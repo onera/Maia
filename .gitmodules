@@ -1,0 +1,9 @@
+[submodule "external/std_e"]
+	path = external/std_e
+	url = https://github.com/BerengerBerthoul/std_e.git
+[submodule "external/cpp_cgns"]
+	path = external/cpp_cgns
+	url = https://github.com/BerengerBerthoul/cpp_cgns.git
+[submodule "external/project_utils"]
+	path = external/project_utils
+	url = https://github.com/BerengerBerthoul/project_utils.git
