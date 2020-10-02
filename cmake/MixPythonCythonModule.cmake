@@ -10,8 +10,8 @@ function( mixpython_cython_add_module _name )
   foreach(_py_file ${_py_files})
     file(RELATIVE_PATH _py_rel  ${CMAKE_CURRENT_SOURCE_DIR} ${_py_file})
     list(APPEND __py_files  ${_py_rel})
-    # message("_py_file :  " ${_py_file})
-    # message("_py_rel  :  " ${_py_rel})
+    message("_py_file :  " ${_py_file})
+    message("_py_rel  :  " ${_py_rel})
   endforeach()
 
   file(GLOB_RECURSE _pyx_files CONFIGURE_DEPENDS *.pyx)
@@ -25,7 +25,7 @@ function( mixpython_cython_add_module _name )
     cython_add_module("${mod_name}" ${_pyx_file})
 
     # message("core_lib = " ${CORE_LIBRARIES})
-    # target_include_directories(${mod_name} PUBLIC ${PROJECT_SOURCE_DIR}/mod)
+    # target_include_directories(${mod_name} PUBLIC ${PROJECT_SOURCE_DIR})
     target_link_libraries("${mod_name}" ${CORE_LIBRARIES})
     target_link_libraries("${mod_name}" ${EXTERNAL_LIBRARIES})
     if(CMAKE_CUDA_COMPILER)
@@ -37,14 +37,14 @@ function( mixpython_cython_add_module _name )
   endforeach()
 
   # Manage install with tree
-  file(RELATIVE_PATH rel ${PROJECT_SOURCE_DIR}/mod ${CMAKE_CURRENT_SOURCE_DIR})
+  file(RELATIVE_PATH rel ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
   # message("relative path : " ${rel})
 
   set(python_copied_modules_${_name})
   foreach (python_file IN LISTS __py_files)
 
-      set(output_python_file "${CMAKE_BINARY_DIR}/mod/${rel}/${python_file}")
+      set(output_python_file "${CMAKE_BINARY_DIR}/${rel}/${python_file}")
 
       add_custom_command(OUTPUT  "${output_python_file}"
                          DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${python_file}"

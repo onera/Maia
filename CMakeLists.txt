@@ -73,7 +73,6 @@ set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full" )
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
-
 ## Dependencies ##
 # include(FetchContent)
 ### doctest ###
@@ -94,10 +93,6 @@ set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full" )
 # ----------------------------------------------------------------------
 include(${CMAKE_MODULE_PATH}/default_flags.cmake)
 # set(CMAKE_Fortran_FLAGS " ${CMAKE_Fortran_FLAGS} -cpp -DE_DOUBLEREAL -ffixed-line-length-none -fno-second-underscore")
-if(MKL_FOUND)
-  # set(CMAKE_Fortran_FLAGS " ${CMAKE_Fortran_FLAGS} -cpp -DMKL_DIRECT_CALL_SEQ ")
-  set(CMAKE_Fortran_FLAGS " ${CMAKE_Fortran_FLAGS} -DMKL_DIRECT_CALL_SEQ ")
-endif()
 
 # ----------------------------------------------------------------------
 # > Mandatory to put here to have all shared libs compile with the coverage flags
@@ -162,7 +157,7 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
 # ----------------------------------------------------------------------
 # Compilation of src
-# add_subdirectory(maia)
+add_subdirectory(maia)
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
