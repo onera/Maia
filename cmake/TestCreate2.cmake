@@ -26,7 +26,7 @@ function(mpi_test_create target_file name n_proc )
   #   message("${incl_lib}")
   #   target_include_directories(${name} PRIVATE incl_lib)
   # endforeach(incl_lib)
-  # target_link_libraries(${name} ${ARGS_LIBRARIES})
+  # target_link_libraries(${name} PUBLIC ${ARGS_LIBRARIES})
   target_link_libraries(${name} maia::maia MPI::MPI_CXX doctest::doctest)
 
   install(TARGETS ${name} RUNTIME DESTINATION bin)

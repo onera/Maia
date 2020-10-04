@@ -29,7 +29,7 @@ file(GLOB_RECURSE __test_files
 set(n_proc_max_test 4)
 mpi_test_create(maia_unit_tests.cpp maia_unit_tests ${n_proc_max_test}
                 SOURCES   ${__test_files}
-                INCLUDES
+                INCLUDES   # doctest::doctest MPI::MPI_CXX
                 LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
                 LABELS     unit
                 SERIAL_RUN false )

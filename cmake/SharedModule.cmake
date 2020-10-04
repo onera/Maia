@@ -55,11 +55,11 @@ function( add_auto_shared_module _name )
   target_link_libraries(${_name} std_e::std_e)
   target_link_libraries(${_name} cpp_cgns::cpp_cgns)
 
-  # install(TARGETS                   ${_name}
-  #         RUNTIME DESTINATION       bin
-  #         LIBRARY DESTINATION       lib
-  #         PUBLIC_HEADER DESTINATION include
-  #         ARCHIVE DESTINATION       lib)
+  install(TARGETS                   ${_name}
+          RUNTIME DESTINATION       bin
+          LIBRARY DESTINATION       lib
+          PUBLIC_HEADER DESTINATION include
+          ARCHIVE DESTINATION       lib)
 
   # install(DIRECTORY      "${CMAKE_CURRENT_SOURCE_DIR}" # source directory
   #         DESTINATION    "include"                     # target directory
