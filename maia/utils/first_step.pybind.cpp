@@ -70,7 +70,8 @@ struct zone_unstructured {
 struct cgns_base {
   std::string         name;
   int                 global_id;
-  std_e::hvector<zone_structured, zone_unstructured> zones;
+  // std_e::hvector<zone_structured, zone_unstructured> zones;
+  std::tuple<std::vector<zone_structured>, std::vector<zone_unstructured>> zones;
 
   // Ctor(s)
   cgns_base() = default;
@@ -88,6 +89,13 @@ struct cgns_base {
   // Move constructor(s)
   cgns_base(cgns_base&& other) = default;
   cgns_base& operator=(cgns_base&& rhs) = default;
+};
+
+
+template<typename zone_type>
+void add_zone_to_base(cgns_base& base, zone_type&& zone){
+  auto& lzone = std::get<std::vector<zone_type>>(base.zones);
+  // lzone.push_back(std::move(zone));
 };
 
 
@@ -133,7 +141,7 @@ PYBIND11_MODULE(first_step, m) {
     .def(py::init<int>())
     .def_readwrite("a", &my_struct::a)
     .def_readonly("h", &my_struct::zones_u, py::return_value_policy::reference)
-    // .def_readwrite("t", &my_struct::h)
+    .def_readonly("t", &my_struct::h, py::return_value_policy::automatic_reference)
     .def("__repr__", [](const my_struct& m){
       std::string s;
       s += "super_class " + std::to_string(m.zones_u.global_id) + "\n";
@@ -153,8 +161,8 @@ PYBIND11_MODULE(first_step, m) {
   py::class_<cgns_base> (m, "cgns_base")
     .def(py::init<std::string, int>())
     .def_readwrite("global_id", &cgns_base::global_id)
-    .def_readwrite("name"     , &cgns_base::name     );
-    // .def_readonly("zones"     , &cgns_base::zones, py::return_value_policy::reference);
+    .def_readwrite("name"     , &cgns_base::name     )
+    .def_readonly("zones"     , &cgns_base::zones, py::return_value_policy::automatic_reference);
 
   m.def("lambda_t1", [](zone_unstructured& m){
     std::cout << __PRETTY_FUNCTION__ << &m << std::endl;
@@ -163,5 +171,14 @@ PYBIND11_MODULE(first_step, m) {
 
   m.def("test", py::overload_cast<zone_structured&>(&test));
   m.def("test", py::overload_cast<zone_unstructured&>(&test));
+
+  // m.def("add_zone_to_base", &add_zone_to_base<zone_unstructured>, py::return_value_policy::move);
+  // m.def("add_zone_to_base", &add_zone_to_base<zone_structured>, py::return_value_policy::move);
+
+  // m.def("add_zone_to_base", [](zone_unstructured&& m){
+  //     std::string s = "void";
+  //     return s;
+  //   });
+  //   // m.def("add_zone_to_base", &add_zone_to_base<zone_structured>, py::return_value_policy::automatic_reference);
 
 }
