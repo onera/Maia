@@ -64,6 +64,7 @@ find_package(ParaDiGM)
 if(NOT PARADIGM_FOUND)
   message("ParaDiGM not found please export PARADIGM_HOME to find it")
 endif()
+# find_package(pybind11)
 include(CTest)
 # ----------------------------------------------------------------------
 
@@ -74,7 +75,18 @@ set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full" )
 
 # ----------------------------------------------------------------------
 ## Dependencies ##
-# include(FetchContent)
+include(FetchContent)
+### pybind11 ###
+FetchContent_Declare(
+  pybind11
+  GIT_REPOSITORY https://github.com/pybind/pybind11.git
+  GIT_TAG        v2.5.0
+)
+FetchContent_GetProperties(pybind11)
+if(NOT pybind11_POPULATED)
+  FetchContent_Populate(pybind11)
+  add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
+endif()
 ### doctest ###
 # FetchContent_Declare(
 #   doctest
@@ -86,6 +98,10 @@ set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full" )
 #   FetchContent_Populate(doctest)
 #   add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR})
 # endif()
+# ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# pybind11_add_module(first_step ${CMAKE_SOURCE_DIR}/first_step.cpp)
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
@@ -151,7 +167,7 @@ include(SharedModule)
 
 # ----------------------------------------------------------------------
 # Define installation directory form
-set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/")
+set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/${PROJECT_NAME}")
 set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 # ----------------------------------------------------------------------
 
