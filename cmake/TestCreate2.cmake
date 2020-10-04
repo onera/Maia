@@ -13,11 +13,21 @@ function(mpi_test_create target_file name n_proc )
   set(multi_value_args SOURCES INCLUDES LIBRARIES LABELS SERIAL_RUN)
   cmake_parse_arguments(ARGS "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
+  # message("${target_file}")
+  # foreach(fs ${ARGS_SOURCES})
+  #   message("file_source = " ${fs})
+  # endforeach(fs)
+
   add_executable(${name} ${target_file} ${ARGS_SOURCES})
 
-  target_include_directories(${name} PRIVATE ${ARGS_INCLUDES})
-  target_link_libraries(${name} ${ARGS_LIBRARIES})
-  target_link_libraries(${name} Threads::Threads)
+  # > Not working if taget specfied
+  # target_include_directories(${name} PRIVATE ${ARGS_INCLUDES})
+  # foreach(incl_lib ${ARGS_INCLUDES})
+  #   message("${incl_lib}")
+  #   target_include_directories(${name} PRIVATE incl_lib)
+  # endforeach(incl_lib)
+  # target_link_libraries(${name} ${ARGS_LIBRARIES})
+  target_link_libraries(${name} maia::maia MPI::MPI_CXX doctest::doctest)
 
   install(TARGETS ${name} RUNTIME DESTINATION bin)
   add_test (NAME ${name}

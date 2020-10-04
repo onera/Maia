@@ -188,7 +188,6 @@ add_subdirectory(maia)
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
-message("${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/")
 install(DIRECTORY      "${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/" # source directory
         DESTINATION    "include/${PROJECT_NAME}"              # target directory
         FILES_MATCHING                                        # install only matched files
@@ -198,15 +197,11 @@ install(DIRECTORY      "${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/" # source directory
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
-# add_subdirectory(mod)
-# ----------------------------------------------------------------------
-
-# ----------------------------------------------------------------------
 # turn on testing
-# enable_testing()
+enable_testing()
 # allow to report to a cdash dashboard
-# include(CTest)
-# add_subdirectory(tests)
+include(CTest)
+add_subdirectory(test)
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
