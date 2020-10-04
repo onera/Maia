@@ -12,6 +12,7 @@ function( add_auto_shared_module _name )
   list(FILTER __sources_files EXCLUDE REGEX ".*\.test\.cpp$")
   list(FILTER __sources_files EXCLUDE REGEX ".*\.nec\.cpp$")
   list(FILTER __sources_files EXCLUDE REGEX ".*\.in\.for$")
+  list(FILTER __sources_files EXCLUDE REGEX ".*\.pybind\.cpp$")
 
   # foreach( _file ${__sources_files} )
   #   message(" Parse file : " ${_file})
@@ -25,7 +26,12 @@ function( add_auto_shared_module _name )
   add_library(${_name} SHARED  ${__sources_files})
 
   # Add include for all libraries configurated
-  target_include_directories(${_name} PUBLIC ${PROJECT_SOURCE_DIR}/src)
+  # Not working
+  # target_include_directories(${_name} PUBLIC
+  #                            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+  #                            $<INSTALL_INTERFACE:include/maia/>)
+  # > Same if in parent directory with specify the correct directory
+  target_include_directories(${_name} PUBLIC ${PROJECT_SOURCE_DIR})
   target_include_directories(${_name} SYSTEM PUBLIC ${MPI_CXX_HEADER_DIR})
   target_include_directories(${_name} SYSTEM PUBLIC ${EXTERNAL_INCLUDES})
   # target_include_directories(${_name} PRIVATE ${Python_NumPy_INCLUDE_DIRS})
@@ -36,7 +42,7 @@ function( add_auto_shared_module _name )
   endif()
 
   # if(AURORA_FOUND)
-  target_include_directories(${_name} PUBLIC ${THRUST_INCLUDE_DIRS})
+  # target_include_directories(${_name} PUBLIC ${THRUST_INCLUDE_DIRS})
   # endif()
 
   # Link with all libraries configurated
@@ -45,22 +51,22 @@ function( add_auto_shared_module _name )
   # if(CMAKE_CUDA_COMPILER)
   #   target_link_libraries(${_name} ${CUDA_LIBRARIES})
   # endif()
-  target_link_libraries(${_name} fmt::fmt)
+  # target_link_libraries(${_name} fmt::fmt)
   target_link_libraries(${_name} std_e::std_e)
   target_link_libraries(${_name} cpp_cgns::cpp_cgns)
 
-  install(TARGETS                   ${_name}
-          RUNTIME DESTINATION       bin
-          LIBRARY DESTINATION       lib
-          PUBLIC_HEADER DESTINATION include
-          ARCHIVE DESTINATION       lib)
+  # install(TARGETS                   ${_name}
+  #         RUNTIME DESTINATION       bin
+  #         LIBRARY DESTINATION       lib
+  #         PUBLIC_HEADER DESTINATION include
+  #         ARCHIVE DESTINATION       lib)
 
-  install(DIRECTORY      "${CMAKE_CURRENT_SOURCE_DIR}" # source directory
-          DESTINATION    "include"                     # target directory
-          FILES_MATCHING                               # install only matched files
-          PATTERN        "*.hpp"                       # select header files
-          PATTERN        "*.h"
-          )
+  # install(DIRECTORY      "${CMAKE_CURRENT_SOURCE_DIR}" # source directory
+  #         DESTINATION    "include"                     # target directory
+  #         FILES_MATCHING                               # install only matched files
+  #         PATTERN        "*.hpp"                       # select header files
+  #         PATTERN        "*.h"
+  #         )
 
 endfunction()
 # ----------------------------------------------------------------------

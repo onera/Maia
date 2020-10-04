@@ -87,6 +87,17 @@ if(NOT pybind11_POPULATED)
   FetchContent_Populate(pybind11)
   add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
 endif()
+### doctest mpi ###
+FetchContent_Declare(
+  doctest
+  GIT_REPOSITORY https://github.com/BerengerBerthoul/doctest.git
+  GIT_TAG        f13a00607463ce211004be23b5aa0bdf24d3ab61
+)
+FetchContent_GetProperties(doctest)
+if(NOT doctest_POPULATED)
+  FetchContent_Populate(doctest)
+  add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR})
+endif()
 ### doctest ###
 # FetchContent_Declare(
 #   doctest
@@ -174,6 +185,16 @@ set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 # ----------------------------------------------------------------------
 # Compilation of src
 add_subdirectory(maia)
+# ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+message("${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/")
+install(DIRECTORY      "${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/" # source directory
+        DESTINATION    "include/${PROJECT_NAME}"              # target directory
+        FILES_MATCHING                                        # install only matched files
+        PATTERN        "*.hpp"                                # select header files
+        PATTERN        "*.h"
+        )
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
