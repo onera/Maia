@@ -89,9 +89,12 @@ function(mpi_pytest_python_create name n_proc)
             ${MPIEXEC_POSTFLAGS})
 
   # > Set properties for the current test
+  # pytest test/maia_python_unit_tests.py --html=test.html --self-contained-html
+  # message(${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH})
   set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
   set_tests_properties("${name}" PROPERTIES
-                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/mod:$ENV{PYTHONPATH}
+                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH}
+                       ENVIRONMENT LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}
                        DEPENDS t_${name})
   set_tests_properties(${name} PROPERTIES PROCESSORS n_proc)
   if(${ARGS_SERIAL_RUN})

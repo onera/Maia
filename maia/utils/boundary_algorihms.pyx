@@ -18,7 +18,7 @@ import copy        as CPY
 cimport cython
 cimport numpy       as      NPY
 
-cimport    mpi4py.MPI        as MPI
+# cimport    mpi4py.MPI        as MPI
 
 # MANDATORY :
 # ---------

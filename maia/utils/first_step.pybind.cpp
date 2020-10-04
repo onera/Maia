@@ -112,11 +112,13 @@ PYBIND11_MODULE(first_step, m) {
 
     py::class_<zone_unstructured> py_zone_unstructured(m, "zone_unstructured");
     py_zone_unstructured.def(py::init<std::string, int>())
-      .def_readwrite("global_id", &zone_unstructured::global_id);
+      .def_readwrite("global_id", &zone_unstructured::global_id)
+      .def_readwrite("name"     , &zone_unstructured::name     );
 
     py::class_<zone_structured> py_zone_structured(m, "zone_structured");
     py_zone_structured.def(py::init<std::string, int>())
-      .def_readwrite("global_id", &zone_structured::global_id);
+      .def_readwrite("global_id", &zone_structured::global_id)
+      .def_readwrite("name"     , &zone_structured::name);
 
     m.def("lambda_t1", [](zone_unstructured& m){
       std::cout << __PRETTY_FUNCTION__ << &m << std::endl;
