@@ -93,9 +93,11 @@ function(mpi_pytest_python_create name n_proc)
   # message(${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH})
   set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
   set_tests_properties("${name}" PROPERTIES
-                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH}
-                       ENVIRONMENT LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}
+                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/:$ENV{PYTHONPATH}
                        DEPENDS t_${name})
+  # > Append other
+  set_property(TEST "${name}" APPEND PROPERTY
+                       ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/maia:$ENV{LD_LIBRARY_PATH})
   set_tests_properties(${name} PROPERTIES PROCESSORS n_proc)
   if(${ARGS_SERIAL_RUN})
     set_tests_properties(${name} PROPERTIES RUN_SERIAL true)
