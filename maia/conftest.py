@@ -3,17 +3,16 @@ import os
 from mpi4py import MPI
 
 # https://stackoverflow.com/questions/59577426/how-to-rename-the-title-of-the-html-report-generated-by-pytest-html-plug-in
-@pytest.hookimpl(tryfirst=False)
+@pytest.hookimpl(tryfirst=True)
 def pytest_configure(config):
   # to remove environment section
-  print("*"*100)
   config._metadata = None
 
   if not os.path.exists('reports'):
     os.makedirs('reports')
 
   comm = MPI.COMM_WORLD
-  config.option.htmlpath = 'reports/' + "report_main_{0}.html".format(comm.rank)
+  config.option.htmlpath = 'reports/' + "report_unit_test_{0}.html".format(comm.rank)
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):

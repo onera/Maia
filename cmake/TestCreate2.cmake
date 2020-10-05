@@ -85,7 +85,7 @@ function(mpi_pytest_python_create name n_proc)
   # WORKING_DIRECTORY
   add_test (${name} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${n_proc}
             ${MPIEXEC_PREFLAGS}
-            ${Python_EXECUTABLE} -m pytest -Wignore -r a -v ${output_python_file}
+            ${Python_EXECUTABLE} -m pytest -Wignore -r a -v -s ${output_python_file}
             ${MPIEXEC_POSTFLAGS})
 
   # > Set properties for the current test

@@ -38,3 +38,11 @@ mpi_test_create(maia_unit_tests.cpp maia_unit_tests ${n_proc_max_test}
 # --------------------------------------------------------------------------------
 mpi_pytest_python_create(maia_python_unit_tests 1)
 # --------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------
+# set(SRC_DIR ${CMAKE_SOURCE_DIR}/${PROJECT_NAME})
+# file(GLOB_RECURSE __py_test_files
+#      CONFIGURE_DEPENDS
+#      "${SRC_DIR}/test_*.py")
+# --------------------------------------------------------------------------------
+

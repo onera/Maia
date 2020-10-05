@@ -6,14 +6,14 @@ from mpi4py import MPI
 @pytest.hookimpl(tryfirst=False)
 def pytest_configure(config):
   # to remove environment section
-  print("*"*100)
+  print("-*"*100)
   config._metadata = None
 
   if not os.path.exists('reports'):
     os.makedirs('reports')
 
   comm = MPI.COMM_WORLD
-  config.option.htmlpath = 'reports/' + "report_main_{0}.html".format(comm.rank)
+  config.option.htmlpath = 'reports/' + "report_cgns_io_unit_test_{0}.html".format(comm.rank)
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
