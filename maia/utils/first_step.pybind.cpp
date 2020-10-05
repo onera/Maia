@@ -33,14 +33,28 @@ struct zone_structured {
   {
     std::cout << __PRETTY_FUNCTION__ << std::endl;
   }
+  ~zone_structured(){
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+  }
 
   // Copy constructor(s)
   zone_structured (const zone_structured& rhs) = delete;
   zone_structured& operator=(const zone_structured &) = delete;
 
   // Move constructor(s)
-  zone_structured (zone_structured&& other) = default;
-  zone_structured& operator=(zone_structured&& rhs) = default;
+  zone_structured (zone_structured&& other) {
+    std::cout << "oo" <<  __PRETTY_FUNCTION__ << std::endl;
+    (*this) = std::move(other);
+  }
+  // zone_structured& operator=(zone_structured&& rhs) = default;
+  zone_structured& operator=(zone_structured&& rhs) {
+    rhs.global_id = -1;
+    rhs.name      = "fake";
+    global_id = -2;
+    name      = "fake_move";
+    std::cout <<  "aoo" <<__PRETTY_FUNCTION__ << std::endl;
+    return *this;
+  };
 };
 
 
@@ -53,6 +67,9 @@ struct zone_unstructured {
   zone_unstructured() = default;
   zone_unstructured(std::string name, int global_id) : name(name), global_id(global_id)
   {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+  }
+  ~zone_unstructured(){
     std::cout << __PRETTY_FUNCTION__ << std::endl;
   }
 
@@ -95,7 +112,9 @@ struct cgns_base {
 template<typename zone_type>
 void add_zone_to_base(cgns_base& base, zone_type&& zone){
   auto& lzone = std::get<std::vector<zone_type>>(base.zones);
-  // lzone.push_back(std::move(zone));
+  std::cout << __PRETTY_FUNCTION__ << " --> " << zone.global_id << std::endl;
+  lzone.push_back(std::move(zone));
+  // auto tmp = std::move(zone);
 };
 
 
@@ -129,6 +148,50 @@ void test(zone_structured& /*zone*/){
   std::cout << __PRETTY_FUNCTION__ << std::endl;
 };
 
+// struct essai {
+//   std::string         name;
+//   int                 global_id;
+//   essai(std::string name, int global_id) : name(name), global_id(global_id)
+//   {
+//     std::cout << __PRETTY_FUNCTION__ << std::endl;
+//   }
+// };
+
+class meboute {
+
+  // operator meboute &&() && { return std::move(this); }
+};
+
+// struct custom {
+//   static constexpr const char name[] = "Custom";
+//   int foo() { return 1; }
+// };
+
+// namespace pybind11 { namespace detail {
+
+// template < typename T >
+// struct caster {
+//     PYBIND11_TYPE_CASTER(T, T::name);
+// };
+
+// template <> struct type_caster< custom > : caster< custom > {};
+
+// }} // namespace pybind11::detail
+
+// PYBIND11_MODULE(core, m) {
+//   py::class_< custom >(m, "cc")
+//   .def("foo", &custom::foo);
+// }
+
+
+// PYBIND11_MAKE_OPAQUE(essai);
+
+void comsume_ptr(std::tuple<int>&& a){
+  auto tmp = std::move(a);
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return;
+};
+
 // ---------------------------------------------------
 PYBIND11_MODULE(first_step, m) {
   m.doc() = "pybind11 first_step plugin"; // optional module docstring
@@ -158,12 +221,26 @@ PYBIND11_MODULE(first_step, m) {
     .def_readwrite("global_id", &zone_structured::global_id)
     .def_readwrite("name"     , &zone_structured::name     );
 
+  // py::class_<essai> (m, "essai")
+  //   .def(py::init<std::string, int>())
+  //   .def_readwrite("global_id", &essai::global_id)
+  //   .def_readwrite("name"     , &essai::name     );
+
   py::class_<cgns_base> (m, "cgns_base")
     .def(py::init<std::string, int>())
     .def_readwrite("global_id", &cgns_base::global_id)
     .def_readwrite("name"     , &cgns_base::name     )
-    .def_readonly("zones"     , &cgns_base::zones, py::return_value_policy::automatic_reference);
-
+    .def_readonly("zones"     , &cgns_base::zones, py::return_value_policy::automatic_reference)
+    .def("__repr__", [](const cgns_base& m){
+      std::string s;
+      std_e::for_each(m.zones, [&](auto& zones) {
+        std::for_each(begin(zones), end(zones), [&](auto& zone){
+          s += "zone name : " + zone.name + " | " + std::to_string(zone.global_id);
+          s += "\n";
+        });
+      });
+      return s;
+    });
   m.def("lambda_t1", [](zone_unstructured& m){
     std::cout << __PRETTY_FUNCTION__ << &m << std::endl;
     return;
@@ -172,8 +249,11 @@ PYBIND11_MODULE(first_step, m) {
   m.def("test", py::overload_cast<zone_structured&>(&test));
   m.def("test", py::overload_cast<zone_unstructured&>(&test));
 
-  // m.def("add_zone_to_base", &add_zone_to_base<zone_unstructured>, py::return_value_policy::move);
-  // m.def("add_zone_to_base", &add_zone_to_base<zone_structured>, py::return_value_policy::move);
+  // m.def("add_zone_to_base", &add_zone_to_base<zone_unstructured>, py::return_value_policy::automatic_reference);
+  // m.def("add_zone_to_base", &add_zone_to_base<zone_structured>, py::return_value_policy::automatic_reference);
+
+  // m.def("comsume_ptr", &comsume_ptr, py::return_value_policy::automatic_reference);
+
 
   // m.def("add_zone_to_base", [](zone_unstructured&& m){
   //     std::string s = "void";
