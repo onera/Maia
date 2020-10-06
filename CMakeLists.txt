@@ -13,7 +13,7 @@ else()
   set(PROJECT_ROOT ${CMAKE_SOURCE_DIR})
 endif()
 
-# load commands target_add_dependency, target_add_thirdparty_dependency and target_install
+# Load commands target_add_dependency, target_add_thirdparty_dependency and target_install
 include(${PROJECT_ROOT}/external/project_utils/scripts/cmake/target_add_dependency.cmake)
 
 
@@ -25,15 +25,15 @@ project(
   DESCRIPTION "Distributed algorithms for CGNS trees"
   LANGUAGES Fortran CXX C)
 
-
-# Compiler flags
+## Compiler flags
+### Defaults
 include(${CMAKE_MODULE_PATH}/default_flags.cmake)
 set(CMAKE_Fortran_FLAGS " ${CMAKE_Fortran_FLAGS} -cpp -DE_DOUBLEREAL -ffixed-line-length-none -fno-second-underscore")
-
+### Build type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE) # default to Release
 endif()
-
+### C++ standard
 set(CMAKE_CXX_STANDARD          17 )
 set(CMAKE_CXX_EXTENSIONS        OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON )
@@ -110,17 +110,62 @@ if(ENABLE_COVERAGE)
   APPEND_COVERAGE_COMPILER_FLAGS()
 endif()
 
+
 # ----------------------------------------------------------------------
-# Compilation + install of src
+# Compilation
 # ----------------------------------------------------------------------
-add_subdirectory(maia)
+
+## Python, Cython, Pybind11
+#include(MixPythonCythonModule)
+#mixpython_cython_add_module(maia)
+add_subdirectory(maia) # TODO DEL separate file once mixpython_cython_add_module can be included here
+
+## Compiled languages
+set(src_dir ${PROJECT_SOURCE_DIR}/${PROJECT_NAME})
+set(include_dir ${PROJECT_SOURCE_DIR})
+
+file(GLOB_RECURSE all_src_files
+  "${src_dir}/*.cpp"
+  "${src_dir}/*.f90"
+  "${src_dir}/*.c"
+)
+
+set(src_files ${all_src_files})
+list(FILTER src_files EXCLUDE REGEX ".*\\.test\\.cpp$")
+list(FILTER src_files EXCLUDE REGEX ".*\\.in\\.for$")
+list(FILTER src_files EXCLUDE REGEX ".*\\.pybind\\.cpp$")
+
+add_library(${PROJECT_NAME} SHARED ${src_files})
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${include_dir}>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
+)
+
+target_link_libraries(${PROJECT_NAME}
+  PUBLIC 
+    std_e::std_e
+    cpp_cgns::cpp_cgns
+    MPI::MPI_CXX
+)
+
+
+# ----------------------------------------------------------------------
+# Installation
+# ----------------------------------------------------------------------
+set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/${PROJECT_NAME}")
+set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
+
+target_install(${PROJECT_NAME})
+
 
 # ----------------------------------------------------------------------
 # Testing
 # ----------------------------------------------------------------------
 include(CTest)
-enable_testing() # allow to report to a cdash dashboard # TODO DEL (doc says its invoked with include(CTest)
+#enable_testing() # allow to report to a cdash dashboard # TODO DEL (doc says its invoked with include(CTest)
 add_subdirectory(test)
+
 
 # ----------------------------------------------------------------------
 # Build documentation
@@ -145,6 +190,7 @@ add_subdirectory(test)
 #   install(DIRECTORY   ${CMAKE_CURRENT_BINARY_DIR}/html
 #           DESTINATION ${CMAKE_INSTALL_PREFIX}/share/doc)
 # endif()
+
 
 # ----------------------------------------------------------------------
 # Summary
