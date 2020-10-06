@@ -187,6 +187,8 @@ class meboute {
 // PYBIND11_MAKE_OPAQUE(essai);
 
 void comsume_ptr(std::tuple<int>&& a){
+// void comsume_ptr(std_e::hvector<int>&& a){
+// void comsume_ptr(zone_unstructured&& a){
   auto tmp = std::move(a);
   std::cout << __PRETTY_FUNCTION__ << std::endl;
   return;
@@ -252,7 +254,7 @@ PYBIND11_MODULE(first_step, m) {
   // m.def("add_zone_to_base", &add_zone_to_base<zone_unstructured>, py::return_value_policy::automatic_reference);
   // m.def("add_zone_to_base", &add_zone_to_base<zone_structured>, py::return_value_policy::automatic_reference);
 
-  // m.def("comsume_ptr", &comsume_ptr, py::return_value_policy::automatic_reference);
+  m.def("comsume_ptr", &comsume_ptr, py::return_value_policy::automatic_reference);
 
 
   // m.def("add_zone_to_base", [](zone_unstructured&& m){

@@ -19,7 +19,7 @@ def compute_distribution_zone_cell(zone_tree, comm):
   """
   # compute_proc_indexes()
 
-  ncell = UTL.getZoneNbCell(zone_tree)
+  ncell = UTL.get_zone_nb_cell(zone_tree)
 
   distrib_cell = NPY.zeros(3, order='C', dtype='int32')
   UTL.compute_proc_indexes(distrib_cell, ncell, i_active, n_active)
