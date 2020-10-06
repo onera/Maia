@@ -23,19 +23,16 @@ def test_filter_2(sub_comm):
 
   pytest.assert_mpi(sub_comm, 0, sub_comm.rank == 0)
 
-  pass
-
 # --------------------------------------------------------------------------
-@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+@pytest.mark.parametrize("sub_comm", [1, 2], indirect=['sub_comm'])
 def test_filter_all_reduce(sub_comm):
   if(sub_comm == MPI.COMM_NULL):
     print("ooox"*10)
     return
 
-  assert( sub_comm.size == 2)
   res = sub_comm.allreduce(sub_comm.size, op=MPI.SUM)
 
   pytest.assert_mpi(sub_comm, 0, sub_comm.rank == 0)
-  pytest.assert_mpi(sub_comm, 1, res           == 4)
-  pytest.assert_mpi(sub_comm, 0, res           == 4)
+  pytest.assert_mpi(sub_comm, 1, res           == sub_comm.size*sub_comm.size)
+  pytest.assert_mpi(sub_comm, 0, res           == sub_comm.size*sub_comm.size)
 
