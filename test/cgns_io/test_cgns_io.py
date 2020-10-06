@@ -25,6 +25,7 @@ def test_filter_2(sub_comm):
 
 # --------------------------------------------------------------------------
 @pytest.mark.parametrize("sub_comm", [1, 2], indirect=['sub_comm'])
+@pytest.mark.mpi(min_size=2)
 def test_filter_all_reduce(sub_comm):
   if(sub_comm == MPI.COMM_NULL):
     print("ooox"*10)
