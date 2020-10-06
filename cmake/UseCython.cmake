@@ -407,10 +407,13 @@ function( compile_one_pyx _name pyx_file generated_file )
   # Get the include directories.
   get_source_file_property( pyx_location ${pyx_file} LOCATION )
   get_filename_component( pyx_path ${pyx_location} PATH )
-  get_directory_property( cmake_include_directories DIRECTORY ${pyx_path} INCLUDE_DIRECTORIES )
+  get_filename_component( pyx_dir ${pyx_location} DIRECTORY )
+  # message("pyx_location::${pyx_dir}")
+  # get_directory_property( cmake_include_directories DIRECTORY ${pyx_dir} INCLUDE_DIRECTORIES )
+  # get_directory_property( cmake_include_directories DIRECTORY ${pyx_dir}  )
   list( APPEND cython_include_directories ${cmake_include_directories} )
   list( APPEND pyx_locations "${pyx_location}" )
-  list( APPEND cython_include_directories ${PROJECT_SOURCE_DIR}/mod)
+  list( APPEND cython_include_directories ${PROJECT_SOURCE_DIR}/maia)
 
   # Determine dependencies.
   # Add the pxd file will the same name as the given pyx file.
