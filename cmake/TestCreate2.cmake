@@ -217,23 +217,28 @@ function(mpi_pytest_directory_python_create name n_proc)
   # WORKING_DIRECTORY
   # add_test (${name} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${n_proc}
   #           ${MPIEXEC_PREFLAGS}
-  #           ${Python_EXECUTABLE} -m pytest -Wignore -r a -v -s ${output_python_file}
+  #           ${Python_EXECUTABLE} -m pytest -Wignore -r a -v -s ${name}
   #           ${MPIEXEC_POSTFLAGS})
+  add_test (${name} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${n_proc}
+            ${MPIEXEC_PREFLAGS}
+            ${Python_EXECUTABLE} -m pytest -Wignore -r a -v -s .
+            ${MPIEXEC_POSTFLAGS})
 
-  # # > Set properties for the current test
-  # # pytest test/maia_python_unit_tests.py --html=test.html --self-contained-html
-  # # message(${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH})
-  # set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
-  # set_tests_properties("${name}" PROPERTIES
-  #                      ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/:$ENV{PYTHONPATH}
-  #                      DEPENDS t_${name})
-  # # > Append other
-  # set_property(TEST "${name}" APPEND PROPERTY
-  #                      ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/maia:$ENV{LD_LIBRARY_PATH})
-  # set_tests_properties(${name} PROPERTIES PROCESSORS n_proc)
-  # if(${ARGS_SERIAL_RUN})
-  #   set_tests_properties(${name} PROPERTIES RUN_SERIAL true)
-  # endif()
+  # > Set properties for the current test
+  # pytest test/maia_python_unit_tests.py --html=test.html --self-contained-html
+  # message(${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH})
+  set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
+  set_tests_properties("${name}" PROPERTIES
+                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/:$ENV{PYTHONPATH}
+                       DEPENDS t_${name})
+  # > Append other
+  set_property(TEST "${name}" APPEND PROPERTY
+                       ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/maia:$ENV{LD_LIBRARY_PATH})
+  set_tests_properties(${name} PROPERTIES PROCESSORS n_proc)
+  if(${ARGS_SERIAL_RUN})
+    set_tests_properties(${name} PROPERTIES RUN_SERIAL true)
+  endif()
+  # > Not working if not launch with srun ...
   # set_tests_properties(${name} PROPERTIES PROCESSOR_AFFINITY true)
 
 
