@@ -2,6 +2,34 @@ import pytest
 import os
 from mpi4py import MPI
 
+# --------------------------------------------------------------------------
+@pytest.fixture
+def sub_comm(request):
+  """
+  """
+  comm = MPI.COMM_WORLD
+
+  nproc = request.param
+
+  # Groups communicator creation
+  gprocs   = [i for i in range(nproc)]
+  group    = comm.Get_group()
+  subgroup = group.Incl(gprocs)
+  subcomm  = comm.Create(subgroup)
+
+  comm.Barrier()
+
+  return subcomm
+
+# --------------------------------------------------------------------------
+def assert_mpi(comm, rank, cond ):
+  if(comm.rank == rank):
+    print("assert_mpi --> ", cond)
+    assert(cond == True)
+  else:
+    pass
+
+# --------------------------------------------------------------------------
 # https://stackoverflow.com/questions/59577426/how-to-rename-the-title-of-the-html-report-generated-by-pytest-html-plug-in
 @pytest.hookimpl(tryfirst=False)
 def pytest_configure(config):
@@ -15,6 +43,9 @@ def pytest_configure(config):
   comm = MPI.COMM_WORLD
   config.option.htmlpath = 'reports/' + "report_main_{0}.html".format(comm.rank)
 
+  pytest.assert_mpi = assert_mpi
+
+# --------------------------------------------------------------------------
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
 
