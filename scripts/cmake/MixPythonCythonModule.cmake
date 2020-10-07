@@ -6,6 +6,16 @@ function( mixpython_cython_add_module _name )
   # message(${CMAKE_BINARY_DIR})
   # message(${CMAKE_CURRENT_SOURCE_DIR})
 
+  file(GLOB_RECURSE _py_files CONFIGURE_DEPENDS *.py)
+
+  set(__py_files)
+  foreach(_py_file ${_py_files})
+    file(RELATIVE_PATH _py_rel  ${CMAKE_CURRENT_SOURCE_DIR} ${_py_file})
+    list(APPEND __py_files  ${_py_rel})
+    # message("_py_file :  " ${_py_file})
+    # message("_py_rel  :  " ${_py_rel})
+  endforeach()
+
 
   # pybind
   # if(ENABLE_PYBIND)

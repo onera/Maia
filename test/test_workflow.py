@@ -30,6 +30,7 @@ from maia.cgns_io import lazy_load as LZL
 import Converter.PyTree   as C
 import Converter.Internal as I
 import numpy              as NPY
+import sys
 
 # ------------------------------------------------------------------------
 # > Pick a file
@@ -41,7 +42,7 @@ inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.
 print(LZL)
 pruned_tree         = LZL.load_collective_pruned_tree(inputfile, comm)
 
-SYS.exit()
+sys.exit()
 # pruned_tree         = LZL.load_collective_pruned_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
                                                                        # 'CGNSBase_t/Family_t'/*])
 dist_tree = LLC.lazyLoadCGNSConfiguration(inputfile, comm)
