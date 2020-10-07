@@ -28,6 +28,11 @@ NPY.import_array()
 # ------------
 
 # -----------------------------------------------------------------
+ctypedef fused integer_kind:
+  NPY.int32_t
+  NPY.int64_t
+
+# -----------------------------------------------------------------
 def convert_to_unstructured():
   """
   """
@@ -35,3 +40,12 @@ def convert_to_unstructured():
   # > Declaration
   # ************************************************************************
   print("convert_to_ngon")
+
+# -----------------------------------------------------------------
+def automatic_dispatch(NPY.ndarray[integer_kind, ndim=1, mode='fortran'] face_vtx,
+                       NPY.ndarray[NPY.int32_t , ndim=1, mode='fortran'] face_vtx_idx):
+  """
+  """
+  print("automatic_dispatch face_vtx     ---> ", type(face_vtx)    )
+  print("automatic_dispatch face_vtx_idx ---> ", type(face_vtx_idx))
+

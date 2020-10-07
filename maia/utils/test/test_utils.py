@@ -31,3 +31,48 @@ def test_utils():
 #   print(zone_u1.global_id)
 #   print(zone_s1.global_id)
 #   print(base)
+
+
+def test_automatic_dispatch():
+  """
+  """
+  from maia.utils import boundary_algorihms as MUB
+  import numpy as NPY
+  print(MUB.__file__)
+
+  face_vtx_32  = NPY.empty(10, dtype='int32', order='F')
+  face_vtx_64  = NPY.empty(10, dtype='int64', order='F')
+  face_vtx_idx = NPY.empty(3 , dtype='int32', order='F')
+
+  face_vtx_u64  = NPY.empty(10, dtype='uint64', order='F')
+
+  MUB.automatic_dispatch(face_vtx_32, face_vtx_idx)
+  MUB.automatic_dispatch(face_vtx_64, face_vtx_idx)
+
+  try:
+    MUB.automatic_dispatch(face_vtx_u64, face_vtx_idx)
+  except TypeError:
+    print("Bad type pass")
+    pass
+
+def test_automatic_dispatch_pybind():
+  """
+  """
+  from maia.utils import dispatch as MUD
+  import numpy as NPY
+  print(MUD.__file__)
+
+  face_vtx_32  = NPY.empty(10, dtype='int32', order='F')
+  face_vtx_64  = NPY.empty(10, dtype='int64', order='F')
+  face_vtx_idx = NPY.empty(3 , dtype='int32', order='F')
+
+  face_vtx_u64  = NPY.empty(10, dtype='float', order='F')
+
+  MUD.auto_dispatch(face_vtx_32, face_vtx_idx)
+  MUD.auto_dispatch(face_vtx_64, face_vtx_idx)
+
+  try:
+    MUD.auto_dispatch(face_vtx_u64, face_vtx_idx)
+  except TypeError:
+    print("Bad type pass")
+    pass
