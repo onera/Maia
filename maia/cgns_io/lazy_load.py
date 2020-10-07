@@ -1,6 +1,7 @@
-import os
+from mpi4py import MPI
 
-def berenger():
+def load_collective_pruned_tree(inputfile, comm):
   """
   """
-  print("MAIS POUQUOI ON FAIT DU CYTHON")
+
+
