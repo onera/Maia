@@ -6,17 +6,6 @@ function( mixpython_cython_add_module _name )
   # message(${CMAKE_BINARY_DIR})
   # message(${CMAKE_CURRENT_SOURCE_DIR})
 
-  file(GLOB_RECURSE _py_files CONFIGURE_DEPENDS *.py)
-
-  ## TODO seems to do nothing, delete?
-  #set(__py_files)
-  #foreach(_py_file ${_py_files})
-  #  file(RELATIVE_PATH _py_rel  ${CMAKE_CURRENT_SOURCE_DIR} ${_py_file})
-  #  list(APPEND __py_files  ${_py_rel})
-  #  # message("_py_file :  " ${_py_file})
-  #  # message("_py_rel  :  " ${_py_rel})
-  #endforeach()
-  ## end TODO
 
   # pybind
   # if(ENABLE_PYBIND)
@@ -26,7 +15,7 @@ function( mixpython_cython_add_module _name )
     # Deduce module name
     get_filename_component(mod_name ${_pybind_file} NAME_WE )
     get_filename_component( pybind_dir      ${_pybind_file} DIRECTORY )
-    get_filename_component( pybind_mod_name ${_pybind_file} NAME_WE   )
+    #get_filename_component( pybind_mod_name ${_pybind_file} NAME_WE   )
     file(RELATIVE_PATH pybind_dir_rel ${CMAKE_CURRENT_SOURCE_DIR} ${pybind_dir})
     # message("mod_name::" ${mod_name} ${pybind_dir_rel})
 
@@ -50,7 +39,7 @@ function( mixpython_cython_add_module _name )
     # message("rel::" ${rel})
 
     get_filename_component( pyx_dir      ${_pyx_file} DIRECTORY )
-    get_filename_component( pyx_mod_name ${_pyx_file} NAME_WE   )
+    #get_filename_component( pyx_mod_name ${_pyx_file} NAME_WE   )
     file(RELATIVE_PATH pyx_dir_rel ${CMAKE_CURRENT_SOURCE_DIR} ${pyx_dir})
 
     set_source_files_properties(${_pyx_file} PROPERTIES CYTHON_IS_CXX TRUE)
@@ -85,7 +74,7 @@ function( mixpython_cython_add_module _name )
                        COMMENT "Copying ${python_file} to the binary directory")
 
     get_filename_component(python_file_directory "${python_file}" DIRECTORY)
-    get_filename_component(py_file_name_we "${python_file}" NAME_WE)
+    #get_filename_component(py_file_name_we "${python_file}" NAME_WE)
 
     # Panic verbose
     # message(" py_file_name_we       " ${py_file_name_we})

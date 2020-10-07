@@ -126,13 +126,10 @@ set(include_dir ${PROJECT_SOURCE_DIR})
 
 file(GLOB_RECURSE all_src_files
   "${src_dir}/*.cpp"
-  "${src_dir}/*.f90"
-  "${src_dir}/*.c"
 )
 
 set(src_files ${all_src_files})
 list(FILTER src_files EXCLUDE REGEX ".*\\.test\\.cpp$")
-list(FILTER src_files EXCLUDE REGEX ".*\\.in\\.for$")
 list(FILTER src_files EXCLUDE REGEX ".*\\.pybind\\.cpp$")
 
 add_library(${PROJECT_NAME} SHARED ${src_files})
@@ -163,7 +160,6 @@ target_install(${PROJECT_NAME})
 # Testing
 # ----------------------------------------------------------------------
 include(CTest)
-#enable_testing() # allow to report to a cdash dashboard # TODO DEL (doc says its invoked with include(CTest)
 add_subdirectory(test)
 
 
