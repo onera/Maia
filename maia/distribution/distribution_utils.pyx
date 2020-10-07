@@ -7,7 +7,7 @@ NPY.import_array()
 
 
 # --------------------------------------------------------------------------
-def compute_proc_indexes(NPY.ndarray[NPY.int32_t, ndim=1, mode='fortran'] proc_indexes,
+def compute_proc_indices(NPY.ndarray[NPY.int32_t, ndim=1, mode='fortran'] proc_indexes,
                          int n_element, int i_rank, int n_rank):
   """
   """
