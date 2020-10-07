@@ -40,6 +40,7 @@ inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.
                                                                        # 'CGNSBase_t/Family_t'/*])
 dist_tree = LLC.lazyLoadCGNSConfiguration(inputfile, comm)
 
+# > ParaDiGM : dcube_gen()
 
 enrich_with_dist_info(dist_tree, distribution_policy='uniform', comm)
 
