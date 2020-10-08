@@ -51,11 +51,14 @@ def warm_up_dist_tree(dist_tree, data_shape):
       warm_up_zone_dist_tree(zone, zone_path, data_shape)
 
 
-def load_collective_pruned_tree(filename, comm, skeleton_depth=7, skeleton_n_data=3):
+def load_collective_pruned_tree(filename, comm):
   """
   """
   rank = comm.Get_rank()
   size = comm.Get_size()
+
+  skeleton_depth  = 7
+  skeleton_n_data = 3
 
   # > In order to avoid filesystem overload only 1 proc read the squeleton
   if(rank == 0):
