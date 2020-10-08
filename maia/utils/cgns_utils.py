@@ -17,8 +17,8 @@ def get_zone_nb_cell( zone ):
      Zone_t : VertexDim[indexDimeension], CellDim[indexDimension]
      Usage: nelts=getzoneElementNumber( z )
   """
-  n_vtx = 1
+  n_cell = 1
   indexDimension = len(zone[1])
   for idx in range(indexDimension):
-    n_vtx *= zone[1][idx][1]
-  return n_vtx
+    n_cell *= zone[1][idx][1]
+  return n_cell
