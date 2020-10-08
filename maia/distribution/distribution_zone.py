@@ -2,7 +2,8 @@ import Converter.PyTree   as C
 import Converter.Internal as I
 import maia.utils         as UTL
 
-from   .distribution_function import uniform_distribution
+from   .distribution_function import create_distribution_node
+from   .distribution_elements import compute_elements_distribution
 
 
 # def compute_distribution_zone_face(zone_tree, comm):
@@ -30,8 +31,10 @@ def compute_zone_distribution(zone, comm):
   print("nvtx ::", nvtx)
   print("ncell::", ncell)
 
-  distrib_vtx  = uniform_distribution(nvtx , comm)
-  distrib_cell = uniform_distribution(ncell, comm)
+  distrib_vtx  = create_distribution_node(nvtx , comm, 'distribution_vtx' , zone)
+  distrib_cell = create_distribution_node(ncell, comm, 'distribution_cell', zone)
+
+  I.printTree(zone)
 
   # FlowSolution : Avec ghost cells
   #    --> [ --------- , rind ]

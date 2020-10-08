@@ -1,4 +1,5 @@
-import numpy as NPY
+import numpy              as NPY
+import Converter.Internal as I
 
 def uniform_distribution(n_elemt, comm):
   """
@@ -22,3 +23,9 @@ def uniform_distribution(n_elemt, comm):
 
   return proc_indices
 
+def create_distribution_node(n_elemt, comm, name, parent_node):
+  """
+  Helper class to setup pyCGNS node with distribution
+  """
+  distrib = uniform_distribution(n_elemt, comm)
+  I.newDataArray(name, value=distrib, parent=parent_node)
