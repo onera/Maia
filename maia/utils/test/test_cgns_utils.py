@@ -13,6 +13,9 @@ def test_get_zone_nb_u():
   ncell = UTL.get_zone_nb_cell(zone_u)
   assert ncell == 9*4*1
 
+  nvtx_bnd = UTL.get_zone_nb_vtx_bnd(zone_u)
+  assert nvtx_bnd == 0
+
 def test_get_zone_nb_s():
 
   zone_s = G.cart((0., 0., 0.), (1., 1., 1.), (20, 3, 5))
@@ -22,3 +25,7 @@ def test_get_zone_nb_s():
 
   ncell = UTL.get_zone_nb_cell(zone_s)
   assert ncell == 19*2*4
+
+  nvtx_bnd = UTL.get_zone_nb_vtx_bnd(zone_s)
+  assert nvtx_bnd == 0
+
