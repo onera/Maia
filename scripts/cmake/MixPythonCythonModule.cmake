@@ -6,17 +6,6 @@ function( mixpython_cython_add_module _name )
   # message(${CMAKE_BINARY_DIR})
   # message(${CMAKE_CURRENT_SOURCE_DIR})
 
-  file(GLOB_RECURSE _py_files CONFIGURE_DEPENDS *.py)
-
-  set(__py_files)
-  foreach(_py_file ${_py_files})
-    file(RELATIVE_PATH _py_rel  ${CMAKE_CURRENT_SOURCE_DIR} ${_py_file})
-    list(APPEND __py_files  ${_py_rel})
-    # message("_py_file :  " ${_py_file})
-    # message("_py_rel  :  " ${_py_rel})
-  endforeach()
-
-
   # pybind
   # if(ENABLE_PYBIND)
   file(GLOB_RECURSE _pybind_files CONFIGURE_DEPENDS *.pybind.cpp)
@@ -72,31 +61,26 @@ function( mixpython_cython_add_module _name )
   # message("relative path : " ${rel})
 
   set(python_copied_modules_${_name})
-  foreach (python_file IN LISTS __py_files)
 
-    set(output_python_file "${CMAKE_BINARY_DIR}/${rel}/${python_file}")
+  file(GLOB_RECURSE _py_files CONFIGURE_DEPENDS *.py)
+  foreach (python_file IN LISTS _py_files)
+
+    file(RELATIVE_PATH python_rel_file  ${CMAKE_CURRENT_SOURCE_DIR} ${python_file})
+    set(output_python_file "${CMAKE_BINARY_DIR}/${python_rel_file}")
+
+    # message("output_python_file::" ${output_python_file})
 
     add_custom_command(OUTPUT  "${output_python_file}"
-                       DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${python_file}"
+                       DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${python_rel_file}"
                        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                       "${CMAKE_CURRENT_SOURCE_DIR}/${python_file}"
+                       "${CMAKE_CURRENT_SOURCE_DIR}/${python_rel_file}"
                        "${output_python_file}"
-                       COMMENT "Copying ${python_file} to the binary directory")
+                       COMMENT "Copying ${python_rel_file} to the binary directory")
 
-    get_filename_component(python_file_directory "${python_file}" DIRECTORY)
-    #get_filename_component(py_file_name_we "${python_file}" NAME_WE)
-
-    # Panic verbose
-    # message(" py_file_name_we       " ${py_file_name_we})
-    # message(" python_file_directory " ${python_file_directory})
-    # message(" output_python_file    " ${output_python_file})
-    # message( ${output_python_file})
-    # message( "rel::" ${rel})
-    # message( "install::" ${SITE_PACKAGES_OUTPUT_DIRECTORY}/${rel}/${python_file_directory})
+    get_filename_component(python_file_directory "${python_rel_file}" DIRECTORY)
+    #get_filename_component(py_file_name_we "${python_rel_file}" NAME_WE)
 
     set(pyc_file ${output_python_file}c)
-    # message( ${Python_EXECUTABLE} -m py_compile ${output_python_file} )
-    # message(" outfile pyc : " ${pyc_file})
     add_custom_command(OUTPUT  ${pyc_file}
                        DEPENDS "${output_python_file}"
                        COMMAND ${Python_EXECUTABLE} -m py_compile ${output_python_file})
@@ -107,11 +91,11 @@ function( mixpython_cython_add_module _name )
     # list(APPEND python_copied_modules_${_name} "${pyc_file}")
 
     # # Old manner --> Install py file instead
-    # install(FILES       "${python_file}"
+    # install(FILES       "${python_rel_file}"
     #         DESTINATION "${SITE_PACKAGES_OUTPUT_DIRECTORY}/${rel}/${python_file_directory}"
     #         COMPONENT   "python")
     # Old manner --> Install py file instead
-    install(FILES       "${python_file}"
+    install(FILES       "${python_rel_file}"
             DESTINATION "${SITE_PACKAGES_OUTPUT_DIRECTORY}/${python_file_directory}"
             COMPONENT   "python")
     list(APPEND python_copied_modules_${_name} "${output_python_file}")
