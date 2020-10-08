@@ -34,13 +34,14 @@ def compute_zone_distribution(zone, comm):
   distrib_vtx  = create_distribution_node(nvtx , comm, 'distribution_vtx' , zone)
   distrib_cell = create_distribution_node(ncell, comm, 'distribution_cell', zone)
 
-  I.printTree(zone)
 
   # FlowSolution : Avec ghost cells
   #    --> [ --------- , rind ]
 
   # > TODO put in tree
   compute_elements_distribution(zone, comm)
+
+  I.printTree(zone)
 
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
     compute_zone_subregion(zone_subregion)

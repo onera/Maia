@@ -36,6 +36,7 @@ import sys
 # ------------------------------------------------------------------------
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_BCDataSet.hdf'
 
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
@@ -45,11 +46,11 @@ dist_tree = LZL.load_collective_pruned_tree(inputfile, comm)
 
 MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
 
+I.printTree(dist_tree)
 
 # > To copy paste in new algorithm
 # dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
 
-I.printTree(dist_tree)
 
 # > dZoneToWeightedParts --> Proportion de la zone initiale qu'on souhate après partitionnement
 # > dLoadingProcs        --> Proportion de la zone initiale avant le partitionnement (vision block)

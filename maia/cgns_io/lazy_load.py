@@ -2,6 +2,15 @@ from   mpi4py             import MPI
 import Converter.PyTree   as     C
 import Converter.Internal as     I
 
+def warn_up_bcdataset_dist_tree(bc, bc_path, data_shape):
+  """
+  """
+  for bcds in I.getNodesFromType1(bc, 'BCDataSet_t'):
+    pl_n = I.getNodeFromName1(bcds, 'PointList')
+    if(pl_n):
+      pl_path = bc_path+"/PointList"
+      I.newDataArray('PointList#Shape', value=data_shape[pl_path][2], parent=bc)
+
 
 def warm_up_zone_dist_tree(zone, zone_path, data_shape):
   """
@@ -14,6 +23,7 @@ def warm_up_zone_dist_tree(zone, zone_path, data_shape):
       if(pl_n):
         pl_path = bc_path+"/PointList"
         I.newDataArray('PointList#Shape', value=data_shape[pl_path][2], parent=bc)
+      warn_up_bcdataset_dist_tree(bc, bc_path, data_shape)
 
   for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
     zone_gc_path = zone_path+"/"+zone_gc[0]
@@ -28,6 +38,7 @@ def warm_up_zone_dist_tree(zone, zone_path, data_shape):
       if(pl_n):
         pld_path = gc_path+"/PointListDonor"
         I.newDataArray('PointListDonor#Shape', value=data_shape[pld_path][2], parent=gc)
+      warn_up_bcdataset_dist_tree(gc, gc_path, data_shape)
 
 
 def warm_up_dist_tree(dist_tree, data_shape):
@@ -40,7 +51,7 @@ def warm_up_dist_tree(dist_tree, data_shape):
       warm_up_zone_dist_tree(zone, zone_path, data_shape)
 
 
-def load_collective_pruned_tree(filename, comm, skeleton_depth=3, skeleton_n_data=5):
+def load_collective_pruned_tree(filename, comm, skeleton_depth=7, skeleton_n_data=3):
   """
   """
   rank = comm.Get_rank()
@@ -50,7 +61,7 @@ def load_collective_pruned_tree(filename, comm, skeleton_depth=3, skeleton_n_dat
   if(rank == 0):
     data_shape = dict()
     dist_tree  = C.convertFile2PyTree(filename,
-                                      skeletonData=[skeleton_depth, skeleton_n_data],
+                                      skeletonData=[skeleton_n_data, skeleton_depth],
                                       dataShape=data_shape,
                                       format='bin_hdf')
 
