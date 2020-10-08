@@ -19,7 +19,7 @@ LOG.basicConfig(filename = '{0}.{1}.log'.format('maia_workflow_log', rank),
 from pypart                 import LazyLoadConfiguration   as LLC
 from pypart                 import DistributionBase        as DBA
 from pypart                 import DistributionZone        as DZO
-from pypart                 import DistributedLoad         as DLO
+# from pypart                 import DistributedLoad         as DLO
 from pypart                 import PyPartMulti             as PPM
 from pypart                 import TransfertTreeData       as TTD
 from pypart                 import SaveTree                as SVT
@@ -37,6 +37,7 @@ import sys
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_BCDataSet.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube.hdf'
 
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...

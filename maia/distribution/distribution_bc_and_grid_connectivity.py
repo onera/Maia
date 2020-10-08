@@ -11,6 +11,10 @@ def compute_distribution_bc(bc, comm):
   pl_n = I.getNodeFromName1(bc, 'PointList')
 
   if(pr_n):
+    pr_size = 1
+    print("*"*10, pr_n[1])
+    for idx in xrange(len(pr_n[1])):
+      print(pr_n[1][idx][0], pr_n[1][idx][1])
     raise NotImplemented
 
   if(pl_n):

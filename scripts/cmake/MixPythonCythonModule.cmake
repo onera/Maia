@@ -66,7 +66,7 @@ function( mixpython_cython_add_module _name )
   foreach (python_file IN LISTS _py_files)
 
     file(RELATIVE_PATH python_rel_file  ${CMAKE_CURRENT_SOURCE_DIR} ${python_file})
-    set(output_python_file "${CMAKE_BINARY_DIR}/${python_rel_file}")
+    set(output_python_file "${CMAKE_CURRENT_BINARY_DIR}/${python_rel_file}")
 
     # message("output_python_file::" ${output_python_file})
 
