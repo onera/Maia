@@ -25,7 +25,8 @@ from pypart                 import TransfertTreeData       as TTD
 from pypart                 import SaveTree                as SVT
 # import etc.transform as trf
 
-from maia.cgns_io import lazy_load as LZL
+from maia.cgns_io        import lazy_load as LZL
+import maia.distribution as     MDI
 
 import Converter.PyTree   as C
 import Converter.Internal as I
@@ -38,18 +39,11 @@ inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.
 
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
-#  --> cgns_io
-print(LZL)
-pruned_tree         = LZL.load_collective_pruned_tree(inputfile, comm)
+dist_tree = LZL.load_collective_pruned_tree(inputfile, comm)
 
-sys.exit()
-# pruned_tree         = LZL.load_collective_pruned_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
-                                                                       # 'CGNSBase_t/Family_t'/*])
-dist_tree = LLC.lazyLoadCGNSConfiguration(inputfile, comm)
+# > ParaDiGM : dcube_gen() --> A faire
 
-# > ParaDiGM : dcube_gen()
-
-# enrich_with_dist_info(dist_tree, distribution_policy='uniform', comm)
+MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
 
 
 # > To copy paste in new algorithm
@@ -71,3 +65,6 @@ for zone in I.getZones(dist_tree):
   dLoadingProcs[zone[0]] = list(range(comm.Get_size()))
 
 print(dLoadingProcs)
+
+# pruned_tree         = LZL.load_collective_pruned_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
+#                                                                        'CGNSBase_t/Family_t'/*])

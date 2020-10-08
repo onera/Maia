@@ -16,9 +16,10 @@ from . import distribution_zone as DZONE
 # Heterogene : Element / BC / Join
 
 
-def enrich_with_dist_info(dist_tree, distribution_policy='uniform', comm):
+def add_distribution_info(dist_tree, comm, distribution_policy='uniform'):
   """
   """
+  print("add_distribution_info")
 
   # f_distrib_zone = distrib_function["Zone_t"]
   # f_distrib_bc   = distrib_function["BC_t"]
@@ -28,6 +29,6 @@ def enrich_with_dist_info(dist_tree, distribution_policy='uniform', comm):
 
   # DFAM.compute_family_distribution(dist_tree)
   for zone in I.getZones(dist_tree):
-    DZONE.compute_zone_distribution(zone)
+    DZONE.compute_zone_distribution(zone, comm)
 
 

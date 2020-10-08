@@ -1,5 +1,6 @@
 import Converter.PyTree   as C
 import Converter.Internal as I
+import maia.utils         as UTL
 
 
 # def compute_distribution_zone_face(zone_tree, comm):
@@ -21,8 +22,11 @@ import Converter.Internal as I
 def compute_zone_distribution(zone, comm):
   """
   """
-  nvtx  = UTL.get_zone_nb_vtx (zone_tree)
-  ncell = UTL.get_zone_nb_cell(zone_tree)
+  nvtx  = UTL.get_zone_nb_vtx (zone)
+  ncell = UTL.get_zone_nb_cell(zone)
+
+  print("nvtx ::", nvtx)
+  print("ncell::", ncell)
 
   distrib_vtx  = uniform_distribution(nvtx , comm)
   distrib_cell = uniform_distribution(ncell, comm)
