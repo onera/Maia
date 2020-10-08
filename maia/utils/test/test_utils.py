@@ -38,7 +38,6 @@ def test_automatic_dispatch():
   """
   from maia.utils import boundary_algorihms as MUB
   import numpy as NPY
-  print(MUB.__file__)
 
   face_vtx_32  = NPY.empty(10, dtype='int32', order='F')
   face_vtx_64  = NPY.empty(10, dtype='int64', order='F')
@@ -52,7 +51,6 @@ def test_automatic_dispatch():
   try:
     MUB.automatic_dispatch(face_vtx_u64, face_vtx_idx)
   except TypeError:
-    print("Bad type pass")
     pass
 
 def test_automatic_dispatch_pybind():
@@ -60,9 +58,6 @@ def test_automatic_dispatch_pybind():
   """
   from maia.utils import dispatch as MUD
   import numpy as NPY
-  print(MUD.__file__)
-
-  # MUD.f_double(1)
 
   face_vtx_32  = NPY.empty(10, dtype='int32', order='F')
   face_vtx_64  = NPY.empty(10, dtype='int64', order='F')
@@ -73,10 +68,9 @@ def test_automatic_dispatch_pybind():
   MUD.auto_dispatch(face_vtx_32, face_vtx_idx)
   MUD.auto_dispatch(face_vtx_64, face_vtx_idx)
 
-  print(help(MUD.auto_dispatch))
+  # print(help(MUD.auto_dispatch))
 
   try:
     MUD.auto_dispatch(face_vtx_u64, face_vtx_idx)
   except TypeError:
-    print("Bad type pass")
     pass
