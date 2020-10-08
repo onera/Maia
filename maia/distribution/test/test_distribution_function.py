@@ -44,19 +44,19 @@ def test_uniform_int64_2p(sub_comm):
   if(sub_comm == MPI.COMM_NULL):
     return
 
-  nelmt  = NPY.int64(10)
+  nelmt  = NPY.int64(11)
   distib = MID.uniform_distribution(nelmt, sub_comm)
 
   pytest.assert_mpi(sub_comm, 0, nelmt.dtype == 'int64'          )
   pytest.assert_mpi(sub_comm, 0, isinstance(distib, NPY.ndarray) )
   pytest.assert_mpi(sub_comm, 0, distib.shape == (3,)            )
   pytest.assert_mpi(sub_comm, 0, distib[0]    == 0               )
-  pytest.assert_mpi(sub_comm, 0, distib[1]    == 5               )
+  pytest.assert_mpi(sub_comm, 0, distib[1]    == 6               )
   pytest.assert_mpi(sub_comm, 0, distib[2]    == nelmt           )
 
   pytest.assert_mpi(sub_comm, 1, nelmt.dtype == 'int64'          )
   pytest.assert_mpi(sub_comm, 1, isinstance(distib, NPY.ndarray) )
   pytest.assert_mpi(sub_comm, 1, distib.shape == (3,)            )
-  pytest.assert_mpi(sub_comm, 1, distib[0]    == 5               )
-  pytest.assert_mpi(sub_comm, 1, distib[1]    == 10              )
+  pytest.assert_mpi(sub_comm, 1, distib[0]    == 6               )
+  pytest.assert_mpi(sub_comm, 1, distib[1]    == 11              )
   pytest.assert_mpi(sub_comm, 1, distib[2]    == nelmt           )
