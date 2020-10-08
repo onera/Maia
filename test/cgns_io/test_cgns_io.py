@@ -15,11 +15,9 @@ def test_filter_1():
 @pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
 def test_filter_2(sub_comm):
   if(sub_comm == MPI.COMM_NULL):
-    print("ooox"*10)
     return
 
   assert( sub_comm.size == 1)
-  # assert( sub_comm.size == 2)
 
   pytest.assert_mpi(sub_comm, 0, sub_comm.rank == 0)
 
