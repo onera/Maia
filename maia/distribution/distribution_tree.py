@@ -19,14 +19,6 @@ from . import distribution_zone as DZONE
 def add_distribution_info(dist_tree, comm, distribution_policy='uniform'):
   """
   """
-  print("add_distribution_info")
-
-  # f_distrib_zone = distrib_function["Zone_t"]
-  # f_distrib_bc   = distrib_function["BC_t"]
-
-  # tuple(function:) [Zone_t] --> function
-  # distrib = function(n_elements, comm)
-
   # DFAM.compute_family_distribution(dist_tree)
   for zone in I.getZones(dist_tree):
     DZONE.compute_zone_distribution(zone, comm)

@@ -1,23 +1,36 @@
-import Converter.PyTree   as C
+import numpy              as NPY
 import Converter.Internal as I
+
+from .distribution_function                 import create_distribution_node
 
 def compute_distribution_bc(bc, comm):
   """
   """
-  pass
+  pr_n = I.getNodeFromName1(bc, 'PointRange')
+  pl_n = I.getNodeFromName1(bc, 'PointList')
+
+  if(pr_n):
+    raise NotImplemented
+
+  if(pl_n):
+    pls_n   = I.getNodeFromName1(zone_subregion, 'PointList#Shape')
+    pl_size = NPY.prod(pls_n[1])
+    create_distribution_node(pl_size, comm, 'distrib_elmt', bc)
 
 
 def compute_distribution_grid_connectivity(join, comm):
   """
   """
-  distrib_ud_n = I.createUniqueChild(join, ':CGNS#Distribution', 'UserDefinedData_t')
+  pr_n = I.getNodeFromName1(join, 'PointRange')
+  pl_n = I.getNodeFromName1(join, 'PointList')
 
-  grid_location_n = I.getNodeFromType1(join, 'GridLocation_t')
-  grid_location   = grid_location_n[1].to_string()
+  if(pr_n):
+    raise NotImplemented
 
-  if(grid_location == 'FaceCenter'):
-    distrib_jn   = NPY.zeros(3, order='C', dtype='int32') # TODO remove int32
-    I.newDataArray('distribution_face', distrib_jn, parent=distrib_ud_n)
-  elif(grid_location == 'Vertex'):
-    distrib_jn   = NPY.zeros(3, order='C', dtype='int32') # TODO remove int32
-    I.newDataArray('distribution_vtx', distrib_jn, parent=distrib_ud_n)
+  if(pl_n):
+    pls_n   = I.getNodeFromName1(join, 'PointList#Shape')
+    pl_size = NPY.prod(pls_n[1])
+    create_distribution_node(pl_size, comm, 'distrib_elmt', join)
+
+  # prd_n = I.getNodeFromName1(join, 'PointRangeDonor')
+  # pld_n = I.getNodeFromName1(join, 'PointListDonor')
