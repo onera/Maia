@@ -10,7 +10,15 @@ def compute_distribution_bc_dataset(bcds, comm):
   pl_n = I.getNodeFromName1(bcds, 'PointList')
 
   if(pr_n):
-    raise NotImplemented
+    pr_size = 1
+    grid_location_n = I.getNodeFromType1(bcds, 'GridLocation_t')
+    if(grid_location_n[1].tostring() == b'Vertex'):
+      shift = 0
+    elif(grid_location_n[1].tostring() == b'CellCenter'):
+      shift = -1
+    for idx in range(len(pr_n[1])):
+      pr_size *= (pr_n[1][idx][1]-pr_n[1][idx][0]+shift)
+    create_distribution_node(pr_size, comm, 'distrib_elmt', bc)
 
   if(pl_n):
     pls_n   = I.getNodeFromName1(bc, 'PointList#Shape')

@@ -22,6 +22,7 @@ def test_filter_2(sub_comm):
   pytest.assert_mpi(sub_comm, 0, sub_comm.rank == 0)
 
 # --------------------------------------------------------------------------
+@pytest.mark.mpi(min_size=2)
 @pytest.mark.parametrize("sub_comm", [1, 2], indirect=['sub_comm'])
 def test_filter_all_reduce(sub_comm):
   if(sub_comm == MPI.COMM_NULL):
