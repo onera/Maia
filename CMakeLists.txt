@@ -125,7 +125,7 @@ set(src_dir ${PROJECT_SOURCE_DIR}/${PROJECT_NAME})
 set(include_dir ${PROJECT_SOURCE_DIR})
 
 file(GLOB_RECURSE all_src_files
-  "${src_dir}/*.cpp"
+  CONFIGURE_DEPENDS "${src_dir}/*.cpp"
 )
 
 set(src_files ${all_src_files})
