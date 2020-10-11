@@ -12,11 +12,9 @@ def compute_zone_distribution(zone, comm):
   """
   n_vtx  = SIDS.zone_n_vtx (zone)
   n_cell = SIDS.zone_n_cell(zone)
-  #nvtx_bnd = UTL.get_zone_nb_vtx_bnd(zone)
 
-  distrib_vtx      = create_distribution_node(n_vtx    , comm, 'distribution_vtx'    , zone)
-  distrib_cell     = create_distribution_node(n_cell   , comm, 'distribution_cell'   , zone)
-  #distrib_nvtx_bnd = create_distribution_node(nvtx_bnd, comm, 'distribution_vtx_bnd', zone)
+  distrib_vtx  = create_distribution_node(n_vtx  , comm, 'distribution_vtx' , zone)
+  distrib_cell = create_distribution_node(n_cell , comm, 'distribution_cell', zone)
 
   compute_elements_distribution(zone, comm)
 
@@ -30,6 +28,6 @@ def compute_zone_distribution(zone, comm):
   for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
     gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
     for gc in gcs:
-      compute_distribution_grid_connectivity(gc, comm) # Caution manage vtx/face
+      compute_distribution_grid_connectivity(gc, comm)
 
 

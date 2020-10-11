@@ -13,3 +13,5 @@ copy of python files to build is broken: does not remove files removed from sour
 ## Algorithms
 load_collective_size_tree: replace by tree traversal + pruning predicate
 attach_dims_to_dist_tree: fix convertFile2PyTree + skeletonData (skeletonData should be placed directly as #Size nodes)
+
+uniform_distribution: where should we put it? (python std_e?)

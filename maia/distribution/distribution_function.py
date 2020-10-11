@@ -1,31 +1,36 @@
-import numpy              as NPY
+import numpy              as np
 import Converter.Internal as I
 
-def uniform_distribution(n_elemt, comm):
+def uniform_distribution_at(n_elt, i, n_interval):
+  """
+  """
+  step      = n_elt // n_interval
+  remainder = n_elt %  n_interval
+
+  if i < remainder:
+    inf = i * (step + 1)
+    sup = inf + step + 1
+  else:
+    inf = i * step + remainder
+    sup = inf + step
+
+  return inf,sup
+
+def uniform_distribution(n_elt, comm):
   """
   """
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
-
-  step      = n_elemt // n_rank
-  remainder = n_elemt %  n_rank
-
-  proc_indices = NPY.empty( 3, dtype=type(n_elemt), order='c')
-
-  if(i_rank < remainder):
-    proc_indices[0] = i_rank * (step + 1)
-    proc_indices[1] = proc_indices[0] + step + 1
-  else:
-    proc_indices[0] = i_rank * step + remainder
-    proc_indices[1] = proc_indices[0] + step
-
-  proc_indices[2] = n_elemt
-
+  u_dist = uniform_distribution_at(n_elt,i_rank,n_rank)
+  proc_indices = np.empty(3, dtype=type(n_elt))
+  proc_indices[0] = u_dist[0]
+  proc_indices[1] = u_dist[1]
+  proc_indices[2] = n_elt
   return proc_indices
 
-def create_distribution_node(n_elemt, comm, name, parent_node):
+def create_distribution_node(n_elt, comm, name, parent_node):
   """
-  Helper class to setup pyCGNS node with distribution
+  setup CGNS node with distribution
   """
-  distrib = uniform_distribution(n_elemt, comm)
+  distrib = uniform_distribution(n_elt, comm)
   I.newDataArray(name, value=distrib, parent=parent_node)
