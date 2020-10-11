@@ -14,7 +14,7 @@ def compute_distribution_bc(bc, comm):
     pass
 
   if(pl_n):
-    pls_n   = I.getNodeFromName1(bc, 'PointList#Shape')
+    pls_n   = I.getNodeFromName1(bc, 'PointList#Size')
     pl_size = NPY.prod(pls_n[1])
     create_distribution_node(pl_size, comm, 'distrib_elmt', bc)
 
@@ -32,7 +32,7 @@ def compute_distribution_grid_connectivity(join, comm):
     raise NotImplemented
 
   if(pl_n):
-    pls_n   = I.getNodeFromName1(join, 'PointList#Shape')
+    pls_n   = I.getNodeFromName1(join, 'PointList#Size')
     pl_size = NPY.prod(pls_n[1])
     create_distribution_node(pl_size, comm, 'distrib_elmt', join)
 

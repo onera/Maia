@@ -1,5 +1,5 @@
 import Converter.Internal as I
-import maia.utils         as UTL
+import maia.sids.sids as SIDS
 
 from .distribution_function                 import create_distribution_node
 from .distribution_elements                 import compute_elements_distribution
@@ -10,13 +10,13 @@ from .distribution_bc_and_grid_connectivity import compute_distribution_bc, comp
 def compute_zone_distribution(zone, comm):
   """
   """
-  nvtx     = UTL.get_zone_nb_vtx    (zone)
-  ncell    = UTL.get_zone_nb_cell   (zone)
-  nvtx_bnd = UTL.get_zone_nb_vtx_bnd(zone)
+  n_vtx  = SIDS.zone_n_vtx (zone)
+  n_cell = SIDS.zone_n_cell(zone)
+  #nvtx_bnd = UTL.get_zone_nb_vtx_bnd(zone)
 
-  distrib_vtx      = create_distribution_node(nvtx    , comm, 'distribution_vtx'    , zone)
-  distrib_cell     = create_distribution_node(ncell   , comm, 'distribution_cell'   , zone)
-  distrib_nvtx_bnd = create_distribution_node(nvtx_bnd, comm, 'distribution_vtx_bnd', zone)
+  distrib_vtx      = create_distribution_node(n_vtx    , comm, 'distribution_vtx'    , zone)
+  distrib_cell     = create_distribution_node(n_cell   , comm, 'distribution_cell'   , zone)
+  #distrib_nvtx_bnd = create_distribution_node(nvtx_bnd, comm, 'distribution_vtx_bnd', zone)
 
   compute_elements_distribution(zone, comm)
 
