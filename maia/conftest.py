@@ -86,26 +86,26 @@ def pytest_sessionstart(session):
   # print(dir(session.session))
 
 # --------------------------------------------------------------------------
-@pytest.mark.tryfirst
-def pytest_runtestloop(session):
-  """
-  """
-  comm = MPI.COMM_WORLD
-  print("pytest_runtestloop", comm.rank)
-  # print(dir(session.session))
-  for i, item in enumerate(session.items):
-    # if(comm.rank == i):
-      # print(i, item, dir(item))
-      print("launch on {0} item : {1}".format(comm.rank, item))
-      item.toto = i
-      # Create sub_comm !
-      # print(i, item)
-      item.config.hook.pytest_runtest_protocol(item=item, nextitem=None)
-      if session.shouldfail:
-        raise session.Failed(session.shouldfail)
-      if session.shouldstop:
-        raise session.Interrupted(session.shouldstop)
-  return True
+# @pytest.mark.tryfirst
+# def pytest_runtestloop(session):
+#   """
+#   """
+#   comm = MPI.COMM_WORLD
+#   print("pytest_runtestloop", comm.rank)
+#   # print(dir(session.session))
+#   for i, item in enumerate(session.items):
+#     # if(comm.rank == i):
+#       # print(i, item, dir(item))
+#       print("launch on {0} item : {1}".format(comm.rank, item))
+#       item.toto = i
+#       # Create sub_comm !
+#       # print(i, item)
+#       item.config.hook.pytest_runtest_protocol(item=item, nextitem=None)
+#       if session.shouldfail:
+#         raise session.Failed(session.shouldfail)
+#       if session.shouldstop:
+#         raise session.Interrupted(session.shouldstop)
+#   return True
 
 # --------------------------------------------------------------------------
 # def pytest_runtest_logreport(report):

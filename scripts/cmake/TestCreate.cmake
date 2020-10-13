@@ -81,6 +81,12 @@ function(create_mpi_pytest name n_proc)
   # > Append other
   set_property(TEST "${name}" APPEND PROPERTY
                        ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/maia:$ENV{LD_LIBRARY_PATH})
+  # > Append other
+  set_property(TEST "${name}" APPEND PROPERTY
+                       ENVIRONMENT PYTHONPATH=${CMAKE_SOURCE_DIR}/external/pytest-mpi-check:$ENV{PYTHONPATH})
+  # > Append other
+  set_property(TEST "${name}" APPEND PROPERTY
+                       ENVIRONMENT PYTEST_PLUGINS=pytest_mpi_check)
   set_tests_properties(${name} PROPERTIES PROCESSORS n_proc)
   if(${ARGS_SERIAL_RUN})
     set_tests_properties(${name} PROPERTIES RUN_SERIAL true)
@@ -217,6 +223,12 @@ function(mpi_pytest_directory_python_create name n_proc)
   # > Append other
   set_property(TEST "${name}" APPEND PROPERTY
                        ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/maia:$ENV{LD_LIBRARY_PATH})
+  # > Append other
+  set_property(TEST "${name}" APPEND PROPERTY
+                       ENVIRONMENT PYTHONPATH=${CMAKE_SOURCE_DIR}/external/pytest-mpi-check:$ENV{PYTHONPATH})
+  # > Append other
+  set_property(TEST "${name}" APPEND PROPERTY
+                       ENVIRONMENT PYTEST_PLUGINS=pytest_mpi_check)
   set_tests_properties(${name} PROPERTIES PROCESSORS n_proc)
   if(${ARGS_SERIAL_RUN})
     set_tests_properties(${name} PROPERTIES RUN_SERIAL true)
