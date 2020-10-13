@@ -6,7 +6,7 @@ function( mixpython_cython_add_module _name )
   # message(${CMAKE_BINARY_DIR})
   # message(${CMAKE_CURRENT_SOURCE_DIR})
 
-  # pybind
+# Pybind
   # if(ENABLE_PYBIND)
   file(GLOB_RECURSE _pybind_files CONFIGURE_DEPENDS *.pybind.cpp)
   foreach(_pybind_file ${_pybind_files})
@@ -28,6 +28,7 @@ function( mixpython_cython_add_module _name )
   endforeach()
   # endif()
 
+# Cython
   file(GLOB_RECURSE _pyx_files CONFIGURE_DEPENDS *.pyx)
   foreach(_pyx_file ${_pyx_files})
     # message("pyx_file::" ${_pyx_file})
@@ -56,10 +57,11 @@ function( mixpython_cython_add_module _name )
   endforeach()
 
   # Manage install with tree
-  file(RELATIVE_PATH rel ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+  #file(RELATIVE_PATH rel ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
   # message("relative path : " ${rel})
 
+# Python
   set(python_copied_modules_${_name})
 
   file(GLOB_RECURSE _py_files CONFIGURE_DEPENDS *.py)

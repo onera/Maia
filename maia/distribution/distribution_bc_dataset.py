@@ -1,7 +1,7 @@
 import numpy              as NPY
 import Converter.Internal as I
 
-from .distribution_function    import create_distribution_node
+from .distribution_function import create_distribution_node
 
 def compute_distribution_bc_dataset(bcds, comm):
   """
@@ -21,6 +21,6 @@ def compute_distribution_bc_dataset(bcds, comm):
     create_distribution_node(pr_size, comm, 'distrib_elmt', bc)
 
   if(pl_n):
-    pls_n   = I.getNodeFromName1(bc, 'PointList#Shape')
+    pls_n   = I.getNodeFromName1(bc, 'PointList#Size')
     pl_size = NPY.prod(pls_n[1])
     create_distribution_node(pl_size, comm, 'distrib_elmt', bcds)
