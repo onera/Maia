@@ -264,3 +264,40 @@ function(seq_test_python_create name)
 
 endfunction()
 # --------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------
+function(mpi_test_create target_file name n_proc )
+  set(options)
+  set(one_value_args)
+  set(multi_value_args SOURCES INCLUDES LIBRARIES LABELS SERIAL_RUN)
+  cmake_parse_arguments(ARGS "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
+
+  add_executable(${name} ${target_file} ${ARGS_SOURCES})
+
+  target_include_directories(${name} PRIVATE ${ARGS_INCLUDES})
+  target_link_libraries(${name} ${ARGS_LIBRARIES})
+  target_link_libraries(${name} maia::maia)
+
+  install(TARGETS ${name} RUNTIME DESTINATION bin)
+  add_test (NAME ${name}
+            COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${n_proc}
+                    ${MPIEXEC_PREFLAGS}
+                    ${CMAKE_CURRENT_BINARY_DIR}/${name}
+                    ${MPIEXEC_POSTFLAGS})
+  # add_test (NAME ${name}
+  #           COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${name})
+
+  # > Set properties for the current test
+  set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
+  set_tests_properties(${name} PROPERTIES PROCESSORS nproc)
+  if(${ARGS_SERIAL_RUN})
+    set_tests_properties(${name} PROPERTIES RUN_SERIAL true)
+  endif()
+  # > Fail in non slurm
+  # set_tests_properties(${name} PROPERTIES PROCESSOR_AFFINITY true)
+
+  # > Specific environement :
+  # set_tests_properties(${name} PROPERTIES ENVIRONMENT I_MPI_DEBUG=5)
+
+endfunction()
+# --------------------------------------------------------------------------------

@@ -3,7 +3,7 @@ import pytest
 import pytest_check as check
 
 # --------------------------------------------------------------------------
-# @pytest.mark.mpi_test(comm_size=2)
+# @pytest.mark.mpi_test(comm_size=1)
 @pytest.mark.parametrize("make_sub_comm", [1], indirect=['make_sub_comm'])
 def test_utils(make_sub_comm):
   """
@@ -16,7 +16,7 @@ def test_utils(make_sub_comm):
   check.equal(0, 1, " hehe3" )
 
 # --------------------------------------------------------------------------
-# @pytest.mark.mpi_test(comm_size=2)
+@pytest.mark.mpi_test(comm_size=2)
 @pytest.mark.parametrize("make_sub_comm", [1], indirect=['make_sub_comm'])
 def test_utils2(make_sub_comm):
   """
@@ -26,6 +26,17 @@ def test_utils2(make_sub_comm):
   check.equal(0, 1, " hehe5" )
   check.equal(0, 0, " hehe6" )
 
+# --------------------------------------------------------------------------
+@pytest.mark.mpi_test(comm_size=2)
+def test_utils3(make_sub_comm):
+  """
+  """
+
+# --------------------------------------------------------------------------
+@pytest.mark.mpi_test(comm_size=1)
+def test_utils4(make_sub_comm):
+  """
+  """
 
   # from maia.utils import dispatch as MUD
   # print("test_utils2",  dir(MUD.kind))
