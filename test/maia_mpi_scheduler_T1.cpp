@@ -85,6 +85,7 @@ int main(int argc, char** argv) {
 
   // std::vector<int> n_rank_for_test = {1, 1, 2};
   std::vector<int> n_rank_for_test = {2, 1, 1};
+  // std::vector<int> n_rank_for_test = {2, 1, 1};
   std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2, &test_3};
   // setup_test(g_comm, n_rank_for_test, tests_suite);
   run_scheduler(g_comm, n_rank_for_test, tests_suite);
