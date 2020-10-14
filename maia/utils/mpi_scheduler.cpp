@@ -1,4 +1,5 @@
 #include <cassert>
+#include <unistd.h>
 #include "std_e/algorithm/distribution.hpp"
 #include "maia/utils/mpi_scheduler.hpp"
 #include "std_e/logging/log.hpp"
@@ -79,36 +80,53 @@ void run_scheduler(MPI_Comm&                                    comm,
                  MPI_INFO_NULL,
                  comm,
                  &win_count_rank_for_test);
-  MPI_Barrier(comm);
+
   // III/ Setup
-  std::vector<int> remote_copy_count_rank(2); // []
-  int i_test = 0;
+  std::vector<int> remote_copy_count_rank(2, -1); // []
+  int i_test_g = 2;
+
+  MPI_Barrier(comm);
+  // if(i_rank == 0 ){
+  //   sleep(1);
+  // }
+
+  // win_p0 : [ 0, 0 ] // win_p1 : [ 0 ]
 
   bool last_decision_failed = false; // 0 = false / 1 = true
   if(!last_decision_failed ){
 
-    int i_target_rank = std_e::interval_index(i_test, dtest_proc);
+    int i_target_rank = std_e::interval_index(i_test_g, dtest_proc);
     MPI_Win_lock(MPI_LOCK_EXCLUSIVE, i_target_rank, 0, win_count_rank_for_test);
+
+    // Compute relative index in remote window iloc = iglob - shift
+    int i_test_loc = i_test_g - dtest_proc[i_target_rank];
+
     MPI_Get(remote_copy_count_rank.data(),    /* origin_addr     */
             1,                                /* origin_count    */
             MPI_INT,                          /* origin_datatype */
             i_target_rank,                    /* target_rank     */
-            0,                                /* target_disp     */
+            i_test_loc,                       /* target_disp     */
             1,                                /* target_count    */
             MPI_INT,                          /* target_datatype */
             win_count_rank_for_test);         /* win             */
+
+    // This one seem to be neccessary
+    MPI_Win_flush(i_target_rank, win_count_rank_for_test);
+
     printf("[%i] have value : %i | i_target_rank = %i \n", i_rank, remote_copy_count_rank[0], i_target_rank);
-    if(remote_copy_count_rank[0] < n_rank_for_test[i_test]){
+    if(remote_copy_count_rank[0] < n_rank_for_test[i_test_g]){
       remote_copy_count_rank[0] += 1;
+      printf("[%i] update with n_cur_test = %i \n", i_rank, remote_copy_count_rank[0]);
       MPI_Put(remote_copy_count_rank.data(),    /* origin_addr     */
               1,                                /* origin_count    */
               MPI_INT,                          /* origin_datatype */
               i_target_rank,                    /* target_rank     */
-              0,                                /* target_disp     */
+              i_test_loc,                       /* target_disp     */
               1,                                /* target_count    */
               MPI_INT,                          /* target_datatype */
               win_count_rank_for_test);         /* win             */
     }
+    // MPI_Win_flush(i_target_rank, win_count_rank_for_test);
     MPI_Win_unlock(i_target_rank, win_count_rank_for_test);
   }
 
