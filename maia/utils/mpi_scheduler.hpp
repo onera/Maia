@@ -5,6 +5,13 @@
 #include <vector>
 #include <functional>
 
+enum class window_state {
+  WORKING,
+  MODIFYING,
+  DECISION_MAKING
+};
+
+
 
 void run_scheduler(MPI_Comm&                                    comm,
                    std::vector<int>&                            n_rank_for_test,

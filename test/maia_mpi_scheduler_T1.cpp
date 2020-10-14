@@ -9,6 +9,7 @@
 #include <iostream>
 #include <functional>
 #include <unistd.h>
+#include "maia/utils/mpi_scheduler.hpp"
 
 // -------------------------------------------------------------------------
 void init_log(){
@@ -71,9 +72,13 @@ int main(int argc, char** argv) {
 
   MPI_Comm g_comm = MPI_COMM_WORLD;
 
-  // std::vector<int> n_rank_for_test = {1, 2};
-  // std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2};
+
+
+  std::vector<int> n_rank_for_test = {1, 2};
+  std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2};
   // setup_test(g_comm, n_rank_for_test, tests_suite);
+  run_scheduler(g_comm, n_rank_for_test, tests_suite);
+  return 0;
 
   int dn_test = 1; // Chaque rang en posséde 1
   int* test_status;
