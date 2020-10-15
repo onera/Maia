@@ -319,9 +319,7 @@ void run_scheduler(MPI_Comm&                                    comm,
 
     if(run_this_test) {
 
-      // > Create group
-      // assert(group_size == n_rank_for_test[i_test_g])
-      // Update list rank
+      // > Update the rank list localy
       update_list_rank_for_test(dtest_proc,
                                 n_rank_for_test,
                                 list_rank_for_test,
@@ -330,6 +328,32 @@ void run_scheduler(MPI_Comm&                                    comm,
                                 i_target_rank,
                                 win_list_rank_for_test,
                                 i_rank);
+
+      // Prepare group
+      int beg_cur_test  = list_rank_for_test_idx[i_test_g];
+      MPI_Group test_group;
+      MPI_Group_incl(world_group,
+                     n_rank_for_test[i_test_g],
+                     &list_rank_for_test[beg_cur_test],
+                     &test_group);
+
+      int i_rank_group;
+      int n_rank_group;
+      MPI_Group_rank(test_group, &i_rank_group);
+      MPI_Group_size(test_group, &n_rank_group);
+      MPI_Comm test_comm;
+      assert( i_rank_group != MPI_UNDEFINED);
+      if(i_rank_group != MPI_UNDEFINED){
+        printf(" olllalala\n");
+        MPI_Comm_create_group(comm, test_group, i_test_g, &test_comm);
+      }
+      assert(n_rank_group == n_rank_for_test[i_test_g]);
+
+      tests_suite[i_test_g](test_comm);
+
+      MPI_Comm_free(&test_comm);
+      MPI_Group_free(&test_group);
+
 
     } else {
       // Attention il faut faire i_test++ si et seulement si le test est bien executé
@@ -342,6 +366,7 @@ void run_scheduler(MPI_Comm&                                    comm,
   // MPI_Barrier(comm);
 
   // Free
+  MPI_Group_free(&world_group);
   MPI_Win_free(&win_list_rank_for_test);
   MPI_Win_free(&win_global_n_rank_available);
   MPI_Win_free(&win_count_rank_for_test);
