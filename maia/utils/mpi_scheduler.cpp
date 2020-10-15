@@ -108,14 +108,17 @@ update_list_rank_for_test(std::vector<int>& dtest_proc,
                           MPI_Win&          win_list_rank,
                           int               i_rank)
 {
-  printf("[%i] On n'attends pas Patrick - MPI_Win_lock \n", i_rank);
+  // printf("[%i] update_list_rank_for_test - MPI_Win_lock \n", i_rank);
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, i_target_rank, 0, win_list_rank);
-  printf("[%i] On n'attends pas Patrick - MPI_Win_lock end \n", i_rank);
+  // printf("[%i] update_list_rank_for_test - MPI_Win_lock end \n", i_rank);
 
   // Compute relative index in remote window iloc = iglob - shift
   int beg_cur_test  = list_rank_for_test_idx[i_test_g];
   int beg_list_rank = list_rank_for_test_idx[i_test_g] - list_rank_for_test_idx[dtest_proc[i_target_rank]];
-  printf("[%i] run_this_test : %i \n", i_rank, list_rank_for_test[beg_cur_test]);
+
+  // printf("[%i] update_list_rank_for_test : beg_cur_test  %i / %i \n", i_rank, beg_cur_test, list_rank_for_test.size());
+  // printf("[%i] update_list_rank_for_test : beg_list_rank %i \n", i_rank, beg_list_rank);
+  // printf("[%i] run_this_test : %i \n", i_rank, list_rank_for_test[beg_cur_test]);
   MPI_Get(&list_rank_for_test[beg_cur_test],     /* origin_addr     */
           n_rank_for_test[i_test_g],             /* origin_count    */
           MPI_INT,                               /* origin_datatype */
@@ -127,7 +130,7 @@ update_list_rank_for_test(std::vector<int>& dtest_proc,
 
   // This one seem to be neccessary
   MPI_Win_flush(i_target_rank, win_list_rank);
-  printf("[%i] run_this_test after : %i \n",i_rank, list_rank_for_test[beg_cur_test]);
+  // printf("[%i] run_this_test after : %i \n",i_rank, list_rank_for_test[beg_cur_test]);
 
   MPI_Win_unlock(i_target_rank, win_list_rank);
 
@@ -225,7 +228,8 @@ void run_scheduler(MPI_Comm&                                    comm,
   }
   int beg_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank  ]]; // 1er  test on the current proc
   int end_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank+1]]; // Last test on the current proc
-  std::vector<int> list_rank_for_test(end_cur_proc_test - beg_cur_proc_test, -10);
+  // std::vector<int> list_rank_for_test(end_cur_proc_test - beg_cur_proc_test, -10);
+  std::vector<int> list_rank_for_test(list_rank_for_test_idx.back(), -10);
   printf("[%i] beg : %i | end : %i | size = %i \n", i_rank, beg_cur_proc_test, end_cur_proc_test, end_cur_proc_test-beg_cur_proc_test);
 
   MPI_Win win_count_rank_for_test;
