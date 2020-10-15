@@ -29,7 +29,7 @@ void test_1(MPI_Comm& comm)
 {
   banner_test(comm, "test_1");
   printf("Test 1 beg \n");
-  sleep(5);
+  sleep(2);
   printf("Test 1 end \n");
 }
 
@@ -38,7 +38,7 @@ void test_2(MPI_Comm& comm)
 {
   banner_test(comm, "test_2");
   printf("Test 2 beg \n");
-  sleep(5);
+  sleep(2);
   printf("Test 2 end \n");
 }
 
@@ -47,29 +47,9 @@ void test_3(MPI_Comm& comm)
 {
   banner_test(comm, "test_3");
   printf("Test 3 beg \n");
-  sleep(5);
+  sleep(2);
   printf("Test 3 end \n");
 }
-
-// -------------------------------------------------------------------------
-void setup_test(MPI_Comm&                                    comm,
-                std::vector<int>&                            n_rank_for_test,
-                std::vector<std::function<void(MPI_Comm&)>>& tests_suite)
-{
-  test_1(comm);
-
-  tests_suite[0](comm);
-  tests_suite[1](comm);
-
-  // MPI_Win_create()
-
-  // MPI_Win_lock()
-  // MPI_Put()
-  // MPI_Win_flush() // Necessary if lock ?
-  // MPI_Win_unlock()
-
-
-};
 
 // -------------------------------------------------------------------------
 int main(int argc, char** argv) {
@@ -81,12 +61,14 @@ int main(int argc, char** argv) {
 
   MPI_Comm g_comm = MPI_COMM_WORLD;
 
-
-
   // std::vector<int> n_rank_for_test = {1, 1, 2};
-  std::vector<int> n_rank_for_test = {2, 1, 1};
-  // std::vector<int> n_rank_for_test = {2, 1, 1};
-  std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2, &test_3};
+  // std::vector<int> n_rank_for_test = {1, 1, 1};
+  // std::vector<int> n_rank_for_test = {1, 1, 1};
+  // std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2, &test_3};
+
+  std::vector<int> n_rank_for_test = {1, 1, 1, 1, 1, 1};
+  std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2, &test_3,
+                                                             &test_1, &test_2, &test_3};
   // setup_test(g_comm, n_rank_for_test, tests_suite);
   run_scheduler(g_comm, n_rank_for_test, tests_suite);
   return 0;
