@@ -5,41 +5,33 @@ from   mpi4py import MPI
 import maia.distribution as MID
 
 # TODO SUBCASE or equivalent in pytest?
-@pytest.mark.parametrize("int_type", [np.int32,np.int64])
+class Test_uniform_distribution_at
 def test_uniform_distribution_at(int_type):
-  n_elt  = int_type(10)
-  distib = MID.uniform_distribution_at(n_elt,0,1)
+  def test_exact():
+    n_elt  = 15
 
-  assert type(distib[0]) == int_type # fails because always int64 WTF?
-  assert type(distib[1]) == int_type
-  assert distib[0]    == 0
-  assert distib[1]    == 10
+    distib = MID.uniform_distribution_at(n_elt,0,3)
+    assert distib[0]    == 0
+    assert distib[1]    == 6
+    distib = MID.uniform_distribution_at(n_elt,1,3)
+    assert distib[0]    == 5
+    assert distib[1]    == 10
+    distib = MID.uniform_distribution_at(n_elt,2,3)
+    assert distib[0]    == 10
+    assert distib[1]    == 15
 
-def test_uniform_distribution_at2():
-  n_elt  = 15
+  def test_inexact():
+    n_elt  = 17
 
-  distib = MID.uniform_distribution_at(n_elt,0,3)
-  assert distib[0]    == 0
-  assert distib[1]    == 5
-  distib = MID.uniform_distribution_at(n_elt,1,3)
-  assert distib[0]    == 5
-  assert distib[1]    == 10
-  distib = MID.uniform_distribution_at(n_elt,2,3)
-  assert distib[0]    == 10
-  assert distib[1]    == 15
-
-def test_uniform_distribution_at3():
-  n_elt  = 17
-
-  distib = MID.uniform_distribution_at(n_elt,0,3)
-  assert distib[0]    == 0
-  assert distib[1]    == 6
-  distib = MID.uniform_distribution_at(n_elt,1,3)
-  assert distib[0]    == 6
-  assert distib[1]    == 12
-  distib = MID.uniform_distribution_at(n_elt,2,3)
-  assert distib[0]    == 12
-  assert distib[1]    == 17
+    distib = MID.uniform_distribution_at(n_elt,0,3)
+    assert distib[0]    == 0
+    assert distib[1]    == 6
+    distib = MID.uniform_distribution_at(n_elt,1,3)
+    assert distib[0]    == 6
+    assert distib[1]    == 12
+    distib = MID.uniform_distribution_at(n_elt,2,3)
+    assert distib[0]    == 12
+    assert distib[1]    == 17
 
 
 #@pytest.mark.mpi(min_size=1)

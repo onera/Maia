@@ -19,8 +19,9 @@ def uniform_distribution_at(n_elt, i, n_interval):
 def uniform_distribution(n_elt, comm):
   """
   """
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
+  int_type = type(n_elt)
+  i_rank = int_type(comm.Get_rank())
+  n_rank = int_type(comm.Get_size())
   u_dist = uniform_distribution_at(n_elt,i_rank,n_rank)
   proc_indices = np.empty(3, dtype=type(n_elt))
   proc_indices[0] = u_dist[0]
