@@ -1,10 +1,63 @@
 
+import pytest
+import pytest_check as check
+
 # --------------------------------------------------------------------------
-def test_utils():
+# @pytest.mark.mpi_test(comm_size=1)
+@pytest.mark.parametrize("make_sub_comm", [1], indirect=['make_sub_comm'])
+def test_utils(make_sub_comm):
   """
   """
-  print("test_first_step")
+  from maia.utils import dispatch as MUD
+  print("test_utils", dir(MUD))
   assert 0 == 0
+  check.equal(0, 0, " hehe1" )
+  check.equal(0, 1, " hehe2" )
+  check.equal(0, 1, " hehe3" )
+
+# --------------------------------------------------------------------------
+@pytest.mark.mpi_test(comm_size=2)
+@pytest.mark.parametrize("make_sub_comm", [1], indirect=['make_sub_comm'])
+def test_utils2(make_sub_comm):
+  """
+  """
+  assert 0 == 0
+  check.equal(0, 1, " hehe4" )
+  check.equal(0, 1, " hehe5" )
+  check.equal(0, 0, " hehe6" )
+
+# --------------------------------------------------------------------------
+@pytest.mark.mpi_test(comm_size=2)
+def test_utils3(make_sub_comm):
+  """
+  """
+
+# --------------------------------------------------------------------------
+@pytest.mark.mpi_test(comm_size=1)
+def test_utils4(make_sub_comm):
+  """
+  """
+
+  # from maia.utils import dispatch as MUD
+  # print("test_utils2",  dir(MUD.kind))
+  # print(MUD.kind.CGNSTree_t)
+  # print(MUD.kind.CGNSBase_t)
+  # print(MUD.kind.Zone_t)
+  # print("******", MUD.kind.Zone_t.name, dir(MUD.kind.Zone_t.name))
+  # print(type(MUD.kind))
+  # MUD.test_enum(MUD.kind.CGNSTree_t)
+  # MUD.test_enum(MUD.kind.CGNSBase_t)
+  # MUD.test_enum(MUD.kind.Zone_t)
+# --------------------------------------------------------------------------
+# @pytest.mark.mpi_test(comm_size=2)
+# def test_utils3():
+#   """
+#   """
+#   print("test_utils3")
+#   assert 0 == 0
+#   check.equal(0, 1, " hehe4" )
+#   check.equal(0, 1, " hehe5" )
+#   check.equal(0, 0, " hehe6" )
 
 # --------------------------------------------------------------------------
 # def test_first_step():
@@ -33,44 +86,44 @@ def test_utils():
 #   print(base)
 
 
-def test_automatic_dispatch():
-  """
-  """
-  from maia.utils import boundary_algorihms as MUB
-  import numpy as NPY
+# def test_automatic_dispatch():
+#   """
+#   """
+#   from maia.utils import boundary_algorihms as MUB
+#   import numpy as NPY
 
-  face_vtx_32  = NPY.empty(10, dtype='int32', order='F')
-  face_vtx_64  = NPY.empty(10, dtype='int64', order='F')
-  face_vtx_idx = NPY.empty(3 , dtype='int32', order='F')
+#   face_vtx_32  = NPY.empty(10, dtype='int32', order='F')
+#   face_vtx_64  = NPY.empty(10, dtype='int64', order='F')
+#   face_vtx_idx = NPY.empty(3 , dtype='int32', order='F')
 
-  face_vtx_u64  = NPY.empty(10, dtype='uint64', order='F')
+#   face_vtx_u64  = NPY.empty(10, dtype='uint64', order='F')
 
-  MUB.automatic_dispatch(face_vtx_32, face_vtx_idx)
-  MUB.automatic_dispatch(face_vtx_64, face_vtx_idx)
+#   MUB.automatic_dispatch(face_vtx_32, face_vtx_idx)
+#   MUB.automatic_dispatch(face_vtx_64, face_vtx_idx)
 
-  try:
-    MUB.automatic_dispatch(face_vtx_u64, face_vtx_idx)
-  except TypeError:
-    pass
+#   try:
+#     MUB.automatic_dispatch(face_vtx_u64, face_vtx_idx)
+#   except TypeError:
+#     pass
 
-def test_automatic_dispatch_pybind():
-  """
-  """
-  from maia.utils import dispatch as MUD
-  import numpy as NPY
+# def test_automatic_dispatch_pybind():
+#   """
+#   """
+#   from maia.utils import dispatch as MUD
+#   import numpy as NPY
 
-  face_vtx_32  = NPY.empty(10, dtype='int32', order='F')
-  face_vtx_64  = NPY.empty(10, dtype='int64', order='F')
-  face_vtx_idx = NPY.empty(3 , dtype='int32', order='F')
+#   face_vtx_32  = NPY.empty(10, dtype='int32', order='F')
+#   face_vtx_64  = NPY.empty(10, dtype='int64', order='F')
+#   face_vtx_idx = NPY.empty(3 , dtype='int32', order='F')
 
-  face_vtx_u64  = NPY.empty(10, dtype='double', order='F')
+#   face_vtx_u64  = NPY.empty(10, dtype='double', order='F')
 
-  MUD.auto_dispatch(face_vtx_32, face_vtx_idx)
-  MUD.auto_dispatch(face_vtx_64, face_vtx_idx)
+#   MUD.auto_dispatch(face_vtx_32, face_vtx_idx)
+#   MUD.auto_dispatch(face_vtx_64, face_vtx_idx)
 
-  # print(help(MUD.auto_dispatch))
+#   # print(help(MUD.auto_dispatch))
 
-  try:
-    MUD.auto_dispatch(face_vtx_u64, face_vtx_idx)
-  except TypeError:
-    pass
+#   try:
+#     MUD.auto_dispatch(face_vtx_u64, face_vtx_idx)
+#   except TypeError:
+#     pass

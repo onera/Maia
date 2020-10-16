@@ -17,3 +17,9 @@ create_mpi_doctest(
 
 create_mpi_pytest(maia_python_unit_tests 1)
 mpi_pytest_directory_python_create(maia_bnr 1)
+
+mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 2
+                SOURCES
+                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
+                LABELS     unit
+                SERIAL_RUN false )

@@ -255,10 +255,9 @@ PYBIND11_MODULE(first_step, m) {
 
   // m.def("get_zone_from_gid",  [](cgns_base& base, int g_id) -> std::variant<zone_structured*, zone_unstructured*> {
   m.def("get_zone_from_gid",  [](cgns_base& base, int g_id) -> auto {
-    std::cout << __PRETTY_FUNCTION__ << &base << std::endl;
-    auto& lzones = std_e::get<zone_structured  >(base.zones);
-    auto& lzoneu = std_e::get<zone_unstructured>(base.zones);
-
+    // std::cout << __PRETTY_FUNCTION__ << &base << std::endl;
+    // auto& lzones = std_e::get<zone_structured  >(base.zones);
+    // auto& lzoneu = std_e::get<zone_unstructured>(base.zones);
     std::variant<zone_structured*, zone_unstructured*> vz;
 
     auto p = [&g_id](auto& zone){ return zone.global_id == g_id;};
