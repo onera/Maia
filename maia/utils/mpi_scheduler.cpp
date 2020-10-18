@@ -158,6 +158,10 @@ void make_decision()
 
 }
 
+// --------------------------------------------------------------------------------------
+// void prepare_buffer(std::vector<int>& buffer,
+//                     int               )
+
 
 // --------------------------------------------------------------------------------------
 std::vector<int>
@@ -191,6 +195,9 @@ void run_scheduler(MPI_Comm&                                    comm,
   MPI_Comm_size(comm, &n_rank);
   MPI_Comm_rank(comm, &i_rank);
 
+  MPI_Group world_group;
+  MPI_Comm_group(comm, &world_group);
+
   // Hypothesis : all rank have the same list test and organize in a same way
   int n_tot_test = n_rank_for_test.size();
   assert(n_tot_test == static_cast<int>(tests_suite.size()));
@@ -201,56 +208,121 @@ void run_scheduler(MPI_Comm&                                    comm,
   std::vector<int> ranks_available(n_rank); // The first is the master
   std::iota(begin(ranks_available), end(ranks_available), 0);
 
-  std::vector<int> buffer(n_rank);
+  std::vector<int> buffer(n_rank+3);
 
   // Setup
   ranks_available[0] = 0;
 
-  // If the current is the master we do multiple things :
-  //   - This rank have the responsbility to choose the optimal test to launch
-  //   - He send information to the available rank - And setup the group
+  // Initialiase the recursion
   int i_test_g = 0;
-  if(ranks_available[0] == i_rank){
-
-
-    int n_info = n_rank_available - n_rank_for_test[i_test_g] + 2;
-    buffer[0] = i_test_g+1;
-    buffer[1] = n_rank_available;
-    for(int i = 0; i < n_rank_available; ++i){
-      buffer[i+2] = ranks_available[n_rank_for_test[i_test_g]+i];
-    }
+  int n_info = n_rank_available - n_rank_for_test[i_test_g] + 3;
+  buffer[0] = i_test_g+1;
+  buffer[1] = 0;
+  buffer[2] = n_rank_available;
+  for(int i = 0; i < n_rank_available; ++i){
+    buffer[i+3] = ranks_available[n_rank_for_test[i_test_g]+i];
+  }
+  if(i_rank == 0){
     MPI_Send(buffer.data(), n_info, MPI_INT,
-             1, i_test_g, comm); // Tag = file line
+             0, i_test_g, comm); // Send to first rank
+  }
 
+  // while(i_test_g < n_tot_test) {
+  while(i_test_g < 1) {
 
-  } else {
-    // Wait for a message in order to begin a test
+    // Donc chaque rang se met en attente !
     int flag = 0;
     MPI_Status status;
     while(!flag) {
-      MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &status);
-      printf("[%i] Waiting for a message : %i \n ", i_rank, flag);
+      MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, &status);
+      // printf("[%i] Waiting for a message : %i \n ", i_rank, flag);
     }
 
+    // Receive the action :
+    // 0 : you're the master let choose a job
+    // 1 : Well, we are a slave
     MPI_Status status_recv;
     int n_info;
     MPI_Get_count(&status, MPI_INT, &n_info);
 
     std::vector<int> incoming_info(n_info);
     MPI_Recv(incoming_info.data(), n_info, MPI_INT, status.MPI_SOURCE,
-             status.MPI_TAG, MPI_COMM_WORLD, &status_recv);
+             status.MPI_TAG, comm, &status_recv);
 
     /* Find out another test and recurse */
     i_test_g = incoming_info[0];
-    int n_rank_available = incoming_info[1];
+    int n_rank_available = incoming_info[2];
     for(int i = 0; i < n_rank_available; ++i) {
       ranks_available[i] = incoming_info[i+2];
     }
 
+    if(incoming_info[1] == 0){
+      printf("[%i] is the master now ! \n", i_rank);
 
+      // Send to other proc correct information to be launch
+      // i_test_g = choose_on_test()
+      buffer[0] = i_test_g;
+      buffer[1] = 0;
+      buffer[2] = n_rank_for_test[i_test_g];
+      for(int i = 0; i < n_rank_for_test[i_test_g]; ++i){
+        buffer[i+3] = ranks_available[n_rank_for_test[i_test_g]+i];
+      }
+      for(int idx = 1; idx < n_rank_for_test[i_test_g]; ++idx){ // On exclue le premier car c'est le master
+        MPI_Send(buffer.data(), n_info, MPI_INT,
+                 ranks_available[idx], i_test_g, comm); // Send to first rank
+      }
+
+      // On envoie également au proc d'aprés l'information pour le nouveu job
+
+
+    } else if ( incoming_info[1] == 1) {
+      // Slave
+      printf("[%i] is the slave now ! \n", i_rank);
+
+    }
+
+    // Create the subgroup
+    MPI_Group test_group;
+    MPI_Group_incl(world_group,
+                   n_rank_for_test[i_test_g],
+                   &buffer[3],
+                   &test_group);
+
+
+    i_test_g++;
   }
 
 
+  // If the current is the master we do multiple things :
+  //   - This rank have the responsbility to choose the optimal test to launch
+  //   - He send information to the available rank - And setup the group
+  // if(ranks_available[0] == i_rank){
+  //   // launch job
+  //   // tests_suite[i_test_g](test_comm);
+  // } else {
+  //   // Wait for a message in order to begin a test
+  //   int flag = 0;
+  //   MPI_Status status;
+  //   while(!flag) {
+  //     MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, &status);
+  //     printf("[%i] Waiting for a message : %i \n ", i_rank, flag);
+  //   }
 
+  //   MPI_Status status_recv;
+  //   int n_info;
+  //   MPI_Get_count(&status, MPI_INT, &n_info);
 
+  //   std::vector<int> incoming_info(n_info);
+  //   MPI_Recv(incoming_info.data(), n_info, MPI_INT, status.MPI_SOURCE,
+  //            status.MPI_TAG, comm, &status_recv);
+
+  //   /* Find out another test and recurse */
+  //   i_test_g = incoming_info[0];
+  //   int n_rank_available = incoming_info[1];
+  //   for(int i = 0; i < n_rank_available; ++i) {
+  //     ranks_available[i] = incoming_info[i+2];
+  //   }
+  // }
+
+  MPI_Group_free(&world_group);
 }
