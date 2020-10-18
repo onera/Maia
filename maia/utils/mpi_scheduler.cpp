@@ -1,5 +1,6 @@
 #include <cassert>
 #include <unistd.h>
+#include <future>
 #include "std_e/algorithm/distribution.hpp"
 #include "maia/utils/mpi_scheduler.hpp"
 #include "std_e/logging/log.hpp"
@@ -38,10 +39,11 @@ update_window_to_match_test(std::vector<int>& dtest_proc,
                             int               i_rank)
 {
   bool run_this_test = false;
+
   int i_target_rank = std_e::interval_index(i_test_g, dtest_proc);
-  printf("[%i] update_window_to_match_test - MPI_Win_lock  | i_test_g:: %i   \n", i_rank, i_test_g);
+  // printf("[%i] update_window_to_match_test - MPI_Win_lock  | i_test_g:: %i   \n", i_rank, i_test_g);
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, i_target_rank, 0, win);
-  printf("[%i] update_window_to_match_test - MPI_Win_lock end | i_test_g:: %i \n", i_rank, i_test_g);
+  // printf("[%i] update_window_to_match_test - MPI_Win_lock end | i_test_g:: %i \n", i_rank, i_test_g);
 
   // Compute relative index in remote window iloc = iglob - shift
   int i_test_loc = i_test_g - dtest_proc[i_target_rank];
@@ -58,10 +60,10 @@ update_window_to_match_test(std::vector<int>& dtest_proc,
   // This one seem to be neccessary
   MPI_Win_flush(i_target_rank, win);
 
-  printf("[%i] have value : %i | i_target_rank = %i | i_test_g : %i  \n", i_rank, remote[0], i_target_rank, i_test_g);
+  // printf("[%i] have value : %i | i_target_rank = %i | i_test_g : %i  \n", i_rank, remote[0], i_target_rank, i_test_g);
   if(remote[0] < n_rank_for_test[i_test_g]){
     remote[0] += 1;
-    printf("[%i] update with n_cur_test = %i | i_test_g : %i \n", i_rank, remote[0], i_test_g);
+    // printf("[%i] update with n_cur_test = %i | i_test_g : %i \n", i_rank, remote[0], i_test_g);
     MPI_Put(remote.data(),    /* origin_addr     */
             1,                /* origin_count    */
             MPI_INT,          /* origin_datatype */
@@ -73,13 +75,14 @@ update_window_to_match_test(std::vector<int>& dtest_proc,
     run_this_test = true;
 
     MPI_Win_flush(i_target_rank, win);
+
     // Well we know that the state is lock we take advantage of this to setup the rank list
     MPI_Win_lock(MPI_LOCK_EXCLUSIVE, i_target_rank, 0, win_list_rank);
 
     int beg_list_rank = list_rank_for_test_idx[i_test_g] - list_rank_for_test_idx[dtest_proc[i_target_rank]];
     int idx_list_rank = beg_list_rank + remote[0] - 1; // Because increment by one at the beginning
 
-    printf("[%i] update idx_list_rank at = %i with val = %i \n", i_rank, idx_list_rank, i_rank);
+    // printf("[%i] update idx_list_rank at = %i with val = %i \n", i_rank, idx_list_rank, i_rank);
     MPI_Put(&i_rank,          /* origin_addr     */
             1,                /* origin_count    */
             MPI_INT,          /* origin_datatype */
@@ -90,9 +93,15 @@ update_window_to_match_test(std::vector<int>& dtest_proc,
             win_list_rank);   /* win             */
     MPI_Win_flush(i_target_rank, win_list_rank);
     MPI_Win_unlock(i_target_rank, win_list_rank);
+
+    // if(remote[0] == n_rank_for_test[i_test_g]){
+      // printf(" Flush all \n");
+    // }
+
   }
 
-  MPI_Win_flush(i_target_rank, win);
+  // MPI_Win_flush_all(win);
+  // MPI_Win_flush_local_all(win);
   MPI_Win_unlock(i_target_rank, win);
 
   return run_this_test;
@@ -109,7 +118,7 @@ update_list_rank_for_test(std::vector<int>& dtest_proc,
                           MPI_Win&          win_list_rank,
                           int               i_rank)
 {
-  printf("[%i] update_list_rank_for_test - MPI_Win_lock \n", i_rank);
+  // printf("[%i] update_list_rank_for_test - MPI_Win_lock \n", i_rank);
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, i_target_rank, 0, win_list_rank);
   // printf("[%i] update_list_rank_for_test - MPI_Win_lock end \n", i_rank);
 
@@ -216,7 +225,10 @@ void run_scheduler(MPI_Comm&                                    comm,
 
 
   // II/ Setup the distributed rank value for each test
-  auto dtest_proc = setup_test_distribution(comm, n_rank_for_test);
+  // auto dtest_proc = setup_test_distribution(comm, n_rank_for_test);
+  std::vector<int> dtest_proc(n_rank+1, n_tot_test);
+  dtest_proc[0] = 0;
+
 
   // For each test we store a distributed array that contains the number of rank that can execute the test
   // Increment by one via MPI_Put
@@ -231,7 +243,7 @@ void run_scheduler(MPI_Comm&                                    comm,
   int end_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank+1]]; // Last test on the current proc
   // std::vector<int> list_rank_for_test(end_cur_proc_test - beg_cur_proc_test, -10);
   std::vector<int> list_rank_for_test(list_rank_for_test_idx.back(), -10);
-  printf("[%i] beg : %i | end : %i | size = %i \n", i_rank, beg_cur_proc_test, end_cur_proc_test, end_cur_proc_test-beg_cur_proc_test);
+  // printf("[%i] beg : %i | end : %i | size = %i \n", i_rank, beg_cur_proc_test, end_cur_proc_test, end_cur_proc_test-beg_cur_proc_test);
 
   MPI_Win win_count_rank_for_test;
   MPI_Win_create(count_rank_for_test.data(),              /* base ptr */
@@ -264,7 +276,26 @@ void run_scheduler(MPI_Comm&                                    comm,
   //   printf("res = %12.5e \n", res);
   // }
 
-  for(int i_test_g = 0; i_test_g < static_cast<int>(n_rank_for_test.size()); ++i_test_g){
+
+  std::vector<int> order(n_rank_for_test.size());
+  std::iota(begin(order), end(order), 0);
+  int beg = 0;
+  int end = n_rank_for_test.size();
+  int step = 1;
+  // if(i_rank == n_rank-1){
+  if(i_rank > n_rank/2-1){
+    for(int i = 0; i < end; ++i ){
+      order[end-i-1] = i;
+      // printf("order[%i]\n", end-i-1);
+    }
+    beg = n_rank_for_test.size();
+    end = 0;
+    step = -1;
+  }
+
+  // for(int i_test_g = 0; i_test_g < static_cast<int>(n_rank_for_test.size()); ++i_test_g){
+  for(int i = 0; i < static_cast<int>(n_rank_for_test.size()); ++i){
+    int i_test_g = order[i];
     // win_p0 : [ 0, 0 ] // win_p1 : [ 0 ]
     bool last_decision_failed = false; // 0 = false / 1 = true
     // if(i_rank == 0){
@@ -302,9 +333,9 @@ void run_scheduler(MPI_Comm&                                    comm,
       bool is_ready_with_other = false;
       while( !is_ready_with_other && run_this_test ){
 
-        printf("[%i] On n'attends pas Patrick - MPI_Win_lock \n", i_rank);
+        // printf("[%i] On n'attends pas Patrick - MPI_Win_lock \n", i_rank);
         MPI_Win_lock(MPI_LOCK_SHARED, i_target_rank, 0, win_count_rank_for_test);
-        printf("[%i] On n'attends pas Patrick - MPI_Win_lock end \n", i_rank);
+        // printf("[%i] On n'attends pas Patrick - MPI_Win_lock end \n", i_rank);
 
         // Compute relative index in remote window iloc = iglob - shift
         int i_test_loc = i_test_g - dtest_proc[i_target_rank];
@@ -322,7 +353,7 @@ void run_scheduler(MPI_Comm&                                    comm,
         MPI_Win_flush(i_target_rank, win_count_rank_for_test);
         MPI_Win_unlock(i_target_rank, win_count_rank_for_test);
         is_ready_with_other = remote_copy_count_rank[0] == n_rank_for_test[i_test_g];
-        printf("[%i] I'm waiting my bro is_ready_with_other :: %i | run_this_test :: %i | remote_copy_count_rank :: %i \n", i_rank, is_ready_with_other, run_this_test, remote_copy_count_rank[0]);
+        // printf("[%i] I'm waiting my bro is_ready_with_other :: %i | run_this_test :: %i | remote_copy_count_rank :: %i \n", i_rank, is_ready_with_other, run_this_test, remote_copy_count_rank[0]);
       }
       // --------------------------------------------------------------------------------
 
@@ -359,7 +390,7 @@ void run_scheduler(MPI_Comm&                                    comm,
         MPI_Comm test_comm;
         assert( i_rank_group != MPI_UNDEFINED);
         if(i_rank_group != MPI_UNDEFINED){
-          printf(" olllalala\n");
+          printf("    [%i] Execute test %i \n", i_rank, i_test_g);
           MPI_Comm_create_group(comm, test_group, i_test_g, &test_comm);
         }
         assert(n_rank_group == n_rank_for_test[i_test_g]);
@@ -373,7 +404,29 @@ void run_scheduler(MPI_Comm&                                    comm,
 
         // MPI_Win_complete(win_count_rank_for_test);
         // MPI_Win_wait(win_count_rank_for_test);
+        // Listen RDMA :
+        // ....
+        // std::mutex<int> val = 1;
+        // std::atomic_bool cancel = false;
+        // auto t1 = std::async(std::launch::async, [&](std::atomic_bool& lcancel){
+        //   printf("[%i] begin wait %i \n", i_rank, i_test_g);
+        //   while(lcancel == 1){
+        //     MPI_Win_lock(MPI_LOCK_SHARED, i_rank, 0, win_list_rank_for_test);
+        //     MPI_Win_lock(MPI_LOCK_SHARED, i_rank, 0, win_count_rank_for_test);
+        //     // MPI_Win_flush(i_rank, win_list_rank_for_test);
+        //     // MPI_Win_flush(i_rank, win_count_rank_for_test);
+        //     MPI_Win_flush_all(win_list_rank_for_test);
+        //     MPI_Win_flush_all(win_count_rank_for_test);
+        //     MPI_Win_unlock(i_target_rank, win_list_rank_for_test);
+        //     MPI_Win_unlock(i_target_rank, win_count_rank_for_test);
+        //   }
+        //   printf("[%i] end wait for %i \n", i_rank, i_test_g);
+        // }, std::ref(cancel));
         tests_suite[i_test_g](test_comm);
+        // cancel = true;
+        // val = 0;
+        // std::chrono::system_clock::time_point zero =  std::chrono::system_clock::now() + std::chrono::seconds(0);
+        // t1.wait();
 
         MPI_Comm_free(&test_comm);
         MPI_Group_free(&test_group);
