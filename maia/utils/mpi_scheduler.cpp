@@ -186,5 +186,71 @@ void run_scheduler(MPI_Comm&                                    comm,
                    std::vector<int>&                            n_rank_for_test,
                    std::vector<std::function<void(MPI_Comm&)>>& tests_suite)
 {
+  // First we setup the main communicator parameter
+  int i_rank, n_rank;
+  MPI_Comm_size(comm, &n_rank);
+  MPI_Comm_rank(comm, &i_rank);
+
+  // Hypothesis : all rank have the same list test and organize in a same way
+  int n_tot_test = n_rank_for_test.size();
+  assert(n_tot_test == static_cast<int>(tests_suite.size()));
+
+  // Well we need to setup dynamicly a kind of master
+  // We always begin with the first rank to inialize the process !
+  int n_rank_available = n_rank;
+  std::vector<int> ranks_available(n_rank); // The first is the master
+  std::iota(begin(ranks_available), end(ranks_available), 0);
+
+  std::vector<int> buffer(n_rank);
+
+  // Setup
+  ranks_available[0] = 0;
+
+  // If the current is the master we do multiple things :
+  //   - This rank have the responsbility to choose the optimal test to launch
+  //   - He send information to the available rank - And setup the group
+  int i_test_g = 0;
+  if(ranks_available[0] == i_rank){
+
+
+    int n_info = n_rank_available - n_rank_for_test[i_test_g] + 2;
+    buffer[0] = i_test_g+1;
+    buffer[1] = n_rank_available;
+    for(int i = 0; i < n_rank_available; ++i){
+      buffer[i+2] = ranks_available[n_rank_for_test[i_test_g]+i];
+    }
+    MPI_Send(buffer.data(), n_info, MPI_INT,
+             1, i_test_g, comm); // Tag = file line
+
+
+  } else {
+    // Wait for a message in order to begin a test
+    int flag = 0;
+    MPI_Status status;
+    while(!flag) {
+      MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &flag, &status);
+      printf("[%i] Waiting for a message : %i \n ", i_rank, flag);
+    }
+
+    MPI_Status status_recv;
+    int n_info;
+    MPI_Get_count(&status, MPI_INT, &n_info);
+
+    std::vector<int> incoming_info(n_info);
+    MPI_Recv(incoming_info.data(), n_info, MPI_INT, status.MPI_SOURCE,
+             status.MPI_TAG, MPI_COMM_WORLD, &status_recv);
+
+    /* Find out another test and recurse */
+    i_test_g = incoming_info[0];
+    int n_rank_available = incoming_info[1];
+    for(int i = 0; i < n_rank_available; ++i) {
+      ranks_available[i] = incoming_info[i+2];
+    }
+
+
+  }
+
+
+
 
 }
