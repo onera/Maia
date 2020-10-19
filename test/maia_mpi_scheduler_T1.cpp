@@ -75,7 +75,8 @@ int main(int argc, char** argv) {
                                                              &test_1, &test_2, &test_3,
                                                              &test_1, &test_2, &test_3};
   // setup_test(g_comm, n_rank_for_test, tests_suite);
-  run_scheduler(g_comm, n_rank_for_test, tests_suite);
+  // run_scheduler(g_comm, n_rank_for_test, tests_suite);
+  run_scheduler_old(g_comm, n_rank_for_test, tests_suite);
   return 0;
 
   int dn_test = 1; // Chaque rang en posséde 1
