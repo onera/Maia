@@ -208,19 +208,18 @@ void run_scheduler(MPI_Comm&                                    comm,
   std::vector<int> ranks_available(n_rank); // The first is the master
   std::iota(begin(ranks_available), end(ranks_available), 0);
 
-  std::vector<int> buffer(n_rank+3);
-
-  // Setup
-  ranks_available[0] = 0;
+  std::vector<int> buffer     (3*n_rank+3);
+  std::vector<int> buffer_next(3*n_rank+3);
 
   // Initialiase the recursion
   int i_test_g = 0;
-  int n_info = n_rank_available - n_rank_for_test[i_test_g] + 3;
-  buffer[0] = i_test_g+1;
+  int n_info = n_rank_available + 3;
+  buffer[0] = i_test_g;
   buffer[1] = 0;
   buffer[2] = n_rank_available;
   for(int i = 0; i < n_rank_available; ++i){
-    buffer[i+3] = ranks_available[n_rank_for_test[i_test_g]+i];
+    printf(" ranks_available[%i] = %i\n", n_rank_for_test[i_test_g]+i, ranks_available[i]);
+    buffer[i+3] = ranks_available[i];
   }
   if(i_rank == 0){
     MPI_Send(buffer.data(), n_info, MPI_INT,
@@ -230,13 +229,14 @@ void run_scheduler(MPI_Comm&                                    comm,
   // while(i_test_g < n_tot_test) {
   while(i_test_g < 1) {
 
-    // Donc chaque rang se met en attente !
+    // Donc chaque rang se met en attente - Attention je pense qu'il faut mettre un tag spécifique !
     int flag = 0;
     MPI_Status status;
     while(!flag) {
       MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &flag, &status);
       // printf("[%i] Waiting for a message : %i \n ", i_rank, flag);
     }
+    printf("[%i] Get the flags = %i \n", i_rank, flag);
 
     // Receive the action :
     // 0 : you're the master let choose a job
@@ -252,8 +252,10 @@ void run_scheduler(MPI_Comm&                                    comm,
     /* Find out another test and recurse */
     i_test_g = incoming_info[0];
     int n_rank_available = incoming_info[2];
+    printf(" n_rank_available : %i \n", n_rank_available);
     for(int i = 0; i < n_rank_available; ++i) {
-      ranks_available[i] = incoming_info[i+2];
+      printf(" incoming_info[%i] = %i\n", i+3, incoming_info[i+3]);
+      ranks_available[i] = incoming_info[i+3];
     }
 
     if(incoming_info[1] == 0){
@@ -262,17 +264,35 @@ void run_scheduler(MPI_Comm&                                    comm,
       // Send to other proc correct information to be launch
       // i_test_g = choose_on_test()
       buffer[0] = i_test_g;
-      buffer[1] = 0;
+      buffer[1] = 1;
       buffer[2] = n_rank_for_test[i_test_g];
       for(int i = 0; i < n_rank_for_test[i_test_g]; ++i){
-        buffer[i+3] = ranks_available[n_rank_for_test[i_test_g]+i];
+        buffer[i+3] = ranks_available[i];
       }
+      printf("[%i] Prepare send : %i \n", i_rank, n_rank_for_test[i_test_g]);
       for(int idx = 1; idx < n_rank_for_test[i_test_g]; ++idx){ // On exclue le premier car c'est le master
+        printf("[%i] send instruction to slave %i / %i \n", i_rank, ranks_available[idx], n_rank_for_test[i_test_g]);
         MPI_Send(buffer.data(), n_info, MPI_INT,
                  ranks_available[idx], i_test_g, comm); // Send to first rank
       }
 
       // On envoie également au proc d'aprés l'information pour le nouveu job
+      int n_info_next = 3;
+      buffer_next[0] = i_test_g+1;
+      buffer_next[1] = 0;
+      if(n_rank_available-n_rank_for_test[i_test_g] > 0){
+        buffer_next[2] = n_rank_available-n_rank_for_test[i_test_g];
+        n_info_next += buffer_next[2];
+        for(int i = 0; i < n_rank_available; ++i){
+          buffer_next[i+3] = ranks_available[i+buffer_next[2]];
+        }
+      } else {
+        buffer_next[2] = 0;
+      }
+      int next_rank = ranks_available[n_rank_for_test[i_test_g]];
+      printf("[%i] Send instruction for the next master --> %i \n", i_rank, next_rank);
+      MPI_Send(buffer_next.data(), n_info_next, MPI_INT,
+               next_rank, i_test_g, comm);
 
 
     } else if ( incoming_info[1] == 1) {
@@ -280,6 +300,7 @@ void run_scheduler(MPI_Comm&                                    comm,
       printf("[%i] is the slave now ! \n", i_rank);
 
     }
+    MPI_Barrier(comm);
 
     // Create the subgroup
     MPI_Group test_group;
@@ -287,6 +308,21 @@ void run_scheduler(MPI_Comm&                                    comm,
                    n_rank_for_test[i_test_g],
                    &buffer[3],
                    &test_group);
+
+    int i_rank_group;
+    int n_rank_group;
+    MPI_Group_rank(test_group, &i_rank_group);
+    MPI_Group_size(test_group, &n_rank_group);
+    MPI_Comm test_comm;
+    assert( i_rank_group != MPI_UNDEFINED);
+    if(i_rank_group != MPI_UNDEFINED){
+      printf("    [%i] Execute test %i \n", i_rank, i_test_g);
+      MPI_Comm_create_group(comm, test_group, i_test_g, &test_comm);
+    }
+    assert(n_rank_group == n_rank_for_test[i_test_g]);
+
+    // On lance le test
+    tests_suite[i_test_g](test_comm);
 
 
     i_test_g++;
