@@ -226,8 +226,9 @@ void run_scheduler(MPI_Comm&                                    comm,
              0, i_test_g, comm); // Send to first rank
   }
 
-  // while(i_test_g < n_tot_test) {
-  while(i_test_g < 1) {
+  while(i_test_g < n_tot_test) {
+    printf("[%i] treat the test : %i \n", i_rank, i_test_g);
+  // while(i_test_g < 1) {
 
     // Donc chaque rang se met en attente - Attention je pense qu'il faut mettre un tag spécifique !
     int flag = 0;
@@ -241,6 +242,7 @@ void run_scheduler(MPI_Comm&                                    comm,
     // Receive the action :
     // 0 : you're the master let choose a job
     // 1 : Well, we are a slave
+    // 2 : Wait status because not enought proc or no master selected
     MPI_Status status_recv;
     int n_info;
     MPI_Get_count(&status, MPI_INT, &n_info);
@@ -257,6 +259,12 @@ void run_scheduler(MPI_Comm&                                    comm,
       printf(" incoming_info[%i] = %i\n", i+3, incoming_info[i+3]);
       ranks_available[i] = incoming_info[i+3];
     }
+
+    // On envoie également au proc d'aprés l'information pour le nouveu job
+    bool master_next_is_init = false;
+    int n_info_next = 3;
+    buffer_next[0] = i_test_g+1;
+    buffer_next[1] = 0;
 
     if(incoming_info[1] == 0){
       printf("[%i] is the master now ! \n", i_rank);
@@ -276,23 +284,27 @@ void run_scheduler(MPI_Comm&                                    comm,
                  ranks_available[idx], i_test_g, comm); // Send to first rank
       }
 
-      // On envoie également au proc d'aprés l'information pour le nouveu job
-      int n_info_next = 3;
-      buffer_next[0] = i_test_g+1;
-      buffer_next[1] = 0;
-      if(n_rank_available-n_rank_for_test[i_test_g] > 0){
-        buffer_next[2] = n_rank_available-n_rank_for_test[i_test_g];
+      // Manage the setup of recursion
+      int nb_steal       = n_rank_for_test[i_test_g];
+      int rst_proc_avail = n_rank_available-nb_steal;
+      if(rst_proc_avail > 0){
+        buffer_next[2] = rst_proc_avail;
         n_info_next += buffer_next[2];
-        for(int i = 0; i < n_rank_available; ++i){
-          buffer_next[i+3] = ranks_available[i+buffer_next[2]];
+        for(int i = 0; i < rst_proc_avail; ++i){
+          printf("[%i] buffer_next[%i] = %i \n", i_rank, i+2, ranks_available[i+nb_steal]);
+          buffer_next[i+3] = ranks_available[i+nb_steal];
         }
+        master_next_is_init = true;
       } else {
         buffer_next[2] = 0;
       }
-      int next_rank = ranks_available[n_rank_for_test[i_test_g]];
-      printf("[%i] Send instruction for the next master --> %i \n", i_rank, next_rank);
-      MPI_Send(buffer_next.data(), n_info_next, MPI_INT,
-               next_rank, i_test_g, comm);
+
+      if(buffer_next[2] > 0 ){
+        int next_rank = ranks_available[n_rank_for_test[i_test_g]];
+        printf("[%i] Send instruction for the next master --> %i \n", i_rank, next_rank);
+        MPI_Send(buffer_next.data(), n_info_next, MPI_INT,
+                 next_rank, i_test_g, comm);
+      }
 
 
     } else if ( incoming_info[1] == 1) {
@@ -300,7 +312,7 @@ void run_scheduler(MPI_Comm&                                    comm,
       printf("[%i] is the slave now ! \n", i_rank);
 
     }
-    MPI_Barrier(comm);
+    // MPI_Barrier(comm);
 
     // Create the subgroup
     MPI_Group test_group;
@@ -324,9 +336,25 @@ void run_scheduler(MPI_Comm&                                    comm,
     // On lance le test
     tests_suite[i_test_g](test_comm);
 
+    // Il faut relancer la recursion si au milieu du test rien n'a été envoyé !
+    // if(i_rank_group == 0 && master_next_is_init == false){
+    if(i_rank_group == 0){
+      printf("[%i] redo recursion with %i \n", i_rank, i_rank_group);
+
+      n_info_next  = 3;
+      n_info_next += n_rank_for_test[i_test_g];
+      buffer_next[2] = n_rank_for_test[i_test_g];
+      for(int i = 0; i < n_rank_for_test[i_test_g]; ++i){
+        buffer_next[i+3] = ranks_available[i];
+      }
+      MPI_Send(buffer_next.data(), n_info_next, MPI_INT,
+               i_rank, i_test_g, comm);
+    }
 
     i_test_g++;
   }
+
+  // If one proc finish test we need to end all process waiting for nothing in order to avoid deadlock
 
 
   // If the current is the master we do multiple things :
