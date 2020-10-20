@@ -49,13 +49,17 @@ void run_scheduler_old(MPI_Comm&                                    comm,
 
   // II/ Setup the distributed rank value for each test
   // auto dtest_proc = setup_test_distribution(comm, n_rank_for_test);
+  // Mode chelou to check RDMA access
   std::vector<int> dtest_proc(n_rank+1, n_tot_test);
   dtest_proc[0] = 0;
-
 
   // For each test we store a distributed array that contains the number of rank that can execute the test
   // Increment by one via MPI_Put
   std::vector<int> count_rank_for_test(dtest_proc[i_rank+1] - dtest_proc[i_rank], 0);
+  int dn_test = dtest_proc[i_rank+1] - dtest_proc[i_rank];
+  // int* count_rank_for_test = NULL;
+  // printf(" dn_test :: %i \n", dn_test);
+  // MPI_Alloc_mem(dn_test * sizeof(int), MPI_INFO_NULL, &count_rank_for_test);
 
   // For each test we need the list of rank (in global communicator) that execute the test
   std::vector<int> list_rank_for_test_idx(n_rank_for_test.size()+1, 0);
@@ -65,10 +69,21 @@ void run_scheduler_old(MPI_Comm&                                    comm,
   int beg_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank  ]]; // 1er  test on the current proc
   int end_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank+1]]; // Last test on the current proc
   // std::vector<int> list_rank_for_test(end_cur_proc_test - beg_cur_proc_test, -10);
+
   std::vector<int> list_rank_for_test(list_rank_for_test_idx.back(), -10);
+  // int* list_rank_for_test = NULL;
+  // MPI_Alloc_mem(list_rank_for_test_idx.back() * sizeof(int), MPI_INFO_NULL, &list_rank_for_test);
   // printf("[%i] beg : %i | end : %i | size = %i \n", i_rank, beg_cur_proc_test, end_cur_proc_test, end_cur_proc_test-beg_cur_proc_test);
 
+  // for(int i = 0; i < list_rank_for_test_idx.back(); ++i){
+  //   list_rank_for_test[i] = 0;
+  // }
+
+  //
   MPI_Win win_count_rank_for_test;
+  MPI_Win win_list_rank_for_test;
+
+  // Solution 1 : vector --> Fail
   MPI_Win_create(count_rank_for_test.data(),              /* base ptr */
                  count_rank_for_test.size()*sizeof(int),  /* size     */
                  sizeof(int),                             /* disp_unit*/
@@ -78,16 +93,58 @@ void run_scheduler_old(MPI_Comm&                                    comm,
 
   // Assez subtile ici car on partage un morceau du tableau mais on le garde global pour stocké nos affaires
   // Si on est sur le rang qui posséde la window il faut assuré la cohérence RMA / Mémoire
-  MPI_Win win_list_rank_for_test;
   MPI_Win_create(&list_rank_for_test[beg_cur_proc_test],               /* base ptr */
                  (end_cur_proc_test - beg_cur_proc_test)*sizeof(int),  /* size     */
-                 sizeof(int),                                         /* disp_unit*/
+                 sizeof(int),                                          /* disp_unit*/
                  MPI_INFO_NULL,
                  comm,
                  &win_list_rank_for_test);
 
-  // MPI_Win_post(world_group, 0, win_count_rank_for_test);
-  // MPI_Win_start(world_group, 0, win_count_rank_for_test);
+  // Solution 2 : Allocate memory by mpi and attach to window
+  // for(int i = 0; i < dn_test; ++i){
+  //   count_rank_for_test[i] = 0;
+  // }
+  // MPI_Win_create(count_rank_for_test,              /* base ptr */
+  //                dn_test*sizeof(int),              /* size     */
+  //                sizeof(int),                      /* disp_unit*/
+  //                MPI_INFO_NULL,
+  //                comm,
+  //                &win_count_rank_for_test);
+
+  // Assez subtile ici car on partage un morceau du tableau mais on le garde global pour stocké nos affaires
+  // Si on est sur le rang qui posséde la window il faut assuré la cohérence RMA / Mémoire
+  // MPI_Win_create(&list_rank_for_test[beg_cur_proc_test],               /* base ptr */
+  //                (end_cur_proc_test - beg_cur_proc_test)*sizeof(int),  /* size     */
+  //                sizeof(int),                                          /* disp_unit*/
+  //                MPI_INFO_NULL,
+  //                comm,
+  //                &win_list_rank_for_test);
+
+
+  // int err_alloc = MPI_Win_allocate(dn_test * sizeof(int),
+  //                                  sizeof(int),
+  //                                  MPI_INFO_NULL,
+  //                                  comm,
+  //                                  &count_rank_for_test,
+  //                                  &win_count_rank_for_test);
+  // assert(err_alloc == MPI_SUCCESS);
+
+  // // int dn_test_list = end_cur_proc_test - beg_cur_proc_test;
+  // int dn_test_list = n_rank_for_test.size()+1;
+  // err_alloc = MPI_Win_allocate(dn_test_list * sizeof(int),
+  //                              sizeof(int),
+  //                              MPI_INFO_NULL,
+  //                              comm,
+  //                              &list_rank_for_test,
+  //                              &win_list_rank_for_test);
+  // MPI_Win_allocate(dn_test_list * sizeof(int),
+  //                              sizeof(int),
+  //                              MPI_INFO_NULL,
+  //                              comm,
+  //                              &list_rank_for_test,
+  //                              &win_list_rank_for_test);
+  // assert(err_alloc == MPI_SUCCESS);
+
 
   // III/ Setup
   std::vector<int> remote_copy_count_rank(2, -1); // []
@@ -186,6 +243,17 @@ void run_scheduler_old(MPI_Comm&                                    comm,
       // MPI_Win_sync(win_list_rank_for_test);
       // --------------------------------------------------------------------------------
 
+      // MPI_Win_fence(0, win_list_rank_for_test);
+      // MPI_Win_fence(0, win_count_rank_for_test);
+
+      // MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOPRECEDE | MPI_MODE_NOSUCCEED, win_list_rank_for_test);
+      // MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOPRECEDE | MPI_MODE_NOSUCCEED, win_count_rank_for_test);
+      // MPI_Win_lock(MPI_LOCK_SHARED, i_rank, MPI_MODE_NOCHECK, win_list_rank_for_test);
+      // MPI_Win_lock(MPI_LOCK_SHARED, i_rank, MPI_MODE_NOCHECK, win_count_rank_for_test);
+
+      // MPI_Win_sync(win_list_rank_for_test);
+      // MPI_Win_sync(win_count_rank_for_test);
+
       if(run_this_test) {
 
         // > Update the rank list localy
@@ -200,7 +268,8 @@ void run_scheduler_old(MPI_Comm&                                    comm,
 
         // Prepare group
         int beg_cur_test  = list_rank_for_test_idx[i_test_g];
-        MPI_Group test_group;
+        // MPI_Group test_group;
+        MPI_Group test_group; // = list_group[i_test_g];
         MPI_Group_incl(world_group,
                        n_rank_for_test[i_test_g],
                        &list_rank_for_test[beg_cur_test],
@@ -210,7 +279,7 @@ void run_scheduler_old(MPI_Comm&                                    comm,
         int n_rank_group;
         MPI_Group_rank(test_group, &i_rank_group);
         MPI_Group_size(test_group, &n_rank_group);
-        MPI_Comm test_comm;
+        MPI_Comm test_comm; // = list_comm[i_test_g];
         assert( i_rank_group != MPI_UNDEFINED);
         if(i_rank_group != MPI_UNDEFINED){
           printf("    [%i] Execute test %i \n", i_rank, i_test_g);
@@ -245,11 +314,22 @@ void run_scheduler_old(MPI_Comm&                                    comm,
         //   }
         //   printf("[%i] end wait for %i \n", i_rank, i_test_g);
         // }, std::ref(cancel));
-        tests_suite[i_test_g](test_comm);
         // cancel = true;
         // val = 0;
         // std::chrono::system_clock::time_point zero =  std::chrono::system_clock::now() + std::chrono::seconds(0);
         // t1.wait();
+
+
+        // MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOPRECEDE | MPI_MODE_NOSUCCEED, win_list_rank_for_test);
+        // MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOPRECEDE | MPI_MODE_NOSUCCEED, win_count_rank_for_test);
+
+        tests_suite[i_test_g](test_comm);
+        // MPI_Win_lock(MPI_LOCK_SHARED, i_rank, 0, win_list_rank_for_test);
+        // MPI_Win_lock(MPI_LOCK_SHARED, i_rank, 0, win_count_rank_for_test);
+        // MPI_Win_flush_all(win_list_rank_for_test);
+        // MPI_Win_flush_all(win_count_rank_for_test);
+        // MPI_Win_unlock(i_rank, win_list_rank_for_test);
+        // MPI_Win_unlock(i_rank, win_count_rank_for_test);
 
         MPI_Comm_free(&test_comm);
         MPI_Group_free(&test_group);
@@ -263,7 +343,18 @@ void run_scheduler_old(MPI_Comm&                                    comm,
         // i_test_g++;
       }
     }
+
+    // MPI_Win_unlock(i_rank, win_list_rank_for_test);
+    // MPI_Win_unlock(i_rank, win_count_rank_for_test);
+    // MPI_Win_fence(0, win_list_rank_for_test);
+    // MPI_Win_fence(0, win_count_rank_for_test);
   }
+
+
+  // for(int i = 0; i < n_tot_test; ++i) {
+  //   MPI_Comm_free(list_comm[i]);
+  //   MPI_Group_free(list_group[i]);
+  // }
 
   // MPI_Win_complete(win_count_rank_for_test);
   // MPI_Win_wait(win_count_rank_for_test);

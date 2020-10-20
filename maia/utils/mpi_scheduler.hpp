@@ -38,6 +38,18 @@ update_list_rank_for_test(std::vector<int>& dtest_proc,
                           int&              i_target_rank,
                           MPI_Win&          win_list_rank,
                           int               i_rank);
+
+
+// void
+// update_list_rank_for_test(std::vector<int>& dtest_proc,
+//                           std::vector<int>& n_rank_for_test,
+//                           int*              list_rank_for_test,
+//                           std::vector<int>& list_rank_for_test_idx,
+//                           int&              i_test_g,
+//                           int&              i_target_rank,
+//                           MPI_Win&          win_list_rank,
+//                           int               i_rank);
+
 std::vector<int>
 setup_test_distribution(MPI_Comm&         comm,
                         std::vector<int>& n_rank_for_test);

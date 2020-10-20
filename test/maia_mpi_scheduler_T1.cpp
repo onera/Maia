@@ -54,6 +54,9 @@ void test_3(MPI_Comm& comm)
 // -------------------------------------------------------------------------
 int main(int argc, char** argv) {
   MPI_Init(&argc, &argv);
+  // int provided = -1;
+  // MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+  // printf("provided::%i \n", provided);
   // MPI_Init(NULL, NULL);
   int n_rank, i_rank;
   MPI_Comm_size(MPI_COMM_WORLD, &n_rank);
@@ -66,7 +69,7 @@ int main(int argc, char** argv) {
   // std::vector<int> n_rank_for_test = {1, 1, 1};
   // std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2, &test_3};
 
-
+  // std::vector<int> n_rank_for_test = {6, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   std::vector<int> n_rank_for_test = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   // // std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2, &test_3,
   // //                                                            &test_1, &test_2, &test_3};
@@ -77,6 +80,8 @@ int main(int argc, char** argv) {
   // setup_test(g_comm, n_rank_for_test, tests_suite);
   // run_scheduler(g_comm, n_rank_for_test, tests_suite);
   run_scheduler_old(g_comm, n_rank_for_test, tests_suite);
+
+  MPI_Finalize();
   return 0;
 
   int dn_test = 1; // Chaque rang en posséde 1
