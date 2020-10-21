@@ -23,3 +23,8 @@ mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 2
                 LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
                 LABELS     unit
                 SERIAL_RUN false )
+mpi_test_create(maia_mpi_scheduler_threads.cpp maia_mpi_scheduler_threads 15
+                SOURCES
+                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
+                LABELS     unit
+                SERIAL_RUN false )
