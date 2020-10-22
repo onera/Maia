@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
   // std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2, &test_3};
 
   // std::vector<int> n_rank_for_test = {6, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  // std::vector<int> n_rank_for_test = {1, 1, 3, 1, 1, 3, 1, 1, 3, 1, 1, 3};
   std::vector<int> n_rank_for_test = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   // // std::vector<std::function<void(MPI_Comm&)>> tests_suite = {&test_1, &test_2, &test_3,
   // //                                                            &test_1, &test_2, &test_3};

@@ -111,11 +111,124 @@ update_window_to_match_test(std::vector<int>& dtest_proc,
   return run_this_test;
 }
 
+
+// --------------------------------------------------------------------------------------
+bool
+update_window_to_match_test2(std::vector<int>& dtest_proc,
+                            std::vector<int>& n_rank_for_test,
+                            std::vector<int>& list_rank_for_test_idx,
+                            int&              i_test_g,
+                            std::vector<int>& remote,
+                            MPI_Win&          win_count_rank_for_test,
+                            MPI_Win&          win_list_rank,
+                            int               i_rank)
+{
+  bool run_this_test = false;
+  int i_target_rank = std_e::interval_index(i_test_g, dtest_proc);
+  // Compute relative index in remote window iloc = iglob - shift
+  int i_test_loc = i_test_g - dtest_proc[i_target_rank];
+
+
+  remote[0] = 0;
+  printf("[%i] On va locker : i_target_rank = %i | i_test_g : %i  \n", i_rank, i_target_rank, i_test_g);
+  MPI_Win_lock_all(0, win_count_rank_for_test);
+  // MPI_Compare_and_swap(remote.data(),               /* origin_addr  */
+  //                      &n_rank_for_test[i_test_g],  /* compare_addr */
+  //                      &remote[1],                  /* result_addr  */
+  //                      MPI_INT,                     /* datatype     */
+  //                      i_target_rank,               /* target_rank  */
+  //                      i_test_loc,                  /* target_disp  */
+  //                      win_count_rank_for_test);    /* win          */
+   // int one = 1;
+   // MPI_Get_Accumulate(&one,              /* origin_addr     */
+   //                1,                          /* origin_count    */
+   //                MPI_INT,                    /* origin_datatype */
+   //                i_target_rank,              /* target_rank     */
+   //                i_test_loc,                 /* target_disp     */
+   //                1,                          /* target_count    */
+   //                MPI_INT,                    /* target_datatype */
+   //                MPI_SUM,                    /* op              */
+   //                win_count_rank_for_test);   /* win             */
+
+   int one = 1;
+   MPI_Get_accumulate(&one,                       /* origin_addr     */
+                      1,                          /* origin_count    */
+                      MPI_INT,                    /* origin_datatype */
+                      remote.data(),              /* result_addr     */
+                      1,                          /* result_count    */
+                      MPI_INT,                    /* result_datatype */
+                      i_target_rank,              /* target_rank     */
+                      i_test_loc,                 /* target_disp     */
+                      1,                          /* target_count    */
+                      MPI_INT,                    /* target_datatype */
+                      MPI_SUM,                    /* op              */
+                      win_count_rank_for_test);   /* win             */
+
+
+   // int MPI_Get_accumulate(const void *origin_addr,
+   //                        int origin_count,
+   //                        MPI_Datatype origin_datatype,
+   //                        void *result_addr,
+   //                        int result_count,
+   //                        MPI_Datatype result_datatype,
+   //                        int target_rank,
+   //                        MPI_Aint target_disp,
+   //                        int target_count,
+   //                        MPI_Datatype target_datatype,
+   //                        MPI_Op op,
+   //                        MPI_Win win);
+
+
+  MPI_Win_flush(i_target_rank, win_count_rank_for_test);
+
+  MPI_Win_unlock_all(win_count_rank_for_test);
+  printf("[%i] MPI_Compare_and_swap : %i | %i | i_target_rank = %i | i_test_g : %i  \n", i_rank, remote[0], remote[1],i_target_rank, i_test_g);
+
+  // printf("[%i] have value : %i | i_target_rank = %i | i_test_g : %i  \n", i_rank, remote[0], i_target_rank, i_test_g);
+  if(remote[0] < n_rank_for_test[i_test_g]){
+    remote[0] += 1;
+    run_this_test = true;
+
+    // Well we know that the state is lock we take advantage of this to setup the rank list
+    MPI_Win_lock(MPI_LOCK_EXCLUSIVE, i_target_rank, 0, win_list_rank);
+    // MPI_Win_lock(MPI_LOCK_SHARED, i_target_rank, MPI_MODE_NOCHECK, win_list_rank);
+
+    int beg_list_rank = list_rank_for_test_idx[i_test_g] - list_rank_for_test_idx[dtest_proc[i_target_rank]];
+    int idx_list_rank = beg_list_rank + remote[0] - 1; // Because increment by one at the beginning
+
+    printf("[%i] update idx_list_rank at = %i with val = %i \n", i_rank, idx_list_rank, i_rank);
+    MPI_Put(&i_rank,          /* origin_addr     */
+            1,                /* origin_count    */
+            MPI_INT,          /* origin_datatype */
+            i_target_rank,    /* target_rank     */
+            idx_list_rank,    /* target_disp     */
+            1,                /* target_count    */
+            MPI_INT,          /* target_datatype */
+            win_list_rank);   /* win             */
+    MPI_Win_flush(i_target_rank, win_list_rank);
+    MPI_Win_unlock(i_target_rank, win_list_rank);
+
+    // if(remote[0] == n_rank_for_test[i_test_g]){
+      // printf(" Flush all \n");
+    // }
+    printf("[%i] (END) update idx_list_rank at = %i with val = %i \n", i_rank, idx_list_rank, i_rank);
+
+  }
+
+  // MPI_Win_flush_all(win);
+  // MPI_Win_flush_local_all(win);
+  // MPI_Win_unlock(i_target_rank, win_count_rank_for_test);
+
+  return run_this_test;
+}
+
+
+
 // --------------------------------------------------------------------------------------
 // void
 // update_list_rank_for_test(std::vector<int>& dtest_proc,
 //                           std::vector<int>& n_rank_for_test,
-//                           int* list_rank_for_test,
+//                           std::vector<int>& list_rank_for_test,
 //                           std::vector<int>& list_rank_for_test_idx,
 //                           int&              i_test_g,
 //                           int&              i_target_rank,
@@ -124,7 +237,7 @@ update_window_to_match_test(std::vector<int>& dtest_proc,
 void
 update_list_rank_for_test(std::vector<int>& dtest_proc,
                           std::vector<int>& n_rank_for_test,
-                          std::vector<int>& list_rank_for_test,
+                          int* list_rank_for_test,
                           std::vector<int>& list_rank_for_test_idx,
                           int&              i_test_g,
                           int&              i_target_rank,
