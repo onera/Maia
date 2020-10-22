@@ -67,10 +67,10 @@ def load_collective_size_tree(filename, comm):
   # In order to avoid filesystem overload only 1 proc reads the squeleton, then we broadcast
   if(comm.Get_rank() == 0):
     size_data = dict()
-    size_tree  = C.convertFile2PyTree(filename,
-                                      skeletonData=[skeleton_n_data, skeleton_depth],
-                                      dataShape=size_data,
-                                      format='bin_hdf')
+    size_tree = C.convertFile2PyTree(filename,
+                                     skeletonData=[skeleton_n_data, skeleton_depth],
+                                     dataShape=size_data,
+                                     format='bin_hdf')
     add_sizes_to_tree(size_tree, size_data)
   else:
     size_tree = None
