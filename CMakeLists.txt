@@ -23,7 +23,7 @@ include(${PROJECT_ROOT}/external/project_utils/scripts/cmake/target_add_dependen
 project(
   maia VERSION 0.1.0
   DESCRIPTION "Distributed algorithms for CGNS trees"
-  LANGUAGES Fortran CXX C)
+  LANGUAGES CXX)
 
 ## Compiler flags
 ### Defaults
@@ -51,10 +51,11 @@ else()
 endif()
 
 find_package(MPI REQUIRED)
-find_package(ParaDiGM)
-if(NOT PARADIGM_FOUND)
-  message("ParaDiGM not found please export PARADIGM_HOME to find it")
-endif()
+#find_package(ParaDiGM)
+#if(NOT PARADIGM_FOUND)
+#  message("ParaDiGM not found please export PARADIGM_HOME to find it")
+#endif()
+find_package(pdm)
 
 ## Dependencies built from source ##
 include(FetchContent)
@@ -91,6 +92,17 @@ endif()
 #   FetchContent_Populate(doctest)
 #   add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR})
 # endif()
+### range-v3 ###
+FetchContent_Declare(
+  range-v3
+  GIT_REPOSITORY https://github.com/ericniebler/range-v3
+  GIT_TAG        0.10.0
+)
+FetchContent_GetProperties(range-v3)
+if(NOT range-v3_POPULATED)
+  FetchContent_Populate(range-v3)
+  add_subdirectory(${range-v3_SOURCE_DIR} ${range-v3_BINARY_DIR})
+endif()
 
 ## Dependencies from submodules ##
 target_add_dependency(${PROJECT_NAME} std_e)
@@ -141,9 +153,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME}
   PUBLIC 
+    MPI::MPI_CXX
     std_e::std_e
     cpp_cgns::cpp_cgns
-    MPI::MPI_CXX
+    range-v3::range-v3
+    pdm::pdm_shared
 )
 
 
