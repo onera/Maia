@@ -55,8 +55,8 @@ void schedule_test(int i_test) {
     if (std::find(begin(procs_by_test[i_test]),end(procs_by_test[i_test]),i_rank)!=end(procs_by_test[i_test])) {
       rank_active_in_test = 1;
     }
-    MPI_Request req0, req1;
-    MPI_Status status;
+    // MPI_Request req0, req1;
+    // MPI_Status status;
     MPI_Send(&i_test, 1, MPI_INT, /*to rank*/i_rank, test_to_exec_tag, MPI_COMM_WORLD);
     MPI_Send(&rank_active_in_test, 1, MPI_INT, /*to rank*/i_rank, ranks_test_to_exec_tag, MPI_COMM_WORLD);
   }
@@ -76,7 +76,7 @@ int test_runnable_with_avail_procs() {
 }
 
 void schedule_tests() {
-  int nb_tests = tests.size();
+  // int nb_tests = tests.size();
   int nb_remaining_tests = std::count(begin(tests_status),end(tests_status),not_started);
   while (nb_remaining_tests) {
     std::unique_lock lk(mut);
@@ -127,7 +127,7 @@ void exec_test(int i_test, MPI_Comm&& sub_comm) {
 void launch_tests() {
   std::thread exec_thread;
 
-  int launched_test = 0;
+  // int launched_test = 0;
   while (1) {
     MPI_Status status;
     MPI_Request req;
