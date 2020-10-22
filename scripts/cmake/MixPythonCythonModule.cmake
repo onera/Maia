@@ -9,18 +9,19 @@ function( mixpython_cython_add_module _name )
 # Pybind
   # if(ENABLE_PYBIND)
   file(GLOB_RECURSE _pybind_files CONFIGURE_DEPENDS *.pybind.cpp)
+  message(_pybind_files ${_pybind_files})
   foreach(_pybind_file ${_pybind_files})
     # message("_pybind_file::" ${_pybind_file})
     # Deduce module name
-    get_filename_component(mod_name ${_pybind_file} NAME_WE )
-    get_filename_component( pybind_dir      ${_pybind_file} DIRECTORY )
+    get_filename_component(mod_name ${_pybind_file} NAME_WE)
+    get_filename_component(pybind_dir ${_pybind_file} DIRECTORY)
     #get_filename_component( pybind_mod_name ${_pybind_file} NAME_WE   )
     file(RELATIVE_PATH pybind_dir_rel ${CMAKE_CURRENT_SOURCE_DIR} ${pybind_dir})
     # message("mod_name::" ${mod_name} ${pybind_dir_rel})
 
     # > If same name : problem
     pybind11_add_module(${mod_name} ${_pybind_file})
-    target_link_libraries(${mod_name} PUBLIC std_e::std_e maia::maia MPI::MPI_CXX)
+    target_link_libraries(${mod_name} PUBLIC std_e::std_e maia::maia MPI::MPI_CXX) # TODO rm std_e, MPI ? (transitive from maia)
     set_target_properties(${mod_name} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/maia/${pybind_dir_rel}")
 
     install(TARGETS "${mod_name}"
