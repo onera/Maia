@@ -39,7 +39,7 @@ def cgns_to_pdm(zone, comm):
 
   distributed_mesh_nodal = PDM.DistributedMeshNodal(comm, n_vtx, nb_elemts)
 
-  distributed_mesh_nodal.SetCoordinnates(dvtx_coord)
+  distributed_mesh_nodal.set_coordinnates(dvtx_coord)
 
   # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   # print("type(sort_elmt_vol)       ::", type(sort_elmt_vol))
@@ -48,7 +48,7 @@ def cgns_to_pdm(zone, comm):
   # print("sort_elmt_connect   ::", sort_elmt_connect)
   # print("sort_elmt_vol_type  ::", sort_elmt_vol_type)
   # print("sort_elmt_vol_n_elmt::", sort_elmt_vol_n_elmt)
-  distributed_mesh_nodal.SetSections(sort_elmt_connect,
+  distributed_mesh_nodal.set_sections(sort_elmt_connect,
                                      sort_elmt_vol_type,
                                      sort_elmt_vol_n_elmt)
   # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

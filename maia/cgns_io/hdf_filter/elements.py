@@ -7,8 +7,6 @@ def create_zone_std_elements_filter(zone_tree,
                                     hdf_filter):
   """
   """
-  print("create_zone_std_elements_filter")
-
   elmts_ini = I.getNodesFromType1(zone_tree, 'Elements_t')
   for elmt in elmts_ini:
 

@@ -7,6 +7,8 @@ from maia.utils import zone_elements_utils as EZU
 
 from . import cgns_to_pdm_dmeshnodal as CGNSTOPDM
 
+from maia.distribution.distribution_function import create_distribution_node_from_distrib
+
 import Pypdm.Pypdm as PDM
 
 
@@ -52,32 +54,18 @@ import Pypdm.Pypdm as PDM
 def generate_ngon_from_std_elements_zone(zone, comm):
   """
   """
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  n_vtx  = SIDS.zone_n_vtx (zone)
-  n_cell = SIDS.zone_n_cell(zone)
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
   distributed_mesh_nodal = CGNSTOPDM.cgns_to_pdm(zone, comm)
+  distributed_mesh_nodal.compute()
 
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  # > Compute
-  distributed_mesh_nodal.Compute()
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  face_cell_dict    = distributed_mesh_nodal.get_face_cell()
+  cell_face_dict    = distributed_mesh_nodal.get_cell_face()
+  face_vtx_idx_dict = distributed_mesh_nodal.get_face_vtx()
+  distrib_face      = distributed_mesh_nodal.get_distrib_face()
 
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  # > Get
-  face_cell_dict    = distributed_mesh_nodal.getFaceCell()
-  cell_face_dict    = distributed_mesh_nodal.getCellFace()
-  face_vtx_idx_dict = distributed_mesh_nodal.getFaceVtx()
-  distrib_face      = distributed_mesh_nodal.getDistribFace()
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  print("face_cell_dict::", face_cell_dict)
-  print("cell_face_dict::", cell_face_dict)
-  print("face_vtx_idx  ::", face_vtx_idx_dict  )
-  print("distrib_face  ::", distrib_face  )
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  # print("face_cell_dict::", face_cell_dict)
+  # print("cell_face_dict::", cell_face_dict)
+  # print("face_vtx_idx  ::", face_vtx_idx_dict  )
+  # print("distrib_face  ::", distrib_face  )
 
   # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   # > Volumic is ok, we need to identifie and translate now boundary conditions
@@ -87,8 +75,8 @@ def generate_ngon_from_std_elements_zone(zone, comm):
 
   # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   # >
-  n_face  = face_cell_dict['sFace']
-  dn_face = face_cell_dict['dNFace']
+  n_face  = face_cell_dict['n_face']
+  dn_face = face_cell_dict['dn_face']
 
   ermax   = EZU.get_next_elements_range(zone)
 
@@ -98,10 +86,16 @@ def generate_ngon_from_std_elements_zone(zone, comm):
   ngon_elmt_range[1] = ermax+n_face
 
   I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', ngon_elmt_range)
-  I.newDataArray('ElementStartOffset' , face_vtx_idx_dict["npdFaceVtxIdx"], parent=ngon_n)
-  I.newDataArray('ElementConnectivity', face_vtx_idx_dict["npdFaceVtx"]   , parent=ngon_n)
-  I.newDataArray('ParentElements'     , face_cell_dict["npdFaceCell"]     , parent=ngon_n)
+  I.newDataArray('ElementStartOffset' , face_vtx_idx_dict["np_dface_vtx_idx"], parent=ngon_n)
+  I.newDataArray('ElementConnectivity', face_vtx_idx_dict["np_dface_vtx"]   , parent=ngon_n)
+  I.newDataArray('ParentElements'     , face_cell_dict["np_dface_cell"]     , parent=ngon_n)
   # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  ldistrib_face = NPY.empty(3, dtype=distrib_face.dtype)
+  ldistrib_face[0] = distrib_face[comm.rank]
+  ldistrib_face[1] = distrib_face[comm.rank+1]
+  ldistrib_face[2] = n_face
+  create_distribution_node_from_distrib("Distribution", ngon_n, ldistrib_face)
 
 
 # -----------------------------------------------------------------
