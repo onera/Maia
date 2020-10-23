@@ -1,5 +1,6 @@
 
 import Converter.Internal as I
+import numpy              as NPY
 
 from   Converter import cgnskeywords as CGK
 
@@ -112,7 +113,7 @@ def collect_pdm_type_and_nelemts(elmts):
 
   for i_elmt, elmt in enumerate(elmts):
     distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-    distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution_elmt')[1]
+    distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
     dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
     elmt_type  [i_elmt] = get_paradigm_type_with_element_type_cgns(elmt[1][0])

@@ -23,10 +23,12 @@ import sys
 # > Import PyPart
 from pypart                 import DistributionBase        as DBA
 
-from maia.cgns_io            import load_collective_size_tree as LST
-from maia.cgns_io            import cgns_io_tree              as IOT
-from maia.cgns_io.hdf_filter import elements                  as HEF
-from maia.cgns_io.hdf_filter import tree                      as HTF
+from maia.cgns_io            import load_collective_size_tree       as LST
+from maia.cgns_io            import cgns_io_tree                    as IOT
+from maia.cgns_io.hdf_filter import elements                        as HEF
+from maia.cgns_io.hdf_filter import tree                            as HTF
+from maia.connectivity       import generate_ngon_from_std_elements as FTH
+
 import maia.distribution                                      as MDI
 
 
@@ -53,6 +55,8 @@ for key, val in hdf_filter.items():
 IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 I.printTree(dist_tree)
+
+FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
 # > To copy paste in new algorithm
 # dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
