@@ -39,10 +39,9 @@ def add_nfaces(t):
   apply_to_bases(t,cmaia.add_nfaces)
 
 def convert_from_ngon_to_simple_connectivities(t):
-  apply_to_bases(t,cmaia.partition_with_boundary_first)
-  #I._adaptNFace2PE(t,remove=True) # PE = ParentElements, remove NFace (not updated by following step)
-  #partition_with_boundary_first(t)
-  #I._fixNGon(t) # reconstruct NFace (TODO add_nfaces [with sign])
-  #sort_nface_into_simple_connectivities(t)
-  #convert_to_simple_connectivities(t)
+  I._adaptNFace2PE(t,remove=True) # PE = ParentElements, remove NFace (not updated by following step)
+  partition_with_boundary_first(t)
+  I._fixNGon(t) # reconstruct NFace (TODO add_nfaces [with sign])
+  sort_nface_into_simple_connectivities(t)
+  convert_to_simple_connectivities(t)
 
