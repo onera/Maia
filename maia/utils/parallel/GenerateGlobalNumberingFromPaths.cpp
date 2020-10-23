@@ -67,7 +67,7 @@ std::vector<int> generate_global_id(     int                       n_loc_id,
   MPI_Alltoallv(global_name_num.data(), recv_n.data(), recv_idx.data(), MPI_INT,
                 part_global_id.data() , send_n.data(), send_idx.data(), MPI_INT, comm);
 
-  std_e::offset(part_global_id,-1);
+  //std_e::offset(part_global_id,-1);
   return part_global_id;
 }
 

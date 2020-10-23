@@ -86,14 +86,14 @@ compute_zone_infos(const tree& b, MPI_Comm comm) -> zone_infos {
   int nb_owned_zones = owned_zone_names.size();
   std::vector<int> owned_zone_ids(nb_owned_zones);
   for (int i=0; i<nb_owned_zones; ++i) {
-    owned_zone_ids[i] = get_global_id_from_path(zone_reg,"/"+b.name+"/"+owned_zone_names[i]);
+    owned_zone_ids[i] = get_global_id_from_path(zone_reg,"/"+b.name+"/"+owned_zone_names[i]) - 1; // TODO cgns_registry starts at 1
   }
 
   auto neighbor_zone_names = name_of_mentionned_zones(b);
   int nb_neighbor_zones = neighbor_zone_names.size();
   std::vector<int> neighbor_zone_ids(nb_neighbor_zones);
   for (int i=0; i<nb_neighbor_zones; ++i) {
-    neighbor_zone_ids[i] = get_global_id_from_path(zone_reg,"/"+b.name+"/"+neighbor_zone_names[i]);
+    neighbor_zone_ids[i] = get_global_id_from_path(zone_reg,"/"+b.name+"/"+neighbor_zone_names[i]) - 1; // TODO cgns_registry starts at 1
   }
 
   std::vector<int> proc_of_owned_zones(nb_owned_zones,std_e::rank(comm));
