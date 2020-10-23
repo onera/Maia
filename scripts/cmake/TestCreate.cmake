@@ -4,7 +4,7 @@ function(create_mpi_doctest tested_target n_proc)
   set(multi_value_args SOURCES LIBRARIES LABEL SERIAL_RUN)
   cmake_parse_arguments(ARGS "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
-  set(executable_for_tests ${tested_target}_${LABEL})
+  set(executable_for_tests ${tested_target}_${ARGS_LABEL})
   add_executable(${executable_for_tests} ${ARGS_SOURCES})
 
   #target_link_libraries(${executable_for_tests} maia::maia MPI::MPI_CXX doctest::doctest)
