@@ -131,3 +131,14 @@ def collect_connectity(elmts):
     elmts_connectivity.append(connectivity)
 
   return elmts_connectivity
+
+
+def get_next_elements_range(zone):
+  """
+  """
+  elmts = I.getNodesFromType2(zone, 'Elements_t')
+  emax = - 1000000
+  for e in elmts:
+     ERElements = I.getNodeFromName1(e, 'ElementRange')[1]
+     emax = max(emax, ERElements[1])
+  return emax
