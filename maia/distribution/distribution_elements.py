@@ -17,4 +17,4 @@ def compute_elements_distribution(zone, comm):
   for elmt in elmts:
     er = I.getNodeFromName(elmt, 'ElementRange')
     n_tot_elmt = er[1][1] - er[1][0] + 1
-    create_distribution_node(n_tot_elmt, comm, 'distrib_elmt', elmt)
+    create_distribution_node(n_tot_elmt, comm, 'Distribution', elmt)

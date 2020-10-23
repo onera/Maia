@@ -16,7 +16,7 @@ def create_zone_std_elements_filter(zone_tree,
       continue
 
     distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-    distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution_elmt')[1]
+    distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
     dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
     elmt_npe = EZU.get_npe_with_element_type_cgns(elmt[1][0])

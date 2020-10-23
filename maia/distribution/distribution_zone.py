@@ -13,8 +13,8 @@ def compute_zone_distribution(zone, comm):
   n_vtx  = SIDS.zone_n_vtx (zone)
   n_cell = SIDS.zone_n_cell(zone)
 
-  distrib_vtx  = create_distribution_node(n_vtx  , comm, 'distribution_vtx' , zone)
-  distrib_cell = create_distribution_node(n_cell , comm, 'distribution_cell', zone)
+  distrib_vtx  = create_distribution_node(n_vtx  , comm, 'Vertex', zone)
+  distrib_cell = create_distribution_node(n_cell , comm, 'Cell'  , zone)
 
   compute_elements_distribution(zone, comm)
 
