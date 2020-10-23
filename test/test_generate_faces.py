@@ -15,32 +15,23 @@ LOG.basicConfig(filename = '{0}.{1}.log'.format('maia_workflow_log', rank),
                 filemode = 'w')
 # ---------------------------------------------------------
 
-# > Import PyPart
-from pypart                 import LazyLoadConfiguration   as LLC
-from pypart                 import DistributionBase        as DBA
-from pypart                 import DistributionZone        as DZO
-# from pypart                 import DistributedLoad         as DLO
-from pypart                 import PyPartMulti             as PPM
-from pypart                 import TransfertTreeData       as TTD
-from pypart                 import SaveTree                as SVT
-# import etc.transform as trf
-
-from maia.cgns_io import load_collective_size_tree as LST
-from maia.cgns_io import cgns_io_tree as IOT
-from maia.cgns_io.hdf_filter import elements as HEF
-from maia.cgns_io.hdf_filter import tree as HTF
-import maia.distribution as MDI
-
 import Converter.PyTree   as C
 import Converter.Internal as I
 import numpy              as NPY
 import sys
 
+# > Import PyPart
+from pypart                 import DistributionBase        as DBA
+
+from maia.cgns_io            import load_collective_size_tree as LST
+from maia.cgns_io            import cgns_io_tree              as IOT
+from maia.cgns_io.hdf_filter import elements                  as HEF
+from maia.cgns_io.hdf_filter import tree                      as HTF
+import maia.distribution                                      as MDI
+
+
 # ------------------------------------------------------------------------
 # > Pick a file
-# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
-# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_BCDataSet.hdf'
-# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/Cube_ANSAd/Cube_hyb_sep.hdf'
 
 # ------------------------------------------------------------------------
@@ -65,8 +56,6 @@ I.printTree(dist_tree)
 
 # > To copy paste in new algorithm
 # dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
-
-
 # > dZoneToWeightedParts --> Proportion de la zone initiale qu'on souhate après partitionnement
 # > dLoadingProcs        --> Proportion de la zone initiale avant le partitionnement (vision block)
 
@@ -79,7 +68,6 @@ print(dZoneToWeightedParts)
 dLoadingProcs = dict()
 for zone in I.getZones(dist_tree):
   dLoadingProcs[zone[0]] = list(range(comm.Get_size()))
-
 print(dLoadingProcs)
 
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
