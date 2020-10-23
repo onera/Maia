@@ -27,7 +27,8 @@ project(
 
 ## Compiler flags
 ### Defaults
-include(${CMAKE_MODULE_PATH}/default_flags.cmake)
+include("/scratchm/bberthou/travail/fs_cgns_adapter/fs_cgns_adapter/external/maia/scripts/cmake/default_flags.cmake")
+#include(${CMAKE_MODULE_PATH}/default_flags.cmake)
 set(CMAKE_Fortran_FLAGS " ${CMAKE_Fortran_FLAGS} -cpp -DE_DOUBLEREAL -ffixed-line-length-none -fno-second-underscore")
 ### Build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -74,7 +75,7 @@ endif()
 FetchContent_Declare(
   doctest
   GIT_REPOSITORY https://github.com/BerengerBerthoul/doctest.git
-  GIT_TAG        f13a00607463ce211004be23b5aa0bdf24d3ab61
+  GIT_TAG        mpi
 )
 FetchContent_GetProperties(doctest)
 if(NOT doctest_POPULATED)

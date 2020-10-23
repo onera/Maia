@@ -111,7 +111,7 @@ elseif (CMAKE_Fortran_COMPILER_ID STREQUAL "PathScale")
   set (FORTRAN_LIBRARIES         )
   set (FORTRAN_LIBRARIES_FLAG    )
 
-else ()
+elseif (CMAKE_Fortran_COMPILER_ID)
 
   message (WARNING "Default flags are not defined for ${CMAKE_Fortran_COMPILER_ID}")
 
@@ -234,7 +234,7 @@ elseif (CMAKE_C_COMPILER_ID STREQUAL "PathScale")
   set (CMAKE_C_FLAGS_MINSIZEREL      "-O2")
   set (CMAKE_C_FLAGS_SANITIZE        "-g")
 
-else ()
+elseif (CMAKE_C_COMPILER_ID)
 
   message (WARNING "Default flags are not defined for ${CMAKE_C_COMPILER_ID}")
 
@@ -376,7 +376,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "PathScale")
   set (CXX_LIBRARIES             )
   set (CXX_LIBRARIES_FLAG        )
 
-else ()
+else (CMAKE_CXX_COMPILER_ID)
 
   message (WARNING "Default flags are not defined for ${CMAKE_CXX_COMPILER_ID}")
 
@@ -413,12 +413,3 @@ set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
     FORCE)
 
 endif()
-
-# > Sanitize
-# export LSAN_OPTIONS=suppressions=suppression_file_lsan.txt
-# (Inside directory tests)
-# leak:util_buf_grow
-# leak:librxm-fi.so
-# leak:*MPI*
-# leak:*mpi*
-

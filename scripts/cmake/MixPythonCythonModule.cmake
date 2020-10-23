@@ -9,7 +9,6 @@ function( mixpython_cython_add_module _name )
 # Pybind
   # if(ENABLE_PYBIND)
   file(GLOB_RECURSE _pybind_files CONFIGURE_DEPENDS *.pybind.cpp)
-  message(_pybind_files ${_pybind_files})
   foreach(_pybind_file ${_pybind_files})
     # message("_pybind_file::" ${_pybind_file})
     # Deduce module name
