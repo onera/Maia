@@ -19,7 +19,7 @@ def compute_zone_distribution(zone, comm):
   compute_elements_distribution(zone, comm)
 
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
-    compute_zone_subregion(zone_subregion, comm)
+    compute_zone_subregion_distribution(zone_subregion, comm)
 
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
     for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
