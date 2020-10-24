@@ -24,7 +24,19 @@ def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
     path = zone_path+"/"+elmt[0]+"/ParentElements"
     hdf_filter[path] = DSMMRYPE + DSFILEPE + DSGLOBPE + DSFORMPE
 
+  eso = I.getNodeFromName1(elmt, 'ElementStartOffset')
+  if(eso):
+    # Distribution for NGon -> ElementStartOffset is the same than DistrbutionFace, except
+    # that the last proc have one more element
+    n_face      = dn_elmt[2]
+    dn_face_idx = dn_face + int(dn_elmt[1] == n_face)
+    DSMMRYESO = [[0         ], [1], [dn_face_idx], [1]]
+    DSFILEESO = [[dn_elmt[0]], [1], [dn_face_idx], [1]]
+    DSGLOBESO = [[n_face+1]]
+    DSFORMESO = [[0]]
 
+    path = zone_path+"/"+elmt[0]+"/ElementStartOffset"
+    hdf_filter[path] = DSMMRYESO + DSFILEESO + DSGLOBESO + DSFORMESO
 
 def create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter):
   """
