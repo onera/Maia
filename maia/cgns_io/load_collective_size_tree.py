@@ -10,7 +10,7 @@ def add_sizes_to_bcdataset_tree(bc, bc_path, size_data):
     pl_n = I.getNodeFromName1(bcds, 'PointList')
     if pl_n:
       pl_path = bc_path+"/PointList"
-      I.newDataArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
+      I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
 
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
@@ -19,7 +19,7 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
   for elmt in I.getNodesFromType1(zone, 'Elements_t'):
     elmt_path = zone_path+"/"+elmt[0]
     ec_path   = elmt_path+"/ElementConnectivity"
-    I.newDataArray('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
+    I.newIndexArray('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
 
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
     zone_bc_path = zone_path+"/"+zone_bc[0]
@@ -28,7 +28,7 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
       pl_n = I.getNodeFromName1(bc, 'PointList')
       if pl_n:
         pl_path = bc_path+"/PointList"
-        I.newDataArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
+        I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
       add_sizes_to_bcdataset_tree(bc, bc_path, size_data)
 
   for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
@@ -39,12 +39,18 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
       pl_n = I.getNodeFromName1(gc, 'PointList')
       if pl_n:
         pl_path = gc_path+"/PointList"
-        I.newDataArray('PointList#Size', value=size_data[pl_path][2], parent=gc)
+        I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=gc)
       pld_n = I.getNodeFromName1(gc, 'PointListDonor')
       if pl_n:
         pld_path = gc_path+"/PointListDonor"
-        I.newDataArray('PointListDonor#Size', value=size_data[pld_path][2], parent=gc)
+        I.newIndexArray('PointListDonor#Size', value=size_data[pld_path][2], parent=gc)
 
+  for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
+    zone_sub_region_path = zone_path+"/"+zone_subregion[0]
+    pl_n = I.getNodeFromName1(bc, 'PointList')
+    if pl_n:
+      pl_path = zone_sub_region_path+"/PointList"
+      I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=zone_subregion)
 
 def add_sizes_to_tree(size_tree, size_data):
   """

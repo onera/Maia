@@ -1,4 +1,5 @@
 import Converter.Internal as I
+import numpy as NPY
 
 from .distribution_function import create_distribution_node
 

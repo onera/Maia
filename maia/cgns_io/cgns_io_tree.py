@@ -1,6 +1,7 @@
 import Converter.Internal as     I
 import Converter.PyTree   as     C
 from typing import Dict
+import fnmatch
 
 def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
   """
@@ -23,12 +24,12 @@ def filtering_filter(dist_tree, hdf_filter, skip_type_ancestors):
     for type_or_name in skip_type:
       print(type_or_name, "--> ", type(type_or_name))
 
-  print("skip_type_ancestors::", skip_type_ancestors)
+  # print("skip_type_ancestors::", skip_type_ancestors)
   n_ancestor = 0
   for skip_type in skip_type_ancestors:
     ancestors_type = skip_type # .split("/")
     n_ancestor     = len(ancestors_type)
-    print("ancestors_type::", ancestors_type)
+    # print("ancestors_type::", ancestors_type)
 
   # > We filter the hdf_filter to keep only the unskip data
   for path, data in hdf_filter.items():
@@ -37,7 +38,7 @@ def filtering_filter(dist_tree, hdf_filter, skip_type_ancestors):
     # > We should remove from dictionnary all entry
     first_path = ''
     first_n = 0
-    for idx in range(len(split_path)-n_ancestor-1):
+    for idx in range(len(split_path)-n_ancestor):
       first_path += "/"+split_path[idx]
       first_n    += 1
     prev_node = I.getNodeFromPath(dist_tree, first_path[1:])
@@ -45,7 +46,7 @@ def filtering_filter(dist_tree, hdf_filter, skip_type_ancestors):
     # Now we need to skip if matching with ancestors type
     ancestors_name = []
     ancestors_type = []
-    for idx in range(first_n, len(split_path)-1):
+    for idx in range(first_n, len(split_path)):
       next_name = split_path[idx]
       next_node = I.getNodeFromName1(prev_node, next_name)
       ancestors_name.append(next_node[0])
@@ -53,20 +54,26 @@ def filtering_filter(dist_tree, hdf_filter, skip_type_ancestors):
       # print("next_name:: ", next_name)
       prev_node = next_node
 
-    print("ancestors_type::", ancestors_type)
-    print("ancestors_name::", ancestors_name)
+    # print("ancestors_type::", ancestors_type)
+    # print("ancestors_name::", ancestors_name)
 
     keep_path = True
+    # print("******************************")
     for skip_type in skip_type_ancestors:
       n_ancestor = len(skip_type)
       n_match_name_or_type = 0
       for idx in reversed(range(n_ancestor)):
         # print(f"idx::{idx} with skip_type={skip_type[idx]} compare to {ancestors_name[idx]} and {ancestors_type[idx]} ")
-        if( (skip_type[idx] == ancestors_name[idx] ) or (skip_type[idx] == ancestors_type[idx] )):
+        # print("fnmatch::", fnmatch.fnmatch(ancestors_name[idx], skip_type[idx]))
+        if( fnmatch.fnmatch(ancestors_name[idx], skip_type[idx])):
+          n_match_name_or_type += 1
+        elif( (skip_type[idx] == ancestors_name[idx] ) or
+              (skip_type[idx] == ancestors_type[idx] )):
           n_match_name_or_type += 1
       if(n_match_name_or_type == len(skip_type)):
         keep_path = False
-      # print("n_match_name_or_type::", n_match_name_or_type)
+    #   print("n_match_name_or_type::", n_match_name_or_type, "/", n_ancestor)
+    # print("******************************", path, keep_path)
 
     if(keep_path):
       cur_hdf_filter[path] = data

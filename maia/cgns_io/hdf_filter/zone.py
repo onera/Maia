@@ -4,7 +4,8 @@ import maia.sids.sids as SIDS
 from maia.cgns_io.hdf_filter import elements        as HEF
 from maia.cgns_io.hdf_filter import zone_sub_region as SRF
 
-from .data_array import create_data_array_filter
+from .data_array      import create_data_array_filter
+from .zone_sub_region import create_zone_subregion_filter
 
 def create_zone_filter(zone_tree, zone_path, hdf_filter):
   """

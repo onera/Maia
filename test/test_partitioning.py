@@ -38,6 +38,7 @@ from   Converter import cgnskeywords as CGK
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS_And_ZSR.hdf'
 
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
@@ -47,7 +48,7 @@ dist_tree = LST.load_collective_size_tree(inputfile, comm)
 
 MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
 
-# I.printTree(dist_tree)
+I.printTree(dist_tree)
 
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
@@ -57,10 +58,13 @@ HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 #   print("*****", type(val))
 #   print(key, val)
 
-skip_type_ancestors = ["Zone_t/FlowSolution_t/"]
-skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun"]]
+# skip_type_ancestors = ["Zone_t/FlowSolution_t/"]
+# skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun"], ["ZoneSubRegion_t", "VelocityY"]]
+# skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "*"], ["Zone_t", "ZoneSubRegion_t", "VelocityY"]]
+skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "Momentum*"],
+                       ["Zone_t", "ZoneSubRegion_t", "Velocity*"]]
 hdf_filter_wo_fs = IOT.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors)
-# IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
+# # IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 for key, val in hdf_filter_wo_fs.items():
   print(key, val)
