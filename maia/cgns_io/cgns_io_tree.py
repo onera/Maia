@@ -16,10 +16,6 @@ def filtering_filter(dist_tree, hdf_filter, name_or_type_list, skip=True):
   """
   cur_hdf_filter = dict()
 
-  # for i, st in enumerate(name_or_type_list):
-  #   if(st[-1] == "/"): name_or_type_list[i] = st[:len(st)-1]
-  #   if(st[0]  == "/"): name_or_type_list[i] = st[1:]
-
   # print("name_or_type_list::", name_or_type_list)
   n_ancestor = 0
   for skip_type in name_or_type_list:
@@ -47,14 +43,12 @@ def filtering_filter(dist_tree, hdf_filter, name_or_type_list, skip=True):
       next_node = I.getNodeFromName1(prev_node, next_name)
       ancestors_name.append(next_node[0])
       ancestors_type.append(next_node[3])
-      # print("next_name:: ", next_name)
       prev_node = next_node
 
     # print("ancestors_type::", ancestors_type)
     # print("ancestors_name::", ancestors_name)
 
     keep_path = skip
-    # print("******************************")
     for skip_type in name_or_type_list:
       n_ancestor = len(skip_type)
       n_match_name_or_type = 0
@@ -68,8 +62,8 @@ def filtering_filter(dist_tree, hdf_filter, name_or_type_list, skip=True):
           n_match_name_or_type += 1
       if(n_match_name_or_type == len(skip_type)):
         keep_path = not skip
-    #   print("n_match_name_or_type::", n_match_name_or_type, "/", n_ancestor)
-    # print("******************************", path, keep_path)
+      # print("n_match_name_or_type::", n_match_name_or_type, "/", n_ancestor)
+      # print("******************************", path, keep_path)
 
     if(keep_path):
       cur_hdf_filter[path] = data
