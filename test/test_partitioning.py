@@ -31,6 +31,7 @@ from maia.connectivity       import generate_ngon_from_std_elements as FTH
 
 import maia.distribution                                      as MDI
 
+from   Converter import cgnskeywords as CGK
 
 # ------------------------------------------------------------------------
 # > Pick a file
@@ -57,6 +58,7 @@ HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 #   print(key, val)
 
 skip_type_ancestors = ["Zone_t/FlowSolution_t/"]
+skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun"]]
 hdf_filter_wo_fs = IOT.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors)
 # IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
