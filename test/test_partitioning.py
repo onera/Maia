@@ -28,8 +28,8 @@ from maia.cgns_io            import cgns_io_tree                    as IOT
 from maia.cgns_io.hdf_filter import elements                        as HEF
 from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
-
-import maia.distribution                                      as MDI
+from maia.partitioning       import part                            as PPA
+import maia.distribution                                            as MDI
 
 from   Converter import cgnskeywords as CGK
 
@@ -88,6 +88,8 @@ dLoadingProcs = dict()
 for zone in I.getZones(dist_tree):
   dLoadingProcs[zone[0]] = list(range(comm.Get_size()))
 print(dLoadingProcs)
+
+PPA.partitioning(dist_tree)
 
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
 #                                                                        'CGNSBase_t/Family_t'/*])
