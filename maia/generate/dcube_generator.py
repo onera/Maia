@@ -1,6 +1,9 @@
 import Converter.Internal as I
 import maia.sids.sids as SIDS
 
+import numpy as NPY
+
+import Pypdm.Pypdm as PDM
 
 # --------------------------------------------------------------------------
 def dcube_generate(n_vtx, edge_length, origin, comm):
@@ -8,15 +11,8 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   This function calls paradigm to generate a distributed mesh of a cube, and
   return a CGNS PyTree
   """
-  # ************************************************************************
-  # > Declaration
-  # cdef NPY.ndarray[NPY.int32_t, ndim=1, mode='fortran'] distri
-  # ************************************************************************
-
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Generation from Paradigm
@@ -32,19 +28,21 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   distrib      = NPY.empty(n_rank+1, dtype=NPY.int32)
   distrib[0]   = 0
   distrib[1:]  = comm.allgather(dcube_dims['dn_cell'])
-  distrib_cell = NPY.cumsum(distri)
+  distrib_cell = NPY.cumsum(distrib)
 
   distrib[0]  = 0
   distrib[1:] = comm.allgather(dcube_dims['dn_vtx'])
-  distri_vtx  = NPY.cumsum(distri)
+  distri_vtx  = NPY.cumsum(distrib)
 
   distrib[0]   = 0
   distrib[1:]  = comm.allgather(dcube_dims['dn_face'])
-  distrib_face = NPY.cumsum(distri)
+  distrib_face = NPY.cumsum(distrib)
 
   distrib[0]       = 0
-  distrib[1:]      = comm.allgather(dcube_dims['dface_vtx'])
-  distrib_face_vtx = NPY.cumsum(distri)
+  # distrib[1:]      = comm.allgather(dcube_dims['sface_vtx'])
+  distrib[1:]      = comm.allgather(dcube_dims['sface_vtx'])
+  distrib_face_vtx = NPY.cumsum(distrib)
+  # raise RuntimeError("To understand distrib face_vtx")
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -63,13 +61,13 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   # > NGon node
   dn_face = dcube_dims['dn_face']
 
-  #For Offset we have to shift to be global
+  # > For Offset we have to shift to be global
   if i_rank == n_rank - 1:
     eso = distrib_face_vtx[i_rank] + dcube_val['dface_vtx_idx']
   else:
     eso = distrib_face_vtx[i_rank] + dcube_val['dface_vtx_idx'][:dn_face]
 
-  pe     = dcube_val['dFaceCell'].reshape(dn_face, 2)
+  pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
   ngon_n = I.newElements('NGonElements', 'NGON',
                          erange = [1, distrib_face[n_rank]], parent=dist_zone)
 
@@ -86,8 +84,8 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   face_group = dcube_val['dface_group']
   distri = NPY.empty(n_rank, dtype=NPY.int32)
 
-  for i_bc in range(dcube_dims['nface_group']):
-    bc_n = I.newBC('dcube_bnd_{0}'.format(i_bc), parent=zone_bc)
+  for i_bc in range(dcube_dims['n_face_group']):
+    bc_n = I.newBC('dcube_bnd_{0}'.format(i_bc), btype='BCWall', parent=zone_bc)
     I.newGridLocation('FaceCenter', parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
