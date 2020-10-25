@@ -14,18 +14,12 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   """
   """
   print("load_tree_from_filter")
-  # hdf_filter_with_dim  = dict(filter(lambda x: isinstance(x[1], list), hdf_filter.items() ))
-  # hdf_filter_with_func = dict(filter(lambda x: not isinstance(x[1], list), hdf_filter.items() ))
-
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
 
-  # > First load :
   partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter_with_dim, comm)
-
   update_tree_with_partial_load_dict(dist_tree, partial_dict_load)
 
   hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() if not isinstance(value, list)}
-
   unlock_at_least_one = True
   while(len(hdf_filter_with_func) > 0 and unlock_at_least_one ):
     # Update if you can
