@@ -10,6 +10,54 @@ def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
     Node[1] = data
 
 
+def filtering_filter(dist_tree, hdf_filter, skip_type_ancestors):
+  """
+  """
+  cur_hdf_filter = dict()
+
+  for i, st in enumerate(skip_type_ancestors):
+    if(st[-1] == "/"): skip_type_ancestors[i] = st[:len(st)-1]
+    if(st[0]  == "/"): skip_type_ancestors[i] = st[1:]
+
+  print("skip_type_ancestors::", skip_type_ancestors)
+  n_ancestor = 0
+  for skip_type in skip_type_ancestors:
+    ancestors_type = skip_type.split("/")
+    n_ancestor     = len(ancestors_type)
+    print("ancestors_type::", ancestors_type)
+
+  # > We filter the hdf_filter to keep only the unskip data
+  for path, data in hdf_filter.items():
+    split_path = path.split("/")
+    print(split_path)
+    # > We should remove from dictionnary all entry
+    first_path = ''
+    first_n = 0
+    for idx in range(len(split_path)-n_ancestor-1):
+      first_path += "/"+split_path[idx]
+      first_n    += 1
+    prev_node = I.getNodeFromPath(dist_tree, first_path[1:])
+
+    # Now we need to skip if matching with ancestors type
+    ancestors_type = ''
+    for idx in range(first_n, len(split_path)-1):
+      next_name = split_path[idx]
+      next_node = I.getNodeFromName1(prev_node, next_name)
+      if(idx == first_n):
+        ancestors_type += next_node[3]
+      else:
+        ancestors_type += "/"+next_node[3]
+      # print("next_name:: ", next_name)
+      prev_node = next_node
+
+    print("ancestors_type::", ancestors_type)
+
+    if(ancestors_type not in skip_type_ancestors):
+      cur_hdf_filter[path] = data
+
+  return cur_hdf_filter
+
+
 def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   """
   """

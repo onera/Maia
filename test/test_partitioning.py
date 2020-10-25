@@ -36,6 +36,7 @@ import maia.distribution                                      as MDI
 # > Pick a file
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS.hdf'
 
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
@@ -45,17 +46,23 @@ dist_tree = LST.load_collective_size_tree(inputfile, comm)
 
 MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
 
-I.printTree(dist_tree)
+# I.printTree(dist_tree)
 
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 
-for key, val in hdf_filter.items():
-  print("*****", type(key))
-  print("*****", type(val))
-  print(key, val)
+# for key, val in hdf_filter.items():
+#   print("*****", type(key))
+#   print("*****", type(val))
+#   print(key, val)
 
-IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
+skip_type_ancestors = ["Zone_t/FlowSolution_t/"]
+hdf_filter_wo_fs = IOT.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors)
+# IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
+
+for key, val in hdf_filter_wo_fs.items():
+  print(key, val)
+IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter_wo_fs)
 
 # FTH.generate_ngon_from_std_elements(dist_tree, comm)
 

@@ -1,6 +1,6 @@
 import Converter.Internal as I
 
-def create_data_array_filter(cgns_node, cgns_path, distrib):
+def create_data_array_filter(cgns_node, cgns_path, distrib, hdf_filter):
   """
   TODO : Structured grid
   """
