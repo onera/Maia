@@ -16,6 +16,11 @@ def add_sizes_to_bcdataset_tree(bc, bc_path, size_data):
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
   """
+  for elmt in I.getNodesFromType1(zone, 'Elements_t'):
+    elmt_path = zone_path+"/"+elmt[0]
+    ec_path   = elmt_path+"/ElementConnectivity"
+    I.newDataArray('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
+
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
     zone_bc_path = zone_path+"/"+zone_bc[0]
     for bc in I.getNodesFromType1(zone_bc, 'BC_t'):

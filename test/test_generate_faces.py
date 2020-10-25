@@ -50,6 +50,8 @@ hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 
 for key, val in hdf_filter.items():
+  print("*****", type(key))
+  print("*****", type(val))
   print(key, val)
 
 IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)

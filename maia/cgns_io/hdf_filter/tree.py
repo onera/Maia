@@ -1,6 +1,6 @@
 import Converter.Internal as I
 
-from maia.cgns_io.hdf_filter import elements as ZEF
+from maia.cgns_io.hdf_filter import zone as ZEF
 
 def create_tree_hdf_filter(dist_tree, hdf_filter):
   """

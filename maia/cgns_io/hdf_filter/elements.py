@@ -1,3 +1,6 @@
+from functools import partial
+import numpy as NPY
+
 import Converter.Internal as I
 from maia.utils import zone_elements_utils as EZU
 
@@ -5,6 +8,41 @@ def gen_elemts(zone_tree):
   elmts_ini = I.getNodesFromType1(zone_tree, 'Elements_t')
   for elmt in elmts_ini:
     yield elmt
+
+def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
+  """
+  """
+  distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
+  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
+  dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
+
+  eso_n = I.getNodeFromName1(elmt, 'ElementStartOffset') # Maintenant il est chargé
+  if(eso_n[1] is None):
+    raise RuntimeError
+  eso = eso_n[1]
+
+  beg_face_vtx = eso[0]
+  end_face_vtx = eso[eso.shape[0]-1]
+  dn_face_vtx  = end_face_vtx - beg_face_vtx
+
+  print("beg_face_vtx::", beg_face_vtx)
+  print("end_face_vtx::", end_face_vtx)
+
+  ec_size_n  = I.getNodeFromName1(elmt, 'ElementConnectivity#Size')
+  n_face_vtx = NPY.prod(ec_size_n[1])
+
+  print("n_face_vtx::", n_face_vtx)
+
+  n_face      = distrib_elmt[2]
+  dn_face_idx = dn_elmt + int(distrib_elmt[1] == n_face)
+  DSMMRYEC = [[0           ], [1], [dn_face_vtx], [1]]
+  DSFILEEC = [[beg_face_vtx], [1], [dn_face_vtx], [1]]
+  DSGLOBEC = [[n_face_vtx ]]
+  DSFORMEC = [[0]]
+
+  ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
+  hdf_filter[ec_path] = DSMMRYEC + DSFILEEC + DSGLOBEC + DSFORMEC
+
 
 
 def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
@@ -21,22 +59,30 @@ def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
     DSGLOBPE = [[distrib_elmt[2], 0]]
     DSFORMPE = [[1]]
 
-    path = zone_path+"/"+elmt[0]+"/ParentElements"
-    hdf_filter[path] = DSMMRYPE + DSFILEPE + DSGLOBPE + DSFORMPE
+    pe_path = zone_path+"/"+elmt[0]+"/ParentElements"
+    hdf_filter[pe_path] = DSMMRYPE + DSFILEPE + DSGLOBPE + DSFORMPE
 
   eso = I.getNodeFromName1(elmt, 'ElementStartOffset')
+  eso_path = None
   if(eso):
     # Distribution for NGon -> ElementStartOffset is the same than DistrbutionFace, except
     # that the last proc have one more element
-    n_face      = dn_elmt[2]
-    dn_face_idx = dn_face + int(dn_elmt[1] == n_face)
-    DSMMRYESO = [[0         ], [1], [dn_face_idx], [1]]
-    DSFILEESO = [[dn_elmt[0]], [1], [dn_face_idx], [1]]
+    n_face      = distrib_elmt[2]
+    dn_face_idx = dn_elmt + int(distrib_elmt[1] == n_face)
+    DSMMRYESO = [[0              ], [1], [dn_face_idx], [1]]
+    DSFILEESO = [[distrib_elmt[0]], [1], [dn_face_idx], [1]]
     DSGLOBESO = [[n_face+1]]
     DSFORMESO = [[0]]
 
-    path = zone_path+"/"+elmt[0]+"/ElementStartOffset"
-    hdf_filter[path] = DSMMRYESO + DSFILEESO + DSGLOBESO + DSFORMESO
+    eso_path = zone_path+"/"+elmt[0]+"/ElementStartOffset"
+    hdf_filter[eso_path] = DSMMRYESO + DSFILEESO + DSGLOBESO + DSFORMESO
+
+  ec = I.getNodeFromName1(elmt, 'ElementConnectivity')
+  if(ec):
+    if(eso_path is None):
+      raise RuntimeError("In order to load ElementConnectivity, the ElementStartOffset is mandatory")
+    ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
+    hdf_filter[ec_path] = partial(load_element_connectivity_from_eso, elmt, zone_path)
 
 def create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter):
   """
@@ -45,6 +91,27 @@ def create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter):
   distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
+  eso = I.getNodeFromName1(elmt, 'ElementStartOffset')
+  eso_path = None
+  if(eso):
+    # Distribution for NGon -> ElementStartOffset is the same than DistrbutionFace, except
+    # that the last proc have one more element
+    n_face      = distrib_elmt[2]
+    dn_face_idx = dn_elmt + int(distrib_elmt[1] == n_face)
+    DSMMRYESO = [[0              ], [1], [dn_face_idx], [1]]
+    DSFILEESO = [[distrib_elmt[0]], [1], [dn_face_idx], [1]]
+    DSGLOBESO = [[n_face+1]]
+    DSFORMESO = [[0]]
+
+    eso_path = zone_path+"/"+elmt[0]+"/ElementStartOffset"
+    hdf_filter[eso_path] = DSMMRYESO + DSFILEESO + DSGLOBESO + DSFORMESO
+
+  ec = I.getNodeFromName1(elmt, 'ElementConnectivity')
+  if(ec):
+    if(eso_path is None):
+      raise RuntimeError("In order to load ElementConnectivity, the ElementStartOffset is mandatory")
+    ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
+    hdf_filter[ec_path] = partial(load_element_connectivity_from_eso, elmt, zone_path)
 
 
 def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):

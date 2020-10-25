@@ -34,7 +34,8 @@ import maia.distribution                                      as MDI
 
 # ------------------------------------------------------------------------
 # > Pick a file
-inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
+# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2.hdf'
 
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
@@ -50,6 +51,8 @@ hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 
 for key, val in hdf_filter.items():
+  print("*****", type(key))
+  print("*****", type(val))
   print(key, val)
 
 IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
