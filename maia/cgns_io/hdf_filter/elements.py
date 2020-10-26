@@ -25,13 +25,13 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   end_face_vtx = eso[eso.shape[0]-1]
   dn_face_vtx  = end_face_vtx - beg_face_vtx
 
-  print("beg_face_vtx::", beg_face_vtx)
-  print("end_face_vtx::", end_face_vtx)
+  # print("beg_face_vtx::", beg_face_vtx)
+  # print("end_face_vtx::", end_face_vtx)
 
   ec_size_n  = I.getNodeFromName1(elmt, 'ElementConnectivity#Size')
   n_face_vtx = NPY.prod(ec_size_n[1])
 
-  print("n_face_vtx::", n_face_vtx)
+  # print("n_face_vtx::", n_face_vtx)
 
   n_face      = distrib_elmt[2]
   dn_face_idx = dn_elmt + int(distrib_elmt[1] == n_face)
@@ -42,6 +42,12 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
 
   ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[ec_path] = DSMMRYEC + DSFILEEC + DSGLOBEC + DSFORMEC
+
+  distrib = NPY.empty(3, dtype=type(eso))
+  distrib[0] = beg_face_vtx
+  distrib[1] = end_face_vtx
+  distrib[2] = n_face_vtx
+  I.newDataArray("DistributionElementConnectivity", value=distrib, parent=distrib_ud)
 
 
 

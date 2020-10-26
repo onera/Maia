@@ -1,6 +1,8 @@
 import Converter.Internal as I
 import maia.sids.sids as SIDS
 
+from maia.distribution.distribution_function import create_distribution_node_from_distrib
+
 import numpy as NPY
 
 import Pypdm.Pypdm as PDM
@@ -14,17 +16,12 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  # > Generation from Paradigm
   dcube = PDM.DCubeGenerator(n_vtx, edge_length,
                              origin[0], origin[1], origin[2], comm)
 
   dcube_dims = dcube.dcube_dim_get()
   dcube_val  = dcube.dcube_val_get()
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  # > Recompute distributions
   distrib      = NPY.empty(n_rank+1, dtype=NPY.int32)
   distrib[0]   = 0
   distrib[1:]  = comm.allgather(dcube_dims['dn_cell'])
@@ -39,20 +36,16 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   distrib_face = NPY.cumsum(distrib)
 
   distrib[0]       = 0
-  # distrib[1:]      = comm.allgather(dcube_dims['sface_vtx'])
   distrib[1:]      = comm.allgather(dcube_dims['sface_vtx'])
   distrib_face_vtx = NPY.cumsum(distrib)
-  # raise RuntimeError("To understand distrib face_vtx")
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
   dist_base = I.newCGNSBase(parent=dist_tree)
   dist_zone = I.newZone('zone', [[distri_vtx[n_rank], distrib_cell[n_rank], 0]],
                         'Unstructured', parent=dist_base)
 
-  # > Grid connectivity
+  # > Grid coordinates
   grid_coord = I.newGridCoordinates(parent=dist_zone)
   I.newDataArray('CoordinateX', dcube_val['dvtx_coord'][0::3], parent=grid_coord)
   I.newDataArray('CoordinateY', dcube_val['dvtx_coord'][1::3], parent=grid_coord)
@@ -82,7 +75,7 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   face_group_n   = NPY.diff(face_group_idx)
 
   face_group = dcube_val['dface_group']
-  distri = NPY.empty(n_rank, dtype=NPY.int32)
+  distri = NPY.empty(n_rank, dtype=face_group.dtype)
 
   for i_bc in range(dcube_dims['n_face_group']):
     bc_n = I.newBC('dcube_bnd_{0}'.format(i_bc), btype='BCWall', parent=zone_bc)
@@ -93,21 +86,18 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
     comm.Allgather(dn_face_bnd, distri)
     r_offset  = sum(distri[:i_rank])
     distrib_n = I.createNode(':CGNS#Distribution', 'UserDefinedData_t', parent=bc_n)
-    distrib   = NPY.array([r_offset, r_offset+dn_face_bnd, sum(distri)], dtype=NPY.int32)
+    distrib   = NPY.array([r_offset, r_offset+dn_face_bnd, sum(distri)], dtype=pe.dtype)
     I.newDataArray('Distribution', distrib, parent=distrib_n)
 
   # > Distributions
-  distrib_n = I.createNode(':CGNS#Distribution', 'UserDefinedData_t', parent=dist_zone)
-  distrib  = NPY.array([distrib_cell[i_rank], distrib_cell[i_rank+1], distrib_cell[n_rank]], dtype=NPY.int32)
-  I.newDataArray('Distribution_cell', distrib, parent=distrib_n)
-  distrib  = NPY.array([distrib_face[i_rank], distrib_face[i_rank+1], distrib_face[n_rank]], dtype=NPY.int32)
-  I.newDataArray('Distribution_face', distrib, parent=distrib_n)
-  distrib  = NPY.array([distri_vtx[i_rank], distri_vtx[i_rank+1], distri_vtx[n_rank]], dtype=NPY.int32)
-  I.newDataArray('Distribution_vtx', distrib, parent=distrib_n)
-  distrib  = NPY.array([distrib_face_vtx[i_rank], distrib_face_vtx[i_rank+1], distrib_face_vtx[n_rank]], dtype=NPY.int32)
-  I.newDataArray('Distribution_faceVtx', distrib, parent=distrib_n)
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  np_distrib_cell     = NPY.array([distrib_cell    [i_rank], distrib_cell    [i_rank+1], distrib_cell    [n_rank]], dtype=pe.dtype)
+  np_distrib_vtx      = NPY.array([distri_vtx      [i_rank], distri_vtx      [i_rank+1], distri_vtx      [n_rank]], dtype=pe.dtype)
+  np_distrib_face     = NPY.array([distrib_face    [i_rank], distrib_face    [i_rank+1], distrib_face    [n_rank]], dtype=pe.dtype)
+  np_distrib_face_vtx = NPY.array([distrib_face_vtx[i_rank], distrib_face_vtx[i_rank+1], distrib_face_vtx[n_rank]], dtype=pe.dtype)
 
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  create_distribution_node_from_distrib("Cell"                           , dist_zone, np_distrib_cell    )
+  create_distribution_node_from_distrib("Vertex"                         , dist_zone, np_distrib_vtx     )
+  create_distribution_node_from_distrib("Distribution"                   , ngon_n   , np_distrib_face    )
+  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n   , np_distrib_face_vtx)
+
   return dist_tree
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

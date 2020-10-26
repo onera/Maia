@@ -29,6 +29,6 @@ origin      = [0., 0., 0.]
 
 dist_tree = DCG.dcube_generate(n_vtx, edge_length, origin, comm)
 
-I.printTree(dist_tree)
+# I.printTree(dist_tree)
 
-C.convertPyTree2File(dist_tree, "dcube_gen.hdf")
+# C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
