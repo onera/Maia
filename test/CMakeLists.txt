@@ -1,6 +1,6 @@
 include(TestCreate)
 
-set(src_dir ${CMAKE_SOURCE_DIR}/${PROJECT_NAME})
+set(src_dir ${CMAKE_CURRENT_SOURCE_DIR}/../${PROJECT_NAME})
 file(GLOB_RECURSE test_files
   CONFIGURE_DEPENDS "${src_dir}/*.test.cpp"
 )
