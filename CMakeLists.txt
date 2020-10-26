@@ -41,7 +41,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON )
 
 
 # ----------------------------------------------------------------------
-# Dependencies 
+# Dependencies
 # ----------------------------------------------------------------------
 
 ## Dependencies installed in the environment ##
@@ -153,7 +153,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME}
-  PUBLIC 
+  PUBLIC
     MPI::MPI_CXX
     std_e::std_e
     cpp_cgns::cpp_cgns
