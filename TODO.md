@@ -17,6 +17,8 @@ attach_dims_to_dist_tree: fix convertFile2PyTree + skeletonData (skeletonData sh
 uniform_distribution: where should we put it? (python std_e?)
 
 ## Tests
+part_to_block <-> block_to_part : deadlock now, why? (tests are commented out)
+
 Unit tests: seq/par python/c++
 Component, Perfo: seq/par python/c++
 Functional (non-reg): seq/par par fichier / python
