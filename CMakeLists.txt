@@ -27,8 +27,8 @@ project(
 
 ## Compiler flags
 ### Defaults
-include("/scratchm/bberthou/travail/fs_cgns_adapter/fs_cgns_adapter/external/maia/scripts/cmake/default_flags.cmake")
-#include(${CMAKE_MODULE_PATH}/default_flags.cmake)
+#include("/scratchm/bberthou/travail/fs_cgns_adapter/fs_cgns_adapter/external/maia/scripts/cmake/default_flags.cmake")
+include(${CMAKE_MODULE_PATH}/default_flags.cmake)
 set(CMAKE_Fortran_FLAGS " ${CMAKE_Fortran_FLAGS} -cpp -DE_DOUBLEREAL -ffixed-line-length-none -fno-second-underscore")
 ### Build type
 if(NOT CMAKE_BUILD_TYPE)
