@@ -11,7 +11,7 @@
 namespace py = pybind11;
 
 auto partition_with_boundary_first(py::object pybase) -> void {
-  cgns::tree base = cgns::view_as_cpptree(pybase.ptr());
+  cgns::tree base = cgns::view_as_cpptree(pybase);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::partition_with_boundary_first(base,cgns::factory(&alloc),MPI_COMM_WORLD);
@@ -20,7 +20,7 @@ auto partition_with_boundary_first(py::object pybase) -> void {
 }
 
 auto sort_nface_into_simple_connectivities(py::object pybase) -> void {
-  cgns::tree base = cgns::view_as_cpptree(pybase.ptr());
+  cgns::tree base = cgns::view_as_cpptree(pybase);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::sort_nface_into_simple_connectivities(base,cgns::factory(&alloc));
@@ -29,7 +29,7 @@ auto sort_nface_into_simple_connectivities(py::object pybase) -> void {
 }
 
 auto convert_to_simple_connectivities(py::object pybase) -> void {
-  cgns::tree base = cgns::view_as_cpptree(pybase.ptr());
+  cgns::tree base = cgns::view_as_cpptree(pybase);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::convert_to_simple_connectivities(base,cgns::factory(&alloc));
@@ -39,7 +39,7 @@ auto convert_to_simple_connectivities(py::object pybase) -> void {
 }
 
 auto add_nfaces(py::object pybase) -> void {
-  cgns::tree base = cgns::view_as_cpptree(pybase.ptr());
+  cgns::tree base = cgns::view_as_cpptree(pybase);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::add_nfaces(base,cgns::factory(&alloc));
@@ -48,7 +48,7 @@ auto add_nfaces(py::object pybase) -> void {
 }
 
 auto remove_ghost_info(py::object pybase) -> void {
-  cgns::tree base = cgns::view_as_cpptree(pybase.ptr());
+  cgns::tree base = cgns::view_as_cpptree(pybase);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::remove_ghost_info(base,cgns::factory(&alloc),MPI_COMM_WORLD);
