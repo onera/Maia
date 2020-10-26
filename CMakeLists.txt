@@ -107,6 +107,8 @@ endif()
 
 ## Dependencies from submodules ##
 target_add_dependency(${PROJECT_NAME} std_e)
+set(STD_E_ENABLE_MPI ON) # maia requires MPI and depends on the MPI wrapper functions of std_e
+
 target_add_dependency(${PROJECT_NAME} cpp_cgns)
 
 
