@@ -75,21 +75,24 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter_wo_fs)
 # I.printTree(dist_tree)
 # > To copy paste in new algorithm
 # dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
-# > dZoneToWeightedParts --> Proportion de la zone initiale qu'on souhate après partitionnement
-# > dLoadingProcs        --> Proportion de la zone initiale avant le partitionnement (vision block)
-
+# > dzone_to_weighted_parts --> Proportion de la zone initiale qu'on souhate après partitionnement
+# > dloading_procs        --> Proportion de la zone initiale avant le partitionnement (vision block)
 #
 # > ... and this is suffisent to predict your partitions sizes
-dZoneToWeightedParts = DBA.computePartitioningWeights(dist_tree, comm)
+dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm)
 
-print(dZoneToWeightedParts)
+print(dzone_to_weighted_parts)
 
-dLoadingProcs = dict()
+dloading_procs = dict()
 for zone in I.getZones(dist_tree):
-  dLoadingProcs[zone[0]] = list(range(comm.Get_size()))
-print(dLoadingProcs)
+  dloading_procs[zone[0]] = list(range(comm.Get_size()))
+print(dloading_procs)
 
-PPA.partitioning(dist_tree)
+PPA.partitioning(dist_tree, dzone_to_weighted_parts,
+                 comm,
+                 split_method=1,
+                 part_weight_method=2,
+                 reorder_methods=["NONE", "NONE"])
 
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
 #                                                                        'CGNSBase_t/Family_t'/*])
