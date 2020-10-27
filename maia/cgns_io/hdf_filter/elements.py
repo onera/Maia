@@ -43,7 +43,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[ec_path] = DSMMRYEC + DSFILEEC + DSGLOBEC + DSFORMEC
 
-  distrib = NPY.empty(3, dtype=type(eso))
+  distrib = NPY.empty(3, dtype=eso.dtype)
   distrib[0] = beg_face_vtx
   distrib[1] = end_face_vtx
   distrib[2] = n_face_vtx
