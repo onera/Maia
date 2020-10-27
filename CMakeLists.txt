@@ -4,18 +4,31 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 cmake_policy(SET CMP0074 NEW)
 # directory containing additional cmake scripts
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
+set(MAIA_CMAKE_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
+list(APPEND CMAKE_MODULE_PATH ${MAIA_CMAKE_SCRIPTS})
 
-# Use a different project root to find submodule sources
-if(DEFINED ENV{PROJECT_ROOT})
-  set(PROJECT_ROOT $ENV{PROJECT_ROOT})
-else()
-  set(PROJECT_ROOT ${CMAKE_SOURCE_DIR})
+if(NOT DEFINED PROJECT_ROOT)
+  set(PROJECT_ROOT ${CMAKE_SOURCE_DIR} CACHE PATH "Root directory, where the submodules are populated")
 endif()
 
-# Load commands target_add_dependency, target_add_thirdparty_dependency and target_install
-include(${PROJECT_ROOT}/external/project_utils/scripts/cmake/target_add_dependency.cmake)
+macro(check_sub_repo_exists sub_repo_name)
+  set(sub_repo_path "${PROJECT_ROOT}/external/${sub_repo_name}")
+  file(GLOB sub_repo_files ${sub_repo_path}/*)
+  list(LENGTH sub_repo_files sub_repo_nb_files)
+  if(sub_repo_nb_files EQUAL 0)
+    message(FATAL_ERROR
+      "${PROJECT_ROOT}/external/${sub_repo_name} is empty. Maybe you forgot to initialize it with \"git submodule update --init\""
+    )
+  endif()
+endmacro()
 
+check_sub_repo_exists(project_utils)
+set(PROJECT_UTILS_DIR ${PROJECT_ROOT}/external/project_utils)
+# Load commands target_add_dependency, target_add_thirdparty_dependency and target_install
+include(${PROJECT_UTILS_DIR}/scripts/cmake/target_add_dependency.cmake)
+
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
 # ----------------------------------------------------------------------
 # Project
@@ -27,9 +40,7 @@ project(
 
 ## Compiler flags
 ### Defaults
-include("/scratchm/bberthou/travail/fs_cgns_adapter/fs_cgns_adapter/external/maia/scripts/cmake/default_flags.cmake")
-#include(${CMAKE_MODULE_PATH}/default_flags.cmake)
-set(CMAKE_Fortran_FLAGS " ${CMAKE_Fortran_FLAGS} -cpp -DE_DOUBLEREAL -ffixed-line-length-none -fno-second-underscore")
+include(${MAIA_CMAKE_SCRIPTS}/default_flags.cmake)
 ### Build type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE) # default to Release
@@ -41,7 +52,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON )
 
 
 # ----------------------------------------------------------------------
-# Dependencies 
+# Dependencies
 # ----------------------------------------------------------------------
 
 ## Dependencies installed in the environment ##
@@ -52,11 +63,17 @@ else()
 endif()
 
 find_package(MPI REQUIRED)
-#find_package(ParaDiGM)
-#if(NOT PARADIGM_FOUND)
-#  message("ParaDiGM not found please export PARADIGM_HOME to find it")
-#endif()
-find_package(pdm)
+
+option(MAIA_USE_PDM_INSTALL OFF "Use an installed ParaDiGM version")
+if (MAIA_USE_PDM_INSTALL)
+  find_package(pdm CONFIG REQUIRED) # "CONFIG" require the install to have a pdmConfig.cmake
+  if(NOT pdm_FOUND)
+    message("ParaDiGM not found please export pdm_DIR to find it")
+  endif()
+else()
+  check_sub_repo_exists(pdm)
+  target_add_dependency(${PROJECT_NAME} pdm)
+endif()
 
 ## Dependencies built from source ##
 include(FetchContent)
@@ -71,28 +88,6 @@ if(NOT pybind11_POPULATED)
   FetchContent_Populate(pybind11)
   add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
 endif()
-### doctest mpi ###
-FetchContent_Declare(
-  doctest
-  GIT_REPOSITORY https://github.com/BerengerBerthoul/doctest.git
-  GIT_TAG        mpi
-)
-FetchContent_GetProperties(doctest)
-if(NOT doctest_POPULATED)
-  FetchContent_Populate(doctest)
-  add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR})
-endif()
-### doctest ### TODO use this one once the MPI extension has been merged
-# FetchContent_Declare(
-#   doctest
-#   GIT_REPOSITORY https://github.com/onqtam/doctest.git
-#   GIT_TAG        2.4.0
-# )
-# FetchContent_GetProperties(doctest)
-# if(NOT doctest_POPULATED)
-#   FetchContent_Populate(doctest)
-#   add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR})
-# endif()
 ### range-v3 ###
 FetchContent_Declare(
   range-v3
@@ -106,7 +101,11 @@ if(NOT range-v3_POPULATED)
 endif()
 
 ## Dependencies from submodules ##
+check_sub_repo_exists(std_e)
 target_add_dependency(${PROJECT_NAME} std_e)
+set(STD_E_ENABLE_MPI ON) # maia requires MPI and depends on the MPI wrapper functions of std_e
+
+check_sub_repo_exists(cpp_cgns)
 target_add_dependency(${PROJECT_NAME} cpp_cgns)
 
 
@@ -153,7 +152,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME}
-  PUBLIC 
+  PUBLIC
     MPI::MPI_CXX
     std_e::std_e
     cpp_cgns::cpp_cgns
