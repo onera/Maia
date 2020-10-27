@@ -63,12 +63,13 @@ HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 # skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "*"], ["Zone_t", "ZoneSubRegion_t", "VelocityY"]]
 skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "Momentum*"],
                        ["Zone_t", "ZoneSubRegion_t", "Velocity*"]]
-hdf_filter_wo_fs = IOT.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors, skip=False)
+# hdf_filter_wo_fs = IOT.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors, skip=True)
 # # IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 # for key, val in hdf_filter_wo_fs.items():
 #   print(key, val)
-IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter_wo_fs)
+# IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter_wo_fs)
+IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 # FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
