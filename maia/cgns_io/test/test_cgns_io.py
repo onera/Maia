@@ -20,17 +20,17 @@ def test_filter_6():
   print("xxx"*100)
 
 # --------------------------------------------------------------------------
-@pytest.mark.parametrize("make_sub_comm", [1, 2], indirect=['make_sub_comm'])
-def test_filter_7(make_sub_comm):
-  print("yyy"*100, make_sub_comm.size)
-  if(make_sub_comm.size == 2):
-    # assert make_sub_comm.size == 2
-    # assert make_sub_comm.rank == 1
-    # assert make_sub_comm.rank == 1
-    # assert make_sub_comm.rank == 1
-    # assert make_sub_comm.rank == 1
-    check.equal(make_sub_comm.size, 2, " hehe" )
-    check.equal(make_sub_comm.rank, 1, " hehe" )
-    check.equal(make_sub_comm.rank, 1, " hehe" )
-    check.equal(make_sub_comm.rank, 1, " hehe" )
-    check.equal(make_sub_comm.rank, 1, " hehe" )
+# @pytest.mark.parametrize("make_sub_comm", [1, 2], indirect=['make_sub_comm'])
+# def test_filter_7(make_sub_comm):
+#   print("yyy"*100, make_sub_comm.size)
+#   if(make_sub_comm.size == 2):
+#     # assert mamke_sub_comm.size == 2
+#     # assert make_sub_comm.rank == 1
+#     # assert make_sub_comm.rank == 1
+#     # assert make_sub_comm.rank == 1
+#     # assert make_sub_comm.rank == 1
+#     check.equal(make_sub_comm.size, 2, " hehe" )
+#     check.equal(make_sub_comm.rank, 1, " hehe" )
+#     check.equal(make_sub_comm.rank, 1, " hehe" )
+#     check.equal(make_sub_comm.rank, 1, " hehe" )
+#     check.equal(make_sub_comm.rank, 1, " hehe" )

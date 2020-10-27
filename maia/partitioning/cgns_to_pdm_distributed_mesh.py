@@ -56,25 +56,16 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
   # > Connectivity
   if dn_face > 0:
 
-    dface_cell = NPY.empty( 2*dn_face, dtype=ngon_pe.dtype )
-    CNT.pe_cgns_to_pdm_face_cell(PE[1], dface_cell)
-    LYT.convertFaceCellForPpart__(dface_cell, PE[1])
-
-    elmtsRange = NPY.zeros(2, dtype=NPY.int32, order='F') ;
-    elmtsRange[0] = 1 ; elmtsRange[1] = dn_face
-    if ESOffset is not None:
-      dface_vtx = EC[1]
-      #We retrieve the n+1 th value of ElementStartOffset from distribution
-      #ESOffset must be shifted to start at 0
-      dface_vtx_idx = NPY.empty(dn_face+1, dtype=NPY.int32)
-      dface_vtx_idx[:dn_face] = ESOffset[1][:dn_face]   - distrib_face_vtx[0]
-      dface_vtx_idx[dn_face]  = distrib_face_vtx[1] - distrib_face_vtx[0]
-    else:
-      raise NotImplemented
+    dface_cell    = NPY.empty( 2*dn_face  , dtype=ngon_pe.dtype )
+    dface_vtx_idx = NPY.empty(   dn_face+1, dtype=NPY.int32     ) # Local index is int32bits
+    print(ngon_pe)
+    print(dface_cell)
+    CNT.pe_cgns_to_pdm_face_cell(ngon_pe      , dface_cell      )
+    CNT.compute_idx_local       (dface_vtx_idx, ngon_eso, distrib_face_vtx)
   else:
-    dface_vtx_idx = NPY.zeros(1, dtype='int32', order='F')
-    dface_vtx     = NPY.empty(0, dtype='int32', order='F')
-    dface_cell    = NPY.empty(0, dtype='int32', order='F')
+    dface_vtx_idx = NPY.zeros(1, dtype=ngon_pe.dtype, order='F')
+    dface_vtx     = NPY.empty(0, dtype=ngon_pe.dtype, order='F')
+    dface_cell    = NPY.empty(0, dtype=ngon_pe.dtype, order='F')
   # LOG.debug(" dface_vtx    = {0}".format(dface_vtx   ))
   # LOG.debug(" dface_vtx_idx = {0}".format(dface_vtx_idx))
   # LOG.debug(" dface_cell   = {0}".format(dface_cell  ))
