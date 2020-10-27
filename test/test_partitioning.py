@@ -37,6 +37,7 @@ from   Converter import cgnskeywords as CGK
 # > Pick a file
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_BND_NGON2.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS_And_ZSR.hdf'
 
@@ -90,7 +91,7 @@ print(dloading_procs)
 PPA.partitioning(dist_tree, dzone_to_weighted_parts,
                  comm,
                  split_method=1,
-                 part_weight_method=2,
+                 part_weight_method=1,
                  reorder_methods=["NONE", "NONE"])
 
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
