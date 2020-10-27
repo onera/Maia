@@ -1,6 +1,7 @@
 import Converter.Internal as I
 import maia.sids.sids as SIDS
 import numpy          as NPY
+from maia.connectivity import connectivity_transform as CNT
 
 
 # --------------------------------------------------------------------------
@@ -26,15 +27,13 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
   if(not found):
     raise NotImplemented
 
-
-
   # distrib_face     = I.getNodeFromName1(distrib_ud, 'distrib_face'    )[1]
   # distrib_face_vtx = I.getNodeFromName1(distrib_ud, 'distrib_face_vtx')[1]
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  dn_vtx     = distrib_vtx [1] - distrib_vtx [0]
-  dn_cell    = distrib_cell[1] - distrib_cell[0]
-  dn_face    = distrib_face[1] - distrib_face[0]
+  dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
+  dn_cell = distrib_cell[1] - distrib_cell[0]
+  dn_face = distrib_face[1] - distrib_face[0]
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -44,10 +43,10 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Prepare Vtx
   if dn_vtx > 0:
-    gridc_n   = I.getNodeFromName1(dist_zone, 'GridCoordinates')
-    cx        = I.getNodeFromName1(gridc_n, 'CoordinateX')[1]
-    cy        = I.getNodeFromName1(gridc_n, 'CoordinateY')[1]
-    cz        = I.getNodeFromName1(gridc_n, 'CoordinateZ')[1]
+    gridc_n    = I.getNodeFromName1(dist_zone, 'GridCoordinates')
+    cx         = I.getNodeFromName1(gridc_n, 'CoordinateX')[1]
+    cy         = I.getNodeFromName1(gridc_n, 'CoordinateY')[1]
+    cz         = I.getNodeFromName1(gridc_n, 'CoordinateZ')[1]
     dvtx_coord = NPY.hstack(list(zip(cx, cy, cz)))
   else:
     dvtx_coord = NPY.empty(0, dtype='float64', order='F')
@@ -56,21 +55,10 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Connectivity
   if dn_face > 0:
-    found  = False
-    elmts    = I.getNodesFromType1(dist_zone, 'Elements_t')
-    for elmt in elmts:
-      if(elmt[1][0] == 22):
-        found    = True
-        EC       = I.getNodeFromName1(elmt, 'ElementConnectivity')
-        PE       = I.getNodeFromName1(elmt, 'ParentElements')
-        ESOffset = I.getNodeFromName1(elmt, 'ElementStartOffset')
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    # LOG.debug("### Call convertFaceCellForPpart__ : {}".format(PE[1]))
-    dface_cell = NPY.empty(2*dn_face  , dtype='int32' )
+    dface_cell = NPY.empty( 2*dn_face, dtype=ngon_pe.dtype )
+    CNT.pe_cgns_to_pdm_face_cell(PE[1], dface_cell)
     LYT.convertFaceCellForPpart__(dface_cell, PE[1])
-    # LOG.debug("### Call convertNGonToMorse__ : {}".format(EC[1]))
 
     elmtsRange = NPY.zeros(2, dtype=NPY.int32, order='F') ;
     elmtsRange[0] = 1 ; elmtsRange[1] = dn_face
@@ -82,11 +70,11 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
       dface_vtx_idx[:dn_face] = ESOffset[1][:dn_face]   - distrib_face_vtx[0]
       dface_vtx_idx[dn_face]  = distrib_face_vtx[1] - distrib_face_vtx[0]
     else:
-      dface_vtx, dface_vtx_idx, dMorseNbf = TBX.convertNGonToMorse__(elmtsRange, EC[1])
+      raise NotImplemented
   else:
     dface_vtx_idx = NPY.zeros(1, dtype='int32', order='F')
-    dface_vtx    = NPY.empty(0, dtype='int32', order='F')
-    dface_cell   = NPY.empty(0, dtype='int32', order='F')
+    dface_vtx     = NPY.empty(0, dtype='int32', order='F')
+    dface_cell    = NPY.empty(0, dtype='int32', order='F')
   # LOG.debug(" dface_vtx    = {0}".format(dface_vtx   ))
   # LOG.debug(" dface_vtx_idx = {0}".format(dface_vtx_idx))
   # LOG.debug(" dface_cell   = {0}".format(dface_cell  ))
