@@ -63,33 +63,37 @@ HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 # skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "*"], ["Zone_t", "ZoneSubRegion_t", "VelocityY"]]
 skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "Momentum*"],
                        ["Zone_t", "ZoneSubRegion_t", "Velocity*"]]
-hdf_filter_wo_fs = IOT.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors, skip=False)
+# hdf_filter_wo_fs = IOT.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors, skip=True)
 # # IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 # for key, val in hdf_filter_wo_fs.items():
 #   print(key, val)
-IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter_wo_fs)
+# IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter_wo_fs)
+IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 # FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
 # I.printTree(dist_tree)
 # > To copy paste in new algorithm
 # dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
-# > dZoneToWeightedParts --> Proportion de la zone initiale qu'on souhate après partitionnement
-# > dLoadingProcs        --> Proportion de la zone initiale avant le partitionnement (vision block)
-
+# > dzone_to_weighted_parts --> Proportion de la zone initiale qu'on souhate après partitionnement
+# > dloading_procs        --> Proportion de la zone initiale avant le partitionnement (vision block)
 #
 # > ... and this is suffisent to predict your partitions sizes
-dZoneToWeightedParts = DBA.computePartitioningWeights(dist_tree, comm)
+dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm)
 
-print(dZoneToWeightedParts)
+print(dzone_to_weighted_parts)
 
-dLoadingProcs = dict()
+dloading_procs = dict()
 for zone in I.getZones(dist_tree):
-  dLoadingProcs[zone[0]] = list(range(comm.Get_size()))
-print(dLoadingProcs)
+  dloading_procs[zone[0]] = list(range(comm.Get_size()))
+print(dloading_procs)
 
-PPA.partitioning(dist_tree)
+PPA.partitioning(dist_tree, dzone_to_weighted_parts,
+                 comm,
+                 split_method=1,
+                 part_weight_method=2,
+                 reorder_methods=["NONE", "NONE"])
 
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
 #                                                                        'CGNSBase_t/Family_t'/*])

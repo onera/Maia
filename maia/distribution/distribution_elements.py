@@ -1,6 +1,5 @@
 import Converter.PyTree   as C
 import Converter.Internal as I
-import maia.utils         as UTL
 
 from   .distribution_function import create_distribution_node
 

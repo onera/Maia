@@ -16,15 +16,21 @@ create_mpi_doctest(
 )
 
 create_mpi_pytest(maia_python_unit_tests 1)
-mpi_pytest_directory_python_create(maia_bnr 1)
 
-mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 2
-                SOURCES
-                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
-                LABELS     unit
-                SERIAL_RUN false )
-mpi_test_create(maia_mpi_scheduler_threads.cpp maia_mpi_scheduler_threads 15
-                SOURCES
-                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
-                LABELS     unit
-                SERIAL_RUN false )
+option(MAIA_ENABLE_MPI_TESTS "Make CTest run the parallel tests" OFF)
+
+
+if(MAIA_ENABLE_MPI_TESTS)
+  mpi_pytest_directory_python_create(maia_bnr 1)
+
+  mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 2
+                  SOURCES
+                  LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
+                  LABELS     unit
+                  SERIAL_RUN false )
+  mpi_test_create(maia_mpi_scheduler_threads.cpp maia_mpi_scheduler_threads 15
+                  SOURCES
+                  LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
+                  LABELS     unit
+                  SERIAL_RUN false )
+endif()
