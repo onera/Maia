@@ -4,8 +4,10 @@ import maia.sids.sids as SIDS
 from maia.cgns_io.hdf_filter import elements        as HEF
 from maia.cgns_io.hdf_filter import zone_sub_region as SRF
 
-from .data_array      import create_data_array_filter
-from .zone_sub_region import create_zone_subregion_filter
+from .data_array             import create_data_array_filter
+from .zone_sub_region        import create_zone_subregion_filter
+from .zone_bc                import create_zone_bc_filter
+from .zone_grid_connectivity import create_zone_grid_connectivity_filter
 
 
 def create_grid_coord_filter(zone_tree, zone_path, hdf_filter):
@@ -40,7 +42,10 @@ def create_zone_filter(zone_tree, zone_path, hdf_filter):
   if(zone_type == b'Structured'):
     raise RuntimeError("create_zone_filter not implemented for structured grid ")
 
+  create_zone_bc_filter(zone_tree, zone_path, hdf_filter)
+  create_zone_grid_connectivity_filter(zone_tree, zone_path, hdf_filter)
   create_grid_coord_filter(zone_tree, zone_path, hdf_filter)
+
   HEF.create_zone_elements_filter(zone_tree, zone_path, hdf_filter)
 
   for zone_subregion in I.getNodesFromType1(zone_tree, 'ZoneSubRegion_t'):

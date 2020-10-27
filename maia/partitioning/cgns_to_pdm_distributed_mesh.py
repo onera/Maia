@@ -5,6 +5,7 @@ from maia.connectivity import connectivity_transform as CNT
 from .bnd_cgns_to_pdm import bnd_cgns_to_pdm
 from .zgc_cgns_to_pdm import zgc_cgns_to_pdm
 
+import Pypdm.Pypdm as PDM
 
 # --------------------------------------------------------------------------
 def cgns_dist_zone_to_pdm_dmesh(dist_zone):
@@ -19,9 +20,9 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
   for elmt in I.getNodesFromType1(dist_zone, 'Elements_t'):
     if(elmt[1][0] == 22):
       found    = True
-      ngon_ec  = I.getNodeFromName1(elmt, 'ElementConnectivity')[1]
-      ngon_pe  = I.getNodeFromName1(elmt, 'ParentElements'     )[1]
-      ngon_eso = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
+      dface_vtx = I.getNodeFromName1(elmt, 'ElementConnectivity')[1]
+      ngon_pe   = I.getNodeFromName1(elmt, 'ParentElements'     )[1]
+      ngon_eso  = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
 
       distrib_ngon_ud  = I.getNodeFromName1(elmt           , ':CGNS#Distribution')
       distrib_face     = I.getNodeFromName1(distrib_ngon_ud, 'Distribution'      )[1]

@@ -8,10 +8,6 @@ namespace py = pybind11;
 template<typename g_num>
 void pe_cgns_to_pdm_face_cell(py::array_t<g_num, py::array::f_style>& pe,
                               py::array_t<g_num, py::array::f_style>& face_cell){
-  std::cout << __PRETTY_FUNCTION__ << std::endl;
-  std::cout << "pe.shape()[0]::" << pe.shape()[0]    << std::endl;
-  std::cout << "pe.itemsize()::" << pe.itemsize() << std::endl;
-  std::cout << "pe.size()    ::" << pe.size()     << std::endl;
   assert(pe.ndim()        == 2        );
   assert(face_cell.ndim() == 1        );
   assert(face_cell.size() == pe.size());
@@ -31,7 +27,6 @@ template<typename g_num>
 void compute_idx_local(py::array_t<int32_t, py::array::f_style>& connect_l_idx,
                        py::array_t<g_num  , py::array::f_style>& connect_g_idx,
                        py::array_t<g_num  , py::array::f_style>& distrib){
-  std::cout << __PRETTY_FUNCTION__ << std::endl;
   assert(distrib.size() == 3);  /* beg_rank / end_rank / n_tot */
 
   int n_connect = connect_l_idx.shape()[0]-1; /* shape = n_connect + 1 */

@@ -15,7 +15,7 @@ def bnd_cgns_to_pdm(dist_zone):
   dface_bound_idx[0] = 0
   for zone_bc in I.getNodesFromType1(dist_zone, 'ZoneBC_t'):
     bcs = I.getNodesFromType1(zone_bc, 'BC_t')
-    for i_group, bc in bcs:
+    for i_group, bc in enumerate(bcs):
       pl_n = I.getNodeFromName1(bc, 'PointList')
       if pl_n is not None:
         # > Don't use I.getValue which return an int instead of np array if len(PL)=1
