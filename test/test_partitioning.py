@@ -90,7 +90,7 @@ print(dloading_procs)
 
 part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
                              comm,
-                             split_method=1,
+                             split_method=2,
                              part_weight_method=1,
                              reorder_methods=["NONE", "NONE"])
 

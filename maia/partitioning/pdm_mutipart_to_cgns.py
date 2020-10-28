@@ -45,9 +45,9 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
       data = part_data_list[index]
 
       part_zone = I.newZone(name   = dist_zone[0]+'.P{0}.N{1}'.format(i_rank, i_part),
-                           zsize  = [[dims['nVertex'],dims['nCell'],0]],
-                           ztype  = 'Unstructured',
-                           parent = part_base)
+                            zsize  = [[dims['nVertex'],dims['nCell'],0]],
+                            ztype  = 'Unstructured',
+                            parent = part_base)
 
       pdm_part_to_cgns_zone(part_zone, dist_zone, dims, data, comm)
 

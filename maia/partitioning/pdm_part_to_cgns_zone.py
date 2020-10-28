@@ -74,4 +74,4 @@ def pdm_part_to_cgns_zone(zone, dist_zone, dims, data, comm):
   bnd_pdm_to_cgns(zone, dist_zone, comm)
   zgc_original_pdm_to_cgns(zone, dist_zone, comm)
 
-  # zgc_created_pdm_to_cgns(zone, dist_zone[0], comm)
+  zgc_created_pdm_to_cgns(zone, dist_zone, comm)
