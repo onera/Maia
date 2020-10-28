@@ -14,4 +14,7 @@ Table of contents
 .. toctree::
   :maxdepth: 3
 
+  introduction
+  loading_a_distributed_tree
+  cgns_registry
   partitioning

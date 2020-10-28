@@ -10,7 +10,7 @@ Quick start
 Introduction
 ------------
 
-**Maia** offers parallel algorithms over CGNS trees: distributed loading, partitioning, transformations...
+**Maia** offers parallel algorithms over CGNS trees: distributed loading, partitioning, and various kind of transformations (generation of faces, generation of ghost cells...).
 
 
 Installation
