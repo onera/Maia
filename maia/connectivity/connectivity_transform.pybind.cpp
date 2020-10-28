@@ -24,6 +24,24 @@ void pe_cgns_to_pdm_face_cell(py::array_t<g_num, py::array::f_style>& pe,
 }
 
 template<typename g_num>
+void pdm_face_cell_to_pe_cgns(py::array_t<g_num, py::array::f_style>& face_cell,
+                              py::array_t<g_num, py::array::f_style>& pe){
+  assert(pe.ndim()        == 2        );
+  assert(face_cell.ndim() == 1        );
+  assert(face_cell.size() == pe.size());
+
+  int n_face = pe.shape()[0];
+
+  auto pe_ptr        = pe       .template mutable_unchecked<2>();
+  auto face_cell_ptr = face_cell.template mutable_unchecked<1>();
+
+  for(int i_face = 0; i_face < n_face; ++i_face){
+    pe_ptr(i_face,0) = face_cell_ptr(2*i_face  );
+    pe_ptr(i_face,1) = face_cell_ptr(2*i_face+1);
+  }
+}
+
+template<typename g_num>
 void compute_idx_local(py::array_t<int32_t, py::array::f_style>& connect_l_idx,
                        py::array_t<g_num  , py::array::f_style>& connect_g_idx,
                        py::array_t<g_num  , py::array::f_style>& distrib){
@@ -57,6 +75,13 @@ PYBIND11_MODULE(connectivity_transform, m) {
   m.def("pe_cgns_to_pdm_face_cell", &pe_cgns_to_pdm_face_cell<int64_t>,
         py::arg("pe"       ).noconvert(),
         py::arg("face_cell").noconvert());
+
+  m.def("pdm_face_cell_to_pe_cgns", &pdm_face_cell_to_pe_cgns<int32_t>,
+        py::arg("face_cell").noconvert(),
+        py::arg("pe"       ).noconvert());
+  m.def("pdm_face_cell_to_pe_cgns", &pdm_face_cell_to_pe_cgns<int64_t>,
+        py::arg("face_cell").noconvert(),
+        py::arg("pe"       ).noconvert());
 
   m.def("compute_idx_local", &compute_idx_local<int32_t>,
         py::arg("connect_l_idx").noconvert(),

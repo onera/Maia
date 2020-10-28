@@ -49,11 +49,13 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
                            ztype  = 'Unstructured',
                            parent = part_base)
 
-      pdm_part_to_cgns_zone(part_zone, dims, data, comm)
+      pdm_part_to_cgns_zone(part_zone, dist_zone, dims, data, comm)
 
       index    += 1
 
     zoneg_id += 1
 
+  import Converter.PyTree as C
+  C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(i_rank))
   return part_tree
 

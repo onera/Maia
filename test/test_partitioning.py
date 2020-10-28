@@ -96,5 +96,7 @@ part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
 
 I.printTree(part_tree)
 
+# C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(rank))
+
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
 #                                                                        'CGNSBase_t/Family_t'/*])
