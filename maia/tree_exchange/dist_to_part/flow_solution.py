@@ -29,10 +29,10 @@ def dist_flow_sol_to_part_flow_sol(dist_tree, part_tree, dzone_to_part, comm):
     for flow_solution_node in flow_solution_nodes:
 
       pln_to_gn = list()
-      dist_data   = dict()
-      part_data   = dict()
+      dist_data = dict()
+      part_data = dict()
 
-      gridloc_n = I.getNodeFromType1(flow_solution_node, 'gridlocation_t')
+      gridloc_n = I.getNodeFromType1(flow_solution_node, 'GridLocation_t')
       gridloc     = I.getValue(gridloc_n)
 
       if(gridloc == 'CellCenter'):
@@ -58,7 +58,7 @@ def dist_flow_sol_to_part_flow_sol(dist_tree, part_tree, dzone_to_part, comm):
 
       distribution_sol = I.getNodeFromName1(distrib_ud, distrib_name)[1]
       dn_elmt = distribution_sol[1] - distribution_sol[0]
-      pdm_distrib = NPY.empty((n_rank + 1), order='C', dtype='int32')
+      pdm_distrib = NPY.empty((n_rank + 1), order='C', dtype=distribution_sol.dtype)
       pdm_distrib[0]  = 0
       pdm_distrib[1:] = comm.allgather(dn_elmt)
       for j in xrange(n_rank):
