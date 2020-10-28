@@ -25,7 +25,6 @@ def pdm_vtx_to_cgns_grid_coordinates(zone, dims, data):
   """
   """
   grid_c = I.newGridCoordinates(parent=zone)
-  print(data.keys())
   I.newDataArray('CoordinateX', data['npVertex'][0::3], parent=grid_c)
   I.newDataArray('CoordinateY', data['npVertex'][1::3], parent=grid_c)
   I.newDataArray('CoordinateZ', data['npVertex'][2::3], parent=grid_c)
@@ -48,7 +47,7 @@ def pdm_elmt_to_cgns_elmt(zone, dims, data):
   I.newDataArray('ElementConnectivity', data['npCellFace']   , parent=nface_n)
   I.newDataArray('ElementStartOffset' , data['npCellFaceIdx'], parent=nface_n)
   I.createNode('ElementRange', 'IndexRange_t',
-               [dims['nFace']+1, dims['nFace']+dims['nCell']+1], parent=nface_n)
+               [dims['nFace']+1, dims['nFace']+dims['nCell']], parent=nface_n)
 
 
 
