@@ -25,6 +25,7 @@ from pypart                 import DistributionBase        as DBA
 
 from maia.cgns_io            import load_collective_size_tree       as LST
 from maia.cgns_io            import cgns_io_tree                    as IOT
+from maia.cgns_io            import save_part_tree                  as SPT
 from maia.cgns_io.hdf_filter import elements                        as HEF
 from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
@@ -94,8 +95,8 @@ part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
                              part_weight_method=1,
                              reorder_methods=["NONE", "NONE"])
 
-I.printTree(part_tree)
-
+# I.printTree(part_tree)
+SPT.save_part_tree(part_tree, 'part_tree', comm)
 # C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(rank))
 
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',

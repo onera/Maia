@@ -1,5 +1,6 @@
 import Converter.Internal as I
 import numpy              as NPY
+import copy               as CPY
 
 from .pdm_part_to_cgns_zone import pdm_part_to_cgns_zone
 
@@ -55,7 +56,8 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
 
     zoneg_id += 1
 
-  import Converter.PyTree as C
-  C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(i_rank))
-  return part_tree
+  # import Converter.PyTree as C
+  # C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(i_rank))
+  print("TODO::remove:: CPY.deepcopy(part_tree)") # Because pdm_not_allowed ownership transfer
+  return CPY.deepcopy(part_tree)
 

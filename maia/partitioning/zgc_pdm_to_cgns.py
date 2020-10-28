@@ -43,7 +43,7 @@ def zgc_created_pdm_to_cgns(zone, dist_zone, comm):
       connect_proc = face_part_bound[beg_pl, 1]
       connect_part = face_part_bound[beg_pl, 2]-1
 
-      join_n = I.newGridConnectivity(name     = 'JN.P{0}.N{1}.LT.P{2}.N{3}'.format(comm.Get_rank(), ipart, connect_proc, connect_part, i_join),
+      join_n = I.newGridConnectivity(name      = 'JN.P{0}.N{1}.LT.P{2}.N{3}'.format(comm.Get_rank(), ipart, connect_proc, connect_part, i_join),
                                      donorName = dist_zone_name+'.P{0}.N{1}'.format(connect_proc, connect_part),
                                      ctype     = 'Abutting1to1',
                                      parent    = zgc_n)
