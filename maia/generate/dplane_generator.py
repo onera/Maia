@@ -19,26 +19,30 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  dplane = PDM.PolyMeshSurf(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
+  dplane_dict = PDM.PolyMeshSurf(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
 
-  dplane_dims = dplane.dplane_dim_get()
-  dplane_val  = dplane.dplane_val_get()
+  for key, val in dplane_dict.items():
+    print(key, val)
 
+  # > En 2D -> dn_face == dn_cell
   distrib      = NPY.empty(n_rank+1, dtype=NPY.int32)
   distrib[0]   = 0
-  distrib[1:]  = comm.allgather(dplane_dims['dn_cell'])
+  distrib[1:]  = comm.allgather(dplane_dict['dn_face'])
   distrib_cell = NPY.cumsum(distrib)
 
+  # > En 2D -> dn_vtx == dn_vtx
   distrib[0]  = 0
-  distrib[1:] = comm.allgather(dplane_dims['dn_vtx'])
+  distrib[1:] = comm.allgather(dplane_dict['dn_vtx'])
   distri_vtx  = NPY.cumsum(distrib)
 
+  # > En 2D -> dn_edge == dn_face
   distrib[0]   = 0
-  distrib[1:]  = comm.allgather(dplane_dims['dn_face'])
+  distrib[1:]  = comm.allgather(dplane_dict['dn_edge'])
   distrib_face = NPY.cumsum(distrib)
 
+  # > Connectivity by pair
   distrib[0]       = 0
-  distrib[1:]      = comm.allgather(dplane_dims['sface_vtx'])
+  distrib[1:]      = comm.allgather(2*dplane_dict['dn_edge'])
   distrib_face_vtx = NPY.cumsum(distrib)
 
   # > Generate dist_tree
@@ -49,46 +53,48 @@ def dplane_generate(xmin, xmax, ymin, ymax,
 
   # > Grid coordinates
   grid_coord = I.newGridCoordinates(parent=dist_zone)
-  I.newDataArray('CoordinateX', dplane_val['dvtx_coord'][0::3], parent=grid_coord)
-  I.newDataArray('CoordinateY', dplane_val['dvtx_coord'][1::3], parent=grid_coord)
-  I.newDataArray('CoordinateZ', dplane_val['dvtx_coord'][2::3], parent=grid_coord)
+  I.newDataArray('CoordinateX', dplane_dict['dvtx_coord'][0::3], parent=grid_coord)
+  I.newDataArray('CoordinateY', dplane_dict['dvtx_coord'][1::3], parent=grid_coord)
+  I.newDataArray('CoordinateZ', dplane_dict['dvtx_coord'][2::3], parent=grid_coord)
+
+  dplane_dict['dedge_vtx_idx'] = NPY.arange(0, 2*dplane_dict['dn_edge']+1, 2, dtype=dplane_dict['dedge_vtx'].dtype)
 
   # > NGon node
-  dn_face = dplane_dims['dn_face']
+  dn_edge = dplane_dict['dn_edge']
 
   # > For Offset we have to shift to be global
   if i_rank == n_rank - 1:
-    eso = distrib_face_vtx[i_rank] + dplane_val['dface_vtx_idx']
+    eso = distrib_face_vtx[i_rank] + dplane_dict['dedge_vtx_idx']
   else:
-    eso = distrib_face_vtx[i_rank] + dplane_val['dface_vtx_idx'][:dn_face]
+    eso = distrib_face_vtx[i_rank] + dplane_dict['dedge_vtx_idx'][:dn_edge]
 
-  pe     = dplane_val['dface_cell'].reshape(dn_face, 2)
+  pe     = dplane_dict['dedge_face'].reshape(dn_edge, 2)
   ngon_n = I.newElements('NGonElements', 'NGON',
                          erange = [1, distrib_face[n_rank]], parent=dist_zone)
 
-  I.newDataArray('ElementConnectivity', dplane_val['dface_vtx'], parent=ngon_n)
-  I.newDataArray('ElementStartOffset' , eso                   , parent=ngon_n)
-  I.newDataArray('ParentElements'     , pe                    , parent=ngon_n)
+  I.newDataArray('ElementConnectivity', dplane_dict['dedge_vtx'], parent=ngon_n)
+  I.newDataArray('ElementStartOffset' , eso                     , parent=ngon_n)
+  I.newDataArray('ParentElements'     , pe                      , parent=ngon_n)
 
   # > BCs
   zone_bc = I.newZoneBC(parent=dist_zone)
 
-  face_group_idx = dplane_val['dface_group_idx']
-  face_group_n   = NPY.diff(face_group_idx)
+  edge_group_idx = dplane_dict['dedge_group_idx']
+  edge_group_n   = NPY.diff(edge_group_idx)
 
-  face_group = dplane_val['dface_group']
-  distri = NPY.empty(n_rank, dtype=face_group.dtype)
+  edge_group = dplane_dict['dedge_group']
+  distri = NPY.empty(n_rank, dtype=edge_group.dtype)
 
-  for i_bc in range(dplane_dims['n_face_group']):
+  for i_bc in range(dplane_dict['n_edge_group']):
     bc_n = I.newBC('dplane_bnd_{0}'.format(i_bc), btype='BCWall', parent=zone_bc)
     I.newGridLocation('FaceCenter', parent=bc_n)
-    start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
-    dn_face_bnd = end - start
-    I.newPointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
-    comm.Allgather(dn_face_bnd, distri)
+    start, end = edge_group_idx[i_bc], edge_group_idx[i_bc+1]
+    dn_edge_bnd = end - start
+    I.newPointList(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
+    comm.Allgather(dn_edge_bnd, distri)
     r_offset  = sum(distri[:i_rank])
     distrib_n = I.createNode(':CGNS#Distribution', 'UserDefinedData_t', parent=bc_n)
-    distrib   = NPY.array([r_offset, r_offset+dn_face_bnd, sum(distri)], dtype=pe.dtype)
+    distrib   = NPY.array([r_offset, r_offset+dn_edge_bnd, sum(distri)], dtype=pe.dtype)
     I.newDataArray('Distribution', distrib, parent=distrib_n)
 
   # > Distributions

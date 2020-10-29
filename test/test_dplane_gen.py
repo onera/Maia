@@ -27,15 +27,13 @@ xmin = 0.
 xmax = 1.
 ymin = 0.
 ymax = 1.
-have_random = 1
+have_random = 0
 init_random = 1
-nx       = 10
-ny       = 10
-edge_length = 1.
-origin      = [0., 0., 0.]
+nx          = 4
+ny          = 4
 
-dist_tree = DPG.dplane_generate(n_vtx, edge_length, origin, comm)
+dist_tree = DPG.dplane_generate(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
 
 # I.printTree(dist_tree)
 
-# C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
+C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
