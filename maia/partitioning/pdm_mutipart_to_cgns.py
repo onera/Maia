@@ -18,6 +18,9 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
     for i_part in range(n_part_per_zone[zoneg_id]):
       part_dims_list.append(multi_part.multipart_dim_get(i_part, zoneg_id))
       part_data_list.append(multi_part.multipart_val_get(i_part, zoneg_id))
+      tmp = multi_part.multipart_graph_comm_vtx_val_get(i_part, zoneg_id)
+      for fld in tmp:
+        part_data_list[i_part][fld] = tmp[fld]
       # print "Got part #{0} on global zone #{1}".format(i_part, zoneg_id+1)
     zoneg_id += 1
 
