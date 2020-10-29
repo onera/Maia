@@ -14,9 +14,9 @@ def zgc_created_pdm_to_cgns(zone, dist_zone, comm):
 
   ppart_ud                 = I.getNodeFromName1(zone, ':CGNS#Ppart')
   ipart                    = I.getNodeFromName1(ppart_ud, 'ipart')[1][0]
-  face_part_bound_proc_idx = I.getNodeFromName1(ppart_ud, 'npfacePartBoundProcIdx')[1]
-  face_part_bound_part_idx = I.getNodeFromName1(ppart_ud, 'npfacePartBoundPartIdx')[1]
-  face_part_bound_tmp      = I.getNodeFromName1(ppart_ud, 'npFacePartBound'       )[1]
+  face_part_bound_proc_idx = I.getNodeFromName1(ppart_ud, 'np_face_part_bound_proc_idx')[1]
+  face_part_bound_part_idx = I.getNodeFromName1(ppart_ud, 'np_face_part_bound_part_idx')[1]
+  face_part_bound_tmp      = I.getNodeFromName1(ppart_ud, 'np_face_part_bound'         )[1]
 
   face_part_bound = face_part_bound_tmp.reshape((4, face_part_bound_tmp.shape[0]//4), order='F')
   face_part_bound = face_part_bound.transpose()

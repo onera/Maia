@@ -46,7 +46,7 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
       data = part_data_list[index]
 
       part_zone = I.newZone(name   = dist_zone[0]+'.P{0}.N{1}'.format(i_rank, i_part),
-                            zsize  = [[dims['nVertex'],dims['nCell'],0]],
+                            zsize  = [[dims['n_vtx'],dims['n_cell'],0]],
                             ztype  = 'Unstructured',
                             parent = part_base)
 
@@ -58,6 +58,5 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
 
   # import Converter.PyTree as C
   # C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(i_rank))
-  print("TODO::remove:: CPY.deepcopy(part_tree)") # Because pdm_not_allowed ownership transfer
-  return CPY.deepcopy(part_tree)
+  return part_tree
 

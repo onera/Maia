@@ -6,9 +6,9 @@ def bnd_pdm_to_cgns(zone, dist_zone, comm):
   """
   ppart_ud            = I.getNodeFromName1(zone, ':CGNS#Ppart')
   ipart               = I.getNodeFromName1(ppart_ud, 'ipart')[1][0]
-  face_bound          = I.getNodeFromName1(ppart_ud, 'npFaceBound'      )[1]
-  face_bound_idx      = I.getNodeFromName1(ppart_ud, 'npFaceBoundIdx'   )[1]
-  face_bound_ln_to_gn = I.getNodeFromName1(ppart_ud, 'npFaceBoundLNToGN')[1]
+  face_bound          = I.getNodeFromName1(ppart_ud, 'np_face_bound'         )[1]
+  face_bound_idx      = I.getNodeFromName1(ppart_ud, 'np_face_bound_idx'     )[1]
+  face_bound_ln_to_gn = I.getNodeFromName1(ppart_ud, 'np_face_bound_ln_to_gn')[1]
 
   if(face_bound_idx is None):
     return
