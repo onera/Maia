@@ -27,9 +27,15 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
 
   # print("beg_face_vtx::", beg_face_vtx)
   # print("end_face_vtx::", end_face_vtx)
-
+  distrib_n  = None
   ec_size_n  = I.getNodeFromName1(elmt, 'ElementConnectivity#Size')
-  n_face_vtx = NPY.prod(ec_size_n[1])
+  if(ec_size_n is not None):
+    n_face_vtx = NPY.prod(ec_size_n[1])
+  else:
+    distrib_ud = I.getNodeFromName1(elmt      , ":CGNS#Distribution")
+    distrib_n  = I.getNodeFromName1(distrib_ud, "DistributionElementConnectivity")
+    assert(distrib_n is not None)
+    n_face_vtx = distrib_n[1][2]
 
   # print("n_face_vtx::", n_face_vtx)
 
@@ -43,11 +49,12 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[ec_path] = DSMMRYEC + DSFILEEC + DSGLOBEC + DSFORMEC
 
-  distrib = NPY.empty(3, dtype=eso.dtype)
-  distrib[0] = beg_face_vtx
-  distrib[1] = end_face_vtx
-  distrib[2] = n_face_vtx
-  I.newDataArray("DistributionElementConnectivity", value=distrib, parent=distrib_ud)
+  if(distrib_n is None):
+    distrib = NPY.empty(3, dtype=eso.dtype)
+    distrib[0] = beg_face_vtx
+    distrib[1] = end_face_vtx
+    distrib[2] = n_face_vtx
+    I.newDataArray("DistributionElementConnectivity", value=distrib, parent=distrib_ud)
 
 
 
@@ -62,7 +69,7 @@ def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
   if(pe):
     DSMMRYPE = [[0              , 0], [1, 1], [dn_elmt, 2], [1, 1]]
     DSFILEPE = [[distrib_elmt[0], 0], [1, 1], [dn_elmt, 2], [1, 1]]
-    DSGLOBPE = [[distrib_elmt[2], 0]]
+    DSGLOBPE = [[distrib_elmt[2], 2]]
     DSFORMPE = [[1]]
 
     pe_path = zone_path+"/"+elmt[0]+"/ParentElements"
@@ -151,7 +158,6 @@ def create_zone_elements_filter(zone_tree, zone_path, hdf_filter):
   """
   """
   zone_elmts = gen_elemts(zone_tree)
-  print(zone_elmts)
   for elmt in zone_elmts:
     if(elmt[1][0] == 22):
       create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter)

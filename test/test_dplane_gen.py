@@ -21,19 +21,54 @@ import numpy              as NPY
 import sys
 
 
-from maia.generate import dplane_generator as DPG
+from pypart                 import DistributionBase        as DBA
 
+from maia.generate           import dplane_generator as DPG
+from maia.cgns_io.hdf_filter import tree             as HTF
+from maia.cgns_io            import cgns_io_tree     as IOT
+from maia.partitioning       import part             as PPA
+from maia.cgns_io            import save_part_tree   as SPT
+
+# 200 / 20proc fail
+# 100 / 20proc fail
+# 100 / 10proc fail
 xmin = 0.
 xmax = 1.
 ymin = 0.
 ymax = 1.
 have_random = 0
 init_random = 1
-nx          = 4
-ny          = 4
+nx          = 10
+ny          = 10
 
 dist_tree = DPG.dplane_generate(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
 
+
+hdf_filter = dict()
+HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
+
+IOT.save_tree_from_filter("zz_out/dplane_mesh.hdf", dist_tree, comm, hdf_filter)
+
+# for key, val in hdf_filter.items():
+#   print(key, val)
 # I.printTree(dist_tree)
 
-C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
+dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm)
+
+print(dzone_to_weighted_parts)
+
+dloading_procs = dict()
+for zone in I.getZones(dist_tree):
+  dloading_procs[zone[0]] = list(range(comm.Get_size()))
+print(dloading_procs)
+
+part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
+                             comm,
+                             split_method=2,
+                             part_weight_method=1,
+                             reorder_methods=["NONE", "NONE"])
+# C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
+I._rmNodesFromName(part_tree, "ZoneGridConnectivity#Vertex")
+# I.printTree(part_tree)
+SPT.save_part_tree(part_tree, 'zz_out/part_tree', comm)
+

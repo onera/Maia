@@ -48,7 +48,7 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
     part_weight = None
 
   multi_part = PDM.MultiPart(n_zone, n_part_per_zone, 0, split_method, part_weight_method, part_weight, comm)
-  print("multi_part = ", multi_part)
+  # print("multi_part = ", multi_part)
 
   for i_zone, zone in enumerate(zones):
     # zoneg_id = I.getNodeFromName1(zone, ':CGNS#Registery')[1][0] - 1

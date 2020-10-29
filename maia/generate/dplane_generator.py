@@ -21,8 +21,8 @@ def dplane_generate(xmin, xmax, ymin, ymax,
 
   dplane_dict = PDM.PolyMeshSurf(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
 
-  for key, val in dplane_dict.items():
-    print(key, val)
+  # for key, val in dplane_dict.items():
+  #   print(key, val)
 
   # > En 2D -> dn_face == dn_cell
   distrib      = NPY.empty(n_rank+1, dtype=NPY.int32)
@@ -42,8 +42,8 @@ def dplane_generate(xmin, xmax, ymin, ymax,
 
   # > Connectivity by pair
   distrib[0]       = 0
-  distrib[1:]      = comm.allgather(2*dplane_dict['dn_edge'])
-  distrib_face_vtx = NPY.cumsum(distrib)
+  distrib[1:]      = comm.allgather( 2 * dplane_dict['dn_edge'] )
+  distrib_edge_vtx = NPY.cumsum(distrib)
 
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
@@ -58,15 +58,18 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   I.newDataArray('CoordinateZ', dplane_dict['dvtx_coord'][2::3], parent=grid_coord)
 
   dplane_dict['dedge_vtx_idx'] = NPY.arange(0, 2*dplane_dict['dn_edge']+1, 2, dtype=dplane_dict['dedge_vtx'].dtype)
+  assert dplane_dict['dedge_vtx_idx'].shape[0] == dplane_dict['dn_edge']+1
 
   # > NGon node
   dn_edge = dplane_dict['dn_edge']
 
   # > For Offset we have to shift to be global
   if i_rank == n_rank - 1:
-    eso = distrib_face_vtx[i_rank] + dplane_dict['dedge_vtx_idx']
+    eso = distrib_edge_vtx[i_rank] + dplane_dict['dedge_vtx_idx']
   else:
-    eso = distrib_face_vtx[i_rank] + dplane_dict['dedge_vtx_idx'][:dn_edge]
+    eso = distrib_edge_vtx[i_rank] + dplane_dict['dedge_vtx_idx'] #[:dn_edge]
+  # print(distrib_edge_vtx)
+  # print(eso)
 
   pe     = dplane_dict['dedge_face'].reshape(dn_edge, 2)
   ngon_n = I.newElements('NGonElements', 'NGON',
@@ -101,11 +104,13 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   np_distrib_cell     = NPY.array([distrib_cell    [i_rank], distrib_cell    [i_rank+1], distrib_cell    [n_rank]], dtype=pe.dtype)
   np_distrib_vtx      = NPY.array([distri_vtx      [i_rank], distri_vtx      [i_rank+1], distri_vtx      [n_rank]], dtype=pe.dtype)
   np_distrib_face     = NPY.array([distrib_face    [i_rank], distrib_face    [i_rank+1], distrib_face    [n_rank]], dtype=pe.dtype)
-  np_distrib_face_vtx = NPY.array([distrib_face_vtx[i_rank], distrib_face_vtx[i_rank+1], distrib_face_vtx[n_rank]], dtype=pe.dtype)
+  np_distrib_edge_vtx = NPY.array([distrib_edge_vtx[i_rank], distrib_edge_vtx[i_rank+1], distrib_edge_vtx[n_rank]], dtype=pe.dtype)
 
+  # print(np_distrib_edge_vtx)
+  # exit(2)
   create_distribution_node_from_distrib("Cell"                           , dist_zone, np_distrib_cell    )
   create_distribution_node_from_distrib("Vertex"                         , dist_zone, np_distrib_vtx     )
   create_distribution_node_from_distrib("Distribution"                   , ngon_n   , np_distrib_face    )
-  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n   , np_distrib_face_vtx)
+  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n   , np_distrib_edge_vtx)
 
   return dist_tree

@@ -55,7 +55,6 @@ def pdm_part_to_cgns_zone(zone, dist_zone, dims, data, comm):
   """
   """
   save_in_tree_part_info(zone, dims, data, comm)
-  I.printTree(zone)
   pdm_vtx_to_cgns_grid_coordinates(zone, dims, data)
   pdm_elmt_to_cgns_elmt(zone, dims, data)
 

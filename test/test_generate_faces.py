@@ -58,7 +58,7 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
-I.printTree(dist_tree)
+# I.printTree(dist_tree)
 # > To copy paste in new algorithm
 # dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
 # > dZoneToWeightedParts --> Proportion de la zone initiale qu'on souhate après partitionnement

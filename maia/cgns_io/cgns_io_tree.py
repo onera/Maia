@@ -74,7 +74,7 @@ def filtering_filter(dist_tree, hdf_filter, name_or_type_list, skip=True):
 def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   """
   """
-  print("load_tree_from_filter")
+  # print("load_tree_from_filter")
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
 
   partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter_with_dim, comm)
@@ -99,3 +99,23 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
 
   if(unlock_at_least_one is False):
     raise RuntimeError("Something strange in the loading process")
+
+
+def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
+  """
+  """
+  # print("load_tree_from_filter")
+  hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
+  hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() if not isinstance(value, list)}
+
+  next_hdf_filter = dict()
+  for key, f in hdf_filter_with_func.items():
+    f(hdf_filter_with_dim)
+
+  # print("**********************")
+  # for key, val in hdf_filter_with_dim.items():
+  #   print(key, val)
+  # print("**********************")
+
+
+  C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter_with_dim, ParallelHDF=True)

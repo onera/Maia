@@ -79,13 +79,6 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  # > Verbose
-  print("dmesh._id::", dmesh._id)
-  print("Attention à la mémoire, les numpy sont desaloué une fois sorti de la fonction !!!")
-  print("Il faut changer les flags numpy sur le owner ship une fois passer au C")
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Create an older --> To Suppress after all
   multi_part_node = I.createUniqueChild(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
   I.newDataArray('dvtx_coord'     , dvtx_coord     , parent=multi_part_node)
