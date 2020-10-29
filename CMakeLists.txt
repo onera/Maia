@@ -91,8 +91,8 @@ endif()
 
 ## Dependencies from submodules ##
 check_sub_repo_exists(std_e)
+set(STD_E_ENABLE_MPI ON CACHE BOOL "Maia requires MPI" FORCE)
 target_add_dependency(${PROJECT_NAME} std_e)
-set(STD_E_ENABLE_MPI ON) # maia requires MPI and depends on the MPI wrapper functions of std_e
 
 check_sub_repo_exists(cpp_cgns)
 target_add_dependency(${PROJECT_NAME} cpp_cgns)
@@ -119,6 +119,7 @@ endif()
 ## Python, Cython, Pybind11
 #include(MixPythonCythonModule)
 #mixpython_cython_add_module(maia)
+set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/${PROJECT_NAME}")
 add_subdirectory(maia) # TODO DEL separate file once mixpython_cython_add_module can be included here
 
 ## Compiled languages
@@ -153,8 +154,6 @@ target_link_libraries(${PROJECT_NAME}
 # ----------------------------------------------------------------------
 # Installation
 # ----------------------------------------------------------------------
-set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/${PROJECT_NAME}")
-set(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/modules)
 
 target_install(${PROJECT_NAME})
 
