@@ -78,7 +78,7 @@ print(dZoneToWeightedParts)
 
 dLoadingProcs = dict()
 for zone in I.getZones(dist_tree):
-  dLoadingProcs[zone[0]] = list(range(comm.Get_size()))
+  dLoadingProcs[I.getName(zone)] = list(range(comm.Get_size()))
 
 print(dLoadingProcs)
 

@@ -16,6 +16,14 @@ attach_dims_to_dist_tree: fix convertFile2PyTree + skeletonData (skeletonData sh
 
 uniform_distribution: where should we put it? (python std_e?)
 
+## Cleaning
+distribution: one file, replace comm by comm_info (and find a name!)
+filter -> selector ?
+load_tree_from_filter
+fonction libre pour filter: regarder structuré
+partial_distribution : regarder structuré
+tests unitaires CGNS pour écrire des arbres CGNS facilement (ASCII, JSON, YAML)
+
 ## Tests
 part_to_block <-> block_to_part : deadlock now, why? (tests are commented out)
 

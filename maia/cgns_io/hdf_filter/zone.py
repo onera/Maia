@@ -10,11 +10,11 @@ from .zone_bc                import create_zone_bc_filter
 from .zone_grid_connectivity import create_zone_grid_connectivity_filter
 
 
-def create_grid_coord_filter(zone_tree, zone_path, hdf_filter):
+def create_grid_coord_filter(zone, zone_path, hdf_filter):
   """
   """
-  n_vtx        = SIDS.zone_n_vtx (zone_tree)
-  distrib_ud   = I.getNodeFromName1(zone_tree , ':CGNS#Distribution')
+  n_vtx        = SIDS.zone_n_vtx (zone)
+  distrib_ud   = I.getNodeFromName1(zone , ':CGNS#Distribution')
   distrib_vtx  = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
 
   dn_vtx    = distrib_vtx[1] - distrib_vtx[0]
@@ -22,37 +22,37 @@ def create_grid_coord_filter(zone_tree, zone_path, hdf_filter):
   DSFILEVtx = [[distrib_vtx[0]], [1], [dn_vtx], [1]]
   DSGLOBVtx = [[n_vtx]]
   DSFORMVtx = [[0]]
-  for grid_c in I.getNodesFromType1(zone_tree, 'GridCoordinates_t'):
+  for grid_c in I.getNodesFromType1(zone, 'GridCoordinates_t'):
     grid_coord_path = zone_path+"/"+grid_c[0]
     for data_array in I.getNodesFromType1(grid_c, 'DataArray_t'):
       data_array_path = grid_coord_path+"/"+data_array[0]
       hdf_filter[data_array_path] = DSMMRYVtx+DSFILEVtx+DSGLOBVtx+DSFORMVtx
 
-def create_zone_filter(zone_tree, zone_path, hdf_filter):
+def create_zone_filter(zone, zone_path, hdf_filter):
   """
   """
-  n_vtx  = SIDS.zone_n_vtx (zone_tree)
-  n_cell = SIDS.zone_n_cell(zone_tree)
+  n_vtx  = SIDS.zone_n_vtx (zone)
+  n_cell = SIDS.zone_n_cell(zone)
 
-  distrib_ud   = I.getNodeFromName1(zone_tree , ':CGNS#Distribution')
+  distrib_ud   = I.getNodeFromName1(zone , ':CGNS#Distribution')
   distrib_vtx  = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
   distrib_cell = I.getNodeFromName1(distrib_ud, 'Cell'  )[1]
 
-  zone_type = I.getNodeFromType1(zone_tree, "ZoneType_t")[1].tostring()
+  zone_type = I.getNodeFromType1(zone, "ZoneType_t")[1].tostring()
   if(zone_type == b'Structured'):
     raise RuntimeError("create_zone_filter not implemented for structured grid ")
 
-  create_zone_bc_filter(zone_tree, zone_path, hdf_filter)
-  create_zone_grid_connectivity_filter(zone_tree, zone_path, hdf_filter)
-  create_grid_coord_filter(zone_tree, zone_path, hdf_filter)
+  create_zone_bc_filter(zone, zone_path, hdf_filter)
+  create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter)
+  create_grid_coord_filter(zone, zone_path, hdf_filter)
 
-  HEF.create_zone_elements_filter(zone_tree, zone_path, hdf_filter)
+  HEF.create_zone_elements_filter(zone, zone_path, hdf_filter)
 
-  for zone_subregion in I.getNodesFromType1(zone_tree, 'ZoneSubRegion_t'):
+  for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
     zone_sub_region_path = zone_path+"/"+zone_subregion[0]
     create_zone_subregion_filter(zone_subregion, zone_sub_region_path, hdf_filter)
 
-  for flow_solution in I.getNodesFromType1(zone_tree, 'FlowSolution_t'):
+  for flow_solution in I.getNodesFromType1(zone, 'FlowSolution_t'):
     flow_solution_path = zone_path+"/"+flow_solution[0]
     grid_location_n = I.getNodeFromType1(flow_solution, 'GridLocation_t')
     if(grid_location_n is None):
