@@ -74,7 +74,7 @@ def dist_flow_sol_to_part_flow_sol(dist_tree, part_tree, dzone_to_part, comm):
         pln_to_gn.append(ln_to_gn_npy)
 
         part_flow_sol = I.newFlowSolution(name=flow_solution_node[0],
-                                          gridlocation=gridloc, parent=part_zone)
+                                          gridLocation=gridloc, parent=part_zone)
         np_elem = I.getNodeFromName1(ppart_n, np_elem_name)[1][0]
         for field in dist_data:
           npy_type    = dist_data[field].dtype

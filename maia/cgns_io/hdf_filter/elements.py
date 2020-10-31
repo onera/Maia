@@ -81,7 +81,7 @@ def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
     # Distribution for NGon -> ElementStartOffset is the same than DistrbutionFace, except
     # that the last proc have one more element
     n_face      = distrib_elmt[2]
-    dn_face_idx = dn_elmt + int(distrib_elmt[1] == n_face)
+    dn_face_idx = dn_elmt + 1 # + int(distrib_elmt[1] == n_face)
     DSMMRYESO = [[0              ], [1], [dn_face_idx], [1]]
     DSFILEESO = [[distrib_elmt[0]], [1], [dn_face_idx], [1]]
     DSGLOBESO = [[n_face+1]]

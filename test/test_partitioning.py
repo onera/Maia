@@ -73,6 +73,8 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 # FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
+# C.convertPyTree2File(dist_tree, "dist_tree_{0}.hdf".format(rank))
+
 # I.printTree(dist_tree)
 # > To copy paste in new algorithm
 # dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
@@ -94,6 +96,12 @@ part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
                              split_method=2,
                              part_weight_method=1,
                              reorder_methods=["NONE", "NONE"])
+
+for zone in I.getZones(part_tree):
+  fs_n = I.newFlowSolution(name="FlowSolution#EndOfRun", gridLocation='Vertex', parent=zone)
+  vtx_gi_n = I.getNodeFromName(zone, "np_vtx_ghost_information")
+  I.newDataArray("GhostInfo", vtx_gi_n[1], parent=fs_n)
+
 
 # I.printTree(part_tree)
 SPT.save_part_tree(part_tree, 'part_tree', comm)
