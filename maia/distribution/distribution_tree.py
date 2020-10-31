@@ -2,8 +2,7 @@ from   mpi4py             import MPI
 import Converter.Internal as     I
 import Converter.PyTree   as     C
 
-from . import distribution_base as DBASE
-from . import distribution_zone import compute_zone_distribution
+from .distribution_zone import compute_zone_distribution
 
 
 #
