@@ -37,14 +37,14 @@ def pdm_elmt_to_cgns_elmt(zone, dims, data):
   CNT.pdm_face_cell_to_pe_cgns(pdm_face_cell, pe)
 
   ngon_n = I.createUniqueChild(zone, 'NGonElements', 'Elements_t', value=[22,0])
-  I.newDataArray('ElementConnectivity', data['np_face_vtx']   , parent=ngon_n)
+  I.newDataArray('ElementConnectivity', data['np_face_vtx']    , parent=ngon_n)
   I.newDataArray('ElementStartOffset' , data['np_face_vtx_idx'], parent=ngon_n)
   I.newDataArray('ParentElements'     , pe                     , parent=ngon_n)
   I.createNode('ElementRange', 'IndexRange_t',
                [1, dims['n_face']], parent=ngon_n)
 
   nface_n = I.createUniqueChild(zone, 'NFacElements', 'Elements_t', value=[23,0])
-  I.newDataArray('ElementConnectivity', data['np_cell_face']   , parent=nface_n)
+  I.newDataArray('ElementConnectivity', data['np_cell_face']    , parent=nface_n)
   I.newDataArray('ElementStartOffset' , data['np_cell_face_idx'], parent=nface_n)
   I.createNode('ElementRange', 'IndexRange_t',
                [dims['n_face']+1, dims['n_face']+dims['n_cell']], parent=nface_n)

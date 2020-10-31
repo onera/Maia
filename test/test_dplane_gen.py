@@ -32,20 +32,27 @@ from maia.cgns_io            import save_part_tree   as SPT
 # 200 / 20proc fail
 # 100 / 20proc fail
 # 100 / 10proc fail
+# 10  / 9 porc fail
 xmin = 0.
 xmax = 1.
 ymin = 0.
 ymax = 1.
 have_random = 0
 init_random = 1
-nx          = 10
-ny          = 10
+nx          = 8
+ny          = 8
 
 dist_tree = DPG.dplane_generate(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
 
 
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
+
+for zone in I.getZones(dist_tree):
+  fs_n = I.newFlowSolution(name='FlowSolution#Centers', gridLocation='CellCenter', parent=zone)
+  zone_dim = I.getZoneDim(zone)
+  n_cell   = zone_dim[2]
+  N = I.newDataArray('cell_num', NPY.linspace(1, n_cell, num=n_cell), parent=fs_n)
 
 IOT.save_tree_from_filter("zz_out/dplane_mesh.hdf", dist_tree, comm, hdf_filter)
 
