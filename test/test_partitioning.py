@@ -84,12 +84,12 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 # > ... and this is suffisent to predict your partitions sizes
 dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm)
 
-print(dzone_to_weighted_parts)
+# print(dzone_to_weighted_parts)
 
 dloading_procs = dict()
 for zone in I.getZones(dist_tree):
   dloading_procs[zone[0]] = list(range(comm.Get_size()))
-print(dloading_procs)
+# print(dloading_procs)
 
 part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
                              comm,
