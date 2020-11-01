@@ -2,6 +2,8 @@ import Converter.Internal as I
 import numpy              as NPY
 import Pypdm.Pypdm        as PDM
 
+from .geometry import compute_face_center_and_characteristic_length
+
 def bcs_if_in_family_list(zone, fams, family_list):
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
     for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
@@ -53,8 +55,8 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
   for elmt in I.getNodesFromType1(zone, 'Elements_t'):
     if(elmt[1][0] == 22):
       found    = True
-      dface_vtx     = I.getNodeFromName1(elmt, 'ElementConnectivity')[1]
-      dface_vtx_idx = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
+      face_vtx     = I.getNodeFromName1(elmt, 'ElementConnectivity')[1]
+      face_vtx_idx = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
       break
   if(not found):
     raise NotImplemented("Connect match need at least the NGonElements")
@@ -67,9 +69,13 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
     l_send_entity_data.append(pl[0,:])
     l_send_entity_stri.append(NPY.ones(pl[0,:].shape, dtype='int32'))
 
+    bnd_xyz, bnd_cl = compute_face_center_and_characteristic_length(pl, cx, cy, cz, face_vtx, face_vtx_idx)
+    print(compute_face_center_and_characteristic_length.__doc__)
+    print(bnd_xyz)
+    print(bnd_cl)
 
 
-    pdm_point_merge.cloud_set(i_point_cloud, BCCharLen.shape[0], BCXYZ, BCCharLen)
+    # pdm_point_merge.cloud_set(i_point_cloud, BCCharLen.shape[0], BCXYZ, BCCharLen)
 
     bnd_to_join_path_list.append(bc[0])
     i_point_cloud = i_point_cloud + 1
