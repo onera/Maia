@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include "std_e/algorithm/permutation.hpp"
 
 namespace py = pybind11;
 
@@ -24,7 +25,7 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
   auto neighbor_idx     = make_raw_view(np_neighbor_idx);
   auto neighbor_desc    = make_raw_view(np_neighbor_desc);     /* i_proc, i_cloud, i_entity */
   auto entity_stri      = make_raw_view(np_recv_entity_stri);  /* stride of pointlist       */
-  auto point_list       = make_raw_view(np_point_list);        /* point_list_donor          */
+  auto point_list       = make_raw_view(np_point_list);        /* point_list                */
   auto point_list_donor = make_raw_view(np_point_list_donor);  /* point_list_donor          */
 
   // Sanity check - For now only faces so 1to1 - En vertex on aura le pb
@@ -41,17 +42,66 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
          < std::tie(neighbor_desc[3*j], neighbor_desc[3*j+1], neighbor_desc[3*j+2]);
   });
 
+  /* Now we have section with all coherent partition */
+  // Count how many new section is here
+  std::vector<int> section_idx(join_size, 0);
+  int n_entity  = 0;
+  int n_section = 1;
+  int cur_proc = neighbor_desc[3*order[0]  ];
+  int cur_part = neighbor_desc[3*order[0]+1];
+  for(int i = 1; i < join_size; ++i){
+    int p = order[i];
+    int next_proc = neighbor_desc[3*p  ];
+    int next_part = neighbor_desc[3*p+1];
+    if( next_part != cur_part || next_proc != cur_proc ){
+      cur_proc = next_proc;
+      cur_part = next_part;
+      section_idx[n_section] = n_entity;
+      n_section++;
+      n_entity = 0;
+    } else {
+      n_entity++;
+    }
+  }
+  section_idx[n_section] = n_entity;
+  printf(" n_section = %i\n", n_section);
+  section_idx.resize(n_section+1);
+  for (int i = 0; i < n_section; i++){
+    section_idx[i+1] += section_idx[i];
+    printf("section_idx[%i] = %i \n", i+1, section_idx[i+1]);
+  }
+
+  std_e::permute(point_list      , order);
+  std_e::permute(point_list_donor, order);
+
+  // Now we order the pointlist
+  std::vector<int> point_list_min(join_size);
+  std::vector<int> point_list_max(join_size);
+
+  for(int i = 0; i < join_size; ++i){
+    point_list_min[i] = std::min(point_list[i], point_list_donor[i]);
+    point_list_max[i] = std::max(point_list[i], point_list_donor[i]);
+  }
+
+  // Pour chaque raccord il faut trier
+
+  std::vector<int> order_pl(join_size);
+  std::iota(begin(order_pl), end(order_pl), 0);
+
+  std::sort(begin(order_pl), end(order_pl), [&](auto& i, auto& j){
+    return std::tie(point_list_min[i], point_list_max[i])
+         < std::tie(point_list_min[j], point_list_max[j]);
+  });
+
+
   // Panic verbose
   for(int i = 0; i < join_size; ++i){
     std::cout << "Info :: pl = " << point_list[i] << " | pld = " << point_list_donor[i];
-    std::cout << " | " << order[i];
+    std::cout << " | order = " << order[i] << " | order_pl = " << order_pl[i];
     std::cout << " | " << neighbor_desc[3*i  ] << "/";
     std::cout <<          neighbor_desc[3*i+1] << "/";
     std::cout <<          neighbor_desc[3*i+2] << std::endl;
   }
-
-
-
 
 }
 
