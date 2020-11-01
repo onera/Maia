@@ -70,12 +70,8 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
     l_send_entity_stri.append(NPY.ones(pl[0,:].shape, dtype='int32'))
 
     bnd_xyz, bnd_cl = compute_face_center_and_characteristic_length(pl, cx, cy, cz, face_vtx, face_vtx_idx)
-    print(compute_face_center_and_characteristic_length.__doc__)
-    print(bnd_xyz)
-    print(bnd_cl)
 
-
-    # pdm_point_merge.cloud_set(i_point_cloud, BCCharLen.shape[0], BCXYZ, BCCharLen)
+    pdm_point_merge.cloud_set(i_point_cloud, bnd_cl.shape[0], bnd_xyz, bnd_cl)
 
     bnd_to_join_path_list.append(bc[0])
     i_point_cloud = i_point_cloud + 1
@@ -118,3 +114,33 @@ def connect_match_from_family(part_tree, family_list, comm,
                                                             l_send_entity_stri,
                                                             l_send_entity_data)
 
+
+  pdm_point_merge.compute()
+
+  l_neighbor_idx  = list()
+  l_neighbor_desc = list()
+  for i_cloud in range(n_point_cloud):
+    res = pdm_point_merge.get_merge_candidates(i_cloud)
+    l_neighbor_idx.append(res['candidates_idx'])
+    l_neighbor_desc.append(res['candidates_desc'])
+
+    print("res['candidates_idx ']::", res['candidates_idx' ])
+    print("res['candidates_desc']::", res['candidates_desc'])
+
+  DNE = PDM.DistantNeighbor(comm,
+                            n_point_cloud,
+                            l_neighbor_idx,
+                            l_neighbor_desc)
+
+  l_recv_entity_data = list()
+  l_recv_entity_stri = None
+  l_recv_entity_stri = list()
+  cst_stride         = 1
+  DNE.DistantNeighbor_Exchange(l_send_entity_data,
+                               l_recv_entity_data,
+                               cst_stride,
+                               l_send_entity_stri,
+                               l_recv_entity_stri)
+
+  print("l_recv_entity_stri::", l_recv_entity_stri)
+  print("l_recv_entity_data::", l_recv_entity_data)
