@@ -12,6 +12,50 @@ make_raw_view(py::array_t<T, py::array::f_style>& x){
   return static_cast<T*>(buf.ptr);
 }
 
+void
+adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
+                        py::array_t<int, py::array::f_style>& np_neighbor_desc,
+                        py::array_t<int, py::array::f_style>& np_recv_entity_stri,
+                        py::array_t<int, py::array::f_style>& np_point_list,
+                        py::array_t<int, py::array::f_style>& np_point_list_donor)
+{
+  int join_size = np_point_list.size();
+
+  auto neighbor_idx     = make_raw_view(np_neighbor_idx);
+  auto neighbor_desc    = make_raw_view(np_neighbor_desc);     /* i_proc, i_cloud, i_entity */
+  auto entity_stri      = make_raw_view(np_recv_entity_stri);  /* stride of pointlist       */
+  auto point_list       = make_raw_view(np_point_list);        /* point_list_donor          */
+  auto point_list_donor = make_raw_view(np_point_list_donor);  /* point_list_donor          */
+
+  // Sanity check - For now only faces so 1to1 - En vertex on aura le pb
+  for(int i = 0; i < join_size; ++i){
+    assert(neighbor_idx[i+1] - neighbor_idx[i] == 1);
+    assert(entity_stri[i] == 1);
+  }
+
+  /* We first need to sort the neighbor_desc lexicographicly */
+  std::vector<int> order(join_size);
+  std::iota(begin(order), end(order), 0);
+  std::sort(begin(order), end(order), [&](auto& i, auto& j){
+    return std::tie(neighbor_desc[3*i], neighbor_desc[3*i+1], neighbor_desc[3*i+2])
+         < std::tie(neighbor_desc[3*j], neighbor_desc[3*j+1], neighbor_desc[3*j+2]);
+  });
+
+  // Panic verbose
+  for(int i = 0; i < join_size; ++i){
+    std::cout << "Info :: pl = " << point_list[i] << " | pld = " << point_list_donor[i];
+    std::cout << " | " << order[i];
+    std::cout << " | " << neighbor_desc[3*i  ] << "/";
+    std::cout <<          neighbor_desc[3*i+1] << "/";
+    std::cout <<          neighbor_desc[3*i+2] << std::endl;
+  }
+
+
+
+
+}
+
+
 auto
 compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_style>& np_point_list,
                                               py::array_t<double, py::array::f_style>& np_cx,
@@ -93,5 +137,12 @@ PYBIND11_MODULE(geometry, m) {
         py::arg("np_cz").noconvert(),
         py::arg("np_face_vtx").noconvert(),
         py::arg("np_face_vtx_idx").noconvert());
+
+  m.def("adapt_match_information", &adapt_match_information,
+        py::arg("np_neighbor_idx"    ).noconvert(),
+        py::arg("np_neighbor_desc"   ).noconvert(),
+        py::arg("np_recv_entity_stri").noconvert(),
+        py::arg("np_point_list"      ).noconvert(),
+        py::arg("np_point_list_donor").noconvert());
 
 }

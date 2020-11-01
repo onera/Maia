@@ -2,7 +2,7 @@ import Converter.Internal as I
 import numpy              as NPY
 import Pypdm.Pypdm        as PDM
 
-from .geometry import compute_face_center_and_characteristic_length
+from .geometry import compute_face_center_and_characteristic_length, adapt_match_information
 
 def bcs_if_in_family_list(zone, fams, family_list):
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
@@ -62,7 +62,7 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
     raise NotImplemented("Connect match need at least the NGonElements")
 
   for bc in bcs_if_in_family_list(zone, fams, family_list):
-    print("Setup caracteristice lenght and coordinate for ", bc[0])
+    print("Setup caracteristice lenght and coordinate for ", zone[0], " --> ", bc[0])
 
     pl = I.getNodeFromName1(bc, 'PointList')[1]
 
@@ -101,19 +101,20 @@ def connect_match_from_family(part_tree, family_list, comm,
   for i_zone, zone in enumerate(zones):
     zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
     zone_type   = zone_type_n[1].tostring()
+    bnd_to_join_path_list_local = list()
     if(zone_type == b'Structured'):
       i_point_cloud += prepare_pdm_point_merge_structured(pdm_point_merge, i_point_cloud, match_type,
                                                           zone, fams, family_list,
-                                                          bnd_to_join_path_list[i_zone],
+                                                          bnd_to_join_path_list_local,
                                                           l_send_entity_stri,
                                                           l_send_entity_data)
     else:
       i_point_cloud += prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_type,
                                                             zone, fams, family_list,
-                                                            bnd_to_join_path_list[i_zone],
+                                                            bnd_to_join_path_list_local,
                                                             l_send_entity_stri,
                                                             l_send_entity_data)
-
+    bnd_to_join_path_list[i_zone] = bnd_to_join_path_list_local
 
   pdm_point_merge.compute()
 
@@ -121,7 +122,8 @@ def connect_match_from_family(part_tree, family_list, comm,
   l_neighbor_desc = list()
   for i_cloud in range(n_point_cloud):
     res = pdm_point_merge.get_merge_candidates(i_cloud)
-    l_neighbor_idx.append(res['candidates_idx'])
+
+    l_neighbor_idx .append(res['candidates_idx' ])
     l_neighbor_desc.append(res['candidates_desc'])
 
     print("res['candidates_idx ']::", res['candidates_idx' ])
@@ -144,3 +146,24 @@ def connect_match_from_family(part_tree, family_list, comm,
 
   print("l_recv_entity_stri::", l_recv_entity_stri)
   print("l_recv_entity_data::", l_recv_entity_data)
+
+  # Setup at join
+  i_point_cloud = 0
+  for i_zone, zone in enumerate(zones):
+    zgc_n = I.newZoneGridConnectivity(name="ZoneGridConnectivity", parent=zone)
+    for bc in bcs_if_in_family_list(zone, fams, family_list):
+      adapt_match_information(l_neighbor_idx    [i_point_cloud],
+                              l_neighbor_desc   [i_point_cloud],
+                              l_recv_entity_stri[i_point_cloud],
+                              l_send_entity_data[i_point_cloud],
+                              l_recv_entity_data[i_point_cloud])
+      i_point_cloud = i_point_cloud + 1
+
+
+  # Remove all bcs
+  for i_zone, zone in enumerate(zones):
+    for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
+      for bc_name in bnd_to_join_path_list[i_zone]:
+        I._rmNodesByName(zone_bc, bc_name)
+
+
