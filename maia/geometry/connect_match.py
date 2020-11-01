@@ -152,12 +152,17 @@ def connect_match_from_family(part_tree, family_list, comm,
   for i_zone, zone in enumerate(zones):
     zgc_n = I.newZoneGridConnectivity(name="ZoneGridConnectivity", parent=zone)
     for bc in bcs_if_in_family_list(zone, fams, family_list):
-      adapt_match_information(l_neighbor_idx    [i_point_cloud],
-                              l_neighbor_desc   [i_point_cloud],
-                              l_recv_entity_stri[i_point_cloud],
-                              l_send_entity_data[i_point_cloud],
-                              l_recv_entity_data[i_point_cloud])
+      section_idx = adapt_match_information(l_neighbor_idx    [i_point_cloud],
+                                           l_neighbor_desc   [i_point_cloud],
+                                           l_recv_entity_stri[i_point_cloud],
+                                           l_send_entity_data[i_point_cloud],
+                                           l_recv_entity_data[i_point_cloud])
       i_point_cloud = i_point_cloud + 1
+
+      for i in range(section_idx.shape[0]-1):
+        n_entity_per_join = section_idx[i+1] - section_idx[i]
+        print(n_entity_per_join)
+
 
 
   # Remove all bcs

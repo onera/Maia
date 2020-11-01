@@ -13,7 +13,7 @@ make_raw_view(py::array_t<T, py::array::f_style>& x){
   return static_cast<T*>(buf.ptr);
 }
 
-void
+auto
 adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
                         py::array_t<int, py::array::f_style>& np_neighbor_desc,
                         py::array_t<int, py::array::f_style>& np_recv_entity_stri,
@@ -120,7 +120,14 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
     std::cout <<          neighbor_desc[3*i+2] << std::endl;
   }
 
-  return
+  // py::array_t<int, py::array::f_style> np_section_idx(n_section+1);
+  py::array_t<int, py::array::f_style> np_section_idx(section_idx.size());
+  auto np_section_idx_ptr     = make_raw_view(np_section_idx);
+  for(int i = 0; i < n_section + 1; ++i){
+    np_section_idx_ptr[i] = section_idx[i];
+  }
+
+  return np_section_idx;
 
 }
 
