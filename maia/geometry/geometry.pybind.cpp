@@ -75,9 +75,9 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
   for (int i = 0; i < n_section; i++){
     section_idx[i+1] += section_idx[i];
     n_entity_max = std::max(n_entity_max, section_idx[i+1]-section_idx[i]);
-    printf("section_idx[%i] = %i \n", i+1, section_idx[i+1]);
+    // printf("section_idx[%i] = %i \n", i+1, section_idx[i+1]);
   }
-  printf("n_entity_max = %i \n", n_entity_max);
+  // printf("n_entity_max = %i \n", n_entity_max);
   // Now we order the pointlist
 
   for(int i_section = 0; i_section < n_section; ++i_section) {
@@ -89,7 +89,7 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
     std::vector<int> point_list_max(n_entity_per_join);
     std::vector<int> order_pl(n_entity_per_join);
 
-    printf("begs = %i | n_entity_per_join = %i \n", begs, n_entity_per_join);
+    // printf("begs = %i | n_entity_per_join = %i \n", begs, n_entity_per_join);
 
     for(int i = 0; i < n_entity_per_join; ++i){
       point_list_min[i] = std::min(point_list[begs+i], point_list_donor[begs+i]);
@@ -112,12 +112,14 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
 
 
   // Panic verbose
-  for(int i = 0; i < join_size; ++i){
-    std::cout << "Info :: pl = " << point_list[i] << " | pld = " << point_list_donor[i];
-    std::cout << " | order = " << order[i];
-    std::cout << " | " << neighbor_desc[3*i  ] << "/";
-    std::cout <<          neighbor_desc[3*i+1] << "/";
-    std::cout <<          neighbor_desc[3*i+2] << std::endl;
+  if(0 == 1){
+    for(int i = 0; i < join_size; ++i){
+      std::cout << "Info :: pl = " << point_list[i] << " | pld = " << point_list_donor[i];
+      std::cout << " | order = " << order[i];
+      std::cout << " | " << neighbor_desc[3*i  ] << "/";
+      std::cout <<          neighbor_desc[3*i+1] << "/";
+      std::cout <<          neighbor_desc[3*i+2] << std::endl;
+    }
   }
 
   // py::array_t<int, py::array::f_style> np_section_idx(n_section+1);

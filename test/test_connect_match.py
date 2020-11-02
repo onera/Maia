@@ -97,7 +97,7 @@ part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
 
 # part_tree = C.convertFile2PyTree(inputfile)
 CMA.connect_match_from_family(part_tree, ['JOIN_1', 'JOIN_2'], comm,
-                              match_type = ['FaceCenter'], rel_tol=0.1)
+                              match_type = ['FaceCenter'], rel_tol=1.e-5)
 
 # I.printTree(part_tree)
 SPT.save_part_tree(part_tree, 'part_tree', comm)

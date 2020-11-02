@@ -140,8 +140,8 @@ def connect_match_from_family(part_tree, family_list, comm,
     l_neighbor_idx .append(res['candidates_idx' ])
     l_neighbor_desc.append(res['candidates_desc'])
 
-    print("res['candidates_idx ']::", res['candidates_idx' ])
-    print("res['candidates_desc']::", res['candidates_desc'])
+    # print("res['candidates_idx ']::", res['candidates_idx' ])
+    # print("res['candidates_desc']::", res['candidates_desc'])
 
   DNE = PDM.DistantNeighbor(comm,
                             n_point_cloud,
@@ -171,8 +171,8 @@ def connect_match_from_family(part_tree, family_list, comm,
   all_zone_name_and_lid = comm.gather(zone_name_and_lid   , root=0)
   all_zone_name_and_lid = comm.bcast(all_zone_name_and_lid, root=0)
 
-  if(comm.rank == 0):
-    print("all_zone_name_and_lid::", all_zone_name_and_lid)
+  # if(comm.rank == 0):
+  #   print("all_zone_name_and_lid::", all_zone_name_and_lid)
 
   # Setup at join
   i_point_cloud = 0
@@ -187,11 +187,10 @@ def connect_match_from_family(part_tree, family_list, comm,
 
       for i in range(section_idx.shape[0]-1):
         n_entity_per_join = section_idx[i+1] - section_idx[i]
-        print(n_entity_per_join)
+        # print(n_entity_per_join)
         pl     = NPY.empty((1, n_entity_per_join), order='F', dtype=NPY.int32)
         pl[0]  = NPY.copy(l_send_entity_data[i_point_cloud][section_idx[i]:section_idx[i+1]])
 
-        print(n_entity_per_join)
         pld    = NPY.empty((1, n_entity_per_join), order='F', dtype=NPY.int32)
         pld[0] = NPY.copy(l_recv_entity_data[i_point_cloud][section_idx[i]:section_idx[i+1]])
 
