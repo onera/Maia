@@ -38,6 +38,7 @@ from   Converter import cgnskeywords as CGK
 # ------------------------------------------------------------------------
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C11_TwoCubes_NoJoin.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C11_TwoCubes_NoJoin_OtherOrder.hdf'
 
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
@@ -94,6 +95,7 @@ part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
                              part_weight_method=1,
                              reorder_methods=["NONE", "NONE"])
 
+part_tree = C.convertFile2PyTree(inputfile)
 CMA.connect_match_from_family(part_tree, ['JOIN_1', 'JOIN_2'], comm,
                               match_type = ['FaceCenter'], rel_tol=1e-5)
 

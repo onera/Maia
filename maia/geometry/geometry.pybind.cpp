@@ -52,7 +52,7 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
   int n_section = 0;
   int cur_proc = neighbor_desc[3*order[0]  ];
   int cur_part = neighbor_desc[3*order[0]+1];
-  for(int i = 1; i < join_size; ++i){
+  for(int i = 0; i < join_size; ++i){
     int p = order[i];
     int next_proc = neighbor_desc[3*p  ];
     int next_part = neighbor_desc[3*p+1];
@@ -128,7 +128,6 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
   }
 
   return np_section_idx;
-
 }
 
 
