@@ -9,7 +9,7 @@ def compute_elements_distribution(zone, comm):
   zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
   zone_type   = zone_type_n[1].tostring()
   if(zone_type == b'Structured'):
-    raise NotImplementedError
+    pass
   else:
     elts = I.getNodesFromType1(zone, 'Elements_t')
 

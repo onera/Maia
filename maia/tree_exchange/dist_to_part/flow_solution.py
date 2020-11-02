@@ -33,7 +33,7 @@ def dist_flow_sol_to_part_flow_sol(dist_tree, part_tree, dzone_to_part, comm):
       part_data = dict()
 
       gridloc_n = I.getNodeFromType1(flow_solution_node, 'GridLocation_t')
-      gridloc     = I.getValue(gridloc_n)
+      gridloc   = I.getValue(gridloc_n)
 
       if(gridloc == 'CellCenter'):
         ppart_name    = 'npCellLNToGN'
