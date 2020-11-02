@@ -73,11 +73,14 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
 
     bnd_xyz, bnd_cl = compute_face_center_and_characteristic_length(pl, cx, cy, cz, face_vtx, face_vtx_idx)
 
-    print("Setup caracteristice lenght and coordinate for ", zone[0], " --> ", bc[0], bnd_cl.shape[0])
+    # print("Setup caracteristice lenght and coordinate for ", zone[0], " --> ", bc[0], bnd_cl.shape[0])
     pdm_point_merge.cloud_set(i_point_cloud, bnd_cl.shape[0], bnd_xyz, bnd_cl)
 
-    print("bnd_xyz::", bnd_xyz)
-    print("bnd_cl ::", bnd_cl)
+    # > Needed to hold memory
+    I.newDataArray("bnd_xyz", value=bnd_xyz, parent=bc)
+    I.newDataArray("bnd_cl" , value=bnd_cl , parent=bc)
+    # print("bnd_xyz::", bnd_xyz)
+    # print("bnd_cl ::", bnd_cl)
 
     bnd_to_join_path_list.append(bc[0])
     i_point_cloud = i_point_cloud + 1
@@ -154,8 +157,8 @@ def connect_match_from_family(part_tree, family_list, comm,
                                l_send_entity_stri,
                                l_recv_entity_stri)
 
-  print("l_recv_entity_stri::", l_recv_entity_stri)
-  print("l_recv_entity_data::", l_recv_entity_data)
+  # print("l_recv_entity_stri::", l_recv_entity_stri)
+  # print("l_recv_entity_data::", l_recv_entity_data)
 
   l_recv_zone_id_data = list()
   l_recv_zone_id_stri = list()
