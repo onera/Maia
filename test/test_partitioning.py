@@ -31,8 +31,27 @@ from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
 from maia.partitioning       import part                            as PPA
 import maia.distribution                                            as MDI
+from maia.cgns_registry      import cgns_registry                   as CGR
 
 from   Converter import cgnskeywords as CGK
+
+
+paths_by_label = CGR.cgns_paths_by_label();
+CGR.add_path(paths_by_label, "/titi/tota", "Zone_t")
+CGR.add_path(paths_by_label, "/titi/toto", "Zone_t")
+
+print(dir(comm))
+print(dir(MPI))
+print(help(MPI._addressof))
+print(type(comm))
+print("*"*100)
+print(help(CGR))
+print("*"*100)
+
+CGR.hello_mpi4py(comm)
+
+cgr = CGR.cgns_paths_by_label(paths_by_label, MPI._addressof(comm));
+
 
 # ------------------------------------------------------------------------
 # > Pick a file

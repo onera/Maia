@@ -21,6 +21,7 @@ function( mixpython_cython_add_module _name )
     # > If same name : problem
     pybind11_add_module(${mod_name} ${_pybind_file})
     target_link_libraries(${mod_name} PUBLIC std_e::std_e maia::maia MPI::MPI_CXX) # TODO rm std_e, MPI ? (transitive from maia)
+    target_include_directories(${mod_name} PUBLIC ${Mpi4Py_INCLUDE_DIR}) # TODO rm std_e, MPI ? (transitive from maia)
     set_target_properties(${mod_name} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/maia/${pybind_dir_rel}")
 
     install(TARGETS "${mod_name}"

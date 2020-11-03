@@ -6,7 +6,7 @@
 
 
 // ===========================================================================
-cgns_registry::cgns_registry(const cgns_paths_by_label& paths_by_label, MPI_Comm comm) {
+cgns_registry::cgns_registry(const cgns_paths_by_label& paths_by_label, MPI_Comm& comm) {
   for (int i=0; i < CGNS::nb_cgns_labels; ++i){
     // std::cout << to_string(static_cast<CGNS::Label::kind>(i)) <<std::endl;
     registries_by_label[i] = label_registry(paths_by_label[i],comm);
@@ -16,13 +16,13 @@ cgns_registry::cgns_registry(const cgns_paths_by_label& paths_by_label, MPI_Comm
 // ===========================================================================
 std::string to_string(const label_registry& reg) {
   std::string s;
-  int nEntry = reg.nb_entities();
-  for(int i = 0; i < nEntry; ++i ){
+  int n_entry = reg.nb_entities();
+  for(int i = 0; i < n_entry; ++i ){
     s += "\t CGNSPath : " + reg.entities()[i] + " | global_id = " + std::to_string(reg.ids()[i]) + "\n";
   }
-  int nRankP1 = reg.distribution().size();
+  int n_rank_p1 = reg.distribution().size();
   s += "Distrib : ";
-  for(int i = 0; i < nRankP1; ++i){
+  for(int i = 0; i < n_rank_p1; ++i){
     s += std::to_string(reg.distribution()[i]) + " ";
   }
   s += "\n";
@@ -33,9 +33,9 @@ std::string to_string(const label_registry& reg) {
 std::string to_string(const cgns_registry& cgns_reg)
 {
   std::string s;
-  for (int i=0; i<CGNS::nb_cgns_labels; ++i){
-    int nEntry = cgns_reg.at(i).nb_entities();
-    if (nEntry > 0) {
+  for (int i = 0; i < CGNS::nb_cgns_labels; ++i){
+    int n_entry = cgns_reg.at(i).nb_entities();
+    if (n_entry > 0) {
       s += " -------------------------------------------- \n";
       s += " ### CGNSLabel : " +to_string(static_cast<CGNS::Label::kind>(i))+"\n";
       s += to_string(cgns_reg.at(i));

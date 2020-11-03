@@ -27,7 +27,7 @@ void add_path(cgns_paths_by_label& paths, cgns_path path, const std::string& lab
 class cgns_registry {
   public:
     cgns_registry() = default;
-    cgns_registry(const cgns_paths_by_label& paths, MPI_Comm comm);
+    cgns_registry(const cgns_paths_by_label& paths, MPI_Comm& comm);
 
     const label_registry& at(int label) const {
       return registries_by_label[label];

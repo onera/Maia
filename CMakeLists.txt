@@ -63,6 +63,7 @@ else()
 endif()
 
 find_package(MPI REQUIRED)
+find_package(Mpi4Py REQUIRED)
 
 option(MAIA_USE_PDM_INSTALL OFF "Use an installed ParaDiGM version")
 if (MAIA_USE_PDM_INSTALL)
