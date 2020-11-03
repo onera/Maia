@@ -48,9 +48,16 @@ print("*"*100)
 print(help(CGR))
 print("*"*100)
 
-CGR.hello_mpi4py(comm)
+o = CGR.hello_mpi4py(comm)
+print(o)
 
-cgr = CGR.cgns_paths_by_label(paths_by_label, MPI._addressof(comm));
+# cgr = CGR.cgns_paths_by_label(paths_by_label, MPI._addressof(comm));
+# cgr = CGR.cgns_paths_by_label(paths_by_label, o);
+cgr = CGR.make_cgns_registry(paths_by_label, comm);
+g_id = CGR.get_global_id_from_path_and_type(cgr, "/titi/tota", "Zone_t")
+print(g_id)
+# >
+
 
 
 # ------------------------------------------------------------------------
