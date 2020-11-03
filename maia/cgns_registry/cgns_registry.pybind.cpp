@@ -34,8 +34,10 @@ PYBIND11_MODULE(cgns_registry, m) {
   m.def("make_cgns_registry", &make_cgns_registry,
         "Some doc here");
 
+  // py::class_<cgns_registry> (m, "cgns_registry")
+  //   .def(py::init<const cgns_paths_by_label&, MPI_Comm&>());
   py::class_<cgns_registry> (m, "cgns_registry")
-    .def(py::init<const cgns_paths_by_label&, MPI_Comm&>());
+    .def(py::init<>(&make_cgns_registry));
 
   m.def("add_path",
         py::overload_cast<cgns_paths_by_label&, cgns_path, CGNS::Label::kind>(add_path),
