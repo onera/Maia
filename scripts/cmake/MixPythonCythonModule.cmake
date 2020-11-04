@@ -21,8 +21,8 @@ function( mixpython_cython_add_module _name )
     # > If same name : problem
     pybind11_add_module(${mod_name} ${_pybind_file})
     target_link_libraries(${mod_name} PUBLIC std_e::std_e maia::maia MPI::MPI_CXX) # TODO rm std_e, MPI ? (transitive from maia)
-    target_include_directories(${mod_name} PUBLIC ${Mpi4Py_INCLUDE_DIR}) # TODO rm std_e, MPI ? (transitive from maia)
-    set_target_properties(${mod_name} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/maia/${pybind_dir_rel}")
+    target_include_directories(${mod_name} PUBLIC ${Mpi4Py_INCLUDE_DIR})
+    set_target_properties(${mod_name} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${pybind_dir_rel}")
 
     install(TARGETS "${mod_name}"
             LIBRARY DESTINATION ${SITE_PACKAGES_OUTPUT_DIRECTORY}/${pybind_dir_rel})
@@ -46,7 +46,7 @@ function( mixpython_cython_add_module _name )
     set_source_files_properties(${_pyx_file} PROPERTIES CYTHON_IS_CXX TRUE)
     # cython_add_module("${_name}_${mod_name}" ${_pyx_file}) // Si 2 modules ont le meme nom
     cython_add_one_file_module("${mod_name}" ${_pyx_file})
-    set_target_properties(${mod_name} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/maia/${pyx_dir_rel}")
+    set_target_properties(${mod_name} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${pyx_dir_rel}")
 
     # message("core_lib = " ${CORE_LIBRARIES})
     # target_include_directories(${mod_name} PUBLIC ${PROJECT_SOURCE_DIR})
