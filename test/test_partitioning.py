@@ -32,30 +32,33 @@ from maia.connectivity       import generate_ngon_from_std_elements as FTH
 from maia.partitioning       import part                            as PPA
 import maia.distribution                                            as MDI
 from maia.cgns_registry      import cgns_registry                   as CGR
+from maia.cgns_registry      import tree                            as CGT # Not bad :D
 
 from   Converter import cgnskeywords as CGK
 
 
-paths_by_label = CGR.cgns_paths_by_label();
-CGR.add_path(paths_by_label, "/titi/tota", "Zone_t")
-CGR.add_path(paths_by_label, "/titi/toto", "Zone_t")
+# paths_by_label = CGR.cgns_paths_by_label();
+# CGR.add_path(paths_by_label, "/titi/tota", "Zone_t")
+# CGR.add_path(paths_by_label, "/titi/toto", "Zone_t")
 
 # cgr = CGR.cgns_paths_by_label(paths_by_label, MPI._addressof(comm));
 # cgr = CGR.cgns_paths_by_label(paths_by_label, o);
 # cgr = CGR.make_cgns_registry(paths_by_label, comm);
-cgr = CGR.cgns_registry(paths_by_label, comm);
-g_id_1 = CGR.get_global_id_from_path_and_type(cgr, "/titi/tota", "Zone_t")
-g_id_2 = CGR.get_global_id_from_path_and_type(cgr, "/titi/toto", "Zone_t")
+# cgr = CGR.cgns_registry(paths_by_label, comm);
+# g_id_1 = CGR.get_global_id_from_path_and_type(cgr, "/titi/tota", "Zone_t")
+# g_id_2 = CGR.get_global_id_from_path_and_type(cgr, "/titi/toto", "Zone_t")
 # >
 
-print(cgr)
+# print(cgr)
 
 
 
 # ------------------------------------------------------------------------
 # > Pick a file
-# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube_OnePerio.hdf'
+# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_BND_NGON2.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS.hdf'
@@ -65,6 +68,7 @@ inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube.
 # > Load only the list of zone and sizes ...
 dist_tree = LST.load_collective_size_tree(inputfile, comm)
 
+cgr = CGT.make_cgns_registery(dist_tree, comm)
 # > ParaDiGM : dcube_gen() --> A faire
 
 MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
