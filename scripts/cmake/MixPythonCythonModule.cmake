@@ -16,7 +16,7 @@ function( mixpython_cython_add_module _name )
     get_filename_component(pybind_dir ${_pybind_file} DIRECTORY)
     #get_filename_component( pybind_mod_name ${_pybind_file} NAME_WE   )
     file(RELATIVE_PATH pybind_dir_rel ${CMAKE_CURRENT_SOURCE_DIR} ${pybind_dir})
-    # message("mod_name::" ${mod_name} ${pybind_dir_rel})
+    message("mod_name::" ${mod_name} ${pybind_dir_rel})
 
     # > If same name : problem
     pybind11_add_module(${mod_name} ${_pybind_file})
@@ -80,14 +80,13 @@ function( mixpython_cython_add_module _name )
                        "${output_python_file}"
                        COMMENT "Copying ${python_rel_file} to the binary directory")
 
-    get_filename_component(python_file_directory "${python_rel_file}" DIRECTORY)
-    #get_filename_component(py_file_name_we "${python_rel_file}" NAME_WE)
-
     set(pyc_file ${output_python_file}c)
     add_custom_command(OUTPUT  ${pyc_file}
                        DEPENDS "${output_python_file}"
                        COMMAND ${Python_EXECUTABLE} -m py_compile ${output_python_file})
 
+
+    get_filename_component(python_file_directory "${python_rel_file}" DIRECTORY)
     # install(FILES       ${pyc_file}
     #         DESTINATION "${SITE_PACKAGES_OUTPUT_DIRECTORY}/${rel}/${python_file_directory}"
     #         COMPONENT   "python")

@@ -1,2 +1,0 @@
-include(MixPythonCythonModule)
-mixpython_cython_add_module(maia)

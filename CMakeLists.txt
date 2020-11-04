@@ -118,10 +118,9 @@ endif()
 # ----------------------------------------------------------------------
 
 ## Python, Cython, Pybind11
-#include(MixPythonCythonModule)
-#mixpython_cython_add_module(maia)
 set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/${PROJECT_NAME}")
-add_subdirectory(maia) # TODO DEL separate file once mixpython_cython_add_module can be included here
+include(MixPythonCythonModule)
+mixpython_cython_add_module(maia)
 
 ## Compiled languages
 set(src_dir ${PROJECT_SOURCE_DIR}/${PROJECT_NAME})

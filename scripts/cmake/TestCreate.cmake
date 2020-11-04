@@ -74,13 +74,17 @@ function(create_mpi_pytest name n_proc)
   # > Set properties for the current test
   # pytest test/maia_python_unit_tests.py --html=test.html --self-contained-html
   # message(${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH})
+  if(NOT DEFINED PROJECT_ROOT)
+    set(PROJECT_ROOT ${CMAKE_SOURCE_DIR})
+  endif()
+
   set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
   set_tests_properties("${name}" PROPERTIES
-                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/:${CMAKE_SOURCE_DIR}/external/pytest-mpi-check:$ENV{PYTHONPATH}
+                       ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}:${PROJECT_ROOT}/external/pytest-mpi-check:$ENV{PYTHONPATH}
                        DEPENDS t_${name})
   # > Append other
   set_property(TEST "${name}" APPEND PROPERTY
-                       ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/maia:$ENV{LD_LIBRARY_PATH})
+                       ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_CURRENT_BINARY_DIR}:$ENV{LD_LIBRARY_PATH})
   # > Append other
   set_property(TEST "${name}" APPEND PROPERTY
                        ENVIRONMENT PYTEST_PLUGINS=pytest_mpi_check)
