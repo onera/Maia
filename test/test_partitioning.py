@@ -37,8 +37,6 @@ from maia.cgns_registry      import tree                            as CGT # Not
 
 from   Converter import cgnskeywords as CGK
 
-print(help(cgns_keywords))
-exit(2)
 
 # ------------------------------------------------------------------------
 # > Pick a file
