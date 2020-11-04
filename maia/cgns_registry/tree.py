@@ -1,6 +1,7 @@
 from   mpi4py             import MPI
 import Converter.Internal as     I
 from . import cgns_registry     as     CGR
+from . import cgns_keywords     as     CGK
 
 def build_paths_by_label_bcdataset(paths_by_label, bc, bc_path):
   """
@@ -55,7 +56,7 @@ def build_paths_by_label(tree):
 
   for base in I.getNodesFromType1(tree, 'CGNSBase_t'):
     base_path = "/"+I.getName(base)
-    CGR.add_path(paths_by_label, base_path, "CGNSBase_t")
+    CGR.add_path(paths_by_label, base_path, u'CGNSBase_t')
 
     setup_child_from_type(paths_by_label, base, base_path, 'Family_t')
     setup_child_from_type(paths_by_label, base, base_path, 'FlowEquationSet_t')
@@ -69,24 +70,35 @@ def build_paths_by_label(tree):
       CGR.add_path(paths_by_label, zone_path, 'Zone_t')
       build_paths_by_label_zone(paths_by_label, zone, zone_path)
 
-
   return paths_by_label
 
-def make_cgns_registery(tree, comm):
+def make_cgns_registry(tree, comm):
   """
   Generate for each nodes a global identifier
   """
-  paths_by_label = build_paths_by_label(tree);
-
-  cgr = CGR.cgns_registry(paths_by_label, comm);
-
-  print("*"*100)
-  print(cgr)
-  print("*"*100)
-
+  paths_by_label = build_paths_by_label(tree)
+  cgr = CGR.cgns_registry(paths_by_label, comm)
   return cgr
 
 
+def add_cgns_registry_information(tree, comm):
+  """
+  """
+  cgr = make_cgns_registry(tree, comm)
+
+  for itype in range(CGK.nb_cgns_labels):
+    paths      = cgr.paths(itype)
+    global_ids = cgr.global_ids(itype)
+    for i in range(len(paths)):
+      # print(paths[i], global_ids[i])
+      node    = I.getNodeFromPath(tree, paths[i])
+      cgns_registry_n = I.getNodeFromNameAndType(node, ":CGNS#Registry", 'UserDefined_t')
+      if cgns_registry_n:
+        I._rmNode(node, cgns_registry_n)
+      else:
+        I.createNode(name=":CGNS#Registry", value=global_ids[i], ntype='UserDefined_t', parent=node)
+
+  return cgr
 
 
 

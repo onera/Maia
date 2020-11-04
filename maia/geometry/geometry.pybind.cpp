@@ -203,6 +203,14 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
   return std::make_tuple(np_bnd_coord, np_characteristic_lenght);
 }
 
+// struct Xdt{
+//   Xdt(cgns_registry& reg){
+//     std::cout << to_string(reg) << std::endl;
+//     std::cout << __PRETTY_FUNCTION__ << std::endl;
+//   }
+//   // cgns_registry _reg;
+// };
+
 
 PYBIND11_MODULE(geometry, m) {
   m.doc() = "pybind11 utils for geomery plugin"; // optional module docstring
@@ -221,5 +229,8 @@ PYBIND11_MODULE(geometry, m) {
         py::arg("np_recv_entity_stri").noconvert(),
         py::arg("np_point_list"      ).noconvert(),
         py::arg("np_point_list_donor").noconvert());
+
+  // py::class_<Xdt> (m, "Xdt")
+  //   .def(py::init<cgns_registry&>());
 
 }

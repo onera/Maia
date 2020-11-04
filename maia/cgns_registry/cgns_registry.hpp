@@ -13,11 +13,11 @@ using label_registry = distributed_registry<cgns_path>;
 using cgns_paths_by_label = std::array<cgns_paths,CGNS::nb_cgns_labels>;
 
 inline
-void add_path(cgns_paths_by_label& paths, cgns_path path, CGNS::Label::kind label) {
+void add_path(cgns_paths_by_label& paths, const cgns_path& path, CGNS::Label::kind label) {
   paths[label].push_back(std::move(path));
 }
 inline
-void add_path(cgns_paths_by_label& paths, cgns_path path, const std::string& label_str) {
+void add_path(cgns_paths_by_label& paths, const std::string& path, const std::string& label_str) {
   auto label = std_e::to_enum<CGNS::Label::kind>(label_str);
   add_path(paths,path,label);
 }
