@@ -23,6 +23,7 @@ PYBIND11_MODULE(cgns_keywords, m) {
 
   auto enum_cgns_kind = py::enum_<CGNS::Label::kind>(m, "kind", py::arithmetic(), "A first enum");
   pybind_auto_enum(enum_cgns_kind);
+  enum_cgns_kind.export_values();
   int nb_cgns_labels = std_e::enum_size<CGNS::Label::kind>;
   m.attr("nb_cgns_labels") = nb_cgns_labels;
 
