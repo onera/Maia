@@ -41,11 +41,11 @@ from   Converter import cgnskeywords as CGK
 # ------------------------------------------------------------------------
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube.hdf'
-inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube.hdf'
-inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube_OnePerio.hdf'
+# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube.hdf'
+# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube_OnePerio.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseS_C1_Cube.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2.hdf'
-# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_BND_NGON2.hdf'
+inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_BND_NGON2.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS_And_ZSR.hdf'
 
@@ -60,7 +60,7 @@ cgr = CGT.add_cgns_registry_information(dist_tree, comm)
 # > ParaDiGM : dcube_gen() --> A faire
 
 MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
-I.printTree(dist_tree)
+# I.printTree(dist_tree)
 
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)

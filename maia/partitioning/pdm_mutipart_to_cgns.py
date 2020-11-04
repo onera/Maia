@@ -15,7 +15,7 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
   part_data_list = []
   zoneg_id = 0
   for dist_zone in I.getZones(dist_tree):
-    # zoneg_id = I.getNodeFromName1(dist_zone, ':CGNS#Registery')[1][0] - 1
+    # zoneg_id = I.getNodeFromName1(dist_zone, ':CGNS#Registry')[1][0] - 1
     for i_part in range(n_part_per_zone[zoneg_id]):
       part_dims_list.append(multi_part.multipart_dim_get(i_part, zoneg_id))
       part_data_list.append(multi_part.multipart_val_get(i_part, zoneg_id))
@@ -42,7 +42,7 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
   index    = 0
   zoneg_id = 0
   for dist_zone in I.getZones(dist_tree):
-    # zoneg_id = I.getNodeFromName1(dist_zone, ':CGNS#Registery')[1][0] - 1
+    # zoneg_id = I.getNodeFromName1(dist_zone, ':CGNS#Registry')[1][0] - 1
 
     # > TODO : join
     # add_paths_to_ghost_zone(dist_zone, part_path_nodes)
