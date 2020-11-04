@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "std_e/algorithm/permutation.hpp"
+#include "maia/cgns_registry/cgns_registry.hpp"
 
 namespace py = pybind11;
 
@@ -201,7 +202,6 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
 
   return std::make_tuple(np_bnd_coord, np_characteristic_lenght);
 }
-
 
 
 PYBIND11_MODULE(geometry, m) {

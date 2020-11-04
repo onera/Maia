@@ -40,26 +40,15 @@ paths_by_label = CGR.cgns_paths_by_label();
 CGR.add_path(paths_by_label, "/titi/tota", "Zone_t")
 CGR.add_path(paths_by_label, "/titi/toto", "Zone_t")
 
-print(dir(comm))
-print(dir(MPI))
-print(help(MPI._addressof))
-print(type(comm))
-print("*"*100)
-print(help(CGR))
-print("*"*100)
-
-o = CGR.hello_mpi4py(comm)
-print(o)
-
 # cgr = CGR.cgns_paths_by_label(paths_by_label, MPI._addressof(comm));
 # cgr = CGR.cgns_paths_by_label(paths_by_label, o);
 # cgr = CGR.make_cgns_registry(paths_by_label, comm);
 cgr = CGR.cgns_registry(paths_by_label, comm);
 g_id_1 = CGR.get_global_id_from_path_and_type(cgr, "/titi/tota", "Zone_t")
 g_id_2 = CGR.get_global_id_from_path_and_type(cgr, "/titi/toto", "Zone_t")
-print(g_id_1)
-print(g_id_2)
 # >
+
+print(cgr)
 
 
 

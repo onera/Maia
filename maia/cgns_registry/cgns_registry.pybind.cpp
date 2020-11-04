@@ -3,19 +3,13 @@
 #include <algorithm>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include "maia/utils/mpi4py.hpp"
 #include "maia/cgns_registry/cgns_registry.hpp"
-#include "mpi4py/mpi4py.MPI.h"
 
 namespace py = pybind11;
 
-
-MPI_Comm& hello_mpi4py(py::object mpi4py_obj){
-  return (MPI_Comm&)(((PyMPICommObject*) mpi4py_obj.ptr())->ob_mpi);
-}
-
 cgns_registry make_cgns_registry(const cgns_paths_by_label& paths, py::object mpi4py_obj){
-  MPI_Comm& comm = (MPI_Comm&)(((PyMPICommObject*) mpi4py_obj.ptr())->ob_mpi);
-  return cgns_registry(paths, comm);
+  return cgns_registry(paths, mpi4py_comm_to_comm(mpi4py_obj));
 }
 
 
@@ -25,19 +19,14 @@ PYBIND11_MODULE(cgns_registry, m) {
   py::class_<cgns_paths_by_label> (m, "cgns_paths_by_label")
     .def(py::init<>());
 
-  // py::class_<MPI_Comm> (m, "MPI_Comm")
-  //   .def(py::init<>());
-
-  m.def("hello_mpi4py", &hello_mpi4py,
-        "Some doc here");
-
   m.def("make_cgns_registry", &make_cgns_registry,
         "Some doc here");
 
-  // py::class_<cgns_registry> (m, "cgns_registry")
-  //   .def(py::init<const cgns_paths_by_label&, MPI_Comm&>());
   py::class_<cgns_registry> (m, "cgns_registry")
-    .def(py::init<>(&make_cgns_registry));
+    .def(py::init<>(&make_cgns_registry))
+    .def("__repr__", [](const cgns_registry& x){
+      return to_string(x);
+    });
 
   m.def("add_path",
         py::overload_cast<cgns_paths_by_label&, cgns_path, CGNS::Label::kind>(add_path),
