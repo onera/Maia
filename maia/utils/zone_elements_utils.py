@@ -50,7 +50,7 @@ def get_paradigm_type_with_element_type_cgns(elmt_type):
   # elif(elmt_type == 19):  # Hexa20
   #   PDM_Type = 10
   else:
-    raise NotImplemented('Not implemented elements type')
+    raise NotImplementedError('Not implemented elements type')
 
   return PDM_Type
 

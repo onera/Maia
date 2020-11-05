@@ -29,7 +29,7 @@ def compute_distribution_grid_connectivity(join, comm):
   pl_n = I.getNodeFromName1(join, 'PointList')
 
   if(pr_n):
-    raise NotImplemented
+    raise NotImplementedError
 
   if(pl_n):
     pls_n   = I.getNodeFromName1(join, 'PointList#Size')

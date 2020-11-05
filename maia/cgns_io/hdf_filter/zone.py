@@ -63,4 +63,4 @@ def create_zone_filter(zone, zone_path, hdf_filter):
     elif(grid_location == b'Vertex'):
       create_data_array_filter(flow_solution, flow_solution_path, distrib_vtx, hdf_filter)
     else:
-      raise NotImplemented(f"GridLocation {grid_location} not implemented")
+      raise NotImplementedError(f"GridLocation {grid_location} not implemented")

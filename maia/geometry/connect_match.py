@@ -23,7 +23,7 @@ def compute_n_point_cloud(zones, fams, family_list):
     zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
     zone_type   = zone_type_n[1].tostring()
     if(zone_type == b'Structured'):
-      raise NotImplemented("connect_match_from_family for structured zone not allowed yet")
+      raise NotImplementedError("connect_match_from_family for structured zone not allowed yet")
     for bc in bcs_if_in_family_list(zone, fams, family_list):
       n_point_cloud = n_point_cloud + 1
 
@@ -37,7 +37,7 @@ def prepare_pdm_point_merge_structured(pdm_point_merge, i_point_cloud, match_typ
                                        l_send_zone_id_data):
   """
   """
-  raise NotImplemented("connect_match_from_family for structured zone not allowed yet")
+  raise NotImplementedError("connect_match_from_family for structured zone not allowed yet")
 
 
 def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_type,
@@ -61,7 +61,7 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
       face_vtx_idx = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
       break
   if(not found):
-    raise NotImplemented("Connect match need at least the NGonElements")
+    raise NotImplementedError("Connect match need at least the NGonElements")
 
   for bc in bcs_if_in_family_list(zone, fams, family_list):
 

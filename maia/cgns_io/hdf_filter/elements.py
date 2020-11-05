@@ -134,7 +134,7 @@ def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
   distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
-  raise NotImplemented("Mixed elements are not allowed ")
+  raise NotImplementedError("Mixed elements are not allowed ")
 
 
 def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):

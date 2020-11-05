@@ -7,13 +7,13 @@ import Converter.Filter   as CFilter
 def create_boundary_filter_unstructured(zone_tree, zone_path, cgns_filter):
   """
   """
-  raise NotImplemented
+  raise NotImplementedError
 
 # --------------------------------------------------------------------------
 def create_boundary_filter_structured(zone_tree, zone_path, cgns_filter):
   """
   """
-  raise NotImplemented
+  raise NotImplementedError
 
 # --------------------------------------------------------------------------
 def create_boundary_filter(zone_tree, zone_path, cgns_filter):
@@ -31,5 +31,5 @@ def create_boundary_filter(zone_tree, zone_path, cgns_filter):
     create_boundary_filter_unstructured(zone_tree, zone_path, cgns_filter)
   else:
     create_boundary_filter_structured(zone_tree, zone_path, cgns_filter)
-    raise NotImplemented
+    raise NotImplementedError
 

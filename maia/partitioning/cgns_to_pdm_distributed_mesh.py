@@ -28,7 +28,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
       distrib_face     = I.getNodeFromName1(distrib_ngon_ud, 'Distribution'      )[1]
       distrib_face_vtx = I.getNodeFromName1(distrib_ngon_ud, 'DistributionElementConnectivity')[1]
   if(not found):
-    raise NotImplemented
+    raise NotImplementedError
 
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
   dn_cell = distrib_cell[1] - distrib_cell[0]

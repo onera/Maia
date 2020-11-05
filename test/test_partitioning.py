@@ -21,7 +21,7 @@ import numpy              as NPY
 import sys
 
 # > Import PyPart
-from pypart                 import DistributionBase        as DBA
+#from pypart                 import DistributionBase        as DBA
 
 from maia.cgns_io            import load_collective_size_tree       as LST
 from maia.cgns_io            import cgns_io_tree                    as IOT
@@ -92,7 +92,11 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 # > dloading_procs        --> Proportion de la zone initiale avant le partitionnement (vision block)
 #
 # > ... and this is suffisent to predict your partitions sizes
-dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm)
+
+#dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm) # TODO use this
+dzone_to_weighted_parts = {}
+for zone in I.getZones(dist_tree):
+    dzone_to_weighted_parts[zone[0]] = [1./comm.Get_size()]
 
 # print(dzone_to_weighted_parts)
 

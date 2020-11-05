@@ -11,7 +11,7 @@ def compute_zone_subregion_distribution(zone_subregion, comm):
   pl_n = I.getNodeFromName1(zone_subregion, 'PointList')
 
   if(pr_n):
-    raise NotImplemented
+    raise NotImplementedError
 
   if(pl_n):
     pls_n   = I.getNodeFromName1(zone_subregion, 'PointList#Size')

@@ -15,7 +15,7 @@ def zgc_created_pdm_to_cgns(zone, dist_zone, comm, entitiy='face', zgc_name='Zon
   elif(entitiy == 'vtx'):
     grid_loc = 'Vertex'
   else:
-    raise NotImplemented("Unvalid specified entity")
+    raise NotImplementedError("Unvalid specified entity")
 
   dist_zone_name = dist_zone[0]
 
