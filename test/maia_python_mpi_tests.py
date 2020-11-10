@@ -63,12 +63,12 @@ def test_size():
   assert comm.size > 0
 
 # --------------------------------------------------------------------------
-@pytest.mark.mpi(min_size=2)
-def test_size():
-  from mpi4py import MPI
-  comm = MPI.COMM_WORLD
-  print("hello", comm.size, comm.rank)
-  assert comm.size >= 2
+#@pytest.mark.mpi(min_size=2)
+#def test_size():
+#  from mpi4py import MPI
+#  comm = MPI.COMM_WORLD
+#  print("hello", comm.size, comm.rank)
+#  assert comm.size >= 2
 
 
 # --------------------------------------------------------------------------

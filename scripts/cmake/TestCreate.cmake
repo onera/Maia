@@ -80,7 +80,7 @@ function(create_mpi_pytest name n_proc)
 
   set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
   set_tests_properties("${name}" PROPERTIES
-                       ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}:${PROJECT_ROOT}/external/pytest-mpi-check:$ENV{PYTHONPATH}
+                       ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}:${CMAKE_CURRENT_BINARY_DIR}/..:${PROJECT_ROOT}/external/pytest-mpi-check:$ENV{PYTHONPATH}
                        DEPENDS t_${name})
   # > Append other
   set_property(TEST "${name}" APPEND PROPERTY
