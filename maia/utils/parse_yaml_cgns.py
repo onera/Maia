@@ -49,9 +49,15 @@ def parse_yaml_dict(yaml_dict):
 
 def to_pytree(yaml_str):
   try:
-    yaml = YAML(typ="safe")
-    yaml_dict = yaml.load(yaml_str)
-    return parse_yaml_dict(yaml_dict)
+    if yaml_str=="":
+      return []
+    else:
+      yaml = YAML(typ="safe")
+      yaml_dict = yaml.load(yaml_str)
+      return parse_yaml_dict(yaml_dict)
   except parser.ParserError as exc:
     print(exc)
     raise exc
+
+def to_complete_pytree(yaml_str):
+  return ['CGNSTree', None, to_pytree(yaml_str), 'CGNSTree_t']

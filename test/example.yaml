@@ -1,5 +1,5 @@
 Base0 Base_t [3,3]:
-  Zone0 Zone_t [24,6,0]:
+  Zone0 Zone_t [[24],[6],[0]]:
     GridCoordinates GridCoordinates_t:
       CoordinateX DataArray_t:
         R8 : [ 0,1,2,3,

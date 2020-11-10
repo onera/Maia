@@ -2,7 +2,7 @@ from maia.utils import parse_yaml_cgns
 import Converter.Internal as I
 import numpy as np
 
-with open("/scratchm/bberthou/travail/git_all_projects/example.yaml") as yt:
+with open("/scratchm/bberthou/travail/git_all_projects/external/maia/test/example.yaml") as yt:
   t = parse_yaml_cgns.to_pytree(yt)
 
   I.printTree(t)

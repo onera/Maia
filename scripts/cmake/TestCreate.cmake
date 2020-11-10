@@ -73,18 +73,17 @@ function(create_mpi_pytest name n_proc)
 
   # > Set properties for the current test
   # pytest test/maia_python_unit_tests.py --html=test.html --self-contained-html
-  # message(${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH})
   if(NOT DEFINED PROJECT_ROOT)
     set(PROJECT_ROOT ${CMAKE_SOURCE_DIR})
   endif()
 
   set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
   set_tests_properties("${name}" PROPERTIES
-                       ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}:${CMAKE_CURRENT_BINARY_DIR}/..:${PROJECT_ROOT}/external/pytest-mpi-check:$ENV{PYTHONPATH}
+                       ENVIRONMENT PYTHONPATH=${PROJECT_BINARY_DIR}:${PROJECT_BINARY_DIR}/test:${CMAKE_BINARY_DIR}/external/pytest-mpi-check:$ENV{PYTHONPATH}
                        DEPENDS t_${name})
   # > Append other
   set_property(TEST "${name}" APPEND PROPERTY
-                       ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_CURRENT_BINARY_DIR}:$ENV{LD_LIBRARY_PATH})
+                       ENVIRONMENT LD_LIBRARY_PATH=${PROJECT_BINARY_DIR}:$ENV{LD_LIBRARY_PATH})
   # > Append other
   set_property(TEST "${name}" APPEND PROPERTY
                        ENVIRONMENT PYTEST_PLUGINS=pytest_mpi_check)
@@ -100,43 +99,32 @@ endfunction()
 
 
 # --------------------------------------------------------------------------------
-function(mpi_pytest_directory_python_create name n_proc)
-  # message("seq_pytest_python_create  " "${name}")
-  # string(REPLACE "/" "_" flat_name ${name} )
-  # message("seq_pytest_python_create  " "${flat_name}")
+function(mpi_pytest_directory_python_create name tested_dir n_proc)
   set(options)
   set(one_value_args)
   set(multi_value_args SOURCES LABELS SERIAL_RUN)
   cmake_parse_arguments(ARGS "${options}" "${one_value_args}" "${multi_value_args}" ${ARGN})
 
   # --------------------------------------------------------------------------------
-  file(GLOB_RECURSE __py_test_files
+  file(GLOB_RECURSE py_test_files
        CONFIGURE_DEPENDS
-       "${CMAKE_CURRENT_SOURCE_DIR}/test_*.py")
-  # --------------------------------------------------------------------------------
+       "${PROJECT_SOURCE_DIR}/${tested_dir}/test_*.py")
 
-  # --------------------------------------------------------------------------------
-  foreach(__py_test_file ${__py_test_files})
-
-    # message("__py_test_file::" ${__py_test_file})
-
-    get_filename_component( output_python_file_name ${__py_test_file} NAME_WE   )
-    get_filename_component( output_python_dir       ${__py_test_file} DIRECTORY )
+  foreach(py_test_file ${py_test_files})
+    get_filename_component( output_python_file_name ${py_test_file} NAME_WE   )
+    get_filename_component( output_python_dir       ${py_test_file} DIRECTORY )
     file(RELATIVE_PATH output_python_dir_rel ${CMAKE_CURRENT_SOURCE_DIR} ${output_python_dir})
 
     set(output_python_file ${CMAKE_CURRENT_BINARY_DIR}/${output_python_dir_rel}/${output_python_file_name}.py)
-    # message(${output_python_file})
     add_custom_command(OUTPUT  "${output_python_file}"
-                       DEPENDS "${__py_test_file}"
+                       DEPENDS "${py_test_file}"
                        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                       "${__py_test_file}"
+                       "${py_test_file}"
                        "${output_python_file}"
                        COMMENT "Copying ${output_python_dir_rel}/${output_python_file_name}.py to the binary directory")
 
     set(rel_output_python_file ${output_python_dir_rel}/${output_python_file_name}.py)
-    # message("rel_output_python_file::" ${rel_output_python_file})
     string(REPLACE "/" "_" target_name "${rel_output_python_file}")
-    # message("target_name::" ${target_name})
     add_custom_target(t_${target_name} ALL DEPENDS "${output_python_file}")
   endforeach()
   # --------------------------------------------------------------------------------
@@ -144,20 +132,14 @@ function(mpi_pytest_directory_python_create name n_proc)
   # --------------------------------------------------------------------------------
   file(GLOB_RECURSE __conftest_files
        CONFIGURE_DEPENDS
-       "${CMAKE_CURRENT_SOURCE_DIR}/*conftest.py")
-  # --------------------------------------------------------------------------------
+       "${PROJECT_SOURCE_DIR}/${tested_dir}/*conftest.py")
 
-  # --------------------------------------------------------------------------------
   foreach(__conftest_file ${__conftest_files})
-
-    # message("__conftest_file::" ${__conftest_file})
-
     get_filename_component( output_python_file_name ${__conftest_file} NAME_WE   )
     get_filename_component( output_python_dir       ${__conftest_file} DIRECTORY )
     file(RELATIVE_PATH output_python_dir_rel ${CMAKE_CURRENT_SOURCE_DIR} ${output_python_dir})
 
     set(output_python_file ${CMAKE_CURRENT_BINARY_DIR}/${output_python_dir_rel}/${output_python_file_name}.py)
-    # message(${output_python_file})
     add_custom_command(OUTPUT  "${output_python_file}"
                        DEPENDS "${__conftest_file}"
                        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
@@ -166,9 +148,7 @@ function(mpi_pytest_directory_python_create name n_proc)
                        COMMENT "Copying ${output_python_dir_rel}/${output_python_file_name}.py to the binary directory")
 
     set(rel_output_python_file ${output_python_dir_rel}/${output_python_file_name}.py)
-    # message("rel_output_python_file::" ${rel_output_python_file})
     string(REPLACE "/" "_" target_name "${rel_output_python_file}")
-    # message("target_name::" ${target_name})
     add_custom_target(t_${target_name} ALL DEPENDS "${output_python_file}")
   endforeach()
   # --------------------------------------------------------------------------------
@@ -176,20 +156,14 @@ function(mpi_pytest_directory_python_create name n_proc)
   # --------------------------------------------------------------------------------
   file(GLOB_RECURSE __pytestini_files
        CONFIGURE_DEPENDS
-       "${CMAKE_CURRENT_SOURCE_DIR}/*pytest.ini")
-  # --------------------------------------------------------------------------------
+       "${PROJECT_SOURCE_DIR}/${tested_dir}/*pytest.ini")
 
-  # --------------------------------------------------------------------------------
   foreach(__pytestini_file ${__pytestini_files})
-
-    # message("__pytestini_file::" ${__pytestini_file})
-
     get_filename_component( output_pytestini_file_name ${__pytestini_file} NAME_WE   )
     get_filename_component( output_pytestini_dir       ${__pytestini_file} DIRECTORY )
     file(RELATIVE_PATH output_pytestini_dir_rel ${CMAKE_CURRENT_SOURCE_DIR} ${output_pytestini_dir})
 
     set(output_pytestini_file ${CMAKE_CURRENT_BINARY_DIR}/${output_pytestini_dir_rel}/${output_pytestini_file_name}.ini)
-    # message("output_pytestini_file" ${output_pytestini_file})
     add_custom_command(OUTPUT  "${output_pytestini_file}"
                        DEPENDS "${__pytestini_file}"
                        COMMAND "${CMAKE_COMMAND}" -E copy_if_different
@@ -197,34 +171,28 @@ function(mpi_pytest_directory_python_create name n_proc)
                        "${output_pytestini_file}"
                        COMMENT "Copying ${output_pytestini_dir_rel}/${output_pytestini_file_name}.ini to the binary directory")
     set(rel_output_pytestini_file ${output_pytestini_dir_rel}/${output_pytestini_file_name}.ini)
-    # message("rel_output_pytestini_file::" ${rel_output_pytestini_file})
     string(REPLACE "/" "_" target_name "${rel_output_pytestini_file}")
-    # message("target_name::" ${target_name})
     add_custom_target(t_${target_name} ALL DEPENDS "${output_pytestini_file}")
   endforeach()
   # --------------------------------------------------------------------------------
 
-  # WORKING_DIRECTORY
-  # add_test (${name} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${n_proc}
-  #           ${MPIEXEC_PREFLAGS}
-  #           ${Python_EXECUTABLE} -m pytest -Wignore -r a -v -s ${name}
-  #           ${MPIEXEC_POSTFLAGS})
+
+  # -r : display a short test summary info (a == all)
+  # -s : no capture (print statements output to stdout)
+  # -v : verbose
+  # -Wignore : ignore warnings
   add_test (${name} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${n_proc}
             ${MPIEXEC_PREFLAGS}
-            ${Python_EXECUTABLE} -m pytest -Wignore -r a -v -s .
+            ${Python_EXECUTABLE} -m pytest ${PROJECT_BINARY_DIR}/${tested_dir} -Wignore -r a -v -s
             ${MPIEXEC_POSTFLAGS})
 
   # > Set properties for the current test
-  # pytest test/maia_python_unit_tests.py --html=test.html --self-contained-html
-  # message(${CMAKE_BINARY_DIR}/maia:$ENV{PYTHONPATH})
   set_tests_properties(${name} PROPERTIES LABELS "${ARGS_LABELS}")
   set_tests_properties("${name}" PROPERTIES
-                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/:${CMAKE_SOURCE_DIR}/external/pytest-mpi-check:$ENV{PYTHONPATH}
+                       ENVIRONMENT PYTHONPATH=${PROJECT_BINARY_DIR}:${PROJECT_BINARY_DIR}/${tested_dir}:${CMAKE_BINARY_DIR}/external/pytest-mpi-check:$ENV{PYTHONPATH}
                        DEPENDS t_${name})
-  # > Append other
   set_property(TEST "${name}" APPEND PROPERTY
-                       ENVIRONMENT LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/maia:$ENV{LD_LIBRARY_PATH})
-  # > Append other
+                       ENVIRONMENT LD_LIBRARY_PATH=${PROJECT_BINARY_DIR}:$ENV{LD_LIBRARY_PATH})
   set_property(TEST "${name}" APPEND PROPERTY
                        ENVIRONMENT PYTEST_PLUGINS=pytest_mpi_check)
   set_tests_properties(${name} PROPERTIES PROCESSORS n_proc)
@@ -233,35 +201,33 @@ function(mpi_pytest_directory_python_create name n_proc)
   endif()
   # > Not working if not launch with srun ...
   # set_tests_properties(${name} PROPERTIES PROCESSOR_AFFINITY true)
-
-
 endfunction()
 # --------------------------------------------------------------------------------
 
 
 
-# --------------------------------------------------------------------------------
-function(seq_test_python_create name)
-  # configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${name}.py ${CMAKE_CURRENT_BINARY_DIR}/${name}.py COPYONLY)
-  set(output_python_file ${CMAKE_CURRENT_BINARY_DIR}/${name}.py)
-  add_custom_command(OUTPUT  "${output_python_file}"
-                     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${name}.py"
-                     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                     "${CMAKE_CURRENT_SOURCE_DIR}/${name}.py"
-                     "${output_python_file}"
-                     COMMENT "Copying ${name} to the binary directory")
-
-  add_custom_target(tpyseq_${name} ALL DEPENDS "${output_python_file}")
-
-
-  add_test (${name}
-             ${Python_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/${name}.py)
-  set_tests_properties("${name}" PROPERTIES
-                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/mod:$ENV{PYTHONPATH}
-                       DEPENDS tpyseq_${name})
-
-endfunction()
-# --------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------
+#function(seq_test_python_create name)
+#  # configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${name}.py ${CMAKE_CURRENT_BINARY_DIR}/${name}.py COPYONLY)
+#  set(output_python_file ${CMAKE_CURRENT_BINARY_DIR}/${name}.py)
+#  add_custom_command(OUTPUT  "${output_python_file}"
+#                     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${name}.py"
+#                     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+#                     "${CMAKE_CURRENT_SOURCE_DIR}/${name}.py"
+#                     "${output_python_file}"
+#                     COMMENT "Copying ${name} to the binary directory")
+#
+#  add_custom_target(tpyseq_${name} ALL DEPENDS "${output_python_file}")
+#
+#
+#  add_test (${name}
+#             ${Python_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/${name}.py)
+#  set_tests_properties("${name}" PROPERTIES
+#                       ENVIRONMENT PYTHONPATH=${CMAKE_BINARY_DIR}/mod:$ENV{PYTHONPATH}
+#                       DEPENDS tpyseq_${name})
+#
+#endfunction()
+## --------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------
 function(mpi_test_create target_file name n_proc )

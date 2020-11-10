@@ -124,6 +124,7 @@ mixpython_cython_add_module(maia)
 
 ## Compiled languages
 set(src_dir ${PROJECT_SOURCE_DIR}/${PROJECT_NAME})
+set(test_dir ${PROJECT_SOURCE_DIR}/test)
 set(include_dir ${PROJECT_SOURCE_DIR})
 
 file(GLOB_RECURSE all_src_files
