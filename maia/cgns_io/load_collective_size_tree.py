@@ -2,6 +2,7 @@ from   mpi4py             import MPI
 import Converter.PyTree   as     C
 import Converter.Internal as     I
 
+from .correct_tree import correct_point_range
 
 def add_sizes_to_bcdataset_tree(bc, bc_path, size_data):
   """
@@ -83,6 +84,7 @@ def load_collective_size_tree(filename, comm):
                                      dataShape=size_data,
                                      format='bin_hdf')
     add_sizes_to_tree(size_tree, size_data)
+    correct_point_range(size_tree, size_data)
   else:
     size_tree = None
 
