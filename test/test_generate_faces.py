@@ -35,7 +35,7 @@ import maia.distribution                                      as MDI
 # ------------------------------------------------------------------------
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/Cube_ANSAd/Cube_hyb_sep.hdf'
-inputfile    = '/home/castillo/ELSA_HYBRIDE/CUBES_POUR_BRUNO/cube1a.cgns'
+# inputfile    = '/home/castillo/ELSA_HYBRIDE/CUBES_POUR_BRUNO/cube1a.cgns'
 
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
@@ -45,7 +45,7 @@ dist_tree = LST.load_collective_size_tree(inputfile, comm)
 
 MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
 
-I.printTree(dist_tree)
+# I.printTree(dist_tree)
 
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
@@ -59,7 +59,7 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
-# I.printTree(dist_tree)
+I.printTree(dist_tree)
 # > To copy paste in new algorithm
 # dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
 # > dZoneToWeightedParts --> Proportion de la zone initiale qu'on souhate après partitionnement
