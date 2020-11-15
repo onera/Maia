@@ -49,6 +49,13 @@ inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS.hdf'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_NGON2_FS_And_ZSR.hdf'
 
+# import Pypdm.Pypdm        as PDM
+# from Pypdm import Pypdm   as PDM
+# print(dir(PDM))
+# t1 = PDM.T1(10)
+# print(type(t1))
+# PDM.une_function(t1)
+
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
 dist_tree = LST.load_collective_size_tree(inputfile, comm)
