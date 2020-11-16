@@ -51,7 +51,13 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
   for i_zone, zone in enumerate(zones):
     zoneg_id = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
     dmesh    = dmesh_list[i_zone]
-    multi_part.multipart_register_block(zoneg_id, dmesh._id)
+    # print(type(dmesh))
+    # print(dir(PDM))
+    # t1 = PDM.T1(10)
+    # print(type(t1))
+    # PDM.une_function(t1)
+    # multi_part.multipart_gen(zoneg_id, t1)
+    multi_part.multipart_register_block(zoneg_id, dmesh)
     # multi_part.multipart_register_block(i_zone, dmesh._id)
     # print "Set dmesh #{0} using zoneg_id {1}".format(dmesh._id, zoneg_id+1)
 
