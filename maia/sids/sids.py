@@ -17,6 +17,11 @@ def VertexBoundarySize(zone):
   z_sizes = I.getValue(zone)
   return list_or_only_elt(z_sizes[:,2])
 
+def ZoneType(zone):
+  assert I.getType(zone) == "Zone_t"
+  zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
+  return zone_type_n[1].tostring()
+
 
 def zone_n_vtx( zone ):
   return np.prod(VertexSize(zone))

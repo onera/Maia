@@ -19,13 +19,11 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
 
   dmesh_list = list()
   zones = I.getZones(dist_tree)
-  for zone_tree in zones:
-    zone_type_n = I.getNodeFromType1(zone_tree, 'ZoneType_t')
-    zone_type   = zone_type_n[1].tostring()
-    if(zone_type == b'Structured'):
+  for zone in zones:
+    if(SIDS.ZoneType(zone) == b'Structured'):
       raise NotImplementedError
     else:
-      dmesh_list.append(cgns_dist_zone_to_pdm_dmesh(zone_tree))
+      dmesh_list.append(cgns_dist_zone_to_pdm_dmesh(zone))
 
   # join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
 

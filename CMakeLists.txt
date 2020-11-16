@@ -72,8 +72,8 @@ if (MAIA_USE_PDM_INSTALL)
     message("ParaDiGM not found please export pdm_DIR to find it")
   endif()
 else()
-  check_sub_repo_exists(pdm)
-  target_add_dependency(${PROJECT_NAME} pdm)
+  check_sub_repo_exists(paradigm)
+  target_add_dependency(${PROJECT_NAME} paradigm)
 endif()
 
 ## Dependencies built from source ##

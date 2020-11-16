@@ -1,6 +1,6 @@
 import Converter.PyTree   as C
 import Converter.Internal as I
-import numpy              as NPY
+import numpy              as np
 
 import maia.sids.sids as SIDS
 from maia.utils import zone_elements_utils as EZU
@@ -81,22 +81,29 @@ def generate_ngon_from_std_elements_zone(zone, comm):
   ermax   = EZU.get_next_elements_range(zone)
 
   ngon_n  = I.createUniqueChild(zone, 'NGonElements', 'Elements_t', value=[22,0])
-  ngon_elmt_range = NPY.empty(2, dtype='int64', order='F')
+  ngon_elmt_range = np.empty(2, dtype='int64', order='F')
   ngon_elmt_range[0] = ermax
   ngon_elmt_range[1] = ermax+n_face
 
+  pe = face_cell_dict["np_dface_cell"].reshape((n_face,2)) # TODO AFAIK, this is incoherent with the SIDS, but seems to be used consistently here...
+  #pe = face_cell_dict["np_dface_cell"].reshape((2,n_face))
+  #pe = np.transpose(pe)
   I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', ngon_elmt_range)
   I.newDataArray('ElementStartOffset' , face_vtx_idx_dict["np_dface_vtx_idx"], parent=ngon_n)
   I.newDataArray('ElementConnectivity', face_vtx_idx_dict["np_dface_vtx"]   , parent=ngon_n)
-  I.newDataArray('ParentElements'     , face_cell_dict["np_dface_cell"]     , parent=ngon_n)
+  I.newDataArray('ParentElements'     , pe                                  , parent=ngon_n)
   # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-  ldistrib_face = NPY.empty(3, dtype=distrib_face.dtype)
+  ldistrib_face = np.empty(3, dtype=distrib_face.dtype)
   ldistrib_face[0] = distrib_face[comm.rank]
   ldistrib_face[1] = distrib_face[comm.rank+1]
   ldistrib_face[2] = n_face
   create_distribution_node_from_distrib("Distribution", ngon_n, ldistrib_face)
 
+  distrib_face_vtx = np.empty(2, dtype=distrib_face.dtype)
+  distrib_face_vtx[0] = face_vtx_idx_dict["np_dface_vtx_idx"][0]
+  distrib_face_vtx[1] = face_vtx_idx_dict["np_dface_vtx_idx"][-1]
+  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n, distrib_face_vtx)
 
 # -----------------------------------------------------------------
 def generate_ngon_from_std_elements(dist_tree, comm):
