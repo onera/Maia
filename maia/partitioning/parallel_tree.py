@@ -69,8 +69,8 @@ def load_partitioned_tree(input_file,comm):
   #   print(key, val)
   # IOT.load_tree_from_filter(input_file, dist_tree, comm, hdf_filter_wo_fs)
   IOT.load_tree_from_filter(input_file, dist_tree, comm, hdf_filter)
-  generate_ngon_from_std_elements(dist_tree,comm)
-  C.convertPyTree2File(dist_tree, "dist_tree_ngon.cgns")
+  #generate_ngon_from_std_elements(dist_tree,comm)
+  #C.convertPyTree2File(dist_tree, "dist_tree_ngon.cgns")
 
   # FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
@@ -96,16 +96,13 @@ def load_partitioned_tree(input_file,comm):
     dloading_procs[zone[0]] = list(range(comm.Get_size()))
   # print(dloading_procs)
 
-  part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
-                               comm,
-                               split_method=2,
-                               part_weight_method=1,
-                               reorder_methods=["NONE", "NONE"])
+  part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
 
-  for zone in I.getZones(part_tree):
-    fs_n = I.newFlowSolution(name="FlowSolution#EndOfRun", gridLocation='Vertex', parent=zone)
-    vtx_gi_n = I.getNodeFromName(zone, "np_vtx_ghost_information")
-    I.newDataArray("GhostInfo", vtx_gi_n[1], parent=fs_n)
+  ## TODO
+  #for zone in I.getZones(part_tree):
+  #  fs_n = I.newFlowSolution(name="FlowSolution#EndOfRun", gridLocation='Vertex', parent=zone)
+  #  vtx_gi_n = I.getNodeFromName(zone, "np_vtx_ghost_information")
+  #  I.newDataArray("GhostInfo", vtx_gi_n[1], parent=fs_n)
 
   return parallel_tree(dist_tree,part_tree)
 

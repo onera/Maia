@@ -1,6 +1,7 @@
 import Converter.Internal as I
 import numpy as np
 from maia.utils.py_utils import list_or_only_elt
+from maia.sids.elements_utils import *
 
 def VertexSize(zone):
   assert I.getType(zone) == "Zone_t"
