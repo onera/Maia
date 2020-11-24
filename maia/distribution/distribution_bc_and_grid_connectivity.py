@@ -18,6 +18,11 @@ def compute_distribution_bc(bc, comm):
     pl_size = NPY.prod(pls_n[1])
     create_distribution_node(pl_size, comm, 'Distribution', bc)
 
+  if(pr_n):
+    prs_n   = I.getNodeFromName1(bc, 'PointRange#Size')
+    pr_size = NPY.prod(prs_n[1])
+    create_distribution_node(pr_size, comm, 'Distribution', bc)
+
   for bcds in I.getNodesFromType1(bc, 'BCDataSet_t'):
     compute_distribution_bc_dataset(bcds, comm)
 

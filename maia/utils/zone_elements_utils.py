@@ -8,7 +8,9 @@ from   Converter import cgnskeywords as CGK
 def get_npe_with_element_type_cgns(elmt_type):
   """
   """
-  if(  elmt_type ==  5):  # Tri3
+  if(  elmt_type ==  3):    # Bar2
+    npe   = 2
+  elif(  elmt_type ==  5):  # Tri3
     npe   = 3
   elif(elmt_type ==  7):  # Quad4
     npe   = 4
@@ -33,7 +35,9 @@ def get_npe_with_element_type_cgns(elmt_type):
 def get_paradigm_type_with_element_type_cgns(elmt_type):
   """
   """
-  if(  elmt_type ==  5):  # Tri3
+  if(  elmt_type ==  3):  # Bar2
+    PDM_Type = 1
+  elif(  elmt_type ==  5):  # Tri3
     PDM_Type = 2
   elif(elmt_type ==  7):  # Quad4
     PDM_Type = 3
@@ -55,6 +59,52 @@ def get_paradigm_type_with_element_type_cgns(elmt_type):
   return PDM_Type
 
 # --------------------------------------------------------------------------
+# def get_ordered_elements_std(zone_tree):
+#   """
+#   Return in increasing order the elements
+#   """
+#   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#   elmts_ini = I.getNodesFromType1(zone_tree, 'Elements_t')
+#   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+#   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#   elmts_list_3d = list()
+#   elmts_list_2d = list()
+#   elmts_list_1d = list()
+#   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+#   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#   next_to_find = 1
+#   while len(elmts_list_3d)+len(elmts_list_2d)+len(elmts_list_1d) != len(elmts_ini):
+#     # print("next_to_find", next_to_find)
+#     # ------------------------------------------------------------
+#     for idx_elmt, elmt in enumerate(elmts_ini):
+#       # print("next_to_find", next_to_find)
+#       # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#       if(I.getNodeFromName1(elmt, 'ElementRange')[1][0] == next_to_find):
+
+#         # > Verbose
+#         # print("----", elmt[0], elmt[1], next_to_find)
+
+#         # > Offset Current Element
+#         next_to_find += ( I.getNodeFromName1(elmt, 'ElementRange')[1][1] - I.getNodeFromName1(elmt, 'ElementRange')[1][0] + 1 )
+
+#         # > Verbose
+#         # print "++++", next_to_find
+#         if(elmt[1][0] in CGK.ElementType1D):
+#           elmts_list_1d.append(elmt)
+#         elif(elmt[1][0] in CGK.ElementType2D):
+#           elmts_list_2d.append(elmt)
+#         else:
+#           assert(elmt[1][0] in CGK.ElementType3D)
+#           elmts_list_3d.append(elmt)
+#       # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#     # ------------------------------------------------------------
+#   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+#   return elmts_list_3d, elmts_list_2d, elmts_list_1d
+
+# --------------------------------------------------------------------------
 def get_ordered_elements_std(zone_tree):
   """
   Return in increasing order the elements
@@ -64,14 +114,12 @@ def get_ordered_elements_std(zone_tree):
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  elmts_list_3d = list()
-  elmts_list_2d = list()
-  elmts_list_1d = list()
+  elmts_list = list()
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   next_to_find = 1
-  while len(elmts_list_3d)+len(elmts_list_2d)+len(elmts_list_1d) != len(elmts_ini):
+  while len(elmts_list) != len(elmts_ini):
     # print("next_to_find", next_to_find)
     # ------------------------------------------------------------
     for idx_elmt, elmt in enumerate(elmts_ini):
@@ -87,18 +135,12 @@ def get_ordered_elements_std(zone_tree):
 
         # > Verbose
         # print "++++", next_to_find
-        if(elmt[1][0] in CGK.ElementType1D):
-          elmts_list_1d.append(elmt)
-        elif(elmt[1][0] in CGK.ElementType2D):
-          elmts_list_2d.append(elmt)
-        else:
-          assert(elmt[1][0] in CGK.ElementType3D)
-          elmts_list_3d.append(elmt)
+        elmts_list.append(elmt)
       # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     # ------------------------------------------------------------
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  return elmts_list_3d, elmts_list_2d, elmts_list_1d
+  return elmts_list
 
 # --------------------------------------------------------------------------
 def collect_pdm_type_and_nelemts(elmts):

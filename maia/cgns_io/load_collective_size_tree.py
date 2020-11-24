@@ -32,6 +32,13 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
         I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
       add_sizes_to_bcdataset_tree(bc, bc_path, size_data)
 
+      pr_n = I.getNodeFromName1(bc, 'PointRange')
+      if pr_n:
+        if(len(pr_n[1].shape) == 2): # Unstructured
+          pr_path = bc_path+"/PointRange"
+          pr_len  = pr_n[1][0,1] - pr_n[1][0,0] + 1
+          I.newIndexArray('PointRange#Size', value=pr_len, parent=bc)
+
   for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
     zone_gc_path = zone_path+"/"+zone_gc[0]
     gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
@@ -89,6 +96,7 @@ def load_collective_size_tree(filename, comm):
     size_tree = None
 
   size_tree = comm.bcast(size_tree, root=0)
+  I.printTree(size_tree)
 
   return size_tree
 
