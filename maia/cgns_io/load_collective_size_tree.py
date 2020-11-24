@@ -96,7 +96,7 @@ def load_collective_size_tree(filename, comm):
     size_tree = None
 
   size_tree = comm.bcast(size_tree, root=0)
-  I.printTree(size_tree)
+  # I.printTree(size_tree)
 
   return size_tree
 

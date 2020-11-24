@@ -25,7 +25,7 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
     if(zone_type == b'Structured'):
       raise NotImplementedError
     else:
-      dmesh_list.append(cgns_dist_zone_to_pdm_dmesh(zone_tree))
+      dmesh_list.append(cgns_dist_zone_to_pdm_dmesh(zone_tree, comm))
 
   # join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
 

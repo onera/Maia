@@ -24,28 +24,58 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
     dface_cell_idx, dface_cell = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_EDGE_FACE)
     dface_vtx_idx, dface_vtx   = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX )
     dcell_face_idx, dcell_face = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE)
-    face_distrib               = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_EDGE)
-    cell_distrib               = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_FACE)
+    distrib_face               = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_EDGE)
+    distrib_cell               = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_FACE)
   else :
     dface_cell_idx, dface_cell = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_CELL)
     dface_vtx_idx, dface_vtx   = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX )
     dcell_face_idx, dcell_face = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
-    face_distrib              = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_FACE)
-    cell_distrib              = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_CELL)
+    distrib_face              = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_FACE)
+    distrib_cell              = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_CELL)
 
-  n_face  = face_distrib[n_rank]
-  if(face_distrib[0] == 1):
-    n_face -=1
-  dn_face = face_distrib[i_rank+1] - face_distrib[i_rank]
+  # print("dface_cell_idx::", dface_cell_idx)
+  # print("dface_cell::"    , dface_cell)
 
-  n_cell  = cell_distrib[n_rank]
-  if(cell_distrib[0] == 1):
-    n_cell -=1
+  # print("dface_vtx_idx::", dface_vtx_idx)
+  # print("dface_vtx::"    , dface_vtx)
 
-  # print("face_distrib::", face_distrib)
-  # print("cell_distrib::", cell_distrib)
+  # print("dcell_face_idx::", dcell_face_idx)
+  # print("dcell_face::"    , dcell_face)
+
+  # print("distrib_face::", distrib_face)
+  # print("distrib_cell::", distrib_cell)
   # print("n_face::", n_face)
   # print("n_cell::", n_cell)
+
+  n_face  = distrib_face[n_rank]
+  if(distrib_face[0] == 1):
+    n_face -=1
+  dn_face = distrib_face[i_rank+1] - distrib_face[i_rank]
+
+  n_cell  = distrib_cell[n_rank]
+  if(distrib_cell[0] == 1):
+    n_cell -=1
+  dn_cell = distrib_cell[i_rank+1] - distrib_cell[i_rank]
+
+  ldistrib_face = NPY.empty(3, dtype=distrib_face.dtype)
+  ldistrib_face[0] = distrib_face[comm.rank]
+  ldistrib_face[1] = distrib_face[comm.rank+1]
+  ldistrib_face[2] = n_face
+
+  ldistrib_cell = NPY.empty(3, dtype=distrib_cell.dtype)
+  ldistrib_cell[0] = distrib_cell[comm.rank]
+  ldistrib_cell[1] = distrib_cell[comm.rank+1]
+  ldistrib_cell[2] = n_cell
+
+  distrib          = NPY.empty(n_rank+1, dtype=NPY.int32)
+  distrib[0]       = 0
+  distrib[1:]      = comm.allgather( dface_vtx_idx[dn_face] )
+  distrib_face_vtx = NPY.cumsum(distrib)
+
+  distrib          = NPY.empty(n_rank+1, dtype=NPY.int32)
+  distrib[0]       = 0
+  distrib[1:]      = comm.allgather( dcell_face_idx[dn_cell] )
+  distrib_cell_face = NPY.cumsum(distrib)
 
   ermax   = EZU.get_next_elements_range(zone)
 
@@ -57,10 +87,13 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
   pe            = NPY.empty((dface_cell.shape[0]//2, 2), dtype=dface_cell.dtype, order='F')
   CNT.pdm_face_cell_to_pe_cgns(dface_cell, pe)
 
+  # > Attention overflow I8
+  eso_ngon = distrib_face_vtx[i_rank] + dface_vtx_idx
+
   I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', ngon_elmt_range)
-  I.newDataArray('ElementStartOffset' , dface_vtx_idx, parent=ngon_n)
-  I.newDataArray('ElementConnectivity', dface_vtx    , parent=ngon_n)
-  I.newDataArray('ParentElements'     , pe           , parent=ngon_n)
+  I.newDataArray('ElementStartOffset' , eso_ngon , parent=ngon_n)
+  I.newDataArray('ElementConnectivity', dface_vtx, parent=ngon_n)
+  I.newDataArray('ParentElements'     , pe       , parent=ngon_n)
 
   ermax   = EZU.get_next_elements_range(zone)
   nfac_n  = I.createUniqueChild(zone, 'NFacElements', 'Elements_t', value=[23,0])
@@ -71,21 +104,19 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
   I.newDataArray('ElementStartOffset' , dcell_face_idx, parent=nfac_n)
   I.newDataArray('ElementConnectivity', NPY.abs(dcell_face), parent=nfac_n)
 
+  create_distribution_node_from_distrib("Distribution", ngon_n, ldistrib_face)
+  np_distrib_face_vtx = NPY.array([distrib_face_vtx[i_rank], distrib_face_vtx[i_rank+1], distrib_face_vtx[n_rank]], dtype=pe.dtype)
+  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n   , np_distrib_face_vtx)
 
-  # print("dface_cell_idx::", dface_cell_idx)
-  # print("dface_cell::"    , dface_cell)
-
-  # print("dface_vtx_idx::", dface_vtx_idx)
-  # print("dface_vtx::"    , dface_vtx)
-
-  # print("dcell_face_idx::", dcell_face_idx)
-  # print("dcell_face::"    , dcell_face)
-
+  create_distribution_node_from_distrib("Distribution", nfac_n, ldistrib_cell)
+  np_distrib_cell_face = NPY.array([distrib_cell_face[i_rank], distrib_cell_face[i_rank+1], distrib_cell_face[n_rank]], dtype=pe.dtype)
+  create_distribution_node_from_distrib("DistributionElementConnectivity", nfac_n   , np_distrib_cell_face)
 
 # -----------------------------------------------------------------
 def generate_ngon_from_std_elements(dist_tree, comm):
   """
   """
+  print("generate_ngon_from_std_elements")
   bases = I.getNodesFromType(dist_tree, 'CGNSBase_t')
 
   for base in bases:
@@ -113,3 +144,5 @@ def generate_ngon_from_std_elements(dist_tree, comm):
       pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim)
 
   # > Generate correctly zone_grid_connectivity
+
+  print("generate_ngon_from_std_elements end")
