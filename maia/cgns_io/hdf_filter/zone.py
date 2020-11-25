@@ -28,7 +28,7 @@ def create_grid_coord_filter(zone, zone_path, hdf_filter):
       data_array_path = grid_coord_path+"/"+data_array[0]
       hdf_filter[data_array_path] = DSMMRYVtx+DSFILEVtx+DSGLOBVtx+DSFORMVtx
 
-def create_zone_filter(zone, zone_path, hdf_filter):
+def create_zone_filter(zone, zone_path, hdf_filter, mode):
   """
   """
   n_vtx  = SIDS.zone_n_vtx (zone)
@@ -46,7 +46,7 @@ def create_zone_filter(zone, zone_path, hdf_filter):
   create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter)
   create_grid_coord_filter(zone, zone_path, hdf_filter)
 
-  HEF.create_zone_elements_filter(zone, zone_path, hdf_filter)
+  HEF.create_zone_elements_filter(zone, zone_path, hdf_filter, mode)
 
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
     zone_sub_region_path = zone_path+"/"+zone_subregion[0]

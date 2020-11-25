@@ -63,9 +63,10 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
-HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
-IOT.save_tree_from_filter("dist_tree.hdf", dist_tree, comm, hdf_filter)
 # I.printTree(dist_tree)
+# C.convertPyTree2File(dist_tree, "dist_tree_{0}.hdf".format(rank))
+HTF.create_tree_hdf_filter(dist_tree, hdf_filter, mode='write')
+IOT.save_tree_from_filter("dist_tree.hdf", dist_tree, comm, hdf_filter)
 
 dzone_to_weighted_parts = {}
 for zone in I.getZones(dist_tree):

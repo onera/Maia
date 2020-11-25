@@ -58,7 +58,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
 
 
 
-def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
+def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter, mode):
   """
   """
   distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
@@ -81,7 +81,10 @@ def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
     # Distribution for NGon -> ElementStartOffset is the same than DistrbutionFace, except
     # that the last proc have one more element
     n_face      = distrib_elmt[2]
-    dn_face_idx = dn_elmt + 1 # + int(distrib_elmt[1] == n_face)
+    if(mode == 'read'):
+      dn_face_idx = dn_elmt + 1 # + int(distrib_elmt[1] == n_face)
+    elif(mode == 'write'):
+      dn_face_idx = dn_elmt + int((distrib_elmt[1] == n_face) and (distrib_elmt[0] != distrib_elmt[1]))
     DSMMRYESO = [[0              ], [1], [dn_face_idx], [1]]
     DSFILEESO = [[distrib_elmt[0]], [1], [dn_face_idx], [1]]
     DSGLOBESO = [[n_face+1]]
@@ -97,7 +100,7 @@ def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
     ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
     hdf_filter[ec_path] = partial(load_element_connectivity_from_eso, elmt, zone_path)
 
-def create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter):
+def create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter, mode):
   """
   """
   distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
@@ -109,11 +112,15 @@ def create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter):
   if(eso):
     # Distribution for NGon -> ElementStartOffset is the same than DistrbutionFace, except
     # that the last proc have one more element
-    n_face      = distrib_elmt[2]
-    dn_face_idx = dn_elmt + int(distrib_elmt[1] == n_face)
-    DSMMRYESO = [[0              ], [1], [dn_face_idx], [1]]
-    DSFILEESO = [[distrib_elmt[0]], [1], [dn_face_idx], [1]]
-    DSGLOBESO = [[n_face+1]]
+    n_cell      = distrib_elmt[2]
+    if(mode == 'read'):
+      dn_cell_idx = dn_elmt + 1 # + int(distrib_elmt[1] == n_face)
+    elif(mode == 'write'):
+      dn_cell_idx = dn_elmt + int((distrib_elmt[1] == n_cell) and (distrib_elmt[0] != distrib_elmt[1]))
+      # dn_cell_idx = dn_elmt + int((distrib_elmt[1] == n_cell) and (distrib_elmt[0] == distrib_elmt[1]))
+    DSMMRYESO = [[0              ], [1], [dn_cell_idx], [1]]
+    DSFILEESO = [[distrib_elmt[0]], [1], [dn_cell_idx], [1]]
+    DSGLOBESO = [[n_cell+1]]
     DSFORMESO = [[0]]
 
     eso_path = zone_path+"/"+elmt[0]+"/ElementStartOffset"
@@ -154,15 +161,15 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[path] = DSMMRYElmt + DSFILEElmt + DSGLOBElmt + DSFORMElmt
 
-def create_zone_elements_filter(zone_tree, zone_path, hdf_filter):
+def create_zone_elements_filter(zone_tree, zone_path, hdf_filter, mode):
   """
   """
   zone_elmts = gen_elemts(zone_tree)
   for elmt in zone_elmts:
     if(elmt[1][0] == 22):
-      create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter)
+      create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter, mode)
     elif(elmt[1][0] == 23):
-      create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter)
+      create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter, mode)
     elif(elmt[1][0] == 20):
       create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter)
     else:

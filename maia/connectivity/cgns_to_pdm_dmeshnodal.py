@@ -29,8 +29,8 @@ def cgns_to_pdm(zone, comm):
 
   # > Si melangé au poly3d faux !
 
-  print("nb_elemts::", nb_elemts)
-  print("n_cell   ::", n_cell)
+  # print("nb_elemts::", nb_elemts)
+  # print("n_cell   ::", n_cell)
 
   distributed_mesh_nodal = PDM.DistributedMeshNodal(comm, n_vtx, n_cell)
 

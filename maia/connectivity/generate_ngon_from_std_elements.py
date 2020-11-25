@@ -49,11 +49,13 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
 
   n_face  = distrib_face[n_rank]
   if(distrib_face[0] == 1):
+    distrib_face = distrib_face-1
     n_face -=1
   dn_face = distrib_face[i_rank+1] - distrib_face[i_rank]
 
   n_cell  = distrib_cell[n_rank]
   if(distrib_cell[0] == 1):
+    distrib_cell = distrib_cell-1
     n_cell -=1
   dn_cell = distrib_cell[i_rank+1] - distrib_cell[i_rank]
 
@@ -100,9 +102,15 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
   nfac_elmt_range = NPY.empty(2, dtype='int64', order='F')
   nfac_elmt_range[0] = ermax+1
   nfac_elmt_range[1] = ermax+n_cell
+
+  eso_nfac = distrib_cell_face[i_rank] + dcell_face_idx
+
   I.createUniqueChild(nfac_n, 'ElementRange', 'IndexRange_t', nfac_elmt_range)
-  I.newDataArray('ElementStartOffset' , dcell_face_idx, parent=nfac_n)
-  I.newDataArray('ElementConnectivity', NPY.abs(dcell_face), parent=nfac_n)
+  I.newDataArray('ElementStartOffset' , eso_nfac, parent=nfac_n)
+  if(dcell_face is not None):
+    I.newDataArray('ElementConnectivity', NPY.abs(dcell_face), parent=nfac_n)
+  else:
+    I.newDataArray('ElementConnectivity', NPY.empty( (0), dtype=eso_ngon.dtype), parent=nfac_n)
 
   create_distribution_node_from_distrib("Distribution", ngon_n, ldistrib_face)
   np_distrib_face_vtx = NPY.array([distrib_face_vtx[i_rank], distrib_face_vtx[i_rank+1], distrib_face_vtx[n_rank]], dtype=pe.dtype)
