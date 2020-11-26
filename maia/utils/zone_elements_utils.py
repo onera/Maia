@@ -184,3 +184,17 @@ def get_next_elements_range(zone):
      ERElements = I.getNodeFromName1(e, 'ElementRange')[1]
      emax = max(emax, ERElements[1])
   return emax
+
+def get_range_of_ngon(zone):
+  """
+  """
+  elmts = I.getNodesFromType2(zone, 'Elements_t')
+  emax = - 1000000
+  found = False
+  for elmt in elmts:
+    if(elmt[1][0] == 22):
+      erange = I.getNodeFromName1(elmt, 'ElementRange')[1]
+      assert(found is False)
+      found = True
+      beg, end = erange[0], erange[1]
+  return beg, end
