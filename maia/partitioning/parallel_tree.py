@@ -38,9 +38,9 @@ class parallel_tree:
 
 
 
-def load_partitioned_tree(input_file,comm):
+def load_partitioned_tree(file_name,comm):
   # > Load only the list of zone and sizes ...
-  dist_tree = LST.load_collective_size_tree(input_file, comm)
+  dist_tree = LST.load_collective_size_tree(file_name, comm)
 
   cgr = CGT.add_cgns_registry_information(dist_tree, comm)
 
@@ -63,12 +63,12 @@ def load_partitioned_tree(input_file,comm):
   skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "Momentum*"],
                          ["Zone_t", "ZoneSubRegion_t", "Velocity*"]]
   # hdf_filter_wo_fs = IOT.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors, skip=True)
-  # # IOT.load_tree_from_filter(input_file, dist_tree, comm, hdf_filter)
+  # # IOT.load_tree_from_filter(file_name, dist_tree, comm, hdf_filter)
 
   # for key, val in hdf_filter_wo_fs.items():
   #   print(key, val)
-  # IOT.load_tree_from_filter(input_file, dist_tree, comm, hdf_filter_wo_fs)
-  IOT.load_tree_from_filter(input_file, dist_tree, comm, hdf_filter)
+  # IOT.load_tree_from_filter(file_name, dist_tree, comm, hdf_filter_wo_fs)
+  IOT.load_tree_from_filter(file_name, dist_tree, comm, hdf_filter)
   #generate_ngon_from_std_elements(dist_tree,comm)
   #C.convertPyTree2File(dist_tree, "dist_tree_ngon.cgns")
 

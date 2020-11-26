@@ -67,6 +67,10 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone,comm):
   dvtx_coord = np.hstack(list(zip(cx, cy, cz)))
   dmesh_nodal.set_coordinnates(dvtx_coord)
 
+  # keep dvtx_coord object alive for ParaDiGM
+  multi_part_node = I.createUniqueChild(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
+  I.newDataArray('dvtx_coord'     , dvtx_coord     , parent=multi_part_node)
+
   dmesh_nodal.set_sections(elt_connecs,elt_pdm_types,elt_lengths)
 
   return dmesh_nodal
