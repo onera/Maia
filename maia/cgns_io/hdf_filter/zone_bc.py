@@ -17,8 +17,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
         distrib_ia = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
         create_point_list_filter(bc, bc_path, "PointList", distrib_ia, hdf_filter)
 
-      if(pl_n):
-        distrib_ud = I.getNodeFromName1(bc        , ':CGNS#Distribution')
-        distrib_ia = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
-        create_point_list_filter(bc, bc_path, "PointRange", distrib_ia, hdf_filter)
-        # I.newIndexArray()
+      # if(pr_n):
+      #   distrib_ud = I.getNodeFromName1(bc        , ':CGNS#Distribution')
+      #   distrib_ia = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
+      #   create_point_list_filter(bc, bc_path, "PointRange", distrib_ia, hdf_filter)

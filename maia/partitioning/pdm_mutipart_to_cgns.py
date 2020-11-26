@@ -55,6 +55,7 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
       # print(zoneg_id, " -> ", data.keys())
       # TODO : Berenger
       if(data['np_vtx_ghost_information'] is not None):
+        print(comm.rank, " --> ", data['np_vtx_ghost_information'])
         vtx_kind_idx = compute_idx_from_color(data['np_vtx_ghost_information'])
         print(vtx_kind_idx)
 

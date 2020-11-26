@@ -117,7 +117,6 @@ def create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter, mode):
       dn_cell_idx = dn_elmt + 1 # + int(distrib_elmt[1] == n_face)
     elif(mode == 'write'):
       dn_cell_idx = dn_elmt + int((distrib_elmt[1] == n_cell) and (distrib_elmt[0] != distrib_elmt[1]))
-      # dn_cell_idx = dn_elmt + int((distrib_elmt[1] == n_cell) and (distrib_elmt[0] == distrib_elmt[1]))
     DSMMRYESO = [[0              ], [1], [dn_cell_idx], [1]]
     DSFILEESO = [[distrib_elmt[0]], [1], [dn_cell_idx], [1]]
     DSGLOBESO = [[n_cell+1]]

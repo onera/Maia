@@ -12,7 +12,8 @@ from maia.distribution.distribution_function import create_distribution_node_fro
 
 import Pypdm.Pypdm as PDM
 
-def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
+
+def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   """
   """
   print("pdm_dmesh_to_cgns")
@@ -120,6 +121,37 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
   np_distrib_cell_face = NPY.array([distrib_cell_face[i_rank], distrib_cell_face[i_rank+1], distrib_cell_face[n_rank]], dtype=pe.dtype)
   create_distribution_node_from_distrib("DistributionElementConnectivity", nfac_n   , np_distrib_cell_face)
 
+  return ngon_elmt_range[0]-1
+
+def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
+  """
+  """
+  next_ngon = pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim)
+
+  if(extract_dim == 2):
+    group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_EDGE)
+  else:
+    group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_FACE)
+
+  print(group_idx)
+  group = NPY.copy(pdm_group)
+  group += next_ngon
+
+  i_group = 0
+  for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
+    for i_bc, bc in enumerate(I.getNodesFromType1(zone_bc, 'BC_t')):
+      pr_n = I.getNodeFromName1(bc, 'PointRange')
+      pl_n = I.getNodeFromName1(bc, 'PointList')
+      if(pr_n):
+        I._rmNode(bc, pr_n)
+        I._rmNodesByName(bc, 'PointRange#Size')
+      if(pl_n):
+        I._rmNode(bc, pl_n)
+      I.newGridLocation('FaceCenter', parent=bc)
+      start, end = group_idx[i_bc], group_idx[i_bc+1]
+      dn_face_bnd = end - start
+      I.newPointList(value=group[start:end].reshape( (1,dn_face_bnd), order='F' ), parent=bc)
+
 # -----------------------------------------------------------------
 def generate_ngon_from_std_elements(dist_tree, comm):
   """
@@ -143,14 +175,21 @@ def generate_ngon_from_std_elements(dist_tree, comm):
       dmntodm.add_dmesh_nodal(i_zone, dmn)
 
     # PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE
-    dmntodm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_EDGE,
-                    PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_EDGE)
+    if(extract_dim == 2):
+      dmntodm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_EDGE,
+                      PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_EDGE)
+    else:
+      dmntodm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE,
+                      PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_FACE)
+
     dmntodm.transform_to_coherent_dmesh(extract_dim)
 
     for i_zone, zone in enumerate(zones_u):
       result_dmesh = dmntodm.get_dmesh(i_zone)
       pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim)
 
-  # > Generate correctly zone_grid_connectivity
+      # > Remove internal holder state
+      I._rmNodesByName(zone, ':CGNS#DMeshNodal#Bnd')
 
+  # > Generate correctly zone_grid_connectivity
   print("generate_ngon_from_std_elements end")
