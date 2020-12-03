@@ -17,9 +17,8 @@ def save_in_tree_part_info(zone, dims, data, comm):
     I.newDataArray(k, dims[k], parent=ppart_node)
 
   for k in data.keys():
-    if(data[k] is not None):
-      if k!="np_elt_vtx_idx" and k!="np_elt_vtx" : #type(data[k]) is not list
-        I.newDataArray(k, NPY.copy(data[k]), parent=ppart_node)
+    if k!="np_elt_vtx_idx" and k!="np_elt_vtx" : #type(data[k]) is not list
+      I.newDataArray(k, NPY.copy(data[k]), parent=ppart_node)
 
   I.newDataArray('iproc', i_rank, parent=ppart_node)
 
@@ -94,4 +93,4 @@ def pdm_part_to_cgns_zone(zone, dist_zone, dims, data, comm):
   #zgc_original_pdm_to_cgns(zone, dist_zone, comm)
 
   #zgc_created_pdm_to_cgns(zone, dist_zone, comm, 'face')
-  #zgc_created_pdm_to_cgns(zone, dist_zone, comm, 'vtx', 'ZoneGridConnectivity#Vertex')
+  zgc_created_pdm_to_cgns(zone, dist_zone, comm, 'vtx', 'ZoneGridConnectivity#Vertex')
