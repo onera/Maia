@@ -13,20 +13,13 @@ from .zone_grid_connectivity import create_zone_grid_connectivity_filter
 def create_grid_coord_filter(zone, zone_path, hdf_filter):
   """
   """
-  n_vtx        = SIDS.zone_n_vtx (zone)
+  data_shape = zone[1][:,0] #Usefull to distinguish U and S
   distrib_ud   = I.getNodeFromName1(zone , ':CGNS#Distribution')
   distrib_vtx  = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
 
-  dn_vtx    = distrib_vtx[1] - distrib_vtx[0]
-  DSMMRYVtx = [[0             ], [1], [dn_vtx], [1]]
-  DSFILEVtx = [[distrib_vtx[0]], [1], [dn_vtx], [1]]
-  DSGLOBVtx = [[n_vtx]]
-  DSFORMVtx = [[0]]
   for grid_c in I.getNodesFromType1(zone, 'GridCoordinates_t'):
     grid_coord_path = zone_path+"/"+grid_c[0]
-    for data_array in I.getNodesFromType1(grid_c, 'DataArray_t'):
-      data_array_path = grid_coord_path+"/"+data_array[0]
-      hdf_filter[data_array_path] = DSMMRYVtx+DSFILEVtx+DSGLOBVtx+DSFORMVtx
+    create_data_array_filter(grid_c, grid_coord_path, distrib_vtx, hdf_filter, data_shape)
 
 def create_zone_filter(zone, zone_path, hdf_filter, mode):
   """
@@ -37,10 +30,6 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
   distrib_ud   = I.getNodeFromName1(zone , ':CGNS#Distribution')
   distrib_vtx  = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
   distrib_cell = I.getNodeFromName1(distrib_ud, 'Cell'  )[1]
-
-  zone_type = I.getNodeFromType1(zone, "ZoneType_t")[1].tostring()
-  if(zone_type == b'Structured'):
-    raise RuntimeError("create_zone_filter not implemented for structured grid ")
 
   create_zone_bc_filter(zone, zone_path, hdf_filter)
   create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter)
