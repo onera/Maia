@@ -39,7 +39,7 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
 
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
     zone_sub_region_path = zone_path+"/"+zone_subregion[0]
-    create_zone_subregion_filter(zone_subregion, zone_sub_region_path, hdf_filter)
+    create_zone_subregion_filter(zone, zone_subregion, zone_sub_region_path, hdf_filter)
 
   for flow_solution in I.getNodesFromType1(zone, 'FlowSolution_t'):
     flow_solution_path = zone_path+"/"+flow_solution[0]
