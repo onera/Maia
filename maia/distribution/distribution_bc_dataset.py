@@ -21,6 +21,6 @@ def compute_distribution_bc_dataset(bcds, comm):
     create_distribution_node(pr_size, comm, 'Distribution', bc)
 
   if(pl_n):
-    pls_n   = I.getNodeFromName1(bc, 'PointList#Size')
+    pls_n   = I.getNodeFromName1(bcds, 'PointList#Size')
     pl_size = NPY.prod(pls_n[1])
     create_distribution_node(pl_size, comm, 'Distribution', bcds)

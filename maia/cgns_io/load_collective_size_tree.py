@@ -24,12 +24,6 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
       if I.getNodeFromName1(bc, 'PointList') is not None:
         pl_path = bc_path+"/PointList"
         I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
-      pr_n = I.getNodeFromName1(bc, 'PointRange')
-      if pr_n:
-        if(len(pr_n[1].shape) == 2): # Unstructured
-          pr_path = bc_path+"/PointRange"
-          pr_len  = pr_n[1][0,1] - pr_n[1][0,0] + 1
-          I.newIndexArray('PointRange#Size', value=pr_len, parent=bc)
       for bcds in I.getNodesFromType1(bc, 'BCDataSet_t'):
         if I.getNodeFromName1(bcds, 'PointList') is not None:
           pl_path = bc_path+"/"+bcds[0]+"/PointList"
