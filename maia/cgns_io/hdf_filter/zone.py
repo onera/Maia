@@ -48,8 +48,8 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
       raise RuntimeError("You need specify GridLocation in FlowSolution to load the cgns ")
     grid_location = grid_location_n[1].tostring()
     if(grid_location == b'CellCenter'):
-      create_data_array_filter(flow_solution, flow_solution_path, distrib_cell, hdf_filter)
+      create_data_array_filter(flow_solution, flow_solution_path, distrib_cell, hdf_filter, zone[1][:,1])
     elif(grid_location == b'Vertex'):
-      create_data_array_filter(flow_solution, flow_solution_path, distrib_vtx, hdf_filter)
+      create_data_array_filter(flow_solution, flow_solution_path, distrib_vtx, hdf_filter, zone[1][:,0])
     else:
       raise NotImplementedError(f"GridLocation {grid_location} not implemented")
