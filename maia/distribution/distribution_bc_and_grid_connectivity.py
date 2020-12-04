@@ -1,6 +1,7 @@
 import numpy              as NPY
 import Converter.Internal as I
 
+import maia.sids.sids as SIDS
 from .distribution_function    import create_distribution_node
 from .distribution_bc_dataset  import compute_distribution_bc_dataset
 
@@ -11,7 +12,8 @@ def compute_distribution_bc(bc, comm):
   pl_n = I.getNodeFromName1(bc, 'PointList')
 
   if(pr_n):
-    pass
+    pr_lenght = SIDS.point_range_lenght(pr_n)
+    create_distribution_node(pr_lenght, comm, 'Distribution', bc)
 
   if(pl_n):
     pls_n   = I.getNodeFromName1(bc, 'PointList#Size')
@@ -29,7 +31,8 @@ def compute_distribution_grid_connectivity(join, comm):
   pl_n = I.getNodeFromName1(join, 'PointList')
 
   if(pr_n):
-    raise NotImplementedError
+    pr_lenght = SIDS.point_range_lenght(pr_n)
+    create_distribution_node(pr_lenght, comm, 'Distribution', join)
 
   if(pl_n):
     pls_n   = I.getNodeFromName1(join, 'PointList#Size')

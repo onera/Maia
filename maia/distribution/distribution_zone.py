@@ -23,7 +23,7 @@ def compute_zone_distribution(zone, comm):
 
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
     for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
-      compute_distribution_bc(bc, comm) # Caution manage vtx/face - Caution BCDataSet can be Vertex
+      compute_distribution_bc(bc, comm)
 
   for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
     gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
