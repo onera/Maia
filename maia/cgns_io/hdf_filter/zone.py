@@ -19,7 +19,10 @@ def create_grid_coord_filter(zone, zone_path, hdf_filter):
 
   for grid_c in I.getNodesFromType1(zone, 'GridCoordinates_t'):
     grid_coord_path = zone_path+"/"+grid_c[0]
-    create_data_array_filter(grid_c, grid_coord_path, distrib_vtx, hdf_filter, data_shape)
+    data_space = create_data_array_filter(distrib_vtx, data_shape)
+    for data_array in I.getNodesFromType1(grid_c, 'DataArray_t'):
+      path = grid_coord_path+"/"+data_array[0]
+      hdf_filter[path] = data_space
 
 def create_zone_filter(zone, zone_path, hdf_filter, mode):
   """
@@ -48,8 +51,11 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
       raise RuntimeError("You need specify GridLocation in FlowSolution to load the cgns ")
     grid_location = grid_location_n[1].tostring()
     if(grid_location == b'CellCenter'):
-      create_data_array_filter(flow_solution, flow_solution_path, distrib_cell, hdf_filter, zone[1][:,1])
+      data_space = create_data_array_filter(distrib_cell, zone[1][:,1])
     elif(grid_location == b'Vertex'):
-      create_data_array_filter(flow_solution, flow_solution_path, distrib_vtx, hdf_filter, zone[1][:,0])
+      data_space = create_data_array_filter(distrib_vtx, zone[1][:,0])
     else:
       raise NotImplementedError(f"GridLocation {grid_location} not implemented")
+    for data_array in I.getNodesFromType1(flow_solution, 'DataArray_t'):
+      path = flow_solution_path+"/"+data_array[0]
+      hdf_filter[path] = data_space

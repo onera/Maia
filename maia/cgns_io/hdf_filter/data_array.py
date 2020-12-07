@@ -27,14 +27,22 @@ def create_data_array_filterU(distrib):
   DSFORMDA = [[0]]
   return DSMMRYDA + DSFILEDA + DSGLOBDA + DSFORMDA
 
-def create_data_array_filter(cgns_node, cgns_path, distrib, hdf_filter, data_shape=None):
+def create_point_list_filter(distrib):
+  dn_pl    = distrib[1] - distrib[0]
+  DSMMRYPL = [[0,0          ], [1, 1], [1, dn_pl], [1, 1]]
+  DSFILEPL = [[0, distrib[0]], [1, 1], [1, dn_pl], [1, 1]]
+  DSGLOBPL = [[1, distrib[2]]]
+  DSFORMPL = [[0]]
+  return DSMMRYPL + DSFILEPL + DSGLOBPL + DSFORMPL
+
+def create_data_array_filter(distrib, data_shape=None):
   """
   """
   if data_shape is None or len(data_shape) == 1: #Unstructured
     hdf_data_space = create_data_array_filterU(distrib)
+  elif len(data_shape) == 2 and data_shape[0] == 1:
+    hdf_data_space = create_point_list_filter(distrib)
   else: #Structured
     hdf_data_space = create_data_array_filterS(data_shape, distrib)
 
-  for data_array in I.getNodesFromType1(cgns_node, 'DataArray_t'):
-    path = cgns_path+"/"+data_array[0]
-    hdf_filter[path] = hdf_data_space
+  return hdf_data_space

@@ -2,7 +2,6 @@ import Converter.Internal as I
 
 import maia.sids.sids as SIDS
 from .data_array import create_data_array_filter
-from .point_list import create_point_list_filter
 
 def create_zone_subregion_filter(zone, zone_subregion, zone_sub_region_path, hdf_filter):
   """
@@ -33,12 +32,16 @@ def create_zone_subregion_filter(zone, zone_subregion, zone_sub_region_path, hdf
   distrib_data = I.getNodeFromName1(distrib_ud_n, 'Distribution')[1]
 
   pr_n = I.getNodeFromName1(matching_region, 'PointRange')
+  pl_n = I.getNodeFromName1(matching_region, 'PointList#Size')
   if pr_n is not None:
     data_shape = SIDS.point_range_size(pr_n)
-    create_data_array_filter(zone_subregion, zone_sub_region_path, distrib_data, hdf_filter, data_shape)
-  else:
-    if matching_region == zone_subregion:
-      create_point_list_filter(zone_subregion, zone_sub_region_path, "PointList", distrib_data, hdf_filter)
-    for data_array in I.getNodesFromType1(zone_subregion, 'DataArray_t'):
-      create_point_list_filter(zone_subregion, zone_sub_region_path, data_array[0], distrib_data, hdf_filter)
+  if pl_n is not None:
+    data_shape = pl_n[1]
+
+  data_space = create_data_array_filter(distrib_data, data_shape)
+  if matching_region == zone_subregion and pl_n is not None:
+    hdf_filter[zone_sub_region_path + "/PointList"] = data_space
+  for data_array in I.getNodesFromType1(zone_subregion, 'DataArray_t'):
+    path = zone_sub_region_path+"/"+data_array[0]
+    hdf_filter[path] = data_space
 
