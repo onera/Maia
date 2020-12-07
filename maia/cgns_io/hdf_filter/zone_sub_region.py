@@ -4,6 +4,17 @@ from .hdf_dataspace import create_data_array_filter
 
 def create_zone_subregion_filter(zone, zone_path, hdf_filter):
   """
+  Fill up the hdf filter for the ZoneSubRegion_t nodes present in
+  the zone.
+  The size of the dataspace are computed from
+  - the corresponding BC or GC if the subregion is related to one of them
+    (this information is given by a BCRegionName or GridConnectivityRegionName
+    node)
+  - the PointList / PointSize node of the subregion otherwise.
+  Filter is created for the following nodes:
+   - All arrays present in ZoneSubRegion;
+   - PointList array if the zone is unstructured and if the subregion
+     is not related to a BC/GC.
   """
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
     zone_sub_region_path = zone_path+"/"+zone_subregion[0]

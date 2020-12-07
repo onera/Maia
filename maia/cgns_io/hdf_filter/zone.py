@@ -11,6 +11,13 @@ from .                       import utils
 
 def create_zone_filter(zone, zone_path, hdf_filter, mode):
   """
+  Fill up the hdf filter for the following elements of the zone:
+  Coordinates, Elements (NGon / NFace, Standards), FlowSolution
+  (vertex & cells only), ZoneSubRegion, ZoneBC (including BCDataSet)
+  and ZoneGridConnectivity.
+
+  The bounds of the filter are determined by the :CGNS#Distribution
+  node and, for the structured zones, by the size of the blocks.
   """
   n_vtx  = SIDS.zone_n_vtx (zone)
   n_cell = SIDS.zone_n_cell(zone)

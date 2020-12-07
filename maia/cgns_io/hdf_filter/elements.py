@@ -131,6 +131,7 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
 
 def create_zone_elements_filter(zone_tree, zone_path, hdf_filter, mode):
   """
+  Prepare the hdf_filter for all the Element_t nodes found in the zone.
   """
   zone_elmts = gen_elemts(zone_tree)
   for elmt in zone_elmts:

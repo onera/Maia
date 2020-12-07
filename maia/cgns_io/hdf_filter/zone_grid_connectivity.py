@@ -4,6 +4,11 @@ from .hdf_dataspace import create_data_array_filter
 
 def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
   """
+  Fill up the hdf filter for the GC_t nodes present in the zone.
+  For unstructured GC (GridConnectivity_t), the filter is set up for
+  the PointList and PointListDonor arrays.
+  Structured GC (GridConnectivity1to1_t) are skipped since there is
+  no data to load for these nodes.
   """
   for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
     zone_gc_path = zone_path+"/"+zone_gc[0]

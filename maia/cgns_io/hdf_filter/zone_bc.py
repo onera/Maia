@@ -4,6 +4,17 @@ from .hdf_dataspace import create_data_array_filter
 
 def create_zone_bc_filter(zone, zone_path, hdf_filter):
   """
+  Fill up the hdf filter for the BC_t nodes present in
+  the zone.
+  Filter is created for the following nodes :
+   - PointList (if present = unstruct. only)
+   - All arrays founds in BCDataSets. Those arrays are supposed
+     to be shaped as the PointList array. If a BCDataSet contains
+     no PointList/PointRange node, the data is assumed to be consistent
+     with the PointList/PointRange of the BC. Otherwise, the PointList/
+     PointRange node of the BCDataSet is used to set the size of the BCData
+     arrays. In this case, the PointList (if any) of the BCDataSet is
+     written in the filter as well.
   """
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
     zone_bc_path = zone_path+"/"+zone_bc[0]
@@ -16,7 +27,6 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
       bc_shape = utils.pl_or_pr_size(bc)
       data_space = create_data_array_filter(distrib_bc, bc_shape)
       utils.apply_dataspace_to_pointlist(bc, bc_path, data_space, hdf_filter)
-
 
       for bcds in I.getNodesFromType1(bc, "BCDataSet_t"):
         bcds_path = bc_path + "/" + bcds[0]
