@@ -1,7 +1,7 @@
 from .range_to_slab          import compute_slabs
 import Converter.Internal as I
 
-def create_data_array_filterS(data_shape, distrib):
+def create_combined_dataspace(data_shape, distrib):
   slab_list  = compute_slabs(data_shape, distrib[0:2])
   dn_da    = distrib[1] - distrib[0]
   DSFILEDA = []
@@ -19,7 +19,7 @@ def create_data_array_filterS(data_shape, distrib):
   DSFORMDA = [[0]]
   return DSMMRYDA + DSFILEDA + DSGLOBDA + DSFORMDA
 
-def create_data_array_filterU(distrib):
+def create_flat_dataspace(distrib):
   dn_da    = distrib[1] - distrib[0]
   DSMMRYDA = [[0         ], [1], [dn_da], [1]]
   DSFILEDA = [[distrib[0]], [1], [dn_da], [1]]
@@ -27,7 +27,7 @@ def create_data_array_filterU(distrib):
   DSFORMDA = [[0]]
   return DSMMRYDA + DSFILEDA + DSGLOBDA + DSFORMDA
 
-def create_point_list_filter(distrib):
+def create_pointlist_dataspace(distrib):
   dn_pl    = distrib[1] - distrib[0]
   DSMMRYPL = [[0,0          ], [1, 1], [1, dn_pl], [1, 1]]
   DSFILEPL = [[0, distrib[0]], [1, 1], [1, dn_pl], [1, 1]]
@@ -39,10 +39,10 @@ def create_data_array_filter(distrib, data_shape=None):
   """
   """
   if data_shape is None or len(data_shape) == 1: #Unstructured
-    hdf_data_space = create_data_array_filterU(distrib)
+    hdf_data_space = create_flat_dataspace(distrib)
   elif len(data_shape) == 2 and data_shape[0] == 1:
-    hdf_data_space = create_point_list_filter(distrib)
+    hdf_data_space = create_pointlist_dataspace(distrib)
   else: #Structured
-    hdf_data_space = create_data_array_filterS(data_shape, distrib)
+    hdf_data_space = create_combined_dataspace(data_shape, distrib)
 
   return hdf_data_space

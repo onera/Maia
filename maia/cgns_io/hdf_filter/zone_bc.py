@@ -1,7 +1,6 @@
 import Converter.Internal as I
-import maia.sids.sids as SIDS
-# from .index_array         import create_index_array_filter
-from .data_array          import create_data_array_filter
+from .              import utils
+from .hdf_dataspace import create_data_array_filter
 
 def create_zone_bc_filter(zone, zone_path, hdf_filter):
   """
@@ -14,14 +13,10 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
       distrib_bc_n = I.getNodeFromName1(bc          , ':CGNS#Distribution')
       distrib_bc   = I.getNodeFromName1(distrib_bc_n, 'Distribution')[1]
 
-      if I.getNodeFromName1(bc, 'PointList') is not None:
-        bc_shape = I.getNodeFromName1(bc, 'PointList#Size')[1]
-        data_space = create_data_array_filter(distrib_bc, bc_shape)
-        hdf_filter[bc_path + "/PointList"] = data_space
+      bc_shape = utils.pl_or_pr_size(bc)
+      data_space = create_data_array_filter(distrib_bc, bc_shape)
+      utils.apply_dataspace_to_pointlist(bc, bc_path, data_space, hdf_filter)
 
-      pr_n = I.getNodeFromName1(bc, 'PointRange')
-      if pr_n is not None:
-        bc_shape = SIDS.point_range_size(pr_n)
 
       for bcds in I.getNodesFromType1(bc, "BCDataSet_t"):
         bcds_path = bc_path + "/" + bcds[0]
@@ -32,19 +27,11 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
           data_shape   = bc_shape
         else: #BCDS has its own distribution
           distrib_data = I.getNodeFromName1(distrib_bcds_n, 'Distribution')[1]
-          if I.getNodeFromName1(bcds, 'PointList') is not None:
-            data_shape = I.getNodeFromName1(bcds, 'PointList#Size')[1]
-          pr_n = I.getNodeFromName1(bcds, 'PointRange')
-          if pr_n is not None:
-            data_shape = SIDS.point_range_size(pr_n)
+          data_shape = utils.pl_or_pr_size(bcds)
 
         data_space = create_data_array_filter(distrib_data, data_shape)
-        if distrib_bcds_n is not None and pr_n is None:
-          hdf_filter[bcds_path + "/PointList"] = data_space
-
+        utils.apply_dataspace_to_pointlist(bcds, bcds_path, data_space, hdf_filter)
         for bcdata in I.getNodesFromType1(bcds, 'BCData_t'):
           bcdata_path = bcds_path + "/" + bcdata[0]
-          for data_array in I.getNodesFromType1(bcdata, 'DataArray_t'):
-            path = bcdata_path+"/"+data_array[0]
-            hdf_filter[path] = data_space
+          utils.apply_dataspace_to_arrays(bcdata, bcdata_path, data_space, hdf_filter)
 
