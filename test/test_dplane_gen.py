@@ -23,6 +23,7 @@ import sys
 
 from pypart                 import DistributionBase        as DBA
 
+from maia.cgns_registry      import tree             as CGT # Not bad :D
 from maia.generate           import dplane_generator as DPG
 from maia.cgns_io.hdf_filter import tree             as HTF
 from maia.cgns_io            import cgns_io_tree     as IOT
@@ -44,6 +45,7 @@ ny          = 8
 
 dist_tree = DPG.dplane_generate(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
 
+cgr = CGT.add_cgns_registry_information(dist_tree, comm)
 
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)

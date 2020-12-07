@@ -24,6 +24,7 @@ import sys
 from pypart                 import DistributionBase        as DBA
 
 from maia.cgns_io            import load_collective_size_tree       as LST
+from maia.cgns_registry      import tree                            as CGT # Not bad :D
 from maia.cgns_io            import cgns_io_tree                    as IOT
 from maia.cgns_io            import save_part_tree                  as SPT
 from maia.cgns_io.hdf_filter import elements                        as HEF
@@ -43,6 +44,8 @@ inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C11_TwoC
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
 dist_tree = LST.load_collective_size_tree(inputfile, comm)
+
+cgr = CGT.add_cgns_registry_information(dist_tree, comm)
 
 # > ParaDiGM : dcube_gen() --> A faire
 
