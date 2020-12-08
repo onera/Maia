@@ -126,7 +126,7 @@ def cgns_dist_tree_to_joinopp_array(dist_tree):
   # > Fill array
   for jn in jns:
     join_id     = I.getNodeFromName1(jn, 'Ordinal')[1]
-    join_opp_id = I.getNodeFromName1(jn, 'OrdinalJoinOpp')[1]
+    join_opp_id = I.getNodeFromName1(jn, 'OrdinalOpp')[1]
     join_to_opp[join_id - 1] = join_opp_id - 1
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 

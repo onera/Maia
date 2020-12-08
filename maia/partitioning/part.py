@@ -25,7 +25,7 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
     else:
       dmesh_list.append(cgns_dist_zone_to_pdm_dmesh(zone_tree, comm))
 
-  # join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
+  join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
 
   n_zone = len(dzone_to_weighted_parts)
   n_part_per_zone = NPY.empty(n_zone, dtype='int32')
@@ -53,8 +53,8 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
     dmesh    = dmesh_list[i_zone]
     multi_part.multipart_register_block(zoneg_id, dmesh)
 
-  # n_total_joins = join_to_opp_array.shape[0]
-  # multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)
+  n_total_joins = join_to_opp_array.shape[0]
+  multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)
 
   # Set reorering option -- -1 is a shortcut for all the zones
   renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_methods[0]

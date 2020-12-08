@@ -25,7 +25,7 @@ def zgc_cgns_to_pdm(dist_zone):
         pl = NPY.empty(0, dtype='int32', order='F')
       dface_join.append(pl)
       dface_join_idx[i_group+1] = dface_join_idx[i_group] + pl.shape[0]
-      # joins_ids[i_group] = I.getNodeFromName1(join, 'Ordinal')[1] - 1
+      joins_ids[i_group] = I.getNodeFromName1(join, 'Ordinal')[1] - 1
 
   if n_join > 0:
     dface_join = NPY.concatenate(dface_join)
