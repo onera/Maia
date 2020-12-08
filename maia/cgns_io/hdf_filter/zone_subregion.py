@@ -17,7 +17,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
      is not related to a BC/GC.
   """
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
-    zone_sub_region_path = zone_path+"/"+zone_subregion[0]
+    zone_subregion_path = zone_path+"/"+zone_subregion[0]
 
     distrib_ud = I.getNodeFromName1(zone_subregion, ':CGNS#Distribution')
     if distrib_ud is not None: #Subregion has its own pointlist / range
@@ -47,6 +47,6 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
     data_shape = utils.pl_or_pr_size(matching_region)
     data_space = create_data_array_filter(distrib_data, data_shape)
 
-    utils.apply_dataspace_to_pointlist(zone_subregion, zone_sub_region_path, data_space, hdf_filter)
-    utils.apply_dataspace_to_arrays(zone_subregion, zone_sub_region_path, data_space, hdf_filter)
+    utils.apply_dataspace_to_pointlist(zone_subregion, zone_subregion_path, data_space, hdf_filter)
+    utils.apply_dataspace_to_arrays(zone_subregion, zone_subregion_path, data_space, hdf_filter)
 

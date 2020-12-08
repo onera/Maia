@@ -42,9 +42,9 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
         I.newIndexArray('PointListDonor#Size', value=size_data[pld_path][2], parent=gc)
 
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
-    zone_sub_region_path = zone_path+"/"+zone_subregion[0]
+    zone_subregion_path = zone_path+"/"+zone_subregion[0]
     if I.getNodeFromName1(zone_subregion, 'PointList') is not None:
-      pl_path = zone_sub_region_path+"/PointList"
+      pl_path = zone_subregion_path+"/PointList"
       I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=zone_subregion)
 
 

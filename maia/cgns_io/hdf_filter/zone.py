@@ -4,7 +4,7 @@ import maia.sids.sids as SIDS
 from maia.cgns_io.hdf_filter import elements        as HEF
 
 from .hdf_dataspace          import create_data_array_filter
-from .zone_sub_region        import create_zone_subregion_filter
+from .zone_subregion         import create_zone_subregion_filter
 from .zone_bc                import create_zone_bc_filter
 from .zone_grid_connectivity import create_zone_grid_connectivity_filter
 from .                       import utils
