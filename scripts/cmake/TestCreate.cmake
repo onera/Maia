@@ -183,7 +183,7 @@ function(mpi_pytest_directory_python_create name tested_dir n_proc)
   # -Wignore : ignore warnings
   add_test (${name} ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} ${n_proc}
             ${MPIEXEC_PREFLAGS}
-            ${Python_EXECUTABLE} -m pytest ${PROJECT_BINARY_DIR}/${tested_dir} -Wignore -r a -v -s
+            ${Python_EXECUTABLE} -m pytest ${PROJECT_BINARY_DIR}/${tested_dir} -Wignore -r a -v -s --with-mpi
             ${MPIEXEC_POSTFLAGS})
 
   # > Set properties for the current test
