@@ -2,34 +2,22 @@ import Converter.Internal as I
 import maia.sids.sids as SIDS
 
 from maia.cgns_io.hdf_filter import elements        as HEF
-from maia.cgns_io.hdf_filter import zone_sub_region as SRF
 
-from .data_array             import create_data_array_filter
-from .zone_sub_region        import create_zone_subregion_filter
+from .hdf_dataspace          import create_data_array_filter
+from .zone_subregion         import create_zone_subregion_filter
 from .zone_bc                import create_zone_bc_filter
 from .zone_grid_connectivity import create_zone_grid_connectivity_filter
-
-
-def create_grid_coord_filter(zone, zone_path, hdf_filter):
-  """
-  """
-  n_vtx        = SIDS.zone_n_vtx (zone)
-  distrib_ud   = I.getNodeFromName1(zone , ':CGNS#Distribution')
-  distrib_vtx  = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
-
-  dn_vtx    = distrib_vtx[1] - distrib_vtx[0]
-  DSMMRYVtx = [[0             ], [1], [dn_vtx], [1]]
-  DSFILEVtx = [[distrib_vtx[0]], [1], [dn_vtx], [1]]
-  DSGLOBVtx = [[n_vtx]]
-  DSFORMVtx = [[0]]
-  for grid_c in I.getNodesFromType1(zone, 'GridCoordinates_t'):
-    grid_coord_path = zone_path+"/"+grid_c[0]
-    for data_array in I.getNodesFromType1(grid_c, 'DataArray_t'):
-      data_array_path = grid_coord_path+"/"+data_array[0]
-      hdf_filter[data_array_path] = DSMMRYVtx+DSFILEVtx+DSGLOBVtx+DSFORMVtx
+from .                       import utils
 
 def create_zone_filter(zone, zone_path, hdf_filter, mode):
   """
+  Fill up the hdf filter for the following elements of the zone:
+  Coordinates, Elements (NGon / NFace, Standards), FlowSolution
+  (vertex & cells only), ZoneSubRegion, ZoneBC (including BCDataSet)
+  and ZoneGridConnectivity.
+
+  The bounds of the filter are determined by the :CGNS#Distribution
+  node and, for the structured zones, by the size of the blocks.
   """
   n_vtx  = SIDS.zone_n_vtx (zone)
   n_cell = SIDS.zone_n_cell(zone)
@@ -38,19 +26,19 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
   distrib_vtx  = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
   distrib_cell = I.getNodeFromName1(distrib_ud, 'Cell'  )[1]
 
-  zone_type = I.getNodeFromType1(zone, "ZoneType_t")[1].tostring()
-  if(zone_type == b'Structured'):
-    raise RuntimeError("create_zone_filter not implemented for structured grid ")
+  all_vtx_dataspace   = create_data_array_filter(distrib_vtx, zone[1][:,0])
+  all_cells_dataspace = create_data_array_filter(distrib_cell, zone[1][:,1])
 
-  create_zone_bc_filter(zone, zone_path, hdf_filter)
-  create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter)
-  create_grid_coord_filter(zone, zone_path, hdf_filter)
+  # Coords
+  for grid_c in I.getNodesFromType1(zone, 'GridCoordinates_t'):
+    grid_coord_path = zone_path+"/"+grid_c[0]
+    utils.apply_dataspace_to_arrays(grid_c, grid_coord_path, all_vtx_dataspace, hdf_filter)
 
   HEF.create_zone_elements_filter(zone, zone_path, hdf_filter, mode)
 
-  for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
-    zone_sub_region_path = zone_path+"/"+zone_subregion[0]
-    create_zone_subregion_filter(zone_subregion, zone_sub_region_path, hdf_filter)
+  create_zone_bc_filter(zone, zone_path, hdf_filter)
+  create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter)
+  create_zone_subregion_filter(zone, zone_path, hdf_filter)
 
   for flow_solution in I.getNodesFromType1(zone, 'FlowSolution_t'):
     flow_solution_path = zone_path+"/"+flow_solution[0]
@@ -59,8 +47,9 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
       raise RuntimeError("You need specify GridLocation in FlowSolution to load the cgns ")
     grid_location = grid_location_n[1].tostring()
     if(grid_location == b'CellCenter'):
-      create_data_array_filter(flow_solution, flow_solution_path, distrib_cell, hdf_filter)
+      data_space = all_cells_dataspace
     elif(grid_location == b'Vertex'):
-      create_data_array_filter(flow_solution, flow_solution_path, distrib_vtx, hdf_filter)
+      data_space = all_vtx_dataspace
     else:
       raise NotImplementedError(f"GridLocation {grid_location} not implemented")
+    utils.apply_dataspace_to_arrays(flow_solution, flow_solution_path, data_space, hdf_filter)
