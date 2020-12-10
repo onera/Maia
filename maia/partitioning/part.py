@@ -29,29 +29,25 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
 
   n_zone = len(dzone_to_weighted_parts)
   n_part_per_zone = NPY.empty(n_zone, dtype='int32')
-  for zone in zones:
+  for izone,zone in enumerate(zones):
     zone_name = zone[0]
-    # > TODO : setup cgns_registery
-    zoneg_id = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
-    n_part_per_zone[zoneg_id] = len(dzone_to_weighted_parts[zone_name])
+    n_part_per_zone[izone] = len(dzone_to_weighted_parts[zone_name])
 
   if part_weight_method == 2:
     part_weight = NPY.empty(sum(n_part_per_zone), dtype='float64')
-    for zone in zone:
+    for izone,zone in enumerate(zone):
       zone_name = zone[0]
-      zoneg_id  = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
-      offset    = sum(n_part_per_zone[:zoneg_id])
-      part_weight[offset:offset+n_part_per_zone[zoneg_id]] = dzone_to_weighted_parts[zone_name]
+      offset    = sum(n_part_per_zone[:izone])
+      part_weight[offset:offset+n_part_per_zone[izone]] = dzone_to_weighted_parts[zone_name]
   else:
     part_weight = None
 
   multi_part = PDM.MultiPart(n_zone, n_part_per_zone, 0, split_method, part_weight_method, part_weight, comm)
   # print("multi_part = ", multi_part)
 
-  for i_zone, zone in enumerate(zones):
-    zoneg_id = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
-    dmesh    = dmesh_list[i_zone]
-    multi_part.multipart_register_block(zoneg_id, dmesh)
+  for izone, zone in enumerate(zones):
+    dmesh    = dmesh_list[izone]
+    multi_part.multipart_register_block(izone, dmesh)
 
   n_total_joins = join_to_opp_array.shape[0]
   multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)
