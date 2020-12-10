@@ -60,8 +60,6 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
 
       pdm_part_to_cgns_zone(part_zone, dist_zone, dims, data, comm)
 
-      # print(zoneg_id, " -> ", data.keys())
-      # TODO : Berenger
       if(data['np_vtx_ghost_information'] is not None):
         vtx_ghost_info = data['np_vtx_ghost_information']
         first_ghost_idx = np.searchsorted(vtx_ghost_info, 2) 

@@ -8,6 +8,7 @@ import maia.distribution                                            as MDI
 from maia.cgns_registry      import cgns_registry                   as CGR
 from maia.cgns_registry      import cgns_keywords
 from maia.cgns_registry      import tree                            as CGT # Not bad :D
+from maia.transform.transform2 import merge_by_elt_type, add_fsdm_distribution, gcs_only_for_ghosts
 
 from Converter import cgnskeywords as CGK
 import Converter.PyTree   as C
@@ -96,7 +97,15 @@ def load_partitioned_tree(file_name,comm):
     dloading_procs[zone[0]] = list(range(comm.Get_size()))
   # print(dloading_procs)
 
+  merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
   part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
+
+  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
+  gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
+
+  import Converter.PyTree as C
+  i_rank = comm.Get_rank()
+  C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(i_rank))
 
   ## TODO
   #for zone in I.getZones(part_tree):

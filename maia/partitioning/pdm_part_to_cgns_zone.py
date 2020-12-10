@@ -1,5 +1,5 @@
 import Converter.Internal as I
-import numpy              as NPY
+import numpy              as np
 
 from maia.connectivity import connectivity_transform as CNT
 from .bnd_pdm_to_cgns  import bnd_pdm_to_cgns
@@ -17,8 +17,8 @@ def save_in_tree_part_info(zone, dims, data, comm):
     I.newDataArray(k, dims[k], parent=ppart_node)
 
   for k in data.keys():
-    if k!="np_elt_vtx_idx" and k!="np_elt_vtx" : #type(data[k]) is not list
-      I.newDataArray(k, NPY.copy(data[k]), parent=ppart_node)
+    if (type(data[k])==np.ndarray):
+      I.newDataArray(k, np.copy(data[k]), parent=ppart_node)
 
   I.newDataArray('iproc', i_rank, parent=ppart_node)
 
@@ -35,7 +35,7 @@ def pdm_elmt_to_cgns_elmt(zone, dims, data, dist_zone):
   """
   if (dims['n_section']==0):
     pdm_face_cell = data['np_face_cell']
-    pe            = NPY.empty((pdm_face_cell.shape[0]//2, 2), dtype=pdm_face_cell.dtype, order='F')
+    pe = np.empty((pdm_face_cell.shape[0]//2, 2), dtype=pdm_face_cell.dtype, order='F')
     CNT.pdm_face_cell_to_pe_cgns(pdm_face_cell, pe)
 
     ngon_n = I.createUniqueChild(zone, 'NGonElements', 'Elements_t', value=[22,0])
@@ -88,9 +88,10 @@ def pdm_part_to_cgns_zone(zone, dist_zone, dims, data, comm):
   #   TBX._convertMorseToNGon2(zone)
   #   TBX._convertMorseToNFace(zone)
 
+  bnd_pdm_to_cgns(zone, dist_zone, comm)
   # TODO
-  #bnd_pdm_to_cgns(zone, dist_zone, comm)
   #zgc_original_pdm_to_cgns(zone, dist_zone, comm)
 
+  # TODO
   #zgc_created_pdm_to_cgns(zone, dist_zone, comm, 'face')
   zgc_created_pdm_to_cgns(zone, dist_zone, comm, 'vtx', 'ZoneGridConnectivity#Vertex')

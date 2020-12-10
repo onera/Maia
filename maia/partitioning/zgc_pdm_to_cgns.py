@@ -24,9 +24,6 @@ def zgc_created_pdm_to_cgns(zone, dist_zone, comm, entity='face', zgc_name='Zone
   entity_part_bound_proc_idx = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound_proc_idx'.format(entity))[1]
   entity_part_bound_part_idx = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound_part_idx'.format(entity))[1]
   entity_part_bound_tmp      = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound'         .format(entity))[1]
-  print("entity_part_bound_proc_idx= ",entity_part_bound_proc_idx)
-  print("entity_part_bound_part_idx= ",entity_part_bound_part_idx)
-  print("entity_part_bound_tmp= ",entity_part_bound_tmp)
 
   entity_part_bound = entity_part_bound_tmp.reshape((4, entity_part_bound_tmp.shape[0]//4), order='F')
   entity_part_bound = entity_part_bound.transpose()

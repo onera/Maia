@@ -5,7 +5,7 @@
 
 namespace py = pybind11;
 
-inline MPI_Comm&
-mpi4py_comm_to_comm(py::object& mpi4py_obj) {
-  return (MPI_Comm&)(((PyMPICommObject*) mpi4py_obj.ptr())->ob_mpi);
+inline MPI_Comm
+mpi4py_comm_to_comm(py::object mpi4py_obj) {
+  return ((PyMPICommObject*)mpi4py_obj.ptr())->ob_mpi;
 }

@@ -169,5 +169,4 @@ def partition_by_elt(dist_tree, comm, split_method):
   #del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
   #for zone in zones:
   #  I._rmNodesFromName1(zone, ':CGNS#MultiPart')
-
   return part_tree

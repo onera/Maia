@@ -24,6 +24,15 @@ def ZoneType(zone):
   return zone_type_n[1].tostring()
 
 
+def ElementRange(elements):
+  assert I.getType(elements) == "Elements_t"
+  return I.getNodeFromName(elements,"ElementRange")[1]
+
+def ElementType(elements):
+  assert I.getType(elements) == "Elements_t"
+  return elements[1][0]
+
+
 def zone_n_vtx( zone ):
   return np.prod(VertexSize(zone))
 

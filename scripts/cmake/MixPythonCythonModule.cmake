@@ -16,7 +16,7 @@ function( mixpython_cython_add_module _name )
     get_filename_component(pybind_dir ${_pybind_file} DIRECTORY)
     #get_filename_component( pybind_mod_name ${_pybind_file} NAME_WE   )
     file(RELATIVE_PATH pybind_dir_rel ${CMAKE_CURRENT_SOURCE_DIR} ${pybind_dir})
-    message("mod_name::" ${mod_name} ${pybind_dir_rel})
+    #message("mod_name::" ${mod_name} ${pybind_dir_rel})
 
     # > If same name : problem
     pybind11_add_module(${mod_name} ${_pybind_file})
