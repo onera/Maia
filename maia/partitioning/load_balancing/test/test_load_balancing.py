@@ -1,6 +1,7 @@
 import numpy as np
 from maia.partitioning.load_balancing import single_zone_balancing
 from maia.partitioning.load_balancing import balancing_quality
+from maia.partitioning.load_balancing import utils
 
 def test_balancing_quality():
   #Single zone
@@ -29,6 +30,13 @@ def test_balancing_quality():
   assert np.all(out[:3] == [93, 75, 110])
   assert np.all(abs(out[3:5] - np.array([12.3794, 0.1331])) < 1E-4)
   assert np.all(out[5:] == [6,10,50])
+
+def test_search_match():
+  assert utils.search_match([10,20,50,70], 60) == (0,2)
+  assert utils.search_match([10,20,50,70], 70) == (3,)
+  assert utils.search_match([10,20,50,70], 32) == []
+  assert utils.search_match([10,20,50,70], 32, tol=2)  == (0,1)
+
 
 def test_single_zone_balancing():
   out = single_zone_balancing.homogeneous_repart(30,3)
