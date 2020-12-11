@@ -11,6 +11,20 @@ def test_jn_opp_zone():
   assert add_joins_ordinal._jn_opp_zone('BaseXX', jn1) == 'BaseXX/ZoneYY'
   assert add_joins_ordinal._jn_opp_zone('BaseXX', jn2) == 'BaseXX/ZoneYY'
 
+class Test_compare_pointrange():
+  def test_ok(self):
+    jn1 = I.newGridConnectivity1to1(pointRange=[[17,17],[3,9],[1,5]], pointRangeDonor=[[7,1],[9,9],[5,1]])
+    jn2 = I.newGridConnectivity1to1(pointRangeDonor=[[17,17],[3,9],[1,5]], pointRange=[[7,1],[9,9],[5,1]])
+    assert(add_joins_ordinal._compare_pointrange(jn1, jn2) == True)
+  def test_ko(self):
+    jn1 = I.newGridConnectivity1to1(pointRange=[[17,17],[3,9],[1,5]], pointRangeDonor=[[7,1],[9,9],[5,1]])
+    jn2 = I.newGridConnectivity1to1(pointRangeDonor=[[17,17],[3,9],[1,5]], pointRange=[[1,7],[9,9],[1,5]])
+    assert(add_joins_ordinal._compare_pointrange(jn1, jn2) == False)
+  def test_empty(self):
+    jn1 = I.newGridConnectivity1to1(pointRange=np.empty((3,2), np.int32), pointRangeDonor=np.empty((3,2), np.int32))
+    jn2 = I.newGridConnectivity1to1(pointRangeDonor=np.empty((3,2), np.int32), pointRange=np.empty((3,2), np.int32))
+    assert(add_joins_ordinal._compare_pointrange(jn1, jn2) == True)
+
 class Test_compare_pointlist():
   def test_ok(self):
     jn1 = I.newGridConnectivity1to1(pointList=[[12,14,16,18]], pointListDonor=[[9,7,5,3]])
