@@ -1,4 +1,5 @@
 import numpy as np
+from maia.partitioning.load_balancing import multi_zone_balancing
 from maia.partitioning.load_balancing import single_zone_balancing
 from maia.partitioning.load_balancing import balancing_quality
 from maia.partitioning.load_balancing import utils
@@ -43,3 +44,16 @@ def test_single_zone_balancing():
   assert np.all(out == [10,10,10])
   out = single_zone_balancing.homogeneous_repart(31,3)
   assert np.all(out == [11,10,10])
+
+def test_multi_zone_balancing():
+  diczone = {'zoneA' : 100, 'zoneB': 200, 'zoneC':100}
+  repart_zones = multi_zone_balancing.balance_with_uniform_weights(diczone, 3)
+  assert repart_zones['zoneA'] == [0, 100, 0]
+  assert repart_zones['zoneB'] == [200, 0, 0]
+  assert repart_zones['zoneC'] == [0, 0, 100]
+
+  repart_zones = multi_zone_balancing.balance_with_non_uniform_weights(diczone, 3)
+  assert repart_zones['zoneA'] == [100, 0, 0]
+  assert repart_zones['zoneB'] == [34, 34, 132]
+  assert repart_zones['zoneC'] == [0, 100, 0]
+
