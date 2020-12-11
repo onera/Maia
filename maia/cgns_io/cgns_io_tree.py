@@ -1,7 +1,7 @@
 import Converter.Internal as     I
 import Converter.PyTree   as     C
-from typing import Dict
 import fnmatch
+from   maia.distribution.distribution_tree import clean_distribution_info
 
 def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
   """
@@ -117,5 +117,8 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   #for key, val in hdf_filter_with_dim.items():
   #  print(comm.rank, key, val)
   #print("**********************")
+  #Dont save distribution info, but work on a copy to keep it for further use
+  saving_dist_tree = I.copyRef(dist_tree)
+  clean_distribution_info(saving_dist_tree)
 
-  C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter_with_dim, ParallelHDF=True)
+  C.convertPyTree2FilePartial(saving_dist_tree, filename, comm, hdf_filter_with_dim, ParallelHDF=True)

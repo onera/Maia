@@ -44,7 +44,7 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
     flow_solution_path = zone_path+"/"+flow_solution[0]
     grid_location_n = I.getNodeFromType1(flow_solution, 'GridLocation_t')
     if(grid_location_n is None):
-      raise RuntimeError("You need specify GridLocation in FlowSolution to load the cgns ")
+      raise RuntimeError("You need specify GridLocation in FlowSolution to load/write the cgns ")
     grid_location = grid_location_n[1].tostring()
     if(grid_location == b'CellCenter'):
       data_space = all_cells_dataspace

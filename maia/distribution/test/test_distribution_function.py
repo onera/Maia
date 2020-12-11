@@ -1,37 +1,69 @@
 import pytest
 import numpy  as     np
-from   mpi4py import MPI
+import Converter.Internal as I
 
+from   mpi4py     import MPI
+from   maia.utils import parse_yaml_cgns
 import maia.distribution as MID
 
 class Test_uniform_distribution_at:
-  def test_uniform_distribution_at(int_type):
-    def test_exact():
-      n_elt  = 15
+  def test_exact(self):
+    n_elt  = 15
 
-      distib = MID.uniform_distribution_at(n_elt,0,3)
-      assert distib[0]    == 0
-      assert distib[1]    == 6
-      distib = MID.uniform_distribution_at(n_elt,1,3)
-      assert distib[0]    == 5
-      assert distib[1]    == 10
-      distib = MID.uniform_distribution_at(n_elt,2,3)
-      assert distib[0]    == 10
-      assert distib[1]    == 15
+    distib = MID.uniform_distribution_at(n_elt,0,3)
+    assert distib[0]    == 0
+    assert distib[1]    == 5
+    distib = MID.uniform_distribution_at(n_elt,1,3)
+    assert distib[0]    == 5
+    assert distib[1]    == 10
+    distib = MID.uniform_distribution_at(n_elt,2,3)
+    assert distib[0]    == 10
+    assert distib[1]    == 15
 
-    def test_inexact():
-      n_elt  = 17
+  def test_inexact(self):
+    n_elt  = 17
 
-      distib = MID.uniform_distribution_at(n_elt,0,3)
-      assert distib[0]    == 0
-      assert distib[1]    == 6
-      distib = MID.uniform_distribution_at(n_elt,1,3)
-      assert distib[0]    == 6
-      assert distib[1]    == 12
-      distib = MID.uniform_distribution_at(n_elt,2,3)
-      assert distib[0]    == 12
-      assert distib[1]    == 17
+    distib = MID.uniform_distribution_at(n_elt,0,3)
+    assert distib[0]    == 0
+    assert distib[1]    == 6
+    distib = MID.uniform_distribution_at(n_elt,1,3)
+    assert distib[0]    == 6
+    assert distib[1]    == 12
+    distib = MID.uniform_distribution_at(n_elt,2,3)
+    assert distib[0]    == 12
+    assert distib[1]    == 17
 
+def test_clean_distribution_info():
+  yt = """
+Base0 CGNSBase_t [3,3]:
+  ZoneA Zone_t [[27],[8],[0]]:
+    Ngon Elements_t [22,0]:
+      ElementConnectivity DataArray_t [1,2,3,4]:
+      ElementConnectivity#Size DataArray_t [12]:
+      :CGNS#Distribution UserDefinedData_t:
+    ZBC ZoneBC_t:
+      bc1 BC_t "Farfield":
+        PointList IndexArray_t [[1,2]]:
+        PointList#Size IndexArray_t [4]:
+        :CGNS#Distribution UserDefinedData_t:
+          Distribution DataArray_t [0,2,4]:
+        bcds BCDataSet_t:
+          PointList#Size IndexArray_t [2]:
+          :CGNS#Distribution UserDefinedData_t:
+    ZGC ZoneGridConnectivity_t:
+      matchAB GridConnectivity_t "ZoneB":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [1,4,7,10]:
+        PointListDonor IndexArray_t [13,16,7,10]:
+        PointList#Size IndexArray_t [8]:
+    :CGNS#Distribution UserDefinedData_t:
+"""
+  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  MID.distribution_tree.clean_distribution_info(dist_tree)
+  assert I.getNodeFromName(dist_tree, ':CGNS#Distribution') is None
+  assert I.getNodeFromName(dist_tree, 'PointList#Size') is None
+  assert len(I.getNodesFromName(dist_tree, 'PointList')) == 2
+  assert I.getNodeFromName(dist_tree, 'ElementConnectivity#Size') is None
 
 #@pytest.mark.mpi(min_size=1)
 #@pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
