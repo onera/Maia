@@ -8,7 +8,7 @@ from .zgc_cgns_to_pdm import zgc_cgns_to_pdm
 import Pypdm.Pypdm as PDM
 
 # --------------------------------------------------------------------------
-def cgns_dist_zone_to_pdm_dmesh(dist_zone):
+def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   """
   distrib_ud       = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
@@ -70,9 +70,9 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone):
   # LOG.debug("dface_join     = {0}".format(dface_join))
   # LOG.debug("dface_join_idx = {0}".format(dface_join_idx))
   # LOG.debug("joins_ids      = {0}".format(joins_ids))
-
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  dmesh = PDM.DistributedMesh(dn_cell, dn_face, dn_vtx, n_bnd, n_join)
+  dn_edge = -1
+  dmesh = PDM.DistributedMesh(comm, dn_cell, dn_face, dn_edge, dn_vtx, n_bnd, n_join)
   dmesh.dmesh_set(dvtx_coord, dface_vtx_idx, dface_vtx, dface_cell,
                   dface_bound_idx, dface_bound, joins_ids,
                   dface_join_idx, dface_join)

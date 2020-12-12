@@ -16,15 +16,13 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
                  n_face_per_pack=64):
   """
   """
-
-
   dmesh_list = list()
   zones = I.getZones(dist_tree)
   for zone in zones:
     if(SIDS.ZoneType(zone) == b'Structured'):
       raise NotImplementedError
     else:
-      dmesh_list.append(cgns_dist_zone_to_pdm_dmesh(zone))
+      dmesh_list.append(cgns_dist_zone_to_pdm_dmesh(zone, comm))
 
   # join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
 
@@ -50,17 +48,9 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
   # print("multi_part = ", multi_part)
 
   for i_zone, zone in enumerate(zones):
-    zone_id = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
-    dmesh = dmesh_list[i_zone]
-    # print(type(dmesh))
-    # print(dir(PDM))
-    # t1 = PDM.T1(10)
-    # print(type(t1))
-    # PDM.une_function(t1)
-    # multi_part.multipart_gen(zone_id, t1)
-    multi_part.multipart_register_block(zone_id, dmesh)
-    # multi_part.multipart_register_block(i_zone, dmesh._id)
-    # print "Set dmesh #{0} using zone_id {1}".format(dmesh._id, zone_id+1)
+    zoneg_id = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
+    dmesh    = dmesh_list[i_zone]
+    multi_part.multipart_register_block(zoneg_id, dmesh)
 
   # n_total_joins = join_to_opp_array.shape[0]
   # multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)

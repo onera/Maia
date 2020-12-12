@@ -5,6 +5,7 @@ import numpy              as np
 import maia.sids.sids as SIDS
 from maia.utils import zone_elements_utils as EZU
 
+from maia.connectivity import connectivity_transform as CNT
 from . import cgns_to_pdm_dmeshnodal as CGNSTOPDM
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
@@ -12,106 +13,206 @@ from maia.distribution.distribution_function import create_distribution_node_fro
 import Pypdm.Pypdm as PDM
 
 
-# def replace_std_elements_by_ngon(dist_tree, comm):
-#   """
-#   """
-#   generate_ngon_from_std_elements(dist_tree, comm)
-
-#   # > Suppress std_elements and reput er ngon = [1, nface] et nface = [nface+1, ncell], elt = void
-
-# def add_ngon(dist_tree, comm):
-#   """
-#   """
-#   generate_ngon_from_std_elements(dist_tree, comm)
-#   # > Organize std + ngon +
-
-# def add_ngon_and_nface(dist_tree, comm):
-#   """
-#   """
-#   generate_ngon_from_std_elements(dist_tree, comm)
-
-
-# def super_fonction(zone, comm):
-#   """
-#   """
-#   zones_u = [zone for zone in I.getZones(dist_tree) if I.getZoneType(zone) == 2]
-#   for zone in zones_u:
-#     pdm_dmn = setup_pdm_distributed_mesh_nodal(zone, comm)
-#     # > Recollecment des frontières
-#     pdm_dmn.service1()
-#     pdm_dmn.service2()
-
-#   # > Rebuild ZoneGridConnecitivty -- Update PointListDonor
-
-#   return pdm_dmn
-
-# def setup_pdm_distributed_mesh_nodal(zone, comm):
-#   """
-#   """
-#   return pdm_dmn
-
-
-def generate_ngon_from_std_elements_zone(zone, comm):
+def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   """
   """
-  distributed_mesh_nodal = CGNSTOPDM.cgns_to_pdm(zone, comm)
-  distributed_mesh_nodal.compute()
+  print("pdm_dmesh_to_cgns")
 
-  face_cell_dict    = distributed_mesh_nodal.get_face_cell()
-  cell_face_dict    = distributed_mesh_nodal.get_cell_face()
-  face_vtx_idx_dict = distributed_mesh_nodal.get_face_vtx()
-  distrib_face      = distributed_mesh_nodal.get_distrib_face()
+  n_rank = comm.Get_size()
+  i_rank = comm.Get_rank()
 
-  # print("face_cell_dict::", face_cell_dict)
-  # print("cell_face_dict::", cell_face_dict)
-  # print("face_vtx_idx  ::", face_vtx_idx_dict  )
-  # print("distrib_face  ::", distrib_face  )
+  if(extract_dim == 2):
+    dface_cell_idx, dface_cell = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_EDGE_FACE)
+    dface_vtx_idx, dface_vtx   = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX )
+    dcell_face_idx, dcell_face = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE)
+    distrib_face               = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_EDGE)
+    distrib_cell               = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_FACE)
+  else :
+    dface_cell_idx, dface_cell = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_CELL)
+    dface_vtx_idx, dface_vtx   = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX )
+    dcell_face_idx, dcell_face = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
+    distrib_face              = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_FACE)
+    distrib_cell              = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_CELL)
 
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  # > Volumic is ok, we need to identifie and translate now boundary conditions
-  #   with the new face numbering
-  # PDM.ParentElementFind()
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  # print("dface_cell_idx::", dface_cell_idx)
+  # print("dface_cell::"    , dface_cell)
 
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  # >
-  n_face  = face_cell_dict['n_face']
-  dn_face = face_cell_dict['dn_face']
+  # print("dface_vtx_idx::", dface_vtx_idx)
+  # print("dface_vtx::"    , dface_vtx)
+
+  # print("dcell_face_idx::", dcell_face_idx)
+  # print("dcell_face::"    , dcell_face)
+
+  # print("distrib_face::", distrib_face)
+  # print("distrib_cell::", distrib_cell)
+  # print("n_face::", n_face)
+  # print("n_cell::", n_cell)
+
+  n_face  = distrib_face[n_rank]
+  if(distrib_face[0] == 1):
+    distrib_face = distrib_face-1
+    n_face -=1
+  dn_face = distrib_face[i_rank+1] - distrib_face[i_rank]
+
+  n_cell  = distrib_cell[n_rank]
+  if(distrib_cell[0] == 1):
+    distrib_cell = distrib_cell-1
+    n_cell -=1
+  dn_cell = distrib_cell[i_rank+1] - distrib_cell[i_rank]
+
+  ldistrib_face = NPY.empty(3, dtype=distrib_face.dtype)
+  ldistrib_face[0] = distrib_face[comm.rank]
+  ldistrib_face[1] = distrib_face[comm.rank+1]
+  ldistrib_face[2] = n_face
+
+  ldistrib_cell = NPY.empty(3, dtype=distrib_cell.dtype)
+  ldistrib_cell[0] = distrib_cell[comm.rank]
+  ldistrib_cell[1] = distrib_cell[comm.rank+1]
+  ldistrib_cell[2] = n_cell
+
+  distrib          = NPY.empty(n_rank+1, dtype=NPY.int32)
+  distrib[0]       = 0
+  distrib[1:]      = comm.allgather( dface_vtx_idx[dn_face] )
+  distrib_face_vtx = NPY.cumsum(distrib)
+
+  distrib          = NPY.empty(n_rank+1, dtype=NPY.int32)
+  distrib[0]       = 0
+  distrib[1:]      = comm.allgather( dcell_face_idx[dn_cell] )
+  distrib_cell_face = NPY.cumsum(distrib)
 
   ermax   = EZU.get_next_elements_range(zone)
 
   ngon_n  = I.createUniqueChild(zone, 'NGonElements', 'Elements_t', value=[22,0])
-  ngon_elmt_range = np.empty(2, dtype='int64', order='F')
-  ngon_elmt_range[0] = ermax
+  ngon_elmt_range = NPY.empty(2, dtype='int64', order='F')
+  ngon_elmt_range[0] = ermax+1
   ngon_elmt_range[1] = ermax+n_face
 
-  pe = face_cell_dict["np_dface_cell"].reshape((n_face,2)) # TODO AFAIK, this is incoherent with the SIDS, but seems to be used consistently here...
-  #pe = face_cell_dict["np_dface_cell"].reshape((2,n_face))
-  #pe = np.transpose(pe)
+  pe            = NPY.empty((dface_cell.shape[0]//2, 2), dtype=dface_cell.dtype, order='F')
+  CNT.pdm_face_cell_to_pe_cgns(dface_cell, pe)
+
+  # > Attention overflow I8
+  eso_ngon = distrib_face_vtx[i_rank] + dface_vtx_idx
+
   I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', ngon_elmt_range)
-  I.newDataArray('ElementStartOffset' , face_vtx_idx_dict["np_dface_vtx_idx"], parent=ngon_n)
-  I.newDataArray('ElementConnectivity', face_vtx_idx_dict["np_dface_vtx"]   , parent=ngon_n)
-  I.newDataArray('ParentElements'     , pe                                  , parent=ngon_n)
-  # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  I.newDataArray('ElementStartOffset' , eso_ngon , parent=ngon_n)
+  I.newDataArray('ElementConnectivity', dface_vtx, parent=ngon_n)
+  I.newDataArray('ParentElements'     , pe       , parent=ngon_n)
 
-  ldistrib_face = np.empty(3, dtype=distrib_face.dtype)
-  ldistrib_face[0] = distrib_face[comm.rank]
-  ldistrib_face[1] = distrib_face[comm.rank+1]
-  ldistrib_face[2] = n_face
+  ermax   = EZU.get_next_elements_range(zone)
+  nfac_n  = I.createUniqueChild(zone, 'NFacElements', 'Elements_t', value=[23,0])
+  nfac_elmt_range = NPY.empty(2, dtype='int64', order='F')
+  nfac_elmt_range[0] = ermax+1
+  nfac_elmt_range[1] = ermax+n_cell
+
+  #ngon_n  = I.createUniqueChild(zone, 'NGonElements', 'Elements_t', value=[22,0])
+  #ngon_elmt_range = np.empty(2, dtype='int64', order='F')
+  #ngon_elmt_range[0] = ermax
+  #ngon_elmt_range[1] = ermax+n_face
+
+  #pe = face_cell_dict["np_dface_cell"].reshape((n_face,2)) # TODO AFAIK, this is incoherent with the SIDS, but seems to be used consistently here...
+  ##pe = face_cell_dict["np_dface_cell"].reshape((2,n_face))
+  ##pe = np.transpose(pe)
+  #I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', ngon_elmt_range)
+  #I.newDataArray('ElementStartOffset' , face_vtx_idx_dict["np_dface_vtx_idx"], parent=ngon_n)
+  #I.newDataArray('ElementConnectivity', face_vtx_idx_dict["np_dface_vtx"]   , parent=ngon_n)
+  #I.newDataArray('ParentElements'     , pe                                  , parent=ngon_n)
+  ## ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+  #ldistrib_face = np.empty(3, dtype=distrib_face.dtype)
+  #ldistrib_face[0] = distrib_face[comm.rank]
+  #ldistrib_face[1] = distrib_face[comm.rank+1]
+  #ldistrib_face[2] = n_face
+
+  eso_nfac = distrib_cell_face[i_rank] + dcell_face_idx
+
+  I.createUniqueChild(nfac_n, 'ElementRange', 'IndexRange_t', nfac_elmt_range)
+  I.newDataArray('ElementStartOffset' , eso_nfac, parent=nfac_n)
+  if(dcell_face is not None):
+    I.newDataArray('ElementConnectivity', NPY.abs(dcell_face), parent=nfac_n)
+  else:
+    I.newDataArray('ElementConnectivity', NPY.empty( (0), dtype=eso_ngon.dtype), parent=nfac_n)
+
   create_distribution_node_from_distrib("Distribution", ngon_n, ldistrib_face)
+  np_distrib_face_vtx = NPY.array([distrib_face_vtx[i_rank], distrib_face_vtx[i_rank+1], distrib_face_vtx[n_rank]], dtype=pe.dtype)
+  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n   , np_distrib_face_vtx)
 
-  distrib_face_vtx = np.empty(2, dtype=distrib_face.dtype)
-  distrib_face_vtx[0] = face_vtx_idx_dict["np_dface_vtx_idx"][0]
-  distrib_face_vtx[1] = face_vtx_idx_dict["np_dface_vtx_idx"][-1]
-  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n, distrib_face_vtx)
+  create_distribution_node_from_distrib("Distribution", nfac_n, ldistrib_cell)
+  np_distrib_cell_face = NPY.array([distrib_cell_face[i_rank], distrib_cell_face[i_rank+1], distrib_cell_face[n_rank]], dtype=pe.dtype)
+  create_distribution_node_from_distrib("DistributionElementConnectivity", nfac_n   , np_distrib_cell_face)
+
+  return ngon_elmt_range[0]-1
+
+  #distrib_face_vtx = np.empty(2, dtype=distrib_face.dtype)
+  #distrib_face_vtx[0] = face_vtx_idx_dict["np_dface_vtx_idx"][0]
+  #distrib_face_vtx[1] = face_vtx_idx_dict["np_dface_vtx_idx"][-1]
+  #create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n, distrib_face_vtx)
+def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
+  """
+  """
+  next_ngon = pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim)
+
+  if(extract_dim == 2):
+    group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_EDGE)
+  else:
+    group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_FACE)
+
+  print(group_idx)
+  group = NPY.copy(pdm_group)
+  group += next_ngon
+
+  i_group = 0
+  for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
+    for i_bc, bc in enumerate(I.getNodesFromType1(zone_bc, 'BC_t')):
+      pr_n = I.getNodeFromName1(bc, 'PointRange')
+      pl_n = I.getNodeFromName1(bc, 'PointList')
+      if(pr_n):
+        I._rmNode(bc, pr_n)
+        I._rmNodesByName(bc, 'PointRange#Size')
+      if(pl_n):
+        I._rmNode(bc, pl_n)
+      I.newGridLocation('FaceCenter', parent=bc)
+      start, end = group_idx[i_bc], group_idx[i_bc+1]
+      dn_face_bnd = end - start
+      I.newPointList(value=group[start:end].reshape( (1,dn_face_bnd), order='F' ), parent=bc)
 
 # -----------------------------------------------------------------
 def generate_ngon_from_std_elements(dist_tree, comm):
   """
   """
-  zones_u = [zone for zone in I.getZones(dist_tree) if I.getZoneType(zone) == 2]
+  print("generate_ngon_from_std_elements")
+  bases = I.getNodesFromType(dist_tree, 'CGNSBase_t')
 
-  for zone in zones_u:
-    generate_ngon_from_std_elements_zone(zone, comm)
+  for base in bases:
+    base_dim = I.getValue(base)
+    extract_dim = base_dim[0]
+    print("extract_dim == ", extract_dim)
+    zones_u = [zone for zone in I.getZones(base) if I.getZoneType(zone) == 2]
+
+    n_mesh = len(zones_u)
+
+    dmntodm = PDM.DMeshNodalToDMesh(n_mesh, comm)
+    dmesh_nodal_list = list()
+    for i_zone, zone in enumerate(zones_u):
+      dmn = CGNSTOPDM.cgns_to_pdm(zone, comm)
+      dmn.generate_distribution()
+      dmntodm.add_dmesh_nodal(i_zone, dmn)
+
+    # PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE
+    if(extract_dim == 2):
+      dmntodm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_EDGE,
+                      PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_EDGE)
+    else:
+      dmntodm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE,
+                      PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_FACE)
+
+    dmntodm.transform_to_coherent_dmesh(extract_dim)
+
+    for i_zone, zone in enumerate(zones_u):
+      result_dmesh = dmntodm.get_dmesh(i_zone)
+      pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim)
+
+      # > Remove internal holder state
+      I._rmNodesByName(zone, ':CGNS#DMeshNodal#Bnd')
 
   # > Generate correctly zone_grid_connectivity
+  print("generate_ngon_from_std_elements end")

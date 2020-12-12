@@ -5,6 +5,8 @@
 #include "std_e/interval/knot_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "pdm_multi_block_to_part.h"
+#include "std_e/log.hpp" // TODO
+#include "std_e/data_structure/multi_range.hpp"
 
 
 namespace cgns {
@@ -146,7 +148,8 @@ auto merge_by_elt_type(tree& b, factory F, MPI_Comm comm) -> void {
   for (tree& elt_section : elt_sections) {
     auto range = ElementRange<I4>(elt_section);
 
-    old_offsets.push_back(range[0]);
+    I4 old_offset = range[0];
+    old_offsets.push_back(old_offset);
 
     I4 n_elt = range[1] - range[0] +1;
     range[0] = new_offset;
@@ -156,9 +159,29 @@ auto merge_by_elt_type(tree& b, factory F, MPI_Comm comm) -> void {
 
     new_offset += n_elt;
   }
+  old_offsets.push_back(new_offset); // since the range span does not change, last new_offset == last old_offset
+  new_offsets.push_back(0); // value unused, but sizes must be equal for zip_sort
+  std_e::zip_sort(std::tie(old_offsets,new_offsets));
 
   // 1. renumber
-  // TODO for several zones + boundary conditions...
+  // TODO for several zones
+  auto bcs = get_nodes_by_matching(z,"ZoneBC_t/BC_t");
+  for (tree& bc : bcs) {
+    if (to_string(get_child_by_name(bc,"GridLocation").value)!="Vertex") {
+      ELOG(to_string(get_child_by_name(bc,"GridLocation").value));
+      //auto pl = get_child_value_by_name<I4>(bc,"PointList");
+      tree& pl_node = get_child_by_name(bc,"PointList");
+      auto pl = view_as_span<I4>(pl_node.value);
+      ELOG(pl);
+
+      for (I4& id : pl) {
+        auto index = std_e::interval_index(id,old_offsets);
+        auto old_offset = old_offsets[index];
+        auto new_offset = new_offsets[index];
+        id = id - old_offset + new_offset;
+      }
+    }
+  }
 
   // 2. merge element sections of the same type
   std::vector<tree> merged_sections;

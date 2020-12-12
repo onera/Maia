@@ -118,7 +118,7 @@ endif()
 # ----------------------------------------------------------------------
 
 ## Python, Cython, Pybind11
-set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/${PROJECT_NAME}")
+set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/")
 include(MixPythonCythonModule)
 mixpython_cython_add_module(maia)
 

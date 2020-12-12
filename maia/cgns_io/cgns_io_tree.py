@@ -115,8 +115,7 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
 
   # print("**********************")
   # for key, val in hdf_filter_with_dim.items():
-  #   print(key, val)
+  #   print(comm.rank, key, val)
   # print("**********************")
-
 
   C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter_with_dim, ParallelHDF=True)

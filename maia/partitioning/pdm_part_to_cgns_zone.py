@@ -88,7 +88,7 @@ def pdm_part_to_cgns_zone(zone, dist_zone, dims, data, comm):
   #   TBX._convertMorseToNGon2(zone)
   #   TBX._convertMorseToNFace(zone)
 
-  #bnd_pdm_to_cgns(zone, dist_zone, comm)
+  bnd_pdm_to_cgns(zone, dist_zone, comm)
   # TODO
   #zgc_original_pdm_to_cgns(zone, dist_zone, comm)
 

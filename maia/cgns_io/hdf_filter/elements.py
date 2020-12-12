@@ -58,13 +58,14 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
 
 
 
-def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
+def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
   """
   """
   distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
   distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
+  # > For NGon only
   pe = I.getNodeFromName1(elmt, 'ParentElements')
   if(pe):
     DSMMRYPE = [[0              , 0], [1, 1], [dn_elmt, 2], [1, 1]]
@@ -78,42 +79,16 @@ def create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter):
   eso = I.getNodeFromName1(elmt, 'ElementStartOffset')
   eso_path = None
   if(eso):
-    # Distribution for NGon -> ElementStartOffset is the same than DistrbutionFace, except
+    # Distribution for NGon/NFace -> ElementStartOffset is the same than DistrbutionFace, except
     # that the last proc have one more element
-    n_face      = distrib_elmt[2]
-    dn_face_idx = dn_elmt + 1 # + int(distrib_elmt[1] == n_face)
-    DSMMRYESO = [[0              ], [1], [dn_face_idx], [1]]
-    DSFILEESO = [[distrib_elmt[0]], [1], [dn_face_idx], [1]]
-    DSGLOBESO = [[n_face+1]]
-    DSFORMESO = [[0]]
-
-    eso_path = zone_path+"/"+elmt[0]+"/ElementStartOffset"
-    hdf_filter[eso_path] = DSMMRYESO + DSFILEESO + DSGLOBESO + DSFORMESO
-
-  ec = I.getNodeFromName1(elmt, 'ElementConnectivity')
-  if(ec):
-    if(eso_path is None):
-      raise RuntimeError("In order to load ElementConnectivity, the ElementStartOffset is mandatory")
-    ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
-    hdf_filter[ec_path] = partial(load_element_connectivity_from_eso, elmt, zone_path)
-
-def create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter):
-  """
-  """
-  distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
-  dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
-
-  eso = I.getNodeFromName1(elmt, 'ElementStartOffset')
-  eso_path = None
-  if(eso):
-    # Distribution for NGon -> ElementStartOffset is the same than DistrbutionFace, except
-    # that the last proc have one more element
-    n_face      = distrib_elmt[2]
-    dn_face_idx = dn_elmt + int(distrib_elmt[1] == n_face)
-    DSMMRYESO = [[0              ], [1], [dn_face_idx], [1]]
-    DSFILEESO = [[distrib_elmt[0]], [1], [dn_face_idx], [1]]
-    DSGLOBESO = [[n_face+1]]
+    n_elmt      = distrib_elmt[2]
+    if(mode == 'read'):
+      dn_elmt_idx = dn_elmt + 1 # + int(distrib_elmt[1] == n_elmt)
+    elif(mode == 'write'):
+      dn_elmt_idx = dn_elmt + int((distrib_elmt[1] == n_elmt) and (distrib_elmt[0] != distrib_elmt[1]))
+    DSMMRYESO = [[0              ], [1], [dn_elmt_idx], [1]]
+    DSFILEESO = [[distrib_elmt[0]], [1], [dn_elmt_idx], [1]]
+    DSGLOBESO = [[n_elmt+1]]
     DSFORMESO = [[0]]
 
     eso_path = zone_path+"/"+elmt[0]+"/ElementStartOffset"
@@ -154,19 +129,16 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[path] = DSMMRYElmt + DSFILEElmt + DSGLOBElmt + DSFORMElmt
 
-def create_zone_elements_filter(zone_tree, zone_path, hdf_filter):
+def create_zone_elements_filter(zone_tree, zone_path, hdf_filter, mode):
   """
+  Prepare the hdf_filter for all the Element_t nodes found in the zone.
   """
   zone_elmts = gen_elemts(zone_tree)
   for elmt in zone_elmts:
-    if(elmt[1][0] == 22):
-      create_zone_ngon_elements_filter(elmt, zone_path, hdf_filter)
-    elif(elmt[1][0] == 23):
-      create_zone_nfac_elements_filter(elmt, zone_path, hdf_filter)
+    if(elmt[1][0] == 22) or (elmt[1][0] == 23):
+      create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode)
     elif(elmt[1][0] == 20):
       create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter)
     else:
       create_zone_std_elements_filter(elmt, zone_path, hdf_filter)
 
-  # create_zone_std_elements_filter(zone_tree, zone_path, hdf_filter)
-  # create_zone_ngon_elements_filter(zone_tree, zone_path, hdf_filter)

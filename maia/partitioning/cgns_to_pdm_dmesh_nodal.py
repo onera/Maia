@@ -4,6 +4,7 @@ import numpy          as np
 from maia.connectivity import connectivity_transform as CNT
 from .bnd_cgns_to_pdm import bnd_cgns_to_pdm
 from .zgc_cgns_to_pdm import zgc_cgns_to_pdm
+from maia.connectivity.cgns_to_pdm_dmeshnodal import concatenate_bc
 
 import Pypdm.Pypdm as PDM
 
@@ -72,6 +73,9 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone,comm):
   I.newDataArray('dvtx_coord'     , dvtx_coord     , parent=multi_part_node)
 
   dmesh_nodal.set_sections(elt_connecs,elt_pdm_types,elt_lengths)
+
+  n_elmt_group, delmt_bound_idx, delmt_bound = concatenate_bc(dist_zone)
+  dmesh_nodal.set_group_elmt(n_elmt_group, delmt_bound_idx, delmt_bound)
 
   return dmesh_nodal
 

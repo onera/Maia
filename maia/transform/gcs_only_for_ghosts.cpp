@@ -11,14 +11,11 @@ auto gcs_only_for_ghosts(tree& b, factory F) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   for (tree& z : zs) {
     int n_node = VertexSize_U<I4>(z);
-    int n_ghost_node = get_node_value_by_matching<I4>(z,"GridCoordinates/Rind")[1];
+    auto n_ghost_node = get_node_value_by_matching<I4>(z,"GridCoordinates/FSDM#n_ghost_node")[0];
     int n_owned_node = n_node - n_ghost_node;
-        ELOG(n_node);
-        ELOG(n_ghost_node);
     auto gcs = get_nodes_by_matching(z,"ZoneGridConnectivity_t/GridConnectivity_t");
     for (tree& gc : gcs) {
       if (GridLocation(gc)=="Vertex") {
-        LOG("Coucou");
         tree& pl_node  = get_child_by_name(gc,"PointList");
         tree& pld_node = get_child_by_name(gc,"PointListDonor");
 

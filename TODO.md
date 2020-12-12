@@ -16,6 +16,8 @@ attach_dims_to_dist_tree: fix convertFile2PyTree + skeletonData (skeletonData sh
 
 uniform_distribution: where should we put it? (python std_e?)
 
+create part tree: keep exact same node from dist_tree (except maybe if empty arrays e.g. Elements_t with 0 elts on partition)
+
 ## Cleaning
 distribution: one file, replace comm by comm_info (and find a name!)
 filter -> selector ?

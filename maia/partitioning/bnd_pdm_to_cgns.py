@@ -9,6 +9,9 @@ def bnd_pdm_to_cgns(zone, dist_zone, comm):
   face_bound          = I.getNodeFromName1(ppart_ud, 'np_face_bound'         )[1]
   face_bound_idx      = I.getNodeFromName1(ppart_ud, 'np_face_bound_idx'     )[1]
   face_bound_ln_to_gn = I.getNodeFromName1(ppart_ud, 'np_face_bound_ln_to_gn')[1]
+  print("face_bound = ",face_bound)
+  print("face_bound_idx= ",face_bound_idx)
+  print("face_bound_ln_to_gn = ",face_bound_ln_to_gn)
 
   if(face_bound_idx is None):
     return

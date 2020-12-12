@@ -9,6 +9,7 @@ from maia.cgns_registry      import cgns_registry                   as CGR
 from maia.cgns_registry      import cgns_keywords
 from maia.cgns_registry      import tree                            as CGT # Not bad :D
 from maia.transform.transform2 import merge_by_elt_type, add_fsdm_distribution, gcs_only_for_ghosts
+from maia.cgns_io import save_part_tree as SPT
 
 from Converter import cgnskeywords as CGK
 import Converter.PyTree   as C
@@ -73,6 +74,10 @@ def load_partitioned_tree(file_name,comm):
   #generate_ngon_from_std_elements(dist_tree,comm)
   #C.convertPyTree2File(dist_tree, "dist_tree_ngon.cgns")
 
+  #hdf_filter = dict()
+  #HTF.create_tree_hdf_filter(dist_tree, hdf_filter, mode='write')
+  #IOT.save_tree_from_filter("dist_tree_0.hdf", dist_tree, comm, hdf_filter)
+
   # FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
   # C.convertPyTree2File(dist_tree, "dist_tree_{0}.hdf".format(rank))
@@ -98,14 +103,17 @@ def load_partitioned_tree(file_name,comm):
   # print(dloading_procs)
 
   merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
+
+  #hdf_filter = dict()
+  #HTF.create_tree_hdf_filter(dist_tree, hdf_filter, mode='write')
+  #IOT.save_tree_from_filter("dist_tree.hdf", dist_tree, comm, hdf_filter)
+
   part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
 
   add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
 
-  import Converter.PyTree as C
-  i_rank = comm.Get_rank()
-  C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(i_rank))
+  SPT.save_part_tree(part_tree, 'part_tree', comm)
 
   ## TODO
   #for zone in I.getZones(part_tree):

@@ -17,7 +17,7 @@ compute_idx_from_color(py::array_t<int, py::array::f_style>& np_color){
   int min_color = *min;
   int max_color = *max;
 
-  assert(min_color == 0);
+  // assert(min_color == 0);
   max_color++;
 
   // std::cout << "min : " << *min << " | max " << max_color << std::endl;
