@@ -76,6 +76,7 @@ def load_partitioned_tree(file_name,comm):
 
   #hdf_filter = dict()
   #HTF.create_tree_hdf_filter(dist_tree, hdf_filter, mode='write')
+  #print("hdf_filter = ",hdf_filter)
   #IOT.save_tree_from_filter("dist_tree_0.hdf", dist_tree, comm, hdf_filter)
 
   # FTH.generate_ngon_from_std_elements(dist_tree, comm)

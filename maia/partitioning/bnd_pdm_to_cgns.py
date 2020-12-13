@@ -44,4 +44,7 @@ def bnd_pdm_to_cgns(zone, dist_zone, comm):
         solver_prop = I.getNodeFromName1(dist_bc, '.Solver#BC')
         if(solver_prop is not None):
           I._addChild(bc_n, solver_prop)
+        boundary_marker = I.getNodeFromName1(dist_bc, 'BoundaryMarker')
+        if(boundary_marker is not None):
+          I._addChild(bc_n, boundary_marker)
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
