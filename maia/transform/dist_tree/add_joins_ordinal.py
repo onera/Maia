@@ -45,7 +45,7 @@ def add_joins_ordinal(dist_tree, comm):
   PointRange/PointRangeDonor arrays, not both.
   """
   gc_list   = []
-  gc_pathes = []
+  gc_paths = []
   # > First pass to collect joins
   for base in I.getBases(dist_tree):
     for zone in I.getZones(base):
@@ -53,17 +53,17 @@ def add_joins_ordinal(dist_tree, comm):
         gcs = I.getNodesFromType1(zgc, 'GridConnectivity_t') + I.getNodesFromType1(zgc, 'GridConnectivity1to1_t')
         for gc in gcs:
           gc_list.append(gc)
-          gc_pathes.append(base[0] + '/' + zone[0])
+          gc_paths.append(base[0] + '/' + zone[0])
 
   nb_joins = len(gc_list)
   local_match_table = np.zeros((nb_joins, nb_joins), dtype=np.bool)
 
   for igc, gc in enumerate(gc_list):
-    current_path = gc_pathes[igc]
+    current_path = gc_paths[igc]
     current_base = current_path.split('/')[0]
     opp_path = _jn_opp_zone(current_base, gc)
-    #print('current', gc[0], gc_pathes[igc], 'opp', opp_path)
-    candidates = [i for i,path in enumerate(gc_pathes) if
+    #print('current', gc[0], gc_paths[igc], 'opp', opp_path)
+    candidates = [i for i,path in enumerate(gc_paths) if
         (path==opp_path and _jn_opp_zone(path.split('/')[0], gc_list[i]) == current_path)]
     #print('  candidates', candidates)
     gc_has_pl = I.getNodeFromName1(gc, 'PointList') is not None
@@ -82,6 +82,6 @@ def add_joins_ordinal(dist_tree, comm):
 
   opp_join_id = np.where(global_match_table)[1]
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
-    I.createNode('Ordinal'   , 'Ordinal_t',  gc_id+1, parent=gc)
-    I.createNode('OrdinalOpp', 'Ordinal_t', opp_id+1, parent=gc)
+    I.createNode('Ordinal'   , 'UserDefinedData_t',  gc_id+1, parent=gc)
+    I.createNode('OrdinalOpp', 'UserDefinedData_t', opp_id+1, parent=gc)
 

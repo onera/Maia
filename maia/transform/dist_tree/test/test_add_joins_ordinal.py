@@ -2,7 +2,7 @@ import pytest
 import mpi4py.MPI as MPI
 import numpy as np
 from maia.utils import parse_yaml_cgns
-from maia.transform.disttree import add_joins_ordinal
+from maia.transform.dist_tree import add_joins_ordinal
 import Converter.Internal as I
 
 def test_jn_opp_zone():
@@ -87,9 +87,12 @@ Base1 CGNSBase_t [3,3]:
 
   expected_ordinal     = [1,2,3,4,5,6]
   expected_ordinal_opp = [2,1,6,5,4,3]
-  for i, gc in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
-    assert I.getNodeFromName1(gc, 'Ordinal')[1]    == expected_ordinal[i]
-    assert I.getNodeFromName1(gc, 'OrdinalOpp')[1] == expected_ordinal_opp[i]
+  for base in I.getBases(dist_tree):
+    for zone in I.getZones(base):
+      for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+        for i, gc in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
+          assert I.getNodeFromName1(gc, 'Ordinal')[1]    == expected_ordinal[i]
+          assert I.getNodeFromName1(gc, 'OrdinalOpp')[1] == expected_ordinal_opp[i]
 
 @pytest.mark.mpi(min_size=3)
 @pytest.mark.parametrize("sub_comm", [3], indirect=['sub_comm'])
@@ -152,7 +155,10 @@ Base1 CGNSBase_t [3,3]:
 
   expected_ordinal     = [1,2,3,4,5,6]
   expected_ordinal_opp = [2,1,6,5,4,3]
-  for i, gc in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
-    assert I.getNodeFromName1(gc, 'Ordinal')[1]    == expected_ordinal[i]
-    assert I.getNodeFromName1(gc, 'OrdinalOpp')[1] == expected_ordinal_opp[i]
+  for base in I.getBases(dist_tree):
+    for zone in I.getZones(base):
+      for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+        for i, gc in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
+          assert I.getNodeFromName1(gc, 'Ordinal')[1]    == expected_ordinal[i]
+          assert I.getNodeFromName1(gc, 'OrdinalOpp')[1] == expected_ordinal_opp[i]
 
