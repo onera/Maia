@@ -15,7 +15,7 @@ def test_simple_tree():
   yt = """
 Base0 CGNSBase_t [3,3]:
   Zone0 Zone_t [[24],[6],[0]]:
-  Zone1 Zone_t [[4,3,2],[3,2,1],[0,0,0]]:
+  Zone1 Zone_t R8 [[4,3,2],[3,2,1],[0,0,0]]:
 """
 
   t = parse_yaml_cgns.to_complete_pytree(yt)
@@ -23,11 +23,12 @@ Base0 CGNSBase_t [3,3]:
   assert len(bs) == 1
   assert I.getName(bs[0]) == "Base0"
   assert I.getType(bs[0]) == "CGNSBase_t"
-  assert I.getValue(bs[0]) == [3,3]
+  assert np.all(I.getValue(bs[0]) == [3,3])
 
   zs = I.getNodesFromType1(bs[0],"Zone_t")
-  assert I.getValue(zs[0]) == [[24],[6],[0]]
+  assert np.all(I.getValue(zs[0]) == [[24],[6],[0]])
   assert I.getChildren(zs[0]) == []
+  assert I.getNodeFromName(t, 'Zone1')[1].dtype == np.float64
 
 def test_multi_line_value():
   yt = """

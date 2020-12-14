@@ -5,6 +5,9 @@ from ruamel.yaml import parser
 import ast
 import numpy as np
 
+data_types = [  "I4"  ,  "I8"  ,   "R4"   ,   "R8"   ]
+np_dtypes  = [np.int32,np.int64,np.float32,np.float64]
+
 def parse_node(node):
   name,label_value = node.split(" ", 1)
   name = name.strip()
@@ -13,15 +16,23 @@ def parse_node(node):
   if len(label_value)==1:
     value = None
   else:
-    value = ast.literal_eval(label_value[1])
+    value = label_value[1].strip()
+    if len(value) > 2 and value[:2] in data_types:
+      data_type_str = value[:2]
+      value         = value[2:].strip()
+      i_data_type   = data_types.index(data_type_str)
+      data_type_np  = np_dtypes[i_data_type]
+      value = np.array(ast.literal_eval(value), dtype=data_type_np)
+    else:
+      value = ast.literal_eval(label_value[1])
+      if isinstance(value, list):
+        value = np.array(value)
   return name,label,value
 
 def extract_value(sub_nodes):
   if sub_nodes is None:
     return None
 
-  data_types = [  "I4"  ,  "I8"  ,   "R4"   ,   "R8"   ]
-  np_dtypes  = [np.int32,np.int64,np.float32,np.float64]
   for data_type,np_dtype in zip(data_types,np_dtypes):
     value = sub_nodes.pop(data_type,None)
     if value is not None:
