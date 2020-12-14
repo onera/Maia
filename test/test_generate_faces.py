@@ -39,6 +39,9 @@ import maia.distribution                                      as MDI
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/Cube_ANSAd/Cube_hyb_sep.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8.cgns'
+# inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8.cgns'
+# inputfile    = '/stck/vuillotf/PARTAGE/CGNS/Export_Centaur/CAS_2b.hyb.cgns'
+# inputfile    = '/stck/bmaugars/dev/dev-Tools/maia/build/CAS_2b.hyb.cgns'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube1a.cgns'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube1b_light.cgns'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/EMMA/cube_simple/Cube_ANSA_mix_separated.cgns'

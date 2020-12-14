@@ -24,11 +24,11 @@ import sys
 from maia.generate           import dcube_generator                 as DCG
 
 n_vtx       = 3
-edge_length = 1.
+edge_length = 2.
 origin      = [0., 0., 0.]
 
 dist_tree = DCG.dcube_generate(n_vtx, edge_length, origin, comm)
 
 # I.printTree(dist_tree)
 
-# C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
+C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
