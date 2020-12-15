@@ -21,7 +21,7 @@ import numpy              as NPY
 import sys
 
 # > Import PyPart
-from pypart                 import DistributionBase        as DBA
+#from pypart                 import DistributionBase        as DBA
 
 from maia.cgns_io            import load_collective_size_tree       as LST
 from maia.cgns_io            import cgns_io_tree                    as IOT
@@ -66,14 +66,18 @@ HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 
 IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
+I.printTree(dist_tree)
 FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
 # I.printTree(dist_tree)
 # C.convertPyTree2File(dist_tree, "dist_tree_{0}.hdf".format(rank))
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter, mode='write')
-I.printTree(dist_tree)
+#I.printTree(dist_tree)
+#C.convertPyTree2File(dist_tree,"dist_tree.cgns")
 
+print(hdf_filter)
+#hdf_filter = {'/Base/dom-2/GridCoordinates/CoordinateX': [[0], [1], [9], [1], [0], [1], [9], [1], [9], [0]]}
 IOT.save_tree_from_filter("dist_tree.hdf", dist_tree, comm, hdf_filter)
 
 dzone_to_weighted_parts = {}
