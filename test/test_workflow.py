@@ -15,21 +15,12 @@ LOG.basicConfig(filename = '{0}.{1}.log'.format('maia_workflow_log', rank),
                 filemode = 'w')
 # ---------------------------------------------------------
 
-# > Import PyPart
-from pypart                 import LazyLoadConfiguration   as LLC
-from pypart                 import DistributionBase        as DBA
-from pypart                 import DistributionZone        as DZO
-# from pypart                 import DistributedLoad         as DLO
-from pypart                 import PyPartMulti             as PPM
-from pypart                 import TransfertTreeData       as TTD
-from pypart                 import SaveTree                as SVT
-# import etc.transform as trf
-
 from maia.cgns_io import load_collective_size_tree as LST
 from maia.cgns_io import cgns_io_tree as IOT
 from maia.cgns_io.hdf_filter import elements as HEF
 from maia.cgns_io.hdf_filter import tree as HTF
 import maia.distribution as MDI
+from maia.partitioning.load_balancing import setup_partition_weights as DBA
 
 import Converter.PyTree   as C
 import Converter.Internal as I
@@ -72,7 +63,7 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
 #
 # > ... and this is suffisent to predict your partitions sizes
-dZoneToWeightedParts = DBA.computePartitioningWeights(dist_tree, comm)
+dZoneToWeightedParts = DBA.npart_per_zone(dist_tree, comm)
 
 print(dZoneToWeightedParts)
 

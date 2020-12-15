@@ -20,13 +20,10 @@ import Converter.Internal as I
 import numpy              as NPY
 import sys
 
-
-from pypart                 import DistributionBase        as DBA
-
-from maia.cgns_registry      import tree             as CGT # Not bad :D
 from maia.generate           import dplane_generator as DPG
 from maia.cgns_io.hdf_filter import tree             as HTF
 from maia.cgns_io            import cgns_io_tree     as IOT
+from maia.partitioning.load_balancing import setup_partition_weights as DBA
 from maia.partitioning       import part             as PPA
 from maia.cgns_io            import save_part_tree   as SPT
 
@@ -45,8 +42,6 @@ ny          = 8
 
 dist_tree = DPG.dplane_generate(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
 
-cgr = CGT.add_cgns_registry_information(dist_tree, comm)
-
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 
@@ -62,7 +57,7 @@ IOT.save_tree_from_filter("zz_out/dplane_mesh.hdf", dist_tree, comm, hdf_filter)
 #   print(key, val)
 # I.printTree(dist_tree)
 
-dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm)
+dzone_to_weighted_parts = DBA.balance_multizone_tree(dist_tree, comm)
 
 print(dzone_to_weighted_parts)
 

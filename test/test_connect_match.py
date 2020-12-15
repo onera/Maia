@@ -20,16 +20,13 @@ import Converter.Internal as I
 import numpy              as NPY
 import sys
 
-# > Import PyPart
-from pypart                 import DistributionBase        as DBA
-
 from maia.cgns_io            import load_collective_size_tree       as LST
-from maia.cgns_registry      import tree                            as CGT # Not bad :D
 from maia.cgns_io            import cgns_io_tree                    as IOT
 from maia.cgns_io            import save_part_tree                  as SPT
 from maia.cgns_io.hdf_filter import elements                        as HEF
 from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
+from maia.partitioning.load_balancing import setup_partition_weights as DBA
 from maia.partitioning       import part                            as PPA
 from maia.geometry           import connect_match                   as CMA
 import maia.distribution                                            as MDI
@@ -44,8 +41,6 @@ inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C11_TwoC
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
 dist_tree = LST.load_collective_size_tree(inputfile, comm)
-
-cgr = CGT.add_cgns_registry_information(dist_tree, comm)
 
 # > ParaDiGM : dcube_gen() --> A faire
 
@@ -83,7 +78,7 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 # > dloading_procs        --> Proportion de la zone initiale avant le partitionnement (vision block)
 #
 # > ... and this is suffisent to predict your partitions sizes
-dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm)
+dzone_to_weighted_parts = DBA.balance_multizone_tree(dist_tree, comm)
 
 # print(dzone_to_weighted_parts)
 

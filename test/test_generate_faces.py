@@ -20,17 +20,14 @@ import Converter.Internal as I
 import numpy              as NPY
 import sys
 
-# > Import PyPart
-from pypart                 import DistributionBase        as DBA
-
 from maia.cgns_io            import load_collective_size_tree       as LST
 from maia.cgns_io            import cgns_io_tree                    as IOT
 from maia.cgns_io.hdf_filter import elements                        as HEF
 from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
+from maia.partitioning.load_balancing import setup_partition_weights as DBA
 from maia.partitioning       import part                            as PPA
 from maia.cgns_io            import save_part_tree                  as SPT
-from maia.cgns_registry      import tree                            as CGT # Not bad :D
 
 import maia.distribution                                      as MDI
 
@@ -79,9 +76,7 @@ HTF.create_tree_hdf_filter(dist_tree, hdf_filter, mode='write')
 # print(hdf_filter)
 IOT.save_tree_from_filter("dist_tree.hdf", dist_tree, comm, hdf_filter)
 
-dzone_to_weighted_parts = {}
-for zone in I.getZones(dist_tree):
-    dzone_to_weighted_parts[zone[0]] = [1./comm.Get_size()]
+dzone_to_weighted_parts = DBA.npart_per_zone(dist_tree, comm, 1)
 
 # print(dzone_to_weighted_parts)
 
@@ -90,7 +85,6 @@ for zone in I.getZones(dist_tree):
   dloading_procs[zone[0]] = list(range(comm.Get_size()))
 # print(dloading_procs)
 
-cgr = CGT.add_cgns_registry_information(dist_tree, comm)
 part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
                              comm,
                              split_method=2,

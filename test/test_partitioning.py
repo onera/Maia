@@ -20,9 +20,6 @@ import Converter.Internal as I
 import numpy              as NPY
 import sys
 
-# > Import PyPart
-#from pypart                 import DistributionBase        as DBA
-
 from maia.cgns_io            import load_collective_size_tree       as LST
 from maia.cgns_io            import cgns_io_tree                    as IOT
 from maia.cgns_io            import save_part_tree                  as SPT
@@ -30,10 +27,8 @@ from maia.cgns_io.hdf_filter import elements                        as HEF
 from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
 from maia.partitioning       import part                            as PPA
+from maia.partitioning.load_balancing import setup_partition_weights as DBA
 import maia.distribution                                            as MDI
-from maia.cgns_registry      import cgns_registry                   as CGR
-from maia.cgns_registry      import cgns_keywords
-from maia.cgns_registry      import tree                            as CGT # Not bad :D
 
 from   Converter import cgnskeywords as CGK
 
@@ -59,8 +54,6 @@ inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C1_Cube_
 # ------------------------------------------------------------------------
 # > Load only the list of zone and sizes ...
 dist_tree = LST.load_collective_size_tree(inputfile, comm)
-
-cgr = CGT.add_cgns_registry_information(dist_tree, comm)
 
 # I.printTree(dist_tree)
 # exit(2)
@@ -100,10 +93,7 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 #
 # > ... and this is suffisent to predict your partitions sizes
 
-#dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm) # TODO use this
-dzone_to_weighted_parts = {}
-for zone in I.getZones(dist_tree):
-    dzone_to_weighted_parts[zone[0]] = [1./comm.Get_size()]
+dzone_to_weighted_parts = DBA.npart_per_zone(dist_tree, comm, 1)
 
 # print(dzone_to_weighted_parts)
 
