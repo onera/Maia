@@ -13,7 +13,7 @@ namespace cgns {
 
 template<class Range> auto
 distribution_from_partial(const Range& partial_distri, MPI_Comm comm) -> distribution_vector<PDM_g_num_t> {
-  int dn_elt = partial_distri[1] - partial_distri[0];
+  PDM_g_num_t dn_elt = partial_distri[1] - partial_distri[0];
   auto full_distri = distribution_from_dsizes(dn_elt, comm);
   STD_E_ASSERT(full_distri.back()==partial_distri[2]);
   return full_distri;
