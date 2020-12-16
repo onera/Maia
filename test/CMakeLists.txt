@@ -30,7 +30,7 @@ option(MAIA_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
 
 
 if(MAIA_ENABLE_MPI_TESTS)
-  mpi_pytest_directory_python_create(maia_python_unit_tests maia 1)
+  mpi_pytest_directory_python_create(maia_python_unit_tests maia ${n_proc_max_test})
   mpi_pytest_directory_python_create(maia_python_func_tests test 1)
 
   # TODO (not ready yet)

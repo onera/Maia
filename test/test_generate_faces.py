@@ -39,6 +39,9 @@ import maia.distribution                                      as MDI
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/Cube_ANSAd/Cube_hyb_sep.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8.cgns'
+# inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8.cgns'
+# inputfile    = '/stck/vuillotf/PARTAGE/CGNS/Export_Centaur/CAS_2b.hyb.cgns'
+# inputfile    = '/stck/bmaugars/dev/dev-Tools/maia/build/CAS_2b.hyb.cgns'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube1a.cgns'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube1b_light.cgns'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/EMMA/cube_simple/Cube_ANSA_mix_separated.cgns'
@@ -73,11 +76,8 @@ FTH.generate_ngon_from_std_elements(dist_tree, comm)
 # C.convertPyTree2File(dist_tree, "dist_tree_{0}.hdf".format(rank))
 hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter, mode='write')
-#I.printTree(dist_tree)
-#C.convertPyTree2File(dist_tree,"dist_tree.cgns")
-
-print(hdf_filter)
-#hdf_filter = {'/Base/dom-2/GridCoordinates/CoordinateX': [[0], [1], [9], [1], [0], [1], [9], [1], [9], [0]]}
+# I.printTree(dist_tree)
+# print(hdf_filter)
 IOT.save_tree_from_filter("dist_tree.hdf", dist_tree, comm, hdf_filter)
 
 dzone_to_weighted_parts = {}
