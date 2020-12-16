@@ -168,11 +168,9 @@ auto merge_by_elt_type(tree& b, factory F, MPI_Comm comm) -> void {
   auto bcs = get_nodes_by_matching(z,"ZoneBC_t/BC_t");
   for (tree& bc : bcs) {
     if (to_string(get_child_by_name(bc,"GridLocation").value)!="Vertex") {
-      ELOG(to_string(get_child_by_name(bc,"GridLocation").value));
       //auto pl = get_child_value_by_name<I4>(bc,"PointList");
       tree& pl_node = get_child_by_name(bc,"PointList");
       auto pl = view_as_span<I4>(pl_node.value);
-      ELOG(pl);
 
       for (I4& id : pl) {
         auto index = std_e::interval_index(id,old_offsets);
@@ -197,6 +195,7 @@ auto merge_by_elt_type(tree& b, factory F, MPI_Comm comm) -> void {
       elt_type = ElementType<I4>(*section_current);
     }
   }
+  LOG("end merge_by_elt_type");
 
   F.rm_children_by_label(z,"Elements_t");
   emplace_children(z,std::move(merged_sections));
