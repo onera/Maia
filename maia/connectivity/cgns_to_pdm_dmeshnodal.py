@@ -44,7 +44,7 @@ def concatenate_bc(zone):
   else:
     delmt_bound = None
 
-  print(n_elmt_group, delmt_bound_idx, delmt_bound)
+  #print(n_elmt_group, delmt_bound_idx, delmt_bound)
 
   # > Holder state
   pdm_node = I.createUniqueChild(zone, ':CGNS#DMeshNodal#Bnd', 'UserDefinedData_t')

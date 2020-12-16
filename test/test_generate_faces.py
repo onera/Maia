@@ -21,7 +21,7 @@ import numpy              as NPY
 import sys
 
 # > Import PyPart
-from pypart                 import DistributionBase        as DBA
+#from pypart                 import DistributionBase        as DBA
 
 from maia.cgns_io            import load_collective_size_tree       as LST
 from maia.cgns_io            import cgns_io_tree                    as IOT

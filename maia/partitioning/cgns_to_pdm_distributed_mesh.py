@@ -15,16 +15,16 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   distrib_vtx      = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
   distrib_cell     = I.getNodeFromName1(distrib_ud, 'Cell'  )[1]
 
-  # > Try to hooks NGon
-  ngon_n = None
-  for elmt in I.getNodesFromType1(dist_zone, 'Elements_t'):
-    if(elmt[1][0] == 22):
+  # > Try to hook NGon
+  found = False
+  for elt in I.getNodesFromType1(dist_zone, 'Elements_t'):
+    if(I.getValue(elt)[0] == 22):
       found    = True
-      dface_vtx = I.getNodeFromName1(elmt, 'ElementConnectivity')[1]
-      ngon_pe   = I.getNodeFromName1(elmt, 'ParentElements'     )[1]
-      ngon_eso  = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
+      dface_vtx = I.getNodeFromName1(elt, 'ElementConnectivity')[1]
+      ngon_pe   = I.getNodeFromName1(elt, 'ParentElements'     )[1]
+      ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1]
 
-      distrib_ngon_ud  = I.getNodeFromName1(elmt           , ':CGNS#Distribution')
+      distrib_ngon_ud  = I.getNodeFromName1(elt           , ':CGNS#Distribution')
       distrib_face     = I.getNodeFromName1(distrib_ngon_ud, 'Distribution'      )[1]
       distrib_face_vtx = I.getNodeFromName1(distrib_ngon_ud, 'DistributionElementConnectivity')[1]
   if(not found):

@@ -1,6 +1,7 @@
 import Converter.Internal as I
 import numpy as np
 from maia.utils.py_utils import list_or_only_elt
+from maia.sids.elements_utils import *
 
 def VertexSize(zone):
   assert I.getType(zone) == "Zone_t"
@@ -16,6 +17,20 @@ def VertexBoundarySize(zone):
   assert I.getType(zone) == "Zone_t"
   z_sizes = I.getValue(zone)
   return list_or_only_elt(z_sizes[:,2])
+
+def ZoneType(zone):
+  assert I.getType(zone) == "Zone_t"
+  zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
+  return zone_type_n[1].tostring()
+
+
+def ElementRange(elements):
+  assert I.getType(elements) == "Elements_t"
+  return I.getNodeFromName(elements,"ElementRange")[1]
+
+def ElementType(elements):
+  assert I.getType(elements) == "Elements_t"
+  return elements[1][0]
 
 def point_range_size(pr_n):
   assert I.getType(pr_n) == "IndexRange_t"

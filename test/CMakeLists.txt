@@ -1,7 +1,7 @@
 include(TestCreate)
 
 set(pytest_mpi_check_file ${PROJECT_ROOT}/external/pytest-mpi-check/pytest_mpi_check.py)
-set(pytest_file_in_build ${CMAKE_CURRENT_BINARY_DIR}/../../pytest-mpi-check/pytest_mpi_check.py)
+set(pytest_file_in_build ${CMAKE_CURRENT_BINARY_DIR}/../external/pytest-mpi-check/pytest_mpi_check.py)
 add_custom_command(OUTPUT  "${pytest_file_in_build}"
                    DEPENDS "${pytest_mpi_check_file}"
                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
