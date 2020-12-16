@@ -8,7 +8,7 @@ function( mixpython_cython_add_module _name )
 
 # Pybind
   # if(ENABLE_PYBIND)
-  file(GLOB_RECURSE _pybind_files CONFIGURE_DEPENDS *.pybind.cpp)
+  file(GLOB_RECURSE _pybind_files CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/${_name}/*.pybind.cpp")
   foreach(_pybind_file ${_pybind_files})
     # message("_pybind_file::" ${_pybind_file})
     # Deduce module name
@@ -30,7 +30,7 @@ function( mixpython_cython_add_module _name )
   # endif()
 
 # Cython
-  file(GLOB_RECURSE _pyx_files CONFIGURE_DEPENDS *.pyx)
+  file(GLOB_RECURSE _pyx_files CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/${_name}/*.pyx")
   foreach(_pyx_file ${_pyx_files})
     # message("pyx_file::" ${_pyx_file})
 
@@ -65,7 +65,7 @@ function( mixpython_cython_add_module _name )
 # Python
   set(python_copied_modules_${_name})
 
-  file(GLOB_RECURSE _py_files CONFIGURE_DEPENDS *.py)
+  file(GLOB_RECURSE _py_files CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/${_name}/*.py")
   foreach (python_file IN LISTS _py_files)
 
     file(RELATIVE_PATH python_rel_file  ${CMAKE_CURRENT_SOURCE_DIR} ${python_file})
