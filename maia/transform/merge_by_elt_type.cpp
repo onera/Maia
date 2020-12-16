@@ -5,7 +5,6 @@
 #include "std_e/interval/knot_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "pdm_multi_block_to_part.h"
-#include "std_e/log.hpp" // TODO
 #include "std_e/data_structure/multi_range.hpp"
 
 
@@ -195,7 +194,6 @@ auto merge_by_elt_type(tree& b, factory F, MPI_Comm comm) -> void {
       elt_type = ElementType<I4>(*section_current);
     }
   }
-  LOG("end merge_by_elt_type");
 
   F.rm_children_by_label(z,"Elements_t");
   emplace_children(z,std::move(merged_sections));
