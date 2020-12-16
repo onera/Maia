@@ -27,17 +27,6 @@ class parallel_tree:
     self.part_tree = part_tree
     self.dist_tree = dist_tree
 
-  def get_part_tree(self):
-    return self.part_tree
-  def set_part_tree(self,part_tree):
-    return self.part_tree
-
-  def get_dist_tree(self):
-    return self.dist_tree
-  def set_dist_tree(self,dist_tree):
-    return self.dist_tree
-
-
 
 
 def load_partitioned_tree(file_name,comm):
@@ -113,8 +102,6 @@ def load_partitioned_tree(file_name,comm):
 
   add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
-
-  SPT.save_part_tree(part_tree, 'part_tree', comm)
 
   ## TODO
   #for zone in I.getZones(part_tree):
