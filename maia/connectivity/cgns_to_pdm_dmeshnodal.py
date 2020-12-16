@@ -33,7 +33,7 @@ def concatenate_bc(zone):
           cgns_distrib_n = I.getNodeFromName1(bc, ':CGNS#Distribution')
           distrib_n      = I.getNodeFromName1(cgns_distrib_n, 'Distribution')
           distrib        = I.getValue(distrib_n)
-          pl = NPY.arange(pr[0][0]+distrib[0], pr[0][0]+distrib[1], dtype='int32')
+          pl = NPY.arange(pr[0][0]+distrib[0], pr[0][0]+distrib[1], dtype=pr.dtype)
         else:
           pl = NPY.empty(0, dtype='int32', order='F')
       delmt_bound.append(pl)

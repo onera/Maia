@@ -18,8 +18,8 @@ namespace pdm {
 
 template<PDM_part_to_block_post_t post_treatment_kind>
 class parts_to_block_protocol {
-  public: 
-    parts_to_block_protocol(MPI_Comm mpi_comm, distribution_vector<int> dist, global_numberings lgs)
+  public:
+    parts_to_block_protocol(MPI_Comm mpi_comm, distribution_vector<PDM_g_num_t> dist, global_numberings lgs)
       : distribution(move(dist))
       , LN_to_GNs(move(lgs))
       , nb_elts_by_partition(LN_to_GNs.size())
@@ -144,9 +144,9 @@ class parts_to_block_protocol {
     parts_to_block_protocol& operator=(parts_to_block_protocol&&) = delete;
     parts_to_block_protocol(const parts_to_block_protocol&) = delete;
     parts_to_block_protocol& operator=(const parts_to_block_protocol&) = delete;
-      
+
   private:
-    distribution_vector<int> distribution;
+    distribution_vector<PDM_g_num_t> distribution;
     global_numberings LN_to_GNs;
 
     std::vector<int> nb_elts_by_partition;
@@ -159,7 +159,7 @@ class parts_to_block_protocol {
 template<PDM_part_to_block_post_t post_treatment_kind>
 class part_to_block_protocol {
   public:
-    part_to_block_protocol(MPI_Comm mpi_comm, distribution_vector<int> dist, global_numbering lg)
+    part_to_block_protocol(MPI_Comm mpi_comm, distribution_vector<PDM_g_num_t> dist, global_numbering lg)
       : impl(mpi_comm,std::move(dist),{std::move(lg)})
     {}
 

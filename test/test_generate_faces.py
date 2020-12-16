@@ -39,6 +39,8 @@ import maia.distribution                                      as MDI
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/Cube_ANSAd/Cube_hyb_sep.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8.cgns'
+# inputfile    = '/stck/bmaugars/dev/dev-Tools/maia/build/H155_FPL24_64.hdf'
+# inputfile    = '/scratchm/bmaugars/H155_FPL24_64.cgns'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8.cgns'
 # inputfile    = '/stck/vuillotf/PARTAGE/CGNS/Export_Centaur/CAS_2b.hyb.cgns'
 # inputfile    = '/stck/bmaugars/dev/dev-Tools/maia/build/CAS_2b.hyb.cgns'
@@ -69,6 +71,9 @@ HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
 
 IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
+# I._rmNodesByName(dist_tree, "B_*")
+# I._rmNodesByName(dist_tree, "ZoneBC")
+
 FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
 # I.printTree(dist_tree)
@@ -77,7 +82,7 @@ hdf_filter = dict()
 HTF.create_tree_hdf_filter(dist_tree, hdf_filter, mode='write')
 # I.printTree(dist_tree)
 # print(hdf_filter)
-IOT.save_tree_from_filter("dist_tree.hdf", dist_tree, comm, hdf_filter)
+# IOT.save_tree_from_filter("dist_tree.hdf", dist_tree, comm, hdf_filter)
 
 dzone_to_weighted_parts = {}
 for zone in I.getZones(dist_tree):
