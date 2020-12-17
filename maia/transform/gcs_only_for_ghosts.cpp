@@ -11,7 +11,7 @@ auto gcs_only_for_ghosts(tree& b, factory F) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   for (tree& z : zs) {
     int n_node = VertexSize_U<I4>(z);
-    auto n_ghost_node = get_node_value_by_matching<I4>(z,"GridCoordinates/FSDM#n_ghost_node")[0];
+    auto n_ghost_node = get_node_value_by_matching<I4>(z,"GridCoordinates/FSDM#n_ghost")[0];
     int n_owned_node = n_node - n_ghost_node;
     auto gcs = get_nodes_by_matching(z,"ZoneGridConnectivity_t/GridConnectivity_t");
     for (tree& gc : gcs) {
@@ -36,11 +36,11 @@ auto gcs_only_for_ghosts(tree& b, factory F) -> void {
 
         F.deallocate_node_value(pl_node.value);
         pl_node.value = view_as_node_value(new_pl);
-        pl_node.value.dims = {1,new_pl.size()}; // required by SIDS
+        pl_node.value.dims = {1,(I8)new_pl.size()}; // required by SIDS
 
         F.deallocate_node_value(pld_node.value);
         pld_node.value = view_as_node_value(new_pld);
-        pld_node.value.dims = {1,new_pld.size()}; // required by SIDS
+        pld_node.value.dims = {1,(I8)new_pld.size()}; // required by SIDS
       }
     }
   }

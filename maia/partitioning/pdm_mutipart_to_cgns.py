@@ -66,7 +66,7 @@ def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):
         n_ghost_node = len(vtx_ghost_info) - first_ghost_idx
         coord_node = I.getNodeFromName(part_zone,"GridCoordinates")
 
-        I.newUserDefinedData("FSDM#n_ghost_node",value=[n_ghost_node],parent=coord_node)
+        I.newUserDefinedData("FSDM#n_ghost",value=[n_ghost_node],parent=coord_node)
 
 
       index    += 1

@@ -7,7 +7,6 @@ import Converter.PyTree   as C
 import Converter.Internal as I
 
 import Pypdm.Pypdm as PDM
-from etc import toolbox as TBX
 
 # --------------------------------------------------------------------------
 def distFlowSolToPartFlowSol(dist_tree, part_tree, dZoneToPart, comm):
@@ -22,7 +21,7 @@ def distFlowSolToPartFlowSol(dist_tree, part_tree, dZoneToPart, comm):
                            distzone name (key), list of size partN on this
                            zone for this process (value). The content of the
                            list is unused here, only size matters.
-      Comm (MPI.Comm)    : MPI Communicator (from mpi4py)
+      comm (MPI.Comm)    : MPI Communicator (from mpi4py)
   """
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -30,8 +29,8 @@ def distFlowSolToPartFlowSol(dist_tree, part_tree, dZoneToPart, comm):
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  iRank = Comm.Get_rank()
-  nRank = Comm.Get_size()
+  iRank = comm.Get_rank()
+  nRank = comm.Get_size()
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -67,21 +66,21 @@ def distFlowSolToPartFlowSol(dist_tree, part_tree, dZoneToPart, comm):
       GridLoc     = I.getValue(GridLocNode)
 
       if(GridLoc == 'CellCenter'):
-        PpartNodeName = 'npCellLNToGN'
+        PpartNodeName = 'np_cell_ln_to_gn'
         DistriName    = 'Distribution_cell'
         npElemName    = 'nCell'
       elif(GridLoc == 'Vertex'):
-        PpartNodeName = 'npVertexLNToGN'
+        PpartNodeName = 'np_vtx_ln_to_gn'
         DistriName    = 'Distribution_vtx'
         npElemName    = 'nVertex'
       elif(GridLoc == 'FaceCenter'):
-        PpartNodeName = 'npFaceLNToGN'
+        PpartNodeName = 'np_face_ln_to_gn'
         DistriName    = 'Distribution_face'
         npElemName    = 'nFace'
       else:
         LOG.error(' '*6 + 'Bad grid location for solution {0} on zone {1}'.format(
           FlowSolutionNode[0], distZoneName))
-        Comm.abort()
+        comm.abort()
       # --------------------------------------------------------------------
 
       # --------------------------------------------------------------------
@@ -98,14 +97,14 @@ def distFlowSolToPartFlowSol(dist_tree, part_tree, dZoneToPart, comm):
       ndElem = DistributionSol[1] - DistributionSol[0]
       PDMDistribution = np.empty((nRank + 1), order='C', dtype='int32')
       PDMDistribution[0]  = 0
-      PDMDistribution[1:] = Comm.allgather(ndElem)
-      for j in xrange(nRank):
+      PDMDistribution[1:] = comm.allgather(ndElem)
+      for j in range(nRank):
         PDMDistribution[j+1] = PDMDistribution[j+1] + PDMDistribution[j]
       # --------------------------------------------------------------------
 
       # --------------------------------------------------------------------
       # > Loop over parts to get LNToGN
-      for iPart in xrange(nParts):
+      for iPart in range(nParts):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > Get zone
         partZoneName = "{0}.P{1}.N{2}".format(distZoneName, iRank, iPart)
@@ -134,7 +133,7 @@ def distFlowSolToPartFlowSol(dist_tree, part_tree, dZoneToPart, comm):
 
       # --------------------------------------------------------------------
       # > Move block data to part data
-      BTP = PDM.BlockToPart(PDMDistribution, Comm, pLNToGN, nParts)
+      BTP = PDM.BlockToPart(PDMDistribution, comm, pLNToGN, nParts)
       BTP.BlockToPart_Exchange(dData, pData)
       # LOG.debug("     pData : {0}".format(pData))
       # --------------------------------------------------------------------
@@ -155,7 +154,7 @@ def distDataSetToPartDataSet(dist_tree, part_tree, dZoneToPart, comm):
                            distzone name (key), list of size partN on this
                            zone for this process (value). The content of the
                            list is unused here, only size matters.
-      Comm (MPI.Comm)    : MPI Communicator (from mpi4py)
+      comm (MPI.Comm)    : MPI Communicator (from mpi4py)
   """
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -163,8 +162,8 @@ def distDataSetToPartDataSet(dist_tree, part_tree, dZoneToPart, comm):
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  iRank = Comm.Get_rank()
-  nRank = Comm.Get_size()
+  iRank = comm.Get_rank()
+  nRank = comm.Get_size()
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -225,14 +224,14 @@ def distDataSetToPartDataSet(dist_tree, part_tree, dZoneToPart, comm):
       ndElem = DistriBC[1] - DistriBC[0]
       PDMDistribution = np.empty((nRank + 1), order='C', dtype='int32')
       PDMDistribution[0]  = 0
-      PDMDistribution[1:] = Comm.allgather(ndElem)
-      for j in xrange(nRank):
+      PDMDistribution[1:] = comm.allgather(ndElem)
+      for j in range(nRank):
         PDMDistribution[j+1] = PDMDistribution[j+1] + PDMDistribution[j]
       # --------------------------------------------------------------------
 
       # --------------------------------------------------------------------
       # > Loop over parts to get LNToGN
-      for iPart in xrange(nParts):
+      for iPart in range(nParts):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > Get zone
         partZoneName = "{0}.P{1}.N{2}".format(distZoneName, iRank, iPart)
@@ -271,7 +270,7 @@ def distDataSetToPartDataSet(dist_tree, part_tree, dZoneToPart, comm):
 
       # --------------------------------------------------------------------
       # > Move block data to part data
-      BTP = PDM.BlockToPart(PDMDistribution, Comm, pLNToGN, nParts)
+      BTP = PDM.BlockToPart(PDMDistribution, comm, pLNToGN, nParts)
       BTP.BlockToPart_Exchange(dData, pData)
       # LOG.debug("     pData : {0}".format(pData))
       # --------------------------------------------------------------------
@@ -292,15 +291,15 @@ def pFlowSolution_to_dFlowSolution(dist_tree, part_tree, dZoneToPart, comm):
                            distzone name (key), list of size partN on this
                            zone for this process (value). The content of the
                            list is unused here, only size matters.
-      Comm (MPI.Comm)    : MPI Communicator (from mpi4py)
+      comm (MPI.Comm)    : MPI Communicator (from mpi4py)
   """
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   LOG.info("### TransfertTreeData::pFlowSolution_to_dFlowSolution")
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  iRank = Comm.Get_rank()
-  nRank = Comm.Get_size()
+  iRank = comm.Get_rank()
+  nRank = comm.Get_size()
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -310,12 +309,12 @@ def pFlowSolution_to_dFlowSolution(dist_tree, part_tree, dZoneToPart, comm):
   #  We assume that flowsolution containers have the same name/dataarray on
   #  each zone, and take names from a random partitioned zone.
   #  Troubles can occur if a proc does not have partitions at all
-  gridLocToLNGNName = {'CellCenter' : 'npCellLNToGN',
-                       'Vertex'     : 'npVertexLNToGN',
-                       'FaceCenter' : 'npFaceLNToGN'}
-  gridLocToDistriUD = {'CellCenter' : 'Distribution_cell',
-                       'Vertex'     : 'Distribution_vtx',
-                       'FaceCenter' : 'Distribution_face'}
+  gridLocToLNGNName = {'CellCenter' : 'np_cell_ln_to_gn',
+                       'Vertex'     : 'np_vtx_ln_to_gn',
+                       'FaceCenter' : 'np_face_ln_to_gn'}
+  gridLocToDistriUD = {'CellCenter' : 'Cell',
+                       'Vertex'     : 'Vertex',
+                       'FaceCenter' : 'Face'}
   gridLocToVoid = dict()
 
   partZone = I.getNodeFromType2(part_tree, "Zone_t")
@@ -336,7 +335,7 @@ def pFlowSolution_to_dFlowSolution(dist_tree, part_tree, dZoneToPart, comm):
     if (GridLoc not in gridLocToLNGNName):
       LOG.error(' '*6 + 'Bad grid location for solution {0} : {1} '.format(
         FlowSolutionNode[0], GridLoc))
-      Comm.Abort()
+      comm.Abort()
     if (GridLoc not in gridLocToVoid):
       gridLocToVoid[GridLoc] = dict()
     # oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
@@ -385,7 +384,7 @@ def pFlowSolution_to_dFlowSolution(dist_tree, part_tree, dZoneToPart, comm):
 
     # oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
     # > Loop over parts (if existing) and fill lntogn and arrays
-    for iPart in xrange(nParts):
+    for iPart in range(nParts):
       # --------------------------------------------------------------------
       partZoneName = "{0}.P{1}.N{2}".format(distZoneName, iRank, iPart)
       partZone = I.getNodeFromName2(part_tree, partZoneName)
@@ -438,13 +437,13 @@ def pFlowSolution_to_dFlowSolution(dist_tree, part_tree, dZoneToPart, comm):
       ndElem = DistributionSol[1] - DistributionSol[0]
       PDMDistribution = np.empty((nRank + 1), order='C', dtype='int32')
       PDMDistribution[0]  = 0
-      PDMDistribution[1:] = Comm.allgather(ndElem)
-      for j in xrange(nRank):
+      PDMDistribution[1:] = comm.allgather(ndElem)
+      for j in range(nRank):
         PDMDistribution[j+1] = PDMDistribution[j+1] + PDMDistribution[j]
       # --------------------------------------------------------------------
 
       # --------------------------------------------------------------------
-      PTB = PDM.PartToBlock(Comm, pLNToGN, pWeight, nParts,
+      PTB = PDM.PartToBlock(comm, pLNToGN, pWeight, nParts,
                             t_distrib = 0,
                             t_post    = 1,
                             t_stride  = 0,
@@ -494,15 +493,15 @@ def partDataSetToDistDataSet(dist_tree, part_tree, dZoneToPart, comm):
                            distzone name (key), list of size partN on this
                            zone for this process (value). The content of the
                            list is unused here, only size matters.
-      Comm (MPI.Comm)    : MPI Communicator (from mpi4py)
+      comm (MPI.Comm)    : MPI Communicator (from mpi4py)
   """
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   LOG.info("### TransfertTreeData::partDataSetToDistDataSet")
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  iRank = Comm.Get_rank()
-  nRank = Comm.Get_size()
+  iRank = comm.Get_rank()
+  nRank = comm.Get_size()
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -550,8 +549,8 @@ def partDataSetToDistDataSet(dist_tree, part_tree, dZoneToPart, comm):
       ndElem = DistriBC[1] - DistriBC[0]
       PDMDistribution = np.empty((nRank + 1), order='C', dtype='int32')
       PDMDistribution[0]  = 0
-      PDMDistribution[1:] = Comm.allgather(ndElem)
-      for j in xrange(nRank):
+      PDMDistribution[1:] = comm.allgather(ndElem)
+      for j in range(nRank):
         PDMDistribution[j+1] = PDMDistribution[j+1] + PDMDistribution[j]
       # --------------------------------------------------------------------
 
@@ -562,7 +561,7 @@ def partDataSetToDistDataSet(dist_tree, part_tree, dZoneToPart, comm):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > Search BCDataSet and create PathNode
         hasBcDataSet = False
-        for iPart in xrange(nParts):
+        for iPart in range(nParts):
           partBCPath = "{0}/{1}.P{4}.N{5}/{2}/{3}.P{4}.N{5}".format(
               BaseName, distZoneName, ContainerName, BoundaryName, iRank, iPart)
           partBC = I.getNodeFromPath(part_tree, partBCPath)
@@ -584,10 +583,10 @@ def partDataSetToDistDataSet(dist_tree, part_tree, dZoneToPart, comm):
 
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > Share pathnode and add it
-        gHasBcDataSet = Comm.allgather(hasBcDataSet)
+        gHasBcDataSet = comm.allgather(hasBcDataSet)
         try:
           sender = gHasBcDataSet.index(True)
-          pathNodes = Comm.bcast(pathNodes, root=sender)
+          pathNodes = comm.bcast(pathNodes, root=sender)
           for pathNode in pathNodes:
             I.addChild(BC, pathNode)
         except ValueError: #No bcdataset
@@ -610,7 +609,7 @@ def partDataSetToDistDataSet(dist_tree, part_tree, dZoneToPart, comm):
 
       # --------------------------------------------------------------------
       # > Loop over parts to get LNToGN
-      for iPart in xrange(nParts):
+      for iPart in range(nParts):
         # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         # > Get zone and partbc
         partZoneName = "{0}.P{1}.N{2}".format(distZoneName, iRank, iPart)
@@ -649,7 +648,7 @@ def partDataSetToDistDataSet(dist_tree, part_tree, dZoneToPart, comm):
       # --------------------------------------------------------------------
       # > PartToBlock
       pWeight = None
-      PTB = PDM.PartToBlock(Comm, pLNToGN, pWeight, nParts,
+      PTB = PDM.PartToBlock(comm, pLNToGN, pWeight, nParts,
                             t_distrib = 0,
                             t_post    = 0,
                             t_stride  = 0,

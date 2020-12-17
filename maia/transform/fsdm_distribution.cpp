@@ -19,7 +19,7 @@ auto add_fsdm_distribution(tree& b, factory F, MPI_Comm comm) -> void {
   int n_rank = std_e::nb_ranks(comm);
 
   auto n_vtx = VertexSize_U<I4>(z);
-  auto n_ghost_node = get_node_value_by_matching<I4>(z,"GridCoordinates/FSDM#n_ghost_node")[0];
+  auto n_ghost_node = get_node_value_by_matching<I4>(z,"GridCoordinates/FSDM#n_ghost")[0];
   I4 n_owned_vtx = n_vtx - n_ghost_node;
   auto vtx_distri = distribution_from_dsizes(n_owned_vtx, comm);
   auto vtx_distri_mem = make_cgns_vector<I4>(n_rank+1,F.alloc());
