@@ -23,55 +23,111 @@ def convert_ijk_to_index(i,j,k,Ni,Nj,Nk):
 ###############################################################################
 
 ###############################################################################
-def convert_ijk_to_faceIndices(i,j,k,nCell,nVtx,nbFacesi,nbFacesj):
-  # WARNING : (i,j,k) begins at (1,1,1)
-  # WARNING : faces begin at 1
-  # nCell = [Ni,Nj,Nk]
-  # nVtx  = [Ni,Nj,Nk]
-  # nbFacesi = nVtx[0]*nCell[1]*nCell[2]
-  # nbFacesj = nVtx[1]*nCell[0]*nCell[2]
+def convert_ijk_to_faceiIndex(i,j,k,nCell,nVtx):
+  """
+  Convert (i,j,k) indices from structured grid to unstructured index of face with
+  normal in direction i
+  (i,j,k) defines start node of the structured face defined by :
+  (i,j,k), (i,j+1,k), (i,j+1,k+1) and (i,j,k+1)
+  nCell = [Ni,Nj,Nk]
+  nVtx  = [Ni,Nj,Nk]
+  Ni is the number of nodes or cells in the direction i
+  Nj is the number of nodes or cells in the direction j
+  Nk is the number of nodes or cells in the direction k
+  WARNING : (i,j,k) begins at (1,1,1)
+  WARNING : index begins at 1
+  CONVENTION : the face numerotation starts with all faces with normal in direction 
+               i, then continues with all faces with normal in direction j and ends 
+               with all faces with normal in direction k
+  """
+  return(i + (j-1)*nVtx[0] + (k-1)*nVtx[0]*nCell[1])
+###############################################################################
+
+###############################################################################
+def convert_ijk_to_facejIndex(i,j,k,nCell,nVtx):
+  """
+  Convert (i,j,k) indices from structured grid to unstructured index of face with
+  normal in direction j
+  (i,j,k) defines start node of the structured face defined by :
+  (i,j,k), (i,j,k+1), (i+1,j,k+1) and (i+1,j,k)
+  nCell = [Ni,Nj,Nk]
+  nVtx  = [Ni,Nj,Nk]
+  Ni is the number of nodes or cells in the direction i
+  Nj is the number of nodes or cells in the direction j
+  Nk is the number of nodes or cells in the direction k
+  WARNING : (i,j,k) begins at (1,1,1)
+  WARNING : index begins at 1
+  CONVENTION : the face numerotation starts with all faces with normal in direction 
+               i, then continues with all faces with normal in direction j and ends 
+               with all faces with normal in direction k
+  nbFacesi is the total number of faces with normal in direction i
+  """
+  nbFacesi = nVtx[0]*nCell[1]*nCell[2]
+  return(i + (j-1)*nCell[0] + (k-1)*nVtx[1]*nCell[0] + nbFacesi)
+###############################################################################
+
+###############################################################################
+def convert_ijk_to_facekIndex(i,j,k,nCell,nVtx):
+  """
+  Convert (i,j,k) indices from structured grid to unstructured index of face with
+  normal in direction k
+  (i,j,k) defines start node of the structured face defined by :
+  (i,j,k), (i+1,j,k), (i+1,j+1,k) and (i,j+1,k)
+  nCell = [Ni,Nj,Nk]
+  nVtx  = [Ni,Nj,Nk]
+  Ni is the number of nodes or cells in the direction i
+  Nj is the number of nodes or cells in the direction j
+  Nk is the number of nodes or cells in the direction k
+  WARNING : (i,j,k) begins at (1,1,1)
+  WARNING : index begins at 1
+  CONVENTION : the face numerotation starts with all faces with normal in direction 
+               i, then continues with all faces with normal in direction j and ends 
+               with all faces with normal in direction k
+  nbFacesi is the total number of faces with normal in direction i
+  nbFacesj is the total number of faces with normal in direction j
+  """
+  nbFacesi = nVtx[0]*nCell[1]*nCell[2]
+  nbFacesj = nVtx[1]*nCell[0]*nCell[2]
+  return(i + (j-1)*nCell[0] + (k-1)*nCell[0]*nCell[1] + nbFacesi + nbFacesj)
+###############################################################################
+
+###############################################################################
+def convert_ijk_to_faceIndices(i,j,k,nCell,nVtx):
+  """
+  Convert (i,j,k) indices from structured grid to unstructured index of faces with
+  normal in direction i, j and k
+  (i,j,k) defines start node of the structured face defined by :
+  (i,j,k), (i,j+1,k), (i,j+1,k+1) and (i,j,k+1) for fi
+  (i,j,k), (i,j,k+1), (i+1,j,k+1) and (i+1,j,k) for fj
+  (i,j,k), (i+1,j,k), (i+1,j+1,k) and (i,j+1,k) for fk
+  nCell = [Ni,Nj,Nk]
+  nVtx  = [Ni,Nj,Nk]
+  Ni is the number of nodes or cells in the direction i
+  Nj is the number of nodes or cells in the direction j
+  Nk is the number of nodes or cells in the direction k
+  WARNING : (i,j,k) begins at (1,1,1)
+  WARNING : index begins at 1
+  CONVENTION : the face numerotation starts with all faces with normal in direction 
+               i, then continues with all faces with normal in direction j and ends 
+               with all faces with normal in direction k
+  """
   fi = convert_ijk_to_faceiIndex(i,j,k,nCell,nVtx)
-  fj = convert_ijk_to_facejIndex(i,j,k,nCell,nVtx,nbFacesi)
-  fk = convert_ijk_to_facekIndex(i,j,k,nCell,nVtx,nbFacesi,nbFacesj)
+  fj = convert_ijk_to_facejIndex(i,j,k,nCell,nVtx)
+  fk = convert_ijk_to_facekIndex(i,j,k,nCell,nVtx)
   return(fi,fj,fk)
 ###############################################################################
 
 ###############################################################################
-def convert_ijk_to_faceiIndex(i,j,k,nCell,nVtx):
-  # WARNING : (i,j,k) begins at (1,1,1)
-  # WARNING : faces begin at 1
-  # nCell = [Ni,Nj,Nk]
-  # nVtx  = [Ni,Nj,Nk]
-  fi = i + (j-1)*nVtx[0]  + (k-1)*nVtx[0]*nCell[1]
-  return(fi)
-###############################################################################
-
-###############################################################################
-def convert_ijk_to_facejIndex(i,j,k,nCell,nVtx,nbFacesi):
-  # WARNING : (i,j,k) begins at (1,1,1)
-  # WARNING : faces begin at 1
-  # nCell = [Ni,Nj,Nk]
-  # nVtx  = [Ni,Nj,Nk]
-  # nbFacesi = nVtx[0]*nCell[1]*nCell[2]
-  fj = nbFacesi + i + (j-1)*nCell[0] + (k-1)*nVtx[1]*nCell[0]
-  return(fj)
-###############################################################################
-
-###############################################################################
-def convert_ijk_to_facekIndex(i,j,k,nCell,nVtx,nbFacesi,nbFacesj):
-  # WARNING : (i,j,k) begins at (1,1,1)
-  # WARNING : faces begin at 1
-  # nCell = [Ni,Nj,Nk]
-  # nVtx  = [Ni,Nj,Nk]
-  # nbFacesi = nVtx[0]*nCell[1]*nCell[2]
-  # nbFacesj = nVtx[1]*nCell[0]*nCell[2]
-  fk = nbFacesj + nbFacesi + i + (j-1)*nCell[0] + (k-1)*nCell[0]*nCell[1]
-  return(fk)
-###############################################################################
-
-###############################################################################
 def compute_fi_from_ijk(i,j,k):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction i and structured left and right cells indices of 
+  this face
+  (i,j,k) defines start node of the structured face defined by :
+  (i,j,k), (i,j+1,k), (i,j+1,k+1) and (i,j,k+1)
+  WARNING : (i,j,k) begins at (1,1,1)
+  This fonction allow i that verify imin < i < imax
+  """
   # Nodes of the face
   n1 = (i,j  ,k  )
   n2 = (i,j+1,k  )
@@ -85,7 +141,14 @@ def compute_fi_from_ijk(i,j,k):
 
 ###############################################################################
 def compute_fi_from_imaxjk(imax,j,k):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction i and for i=imax and structured left and right cells
+  indices of this face
+  (imax,j,k) defines start node of the structured face defined by :
+  (imax,j,k), (imax,j+1,k), (imax,j+1,k+1) and (imax,j,k+1)
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
   # Nodes of the face
   n1 = (imax,j  ,k  )
   n2 = (imax,j+1,k  )
@@ -99,7 +162,14 @@ def compute_fi_from_imaxjk(imax,j,k):
 
 ###############################################################################
 def compute_fi_from_iminjk(imin,j,k):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction i and for i=imin and structured left and right cells
+  indices of this face
+  (imin,j,k) defines start node of the structured face defined by :
+  (imin,j,k), (imin,j,k+1), (imin,j+1,k+1) and (imin,j+1,k)
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
   # Nodes of the face
   n1 = (imin,j  ,k  )
   n2 = (imin,j  ,k+1)
@@ -113,7 +183,15 @@ def compute_fi_from_iminjk(imin,j,k):
 
 ###############################################################################
 def compute_fj_from_ijk(i,j,k):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction j and structured left and right cells indices of 
+  this face
+  (i,j,k) defines start node of the structured face defined by :
+  (i,j,k), (i,j,k+1), (i+1,j,k+1) and (i+1,j,k)
+  WARNING : (i,j,k) begins at (1,1,1)
+  This fonction allow j that verify jmin < j < jmax
+  """
   # Nodes of the face
   n1 = (i  ,j,k  )
   n2 = (i  ,j,k+1)
@@ -127,7 +205,14 @@ def compute_fj_from_ijk(i,j,k):
 
 ###############################################################################
 def compute_fj_from_ijmaxk(i,jmax,k):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction j and for j=jmax and structured left and right cells
+  indices of this face
+  (i,jmax,k) defines start node of the structured face defined by :
+  (i,jmax,k), (i,jmax,k+1), (i+1,jmax,k+1) and (i+1,jmax,k)
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
   # Nodes of the face
   n1 = (i  ,jmax,k  )
   n2 = (i  ,jmax,k+1)
@@ -141,7 +226,14 @@ def compute_fj_from_ijmaxk(i,jmax,k):
 
 ###############################################################################
 def compute_fj_from_ijmink(i,jmin,k):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction j and for j=jmin and structured left and right cells
+  indices of this face
+  (i,jmin,k) defines start node of the structured face defined by :
+  (i,jmin,k), (i+1,jmin,k), (i+1,jmin,k+1) and (i,jmin,k+1)
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
   # Nodes of the face
   n1 = (i  ,jmin,k  )
   n2 = (i+1,jmin,k  )
@@ -155,21 +247,36 @@ def compute_fj_from_ijmink(i,jmin,k):
 
 ###############################################################################
 def compute_fk_from_ijk(i,j,k):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction k and structured left and right cells indices of 
+  this face
+  (i,j,k) defines start node of the structured face defined by :
+  (i,j,k), (i+1,j,k), (i+1,j+1,k) and (i,j+1,k)
+  WARNING : (i,j,k) begins at (1,1,1)
+  This fonction allow k that verify kmin < k < kmax
+  """
   # Nodes of the face
   n1 = (i  ,j  ,k)
   n2 = (i+1,j  ,k)
   n3 = (i+1,j+1,k)
   n4 = (i  ,j+1,k)
   # Neighbour cells of the face
-  left  = (i,j,k  )
-  right = (i,j,k-1)
+  left  = (i,j,k-1)
+  right = (i,j,k  )
   return(n1,n2,n3,n4,left,right)
 ###############################################################################
 
 ###############################################################################
 def compute_fk_from_ijkmax(i,j,kmax):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction k and for k=kmax and structured left and right cells
+  indices of this face
+  (i,j,kmax) defines start node of the structured face defined by :
+  (i,j,kmax), (i+1,j,kmax), (i+1,j+1,kmax) and (i,j+1,kmax)
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
   # Nodes of the face
   n1 = (i  ,j  ,kmax)
   n2 = (i+1,j  ,kmax)
@@ -183,12 +290,19 @@ def compute_fk_from_ijkmax(i,j,kmax):
 
 ###############################################################################
 def compute_fk_from_ijkmin(i,j,kmin):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Compute from structured indices (i,j,k) of structured nodes indices that compose 
+  face with normal in direction k and for k=kmin and structured left and right cells
+  indices of this face
+  (i,j,kmin) defines start node of the structured face defined by :
+  (i,j,kmin), (i,j+1,kmin), (i+1,j+1,kmin), (i+1,j,kmin)
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
   # Nodes of the face
   n1 = (i  ,j  ,kmin)
-  n2 = (i+1,j  ,kmin)
+  n2 = (i  ,j+1,kmin)
   n3 = (i+1,j+1,kmin)
-  n4 = (i  ,j+1,kmin)
+  n4 = (i+1,j  ,kmin)
   # Neighbour cell of the face
   left  = (i,j,kmin)
   right = 0
@@ -199,30 +313,45 @@ def compute_fk_from_ijkmin(i,j,kmin):
 def fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                      leftijk,rightijk,nVtx,nCell,
                                      faceNgon,faceLeftCell,faceRightCell):
-  # WARNING : (i,j,k) begins at (1,1,1)
+  """
+  Convert to unstructured indices for nodes and cells for a face and fill associated
+  tabs :
+  faceNgon refers to non sorted NGonConnectivity
+  faceLeftCell refers to non sorted ParentElement[:][0]
+  faceRightCell refers to non sorted ParentElement[:][1]
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
+  # Convert (i,j,k) structured indices of node to unstructured indices
   n1 = convert_ijk_to_index(n1ijk[0],n1ijk[1],n1ijk[2],nVtx[0],nVtx[1],nVtx[2])
   n2 = convert_ijk_to_index(n2ijk[0],n2ijk[1],n2ijk[2],nVtx[0],nVtx[1],nVtx[2])
   n3 = convert_ijk_to_index(n3ijk[0],n3ijk[1],n3ijk[2],nVtx[0],nVtx[1],nVtx[2])
   n4 = convert_ijk_to_index(n4ijk[0],n4ijk[1],n4ijk[2],nVtx[0],nVtx[1],nVtx[2])
+  # Fill NGon connectivity with nodes
   faceNgon[4*counter:4*(counter+1)] = [n1,n2,n3,n4]
+  # Convert leftt structured cell (i,j,k) to unstructured index
   left = convert_ijk_to_index(leftijk[0],leftijk[1],leftijk[2],nCell[0],nCell[1],nCell[2])
+  # Fill LeftCell with nodes (LeftCell equal ParentElement[:][0])
   faceLeftCell[counter] = left
+  # Convert right structured cell (i,j,k) to unstructured index
   if rightijk == 0:
     right = 0
   else:
     right = convert_ijk_to_index(rightijk[0],rightijk[1],rightijk[2],nCell[0],nCell[1],nCell[2])
-  faceRightCell[counter] = right
-    
+  # Fill RightCell with nodes (RightCell equal ParentElement[:][1])
+  faceRightCell[counter] = right    
 ###############################################################################
 
 ###############################################################################
 def compute_nbFacesAllSlabsPerZone(slabListVtx,nVtx):
-  nbFacesAllSlabsPerRank = 0
+  """
+  Compute the number of faces to create for a zone by a proc with distributed info
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
+  nbFacesAllSlabsPerZone = 0
   for slabVtx in slabListVtx:
     nbFacesPerSlab = 0
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabVtx for item in bounds]
-    # print(iS,iE,jS,jE,kS,kE)
-    # print([i for i in range(iS,iE)])
+
     if iE == nVtx[0]+1:
       supI = iE-1
     else:
@@ -283,17 +412,27 @@ def compute_nbFacesAllSlabsPerZone(slabListVtx,nVtx):
     if kE == nVtx[2]+1:
       nbFacesPerSlab += (supI-iS)*(supJ-jS)
       
-    nbFacesAllSlabsPerRank += nbFacesPerSlab  
+    nbFacesAllSlabsPerZone += nbFacesPerSlab  
   
-  return nbFacesAllSlabsPerRank
+  return nbFacesAllSlabsPerZone
 
 ###############################################################################
 
 ###############################################################################
 def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,nCell,
-                                                               nbFacesi,nbFacesj,
                                                                faceNumber,faceNgon,
                                                                faceLeftCell,faceRightCell):
+  """
+  Compute the numerotation, the nodes and the cells linked to all face traited for
+  zone by a proc and fill associated tabs :
+  faceNumber refers to non sorted numerotation of each face
+  faceNgon refers to non sorted NGonConnectivity
+  faceLeftCell refers to non sorted ParentElement[:][0]
+  faceRightCell refers to non sorted ParentElement[:][1]
+  Remark : all tabs are defined in the same way i.e. for the fth face, information are
+  located in faceNumber[f], faceNgon[4*f:4*(f+1)], faceLeftCell[f] and faceRightCell[f]
+  WARNING : (i,j,k) begins at (1,1,1)
+  """
   counter = 0
   for slabVtx in slabListVtx:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabVtx for item in bounds]
@@ -331,7 +470,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
       infJ = jS+1
       for i in range(iS,supI):
         for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_facejIndex(i,1,k,nCell,nVtx,nbFacesi)
+          faceNumber[counter] = convert_ijk_to_facejIndex(i,1,k,nCell,nVtx)
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijmink(i,1,k)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
@@ -345,7 +484,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
       infK = kS+1
       for i in range(iS,supI):
         for j in range(jS,supJ):
-          faceNumber[counter] = convert_ijk_to_facekIndex(i,j,1,nCell,nVtx,nbFacesi,nbFacesj)
+          faceNumber[counter] = convert_ijk_to_facekIndex(i,j,1,nCell,nVtx)
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijkmin(i,j,1)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
@@ -358,7 +497,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
     for i in range(infI,supI):
       for j in range(infJ,supJ):
         for k in range(infK, supK):
-          (fi,fj,fk) = convert_ijk_to_faceIndices(i,j,k,nCell,nVtx,nbFacesi,nbFacesj)
+          (fi,fj,fk) = convert_ijk_to_faceIndices(i,j,k,nCell,nVtx)
           #>> i face treatment
           faceNumber[counter] = fi
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(i,j,k)
@@ -386,7 +525,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
     if iS == 1:
       for j in range(infJ,supJ):
         for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_facejIndex(1,j,k,nCell,nVtx,nbFacesi)
+          faceNumber[counter] = convert_ijk_to_facejIndex(1,j,k,nCell,nVtx)
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(1,j,k)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
@@ -394,7 +533,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
           counter+=1
       for k in range(infK,supK):
         for j in range(jS,supJ):
-          faceNumber[counter] = convert_ijk_to_facekIndex(1,j,k,nCell,nVtx,nbFacesi,nbFacesj)
+          faceNumber[counter] = convert_ijk_to_facekIndex(1,j,k,nCell,nVtx)
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(1,j,k)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
@@ -412,7 +551,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
           counter+=1
       for k in range(infK,supK):
         for i in range(infI,supI):
-          faceNumber[counter] = convert_ijk_to_facekIndex(i,1,k,nCell,nVtx,nbFacesi,nbFacesj)
+          faceNumber[counter] = convert_ijk_to_facekIndex(i,1,k,nCell,nVtx)
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(i,1,k)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
@@ -422,7 +561,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
     if kS == 1:
       for j in range(infJ,supJ):
         for i in range(infI,supI):
-          faceNumber[counter] = convert_ijk_to_facejIndex(i,j,1,nCell,nVtx,nbFacesi)
+          faceNumber[counter] = convert_ijk_to_facejIndex(i,j,1,nCell,nVtx)
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(i,j,1)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
@@ -452,7 +591,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
     if jE == nVtx[1]+1:
       for i in range(iS,supI):
         for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_facejIndex(i,nVtx[1],k,nCell,nVtx,nbFacesi)
+          faceNumber[counter] = convert_ijk_to_facejIndex(i,nVtx[1],k,nCell,nVtx)
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijmaxk(i,nVtx[1],k)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
@@ -463,7 +602,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
     if kE == nVtx[2]+1:
       for i in range(iS,supI):
         for j in range(jS,supJ):
-          faceNumber[counter] = convert_ijk_to_facekIndex(i,j,nVtx[2],nCell,nVtx,nbFacesi,nbFacesj)
+          faceNumber[counter] = convert_ijk_to_facekIndex(i,j,nVtx[2],nCell,nVtx)
           (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijkmax(i,j,nVtx[2])
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
@@ -473,158 +612,168 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
 
 ###############################################################################
 def compute_faceList_from_vertexRange(pointRange,iRank,nRank,nCellS,nVtxS):
-    sizeS = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
-    rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-    slabListS = HFR2S.compute_slabs(sizeS, rangeS)
-    sizeU = rangeS[1]-rangeS[0]
-    faceList = np.empty((1,sizeU),dtype=np.int32)
-    counter = 0
-    for slabS in slabListS:
-      iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-      if pointRange[0,0] == pointRange[0,1]:
-      #>> face i
-        i = pointRange[0,0]
-        for k in range(kS,kE):
-          for j in range(jS,jE):
-            faceList[0][counter] = convert_ijk_to_faceiIndex(i,j,k,nCellS,nVtxS)
-            counter += 1
-      elif pointRange[1,0] == pointRange[1,1]:
-      #>> face j
-        nbFacesi = nVtxS[0]*nCellS[1]*nCellS[2]
-        j = pointRange[1,0]
-        for k in range(kS,kE):
-          for i in range(iS,iE):
-            faceList[0][counter] = convert_ijk_to_facejIndex(i,j,k,nCellS,nVtxS,nbFacesi)
-            counter += 1
-      elif pointRange[2,0] == pointRange[2,1]:
-      #>> face k
-        nbFacesi = nVtxS[0]*nCellS[1]*nCellS[2]
-        nbFacesj = nVtxS[1]*nCellS[0]*nCellS[2]
-        k = pointRange[2,0]
+  """
+  Transform structured PointRange with 'GridLocation'='Vertex' to unstructured
+  PointList with 'GridLocation'='FaceCenter'
+  """
+  sizeS = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
+  rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
+  slabListS = HFR2S.compute_slabs(sizeS, rangeS)
+  sizeU = rangeS[1]-rangeS[0]
+  faceList = np.empty((1,sizeU),dtype=np.int32)
+  counter = 0
+  for slabS in slabListS:
+    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
+    if pointRange[0,0] == pointRange[0,1]:
+    #>> face i
+      i = pointRange[0,0]
+      for k in range(kS,kE):
         for j in range(jS,jE):
-          for i in range(iS,iE):
-            faceList[0][counter] = convert_ijk_to_facekIndex(i,j,k,nCellS,nVtxS,nbFacesi,nbFacesj)
-            counter += 1
-      else:
-        raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-    return(faceList)
+          faceList[0][counter] = convert_ijk_to_faceiIndex(i,j,k,nCellS,nVtxS)
+          counter += 1
+    elif pointRange[1,0] == pointRange[1,1]:
+    #>> face j
+      j = pointRange[1,0]
+      for k in range(kS,kE):
+        for i in range(iS,iE):
+          faceList[0][counter] = convert_ijk_to_facejIndex(i,j,k,nCellS,nVtxS)
+          counter += 1
+    elif pointRange[2,0] == pointRange[2,1]:
+    #>> face k
+      k = pointRange[2,0]
+      for j in range(jS,jE):
+        for i in range(iS,iE):
+          faceList[0][counter] = convert_ijk_to_facekIndex(i,j,k,nCellS,nVtxS)
+          counter += 1
+    else:
+      raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
+  return(faceList)
 ###############################################################################
 
 ###############################################################################
 def compute_vertexList_from_vertexRange(pointRange,iRank,nRank,nVtxS):
-    sizeS = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
-    rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-    slabListS = HFR2S.compute_slabs(sizeS, rangeS)
-    sizeU = rangeS[1]-rangeS[0]
-    vertexList = np.empty((1,sizeU),dtype=np.int32)
-    counter = 0
-    for slabS in slabListS:
-      iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-      if pointRange[0,0] == pointRange[0,1]:
-      #>> face i
-        i = pointRange[0,0]
-        for k in range(kS,kE):
-          for j in range(jS,jE):
-            vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
-            counter += 1
-      elif pointRange[1,0] == pointRange[1,1]:
-      #>> face j
-        j = pointRange[1,0]
-        for k in range(kS,kE):
-          for i in range(iS,iE):
-            vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
-            counter += 1
-      elif pointRange[2,0] == pointRange[2,1]:
-      #>> face k
-        k = pointRange[2,0]
+  """
+  Transform structured PointRange with 'GridLocation'='Vertex' to unstructured
+  PointList with 'GridLocation'='Vertex'
+  """
+  sizeS = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
+  rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
+  slabListS = HFR2S.compute_slabs(sizeS, rangeS)
+  sizeU = rangeS[1]-rangeS[0]
+  vertexList = np.empty((1,sizeU),dtype=np.int32)
+  counter = 0
+  for slabS in slabListS:
+    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
+    if pointRange[0,0] == pointRange[0,1]:
+    #>> face i
+      i = pointRange[0,0]
+      for k in range(kS,kE):
         for j in range(jS,jE):
-          for i in range(iS,iE):
-            vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
-            counter += 1
-      else:
-        raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-    return(vertexList)
+          vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
+          counter += 1
+    elif pointRange[1,0] == pointRange[1,1]:
+    #>> face j
+      j = pointRange[1,0]
+      for k in range(kS,kE):
+        for i in range(iS,iE):
+          vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
+          counter += 1
+    elif pointRange[2,0] == pointRange[2,1]:
+    #>> face k
+      k = pointRange[2,0]
+      for j in range(jS,jE):
+        for i in range(iS,iE):
+          vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
+          counter += 1
+    else:
+      raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
+  return(vertexList)
 ###############################################################################
 
 ###############################################################################
 def compute_cellList_from_vertexRange(pointRange,iRank,nRank,nCellS):
-    sizeS = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
-    rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-    slabListS = HFR2S.compute_slabs(sizeS, rangeS)
-    sizeU = rangeS[1]-rangeS[0]
-    cellList = np.empty((1,sizeU),dtype=np.int32)
-    counter = 0
-    for slabS in slabListS:
-      iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-      if pointRange[0,0] == pointRange[0,1]:
-      #>> face i
-        i = pointRange[0,0]
-        if i>nCellS[0]:
-          i -= 1
-        for k in range(kS,kE):
-          for j in range(jS,jE):
-            cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
-            counter += 1
-      elif pointRange[1,0] == pointRange[1,1]:
-      #>> face j
-        j = pointRange[1,0]
-        if j>nCellS[1]:
-          j -= 1
-        for k in range(kS,kE):
-          for i in range(iS,iE):
-            cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
-            counter += 1
-      elif pointRange[2,0] == pointRange[2,1]:
-      #>> face k
-        k = pointRange[2,0]
-        if k>nCellS[2]:
-          k -= 1
+  """
+  Transform structured PointRange with 'GridLocation'='Vertex' to unstructured
+  PointList with 'GridLocation'='CellCenter'
+  """
+  sizeS = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
+  rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
+  slabListS = HFR2S.compute_slabs(sizeS, rangeS)
+  sizeU = rangeS[1]-rangeS[0]
+  cellList = np.empty((1,sizeU),dtype=np.int32)
+  counter = 0
+  for slabS in slabListS:
+    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
+    if pointRange[0,0] == pointRange[0,1]:
+    #>> face i
+      i = pointRange[0,0]
+      if i>nCellS[0]:
+        i -= 1
+      for k in range(kS,kE):
         for j in range(jS,jE):
-          for i in range(iS,iE):
-            cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
-            counter += 1
-      else:
-        raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-    return(cellList)
+          cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
+          counter += 1
+    elif pointRange[1,0] == pointRange[1,1]:
+    #>> face j
+      j = pointRange[1,0]
+      if j>nCellS[1]:
+        j -= 1
+      for k in range(kS,kE):
+        for i in range(iS,iE):
+          cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
+          counter += 1
+    elif pointRange[2,0] == pointRange[2,1]:
+    #>> face k
+      k = pointRange[2,0]
+      if k>nCellS[2]:
+        k -= 1
+      for j in range(jS,jE):
+        for i in range(iS,iE):
+          cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
+          counter += 1
+    else:
+      raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
+  return(cellList)
 ###############################################################################
 
 ###############################################################################
 def compute_faceList_from_faceRange(pointRange,iRank,nRank,nCellS,nVtxS,gridLocationS):
-    sizeS = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
-    rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-    slabListS = HFR2S.compute_slabs(sizeS, rangeS)
-    sizeU = rangeS[1]-rangeS[0]
-    faceList = np.empty((1,sizeU),dtype=np.int32)
-    counter = 0
-    for slabS in slabListS:
-      iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-      if gridLocationS == "IFaceCenter":
-      #>> face i
-        i = pointRange[0,0]
-        for k in range(kS,kE):
-          for j in range(jS,jE):
-            faceList[0][counter] = convert_ijk_to_faceiIndex(i,j,k,nCellS,nVtxS)
-            counter += 1
-      elif gridLocationS == "JFaceCenter":
-      #>> face j
-        nbFacesi = nVtxS[0]*nCellS[1]*nCellS[2]
-        j = pointRange[1,0]
-        for k in range(kS,kE):
-          for i in range(iS,iE):
-            faceList[0][counter] = convert_ijk_to_facejIndex(i,j,k,nCellS,nVtxS,nbFacesi)
-            counter += 1
-      elif gridLocationS == "KFaceCenter":
-      #>> face k
-        nbFacesi = nVtxS[0]*nCellS[1]*nCellS[2]
-        nbFacesj = nVtxS[1]*nCellS[0]*nCellS[2]
-        k = pointRange[2,0]
+  """
+  Transform structured PointRange with 'GridLocation'='IFaceCenter' or 'JFaceCenter' or
+  'KFaceCenter' to unstructured PointList with 'GridLocation'='FaceCenter'
+  """
+  sizeS = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
+  rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
+  slabListS = HFR2S.compute_slabs(sizeS, rangeS)
+  sizeU = rangeS[1]-rangeS[0]
+  faceList = np.empty((1,sizeU),dtype=np.int32)
+  counter = 0
+  for slabS in slabListS:
+    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
+    if gridLocationS == "IFaceCenter":
+    #>> face i
+      i = pointRange[0,0]
+      for k in range(kS,kE):
         for j in range(jS,jE):
-          for i in range(iS,iE):
-            faceList[0][counter] = convert_ijk_to_facekIndex(i,j,k,nCellS,nVtxS,nbFacesi,nbFacesj)
-            counter += 1
-      else:
-        raise ValueError("The GridLocation '{}' is bad defined".format(gridLocationS))
-    return(faceList)
+          faceList[0][counter] = convert_ijk_to_faceiIndex(i,j,k,nCellS,nVtxS)
+          counter += 1
+    elif gridLocationS == "JFaceCenter":
+    #>> face j
+      j = pointRange[1,0]
+      for k in range(kS,kE):
+        for i in range(iS,iE):
+          faceList[0][counter] = convert_ijk_to_facejIndex(i,j,k,nCellS,nVtxS)
+          counter += 1
+    elif gridLocationS == "KFaceCenter":
+    #>> face k
+      k = pointRange[2,0]
+      for j in range(jS,jE):
+        for i in range(iS,iE):
+          faceList[0][counter] = convert_ijk_to_facekIndex(i,j,k,nCellS,nVtxS)
+          counter += 1
+    else:
+      raise ValueError("The GridLocation '{}' is bad defined".format(gridLocationS))
+  return(faceList)
 ###############################################################################
 
 ###############################################################################
@@ -697,26 +846,23 @@ def compute_faceList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
             counter += 1
     elif pointRange2[1,0] == pointRange2[1,1]:
     #>> face j2
-      nbFacesi2 = nVtx2[0]*nCell2[1]*nCell2[2]
       for k1 in range(kS,kE):
         for j1 in range(jS,jE):
           for i1 in range(iS,iE):
             (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
             i2 += correcti2
             k2 += correctk2
-            faceList2[0][counter] = convert_ijk_to_facejIndex(i2,j2,k2,nCell2,nVtx2,nbFacesi2)
+            faceList2[0][counter] = convert_ijk_to_facejIndex(i2,j2,k2,nCell2,nVtx2)
             counter += 1
     elif pointRange2[2,0] == pointRange2[2,1]:
     #>> face k2
-      nbFacesi2 = nVtx2[0]*nCell2[1]*nCell2[2]
-      nbFacesj2 = nVtx2[1]*nCell2[0]*nCell2[2]
       for k1 in range(kS,kE):
         for j1 in range(jS,jE):
           for i1 in range(iS,iE):
             (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
             i2 += correcti2
             j2 += correctj2
-            faceList2[0][counter] = convert_ijk_to_facekIndex(i2,j2,k2,nCell2,nVtx2,nbFacesi2,nbFacesj2)
+            faceList2[0][counter] = convert_ijk_to_facekIndex(i2,j2,k2,nCell2,nVtx2)
             counter += 1
     else:
       raise ValueError("The PointRange2 '{}' is bad defined".format(pointRange2))    
@@ -940,7 +1086,6 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
     faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
     faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
     compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtxS,nVtxS,nCellS,
-                                                               nbFacesi,nbFacesj,
                                                                faceNumber,faceNgon,
                                                                faceLeftCell,faceRightCell)   
     #>> PartToBlock pour ordonner et equidistribuer les faces
