@@ -91,7 +91,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   CNT.pdm_face_cell_to_pe_cgns(dface_cell, pe)
 
   # > Attention overflow I8
-  eso_ngon    = NPY.empty(dface_vtx_idx.shape[0], dtype=dface_vtx.dtype)
+  eso_ngon    = np.empty(dface_vtx_idx.shape[0], dtype=dface_vtx.dtype)
   eso_ngon[:] = distrib_face_vtx[i_rank] + dface_vtx_idx[:]
 
   I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', ngon_elmt_range)
@@ -105,7 +105,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   nfac_elmt_range[0] = ermax+1
   nfac_elmt_range[1] = ermax+n_cell
 
-  eso_nfac    = NPY.empty(dcell_face_idx.shape[0], dtype=dface_vtx.dtype)
+  eso_nfac    = np.empty(dcell_face_idx.shape[0], dtype=dface_vtx.dtype)
   eso_nfac[:] = distrib_cell_face[i_rank] + dcell_face_idx[:]
 
   I.createUniqueChild(nfac_n, 'ElementRange', 'IndexRange_t', nfac_elmt_range)
