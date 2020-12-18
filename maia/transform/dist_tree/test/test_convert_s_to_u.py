@@ -908,6 +908,34 @@ class Test_compute_faceList_from_faceRange():
       result = True
     assert result
 ###############################################################################
+  
+###############################################################################
+def test_isSameAxis():
+  assert convert_s_to_u.isSameAxis( 1, 2) == 0
+  assert convert_s_to_u.isSameAxis( 1, 1) == 1
+  assert convert_s_to_u.isSameAxis(-2, 2) == 1
+  assert convert_s_to_u.isSameAxis( 1,-1) == 1
+###############################################################################
+  
+###############################################################################
+class Test_compute_transformMatrix():
+# --------------------------------------------------------------------------- #
+  def test_compute_transformMatrix(self):
+    transform = [1,2,3]
+    attendedTransformMatrix = np.zeros((3,3),dtype=np.int32,order='F')
+    attendedTransformMatrix[0][0] = 1
+    attendedTransformMatrix[1][1] = 1
+    attendedTransformMatrix[2][2] = 1
+    assert (convert_s_to_u.compute_transformMatrix(transform) == attendedTransformMatrix).all()
+# --------------------------------------------------------------------------- #
+  def test_compute_transformMatrix(self):
+    transform = [-2,3,1]
+    attendedTransformMatrix = np.zeros((3,3),dtype=np.int32,order='F')
+    attendedTransformMatrix[0][2] =  1
+    attendedTransformMatrix[1][0] = -1
+    attendedTransformMatrix[2][1] =  1
+    assert (convert_s_to_u.compute_transformMatrix(transform) == attendedTransformMatrix).all()
+###############################################################################
 
     
     

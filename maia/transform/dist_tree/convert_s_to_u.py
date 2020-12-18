@@ -778,6 +778,11 @@ def compute_faceList_from_faceRange(pointRange,iRank,nRank,nCellS,nVtxS,gridLoca
 
 ###############################################################################
 def isSameAxis(x,y):
+  """
+  This function is the implementation of the 'del' function defined in the SIDS
+  of CGNS (https://cgns.github.io/CGNS_docs_current/sids/cnct.html) as :
+  del(x−y) ≡ +1 if |x| = |y|
+  """
   if abs(x) == abs(y):
      return(1)
   else:
@@ -786,6 +791,11 @@ def isSameAxis(x,y):
 
 ###############################################################################
 def compute_transformMatrix(transform):
+  """
+  This function compute the matrix to convert current indices to opposit indices
+  The definition of this matrix is given in the SIDS of CGNS 
+  (https://cgns.github.io/CGNS_docs_current/sids/cnct.html)
+  """
   transformMatrix = np.empty((3,3),dtype=np.int32,order='F')
   transformMatrix[0][0] = np.sign(transform[0])*isSameAxis(transform[0],1)
   transformMatrix[0][1] = np.sign(transform[1])*isSameAxis(transform[1],1)
@@ -804,6 +814,12 @@ def compute_transformMatrix(transform):
 
 ###############################################################################
 def convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T):
+  """
+  This function compute indices from current to oppposit or from opposit to current
+  by using the transform matrix.
+  As defined in the SIDS of CGNS (https://cgns.github.io/CGNS_docs_current/sids/cnct.html) :
+  Index2 = T.(Index1 - Begin1) + Begin2
+  """
   vector = np.array([i1-iS1,j1-jS1,k1-kS1])
   [i2,j2,k2] = np.matmul(T,vector,order='F') + np.array([iS2,jS2,kS2])
   
