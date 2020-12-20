@@ -64,9 +64,15 @@ The triplet is stored in a node `PartialDistribution` of type `Distribution_t`. 
 .. code::
   CGNSBase_t
   |___Zone_t
+     |___**Distribution_t Distribution**
+     |   |___IndexArray_t Vertex
+     |   |___IndexArray_t Cell
+     |   |___IndexArray_t VertexBoundary
+     |
      |___GridCoordinates_t
      |   |___DataArray_t
-     |   |___**Distribution_t**
+     |   |___**Distribution_t** (optionel)
+     |       |___IndexArray_t Vertex
      |
      |___Elements_t
      |   |___ElementConnectivity
@@ -74,23 +80,30 @@ The triplet is stored in a node `PartialDistribution` of type `Distribution_t`. 
      |   |___ParentElement
      |   |___ParentElementPosition   [not implemented]
      |   |___**Distribution_t**
+     |       |___IndexArray_t Element
+     |       |___IndexArray_t ElementStartOffset
      |
      |___FlowSolution_t
      |   |___DataArray_t
      |   |___PointList
-     |   |___**Distribution_t** (si PointList)
+     |   |___**Distribution_t** (si PointList et si pas de NFace)
+     |   |___**Distribution_t**
+     |       |___IndexArray_t Vertex|Cell|Face (Face si PointList)
      |
      |___DiscreteData_t
      |   |___DataArray_t
      |   |___PointList
      |   |___**Distribution_t** (si PointList)
+     |       |___IndexArray_t Vertex|Cell|Face (Face si PointList)
      |
      |___ZoneBC_t
      |   |___BC_t
      |       |___PointList
      |       |___**Distribution_t**
+     |           |___IndexArray_t Vertex|Cell|Face (Suivant GridLocation)
      |       |___BCDataSet_t
      |           |___PointList
+     |               |___IndexArray_t Vertex|Cell|Face (Suivant GridLocation)
      |           |___**Distribution_t**
      |           |___BCData_t
      |               |___DataArray_t
@@ -100,6 +113,7 @@ The triplet is stored in a node `PartialDistribution` of type `Distribution_t`. 
      |       |___PointList
      |       |___PointListDonor
      |       |___**Distribution_t**
+     |           |___IndexArray_t Vertex|Cell|Face (Suivant GridLocation)
      |
      |___ZoneSubRegion               [not implemented]
 
@@ -107,6 +121,11 @@ The triplet is stored in a node `PartialDistribution` of type `Distribution_t`. 
 .. code::
   CGNSBase_t
   |___Zone_t
+     |___**GlobalNumbering**
+     |   |___Vertex
+     |   |___Cell
+     |   |___CellBoundary
+     |
      |___GridCoordinates_t
      |   |___DataArray_t
      |   |___**GlobalNumbering**
