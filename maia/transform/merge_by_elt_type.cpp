@@ -62,11 +62,11 @@ merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_C
   const int n_part = 1;
 
   std::vector<PDM_g_num_t> merged_distri(n_rank+1);
-  std_e::uniform_distribution(begin(merged_distri),end(merged_distri),1,multi_distrib_idx.back());
+  std_e::uniform_distribution(begin(merged_distri),end(merged_distri),0,multi_distrib_idx.back());
 
   int n_elts_0 = merged_distri[i_rank+1]-merged_distri[i_rank];
   std::vector<PDM_g_num_t> ln_to_gn_0(n_elts_0);
-  std::iota(begin(ln_to_gn_0),end(ln_to_gn_0),merged_distri[i_rank]);
+  std::iota(begin(ln_to_gn_0),end(ln_to_gn_0),merged_distri[i_rank]+1);
   std::vector<PDM_g_num_t*> ln_to_gn = {ln_to_gn_0.data()};
   std::vector<int> n_elts = {n_elts_0};
 

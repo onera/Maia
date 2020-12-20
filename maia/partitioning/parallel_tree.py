@@ -92,23 +92,22 @@ def load_partitioned_tree(file_name,comm):
     dloading_procs[zone[0]] = list(range(comm.Get_size()))
   # print(dloading_procs)
 
-  #merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
+  merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
 
-  hdf_filter = dict()
-  HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
+  #hdf_filter = dict()
+  #HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
+  #IOT.save_tree_from_filter("dist_tree_bef_0.hdf", dist_tree, comm, hdf_filter)
 
-  IOT.save_tree_from_filter("dist_tree_bef_0.hdf", dist_tree, comm, hdf_filter)
+  part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
 
-  #part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
+  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
+  gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
 
-  #add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
-  #gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
+  ## TODO
+  #for zone in I.getZones(part_tree):
+  #  fs_n = I.newFlowSolution(name="FlowSolution#EndOfRun", gridLocation='Vertex', parent=zone)
+  #  vtx_gi_n = I.getNodeFromName(zone, "np_vtx_ghost_information")
+  #  I.newDataArray("GhostInfo", vtx_gi_n[1], parent=fs_n)
 
-  ### TODO
-  ##for zone in I.getZones(part_tree):
-  ##  fs_n = I.newFlowSolution(name="FlowSolution#EndOfRun", gridLocation='Vertex', parent=zone)
-  ##  vtx_gi_n = I.getNodeFromName(zone, "np_vtx_ghost_information")
-  ##  I.newDataArray("GhostInfo", vtx_gi_n[1], parent=fs_n)
-
-  #return parallel_tree(dist_tree,part_tree)
+  return parallel_tree(dist_tree,part_tree)
 
