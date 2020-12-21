@@ -1,5 +1,4 @@
 #include <vector>
-#include "std_e/future/span.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -7,97 +6,110 @@
 
 namespace py = pybind11;
 
-bool isSubsetSum(int set[], int n, int sum)
+bool isSubsetSum(const int set[], const int n, const int sum)
 {
-    // The value of subset[i][j] will be true if there is a subset of set[0..i-1] with sum equal to j
-    bool subset[n + 1][sum + 1];
- 
-    // If sum is 0, then answer is true
-    for (int i = 0; i <= n; i++)
-        subset[i][0] = true;
- 
-    // If sum is not 0 and set is empty,
-    // then answer is false
-    for (int i = 1; i <= sum; i++)
-        subset[0][i] = false;
- 
-    // Fill the subset table in botton up manner
-    for (int i = 1; i <= n; i++) {
-        for (int j = 1; j <= sum; j++) {
-            if (j < set[i - 1])
-                subset[i][j] = subset[i - 1][j];
-            if (j >= set[i - 1])
-                subset[i][j] = subset[i - 1][j] || subset[i - 1][j - set[i - 1]];
-        }
+  /*
+   * Checks if a solution to the subset sum problem exists
+  */
+  // The value of subset[i][j] will be true if there is a subset of set[0..i-1] with sum equal to j
+  bool subset[n + 1][sum + 1];
+
+  // If sum is 0, then answer is true
+  for (int i = 0; i <= n; i++)
+      subset[i][0] = true;
+
+  // If sum is not 0 and set is empty,
+  // then answer is false
+  for (int i = 1; i <= sum; i++)
+      subset[0][i] = false;
+
+  // Fill the subset table in botton up manner
+  for (int i = 1; i <= n; i++) {
+      for (int j = 1; j <= sum; j++) {
+          if (j < set[i - 1])
+              subset[i][j] = subset[i - 1][j];
+          if (j >= set[i - 1])
+              subset[i][j] = subset[i - 1][j] || subset[i - 1][j - set[i - 1]];
+      }
+  }
+  return subset[n][sum];
+}
+
+auto subset_sum_positions(int* first, int* last, int target, int max_it) -> std::pair<bool,std::vector<int*>> {
+  /*
+   * Return a solution to the subset sum problem.
+  */
+  // TODO: const-correctness
+  // TODO: generalize to other types (templatize int* -> iterator)
+  // TODO: extract into an algorithm that could be restarted in order to search other matching subsets
+  // TODO: generalize the matching function to allow for a tolerance
+
+  if (target==0) return {true,{}};
+  if (std::accumulate(first, last, 0) < target) return {false, {}};
+
+  std::vector<int*> candidates = {};
+  int s = 0;
+  int it = 0;
+  while (first != last && it < max_it) { // loop until done
+
+    // loop until the end and try to add elements to the candidates
+    while (first != last) {
+      ++it;
+      if (s + *first == target) { // we are done
+        candidates.push_back(first);
+        s += *first;
+        return {true,candidates};
+      }
+      else if (s + *first < target) { // add the position to the candidates and move forward
+        candidates.push_back(first);
+        s += *first;
+        ++first;
+      }
+      else { // do not take this position in the candidates, just move forward
+        ++first;
+      }
     }
-    return subset[n][sum];
-}
 
-void subset_sum_recursive(std_e::span<const int>numbers,
-                          int target,
-                          const std::vector<const int*>& partial, 
-                          std::vector<const int*>& solutions,
-                          bool &found)
-{
-  //Sum array using lambda func -> sum content of pointers
-  int s = accumulate(partial.begin(), partial.end(), 0, [](int acc, const int* x) {return acc + *x;});
-
-  if (found)
-    return;
-  if(s == target) {
-    solutions = partial;
-    found = true;
+    // if we reach this point, no solution has been found yet
+    // since nothing is found, it means one term in the target is not right, so we need to pop it and restart from there
+    if (candidates.size()>0) {
+      first = candidates.back(); // restart from the last saved candidate...
+      candidates.pop_back(); // ... remove it from the candidates...
+      s -= *first; // ... and from the target ...
+      ++first; // ... and begin just after
+    }
+    // else: nothing to pop in the candidates, nothing matching, so do nothing: let the loop end
   }
-  if(s >= target)
-    return;
-
-  auto first = numbers.data();
-  auto last  = numbers.data() + numbers.size();
-  for (auto ai = first; ai != last; ++ai) {
-    auto remaining = std_e::make_span(ai+1, last);
-    auto partial_rec = partial;
-    partial_rec.push_back(ai);
-    if (found)
-      break;
-    else
-      subset_sum_recursive(remaining, target, partial_rec, solutions, found);
-  }
+  return {false,{}};
 }
 
-std::vector<int> subset_sum(const std::vector<int>& numbers, int target) {
+auto search_match(py::array_t<int> sorted_np, int target, int max_it) -> py::list {
+  /*
+   * Bind the subset sum problem for a numpy int array : return (if existing)
+   * a list of indices such that array[indices].sum == target.
+   * The input array must be sorted. A maximal number of iterations can be specified.
+  */
 
-  std::vector<const int*> solution;
-  bool found = false;
-  subset_sum_recursive(std_e::make_span(numbers), target, {}, solution, found);
-
-  std::vector<int> indices;
-  for (auto x: solution)
-    indices.push_back(x - numbers.data()); //Get indices
-
-  return indices;
-}
-
-auto search_match(py::array_t<int> ordered_list, int target, int max_tries) -> py::list {
-
-  assert(ordered_list.ndim() == 1);
-  int N = ordered_list.size();
-  if (N==0) {
+  if (sorted_np.ndim() != 1 || sorted_np.size()==0)
     return py::cast(std::vector<int>{});
-  }
 
-  const int *np_data = ordered_list.data(0);
+  int N = sorted_np.size();
+  const int *np_data = sorted_np.data(0);
 
   if (!std::is_sorted(np_data, np_data+N)) {
     return py::cast(std::vector<int>{}); // We shoud raise here, list is not sorted
   }
 
+  // First index >= target
   auto upper = std::upper_bound(np_data, np_data+N, target);
 
-  std::vector<int> input;
-  std::copy(np_data, upper, std::back_inserter(input)); //Copy data up to max bound
-
-  std::vector<int> indices = subset_sum(input, target);
-
+  //Array is sorted, we can juste search beetween begin and upper
+  std::vector<int> indices;
+  if (isSubsetSum(np_data, upper - np_data, target)) {
+    auto result = subset_sum_positions((int *) np_data, (int *) upper, target, max_it);
+    for (auto x: result.second)
+      indices.push_back(x - np_data); //Get indices
+  }
   return py::cast(indices); //Return list
 }
 
@@ -106,41 +118,4 @@ PYBIND11_MODULE(load_balancing_utils, m) {
 
   m.def("search_match", &search_match, "search_match");
 }
-
-//Old version, returns all combinations
-//bool subset_sum_recursiveOLD(const std::vector<int>& numbers, int target,
-                          //const std::vector<int>& partial, std::vector<int>& solutions) {
-  //int s = 0;
-  //for (std::vector<int>::const_iterator cit = partial.begin(); cit != partial.end(); cit++) {
-    //s += *cit;
-  //}
-  //std::cout << "entering func with s = " << s << std::endl;
-  //if(s == target) {
-    //std::cout << "solution found " << std::endl;
-    //solutions.push_back(partial.size());
-    //for (std::vector<int>::const_iterator cit = partial.begin(); cit != partial.end(); cit++) {
-      //solutions.push_back(*cit);
-    //}
-    //return true;
-  //}
-  //if(s >= target)
-    //return false;
-
-  //int n;
-  //for (std::vector<int>::const_iterator ai = numbers.begin(); ai != numbers.end(); ai++) {
-    //n = *ai;
-    //std::vector<int> remaining;
-    //for(std::vector<int>::const_iterator aj = ai; aj != numbers.end(); aj++) {
-      //if(aj == ai)continue;
-      //remaining.push_back(*aj);
-    //}
-    //std::vector<int> partial_rec=partial;
-    //partial_rec.push_back(n);
-    //bool found = subset_sum_recursiveOLD(remaining,target,partial_rec, solutions);
-    //std::cout << "found is " << std::boolalpha << found <<std::endl;
-    //if (found)
-      //break;
-  //}
-  //return true;
-//}
 
