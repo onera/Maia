@@ -3,6 +3,7 @@
 
 #include "std_e/algorithm/distribution.hpp"
 #include "std_e/interval/knot_sequence.hpp"
+#include "std_e/parallel/mpi.hpp"
 
 /*
 concept Distribution : std_e::Knot_sequence
@@ -27,6 +28,15 @@ distribution_from_sizes(const Random_access_range& r) -> distribution_vector<I> 
 }
 // Distribution vocabulary around knot_sequence functions }
 
+template<class Integer> auto
+distribution_from_dsizes(Integer dn, MPI_Comm comm) -> distribution_vector<Integer> {
+  int n_rank = std_e::nb_ranks(comm);
+  std::vector<Integer> dn_elts(n_rank);
+  MPI_Allgather((void*) &dn           , 1, std_e::to_mpi_type<Integer>,
+                (void*)  dn_elts.data(), 1, std_e::to_mpi_type<Integer>,
+                comm);
+  return std_e::indices_from_sizes(dn_elts);
+}
 
 template<class I>
 distribution_vector<I> uniform_distribution(int size, I nb_elts) {

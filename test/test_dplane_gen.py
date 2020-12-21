@@ -51,7 +51,7 @@ for zone in I.getZones(dist_tree):
   n_cell   = zone_dim[2]
   N = I.newDataArray('cell_num', NPY.linspace(1, n_cell, num=n_cell), parent=fs_n)
 
-IOT.save_tree_from_filter("zz_out/dplane_mesh.hdf", dist_tree, comm, hdf_filter)
+IOT.save_tree_from_filter("dplane_mesh.hdf", dist_tree, comm, hdf_filter)
 
 # for key, val in hdf_filter.items():
 #   print(key, val)
@@ -74,5 +74,5 @@ part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
 # C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
 I._rmNodesFromName(part_tree, "ZoneGridConnectivity#Vertex")
 # I.printTree(part_tree)
-SPT.save_part_tree(part_tree, 'zz_out/part_tree', comm)
+SPT.save_part_tree(part_tree, 'part_tree', comm)
 

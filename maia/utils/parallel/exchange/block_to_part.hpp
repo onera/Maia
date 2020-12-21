@@ -15,7 +15,7 @@ namespace pdm {
 
 class block_to_parts_protocol {
   public:
-    block_to_parts_protocol(MPI_Comm mpi_comm, distribution_vector<int> dist, global_numberings lgs)
+    block_to_parts_protocol(MPI_Comm mpi_comm, distribution_vector<PDM_g_num_t> dist, global_numberings lgs)
       : distribution(move(dist))
       , LN_to_GNs(move(lgs))
       , n_part(LN_to_GNs.size())
@@ -89,7 +89,7 @@ class block_to_parts_protocol {
     block_to_parts_protocol& operator=(const block_to_parts_protocol&) = delete;
 
   private:
-    distribution_vector<int> distribution;
+    distribution_vector<PDM_g_num_t> distribution;
     global_numberings LN_to_GNs;
 
     int n_part;
@@ -102,14 +102,14 @@ class block_to_parts_protocol {
 
 class block_to_part_protocol {
   public:
-    block_to_part_protocol(MPI_Comm mpi_comm, distribution_vector<int> dist, global_numbering lg)
+    block_to_part_protocol(MPI_Comm mpi_comm, distribution_vector<PDM_g_num_t> dist, global_numbering lg)
       : impl(mpi_comm,std::move(dist),{std::move(lg)})
     {}
     template<
       class Global_numbering,
       std::enable_if_t<!std::is_same_v<std::decay_t<Global_numbering>,global_numbering>,int> =0
     >
-    block_to_part_protocol(MPI_Comm mpi_comm, distribution_vector<int> dist, Global_numbering lg)
+    block_to_part_protocol(MPI_Comm mpi_comm, distribution_vector<PDM_g_num_t> dist, Global_numbering lg)
       : block_to_part_protocol(mpi_comm,dist,global_numbering(begin(lg),end(lg)))
     {}
 

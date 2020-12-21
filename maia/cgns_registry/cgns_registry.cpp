@@ -6,7 +6,7 @@
 
 
 // ===========================================================================
-cgns_registry::cgns_registry(const cgns_paths_by_label& paths_by_label, MPI_Comm& comm) {
+cgns_registry::cgns_registry(const cgns_paths_by_label& paths_by_label, MPI_Comm comm) {
   for (int i=0; i < CGNS::nb_cgns_labels; ++i){
     // std::cout << to_string(static_cast<CGNS::Label::kind>(i)) <<std::endl;
     registries_by_label[i] = label_registry(paths_by_label[i],comm);

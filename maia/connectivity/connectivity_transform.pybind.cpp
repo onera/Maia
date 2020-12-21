@@ -45,7 +45,7 @@ template<typename g_num>
 void compute_idx_local(py::array_t<int32_t, py::array::f_style>& connect_l_idx,
                        py::array_t<g_num  , py::array::f_style>& connect_g_idx,
                        py::array_t<g_num  , py::array::f_style>& distrib){
-  assert(distrib.size() == 3);  /* beg_rank / end_rank / n_tot */
+  assert(distrib.size() == 2 || distrib.size() == 3);  /* beg_rank / end_rank / n_tot */
 
   int n_connect = connect_l_idx.shape()[0]-1; /* shape = n_connect + 1 */
 

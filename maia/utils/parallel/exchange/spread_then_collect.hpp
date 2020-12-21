@@ -7,7 +7,7 @@
 
 template<class Contiguous_range, class Integer_contiguous_range0, class Integer_contiguous_range1, class T = typename Contiguous_range::value_type> auto
 spread_then_collect(
-  MPI_Comm comm, const distribution_vector<int>& distribution,
+  MPI_Comm comm, const distribution_vector<PDM_g_num_t>& distribution,
   Integer_contiguous_range0&& LN_to_GN_spread, const Contiguous_range& data_to_spread,
   Integer_contiguous_range1&& LN_to_GN_collect
 ) -> std::vector<T>

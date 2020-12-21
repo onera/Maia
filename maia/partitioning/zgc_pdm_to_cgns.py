@@ -6,13 +6,13 @@ def zgc_original_pdm_to_cgns(zone, dist_zone, comm):
   Already exist in initial configuration
   """
 
-def zgc_created_pdm_to_cgns(zone, dist_zone, comm, entitiy='face', zgc_name='ZoneGridConnectivity'):
+def zgc_created_pdm_to_cgns(zone, dist_zone, comm, entity='face', zgc_name='ZoneGridConnectivity'):
   """
   Create by splitting
   """
-  if(entitiy == 'face'):
+  if(entity == 'face'):
     grid_loc = 'FaceCenter'
-  elif(entitiy == 'vtx'):
+  elif(entity == 'vtx'):
     grid_loc = 'Vertex'
   else:
     raise NotImplementedError("Unvalid specified entity")
@@ -21,9 +21,9 @@ def zgc_created_pdm_to_cgns(zone, dist_zone, comm, entitiy='face', zgc_name='Zon
 
   ppart_ud                   = I.getNodeFromName1(zone, ':CGNS#Ppart')
   ipart                      = I.getNodeFromName1(ppart_ud, 'ipart')[1][0]
-  entity_part_bound_proc_idx = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound_proc_idx'.format(entitiy))[1]
-  entity_part_bound_part_idx = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound_part_idx'.format(entitiy))[1]
-  entity_part_bound_tmp      = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound'         .format(entitiy))[1]
+  entity_part_bound_proc_idx = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound_proc_idx'.format(entity))[1]
+  entity_part_bound_part_idx = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound_part_idx'.format(entity))[1]
+  entity_part_bound_tmp      = I.getNodeFromName1(ppart_ud, 'np_{0}_part_bound'         .format(entity))[1]
 
   entity_part_bound = entity_part_bound_tmp.reshape((4, entity_part_bound_tmp.shape[0]//4), order='F')
   entity_part_bound = entity_part_bound.transpose()

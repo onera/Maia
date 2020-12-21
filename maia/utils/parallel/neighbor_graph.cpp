@@ -84,25 +84,30 @@ compute_zone_infos(const tree& b, MPI_Comm comm) -> zone_infos {
 
   auto owned_zone_names = name_of_zones(b);
   int nb_owned_zones = owned_zone_names.size();
-  std::vector<int> owned_zone_ids(nb_owned_zones);
+  std::vector<PDM_g_num_t> owned_zone_ids(nb_owned_zones);
   for (int i=0; i<nb_owned_zones; ++i) {
     owned_zone_ids[i] = get_global_id_from_path(zone_reg,"/"+b.name+"/"+owned_zone_names[i]) - 1; // TODO cgns_registry starts at 1
   }
 
   auto neighbor_zone_names = name_of_mentionned_zones(b);
   int nb_neighbor_zones = neighbor_zone_names.size();
-  std::vector<int> neighbor_zone_ids(nb_neighbor_zones);
+  std::vector<PDM_g_num_t> neighbor_zone_ids_long(nb_neighbor_zones);
   for (int i=0; i<nb_neighbor_zones; ++i) {
-    neighbor_zone_ids[i] = get_global_id_from_path(zone_reg,"/"+b.name+"/"+neighbor_zone_names[i]) - 1; // TODO cgns_registry starts at 1
+    neighbor_zone_ids_long[i] = get_global_id_from_path(zone_reg,"/"+b.name+"/"+neighbor_zone_names[i]) - 1; // TODO cgns_registry starts at 1
   }
 
-  std::vector<int> proc_of_owned_zones(nb_owned_zones,std_e::rank(comm));
+  std::vector<PDM_g_num_t> proc_of_owned_zones(nb_owned_zones,std_e::rank(comm));
 
-  auto proc_of_neighbor_zones = spread_then_collect(
-    comm, zone_reg.distribution(), 
+  std_e::knot_vector<PDM_g_num_t> zone_reg_long(begin(zone_reg.distribution()), end(zone_reg.distribution()));
+  auto proc_of_neighbor_zones_long = spread_then_collect(
+    comm, zone_reg_long,
     owned_zone_ids, proc_of_owned_zones,
-    neighbor_zone_ids
+    neighbor_zone_ids_long
   );
+
+  std::vector<int> proc_of_neighbor_zones(begin(proc_of_neighbor_zones_long), end(proc_of_neighbor_zones_long));
+  std::vector<int> neighbor_zone_ids(begin(neighbor_zone_ids_long), end(neighbor_zone_ids_long));
+
 
   return {std::move(neighbor_zone_names),std::move(neighbor_zone_ids),std::move(proc_of_neighbor_zones)};
 }

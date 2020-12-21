@@ -67,7 +67,7 @@ Depending on the purpose, we need to use multiple type of CGNS trees.
 
 A **full tree** is a tree as it is inside a CGNS file, or how it would be loaded in completely by one process. A full tree is *global data*.
 
-A **dist tree** is a distributed tree, i.e. for each node of the tree, each process only stores a block of the complete array value.
+A **dist tree** is a distributed tree, i.e. for each node of the tree, each process only stores a block of the complete array value. See :ref:`_load_dist_tree`.
 
 A **part tree** is a partial tree, i.e. a tree for which each zone is only stored by one process. Note however that each zone is full stored by its process.
 
