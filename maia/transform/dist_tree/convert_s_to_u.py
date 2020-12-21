@@ -13,11 +13,8 @@ def convert_ijk_to_index(i,j,k,Ni,Nj,Nk):
   """
   Convert (i,j,k) indices from structured grid to unstructured index
   This fonction allows (i,j,k) that defines node or cell
-  Ni is the number of nodes or cells in the direction i
-  Nj is the number of nodes or cells in the direction j
-  Nk is the number of nodes or cells in the direction k
-  WARNING : (i,j,k) begins at (1,1,1)
-  WARNING : index begins at 1
+  Ni (resp. j,k) is the number of nodes or cells in the direction i (resp. j,k)
+  WARNING : (i,j,k) and index begins at 1
   """
   return(i+(j-1)*Ni+(k-1)*Ni*Nj)
 ###############################################################################
@@ -31,11 +28,8 @@ def convert_ijk_to_faceiIndex(i,j,k,nCell,nVtx):
   (i,j,k), (i,j+1,k), (i,j+1,k+1) and (i,j,k+1)
   nCell = [Ni,Nj,Nk]
   nVtx  = [Ni,Nj,Nk]
-  Ni is the number of nodes or cells in the direction i
-  Nj is the number of nodes or cells in the direction j
-  Nk is the number of nodes or cells in the direction k
-  WARNING : (i,j,k) begins at (1,1,1)
-  WARNING : index begins at 1
+  Ni (resp. j,k) is the number of nodes or cells in the direction i (resp. j,k)
+  WARNING : (i,j,k) and index begins at 1
   CONVENTION : the face numerotation starts with all faces with normal in direction 
                i, then continues with all faces with normal in direction j and ends 
                with all faces with normal in direction k
@@ -52,11 +46,8 @@ def convert_ijk_to_facejIndex(i,j,k,nCell,nVtx):
   (i,j,k), (i,j,k+1), (i+1,j,k+1) and (i+1,j,k)
   nCell = [Ni,Nj,Nk]
   nVtx  = [Ni,Nj,Nk]
-  Ni is the number of nodes or cells in the direction i
-  Nj is the number of nodes or cells in the direction j
-  Nk is the number of nodes or cells in the direction k
-  WARNING : (i,j,k) begins at (1,1,1)
-  WARNING : index begins at 1
+  Ni (resp. j,k) is the number of nodes or cells in the direction i (resp. j,k)
+  WARNING : (i,j,k) and index begins at 1
   CONVENTION : the face numerotation starts with all faces with normal in direction 
                i, then continues with all faces with normal in direction j and ends 
                with all faces with normal in direction k
@@ -75,16 +66,12 @@ def convert_ijk_to_facekIndex(i,j,k,nCell,nVtx):
   (i,j,k), (i+1,j,k), (i+1,j+1,k) and (i,j+1,k)
   nCell = [Ni,Nj,Nk]
   nVtx  = [Ni,Nj,Nk]
-  Ni is the number of nodes or cells in the direction i
-  Nj is the number of nodes or cells in the direction j
-  Nk is the number of nodes or cells in the direction k
-  WARNING : (i,j,k) begins at (1,1,1)
-  WARNING : index begins at 1
+  Ni (resp. j,k) is the number of nodes or cells in the direction i (resp. j,k)
+  WARNING : (i,j,k) and index begins at 1
   CONVENTION : the face numerotation starts with all faces with normal in direction 
                i, then continues with all faces with normal in direction j and ends 
                with all faces with normal in direction k
-  nbFacesi is the total number of faces with normal in direction i
-  nbFacesj is the total number of faces with normal in direction j
+  nbFacesi (resp. j) is the total number of faces with normal in direction i (resp. j)
   """
   nbFacesi = nVtx[0]*nCell[1]*nCell[2]
   nbFacesj = nVtx[1]*nCell[0]*nCell[2]
@@ -102,11 +89,8 @@ def convert_ijk_to_faceIndices(i,j,k,nCell,nVtx):
   (i,j,k), (i+1,j,k), (i+1,j+1,k) and (i,j+1,k) for fk
   nCell = [Ni,Nj,Nk]
   nVtx  = [Ni,Nj,Nk]
-  Ni is the number of nodes or cells in the direction i
-  Nj is the number of nodes or cells in the direction j
-  Nk is the number of nodes or cells in the direction k
-  WARNING : (i,j,k) begins at (1,1,1)
-  WARNING : index begins at 1
+  Ni (resp. j,k) is the number of nodes or cells in the direction i (resp. j,k)
+  WARNING : (i,j,k) and index begins at 1
   CONVENTION : the face numerotation starts with all faces with normal in direction 
                i, then continues with all faces with normal in direction j and ends 
                with all faces with normal in direction k
@@ -352,53 +336,38 @@ def compute_nbFacesAllSlabsPerZone(slabListVtx,nVtx):
     nbFacesPerSlab = 0
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabVtx for item in bounds]
 
-    if iE == nVtx[0]+1:
-      supI = iE-1
-    else:
-      supI = iE    
-    if jE == nVtx[1]+1:
-      supJ = jE-1
-    else:
-      supJ = jE
-    if kE == nVtx[2]+1:
-      supK = kE-1
-    else:
-      supK = kE
-    
-    #> iMin faces treatment
-    if iS == 1:
-      infI = iS+1
-      nbFacesPerSlab += (supJ-jS)*(supK-kS)
-    else:
-      infI = iS
-      
-    #> jMin faces treatment
-    if jS == 1:
-      infJ = jS+1
-      nbFacesPerSlab += (supI-iS)*(supK-kS)
-    else:
-      infJ = jS
-      
-    #> kMin faces treatment
-    if kS == 1:
-      infK = kS+1
-      nbFacesPerSlab += (supI-iS)*(supJ-jS)
-    else:
-      infK = kS
+    supI = iE-1 if iE == nVtx[0]+1 else iE
+    supJ = jE-1 if jE == nVtx[1]+1 else jE
+    supK = kE-1 if kE == nVtx[2]+1 else kE
+
+    infI = iS+1 if iS == 1 else iS
+    infJ = jS+1 if jS == 1 else jS
+    infK = kS+1 if kS == 1 else kS
     
     #> interior faces treatment with only interior edges
     nbFacesPerSlab += 3*(supI-infI)*(supJ-infJ)*(supK-infK)
+
+    #> iMin faces treatment
+    if iS == 1:
+      nbFacesPerSlab += (supJ-jS)*(supK-kS)
+      
+    #> jMin faces treatment
+    if jS == 1:
+      nbFacesPerSlab += (supI-iS)*(supK-kS)
+      
+    #> kMin faces treatment
+    if kS == 1:
+      nbFacesPerSlab += (supI-iS)*(supJ-jS)
+    
     
     #> interior faces treatment with at least one exterior edge
+    #todo : pourquoi pas des inf partout ?
     if iS == 1:
-      nbFacesPerSlab += (supJ-infJ)*(supK-kS)
-      nbFacesPerSlab += (supK-infK)*(supJ-jS)
+      nbFacesPerSlab += (supJ-infJ)*(supK-kS) + (supK-infK)*(supJ-jS)
     if jS == 1:
-      nbFacesPerSlab += (supI-infI)*(supK-kS)
-      nbFacesPerSlab += (supK-infK)*(supI-infI)
+      nbFacesPerSlab += (supI-infI)*(supK-kS) + (supK-infK)*(supI-infI)
     if kS == 1:
-      nbFacesPerSlab += (supI-infI)*(supJ-infJ)
-      nbFacesPerSlab += (supJ-infJ)*(supI-infI)
+      nbFacesPerSlab += (supI-infI)*(supJ-infJ) + (supJ-infJ)*(supI-infI)
     
     #> iMax faces treatment
     if iE == nVtx[0]+1:
@@ -783,10 +752,7 @@ def isSameAxis(x,y):
   of CGNS (https://cgns.github.io/CGNS_docs_current/sids/cnct.html) as :
   del(x−y) ≡ +1 if |x| = |y|
   """
-  if abs(x) == abs(y):
-     return(1)
-  else:
-     return(0)
+  return (np.abs(x) == np.abs(y)).astype(int)
 ###############################################################################
 
 ###############################################################################
@@ -796,20 +762,9 @@ def compute_transformMatrix(transform):
   The definition of this matrix is given in the SIDS of CGNS 
   (https://cgns.github.io/CGNS_docs_current/sids/cnct.html)
   """
-  transformMatrix = np.empty((3,3),dtype=np.int32,order='F')
-  transformMatrix[0][0] = np.sign(transform[0])*isSameAxis(transform[0],1)
-  transformMatrix[0][1] = np.sign(transform[1])*isSameAxis(transform[1],1)
-  transformMatrix[0][2] = np.sign(transform[2])*isSameAxis(transform[2],1)
-  
-  transformMatrix[1][0] = np.sign(transform[0])*isSameAxis(transform[0],2)
-  transformMatrix[1][1] = np.sign(transform[1])*isSameAxis(transform[1],2)
-  transformMatrix[1][2] = np.sign(transform[2])*isSameAxis(transform[2],2)
-  
-  transformMatrix[2][0] = np.sign(transform[0])*isSameAxis(transform[0],3)
-  transformMatrix[2][1] = np.sign(transform[1])*isSameAxis(transform[1],3)
-  transformMatrix[2][2] = np.sign(transform[2])*isSameAxis(transform[2],3)
-    
-  return(transformMatrix)
+  transform_np = np.asarray(transform)
+  del_matrix = isSameAxis(transform_np, np.array([[1],[2],[3]]))
+  return np.sign(transform_np) * del_matrix
 ###############################################################################
 
 ###############################################################################
@@ -1048,9 +1003,8 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
   
   #> Create skeleton of distTreeU
   distTreeU = I.newCGNSTree()
-  baseS = I.getNodeFromType1(distTreeS,'CGNSBase_t')
-  baseU = I.newCGNSBase(I.getName(baseS),parent=distTreeU)
-  I.setValue(baseU,I.getValue(baseS))
+  baseS = I.getNodeFromType1(distTreeS, 'CGNSBase_t')
+  baseU = I.createNode(I.getName(baseS), 'CGNSBase_t', I.getValue(baseS), parent=distTreeU)
   for zoneS in I.getZones(distTreeS):
     zoneSName = I.getName(zoneS)
     zoneSDims = I.getValue(zoneS)
@@ -1059,43 +1013,40 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
     nCellTotS = nCellS.prod()
     nVtxTotS  = nVtxS.prod()
   
-  #> Calcul du nombre faces totales en i, j et k
+    #> Calcul du nombre faces totales en i, j et k
     nbFacesi = nVtxS[0]*nCellS[1]*nCellS[2]
     nbFacesj = nVtxS[1]*nCellS[0]*nCellS[2]
     nbFacesk = nVtxS[2]*nCellS[0]*nCellS[1]
     nbFacesTot = nbFacesi + nbFacesj + nbFacesk
   
-  #> with Zones
-    nCellU = np.prod(nCellS)
-    nVtxU  = np.prod(nVtxS)
-    zoneUSize = [[nVtxU,nCellU,0]]
-    zoneU = I.newZone(zoneSName, zoneUSize, 'Unstructured', None, baseU)
+    #> with Zones
+    zoneU = I.newZone(zoneSName, [[nVtxTotS, nCellTotS, 0]], 'Unstructured', None, baseU)
   
-  #> with GridCoordinates
-    gridCoordinatesS = I.getNodeFromType1(zoneS,"GridCoordinates_t")
-    CoordinateXS = I.getNodeFromName1(gridCoordinatesS,"CoordinateX")
-    CoordinateYS = I.getNodeFromName1(gridCoordinatesS,"CoordinateY")
-    CoordinateZS = I.getNodeFromName1(gridCoordinatesS,"CoordinateZ")
+    #> with GridCoordinates
+    gridCoordinatesS = I.getNodeFromType1(zoneS, "GridCoordinates_t")
+    CoordinateXS = I.getNodeFromName1(gridCoordinatesS, "CoordinateX")
+    CoordinateYS = I.getNodeFromName1(gridCoordinatesS, "CoordinateY")
+    CoordinateZS = I.getNodeFromName1(gridCoordinatesS, "CoordinateZ")
     gridCoordinatesU = I.newGridCoordinates(parent=zoneU)
     I.newDataArray('CoordinateX', I.getValue(CoordinateXS), gridCoordinatesU)
     I.newDataArray('CoordinateY', I.getValue(CoordinateYS), gridCoordinatesU)
     I.newDataArray('CoordinateZ', I.getValue(CoordinateZS), gridCoordinatesU)
   
-  #> with FlowSolutions
-    for flowSolutionS in I.getNodesFromType1(zoneS,"FlowSolution_t"):
-      flowSolutionU = I.newFlowSolution(I.getName(flowSolutionS),parent=zoneU)
-      gridLocationS = I.getNodeFromType1(zoneS,"GridLocation_t")
+    #> with FlowSolutions
+    for flowSolutionS in I.getNodesFromType1(zoneS, "FlowSolution_t"):
+      flowSolutionU = I.newFlowSolution(I.getName(flowSolutionS), parent=zoneU)
+      gridLocationS = I.getNodeFromType1(zoneS, "GridLocation_t")
       if gridLocationS:
-        I.newGridLocation(I.getValue(gridLocationS),flowSolutionU)
+        I.addChild(flowSolutionU, gridLocationS)
       else:
-        I.newGridLocation("CellCenter",flowSolutionU)
-      for dataS in I.getNodesFromType1(flowSolutionS,"DataArray_t"):
-        I.newDataArray(I.getName(dataS),I.getValue(dataS),flowSolutionU)
+        I.newGridLocation("CellCenter", flowSolutionU)
+      for dataS in I.getNodesFromType1(flowSolutionS, "DataArray_t"):
+        I.addChild(flowSolutionU, dataS)
   
-  #> with NgonElements
+    #> with NgonElements
     #>> Definition en non structure des faces
     vtxRangeS  = MDIDF.uniform_distribution_at(nVtxTotS, iRank, nRank)
-    slabListVtxS  = HFR2S.compute_slabs(zoneS[1][:,0], vtxRangeS)
+    slabListVtxS  = HFR2S.compute_slabs(nVtxS, vtxRangeS)
     nbFacesAllSlabsPerZone = compute_nbFacesAllSlabsPerZone(slabListVtxS, nVtxS)  
     faceNumber    = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
     faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
@@ -1112,39 +1063,34 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
     partToBlockObject = PDM.PartToBlock(comm, [faceNumber], None, 1, 0, 0, 1)
     #>>> Premier echange pour le ParentElements
     pFieldStride1 = dict()  
-    pFieldStride1["faceLeftCell"] = []
-    pFieldStride1["faceLeftCell"].append(faceLeftCell)
-    pFieldStride1["faceRightCell"] = []
-    pFieldStride1["faceRightCell"].append(faceRightCell)
-    pStride1 = []
-    pStride1.append(np.ones(nbFacesAllSlabsPerZone,dtype='int32'))  
+    pFieldStride1["faceLeftCell"] = [faceLeftCell]
+    pFieldStride1["faceRightCell"] = [faceRightCell]
+    pStride1 = [np.ones(nbFacesAllSlabsPerZone, dtype='int32')]
     dFieldStride1 = dict()  
     partToBlockObject.PartToBlock_Exchange(dFieldStride1, pFieldStride1, pStride1)
     #>>> Deuxieme echange pour l'ElementConnectivity
     pFieldStride4 = dict()
-    pFieldStride4["faceNgon"] = []
-    pFieldStride4["faceNgon"].append(faceNgon)
-    pStride4 = []
-    pStride4.append(4*np.ones(nbFacesAllSlabsPerZone,dtype='int32'))
+    pFieldStride4["faceNgon"] = [faceNgon]
+    pStride4 = [4*np.ones(nbFacesAllSlabsPerZone,dtype='int32')]
     dFieldStride4 = dict()
     partToBlockObject.PartToBlock_Exchange(dFieldStride4, pFieldStride4, pStride4)
+
     #>>> Distribution des faces  
     facesDistribution = partToBlockObject.getDistributionCopy()
     # >> Creation du noeud NGonElements
     ngon = I.newElements('NGonElements', 'NGON', dFieldStride4["faceNgon"],
-                         [1,nbFacesTot], parent=zoneU)
+                         [1, nbFacesTot], parent=zoneU)
     nbFacesLoc = dFieldStride1["faceLeftCell"].shape[0]
-    pe = np.empty((nbFacesLoc,2),dtype=np.int32)
-    for i in range(nbFacesLoc):
-      pe[i][0] = dFieldStride1["faceLeftCell"][i]
-      pe[i][1] = dFieldStride1["faceRightCell"][i]
+    pe = np.array([dFieldStride1["faceLeftCell"],
+                   dFieldStride1["faceRightCell"]]).transpose()
+
     I.newParentElements(pe,ngon)
     startOffset = facesDistribution[iRank]
     endOffset   = startOffset + nbFacesLoc+1
-    I.newDataArray("ElementStartOffset",4*np.arange(startOffset,endOffset),ngon)
-    I.newIndexArray('ElementConnectivity#Size', [nbFacesTot*4], ngon)
+    I.newDataArray("ElementStartOffset", 4*np.arange(startOffset,endOffset), parent=ngon)
+    I.newIndexArray('ElementConnectivity#Size', [nbFacesTot*4], parent=ngon)
   
-  #> with ZoneBC
+    #> with ZoneBC
     zoneBCS = I.getNodeFromType1(zoneS,"ZoneBC_t")
     if zoneBCS is not None:
       zoneBCU = I.newZoneBC(zoneU)
