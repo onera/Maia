@@ -2,7 +2,7 @@ from mpi4py import MPI
 import logging     as LOG
 import Converter.Internal as I
 import numpy as np
-from .utils import search_match
+from .load_balancing_utils            import search_match
 from maia.partitioning.load_balancing import single_zone_balancing
 
 def balance_with_uniform_weights(n_elem_per_zone, n_rank):
@@ -276,7 +276,7 @@ def balance_with_non_uniform_weights(n_elem_per_zone, n_rank,
       match_idx = True #To enter the loop
       while match_idx:
         searching_list = np.fromiter(n_elem_zone_abs.values(), dtype=np.int32)
-        match_idx = search_match(searching_list, mean_per_rank-k, tol=0)
+        match_idx = search_match(searching_list, mean_per_rank-k, 2**20)
         if match_idx:
           z_names = [list(n_elem_zone_abs.keys())[idx] for idx in match_idx]
           LOG.debug(' '*4 + "~>Match found : affect zones {0} to proc {1}".format(z_names, current_proc))

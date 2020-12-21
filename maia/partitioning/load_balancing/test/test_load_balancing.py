@@ -2,7 +2,7 @@ import numpy as np
 from maia.partitioning.load_balancing import multi_zone_balancing
 from maia.partitioning.load_balancing import single_zone_balancing
 from maia.partitioning.load_balancing import balancing_quality
-from maia.partitioning.load_balancing import utils
+from maia.partitioning.load_balancing import load_balancing_utils
 
 class Test_balancing_quality:
   def test_single_zone(self):
@@ -34,10 +34,10 @@ class Test_balancing_quality:
     assert np.all(out[5:] == [6,10,50])
 
 def test_search_match():
-  assert utils.search_match([10,20,50,70], 60) == (0,2)
-  assert utils.search_match([10,20,50,70], 70) == (3,)
-  assert utils.search_match([10,20,50,70], 32) == []
-  assert utils.search_match([10,20,50,70], 32, tol=2)  == (0,1)
+  assert load_balancing_utils.search_match([10,20,50,70], 60, 2**20) == [0,2]
+  assert load_balancing_utils.search_match([10,20,50,70], 70, 2**20) == [1,2]
+  assert load_balancing_utils.search_match([10,20,50,70], 32, 2**20) == []
+  #assert load_balancing_utils.search_match([10,20,50,70], 32, tol=2)  == [0,1]
 
 
 def test_single_zone_balancing():
