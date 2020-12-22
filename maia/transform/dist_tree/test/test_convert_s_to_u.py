@@ -301,44 +301,36 @@ class Test_fill_faceNgon_leftCell_rightCell():
 ###############################################################################
   
 ###############################################################################
-class Test_compute_nbFacesAllSlabsPerZone():
+class Test_vtx_slab_to_n_face():
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_monoslab_imax_jmax_kmax(self):
-    slabListVtx = [[[0, 3], [0, 3], [2, 3]]]
-    nVtx        = [3, 3, 3]
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone(slabListVtx,nVtx) == 4
+  nVtx        = [3, 3, 3]
+  def test_vtx_slab_to_n_face_monoslab_imax_jmax_kmax(self):
+    slabListVtx = [[0, 3], [0, 3], [2, 3]]
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx,self.nVtx) == 4
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_monoslab_imin_jmin_kmin(self):
-    slabListVtx = [[[0, 3], [0, 3], [0, 1]]]
-    nVtx        = [3, 3, 3]
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone(slabListVtx,nVtx) == 16
+  def test_vtx_slab_to_n_face_monoslab_imin_jmin_kmin(self):
+    slabListVtx = [[0, 3], [0, 3], [0, 1]]
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx,self.nVtx) == 16
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_monoslab_random(self):
-    slabListVtx = [[[1, 2], [0, 1], [1, 2]]]
-    nVtx        = [3, 3, 3]
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone(slabListVtx,nVtx) == 3
+  def test_vtx_slab_to_n_face_monoslab_random(self):
+    slabListVtx = [[1, 2], [0, 1], [1, 2]]
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx,self.nVtx) == 3
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_multislabs1(self):
+  def test_vtx_slab_to_n_face_multislabs1(self):
     slabListVtx = [[[1, 3], [1, 2], [2, 3]], [[0, 3], [2, 3], [2, 3]]]
-    nVtx        = [3, 3, 3]
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone([slabListVtx[0]],nVtx) == 1
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone([slabListVtx[1]],nVtx) == 0
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone(slabListVtx     ,nVtx) == 1+0
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[0],self.nVtx) == 1
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[1],self.nVtx) == 0
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_multislabs2(self):
+  def test_vtx_slab_to_n_face_multislabs2(self):
     slabListVtx = [[[0, 3], [1, 2], [1, 2]], [[0, 2], [2, 3], [1, 2]]]
-    nVtx        = [3, 3, 3]
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone([slabListVtx[0]],nVtx) == 7
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone([slabListVtx[1]],nVtx) == 2
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone(slabListVtx     ,nVtx) == 7+2
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[0],self.nVtx) == 7
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[1],self.nVtx) == 2
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_multislabs3(self):
+  def test_vtx_slab_to_n_face_multislabs3(self):
     slabListVtx = [[[2, 3], [2, 3], [1, 2]], [[0, 3], [0, 1], [2, 3]], [[0, 1], [1, 2], [2, 3]]]
-    nVtx        = [3, 3, 3]
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone([slabListVtx[0]],nVtx) == 0
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone([slabListVtx[1]],nVtx) == 2
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone([slabListVtx[2]],nVtx) == 1
-    assert convert_s_to_u.compute_nbFacesAllSlabsPerZone(slabListVtx     ,nVtx) == 0+2+1
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[0],self.nVtx) == 0
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[1],self.nVtx) == 2
+    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[2],self.nVtx) == 1
 ###############################################################################
   
 ###############################################################################

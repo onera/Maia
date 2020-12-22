@@ -326,64 +326,25 @@ def fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
 ###############################################################################
 
 ###############################################################################
-def compute_nbFacesAllSlabsPerZone(slabListVtx,nVtx):
+def vtx_slab_to_n_face(vtx_slab, n_vtx):
   """
   Compute the number of faces to create for a zone by a proc with distributed info
-  WARNING : (i,j,k) begins at (1,1,1)
+  from a vertex slab
   """
-  nbFacesAllSlabsPerZone = 0
-  for slabVtx in slabListVtx:
-    nbFacesPerSlab = 0
-    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabVtx for item in bounds]
+  iS,iE, jS,jE, kS,kE = [item for bounds in vtx_slab for item in bounds]
+  # Number of vertices of the slab in each direction
+  nx = iE - iS
+  ny = jE - jS
+  nz = kE - kS
 
-    supI = iE-1 if iE == nVtx[0]+1 else iE
-    supJ = jE-1 if jE == nVtx[1]+1 else jE
-    supK = kE-1 if kE == nVtx[2]+1 else kE
+  # Number of edges of the slab in each direction : exclude last edge if slab
+  # is the end of the block
+  ex = nx - 1 if iE == n_vtx[0] else nx
+  ey = ny - 1 if jE == n_vtx[1] else ny
+  ez = nz - 1 if kE == n_vtx[2] else nz
 
-    infI = iS+1 if iS == 1 else iS
-    infJ = jS+1 if jS == 1 else jS
-    infK = kS+1 if kS == 1 else kS
-    
-    #> interior faces treatment with only interior edges
-    nbFacesPerSlab += 3*(supI-infI)*(supJ-infJ)*(supK-infK)
-
-    #> iMin faces treatment
-    if iS == 1:
-      nbFacesPerSlab += (supJ-jS)*(supK-kS)
-      
-    #> jMin faces treatment
-    if jS == 1:
-      nbFacesPerSlab += (supI-iS)*(supK-kS)
-      
-    #> kMin faces treatment
-    if kS == 1:
-      nbFacesPerSlab += (supI-iS)*(supJ-jS)
-    
-    
-    #> interior faces treatment with at least one exterior edge
-    #todo : pourquoi pas des inf partout ?
-    if iS == 1:
-      nbFacesPerSlab += (supJ-infJ)*(supK-kS) + (supK-infK)*(supJ-jS)
-    if jS == 1:
-      nbFacesPerSlab += (supI-infI)*(supK-kS) + (supK-infK)*(supI-infI)
-    if kS == 1:
-      nbFacesPerSlab += (supI-infI)*(supJ-infJ) + (supJ-infJ)*(supI-infI)
-    
-    #> iMax faces treatment
-    if iE == nVtx[0]+1:
-      nbFacesPerSlab += (supJ-jS)*(supK-kS)
-          
-    #> jMax faces treatment
-    if jE == nVtx[1]+1:
-      nbFacesPerSlab += (supI-iS)*(supK-kS)
-          
-    #> kMax faces treatment
-    if kE == nVtx[2]+1:
-      nbFacesPerSlab += (supI-iS)*(supJ-jS)
-      
-    nbFacesAllSlabsPerZone += nbFacesPerSlab  
-  
-  return nbFacesAllSlabsPerZone
+  # In each direction, number of faces is n_vtx * n_edge1 * n_edge2
+  return nx*ey*ez + ny*ex*ez + nz*ex*ey
 
 ###############################################################################
 
@@ -1047,7 +1008,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
     #>> Definition en non structure des faces
     vtxRangeS  = MDIDF.uniform_distribution_at(nVtxTotS, iRank, nRank)
     slabListVtxS  = HFR2S.compute_slabs(nVtxS, vtxRangeS)
-    nbFacesAllSlabsPerZone = compute_nbFacesAllSlabsPerZone(slabListVtxS, nVtxS)  
+    nbFacesAllSlabsPerZone = sum([vtx_slab_to_n_face(slab, nVtxS) for slab in slabListVtxS])
     faceNumber    = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
     faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
     faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
