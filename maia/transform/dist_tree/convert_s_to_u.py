@@ -102,15 +102,15 @@ def convert_ijk_to_faceIndices(i,j,k,nCell,nVtx):
 ###############################################################################
 
 ###############################################################################
-def compute_fi_from_ijk(i,j,k):
+def compute_fi_from_ijk(i,j,k, is_min=False, is_max=False):
   """
   Compute from structured indices (i,j,k) of structured nodes indices that compose 
   face with normal in direction i and structured left and right cells indices of 
   this face
   (i,j,k) defines start node of the structured face defined by :
-  (i,j,k), (i,j+1,k), (i,j+1,k+1) and (i,j,k+1)
+  (i,j,k), (i,j+1,k), (i,j+1,k+1) and (i,j,k+1) if i is not min
+  (i,j,k), (i,j,k+1), (i,j+1,k+1) and (i,j+1,k) if i is min
   WARNING : (i,j,k) begins at (1,1,1)
-  This fonction allow i that verify imin < i < imax
   """
   # Nodes of the face
   n1 = (i,j  ,k  )
@@ -120,61 +120,24 @@ def compute_fi_from_ijk(i,j,k):
   # Neighbour cells of the face
   left  = (i-1,j,k)
   right = (i  ,j,k)
+  if is_min:
+    n2, n4 = n4, n2
+    left = (i,j,k)
+  if is_min or is_max:
+    right = 0
   return(n1,n2,n3,n4,left,right)
 ###############################################################################
 
 ###############################################################################
-def compute_fi_from_imaxjk(imax,j,k):
-  """
-  Compute from structured indices (i,j,k) of structured nodes indices that compose 
-  face with normal in direction i and for i=imax and structured left and right cells
-  indices of this face
-  (imax,j,k) defines start node of the structured face defined by :
-  (imax,j,k), (imax,j+1,k), (imax,j+1,k+1) and (imax,j,k+1)
-  WARNING : (i,j,k) begins at (1,1,1)
-  """
-  # Nodes of the face
-  n1 = (imax,j  ,k  )
-  n2 = (imax,j+1,k  )
-  n3 = (imax,j+1,k+1)
-  n4 = (imax,j  ,k+1)
-  # Neighbour cell of the face
-  left  = (imax-1,j,k)
-  right = 0
-  return(n1,n2,n3,n4,left,right)
-###############################################################################
-
-###############################################################################
-def compute_fi_from_iminjk(imin,j,k):
-  """
-  Compute from structured indices (i,j,k) of structured nodes indices that compose 
-  face with normal in direction i and for i=imin and structured left and right cells
-  indices of this face
-  (imin,j,k) defines start node of the structured face defined by :
-  (imin,j,k), (imin,j,k+1), (imin,j+1,k+1) and (imin,j+1,k)
-  WARNING : (i,j,k) begins at (1,1,1)
-  """
-  # Nodes of the face
-  n1 = (imin,j  ,k  )
-  n2 = (imin,j  ,k+1)
-  n3 = (imin,j+1,k+1)
-  n4 = (imin,j+1,k  )
-  # Neighbour cell of the face
-  left  = (imin,j,k)
-  right = 0
-  return(n1,n2,n3,n4,left,right)
-###############################################################################
-
-###############################################################################
-def compute_fj_from_ijk(i,j,k):
+def compute_fj_from_ijk(i,j,k, is_min=False, is_max=False):
   """
   Compute from structured indices (i,j,k) of structured nodes indices that compose 
   face with normal in direction j and structured left and right cells indices of 
   this face
   (i,j,k) defines start node of the structured face defined by :
-  (i,j,k), (i,j,k+1), (i+1,j,k+1) and (i+1,j,k)
+  (i,j,k), (i,j,k+1), (i+1,j,k+1) and (i+1,j,k) if j is not min
+  (i,j,k), (i+1,j,k), (i+1,j,k+1) and (i,j,k+1) if j is min
   WARNING : (i,j,k) begins at (1,1,1)
-  This fonction allow j that verify jmin < j < jmax
   """
   # Nodes of the face
   n1 = (i  ,j,k  )
@@ -184,61 +147,24 @@ def compute_fj_from_ijk(i,j,k):
   # Neighbour cells of the face
   left  = (i,j-1,k)
   right = (i,j  ,k)
+  if is_min:
+    n2, n4 = n4, n2
+    left = (i,j,k)
+  if is_min or is_max:
+    right = 0
   return(n1,n2,n3,n4,left,right)
 ###############################################################################
 
 ###############################################################################
-def compute_fj_from_ijmaxk(i,jmax,k):
-  """
-  Compute from structured indices (i,j,k) of structured nodes indices that compose 
-  face with normal in direction j and for j=jmax and structured left and right cells
-  indices of this face
-  (i,jmax,k) defines start node of the structured face defined by :
-  (i,jmax,k), (i,jmax,k+1), (i+1,jmax,k+1) and (i+1,jmax,k)
-  WARNING : (i,j,k) begins at (1,1,1)
-  """
-  # Nodes of the face
-  n1 = (i  ,jmax,k  )
-  n2 = (i  ,jmax,k+1)
-  n3 = (i+1,jmax,k+1)
-  n4 = (i+1,jmax,k  )
-  # Neighbour cell of the face
-  left  = (i,jmax-1,k)
-  right = 0
-  return(n1,n2,n3,n4,left,right)
-###############################################################################
-
-###############################################################################
-def compute_fj_from_ijmink(i,jmin,k):
-  """
-  Compute from structured indices (i,j,k) of structured nodes indices that compose 
-  face with normal in direction j and for j=jmin and structured left and right cells
-  indices of this face
-  (i,jmin,k) defines start node of the structured face defined by :
-  (i,jmin,k), (i+1,jmin,k), (i+1,jmin,k+1) and (i,jmin,k+1)
-  WARNING : (i,j,k) begins at (1,1,1)
-  """
-  # Nodes of the face
-  n1 = (i  ,jmin,k  )
-  n2 = (i+1,jmin,k  )
-  n3 = (i+1,jmin,k+1)
-  n4 = (i  ,jmin,k+1)
-  # Neighbour cell of the face
-  left  = (i,jmin,k)
-  right = 0
-  return(n1,n2,n3,n4,left,right)
-###############################################################################
-
-###############################################################################
-def compute_fk_from_ijk(i,j,k):
+def compute_fk_from_ijk(i,j,k, is_min=False, is_max=False):
   """
   Compute from structured indices (i,j,k) of structured nodes indices that compose 
   face with normal in direction k and structured left and right cells indices of 
   this face
   (i,j,k) defines start node of the structured face defined by :
-  (i,j,k), (i+1,j,k), (i+1,j+1,k) and (i,j+1,k)
+  (i,j,k), (i+1,j,k), (i+1,j+1,k) and (i,j+1,k) if k is not min
+  (i,j,k), (i,j+1,k), (i+1,j+1,k) and (i+1,j,k) if k is min
   WARNING : (i,j,k) begins at (1,1,1)
-  This fonction allow k that verify kmin < k < kmax
   """
   # Nodes of the face
   n1 = (i  ,j  ,k)
@@ -248,48 +174,11 @@ def compute_fk_from_ijk(i,j,k):
   # Neighbour cells of the face
   left  = (i,j,k-1)
   right = (i,j,k  )
-  return(n1,n2,n3,n4,left,right)
-###############################################################################
-
-###############################################################################
-def compute_fk_from_ijkmax(i,j,kmax):
-  """
-  Compute from structured indices (i,j,k) of structured nodes indices that compose 
-  face with normal in direction k and for k=kmax and structured left and right cells
-  indices of this face
-  (i,j,kmax) defines start node of the structured face defined by :
-  (i,j,kmax), (i+1,j,kmax), (i+1,j+1,kmax) and (i,j+1,kmax)
-  WARNING : (i,j,k) begins at (1,1,1)
-  """
-  # Nodes of the face
-  n1 = (i  ,j  ,kmax)
-  n2 = (i+1,j  ,kmax)
-  n3 = (i+1,j+1,kmax)
-  n4 = (i  ,j+1,kmax)
-  # Neighbour cell of the face
-  left  = (i,j,kmax-1)
-  right = 0
-  return(n1,n2,n3,n4,left,right)
-###############################################################################
-
-###############################################################################
-def compute_fk_from_ijkmin(i,j,kmin):
-  """
-  Compute from structured indices (i,j,k) of structured nodes indices that compose 
-  face with normal in direction k and for k=kmin and structured left and right cells
-  indices of this face
-  (i,j,kmin) defines start node of the structured face defined by :
-  (i,j,kmin), (i,j+1,kmin), (i+1,j+1,kmin), (i+1,j,kmin)
-  WARNING : (i,j,k) begins at (1,1,1)
-  """
-  # Nodes of the face
-  n1 = (i  ,j  ,kmin)
-  n2 = (i  ,j+1,kmin)
-  n3 = (i+1,j+1,kmin)
-  n4 = (i+1,j  ,kmin)
-  # Neighbour cell of the face
-  left  = (i,j,kmin)
-  right = 0
+  if is_min:
+    n2, n4 = n4, n2
+    left = (i,j,k)
+  if is_min or is_max:
+    right = 0
   return(n1,n2,n3,n4,left,right)
 ###############################################################################
 
@@ -387,7 +276,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
       for j in range(jS,supJ):
         for k in range(kS,supK):
           faceNumber[counter] = convert_ijk_to_faceiIndex(1,j,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_iminjk(1,j,k)
+          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(1,j,k, is_min=True)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
                                            faceNgon,faceLeftCell,faceRightCell)
@@ -401,7 +290,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
       for i in range(iS,supI):
         for k in range(kS,supK):
           faceNumber[counter] = convert_ijk_to_facejIndex(i,1,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijmink(i,1,k)
+          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(i,1,k,is_min=True)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
                                            faceNgon,faceLeftCell,faceRightCell)
@@ -415,7 +304,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
       for i in range(iS,supI):
         for j in range(jS,supJ):
           faceNumber[counter] = convert_ijk_to_facekIndex(i,j,1,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijkmin(i,j,1)
+          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(i,j,1, is_min=True)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
                                            faceNgon,faceLeftCell,faceRightCell)
@@ -511,7 +400,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
       for j in range(jS,supJ):
         for k in range(kS,supK):
           faceNumber[counter] = convert_ijk_to_faceiIndex(nVtx[0],j,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_imaxjk(nVtx[0],j,k)
+          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(nVtx[0],j,k, is_max=True)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
                                            faceNgon,faceLeftCell,faceRightCell)
@@ -522,7 +411,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
       for i in range(iS,supI):
         for k in range(kS,supK):
           faceNumber[counter] = convert_ijk_to_facejIndex(i,nVtx[1],k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijmaxk(i,nVtx[1],k)
+          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(i,nVtx[1],k, is_max=True)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
                                            faceNgon,faceLeftCell,faceRightCell)
@@ -533,7 +422,7 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
       for i in range(iS,supI):
         for j in range(jS,supJ):
           faceNumber[counter] = convert_ijk_to_facekIndex(i,j,nVtx[2],nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijkmax(i,j,nVtx[2])
+          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(i,j,nVtx[2], is_max=True)
           fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
                                            leftijk,rightijk,nVtx,nCell,
                                            faceNgon,faceLeftCell,faceRightCell)
