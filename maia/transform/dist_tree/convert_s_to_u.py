@@ -238,9 +238,9 @@ def vtx_slab_to_n_face(vtx_slab, n_vtx):
 ###############################################################################
 
 ###############################################################################
-def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,nCell,
-                                                               faceNumber,faceNgon,
-                                                               faceLeftCell,faceRightCell):
+def compute_all_ngon_connectivity(slabListVtx,nVtx,nCell,
+                                  faceNumber,faceNgon,
+                                  faceLeftCell,faceRightCell):
   """
   Compute the numerotation, the nodes and the cells linked to all face traited for
   zone by a proc and fill associated tabs :
@@ -255,178 +255,32 @@ def compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtx,nVtx,
   counter = 0
   for slabVtx in slabListVtx:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabVtx for item in bounds]
-    # print(iS,iE,jS,jE,kS,kE)
+      
+    for i in range(iS, iE):
+      for j in range(jS, jE):
+        for k in range(kS, kE):
+          if (j != nVtx[1] and k != nVtx[2]):
+            faceNumber[counter] = convert_ijk_to_faceiIndex(i,j,k,nCell,nVtx)
+            (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(i,j,k, i==1, i==nVtx[0])
+            fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
+                                             leftijk,rightijk,nVtx,nCell,
+                                             faceNgon,faceLeftCell,faceRightCell)
+            counter += 1
+          if (i != nVtx[0] and k != nVtx[2]):
+            faceNumber[counter] = convert_ijk_to_facejIndex(i,j,k,nCell,nVtx)
+            (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(i,j,k, j==1, j==nVtx[1])
+            fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
+                                             leftijk,rightijk,nVtx,nCell,
+                                             faceNgon,faceLeftCell,faceRightCell)
+            counter += 1
+          if (i != nVtx[0] and j != nVtx[1]):
+            faceNumber[counter] = convert_ijk_to_facekIndex(i,j,k,nCell,nVtx)
+            (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(i,j,k, k==1, k==nVtx[2])
+            fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
+                                             leftijk,rightijk,nVtx,nCell,
+                                             faceNgon,faceLeftCell,faceRightCell)
+            counter += 1
 
-    if iE == nVtx[0]+1:
-      supI = iE-1
-    else:
-      supI = iE    
-    if jE == nVtx[1]+1:
-      supJ = jE-1
-    else:
-      supJ = jE
-    if kE == nVtx[2]+1:
-      supK = kE-1
-    else:
-      supK = kE
-      
-    #> iMin faces treatment
-    if iS == 1:
-      infI = iS+1
-      for j in range(jS,supJ):
-        for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_faceiIndex(1,j,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(1,j,k, is_min=True)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-    else:
-      infI = iS
-      
-    #> jMin faces treatment
-    if jS == 1:
-      infJ = jS+1
-      for i in range(iS,supI):
-        for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_facejIndex(i,1,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(i,1,k,is_min=True)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-    else:
-      infJ = jS
-      
-    #> kMin faces treatment
-    if kS == 1:
-      infK = kS+1
-      for i in range(iS,supI):
-        for j in range(jS,supJ):
-          faceNumber[counter] = convert_ijk_to_facekIndex(i,j,1,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(i,j,1, is_min=True)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-    else:
-      infK = kS
-    
-    #> interior faces treatment with only interior edges
-    for i in range(infI,supI):
-      for j in range(infJ,supJ):
-        for k in range(infK, supK):
-          (fi,fj,fk) = convert_ijk_to_faceIndices(i,j,k,nCell,nVtx)
-          #>> i face treatment
-          faceNumber[counter] = fi
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(i,j,k)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-          #>> j face treatment
-          faceNumber[counter] = fj
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(i,j,k)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-          #>> i face treatment
-          faceNumber[counter] = fk
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(i,j,k)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-    
-    #> interior faces treatment with at least one exterior edge
-    #>> i=1 edge
-    if iS == 1:
-      for j in range(infJ,supJ):
-        for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_facejIndex(1,j,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(1,j,k)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-      for k in range(infK,supK):
-        for j in range(jS,supJ):
-          faceNumber[counter] = convert_ijk_to_facekIndex(1,j,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(1,j,k)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-    #>> j=1 edge
-    if jS == 1:
-      for i in range(infI,supI):
-        for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_faceiIndex(i,1,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(i,1,k)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-      for k in range(infK,supK):
-        for i in range(infI,supI):
-          faceNumber[counter] = convert_ijk_to_facekIndex(i,1,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(i,1,k)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-    #>> k=1 edge
-    if kS == 1:
-      for j in range(infJ,supJ):
-        for i in range(infI,supI):
-          faceNumber[counter] = convert_ijk_to_facejIndex(i,j,1,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(i,j,1)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-      for i in range(infI,supI):
-        for j in range(infJ,supJ):
-          faceNumber[counter] = convert_ijk_to_faceiIndex(i,j,1,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(i,j,1)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-
-    #> iMax faces treatment
-    if iE == nVtx[0]+1:
-      for j in range(jS,supJ):
-        for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_faceiIndex(nVtx[0],j,k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fi_from_ijk(nVtx[0],j,k, is_max=True)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-          
-    #> jMax faces treatment
-    if jE == nVtx[1]+1:
-      for i in range(iS,supI):
-        for k in range(kS,supK):
-          faceNumber[counter] = convert_ijk_to_facejIndex(i,nVtx[1],k,nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fj_from_ijk(i,nVtx[1],k, is_max=True)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
-          
-    #> kMax faces treatment
-    if kE == nVtx[2]+1:
-      for i in range(iS,supI):
-        for j in range(jS,supJ):
-          faceNumber[counter] = convert_ijk_to_facekIndex(i,j,nVtx[2],nCell,nVtx)
-          (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = compute_fk_from_ijk(i,j,nVtx[2], is_max=True)
-          fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter+=1
 ###############################################################################
 
 ###############################################################################
@@ -902,9 +756,9 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
     faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
     faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
     faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces(slabListVtxS,nVtxS,nCellS,
-                                                               faceNumber,faceNgon,
-                                                               faceLeftCell,faceRightCell)   
+    compute_all_ngon_connectivity(slabListVtxS,nVtxS,nCellS,
+                                  faceNumber,faceNgon,
+                                  faceLeftCell,faceRightCell)
     #>> PartToBlock pour ordonner et equidistribuer les faces
     #>>> Creation de l'objet partToBlock
     #>>> PDM_part_to_block_distrib_t t_distrib = 0 ! Numerotation recalculee sur tous les procs
