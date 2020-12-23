@@ -414,22 +414,20 @@ class Test_compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces():
 ###############################################################################
 class Test_compute_faceList_from_vertexRange():
 # --------------------------------------------------------------------------- #
+  nVtx       = [3, 3, 3]
+  nCell      = [2, 2, 2]
   def test_compute_faceList_from_vertexRange_i_1rank(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,1,nCell,nVtx)
+    pointList  = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,1,self.nCell,self.nVtx)
     expected_pointList = [[3,6,9,12]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,4))
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_vertexRange_i_3ranks(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,3,nCell,nVtx)
-    pointList1 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,1,3,nCell,nVtx)
-    pointList2 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,2,3,nCell,nVtx)
+    pointList0 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,3,self.nCell,self.nVtx)
+    pointList1 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,1,3,self.nCell,self.nVtx)
+    pointList2 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,2,3,self.nCell,self.nVtx)
     expected_pointList = [[3,6,9,12]]
     assert (pointList0 == [[3,6]]).all()
     assert (pointList1 == [[  9]]).all()
@@ -443,13 +441,11 @@ class Test_compute_faceList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_vertexRange_i_5ranks(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,5,nCell,nVtx)
-    pointList1 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,1,5,nCell,nVtx)
-    pointList2 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,2,5,nCell,nVtx)
-    pointList3 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,3,5,nCell,nVtx)
-    pointList4 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,4,5,nCell,nVtx)
+    pointList0 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,5,self.nCell,self.nVtx)
+    pointList1 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,1,5,self.nCell,self.nVtx)
+    pointList2 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,2,5,self.nCell,self.nVtx)
+    pointList3 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,3,5,self.nCell,self.nVtx)
+    pointList4 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,4,5,self.nCell,self.nVtx)
     expected_pointList = [[3,6,9,12]]
     assert (pointList0 == [[ 3]]).all()
     assert (pointList1 == [[ 6]]).all()
@@ -467,20 +463,16 @@ class Test_compute_faceList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_vertexRange_j_1rank(self):
     pointRange = np.reshape([2,3,1,1,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,1,nCell,nVtx)
+    pointList  = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,1,self.nCell,self.nVtx)
     expected_pointList = [[13,19]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,2))
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_vertexRange_j_3ranks(self):
     pointRange = np.reshape([2,3,1,1,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,3,nCell,nVtx)
-    pointList1 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,1,3,nCell,nVtx)
-    pointList2 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,2,3,nCell,nVtx)
+    pointList0 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,3,self.nCell,self.nVtx)
+    pointList1 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,1,3,self.nCell,self.nVtx)
+    pointList2 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,2,3,self.nCell,self.nVtx)
     expected_pointList = [[13,19]]
     assert (pointList0 == [[13]]).all()
     assert (pointList1 == [[19]]).all()
@@ -494,20 +486,16 @@ class Test_compute_faceList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_vertexRange_k_1rank(self):
     pointRange = np.reshape([2,3,1,2,1,1],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,1,nCell,nVtx)
+    pointList  = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,1,self.nCell,self.nVtx)
     expected_pointList = [[25]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,1))
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_vertexRange_k_3ranks(self):
     pointRange = np.reshape([2,3,1,2,1,1],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,3,nCell,nVtx)
-    pointList1 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,1,3,nCell,nVtx)
-    pointList2 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,2,3,nCell,nVtx)
+    pointList0 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,3,self.nCell,self.nVtx)
+    pointList1 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,1,3,self.nCell,self.nVtx)
+    pointList2 = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,2,3,self.nCell,self.nVtx)
     expected_pointList = [[25]]
     assert (pointList0 == [[25]]).all()
     assert (pointList1 == [[  ]]).all()
@@ -521,11 +509,9 @@ class Test_compute_faceList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_vertexRange_error(self):
     pointRange = np.reshape([1,2,1,2,1,2],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
     result = False
     try:
-      pointList  = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,1,nCell,nVtx)
+      pointList  = convert_s_to_u.compute_faceList_from_vertexRange(pointRange,0,1,self.nCell,self.nVtx)
     except ValueError:
       result = True
     assert result
@@ -534,20 +520,19 @@ class Test_compute_faceList_from_vertexRange():
 ###############################################################################
 class Test_compute_vertexList_from_vertexRange():
 # --------------------------------------------------------------------------- #
+  nVtx       = [3, 3, 3]
   def test_compute_vertexList_from_vertexRange_i_1rank(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    pointList  = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,1,nVtx)
+    pointList  = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,1,self.nVtx)
     expected_pointList = [[3,6,9,12,15,18,21,24,27]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,9))
 # --------------------------------------------------------------------------- #
   def test_compute_vertexList_from_vertexRange_i_3ranks(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    pointList0 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,3,nVtx)
-    pointList1 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,1,3,nVtx)
-    pointList2 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,2,3,nVtx)
+    pointList0 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,3,self.nVtx)
+    pointList1 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,1,3,self.nVtx)
+    pointList2 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,2,3,self.nVtx)
     expected_pointList = [[3,6,9,12,15,18,21,24,27]]
     assert (pointList0 == [[ 3, 6, 9]]).all()
     assert (pointList1 == [[12,15,18]]).all()
@@ -561,12 +546,11 @@ class Test_compute_vertexList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_vertexList_from_vertexRange_i_5ranks(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    pointList0 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,5,nVtx)
-    pointList1 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,1,5,nVtx)
-    pointList2 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,2,5,nVtx)
-    pointList3 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,3,5,nVtx)
-    pointList4 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,4,5,nVtx)
+    pointList0 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,5,self.nVtx)
+    pointList1 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,1,5,self.nVtx)
+    pointList2 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,2,5,self.nVtx)
+    pointList3 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,3,5,self.nVtx)
+    pointList4 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,4,5,self.nVtx)
     expected_pointList = [[3,6,9,12,15,18,21,24,27]]
     assert (pointList0 == [[ 3, 6]]).all()
     assert (pointList1 == [[ 9,12]]).all()
@@ -584,18 +568,16 @@ class Test_compute_vertexList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_vertexList_from_vertexRange_j_1rank(self):
     pointRange = np.reshape([2,3,1,1,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    pointList  = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,1,nVtx)
+    pointList  = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,1,self.nVtx)
     expected_pointList = [[1,2,10,11,19,20]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,6))
 # --------------------------------------------------------------------------- #
   def test_compute_vertexList_from_vertexRange_j_3ranks(self):
     pointRange = np.reshape([2,3,1,1,1,3],(3,2))
-    nVtx       = [3, 3, 3]
-    pointList0 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,3,nVtx)
-    pointList1 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,1,3,nVtx)
-    pointList2 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,2,3,nVtx)
+    pointList0 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,3,self.nVtx)
+    pointList1 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,1,3,self.nVtx)
+    pointList2 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,2,3,self.nVtx)
     expected_pointList = [[1,2,10,11,19,20]]
     assert (pointList0 == [[ 1, 2]]).all()
     assert (pointList1 == [[10,11]]).all()
@@ -609,18 +591,16 @@ class Test_compute_vertexList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_vertexList_from_vertexRange_k_1rank(self):
     pointRange = np.reshape([2,3,1,2,1,1],(3,2))
-    nVtx       = [3, 3, 3]
-    pointList  = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,1,nVtx)
+    pointList  = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,1,self.nVtx)
     expected_pointList = [[1,2,4,5]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,4))
 # --------------------------------------------------------------------------- #
   def test_compute_vertexList_from_vertexRange_k_3ranks(self):
     pointRange = np.reshape([2,3,1,2,1,1],(3,2))
-    nVtx       = [3, 3, 3]
-    pointList0 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,3,nVtx)
-    pointList1 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,1,3,nVtx)
-    pointList2 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,2,3,nVtx)
+    pointList0 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,3,self.nVtx)
+    pointList1 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,1,3,self.nVtx)
+    pointList2 = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,2,3,self.nVtx)
     expected_pointList = [[1,2,4,5]]
     assert (pointList0 == [[1,2]]).all()
     assert (pointList1 == [[  4]]).all()
@@ -634,10 +614,9 @@ class Test_compute_vertexList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_vertexList_from_vertexRange_error(self):
     pointRange = np.reshape([1,2,1,2,1,2],(3,2))
-    nVtx       = [3, 3, 3]
     result = False
     try:
-      pointList  = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,1,nVtx)
+      pointList  = convert_s_to_u.compute_vertexList_from_vertexRange(pointRange,0,1,self.nVtx)
     except ValueError:
       result = True
     assert result
@@ -646,20 +625,19 @@ class Test_compute_vertexList_from_vertexRange():
 ###############################################################################
 class Test_compute_cellList_from_vertexRange():
 # --------------------------------------------------------------------------- #
+  nCell      = [2, 2, 2]
   def test_compute_cellList_from_vertexRange_i_1rank(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,nCell)
+    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,self.nCell)
     expected_pointList = [[2,4,6,8]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,4))
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_i_3ranks(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,3,nCell)
-    pointList1 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,1,3,nCell)
-    pointList2 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,2,3,nCell)
+    pointList0 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,3,self.nCell)
+    pointList1 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,1,3,self.nCell)
+    pointList2 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,2,3,self.nCell)
     expected_pointList = [[2,4,6,8]]
     assert (pointList0 == [[2,4]]).all()
     assert (pointList1 == [[  6]]).all()
@@ -673,12 +651,11 @@ class Test_compute_cellList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_i_5ranks(self):
     pointRange = np.reshape([3,3,1,3,1,3],(3,2))
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,5,nCell)
-    pointList1 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,1,5,nCell)
-    pointList2 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,2,5,nCell)
-    pointList3 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,3,5,nCell)
-    pointList4 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,4,5,nCell)
+    pointList0 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,5,self.nCell)
+    pointList1 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,1,5,self.nCell)
+    pointList2 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,2,5,self.nCell)
+    pointList3 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,3,5,self.nCell)
+    pointList4 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,4,5,self.nCell)
     expected_pointList = [[2,4,6,8]]
     assert (pointList0 == [[2]]).all()
     assert (pointList1 == [[4]]).all()
@@ -696,18 +673,16 @@ class Test_compute_cellList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_j_1rank(self):
     pointRange = np.reshape([2,3,1,1,1,3],(3,2))
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,nCell)
+    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,self.nCell)
     expected_pointList = [[1,5]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,2))
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_j_3ranks(self):
     pointRange = np.reshape([2,3,1,1,1,3],(3,2))
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,3,nCell)
-    pointList1 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,1,3,nCell)
-    pointList2 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,2,3,nCell)
+    pointList0 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,3,self.nCell)
+    pointList1 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,1,3,self.nCell)
+    pointList2 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,2,3,self.nCell)
     expected_pointList = [[1,5]]
     assert (pointList0 == [[1]]).all()
     assert (pointList1 == [[5]]).all()
@@ -721,26 +696,23 @@ class Test_compute_cellList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_jmax_1rank(self):
     pointRange = np.reshape([2,3,3,3,1,3],(3,2))
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,nCell)
+    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,self.nCell)
     expected_pointList = [[3,7]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,2))
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_k_1rank(self):
     pointRange = np.reshape([2,3,1,2,1,1],(3,2))
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,nCell)
+    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,self.nCell)
     expected_pointList = [[1]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,1))
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_k_3ranks(self):
     pointRange = np.reshape([2,3,1,2,1,1],(3,2))
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,3,nCell)
-    pointList1 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,1,3,nCell)
-    pointList2 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,2,3,nCell)
+    pointList0 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,3,self.nCell)
+    pointList1 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,1,3,self.nCell)
+    pointList2 = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,2,3,self.nCell)
     expected_pointList = [[1]]
     assert (pointList0 == [[1]]).all()
     assert (pointList1 == [[ ]]).all()
@@ -754,18 +726,16 @@ class Test_compute_cellList_from_vertexRange():
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_kmax_1rank(self):
     pointRange = np.reshape([2,3,1,2,3,3],(3,2))
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,nCell)
+    pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,self.nCell)
     expected_pointList = [[5]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,1))
 # --------------------------------------------------------------------------- #
   def test_compute_cellList_from_vertexRange_error(self):
     pointRange = np.reshape([1,2,1,2,1,2],(3,2))
-    nCell      = [2, 2, 2]
     result = False
     try:
-      pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,nCell)
+      pointList  = convert_s_to_u.compute_cellList_from_vertexRange(pointRange,0,1,self.nCell)
     except ValueError:
       result = True
     assert result
@@ -774,11 +744,11 @@ class Test_compute_cellList_from_vertexRange():
 ###############################################################################
 class Test_compute_faceList_from_faceRange():
 # --------------------------------------------------------------------------- #
+  nVtx       = [3, 3, 3]
+  nCell      = [2, 2, 2]
   def test_compute_faceList_from_faceRange_i_1rank(self):
     pointRange = np.reshape([3,3,1,1,1,1],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,1,nCell,nVtx,"IFaceCenter")
+    pointList  = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,1,self.nCell,self.nVtx,"IFaceCenter")
     print(pointList)
     expected_pointList = [[3]]
     assert (pointList == expected_pointList).all()
@@ -786,11 +756,9 @@ class Test_compute_faceList_from_faceRange():
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_faceRange_i_3rank(self):
     pointRange = np.reshape([3,3,1,2,1,2],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,3,nCell,nVtx,"IFaceCenter")
-    pointList1 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,1,3,nCell,nVtx,"IFaceCenter")
-    pointList2 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,2,3,nCell,nVtx,"IFaceCenter")
+    pointList0 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,3,self.nCell,self.nVtx,"IFaceCenter")
+    pointList1 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,1,3,self.nCell,self.nVtx,"IFaceCenter")
+    pointList2 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,2,3,self.nCell,self.nVtx,"IFaceCenter")
     expected_pointList = [[3,6,9,12]]
     assert (pointList0 == [[3, 6]]).all()
     assert (pointList1 == [[   9]]).all()
@@ -804,20 +772,16 @@ class Test_compute_faceList_from_faceRange():
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_faceRange_j_1rank(self):
     pointRange = np.reshape([3,3,1,1,1,1],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,1,nCell,nVtx,"JFaceCenter")
+    pointList  = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,1,self.nCell,self.nVtx,"JFaceCenter")
     expected_pointList = [[13]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,1))
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_faceRange_j_3rank(self):
     pointRange = np.reshape([1,2,3,3,1,2],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,3,nCell,nVtx,"JFaceCenter")
-    pointList1 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,1,3,nCell,nVtx,"JFaceCenter")
-    pointList2 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,2,3,nCell,nVtx,"JFaceCenter")
+    pointList0 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,3,self.nCell,self.nVtx,"JFaceCenter")
+    pointList1 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,1,3,self.nCell,self.nVtx,"JFaceCenter")
+    pointList2 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,2,3,self.nCell,self.nVtx,"JFaceCenter")
     expected_pointList = [[17,18,23,24]]
     assert (pointList0 == [[17,18]]).all()
     assert (pointList1 == [[   23]]).all()
@@ -831,20 +795,16 @@ class Test_compute_faceList_from_faceRange():
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_faceRange_k_1rank(self):
     pointRange = np.reshape([3,3,1,1,1,1],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList  = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,1,nCell,nVtx,"KFaceCenter")
+    pointList  = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,1,self.nCell,self.nVtx,"KFaceCenter")
     expected_pointList = [[25]]
     assert (pointList == expected_pointList).all()
     assert (pointList.shape == (1,1))
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_faceRange_k_3rank(self):
     pointRange = np.reshape([1,2,1,2,3,3],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
-    pointList0 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,3,nCell,nVtx,"KFaceCenter")
-    pointList1 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,1,3,nCell,nVtx,"KFaceCenter")
-    pointList2 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,2,3,nCell,nVtx,"KFaceCenter")
+    pointList0 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,3,self.nCell,self.nVtx,"KFaceCenter")
+    pointList1 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,1,3,self.nCell,self.nVtx,"KFaceCenter")
+    pointList2 = convert_s_to_u.compute_faceList_from_faceRange(pointRange,2,3,self.nCell,self.nVtx,"KFaceCenter")
     expected_pointList = [[33,34,35,36]]
     assert (pointList0 == [[33,34]]).all()
     assert (pointList1 == [[   35]]).all()
@@ -858,11 +818,9 @@ class Test_compute_faceList_from_faceRange():
 # --------------------------------------------------------------------------- #
   def test_compute_faceList_from_faceRange_error(self):
     pointRange = np.reshape([1,1,1,2,1,2],(3,2))
-    nVtx       = [3, 3, 3]
-    nCell      = [2, 2, 2]
     result = False
     try:
-      pointList  = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,1,nCell,nVtx,'ZFaceCenter')
+      pointList  = convert_s_to_u.compute_faceList_from_faceRange(pointRange,0,1,self.nCell,self.nVtx,'ZFaceCenter')
     except ValueError:
       result = True
     assert result
