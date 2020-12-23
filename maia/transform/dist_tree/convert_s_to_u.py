@@ -293,34 +293,35 @@ def compute_faceList_from_vertexRange(pointRange,iRank,nRank,nCellS,nVtxS):
   rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
   slabListS = HFR2S.compute_slabs(sizeS, rangeS)
   sizeU = rangeS[1]-rangeS[0]
-  faceList = np.empty((1,sizeU),dtype=np.int32)
+  faceList = np.empty((1,sizeU), dtype=np.int32)
   counter = 0
+
+  #Find constant direction
+  cst_axes = np.nonzero(pointRange[:,0] == pointRange[:,1])[0]
+  if len(cst_axes) != 1:
+    raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
+  cst_axe = cst_axes[0]
+  cst_val = pointRange[cst_axe,0]
+
+  #Prepare lambda func depending of const idx -> this allow vectorial call of
+  # convert_ijk_to_faceLIndex as if we did double for loop
+  if cst_axe == 0:
+    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_faceiIndex(cst_val, j_idx, k_idx.reshape(-1,1), nCellS, nVtxS)
+  elif cst_axe == 1:
+    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_facejIndex(i_idx, cst_val, k_idx.reshape(-1,1), nCellS, nVtxS)
+  elif cst_axe == 2:
+    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_facekIndex(i_idx, j_idx.reshape(-1,1), cst_val, nCellS, nVtxS)
+
   for slabS in slabListS:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-    if pointRange[0,0] == pointRange[0,1]:
-    #>> face i
-      i = pointRange[0,0]
-      for k in range(kS,kE):
-        for j in range(jS,jE):
-          faceList[0][counter] = convert_ijk_to_faceiIndex(i,j,k,nCellS,nVtxS)
-          counter += 1
-    elif pointRange[1,0] == pointRange[1,1]:
-    #>> face j
-      j = pointRange[1,0]
-      for k in range(kS,kE):
-        for i in range(iS,iE):
-          faceList[0][counter] = convert_ijk_to_facejIndex(i,j,k,nCellS,nVtxS)
-          counter += 1
-    elif pointRange[2,0] == pointRange[2,1]:
-    #>> face k
-      k = pointRange[2,0]
-      for j in range(jS,jE):
-        for i in range(iS,iE):
-          faceList[0][counter] = convert_ijk_to_facekIndex(i,j,k,nCellS,nVtxS)
-          counter += 1
-    else:
-      raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-  return(faceList)
+    n_faces = (iE-iS)*(jE-jS)*(kE-kS)
+    faceList[0][counter:counter+n_faces] = ijk_to_faceidx(
+        np.arange(iS, iE), np.arange(jS, jE), np.arange(kS, kE)).flatten()
+    counter += n_faces
+  return faceList
 ###############################################################################
 
 ###############################################################################
@@ -335,32 +336,31 @@ def compute_vertexList_from_vertexRange(pointRange,iRank,nRank,nVtxS):
   sizeU = rangeS[1]-rangeS[0]
   vertexList = np.empty((1,sizeU),dtype=np.int32)
   counter = 0
+
+  #Find constant direction
+  cst_axes = np.nonzero(pointRange[:,0] == pointRange[:,1])[0]
+  if len(cst_axes) != 1:
+    raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
+  cst_axe = cst_axes[0]
+  cst_val = pointRange[cst_axe,0]
+
+  if cst_axe == 0:
+    ijk_to_idx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_index(cst_val, j_idx, k_idx.reshape(-1,1), *nVtxS)
+  elif cst_axe == 1:
+    ijk_to_idx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_index(i_idx, cst_val, k_idx.reshape(-1,1), *nVtxS)
+  elif cst_axe == 2:
+    ijk_to_idx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_index(i_idx, j_idx.reshape(-1,1), cst_val, *nVtxS)
+
   for slabS in slabListS:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-    if pointRange[0,0] == pointRange[0,1]:
-    #>> face i
-      i = pointRange[0,0]
-      for k in range(kS,kE):
-        for j in range(jS,jE):
-          vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
-          counter += 1
-    elif pointRange[1,0] == pointRange[1,1]:
-    #>> face j
-      j = pointRange[1,0]
-      for k in range(kS,kE):
-        for i in range(iS,iE):
-          vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
-          counter += 1
-    elif pointRange[2,0] == pointRange[2,1]:
-    #>> face k
-      k = pointRange[2,0]
-      for j in range(jS,jE):
-        for i in range(iS,iE):
-          vertexList[0][counter] = convert_ijk_to_index(i,j,k,nVtxS[0],nVtxS[1],nVtxS[2])
-          counter += 1
-    else:
-      raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-  return(vertexList)
+    n_faces = (iE-iS)*(jE-jS)*(kE-kS)
+    vertexList[0][counter:counter+n_faces] = ijk_to_idx(
+        np.arange(iS, iE), np.arange(jS, jE), np.arange(kS, kE)).flatten()
+    counter += n_faces
+  return vertexList
 ###############################################################################
 
 ###############################################################################
@@ -375,38 +375,31 @@ def compute_cellList_from_vertexRange(pointRange,iRank,nRank,nCellS):
   sizeU = rangeS[1]-rangeS[0]
   cellList = np.empty((1,sizeU),dtype=np.int32)
   counter = 0
+
+  #Find constant direction
+  cst_axes = np.nonzero(pointRange[:,0] == pointRange[:,1])[0]
+  if len(cst_axes) != 1:
+    raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
+  cst_axe = cst_axes[0]
+  cst_val = pointRange[cst_axe,0] - int(pointRange[cst_axe,0] > nCellS[cst_axe])
+
+  if cst_axe == 0:
+    ijk_to_idx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_index(cst_val, j_idx, k_idx.reshape(-1,1), *nCellS)
+  elif cst_axe == 1:
+    ijk_to_idx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_index(i_idx, cst_val, k_idx.reshape(-1,1), *nCellS)
+  elif cst_axe == 2:
+    ijk_to_idx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_index(i_idx, j_idx.reshape(-1,1), cst_val, *nCellS)
+
   for slabS in slabListS:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-    if pointRange[0,0] == pointRange[0,1]:
-    #>> face i
-      i = pointRange[0,0]
-      if i>nCellS[0]:
-        i -= 1
-      for k in range(kS,kE):
-        for j in range(jS,jE):
-          cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
-          counter += 1
-    elif pointRange[1,0] == pointRange[1,1]:
-    #>> face j
-      j = pointRange[1,0]
-      if j>nCellS[1]:
-        j -= 1
-      for k in range(kS,kE):
-        for i in range(iS,iE):
-          cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
-          counter += 1
-    elif pointRange[2,0] == pointRange[2,1]:
-    #>> face k
-      k = pointRange[2,0]
-      if k>nCellS[2]:
-        k -= 1
-      for j in range(jS,jE):
-        for i in range(iS,iE):
-          cellList[0][counter] = convert_ijk_to_index(i,j,k,nCellS[0],nCellS[1],nCellS[2])
-          counter += 1
-    else:
-      raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-  return(cellList)
+    n_faces = (iE-iS)*(jE-jS)*(kE-kS)
+    cellList[0][counter:counter+n_faces] = ijk_to_idx(
+        np.arange(iS, iE), np.arange(jS, jE), np.arange(kS, kE)).flatten()
+    counter += n_faces
+  return cellList
 ###############################################################################
 
 ###############################################################################
@@ -419,34 +412,31 @@ def compute_faceList_from_faceRange(pointRange,iRank,nRank,nCellS,nVtxS,gridLoca
   rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
   slabListS = HFR2S.compute_slabs(sizeS, rangeS)
   sizeU = rangeS[1]-rangeS[0]
-  faceList = np.empty((1,sizeU),dtype=np.int32)
+  faceList = np.empty((1,sizeU), dtype=np.int32)
   counter = 0
+
+  # Prepare lambda func depending of const idx -> this allow vectorial call of
+  # convert_ijk_to_faceLIndex as if we did double for loop
+  if gridLocationS == 'IFaceCenter':
+    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_faceiIndex(pointRange[0,0], j_idx, k_idx.reshape(-1,1), nCellS, nVtxS)
+  elif gridLocationS == 'JFaceCenter':
+    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_facejIndex(i_idx, pointRange[1,0], k_idx.reshape(-1,1), nCellS, nVtxS)
+  elif gridLocationS == 'KFaceCenter':
+    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
+        convert_ijk_to_facekIndex(i_idx, j_idx.reshape(-1,1), pointRange[2,0], nCellS, nVtxS)
+  else:
+    raise ValueError("The GridLocation '{}' is bad defined".format(gridLocationS))
+
   for slabS in slabListS:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-    if gridLocationS == "IFaceCenter":
-    #>> face i
-      i = pointRange[0,0]
-      for k in range(kS,kE):
-        for j in range(jS,jE):
-          faceList[0][counter] = convert_ijk_to_faceiIndex(i,j,k,nCellS,nVtxS)
-          counter += 1
-    elif gridLocationS == "JFaceCenter":
-    #>> face j
-      j = pointRange[1,0]
-      for k in range(kS,kE):
-        for i in range(iS,iE):
-          faceList[0][counter] = convert_ijk_to_facejIndex(i,j,k,nCellS,nVtxS)
-          counter += 1
-    elif gridLocationS == "KFaceCenter":
-    #>> face k
-      k = pointRange[2,0]
-      for j in range(jS,jE):
-        for i in range(iS,iE):
-          faceList[0][counter] = convert_ijk_to_facekIndex(i,j,k,nCellS,nVtxS)
-          counter += 1
-    else:
-      raise ValueError("The GridLocation '{}' is bad defined".format(gridLocationS))
-  return(faceList)
+    n_faces = (iE-iS)*(jE-jS)*(kE-kS)
+    faceList[0][counter:counter+n_faces] = ijk_to_faceidx(
+        np.arange(iS, iE), np.arange(jS, jE), np.arange(kS, kE)).flatten()
+    counter += n_faces
+
+  return faceList
 ###############################################################################
 
 ###############################################################################
@@ -793,17 +783,14 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
     endOffset   = startOffset + nbFacesLoc+1
     I.newDataArray("ElementStartOffset", 4*np.arange(startOffset,endOffset), parent=ngon)
     I.newIndexArray('ElementConnectivity#Size', [nbFacesTot*4], parent=ngon)
-  
+
     #> with ZoneBC
     zoneBCS = I.getNodeFromType1(zoneS,"ZoneBC_t")
     if zoneBCS is not None:
       zoneBCU = I.newZoneBC(zoneU)
       for bcS in I.getNodesFromType1(zoneBCS,"BC_t"):
         gridLocationNodeS = I.getNodeFromType1(bcS, "GridLocation_t")
-        if gridLocationNodeS is None:
-          gridLocationS = "Vertex"
-        else:
-          gridLocationS = I.getValue(gridLocationNodeS)
+        gridLocationS = I.getValue(gridLocationNodeS) if gridLocationNodeS is not None else "Vertex"
         bcU = copy.deepcopy(bcS)
         I._rmNodesByType(bcU,"GridLocation_t")
         I._rmNodesByType(bcU,"IndexRange_t")
@@ -836,10 +823,10 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           #   raise ValueError("attendedGridLocationBC is '{}' but allowed values are 'Vertex', 'FaceCenter' or 'CellCenter'".format(attendedGridLocationBC))
         sizeU = sizeS.prod()
         I.newPointList(value=pointList,parent=bcU)
-        I.newGridLocation(attendedGridLocationBC,bcU)
+        I.newGridLocation(attendedGridLocationBC, parent=bcU)
         I.newIndexArray('PointList#Size', [1, sizeU], bcU)
         I.addChild(zoneBCU,bcU)
-      
+
   #> with ZoneGC
     zoneGCS = I.getNodeFromType1(zoneS,"ZoneGridConnectivity_t")
     if zoneGCS is not None:
