@@ -723,37 +723,31 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
       for bcS in I.getNodesFromType1(zoneBCS,"BC_t"):
         gridLocationNodeS = I.getNodeFromType1(bcS, "GridLocation_t")
         gridLocationS = I.getValue(gridLocationNodeS) if gridLocationNodeS is not None else "Vertex"
-        bcU = copy.deepcopy(bcS)
-        I._rmNodesByType(bcU,"GridLocation_t")
-        I._rmNodesByType(bcU,"IndexRange_t")
-        I._rmNodesByName(bcU,":CGNS#Distribution")
         pointRange = I.getValue(I.getNodeFromName1(bcS, 'PointRange'))
+        #Slabs depends only of attended location
+        if attendedGridLocationBC in ["FaceCenter", "CellCenter"]:
+          sizeS     = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
+        elif attendedGridLocationBC == "Vertex":
+          sizeS     = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
+        else:
+          raise ValueError("attendedGridLocationBC is '{}' but allowed values are \
+              'Vertex', 'FaceCenter' or 'CellCenter'".format(attendedGridLocationBC))
+        bc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
+        bc_slabs = HFR2S.compute_slabs(sizeS, bc_range)
+
         if gridLocationS == "Vertex":
-          if attendedGridLocationBC in ["FaceCenter", "CellCenter"]:
-            sizeS     = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
-          elif attendedGridLocationBC == "Vertex":
-            sizeS     = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
-          else:
-            raise ValueError("attendedGridLocationBC is '{}' but allowed values are \
-                'Vertex', 'FaceCenter' or 'CellCenter'".format(attendedGridLocationBC))
-          rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-          slabListS = HFR2S.compute_slabs(sizeS, rangeS)
-          pointList = compute_pointList_from_vertexRange(\
-              pointRange,slabListS,nVtxS,attendedGridLocationBC)
+          pointList = compute_pointList_from_vertexRange(pointRange,bc_slabs,nVtxS,attendedGridLocationBC)
         elif "FaceCenter" in gridLocationS:
-          if attendedGridLocationBC == "FaceCenter":
-            sizeS     = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
-            rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-            slabListS = HFR2S.compute_slabs(sizeS, rangeS)
-            pointList = compute_faceList_from_faceRange(pointRange,slabListS,nCellS,nVtxS,gridLocationS)
-          else:
-            print("Not yet implemented !!!")
-          #   raise ValueError("attendedGridLocationBC is '{}' but allowed values are 'Vertex', 'FaceCenter' or 'CellCenter'".format(attendedGridLocationBC))
-        sizeU = sizeS.prod()
-        I.newPointList(value=pointList,parent=bcU)
+          assert attendedGridLocationBC == "FaceCenter"
+          pointList = compute_faceList_from_faceRange(pointRange,bc_slabs,nCellS,nVtxS,gridLocationS)
+
+        bcU = I.newBC(I.getName(bcS), btype=I.getValue(bcS), parent=zoneBCU)
         I.newGridLocation(attendedGridLocationBC, parent=bcU)
-        I.newIndexArray('PointList#Size', [1, sizeU], bcU)
-        I.addChild(zoneBCU,bcU)
+        I.newPointList(value=pointList, parent=bcU)
+        I.newIndexArray('PointList#Size', [1, sizeS.prod()], parent=bcU)
+        allowed_types = ['FamilyName_t'] #Copy these nodes to bcU
+        for allowed_child in [c for c in I.getChildren(bcS) if I.getType(c) in allowed_types]:
+          I.addChild(bcU, allowed_child)
 
   #> with ZoneGC
     zoneGCS = I.getNodeFromType1(zoneS,"ZoneGridConnectivity_t")
