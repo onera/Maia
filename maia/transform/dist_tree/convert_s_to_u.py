@@ -394,17 +394,14 @@ def compute_transformMatrix(transform):
 ###############################################################################
 
 ###############################################################################
-def convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T):
+def apply_transformation(index1, start1, start2, T):
   """
   This function compute indices from current to oppposit or from opposit to current
   by using the transform matrix.
   As defined in the SIDS of CGNS (https://cgns.github.io/CGNS_docs_current/sids/cnct.html) :
   Index2 = T.(Index1 - Begin1) + Begin2
   """
-  vector = np.array([i1-iS1,j1-jS1,k1-kS1])
-  [i2,j2,k2] = np.matmul(T,vector,order='F') + np.array([iS2,jS2,kS2])
-  
-  return(i2,j2,k2)
+  return np.matmul(T, (index1 - start1)) + start2
 ###############################################################################
 
 ###############################################################################
@@ -436,7 +433,7 @@ def compute_faceList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
       for k1 in range(kS,kE):
         for j1 in range(jS,jE):
           for i1 in range(iS,iE):
-            (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
+            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
             j2 += correctj2
             k2 += correctk2
             faceList2[0][counter] = convert_ijk_to_faceiIndex(i2,j2,k2,nCell2,nVtx2)
@@ -446,7 +443,7 @@ def compute_faceList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
       for k1 in range(kS,kE):
         for j1 in range(jS,jE):
           for i1 in range(iS,iE):
-            (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
+            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
             i2 += correcti2
             k2 += correctk2
             faceList2[0][counter] = convert_ijk_to_facejIndex(i2,j2,k2,nCell2,nVtx2)
@@ -456,7 +453,7 @@ def compute_faceList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
       for k1 in range(kS,kE):
         for j1 in range(jS,jE):
           for i1 in range(iS,iE):
-            (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
+            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
             i2 += correcti2
             j2 += correctj2
             faceList2[0][counter] = convert_ijk_to_facekIndex(i2,j2,k2,nCell2,nVtx2)
@@ -482,7 +479,7 @@ def compute_vertexList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2
     for k1 in range(kS,kE):
       for j1 in range(jS,jE):
         for i1 in range(iS,iE):
-          (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
+          (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
           vertexList2[0][counter] = convert_ijk_to_index(i2,j2,k2,nVtx2[0],nVtx2[1],nVtx2[2])
           counter += 1
     
@@ -518,7 +515,7 @@ def compute_cellList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
       for k1 in range(kS,kE):
         for j1 in range(jS,jE):
           for i1 in range(iS,iE):
-            (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
+            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
             j2 += correctj2
             k2 += correctk2
             cellList2[0][counter] = convert_ijk_to_index(i2,j2,k2,nCell2[0],nCell2[1],nCell2[2])
@@ -528,7 +525,7 @@ def compute_cellList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
       for k1 in range(kS,kE):
         for j1 in range(jS,jE):
           for i1 in range(iS,iE):
-            (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
+            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
             i2 += correcti2
             k2 += correctk2
             cellList2[0][counter] = convert_ijk_to_index(i2,j2,k2,nCell2[0],nCell2[1],nCell2[2])
@@ -538,7 +535,7 @@ def compute_cellList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
       for k1 in range(kS,kE):
         for j1 in range(jS,jE):
           for i1 in range(iS,iE):
-            (i2,j2,k2) = convert_i1j1k1_to_i2j2k2(i1,j1,k1,iS1,jS1,kS1,iS2,jS2,kS2,T)
+            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
             i2 += correcti2
             j2 += correctj2
             cellList2[0][counter] = convert_ijk_to_index(i2,j2,k2,nCell2[0],nCell2[1],nCell2[2])
