@@ -337,18 +337,12 @@ def compute_pointList_from_vertexRange(pointRange, vtx_slabs, nVtxS, output_loc)
 ###############################################################################
 
 ###############################################################################
-def compute_faceList_from_faceRange(pointRange,iRank,nRank,nCellS,nVtxS,gridLocationS):
+def compute_faceList_from_faceRange(pointRange, vtx_slabs, nVtxS, gridLocationS):
   """
   Transform structured PointRange with 'GridLocation'='IFaceCenter' or 'JFaceCenter' or
   'KFaceCenter' to unstructured PointList with 'GridLocation'='FaceCenter'
   """
-  sizeS = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
-  rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-  slabListS = HFR2S.compute_slabs(sizeS, rangeS)
-  sizeU = rangeS[1]-rangeS[0]
-  faceList = np.empty((1,sizeU), dtype=np.int32)
-  counter = 0
-
+  nCellS = [nv - 1 for nv in nVtxS]
   # Prepare lambda func depending of const idx -> this allow vectorial call of
   # convert_ijk_to_faceLIndex as if we did double for loop
   if gridLocationS == 'IFaceCenter':
@@ -363,7 +357,11 @@ def compute_faceList_from_faceRange(pointRange,iRank,nRank,nCellS,nVtxS,gridLoca
   else:
     raise ValueError("The GridLocation '{}' is bad defined".format(gridLocationS))
 
-  for slabS in slabListS:
+  sizeU = sum([np.prod([d[1] - d[0] for d in slab]) for slab in vtx_slabs])
+  faceList = np.empty((1,sizeU), dtype=np.int32)
+  counter = 0
+
+  for slabS in vtx_slabs:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
     n_faces = (iE-iS)*(jE-jS)*(kE-kS)
     faceList[0][counter:counter+n_faces] = ijk_to_faceidx(
@@ -744,14 +742,10 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
               pointRange,slabListS,nVtxS,attendedGridLocationBC)
         elif "FaceCenter" in gridLocationS:
           if attendedGridLocationBC == "FaceCenter":
-            pointList = compute_faceList_from_faceRange(pointRange,iRank,nRank,nCellS,nVtxS,gridLocationS)
             sizeS     = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
-          # elif attendedGridLocationBC == "Vertex":
-          #   pointList = compute_vertexList_from_vertexRange(pointRange,iRank,nRank,nVtxS)
-          #   sizeS     = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
-          # elif attendedGridLocationBC == "CellCenter":
-          #   pointList = compute_cellList_from_vertexRange(pointRange,iRank,nRank,nCellS)
-          #   sizeS     = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
+            rangeS = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
+            slabListS = HFR2S.compute_slabs(sizeS, rangeS)
+            pointList = compute_faceList_from_faceRange(pointRange,slabListS,nCellS,nVtxS,gridLocationS)
           else:
             print("Not yet implemented !!!")
           #   raise ValueError("attendedGridLocationBC is '{}' but allowed values are 'Vertex', 'FaceCenter' or 'CellCenter'".format(attendedGridLocationBC))
