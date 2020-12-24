@@ -405,145 +405,53 @@ def apply_transformation(index1, start1, start2, T):
 ###############################################################################
 
 ###############################################################################
-def compute_faceList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
+def compute_pointList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2, iRank, nRank, output_loc):
   [iS1,jS1,kS1] = pointRange1[:,0]
   [iS2,jS2,kS2] = pointRange2[:,0]
-  size1 = np.maximum(np.abs(pointRange1[:,1] - pointRange1[:,0]), 1)
+  if output_loc == 'Vertex':
+    size1 = np.abs(pointRange1[:,1] - pointRange1[:,0]) + 1
+  else:
+    size1 = np.maximum(np.abs(pointRange1[:,1] - pointRange1[:,0]), 1)
   bounds1 = MDIDF.uniform_distribution_at(size1.prod(), iRank, nRank)
   slabList = HFR2S.compute_slabs(size1, bounds1)
   size2 = bounds1[1]-bounds1[0]
-  faceList2 = np.empty((1,size2),dtype=np.int32)
-  if T[0].sum() < 0:
-    correcti2 = -1
-  else:
-    correcti2 = 0
-  if T[1].sum() < 0:
-    correctj2 = -1
-  else:
-    correctj2 = 0
-  if T[2].sum() < 0:
-    correctk2 = -1
-  else:
-    correctk2 = 0
-  counter = 0
-  for slab in slabList:
-    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slab for item in bounds]
-    if pointRange2[0,0] == pointRange2[0,1]:
-    #>> face i2
-      for k1 in range(kS,kE):
-        for j1 in range(jS,jE):
-          for i1 in range(iS,iE):
-            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
-            j2 += correctj2
-            k2 += correctk2
-            faceList2[0][counter] = convert_ijk_to_faceiIndex(i2,j2,k2,nCell2,nVtx2)
-            counter += 1
-    elif pointRange2[1,0] == pointRange2[1,1]:
-    #>> face j2
-      for k1 in range(kS,kE):
-        for j1 in range(jS,jE):
-          for i1 in range(iS,iE):
-            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
-            i2 += correcti2
-            k2 += correctk2
-            faceList2[0][counter] = convert_ijk_to_facejIndex(i2,j2,k2,nCell2,nVtx2)
-            counter += 1
-    elif pointRange2[2,0] == pointRange2[2,1]:
-    #>> face k2
-      for k1 in range(kS,kE):
-        for j1 in range(jS,jE):
-          for i1 in range(iS,iE):
-            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
-            i2 += correcti2
-            j2 += correctj2
-            faceList2[0][counter] = convert_ijk_to_facekIndex(i2,j2,k2,nCell2,nVtx2)
-            counter += 1
-    else:
-      raise ValueError("The PointRange2 '{}' is bad defined".format(pointRange2))    
-    
-  return(faceList2)
-###############################################################################
+  pointList2 = np.empty((1,size2),dtype=np.int32)
 
-###############################################################################
-def compute_vertexList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
-  [iS1,jS1,kS1] = pointRange1[:,0]
-  [iS2,jS2,kS2] = pointRange2[:,0]
-  size1 = np.abs(pointRange1[:,1] - pointRange1[:,0]) + 1
-  bounds1 = MDIDF.uniform_distribution_at(size1.prod(), iRank, nRank)
-  slabList = HFR2S.compute_slabs(size1, bounds1)
-  size2 = bounds1[1]-bounds1[0]
-  vertexList2 = np.empty((1,size2),dtype=np.int32)
+  # For each dim, -1 if T[i].sum() < 0 else 0
+  correct2 = -1*(T.sum(axis=1) < 0).astype(int)
+  if output_loc == 'Vertex':
+    correct2 = 0*correct2
+
+  #Find constant direction
+  cst_axes = np.nonzero(pointRange2[:,0] == pointRange2[:,1])[0]
+  if len(cst_axes) != 1:
+    raise ValueError("The PointRange '{}' is bad defined".format(pointRange2))
+  cst_axe = cst_axes[0]
+  mask = np.ones(3, dtype=np.bool)
+  mask[cst_axe] = False
+
+  convert_ijk_to_faceIndex = [convert_ijk_to_faceiIndex, convert_ijk_to_facejIndex, convert_ijk_to_facekIndex]
+  if output_loc == 'FaceCenter':
+    ijk_to_func = lambda i,j,k : convert_ijk_to_faceIndex[cst_axe](i, j, k, nCell2, nVtx2)
+  elif output_loc == 'Vertex':
+    ijk_to_func = lambda i,j,k : convert_ijk_to_index(i, j, k, *nVtx2)
+  elif output_loc == 'CellCenter':
+    ijk_to_func = lambda i,j,k : convert_ijk_to_index(i, j, k, *nCell2)
+  else:
+    raise ValueError("Wrong output location : '{}'".format(output_loc))
+
   counter = 0
   for slab in slabList:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slab for item in bounds]
     for k1 in range(kS,kE):
       for j1 in range(jS,jE):
         for i1 in range(iS,iE):
-          (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
-          vertexList2[0][counter] = convert_ijk_to_index(i2,j2,k2,nVtx2[0],nVtx2[1],nVtx2[2])
+          index2 = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
+          index2[mask] += correct2[mask] #Do this for the two other indices
+          pointList2[0][counter] = ijk_to_func(*index2)
           counter += 1
     
-  return(vertexList2)
-###############################################################################
-
-###############################################################################
-def compute_cellList2_from_vertexRanges(pointRange1,pointRange2,T,nCell2,nVtx2):
-  [iS1,jS1,kS1] = pointRange1[:,0]
-  [iS2,jS2,kS2] = pointRange2[:,0]
-  size1 = np.maximum(np.abs(pointRange1[:,1] - pointRange1[:,0]), 1)
-  bounds1 = MDIDF.uniform_distribution_at(size1.prod(), iRank, nRank)
-  slabList = HFR2S.compute_slabs(size1, bounds1)
-  size2 = bounds1[1]-bounds1[0]
-  cellList2 = np.empty((1,size2),dtype=np.int32)
-  if T[0].sum() < 0:
-    correcti2 = -1
-  else:
-    correcti2 = 0
-  if T[1].sum() < 0:
-    correctj2 = -1
-  else:
-    correctj2 = 0
-  if T[2].sum() < 0:
-    correctk2 = -1
-  else:
-    correctk2 = 0
-  counter = 0
-  for slab in slabList:
-    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slab for item in bounds]
-    if pointRange2[0,0] == pointRange2[0,1]:
-    #>> face i2
-      for k1 in range(kS,kE):
-        for j1 in range(jS,jE):
-          for i1 in range(iS,iE):
-            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
-            j2 += correctj2
-            k2 += correctk2
-            cellList2[0][counter] = convert_ijk_to_index(i2,j2,k2,nCell2[0],nCell2[1],nCell2[2])
-            counter += 1
-    elif pointRange2[1,0] == pointRange2[1,1]:
-    #>> face j2
-      for k1 in range(kS,kE):
-        for j1 in range(jS,jE):
-          for i1 in range(iS,iE):
-            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
-            i2 += correcti2
-            k2 += correctk2
-            cellList2[0][counter] = convert_ijk_to_index(i2,j2,k2,nCell2[0],nCell2[1],nCell2[2])
-            counter += 1
-    elif pointRange2[2,0] == pointRange2[2,1]:
-    #>> face k2
-      for k1 in range(kS,kE):
-        for j1 in range(jS,jE):
-          for i1 in range(iS,iE):
-            (i2,j2,k2) = apply_transformation(np.array([i1,j1,k1]), pointRange1[:,0], pointRange2[:,0], T)
-            i2 += correcti2
-            j2 += correctj2
-            cellList2[0][counter] = convert_ijk_to_index(i2,j2,k2,nCell2[0],nCell2[1],nCell2[2])
-            counter += 1
-    else:
-      raise ValueError("The PointRange2 '{}' is bad defined".format(pointRange2))    
-    
-  return(cellList2)
+  return pointList2
 ###############################################################################
 
 ###############################################################################
@@ -793,13 +701,13 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
               pointRangeDonor,slabListS,nVtxS,attendedGridLocationGC)
         elif zoneID < zoneDonorID:
           if attendedGridLocationGC == "FaceCenter":
-            pointListDonor = compute_faceList2_from_vertexRanges(pointRange,pointRangeDonor,T,nCellSDonor,nVtxSDonor)
+            pointListDonor = compute_pointList2_from_vertexRanges(pointRange,pointRangeDonor,T,nCellSDonor,nVtxSDonor, iRank, nRank, attendedGridLocationGC)
             sizeS          = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
           elif attendedGridLocationGC == "Vertex":
-            pointListDonor = compute_vertexList2_from_vertexRanges(pointRange,pointRangeDonor,T,nCellSDonor,nVtxSDonor)
+            pointListDonor = compute_pointList2_from_vertexRanges(pointRange,pointRangeDonor,T,nCellSDonor,nVtxSDonor,iRank,nRank, attendedGridLocationGC)
             sizeS          = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
           elif attendedGridLocationGC == "CellCenter":
-            pointListDonor = compute_cellList2_from_vertexRanges(pointRange,pointRangeDonor,T,nCellSDonor,nVtxSDonor)
+            pointListDonor = compute_pointList2_from_vertexRanges(pointRange,pointRangeDonor,T,nCellSDonor,nVtxSDonor,iRank,nRank, attendedGridLocationGC)
             sizeS = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
           else:
             raise ValueError("attendedGridLocationGC is '{}' but allowed values are \
@@ -810,13 +718,13 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
               pointRange,slabListS,nVtxS,attendedGridLocationGC)
         else:
           if attendedGridLocationGC == "FaceCenter":
-            pointList      =compute_faceList2_from_vertexRanges(pointRangeDonor,pointRange,np.transpose(T),nCellS,nVtxS)
+            pointList      =compute_pointList2_from_vertexRanges(pointRangeDonor,pointRange,np.transpose(T),nCellS,nVtxS, iRank, nRank, attendedGridLocationGC)
             sizeS          = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
           elif attendedGridLocationGC == "Vertex":
-            pointList      = compute_vertexList2_from_vertexRanges(pointRangeDonor,pointRange,np.transpose(T),nCellS,nVtxS)
+            pointList      = compute_pointList2_from_vertexRanges(pointRangeDonor,pointRange,np.transpose(T),nCellS,nVtxS,iRank,nRank,attendedGridLocationGC)
             sizeS          = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
           elif attendedGridLocationGC == "CellCenter":
-            pointList      = compute_cellList2_from_vertexRanges(pointRangeDonor,pointRange,np.transpose(T),nCellS,nVtxS)
+            pointList      = compute_pointList2_from_vertexRanges(pointRangeDonor,pointRange,np.transpose(T),nCellS,nVtxS,iRank,nRank, attendedGridLocationGC)
             sizeS = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
           else:
             raise ValueError("attendedGridLocationGC is '{}' but allowed values are \
