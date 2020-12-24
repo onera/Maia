@@ -457,32 +457,6 @@ def compute_dZones2ID(distTree):
 ###############################################################################
 
 ###############################################################################
-def compute_dJoins2ID(distree,dZones2ID):
-  dJoins2ID    = {}
-  counterJoins = 0
-  for zone in I.getZones(distTree):
-    zoneName = I.getName(zone)
-    zoneID   = dZones2ID[zoneName]
-    zoneGC = I.getNodesFromType1(zone, 'ZoneGridConnectivity_t')
-    joins  = I.getNodesFromType1(zoneGC, 'GridConnectivity_t')
-    joins += I.getNodesFromType1(zoneGC, 'GridConnectivity1to1_t')
-    for join in joins:
-      zoneDonorName = I.getValue(join)
-      zoneDonorID   = dZones2ID[zoneDonorName]
-      if zoneID < zoneDonorID:
-        pointRange = I.getValue(I.getNodeFromName1(join, 'PointRange'))
-        strPointRange = ""
-        for dim1 in range(pointRange.shape[0]):
-          for dim2 in range(pointRange.shape[1]):
-            strPointRange += "_{0}".format(pointRange[dim1][dim2])
-            joinName = str(zoneID)+"_"+str(zoneDonorID)+strPointRange
-            dJoins2ID[joinName] = counterJoins
-            counterJoins += 1
-  return dJoins2ID
-
-###############################################################################
-
-###############################################################################
 def correctPointRanges(pointRange,pointRangeDonor,transform,zoneID,zoneDonorID):
   newPointRange      = np.empty(pointRange.shape,dtype=np.int32)
   newPointRangeDonor = np.empty(pointRange.shape,dtype=np.int32)
@@ -512,15 +486,6 @@ def correctPointRanges(pointRange,pointRangeDonor,transform,zoneID,zoneDonorID):
 
 ###############################################################################
 ###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
-# Début convertion DistTreeS en DistTreeU
-
 def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGridLocationGC="FaceCenter"):
 
   nRank = comm.Get_size()
@@ -710,18 +675,13 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           if I.getName(child) in allowed_names or I.getType(child) in allowed_types:
             I.addChild(gcU, child)
       
-  # #> with ZoneGC
-  # TO DO
-  
-  #> with FlowEquationSet
   for flowEquationSetS in I.getNodesFromType1(baseS,"FlowEquationSet_t"):
     I.addChild(baseU,flowEquationSetS)
   
-  #> with ReferenceState
   for referenceStateS in I.getNodesFromType1(baseS,"ReferenceState_t"):
     I.addChild(baseU,referenceStateS)
   
-  #> with Family
   for familyS in I.getNodesFromType1(baseS,"Family_t"):
     I.addChild(baseU,familyS)
-  
+
+  return distTreeU
