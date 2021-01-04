@@ -3,9 +3,6 @@
 # ----------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 cmake_policy(SET CMP0074 NEW)
-# directory containing additional cmake scripts
-set(MAIA_CMAKE_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
-list(APPEND CMAKE_MODULE_PATH ${MAIA_CMAKE_SCRIPTS})
 
 if(NOT DEFINED PROJECT_ROOT)
   set(PROJECT_ROOT ${CMAKE_SOURCE_DIR} CACHE PATH "Root directory, where the submodules are populated")
@@ -23,9 +20,9 @@ macro(check_sub_repo_exists sub_repo_name)
 endmacro()
 
 check_sub_repo_exists(project_utils)
-set(PROJECT_UTILS_DIR ${PROJECT_ROOT}/external/project_utils)
-# Load commands target_add_dependency, target_add_thirdparty_dependency and target_install
-include(${PROJECT_UTILS_DIR}/scripts/cmake/target_add_dependency.cmake)
+set(PROJECT_UTILS_CMAKE_DIR ${PROJECT_ROOT}/external/project_utils/scripts/cmake)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_UTILS_CMAKE_DIR}") # for custom Find*.cmake files
+include(${PROJECT_UTILS_CMAKE_DIR}/target_add_dependency.cmake) # target_add_dependency, target_add_thirdparty_dependency and target_install commands
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
@@ -40,6 +37,7 @@ project(
 
 ## Compiler flags
 ### Defaults
+set(MAIA_CMAKE_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
 include(${MAIA_CMAKE_SCRIPTS}/default_flags.cmake)
 ### Build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -120,6 +118,7 @@ endif()
 ## Python, Cython, Pybind11
 set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/")
 include(MixPythonCythonModule)
+include(${PROJECT_UTILS_CMAKE_DIR}/MixPythonCythonModule.cmake)
 mixpython_cython_add_module(maia)
 
 ## Compiled languages

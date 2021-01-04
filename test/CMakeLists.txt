@@ -1,4 +1,4 @@
-include(TestCreate)
+include(${PROJECT_UTILS_CMAKE_DIR}/TestCreate.cmake)
 
 set(pytest_mpi_check_file ${PROJECT_ROOT}/external/pytest-mpi-check/pytest_mpi_check.py)
 set(pytest_file_in_build ${CMAKE_CURRENT_BINARY_DIR}/../external/pytest-mpi-check/pytest_mpi_check.py)
@@ -34,12 +34,12 @@ if(MAIA_ENABLE_MPI_TESTS)
   mpi_pytest_directory_python_create(maia_python_func_tests test 1)
 
   # TODO (not ready yet)
-  #mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 2
+  #mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 maia 2
   #                SOURCES
   #                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
   #                LABELS     unit
   #                SERIAL_RUN false )
-  #mpi_test_create(maia_mpi_scheduler_threads.cpp maia_mpi_scheduler_threads 15
+  #mpi_test_create(maia_mpi_scheduler_threads.cpp maia_mpi_scheduler_threads maia 15
   #                SOURCES
   #                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
   #                LABELS     unit
