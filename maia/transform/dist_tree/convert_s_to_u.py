@@ -451,40 +451,11 @@ def compute_pointList2_from_vertexRanges(pointRange1, pointRange2, T, vtx_slabs,
 ###############################################################################
 
 ###############################################################################
-def compute_dZones2ID(distTree):
-  return{I.getName(zone):z for z, zone in enumerate(I.getZones(distTree))}
-
-###############################################################################
-
-###############################################################################
-def correctPointRanges(gcS, zoneID, zoneDonorID):
-  #Todo : global function on tree (move in correct tree ?)
-
-  transform       = I.getValue(I.getNodeFromName1(gcS, 'Transform'))
-  pointRange      = I.getValue(I.getNodeFromName1(gcS, 'PointRange'))
-  pointRangeDonor = I.getValue(I.getNodeFromName1(gcS, 'PointRangeDonor'))
-
-  nbPoint      = pointRange[:,1] - pointRange[:,0]
-  dDonor = abs(transform) - 1
-  nbPointDonor = np.sign(transform)*(pointRangeDonor[dDonor,1] - pointRangeDonor[dDonor,0])
-  dir_to_swap = (nbPoint != nbPointDonor)
-
-  if zoneID < zoneDonorID:
-    pointRangeDonor[dir_to_swap, 0], pointRangeDonor[dir_to_swap, 1] = \
-        pointRangeDonor[dir_to_swap, 1], pointRangeDonor[dir_to_swap, 0]
-  else:
-    pointRange[dir_to_swap, 0], pointRange[dir_to_swap, 1] = \
-        pointRange[dir_to_swap, 1], pointRange[dir_to_swap, 0]
-
-###############################################################################
-###############################################################################
 def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGridLocationGC="FaceCenter"):
 
   nRank = comm.Get_size()
   iRank = comm.Get_rank()
 
-  dZones2ID = compute_dZones2ID(distTreeS)
-  
   #> Create skeleton of distTreeU
   distTreeU = I.newCGNSTree()
   baseS = I.getNodeFromType1(distTreeS, 'CGNSBase_t')
@@ -575,7 +546,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
     I.newIndexArray('ElementConnectivity#Size', [nbFacesTot*4], parent=ngon)
 
     #> with ZoneBC
-    zoneBCS = I.getNodeFromType1(zoneS,"ZoneBC_t")
+    zoneBCS = I.getNodeFromType1(zoneS, "ZoneBC_t")
     if zoneBCS is not None:
       zoneBCU = I.newZoneBC(zoneU)
       for bcS in I.getNodesFromType1(zoneBCS,"BC_t"):
@@ -608,10 +579,9 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           I.addChild(bcU, allowed_child)
 
     #> with ZoneGC
-    zoneGCS = I.getNodeFromType1(zoneS,"ZoneGridConnectivity_t")
-    for zoneGCS in I.getNodesFromType1(zoneS,"ZoneGridConnectivity_t"):
+    zoneName = I.getName(zoneS)
+    for zoneGCS in I.getNodesFromType1(zoneS, "ZoneGridConnectivity_t"):
       zoneGCU = I.newZoneGridConnectivity(I.getName(zoneGCS), parent=zoneU)
-      zoneID  = dZones2ID[zoneSName]
       for gcS in I.getNodesFromType1(zoneGCS, "GridConnectivity1to1_t"):
         gridLocationNodeS = I.getNodeFromType1(gcS, "GridLocation_t")
         if gridLocationNodeS is not None:
@@ -619,13 +589,11 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
 
         zoneDonorName = I.getValue(gcS)
         zoneDonor     = I.getNodeFromName1(baseS, zoneDonorName)
-        zoneDonorID   = dZones2ID[zoneDonorName]
         nVtxSDonor    = I.getValue(zoneDonor)[:,0]
 
         transform = I.getValue(I.getNodeFromName1(gcS, 'Transform'))
         T = compute_transformMatrix(transform)
 
-        correctPointRanges(gcS, zoneID, zoneDonorID)
         pointRange      = I.getValue(I.getNodeFromName1(gcS, 'PointRange'))
         pointRangeDonor = I.getValue(I.getNodeFromName1(gcS, 'PointRangeDonor'))
 
@@ -640,11 +608,11 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         gc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
         gc_slabs = HFR2S.compute_slabs(sizeS, gc_range)
 
-        if zoneID == zoneDonorID:
-        # raccord périodique sur la même zone
+        if zoneName == zoneDonorName:
+          # raccord périodique sur la même zone
           pointList      = compute_pointList_from_vertexRange(pointRange, gc_slabs, nVtxS, attendedGridLocationGC)
           pointListDonor = compute_pointList_from_vertexRange(pointRangeDonor, gc_slabs, nVtxS, attendedGridLocationGC)
-        elif zoneID < zoneDonorID:
+        elif zoneName < zoneDonorName:
           pointList      = compute_pointList_from_vertexRange(pointRange, gc_slabs, nVtxS, attendedGridLocationGC)
           pointListDonor = compute_pointList2_from_vertexRanges(pointRange, pointRangeDonor, T, \
               gc_slabs, nVtxSDonor, attendedGridLocationGC)
