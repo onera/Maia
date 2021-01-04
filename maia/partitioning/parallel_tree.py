@@ -111,3 +111,35 @@ def load_partitioned_tree(file_name,comm):
 
   return parallel_tree(dist_tree,part_tree)
 
+def load_partitioned_tree_poly(file_name,comm):
+  dist_tree = LST.load_collective_size_tree(file_name, comm)
+
+  cgr = CGT.add_cgns_registry_information(dist_tree, comm)
+
+  MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
+
+  hdf_filter = dict()
+  HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
+
+  skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "Momentum*"],
+                         ["Zone_t", "ZoneSubRegion_t", "Velocity*"]]
+
+  IOT.load_tree_from_filter(file_name, dist_tree, comm, hdf_filter)
+
+  #dzone_to_weighted_parts = DBA.computePartitioningWeights(dist_tree, comm) # TODO use this
+  dzone_to_weighted_parts = {}
+  for zone in I.getZones(dist_tree):
+      dzone_to_weighted_parts[zone[0]] = [1./comm.Get_size()]
+
+  dloading_procs = dict()
+  for zone in I.getZones(dist_tree):
+    dloading_procs[zone[0]] = list(range(comm.Get_size()))
+
+  #merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
+
+  part_tree = PPA.partition(dist_tree,comm,split_method=2)
+
+  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
+  gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
+
+  return parallel_tree(dist_tree,part_tree)
