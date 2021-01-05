@@ -37,8 +37,8 @@ project(
 
 ## Compiler flags
 ### Defaults
-set(MAIA_CMAKE_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
-include(${MAIA_CMAKE_SCRIPTS}/default_flags.cmake)
+set(LOCAL_CMAKE_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
+include(${LOCAL_CMAKE_SCRIPTS}/default_flags.cmake)
 ### Build type
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE) # default to Release
@@ -117,9 +117,8 @@ endif()
 
 ## Python, Cython, Pybind11
 set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/")
-include(MixPythonCythonModule)
 include(${PROJECT_UTILS_CMAKE_DIR}/MixPythonCythonModule.cmake)
-mixpython_cython_add_module(maia)
+mixpython_cython_add_module(${PROJECT_NAME})
 
 ## Compiled languages
 set(src_dir ${PROJECT_SOURCE_DIR}/${PROJECT_NAME})
