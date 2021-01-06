@@ -284,7 +284,7 @@ def compute_all_ngon_connectivity(slabListVtx,nVtx,nCell,
 ###############################################################################
 
 ###############################################################################
-def compute_pointList_from_vertexRange(pointRange, vtx_slabs, nVtxS, output_loc):
+def compute_pointList_from_vertexRange(pointRange, sub_pr_list, nVtxS, output_loc):
   """
   Transform structured PointRange with 'GridLocation'='Vertex' to unstructured
   PointList with 'GridLocation'='FaceCenter', 'Vertex' or 'CellCenter'
@@ -296,9 +296,6 @@ def compute_pointList_from_vertexRange(pointRange, vtx_slabs, nVtxS, output_loc)
   if len(cst_axes) != 1:
     raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
   cst_axe = cst_axes[0]
-  cst_val = pointRange[cst_axe,0]
-  if output_loc == 'CellCenter' and pointRange[cst_axe,0] > nCellS[cst_axe]:
-    cst_val -= 1
 
   # The lambda func ijk_to_func redirect to the good indexing function depending
   # on the output grid location
@@ -316,21 +313,21 @@ def compute_pointList_from_vertexRange(pointRange, vtx_slabs, nVtxS, output_loc)
   # but with args expressed as numpy arrays (for 2 of them) : this allow vectorial call of indexing
   # function as if we did a double for loop
   if cst_axe == 0:
-    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(cst_val, j_idx, k_idx.reshape(-1,1))
+    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx[0], j_idx, k_idx.reshape(-1,1))
   elif cst_axe == 1:
-    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, cst_val, k_idx.reshape(-1,1))
+    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx[0], k_idx.reshape(-1,1))
   elif cst_axe == 2:
-    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), cst_val)
+    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx[0])
 
-  sizeU =  sum([np.prod([d[1] - d[0] for d in slab]) for slab in vtx_slabs])
+  sizeU =  sum([np.prod([d[1] - d[0] + 1 for d in slab]) for slab in sub_pr_list])
   pointList = np.empty((1,sizeU), dtype=np.int32)
   counter = 0
 
-  for slabS in vtx_slabs:
-    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-    n_faces = (iE-iS)*(jE-jS)*(kE-kS)
+  for pr in sub_pr_list:
+    iS,iE, jS,jE, kS,kE = [item for bounds in pr for item in bounds]
+    n_faces = (iE-iS+1)*(jE-jS+1)*(kE-kS+1)
     pointList[0][counter:counter+n_faces] = ijk_to_vect_func(
-        np.arange(iS, iE), np.arange(jS, jE), np.arange(kS, kE)).flatten()
+        np.arange(iS, iE+1), np.arange(jS, jE+1), np.arange(kS, kE+1)).flatten()
     counter += n_faces
 
   return pointList
@@ -553,6 +550,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         gridLocationNodeS = I.getNodeFromType1(bcS, "GridLocation_t")
         gridLocationS = I.getValue(gridLocationNodeS) if gridLocationNodeS is not None else "Vertex"
         pointRange = I.getValue(I.getNodeFromName1(bcS, 'PointRange'))
+
         #Slabs depends only of attended location
         if attendedGridLocationBC in ["FaceCenter", "CellCenter"]:
           sizeS     = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
@@ -563,6 +561,21 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
               'Vertex', 'FaceCenter' or 'CellCenter'".format(attendedGridLocationBC))
         bc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
         bc_slabs = HFR2S.compute_slabs(sizeS, bc_range)
+
+        cst_axes = np.nonzero(pointRange[:,0] == pointRange[:,1])[0]
+        if len(cst_axes) != 1:
+          raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
+        cst_axe = cst_axes[0]
+
+        #Make slab absolute
+        for slab in bc_slabs:
+          for k in range(pointRange.shape[0]):
+            slab[k][0] += pointRange[k,0]
+            slab[k][1] += pointRange[k,0] - 1
+        if attendedGridLocationBC == 'CellCenter' and pointRange[cst_axe,0] > nCellS[cst_axe]:
+          for slab in bc_slabs:
+            slab[cst_axe][0] -= 1
+            slab[cst_axe][1] -= 1
 
         if gridLocationS == "Vertex":
           pointList = compute_pointList_from_vertexRange(pointRange,bc_slabs,nVtxS,attendedGridLocationBC)
