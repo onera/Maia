@@ -651,7 +651,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         I.newPointList('PointListDonor', pointListDonor, parent=gcU)
         I.newIndexArray('PointList#Size', [1, sizeS.prod()], gcU)
         #Copy these nodes to gcU
-        allowed_types = []
+        allowed_types = ['GridConnectivityProperty_t']
         allowed_names = ['Ordinal', 'OrdinalOpp']
         for child in I.getChildren(gcS):
           if I.getName(child) in allowed_names or I.getType(child) in allowed_types:

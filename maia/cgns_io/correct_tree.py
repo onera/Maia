@@ -52,7 +52,9 @@ def load_grid_connectivity_property(filename, tree):
   for base in I.getBases(tree):
     for zone in I.getZones(base):
       for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
-        for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
+        gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') \
+            + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
+        for gc in gcs:
           gc_prop = I.getNodeFromType1(gc, 'GridConnectivityProperty_t')
           if gc_prop is not None:
             gc_prop_path = '/'.join([base[0], zone[0], zone_gc[0], gc[0], gc_prop[0]])
