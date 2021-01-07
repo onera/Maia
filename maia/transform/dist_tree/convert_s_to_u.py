@@ -563,7 +563,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         pointRangeDonor = I.getValue(I.getNodeFromName1(gcS, 'PointRangeDonor'))
 
         # One of the two connected zones is choosen to compute the slabs/sub_pointrange and to impose
-        # it to the opposed zone. We choose for which PR[:,1] >= PR[:,0] ie zone with min name (see correct_tree).
+        # it to the opposed zone.
         if zoneName <= zoneDonorName:
           pointRangeLoc, pointRangeDonorLoc = pointRange, pointRangeDonor
           nVtxLoc, nVtxDonorLoc = nVtxS, nVtxSDonor
@@ -571,7 +571,14 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           pointRangeLoc, pointRangeDonorLoc = pointRangeDonor, pointRange
           nVtxLoc, nVtxDonorLoc = nVtxSDonor, nVtxS
           T = T.transpose()
-        assert (pointRangeLoc[:,1] >= pointRangeLoc[:,0]).all()
+        # Refence PR must be increasing, otherwise we have troubles with slabs->sub_point_range
+        # When we swap the PR, we must swap the corresponding dim of the PRD as well
+        dir_to_swap     = (pointRangeLoc[:,1] < pointRangeLoc[:,0])
+        opp_dir_to_swap = dir_to_swap[abs(transform) - 1]
+        pointRangeLoc[dir_to_swap, 0], pointRangeLoc[dir_to_swap, 1] = \
+                pointRangeLoc[dir_to_swap, 1], pointRangeLoc[dir_to_swap, 0]
+        pointRangeDonorLoc[opp_dir_to_swap,0], pointRangeDonorLoc[opp_dir_to_swap,1] \
+            = pointRangeDonorLoc[opp_dir_to_swap,1], pointRangeDonorLoc[opp_dir_to_swap,0]
 
         #Slabs depends only of attended location and gc size, so its the same for PR and PRDonor
         if attendedGridLocationGC in ["FaceCenter", "CellCenter"]:
