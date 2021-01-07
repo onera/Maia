@@ -414,6 +414,27 @@ def fix_cell_point_ranges(pointRange, nCell, point_range_list):
     for sub_pr in point_range_list:
       sub_pr[cst_axe,:] -= 1
 
+
+def transform_bnd_pr_size(point_range, input_loc, output_loc):
+  """
+  Predict a point_range defined at an input_location if it were defined at an output_location
+  """
+  size = np.abs(point_range[:,1] - point_range[:,0]) + 1
+
+  if input_loc == 'Vertex' and 'Center' in output_loc:
+    size -= (size != 1).astype(int)
+  elif 'Center' in input_loc and output_loc == 'Vertex':
+    if input_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
+      cst_axe = {'I':0, 'J':1, 'K':2}[input_loc[0]]
+    elif sum(point_range[:,0] == point_range[:,1]) == 1: #Ambiguity can be resolved
+      cst_axe = np.nonzero(point_range[:,0] == point_range[:,1])[0][0]
+    else:
+      raise ValueError("Ambiguous input location")
+    mask = np.zeros(point_range.shape[0], dtype=np.bool)
+    mask[cst_axe] = True
+    size += (~mask).astype(int)
+  return size
+
 ###############################################################################
 def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGridLocationGC="FaceCenter"):
 
@@ -519,13 +540,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         pointRange = I.getValue(I.getNodeFromName1(bcS, 'PointRange'))
 
         #Compute slabs from attended location (better load balance)
-        if attendedGridLocationBC in ["FaceCenter", "CellCenter"]:
-          sizeS     = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
-        elif attendedGridLocationBC == "Vertex":
-          sizeS     = np.abs(pointRange[:,1] - pointRange[:,0]) + 1
-        else:
-          raise ValueError("attendedGridLocationBC is '{}' but allowed values are \
-              'Vertex', 'FaceCenter' or 'CellCenter'".format(attendedGridLocationBC))
+        sizeS = transform_bnd_pr_size(pointRange, gridLocationS, attendedGridLocationBC)
         bc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
         bc_slabs = HFR2S.compute_slabs(sizeS, bc_range)
 
@@ -588,14 +603,8 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         pointRangeDonorLoc[opp_dir_to_swap,0], pointRangeDonorLoc[opp_dir_to_swap,1] \
             = pointRangeDonorLoc[opp_dir_to_swap,1], pointRangeDonorLoc[opp_dir_to_swap,0]
 
-        #Slabs depends only of attended location and gc size, so its the same for PR and PRDonor
-        if attendedGridLocationGC in ["FaceCenter", "CellCenter"]:
-          sizeS     = np.maximum(np.abs(pointRangeLoc[:,1] - pointRangeLoc[:,0]), 1)
-        elif attendedGridLocationGC == "Vertex":
-          sizeS     = np.abs(pointRangeLoc[:,1] - pointRangeLoc[:,0]) + 1
-        else:
-          raise ValueError("attendedGridLocationGC is '{}' but allowed values are \
-              'Vertex', 'FaceCenter' or 'CellCenter'".format(attendedGridLocationBC))
+        #Compute slabs from attended location (better load balance)
+        sizeS = transform_bnd_pr_size(pointRangeLoc, "Vertex", attendedGridLocationGC)
         gc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
         gc_slabs = HFR2S.compute_slabs(sizeS, gc_range)
 

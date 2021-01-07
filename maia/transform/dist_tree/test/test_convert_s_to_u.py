@@ -941,6 +941,31 @@ def test_fix_cell_point_ranges():
   assert (cell_subranges[0] == np.array([[1,1], [1,9], [1,4]])).all()
   assert (cell_subranges[1] == np.array([[1,1], [1,9], [4,6]])).all()
 
+class Test_transform_bnd_pr_size():
+  def test_non_ambiguous(self):
+    vtx_range  = np.array([[1,17], [9,9], [1,7]])
+    assert (convert_s_to_u.transform_bnd_pr_size(vtx_range, 'Vertex', 'Vertex') == [17,1,7]).all()
+    assert (convert_s_to_u.transform_bnd_pr_size(vtx_range, 'Vertex', 'FaceCenter') == [16,1,6]).all()
+    face_range  = np.array([[1,16], [9,9], [1,6]])
+    assert (convert_s_to_u.transform_bnd_pr_size(face_range, 'JFaceCenter', 'CellCenter') == [16,1,6]).all()
+    assert (convert_s_to_u.transform_bnd_pr_size(face_range, 'JFaceCenter', 'Vertex') == [17,1,7]).all()
+    assert (convert_s_to_u.transform_bnd_pr_size(face_range, 'FaceCenter', 'Vertex') == [17,1,7]).all()
+    cell_range  = np.array([[1,16], [8,8], [1,6]])
+    assert (convert_s_to_u.transform_bnd_pr_size(cell_range, 'CellCenter', 'FaceCenter') == [16,1,6]).all()
+    assert (convert_s_to_u.transform_bnd_pr_size(cell_range, 'CellCenter', 'Vertex') == [17,1,7]).all()
+
+  def test_ambiguous(self):
+    face_range  = np.array([[1,16], [9,9], [6,6]])
+    assert (convert_s_to_u.transform_bnd_pr_size(face_range, 'JFaceCenter', 'Vertex') == [17,1,2]).all()
+    assert (convert_s_to_u.transform_bnd_pr_size(face_range, 'KFaceCenter', 'Vertex') == [17,2,1]).all()
+    assert (convert_s_to_u.transform_bnd_pr_size(face_range, 'FaceCenter', 'CellCenter') == [16,1,1]).all()
+    with pytest.raises(ValueError):
+      convert_s_to_u.transform_bnd_pr_size(face_range, 'FaceCenter', 'Vertex')
+    cell_range  = np.array([[1,16], [8,8], [5,5]])
+    assert (convert_s_to_u.transform_bnd_pr_size(cell_range, 'CellCenter', 'FaceCenter') == [16,1,1]).all()
+    with pytest.raises(ValueError):
+      convert_s_to_u.transform_bnd_pr_size(cell_range, 'CellCenter', 'Vertex')
+
 # --------------------------------------------------------------------------- #
   # @pytest.mark.mpi(min_size=3)
   # @pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
