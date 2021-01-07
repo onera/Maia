@@ -310,39 +310,25 @@ def compute_pointList_from_vertexRange(pointRange, sub_pr_list, nVtxS, output_lo
     raise ValueError("Wrong output location : '{}'".format(output_loc))
 
   # The lambda func ijk_to_vect_func is a wrapping to ijk_to_func (and so to the good indexing func)
-  # but with args expressed as numpy arrays (for 2 of them) : this allow vectorial call of indexing
-  # function as if we did a double for loop
+  # but with args expressed as numpy arrays : this allow vectorial call of indexing function as if we did an
+  # imbricated loop
   ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
-  # if cst_axe == 0:
-    # ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx[0], j_idx, k_idx.reshape(-1,1))
-  # elif cst_axe == 1:
-    # ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx[0], k_idx.reshape(-1,1))
-  # elif cst_axe == 2:
-    # ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx[0])
 
-  #sizeU =  sum([np.prod([d[1] - d[0] + 1 for d in slab]) for slab in sub_pr_list])
-
-  if 'Center' in output_loc:
-    sizeU     = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1).prod()
-  else:
-    sizeU  = (np.abs(pointRange[:,1] - pointRange[:,0]) + 1).prod() #Vtx only ???? 
-  print('sizeU', sizeU)
-  pointList = np.empty((1,sizeU), dtype=np.int32)
+  sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
+  pointList = np.empty((1, sum(sub_range_sizes)), dtype=np.int32)
   counter = 0
 
-  for pr in sub_pr_list:
-    iS,iE, jS,jE, kS,kE = [item for bounds in pr for item in bounds]
+  for ipr, pr in enumerate(sub_pr_list):
+    inc = 2*(pr[:,0] <= pr[:,1]).astype(int) - 1 #In each direction, 1 if pr[l,0] <= pr[l,1] else - 1
 
-    inc = [0,0,0]
-    inc[0] = 1 if iS <= iE else -1
-    inc[1] = 1 if jS <= jE else -1
-    inc[2] = 1 if kS <= kE else -1
+    # Here we build for each direction a looping array range(start, end+1) if pr is increasing
+    # or range(start, end-1, -1) if pr is decreasing
+    np_idx_arrays = []
+    for l in range(pr.shape[0]):
+      np_idx_arrays.append(np.arange(pr[l,0], pr[l,1] + inc[l], inc[l]))
 
-    n_faces = (inc[0]*(iE-iS)+1)*(inc[1]*(jE-jS)+1)*(inc[2]*(kE-kS)+1)
-
-    pointList[0][counter:counter+n_faces] = ijk_to_vect_func(
-        np.arange(iS, iE+inc[0], inc[0]), np.arange(jS, jE+inc[1], inc[1]), np.arange(kS, kE+inc[2], inc[2])).flatten()
-    counter += n_faces
+    pointList[0][counter:counter+sub_range_sizes[ipr]] = ijk_to_vect_func(*np_idx_arrays).flatten()
+    counter += sub_range_sizes[ipr]
 
   return pointList
 ###############################################################################
@@ -519,7 +505,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         gridLocationS = I.getValue(gridLocationNodeS) if gridLocationNodeS is not None else "Vertex"
         pointRange = I.getValue(I.getNodeFromName1(bcS, 'PointRange'))
 
-        #Slabs depends only of attended location
+        #Compute slabs from attended location (better load balance)
         if attendedGridLocationBC in ["FaceCenter", "CellCenter"]:
           sizeS     = np.maximum(np.abs(pointRange[:,1] - pointRange[:,0]), 1)
         elif attendedGridLocationBC == "Vertex":
@@ -535,21 +521,20 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
         cst_axe = cst_axes[0]
 
-        #Make slab absolute
-        for slab in bc_slabs:
-          for k in range(pointRange.shape[0]):
-            slab[k][0] += pointRange[k,0]
-            slab[k][1] += pointRange[k,0] - 1
+        #Prepare sub pointRanges from slabs
+        sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
+        for sub_pr in sub_pr_list:
+          sub_pr[:,0] += pointRange[:,0]
+          sub_pr[:,1] += pointRange[:,0] - 1
         if attendedGridLocationBC == 'CellCenter' and pointRange[cst_axe,0] > nCellS[cst_axe]:
-          for slab in bc_slabs:
-            slab[cst_axe][0] -= 1
-            slab[cst_axe][1] -= 1
+          for sub_pr in sub_pr_list:
+            sub_pr[cst_axe,:] -= 1
 
         if gridLocationS == "Vertex":
-          pointList = compute_pointList_from_vertexRange(pointRange,bc_slabs,nVtxS,attendedGridLocationBC)
-        elif "FaceCenter" in gridLocationS:
-          assert attendedGridLocationBC == "FaceCenter"
-          pointList = compute_faceList_from_faceRange(pointRange,bc_slabs,nCellS,nVtxS,gridLocationS)
+          pointList = compute_pointList_from_vertexRange(pointRange,sub_pr_list,nVtxS,attendedGridLocationBC)
+        # elif "FaceCenter" in gridLocationS:
+          # assert attendedGridLocationBC == "FaceCenter"
+          # pointList = compute_faceList_from_faceRange(pointRange,bc_slabs,nCellS,nVtxS,gridLocationS)
 
         bcU = I.newBC(I.getName(bcS), btype=I.getValue(bcS), parent=zoneBCU)
         I.newGridLocation(attendedGridLocationBC, parent=bcU)
@@ -577,13 +562,15 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         pointRange      = I.getValue(I.getNodeFromName1(gcS, 'PointRange'))
         pointRangeDonor = I.getValue(I.getNodeFromName1(gcS, 'PointRangeDonor'))
 
+        # One of the two connected zones is choosen to compute the slabs/sub_pointrange and to impose
+        # it to the opposed zone. We choose for which PR[:,1] >= PR[:,0] ie zone with min name (see correct_tree).
         if zoneName <= zoneDonorName:
           pointRangeLoc, pointRangeDonorLoc = pointRange, pointRangeDonor
           nVtxLoc, nVtxDonorLoc = nVtxS, nVtxSDonor
         else:
           pointRangeLoc, pointRangeDonorLoc = pointRangeDonor, pointRange
-          T = T.transpose()
           nVtxLoc, nVtxDonorLoc = nVtxSDonor, nVtxS
+          T = T.transpose()
         assert (pointRangeLoc[:,1] >= pointRangeLoc[:,0]).all()
 
         #Slabs depends only of attended location and gc size, so its the same for PR and PRDonor
@@ -597,49 +584,47 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         gc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
         gc_slabs = HFR2S.compute_slabs(sizeS, gc_range)
 
+        sub_pr_list = [np.asarray(slab) for slab in gc_slabs]
+        #Compute sub pointranges from slab
+        for sub_pr in sub_pr_list:
+          sub_pr[:,0] += pointRangeLoc[:,0]
+          sub_pr[:,1] += pointRangeLoc[:,0] - 1
 
-        #Make slab absolute
-        for slab in gc_slabs:
-          for k in range(pointRangeLoc.shape[0]):
-            slab[k][0] += pointRangeLoc[k,0]
-            slab[k][1] += pointRangeLoc[k,0] - 1
+        #Get opposed sub point ranges
+        sub_pr_opp_list = []
+        for sub_pr in sub_pr_list:
+          sub_pr_opp = np.empty((3,2), dtype=np.int32)
+          sub_pr_opp[:,0] = apply_transformation(sub_pr[:,0], pointRangeLoc[:,0], pointRangeDonorLoc[:,0], T)
+          sub_pr_opp[:,1] = apply_transformation(sub_pr[:,1], pointRangeLoc[:,0], pointRangeDonorLoc[:,0], T)
+          sub_pr_opp_list.append(sub_pr_opp)
 
-        gc_slabs_opp = []
-        for gc_slab in gc_slabs:
-          iSd, jSd, kSd = apply_transformation([gc_slab[0][0], gc_slab[1][0], gc_slab[2][0]], \
-              pointRangeLoc[:,0], pointRangeDonorLoc[:,0], T)
-          iEd, jEd, kEd = apply_transformation([gc_slab[0][1], gc_slab[1][1], gc_slab[2][1]], \
-              pointRangeLoc[:,0], pointRangeDonorLoc[:,0], T)
-          gc_slabs_opp.append([[iSd, iEd], [jSd, jEd], [kSd, kEd]])
+        #If output location is Vertex, sub_point_range are ready. Otherwise, some corrections are required
+        if attendedGridLocationGC == 'CellCenter':
+          cst_axes = np.nonzero(pointRangeLoc[:,0] == pointRangeLoc[:,0])[0]
+          if len(cst_axes) != 1:
+            raise ValueError("The PointRange '{}' is bad defined".format(pointRangeLoc))
+          cst_axe = cst_axes[0]
+          if pointRangeLoc[cst_axe,0] > (nVtxLoc[cst_axe]-1):
+            for sub_pr in sub_pr_list:
+              sub_pr[cst_axe,:] -= 1
+          cst_axes = np.nonzero(pointRangeDonorLoc[:,0] == pointRangeDonorLoc[:,1])[0]
+          if len(cst_axes) != 1:
+            raise ValueError("The PointRange '{}' is bad defined".format(pointRangeDonorLoc))
+          cst_axe = cst_axes[0]
+          if pointRangeDonorLoc[cst_axe,0] > (nVtxDonorLoc[cst_axe]-1):
+            for sub_pr_opp in sub_pr_opp_list:
+              sub_pr_opp[cst_axe,:] -= 1
 
-        cst_axes = np.nonzero(pointRangeLoc[:,0] == pointRangeLoc[:,1])[0]
-        if len(cst_axes) != 1:
-          raise ValueError("The PointRange '{}' is bad defined".format(pointRangeLoc))
-        cst_axe = cst_axes[0]
-        if attendedGridLocationGC == 'CellCenter' and pointRangeLoc[cst_axe,0] > (nVtxLoc[cst_axe]-1):
-          for slab in gc_slabs:
-            slab[cst_axe][0] -= 1
-            slab[cst_axe][1] -= 1
-
-        cst_axes = np.nonzero(pointRangeDonorLoc[:,0] == pointRangeDonorLoc[:,1])[0]
-        if len(cst_axes) != 1:
-          raise ValueError("The PointRange '{}' is bad defined".format(pointRangeLoc))
-        cst_axe = cst_axes[0]
-        if attendedGridLocationGC == 'CellCenter' and pointRangeDonorLoc[cst_axe,0] > (nVtxDonorLoc[cst_axe]-1):
-          for slab in gc_slabs_opp:
-            slab[cst_axe][0] -= 1
-            slab[cst_axe][1] -= 1
-            #####
+        #When working on cell|face, extra care has to be taken if PR[:,1] < PR[:,0] : the cell|face id
+        #is not given by the bottom left corner but by the top right. We can just shift to retrieve casual behaviour
         if 'Center' in attendedGridLocationGC:
-          for slab in gc_slabs_opp:
-            for k in range(3): #Todo
-              if slab[k][0] > slab[k][1]:
-                slab[k][0] -= 1
-                slab[k][1] -= 1
+          for sub_pr_opp in sub_pr_opp_list:
+            reverted = sub_pr_opp[:,0] > sub_pr_opp[:,1]
+            sub_pr_opp[reverted,:] -= 1
 
+        pointListLoc      = compute_pointList_from_vertexRange(pointRangeLoc, sub_pr_list, nVtxLoc, attendedGridLocationGC)
+        pointListDonorLoc = compute_pointList_from_vertexRange(pointRangeDonorLoc, sub_pr_opp_list, nVtxDonorLoc, attendedGridLocationGC)
 
-        pointListLoc      = compute_pointList_from_vertexRange(pointRangeLoc, gc_slabs, nVtxLoc, attendedGridLocationGC)
-        pointListDonorLoc = compute_pointList_from_vertexRange(pointRangeDonorLoc, gc_slabs_opp, nVtxDonorLoc, attendedGridLocationGC)
         if zoneName <= zoneDonorName:
           pointList, pointListDonor = pointListLoc, pointListDonorLoc
         else:
