@@ -923,9 +923,24 @@ class Test_compute_transformMatrix():
     assert (convert_s_to_u.compute_transformMatrix(transform) == attendedTransformMatrix).all()
 ###############################################################################
 
-    
-    
-    
+def test_fix_cell_point_ranges():
+  nCell = [16,8,6]
+  #Last bnd
+  vtx_point_range  = np.array([[1,17], [9,9], [1,7]])
+  cell_subranges = [np.array([[1,16], [9,9], [1,4]]),
+                    np.array([[1,16], [9,9], [4,6]])]
+  convert_s_to_u.fix_cell_point_ranges(vtx_point_range, nCell, cell_subranges)
+  assert (cell_subranges[0] == np.array([[1,16], [8,8], [1,4]])).all()
+  assert (cell_subranges[1] == np.array([[1,16], [8,8], [4,6]])).all()
+
+  #First bnd (no change)
+  vtx_point_range  = np.array([[1,1], [1,9], [1,7]])
+  cell_subranges = [np.array([[1,1], [1,9], [1,4]]),
+                    np.array([[1,1], [1,9], [4,6]])]
+  convert_s_to_u.fix_cell_point_ranges(vtx_point_range, nCell, cell_subranges)
+  assert (cell_subranges[0] == np.array([[1,1], [1,9], [1,4]])).all()
+  assert (cell_subranges[1] == np.array([[1,1], [1,9], [4,6]])).all()
+
 # --------------------------------------------------------------------------- #
   # @pytest.mark.mpi(min_size=3)
   # @pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])

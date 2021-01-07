@@ -401,6 +401,19 @@ def apply_transformation(index1, start1, start2, T):
   return np.matmul(T, (index1 - start1)) + start2
 ###############################################################################
 
+def fix_cell_point_ranges(pointRange, nCell, point_range_list):
+  """
+  Correct the cells sub pointranges for BC/GC (shift max cell if needed)
+  """
+  cst_axes = np.nonzero(pointRange[:,0] == pointRange[:,1])[0]
+  if len(cst_axes) != 1:
+    raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
+  cst_axe = cst_axes[0]
+
+  if pointRange[cst_axe,0] > nCell[cst_axe]:
+    for sub_pr in point_range_list:
+      sub_pr[cst_axe,:] -= 1
+
 ###############################################################################
 def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGridLocationGC="FaceCenter"):
 
@@ -516,19 +529,14 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         bc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
         bc_slabs = HFR2S.compute_slabs(sizeS, bc_range)
 
-        cst_axes = np.nonzero(pointRange[:,0] == pointRange[:,1])[0]
-        if len(cst_axes) != 1:
-          raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-        cst_axe = cst_axes[0]
-
         #Prepare sub pointRanges from slabs
         sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
         for sub_pr in sub_pr_list:
           sub_pr[:,0] += pointRange[:,0]
           sub_pr[:,1] += pointRange[:,0] - 1
-        if attendedGridLocationBC == 'CellCenter' and pointRange[cst_axe,0] > nCellS[cst_axe]:
-          for sub_pr in sub_pr_list:
-            sub_pr[cst_axe,:] -= 1
+
+        if attendedGridLocationBC == 'CellCenter':
+          fix_cell_point_ranges(pointRange, nCellS, sub_pr_list)
 
         if gridLocationS == "Vertex":
           pointList = compute_pointList_from_vertexRange(pointRange,sub_pr_list,nVtxS,attendedGridLocationBC)
@@ -605,22 +613,10 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           sub_pr_opp[:,1] = apply_transformation(sub_pr[:,1], pointRangeLoc[:,0], pointRangeDonorLoc[:,0], T)
           sub_pr_opp_list.append(sub_pr_opp)
 
-        #If output location is Vertex, sub_point_range are ready. Otherwise, some corrections are required
+        #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required
         if attendedGridLocationGC == 'CellCenter':
-          cst_axes = np.nonzero(pointRangeLoc[:,0] == pointRangeLoc[:,0])[0]
-          if len(cst_axes) != 1:
-            raise ValueError("The PointRange '{}' is bad defined".format(pointRangeLoc))
-          cst_axe = cst_axes[0]
-          if pointRangeLoc[cst_axe,0] > (nVtxLoc[cst_axe]-1):
-            for sub_pr in sub_pr_list:
-              sub_pr[cst_axe,:] -= 1
-          cst_axes = np.nonzero(pointRangeDonorLoc[:,0] == pointRangeDonorLoc[:,1])[0]
-          if len(cst_axes) != 1:
-            raise ValueError("The PointRange '{}' is bad defined".format(pointRangeDonorLoc))
-          cst_axe = cst_axes[0]
-          if pointRangeDonorLoc[cst_axe,0] > (nVtxDonorLoc[cst_axe]-1):
-            for sub_pr_opp in sub_pr_opp_list:
-              sub_pr_opp[cst_axe,:] -= 1
+          fix_cell_point_ranges(pointRangeLoc, nVtxLoc-1, sub_pr_list)
+          fix_cell_point_ranges(pointRangeDonorLoc, nVtxDonorLoc-1, sub_pr_opp_list)
 
         #When working on cell|face, extra care has to be taken if PR[:,1] < PR[:,0] : the cell|face id
         #is not given by the bottom left corner but by the top right. We can just shift to retrieve casual behaviour
