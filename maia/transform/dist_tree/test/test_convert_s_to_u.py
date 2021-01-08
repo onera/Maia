@@ -934,23 +934,21 @@ def test_guess_boundary_axis():
     convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'FaceCenter')
     convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'CellCenter')
 
-def test_fix_cell_point_ranges():
-  nCell = [16,8,6]
-  #Last bnd
-  vtx_point_range  = np.array([[1,17], [9,9], [1,7]])
-  cell_subranges = [np.array([[1,16], [9,9], [1,4]]),
-                    np.array([[1,16], [9,9], [4,6]])]
-  convert_s_to_u.fix_cell_point_ranges(vtx_point_range, nCell, cell_subranges)
-  assert (cell_subranges[0] == np.array([[1,16], [8,8], [1,4]])).all()
-  assert (cell_subranges[1] == np.array([[1,16], [8,8], [4,6]])).all()
-
-  #First bnd (no change)
-  vtx_point_range  = np.array([[1,1], [1,9], [1,7]])
-  cell_subranges = [np.array([[1,1], [1,9], [1,4]]),
-                    np.array([[1,1], [1,9], [4,6]])]
-  convert_s_to_u.fix_cell_point_ranges(vtx_point_range, nCell, cell_subranges)
-  assert (cell_subranges[0] == np.array([[1,1], [1,9], [1,4]])).all()
-  assert (cell_subranges[1] == np.array([[1,1], [1,9], [4,6]])).all()
+def test_cst_axe_shift():
+  nVtx = np.array([17,9,7])
+  vtx_range_last  = np.array([[1,17], [9,9], [1,7]])
+  vtx_range_first = np.array([[1,17], [1,1], [1,7]])
+  cell_range_last  = np.array([[1,16], [8,8], [1,6]])
+  cell_range_first = np.array([[1,16], [1,1], [1,6]])
+  #Same location
+  assert convert_s_to_u.cst_axe_shift(vtx_range_last, nVtx, 1, False, False) == 0
+  assert convert_s_to_u.cst_axe_shift(cell_range_last, nVtx, 1, True, True) == 0
+  #Vtx to cells
+  assert convert_s_to_u.cst_axe_shift(vtx_range_last, nVtx, 1, False, True) == -1
+  assert convert_s_to_u.cst_axe_shift(vtx_range_first, nVtx, 1, False, True) == 0
+  #Cell to vtx
+  assert convert_s_to_u.cst_axe_shift(cell_range_last, nVtx, 1, True, False) == 1
+  assert convert_s_to_u.cst_axe_shift(cell_range_first, nVtx, 1, True, False) == 0
 
 class Test_transform_bnd_pr_size():
   def test_non_ambiguous(self):

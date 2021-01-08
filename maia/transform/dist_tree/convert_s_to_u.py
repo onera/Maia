@@ -370,24 +370,16 @@ def guess_boundary_axis(point_range, grid_location):
     raise ValueError("Ambiguous input location")
   return cst_axe
 
-
-def fix_cell_point_ranges(pointRange, nCell, point_range_list, in_cell, out_cell):
+def cst_axe_shift(point_range, n_vtx, bnd_axis, in_loc_is_cell, out_loc_is_cell):
   """
-  Correct the cells sub pointranges for BC/GC (shift max cell if needed)
+  Return the value that should be added to pr[cst_axe,:] to account for cell <-> face|vtx transformation :
+    +1 if we move from cell to face|vtx and if it was the last plane of cells
+    -1 if we move from face|vtx to cell and if it was the last plane of face|vtx
+     0 in other cases
   """
-  cst_axes = np.nonzero(pointRange[:,0] == pointRange[:,1])[0]
-  if len(cst_axes) != 1:
-    raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-  cst_axe = cst_axes[0]
-
-  if out_cell:
-    if pointRange[cst_axe,0] > nCell[cst_axe]:
-      for sub_pr in point_range_list:
-        sub_pr[cst_axe,:] -= 1
-  elif in_cell:
-    if pointRange[cst_axe,0] == nCell[cst_axe]:
-      for sub_pr in point_range_list:
-        sub_pr[cst_axe,:] += 1
+  cst_axe_is_last = point_range[bnd_axis,0] == (n_vtx[bnd_axis] - int(in_loc_is_cell))
+  correction_sign = -int(out_loc_is_cell and not in_loc_is_cell) + int(not out_loc_is_cell and in_loc_is_cell)
+  return int(cst_axe_is_last) * correction_sign
 
 def transform_bnd_pr_size(point_range, input_loc, output_loc):
   """
@@ -513,14 +505,14 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         bc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
         bc_slabs = HFR2S.compute_slabs(sizeS, bc_range)
 
+        shift = cst_axe_shift(pointRange, nVtxS, bnd_axis,\
+            gridLocationS=='CellCenter', attendedGridLocationBC=='CellCenter')
         #Prepare sub pointRanges from slabs
         sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
         for sub_pr in sub_pr_list:
           sub_pr[:,0] += pointRange[:,0]
           sub_pr[:,1] += pointRange[:,0] - 1
-
-        fix_cell_point_ranges(pointRange, nCellS, sub_pr_list,\
-            gridLocationS=='CellCenter', attendedGridLocationBC=='CellCenter')
+          sub_pr[bnd_axis,:] += shift
 
         pointList = compute_pointList_from_pointRanges(sub_pr_list,nVtxS,attendedGridLocationBC, bnd_axis)
 
@@ -590,8 +582,11 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           sub_pr_opp_list.append(sub_pr_opp)
 
         #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required
-        fix_cell_point_ranges(pointRangeLoc, nVtxLoc-1, sub_pr_list,False,attendedGridLocationGC=='CellCenter')
-        fix_cell_point_ranges(pointRangeDonorLoc, nVtxDonorLoc-1, sub_pr_opp_list,False,attendedGridLocationGC=='CellCenter')
+        shift = cst_axe_shift(pointRangeLoc, nVtxLoc, bnd_axis, False, attendedGridLocationBC=='CellCenter')
+        shift_opp = cst_axe_shift(pointRangeDonorLoc, nVtxDonorLoc, bnd_axis_opp, False, attendedGridLocationBC=='CellCenter')
+        for i_pr in range(len(sub_pr_list)):
+          sub_pr_list[i_pr][bnd_axis,:] += shift
+          sub_pr_opp_list[i_pr][bnd_axis_opp,:] += shift_opp
 
         #When working on cell|face, extra care has to be taken if PR[:,1] < PR[:,0] : the cell|face id
         #is not given by the bottom left corner but by the top right. We can just shift to retrieve casual behaviour
