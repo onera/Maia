@@ -334,41 +334,6 @@ def compute_pointList_from_vertexRange(pointRange, sub_pr_list, nVtxS, output_lo
 ###############################################################################
 
 ###############################################################################
-def compute_faceList_from_faceRange(pointRange, vtx_slabs, nVtxS, gridLocationS):
-  """
-  Transform structured PointRange with 'GridLocation'='IFaceCenter' or 'JFaceCenter' or
-  'KFaceCenter' to unstructured PointList with 'GridLocation'='FaceCenter'
-  """
-  nCellS = [nv - 1 for nv in nVtxS]
-  # Prepare lambda func depending of const idx -> this allow vectorial call of
-  # convert_ijk_to_faceLIndex as if we did double for loop
-  if gridLocationS == 'IFaceCenter':
-    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
-        convert_ijk_to_faceiIndex(pointRange[0,0], j_idx, k_idx.reshape(-1,1), nCellS, nVtxS)
-  elif gridLocationS == 'JFaceCenter':
-    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
-        convert_ijk_to_facejIndex(i_idx, pointRange[1,0], k_idx.reshape(-1,1), nCellS, nVtxS)
-  elif gridLocationS == 'KFaceCenter':
-    ijk_to_faceidx = lambda i_idx, j_idx, k_idx : \
-        convert_ijk_to_facekIndex(i_idx, j_idx.reshape(-1,1), pointRange[2,0], nCellS, nVtxS)
-  else:
-    raise ValueError("The GridLocation '{}' is bad defined".format(gridLocationS))
-
-  sizeU = sum([np.prod([d[1] - d[0] for d in slab]) for slab in vtx_slabs])
-  faceList = np.empty((1,sizeU), dtype=np.int32)
-  counter = 0
-
-  for slabS in vtx_slabs:
-    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabS for item in bounds]
-    n_faces = (iE-iS)*(jE-jS)*(kE-kS)
-    faceList[0][counter:counter+n_faces] = ijk_to_faceidx(
-        np.arange(iS, iE), np.arange(jS, jE), np.arange(kS, kE)).flatten()
-    counter += n_faces
-
-  return faceList
-###############################################################################
-
-###############################################################################
 def isSameAxis(x,y):
   """
   This function is the implementation of the 'del' function defined in the SIDS
@@ -401,7 +366,7 @@ def apply_transformation(index1, start1, start2, T):
   return np.matmul(T, (index1 - start1)) + start2
 ###############################################################################
 
-def fix_cell_point_ranges(pointRange, nCell, point_range_list):
+def fix_cell_point_ranges(pointRange, nCell, point_range_list, in_cell, out_cell):
   """
   Correct the cells sub pointranges for BC/GC (shift max cell if needed)
   """
@@ -410,9 +375,15 @@ def fix_cell_point_ranges(pointRange, nCell, point_range_list):
     raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
   cst_axe = cst_axes[0]
 
-  if pointRange[cst_axe,0] > nCell[cst_axe]:
-    for sub_pr in point_range_list:
-      sub_pr[cst_axe,:] -= 1
+  if out_cell:
+    if pointRange[cst_axe,0] > nCell[cst_axe]:
+      for sub_pr in point_range_list:
+        sub_pr[cst_axe,:] -= 1
+  elif in_cell:
+    if pointRange[cst_axe,0] == nCell[cst_axe]:
+      for sub_pr in point_range_list:
+        sub_pr[cst_axe,:] += 1
+
 
 
 def transform_bnd_pr_size(point_range, input_loc, output_loc):
@@ -550,14 +521,10 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           sub_pr[:,0] += pointRange[:,0]
           sub_pr[:,1] += pointRange[:,0] - 1
 
-        if attendedGridLocationBC == 'CellCenter':
-          fix_cell_point_ranges(pointRange, nCellS, sub_pr_list)
+        fix_cell_point_ranges(pointRange, nCellS, sub_pr_list,\
+            gridLocationS=='CellCenter', attendedGridLocationBC=='CellCenter')
 
-        if gridLocationS == "Vertex":
-          pointList = compute_pointList_from_vertexRange(pointRange,sub_pr_list,nVtxS,attendedGridLocationBC)
-        # elif "FaceCenter" in gridLocationS:
-          # assert attendedGridLocationBC == "FaceCenter"
-          # pointList = compute_faceList_from_faceRange(pointRange,bc_slabs,nCellS,nVtxS,gridLocationS)
+        pointList = compute_pointList_from_vertexRange(pointRange,sub_pr_list,nVtxS,attendedGridLocationBC)
 
         bcU = I.newBC(I.getName(bcS), btype=I.getValue(bcS), parent=zoneBCU)
         I.newGridLocation(attendedGridLocationBC, parent=bcU)
@@ -623,9 +590,8 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
           sub_pr_opp_list.append(sub_pr_opp)
 
         #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required
-        if attendedGridLocationGC == 'CellCenter':
-          fix_cell_point_ranges(pointRangeLoc, nVtxLoc-1, sub_pr_list)
-          fix_cell_point_ranges(pointRangeDonorLoc, nVtxDonorLoc-1, sub_pr_opp_list)
+        fix_cell_point_ranges(pointRangeLoc, nVtxLoc-1, sub_pr_list,False,attendedGridLocationGC=='CellCenter')
+        fix_cell_point_ranges(pointRangeDonorLoc, nVtxDonorLoc-1, sub_pr_opp_list,False,attendedGridLocationGC=='CellCenter')
 
         #When working on cell|face, extra care has to be taken if PR[:,1] < PR[:,0] : the cell|face id
         #is not given by the bottom left corner but by the top right. We can just shift to retrieve casual behaviour
