@@ -22,23 +22,14 @@ def fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
   WARNING : (i,j,k) begins at (1,1,1)
   """
   # Convert (i,j,k) structured indices of node to unstructured indices
-  n1 = s_numb.ijk_to_index(n1ijk[0],n1ijk[1],n1ijk[2],nVtx)
-  n2 = s_numb.ijk_to_index(n2ijk[0],n2ijk[1],n2ijk[2],nVtx)
-  n3 = s_numb.ijk_to_index(n3ijk[0],n3ijk[1],n3ijk[2],nVtx)
-  n4 = s_numb.ijk_to_index(n4ijk[0],n4ijk[1],n4ijk[2],nVtx)
+  n1 = s_numb.ijk_to_index(*n1ijk, nVtx)
+  n2 = s_numb.ijk_to_index(*n2ijk, nVtx)
+  n3 = s_numb.ijk_to_index(*n3ijk, nVtx)
+  n4 = s_numb.ijk_to_index(*n4ijk, nVtx)
   # Fill NGon connectivity with nodes
   faceNgon[4*counter:4*(counter+1)] = [n1,n2,n3,n4]
-  # Convert leftt structured cell (i,j,k) to unstructured index
-  left = s_numb.ijk_to_index(leftijk[0],leftijk[1],leftijk[2],nCell)
-  # Fill LeftCell with nodes (LeftCell equal ParentElement[:][0])
-  faceLeftCell[counter] = left
-  # Convert right structured cell (i,j,k) to unstructured index
-  if rightijk == 0:
-    right = 0
-  else:
-    right = s_numb.ijk_to_index(rightijk[0],rightijk[1],rightijk[2],nCell)
-  # Fill RightCell with nodes (RightCell equal ParentElement[:][1])
-  faceRightCell[counter] = right    
+  faceLeftCell[counter] = s_numb.ijk_to_index(*leftijk, nCell)
+  faceRightCell[counter] = s_numb.ijk_to_index(*rightijk, nCell) if rightijk != 0 else 0
 ###############################################################################
 
 ###############################################################################
@@ -47,20 +38,19 @@ def vtx_slab_to_n_face(vtx_slab, n_vtx):
   Compute the number of faces to create for a zone by a proc with distributed info
   from a vertex slab
   """
-  iS,iE, jS,jE, kS,kE = [item for bounds in vtx_slab for item in bounds]
-  # Number of vertices of the slab in each direction
-  nx = iE - iS
-  ny = jE - jS
-  nz = kE - kS
+  np_vtx_slab = np.asarray(vtx_slab)
 
+  # Number of vertices of the slab in each direction
+  n_vertices  = np_vtx_slab[:,1] - np_vtx_slab[:,0]
   # Number of edges of the slab in each direction : exclude last edge if slab
   # is the end of the block
-  ex = nx - 1 if iE == n_vtx[0] else nx
-  ey = ny - 1 if jE == n_vtx[1] else ny
-  ez = nz - 1 if kE == n_vtx[2] else nz
+  n_edges = n_vertices - (np_vtx_slab[:,1] == n_vtx).astype(int)
 
   # In each direction, number of faces is n_vtx * n_edge1 * n_edge2
-  return nx*ey*ez + ny*ex*ez + nz*ex*ey
+  n_faces_per_dir = np.array([ n_edges[1]*n_edges[2],
+                               n_edges[0]*n_edges[2],
+                               n_edges[0]*n_edges[1]])
+  return (n_vertices * n_faces_per_dir).sum()
 
 ###############################################################################
 
@@ -82,31 +72,39 @@ def compute_all_ngon_connectivity(slabListVtx,nVtx,nCell,
   counter = 0
   for slabVtx in slabListVtx:
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabVtx for item in bounds]
-      
+    isup = iE - int(iE == nVtx[0]+1)
+    jsup = jE - int(jE == nVtx[1]+1)
+    ksup = kE - int(kE == nVtx[2]+1)
+
+    #Do 3 loops to remove if test
     for i in range(iS, iE):
+      for j in range(jS, jsup):
+        for k in range(kS, ksup):
+          faceNumber[counter] = s_numb.ijk_to_faceiIndex(i,j,k,nCell,nVtx)
+          (n1,n2,n3,n4,leftijk,rightijk) = s_numb.compute_fi_from_ijk(i,j,k, i==1, i==nVtx[0])
+          fill_faceNgon_leftCell_rightCell(counter,n1,n2,n3,n4,
+                                           leftijk,rightijk,nVtx,nCell,
+                                           faceNgon,faceLeftCell,faceRightCell)
+          counter += 1
+    for i in range(iS, isup):
       for j in range(jS, jE):
+        for k in range(kS, ksup):
+          faceNumber[counter] = s_numb.ijk_to_facejIndex(i,j,k,nCell,nVtx)
+          (n1,n2,n3,n4,leftijk,rightijk) = s_numb.compute_fj_from_ijk(i,j,k, j==1, j==nVtx[1])
+          fill_faceNgon_leftCell_rightCell(counter,n1,n2,n3,n4,
+                                           leftijk,rightijk,nVtx,nCell,
+                                           faceNgon,faceLeftCell,faceRightCell)
+          counter += 1
+    for i in range(iS, isup):
+      for j in range(jS, jsup):
         for k in range(kS, kE):
-          if (j != nVtx[1] and k != nVtx[2]):
-            faceNumber[counter] = s_numb.ijk_to_faceiIndex(i,j,k,nCell,nVtx)
-            (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = s_numb.compute_fi_from_ijk(i,j,k, i==1, i==nVtx[0])
-            fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                             leftijk,rightijk,nVtx,nCell,
-                                             faceNgon,faceLeftCell,faceRightCell)
-            counter += 1
-          if (i != nVtx[0] and k != nVtx[2]):
-            faceNumber[counter] = s_numb.ijk_to_facejIndex(i,j,k,nCell,nVtx)
-            (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = s_numb.compute_fj_from_ijk(i,j,k, j==1, j==nVtx[1])
-            fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                             leftijk,rightijk,nVtx,nCell,
-                                             faceNgon,faceLeftCell,faceRightCell)
-            counter += 1
-          if (i != nVtx[0] and j != nVtx[1]):
-            faceNumber[counter] = s_numb.ijk_to_facekIndex(i,j,k,nCell,nVtx)
-            (n1ijk,n2ijk,n3ijk,n4ijk,leftijk,rightijk) = s_numb.compute_fk_from_ijk(i,j,k, k==1, k==nVtx[2])
-            fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                             leftijk,rightijk,nVtx,nCell,
-                                             faceNgon,faceLeftCell,faceRightCell)
-            counter += 1
+          faceNumber[counter] = s_numb.ijk_to_facekIndex(i,j,k,nCell,nVtx)
+          (n1,n2,n3,n4,leftijk,rightijk) = s_numb.compute_fk_from_ijk(i,j,k, k==1, k==nVtx[2])
+          fill_faceNgon_leftCell_rightCell(counter,n1,n2,n3,n4,
+                                           leftijk,rightijk,nVtx,nCell,
+                                           faceNgon,faceLeftCell,faceRightCell)
+          counter += 1
+
 
 ###############################################################################
 
