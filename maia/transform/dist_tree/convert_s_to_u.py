@@ -284,23 +284,18 @@ def compute_all_ngon_connectivity(slabListVtx,nVtx,nCell,
 ###############################################################################
 
 ###############################################################################
-def compute_pointList_from_vertexRange(pointRange, sub_pr_list, nVtxS, output_loc):
+def compute_pointList_from_pointRanges(sub_pr_list, nVtxS, output_loc, cst_axe=None):
   """
   Transform structured PointRange with 'GridLocation'='Vertex' to unstructured
   PointList with 'GridLocation'='FaceCenter', 'Vertex' or 'CellCenter'
   """
 
   nCellS = [nv - 1 for nv in nVtxS]
-  #Find constant direction
-  cst_axes = np.nonzero(pointRange[:,0] == pointRange[:,1])[0]
-  if len(cst_axes) != 1:
-    raise ValueError("The PointRange '{}' is bad defined".format(pointRange))
-  cst_axe = cst_axes[0]
 
   # The lambda func ijk_to_func redirect to the good indexing function depending
   # on the output grid location
-  convert_ijk_to_faceIndex = [convert_ijk_to_faceiIndex, convert_ijk_to_facejIndex, convert_ijk_to_facekIndex]
   if output_loc == 'FaceCenter':
+    convert_ijk_to_faceIndex = [convert_ijk_to_faceiIndex, convert_ijk_to_facejIndex, convert_ijk_to_facekIndex]
     ijk_to_func = lambda i,j,k : convert_ijk_to_faceIndex[cst_axe](i, j, k, nCellS, nVtxS)
   elif output_loc == 'Vertex':
     ijk_to_func = lambda i,j,k : convert_ijk_to_index(i, j, k, *nVtxS)
@@ -366,6 +361,16 @@ def apply_transformation(index1, start1, start2, T):
   return np.matmul(T, (index1 - start1)) + start2
 ###############################################################################
 
+def guess_boundary_axis(point_range, grid_location):
+  if grid_location in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
+    cst_axe = {'I':0, 'J':1, 'K':2}[grid_location[0]]
+  elif sum(point_range[:,0] == point_range[:,1]) == 1: #Ambiguity can be resolved
+    cst_axe = np.nonzero(point_range[:,0] == point_range[:,1])[0][0]
+  else:
+    raise ValueError("Ambiguous input location")
+  return cst_axe
+
+
 def fix_cell_point_ranges(pointRange, nCell, point_range_list, in_cell, out_cell):
   """
   Correct the cells sub pointranges for BC/GC (shift max cell if needed)
@@ -384,8 +389,6 @@ def fix_cell_point_ranges(pointRange, nCell, point_range_list, in_cell, out_cell
       for sub_pr in point_range_list:
         sub_pr[cst_axe,:] += 1
 
-
-
 def transform_bnd_pr_size(point_range, input_loc, output_loc):
   """
   Predict a point_range defined at an input_location if it were defined at an output_location
@@ -395,14 +398,8 @@ def transform_bnd_pr_size(point_range, input_loc, output_loc):
   if input_loc == 'Vertex' and 'Center' in output_loc:
     size -= (size != 1).astype(int)
   elif 'Center' in input_loc and output_loc == 'Vertex':
-    if input_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
-      cst_axe = {'I':0, 'J':1, 'K':2}[input_loc[0]]
-    elif sum(point_range[:,0] == point_range[:,1]) == 1: #Ambiguity can be resolved
-      cst_axe = np.nonzero(point_range[:,0] == point_range[:,1])[0][0]
-    else:
-      raise ValueError("Ambiguous input location")
-    mask = np.zeros(point_range.shape[0], dtype=np.bool)
-    mask[cst_axe] = True
+    bnd_axis = guess_boundary_axis(point_range, input_loc)
+    mask = np.arange(point_range.shape[0]) == bnd_axis
     size += (~mask).astype(int)
   return size
 
@@ -510,6 +507,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         gridLocationS = I.getValue(gridLocationNodeS) if gridLocationNodeS is not None else "Vertex"
         pointRange = I.getValue(I.getNodeFromName1(bcS, 'PointRange'))
 
+        bnd_axis = guess_boundary_axis(pointRange, gridLocationS)
         #Compute slabs from attended location (better load balance)
         sizeS = transform_bnd_pr_size(pointRange, gridLocationS, attendedGridLocationBC)
         bc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
@@ -524,7 +522,7 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         fix_cell_point_ranges(pointRange, nCellS, sub_pr_list,\
             gridLocationS=='CellCenter', attendedGridLocationBC=='CellCenter')
 
-        pointList = compute_pointList_from_vertexRange(pointRange,sub_pr_list,nVtxS,attendedGridLocationBC)
+        pointList = compute_pointList_from_pointRanges(sub_pr_list,nVtxS,attendedGridLocationBC, bnd_axis)
 
         bcU = I.newBC(I.getName(bcS), btype=I.getValue(bcS), parent=zoneBCU)
         I.newGridLocation(attendedGridLocationBC, parent=bcU)
@@ -570,6 +568,8 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         pointRangeDonorLoc[opp_dir_to_swap,0], pointRangeDonorLoc[opp_dir_to_swap,1] \
             = pointRangeDonorLoc[opp_dir_to_swap,1], pointRangeDonorLoc[opp_dir_to_swap,0]
 
+        bnd_axis = guess_boundary_axis(pointRangeLoc, "Vertex")
+        bnd_axis_opp = guess_boundary_axis(pointRangeDonorLoc, "Vertex")
         #Compute slabs from attended location (better load balance)
         sizeS = transform_bnd_pr_size(pointRangeLoc, "Vertex", attendedGridLocationGC)
         gc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
@@ -600,8 +600,8 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
             reverted = sub_pr_opp[:,0] > sub_pr_opp[:,1]
             sub_pr_opp[reverted,:] -= 1
 
-        pointListLoc      = compute_pointList_from_vertexRange(pointRangeLoc, sub_pr_list, nVtxLoc, attendedGridLocationGC)
-        pointListDonorLoc = compute_pointList_from_vertexRange(pointRangeDonorLoc, sub_pr_opp_list, nVtxDonorLoc, attendedGridLocationGC)
+        pointListLoc      = compute_pointList_from_pointRanges(sub_pr_list, nVtxLoc, attendedGridLocationGC, bnd_axis)
+        pointListDonorLoc = compute_pointList_from_pointRanges(sub_pr_opp_list, nVtxDonorLoc, attendedGridLocationGC, bnd_axis_opp)
 
         if zoneName <= zoneDonorName:
           pointList, pointListDonor = pointListLoc, pointListDonorLoc

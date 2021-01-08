@@ -922,6 +922,17 @@ class Test_compute_transformMatrix():
     attendedTransformMatrix[2][1] =  1
     assert (convert_s_to_u.compute_transformMatrix(transform) == attendedTransformMatrix).all()
 ###############################################################################
+def test_guess_boundary_axis():
+  #Unambiguous
+  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [1,7]]),'Vertex') == 1
+  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [1,7]]),'CellCenter') == 1
+  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [1,7]]),'JFaceCenter') == 1
+  #Ambiguous
+  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'JFaceCenter') == 1
+  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'KFaceCenter') == 2
+  with pytest.raises(ValueError):
+    convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'FaceCenter')
+    convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'CellCenter')
 
 def test_fix_cell_point_ranges():
   nCell = [16,8,6]
