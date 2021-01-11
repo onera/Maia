@@ -24,200 +24,6 @@ import Converter.Internal as I
 #     iRank = sub_comm.Get_rank()
 
 ###############################################################################
-class Test_fill_faceNgon_leftCell_rightCell():
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fi_ijk(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 0
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (5,4,3),(5,5,3),(5,5,4),(5,4,4),
-                                                    (4,4,3),(5,4,3),
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [ 83, 89,119,113]).all()
-        assert faceLeftCell[f]        == 59
-        assert faceRightCell[f]       == 60
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fi_imaxjk(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 1
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (6,4,3),(6,5,3),(6,5,4),(6,4,4),
-                                                    (5,4,3),0,
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [ 84, 90,120,114]).all()
-        assert faceLeftCell[f]        == 60
-        assert faceRightCell[f]       ==  0
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fi_iminjk(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 2
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (1,4,3),(1,4,4),(1,5,4),(1,5,3),
-                                                    (1,4,3),0,
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [ 79,109,115, 85]).all()
-        assert faceLeftCell[f]        == 56
-        assert faceRightCell[f]       ==  0
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fj_ijk(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 3
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (5,4,3),(5,4,4),(6,4,4),(6,4,3),
-                                                    (5,3,3),(5,4,3),
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [ 83,113,114, 84]).all()
-        assert faceLeftCell[f]        == 55
-        assert faceRightCell[f]       == 60
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fj_ijmaxk(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 4
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (5,5,3),(5,5,4),(6,5,4),(6,5,3),
-                                                    (5,4,3),0,
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,
-                                                    faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [ 89,119,120, 90]).all()
-        assert faceLeftCell[f]        == 60
-        assert faceRightCell[f]       ==  0
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fj_ijmink(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 5
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (5,1,3),(6,1,3),(6,1,4),(5,1,4),
-                                                    (5,1,3),0,
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [ 65, 66, 96, 95]).all()
-        assert faceLeftCell[f]        == 45
-        assert faceRightCell[f]       ==  0
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fk_ijk(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 6
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (5,4,3),(6,4,3),(6,5,3),(5,5,3),
-                                                    (5,4,2),(5,4,3),
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [ 83, 84, 90, 89]).all()
-        assert faceLeftCell[f]        == 40
-        assert faceRightCell[f]       == 60
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fk_ijkmax(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 7
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (5,4,4),(6,4,4),(6,5,4),(5,5,4),
-                                                    (5,4,3),0,
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [113,114,120,119]).all()
-        assert faceLeftCell[f]        == 60
-        assert faceRightCell[f]       ==  0
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-# --------------------------------------------------------------------------- #
-  def test_fill_faceNgon_leftCell_rightCell_fk_ijkmin(self):
-    nbFacesAllSlabsPerZone = 9
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    counter = 8
-    convert_s_to_u.fill_faceNgon_leftCell_rightCell(counter,
-                                                    (5,4,1),(5,5,1),(6,5,1),(6,4,1),
-                                                    (5,4,1),0,
-                                                    [6,5,4],[5,4,3],
-                                                    faceNgon,faceLeftCell,faceRightCell)
-    for f in range(nbFacesAllSlabsPerZone):
-      if f == counter:
-        assert (faceNgon[4*f:4*(f+1)] == [ 23, 29, 30, 24]).all()
-        assert faceLeftCell[f]        == 20
-        assert faceRightCell[f]       ==  0
-      else:
-        assert (faceNgon[4*f:4*(f+1)] == [ -1, -1, -1, -1]).all()
-        assert faceLeftCell[f]        == -1
-        assert faceRightCell[f]       == -1
-###############################################################################
-  
-###############################################################################
 class Test_vtx_slab_to_n_face():
 # --------------------------------------------------------------------------- #
   nVtx        = [3, 3, 3]
@@ -251,105 +57,91 @@ class Test_vtx_slab_to_n_face():
 ###############################################################################
   
 ###############################################################################
-class Test_compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces():
+class Test_compute_all_ngon_connectivity():
 # --------------------------------------------------------------------------- #
-  nVtx        = [3, 3, 3]
-  nCell       = [2, 2, 2]
-  def test_compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces_monoslab_imax_jmax_kmax(self):
-    slabListVtx = [[[0, 3], [0, 3], [2, 3]]]
-    nbFacesAllSlabsPerZone = 4
-    faceNumber             = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceNgon               = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell           = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell          = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(slabListVtx,self.nVtx,self.nCell,
-                                                 faceNumber,faceNgon,
-                                                 faceLeftCell,faceRightCell)
-    assert (faceNumber[:]    == [33,35,34,36]                                    ).all()
-    assert (faceNgon[:]      == [19,20,23,22,22,23,26,25,20,21,24,23,23,24,27,26]).all()
-    assert (faceLeftCell[:]  == [ 5, 7, 6, 8]                                    ).all()
-    assert (faceRightCell[:] == [ 0, 0, 0, 0]                                    ).all()
+  n_vtx        = np.array([3, 3, 3])
+  def test_compute_ngon_monoslab_kmax(self):
+    vtx_slabs = [[[0, 3], [0, 3], [2, 3]]]
+    n_face = 4
+    face_gnum  = -np.ones(  n_face, dtype=np.int32)
+    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
+    face_pe    = -np.ones((n_face,2), dtype=np.int32)
+    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx,
+                                                 face_gnum, face_ngon, face_pe)
+    assert (face_gnum[:] == [33,35,34,36]                                    ).all()
+    assert (face_ngon[:] == [19,20,23,22,22,23,26,25,20,21,24,23,23,24,27,26]).all()
+    assert (face_pe[:,0] == [ 5, 7, 6, 8]                                    ).all()
+    assert (face_pe[:,1] == [ 0, 0, 0, 0]                                    ).all()
 # --------------------------------------------------------------------------- #
-  def test_compute_faceNumber_faceNgon_leftCell_rightCell_forAllFaces_monoslab_imin_jmin_kmin(self):
-    slabListVtx = [[[0, 3], [0, 3], [0, 1]]]
-    nbFacesAllSlabsPerZone = 16
-    faceNumber             = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceNgon               = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell           = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell          = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(slabListVtx,self.nVtx,self.nCell,
-                                                 faceNumber,faceNgon,
-                                                 faceLeftCell,faceRightCell)
-    assert (faceNumber[:]    == [1, 13, 25,  4, 15, 27, 17,  2, 14, 26,  5, 16, 28, 18,  3,  6]).all()
-    assert (faceNgon[:]      == [1, 10, 13,  4,  1,  2, 11, 10,  1,  4,  5,  2,  4, 13, 16,  7,
-                                 4, 13, 14,  5,  4,  7,  8,  5,  7, 16, 17,  8,  2,  5, 14, 11,
-                                 2,  3, 12, 11,  2,  5,  6,  3,  5,  8, 17, 14,  5, 14, 15,  6,
-                                 5,  8,  9,  6,  8, 17, 18,  9,  3,  6, 15, 12,  6,  9, 18, 15]).all()
-    assert (faceLeftCell[:]  == [1, 1, 1, 3, 1, 3, 3, 1, 2, 2, 3, 2, 4, 4, 2, 4]).all()
-    assert (faceRightCell[:] == [0, 0, 0, 0, 3, 0, 0, 2, 0, 0, 4, 4, 0, 0, 0, 0]).all()
+  def test_compute_ngon_monoslab_kmin(self):
+    vtx_slabs = [[[0, 3], [0, 3], [0, 1]]]
+    n_face = 16
+    face_gnum  = -np.ones(  n_face, dtype=np.int32)
+    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
+    face_pe    = -np.ones((n_face,2), dtype=np.int32)
+    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx,
+                                                 face_gnum ,face_ngon, face_pe)
+    assert (face_gnum[:] == [1, 4, 2, 5, 3, 6, 13, 15, 17, 14, 16, 18, 25, 27, 26, 28]).all()
+    assert (face_ngon[:] == [1, 10, 13,  4, 4, 13, 16,  7, 2,  5, 14, 11, 5,  8, 17, 14,
+                             3,  6, 15, 12, 6,  9, 18, 15, 1,  2, 11, 10, 4, 13, 14,  5,
+                             7, 16, 17,  8, 2,  3, 12, 11, 5, 14, 15,  6, 8, 17, 18,  9,
+                             1,  4,  5,  2, 4,  7,  8,  5, 2,  5,  6,  3, 5,  8,  9,  6]).all()
+    assert (face_pe[:,0] == [1, 3, 1, 3, 2, 4, 1, 1, 3, 2, 2, 4, 1, 3, 2, 4]).all()
+    assert (face_pe[:,1] == [0, 0, 2, 4, 0, 0, 0, 3, 0, 0, 4, 0, 0, 0, 0, 0]).all()
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_monoslab_random(self):
-    slabListVtx = [[[1, 2], [0, 1], [1, 2]]]
-    nbFacesAllSlabsPerZone = 3
-    faceNumber             = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceNgon               = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell           = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell          = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(slabListVtx,self.nVtx,self.nCell,
-                                                 faceNumber,faceNgon,
-                                                 faceLeftCell,faceRightCell)
-    assert (faceNumber[:]    == [8, 20, 30]                          ).all()
-    assert (faceNgon[:]      == [11,14,23,20,11,12,21,20,11,12,15,14]).all()
-    assert (faceLeftCell[:]  == [ 5, 6, 2]                           ).all()
-    assert (faceRightCell[:] == [ 6, 0, 6]                           ).all()
+  def test_compute_ngon_monoslab_random(self):
+    vtx_slabs = [[[1, 2], [0, 1], [1, 2]]]
+    n_face = 3
+    face_gnum  = -np.ones(  n_face, dtype=np.int32)
+    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
+    face_pe    = -np.ones((n_face,2), dtype=np.int32)
+    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs,self.n_vtx,
+                                                 face_gnum, face_ngon, face_pe)
+    assert (face_gnum[:] == [8, 20, 30]                          ).all()
+    assert (face_ngon[:] == [11,14,23,20,11,12,21,20,11,12,15,14]).all()
+    assert (face_pe[:,0] == [ 5, 6, 2]                           ).all()
+    assert (face_pe[:,1] == [ 6, 0, 6]                           ).all()
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_multislabs1(self):
-    slabListVtx = [[[1, 3], [1, 2], [2, 3]], [[0, 3], [2, 3], [2, 3]]]
-    nbFacesAllSlabsPerZone = 1
-    faceNumber             = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceNgon               = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell           = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell          = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(slabListVtx,self.nVtx,self.nCell,
-                                                 faceNumber,faceNgon,
-                                                 faceLeftCell,faceRightCell)
-    assert (faceNumber[:]    == [36]         ).all()
-    assert (faceNgon[:]      == [23,24,27,26]).all()
-    assert (faceLeftCell[:]  == [ 8]         ).all()
-    assert (faceRightCell[:] == [ 0]         ).all()
+  def test_compute_n_face_multislabs1(self):
+    vtx_slabs = [[[1, 3], [1, 2], [2, 3]], [[0, 3], [2, 3], [2, 3]]]
+    n_face = 1
+    face_gnum  = -np.ones(  n_face, dtype=np.int32)
+    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
+    face_pe    = -np.ones((n_face,2), dtype=np.int32)
+    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs,self.n_vtx,
+                                                 face_gnum, face_ngon, face_pe)
+    assert (face_gnum[:] == [36]         ).all()
+    assert (face_ngon[:] == [23,24,27,26]).all()
+    assert (face_pe[:,0] == [ 8]         ).all()
+    assert (face_pe[:,1] == [ 0]         ).all()
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_multislabs2(self):
-    slabListVtx = [[[0, 3], [1, 2], [1, 2]], [[0, 2], [2, 3], [1, 2]]]
-    nbFacesAllSlabsPerZone = 9
-    faceNumber             = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceNgon               = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell           = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell          = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(slabListVtx,self.nVtx,self.nCell,
-                                                 faceNumber,faceNgon,
-                                                 faceLeftCell,faceRightCell)
-    assert (faceNumber[:]    == [10, 21, 31, 11, 22, 32, 12, 23, 24]            ).all()
-    assert (faceNgon[:]      == [13, 22, 25, 16, 13, 22, 23, 14, 13, 14, 17, 16,
-                                 14, 17, 26, 23, 14, 23, 24, 15, 14, 15, 18, 17,
-                                 15, 18, 27, 24, 16, 25, 26, 17, 17, 26, 27, 18]).all()
-
-    assert (faceLeftCell[:]  == [7, 5, 3, 7, 6, 4, 8, 7, 8]          ).all()
-    assert (faceRightCell[:] == [0, 7, 7, 8, 8, 8, 0, 0, 0]          ).all()
+  def test_compute_n_face_multislabs2(self):
+    vtx_slabs = [[[0, 3], [1, 2], [1, 2]], [[0, 2], [2, 3], [1, 2]]]
+    n_face = 9
+    face_gnum  = -np.ones(  n_face, dtype=np.int32)
+    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
+    face_pe    = -np.ones((n_face,2), dtype=np.int32)
+    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs,self.n_vtx,
+                                                 face_gnum, face_ngon, face_pe)
+    assert (face_gnum[:] == [10, 11, 12, 21, 22, 31, 32, 23, 24]            ).all()
+    assert (face_ngon[:] == [13, 22, 25, 16, 14, 17, 26, 23, 15, 18, 27, 24,
+                             13, 22, 23, 14, 14, 23, 24, 15, 13, 14, 17, 16,
+                             14, 15, 18, 17, 16, 25, 26, 17, 17, 26, 27, 18]).all()
+    assert (face_pe[:,0] == [7, 7, 8, 5, 6, 3, 4, 7, 8]                     ).all()
+    assert (face_pe[:,1] == [0, 8, 0, 7, 8, 7, 8, 0, 0]                     ).all()
 # --------------------------------------------------------------------------- #
-  def test_compute_nbFacesAllSlabsPerZone_multislabs3(self):
-    slabListVtx = [[[2, 3], [2, 3], [1, 2]], [[0, 3], [0, 1], [2, 3]], [[0, 1], [1, 2], [2, 3]]]
-    nbFacesAllSlabsPerZone = 3
-    faceNumber             = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceNgon               = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell           = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell          = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(slabListVtx,self.nVtx,self.nCell,
-                                                 faceNumber,faceNgon,
-                                                 faceLeftCell,faceRightCell)
-    assert (faceNumber[:]    == [33,34,35]                           ).all()
-    assert (faceNgon[:]      == [19,20,23,22,20,21,24,23,22,23,26,25]).all()
-    assert (faceLeftCell[:]  == [ 5, 6, 7]                           ).all()
-    assert (faceRightCell[:] == [ 0, 0, 0]                           ).all()
+  def test_compute_n_face_multislabs3(self):
+    vtx_slabs = [[[2, 3], [2, 3], [1, 2]], [[0, 3], [0, 1], [2, 3]], [[0, 1], [1, 2], [2, 3]]]
+    n_face = 3
+    face_gnum  = -np.ones(  n_face, dtype=np.int32)
+    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
+    face_pe    = -np.ones((n_face,2), dtype=np.int32)
+    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs,self.n_vtx,
+                                                 face_gnum, face_ngon, face_pe)
+    assert (face_gnum[:] == [33,34,35]                           ).all()
+    assert (face_ngon[:] == [19,20,23,22,20,21,24,23,22,23,26,25]).all()
+    assert (face_pe[:,0] == [ 5, 6, 7]                           ).all()
+    assert (face_pe[:,1] == [ 0, 0, 0]                           ).all()
 ###############################################################################
 
 ###############################################################################

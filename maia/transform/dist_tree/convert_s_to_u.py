@@ -31,26 +31,25 @@ def vtx_slab_to_n_face(vtx_slab, n_vtx):
 ###############################################################################
 
 ###############################################################################
-def compute_all_ngon_connectivity(slabListVtx,nVtx,nCell,
-                                  faceNumber,faceNgon,
-                                  faceLeftCell,faceRightCell):
+def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_pe):
   """
   Compute the numerotation, the nodes and the cells linked to all face traited for
   zone by a proc and fill associated tabs :
   faceNumber refers to non sorted numerotation of each face
-  faceNgon refers to non sorted NGonConnectivity
+  face_vtx refers to non sorted NGonConnectivity
   faceLeftCell refers to non sorted ParentElement[:][0]
   faceRightCell refers to non sorted ParentElement[:][1]
   Remark : all tabs are defined in the same way i.e. for the fth face, information are
-  located in faceNumber[f], faceNgon[4*f:4*(f+1)], faceLeftCell[f] and faceRightCell[f]
+  located in faceNumber[f], face_vtx[4*f:4*(f+1)], faceLeftCell[f] and faceRightCell[f]
   WARNING : (i,j,k) begins at (1,1,1)
   """
+  n_cell = n_vtx - 1
   counter = 0
-  for slabVtx in slabListVtx:
-    iS,iE, jS,jE, kS,kE = [item+1 for bounds in slabVtx for item in bounds]
-    isup = iE - int(iE == nVtx[0]+1)
-    jsup = jE - int(jE == nVtx[1]+1)
-    ksup = kE - int(kE == nVtx[2]+1)
+  for vtx_slab in vtx_slab_l:
+    iS,iE, jS,jE, kS,kE = [item+1 for bounds in vtx_slab for item in bounds]
+    isup = iE - int(iE == n_vtx[0]+1)
+    jsup = jE - int(jE == n_vtx[1]+1)
+    ksup = kE - int(kE == n_vtx[2]+1)
 
     n_faces_i = (iE-iS)*(jsup-jS)*(ksup-kS)
     n_faces_j = (isup-iS)*(jE-jS)*(ksup-kS)
@@ -59,43 +58,39 @@ def compute_all_ngon_connectivity(slabListVtx,nVtx,nCell,
     #Do 3 loops to remove if test
     start = counter
     end   = start + n_faces_i
-    i_ar = np.arange(iS,iE).reshape(-1,1,1)
-    j_ar = np.arange(jS,jsup).reshape(-1,1)
-    k_ar = np.arange(kS,ksup)
-    faceNumber[start:end] = s_numb.ijk_to_faceiIndex(i_ar,j_ar,k_ar,nCell,nVtx).flatten()
+    i_ar  = np.arange(iS,iE).reshape(-1,1,1)
+    j_ar  = np.arange(jS,jsup).reshape(-1,1)
+    k_ar  = np.arange(kS,ksup)
 
-    faceLeftCell[start:end] = s_numb.compute_fi_PE_from_idx(faceNumber[start:end], nCell, nVtx)[:,0]
-    faceRightCell[start:end] = s_numb.compute_fi_PE_from_idx(faceNumber[start:end], nCell, nVtx)[:,1]
-    faceNgon[4*start:4*end] = s_numb.compute_fi_facevtx_from_idx(faceNumber[start:end], nCell, nVtx)
+    face_gnum[start:end]    = s_numb.ijk_to_faceiIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
+    face_pe[start:end]      = s_numb.compute_fi_PE_from_idx(face_gnum[start:end], n_cell, n_vtx)
+    face_vtx[4*start:4*end] = s_numb.compute_fi_facevtx_from_idx(face_gnum[start:end], n_cell, n_vtx)
     counter += n_faces_i
 
     #Shift ifaces (shift is global for zone)
     shift = n_vtx[0]*(n_cell[1]*n_cell[2])
     start = counter
     end   = start + n_faces_j
-    i_ar = np.arange(iS,isup).reshape(-1,1,1)
-    j_ar = np.arange(jS,jE).reshape(-1,1)
-    k_ar = np.arange(kS,ksup)
-    faceNumber[start:end] = s_numb.ijk_to_facejIndex(i_ar,j_ar,k_ar,nCell,nVtx).flatten()
-
-    faceLeftCell[start:end] = s_numb.compute_fj_PE_from_idx(faceNumber[start:end]-shift, nCell, nVtx)[:,0]
-    faceRightCell[start:end] = s_numb.compute_fj_PE_from_idx(faceNumber[start:end]-shift, nCell, nVtx)[:,1]
-    faceNgon[4*start:4*end] = s_numb.compute_fj_facevtx_from_idx(faceNumber[start:end]-shift, nCell, nVtx)
+    i_ar  = np.arange(iS,isup).reshape(-1,1,1)
+    j_ar  = np.arange(jS,jE).reshape(-1,1)
+    k_ar  = np.arange(kS,ksup)
+    
+    face_gnum[start:end]    = s_numb.ijk_to_facejIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
+    face_pe[start:end]      = s_numb.compute_fj_PE_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
+    face_vtx[4*start:4*end] = s_numb.compute_fj_facevtx_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     counter += n_faces_j
 
     shift += n_vtx[1]*(n_cell[0]*n_cell[2])
     start = counter
     end   = start + n_faces_k
-    i_ar = np.arange(iS,isup).reshape(-1,1,1)
-    j_ar = np.arange(jS,jsup).reshape(-1,1)
-    k_ar = np.arange(kS,kE)
-    faceNumber[start:end] = s_numb.ijk_to_facekIndex(i_ar,j_ar,k_ar,nCell,nVtx).flatten()
+    i_ar  = np.arange(iS,isup).reshape(-1,1,1)
+    j_ar  = np.arange(jS,jsup).reshape(-1,1)
+    k_ar  = np.arange(kS,kE)
 
-    faceLeftCell[start:end] = s_numb.compute_fk_PE_from_idx(faceNumber[start:end]-shift, nCell, nVtx)[:,0]
-    faceRightCell[start:end] = s_numb.compute_fk_PE_from_idx(faceNumber[start:end]-shift, nCell, nVtx)[:,1]
-    faceNgon[4*start:4*end] = s_numb.compute_fk_facevtx_from_idx(faceNumber[start:end]-shift, nCell, nVtx)
+    face_gnum[start:end]    = s_numb.ijk_to_facekIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
+    face_pe[start:end]      = s_numb.compute_fk_PE_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
+    face_vtx[4*start:4*end] = s_numb.compute_fk_facevtx_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     counter += n_faces_k
-
 
 ###############################################################################
 
@@ -267,45 +262,35 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
     #>> Definition en non structure des faces
     vtxRangeS  = MDIDF.uniform_distribution_at(nVtxTotS, iRank, nRank)
     slabListVtxS  = HFR2S.compute_slabs(nVtxS, vtxRangeS)
-    nbFacesAllSlabsPerZone = sum([vtx_slab_to_n_face(slab, nVtxS) for slab in slabListVtxS])
-    faceNumber    = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceNgon      = -np.ones(4*nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceLeftCell  = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    faceRightCell = -np.ones(  nbFacesAllSlabsPerZone, dtype=np.int32)
-    compute_all_ngon_connectivity(slabListVtxS,nVtxS,nCellS,
-                                  faceNumber,faceNgon,
-                                  faceLeftCell,faceRightCell)
+    n_face_slab = sum([vtx_slab_to_n_face(slab, nVtxS) for slab in slabListVtxS])
+    face_gnum     = np.empty(  n_face_slab, dtype=np.int32)
+    face_vtx      = np.empty(4*n_face_slab, dtype=np.int32)
+    face_pe       = np.empty((n_face_slab, 2), dtype=np.int32)
+    compute_all_ngon_connectivity(slabListVtxS, nVtxS, face_gnum, face_vtx, face_pe)
     #>> PartToBlock pour ordonner et equidistribuer les faces
-    #>>> Creation de l'objet partToBlock
-    #>>> PDM_part_to_block_distrib_t t_distrib = 0 ! Numerotation recalculee sur tous les procs
-    #>>> PDM_part_to_block_post_t    t_post    = 0 ! Pas de traitement sur les valeurs
-    #>>> PDM_stride_t                t_stride  = 1 ! Stride variable car variable en sortie...
-    partToBlockObject = PDM.PartToBlock(comm, [faceNumber], None, 1, 0, 0, 1)
+    partToBlockObject = PDM.PartToBlock(comm, [face_gnum], None, partN=1, t_distrib=0, t_post=0, t_stride=1)
     #>>> Premier echange pour le ParentElements
-    pFieldStride1 = dict()  
-    pFieldStride1["faceLeftCell"] = [faceLeftCell]
-    pFieldStride1["faceRightCell"] = [faceRightCell]
-    pStride1 = [np.ones(nbFacesAllSlabsPerZone, dtype='int32')]
-    dFieldStride1 = dict()  
-    partToBlockObject.PartToBlock_Exchange(dFieldStride1, pFieldStride1, pStride1)
+    pFieldStride2 = {"NGonPE" : [face_pe.ravel()]}
+    pStride2 = [2*np.ones(n_face_slab, dtype='int32')]
+    dFieldStride2 = dict()
+    partToBlockObject.PartToBlock_Exchange(dFieldStride2, pFieldStride2, pStride2)
     #>>> Deuxieme echange pour l'ElementConnectivity
-    pFieldStride4 = dict()
-    pFieldStride4["faceNgon"] = [faceNgon]
-    pStride4 = [4*np.ones(nbFacesAllSlabsPerZone,dtype='int32')]
+    pFieldStride4 = {"NGonFaceVtx" : [face_vtx]}
+    pStride4 = [4*np.ones(n_face_slab,dtype='int32')]
     dFieldStride4 = dict()
     partToBlockObject.PartToBlock_Exchange(dFieldStride4, pFieldStride4, pStride4)
 
+
     #>>> Distribution des faces  
-    facesDistribution = partToBlockObject.getDistributionCopy()
+    face_distribution = partToBlockObject.getDistributionCopy()
     # >> Creation du noeud NGonElements
-    ngon = I.newElements('NGonElements', 'NGON', dFieldStride4["faceNgon"],
+    ngon = I.newElements('NGonElements', 'NGON', dFieldStride4["NGonFaceVtx"],
                          [1, nbFacesTot], parent=zoneU)
-    nbFacesLoc = dFieldStride1["faceLeftCell"].shape[0]
-    pe = np.array([dFieldStride1["faceLeftCell"],
-                   dFieldStride1["faceRightCell"]]).transpose()
+    nbFacesLoc = dFieldStride2["NGonPE"].shape[0] // 2
+    pe = dFieldStride2["NGonPE"].reshape(nbFacesLoc, 2)
 
     I.newParentElements(pe,ngon)
-    startOffset = facesDistribution[iRank]
+    startOffset = face_distribution[iRank]
     endOffset   = startOffset + nbFacesLoc+1
     I.newDataArray("ElementStartOffset", 4*np.arange(startOffset,endOffset), parent=ngon)
     I.newIndexArray('ElementConnectivity#Size', [nbFacesTot*4], parent=ngon)
