@@ -1,3 +1,4 @@
+import numpy as np
 """
 These numbering functions map cells, faces or vertex of a structured mesh,
 identified by their three indexes (i,j,k), to an absolute 1d identifier.
@@ -72,6 +73,106 @@ def ijk_to_faceIndices(i,j,k,n_cell,n_vtx):
 ###############################################################################
 
 ###############################################################################
+def compute_fi_PE_from_idx(idx, n_cell, n_vtx):
+  np_idx = np.asarray(idx)
+  is_min_bnd  = (np_idx % n_vtx[0]) == 1
+  is_max_bnd  = (np_idx % n_vtx[0]) == 0
+  is_internal = ~(is_min_bnd | is_max_bnd)
+  line_number = (np_idx-1) // n_vtx[0]
+
+  #Internal faces : left, right = idx-line_number-1, idx-line_number
+  #Min faces      : left        = idx-line_number
+  #Max faces      : left        = idx-line_number-1
+  PE = np.empty((np_idx.shape[0], 2), dtype=np_idx.dtype)
+  PE[:,0] = np_idx - line_number - 1 + is_min_bnd
+  PE[:,1] = (np_idx - line_number) * is_internal
+  return PE
+
+def compute_fi_facevtx_from_idx(idx, n_cell, n_vtx):
+  np_idx = np.asarray(idx)
+  is_min_bnd  = (np_idx % n_vtx[0]) == 1
+  plan_number = (np_idx-1) // (n_vtx[0]*n_cell[1])
+
+  n1 = np_idx + plan_number*n_vtx[0]
+  nodes = np.empty((np_idx.shape[0],4), dtype=np_idx.dtype)
+  nodes[:,0] = n1
+  nodes[:,1] = n1 + n_vtx[0]
+  nodes[:,2] = n1 + n_vtx[0] + n_vtx[0]*n_vtx[1]
+  nodes[:,3] = n1 + n_vtx[0]*n_vtx[1]
+  #Swap 2,4 for min faces
+  nodes[is_min_bnd, 1], nodes[is_min_bnd,3] = nodes[is_min_bnd, 3], nodes[is_min_bnd,1]
+  return nodes.flatten()
+###############################################################################
+
+###############################################################################
+def compute_fj_PE_from_idx(idx, n_cell, n_vtx):
+  np_idx = np.asarray(idx)
+  nb_face_ij  = n_vtx[1]*n_cell[0]
+  plan_number = (np_idx-1) // nb_face_ij
+  is_min_bnd  = (np_idx - plan_number*nb_face_ij) < n_vtx[0]
+  is_max_bnd  = (np_idx - plan_number*nb_face_ij) > nb_face_ij-n_vtx[0]+1
+  is_internal = ~(is_min_bnd | is_max_bnd)
+
+  #Internal faces : left, right = idx - n_cell[0]*plan_number-n_cell[0], idx - n_cell[0]*plan_number
+  #Min faces      : left        = idx - n_cell[0]*plan_number
+  #Max faces      : left        = idx - n_cell[0]*plan_number-n_cell[0]
+  PE = np.empty((np_idx.shape[0], 2), dtype=np_idx.dtype)
+  PE[:,0] = np_idx - n_cell[0]*plan_number - n_cell[0]*(1-is_min_bnd)
+  PE[:,1] = (np_idx - n_cell[0]*plan_number)*is_internal
+  return PE
+
+def compute_fj_facevtx_from_idx(idx, n_cell, n_vtx):
+  np_idx = np.asarray(idx)
+  nb_face_ij  = n_vtx[1]*n_cell[0]
+  line_number = (np_idx-1) // n_cell[0]
+  plan_number = (np_idx-1) // nb_face_ij
+  is_min_bnd  = (np_idx - plan_number*nb_face_ij) < n_vtx[0]
+
+  n1 = np_idx + line_number
+  nodes = np.empty((np_idx.shape[0],4), dtype=np_idx.dtype)
+  nodes[:,0] = n1
+  nodes[:,1] = n1 + n_vtx[0]*n_vtx[1]
+  nodes[:,2] = n1 + n_vtx[0]*n_vtx[1] + 1
+  nodes[:,3] = n1 + 1
+  #Swap 2,4 for min faces
+  nodes[is_min_bnd, 1], nodes[is_min_bnd,3] = nodes[is_min_bnd, 3], nodes[is_min_bnd,1]
+  return nodes.flatten()
+###############################################################################
+
+###############################################################################
+def compute_fk_PE_from_idx(idx, n_cell, n_vtx):
+  np_idx = np.asarray(idx)
+  nb_face_ij  = n_cell[0]*n_cell[1]
+  is_min_bnd  = np_idx <= nb_face_ij
+  is_max_bnd  = np_idx  > nb_face_ij*(n_vtx[2]-1)
+  is_internal = ~(is_min_bnd | is_max_bnd)
+
+  #Internal faces : left, right = idx - nb_face_ij, idx
+  #Min faces      : left        = idx
+  #Max faces      : left        = idx - nb_face_ij
+  PE = np.empty((np_idx.shape[0], 2), dtype=np_idx.dtype)
+  PE[:,0] = np_idx - nb_face_ij*(1-is_min_bnd)
+  PE[:,1] = np_idx*is_internal
+  return PE
+
+def compute_fk_facevtx_from_idx(idx, n_cell, n_vtx):
+  np_idx = np.asarray(idx)
+  nb_face_ij  = n_cell[0]*n_cell[1]
+  is_min_bnd  = np_idx <= nb_face_ij
+  line_number = (np_idx - 1 ) // n_cell[0]
+  plan_number = (np_idx - 1 ) // nb_face_ij
+
+  n1 = np_idx + line_number + n_vtx[0]*plan_number
+  nodes = np.empty((np_idx.shape[0],4), dtype=np_idx.dtype)
+  nodes[:,0] = n1
+  nodes[:,1] = n1 + 1
+  nodes[:,2] = n1 + n_vtx[0] + 1
+  nodes[:,3] = n1 + n_vtx[0]
+  #Swap 2,4 for min faces
+  nodes[is_min_bnd, 1], nodes[is_min_bnd,3] = nodes[is_min_bnd, 3], nodes[is_min_bnd,1]
+  return nodes.flatten()
+###############################################################################
+
 def compute_fi_from_ijk(i,j,k, is_min=False, is_max=False):
   """
   Compute from structured indices (i,j,k) of structured nodes indices that compose 
