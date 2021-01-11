@@ -8,30 +8,6 @@ from maia.distribution       import distribution_function           as MDIDF
 from maia.cgns_io.hdf_filter import range_to_slab                   as HFR2S
 from .                       import s_numbering_funcs               as s_numb
 
-
-###############################################################################
-def fill_faceNgon_leftCell_rightCell(counter,n1ijk,n2ijk,n3ijk,n4ijk,
-                                     leftijk,rightijk,nVtx,nCell,
-                                     faceNgon,faceLeftCell,faceRightCell):
-  """
-  Convert to unstructured indices for nodes and cells for a face and fill associated
-  tabs :
-  faceNgon refers to non sorted NGonConnectivity
-  faceLeftCell refers to non sorted ParentElement[:][0]
-  faceRightCell refers to non sorted ParentElement[:][1]
-  WARNING : (i,j,k) begins at (1,1,1)
-  """
-  # Convert (i,j,k) structured indices of node to unstructured indices
-  n1 = s_numb.ijk_to_index(*n1ijk, nVtx)
-  n2 = s_numb.ijk_to_index(*n2ijk, nVtx)
-  n3 = s_numb.ijk_to_index(*n3ijk, nVtx)
-  n4 = s_numb.ijk_to_index(*n4ijk, nVtx)
-  # Fill NGon connectivity with nodes
-  faceNgon[4*counter:4*(counter+1)] = [n1,n2,n3,n4]
-  faceLeftCell[counter] = s_numb.ijk_to_index(*leftijk, nCell)
-  faceRightCell[counter] = s_numb.ijk_to_index(*rightijk, nCell) if rightijk != 0 else 0
-###############################################################################
-
 ###############################################################################
 def vtx_slab_to_n_face(vtx_slab, n_vtx):
   """
@@ -76,34 +52,49 @@ def compute_all_ngon_connectivity(slabListVtx,nVtx,nCell,
     jsup = jE - int(jE == nVtx[1]+1)
     ksup = kE - int(kE == nVtx[2]+1)
 
+    n_faces_i = (iE-iS)*(jsup-jS)*(ksup-kS)
+    n_faces_j = (isup-iS)*(jE-jS)*(ksup-kS)
+    n_faces_k = (isup-iS)*(jsup-jS)*(kE-kS)
+
     #Do 3 loops to remove if test
-    for i in range(iS, iE):
-      for j in range(jS, jsup):
-        for k in range(kS, ksup):
-          faceNumber[counter] = s_numb.ijk_to_faceiIndex(i,j,k,nCell,nVtx)
-          (n1,n2,n3,n4,leftijk,rightijk) = s_numb.compute_fi_from_ijk(i,j,k, i==1, i==nVtx[0])
-          fill_faceNgon_leftCell_rightCell(counter,n1,n2,n3,n4,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter += 1
-    for i in range(iS, isup):
-      for j in range(jS, jE):
-        for k in range(kS, ksup):
-          faceNumber[counter] = s_numb.ijk_to_facejIndex(i,j,k,nCell,nVtx)
-          (n1,n2,n3,n4,leftijk,rightijk) = s_numb.compute_fj_from_ijk(i,j,k, j==1, j==nVtx[1])
-          fill_faceNgon_leftCell_rightCell(counter,n1,n2,n3,n4,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter += 1
-    for i in range(iS, isup):
-      for j in range(jS, jsup):
-        for k in range(kS, kE):
-          faceNumber[counter] = s_numb.ijk_to_facekIndex(i,j,k,nCell,nVtx)
-          (n1,n2,n3,n4,leftijk,rightijk) = s_numb.compute_fk_from_ijk(i,j,k, k==1, k==nVtx[2])
-          fill_faceNgon_leftCell_rightCell(counter,n1,n2,n3,n4,
-                                           leftijk,rightijk,nVtx,nCell,
-                                           faceNgon,faceLeftCell,faceRightCell)
-          counter += 1
+    start = counter
+    end   = start + n_faces_i
+    i_ar = np.arange(iS,iE).reshape(-1,1,1)
+    j_ar = np.arange(jS,jsup).reshape(-1,1)
+    k_ar = np.arange(kS,ksup)
+    faceNumber[start:end] = s_numb.ijk_to_faceiIndex(i_ar,j_ar,k_ar,nCell,nVtx).flatten()
+
+    faceLeftCell[start:end] = s_numb.compute_fi_PE_from_idx(faceNumber[start:end], nCell, nVtx)[:,0]
+    faceRightCell[start:end] = s_numb.compute_fi_PE_from_idx(faceNumber[start:end], nCell, nVtx)[:,1]
+    faceNgon[4*start:4*end] = s_numb.compute_fi_facevtx_from_idx(faceNumber[start:end], nCell, nVtx)
+    counter += n_faces_i
+
+    #Shift ifaces (shift is global for zone)
+    shift = n_vtx[0]*(n_cell[1]*n_cell[2])
+    start = counter
+    end   = start + n_faces_j
+    i_ar = np.arange(iS,isup).reshape(-1,1,1)
+    j_ar = np.arange(jS,jE).reshape(-1,1)
+    k_ar = np.arange(kS,ksup)
+    faceNumber[start:end] = s_numb.ijk_to_facejIndex(i_ar,j_ar,k_ar,nCell,nVtx).flatten()
+
+    faceLeftCell[start:end] = s_numb.compute_fj_PE_from_idx(faceNumber[start:end]-shift, nCell, nVtx)[:,0]
+    faceRightCell[start:end] = s_numb.compute_fj_PE_from_idx(faceNumber[start:end]-shift, nCell, nVtx)[:,1]
+    faceNgon[4*start:4*end] = s_numb.compute_fj_facevtx_from_idx(faceNumber[start:end]-shift, nCell, nVtx)
+    counter += n_faces_j
+
+    shift += n_vtx[1]*(n_cell[0]*n_cell[2])
+    start = counter
+    end   = start + n_faces_k
+    i_ar = np.arange(iS,isup).reshape(-1,1,1)
+    j_ar = np.arange(jS,jsup).reshape(-1,1)
+    k_ar = np.arange(kS,kE)
+    faceNumber[start:end] = s_numb.ijk_to_facekIndex(i_ar,j_ar,k_ar,nCell,nVtx).flatten()
+
+    faceLeftCell[start:end] = s_numb.compute_fk_PE_from_idx(faceNumber[start:end]-shift, nCell, nVtx)[:,0]
+    faceRightCell[start:end] = s_numb.compute_fk_PE_from_idx(faceNumber[start:end]-shift, nCell, nVtx)[:,1]
+    faceNgon[4*start:4*end] = s_numb.compute_fk_facevtx_from_idx(faceNumber[start:end]-shift, nCell, nVtx)
+    counter += n_faces_k
 
 
 ###############################################################################
