@@ -397,7 +397,8 @@ def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGr
         #is not given by the bottom left corner but by the top right. We can just shift to retrieve casual behaviour
         if 'Center' in attendedGridLocationGC:
           for sub_pr_opp in sub_pr_opp_list:
-            reverted = sub_pr_opp[:,0] > sub_pr_opp[:,1]
+            reverted = np.sum(T, axis=0) < 0
+            reverted[bnd_axis_opp] = False
             sub_pr_opp[reverted,:] -= 1
 
         pointListLoc      = compute_pointList_from_pointRanges(sub_pr_list, nVtxLoc, attendedGridLocationGC, bnd_axis)
