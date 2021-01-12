@@ -5,23 +5,6 @@ from maia.utils import parse_yaml_cgns
 from maia.transform.dist_tree import convert_s_to_u
 import Converter.Internal as I
 
-# class Test_compare_pointrange():
-#   def test_ok(self):
-#     jn1 = I.newGridConnectivity1to1(pointRange=[[17,17],[3,9],[1,5]], pointRangeDonor=[[7,1],[9,9],[5,1]])
-#     jn2 = I.newGridConnectivity1to1(pointRangeDonor=[[17,17],[3,9],[1,5]], pointRange=[[7,1],[9,9],[5,1]])
-#     assert(add_joins_ordinal._compare_pointrange(jn1, jn2) == True)
-#   def test_ko(self):
-#     jn1 = I.newGridConnectivity1to1(pointRange=[[17,17],[3,9],[1,5]], pointRangeDonor=[[7,1],[9,9],[5,1]])
-#     jn2 = I.newGridConnectivity1to1(pointRangeDonor=[[17,17],[3,9],[1,5]], pointRange=[[1,7],[9,9],[1,5]])
-#     assert(add_joins_ordinal._compare_pointrange(jn1, jn2) == False)
-# class Test_MPI():
-#   @pytest.mark.mpi(min_size=3)
-#   @pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
-#   def test_mpi(self,sub_comm):
-#     if(sub_comm == MPI.COMM_NULL):
-#       return
-#     nRank = sub_comm.Get_size()
-#     iRank = sub_comm.Get_rank()
 
 ###############################################################################
 class Test_vtx_slab_to_n_face():
@@ -226,31 +209,41 @@ class Test_compute_pointList_from_pointRanges():
                     np.array([[2,2],[1,2],[2,2]])]
       pointList  = convert_s_to_u.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc,0)
       assert (pointList == [[4,6,8]]).all()
-
-###############################################################################
-def test_isSameAxis():
-  assert convert_s_to_u.isSameAxis( 1, 2) == 0
-  assert convert_s_to_u.isSameAxis( 1, 1) == 1
-  assert convert_s_to_u.isSameAxis(-2, 2) == 1
-  assert convert_s_to_u.isSameAxis( 1,-1) == 1
 ###############################################################################
   
 ###############################################################################
-class Test_compute_transformMatrix():
-# --------------------------------------------------------------------------- #
+class Test_cgns_transform_funcs():
+  # ------------------------------------------------------------------------- #
+  def test_isSameAxis(self):
+    assert convert_s_to_u.isSameAxis( 1, 2) == 0
+    assert convert_s_to_u.isSameAxis( 1, 1) == 1
+    assert convert_s_to_u.isSameAxis(-2, 2) == 1
+    assert convert_s_to_u.isSameAxis( 1,-1) == 1
+  # ------------------------------------------------------------------------- #
   def test_compute_transformMatrix(self):
     transform = [1,2,3]
     attendedTransformMatrix = np.eye(3, dtype=np.int32)
     assert (convert_s_to_u.compute_transformMatrix(transform) == attendedTransformMatrix).all()
-# --------------------------------------------------------------------------- #
-  def test_compute_transformMatrix(self):
+
     transform = [-2,3,1]
     attendedTransformMatrix = np.zeros((3,3),dtype=np.int32,order='F')
     attendedTransformMatrix[0][2] =  1
     attendedTransformMatrix[1][0] = -1
     attendedTransformMatrix[2][1] =  1
     assert (convert_s_to_u.compute_transformMatrix(transform) == attendedTransformMatrix).all()
+  # ------------------------------------------------------------------------- #
+  def test_apply_transformation(self):
+    t_matrix = np.array([[0,-1,0], [-1,0,0], [0,0,-1]])
+    start_1 = np.array([17,3,1])
+    start_2 = np.array([7,9,5])
+    assert (convert_s_to_u.apply_transformation(start_1, start_1, start_2, t_matrix)\
+           == start_2).all() #Debut
+    assert (convert_s_to_u.apply_transformation(np.array([17,6,3]), start_1, start_2, t_matrix)\
+           == [4,9,3]).all() #Milieu
+    assert (convert_s_to_u.apply_transformation(np.array([17,9,5]), start_1, start_2, t_matrix)\
+           == [1,9,1]).all() #Fin
 ###############################################################################
+
 def test_guess_boundary_axis():
   #Unambiguous
   assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [1,7]]),'Vertex') == 1
