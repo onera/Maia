@@ -9,30 +9,27 @@ from maia.cgns_io.hdf_filter import range_to_slab                   as HFR2S
 from .                       import s_numbering_funcs               as s_numb
 
 ###############################################################################
-def n_face_per_dir(n_vtx):
-  n_cell = n_vtx - 1
-  return np.array([n_vtx[0]*n_cell[1]*n_cell[2],
-                   n_vtx[1]*n_cell[0]*n_cell[2],
-                   n_vtx[2]*n_cell[0]*n_cell[1]])
+def n_face_per_dir(n_vtx, n_edge):
+  """
+  Compute the number of faces in each direction from the number of vtx/edge
+  in each direction
+  """
+  return np.array([n_vtx[0]*n_edge[1]*n_edge[2],
+                   n_vtx[1]*n_edge[0]*n_edge[2],
+                   n_vtx[2]*n_edge[0]*n_edge[1]])
 
-def vtx_slab_to_n_face(vtx_slab, n_vtx):
+def vtx_slab_to_n_faces(vtx_slab, n_vtx):
   """
   Compute the number of faces to create for a zone by a proc with distributed info
   from a vertex slab
   """
   np_vtx_slab = np.asarray(vtx_slab)
+  # Compute number of vertices and number of edges in each dir (exclude last
+  # edge if slab is the end of the block
+  n_vertices = np_vtx_slab[:,1] - np_vtx_slab[:,0]
+  n_edges    = n_vertices - (np_vtx_slab[:,1] == n_vtx).astype(int)
 
-  # Number of vertices of the slab in each direction
-  n_vertices  = np_vtx_slab[:,1] - np_vtx_slab[:,0]
-  # Number of edges of the slab in each direction : exclude last edge if slab
-  # is the end of the block
-  n_edges = n_vertices - (np_vtx_slab[:,1] == n_vtx).astype(int)
-
-  # In each direction, number of faces is n_vtx * n_edge1 * n_edge2
-  n_faces_per_dir = np.array([ n_edges[1]*n_edges[2],
-                               n_edges[0]*n_edges[2],
-                               n_edges[0]*n_edges[1]])
-  return (n_vertices * n_faces_per_dir).sum()
+  return n_face_per_dir(n_vertices, n_edges)
 
 ###############################################################################
 
@@ -57,13 +54,11 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     jsup = jE - int(jE == n_vtx[1]+1)
     ksup = kE - int(kE == n_vtx[2]+1)
 
-    n_faces_i = (iE-iS)*(jsup-jS)*(ksup-kS)
-    n_faces_j = (isup-iS)*(jE-jS)*(ksup-kS)
-    n_faces_k = (isup-iS)*(jsup-jS)*(kE-kS)
+    n_faces = vtx_slab_to_n_faces(vtx_slab, n_vtx)
 
     #Do 3 loops to remove if test
     start = counter
-    end   = start + n_faces_i
+    end   = start + n_faces[0]
     i_ar  = np.arange(iS,iE).reshape(-1,1,1)
     j_ar  = np.arange(jS,jsup).reshape(-1,1)
     k_ar  = np.arange(kS,ksup)
@@ -71,12 +66,12 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     face_gnum[start:end]    = s_numb.ijk_to_faceiIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
     face_pe[start:end]      = s_numb.compute_fi_PE_from_idx(face_gnum[start:end], n_cell, n_vtx)
     face_vtx[4*start:4*end] = s_numb.compute_fi_facevtx_from_idx(face_gnum[start:end], n_cell, n_vtx)
-    counter += n_faces_i
+    counter += n_faces[0]
 
     #Shift ifaces (shift is global for zone)
     shift = n_vtx[0]*(n_cell[1]*n_cell[2])
     start = counter
-    end   = start + n_faces_j
+    end   = start + n_faces[1]
     i_ar  = np.arange(iS,isup).reshape(-1,1,1)
     j_ar  = np.arange(jS,jE).reshape(-1,1)
     k_ar  = np.arange(kS,ksup)
@@ -84,11 +79,11 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     face_gnum[start:end]    = s_numb.ijk_to_facejIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
     face_pe[start:end]      = s_numb.compute_fj_PE_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     face_vtx[4*start:4*end] = s_numb.compute_fj_facevtx_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
-    counter += n_faces_j
+    counter += n_faces[1]
 
     shift += n_vtx[1]*(n_cell[0]*n_cell[2])
     start = counter
-    end   = start + n_faces_k
+    end   = start + n_faces[2]
     i_ar  = np.arange(iS,isup).reshape(-1,1,1)
     j_ar  = np.arange(jS,jsup).reshape(-1,1)
     k_ar  = np.arange(kS,kE)
@@ -96,7 +91,7 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     face_gnum[start:end]    = s_numb.ijk_to_facekIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
     face_pe[start:end]      = s_numb.compute_fk_PE_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     face_vtx[4*start:4*end] = s_numb.compute_fk_facevtx_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
-    counter += n_faces_k
+    counter += n_faces[2]
 
 ###############################################################################
 
@@ -341,12 +336,12 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  n_face_tot = n_face_per_dir(n_vtx_zone).sum()
+  n_face_tot = n_face_per_dir(n_vtx_zone, n_vtx_zone-1).sum()
   #> with NgonElements
   #>> Definition en non structure des faces
   vtx_range  = MDIDF.uniform_distribution_at(n_vtx_zone.prod(), i_rank, n_rank)
   vtx_slabs  = HFR2S.compute_slabs(n_vtx_zone, vtx_range)
-  n_face_slab = sum([vtx_slab_to_n_face(slab, n_vtx_zone) for slab in vtx_slabs])
+  n_face_slab = sum([vtx_slab_to_n_faces(slab, n_vtx_zone).sum() for slab in vtx_slabs])
   face_gnum     = np.empty(  n_face_slab, dtype=np.int32)
   face_vtx      = np.empty(4*n_face_slab, dtype=np.int32)
   face_pe       = np.empty((n_face_slab, 2), dtype=np.int32)

@@ -7,36 +7,24 @@ import Converter.Internal as I
 
 
 ###############################################################################
-class Test_vtx_slab_to_n_face():
+def test_n_face_per_dir():
+  nVtx = np.array([7,9,5])
+  assert (convert_s_to_u.n_face_per_dir(nVtx, nVtx-1) == [224,216,240]).all()
+def test_vtx_slab_to_n_face():
 # --------------------------------------------------------------------------- #
   nVtx        = [3, 3, 3]
-  def test_vtx_slab_to_n_face_monoslab_imax_jmax_kmax(self):
-    slabListVtx = [[0, 3], [0, 3], [2, 3]]
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx,self.nVtx) == 4
-# --------------------------------------------------------------------------- #
-  def test_vtx_slab_to_n_face_monoslab_imin_jmin_kmin(self):
-    slabListVtx = [[0, 3], [0, 3], [0, 1]]
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx,self.nVtx) == 16
-# --------------------------------------------------------------------------- #
-  def test_vtx_slab_to_n_face_monoslab_random(self):
-    slabListVtx = [[1, 2], [0, 1], [1, 2]]
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx,self.nVtx) == 3
-# --------------------------------------------------------------------------- #
-  def test_vtx_slab_to_n_face_multislabs1(self):
-    slabListVtx = [[[1, 3], [1, 2], [2, 3]], [[0, 3], [2, 3], [2, 3]]]
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[0],self.nVtx) == 1
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[1],self.nVtx) == 0
-# --------------------------------------------------------------------------- #
-  def test_vtx_slab_to_n_face_multislabs2(self):
-    slabListVtx = [[[0, 3], [1, 2], [1, 2]], [[0, 2], [2, 3], [1, 2]]]
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[0],self.nVtx) == 7
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[1],self.nVtx) == 2
-# --------------------------------------------------------------------------- #
-  def test_vtx_slab_to_n_face_multislabs3(self):
-    slabListVtx = [[[2, 3], [2, 3], [1, 2]], [[0, 3], [0, 1], [2, 3]], [[0, 1], [1, 2], [2, 3]]]
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[0],self.nVtx) == 0
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[1],self.nVtx) == 2
-    assert convert_s_to_u.vtx_slab_to_n_face(slabListVtx[2],self.nVtx) == 1
+  #kmax
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 3], [0, 3], [2, 3]], nVtx) == [0,0,4]).all()
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[1, 3], [1, 2], [2, 3]], nVtx) == [0,0,1]).all()
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 3], [2, 3], [2, 3]], nVtx) == [0,0,0]).all()
+  #random
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 3], [0, 3], [0, 1]], nVtx) == [6,6,4]).all()
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[1, 2], [0, 1], [1, 2]], nVtx) == [1,1,1]).all()
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 3], [1, 2], [1, 2]], nVtx) == [3,2,2]).all()
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 2], [2, 3], [1, 2]], nVtx) == [0,2,0]).all()
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[2, 3], [2, 3], [1, 2]], nVtx) == [0,0,0]).all()
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 3], [0, 1], [2, 3]], nVtx) == [0,0,2]).all()
+  assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 1], [1, 2], [2, 3]], nVtx) == [0,0,1]).all()
 ###############################################################################
   
 ###############################################################################
