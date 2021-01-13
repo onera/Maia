@@ -144,6 +144,14 @@ class Test_compute_pointList_from_pointRanges():
       pointList  = convert_s_to_u.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc,0)
       assert (pointList == [[3,6,9,12]]).all()
     # --------------------------------------------------------------------------- #
+    def test_reversed_range(self):
+      sub_ranges = [np.array([[3,3],[2,1],[1,2]])]
+      pointList  = convert_s_to_u.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc,0)
+      assert (pointList == [[6,3,12,9]]).all()
+      sub_ranges = [np.array([[3,3],[2,1],[2,1]])]
+      pointList  = convert_s_to_u.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc,0)
+      assert (pointList == [[12,9,6,3]]).all()
+    # --------------------------------------------------------------------------- #
     def test_multiple_range(self):
       sub_ranges = [np.array([[3,3],[1,2],[1,1]]),
                     np.array([[3,3],[1,1],[2,2]]),
@@ -298,16 +306,75 @@ class Test_transform_bnd_pr_size():
       convert_s_to_u.transform_bnd_pr_size(cell_range, 'CellCenter', 'Vertex')
 
 # --------------------------------------------------------------------------- #
-  # @pytest.mark.mpi(min_size=3)
-  # @pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
-  # def test_mpi(self,sub_comm):
-  #   if(sub_comm == MPI.COMM_NULL):
-  #     return
-  #   nRank = sub_comm.Get_size()
-  #   iRank = sub_comm.Get_rank()
-    
-    
-    
-    
+
+def test_bc_s_to_bc_u():
+  #We dont test value of PL here, this is carried out by Test_compute_pointList_from_pointRanges
+  n_vtx = np.array([4,4,4])
+  bc_s = I.newBC('MyBCName', btype='BCOutflow', pointRange=[[1,4], [1,4], [4,4]])
+  bc_u = convert_s_to_u.bc_s_to_bc_u(bc_s, n_vtx, 'FaceCenter', 0, 1)
+  assert I.getName(bc_u) == 'MyBCName'
+  assert I.getValue(bc_u) == 'BCOutflow'
+  assert I.getValue(I.getNodeFromType1(bc_u, 'GridLocation_t')) == 'FaceCenter'
+  assert I.getValue(I.getNodeFromName1(bc_u, 'PointList')).shape == (1,9)
+
+def test_gc_s_to_gc_u():
+  #https://cgns.github.io/CGNS_docs_current/sids/cnct.html
+  #We dont test value of PL here, this is carried out by Test_compute_pointList_from_pointRanges
+  n_vtx_A = np.array([17,9,7])
+  n_vtx_B = np.array([7,9,5])
+  gcA_s = I.newGridConnectivity1to1('matchA', 'Base/zoneB', pointRange=[[17,17], [3,9], [1,5]], \
+      pointRangeDonor=[[7,1], [9,9], [5,1]], transform = [-2,-1,-3])
+  gcB_s = I.newGridConnectivity1to1('matchB', 'zoneA', pointRange=[[7,1], [9,9], [5,1]], \
+      pointRangeDonor=[[17,17], [3,9], [1,5]], transform = [-2,-1,-3])
+
+  gcA_u = convert_s_to_u.gc_s_to_gc_u(gcA_s, 'Base/zoneA', n_vtx_A, n_vtx_B, 'FaceCenter', 0, 1)
+  gcB_u = convert_s_to_u.gc_s_to_gc_u(gcB_s, 'Base/zoneB', n_vtx_B, n_vtx_A, 'FaceCenter', 0, 1)
+
+  assert I.getName(gcA_u) == 'matchA'
+  assert I.getName(gcB_u) == 'matchB'
+  assert I.getValue(gcA_u) == 'Base/zoneB'
+  assert I.getValue(gcB_u) == 'zoneA'
+  assert I.getValue(I.getNodeFromType1(gcA_u, 'GridLocation_t')) == 'FaceCenter'
+  assert I.getValue(I.getNodeFromType1(gcB_u, 'GridLocation_t')) == 'FaceCenter'
+  assert I.getValue(I.getNodeFromType1(gcA_u, 'GridConnectivityType_t')) == 'Abutting1to1'
+  assert I.getValue(I.getNodeFromType1(gcB_u, 'GridConnectivityType_t')) == 'Abutting1to1'
+  assert I.getValue(I.getNodeFromName1(gcA_u, 'PointList')).shape == (1,24)
+  assert (I.getNodeFromName1(gcA_u, 'PointList')[1]\
+          == I.getNodeFromName1(gcB_u, 'PointListDonor')[1]).all()
+  assert (I.getNodeFromName1(gcB_u, 'PointList')[1]\
+          == I.getNodeFromName1(gcA_u, 'PointListDonor')[1]).all()
+
+  gcA_s = I.newGridConnectivity1to1('matchB', 'Base/zoneA', pointRange=[[17,17], [3,9], [1,5]], \
+      pointRangeDonor=[[7,1], [9,9], [5,1]], transform = [-2,-1,-3])
+  gcB_s = I.newGridConnectivity1to1('matchA', 'zoneB', pointRange=[[7,1], [9,9], [5,1]], \
+      pointRangeDonor=[[17,17], [3,9], [1,5]], transform = [-2,-1,-3])
+  gcA_u = convert_s_to_u.gc_s_to_gc_u(gcA_s, 'Base/zoneB', n_vtx_B, n_vtx_A, 'FaceCenter', 0, 1)
+  gcB_u = convert_s_to_u.gc_s_to_gc_u(gcB_s, 'Base/zoneA', n_vtx_A, n_vtx_B, 'FaceCenter', 0, 1)
+  assert (I.getNodeFromName1(gcA_u, 'PointList')[1]\
+          == I.getNodeFromName1(gcB_u, 'PointListDonor')[1]).all()
+  assert (I.getNodeFromName1(gcB_u, 'PointList')[1]\
+          == I.getNodeFromName1(gcA_u, 'PointListDonor')[1]).all()
+
+@pytest.mark.mpi(min_size=2)
+@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+def test_zonedims_to_ngon(sub_comm):
+  #We dont test value of faceVtx/ngon here, this is carried out by Test_compute_all_ngon_connectivity
+  if(sub_comm == MPI.COMM_NULL):
+    return
+  n_vtx_zone = np.array([3,2,4])
+  ngon = convert_s_to_u.zonedims_to_ngon(n_vtx_zone, sub_comm)
+  n_faces = I.getNodeFromName1(ngon, "ElementStartOffset")[1].shape[0] - 1
+  if sub_comm.Get_rank() == 0:
+    expected_n_faces = 15
+    expected_eso     = 4*np.arange(0,15+1)
+  elif sub_comm.Get_rank() == 1:
+    expected_n_faces = 14
+    expected_eso     = 4*np.arange(15, 15+14+1)
+  assert n_faces == expected_n_faces
+  assert (I.getNodeFromName1(ngon, 'ElementRange')[1] == [1, 29]).all()
+  assert (I.getNodeFromName1(ngon, 'ElementStartOffset')[1] == expected_eso).all()
+  assert I.getNodeFromName1(ngon, 'ElementConnectivity#Size')[1] == 4*29
+  assert I.getNodeFromName1(ngon, 'ParentElements')[1].shape == (expected_n_faces, 2)
+  assert I.getNodeFromName1(ngon, 'ElementConnectivity')[1].shape == (4*expected_n_faces,)
 
 ###############################################################################

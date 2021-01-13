@@ -9,6 +9,12 @@ from maia.cgns_io.hdf_filter import range_to_slab                   as HFR2S
 from .                       import s_numbering_funcs               as s_numb
 
 ###############################################################################
+def n_face_per_dir(n_vtx):
+  n_cell = n_vtx - 1
+  return np.array([n_vtx[0]*n_cell[1]*n_cell[2],
+                   n_vtx[1]*n_cell[0]*n_cell[2],
+                   n_vtx[2]*n_cell[0]*n_cell[1]])
+
 def vtx_slab_to_n_face(vtx_slab, n_vtx):
   """
   Compute the number of faces to create for a zone by a proc with distributed info
@@ -211,223 +217,221 @@ def transform_bnd_pr_size(point_range, input_loc, output_loc):
   return size
 
 ###############################################################################
-def convert_s_to_u(distTreeS,comm,attendedGridLocationBC="FaceCenter",attendedGridLocationGC="FaceCenter"):
+def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
+  input_loc_node = I.getNodeFromType1(bc_s, "GridLocation_t")
+  input_loc = I.getValue(input_loc_node) if input_loc_node is not None else "Vertex"
+  point_range = I.getValue(I.getNodeFromName1(bc_s, 'PointRange'))
 
-  nRank = comm.Get_size()
-  iRank = comm.Get_rank()
+  bnd_axis = guess_boundary_axis(point_range, input_loc)
+  #Compute slabs from attended location (better load balance)
+  bc_size = transform_bnd_pr_size(point_range, input_loc, output_loc)
+  bc_range = MDIDF.uniform_distribution_at(bc_size.prod(), i_rank, n_rank)
+  bc_slabs = HFR2S.compute_slabs(bc_size, bc_range)
 
-  #> Create skeleton of distTreeU
-  distTreeU = I.newCGNSTree()
-  baseS = I.getNodeFromType1(distTreeS, 'CGNSBase_t')
-  baseU = I.createNode(I.getName(baseS), 'CGNSBase_t', I.getValue(baseS), parent=distTreeU)
-  for zoneS in I.getZones(distTreeS):
-    zoneSName = I.getName(zoneS)
-    zoneSDims = I.getValue(zoneS)
-    nCellS = zoneSDims[:,1]
-    nVtxS  = zoneSDims[:,0]
-    nCellTotS = nCellS.prod()
-    nVtxTotS  = nVtxS.prod()
-  
-    #> Calcul du nombre faces totales en i, j et k
-    nbFacesi = nVtxS[0]*nCellS[1]*nCellS[2]
-    nbFacesj = nVtxS[1]*nCellS[0]*nCellS[2]
-    nbFacesk = nVtxS[2]*nCellS[0]*nCellS[1]
-    nbFacesTot = nbFacesi + nbFacesj + nbFacesk
-  
-    #> with Zones
-    zoneU = I.newZone(zoneSName, [[nVtxTotS, nCellTotS, 0]], 'Unstructured', None, baseU)
-  
-    #> with GridCoordinates
-    gridCoordinatesS = I.getNodeFromType1(zoneS, "GridCoordinates_t")
-    CoordinateXS = I.getNodeFromName1(gridCoordinatesS, "CoordinateX")
-    CoordinateYS = I.getNodeFromName1(gridCoordinatesS, "CoordinateY")
-    CoordinateZS = I.getNodeFromName1(gridCoordinatesS, "CoordinateZ")
-    gridCoordinatesU = I.newGridCoordinates(parent=zoneU)
-    I.newDataArray('CoordinateX', I.getValue(CoordinateXS), gridCoordinatesU)
-    I.newDataArray('CoordinateY', I.getValue(CoordinateYS), gridCoordinatesU)
-    I.newDataArray('CoordinateZ', I.getValue(CoordinateZS), gridCoordinatesU)
-  
-    #> with FlowSolutions
-    for flowSolutionS in I.getNodesFromType1(zoneS, "FlowSolution_t"):
-      flowSolutionU = I.newFlowSolution(I.getName(flowSolutionS), parent=zoneU)
-      gridLocationS = I.getNodeFromType1(zoneS, "GridLocation_t")
-      if gridLocationS:
-        I.addChild(flowSolutionU, gridLocationS)
-      else:
-        I.newGridLocation("CellCenter", flowSolutionU)
-      for dataS in I.getNodesFromType1(flowSolutionS, "DataArray_t"):
-        I.addChild(flowSolutionU, dataS)
-  
-    #> with NgonElements
-    #>> Definition en non structure des faces
-    vtxRangeS  = MDIDF.uniform_distribution_at(nVtxTotS, iRank, nRank)
-    slabListVtxS  = HFR2S.compute_slabs(nVtxS, vtxRangeS)
-    n_face_slab = sum([vtx_slab_to_n_face(slab, nVtxS) for slab in slabListVtxS])
-    face_gnum     = np.empty(  n_face_slab, dtype=np.int32)
-    face_vtx      = np.empty(4*n_face_slab, dtype=np.int32)
-    face_pe       = np.empty((n_face_slab, 2), dtype=np.int32)
-    compute_all_ngon_connectivity(slabListVtxS, nVtxS, face_gnum, face_vtx, face_pe)
-    #>> PartToBlock pour ordonner et equidistribuer les faces
-    partToBlockObject = PDM.PartToBlock(comm, [face_gnum], None, partN=1, t_distrib=0, t_post=0, t_stride=1)
-    #>>> Premier echange pour le ParentElements
-    pFieldStride2 = {"NGonPE" : [face_pe.ravel()]}
-    pStride2 = [2*np.ones(n_face_slab, dtype='int32')]
-    dFieldStride2 = dict()
-    partToBlockObject.PartToBlock_Exchange(dFieldStride2, pFieldStride2, pStride2)
-    #>>> Deuxieme echange pour l'ElementConnectivity
-    pFieldStride4 = {"NGonFaceVtx" : [face_vtx]}
-    pStride4 = [4*np.ones(n_face_slab,dtype='int32')]
-    dFieldStride4 = dict()
-    partToBlockObject.PartToBlock_Exchange(dFieldStride4, pFieldStride4, pStride4)
+  shift = cst_axe_shift(point_range, n_vtx_zone, bnd_axis,\
+      input_loc=='CellCenter', output_loc=='CellCenter')
+  #Prepare sub pointRanges from slabs
+  sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
+  for sub_pr in sub_pr_list:
+    sub_pr[:,0] += point_range[:,0]
+    sub_pr[:,1] += point_range[:,0] - 1
+    sub_pr[bnd_axis,:] += shift
+
+  point_list = compute_pointList_from_pointRanges(sub_pr_list,n_vtx_zone,output_loc, bnd_axis)
+
+  bc_u = I.newBC(I.getName(bc_s), btype=I.getValue(bc_s))
+  I.newGridLocation(output_loc, parent=bc_u)
+  I.newPointList(value=point_list, parent=bc_u)
+  I.newIndexArray('PointList#Size', [1, bc_size.prod()], parent=bc_u)
+  allowed_types = ['FamilyName_t'] #Copy these nodes to bc_u
+  for allowed_child in [c for c in I.getChildren(bc_s) if I.getType(c) in allowed_types]:
+    I.addChild(bc_u, allowed_child)
+  return bc_u
 
 
-    #>>> Distribution des faces  
-    face_distribution = partToBlockObject.getDistributionCopy()
-    # >> Creation du noeud NGonElements
-    ngon = I.newElements('NGonElements', 'NGON', dFieldStride4["NGonFaceVtx"],
-                         [1, nbFacesTot], parent=zoneU)
-    nbFacesLoc = dFieldStride2["NGonPE"].shape[0] // 2
-    pe = dFieldStride2["NGonPE"].reshape(nbFacesLoc, 2)
+def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank, n_rank):
+  input_loc_node = I.getNodeFromType1(gc_s, "GridLocation_t")
+  assert input_loc_node is None or I.getValue(input_loc_node) == "Vertex"
 
-    I.newParentElements(pe,ngon)
-    startOffset = face_distribution[iRank]
-    endOffset   = startOffset + nbFacesLoc+1
-    I.newDataArray("ElementStartOffset", 4*np.arange(startOffset,endOffset), parent=ngon)
-    I.newIndexArray('ElementConnectivity#Size', [nbFacesTot*4], parent=ngon)
+  zone_path_opp = I.getValue(gc_s)
+  if not '/' in zone_path_opp:
+    zone_path_opp = zone_path.split('/')[0] + '/' + zone_path_opp
+  transform = I.getValue(I.getNodeFromName1(gc_s, 'Transform'))
+  T = compute_transformMatrix(transform)
 
-    #> with ZoneBC
-    zoneBCS = I.getNodeFromType1(zoneS, "ZoneBC_t")
-    if zoneBCS is not None:
-      zoneBCU = I.newZoneBC(zoneU)
-      for bcS in I.getNodesFromType1(zoneBCS,"BC_t"):
-        gridLocationNodeS = I.getNodeFromType1(bcS, "GridLocation_t")
-        gridLocationS = I.getValue(gridLocationNodeS) if gridLocationNodeS is not None else "Vertex"
-        pointRange = I.getValue(I.getNodeFromName1(bcS, 'PointRange'))
+  point_range     = I.getValue(I.getNodeFromName1(gc_s, 'PointRange'))
+  point_range_opp = I.getValue(I.getNodeFromName1(gc_s, 'PointRangeDonor'))
 
-        bnd_axis = guess_boundary_axis(pointRange, gridLocationS)
-        #Compute slabs from attended location (better load balance)
-        sizeS = transform_bnd_pr_size(pointRange, gridLocationS, attendedGridLocationBC)
-        bc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-        bc_slabs = HFR2S.compute_slabs(sizeS, bc_range)
+  # One of the two connected zones is choosen to compute the slabs/sub_pointrange and to impose
+  # it to the opposed zone.
+  if zone_path <= zone_path_opp:
+    point_range_loc, point_range_opp_loc = point_range, point_range_opp
+    n_vtx_loc, n_vtx_opp_loc = n_vtx_zone, n_vtx_zone_opp
+  else:
+    point_range_loc, point_range_opp_loc = point_range_opp, point_range
+    n_vtx_loc, n_vtx_opp_loc = n_vtx_zone_opp, n_vtx_zone
+    T = T.transpose()
+  # Refence PR must be increasing, otherwise we have troubles with slabs->sub_point_range
+  # When we swap the PR, we must swap the corresponding dim of the PRD as well
+  dir_to_swap     = (point_range_loc[:,1] < point_range_loc[:,0])
+  opp_dir_to_swap = dir_to_swap[abs(transform) - 1]
+  point_range_loc[dir_to_swap, 0], point_range_loc[dir_to_swap, 1] = \
+          point_range_loc[dir_to_swap, 1], point_range_loc[dir_to_swap, 0]
+  point_range_opp_loc[opp_dir_to_swap,0], point_range_opp_loc[opp_dir_to_swap,1] \
+      = point_range_opp_loc[opp_dir_to_swap,1], point_range_opp_loc[opp_dir_to_swap,0]
 
-        shift = cst_axe_shift(pointRange, nVtxS, bnd_axis,\
-            gridLocationS=='CellCenter', attendedGridLocationBC=='CellCenter')
-        #Prepare sub pointRanges from slabs
-        sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
-        for sub_pr in sub_pr_list:
-          sub_pr[:,0] += pointRange[:,0]
-          sub_pr[:,1] += pointRange[:,0] - 1
-          sub_pr[bnd_axis,:] += shift
+  bnd_axis = guess_boundary_axis(point_range_loc, "Vertex")
+  bnd_axis_opp = guess_boundary_axis(point_range_opp_loc, "Vertex")
+  #Compute slabs from attended location (better load balance)
+  gc_size = transform_bnd_pr_size(point_range_loc, "Vertex", output_loc)
+  gc_range = MDIDF.uniform_distribution_at(gc_size.prod(), i_rank, n_rank)
+  gc_slabs = HFR2S.compute_slabs(gc_size, gc_range)
 
-        pointList = compute_pointList_from_pointRanges(sub_pr_list,nVtxS,attendedGridLocationBC, bnd_axis)
+  sub_pr_list = [np.asarray(slab) for slab in gc_slabs]
+  #Compute sub pointranges from slab
+  for sub_pr in sub_pr_list:
+    sub_pr[:,0] += point_range_loc[:,0]
+    sub_pr[:,1] += point_range_loc[:,0] - 1
 
-        bcU = I.newBC(I.getName(bcS), btype=I.getValue(bcS), parent=zoneBCU)
-        I.newGridLocation(attendedGridLocationBC, parent=bcU)
-        I.newPointList(value=pointList, parent=bcU)
-        I.newIndexArray('PointList#Size', [1, sizeS.prod()], parent=bcU)
-        allowed_types = ['FamilyName_t'] #Copy these nodes to bcU
-        for allowed_child in [c for c in I.getChildren(bcS) if I.getType(c) in allowed_types]:
-          I.addChild(bcU, allowed_child)
+  #Get opposed sub point ranges
+  sub_pr_opp_list = []
+  for sub_pr in sub_pr_list:
+    sub_pr_opp = np.empty((3,2), dtype=np.int32)
+    sub_pr_opp[:,0] = apply_transformation(sub_pr[:,0], point_range_loc[:,0], point_range_opp_loc[:,0], T)
+    sub_pr_opp[:,1] = apply_transformation(sub_pr[:,1], point_range_loc[:,0], point_range_opp_loc[:,0], T)
+    sub_pr_opp_list.append(sub_pr_opp)
 
-    #> with ZoneGC
-    zoneName = I.getName(zoneS)
-    for zoneGCS in I.getNodesFromType1(zoneS, "ZoneGridConnectivity_t"):
-      zoneGCU = I.newZoneGridConnectivity(I.getName(zoneGCS), parent=zoneU)
-      for gcS in I.getNodesFromType1(zoneGCS, "GridConnectivity1to1_t"):
-        gridLocationNodeS = I.getNodeFromType1(gcS, "GridLocation_t")
-        assert gridLocationNodeS is None or I.getValue(gridLocationNodeS) == "Vertex"
+  #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required
+  shift = cst_axe_shift(point_range_loc, n_vtx_loc, bnd_axis, False, output_loc=='CellCenter')
+  shift_opp = cst_axe_shift(point_range_opp_loc, n_vtx_opp_loc, bnd_axis_opp, False, output_loc=='CellCenter')
+  for i_pr in range(len(sub_pr_list)):
+    sub_pr_list[i_pr][bnd_axis,:] += shift
+    sub_pr_opp_list[i_pr][bnd_axis_opp,:] += shift_opp
 
-        zoneDonorName = I.getValue(gcS)
-        zoneDonor     = I.getNodeFromName1(baseS, zoneDonorName)
-        nVtxSDonor    = I.getValue(zoneDonor)[:,0]
+  #When working on cell|face, extra care has to be taken if PR[:,1] < PR[:,0] : the cell|face id
+  #is not given by the bottom left corner but by the top right. We can just shift to retrieve casual behaviour
+  if 'Center' in output_loc:
+    for sub_pr_opp in sub_pr_opp_list:
+      reverted = np.sum(T, axis=0) < 0
+      reverted[bnd_axis_opp] = False
+      sub_pr_opp[reverted,:] -= 1
 
-        transform = I.getValue(I.getNodeFromName1(gcS, 'Transform'))
-        T = compute_transformMatrix(transform)
+  point_list_loc     = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, output_loc, bnd_axis)
+  point_list_opp_loc = compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, output_loc, bnd_axis_opp)
 
-        pointRange      = I.getValue(I.getNodeFromName1(gcS, 'PointRange'))
-        pointRangeDonor = I.getValue(I.getNodeFromName1(gcS, 'PointRangeDonor'))
+  if zone_path <= zone_path_opp:
+    point_list, point_list_opp = point_list_loc, point_list_opp_loc
+  else:
+    point_list, point_list_opp = point_list_opp_loc, point_list_loc
 
-        # One of the two connected zones is choosen to compute the slabs/sub_pointrange and to impose
-        # it to the opposed zone.
-        if zoneName <= zoneDonorName:
-          pointRangeLoc, pointRangeDonorLoc = pointRange, pointRangeDonor
-          nVtxLoc, nVtxDonorLoc = nVtxS, nVtxSDonor
-        else:
-          pointRangeLoc, pointRangeDonorLoc = pointRangeDonor, pointRange
-          nVtxLoc, nVtxDonorLoc = nVtxSDonor, nVtxS
-          T = T.transpose()
-        # Refence PR must be increasing, otherwise we have troubles with slabs->sub_point_range
-        # When we swap the PR, we must swap the corresponding dim of the PRD as well
-        dir_to_swap     = (pointRangeLoc[:,1] < pointRangeLoc[:,0])
-        opp_dir_to_swap = dir_to_swap[abs(transform) - 1]
-        pointRangeLoc[dir_to_swap, 0], pointRangeLoc[dir_to_swap, 1] = \
-                pointRangeLoc[dir_to_swap, 1], pointRangeLoc[dir_to_swap, 0]
-        pointRangeDonorLoc[opp_dir_to_swap,0], pointRangeDonorLoc[opp_dir_to_swap,1] \
-            = pointRangeDonorLoc[opp_dir_to_swap,1], pointRangeDonorLoc[opp_dir_to_swap,0]
+  gc_u = I.newGridConnectivity(I.getName(gc_s), I.getValue(gc_s), 'Abutting1to1')
+  I.newGridLocation(output_loc, gc_u)
+  I.newPointList('PointList'     , point_list,     parent=gc_u)
+  I.newPointList('PointListDonor', point_list_opp, parent=gc_u)
+  I.newIndexArray('PointList#Size', [1, gc_size.prod()], gc_u)
+  #Copy these nodes to gc_u
+  allowed_types = ['GridConnectivityProperty_t']
+  allowed_names = ['Ordinal', 'OrdinalOpp']
+  for child in I.getChildren(gc_s):
+    if I.getName(child) in allowed_names or I.getType(child) in allowed_types:
+      I.addChild(gc_u, child)
+  return gc_u
 
-        bnd_axis = guess_boundary_axis(pointRangeLoc, "Vertex")
-        bnd_axis_opp = guess_boundary_axis(pointRangeDonorLoc, "Vertex")
-        #Compute slabs from attended location (better load balance)
-        sizeS = transform_bnd_pr_size(pointRangeLoc, "Vertex", attendedGridLocationGC)
-        gc_range = MDIDF.uniform_distribution_at(sizeS.prod(), iRank, nRank)
-        gc_slabs = HFR2S.compute_slabs(sizeS, gc_range)
+def zonedims_to_ngon(n_vtx_zone, comm):
+  i_rank = comm.Get_rank()
+  n_rank = comm.Get_size()
 
-        sub_pr_list = [np.asarray(slab) for slab in gc_slabs]
-        #Compute sub pointranges from slab
-        for sub_pr in sub_pr_list:
-          sub_pr[:,0] += pointRangeLoc[:,0]
-          sub_pr[:,1] += pointRangeLoc[:,0] - 1
+  n_face_tot = n_face_per_dir(n_vtx_zone).sum()
+  #> with NgonElements
+  #>> Definition en non structure des faces
+  vtx_range  = MDIDF.uniform_distribution_at(n_vtx_zone.prod(), i_rank, n_rank)
+  vtx_slabs  = HFR2S.compute_slabs(n_vtx_zone, vtx_range)
+  n_face_slab = sum([vtx_slab_to_n_face(slab, n_vtx_zone) for slab in vtx_slabs])
+  face_gnum     = np.empty(  n_face_slab, dtype=np.int32)
+  face_vtx      = np.empty(4*n_face_slab, dtype=np.int32)
+  face_pe       = np.empty((n_face_slab, 2), dtype=np.int32)
+  compute_all_ngon_connectivity(vtx_slabs, n_vtx_zone, face_gnum, face_vtx, face_pe)
 
-        #Get opposed sub point ranges
-        sub_pr_opp_list = []
-        for sub_pr in sub_pr_list:
-          sub_pr_opp = np.empty((3,2), dtype=np.int32)
-          sub_pr_opp[:,0] = apply_transformation(sub_pr[:,0], pointRangeLoc[:,0], pointRangeDonorLoc[:,0], T)
-          sub_pr_opp[:,1] = apply_transformation(sub_pr[:,1], pointRangeLoc[:,0], pointRangeDonorLoc[:,0], T)
-          sub_pr_opp_list.append(sub_pr_opp)
+  #>> PartToBlock pour ordonner et equidistribuer les faces
+  part_to_block = PDM.PartToBlock(comm, [face_gnum], None, partN=1, t_distrib=0, t_post=0, t_stride=1)
+  #>>> Premier echange pour le ParentElements
+  pfield_stride2 = {"NGonPE" : [face_pe.ravel()]}
+  stride2 = [2*np.ones(n_face_slab, dtype='int32')]
+  dfield_stride2 = dict()
+  part_to_block.PartToBlock_Exchange(dfield_stride2, pfield_stride2, stride2)
+  #>>> Deuxieme echange pour l'ElementConnectivity
+  pfield_stride4 = {"NGonFaceVtx" : [face_vtx]}
+  stride4 = [4*np.ones(n_face_slab,  dtype='int32')]
+  dfield_stride4 = dict()
+  part_to_block.PartToBlock_Exchange(dfield_stride4, pfield_stride4, stride4)
 
-        #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required
-        shift = cst_axe_shift(pointRangeLoc, nVtxLoc, bnd_axis, False, attendedGridLocationBC=='CellCenter')
-        shift_opp = cst_axe_shift(pointRangeDonorLoc, nVtxDonorLoc, bnd_axis_opp, False, attendedGridLocationBC=='CellCenter')
-        for i_pr in range(len(sub_pr_list)):
-          sub_pr_list[i_pr][bnd_axis,:] += shift
-          sub_pr_opp_list[i_pr][bnd_axis_opp,:] += shift_opp
+  face_pe  = dfield_stride2["NGonPE"].reshape(-1, 2)
+  face_vtx = dfield_stride4["NGonFaceVtx"]
+  n_face_loc = face_pe.shape[0]
+  face_distri = part_to_block.getDistributionCopy()
+  face_vtx_idx = 4*np.arange(face_distri[i_rank], face_distri[i_rank]+n_face_loc+1)
 
-        #When working on cell|face, extra care has to be taken if PR[:,1] < PR[:,0] : the cell|face id
-        #is not given by the bottom left corner but by the top right. We can just shift to retrieve casual behaviour
-        if 'Center' in attendedGridLocationGC:
-          for sub_pr_opp in sub_pr_opp_list:
-            reverted = np.sum(T, axis=0) < 0
-            reverted[bnd_axis_opp] = False
-            sub_pr_opp[reverted,:] -= 1
+  ngon = I.newElements('NGonElements', 'NGON', face_vtx, [1, n_face_tot])
+  I.newDataArray("ElementStartOffset", face_vtx_idx, parent=ngon)
+  I.newIndexArray('ElementConnectivity#Size', [4*n_face_tot], parent=ngon)
+  I.newParentElements(face_pe, parent=ngon)
 
-        pointListLoc      = compute_pointList_from_pointRanges(sub_pr_list, nVtxLoc, attendedGridLocationGC, bnd_axis)
-        pointListDonorLoc = compute_pointList_from_pointRanges(sub_pr_opp_list, nVtxDonorLoc, attendedGridLocationGC, bnd_axis_opp)
+  return ngon
 
-        if zoneName <= zoneDonorName:
-          pointList, pointListDonor = pointListLoc, pointListDonorLoc
-        else:
-          pointList, pointListDonor = pointListDonorLoc, pointListLoc
+def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="FaceCenter"):
 
-        gcU = I.newGridConnectivity(I.getName(gcS), I.getValue(gcS), 'Abutting1to1', zoneGCU)
-        I.newGridLocation(attendedGridLocationGC, gcU)
-        I.newPointList('PointList'     , pointList,      parent=gcU)
-        I.newPointList('PointListDonor', pointListDonor, parent=gcU)
-        I.newIndexArray('PointList#Size', [1, sizeS.prod()], gcU)
-        #Copy these nodes to gcU
-        allowed_types = ['GridConnectivityProperty_t']
-        allowed_names = ['Ordinal', 'OrdinalOpp']
-        for child in I.getChildren(gcS):
-          if I.getName(child) in allowed_names or I.getType(child) in allowed_types:
-            I.addChild(gcU, child)
+  n_rank = comm.Get_size()
+  i_rank = comm.Get_rank()
+
+  disttree_u = I.newCGNSTree()
+  for base_s in I.getBases(disttree_s):
+    base_u = I.createNode(I.getName(base_s), 'CGNSBase_t', I.getValue(base_s), parent=disttree_u)
+    for zone_s in I.getZones(base_s):
+      if I.getZoneType(zone_s) == 2: #Zone is already U
+        I.addChild(base_u, zone_s)
+
+      elif I.getZoneType(zone_s) == 1: #Zone is S -> convert it
+        zone_dims_s = I.getValue(zone_s)
+        zone_dims_u = np.prod(zone_dims_s, axis=0).reshape(1,-1)
+        n_vtx  = zone_dims_s[:,0]
       
-  for flowEquationSetS in I.getNodesFromType1(baseS,"FlowEquationSet_t"):
-    I.addChild(baseU,flowEquationSetS)
-  
-  for referenceStateS in I.getNodesFromType1(baseS,"ReferenceState_t"):
-    I.addChild(baseU,referenceStateS)
-  
-  for familyS in I.getNodesFromType1(baseS,"Family_t"):
-    I.addChild(baseU,familyS)
+        zone_u = I.createNode(I.getName(zone_s), 'Zone_t', zone_dims_u, parent=base_u)
+        I.createNode('ZoneType', 'ZoneType_t', 'Unstructured', parent=zone_u)
 
-  return distTreeU
+        grid_coord_s = I.getNodeFromType1(zone_s, "GridCoordinates_t")
+        grid_coord_u = I.newGridCoordinates(parent=zone_u)
+        for data in I.getNodesFromType1(grid_coord_s, "DataArray_t"):
+          I.addChild(grid_coord_u, data)
+
+        for flow_solution_s in I.getNodesFromType1(zone_s, "FlowSolution_t"):
+          flow_solution_u = I.newFlowSolution(I.getName(flow_solution_s), parent=zone_u)
+          grid_loc = I.getNodeFromType1(zone_s, "GridLocation_t")
+          if grid_loc:
+            I.addChild(flow_solution_u, grid_loc)
+          for data in I.getNodesFromType1(flow_solution_s, "DataArray_t"):
+            I.addChild(flow_solution_u, data)
+
+        I.addChild(zone_u, zonedims_to_ngon(n_vtx, comm))
+
+        zonebc_s = I.getNodeFromType1(zone_s, "ZoneBC_t")
+        if zonebc_s is not None:
+          zonebc_u = I.newZoneBC(zone_u)
+          for bc_s in I.getNodesFromType1(zonebc_s,"BC_t"):
+            I.addChild(zonebc_u, bc_s_to_bc_u(bc_s, n_vtx, bc_output_loc, i_rank, n_rank))
+
+        zone_path = '/'.join([I.getName(base_s), I.getName(zone_s)])
+        for zonegc_s in I.getNodesFromType1(zone_s, "ZoneGridConnectivity_t"):
+          zonegc_u = I.newZoneGridConnectivity(I.getName(zonegc_s), parent=zone_u)
+          for gc_s in I.getNodesFromType1(zonegc_s, "GridConnectivity1to1_t"):
+            opp_name = I.getValue(gc_s)
+            zone_opp_path = zone_opp_name if '/' in opp_name else I.getName(base_s)+'/'+opp_name
+            n_vtx_opp = I.getValue(I.getNodeFromPath(disttree_s, zone_opp_path))[:,0]
+            I.addChild(zonegc_u, gc_s_to_gc_u(gc_s, zone_path, n_vtx, n_vtx_opp, gc_output_loc, i_rank, n_rank))
+
+    # Top level nodes
+    top_level_types = ["FlowEquationSet_t", "ReferenceState_t", "Family_t"]
+    for top_level_type in top_level_types:
+      for node in I.getNodesFromType1(base_s, top_level_type):
+        I.addChild(base_u, node)
+
+  return disttree_u
