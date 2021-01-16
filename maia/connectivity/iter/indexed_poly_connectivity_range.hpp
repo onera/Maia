@@ -88,7 +88,7 @@ operator!=(const indexed_poly_connectivity_iterator<I00,I01,CK>& x, const indexe
 }
 template<class I0, class I1, class Integer, class CK> constexpr auto
 operator+(const indexed_poly_connectivity_iterator<I0,I1,CK>& x, Integer i) {
-  indexed_poly_connectivity_iterator<I0,I1,CK> res;
+  indexed_poly_connectivity_iterator<I0,I1,CK> res(x);
   return res += i;
 }
 template<class I0, class I1, class Integer, class CK> constexpr auto
@@ -97,7 +97,7 @@ operator+(Integer i, const indexed_poly_connectivity_iterator<I0,I1,CK>& x) {
 }
 template<class I0, class I1, class Integer, class CK> constexpr auto
 operator-(const indexed_poly_connectivity_iterator<I0,I1,CK>& x, Integer i) {
-  indexed_poly_connectivity_iterator<I0,I1,CK> res;
+  indexed_poly_connectivity_iterator<I0,I1,CK> res(x);
   return res -= i;
 }
 template<class I0, class I1, class Integer, class CK> constexpr auto
