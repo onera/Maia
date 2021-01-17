@@ -17,5 +17,4 @@ Table of contents
   introduction
   distributed_tree
   loading_a_distributed_tree
-  cgns_registry
   partitioning

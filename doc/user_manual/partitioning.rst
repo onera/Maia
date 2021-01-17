@@ -1,6 +1,6 @@
 .. contents:: :local:
 
-.. _log:
+.. _partitioning:
 
 Partitioning
 ============

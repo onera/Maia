@@ -167,26 +167,34 @@ add_subdirectory(test)
 # ----------------------------------------------------------------------
 # Build documentation
 # ----------------------------------------------------------------------
-# option(${PROJECT_NAME}_BUILD_DOCUMENTATION "Build ${PROJECT_NAME} documentation ." OFF)
-# if(${PROJECT_NAME}_BUILD_DOCUMENTATION)
-#   # message("Build docs ... ")
+option(MAIA_BUILD_DOCUMENTATION "Build ${PROJECT_NAME} documentation ." OFF)
+if(MAIA_BUILD_DOCUMENTATION)
+  # Download bootstrap style
+  FetchContent_Declare(
+    sphinx_bootstrap_theme
+    GIT_REPOSITORY https://github.com/ryan-roemer/sphinx-bootstrap-theme.git
+    GIT_TAG        v0.8.0
+  )
+  FetchContent_GetProperties(sphinx_bootstrap_theme)
+  if(NOT sphinx_bootstrap_theme_POPULATED)
+    FetchContent_Populate(sphinx_bootstrap_theme)
+  endif()
 
-#   include(UseBreathe)
+  include(UseBreathe)
+  add_breathe_doc(TARGET_NAME ${PROJECT_NAME}_doc
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/doc
+    DOXY_FILE  ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.in
+    CONF_FILE  ${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py.in
+    BUILD_DIR  ${CMAKE_CURRENT_BINARY_DIR}/_build
+    CACHE_DIR  ${CMAKE_CURRENT_BINARY_DIR}/_doctrees
+    HTML_DIR   ${CMAKE_CURRENT_BINARY_DIR}/html
+    #ENV_PATH    ${CMAKE_BINARY_DIR}
+    COMMENT "HTML documentation"
+  )
 
-#   add_breathe_doc(SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/docs
-#                   BUILD_DIR   ${CMAKE_CURRENT_BINARY_DIR}/_build
-#                   CACHE_DIR   ${CMAKE_CURRENT_BINARY_DIR}/_doctrees
-#                   HTML_DIR    ${CMAKE_CURRENT_BINARY_DIR}/html
-#                   DOXY_FILE   ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.in
-#                   CONF_FILE   ${CMAKE_CURRENT_SOURCE_DIR}/docs/conf.py.in
-#                   TARGET_NAME maia_doc
-#                   ENV_PATH    ${CMAKE_BINARY_DIR}
-#                   COMMENT      "HTML documentation"
-#                   )
-
-#   install(DIRECTORY   ${CMAKE_CURRENT_BINARY_DIR}/html
-#           DESTINATION ${CMAKE_INSTALL_PREFIX}/share/doc)
-# endif()
+  install(DIRECTORY   ${CMAKE_CURRENT_BINARY_DIR}/html
+          DESTINATION ${CMAKE_INSTALL_PREFIX}/share/doc)
+endif()
 
 
 # ----------------------------------------------------------------------

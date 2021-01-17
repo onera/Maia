@@ -19,6 +19,7 @@ Note: of course there is no way to distinguish if we mean "of type Zone_t" or "o
 
 
 .. code::
+
   CGNSBase_t
   |___Zone_t
      |___GridCoordinates_t
@@ -62,6 +63,7 @@ For these nodes, array values are distributed across processes. That is, for a d
 The triplet is stored in a node `PartialDistribution` of type `Distribution_t`. Since many arrays are of the same size, they share this distribution, and there is not need to duplicate it for each shared array. `Distribution_t` nodes go here:
 
 .. code::
+
   CGNSBase_t
   |___Zone_t
      |___**Distribution_t Distribution**
@@ -119,6 +121,7 @@ The triplet is stored in a node `PartialDistribution` of type `Distribution_t`. 
 
 
 .. code::
+
   CGNSBase_t
   |___Zone_t
      |___**GlobalNumbering**
@@ -169,7 +172,7 @@ The triplet is stored in a node `PartialDistribution` of type `Distribution_t`. 
 Elements_t
 ----------
 
-For heterogenous connectivities, the `ElementStartOffset` and `ElementConnectivity` arrays are not independent. The `ElementStartPartialDistribution` refers to the `ElementStartOffset` array (actually, the `ElementStartOffset` load one more element), and the partial ``ElementConnectivity` block loaded by one process is the one described by the `ElementStartOffset` block of that process.
+For heterogenous connectivities, the :code:`ElementStartOffset` and :code:`ElementConnectivity` arrays are not independent. The :code:`ElementStartPartialDistribution` refers to the :code:`ElementStartOffset` array (actually, the :code:`ElementStartOffset` load one more element), and the partial :code:`ElementConnectivity` block loaded by one process is the one described by the :code:`ElementStartOffset` block of that process.
   
 TODO
 ElementStartPartialDistribution
@@ -181,6 +184,7 @@ Example
 Let us look at this tree:
 
 .. code:: yaml
+
   Base0 Base_t [3,3]:
     Zone0 Zone_t [[24],[6],[0]]:
       GridCoordinates GridCoordinates_t:
@@ -194,6 +198,7 @@ TODO ajouter 2 BCs
 If it is distributed on two processes, the dist_tree of each process will be:
 
 .. code:: yaml
+
   Base0 Base_t [3,3]:
     Zone0 Zone_t [[24],[6],[0]]:
       GridCoordinates GridCoordinates_t:

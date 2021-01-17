@@ -8,7 +8,6 @@ Dependencies
 
 **Maia** depends on :
 * python
-* cython
 * pytest
 
 * mpi
@@ -17,6 +16,8 @@ Dependencies
 * hdf5
 
 * Cassiopée
+
+* ruyaml (python package)
 
 
 The build process requires:
@@ -68,6 +69,7 @@ Build and install
 3. Then use CMake to build maia, e.g. 
 
 .. code:: bash
+
   SRC_DIR=<path to source repo>
   BUILD_DIR=<path to tmp build dir>
   INSTALL_DIR=<path to where you want to install Maia>
