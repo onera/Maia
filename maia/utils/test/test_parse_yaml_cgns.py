@@ -2,6 +2,7 @@ from maia.utils import parse_yaml_cgns
 import Converter.Internal as I
 import numpy as np
 
+
 def test_empty_tree():
   yt = ""
   t = parse_yaml_cgns.to_pytree(yt)
@@ -17,7 +18,6 @@ Base0 CGNSBase_t [3,3]:
   Zone0 Zone_t [[24],[6],[0]]:
   Zone1 Zone_t R8 [[4,3,2],[3,2,1],[0,0,0]]:
 """
-
   t = parse_yaml_cgns.to_complete_pytree(yt)
   bs = I.getNodesFromType1(t,"CGNSBase_t")
   assert len(bs) == 1
@@ -29,6 +29,7 @@ Base0 CGNSBase_t [3,3]:
   assert np.all(I.getValue(zs[0]) == [[24],[6],[0]])
   assert I.getChildren(zs[0]) == []
   assert I.getNodeFromName(t, 'Zone1')[1].dtype == np.float64
+
 
 def test_multi_line_value():
   yt = """

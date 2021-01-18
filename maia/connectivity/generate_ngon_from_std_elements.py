@@ -16,7 +16,6 @@ import Pypdm.Pypdm as PDM
 def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   """
   """
-  print("pdm_dmesh_to_cgns")
 
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
@@ -135,7 +134,7 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
   else:
     group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_FACE)
 
-  print(group_idx)
+  #print(group_idx)
   group = np.copy(pdm_group)
   group += next_ngon
 
@@ -158,13 +157,12 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
 def generate_ngon_from_std_elements(dist_tree, comm):
   """
   """
-  print("generate_ngon_from_std_elements")
   bases = I.getNodesFromType(dist_tree, 'CGNSBase_t')
 
   for base in bases:
     base_dim = I.getValue(base)
     extract_dim = base_dim[0]
-    print("extract_dim == ", extract_dim)
+    #print("extract_dim == ", extract_dim)
     zones_u = [zone for zone in I.getZones(base) if I.getZoneType(zone) == 2]
 
     n_mesh = len(zones_u)
@@ -194,4 +192,3 @@ def generate_ngon_from_std_elements(dist_tree, comm):
       I._rmNodesByName(zone, ':CGNS#DMeshNodal#Bnd')
 
   # > Generate correctly zone_grid_connectivity
-  print("generate_ngon_from_std_elements end")

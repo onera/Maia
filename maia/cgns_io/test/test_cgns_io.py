@@ -6,18 +6,21 @@ import pytest_check as check
 @pytest.mark.parametrize("memorder", [1, 2, 3])
 @pytest.mark.parametrize("dtype", ["float", "double", "int"])
 def test_memory_key(dtype, memorder):
-  print("dtype::"   ,dtype)
-  print("memorder::",memorder)
+  #print("dtype::"   ,dtype)
+  #print("memorder::",memorder)
+  pass
 
 # --------------------------------------------------------------------------
 @pytest.mark.mpi_test(comm_size=1)
 def test_filter_5():
-  print("xxx"*100)
+  #print("xxx"*100)
+  pass
 
 # --------------------------------------------------------------------------
 @pytest.mark.mpi_test(comm_size=2)
 def test_filter_6():
-  print("xxx"*100)
+  #print("xxx"*100)
+  pass
 
 # --------------------------------------------------------------------------
 # @pytest.mark.parametrize("make_sub_comm", [1, 2], indirect=['make_sub_comm'])

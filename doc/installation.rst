@@ -79,5 +79,6 @@ Build and install
 CMake options
 ^^^^^^^^^^^^^
 
-* MAIA_PDM_IN_EXTERNAL_FOLDER: If ON, then ParaDiGM will be built from the `maia/exteral/paradigm` folder. Else, CMake will try to find ParaDiGM in your environment. ON by default.
-* MAIA_ENABLE_MPI_TESTS: If ON, CTest will try to execute the parallel test suite. OFF by default.
+* :code:`MAIA_PDM_IN_EXTERNAL_FOLDER`: If :code:`ON`, then ParaDiGM will be built from the `maia/exteral/paradigm` folder. Else, CMake will try to find ParaDiGM in your environment. :code:`ON` by default.
+* :code:`MAIA_ENABLE_MPI_TESTS`: If :code:`ON`, CTest will try to execute the parallel test suite. :code:`OFF` by default.
+* :code:`MAIA_ENABLE_MPI_TESTS`: If :code:`ON`, the doc can be built with :code:`make maia_doc`. :code:`OFF` by default.

@@ -6,7 +6,7 @@ from mpi4py import MPI
 @pytest.hookimpl(tryfirst=False)
 def pytest_configure(config):
   # to remove environment section
-  print("-*"*100)
+  #print("-*"*100)
   config._metadata = None
 
   if not os.path.exists('reports'):

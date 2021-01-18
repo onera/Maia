@@ -65,59 +65,59 @@ Base0 CGNSBase_t [3,3]:
   assert len(I.getNodesFromName(dist_tree, 'PointList')) == 2
   assert I.getNodeFromName(dist_tree, 'ElementConnectivity#Size') is None
 
-#@pytest.mark.mpi(min_size=1)
-#@pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
-#def test_uniform_int32(sub_comm):
-#  if(sub_comm == MPI.COMM_NULL):
-#    return
-#
-#  n_elt  = np.int32(10)
-#  distib = MID.uniform_distribution(n_elt, sub_comm)
-#
-#  assert n_elt.dtype == 'int32'
-#  assert isinstance(distib, np.ndarray)
-#  assert distib.shape == (3,)
-#  assert distib[0]    == 0
-#  assert distib[1]    == 10
-#  assert distib[2]    == n_elt
-#
-#
-#@pytest.mark.mpi(min_size=1)
-#@pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
-#def test_uniform_int64(sub_comm):
-#  if(sub_comm == MPI.COMM_NULL):
-#    return
-#
-#  n_elt  = np.int64(10)
-#  distib = MID.uniform_distribution(n_elt, sub_comm)
-#
-#  assert n_elt.dtype == 'int64'
-#  assert isinstance(distib, np.ndarray)
-#  assert distib.shape == (3,)
-#  assert distib[0]    == 0
-#  assert distib[1]    == 10
-#  assert distib[2]    == n_elt
-#
-#
-#@pytest.mark.mpi(min_size=2)
-#@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
-#def test_uniform_int64_2p(sub_comm):
-#  if(sub_comm == MPI.COMM_NULL):
-#    return
-#
-#  n_elt  = np.int64(11)
-#  distib = MID.uniform_distribution(n_elt, sub_comm)
-#
-#  pytest.assert_mpi(sub_comm, 0, n_elt.dtype == 'int64'          )
-#  pytest.assert_mpi(sub_comm, 0, isinstance(distib, np.ndarray) )
-#  pytest.assert_mpi(sub_comm, 0, distib.shape == (3,)            )
-#  pytest.assert_mpi(sub_comm, 0, distib[0]    == 0               )
-#  pytest.assert_mpi(sub_comm, 0, distib[1]    == 6               )
-#  pytest.assert_mpi(sub_comm, 0, distib[2]    == n_elt           )
-#
-#  pytest.assert_mpi(sub_comm, 1, n_elt.dtype == 'int64'          )
-#  pytest.assert_mpi(sub_comm, 1, isinstance(distib, np.ndarray) )
-#  pytest.assert_mpi(sub_comm, 1, distib.shape == (3,)            )
-#  pytest.assert_mpi(sub_comm, 1, distib[0]    == 6               )
-#  pytest.assert_mpi(sub_comm, 1, distib[1]    == 11              )
-#  pytest.assert_mpi(sub_comm, 1, distib[2]    == n_elt           )
+@pytest.mark.mpi(min_size=1)
+@pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
+def test_uniform_int32(sub_comm):
+  if(sub_comm == MPI.COMM_NULL):
+    return
+
+  n_elt  = np.int32(10)
+  distib = MID.uniform_distribution(n_elt, sub_comm)
+
+  assert n_elt.dtype == 'int32'
+  assert isinstance(distib, np.ndarray)
+  assert distib.shape == (3,)
+  assert distib[0]    == 0
+  assert distib[1]    == 10
+  assert distib[2]    == n_elt
+
+
+@pytest.mark.mpi(min_size=1)
+@pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
+def test_uniform_int64(sub_comm):
+  if(sub_comm == MPI.COMM_NULL):
+    return
+
+  n_elt  = np.int64(10)
+  distib = MID.uniform_distribution(n_elt, sub_comm)
+
+  assert n_elt.dtype == 'int64'
+  assert isinstance(distib, np.ndarray)
+  assert distib.shape == (3,)
+  assert distib[0]    == 0
+  assert distib[1]    == 10
+  assert distib[2]    == n_elt
+
+
+@pytest.mark.mpi(min_size=2)
+@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+def test_uniform_int64_2p(sub_comm):
+  if(sub_comm == MPI.COMM_NULL):
+    return
+
+  n_elt  = np.int64(11)
+  distib = MID.uniform_distribution(n_elt, sub_comm)
+
+  pytest.assert_mpi(sub_comm, 0, n_elt.dtype == 'int64'          )
+  pytest.assert_mpi(sub_comm, 0, isinstance(distib, np.ndarray) )
+  pytest.assert_mpi(sub_comm, 0, distib.shape == (3,)            )
+  pytest.assert_mpi(sub_comm, 0, distib[0]    == 0               )
+  pytest.assert_mpi(sub_comm, 0, distib[1]    == 6               )
+  pytest.assert_mpi(sub_comm, 0, distib[2]    == n_elt           )
+
+  pytest.assert_mpi(sub_comm, 1, n_elt.dtype == 'int64'          )
+  pytest.assert_mpi(sub_comm, 1, isinstance(distib, np.ndarray) )
+  pytest.assert_mpi(sub_comm, 1, distib.shape == (3,)            )
+  pytest.assert_mpi(sub_comm, 1, distib[0]    == 6               )
+  pytest.assert_mpi(sub_comm, 1, distib[1]    == 11              )
+  pytest.assert_mpi(sub_comm, 1, distib[2]    == n_elt           )

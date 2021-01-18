@@ -10,3 +10,6 @@
 [submodule "external/pytest-mpi-check"]
 	path = external/pytest-mpi-check
 	url = https://github.com/maugarsb/pytest-mpi-check.git
+[submodule "external/paradigm"]
+	path = external/paradigm
+	url = https://git.onera.fr/paradigm

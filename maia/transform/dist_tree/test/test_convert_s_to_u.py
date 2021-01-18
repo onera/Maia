@@ -26,7 +26,7 @@ def test_vtx_slab_to_n_face():
   assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 3], [0, 1], [2, 3]], nVtx) == [0,0,2]).all()
   assert (convert_s_to_u.vtx_slab_to_n_faces([[0, 1], [1, 2], [2, 3]], nVtx) == [0,0,1]).all()
 ###############################################################################
-  
+
 ###############################################################################
 class Test_compute_all_ngon_connectivity():
 # --------------------------------------------------------------------------- #
@@ -182,7 +182,7 @@ class Test_compute_pointList_from_pointRanges():
       pointList  = convert_s_to_u.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc,0)
       assert (pointList == [[4,6,8]]).all()
 ###############################################################################
-  
+
 ###############################################################################
 class Test_cgns_transform_funcs():
   # ------------------------------------------------------------------------- #
@@ -340,5 +340,4 @@ def test_zonedims_to_ngon(sub_comm):
   assert I.getNodeFromName1(ngon, 'ElementConnectivity#Size')[1] == 4*29
   assert I.getNodeFromName1(ngon, 'ParentElements')[1].shape == (expected_n_faces, 2)
   assert I.getNodeFromName1(ngon, 'ElementConnectivity')[1].shape == (4*expected_n_faces,)
-
 ###############################################################################

@@ -72,7 +72,7 @@ def sub_comm(request):
 # --------------------------------------------------------------------------
 def assert_mpi(comm, rank, cond ):
   if(comm.rank == rank):
-    print("assert_mpi_maia --> ", cond)
+    #print("assert_mpi_maia --> ", cond)
     assert(cond == True)
   else:
     pass
@@ -82,7 +82,8 @@ def assert_mpi(comm, rank, cond ):
 def pytest_sessionstart(session):
   """
   """
-  print("pytest_session_start")
+  pass
+  #print("pytest_session_start")
   # print(dir(session.session))
 
 # --------------------------------------------------------------------------
@@ -132,7 +133,7 @@ def pytest_runtest_setup(item):
     comm = MPI.COMM_WORLD
     try:
       n_rank_test = mark.kwargs.get('comm_size')
-      print("*"*100, n_rank_test)
+      #print("*"*100, n_rank_test)
 
       # > Si n_rank_test > comm.size() --> Skip
       if(n_rank_test > comm.size):

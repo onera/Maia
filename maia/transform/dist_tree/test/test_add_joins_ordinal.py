@@ -150,7 +150,7 @@ Base1 CGNSBase_t [3,3]:
     if sub_comm.Get_rank() == 2:
       pl_n[1]  = pl_n[1][3:4]
       pld_n[1] = pld_n[1][3:4]
-  
+
   add_joins_ordinal.add_joins_ordinal(dist_tree, sub_comm)
 
   expected_ordinal     = [1,2,3,4,5,6]

@@ -1,5 +1,9 @@
 #include "std_e/logging/mpi_log.hpp"
 
+// Contrary to other .test.cpp files, this one does not test anything
+// It is only here to initialize the test logger
+// It has the .test.cpp suffix convention in order to be picked up when building the test executable
+
 namespace {
 
 bool init_maia_test_logger() {

@@ -27,7 +27,7 @@ def get_npe_with_element_type_cgns(elmt_type):
   # elif(elmt_type == 19):  # Hexa20
   #   npe   = 20
   else:
-    print('Not implemented elements type')
+    raise NotImplementedError('Not implemented elements type')
 
   return npe
 

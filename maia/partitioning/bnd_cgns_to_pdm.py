@@ -9,8 +9,8 @@ def bnd_cgns_to_pdm(dist_zone):
   """
   # > Find shift in NGon
   first_ngon_elmt, last_ngon_elmt = EZU.get_range_of_ngon(dist_zone)
-  print("first_ngon_elmt::", first_ngon_elmt)
-  print("last_ngon_elmt ::", last_ngon_elmt)
+  #print("first_ngon_elmt::", first_ngon_elmt)
+  #print("last_ngon_elmt ::", last_ngon_elmt)
 
   n_bnd = 0
   for zone_bc in I.getNodesFromType1(dist_zone, 'ZoneBC_t'):
@@ -38,5 +38,5 @@ def bnd_cgns_to_pdm(dist_zone):
   else:
     dface_bound = None
 
-  print(dface_bound, dface_bound_idx)
+  #print(dface_bound, dface_bound_idx)
   return dface_bound, dface_bound_idx
