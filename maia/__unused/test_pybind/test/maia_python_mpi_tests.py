@@ -23,7 +23,7 @@ def test_first_step():
   """
   """
   # print("test_first_step")
-  from maia.utils import first_step as MUF
+  from maia.__unused.test_pybind import first_step as MUF
 
   base = MUF.cgns_base("cgns_base", 1)
 

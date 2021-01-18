@@ -114,11 +114,10 @@ endif()
 # ----------------------------------------------------------------------
 # Compilation
 # ----------------------------------------------------------------------
-
-## Python, Cython, Pybind11
-set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/")
-include(${PROJECT_UTILS_CMAKE_DIR}/MixPythonCythonModule.cmake)
-mixpython_cython_add_module(${PROJECT_NAME})
+### Python, Cython, Pybind11
+#set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/")
+#include(${PROJECT_UTILS_CMAKE_DIR}/MixPythonCythonModule.cmake)
+#mixpython_cython_add_module(${PROJECT_NAME})
 
 ## Compiled languages
 set(src_dir ${PROJECT_SOURCE_DIR}/${PROJECT_NAME})
@@ -149,13 +148,17 @@ target_link_libraries(${PROJECT_NAME}
     pdm::pdm_shared
 )
 
-
 # ----------------------------------------------------------------------
 # Installation
 # ----------------------------------------------------------------------
-
 target_install(${PROJECT_NAME})
 
+# ----------------------------------------------------------------------
+# Python and wrapping
+# ----------------------------------------------------------------------
+include(${PROJECT_UTILS_CMAKE_DIR}/python_wrapping.cmake)
+compile_install_pybind_modules(${PROJECT_NAME})
+compile_install_python_modules(${PROJECT_NAME})
 
 # ----------------------------------------------------------------------
 # Testing
@@ -167,7 +170,7 @@ add_subdirectory(test)
 # ----------------------------------------------------------------------
 # Build documentation
 # ----------------------------------------------------------------------
-option(MAIA_BUILD_DOCUMENTATION "Build ${PROJECT_NAME} documentation ." OFF)
+option(MAIA_BUILD_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
 if(MAIA_BUILD_DOCUMENTATION)
   # Download bootstrap style
   FetchContent_Declare(

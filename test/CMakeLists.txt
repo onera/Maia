@@ -23,9 +23,6 @@ create_mpi_doctest(
   N_PROC        ${n_proc_max_test}
 )
 
-# TODO DEL? (replaced by mpi_pytest_directory_python_create)
-create_mpi_pytest(maia_python_mpi_tests 1)
-
 option(MAIA_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
 if(MAIA_ENABLE_MPI_TESTS)
   mpi_pytest_directory_python_create(maia_python_unit_tests maia ${n_proc_max_test})
