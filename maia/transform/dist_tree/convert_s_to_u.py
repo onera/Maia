@@ -17,7 +17,9 @@ def n_face_per_dir(n_vtx, n_edge):
   return np.array([n_vtx[0]*n_edge[1]*n_edge[2],
                    n_vtx[1]*n_edge[0]*n_edge[2],
                    n_vtx[2]*n_edge[0]*n_edge[1]])
+###############################################################################
 
+###############################################################################
 def vtx_slab_to_n_faces(vtx_slab, n_vtx):
   """
   Compute the number of faces to create for a zone by a proc with distributed info
@@ -30,7 +32,6 @@ def vtx_slab_to_n_faces(vtx_slab, n_vtx):
   n_edges    = n_vertices - (np_vtx_slab[:,1] == n_vtx).astype(int)
 
   return n_face_per_dir(n_vertices, n_edges)
-
 ###############################################################################
 
 ###############################################################################
@@ -92,11 +93,10 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     face_pe[start:end]      = s_numb.compute_fk_PE_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     face_vtx[4*start:4*end] = s_numb.compute_fk_facevtx_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     counter += n_faces[2]
-
 ###############################################################################
 
 ###############################################################################
-def compute_pointList_from_pointRanges(sub_pr_list, n_vtxS, output_loc, cst_axe=None):
+def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, cst_axe=None):
   """
   Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must
   describe entity of kind output_loc, which can take the values 'FaceCenter', 'Vertex' or 'CellCenter'
@@ -106,17 +106,17 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtxS, output_loc, cst_axe=
   to retrieve the indexing function when output_loc == 'FaceCenter'.
   """
 
-  nCellS = [nv - 1 for nv in n_vtxS]
+  n_cell_S = [nv - 1 for nv in n_vtx_S]
 
   # The lambda func ijk_to_func redirect to the good indexing function depending
   # on the output grid location
   if output_loc == 'FaceCenter':
-    ijk_to_faceIndex = [s_numb.ijk_to_faceiIndex, s_numb.ijk_to_facejIndex, s_numb.ijk_to_facekIndex]
-    ijk_to_func = lambda i,j,k : ijk_to_faceIndex[cst_axe](i, j, k, nCellS, n_vtxS)
+    ijk_to_face_index = [s_numb.ijk_to_faceiIndex, s_numb.ijk_to_facejIndex, s_numb.ijk_to_facekIndex]
+    ijk_to_func = lambda i,j,k : ijk_to_face_index[cst_axe](i, j, k, n_cell_S, n_vtx_S)
   elif output_loc == 'Vertex':
-    ijk_to_func = lambda i,j,k : s_numb.ijk_to_index(i, j, k, n_vtxS)
+    ijk_to_func = lambda i,j,k : s_numb.ijk_to_index(i, j, k, n_vtx_S)
   elif output_loc == 'CellCenter':
-    ijk_to_func = lambda i,j,k : s_numb.ijk_to_index(i, j, k, nCellS)
+    ijk_to_func = lambda i,j,k : s_numb.ijk_to_index(i, j, k, n_cell_S)
   else:
     raise ValueError("Wrong output location : '{}'".format(output_loc))
 
@@ -145,7 +145,7 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtxS, output_loc, cst_axe=
 ###############################################################################
 
 ###############################################################################
-def isSameAxis(x,y):
+def is_same_axis(x,y):
   """
   This function is the implementation of the 'del' function defined in the SIDS
   of CGNS (https://cgns.github.io/CGNS_docs_current/sids/cnct.html) as :
@@ -155,29 +155,34 @@ def isSameAxis(x,y):
 ###############################################################################
 
 ###############################################################################
-def compute_transformMatrix(transform):
+def compute_transform_matrix(transform):
   """
   This function compute the matrix to convert current indices to opposit indices
   The definition of this matrix is given in the SIDS of CGNS 
   (https://cgns.github.io/CGNS_docs_current/sids/cnct.html)
   """
   transform_np = np.asarray(transform)
-  del_matrix = isSameAxis(transform_np, np.array([[1],[2],[3]]))
+  del_matrix = is_same_axis(transform_np, np.array([[1],[2],[3]]))
   return np.sign(transform_np) * del_matrix
 ###############################################################################
 
 ###############################################################################
-def apply_transformation(index1, start1, start2, T):
+def apply_transformation(index_1, start_1, start_2, T):
   """
   This function compute indices from current to oppposit or from opposit to current
-  by using the transform matrix.
-  As defined in the SIDS of CGNS (https://cgns.github.io/CGNS_docs_current/sids/cnct.html) :
-  Index2 = T.(Index1 - Begin1) + Begin2
+  by using the transform matrix as defined in the SIDS of CGNS
+  (https://cgns.github.io/CGNS_docs_current/sids/cnct.html)
   """
-  return np.matmul(T, (index1 - start1)) + start2
+  return np.matmul(T, (index_1 - start_1)) + start_2
 ###############################################################################
 
+###############################################################################
 def guess_boundary_axis(point_range, grid_location):
+  """
+  From a point_range array and a grid_location value, try to predict the plane
+  on which the boundary was created. Return the axis on which the boundary
+  is constant (0:=x, 1:=y, 2:=z) eg return 1 if boundary belongs to x,y plane.
+  """
   if grid_location in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
     cst_axe = {'I':0, 'J':1, 'K':2}[grid_location[0]]
   elif sum(point_range[:,0] == point_range[:,1]) == 1: #Ambiguity can be resolved
@@ -185,7 +190,9 @@ def guess_boundary_axis(point_range, grid_location):
   else:
     raise ValueError("Ambiguous input location")
   return cst_axe
+###############################################################################
 
+###############################################################################
 def cst_axe_shift(point_range, n_vtx, bnd_axis, in_loc_is_cell, out_loc_is_cell):
   """
   Return the value that should be added to pr[cst_axe,:] to account for cell <-> face|vtx transformation :
@@ -194,9 +201,12 @@ def cst_axe_shift(point_range, n_vtx, bnd_axis, in_loc_is_cell, out_loc_is_cell)
      0 in other cases
   """
   cst_axe_is_last = point_range[bnd_axis,0] == (n_vtx[bnd_axis] - int(in_loc_is_cell))
-  correction_sign = -int(out_loc_is_cell and not in_loc_is_cell) + int(not out_loc_is_cell and in_loc_is_cell)
+  correction_sign = -int(out_loc_is_cell and not in_loc_is_cell) \
+                    +int(not out_loc_is_cell and in_loc_is_cell)
   return int(cst_axe_is_last) * correction_sign
+###############################################################################
 
+###############################################################################
 def transform_bnd_pr_size(point_range, input_loc, output_loc):
   """
   Predict a point_range defined at an input_location if it were defined at an output_location
@@ -210,9 +220,17 @@ def transform_bnd_pr_size(point_range, input_loc, output_loc):
     mask = np.arange(point_range.shape[0]) == bnd_axis
     size += (~mask).astype(int)
   return size
+###############################################################################
 
 ###############################################################################
 def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
+  """
+  Convert a structured bc into a non structured bc. This consist mainly in
+  deducing a point_list array from the point_range. The support of the output
+  point_list must be specified throught output_loc arg (which can be one of
+  'Vertex', 'FaceCenter', 'CellCenter').
+  For now, BCDataSet are not preserved.
+  """
   input_loc_node = I.getNodeFromType1(bc_s, "GridLocation_t")
   input_loc = I.getValue(input_loc_node) if input_loc_node is not None else "Vertex"
   point_range = I.getValue(I.getNodeFromName1(bc_s, 'PointRange'))
@@ -232,7 +250,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     sub_pr[:,1] += point_range[:,0] - 1
     sub_pr[bnd_axis,:] += shift
 
-  point_list = compute_pointList_from_pointRanges(sub_pr_list,n_vtx_zone,output_loc, bnd_axis)
+  point_list = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, output_loc, bnd_axis)
 
   bc_u = I.newBC(I.getName(bc_s), btype=I.getValue(bc_s))
   I.newGridLocation(output_loc, parent=bc_u)
@@ -242,9 +260,17 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   for allowed_child in [c for c in I.getChildren(bc_s) if I.getType(c) in allowed_types]:
     I.addChild(bc_u, allowed_child)
   return bc_u
+###############################################################################
 
-
+###############################################################################
 def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank, n_rank):
+  """
+  Convert a structured gc into a non structured gc. This consist mainly in
+  deducing a point_list array from the point_range. The support of the output
+  point_list must be specified throught output_loc arg (which can be one of
+  'Vertex', 'FaceCenter', 'CellCenter').
+  Consistency between PL/PLDonor is preserved.
+  """
   input_loc_node = I.getNodeFromType1(gc_s, "GridLocation_t")
   assert input_loc_node is None or I.getValue(input_loc_node) == "Vertex"
 
@@ -252,7 +278,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   if not '/' in zone_path_opp:
     zone_path_opp = zone_path.split('/')[0] + '/' + zone_path_opp
   transform = I.getValue(I.getNodeFromName1(gc_s, 'Transform'))
-  T = compute_transformMatrix(transform)
+  T = compute_transform_matrix(transform)
 
   point_range     = I.getValue(I.getNodeFromName1(gc_s, 'PointRange'))
   point_range_opp = I.getValue(I.getNodeFromName1(gc_s, 'PointRangeDonor'))
@@ -331,30 +357,36 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
     if I.getName(child) in allowed_names or I.getType(child) in allowed_types:
       I.addChild(gc_u, child)
   return gc_u
+###############################################################################
 
+###############################################################################
 def zonedims_to_ngon(n_vtx_zone, comm):
+  """
+  Generates distributed NGonElement node from the number of
+  vertices in the zone.
+  """
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
   n_face_tot = n_face_per_dir(n_vtx_zone, n_vtx_zone-1).sum()
-  #> with NgonElements
-  #>> Definition en non structure des faces
+
   vtx_range  = MDIDF.uniform_distribution_at(n_vtx_zone.prod(), i_rank, n_rank)
   vtx_slabs  = HFR2S.compute_slabs(n_vtx_zone, vtx_range)
   n_face_slab = sum([vtx_slab_to_n_faces(slab, n_vtx_zone).sum() for slab in vtx_slabs])
   face_gnum     = np.empty(  n_face_slab, dtype=np.int32)
   face_vtx      = np.empty(4*n_face_slab, dtype=np.int32)
   face_pe       = np.empty((n_face_slab, 2), dtype=np.int32)
+  # Create local NGon connectivity
   compute_all_ngon_connectivity(vtx_slabs, n_vtx_zone, face_gnum, face_vtx, face_pe)
 
-  #>> PartToBlock pour ordonner et equidistribuer les faces
+  # PartToBlock to order an distribute the faces
   part_to_block = PDM.PartToBlock(comm, [face_gnum], None, partN=1, t_distrib=0, t_post=0, t_stride=1)
-  #>>> Premier echange pour le ParentElements
+  # Exchange PE
   pfield_stride2 = {"NGonPE" : [face_pe.ravel()]}
   stride2 = [2*np.ones(n_face_slab, dtype='int32')]
   dfield_stride2 = dict()
   part_to_block.PartToBlock_Exchange(dfield_stride2, pfield_stride2, stride2)
-  #>>> Deuxieme echange pour l'ElementConnectivity
+  # Exchange element connectivity
   pfield_stride4 = {"NGonFaceVtx" : [face_vtx]}
   stride4 = [4*np.ones(n_face_slab,  dtype='int32')]
   dfield_stride4 = dict()
@@ -372,13 +404,21 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   I.newParentElements(face_pe, parent=ngon)
 
   return ngon
+###############################################################################
 
+###############################################################################
 def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="FaceCenter"):
-
+  """
+  Convert a structured dist_tree into an unstructured dist_tree. This function
+    - Copy the grid coordinates and flow solution nodes
+    - Create the NGon connectivity
+    - Convert the BCs (BCDataSet are not managed yet) and GCs
+    - Copy the top level nodes (FlowEquationSet_t, ReferenceState_t, Family_t)
+  """
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
-
   disttree_u = I.newCGNSTree()
+
   for base_s in I.getBases(disttree_s):
     base_u = I.createNode(I.getName(base_s), 'CGNSBase_t', I.getValue(base_s), parent=disttree_u)
     for zone_s in I.getZones(base_s):
@@ -430,3 +470,4 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
         I.addChild(base_u, node)
 
   return disttree_u
+###############################################################################

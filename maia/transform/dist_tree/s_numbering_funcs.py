@@ -8,7 +8,7 @@ Some conventions shared by all the functions:
 - The face numerotation starts with all faces with normal in direction
   i, then continues with all faces with normal in direction j and ends
   with all faces with normal in direction k
-
+- Functions should be call directly on numpy arrays for optimal performance
 """
 ###############################################################################
 def ijk_to_index(i,j,k,n_elmt):
@@ -18,9 +18,7 @@ def ijk_to_index(i,j,k,n_elmt):
   n_elmt is the number of nodes or cells of the structured block
   """
   return(i+(j-1)*n_elmt[0]+(k-1)*n_elmt[0]*n_elmt[1])
-###############################################################################
 
-###############################################################################
 def ijk_to_faceiIndex(i,j,k,n_cell,n_vtx):
   """
   Convert (i,j,k) indices from structured grid to unstructured index of face with
@@ -29,9 +27,7 @@ def ijk_to_faceiIndex(i,j,k,n_cell,n_vtx):
   (i,j,k), (i,j+1,k), (i,j+1,k+1) and (i,j,k+1)
   """
   return(i + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_cell[1])
-###############################################################################
 
-###############################################################################
 def ijk_to_facejIndex(i,j,k,n_cell,n_vtx):
   """
   Convert (i,j,k) indices from structured grid to unstructured index of face with
@@ -41,9 +37,7 @@ def ijk_to_facejIndex(i,j,k,n_cell,n_vtx):
   """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   return(i + (j-1)*n_cell[0] + (k-1)*n_vtx[1]*n_cell[0] + nbFacesi)
-###############################################################################
 
-###############################################################################
 def ijk_to_facekIndex(i,j,k,n_cell,n_vtx):
   """
   Convert (i,j,k) indices from structured grid to unstructured index of face with
@@ -54,9 +48,7 @@ def ijk_to_facekIndex(i,j,k,n_cell,n_vtx):
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   nbFacesj = n_vtx[1]*n_cell[0]*n_cell[2]
   return(i + (j-1)*n_cell[0] + (k-1)*n_cell[0]*n_cell[1] + nbFacesi + nbFacesj)
-###############################################################################
 
-###############################################################################
 def ijk_to_faceIndices(i,j,k,n_cell,n_vtx):
   """
   Convert (i,j,k) indices from structured grid to unstructured index of faces with
@@ -74,6 +66,11 @@ def ijk_to_faceIndices(i,j,k,n_cell,n_vtx):
 
 ###############################################################################
 def compute_fi_PE_from_idx(idx, n_cell, n_vtx):
+  """
+  Compute the U index of left and right parents of a i-normal face directly from
+  its U index. Returns a (#idx, 2) shaped array PE storing for each face
+  PE[i_face_id,:] = [left_parent_id, right_parent_id]
+  """
   np_idx = np.asarray(idx)
   is_min_bnd  = (np_idx % n_vtx[0]) == 1
   is_max_bnd  = (np_idx % n_vtx[0]) == 0
@@ -89,6 +86,12 @@ def compute_fi_PE_from_idx(idx, n_cell, n_vtx):
   return PE
 
 def compute_fi_facevtx_from_idx(idx, n_cell, n_vtx):
+  """
+  Compute the U index of the 4 nodes belonging to a i-normal face directly from
+  its U index. Returns a flattened array nodes of size 4*#idx storing for each face
+  nodes[4*i_face_id:4*(i_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
+  face normal goes from leftcell to rightcell.
+  """
   np_idx = np.asarray(idx)
   is_min_bnd  = (np_idx % n_vtx[0]) == 1
   plan_number = (np_idx-1) // (n_vtx[0]*n_cell[1])
@@ -102,10 +105,13 @@ def compute_fi_facevtx_from_idx(idx, n_cell, n_vtx):
   #Swap 2,4 for min faces
   nodes[is_min_bnd, 1], nodes[is_min_bnd,3] = nodes[is_min_bnd, 3], nodes[is_min_bnd,1]
   return nodes.flatten()
-###############################################################################
 
-###############################################################################
 def compute_fj_PE_from_idx(idx, n_cell, n_vtx):
+  """
+  Compute the U index of left and right parents of a j-normal face directly from
+  its U index. Returns a (#idx, 2) shaped array PE storing for each face
+  PE[j_face_id,:] = [left_parent_id, right_parent_id]
+  """
   np_idx = np.asarray(idx)
   nb_face_ij  = n_vtx[1]*n_cell[0]
   plan_number = (np_idx-1) // nb_face_ij
@@ -122,6 +128,12 @@ def compute_fj_PE_from_idx(idx, n_cell, n_vtx):
   return PE
 
 def compute_fj_facevtx_from_idx(idx, n_cell, n_vtx):
+  """
+  Compute the U index of the 4 nodes belonging to a j-normal face directly from
+  its U index. Returns a flattened array nodes of size 4*#idx storing for each face
+  nodes[4*j_face_id:4*(j_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
+  face normal goes from leftcell to rightcell.
+  """
   np_idx = np.asarray(idx)
   nb_face_ij  = n_vtx[1]*n_cell[0]
   line_number = (np_idx-1) // n_cell[0]
@@ -137,10 +149,13 @@ def compute_fj_facevtx_from_idx(idx, n_cell, n_vtx):
   #Swap 2,4 for min faces
   nodes[is_min_bnd, 1], nodes[is_min_bnd,3] = nodes[is_min_bnd, 3], nodes[is_min_bnd,1]
   return nodes.flatten()
-###############################################################################
 
-###############################################################################
 def compute_fk_PE_from_idx(idx, n_cell, n_vtx):
+  """
+  Compute the U index of left and right parents of a k-normal face directly from
+  its U index. Returns a (#idx, 2) shaped array PE storing for each face
+  PE[k_face_id,:] = [left_parent_id, right_parent_id]
+  """
   np_idx = np.asarray(idx)
   nb_face_ij  = n_cell[0]*n_cell[1]
   is_min_bnd  = np_idx <= nb_face_ij
@@ -156,6 +171,12 @@ def compute_fk_PE_from_idx(idx, n_cell, n_vtx):
   return PE
 
 def compute_fk_facevtx_from_idx(idx, n_cell, n_vtx):
+  """
+  Compute the U index of the 4 nodes belonging to a k-normal face directly from
+  its U index. Returns a flattened array nodes of size 4*#idx storing for each face
+  nodes[4*k_face_id:4*(k_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
+  face normal goes from leftcell to rightcell.
+  """
   np_idx = np.asarray(idx)
   nb_face_ij  = n_cell[0]*n_cell[1]
   is_min_bnd  = np_idx <= nb_face_ij
@@ -171,7 +192,6 @@ def compute_fk_facevtx_from_idx(idx, n_cell, n_vtx):
   #Swap 2,4 for min faces
   nodes[is_min_bnd, 1], nodes[is_min_bnd,3] = nodes[is_min_bnd, 3], nodes[is_min_bnd,1]
   return nodes.flatten()
-###############################################################################
 
 def compute_fi_from_ijk(i,j,k, is_min=False, is_max=False):
   """
@@ -196,9 +216,7 @@ def compute_fi_from_ijk(i,j,k, is_min=False, is_max=False):
   if is_min or is_max:
     right = 0
   return(n1,n2,n3,n4,left,right)
-###############################################################################
 
-###############################################################################
 def compute_fj_from_ijk(i,j,k, is_min=False, is_max=False):
   """
   Compute from structured indices (i,j,k) of structured nodes indices that compose 
@@ -222,9 +240,7 @@ def compute_fj_from_ijk(i,j,k, is_min=False, is_max=False):
   if is_min or is_max:
     right = 0
   return(n1,n2,n3,n4,left,right)
-###############################################################################
 
-###############################################################################
 def compute_fk_from_ijk(i,j,k, is_min=False, is_max=False):
   """
   Compute from structured indices (i,j,k) of structured nodes indices that compose 

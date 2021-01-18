@@ -211,22 +211,22 @@ class Test_compute_pointList_from_pointRanges():
 class Test_cgns_transform_funcs():
   # ------------------------------------------------------------------------- #
   def test_isSameAxis(self):
-    assert convert_s_to_u.isSameAxis( 1, 2) == 0
-    assert convert_s_to_u.isSameAxis( 1, 1) == 1
-    assert convert_s_to_u.isSameAxis(-2, 2) == 1
-    assert convert_s_to_u.isSameAxis( 1,-1) == 1
+    assert convert_s_to_u.is_same_axis( 1, 2) == 0
+    assert convert_s_to_u.is_same_axis( 1, 1) == 1
+    assert convert_s_to_u.is_same_axis(-2, 2) == 1
+    assert convert_s_to_u.is_same_axis( 1,-1) == 1
   # ------------------------------------------------------------------------- #
   def test_compute_transformMatrix(self):
     transform = [1,2,3]
     attendedTransformMatrix = np.eye(3, dtype=np.int32)
-    assert (convert_s_to_u.compute_transformMatrix(transform) == attendedTransformMatrix).all()
+    assert (convert_s_to_u.compute_transform_matrix(transform) == attendedTransformMatrix).all()
 
     transform = [-2,3,1]
     attendedTransformMatrix = np.zeros((3,3),dtype=np.int32,order='F')
     attendedTransformMatrix[0][2] =  1
     attendedTransformMatrix[1][0] = -1
     attendedTransformMatrix[2][1] =  1
-    assert (convert_s_to_u.compute_transformMatrix(transform) == attendedTransformMatrix).all()
+    assert (convert_s_to_u.compute_transform_matrix(transform) == attendedTransformMatrix).all()
   # ------------------------------------------------------------------------- #
   def test_apply_transformation(self):
     t_matrix = np.array([[0,-1,0], [-1,0,0], [0,0,-1]])
