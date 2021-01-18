@@ -127,7 +127,7 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, cst_axe
   ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
 
   sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
-  point_list = np.empty((1, sum(sub_range_sizes)), dtype=pdm_gnum_dtype)
+  point_list = np.empty((1, sum(sub_range_sizes)), order='F', dtype=pdm_gnum_dtype)
   counter = 0
 
   for ipr, pr in enumerate(sub_pr_list):
@@ -376,7 +376,7 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   n_face_slab = sum([vtx_slab_to_n_faces(slab, n_vtx_zone).sum() for slab in vtx_slabs])
   face_gnum     = np.empty(  n_face_slab, dtype=pdm_gnum_dtype)
   face_vtx      = np.empty(4*n_face_slab, dtype=pdm_gnum_dtype)
-  face_pe       = np.empty((n_face_slab, 2), dtype=pdm_gnum_dtype)
+  face_pe       = np.empty((n_face_slab, 2), order='F', dtype=pdm_gnum_dtype)
   # Create local NGon connectivity
   compute_all_ngon_connectivity(vtx_slabs, n_vtx_zone, face_gnum, face_vtx, face_pe)
 
@@ -397,7 +397,7 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   face_vtx = dfield_stride4["NGonFaceVtx"]
   n_face_loc = face_pe.shape[0]
   face_distri = part_to_block.getDistributionCopy()
-  face_vtx_idx = 4*np.arange(face_distri[i_rank], face_distri[i_rank]+n_face_loc+1)
+  face_vtx_idx = 4*np.arange(face_distri[i_rank], face_distri[i_rank]+n_face_loc+1, dtype=pdm_gnum_dtype)
 
   ngon = I.newElements('NGonElements', 'NGON', face_vtx, [1, n_face_tot])
   I.newDataArray("ElementStartOffset", face_vtx_idx, parent=ngon)

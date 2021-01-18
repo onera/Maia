@@ -80,7 +80,7 @@ def compute_fi_PE_from_idx(idx, n_cell, n_vtx):
   #Internal faces : left, right = idx-line_number-1, idx-line_number
   #Min faces      : left        = idx-line_number
   #Max faces      : left        = idx-line_number-1
-  PE = np.empty((np_idx.shape[0], 2), dtype=np_idx.dtype)
+  PE = np.empty((np_idx.shape[0], 2), order='F', dtype=np_idx.dtype)
   PE[:,0] = np_idx - line_number - 1 + is_min_bnd
   PE[:,1] = (np_idx - line_number) * is_internal
   return PE
@@ -122,7 +122,7 @@ def compute_fj_PE_from_idx(idx, n_cell, n_vtx):
   #Internal faces : left, right = idx - n_cell[0]*plan_number-n_cell[0], idx - n_cell[0]*plan_number
   #Min faces      : left        = idx - n_cell[0]*plan_number
   #Max faces      : left        = idx - n_cell[0]*plan_number-n_cell[0]
-  PE = np.empty((np_idx.shape[0], 2), dtype=np_idx.dtype)
+  PE = np.empty((np_idx.shape[0], 2), order='F', dtype=np_idx.dtype)
   PE[:,0] = np_idx - n_cell[0]*plan_number - n_cell[0]*(1-is_min_bnd)
   PE[:,1] = (np_idx - n_cell[0]*plan_number)*is_internal
   return PE
@@ -165,7 +165,7 @@ def compute_fk_PE_from_idx(idx, n_cell, n_vtx):
   #Internal faces : left, right = idx - nb_face_ij, idx
   #Min faces      : left        = idx
   #Max faces      : left        = idx - nb_face_ij
-  PE = np.empty((np_idx.shape[0], 2), dtype=np_idx.dtype)
+  PE = np.empty((np_idx.shape[0], 2), order='F', dtype=np_idx.dtype)
   PE[:,0] = np_idx - nb_face_ij*(1-is_min_bnd)
   PE[:,1] = np_idx*is_internal
   return PE
