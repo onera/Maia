@@ -8,6 +8,7 @@ from maia.distribution       import distribution_function           as MDIDF
 from maia.cgns_io.hdf_filter import range_to_slab                   as HFR2S
 from .                       import s_numbering_funcs               as s_numb
 
+pdm_gnum_dtype = PDM.npy_pdm_gnum_dtype
 ###############################################################################
 def n_face_per_dir(n_vtx, n_edge):
   """
@@ -126,7 +127,7 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, cst_axe
   ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
 
   sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
-  point_list = np.empty((1, sum(sub_range_sizes)), dtype=np.int32)
+  point_list = np.empty((1, sum(sub_range_sizes)), dtype=pdm_gnum_dtype)
   counter = 0
 
   for ipr, pr in enumerate(sub_pr_list):
@@ -317,7 +318,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   #Get opposed sub point ranges
   sub_pr_opp_list = []
   for sub_pr in sub_pr_list:
-    sub_pr_opp = np.empty((3,2), dtype=np.int32)
+    sub_pr_opp = np.empty((3,2), dtype=sub_pr.dtype)
     sub_pr_opp[:,0] = apply_transformation(sub_pr[:,0], point_range_loc[:,0], point_range_opp_loc[:,0], T)
     sub_pr_opp[:,1] = apply_transformation(sub_pr[:,1], point_range_loc[:,0], point_range_opp_loc[:,0], T)
     sub_pr_opp_list.append(sub_pr_opp)
@@ -373,9 +374,9 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   vtx_range  = MDIDF.uniform_distribution_at(n_vtx_zone.prod(), i_rank, n_rank)
   vtx_slabs  = HFR2S.compute_slabs(n_vtx_zone, vtx_range)
   n_face_slab = sum([vtx_slab_to_n_faces(slab, n_vtx_zone).sum() for slab in vtx_slabs])
-  face_gnum     = np.empty(  n_face_slab, dtype=np.int32)
-  face_vtx      = np.empty(4*n_face_slab, dtype=np.int32)
-  face_pe       = np.empty((n_face_slab, 2), dtype=np.int32)
+  face_gnum     = np.empty(  n_face_slab, dtype=pdm_gnum_dtype)
+  face_vtx      = np.empty(4*n_face_slab, dtype=pdm_gnum_dtype)
+  face_pe       = np.empty((n_face_slab, 2), dtype=pdm_gnum_dtype)
   # Create local NGon connectivity
   compute_all_ngon_connectivity(vtx_slabs, n_vtx_zone, face_gnum, face_vtx, face_pe)
 
