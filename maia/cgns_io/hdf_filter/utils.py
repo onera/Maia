@@ -21,7 +21,7 @@ def pl_or_pr_size(node):
       distri = I.getNodeFromPath(node, ':CGNS#Distribution/Distribution')[1]
       return [1, distri[2]]
   if pr_n:
-    return SIDS.point_range_size(pr_n)
+    return SIDS.point_range_sizes(pr_n)
 
 def apply_dataspace_to_arrays(node, node_path, data_space, hdf_filter):
   """

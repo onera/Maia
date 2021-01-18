@@ -1,7 +1,7 @@
 import Converter.PyTree   as     C
 import Converter.Internal as     I
 
-from .correct_tree import correct_point_range, load_grid_connectivity_property
+from .correct_tree import fix_point_ranges, load_grid_connectivity_property
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
@@ -79,7 +79,7 @@ def load_collective_size_tree(filename, comm):
                                      dataShape=size_data,
                                      format='bin_hdf')
     add_sizes_to_tree(size_tree, size_data)
-    correct_point_range(size_tree, size_data)
+    fix_point_ranges(size_tree)
     load_grid_connectivity_property(filename, size_tree)
   else:
     size_tree = None

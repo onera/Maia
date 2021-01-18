@@ -1,11 +1,11 @@
 import numpy as np
 """
 These numbering functions map cells, faces or vertex of a structured mesh,
-identified by their three indexes (i,j,k), to an absolute 1d identifier.
+identified by their three indices (i,j,k), to an absolute 1d identifier.
 Some conventions shared by all the functions:
-- (i,j,k) and resultting indexes start at 1
+- (i,j,k) and resulting indices start at 1
 - n_cell / n_vtx is the number of cells and vertices in the structured block
-- The face numerotation starts with all faces with normal in direction
+- The face numbering starts with all faces with normal in direction
   i, then continues with all faces with normal in direction j and ends
   with all faces with normal in direction k
 - Functions should be call directly on numpy arrays for optimal performance
@@ -65,16 +65,16 @@ def ijk_to_faceIndices(i,j,k,n_cell,n_vtx):
 ###############################################################################
 
 ###############################################################################
-def compute_fi_PE_from_idx(idx, n_cell, n_vtx):
+def PE_idx_from_i_face_idx(idx, n_cell, n_vtx):
   """
-  Compute the U index of left and right parents of a i-normal face directly from
-  its U index. Returns a (#idx, 2) shaped array PE storing for each face
+  Compute the index of left and right parents of a i-normal face directly from
+  its index. Returns a (#idx, 2) shaped array PE storing for each face
   PE[i_face_id,:] = [left_parent_id, right_parent_id]
   """
   np_idx = np.asarray(idx)
   is_min_bnd  = (np_idx % n_vtx[0]) == 1
   is_max_bnd  = (np_idx % n_vtx[0]) == 0
-  is_internal = ~(is_min_bnd | is_max_bnd)
+  is_internal = ~is_min_bnd & ~is_max_bnd
   line_number = (np_idx-1) // n_vtx[0]
 
   #Internal faces : left, right = idx-line_number-1, idx-line_number
@@ -85,10 +85,10 @@ def compute_fi_PE_from_idx(idx, n_cell, n_vtx):
   PE[:,1] = (np_idx - line_number) * is_internal
   return PE
 
-def compute_fi_facevtx_from_idx(idx, n_cell, n_vtx):
+def facevtx_from_i_face_idx(idx, n_cell, n_vtx):
   """
-  Compute the U index of the 4 nodes belonging to a i-normal face directly from
-  its U index. Returns a flattened array nodes of size 4*#idx storing for each face
+  Compute the index of the 4 nodes belonging to a i-normal face directly from
+  its index. Returns a flattened array nodes of size 4*#idx storing for each face
   nodes[4*i_face_id:4*(i_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
   face normal goes from leftcell to rightcell.
   """
@@ -106,10 +106,10 @@ def compute_fi_facevtx_from_idx(idx, n_cell, n_vtx):
   nodes[is_min_bnd, 1], nodes[is_min_bnd,3] = nodes[is_min_bnd, 3], nodes[is_min_bnd,1]
   return nodes.flatten()
 
-def compute_fj_PE_from_idx(idx, n_cell, n_vtx):
+def PE_idx_from_j_face_idx(idx, n_cell, n_vtx):
   """
-  Compute the U index of left and right parents of a j-normal face directly from
-  its U index. Returns a (#idx, 2) shaped array PE storing for each face
+  Compute the index of left and right parents of a j-normal face directly from
+  its index. Returns a (#idx, 2) shaped array PE storing for each face
   PE[j_face_id,:] = [left_parent_id, right_parent_id]
   """
   np_idx = np.asarray(idx)
@@ -117,7 +117,7 @@ def compute_fj_PE_from_idx(idx, n_cell, n_vtx):
   plan_number = (np_idx-1) // nb_face_ij
   is_min_bnd  = (np_idx - plan_number*nb_face_ij) < n_vtx[0]
   is_max_bnd  = (np_idx - plan_number*nb_face_ij) > nb_face_ij-n_vtx[0]+1
-  is_internal = ~(is_min_bnd | is_max_bnd)
+  is_internal = ~is_min_bnd & ~is_max_bnd
 
   #Internal faces : left, right = idx - n_cell[0]*plan_number-n_cell[0], idx - n_cell[0]*plan_number
   #Min faces      : left        = idx - n_cell[0]*plan_number
@@ -127,10 +127,10 @@ def compute_fj_PE_from_idx(idx, n_cell, n_vtx):
   PE[:,1] = (np_idx - n_cell[0]*plan_number)*is_internal
   return PE
 
-def compute_fj_facevtx_from_idx(idx, n_cell, n_vtx):
+def facevtx_from_j_face_idx(idx, n_cell, n_vtx):
   """
-  Compute the U index of the 4 nodes belonging to a j-normal face directly from
-  its U index. Returns a flattened array nodes of size 4*#idx storing for each face
+  Compute the index of the 4 nodes belonging to a j-normal face directly from
+  its index. Returns a flattened array nodes of size 4*#idx storing for each face
   nodes[4*j_face_id:4*(j_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
   face normal goes from leftcell to rightcell.
   """
@@ -150,17 +150,17 @@ def compute_fj_facevtx_from_idx(idx, n_cell, n_vtx):
   nodes[is_min_bnd, 1], nodes[is_min_bnd,3] = nodes[is_min_bnd, 3], nodes[is_min_bnd,1]
   return nodes.flatten()
 
-def compute_fk_PE_from_idx(idx, n_cell, n_vtx):
+def PE_idx_from_k_face_idx(idx, n_cell, n_vtx):
   """
-  Compute the U index of left and right parents of a k-normal face directly from
-  its U index. Returns a (#idx, 2) shaped array PE storing for each face
+  Compute the index of left and right parents of a k-normal face directly from
+  its index. Returns a (#idx, 2) shaped array PE storing for each face
   PE[k_face_id,:] = [left_parent_id, right_parent_id]
   """
   np_idx = np.asarray(idx)
   nb_face_ij  = n_cell[0]*n_cell[1]
   is_min_bnd  = np_idx <= nb_face_ij
   is_max_bnd  = np_idx  > nb_face_ij*(n_vtx[2]-1)
-  is_internal = ~(is_min_bnd | is_max_bnd)
+  is_internal = ~is_min_bnd & ~is_max_bnd
 
   #Internal faces : left, right = idx - nb_face_ij, idx
   #Min faces      : left        = idx
@@ -170,10 +170,10 @@ def compute_fk_PE_from_idx(idx, n_cell, n_vtx):
   PE[:,1] = np_idx*is_internal
   return PE
 
-def compute_fk_facevtx_from_idx(idx, n_cell, n_vtx):
+def facevtx_from_k_face_idx(idx, n_cell, n_vtx):
   """
-  Compute the U index of the 4 nodes belonging to a k-normal face directly from
-  its U index. Returns a flattened array nodes of size 4*#idx storing for each face
+  Compute the index of the 4 nodes belonging to a k-normal face directly from
+  its index. Returns a flattened array nodes of size 4*#idx storing for each face
   nodes[4*k_face_id:4*(k_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
   face normal goes from leftcell to rightcell.
   """

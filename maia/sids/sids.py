@@ -17,7 +17,7 @@ def VertexBoundarySize(zone):
   z_sizes = I.getValue(zone)
   return list_or_only_elt(z_sizes[:,2])
 
-def point_range_size(pr_n):
+def point_range_sizes(pr_n):
   """Allow point_range to be inverted (PR[:,1] < PR[:,0])
   as it can occurs in struct GCs
   """
@@ -35,5 +35,5 @@ def zone_n_cell( zone ):
 def zone_n_vtx_bnd( zone ):
   return np.prod(VertexBoundarySize(zone))
 
-def point_range_lenght(pr_n):
-  return np.prod(point_range_size(pr_n))
+def point_range_n_elt(pr_n):
+  return np.prod(point_range_sizes(pr_n))

@@ -66,8 +66,8 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     k_ar  = np.arange(kS,ksup)
 
     face_gnum[start:end]    = s_numb.ijk_to_faceiIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
-    face_pe[start:end]      = s_numb.compute_fi_PE_from_idx(face_gnum[start:end], n_cell, n_vtx)
-    face_vtx[4*start:4*end] = s_numb.compute_fi_facevtx_from_idx(face_gnum[start:end], n_cell, n_vtx)
+    face_pe[start:end]      = s_numb.PE_idx_from_i_face_idx(face_gnum[start:end], n_cell, n_vtx)
+    face_vtx[4*start:4*end] = s_numb.facevtx_from_i_face_idx(face_gnum[start:end], n_cell, n_vtx)
     counter += n_faces[0]
 
     #Shift ifaces (shift is global for zone)
@@ -79,8 +79,8 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     k_ar  = np.arange(kS,ksup)
     
     face_gnum[start:end]    = s_numb.ijk_to_facejIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
-    face_pe[start:end]      = s_numb.compute_fj_PE_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
-    face_vtx[4*start:4*end] = s_numb.compute_fj_facevtx_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
+    face_pe[start:end]      = s_numb.PE_idx_from_j_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
+    face_vtx[4*start:4*end] = s_numb.facevtx_from_j_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     counter += n_faces[1]
 
     shift += n_vtx[1]*(n_cell[0]*n_cell[2])
@@ -91,8 +91,8 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     k_ar  = np.arange(kS,kE)
 
     face_gnum[start:end]    = s_numb.ijk_to_facekIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
-    face_pe[start:end]      = s_numb.compute_fk_PE_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
-    face_vtx[4*start:4*end] = s_numb.compute_fk_facevtx_from_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
+    face_pe[start:end]      = s_numb.PE_idx_from_k_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
+    face_vtx[4*start:4*end] = s_numb.facevtx_from_k_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     counter += n_faces[2]
 ###############################################################################
 

@@ -4,7 +4,7 @@ import Converter.PyTree   as     C
 import Converter.Filter   as     CFilter
 import Converter.Internal as     I
 
-def correct_point_range(size_tree, size_data):
+def fix_point_ranges(size_tree):
   """
   Permute start and end of PointRange or PointRangeDonor nodes found in GridConnectivity1to1_t
   in order to

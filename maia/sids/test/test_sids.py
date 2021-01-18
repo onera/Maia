@@ -29,15 +29,15 @@ def test_zone_s_size():
 
 def test_point_range():
   pr = I.newPointRange('Standard', [1,3, 3,5, 1,3])
-  assert (SIDS.point_range_size(pr) == [3,3,3]).all()
-  assert SIDS.point_range_lenght(pr) == 27
+  assert (SIDS.point_range_sizes(pr) == [3,3,3]).all()
+  assert SIDS.point_range_n_elt(pr) == 3*3*3
   pr = I.newPointRange('BCLike', [5,5, 2,4, 1,1])
-  assert (SIDS.point_range_size(pr) == [1,3,1]).all()
-  assert SIDS.point_range_lenght(pr) == 3
+  assert (SIDS.point_range_sizes(pr) == [1,3,1]).all()
+  assert SIDS.point_range_n_elt(pr) == 1*3*1
   pr = I.newPointRange('Reversed', [3,1, 5,3, 1,3])
-  assert (SIDS.point_range_size(pr) == [3,3,3]).all()
-  assert SIDS.point_range_lenght(pr) == 27
+  assert (SIDS.point_range_sizes(pr) == [3,3,3]).all()
+  assert SIDS.point_range_n_elt(pr) == 3*3*3
   pr = I.newPointRange('GCLike', [7,1, 9,9, 5,1])
-  assert (SIDS.point_range_size(pr) == [7,1,5]).all()
-  assert SIDS.point_range_lenght(pr) == 35
+  assert (SIDS.point_range_sizes(pr) == [7,1,5]).all()
+  assert SIDS.point_range_n_elt(pr) == 7*1*5
 
