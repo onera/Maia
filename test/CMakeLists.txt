@@ -16,19 +16,17 @@ file(GLOB_RECURSE test_files
 
 set(n_proc_max_test 4)
 create_mpi_doctest(
-  maia
-  ${n_proc_max_test}
-  SOURCES    maia_unit_tests.cpp ${test_files}
-  LIBRARIES  ${LINK_LIBRARIES} MPI::MPI_CXX
-  LABEL      unit_tests
-  SERIAL_RUN false
+  TESTED_TARGET maia
+  LABEL         unit_tests
+  SOURCES       maia_unit_tests.cpp ${test_files}
+  SERIAL_RUN    false
+  N_PROC        ${n_proc_max_test}
 )
 
+# TODO DEL? (replaced by mpi_pytest_directory_python_create)
 create_mpi_pytest(maia_python_mpi_tests 1)
 
 option(MAIA_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
-
-
 if(MAIA_ENABLE_MPI_TESTS)
   mpi_pytest_directory_python_create(maia_python_unit_tests maia ${n_proc_max_test})
   mpi_pytest_directory_python_create(maia_python_func_tests test 1)

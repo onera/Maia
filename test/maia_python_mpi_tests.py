@@ -23,8 +23,6 @@ def test_first_step():
   """
   """
   # print("test_first_step")
-  from maia.utils import boundary_algorihms as MUB
-  # print(MUB.__file__)
   from maia.utils import first_step as MUF
 
   base = MUF.cgns_base("cgns_base", 1)
