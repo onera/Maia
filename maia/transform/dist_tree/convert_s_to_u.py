@@ -36,27 +36,32 @@ def vtx_slab_to_n_faces(vtx_slab, n_vtx):
 ###############################################################################
 
 ###############################################################################
-def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_pe):
+def compute_all_ngon_connectivity(vtx_slab_l, n_vtx):
   """
-  Compute the numerotation, the nodes and the cells linked to all face traited for
-  zone by a proc and fill associated tabs :
-  faceNumber refers to non sorted numerotation of each face
-  face_vtx refers to non sorted NGonConnectivity
-  faceLeftCell refers to non sorted ParentElement[:][0]
-  faceRightCell refers to non sorted ParentElement[:][1]
+  Compute the global numbering, the nodes and the cells linked to all face traited for
+  zone by a proc and fill create tabs :
+  face_gnum refers to global index of each face
+  face_vtx refers to face->vertex connectivity (NGon). Since the number of vertex for
+    each face is always 4, the face_vtx_idx array is not created here.
+  face_pe refers to the left and right parent cell of the each face.
   Remark : all tabs are defined in the same way i.e. for the fth face, information are
-  located in faceNumber[f], face_vtx[4*f:4*(f+1)], faceLeftCell[f] and faceRightCell[f]
+  located in face_gnum[f], face_vtx[4*f:4*(f+1)] and face_pe[f,:]
   WARNING : (i,j,k) begins at (1,1,1)
   """
+  n_face_per_slab = [vtx_slab_to_n_faces(slab, n_vtx) for slab in vtx_slab_l]
+  n_face_tot      = sum([n_face_slab.sum() for n_face_slab in n_face_per_slab])
+  face_gnum     = np.empty(  n_face_tot, dtype=pdm_gnum_dtype)
+  face_vtx      = np.empty(4*n_face_tot, dtype=pdm_gnum_dtype)
+  face_pe       = np.empty((n_face_tot, 2), order='F', dtype=pdm_gnum_dtype)
   n_cell = n_vtx - 1
   counter = 0
-  for vtx_slab in vtx_slab_l:
+  for i_slab, vtx_slab in enumerate(vtx_slab_l):
     iS,iE, jS,jE, kS,kE = [item+1 for bounds in vtx_slab for item in bounds]
     isup = iE - int(iE == n_vtx[0]+1)
     jsup = jE - int(jE == n_vtx[1]+1)
     ksup = kE - int(kE == n_vtx[2]+1)
 
-    n_faces = vtx_slab_to_n_faces(vtx_slab, n_vtx)
+    n_faces = n_face_per_slab[i_slab]
 
     #Do 3 loops to remove if test
     start = counter
@@ -94,16 +99,18 @@ def compute_all_ngon_connectivity(vtx_slab_l, n_vtx, face_gnum, face_vtx, face_p
     face_pe[start:end]      = s_numb.PE_idx_from_k_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     face_vtx[4*start:4*end] = s_numb.facevtx_from_k_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
     counter += n_faces[2]
+
+  return face_gnum, face_vtx, face_pe
 ###############################################################################
 
 ###############################################################################
-def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, cst_axe=None):
+def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_index=None):
   """
   Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must
   describe entity of kind output_loc, which can take the values 'FaceCenter', 'Vertex' or 'CellCenter'
   and represent the output gridlocation of the pointlist array.
   Note that the pointRange intervals can be reverted (start > end) as it occurs in GC nodes.
-  This function also require the cst_axe parameter, (admissibles values : 0,1,2) which is mandatory
+  This function also require the normal_index parameter, (admissibles values : 0,1,2) which is mandatory
   to retrieve the indexing function when output_loc == 'FaceCenter'.
   """
 
@@ -113,7 +120,7 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, cst_axe
   # on the output grid location
   if output_loc == 'FaceCenter':
     ijk_to_face_index = [s_numb.ijk_to_faceiIndex, s_numb.ijk_to_facejIndex, s_numb.ijk_to_facekIndex]
-    ijk_to_func = lambda i,j,k : ijk_to_face_index[cst_axe](i, j, k, n_cell_S, n_vtx_S)
+    ijk_to_func = lambda i,j,k : ijk_to_face_index[normal_index](i, j, k, n_cell_S, n_vtx_S)
   elif output_loc == 'Vertex':
     ijk_to_func = lambda i,j,k : s_numb.ijk_to_index(i, j, k, n_vtx_S)
   elif output_loc == 'CellCenter':
@@ -158,7 +165,7 @@ def is_same_axis(x,y):
 ###############################################################################
 def compute_transform_matrix(transform):
   """
-  This function compute the matrix to convert current indices to opposit indices
+  This function compute the matrix to convert current indices to opposite indices
   The definition of this matrix is given in the SIDS of CGNS 
   (https://cgns.github.io/CGNS_docs_current/sids/cnct.html)
   """
@@ -170,7 +177,7 @@ def compute_transform_matrix(transform):
 ###############################################################################
 def apply_transformation(index_1, start_1, start_2, T):
   """
-  This function compute indices from current to oppposit or from opposit to current
+  This function compute indices from current to oppposit or from opposite to current
   by using the transform matrix as defined in the SIDS of CGNS
   (https://cgns.github.io/CGNS_docs_current/sids/cnct.html)
   """
@@ -178,33 +185,33 @@ def apply_transformation(index_1, start_1, start_2, T):
 ###############################################################################
 
 ###############################################################################
-def guess_boundary_axis(point_range, grid_location):
+def guess_bnd_normal_index(point_range, grid_location):
   """
   From a point_range array and a grid_location value, try to predict the plane
   on which the boundary was created. Return the axis on which the boundary
   is constant (0:=x, 1:=y, 2:=z) eg return 1 if boundary belongs to x,y plane.
   """
   if grid_location in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
-    cst_axe = {'I':0, 'J':1, 'K':2}[grid_location[0]]
+    normal_index = {'I':0, 'J':1, 'K':2}[grid_location[0]]
   elif sum(point_range[:,0] == point_range[:,1]) == 1: #Ambiguity can be resolved
-    cst_axe = np.nonzero(point_range[:,0] == point_range[:,1])[0][0]
+    normal_index = np.nonzero(point_range[:,0] == point_range[:,1])[0][0]
   else:
     raise ValueError("Ambiguous input location")
-  return cst_axe
+  return normal_index
 ###############################################################################
 
 ###############################################################################
-def cst_axe_shift(point_range, n_vtx, bnd_axis, in_loc_is_cell, out_loc_is_cell):
+def normal_index_shift(point_range, n_vtx, bnd_axis, in_loc_is_cell, out_loc_is_cell):
   """
-  Return the value that should be added to pr[cst_axe,:] to account for cell <-> face|vtx transformation :
+  Return the value that should be added to pr[normal_index,:] to account for cell <-> face|vtx transformation :
     +1 if we move from cell to face|vtx and if it was the last plane of cells
     -1 if we move from face|vtx to cell and if it was the last plane of face|vtx
      0 in other cases
   """
-  cst_axe_is_last = point_range[bnd_axis,0] == (n_vtx[bnd_axis] - int(in_loc_is_cell))
+  normal_index_is_last = point_range[bnd_axis,0] == (n_vtx[bnd_axis] - int(in_loc_is_cell))
   correction_sign = -int(out_loc_is_cell and not in_loc_is_cell) \
                     +int(not out_loc_is_cell and in_loc_is_cell)
-  return int(cst_axe_is_last) * correction_sign
+  return int(normal_index_is_last) * correction_sign
 ###############################################################################
 
 ###############################################################################
@@ -217,7 +224,7 @@ def transform_bnd_pr_size(point_range, input_loc, output_loc):
   if input_loc == 'Vertex' and 'Center' in output_loc:
     size -= (size != 1).astype(int)
   elif 'Center' in input_loc and output_loc == 'Vertex':
-    bnd_axis = guess_boundary_axis(point_range, input_loc)
+    bnd_axis = guess_bnd_normal_index(point_range, input_loc)
     mask = np.arange(point_range.shape[0]) == bnd_axis
     size += (~mask).astype(int)
   return size
@@ -236,13 +243,13 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   input_loc = I.getValue(input_loc_node) if input_loc_node is not None else "Vertex"
   point_range = I.getValue(I.getNodeFromName1(bc_s, 'PointRange'))
 
-  bnd_axis = guess_boundary_axis(point_range, input_loc)
+  bnd_axis = guess_bnd_normal_index(point_range, input_loc)
   #Compute slabs from attended location (better load balance)
   bc_size = transform_bnd_pr_size(point_range, input_loc, output_loc)
   bc_range = MDIDF.uniform_distribution_at(bc_size.prod(), i_rank, n_rank)
   bc_slabs = HFR2S.compute_slabs(bc_size, bc_range)
 
-  shift = cst_axe_shift(point_range, n_vtx_zone, bnd_axis,\
+  shift = normal_index_shift(point_range, n_vtx_zone, bnd_axis,\
       input_loc=='CellCenter', output_loc=='CellCenter')
   #Prepare sub pointRanges from slabs
   sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
@@ -302,8 +309,8 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   point_range_opp_loc[opp_dir_to_swap,0], point_range_opp_loc[opp_dir_to_swap,1] \
       = point_range_opp_loc[opp_dir_to_swap,1], point_range_opp_loc[opp_dir_to_swap,0]
 
-  bnd_axis = guess_boundary_axis(point_range_loc, "Vertex")
-  bnd_axis_opp = guess_boundary_axis(point_range_opp_loc, "Vertex")
+  bnd_axis = guess_bnd_normal_index(point_range_loc, "Vertex")
+  bnd_axis_opp = guess_bnd_normal_index(point_range_opp_loc, "Vertex")
   #Compute slabs from attended location (better load balance)
   gc_size = transform_bnd_pr_size(point_range_loc, "Vertex", output_loc)
   gc_range = MDIDF.uniform_distribution_at(gc_size.prod(), i_rank, n_rank)
@@ -324,8 +331,8 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
     sub_pr_opp_list.append(sub_pr_opp)
 
   #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required
-  shift = cst_axe_shift(point_range_loc, n_vtx_loc, bnd_axis, False, output_loc=='CellCenter')
-  shift_opp = cst_axe_shift(point_range_opp_loc, n_vtx_opp_loc, bnd_axis_opp, False, output_loc=='CellCenter')
+  shift = normal_index_shift(point_range_loc, n_vtx_loc, bnd_axis, False, output_loc=='CellCenter')
+  shift_opp = normal_index_shift(point_range_opp_loc, n_vtx_opp_loc, bnd_axis_opp, False, output_loc=='CellCenter')
   for i_pr in range(len(sub_pr_list)):
     sub_pr_list[i_pr][bnd_axis,:] += shift
     sub_pr_opp_list[i_pr][bnd_axis_opp,:] += shift_opp
@@ -373,23 +380,21 @@ def zonedims_to_ngon(n_vtx_zone, comm):
 
   vtx_range  = MDIDF.uniform_distribution_at(n_vtx_zone.prod(), i_rank, n_rank)
   vtx_slabs  = HFR2S.compute_slabs(n_vtx_zone, vtx_range)
-  n_face_slab = sum([vtx_slab_to_n_faces(slab, n_vtx_zone).sum() for slab in vtx_slabs])
-  face_gnum     = np.empty(  n_face_slab, dtype=pdm_gnum_dtype)
-  face_vtx      = np.empty(4*n_face_slab, dtype=pdm_gnum_dtype)
-  face_pe       = np.empty((n_face_slab, 2), order='F', dtype=pdm_gnum_dtype)
+
   # Create local NGon connectivity
-  compute_all_ngon_connectivity(vtx_slabs, n_vtx_zone, face_gnum, face_vtx, face_pe)
+  n_face_all_slab = sum([vtx_slab_to_n_faces(slab, n_vtx_zone).sum() for slab in vtx_slabs])
+  face_gnum, face_vtx, face_pe = compute_all_ngon_connectivity(vtx_slabs, n_vtx_zone)
 
   # PartToBlock to order an distribute the faces
   part_to_block = PDM.PartToBlock(comm, [face_gnum], None, partN=1, t_distrib=0, t_post=0, t_stride=1)
   # Exchange PE
   pfield_stride2 = {"NGonPE" : [face_pe.ravel()]}
-  stride2 = [2*np.ones(n_face_slab, dtype='int32')]
+  stride2 = [2*np.ones(n_face_all_slab, dtype='int32')]
   dfield_stride2 = dict()
   part_to_block.PartToBlock_Exchange(dfield_stride2, pfield_stride2, stride2)
   # Exchange element connectivity
   pfield_stride4 = {"NGonFaceVtx" : [face_vtx]}
-  stride4 = [4*np.ones(n_face_slab,  dtype='int32')]
+  stride4 = [4*np.ones(n_face_all_slab,  dtype='int32')]
   dfield_stride4 = dict()
   part_to_block.PartToBlock_Exchange(dfield_stride4, pfield_stride4, stride4)
 

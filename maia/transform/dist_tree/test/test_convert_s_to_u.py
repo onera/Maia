@@ -9,7 +9,7 @@ import Converter.Internal as I
 ###############################################################################
 def test_n_face_per_dir():
   nVtx = np.array([7,9,5])
-  assert (convert_s_to_u.n_face_per_dir(nVtx, nVtx-1) == [224,216,240]).all()
+  assert (convert_s_to_u.n_face_per_dir(nVtx, nVtx-1) == [7*8*4,6*9*4,6*8*5]).all()
 def test_vtx_slab_to_n_face():
 # --------------------------------------------------------------------------- #
   nVtx        = [3, 3, 3]
@@ -33,12 +33,8 @@ class Test_compute_all_ngon_connectivity():
   n_vtx        = np.array([3, 3, 3])
   def test_compute_ngon_monoslab_kmax(self):
     vtx_slabs = [[[0, 3], [0, 3], [2, 3]]]
-    n_face = 4
-    face_gnum  = -np.ones(  n_face, dtype=np.int32)
-    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
-    face_pe    = -np.ones((n_face,2), dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx,
-                                                 face_gnum, face_ngon, face_pe)
+    face_gnum, face_ngon, face_pe = \
+        convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx)
     assert (face_gnum[:] == [33,35,34,36]                                    ).all()
     assert (face_ngon[:] == [19,20,23,22,22,23,26,25,20,21,24,23,23,24,27,26]).all()
     assert (face_pe[:,0] == [ 5, 7, 6, 8]                                    ).all()
@@ -46,12 +42,8 @@ class Test_compute_all_ngon_connectivity():
 # --------------------------------------------------------------------------- #
   def test_compute_ngon_monoslab_kmin(self):
     vtx_slabs = [[[0, 3], [0, 3], [0, 1]]]
-    n_face = 16
-    face_gnum  = -np.ones(  n_face, dtype=np.int32)
-    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
-    face_pe    = -np.ones((n_face,2), dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx,
-                                                 face_gnum ,face_ngon, face_pe)
+    face_gnum, face_ngon, face_pe = \
+        convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx)
     assert (face_gnum[:] == [1, 4, 2, 5, 3, 6, 13, 15, 17, 14, 16, 18, 25, 27, 26, 28]).all()
     assert (face_ngon[:] == [1, 10, 13,  4, 4, 13, 16,  7, 2,  5, 14, 11, 5,  8, 17, 14,
                              3,  6, 15, 12, 6,  9, 18, 15, 1,  2, 11, 10, 4, 13, 14,  5,
@@ -62,12 +54,8 @@ class Test_compute_all_ngon_connectivity():
 # --------------------------------------------------------------------------- #
   def test_compute_ngon_monoslab_random(self):
     vtx_slabs = [[[1, 2], [0, 1], [1, 2]]]
-    n_face = 3
-    face_gnum  = -np.ones(  n_face, dtype=np.int32)
-    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
-    face_pe    = -np.ones((n_face,2), dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs,self.n_vtx,
-                                                 face_gnum, face_ngon, face_pe)
+    face_gnum, face_ngon, face_pe = \
+        convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx)
     assert (face_gnum[:] == [8, 20, 30]                          ).all()
     assert (face_ngon[:] == [11,14,23,20,11,12,21,20,11,12,15,14]).all()
     assert (face_pe[:,0] == [ 5, 6, 2]                           ).all()
@@ -75,12 +63,8 @@ class Test_compute_all_ngon_connectivity():
 # --------------------------------------------------------------------------- #
   def test_compute_n_face_multislabs1(self):
     vtx_slabs = [[[1, 3], [1, 2], [2, 3]], [[0, 3], [2, 3], [2, 3]]]
-    n_face = 1
-    face_gnum  = -np.ones(  n_face, dtype=np.int32)
-    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
-    face_pe    = -np.ones((n_face,2), dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs,self.n_vtx,
-                                                 face_gnum, face_ngon, face_pe)
+    face_gnum, face_ngon, face_pe = \
+        convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx)
     assert (face_gnum[:] == [36]         ).all()
     assert (face_ngon[:] == [23,24,27,26]).all()
     assert (face_pe[:,0] == [ 8]         ).all()
@@ -88,12 +72,8 @@ class Test_compute_all_ngon_connectivity():
 # --------------------------------------------------------------------------- #
   def test_compute_n_face_multislabs2(self):
     vtx_slabs = [[[0, 3], [1, 2], [1, 2]], [[0, 2], [2, 3], [1, 2]]]
-    n_face = 9
-    face_gnum  = -np.ones(  n_face, dtype=np.int32)
-    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
-    face_pe    = -np.ones((n_face,2), dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs,self.n_vtx,
-                                                 face_gnum, face_ngon, face_pe)
+    face_gnum, face_ngon, face_pe = \
+        convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx)
     assert (face_gnum[:] == [10, 11, 12, 21, 22, 31, 32, 23, 24]            ).all()
     assert (face_ngon[:] == [13, 22, 25, 16, 14, 17, 26, 23, 15, 18, 27, 24,
                              13, 22, 23, 14, 14, 23, 24, 15, 13, 14, 17, 16,
@@ -103,12 +83,8 @@ class Test_compute_all_ngon_connectivity():
 # --------------------------------------------------------------------------- #
   def test_compute_n_face_multislabs3(self):
     vtx_slabs = [[[2, 3], [2, 3], [1, 2]], [[0, 3], [0, 1], [2, 3]], [[0, 1], [1, 2], [2, 3]]]
-    n_face = 3
-    face_gnum  = -np.ones(  n_face, dtype=np.int32)
-    face_ngon  = -np.ones(4*n_face, dtype=np.int32)
-    face_pe    = -np.ones((n_face,2), dtype=np.int32)
-    convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs,self.n_vtx,
-                                                 face_gnum, face_ngon, face_pe)
+    face_gnum, face_ngon, face_pe = \
+        convert_s_to_u.compute_all_ngon_connectivity(vtx_slabs, self.n_vtx)
     assert (face_gnum[:] == [33,34,35]                           ).all()
     assert (face_ngon[:] == [19,20,23,22,20,21,24,23,22,23,26,25]).all()
     assert (face_pe[:,0] == [ 5, 6, 7]                           ).all()
@@ -218,55 +194,55 @@ class Test_cgns_transform_funcs():
   # ------------------------------------------------------------------------- #
   def test_compute_transformMatrix(self):
     transform = [1,2,3]
-    attendedTransformMatrix = np.eye(3, dtype=np.int32)
-    assert (convert_s_to_u.compute_transform_matrix(transform) == attendedTransformMatrix).all()
+    expected_matrix = np.eye(3, dtype=np.int32)
+    assert (convert_s_to_u.compute_transform_matrix(transform) == expected_matrix).all()
 
     transform = [-2,3,1]
-    attendedTransformMatrix = np.zeros((3,3),dtype=np.int32,order='F')
-    attendedTransformMatrix[0][2] =  1
-    attendedTransformMatrix[1][0] = -1
-    attendedTransformMatrix[2][1] =  1
-    assert (convert_s_to_u.compute_transform_matrix(transform) == attendedTransformMatrix).all()
+    expected_matrix = np.zeros((3,3),dtype=np.int32,order='F')
+    expected_matrix[0][2] =  1
+    expected_matrix[1][0] = -1
+    expected_matrix[2][1] =  1
+    assert (convert_s_to_u.compute_transform_matrix(transform) == expected_matrix).all()
   # ------------------------------------------------------------------------- #
   def test_apply_transformation(self):
     t_matrix = np.array([[0,-1,0], [-1,0,0], [0,0,-1]])
     start_1 = np.array([17,3,1])
     start_2 = np.array([7,9,5])
     assert (convert_s_to_u.apply_transformation(start_1, start_1, start_2, t_matrix)\
-           == start_2).all() #Debut
+           == start_2).all() #Start
     assert (convert_s_to_u.apply_transformation(np.array([17,6,3]), start_1, start_2, t_matrix)\
-           == [4,9,3]).all() #Milieu
+           == [4,9,3]).all() #Middle
     assert (convert_s_to_u.apply_transformation(np.array([17,9,5]), start_1, start_2, t_matrix)\
-           == [1,9,1]).all() #Fin
+           == [1,9,1]).all() #End
 ###############################################################################
 
-def test_guess_boundary_axis():
+def test_guess_bnd_normal_index():
   #Unambiguous
-  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [1,7]]),'Vertex') == 1
-  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [1,7]]),'CellCenter') == 1
-  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [1,7]]),'JFaceCenter') == 1
+  assert convert_s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [1,7]]),'Vertex') == 1
+  assert convert_s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [1,7]]),'CellCenter') == 1
+  assert convert_s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [1,7]]),'JFaceCenter') == 1
   #Ambiguous
-  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'JFaceCenter') == 1
-  assert convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'KFaceCenter') == 2
+  assert convert_s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [7,7]]),'JFaceCenter') == 1
+  assert convert_s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [7,7]]),'KFaceCenter') == 2
   with pytest.raises(ValueError):
-    convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'FaceCenter')
-    convert_s_to_u.guess_boundary_axis(np.array([[1,17], [9,9], [7,7]]),'CellCenter')
+    convert_s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [7,7]]),'FaceCenter')
+    convert_s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [7,7]]),'CellCenter')
 
-def test_cst_axe_shift():
+def test_normal_index_shift():
   nVtx = np.array([17,9,7])
   vtx_range_last  = np.array([[1,17], [9,9], [1,7]])
   vtx_range_first = np.array([[1,17], [1,1], [1,7]])
   cell_range_last  = np.array([[1,16], [8,8], [1,6]])
   cell_range_first = np.array([[1,16], [1,1], [1,6]])
   #Same location
-  assert convert_s_to_u.cst_axe_shift(vtx_range_last, nVtx, 1, False, False) == 0
-  assert convert_s_to_u.cst_axe_shift(cell_range_last, nVtx, 1, True, True) == 0
+  assert convert_s_to_u.normal_index_shift(vtx_range_last, nVtx, 1, False, False) == 0
+  assert convert_s_to_u.normal_index_shift(cell_range_last, nVtx, 1, True, True) == 0
   #Vtx to cells
-  assert convert_s_to_u.cst_axe_shift(vtx_range_last, nVtx, 1, False, True) == -1
-  assert convert_s_to_u.cst_axe_shift(vtx_range_first, nVtx, 1, False, True) == 0
+  assert convert_s_to_u.normal_index_shift(vtx_range_last, nVtx, 1, False, True) == -1
+  assert convert_s_to_u.normal_index_shift(vtx_range_first, nVtx, 1, False, True) == 0
   #Cell to vtx
-  assert convert_s_to_u.cst_axe_shift(cell_range_last, nVtx, 1, True, False) == 1
-  assert convert_s_to_u.cst_axe_shift(cell_range_first, nVtx, 1, True, False) == 0
+  assert convert_s_to_u.normal_index_shift(cell_range_last, nVtx, 1, True, False) == 1
+  assert convert_s_to_u.normal_index_shift(cell_range_first, nVtx, 1, True, False) == 0
 
 class Test_transform_bnd_pr_size():
   def test_non_ambiguous(self):

@@ -1,7 +1,7 @@
 import Converter.PyTree   as     C
 import Converter.Internal as     I
 
-from .correct_tree import fix_point_ranges, load_grid_connectivity_property
+from .fix_tree import fix_point_ranges, load_grid_connectivity_property
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
