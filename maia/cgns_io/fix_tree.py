@@ -32,6 +32,7 @@ def fix_point_ranges(size_tree):
           dir_to_swap  = (nb_points != nb_points_d)
 
           if gc_path < gc_opp_path:
+            dir_to_swap = dir_to_swap[donor_dir]
             point_range_d[dir_to_swap, 0], point_range_d[dir_to_swap, 1] = \
                 point_range_d[dir_to_swap, 1], point_range_d[dir_to_swap, 0]
           elif gc_path > gc_opp_path:
