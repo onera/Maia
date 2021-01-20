@@ -1,5 +1,5 @@
 from functools import partial
-import numpy as NPY
+import numpy as np
 
 import Converter.Internal as I
 from maia.utils import zone_elements_utils as EZU
@@ -30,7 +30,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   distrib_n  = None
   ec_size_n  = I.getNodeFromName1(elmt, 'ElementConnectivity#Size')
   if(ec_size_n is not None):
-    n_face_vtx = NPY.prod(ec_size_n[1])
+    n_face_vtx = np.prod(ec_size_n[1])
   else:
     distrib_ud = I.getNodeFromName1(elmt      , ":CGNS#Distribution")
     distrib_n  = I.getNodeFromName1(distrib_ud, "DistributionElementConnectivity")
@@ -50,7 +50,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   hdf_filter[ec_path] = DSMMRYEC + DSFILEEC + DSGLOBEC + DSFORMEC
 
   if(distrib_n is None):
-    distrib = NPY.empty(3, dtype=eso.dtype)
+    distrib = np.empty(3, dtype=eso.dtype)
     distrib[0] = beg_face_vtx
     distrib[1] = end_face_vtx
     distrib[2] = n_face_vtx
@@ -105,9 +105,9 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
 def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
-  dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
+  # distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
+  # distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
+  # dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   raise NotImplementedError("Mixed elements are not allowed ")
 

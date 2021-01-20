@@ -1,6 +1,5 @@
 from maia.cgns_io            import load_collective_size_tree       as LST
 from maia.cgns_io            import cgns_io_tree                    as IOT
-from maia.cgns_io.hdf_filter import elements                        as HEF
 from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
 from maia.partitioning       import part                            as PPA
