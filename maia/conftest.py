@@ -175,10 +175,14 @@ def pytest_configure(config):
   # to remove environment section
   config._metadata = None
 
-  if not os.path.exists('reports'):
-    os.makedirs('reports')
-
   comm = MPI.COMM_WORLD
+  if comm.Get_rank() == 0:
+    if not os.path.exists('reports'):
+      os.makedirs('reports')
+    if not os.path.exists('reports/assets'):
+      os.makedirs('reports/assets')
+  comm.barrier()
+
   config.option.htmlpath = 'reports/' + "report_unit_test_{0}.html".format(comm.rank)
 
   pytest.assert_mpi = assert_mpi
