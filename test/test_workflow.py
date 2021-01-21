@@ -18,7 +18,7 @@ LOG.basicConfig(filename = '{0}.{1}.log'.format('maia_workflow_log', rank),
 from maia.cgns_io import load_collective_size_tree as LST
 from maia.cgns_io import cgns_io_tree as IOT
 from maia.cgns_io.hdf_filter import tree as HTF
-import maia.distribution as MDI
+import maia.distribution.distribution_tree                          as MDI
 from maia.partitioning.load_balancing import setup_partition_weights as DBA
 
 import Converter.PyTree   as C

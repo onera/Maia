@@ -34,8 +34,7 @@ def create_distribution_node(n_elt, comm, name, parent_node):
   setup CGNS node with distribution
   """
   distrib    = uniform_distribution(n_elt, comm)
-  distrib_ud = I.createUniqueChild(parent_node, ':CGNS#Distribution', 'UserDefinedData_t')
-  I.newDataArray(name, value=distrib, parent=distrib_ud)
+  create_distribution_node_from_distrib(name, parent_node, distrib)
 
 def create_distribution_node_from_distrib(name, parent_node, distrib):
   """

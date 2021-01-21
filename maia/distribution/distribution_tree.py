@@ -1,25 +1,74 @@
-from   mpi4py             import MPI
 import Converter.Internal as     I
-import Converter.PyTree   as     C
 
-from .distribution_zone import compute_zone_distribution
+import maia.sids.sids as SIDS
+from   .distribution_function                 import create_distribution_node
 
+def compute_plist_or_prange_distribution(node, comm):
+  """
+  Compute the distribution for a given node using its PointList or PointRange child
+  If a PointRange node is found, the total lenght is getted from the product
+  of the differences for each direction (cgns convention (cgns convention :
+  first and last are included).
+  If a PointList node is found, the total lenght is getted from the product of
+  PointList#Size arrays, which store the size of the PL in each direction.
+  """
 
-#
-# uniform = compute_proc_indices
+  pr_n = I.getNodeFromName1(node, 'PointRange')
+  pl_n = I.getNodeFromName1(node, 'PointList')
 
-# def master_of_each_node():
-#   sub_comm = master_of_each_node(comm)
-#   compute_proc_indices(sub_comm)
-#   #
-# Heterogene : Element / BC / Join
+  if(pr_n):
+    pr_lenght = SIDS.point_range_n_elt(pr_n)
+    create_distribution_node(pr_lenght, comm, 'Distribution', node)
 
+  if(pl_n):
+    pls_n   = I.getNodeFromName1(node, 'PointList#Size')
+    pl_size = I.getValue(pls_n).prod()
+    create_distribution_node(pl_size, comm, 'Distribution', node)
+
+def compute_elements_distribution(zone, comm):
+  """
+  """
+  zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
+  zone_type   = zone_type_n[1].tostring()
+  if(zone_type == b'Structured'):
+    pass
+  else:
+    elts = I.getNodesFromType1(zone, 'Elements_t')
+
+    for elt in elts:
+      er = I.getNodeFromName(elt, 'ElementRange')
+      n_tot_elmt = er[1][1] - er[1][0] + 1
+      create_distribution_node(n_tot_elmt, comm, 'Distribution', elt)
+
+def compute_zone_distribution(zone, comm):
+  """
+  """
+  n_vtx  = SIDS.zone_n_vtx (zone)
+  n_cell = SIDS.zone_n_cell(zone)
+
+  distrib_vtx  = create_distribution_node(n_vtx  , comm, 'Vertex', zone)
+  distrib_cell = create_distribution_node(n_cell , comm, 'Cell'  , zone)
+
+  compute_elements_distribution(zone, comm)
+
+  for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
+    compute_plist_or_prange_distribution(zone_subregion, comm)
+
+  for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
+    for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
+      compute_plist_or_prange_distribution(bc, comm)
+      for bcds in I.getNodesFromType1(bc, 'BCDataSet_t'):
+        compute_plist_or_prange_distribution(bcds, comm)
+
+  for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+    gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
+    for gc in gcs:
+      compute_plist_or_prange_distribution(gc, comm)
 
 def add_distribution_info(dist_tree, comm, distribution_policy='uniform'):
   """
   """
   for base in I.getNodesFromType1(dist_tree, 'CGNSBase_t'):
-  # DFAM.compute_family_distribution(dist_tree)
     for zone in I.getNodesFromType1(base, 'Zone_t'):
       compute_zone_distribution(zone, comm)
 

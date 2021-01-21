@@ -3,7 +3,7 @@ from maia.cgns_io            import cgns_io_tree                    as IOT
 from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
 from maia.partitioning       import part                            as PPA
-import maia.distribution                                            as MDI
+import maia.distribution.distribution_tree                          as MDI
 from maia.cgns_registry      import cgns_registry                   as CGR
 from maia.cgns_registry      import cgns_keywords
 from maia.cgns_registry      import tree                            as CGT # Not bad :D

@@ -27,7 +27,7 @@ from maia.cgns_io.hdf_filter import tree                            as HTF
 from maia.connectivity       import generate_ngon_from_std_elements as FTH
 from maia.partitioning       import part                            as PPA
 from maia.partitioning.load_balancing import setup_partition_weights as DBA
-import maia.distribution                                            as MDI
+import maia.distribution.distribution_tree                          as MDI
 
 from   Converter import cgnskeywords as CGK
 

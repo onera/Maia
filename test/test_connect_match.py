@@ -28,7 +28,7 @@ from maia.connectivity       import generate_ngon_from_std_elements as FTH
 from maia.partitioning.load_balancing import setup_partition_weights as DBA
 from maia.partitioning       import part                            as PPA
 from maia.geometry           import connect_match                   as CMA
-import maia.distribution                                            as MDI
+import maia.distribution.distribution_tree                          as MDI
 
 from   Converter import cgnskeywords as CGK
 
