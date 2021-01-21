@@ -1,8 +1,13 @@
 def cell_to_indexes(i_cell, plan_size, line_size):
-    k = i_cell // plan_size
-    j = (i_cell - k*plan_size) // line_size
-    i = i_cell - k*plan_size - j*line_size
-    return i,j,k
+  """ Compute the (i,j,k) indices of a cell or a node
+  from its global index.
+  Numbering convention is increasing i,j,k. Here global index
+  and i,j,k start at 0.
+  """
+  k = i_cell // plan_size
+  j = (i_cell - k*plan_size) // line_size
+  i = i_cell - k*plan_size - j*line_size
+  return i,j,k
 
 def compute_slabs(array_shape, gnum_interval):
   """ Compute HDF HyperSlabs to be used in order to contiguously load a part

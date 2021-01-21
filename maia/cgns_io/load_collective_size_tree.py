@@ -32,7 +32,8 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
 
   for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
     zone_gc_path = zone_path+"/"+zone_gc[0]
-    gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
+    gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') \
+        + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
     for gc in gcs:
       gc_path = zone_gc_path+"/"+gc[0]
       if I.getNodeFromName1(gc, 'PointList') is not None:
@@ -51,6 +52,8 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
 
 def add_sizes_to_tree(size_tree, size_data):
   """
+  Convience function which loops over zones to add size
+  data in each one.
   """
   for base in I.getNodesFromType1(size_tree, 'CGNSBase_t'):
     base_path = '/'+base[0]
@@ -87,7 +90,6 @@ def load_collective_size_tree(filename, comm):
     size_tree = None
 
   size_tree = comm.bcast(size_tree, root=0)
-  # I.printTree(size_tree)
 
   return size_tree
 
