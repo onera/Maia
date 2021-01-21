@@ -12,4 +12,4 @@
 	url = https://github.com/maugarsb/pytest-mpi-check.git
 [submodule "external/paradigm"]
 	path = external/paradigm
-	url = https://git.onera.fr/paradigm
+  url = http://gitlab-elsa-test.onecert.fr/base/paradigm.git
