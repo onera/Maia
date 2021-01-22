@@ -26,7 +26,7 @@ stages:
 
 job:build:
   variables:
-    GIT_SUBMODULE_STRATEGY: recursive
+    GIT_SUBMODULE_STRATEGY: normal
   stage: build
   script:
     - mkdir build && cd build
