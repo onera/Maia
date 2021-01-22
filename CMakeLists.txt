@@ -14,7 +14,8 @@ macro(check_sub_repo_exists sub_repo_name)
   list(LENGTH sub_repo_files sub_repo_nb_files)
   if(sub_repo_nb_files EQUAL 0)
     message(FATAL_ERROR
-      "${PROJECT_ROOT}/external/${sub_repo_name} is empty. Maybe you forgot to initialize it with \"git submodule update --init\""
+      "${PROJECT_ROOT}/external/${sub_repo_name} is empty.
+      Maybe you forgot to initialize it with \"git submodule update --init\""
     )
   endif()
 endmacro()
@@ -152,12 +153,6 @@ endif()
 # ----------------------------------------------------------------------
 # Compilation
 # ----------------------------------------------------------------------
-### Python, Cython, Pybind11
-#set(SITE_PACKAGES_OUTPUT_DIRECTORY "${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/")
-#include(${PROJECT_UTILS_CMAKE_DIR}/MixPythonCythonModule.cmake)
-#mixpython_cython_add_module(${PROJECT_NAME})
-
-## Compiled languages
 set(src_dir ${PROJECT_SOURCE_DIR}/${PROJECT_NAME})
 set(test_dir ${PROJECT_SOURCE_DIR}/test)
 set(include_dir ${PROJECT_SOURCE_DIR})
@@ -241,5 +236,8 @@ endif()
 # ----------------------------------------------------------------------
 # Summary
 # ----------------------------------------------------------------------
-include(FeatureSummary)
-FEATURE_SUMMARY(WHAT ALL)
+get_directory_property(is_top_lvl_cmakelists PARENT_DIRECTORY)
+if(is_top_lvl_cmakelists)
+  include(FeatureSummary)
+  FEATURE_SUMMARY(WHAT ALL)
+endif()
