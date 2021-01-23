@@ -278,7 +278,7 @@ def distDataSetToPartDataSet(dist_tree, part_tree, dZoneToPart, comm):
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
 # --------------------------------------------------------------------------
-def pFlowSolution_to_dFlowSolution(dist_tree, part_tree, dZoneToPart, comm):
+def pFlowSolution_to_dFlowSolution(dist_tree, part_tree, comm, dZoneToPart = None):
   """
   Transfert all the flowSolution nodes found in part_tree to the
   corresponding distZones in dist_tree.
@@ -296,6 +296,13 @@ def pFlowSolution_to_dFlowSolution(dist_tree, part_tree, dZoneToPart, comm):
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   LOG.info("### TransfertTreeData::pFlowSolution_to_dFlowSolution")
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+  # TODO replace dZoneToPart by sizes
+  if dZoneToPart is None:
+    dZoneToPart = {}
+    z = I.getNodeFromType(dist_tree,"Zone_t")
+    dZoneToPart[ I.getName(z) ] = [None]
+
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   iRank = comm.Get_rank()

@@ -9,6 +9,7 @@ from maia.cgns_registry      import cgns_keywords
 from maia.cgns_registry      import tree                            as CGT # Not bad :D
 from maia.transform.transform2 import merge_by_elt_type, add_fsdm_distribution, gcs_only_for_ghosts
 from maia.cgns_io import save_part_tree as SPT
+from maia.tree_exchange.tree_transfer import pFlowSolution_to_dFlowSolution
 
 from Converter import cgnskeywords as CGK
 import Converter.PyTree   as C
@@ -22,7 +23,8 @@ from maia.connectivity.generate_ngon_from_std_elements import generate_ngon_from
 
 
 class parallel_tree:
-  def __init__(self,dist_tree,part_tree):
+  def __init__(self,comm,dist_tree,part_tree):
+    self.comm = comm
     self.part_tree = part_tree
     self.dist_tree = dist_tree
 
@@ -108,7 +110,7 @@ def load_partitioned_tree(file_name,comm):
   #  vtx_gi_n = I.getNodeFromName(zone, "np_vtx_ghost_information")
   #  I.newDataArray("GhostInfo", vtx_gi_n[1], parent=fs_n)
 
-  return parallel_tree(dist_tree,part_tree)
+  return parallel_tree(comm,dist_tree,part_tree)
 
 def load_partitioned_tree_poly(file_name,comm):
   dist_tree = LST.load_collective_size_tree(file_name, comm)
@@ -142,3 +144,9 @@ def load_partitioned_tree_poly(file_name,comm):
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
 
   return parallel_tree(dist_tree,part_tree)
+
+
+def merge_and_save(par_tree,file_name):
+  # TODO: DiscreteData + BC
+  pFlowSolution_to_dFlowSolution(par_tree.dist_tree,par_tree.part_tree,par_tree.comm)
+  IOT.dist_tree_to_file(par_tree.dist_tree, file_name, par_tree.comm)
