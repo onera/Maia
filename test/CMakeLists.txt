@@ -1,4 +1,4 @@
-include(${PROJECT_UTILS_CMAKE_DIR}/TestCreate.cmake)
+include(${PROJECT_UTILS_CMAKE_DIR}/doctest_pytest.cmake)
 
 set(pytest_mpi_check_file ${PROJECT_ROOT}/external/pytest-mpi-check/pytest_mpi_check.py)
 set(pytest_file_in_build ${CMAKE_CURRENT_BINARY_DIR}/../external/pytest-mpi-check/pytest_mpi_check.py)
@@ -9,13 +9,14 @@ add_custom_command(OUTPUT  "${pytest_file_in_build}"
                    "${pytest_file_in_build}"
                    COMMENT "Copying ${pytest_mpi_check_file} to the binary directory")
 add_custom_target(pytest_mpi_check ALL DEPENDS "${pytest_file_in_build}")
+set(n_proc_max_test 4)
 
+
+# C++ unit tests
 file(GLOB_RECURSE test_files
   CONFIGURE_DEPENDS "${src_dir}/*.test.cpp"
 )
-
-set(n_proc_max_test 4)
-create_mpi_doctest(
+create_doctest(
   TESTED_TARGET maia
   LABEL         unit_tests
   SOURCES       maia_unit_tests.cpp ${test_files}
@@ -23,10 +24,21 @@ create_mpi_doctest(
   N_PROC        ${n_proc_max_test}
 )
 
+
 option(MAIA_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
 if(MAIA_ENABLE_MPI_TESTS)
-  mpi_pytest_directory_python_create(maia_python_unit_tests maia ${n_proc_max_test})
-  mpi_pytest_directory_python_create(maia_python_func_tests test 1)
+  create_pytest(
+    TESTED_FOLDER ${PROJECT_SOURCE_DIR}/maia
+    LABEL         unit_tests
+    SERIAL_RUN    false
+    N_PROC        ${n_proc_max_test}
+  )
+  create_pytest(
+    TESTED_FOLDER ${PROJECT_SOURCE_DIR}/test
+    LABEL         func_tests
+    SERIAL_RUN    false
+    N_PROC        1
+  )
 
   # TODO (not ready yet)
   #mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 maia 2

@@ -191,7 +191,7 @@ target_install(${PROJECT_NAME})
 # ----------------------------------------------------------------------
 include(${PROJECT_UTILS_CMAKE_DIR}/python_wrapping.cmake)
 compile_install_pybind_modules(${PROJECT_NAME})
-compile_install_python_modules(${PROJECT_NAME})
+install_python_modules(${PROJECT_NAME})
 
 # ----------------------------------------------------------------------
 # Testing
