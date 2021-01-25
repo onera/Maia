@@ -4,11 +4,11 @@ import numpy              as np
 
 import Pypdm.Pypdm as PDM
 
-from maia.distribution       import distribution_function           as MDIDF
-from maia.cgns_io.hdf_filter import range_to_slab                   as HFR2S
-from .                       import s_numbering_funcs               as s_numb
+from maia                    import npy_pdm_gnum_dtype     as pdm_gnum_dtype
+from maia.distribution       import distribution_function  as MDIDF
+from maia.cgns_io.hdf_filter import range_to_slab          as HFR2S
+from .                       import s_numbering_funcs      as s_numb
 
-pdm_gnum_dtype = PDM.npy_pdm_gnum_dtype
 ###############################################################################
 def n_face_per_dir(n_vtx, n_edge):
   """
