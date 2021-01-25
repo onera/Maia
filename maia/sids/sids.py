@@ -21,7 +21,7 @@ def VertexBoundarySize(zone):
 def ZoneType(zone):
   assert I.getType(zone) == "Zone_t"
   zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
-  return zone_type_n[1].tostring()
+  return I.getValue(zone_type_n)
 
 
 def ElementRange(elements):

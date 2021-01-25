@@ -28,9 +28,7 @@ def compute_plist_or_prange_distribution(node, comm):
 def compute_elements_distribution(zone, comm):
   """
   """
-  zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
-  zone_type   = zone_type_n[1].tostring()
-  if(zone_type == b'Structured'):
+  if SIDS.ZoneType(zone) == 'Structured':
     pass
   else:
     elts = I.getNodesFromType1(zone, 'Elements_t')

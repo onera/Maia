@@ -1,6 +1,7 @@
 import Converter.Internal as I
 import numpy              as NPY
 import Pypdm.Pypdm        as PDM
+import maia.sids.sids     as SIDS
 
 from .geometry import compute_face_center_and_characteristic_length, adapt_match_information
 
@@ -20,9 +21,7 @@ def compute_n_point_cloud(zones, fams, family_list):
   """
   n_point_cloud = 0
   for zone in zones:
-    zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
-    zone_type   = zone_type_n[1].tostring()
-    if(zone_type == b'Structured'):
+    if SIDS.ZoneType(zone) == 'Structured':
       raise NotImplementedError("connect_match_from_family for structured zone not allowed yet")
     for bc in bcs_if_in_family_list(zone, fams, family_list):
       n_point_cloud = n_point_cloud + 1
@@ -110,10 +109,8 @@ def connect_match_from_family(part_tree, family_list, comm,
   zone_name_and_lid     = dict()
   bnd_to_join_path_list = [[]]*len(zones)
   for i_zone, zone in enumerate(zones):
-    zone_type_n = I.getNodeFromType1(zone, 'ZoneType_t')
-    zone_type   = zone_type_n[1].tostring()
     bnd_to_join_path_list_local = list()
-    if(zone_type == b'Structured'):
+    if SIDS.ZoneType(zone) == 'Structured':
       i_point_cloud += prepare_pdm_point_merge_structured(pdm_point_merge, i_point_cloud, match_type,
                                                           i_zone, zone, fams, family_list,
                                                           bnd_to_join_path_list_local,

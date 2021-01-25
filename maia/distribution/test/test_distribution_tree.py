@@ -88,6 +88,8 @@ class Test_compute_zone_distribution:
     if(sub_comm == MPI.COMM_NULL):
       return
     yt = """
+Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
+  ZoneType ZoneType_t "Structured":
   ZBC ZoneBC_t:
     bc1 BC_t "Farfield":
       PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
@@ -98,9 +100,7 @@ class Test_compute_zone_distribution:
   """
     tree = parse_yaml_cgns.to_complete_pytree(yt)
     #Create zone by hand, otherwith ZoneType is misformed
-    zone = I.newZone('Zone', np.array([[3,3,3],[2,2,2],[0,0,0]]), 'Structured')
-    for child in tree[2]:
-      I.addChild(zone, child)
+    zone = I.getZones(tree)[0]
     distribution_tree.compute_zone_distribution(zone, sub_comm)
     assert len(I.getNodesFromName(zone, 'Distribution')) == 3
 
@@ -110,45 +110,37 @@ class Test_compute_zone_distribution:
 def test_add_distribution_info(sub_comm):
   if(sub_comm == MPI.COMM_NULL):
     return
-  Unodes = parse_yaml_cgns.to_complete_pytree("""
-Ngon Elements_t [22,0]:
-  ElementRange IndexArray_t [1,36]:
-ZBC ZoneBC_t:
-  bc1 BC_t "Farfield":
-    PointList IndexArray_t None:
-    PointList#Size IndexArray_t [1,4]:
-    bcds BCDataSet_t:
+  dist_tree = parse_yaml_cgns.to_complete_pytree("""
+Base CGNSBase_t [3,3]:
+  ZoneU Zone_t [[27,8,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    Ngon Elements_t [22,0]:
+      ElementRange IndexArray_t [1,36]:
+    ZBC ZoneBC_t:
+      bc1 BC_t "Farfield":
+        PointList IndexArray_t None:
+        PointList#Size IndexArray_t [1,4]:
+        bcds BCDataSet_t:
+          PointList IndexArray_t None:
+          PointList#Size IndexArray_t [1,2]:
+    ZGC ZoneGridConnectivity_t:
+      match GridConnectivity_t "otherzone":
+        PointList IndexArray_t None:
+        PointListDonor IndexArray_t None:
+        PointList#Size IndexArray_t [1,4]:
+    ZSR ZoneSubRegion_t:
       PointList IndexArray_t None:
-      PointList#Size IndexArray_t [1,2]:
-ZGC ZoneGridConnectivity_t:
-  match GridConnectivity_t "otherzone":
-    PointList IndexArray_t None:
-    PointListDonor IndexArray_t None:
-    PointList#Size IndexArray_t [1,4]:
-ZSR ZoneSubRegion_t:
-  PointList IndexArray_t None:
-  PointList#Size IndexArray_t [1,12]:
+      PointList#Size IndexArray_t [1,12]:
+  ZoneS Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
+    ZoneType ZoneType_t "Structured":
+    ZBC ZoneBC_t:
+      bc1 BC_t "Farfield":
+        PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
+        bcds BCDataSet_t:
+          PointRange IndexRange_t [[1,3],[1,1],[1,1]]:
+    ZSR ZoneSubRegion_t:
+      PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
 """)
-  Snodes = parse_yaml_cgns.to_complete_pytree("""
-ZBC ZoneBC_t:
-  bc1 BC_t "Farfield":
-    PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
-    bcds BCDataSet_t:
-      PointRange IndexRange_t [[1,3],[1,1],[1,1]]:
-ZSR ZoneSubRegion_t:
-  PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
-""")
-  #Create zone by hand, otherwith ZoneType is misformed
-  Uzone = I.newZone('ZoneU', np.array([[27,8,0]]), 'Unstructured')
-  Szone = I.newZone('ZoneS', np.array([[3,3,3],[2,2,2],[0,0,0]]), 'Structured')
-  for child in Unodes[2]:
-    I.addChild(Uzone, child)
-  for child in Snodes[2]:
-    I.addChild(Szone, child)
-  dist_tree = I.newCGNSTree()
-  dist_base = I.newCGNSBase(parent=dist_tree)
-  for zone in [Uzone, Szone]:
-    I.addChild(dist_base, zone)
   distribution_tree.add_distribution_info(dist_tree, sub_comm)
   assert len(I.getNodesFromName(dist_tree, 'Distribution')) == 5+3
 

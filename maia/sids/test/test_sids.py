@@ -4,6 +4,18 @@ import maia.sids.sids     as SIDS
 import numpy              as np
 
 
+def test_ZoneType():
+  #With numpy arrays
+  zone_u = G.cartNGon((0., 0., 0.), (1., 1., 1.), (10, 5, 2))
+  zone_s = G.cart((0., 0., 0.), (1., 1., 1.), (10, 5, 2))
+  assert SIDS.ZoneType(zone_u) == 'Unstructured'
+  assert SIDS.ZoneType(zone_s) == 'Structured'
+  #With strings
+  I.getNodeFromType1(zone_u, 'ZoneType_t')[1] = 'Unstructured'
+  I.getNodeFromType1(zone_s, 'ZoneType_t')[1] = 'Structured'
+  assert SIDS.ZoneType(zone_u) == 'Unstructured'
+  assert SIDS.ZoneType(zone_s) == 'Structured'
+
 def test_zone_u_size():
   zone_u = G.cartNGon((0., 0., 0.), (1., 1., 1.), (10, 5, 2))
 
