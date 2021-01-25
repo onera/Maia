@@ -1,8 +1,7 @@
 import Converter.Internal as I
 import numpy              as np
-import copy               as CPY
 
-from .pdm_part_to_cgns_zone import pdm_part_to_cgns_zone
+from .split_U.pdm_part_to_cgns_zone import pdm_part_to_cgns_zone
 from .utils                 import compute_idx_from_color
 
 def pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm):

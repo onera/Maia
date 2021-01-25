@@ -3,8 +3,8 @@ import maia.sids.sids     as SIDS
 import numpy              as np
 import Pypdm.Pypdm        as PDM
 
-from .cgns_to_pdm_distributed_mesh import cgns_dist_zone_to_pdm_dmesh, cgns_dist_tree_to_joinopp_array
-from .cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
+from .split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh, cgns_dist_tree_to_joinopp_array
+from .split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 from .pdm_mutipart_to_cgns         import pdm_mutipart_to_cgns
 
 

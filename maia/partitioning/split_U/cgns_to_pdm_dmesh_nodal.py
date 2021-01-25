@@ -2,8 +2,6 @@ import Converter.Internal as I
 import maia.sids.sids as sids
 import numpy          as np
 from maia.connectivity import connectivity_transform as CNT
-from .bnd_cgns_to_pdm import bnd_cgns_to_pdm
-from .zgc_cgns_to_pdm import zgc_cgns_to_pdm
 from maia.connectivity.cgns_to_pdm_dmeshnodal import concatenate_bc
 
 import Pypdm.Pypdm as PDM
