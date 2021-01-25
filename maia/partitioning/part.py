@@ -7,6 +7,25 @@ from .cgns_to_pdm_distributed_mesh import cgns_dist_zone_to_pdm_dmesh, cgns_dist
 from .cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 from .pdm_mutipart_to_cgns         import pdm_mutipart_to_cgns
 
+
+def partitioningS(dist_tree, dzone_to_weighted_parts, comm,
+                 split_method,
+                 part_weight_method,
+                 reorder_methods=["NONE", "NONE"],
+                 multigrid=0, multigridOption=[],
+                 n_cell_per_cache=0,
+                 n_face_per_pack=64):
+  from .split_S import part_zone
+  part_tree = I.newCGNSTree()
+  part_base = I.newCGNSBase(parent=part_tree)
+  for zone in I.getZones(dist_tree):
+    if(SIDS.ZoneType(zone) == 'Structured'):
+      parts = part_zone.part_s_zone(zone, dzone_to_weighted_parts[I.getName(zone)], comm)
+      for part in parts:
+        I._addChild(part_base, part)
+  return part_tree
+
+
 def partitioning(dist_tree, dzone_to_weighted_parts, comm,
                  split_method,
                  part_weight_method,
