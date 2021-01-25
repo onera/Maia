@@ -1,0 +1,85 @@
+import numpy              as np
+import Converter.Internal as I
+import Pypdm.Pypdm        as PDM
+
+import maia.sids.sids     as SIDS
+from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
+from maia.utils.parallel import utils as par_utils
+
+def collect_lntogn_from_path(part_zones, path):
+  return [I.getNodeFromPath(part_zone, path)[1] for part_zone in part_zones]
+
+def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
+  pdm_distrib = par_utils.partial_to_full_distribution(partial_distri, comm)
+
+  part_data = dict()
+  for data_name in dist_data:
+    npy_type = dist_data[data_name].dtype
+    part_data[data_name] = [np.empty(ln_to_gn.shape[0], dtype=npy_type) for ln_to_gn in ln_to_gn_list]
+
+  BTP = PDM.BlockToPart(pdm_distrib, comm, ln_to_gn_list, len(ln_to_gn_list))
+  BTP.BlockToPart_Exchange(dist_data, part_data)
+
+  return part_data
+
+def dist_coords_to_part_coords2(dist_zone, part_zones, comm):
+
+  #Get distribution
+  distrib_ud = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
+  distribution_vtx = I.getNodeFromName1(distrib_ud, 'Vertex')[1].astype(pdm_gnum_dtype)
+
+  #Get data
+  dist_data = dict()
+  dist_gc = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
+  for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
+    dist_data[I.getName(grid_co)] = I.getValue(grid_co)
+
+  vtx_lntogn_list = collect_lntogn_from_path(part_zones, ':CGNS#Lntogn/Vertex')
+  part_data = dist_to_part(distribution_vtx, dist_data, vtx_lntogn_list, comm)
+  
+  for ipart, part_zone in enumerate(part_zones):
+    part_gc = I.newGridCoordinates(parent=part_zone)
+    for data_name, data in part_data.items():
+      #F is mandatory to keep shared reference. Normally no copy is done
+      shaped_data = data[ipart].reshape(SIDS.VertexSize(part_zone), order='F')
+      I.newDataArray(data_name, shaped_data, parent=part_gc)
+
+def dist_coords_to_part_coords(dist_zone, part_zones, comm):
+
+  #Get distribution
+  distrib_ud = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
+  distribution_vtx = I.getNodeFromName1(distrib_ud, 'Vertex')[1].astype(pdm_gnum_dtype)
+  pdm_distrib = par_utils.partial_to_full_distribution(distribution_vtx, comm)
+
+  #Init
+  vtx_lntogn_list = list()
+  dist_data = dict()
+  part_data = dict()
+
+  #Get data
+  dist_gc = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
+  for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
+    dist_data[I.getName(grid_co)] = I.getValue(grid_co)
+    part_data[I.getName(grid_co)] = list()
+
+  #Collect lntogn
+  for part_zone in part_zones:
+    lngn_zone = I.getNodeFromName1(part_zone, ':CGNS#Lntogn')
+    vtx_ln_gn = I.getNodeFromName1(lngn_zone, 'Vertex')[1]
+    vtx_lntogn_list.append(vtx_ln_gn)
+
+    #Prepare grid_coord ; will be fill by BTP
+    part_gc = I.newGridCoordinates(parent=part_zone)
+    for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
+      npyType = dist_data[I.getName(grid_co)].dtype
+
+      emptyArray       = np.empty(vtx_ln_gn.shape[0], dtype=npyType)
+      part_data[I.getName(grid_co)].append(emptyArray)
+
+      empty_array_view = emptyArray.reshape(SIDS.VertexSize(part_zone), order='F') #F is mandatory to keep shared reference
+      I.newDataArray(I.getName(grid_co), empty_array_view, parent=part_gc)
+
+  #Exchange
+  BTP = PDM.BlockToPart(pdm_distrib, comm, vtx_lntogn_list, len(part_zones))
+  BTP.BlockToPart_Exchange(dist_data, part_data)
+
