@@ -7,18 +7,14 @@ Dependencies
 ------------
 
 **Maia** depends on :
-* python
-* pytest
-
+* python3
 * mpi
-* ParaDiGM
-
 * hdf5
 
 * Cassiopée
 
-* ruyaml (python package)
-
+* pytest (python package)
+* ruamel (python package)
 
 The build process requires:
 
@@ -34,13 +30,14 @@ During the build process, several other libraries will be downloaded:
 * range-v3
 * doctest
 
+* ParaDiGM
 * project_utils
 * std_e
 * cpp_cgns
 
 The process should be transparent to the user.
 
-TODO: cython, pytest, paradigm, Cassiopée should be here
+TODO: Cassiopée should be here
 
 Optional dependencies
 ^^^^^^^^^^^^^^^^^^^^^
@@ -59,10 +56,11 @@ Build and install
 
 .. code:: bash
 
+  pip3 install --user pytest
   pip3 install --user pytest-mpi
   pip3 install --user pytest-html
   pip3 install --user pytest_check
-  pip3 install --user ruyaml
+  pip3 install --user ruamel
 
 2. Then you need to populate your :code:`external` folder. If you got Maia from a `Maia_suite` repository, then there is nothing to do. Else, you can do it with `git submodule update --init`
 

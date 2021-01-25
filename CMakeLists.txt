@@ -135,6 +135,14 @@ target_add_dependency(${PROJECT_NAME} std_e)
 check_sub_repo_exists(cpp_cgns)
 target_add_dependency(${PROJECT_NAME} cpp_cgns)
 
+## Python dependencies (just check) ##
+include(${PROJECT_UTILS_CMAKE_DIR}/has_python_module.cmake)
+has_python_module(ruamel REQUIRED)
+has_python_module(pytest)
+has_python_module(pytest_mpi) # TODO tell to install package pytest-mpi
+has_python_module(pytest_html) # TODO tell to install package pytest-mpi
+has_python_module(pytest_check)
+
 
 # ----------------------------------------------------------------------
 # Code quality tools
