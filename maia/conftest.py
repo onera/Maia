@@ -184,6 +184,7 @@ def pytest_runtest_teardown(item):
 @pytest.hookimpl(tryfirst=True) # False ?
 def pytest_configure(config):
   # to remove environment section
+  #print("*"*100)
   config._metadata = None
 
   comm = MPI.COMM_WORLD
