@@ -3,10 +3,38 @@ import maia.sids.sids     as SIDS
 import numpy              as np
 import Pypdm.Pypdm        as PDM
 
-from .split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh, cgns_dist_tree_to_joinopp_array
+from maia.transform.dist_tree import add_joins_ordinal      as AJO
+from .split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh
 from .split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 from .split_S import part_zone
 from .pdm_mutipart_to_cgns         import pdm_mutipart_to_cgns
+
+def get_matching_joins(dist_tree):
+  """
+  Scan all the grid connectivity nodes of the distributed tree and return
+  an array of size #nb_gc pairing the joins :
+  array [3,2,1,0] means that the matching pairs are (0,3) and (1,2).
+  The join numbering must be included in dist_tree under nodes Ordinal/OrdinalOpp
+  (see add_joins_ordinal.py)
+  """
+  jns = []
+  for zone in I.getZones(dist_tree):
+    # > Get ZoneGridConnectivity List
+    zone_gcs = I.getNodesFromType1(zone, 'ZoneGridConnectivity_t')
+    if (zone_gcs != []):
+      jns += I.getNodesFromType1(zone_gcs, 'GridConnectivity_t')
+      jns += I.getNodesFromType1(zone_gcs, 'GridConnectivity1to1_t')
+
+  # > Declare array
+  join_to_opp = np.empty(len(jns), dtype=np.int32)
+
+  # > Fill
+  for jn in jns:
+    join_id     = I.getNodeFromName1(jn, 'Ordinal')[1]
+    join_opp_id = I.getNodeFromName1(jn, 'OrdinalOpp')[1]
+    join_to_opp[join_id - 1] = join_opp_id - 1
+
+  return join_to_opp
 
 def partitioning(dist_tree, dzone_to_weighted_parts, comm,
                  split_method,
@@ -20,6 +48,10 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
 
   if len(u_zones)*len(s_zones) != 0:
     raise RuntimeError("Hybrid meshes are not yet supported")
+
+  if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:
+    AJO.add_joins_ordinal(dist_tree, comm)
+  join_to_opp_array = get_matching_joins(dist_tree)
 
   part_tree = I.newCGNSTree()
   #For now only one base
@@ -61,7 +93,6 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
         multi_part.multipart_register_dmesh_nodal(izone, dmesh_nodal)
 
     #Register joins
-    join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
     n_total_joins = join_to_opp_array.shape[0]
     multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)
 

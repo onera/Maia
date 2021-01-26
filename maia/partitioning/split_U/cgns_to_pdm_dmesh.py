@@ -169,33 +169,3 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   return dmesh
 
 # --------------------------------------------------------------------------
-def cgns_dist_tree_to_joinopp_array(dist_tree):
-  """
-  """
-  zones = I.getZones(dist_tree)
-
-  jns = []
-  for zone in zones:
-    # > Get ZoneGridConnectivity List
-    zone_gcs = I.getNodesFromType1(zone, 'ZoneGridConnectivity_t')
-    # > Get Join List if ZoneGridConnectivity is not None
-    #   - Match Structured and Match Hybride
-    if (zone_gcs != []):
-      jns += I.getNodesFromType1(zone_gcs, 'GridConnectivity_t')
-      jns += I.getNodesFromType1(zone_gcs, 'GridConnectivity1to1_t')
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  # > Count joins and declare array
-  join_to_opp = NPY.empty(len(jns), dtype='int32' )
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  # > Fill array
-  for jn in jns:
-    join_id     = I.getNodeFromName1(jn, 'Ordinal')[1]
-    join_opp_id = I.getNodeFromName1(jn, 'OrdinalOpp')[1]
-    join_to_opp[join_id - 1] = join_opp_id - 1
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-  return join_to_opp
