@@ -164,9 +164,42 @@ def pdm_elmt_to_cgns_elmt(zone, dims, data, dist_zone):
       n_elt_sum += dims['n_elt'][i]
 
 
+def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm):
+
+  #Dims and data should be related to the dist zone and of size n_parts
+  part_zones = list()
+  for i_part, (dims, data) in enumerate(zip(l_dims, l_data)):
+
+    part_zone = I.newZone(name  = '{0}.P{1}.N{2}'.format(I.getName(dist_zone), comm.Get_rank(), i_part),
+                          zsize = [[dims['n_vtx'],dims['n_cell'],0]],
+                          ztype = 'Unstructured')
+
+    save_in_tree_part_info(part_zone, dims, data, comm)
+    pdm_vtx_to_cgns_grid_coordinates(part_zone, dims, data)
+    pdm_elmt_to_cgns_elmt(part_zone, dims, data, dist_zone)
+
+    bnd_pdm_to_cgns(part_zone, dist_zone, comm)
+    # TODO
+    #zgc_original_pdm_to_cgns(part_zone, dist_zone, comm)
+
+    # TODO
+    #zgc_created_pdm_to_cgns(part_zone, dist_zone, comm, 'face')
+    zgc_created_pdm_to_cgns(part_zone, dist_zone, comm, 'vtx', 'ZoneGridConnectivity#Vertex')
+
+    if(data['np_vtx_ghost_information'] is not None):
+      vtx_ghost_info = data['np_vtx_ghost_information']
+      first_ghost_idx = np.searchsorted(vtx_ghost_info, 2)
+      n_ghost_node = len(vtx_ghost_info) - first_ghost_idx
+      coord_node = I.getNodeFromName(part_zone,"GridCoordinates")
+
+      I.newUserDefinedData("FSDM#n_ghost",value=[n_ghost_node],parent=coord_node)
+
+    part_zones.append(part_zone)
+
+  return part_zones
 
 
-def pdm_part_to_cgns_zone(zone, dist_zone, dims, data, comm):
+def pdm_part_to_cgns_zoneold(zone, dist_zone, dims, data, comm):
   """
   """
   save_in_tree_part_info(zone, dims, data, comm)
