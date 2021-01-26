@@ -5,173 +5,92 @@ import Pypdm.Pypdm        as PDM
 
 from .split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh, cgns_dist_tree_to_joinopp_array
 from .split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
+from .split_S import part_zone
 from .pdm_mutipart_to_cgns         import pdm_mutipart_to_cgns
-
-
-def partitioningS(dist_tree, dzone_to_weighted_parts, comm,
-                 split_method,
-                 part_weight_method,
-                 reorder_methods=["NONE", "NONE"],
-                 multigrid=0, multigridOption=[],
-                 n_cell_per_cache=0,
-                 n_face_per_pack=64):
-  from .split_S import part_zone
-  part_tree = I.newCGNSTree()
-  part_base = I.newCGNSBase(parent=part_tree)
-  for zone in I.getZones(dist_tree):
-    if(SIDS.ZoneType(zone) == 'Structured'):
-      parts = part_zone.part_s_zone(zone, dzone_to_weighted_parts[I.getName(zone)], comm)
-      for part in parts:
-        I._addChild(part_base, part)
-  return part_tree
-
 
 def partitioning(dist_tree, dzone_to_weighted_parts, comm,
                  split_method,
                  part_weight_method,
                  reorder_methods=["NONE", "NONE"],
-                 multigrid=0, multigridOption=[],
-                 n_cell_per_cache=0,
-                 n_face_per_pack=64):
-  """
-  """
-  dmesh_list = list()
-  zones = I.getZones(dist_tree)
-  for zone in zones:
-    if(SIDS.ZoneType(zone) == 'Structured'):
-      raise NotImplementedError
+                 n_cell_per_cache=0, n_face_per_pack=64):
+
+  all_zones = I.getZones(dist_tree)
+  u_zones   = [zone for zone in all_zones if SIDS.ZoneType(zone) == 'Unstructured']
+  s_zones   = [zone for zone in all_zones if SIDS.ZoneType(zone) == 'Structured']
+
+  if len(u_zones)*len(s_zones) != 0:
+    raise RuntimeError("Hybrid meshes are not yet supported")
+
+  part_tree = I.newCGNSTree()
+  #For now only one base
+  dist_base = I.getNodeFromType1(dist_tree, 'CGNSBase_t')
+  part_base = I.createNode(I.getName(dist_base), 'CGNSBase_t', I.getValue(dist_base), parent=part_tree)
+
+  #Split S zones
+  for zone in s_zones:
+    parts = part_zone.part_s_zone(zone, dzone_to_weighted_parts[I.getName(zone)], comm)
+    for part in parts:
+      I._addChild(part_base, part)
+
+  #Split U zones
+  if len(u_zones) > 0:
+    n_part_per_zone_u = [len(dzone_to_weighted_parts[I.getName(zone)]) for zone in u_zones]
+    n_part_per_zone_u = np.array(n_part_per_zone_u, dtype=np.int32)
+    if part_weight_method == 2:
+      part_weight = np.empty(sum(n_part_per_zone_u), dtype='float64')
+      for izone, zone in enumerate(u_zones):
+        offset    = sum(n_part_per_zone_u[:izone])
+        part_weight[offset:offset+n_part_per_zone_u[izone]] = dzone_to_weighted_parts[I.getName(zone)]
     else:
-      dmesh_list.append(cgns_dist_zone_to_pdm_dmesh(zone, comm))
+      part_weight = None
 
-  join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
+    multi_part = PDM.MultiPart(len(u_zones), n_part_per_zone_u, 0, split_method,
+        part_weight_method, part_weight, comm)
 
-  n_zone = len(dzone_to_weighted_parts)
-  n_part_per_zone = np.empty(n_zone, dtype='int32')
-  for izone,zone in enumerate(zones):
-    zone_name = zone[0]
-    n_part_per_zone[izone] = len(dzone_to_weighted_parts[zone_name])
+    dmesh_list = list()
+    for izone, zone in enumerate(u_zones):
+      #Determine NGON or ELMT
+      elmt_types = [SIDS.ElementType(elmt) for elmt in I.getNodesFromType1(zone, 'Elements_t')]
+      is_ngon = 22 in elmt_types
+      if is_ngon:
+        dmesh    = cgns_dist_zone_to_pdm_dmesh(zone, comm)
+        dmesh_list.append(dmesh)
+        multi_part.multipart_register_block(izone, dmesh)
+      else:
+        dmesh_nodal = cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm)
+        multi_part.multipart_register_dmesh_nodal(izone, dmesh_nodal)
 
-  if part_weight_method == 2:
-    part_weight = np.empty(sum(n_part_per_zone), dtype='float64')
-    for izone,zone in enumerate(zone):
-      zone_name = zone[0]
-      offset    = sum(n_part_per_zone[:izone])
-      part_weight[offset:offset+n_part_per_zone[izone]] = dzone_to_weighted_parts[zone_name]
-  else:
-    part_weight = None
+    #Register joins
+    join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
+    n_total_joins = join_to_opp_array.shape[0]
+    multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)
 
-  multi_part = PDM.MultiPart(n_zone, n_part_per_zone, 0, split_method, part_weight_method, part_weight, comm)
-  # print("multi_part = ", multi_part)
+    #Set reordering
+    renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_methods[0]
+    renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_methods[1]
+    if "CACHEBLOCKING" in reorder_methods[0]:
+      cacheblocking_props = np.array([n_cell_per_cache, 1, 1, n_face_per_pack, split_method],
+                                      dtype='int32', order='c')
+    else:
+      cacheblocking_props = None
+    multi_part.multipart_set_reordering(-1,
+                                        renum_cell_method.encode('utf-8'),
+                                        renum_face_method.encode('utf-8'),
+                                        cacheblocking_props)
 
-  for izone, zone in enumerate(zones):
-    dmesh    = dmesh_list[izone]
-    multi_part.multipart_register_block(izone, dmesh)
+    #Run now
+    multi_part.multipart_run_ppart()
 
-  n_total_joins = join_to_opp_array.shape[0]
-  multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)
+    #To rewrite to have a by zone behaviour
+    pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone_u, part_base, comm)
 
-  # Set reorering option -- -1 is a shortcut for all the zones
-  renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_methods[0]
-  renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_methods[1]
-  if "CACHEBLOCKING" in reorder_methods[0]:
-    cacheblocking_props = np.array([n_cell_per_cache, 1, 1, n_face_per_pack, split_method],
-                                    dtype='int32', order='c')
-  else:
-    cacheblocking_props = None
-  multi_part.multipart_set_reordering(-1,
-                                      renum_cell_method.encode('utf-8'),
-                                      renum_face_method.encode('utf-8'),
-                                      cacheblocking_props)
+    del(dmesh_list) # Enforce free of PDM struct before free of numpy
+    del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
+    # for zone in zones:
+      # I._rmNodesFromName1(zone, ':CGNS#MultiPart')
 
-  multi_part.multipart_run_ppart()
+  #Add to level nodes
+  for fam in I.getNodesFromType1(dist_base, 'Family_t'):
+    I.addChild(part_base, fam)
 
-  part_tree = pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm)
-
-  del(dmesh_list) # Enforce free of PDM struct before free of numpy
-  del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
-  for zone in zones:
-    I._rmNodesFromName1(zone, ':CGNS#MultiPart')
-  return part_tree
-
-
-def partition_by_elt(dist_tree, comm, split_method):
-  """
-  """
-  zones = I.getZones(dist_tree)
-
-  n_zone = len(zones)
-  n_part_per_zone = np.ones(n_zone, dtype='int32')
-  part_weight_method = 0
-  part_weight = np.empty(0, dtype='float64')
-  multi_part = PDM.MultiPart(n_zone, n_part_per_zone, 0, split_method, part_weight_method, part_weight, comm)
-
-  for i_zone, zone in enumerate(zones):
-    zone_id = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
-    dmesh_nodal = cgns_dist_zone_to_pdm_dmesh_nodal(zone,comm)
-    multi_part.multipart_register_dmesh_nodal(zone_id, dmesh_nodal)
-
-  multi_part.multipart_run_ppart()
-
-  part_tree = pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm)
-
-  ## join_to_opp_array = cgns_dist_tree_to_joinopp_array(dist_tree)
-
-  #n_zone = len(dzone_to_weighted_parts)
-  #n_part_per_zone = np.empty(n_zone, dtype='int32')
-  #for zone in zones:
-  #  zone_name = zone[0]
-  #  # > TODO : setup cgns_registery
-  #  zone_id = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
-  #  n_part_per_zone[zone_id] = len(dzone_to_weighted_parts[zone_name])
-
-  #if part_weight_method == 2:
-  #  part_weight = np.empty(sum(n_part_per_zone), dtype='float64')
-  #  for zone in zone:
-  #    zone_name = zone[0]
-  #    zone_id  = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
-  #    offset    = sum(n_part_per_zone[:zone_id])
-  #    part_weight[offset:offset+n_part_per_zone[zone_id]] = dzone_to_weighted_parts[zone_name]
-  #else:
-  #  part_weight = None
-
-  #multi_part = PDM.MultiPart(n_zone, n_part_per_zone, 0, split_method, part_weight_method, part_weight, comm)
-  ## print("multi_part = ", multi_part)
-
-  #for i_zone, zone in enumerate(zones):
-  #  zone_id = I.getNodeFromName1(zone, ':CGNS#Registry')[1][0] - 1
-  #  dmesh = dmesh_list[i_zone]
-  #  # print(type(dmesh))
-  #  # print(dir(PDM))
-  #  # t1 = PDM.T1(10)
-  #  # print(type(t1))
-  #  # PDM.une_function(t1)
-  #  # multi_part.multipart_gen(zone_id, t1)
-  #  multi_part.multipart_register_block(zone_id, dmesh)
-  #  # multi_part.multipart_register_block(i_zone, dmesh._id)
-  #  # print "Set dmesh #{0} using zone_id {1}".format(dmesh._id, zone_id+1)
-
-  ## n_total_joins = join_to_opp_array.shape[0]
-  ## multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)
-
-  ## Set reorering option -- -1 is a shortcut for all the zones
-  #renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_methods[0]
-  #renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_methods[1]
-  #if "CACHEBLOCKING" in reorder_methods[0]:
-  #  cacheblocking_props = np.array([n_cell_per_cache, 1, 1, n_face_per_pack, split_method],
-  #                                  dtype='int32', order='c')
-  #else:
-  #  cacheblocking_props = None
-  #multi_part.multipart_set_reordering(-1,
-  #                                    renum_cell_method.encode('utf-8'),
-  #                                    renum_face_method.encode('utf-8'),
-  #                                    cacheblocking_props)
-
-  #multi_part.multipart_run_ppart()
-
-  #part_tree = pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone, comm)
-
-  #del(dmesh_list) # Enforce free of PDM struct before free of numpy
-  #del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
-  #for zone in zones:
-  #  I._rmNodesFromName1(zone, ':CGNS#MultiPart')
   return part_tree

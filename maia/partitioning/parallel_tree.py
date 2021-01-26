@@ -99,7 +99,8 @@ def load_partitioned_tree(file_name,comm):
   #HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
   #IOT.save_tree_from_filter("dist_tree_bef_0.hdf", dist_tree, comm, hdf_filter)
 
-  part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
+  #part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
+  part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts, comm, split_method=2, part_weight_method=1)
 
   add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
