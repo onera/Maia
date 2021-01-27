@@ -2,6 +2,7 @@ import pytest
 import os
 from pytest_check import *
 from mpi4py import MPI
+import sys
 
 pytest.register_assert_rewrite("pytest_check.check")
 
@@ -16,39 +17,48 @@ def setup_subcomm(comm, n_proc):
   subcomm  = comm.Create(subgroup)
   return subcomm
 
+
 # --------------------------------------------------------------------------
 @pytest.fixture
 def make_sub_comm(request):
   """
   """
-  comm = MPI.COMM_WORLD
-
   # print(" request:: ", dir(request._pyfuncitem))
-  # print(" toto:: ", comm.rank, request._pyfuncitem.toto)
-  n_proc = request.param
+  return request._pyfuncitem._sub_comm
 
-  # if(request._pyfuncitem.toto == comm.rank):
-  #   pytest.skip()
-  #   return None
+# --------------------------------------------------------------------------
+# @pytest.fixture
+# def make_sub_comm(request):
+#   """
+#   """
+#   comm = MPI.COMM_WORLD
 
-  return None
+#   print(" request:: ", dir(request._pyfuncitem))
+#   # print(" toto:: ", comm.rank, request._pyfuncitem.toto)
+#   n_proc = request.param
 
-  if(n_proc > comm.size):
-    pytest.skip()
-    return None
+#   # if(request._pyfuncitem.toto == comm.rank):
+#   #   pytest.skip()
+#   #   return None
 
-  # Groups communicator creation
-  gprocs   = [i for i in range(n_proc)]
-  group    = comm.Get_group()
-  subgroup = group.Incl(gprocs)
-  # print(dir(comm))
-  # subcomm  = comm.Create(subgroup)      # Lock here - Collection among all procs
-  subcomm  = comm.Create_group(subgroup)  # Ok - Only collective amont groups
+#   return None
 
-  if(subcomm == MPI.COMM_NULL):
-    pytest.skip()
+#   if(n_proc > comm.size):
+#     pytest.skip()
+#     return None
 
-  return subcomm
+#   # Groups communicator creation
+#   gprocs   = [i for i in range(n_proc)]
+#   group    = comm.Get_group()
+#   subgroup = group.Incl(gprocs)
+#   # print(dir(comm))
+#   # subcomm  = comm.Create(subgroup)      # Lock here - Collection among all procs
+#   subcomm  = comm.Create_group(subgroup)  # Ok - Only collective amont groups
+
+#   if(subcomm == MPI.COMM_NULL):
+#     pytest.skip()
+
+#   return subcomm
 
 # --------------------------------------------------------------------------
 @pytest.fixture
@@ -187,6 +197,10 @@ def pytest_configure(config):
   config.option.htmlpath = 'reports/' + "report_unit_test_{0}.html".format(comm.rank)
 
   pytest.assert_mpi = assert_mpi
+  # temp_ouput_file = 'maia_'
+  # sys.stdout = open(f"{temp_ouput_file(args.test_name)}_{MPI.COMM_WORLD.Get_rank()}", "w")
+  # print(dir(config))
+  # exit(2)
 
 
 @pytest.hookimpl(hookwrapper=True)

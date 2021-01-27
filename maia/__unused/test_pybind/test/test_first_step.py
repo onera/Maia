@@ -15,20 +15,20 @@ def test_first_step():
   assert(zone_s1.global_id == 2          );
   assert(zone_s1.name      == "cartesian");
 
-  print(zone_u1.big_vector[400])
-  print(zone_s1.big_vector[400])
+  # print(zone_u1.big_vector[400])
+  # print(zone_s1.big_vector[400])
   MUF.add_zone_to_base(base, zone_u1);
   MUF.add_zone_to_base(base, zone_s1);
 
   # > En faite ce qui est pas mal c'est que pybind retrouve le bon type caché par le variant
   # > Ok ca marche
   zone_t = MUF.get_zone_from_gid(base, 1)
-  print(zone_t)
-  print(zone_t.ngon) # type == zone_unstructured
+  # print(zone_t)
+  # print(zone_t.ngon) # type == zone_unstructured
 
   zone_ts = MUF.get_zone_from_gid(base, 2)
-  print(zone_ts)
-  print(zone_ts.zone_opp_name) # type == zone_structured
+  # print(zone_ts)
+  # print(zone_ts.zone_opp_name) # type == zone_structured
 
   # Si la zone est pas trouvé --> None
   # Si pas le type de retour n'est pas wrappé --> Cannot convert C++ object to python -> Logique, il sait pas faire le translate
@@ -38,19 +38,19 @@ def test_first_step():
 
   zone_u1.global_id = 1000 # Well this one works but not for good reason
 
-  print("python side before del : ")
-  print(zone_u1.global_id)
-  print(zone_s1.global_id)
+  # print("python side before del : ")
+  # print(zone_u1.global_id)
+  # print(zone_s1.global_id)
   # print(zone_u1.big_vector[400]) # Fail
   # print(zone_s1.big_vector[400]) # Fail
-  print(zone_ts.big_vector[400])   # > Ok because we retake the zone by accessor
-  print(base)
-  print("python side before del : ")
+  # print(zone_ts.big_vector[400])   # > Ok because we retake the zone by accessor
+  # print(base)
+  # print("python side before del : ")
 
   del(zone_u1)
   del(zone_s1)
 
-  print(base)
+  # print(base)
 
   del(base)
 
