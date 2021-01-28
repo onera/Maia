@@ -13,6 +13,26 @@ def interweave_arrays(array_list):
     output[i::number] = array
   return output
 
+def concatenate_point_list(point_lists, dtype=None):
+  """
+  Merge all the PointList arrays in point_lists list
+  into a flat 1d array and an index array
+  """
+  sizes = [pl_n.size for pl_n in point_lists]
+
+  merged_pl_idx = np.empty(len(sizes)+1, dtype='int32')
+  merged_pl_idx[0] = 0
+  np.cumsum(sizes, out=merged_pl_idx[1:])
+
+  if dtype is None:
+    dtype = point_lists[0].dtype if point_lists != [] else np.int
+
+  merged_pl = np.empty(sum(sizes), dtype=dtype)
+  for ipl, pl in enumerate(point_lists):
+    merged_pl[merged_pl_idx[ipl]:merged_pl_idx[ipl+1]] = pl[0,:]
+
+  return merged_pl_idx, merged_pl
+
 def getNodesFromTypePath(root, types_path):
   """Generator following type path, equivalent to
   for level1 in I.getNodesFromType1(root, type1):

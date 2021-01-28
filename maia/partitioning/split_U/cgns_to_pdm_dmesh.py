@@ -5,35 +5,8 @@ from maia.connectivity import connectivity_transform as CNT
 from maia.utils import zone_elements_utils as EZU
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
+from .collect_pl import collect_distributed_pl
 from Pypdm.Pypdm import DistributedMesh
-
-def concatenate_point_list(point_lists):
-  """
-  Merge all the PointList arrays in point_lists list
-  into a flat 1d array and an index array
-  """
-  sizes = [pl_n.size for pl_n in point_lists]
-
-  merged_pl_idx = np.empty(len(sizes)+1, dtype='int32')
-  merged_pl_idx[0] = 0
-  np.cumsum(sizes, out=merged_pl_idx[1:])
-
-  merged_pl = np.empty(sum(sizes), dtype=pdm_gnum_dtype)
-  for ipl, pl in enumerate(point_lists):
-    merged_pl[merged_pl_idx[ipl]:merged_pl_idx[ipl+1]] = pl[0,:]
-
-  return merged_pl_idx, merged_pl
-
-def concatenate_point_list_of_types(root, type_path):
-  """
-  Search all the pointList nodes from root node following the
-  types given in type_path, and concatenate them using
-  concatenate_point_list
-  """
-  point_lists = [I.getNodeFromName1(node, 'PointList')[1] for \
-      node in py_utils.getNodesFromTypePath(root, type_path)]
-  return concatenate_point_list(point_lists)
-
 
 def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
@@ -83,14 +56,16 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     dface_cell    = np.empty(0, dtype=pdm_gnum_type)
 
   # > Prepare bnd
-  dface_bound_idx, dface_bound = concatenate_point_list_of_types(dist_zone, 'ZoneBC_t/BC_t')
+  bc_point_lists = collect_distributed_pl(dist_zone, 'ZoneBC_t/BC_t')
+  dface_bound_idx, dface_bound = py_utils.concatenate_point_list(bc_point_lists, pdm_gnum_dtype)
   # > Find shift in NGon
   first_ngon_elmt, last_ngon_elmt = EZU.get_range_of_ngon(dist_zone)
   dface_bound = dface_bound - first_ngon_elmt + 1
 
   # > Prepare joins
   gc_type_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
-  dface_join_idx, dface_join = concatenate_point_list_of_types(dist_zone, gc_type_path)
+  gc_point_lists = collect_distributed_pl(dist_zone, gc_type_path)
+  dface_join_idx, dface_join = py_utils.concatenate_point_list(gc_point_lists, pdm_gnum_dtype)
   joins_ids = [I.getNodeFromName1(gc, 'Ordinal')[1][0] for gc in \
       py_utils.getNodesFromTypePath(dist_zone, gc_type_path)]
   joins_ids = np.array(joins_ids, dtype='int32') - 1
