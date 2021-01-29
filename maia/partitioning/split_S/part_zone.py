@@ -12,43 +12,51 @@ from maia.utils import py_utils
 def ijk_to_index(i,j,k,n_elmt):
   return i+(j-1)*n_elmt[0]+(k-1)*n_elmt[0]*n_elmt[1] 
 
-def merge_dist_boundaries(dist_zone):
-  base_bound = {k:[] for k in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]}
+def collect_S_bnd_per_dir(zone):
+  """
+  Group the bc and 1to1 gc founds in a structured zone according to
+  the geometric boundary they belong (xmin, xmax, ymin, ... , zmax).
+  Return a dictionnary storing the names of the boundaries for
+  each geometric boundary.
+  """
+  base_bound = {k : [] for k in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]}
   idx_to_dir = {0: 'x', 1: 'y', 2:'z'}
 
-  for zone_bc in I.getNodesFromType1(dist_zone, 'ZoneBC_t'):
-    for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
-      grid_loc_n = I.getNodeFromName(bc, 'GridLocation')
+  for bnd_path in ['ZoneBC_t/BC_t', 'ZoneGridConnectivity_t/GridConnectivity1to1_t']:
+    for bnd in py_utils.getNodesFromTypePath(zone, bnd_path):
+      grid_loc_n = I.getNodeFromName(bnd, 'GridLocation')
       grid_loc   = I.getValue(grid_loc_n) if grid_loc_n else 'Vertex'
-      point_range = I.getNodeFromName(bc, 'PointRange')[1]
+      point_range = I.getNodeFromName(bnd, 'PointRange')[1]
       bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
 
       pr_val = point_range[bnd_normal_index,0]
-
       extr = 'min' if pr_val == 1 else 'max'
-      base_bound[idx_to_dir[bnd_normal_index] + extr].append(I.getName(bc))
 
-  for zone_gc in I.getNodesFromType1(dist_zone, 'ZoneGridConnectivity_t'):
-    for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t'):
-      grid_loc_n = I.getNodeFromName(gc, 'GridLocation')
-      point_range = I.getNodeFromName(gc, 'PointRange')[1]
-      bnd_normal_index = guess_bnd_normal_index(point_range, 'Vertex')
-
-      pr_val = point_range[bnd_normal_index,0]
-
-      extr = 'min' if pr_val == 1 else 'max'
-      base_bound[idx_to_dir[bnd_normal_index] + extr].append(I.getName(gc))
+      base_bound[idx_to_dir[bnd_normal_index] + extr].append(I.getName(bnd))
 
   return base_bound
 
+def intersect_pr(prA, prB):
+  assert prA.ndim == 2 and prA.shape[1] == 2
+  assert prB.shape == prA.shape
+
+  sub_pr = np.empty_like(prA)
+  for d in range(prA.shape[0]):
+    if prB[d,0] <= prA[d,0] and prA[d,0] <= prB[d,1]:
+      sub_pr[d,0] = prA[d,0]
+    elif prA[d,0] <= prB[d,0] and prB[d,0] <= prA[d,1]:
+      sub_pr[d,0] = prB[d,0]
+    else:
+      return None
+    sub_pr[d,1] = min(prA[d,1], prB[d,1])
+
+  return sub_pr
 
 def create_bcs(zone, part, comm):
-  i_rank = comm.Get_rank()
-  dist_bound = merge_dist_boundaries(zone)
+  dist_bound = collect_S_bnd_per_dir(zone)
   dir_to_idx = {'x':0, 'y':1, 'z':2}
 
   zbc = I.newZoneBC(parent=part)
-  part_bounds = list()
 
   abs_dims = I.getNodeFromName1(part, 'AbsDims')[1]
 
@@ -57,17 +65,17 @@ def create_bcs(zone, part, comm):
     normal_idx = dir_to_idx[bnd[0]]
     extr = 0 if 'min' in bnd else 1
 
-    local_range = np.ones((3,2), dtype=np.int32)
-    local_range[:,1] = SIDS.CellSize(part)
-    local_range[normal_idx, 1-extr] = local_range[normal_idx, extr]
+    range_part_bc_l = np.ones((3,2), dtype=np.int32)
+    range_part_bc_l[:,1] = SIDS.CellSize(part)
+    range_part_bc_l[normal_idx, 1-extr] = range_part_bc_l[normal_idx, extr]
 
-    global_range = local_range + abs_dims[:,0].reshape((3,1)) - 1
+    range_part_bc_g = range_part_bc_l + abs_dims[:,0].reshape((3,1)) - 1
 
-    global_range_dist = np.ones((3,2), dtype=np.int32)
-    global_range_dist[:,1] = SIDS.CellSize(zone)
+    range_dist_zone_g = np.ones((3,2), dtype=np.int32)
+    range_dist_zone_g[:,1] = SIDS.CellSize(zone)
 
     #Ancienne BC/GC ou nouveau raccord
-    is_old_bc = global_range[normal_idx,extr] == global_range_dist[normal_idx,extr]
+    is_old_bc = range_part_bc_g[normal_idx,extr] == range_dist_zone_g[normal_idx,extr]
 
     if is_old_bc:
       dirs = np.where(np.arange(3) != normal_idx)[0]
@@ -87,33 +95,29 @@ def create_bcs(zone, part, comm):
         if grid_loc == 'Vertex':
           range_dist_bc[dirs,1] -= 1
 
-        sub_pr = np.empty((3,2), dtype=np.int32)
-        for d in dirs:
-          if range_dist_bc[d,0] <= global_range[d,0] and global_range[d,0] <= range_dist_bc[d,1]:
-            sub_pr[d,0] = global_range[d,0]
-          elif global_range[d,0] <= range_dist_bc[d,0] and range_dist_bc[d,0] <= global_range[d,1]:
-            sub_pr[d,0] = range_dist_bc[d,0]
-          else:
-            break
-          sub_pr[d,1] = min(global_range[d,1], range_dist_bc[d,1])
-        sub_pr[normal_idx,:] = global_range[normal_idx,:]
-        #Global to local
-        sub_pr = sub_pr - abs_dims[:,0].reshape((3,1)) + 1
-        #Restore location
-        if not grid_loc == 'CellCenter':
-          sub_pr[normal_idx,:] += int('max' in bnd)
-        if grid_loc == 'Vertex':
-          sub_pr[dirs,1] += 1
-        sub_pr[dir_to_swap, 0], sub_pr[dir_to_swap, 1] = \
-                sub_pr[dir_to_swap, 1], sub_pr[dir_to_swap, 0]
+        inter = intersect_pr(range_part_bc_g[dirs,:], range_dist_bc[dirs,:])
+        if inter is not None:
+          sub_pr = np.empty((3,2), dtype=np.int32)
+          sub_pr[dirs,:] = inter
+          sub_pr[normal_idx,:] = range_part_bc_g[normal_idx,:]
 
-        part_bc = I.newBC(dist_bc_name + 'suff', sub_pr, parent=zbc)
-        I.newGridLocation(grid_loc, parent=part_bc)
+          #Global to local
+          sub_pr = sub_pr - abs_dims[:,0].reshape((3,1)) + 1
+          #Restore location
+          if not grid_loc == 'CellCenter':
+            sub_pr[normal_idx,:] += int('max' in bnd)
+          if grid_loc == 'Vertex':
+            sub_pr[dirs,1] += 1
+          sub_pr[dir_to_swap, 0], sub_pr[dir_to_swap, 1] = \
+                  sub_pr[dir_to_swap, 1], sub_pr[dir_to_swap, 0]
+
+          part_bc = I.newBC(dist_bc_name + 'suff', sub_pr, parent=zbc)
+          I.newGridLocation(grid_loc, parent=part_bc)
     else:
-      range_dist_gc = np.copy(global_range)
-      range_dist_gc[normal_idx, 1-extr] = range_dist_gc[normal_idx,extr]
+      range_dist_gc_g = np.copy(range_part_bc_g)
+      range_dist_gc_g[normal_idx, 1-extr] = range_dist_gc_g[normal_idx,extr]
       #Store PR dans la numérotation globale de la dist_zone
-      I.newBC('JN_' + bnd, pointRange=range_dist_gc, parent=zbc)
+      I.newBC('JN_' + bnd, pointRange=range_dist_gc_g, parent=zbc)
 
 def create_new_internal_gcs(dist_zone, part_zones, comm):
   i_rank = comm.Get_rank()
@@ -155,19 +159,12 @@ def create_new_internal_gcs(dist_zone, part_zones, comm):
       for candidate in possible_opp_jns:
         opp_pr = candidate[2]
         if my_pr[normal_idx,0] - shift == opp_pr[normal_idx,0]:
-          sub_pr = np.empty((3,2), dtype=np.int32)
-          is_possible = True
-          for d in dirs:
-            if opp_pr[d,0] <= my_pr[d,0] and my_pr[d,0] <= opp_pr[d,1]:
-              sub_pr[d,0] = my_pr[d,0]
-            elif my_pr[d,0] <= opp_pr[d,0] and opp_pr[d,0] <= my_pr[d,1]:
-              sub_pr[d,0] = opp_pr[d,0]
-            else:
-              is_possible = False
-              break
-            sub_pr[d,1] = min(my_pr[d,1], opp_pr[d,1])
-          if is_possible:
+          inter = intersect_pr(my_pr[dirs,:], opp_pr[dirs,:])
+          if inter is not None:
+            sub_pr = np.empty((3,2), dtype=np.int32)
+            sub_pr[dirs,:] = inter
             sub_pr[normal_idx,:] = my_pr[normal_idx,:]
+
             sub_pr_d = np.copy(sub_pr)
             sub_pr_d[normal_idx] -= shift
             #Global to local
