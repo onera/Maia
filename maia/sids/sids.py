@@ -32,6 +32,10 @@ def ElementType(elements):
   assert I.getType(elements) == "Elements_t"
   return elements[1][0]
 
+def GridLocation(node):
+  grid_loc_n = I.getNodeFromType1(node, 'GridLocation_t')
+  return I.getValue(grid_loc_n) if grid_loc_n else 'Vertex'
+
 def point_range_sizes(pr_n):
   """Allow point_range to be inverted (PR[:,1] < PR[:,0])
   as it can occurs in struct GCs

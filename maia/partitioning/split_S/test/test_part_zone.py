@@ -38,12 +38,12 @@ Zone Zone_t:
   zone      = I.getZones(dist_tree)[0]
 
   out = splitS.collect_S_bnd_per_dir(zone)
-  assert out["xmin"] == ['bc1']
-  assert out["ymin"] == ['bc2', 'bc8']
-  assert out["zmin"] == ['bc4']
-  assert out["xmax"] == ['bc6', 'bc7', 'gc1']
-  assert out["ymax"] == ['bc3']
-  assert out["zmax"] == ['bc5']
+  assert out["xmin"] == [I.getNodeFromName(zone, name) for name in ['bc1']]
+  assert out["ymin"] == [I.getNodeFromName(zone, name) for name in ['bc2', 'bc8']]
+  assert out["zmin"] == [I.getNodeFromName(zone, name) for name in ['bc4']]
+  assert out["xmax"] == [I.getNodeFromName(zone, name) for name in ['bc6', 'bc7', 'gc1']]
+  assert out["ymax"] == [I.getNodeFromName(zone, name) for name in ['bc3']]
+  assert out["zmax"] == [I.getNodeFromName(zone, name) for name in ['bc5']]
 
 def test_intersect_pr():
   print("coucou")
@@ -52,3 +52,30 @@ def test_intersect_pr():
       == np.array([[7,11],[1,5]])).all()
   assert (splitS.intersect_pr(np.array([[1,5],[1,3]]), np.array([[1,4],[3,6]])) \
       == np.array([[1,4],[3,3]])).all()
+
+def test_zone_cell_range():
+  zone = I.newZone(ztype='Structured', zsize=[[101,100,0],[101,100,0],[41,40,0]])
+  assert (splitS.zone_cell_range(zone) == np.array([[1,100],[1,100],[1,40]])).all()
+
+def test_pr_to_cell_location():
+  pr = np.array([[1,1],[1,8],[1,6]])
+  splitS.pr_to_cell_location(pr, 0, 'IFaceCenter', False)
+  assert (pr == np.array([[1,1],[1,8],[1,6]])).all()
+  pr = np.array([[10,10],[1,8],[1,6]])
+  splitS.pr_to_cell_location(pr, 0, 'IFaceCenter', True)
+  assert (pr == np.array([[9,9],[1,8],[1,6]])).all()
+  splitS.pr_to_cell_location(pr, 0, 'IFaceCenter', True, reverse=True)
+  assert (pr == np.array([[10,10],[1,8],[1,6]])).all()
+
+  pr = np.array([[11,11],[1,9],[1,7]])
+  splitS.pr_to_cell_location(pr, 0, 'Vertex', True)
+  assert (pr == np.array([[10,10],[1,8],[1,6]])).all()
+  splitS.pr_to_cell_location(pr, 0, 'Vertex', True, reverse=True)
+  assert (pr == np.array([[11,11],[1,9],[1,7]])).all()
+
+def test_pr_to_global_num():
+  pr = np.array([[11,11],[1,9],[1,7]])
+  splitS.pr_to_global_num(pr, np.array([10,1,100]), reverse=False)
+  assert (pr == np.array([[11+9,11+9],[1,9],[1+99,7+99]])).all()
+  splitS.pr_to_global_num(pr, np.array([10,1,100]), reverse=True)
+  assert (pr == np.array([[11,11],[1,9],[1,7]])).all()
