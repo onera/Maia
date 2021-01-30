@@ -10,7 +10,7 @@
 namespace py = pybind11;
 
 cgns_registry make_cgns_registry(const cgns_paths_by_label& paths, py::object mpi4py_obj){
-  return cgns_registry(paths, mpi4py_comm_to_comm(mpi4py_obj));
+  return cgns_registry(paths, maia::mpi4py_comm_to_comm(mpi4py_obj));
 }
 
 

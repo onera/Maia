@@ -62,7 +62,7 @@ auto remove_ghost_info(py::object py_base) -> void {
 
 auto merge_by_elt_type(py::object py_base, py::object mpi4py_comm) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
-  MPI_Comm comm = mpi4py_comm_to_comm(mpi4py_comm);
+  MPI_Comm comm = maia::mpi4py_comm_to_comm(mpi4py_comm);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::merge_by_elt_type(base,cgns::factory(&alloc),comm);
@@ -71,7 +71,7 @@ auto merge_by_elt_type(py::object py_base, py::object mpi4py_comm) -> void {
 }
 auto add_fsdm_distribution(py::object py_base, py::object mpi4py_comm) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
-  MPI_Comm comm = mpi4py_comm_to_comm(mpi4py_comm);
+  MPI_Comm comm = maia::mpi4py_comm_to_comm(mpi4py_comm);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::add_fsdm_distribution(base,cgns::factory(&alloc),comm);
