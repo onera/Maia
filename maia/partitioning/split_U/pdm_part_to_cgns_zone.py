@@ -209,7 +209,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data):
       n_elt_cum += n_i_elt
 
 
-def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm):
+def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   """
   """
   #Dims and data should be related to the dist zone and of size n_parts
@@ -226,17 +226,18 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm):
 
     bnd_pdm_to_cgns(part_zone, dist_zone, dims, data)
 
-    output_loc = 'Vertex'
+    output_loc = options['jn_location']
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'
     zgc_created_pdm_to_cgns(part_zone, dist_zone, dims, data, output_loc, zgc_name)
     zgc_original_pdm_to_cgns(part_zone, dist_zone, dims, data)
 
-    vtx_ghost_info = data['np_vtx_ghost_information']
-    if vtx_ghost_info is not None:
-      first_ghost_idx = np.searchsorted(vtx_ghost_info, 2)
-      n_ghost_node = len(vtx_ghost_info) - first_ghost_idx
-      coord_node   = I.getNodeFromName(part_zone, "GridCoordinates")
-      I.newUserDefinedData("FSDM#n_ghost", value=[n_ghost_node], parent=coord_node)
+    if options['save_ghost_data']:
+      vtx_ghost_info = data['np_vtx_ghost_information']
+      if vtx_ghost_info is not None:
+        first_ghost_idx = np.searchsorted(vtx_ghost_info, 2)
+        n_ghost_node = len(vtx_ghost_info) - first_ghost_idx
+        coord_node   = I.getNodeFromName(part_zone, "GridCoordinates")
+        I.newUserDefinedData("FSDM#n_ghost", value=[n_ghost_node], parent=coord_node)
 
     part_zones.append(part_zone)
 
