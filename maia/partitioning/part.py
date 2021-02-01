@@ -113,7 +113,7 @@ def partitioning(dist_tree, dzone_to_weighted_parts, comm,
     multi_part.multipart_run_ppart()
 
     #To rewrite to have a by zone behaviour
-    pdm_mutipart_to_cgns(multi_part, dist_tree, n_part_per_zone_u, part_base, comm)
+    pdm_mutipart_to_cgns(multi_part, u_zones, n_part_per_zone_u, part_base, comm)
 
     del(dmesh_list) # Enforce free of PDM struct before free of numpy
     del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
