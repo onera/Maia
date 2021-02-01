@@ -14,10 +14,73 @@ def dump_pdm_output(p_zone, dims, data):
     if isinstance(data_val, np.ndarray):
       I.newDataArray(data_key, np.copy(data_val), parent=ppart_node)
 
-def zgc_original_pdm_to_cgns(zone, dist_zone, comm):
+def zgc_original_pdm_to_cgns(p_zone, d_zone, dims, data):
   """
   Already exist in initial configuration
   """
+  # Collect original joins
+  face_join_idx      = data['np_face_join_idx'     ]
+  face_join_tmp      = data['np_face_join'         ]
+  face_join_ln_to_gn = data['np_face_join_ln_to_gn']
+
+  if(face_join_idx is None):
+    return
+
+  face_join = face_join_tmp.reshape((4, face_join_tmp.shape[0]//4), order='F')
+  face_join = face_join.transpose()
+
+  for dist_zone_gc in I.getNodesFromType1(d_zone, 'ZoneGridConnectivity_t'):
+    zgc_n = I.newZoneGridConnectivity(I.getName(dist_zone_gc), parent=p_zone)
+    for i_jn, dist_jn in enumerate(I.getNodesFromType1(dist_zone_gc, 'GridConnectivity_t')):
+      beg_pl = face_join_idx[i_jn  ]
+      end_pl = face_join_idx[i_jn+1]
+      face_this_join = face_join[beg_pl:end_pl, :]
+
+      if( beg_pl != end_pl):
+        jnname = '{0}.{1}.{2}'.format(I.getName(dist_jn), *I.getName(p_zone).split('.')[-2:])
+
+        # > List of couples (procs, parts) holding the opposite join
+        opposed_parts = np.unique(face_this_join[:,1:3], axis=0)
+        for i_jn, (opp_rank, opp_part) in enumerate(opposed_parts):
+          join_n = I.newGridConnectivity(name      = jnname+'.{0}'.format(i_jn),
+                                         donorName = I.getValue(dist_jn)+'.P{0}.N{1}'.format(opp_rank, opp_part),
+                                         ctype     = 'Abutting1to1',
+                                         parent    = zgc_n)
+
+          # > Extract faces in this couple
+          matching_faces_idx = (face_this_join[:,1]==opp_rank) & (face_this_join[:,2]==opp_part)
+          matching_faces = face_this_join[matching_faces_idx]
+
+          pl_size = matching_faces.shape[0]
+          pl     = np.empty((1, pl_size), order='F', dtype=np.int32)
+          pl[0]  = np.copy(matching_faces[:,0])
+          pld    = np.empty((1, pl_size), order='F', dtype=np.int32)
+          pld[0] = np.copy(matching_faces[:,3])
+
+          ln_to_gn = np.copy(face_join_ln_to_gn[beg_pl:end_pl][matching_faces_idx])
+          # Sort both pl and pld according to min joinId to ensure that
+          # order is the same
+          ordinal_cur = I.getNodeFromName1(dist_jn, 'Ordinal')[1][0]
+          ordinal_opp = I.getNodeFromName1(dist_jn, 'OrdinalOpp')[1][0]
+          ref_pl = pl if ordinal_cur < ordinal_opp else pld
+          sort_idx = np.argsort(ref_pl[0])
+          pl[0]    = pl[0] [sort_idx]
+          pld[0]   = pld[0][sort_idx]
+          ln_to_gn = ln_to_gn[sort_idx]
+
+          I.newGridLocation('FaceCenter', parent=join_n)
+          I.newPointList(name='PointList'     , value=pl      , parent=join_n)
+          I.newPointList(name='PointListDonor', value=pld     , parent=join_n)
+          I.newDataArray(name='LNtoGN'        , value=ln_to_gn, parent=join_n)
+
+          # > Recuperation of UserDefinedData and FamilyName in DistTree
+          for node_type in ['FamilyName_t', 'GridConnectivityProperty_t']:
+            for node in I.getNodesFromType1(dist_jn, node_type):
+              I._addChild(bc_n, node)
+          for node_name in ['.Solver#Property']:
+            for node in I.getNodesFromName1(dist_jn, node_name):
+              I._addChild(bc_n, node)
+
 
 def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', zgc_name='ZoneGridConnectivity'):
   """
@@ -162,12 +225,11 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm):
     pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data)
 
     bnd_pdm_to_cgns(part_zone, dist_zone, dims, data)
-    # TODO
-    #zgc_original_pdm_to_cgns(part_zone, dist_zone, comm)
 
     output_loc = 'Vertex'
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'
     zgc_created_pdm_to_cgns(part_zone, dist_zone, dims, data, output_loc, zgc_name)
+    zgc_original_pdm_to_cgns(part_zone, dist_zone, dims, data)
 
     vtx_ghost_info = data['np_vtx_ghost_information']
     if vtx_ghost_info is not None:
