@@ -52,7 +52,7 @@ merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_C
   std::vector<PDM_g_num_t*> block_distribs(n_section);
   for (int i=0; i<n_section; ++i) {
     tree& section_node = *(first_section+i);
-    auto section_connec_partial_distri = get_node_value_by_matching<I8>(section_node,":CGNS#Distribution/Distribution");
+    auto section_connec_partial_distri = get_node_value_by_matching<I8>(section_node,":CGNS#Distribution/Element");
     block_distribs_storer[i] = distribution_from_partial(section_connec_partial_distri,comm);
     block_distribs[i] = block_distribs_storer[i].data();
     multi_distrib_idx[i+1] = multi_distrib_idx[i] + section_connec_partial_distri.back();
@@ -117,7 +117,7 @@ merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_C
   partial_dist[0] = merged_distri[i_rank];
   partial_dist[1] = merged_distri[i_rank+1];
   partial_dist[2] = merged_distri.back();
-  tree dist = F.newDataArray("Distribution",{"I8",{3},partial_dist.data()});
+  tree dist = F.newDataArray("Element",{"I8",{3},partial_dist.data()});
 
   tree cgns_dist = F.newUserDefinedData(":CGNS#Distribution");
   emplace_child(cgns_dist,std::move(dist));

@@ -19,10 +19,10 @@ def test_create_zone_std_elements_filter():
   yt = """
 Hexa Elements_t [17, 0]:
   :CGNS#Distribution UserDefinedData_t:
-    Distribution DataArray_t [2,7,10]:
+    Element DataArray_t [2,7,10]:
 Tetra Elements_t [10, 0]:
   :CGNS#Distribution UserDefinedData_t:
-    Distribution DataArray_t [40,60,60]:
+    Element DataArray_t [40,60,60]:
 """
   zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
   hdf_filter = dict()
@@ -41,7 +41,7 @@ NGon Elements_t [22, 0]:
   ElementConnectivity#Size IndexArray_t [40]:
   ElementStartOffset DataArray_t [8,12,16,20,24,28]:
   :CGNS#Distribution UserDefinedData_t:
-    Distribution DataArray_t [2,7,10]:
+    Element DataArray_t [2,7,10]:
 """
   zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
   hdf_filter = dict()
@@ -49,7 +49,7 @@ NGon Elements_t [22, 0]:
   cgns_elements.load_element_connectivity_from_eso(element, 'pathtozone', hdf_filter)
   assert hdf_filter['pathtozone/NGon/ElementConnectivity'] == \
       [[0], [1], [28-8], [1], [8], [1], [28-8], [1], [40], [0]]
-  element_connectivity_distri = I.getNodeFromPath(element, ':CGNS#Distribution/DistributionElementConnectivity')
+  element_connectivity_distri = I.getNodeFromPath(element, ':CGNS#Distribution/ElementConnectivity')
   assert (element_connectivity_distri[1] == [8,28,40]).all()
       
 
@@ -60,7 +60,7 @@ NGon Elements_t [22, 0]:
   ElementStartOffset DataArray_t None:
   ElementConnectivity DataArray_t None:
   :CGNS#Distribution UserDefinedData_t:
-    Distribution DataArray_t [2,7,10]:
+    Element DataArray_t [2,7,10]:
 """
   zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
   read_filter, write_filter = dict(), dict()
@@ -90,10 +90,10 @@ NGon Elements_t [22, 0]:
   ElementStartOffset DataArray_t None:
   ElementConnectivity DataArray_t None:
   :CGNS#Distribution UserDefinedData_t:
-    Distribution DataArray_t [2,7,10]:
+    Element DataArray_t [2,7,10]:
 Tri Elements_t [5, 0]:
   :CGNS#Distribution UserDefinedData_t:
-    Distribution DataArray_t [30,60,120]:
+    Element DataArray_t [30,60,120]:
 """
   zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
   hdf_filter = dict()

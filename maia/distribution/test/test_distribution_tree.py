@@ -17,7 +17,7 @@ def test_compute_plist_or_prange_distribution(sub_comm):
 
   distrib_ud = I.getNodeFromName1(node, ':CGNS#Distribution')
   assert I.getType(distrib_ud) == 'UserDefinedData_t'
-  distrib    = I.getNodeFromName1(distrib_ud, 'Distribution')
+  distrib    = I.getNodeFromName1(distrib_ud, 'Index')
   assert I.getType(distrib) == 'DataArray_t'
   assert (I.getValue(distrib) == MID.uniform_distribution(3*3*1, sub_comm)).all()
 
@@ -28,7 +28,7 @@ def test_compute_plist_or_prange_distribution(sub_comm):
 
   distrib_ud = I.getNodeFromName1(node, ':CGNS#Distribution')
   assert I.getType(distrib_ud) == 'UserDefinedData_t'
-  distrib    = I.getNodeFromName1(distrib_ud, 'Distribution')
+  distrib    = I.getNodeFromName1(distrib_ud, 'Index')
   assert I.getType(distrib) == 'DataArray_t'
   assert (I.getValue(distrib) == MID.uniform_distribution(1*9, sub_comm)).all()
 
@@ -43,11 +43,11 @@ def test_compute_elements_distribution(sub_comm):
   tri  = I.newElements('Tri', 'TRI', erange=[101,1000],parent=zoneU)
   distribution_tree.compute_elements_distribution(zoneS, sub_comm)
   distribution_tree.compute_elements_distribution(zoneU, sub_comm)
-  assert (I.getNodeFromName(hexa, 'Distribution')[1] == \
+  assert (I.getNodeFromName(hexa, 'Element')[1] == \
       MID.uniform_distribution(100, sub_comm)).all()
-  assert (I.getNodeFromName(tri , 'Distribution')[1] == \
+  assert (I.getNodeFromName(tri , 'Element')[1] == \
       MID.uniform_distribution(900, sub_comm)).all()
-  assert I.getNodeFromName(zoneS, 'Distribution') == None
+  assert I.getNodeFromName(zoneS, 'Element') == None
 
 
 
@@ -82,7 +82,8 @@ class Test_compute_zone_distribution:
     for child in tree[2]:
       I.addChild(zone, child)
     distribution_tree.compute_zone_distribution(zone, sub_comm)
-    assert len(I.getNodesFromName(zone, 'Distribution')) == 5
+    assert len(I.getNodesFromName(zone, 'Index')) == 4
+    assert len(I.getNodesFromName(zone, 'Element')) == 1
 
   def test_struct(self, sub_comm):
     if(sub_comm == MPI.COMM_NULL):
@@ -102,7 +103,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     #Create zone by hand, otherwith ZoneType is misformed
     zone = I.getZones(tree)[0]
     distribution_tree.compute_zone_distribution(zone, sub_comm)
-    assert len(I.getNodesFromName(zone, 'Distribution')) == 3
+    assert len(I.getNodesFromName(zone, 'Index')) == 3
 
 
 @pytest.mark.mpi(min_size=2)
@@ -142,7 +143,7 @@ Base CGNSBase_t [3,3]:
       PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
 """)
   distribution_tree.add_distribution_info(dist_tree, sub_comm)
-  assert len(I.getNodesFromName(dist_tree, 'Distribution')) == 5+3
+  assert len(I.getNodesFromName(dist_tree, 'Index')) == 4+3
 
 def test_clean_distribution_info():
   yt = """
@@ -157,7 +158,7 @@ Base0 CGNSBase_t [3,3]:
         PointList IndexArray_t [[1,2]]:
         PointList#Size IndexArray_t [1,4]:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [0,2,4]:
+          Index DataArray_t [0,2,4]:
         bcds BCDataSet_t:
           PointList#Size IndexArray_t [1,2]:
           :CGNS#Distribution UserDefinedData_t:

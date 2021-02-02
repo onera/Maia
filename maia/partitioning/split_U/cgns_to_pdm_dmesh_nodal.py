@@ -35,7 +35,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone,comm):
 
     elt_vtx        = I.getNodeFromName1(elt           , 'ElementConnectivity')[1]
     distrib_elt_ud = I.getNodeFromName1(elt           , ':CGNS#Distribution')
-    distrib_elt    = I.getNodeFromName1(distrib_elt_ud, 'Distribution'      )[1]
+    distrib_elt    = I.getNodeFromName1(distrib_elt_ud, 'Element'      )[1]
 
     n_elt_section  = distrib_elt[2]
     dn_elt_section = distrib_elt[1] - distrib_elt[0]

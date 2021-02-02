@@ -98,7 +98,7 @@ def dplane_generate(xmin, xmax, ymin, ymax,
     r_offset  = sum(distri[:i_rank])
     distrib_n = I.createNode(':CGNS#Distribution', 'UserDefinedData_t', parent=bc_n)
     distrib   = NPY.array([r_offset, r_offset+dn_edge_bnd, sum(distri)], dtype=pe.dtype)
-    I.newDataArray('Distribution', distrib, parent=distrib_n)
+    I.newDataArray('Index', distrib, parent=distrib_n)
 
   # > Distributions
   np_distrib_cell     = NPY.array([distrib_cell    [i_rank], distrib_cell    [i_rank+1], distrib_cell    [n_rank]], dtype=pe.dtype)
@@ -108,9 +108,9 @@ def dplane_generate(xmin, xmax, ymin, ymax,
 
   # print(np_distrib_edge_vtx)
   # exit(2)
-  create_distribution_node_from_distrib("Cell"                           , dist_zone, np_distrib_cell    )
-  create_distribution_node_from_distrib("Vertex"                         , dist_zone, np_distrib_vtx     )
-  create_distribution_node_from_distrib("Distribution"                   , ngon_n   , np_distrib_face    )
-  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n   , np_distrib_edge_vtx)
+  create_distribution_node_from_distrib("Cell"               , dist_zone, np_distrib_cell    )
+  create_distribution_node_from_distrib("Vertex"             , dist_zone, np_distrib_vtx     )
+  create_distribution_node_from_distrib("Element"            , ngon_n   , np_distrib_face    )
+  create_distribution_node_from_distrib("ElementConnectivity", ngon_n   , np_distrib_edge_vtx)
 
   return dist_tree

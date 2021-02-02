@@ -114,13 +114,13 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   else:
     I.newDataArray('ElementConnectivity', np.empty( (0), dtype=eso_ngon.dtype), parent=nfac_n)
 
-  create_distribution_node_from_distrib("Distribution", ngon_n, ldistrib_face)
+  create_distribution_node_from_distrib("Element", ngon_n, ldistrib_face)
   np_distrib_face_vtx = np.array([distrib_face_vtx[i_rank], distrib_face_vtx[i_rank+1], distrib_face_vtx[n_rank]], dtype=pe.dtype)
-  create_distribution_node_from_distrib("DistributionElementConnectivity", ngon_n   , np_distrib_face_vtx)
+  create_distribution_node_from_distrib("ElementConnectivity", ngon_n   , np_distrib_face_vtx)
 
-  create_distribution_node_from_distrib("Distribution", nfac_n, ldistrib_cell)
+  create_distribution_node_from_distrib("Element", nfac_n, ldistrib_cell)
   np_distrib_cell_face = np.array([distrib_cell_face[i_rank], distrib_cell_face[i_rank+1], distrib_cell_face[n_rank]], dtype=pe.dtype)
-  create_distribution_node_from_distrib("DistributionElementConnectivity", nfac_n   , np_distrib_cell_face)
+  create_distribution_node_from_distrib("ElementConnectivity", nfac_n   , np_distrib_cell_face)
 
   return ngon_elmt_range[0]-1
 

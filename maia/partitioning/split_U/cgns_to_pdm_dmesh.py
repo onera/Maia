@@ -26,8 +26,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
       ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1]
 
       distrib_ngon_ud  = I.getNodeFromName1(elt           , ':CGNS#Distribution')
-      distrib_face     = I.getNodeFromName1(distrib_ngon_ud, 'Distribution'      )[1]
-      distrib_face_vtx = I.getNodeFromName1(distrib_ngon_ud, 'DistributionElementConnectivity')[1]
+      distrib_face     = I.getNodeFromName1(distrib_ngon_ud, 'Element'      )[1]
+      distrib_face_vtx = I.getNodeFromName1(distrib_ngon_ud, 'ElementConnectivity')[1]
   if not found :
     raise RuntimeError
 

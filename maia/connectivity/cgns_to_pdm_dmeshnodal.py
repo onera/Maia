@@ -31,7 +31,7 @@ def concatenate_bc(zone):
         if(pr_n is not None):
           pr = I.getValue(pr_n)
           cgns_distrib_n = I.getNodeFromName1(bc, ':CGNS#Distribution')
-          distrib_n      = I.getNodeFromName1(cgns_distrib_n, 'Distribution')
+          distrib_n      = I.getNodeFromName1(cgns_distrib_n, 'Index')
           distrib        = I.getValue(distrib_n)
           pl = NPY.arange(pr[0][0]+distrib[0], pr[0][0]+distrib[1], dtype=pr.dtype)
         else:

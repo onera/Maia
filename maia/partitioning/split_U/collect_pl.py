@@ -15,7 +15,7 @@ def collect_distributed_pl(dist_zone, type_path):
       point_lists.append(I.getNodeFromName1(node, 'PointList')[1])
     elif I.getNodeFromName1(node, 'PointRange') is not None:
       pr = I.getNodeFromName1(node, 'PointRange')[1]
-      distrib_n = I.getNodeFromPath(node, ':CGNS#Distribution/Distribution')
+      distrib_n = I.getNodeFromPath(node, ':CGNS#Distribution/Index')
       distrib   = I.getValue(distrib_n)
       point_lists.append(np.arange(pr[0,0]+distrib[0], pr[0,0]+distrib[1], dtype=pr.dtype))
     else:

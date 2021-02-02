@@ -71,7 +71,8 @@ def zgc_original_pdm_to_cgns(p_zone, d_zone, dims, data):
           I.newGridLocation('FaceCenter', parent=join_n)
           I.newPointList(name='PointList'     , value=pl      , parent=join_n)
           I.newPointList(name='PointListDonor', value=pld     , parent=join_n)
-          I.newDataArray(name='LNtoGN'        , value=ln_to_gn, parent=join_n)
+          lntogn_ud = I.createUniqueChild(join_n, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+          I.newDataArray('Index', value=ln_to_gn, parent=lntogn_ud)
 
           # > Recuperation of UserDefinedData and FamilyName in DistTree
           for node_type in ['FamilyName_t', 'GridConnectivityProperty_t']:
@@ -155,7 +156,8 @@ def bnd_pdm_to_cgns(p_zone, d_zone, dims, data):
         pl_data[0] = np.copy(face_bound[beg_pl:end_pl])
         I.newGridLocation('FaceCenter', parent=bc_n)
         I.newPointList(value=pl_data, parent=bc_n)
-        I.newDataArray(name='LNtoGN', value=np.copy(face_bound_ln_to_gn[beg_pl:end_pl]), parent=bc_n)
+        lntogn_ud = I.createUniqueChild(bc_n, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+        I.newDataArray('Index', np.copy(face_bound_ln_to_gn[beg_pl:end_pl]), parent=lntogn_ud)
 
         # > Recuperation of UserDefinedData and FamilyName in DistTree
         for node_type in ['FamilyName_t']:
@@ -238,6 +240,11 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
         n_ghost_node = len(vtx_ghost_info) - first_ghost_idx
         coord_node   = I.getNodeFromName(part_zone, "GridCoordinates")
         I.newUserDefinedData("FSDM#n_ghost", value=[n_ghost_node], parent=coord_node)
+
+
+    lngn_zone = I.createUniqueChild(part_zone, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    I.newDataArray('Vertex', data['np_vtx_ln_to_gn'], parent=lngn_zone)
+    I.newDataArray('Cell', data['np_cell_ln_to_gn'], parent=lngn_zone)
 
     part_zones.append(part_zone)
 

@@ -13,7 +13,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   """
   """
   distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
+  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   eso_n = I.getNodeFromName1(elmt, 'ElementStartOffset') # Maintenant il est chargé
@@ -33,7 +33,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
     n_face_vtx = np.prod(ec_size_n[1])
   else:
     distrib_ud = I.getNodeFromName1(elmt      , ":CGNS#Distribution")
-    distrib_n  = I.getNodeFromName1(distrib_ud, "DistributionElementConnectivity")
+    distrib_n  = I.getNodeFromName1(distrib_ud, "ElementConnectivity")
     assert(distrib_n is not None)
     n_face_vtx = distrib_n[1][2]
 
@@ -54,7 +54,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
     distrib[0] = beg_face_vtx
     distrib[1] = end_face_vtx
     distrib[2] = n_face_vtx
-    I.newDataArray("DistributionElementConnectivity", value=distrib, parent=distrib_ud)
+    I.newDataArray("ElementConnectivity", value=distrib, parent=distrib_ud)
 
 
 
@@ -62,7 +62,7 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
   """
   """
   distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
+  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   # > For NGon only
@@ -106,7 +106,7 @@ def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
   # distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  # distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
+  # distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
   # dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   raise NotImplementedError("Mixed elements are not allowed ")
@@ -116,7 +116,7 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
   distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
+  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   elmt_npe = EZU.get_npe_with_element_type_cgns(elmt[1][0])

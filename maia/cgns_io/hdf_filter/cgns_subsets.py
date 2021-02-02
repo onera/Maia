@@ -22,7 +22,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
       bc_path = zone_bc_path+"/"+bc[0]
 
       distrib_bc_n = I.getNodeFromName1(bc          , ':CGNS#Distribution')
-      distrib_bc   = I.getNodeFromName1(distrib_bc_n, 'Distribution')[1]
+      distrib_bc   = I.getNodeFromName1(distrib_bc_n, 'Index')[1]
 
       bc_shape = utils.pl_or_pr_size(bc)
       data_space = create_data_array_filter(distrib_bc, bc_shape)
@@ -36,7 +36,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
           distrib_data = distrib_bc
           data_shape   = bc_shape
         else: #BCDS has its own distribution
-          distrib_data = I.getNodeFromName1(distrib_bcds_n, 'Distribution')[1]
+          distrib_data = I.getNodeFromName1(distrib_bcds_n, 'Index')[1]
           data_shape = utils.pl_or_pr_size(bcds)
 
         data_space = create_data_array_filter(distrib_data, data_shape)
@@ -59,7 +59,7 @@ def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
     for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
       gc_path = zone_gc_path+"/"+gc[0]
       distrib_ud = I.getNodeFromName1(gc        , ':CGNS#Distribution')
-      distrib_ia = I.getNodeFromName1(distrib_ud, 'Distribution')[1]
+      distrib_ia = I.getNodeFromName1(distrib_ud, 'Index')[1]
 
       gc_shape   = utils.pl_or_pr_size(gc)
       data_space = create_data_array_filter(distrib_ia, gc_shape)
@@ -106,7 +106,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
 
     assert(matching_region is not None)
     distrib_ud_n = I.getNodeFromName1(matching_region , ':CGNS#Distribution')
-    distrib_data = I.getNodeFromName1(distrib_ud_n, 'Distribution')[1]
+    distrib_data = I.getNodeFromName1(distrib_ud_n, 'Index')[1]
 
     data_shape = utils.pl_or_pr_size(matching_region)
     data_space = create_data_array_filter(distrib_data, data_shape)

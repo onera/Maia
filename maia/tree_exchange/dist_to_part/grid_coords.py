@@ -34,7 +34,7 @@ def dist_coords_to_part_coords2(dist_zone, part_zones, comm):
   for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
     dist_data[I.getName(grid_co)] = I.getValue(grid_co)
 
-  vtx_lntogn_list = collect_lntogn_from_path(part_zones, ':CGNS#Lntogn/Vertex')
+  vtx_lntogn_list = collect_lntogn_from_path(part_zones, ':CGNS#GlobalNumbering/Vertex')
   part_data = dist_to_part(distribution_vtx, dist_data, vtx_lntogn_list, comm)
   
   for ipart, part_zone in enumerate(part_zones):
@@ -64,7 +64,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
   #Collect lntogn
   for part_zone in part_zones:
-    lngn_zone = I.getNodeFromName1(part_zone, ':CGNS#Lntogn')
+    lngn_zone = I.getNodeFromName1(part_zone, ':CGNS#GlobalNumbering')
     vtx_ln_gn = I.getNodeFromName1(lngn_zone, 'Vertex')[1]
     vtx_lntogn_list.append(vtx_ln_gn)
 

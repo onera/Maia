@@ -13,7 +13,7 @@ def test_pl_or_pr_size():
 
   bc_ud = I.newBC(name='BC', pointList=[[5,10,15,20,25,30]], btype='BCFarfield')
   ud_node = I.createChild(bc_ud, ':CGNS#Distribution', 'UserDefinedData_t')
-  I.newDataArray('Distribution', [1, 6, 6], parent=ud_node)
+  I.newDataArray('Index', [1, 6, 6], parent=ud_node)
   size = utils.pl_or_pr_size(bc_ud)
   assert (size == [1, 6]).all()
 
