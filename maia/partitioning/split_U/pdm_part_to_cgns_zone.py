@@ -76,10 +76,10 @@ def zgc_original_pdm_to_cgns(p_zone, d_zone, dims, data):
           # > Recuperation of UserDefinedData and FamilyName in DistTree
           for node_type in ['FamilyName_t', 'GridConnectivityProperty_t']:
             for node in I.getNodesFromType1(dist_jn, node_type):
-              I._addChild(bc_n, node)
+              I._addChild(join_n, node)
           for node_name in ['.Solver#Property']:
             for node in I.getNodesFromName1(dist_jn, node_name):
-              I._addChild(bc_n, node)
+              I._addChild(join_n, node)
 
 
 def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', zgc_name='ZoneGridConnectivity'):
