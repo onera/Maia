@@ -6,7 +6,6 @@
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 #include "std_e/future/span.hpp"
 #include "cpp_cgns/sids/creation.hpp"
-#include "cpp_cgns/cgnslib.h"
 #include "maia/generate/__old/ngons/from_cells/cast_heterogenous_to_homogenous.hpp"
 
 

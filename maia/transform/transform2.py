@@ -5,7 +5,7 @@ from mpi4py import MPI
 
 def apply_to_bases(t,f,*args):
   if I.getType(t)=="CGNSBase_t":
-    f(t)
+    f(t,*args)
   elif I.getType(t)=="CGNSTree_t":
     for b in I.getBases(t):
       f(b,*args)

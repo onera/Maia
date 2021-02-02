@@ -14,77 +14,76 @@
 
 namespace py = pybind11;
 
-auto partition_with_boundary_first(py::object py_base) -> void {
+auto partition_with_boundary_first(py::list py_base) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::partition_with_boundary_first(base,cgns::factory(&alloc),MPI_COMM_WORLD);
 
-  add_new_nodes_and_ownership(base,alloc,py_base.ptr());
+  update_and_transfer_ownership2(base,alloc,py_base);
 }
 
-auto sort_nface_into_simple_connectivities(py::object py_base) -> void {
+auto sort_nface_into_simple_connectivities(py::list py_base) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::sort_nface_into_simple_connectivities(base,cgns::factory(&alloc));
 
-  add_new_nodes_and_ownership(base,alloc,py_base.ptr());
+  update_and_transfer_ownership2(base,alloc,py_base);
 }
 
-auto convert_to_simple_connectivities(py::object py_base) -> void {
+auto convert_to_simple_connectivities(py::list py_base) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::convert_to_simple_connectivities(base,cgns::factory(&alloc));
 
-  //add_new_nodes_and_ownership(base,alloc,py_base.ptr());
-  update_and_transfer_ownership(base,alloc,py_base.ptr());
+  update_and_transfer_ownership2(base,alloc,py_base);
 }
 
-auto add_nfaces(py::object py_base) -> void {
+auto add_nfaces(py::list py_base) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::add_nfaces(base,cgns::factory(&alloc));
 
-  add_new_nodes_and_ownership(base,alloc,py_base.ptr());
+  update_and_transfer_ownership2(base,alloc,py_base);
 }
 
-auto remove_ghost_info(py::object py_base) -> void {
+auto remove_ghost_info(py::list py_base) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::remove_ghost_info(base,cgns::factory(&alloc),MPI_COMM_WORLD);
 
-  update_and_transfer_ownership2(base,alloc,py_base.ptr());
+  update_and_transfer_ownership2(base,alloc,py_base);
 }
 
-auto merge_by_elt_type(py::object py_base, py::object mpi4py_comm) -> void {
+auto merge_by_elt_type(py::list py_base, py::object mpi4py_comm) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
   MPI_Comm comm = maia::mpi4py_comm_to_comm(mpi4py_comm);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::merge_by_elt_type(base,cgns::factory(&alloc),comm);
 
-  update_and_transfer_ownership2(base,alloc,py_base.ptr());
+  update_and_transfer_ownership2(base,alloc,py_base);
 }
-auto add_fsdm_distribution(py::object py_base, py::object mpi4py_comm) -> void {
+auto add_fsdm_distribution(py::list py_base, py::object mpi4py_comm) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
   MPI_Comm comm = maia::mpi4py_comm_to_comm(mpi4py_comm);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::add_fsdm_distribution(base,cgns::factory(&alloc),comm);
 
-  update_and_transfer_ownership2(base,alloc,py_base.ptr());
+  update_and_transfer_ownership2(base,alloc,py_base);
 }
-auto gcs_only_for_ghosts(py::object py_base) -> void {
+auto gcs_only_for_ghosts(py::list py_base) -> void {
   cgns::tree base = cgns::view_as_cpptree(py_base);
 
   cgns::cgns_allocator alloc; // allocates and owns memory
   cgns::gcs_only_for_ghosts(base,cgns::factory(&alloc));
 
-  update_and_transfer_ownership2(base,alloc,py_base.ptr());
+  update_and_transfer_ownership2(base,alloc,py_base);
 }
 
 PYBIND11_MODULE(transform, m) {

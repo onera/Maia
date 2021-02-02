@@ -67,7 +67,7 @@ template<class I, class CK> constexpr auto begin(const connectivity<I,CK>& c) ->
 template<class I, class CK> constexpr auto end  (      connectivity<I,CK>& c) ->       I* { return c.end();   }
 template<class I, class CK> constexpr auto end  (const connectivity<I,CK>& c) -> const I* { return c.end();   }
 
-template<class I, class CK> constexpr auto
+template<class I, class CK> auto
 to_string(const connectivity<I,CK>& c) -> std::string {
   return std_e::to_string(std_e::make_span(begin(c),c.size()));
 }

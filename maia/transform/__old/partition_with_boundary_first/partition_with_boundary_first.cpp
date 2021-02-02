@@ -33,7 +33,7 @@ partition_zone_with_boundary_first(tree& z, donated_point_lists& plds, factory F
 auto
 partition_coordinates(tree& z) -> void {
   STD_E_ASSERT(z.label=="Zone_t");
-  if (!is_boundary_partitionned_zone(z)) {
+  if (!is_boundary_partitionned_zone<I4>(z)) {
     auto elt_pools = get_children_by_label(z,"Elements_t");
     auto boundary_vertex_ids = get_ordered_boundary_vertex_ids(elt_pools);
     permute_boundary_vertices_at_beginning(z,boundary_vertex_ids);
@@ -94,7 +94,7 @@ partition_elements(tree& z, donated_point_lists& plds, factory F) -> void {
   STD_E_ASSERT(z.label=="Zone_t");
   auto elt_pools = get_children_by_label(z,"Elements_t");
   tree& ngons = element_pool<I4>(z,NGON_n);
-  if (is_boundary_partitionned_element_pool(ngons)) return;
+  if (is_boundary_partitionned_element_pool<I4>(ngons)) return;
 
   auto elts_permutation_0 = sort_ngons_by_nb_vertices(ngons);
   auto elts_permutation_1 = permute_boundary_ngons_at_beginning(ngons,F);

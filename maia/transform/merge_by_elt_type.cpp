@@ -88,7 +88,7 @@ merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_C
   std::vector<I4*> d_connectivity_sections(n_section);
   for (int i=0; i<n_section; ++i) {
     tree& section_node = *(first_section+i);
-    auto section_connec = get_node_value_by_matching<I4>(section_node,"ElementConnectivity");
+    auto section_connec = get_child_value_by_name<I4>(section_node,"ElementConnectivity");
     d_connectivity_sections[i] = section_connec.data();
   }
 

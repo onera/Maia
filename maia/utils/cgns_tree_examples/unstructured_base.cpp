@@ -92,7 +92,7 @@ create_Zone0(factory F) -> tree {
     F.alloc()
   );
   tree zone_bc = F.newZoneBC();
-  emplace_child(zone_bc,F.newBC("Inlet","FaceCenter",pl_bc));
+  emplace_child(zone_bc,F.newBC("Inlet","FaceCenter",std_e::make_span(pl_bc)));
   emplace_child(zone,std::move(zone_bc));
 
   auto pl_gc = make_cgns_vector<I4>(
@@ -104,8 +104,8 @@ create_Zone0(factory F) -> tree {
     F.alloc()
   );
   tree gc = F.newGridConnectivity("MixingPlane","Zone1","FaceCenter","Abutting1to1");
-  emplace_child(gc,F.newPointList("PointList",pl_gc));
-  emplace_child(gc,F.newPointList("PointListDonor",pl_gc_opp));
+  emplace_child(gc,F.newPointList("PointList",std_e::make_span(pl_gc)));
+  emplace_child(gc,F.newPointList("PointListDonor",std_e::make_span(pl_gc_opp)));
   tree zone_gc = F.newZoneGridConnectivity();
   emplace_child(zone_gc,std::move(gc));
   emplace_child(zone,std::move(zone_gc));
@@ -166,7 +166,7 @@ create_Zone1(factory F) -> tree {
     F.alloc()
   );
   tree zone_bc = F.newZoneBC();
-  emplace_child(zone_bc,F.newBC("Outlet","FaceCenter",pl_bc));
+  emplace_child(zone_bc,F.newBC("Outlet","FaceCenter",std_e::make_span(pl_bc)));
   emplace_child(zone,std::move(zone_bc));
 
 
@@ -179,8 +179,8 @@ create_Zone1(factory F) -> tree {
     F.alloc()
   );
   tree gc = F.newGridConnectivity("MixingPlane","Zone0","FaceCenter","Abutting1to1");
-  emplace_child(gc,F.newPointList("PointList",pl_gc));
-  emplace_child(gc,F.newPointList("PointListDonor",pl_gc_opp));
+  emplace_child(gc,F.newPointList("PointList",std_e::make_span(pl_gc)));
+  emplace_child(gc,F.newPointList("PointListDonor",std_e::make_span(pl_gc_opp)));
   tree zone_gc = F.newZoneGridConnectivity();
   emplace_child(zone_gc,std::move(gc));
   emplace_child(zone,std::move(zone_gc));

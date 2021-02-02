@@ -1,7 +1,6 @@
 #pragma once
 
 
-#include "cpp_cgns/cgnslib.h"
 #include "cpp_cgns/sids/elements_utils.hpp"
 #include "cpp_cgns/sids/connectivity_category.hpp"
 #include "maia/connectivity/iter/concepts.hpp"

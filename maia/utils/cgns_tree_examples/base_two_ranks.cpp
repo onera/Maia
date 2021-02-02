@@ -28,7 +28,7 @@ create_base_two_ranks(int mpi_rank, factory F) -> tree {
 
   if (mpi_rank == 0) {
   // Zone0
-    tree z0 = F.newUnstructuredZone("Zone0");
+    tree z0 = F.newUnstructuredZone<I4>("Zone0");
 
     auto pld00_data = make_cgns_vector( {1,2,3} , F.alloc() );
     tree pld00 = F.newPointList("PointListDonor",std_e::make_span(pld00_data));
@@ -47,7 +47,7 @@ create_base_two_ranks(int mpi_rank, factory F) -> tree {
 
     emplace_child(b,std::move(z0));
   // Zone3
-    tree z3 = F.newUnstructuredZone("Zone3");
+    tree z3 = F.newUnstructuredZone<I4>("Zone3");
 
     auto pld31a_data = make_cgns_vector( {15} , F.alloc() );
     tree pld31a = F.newPointList("PointListDonor",std_e::make_span(pld31a_data));
@@ -67,7 +67,7 @@ create_base_two_ranks(int mpi_rank, factory F) -> tree {
     emplace_child(b,std::move(z3));
   } else { STD_E_ASSERT(mpi_rank == 1); 
   // Zone1
-    tree z1 = F.newUnstructuredZone("Zone1");
+    tree z1 = F.newUnstructuredZone<I4>("Zone1");
 
     auto pld11_data = make_cgns_vector( {101,102,103,104} , F.alloc() );
     tree pld11 = F.newPointList("PointListDonor",std_e::make_span(pld11_data));
@@ -87,7 +87,7 @@ create_base_two_ranks(int mpi_rank, factory F) -> tree {
     emplace_child(b,std::move(z1));
 
   // Zone2
-    tree z2 = F.newUnstructuredZone("Zone2");
+    tree z2 = F.newUnstructuredZone<I4>("Zone2");
 
     auto pld21_data = make_cgns_vector( {136,137} , F.alloc() );
     tree pld21 = F.newPointList("PointListDonor",std_e::make_span(pld21_data));
