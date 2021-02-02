@@ -44,6 +44,37 @@ def dist_coords_to_part_coords2(dist_zone, part_zones, comm):
       shaped_data = data[ipart].reshape(SIDS.VertexSize(part_zone), order='F')
       I.newDataArray(data_name, shaped_data, parent=part_gc)
 
+def dist_flowsol_to_part_flowsol(dist_zone, part_zones, comm):
+  #Get distribution
+  distrib_ud = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
+  for d_flow_sol in  I.getNodesFromType1(dist_zone, "FlowSolution_t"):
+    location = SIDS.GridLocation(d_flow_sol)
+    if location == 'Vertex':
+      distribution = I.getNodeFromName1(distrib_ud, 'Vertex')[1].astype(pdm_gnum_dtype)
+      lntogn_list  = collect_lntogn_from_path(part_zones, ':CGNS#GlobalNumbering/Vertex')
+    elif location == 'CellCenter':
+      distribution = I.getNodeFromName1(distrib_ud, 'Cell')[1].astype(pdm_gnum_dtype)
+      lntogn_list  = collect_lntogn_from_path(part_zones, ':CGNS#GlobalNumbering/Cell')
+    else:
+      raise NotImplementedError("Only cell or vertex flow solutions are supported")
+
+    #Get data
+    dist_data = dict()
+    dist_gc = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
+    for field in I.getNodesFromType1(d_flow_sol, 'DataArray_t'):
+      dist_data[I.getName(field)] = I.getValue(field)
+
+    #Exchange
+    part_data = dist_to_part(distribution, dist_data, lntogn_list, comm)
+
+    for ipart, part_zone in enumerate(part_zones):
+      p_flow_sol = I.newFlowSolution(I.getName(d_flow_sol), location, parent=part_zone)
+      shape = SIDS.VertexSize(part_zone) if location == 'Vertex' else SIDS.CellSize(part_zone)
+      for data_name, data in part_data.items():
+        #F is mandatory to keep shared reference. Normally no copy is done
+        shaped_data = data[ipart].reshape(shape, order='F')
+        I.newDataArray(data_name, shaped_data, parent=p_flow_sol)
+
 def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
   #Get distribution
