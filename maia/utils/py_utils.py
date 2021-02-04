@@ -20,9 +20,7 @@ def concatenate_point_list(point_lists, dtype=None):
   """
   sizes = [pl_n.size for pl_n in point_lists]
 
-  merged_pl_idx = np.empty(len(sizes)+1, dtype='int32')
-  merged_pl_idx[0] = 0
-  np.cumsum(sizes, out=merged_pl_idx[1:])
+  merged_pl_idx = nb_to_offset(sizes, dtype=np.int32)
 
   if dtype is None:
     dtype = point_lists[0].dtype if point_lists != [] else np.int
@@ -32,6 +30,14 @@ def concatenate_point_list(point_lists, dtype=None):
     merged_pl[merged_pl_idx[ipl]:merged_pl_idx[ipl+1]] = pl[0,:]
 
   return merged_pl_idx, merged_pl
+
+def nb_to_offset(nb_array, dtype=None):
+  """ Create and offset array from a size array """
+  nptype = dtype if dtype else np.asarray(nb_array).dtype
+  offset_array = np.empty(len(nb_array)+1, dtype=nptype)
+  offset_array[0] = 0
+  np.cumsum(nb_array, out=offset_array[1:])
+  return offset_array
 
 def getNodesFromTypePath(root, types_path):
   """Generator following type path, equivalent to

@@ -18,6 +18,13 @@ def test_interweave_arrays():
   assert (py_utils.interweave_arrays([first, second, third]) == \
       [1,11,111,2,22,222,3,33,333]).all()
 
+def test_nb_to_offset():
+  assert(py_utils.nb_to_offset([]) == np.zeros(1))
+  assert(py_utils.nb_to_offset([5,3,5,10]) == np.array([0,5,8,13,23])).all()
+  assert(py_utils.nb_to_offset([5,0,0,10]) == np.array([0,5,5,5,15])).all()
+  assert py_utils.nb_to_offset([5,0,0,10], np.int32).dtype == np.int32
+  assert py_utils.nb_to_offset([5,0,0,10], np.int64).dtype == np.int64
+
 def test_concatenate_point_list():
   pl1 = np.array([[2, 4, 6, 8]])
   pl2 = np.array([[10, 20, 30, 40, 50, 60]])

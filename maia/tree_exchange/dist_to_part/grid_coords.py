@@ -6,8 +6,20 @@ import maia.sids.sids     as SIDS
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils.parallel import utils as par_utils
 
+import maia.tree_exchange.dist_to_part.point_list as PLT
+
 def collect_lntogn_from_path(part_zones, path):
   return [I.getNodeFromPath(part_zone, path)[1] for part_zone in part_zones]
+
+def collect_lntogn_from_splited_path(part_zones, prefix, suffix):
+  lngn_list = list()
+  for p_zone in part_zones:
+    extension  = '.'.join(I.getName(p_zone).split('.')[-2:])
+    ln_gn_path = '{0}.{1}/{2}'.format(prefix, extension, suffix)
+    ln_gn_node = I.getNodeFromPath(p_zone, ln_gn_path)
+    if ln_gn_node:
+      lngn_list.append(I.getValue(ln_gn_path))
+  return lngn_list
 
 def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
   pdm_distrib = par_utils.partial_to_full_distribution(partial_distri, comm)
@@ -74,6 +86,23 @@ def dist_flowsol_to_part_flowsol(dist_zone, part_zones, comm):
         #F is mandatory to keep shared reference. Normally no copy is done
         shaped_data = data[ipart].reshape(shape, order='F')
         I.newDataArray(data_name, shaped_data, parent=p_flow_sol)
+
+
+def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
+  d_zbc = I.getNodeFromType1(dist_zone, "ZoneBC_t")
+  for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
+    distribution_bc = I.getNodeFromPath(d_bc, \
+        ':CGNS#Distribution/Distribution')[1].astype(pdm_gnum_dtype)
+    prefix    = I.getName(d_zbc) + '/' + I.getName(d_bc)
+    suffix    = ':CGNS#GlobalNumbering/Index'
+    lngn_list_bc = collect_lntogn_from_splited_path(part_zones, prefix, suffix)
+    for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
+      #If dataset has its own PointList, we must override bc distribution and lngn
+      distribution = I.getNodeFromPath(d_dataset, ':CGNS#Distribution/Distribution')
+      if distribution is not None:
+        print("coucou dataset", d_dataset[0])
+        PLT.dist_pl_to_part_pl(dist_zone, part_zones, prefix+'/'+I.getName(d_dataset), comm)
+    
 
 def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
