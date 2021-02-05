@@ -32,6 +32,11 @@ def ElementType(elements):
   assert I.getType(elements) == "Elements_t"
   return elements[1][0]
 
+def ElementSize(elements):
+  assert I.getType(elements) == "Elements_t"
+  er = I.getNodeFromName(elements,"ElementRange")[1]
+  return er[1] - er[0] + 1
+
 def GridLocation(node):
   grid_loc_n = I.getNodeFromType1(node, 'GridLocation_t')
   return I.getValue(grid_loc_n) if grid_loc_n else 'Vertex'
