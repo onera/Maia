@@ -4,6 +4,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml import parser
 import ast
 import numpy as np
+import Converter.Internal as I
 
 data_types = [  "I4"  ,  "I8"  ,   "R4"   ,   "R8"   ]
 np_dtypes  = [np.int32,np.int64,np.float32,np.float64]
@@ -67,4 +68,6 @@ def to_pytree(yaml_str):
     return parse_yaml_dict(yaml_dict)
 
 def to_complete_pytree(yaml_str):
-  return ['CGNSTree', None, to_pytree(yaml_str), 'CGNSTree_t']
+  t = I.newCGNSTree()
+  I.addChild(t,to_pytree(yaml_str))
+  return t

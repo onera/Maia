@@ -29,8 +29,9 @@ def load_partitioned_tree(file_name,comm):
                    'zone_to_parts':dzone_to_weighted_parts}
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
-  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
+  SPT.save_part_tree(part_tree, '/scratchm/bberthou/travail/git_all_projects/scripts/install/part_tree_bef', comm)
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
+  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
 
   ## TODO
   #for zone in I.getZones(part_tree):
