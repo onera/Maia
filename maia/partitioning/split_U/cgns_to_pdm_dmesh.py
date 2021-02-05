@@ -56,7 +56,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     dface_cell    = np.empty(0, dtype=pdm_gnum_type)
 
   # > Prepare bnd
-  bc_point_lists = collect_distributed_pl(dist_zone, 'ZoneBC_t/BC_t')
+  bc_point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'])
   dface_bound_idx, dface_bound = py_utils.concatenate_point_list(bc_point_lists, pdm_gnum_dtype)
   # > Find shift in NGon
   first_ngon_elmt, last_ngon_elmt = EZU.get_range_of_ngon(dist_zone)
@@ -64,7 +64,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
 
   # > Prepare joins
   gc_type_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
-  gc_point_lists = collect_distributed_pl(dist_zone, gc_type_path)
+  gc_point_lists = collect_distributed_pl(dist_zone, [gc_type_path])
   dface_join_idx, dface_join = py_utils.concatenate_point_list(gc_point_lists, pdm_gnum_dtype)
   joins_ids = [I.getNodeFromName1(gc, 'Ordinal')[1][0] for gc in \
       py_utils.getNodesFromTypePath(dist_zone, gc_type_path)]

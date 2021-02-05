@@ -15,7 +15,7 @@ def test_concatenate_point_list_of_types():
   for i, pl in enumerate(point_lists):
     I.newBC('bc'+str(i+1), pointList=pl, parent=zoneBC)
 
-  collected = collect_pl.collect_distributed_pl(zone, 'ZoneBC_t/BC_t')
+  collected = collect_pl.collect_distributed_pl(zone, ['ZoneBC_t/BC_t'])
   assert len(collected) == len(point_lists)
   for i in range(len(collected)):
     assert (collected[i] == point_lists[i]).all()
