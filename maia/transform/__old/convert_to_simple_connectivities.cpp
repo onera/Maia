@@ -65,7 +65,7 @@ convert_to_simple_boundary_connectivities(const tree& ngons, factory F) -> std::
     }
 
     elt_pools.push_back(
-      F.newElements(
+      F.new_Elements(
         "Poly_"+std::to_string(polygon_type),
         cgns_type,
         std_e::make_span(homogenous_connectivities),
@@ -116,7 +116,7 @@ convert_to_tetra(const T& tetra_accessor, const tree& ngons, I4 elt_pool_start, 
     *d_first++ = other_vertex;
   }
 
-  return F.newElements(
+  return F.new_Elements(
     "TETRA_4",
     cgns::TETRA_4,
     std_e::make_span(homogenous_connectivities),
@@ -158,7 +158,7 @@ convert_to_pyra(const T& pyra_accessor, const tree& ngons, I4 elt_pool_start, I4
     }
   }
 
-  return F.newElements(
+  return F.new_Elements(
     "PYRA_5",
     cgns::PYRA_5,
     std_e::make_span(homogenous_connectivities),
@@ -245,7 +245,7 @@ convert_to_penta(const T& penta_accessor, const tree& ngons, I4 elt_pool_start, 
     *d_first++ = node_above(tri[2],quads);
   }
 
-  return F.newElements(
+  return F.new_Elements(
     "PENTA_6",
     cgns::PENTA_6,
     std_e::make_span(homogenous_connectivities),
@@ -318,7 +318,7 @@ convert_to_hexa(const T& hexa_accessor, const tree& ngons, I4 elt_pool_start, I4
     *d_first++ = node_above(quad_0[3],side_quads);
   }
 
-  return F.newElements(
+  return F.new_Elements(
     "HEXA_8",
     cgns::HEXA_8,
     std_e::make_span(homogenous_connectivities),

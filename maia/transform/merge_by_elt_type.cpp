@@ -106,7 +106,7 @@ merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_C
   free(parray);
   PDM_multi_block_to_part_free(mbtp);
 
-  tree elt_node = F.newElements(
+  tree elt_node = F.new_Elements(
     cgns::to_string((ElementType_t)elt_type),
     elt_type,
     std_e::make_span(d_connectivity_merge),
@@ -117,9 +117,9 @@ merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_C
   partial_dist[0] = merged_distri[i_rank];
   partial_dist[1] = merged_distri[i_rank+1];
   partial_dist[2] = merged_distri.back();
-  tree dist = F.newDataArray("Element",{"I8",{3},partial_dist.data()});
+  tree dist = F.new_DataArray("Element",{"I8",{3},partial_dist.data()});
 
-  tree cgns_dist = F.newUserDefinedData(":CGNS#Distribution");
+  tree cgns_dist = F.new_UserDefinedData(":CGNS#Distribution");
   emplace_child(cgns_dist,std::move(dist));
 
   emplace_child(elt_node,std::move(cgns_dist));

@@ -14,7 +14,7 @@ auto add_fsdm_distribution(tree& b, factory F, MPI_Comm comm) -> void {
   }
   tree& z = zs[0];
 
-  auto fsdm_dist_node = F.newUserDefinedData("FSDM_elt_distributions");
+  auto fsdm_dist_node = F.new_UserDefinedData("FSDM_elt_distributions");
 
   int n_rank = std_e::nb_ranks(comm);
 
@@ -24,7 +24,7 @@ auto add_fsdm_distribution(tree& b, factory F, MPI_Comm comm) -> void {
   auto vtx_distri = distribution_from_dsizes(n_owned_vtx, comm);
   auto vtx_distri_mem = make_cgns_vector<I4>(n_rank+1,F.alloc());
   std::copy(begin(vtx_distri),end(vtx_distri),begin(vtx_distri_mem));
-  tree vtx_dist = F.newDataArray("NODE",{"I4",{n_rank+1},vtx_distri_mem.data()});
+  tree vtx_dist = F.new_DataArray("NODE",{"I4",{n_rank+1},vtx_distri_mem.data()});
   emplace_child(fsdm_dist_node,std::move(vtx_dist));
 
   auto elt_sections = get_children_by_label(z,"Elements_t");
@@ -38,7 +38,7 @@ auto add_fsdm_distribution(tree& b, factory F, MPI_Comm comm) -> void {
 
       I4 elt_type = ElementType<I4>(elt_section);
       auto elt_name = cgns::to_string((ElementType_t)elt_type);
-      tree elt_dist = F.newDataArray(elt_name,{"I4",{n_rank+1},elt_distri_mem.data()});
+      tree elt_dist = F.new_DataArray(elt_name,{"I4",{n_rank+1},elt_distri_mem.data()});
 
       emplace_child(fsdm_dist_node,std::move(elt_dist));
   }

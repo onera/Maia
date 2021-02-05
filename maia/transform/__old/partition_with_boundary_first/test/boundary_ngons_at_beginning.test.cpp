@@ -35,7 +35,7 @@ TEST_CASE("boundary_ngons_at_beginning") {
     std_e::make_span(ngon_cs),
     first_ngon_elt,last_ngon_elt
   );
-  emplace_child(ngons,F.newDataArray("ParentElements", view_as_node_value(parent_elts)));
+  emplace_child(ngons,F.new_DataArray("ParentElements", view_as_node_value(parent_elts)));
 
 
   SUBCASE("boundary/interior_permutation") {

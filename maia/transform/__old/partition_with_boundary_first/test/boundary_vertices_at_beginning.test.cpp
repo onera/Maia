@@ -50,7 +50,7 @@ TEST_CASE("re_number_vertex_ids_in_elements") {
         4, 5, 9 },
       alloc
     );
-    tree tris = F.newElements(
+    tree tris = F.new_Elements(
       "Tri",
       cgns::TRI_3,
       std_e::make_span(tri_cs),

@@ -19,7 +19,7 @@ auto gcs_only_for_ghosts(tree& b, factory F) -> void {
     auto first_ghost = std::partition_point(begin(ghost_info),end(ghost_info),is_owned);
     I4 n_ghost = end(ghost_info)-first_ghost;
     tree& grid_coord_node = get_child_by_name(z,"GridCoordinates");
-    cgns::emplace_child(grid_coord_node,F.newUserDefinedData("FSDM#n_ghost",n_ghost));
+    cgns::emplace_child(grid_coord_node,F.new_UserDefinedData("FSDM#n_ghost",n_ghost));
     // GCs
     auto gcs = get_nodes_by_matching(z,"ZoneGridConnectivity_t/GridConnectivity_t");
     for (tree& gc : gcs) {

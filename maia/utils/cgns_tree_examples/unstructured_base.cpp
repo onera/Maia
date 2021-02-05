@@ -38,10 +38,10 @@ create_GridCoords0(factory F) -> tree {
       1.,1.,1.,1. }
     ,F.alloc()
   );
-  tree grid_coords = F.newGridCoordinates();
-  emplace_child(grid_coords,F.newDataArray("CoordinateX",view_as_node_value(coord_X)));
-  emplace_child(grid_coords,F.newDataArray("CoordinateY",view_as_node_value(coord_Y)));
-  emplace_child(grid_coords,F.newDataArray("CoordinateZ",view_as_node_value(coord_Z)));
+  tree grid_coords = F.new_GridCoordinates();
+  emplace_child(grid_coords,F.new_DataArray("CoordinateX",view_as_node_value(coord_X)));
+  emplace_child(grid_coords,F.new_DataArray("CoordinateY",view_as_node_value(coord_Y)));
+  emplace_child(grid_coords,F.new_DataArray("CoordinateZ",view_as_node_value(coord_Z)));
   return grid_coords;
 }
 auto
@@ -67,10 +67,10 @@ create_GridCoords1(factory F) -> tree {
       1.,1. }
     ,F.alloc()
   );
-  tree grid_coords = F.newGridCoordinates();
-  emplace_child(grid_coords,F.newDataArray("CoordinateX",view_as_node_value(coord_X)));
-  emplace_child(grid_coords,F.newDataArray("CoordinateY",view_as_node_value(coord_Y)));
-  emplace_child(grid_coords,F.newDataArray("CoordinateZ",view_as_node_value(coord_Z)));
+  tree grid_coords = F.new_GridCoordinates();
+  emplace_child(grid_coords,F.new_DataArray("CoordinateX",view_as_node_value(coord_X)));
+  emplace_child(grid_coords,F.new_DataArray("CoordinateY",view_as_node_value(coord_Y)));
+  emplace_child(grid_coords,F.new_DataArray("CoordinateZ",view_as_node_value(coord_Z)));
   return grid_coords;
 }
 
@@ -83,7 +83,7 @@ create_Zone0(factory F) -> tree {
   int32_t VertexSize = 24;
   int32_t CellSize = 6;
   int32_t VertexSizeBoundary = 0;
-  tree zone = F.newUnstructuredZone("Zone0",{VertexSize,CellSize,VertexSizeBoundary});
+  tree zone = F.new_UnstructuredZone("Zone0",{VertexSize,CellSize,VertexSizeBoundary});
 
   emplace_child(zone,create_GridCoords0(F));
 
@@ -91,8 +91,8 @@ create_Zone0(factory F) -> tree {
     {1,2}, // 1,2 are the two i-faces at x=0
     F.alloc()
   );
-  tree zone_bc = F.newZoneBC();
-  emplace_child(zone_bc,F.newBC("Inlet","FaceCenter",std_e::make_span(pl_bc)));
+  tree zone_bc = F.new_ZoneBC();
+  emplace_child(zone_bc,F.new_BC("Inlet","FaceCenter",std_e::make_span(pl_bc)));
   emplace_child(zone,std::move(zone_bc));
 
   auto pl_gc = make_cgns_vector<I4>(
@@ -103,10 +103,10 @@ create_Zone0(factory F) -> tree {
     {1}, // cf. zone 1
     F.alloc()
   );
-  tree gc = F.newGridConnectivity("MixingPlane","Zone1","FaceCenter","Abutting1to1");
-  emplace_child(gc,F.newPointList("PointList",std_e::make_span(pl_gc)));
-  emplace_child(gc,F.newPointList("PointListDonor",std_e::make_span(pl_gc_opp)));
-  tree zone_gc = F.newZoneGridConnectivity();
+  tree gc = F.new_GridConnectivity("MixingPlane","Zone1","FaceCenter","Abutting1to1");
+  emplace_child(gc,F.new_PointList("PointList",std_e::make_span(pl_gc)));
+  emplace_child(gc,F.new_PointList("PointListDonor",std_e::make_span(pl_gc_opp)));
+  tree zone_gc = F.new_ZoneGridConnectivity();
   emplace_child(zone_gc,std::move(gc));
   emplace_child(zone,std::move(zone_gc));
 
@@ -145,7 +145,7 @@ create_Zone0(factory F) -> tree {
     std_e::make_span(ngons),
     1,nb_ngons
   );
-  emplace_child(ngon_elts,F.newDataArray("ParentElements", view_as_node_value(parent_elts)));
+  emplace_child(ngon_elts,F.new_DataArray("ParentElements", view_as_node_value(parent_elts)));
   emplace_child(zone,std::move(ngon_elts));
 
   return zone;
@@ -157,7 +157,7 @@ create_Zone1(factory F) -> tree {
   int32_t VertexSize = 8;
   int32_t CellSize = 1;
   int32_t VertexSizeBoundary = 0;
-  tree zone = F.newUnstructuredZone("Zone1",{VertexSize,CellSize,VertexSizeBoundary});
+  tree zone = F.new_UnstructuredZone("Zone1",{VertexSize,CellSize,VertexSizeBoundary});
 
   emplace_child(zone,create_GridCoords1(F));
 
@@ -165,8 +165,8 @@ create_Zone1(factory F) -> tree {
     {2}, // 2 is the i-face at x=4
     F.alloc()
   );
-  tree zone_bc = F.newZoneBC();
-  emplace_child(zone_bc,F.newBC("Outlet","FaceCenter",std_e::make_span(pl_bc)));
+  tree zone_bc = F.new_ZoneBC();
+  emplace_child(zone_bc,F.new_BC("Outlet","FaceCenter",std_e::make_span(pl_bc)));
   emplace_child(zone,std::move(zone_bc));
 
 
@@ -178,10 +178,10 @@ create_Zone1(factory F) -> tree {
     {7}, // 1 is the i-face at x=3
     F.alloc()
   );
-  tree gc = F.newGridConnectivity("MixingPlane","Zone0","FaceCenter","Abutting1to1");
-  emplace_child(gc,F.newPointList("PointList",std_e::make_span(pl_gc)));
-  emplace_child(gc,F.newPointList("PointListDonor",std_e::make_span(pl_gc_opp)));
-  tree zone_gc = F.newZoneGridConnectivity();
+  tree gc = F.new_GridConnectivity("MixingPlane","Zone0","FaceCenter","Abutting1to1");
+  emplace_child(gc,F.new_PointList("PointList",std_e::make_span(pl_gc)));
+  emplace_child(gc,F.new_PointList("PointListDonor",std_e::make_span(pl_gc_opp)));
+  tree zone_gc = F.new_ZoneGridConnectivity();
   emplace_child(zone_gc,std::move(gc));
   emplace_child(zone,std::move(zone_gc));
 
@@ -205,7 +205,7 @@ create_Zone1(factory F) -> tree {
     std_e::make_span(ngons),
     1,nb_ngons
   );
-  emplace_child(ngon_elts,F.newDataArray("ParentElements", view_as_node_value(parent_elts)));
+  emplace_child(ngon_elts,F.new_DataArray("ParentElements", view_as_node_value(parent_elts)));
   emplace_child(zone,std::move(ngon_elts));
 
   return zone;
@@ -213,7 +213,7 @@ create_Zone1(factory F) -> tree {
 
 auto
 create_unstructured_base(factory F) -> cgns::tree {
-  tree b = F.newCGNSBase("Base0",3,3);
+  tree b = F.new_CGNSBase("Base0",3,3);
   emplace_child(b,create_Zone0(F));
   emplace_child(b,create_Zone1(F));
   return b;

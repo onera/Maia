@@ -119,9 +119,9 @@ symmetrize_grid_connectivities(tree& b, factory F, MPI_Comm comm) -> void {
       }
       // TODO sort unique
 
-      tree pl_node  = F.newPointList("PointList"     ,std_e::make_span(pl ));
-      tree pld_node = F.newPointList("PointListDonor",std_e::make_span(pld));
-      tree new_gc =  F.newGridConnectivity("Sym_GC_"+receiver_z_name,receiver_z_name,"Vertex","Abutting1to1"); // TODO Vertex
+      tree pl_node  = F.new_PointList("PointList"     ,std_e::make_span(pl ));
+      tree pld_node = F.new_PointList("PointListDonor",std_e::make_span(pld));
+      tree new_gc =  F.new_GridConnectivity("Sym_GC_"+receiver_z_name,receiver_z_name,"Vertex","Abutting1to1"); // TODO Vertex
       emplace_child(new_gc,std::move(pl_node));
       emplace_child(new_gc,std::move(pld_node));
       emplace_child(zgc,std::move(new_gc));

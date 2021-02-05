@@ -44,13 +44,13 @@ TEST_CASE("partition_with_boundray_vertices") {
   );
 
 // construction of elements
-  tree tris = F.newElements(
+  tree tris = F.new_Elements(
     "Tri",
     cgns::TRI_3,
     std_e::make_span(tri_cs),
     1,3
   );
-  tree tets = F.newElements(
+  tree tets = F.new_Elements(
     "Tet",
     cgns::TETRA_4,
     std_e::make_span(tet_cs),
@@ -61,7 +61,7 @@ TEST_CASE("partition_with_boundray_vertices") {
     std_e::make_span(ngon_cs),
     6,9
   );
-  emplace_child(ngons,F.newDataArray("ParentElements", view_as_node_value(parent_elts)));
+  emplace_child(ngons,F.new_DataArray("ParentElements", view_as_node_value(parent_elts)));
 
 
   SUBCASE("ngon_boundary_vertices") {

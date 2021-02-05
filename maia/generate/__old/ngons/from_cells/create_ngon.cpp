@@ -74,7 +74,7 @@ create_ngon(const faces_container<std::int32_t>& all_faces, std::int32_t first_n
     first_ngon_id,first_ngon_id+nb_ngons-1,
     nb_ngons_boundary
   );
-  emplace_child(ngons,F.newDataArray("ParentElements", view_as_node_value(parent_elts)));
+  emplace_child(ngons,F.new_DataArray("ParentElements", view_as_node_value(parent_elts)));
   return ngons;
 }
 

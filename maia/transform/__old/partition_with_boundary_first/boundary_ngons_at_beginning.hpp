@@ -102,7 +102,7 @@ mark_as_boundary_partitionned(tree& ngons, I8 partition_index, I8 ngon_partition
   ElementSizeBoundary<I4>(ngons) = partition_index;
 
   node_value part_idx_val = create_node_value_1d({ngon_partition_index},F.alloc());
-  tree pt_node = F.newUserDefinedData(".#PartitionIndex",part_idx_val);
+  tree pt_node = F.new_UserDefinedData(".#PartitionIndex",part_idx_val);
 
   emplace_child(ngons,std::move(pt_node));
 }
@@ -123,8 +123,8 @@ mark_polygon_groups(const std::string& bnd_or_interior, T& ngon_accessor, const 
   node_value polygon_type_val = view_as_node_value(polygon_types);
   node_value polygon_type_start_val = view_as_node_value(polygon_type_starts);
   return {
-    F.newUserDefinedData(".#PolygonType"+bnd_or_interior,polygon_type_val),
-    F.newUserDefinedData(".#PolygonTypeStart"+bnd_or_interior,polygon_type_start_val)
+    F.new_UserDefinedData(".#PolygonType"+bnd_or_interior,polygon_type_val),
+    F.new_UserDefinedData(".#PolygonTypeStart"+bnd_or_interior,polygon_type_start_val)
   };
 }
 inline auto
@@ -203,8 +203,8 @@ mark_simple_polyhedron_groups(tree& nfaces, const tree& ngons, I4 penta_start, f
   //// end CHECK
 
   node_value polyhedron_type_start_val = view_as_node_value(polyhedron_type_starts);
-  tree pts_node = F.newUserDefinedData(".#PolygonSimpleTypeStart",polyhedron_type_start_val);
-  tree desc = F.newDescriptor("Node info","The .#PolygonSimpleTypeStart node is present for an Elements_t of NFACE_n type if the polyhedrons are only simple, linear ones and sorted with Tets firsts, then Pyras, then Pentas then Hexes. The .#PolygonSimpleTypeStart values are the starting indices for each of these elements, in respective order (the last number is the size of the NFACE connectivity)");
+  tree pts_node = F.new_UserDefinedData(".#PolygonSimpleTypeStart",polyhedron_type_start_val);
+  tree desc = F.new_Descriptor("Node info","The .#PolygonSimpleTypeStart node is present for an Elements_t of NFACE_n type if the polyhedrons are only simple, linear ones and sorted with Tets firsts, then Pyras, then Pentas then Hexes. The .#PolygonSimpleTypeStart values are the starting indices for each of these elements, in respective order (the last number is the size of the NFACE connectivity)");
   emplace_child(pts_node,std::move(desc));
   emplace_child(nfaces,std::move(pts_node));
 }
