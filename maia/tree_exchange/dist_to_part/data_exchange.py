@@ -3,25 +3,9 @@ import Converter.Internal as I
 import Pypdm.Pypdm        as PDM
 
 import maia.sids.sids     as SIDS
-from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils.parallel import utils as par_utils
 from maia.utils import py_utils
-
-import maia.tree_exchange.dist_to_part.point_list as PLT
-
-def collect_lntogn_from_path(part_zones, path):
-  return [I.getNodeFromPath(part_zone, path)[1] if I.getNodeFromPath(part_zone, path)
-      is not None else np.empty(0, pdm_gnum_dtype) for part_zone in part_zones]
-
-def collect_lntogn_from_splited_path(part_zones, prefix, suffix):
-  lngn_list = list()
-  for p_zone in part_zones:
-    extension  = '.'.join(I.getName(p_zone).split('.')[-2:])
-    ln_gn_path = '{0}.{1}/{2}'.format(prefix, extension, suffix)
-    ln_gn_node = I.getNodeFromPath(p_zone, ln_gn_path)
-    if ln_gn_node:
-      lngn_list.append(I.getValue(ln_gn_path))
-  return lngn_list
+from maia.tree_exchange import utils as te_utils
 
 def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
   pdm_distrib = par_utils.partial_to_full_distribution(partial_distri, comm)
@@ -39,8 +23,7 @@ def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
 def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
   #Get distribution
-  distrib_ud = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
-  distribution_vtx = I.getNodeFromName1(distrib_ud, 'Vertex')[1].astype(pdm_gnum_dtype)
+  distribution_vtx = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
 
   #Get data
   dist_data = dict()
@@ -48,7 +31,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
     dist_data[I.getName(grid_co)] = I.getValue(grid_co)
 
-  vtx_lntogn_list = collect_lntogn_from_path(part_zones, ':CGNS#GlobalNumbering/Vertex')
+  vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
   part_data = dist_to_part(distribution_vtx, dist_data, vtx_lntogn_list, comm)
   
   for ipart, part_zone in enumerate(part_zones):
@@ -60,15 +43,14 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
 def dist_flowsol_to_part_flowsol(dist_zone, part_zones, comm):
   #Get distribution
-  distrib_ud = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
   for d_flow_sol in  I.getNodesFromType1(dist_zone, "FlowSolution_t"):
     location = SIDS.GridLocation(d_flow_sol)
     if location == 'Vertex':
-      distribution = I.getNodeFromName1(distrib_ud, 'Vertex')[1].astype(pdm_gnum_dtype)
-      lntogn_list  = collect_lntogn_from_path(part_zones, ':CGNS#GlobalNumbering/Vertex')
+      distribution = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
+      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
     elif location == 'CellCenter':
-      distribution = I.getNodeFromName1(distrib_ud, 'Cell')[1].astype(pdm_gnum_dtype)
-      lntogn_list  = collect_lntogn_from_path(part_zones, ':CGNS#GlobalNumbering/Cell')
+      distribution = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Cell')
+      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Cell')
     else:
       raise NotImplementedError("Only cell or vertex flow solutions are supported")
 
@@ -94,14 +76,14 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
     for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
       bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
       #Get BC distribution and lngn
-      distribution_bc = I.getNodeFromPath(d_bc, ':CGNS#Distribution/Index')[1].astype(pdm_gnum_dtype)
-      lngn_list_bc    = collect_lntogn_from_path(part_zones, bc_path + '/:CGNS#GlobalNumbering/Index')
+      distribution_bc = te_utils.get_cgns_distribution(d_bc, ':CGNS#Distribution/Index')
+      lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, bc_path + '/:CGNS#GlobalNumbering/Index')
       for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
         #If dataset has its own PointList, we must override bc distribution and lngn
         if I.getNodeFromPath(d_dataset, ':CGNS#Distribution/Index') is not None:
-          distribution = I.getNodeFromPath(d_dataset, ':CGNS#Distribution/Index')[1].astype(pdm_gnum_dtype)
+          distribution = te_utils.get_cgns_distribution(d_dataset, ':CGNS#Distribution/Index')
           ds_path      = bc_path + '/' + I.getName(d_dataset)
-          lngn_list    = collect_lntogn_from_path(part_zones, ds_path + '/:CGNS#GlobalNumbering/Index')
+          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, ds_path + '/:CGNS#GlobalNumbering/Index')
         else: #Fallback to bc distribution
           distribution = distribution_bc
           lngn_list    = lngn_list_bc

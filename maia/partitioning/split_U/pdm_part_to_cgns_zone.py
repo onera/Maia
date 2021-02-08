@@ -2,7 +2,7 @@ import Converter.Internal as I
 import numpy              as np
 
 from maia.connectivity import connectivity_transform as CNT
-import maia.tree_exchange.dist_to_part.point_list as PL
+import maia.tree_exchange.dist_to_part.index_exchange as IBTP
 
 def dump_pdm_output(p_zone, dims, data):
   """
@@ -274,8 +274,8 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
 
   #Now create point_list on partitions for the following nodes types
   pl_paths = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneSubRegion_t', 'FlowSolution_t']
-  PL.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Elements', comm)
-  PL.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Vertex'  , comm)
+  IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Elements', comm)
+  IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Vertex'  , comm)
 
   for p_zone in part_zones:
     copy_additional_nodes(dist_zone, p_zone)

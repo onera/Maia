@@ -5,7 +5,7 @@ import Converter.Internal as I
 
 from maia.sids import sids as SIDS
 from .                               import split_cut_tree as SCT
-from maia.tree_exchange.dist_to_part import grid_coords
+from maia.tree_exchange.dist_to_part import data_exchange  as BTP
 from maia.transform.dist_tree.convert_s_to_u import guess_bnd_normal_index
 from maia.utils import py_utils
 
@@ -245,7 +245,7 @@ def part_s_zone(d_zone, d_zone_weights, comm):
 
     part_zones.append(part_zone)
 
-  grid_coords.dist_coords_to_part_coords(d_zone, part_zones, comm)
+  BTP.dist_coords_to_part_coords(d_zone, part_zones, comm)
 
   parts_offset = [np.asarray(part, dtype=np.int32)[:,0] + 1 for part in my_parts]
   create_internal_gcs(d_zone, part_zones, parts_offset, comm)
