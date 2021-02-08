@@ -245,7 +245,7 @@ def part_s_zone(d_zone, d_zone_weights, comm):
 
     part_zones.append(part_zone)
 
-  grid_coords.dist_coords_to_part_coords2(d_zone, part_zones, comm)
+  grid_coords.dist_coords_to_part_coords(d_zone, part_zones, comm)
 
   parts_offset = [np.asarray(part, dtype=np.int32)[:,0] + 1 for part in my_parts]
   create_internal_gcs(d_zone, part_zones, parts_offset, comm)

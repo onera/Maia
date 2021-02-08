@@ -5,11 +5,13 @@ import Pypdm.Pypdm        as PDM
 import maia.sids.sids     as SIDS
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils.parallel import utils as par_utils
+from maia.utils import py_utils
 
 import maia.tree_exchange.dist_to_part.point_list as PLT
 
 def collect_lntogn_from_path(part_zones, path):
-  return [I.getNodeFromPath(part_zone, path)[1] for part_zone in part_zones]
+  return [I.getNodeFromPath(part_zone, path)[1] if I.getNodeFromPath(part_zone, path)
+      is not None else np.empty(0, pdm_gnum_dtype) for part_zone in part_zones]
 
 def collect_lntogn_from_splited_path(part_zones, prefix, suffix):
   lngn_list = list()
@@ -34,7 +36,7 @@ def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
 
   return part_data
 
-def dist_coords_to_part_coords2(dist_zone, part_zones, comm):
+def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
   #Get distribution
   distrib_ud = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
@@ -72,7 +74,6 @@ def dist_flowsol_to_part_flowsol(dist_zone, part_zones, comm):
 
     #Get data
     dist_data = dict()
-    dist_gc = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
     for field in I.getNodesFromType1(d_flow_sol, 'DataArray_t'):
       dist_data[I.getName(field)] = I.getValue(field)
 
@@ -89,57 +90,43 @@ def dist_flowsol_to_part_flowsol(dist_zone, part_zones, comm):
 
 
 def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
-  d_zbc = I.getNodeFromType1(dist_zone, "ZoneBC_t")
-  for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
-    distribution_bc = I.getNodeFromPath(d_bc, \
-        ':CGNS#Distribution/Distribution')[1].astype(pdm_gnum_dtype)
-    prefix    = I.getName(d_zbc) + '/' + I.getName(d_bc)
-    suffix    = ':CGNS#GlobalNumbering/Index'
-    lngn_list_bc = collect_lntogn_from_splited_path(part_zones, prefix, suffix)
-    for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
-      #If dataset has its own PointList, we must override bc distribution and lngn
-      distribution = I.getNodeFromPath(d_dataset, ':CGNS#Distribution/Distribution')
-      if distribution is not None:
-        print("coucou dataset", d_dataset[0])
-        PLT.dist_pl_to_part_pl(dist_zone, part_zones, prefix+'/'+I.getName(d_dataset), comm)
-    
+  for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
+    for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
+      bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
+      #Get BC distribution and lngn
+      distribution_bc = I.getNodeFromPath(d_bc, ':CGNS#Distribution/Index')[1].astype(pdm_gnum_dtype)
+      lngn_list_bc    = collect_lntogn_from_path(part_zones, bc_path + '/:CGNS#GlobalNumbering/Index')
+      for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
+        #If dataset has its own PointList, we must override bc distribution and lngn
+        if I.getNodeFromPath(d_dataset, ':CGNS#Distribution/Index') is not None:
+          distribution = I.getNodeFromPath(d_dataset, ':CGNS#Distribution/Index')[1].astype(pdm_gnum_dtype)
+          ds_path      = bc_path + '/' + I.getName(d_dataset)
+          lngn_list    = collect_lntogn_from_path(part_zones, ds_path + '/:CGNS#GlobalNumbering/Index')
+        else: #Fallback to bc distribution
+          distribution = distribution_bc
+          lngn_list    = lngn_list_bc
+        #Get data
+        dist_data = dict()
+        for bc_data, field in py_utils.getNodesWithParentsFromTypePath(d_dataset, 'BCData_t/DataArray_t'):
+          dist_data[I.getName(bc_data) + '/' + I.getName(field)] = I.getValue(field)
 
-def dist_coords_to_part_coords(dist_zone, part_zones, comm):
+        #Exchange
+        part_data = dist_to_part(distribution, dist_data, lngn_list, comm)
 
-  #Get distribution
-  distrib_ud = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
-  distribution_vtx = I.getNodeFromName1(distrib_ud, 'Vertex')[1].astype(pdm_gnum_dtype)
-  pdm_distrib = par_utils.partial_to_full_distribution(distribution_vtx, comm)
+        #Put part data in tree
+        for ipart, part_zone in enumerate(part_zones):
+          part_bc = I.getNodeFromPath(part_zone, bc_path)
+          # Skip void bcs
+          if lngn_list[ipart].size > 0:
+            # Create dataset if no existing
+            part_ds = I.createUniqueChild(part_bc, I.getName(d_dataset), I.getType(d_dataset), I.getValue(d_dataset))
+            part_ds_pl = I.getNodeFromName1(part_ds, 'PointList')
+            # Get shape
+            shape = I.getValue(part_ds_pl).shape if part_ds_pl else I.getNodeFromName1(part_bc, 'PointList')[1].shape
+            # Add data
+            for data_name, data in part_data.items():
+              container_name, field_name = data_name.split('/')
+              p_container = I.createUniqueChild(part_ds, container_name, 'BCData_t')
+              I.newDataArray(field_name, data[ipart].reshape(shape, order='F'), parent=p_container)
 
-  #Init
-  vtx_lntogn_list = list()
-  dist_data = dict()
-  part_data = dict()
-
-  #Get data
-  dist_gc = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
-  for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
-    dist_data[I.getName(grid_co)] = I.getValue(grid_co)
-    part_data[I.getName(grid_co)] = list()
-
-  #Collect lntogn
-  for part_zone in part_zones:
-    lngn_zone = I.getNodeFromName1(part_zone, ':CGNS#GlobalNumbering')
-    vtx_ln_gn = I.getNodeFromName1(lngn_zone, 'Vertex')[1]
-    vtx_lntogn_list.append(vtx_ln_gn)
-
-    #Prepare grid_coord ; will be fill by BTP
-    part_gc = I.newGridCoordinates(parent=part_zone)
-    for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
-      npyType = dist_data[I.getName(grid_co)].dtype
-
-      emptyArray       = np.empty(vtx_ln_gn.shape[0], dtype=npyType)
-      part_data[I.getName(grid_co)].append(emptyArray)
-
-      empty_array_view = emptyArray.reshape(SIDS.VertexSize(part_zone), order='F') #F is mandatory to keep shared reference
-      I.newDataArray(I.getName(grid_co), empty_array_view, parent=part_gc)
-
-  #Exchange
-  BTP = PDM.BlockToPart(pdm_distrib, comm, vtx_lntogn_list, len(part_zones))
-  BTP.BlockToPart_Exchange(dist_data, part_data)
 
