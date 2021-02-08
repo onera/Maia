@@ -56,8 +56,10 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     dface_cell    = np.empty(0, dtype=pdm_gnum_type)
 
   # > Prepare bnd
-  bc_point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'])
-  dface_bound_idx, dface_bound = py_utils.concatenate_point_list(bc_point_lists, pdm_gnum_dtype)
+  #bc_point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'])
+  #dface_bound_idx, dface_bound = py_utils.concatenate_point_list(bc_point_lists, pdm_gnum_dtype)
+  dface_bound_idx = np.zeros(1, dtype=np.int32)
+  dface_bound     = np.empty(0, dtype=pdm_gnum_dtype)
   # > Find shift in NGon
   first_ngon_elmt, last_ngon_elmt = EZU.get_range_of_ngon(dist_zone)
   dface_bound = dface_bound - first_ngon_elmt + 1

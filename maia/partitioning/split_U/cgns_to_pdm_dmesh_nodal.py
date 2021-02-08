@@ -65,10 +65,11 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone,comm):
   dmesh_nodal.set_sections(elt_vtx_list, elt_pdm_types, elt_lengths)
 
   # Boundaries
-  bc_point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'])
-  delmt_bound_idx, delmt_bound = py_utils.concatenate_point_list(bc_point_lists, pdm_gnum_dtype)
-  n_elmt_group = delmt_bound_idx.shape[0] - 1
-  dmesh_nodal.set_group_elmt(n_elmt_group, delmt_bound_idx, delmt_bound)
+  # bc_point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'])
+  # delmt_bound_idx, delmt_bound = py_utils.concatenate_point_list(bc_point_lists, pdm_gnum_dtype)
+  # n_elmt_group = delmt_bound_idx.shape[0] - 1
+  # dmesh_nodal.set_group_elmt(n_elmt_group, delmt_bound_idx, delmt_bound)
+  dmesh_nodal.set_group_elmt(0, np.zeros(1, dtype=np.int32), np.empty(0, dtype=pdm_gnum_dtype))
 
   return dmesh_nodal
 

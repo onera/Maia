@@ -2,6 +2,7 @@ import Converter.Internal as I
 import numpy              as np
 
 from maia.connectivity import connectivity_transform as CNT
+import maia.tree_exchange.dist_to_part.point_list as PL
 
 def dump_pdm_output(p_zone, dims, data):
   """
@@ -167,6 +168,23 @@ def bnd_pdm_to_cgns(p_zone, d_zone, dims, data):
           for node in I.getNodesFromName1(dist_bc, node_name):
             I._addChild(bc_n, node)
 
+def copy_additional_nodes(dist_zone, part_zone):
+  #BCs
+  #zone_suffix = '.' + '.'.join(I.getName(part_zone).split('.')[-2:])
+  zone_suffix = ''
+  for dist_zbc in I.getNodesFromType1(dist_zone, 'ZoneBC_t'):
+    part_zbc = I.getNodeFromName1(part_zone, I.getName(dist_zbc))
+    if part_zbc:
+      for dist_bc in I.getNodesFromType1(dist_zbc, 'BC_t'):
+        part_bc = I.getNodeFromName1(part_zbc, I.getName(dist_bc) + zone_suffix)
+        if part_bc:
+          for node_type in ['FamilyName_t']:
+            for node in I.getNodesFromType1(dist_bc, node_type):
+              I._addChild(part_bc, node)
+          for node_name in ['.Solver#BC', 'BoundaryMarker']:
+            for node in I.getNodesFromName1(dist_bc, node_name):
+              I._addChild(part_bc, node)
+
 def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
   """
   """
@@ -232,7 +250,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     pdm_vtx_to_cgns_grid_coordinates(part_zone, dims, data)
     pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data)
 
-    bnd_pdm_to_cgns(part_zone, dist_zone, dims, data)
+    #bnd_pdm_to_cgns(part_zone, dist_zone, dims, data)
 
     output_loc = options['jn_location']
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'
@@ -253,5 +271,13 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     I.newDataArray('Cell', data['np_cell_ln_to_gn'], parent=lngn_zone)
 
     part_zones.append(part_zone)
+
+  #Now create point_list on partitions for the following nodes types
+  pl_paths = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneSubRegion_t', 'FlowSolution_t']
+  PL.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Elements', comm)
+  PL.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Vertex'  , comm)
+
+  for p_zone in part_zones:
+    copy_additional_nodes(dist_zone, p_zone)
 
   return part_zones
