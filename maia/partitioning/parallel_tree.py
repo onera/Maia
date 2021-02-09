@@ -25,9 +25,9 @@ def load_partitioned_tree(file_name,comm):
   merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
 
   #part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
-  split_options = {'split_method' : 'pt-scotch', 'no_weight':True,
-                   'jn_location':'Vertex', 'save_ghost_data':True}
-  part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts, comm, split_options)
+  split_options = {'graph_part_tool' : 'ptscotch', 'save_ghost_data':True,
+                   'zone_to_parts':dzone_to_weighted_parts}
+  part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
   add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
@@ -47,10 +47,10 @@ def load_partitioned_tree_poly(file_name,comm):
 
   #merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
 
-  split_options = {'split_method' : 'pt-scotch', 'no_weight':True,
-                   'jn_location':'Vertex', 'save_ghost_data':True}
+  split_options = {'graph_part_tool' : 'ptscotch', 'save_ghost_data':True,
+                   'zone_to_parts':dzone_to_weighted_parts}
   #part_tree = PPA.partition(dist_tree,comm,split_method=2)
-  part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts, comm, split_options)
+  part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
   add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific

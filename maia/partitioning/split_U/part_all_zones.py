@@ -50,18 +50,18 @@ def set_mpart_join_connectivity(multi_part, zones, keep_alive):
   keep_alive.append(join_to_opp_array)
 
 def set_mpart_reordering(multipart, reorder_options, keep_alive):
-  renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum']
-  renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_options['face_renum']
-  if "CACHEBLOCKING" in reorder_options['cell_renum']:
+  renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum_method']
+  renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_options['face_renum_method']
+  if "CACHEBLOCKING" in reorder_options['cell_renum_method']:
     cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
                                     1,
                                     1,
                                     reorder_options['n_face_per_pack'],
-                                    reorder_options['split_method']],
+                                    reorder_options['graph_part_tool']],
                                     dtype='int32', order='c')
   else:
     cacheblocking_props = None
-  multi_part.multipart_set_reordering(-1,
+  multipart.multipart_set_reordering(-1,
                                       renum_cell_method.encode('utf-8'),
                                       renum_face_method.encode('utf-8'),
                                       cacheblocking_props)
@@ -104,7 +104,7 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
 
   return all_parts
 
-def part_U_zones(u_zones, dzone_to_weighted_parts, comm, split_options, reorder_options=None):
+def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
 
   # Careful ! Some object must be deleted at the very end of the function,
   # since they are usefull for pdm
@@ -116,24 +116,21 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, split_options, reorder_
   keep_alive.append(n_part_per_zone)
 
   # Init multipart object
-  part_weight = None
-  if not split_options['no_weight']:
-    prepare_part_weight(u_zones, n_part_per_zone, dzone_to_weighted_parts)
+  part_weight = prepare_part_weight(u_zones, n_part_per_zone, dzone_to_weighted_parts)
 
-  pdm_part_tool     = 1 if split_options['split_method'] == 'parmetis' else 2
-  pdm_weight_method = 1 if split_options['no_weight'] == True else 2
+  pdm_part_tool     = 1 if part_options['graph_part_tool'] == 'parmetis' else 2
+  pdm_weight_method = 2
   multi_part = PDM.MultiPart(len(u_zones), n_part_per_zone, 0, pdm_part_tool, pdm_weight_method, part_weight, comm)
 
   # Setup
   set_mpart_join_connectivity(multi_part, u_zones, keep_alive)
   set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive)
-  if reorder_options is not None:
-    set_mpart_reordering(multi_part, reorder_options, keep_alive)
+  set_mpart_reordering(multi_part, part_options['reordering'], keep_alive)
 
   #Run and return parts
   multi_part.multipart_run_ppart()
 
-  post_options = {k:split_options[k] for k in ['jn_location', 'save_ghost_data']}
+  post_options = {k:part_options[k] for k in ['part_interface_loc', 'save_ghost_data']}
   u_parts = collect_mpart_partitions(multi_part, u_zones, n_part_per_zone, comm, post_options)
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array

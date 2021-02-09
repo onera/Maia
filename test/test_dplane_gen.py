@@ -66,7 +66,7 @@ for zone in I.getZones(dist_tree):
   dloading_procs[zone[0]] = list(range(comm.Get_size()))
 print(dloading_procs)
 
-part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts, comm)
+part_tree = PPA.partitioning(dist_tree, comm, zone_to_parts=dzone_to_weighted_parts)
 # C.convertPyTree2File(dist_tree, "dcube_gen_{0}.hdf".format(rank))
 I._rmNodesFromName(part_tree, "ZoneGridConnectivity#Vertex")
 # I.printTree(part_tree)

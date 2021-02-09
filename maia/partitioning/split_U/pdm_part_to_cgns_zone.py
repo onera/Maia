@@ -252,7 +252,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
 
     #bnd_pdm_to_cgns(part_zone, dist_zone, dims, data)
 
-    output_loc = options['jn_location']
+    output_loc = options['part_interface_loc']
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'
     zgc_created_pdm_to_cgns(part_zone, dist_zone, dims, data, output_loc, zgc_name)
     zgc_original_pdm_to_cgns(part_zone, dist_zone, dims, data)
