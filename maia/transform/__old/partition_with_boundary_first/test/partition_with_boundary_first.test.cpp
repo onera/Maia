@@ -11,14 +11,11 @@
 using namespace cgns;
 
 TEST_CASE("cgns__partition_with_boundary_first, with 2 zones") {
-  cgns_allocator alloc; // allocates and owns memory
-  factory F(&alloc);
-
-  tree base = create_unstructured_base(F);
+  tree base = create_unstructured_base();
 
   auto rank_sub_comm = std_e::seq_comm_of_rank(MPI_COMM_WORLD); // TODO extract in "seq_test_comm"
-  cgns::partition_with_boundary_first(base,F,rank_sub_comm.comm());
-  
+  cgns::partition_with_boundary_first(base,rank_sub_comm.comm());
+
   // zones
   tree& z0 = get_child_by_name(base,"Zone0");
   tree& z1 = get_child_by_name(base,"Zone1");
@@ -98,7 +95,7 @@ TEST_CASE("cgns__partition_with_boundary_first, with 2 zones") {
   CHECK( z0_ngon_elt_connect[beginning_last_ngon+2] == 20 ); // of face {18 19 23 22} in simple_meshes.h,
   CHECK( z0_ngon_elt_connect[beginning_last_ngon+3] ==  6 ); // and this face is an interior face (because
   CHECK( z0_ngon_elt_connect[beginning_last_ngon+4] ==  7 ); // in this test all k-faces are considered interior)
-                                                            
+
   auto z0_ngon_parent_elts = ParentElements<I4>(z0_ngon);
   REQUIRE( z0_ngon_parent_elts.size() == (8 + 9 + 12)*2 );
   CHECK( z0_ngon_parent_elts(0,0) == 0 );  CHECK( z0_ngon_parent_elts(0,1) == 1 );

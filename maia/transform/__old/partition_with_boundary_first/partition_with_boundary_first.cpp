@@ -14,18 +14,18 @@ namespace cgns {
 
 
 auto
-partition_with_boundary_first(tree& b, factory F, MPI_Comm comm) -> void {
+partition_with_boundary_first(tree& b, MPI_Comm comm) -> void {
   STD_E_ASSERT(b.label=="CGNSBase_t");
-  apply_base_renumbering(b,F,partition_zone_with_boundary_first,comm);
+  apply_base_renumbering(b,partition_zone_with_boundary_first,comm);
 }
 
 
 auto
-partition_zone_with_boundary_first(tree& z, donated_point_lists& plds, factory F) -> void {
+partition_zone_with_boundary_first(tree& z, donated_point_lists& plds) -> void {
   STD_E_ASSERT(z.label=="Zone_t");
   if (is_unstructured_zone(z)) {
     partition_coordinates(z);
-    partition_elements(z,plds,F);
+    partition_elements(z,plds);
   }
 }
 
@@ -47,7 +47,7 @@ permute_boundary_vertices_at_beginning(tree& z, const std::vector<I4>& boundary_
   auto nb_of_vertices = VertexSize_U<I4>(z);
   auto vertex_permutation = vertex_permutation_to_move_boundary_at_beginning(nb_of_vertices, boundary_vertex_ids);
 
-  auto grid_coords = get_child_by_name(z,"GridCoordinates");
+  auto& grid_coords = get_child_by_name(z,"GridCoordinates");
   auto elt_pools = get_children_by_label(z,"Elements_t");
   permute_boundary_grid_coords_at_beginning(grid_coords,vertex_permutation);
   update_vertex_ids_in_connectivities(elt_pools,vertex_permutation);
@@ -90,16 +90,16 @@ save_partition_point(tree& z, I4 nb_of_boundary_vertices) -> void {
 
 
 auto
-partition_elements(tree& z, donated_point_lists& plds, factory F) -> void {
+partition_elements(tree& z, donated_point_lists& plds) -> void {
   STD_E_ASSERT(z.label=="Zone_t");
   auto elt_pools = get_children_by_label(z,"Elements_t");
   tree& ngons = element_pool<I4>(z,NGON_n);
   if (is_boundary_partitionned_element_pool<I4>(ngons)) return;
 
   auto elts_permutation_0 = sort_ngons_by_nb_vertices(ngons);
-  auto elts_permutation_1 = permute_boundary_ngons_at_beginning(ngons,F);
+  auto elts_permutation_1 = permute_boundary_ngons_at_beginning(ngons);
 
-  mark_polygon_groups(ngons,F);
+  mark_polygon_groups(ngons);
 
   auto perm_new_to_old = std_e::compose_permutations(elts_permutation_1,elts_permutation_0);
   auto perm_old_to_new = std_e::inverse_permutation(perm_new_to_old);

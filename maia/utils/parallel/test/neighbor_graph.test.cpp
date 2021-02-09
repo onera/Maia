@@ -10,9 +10,7 @@ using namespace std_e;
 
 
 MPI_TEST_CASE("paths_of_all_mentionned_zones",2) {
-  cgns_allocator alloc; // allocates and owns memory
-  factory F(&alloc);
-  cgns::tree b = example::create_base_two_ranks(test_rank,F);
+  cgns::tree b = example::create_base_two_ranks(test_rank);
 
   auto paths = paths_of_all_mentionned_zones(b);
 
@@ -33,9 +31,7 @@ MPI_TEST_CASE("paths_of_all_mentionned_zones",2) {
 }
 
 MPI_TEST_CASE("zone_infos",2) {
-  cgns_allocator alloc; // allocates and owns memory
-  factory F(&alloc);
-  cgns::tree b = example::create_base_two_ranks(test_rank,F);
+  cgns::tree b = example::create_base_two_ranks(test_rank);
 
   zone_infos zis = cgns::compute_zone_infos(b,test_comm);
 
@@ -45,9 +41,7 @@ MPI_TEST_CASE("zone_infos",2) {
   MPI_CHECK(1, zis.procs == vector< int  >{   0   ,   1   ,   1   ,   0   } );
 }
 MPI_TEST_CASE("connectivity_infos",2) {
-  cgns_allocator alloc; // allocates and owns memory
-  factory F(&alloc);
-  cgns::tree b = example::create_base_two_ranks(test_rank,F);
+  cgns::tree b = example::create_base_two_ranks(test_rank);
 
   std::vector<connectivity_info> cis = cgns::create_connectivity_infos(b);
 
@@ -64,9 +58,7 @@ MPI_TEST_CASE("connectivity_infos",2) {
 
 
 MPI_TEST_CASE("send_PointListDonor_to_donor_proc",2) {
-  cgns_allocator alloc; // allocates and owns memory
-  factory F(&alloc);
-  auto b = example::create_base_two_ranks(test_rank,F);
+  auto b = example::create_base_two_ranks(test_rank);
 
   zone_exchange ze(b,test_comm);
   auto [donor_zone_names,receiver_zone_names,grid_locs,pl_donor_data] = ze.send_PointListDonor_to_donor_proc();
@@ -84,9 +76,7 @@ MPI_TEST_CASE("send_PointListDonor_to_donor_proc",2) {
 }
 
 MPI_TEST_CASE("receive_PointListDonor_from_donor_proc",2) {
-  cgns_allocator alloc; // allocates and owns memory
-  factory F(&alloc);
-  auto b = example::create_base_two_ranks(test_rank,F);
+  auto b = example::create_base_two_ranks(test_rank);
 
   zone_exchange ze(b,test_comm);
 
@@ -94,7 +84,7 @@ MPI_TEST_CASE("receive_PointListDonor_from_donor_proc",2) {
   if (test_rank==0) {
     //                   "Zone0"  ,    "Zone0"  ,   "Zone3"
     pl_donor_data = {{100,200,300},{11100,11200},{13600,13700}};
-  } 
+  }
   if (test_rank==1) {
     //                        "Zone1"     ,"Zone1",  "Zone1" ,          "Zone1"
     pl_donor_data = {{1100,1200,1300,1400},{1500},{1600,1700},{10100,10200,10300,10400}};

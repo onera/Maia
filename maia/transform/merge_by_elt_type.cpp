@@ -1,7 +1,9 @@
 #include "maia/transform/merge_by_elt_type.hpp"
+#include "cpp_cgns/sids/creation.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "cpp_cgns/sids/sids.hpp"
 #include "std_e/algorithm/distribution.hpp"
+#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/interval/knot_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "pdm_multi_block_to_part.h"
@@ -20,7 +22,7 @@ distribution_from_partial(const Range& partial_distri, MPI_Comm comm) -> distrib
 }
 
 template<class It> auto
-merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_Comm comm) -> tree {
+merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -> tree {
   int i_rank = std_e::rank(comm);
   int n_rank = std_e::nb_ranks(comm);
 
@@ -100,26 +102,26 @@ merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_C
                      (void ***) &parray);
 
   int d_connec_sz = n_elts_0*stride;
-  auto d_connectivity_merge = make_cgns_vector<I4>(d_connec_sz,F.alloc());
+  std_e::buffer_vector<I4> d_connectivity_merge(d_connec_sz);
   std::copy_n(parray[0],d_connec_sz,begin(d_connectivity_merge));
   free(parray[0]);
   free(parray);
   PDM_multi_block_to_part_free(mbtp);
 
-  tree elt_node = F.new_Elements(
+  tree elt_node = new_Elements(
     cgns::to_string((ElementType_t)elt_type),
     elt_type,
-    std_e::make_span(d_connectivity_merge),
+    std::move(d_connectivity_merge),
     start,finish
   );
 
-  auto partial_dist = make_cgns_vector<I8>(3,F.alloc());
+  std_e::buffer_vector<I8> partial_dist(3);
   partial_dist[0] = merged_distri[i_rank];
   partial_dist[1] = merged_distri[i_rank+1];
   partial_dist[2] = merged_distri.back();
-  tree dist = F.new_DataArray("Element",{"I8",{3},partial_dist.data()});
+  tree dist = new_DataArray("Element",std::move(partial_dist));
 
-  tree cgns_dist = F.new_UserDefinedData(":CGNS#Distribution");
+  tree cgns_dist = new_UserDefinedData(":CGNS#Distribution");
   emplace_child(cgns_dist,std::move(dist));
 
   emplace_child(elt_node,std::move(cgns_dist));
@@ -129,7 +131,7 @@ merge_same_type_elt_sections(It first_section, It last_section, factory F, MPI_C
 
 
 
-auto merge_by_elt_type(tree& b, factory F, MPI_Comm comm) -> void {
+auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   if (zs.size()!=1) {
     throw cgns_exception("merge_by_elt_type: only implemented for one zone");
@@ -187,15 +189,15 @@ auto merge_by_elt_type(tree& b, factory F, MPI_Comm comm) -> void {
   auto is_same_elt_type = [&elt_type](const auto& elt_node){ return ElementType<I4>(elt_node) == elt_type; };
   while (section_current != end(elt_sections)){
     auto section_same_type_end = std::partition_point(section_current,end(elt_sections),is_same_elt_type);
-    auto new_section = merge_same_type_elt_sections(section_current,section_same_type_end,F,comm);
-    merged_sections.push_back(new_section);
+    auto new_section = merge_same_type_elt_sections(section_current,section_same_type_end,comm);
+    merged_sections.emplace_back(std::move(new_section));
     section_current = section_same_type_end;
     if (section_current != end(elt_sections)) {
       elt_type = ElementType<I4>(*section_current);
     }
   }
 
-  F.rm_children_by_label(z,"Elements_t");
+  rm_children_by_label(z,"Elements_t");
   emplace_children(z,std::move(merged_sections));
 }
 

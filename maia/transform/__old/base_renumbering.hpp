@@ -2,6 +2,7 @@
 
 
 #include "cpp_cgns/cgns.hpp"
+#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/future/span.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "cpp_cgns/tree_manip.hpp"
@@ -41,14 +42,14 @@ inline auto find_point_list_by_zone_donor(pl_by_donor_zone& pl_by_z, const std::
 
 
 // declarations {
-template<class Fun> auto apply_base_renumbering(tree& b, factory F, Fun zone_renumbering, MPI_Comm comm) -> void; // TODO no default
+template<class Fun> auto apply_base_renumbering(tree& b, Fun zone_renumbering, MPI_Comm comm) -> void; // TODO no default
 auto register_connectivities_PointList_infos(tree& base, MPI_Comm comm) -> interzone_point_list_info;
 auto re_number_point_lists_donors(interzone_point_list_info& pl_infos) -> void;
 // declarations }
 
 
 template<class Fun> auto
-apply_base_renumbering(tree& b, factory F, Fun zone_renumbering, MPI_Comm comm) -> void {
+apply_base_renumbering(tree& b, Fun zone_renumbering, MPI_Comm comm) -> void {
   STD_E_ASSERT(b.label=="CGNSBase_t");
   auto zs = get_children_by_label(b,"Zone_t");
 
@@ -59,7 +60,7 @@ apply_base_renumbering(tree& b, factory F, Fun zone_renumbering, MPI_Comm comm) 
 
   for (tree& z : zs) {
     auto z_plds = find_point_list_by_zone_donor(pl_infos.pld_by_z,z.name);
-    zone_renumbering(z,z_plds,F);
+    zone_renumbering(z,z_plds);
   }
 
   //if (std_e::nb_ranks(comm)>1) { // TODO clean
@@ -68,7 +69,7 @@ apply_base_renumbering(tree& b, factory F, Fun zone_renumbering, MPI_Comm comm) 
 }
 
 inline auto
-symmetrize_grid_connectivities(tree& b, factory F, MPI_Comm comm) -> void {
+symmetrize_grid_connectivities(tree& b, MPI_Comm comm) -> void {
   STD_E_ASSERT(b.label=="CGNSBase_t");
 
   auto zs = get_children_by_label(b,"Zone_t");
@@ -89,14 +90,14 @@ symmetrize_grid_connectivities(tree& b, factory F, MPI_Comm comm) -> void {
     auto z_gcs = cgns::get_nodes_by_matching(zgc,"GridConnectivity_t");
     for (const auto& gcs : gc_by_recv_z) {
       std::string receiver_z_name = gcs.first[0].receiver_z_name;
-      auto pl = make_cgns_vector<I4>(F.alloc());
+      std_e::buffer_vector<I4> pl;
       for (const auto& recv_pld : gcs.second) { // Note : using pl DONOR of the OPPOSITE zone, because they are the pl of the CURRENT zone
         for (I4 i : recv_pld.pl) {
           pl.push_back(i);
         }
       }
 
-      auto pld = make_cgns_vector<I4>(F.alloc());
+      std_e::buffer_vector<I4> pld;
       for (const auto& recv_pl : gcs.first) { // Note : inverted for the same reason
         for (I4 i : recv_pl.pl) {
           pld.push_back(i);
@@ -119,9 +120,9 @@ symmetrize_grid_connectivities(tree& b, factory F, MPI_Comm comm) -> void {
       }
       // TODO sort unique
 
-      tree pl_node  = F.new_PointList("PointList"     ,std_e::make_span(pl ));
-      tree pld_node = F.new_PointList("PointListDonor",std_e::make_span(pld));
-      tree new_gc =  F.new_GridConnectivity("Sym_GC_"+receiver_z_name,receiver_z_name,"Vertex","Abutting1to1"); // TODO Vertex
+      tree pl_node  = new_PointList("PointList"     ,std::move(pl ));
+      tree pld_node = new_PointList("PointListDonor",std::move(pld));
+      tree new_gc =  new_GridConnectivity("Sym_GC_"+receiver_z_name,receiver_z_name,"Vertex","Abutting1to1"); // TODO Vertex
       emplace_child(new_gc,std::move(pl_node));
       emplace_child(new_gc,std::move(pld_node));
       emplace_child(zgc,std::move(new_gc));

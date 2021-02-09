@@ -1,3 +1,4 @@
+#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/transform/__old/partition_with_boundary_first/boundary_vertices_at_beginning.hpp"
@@ -31,29 +32,24 @@ TEST_CASE("vertex_permutation_to_move_boundary_at_beginning") {
 
 
 TEST_CASE("re_number_vertex_ids_in_elements") {
-  cgns_allocator alloc; // allocates and owns memory
-  factory F(&alloc);
-
   vector<I4> my_vertex_permutation = { 0,1,     5,6,7,    2,3,4,     8,9 };
   //                                   |_|      |___|     |___|      |_|
-  //                                  still       ^         ^       still   
-  //                                  same        |_________|       same    
+  //                                  still       ^         ^       still
+  //                                  same        |_________|       same
   //                                  position      rotated         position
-  //   
+  //
   //   so                            { 1,2,     3,4,5,    6,7,8,     9,10 };
   //   should become                 { 1,2,     6,7,8,    3,4,5      9,10 };
 
   SUBCASE("tris") {
-    auto tri_cs = make_cgns_vector<I4>(
+    std_e::buffer_vector<I4> tri_cs =
       { 1, 2, 3,
         1, 3, 4,
-        4, 5, 9 },
-      alloc
-    );
-    tree tris = F.new_Elements(
+        4, 5, 9  };
+    tree tris = new_Elements(
       "Tri",
       cgns::TRI_3,
-      std_e::make_span(tri_cs),
+      std::move(tri_cs),
       1,3
     );
     cgns::re_number_vertex_ids_in_elements(tris,my_vertex_permutation);
@@ -74,28 +70,25 @@ TEST_CASE("re_number_vertex_ids_in_elements") {
   }
 
   SUBCASE("ngons") {
-    auto ngon_cs = make_cgns_vector<I4>(
+    std_e::buffer_vector<I4> ngon_cs =
       { 3,   1, 2, 3,
         4,   4, 5, 6,10,
         3,   9, 8, 7,
-        3,   1, 8, 9 },
-      alloc
-    );
-    tree ngons = F.newNgonElements(
+        3,   1, 8, 9 };
+
+    tree ngons = new_NgonElements(
       "Ngons",
-      std_e::make_span(ngon_cs),
+      std::move(ngon_cs),
       6,9
     );
 
     cgns::re_number_vertex_ids_in_elements(ngons,my_vertex_permutation);
 
-    auto expected_ngon_cs = make_cgns_vector<I4>(
+    std::vector<I4> expected_ngon_cs =
       { 3,   1, 2, 6,
         4,   7, 8, 3,10,
         3,   9, 5, 4,
-        3,   1, 5, 9 },
-      alloc
-    );
-    CHECK( ngon_cs == expected_ngon_cs );
+        3,   1, 5, 9 };
+    CHECK( ElementConnectivity<I4>(ngons) == expected_ngon_cs );
   }
 }

@@ -9,7 +9,7 @@ def test_empty_tree():
   assert t == []
 
   complete_t = parse_yaml_cgns.to_complete_pytree(yt)
-  assert complete_t == ["CGNSTree",None,[],"CGNSTree_t"]
+  assert complete_t == ["CGNSTree",None,[['CGNSLibraryVersion', [3.1], [], 'CGNSLibraryVersion_t']],"CGNSTree_t"]
 
 
 def test_simple_tree():

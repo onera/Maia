@@ -57,11 +57,11 @@ Complexity:
     - Algorithms are at most linear time and space in the arrays number of elements.
 */
 auto
-partition_with_boundary_first(tree& b, factory F, MPI_Comm comm) -> void;
+partition_with_boundary_first(tree& b, MPI_Comm comm) -> void;
 
 
 auto
-partition_zone_with_boundary_first(tree& zone, donated_point_lists& plds, factory F) -> void;
+partition_zone_with_boundary_first(tree& zone, donated_point_lists& plds) -> void;
 
 
 auto
@@ -88,7 +88,7 @@ save_partition_point(tree& zone, I4 nb_of_boundary_vertices) -> void;
 
 
 auto
-partition_elements(tree& zone, donated_point_lists& plds, factory F) -> void;
+partition_elements(tree& zone, donated_point_lists& plds) -> void;
 
 
 } // cgns

@@ -4,15 +4,12 @@
 
 namespace cgns {
 
-// Fwd decl
-class factory;
+auto
+convert_to_simple_connectivities(tree& b) -> void;
 
 auto
-convert_to_simple_connectivities(tree& b, factory F) -> void;
-
+sort_nface_into_simple_connectivities(tree& b) -> void;
 auto
-sort_nface_into_simple_connectivities(tree& b, factory F) -> void;
-auto
-convert_zone_to_simple_connectivities(tree& z, factory F) -> void;
+convert_zone_to_simple_connectivities(tree& z) -> void;
 
 } // cgns

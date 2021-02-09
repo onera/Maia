@@ -41,7 +41,7 @@ boundary_interior_permutation(const md_array_view<I,2>& parent_elts) -> std::pai
 
 template<class I> auto
 create_partitionned_ngon_connectivities(std_e::span<I> old_connectivities, const std::vector<I>& permutation, I partition_index)
-  -> std::pair<std::vector<I>,I> 
+  -> std::pair<std::vector<I>,I>
 {
   auto _ = maia_time_log("create_partitionned_ngon_connectivities");
 
@@ -98,19 +98,18 @@ apply_nface_permutation_to_parent_elts(md_array_view<I,2>& parent_elts, const st
 
 
 inline auto
-mark_as_boundary_partitionned(tree& ngons, I8 partition_index, I8 ngon_partition_index, factory F) -> void {
+mark_as_boundary_partitionned(tree& ngons, I8 partition_index, I8 ngon_partition_index) -> void {
   ElementSizeBoundary<I4>(ngons) = partition_index;
 
-  node_value part_idx_val = create_node_value_1d({ngon_partition_index},F.alloc());
-  tree pt_node = F.new_UserDefinedData(".#PartitionIndex",part_idx_val);
+  tree pt_node = new_UserDefinedData(".#PartitionIndex",create_scalar_node_value(ngon_partition_index));
 
   emplace_child(ngons,std::move(pt_node));
 }
 
 template<class T> inline auto
-mark_polygon_groups(const std::string& bnd_or_interior, T& ngon_accessor, const I4* global_start, factory F) -> std::vector<tree> {
-  auto polygon_types = make_cgns_vector<I4>(F.alloc());
-  auto polygon_type_starts = make_cgns_vector<I4>(F.alloc());
+mark_polygon_groups(const std::string& bnd_or_interior, T& ngon_accessor, const I4* global_start) -> std::vector<tree> {
+  std_e::buffer_vector<I4> polygon_types;
+  std_e::buffer_vector<I4> polygon_type_starts;
 
   auto equal_nb_vertices = [](const auto& conn0, const auto& conn1){ return conn0.nb_nodes()==conn1.nb_nodes(); };
   auto record_type_and_start = [&polygon_types,&polygon_type_starts,global_start](const auto& conn_it){
@@ -120,15 +119,13 @@ mark_polygon_groups(const std::string& bnd_or_interior, T& ngon_accessor, const 
   std_e::for_each_mismatch(ngon_accessor.begin(),ngon_accessor.end(),equal_nb_vertices,record_type_and_start);
   polygon_type_starts.push_back(ngon_accessor.data()+ngon_accessor.memory_length()-global_start);
 
-  node_value polygon_type_val = view_as_node_value(polygon_types);
-  node_value polygon_type_start_val = view_as_node_value(polygon_type_starts);
-  return {
-    F.new_UserDefinedData(".#PolygonType"+bnd_or_interior,polygon_type_val),
-    F.new_UserDefinedData(".#PolygonTypeStart"+bnd_or_interior,polygon_type_start_val)
-  };
+  return std_e::make_vector(
+    new_UserDefinedData(".#PolygonType"+bnd_or_interior,std::move(polygon_types)),
+    new_UserDefinedData(".#PolygonTypeStart"+bnd_or_interior,std::move(polygon_type_starts))
+  );
 }
 inline auto
-mark_polygon_groups(tree& ngons, factory F) -> void {
+mark_polygon_groups(tree& ngons) -> void {
   auto ngon_connectivity = ElementConnectivity<I4>(ngons);
   auto ngon_start = ngon_connectivity.data();
   auto ngon_size = ngon_connectivity.size();
@@ -140,11 +137,11 @@ mark_polygon_groups(tree& ngons, factory F) -> void {
   auto ngon_bnd_accessor = cgns::interleaved_ngon_range(ngon_bnd_connectivity);
   auto ngon_interior_accessor = cgns::interleaved_ngon_range(ngon_iterior_connectivity);
 
-  emplace_children(ngons,mark_polygon_groups("Boundary",ngon_bnd_accessor,ngon_start,F));
-  emplace_children(ngons,mark_polygon_groups("Interior",ngon_interior_accessor,ngon_start,F));
+  emplace_children(ngons,mark_polygon_groups("Boundary",ngon_bnd_accessor,ngon_start));
+  emplace_children(ngons,mark_polygon_groups("Interior",ngon_interior_accessor,ngon_start));
 }
 //auto
-//mark_polyhedron_groups(tree& nfaces, factory F) -> void {
+//mark_polyhedron_groups(tree& nfaces) -> void {
   //auto ngon_connectivity = ElementConnectivity<I4>(nfaces);
 //  auto conn_start = ngon_connectivity.data();
 //  auto nface_accessor = cgns::interleaved_nface_range(ngon_connectivity);
@@ -167,14 +164,14 @@ mark_polygon_groups(tree& ngons, factory F) -> void {
 //  emplace_child(nfaces,std::move(pts_node));
 //}
 inline auto
-mark_simple_polyhedron_groups(tree& nfaces, const tree& ngons, I4 penta_start, factory F) -> void {
+mark_simple_polyhedron_groups(tree& nfaces, const tree& ngons, I4 penta_start) -> void {
   // Precondition: nfaces is sorted with tet,pyra,penta,hex; with no other polyhedron type
   auto nface_connectivity = ElementConnectivity<I4>(nfaces);
   auto nface_accessor = cgns::interleaved_nface_random_access_range(nface_connectivity);
 
   auto last_tet = std::find_if_not(nface_accessor.begin(),nface_accessor.end(),[](const auto& c){ return c.size()==4; });
   auto last_penta = std::find_if_not(last_tet,nface_accessor.end(),[](const auto& c){ return c.size()==5; });
-  auto polyhedron_type_starts = make_cgns_vector<I4>(5,F.alloc()); // tet, pyra, penta, hex, end
+  std_e::buffer_vector<I4> polyhedron_type_starts; // tet, pyra, penta, hex, end
   polyhedron_type_starts[0] = 0; // tets start at 0
   polyhedron_type_starts[1] = last_tet.data()-nface_accessor.data();
   polyhedron_type_starts[2] = penta_start; // penta start
@@ -202,15 +199,14 @@ mark_simple_polyhedron_groups(tree& nfaces, const tree& ngons, I4 penta_start, f
   //}
   //// end CHECK
 
-  node_value polyhedron_type_start_val = view_as_node_value(polyhedron_type_starts);
-  tree pts_node = F.new_UserDefinedData(".#PolygonSimpleTypeStart",polyhedron_type_start_val);
-  tree desc = F.new_Descriptor("Node info","The .#PolygonSimpleTypeStart node is present for an Elements_t of NFACE_n type if the polyhedrons are only simple, linear ones and sorted with Tets firsts, then Pyras, then Pentas then Hexes. The .#PolygonSimpleTypeStart values are the starting indices for each of these elements, in respective order (the last number is the size of the NFACE connectivity)");
+  tree pts_node = new_UserDefinedData(".#PolygonSimpleTypeStart",std::move(polyhedron_type_starts));
+  tree desc = new_Descriptor("Node info","The .#PolygonSimpleTypeStart node is present for an Elements_t of NFACE_n type if the polyhedrons are only simple, linear ones and sorted with Tets firsts, then Pyras, then Pentas then Hexes. The .#PolygonSimpleTypeStart values are the starting indices for each of these elements, in respective order (the last number is the size of the NFACE connectivity)");
   emplace_child(pts_node,std::move(desc));
   emplace_child(nfaces,std::move(pts_node));
 }
 
 inline auto
-permute_boundary_ngons_at_beginning(tree& ngons, factory F) -> std::vector<I4> { // TODO find a way to do it for I4 and I8
+permute_boundary_ngons_at_beginning(tree& ngons) -> std::vector<I4> { // TODO find a way to do it for I4 and I8
   // Precondition: ngons.type = "Elements_t" and elements of type NGON_n
   auto parent_elts = ParentElements<I4>(ngons);
   auto ngon_connectivity = ElementConnectivity<I4>(ngons);
@@ -222,7 +218,7 @@ permute_boundary_ngons_at_beginning(tree& ngons, factory F) -> std::vector<I4> {
   auto ngon_partition_index = apply_partition_to_ngons(ngon_connectivity,permutation,partition_index);
   apply_ngon_permutation_to_parent_elts(parent_elts,permutation);
 
-  mark_as_boundary_partitionned(ngons,partition_index,ngon_partition_index,F);
+  mark_as_boundary_partitionned(ngons,partition_index,ngon_partition_index);
 
   return permutation;
 }
@@ -249,7 +245,7 @@ sorting_by_nb_vertices_permutation(std_e::span<I> connectivities) -> std::vector
 
 template<class I> auto
 create_permuted_ngon_connectivities(std_e::span<I> old_connectivities, const std::vector<I>& permutation)
-  -> std::vector<I> 
+  -> std::vector<I>
 {
   auto _ = maia_time_log("create_permuted_ngon_connectivities");
 
@@ -308,7 +304,7 @@ sorting_by_nb_faces_permutation(std_e::span<I> connectivities) -> std::vector<I>
 
 template<class I> auto
 create_permuted_nface_connectivities(std_e::span<I> old_connectivities, const std::vector<I>& permutation)
-  -> std::vector<I> 
+  -> std::vector<I>
 {
   auto _ = maia_time_log("create_permuted_nface_connectivities");
 
@@ -353,7 +349,7 @@ pyra_penta_permutation(std_e::span<I4> nface_connectivity, const tree& ngons) ->
   I4 first_5_index = first_5_faces-nface_accessor.begin();
   I4 last_5_index = first_6_faces-nface_accessor.begin();
 
-  auto is_pyra = [ngon_start_id,&ngon_accessor,&nface_accessor](I4 i){ 
+  auto is_pyra = [ngon_start_id,&ngon_accessor,&nface_accessor](I4 i){
     auto polyhedron = nface_accessor[i];
     STD_E_ASSERT(polyhedron.size()==5);
     int nb_quad = 0;

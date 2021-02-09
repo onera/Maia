@@ -9,66 +9,34 @@ using namespace cgns;
 
 
 TEST_CASE("partition_with_boundray_vertices") {
-  cgns_allocator alloc; // allocates and owns memory
-  factory F(&alloc);
-
 // tri3 connectivities
-  auto tri_cs = make_cgns_vector<I4>(
+  std_e::buffer_vector<I4> tri_cs =
     {  1, 2, 3,
       42,43,44,
-      44,43, 3  },
-    alloc
-  );
+      44,43, 3  };
 
 // tet4 connectivities
-  auto tet_cs = make_cgns_vector<I4>(
+  std_e::buffer_vector<I4> tet_cs =
     {  1, 2, 3, 4,
-      42,43,44,45  },
-    alloc
-  );
+      42,43,44,45  };
 
 // ngon connectivities
-  auto ngon_cs = make_cgns_vector<I4>(
+  std_e::buffer_vector<I4> ngon_cs =
     { 3,   1, 2, 3,
-      4,  10,11,12,13, 
+      4,  10,11,12,13,
       3,   5, 4, 3,
-      3,   1, 8, 9 },
-    alloc
-  );
-  auto parent_elts = make_md_array<I4>(
+      3,   1, 8, 9 };
+  md_array<I4,2> parent_elts =
     { {1, 4},
       {0, 8},
       {0, 0},
-      {3, 1} },
-    alloc
-  );
-
-// construction of elements
-  tree tris = F.new_Elements(
-    "Tri",
-    cgns::TRI_3,
-    std_e::make_span(tri_cs),
-    1,3
-  );
-  tree tets = F.new_Elements(
-    "Tet",
-    cgns::TETRA_4,
-    std_e::make_span(tet_cs),
-    4,5
-  );
-  tree ngons = F.newNgonElements(
-    "Ngons",
-    std_e::make_span(ngon_cs),
-    6,9
-  );
-  emplace_child(ngons,F.new_DataArray("ParentElements", view_as_node_value(parent_elts)));
-
+      {3, 1} };
 
   SUBCASE("ngon_boundary_vertices") {
     auto boundary_vertices = ngon_boundary_vertices(std_e::make_span(ngon_cs),std_e::make_view(parent_elts));
 
     vector<I4> expected_boundary_vertices = {
-      10,11,12,13, 
+      10,11,12,13,
       5, 4, 3
     };
 
@@ -76,6 +44,26 @@ TEST_CASE("partition_with_boundray_vertices") {
   }
 
   SUBCASE("get_ordered_boundary_vertex_ids") {
+    // construction of elements
+    tree tris = new_Elements(
+      "Tri",
+      cgns::TRI_3,
+      std::move(tri_cs),
+      1,3
+    );
+    tree tets = new_Elements(
+      "Tet",
+      cgns::TETRA_4,
+      std::move(tet_cs),
+      4,5
+    );
+    tree ngons = new_NgonElements(
+      "Ngons",
+      std::move(ngon_cs),
+      6,9
+    );
+    emplace_child(ngons,new_DataArray("ParentElements", std::move(parent_elts)));
+
     tree_range zone_elements = {tris,tets,ngons};
     auto boundary_vertices = get_ordered_boundary_vertex_ids(zone_elements);
 

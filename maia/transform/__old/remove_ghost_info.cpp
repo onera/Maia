@@ -8,22 +8,23 @@
 #include "std_e/algorithm/iota.hpp"
 #include "std_e/algorithm/algorithm.hpp"
 #include "maia/transform/__old/renumber_point_lists.hpp"
+#include "std_e/buffer/buffer_vector.hpp"
 
 namespace cgns {
 
 auto
-remove_ghost_info(tree& b, factory F, MPI_Comm comm) -> void {
+remove_ghost_info(tree& b, MPI_Comm comm) -> void {
   STD_E_ASSERT(b.label=="CGNSBase_t");
-  apply_base_renumbering(b,F,remove_ghost_info_from_zone,comm);
+  apply_base_renumbering(b,remove_ghost_info_from_zone,comm);
   
   for (tree& z : get_children_by_label(b,"Zone_t")) {
-    rm_invalid_ids_in_point_lists(z,"FaceCenter",F); // For BC
-    rm_invalid_ids_in_point_lists_with_donors(z,"Vertex",F); // For GC
-    rm_grid_connectivities(z,"FaceCenter",F);
-    rm_grid_connectivities(z,"CellCenter",F);
+    rm_invalid_ids_in_point_lists(z,"FaceCenter"); // For BC
+    rm_invalid_ids_in_point_lists_with_donors(z,"Vertex"); // For GC
+    rm_grid_connectivities(z,"FaceCenter");
+    rm_grid_connectivities(z,"CellCenter");
   }
 
-  symmetrize_grid_connectivities(b,F,comm);
+  symmetrize_grid_connectivities(b,comm);
 }
 
 
@@ -52,7 +53,6 @@ nb_owned_elements(const tree& elt_pool) -> I {
  * \brief remove all ghost info, but keeps the GridCOnnectivity 1-to-1 on nodes
  * \param [inout] z: the cgns zone
  * \param [in] plds: PointListDonors from other zones pointing to zone "z"
- * \param [in] F: the factory to allocate new CGNS object an memory
  * \pre ghost nodes/elements are given by "Rind" nodes
  * \pre ghost nodes/elements are given their "owner" zone and id by GridConnectivities
  *
@@ -65,7 +65,7 @@ nb_owned_elements(const tree& elt_pool) -> I {
  *   6. delete invalid PointList
 */
 auto
-remove_ghost_info_from_zone(tree& z, donated_point_lists& plds, factory F) -> void {
+remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
   tree_range elt_pools = get_children_by_label(z,"Elements_t");
   std::sort(begin(elt_pools),end(elt_pools),compare_by_range);
   STD_E_ASSERT(cgns::elts_ranges_are_contiguous(elt_pools));
@@ -112,15 +112,14 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds, factory F) -> vo
     // del old {
     int new_connec_size = knots.length(i)*number_of_nodes(elt_type);
     auto old_connec_val = view_as_span<I4>(elt_connec.value);
-    auto new_connec_val = make_cgns_vector<I4>(new_connec_size,F.alloc());
+    std_e::buffer_vector<I4> new_connec_val(new_connec_size);
     for (int i=0; i<new_connec_size; ++i) {
       new_connec_val[i] = old_connec_val[i];
     }
-    F.deallocate_node_value(elt_connec.value);
-    elt_connec.value = view_as_node_value(new_connec_val);
+    elt_connec.value = make_node_value(std::move(new_connec_val));
     // del old }
 
-    F.rm_child_by_name(elt_pool,"Rind");
+    rm_child_by_name(elt_pool,"Rind");
   }
 
 
@@ -150,21 +149,20 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds, factory F) -> vo
   VertexSize_U<I4>(z) = nb_nodes2;
 
   tree& coords = get_child_by_name(z,"GridCoordinates");
-  F.rm_child_by_name(coords,"Rind");
+  rm_child_by_name(coords,"Rind");
 
   /// 5.0. renumber GridCoordinates
   for (tree& coord : get_children_by_label(coords,"DataArray_t")) {
     // TODO once pybind11: do not allocate/copy/del, only resize
     auto old_coord_val = view_as_span<R8>(coord.value);
-    auto new_coord_val = make_cgns_vector<R8>(nb_nodes2,F.alloc());
+    std_e::buffer_vector<R8> new_coord_val(nb_nodes2);
     for (I4 i=0; i<old_nb_nodes; ++i) {
       I4 new_node_pos = nodes2[i];
       if (new_node_pos!=-1) {
         new_coord_val[new_node_pos] = old_coord_val[i];
       }
     }
-    F.deallocate_node_value(coord.value);
-    coord.value = view_as_node_value(new_coord_val);
+    coord.value = make_node_value(std::move(new_coord_val));
   }
 
   //auto node_perm_at_0 = node_perm.perm;

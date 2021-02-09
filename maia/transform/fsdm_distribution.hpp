@@ -2,12 +2,11 @@
 
 
 #include "cpp_cgns/cgns.hpp"
-#include "cpp_cgns/sids/creation.hpp"
 #include "mpi.h"
 
 
 namespace cgns {
 
-auto add_fsdm_distribution(tree& b, factory F, MPI_Comm comm) -> void;
+auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void;
 
 } // cgns

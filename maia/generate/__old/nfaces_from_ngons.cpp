@@ -2,7 +2,6 @@
 
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 #include "cpp_cgns/sids/creation.hpp"
-#include "cpp_cgns/array_utils.hpp"
 #include "std_e/algorithm/for_each.hpp"
 
 
@@ -34,7 +33,7 @@ face_ids_by_sorted_cell_ids(const tree& ngons) -> std::vector<cell_id_and_face_i
     cell_face_ids.push_back({left_cell_id,ngon_id});
     cell_face_ids.push_back({right_cell_id,ngon_id});
   }
-   
+
   std::sort(begin(cell_face_ids),end(cell_face_ids),less_cell_id);
   return cell_face_ids;
 }
@@ -59,37 +58,36 @@ for_each_partition2(Forward_it first, S last, Bin_predicate eq, Range_function f
   }
 }
 auto
-nfaces_from_cell_face(const std::vector<cell_id_and_face_id<I4>>& cell_face_ids, const factory& F) -> tree {
+nfaces_from_cell_face(const std::vector<cell_id_and_face_id<I4>>& cell_face_ids) -> tree {
   STD_E_ASSERT(std::is_sorted(begin(cell_face_ids),end(cell_face_ids),less_cell_id));
 
   auto first_non_boundary = std::partition_point(begin(cell_face_ids),end(cell_face_ids),[](auto& x){ return x.cell_id==0; });
 
-  auto nfaces = make_cgns_vector<I4>(F.alloc());
+  std_e::buffer_vector<I4> nfaces;
   I4 nb_nfaces = 0;
 
   auto append_nface = [&nb_nfaces,&nfaces](auto f, auto l){ append_nface_from_range(f,l,std::back_inserter(nfaces)); ++nb_nfaces; };
   for_each_partition2(first_non_boundary,end(cell_face_ids),equal_cell_id,append_nface);
 
   I4 first_nface_id = cell_face_ids[0].cell_id;
-  return F.newNfaceElements("Nface",std_e::make_span(nfaces),first_nface_id,first_nface_id+nb_nfaces);
+  return new_NfaceElements("Nface",std::move(nfaces),first_nface_id,first_nface_id+nb_nfaces);
 }
 
-auto 
-nfaces_from_ngons(const tree& ngons, const factory& F) -> tree {
+auto
+nfaces_from_ngons(const tree& ngons) -> tree {
   auto cell_face_ids = face_ids_by_sorted_cell_ids(ngons);
-  return nfaces_from_cell_face(cell_face_ids,F);
+  return nfaces_from_cell_face(cell_face_ids);
 }
 
 auto
-add_nfaces_to_zone(tree& z, const factory& F) -> void {
+add_nfaces_to_zone(tree& z) -> void {
   tree& ngons = element_pool<I4>(z,NGON_n);
-  emplace_child(z,nfaces_from_ngons(ngons,F));
+  emplace_child(z,nfaces_from_ngons(ngons));
 }
 
 auto
-add_nfaces(tree& b, const factory& F) -> void {
-  auto f = [&F](tree& z){ add_nfaces_to_zone(z,F); };
-  for_each_unstructured_zone(b,f);
+add_nfaces(tree& b) -> void {
+  for_each_unstructured_zone(b,add_nfaces_to_zone);
 }
 
 

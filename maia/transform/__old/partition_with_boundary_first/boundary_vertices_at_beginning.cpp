@@ -44,7 +44,7 @@ template<class I> auto
 re_number_vertex_ids_in_elements(tree& elt_pool, const std::vector<I>& vertex_permutation) -> void {
   // Preconditions
   //   - vertex_permutation is an index permutation (i.e. sort(permutation) == std_e::iota(permutation.size()))
-  //   - any vertex "v" of "elt_pool" is referenced in "vertex_permutation", 
+  //   - any vertex "v" of "elt_pool" is referenced in "vertex_permutation",
   //     i.e. vertex_permutation[v-1] is valid ("-1" because of 1-indexing)
   auto _ = maia_time_log("re_number_vertex_ids_in_elements");
 

@@ -8,8 +8,8 @@
 
 namespace cgns {
 
-auto generate_ngons_from_elts(tree& b, factory& F) -> void;
-auto generate_ngons_from_elts(const tree_range& elt_pools, factory& F) -> tree;
+auto generate_ngons_from_elts(tree& b) -> void;
+auto generate_ngons_from_elts(const tree_range& elt_pools) -> tree;
 
 auto
 append_faces(ElementType_t ElementType, faces_heterogenous_container<std::int32_t>& all_faces, const std_e::span<const std::int32_t>& connectivities, std::int32_t first_elt_id) -> void;

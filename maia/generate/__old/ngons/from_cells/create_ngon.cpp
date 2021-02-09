@@ -1,15 +1,17 @@
 #include "maia/generate/__old/ngons/from_cells/create_ngon.hpp"
 
+#include "cpp_cgns/sids/creation.hpp"
 #include "maia/generate/__old/ngons/from_cells/faces_heterogenous_container.hpp"
 
 #include "maia/utils/log/log.hpp"
+#include "std_e/buffer/buffer_vector.hpp"
 
 
 namespace cgns {
 
 
 auto
-create_ngon(const faces_container<std::int32_t>& all_faces, std::int32_t first_ngon_id, factory& F) -> tree {
+create_ngon(const faces_container<std::int32_t>& all_faces, std::int32_t first_ngon_id) -> tree {
   using I = std::int32_t;
   auto _ = maia_time_log("create_ngon");
   // TODO explicit the fact that get<0> is tris and get<1> is quads
@@ -24,8 +26,8 @@ create_ngon(const faces_container<std::int32_t>& all_faces, std::int32_t first_n
   I nb_ngons_boundary = bnd_faces_3.size()+bnd_faces_4.size();
   I nb_ngons_interior = int_faces_3.size()+int_faces_4.size();
   I nb_ngons = nb_ngons_boundary+nb_ngons_interior;
-  auto ngon_cs = make_cgns_vector<I>(F.alloc()); // TODO reserve
-  auto parent_elts = make_cgns_vector<I>(2*nb_ngons,F.alloc());
+  std_e::buffer_vector<I> ngon_cs; // TODO reserve
+  std_e::buffer_vector<I> parent_elts(2*nb_ngons);
   I* l_parents = parent_elts.data();
   I* r_parents = parent_elts.data() + nb_ngons;
   I i=0;
@@ -68,13 +70,13 @@ create_ngon(const faces_container<std::int32_t>& all_faces, std::int32_t first_n
     ++i;
   }
 
-  tree ngons = F.newNgonElements(
+  tree ngons = new_NgonElements(
     "Ngons",
-    std_e::make_span(ngon_cs),
+    std::move(ngon_cs),
     first_ngon_id,first_ngon_id+nb_ngons-1,
     nb_ngons_boundary
   );
-  emplace_child(ngons,F.new_DataArray("ParentElements", view_as_node_value(parent_elts)));
+  emplace_child(ngons,new_DataArray("ParentElements", make_node_value(std::move(parent_elts))));
   return ngons;
 }
 

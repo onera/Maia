@@ -1,14 +1,16 @@
 #include "maia/transform/gcs_only_for_ghosts.hpp"
 #include "cpp_cgns/cgns.hpp"
+#include "cpp_cgns/sids/creation.hpp"
 #include "cpp_cgns/sids/sids.hpp"
 #include <algorithm>
 #include "maia/partitioning/gc_name_convention.hpp"
+#include "std_e/buffer/buffer_vector.hpp"
 
 
 namespace cgns {
 
 
-auto gcs_only_for_ghosts(tree& b, factory F) -> void {
+auto gcs_only_for_ghosts(tree& b) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   for (tree& z : zs) {
     int n_node = VertexSize_U<I4>(z);
@@ -19,7 +21,7 @@ auto gcs_only_for_ghosts(tree& b, factory F) -> void {
     auto first_ghost = std::partition_point(begin(ghost_info),end(ghost_info),is_owned);
     I4 n_ghost = end(ghost_info)-first_ghost;
     tree& grid_coord_node = get_child_by_name(z,"GridCoordinates");
-    cgns::emplace_child(grid_coord_node,F.new_UserDefinedData("FSDM#n_ghost",n_ghost));
+    cgns::emplace_child(grid_coord_node,new_UserDefinedData("FSDM#n_ghost",n_ghost));
     // GCs
     auto gcs = get_nodes_by_matching(z,"ZoneGridConnectivity_t/GridConnectivity_t");
     for (tree& gc : gcs) {
@@ -33,8 +35,8 @@ auto gcs_only_for_ghosts(tree& b, factory F) -> void {
 
         I4 n_old_id = old_pl.size();
 
-        auto new_pl  = make_cgns_vector<I4>(F.alloc());
-        auto new_pld = make_cgns_vector<I4>(F.alloc());
+        std_e::buffer_vector<I4> new_pl;
+        std_e::buffer_vector<I4> new_pld;
 
         for (int i=0; i<n_old_id; ++i) {
           I4 owner_proc = ghost_info[old_pl[i]-1]; // -1 because PointList (refering to a vertex) is 1-indexed in CGNS
@@ -44,13 +46,11 @@ auto gcs_only_for_ghosts(tree& b, factory F) -> void {
           }
         }
 
-        F.deallocate_node_value(pl_node.value);
-        pl_node.value = view_as_node_value(new_pl);
-        pl_node.value.dims = {1,(I8)new_pl.size()}; // required by SIDS
+        pl_node.value = make_node_value(std::move(new_pl));
+        pl_node.value.dims = {1,pl_node.value.dims[0]}; // required by SIDS
 
-        F.deallocate_node_value(pld_node.value);
-        pld_node.value = view_as_node_value(new_pld);
-        pld_node.value.dims = {1,(I8)new_pld.size()}; // required by SIDS
+        pld_node.value = make_node_value(std::move(new_pld));
+        pld_node.value.dims = {1,pld_node.value.dims[0]}; // required by SIDS
       }
     }
   }
