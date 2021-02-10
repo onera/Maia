@@ -16,7 +16,7 @@ class parallel_tree:
     self.part_tree = part_tree
     self.dist_tree = dist_tree
 
-def load_partitioned_tree(file_name,comm):
+def load_dist_tree(file_name,comm):
 
   dist_tree = IOT.file_to_dist_tree(file_name, comm, distribution_policy='uniform')
 
@@ -24,14 +24,16 @@ def load_partitioned_tree(file_name,comm):
 
   merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
 
-  #part_tree = PPA.partition_by_elt(dist_tree,comm,split_method=2)
   split_options = {'graph_part_tool' : 'ptscotch', 'save_ghost_data':True,
                    'zone_to_parts':dzone_to_weighted_parts}
+
+
+def load(file_name,comm):
+  dist_tree = load_dist_tree(file_name,comm)
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
-  SPT.save_part_tree(part_tree, '/scratchm/bberthou/travail/git_all_projects/scripts/install/part_tree_bef', comm)
-  gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
   add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
+  gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
 
   ## TODO
   #for zone in I.getZones(part_tree):
