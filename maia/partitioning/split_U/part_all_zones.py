@@ -35,6 +35,59 @@ def get_matching_joins(d_zones):
 
   return join_to_opp
 
+def zgc_original_pdm_to_cgns(p_zone):
+  """
+  Already exist in initial configuration
+  """
+  to_remove = list()
+  for zone_gc in I.getNodesFromType1(p_zone, 'ZoneGridConnectivity_t'):
+    for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
+      if not '.' in I.getName(gc):
+        pl       = I.getNodeFromName1(gc, 'PointList')[1]
+        pl_d     = I.getNodeFromName1(gc, 'PointListDonor')[1]
+        lngn     = I.getNodeFromPath (gc, ':CGNS#GlobalNumbering/Index')[1]
+        donor    = I.getNodeFromName1(gc, 'Donor')[1]
+        # opp_proc = I.getNodeFromName1(gc, 'OppRank')[1]
+        # opp_part = I.getNodeFromName1(gc, 'OppPart')[1]
+        # > List of couples (procs, parts) holding the opposite join
+        opposed_parts = np.unique(donor, axis=0)
+        for i_sub_jn, opp_part in enumerate(opposed_parts):
+          join_n = I.newGridConnectivity(name      = I.getName(gc)+'.{0}'.format(i_sub_jn),
+                                         donorName = I.getValue(gc)+'.P{0}.N{1}'.format(*opp_part),
+                                         ctype     = 'Abutting1to1',
+                                         parent    = zone_gc)
+
+          matching_faces_idx = np.all(donor == opp_part, axis=1)
+
+          # Extract sub arrays. OK to modify because indexing return a copy
+          sub_pl   = pl  [:,matching_faces_idx]
+          sub_pl_d = pl_d[:,matching_faces_idx]
+          sub_lngn = lngn[matching_faces_idx]
+
+          # Sort both pl and pld according to min joinId to ensure that
+          # order is the same
+          ordinal_cur = I.getNodeFromName1(gc, 'Ordinal')[1][0]
+          ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
+          ref_pl = sub_pl if ordinal_cur < ordinal_opp else sub_pl_d
+          sort_idx = np.argsort(ref_pl[0])
+          sub_pl  [0]   = sub_pl  [0][sort_idx]
+          sub_pl_d[0]   = sub_pl_d[0][sort_idx]
+          sub_lngn      = sub_lngn[sort_idx]
+
+          I.newPointList(name='PointList'     , value=sub_pl      , parent=join_n)
+          I.newPointList(name='PointListDonor', value=sub_pl_d    , parent=join_n)
+          lntogn_ud = I.createUniqueChild(join_n, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+          I.newDataArray('Index', value=sub_lngn, parent=lntogn_ud)
+          #Copy decorative nodes
+          for node in I.getChildren(gc):
+            if I.getName(node) not in ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', 'Ordinal', 'OrdinalOpp']:
+              I._addChild(join_n, node)
+
+        to_remove.append(gc)
+  for node in to_remove:
+    I._rmNode(p_zone, node)
+
+
 def prepare_part_weight(zones, n_part_per_zone, dzone_to_weighted_parts):
   part_weight = np.empty(sum(n_part_per_zone), dtype='float64')
   offset = 0
@@ -132,6 +185,11 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
 
   post_options = {k:part_options[k] for k in ['part_interface_loc', 'save_ghost_data']}
   u_parts = collect_mpart_partitions(multi_part, u_zones, n_part_per_zone, comm, post_options)
+
+  import maia.tree_exchange.dist_to_part.recover_jn as JBTP
+  JBTP.recover_jns(get_matching_joins(u_zones), u_zones, u_parts, comm)
+  for part in u_parts:
+    zgc_original_pdm_to_cgns(part)
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
   del(keep_alive)
