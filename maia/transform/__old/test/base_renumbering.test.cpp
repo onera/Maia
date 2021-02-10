@@ -1,7 +1,7 @@
-#include "doctest/extensions/doctest_mpi.h"
-
-//#include "maia/sids_example/unstructured_base.hpp"
-//#include "maia/transform/partition_with_boundary_first/partition_with_boundary_first.hpp"
+//#include "doctest/extensions/doctest_mpi.h"
+//
+//#include "maia/utils/cgns_tree_examples/unstructured_base.hpp"
+//#include "maia/transform/__old/partition_with_boundary_first/partition_with_boundary_first.hpp"
 //#include "std_e/algorithm/algorithm.hpp"
 //#include "cpp_cgns/tree_manip.hpp"
 //#include "cpp_cgns/sids/Hierarchical_Structures.hpp"
@@ -9,12 +9,9 @@
 //
 //using namespace cgns;
 //
-//TEST_CASE("") {
-//  cgns_allocator alloc; // allocates and owns memory
-//  factory F(&alloc);
-//
-//  tree base = create_unstructured_base(F);
-//  cgns::partition_with_boundary_first(base,F);
+//TEST_CASE("base renumbering") {
+//  tree base = create_unstructured_base();
+//  cgns::partition_with_boundary_first(base);
 //  
 //  // zone 0
 //  tree& z0 = get_child_by_name(base,"Zone0");

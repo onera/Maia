@@ -31,7 +31,7 @@ def gcs_only_for_ghosts(t):
 
 
 
-def partition_with_boundary_first(t):
+def put_boundary_first(t):
   apply_to_bases(t,ctransform.partition_with_boundary_first)
 
 def sort_nface_into_simple_connectivities(t):
@@ -45,8 +45,7 @@ def add_nfaces(t):
 
 def convert_from_ngon_to_simple_connectivities(t):
   I._adaptNFace2PE(t,remove=True) # PE = ParentElements, remove NFace (not updated by following step)
-  partition_with_boundary_first(t)
+  put_boundary_first(t)
   I._fixNGon(t) # reconstruct NFace (TODO add_nfaces [with sign])
   sort_nface_into_simple_connectivities(t)
   convert_to_simple_connectivities(t)
-

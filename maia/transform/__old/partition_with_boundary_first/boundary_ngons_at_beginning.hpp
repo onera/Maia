@@ -171,7 +171,7 @@ mark_simple_polyhedron_groups(tree& nfaces, const tree& ngons, I4 penta_start) -
 
   auto last_tet = std::find_if_not(nface_accessor.begin(),nface_accessor.end(),[](const auto& c){ return c.size()==4; });
   auto last_penta = std::find_if_not(last_tet,nface_accessor.end(),[](const auto& c){ return c.size()==5; });
-  std_e::buffer_vector<I4> polyhedron_type_starts; // tet, pyra, penta, hex, end
+  std_e::buffer_vector<I4> polyhedron_type_starts(5); // tet, pyra, penta, hex, end
   polyhedron_type_starts[0] = 0; // tets start at 0
   polyhedron_type_starts[1] = last_tet.data()-nface_accessor.data();
   polyhedron_type_starts[2] = penta_start; // penta start
