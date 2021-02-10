@@ -6,18 +6,30 @@ import Pypdm.Pypdm as PDM
 from maia.utils          import py_utils
 from maia.tree_exchange  import utils    as te_utils
 
-def recover_jns(jn_to_opp, dist_zones, part_zones, comm):
+def get_pl_donor(dist_zones, part_zones, comm):
 
-  n_jn        = len(jn_to_opp)
+  path = 'ZoneGridConnectivity_t/GridConnectivity_t'
+  jn_id     = []
+  jn_id_opp = []
+  for dist_zone in dist_zones:
+    for jn in py_utils.getNodesByMatching(dist_zone, path):
+      jn_id.append    (I.getNodeFromName1(jn, 'Ordinal')[1][0] - 1)
+      jn_id_opp.append(I.getNodeFromName1(jn, 'OrdinalOpp')[1][0] - 1)
+
+  n_jn = len(jn_id)
   n_unique_jn = n_jn // 2
-  join_to_ref = np.empty(n_jn, dtype=np.int32)
 
+  if n_jn == 0:
+    return
+
+  join_to_ref = np.empty(n_jn, dtype=np.int32)
   ref_join_gid = 0
   for i in range(n_jn):
-    iopp = jn_to_opp[i]
-    if i < iopp:
-      join_to_ref[i]    = ref_join_gid
-      join_to_ref[iopp] = ref_join_gid
+    i_jn     = jn_id[i]
+    i_jn_opp = jn_id_opp[i]
+    if i_jn < i_jn_opp:
+      join_to_ref[i_jn]     = ref_join_gid
+      join_to_ref[i_jn_opp] = ref_join_gid
       ref_join_gid += 1
 
   # Create face join distribution (with unicity)
@@ -25,8 +37,8 @@ def recover_jns(jn_to_opp, dist_zones, part_zones, comm):
   gc_type_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
   for d_zone in dist_zones:
     for gc in py_utils.getNodesFromTypePath(d_zone, gc_type_path):
-      gc_id = I.getNodeFromName1(gc, 'Ordinal')[1][0] - 1
-      gc_id_opp = jn_to_opp[gc_id]
+      gc_id     = I.getNodeFromName1(gc, 'Ordinal'   )[1][0] - 1
+      gc_id_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0] - 1
       if (gc_id < gc_id_opp):
         nb_face_in_joins[join_to_ref[gc_id]] = te_utils.get_cgns_distribution(gc, ':CGNS#Distribution/Index')[2]
         
@@ -101,5 +113,4 @@ def recover_jns(jn_to_opp, dist_zones, part_zones, comm):
         i_join += 1
         I.newDataArray('PointListDonor', opp_pl.reshape((1,-1), order='F'), parent=gc)
         I.newDataArray('Donor', opp_rank, parent=gc)
-        # I.newDataArray('OppRank', opp_rank, parent=gc)
 

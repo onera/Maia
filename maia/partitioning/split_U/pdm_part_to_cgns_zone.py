@@ -2,7 +2,6 @@ import Converter.Internal as I
 import numpy              as np
 
 from maia.connectivity import connectivity_transform as CNT
-import maia.tree_exchange.dist_to_part.index_exchange as IBTP
 
 def dump_pdm_output(p_zone, dims, data):
   """
@@ -168,26 +167,6 @@ def bnd_pdm_to_cgns(p_zone, d_zone, dims, data):
           for node in I.getNodesFromName1(dist_bc, node_name):
             I._addChild(bc_n, node)
 
-def copy_additional_nodes(dist_zone, part_zone):
-  #BCs
-  names = ['.Solver#BC', 'BoundaryMarker']
-  types = ['FamilyName_t']
-  for p_zbc in I.getNodesFromType1(part_zone, 'ZoneBC_t'):
-    for p_bc in I.getNodesFromType1(p_zbc, 'BC_t'):
-      d_bc = I.getNodeFromPath(dist_zone, I.getName(p_zbc)+'/'+I.getName(p_bc))
-      for node in I.getChildren(d_bc):
-        if I.getName(node) in names or I.getType(node) in types:
-          I._addChild(p_bc, node)
-  #GCs
-  names = ['.Solver#Property', 'Ordinal', 'OrdinalOpp']
-  types = ['FamilyName_t', 'GridConnectivityProperty_t']
-  for p_zgc in I.getNodesFromType1(part_zone, 'ZoneGridConnectivity_t'):
-    for p_gc in I.getNodesFromType1(p_zgc, 'GridConnectivity_t'):
-      d_gc = I.getNodeFromPath(dist_zone, I.getName(p_zgc)+'/'+I.getName(p_gc))
-      if d_gc: #Skip created jns
-        for node in I.getChildren(d_gc):
-          if I.getName(node) in names or I.getType(node) in types:
-            I._addChild(p_gc, node)
 
 def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
   """
@@ -275,13 +254,5 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     I.newDataArray('Cell', data['np_cell_ln_to_gn'], parent=lngn_zone)
 
     part_zones.append(part_zone)
-
-  #Now create point_list on partitions for the following nodes types
-  pl_paths = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneSubRegion_t', 'FlowSolution_t', 'ZoneGridConnectivity_t/GridConnectivity_t']
-  IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Elements', comm)
-  IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Vertex'  , comm)
-
-  for p_zone in part_zones:
-    copy_additional_nodes(dist_zone, p_zone)
 
   return part_zones

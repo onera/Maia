@@ -5,6 +5,7 @@ from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.transform.dist_tree import add_joins_ordinal      as AJO
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
+from .post_split import post_partitioning as post_split
 
 def set_default(dist_tree, comm):
 
@@ -99,6 +100,8 @@ def _partitioning(dist_tree,
     u_parts = partU.part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options)
     for part in u_parts:
       I._addChild(part_base, part)
+
+  post_split(dist_base, part_base, comm)
 
   #Add top level nodes
   for fam in I.getNodesFromType1(dist_base, 'Family_t'):
