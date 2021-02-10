@@ -170,20 +170,24 @@ def bnd_pdm_to_cgns(p_zone, d_zone, dims, data):
 
 def copy_additional_nodes(dist_zone, part_zone):
   #BCs
-  #zone_suffix = '.' + '.'.join(I.getName(part_zone).split('.')[-2:])
-  zone_suffix = ''
-  for dist_zbc in I.getNodesFromType1(dist_zone, 'ZoneBC_t'):
-    part_zbc = I.getNodeFromName1(part_zone, I.getName(dist_zbc))
-    if part_zbc:
-      for dist_bc in I.getNodesFromType1(dist_zbc, 'BC_t'):
-        part_bc = I.getNodeFromName1(part_zbc, I.getName(dist_bc) + zone_suffix)
-        if part_bc:
-          for node_type in ['FamilyName_t']:
-            for node in I.getNodesFromType1(dist_bc, node_type):
-              I._addChild(part_bc, node)
-          for node_name in ['.Solver#BC', 'BoundaryMarker']:
-            for node in I.getNodesFromName1(dist_bc, node_name):
-              I._addChild(part_bc, node)
+  names = ['.Solver#BC', 'BoundaryMarker']
+  types = ['FamilyName_t']
+  for p_zbc in I.getNodesFromType1(part_zone, 'ZoneBC_t'):
+    for p_bc in I.getNodesFromType1(p_zbc, 'BC_t'):
+      d_bc = I.getNodeFromPath(dist_zone, I.getName(p_zbc)+'/'+I.getName(p_bc))
+      for node in I.getChildren(d_bc):
+        if I.getName(node) in names or I.getType(node) in types:
+          I._addChild(p_bc, node)
+  #GCs
+  names = ['.Solver#Property', 'Ordinal', 'OrdinalOpp']
+  types = ['FamilyName_t', 'GridConnectivityProperty_t']
+  for p_zgc in I.getNodesFromType1(part_zone, 'ZoneGridConnectivity_t'):
+    for p_gc in I.getNodesFromType1(p_zgc, 'GridConnectivity_t'):
+      d_gc = I.getNodeFromPath(dist_zone, I.getName(p_zgc)+'/'+I.getName(p_gc))
+      if d_gc: #Skip created jns
+        for node in I.getChildren(d_gc):
+          if I.getName(node) in names or I.getType(node) in types:
+            I._addChild(p_gc, node)
 
 def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
   """
@@ -255,7 +259,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     output_loc = options['part_interface_loc']
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'
     zgc_created_pdm_to_cgns(part_zone, dist_zone, dims, data, output_loc, zgc_name)
-    zgc_original_pdm_to_cgns(part_zone, dist_zone, dims, data)
+    #zgc_original_pdm_to_cgns(part_zone, dist_zone, dims, data)
 
     if options['save_ghost_data']:
       vtx_ghost_info = data['np_vtx_ghost_information']
@@ -273,7 +277,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     part_zones.append(part_zone)
 
   #Now create point_list on partitions for the following nodes types
-  pl_paths = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneSubRegion_t', 'FlowSolution_t']
+  pl_paths = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneSubRegion_t', 'FlowSolution_t', 'ZoneGridConnectivity_t/GridConnectivity_t']
   IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Elements', comm)
   IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Vertex'  , comm)
 

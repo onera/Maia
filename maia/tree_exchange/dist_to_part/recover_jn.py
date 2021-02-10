@@ -37,11 +37,9 @@ def recover_jns(jn_to_opp, dist_zones, part_zones, comm):
   for p_zone in part_zones:
     d_zone_name = '.'.join(I.getName(p_zone).split('.')[:-2])
     i_part = int(I.getName(p_zone).split('.')[-1][1:])
-    d_zone = [z for z in dist_zones if z[0] == d_zone_name][0]
     for gc in py_utils.getNodesFromTypePath(p_zone, gc_type_path):
-      if not '.' in I.getName(gc):
-        dist_gc = I.getNodeFromName(d_zone, I.getName(gc))
-        gc_id = I.getNodeFromName1(dist_gc, 'Ordinal')[1][0] - 1
+      if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
+        gc_id = I.getNodeFromName1(gc, 'Ordinal')[1][0] - 1
         lngn = I.getNodeFromPath(gc, ':CGNS#GlobalNumbering/Index')[1]
         shifted_lntogn.append(lngn + face_in_join_offset[join_to_ref[gc_id]])
         pl = I.getNodeFromName1(gc, 'PointList')[1][0]
@@ -69,7 +67,7 @@ def recover_jns(jn_to_opp, dist_zones, part_zones, comm):
     i_rank = comm.Get_rank()
     i_part = int(I.getName(p_zone).split('.')[-1][1:])
     for gc in py_utils.getNodesFromTypePath(p_zone, gc_type_path):
-      if not '.' in I.getName(gc):
+      if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         pl = I.getNodeFromName1(gc, 'PointList')[1][0]
         opp_pl   = np.empty_like(pl)
         opp_rank = np.empty((pl.size,2), order='F', dtype=np.int32)

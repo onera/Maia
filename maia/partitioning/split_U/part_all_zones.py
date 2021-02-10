@@ -42,7 +42,7 @@ def zgc_original_pdm_to_cgns(p_zone):
   to_remove = list()
   for zone_gc in I.getNodesFromType1(p_zone, 'ZoneGridConnectivity_t'):
     for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
-      if not '.' in I.getName(gc):
+      if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         pl       = I.getNodeFromName1(gc, 'PointList')[1]
         pl_d     = I.getNodeFromName1(gc, 'PointListDonor')[1]
         lngn     = I.getNodeFromPath (gc, ':CGNS#GlobalNumbering/Index')[1]
@@ -176,7 +176,7 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
   multi_part = PDM.MultiPart(len(u_zones), n_part_per_zone, 0, pdm_part_tool, pdm_weight_method, part_weight, comm)
 
   # Setup
-  set_mpart_join_connectivity(multi_part, u_zones, keep_alive)
+  #set_mpart_join_connectivity(multi_part, u_zones, keep_alive)
   set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive)
   set_mpart_reordering(multi_part, part_options['reordering'], keep_alive)
 
