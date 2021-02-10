@@ -1,4 +1,4 @@
-#include "maia/transform/__old/convert_to_simple_connectivities.hpp"
+#include "maia/transform/__old/convert_to_std_elements.hpp"
 
 
 #include "maia/transform/__old/partition_with_boundary_first/boundary_ngons_at_beginning.hpp" // TODO rename file
@@ -390,7 +390,7 @@ convert_to_simple_volume_connectivities(const tree& nfaces, const tree& ngons, I
 
 
 auto
-convert_zone_to_simple_connectivities(tree& z) -> void {
+convert_zone_to_std_elements(tree& z) -> void {
   STD_E_ASSERT(z.label=="Zone_t");
 
   sort_zone_nface_into_simple_connectivities(z);
@@ -417,12 +417,12 @@ convert_zone_to_simple_connectivities(tree& z) -> void {
 
 
 auto
-sort_nface_into_simple_connectivities(tree& b) -> void {
+sort_nfaces_by_element_type(tree& b) -> void {
   for_each_unstructured_zone(b,sort_zone_nface_into_simple_connectivities);
 }
 auto
-convert_to_simple_connectivities(tree& b) -> void {
-  for_each_unstructured_zone(b,convert_zone_to_simple_connectivities);
+sorted_nfaces_to_std_elements(tree& b) -> void {
+  for_each_unstructured_zone(b,convert_zone_to_std_elements);
 }
 
 

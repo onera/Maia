@@ -1,4 +1,5 @@
 from cmaia.transform import transform as ctransform
+from maia.transform.apply_to_bases import apply_to_bases
 import Converter.Internal as I
 from mpi4py import MPI
 
@@ -34,18 +35,3 @@ def gcs_only_for_ghosts(t):
 def put_boundary_first(t):
   apply_to_bases(t,ctransform.partition_with_boundary_first)
 
-def sort_nface_into_simple_connectivities(t):
-  apply_to_bases(t,ctransform.sort_nface_into_simple_connectivities)
-
-def convert_to_simple_connectivities(t):
-  apply_to_bases(t,ctransform.convert_to_simple_connectivities)
-
-def add_nfaces(t):
-  apply_to_bases(t,ctransform.add_nfaces)
-
-def convert_from_ngon_to_simple_connectivities(t):
-  I._adaptNFace2PE(t,remove=True) # PE = ParentElements, remove NFace (not updated by following step)
-  put_boundary_first(t)
-  I._fixNGon(t) # reconstruct NFace (TODO add_nfaces [with sign])
-  sort_nface_into_simple_connectivities(t)
-  convert_to_simple_connectivities(t)
