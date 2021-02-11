@@ -8,33 +8,6 @@ from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh
 from .cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 from .pdm_part_to_cgns_zone   import pdm_part_to_cgns_zone
 
-def get_matching_joins(d_zones):
-  """
-  Scan all the grid connectivity nodes of the given zones and return
-  an array of size #nb_gc pairing the joins :
-  array [3,2,1,0] means that the matching pairs are (0,3) and (1,2).
-  The join numbering must be included in dist_tree under nodes Ordinal/OrdinalOpp
-  (see add_joins_ordinal.py)
-  """
-  jns = []
-  for zone in d_zones:
-    # > Get ZoneGridConnectivity List
-    zone_gcs = I.getNodesFromType1(zone, 'ZoneGridConnectivity_t')
-    if (zone_gcs != []):
-      jns += I.getNodesFromType1(zone_gcs, 'GridConnectivity_t')
-      jns += I.getNodesFromType1(zone_gcs, 'GridConnectivity1to1_t')
-
-  # > Declare array
-  join_to_opp = np.empty(len(jns), dtype=np.int32)
-
-  # > Fill
-  for jn in jns:
-    join_id     = I.getNodeFromName1(jn, 'Ordinal')[1]
-    join_opp_id = I.getNodeFromName1(jn, 'OrdinalOpp')[1]
-    join_to_opp[join_id - 1] = join_opp_id - 1
-
-  return join_to_opp
-
 def prepare_part_weight(zones, n_part_per_zone, dzone_to_weighted_parts):
   part_weight = np.empty(sum(n_part_per_zone), dtype='float64')
   offset = 0
@@ -42,12 +15,6 @@ def prepare_part_weight(zones, n_part_per_zone, dzone_to_weighted_parts):
     part_weight[offset:offset+n_part_per_zone[i_zone]] = dzone_to_weighted_parts[I.getName(zone)]
     offset += n_part_per_zone[i_zone]
   return part_weight
-
-def set_mpart_join_connectivity(multi_part, zones, keep_alive):
-  join_to_opp_array = get_matching_joins(zones)
-  n_total_joins = join_to_opp_array.shape[0]
-  multi_part.multipart_register_joins(n_total_joins, join_to_opp_array)
-  keep_alive.append(join_to_opp_array)
 
 def set_mpart_reordering(multipart, reorder_options, keep_alive):
   renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum_method']
@@ -123,7 +90,6 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
   multi_part = PDM.MultiPart(len(u_zones), n_part_per_zone, 0, pdm_part_tool, pdm_weight_method, part_weight, comm)
 
   # Setup
-  #set_mpart_join_connectivity(multi_part, u_zones, keep_alive)
   set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive)
   set_mpart_reordering(multi_part, part_options['reordering'], keep_alive)
 
