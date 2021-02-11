@@ -13,9 +13,10 @@ def copy_additional_nodes(dist_zone, part_zone):
   for p_zbc in I.getNodesFromType1(part_zone, 'ZoneBC_t'):
     for p_bc in I.getNodesFromType1(p_zbc, 'BC_t'):
       d_bc = I.getNodeFromPath(dist_zone, I.getName(p_zbc)+'/'+I.getName(p_bc))
-      for node in I.getChildren(d_bc):
-        if I.getName(node) in names or I.getType(node) in types:
-          I._addChild(p_bc, node)
+      if d_bc: #Tmp, since S splitting store external JNs as bnd
+        for node in I.getChildren(d_bc):
+          if I.getName(node) in names or I.getType(node) in types:
+            I._addChild(p_bc, node)
   #GCs
   names = ['.Solver#Property', 'Ordinal', 'OrdinalOpp']
   types = ['FamilyName_t', 'GridConnectivityProperty_t']

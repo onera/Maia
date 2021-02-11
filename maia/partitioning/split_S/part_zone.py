@@ -127,8 +127,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
                   sub_pr[dir_to_swap, 1], sub_pr[dir_to_swap, 0]
 
           #Effective creation of BC in part zone
-          part_bc_name = '.'.join([I.getName(dist_bc), *I.getName(p_zone).split('.')[-2:]])
-          part_bc = I.newBC(part_bc_name, sub_pr, parent=zbc)
+          part_bc = I.newBC(I.getName(dist_bc), sub_pr, parent=zbc)
           I.setValue(part_bc, I.getValue(dist_bc))
           I.newGridLocation(grid_loc, parent=part_bc)
 

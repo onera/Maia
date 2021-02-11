@@ -11,7 +11,6 @@ from maia.tree_exchange  import utils    as te_utils
 
 def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
   i_pl = 0
-  zone_suffix = '.' + '.'.join(I.getName(p_zone).split('.')[-2:])
   for pl_path in pl_pathes:
     for nodes in py_utils.getNodesWithParentsFromTypePath(dist_zone, pl_path):
       ancestors, node = nodes[:-1], nodes[-1]
@@ -26,14 +25,8 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
             #Recreate path -- Carefull stupid name convention
             ancestor = p_zone
             for parent in ancestors:
-              parent_name = I.getName(parent)
-              # if I.getType(parent) in ['BC_t', 'GridConnectivity_t']:
-                # parent_name = parent_name + zone_suffix
-              ancestor = I.createUniqueChild(ancestor, parent_name, I.getType(parent), I.getValue(parent))
-            node_name = I.getName(node)
-            # if I.getType(nodes[-1]) in ['BC_t', 'GridConnectivity_t']:
-              # node_name = node_name + zone_suffix
-            p_node = I.createChild(ancestor, node_name, I.getType(node), I.getValue(node))
+              ancestor = I.createUniqueChild(ancestor, I.getName(parent), I.getType(parent), I.getValue(parent))
+            p_node = I.createChild(ancestor, I.getName(node), I.getType(node), I.getValue(node))
             I.newGridLocation(SIDS.GridLocation(node), parent=p_node)
             I.newIndexArray('PointList', p_groups['npZSRGroup'][beg_pl:end_pl].reshape((1,-1), order='F'), parent=p_node)
             lntogn_ud = I.createUniqueChild(p_node, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
