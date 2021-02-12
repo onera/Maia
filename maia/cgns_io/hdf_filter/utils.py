@@ -19,7 +19,7 @@ def pl_or_pr_size(node):
     try:
       return I.getNodeFromName1(node, 'PointList#Size')[1]
     except TypeError: #No PL#Size, try to get info from :CGNS#Distribution and suppose size = 1,N
-      distri = I.getNodeFromPath(node, ':CGNS#Distribution/Distribution')[1]
+      distri = I.getNodeFromPath(node, ':CGNS#Distribution/Index')[1]
       return np.array([1, distri[2]])
   if pr_n:
     return SIDS.point_range_sizes(pr_n)

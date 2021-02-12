@@ -12,7 +12,7 @@ Base CGNSBase_t [3,3]:
       bc_only BC_t "wall":
         PointList IndexArray_t None:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [5,10,10]:
+          Index DataArray_t [5,10,10]:
       bc_with_ds BC_t "wall":
         PointList IndexArray_t None:
         BCDataSet BCDataSet_t:
@@ -20,7 +20,7 @@ Base CGNSBase_t [3,3]:
             array1 DataArray_t None:
             array2 DataArray_t None:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [20,50,50]:
+          Index DataArray_t [20,50,50]:
       bc_with_subds BC_t "wall":
         PointList IndexArray_t None:
         BCDataSet BCDataSet_t:
@@ -29,9 +29,9 @@ Base CGNSBase_t [3,3]:
             array1 DataArray_t None:
             array2 DataArray_t None:
           :CGNS#Distribution UserDefinedData_t:
-            Distribution DataArray_t [20,30,30]:
+            Index DataArray_t [20,30,30]:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [20,50,50]:
+          Index DataArray_t [20,50,50]:
 """
   size_tree = parse_yaml_cgns.to_complete_pytree(yt)
   hdf_filter = dict()
@@ -59,19 +59,19 @@ Base CGNSBase_t [3,3]:
         PointList IndexArray_t None:
         PointListDonor IndexArray_t None:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [5,10,10]:
+          Index DataArray_t [5,10,10]:
       match2 GridConnectivity_t "Base1/ZoneC":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t None:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [20,50,50]:
+          Index DataArray_t [20,50,50]:
   ZoneS Zone_t None:
     ZGC ZoneGridConnectivity_t:
       match3 GridConnectivity1to1_t "ZoneA":
         PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
         PointRangeDonor IndexRange_t [[1,3],[1,3],[3,3]]:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [5,9,9]:
+          Index DataArray_t [5,9,9]:
 """
   size_tree = parse_yaml_cgns.to_complete_pytree(yt)
   hdf_filter = dict()
@@ -95,7 +95,7 @@ Base CGNSBase_t [3,3]:
       array1 DataArray_t None:
       array2 DataArray_t None:
       :CGNS#Distribution UserDefinedData_t:
-        Distribution DataArray_t [5,10,10]:
+        Index DataArray_t [5,10,10]:
     linked_ZSR ZoneSubRegion_t:
       BCRegionName Descriptor_t "bc":
       array1 DataArray_t None:
@@ -108,13 +108,13 @@ Base CGNSBase_t [3,3]:
       bc BC_t "farfield":
         PointList IndexArray_t None:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [5,10,10]:
+          Index DataArray_t [5,10,10]:
     ZoneGC ZoneGridConnectivity_t:
       bc GridConnectivity_t:
         PointList IndexArray_t None:
         PointListDonor IndexArray_t None:
         :CGNS#Distribution UserDefinedData_t:
-          Distribution DataArray_t [20,40,40]:
+          Index DataArray_t [20,40,40]:
 """
   size_tree = parse_yaml_cgns.to_complete_pytree(yt)
   hdf_filter = dict()

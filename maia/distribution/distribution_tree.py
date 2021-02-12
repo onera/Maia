@@ -18,12 +18,12 @@ def compute_plist_or_prange_distribution(node, comm):
 
   if(pr_n):
     pr_lenght = SIDS.point_range_n_elt(pr_n)
-    create_distribution_node(pr_lenght, comm, 'Distribution', node)
+    create_distribution_node(pr_lenght, comm, 'Index', node)
 
   if(pl_n):
     pls_n   = I.getNodeFromName1(node, 'PointList#Size')
     pl_size = I.getValue(pls_n).prod()
-    create_distribution_node(pl_size, comm, 'Distribution', node)
+    create_distribution_node(pl_size, comm, 'Index', node)
 
 def compute_elements_distribution(zone, comm):
   """
@@ -36,7 +36,7 @@ def compute_elements_distribution(zone, comm):
     for elt in elts:
       er = I.getNodeFromName(elt, 'ElementRange')
       n_tot_elmt = er[1][1] - er[1][0] + 1
-      create_distribution_node(n_tot_elmt, comm, 'Distribution', elt)
+      create_distribution_node(n_tot_elmt, comm, 'Element', elt)
 
 def compute_zone_distribution(zone, comm):
   """

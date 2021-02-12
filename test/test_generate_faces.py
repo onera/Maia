@@ -89,11 +89,7 @@ for zone in I.getZones(dist_tree):
   dloading_procs[zone[0]] = list(range(comm.Get_size()))
 # print(dloading_procs)
 
-part_tree = PPA.partitioning(dist_tree, dzone_to_weighted_parts,
-                             comm,
-                             split_method=2,
-                             part_weight_method=1,
-                             reorder_methods=["NONE", "NONE"])
+part_tree = PPA.partitioning(dist_tree, comm, zone_to_parts=dzone_to_weighted_parts)
 
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
 #                                                                        'CGNSBase_t/Family_t'/*])

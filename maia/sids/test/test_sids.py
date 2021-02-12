@@ -16,6 +16,19 @@ def test_ZoneType():
   assert SIDS.ZoneType(zone_u) == 'Unstructured'
   assert SIDS.ZoneType(zone_s) == 'Structured'
 
+def test_ElementSize():
+  elt1 = I.newElements(etype='QUAD', erange=[1,100])
+  elt2 = I.newElements(etype='QUAD', erange=[15,15])
+  assert SIDS.ElementSize(elt1) == 100
+  assert SIDS.ElementSize(elt2) == 1
+
+def test_GridLocation():
+  bc_no_loc = I.newBC()
+  bc_loc    = I.newBC()
+  I.newGridLocation('JFaceCenter', bc_loc)
+  assert SIDS.GridLocation(bc_no_loc) == 'Vertex'
+  assert SIDS.GridLocation(bc_loc   ) == 'JFaceCenter'
+
 def test_zone_u_size():
   zone_u = G.cartNGon((0., 0., 0.), (1., 1., 1.), (10, 5, 2))
 
