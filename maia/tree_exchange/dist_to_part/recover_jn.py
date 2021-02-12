@@ -42,7 +42,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
       if (gc_id < gc_id_opp):
         nb_face_in_joins[join_to_ref[gc_id]] = te_utils.get_cgns_distribution(gc, ':CGNS#Distribution/Index')[2]
         
-  face_in_join_offset = py_utils.nb_to_offset(nb_face_in_joins)
+  face_in_join_offset = py_utils.sizes_to_indices(nb_face_in_joins)
 
   shifted_lntogn = list()
   part_data = {key : [] for key in ['pl', 'irank', 'ipart']}

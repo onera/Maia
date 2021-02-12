@@ -22,7 +22,6 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
           beg_pl = p_groups['npZSRGroupIdx'][i_pl]
           end_pl = p_groups['npZSRGroupIdx'][i_pl+1]
           if beg_pl != end_pl:
-            #Recreate path -- Carefull stupid name convention
             ancestor = p_zone
             for parent in ancestors:
               ancestor = I.createUniqueChild(ancestor, I.getName(parent), I.getType(parent), I.getValue(parent))

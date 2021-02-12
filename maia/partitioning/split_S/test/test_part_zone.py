@@ -46,7 +46,6 @@ Zone Zone_t:
   assert out["zmax"] == [I.getNodeFromName(zone, name) for name in ['bc5']]
 
 def test_intersect_pr():
-  print("coucou")
   assert splitS.intersect_pr(np.array([[7,11],[1,5]]), np.array([[12,16],[1,5]])) is None
   assert (splitS.intersect_pr(np.array([[7,11],[1,5]]), np.array([[7,11],[1,5]])) \
       == np.array([[7,11],[1,5]])).all()

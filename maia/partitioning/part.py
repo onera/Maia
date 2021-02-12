@@ -104,7 +104,8 @@ def _partitioning(dist_tree,
   post_split(dist_base, part_base, comm)
 
   #Add top level nodes
-  for fam in I.getNodesFromType1(dist_base, 'Family_t'):
-    I.addChild(part_base, fam)
+  for node in I.getChildren(dist_base):
+    if I.getType(node) != "Zone_t":
+      I.addChild(part_base, node)
 
   return part_tree

@@ -19,7 +19,7 @@ def create_all_elt_distribution(dist_elts, comm):
   have if all the Element_t nodes were concatenated
   """
   elt_sections_dn  = [SIDS.ElementSize(elt) for elt in dist_elts]
-  elt_sections_idx = py_utils.nb_to_offset(elt_sections_dn, dtype=pdm_gnum_dtype)
+  elt_sections_idx = py_utils.sizes_to_indices(elt_sections_dn, dtype=pdm_gnum_dtype)
   return uniform_distribution(elt_sections_idx[-1], comm)
 
 def collect_cgns_g_numbering(part_zones, path):
@@ -39,7 +39,7 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
   sorting_idx = np.argsort([SIDS.ElementRange(elt)[0] for elt in dist_elts])
   sorted_dist_elts  = [dist_elts[k] for k in sorting_idx]
   elt_sections_dn   = [SIDS.ElementSize(elt) for elt in sorted_dist_elts]
-  elt_sections_idx  = py_utils.nb_to_offset(elt_sections_dn, dtype=np.int32)
+  elt_sections_idx  = py_utils.sizes_to_indices(elt_sections_dn, dtype=np.int32)
   p_elts = [I.getNodeFromName(p_zone, I.getName(elt)) for elt in sorted_dist_elts]
   elt_sections_pn = [SIDS.ElementSize(elt) if elt else 0 for elt in p_elts]
   offset = 0

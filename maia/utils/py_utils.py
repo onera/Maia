@@ -20,7 +20,7 @@ def concatenate_point_list(point_lists, dtype=None):
   """
   sizes = [pl_n.size for pl_n in point_lists]
 
-  merged_pl_idx = nb_to_offset(sizes, dtype=np.int32)
+  merged_pl_idx = sizes_to_indices(sizes, dtype=np.int32)
 
   if dtype is None:
     dtype = point_lists[0].dtype if point_lists != [] else np.int
@@ -31,7 +31,7 @@ def concatenate_point_list(point_lists, dtype=None):
 
   return merged_pl_idx, merged_pl
 
-def nb_to_offset(nb_array, dtype=None):
+def sizes_to_indices(nb_array, dtype=None):
   """ Create and offset array from a size array """
   nptype = dtype if dtype else np.asarray(nb_array).dtype
   offset_array = np.empty(len(nb_array)+1, dtype=nptype)

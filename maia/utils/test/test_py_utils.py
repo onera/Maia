@@ -5,7 +5,7 @@ from   maia.utils        import parse_yaml_cgns
 
 def test_list_or_only_elt():
   assert py_utils.list_or_only_elt([42]) == 42
-  input = [1,2,3, "nous irons aux bois"]
+  input = [1,2,3, "nous irons au bois"]
   assert py_utils.list_or_only_elt(input) is input
 
 def test_interweave_arrays():
@@ -18,12 +18,12 @@ def test_interweave_arrays():
   assert (py_utils.interweave_arrays([first, second, third]) == \
       [1,11,111,2,22,222,3,33,333]).all()
 
-def test_nb_to_offset():
-  assert(py_utils.nb_to_offset([]) == np.zeros(1))
-  assert(py_utils.nb_to_offset([5,3,5,10]) == np.array([0,5,8,13,23])).all()
-  assert(py_utils.nb_to_offset([5,0,0,10]) == np.array([0,5,5,5,15])).all()
-  assert py_utils.nb_to_offset([5,0,0,10], np.int32).dtype == np.int32
-  assert py_utils.nb_to_offset([5,0,0,10], np.int64).dtype == np.int64
+def test_sizes_to_indices():
+  assert(py_utils.sizes_to_indices([]) == np.zeros(1))
+  assert(py_utils.sizes_to_indices([5,3,5,10]) == np.array([0,5,8,13,23])).all()
+  assert(py_utils.sizes_to_indices([5,0,0,10]) == np.array([0,5,5,5,15])).all()
+  assert py_utils.sizes_to_indices([5,0,0,10], np.int32).dtype == np.int32
+  assert py_utils.sizes_to_indices([5,0,0,10], np.int64).dtype == np.int64
 
 def test_concatenate_point_list():
   pl1 = np.array([[2, 4, 6, 8]])

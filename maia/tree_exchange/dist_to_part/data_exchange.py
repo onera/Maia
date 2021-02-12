@@ -41,14 +41,14 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       shaped_data = data[ipart].reshape(SIDS.VertexSize(part_zone), order='F')
       I.newDataArray(data_name, shaped_data, parent=part_gc)
 
-def dist_flowsol_to_part_flowsol(dist_zone, part_zones, comm):
+def dist_sol_to_part_sol(dist_zone, part_zones, comm):
   #Get distribution
-  for d_flow_sol in  I.getNodesFromType1(dist_zone, "FlowSolution_t"):
-    location = SIDS.GridLocation(d_flow_sol)
-    has_pl   = I.getNodeFromName1(d_flow_sol, 'PointList') is not None
+  for d_sol in I.getNodesFromType1(dist_zone, "FlowSolution_t") + I.getNodesFromType1(dist_zone, "DiscreteData_t"):
+    location = SIDS.GridLocation(d_sol)
+    has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
     if has_pl:
-      distribution = te_utils.get_cgns_distribution(d_flow_sol, ':CGNS#Distribution/Index')
-      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, I.getName(d_flow_sol) + '/:CGNS#GlobalNumbering/Index')
+      distribution = te_utils.get_cgns_distribution(d_sol, ':CGNS#Distribution/Index')
+      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, I.getName(d_sol) + '/:CGNS#GlobalNumbering/Index')
     else:
       assert location in ['Vertex', 'CellCenter']
       if location == 'Vertex':
@@ -60,7 +60,7 @@ def dist_flowsol_to_part_flowsol(dist_zone, part_zones, comm):
 
     #Get data
     dist_data = dict()
-    for field in I.getNodesFromType1(d_flow_sol, 'DataArray_t'):
+    for field in I.getNodesFromType1(d_sol, 'DataArray_t'):
       dist_data[I.getName(field)] = I.getValue(field)
 
     #Exchange
@@ -70,15 +70,16 @@ def dist_flowsol_to_part_flowsol(dist_zone, part_zones, comm):
       #Skip void flow solution (can occur with point lists)
       if lntogn_list[ipart].size > 0:
         if has_pl:
-          p_flow_sol = I.getNodeFromName1(part_zone, I.getName(d_flow_sol))
-          shape = I.getNodeFromName1(p_flow_sol, 'PointList')[1].shape
+          p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
+          shape = I.getNodeFromName1(p_sol, 'PointList')[1].shape
         else:
-          p_flow_sol = I.newFlowSolution(I.getName(d_flow_sol), location, parent=part_zone)
+          p_sol = I.newFlowSolution(I.getName(d_sol), location, parent=part_zone)
+          I.setType(p_sol, I.getType(d_sol)) #Trick to be generic between DiscreteData/FlowSol
           shape = SIDS.VertexSize(part_zone) if location == 'Vertex' else SIDS.CellSize(part_zone)
         for data_name, data in part_data.items():
           #F is mandatory to keep shared reference. Normally no copy is done
           shaped_data = data[ipart].reshape(shape, order='F')
-          I.newDataArray(data_name, shaped_data, parent=p_flow_sol)
+          I.newDataArray(data_name, shaped_data, parent=p_sol)
 
 
 def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):

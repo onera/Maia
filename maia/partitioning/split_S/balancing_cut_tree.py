@@ -1,7 +1,7 @@
 """
 This module implements a balancing cut tree structure
 and some algorithm, detailed in https://doi.org/10.1016/j.jpdc.2019.12.010,
-usefull for structured blocks partitioning.
+useful for structured blocks partitioning.
 
 Trees are represented by nested list. A l levels tree is a (l-1) nested list
    and at a given level k, we find:

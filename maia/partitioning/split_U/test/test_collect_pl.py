@@ -12,10 +12,17 @@ def test_concatenate_point_list_of_types():
                  np.array([[10,20,30,40,50,60]], np.int32),
                  np.array([[100]]              , np.int32),
                  np.empty((1,0)                , np.int32)]
+  point_ranges = [np.array([[3,3],[1,3],[1,3]] , np.int32), #This one should be ignored
+                  np.array([[35,55]]           , np.int32)]
   for i, pl in enumerate(point_lists):
     I.newBC('bc'+str(i+1), pointList=pl, parent=zoneBC)
+  for i, pr in enumerate(point_ranges):
+    bc = I.newBC('bc'+str(i+1+len(point_lists)), pointRange=pr, parent=zoneBC)
+    distri = I.createUniqueChild(bc, ":CGNS#Distribution", "UserDefinedData_t")
+    I.newDataArray('Index', [10,15,20], parent=distri)
 
   collected = collect_pl.collect_distributed_pl(zone, ['ZoneBC_t/BC_t'])
-  assert len(collected) == len(point_lists)
-  for i in range(len(collected)):
+  assert len(collected) == len(point_lists) + 1
+  for i in range(len(point_lists)):
     assert (collected[i] == point_lists[i]).all()
+  assert (collected[-1] == np.arange(35+10, 35+15)).all()
