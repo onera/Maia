@@ -4,10 +4,35 @@ import Pypdm.Pypdm        as PDM
 
 from maia      import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.sids import sids     as SIDS
-from maia.partitioning.split_U.collect_pl import collect_distributed_pl
 from maia.utils          import py_utils
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
+
+def collect_distributed_pl(dist_zone, type_paths, filter_loc=None):
+  """
+  Search and collect all the pointList values found under the given
+  types pathes.
+  If a 1d PR is used, it is converted to a contiguous
+  pointlist using the distribution node.
+  If filter_loc list is not None, select only the pointLists of given
+  GridLocation.
+  """
+  point_lists = []
+  for type_path in type_paths:
+    for node in py_utils.getNodesFromTypePath(dist_zone, type_path):
+      if filter_loc is None or SIDS.GridLocation(node) in filter_loc:
+        pl_n = I.getNodeFromName1(node, 'PointList')
+        pr_n = I.getNodeFromName1(node, 'PointRange')
+        if pl_n is not None:
+          point_lists.append(pl_n[1])
+        elif pr_n is not None and I.getValue(pr_n).shape[0] == 1:
+          pr = I.getValue(pr_n)
+          distrib = I.getNodeFromPath(node, ':CGNS#Distribution/Index')[1]
+          point_lists.append(py_utils.single_dim_pr_to_pl(pr, distrib))
+        # else:
+          # point_lists.append(np.empty((1,0), dtype=np.int32, order='F'))
+  return point_lists
+
 
 def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
   i_pl = 0

@@ -1,3 +1,4 @@
+import pytest
 import Converter.Internal as I
 import numpy as np
 import maia.utils.py_utils as py_utils
@@ -17,6 +18,18 @@ def test_interweave_arrays():
       [11,111,22,222,33,333]).all()
   assert (py_utils.interweave_arrays([first, second, third]) == \
       [1,11,111,2,22,222,3,33,333]).all()
+
+def test_single_dim_pr_to_pl():
+  no_dist = py_utils.single_dim_pr_to_pl(np.array([[20, 25]]))
+  assert no_dist.dtype == np.array([[20,25]]).dtype
+  assert (no_dist == np.arange(20, 25+1)).all()
+  assert no_dist.ndim == 2 and no_dist.shape[0] == 1
+  dist = py_utils.single_dim_pr_to_pl(np.array([[20, 25]], dtype=np.int32), np.array([10,15,20]))
+  assert dist.dtype == np.int32
+  assert (dist == np.arange(10+20, 15+20)).all()
+  assert dist.ndim == 2 and dist.shape[0] == 1
+  with pytest.raises(AssertionError):
+    py_utils.single_dim_pr_to_pl(np.array([[20, 25], [1,1]]))
 
 def test_sizes_to_indices():
   assert(py_utils.sizes_to_indices([]) == np.zeros(1))

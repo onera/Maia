@@ -5,7 +5,7 @@ from maia.connectivity import connectivity_transform as CNT
 from maia.utils import zone_elements_utils as EZU
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from .collect_pl import collect_distributed_pl
+#from maia.tree_exchange.dist_to_part.index_exchange import collect_distributed_pl
 from Pypdm.Pypdm import DistributedMesh
 
 def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):

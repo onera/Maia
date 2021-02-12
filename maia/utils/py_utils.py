@@ -13,6 +13,13 @@ def interweave_arrays(array_list):
     output[i::number] = array
   return output
 
+def single_dim_pr_to_pl(pr, distrib=None):
+  assert pr.shape[0] == 1
+  if distrib is not None:
+    return np.arange(pr[0,0]+distrib[0], pr[0,0]+distrib[1], dtype=pr.dtype).reshape((1,-1), order='F')
+  else:
+    return np.arange(pr[0,0], pr[0,1]+1, dtype=pr.dtype).reshape((1,-1), order='F')
+
 def concatenate_point_list(point_lists, dtype=None):
   """
   Merge all the PointList arrays in point_lists list

@@ -2,10 +2,10 @@ import Converter.Internal as I
 import numpy as np
 
 import maia.utils.py_utils as py_utils
-from maia.partitioning.split_U import collect_pl
+from maia.tree_exchange.dist_to_part import index_exchange as IBTP
 
 
-def test_concatenate_point_list_of_types():
+def test_collect_distributed_pl():
   zone   = I.newZone(ztype='Unstructured')
   zoneBC = I.newZoneBC(parent=zone)
   point_lists = [np.array([[2,4,6,8]]          , np.int32),
@@ -21,7 +21,7 @@ def test_concatenate_point_list_of_types():
     distri = I.createUniqueChild(bc, ":CGNS#Distribution", "UserDefinedData_t")
     I.newDataArray('Index', [10,15,20], parent=distri)
 
-  collected = collect_pl.collect_distributed_pl(zone, ['ZoneBC_t/BC_t'])
+  collected = IBTP.collect_distributed_pl(zone, ['ZoneBC_t/BC_t'])
   assert len(collected) == len(point_lists) + 1
   for i in range(len(point_lists)):
     assert (collected[i] == point_lists[i]).all()

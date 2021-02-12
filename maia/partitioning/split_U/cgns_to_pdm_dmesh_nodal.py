@@ -4,7 +4,7 @@ import numpy          as np
 import maia.sids.sids as sids
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from .collect_pl import collect_distributed_pl
+#from maia.tree_exchange.dist_to_part.index_exchange import collect_distributed_pl
 
 from Pypdm.Pypdm import DistributedMeshNodal
 
