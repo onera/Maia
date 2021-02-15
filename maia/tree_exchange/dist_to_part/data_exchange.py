@@ -8,6 +8,9 @@ from maia.utils import py_utils
 from maia.tree_exchange import utils as te_utils
 
 def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
+  """
+  Helper function calling PDM.BlockToPart
+  """
   pdm_distrib = par_utils.partial_to_full_distribution(partial_distri, comm)
 
   part_data = dict()
@@ -21,7 +24,10 @@ def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
   return part_data
 
 def dist_coords_to_part_coords(dist_zone, part_zones, comm):
-
+  """
+  Transfert all the data included in GridCoordinates_t nodes from a distributed
+  zone to the partitioned zones
+  """
   #Get distribution
   distribution_vtx = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
 
@@ -29,7 +35,8 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   dist_data = dict()
   dist_gc = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
   for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
-    dist_data[I.getName(grid_co)] = I.getValue(grid_co)
+    dist_data[I.getName(grid_co)] = grid_co[1] #Prevent np->scalar conversion
+
 
   vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
   part_data = dist_to_part(distribution_vtx, dist_data, vtx_lntogn_list, comm)
@@ -42,6 +49,10 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       I.newDataArray(data_name, shaped_data, parent=part_gc)
 
 def dist_sol_to_part_sol(dist_zone, part_zones, comm):
+  """
+  Transfert all the data included in FlowSolution_t nodes and DiscreteData_t nodes from a distributed
+  zone to the partitioned zones
+  """
   #Get distribution
   for d_sol in I.getNodesFromType1(dist_zone, "FlowSolution_t") + I.getNodesFromType1(dist_zone, "DiscreteData_t"):
     location = SIDS.GridLocation(d_sol)
@@ -61,7 +72,7 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
     #Get data
     dist_data = dict()
     for field in I.getNodesFromType1(d_sol, 'DataArray_t'):
-      dist_data[I.getName(field)] = I.getValue(field)
+      dist_data[I.getName(field)] = field[1] #Prevent np->scalar conversion
 
     #Exchange
     part_data = dist_to_part(distribution, dist_data, lntogn_list, comm)
@@ -81,8 +92,11 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
           shaped_data = data[ipart].reshape(shape, order='F')
           I.newDataArray(data_name, shaped_data, parent=p_sol)
 
-
 def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
+  """
+  Transfert all the data included in BCDataSet_t/BCData_t nodes from a distributed
+  zone to the partitioned zones
+  """
   for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
     for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
       bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
@@ -101,7 +115,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
         #Get data
         dist_data = dict()
         for bc_data, field in py_utils.getNodesWithParentsFromTypePath(d_dataset, 'BCData_t/DataArray_t'):
-          dist_data[I.getName(bc_data) + '/' + I.getName(field)] = I.getValue(field)
+          dist_data[I.getName(bc_data) + '/' + I.getName(field)] = field[1] #Prevent np->scalar conversion
 
         #Exchange
         part_data = dist_to_part(distribution, dist_data, lngn_list, comm)
@@ -115,7 +129,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
             part_ds = I.createUniqueChild(part_bc, I.getName(d_dataset), I.getType(d_dataset), I.getValue(d_dataset))
             part_ds_pl = I.getNodeFromName1(part_ds, 'PointList')
             # Get shape
-            shape = I.getValue(part_ds_pl).shape if part_ds_pl else I.getNodeFromName1(part_bc, 'PointList')[1].shape
+            shape = part_ds_pl[1].shape if part_ds_pl else I.getNodeFromName1(part_bc, 'PointList')[1].shape
             # Add data
             for data_name, data in part_data.items():
               container_name, field_name = data_name.split('/')
@@ -123,3 +137,51 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
               I.newDataArray(field_name, data[ipart].reshape(shape, order='F'), parent=p_container)
 
 
+def dist_subregion_to_part_subregion(dist_zone, part_zones, comm):
+  """
+  Transfert all the data included in ZoneSubRegion_t nodes from a distributed
+  zone to the partitioned zones
+  """
+  for d_zsr in I.getNodesFromType1(dist_zone, "ZoneSubRegion_t"):
+    # Search matching region
+    matching_region_path = None
+    if I.getNodeFromName1(d_zsr, "BCRegionName") is not None:
+      for zbc, bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, "ZoneBC_t/BC_t"):
+        if I.getName(bc) == I.getValue(I.getNodeFromName1(d_zsr, "BCRegionName")):
+          matching_region_path = I.getName(zbc) + '/' + I.getName(bc)
+          break
+    elif I.getNodeFromName1(d_zsr, "GridConnectivityRegionName") is not None:
+      gc_pathes = ["ZoneGridConnectivity_t/GridConnectivity_t", "ZoneGridConnectivity/GridConnectivity1to1_t"]
+      for gc_path in gc_pathes:
+        for zgc, gc in py_utils.getNodesWithParentsFromTypePath(dist_zone, gc_path):
+          if I.getName(gc) == I.getValue(I.getNodeFromName1(d_zsr, "GridConnectivityRegionName")):
+            matching_region_path = I.getName(zgc) + '/' + I.getName(gc)
+            break
+    else:
+      matching_region_path = I.getName(d_zsr)
+
+    matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
+    assert matching_region is not None
+
+    #Get distribution and lngn
+    distribution = te_utils.get_cgns_distribution(matching_region, ':CGNS#Distribution/Index')
+    lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, matching_region_path + \
+        '/:CGNS#GlobalNumbering/Index')
+
+    #Get Data
+    dist_data = dict()
+    for field in I.getNodesFromType1(d_zsr, "DataArray_t"):
+      dist_data[I.getName(field)] = field[1] #Prevent np->scalar conversion
+
+    #Exchange
+    part_data = dist_to_part(distribution, dist_data, lngn_list, comm)
+
+    #Put part data in tree
+    for ipart, part_zone in enumerate(part_zones):
+      # Skip void zsr
+      if lngn_list[ipart].size > 0:
+        # Create ZSR if not existing (eg was defined by bc/gc)
+        p_zsr = I.createUniqueChild(part_zone, I.getName(d_zsr), I.getType(d_zsr), I.getValue(d_zsr))
+        shape = I.getNodeFromPath(part_zone, matching_region_path + '/PointList')[1].shape
+        for field_name, data in part_data.items():
+          I.newDataArray(field_name, data[ipart].reshape(shape, order='F'), parent=p_zsr)
