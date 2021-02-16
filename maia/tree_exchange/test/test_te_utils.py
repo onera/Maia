@@ -3,7 +3,7 @@ import Converter.Internal as I
 from maia import npy_pdm_gnum_dtype
 from maia.utils         import parse_yaml_cgns
 from maia.tree_exchange import utils
-from maia.utils.mpi_test_utils import mark_mpi_test
+from pytest_mpi_check._decorator import mark_mpi_test
 
 def test_get_cgns_distribution():
   yt = """

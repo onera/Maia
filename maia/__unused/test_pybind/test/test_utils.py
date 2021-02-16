@@ -1,6 +1,7 @@
 import pytest
-import pytest_check as check
-from maia.utils.mpi_test_utils import mark_mpi_test
+from pytest_mpi_check._decorator import mark_mpi_test
+
+# import pytest_check as check
 
 # @pytest.mark.parametrize("make_sub_comm", [1], indirect=['make_sub_comm'])
 # --------------------------------------------------------------------------
@@ -8,8 +9,8 @@ from maia.utils.mpi_test_utils import mark_mpi_test
 def test_utils(sub_comm):
   """
   """
-  # print("make_sub_comm :: ", make_sub_comm)
-  #print(f"[{make_sub_comm.Get_rank()}/{make_sub_comm.Get_size()}] test_utils")
+  # print("sub_comm :: ", sub_comm)
+  print(f"[{sub_comm.Get_rank()}/{sub_comm.Get_size()}] test_utils")
   # from maia.utils import dispatch as MUD
   # print("test_utils", dir(MUD))
   assert 0 == 0
@@ -18,12 +19,15 @@ def test_utils(sub_comm):
   # check.equal(0, 1, " hehe3" )
 
 # --------------------------------------------------------------------------
+# @pytest.mark.mpi_test(comm_size=1)
+# @pytest.mark.parametrize("make_sub_comm", [1, 2], indirect=['make_sub_comm'])
+
 @mark_mpi_test([1,2])
 def test_utils2(sub_comm):
   """
   """
   # print("make_sub_comm :: ", make_sub_comm)
-  #print(f"[{make_sub_comm.Get_rank()}/{make_sub_comm.Get_size()}] test_utils2")
+  print(f"[{sub_comm.Get_rank()}/{sub_comm.Get_size()}] test_utils2")
   # print(f"test_utils2 on rank {}")
   assert 0 == 0
   # check.equal(0, 1, " hehe4" )

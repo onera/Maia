@@ -1,79 +1,56 @@
 import pytest
-import itertools as ITT
+from pytest_mpi_check._decorator import mark_mpi_test
 
-def inc(x):
-    return x + 1
+from mpi4py import MPI
 
-def test_answer():
-    assert inc(3) == 4
-    assert inc(4) == 5
-    assert inc(5) == 6
-    # assert inc(6) == 8
-
-# --------------------------------------------------------------------------
-def assert_mpi(comm, rank, cond ):
-  if(comm.rank == rank):
-    print(cond)
-    assert(cond == True)
-  else:
-    pass
-
-# --------------------------------------------------------------------------
-def test_first_step():
+def test_simple_seq():
   """
   """
-  # print("test_first_step")
-  from maia.__unused.test_pybind import first_step as MUF
+  print("test_simple_seq")
+  assert 0 == 0
 
-  base = MUF.cgns_base("cgns_base", 1)
+def test_simple_mpi2proc():
+  """
+  A nettoyer je pense qu'il est executé n procs fois
+  """
+  print("test_simple_mpi2proc")
 
-  zone_u1 = MUF.zone_unstructured("zone_name", 1)
-  assert(zone_u1.global_id == 1          );
-  assert(zone_u1.name      == "zone_name");
+  assert 0 == 0
 
-  zone_s1 = MUF.zone_structured("cartesian", 2)
-  assert(zone_s1.global_id == 2          );
-  assert(zone_s1.name      == "cartesian");
 
-  # MUF.add_zone_to_base(base, zone_u1);
-  # MUF.add_zone_to_base(base, zone_s1);
-
-  print(zone_u1.global_id)
-  print(zone_s1.global_id)
-  print(base)
-
-# --------------------------------------------------------------------------
-def test_mpi():
+@mark_mpi_test([1,2])
+def test_simple_mpi_param(sub_comm):
   """
   """
-  from mpi4py import MPI
-  comm = MPI.COMM_WORLD
-  print("hello", comm.size)
-  assert comm.size > 0
-  assert_mpi(comm, 0, comm.rank == 0)
-  assert_mpi(comm, 1, comm.rank == 1)
+  comm   = MPI.COMM_WORLD
+  print("\n\n test_simple_mpi_param :: rank = ",sub_comm.Get_rank(),", n_rank = ",sub_comm.Get_size(), "on initial comm :: ", comm.Get_rank(), "/", comm.Get_size(), "\n\n")
+  assert 0 == 0
+  # assert 0 == 1
+  # assert 1 == 0
+  pytest.assert_mpi(sub_comm, 0, sub_comm.rank == 1)
+  pytest.assert_mpi(sub_comm, 1, sub_comm.rank == 0)
 
-# --------------------------------------------------------------------------
-@pytest.mark.mpi
-def test_size():
-  from mpi4py import MPI
-  comm = MPI.COMM_WORLD
-  assert comm.size > 0
+# @pytest.mark.parametrize("val",[-3,-4])
+# @mark_mpi_test([1,2])
+# def test_simple_mpi_param_and_val(sub_comm, val):
+#   """
+#   """
+#   comm   = MPI.COMM_WORLD
+#   print("\n\n test_simple_mpi_param_and_val :: rank = ",sub_comm.Get_rank(),", n_rank = ",sub_comm.Get_size(), "on initial comm :: ", comm.Get_rank(), "/", comm.Get_size(), "\n\n")
+#   assert 0 == 0
+#   assert 0 == 0
+#   assert 0 == 0
+#   assert 0 == 0
+#   assert 1 == 0
 
-# --------------------------------------------------------------------------
-#@pytest.mark.mpi(min_size=2)
-#def test_size():
-#  from mpi4py import MPI
-#  comm = MPI.COMM_WORLD
-#  print("hello", comm.size, comm.rank)
-#  assert comm.size >= 2
+# @pytest.mark.parametrize("val",[-30,-40])
+@mark_mpi_test(2)
+def test_simple_mpi_param_and_val_t2(sub_comm):
+  """
+  """
+  comm   = MPI.COMM_WORLD
+  print("\n\n test_simple_mpi_param_and_val_t2 :: rank = ",sub_comm.Get_rank(),", n_rank = ",sub_comm.Get_size(), "on initial comm :: ", comm.Get_rank(), "/", comm.Get_size(), "\n\n")
+  assert 0 == 0
 
-
-# --------------------------------------------------------------------------
-# @pytest.mark.parametrize("memorder", 1, 2, 3, ids=lambda fixture_value:fixture_value.name)
-@pytest.mark.parametrize("memorder", [1, 2, 3])
-@pytest.mark.parametrize("dtype", ["float", "double", "int"])
-def test_memory_key(dtype, memorder):
-  print("dtype::"   ,dtype)
-  print("memorder::",memorder)
-
+  # pytest.assert_mpi(sub_comm, 0, sub_comm.rank == 1)
+  # pytest.assert_mpi(sub_comm, 1, sub_comm.rank == 0)

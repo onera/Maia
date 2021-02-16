@@ -1,4 +1,6 @@
 import pytest
+from pytest_mpi_check._decorator import mark_mpi_test
+
 import numpy      as np
 import mpi4py.MPI as MPI
 
@@ -15,12 +17,9 @@ def test_uniform_distribution_at():
   assert MID.uniform_distribution_at(17,2,3) == (12,17)
 
 
-@pytest.mark.mpi(min_size=3)
-@pytest.mark.parametrize("sub_comm", [3], indirect=['sub_comm'])
-def test_uniform_distribution(sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
 
+@mark_mpi_test(3)
+def test_uniform_distribution(sub_comm):
   distrib = MID.uniform_distribution(np.int32(17), sub_comm)
   assert isinstance(distrib, np.ndarray)
   assert distrib.dtype == 'int32'
@@ -35,12 +34,8 @@ def test_uniform_distribution(sub_comm):
       17, sub_comm.Get_rank(), sub_comm.Get_size())).all()
   assert distrib[2] == 17
 
-@pytest.mark.mpi(min_size=3)
-@pytest.mark.parametrize("sub_comm", [3], indirect=['sub_comm'])
+@mark_mpi_test(3)
 def test_create_distribution_node(sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
-
   node = I.createNode('ParentNode', 'AnyType_t')
   MID.create_distribution_node(100, sub_comm, 'MyDistribution', node)
 
