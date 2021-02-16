@@ -58,9 +58,9 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ## Dependencies installed in the environment ##
 if(CMAKE_VERSION VERSION_LESS 3.14)
-  find_package(Python REQUIRED COMPONENTS Interpreter Development)
+  find_package(Python 3 REQUIRED COMPONENTS Interpreter Development)
 else()
-  find_package(Python REQUIRED COMPONENTS Interpreter Development NumPy)
+  find_package(Python 3 REQUIRED COMPONENTS Interpreter Development NumPy)
 endif()
 
 find_package(MPI REQUIRED)
@@ -137,11 +137,11 @@ target_add_dependency(${PROJECT_NAME} cpp_cgns)
 
 ## Python dependencies (just check) ##
 include(${PROJECT_UTILS_CMAKE_DIR}/has_python_module.cmake)
-has_python_module(ruamel REQUIRED)
-has_python_module(pytest)
-has_python_module(pytest_mpi) # TODO tell to install package pytest-mpi
-has_python_module(pytest_html) # TODO tell to install package pytest-mpi
-has_python_module(pytest_check)
+#has_python_module(ruamel REQUIRED)
+#has_python_module(pytest)
+#has_python_module(pytest_mpi) # TODO tell to install package pytest-mpi
+#has_python_module(pytest_html) # TODO tell to install package pytest-mpi
+#has_python_module(pytest_check)
 
 
 # ----------------------------------------------------------------------

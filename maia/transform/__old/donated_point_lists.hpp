@@ -13,10 +13,10 @@ struct donated_point_list {
   cgns::GridLocation_t loc;
   std_e::span<I4> pl;
 };
-auto eq_receiver_zone = [](const donated_point_list& x, const donated_point_list& y) {
+const auto eq_receiver_zone = [](const donated_point_list& x, const donated_point_list& y) {
   return x.receiver_z_name == y.receiver_z_name ;
 };
-auto less_receiver_zone = [](const donated_point_list& x, const donated_point_list& y) {
+const auto less_receiver_zone = [](const donated_point_list& x, const donated_point_list& y) {
   return x.receiver_z_name < y.receiver_z_name ;
 };
 

@@ -15,6 +15,7 @@ Dependencies
 
 * pytest (python package)
 * ruamel (python package)
+* mpi4py (python package)
 
 The build process requires:
 
@@ -60,7 +61,7 @@ Build and install
   pip3 install --user pytest-mpi
   pip3 install --user pytest-html
   pip3 install --user pytest_check
-  pip3 install --user ruamel
+  pip3 install --user ruamel.yaml
 
 2. Then you need to populate your :code:`external` folder. If you got Maia from a `Maia_suite` repository, then there is nothing to do. Else, you can do it with `git submodule update --init`
 

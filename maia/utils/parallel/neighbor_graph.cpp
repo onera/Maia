@@ -3,7 +3,6 @@
 #include "cpp_cgns/tree_manip.hpp"
 #include "std_e/utils/vector.hpp"
 #include "std_e/parallel/mpi.hpp"
-#include "std_e/log.hpp"
 #include "std_e/utils/to_string.hpp"
 #include "maia/utils/parallel/exchange/spread_then_collect.hpp"
 

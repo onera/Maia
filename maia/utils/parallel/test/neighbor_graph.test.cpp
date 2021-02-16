@@ -63,7 +63,6 @@ MPI_TEST_CASE("send_PointListDonor_to_donor_proc",2) {
   zone_exchange ze(b,test_comm);
   auto [donor_zone_names,receiver_zone_names,grid_locs,pl_donor_data] = ze.send_PointListDonor_to_donor_proc();
 
-  ELOG(receiver_zone_names);
   MPI_CHECK( 0 ,    donor_zone_names == vector<string>{"Zone0","Zone0","Zone3"} );
   MPI_CHECK( 0 , receiver_zone_names == vector<string>{"Zone0","Zone1","Zone2"} );
   MPI_CHECK( 0 , grid_locs == vector<GridLocation_t>{FaceCenter,Vertex,CellCenter} );

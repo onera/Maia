@@ -83,12 +83,12 @@ create_Zone0() -> tree {
   emplace_child(zone,create_GridCoords0());
 
   tree zone_bc = new_ZoneBC();
-  emplace_child(zone_bc,new_BC("Inlet","FaceCenter",std_e::make_buffer_vector({1,2}))); // 1,2 are the two i-faces at x=0
+  emplace_child(zone_bc,new_BC("Inlet","FaceCenter",{1,2})); // 1,2 are the two i-faces at x=0
   emplace_child(zone,std::move(zone_bc));
 
   tree gc = new_GridConnectivity("MixingPlane","Zone1","FaceCenter","Abutting1to1");
-  emplace_child(gc,new_PointList("PointList",std_e::make_buffer_vector({7}))); // 7 is the bottom i-face at x=3
-  emplace_child(gc,new_PointList("PointListDonor",std_e::make_buffer_vector({1}))); // cf. zone 1
+  emplace_child(gc,new_PointList("PointList",{7})); // 7 is the bottom i-face at x=3
+  emplace_child(gc,new_PointList("PointListDonor",{1})); // cf. zone 1
   tree zone_gc = new_ZoneGridConnectivity();
   emplace_child(zone_gc,std::move(gc));
   emplace_child(zone,std::move(zone_gc));
@@ -145,13 +145,13 @@ create_Zone1() -> tree {
   emplace_child(zone,create_GridCoords1());
 
   tree zone_bc = new_ZoneBC();
-  emplace_child(zone_bc,new_BC("Outlet","FaceCenter",std_e::make_buffer_vector({2}))); // 2 is the i-face at x=4
+  emplace_child(zone_bc,new_BC("Outlet","FaceCenter",{2})); // 2 is the i-face at x=4
   emplace_child(zone,std::move(zone_bc));
 
 
   tree gc = new_GridConnectivity("MixingPlane","Zone0","FaceCenter","Abutting1to1");
-  emplace_child(gc,new_PointList("PointList",std_e::make_buffer_vector({1}))); // cf. zone 0
-  emplace_child(gc,new_PointList("PointListDonor",std_e::make_buffer_vector({7}))); // 1 is the i-face at x=3
+  emplace_child(gc,new_PointList("PointList",{1})); // cf. zone 0
+  emplace_child(gc,new_PointList("PointListDonor",{7})); // 1 is the i-face at x=3
   tree zone_gc = new_ZoneGridConnectivity();
   emplace_child(zone_gc,std::move(gc));
   emplace_child(zone,std::move(zone_gc));
