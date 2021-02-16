@@ -35,6 +35,7 @@ import maia.distribution.distribution_tree                          as MDI
 # > Pick a file
 inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/Cube_ANSAd/Cube_hyb_sep.hdf'
 inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8.cgns'
+inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8_I4.cgns'
 # inputfile    = '/stck/bmaugars/dev/dev-Tools/maia/build/H155_FPL24_64.hdf'
 # inputfile    = '/scratchm/bmaugars/H155_FPL24_64.cgns'
 # inputfile    = '/home/bmaugars/dev/dev-Tools/maia/unit_tests_case/CUBES_POUR_BRUNO/cube8.cgns'
