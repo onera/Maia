@@ -1,9 +1,11 @@
-import pytest
+from pytest_mpi_check._decorator import mark_mpi_test
+
 import mpi4py.MPI as MPI
 import numpy as np
+import Converter.Internal as I
+
 from maia.utils import parse_yaml_cgns
 from maia.transform.dist_tree import add_joins_ordinal
-import Converter.Internal as I
 
 def test_jn_opp_zone():
   jn1 = I.newGridConnectivity1to1(donorName='BaseXX/ZoneYY')
@@ -39,11 +41,8 @@ class Test_compare_pointlist():
     jn2 = I.newGridConnectivity1to1(pointListDonor=np.empty((1,0), np.int32), pointList=np.empty((1,0), np.int32))
     assert(add_joins_ordinal._compare_pointlist(jn1, jn2) == True)
 
-@pytest.mark.mpi(min_size=1)
-@pytest.mark.parametrize("sub_comm", [1], indirect=['sub_comm'])
+@mark_mpi_test(1)
 def test_add_joins_ordinal(sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t [[27],[8],[0]]:
@@ -94,11 +93,8 @@ Base1 CGNSBase_t [3,3]:
           assert I.getNodeFromName1(gc, 'Ordinal')[1]    == expected_ordinal[i]
           assert I.getNodeFromName1(gc, 'OrdinalOpp')[1] == expected_ordinal_opp[i]
 
-@pytest.mark.mpi(min_size=3)
-@pytest.mark.parametrize("sub_comm", [3], indirect=['sub_comm'])
+@mark_mpi_test(3)
 def test_add_joins_ordinal_3p(sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t [[27],[8],[0]]:

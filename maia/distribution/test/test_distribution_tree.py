@@ -1,4 +1,5 @@
 import pytest
+from pytest_mpi_check._decorator import mark_mpi_test
 import mpi4py.MPI as MPI
 import numpy      as np
 import Converter.Internal as I
@@ -7,11 +8,8 @@ from   maia.utils        import parse_yaml_cgns
 from   maia.distribution import distribution_tree
 import maia.distribution.distribution_function as MID
 
-@pytest.mark.mpi(min_size=2)
-@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+@mark_mpi_test(2)
 def test_compute_plist_or_prange_distribution(sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
   node = I.newBC(name='BC', pointRange=[[1,3],[1,3],[3,3]])
   distribution_tree.compute_plist_or_prange_distribution(node, sub_comm)
 
@@ -32,11 +30,8 @@ def test_compute_plist_or_prange_distribution(sub_comm):
   assert I.getType(distrib) == 'DataArray_t'
   assert (I.getValue(distrib) == MID.uniform_distribution(1*9, sub_comm)).all()
 
-@pytest.mark.mpi(min_size=2)
-@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+@mark_mpi_test(2)
 def test_compute_elements_distribution(sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
   zoneS = I.newZone('ZoneS', ztype='Structured')
   zoneU = I.newZone('ZoneS', ztype='Unstructured')
   hexa = I.newElements('Hexa', 'HEXA', erange=[1,100],parent=zoneU)
@@ -106,11 +101,8 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     assert len(I.getNodesFromName(zone, 'Index')) == 3
 
 
-@pytest.mark.mpi(min_size=2)
-@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+@mark_mpi_test(2)
 def test_add_distribution_info(sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
   dist_tree = parse_yaml_cgns.to_complete_pytree("""
 Base CGNSBase_t [3,3]:
   ZoneU Zone_t [[27,8,0]]:

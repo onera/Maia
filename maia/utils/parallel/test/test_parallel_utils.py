@@ -1,14 +1,12 @@
+from pytest_mpi_check._decorator import mark_mpi_test
+
 import numpy as np
-import pytest
 from mpi4py import MPI
 
 from maia.utils.parallel import utils
 
-@pytest.mark.mpi(min_size=3)
-@pytest.mark.parametrize("sub_comm", [3], indirect=['sub_comm'])
+@mark_mpi_test(3)
 def test_partial_to_full_distribution(sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
   if sub_comm.Get_rank() == 0:
     partial_distrib_32 = np.array([0, 25, 75], dtype=np.int32)
     partial_distrib_64 = np.array([0, 25, 75], dtype=np.int64)

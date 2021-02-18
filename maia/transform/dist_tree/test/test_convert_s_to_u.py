@@ -1,4 +1,5 @@
 import pytest
+from pytest_mpi_check._decorator import mark_mpi_test
 import mpi4py.MPI as MPI
 import numpy as np
 from maia.utils import parse_yaml_cgns
@@ -319,12 +320,9 @@ def test_gc_s_to_gc_u():
   assert (I.getNodeFromName1(gcB_u, 'PointList')[1]\
           == I.getNodeFromName1(gcA_u, 'PointListDonor')[1]).all()
 
-@pytest.mark.mpi(min_size=2)
-@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+@mark_mpi_test(2)
 def test_zonedims_to_ngon(sub_comm):
   #We dont test value of faceVtx/ngon here, this is carried out by Test_compute_all_ngon_connectivity
-  if(sub_comm == MPI.COMM_NULL):
-    return
   n_vtx_zone = np.array([3,2,4])
   ngon = convert_s_to_u.zonedims_to_ngon(n_vtx_zone, sub_comm)
   n_faces = I.getNodeFromName1(ngon, "ElementStartOffset")[1].shape[0] - 1
