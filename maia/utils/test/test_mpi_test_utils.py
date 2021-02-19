@@ -4,11 +4,15 @@ from mpi4py import MPI
 
 @mark_mpi_test(1)
 def test_mark_mpi_decorator(sub_comm):
-  print("\n\nrank = ",sub_comm.Get_rank(),", n_rank = ",sub_comm.Get_size(),"\n\n")
+  print("\n\n", MPI.COMM_WORLD.Get_rank(), " -> ", sub_comm, MPI.COMM_NULL)
+  assert(sub_comm != MPI.COMM_NULL)
+  print("\n\nrank = ",sub_comm.Get_rank(),", n_rank = ",sub_comm.Get_size(), "  ", MPI.COMM_WORLD.Get_rank(),"\n\n")
 
 @mark_mpi_test([1,2])
 def test_mark_mpi_decorator_with_list(sub_comm):
-  print("\n\nrank = ",sub_comm.Get_rank(),", n_rank = ",sub_comm.Get_size(),"\n\n")
+  # print("\n\n", MPI.COMM_WORLD.Get_rank(), " -> ", sub_comm)
+  print("\n\nrank = ",sub_comm.Get_rank(),", n_rank = ",sub_comm.Get_size(), "  ", MPI.COMM_WORLD.Get_rank(),"\n\n")
+
 
 @pytest.mark.parametrize("val",[3,4])
 @mark_mpi_test(2)

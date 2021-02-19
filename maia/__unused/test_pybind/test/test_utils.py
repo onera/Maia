@@ -18,10 +18,6 @@ def test_utils(sub_comm):
   # check.equal(0, 1, " hehe2" )
   # check.equal(0, 1, " hehe3" )
 
-# --------------------------------------------------------------------------
-# @pytest.mark.mpi_test(comm_size=1)
-# @pytest.mark.parametrize("make_sub_comm", [1, 2], indirect=['make_sub_comm'])
-
 @mark_mpi_test([1,2])
 def test_utils2(sub_comm):
   """

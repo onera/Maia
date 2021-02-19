@@ -3,12 +3,12 @@ import numpy as np
 from mpi4py import MPI
 
 import Converter.Internal as I
+from pytest_mpi_check._decorator import mark_mpi_test
 
 from maia.utils import parse_yaml_cgns
 from maia.partitioning.load_balancing import setup_partition_weights
 
-@pytest.mark.mpi(min_size=3)
-@pytest.mark.parametrize("sub_comm", [3], indirect=['sub_comm'])
+@mark_mpi_test(3)
 class Test_npart_per_zone_3p:
   yt = """
 Base0 CGNSBase_t [3,3]:
@@ -37,8 +37,7 @@ Base0 CGNSBase_t [3,3]:
       for weight in weights:
         assert abs(weight - 0.25) < 1E-2 #Bad precision due to remainder
 
-@pytest.mark.mpi(min_size=2)
-@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+@mark_mpi_test(2)
 class Test_balance_multizone_tree_2p:
   yt = """
 Base0 CGNSBase_t [3,3]:
@@ -51,7 +50,7 @@ Base0 CGNSBase_t [3,3]:
   def test_uniform(self, sub_comm):
     if(sub_comm == MPI.COMM_NULL):
       return
-    zone_to_weights = setup_partition_weights.balance_multizone_tree(self.dist_tree, 
+    zone_to_weights = setup_partition_weights.balance_multizone_tree(self.dist_tree,
         sub_comm, only_uniform=True)
     if sub_comm.Get_rank() == 0:
       assert zone_to_weights['ZoneU1'] == [1.0]

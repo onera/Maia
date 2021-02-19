@@ -46,12 +46,17 @@ def test_compute_elements_distribution(sub_comm):
 
 
 
-@pytest.mark.mpi(min_size=2)
-@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+#@pytest.mark.mpi(min_size=2)
+#@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+#@mark_mpi_test(2)
+#@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
+
+@mark_mpi_test(2)
 class Test_compute_zone_distribution:
   def test_unstruct(self, sub_comm):
     if(sub_comm == MPI.COMM_NULL):
       return
+    # assert False
     yt = """
   Ngon Elements_t [22,0]:
     ElementRange IndexArray_t [1,36]:
