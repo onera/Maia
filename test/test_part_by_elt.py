@@ -1,5 +1,5 @@
 import pytest
-from maia.utils.mpi_test_utils import mark_mpi_test
+from pytest_mpi_check._decorator import mark_mpi_test
 from maia.cgns_io import save_part_tree as SPT
 
 from mpi4py import MPI
