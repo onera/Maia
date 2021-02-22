@@ -1,4 +1,3 @@
-import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import mpi4py.MPI as MPI
 import numpy      as np
@@ -46,17 +45,9 @@ def test_compute_elements_distribution(sub_comm):
 
 
 
-#@pytest.mark.mpi(min_size=2)
-#@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
-#@mark_mpi_test(2)
-#@pytest.mark.parametrize("sub_comm", [2], indirect=['sub_comm'])
-
 @mark_mpi_test(2)
 class Test_compute_zone_distribution:
   def test_unstruct(self, sub_comm):
-    if(sub_comm == MPI.COMM_NULL):
-      return
-    # assert False
     yt = """
   Ngon Elements_t [22,0]:
     ElementRange IndexArray_t [1,36]:
@@ -86,8 +77,6 @@ class Test_compute_zone_distribution:
     assert len(I.getNodesFromName(zone, 'Element')) == 1
 
   def test_struct(self, sub_comm):
-    if(sub_comm == MPI.COMM_NULL):
-      return
     yt = """
 Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
   ZoneType ZoneType_t "Structured":

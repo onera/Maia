@@ -1,9 +1,8 @@
-import pytest
+from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 from mpi4py import MPI
 
 import Converter.Internal as I
-from pytest_mpi_check._decorator import mark_mpi_test
 
 from maia.utils import parse_yaml_cgns
 from maia.partitioning.load_balancing import setup_partition_weights
@@ -18,8 +17,6 @@ Base0 CGNSBase_t [3,3]:
 """
   dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
   def test_one_part(self, sub_comm):
-    if(sub_comm == MPI.COMM_NULL):
-      return
     zone_to_weights = setup_partition_weights.npart_per_zone(self.dist_tree, sub_comm)
     for zone in I.getZones(self.dist_tree):
       assert I.getName(zone) in zone_to_weights
@@ -28,8 +25,6 @@ Base0 CGNSBase_t [3,3]:
       assert abs(weights[0] - 1./3.) < 1E-2 #Bad precision due to remainder
 
   def test_multiple_part(self, sub_comm):
-    if(sub_comm == MPI.COMM_NULL):
-      return
     n_part = 2 if sub_comm.Get_rank() == 1 else 1
     zone_to_weights = setup_partition_weights.npart_per_zone(self.dist_tree, sub_comm, n_part)
     for zone, weights in zone_to_weights.items():
@@ -48,8 +43,6 @@ Base0 CGNSBase_t [3,3]:
   dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
 
   def test_uniform(self, sub_comm):
-    if(sub_comm == MPI.COMM_NULL):
-      return
     zone_to_weights = setup_partition_weights.balance_multizone_tree(self.dist_tree,
         sub_comm, only_uniform=True)
     if sub_comm.Get_rank() == 0:
@@ -62,8 +55,6 @@ Base0 CGNSBase_t [3,3]:
       assert zone_to_weights['ZoneS']  == [1.0]
 
   def test_non_uniform(self, sub_comm):
-    if(sub_comm == MPI.COMM_NULL):
-      return
     zone_to_weights = setup_partition_weights.balance_multizone_tree(self.dist_tree, sub_comm)
     if sub_comm.Get_rank() == 0:
       assert zone_to_weights['ZoneU1'] == [.238]

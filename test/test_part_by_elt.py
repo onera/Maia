@@ -8,8 +8,6 @@ from maia import parallel_tree
 
 @mark_mpi_test(1)
 def test_load_partitioned_tree(tmpdir,sub_comm):
-  if(sub_comm == MPI.COMM_NULL):
-    return
   #input_file = '/scratchm/bberthou/cases/CODA_tests/cube/data/in/cube.cgns'
   input_file = '/scratchm/bberthou/cases/CODA_tests/cube/data/in/cube_4.cgns'
 
