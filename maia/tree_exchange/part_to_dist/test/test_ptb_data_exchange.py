@@ -131,3 +131,179 @@ ZoneU Zone_t [[6,0,0]]:
   if sub_comm.Get_rank () == 1:
     assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
     assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1] == [0,1,1]).all()
+
+@mark_mpi_test(2)
+def test_part_subregion_to_dist_subregion(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    dt = """
+ZoneU Zone_t [[6,0,0]]:
+  ZGC ZoneGridConnectivity_t:
+    GC GridConnectivity_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[18, 22]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [0,2,6]:
+  ZSRWithPL ZoneSubRegion_t:
+    GridLocation GridLocation_t "Vertex":
+    PointList IndexArray_t [[6]]:
+    field DataArray_t I4 [[42]]:
+    :CGNS#Distribution UserDefinedData_t:
+      Index DataArray_t [0,1,2]:
+  LinkedZSR ZoneSubRegion_t:
+    GridLocation GridLocation_t "FaceCenter":
+    GridConnectivityRegionName Descriptor_t "GC":
+    field DataArray_t:
+  """.format(dtype)
+    pt = """
+  ZoneU.P0.N0 Zone_t [[3,0,0]]:
+    ZGC ZoneGridConnectivity_t:
+      GC GridConnectivity_t:
+        PointList IndexArray_t [[1, 12, 21]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [2,5,1]:
+    LinkedZSR ZoneSubRegion_t:
+      GridLocation GridLocation_t "FaceCenter":
+      GridConnectivityRegionName Descriptor_t "GC":
+      field DataArray_t R8 [[200,500,100]]:
+    """.format(dtype)
+  elif sub_comm.Get_rank() == 1:
+    dt = """
+ZoneU Zone_t [[6,0,0]]:
+  ZGC ZoneGridConnectivity_t:
+    GC GridConnectivity_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[13, 39, 41, 9]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [2,6,6]:
+  ZSRWithPL ZoneSubRegion_t:
+    GridLocation GridLocation_t "Vertex":
+    PointList IndexArray_t [[2]]:
+    field DataArray_t I4 [[24]]:
+    :CGNS#Distribution UserDefinedData_t:
+      Index DataArray_t [1,2,2]:
+  LinkedZSR ZoneSubRegion_t:
+    GridLocation GridLocation_t "FaceCenter":
+    GridConnectivityRegionName Descriptor_t "GC":
+    field DataArray_t:
+  """.format(dtype)
+    pt = """
+  ZoneU.P1.N0 Zone_t [[3,0,0]]:
+    ZGC ZoneGridConnectivity_t:
+      GC GridConnectivity_t:
+        PointList IndexArray_t [[1, 29, 108]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [6,3,4]:
+    ZSRWithPL ZoneSubRegion_t:
+      GridLocation GridLocation_t "Vertex":
+      PointList IndexArray_t [[1,2]]:
+      field DataArray_t I4 [[84,48]]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Index DataArray_t {0} [1,2]:
+    LinkedZSR ZoneSubRegion_t:
+      GridLocation GridLocation_t "FaceCenter":
+      GridConnectivityRegionName Descriptor_t "GC":
+      field DataArray_t R8 [[600,300,400]]:
+  """.format(dtype)
+
+  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+
+  dist_zone  = I.getZones(dist_tree)[0]
+  part_zones = I.getZones(part_tree)
+  PTB.part_subregion_to_dist_subregion(dist_zone, part_zones, sub_comm)
+
+  assert I.getNodeFromPath(dist_zone, 'ZSRWithPL/field')[1].dtype == np.int32
+  assert I.getNodeFromPath(dist_zone, 'LinkedZSR/field')[1].dtype == np.float64
+  if sub_comm.Get_rank () == 0:
+    assert (I.getNodeFromPath(dist_zone, 'ZSRWithPL/field')[1] == [84]).all()
+    assert (I.getNodeFromPath(dist_zone, 'LinkedZSR/field')[1] == [100,200]).all()
+  if sub_comm.Get_rank () == 1:
+    assert (I.getNodeFromPath(dist_zone, 'ZSRWithPL/field')[1] == [48]).all()
+    assert (I.getNodeFromPath(dist_zone, 'LinkedZSR/field')[1] == [300,400,500,600]).all()
+
+@mark_mpi_test(2)
+def test_part_dataset_to_dist_dataset(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    dt = """
+ZoneS Zone_t:
+  ZBC ZoneBC_t:
+    BC BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[18, 22]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [0,2,6]:
+      BCDSWithoutPL BCDataSet_t:
+        DirichletData BCData_t:
+          field DataArray_t:
+      BCDSWithPL BCDataSet_t:
+        DirichletData BCData_t:
+          field DataArray_t R8 [[100]]:
+        PointList IndexArray_t [[10]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {0} [0,1,1]:
+  """.format(dtype)
+    pt = """
+  ZoneS.P0.N0 Zone_t:
+    ZBC ZoneBC_t:
+      BC BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1, 12]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [2,5]:
+        BCDSWithoutPL BCDataSet_t:
+          DirichletData BCData_t:
+            field DataArray_t [[[2],[2]]]:
+    """.format(dtype)
+  elif sub_comm.Get_rank() == 1:
+    dt = """
+ZoneS Zone_t:
+  ZBC ZoneBC_t:
+    BC BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[13, 39, 41, 9]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [2,6,6]:
+      BCDSWithoutPL BCDataSet_t:
+        DirichletData BCData_t:
+          field DataArray_t:
+      BCDSWithPL BCDataSet_t:
+        DirichletData BCData_t:
+          field DataArray_t R8 [[]]:
+        PointList IndexArray_t [[]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {0} [1,1,1]:
+  """.format(dtype)
+    pt = """
+  ZoneS.P1.N0 Zone_t:
+    ZBC ZoneBC_t:
+      BC BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1,29,108,21]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [6,3,4,1]:
+        BCDSWithPL BCDataSet_t:
+          DirichletData BCData_t:
+            field DataArray_t R8 [[[200.]]]:
+          PointList IndexArray_t [[108]]:
+          :CGNS#GlobalNumbering UserDefinedData_t:
+            Index DataArray_t {0} [1]:
+        BCDSWithoutPL BCDataSet_t:
+          DirichletData BCData_t:
+            field DataArray_t [[[1,4],[3,1]]]:
+  """.format(dtype)
+
+  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+
+  dist_zone  = I.getZones(dist_tree)[0]
+  part_zones = I.getZones(part_tree)
+  PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, sub_comm)
+
+  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1].dtype    == np.float64
+  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1].dtype == np.int
+  if sub_comm.Get_rank () == 0:
+    assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [200.]).all()
+    assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,2]).all()
+  if sub_comm.Get_rank () == 1:
+    assert len(I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1]) == 0
+    assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [4,3,2,1]).all()

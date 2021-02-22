@@ -3,8 +3,9 @@ import Converter.Internal as I
 import Pypdm.Pypdm        as PDM
 
 import maia.sids.sids     as SIDS
-from maia.utils.parallel import utils as par_utils
-from maia.tree_exchange import utils as te_utils
+from maia.utils.parallel import utils    as par_utils
+from maia.tree_exchange  import utils    as te_utils
+from maia.utils          import py_utils
 
 def discover_partitioned_fields(dist_zone, part_zones, comm):
   """
@@ -87,4 +88,95 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm):
     for field, array in dist_data.items():
       dist_field = I.getNodeFromName1(d_flow_sol, field)
       I.setValue(dist_field, array)
+
+def part_subregion_to_dist_subregion(dist_zone, part_zones, comm):
+  """
+  Transfert all the data included in ZoneSubRegion_t nodes from the partitioned
+  zones to the distributed zone.
+  Zone subregions must exist on distzone
+  """
+  for d_zsr in I.getNodesFromType1(dist_zone, "ZoneSubRegion_t"):
+    # Search matching region
+    matching_region_path = None
+    if I.getNodeFromName1(d_zsr, "BCRegionName") is not None:
+      for zbc, bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, "ZoneBC_t/BC_t"):
+        if I.getName(bc) == I.getValue(I.getNodeFromName1(d_zsr, "BCRegionName")):
+          matching_region_path = I.getName(zbc) + '/' + I.getName(bc)
+          break
+    elif I.getNodeFromName1(d_zsr, "GridConnectivityRegionName") is not None:
+      gc_pathes = ["ZoneGridConnectivity_t/GridConnectivity_t", "ZoneGridConnectivity/GridConnectivity1to1_t"]
+      for gc_path in gc_pathes:
+        for zgc, gc in py_utils.getNodesWithParentsFromTypePath(dist_zone, gc_path):
+          if I.getName(gc) == I.getValue(I.getNodeFromName1(d_zsr, "GridConnectivityRegionName")):
+            matching_region_path = I.getName(zgc) + '/' + I.getName(gc)
+            break
+    else:
+      matching_region_path = I.getName(d_zsr)
+
+    matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
+    assert matching_region is not None
+
+    #Get distribution and lngn
+    distribution = te_utils.get_cgns_distribution(matching_region, ':CGNS#Distribution/Index')
+    lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, matching_region_path + \
+        '/:CGNS#GlobalNumbering/Index')
+
+    #Discover data
+    part_data = dict()
+    for field in I.getNodesFromType1(d_zsr, 'DataArray_t'):
+      part_data[I.getName(field)] = list()
+
+    for part_zone in part_zones:
+      p_zsr = I.getNodeFromPath(part_zone, I.getName(d_zsr))
+      if p_zsr is not None:
+        for field in I.getNodesFromType1(p_zsr, 'DataArray_t'):
+          flat_data = field[1].ravel(order='A') #Reshape structured arrays for PDM exchange
+          part_data[I.getName(field)].append(flat_data)
+
+    # Exchange
+    dist_data = part_to_dist(distribution, part_data, lngn_list, comm)
+    for field, array in dist_data.items():
+      dist_field = I.getNodeFromName1(d_zsr, field)
+      I.setValue(dist_field, array)
+
+def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
+  """
+  Transfert all the data included in BCDataSet_t/BCData_t nodes from partitioned
+  zones to the distributed zone.
+  Such nodes must exist on the dist zone.
+  """
+  for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
+    for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
+      bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
+      #Get BC distribution and lngn
+      distribution_bc = te_utils.get_cgns_distribution(d_bc, ':CGNS#Distribution/Index')
+      lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, bc_path + '/:CGNS#GlobalNumbering/Index')
+      for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
+        #If dataset has its own PointList, we must override bc distribution and lngn
+        if I.getNodeFromPath(d_dataset, ':CGNS#Distribution/Index') is not None:
+          distribution = te_utils.get_cgns_distribution(d_dataset, ':CGNS#Distribution/Index')
+          ds_path      = bc_path + '/' + I.getName(d_dataset)
+          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, ds_path + '/:CGNS#GlobalNumbering/Index')
+        else: #Fallback to bc distribution
+          distribution = distribution_bc
+          lngn_list    = lngn_list_bc
+
+
+        #Discover data
+        part_data = dict()
+        for bc_data, field in py_utils.getNodesWithParentsFromTypePath(d_dataset, 'BCData_t/DataArray_t'):
+          part_data[I.getName(bc_data) + '/' + I.getName(field)] = list()
+
+        for part_zone in part_zones:
+          p_dataset = I.getNodeFromPath(part_zone, bc_path + '/' + I.getName(d_dataset))
+          if p_dataset is not None:
+            for bc_data, field in py_utils.getNodesWithParentsFromTypePath(p_dataset, 'BCData_t/DataArray_t'):
+              flat_data = field[1].ravel(order='A') #Reshape structured arrays for PDM exchange
+              part_data[I.getName(bc_data) + '/' + I.getName(field)].append(flat_data)
+
+        #Exchange
+        dist_data = part_to_dist(distribution, part_data, lngn_list, comm)
+        for field, array in dist_data.items():
+          dist_field = I.getNodeFromPath(d_dataset, field)
+          I.setValue(dist_field, array)
 
