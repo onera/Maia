@@ -52,8 +52,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     CNT.compute_idx_local       (dface_vtx_idx, ngon_eso, distrib_face_vtx)
   else:
     dface_vtx_idx = np.zeros(1, dtype=np.int32    )
-    dface_vtx     = np.empty(0, dtype=pdm_gnum_type)
-    dface_cell    = np.empty(0, dtype=pdm_gnum_type)
+    dface_vtx     = np.empty(0, dtype=pdm_gnum_dtype)
+    dface_cell    = np.empty(0, dtype=pdm_gnum_dtype)
 
   # > Prepare bnd
   #bc_point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'])

@@ -51,11 +51,14 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone,comm):
     elt_lengths[i] = dn_elt_section
 
   dmesh_nodal = DistributedMeshNodal(comm, n_vtx, *n_elt_per_dim[::-1])
-  gridc_n    = I.getNodeFromName1(dist_zone, 'GridCoordinates')
-  cx         = I.getNodeFromName1(gridc_n, 'CoordinateX')[1]
-  cy         = I.getNodeFromName1(gridc_n, 'CoordinateY')[1]
-  cz         = I.getNodeFromName1(gridc_n, 'CoordinateZ')[1]
-  dvtx_coord = py_utils.interweave_arrays([cx,cy,cz])
+  if dn_vtx > 0:
+    gridc_n    = I.getNodeFromName1(dist_zone, 'GridCoordinates')
+    cx         = I.getNodeFromName1(gridc_n, 'CoordinateX')[1]
+    cy         = I.getNodeFromName1(gridc_n, 'CoordinateY')[1]
+    cz         = I.getNodeFromName1(gridc_n, 'CoordinateZ')[1]
+    dvtx_coord = py_utils.interweave_arrays([cx,cy,cz])
+  else:
+    dvtx_coord = np.empty(0, dtype='float64', order='F')
   dmesh_nodal.set_coordinnates(dvtx_coord)
 
   # keep dvtx_coord object alive for ParaDiGM
