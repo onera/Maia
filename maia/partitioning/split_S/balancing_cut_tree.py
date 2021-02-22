@@ -1,4 +1,4 @@
-"""
+r"""
 This module implements a balancing cut tree structure
 and some algorithm, detailed in https://doi.org/10.1016/j.jpdc.2019.12.010,
 useful for structured blocks partitioning.

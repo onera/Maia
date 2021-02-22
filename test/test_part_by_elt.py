@@ -6,7 +6,7 @@ from mpi4py import MPI
 
 from maia import parallel_tree 
 
-@mark_mpi_test(3)
+@mark_mpi_test(1)
 def test_load_partitioned_tree(tmpdir,sub_comm):
   if(sub_comm == MPI.COMM_NULL):
     return

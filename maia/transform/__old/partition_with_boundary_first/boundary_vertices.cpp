@@ -52,7 +52,7 @@ get_elements_boundary_vertices(const tree& elts) -> std::vector<I4> {
   if (elt_type==cgns::NGON_n) {
     auto parent_elts = ParentElements<I4>(elts);
     return ngon_boundary_vertices(connectivity,parent_elts);
-  } else if (std_e::contains(element_types_of_dimension(2),elt_type)) {
+  } else if (cgns::element_dimension(elt_type)==2) {
     return std::vector<I4>(connectivity.begin(),connectivity.end());
   } else {
     return {};

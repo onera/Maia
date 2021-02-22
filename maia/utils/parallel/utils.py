@@ -1,7 +1,7 @@
 import numpy as np
 
 def partial_to_full_distribution(partial_distrib, comm):
-  """
+  r"""
   Compute the full distribution array from the partials distribution
   arrays. 
   Full distribution store data for all procs, ie is Np+1 sized array

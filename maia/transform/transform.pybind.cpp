@@ -9,6 +9,7 @@
 #include "maia/transform/merge_by_elt_type.hpp"
 #include "maia/transform/fsdm_distribution.hpp"
 #include "maia/transform/gcs_only_for_ghosts.hpp"
+#include "maia/transform/split_boundary_subzones_according_to_bcs.hpp"
 
 #include <pybind11/pybind11.h>
 
@@ -78,15 +79,24 @@ auto gcs_only_for_ghosts(py::list py_base) -> void {
   update_and_transfer_ownership_to_py_tree(base,py_base);
 }
 
+auto split_boundary_subzones_according_to_bcs(py::list py_base) -> void {
+  cgns::tree base = cgns::to_cpp_tree(py_base);
+
+  cgns::split_boundary_subzones_according_to_bcs(base);
+
+  update_and_transfer_ownership_to_py_tree(base,py_base);
+}
+
 PYBIND11_MODULE(transform, m) {
   m.doc() = "C++ maia functions wrapped by pybind";
 
-  m.def("partition_with_boundary_first"     , &partition_with_boundary_first , "ngon sorted with boundary faces first");
-  m.def("sort_nfaces_by_element_type"       , &sort_nfaces_by_element_type   , "sort nface into tet, prism, pyra, hex");
-  m.def("sorted_nfaces_to_std_elements"     , &sorted_nfaces_to_std_elements , "turn ngon with boundary first and nface to tri, quad, tet, prism, pyra, hex");
-  m.def("add_nfaces"                        , &add_nfaces                    , "add nface Elements_t from ngons with ParentElements");
-  m.def("remove_ghost_info"                 , &remove_ghost_info             , "Remove ghost nodes and ghost elements of base");
-  m.def("merge_by_elt_type"                 , &merge_by_elt_type             , "For a distributed base, merge Elements_t nodes the same type and does the associated renumbering");
-  m.def("add_fsdm_distribution"             , &add_fsdm_distribution         , "Add FSDM-specific distribution info");
-  m.def("gcs_only_for_ghosts"               , &gcs_only_for_ghosts           , "For GridConnectivities, keep only in the PointList the ones that are ghosts");
+  m.def("partition_with_boundary_first"           , &partition_with_boundary_first           , "ngon sorted with boundary faces first");
+  m.def("sort_nfaces_by_element_type"             , &sort_nfaces_by_element_type             , "sort nface into tet, prism, pyra, hex");
+  m.def("sorted_nfaces_to_std_elements"           , &sorted_nfaces_to_std_elements           , "turn ngon with boundary first and nface to tri, quad, tet, prism, pyra, hex");
+  m.def("add_nfaces"                              , &add_nfaces                              , "add nface Elements_t from ngons with ParentElements");
+  m.def("remove_ghost_info"                       , &remove_ghost_info                       , "Remove ghost nodes and ghost elements of base");
+  m.def("merge_by_elt_type"                       , &merge_by_elt_type                       , "For a distributed base, merge Elements_t nodes the same type and does the associated renumbering");
+  m.def("add_fsdm_distribution"                   , &add_fsdm_distribution                   , "Add FSDM-specific distribution info");
+  m.def("gcs_only_for_ghosts"                     , &gcs_only_for_ghosts                     , "For GridConnectivities, keep only in the PointList the ones that are ghosts");
+  m.def("split_boundary_subzones_according_to_bcs", &split_boundary_subzones_according_to_bcs, "Split a ZoneSubRegion node with a PointRange spaning all boundary faces into multiple ZoneSubRegion with a BCRegionName");
 }

@@ -81,7 +81,7 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
     I4 nb_owned_elts = nb_owned_elements<I4>(elt_pool);
     I4 nb_ghost_elts = nb_ghost_elements<I4>(elt_pool);
 
-    if (std_e::contains(element_types_of_dimension(3),elt_type)) {
+    if (element_dimension(elt_type)==3) {
       nb_owned_cells += nb_owned_elts;
     }
 

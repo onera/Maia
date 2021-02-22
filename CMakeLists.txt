@@ -83,10 +83,8 @@ else()
   set(PDM_ENABLE_PARMETIS        OFF CACHE BOOL "Maia uses ParaDiGM without parmetis"    FORCE)
   set(PDM_ENABLE_PTSCOTCH        ON  CACHE BOOL "Maia uses ParaDiGM with Scotch"         FORCE)
   set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"   FORCE)
-  set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"   FORCE)
 
   # ParaDiGM does not use the same variable names as FindPython
-  message("Python_EXECUTABLE = ${Python_EXECUTABLE}")
   set(PYTHON_EXECUTABLE  ${Python_EXECUTABLE}   CACHE FILEPATH "" FORCE)
   set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS} CACHE PATH     "" FORCE)
   set(PYTHON_LIBRARY     ${Python_LIBRARIES}    CACHE FILEPATH "" FORCE)
