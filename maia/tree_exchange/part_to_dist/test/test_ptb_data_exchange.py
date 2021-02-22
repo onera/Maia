@@ -41,7 +41,7 @@ def test_discover_partitioned_fields(sub_comm):
     PTB.discover_partitioned_fields(dist_zone, part_zones, sub_comm)
 
 @mark_mpi_test(2)
-def test_dist_to_part(sub_comm):
+def test_part_to_dist(sub_comm):
   part_data = dict()
   expected_dist_data = dict()
   if sub_comm.Get_rank() == 0:
@@ -62,7 +62,7 @@ def test_dist_to_part(sub_comm):
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 
 @mark_mpi_test(2)
-def test_part_flowsol_to_dist_flowsol(sub_comm):
+def test_part_sol_to_dist_sol(sub_comm):
   if sub_comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
@@ -83,7 +83,7 @@ ZoneU Zone_t [[6,0,0]]:
       field1 DataArray_t [-10]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t {0} [2]:
-    NewFlowSol FlowSolution_t:
+    NewFlowSol DiscreteData_t:
       GridLocation GridLocation_t "Vertex":
       field2 DataArray_t R8 [0,0,0]:
     :CGNS#GlobalNumbering UserDefinedData_t:
@@ -109,7 +109,7 @@ ZoneU Zone_t [[6,0,0]]:
       field1 DataArray_t [-20,-30]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t {0} [3,1]:
-    NewFlowSol FlowSolution_t:
+    NewFlowSol DiscreteData_t:
       GridLocation GridLocation_t "Vertex":
       field2 DataArray_t R8 [1,1,1]:
     :CGNS#GlobalNumbering UserDefinedData_t:
@@ -121,7 +121,7 @@ ZoneU Zone_t [[6,0,0]]:
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = I.getZones(part_tree)
-  PTB.part_flowsol_to_dist_flowsol(dist_zone, part_zones, sub_comm)
+  PTB.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
 
   assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int
   assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1].dtype == np.float64

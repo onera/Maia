@@ -14,18 +14,20 @@ def discover_partitioned_fields(dist_zone, part_zones, comm):
   # > Local collection of fields not existing in dist zone
   new_sols = {}
   for part_zone in part_zones:
-    for p_flow_sol in I.getNodesFromType1(part_zones, "FlowSolution_t"):
-      if I.getNodeFromPath(dist_zone, I.getName(p_flow_sol)) is None:
-        assert I.getNodeFromType1(p_flow_sol, 'IndexArray_t') is None
-        fields = [I.getName(field) for field in I.getNodesFromType1(p_flow_sol, 'DataArray_t')]
-        new_sols[I.getName(p_flow_sol)] = (SIDS.GridLocation(p_flow_sol), fields)
+    for p_sol in I.getNodesFromType1(part_zones, "FlowSolution_t") + \
+                 I.getNodesFromType1(part_zones, "DiscreteData_t"):
+      if I.getNodeFromPath(dist_zone, I.getName(p_sol)) is None:
+        assert I.getNodeFromType1(p_sol, 'IndexArray_t') is None
+        fields = [I.getName(field) for field in I.getNodesFromType1(p_sol, 'DataArray_t')]
+        new_sols[I.getName(p_sol)] = (I.getType(p_sol), SIDS.GridLocation(p_sol), fields)
 
   # > Gathering and update of dist zone
   discovered_sols = {}
   for new_sol_rank in comm.allgather(new_sols):
     discovered_sols.update(new_sol_rank)
-  for discovered_sol, (loc, fields) in discovered_sols.items():
+  for discovered_sol, (type, loc, fields) in discovered_sols.items():
     d_sol = I.newFlowSolution(discovered_sol, loc, parent=dist_zone)
+    I.setType(d_sol, type) #Trick to be generic between DiscreteData/FlowSol
     for field in fields:
       I.newDataArray(field, parent=d_sol)
 
@@ -42,11 +44,17 @@ def part_to_dist(partial_distri, part_data, ln_to_gn_list, comm):
   PTB.PartToBlock_Exchange(dist_data, part_data)
   return dist_data
 
-def part_flowsol_to_dist_flowsol(dist_zone, part_zones, comm):
+def part_sol_to_dist_sol(dist_zone, part_zones, comm):
+  """
+  Transfert all the data included in FlowSolution_t nodes and DiscreteData_t nodes from partitioned
+  zones to the distributed zone. Data created on (one or more) partitions and not present in dist_tree
+  is also reported to the distributed zone.
+  """
 
   discover_partitioned_fields(dist_zone, part_zones, comm)
 
-  for d_flow_sol in I.getNodesFromType1(dist_zone, "FlowSolution_t"):
+  for d_flow_sol in I.getNodesFromType1(dist_zone, "FlowSolution_t") + \
+                    I.getNodesFromType1(dist_zone, "DiscreteData_t"):
     location = SIDS.GridLocation(d_flow_sol)
     has_pl   = I.getNodeFromName1(d_flow_sol, 'PointList') is not None
 
