@@ -97,22 +97,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm):
   """
   for d_zsr in I.getNodesFromType1(dist_zone, "ZoneSubRegion_t"):
     # Search matching region
-    matching_region_path = None
-    if I.getNodeFromName1(d_zsr, "BCRegionName") is not None:
-      for zbc, bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, "ZoneBC_t/BC_t"):
-        if I.getName(bc) == I.getValue(I.getNodeFromName1(d_zsr, "BCRegionName")):
-          matching_region_path = I.getName(zbc) + '/' + I.getName(bc)
-          break
-    elif I.getNodeFromName1(d_zsr, "GridConnectivityRegionName") is not None:
-      gc_pathes = ["ZoneGridConnectivity_t/GridConnectivity_t", "ZoneGridConnectivity/GridConnectivity1to1_t"]
-      for gc_path in gc_pathes:
-        for zgc, gc in py_utils.getNodesWithParentsFromTypePath(dist_zone, gc_path):
-          if I.getName(gc) == I.getValue(I.getNodeFromName1(d_zsr, "GridConnectivityRegionName")):
-            matching_region_path = I.getName(zgc) + '/' + I.getName(gc)
-            break
-    else:
-      matching_region_path = I.getName(d_zsr)
-
+    matching_region_path = SIDS.get_subregion_extent(d_zsr, dist_zone)
     matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
     assert matching_region is not None
 
