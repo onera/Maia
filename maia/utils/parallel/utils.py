@@ -1,7 +1,7 @@
 import numpy as np
 
 def partial_to_full_distribution(partial_distrib, comm):
-  r"""
+  """
   Compute the full distribution array from the partials distribution
   arrays. 
   Full distribution store data for all procs, ie is Np+1 sized array
@@ -19,3 +19,16 @@ def partial_to_full_distribution(partial_distrib, comm):
   #Compute cumulated sum
   np.cumsum(full_distrib, out=full_distrib)
   return full_distrib
+
+def gather_and_shift(value, comm, dtype=None):
+  if dtype is None:
+    value = np.asarray(value)
+    dtype = value.dtype
+  else:
+    value = np.asarray(value, dtype=dtype)
+  distrib = np.empty(comm.Get_size()+1, dtype)
+  distrib_view = distrib[1:]
+  comm.Allgather(value, distrib_view)
+  distrib[0]   = 0
+  np.cumsum(distrib, out=distrib)
+  return distrib

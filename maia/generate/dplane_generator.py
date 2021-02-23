@@ -3,7 +3,8 @@ import maia.sids.sids as SIDS
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
 
-import numpy as NPY
+import numpy as np
+from maia.utils.parallel import utils as par_utils
 
 import Pypdm.Pypdm as PDM
 
@@ -25,25 +26,13 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   #   print(key, val)
 
   # > En 2D -> dn_face == dn_cell
-  distrib      = NPY.empty(n_rank+1, dtype=NPY.int32)
-  distrib[0]   = 0
-  distrib[1:]  = comm.allgather(dplane_dict['dn_face'])
-  distrib_cell = NPY.cumsum(distrib)
-
+  distrib_cell     = par_utils.gather_and_shift(dplane_dict['dn_face'],comm, np.int32)
   # > En 2D -> dn_vtx == dn_vtx
-  distrib[0]  = 0
-  distrib[1:] = comm.allgather(dplane_dict['dn_vtx'])
-  distri_vtx  = NPY.cumsum(distrib)
-
+  distri_vtx       = par_utils.gather_and_shift(dplane_dict['dn_vtx'],comm, np.int32)
   # > En 2D -> dn_edge == dn_face
-  distrib[0]   = 0
-  distrib[1:]  = comm.allgather(dplane_dict['dn_edge'])
-  distrib_face = NPY.cumsum(distrib)
-
+  distrib_face     = par_utils.gather_and_shift(dplane_dict['dn_edge'],comm, np.int32)
   # > Connectivity by pair
-  distrib[0]       = 0
-  distrib[1:]      = comm.allgather( 2 * dplane_dict['dn_edge'] )
-  distrib_edge_vtx = NPY.cumsum(distrib)
+  distrib_edge_vtx = par_utils.gather_and_shift(2*dplane_dict['dn_edge'],comm, np.int32)
 
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
@@ -57,7 +46,7 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   I.newDataArray('CoordinateY', dplane_dict['dvtx_coord'][1::3], parent=grid_coord)
   I.newDataArray('CoordinateZ', dplane_dict['dvtx_coord'][2::3], parent=grid_coord)
 
-  dplane_dict['dedge_vtx_idx'] = NPY.arange(0, 2*dplane_dict['dn_edge']+1, 2, dtype=dplane_dict['dedge_vtx'].dtype)
+  dplane_dict['dedge_vtx_idx'] = np.arange(0, 2*dplane_dict['dn_edge']+1, 2, dtype=dplane_dict['dedge_vtx'].dtype)
   assert dplane_dict['dedge_vtx_idx'].shape[0] == dplane_dict['dn_edge']+1
 
   # > NGon node
@@ -83,10 +72,9 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   zone_bc = I.newZoneBC(parent=dist_zone)
 
   edge_group_idx = dplane_dict['dedge_group_idx']
-  edge_group_n   = NPY.diff(edge_group_idx)
+  edge_group_n   = np.diff(edge_group_idx)
 
   edge_group = dplane_dict['dedge_group']
-  distri = NPY.empty(n_rank, dtype=edge_group.dtype)
 
   for i_bc in range(dplane_dict['n_edge_group']):
     bc_n = I.newBC('dplane_bnd_{0}'.format(i_bc), btype='BCWall', parent=zone_bc)
@@ -94,17 +82,17 @@ def dplane_generate(xmin, xmax, ymin, ymax,
     start, end = edge_group_idx[i_bc], edge_group_idx[i_bc+1]
     dn_edge_bnd = end - start
     I.newPointList(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
-    comm.Allgather(dn_edge_bnd, distri)
-    r_offset  = sum(distri[:i_rank])
+
+    bc_distrib = par_utils.gather_and_shift(dn_edge_bnd, comm, edge_group.dtype)
     distrib_n = I.createNode(':CGNS#Distribution', 'UserDefinedData_t', parent=bc_n)
-    distrib   = NPY.array([r_offset, r_offset+dn_edge_bnd, sum(distri)], dtype=pe.dtype)
+    distrib   = np.array([bc_distrib[i_rank], bc_distrib[i_rank+1], bc_distrib[n_rank]])
     I.newDataArray('Index', distrib, parent=distrib_n)
 
   # > Distributions
-  np_distrib_cell     = NPY.array([distrib_cell    [i_rank], distrib_cell    [i_rank+1], distrib_cell    [n_rank]], dtype=pe.dtype)
-  np_distrib_vtx      = NPY.array([distri_vtx      [i_rank], distri_vtx      [i_rank+1], distri_vtx      [n_rank]], dtype=pe.dtype)
-  np_distrib_face     = NPY.array([distrib_face    [i_rank], distrib_face    [i_rank+1], distrib_face    [n_rank]], dtype=pe.dtype)
-  np_distrib_edge_vtx = NPY.array([distrib_edge_vtx[i_rank], distrib_edge_vtx[i_rank+1], distrib_edge_vtx[n_rank]], dtype=pe.dtype)
+  np_distrib_cell     = np.array([distrib_cell    [i_rank], distrib_cell    [i_rank+1], distrib_cell    [n_rank]], dtype=pe.dtype)
+  np_distrib_vtx      = np.array([distri_vtx      [i_rank], distri_vtx      [i_rank+1], distri_vtx      [n_rank]], dtype=pe.dtype)
+  np_distrib_face     = np.array([distrib_face    [i_rank], distrib_face    [i_rank+1], distrib_face    [n_rank]], dtype=pe.dtype)
+  np_distrib_edge_vtx = np.array([distrib_edge_vtx[i_rank], distrib_edge_vtx[i_rank+1], distrib_edge_vtx[n_rank]], dtype=pe.dtype)
 
   # print(np_distrib_edge_vtx)
   # exit(2)

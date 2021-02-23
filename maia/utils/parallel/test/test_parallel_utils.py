@@ -33,3 +33,18 @@ def test_partial_to_full_distribution(sub_comm):
   assert (full_distri_hole == [0,25,25,75]).all()
   full_distri_void = utils.partial_to_full_distribution(partial_distrib_void, sub_comm)
   assert (full_distri_void == [0,0,0,0]).all()
+
+@mark_mpi_test(3)
+def test_gather_and_shift(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    value = 6
+  if sub_comm.Get_rank() == 1:
+    value = 9
+  if sub_comm.Get_rank() == 2:
+    value = 2
+  distri = utils.gather_and_shift(value, sub_comm)
+  assert distri.dtype == np.int
+  assert (distri == [0,6,15,17]).all()
+  distri = utils.gather_and_shift(value, sub_comm, np.int32)
+  assert distri.dtype == np.int32
+  assert (distri == [0,6,15,17]).all()

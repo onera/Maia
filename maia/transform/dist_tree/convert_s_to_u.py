@@ -4,6 +4,7 @@ import numpy              as np
 
 import Pypdm.Pypdm as PDM
 
+from maia.sids               import sids
 from maia                    import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.distribution       import distribution_function  as MDIDF
 from maia.cgns_io.hdf_filter import range_to_slab          as HFR2S
@@ -239,8 +240,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   'Vertex', 'FaceCenter', 'CellCenter').
   For now, BCDataSet are not preserved.
   """
-  input_loc_node = I.getNodeFromType1(bc_s, "GridLocation_t")
-  input_loc = I.getValue(input_loc_node) if input_loc_node is not None else "Vertex"
+  input_loc = sids.GridLocation(bc_s)
   point_range = I.getValue(I.getNodeFromName1(bc_s, 'PointRange'))
 
   bnd_axis = guess_bnd_normal_index(point_range, input_loc)
@@ -279,8 +279,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   'Vertex', 'FaceCenter', 'CellCenter').
   Consistency between PL/PLDonor is preserved.
   """
-  input_loc_node = I.getNodeFromType1(gc_s, "GridLocation_t")
-  assert input_loc_node is None or I.getValue(input_loc_node) == "Vertex"
+  assert sids.GridLocation(gc_s) == 'Vertex'
 
   zone_path_opp = I.getValue(gc_s)
   if not '/' in zone_path_opp:

@@ -42,13 +42,10 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
 
   for flow_solution in I.getNodesFromType1(zone, 'FlowSolution_t'):
     flow_solution_path = zone_path+"/"+flow_solution[0]
-    grid_location_n = I.getNodeFromType1(flow_solution, 'GridLocation_t')
-    if(grid_location_n is None):
-      raise RuntimeError("You need specify GridLocation in FlowSolution to load/write the cgns ")
-    grid_location = grid_location_n[1].tostring()
-    if(grid_location == b'CellCenter'):
+    grid_location = SIDS.GridLocation(flow_solution)
+    if(grid_location == 'CellCenter'):
       data_space = all_cells_dataspace
-    elif(grid_location == b'Vertex'):
+    elif(grid_location == 'Vertex'):
       data_space = all_vtx_dataspace
     else:
       raise NotImplementedError(f"GridLocation {grid_location} not implemented")

@@ -4,6 +4,7 @@ import numpy              as np
 
 import maia.sids.sids as SIDS
 from maia.utils import zone_elements_utils as EZU
+from maia.utils.parallel import utils as par_utils
 
 from maia.connectivity import connectivity_transform as CNT
 from . import cgns_to_pdm_dmeshnodal as CGNSTOPDM
@@ -69,15 +70,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   ldistrib_cell[1] = distrib_cell[comm.rank+1]
   ldistrib_cell[2] = n_cell
 
-  distrib          = np.empty(n_rank+1, dtype=np.int32)
-  distrib[0]       = 0
-  distrib[1:]      = comm.allgather( dface_vtx_idx[dn_face] )
-  distrib_face_vtx = np.cumsum(distrib)
-
-  distrib          = np.empty(n_rank+1, dtype=np.int32)
-  distrib[0]       = 0
-  distrib[1:]      = comm.allgather( dcell_face_idx[dn_cell] )
-  distrib_cell_face = np.cumsum(distrib)
+  distrib_face_vtx = par_utils.gather_and_shift(dface_vtx_idx[dn_face], comm, np.int32)
+  distrib_cell_face = par_utils.gather_and_shift(dcell_face_idx[dn_cell], comm, np.int32)
 
   ermax   = EZU.get_next_elements_range(zone)
 

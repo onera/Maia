@@ -2,6 +2,7 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import mpi4py.MPI as MPI
 import numpy as np
+from maia.sids  import sids
 from maia.utils import parse_yaml_cgns
 from maia.transform.dist_tree import convert_s_to_u
 import Converter.Internal as I
@@ -279,7 +280,7 @@ def test_bc_s_to_bc_u():
   bc_u = convert_s_to_u.bc_s_to_bc_u(bc_s, n_vtx, 'FaceCenter', 0, 1)
   assert I.getName(bc_u) == 'MyBCName'
   assert I.getValue(bc_u) == 'BCOutflow'
-  assert I.getValue(I.getNodeFromType1(bc_u, 'GridLocation_t')) == 'FaceCenter'
+  assert sids.GridLocation(bc_u) == 'FaceCenter'
   assert I.getValue(I.getNodeFromName1(bc_u, 'PointList')).shape == (1,9)
 
 def test_gc_s_to_gc_u():
@@ -299,8 +300,8 @@ def test_gc_s_to_gc_u():
   assert I.getName(gcB_u) == 'matchB'
   assert I.getValue(gcA_u) == 'Base/zoneB'
   assert I.getValue(gcB_u) == 'zoneA'
-  assert I.getValue(I.getNodeFromType1(gcA_u, 'GridLocation_t')) == 'FaceCenter'
-  assert I.getValue(I.getNodeFromType1(gcB_u, 'GridLocation_t')) == 'FaceCenter'
+  assert sids.GridLocation(gcA_u) == 'FaceCenter'
+  assert sids.GridLocation(gcB_u) == 'FaceCenter'
   assert I.getValue(I.getNodeFromType1(gcA_u, 'GridConnectivityType_t')) == 'Abutting1to1'
   assert I.getValue(I.getNodeFromType1(gcB_u, 'GridConnectivityType_t')) == 'Abutting1to1'
   assert I.getValue(I.getNodeFromName1(gcA_u, 'PointList')).shape == (1,24)
