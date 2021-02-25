@@ -149,11 +149,11 @@ find_program( MEMORYCHECK_COMMAND valgrind )
 set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full" )
 
 # > Mandatory to put here to have all shared libs compile with the coverage flags
-option(ENABLE_COVERAGE "Enable coverage" OFF)
-if(ENABLE_COVERAGE)
-  include(CodeCoverage)
-  APPEND_COVERAGE_COMPILER_FLAGS()
-endif()
+option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF)
+#if(${${PROJECT_NAME}_ENABLE_COVERAGE})
+ #include(CodeCoverage)
+ #APPEND_COVERAGE_COMPILER_FLAGS()
+#endif()
 
 
 # ----------------------------------------------------------------------
