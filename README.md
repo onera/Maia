@@ -14,17 +14,17 @@ The documentation root is file `doc/index.rst`.
 
 ## Examples ##
 Loading an HDF5/CGNS file in parallel
-TODO
+(TODO)
 
 ``` Python
 import maia
-# truc pour load dist_tree
-# truc pour load dist_tree/part_tree
+# some function loading dist_tree
+# some function loading dist_tree/part_tree
 # transfer
 # merge and save
 ```
 
-Conversions
+Some converting functions :
 
 ``` Python
 import maia

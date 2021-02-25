@@ -1,3 +1,4 @@
+from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 import Converter.Internal as I
 from   maia.utils        import parse_yaml_cgns
@@ -78,3 +79,95 @@ def test_pr_to_global_num():
   assert (pr == np.array([[11+9,11+9],[1,9],[1+99,7+99]])).all()
   splitS.pr_to_global_num(pr, np.array([10,1,100]), reverse=True)
   assert (pr == np.array([[11,11],[1,9],[1,7]])).all()
+
+@mark_mpi_test(3)
+def test_split_original_joins_S(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    pt = """
+Big.P0.N0 Zone_t:
+Small.P0.N0 Zone_t:
+  """
+  elif sub_comm.Get_rank() == 1:
+    pt = """
+Small.P1.N0 Zone_t:
+  ZBC ZoneBC_t:
+    match2 BC_t "Big":
+      Ordinal UserDefinedData_t [2]:
+      OrdinalOpp UserDefinedData_t [1]:
+      Transform int[IndexDimension] [-2,-1,-3]:
+      PointRange IndexRange_t [[4,1],[4,4],[5,1]]:
+      distPR IndexRange_t [[7,1],[9,9],[5,1]]:
+      distPRDonor IndexRange_t [[17,17],[3,9],[1,5]]:
+      zone_offset DataArray_t [1,6,1]:
+  """
+  elif sub_comm.Get_rank() == 2:
+    pt = """
+Big.P2.N0 Zone_t:
+  ZBC ZoneBC_t:
+    match1 BC_t "Small":
+      Ordinal UserDefinedData_t [1]:
+      OrdinalOpp UserDefinedData_t [2]:
+      Transform int[IndexDimension] [-2,-1,-3]:
+      PointRange IndexRange_t [[6,6],[3,5],[1,5]]:
+      distPR IndexRange_t [[17,17],[3,9],[1,5]]:
+      distPRDonor IndexRange_t [[7,1],[9,9],[5,1]]:
+      zone_offset DataArray_t [12,1,1]:
+Big.P2.N1 Zone_t:
+  ZBC ZoneBC_t:
+    match1 BC_t "Small":
+      Ordinal UserDefinedData_t [1]:
+      OrdinalOpp UserDefinedData_t [2]:
+      Transform int[IndexDimension] [-2,-1,-3]:
+      PointRange IndexRange_t [[6,6],[1,5],[1,5]]:
+      distPR IndexRange_t [[17,17],[3,9],[1,5]]:
+      distPRDonor IndexRange_t [[7,1],[9,9],[5,1]]:
+      zone_offset DataArray_t [12,5,1]:
+Small.P2.N1 Zone_t:
+  ZBC ZoneBC_t:
+    match2 BC_t "Big":
+      Ordinal UserDefinedData_t [2]:
+      OrdinalOpp UserDefinedData_t [1]:
+      Transform int[IndexDimension] [-2,-1,-3]:
+      PointRange IndexRange_t [[4,1],[4,4],[5,1]]:
+      distPR IndexRange_t [[7,1],[9,9],[5,1]]:
+      distPRDonor IndexRange_t [[17,17],[3,9],[1,5]]:
+      zone_offset DataArray_t [4,6,1]:
+  """
+  part_tree  = parse_yaml_cgns.to_complete_pytree(pt)
+  part_zones = I.getZones(part_tree)
+  splitS.split_original_joins_S(part_zones, sub_comm)
+
+  if sub_comm.Get_rank() == 0:
+    assert I.getNodesFromName(part_tree, 'match1.*') == []
+    assert I.getNodesFromName(part_tree, 'match2.*') == []
+  elif sub_comm.Get_rank() == 1:
+    assert I.getNodesFromName(part_tree, 'match1.*') == []
+    assert len(I.getNodesFromName(part_tree, 'match2.*')) == 1
+    match2 = I.getNodeFromName(part_tree, 'match2.0')
+    assert I.getValue(match2) == 'Big.P2.N1'
+    assert I.getType(match2) == 'GridConnectivity1to1_t'
+    assert (I.getNodeFromName(match2, 'PointRange')[1] == [[4,1],[4,4],[5,1]]).all()
+    assert (I.getNodeFromName(match2, 'PointRangeDonor')[1] == [[6,6],[2,5],[1,5]]).all()
+  elif sub_comm.Get_rank() == 2:
+    assert len(I.getNodesFromName(part_tree, 'match1.*')) == 3
+    assert len(I.getNodesFromName(part_tree, 'match2.*')) == 2
+    match1_1 = I.getNodeFromPath(part_tree, 'Big.P2.N0/ZoneGridConnectivity/match1.0')
+    assert I.getValue(match1_1) == 'Small.P2.N1'
+    assert (I.getNodeFromName(match1_1, 'PointRange')[1] == [[6,6],[3,5],[1,5]]).all()
+    assert (I.getNodeFromName(match1_1, 'PointRangeDonor')[1] == [[4,2],[4,4],[5,1]]).all()
+    match1_2 = I.getNodeFromPath(part_tree, 'Big.P2.N1/ZoneGridConnectivity/match1.0')
+    assert I.getValue(match1_2) == 'Small.P1.N0'
+    assert (I.getNodeFromName(match1_2, 'PointRange')[1] == [[6,6],[2,5],[1,5]]).all()
+    assert (I.getNodeFromName(match1_2, 'PointRangeDonor')[1] == [[4,1],[4,4],[5,1]]).all()
+    match1_3 = I.getNodeFromPath(part_tree, 'Big.P2.N1/ZoneGridConnectivity/match1.1')
+    assert I.getValue(match1_3) == 'Small.P2.N1'
+    assert (I.getNodeFromName(match1_3, 'PointRange')[1] == [[6,6],[1,2],[1,5]]).all()
+    assert (I.getNodeFromName(match1_3, 'PointRangeDonor')[1] == [[2,1],[4,4],[5,1]]).all()
+    match2_1 = I.getNodeFromPath(part_tree, 'Small.P2.N1/ZoneGridConnectivity/match2.0')
+    assert I.getValue(match2_1) == 'Big.P2.N0'
+    assert (I.getNodeFromName(match2_1, 'PointRange')[1] == [[4,2],[4,4],[5,1]]).all()
+    assert (I.getNodeFromName(match2_1, 'PointRangeDonor')[1] == [[6,6],[3,5],[1,5]]).all()
+    match2_2 = I.getNodeFromPath(part_tree, 'Small.P2.N1/ZoneGridConnectivity/match2.1')
+    assert I.getValue(match2_2) == 'Big.P2.N1'
+    assert (I.getNodeFromName(match2_2, 'PointRange')[1] == [[2,1],[4,4],[5,1]]).all()
+    assert (I.getNodeFromName(match2_2, 'PointRangeDonor')[1] == [[6,6],[1,2],[1,5]]).all()

@@ -90,10 +90,13 @@ def _partitioning(dist_tree,
   part_base = I.createNode(I.getName(dist_base), 'CGNSBase_t', I.getValue(dist_base), parent=part_tree)
 
   #Split S zones
+  all_s_parts = []
   for zone in s_zones:
     s_parts = partS.part_s_zone(zone, dzone_to_weighted_parts[I.getName(zone)], comm)
     for part in s_parts:
       I._addChild(part_base, part)
+    all_s_parts.extend(s_parts)
+  partS.split_original_joins_S(all_s_parts, comm)
 
   #Split U zones
   if len(u_zones) > 0:

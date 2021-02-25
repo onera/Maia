@@ -6,7 +6,10 @@ import Converter.Internal as I
 from maia.sids import sids as SIDS
 from .                               import split_cut_tree as SCT
 from maia.tree_exchange.dist_to_part import data_exchange  as BTP
-from maia.transform.dist_tree.convert_s_to_u import guess_bnd_normal_index
+from maia.transform.dist_tree.convert_s_to_u import guess_bnd_normal_index, \
+                                                    compute_transform_matrix, \
+                                                    apply_transformation
+from maia.sids import sids
 from maia.utils import py_utils
 
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
@@ -105,7 +108,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
     if is_old_bc:
       dirs = np.where(np.arange(range_part_bc_g.shape[0]) != normal_idx)[0]
       for dist_bc in dist_bnds:
-        range_dist_bc = I.getNodeFromName1(dist_bc, 'PointRange')[1]
+        range_dist_bc = np.copy(I.getNodeFromName1(dist_bc, 'PointRange')[1])
         grid_loc      = SIDS.GridLocation(dist_bc)
 
         #Swap because some gc are allowed to be reversed and convert to cell
@@ -130,6 +133,13 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
           part_bc = I.newBC(I.getName(dist_bc), sub_pr, parent=zbc)
           I.setValue(part_bc, I.getValue(dist_bc))
           I.newGridLocation(grid_loc, parent=part_bc)
+          if I.getNodeFromName1(dist_bc, 'Ordinal') is not None:
+            I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Ordinal'))
+            I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'OrdinalOpp'))
+            I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Transform'))
+            I.createChild(part_bc, 'distPR', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRange')[1])
+            I.createChild(part_bc, 'distPRDonor', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRangeDonor')[1])
+            I.newDataArray('zone_offset', p_zone_offset, parent=part_bc)
 
 def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
   """
@@ -197,6 +207,108 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
                                                     pointRange=sub_pr, pointRangeDonor=sub_pr_d,
                                                     transform = [1,2,3], parent=zgc)
                 I.newGridLocation('Vertex', parent=part_gc)
+
+def split_original_joins_S(all_part_zones, comm):
+  """
+  Intersect the original joins of the meshes. Such joins must are stored in ZoneBC_t node
+  at the end of S partitioning with needed information stored inside
+  """
+  ordinal_to_pr = dict()
+  zones_offsets = dict()
+  for part in all_part_zones:
+    for jn in py_utils.getNodesFromTypePath(part, 'ZoneBC_t/BC_t'):
+      if I.getNodeFromName1(jn, 'Ordinal') is not None:
+        p_zone_offset = I.getNodeFromName1(jn, 'zone_offset')[1]
+        pr_n = I.newPointRange(part[0], np.copy(I.getNodeFromName1(jn, 'PointRange')[1]))
+        # Pr dans la num globale de la zone
+        pr_to_global_num(pr_n[1], p_zone_offset)
+        try:
+          ordinal_to_pr[I.getNodeFromName1(jn, 'Ordinal')[1][0]].append(pr_n)
+        except KeyError:
+          ordinal_to_pr[I.getNodeFromName1(jn, 'Ordinal')[1][0]] = [pr_n]
+        zones_offsets[I.getName(part)] = p_zone_offset
+
+  #Gather and create dic ordinal -> List of PR
+  ordinal_to_pr_glob = dict()
+  all_offset_zones   = dict()
+  for ordinal_to_pr_rank in comm.allgather(ordinal_to_pr):
+    for key, value in ordinal_to_pr_rank.items():
+      if key in ordinal_to_pr_glob:
+        ordinal_to_pr_glob[key].extend(value)
+      else:
+        ordinal_to_pr_glob[key] = value
+  for zones_offsets_rank in comm.allgather(zones_offsets):
+    all_offset_zones.update(zones_offsets_rank)
+
+  for part in all_part_zones:
+    zone_gc = I.createUniqueChild(part, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
+    to_delete = []
+    for jn in py_utils.getNodesFromTypePath(part, 'ZoneBC_t/BC_t'):
+      if I.getNodeFromName1(jn, 'Ordinal') is not None:
+        dist_pr = I.getNodeFromName1(jn, 'distPR')[1]
+        dist_prd = I.getNodeFromName1(jn, 'distPRDonor')[1]
+        transform  = I.getNodeFromName1(jn, 'Transform')[1]
+        T_matrix = compute_transform_matrix(transform)
+        assert sids.GridLocation(jn) == 'Vertex'
+
+        #Jn dans la num globale de la dist_zone
+        p_zone_offset = I.getNodeFromName1(jn, 'zone_offset')[1]
+        pr = np.copy(I.getNodeFromName1(jn, 'PointRange')[1])
+        pr_to_global_num(pr, p_zone_offset)
+
+        #Jn dans la num globale de la dist_zone opposée
+        pr_in_opp_abs = np.empty((3,2), dtype=pr.dtype)
+        pr_in_opp_abs[:,0] = apply_transformation(pr[:,0], dist_pr[:,0], dist_prd[:,0], T_matrix)
+        pr_in_opp_abs[:,1] = apply_transformation(pr[:,1], dist_pr[:,0], dist_prd[:,0], T_matrix)
+
+        #Jn dans la zone opposée et en cellules
+        normal_idx = guess_bnd_normal_index(pr_in_opp_abs, 'Vertex')
+        dirs       = np.where(np.arange(3) != normal_idx)[0]
+        bnd_is_max = pr_in_opp_abs[normal_idx,0] != 1 #Sommets
+        dir_to_swap     = (pr_in_opp_abs[:,1] < pr_in_opp_abs[:,0])
+        pr_in_opp_abs[dir_to_swap, 0], pr_in_opp_abs[dir_to_swap, 1] = \
+                pr_in_opp_abs[dir_to_swap, 1], pr_in_opp_abs[dir_to_swap, 0]
+        pr_to_cell_location(pr_in_opp_abs, normal_idx, 'Vertex', bnd_is_max)
+
+        opposed_joins = ordinal_to_pr_glob[I.getNodeFromName1(jn, 'OrdinalOpp')[1][0]]
+
+        to_delete.append(jn)
+        i_sub_jn = 0
+        for opposed_join in opposed_joins:
+          pr_opp_abs = np.copy(I.getValue(opposed_join))
+          # Also swap opposed jn (using same directions)
+          pr_opp_abs[dir_to_swap, 0], pr_opp_abs[dir_to_swap, 1] = \
+                  pr_opp_abs[dir_to_swap, 1], pr_opp_abs[dir_to_swap, 0]
+          pr_to_cell_location(pr_opp_abs, normal_idx, 'Vertex', bnd_is_max)
+          inter = intersect_pr(pr_in_opp_abs[dirs,:], pr_opp_abs[dirs,:])
+          if inter is not None:
+            sub_prd = np.empty((3,2), dtype=np.int32)
+            sub_prd[dirs,:] = inter
+            sub_prd[normal_idx,:] = pr_in_opp_abs[normal_idx,:]
+            # Go back to vertex and invert swap
+            pr_to_cell_location(sub_prd, normal_idx, 'Vertex', bnd_is_max, reverse=True)
+            sub_prd[dir_to_swap, 0], sub_prd[dir_to_swap, 1] = \
+                    sub_prd[dir_to_swap, 1], sub_prd[dir_to_swap, 0]
+            # Go back to dist_zone
+            sub_pr = np.empty((3,2), dtype=pr.dtype)
+            sub_pr[:,0] = apply_transformation(sub_prd[:,0], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
+            sub_pr[:,1] = apply_transformation(sub_prd[:,1], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
+            # Go back to local numbering
+            pr_to_global_num(sub_pr, p_zone_offset, reverse=True)
+            p_zone_offset_opp = all_offset_zones[I.getName(opposed_join)]
+            pr_to_global_num(sub_prd, p_zone_offset_opp, reverse=True)
+
+            #Effective creation of GC in part zone
+            gc_name  = I.getName(jn) + '.' + str(i_sub_jn)
+            opp_zone = I.getName(opposed_join)
+            part_gc = I.newGridConnectivity1to1(gc_name, opp_zone,
+                                                pointRange=sub_pr, pointRangeDonor=sub_prd,
+                                                transform = transform, parent=zone_gc)
+            I.newGridLocation('Vertex', parent=part_gc)
+            i_sub_jn += 1
+    #Cleanup
+    for node in to_delete:
+      I._rmNode(part, node)
 
 
 def part_s_zone(d_zone, d_zone_weights, comm):
