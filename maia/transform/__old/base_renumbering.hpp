@@ -5,6 +5,7 @@
 #include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/future/span.hpp"
 #include "cpp_cgns/sids/creation.hpp"
+#include "cpp_cgns/sids/utils.hpp"
 #include "cpp_cgns/tree_manip.hpp"
 #include "maia/utils/parallel/neighbor_graph.hpp"
 #include "maia/transform/__old/donated_point_lists.hpp"
@@ -108,11 +109,11 @@ symmetrize_grid_connectivities(tree& b, MPI_Comm comm) -> void {
         auto opp_z_name = to_string(z_gc.value);
         if (opp_z_name == receiver_z_name) {
           ELOG(opp_z_name);
-          auto z_pl = view_as_span<I4>(get_child_by_name(z_gc,"PointList").value);
+          auto z_pl = PointList<I4>(z_gc);
           for (I4 i : z_pl) {
             pl.push_back(i);
           }
-          auto z_pld = view_as_span<I4>(get_child_by_name(z_gc,"PointListDonor").value);
+          auto z_pld = PointListDonor<I4>(z_gc);
           for (I4 i : z_pld) {
             pld.push_back(i);
           }

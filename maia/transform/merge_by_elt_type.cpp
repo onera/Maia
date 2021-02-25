@@ -1,7 +1,7 @@
 #include "maia/transform/merge_by_elt_type.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/utils/parallel/distribution.hpp"
-#include "cpp_cgns/sids/sids.hpp"
+#include "maia/transform/utils.hpp"
 #include "std_e/algorithm/distribution.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/interval/knot_sequence.hpp"
@@ -9,8 +9,9 @@
 #include "pdm_multi_block_to_part.h"
 #include "std_e/data_structure/multi_range.hpp"
 
+using namespace cgns;
 
-namespace cgns {
+namespace maia {
 
 
 template<class Range> auto
@@ -129,8 +130,6 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   return elt_node;
 }
 
-
-
 auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   if (zs.size()!=1) {
@@ -138,9 +137,7 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   }
   tree& z = zs[0];
 
-  auto elt_sections = get_children_by_label(z,"Elements_t");
-  std::stable_sort(begin(elt_sections),end(elt_sections),cgns::compare_by_range);
-  std::stable_sort(begin(elt_sections),end(elt_sections),cgns::compare_by_elt_type);
+  auto elt_sections = element_sections_ordered_by_range_by_type(z);
 
   // 0. new ranges
   I4 new_offset = 1;
@@ -166,6 +163,7 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
 
   // 1. renumber
   // TODO for several zones
+  // TODO fields
   auto bcs = get_nodes_by_matching(z,"ZoneBC_t/BC_t");
   for (tree& bc : bcs) {
     if (to_string(get_child_by_name(bc,"GridLocation").value)!="Vertex") {
@@ -201,4 +199,4 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   emplace_children(z,std::move(merged_sections));
 }
 
-} // cgns
+} // maia
