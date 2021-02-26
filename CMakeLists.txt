@@ -66,49 +66,57 @@ endif()
 find_package(MPI REQUIRED)
 find_package(Mpi4Py REQUIRED)
 
-option(MAIA_USE_PDM_INSTALL OFF "Use an installed ParaDiGM version")
-if (MAIA_USE_PDM_INSTALL)
-  find_package(pdm CONFIG REQUIRED) # "CONFIG" require the install to have a pdmConfig.cmake
+
+#option(MAIA_USE_PDM_INSTALL OFF "Use an installed ParaDiGM version")
+#if (MAIA_USE_PDM_INSTALL)
+#  find_package(pdm CONFIG REQUIRED) # "CONFIG" require the install to have a pdmConfig.cmake
+#  if(NOT pdm_FOUND)
+#    message("ParaDiGM not found please export pdm_DIR to find it")
+#  endif()
+#else()
+
+
+find_package(pdma CONFIG)
+if(NOT pdma_FOUND)
+  find_package(pdm  CONFIG)
   if(NOT pdm_FOUND)
-    message("ParaDiGM not found please export pdm_DIR to find it")
+    check_sub_repo_exists(paradigm)
+
+    # Maia uses ParaDiGM with these options
+    set(PDM_ENABLE_Fortran         OFF CACHE BOOL "Maia uses ParaDiGM without Fortran"     FORCE)
+    set(PDM_ENABLE_STATIC          OFF CACHE BOOL "Maia uses ParaDiGM without static libs" FORCE)
+    set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"    FORCE)
+    set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"         FORCE)
+    set(PDM_ENABLE_PARMETIS        OFF CACHE BOOL "Maia uses ParaDiGM without parmetis"    FORCE)
+    set(PDM_ENABLE_PTSCOTCH        ON  CACHE BOOL "Maia uses ParaDiGM with Scotch"         FORCE)
+    set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"   FORCE)
+
+    # ParaDiGM does not use the same variable names as FindPython
+    set(PYTHON_EXECUTABLE  ${Python_EXECUTABLE}   CACHE FILEPATH "" FORCE)
+    set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS} CACHE PATH     "" FORCE)
+    set(PYTHON_LIBRARY     ${Python_LIBRARIES}    CACHE FILEPATH "" FORCE)
+
+    # ParaDiGM needs these paths from Scotch
+    if(NOT DEFINED ENV{PTSCOTCH_DIR})
+      message(FATAL_ERROR "You need PtScotch to build ParaDiGM. Export environment variable PTSCOTCH_DIR")
+    endif()
+    set(PTSCOTCH_DIR       $ENV{PTSCOTCH_DIR}     CACHE PATH "" FORCE)
+    set(PTSCOTCH_LIBRARIES "${PTSCOTCH_DIR}/lib/libptscotch.so;${PTSCOTCH_DIR}/lib/libscotch.so;${PTSCOTCH_DIR}/lib/libptscotcherr.so" CACHE STRING "" FORCE)
+    #set(PTSCOTCH_VERSION        CACHE STRING FORCE)
+
+    # ParaDiGM unit tests if Maia unit tests
+    if(MAIA_ENABLE_MPI_TESTS)
+      set(PDM_ENABLE_UNIT_TEST ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"     FORCE)
+    else()
+      set(PDM_ENABLE_UNIT_TEST OFF CACHE BOOL "Maia uses ParaDiGM without unit tests"  FORCE)
+    endif()
+
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+      # The C compiler does not link libm by default
+      set(CMAKE_C_FLAGS "-lm ${CMAKE_C_FLAGS}")
+    endif()
+    target_add_dependency(${PROJECT_NAME} paradigm)
   endif()
-else()
-  check_sub_repo_exists(paradigm)
-
-  # Maia uses ParaDiGM with these options
-  set(PDM_ENABLE_Fortran         OFF CACHE BOOL "Maia uses ParaDiGM without Fortran"     FORCE)
-  set(PDM_ENABLE_STATIC          OFF CACHE BOOL "Maia uses ParaDiGM without static libs" FORCE)
-  set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"    FORCE)
-  set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"         FORCE)
-  set(PDM_ENABLE_PARMETIS        OFF CACHE BOOL "Maia uses ParaDiGM without parmetis"    FORCE)
-  set(PDM_ENABLE_PTSCOTCH        ON  CACHE BOOL "Maia uses ParaDiGM with Scotch"         FORCE)
-  set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"   FORCE)
-
-  # ParaDiGM does not use the same variable names as FindPython
-  set(PYTHON_EXECUTABLE  ${Python_EXECUTABLE}   CACHE FILEPATH "" FORCE)
-  set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS} CACHE PATH     "" FORCE)
-  set(PYTHON_LIBRARY     ${Python_LIBRARIES}    CACHE FILEPATH "" FORCE)
-
-  # ParaDiGM needs these paths from Scotch
-  if(NOT DEFINED ENV{PTSCOTCH_DIR})
-    message(FATAL_ERROR "You need PtScotch to build ParaDiGM. Export environment variable PTSCOTCH_DIR")
-  endif()
-  set(PTSCOTCH_DIR       $ENV{PTSCOTCH_DIR}     CACHE PATH "" FORCE)
-  set(PTSCOTCH_LIBRARIES "${PTSCOTCH_DIR}/lib/libptscotch.so;${PTSCOTCH_DIR}/lib/libscotch.so;${PTSCOTCH_DIR}/lib/libptscotcherr.so" CACHE STRING "" FORCE)
-  #set(PTSCOTCH_VERSION        CACHE STRING FORCE)
-
-  # ParaDiGM unit tests if Maia unit tests
-  if(MAIA_ENABLE_MPI_TESTS)
-    set(PDM_ENABLE_UNIT_TEST ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"     FORCE)
-  else()
-    set(PDM_ENABLE_UNIT_TEST OFF CACHE BOOL "Maia uses ParaDiGM without unit tests"  FORCE)
-  endif()
-
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    # The C compiler does not link libm by default
-    set(CMAKE_C_FLAGS "-lm ${CMAKE_C_FLAGS}")
-  endif()
-  target_add_dependency(${PROJECT_NAME} paradigm)
 endif()
 
 ## Dependencies built from source ##
