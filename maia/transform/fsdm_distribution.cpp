@@ -34,18 +34,18 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
 
   auto elt_sections = get_children_by_label(z,"Elements_t");
   for (tree& elt_section : elt_sections) {
-      auto elt_range = ElementRange<I4>(elt_section);
-      I4 n_owned_elt = elt_range[1] - elt_range[0] + 1;
+    auto elt_range = ElementRange<I4>(elt_section);
+    I4 n_owned_elt = elt_range[1] - elt_range[0] + 1;
 
-      auto elt_distri = distribution_from_dsizes(n_owned_elt, comm);
-      std_e::buffer_vector<I4> elt_distri_mem(n_rank+1);
-      std::copy(begin(elt_distri),end(elt_distri),begin(elt_distri_mem));
+    auto elt_distri = distribution_from_dsizes(n_owned_elt, comm);
+    std_e::buffer_vector<I4> elt_distri_mem(n_rank+1);
+    std::copy(begin(elt_distri),end(elt_distri),begin(elt_distri_mem));
 
-      I4 elt_type = ElementType<I4>(elt_section);
-      auto elt_name = cgns::to_string((ElementType_t)elt_type);
-      tree elt_dist = new_DataArray(elt_name,std::move(elt_distri_mem));
+    I4 elt_type = ElementType<I4>(elt_section);
+    auto elt_name = cgns::to_string((ElementType_t)elt_type);
+    tree elt_dist = new_DataArray(elt_name,std::move(elt_distri_mem));
 
-      emplace_child(fsdm_dist_node,std::move(elt_dist));
+    emplace_child(fsdm_dist_node,std::move(elt_dist));
   }
 
   emplace_child(b,std::move(fsdm_dist_node));
