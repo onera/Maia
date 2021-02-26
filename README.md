@@ -1,56 +1,39 @@
-  - But :
+Maia
+====
 
-  1) Composant pyCGNS : ensemble cohérent de service en // en composant des algorithmes provenant de ParaDiGM essentiellement.
+`Maia` is a Python and C++ library for distributed algorithms and manipulations over CGNS meshes. It uses [ParaDiGM](https://git.onera.fr/paradigm) for parallel algorithms and [Cassiopee](http://elsa.onera.fr/Cassiopee) for CGNS tree manipulation.
 
+## Build and install ##
+1. `git clone http://gitlab-elsa-test.onecert.fr/clef/maia`
+2. `cd maia`
+3. `git submodule update --init` (needed for dependencies)
+4. Use `cmake` to configure, build and install. See the complete procedure here `doc/installation.rst`
 
-  - Algo
+## Documentation ##
+The documentation root is file `doc/index.rst`.
 
-   --> hdf_filter
+## Examples ##
+Loading an HDF5/CGNS file in parallel
+TODO
 
-   --> lecture / ecriture : DistTree ET PartTree  (hdf_filter + save)
-   --> Load balancing
+``` Python
+import maia
+# truc pour load dist_tree
+# truc pour load dist_tree/part_tree
+# transfer
+# merge and save
+```
 
-   --> partitionnement : pypart  (Service complet / avec sans ghost cell / )
+Conversions
 
-   --> Service de transfert DistTree / PartTree
+``` Python
+import maia
+std_element_to_ngon
+convert_s_to_u
+```
 
-   --> fetch topologique // 3D/2D/1D + maia  + [ distribué / partitioné ]
-   --> dconnectivity_transform / pcoonectivty_trsfrom
-   --> Déstructuration // ( convertArray2NGon )
-   --> Transfert distribué cell <-> noeuds (underconstruction)
+## Contributing ##
+`Maia` is open-source software. Contributions are welcome. See `Contributing`.
 
-
-   --> Génération de maillage // --> Cube / Plan
-
-   --> cgns_registery
-
-
-   --> Dist2Wall : ok
-   --> connectMatch / connectMatchPeriodic + [ distribué / partitioné ]
-
-   --> ExtractMesh :(MeshLocation + Interpolation + distant_neightbor )
-   --> Calcul des Gradients : Une description
-
-
-   --> Overlay (intersection surfacique de maillage) : Une description
-   --> MeshLocation : Location d'un nuage de point dans un maillage
-
-
-   --> Cloud
-
-   --> PointList Vertex->Face (FSDM) Face->Vertex (Adjoint)
-   --> Ghost entity removal (FSDM)
-
-
-  - Doc
-
-  - Test (gros boulot)
-
-   --> Dev de pytest + pytest // (généralisation de doctest MPI )
-
-   --> Doc sphinx - OK
-
-
-
-
-
+## License ##
+`Maia` is available under the MPL-2.0 license (https://mozilla.org/MPL/2.0/).

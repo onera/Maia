@@ -13,7 +13,7 @@ Dependencies
 
 * Cassiopée
 
-* pytest (python package)
+* pytest >6 (python package)
 * ruamel (python package)
 * mpi4py (python package)
 
