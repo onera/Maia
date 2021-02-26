@@ -22,9 +22,6 @@ def dplane_generate(xmin, xmax, ymin, ymax,
 
   dplane_dict = PDM.PolyMeshSurf(xmin, xmax, ymin, ymax, have_random, init_random, nx, ny, comm)
 
-  # for key, val in dplane_dict.items():
-  #   print(key, val)
-
   # > En 2D -> dn_face == dn_cell
   distrib_cell     = par_utils.gather_and_shift(dplane_dict['dn_face'],comm, np.int32)
   # > En 2D -> dn_vtx == dn_vtx
@@ -53,12 +50,7 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   dn_edge = dplane_dict['dn_edge']
 
   # > For Offset we have to shift to be global
-  if i_rank == n_rank - 1:
-    eso = distrib_edge_vtx[i_rank] + dplane_dict['dedge_vtx_idx']
-  else:
-    eso = distrib_edge_vtx[i_rank] + dplane_dict['dedge_vtx_idx'] #[:dn_edge]
-  # print(distrib_edge_vtx)
-  # print(eso)
+  eso = distrib_edge_vtx[i_rank] + dplane_dict['dedge_vtx_idx']
 
   pe     = dplane_dict['dedge_face'].reshape(dn_edge, 2)
   ngon_n = I.newElements('NGonElements', 'NGON',
@@ -94,8 +86,6 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   np_distrib_face     = np.array([distrib_face    [i_rank], distrib_face    [i_rank+1], distrib_face    [n_rank]], dtype=pe.dtype)
   np_distrib_edge_vtx = np.array([distrib_edge_vtx[i_rank], distrib_edge_vtx[i_rank+1], distrib_edge_vtx[n_rank]], dtype=pe.dtype)
 
-  # print(np_distrib_edge_vtx)
-  # exit(2)
   create_distribution_node_from_distrib("Cell"               , dist_zone, np_distrib_cell    )
   create_distribution_node_from_distrib("Vertex"             , dist_zone, np_distrib_vtx     )
   create_distribution_node_from_distrib("Element"            , ngon_n   , np_distrib_face    )
