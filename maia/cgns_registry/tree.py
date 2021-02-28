@@ -99,11 +99,3 @@ def add_cgns_registry_information(tree, comm):
         I.createNode(name=":CGNS#Registry", value=global_ids[i], ntype='UserDefined_t', parent=node)
 
   return cgr
-
-
-
-
-
-
-
-

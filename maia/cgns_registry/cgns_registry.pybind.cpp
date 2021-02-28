@@ -25,10 +25,10 @@ PYBIND11_MODULE(cgns_registry, m) {
 
   py::class_<cgns_registry> (m, "cgns_registry")
     .def(py::init<>(&make_cgns_registry))
-    .def("at"          , &cgns_registry::at)
-    .def("paths"       , &cgns_registry::paths)
-    .def("global_ids"  , &cgns_registry::global_ids)
-    .def("distribution", &cgns_registry::distribution)
+    .def("at"          , &cgns_registry::at          , py::return_value_policy::automatic_reference)
+    .def("paths"       , &cgns_registry::paths       , py::return_value_policy::automatic_reference)
+    .def("global_ids"  , &cgns_registry::global_ids  , py::return_value_policy::automatic_reference)
+    .def("distribution", &cgns_registry::distribution, py::return_value_policy::automatic_reference)
     .def("__repr__", [](const cgns_registry& x){
       return to_string(x);
     });
