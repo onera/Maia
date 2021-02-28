@@ -82,8 +82,8 @@ def test_utils2(sub_comm):
 #   assert(zone_s1.global_id == 2          );
 #   assert(zone_s1.name      == "cartesian");
 
-#   # MUF.add_zone_to_base(base, zone_u1);
-#   # MUF.add_zone_to_base(base, zone_s1);
+#   # MUF.move_zone_to_base(base, zone_u1);
+#   # MUF.move_zone_to_base(base, zone_s1);
 
 #   print(zone_u1.global_id)
 #   print(zone_s1.global_id)

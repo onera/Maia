@@ -143,7 +143,7 @@ struct cgns_base {
 
 
 template<typename zone_type>
-void add_zone_to_base(cgns_base& base, zone_type& zone){
+void move_zone_to_base(cgns_base& base, zone_type& zone){
   // auto& lzone = std::get<std::vector<zone_type>>(base.zones);
   auto& lzone = std_e::get<zone_type>(base.zones);
   std::cout << __PRETTY_FUNCTION__ << " --> " << zone.global_id << std::endl;
@@ -248,8 +248,8 @@ PYBIND11_MODULE(first_step, m) {
   m.def("test", py::overload_cast<zone_structured&>(&test));
   m.def("test", py::overload_cast<zone_unstructured&>(&test));
 
-  m.def("add_zone_to_base", &add_zone_to_base<zone_unstructured>, py::return_value_policy::automatic_reference);
-  m.def("add_zone_to_base", &add_zone_to_base<zone_structured>, py::return_value_policy::automatic_reference);
+  m.def("move_zone_to_base", &move_zone_to_base<zone_unstructured>, py::return_value_policy::automatic_reference);
+  m.def("move_zone_to_base", &move_zone_to_base<zone_structured>, py::return_value_policy::automatic_reference);
 
   // m.def("comsume_ptr", &comsume_ptr, py::return_value_policy::automatic_reference);
 
@@ -271,10 +271,10 @@ PYBIND11_MODULE(first_step, m) {
   }, py::return_value_policy::reference);
 
 
-  // m.def("add_zone_to_base", [](zone_unstructured&& m){
+  // m.def("move_zone_to_base", [](zone_unstructured&& m){
   //     std::string s = "void";
   //     return s;
   //   });
-  //   // m.def("add_zone_to_base", &add_zone_to_base<zone_structured>, py::return_value_policy::automatic_reference);
+  //   // m.def("move_zone_to_base", &move_zone_to_base<zone_structured>, py::return_value_policy::automatic_reference);
 
 }

@@ -19,8 +19,8 @@ def test_first_step():
 
   # print(zone_u1.big_vector[400])
   # print(zone_s1.big_vector[400])
-  MUF.add_zone_to_base(base, zone_u1);
-  MUF.add_zone_to_base(base, zone_s1);
+  MUF.move_zone_to_base(base, zone_u1);
+  MUF.move_zone_to_base(base, zone_s1);
 
   # > En faite ce qui est pas mal c'est que pybind retrouve le bon type caché par le variant
   # > Ok ca marche
@@ -36,7 +36,7 @@ def test_first_step():
   # Si pas le type de retour n'est pas wrappé --> Cannot convert C++ object to python -> Logique, il sait pas faire le translate
 
   # > C'est bizarre ca, car la fonction accepte indiremment un pointer ou adress ??
-  # MUF.add_zone_to_base(base, zone_t);
+  # MUF.move_zone_to_base(base, zone_t);
 
   zone_u1.global_id = 1000 # Well this one works but not for good reason
 
@@ -94,8 +94,8 @@ def test_first_step():
   assert(zone_s1.global_id == 2          );
   assert(zone_s1.name      == "cartesian");
 
-  # MUF.add_zone_to_base(base, zone_u1);
-  # MUF.add_zone_to_base(base, zone_s1);
+  # MUF.move_zone_to_base(base, zone_u1);
+  # MUF.move_zone_to_base(base, zone_s1);
 
   print(zone_u1.global_id)
   print(zone_s1.global_id)
