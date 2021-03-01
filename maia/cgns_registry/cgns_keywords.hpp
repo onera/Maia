@@ -494,7 +494,7 @@ STD_E_ENUM_CLASS(DataType,
 );
 
 // Element types
-// --------------
+// ---------------// Element types
 STD_E_ENUM_CLASS(ElementType,
   Null,
   UserDefined,
@@ -519,7 +519,7 @@ STD_E_ENUM_CLASS(ElementType,
   MIXED,
   PYRA_13,
   NGON_n,
-  n_face_n,
+  NFACE_n,
   BAR_4,
   TRI_9,
   TRI_10,
