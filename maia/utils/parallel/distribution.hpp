@@ -17,7 +17,7 @@ template<class Integer> using distribution_span = std_e::knot_span<Integer>;
 
 
 // Distribution vocabulary around knot_sequence functions {
-template<class Integer, class Distribution> auto 
+template<class Integer, class Distribution> auto
 search_rank(Integer i, const Distribution& dist) {
   return std_e::interval_index(i,dist);
 }

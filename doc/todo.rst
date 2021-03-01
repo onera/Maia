@@ -21,7 +21,7 @@ Fonctionnalités :
    dconnectivity_transform / pcoonectivty_trsfrom
    Déstructuration // ( convertArray2NGon )
    Transfert distribué cell <-> noeuds (underconstruction)
-   cgns_registery
+   cgns_registry
    Génération de maillage // --> Cube / Plan
    connectMatch / connectMatchPeriodic + [ distribué / partitioné ]
 
