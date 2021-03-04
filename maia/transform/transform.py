@@ -39,3 +39,6 @@ def ngon_new_to_old(t):
   apply_to_bases(t,ctransform.ngon_new_to_old)
 def sids_conforming_ngon_nface(t):
   apply_to_bases(t,ctransform.sids_conforming_ngon_nface)
+
+def split_boundary_subzones_according_to_bcs(t):
+  apply_to_bases(t,ctransform.split_boundary_subzones_according_to_bcs)

@@ -20,6 +20,7 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
       if isinstance(value, (list, tuple))}
 
   partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter_with_dim, comm)
+  print(partial_dict_load.keys())
   update_tree_with_partial_load_dict(dist_tree, partial_dict_load)
 
   # > Match with callable
