@@ -42,8 +42,8 @@ PYBIND11_MODULE(dispatch, m) {
   py::enum_<CGNS::Label::kind>(m, "kind", py::arithmetic(), "A first enum")
   .value("CGNSTree_t", CGNS::Label::CGNSTree_t, " ooo ")
   .value("CGNSBase_t", CGNS::Label::CGNSBase_t, " aaa ")
-  .value("Zone_t"    , CGNS::Label::Zone_t, " aaa ")
-  .export_values();
+  .value("Zone_t"    , CGNS::Label::Zone_t, " aaa ");
+  // .export_values();
 
   m.def("test_enum", [](CGNS::Label::kind k){
     std::cout << " ----------------" << std::endl;

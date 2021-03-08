@@ -53,7 +53,8 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
   """
   concat_pdm_data = lambda i_part, i_zone : {**multi_part.multipart_val_get               (i_part, i_zone),
                                              **multi_part.multipart_graph_comm_vtx_val_get(i_part, i_zone),
-                                             **multi_part.multipart_ghost_information_get (i_part, i_zone)}
+                                             **multi_part.multipart_ghost_information_get (i_part, i_zone),
+                                             **multi_part.multipart_color_get             (i_part, i_zone)}
 
   #part_path_nodes = I.createNode(':Ppart#ZonePaths', 'UserDefinedData_t', parent=part_base)
 
