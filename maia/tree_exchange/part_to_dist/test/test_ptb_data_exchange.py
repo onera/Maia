@@ -40,6 +40,53 @@ def test_discover_partitioned_fields(sub_comm):
     I.newPointList(parent=p_sol)
     PTB.discover_partitioned_fields(dist_zone, part_zones, sub_comm)
 
+@mark_mpi_test(3)
+def test_discover_partitioned_dataset(sub_comm):
+  dt = """
+Zone Zone_t:
+  ZBC ZoneBC_t:
+    bc1 BC_t:
+    bc2 BC_t:
+  """
+  if sub_comm.Get_rank() == 0:
+    pt = """
+  Zone.P0.N0 Zone_t:
+    ZBC ZoneBC_t:
+      bc1 BC_t:
+        BCDS BCDataSet_t 'BCInflow':
+          BCData BCData_t:
+            newField1 DataArray_t:
+            newField2 DataArray_t:
+    """
+  elif sub_comm.Get_rank() == 1:
+    pt = """
+  Zone.P1.N0 Zone_t:
+    """
+  if sub_comm.Get_rank() == 2:
+    pt = """
+  Zone.P2.N0 Zone_t:
+    ZBC ZoneBC_t:
+      bc1 BC_t:
+        BCDS2 BCDataSet_t 'BCWall':
+          BCData BCData_t:
+            newField3 DataArray_t:
+  Zone.P2.N1 Zone_t:
+    ZBC ZoneBC_t:
+      bc2 BC_t:
+        BCDS BCDataSet_t 'Null':
+          BCData BCData_t:
+            newField4 DataArray_t:
+    """
+  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+
+  PTB.discover_partitioned_dataset(I.getZones(dist_tree)[0], I.getZones(part_tree), sub_comm)
+
+  assert [I.getValue(bcds) for bcds in I.getNodesFromType(dist_tree, 'BCDataSet_t')] \
+      == ['BCInflow', 'BCWall', 'Null']
+  assert [I.getName(field) for field in I.getNodesFromType(dist_tree, 'DataArray_t')] \
+      == ['newField1', 'newField2', 'newField3', 'newField4']
+
 @mark_mpi_test(2)
 def test_part_to_dist(sub_comm):
   part_data = dict()

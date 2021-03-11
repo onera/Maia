@@ -32,6 +32,36 @@ def discover_partitioned_fields(dist_zone, part_zones, comm):
     for field in fields:
       I.newDataArray(field, parent=d_sol)
 
+def discover_partitioned_dataset(dist_zone, part_zones, comm):
+  """
+  Append in dist zone the skeleton path of bcdataset that have been created
+  on specific partitioned zones. We assume that ZoneBC/BC exists on distTree,
+  only DataSet nodes are absent.
+  """
+  # > Local collection of fields not existing in dist zone
+  new_datasets = {}
+  for part_zone in part_zones:
+    for p_dataset_n_path in py_utils.getNodesWithParentsFromTypePath(part_zone, 'ZoneBC_t/BC_t/BCDataSet_t'):
+      p_dataset_path = '/'.join([I.getName(node) for node in p_dataset_n_path])
+      p_dataset = p_dataset_n_path[-1]
+      if I.getNodeFromPath(dist_zone, p_dataset_path) is None:
+        assert I.getNodeFromType1(p_dataset, 'IndexArray_t') is None
+        fields = ['/'.join([I.getName(node) for node in field_path]) for field_path in\
+            py_utils.getNodesWithParentsFromTypePath(p_dataset, 'BCData_t/DataArray_t')]
+        new_datasets[p_dataset_path] = (I.getValue(p_dataset), fields)
+
+  # > Gathering and update of dist zone
+  discovered_dataset = {}
+  for new_dataset_rank in comm.allgather(new_datasets):
+    discovered_dataset.update(new_dataset_rank)
+  for discovered_dataset, (value, fields) in discovered_dataset.items():
+    ds_prefix, ds_name = I.getPathAncestor(discovered_dataset), I.getPathLeaf(discovered_dataset)
+    dist_dataset = I.newBCDataSet(ds_name, value, parent=I.getNodeFromPath(dist_zone, ds_prefix))
+    for field in fields:
+      bcdata, data = field.split('/')
+      bcdata_n = I.createUniqueChild(dist_dataset, bcdata, 'BCData_t')
+      I.newDataArray(data, parent=bcdata_n)
+
 def part_to_dist(partial_distri, part_data, ln_to_gn_list, comm):
   """
   Helper function calling PDM.PartToBlock
@@ -128,8 +158,10 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
   """
   Transfert all the data included in BCDataSet_t/BCData_t nodes from partitioned
   zones to the distributed zone.
-  Such nodes must exist on the dist zone.
   """
+
+  discover_partitioned_dataset(dist_zone, part_zones, comm)
+
   for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
     for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
       bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
