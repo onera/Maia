@@ -2,7 +2,6 @@
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/transform/utils.hpp"
-#include "std_e/algorithm/distribution.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/interval/knot_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
@@ -12,15 +11,6 @@
 using namespace cgns;
 
 namespace maia {
-
-
-template<class Range> auto
-distribution_from_partial(const Range& partial_distri, MPI_Comm comm) -> distribution_vector<PDM_g_num_t> {
-  PDM_g_num_t dn_elt = partial_distri[1] - partial_distri[0];
-  auto full_distri = distribution_from_dsizes(dn_elt, comm);
-  STD_E_ASSERT(full_distri.back()==partial_distri[2]);
-  return full_distri;
-}
 
 template<class It> auto
 merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -> tree {

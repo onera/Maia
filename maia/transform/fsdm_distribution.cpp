@@ -4,9 +4,11 @@
 #include "cpp_cgns/tree_manip.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
+#include "maia/transform/utils.hpp"
 
+using namespace cgns;
 
-namespace cgns {
+namespace maia {
 
 auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
   STD_E_ASSERT(b.label=="CGNSBase_t");
@@ -50,4 +52,58 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
   }
 }
 
-} // cgns
+template<class I, class Tree_range> auto
+elt_interval_range(const Tree_range& sorted_elt_sections) {
+  int n_elt = sorted_elt_sections.size();
+  std::vector<I> interval_rng(n_elt+1);
+
+  for (int i=0; i<n_elt; ++i) {
+    interval_rng[i] = ElementRange<I>(sorted_elt_sections[i])[0];
+  }
+
+  interval_rng[n_elt] = ElementRange<I>(sorted_elt_sections.back())[1]+1; // +1 because CGNS intervals are closed, we want open
+
+  return interval_rng;
+}
+
+template<class Tree_range> auto
+elt_distributions(const Tree_range& sorted_elt_sections, MPI_Comm comm) {
+  int n_elt = sorted_elt_sections.size();
+  std::vector<distribution_vector<I4>> dists(n_elt);
+  for (int i=0; i<n_elt; ++i) {
+    const tree& elt = sorted_elt_sections[i];
+    auto partial_dist = cgns::get_node_value_by_matching<I8>(elt,":CGNS#Distribution/Element");
+    dists[i] = distribution_from_partial(partial_dist,comm);
+  }
+  return dists;
+}
+
+
+auto
+distribute_bc_ids_to_match_face_dist(tree& b, MPI_Comm comm) -> void {
+  STD_E_ASSERT(b.label=="CGNSBase_t");
+  auto zs = get_children_by_label(b,"Zone_t");
+  if (zs.size()!=1) {
+    throw cgns_exception("distribute_bc_ids_to_match_face_dist (as FSDM) expects only one zone per process");
+  }
+  tree& z = zs[0];
+
+  auto elt_sections = element_sections_ordered_by_range(z);
+  auto elt_intervals = elt_interval_range<I4>(elt_sections);
+  auto elt_dists = elt_distributions(elt_sections,comm);
+
+  for (tree& bc : cgns::get_nodes_by_matching(z,"ZoneBC/BC_t")) {
+    auto pl = cgns::PointList<I4>(bc);
+    auto fields = std::vector<std::vector<double>>{}; // TODO extract these fields (if they exist)
+    ELOG(bc.name);
+    auto [new_pl,_] = redistribute_to_match_face_dist(elt_dists,elt_intervals,pl,fields,comm);
+
+    rm_child_by_name(bc,"PointList");
+
+    std_e::buffer_vector<I4> pl_buf(begin(new_pl),end(new_pl));
+    cgns::emplace_child(bc,new_PointList("PointList",std::move(pl_buf)));
+  }
+  // TODO update BC distribution
+}
+
+} // maia
