@@ -3,8 +3,10 @@
 #include "cpp_cgns/sids/sids.hpp"
 #include "cpp_cgns/tree_manip.hpp"
 #include "maia/utils/parallel/distribution.hpp"
+#include "maia/utils/parallel/utils.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "maia/transform/utils.hpp"
+#include "std_e/log.hpp" // TODO
 
 using namespace cgns;
 
@@ -27,11 +29,12 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
   }
   I4 n_owned_vtx = n_vtx - n_ghost_node;
   auto vtx_distri = distribution_from_dsizes(n_owned_vtx, comm);
-  std_e::buffer_vector<I8> vtx_distri_mem(n_rank+1);
-  std::copy(begin(vtx_distri),end(vtx_distri),begin(vtx_distri_mem));
+  auto partial_vtx_distri = full_to_partial_distribution(vtx_distri,comm);
+  std_e::buffer_vector<I8> vtx_distri_mem(begin(partial_vtx_distri),end(partial_vtx_distri));
   tree vtx_dist = new_DataArray("Vertex",std::move(vtx_distri_mem));
   auto dist_node = new_UserDefinedData(":CGNS#Distribution");
   emplace_child(dist_node,std::move(vtx_dist));
+  ELOG(dist_node);
   emplace_child(z,std::move(dist_node));
 
   auto elt_sections = get_children_by_label(z,"Elements_t");

@@ -2,7 +2,6 @@ import Converter.Internal as I
 
 from maia.cgns_io                     import cgns_io_tree            as IOT
 from maia.transform.transform        import merge_by_elt_type,\
-                                            add_fsdm_distribution,\
                                             gcs_only_for_ghosts
 
 from maia.tree_exchange.utils import get_partitioned_zones
@@ -36,7 +35,6 @@ def load(file_name,comm):
 
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
-  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
 
   ## TODO
@@ -59,7 +57,6 @@ def load_partitioned_tree_poly(file_name,comm):
   #part_tree = PPA.partition(dist_tree,comm,split_method=2)
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
-  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
 
   return parallel_tree(dist_tree,part_tree)
