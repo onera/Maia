@@ -6,7 +6,6 @@
 #include "maia/utils/parallel/utils.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "maia/transform/utils.hpp"
-#include "std_e/log.hpp" // TODO
 
 using namespace cgns;
 
@@ -34,7 +33,6 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
   tree vtx_dist = new_DataArray("Vertex",std::move(vtx_distri_mem));
   auto dist_node = new_UserDefinedData(":CGNS#Distribution");
   emplace_child(dist_node,std::move(vtx_dist));
-  ELOG(dist_node);
   emplace_child(z,std::move(dist_node));
 
   auto elt_sections = get_children_by_label(z,"Elements_t");
@@ -43,8 +41,8 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
     I4 n_owned_elt = elt_range[1] - elt_range[0] + 1;
 
     auto elt_distri = distribution_from_dsizes(n_owned_elt, comm);
-    std_e::buffer_vector<I8> elt_distri_mem(n_rank+1);
-    std::copy(begin(elt_distri),end(elt_distri),begin(elt_distri_mem));
+    auto partial_elt_distri = full_to_partial_distribution(elt_distri,comm);
+    std_e::buffer_vector<I8> elt_distri_mem(begin(partial_elt_distri),end(partial_elt_distri));
 
     I4 elt_type = ElementType<I4>(elt_section);
     tree elt_dist = new_DataArray("Element",std::move(elt_distri_mem));
