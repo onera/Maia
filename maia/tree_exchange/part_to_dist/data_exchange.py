@@ -6,6 +6,7 @@ import maia.sids.sids     as SIDS
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
 from maia.utils          import py_utils
+from .                   import index_exchange as IPTB
 
 def discover_partitioned_fields(dist_zone, part_zones, comm):
   """
@@ -18,19 +19,27 @@ def discover_partitioned_fields(dist_zone, part_zones, comm):
     for p_sol in I.getNodesFromType1(part_zones, "FlowSolution_t") + \
                  I.getNodesFromType1(part_zones, "DiscreteData_t"):
       if I.getNodeFromPath(dist_zone, I.getName(p_sol)) is None:
-        assert I.getNodeFromType1(p_sol, 'IndexArray_t') is None
+        # We store a flag telling us if a point list reconstruction is necessary:
+        # 0 = no point list for this sol, 1 = pl with precomputed numbering, 2 = pl needing numbering
+        pl_gnum_status = 0
+        if I.getNodeFromName1(p_sol, 'PointList') is not None:
+          pl_gnum_status = 1 if I.getNodeFromPath(p_sol, ':CGNS#GlobalNumbering/Index') is not None else 2
         fields = [I.getName(field) for field in I.getNodesFromType1(p_sol, 'DataArray_t')]
-        new_sols[I.getName(p_sol)] = (I.getType(p_sol), SIDS.GridLocation(p_sol), fields)
+        new_sols[I.getName(p_sol)] = (I.getType(p_sol), SIDS.GridLocation(p_sol), pl_gnum_status, fields)
 
   # > Gathering and update of dist zone
   discovered_sols = {}
   for new_sol_rank in comm.allgather(new_sols):
     discovered_sols.update(new_sol_rank)
-  for discovered_sol, (type, loc, fields) in discovered_sols.items():
+  for discovered_sol, (type, loc, pl_status, fields) in discovered_sols.items():
     d_sol = I.newFlowSolution(discovered_sol, loc, parent=dist_zone)
     I.setType(d_sol, type) #Trick to be generic between DiscreteData/FlowSol
     for field in fields:
       I.newDataArray(field, parent=d_sol)
+    if pl_status == 2:
+      IPTB.create_part_pl_gnum(dist_zone, part_zones, I.getName(d_sol), comm)
+    if pl_status >= 1:
+      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_sol), comm)
 
 def discover_partitioned_dataset(dist_zone, part_zones, comm):
   """
