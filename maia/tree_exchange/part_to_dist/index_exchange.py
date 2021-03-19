@@ -86,3 +86,42 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
       I.newDataArray('Index', part_data['lngn'][i_zone], parent=distri_ud)
       i_zone += 1
 
+def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm):
+  """
+  Create a distributed point list for the node specified by its node_path
+  from the partitioned point lists.
+  Numbering :CGNS#GlobalNumbering/Index on node_path must have been created before.
+  In addition, we assume that node_path exists in dist_tree and that its location is already set
+  """
+  dist_node = I.getNodeFromPath(dist_zone, node_path)
+
+  ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, node_path + '/:CGNS#GlobalNumbering/Index')
+  PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
+                        t_distrib=0, t_post=1, t_stride=0)
+
+  dist_data = dict()
+  part_data = {'pl' : []}
+  for part_zone in part_zones:
+    node = I.getNodeFromPath(part_zone, node_path)
+    if node:
+      if SIDS.GridLocation(node) == 'Vertex':
+        ln_to_gn = I.getNodeFromPath(part_zone, ':CGNS#GlobalNumbering/Vertex')[1]
+      else:
+        ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
+      part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
+      part_data['pl'].append(ln_to_gn[part_pl-1])
+    else:
+      part_data['pl'].append(np.empty(0, dtype=pdm_gnum_dtype))
+
+  PTB.PartToBlock_Exchange(dist_data, part_data)
+
+  # Add distribution in dist_node
+  distri_ud = I.createUniqueChild(dist_node, ':CGNS#Distribution', 'UserDefinedData_t')
+  full_distri    = PTB.getDistributionCopy()
+  partial_distri = np.empty(3, dtype=pdm_gnum_dtype)
+  partial_distri[:2] = full_distri[comm.Get_rank() : comm.Get_rank()+2]
+  partial_distri[2]  = full_distri[-1]
+  I.newDataArray('Index', partial_distri, parent=distri_ud)
+
+  # Create dist pointlist
+  I.newPointList(value = dist_data['pl'].reshape(1,-1), parent=dist_node)
