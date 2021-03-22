@@ -125,3 +125,4 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm):
 
   # Create dist pointlist
   I.newPointList(value = dist_data['pl'].reshape(1,-1), parent=dist_node)
+  I.newIndexArray('PointList#Size', value=[1, partial_distri[2]], parent=dist_node)

@@ -85,6 +85,49 @@ Base CGNSBase_t [3,3]:
   assert 'Base/ZoneU/ZGC/match2/PointList' in hdf_filter
   assert 'Base/ZoneS/ZGC/match3/PointRange' not in hdf_filter #Point range are ignored
 
+def test_create_flow_solution_filter():
+  #Don't test the value of value of dataspace, this is done by test_hdf_dataspace
+  yt = """
+Base CGNSBase_t [3,3]:
+  Zone Zone_t [[27],[8],[0]]:
+    FSall FlowSolution_t:
+      GridLocation GridLocation_t "Vertex":
+      array1 DataArray_t None:
+      array2 DataArray_t None:
+    FSpartial FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      PointList IndexArray_t None:
+      array3 DataArray_t None:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t [0,4,4]:
+    :CGNS#Distribution UserDefinedData_t:
+      Vertex DataArray_t [12,27,27]:
+      Cell DataArray_t [0,8,8]:
+"""
+  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  hdf_filter = dict()
+  cgns_subsets.create_flow_solution_filter(I.getZones(size_tree)[0], "Base/Zone", hdf_filter)
+  assert len(hdf_filter.keys()) == 4
+  assert 'Base/Zone/FSall/array1' in hdf_filter
+  assert 'Base/Zone/FSall/array2' in hdf_filter
+  assert 'Base/Zone/FSpartial/array3' in hdf_filter
+  assert 'Base/Zone/FSpartial/PointList' in hdf_filter
+
+  yt = """
+Base CGNSBase_t [3,3]:
+  Zone Zone_t [[27],[8],[0]]:
+    wrongFS FlowSolution_t:
+      GridLocation GridLocation_t "FaceCenter":
+      array1 DataArray_t None:
+    :CGNS#Distribution UserDefinedData_t:
+      Vertex DataArray_t [12,27,27]:
+      Cell DataArray_t [0,8,8]:
+"""
+  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  hdf_filter = dict()
+  with pytest.raises(RuntimeError):
+    cgns_subsets.create_flow_solution_filter(I.getZones(size_tree)[0], "Base/Zone", hdf_filter)
+
 def test_create_zone_subregion_filter():
   #Don't test the value of value of dataspace, this is done by test_hdf_dataspace
   yt = """

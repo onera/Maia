@@ -91,8 +91,10 @@ def test_part_pl_to_dist_pl(sub_comm):
   IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", sub_comm)
 
   dist_pl     = I.getNodeFromPath(dist_zsr, 'PointList')[1]
+  dist_pl_s   = I.getNodeFromPath(dist_zsr, 'PointList#Size')[1]
   dist_distri = I.getNodeFromPath(dist_zsr, ':CGNS#Distribution/Index')[1]
   assert dist_distri.dtype == pdm_gnum_dtype
+  assert (dist_pl_s == [1,7]).all()
 
   if sub_comm.Get_rank() == 0:
     assert (dist_distri == [0,2,7]).all()
