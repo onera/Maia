@@ -4,7 +4,8 @@ import Pypdm.Pypdm        as PDM
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
-from maia.sids import sids     as SIDS
+from maia.sids  import sids     as SIDS
+from maia.utils import py_utils
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
 
@@ -126,3 +127,107 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm):
   # Create dist pointlist
   I.newPointList(value = dist_data['pl'].reshape(1,-1), parent=dist_node)
   I.newIndexArray('PointList#Size', value=[1, partial_distri[2]], parent=dist_node)
+
+
+def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
+  """
+  Create a distributed Elements_t node for NGon on the dist_zone from partitions.
+  Partitions must have the global numbering informations.
+  On the dist_zone, ElementRange of the created NGon node will start at 1 and must
+  be shifted afterward.
+  """
+  n_rank = comm.Get_size()
+  i_rank = comm.Get_rank()
+  # Prepare gnum lists
+  elt_gnum_path = elem_name + '/:CGNS#GlobalNumbering/Element'
+  vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
+  cell_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Cell')
+  elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, elt_gnum_path)
+
+  # Init dicts
+  p_data_pe = {'PE' : list()}
+  p_data_ec = {'Connectivity' : list()}
+  p_strid_ec = list()
+  p_strid_pe = list()
+
+  # Collect partitioned data
+  for ipart, part_zone in enumerate(part_zones):
+    elem_n = I.getNodeFromName1(part_zone, elem_name)
+    PE     = I.getNodeFromName1(elem_n, 'ParentElements')[1]
+    EC     = I.getNodeFromName1(elem_n, 'ElementConnectivity')[1]
+    ECIdx  = I.getNodeFromName1(elem_n, 'ElementStartOffset')[1]
+
+    # Convert in global numbering and expected shape
+    PE = PE.ravel()
+    EC = vtx_gnum_l[ipart][EC-1]
+
+    internal_cells = np.where(PE != 0)[0]
+    internal_cells_lids = PE[internal_cells]
+    PE[internal_cells] = cell_gnum_l[ipart][internal_cells_lids-1]
+
+    p_data_pe['PE'].append(PE)
+    p_data_ec['Connectivity'].append(EC)
+    p_strid_pe.append(2*np.ones(PE.shape[0], dtype=np.int32))
+    p_strid_ec.append(np.diff(ECIdx).astype(np.int32))
+
+  # Init PTB protocol
+  PTB = PDM.PartToBlock(comm, elt_gnum_l, None, len(elt_gnum_l),
+                        t_distrib = 0, t_post = 2, t_stride = 1)
+  PTBDistribution = PTB.getDistributionCopy()
+
+  # Two echanges are needed, one for PE (with stride == 2), one for connectivity
+  d_data_ec = dict()
+  d_data_pe  = dict()
+  PTB.PartToBlock_Exchange(d_data_pe, p_data_pe, p_strid_pe)
+  PTB.PartToBlock_Exchange(d_data_ec, p_data_ec, p_strid_ec)
+
+  # Post treat : delete duplicated faces. We chose to keep the first appearing
+  d_strid_pe = d_data_pe['PE#Stride']
+  dn_elt = d_strid_pe.shape[0]
+  duplicated_idx = np.where(d_strid_pe != 2)[0]
+
+  dist_pe = np.empty([dn_elt, 2], order='F', dtype=np.int32)
+  offset = 0
+  for iFace in range(dn_elt):
+    # Face was not shared with a second partition on this zone
+    if d_strid_pe[iFace] == 2:
+      dist_pe[iFace,:] = d_data_pe['PE'][offset:offset+2]
+    # Face was a partition boundary -> we take the left cell of each received tuple
+    elif d_strid_pe[iFace] == 4:
+      dist_pe[iFace,:] = [d_data_pe['PE'][offset], d_data_pe['PE'][offset+2]]
+    else:
+      raise RuntimeError("Something went wrong with face", iFace)
+    offset += d_strid_pe[iFace]
+
+  d_elt_n = d_data_ec['Connectivity#Stride']
+  # Local elementStartOffset, but with duplicated face->vertex connectivity
+  unfiltered_eso = py_utils.sizes_to_indices(d_data_ec['Connectivity#Stride'])
+
+  # Array of bool (1d) indicating which indices of connectivity must be keeped
+  # Then we just have to extract the good indices
+  duplicated_ec = np.zeros(unfiltered_eso[dn_elt], dtype=np.bool)
+  wrong_idx = py_utils.multi_arange(unfiltered_eso[duplicated_idx] + (d_elt_n[duplicated_idx] // 2),
+                                    unfiltered_eso[duplicated_idx+1])
+  duplicated_ec[wrong_idx] = 1
+  dist_ec = d_data_ec['Connectivity'][~duplicated_ec]
+
+  #Now retrieve filtered ElementStartOffset using size and cumsum
+  d_elt_n[duplicated_idx] = d_elt_n[duplicated_idx] // 2
+  d_elt_eso = py_utils.sizes_to_indices(d_elt_n)
+
+  #Local work is done, ElementStartOffset must now be shifted
+  shift_eso = par_utils.gather_and_shift(d_elt_eso[-1], comm)
+  d_elt_eso += shift_eso[i_rank]
+
+  # > Add in disttree
+  elt_node = I.newElements(elem_name, 'NGON', parent=dist_zone)
+  n_faceTot = PTBDistribution[n_rank]
+  I.newPointRange('ElementRange',        [1, n_faceTot], parent=elt_node)
+  I.newDataArray ('ParentElements',      dist_pe,        parent=elt_node)
+  I.newDataArray ('ElementConnectivity', dist_ec,        parent=elt_node)
+  I.newDataArray ('ElementStartOffset',  d_elt_eso,      parent=elt_node)
+
+  DistriFaceVtx = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
+  distri_ud = I.createUniqueChild(elt_node, ':CGNS#Distribution', 'UserDefinedData_t')
+  I.newDataArray('Element',           PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  I.newDataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
