@@ -159,6 +159,65 @@ def test_part_to_dist(sub_comm):
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 
 @mark_mpi_test(2)
+def test_part_coords_to_dist_coords(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    dt = """
+ZoneU Zone_t [[6,0,0]]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t {0} [0,3,6]:
+  GridCoordinates GridCoordinates_t:
+    CX DataArray_t:
+    CY DataArray_t:
+  """.format(dtype)
+    pt = """
+  ZoneU.P0.N0 Zone_t [[3,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [1,6]:
+    GridCoordinates GridCoordinates_t:
+      CX DataArray_t [1,6]:
+      CY DataArray_t [2,1]:
+    """.format(dtype)
+  elif sub_comm.Get_rank() == 1:
+    dt = """
+ZoneU Zone_t [[6,0,0]]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t {0} [3,6,6]:
+  GridCoordinates GridCoordinates_t:
+    CX DataArray_t:
+    CY DataArray_t:
+  """.format(dtype)
+    pt = """
+  ZoneU.P1.N0 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [5,2]:
+    GridCoordinates GridCoordinates_t:
+      CX DataArray_t [5,2]:
+      CY DataArray_t [1,2]:
+  ZoneU.P1.N1 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [3,4]:
+    GridCoordinates GridCoordinates_t:
+      CX DataArray_t [3,4]:
+      CY DataArray_t [2,1]:
+  """.format(dtype)
+
+  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+
+  dist_zone  = I.getZones(dist_tree)[0]
+  part_zones = I.getZones(part_tree)
+  PTB.part_coords_to_dist_coords(dist_zone, part_zones, sub_comm)
+
+  if sub_comm.Get_rank() == 0:
+    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()
+    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == [2,1]).all()
+  elif sub_comm.Get_rank() == 1:
+    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == [5,2]).all()
+    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == [1,2]).all()
+    assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CX')[1] == [3,4]).all()
+    assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
+
+@mark_mpi_test(2)
 def test_part_sol_to_dist_sol(sub_comm):
   if sub_comm.Get_rank() == 0:
     dt = """

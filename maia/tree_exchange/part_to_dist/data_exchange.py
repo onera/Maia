@@ -84,6 +84,28 @@ def part_to_dist(partial_distri, part_data, ln_to_gn_list, comm):
   PTB.PartToBlock_Exchange(dist_data, part_data)
   return dist_data
 
+def part_coords_to_dist_coords(dist_zone, part_zones, comm):
+
+  distribution = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
+  lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
+
+  d_grid_co = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
+  part_data = dict()
+  for coord in I.getNodesFromType1(d_grid_co, 'DataArray_t'):
+    part_data[I.getName(coord)] = list()
+
+  for part_zone in part_zones:
+    p_grid_co = I.getNodesFromName1(part_zone, I.getName(d_grid_co))
+    for coord in I.getNodesFromType1(p_grid_co, 'DataArray_t'):
+      flat_data = coord[1].ravel(order='A') #Reshape structured arrays for PDM exchange
+      part_data[I.getName(coord)].append(flat_data)
+
+  # Exchange
+  dist_data = part_to_dist(distribution, part_data, lntogn_list, comm)
+  for coord, array in dist_data.items():
+    dist_coord = I.getNodeFromName1(d_grid_co, coord)
+    I.setValue(dist_coord, array)
+
 def part_sol_to_dist_sol(dist_zone, part_zones, comm):
   """
   Transfert all the data included in FlowSolution_t nodes and DiscreteData_t nodes from partitioned
