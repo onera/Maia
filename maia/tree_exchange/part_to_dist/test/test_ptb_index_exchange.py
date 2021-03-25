@@ -66,7 +66,8 @@ def test_create_part_pl_gnum(sub_comm):
     assert (I.getNodeFromName(part_zones[1], 'Index')[1] == [4,1,3]).all()
 
 @mark_mpi_test(4)
-def test_part_pl_to_dist_pl(sub_comm):
+@pytest.mark.parametrize("allow_mult", [False, True])
+def test_part_pl_to_dist_pl(sub_comm, allow_mult):
   dist_zone = I.newZone('Zone')
   dist_zsr = I.newZoneSubRegion("ZSR", gridLocation='Vertex', parent=dist_zone)
   part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
@@ -92,7 +93,7 @@ def test_part_pl_to_dist_pl(sub_comm):
   elif sub_comm.Get_rank() == 3:
     part_zones = []
 
-  IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", sub_comm)
+  IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", sub_comm, allow_mult)
 
   dist_pl     = I.getNodeFromPath(dist_zsr, 'PointList')[1]
   dist_pl_s   = I.getNodeFromPath(dist_zsr, 'PointList#Size')[1]

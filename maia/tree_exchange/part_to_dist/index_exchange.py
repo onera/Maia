@@ -87,46 +87,56 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
       I.newDataArray('Index', part_data['lngn'][i_zone], parent=distri_ud)
       i_zone += 1
 
-def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm):
+def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False):
   """
   Create a distributed point list for the node specified by its node_path
   from the partitioned point lists.
   Numbering :CGNS#GlobalNumbering/Index on node_path must have been created before.
   In addition, we assume that node_path exists in dist_tree and that its location is already set
+  If allow_mult is True, leaf node of node_path is expanded search all partitioned leaf*. This can
+  be usefull eg to merge splitted joins (match.0, match.1, ...)
   """
+  ancestor, leaf = I.getPathAncestor(node_path), I.getPathLeaf(node_path)
   dist_node = I.getNodeFromPath(dist_zone, node_path)
 
-  ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, node_path + '/:CGNS#GlobalNumbering/Index')
+  if allow_mult:
+    ln_to_gn_list = []
+    for part_zone in part_zones:
+      ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
+      ln_to_gn_list.extend([I.getNodeFromPath(node, ':CGNS#GlobalNumbering/Index')[1] \
+          for node in I.getNodesFromName(ancestor_n, leaf+'*')])
+  else:
+    gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
+    ln_to_gn_list = [I.getNodeFromPath(part_zone, gn_path)[1] for part_zone in part_zones \
+        if I.getNodeFromPath(part_zone, gn_path) is not None]
+
   PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
                         t_distrib=0, t_post=1, t_stride=0)
 
   dist_data = dict()
   part_data = {'pl' : []}
   for part_zone in part_zones:
-    node = I.getNodeFromPath(part_zone, node_path)
-    if node:
+    ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
+    allowed_nodes = I.getNodesFromName(ancestor_n, leaf+'*') if allow_mult else I.getNodesFromName1(ancestor_n, leaf)
+    for node in allowed_nodes:
       if SIDS.GridLocation(node) == 'Vertex':
         ln_to_gn = I.getNodeFromPath(part_zone, ':CGNS#GlobalNumbering/Vertex')[1]
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
       part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
       part_data['pl'].append(ln_to_gn[part_pl-1])
-    else:
-      part_data['pl'].append(np.empty(0, dtype=pdm_gnum_dtype))
 
   PTB.PartToBlock_Exchange(dist_data, part_data)
 
   # Add distribution in dist_node
+  i_rank, n_rank = comm.Get_rank(), comm.Get_size()
   distri_ud = I.createUniqueChild(dist_node, ':CGNS#Distribution', 'UserDefinedData_t')
   full_distri    = PTB.getDistributionCopy()
-  partial_distri = np.empty(3, dtype=pdm_gnum_dtype)
-  partial_distri[:2] = full_distri[comm.Get_rank() : comm.Get_rank()+2]
-  partial_distri[2]  = full_distri[-1]
-  I.newDataArray('Index', partial_distri, parent=distri_ud)
+  I.newDataArray('Index', full_distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
   # Create dist pointlist
   I.newPointList(value = dist_data['pl'].reshape(1,-1), parent=dist_node)
-  I.newIndexArray('PointList#Size', value=[1, partial_distri[2]], parent=dist_node)
+  I.newIndexArray('PointList#Size', value=[1, full_distri[n_rank]], parent=dist_node)
 
 
 def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
