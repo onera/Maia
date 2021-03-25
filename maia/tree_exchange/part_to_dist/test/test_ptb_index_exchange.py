@@ -207,3 +207,79 @@ Zone.P2.N1 Zone_t:
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
   assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()
+
+@mark_mpi_test(3)
+def test_part_nface_to_dist_nface(sub_comm):
+  rank = sub_comm.Get_rank()
+  size = sub_comm.Get_size()
+
+  dist_zone = I.newZone('Zone')
+  if rank == 0:
+    yt = """
+Zone.P0.N0 Zone_t:
+  Ngon Elements_t [22,0]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Element DataArray_t:
+        {0} : [5,6,7,8,9,10,11,12,15,16,19,20,23,24,26,28,30,32,34,36]
+  NFace Elements_t [23,0]:
+    ElementConnectivity DataArray_t:
+      I4 : [1,5,9,11,15,17,2,6,-11,13,16,18,3,7,10,12,-17,19,4,8,-12,14,-18,20]
+    ElementStartOffset DataArray_t [0,6,12,18,24]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Element DataArray_t {0} [5,6,7,8]:
+  :CGNS#GlobalNumbering UserDefinedData_t:
+    Vertex DataArray_t {0} [19,20,21,22,23,24,25,26,27,10,13,15,17,18,11,12,14,16]:
+    Cell DataArray_t {0} [5,6,7,8]:
+  """.format(dtype)
+    expected_ec  = [1,5,13,17,25,29,2,6,17,21,27,31,3,7,14,18,29,33]
+    expected_eso = [0,6,12,18]
+  elif rank == 1:
+    yt = ""
+    expected_ec  = [4,8,18,22,31,35,5,9,15,19,26,30,6,10,19,23,28,32]
+    expected_eso = [18,24,30,36]
+  elif rank == 2:
+    yt = """
+Zone.P2.N0 Zone_t:
+  Ngon Elements_t [22,0]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Element DataArray_t {0} [1,3,5,7,13,14,17,18,25,29,33]:
+  NFace Elements_t [23,0]:
+    ElementConnectivity DataArray_t I4 [1,3,5,7,9,10,2,4,6,8,-10,11]:
+    ElementStartOffset DataArray_t [0,6,12]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Element DataArray_t {0} [1,3]:
+  :CGNS#GlobalNumbering UserDefinedData_t:
+    Vertex DataArray_t {0} [1,4,7,2,5,8,11,14,16,10,13,17]:
+    Cell DataArray_t {0} [1,3]:
+Zone.P2.N1 Zone_t:
+  Ngon Elements_t [22,0]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Element DataArray_t {0} [2,4,6,8,17,18,21,22,27,31,35]:
+  NFace Elements_t [23,0]:
+    ElementConnectivity DataArray_t I4 [1,3,5,7,9,10,2,4,6,8,-10,11]:
+    ElementStartOffset DataArray_t [0,6,12]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Element DataArray_t {0} [2,4]:
+  :CGNS#GlobalNumbering UserDefinedData_t:
+    Vertex DataArray_t {0} [3,6,9,2,5,8,11,12,14,15,17,18]:
+    Cell DataArray_t {0} [2,4]:
+  """.format(dtype)
+    expected_ec  = [7,11,16,20,30,34,8,12,20,24,32,36]
+    expected_eso = [36,42,48]
+
+  expected_elt_distri_full  = np.array([0,3,6,8])
+  expected_eltc_distri_full = np.array([0,18,36,48])
+
+  pT = parse_yaml_cgns.to_complete_pytree(yt)
+
+  IPTB.part_nface_to_dist_nface(dist_zone, I.getZones(pT), 'NFace', 'Ngon', sub_comm)
+
+  nface = I.getNodeFromName(dist_zone, 'NFace')
+  assert nface is not None
+  assert (I.getNodeFromName(nface, 'ElementStartOffset')[1] == expected_eso).all()
+  assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == expected_ec).all()
+  distri_elt  = I.getNodeFromPath(nface, ':CGNS#Distribution/Element')[1]
+  distri_eltc = I.getNodeFromPath(nface, ':CGNS#Distribution/ElementConnectivity')[1]
+  assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
+  assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
+  assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()

@@ -231,3 +231,59 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   distri_ud = I.createUniqueChild(elt_node, ':CGNS#Distribution', 'UserDefinedData_t')
   I.newDataArray('Element',           PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
   I.newDataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+
+def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
+  """
+  Create a distributed Elements_t node for NFace on the dist_zone from partitions.
+  Partitions must have the global numbering informations.
+  We assume that each NFace cell belongs to only one partition.
+  On the dist_zone, ElementRange of the created NFace node will start at 1 and must
+  be shifted afterward.
+  """
+  n_rank = comm.Get_size()
+  i_rank = comm.Get_rank()
+  # Prepare gnum lists
+  cell_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, elem_name + '/:CGNS#GlobalNumbering/Element')
+  ngon_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, ngon_name + '/:CGNS#GlobalNumbering/Element')
+
+  # Init dicts
+  part_data   = {'Connectivity' : list()}
+  part_stride = list()
+
+  # Collect partitioned data
+  for ipart, part_zone in enumerate(part_zones):
+    nface_n = I.getNodeFromName1(part_zone, elem_name)
+    EC     = I.getNodeFromName1(nface_n, 'ElementConnectivity')[1]
+    ECIdx  = I.getNodeFromName1(nface_n, 'ElementStartOffset')[1]
+
+    # Move to global and add in part_data
+    part_data['Connectivity'].append(ngon_gnum_l[ipart][np.abs(EC)-1])
+    part_stride.append(np.diff(ECIdx).astype(np.int32))
+
+  # Exchange : we suppose that cell belong to only one part, so there is nothing to do
+  PTB = PDM.PartToBlock(comm, cell_gnum_l, None, len(cell_gnum_l),
+                        t_distrib = 0, t_post = 0, t_stride = 1)
+  PTBDistribution = PTB.getDistributionCopy()
+
+  dist_data = dict()
+  PTB.PartToBlock_Exchange(dist_data, part_data, part_stride)
+
+  dist_ec = dist_data['Connectivity']
+  d_elt_n = dist_data['Connectivity#Stride']
+
+  # ElementStartOffset must be shifted
+  dist_eso = py_utils.sizes_to_indices(d_elt_n)
+  shift_eso = par_utils.gather_and_shift(dist_eso[-1], comm)
+  dist_eso += shift_eso[comm.Get_rank()]
+
+  # > Add in disttree
+  elt_node = I.newElements(elem_name, 'NFACE', parent=dist_zone)
+  n_cellTot = PTBDistribution[n_rank]
+  I.newPointRange('ElementRange',        [1, n_cellTot], parent=elt_node)
+  I.newDataArray ('ElementConnectivity', dist_ec,        parent=elt_node)
+  I.newDataArray ('ElementStartOffset',  dist_eso,       parent=elt_node)
+
+  distri_cell_face = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
+  distri_ud = I.createUniqueChild(elt_node, ':CGNS#Distribution', 'UserDefinedData_t')
+  I.newDataArray('Element',             PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  I.newDataArray('ElementConnectivity',distri_cell_face[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
