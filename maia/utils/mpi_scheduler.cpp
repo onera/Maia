@@ -19,7 +19,7 @@ double big_loop(){
       test[i] += 2.*iteration/((i+1)*(i+1));
     }
     test[100] = iteration;
-    sleep(0.1);
+    usleep(1);
     printf("iteration : %i \n ", iteration);
     std::cout << " iteration : " << iteration << std::endl;
   }
@@ -43,11 +43,12 @@ update_window_to_match_test(std::vector<int>& dtest_proc,
 
   int i_target_rank = std_e::interval_index(i_test_g, dtest_proc);
   printf("[%i] update_window_to_match_test - MPI_Win_lock  | i_test_g:: %i   \n", i_rank, i_test_g);
-  std::chrono::steady_clock::time_point a = std::chrono::steady_clock::now();
+  // std::chrono::steady_clock::time_point a = std::chrono::steady_clock::now();
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, i_target_rank, 0, win_count_rank_for_test);
-  std::chrono::steady_clock::time_point b = std::chrono::steady_clock::now();
-  std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double> >(b-a);
-  printf("[%i] update_window_to_match_test - MPI_Win_lock end | i_test_g:: %i | took : %12.5e \n", i_rank, i_test_g, time_span);
+  // std::chrono::steady_clock::time_point b = std::chrono::steady_clock::now();
+  // std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double> >(b-a);
+
+  // printf("[%i] update_window_to_match_test - MPI_Win_lock end | i_test_g:: %i | took : %12.5e \n", i_rank, i_test_g, time_span);
 
   // Compute relative index in remote window iloc = iglob - shift
   int i_test_loc = i_test_g - dtest_proc[i_target_rank];
@@ -388,7 +389,6 @@ void run_scheduler(MPI_Comm&                                    comm,
     }
 
     // On envoie également au proc d'aprés l'information pour le nouveu job
-    bool master_next_is_init = false;
     int n_info_next = 3;
     buffer_next[0] = i_test_g+1;
     buffer_next[1] = 0;
@@ -421,7 +421,6 @@ void run_scheduler(MPI_Comm&                                    comm,
           printf("[%i] buffer_next[%i] = %i \n", i_rank, i+2, ranks_available[i+nb_steal]);
           buffer_next[i+3] = ranks_available[i+nb_steal];
         }
-        master_next_is_init = true;
       } else {
         buffer_next[2] = 0;
       }

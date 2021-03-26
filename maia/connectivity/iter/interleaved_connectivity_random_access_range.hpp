@@ -41,7 +41,7 @@ class interleaved_connectivity_random_access_iterator {
     {}
 
     auto size() const -> I {
-      return fwd_it->size();
+      return fwd_it()->size();
     }
 
     template<class I0, std::enable_if_t< std::is_integral_v<I0> , int > =0>

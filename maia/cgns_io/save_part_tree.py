@@ -35,8 +35,8 @@ def save_part_tree(part_tree, filename, comm):
     base_name  = I.getNodeFromType1(part_tree, 'CGNSBase_t')[0]
     local_tree = I.newCGNSTree()
     local_base = I.newCGNSBase(base_name, 3, 3, parent=local_tree)
-    for path_zone in links:
-      zone_name = path_zone[0][2].split("/")[2]
+    for path_zone in nlinks:
+      zone_name = path_zone[2].split("/")[2]
       I.newZone(name=zone_name, zsize=None, parent=local_base)
 
     C.convertPyTree2File(local_tree, topfilename, links=nlinks)

@@ -5,7 +5,7 @@
 #include "cpp_cgns/cgns.hpp"
 
 
-template<class I> class faces_container; // TODO in namespace cgns
+template<class I> struct faces_container; // TODO in namespace cgns
 namespace cgns {
 
 

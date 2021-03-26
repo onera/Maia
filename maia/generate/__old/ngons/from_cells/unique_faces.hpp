@@ -57,7 +57,7 @@
 //
 //// TODO get<0> means get_tri and get<1> means get_quad
 template<class I> auto
-append_boundary_and_interior_faces(faces_container<I>& all_faces_unique, faces_heterogenous_container<I>& faces) {
+append_boundary_and_interior_faces(faces_container<I>& /*all_faces_unique*/, faces_heterogenous_container<I>& /*faces*/) {
   throw std_e::not_implemented_exception();
 }
 //  std_e::time_logger _("unique_faces");
@@ -71,7 +71,7 @@ append_boundary_and_interior_faces(faces_container<I>& all_faces_unique, faces_h
 //      bnd_faces_from_vol_3 = append_unique_faces(faces_3,all_interior_faces_3);
 //      bnd_faces_from_vol_4 = append_unique_faces(faces_4,all_interior_faces_4);
 //  //#pragma omp parallel sections
-//  //{             
+//  //{
 //  //  #pragma omp section
 //  //  bnd_faces_from_vol_3 = append_unique_faces(faces_3,all_interior_faces_3);
 //  //  #pragma omp section

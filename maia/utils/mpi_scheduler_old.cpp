@@ -43,8 +43,8 @@ void run_scheduler_old(MPI_Comm&                                    comm,
   for(int i = 0; i < static_cast<int>(n_rank_for_test.size()); ++i) {
     list_rank_for_test_idx[i+1] = list_rank_for_test_idx[i] + n_rank_for_test[i];
   }
-  int beg_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank  ]]; // 1er  test on the current proc
-  int end_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank+1]]; // Last test on the current proc
+  // int beg_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank  ]]; // 1er  test on the current proc
+  // int end_cur_proc_test = list_rank_for_test_idx[dtest_proc[i_rank+1]]; // Last test on the current proc
   // std::vector<int> list_rank_for_test(end_cur_proc_test - beg_cur_proc_test, -10);
 
   // std::vector<int> list_rank_for_test(list_rank_for_test_idx.back(), -10);

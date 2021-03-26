@@ -155,7 +155,7 @@ std::vector<int> generate_global_numbering(/* TODO const */ std::vector<std::str
   // -------------------------------------------------------------------
   // Sort local array // TODO DEL (not used)
   std_e::sort_unique(part_paths);
-  int n_loc_path = part_paths.size();
+  // int n_loc_path = part_paths.size();
   //log_general(logging_level::info, "generateGlobalNumberingFromPaths:: {0}\n", n_loc_path);
   //for(int i = 0; i < n_loc_path; ++i){
   //  log_general(logging_level::info, "{0} -> {1}\n", i, part_paths[i]);

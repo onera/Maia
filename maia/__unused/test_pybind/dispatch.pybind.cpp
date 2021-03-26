@@ -26,7 +26,7 @@ STD_E_ENUM(kind,
 }
 
 template<typename g_num>
-void auto_dispatch(py::array_t<g_num>& face_vtx, py::array_t<int>& face_vtx_idx){
+void auto_dispatch(py::array_t<g_num>& face_vtx, py::array_t<int>& /*face_vtx_idx*/){
   std::cout << __PRETTY_FUNCTION__ << std::endl;
   std::cout << "face_vtx.shape()   " << face_vtx.shape()    << std::endl;
   std::cout << "face_vtx.itemsize()" << face_vtx.itemsize() << std::endl;

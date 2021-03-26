@@ -164,7 +164,7 @@ mark_polygon_groups(tree& ngons) -> void {
 //  emplace_child(nfaces,std::move(pts_node));
 //}
 inline auto
-mark_simple_polyhedron_groups(tree& nfaces, const tree& ngons, I4 penta_start) -> void {
+mark_simple_polyhedron_groups(tree& nfaces, [[maybe_unused]] const tree& ngons, I4 penta_start) -> void {
   // Precondition: nfaces is sorted with tet,pyra,penta,hex; with no other polyhedron type
   auto nface_connectivity = ElementConnectivity<I4>(nfaces);
   auto nface_accessor = cgns::interleaved_nface_random_access_range(nface_connectivity);

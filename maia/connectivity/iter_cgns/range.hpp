@@ -55,9 +55,9 @@ polyhedron_range(C0& offsets, C1& cs) {
 }
 
 template<class C0, class C1> inline auto
-mixed_range(C0& offsets, C1& cs) {
+mixed_range([[maybe_unused]] C0& offsets, [[maybe_unused]] C1& cs) {
   throw std_e::not_implemented_exception("indexed mixed_range");
-  // TODO: something like this (not immediate because now interleaved_connectivity_random_access_range index array is self-hosted): 
+  // TODO: something like this (not immediate because now interleaved_connectivity_random_access_range index array is self-hosted):
   //return interleaved_connectivity_random_access_range<C0,C1,mixed_kind>(offsets,cs);
 }
 // indexed }

@@ -109,6 +109,7 @@ def test_mpi():
   comm = MPI.COMM_WORLD
   print("hello", comm.size)
   assert comm.size > 0
+  # assert(0 == 1)
   assert_mpi(comm, 0, comm.rank == 0)
   assert_mpi(comm, 1, comm.rank == 1)
 

@@ -8,7 +8,7 @@
 
 namespace py = pybind11;
 
-template<typename T> constexpr auto
+template<typename T> auto
 make_raw_view(py::array_t<T, py::array::f_style>& x){
   py::buffer_info buf = x.request();
   return static_cast<T*>(buf.ptr);
