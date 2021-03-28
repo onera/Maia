@@ -14,7 +14,7 @@ compute_idx_from_color(py::array_t<int, py::array::f_style>& np_color){
   int* color  = static_cast<int *>(buf.ptr);
   auto [min, max] = std::minmax_element(color, color+n_entitiy);
 
-  int min_color = *min;
+  // int min_color = *min;
   int max_color = *max;
 
   // assert(min_color == 0);

@@ -15,7 +15,7 @@ if (NOT PASS_DEFAULT_FLAGS)
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
 
   # set (CMAKE_Fortran_FLAGS " -fPIC -Wall -pedantic -std=gnu -fdefault-real-8 -fdefault-double-8 -ffixed-line-length-none -fno-second-underscore -Wno-unused-dummy-argument -Wno-maybe-uninitialized")
-  set (CMAKE_Fortran_FLAGS " -cpp -DE_DOUBLEREAL -ffixed-line-length-none -fno-second-underscore -fPIC -Wall -pedantic -std=gnu -fdefault-real-8 -fdefault-double-8 -ffixed-line-length-none -fno-second-underscore -Wno-unused-dummy-argument -Wno-maybe-uninitialized")
+  set (CMAKE_Fortran_FLAGS " -cpp -DE_DOUBLEREAL -ffixed-line-length-none -fno-second-underscore -fPIC -Wall -std=gnu -fdefault-real-8 -fdefault-double-8 -ffixed-line-length-none -fno-second-underscore -Wno-unused-dummy-argument -Wno-maybe-uninitialized")
 
   set (CMAKE_Fortran_FLAGS_RELEASE         "-O3")
   set (CMAKE_Fortran_FLAGS_DEBUG           "-O0 -g -fcheck=bounds -fbacktrace")
@@ -150,7 +150,7 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
 
   link_libraries ("m")
 
-  set (CMAKE_C_FLAGS "-std=gnu99 -fPIC -funsigned-char -pedantic -W -Wall -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -Wunused -Wfloat-equal  -Wno-unused-dummy-argument")
+  set (CMAKE_C_FLAGS "-std=gnu99 -fPIC -funsigned-char -pedantic -W -Wall -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -Wunused -Wfloat-equal  ")
 
   set (CMAKE_C_FLAGS_RELEASE         "-O3")
   set (CMAKE_C_FLAGS_DEBUG           "-O0 -g")

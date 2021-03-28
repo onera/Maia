@@ -250,8 +250,8 @@ endif()
 # ----------------------------------------------------------------------
 # Summary
 # ----------------------------------------------------------------------
-get_directory_property(is_top_lvl_cmakelists PARENT_DIRECTORY)
-if(is_top_lvl_cmakelists)
+get_directory_property(top_lvl_cmakelists PARENT_DIRECTORY)
+if(top_lvl_cmakelists STREQUAL ${PROJECT_SOURCE_DIR})
   include(FeatureSummary)
   FEATURE_SUMMARY(WHAT ALL)
 endif()
