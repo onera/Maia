@@ -5,6 +5,33 @@ from maia.utils         import parse_yaml_cgns
 from maia.tree_exchange import utils
 from pytest_mpi_check._decorator import mark_mpi_test
 
+def test_get_partitioned_zones():
+  dt = """
+BaseA CGNSBase_t:
+  Zone1 Zone_t:
+  Zone2.With.dot Zone_t:
+  Zone3 Zone_t:
+BaseB CGNSBase_t:
+  Zone3 Zone_t:
+"""
+  pt = """
+BaseA CGNSBase_t:
+  Zone1.P0.N1 Zone_t:
+  Zone1.P0.N2 Zone_t:
+  Zone2.With.dot.P0.N0 Zone_t:
+BaseB CGNSBase_t:
+  Zone3.P0.N0 Zone_t:
+"""
+  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseA/Zone1')]\
+      == ['Zone1.P0.N1', 'Zone1.P0.N2']
+  assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseA/Zone2.With.dot')]\
+      == ['Zone2.With.dot.P0.N0']
+  assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseA/Zone3')]\
+      == []
+  assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseB/Zone3')]\
+      == ['Zone3.P0.N0']
+
 def test_get_cgns_distribution():
   yt = """
 Zone Zone_t:
