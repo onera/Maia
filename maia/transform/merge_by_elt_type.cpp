@@ -37,8 +37,6 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   }
 
   // multi_block_to_part
-  PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
-
   std::vector<PDM_g_num_t> multi_distrib_idx(n_section+1);
   multi_distrib_idx[0] = 0;
   std::vector<distribution_vector<PDM_g_num_t>> block_distribs_storer(n_section);
@@ -63,6 +61,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   std::vector<PDM_g_num_t*> ln_to_gn = {ln_to_gn_0.data()};
   std::vector<int> n_elts = {n_elts_0};
 
+  PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
   PDM_multi_block_to_part_t* mbtp =
     PDM_multi_block_to_part_create(multi_distrib_idx.data(),
                                    n_block,
