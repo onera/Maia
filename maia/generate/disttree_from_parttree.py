@@ -8,6 +8,54 @@ import maia.tree_exchange.utils as te_utils
 from maia.tree_exchange.part_to_dist import data_exchange  as PTB
 from maia.tree_exchange.part_to_dist import index_exchange as IPTB
 
+def discover_nodes_of_kind(dist_node, part_nodes, kind_path, comm,
+    child_list=[], allow_multiple=False, skip_rule=lambda node:False):
+  """
+  Recreate a distributed structure (basically without data) in dist_node merging all the
+  path found in (locally known) part_nodes.
+  Usefull eg to globally reput on a dist_zone some BC created on specific part_zones.
+  Nodes already present in dist_node will not be added.
+  dist_node and part_nodes are the starting point of the search to which kind_path is related
+  Additional options:
+    child_list is a list of node names or types related to leaf nodes that will be copied into dist_node
+    allow_multiple, when setted true, consider leaf node of name name.N as related to same dist leaf
+    skip_rule accepts a bool function whose argument is a node. If this function returns True, the node
+      will not be added in dist_tree.
+  Todo : could be optimised using a distributed hash table -> see BM
+  """
+  collected_part_nodes = dict()
+  for part_node in part_nodes:
+    for nodes in py_utils.getNodesWithParentsFromTypePath(part_node, kind_path):
+      leaf_path = '/'.join([I.getName(node) for node in nodes])
+      # Options to map splitted nodes (eg jn) to the same dist node
+      if allow_multiple:
+        leaf_path = '.'.join(leaf_path.split('.')[:-1])
+      # Option to skip some nodes
+      if skip_rule(nodes[-1]):
+        continue
+      # Avoid data duplication to minimize exchange
+      if I.getNodeFromPath(dist_node, leaf_path) is None and leaf_path not in collected_part_nodes:
+        ancestors, leaf = nodes[:-1], nodes[-1]
+        type_list  = [I.getType(node)  for node in nodes]
+        value_list = [I.getValue(node) for node in nodes]
+        childs = list()
+        for query in child_list:
+          getNodes1 = I.getNodesFromType1 if query[-2:] == '_t' else I.getNodesFromName1
+          childs.extend(getNodes1(leaf, query))
+        collected_part_nodes[leaf_path] = (type_list, value_list, childs)
+
+  for rank_node_path in comm.allgather(collected_part_nodes):
+    for node_path, (type_list, value_list, childs) in rank_node_path.items():
+      if I.getNodeFromPath(dist_node, node_path) is None:
+        nodes_name = node_path.split('/')
+        ancestor = dist_node
+        for name, kind, value in zip(nodes_name, type_list, value_list):
+          ancestor = I.createUniqueChild(ancestor, name, kind, value)
+        # At the end of this loop, ancestor is in fact the leaf node
+        for child in childs:
+          I._addChild(ancestor, child)
+
+
 def match_jn_from_ordinals(dist_tree):
   """
   Retrieve for each original GridConnectivity_t node the donor zone and the opposite
@@ -77,56 +125,23 @@ def disttree_from_parttree(part_tree, comm):
     I.newDataArray('Cell', cell_distri, parent=distri_ud)
     dist_zone[1][0][1] = cell_distri[2]
 
-    # > BND
-    part_bcs = dict()
+    # > BND and JNS
     bc_t_path = 'ZoneBC_t/BC_t'
-    for part_zone in part_zones:
-      for p_zbc, p_bc in py_utils.getNodesWithParentsFromTypePath(part_zone, bc_t_path):
-        childs  = [I.getNodeFromType1(p_bc, 'FamilyName_t'),
-                   I.getNodeFromType1(p_bc, 'GridLocation_t')]
-        part_bcs[I.getName(p_zbc) + '/' + I.getName(p_bc)] = (I.getValue(p_bc), childs)
-
-    for rank_bc_names in comm.allgather(part_bcs):
-      for bc_path, (kind, childs) in rank_bc_names.items():
-        zbc_name, bc_name = bc_path.split('/')
-        d_zbc = I.createUniqueChild(dist_zone, zbc_name, 'ZoneBC_t')
-        if I.getNodeFromName1(d_zbc, bc_name) is None:
-          d_bc = I.newBC(bc_name, btype=kind, parent=d_zbc)
-          for child in childs:
-            I._addChild(d_bc, child)
-
-    # > Index exchange
-    for d_zbc, d_bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, bc_t_path):
-      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zbc) + '/' + I.getName(d_bc), comm)
-
-    # > JNS
-    # > Discover
-    part_jns = dict()
     gc_t_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
-    for part_zone in part_zones:
-      for p_zgc, p_gc in py_utils.getNodesWithParentsFromTypePath(part_zone, gc_t_path):
-        #Treat only original joins
-        if I.getNodeFromName1(p_gc, ':CGNS#GlobalNumbering') is not None:
-          childs  = [I.getNodeFromName1(p_gc, 'Ordinal'), I.getNodeFromName(p_gc, 'OrdinalOpp'),
-                     I.getNodeFromType1(p_gc, 'GridLocation_t'),
-                     I.getNodeFromType1(p_gc, 'GridConnectivityProperty_t')]
-          #Splited join must be added only once
-          full_name = I.getName(p_zgc) + '/' + '.'.join(I.getName(p_gc).split('.')[:-1])
-          part_jns[full_name] = childs
 
-    for rank_jn_names in comm.allgather(part_jns):
-      for jn_path, childs in rank_jn_names.items():
-        d_zgc_name, d_gc_name = jn_path.split('/')
-        d_zgc = I.createUniqueChild(dist_zone, d_zgc_name, 'ZoneGridConnectivity_t')
-        if I.getNodeFromName1(d_zgc, d_gc_name) is None:
-          d_gc = I.newGridConnectivity(d_gc_name, ctype='Abbuting1to1', parent=d_zgc)
-          for child in childs:
-            I._addChild(d_gc, child)
+    # > Discover
+    discover_nodes_of_kind(dist_zone, part_zones, bc_t_path, comm,
+        child_list=['FamilyName_t', 'GridLocation_t'])
+    discover_nodes_of_kind(dist_zone, part_zones, gc_t_path, comm,
+        child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
+        allow_multiple=True,
+        skip_rule = lambda node: I.getNodeFromPath(node, ':CGNS#GlobalNumbering') is None)
 
     # > Index exchange
+    for d_zbc, d_bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, 'ZoneBC_t/BC_t'):
+      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zbc) + '/' + I.getName(d_bc), comm)
     for d_zgc, d_gc in py_utils.getNodesWithParentsFromTypePath(dist_zone, gc_t_path):
       IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zgc) + '/' + I.getName(d_gc), comm, True)
-
 
     # > Flow Solution and Discrete Data
     PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm)
