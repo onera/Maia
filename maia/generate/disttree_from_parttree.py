@@ -9,23 +9,25 @@ from maia.tree_exchange.part_to_dist import data_exchange  as PTB
 from maia.tree_exchange.part_to_dist import index_exchange as IPTB
 
 def match_jn_from_ordinals(dist_tree):
-  # > Resolve joins now. Because the distribution is homogeneous, all the
-  #   data are already present in tree
-  ordinal_to_pl    = dict()
-  ordinal_to_zname = dict()
+  """
+  Retrieve for each original GridConnectivity_t node the donor zone and the opposite
+  pointlist in the tree. This assume that index distribution was identical for two related
+  gc nodes.
+  For now, donorname does not include basename because of a solver failure.
+  """
+  ordinal_to_data = dict() #Will store zone name & PL for each GC
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'
 
   for base,zone,zgc,gc in py_utils.getNodesWithParentsFromTypePath(dist_tree, gc_t_path):
-    ordinal = gc[1][0]
-    ordinal_to_pl[ordinal]    = I.getNodeFromName1(gc, 'PointList')[1]
+    ordinal = I.getNodeFromName1(gc, 'Ordinal')[1][0]
     #ordinal_to_zname[ordinal] = I.getName(base) + '/' + I.getName(zone)
-    ordinal_to_zname[ordinal] = I.getName(zone)
+    ordinal_to_data[ordinal] = (I.getName(zone), I.getNodeFromName1(gc, 'PointList')[1])
 
   for base,zone,zgc,gc in py_utils.getNodesWithParentsFromTypePath(dist_tree, gc_t_path):
-    ordinal_opp = gc[1][1]
-    PLOpp = I.newPointList('PointListDonor', ordinal_to_pl[ordinal_opp])
-    I.addChild(gc, PLOpp)
-    I.setValue(gc, ordinal_to_zname[ordinal_opp])
+    ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
+    donor_name, donor_pl = ordinal_to_data[ordinal_opp]
+    I.setValue(gc, donor_name)
+    I.newPointList('PointListDonor', donor_pl, parent=gc)
 
 def disttree_from_parttree(part_tree, comm):
   """
@@ -76,54 +78,60 @@ def disttree_from_parttree(part_tree, comm):
     dist_zone[1][0][1] = cell_distri[2]
 
     # > BND
-    part_bcs = []
+    part_bcs = dict()
+    bc_t_path = 'ZoneBC_t/BC_t'
     for part_zone in part_zones:
-      part_bcs.extend([(I.getName(node), 'FaceCenter', I.getValue(node), I.getNodeFromType1(node, 'FamilyName_t'))\
-          for node in I.getNodesFromType(part_zone, 'BC_t')])
-    dist_bcs = []
-    treated_bcs = []
-    d_zbc = I.newZoneBC(parent=dist_zone)
+      for p_zbc, p_bc in py_utils.getNodesWithParentsFromTypePath(part_zone, bc_t_path):
+        childs  = [I.getNodeFromType1(p_bc, 'FamilyName_t'),
+                   I.getNodeFromType1(p_bc, 'GridLocation_t')]
+        part_bcs[I.getName(p_zbc) + '/' + I.getName(p_bc)] = (I.getValue(p_bc), childs)
+
     for rank_bc_names in comm.allgather(part_bcs):
-      for bc_name, bc_loc, bc_type, bc_fam in rank_bc_names:
-        if not bc_name in treated_bcs:
-          treated_bcs.append(bc_name)
-          d_bc = I.newBC(bc_name, btype=bc_type, parent=d_zbc)
-          if bc_fam is not None:
-            I._addChild(d_bc, bc_fam)
-          I.newGridLocation(bc_loc, parent=d_bc)
-          IPTB.part_pl_to_dist_pl(dist_zone, part_zones, 'ZoneBC/' + bc_name, comm)
+      for bc_path, (kind, childs) in rank_bc_names.items():
+        zbc_name, bc_name = bc_path.split('/')
+        d_zbc = I.createUniqueChild(dist_zone, zbc_name, 'ZoneBC_t')
+        if I.getNodeFromName1(d_zbc, bc_name) is None:
+          d_bc = I.newBC(bc_name, btype=kind, parent=d_zbc)
+          for child in childs:
+            I._addChild(d_bc, child)
+
+    # > Index exchange
+    for d_zbc, d_bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, bc_t_path):
+      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zbc) + '/' + I.getName(d_bc), comm)
 
     # > JNS
-    part_jns = []
-    dist_jns = []
-    d_zgc = I.newZoneGridConnectivity(parent=dist_zone)
+    # > Discover
+    part_jns = dict()
+    gc_t_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
     for part_zone in part_zones:
-      for JN in I.getNodesFromType(part_zone, 'GridConnectivity_t'):
-        if I.getNodeFromName1(JN, ':CGNS#GlobalNumbering') is not None:
-          ordinals = [I.getNodeFromName1(JN, 'Ordinal')[1][0], I.getNodeFromName1(JN, 'OrdinalOpp')[1][0]]
-          gc_prop = I.getNodeFromType1(JN, 'GridConnectivityProperty_t')
-          part_jns.append((I.getName(JN), 'FaceCenter', ordinals, gc_prop))
+      for p_zgc, p_gc in py_utils.getNodesWithParentsFromTypePath(part_zone, gc_t_path):
+        #Treat only original joins
+        if I.getNodeFromName1(p_gc, ':CGNS#GlobalNumbering') is not None:
+          childs  = [I.getNodeFromName1(p_gc, 'Ordinal'), I.getNodeFromName(p_gc, 'OrdinalOpp'),
+                     I.getNodeFromType1(p_gc, 'GridLocation_t'),
+                     I.getNodeFromType1(p_gc, 'GridConnectivityProperty_t')]
+          #Splited join must be added only once
+          full_name = I.getName(p_zgc) + '/' + '.'.join(I.getName(p_gc).split('.')[:-1])
+          part_jns[full_name] = childs
 
-    treated_jns = []
     for rank_jn_names in comm.allgather(part_jns):
-      for jn_name, jn_loc, ordinals, gc_prop in rank_jn_names:
-        full_name = '.'.join(jn_name.split('.')[:-1])
-        if not full_name in treated_jns:
-          treated_jns.append(full_name)
-          #tpm use of donorName to store ordinals
-          d_gc = I.newGridConnectivity(full_name, donorName=ordinals, ctype='Abbuting1to1', parent=d_zgc)
-          I._addChild(d_gc, gc_prop)
-          I.newGridLocation(jn_loc, parent=d_gc)
-          IPTB.part_pl_to_dist_pl(dist_zone, part_zones, 'ZoneGridConnectivity/' + full_name, comm, True)
-    if not treated_jns:
-      I._rmNode(dist_zone, d_zgc)
+      for jn_path, childs in rank_jn_names.items():
+        d_zgc_name, d_gc_name = jn_path.split('/')
+        d_zgc = I.createUniqueChild(dist_zone, d_zgc_name, 'ZoneGridConnectivity_t')
+        if I.getNodeFromName1(d_zgc, d_gc_name) is None:
+          d_gc = I.newGridConnectivity(d_gc_name, ctype='Abbuting1to1', parent=d_zgc)
+          for child in childs:
+            I._addChild(d_gc, child)
+
+    # > Index exchange
+    for d_zgc, d_gc in py_utils.getNodesWithParentsFromTypePath(dist_zone, gc_t_path):
+      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zgc) + '/' + I.getName(d_gc), comm, True)
 
 
     # > Flow Solution and Discrete Data
     PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm)
     
     # > Todo : BCDataSet
-
 
   match_jn_from_ordinals(dist_tree)
 
