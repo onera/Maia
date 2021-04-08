@@ -12,29 +12,6 @@ from   maia.utils        import parse_yaml_cgns
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 @mark_mpi_test(3)
-def test_discover_partitioned_zones(sub_comm):
-  if sub_comm.Get_rank() == 0:
-    pt = """
-BaseA CGNSBase_t:
-  Zone.P0.N0 Zone_t:
-    """
-  if sub_comm.Get_rank() == 1:
-    pt = """
-BaseB CGNSBase_t:
-  Zone.withdot.P1.N0 Zone_t:
-  """
-  if sub_comm.Get_rank() == 2:
-    pt = """
-BaseA CGNSBase_t:
-  Zone.P2.N0 Zone_t:
-  Zone.P2.N1 Zone_t:
-    """
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
-
-  assert PTB.discover_partitioned_zones(part_tree, sub_comm) == \
-      ['BaseA/Zone', 'BaseB/Zone.withdot']
-
-@mark_mpi_test(3)
 class Test_discover_partitionded_fields:
   def test_without_pl(self, sub_comm):
     dist_zone  = I.newZone('Zone')

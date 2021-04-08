@@ -8,20 +8,6 @@ from maia.tree_exchange  import utils    as te_utils
 from maia.utils          import py_utils
 from .                   import index_exchange as IPTB
 
-def discover_partitioned_zones(part_tree, comm):
-  part_pathes = []
-  dist_pathes = []
-  for part_base, part_zone in py_utils.getNodesWithParentsFromTypePath(part_tree, 'CGNSBase_t/Zone_t'):
-    part_path = I.getName(part_base) + '/' + '.'.join(I.getName(part_zone).split('.')[:-2])
-    if not part_path in part_pathes:
-      part_pathes.append(part_path)
-  for rank_part_pathes in comm.allgather(part_pathes):
-    for rank_dist_path in rank_part_pathes:
-      if not rank_dist_path in dist_pathes:
-        dist_pathes.append(rank_dist_path)
-
-  return dist_pathes
-
 def discover_partitioned_fields(dist_zone, part_zones, comm):
   """
   Append in dist zone the skeleton path of field that have been created
