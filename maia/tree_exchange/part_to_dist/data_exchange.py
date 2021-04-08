@@ -6,70 +6,25 @@ import maia.sids.sids     as SIDS
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
 from maia.utils          import py_utils
+from .discover           import discover_nodes_of_kind
 from .                   import index_exchange as IPTB
 
-def discover_partitioned_fields(dist_zone, part_zones, comm):
+def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   """
-  Append in dist zone the skeleton path of field that have been created
-  on specific partitioned zones
+  Wrapper for discover_nodes_of_kind which add the node path in distree,
+  but also recreate the distributed pointlist if needed
   """
-  # > Local collection of fields not existing in dist zone
-  new_sols = {}
-  for part_zone in part_zones:
-    for p_sol in I.getNodesFromType1(part_zones, "FlowSolution_t") + \
-                 I.getNodesFromType1(part_zones, "DiscreteData_t"):
-      if I.getNodeFromPath(dist_zone, I.getName(p_sol)) is None:
-        # We store a flag telling us if a point list reconstruction is necessary:
-        # 0 = no point list for this sol, 1 = pl with precomputed numbering, 2 = pl needing numbering
-        pl_gnum_status = 0
-        if I.getNodeFromName1(p_sol, 'PointList') is not None:
-          pl_gnum_status = 1 if I.getNodeFromPath(p_sol, ':CGNS#GlobalNumbering/Index') is not None else 2
-        fields = [I.getName(field) for field in I.getNodesFromType1(p_sol, 'DataArray_t')]
-        new_sols[I.getName(p_sol)] = (I.getType(p_sol), SIDS.GridLocation(p_sol), pl_gnum_status, fields)
-
-  # > Gathering and update of dist zone
-  discovered_sols = {}
-  for new_sol_rank in comm.allgather(new_sols):
-    discovered_sols.update(new_sol_rank)
-  for discovered_sol, (type, loc, pl_status, fields) in discovered_sols.items():
-    d_sol = I.newFlowSolution(discovered_sol, loc, parent=dist_zone)
-    I.setType(d_sol, type) #Trick to be generic between DiscreteData/FlowSol
-    for field in fields:
-      I.newDataArray(field, parent=d_sol)
-    if pl_status == 2:
-      IPTB.create_part_pl_gnum(dist_zone, part_zones, I.getName(d_sol), comm)
-    if pl_status >= 1:
-      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_sol), comm)
-
-def discover_partitioned_dataset(dist_zone, part_zones, comm):
-  """
-  Append in dist zone the skeleton path of bcdataset that have been created
-  on specific partitioned zones. We assume that ZoneBC/BC exists on distTree,
-  only DataSet nodes are absent.
-  """
-  # > Local collection of fields not existing in dist zone
-  new_datasets = {}
-  for part_zone in part_zones:
-    for p_dataset_n_path in py_utils.getNodesWithParentsFromTypePath(part_zone, 'ZoneBC_t/BC_t/BCDataSet_t'):
-      p_dataset_path = '/'.join([I.getName(node) for node in p_dataset_n_path])
-      p_dataset = p_dataset_n_path[-1]
-      if I.getNodeFromPath(dist_zone, p_dataset_path) is None:
-        assert I.getNodeFromType1(p_dataset, 'IndexArray_t') is None
-        fields = ['/'.join([I.getName(node) for node in field_path]) for field_path in\
-            py_utils.getNodesWithParentsFromTypePath(p_dataset, 'BCData_t/DataArray_t')]
-        new_datasets[p_dataset_path] = (I.getValue(p_dataset), fields)
-
-  # > Gathering and update of dist zone
-  discovered_dataset = {}
-  for new_dataset_rank in comm.allgather(new_datasets):
-    discovered_dataset.update(new_dataset_rank)
-  for discovered_dataset, (value, fields) in discovered_dataset.items():
-    ds_prefix, ds_name = I.getPathAncestor(discovered_dataset), I.getPathLeaf(discovered_dataset)
-    dist_dataset = I.newBCDataSet(ds_name, value, parent=I.getNodeFromPath(dist_zone, ds_prefix))
-    for field in fields:
-      bcdata, data = field.split('/')
-      bcdata_n = I.createUniqueChild(dist_dataset, bcdata, 'BCData_t')
-      I.newDataArray(data, parent=bcdata_n)
+  discover_nodes_of_kind(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t'])
+  discover_nodes_of_kind(dist_zone, part_zones, data_path, comm)
+  for nodes in py_utils.getNodesWithParentsFromTypePath(dist_zone, pl_path):
+    node_path   = '/'.join([I.getName(node) for node in nodes])
+    if I.getNodeFromPath(nodes[-1], 'PointList') is None and \
+       par_utils.exists_anywhere(part_zones, node_path+'/PointList', comm):
+      # > Pointlist must be computed on dist node
+      if not par_utils.exists_anywhere(part_zones, node_path+'/:CGNS#GlobalNumbering/Index', comm):
+        # > GlobalNumbering is required to do that
+        IPTB.create_part_pl_gnum(dist_zone, part_zones, node_path, comm)
+      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm)
 
 def part_to_dist(partial_distri, part_data, ln_to_gn_list, comm):
   """
@@ -113,8 +68,11 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm):
   is also reported to the distributed zone.
   """
 
-  discover_partitioned_fields(dist_zone, part_zones, comm)
+  # Complete distree with partitioned fields and exchange PL if needed
+  for n_type in ['FlowSolution_t', 'DiscreteData_t']:
+    _discover_wrapper(dist_zone, part_zones, n_type, n_type+'/DataArray_t', comm)
 
+  # > Exchange
   for d_flow_sol in I.getNodesFromType1(dist_zone, "FlowSolution_t") + \
                     I.getNodesFromType1(dist_zone, "DiscreteData_t"):
     location = SIDS.GridLocation(d_flow_sol)
@@ -191,7 +149,10 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
   zones to the distributed zone.
   """
 
-  discover_partitioned_dataset(dist_zone, part_zones, comm)
+  # Complete distree with partitioned fields and exchange PL if needed
+  bc_ds_path = 'ZoneBC_t/BC_t/BCDataSet_t'
+  _discover_wrapper(dist_zone, part_zones, bc_ds_path, bc_ds_path+'/BCData_t/DataArray_t', comm)
+
 
   for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
     for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
@@ -208,7 +169,6 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
         else: #Fallback to bc distribution
           distribution = distribution_bc
           lngn_list    = lngn_list_bc
-
 
         #Discover data
         part_data = dict()

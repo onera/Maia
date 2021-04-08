@@ -12,8 +12,8 @@ from   maia.utils        import parse_yaml_cgns
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 @mark_mpi_test(3)
-class Test_discover_partitionded_fields:
-  def test_without_pl(self, sub_comm):
+class Test__discover_wrapper:
+  def test_sol_without_pl(self, sub_comm):
     dist_zone  = I.newZone('Zone')
     part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
     if sub_comm.Get_rank() == 0:
@@ -28,7 +28,7 @@ class Test_discover_partitionded_fields:
     p_sol = I.newFlowSolution('NewSol3', 'Vertex', part_zones[0])
     I.newDataArray('NewField5', parent=p_sol)
 
-    PTB.discover_partitioned_fields(dist_zone, part_zones, sub_comm)
+    PTB._discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', sub_comm)
 
     assert [I.getName(sol) for sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t')] \
         == ['NewSol1', 'NewSol3', 'NewSol2']
@@ -36,7 +36,7 @@ class Test_discover_partitionded_fields:
         == ['CellCenter', 'Vertex', 'Vertex']
     assert I.getNodeFromPath(dist_zone, 'NewSol2/NewField4') is not None
 
-  def test_with_pl(self, sub_comm):
+  def test_sol_with_pl(self, sub_comm):
     dt = """
   Zone Zone_t:
     Hexa Elements_t [17,0]:
@@ -72,7 +72,8 @@ class Test_discover_partitionded_fields:
     dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
     part_tree = parse_yaml_cgns.to_complete_pytree(pt)
 
-    PTB.discover_partitioned_fields(I.getZones(dist_tree)[0], I.getZones(part_tree), sub_comm)
+    PTB._discover_wrapper(I.getZones(dist_tree)[0], I.getZones(part_tree), \
+        'DiscreteData_t', 'DiscreteData_t/DataArray_t', sub_comm)
 
     fs = I.getNodeFromName(dist_tree, 'FS')
     assert I.getType(fs) == 'DiscreteData_t'
@@ -90,52 +91,53 @@ class Test_discover_partitionded_fields:
       assert (dist_distri == [3,4,4]).all()
       assert (dist_pl     == [42]   ).all()
 
-@mark_mpi_test(3)
-def test_discover_partitioned_dataset(sub_comm):
-  dt = """
-Zone Zone_t:
-  ZBC ZoneBC_t:
-    bc1 BC_t:
-    bc2 BC_t:
-  """
-  if sub_comm.Get_rank() == 0:
-    pt = """
-  Zone.P0.N0 Zone_t:
+  def test_dataset(self, sub_comm):
+    dt = """
+  Zone Zone_t:
     ZBC ZoneBC_t:
       bc1 BC_t:
-        BCDS BCDataSet_t 'BCInflow':
-          BCData BCData_t:
-            newField1 DataArray_t:
-            newField2 DataArray_t:
-    """
-  elif sub_comm.Get_rank() == 1:
-    pt = """
-  Zone.P1.N0 Zone_t:
-    """
-  if sub_comm.Get_rank() == 2:
-    pt = """
-  Zone.P2.N0 Zone_t:
-    ZBC ZoneBC_t:
-      bc1 BC_t:
-        BCDS2 BCDataSet_t 'BCWall':
-          BCData BCData_t:
-            newField3 DataArray_t:
-  Zone.P2.N1 Zone_t:
-    ZBC ZoneBC_t:
       bc2 BC_t:
-        BCDS BCDataSet_t 'Null':
-          BCData BCData_t:
-            newField4 DataArray_t:
     """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+    if sub_comm.Get_rank() == 0:
+      pt = """
+    Zone.P0.N0 Zone_t:
+      ZBC ZoneBC_t:
+        bc1 BC_t:
+          BCDS BCDataSet_t 'BCInflow':
+            BCData BCData_t:
+              newField1 DataArray_t:
+              newField2 DataArray_t:
+      """
+    elif sub_comm.Get_rank() == 1:
+      pt = """
+    Zone.P1.N0 Zone_t:
+      """
+    if sub_comm.Get_rank() == 2:
+      pt = """
+    Zone.P2.N0 Zone_t:
+      ZBC ZoneBC_t:
+        bc1 BC_t:
+          BCDS2 BCDataSet_t 'BCWall':
+            BCData BCData_t:
+              newField3 DataArray_t:
+    Zone.P2.N1 Zone_t:
+      ZBC ZoneBC_t:
+        bc2 BC_t:
+          BCDS BCDataSet_t 'Null':
+            BCData BCData_t:
+              newField4 DataArray_t:
+      """
+    dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+    part_tree = parse_yaml_cgns.to_complete_pytree(pt)
 
-  PTB.discover_partitioned_dataset(I.getZones(dist_tree)[0], I.getZones(part_tree), sub_comm)
+    bc_ds_path = 'ZoneBC_t/BC_t/BCDataSet_t'
+    PTB._discover_wrapper(I.getZones(dist_tree)[0], I.getZones(part_tree), \
+        bc_ds_path, bc_ds_path+'/BCData_t/DataArray_t', sub_comm)
 
-  assert [I.getValue(bcds) for bcds in I.getNodesFromType(dist_tree, 'BCDataSet_t')] \
-      == ['BCInflow', 'BCWall', 'Null']
-  assert [I.getName(field) for field in I.getNodesFromType(dist_tree, 'DataArray_t')] \
-      == ['newField1', 'newField2', 'newField3', 'newField4']
+    assert [I.getValue(bcds) for bcds in I.getNodesFromType(dist_tree, 'BCDataSet_t')] \
+        == ['BCInflow', 'BCWall', 'Null']
+    assert [I.getName(field) for field in I.getNodesFromType(dist_tree, 'DataArray_t')] \
+        == ['newField1', 'newField2', 'newField3', 'newField4']
 
 @mark_mpi_test(2)
 def test_part_to_dist(sub_comm):
