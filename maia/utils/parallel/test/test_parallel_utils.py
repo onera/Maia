@@ -2,6 +2,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 
 import numpy as np
 from mpi4py import MPI
+import Converter.Internal as I
 
 from maia.utils.parallel import utils
 
@@ -48,3 +49,27 @@ def test_gather_and_shift(sub_comm):
   distri = utils.gather_and_shift(value, sub_comm, np.int32)
   assert distri.dtype == np.int32
   assert (distri == [0,6,15,17]).all()
+
+@mark_mpi_test(2)
+def test_exists_anywhere(sub_comm):
+  trees = []
+  if sub_comm.Get_rank() > 0:
+    zone = I.newZone()
+    zbc  = I.newZoneBC(parent=zone)
+    bc   = I.newBC('BCA', parent=zbc)
+    trees.append(zone)
+  assert utils.exists_anywhere(trees, 'ZoneBC/BCA', sub_comm) == True
+  assert utils.exists_anywhere(trees, 'ZoneBC/BCB', sub_comm) == False
+
+@mark_mpi_test(3)
+def test_exists_everywhere(sub_comm):
+  trees = []
+  if sub_comm.Get_rank() > 0:
+    zone = I.newZone()
+    zbc  = I.newZoneBC(parent=zone)
+    bc   = I.newBC('BCA', parent=zbc)
+    if sub_comm.Get_rank() > 1:
+      bc   = I.newBC('BCB', parent=zbc)
+    trees.append(zone)
+  assert utils.exists_everywhere(trees, 'ZoneBC/BCA', sub_comm) == True
+  assert utils.exists_everywhere(trees, 'ZoneBC/BCB', sub_comm) == False

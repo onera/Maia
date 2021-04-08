@@ -1,4 +1,6 @@
+from mpi4py import MPI
 import numpy as np
+import Converter.Internal as I
 
 def partial_to_full_distribution(partial_distrib, comm):
   """
@@ -32,3 +34,16 @@ def gather_and_shift(value, comm, dtype=None):
   distrib[0]   = 0
   np.cumsum(distrib, out=distrib)
   return distrib
+
+def exists_anywhere(trees, node_path, comm):
+  exists_loc = False
+  for tree in trees:
+    exists_loc = exists_loc or (I.getNodeFromPath(tree, node_path) is not None)
+  return comm.allreduce(exists_loc, op=MPI.LOR)
+
+def exists_everywhere(trees, node_path, comm):
+  exists_loc = True #Allow True if list is empty
+  for tree in trees:
+    exists_loc = exists_loc and (I.getNodeFromPath(tree, node_path) is not None)
+  return comm.allreduce(exists_loc, op=MPI.LAND)
+
