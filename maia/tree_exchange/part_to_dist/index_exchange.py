@@ -117,14 +117,15 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   part_data = {'pl' : []}
   for part_zone in part_zones:
     ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
-    allowed_nodes = I.getNodesFromName(ancestor_n, leaf+'*') if allow_mult else I.getNodesFromName1(ancestor_n, leaf)
-    for node in allowed_nodes:
-      if SIDS.GridLocation(node) == 'Vertex':
-        ln_to_gn = I.getNodeFromPath(part_zone, ':CGNS#GlobalNumbering/Vertex')[1]
-      else:
-        ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
-      part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
-      part_data['pl'].append(ln_to_gn[part_pl-1])
+    if ancestor_n:
+      allowed_nodes = I.getNodesFromName(ancestor_n, leaf+'*') if allow_mult else I.getNodesFromName1(ancestor_n, leaf)
+      for node in allowed_nodes:
+        if SIDS.GridLocation(node) == 'Vertex':
+          ln_to_gn = I.getNodeFromPath(part_zone, ':CGNS#GlobalNumbering/Vertex')[1]
+        else:
+          ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
+        part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
+        part_data['pl'].append(ln_to_gn[part_pl-1])
 
   PTB.PartToBlock_Exchange(dist_data, part_data)
 

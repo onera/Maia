@@ -41,6 +41,7 @@ def disttree_from_parttree(part_tree, comm):
 
   dist_tree = I.newCGNSTree()
   # > Discover partitioned zones to build dist_tree structure
+  DIS.discover_nodes_of_kind(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=['Family_t'])
   DIS.discover_nodes_of_kind(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\
       child_list = ['ZoneType_t'],
       merge_rule=lambda zpath : '.'.join(zpath.split('.')[:-2]))
@@ -55,8 +56,8 @@ def disttree_from_parttree(part_tree, comm):
     vtx_lngn_list = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
     pdm_ptb = PDM.PartToBlock(comm, vtx_lngn_list, pWeight=None, partN=len(vtx_lngn_list),
                               t_distrib=0, t_post=1, t_stride=0)
-    vtx_distri = pdm_ptb.getDistributionCopy()
-    I.newDataArray('Vertex', vtx_distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+    vtx_distri_pdm = pdm_ptb.getDistributionCopy()
+    I.newDataArray('Vertex', vtx_distri_pdm[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
     d_grid_co = I.newGridCoordinates('GridCoordinates', parent=dist_zone)
     for coord in ['CoordinateX', 'CoordinateY', 'CoordinateZ']:
       I.newDataArray(coord, parent=d_grid_co)
@@ -72,6 +73,7 @@ def disttree_from_parttree(part_tree, comm):
     nface_range += n_face_tot
 
     cell_distri = I.getNodeFromPath(dist_zone, 'NFaceElements/:CGNS#Distribution/Element')[1]
+    vtx_distri  = I.getNodeFromPath(dist_zone, ':CGNS#Distribution/Vertex')[1]
     I.newDataArray('Cell', cell_distri, parent=distri_ud)
 
     I.setValue(dist_zone, np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32))
