@@ -39,19 +39,17 @@ def disttree_from_parttree(part_tree, comm):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  # > Discover partitioned zones to build dist_tree structure
-  dist_zone_pathes = DIS.discover_partitioned_zones(part_tree, comm)
-
   dist_tree = I.newCGNSTree()
-  for dist_zone_path in dist_zone_pathes:
-    base_name, zone_name = dist_zone_path.split('/')
+  # > Discover partitioned zones to build dist_tree structure
+  DIS.discover_nodes_of_kind(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\
+      child_list = ['ZoneType_t'],
+      merge_rule=lambda zpath : '.'.join(zpath.split('.')[:-2]))
 
-    # > Create base and zone in dist tree
-    dist_base = I.createUniqueChild(dist_tree, base_name, 'CGNSBase_t', [3,3])
-    dist_zone = I.newZone(zone_name, zsize=[[0,0,0]], ztype='Unstructured', parent=dist_base)
+  for dist_base, dist_zone in py_utils.getNodesWithParentsFromTypePath(dist_tree, 'CGNSBase_t/Zone_t'):
+
     distri_ud = I.createUniqueChild(dist_zone, ':CGNS#Distribution', 'UserDefinedData_t')
 
-    part_zones = te_utils.get_partitioned_zones(part_tree, dist_zone_path)
+    part_zones = te_utils.get_partitioned_zones(part_tree, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
     # > Create vertex distribution and exchange vertex coordinates
     vtx_lngn_list = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
@@ -59,7 +57,6 @@ def disttree_from_parttree(part_tree, comm):
                               t_distrib=0, t_post=1, t_stride=0)
     vtx_distri = pdm_ptb.getDistributionCopy()
     I.newDataArray('Vertex', vtx_distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
-    dist_zone[1][0][0] = vtx_distri[2]
     d_grid_co = I.newGridCoordinates('GridCoordinates', parent=dist_zone)
     for coord in ['CoordinateX', 'CoordinateY', 'CoordinateZ']:
       I.newDataArray(coord, parent=d_grid_co)
@@ -76,7 +73,8 @@ def disttree_from_parttree(part_tree, comm):
 
     cell_distri = I.getNodeFromPath(dist_zone, 'NFaceElements/:CGNS#Distribution/Element')[1]
     I.newDataArray('Cell', cell_distri, parent=distri_ud)
-    dist_zone[1][0][1] = cell_distri[2]
+
+    I.setValue(dist_zone, np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32))
 
     # > BND and JNS
     bc_t_path = 'ZoneBC_t/BC_t'
@@ -84,10 +82,10 @@ def disttree_from_parttree(part_tree, comm):
 
     # > Discover
     DIS.discover_nodes_of_kind(dist_zone, part_zones, bc_t_path, comm,
-          child_list=['FamilyName_t', 'GridLocation_t'])
+          child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
     DIS.discover_nodes_of_kind(dist_zone, part_zones, gc_t_path, comm,
           child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
-          allow_multiple=True,
+          merge_rule= lambda path: '.'.join(path.split('.')[:-1]),
           skip_rule = lambda node: I.getNodeFromPath(node, ':CGNS#GlobalNumbering') is None)
 
     # > Index exchange
