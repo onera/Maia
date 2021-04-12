@@ -7,6 +7,7 @@ import maia.sids.Internal_ext as IE
 from maia.utils import zone_elements_utils as EZU
 
 import Pypdm.Pypdm as PDM
+from maia import npy_pdm_gnum_dtype as npy_pdm_gnum_t
 
 
 def concatenate_bc(zone):
@@ -39,7 +40,7 @@ def concatenate_bc(zone):
       delmt_bound_idx[i_group+1] = delmt_bound_idx[i_group] + pl.shape[0]
 
   if n_elmt_group > 0:
-    delmt_bound = NPY.concatenate(delmt_bound)
+    delmt_bound = NPY.concatenate(delmt_bound,dtype=npy_pdm_gnum_t)
   else:
     delmt_bound = None
 

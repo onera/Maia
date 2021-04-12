@@ -32,8 +32,8 @@ def gcs_only_for_ghosts(t):
 
 
 
-def put_boundary_first(t):
-  apply_to_bases(t,ctransform.partition_with_boundary_first)
+def put_boundary_first(t,comm):
+  apply_to_bases(t,ctransform.partition_with_boundary_first,comm)
 
 def ngon_new_to_old(t):
   apply_to_bases(t,ctransform.ngon_new_to_old)
