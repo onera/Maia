@@ -92,7 +92,7 @@ def disttree_from_parttree(part_tree, comm):
           skip_rule = lambda node: re.match("JN\.P\d+\.N\d+\.LT\.P\d+\.N\d+", I.getName(node)) is not None)
 
     # > Index exchange
-    for d_zbc, d_bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, 'ZoneBC_t/BC_t'):
+    for d_zbc, d_bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, bc_t_path):
       IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zbc) + '/' + I.getName(d_bc), comm)
     for d_zgc, d_gc in py_utils.getNodesWithParentsFromTypePath(dist_zone, gc_t_path):
       IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zgc) + '/' + I.getName(d_gc), comm, True)

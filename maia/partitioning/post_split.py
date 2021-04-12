@@ -69,7 +69,7 @@ def split_original_joins(p_zone):
           lntogn_ud = I.createUniqueChild(join_n, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
           I.newDataArray('Index', value=sub_lngn, parent=lntogn_ud)
           #Copy decorative nodes
-          skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', 'Ordinal', 'OrdinalOpp']
+          skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor']
           for node in I.getChildren(gc):
             if I.getName(node) not in skip_nodes:
               I._addChild(join_n, node)

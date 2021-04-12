@@ -20,11 +20,12 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
   renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum_method']
   renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_options['face_renum_method']
   if "CACHEBLOCKING" in reorder_options['cell_renum_method']:
+    pdm_part_tool     = 1 if reorder_options['graph_part_tool'] == 'parmetis' else 2
     cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
                                     1,
                                     1,
                                     reorder_options['n_face_per_pack'],
-                                    reorder_options['graph_part_tool']],
+                                    pdm_part_tool],
                                     dtype='int32', order='c')
   else:
     cacheblocking_props = None
