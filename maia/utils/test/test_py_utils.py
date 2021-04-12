@@ -38,6 +38,11 @@ def test_sizes_to_indices():
   assert py_utils.sizes_to_indices([5,0,0,10], np.int32).dtype == np.int32
   assert py_utils.sizes_to_indices([5,0,0,10], np.int64).dtype == np.int64
 
+def test_multi_arange():
+  assert (py_utils.multi_arange([1,3,4,6], [1,5,7,6]) == [3,4,4,5,6]).all()
+  assert (py_utils.multi_arange([1,5,10,20], [3,10,12,25]) == \
+      [1,2,5,6,7,8,9,10,11,20,21,22,23,24]).all()
+
 def test_concatenate_point_list():
   pl1 = np.array([[2, 4, 6, 8]])
   pl2 = np.array([[10, 20, 30, 40, 50, 60]])

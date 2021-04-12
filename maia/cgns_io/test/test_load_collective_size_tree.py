@@ -20,6 +20,9 @@ Zone Zone_t:
       PointListDonor IndexArray_t None:
   ZSR ZoneSubRegion_t:
     PointList IndexArray_t None:
+  FS FlowSolution_t:
+  FSPL FlowSolution_t:
+    PointList IndexArray_t None:
 """
   tree = parse_yaml_cgns.to_complete_pytree(yt)
   zone = I.getZones(tree)[0]
@@ -30,6 +33,7 @@ Zone Zone_t:
                '/Zone/ZGC/gc/PointList' : (1, 'I4', (1,20)),
                '/Zone/ZGC/gc/PointListDonor' : (1, 'I4', (1,20)),
                '/Zone/ZSR/PointList' : (1, 'I4', (1,34)),
+               '/Zone/FSPL/PointList' : (1, 'I4', (1,10)),
               }
 
   LC.add_sizes_to_zone_tree(zone, '/Zone', size_data)
@@ -44,6 +48,9 @@ Zone Zone_t:
   assert (I.getNodeFromPath(zone, 'ZGC/gc/PointList#Size')[1] == [1,20]).all()
 
   assert (I.getNodeFromPath(zone, 'ZSR/PointList#Size')[1] == [1,34]).all()
+
+  assert (I.getNodeFromPath(zone, 'FSPL/PointList#Size')[1] == [1,10]).all()
+  assert (I.getNodeFromPath(zone, 'FS/PointList#Size') is None)
 
 def test_add_sizes_to_tree():
   yt = """

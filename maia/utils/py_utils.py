@@ -46,6 +46,16 @@ def sizes_to_indices(nb_array, dtype=None):
   np.cumsum(nb_array, out=offset_array[1:])
   return offset_array
 
+def multi_arange(starts, stops):
+  """
+  Create concatenated ranges of integers for multiple start/stop
+  See https://codereview.stackexchange.com/questions/83018/
+  vectorized-numpy-version-of-arange-with-multiple-start-stop
+  """
+  stops = np.asarray(stops)
+  l = stops - starts # Lengths of each range.
+  return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
+
 def getNodesFromTypePath(root, types_path):
   """Generator following type path, equivalent to
   for level1 in I.getNodesFromType1(root, type1):

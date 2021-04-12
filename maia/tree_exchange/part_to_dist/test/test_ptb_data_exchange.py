@@ -12,80 +12,132 @@ from   maia.utils        import parse_yaml_cgns
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 @mark_mpi_test(3)
-def test_discover_partitioned_fields(sub_comm):
-  dist_zone  = I.newZone('Zone')
-  part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
-  if sub_comm.Get_rank() == 0:
-    p_sol = I.newFlowSolution('NewSol1', 'CellCenter', part_zones[0])
-    I.newDataArray('NewField1', parent=p_sol)
-    I.newDataArray('NewField2', parent=p_sol)
-  if sub_comm.Get_rank() == 2:
-    part_zones.append(I.newZone('Zone.P{0}.N1'.format(sub_comm.Get_rank())))
-    p_sol = I.newFlowSolution('NewSol2', 'Vertex', part_zones[1])
-    I.newDataArray('NewField3', parent=p_sol)
-    I.newDataArray('NewField4', parent=p_sol)
-  p_sol = I.newFlowSolution('NewSol3', 'Vertex', part_zones[0])
-  I.newDataArray('NewField5', parent=p_sol)
+class Test__discover_wrapper:
+  def test_sol_without_pl(self, sub_comm):
+    dist_zone  = I.newZone('Zone')
+    part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
+    if sub_comm.Get_rank() == 0:
+      p_sol = I.newFlowSolution('NewSol1', 'CellCenter', part_zones[0])
+      I.newDataArray('NewField1', parent=p_sol)
+      I.newDataArray('NewField2', parent=p_sol)
+    if sub_comm.Get_rank() == 2:
+      part_zones.append(I.newZone('Zone.P{0}.N1'.format(sub_comm.Get_rank())))
+      p_sol = I.newFlowSolution('NewSol2', 'Vertex', part_zones[1])
+      I.newDataArray('NewField3', parent=p_sol)
+      I.newDataArray('NewField4', parent=p_sol)
+    p_sol = I.newFlowSolution('NewSol3', 'Vertex', part_zones[0])
+    I.newDataArray('NewField5', parent=p_sol)
 
-  PTB.discover_partitioned_fields(dist_zone, part_zones, sub_comm)
+    PTB._discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', sub_comm)
 
-  assert [I.getName(sol) for sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t')] \
-      == ['NewSol1', 'NewSol3', 'NewSol2']
-  assert [SIDS.GridLocation(sol) for sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t')] \
-      == ['CellCenter', 'Vertex', 'Vertex']
-  assert I.getNodeFromPath(dist_zone, 'NewSol2/NewField4') is not None
+    assert [I.getName(sol) for sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t')] \
+        == ['NewSol1', 'NewSol3', 'NewSol2']
+    assert [SIDS.GridLocation(sol) for sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t')] \
+        == ['CellCenter', 'Vertex', 'Vertex']
+    assert I.getNodeFromPath(dist_zone, 'NewSol2/NewField4') is not None
 
-  with pytest.raises(AssertionError):
-    p_sol = I.newFlowSolution('NewSolFail', 'FaceCenter', part_zones[0])
-    I.newPointList(parent=p_sol)
-    PTB.discover_partitioned_fields(dist_zone, part_zones, sub_comm)
+  def test_sol_with_pl(self, sub_comm):
+    dt = """
+  Zone Zone_t:
+    Hexa Elements_t [17,0]:
+      ElementRange IndexRange_t [1,50]:
+    """
+    if sub_comm.Get_rank() == 0:
+      pt = """
+    Zone.P0.N0 Zone_t:
+      Hexa Elements_t [17,0]:
+        ElementRange IndexRange_t [1,5]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Element DataArray_t {0} [29,42,19,18,41]:
+      FS DiscreteData_t:
+        GridLocation GridLocation_t "CellCenter":
+        PointList IndexArray_t [[4,2]]:
+        field DataArray_t:
+      """.format(dtype)
+    if sub_comm.Get_rank() == 1:
+      pt = ""
+    if sub_comm.Get_rank() == 2:
+      pt = """
+    Zone.P2.N0 Zone_t:
+    Zone.P2.N1 Zone_t:
+      Hexa Elements_t [17,0]:
+        ElementRange IndexRange_t [1,4]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Element DataArray_t {0} [8,13,18,25]:
+      FS DiscreteData_t:
+        GridLocation GridLocation_t "CellCenter":
+        PointList IndexArray_t [[1,4,3]]:
+        field DataArray_t:
+      """.format(dtype)
+    dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+    part_tree = parse_yaml_cgns.to_complete_pytree(pt)
 
-@mark_mpi_test(3)
-def test_discover_partitioned_dataset(sub_comm):
-  dt = """
-Zone Zone_t:
-  ZBC ZoneBC_t:
-    bc1 BC_t:
-    bc2 BC_t:
-  """
-  if sub_comm.Get_rank() == 0:
-    pt = """
-  Zone.P0.N0 Zone_t:
+    PTB._discover_wrapper(I.getZones(dist_tree)[0], I.getZones(part_tree), \
+        'DiscreteData_t', 'DiscreteData_t/DataArray_t', sub_comm)
+
+    fs = I.getNodeFromName(dist_tree, 'FS')
+    assert I.getType(fs) == 'DiscreteData_t'
+    dist_pl     = I.getNodeFromPath(fs, 'PointList')[1]
+    dist_distri = I.getNodeFromPath(fs, ':CGNS#Distribution/Index')[1]
+    assert dist_distri.dtype == pdm_dtype
+
+    if sub_comm.Get_rank() == 0:
+      assert (dist_distri == [0,2,4]).all()
+      assert (dist_pl     == [8,18] ).all()
+    elif sub_comm.Get_rank() == 1:
+      assert (dist_distri == [2,3,4]).all()
+      assert (dist_pl     == [25]   ).all()
+    elif sub_comm.Get_rank() == 2:
+      assert (dist_distri == [3,4,4]).all()
+      assert (dist_pl     == [42]   ).all()
+
+  def test_dataset(self, sub_comm):
+    dt = """
+  Zone Zone_t:
     ZBC ZoneBC_t:
       bc1 BC_t:
-        BCDS BCDataSet_t 'BCInflow':
-          BCData BCData_t:
-            newField1 DataArray_t:
-            newField2 DataArray_t:
-    """
-  elif sub_comm.Get_rank() == 1:
-    pt = """
-  Zone.P1.N0 Zone_t:
-    """
-  if sub_comm.Get_rank() == 2:
-    pt = """
-  Zone.P2.N0 Zone_t:
-    ZBC ZoneBC_t:
-      bc1 BC_t:
-        BCDS2 BCDataSet_t 'BCWall':
-          BCData BCData_t:
-            newField3 DataArray_t:
-  Zone.P2.N1 Zone_t:
-    ZBC ZoneBC_t:
       bc2 BC_t:
-        BCDS BCDataSet_t 'Null':
-          BCData BCData_t:
-            newField4 DataArray_t:
     """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+    if sub_comm.Get_rank() == 0:
+      pt = """
+    Zone.P0.N0 Zone_t:
+      ZBC ZoneBC_t:
+        bc1 BC_t:
+          BCDS BCDataSet_t 'BCInflow':
+            BCData BCData_t:
+              newField1 DataArray_t:
+              newField2 DataArray_t:
+      """
+    elif sub_comm.Get_rank() == 1:
+      pt = """
+    Zone.P1.N0 Zone_t:
+      """
+    if sub_comm.Get_rank() == 2:
+      pt = """
+    Zone.P2.N0 Zone_t:
+      ZBC ZoneBC_t:
+        bc1 BC_t:
+          BCDS2 BCDataSet_t 'BCWall':
+            BCData BCData_t:
+              newField3 DataArray_t:
+    Zone.P2.N1 Zone_t:
+      ZBC ZoneBC_t:
+        bc2 BC_t:
+          BCDS BCDataSet_t 'Null':
+            BCData BCData_t:
+              newField4 DataArray_t:
+      """
+    dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+    part_tree = parse_yaml_cgns.to_complete_pytree(pt)
 
-  PTB.discover_partitioned_dataset(I.getZones(dist_tree)[0], I.getZones(part_tree), sub_comm)
+    bc_ds_path = 'ZoneBC_t/BC_t/BCDataSet_t'
+    PTB._discover_wrapper(I.getZones(dist_tree)[0], I.getZones(part_tree), \
+        bc_ds_path, bc_ds_path+'/BCData_t/DataArray_t', sub_comm)
 
-  assert [I.getValue(bcds) for bcds in I.getNodesFromType(dist_tree, 'BCDataSet_t')] \
-      == ['BCInflow', 'BCWall', 'Null']
-  assert [I.getName(field) for field in I.getNodesFromType(dist_tree, 'DataArray_t')] \
-      == ['newField1', 'newField2', 'newField3', 'newField4']
+    assert [I.getValue(bcds) for bcds in I.getNodesFromType(dist_tree, 'BCDataSet_t')] \
+        == ['BCInflow', 'BCWall', 'Null']
+    assert [I.getName(field) for field in I.getNodesFromType(dist_tree, 'DataArray_t')] \
+        == ['newField1', 'newField2', 'newField3', 'newField4']
 
 @mark_mpi_test(2)
 def test_part_to_dist(sub_comm):
@@ -107,6 +159,65 @@ def test_part_to_dist(sub_comm):
   dist_data = PTB.part_to_dist(partial_distri, part_data, ln_to_gn_list, sub_comm)
   assert dist_data["field"].dtype == np.float64
   assert (dist_data["field"] == expected_dist_data["field"]).all()
+
+@mark_mpi_test(2)
+def test_part_coords_to_dist_coords(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    dt = """
+ZoneU Zone_t [[6,0,0]]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t {0} [0,3,6]:
+  GridCoordinates GridCoordinates_t:
+    CX DataArray_t:
+    CY DataArray_t:
+  """.format(dtype)
+    pt = """
+  ZoneU.P0.N0 Zone_t [[3,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [1,6]:
+    GridCoordinates GridCoordinates_t:
+      CX DataArray_t [1,6]:
+      CY DataArray_t [2,1]:
+    """.format(dtype)
+  elif sub_comm.Get_rank() == 1:
+    dt = """
+ZoneU Zone_t [[6,0,0]]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t {0} [3,6,6]:
+  GridCoordinates GridCoordinates_t:
+    CX DataArray_t:
+    CY DataArray_t:
+  """.format(dtype)
+    pt = """
+  ZoneU.P1.N0 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [5,2]:
+    GridCoordinates GridCoordinates_t:
+      CX DataArray_t [5,2]:
+      CY DataArray_t [1,2]:
+  ZoneU.P1.N1 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [3,4]:
+    GridCoordinates GridCoordinates_t:
+      CX DataArray_t [3,4]:
+      CY DataArray_t [2,1]:
+  """.format(dtype)
+
+  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+
+  dist_zone  = I.getZones(dist_tree)[0]
+  part_zones = I.getZones(part_tree)
+  PTB.part_coords_to_dist_coords(dist_zone, part_zones, sub_comm)
+
+  if sub_comm.Get_rank() == 0:
+    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()
+    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == [2,1]).all()
+  elif sub_comm.Get_rank() == 1:
+    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == [5,2]).all()
+    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == [1,2]).all()
+    assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CX')[1] == [3,4]).all()
+    assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
 
 @mark_mpi_test(2)
 def test_part_sol_to_dist_sol(sub_comm):

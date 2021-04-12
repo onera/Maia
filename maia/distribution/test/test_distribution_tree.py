@@ -66,6 +66,9 @@ class Test_compute_zone_distribution:
   ZSR ZoneSubRegion_t:
     PointList IndexArray_t None:
     PointList#Size IndexArray_t [1,12]:
+  FS FlowSolution_t:
+    PointList IndexArray_t None:
+    PointList#Size IndexArray [1,10]:
   """
     tree = parse_yaml_cgns.to_complete_pytree(yt)
     #Create zone by hand, otherwith ZoneType is misformed
@@ -73,7 +76,7 @@ class Test_compute_zone_distribution:
     for child in tree[2]:
       I.addChild(zone, child)
     distribution_tree.compute_zone_distribution(zone, sub_comm)
-    assert len(I.getNodesFromName(zone, 'Index')) == 4
+    assert len(I.getNodesFromName(zone, 'Index')) == 5
     assert len(I.getNodesFromName(zone, 'Element')) == 1
 
   def test_struct(self, sub_comm):
@@ -154,6 +157,10 @@ Base0 CGNSBase_t [3,3]:
         PointList IndexArray_t [1,4,7,10]:
         PointListDonor IndexArray_t [13,16,7,10]:
         PointList#Size IndexArray_t [1,8]:
+    FS FlowSolution_t:
+      field DataArray_t:
+      PointList#Size IndexArray_t [1,2]:
+      :CGNS#Distribution UserDefinedData_t:
     :CGNS#Distribution UserDefinedData_t:
 """
   dist_tree = parse_yaml_cgns.to_complete_pytree(yt)

@@ -4,7 +4,9 @@ from maia.cgns_io                     import cgns_io_tree            as IOT
 from maia.transform.transform        import merge_by_elt_type,\
                                             add_fsdm_distribution,\
                                             gcs_only_for_ghosts
-from maia.tree_exchange.tree_transfer import pFlowSolution_to_dFlowSolution
+
+from maia.tree_exchange.utils import get_partitioned_zones
+from maia.tree_exchange.part_to_dist.data_exchange import part_sol_to_dist_sol
 
 from maia.partitioning import part as PPA
 from maia.partitioning.load_balancing import setup_partition_weights as DBA
@@ -63,7 +65,11 @@ def load_partitioned_tree_poly(file_name,comm):
   return parallel_tree(dist_tree,part_tree)
 
 
-def merge_and_save(par_tree,file_name):
-  # TODO: DiscreteData + BC
-  pFlowSolution_to_dFlowSolution(par_tree.dist_tree,par_tree.part_tree,par_tree.comm)
+def merge_and_save(par_tree, file_name):
+  # TODO: BC
+  for d_base in I.getBases(par_tree.dist_tree):
+    for d_zone in I.getZones(d_base):
+      p_zones = get_partitioned_zones(par_tree.part_tree, I.getName(d_base) + '/' + I.getName(d_zone))
+      part_sol_to_dist_sol(d_zone, p_zones, par_tree.comm)
+
   IOT.dist_tree_to_file(par_tree.dist_tree, file_name, par_tree.comm)

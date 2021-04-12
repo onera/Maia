@@ -49,6 +49,11 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
       pl_path = zone_subregion_path+"/PointList"
       I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=zone_subregion)
 
+  for flow_sol in I.getNodesFromType1(zone, 'FlowSolution_t'):
+    sol_path = zone_path + "/" + I.getName(flow_sol)
+    if I.getNodeFromName1(flow_sol, 'PointList') is not None:
+      pl_path = sol_path+"/PointList"
+      I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=flow_sol)
 
 def add_sizes_to_tree(size_tree, size_data):
   """

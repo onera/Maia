@@ -6,6 +6,19 @@ from maia.utils import py_utils
 from maia.distribution.distribution_function import uniform_distribution
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
+def get_partitioned_zones(part_tree, dist_zone_path):
+  """
+  Return a list of the partitioned zones created from a distributed zone name
+  found in part_tree
+  """
+  base_name, zone_name = I.getPathAncestor(dist_zone_path), I.getPathLeaf(dist_zone_path)
+  part_base = I.getNodeFromPath(part_tree, base_name)
+  if part_base:
+    return [part for part in I.getZones(part_base) if \
+        '.'.join(I.getName(part).split('.')[:-2]) == zone_name]
+  else:
+    return []
+
 def get_cgns_distribution(dist_zone, path):
   """
   Return the (partial) distribution array of a distributed zone from

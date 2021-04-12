@@ -67,6 +67,31 @@ def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
       data_space = create_data_array_filter(distrib_ia, gc_shape)
       utils.apply_dataspace_to_pointlist(gc, gc_path, data_space, hdf_filter)
 
+def create_flow_solution_filter(zone, zone_path, hdf_filter):
+  """
+  Fill up the hdf filter for the FlowSolution_t nodes present in the
+  zone. The size of the dataspace are computed from the pointList node
+  if present, or using allCells / allVertex if no pointList is present.
+  Filter is created for the arrays and for the PointList if present
+  """
+  distrib_vtx  = I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex')[1]
+  distrib_cell = I.getNodeFromPath(zone, ':CGNS#Distribution/Cell')[1]
+  for flow_solution in I.getNodesFromType1(zone, 'FlowSolution_t'):
+    flow_solution_path = zone_path + "/" + I.getName(flow_solution)
+    grid_location = SIDS.GridLocation(flow_solution)
+    distrib_ud_n = I.getNodeFromName1(flow_solution , ':CGNS#Distribution')
+    if distrib_ud_n:
+      distrib_data = I.getNodeFromName1(distrib_ud_n, 'Index')[1]
+      data_shape = utils.pl_or_pr_size(flow_solution)
+      data_space = create_data_array_filter(distrib_data, data_shape)
+      utils.apply_dataspace_to_pointlist(flow_solution, flow_solution_path, data_space, hdf_filter)
+    elif(grid_location == 'CellCenter'):
+      data_space = create_data_array_filter(distrib_cell, zone[1][:,1])
+    elif(grid_location == 'Vertex'):
+      data_space = create_data_array_filter(distrib_vtx, zone[1][:,0])
+    else:
+      raise RuntimeError(f"GridLocation {grid_location} is not allowed without PL")
+    utils.apply_dataspace_to_arrays(flow_solution, flow_solution_path, data_space, hdf_filter)
 
 def create_zone_subregion_filter(zone, zone_path, hdf_filter):
   """

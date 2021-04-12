@@ -52,6 +52,9 @@ def compute_zone_distribution(zone, comm):
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
     compute_plist_or_prange_distribution(zone_subregion, comm)
 
+  for flow_sol in I.getNodesFromType1(zone, 'FlowSolution_t'):
+    compute_plist_or_prange_distribution(flow_sol, comm)
+
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
     for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
       compute_plist_or_prange_distribution(bc, comm)
@@ -93,3 +96,6 @@ def clean_distribution_info(dist_tree):
       for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
         I._rmNodesByName1(zone_subregion, ':CGNS#Distribution')
         I._rmNodesByName1(zone_subregion, 'PointList#Size')
+      for zone_sol in I.getNodesFromType1(zone, 'FlowSolution_t'):
+        I._rmNodesByName1(zone_sol, ':CGNS#Distribution')
+        I._rmNodesByName1(zone_sol, 'PointList#Size')
