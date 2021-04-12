@@ -1,4 +1,5 @@
 import numpy      as np
+import re
 
 import Converter.Internal as I
 import Pypdm.Pypdm as PDM
@@ -82,13 +83,13 @@ def disttree_from_parttree(part_tree, comm):
     bc_t_path = 'ZoneBC_t/BC_t'
     gc_t_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
 
-    # > Discover
+    # > Discover (skip GC created by partitioning)
     DIS.discover_nodes_of_kind(dist_zone, part_zones, bc_t_path, comm,
           child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
     DIS.discover_nodes_of_kind(dist_zone, part_zones, gc_t_path, comm,
           child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
           merge_rule= lambda path: '.'.join(path.split('.')[:-1]),
-          skip_rule = lambda node: I.getNodeFromPath(node, ':CGNS#GlobalNumbering') is None)
+          skip_rule = lambda node: re.match("JN\.P\d+\.N\d+\.LT\.P\d+\.N\d+", I.getName(node)) is not None)
 
     # > Index exchange
     for d_zbc, d_bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, 'ZoneBC_t/BC_t'):
