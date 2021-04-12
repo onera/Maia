@@ -97,7 +97,6 @@ distribute_bc_ids_to_match_face_dist(tree& b, MPI_Comm comm) -> void {
     for (tree& bc : cgns::get_nodes_by_matching(z,"ZoneBC/BC_t")) {
       auto pl = cgns::PointList<I4>(bc);
       auto fields = std::vector<std::vector<double>>{}; // TODO extract these fields (if they exist)
-      ELOG(bc.name);
       auto [new_pl,_] = redistribute_to_match_face_dist(elt_dists,elt_intervals,pl,fields,comm);
 
       rm_child_by_name(bc,"PointList");
@@ -117,8 +116,6 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
   int n_rank = std_e::nb_ranks(comm);
 
   for (tree& z : get_children_by_label(b,"Zone_t")) {
-    LOG("\n\n\n");
-    ELOG(z.name);
     int n_cell = cgns::CellSize_U<I4>(z);
 
     auto elt_sections = element_sections_ordered_by_range(z);
@@ -145,7 +142,6 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
     std::vector<int> d_elt_szs(n_3d_section);
     for (int i=0; i<n_3d_section; ++i) {
       tree& section_node = elt_3d_sections[i];
-      ELOG(section_node.name);
       auto section_connec_partial_distri = get_node_value_by_matching<I8>(section_node,":CGNS#Distribution/Element");
       d_elt_szs[i] = section_connec_partial_distri[1]-section_connec_partial_distri[0];
       block_distribs_storer[i] = distribution_from_partial(section_connec_partial_distri,comm);
@@ -163,12 +159,6 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
     std::iota(begin(ln_to_gn_0),end(ln_to_gn_0),merged_distri[i_rank]+1);
     std::vector<PDM_g_num_t*> ln_to_gn = {ln_to_gn_0.data()};
     std::vector<int> n_elts = {n_elts_0};
-    ELOG(multi_distrib_idx);
-    ELOG(n_block);
-    ELOG(block_distribs_storer);
-    ELOG(ln_to_gn_0);
-    ELOG(n_elts);
-    ELOG(n_part);
 
     PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
     PDM_multi_block_to_part_t* mbtp =
@@ -208,7 +198,6 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
         int d_sol_sz = merged_distri[i_rank+1] - merged_distri[i_rank];
         std_e::buffer_vector<R8> new_sol(d_sol_sz);
         std::copy_n(parray[0],d_sol_sz,begin(new_sol));
-        ELOG(new_sol);
         free(parray[0]);
         free(parray);
 

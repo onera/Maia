@@ -16,7 +16,7 @@ auto
 remove_ghost_info(tree& b, MPI_Comm comm) -> void {
   STD_E_ASSERT(b.label=="CGNSBase_t");
   apply_base_renumbering(b,remove_ghost_info_from_zone,comm);
-  
+
   for (tree& z : get_children_by_label(b,"Zone_t")) {
     rm_invalid_ids_in_point_lists(z,"FaceCenter"); // For BC
     rm_invalid_ids_in_point_lists_with_donors(z,"Vertex"); // For GC
@@ -48,7 +48,7 @@ nb_owned_elements(const tree& elt_pool) -> I {
   return nb_elements<I>(elt_pool) - nb_ghost_elements<I>(elt_pool);
 }
 
-// TODO BC, renum connec vertices after 
+// TODO BC, renum connec vertices after
 /**
  * \brief remove all ghost info, but keeps the GridCOnnectivity 1-to-1 on nodes
  * \param [inout] z: the cgns zone
@@ -126,7 +126,6 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
   // 4. gather all nodes used by elements
   /// 4.1. counting impl
   int old_nb_nodes = VertexSize_U<I4>(z);
-  ELOG(old_nb_nodes);
   std::vector<I4> nodes2(old_nb_nodes,-1);
   for (const tree& elt_pool: elt_pools) {
     auto cs = ElementConnectivity<I4>(elt_pool);
@@ -141,10 +140,10 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
       n = cnt++;
     }
   }
-  // 4.1. }  
+  // 4.1. }
 
   int nb_nodes2 = cnt;
-  
+
   // 5. delete unused nodes
   VertexSize_U<I4>(z) = nb_nodes2;
 
