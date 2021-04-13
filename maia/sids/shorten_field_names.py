@@ -3,7 +3,7 @@ import Converter.Internal as I
 def shorten_field_names(t, quiet=False):
   for x in I.getNodesFromType(t,"DataArray_t"):
     old_name = I.getName(x)
-    if (len(old_name)>32):
+    if len(old_name)>32:
       new_name = ""
       cnt = 0
       for c in old_name:
@@ -20,7 +20,7 @@ def shorten_field_names(t, quiet=False):
 
 def shorten_names(t, quiet=False):
   old_name = I.getName(t)
-  if (len(old_name)>32):
+  if len(old_name)>32:
     new_name = ""
     cnt = 0
     for c in old_name:
