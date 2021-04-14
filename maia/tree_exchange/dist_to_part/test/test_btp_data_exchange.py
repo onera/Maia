@@ -289,6 +289,7 @@ def test_dist_sol_to_part_sol_pl(sub_comm):
   """.format(dtype)
 
   dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  I._rmNodesByName(dist_tree, 'FlowSolution') #Test only pl sol here
   part_tree = parse_yaml_cgns.to_complete_pytree(pt)
 
   dist_zone  = I.getZones(dist_tree)[0]

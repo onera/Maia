@@ -42,8 +42,8 @@ def part_to_dist(partial_distri, part_data, ln_to_gn_list, comm):
 
 def part_coords_to_dist_coords(dist_zone, part_zones, comm):
 
-  distribution = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
-  lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
+  distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
+  lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
 
   d_grid_co = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
   part_data = dict()
@@ -80,17 +80,16 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm):
     has_pl   = I.getNodeFromName1(d_flow_sol, 'PointList') is not None
 
     if has_pl:
-      distribution = te_utils.get_cgns_distribution(d_flow_sol, ':CGNS#Distribution/Index')
-      lntogn_path  = I.getName(d_flow_sol) + '/:CGNS#GlobalNumbering/Index'
-      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, lntogn_path)
+      distribution = te_utils.get_cgns_distribution(d_flow_sol, 'Index')
+      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Index', I.getName(d_flow_sol))
     else:
       assert location in ['Vertex', 'CellCenter']
       if location == 'Vertex':
-        distribution = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
-        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
+        distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
+        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
       elif location == 'CellCenter':
-        distribution = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Cell')
-        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Cell')
+        distribution = te_utils.get_cgns_distribution(dist_zone, 'Cell')
+        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
     #Discover data
     part_data = dict()
@@ -122,9 +121,8 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm):
     assert matching_region is not None
 
     #Get distribution and lngn
-    distribution = te_utils.get_cgns_distribution(matching_region, ':CGNS#Distribution/Index')
-    lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, matching_region_path + \
-        '/:CGNS#GlobalNumbering/Index')
+    distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
+    lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
     #Discover data
     part_data = dict()
@@ -159,14 +157,14 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
     for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
       bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
       #Get BC distribution and lngn
-      distribution_bc = te_utils.get_cgns_distribution(d_bc, ':CGNS#Distribution/Index')
-      lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, bc_path + '/:CGNS#GlobalNumbering/Index')
+      distribution_bc = te_utils.get_cgns_distribution(d_bc, 'Index')
+      lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
       for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
         #If dataset has its own PointList, we must override bc distribution and lngn
         if IE.getDistribution(d_dataset) is not None:
-          distribution = te_utils.get_cgns_distribution(d_dataset, ':CGNS#Distribution/Index')
+          distribution = te_utils.get_cgns_distribution(d_dataset, 'Index')
           ds_path      = bc_path + '/' + I.getName(d_dataset)
-          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, ds_path + '/:CGNS#GlobalNumbering/Index')
+          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
           distribution = distribution_bc
           lngn_list    = lngn_list_bc

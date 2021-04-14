@@ -30,7 +30,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   zone to the partitioned zones
   """
   #Get distribution
-  distribution_vtx = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
+  distribution_vtx = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
 
   #Get data
   dist_data = dict()
@@ -39,7 +39,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
     dist_data[I.getName(grid_co)] = grid_co[1] #Prevent np->scalar conversion
 
 
-  vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
+  vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   part_data = dist_to_part(distribution_vtx, dist_data, vtx_lntogn_list, comm)
   
   for ipart, part_zone in enumerate(part_zones):
@@ -59,16 +59,16 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
     location = SIDS.GridLocation(d_sol)
     has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
     if has_pl:
-      distribution = te_utils.get_cgns_distribution(d_sol, ':CGNS#Distribution/Index')
-      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, I.getName(d_sol) + '/:CGNS#GlobalNumbering/Index')
+      distribution = te_utils.get_cgns_distribution(d_sol, 'Index')
+      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Index', I.getName(d_sol))
     else:
       assert location in ['Vertex', 'CellCenter']
       if location == 'Vertex':
-        distribution = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
-        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
+        distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
+        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
       elif location == 'CellCenter':
-        distribution = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Cell')
-        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Cell')
+        distribution = te_utils.get_cgns_distribution(dist_zone, 'Cell')
+        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
     #Get data
     dist_data = dict()
@@ -102,14 +102,14 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
     for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
       bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
       #Get BC distribution and lngn
-      distribution_bc = te_utils.get_cgns_distribution(d_bc, ':CGNS#Distribution/Index')
-      lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, bc_path + '/:CGNS#GlobalNumbering/Index')
+      distribution_bc = te_utils.get_cgns_distribution(d_bc, 'Index')
+      lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
       for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
         #If dataset has its own PointList, we must override bc distribution and lngn
         if IE.getDistribution(d_dataset) is not None:
-          distribution = te_utils.get_cgns_distribution(d_dataset, ':CGNS#Distribution/Index')
+          distribution = te_utils.get_cgns_distribution(d_dataset, 'Index')
           ds_path      = bc_path + '/' + I.getName(d_dataset)
-          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, ds_path + '/:CGNS#GlobalNumbering/Index')
+          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
           distribution = distribution_bc
           lngn_list    = lngn_list_bc
@@ -150,9 +150,8 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm):
     assert matching_region is not None
 
     #Get distribution and lngn
-    distribution = te_utils.get_cgns_distribution(matching_region, ':CGNS#Distribution/Index')
-    lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, matching_region_path + \
-        '/:CGNS#GlobalNumbering/Index')
+    distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
+    lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
     #Get Data
     dist_data = dict()

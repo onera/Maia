@@ -21,12 +21,12 @@ def get_partitioned_zones(part_tree, dist_zone_path):
   else:
     return []
 
-def get_cgns_distribution(dist_zone, path):
+def get_cgns_distribution(dist_node, name):
   """
   Return the (partial) distribution array of a distributed zone from
   its path. Array is converted to pdm gnum_dtype.
   """
-  return I.getNodeFromPath(dist_zone, path)[1].astype(pdm_gnum_dtype)
+  return IE.getDistribution(dist_node, name).astype(pdm_gnum_dtype)
 
 def create_all_elt_distribution(dist_elts, comm):
   """
@@ -37,14 +37,15 @@ def create_all_elt_distribution(dist_elts, comm):
   elt_sections_idx = py_utils.sizes_to_indices(elt_sections_dn, dtype=pdm_gnum_dtype)
   return uniform_distribution(elt_sections_idx[-1], comm)
 
-def collect_cgns_g_numbering(part_zones, path):
+def collect_cgns_g_numbering(part_nodes, name, prefix=''):
   """
-  Return the list of the CGNS:GlobalNumbering array found for each
-  partitioned zone following path path.
-  An empty array is returned for zone having no global numbering.
+  Return the list of the CGNS:GlobalNumbering array of name name found for each
+  partition, stating from part_node and searching under the (optional) prefix path
+  An empty array is returned if the partitioned node does not exists
   """
-  return [I.getNodeFromPath(part_zone, path)[1] if I.getNodeFromPath(part_zone, path)
-      is not None else np.empty(0, pdm_gnum_dtype) for part_zone in part_zones]
+  prefixed = lambda node : I.getNodeFromPath(node, prefix)
+  return [np.empty(0, pdm_gnum_dtype) if prefixed(part_node) is None else \
+      IE.getGlobalNumbering(prefixed(part_node), name).astype(pdm_gnum_dtype) for part_node in part_nodes]
 
 def create_all_elt_g_numbering(p_zone, dist_elts):
   """

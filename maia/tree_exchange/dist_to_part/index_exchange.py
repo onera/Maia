@@ -66,10 +66,10 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
 
   #Create distri and lngn
   if entity == 'Vertex':
-    distri_partial = te_utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Vertex')
+    distri_partial = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
     pdm_distri     = par_utils.partial_to_full_distribution(distri_partial, comm)
 
-    ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
+    ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   elif entity == 'Elements':
     elts = I.getNodesFromType1(dist_zone, 'Elements_t')
     distri_partial = te_utils.create_all_elt_distribution(elts, comm)

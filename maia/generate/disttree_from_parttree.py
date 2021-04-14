@@ -55,7 +55,7 @@ def disttree_from_parttree(part_tree, comm):
     part_zones = te_utils.get_partitioned_zones(part_tree, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
     # > Create vertex distribution and exchange vertex coordinates
-    vtx_lngn_list = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
+    vtx_lngn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
     pdm_ptb = PDM.PartToBlock(comm, vtx_lngn_list, pWeight=None, partN=len(vtx_lngn_list),
                               t_distrib=0, t_post=1, t_stride=0)
     vtx_distri_pdm = pdm_ptb.getDistributionCopy()

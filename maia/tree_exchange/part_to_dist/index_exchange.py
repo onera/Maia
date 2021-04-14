@@ -151,10 +151,9 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
   # Prepare gnum lists
-  elt_gnum_path = elem_name + '/:CGNS#GlobalNumbering/Element'
-  vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Vertex')
-  cell_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Cell')
-  elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, elt_gnum_path)
+  vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
+  cell_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
+  elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
 
   # Init dicts
   p_data_pe = {'PE' : list()}
@@ -255,8 +254,8 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
   # Prepare gnum lists
-  cell_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, elem_name + '/:CGNS#GlobalNumbering/Element')
-  ngon_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, ngon_name + '/:CGNS#GlobalNumbering/Element')
+  cell_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
+  ngon_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, 'Element', ngon_name)
 
   # Init dicts
   part_data   = {'Connectivity' : list()}

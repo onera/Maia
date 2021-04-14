@@ -42,7 +42,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
       gc_id     = I.getNodeFromName1(gc, 'Ordinal'   )[1][0] - 1
       gc_id_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0] - 1
       if (gc_id < gc_id_opp):
-        nb_face_in_joins[join_to_ref[gc_id]] = te_utils.get_cgns_distribution(gc, ':CGNS#Distribution/Index')[2]
+        nb_face_in_joins[join_to_ref[gc_id]] = te_utils.get_cgns_distribution(gc, 'Index')[2]
         
   face_in_join_offset = py_utils.sizes_to_indices(nb_face_in_joins)
 

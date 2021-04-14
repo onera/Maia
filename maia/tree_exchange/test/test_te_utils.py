@@ -45,8 +45,8 @@ Zone Zone_t:
 """
   dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
   dist_zone = I.getZones(dist_tree)[0]
-  zone_distri = utils.get_cgns_distribution(dist_zone, ':CGNS#Distribution/Cell')
-  bc_distri   = utils.get_cgns_distribution(dist_zone, 'ZBC/bc1/:CGNS#Distribution/Index')
+  zone_distri = utils.get_cgns_distribution(dist_zone, 'Cell')
+  bc_distri   = utils.get_cgns_distribution(I.getNodeFromPath(dist_zone, 'ZBC/bc1'), 'Index')
   assert zone_distri.dtype == bc_distri.dtype == npy_pdm_gnum_dtype
   assert (zone_distri == [1,2,4]).all()
   assert (bc_distri   == [1,4,4]).all()
@@ -88,8 +88,8 @@ Zone.P0.N1 Zone_t:
 """
   part_tree = parse_yaml_cgns.to_complete_pytree(yt)
   part_zones = I.getZones(part_tree)
-  cell_lngn = utils.collect_cgns_g_numbering(part_zones, ':CGNS#GlobalNumbering/Cell')
-  bc1_lngn  = utils.collect_cgns_g_numbering(part_zones, 'ZBC/bc1/:CGNS#GlobalNumbering/Index')
+  cell_lngn = utils.collect_cgns_g_numbering(part_zones, 'Cell')
+  bc1_lngn  = utils.collect_cgns_g_numbering(part_zones, 'Index', 'ZBC/bc1')
   assert len(cell_lngn) == len(bc1_lngn) == 2
   assert (cell_lngn[0] == [1,2]).all()
   assert (cell_lngn[1] == [3,4]).all()
