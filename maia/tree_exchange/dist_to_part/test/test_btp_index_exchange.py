@@ -6,6 +6,7 @@ import numpy as np
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.sids import sids
+from maia.sids import Internal_ext as IE
 import maia.utils.py_utils as py_utils
 from   maia.utils        import parse_yaml_cgns
 from maia.tree_exchange.dist_to_part import index_exchange as IBTP
@@ -25,8 +26,7 @@ def test_collect_distributed_pl():
     I.newBC('bc'+str(i+1), pointList=pl, parent=zoneBC)
   for i, pr in enumerate(point_ranges):
     bc = I.newBC('bc'+str(i+1+len(point_lists)), pointRange=pr, parent=zoneBC)
-    distri = I.createUniqueChild(bc, ":CGNS#Distribution", "UserDefinedData_t")
-    I.newDataArray('Index', [10,15,20], parent=distri)
+    distri = IE.newDistribution({'Index' : np.array([10,15,20])}, parent=bc)
 
   collected = IBTP.collect_distributed_pl(zone, ['ZoneBC_t/BC_t'])
   assert len(collected) == len(point_lists) + 1

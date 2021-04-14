@@ -3,6 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 
 import numpy      as np
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 
 from maia.utils import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -37,7 +38,7 @@ def test_create_part_pl_gnum_unique(sub_comm):
 def test_create_part_pl_gnum(sub_comm):
   dist_zone = I.newZone('Zone')
   part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
-  distri_ud0 = I.createUniqueChild(part_zones[0], ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+  distri_ud0 = IE.newGlobalNumbering(parent=part_zones[0])
   if sub_comm.Get_rank() == 0:
     I.newZoneSubRegion("ZSR", pointList=[[1,8,5,2]], gridLocation='Vertex', parent=part_zones[0])
     I.newDataArray('Vertex', [22,18,5,13,9,11,6,4], parent=distri_ud0)
@@ -46,7 +47,7 @@ def test_create_part_pl_gnum(sub_comm):
   elif sub_comm.Get_rank() == 2:
     I.newDataArray('Vertex', [13,8,9,6,2], parent=distri_ud0)
     part_zones.append(I.newZone('Zone.P2.N1'))
-    distri_ud1 = I.createUniqueChild(part_zones[1], ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    distri_ud1 = IE.newGlobalNumbering(parent=part_zones[1])
     I.newDataArray('Vertex', [4,9,13,1,7,6], parent=distri_ud1)
     I.newZoneSubRegion("ZSR", pointList=[[1,3]], gridLocation='Vertex', parent=part_zones[0])
     I.newZoneSubRegion("ZSR", pointList=[[2,4,6]], gridLocation='Vertex', parent=part_zones[1])
@@ -71,25 +72,22 @@ def test_part_pl_to_dist_pl(sub_comm, allow_mult):
   dist_zone = I.newZone('Zone')
   dist_zsr = I.newZoneSubRegion("ZSR", gridLocation='Vertex', parent=dist_zone)
   part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
-  distri_ud0 = I.createUniqueChild(part_zones[0], ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+  distri_ud0 = IE.newGlobalNumbering(parent=part_zones[0])
   if sub_comm.Get_rank() == 0:
     I.newDataArray('Vertex', [22,18,5,13,9,11,6,4], parent=distri_ud0)
     zsr = I.newZoneSubRegion("ZSR", pointList=[[1,8,5,2]], gridLocation='Vertex', parent=part_zones[0])
-    distri_ud_zsr = I.createUniqueChild(zsr, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-    I.newDataArray('Index', [7,2,4,6], parent=distri_ud_zsr)
+    IE.newGlobalNumbering({'Index' : [7,2,4,6]}, zsr)
   elif sub_comm.Get_rank() == 1:
     I.newDataArray('Vertex', [5,16,9,17,22], parent=distri_ud0)
   elif sub_comm.Get_rank() == 2:
     I.newDataArray('Vertex', [13,8,9,6,2], parent=distri_ud0)
     part_zones.append(I.newZone('Zone.P2.N1'))
-    distri_ud1 = I.createUniqueChild(part_zones[1], ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    distri_ud1 = IE.newGlobalNumbering(parent=part_zones[1])
     I.newDataArray('Vertex', [4,9,13,1,7,6], parent=distri_ud1)
     zsr = I.newZoneSubRegion("ZSR", pointList=[[1,3]], gridLocation='Vertex', parent=part_zones[0])
-    distri_ud_zsr = I.createUniqueChild(zsr, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-    I.newDataArray('Index', [5,4], parent=distri_ud_zsr)
+    IE.newGlobalNumbering({'Index' : [5,4]}, zsr)
     zsr = I.newZoneSubRegion("ZSR", pointList=[[2,4,6]], gridLocation='Vertex', parent=part_zones[1])
-    distri_ud_zsr = I.createUniqueChild(zsr, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-    I.newDataArray('Index', [4,1,3], parent=distri_ud_zsr)
+    IE.newGlobalNumbering({'Index' : [4,1,3]}, zsr)
   elif sub_comm.Get_rank() == 3:
     part_zones = []
 

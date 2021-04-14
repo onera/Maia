@@ -1,5 +1,6 @@
 import numpy              as np
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 
 def uniform_distribution_at(n_elt, i, n_interval):
   """
@@ -40,5 +41,5 @@ def create_distribution_node_from_distrib(name, parent_node, distrib):
   """
   setup CGNS node with distribution
   """
-  distrib_ud = I.createUniqueChild(parent_node, ':CGNS#Distribution', 'UserDefinedData_t')
+  distrib_ud = IE.newDistribution(parent=parent_node)
   I.newDataArray(name, value=distrib, parent=distrib_ud)

@@ -5,6 +5,7 @@ import Pypdm.Pypdm        as PDM
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 from maia.sids  import sids     as SIDS
+from maia.sids  import Internal_ext as IE
 from maia.utils import py_utils
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
@@ -33,7 +34,7 @@ def create_part_pl_gnum_unique(part_zones, node_path, comm):
     if node:
       offset = shifted_part[comm.Get_rank()] + i_zone
       start = np.sum(size_per_part[:offset]) + 1
-      distri_ud = I.createUniqueChild(node, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+      distri_ud = IE.newGlobalNumbering(parent=node)
       I.newDataArray('Index', np.arange(start, start+size_per_part[offset], dtype=pdm_gnum_dtype), distri_ud)
 
 def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
@@ -83,7 +84,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
   for p_zone in part_zones:
     node = I.getNodeFromPath(p_zone, node_path)
     if node:
-      distri_ud = I.createUniqueChild(node, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+      distri_ud = IE.newGlobalNumbering(parent=node)
       I.newDataArray('Index', part_data['lngn'][i_zone], parent=distri_ud)
       i_zone += 1
 
@@ -131,7 +132,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
   # Add distribution in dist_node
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
-  distri_ud = I.createUniqueChild(dist_node, ':CGNS#Distribution', 'UserDefinedData_t')
+  distri_ud = IE.newDistribution(parent=dist_node)
   full_distri    = PTB.getDistributionCopy()
   I.newDataArray('Index', full_distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
@@ -239,7 +240,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   I.newDataArray ('ElementStartOffset',  d_elt_eso,      parent=elt_node)
 
   DistriFaceVtx = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
-  distri_ud = I.createUniqueChild(elt_node, ':CGNS#Distribution', 'UserDefinedData_t')
+  distri_ud = IE.newDistribution(parent=elt_node)
   I.newDataArray('Element',           PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
   I.newDataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 

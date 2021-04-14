@@ -4,6 +4,7 @@ import Pypdm.Pypdm        as PDM
 
 from maia      import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.sids import sids     as SIDS
+import maia.sids.Internal_ext as IE
 from maia.utils          import py_utils
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
@@ -53,7 +54,7 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
             p_node = I.createChild(ancestor, I.getName(node), I.getType(node), I.getValue(node))
             I.newGridLocation(SIDS.GridLocation(node), parent=p_node)
             I.newIndexArray('PointList', p_groups['npZSRGroup'][beg_pl:end_pl].reshape((1,-1), order='F'), parent=p_node)
-            lntogn_ud = I.createUniqueChild(p_node, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+            lntogn_ud = IE.newGlobalNumbering(parent=p_node)
             I.newDataArray('Index', p_groups['npZSRGroupLNToGN'][beg_pl:end_pl], parent=lntogn_ud)
 
           i_pl += 1

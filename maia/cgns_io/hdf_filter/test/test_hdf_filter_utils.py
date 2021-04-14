@@ -1,5 +1,6 @@
 import Converter.Internal as I
 from maia.cgns_io.hdf_filter import utils
+import maia.sids.Internal_ext as IE
 
 def test_pl_or_pr_size():
   bc_pr = I.newBC(name='BC', pointRange=[[16,25], [5,5], [1,5]], btype='BCFarfield')
@@ -12,8 +13,7 @@ def test_pl_or_pr_size():
   assert (size == [1, 6]).all()
 
   bc_ud = I.newBC(name='BC', pointList=[[5,10,15,20,25,30]], btype='BCFarfield')
-  ud_node = I.createChild(bc_ud, ':CGNS#Distribution', 'UserDefinedData_t')
-  I.newDataArray('Index', [1, 6, 6], parent=ud_node)
+  IE.newDistribution({'Index' : [1,6,6]}, parent=bc_ud)
   size = utils.pl_or_pr_size(bc_ud)
   assert (size == [1, 6]).all()
 

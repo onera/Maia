@@ -2,6 +2,7 @@ from mpi4py import MPI
 import numpy              as np
 
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 
 from maia.sids import sids as SIDS
 from maia.sids import conventions as conv
@@ -341,7 +342,7 @@ def part_s_zone(d_zone, d_zone_weights, comm):
     part_zone  = I.newZone(pzone_name, pzone_dims, ztype='Structured')
 
     #Get ln2gn : following convention i, j, k increasing. Add 1 to end for vtx
-    lngn_zone = I.createUniqueChild(part_zone, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    lngn_zone = IE.newGlobalNumbering(parent=part_zone)
     i_ar  = np.arange(cell_bounds[0,0], cell_bounds[0,1]+1, dtype=np.int32)
     j_ar  = np.arange(cell_bounds[1,0], cell_bounds[1,1]+1, dtype=np.int32).reshape(-1,1)
     k_ar  = np.arange(cell_bounds[2,0], cell_bounds[2,1]+1, dtype=np.int32).reshape(-1,1,1)

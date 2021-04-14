@@ -5,6 +5,7 @@ import Converter.Internal as I
 import numpy as np
 
 from maia.sids     import sids
+from maia.sids     import Internal_ext as IE
 from maia.utils    import parse_yaml_cgns
 from maia.generate import disttree_from_parttree as DFP
 
@@ -47,7 +48,7 @@ def test_disttree_from_parttree(sub_comm):
   part_tree = I.newCGNSTree()
   if sub_comm.Get_rank() < 2:
     part_base = I.newCGNSBase(parent=part_tree)
-    distri_ud = I.createNode(':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    distri_ud = IE.newGlobalNumbering()
     if sub_comm.Get_rank() == 0:
       part_zone = G.cartNGon((0,0,0), (.5,.5,.5), (3,3,3))
       vtx_gnum = [1,2,3,6,7,8,11,12,13,16,17,18,21,22,23,26,27,28,31,32,33,36,37,38,41,42,43]
@@ -56,8 +57,7 @@ def test_disttree_from_parttree(sub_comm):
       zbc = I.newZoneBC(parent=part_zone)
       bc = I.newBC(btype='BCWall', pointList=[[1,4,2,3]], parent=zbc)
       I.newGridLocation('FaceCenter', bc)
-      distri_bc = I.createChild(bc, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-      I.newDataArray('Index', [1,2,3,4], parent=distri_bc)
+      IE.newGlobalNumbering({'Index' : [1,2,3,4]}, parent=bc)
     else:
       part_zone = G.cartNGon((1,0,0), (.5,.5,.5), (3,3,3))
       vtx_gnum = [3,4,5, 8,9,10,13,14,15,18,19,20,23,24,25,28,29,30,33,34,35,38,39,40,43,44,45]
@@ -72,8 +72,7 @@ def test_disttree_from_parttree(sub_comm):
     ngon_ec = I.getNodeFromName(ngon, 'ElementConnectivity')
     I.newDataArray('ElementStartOffset', ngon_idx, parent=ngon)
     ngon_ec[1] = np.delete(ngon_ec[1], np.arange(0, 5*n_elem, 5))
-    elt_distri = I.createNode(':CGNS#GlobalNumbering', 'UserDefinedData_t', parent=ngon)
-    I.newDataArray('Element', ngon_gnum, parent=elt_distri)
+    IE.newGlobalNumbering({'Element' : ngon_gnum}, parent=ngon)
 
     nface = I.getNodeFromPath(part_zone, 'NFaceElements')
     n_elem = sids.ElementSize(nface)
@@ -81,8 +80,7 @@ def test_disttree_from_parttree(sub_comm):
     nface_ec = I.getNodeFromName(nface, 'ElementConnectivity')
     I.newDataArray('ElementStartOffset', nface_idx, parent=nface)
     nface_ec[1] = np.delete(nface_ec[1], np.arange(0, 7*n_elem, 7))
-    elt_distri = I.createNode(':CGNS#GlobalNumbering', 'UserDefinedData_t', parent=nface)
-    I.newDataArray('Element', cell_gnum, parent=elt_distri)
+    IE.newGlobalNumbering({'Element' : cell_gnum}, parent=nface)
 
     I.newDataArray('Vertex', vtx_gnum,  parent=distri_ud)
     I.newDataArray('Cell',   cell_gnum, parent=distri_ud)

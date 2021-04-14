@@ -1,6 +1,7 @@
 import numpy      as np
 
-import Converter.Internal as I
+import Converter.Internal     as I
+import maia.sids.Internal_ext as IE
 import Pypdm.Pypdm as PDM
 
 from maia.utils import py_utils
@@ -49,7 +50,7 @@ def disttree_from_parttree(part_tree, comm):
 
   for dist_base, dist_zone in py_utils.getNodesWithParentsFromTypePath(dist_tree, 'CGNSBase_t/Zone_t'):
 
-    distri_ud = I.createUniqueChild(dist_zone, ':CGNS#Distribution', 'UserDefinedData_t')
+    distri_ud = IE.newDistribution(parent=dist_zone)
 
     part_zones = te_utils.get_partitioned_zones(part_tree, I.getName(dist_base) + '/' + I.getName(dist_zone))
 

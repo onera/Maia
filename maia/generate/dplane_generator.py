@@ -1,4 +1,5 @@
-import Converter.Internal as I
+import Converter.Internal     as I
+import maia.sids.Internal_ext as IE
 import maia.sids.sids as SIDS
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
@@ -76,9 +77,8 @@ def dplane_generate(xmin, xmax, ymin, ymax,
     I.newPointList(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
 
     bc_distrib = par_utils.gather_and_shift(dn_edge_bnd, comm, edge_group.dtype)
-    distrib_n = I.createNode(':CGNS#Distribution', 'UserDefinedData_t', parent=bc_n)
     distrib   = np.array([bc_distrib[i_rank], bc_distrib[i_rank+1], bc_distrib[n_rank]])
-    I.newDataArray('Index', distrib, parent=distrib_n)
+    IE.newDistribution({'Index' : distrib}, parent=bc_n)
 
   # > Distributions
   np_distrib_cell     = np.array([distrib_cell    [i_rank], distrib_cell    [i_rank+1], distrib_cell    [n_rank]], dtype=pe.dtype)

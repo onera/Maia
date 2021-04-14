@@ -1,4 +1,5 @@
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 import numpy              as np
 
 from maia.sids import conventions as conv
@@ -85,15 +86,13 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data):
     I.newDataArray('ElementStartOffset' , data['np_face_vtx_idx'], parent=ngon_n)
     I.newDataArray('ParentElements'     , pe                     , parent=ngon_n)
     I.newPointRange('ElementRange'      , [1, n_face]            , parent=ngon_n)
-    lngn_elmt = I.createUniqueChild(ngon_n, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-    I.newDataArray('Element', data['np_face_ln_to_gn'], parent=lngn_elmt)
+    IE.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
 
     nface_n = I.createUniqueChild(p_zone, 'NFaceElements', 'Elements_t', value=[23,0])
     I.newDataArray('ElementConnectivity', data['np_cell_face']     , parent=nface_n)
     I.newDataArray('ElementStartOffset' , data['np_cell_face_idx'] , parent=nface_n)
     I.newPointRange('ElementRange'      , [n_face+1, n_face+n_cell], parent=nface_n)
-    lngn_elmt = I.createUniqueChild(nface_n, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-    I.newDataArray('Element', data['np_cell_ln_to_gn'], parent=lngn_elmt)
+    IE.newGlobalNumbering({'Element' : data['np_cell_ln_to_gn']}, nface_n)
 
   else:
     elt_section_nodes = I.getNodesFromType(d_zone, "Elements_t")
@@ -108,8 +107,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data):
       I.newDataArray('ElementConnectivity', data['np_elt_vtx'][i_elt]       , parent=elt_n)
       I.newPointRange('ElementRange'      , [n_elt_cum+1, n_elt_cum+n_i_elt], parent=elt_n)
       n_elt_cum += n_i_elt
-      lngn_elmt = I.createUniqueChild(elt_n, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-      I.newDataArray('Element', data['np_elt_section_ln_to_gn'][i_elt], parent=lngn_elmt)
+      IE.newGlobalNumbering({'Element' : data['np_elt_section_ln_to_gn'][i_elt]}, elt_n)
 
 
 def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):

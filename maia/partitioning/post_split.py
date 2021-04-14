@@ -1,4 +1,5 @@
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 import numpy as np
 
 import maia.sids.conventions as conv
@@ -67,8 +68,7 @@ def split_original_joins(p_zone):
 
           I.newPointList(name='PointList'     , value=sub_pl      , parent=join_n)
           I.newPointList(name='PointListDonor', value=sub_pl_d    , parent=join_n)
-          lntogn_ud = I.createUniqueChild(join_n, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-          I.newDataArray('Index', value=sub_lngn, parent=lntogn_ud)
+          IE.newGlobalNumbering({'Index' : sub_lngn}, join_n)
           #Copy decorative nodes
           skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor']
           for node in I.getChildren(gc):

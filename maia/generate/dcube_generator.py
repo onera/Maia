@@ -1,4 +1,5 @@
-import Converter.Internal as I
+import Converter.Internal     as I
+import maia.sids.Internal_ext as IE
 import maia.sids.sids as SIDS
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -70,9 +71,8 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
     I.newPointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
 
     bc_distrib = par_utils.gather_and_shift(dn_face_bnd, comm, pdm_gnum_dtype)
-    distrib_n = I.createNode(':CGNS#Distribution', 'UserDefinedData_t', parent=bc_n)
     distrib   = np.array([bc_distrib[i_rank], bc_distrib[i_rank+1], bc_distrib[n_rank]])
-    I.newDataArray('Index', distrib, parent=distrib_n)
+    IE.newDistribution({'Index' : distrib}, parent=bc_n)
 
   # > Distributions
   np_distrib_cell    = np.array([distrib_cell[i_rank]   , distrib_cell[i_rank+1]   , distrib_cell[n_rank]]   )
