@@ -53,23 +53,23 @@ def test_cgns_registry_1p(sub_comm):
 
   cgr = make_cgns_registry(tree, sub_comm)
 
-  assert( list(cgr.paths(CGK.Zone_t)) == ["/Base0/ZoneU1", "/Base0/ZoneU2"])
+  assert( list(cgr.paths(CGK.kind.Zone_t)) == ["/Base0/ZoneU1", "/Base0/ZoneU2"])
 
   # get_global_id_from_path_and_type
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0", CGK.CGNSBase_t) == 1)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0", CGK.kind.CGNSBase_t) == 1)
 
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1", CGK.Zone_t) == 1)
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2", CGK.Zone_t) == 2)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1", CGK.kind.Zone_t) == 1)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2", CGK.kind.Zone_t) == 2)
 
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/FARFIELD", CGK.BC_t) == 1)
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/WALL"    , CGK.BC_t) == 2)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/FARFIELD", CGK.kind.BC_t) == 1)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/WALL"    , CGK.kind.BC_t) == 2)
 
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/SYM" , CGK.BC_t) == 3)
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/WALL", CGK.BC_t) == 4)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/SYM" , CGK.kind.BC_t) == 3)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/WALL", CGK.kind.BC_t) == 4)
 
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/WALL"    , CGK.Family_t) == 3)
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/FARFIELD", CGK.Family_t) == 1)
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/SYM"     , CGK.Family_t) == 2)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/WALL"    , CGK.kind.Family_t) == 3)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/FARFIELD", CGK.kind.Family_t) == 1)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/SYM"     , CGK.kind.Family_t) == 2)
 
   # get_global_id_from_path_and_type
   assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0", "CGNSBase_t") == 1)
@@ -88,20 +88,20 @@ def test_cgns_registry_1p(sub_comm):
   assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/SYM"     , "Family_t") == 2)
 
   # get_path_from_global_id_and_type
-  assert(CGR.get_path_from_global_id_and_type(cgr, 1,  CGK.CGNSBase_t) == "/Base0")
+  assert(CGR.get_path_from_global_id_and_type(cgr, 1,  CGK.kind.CGNSBase_t) == "/Base0")
 
-  assert(CGR.get_path_from_global_id_and_type(cgr, 1, CGK.Zone_t) == "/Base0/ZoneU1")
-  assert(CGR.get_path_from_global_id_and_type(cgr, 2, CGK.Zone_t) == "/Base0/ZoneU2")
+  assert(CGR.get_path_from_global_id_and_type(cgr, 1, CGK.kind.Zone_t) == "/Base0/ZoneU1")
+  assert(CGR.get_path_from_global_id_and_type(cgr, 2, CGK.kind.Zone_t) == "/Base0/ZoneU2")
 
-  assert(CGR.get_path_from_global_id_and_type(cgr, 1, CGK.BC_t) == "/Base0/ZoneU1/ZoneBC/FARFIELD")
-  assert(CGR.get_path_from_global_id_and_type(cgr, 2, CGK.BC_t) == "/Base0/ZoneU1/ZoneBC/WALL"    )
+  assert(CGR.get_path_from_global_id_and_type(cgr, 1, CGK.kind.BC_t) == "/Base0/ZoneU1/ZoneBC/FARFIELD")
+  assert(CGR.get_path_from_global_id_and_type(cgr, 2, CGK.kind.BC_t) == "/Base0/ZoneU1/ZoneBC/WALL"    )
 
-  assert(CGR.get_path_from_global_id_and_type(cgr, 3, CGK.BC_t) == "/Base0/ZoneU2/ZoneBC/SYM" )
-  assert(CGR.get_path_from_global_id_and_type(cgr, 4, CGK.BC_t) == "/Base0/ZoneU2/ZoneBC/WALL")
+  assert(CGR.get_path_from_global_id_and_type(cgr, 3, CGK.kind.BC_t) == "/Base0/ZoneU2/ZoneBC/SYM" )
+  assert(CGR.get_path_from_global_id_and_type(cgr, 4, CGK.kind.BC_t) == "/Base0/ZoneU2/ZoneBC/WALL")
 
-  assert(CGR.get_path_from_global_id_and_type(cgr, 3, CGK.Family_t) == "/Base0/WALL"    )
-  assert(CGR.get_path_from_global_id_and_type(cgr, 1, CGK.Family_t) == "/Base0/FARFIELD")
-  assert(CGR.get_path_from_global_id_and_type(cgr, 2, CGK.Family_t) == "/Base0/SYM"     )
+  assert(CGR.get_path_from_global_id_and_type(cgr, 3, CGK.kind.Family_t) == "/Base0/WALL"    )
+  assert(CGR.get_path_from_global_id_and_type(cgr, 1, CGK.kind.Family_t) == "/Base0/FARFIELD")
+  assert(CGR.get_path_from_global_id_and_type(cgr, 2, CGK.kind.Family_t) == "/Base0/SYM"     )
 
   # get_path_from_global_id_and_type
   assert(CGR.get_path_from_global_id_and_type(cgr, 1,  "CGNSBase_t") == "/Base0")
@@ -127,26 +127,26 @@ def test_cgns_registry_2p(sub_comm):
 
   cgr = make_cgns_registry(tree, sub_comm)
 
-  assert_mpi(sub_comm, 0, list(cgr.paths(CGK.Zone_t)) == ["/Base0/ZoneU1"])
-  assert_mpi(sub_comm, 1, list(cgr.paths(CGK.Zone_t)) == ["/Base0/ZoneU2"])
+  assert_mpi(sub_comm, 0, list(cgr.paths(CGK.kind.Zone_t)) == ["/Base0/ZoneU1"])
+  assert_mpi(sub_comm, 1, list(cgr.paths(CGK.kind.Zone_t)) == ["/Base0/ZoneU2"])
 
   # get_global_id_from_path_and_type
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0", CGK.CGNSBase_t) == 1)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0", CGK.kind.CGNSBase_t) == 1)
 
-  assert_mpi(sub_comm, 0, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1", CGK.Zone_t) == 1)
-  assert_mpi(sub_comm, 1, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2", CGK.Zone_t) == 2)
+  assert_mpi(sub_comm, 0, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1", CGK.kind.Zone_t) == 1)
+  assert_mpi(sub_comm, 1, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2", CGK.kind.Zone_t) == 2)
 
-  assert_mpi(sub_comm, 1, lambda x: CGR.get_global_id_from_path_and_type(cgr, x, CGK.Zone_t) == 2, "/Base0/ZoneU2")
+  assert_mpi(sub_comm, 1, lambda x: CGR.get_global_id_from_path_and_type(cgr, x, CGK.kind.Zone_t) == 2, "/Base0/ZoneU2")
 
-  assert_mpi(sub_comm, 0, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/FARFIELD", CGK.BC_t) == 1)
-  assert_mpi(sub_comm, 0, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/WALL"    , CGK.BC_t) == 2)
+  assert_mpi(sub_comm, 0, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/FARFIELD", CGK.kind.BC_t) == 1)
+  assert_mpi(sub_comm, 0, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/WALL"    , CGK.kind.BC_t) == 2)
 
-  assert_mpi(sub_comm, 1, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/SYM" , CGK.BC_t) == 3)
-  assert_mpi(sub_comm, 1, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/WALL", CGK.BC_t) == 4)
+  assert_mpi(sub_comm, 1, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/SYM" , CGK.kind.BC_t) == 3)
+  assert_mpi(sub_comm, 1, lambda: CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/WALL", CGK.kind.BC_t) == 4)
 
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/WALL"    , CGK.Family_t) == 3)
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/FARFIELD", CGK.Family_t) == 1)
-  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/SYM"     , CGK.Family_t) == 2)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/WALL"    , CGK.kind.Family_t) == 3)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/FARFIELD", CGK.kind.Family_t) == 1)
+  assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/SYM"     , CGK.kind.Family_t) == 2)
 
   # get_global_id_from_path_and_type
   assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0", "CGNSBase_t") == 1)
@@ -165,20 +165,20 @@ def test_cgns_registry_2p(sub_comm):
   assert(CGR.get_global_id_from_path_and_type(cgr, "/Base0/SYM"     , "Family_t") == 2)
 
   # get_path_from_global_id_and_type
-  assert(CGR.get_path_from_global_id_and_type(cgr, 1,  CGK.CGNSBase_t) == "/Base0")
+  assert(CGR.get_path_from_global_id_and_type(cgr, 1,  CGK.kind.CGNSBase_t) == "/Base0")
 
-  assert_mpi(sub_comm, 0, lambda: CGR.get_path_from_global_id_and_type(cgr, 1, CGK.Zone_t) == "/Base0/ZoneU1")
-  assert_mpi(sub_comm, 1, lambda: CGR.get_path_from_global_id_and_type(cgr, 2, CGK.Zone_t) == "/Base0/ZoneU2")
+  assert_mpi(sub_comm, 0, lambda: CGR.get_path_from_global_id_and_type(cgr, 1, CGK.kind.Zone_t) == "/Base0/ZoneU1")
+  assert_mpi(sub_comm, 1, lambda: CGR.get_path_from_global_id_and_type(cgr, 2, CGK.kind.Zone_t) == "/Base0/ZoneU2")
 
-  assert_mpi(sub_comm, 0, lambda: CGR.get_path_from_global_id_and_type(cgr, 1, CGK.BC_t) == "/Base0/ZoneU1/ZoneBC/FARFIELD")
-  assert_mpi(sub_comm, 0, lambda: CGR.get_path_from_global_id_and_type(cgr, 2, CGK.BC_t) == "/Base0/ZoneU1/ZoneBC/WALL"    )
+  assert_mpi(sub_comm, 0, lambda: CGR.get_path_from_global_id_and_type(cgr, 1, CGK.kind.BC_t) == "/Base0/ZoneU1/ZoneBC/FARFIELD")
+  assert_mpi(sub_comm, 0, lambda: CGR.get_path_from_global_id_and_type(cgr, 2, CGK.kind.BC_t) == "/Base0/ZoneU1/ZoneBC/WALL"    )
 
-  assert_mpi(sub_comm, 1, lambda: CGR.get_path_from_global_id_and_type(cgr, 3, CGK.BC_t) == "/Base0/ZoneU2/ZoneBC/SYM" )
-  assert_mpi(sub_comm, 1, lambda: CGR.get_path_from_global_id_and_type(cgr, 4, CGK.BC_t) == "/Base0/ZoneU2/ZoneBC/WALL")
+  assert_mpi(sub_comm, 1, lambda: CGR.get_path_from_global_id_and_type(cgr, 3, CGK.kind.BC_t) == "/Base0/ZoneU2/ZoneBC/SYM" )
+  assert_mpi(sub_comm, 1, lambda: CGR.get_path_from_global_id_and_type(cgr, 4, CGK.kind.BC_t) == "/Base0/ZoneU2/ZoneBC/WALL")
 
-  assert(CGR.get_path_from_global_id_and_type(cgr, 3, CGK.Family_t) == "/Base0/WALL"    )
-  assert(CGR.get_path_from_global_id_and_type(cgr, 1, CGK.Family_t) == "/Base0/FARFIELD")
-  assert(CGR.get_path_from_global_id_and_type(cgr, 2, CGK.Family_t) == "/Base0/SYM"     )
+  assert(CGR.get_path_from_global_id_and_type(cgr, 3, CGK.kind.Family_t) == "/Base0/WALL"    )
+  assert(CGR.get_path_from_global_id_and_type(cgr, 1, CGK.kind.Family_t) == "/Base0/FARFIELD")
+  assert(CGR.get_path_from_global_id_and_type(cgr, 2, CGK.kind.Family_t) == "/Base0/SYM"     )
 
   # get_path_from_global_id_and_type
   assert(CGR.get_path_from_global_id_and_type(cgr, 1,  "CGNSBase_t") == "/Base0")
