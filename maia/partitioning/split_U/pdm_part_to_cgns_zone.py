@@ -1,6 +1,7 @@
 import Converter.Internal as I
 import numpy              as np
 
+from maia.sids import conventions as conv
 from maia.connectivity import connectivity_transform as CNT
 
 def dump_pdm_output(p_zone, dims, data):
@@ -49,11 +50,10 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
       opp_rank = entity_part_bound[beg_pl, 1]
       opp_part = entity_part_bound[beg_pl, 2]-1
 
-      cur_rank = I.getName(p_zone).split('.')[-2][1:]
-      cur_part = I.getName(p_zone).split('.')[-1][1:]
-      gcname = 'JN.P{0}.N{1}.LT.P{2}.N{3}'.format(cur_rank, cur_part, opp_rank, opp_part, i_join)
+      cur_rank, cur_part = conv.get_part_suffix(I.getName(p_zone))
+      gcname = conv.name_intra_gc(cur_rank, cur_part, opp_rank, opp_part)
       join_n = I.newGridConnectivity(name      = gcname,
-                                     donorName = I.getName(d_zone)+'.P{0}.N{1}'.format(opp_rank, opp_part),
+                                     donorName = conv.add_part_suffix(I.getName(d_zone), opp_rank, opp_part),
                                      ctype     = 'Abutting1to1',
                                      parent    = zgc_n)
 
@@ -119,7 +119,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   part_zones = list()
   for i_part, (dims, data) in enumerate(zip(l_dims, l_data)):
 
-    part_zone = I.newZone(name  = '{0}.P{1}.N{2}'.format(I.getName(dist_zone), comm.Get_rank(), i_part),
+    part_zone = I.newZone(name  = conv.add_part_suffix(I.getName(dist_zone), comm.Get_rank(), i_part),
                           zsize = [[dims['n_vtx'],dims['n_cell'],0]],
                           ztype = 'Unstructured')
 

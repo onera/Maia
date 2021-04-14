@@ -2,6 +2,7 @@ import Converter.Internal as I
 import numpy as np
 
 import maia.sids.sids               as SIDS
+from maia.sids  import conventions as conv
 from maia.utils import py_utils
 from maia.distribution.distribution_function import uniform_distribution
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -15,7 +16,7 @@ def get_partitioned_zones(part_tree, dist_zone_path):
   part_base = I.getNodeFromPath(part_tree, base_name)
   if part_base:
     return [part for part in I.getZones(part_base) if \
-        '.'.join(I.getName(part).split('.')[:-2]) == zone_name]
+        conv.get_part_prefix(I.getName(part)) == zone_name]
   else:
     return []
 
@@ -63,14 +64,4 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
       np_elt_ln_to_gn[offset:offset+elt_sections_pn[i_elt]] = local_ln_gn + elt_sections_idx[i_elt]
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn
-
-# def collect_lntogn_from_splited_path(part_zones, prefix, suffix):
-  # lngn_list = list()
-  # for p_zone in part_zones:
-    # extension  = '.'.join(I.getName(p_zone).split('.')[-2:])
-    # ln_gn_path = '{0}.{1}/{2}'.format(prefix, extension, suffix)
-    # ln_gn_node = I.getNodeFromPath(p_zone, ln_gn_path)
-    # if ln_gn_node:
-      # lngn_list.append(I.getValue(ln_gn_path))
-  # return lngn_list
 

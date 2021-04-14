@@ -1,6 +1,7 @@
 import Converter.Internal as I
 import numpy as np
 
+import maia.sids.conventions as conv
 import maia.tree_exchange.dist_to_part.index_exchange as IBTP
 import maia.tree_exchange.dist_to_part.recover_jn     as JBTP
 
@@ -42,8 +43,8 @@ def split_original_joins(p_zone):
         # > List of couples (procs, parts) holding the opposite join
         opposed_parts = np.unique(donor, axis=0)
         for i_sub_jn, opp_part in enumerate(opposed_parts):
-          join_n = I.newGridConnectivity(name      = I.getName(gc)+'.{0}'.format(i_sub_jn),
-                                         donorName = I.getValue(gc)+'.P{0}.N{1}'.format(*opp_part),
+          join_n = I.newGridConnectivity(name      = conv.add_split_suffix(I.getName(gc), i_sub_jn),
+                                         donorName = conv.add_part_suffix(I.getValue(gc), *opp_part),
                                          ctype     = 'Abutting1to1',
                                          parent    = zone_gc)
 
@@ -83,7 +84,7 @@ def post_partitioning(dist_tree, part_tree, comm):
   """
   dist_zones     = I.getZones(dist_tree)
   all_part_zones = I.getZones(part_tree)
-  parts_prefix    = ['.'.join(I.getName(zone).split('.')[:-2]) for zone in all_part_zones]
+  parts_prefix    = [conv.get_part_prefix(I.getName(zone)) for zone in all_part_zones]
   for dist_zone in dist_zones:
     # Recover matching zones
     part_zones = [part for part,prefix in zip(all_part_zones,parts_prefix) if \

@@ -1,10 +1,10 @@
 import numpy      as np
-import re
 
 import Converter.Internal as I
 import Pypdm.Pypdm as PDM
 
 from maia.utils import py_utils
+from maia.sids  import conventions as conv
 import maia.tree_exchange.utils as te_utils
 from maia.tree_exchange.part_to_dist import discover  as DIS
 from maia.tree_exchange.part_to_dist import data_exchange  as PTB
@@ -45,7 +45,7 @@ def disttree_from_parttree(part_tree, comm):
   DIS.discover_nodes_of_kind(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=['Family_t'])
   DIS.discover_nodes_of_kind(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\
       child_list = ['ZoneType_t'],
-      merge_rule=lambda zpath : '.'.join(zpath.split('.')[:-2]))
+      merge_rule=lambda zpath : conv.get_part_prefix(zpath))
 
   for dist_base, dist_zone in py_utils.getNodesWithParentsFromTypePath(dist_tree, 'CGNSBase_t/Zone_t'):
 
@@ -88,8 +88,8 @@ def disttree_from_parttree(part_tree, comm):
           child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
     DIS.discover_nodes_of_kind(dist_zone, part_zones, gc_t_path, comm,
           child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
-          merge_rule= lambda path: '.'.join(path.split('.')[:-1]),
-          skip_rule = lambda node: re.match("JN\.P\d+\.N\d+\.LT\.P\d+\.N\d+", I.getName(node)) is not None)
+          merge_rule= lambda path: conv.get_split_prefix(path),
+          skip_rule = lambda node: conv.is_intra_gc(I.getName(node)))
 
     # > Index exchange
     for d_zbc, d_bc in py_utils.getNodesWithParentsFromTypePath(dist_zone, bc_t_path):

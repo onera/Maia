@@ -2,6 +2,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 
 import Converter.Internal as I
 
+from maia.sids          import conventions as conv
 from maia.utils         import parse_yaml_cgns
 from maia.tree_exchange.part_to_dist import discover as disc
 
@@ -106,7 +107,7 @@ Zone.P2.N1 Zone_t:
 
     dist_zone = I.newZone('Zone')
     disc.discover_nodes_of_kind(dist_zone, I.getZones(part_tree), gc_path, sub_comm,\
-        merge_rule=lambda path : '.'.join(path.split('.')[:-1]))
+        merge_rule=lambda path : conv.get_split_prefix(path))
     assert I.getNodeFromPath(dist_zone, 'ZGC/match.0') is None
     assert I.getNodeFromPath(dist_zone, 'ZGC/match.1') is None
     assert I.getNodeFromPath(dist_zone, 'ZGC/match') is not None
@@ -126,7 +127,7 @@ Zone.P2.N1 Zone_t:
 
     dist_tree = I.newCGNSTree()
     disc.discover_nodes_of_kind(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', sub_comm,\
-        merge_rule=lambda zpath : '.'.join(zpath.split('.')[:-2]))
+        merge_rule=lambda zpath : conv.get_part_prefix(zpath))
 
     assert len(I.getZones(dist_tree)) == 2
     assert I.getNodeFromPath(dist_tree, 'BaseA/Zone') is not None

@@ -4,6 +4,7 @@ import numpy              as np
 import Converter.Internal as I
 
 from maia.sids import sids as SIDS
+from maia.sids import conventions as conv
 from .                               import split_cut_tree as SCT
 from maia.tree_exchange.dist_to_part import data_exchange  as BTP
 from maia.transform.dist_tree.convert_s_to_u import guess_bnd_normal_index, \
@@ -201,8 +202,8 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
                 pr_to_cell_location(sub_pr_d, normal_idx, 'Vertex', 1-extr, reverse=True)
 
                 #Effective creation of GC in part zone
-                gc_name  = 'JN.P{0}.N{1}.to.P{2}.N{3}'.format(comm.Get_rank(), i_part, j_proc, j_part)
-                opp_zone = I.getName(d_zone) + '.P{0}.N{1}'.format(j_proc, j_part)
+                gc_name  = conv.name_intra_gc(comm.Get_rank(), i_part, j_proc, j_part)
+                opp_zone = conv.add_part_suffix(I.getName(d_zone), j_proc, j_part)
                 part_gc = I.newGridConnectivity1to1(gc_name, opp_zone,
                                                     pointRange=sub_pr, pointRangeDonor=sub_pr_d,
                                                     transform = [1,2,3], parent=zgc)
@@ -335,7 +336,7 @@ def part_s_zone(d_zone, d_zone_weights, comm):
     #Get dim and setup zone
     cell_bounds = np.asarray(part, dtype=np.int32) + 1 #Semi open, but start at 1
     n_cells = np.diff(cell_bounds)
-    pzone_name = '{0}.P{1}.N{2}'.format(I.getName(d_zone), i_rank, i_part)
+    pzone_name = conv.add_part_suffix(I.getName(d_zone), i_rank, i_part)
     pzone_dims = np.hstack([n_cells+1, n_cells, np.zeros((3,1), dtype=np.int32)])
     part_zone  = I.newZone(pzone_name, pzone_dims, ztype='Structured')
 

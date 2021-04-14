@@ -3,6 +3,7 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
+from maia.sids           import conventions as conv
 from maia.utils          import py_utils
 from maia.tree_exchange  import utils    as te_utils
 
@@ -47,8 +48,8 @@ def get_pl_donor(dist_zones, part_zones, comm):
   shifted_lntogn = list()
   part_data = {key : [] for key in ['pl', 'irank', 'ipart']}
   for p_zone in part_zones:
-    d_zone_name = '.'.join(I.getName(p_zone).split('.')[:-2])
-    i_part = int(I.getName(p_zone).split('.')[-1][1:])
+    d_zone_name = conv.get_part_prefix(I.getName(p_zone))
+    i_proc, i_part = conv.get_part_suffix(I.getName(p_zone))
     for gc in py_utils.getNodesFromTypePath(p_zone, gc_type_path):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         gc_id = I.getNodeFromName1(gc, 'Ordinal')[1][0] - 1
@@ -56,7 +57,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
         shifted_lntogn.append(lngn + face_in_join_offset[join_to_ref[gc_id]])
         pl = I.getNodeFromName1(gc, 'PointList')[1][0]
         part_data['pl'].append(pl)
-        part_data['irank'].append(comm.Get_rank()*np.ones(pl.size, dtype=pl.dtype))
+        part_data['irank'].append(i_proc*np.ones(pl.size, dtype=pl.dtype))
         part_data['ipart'].append(i_part*np.ones(pl.size, dtype=pl.dtype))
 
   PTB = PDM.PartToBlock(comm, shifted_lntogn, pWeight=None, partN=len(shifted_lntogn), 
@@ -76,8 +77,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
   #Post treat
   i_join = 0
   for p_zone in part_zones:
-    i_rank = comm.Get_rank()
-    i_part = int(I.getName(p_zone).split('.')[-1][1:])
+    i_rank, i_part = conv.get_part_suffix(I.getName(p_zone))
     for gc in py_utils.getNodesFromTypePath(p_zone, gc_type_path):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         pl = I.getNodeFromName1(gc, 'PointList')[1][0]
