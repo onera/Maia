@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from mpi4py import MPI
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.sids import sids
@@ -75,13 +76,13 @@ def test_pdm_elmt_to_cgns_elmt_ngon():
   assert (I.getNodeFromPath(ngon_n, 'ElementStartOffset')[1] == data['np_face_vtx_idx']).all()
   assert (I.getNodeFromPath(ngon_n, 'ElementConnectivity')[1] == data['np_face_vtx']).all()
   assert (I.getNodeFromPath(ngon_n, 'ElementRange')[1] == [1,6]).all()
-  assert (I.getNodeFromPath(ngon_n, ':CGNS#GlobalNumbering/Element')[1] == data['np_face_ln_to_gn']).all()
+  assert (IE.getGlobalNumbering(ngon_n, 'Element') == data['np_face_ln_to_gn']).all()
 
   nface_n = I.getNodeFromPath(p_zone, 'NFaceElements')
   assert (I.getNodeFromPath(nface_n, 'ElementStartOffset')[1] == data['np_cell_face_idx']).all()
   assert (I.getNodeFromPath(nface_n, 'ElementConnectivity')[1] == data['np_cell_face']).all()
   assert (I.getNodeFromPath(nface_n, 'ElementRange')[1] == [7,7]).all()
-  assert (I.getNodeFromPath(nface_n, ':CGNS#GlobalNumbering/Element')[1] == data['np_cell_ln_to_gn']).all()
+  assert (IE.getGlobalNumbering(nface_n, 'Element') == data['np_cell_ln_to_gn']).all()
 
 def test_pdm_elmt_to_cgns_elmt_elmt():
   d_zone = I.newZone('Zone', ztype='Unstructured')
@@ -100,13 +101,13 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   assert (I.getValue(quad_n) == [7,0]).all()
   assert (I.getNodeFromPath(quad_n, 'ElementConnectivity')[1] == data['np_elt_vtx'][0]).all()
   assert (I.getNodeFromPath(quad_n, 'ElementRange')[1] == [1,6]).all()
-  assert (I.getNodeFromPath(quad_n, ':CGNS#GlobalNumbering/Element')[1] == data['np_elt_section_ln_to_gn'][0]).all()
+  assert (IE.getGlobalNumbering(quad_n, 'Element') == data['np_elt_section_ln_to_gn'][0]).all()
 
   hexa_n = I.getNodeFromPath(p_zone, 'Hexa')
   assert (I.getValue(hexa_n) == [17,0]).all()
   assert (I.getNodeFromPath(hexa_n, 'ElementConnectivity')[1] == data['np_elt_vtx'][1]).all()
   assert (I.getNodeFromPath(hexa_n, 'ElementRange')[1] == [7,7]).all()
-  assert (I.getNodeFromPath(hexa_n, ':CGNS#GlobalNumbering/Element')[1] == data['np_elt_section_ln_to_gn'][1]).all()
+  assert (IE.getGlobalNumbering(hexa_n, 'Element') == data['np_elt_section_ln_to_gn'][1]).all()
 
 def test_pdm_part_to_cgns_zone():
   # Result of subfunction is not tested here
@@ -133,5 +134,5 @@ def test_pdm_part_to_cgns_zone():
   assert len(part_zones) == len(l_dims)
   for ipart, part_zone in enumerate(part_zones):
     assert I.getName(part_zone) == I.getName(d_zone) + '.P0.N{0}'.format(ipart)
-    assert (I.getNodeFromPath(part_zone, ':CGNS#GlobalNumbering/Vertex')[1] == l_data[ipart]['np_vtx_ln_to_gn']).all()
-    assert (I.getNodeFromPath(part_zone, ':CGNS#GlobalNumbering/Cell'  )[1] == l_data[ipart]['np_cell_ln_to_gn']).all()
+    assert (IE.getGlobalNumbering(part_zone, 'Vertex') == l_data[ipart]['np_vtx_ln_to_gn']).all()
+    assert (IE.getGlobalNumbering(part_zone, 'Cell'  ) == l_data[ipart]['np_cell_ln_to_gn']).all()

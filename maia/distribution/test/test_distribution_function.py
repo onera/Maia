@@ -5,6 +5,7 @@ import numpy      as np
 import mpi4py.MPI as MPI
 
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 import maia.distribution.distribution_function as MID
 
 def test_uniform_distribution_at():
@@ -39,7 +40,7 @@ def test_create_distribution_node(sub_comm):
   node = I.createNode('ParentNode', 'AnyType_t')
   MID.create_distribution_node(100, sub_comm, 'MyDistribution', node)
 
-  distri_ud   = I.getNodeFromName(node, ':CGNS#Distribution')
+  distri_ud   = IE.getDistribution(node)
   assert distri_ud is not None
   assert I.getType(distri_ud) == 'UserDefinedData_t'
   distri_node = I.getNodeFromName1(distri_ud, 'MyDistribution')
@@ -52,7 +53,7 @@ def test_create_distribution_node_from_distrib():
   distri = np.array([10,20,30])
   node = I.createNode('ParentNode', 'AnyType_t')
   MID.create_distribution_node_from_distrib('MyDistribution', node, distri)
-  distri_ud   = I.getNodeFromName(node, ':CGNS#Distribution')
+  distri_ud   = IE.getDistribution(node)
   assert distri_ud is not None
   assert I.getType(distri_ud) == 'UserDefinedData_t'
   distri_node = I.getNodeFromName1(distri_ud, 'MyDistribution')

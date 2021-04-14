@@ -1,5 +1,6 @@
 import pytest
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 from maia.utils import parse_yaml_cgns
 from maia.cgns_io.hdf_filter import cgns_elements
 
@@ -49,8 +50,8 @@ NGon Elements_t [22, 0]:
   cgns_elements.load_element_connectivity_from_eso(element, 'pathtozone', hdf_filter)
   assert hdf_filter['pathtozone/NGon/ElementConnectivity'] == \
       [[0], [1], [28-8], [1], [8], [1], [28-8], [1], [40], [0]]
-  element_connectivity_distri = I.getNodeFromPath(element, ':CGNS#Distribution/ElementConnectivity')
-  assert (element_connectivity_distri[1] == [8,28,40]).all()
+  element_connectivity_distri = IE.getDistribution(element, 'ElementConnectivity')
+  assert (element_connectivity_distri == [8,28,40]).all()
       
 
 def test_create_zone_eso_elements_filter():

@@ -52,7 +52,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
     node = I.getNodeFromPath(p_zone, node_path)
     if node:
       if SIDS.GridLocation(node) == 'Vertex':
-        ln_to_gn = I.getNodeFromPath(p_zone, ':CGNS#GlobalNumbering/Vertex')[1]
+        ln_to_gn = IE.getGlobalNumbering(p_zone, 'Vertex')
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
       part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
@@ -104,7 +104,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     ln_to_gn_list = []
     for part_zone in part_zones:
       ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
-      ln_to_gn_list.extend([I.getNodeFromPath(node, ':CGNS#GlobalNumbering/Index')[1] \
+      ln_to_gn_list.extend([IE.getGlobalNumbering(node, 'Index') \
           for node in I.getNodesFromName(ancestor_n, leaf+'*')])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
@@ -122,7 +122,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
       allowed_nodes = I.getNodesFromName(ancestor_n, leaf+'*') if allow_mult else I.getNodesFromName1(ancestor_n, leaf)
       for node in allowed_nodes:
         if SIDS.GridLocation(node) == 'Vertex':
-          ln_to_gn = I.getNodeFromPath(part_zone, ':CGNS#GlobalNumbering/Vertex')[1]
+          ln_to_gn = IE.getGlobalNumbering(part_zone, 'Vertex')
         else:
           ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
         part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
@@ -296,6 +296,6 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   I.newDataArray ('ElementStartOffset',  dist_eso,       parent=elt_node)
 
   distri_cell_face = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
-  distri_ud = I.createUniqueChild(elt_node, ':CGNS#Distribution', 'UserDefinedData_t')
+  distri_ud = IE.newDistribution(parent=elt_node)
   I.newDataArray('Element',             PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
   I.newDataArray('ElementConnectivity',distri_cell_face[[i_rank, i_rank+1, n_rank]], parent=distri_ud)

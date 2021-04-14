@@ -1,5 +1,6 @@
 import maia.sids.sids as SIDS
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 import numpy as np
 
 def pl_or_pr_size(node):
@@ -19,7 +20,7 @@ def pl_or_pr_size(node):
     try:
       return I.getNodeFromName1(node, 'PointList#Size')[1]
     except TypeError: #No PL#Size, try to get info from :CGNS#Distribution and suppose size = 1,N
-      distri = I.getNodeFromPath(node, ':CGNS#Distribution/Index')[1]
+      distri = IE.getDistribution(node, 'Index')
       return np.array([1, distri[2]])
   if pr_n:
     return SIDS.point_range_sizes(pr_n)

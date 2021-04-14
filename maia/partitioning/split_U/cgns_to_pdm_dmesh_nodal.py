@@ -2,6 +2,7 @@ import Converter.Internal as I
 import numpy          as np
 
 import maia.sids.sids as sids
+import maia.sids.Internal_ext as IE
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 #from maia.tree_exchange.dist_to_part.index_exchange import collect_distributed_pl
@@ -12,9 +13,8 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone,comm):
   """
   Create a pdm_dmesh_nodal structure from a distributed zone
   """
-  distrib_ud       = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
-  distrib_vtx      = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
-  distrib_cell     = I.getNodeFromName1(distrib_ud, 'Cell'  )[1]
+  distrib_vtx      = IE.getDistribution(dist_zone, 'Vertex')
+  distrib_cell     = IE.getDistribution(dist_zone, 'Cell'  )
 
   n_vtx   = distrib_vtx[2]
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
@@ -34,8 +34,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone,comm):
       raise NotImplementedError # NGON
 
     elt_vtx        = I.getNodeFromName1(elt           , 'ElementConnectivity')[1]
-    distrib_elt_ud = I.getNodeFromName1(elt           , ':CGNS#Distribution')
-    distrib_elt    = I.getNodeFromName1(distrib_elt_ud, 'Element'      )[1]
+    distrib_elt    = IE.getDistribution(elt, 'Element')
 
     n_elt_section  = distrib_elt[2]
     dn_elt_section = distrib_elt[1] - distrib_elt[0]

@@ -1,4 +1,5 @@
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 import numpy as np
 
 import Pypdm.Pypdm as PDM
@@ -53,7 +54,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
     for gc in py_utils.getNodesFromTypePath(p_zone, gc_type_path):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         gc_id = I.getNodeFromName1(gc, 'Ordinal')[1][0] - 1
-        lngn = I.getNodeFromPath(gc, ':CGNS#GlobalNumbering/Index')[1]
+        lngn = IE.getGlobalNumbering(gc, 'Index')
         shifted_lntogn.append(lngn + face_in_join_offset[join_to_ref[gc_id]])
         pl = I.getNodeFromName1(gc, 'PointList')[1][0]
         part_data['pl'].append(pl)

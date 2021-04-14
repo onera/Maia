@@ -138,7 +138,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
         I.newUserDefinedData("FSDM#n_ghost", value=[n_ghost_node], parent=coord_node)
 
 
-    lngn_zone = I.createUniqueChild(part_zone, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    lngn_zone = IE.newGlobalNumbering(parent=part_zone)
     I.newDataArray('Vertex', data['np_vtx_ln_to_gn'], parent=lngn_zone)
     I.newDataArray('Cell', data['np_cell_ln_to_gn'], parent=lngn_zone)
 

@@ -2,6 +2,7 @@ from functools import partial
 import numpy as np
 
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 from maia.utils import zone_elements_utils as EZU
 
 def gen_elemts(zone_tree):
@@ -12,7 +13,7 @@ def gen_elemts(zone_tree):
 def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   """
   """
-  distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
+  distrib_ud   = IE.getDistribution(elmt)
   distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
@@ -32,7 +33,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   if(ec_size_n is not None):
     n_face_vtx = np.prod(ec_size_n[1])
   else:
-    distrib_ud = I.getNodeFromName1(elmt      , ":CGNS#Distribution")
+    distrib_ud = IE.getDistribution(elmt)
     distrib_n  = I.getNodeFromName1(distrib_ud, "ElementConnectivity")
     assert(distrib_n is not None)
     n_face_vtx = distrib_n[1][2]
@@ -61,8 +62,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
 def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
   """
   """
-  distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
+  distrib_elmt = IE.getDistribution(elmt, 'Element')
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   # > For NGon only
@@ -105,8 +105,7 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
 def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  # distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  # distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
+  # distrib_elmt = IE.getDistribution(elmt, 'Element')
   # dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   raise NotImplementedError("Mixed elements are not allowed ")
@@ -115,8 +114,7 @@ def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
 def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
+  distrib_elmt = IE.getDistribution(elmt, 'Element')
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   elmt_npe = EZU.get_npe_with_element_type_cgns(elmt[1][0])

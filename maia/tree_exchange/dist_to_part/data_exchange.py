@@ -3,6 +3,7 @@ import Converter.Internal as I
 import Pypdm.Pypdm        as PDM
 
 import maia.sids.sids     as SIDS
+import maia.sids.Internal_ext as IE
 from maia.utils.parallel import utils as par_utils
 from maia.utils import py_utils
 from maia.tree_exchange import utils as te_utils
@@ -105,7 +106,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
       lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, bc_path + '/:CGNS#GlobalNumbering/Index')
       for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
         #If dataset has its own PointList, we must override bc distribution and lngn
-        if I.getNodeFromPath(d_dataset, ':CGNS#Distribution/Index') is not None:
+        if IE.getDistribution(d_dataset) is not None:
           distribution = te_utils.get_cgns_distribution(d_dataset, ':CGNS#Distribution/Index')
           ds_path      = bc_path + '/' + I.getName(d_dataset)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, ds_path + '/:CGNS#GlobalNumbering/Index')

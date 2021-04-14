@@ -2,6 +2,7 @@ import Converter.Internal as I
 import numpy as np
 
 import maia.sids.sids               as SIDS
+import maia.sids.Internal_ext as IE
 from maia.sids  import conventions as conv
 from maia.utils import py_utils
 from maia.distribution.distribution_function import uniform_distribution
@@ -60,7 +61,7 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
   np_elt_ln_to_gn = np.empty(sum(elt_sections_pn), dtype=pdm_gnum_dtype)
   for i_elt, p_elt in enumerate(p_elts):
     if p_elt:
-      local_ln_gn = I.getNodeFromPath(p_elt, ':CGNS#GlobalNumbering/Element')[1]
+      local_ln_gn = IE.getGlobalNumbering(p_elt, 'Element')
       np_elt_ln_to_gn[offset:offset+elt_sections_pn[i_elt]] = local_ln_gn + elt_sections_idx[i_elt]
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn

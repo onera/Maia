@@ -1,5 +1,6 @@
 import Converter.Internal as I
 import maia.sids.sids as SIDS
+import maia.sids.Internal_ext as IE
 import numpy          as np
 from maia.connectivity import connectivity_transform as CNT
 from maia.utils import zone_elements_utils as EZU
@@ -12,9 +13,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
   """
-  distrib_ud       = I.getNodeFromName1(dist_zone, ':CGNS#Distribution')
-  distrib_vtx      = I.getNodeFromName1(distrib_ud, 'Vertex')[1]
-  distrib_cell     = I.getNodeFromName1(distrib_ud, 'Cell'  )[1]
+  distrib_vtx      = IE.getDistribution(dist_zone, 'Vertex')
+  distrib_cell     = IE.getDistribution(dist_zone, 'Cell'  )
 
   # > Try to hook NGon
   found = False
@@ -25,9 +25,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
       ngon_pe   = I.getNodeFromName1(elt, 'ParentElements'     )[1]
       ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1]
 
-      distrib_ngon_ud  = I.getNodeFromName1(elt           , ':CGNS#Distribution')
-      distrib_face     = I.getNodeFromName1(distrib_ngon_ud, 'Element'      )[1]
-      distrib_face_vtx = I.getNodeFromName1(distrib_ngon_ud, 'ElementConnectivity')[1]
+      distrib_face     = IE.getDistribution(elt, 'Element'      )
+      distrib_face_vtx = IE.getDistribution(elt, 'ElementConnectivity')
   if not found :
     raise RuntimeError
 

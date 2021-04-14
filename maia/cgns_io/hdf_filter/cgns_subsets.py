@@ -3,6 +3,7 @@ from .              import utils
 from .hdf_dataspace import create_data_array_filter
 
 import maia.sids.sids     as SIDS
+import maia.sids.Internal_ext as IE
 
 def create_zone_bc_filter(zone, zone_path, hdf_filter):
   """
@@ -23,8 +24,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
     for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
       bc_path = zone_bc_path+"/"+bc[0]
 
-      distrib_bc_n = I.getNodeFromName1(bc          , ':CGNS#Distribution')
-      distrib_bc   = I.getNodeFromName1(distrib_bc_n, 'Index')[1]
+      distrib_bc   = IE.getDistribution(bc, 'Index')
 
       bc_shape = utils.pl_or_pr_size(bc)
       data_space = create_data_array_filter(distrib_bc, bc_shape)
@@ -32,7 +32,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
 
       for bcds in I.getNodesFromType1(bc, "BCDataSet_t"):
         bcds_path = bc_path + "/" + bcds[0]
-        distrib_bcds_n = I.getNodeFromName1(bcds, ':CGNS#Distribution')
+        distrib_bcds_n = IE.getDistribution(bcds)
 
         if distrib_bcds_n is None: #BCDS uses BC distribution
           distrib_data = distrib_bc
@@ -60,8 +60,7 @@ def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
     zone_gc_path = zone_path+"/"+zone_gc[0]
     for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
       gc_path = zone_gc_path+"/"+gc[0]
-      distrib_ud = I.getNodeFromName1(gc        , ':CGNS#Distribution')
-      distrib_ia = I.getNodeFromName1(distrib_ud, 'Index')[1]
+      distrib_ia = IE.getDistribution(gc, 'Index')
 
       gc_shape   = utils.pl_or_pr_size(gc)
       data_space = create_data_array_filter(distrib_ia, gc_shape)
@@ -74,12 +73,12 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   if present, or using allCells / allVertex if no pointList is present.
   Filter is created for the arrays and for the PointList if present
   """
-  distrib_vtx  = I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex')[1]
-  distrib_cell = I.getNodeFromPath(zone, ':CGNS#Distribution/Cell')[1]
+  distrib_vtx  = IE.getDistribution(zone, 'Vertex')
+  distrib_cell = IE.getDistribution(zone, 'Cell')
   for flow_solution in I.getNodesFromType1(zone, 'FlowSolution_t'):
     flow_solution_path = zone_path + "/" + I.getName(flow_solution)
     grid_location = SIDS.GridLocation(flow_solution)
-    distrib_ud_n = I.getNodeFromName1(flow_solution , ':CGNS#Distribution')
+    distrib_ud_n = IE.getDistribution(flow_solution)
     if distrib_ud_n:
       distrib_data = I.getNodeFromName1(distrib_ud_n, 'Index')[1]
       data_shape = utils.pl_or_pr_size(flow_solution)
@@ -115,7 +114,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
     matching_region = I.getNodeFromPath(zone, matching_region_path)
     assert(matching_region is not None)
 
-    distrib_ud_n = I.getNodeFromName1(matching_region , ':CGNS#Distribution')
+    distrib_ud_n = IE.getDistribution(matching_region)
     if not distrib_ud_n:
       raise RuntimeError("ZoneSubRegion {0} is not well defined".format(zone_subregion[0]))
     distrib_data = I.getNodeFromName1(distrib_ud_n, 'Index')[1]

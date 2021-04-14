@@ -3,6 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 
 import numpy      as np
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 import maia.sids.sids     as SIDS
@@ -78,7 +79,7 @@ class Test__discover_wrapper:
     fs = I.getNodeFromName(dist_tree, 'FS')
     assert I.getType(fs) == 'DiscreteData_t'
     dist_pl     = I.getNodeFromPath(fs, 'PointList')[1]
-    dist_distri = I.getNodeFromPath(fs, ':CGNS#Distribution/Index')[1]
+    dist_distri = IE.getDistribution(fs, 'Index')
     assert dist_distri.dtype == pdm_dtype
 
     if sub_comm.Get_rank() == 0:

@@ -35,17 +35,32 @@ def test_newDistribution():
   assert len(I.getNodesFromName(zone, ':CGNS#Distribution')) == 1
 
 def test_newGlobalNumbering():
-  distri = IE.newGlobalNumbering()
-  assert I.getName(distri) == ':CGNS#GlobalNumbering'
-  assert I.getType(distri) == 'UserDefinedData_t'
+  gnum = IE.newGlobalNumbering()
+  assert I.getName(gnum) == ':CGNS#GlobalNumbering'
+  assert I.getType(gnum) == 'UserDefinedData_t'
 
   zone = I.newZone('zone')
-  distri = IE.newGlobalNumbering(parent=zone)
+  gnum = IE.newGlobalNumbering(parent=zone)
   assert I.getNodeFromName(zone, ':CGNS#GlobalNumbering') is not None
 
   zone = I.newZone('zone')
-  distri_arrays = {'Cell' : [4,21,1,2,8,12], 'Vertex' : None}
-  distri = IE.newGlobalNumbering(distri_arrays, zone)
+  gnum_arrays = {'Cell' : [4,21,1,2,8,12], 'Vertex' : None}
+  gnum = IE.newGlobalNumbering(gnum_arrays, zone)
   assert (I.getNodeFromPath(zone, ':CGNS#GlobalNumbering/Cell')[1] == [4,21,1,2,8,12]).all()
   assert I.getNodeFromPath(zone, ':CGNS#GlobalNumbering/Vertex')[1] == None
 
+def test_getDistribution():
+  zone = I.newZone()
+  distri_arrays = {'Cell' : [0,15,30], 'Vertex' : [100,1000,1000]}
+  distri = IE.newDistribution(distri_arrays, zone)
+  assert IE.getDistribution(zone) is distri
+  assert (IE.getDistribution(zone, 'Cell') == [0,15,30]).all()
+  assert (IE.getDistribution(zone, 'Vertex') == [100,1000,1000]).all()
+
+def test_getGlobalNumbering():
+  zone = I.newZone()
+  gnum_arrays = {'Cell' : [4,21,1,2,8,12], 'Vertex' : None}
+  gnum_node = IE.newGlobalNumbering(gnum_arrays, zone)
+  assert IE.getGlobalNumbering(zone) is gnum_node
+  assert (IE.getGlobalNumbering(zone, 'Cell') == [4,21,1,2,8,12]).all()
+  assert  IE.getGlobalNumbering(zone, 'Vertex') == None

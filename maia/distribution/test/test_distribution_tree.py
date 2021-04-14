@@ -2,6 +2,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import mpi4py.MPI as MPI
 import numpy      as np
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 
 from   maia.utils        import parse_yaml_cgns
 from   maia.distribution import distribution_tree
@@ -12,7 +13,7 @@ def test_compute_plist_or_prange_distribution(sub_comm):
   node = I.newBC(name='BC', pointRange=[[1,3],[1,3],[3,3]])
   distribution_tree.compute_plist_or_prange_distribution(node, sub_comm)
 
-  distrib_ud = I.getNodeFromName1(node, ':CGNS#Distribution')
+  distrib_ud = IE.getDistribution(node)
   assert I.getType(distrib_ud) == 'UserDefinedData_t'
   distrib    = I.getNodeFromName1(distrib_ud, 'Index')
   assert I.getType(distrib) == 'DataArray_t'
@@ -23,7 +24,7 @@ def test_compute_plist_or_prange_distribution(sub_comm):
   I.newIndexArray('PointList#Size', [1,9], parent=node)
   distribution_tree.compute_plist_or_prange_distribution(node, sub_comm)
 
-  distrib_ud = I.getNodeFromName1(node, ':CGNS#Distribution')
+  distrib_ud = IE.getDistribution(node)
   assert I.getType(distrib_ud) == 'UserDefinedData_t'
   distrib    = I.getNodeFromName1(distrib_ud, 'Index')
   assert I.getType(distrib) == 'DataArray_t'

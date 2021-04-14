@@ -1,4 +1,5 @@
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 import maia.sids.sids as SIDS
 import fnmatch
 
@@ -21,7 +22,7 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
   node and, for the structured zones, by the size of the blocks.
   """
   # Coords
-  distrib_vtx  = I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex')[1]
+  distrib_vtx  = IE.getDistribution(zone, 'Vertex')
   all_vtx_dataspace   = create_data_array_filter(distrib_vtx, zone[1][:,0])
   for grid_c in I.getNodesFromType1(zone, 'GridCoordinates_t'):
     grid_coord_path = zone_path + "/" + I.getName(grid_c)

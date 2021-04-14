@@ -3,6 +3,7 @@ import Converter.Internal as I
 import numpy              as NPY
 
 import maia.sids.sids as SIDS
+import maia.sids.Internal_ext as IE
 from maia.utils import zone_elements_utils as EZU
 
 import Pypdm.Pypdm as PDM
@@ -30,9 +31,7 @@ def concatenate_bc(zone):
         pr_n = I.getNodeFromName1(bc, 'PointRange')
         if(pr_n is not None):
           pr = I.getValue(pr_n)
-          cgns_distrib_n = I.getNodeFromName1(bc, ':CGNS#Distribution')
-          distrib_n      = I.getNodeFromName1(cgns_distrib_n, 'Index')
-          distrib        = I.getValue(distrib_n)
+          distrib        = IE.getDistribution(bc, 'Index')
           pl = NPY.arange(pr[0][0]+distrib[0], pr[0][0]+distrib[1], dtype=pr.dtype)
         else:
           pl = NPY.empty(0, dtype='int32', order='F')

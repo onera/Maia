@@ -1,5 +1,6 @@
 
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 import numpy              as NPY
 
 from   Converter import cgnskeywords as CGK
@@ -154,8 +155,7 @@ def collect_pdm_type_and_nelemts(elmts):
   elmt_n_elmt = NPY.zeros(len(elmts), dtype='int32', order='F')
 
   for i_elmt, elmt in enumerate(elmts):
-    distrib_ud   = I.getNodeFromName1(elmt      , ':CGNS#Distribution')
-    distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
+    distrib_elmt = IE.getDistribution(elmt, 'Element')
     dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
     elmt_type  [i_elmt] = get_paradigm_type_with_element_type_cgns(elmt[1][0])
