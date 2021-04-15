@@ -110,7 +110,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
     zone_subregion_path = zone_path+"/"+zone_subregion[0]
 
     # Search matching region
-    matching_region_path = SIDS.get_subregion_extent(zone_subregion, zone)
+    matching_region_path = IE.getSubregionExtent(zone_subregion, zone)
     matching_region = I.getNodeFromPath(zone, matching_region_path)
     assert(matching_region is not None)
 

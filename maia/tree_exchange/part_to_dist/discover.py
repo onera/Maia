@@ -1,6 +1,5 @@
 import Converter.Internal as I
-
-from maia.utils import py_utils
+import maia.sids.Internal_ext as IE
 
 def discover_nodes_of_kind(dist_node, part_nodes, kind_path, comm,
     child_list=[], get_value="ancestors", merge_rule=lambda path:path, skip_rule=lambda node:False):
@@ -22,7 +21,7 @@ def discover_nodes_of_kind(dist_node, part_nodes, kind_path, comm,
   """
   collected_part_nodes = dict()
   for part_node in part_nodes:
-    for nodes in py_utils.getNodesWithParentsFromTypePath(part_node, kind_path):
+    for nodes in IE.getNodesWithParentsFromTypePath(part_node, kind_path):
       # Option to skip some nodes
       if skip_rule(nodes[-1]):
         continue

@@ -5,7 +5,6 @@ import Pypdm.Pypdm        as PDM
 import maia.sids.sids     as SIDS
 import maia.sids.Internal_ext as IE
 from maia.utils.parallel import utils as par_utils
-from maia.utils import py_utils
 from maia.tree_exchange import utils as te_utils
 
 def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
@@ -115,7 +114,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
           lngn_list    = lngn_list_bc
         #Get data
         dist_data = dict()
-        for bc_data, field in py_utils.getNodesWithParentsFromTypePath(d_dataset, 'BCData_t/DataArray_t'):
+        for bc_data, field in IE.getNodesWithParentsFromTypePath(d_dataset, 'BCData_t/DataArray_t'):
           dist_data[I.getName(bc_data) + '/' + I.getName(field)] = field[1] #Prevent np->scalar conversion
 
         #Exchange
@@ -145,7 +144,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm):
   """
   for d_zsr in I.getNodesFromType1(dist_zone, "ZoneSubRegion_t"):
     # Search matching region
-    matching_region_path = SIDS.get_subregion_extent(d_zsr, dist_zone)
+    matching_region_path = IE.getSubregionExtent(d_zsr, dist_zone)
     matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
     assert matching_region is not None
 
