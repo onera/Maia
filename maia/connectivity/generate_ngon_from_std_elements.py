@@ -3,7 +3,6 @@ import Converter.Internal as I
 import numpy              as np
 
 import maia.sids.sids as SIDS
-from maia.utils import zone_elements_utils as EZU
 from maia.utils.parallel import utils as par_utils
 
 from maia.connectivity import connectivity_transform as CNT
@@ -74,7 +73,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   distrib_face_vtx = par_utils.gather_and_shift(dface_vtx_idx[dn_face], comm, np.int32)
   distrib_cell_face = par_utils.gather_and_shift(dcell_face_idx[dn_cell], comm, np.int32)
 
-  ermax   = EZU.get_next_elements_range(zone)
+  ermax   = max([SIDS.ElementRange(e)[1] for e in I.getNodesFromType1(zone, 'Elements_t')])
 
   ngon_n  = I.createUniqueChild(zone, 'NGonElements', 'Elements_t', value=[22,0])
   ngon_elmt_range = np.empty(2, dtype='int64', order='F')
@@ -93,7 +92,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   I.newDataArray('ElementConnectivity', dface_vtx, parent=ngon_n)
   I.newDataArray('ParentElements'     , pe       , parent=ngon_n)
 
-  ermax   = EZU.get_next_elements_range(zone)
+  ermax   = max([SIDS.ElementRange(e)[1] for e in I.getNodesFromType1(zone, 'Elements_t')])
   nfac_n  = I.createUniqueChild(zone, 'NFacElements', 'Elements_t', value=[23,0])
   nfac_elmt_range = np.empty(2, dtype='int64', order='F')
   nfac_elmt_range[0] = ermax+1

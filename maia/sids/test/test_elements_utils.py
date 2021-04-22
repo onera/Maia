@@ -1,0 +1,45 @@
+import pytest
+import Converter.Internal as I
+
+from maia.sids import elements_utils as EU
+
+def test_element_name():
+  assert EU.element_name(5)  == "TRI_3"
+  assert EU.element_name(38) == "HEXA_56"
+  with pytest.raises(AssertionError):
+    EU.element_name(1000)
+
+def test_element_dim():
+  assert EU.element_dim(5)  == 2
+  assert EU.element_dim(38) == 3
+  with pytest.raises(AssertionError):
+    EU.element_dim(1000)
+
+def test_element_number_of_nodes():
+  assert EU.element_number_of_nodes(5)  == 2
+  assert EU.element_number_of_nodes(38) == None
+  with pytest.raises(AssertionError):
+    EU.element_number_of_nodes(1000)
+
+def test_element_number_of_nodes():
+  assert EU.element_number_of_nodes(5)  == 3
+  assert EU.element_number_of_nodes(38) == 56
+  with pytest.raises(AssertionError):
+    EU.element_number_of_nodes(1000)
+
+def test_get_range_of_ngon():
+  zone = I.newZone()
+  I.newElements('ElemA', 'NGON',  erange=[11, 53], parent=zone)
+  I.newElements('ElemB', 'NFACE', erange=[1, 10], parent=zone)
+  I.newElements('ElemC', 'HEXA',  erange=[54,60], parent=zone)
+  assert (EU.get_range_of_ngon(zone) == [11,53]).all()
+
+def test_get_ordered_elements_std():
+  zone = I.newZone()
+  I.newElements('ElemA', erange=[11, 53], parent=zone)
+  I.newElements('ElemB', erange=[1, 10], parent=zone)
+  I.newElements('ElemC', erange=[54,60], parent=zone)
+
+  sorted_elems = EU.get_ordered_elements_std(zone)
+  assert [I.getName(elem) for elem in sorted_elems] == ['ElemB', 'ElemA', 'ElemC']
+    

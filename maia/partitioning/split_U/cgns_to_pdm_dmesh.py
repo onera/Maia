@@ -3,7 +3,7 @@ import maia.sids.sids as SIDS
 import maia.sids.Internal_ext as IE
 import numpy          as np
 from maia.connectivity import connectivity_transform as CNT
-from maia.utils import zone_elements_utils as EZU
+from maia.sids  import elements_utils as EU
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 #from maia.tree_exchange.dist_to_part.index_exchange import collect_distributed_pl
@@ -60,7 +60,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   dface_bound_idx = np.zeros(1, dtype=np.int32)
   dface_bound     = np.empty(0, dtype=pdm_gnum_dtype)
   # > Find shift in NGon
-  # first_ngon_elmt, last_ngon_elmt = EZU.get_range_of_ngon(dist_zone)
+  # first_ngon_elmt, last_ngon_elmt = EU.get_range_of_ngon(dist_zone)
   # dface_bound = dface_bound - first_ngon_elmt + 1
 
   # > Prepare joins

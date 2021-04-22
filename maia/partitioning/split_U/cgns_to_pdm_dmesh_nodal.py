@@ -3,7 +3,7 @@ import numpy          as np
 
 import maia.sids.sids as sids
 import maia.sids.Internal_ext as IE
-from maia.utils import zone_elements_utils as EZU
+from maia.sids import elements_utils as EU
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.tree_exchange.dist_to_part.index_exchange import collect_distributed_pl
@@ -19,11 +19,10 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
 
   n_elt_per_dim  = [0,0,0]
-  sorted_elts = EZU.get_ordered_elements_std(dist_zone)
+  sorted_elts = EU.get_ordered_elements_std(dist_zone)
   for elt in sorted_elts:
-    elt_type = sids.ElementType(elt)
-    assert sids.element_name(elt_type) != "NGON_n"
-    n_elt_per_dim[sids.element_dim(elt_type)-1] += sids.ElementSize(elt)
+    assert sids.ElementCGNSName(elt) != "NGON_n"
+    n_elt_per_dim[sids.ElementDimension(elt)-1] += sids.ElementSize(elt)
 
   #Create DMeshNodal
   dmesh_nodal = DistributedMeshNodal(comm, n_vtx, *n_elt_per_dim[::-1])
@@ -45,8 +44,11 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
     I.newDataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
 
   #Elements
-  elt_pdm_types, elt_lengths = EZU.collect_pdm_type_and_nelemts(sorted_elts)
-  elmts_connectivities = EZU.collect_connectity(sorted_elts)
+  to_elmt_size = lambda e : IE.getDistribution(e, 'Element')[1] - IE.getDistribution(e, 'Element')[0]
+  elt_pdm_types = np.array([EU.element_pdm_type(sids.ElementType(e)) for e in sorted_elts], dtype=np.int32)
+  elt_lengths   = np.array([to_elmt_size(e) for e in sorted_elts], dtype=np.int32)
+  elmts_connectivities = [I.getNodeFromName1(elt, "ElementConnectivity")[1] for elt in sorted_elts]
+
   dmesh_nodal.set_sections(elmts_connectivities, elt_pdm_types, elt_lengths)
 
   # Boundaries
