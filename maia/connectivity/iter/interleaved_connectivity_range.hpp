@@ -3,12 +3,14 @@
 
 #include <type_traits>
 #include <algorithm>
+#include "std_e/future/span.hpp"
 #include "std_e/utils/meta.hpp"
 #include "std_e/base/not_implemented_exception.hpp"
 #include "maia/connectivity/iter/heterogenous_connectivity_ref.hpp"
 #include "maia/connectivity/iter/heterogenous_connectivity_view.hpp"
 
 
+namespace maia {
 
 
 template<class I, class Connectivity_kind>
@@ -20,7 +22,7 @@ class interleaved_connectivity_iterator {
 
     using connec_view_type = heterogenous_connectivity_view<I,I,kind>;
     using connec_ref_type = heterogenous_connectivity_ref<I,I,kind>;
-       
+
     /// std::iterator type traits
     using value_type = connec_view_type;
     using reference = connec_ref_type;
@@ -53,7 +55,7 @@ class interleaved_connectivity_iterator {
     auto operator->() const {
       return std_e::arrow_proxy<reference>{**this};
     }
-    
+
     auto data() const -> I* { return ptr; }
   private:
     auto elt_t_ref() const -> I& {
@@ -76,6 +78,16 @@ template<class C0, class C1, class CK> constexpr auto
 operator!=(const interleaved_connectivity_iterator<C0,CK>& x, const interleaved_connectivity_iterator<C1,CK>& y) -> bool {
   return !(x == y);
 }
+} // maia
+template<class I, class CK>
+struct std::iterator_traits<maia::interleaved_connectivity_iterator<I,CK>> {
+  using type = maia::interleaved_connectivity_iterator<I,CK>;
+  using value_type = typename type::value_type;
+  using reference = typename type::reference;
+  using difference_type = typename type::difference_type;
+  using iterator_category = typename type::iterator_category;
+};
+namespace maia {
 
 
 template<class I, class Connectivity_kind>
@@ -218,3 +230,5 @@ make_interleaved_connectivity_vertex_range(C& c) {
   std_e::span<I> sp(c.data(),c.size());
   return interleaved_connectivity_vertex_range<I,CK>(sp);
 }
+
+} // maia

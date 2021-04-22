@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include "maia/connectivity/iter/connectivity_ref.hpp"
+#include "std_e/utils/to_string_fwd.hpp"
 
 template<class I0, class I1, class Connectivity_kind>
 class heterogenous_connectivity_ref {
