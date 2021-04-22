@@ -10,7 +10,6 @@
 #include "std_e/algorithm/algorithm.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "maia/transform/utils.hpp"
-#include "std_e/log.hpp" // TODO
 #include <algorithm>
 
 using namespace cgns;
