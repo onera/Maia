@@ -13,7 +13,6 @@ namespace cgns {
 auto gcs_only_for_ghosts(tree& b) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   for (tree& z : zs) {
-    // int n_node = VertexSize_U<I4>(z);
     auto ghost_info = get_node_value_by_matching<I4>(z,":CGNS#Ppart/np_vtx_ghost_information");
     // n_ghost
     int zone_proc = maia::proc_of_zone(z.name);
