@@ -122,6 +122,10 @@ elements_traits = [
 def element_name (n):
   return elements_traits[n][0]
 
+def element_dim(n):
+  assert n < len(elements_properties)
+  return elements_properties[n][1]
+
 def element_number_of_nodes(n):
   return elements_traits[n][1]
 

@@ -7,7 +7,7 @@ from maia.utils import zone_elements_utils as EZU
 from maia.utils.parallel import utils as par_utils
 
 from maia.connectivity import connectivity_transform as CNT
-from . import cgns_to_pdm_dmeshnodal as CGNSTOPDM
+from maia.partitioning.split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
 from maia.transform import sids_conforming_ngon_nface
@@ -163,7 +163,7 @@ def compute_ngon_from_std_elements(dist_tree, comm):
     dmn_to_dm = PDM.DMeshNodalToDMesh(n_mesh, comm)
     dmesh_nodal_list = list()
     for i_zone, zone in enumerate(zones_u):
-      dmn = CGNSTOPDM.cgns_to_pdm(zone, comm)
+      dmn = cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_vertex=False)
       dmn.generate_distribution()
       dmn_to_dm.add_dmesh_nodal(i_zone, dmn)
 
