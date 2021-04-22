@@ -132,7 +132,7 @@ Base CGNSBase_t [3,3]:
     ZSR ZoneSubRegion_t:
       PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
 """)
-  distribution_tree.add_distribution_info_if_needed(dist_tree, sub_comm)
+  distribution_tree.add_distribution_info(dist_tree, sub_comm)
   assert len(I.getNodesFromName(dist_tree, 'Index')) == 4+3
 
 def test_clean_distribution_info():

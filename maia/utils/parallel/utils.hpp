@@ -21,7 +21,6 @@ partial_to_full_distribution(const Range& partial_distrib, MPI_Comm comm) {
 }
 template<class Range> auto
 full_to_partial_distribution(const Range& full_distrib, MPI_Comm comm) {
-  STD_E_ASSERT(partial_distrib.size()==3);
   using I = typename Range::value_type;
 
   std::vector<I> partial_distrib(3);
