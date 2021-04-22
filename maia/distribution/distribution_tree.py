@@ -66,7 +66,7 @@ def compute_zone_distribution(zone, comm):
     for gc in gcs:
       compute_plist_or_prange_distribution(gc, comm)
 
-def add_distribution_info_if_needed(dist_tree, comm, distribution_policy='uniform'):
+def add_distribution_info(dist_tree, comm, distribution_policy='uniform'):
   """
   """
   for base in I.getNodesFromType1(dist_tree, 'CGNSBase_t'):
