@@ -6,10 +6,10 @@
 #include "cpp_cgns/tree_manip.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/utils/parallel/utils.hpp"
+#include "maia/sids/element_sections.hpp"
 #include "pdm_multi_block_to_part.h"
 #include "std_e/algorithm/algorithm.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
-#include "maia/transform/utils.hpp"
 #include <algorithm>
 
 using namespace cgns;

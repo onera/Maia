@@ -1,11 +1,12 @@
 #include "maia/transform/poly_algorithm.hpp"
 #include "cpp_cgns/cgns.hpp"
 #include "cpp_cgns/sids/creation.hpp"
-#include "maia/transform/utils.hpp"
 #include <algorithm>
 #include <vector>
+#include "cpp_cgns/sids/utils.hpp"
 #include "maia/connectivity/iter_cgns/range.hpp"
 #include "maia/partitioning/gc_name_convention.hpp"
+#include "maia/sids/element_sections.hpp"
 #include "std_e/algorithm/algorithm.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/data_structure/multi_range.hpp"

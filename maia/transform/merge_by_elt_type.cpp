@@ -1,12 +1,13 @@
 #include "maia/transform/merge_by_elt_type.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/utils/parallel/distribution.hpp"
-#include "maia/transform/utils.hpp"
+#include "maia/utils/parallel/utils.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/interval/knot_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "pdm_multi_block_to_part.h"
 #include "std_e/data_structure/multi_range.hpp"
+#include "maia/sids/element_sections.hpp"
 
 using namespace cgns;
 

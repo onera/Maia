@@ -6,7 +6,7 @@ comm = MPI.COMM_WORLD
 from maia.cgns_io import cgns_io_tree as IOT
 from maia.connectivity import generate_ngon_from_std_elements as FTH
 from maia.transform import ngon_new_to_old,split_boundary_subzones_according_to_bcs
-from maia.sids.shorten_field_names import shorten_field_names,shorten_names
+from maia.sids.shorten_names import shorten_field_names,shorten_names
 import Converter.PyTree as C
 import Converter.Internal as I
 

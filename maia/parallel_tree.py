@@ -30,8 +30,7 @@ def load(file_name,comm):
   dist_tree = load_dist_tree(file_name,comm)
 
   dzone_to_weighted_parts =  DBA.npart_per_zone(dist_tree, comm, n_part=1)
-  split_options = {'graph_part_tool' : 'ptscotch', 'save_ghost_data':True,
-                   'zone_to_parts':dzone_to_weighted_parts}
+  split_options = {'graph_part_tool' : 'ptscotch', 'zone_to_parts':dzone_to_weighted_parts}
 
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
@@ -52,8 +51,7 @@ def load_partitioned_tree_poly(file_name,comm):
 
   #merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
 
-  split_options = {'graph_part_tool' : 'ptscotch', 'save_ghost_data':True,
-                   'zone_to_parts':dzone_to_weighted_parts}
+  split_options = {'graph_part_tool' : 'ptscotch', 'zone_to_parts':dzone_to_weighted_parts}
   #part_tree = PPA.partition(dist_tree,comm,split_method=2)
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 

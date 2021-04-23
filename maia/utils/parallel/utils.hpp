@@ -1,5 +1,9 @@
 #include "std_e/parallel/mpi.hpp"
 #include <vector>
+#include "cpp_cgns/sids/sids.hpp"
+#include "pdm.h"
+#include "mpi.h"
+#include "maia/utils/parallel/distribution.hpp"
 
 
 namespace maia {
@@ -10,7 +14,7 @@ partial_to_full_distribution(const Range& partial_distrib, MPI_Comm comm) {
   STD_E_ASSERT(partial_distrib.size()==3);
   using I = typename Range::value_type;
 
-  std::vector<I> full_distrib(std_e::nb_ranks(comm)+1);
+  distribution_vector<I> full_distrib(std_e::nb_ranks(comm));
   full_distrib[0] = 0;
   std_e::all_gather(partial_distrib[1], full_distrib.data()+1, comm);
 
@@ -30,5 +34,13 @@ full_to_partial_distribution(const Range& full_distrib, MPI_Comm comm) {
   return partial_distrib;
 }
 
+// TODO facto with partial_to_full_distribution
+template<class Range> auto
+distribution_from_partial(const Range& partial_distri, MPI_Comm comm) -> distribution_vector<PDM_g_num_t> {
+  PDM_g_num_t dn_elt = partial_distri[1] - partial_distri[0];
+  auto full_distri = distribution_from_dsizes(dn_elt, comm);
+  STD_E_ASSERT(full_distri.back()==partial_distri[2]);
+  return full_distri;
+}
 
 } // maia

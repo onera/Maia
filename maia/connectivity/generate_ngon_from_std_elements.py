@@ -149,9 +149,7 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
       I.newPointList(value=group[start:end].reshape( (1,dn_face_bnd), order='F' ), parent=bc)
 
 # -----------------------------------------------------------------
-def generate_ngon_from_std_elements(dist_tree, comm):
-  """
-  """
+def compute_ngon_from_std_elements(dist_tree, comm):
   bases = I.getNodesFromType(dist_tree, 'CGNSBase_t')
 
   for base in bases:
@@ -188,4 +186,8 @@ def generate_ngon_from_std_elements(dist_tree, comm):
 
   # > Generate correctly zone_grid_connectivity
 
+def generate_ngon_from_std_elements(dist_tree, comm):
+  """
+  """
+  compute_ngon_from_std_elements(dist_tree,comm)
   sids_conforming_ngon_nface(dist_tree)
