@@ -9,7 +9,7 @@ from maia.sids         import Internal_ext as IE
 from maia.connectivity import generate_ngon_from_std_elements as GNG
 
 @mark_mpi_test(2)
-class Test_generate_ngon_from_std_elements:
+class Test_compute_ngon_from_std_elements:
 
   def test_3d_mesh(self, sub_comm):
     #Generated from G.cartTetra((0,0,0), (1./3, 1./2, 0), (3,3,2))
@@ -26,7 +26,7 @@ class Test_generate_ngon_from_std_elements:
     tetra = I.newElements('Tetra', 'TETRA', tetra_ec, [1,20], parent=dist_zone)
     IE.newDistribution({'Element' : [10*rank,10*(rank+1),20]}, tetra)
 
-    GNG.generate_ngon_from_std_elements(dist_tree, sub_comm)
+    GNG.compute_ngon_from_std_elements(dist_tree, sub_comm)
 
     assert I.getNodeFromPath(dist_tree, 'Base/Zone/Tetra') == tetra
     ngon  = I.getNodeFromPath(dist_tree, 'Base/Zone/NGonElements')
@@ -39,11 +39,13 @@ class Test_generate_ngon_from_std_elements:
       assert (IE.getDistribution(ngon, 'ElementConnectivity') == [0,81,168]).all()
       assert (IE.getDistribution(nface, 'Element') == [0,10,20]).all()
       assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1][:6] == [1,4,2,2,4,5]).all()
+      assert (I.getNodeFromName(ngon, 'ParentElements')[1][8:12] == [[83,0], [92,0], [87,0], [83,86]]).all()
     elif rank == 1:
       assert (IE.getDistribution(ngon, 'Element') == [27,56,56]).all()
       assert (IE.getDistribution(ngon, 'ElementConnectivity') == [81,168,168]).all()
       assert (IE.getDistribution(nface, 'Element') == [10,20,20]).all()
       assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1][-6:] == [16,14,17,14,18,17]).all()
+      assert (I.getNodeFromName(ngon, 'ParentElements')[1][4:8] == [[90,79], [87,0], [93,96], [84,86]]).all()
     assert (I.getNodeFromName(nface, 'ElementStartOffset')[1] ==  np.arange(0,44,4)+40*rank).all()
 
   def test_2d_mesh(self, sub_comm):
@@ -61,7 +63,7 @@ class Test_generate_ngon_from_std_elements:
     quad = I.newElements('Quad', 'QUAD', quad_ec, [1,6], parent=dist_zone)
     IE.newDistribution({'Element' : [3*rank,3*(rank+1),6]}, quad)
 
-    GNG.generate_ngon_from_std_elements(dist_tree, sub_comm)
+    GNG.compute_ngon_from_std_elements(dist_tree, sub_comm)
 
     assert I.getNodeFromPath(dist_tree, 'Base/Zone/Quad') == quad
     ngon  = I.getNodeFromPath(dist_tree, 'Base/Zone/NGonElements')
@@ -117,7 +119,7 @@ class Test_generate_ngon_from_std_elements:
     I.newGridLocation('EdgeCenter', bca)
     I.newGridLocation('EdgeCenter', bcb)
 
-    GNG.generate_ngon_from_std_elements(dist_tree, sub_comm)
+    GNG.compute_ngon_from_std_elements(dist_tree, sub_comm)
 
     assert I.getNodeFromPath(dist_tree, 'Base/Zone/Quad') == quad
     assert I.getNodeFromPath(dist_tree, 'Base/Zone/Bar') == bar
