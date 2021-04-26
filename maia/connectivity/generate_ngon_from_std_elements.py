@@ -10,6 +10,7 @@ from maia.connectivity import connectivity_transform as CNT
 from . import cgns_to_pdm_dmeshnodal as CGNSTOPDM
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
+from maia.transform import sids_conforming_ngon_nface
 
 import Pypdm.Pypdm as PDM
 
@@ -148,9 +149,7 @@ def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
       I.newPointList(value=group[start:end].reshape( (1,dn_face_bnd), order='F' ), parent=bc)
 
 # -----------------------------------------------------------------
-def generate_ngon_from_std_elements(dist_tree, comm):
-  """
-  """
+def compute_ngon_from_std_elements(dist_tree, comm):
   bases = I.getNodesFromType(dist_tree, 'CGNSBase_t')
 
   for base in bases:
@@ -161,28 +160,34 @@ def generate_ngon_from_std_elements(dist_tree, comm):
 
     n_mesh = len(zones_u)
 
-    dmntodm = PDM.DMeshNodalToDMesh(n_mesh, comm)
+    dmn_to_dm = PDM.DMeshNodalToDMesh(n_mesh, comm)
     dmesh_nodal_list = list()
     for i_zone, zone in enumerate(zones_u):
       dmn = CGNSTOPDM.cgns_to_pdm(zone, comm)
       dmn.generate_distribution()
-      dmntodm.add_dmesh_nodal(i_zone, dmn)
+      dmn_to_dm.add_dmesh_nodal(i_zone, dmn)
 
     # PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE
     if(extract_dim == 2):
-      dmntodm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_EDGE,
+      dmn_to_dm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_EDGE,
                       PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_EDGE)
     else:
-      dmntodm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE,
+      dmn_to_dm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE,
                       PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_FACE)
 
-    dmntodm.transform_to_coherent_dmesh(extract_dim)
+    dmn_to_dm.transform_to_coherent_dmesh(extract_dim)
 
     for i_zone, zone in enumerate(zones_u):
-      result_dmesh = dmntodm.get_dmesh(i_zone)
+      result_dmesh = dmn_to_dm.get_dmesh(i_zone)
       pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim)
 
       # > Remove internal holder state
       I._rmNodesByName(zone, ':CGNS#DMeshNodal#Bnd')
 
   # > Generate correctly zone_grid_connectivity
+
+def generate_ngon_from_std_elements(dist_tree, comm):
+  """
+  """
+  compute_ngon_from_std_elements(dist_tree,comm)
+  sids_conforming_ngon_nface(dist_tree)

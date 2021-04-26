@@ -5,6 +5,7 @@
 #include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/future/span.hpp"
 #include "cpp_cgns/sids/creation.hpp"
+#include "cpp_cgns/sids/utils.hpp"
 #include "cpp_cgns/tree_manip.hpp"
 #include "maia/utils/parallel/neighbor_graph.hpp"
 #include "maia/transform/__old/donated_point_lists.hpp"
@@ -81,7 +82,6 @@ symmetrize_grid_connectivities(tree& b, MPI_Comm comm) -> void {
 
   for (tree& z : zs) {
     tree& zgc = cgns::get_child_by_name(z,"ZoneGridConnectivity");
-    ELOG(z.name);
     auto z_pls  = find_point_list_by_zone_donor(pls_by_zone ,z.name) | ranges::actions::sort(less_receiver_zone);
     auto z_plds = find_point_list_by_zone_donor(plds_by_zone,z.name) | ranges::actions::sort(less_receiver_zone);
     auto pls_by_recv_z  = z_pls  | ranges::views::group_by(eq_receiver_zone);
@@ -107,12 +107,11 @@ symmetrize_grid_connectivities(tree& b, MPI_Comm comm) -> void {
       for (tree& z_gc : z_gcs) {
         auto opp_z_name = to_string(z_gc.value);
         if (opp_z_name == receiver_z_name) {
-          ELOG(opp_z_name);
-          auto z_pl = view_as_span<I4>(get_child_by_name(z_gc,"PointList").value);
+          auto z_pl = PointList<I4>(z_gc);
           for (I4 i : z_pl) {
             pl.push_back(i);
           }
-          auto z_pld = view_as_span<I4>(get_child_by_name(z_gc,"PointListDonor").value);
+          auto z_pld = PointListDonor<I4>(z_gc);
           for (I4 i : z_pld) {
             pld.push_back(i);
           }

@@ -2,7 +2,6 @@ import Converter.Internal as I
 
 from maia.cgns_io                     import cgns_io_tree            as IOT
 from maia.transform.transform        import merge_by_elt_type,\
-                                            add_fsdm_distribution,\
                                             gcs_only_for_ghosts
 
 from maia.tree_exchange.utils import get_partitioned_zones
@@ -31,12 +30,10 @@ def load(file_name,comm):
   dist_tree = load_dist_tree(file_name,comm)
 
   dzone_to_weighted_parts =  DBA.npart_per_zone(dist_tree, comm, n_part=1)
-  split_options = {'graph_part_tool' : 'ptscotch', 'save_ghost_data':True,
-                   'zone_to_parts':dzone_to_weighted_parts}
+  split_options = {'graph_part_tool' : 'ptscotch', 'zone_to_parts':dzone_to_weighted_parts}
 
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
-  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
 
   ## TODO
@@ -54,12 +51,10 @@ def load_partitioned_tree_poly(file_name,comm):
 
   #merge_by_elt_type(dist_tree,comm) # TODO FSDM-specific
 
-  split_options = {'graph_part_tool' : 'ptscotch', 'save_ghost_data':True,
-                   'zone_to_parts':dzone_to_weighted_parts}
+  split_options = {'graph_part_tool' : 'ptscotch', 'zone_to_parts':dzone_to_weighted_parts}
   #part_tree = PPA.partition(dist_tree,comm,split_method=2)
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
-  add_fsdm_distribution(part_tree,comm) # TODO FSDM-specific
   gcs_only_for_ghosts(part_tree) # TODO FSDM-specific
 
   return parallel_tree(dist_tree,part_tree)

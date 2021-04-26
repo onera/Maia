@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include "maia/connectivity/iter/connectivity_ref.hpp"
+#include "std_e/utils/to_string_fwd.hpp"
 
 template<class I0, class I1, class Connectivity_kind>
 class heterogenous_connectivity_ref {
@@ -36,18 +37,18 @@ class heterogenous_connectivity_ref {
     }
     // operator= overloads for const types {
     template<class,class,class> friend class heterogenous_connectivity_ref;
-    template<class Integer0, class Integer1> auto
+    template<class Integer0, class Integer1, class K> auto
     // requires Integer0 is I0 or const I0
     // requires Integer1 is I1 or const I1
-    operator=(const heterogenous_connectivity_ref<Integer0,Integer1,kind>& other) -> decltype(auto) {
+    operator=(const heterogenous_connectivity_ref<Integer0,Integer1,K>& other) -> decltype(auto) {
       std::copy(other.nodes_ptr, other.nodes_ptr+other.size(), nodes_ptr);
       elt_t_ref = other.elt_t_ref;
       return *this;
     }
-    template<class Integer0, class Integer1> auto
+    template<class Integer0, class Integer1, class K> auto
     // requires Integer0 is I0 or const I0
     // requires Integer1 is I1 or const I1
-    operator=(heterogenous_connectivity_ref<Integer0,Integer1,kind>&& other) -> decltype(auto) {
+    operator=(heterogenous_connectivity_ref<Integer0,Integer1,K>&& other) -> decltype(auto) {
       // even if the reference is temporary, we only care about the underlying values
       std::copy(other.nodes_ptr, other.nodes_ptr+other.size(), nodes_ptr);
       elt_t_ref = other.elt_t_ref;

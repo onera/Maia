@@ -207,6 +207,13 @@ include(${PROJECT_UTILS_CMAKE_DIR}/python_wrapping.cmake)
 compile_install_pybind_modules(${PROJECT_NAME})
 install_python_modules(${PROJECT_NAME})
 
+# install pytest-mpi-check
+install(
+  DIRECTORY   "${PROJECT_ROOT}/external/pytest-mpi-check/pytest_mpi_check"
+  DESTINATION "${SITE_PACKAGES_OUTPUT_DIRECTORY}"
+  COMPONENT   "python"
+)
+
 # ----------------------------------------------------------------------
 # Testing
 # ----------------------------------------------------------------------

@@ -82,7 +82,6 @@ def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None):
   Distributed write of cgns_tree into filename.
   """
   if hdf_filter is None:
-    add_distribution_info(dist_tree, comm, distribution_policy='uniform')
     hdf_filter = dict()
     create_tree_hdf_filter(dist_tree, hdf_filter)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter)

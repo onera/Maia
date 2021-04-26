@@ -16,29 +16,29 @@ namespace cgns {
 // interleaved (fwd and random access) {
 template<class C> inline auto
 interleaved_ngon_range(C& cs) {
-  return make_interleaved_connectivity_range<maia::interleaved_polygon_kind>(cs);
+  return maia::make_interleaved_connectivity_range<maia::interleaved_polygon_kind>(cs);
 }
 template<class C> inline auto
 interleaved_ngon_random_access_range(C& cs) {
-  return make_interleaved_connectivity_random_access_range<maia::interleaved_polygon_kind>(cs);
+  return maia::make_interleaved_connectivity_random_access_range<maia::interleaved_polygon_kind>(cs);
 }
 
 template<class C> inline auto
 interleaved_nface_range(C& cs) {
-  return make_interleaved_connectivity_range<maia::interleaved_polyhedron_kind>(cs);
+  return maia::make_interleaved_connectivity_range<maia::interleaved_polyhedron_kind>(cs);
 }
 template<class C> inline auto
 interleaved_nface_random_access_range(C& cs) {
-  return make_interleaved_connectivity_random_access_range<maia::interleaved_polyhedron_kind>(cs);
+  return maia::make_interleaved_connectivity_random_access_range<maia::interleaved_polyhedron_kind>(cs);
 }
 
 template<class C> inline auto
 interleaved_mixed_range(C& cs) {
-  return make_interleaved_connectivity_range<mixed_kind>(cs);
+  return maia::make_interleaved_connectivity_range<mixed_kind>(cs);
 }
 template<class C> inline auto
 interleaved_mixed_random_access_range(C& cs) {
-  return make_interleaved_connectivity_random_access_range<mixed_kind>(cs);
+  return maia::make_interleaved_connectivity_random_access_range<mixed_kind>(cs);
 }
 // interleaved }
 
@@ -77,7 +77,7 @@ connectivity_vertex_range(tree& elt_pool) {
   auto cs = ElementConnectivity<I>(elt_pool);
   if constexpr (is_interleaved(cat)) {
     using connec_kind = connectivity_kind_of<cat>;
-    return make_interleaved_connectivity_vertex_range<connec_kind>(cs);
+    return maia::make_interleaved_connectivity_vertex_range<connec_kind>(cs);
   } else {
     return cs; // a non-interleaved connectivity range is composed of vertices only
   }

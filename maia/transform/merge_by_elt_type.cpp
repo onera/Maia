@@ -1,25 +1,17 @@
 #include "maia/transform/merge_by_elt_type.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/utils/parallel/distribution.hpp"
-#include "cpp_cgns/sids/sids.hpp"
-#include "std_e/algorithm/distribution.hpp"
+#include "maia/utils/parallel/utils.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/interval/knot_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "pdm_multi_block_to_part.h"
 #include "std_e/data_structure/multi_range.hpp"
+#include "maia/sids/element_sections.hpp"
 
+using namespace cgns;
 
-namespace cgns {
-
-
-template<class Range> auto
-distribution_from_partial(const Range& partial_distri, MPI_Comm comm) -> distribution_vector<PDM_g_num_t> {
-  PDM_g_num_t dn_elt = partial_distri[1] - partial_distri[0];
-  auto full_distri = distribution_from_dsizes(dn_elt, comm);
-  STD_E_ASSERT(full_distri.back()==partial_distri[2]);
-  return full_distri;
-}
+namespace maia {
 
 template<class It> auto
 merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -> tree {
@@ -46,8 +38,6 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   }
 
   // multi_block_to_part
-  PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
-
   std::vector<PDM_g_num_t> multi_distrib_idx(n_section+1);
   multi_distrib_idx[0] = 0;
   std::vector<distribution_vector<PDM_g_num_t>> block_distribs_storer(n_section);
@@ -72,6 +62,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   std::vector<PDM_g_num_t*> ln_to_gn = {ln_to_gn_0.data()};
   std::vector<int> n_elts = {n_elts_0};
 
+  PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
   PDM_multi_block_to_part_t* mbtp =
     PDM_multi_block_to_part_create(multi_distrib_idx.data(),
                                    n_block,
@@ -129,8 +120,6 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   return elt_node;
 }
 
-
-
 auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   if (zs.size()!=1) {
@@ -138,9 +127,7 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   }
   tree& z = zs[0];
 
-  auto elt_sections = get_children_by_label(z,"Elements_t");
-  std::stable_sort(begin(elt_sections),end(elt_sections),cgns::compare_by_range);
-  std::stable_sort(begin(elt_sections),end(elt_sections),cgns::compare_by_elt_type);
+  auto elt_sections = element_sections_ordered_by_range_by_type(z);
 
   // 0. new ranges
   I4 new_offset = 1;
@@ -166,6 +153,7 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
 
   // 1. renumber
   // TODO for several zones
+  // TODO fields
   auto bcs = get_nodes_by_matching(z,"ZoneBC_t/BC_t");
   for (tree& bc : bcs) {
     if (to_string(get_child_by_name(bc,"GridLocation").value)!="Vertex") {
@@ -201,4 +189,4 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   emplace_children(z,std::move(merged_sections));
 }
 
-} // cgns
+} // maia

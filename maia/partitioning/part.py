@@ -18,7 +18,6 @@ def set_default(dist_tree, comm):
   default = {'graph_part_tool'    : None,
              'zone_to_parts'      : {I.getName(z):[1/comm.Get_size()] for z in I.getZones(dist_tree)},
              'reordering'         : default_renum,
-             'save_ghost_data'    : False,
              'part_interface_loc' : 'Vertex',
              'dump_pdm_output'    : False }
 

@@ -5,8 +5,8 @@
 #include "mpi.h"
 
 
-namespace cgns {
+namespace maia {
 
-auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void;
+auto merge_by_elt_type(cgns::tree& b, MPI_Comm comm) -> void;
 
-} // cgns
+} // maia

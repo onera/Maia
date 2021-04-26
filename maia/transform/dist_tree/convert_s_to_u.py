@@ -7,6 +7,7 @@ import Pypdm.Pypdm as PDM
 from maia.sids               import sids
 from maia                    import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.distribution       import distribution_function  as MDIDF
+from maia.distribution       import distribution_tree      as MDIDT
 from maia.cgns_io.hdf_filter import range_to_slab          as HFR2S
 from .                       import s_numbering_funcs      as s_numb
 
@@ -474,5 +475,6 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
       for node in I.getNodesFromType1(base_s, top_level_type):
         I.addChild(base_u, node)
 
+  MDIDT.add_distribution_info(disttree_u, comm, distribution_policy='uniform')
   return disttree_u
 ###############################################################################

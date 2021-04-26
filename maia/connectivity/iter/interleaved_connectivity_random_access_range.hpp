@@ -4,6 +4,9 @@
 #include "maia/connectivity/iter/interleaved_connectivity_range.hpp"
 
 
+namespace maia {
+
+
 template<class I, class CK, class I_nc = std::remove_const_t<I>> auto
 index_table(const interleaved_connectivity_range<I,CK>& cs_fwd_accessor) -> std::vector<I_nc> {
   std::vector<I_nc> idx_table = {0};
@@ -105,14 +108,17 @@ class interleaved_connectivity_random_access_iterator {
     I_nc pos;
     const std::vector<I_nc>& idx_table;
 };
+
+} // maia
 template<class I, class CK>
-struct std::iterator_traits<interleaved_connectivity_random_access_iterator<I,CK>> {
-  using type = interleaved_connectivity_random_access_iterator<I,CK>;
+struct std::iterator_traits<maia::interleaved_connectivity_random_access_iterator<I,CK>> {
+  using type = maia::interleaved_connectivity_random_access_iterator<I,CK>;
   using value_type = typename type::value_type;
   using reference = typename type::reference;
   using difference_type = typename type::difference_type;
   using iterator_category = typename type::iterator_category;
 };
+namespace maia {
 
 
 // interleaved_connectivity_random_access_range allows to random access connectivities
@@ -192,3 +198,6 @@ make_interleaved_connectivity_random_access_range(C& c) {
   std_e::span<I> sp(c.data(),c.size());
   return interleaved_connectivity_random_access_range<I,CK>(c);
 }
+
+
+} // maia
