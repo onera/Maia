@@ -22,9 +22,9 @@ class block_to_parts_protocol {
       , n_elts(n_part)
       , g_num_by_block(n_part)
     {
-      for (auto& LN_to_GN : LN_to_GNs) {
-        std_e::offset(LN_to_GN,1); // TODO why does Paradigma uses 1-indexed LN_to_GN but 0-indexed distribution ???
-      }
+      // for (auto& LN_to_GN : LN_to_GNs) {
+      //   std_e::offset(LN_to_GN,1); // TODO why does Paradigma uses 1-indexed LN_to_GN but 0-indexed distribution ???
+      // }
       std::transform(begin(LN_to_GNs),end(LN_to_GNs),begin(n_elts),[](auto& LN_to_GN){ return LN_to_GN.size(); });
       std::transform(begin(LN_to_GNs),end(LN_to_GNs),begin(g_num_by_block),[](auto& LN_to_GN){ return LN_to_GN.data(); });
 

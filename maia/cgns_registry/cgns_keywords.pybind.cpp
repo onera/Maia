@@ -29,4 +29,7 @@ PYBIND11_MODULE(cgns_keywords, m) {
   auto enum_grid_location = py::enum_<CGNS::Value::GridLocation>(m, "GridLocation", py::arithmetic(), "A first enum");
   pybind_auto_enum(enum_grid_location);
 
+  auto enum_element_type_value = py::enum_<CGNS::Value::ElementType>(m, "ElementType", py::arithmetic(), "A first enum");
+  pybind_auto_enum(enum_element_type_value);
+
 }
