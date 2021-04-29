@@ -21,19 +21,23 @@ def test_create_zone_std_elements_filter():
 Hexa Elements_t [17, 0]:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [2,7,10]:
-Tetra Elements_t [10, 0]:
+Tri Elements_t [5, 0]:
+  ParentElements DataArray_t:
+  ParentElementsPosition DataArray_t:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [40,60,60]:
 """
   zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
   hdf_filter = dict()
   cgns_elements.create_zone_std_elements_filter(I.getNodeFromName(zone_tree, 'Hexa'), "path/to/zone", hdf_filter)
-  cgns_elements.create_zone_std_elements_filter(I.getNodeFromName(zone_tree, 'Tetra'), "path/to/zone", hdf_filter)
-  assert len(hdf_filter) == 2
+  cgns_elements.create_zone_std_elements_filter(I.getNodeFromName(zone_tree, 'Tri'), "path/to/zone", hdf_filter)
+  assert len(hdf_filter) == 4
   assert hdf_filter['path/to/zone/Hexa/ElementConnectivity'] == \
       [[0], [1], [(7-2)*8], [1], [2*8], [1], [(7-2)*8], [1], [10*8], [0]]
-  assert hdf_filter['path/to/zone/Tetra/ElementConnectivity'] == \
-      [[0], [1], [(60-40)*4], [1], [40*4], [1], [(60-40)*4], [1], [60*4], [0]]
+  assert hdf_filter['path/to/zone/Tri/ElementConnectivity'] == \
+      [[0], [1], [(60-40)*3], [1], [40*3], [1], [(60-40)*3], [1], [60*3], [0]]
+  assert hdf_filter['path/to/zone/Tri/ParentElements'] == \
+      [[0,0], [1,1], [(60-40),2], [1,1], [40,0], [1,1], [(60-40),2], [1,1], [60,2], [1]]
 
 def test_load_element_connectivity_from_eso():
   yt = """

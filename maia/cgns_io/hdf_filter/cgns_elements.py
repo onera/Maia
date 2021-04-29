@@ -4,6 +4,7 @@ import numpy as np
 import Converter.Internal as I
 import maia.sids.Internal_ext as IE
 from maia.utils import zone_elements_utils as EZU
+from .hdf_dataspace import create_pe_dataspace
 
 def gen_elemts(zone_tree):
   elmts_ini = I.getNodesFromType1(zone_tree, 'Elements_t')
@@ -68,13 +69,10 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
   # > For NGon only
   pe = I.getNodeFromName1(elmt, 'ParentElements')
   if(pe):
-    DSMMRYPE = [[0              , 0], [1, 1], [dn_elmt, 2], [1, 1]]
-    DSFILEPE = [[distrib_elmt[0], 0], [1, 1], [dn_elmt, 2], [1, 1]]
-    DSGLOBPE = [[distrib_elmt[2], 2]]
-    DSFORMPE = [[1]]
-
-    pe_path = zone_path+"/"+elmt[0]+"/ParentElements"
-    hdf_filter[pe_path] = DSMMRYPE + DSFILEPE + DSGLOBPE + DSFORMPE
+    data_space = create_pe_dataspace(distrib_elmt)
+    hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElements"] = data_space
+    if I.getNodeFromName1(elmt, 'ParentElementsPosition'):
+      hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElementsPosition"] = data_space
 
   eso = I.getNodeFromName1(elmt, 'ElementStartOffset')
   eso_path = None
@@ -126,6 +124,14 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
 
   path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[path] = DSMMRYElmt + DSFILEElmt + DSGLOBElmt + DSFORMElmt
+
+  pe = I.getNodeFromName1(elmt, 'ParentElements')
+  if(pe):
+    data_space = create_pe_dataspace(distrib_elmt)
+    hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElements"] = data_space
+    if I.getNodeFromName1(elmt, 'ParentElementsPosition'):
+      hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElementsPosition"] = data_space
+
 
 def create_zone_elements_filter(zone_tree, zone_path, hdf_filter, mode):
   """

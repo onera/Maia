@@ -22,6 +22,14 @@ def test_create_pointlist_dataspace():
   assert hdf_dataspace.create_pointlist_dataspace([0, 0, 0]) == \
       [[0,0], [1,1], [1,0], [1,1], [0,0], [1,1], [1,0], [1,1], [1,0], [0]]
 
+def test_create_pe_dataspace():
+  assert hdf_dataspace.create_pe_dataspace([0, 10, 100]) == \
+      [[0,0], [1,1], [10,2], [1,1], [0,0], [1,1], [10,2], [1,1], [100,2], [1]]
+  assert hdf_dataspace.create_pe_dataspace([0, 100, 100]) == \
+      [[0,0], [1,1], [100,2], [1,1], [0,0], [1,1], [100,2], [1,1], [100,2], [1]]
+  assert hdf_dataspace.create_pe_dataspace([0, 0, 0]) == \
+      [[0,0], [1,1], [0,2], [1,1], [0,0], [1,1], [0,2], [1,1], [0,2], [1]]
+
 def test_create_combined_dataspace():
   assert hdf_dataspace.create_combined_dataspace([10,2,5], [0,10,100]) == \
       [[0], [1], [10], [1], [[0, 0, 0], [1, 1, 1], [10, 1, 1], [1, 1, 1]], [10, 2, 5], [0]]

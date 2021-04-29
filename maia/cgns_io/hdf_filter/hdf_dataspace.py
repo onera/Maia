@@ -40,6 +40,18 @@ def create_flat_dataspace(distrib):
   DSFORMDA = [[0]]
   return DSMMRYDA + DSFILEDA + DSGLOBDA + DSFORMDA
 
+def create_pe_dataspace(distrib):
+  """
+  Create a dataspace from a flat distribution, of elements,
+  but adapted to "ParentElements" arrays ie (N,2) numpy arrays.
+  """
+  dn_pe    = distrib[1] - distrib[0]
+  DSMMRYPE = [[0              , 0], [1, 1], [dn_pe, 2], [1, 1]]
+  DSFILEPE = [[distrib[0], 0], [1, 1], [dn_pe, 2], [1, 1]]
+  DSGLOBPE = [[distrib[2], 2]]
+  DSFORMPE = [[1]]
+  return DSMMRYPE + DSFILEPE + DSGLOBPE + DSFORMPE
+
 def create_pointlist_dataspace(distrib):
   """
   Create a dataspace from a flat distribution, but adapted to "fake 2d" arrays
