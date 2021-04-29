@@ -137,3 +137,31 @@ class Test_compute_ngon_from_std_elements:
       assert (I.getNodeFromName(bca, 'PointList')[1] == [28]).all()
       assert (I.getNodeFromName(bcb, 'PointList')[1] == [21]).all()
 
+@mark_mpi_test(2)
+def test_generate_ngon_from_std_elements_jc(sub_comm):
+  #Generated from G.cartTetra((0,0,0), (1./3, 1./2, 0), (3,3,2))
+  rank = sub_comm.Get_rank()
+  if sub_comm.Get_rank() == 0:
+    tetra_ec = [1,2,4,10,2,5,4,14,4,10,14,13,2,10,11,14,2,4,10,14,2,6,5,14,2,12,3,6,14,15,12,6,12,14,2,11,12,2,14,6]
+  elif sub_comm.Get_rank() == 1:
+    tetra_ec = [4,8,7,16,4,14,5,8,16,17,14,8,14,16,4,13,14,4,16,8,5,6,8,14,6,9,8,18,8,14,18,17,6,14,15,18,6,8,14,18]
+
+  dist_tree = I.newCGNSTree()
+  dist_base = I.newCGNSBase('Base', 3, 3, parent=dist_tree)
+  dist_zone = I.newZone('Zone', [0,20,0], 'Unstructured', parent=dist_base)
+  IE.newDistribution({'Vertex' : [9*rank,9*(rank+1),18], 'Cell' : [10*rank, 10*(rank+1), 20]}, dist_zone)
+  tetra = I.newElements('Tetra', 'TETRA', tetra_ec, [1,20], parent=dist_zone)
+  IE.newDistribution({'Element' : [10*rank,10*(rank+1),20]}, tetra)
+
+  GNG.generate_ngon_from_std_elements(dist_tree, sub_comm)
+
+  assert I.getNodeFromPath(dist_tree, 'Base/Zone/Tetra') is None
+  ngon  = I.getNodeFromPath(dist_tree, 'Base/Zone/NGonElements')
+  nface = I.getNodeFromPath(dist_tree, 'Base/Zone/NFaceElements')
+
+  assert (sids.ElementRange(ngon) == [1,56]).all()
+  assert (sids.ElementRange(nface) == [57,76]).all()
+  if rank == 0:
+    assert (I.getNodeFromName(ngon, 'ParentElements')[1][8:12] == [[63,0], [72,0], [67,0], [63,66]]).all()
+  elif rank == 1:
+    assert (I.getNodeFromName(ngon, 'ParentElements')[1][4:8] == [[70,59], [67,0], [73,76], [64,66]]).all()

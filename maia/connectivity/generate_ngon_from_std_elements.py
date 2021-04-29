@@ -7,6 +7,7 @@ from maia.sids import elements_utils as EU
 from maia.utils.parallel import utils as par_utils
 
 from maia.connectivity import connectivity_transform as CNT
+from maia.connectivity import remove_element as RME
 from maia.partitioning.split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
@@ -127,6 +128,15 @@ def compute_ngon_from_std_elements(dist_tree, comm):
 
 def generate_ngon_from_std_elements(dist_tree, comm):
   """
+  Generate the ngon and nface elements using compute_ngon_from_std_elements,
+  and remove the standard elements from the tree
+  Possible optimisation : remove all the element at the same time
+  instead of looping
   """
   compute_ngon_from_std_elements(dist_tree,comm)
-  sids_conforming_ngon_nface(dist_tree)
+  for zone in I.getZones(dist_tree):
+    elts_to_remove = [elt for elt in I.getNodesFromType1(zone, 'Elements_t') if\
+        SIDS.ElementCGNSName(elt) not in ["NGON_n", "NFACE_n"]]
+    #2D element should be removed first, to avoid probleme coming from ParentElements
+    for elt in sorted(elts_to_remove, key = SIDS.ElementDimension):
+      RME.remove_element(zone, elt)

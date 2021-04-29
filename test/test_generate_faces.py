@@ -71,7 +71,7 @@ IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 # I._rmNodesByName(dist_tree, "B_*")
 # I._rmNodesByName(dist_tree, "ZoneBC")
 
-FTH.compute_ngon_from_std_elements(dist_tree, comm)
+FTH.generate_ngon_from_std_elements(dist_tree, comm)
 
 # I.printTree(dist_tree)
 # C.convertPyTree2File(dist_tree, "dist_tree_{0}.hdf".format(rank))
@@ -90,10 +90,11 @@ for zone in I.getZones(dist_tree):
   dloading_procs[zone[0]] = list(range(comm.Get_size()))
 # print(dloading_procs)
 
-part_tree = PPA.partitioning(dist_tree, comm, zone_to_parts=dzone_to_weighted_parts)
+#Partitioning with CGNS compliant ParentElements is not yet possible -- to uncomment after
+#part_tree = PPA.partitioning(dist_tree, comm, zone_to_parts=dzone_to_weighted_parts)
 
 # size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
 #                                                                        'CGNSBase_t/Family_t'/*])
 
-SPT.save_part_tree(part_tree, 'part_tree', comm)
+#SPT.save_part_tree(part_tree, 'part_tree', comm)
 # C.convertPyTree2File(dist_tree, "dist_tree_{0}.hdf".format(rank))
