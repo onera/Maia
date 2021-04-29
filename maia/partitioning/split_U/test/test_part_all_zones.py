@@ -43,7 +43,7 @@ ZoneA Zone_t:
     Cell DataArray_t {dtype} [0,0,0]:
 ZoneB Zone_t:
   Hexa Elements_t [17,0]:
-    ElementRange ElementRange_t [1,1]:
+    ElementRange IndexRange_t [1,1]:
     ElementConnectivity DataArray_t {dtype} []:
     :CGNS#Distribution UserDefinedData_t:
       Element DataArray_t {dtype} [0,0,0]:
