@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import Converter.Internal as I
+import numpy as np
 from maia.utils   import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
@@ -59,3 +60,32 @@ def test_enforce_pdm_dtype():
   assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == pdm_dtype
   assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == pdm_dtype
   assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == np.int32 #Always int32
+
+def test_ensure_PE_global_indexing():
+  ngon = I.newElements('WrongNGon', 'NGON', erange=[1,4])
+  pe   = I.newDataArray('ParentElements', [[1,2],[3,0],[1,0],[2,4]], parent=ngon)
+  fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
+  assert (pe[1] == [[5,6],[7,0],[5,0],[6,8]]).all()
+
+  ngon = I.newElements('GoodNGon', 'NGON', erange=[1,4])
+  pe   = I.newDataArray('ParentElements', [[5,6],[7,0],[5,0],[6,8]], parent=ngon)
+  fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
+  assert (pe[1] == [[5,6],[7,0],[5,0],[6,8]]).all()
+
+  ngon = I.newElements('SecondNGon', 'NGON', erange=[3,6])
+  pe   = I.newDataArray('ParentElements', [[1,0],[1,0],[1,2],[2,0]], parent=ngon)
+  fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
+  assert (pe[1] == [[1,0],[1,0],[1,2],[2,0]]).all()
+
+  ngon = I.newElements('EmptyNGon', 'NGON', erange=[1,4])
+  pe   = I.newDataArray('ParentElements', np.empty((0,2), order='F'), parent=ngon)
+  fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
+
+  with pytest.raises(RuntimeError):
+    ngon = I.newElements('NGon', 'NGON')
+    fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon,ngon]))
+  with pytest.raises(RuntimeError):
+    ngon = I.newElements('NGon', 'NGON', erange=[1,4])
+    tri = I.newElements('Tri', 'TRI')
+    fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon,tri]))
+

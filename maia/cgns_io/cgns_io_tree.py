@@ -5,6 +5,7 @@ from   maia.distribution.distribution_tree import add_distribution_info, clean_d
 from   maia.distribution.distribute_nodes  import distribute_tree
 from   .load_collective_size_tree          import load_collective_size_tree
 from   .hdf_filter.tree                    import create_tree_hdf_filter
+from   .fix_tree                           import ensure_PE_global_indexing
 
 from maia.utils import parse_yaml_cgns
 from .fix_tree import _enforce_pdm_dtype
@@ -20,7 +21,6 @@ def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
 def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   """
   """
-  # print("load_tree_from_filter")
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() \
       if isinstance(value, (list, tuple))}
 
@@ -50,11 +50,12 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   if(unlock_at_least_one is False):
     raise RuntimeError("Something strange in the loading process")
 
+  ensure_PE_global_indexing(dist_tree)
+
 
 def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   """
   """
-  # print("load_tree_from_filter")
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
   hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() if not isinstance(value, list)}
 

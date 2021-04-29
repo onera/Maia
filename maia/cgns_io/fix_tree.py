@@ -1,11 +1,11 @@
 from   mpi4py             import MPI
 import numpy              as     np
-import Converter.PyTree   as     C
 import Converter.Filter   as     CFilter
 import Converter.Internal as     I
 from maia.sids import Internal_ext as IE
 from maia.transform.dist_tree.convert_s_to_u import compute_transform_matrix, apply_transform_matrix
 from maia import npy_pdm_gnum_dtype
+from maia.sids import sids
 
 def fix_point_ranges(size_tree):
   """
@@ -90,3 +90,33 @@ def _enforce_pdm_dtype(tree):
           node[1] = node[1].astype(npy_pdm_gnum_dtype)
     for pl in I.getNodesFromType(zone, 'IndexArray_t'):
       pl[1] = pl[1].astype(npy_pdm_gnum_dtype)
+   
+def ensure_PE_global_indexing(dist_tree):
+  """
+  This function ensure that the ParentElement array of the NGonElements, if existing,
+  is compliant with the CGNS standard ie refers faces using absolute numbering.
+  This function work under the following assumptions (which could be released,
+  but also seems to be imposed by the standard)
+   - At most one NGonElements node exists
+   - NGonElements and standard elements can not be mixed together
+  """
+  for zone in I.getZones(dist_tree):
+    elts = I.getNodesFromType1(zone, 'Elements_t')
+    ngon_nodes = [elt for elt in elts if sids.ElementCGNSName(elt)=='NGON_n']
+    oth_nodes  = [elt for elt in elts if sids.ElementCGNSName(elt)!='NGON_n']
+    if ngon_nodes == []:
+      pass
+    elif len(ngon_nodes) == 1:
+      if len(oth_nodes) > 1 or (len(oth_nodes) == 1 and sids.ElementCGNSName(oth_nodes[0]) != 'NFACE_n'):
+        raise RuntimeError(f"Zone {I.getName(zone)} has both NGon and Std elements nodes, which is not supported")
+
+      ngon_n = ngon_nodes[0]
+      ngon_pe_n = I.getNodeFromName1(ngon_n, 'ParentElements')
+      if ngon_pe_n:
+        n_faces = sids.ElementSize(ngon_n)
+        ngon_pe = ngon_pe_n[1]
+        if sids.ElementRange(ngon_n)[0] == 1 and ngon_pe.shape[0] > 0 and ngon_pe[0].max() <= n_faces:
+          print(f"Warning -- NGon/ParentElements have been shift on zone {I.getName(zone)} to be CGNS compliant")
+          ngon_pe += n_faces * (ngon_pe > 0)
+    else:
+      raise RuntimeError(f"Multiple NGon nodes found in zone {I.getName(zone)}")
