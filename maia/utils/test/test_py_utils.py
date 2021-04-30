@@ -78,3 +78,13 @@ def test_concatenate_point_list():
   assert (merged[0:4 ] == pl1[0]).all()
   assert (merged[4:10] == pl2[0]).all()
 
+def test_any_in_range():
+  assert py_utils.any_in_range([3,4,1,6,12,3], 2, 20, strict=False)
+  assert not py_utils.any_in_range([3,4,2,6,12,3], 15, 20, strict=False)
+  assert py_utils.any_in_range([3,4,1,6,12,3], 12, 20, strict=False)
+  assert not py_utils.any_in_range([3,4,1,6,12,3], 12, 20, strict=True)
+
+def test_all_in_range():
+  assert py_utils.all_in_range([3,4,5,6,12,3], 2, 20, strict=False)
+  assert not py_utils.all_in_range([18,4,2,17,16,3], 15, 20, strict=False)
+  assert not py_utils.all_in_range([3,4,1,6,12,3], 3, 20, strict=True)
