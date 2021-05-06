@@ -1,5 +1,6 @@
 import Converter.Internal as I
 from . import sids
+import Pypdm.Pypdm as PDM
 
 elements_properties = [
 #CGNS_Id, ElementName        ,  dim, nVtx,nEdge,nFace, refElt,pdm_id
@@ -77,6 +78,27 @@ def element_number_of_nodes(n):
 def element_pdm_type(n):
   assert n < len(elements_properties)
   return elements_properties[n][6]
+  
+PDM_MESH_NODAL_POINT    = PDM._PDM_MESH_NODAL_POINT
+PDM_MESH_NODAL_BAR2     = PDM._PDM_MESH_NODAL_BAR2
+PDM_MESH_NODAL_TRIA3    = PDM._PDM_MESH_NODAL_TRIA3
+PDM_MESH_NODAL_QUAD4    = PDM._PDM_MESH_NODAL_QUAD4
+PDM_MESH_NODAL_POLY_2D  = PDM._PDM_MESH_NODAL_POLY_2D
+PDM_MESH_NODAL_TETRA4   = PDM._PDM_MESH_NODAL_TETRA4
+PDM_MESH_NODAL_PYRAMID5 = PDM._PDM_MESH_NODAL_PYRAMID5
+PDM_MESH_NODAL_PRISM6   = PDM._PDM_MESH_NODAL_PRISM6
+PDM_MESH_NODAL_HEXA8    = PDM._PDM_MESH_NODAL_HEXA8
+PDM_MESH_NODAL_POLY_3D  = PDM._PDM_MESH_NODAL_POLY_3D
+cgns_pdm_element_type = [
+  ("NODE"    ,  PDM._PDM_MESH_NODAL_POINT    ),
+  ("BAR_2"   ,  PDM._PDM_MESH_NODAL_BAR2     ),
+  ("TRI_3"   ,  PDM._PDM_MESH_NODAL_TRIA3    ),
+  ("QUAD_4"  ,  PDM._PDM_MESH_NODAL_QUAD4    ),
+  ("TETRA_4" ,  PDM._PDM_MESH_NODAL_TETRA4   ),
+  ("PYRA_5"  ,  PDM._PDM_MESH_NODAL_PYRAMID5 ),
+  ("PENTA_6" ,  PDM._PDM_MESH_NODAL_PRISM6   ),
+  ("HEXA_8"  ,  PDM._PDM_MESH_NODAL_HEXA8    ),
+]
 
 def get_range_of_ngon(zone):
   """
@@ -85,10 +107,24 @@ def get_range_of_ngon(zone):
   ngons = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if sids.ElementType(elem) == 22]
   assert len(ngons) == 1
   return sids.ElementRange(ngons[0])
+def cgns_elt_name_to_pdm_element_type(name):
+  for cgns_name,pdm_name in cgns_pdm_element_type:
+    if cgns_name==name: return pdm_name
+  raise NameError("No PDM element associated to "+name)
 
-def get_ordered_elements_std(zone):
-  """
-  Return the elements nodes in inscreasing order wrt ElementRange
-  """
-  return sorted(I.getNodesFromType1(zone, 'Elements_t'),
-                key = lambda item : sids.ElementRange(item)[0])
+
+pdm_cgns_element_type = [
+  (PDM._PDM_MESH_NODAL_POINT   , "NODE"   ),
+  (PDM._PDM_MESH_NODAL_BAR2    , "BAR_2"  ),
+  (PDM._PDM_MESH_NODAL_TRIA3   , "TRI_3"  ),
+  (PDM._PDM_MESH_NODAL_QUAD4   , "QUAD_4" ),
+  (PDM._PDM_MESH_NODAL_TETRA4  , "TETRA_4"),
+  (PDM._PDM_MESH_NODAL_PYRAMID5, "PYRA_5" ),
+  (PDM._PDM_MESH_NODAL_PRISM6  , "PENTA_6"),
+  (PDM._PDM_MESH_NODAL_HEXA8   , "HEXA_8" ),
+]
+
+def pdm_elt_name_to_cgns_element_type(name):
+  for pdm_name,cgns_name in pdm_cgns_element_type:
+    if pdm_name==name: return cgns_name
+  raise NameError("No PDM element associated to "+name)
