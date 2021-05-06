@@ -45,7 +45,7 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
       keep_alive.append(dmesh)
       multi_part.multipart_register_block(i_zone, dmesh)
     else:
-      dmesh_nodal = cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm)
+      dmesh_nodal = cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
       keep_alive.append(dmesh_nodal)
       multi_part.multipart_register_dmesh_nodal(i_zone, dmesh_nodal)
 

@@ -56,3 +56,21 @@ def multi_arange(starts, stops):
   l = stops - starts # Lengths of each range.
   return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
 
+def any_in_range(array, start, end, strict=False):
+  """
+  Return True if any element of array is in interval
+  [start, end]. In is large by defaut and strict is strict==True
+  """
+  np_array = np.asarray(array)
+  return ((start <  np_array) & (np_array <  end)).any() if strict\
+    else ((start <= np_array) & (np_array <= end)).any()
+
+def all_in_range(array, start, end, strict=False):
+  """
+  Return True if all the elements of array are in interval
+  [start, end]. In is large by defaut and strict is strict==True
+  """
+  np_array = np.asarray(array)
+  return ((start <  np_array) & (np_array <  end)).all() if strict\
+    else ((start <= np_array) & (np_array <= end)).all()
+

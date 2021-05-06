@@ -3,7 +3,7 @@ import numpy as np
 
 import Converter.Internal as I
 import maia.sids.Internal_ext as IE
-from maia.utils import zone_elements_utils as EZU
+from maia.sids import sids
 from .hdf_dataspace import create_pe_dataspace
 
 def gen_elemts(zone_tree):
@@ -115,7 +115,7 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   distrib_elmt = IE.getDistribution(elmt, 'Element')
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
-  elmt_npe = EZU.get_npe_with_element_type_cgns(elmt[1][0])
+  elmt_npe = sids.ElementNVtx(elmt)
 
   DSMMRYElmt = [[0                       ], [1], [dn_elmt*elmt_npe], [1]]
   DSFILEElmt = [[distrib_elmt[0]*elmt_npe], [1], [dn_elmt*elmt_npe], [1]]

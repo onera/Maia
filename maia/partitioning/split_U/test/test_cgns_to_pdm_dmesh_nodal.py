@@ -17,6 +17,7 @@ ZoneU Zone_t [[18,6,0]]:
     CoordinateY DataArray_t [0., 0.,  0.,  0.5, 0.5, 0.5]:
     CoordinateZ DataArray_t [0., 0.,  0.,  0. , 0. , 0. ]:
   Hexa Elements_t [17,0]:
+    ElementRange ElementRange_t [1,4]:
     ElementConnectivity DataArray_t:
       I4 : [1,2,5,4,10,11,14,13,  2,3,6,5,11,12,15,14]
     :CGNS#Distribution UserDefinedData_t:
@@ -35,6 +36,7 @@ ZoneU Zone_t [[18,6,0]]:
     CoordinateY DataArray_t [1.,  1., 1., 0.,  0., 0.]:
     CoordinateZ DataArray_t [0.,  0., 0., 1.,  1., 1.]:
   Hexa Elements_t [17,0]:
+    ElementRange ElementRange_t [1,4]:
     ElementConnectivity DataArray_t:
       I4 : [4,5,8,7,13,14,17,16]
     :CGNS#Distribution UserDefinedData_t:
@@ -53,6 +55,7 @@ ZoneU Zone_t [[18,6,0]]:
     CoordinateY DataArray_t [0.5, 0.5, 0.5, 1.,  1.,  1.]:
     CoordinateZ DataArray_t [1.,  1.,  1.,  1.,  1. , 1.]:
   Hexa Elements_t [17,0]:
+    ElementRange ElementRange_t [1,4]:
     ElementConnectivity DataArray_t:
       I4 : [5,6,9,8,14,15,18,17]
     :CGNS#Distribution UserDefinedData_t:

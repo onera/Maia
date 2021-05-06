@@ -1,13 +1,14 @@
-import Converter.PyTree   as C
 import Converter.Internal as I
 import numpy              as np
 
 import maia.sids.sids as SIDS
-from maia.utils import zone_elements_utils as EZU
+import maia.sids.Internal_ext as IE
+from maia.sids import elements_utils as EU
 from maia.utils.parallel import utils as par_utils
 
 from maia.connectivity import connectivity_transform as CNT
-from . import cgns_to_pdm_dmeshnodal as CGNSTOPDM
+from maia.connectivity import remove_element as RME
+from maia.partitioning.split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
 from maia.transform import sids_conforming_ngon_nface
@@ -22,164 +23,103 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 
-  if(extract_dim == 2):
-    dface_cell_idx, dface_cell = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_EDGE_FACE)
-    dface_vtx_idx, dface_vtx   = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX )
-    dcell_face_idx, dcell_face = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE)
-    distrib_face               = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_EDGE)
-    distrib_cell               = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_FACE)
-  else :
-    dface_cell_idx, dface_cell = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_CELL)
-    dface_vtx_idx, dface_vtx   = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX )
-    dcell_face_idx, dcell_face = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
-    distrib_face              = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_FACE)
-    distrib_cell              = result_dmesh.dmesh_distrib_get(PDM._PDM_MESH_ENTITY_CELL)
+  # Get PDM output
+  cell = "FACE" if extract_dim == 2 else "CELL"
+  face = "EDGE" if extract_dim == 2 else "FACE"
+  dface_cell_idx, dface_cell = result_dmesh.dmesh_connectivity_get(eval(f"PDM._PDM_CONNECTIVITY_TYPE_{face}_{cell}"))
+  dface_vtx_idx,  dface_vtx  = result_dmesh.dmesh_connectivity_get(eval(f"PDM._PDM_CONNECTIVITY_TYPE_{face}_VTX"))
+  dcell_face_idx, dcell_face = result_dmesh.dmesh_connectivity_get(eval(f"PDM._PDM_CONNECTIVITY_TYPE_{cell}_{face}"))
+  distrib_face               = result_dmesh.dmesh_distrib_get(eval(f"PDM._PDM_MESH_ENTITY_{face}"))
+  distrib_cell               = result_dmesh.dmesh_distrib_get(eval(f"PDM._PDM_MESH_ENTITY_{cell}"))
+  group_idx, pdm_group       = result_dmesh.dmesh_bound_get(eval(f"PDM._PDM_BOUND_TYPE_{face}"))
 
-  # print("dface_cell_idx::", dface_cell_idx)
-  # print("dface_cell::"    , dface_cell)
-
-  # print("dface_vtx_idx::", dface_vtx_idx)
-  # print("dface_vtx::"    , dface_vtx)
-
-  # print("dcell_face_idx::", dcell_face_idx)
-  # print("dcell_face::"    , dcell_face)
-
-  # print("distrib_face::", distrib_face)
-  # print("distrib_cell::", distrib_cell)
-  # print("n_face::", n_face)
-  # print("n_cell::", n_cell)
-
-  n_face  = distrib_face[n_rank]
+  #Shift distribution if starting at 1
   if(distrib_face[0] == 1):
     distrib_face = distrib_face-1
-    n_face -=1
-  dn_face = distrib_face[i_rank+1] - distrib_face[i_rank]
-
-  n_cell  = distrib_cell[n_rank]
   if(distrib_cell[0] == 1):
     distrib_cell = distrib_cell-1
-    n_cell -=1
+
+  dn_face = distrib_face[i_rank+1] - distrib_face[i_rank]
+  n_face  = distrib_face[n_rank]
+
+  n_cell  = distrib_cell[n_rank]
   dn_cell = distrib_cell[i_rank+1] - distrib_cell[i_rank]
 
-  ldistrib_face = np.empty(3, dtype=distrib_face.dtype)
-  ldistrib_face[0] = distrib_face[comm.rank]
-  ldistrib_face[1] = distrib_face[comm.rank+1]
-  ldistrib_face[2] = n_face
+  ldistrib_face = distrib_face[[i_rank, i_rank+1, n_rank]]
+  ldistrib_cell = distrib_cell[[i_rank, i_rank+1, n_rank]]
 
-  ldistrib_cell = np.empty(3, dtype=distrib_cell.dtype)
-  ldistrib_cell[0] = distrib_cell[comm.rank]
-  ldistrib_cell[1] = distrib_cell[comm.rank+1]
-  ldistrib_cell[2] = n_cell
-
-  distrib_face_vtx = par_utils.gather_and_shift(dface_vtx_idx[dn_face], comm, np.int32)
+  distrib_face_vtx  = par_utils.gather_and_shift(dface_vtx_idx[dn_face], comm, np.int32)
   distrib_cell_face = par_utils.gather_and_shift(dcell_face_idx[dn_cell], comm, np.int32)
 
-  ermax   = EZU.get_next_elements_range(zone)
+  # Create NGon node
+  ermax   = max([SIDS.ElementRange(e)[1] for e in I.getNodesFromType1(zone, 'Elements_t')])
+
+  pe = np.empty((dface_cell.shape[0]//2, 2), dtype=dface_cell.dtype, order='F')
+  CNT.pdm_face_cell_to_pe_cgns(dface_cell, pe)
+  #NGon PE must refer to nFace indexes, we have to shift
+  pe[np.where(pe != 0)] += ermax+n_face
+  # > Attention overflow I8
+  eso_ngon = dface_vtx_idx + distrib_face_vtx[i_rank]
 
   ngon_n  = I.createUniqueChild(zone, 'NGonElements', 'Elements_t', value=[22,0])
-  ngon_elmt_range = np.empty(2, dtype='int64', order='F')
-  ngon_elmt_range[0] = ermax+1
-  ngon_elmt_range[1] = ermax+n_face
-
-  pe            = np.empty((dface_cell.shape[0]//2, 2), dtype=dface_cell.dtype, order='F')
-  CNT.pdm_face_cell_to_pe_cgns(dface_cell, pe)
-
-  # > Attention overflow I8
-  eso_ngon    = np.empty(dface_vtx_idx.shape[0], dtype=dface_vtx.dtype)
-  eso_ngon[:] = distrib_face_vtx[i_rank] + dface_vtx_idx[:]
-
-  I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', ngon_elmt_range)
+  I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', [ermax+1, ermax+n_face])
   I.newDataArray('ElementStartOffset' , eso_ngon , parent=ngon_n)
   I.newDataArray('ElementConnectivity', dface_vtx, parent=ngon_n)
   I.newDataArray('ParentElements'     , pe       , parent=ngon_n)
 
-  ermax   = EZU.get_next_elements_range(zone)
-  nfac_n  = I.createUniqueChild(zone, 'NFacElements', 'Elements_t', value=[23,0])
-  nfac_elmt_range = np.empty(2, dtype='int64', order='F')
-  nfac_elmt_range[0] = ermax+1
-  nfac_elmt_range[1] = ermax+n_cell
+  create_distribution_node_from_distrib("Element", ngon_n, ldistrib_face)
+  create_distribution_node_from_distrib("ElementConnectivity", ngon_n, distrib_face_vtx[[i_rank, i_rank+1, n_rank]])
 
-  eso_nfac    = np.empty(dcell_face_idx.shape[0], dtype=dface_vtx.dtype)
-  eso_nfac[:] = distrib_cell_face[i_rank] + dcell_face_idx[:]
+  # Create NFace node
+  ermax   = max([SIDS.ElementRange(e)[1] for e in I.getNodesFromType1(zone, 'Elements_t')])
+  eso_nfac = dcell_face_idx + distrib_cell_face[i_rank]
 
-  I.createUniqueChild(nfac_n, 'ElementRange', 'IndexRange_t', nfac_elmt_range)
+  nfac_n  = I.createUniqueChild(zone, 'NFaceElements', 'Elements_t', value=[23,0])
+  I.createUniqueChild(nfac_n, 'ElementRange', 'IndexRange_t', [ermax+1, ermax+n_cell])
   I.newDataArray('ElementStartOffset' , eso_nfac, parent=nfac_n)
-  if(dcell_face is not None):
+  if dcell_face is not None:
     I.newDataArray('ElementConnectivity', np.abs(dcell_face), parent=nfac_n)
   else:
-    I.newDataArray('ElementConnectivity', np.empty( (0), dtype=eso_ngon.dtype), parent=nfac_n)
-
-  create_distribution_node_from_distrib("Element", ngon_n, ldistrib_face)
-  np_distrib_face_vtx = np.array([distrib_face_vtx[i_rank], distrib_face_vtx[i_rank+1], distrib_face_vtx[n_rank]], dtype=pe.dtype)
-  create_distribution_node_from_distrib("ElementConnectivity", ngon_n   , np_distrib_face_vtx)
+    I.newDataArray('ElementConnectivity', np.empty(0, dtype=eso_ngon.dtype), parent=nfac_n)
 
   create_distribution_node_from_distrib("Element", nfac_n, ldistrib_cell)
-  np_distrib_cell_face = np.array([distrib_cell_face[i_rank], distrib_cell_face[i_rank+1], distrib_cell_face[n_rank]], dtype=pe.dtype)
-  create_distribution_node_from_distrib("ElementConnectivity", nfac_n   , np_distrib_cell_face)
+  create_distribution_node_from_distrib("ElementConnectivity", nfac_n, distrib_cell_face[[i_rank, i_rank+1, n_rank]])
 
-  return ngon_elmt_range[0]-1
+  #Manage BCs : shift PL values to reach refer ngon_elements
+  group = np.copy(pdm_group) + (EU.get_range_of_ngon(zone)[0]-1)
+  for i_bc, bc in enumerate(IE.getNodesFromTypePath(zone, 'ZoneBC_t/BC_t')):
+    I._rmNodesByName(bc, 'PointRange')
+    I._rmNodesByName(bc, 'PointList')
+    start, end = group_idx[i_bc], group_idx[i_bc+1]
+    I.newPointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
-def pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim):
-  """
-  """
-  next_ngon = pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim)
-
-  if(extract_dim == 2):
-    group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_EDGE)
-  else:
-    group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_FACE)
-
-  #print(group_idx)
-  group = np.copy(pdm_group)
-  group += next_ngon
-
-  i_group = 0
-  for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
-    for i_bc, bc in enumerate(I.getNodesFromType1(zone_bc, 'BC_t')):
-      pr_n = I.getNodeFromName1(bc, 'PointRange')
-      pl_n = I.getNodeFromName1(bc, 'PointList')
-      if(pr_n):
-        I._rmNode(bc, pr_n)
-        I._rmNodesByName(bc, 'PointRange#Size')
-      if(pl_n):
-        I._rmNode(bc, pl_n)
-      I.newGridLocation('FaceCenter', parent=bc)
-      start, end = group_idx[i_bc], group_idx[i_bc+1]
-      dn_face_bnd = end - start
-      I.newPointList(value=group[start:end].reshape( (1,dn_face_bnd), order='F' ), parent=bc)
 
 # -----------------------------------------------------------------
 def compute_ngon_from_std_elements(dist_tree, comm):
-  bases = I.getNodesFromType(dist_tree, 'CGNSBase_t')
-
-  for base in bases:
-    base_dim = I.getValue(base)
-    extract_dim = base_dim[0]
+  """
+  """
+  for base in I.getNodesFromType(dist_tree, 'CGNSBase_t'):
+    extract_dim = I.getValue(base)[0]
     #print("extract_dim == ", extract_dim)
-    zones_u = [zone for zone in I.getZones(base) if I.getZoneType(zone) == 2]
+    zones_u = [zone for zone in I.getZones(base) if SIDS.ZoneType(zone) == "Unstructured"]
 
-    n_mesh = len(zones_u)
-
-    dmn_to_dm = PDM.DMeshNodalToDMesh(n_mesh, comm)
+    dmn_to_dm = PDM.DMeshNodalToDMesh(len(zones_u), comm)
     dmesh_nodal_list = list()
     for i_zone, zone in enumerate(zones_u):
-      dmn = CGNSTOPDM.cgns_to_pdm(zone, comm)
+      dmn = cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_vertex=False)
       dmn.generate_distribution()
       dmn_to_dm.add_dmesh_nodal(i_zone, dmn)
 
     # PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE
-    if(extract_dim == 2):
-      dmn_to_dm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_EDGE,
-                      PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_EDGE)
-    else:
-      dmn_to_dm.compute(PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE,
-                      PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_FACE)
+    face = "EDGE" if extract_dim == 2 else "FACE"
+    dmn_to_dm.compute(eval(f"PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_{face}"),
+                    eval(f"PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_{face}"))
 
     dmn_to_dm.transform_to_coherent_dmesh(extract_dim)
 
     for i_zone, zone in enumerate(zones_u):
       result_dmesh = dmn_to_dm.get_dmesh(i_zone)
-      pdm_dmesh_to_cgns(result_dmesh, zone, comm, extract_dim)
+      pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim)
 
       # > Remove internal holder state
       I._rmNodesByName(zone, ':CGNS#DMeshNodal#Bnd')
@@ -188,6 +128,15 @@ def compute_ngon_from_std_elements(dist_tree, comm):
 
 def generate_ngon_from_std_elements(dist_tree, comm):
   """
+  Generate the ngon and nface elements using compute_ngon_from_std_elements,
+  and remove the standard elements from the tree
+  Possible optimisation : remove all the element at the same time
+  instead of looping
   """
   compute_ngon_from_std_elements(dist_tree,comm)
-  sids_conforming_ngon_nface(dist_tree)
+  for zone in I.getZones(dist_tree):
+    elts_to_remove = [elt for elt in I.getNodesFromType1(zone, 'Elements_t') if\
+        SIDS.ElementCGNSName(elt) not in ["NGON_n", "NFACE_n"]]
+    #2D element should be removed first, to avoid probleme coming from ParentElements
+    for elt in sorted(elts_to_remove, key = SIDS.ElementDimension):
+      RME.remove_element(zone, elt)

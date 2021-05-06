@@ -1,7 +1,7 @@
 import Converter.Internal as I
 import numpy as np
 from maia.utils.py_utils import list_or_only_elt
-from maia.sids.elements_utils import *
+from . import elements_utils as EU
 
 def VertexSize(zone):
   assert I.getType(zone) == "Zone_t"
@@ -36,6 +36,15 @@ def ElementSize(elements):
   assert I.getType(elements) == "Elements_t"
   er = I.getNodeFromName(elements,"ElementRange")[1]
   return er[1] - er[0] + 1
+
+def ElementCGNSName(element):
+  return EU.element_name(ElementType(element))
+
+def ElementDimension(element):
+  return EU.element_dim(ElementType(element))
+
+def ElementNVtx(element):
+  return EU.element_number_of_nodes(ElementType(element))
 
 def GridLocation(node):
   grid_loc_n = I.getNodeFromType1(node, 'GridLocation_t')

@@ -22,6 +22,19 @@ def test_ElementSize():
   assert SIDS.ElementSize(elt1) == 100
   assert SIDS.ElementSize(elt2) == 1
 
+def test_ElementCGNSName():
+  assert SIDS.ElementCGNSName(I.createNode("Toto", "Elements_t", [22, 0])) == "NGON_n"
+  assert SIDS.ElementCGNSName(I.createNode("Toto", "Elements_t", [42, 0])) == "TRI_15"
+
+def test_ElementDimension():
+  assert SIDS.ElementDimension(I.createNode("Toto", "Elements_t", [22, 0])) == 2
+  assert SIDS.ElementDimension(I.createNode("Toto", "Elements_t", [42, 0])) == 2
+  assert SIDS.ElementDimension(I.createNode("Toto", "Elements_t", [34, 0])) == 3
+
+def test_ElementNVtx():
+  assert SIDS.ElementNVtx(I.createNode("Toto", "Elements_t", [22, 0])) == None
+  assert SIDS.ElementNVtx(I.createNode("Toto", "Elements_t", [42, 0])) == 15
+
 def test_GridLocation():
   bc_no_loc = I.newBC()
   bc_loc    = I.newBC()
