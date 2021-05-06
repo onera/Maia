@@ -11,7 +11,6 @@ from maia.connectivity import remove_element as RME
 from maia.partitioning.split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
-from maia.transform import sids_conforming_ngon_nface
 
 import Pypdm.Pypdm as PDM
 

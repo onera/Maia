@@ -46,7 +46,6 @@ const auto add_nfaces                               = apply_cpp_cgns_function_to
 const auto gcs_only_for_ghosts                      = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
 const auto split_boundary_subzones_according_to_bcs = apply_cpp_cgns_function_to_py_base(cgns::split_boundary_subzones_according_to_bcs);
 const auto ngon_new_to_old                          = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
-const auto sids_conforming_ngon_nface               = apply_cpp_cgns_function_to_py_base(maia::sids_conforming_ngon_nface);
 
 
 PYBIND11_MODULE(transform, m) {
@@ -62,5 +61,4 @@ PYBIND11_MODULE(transform, m) {
   m.def("gcs_only_for_ghosts"                     , gcs_only_for_ghosts                     , "For GridConnectivities, keep only in the PointList the ones that are ghosts");
   m.def("split_boundary_subzones_according_to_bcs", split_boundary_subzones_according_to_bcs, "Split a ZoneSubRegion node with a PointRange spaning all boundary faces into multiple ZoneSubRegion with a BCRegionName");
   m.def("ngon_new_to_old"                         , ngon_new_to_old                         , "Turn Ngon description with ElementStartOffset to old convension");
-  m.def("sids_conforming_ngon_nface"              , sids_conforming_ngon_nface              , "Only keep ngon and nface");
 }

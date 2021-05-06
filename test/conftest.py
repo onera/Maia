@@ -1,6 +1,5 @@
 import pytest
 import os
-from pytest_check import *
 from mpi4py import MPI
 
 from pytest_mpi_check import assert_mpi
