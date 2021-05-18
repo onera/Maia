@@ -4,6 +4,7 @@
 #include "std_e/utils/enum.hpp"
 
 namespace CGNS {
+
 //Enum section
 //############
 
@@ -12,8 +13,7 @@ namespace CGNS {
 
 // Types as strings
 // -----------------
-namespace Label {
-STD_E_ENUM(kind,
+STD_E_ENUM(Label,
   CGNSTree_t,
   CGNSBase_t,
   Zone_t,
@@ -93,10 +93,8 @@ STD_E_ENUM(kind,
   BndConnectionFamily_t,
   Invalid_t
 );
-} // Label
-constexpr int nb_cgns_labels = std_e::enum_size<Label::kind>;
 
-namespace Value {
+constexpr int nb_cgns_labels = std_e::enum_size<Label>;
 
 //  Units
 // ======
@@ -126,8 +124,8 @@ STD_E_ENUM_CLASS(LengthUnits,
   maxLengthUnits
 );
 
-// Mass
-// -----
+// Time
+// ----
 STD_E_ENUM_CLASS(TimeUnits,
   Null,
   UserDefined,
@@ -326,7 +324,7 @@ STD_E_ENUM_CLASS(TurbulentClosure,
 );
 
 // TurbulenceModel
-// --------------
+// ---------------
 STD_E_ENUM_CLASS(TurbulenceModel,
   Null,
   UserDefined,
@@ -424,8 +422,32 @@ STD_E_ENUM_CLASS(GoverningEquationsType,
   maxGoverningEquationsType
 );
 
-// GasModelType_t
-// ---------------
+// Model Types
+// -----------
+STD_E_ENUM_CLASS(ModelType,
+  Null,
+  UserDefined,
+  Ideal, VanderWaals,
+  Constant,
+  PowerLaw, SutherlandLaw,
+  ConstantPrandtl,
+  EddyViscosity, ReynoldsStress, ReynoldsStressAlgebraic,
+  Algebraic_BaldwinLomax, Algebraic_CebeciSmith,
+  HalfEquation_JohnsonKing, OneEquation_BaldwinBarth,
+  OneEquation_SpalartAllmaras, TwoEquation_JonesLaunder,
+  TwoEquation_MenterSST, TwoEquation_Wilcox,
+  CaloricallyPerfect, ThermallyPerfect,
+  ConstantDensity, RedlichKwong,
+  Frozen, ThermalEquilib, ThermalNonequilib,
+  ChemicalEquilibCurveFit, ChemicalEquilibMinimization,
+  ChemicalNonequilib,
+  EMElectricField, EMMagneticField, EMConductivity,
+  Voltage, Interpolated, Equilibrium_LinRessler, Chemistry_LinRessler,
+  maxModelType
+);
+
+// GasModel Types
+// --------------
 STD_E_ENUM_CLASS(GasModelType,
   Null,
   UserDefined,
@@ -436,8 +458,8 @@ STD_E_ENUM_CLASS(GasModelType,
   maxGasModelType
 );
 
-// ViscosityModelType_t
-// ---------------------
+// ViscosityModel Types
+// --------------------
 STD_E_ENUM_CLASS(ViscosityModelType,
   Null,
   UserDefined,
@@ -490,11 +512,13 @@ STD_E_ENUM_CLASS(DataType,
   RealDouble,
   Character,
   LongInteger,
+  ComplexSingle,
+  ComplexDouble,
   maxDataType
 );
 
-// Element types
-// ---------------// Element types
+// Element Types
+// -------------
 STD_E_ENUM_CLASS(ElementType,
   Null,
   UserDefined,
@@ -556,8 +580,8 @@ STD_E_ENUM_CLASS(ElementType,
   maxElementType
 );
 
-// Zone types
-// -----------
+// Zone Types
+// ----------
 STD_E_ENUM_CLASS(ZoneType,
   Null,
   UserDefined,
@@ -566,8 +590,8 @@ STD_E_ENUM_CLASS(ZoneType,
   maxZoneType
 );
 
-// Rig_id Grid Motion types
-// ------------------------
+// Rigid Grid Motion Types
+// -----------------------
 STD_E_ENUM_CLASS(RigidGridMotionType,
   Null,
   UserDefined,
@@ -576,8 +600,8 @@ STD_E_ENUM_CLASS(RigidGridMotionType,
   maxRigidGridMotionType
 );
 
-// Arbitrary Grid Motion types
-// ----------------------------
+// Arbitrary Grid Motion Types
+// ---------------------------
 STD_E_ENUM_CLASS(ArbitraryGridMotionType,
   Null,
   UserDefined,
@@ -586,8 +610,8 @@ STD_E_ENUM_CLASS(ArbitraryGridMotionType,
   maxArbitraryGridMotionType
 );
 
-// Simulation types
-// -----------------
+// Simulation Types
+// ----------------
 STD_E_ENUM_CLASS(SimulationType,
   Null,
   UserDefined,
@@ -596,8 +620,8 @@ STD_E_ENUM_CLASS(SimulationType,
   maxSimulationType
 );
 
-// BC Property types
-// ------------------
+// BC Property Types
+// -----------------
 STD_E_ENUM_CLASS(WallFunctionType,
   Null,
   UserDefined,
@@ -605,8 +629,8 @@ STD_E_ENUM_CLASS(WallFunctionType,
   maxWallFunctionType
 );
 
-// Grid Connectivity Property types
-// ---------------------------------
+// Average Interface Types
+// -----------------------
 STD_E_ENUM_CLASS(AverageInterfaceType,
   Null,
   UserDefined,
@@ -619,14 +643,13 @@ STD_E_ENUM_CLASS(AverageInterfaceType,
   maxAverageInterfaceType
 );
 
-} // Value
-
 namespace Name {
+
 //The strings defined below are node names or node name patterns
 //##############################################################
 
 // Coordinate system
-// ------------------
+// -----------------
 extern const char* GridCoordinates;
 extern const char* CoordinateNames;
 extern const char* CoordinateX;
@@ -649,7 +672,7 @@ extern const char* ParentElementsPosition;
 extern const char* ElementSizeBoundary;
 
 // FlowSolution Quantities
-// ------------------------
+// -----------------------
 // Patterns
 extern const char* VectorX_p;
 extern const char* VectorY_p;
@@ -867,9 +890,9 @@ extern const char* FlowSolutionPointers;
 extern const char* ZoneGridConnectivityPointers;
 extern const char* ZoneSubRegionPointers;
 extern const char* OriginLocation;
-extern const char* Rig_idRotationAngle;
-extern const char* Rig_idVelocity;
-extern const char* Rig_idRotationRate;
+extern const char* RigidRotationAngle;
+extern const char* RigidVelocity;
+extern const char* RigidRotationRate;
 extern const char* GridVelocityX;
 extern const char* GridVelocityY;
 extern const char* GridVelocityZ;
@@ -930,6 +953,6 @@ extern const char* BCTypeSimple;
 extern const char* BCTypeCompound;
 extern const char* ElementRangeList;
 
-} // Name
+} /// End of Name namespace
 
-} // CGNS
+} /// End of CGNS namespace
