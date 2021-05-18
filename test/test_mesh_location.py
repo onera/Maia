@@ -121,7 +121,8 @@ for zone in I.getZones(part_tree):
 SPT.save_part_tree(part_tree, 'part_tree', comm)
 
 # > Create a line
-line_cloud = D.line((-1,0,0), (2,0,0), 5)
+line_cloud = D.line((0,0,0), (2,2,2), 5)
+# line_cloud = D.line((-1,0,0), (2,0,0), 5)
 C.convertPyTree2File(line_cloud, 'out.cgns')
 coords, gnum = get_coords_and_gnum(line_cloud)
 
@@ -152,7 +153,13 @@ ml.part_set(0, n_cell, cell_face_idx, cell_face, cell_ln_to_gn,
                n_vtx, coords_part, vtx_ln_to_gn)
 ml.compute()
 results = ml.location_get(0, 0)
-print(results)
+for key, val in results.items():
+  print(key, val)
 
+# print(results)
+results_pts = ml.points_in_elt_get(0, 0)
+# print(results_pts)
+for key, val in results_pts.items():
+  print(key, val)
 
 # C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(rank))
