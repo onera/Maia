@@ -1,5 +1,7 @@
 from mpi4py import MPI
 import logging as LOG
+import numpy     as np
+import maia.sids.sids     as SIDS
 
 # ------------------------------------------------------------------------
 # > Initilise MPI
@@ -26,7 +28,7 @@ from maia.partitioning.load_balancing import setup_partition_weights as DBA
 from maia.interpolation               import mesha_to_meshb          as ITP
 from maia.cgns_io                     import save_part_tree          as SPT
 
-
+return
 # ---------------------------------------------------------
 n_vtx       = 3
 edge_length = 2.
@@ -47,6 +49,14 @@ dzone_to_weighted_parts_target = DBA.npart_per_zone(dist_tree_target, comm, 1)
 part_tree_src    = PPA.partitioning(dist_tree_src   , comm, zone_to_parts=dzone_to_weighted_parts_src   )
 part_tree_target = PPA.partitioning(dist_tree_target, comm, zone_to_parts=dzone_to_weighted_parts_target)
 
+# ---------------------------------------------------------
+# > Create a flow solution
+for zone in I.getZones(part_tree_src):
+  n_cell = SIDS.zone_n_cell(zone)
+  fs = I.newFlowSolution("FlowSolution#Init", gridLocation='CellCenter', parent=zone)
+  da = I.newDataArray("Density", np.linspace(1., 2., num=n_cell), parent=fs)
+
+
 SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
 SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
 
@@ -55,9 +65,8 @@ ITP.mesha_to_meshb(part_tree_src, part_tree_target, comm, order=0)
 
 
 # ---------------------------------------------------------
-
-# SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
-# SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
+SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
+SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
 
 # I.printTree(dist_tree)
 

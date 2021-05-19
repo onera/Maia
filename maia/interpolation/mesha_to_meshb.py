@@ -103,9 +103,6 @@ def get_target_zone_info(zone):
 def locate_meshb_in_meshb():
   """
   """
-
-
-
   pass
 
 # --------------------------------------------------------------------------
@@ -208,6 +205,40 @@ def mesha_to_meshb(part_tree_src, part_tree_target, comm, order = 0):
   # > Interpolation
   #    - For each part we have to compute a good interpolation for the point located
   #    - At the end, for each located point we have an interpolation
+  interp_from_mesh_loc = PDM.InterpolateFromMeshLocation(1, comm)
+  setup_src_mesh   (interp_from_mesh_loc, dist_tree_src   , part_tree_src   )
+  setup_target_mesh(interp_from_mesh_loc, dist_tree_target, part_tree_target)
 
+  interp_from_mesh_loc.points_in_elt_set(0, 0,
+                                         results_pts["elt_pts_inside_idx"],
+                                         results_pts["points_gnum"],
+                                         results_pts["points_coords"],
+                                         results_pts["points_uvw"],
+                                         results_pts["points_weights_idx"],
+                                         results_pts["points_weights"],
+                                         results_pts["points_dist2"],
+                                         results_pts["points_projected_coords"])
 
   # > Return result in "cloud"
+  interp_from_mesh_loc.compute()
+
+  list_part_data_in = list()
+  for zone in I.getZones(part_tree_src):
+
+    fs = I.getNodeFromName1(zone, "FlowSolution#Init")
+    da = I.getNodeFromName1(fs, "Density")
+
+    list_part_data_in.append(da[1])
+
+  print(len(list_part_data_in))
+  results_interp = interp_from_mesh_loc.exch(0, list_part_data_in)
+
+  print(results_interp)
+
+  list_part_data_in = list()
+  for zone in I.getZones(part_tree_target):
+    n_vtx  = SIDS.zone_n_vtx(zone)
+    n_cell = SIDS.zone_n_cell(zone)
+    fs = I.newFlowSolution("FlowSolution#Init", gridLocation='Vertex', parent=zone)
+
+    da = I.newDataArray("Density", results_interp[0], parent=fs)
