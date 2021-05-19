@@ -38,8 +38,8 @@ def discover_nodes_of_kind(dist_node, part_nodes, kind_path, comm,
           value_list = [I.getValue(node) for node in ancestors] + [None]
         childs = list()
         for query in child_list:
-          getNodes1 = I.getNodesFromType1 if query[-2:] == '_t' else I.getNodesFromName1
-          childs.extend(getNodes1(leaf, query))
+          # getNodes1 = I.getNodesFromType1 if query[-2:] == '_t' else I.getNodesFromName1
+          childs.extend(IE.getNodesDispatch1(leaf, query))
         collected_part_nodes[leaf_path] = (value_list, childs)
 
   for rank_node_path in comm.allgather(collected_part_nodes):
