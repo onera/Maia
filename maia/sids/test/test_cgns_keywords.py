@@ -13,6 +13,8 @@ def test_cgns_label():
   # print(f"dir(CGK.Label) = {dir(CGK.Label)}")
   # for label in CGK.Label.__members__:
   #   print(f"label = {label}")
+  assert(isinstance(CGK.Label.CGNSTree_t, CGK.Label))
+
   assert(CGK.Label.CGNSTree_t.name  == "CGNSTree_t")
   assert(CGK.Label.CGNSBase_t.name  == "CGNSBase_t")
   assert(CGK.Label.Zone_t.name      == "Zone_t")

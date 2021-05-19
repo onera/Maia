@@ -1,7 +1,7 @@
 from   mpi4py             import MPI
 import Converter.Internal as     I
-from . import cgns_registry     as     CGR
-from . import cgns_keywords     as     CGK
+from . import cgns_registry    as CGR
+import maia.sids.cgns_keywords as CGK
 
 def build_paths_by_label_bcdataset(paths_by_label, bc, bc_path):
   """
