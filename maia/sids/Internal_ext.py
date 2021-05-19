@@ -91,13 +91,17 @@ def getNodesByMatching(root, queries):
 
   # query_list = query_path.split('/')
   # getNodes1 = I.getNodesFromType1 if query_list[0][-2:] == '_t' else I.getNodesFromName1
+  yield from getNodesByMatching__(root, query_list)
+
+def getNodesByMatching__(root, query_list):
   if len(query_list) > 1:
     next_root = getNodesDispatch1(root, query_list[0])
     for node in next_root:
-      yield from getNodesByMatching(node, query_list[1:])
+      yield from getNodesByMatching__(node, query_list[1:])
   elif len(query_list) == 1:
     nodes =  getNodesDispatch1(root, query_list[0])
     yield from nodes
+
 
 def getNodesWithParentsByMatching(root, queries):
   """Same than getNodesByMatching, but return
@@ -114,15 +118,19 @@ def getNodesWithParentsByMatching(root, queries):
 
   # query_list = query_path.split('/')
   # getNodes1 = I.getNodesFromType1 if query_list[0][-2:] == '_t' else I.getNodesFromName1
+  yield from getNodesWithParentsByMatching__(root, query_list)
+
+def getNodesWithParentsByMatching__(root, query_list):
   if len(query_list) > 1:
     next_root = getNodesDispatch1(root, query_list[0])
     for node in next_root:
-      for subnode in getNodesWithParentsByMatching(node, query_list[1:]):
+      for subnode in getNodesWithParentsByMatching__(node, query_list[1:]):
         yield (node, *subnode)
   elif len(query_list) == 1:
     nodes =  getNodesDispatch1(root, query_list[0])
     for node in nodes:
       yield (node,)
+
 
 def getNodesFromTypeMatching(root, queries):
   """Generator following type queries, equivalent to
@@ -139,13 +147,17 @@ def getNodesFromTypeMatching(root, queries):
   else:
     raise TypeError("getNodesFromTypeMatching: queries must be a sequence of CGNS label or a path with CGNS labels separated by '/'.")
 
+  yield from getNodesFromTypeMatching__(root, types_list)
+
+def getNodesFromTypeMatching__(root, types_list):
   if len(types_list) > 1:
     next_root = I.getNodesFromType1(root, types_list[0])
     for node in next_root:
-      yield from getNodesFromTypeMatching(node, types_list[1:])
+      yield from getNodesFromTypeMatching__(node, types_list[1:])
   elif len(types_list) == 1:
     nodes =  I.getNodesFromType1(root, types_list[0])
     yield from nodes
+
 
 def getNodesWithParentsFromTypeMatching(root, queries):
   """Same than getNodesWithParentsFromTypeMatching, but return
@@ -159,10 +171,13 @@ def getNodesWithParentsFromTypeMatching(root, queries):
   else:
     raise TypeError("getNodesFromTypeMatching: queries must be a sequence of CGNS label or a path with CGNS labels separated by '/'.")
 
+  yield from getNodesWithParentsFromTypeMatching__(root, types_list)
+
+def getNodesWithParentsFromTypeMatching__(root, types_list):
   if len(types_list) > 1:
     next_root = I.getNodesFromType1(root, types_list[0])
     for node in next_root:
-      for subnode in getNodesWithParentsFromTypeMatching(node, types_list[1:]):
+      for subnode in getNodesWithParentsFromTypeMatching__(node, types_list[1:]):
         yield (node, *subnode)
   elif len(types_list) == 1:
     nodes =  I.getNodesFromType1(root, types_list[0])
@@ -171,6 +186,7 @@ def getNodesWithParentsFromTypeMatching(root, queries):
 
 getNodesFromTypePath = getNodesFromTypeMatching
 getNodesWithParentsFromTypePath = getNodesWithParentsFromTypeMatching
+
 
 def newDistribution(distributions = dict(), parent=None):
   """
