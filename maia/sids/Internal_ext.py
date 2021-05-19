@@ -3,6 +3,9 @@ import numpy as np
 import Converter.Internal as I
 import maia.sids.cgns_keywords as CGK
 
+def isLabelFromString(label):
+  return isinstance(label, str) and ((label.endswith('_t') and label in CGK.Label.__members__) or label == '')
+
 def getValue(t):
   return t[1]
 
@@ -132,55 +135,71 @@ def getNodesWithParentsByMatching__(root, query_list):
       yield (node,)
 
 
-def getNodesFromTypeMatching(root, queries):
-  """Generator following type queries, equivalent to
+def getNodesFromTypeMatching(root, label_queries):
+  """Generator following CGNS label queries, equivalent to
   for level1 in I.getNodesFromType1(root, type1):
     for level2 in I.getNodesFromType1(level1, type2):
       for level3 in I.getNodesFromType1(level2, type3):
         ...
   """
-  types_list = []
-  if isinstance(queries, str):
-    types_list = queries.split('/')
-  elif isinstance(queries, (list, tuple)):
-    types_list = queries
+  # Test CGNS label in label_queries
+  if isinstance(label_queries, str):
+    label_queries = label_queries.split('/')
+  elif isinstance(label_queries, (list, tuple)):
+    pass
   else:
-    raise TypeError("getNodesFromTypeMatching: queries must be a sequence of CGNS label or a path with CGNS labels separated by '/'.")
+    raise TypeError("label_queries must be a sequence of CGNS label or a path with CGNS labels separated by '/'.")
+  labels = []
+  for label in label_queries:
+    if isLabelFromString(label):
+      labels.append(label)
+    elif isinstance(label, CGK.Label):
+      labels.append(label.name)
+    else:
+      raise TypeError(f"label_queries must be a CGNS label [{label}].")
 
-  yield from getNodesFromTypeMatching__(root, types_list)
+  yield from getNodesFromTypeMatching__(root, labels)
 
-def getNodesFromTypeMatching__(root, types_list):
-  if len(types_list) > 1:
-    next_root = I.getNodesFromType1(root, types_list[0])
+def getNodesFromTypeMatching__(root, labels):
+  if len(labels) > 1:
+    next_root = I.getNodesFromType1(root, labels[0])
     for node in next_root:
-      yield from getNodesFromTypeMatching__(node, types_list[1:])
-  elif len(types_list) == 1:
-    nodes =  I.getNodesFromType1(root, types_list[0])
+      yield from getNodesFromTypeMatching__(node, labels[1:])
+  elif len(labels) == 1:
+    nodes =  I.getNodesFromType1(root, labels[0])
     yield from nodes
 
 
-def getNodesWithParentsFromTypeMatching(root, queries):
+def getNodesWithParentsFromTypeMatching(root, label_queries):
   """Same than getNodesWithParentsFromTypeMatching, but return
   a tuple of size nb_types containing the node and its parents
   """
-  types_list = []
-  if isinstance(queries, str):
-    types_list = queries.split('/')
-  elif isinstance(queries, (list, tuple)):
-    types_list = queries
+  # Test CGNS label in label_queries
+  if isinstance(label_queries, str):
+    label_queries = label_queries.split('/')
+  elif isinstance(label_queries, (list, tuple)):
+    pass
   else:
-    raise TypeError("getNodesFromTypeMatching: queries must be a sequence of CGNS label or a path with CGNS labels separated by '/'.")
+    raise TypeError("label_queries must be a sequence of CGNS label or a path with CGNS labels separated by '/'.")
+  labels = []
+  for label in label_queries:
+    if isLabelFromString(label):
+      labels.append(label)
+    elif isinstance(label, CGK.Label):
+      labels.append(label.name)
+    else:
+      raise TypeError(f"label_queries must be a CGNS label [{label}].")
 
-  yield from getNodesWithParentsFromTypeMatching__(root, types_list)
+  yield from getNodesWithParentsFromTypeMatching__(root, labels)
 
-def getNodesWithParentsFromTypeMatching__(root, types_list):
-  if len(types_list) > 1:
-    next_root = I.getNodesFromType1(root, types_list[0])
+def getNodesWithParentsFromTypeMatching__(root, labels):
+  if len(labels) > 1:
+    next_root = I.getNodesFromType1(root, labels[0])
     for node in next_root:
-      for subnode in getNodesWithParentsFromTypeMatching__(node, types_list[1:]):
+      for subnode in getNodesWithParentsFromTypeMatching__(node, labels[1:]):
         yield (node, *subnode)
-  elif len(types_list) == 1:
-    nodes =  I.getNodesFromType1(root, types_list[0])
+  elif len(labels) == 1:
+    nodes =  I.getNodesFromType1(root, labels[0])
     for node in nodes:
       yield (node,)
 
