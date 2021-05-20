@@ -114,7 +114,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
           lngn_list    = lngn_list_bc
         #Get data
         dist_data = dict()
-        for bc_data, field in IE.getNodesWithParentsFromTypeMatching(d_dataset, 'BCData_t/DataArray_t'):
+        for bc_data, field in IE.getNodesWithParentsByMatching(d_dataset, 'BCData_t/DataArray_t'):
           dist_data[I.getName(bc_data) + '/' + I.getName(field)] = field[1] #Prevent np->scalar conversion
 
         #Exchange

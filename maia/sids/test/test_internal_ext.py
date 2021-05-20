@@ -280,20 +280,20 @@ ZoneI Zone_t:
   zoneI = I.getNodeFromName(root, 'ZoneI')
   zbcB  = I.getNodeFromName(root, 'ZBCB')
 
-  assert list(IE.getNodesFromTypeMatching(zoneI, '')) == []
-  assert list(IE.getNodesFromTypeMatching(zoneI, 'BC_t')) == []
+  assert list(IE.getNodesByMatching(zoneI, '')) == []
+  assert list(IE.getNodesByMatching(zoneI, 'BC_t')) == []
 
-  onelvl = IE.getNodesFromTypeMatching(zoneI, 'ZoneBC_t')
+  onelvl = IE.getNodesByMatching(zoneI, 'ZoneBC_t')
   assert [I.getName(node) for node in onelvl] == ['ZBCA', 'ZBCB']
-  onelvl = IE.getNodesFromTypeMatching(zbcB, 'BC_t')
+  onelvl = IE.getNodesByMatching(zbcB, 'BC_t')
   assert [I.getName(node) for node in onelvl] == ['bc3', 'bc4', 'bc5']
 
-  twolvl = IE.getNodesFromTypeMatching(zoneI, 'ZoneBC_t/BC_t')
+  twolvl = IE.getNodesByMatching(zoneI, 'ZoneBC_t/BC_t')
   assert [I.getName(node) for node in twolvl] == ['bc1', 'bc2', 'bc3', 'bc4', 'bc5']
-  twolvl = IE.getNodesFromTypeMatching(zbcB, 'BC_t/IndexArray_t')
+  twolvl = IE.getNodesByMatching(zbcB, 'BC_t/IndexArray_t')
   assert [I.getName(node) for node in twolvl] == ['Index_iii','Index_iv','Index_v','Index_vi']
 
-  threelvl = IE.getNodesFromTypeMatching(zoneI, 'ZoneBC_t/BC_t/IndexArray_t')
+  threelvl = IE.getNodesByMatching(zoneI, 'ZoneBC_t/BC_t/IndexArray_t')
   assert [I.getName(node) for node in threelvl] == ['Index_i', 'Index_ii','Index_iii','Index_iv','Index_v','Index_vi']
 
 def test_getNodesWithParentsFromTypePath():
@@ -318,23 +318,23 @@ ZoneI Zone_t:
   zoneI = I.getNodeFromName(root, 'ZoneI')
   zbcB  = I.getNodeFromName(root, 'ZBCB' )
 
-  assert list(IE.getNodesWithParentsFromTypeMatching(zoneI, '')) == []
-  assert list(IE.getNodesWithParentsFromTypeMatching(zoneI, 'BC_t')) == []
+  assert list(IE.getNodesWithParentsByMatching(zoneI, '')) == []
+  assert list(IE.getNodesWithParentsByMatching(zoneI, 'BC_t')) == []
 
-  onelvl = IE.getNodesWithParentsFromTypeMatching(zoneI, 'ZoneBC_t')
+  onelvl = IE.getNodesWithParentsByMatching(zoneI, 'ZoneBC_t')
   assert [I.getName(nodes[0]) for nodes in onelvl] == ['ZBCA', 'ZBCB']
-  onelvl = IE.getNodesWithParentsFromTypeMatching(zbcB, 'BC_t')
+  onelvl = IE.getNodesWithParentsByMatching(zbcB, 'BC_t')
   assert [I.getName(nodes[0]) for nodes in onelvl] == ['bc3', 'bc4', 'bc5']
 
-  twolvl = IE.getNodesWithParentsFromTypeMatching(zoneI, 'ZoneBC_t/BC_t')
+  twolvl = IE.getNodesWithParentsByMatching(zoneI, 'ZoneBC_t/BC_t')
   assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in twolvl] == \
       [('ZBCA', 'bc1'), ('ZBCA', 'bc2'), ('ZBCB', 'bc3'), ('ZBCB', 'bc4'), ('ZBCB', 'bc5')]
-  twolvl = IE.getNodesWithParentsFromTypeMatching(zbcB, 'BC_t/IndexArray_t')
+  twolvl = IE.getNodesWithParentsByMatching(zbcB, 'BC_t/IndexArray_t')
   for bc in I.getNodesFromType1(zbcB, 'BC_t'):
     for idx in I.getNodesFromType1(bc, 'IndexArray_t'):
       assert next(twolvl) == (bc, idx)
 
-  threelvl = IE.getNodesWithParentsFromTypeMatching(zoneI, 'ZoneBC_t/BC_t/IndexArray_t')
+  threelvl = IE.getNodesWithParentsByMatching(zoneI, 'ZoneBC_t/BC_t/IndexArray_t')
   for zbc in I.getNodesFromType1(zoneI, 'ZoneBC_t'):
     for bc in I.getNodesFromType1(zbc, 'BC_t'):
       for idx in I.getNodesFromType1(bc, 'IndexArray_t'):

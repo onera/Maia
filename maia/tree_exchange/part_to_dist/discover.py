@@ -23,7 +23,7 @@ def discover_nodes_of_kind(dist_node, part_nodes, label_queries, comm,
   """
   collected_part_nodes = dict()
   for part_node in part_nodes:
-    for nodes in IE.getNodesWithParentsFromTypeMatching(part_node, label_queries):
+    for nodes in IE.getNodesWithParentsByMatching(part_node, label_queries):
       # Option to skip some nodes
       if skip_rule(nodes[-1]):
         continue
