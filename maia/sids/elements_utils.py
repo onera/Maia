@@ -78,7 +78,7 @@ def element_number_of_nodes(n):
 def element_pdm_type(n):
   assert n < len(elements_properties)
   return elements_properties[n][6]
-  
+
 PDM_MESH_NODAL_POINT    = PDM._PDM_MESH_NODAL_POINT
 PDM_MESH_NODAL_BAR2     = PDM._PDM_MESH_NODAL_BAR2
 PDM_MESH_NODAL_TRIA3    = PDM._PDM_MESH_NODAL_TRIA3
@@ -128,3 +128,10 @@ def pdm_elt_name_to_cgns_element_type(name):
   for pdm_name,cgns_name in pdm_cgns_element_type:
     if pdm_name==name: return cgns_name
   raise NameError("No PDM element associated to "+name)
+
+def get_ordered_elements_std(zone):
+  """
+  Return the elements nodes in inscreasing order wrt ElementRange
+  """
+  return sorted(I.getNodesFromType1(zone, 'Elements_t'),
+                key = lambda item : sids.ElementRange(item)[0])
