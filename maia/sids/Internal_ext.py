@@ -59,13 +59,13 @@ def getSubregionExtent(sub_region_n, zone):
   """
   assert I.getType(sub_region_n) == "ZoneSubRegion_t"
   if I.getNodeFromName1(sub_region_n, "BCRegionName") is not None:
-    for zbc, bc in getNodesWithParentsFromTypePath(zone, "ZoneBC_t/BC_t"):
+    for zbc, bc in getNodesWithParentsFromTypeMatching(zone, "ZoneBC_t/BC_t"):
       if I.getName(bc) == I.getValue(I.getNodeFromName1(sub_region_n, "BCRegionName")):
         return I.getName(zbc) + '/' + I.getName(bc)
   elif I.getNodeFromName1(sub_region_n, "GridConnectivityRegionName") is not None:
     gc_pathes = ["ZoneGridConnectivity_t/GridConnectivity_t", "ZoneGridConnectivity_t/GridConnectivity1to1_t"]
     for gc_path in gc_pathes:
-      for zgc, gc in getNodesWithParentsFromTypePath(zone, gc_path):
+      for zgc, gc in getNodesWithParentsFromTypeMatching(zone, gc_path):
         if I.getName(gc) == I.getValue(I.getNodeFromName1(sub_region_n, "GridConnectivityRegionName")):
           return I.getName(zgc) + '/' + I.getName(gc)
   else:
@@ -230,9 +230,6 @@ def getNodesWithParentsFromTypeMatching__(root, labels):
     nodes =  I.getNodesFromType1(root, labels[0])
     for node in nodes:
       yield (node,)
-
-getNodesFromTypePath = getNodesFromTypeMatching
-getNodesWithParentsFromTypePath = getNodesWithParentsFromTypeMatching
 
 
 def newDistribution(distributions = dict(), parent=None):

@@ -86,7 +86,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
 
   #Manage BCs : shift PL values to reach refer ngon_elements
   group = np.copy(pdm_group) + (EU.get_range_of_ngon(zone)[0]-1)
-  for i_bc, bc in enumerate(IE.getNodesFromTypePath(zone, 'ZoneBC_t/BC_t')):
+  for i_bc, bc in enumerate(IE.getNodesFromTypeMatching(zone, 'ZoneBC_t/BC_t')):
     I._rmNodesByName(bc, 'PointRange')
     I._rmNodesByName(bc, 'PointList')
     start, end = group_idx[i_bc], group_idx[i_bc+1]

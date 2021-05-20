@@ -40,7 +40,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
   vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   part_data = dist_to_part(distribution_vtx, dist_data, vtx_lntogn_list, comm)
-  
+
   for ipart, part_zone in enumerate(part_zones):
     part_gc = I.newGridCoordinates(parent=part_zone)
     for data_name, data in part_data.items():
@@ -114,7 +114,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
           lngn_list    = lngn_list_bc
         #Get data
         dist_data = dict()
-        for bc_data, field in IE.getNodesWithParentsFromTypePath(d_dataset, 'BCData_t/DataArray_t'):
+        for bc_data, field in IE.getNodesWithParentsFromTypeMatching(d_dataset, 'BCData_t/DataArray_t'):
           dist_data[I.getName(bc_data) + '/' + I.getName(field)] = field[1] #Prevent np->scalar conversion
 
         #Exchange

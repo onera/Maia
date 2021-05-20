@@ -125,14 +125,13 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
 
   // py::array_t<int, py::array::f_style> np_section_idx(n_section+1);
   py::array_t<int, py::array::f_style> np_section_idx(section_idx.size());
-  auto np_section_idx_ptr     = make_raw_view(np_section_idx);
+  auto np_section_idx_ptr = make_raw_view(np_section_idx);
   for(int i = 0; i < n_section + 1; ++i){
     np_section_idx_ptr[i] = section_idx[i];
   }
 
   return np_section_idx;
 }
-
 
 auto
 compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_style>& np_point_list,
@@ -155,7 +154,7 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
   py::array_t<double, py::array::f_style> np_characteristic_lenght(bnd_size);
 
   auto bnd_coord             = make_raw_view(np_bnd_coord);
-  auto characteristic_lenght = make_raw_view(np_characteristic_lenght);
+  auto characteristic_length = make_raw_view(np_characteristic_lenght);
 
   for(int idx = 0; idx < bnd_size; ++idx) {
     int i_face = point_list[idx]-1;
@@ -163,7 +162,7 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
     bnd_coord[3*idx+1] = 0.;
     bnd_coord[3*idx+2] = 0.;
 
-    characteristic_lenght[idx] = std::numeric_limits<double>::max();
+    characteristic_length[idx] = std::numeric_limits<double>::max();
 
     int beg = face_vtx_idx[i_face];
     int n_vtx_on_face = face_vtx_idx[i_face+1]-beg;
@@ -171,7 +170,7 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
     for(int idx_vtx = beg; idx_vtx < face_vtx_idx[i_face+1]; ++idx_vtx){
 
       int pos1 =   idx_vtx - beg;
-      int pos2 = ( idx_vtx - beg + 1 ) % n_vtx_on_face;
+      int pos2 = ( pos1 + 1 ) % n_vtx_on_face;
 
       int ivtx1 = face_vtx[beg+pos1] - 1;
       int ivtx2 = face_vtx[beg+pos2] - 1;
@@ -186,10 +185,9 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
       double dx = cx[ivtx1] - cx[ivtx2];
       double dy = cy[ivtx1] - cy[ivtx2];
       double dz = cz[ivtx1] - cz[ivtx2];
-      double le = std::sqrt(dx*dx + dy*dy + dz*dz);
+      double length = std::sqrt(dx*dx + dy*dy + dz*dz);
 
-      characteristic_lenght[idx] = std::min(characteristic_lenght[idx], le);
-
+      characteristic_length[idx] = std::min(characteristic_length[idx], length);
     }
 
     // Finish
@@ -197,7 +195,6 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
     bnd_coord[3*idx  ] = bnd_coord[3*idx  ] * inv;
     bnd_coord[3*idx+1] = bnd_coord[3*idx+1] * inv;
     bnd_coord[3*idx+2] = bnd_coord[3*idx+2] * inv;
-
   }
 
   return std::make_tuple(np_bnd_coord, np_characteristic_lenght);

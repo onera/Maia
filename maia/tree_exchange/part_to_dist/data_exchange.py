@@ -16,7 +16,7 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   """
   discover_nodes_of_kind(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t'])
   discover_nodes_of_kind(dist_zone, part_zones, data_path, comm)
-  for nodes in IE.getNodesWithParentsFromTypePath(dist_zone, pl_path):
+  for nodes in IE.getNodesWithParentsFromTypeMatching(dist_zone, pl_path):
     node_path   = '/'.join([I.getName(node) for node in nodes])
     if I.getNodeFromPath(nodes[-1], 'PointList') is None and \
        par_utils.exists_anywhere(part_zones, node_path+'/PointList', comm):
@@ -170,13 +170,13 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
 
         #Discover data
         part_data = dict()
-        for bc_data, field in IE.getNodesWithParentsFromTypePath(d_dataset, 'BCData_t/DataArray_t'):
+        for bc_data, field in IE.getNodesWithParentsFromTypeMatching(d_dataset, 'BCData_t/DataArray_t'):
           part_data[I.getName(bc_data) + '/' + I.getName(field)] = list()
 
         for part_zone in part_zones:
           p_dataset = I.getNodeFromPath(part_zone, bc_path + '/' + I.getName(d_dataset))
           if p_dataset is not None:
-            for bc_data, field in IE.getNodesWithParentsFromTypePath(p_dataset, 'BCData_t/DataArray_t'):
+            for bc_data, field in IE.getNodesWithParentsFromTypeMatching(p_dataset, 'BCData_t/DataArray_t'):
               flat_data = field[1].ravel(order='A') #Reshape structured arrays for PDM exchange
               part_data[I.getName(bc_data) + '/' + I.getName(field)].append(flat_data)
 

@@ -68,7 +68,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   # gc_point_lists = collect_distributed_pl(dist_zone, [gc_type_path])
   # dface_join_idx, dface_join = py_utils.concatenate_point_list(gc_point_lists, pdm_gnum_dtype)
   # joins_ids = [I.getNodeFromName1(gc, 'Ordinal')[1][0] for gc in \
-      # IE.getNodesFromTypePath(dist_zone, gc_type_path)]
+      # IE.getNodesFromTypeMatching(dist_zone, gc_type_path)]
   # joins_ids = np.array(joins_ids, dtype='int32') - 1
   joins_ids      = np.empty(0, dtype=np.int32)
   dface_join_idx = np.zeros(1, dtype=np.int32)
@@ -76,7 +76,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
 
   n_bnd  = dface_bound_idx.shape[0] - 1
   n_join = dface_join_idx.shape[0]  - 1
-  
+
   dmesh = DistributedMesh(comm, dn_cell, dn_face, dn_edge, dn_vtx, n_bnd, n_join)
   dmesh.dmesh_set(dvtx_coord, dface_vtx_idx, dface_vtx, dface_cell,
                   dface_bound_idx, dface_bound, joins_ids,
