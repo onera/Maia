@@ -84,5 +84,4 @@ def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None):
   if hdf_filter is None:
     hdf_filter = dict()
     create_tree_hdf_filter(dist_tree, hdf_filter)
-  print(hdf_filter)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter)

@@ -6,22 +6,22 @@ elements_properties = [
 #CGNS_Id, ElementName        ,  dim, nVtx,nEdge,nFace, refElt,pdm_id
     ("ElementTypeNull"       , None, None, None, None,   None,  None),
     ("ElementTypeUserDefined", None, None, None, None,   None,  None),
-    ("NODE"                  ,    0,    1,    1,    0,  "NODE",    0),
-    ("BAR_2"                 ,    1,    2,    1,    0,   "BAR",    1),
+    ("NODE"                  ,    0,    1,    1,    0,  "NODE", PDM._PDM_MESH_NODAL_POINT),
+    ("BAR_2"                 ,    1,    2,    1,    0,   "BAR", PDM._PDM_MESH_NODAL_BAR2),
     ("BAR_3"                 ,    1,    3,    1,    0,   "BAR", None),
-    ("TRI_3"                 ,    2,    3,    3,    1,   "TRI",    2),
+    ("TRI_3"                 ,    2,    3,    3,    1,   "TRI", PDM._PDM_MESH_NODAL_TRIA3),
     ("TRI_6"                 ,    2,    6,    3,    1,   "TRI", None),
-    ("QUAD_4"                ,    2,    4,    4,    1,  "QUAD",    3),
+    ("QUAD_4"                ,    2,    4,    4,    1,  "QUAD", PDM._PDM_MESH_NODAL_QUAD4),
     ("QUAD_8"                ,    2,    8,    4,    1,  "QUAD",    9),
     ("QUAD_9"                ,    2,    9,    4,    1,  "QUAD", None),
-    ("TETRA_4"               ,    3,    4,    6,    4, "TETRA",    5),
+    ("TETRA_4"               ,    3,    4,    6,    4, "TETRA", PDM._PDM_MESH_NODAL_TETRA4),
     ("TETRA_10"              ,    3,   10,    6,    4, "TETRA", None),
-    ("PYRA_5"                ,    3,    5,    8,    5,  "PYRA",    6),
+    ("PYRA_5"                ,    3,    5,    8,    5,  "PYRA", PDM._PDM_MESH_NODAL_PYRAMID5),
     ("PYRA_14"               ,    3,   14,    8,    5,  "PYRA", None),
-    ("PENTA_6"               ,    3,    6,    9,    5, "PENTA",    7),
+    ("PENTA_6"               ,    3,    6,    9,    5, "PENTA", PDM._PDM_MESH_NODAL_PRISM6),
     ("PENTA_15"              ,    3,   15,    9,    5, "PENTA", None),
     ("PENTA_18"              ,    3,   18,    9,    5, "PENTA", None),
-    ("HEXA_8"                ,    3,    8,   12,    6,  "HEXA",    8),
+    ("HEXA_8"                ,    3,    8,   12,    6,  "HEXA", PDM._PDM_MESH_NODAL_HEXA8),
     ("HEXA_20"               ,    3,   20,   12,    6,  "HEXA",   10),
     ("HEXA_27"               ,    3,   27,   12,    6,  "HEXA", None),
     ("MIXED"                 , None, None, None, None,    None, None),
@@ -79,26 +79,17 @@ def element_pdm_type(n):
   assert n < len(elements_properties)
   return elements_properties[n][6]
 
-PDM_MESH_NODAL_POINT    = PDM._PDM_MESH_NODAL_POINT
-PDM_MESH_NODAL_BAR2     = PDM._PDM_MESH_NODAL_BAR2
-PDM_MESH_NODAL_TRIA3    = PDM._PDM_MESH_NODAL_TRIA3
-PDM_MESH_NODAL_QUAD4    = PDM._PDM_MESH_NODAL_QUAD4
-PDM_MESH_NODAL_POLY_2D  = PDM._PDM_MESH_NODAL_POLY_2D
-PDM_MESH_NODAL_TETRA4   = PDM._PDM_MESH_NODAL_TETRA4
-PDM_MESH_NODAL_PYRAMID5 = PDM._PDM_MESH_NODAL_PYRAMID5
-PDM_MESH_NODAL_PRISM6   = PDM._PDM_MESH_NODAL_PRISM6
-PDM_MESH_NODAL_HEXA8    = PDM._PDM_MESH_NODAL_HEXA8
-PDM_MESH_NODAL_POLY_3D  = PDM._PDM_MESH_NODAL_POLY_3D
-cgns_pdm_element_type = [
-  ("NODE"    ,  PDM._PDM_MESH_NODAL_POINT    ),
-  ("BAR_2"   ,  PDM._PDM_MESH_NODAL_BAR2     ),
-  ("TRI_3"   ,  PDM._PDM_MESH_NODAL_TRIA3    ),
-  ("QUAD_4"  ,  PDM._PDM_MESH_NODAL_QUAD4    ),
-  ("TETRA_4" ,  PDM._PDM_MESH_NODAL_TETRA4   ),
-  ("PYRA_5"  ,  PDM._PDM_MESH_NODAL_PYRAMID5 ),
-  ("PENTA_6" ,  PDM._PDM_MESH_NODAL_PRISM6   ),
-  ("HEXA_8"  ,  PDM._PDM_MESH_NODAL_HEXA8    ),
-]
+def cgns_elt_name_to_pdm_element_type(name):
+  for elem in elements_properties:
+    if elem[0] == name:
+      return elem[6]
+  raise NameError(f"CGNS Elem {name} is not a valid name")
+
+def pdm_elt_name_to_cgns_element_type(pdm_id):
+  for elem in elements_properties:
+    if elem[6] == pdm_id:
+      return elem[0]
+  raise NameError(f"No PDM element associated to {pdm_id}")
 
 def get_range_of_ngon(zone):
   """
@@ -107,27 +98,6 @@ def get_range_of_ngon(zone):
   ngons = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if sids.ElementType(elem) == 22]
   assert len(ngons) == 1
   return sids.ElementRange(ngons[0])
-def cgns_elt_name_to_pdm_element_type(name):
-  for cgns_name,pdm_name in cgns_pdm_element_type:
-    if cgns_name==name: return pdm_name
-  raise NameError("No PDM element associated to "+name)
-
-
-pdm_cgns_element_type = [
-  (PDM._PDM_MESH_NODAL_POINT   , "NODE"   ),
-  (PDM._PDM_MESH_NODAL_BAR2    , "BAR_2"  ),
-  (PDM._PDM_MESH_NODAL_TRIA3   , "TRI_3"  ),
-  (PDM._PDM_MESH_NODAL_QUAD4   , "QUAD_4" ),
-  (PDM._PDM_MESH_NODAL_TETRA4  , "TETRA_4"),
-  (PDM._PDM_MESH_NODAL_PYRAMID5, "PYRA_5" ),
-  (PDM._PDM_MESH_NODAL_PRISM6  , "PENTA_6"),
-  (PDM._PDM_MESH_NODAL_HEXA8   , "HEXA_8" ),
-]
-
-def pdm_elt_name_to_cgns_element_type(name):
-  for pdm_name,cgns_name in pdm_cgns_element_type:
-    if pdm_name==name: return cgns_name
-  raise NameError("No PDM element associated to "+name)
 
 def get_ordered_elements_std(zone):
   """

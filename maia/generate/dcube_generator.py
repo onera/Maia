@@ -9,7 +9,6 @@ from maia.utils.parallel                     import utils          as par_utils
 from maia.sids                               import elements_utils as EU
 
 import maia.distribution.distribution_function as MID
-import maia.sids.Internal_ext as IE
 
 import numpy as np
 
@@ -64,7 +63,6 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   zone_bc = I.newZoneBC(parent=dist_zone)
 
   face_group_idx = dcube_val['dface_group_idx']
-  face_group_n   = np.diff(face_group_idx)
 
   face_group = dcube_val['dface_group']
 
@@ -103,10 +101,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
 
   t_elmt = EU.cgns_elt_name_to_pdm_element_type(cgns_elmt_type)
 
-  dcube = PDM.DCubeNodalGenerator(n_vtx, edge_length,
-                                  origin[0], origin[1], origin[2],
-                                  t_elmt,
-                                  comm)
+  dcube = PDM.DCubeNodalGenerator(n_vtx, edge_length, *origin, t_elmt, comm)
 
   dmesh_nodal = dcube.get_dmesh_nodal()
   g_dims      = dmesh_nodal.dmesh_nodal_get_g_dims()
@@ -132,20 +127,19 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
     cgns_elmt_type = EU.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
     # print("cgns_elmt_type :", cgns_elmt_type)
 
-    elmt = I.newElements('{}.{}'.format(cgns_elmt_type, i_section), cgns_elmt_type,
+    elmt = I.newElements(f"{cgns_elmt_type}.{i_section}", cgns_elmt_type,
                          erange = [shift_elmt, shift_elmt + section["np_distrib"][n_rank]-1], parent=dist_zone)
     I.newDataArray('ElementConnectivity', section["np_connec"], parent=elmt)
 
     shift_elmt += section["np_distrib"][n_rank]
 
-    distrib   = np.array([section["np_distrib"][i_rank], section["np_distrib"][i_rank+1], section["np_distrib"][n_rank]])
+    distrib   = section["np_distrib"][[i_rank, i_rank+1, n_rank]]
     IE.newDistribution({'Element' : distrib}, parent=elmt)
 
   # > BCs
   zone_bc = I.newZoneBC(parent=dist_zone)
 
   face_group_idx = groups['dgroup_elmt_idx']
-  face_group_n   = np.diff(face_group_idx)
 
   face_group = groups['dgroup_elmt']
   distri = np.empty(n_rank, dtype=face_group.dtype)
@@ -157,19 +151,18 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
     I.newPointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
-    comm.Allgather(dn_face_bnd, distri)
-    r_offset  = sum(distri[:i_rank])
-    distrib_n = I.createNode(':CGNS#Distribution', 'UserDefinedData_t', parent=bc_n)
-    distrib   = np.array([r_offset, r_offset+dn_face_bnd, sum(distri)], dtype=face_group.dtype)
-    I.newDataArray('Index', distrib, parent=distrib_n)
+
+    bc_distrib = par_utils.gather_and_shift(dn_face_bnd, comm, pdm_gnum_dtype)
+    distrib    = bc_distrib[[i_rank, i_rank+1, n_rank]]
+    IE.newDistribution({'Index' : distrib}, parent=bc_n)
 
   # > Distributions
   np_distrib_cell = MID.uniform_distribution(g_dims["n_cell_abs"], comm)
 
   distri_vtx = sections['vtx']['np_vtx_distrib']
-  np_distrib_vtx      = np.array([distri_vtx      [i_rank], distri_vtx      [i_rank+1], distri_vtx      [n_rank]], dtype=distri_vtx.dtype)
+  np_distrib_vtx      = distri_vtx[[i_rank, i_rank+1, n_rank]]
 
-  create_distribution_node_from_distrib("Cell"               , dist_zone, np_distrib_cell    )
-  create_distribution_node_from_distrib("Vertex"             , dist_zone, np_distrib_vtx     )
+  create_distribution_node_from_distrib("Cell"  , dist_zone, np_distrib_cell)
+  create_distribution_node_from_distrib("Vertex", dist_zone, np_distrib_vtx )
 
   return dist_tree

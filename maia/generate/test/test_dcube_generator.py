@@ -1,7 +1,6 @@
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import Converter.Internal as I
-from maia.sids                               import elements_utils as EU
 
 from maia.generate import dcube_generator
 
