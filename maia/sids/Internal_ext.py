@@ -9,10 +9,6 @@ def isLabelFromString(label):
   """
   return isinstance(label, str) and ((label.endswith('_t') and label in CGK.Label.__members__) or label == '')
 
-def getValue(t):
-  """ Return the (raw) value of a node, without Cassiopee conversion """
-  return t[1]
-
 def getChildrenFromPredicate(node, query):
   """ Return the list of first level childs of node matching a given query (callable function)"""
   return [c for c in node[2] if query(c)] if node else []
@@ -151,7 +147,7 @@ def getDistribution(node, distri_name=None):
   Starting from node, return the CGNS#Distribution node if distri_name is None
   or the value of the requested distribution if distri_name is not None
   """
-  return getValue(I.getNodeFromPath(node, ':CGNS#Distribution/' + distri_name)) if distri_name \
+  return I.getVal(I.getNodeFromPath(node, ':CGNS#Distribution/' + distri_name)) if distri_name \
       else I.getNodeFromName1(node, ':CGNS#Distribution')
 
 def getGlobalNumbering(node, lngn_name=None):
@@ -159,5 +155,5 @@ def getGlobalNumbering(node, lngn_name=None):
   Starting from node, return the CGNS#GlobalNumbering node if lngn_name is None
   or the value of the requested globalnumbering if lngn_name is not None
   """
-  return getValue(I.getNodeFromPath(node, ':CGNS#GlobalNumbering/' + lngn_name)) if lngn_name \
+  return I.getVal(I.getNodeFromPath(node, ':CGNS#GlobalNumbering/' + lngn_name)) if lngn_name \
       else I.getNodeFromName1(node, ':CGNS#GlobalNumbering')

@@ -16,15 +16,15 @@ def test_isLabelFromString():
 
 def test_getValue():
   node = I.newDataArray('Test', [1,2])
-  assert (IE.getValue(node) == [1,2]).all()
-  assert isinstance(IE.getValue(node), np.ndarray)
+  assert (I.getVal(node) == [1,2]).all()
+  assert isinstance(I.getVal(node), np.ndarray)
   node = I.newDataArray('Test', np.array([1]))
   # Result from Cassiopee
   assert I.getValue(node) == 1
   assert isinstance(I.getValue(node), int)
   # Result expected
-  assert IE.getValue(node) == [1]
-  assert isinstance(IE.getValue(node), np.ndarray)
+  assert I.getVal(node) == [1]
+  assert isinstance(I.getVal(node), np.ndarray)
 
 def test_getNodesFromQuery():
   yt = """
@@ -68,8 +68,8 @@ Base CGNSBase_t:
   # Test from Value
   zone = I.getZones(tree)[0]
   ngon_value = np.array([22,0], dtype=np.int32)
-  elements_from_type_value1 = [n for n in I.getNodesFromType1(zone, CGL.Elements_t.name) if np.array_equal(IE.getValue(n), ngon_value)]
-  assert IE.getChildrenFromPredicate(zone, lambda n: I.getType(n) == CGL.Elements_t.name and np.array_equal(IE.getValue(n), ngon_value)) == elements_from_type_value1
+  elements_from_type_value1 = [n for n in I.getNodesFromType1(zone, CGL.Elements_t.name) if np.array_equal(I.getVal(n), ngon_value)]
+  assert IE.getChildrenFromPredicate(zone, lambda n: I.getType(n) == CGL.Elements_t.name and np.array_equal(I.getVal(n), ngon_value)) == elements_from_type_value1
   assert IE.getChildrenFromValue(zone, ngon_value) == elements_from_type_value1
 
   zonebcs_from_type_name1 = [n for n in I.getNodesFromType1(zone, CGL.ZoneBC_t.name) if I.getName(n) != "ZBCA"]

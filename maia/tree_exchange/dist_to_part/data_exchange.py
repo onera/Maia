@@ -45,7 +45,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
     part_gc = I.newGridCoordinates(parent=part_zone)
     for data_name, data in part_data.items():
       #F is mandatory to keep shared reference. Normally no copy is done
-      shaped_data = data[ipart].reshape(SIDS.VertexSize(part_zone), order='F')
+      shaped_data = data[ipart].reshape(SIDS.Zone.VertexSize(part_zone), order='F')
       I.newDataArray(data_name, shaped_data, parent=part_gc)
 
 def dist_sol_to_part_sol(dist_zone, part_zones, comm):
@@ -86,7 +86,7 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
         else:
           p_sol = I.newFlowSolution(I.getName(d_sol), location, parent=part_zone)
           I.setType(p_sol, I.getType(d_sol)) #Trick to be generic between DiscreteData/FlowSol
-          shape = SIDS.VertexSize(part_zone) if location == 'Vertex' else SIDS.CellSize(part_zone)
+          shape = SIDS.Zone.VertexSize(part_zone) if location == 'Vertex' else SIDS.Zone.CellSize(part_zone)
         for data_name, data in part_data.items():
           #F is mandatory to keep shared reference. Normally no copy is done
           shaped_data = data[ipart].reshape(shape, order='F')

@@ -18,7 +18,7 @@ def npart_per_zone(tree, comm, n_part=1):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  nb_elmt_per_zone = {I.getName(zone) : SIDS.zone_n_cell(zone) for zone in I.getZones(tree)}
+  nb_elmt_per_zone = {I.getName(zone) : SIDS.Zone.n_cell(zone) for zone in I.getZones(tree)}
 
   n_part_np = np.asarray(n_part, dtype=np.int32)
 
@@ -64,7 +64,7 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  nb_elmt_per_zone = {I.getName(zone) : SIDS.zone_n_cell(zone) for zone in I.getZones(tree)}
+  nb_elmt_per_zone = {I.getName(zone) : SIDS.Zone.n_cell(zone) for zone in I.getZones(tree)}
 
   repart_per_zone = balance_with_uniform_weights(nb_elmt_per_zone, n_rank) if only_uniform \
                else balance_with_non_uniform_weights(nb_elmt_per_zone, n_rank)
@@ -95,7 +95,7 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Convert to expected format and return
-  zone_to_weights = {zone: [repart[i_rank]/nb_elmt_per_zone[zone]] if repart[i_rank] > 0 else [] 
+  zone_to_weights = {zone: [repart[i_rank]/nb_elmt_per_zone[zone]] if repart[i_rank] > 0 else []
       for zone, repart in repart_per_zone.items()}
   return zone_to_weights
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

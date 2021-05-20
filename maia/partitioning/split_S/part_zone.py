@@ -22,7 +22,7 @@ def ijk_to_index(i,j,k,n_elmt):
 
 def zone_cell_range(zone):
   """ Return the size of a point_range 2d array """
-  n_cell = SIDS.CellSize(zone)
+  n_cell = SIDS.Zone.CellSize(zone)
   zone_range = np.empty((n_cell.shape[0], 2), n_cell.dtype)
   zone_range[:,0] = 1
   zone_range[:,1] = n_cell
@@ -325,7 +325,7 @@ def part_s_zone(d_zone, d_zone_weights, comm):
   all_weights = np.empty(n_part_each_proc.sum(), dtype=np.float64)
   comm.Allgatherv(my_weights, [all_weights, n_part_each_proc])
 
-  all_parts = SCT.split_S_block(SIDS.CellSize(d_zone), len(all_weights), all_weights)
+  all_parts = SCT.split_S_block(SIDS.Zone.CellSize(d_zone), len(all_weights), all_weights)
 
   my_start = n_part_each_proc[:i_rank].sum()
   my_end   = my_start + n_part_this_zone
@@ -345,12 +345,12 @@ def part_s_zone(d_zone, d_zone_weights, comm):
     i_ar  = np.arange(cell_bounds[0,0], cell_bounds[0,1]+1, dtype=np.int32)
     j_ar  = np.arange(cell_bounds[1,0], cell_bounds[1,1]+1, dtype=np.int32).reshape(-1,1)
     k_ar  = np.arange(cell_bounds[2,0], cell_bounds[2,1]+1, dtype=np.int32).reshape(-1,1,1)
-    vtx_lntogn = ijk_to_index(i_ar, j_ar, k_ar, SIDS.VertexSize(d_zone)).flatten()
+    vtx_lntogn = ijk_to_index(i_ar, j_ar, k_ar, SIDS.Zone.VertexSize(d_zone)).flatten()
     I.newDataArray('Vertex', vtx_lntogn, parent=lngn_zone)
     i_ar  = np.arange(cell_bounds[0,0], cell_bounds[0,1], dtype=np.int32)
     j_ar  = np.arange(cell_bounds[1,0], cell_bounds[1,1], dtype=np.int32).reshape(-1,1)
     k_ar  = np.arange(cell_bounds[2,0], cell_bounds[2,1], dtype=np.int32).reshape(-1,1,1)
-    cell_lntogn = ijk_to_index(i_ar, j_ar, k_ar, SIDS.CellSize(d_zone)).flatten()
+    cell_lntogn = ijk_to_index(i_ar, j_ar, k_ar, SIDS.Zone.CellSize(d_zone)).flatten()
     I.newDataArray('Cell', cell_lntogn, parent=lngn_zone)
 
     create_bcs(d_zone, part_zone, cell_bounds[:,0])

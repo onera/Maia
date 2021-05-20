@@ -74,8 +74,8 @@ def _partitioning(dist_tree,
                   part_options):
 
   all_zones = I.getZones(dist_tree)
-  u_zones   = [zone for zone in all_zones if SIDS.ZoneType(zone) == 'Unstructured']
-  s_zones   = [zone for zone in all_zones if SIDS.ZoneType(zone) == 'Structured']
+  u_zones   = [zone for zone in all_zones if SIDS.Zone.Type(zone) == 'Unstructured']
+  s_zones   = [zone for zone in all_zones if SIDS.Zone.Type(zone) == 'Structured']
 
   if len(u_zones)*len(s_zones) != 0:
     raise RuntimeError("Hybrid meshes are not yet supported")
