@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "maia/utils/parallel/exchange/part_to_block.hpp"
 #include "maia/utils/parallel/exchange/block_to_part.hpp"
 
