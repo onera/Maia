@@ -123,6 +123,33 @@ ZoneI Zone_t:
   # print(f"threelvl3 = {[I.getName(node) for node in threelvl3]}")
   assert [I.getName(node) for node in threelvl3] == results3
 
+
+def test_getNodesByMatchingApplies():
+  yt = """
+Base CGNSBase_t:
+  ZoneI.P0.N0 Zone_t:
+    Ngon Elements_t [22,0]:
+  ZoneI.P1.N0 Zone_t:
+    Ngon Elements_t [22,0]:
+"""
+  root = parse_yaml_cgns.to_complete_pytree(yt)
+
+  zones = IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"])
+  # print(f"zones = {[I.getName(node) for node in zones]}")
+  assert [I.getName(node) for node in zones] == ["ZoneI.P0.N0", "ZoneI.P1.N0"]
+
+  def reduce_name(n):
+    name = I.getName(n)
+    new_name = p.search(name).group(1)
+    I.setName(n, new_name)
+    return n
+
+  p = re.compile('([a-zA-Z0-9_]*)(\\.P[0-9]*)(\\.N[0-9]*)')
+  zones = IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"], {1:reduce_name})
+  # print(f"zones = {[I.getName(node) for node in zones]}")
+  assert [I.getName(node) for node in zones] == ["ZoneI", "ZoneI"]
+
+
 def test_getNodesWithParentsByMatching():
   yt = """
 ZoneI Zone_t:
@@ -205,6 +232,31 @@ ZoneI Zone_t:
       for pl in [n for n in IE.getNodesFromName1(bc, 'PL*') if p.match(I.getName(n))]:
         assert next(threelvl) == (zbc, bc, pl)
 
+def test_getNodesByParentsMatchingApplies():
+  yt = """
+Base CGNSBase_t:
+  ZoneI.P0.N0 Zone_t:
+    Ngon Elements_t [22,0]:
+  ZoneI.P1.N0 Zone_t:
+    Ngon Elements_t [22,0]:
+"""
+  root = parse_yaml_cgns.to_complete_pytree(yt)
+
+  zones = IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"])
+  # print(f"zones = {[(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones]}")
+  assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones] == [("Base", "ZoneI.P0.N0"), ("Base", "ZoneI.P1.N0")]
+
+  def reduce_name(n):
+    name = I.getName(n)
+    new_name = p.search(name).group(1)
+    I.setName(n, new_name)
+    return n
+
+  p = re.compile('([a-zA-Z0-9_]*)(\\.P[0-9]*)(\\.N[0-9]*)')
+  zones = IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"], {1:reduce_name})
+  # print(f"zones = {[(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones]}")
+  assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones] == [("Base", "ZoneI"), ("Base", "ZoneI")]
+
 
 def test_getNodesFromTypePath():
   yt = """
@@ -226,7 +278,7 @@ ZoneI Zone_t:
 """
   root = parse_yaml_cgns.to_complete_pytree(yt)
   zoneI = I.getNodeFromName(root, 'ZoneI')
-  zbcB  = I.getNodeFromName(root, 'ZBCB' )
+  zbcB  = I.getNodeFromName(root, 'ZBCB')
 
   assert list(IE.getNodesFromTypePath(zoneI, '')) == []
   assert list(IE.getNodesFromTypePath(zoneI, 'BC_t')) == []
