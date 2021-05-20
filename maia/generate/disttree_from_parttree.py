@@ -42,8 +42,8 @@ def disttree_from_parttree(part_tree, comm):
 
   dist_tree = I.newCGNSTree()
   # > Discover partitioned zones to build dist_tree structure
-  DIS.discover_nodes_of_kind(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=['Family_t'])
-  DIS.discover_nodes_of_kind(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\
+  DIS.discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=['Family_t'])
+  DIS.discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\
       child_list = ['ZoneType_t'],
       merge_rule=lambda zpath : conv.get_part_prefix(zpath))
 
@@ -81,15 +81,18 @@ def disttree_from_parttree(part_tree, comm):
 
     # > BND and JNS
     bc_t_path = 'ZoneBC_t/BC_t'
-    gc_t_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
+    gc_t_path = ['ZoneGridConnectivity_t', lambda n: I.getType(n) == 'GridConnectivity_t' and not conv.is_intra_gc(I.getName(n))]
 
     # > Discover (skip GC created by partitioning)
-    DIS.discover_nodes_of_kind(dist_zone, part_zones, bc_t_path, comm,
+    DIS.discover_nodes_from_matching(dist_zone, part_zones, bc_t_path, comm,
           child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
-    DIS.discover_nodes_of_kind(dist_zone, part_zones, gc_t_path, comm,
+    # DIS.discover_nodes_from_matching(dist_zone, part_zones, gc_t_path, comm,
+    #       child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
+    #       merge_rule= lambda path: conv.get_split_prefix(path),
+    #       skip_rule = lambda node: conv.is_intra_gc(I.getName(node)))
+    DIS.discover_nodes_from_matching(dist_zone, part_zones, gc_t_path, comm,
           child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
-          merge_rule= lambda path: conv.get_split_prefix(path),
-          skip_rule = lambda node: conv.is_intra_gc(I.getName(node)))
+          merge_rule= lambda path: conv.get_split_prefix(path))
 
     # > Index exchange
     for d_zbc, d_bc in IE.getNodesWithParentsByMatching(dist_zone, bc_t_path):

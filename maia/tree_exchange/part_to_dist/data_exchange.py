@@ -6,16 +6,16 @@ import maia.sids.sids     as SIDS
 import maia.sids.Internal_ext as IE
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
-from .discover           import discover_nodes_of_kind
+from .discover           import discover_nodes_from_matching
 from .                   import index_exchange as IPTB
 
 def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   """
-  Wrapper for discover_nodes_of_kind which add the node path in distree,
+  Wrapper for discover_nodes_from_matching which add the node path in distree,
   but also recreate the distributed pointlist if needed
   """
-  discover_nodes_of_kind(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t'])
-  discover_nodes_of_kind(dist_zone, part_zones, data_path, comm)
+  discover_nodes_from_matching(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t'])
+  discover_nodes_from_matching(dist_zone, part_zones, data_path, comm)
   for nodes in IE.getNodesWithParentsByMatching(dist_zone, pl_path):
     node_path   = '/'.join([I.getName(node) for node in nodes])
     if I.getNodeFromPath(nodes[-1], 'PointList') is None and \
