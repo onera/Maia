@@ -28,7 +28,6 @@ from maia.partitioning.load_balancing import setup_partition_weights as DBA
 from maia.interpolation               import mesha_to_meshb          as ITP
 from maia.cgns_io                     import save_part_tree          as SPT
 
-return
 # ---------------------------------------------------------
 n_vtx       = 3
 edge_length = 2.
@@ -57,16 +56,16 @@ for zone in I.getZones(part_tree_src):
   da = I.newDataArray("Density", np.linspace(1., 2., num=n_cell), parent=fs)
 
 
-SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
-SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
+# SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
+# SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
 
-# ---------------------------------------------------------
-ITP.mesha_to_meshb(part_tree_src, part_tree_target, comm, order=0)
+# # ---------------------------------------------------------
+# ITP.mesha_to_meshb(part_tree_src, part_tree_target, comm, order=0)
 
 
-# ---------------------------------------------------------
-SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
-SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
+# # ---------------------------------------------------------
+# SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
+# SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
 
 # I.printTree(dist_tree)
 
