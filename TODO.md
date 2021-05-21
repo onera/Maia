@@ -1,7 +1,12 @@
 #TODO
 
-## Naming
+## Naming and organisation
 Filter -> i/o (why call it filter? no biblio element to support the use, filter is too general and does not warn we are doing i/o)
+Connectivity -> Connectivity?, ElementConnectivity? -> sous-dossier de transform
+Geometry -> Connector?, GridConnectivity
+Transform -> 
+Tree_exchange -> Transfer
+cgns_io/distribution/partitioning/tree_exchange -> pot commun
 
 ## Licensing
 MPL2?

@@ -12,7 +12,7 @@ np_dtypes  = [np.int32,np.int64,np.float32,np.float64]
 def parse_node(node):
   name,label_value = node.split(" ", 1)
   name = name.strip()
-  label_value = label_value.split(" ", 1)
+  label_value = label_value.strip().split(" ", 1)
   label = label_value[0].strip()
   if len(label_value)==1:
     value = None

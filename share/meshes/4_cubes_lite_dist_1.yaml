@@ -1,0 +1,28 @@
+MyBase [3,3]:
+  Wall Family_t:
+    BCWall FamilyBC_t:
+  MyZone [18 4 0]:
+    :CGNS#Distribution:
+      Vertex [9 18 18]:
+      Cell [3 4 4]:
+    GridCoordinates:
+      CoordinateX [0 1 2 0 1 2 0 1 2]:
+    Hexa [17 0]:
+      ElementRange [1 4]:
+      ElementConnectivity [4 5 8 7 13 14 17 16  5 6 9 8 14 15 18 17]:
+      :CGNS#Distribution:
+        Element [2 4 4]:
+    Quad [7 0]:
+      ElementRange [6]:
+    FlowSolution:
+      Density [1.2]:
+    ZoneBC:
+      BC_1:
+        FamilyName "Wall":
+        PointList [6]:
+        :CGNS#Distribution:
+          Index [1 2 2]:
+        GridLocation "FaceCenter":
+        BCDataSet:
+          DirichletData:
+            Temperature [2.]:
