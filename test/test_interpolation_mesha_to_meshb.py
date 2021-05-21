@@ -29,13 +29,13 @@ from maia.interpolation               import mesha_to_meshb          as ITP
 from maia.cgns_io                     import save_part_tree          as SPT
 
 # ---------------------------------------------------------
-n_vtx       = 3
+n_vtx       = 5
 edge_length = 2.
 origin      = [0., 0., 0.]
 dist_tree_src    = DCG.dcube_generate(n_vtx, edge_length, origin, comm)
 
 # ---------------------------------------------------------
-n_vtx       = 3
+n_vtx       = 4
 edge_length = 2.
 origin      = [0., 0., 0.]
 dist_tree_target = DCG.dcube_generate(n_vtx, edge_length, origin, comm)
@@ -55,17 +55,15 @@ for zone in I.getZones(part_tree_src):
   fs = I.newFlowSolution("FlowSolution#Init", gridLocation='CellCenter', parent=zone)
   da = I.newDataArray("Density", np.linspace(1., 2., num=n_cell), parent=fs)
 
-
 # SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
 # SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
 
 # # ---------------------------------------------------------
-# ITP.mesha_to_meshb(part_tree_src, part_tree_target, comm, order=0)
+ITP.mesha_to_meshb(part_tree_src, part_tree_target, comm, order=0)
 
-
-# # ---------------------------------------------------------
-# SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
-# SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
+# ---------------------------------------------------------
+SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
+SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
 
 # I.printTree(dist_tree)
 
