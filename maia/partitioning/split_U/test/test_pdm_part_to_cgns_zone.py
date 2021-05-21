@@ -59,6 +59,7 @@ def test_zgc_created_pdm_to_cgns(grid_loc):
     assert (I.getValue(I.getNodeFromName(gc_n, 'PointListDonor')) == data['np_vtx_part_bound'][3::4]).all()
 
 def test_pdm_elmt_to_cgns_elmt_ngon():
+  d_zone = I.newZone('Zone', ztype='Unstructured')
   p_zone = I.newZone('Zone.P0.N0', ztype='Unstructured')
   dims = {'n_section' :0, 'n_face' : 6, 'n_cell':1}
   data = {'np_face_cell'     : np.array([1,0,1,0,1,0,1,0,1,0,1,0], dtype=np.int32),
@@ -70,7 +71,7 @@ def test_pdm_elmt_to_cgns_elmt_ngon():
           'np_cell_face_idx' : np.array([0,6], dtype=np.int32),
           'np_cell_ln_to_gn' : np.array([42], dtype=pdm_dtype)}
 
-  PTC.pdm_elmt_to_cgns_elmt(p_zone, None, dims, data)
+  PTC.pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data)
 
   ngon_n = I.getNodeFromPath(p_zone, 'NGonElements')
   assert (I.getNodeFromPath(ngon_n, 'ElementStartOffset')[1] == data['np_face_vtx_idx']).all()

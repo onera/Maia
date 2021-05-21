@@ -81,14 +81,22 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data):
     pe = np.empty((n_face, 2), dtype=pdm_face_cell.dtype, order='F')
     CNT.pdm_face_cell_to_pe_cgns(pdm_face_cell, pe)
 
-    ngon_n = I.createUniqueChild(p_zone, 'NGonElements', 'Elements_t', value=[22,0])
+    ngon_name  = 'NGonElements'
+    nface_name = 'NFaceElements'
+    for elt in I.getNodesFromType1(d_zone, 'Elements_t'):
+      if I.getValue(elt)[0] == 22:
+        ngon_name = I.getName(elt)
+      elif I.getValue(elt)[0] == 23:
+        nface_name = I.getName(elt)
+
+    ngon_n = I.createUniqueChild(p_zone, ngon_name, 'Elements_t', value=[22,0])
     I.newDataArray('ElementConnectivity', data['np_face_vtx']    , parent=ngon_n)
     I.newDataArray('ElementStartOffset' , data['np_face_vtx_idx'], parent=ngon_n)
     I.newDataArray('ParentElements'     , pe                     , parent=ngon_n)
     I.newPointRange('ElementRange'      , [1, n_face]            , parent=ngon_n)
     IE.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
 
-    nface_n = I.createUniqueChild(p_zone, 'NFaceElements', 'Elements_t', value=[23,0])
+    nface_n = I.createUniqueChild(p_zone, nface_name, 'Elements_t', value=[23,0])
     I.newDataArray('ElementConnectivity', data['np_cell_face']     , parent=nface_n)
     I.newDataArray('ElementStartOffset' , data['np_cell_face_idx'] , parent=nface_n)
     I.newPointRange('ElementRange'      , [n_face+1, n_face+n_cell], parent=nface_n)
