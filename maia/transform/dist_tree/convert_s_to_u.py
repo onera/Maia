@@ -2,8 +2,6 @@
 import Converter.Internal as I
 import numpy              as np
 
-import Pypdm.Pypdm as PDM
-
 from maia.sids               import sids
 from maia                    import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.distribution       import distribution_function  as MDIDF
@@ -376,33 +374,45 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  n_face_tot = n_face_per_dir(n_vtx_zone, n_vtx_zone-1).sum()
+  n_cell_zone = n_vtx_zone - 1
 
-  vtx_range  = MDIDF.uniform_distribution_at(n_vtx_zone.prod(), i_rank, n_rank)
-  vtx_slabs  = HFR2S.compute_slabs(n_vtx_zone, vtx_range)
+  nf_i, nf_j, nf_k = n_face_per_dir(n_vtx_zone, n_cell_zone)
+  n_face_tot = nf_i + nf_j + nf_k
+  face_distri = MDIDF.uniform_distribution_at(n_face_tot, i_rank, n_rank)
 
-  # Create local NGon connectivity
-  n_face_all_slab = sum([vtx_slab_to_n_faces(slab, n_vtx_zone).sum() for slab in vtx_slabs])
-  face_gnum, face_vtx, face_pe = compute_all_ngon_connectivity(vtx_slabs, n_vtx_zone)
+  n_face_loc = face_distri[1] - face_distri[0]
+  #Bounds stores for each proc [id of first iface, id of first jface, id of first kface, id of last kface]
+  # assuming that face are globally ordered i, then j, then k
+  bounds = np.empty(4, dtype=np.int32)
+  bounds[0] = face_distri[0]
+  bounds[1] = bounds[0]
+  if bounds[0] < nf_i:
+    bounds[1] = min(face_distri[1], nf_i)
+  bounds[2] = bounds[1]
+  if nf_i <= bounds[1] and bounds[1] < nf_i + nf_j:
+    bounds[2] = min(face_distri[1], nf_i + nf_j)
+  bounds[3] = face_distri[1]
 
-  # PartToBlock to order an distribute the faces
-  part_to_block = PDM.PartToBlock(comm, [face_gnum], None, partN=1, t_distrib=0, t_post=0, t_stride=1)
-  # Exchange PE
-  pfield_stride2 = {"NGonPE" : [face_pe.ravel()]}
-  stride2 = [2*np.ones(n_face_all_slab, dtype='int32')]
-  dfield_stride2 = dict()
-  part_to_block.PartToBlock_Exchange(dfield_stride2, pfield_stride2, stride2)
-  # Exchange element connectivity
-  pfield_stride4 = {"NGonFaceVtx" : [face_vtx]}
-  stride4 = [4*np.ones(n_face_all_slab,  dtype='int32')]
-  dfield_stride4 = dict()
-  part_to_block.PartToBlock_Exchange(dfield_stride4, pfield_stride4, stride4)
+  bounds_l = bounds - face_distri[0]
 
-  face_pe  = dfield_stride2["NGonPE"].reshape(-1, 2)
-  face_vtx = dfield_stride4["NGonFaceVtx"]
-  n_face_loc = face_pe.shape[0]
-  face_distri = part_to_block.getDistributionCopy()
-  face_vtx_idx = 4*np.arange(face_distri[i_rank], face_distri[i_rank]+n_face_loc+1, dtype=pdm_gnum_dtype)
+  face_pe  = np.empty((n_face_loc, 2), order='F', dtype=pdm_gnum_dtype)
+  face_vtx = np.empty(4*n_face_loc, dtype=pdm_gnum_dtype)
+
+  i_faces_gnum = np.arange(bounds[0], bounds[1])+1
+  face_vtx[4*bounds_l[0]:4*bounds_l[1]] = s_numb.facevtx_from_i_face_idx(i_faces_gnum, n_cell_zone, n_vtx_zone)
+  face_pe [  bounds_l[0]:  bounds_l[1]] = s_numb.PE_idx_from_i_face_idx (i_faces_gnum, n_cell_zone, n_vtx_zone)
+
+  j_faces_gnum = np.arange(bounds[1], bounds[2])+1
+  shift = nf_i
+  face_vtx[4*bounds_l[1]:4*bounds_l[2]] = s_numb.facevtx_from_j_face_idx(j_faces_gnum-shift, n_cell_zone, n_vtx_zone)
+  face_pe [  bounds_l[1]  :bounds_l[2]] = s_numb.PE_idx_from_j_face_idx (j_faces_gnum-shift, n_cell_zone, n_vtx_zone)
+
+  k_faces_gnum = np.arange(bounds[2], bounds[3])+1
+  shift += nf_j
+  face_vtx[4*bounds_l[2]:4*bounds_l[3]] = s_numb.facevtx_from_k_face_idx(k_faces_gnum-shift, n_cell_zone, n_vtx_zone)
+  face_pe [  bounds_l[2]:  bounds_l[3]] = s_numb.PE_idx_from_k_face_idx (k_faces_gnum-shift, n_cell_zone, n_vtx_zone)
+
+  face_vtx_idx = 4*np.arange(face_distri[0], face_distri[1]+1, dtype=pdm_gnum_dtype)
 
   ngon = I.newElements('NGonElements', 'NGON', face_vtx, [1, n_face_tot])
   I.newDataArray("ElementStartOffset", face_vtx_idx, parent=ngon)
