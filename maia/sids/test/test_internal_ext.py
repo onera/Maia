@@ -8,6 +8,12 @@ from maia.sids.cgns_keywords import Label as CGL
 
 from   maia.utils        import parse_yaml_cgns
 
+def test_isLabelFromString():
+  assert IE.isLabelFromString('BC') == False
+  assert IE.isLabelFromString('BC_t') == True
+  assert IE.isLabelFromString('BC_toto') == False
+  assert IE.isLabelFromString('FakeLabel_t') == False
+
 def test_getValue():
   node = I.newDataArray('Test', [1,2])
   assert (IE.getValue(node) == [1,2]).all()
@@ -51,6 +57,8 @@ Base CGNSBase_t:
   assert I.getNodesFromName1(bases, "Zone*") == []
   assert IE.getNodesFromQuery1(bases, lambda n: fnmatch.fnmatch(I.getName(n), "Zone*")) == nodes_from_name1
   assert IE.getNodesFromName1(bases, "Zone*") == nodes_from_name1
+  #Exclude top level which is included by Cassiopée
+  assert IE.getNodesFromName1(bases[0], "Base") == []
 
   # Test from Type
   nodes_from_type1 = I.getNodesFromType1(bases, CGL.Zone_t.name)
@@ -67,6 +75,18 @@ Base CGNSBase_t:
   zonebcs_from_type_name1 = [n for n in I.getNodesFromType1(zones, CGL.ZoneBC_t.name) if I.getName(n) != "ZBCA"]
   assert IE.getNodesFromQuery1(zones, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA") == zonebcs_from_type_name1
 
+def test_getNodesDispatch1():
+  fs = I.newFlowSolution()
+  data_a   = I.newDataArray('DataA', [1,2,3], parent=fs)
+  data_b   = I.newDataArray('DataB', [4,6,8], parent=fs)
+  grid_loc = I.newGridLocation('Vertex', fs)
+  assert IE.getNodesDispatch1(fs, 'DataB') == [data_b]
+  assert IE.getNodesDispatch1(fs, 'DataArray_t') == [data_a, data_b]
+  assert IE.getNodesDispatch1(fs, CGL.GridLocation_t) == [grid_loc]
+  assert IE.getNodesDispatch1(fs, np.array([4,6,8])) == [data_b]
+  assert IE.getNodesDispatch1(fs, lambda n: I.getValue(n) == 'Vertex') == [grid_loc]
+  with pytest.raises(TypeError):
+    IE.getNodesDispatch1(fs, False)
 
 def test_getNodesByMatching():
   yt = """
@@ -123,6 +143,8 @@ ZoneI Zone_t:
   # print(f"threelvl3 = {[I.getName(node) for node in threelvl3]}")
   assert [I.getName(node) for node in threelvl3] == results3
 
+  with pytest.raises(TypeError):
+    list(IE.getNodesByMatching(zoneI, 12))
 
 def test_getNodesByMatchingApplies():
   yt = """
@@ -149,6 +171,14 @@ Base CGNSBase_t:
   # print(f"zones = {[I.getName(node) for node in zones]}")
   assert [I.getName(node) for node in zones] == ["ZoneI", "ZoneI"]
 
+  root = parse_yaml_cgns.to_complete_pytree(yt)
+  zones = IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"], [None, reduce_name])
+  assert [I.getName(node) for node in zones] == ["ZoneI", "ZoneI"]
+
+  with pytest.raises(TypeError):
+    list(IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"], 12))
+  with pytest.raises(TypeError):
+    list(IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"], [reduce_name]))
 
 def test_getNodesWithParentsByMatching():
   yt = """
@@ -232,6 +262,9 @@ ZoneI Zone_t:
       for pl in [n for n in IE.getNodesFromName1(bc, 'PL*') if p.match(I.getName(n))]:
         assert next(threelvl) == (zbc, bc, pl)
 
+  with pytest.raises(TypeError):
+    list(IE.getNodesWithParentsByMatching(zoneI, 12))
+
 def test_getNodesByParentsMatchingApplies():
   yt = """
 Base CGNSBase_t:
@@ -257,88 +290,14 @@ Base CGNSBase_t:
   # print(f"zones = {[(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones]}")
   assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones] == [("Base", "ZoneI"), ("Base", "ZoneI")]
 
-
-def test_getNodesFromTypePath():
-  yt = """
-ZoneI Zone_t:
-  Ngon Elements_t [22,0]:
-  ZBCA ZoneBC_t:
-    bc1 BC_t:
-      Index_i IndexArray_t:
-    bc2 BC_t:
-      Index_ii IndexArray_t:
-  ZBCB ZoneBC_t:
-    bc3 BC_t:
-      Index_iii IndexArray_t:
-    bc4 BC_t:
-    bc5 BC_t:
-      Index_iv IndexArray_t:
-      Index_v IndexArray_t:
-      Index_vi IndexArray_t:
-"""
   root = parse_yaml_cgns.to_complete_pytree(yt)
-  zoneI = I.getNodeFromName(root, 'ZoneI')
-  zbcB  = I.getNodeFromName(root, 'ZBCB')
+  zones = IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"], [None, reduce_name])
+  assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones] == [("Base", "ZoneI"), ("Base", "ZoneI")]
 
-  assert list(IE.getNodesByMatching(zoneI, '')) == []
-  assert list(IE.getNodesByMatching(zoneI, 'BC_t')) == []
-
-  onelvl = IE.getNodesByMatching(zoneI, 'ZoneBC_t')
-  assert [I.getName(node) for node in onelvl] == ['ZBCA', 'ZBCB']
-  onelvl = IE.getNodesByMatching(zbcB, 'BC_t')
-  assert [I.getName(node) for node in onelvl] == ['bc3', 'bc4', 'bc5']
-
-  twolvl = IE.getNodesByMatching(zoneI, 'ZoneBC_t/BC_t')
-  assert [I.getName(node) for node in twolvl] == ['bc1', 'bc2', 'bc3', 'bc4', 'bc5']
-  twolvl = IE.getNodesByMatching(zbcB, 'BC_t/IndexArray_t')
-  assert [I.getName(node) for node in twolvl] == ['Index_iii','Index_iv','Index_v','Index_vi']
-
-  threelvl = IE.getNodesByMatching(zoneI, 'ZoneBC_t/BC_t/IndexArray_t')
-  assert [I.getName(node) for node in threelvl] == ['Index_i', 'Index_ii','Index_iii','Index_iv','Index_v','Index_vi']
-
-def test_getNodesWithParentsFromTypePath():
-  yt = """
-ZoneI Zone_t:
-  Ngon Elements_t [22,0]:
-  ZBCA ZoneBC_t:
-    bc1 BC_t:
-      Index_i IndexArray_t:
-    bc2 BC_t:
-      Index_ii IndexArray_t:
-  ZBCB ZoneBC_t:
-    bc3 BC_t:
-      Index_iii IndexArray_t:
-    bc4 BC_t:
-    bc5 BC_t:
-      Index_iv IndexArray_t:
-      Index_v IndexArray_t:
-      Index_vi IndexArray_t:
-"""
-  root = parse_yaml_cgns.to_complete_pytree(yt)
-  zoneI = I.getNodeFromName(root, 'ZoneI')
-  zbcB  = I.getNodeFromName(root, 'ZBCB' )
-
-  assert list(IE.getNodesWithParentsByMatching(zoneI, '')) == []
-  assert list(IE.getNodesWithParentsByMatching(zoneI, 'BC_t')) == []
-
-  onelvl = IE.getNodesWithParentsByMatching(zoneI, 'ZoneBC_t')
-  assert [I.getName(nodes[0]) for nodes in onelvl] == ['ZBCA', 'ZBCB']
-  onelvl = IE.getNodesWithParentsByMatching(zbcB, 'BC_t')
-  assert [I.getName(nodes[0]) for nodes in onelvl] == ['bc3', 'bc4', 'bc5']
-
-  twolvl = IE.getNodesWithParentsByMatching(zoneI, 'ZoneBC_t/BC_t')
-  assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in twolvl] == \
-      [('ZBCA', 'bc1'), ('ZBCA', 'bc2'), ('ZBCB', 'bc3'), ('ZBCB', 'bc4'), ('ZBCB', 'bc5')]
-  twolvl = IE.getNodesWithParentsByMatching(zbcB, 'BC_t/IndexArray_t')
-  for bc in I.getNodesFromType1(zbcB, 'BC_t'):
-    for idx in I.getNodesFromType1(bc, 'IndexArray_t'):
-      assert next(twolvl) == (bc, idx)
-
-  threelvl = IE.getNodesWithParentsByMatching(zoneI, 'ZoneBC_t/BC_t/IndexArray_t')
-  for zbc in I.getNodesFromType1(zoneI, 'ZoneBC_t'):
-    for bc in I.getNodesFromType1(zbc, 'BC_t'):
-      for idx in I.getNodesFromType1(bc, 'IndexArray_t'):
-        assert next(threelvl) == (zbc, bc, idx)
+  with pytest.raises(TypeError):
+    list(IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"], 12))
+  with pytest.raises(TypeError):
+    list(IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"], [reduce_name]))
 
 
 def test_getSubregionExtent():

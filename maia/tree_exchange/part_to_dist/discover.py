@@ -40,8 +40,7 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
         # Children
         childs = list()
         for query in child_list:
-          node = IE.getNodesDispatch1(leaf, query)
-          childs.extend(node)
+          childs.extend(IE.getNodesDispatch1(leaf, query))
         collected_part_nodes[leaf_path] = (labels, values, childs)
 
   for rank_node_path in comm.allgather(collected_part_nodes):

@@ -4,44 +4,48 @@ import Converter.Internal as I
 import maia.sids.cgns_keywords as CGK
 
 def isLabelFromString(label):
+  """
+  Return True if a string is a valid CGNS Label
+  """
   return isinstance(label, str) and ((label.endswith('_t') and label in CGK.Label.__members__) or label == '')
 
 def getValue(t):
+  """ Return the (raw) value of a node, without Cassiopee conversion """
   return t[1]
 
 def getNodesFromQuery1(node, query):
-    result = []
-    isStd = I.isStdNode(node)
-    if isStd >= 0:
-        for c in node[isStd:]:
-          getNodesFromQuery1__(c, query, result)
-    else:
-      getNodesFromQuery1__(node, query, result)
-    return result
+  """ Return the list of first level childs of node matching a given query (callable function)"""
+  result = []
+  isStd = I.isStdNode(node)
+  if isStd >= 0:
+    for c in node[isStd:]:
+      getNodesFromQuery1__(c, query, result)
+  else:
+    getNodesFromQuery1__(node, query, result)
+  return result
 
 def getNodesFromQuery1__(node, query, result):
-    if query(node):
-      result.append(node)
-    for c in node[2]:
-      if query(c):
-        result.append(c)
+  for c in node[2]:
+    if query(c):
+      result.append(c)
 
 def getNodesFromName1(node, name):
+  """ Return the list of first level childs matching a given name -- specialized shortcut for getNodesFromQuery1 """
   return getNodesFromQuery1(node, lambda n : fnmatch.fnmatch(n[0], name))
 
 def getNodesFromType1(node, label):
+  """ Return the list of first level childs matching a given label -- specialized shortcut for getNodesFromQuery1 """
   return getNodesFromQuery1(node, lambda n : n[3] == label)
 
 def getNodesFromValue1(node, value):
+  """ Return the list of first level childs matching a given value -- specialized shortcut for getNodesFromQuery1 """
   return getNodesFromQuery1(node, lambda n : np.array_equal(n[1], value))
 
 
 def getNodesDispatch1(node, query):
+  """ Interface to adapted getNodesFromXXX1 function depending of query type"""
   if isinstance(query, str):
-    if query.endswith('_t') and query in CGK.Label.__members__:
-      return getNodesFromType1(node, query)
-    else:
-      return getNodesFromName1(node, query)
+    return getNodesFromType1(node, query) if isLabelFromString(query) else getNodesFromName1(node, query)
   elif isinstance(query, CGK.Label):
     return getNodesFromType1(node, query.name)
   elif isinstance(query, np.ndarray):
