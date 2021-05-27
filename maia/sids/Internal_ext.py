@@ -13,45 +13,45 @@ def getValue(t):
   """ Return the (raw) value of a node, without Cassiopee conversion """
   return t[1]
 
-def getNodesFromQuery1(node, query):
+def getChildrenFromPredicate(node, query):
   """ Return the list of first level childs of node matching a given query (callable function)"""
   result = []
   isStd = I.isStdNode(node)
   if isStd >= 0:
     for c in node[isStd:]:
-      getNodesFromQuery1__(c, query, result)
+      getChildrenFromPredicate__(c, query, result)
   else:
-    getNodesFromQuery1__(node, query, result)
+    getChildrenFromPredicate__(node, query, result)
   return result
 
-def getNodesFromQuery1__(node, query, result):
+def getChildrenFromPredicate__(node, query, result):
   for c in node[2]:
     if query(c):
       result.append(c)
 
-def getNodesFromName1(node, name):
-  """ Return the list of first level childs matching a given name -- specialized shortcut for getNodesFromQuery1 """
-  return getNodesFromQuery1(node, lambda n : fnmatch.fnmatch(n[0], name))
+def getChildrenFromName(node, name):
+  """ Return the list of first level childs matching a given name -- specialized shortcut for getChildrenFromPredicate """
+  return getChildrenFromPredicate(node, lambda n : fnmatch.fnmatch(n[0], name))
 
-def getNodesFromType1(node, label):
-  """ Return the list of first level childs matching a given label -- specialized shortcut for getNodesFromQuery1 """
-  return getNodesFromQuery1(node, lambda n : n[3] == label)
+def getChildrenFromLabel(node, label):
+  """ Return the list of first level childs matching a given label -- specialized shortcut for getChildrenFromPredicate """
+  return getChildrenFromPredicate(node, lambda n : n[3] == label)
 
-def getNodesFromValue1(node, value):
-  """ Return the list of first level childs matching a given value -- specialized shortcut for getNodesFromQuery1 """
-  return getNodesFromQuery1(node, lambda n : np.array_equal(n[1], value))
+def getChildrenFromValue(node, value):
+  """ Return the list of first level childs matching a given value -- specialized shortcut for getChildrenFromPredicate """
+  return getChildrenFromPredicate(node, lambda n : np.array_equal(n[1], value))
 
 
 def getNodesDispatch1(node, query):
   """ Interface to adapted getNodesFromXXX1 function depending of query type"""
   if isinstance(query, str):
-    return getNodesFromType1(node, query) if isLabelFromString(query) else getNodesFromName1(node, query)
+    return getChildrenFromLabel(node, query) if isLabelFromString(query) else getChildrenFromName(node, query)
   elif isinstance(query, CGK.Label):
-    return getNodesFromType1(node, query.name)
+    return getChildrenFromLabel(node, query.name)
   elif isinstance(query, np.ndarray):
-    return getNodesFromValue1(node, query)
+    return getChildrenFromValue(node, query)
   elif callable(query):
-    return getNodesFromQuery1(node, query)
+    return getChildrenFromPredicate(node, query)
   else:
     raise TypeError("query must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
 
@@ -80,7 +80,7 @@ def getSubregionExtent(sub_region_n, zone):
 
 def getNodesByMatching(root, queries, applies=None):
   """Generator following queries, doing 1 level search using
-  getNodesFromType1 or getNodesFromName1. Equivalent to
+  getChildrenFromLabel or getChildrenFromName. Equivalent to
   (query = 'type1_t/name2/type3_t' or ['type1_t', 'name2', lambda n: I.getType(n) == CGL.type3_t.name] )
   for level1 in I.getNodesFromType1(root, type1_t):
     for level2 in I.getNodesFromName1(level1, name2):
