@@ -159,14 +159,14 @@ def get_center_cell_cloud(zone):
   coords = coords.reshape( 3*cx.shape[0], order='C')
 
   pdm_nodes     = I.getNodeFromName1(zone, ":CGNS#Ppart")
-  # vtx_coords    = I.getNodeFromName1(pdm_nodes, "np_vtx_coord")[1]
+  vtx_coords    = I.getNodeFromName1(pdm_nodes, "np_vtx_coord")[1]
   # cell_face_idx = I.getNodeFromName1(pdm_nodes, "np_cell_face_idx")[1]
   # cell_face     = I.getNodeFromName1(pdm_nodes, "np_cell_face")[1]
   cell_ln_to_gn = I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn")[1]
   # face_vtx_idx  = I.getNodeFromName1(pdm_nodes, "np_face_vtx_idx")[1]
   # face_vtx      = I.getNodeFromName1(pdm_nodes, "np_face_vtx")[1]
   # face_ln_to_gn = I.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn")[1]
-  # vtx_ln_to_gn  = I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn")[1]
+  vtx_ln_to_gn  = I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn")[1]
 
   n_cell = SIDS.zone_n_cell(zone)
   center_cell = np.empty(3*n_cell, dtype='double')
@@ -186,8 +186,6 @@ def get_center_cell_cloud(zone):
 
   # return vtx_coords, vtx_ln_to_gn
   return center_cell, cell_ln_to_gn
-
-
 
 # --------------------------------------------------------------------------
 def locate_meshb_in_meshb():
@@ -241,7 +239,7 @@ def setup_cloud_src_mesh(closest_point, dist_tree_src, part_tree_src):
 
     for i_part, part_zone in enumerate(part_zones):
       center_cell, cell_ln_to_gn = get_center_cell_cloud(part_zone)
-      closest_point.tgt_cloud_set(i_part, cell_ln_to_gn.shape[0], center_cell, cell_ln_to_gn)
+      closest_point.src_cloud_set(i_part, cell_ln_to_gn.shape[0], center_cell, cell_ln_to_gn)
 
     n_part[i_domain] = len(part_zones)
     i_domain =+ 1
@@ -268,6 +266,108 @@ def setup_target_mesh(mesh_loc, dist_tree_target, part_tree_target):
     i_domain =+ 1
 
 # --------------------------------------------------------------------------
+def setup_gnum_for_unlocated(mesh_loc, closest_point, dist_tree_target, part_tree_target, comm):
+  """
+  """
+  n_domain_target = len(I.getZones(dist_tree_target))
+  assert(n_domain_target == 1)
+
+  n_unlocated = 0
+  i_domain = 0
+  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_target, 'CGNSBase_t/Zone_t'):
+    # > Get the list of all partition in this domain
+    part_zones = te_utils.get_partitioned_zones(part_tree_target, I.getName(dist_base) + '/' + I.getName(dist_zone))
+
+
+    gen_gnum = PDM.GlobalNumbering(3, # Dimension
+                                   len(part_zones),
+                                   0, # Merge
+                                   0.,
+                                   comm)
+    assert(i_domain == 0)
+
+    for i_part, part_zone in enumerate(part_zones):
+
+      coords, ln_to_gn = get_target_zone_info(part_zone)
+      results_located   = mesh_loc.located_get(0, i_part)  # Necessary for no leaks in ParaDiGM
+      results_unlocated = mesh_loc.unlocated_get(0, i_part)
+
+      n_unlocated += results_unlocated.shape[0]
+
+      extract_coords   = EX.extract_from_indices(coords  , results_unlocated, 3, 1)
+      extract_ln_to_gn = EX.extract_from_indices(ln_to_gn, results_unlocated, 1, 1)
+
+      extract_n_points = extract_ln_to_gn.shape[0]
+      gen_gnum.gnum_set_from_parent(i_part, extract_n_points, extract_ln_to_gn)
+
+      pdm_nodes     = I.getNodeFromName1(part_zone, ":CGNS#Ppart")
+
+      # > Keep alive
+      I.newDataArray("unlocated_extract_coords"  , extract_coords  , parent=pdm_nodes)
+      I.newDataArray("unlocated_extract_ln_to_gn", extract_ln_to_gn, parent=pdm_nodes)
+      # I.newDataArray("unlocated_ln_to_gn", extract_ln_to_gn, parent=pdm_nodes)
+
+    gen_gnum.gnum_compute()
+
+    for i_part, part_zone in enumerate(part_zones):
+      sub_ln_to_gn = gen_gnum.gnum_get(i_part)
+      print("sub_ln_to_gn : ", sub_ln_to_gn)
+      pdm_nodes     = I.getNodeFromName1(part_zone, ":CGNS#Ppart")
+      I.newDataArray("unlocated_sub_ln_to_gn"  , sub_ln_to_gn["gnum"]  , parent=pdm_nodes)
+
+      extract_coords = I.getNodeFromName1(pdm_nodes, "unlocated_extract_coords")
+      closest_point.tgt_cloud_set(i_part, extract_n_points, I.getValue(extract_coords), sub_ln_to_gn["gnum"])
+
+    i_domain =+ 1
+
+# --------------------------------------------------------------------------
+def post_and_set_closest_result(closest_point, interp_from_mesh_loc, dist_tree_target, part_tree_target, comm):
+  """
+  CETTE METHODE EST COMPLETEMENT FAUSSE : On attend des modif dans le pdm_mesh_location
+  On prends l'arbre target en suposant que le source a exactment le même partitionnement !!!!!
+  """
+  n_domain_target = len(I.getZones(dist_tree_target))
+  assert(n_domain_target == 1)
+
+  n_unlocated = 0
+  i_domain = 0
+  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_target, 'CGNSBase_t/Zone_t'):
+    # > Get the list of all partition in this domain
+    part_zones = te_utils.get_partitioned_zones(part_tree_target, I.getName(dist_base) + '/' + I.getName(dist_zone))
+
+    assert(i_domain == 0)
+
+    results_closest = closest_point.points_get(0)
+    for i_part, part_zone in enumerate(part_zones):
+
+      i_part_src = i_part # C'est FAUX
+      results_tgt_in_src_closest = closest_point.tgt_in_src_get(i_part_src)
+
+      pdm_nodes       = I.getNodeFromName1(part_zone, ":CGNS#Ppart")
+      sub_ln_to_gn    = I.getNodeFromName1(pdm_nodes, "unlocated_sub_ln_to_gn")[1]
+      parent_ln_to_gn = I.getNodeFromName1(pdm_nodes, "unlocated_extract_ln_to_gn")[1]
+
+      # > Apply parent to result
+      PDM.transform_to_parent_gnum(results_tgt_in_src_closest["tgt_in_src"], sub_ln_to_gn, parent_ln_to_gn, comm) # Inplace !!!!!
+
+      I.newDataArray("tgt_in_src_idx", results_tgt_in_src_closest["tgt_in_src_idx"], parent=pdm_nodes)
+      I.newDataArray("tgt_in_src"    , results_tgt_in_src_closest["tgt_in_src"]    , parent=pdm_nodes)
+
+      interp_from_mesh_loc.points_in_elt_set(0, 0,
+                                             results_tgt_in_src_closest["tgt_in_src_idx"],
+                                             results_tgt_in_src_closest["tgt_in_src"],
+                                             None,
+                                             None,
+                                             None,
+                                             None,
+                                             None,
+                                             None)
+
+    i_domain =+ 1
+
+
+
+# --------------------------------------------------------------------------
 def setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_tree_target):
   """
   """
@@ -286,6 +386,7 @@ def setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_
 
       coords, ln_to_gn = get_target_zone_info(part_zone)
       n_points = ln_to_gn.shape[0]
+      results_located   = mesh_loc.located_get(0, i_part)  # Necessary for no leaks in ParaDiGM
       results_unlocated = mesh_loc.unlocated_get(0, i_part)
 
       n_unlocated += results_unlocated.shape[0]
@@ -295,13 +396,14 @@ def setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_
 
       # extract_ln_to_gn = ln_to_gn[results_unlocated]
       extract_n_points = extract_ln_to_gn.shape[0]
-      print("extract_coords   : ", extract_coords  )
-      print("extract_ln_to_gn : ", extract_ln_to_gn)
-      closest_point.src_cloud_set(i_part, extract_n_points, extract_coords, extract_ln_to_gn)
+      # print("extract_coords   : ", extract_coords  )
+      # print("extract_ln_to_gn : ", extract_ln_to_gn)
+      closest_point.tgt_cloud_set(i_part, extract_n_points, extract_coords, extract_ln_to_gn)
 
       pdm_nodes     = I.getNodeFromName1(part_zone, ":CGNS#Ppart")
+
       # > Keep alive
-      I.newDataArray("extract_coords", extract_coords, parent=pdm_nodes)
+      I.newDataArray("extract_coords"  , extract_coords  , parent=pdm_nodes)
       I.newDataArray("extract_ln_to_gn", extract_ln_to_gn, parent=pdm_nodes)
 
     i_domain =+ 1
@@ -345,6 +447,7 @@ def mesha_to_meshb(part_tree_src,
   setup_target_mesh(mesh_loc, dist_tree_target, part_tree_target)
 
   mesh_loc.tolerance_set(1.e-6)
+  # mesh_loc.tolerance_set(1.e-1)
 
   mesh_loc.compute()
 
@@ -361,29 +464,29 @@ def mesha_to_meshb(part_tree_src,
 
   # > Il ne faut pas faire le get 2 fois :/ ATTENTION
   results_unlocated = mesh_loc.unlocated_get(0, 0)
-  print("Unlocated size = ", results_unlocated.shape[0])
+  # print("Unlocated size = ", results_unlocated.shape[0])
   print(results_unlocated)
 
   n_unlocated = results_unlocated.shape[0]
 
   n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.MAX)
+  print(" n_tot_unlocated = ", n_tot_unlocated )
 
-  n_closest = 1
-  closest_point = PDM.ClosestPoints(comm, n_closest)
-  closest_point.n_part_cloud_set(1, 1) # Pour l'instant 1 part src et 1 part target
-  setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_tree_target)
-  # print()
+  if( n_tot_unlocated > 0):
+    n_closest = 1
+    closest_point = PDM.ClosestPoints(comm, n_closest)
+    closest_point.n_part_cloud_set(1, 1) # Pour l'instant 1 part src et 1 part target
 
-  # > Pour les target on doit faire que ceux qui n'ont pas été localisé (donc extractraction des précédement calculé )
-  setup_cloud_src_mesh(closest_point, dist_tree_src, part_tree_src)
+    # > Create a global numbering for unalocated point (inside cgns ... )
+    setup_gnum_for_unlocated(mesh_loc, closest_point, dist_tree_target, part_tree_target, comm)
 
-  closest_point.compute()
+    # setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_tree_target)
+    # print()
 
-  results_closest = closest_point.points_get(0)
-  for key, val in results_closest.items():
-    print(key, val)
+    # > Pour les target on doit faire que ceux qui n'ont pas été localisé (donc extractraction des précédement calculé )
+    setup_cloud_src_mesh(closest_point, dist_tree_src, part_tree_src)
 
-  return
+    closest_point.compute()
 
   # > Interpolation
   #    - For each part we have to compute a good interpolation for the point located
@@ -417,10 +520,22 @@ def mesha_to_meshb(part_tree_src,
 
   # print(len(list_part_data_in))
   results_interp = interp_from_mesh_loc.exch(0, list_part_data_in)
+  # print("Avant  : ", results_interp[0])
 
   # > Recall the interpolation but with the unlocated part
 
-  # results_interp = interp_from_mesh_loc.exch(0, list_part_data_in)
+  if( n_tot_unlocated > 0):
+    # results_closest = closest_point.points_get(0)
+    # for key, val in results_closest.items():
+    #   print(key, val)
+
+    # results_tgt_in_src_closest = closest_point.tgt_in_src_get(0)
+    # for key, val in results_tgt_in_src_closest.items():
+    #   print(key, val)
+
+    # > Closest give the abolute numbering in the cloud numebering of the unloacated =! The true cloud with all point localted and unlocated
+    post_and_set_closest_result(closest_point, interp_from_mesh_loc, dist_tree_target, part_tree_target, comm)
+    interp_from_mesh_loc.exch_inplace(0, list_part_data_in, results_interp)
 
   list_part_data_in = list()
   for zone in I.getZones(part_tree_target):
@@ -430,3 +545,26 @@ def mesha_to_meshb(part_tree_src,
     # fs = I.newFlowSolution("FlowSolution#Init", gridLocation='CellCenter', parent=zone)
 
     da = I.newDataArray(fs_name, results_interp[0], parent=fs)
+    # print(results_interp[0])
+
+    # > Remove holder
+    pdm_nodes     = I.getNodeFromName1(zone, ":CGNS#Ppart")
+    I._rmNodesByName(pdm_nodes, "extract_coords" )
+    I._rmNodesByName(pdm_nodes, "extract_ln_to_gn" )
+    I._rmNodesByName(pdm_nodes, "cell_center" )
+    I._rmNodesByName(pdm_nodes, "unlocated_extract_coords"   )
+    I._rmNodesByName(pdm_nodes, "unlocated_extract_ln_to_gn" )
+    I._rmNodesByName(pdm_nodes, "unlocated_sub_ln_to_gn"  )
+    I._rmNodesByName(pdm_nodes, "tgt_in_src_idx"  )
+    I._rmNodesByName(pdm_nodes, "tgt_in_src"      )
+
+  for zone in I.getZones(part_tree_src):
+    pdm_nodes     = I.getNodeFromName1(zone, ":CGNS#Ppart")
+    I._rmNodesByName(pdm_nodes, "extract_coords" )
+    I._rmNodesByName(pdm_nodes, "extract_ln_to_gn" )
+    I._rmNodesByName(pdm_nodes, "cell_center" )
+    I._rmNodesByName(pdm_nodes, "unlocated_extract_coords"   )
+    I._rmNodesByName(pdm_nodes, "unlocated_extract_ln_to_gn" )
+    I._rmNodesByName(pdm_nodes, "unlocated_sub_ln_to_gn"  )
+    I._rmNodesByName(pdm_nodes, "tgt_in_src_idx"  )
+    I._rmNodesByName(pdm_nodes, "tgt_in_src"      )
