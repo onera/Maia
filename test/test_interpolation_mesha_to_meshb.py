@@ -35,11 +35,11 @@ origin      = [0., 0., 0.]
 dist_tree_src    = DCG.dcube_generate(n_vtx, edge_length, origin, comm)
 
 # ---------------------------------------------------------
-n_vtx       = 4
+n_vtx       = 3
 edge_length = 1.
 origin      = [0., 0., 0.]
-origin      = [-0.75, 0., 0.]
-origin      = [-0.05, 0., 0.]
+# origin      = [-0.75, 0., 0.]
+origin      = [-1.05, -1.05, -1.05]
 dist_tree_target = DCG.dcube_generate(n_vtx, edge_length, origin, comm)
 
 # ---------------------------------------------------------
@@ -66,7 +66,7 @@ ITP.mesha_to_meshb(part_tree_src, part_tree_target, comm, order=0)
 
 # ---------------------------------------------------------
 # I.printTree(part_tree_target, "part_tree_target_{0}.txt".format(comm.Get_rank()))
-# SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
+SPT.save_part_tree(part_tree_src   , 'part_tree_src'   , comm)
 SPT.save_part_tree(part_tree_target, 'part_tree_target', comm)
 
 

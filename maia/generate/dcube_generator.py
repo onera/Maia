@@ -49,7 +49,8 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   dn_face = dcube_dims['dn_face']
 
   # > For Offset we have to shift to be global
-  eso = distrib_facevtx[i_rank] + dcube_val['dface_vtx_idx']
+  eso = np.empty(dcube_val['dface_vtx_idx'].shape[0], dtype=pdm_gnum_dtype)
+  eso[:] = distrib_facevtx[i_rank] + dcube_val['dface_vtx_idx']
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
   ngon_n = I.newElements('NGonElements', 'NGON',
