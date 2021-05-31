@@ -25,26 +25,6 @@ def test_ijk_to_facekIndex():
   assert s_numb.ijk_to_facekIndex(7,5,3,[7,5,3],[8,6,4]) == 351
   assert s_numb.ijk_to_facekIndex(7,5,4,[7,5,3],[8,6,4]) == 7+4*7+3*7*5+120+126
 
-def test_ijk_to_faceIndices():
-  assert s_numb.ijk_to_faceIndices(1,1,1,[7,5,3],[8,6,4]) == (  1,121,247)
-  assert s_numb.ijk_to_faceIndices(3,2,1,[7,5,3],[8,6,4]) == ( 11,130,256)
-  assert s_numb.ijk_to_faceIndices(7,5,3,[7,5,3],[8,6,4]) == (119,239,351)
-
-def test_compute_fi_from_ijk():
-  assert s_numb.compute_fi_from_ijk(5,4,3)    == ((5,4,3),(5,5,3),(5,5,4),(5,4,4),(4,4,3),(5,4,3))
-  assert s_numb.compute_fi_from_ijk(6,4,3,is_max=True) == ((6,4,3),(6,5,3),(6,5,4),(6,4,4),(5,4,3),0)
-  assert s_numb.compute_fi_from_ijk(1,4,3,is_min=True) == ((1,4,3),(1,4,4),(1,5,4),(1,5,3),(1,4,3),0)
-
-def test_compute_fj_from_ijk():
-  assert s_numb.compute_fj_from_ijk(5,4,3)    == ((5,4,3),(5,4,4),(6,4,4),(6,4,3),(5,3,3),(5,4,3))
-  assert s_numb.compute_fj_from_ijk(5,5,3,is_max=True) == ((5,5,3),(5,5,4),(6,5,4),(6,5,3),(5,4,3),0)
-  assert s_numb.compute_fj_from_ijk(5,1,3,is_min=True) == ((5,1,3),(6,1,3),(6,1,4),(5,1,4),(5,1,3),0)
-
-def test_compute_fk_from_ijk():
-  assert s_numb.compute_fk_from_ijk(5,4,3)    == ((5,4,3),(6,4,3),(6,5,3),(5,5,3),(5,4,2),(5,4,3))
-  assert s_numb.compute_fk_from_ijk(5,4,4,is_max=True) == ((5,4,4),(6,4,4),(6,5,4),(5,5,4),(5,4,3),0)
-  assert s_numb.compute_fk_from_ijk(5,4,1,is_min=True) == ((5,4,1),(5,5,1),(6,5,1),(6,4,1),(5,4,1),0)
-
 def test_PE_idx_from_i_face_idx():
   PE = s_numb.PE_idx_from_i_face_idx(np.arange(1,21), [4,2,2], [5,3,3])
   expected_pe = np.array([ 1,0,  1,2,   2,3,   3,4,   4,0,  5,0,    5,6,

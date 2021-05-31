@@ -36,74 +36,6 @@ def vtx_slab_to_n_faces(vtx_slab, n_vtx):
 ###############################################################################
 
 ###############################################################################
-def compute_all_ngon_connectivity(vtx_slab_l, n_vtx):
-  """
-  Compute the global numbering, the nodes and the cells linked to all face traited for
-  zone by a proc and fill create tabs :
-  face_gnum refers to global index of each face
-  face_vtx refers to face->vertex connectivity (NGon). Since the number of vertex for
-    each face is always 4, the face_vtx_idx array is not created here.
-  face_pe refers to the left and right parent cell of the each face.
-  Remark : all tabs are defined in the same way i.e. for the fth face, information are
-  located in face_gnum[f], face_vtx[4*f:4*(f+1)] and face_pe[f,:]
-  WARNING : (i,j,k) begins at (1,1,1)
-  """
-  n_face_per_slab = [vtx_slab_to_n_faces(slab, n_vtx) for slab in vtx_slab_l]
-  n_face_tot      = sum([n_face_slab.sum() for n_face_slab in n_face_per_slab])
-  face_gnum     = np.empty(  n_face_tot, dtype=pdm_gnum_dtype)
-  face_vtx      = np.empty(4*n_face_tot, dtype=pdm_gnum_dtype)
-  face_pe       = np.empty((n_face_tot, 2), order='F', dtype=pdm_gnum_dtype)
-  n_cell = n_vtx - 1
-  counter = 0
-  for i_slab, vtx_slab in enumerate(vtx_slab_l):
-    iS,iE, jS,jE, kS,kE = [item+1 for bounds in vtx_slab for item in bounds]
-    isup = iE - int(iE == n_vtx[0]+1)
-    jsup = jE - int(jE == n_vtx[1]+1)
-    ksup = kE - int(kE == n_vtx[2]+1)
-
-    n_faces = n_face_per_slab[i_slab]
-
-    #Do 3 loops to remove if test
-    start = counter
-    end   = start + n_faces[0]
-    i_ar  = np.arange(iS,iE).reshape(-1,1,1)
-    j_ar  = np.arange(jS,jsup).reshape(-1,1)
-    k_ar  = np.arange(kS,ksup)
-
-    face_gnum[start:end]    = s_numb.ijk_to_faceiIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
-    face_pe[start:end]      = s_numb.PE_idx_from_i_face_idx(face_gnum[start:end], n_cell, n_vtx)
-    face_vtx[4*start:4*end] = s_numb.facevtx_from_i_face_idx(face_gnum[start:end], n_cell, n_vtx)
-    counter += n_faces[0]
-
-    #Shift ifaces (shift is global for zone)
-    shift = n_vtx[0]*(n_cell[1]*n_cell[2])
-    start = counter
-    end   = start + n_faces[1]
-    i_ar  = np.arange(iS,isup).reshape(-1,1,1)
-    j_ar  = np.arange(jS,jE).reshape(-1,1)
-    k_ar  = np.arange(kS,ksup)
-    
-    face_gnum[start:end]    = s_numb.ijk_to_facejIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
-    face_pe[start:end]      = s_numb.PE_idx_from_j_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
-    face_vtx[4*start:4*end] = s_numb.facevtx_from_j_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
-    counter += n_faces[1]
-
-    shift += n_vtx[1]*(n_cell[0]*n_cell[2])
-    start = counter
-    end   = start + n_faces[2]
-    i_ar  = np.arange(iS,isup).reshape(-1,1,1)
-    j_ar  = np.arange(jS,jsup).reshape(-1,1)
-    k_ar  = np.arange(kS,kE)
-
-    face_gnum[start:end]    = s_numb.ijk_to_facekIndex(i_ar,j_ar,k_ar,n_cell,n_vtx).flatten()
-    face_pe[start:end]      = s_numb.PE_idx_from_k_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
-    face_vtx[4*start:4*end] = s_numb.facevtx_from_k_face_idx(face_gnum[start:end]-shift, n_cell, n_vtx)
-    counter += n_faces[2]
-
-  return face_gnum, face_vtx, face_pe
-###############################################################################
-
-###############################################################################
 def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_index=None):
   """
   Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must
@@ -393,26 +325,11 @@ def zonedims_to_ngon(n_vtx_zone, comm):
     bounds[2] = min(face_distri[1], nf_i + nf_j)
   bounds[3] = face_distri[1]
 
-  bounds_l = bounds - face_distri[0]
+  assert bounds[3]-bounds[0] == n_face_loc
 
-  face_pe  = np.empty((n_face_loc, 2), order='F', dtype=pdm_gnum_dtype)
-  face_vtx = np.empty(4*n_face_loc, dtype=pdm_gnum_dtype)
-
-  i_faces_gnum = np.arange(bounds[0], bounds[1])+1
-  face_vtx[4*bounds_l[0]:4*bounds_l[1]] = s_numb.facevtx_from_i_face_idx(i_faces_gnum, n_cell_zone, n_vtx_zone)
-  face_pe [  bounds_l[0]:  bounds_l[1]] = s_numb.PE_idx_from_i_face_idx (i_faces_gnum, n_cell_zone, n_vtx_zone)
-
-  j_faces_gnum = np.arange(bounds[1], bounds[2])+1
-  shift = nf_i
-  face_vtx[4*bounds_l[1]:4*bounds_l[2]] = s_numb.facevtx_from_j_face_idx(j_faces_gnum-shift, n_cell_zone, n_vtx_zone)
-  face_pe [  bounds_l[1]  :bounds_l[2]] = s_numb.PE_idx_from_j_face_idx (j_faces_gnum-shift, n_cell_zone, n_vtx_zone)
-
-  k_faces_gnum = np.arange(bounds[2], bounds[3])+1
-  shift += nf_j
-  face_vtx[4*bounds_l[2]:4*bounds_l[3]] = s_numb.facevtx_from_k_face_idx(k_faces_gnum-shift, n_cell_zone, n_vtx_zone)
-  face_pe [  bounds_l[2]:  bounds_l[3]] = s_numb.PE_idx_from_k_face_idx (k_faces_gnum-shift, n_cell_zone, n_vtx_zone)
 
   face_vtx_idx = 4*np.arange(face_distri[0], face_distri[1]+1, dtype=pdm_gnum_dtype)
+  face_vtx, face_pe = s_numb.ngon_dconnectivity_from_gnum(bounds+1,n_cell_zone, pdm_gnum_dtype)
 
   ngon = I.newElements('NGonElements', 'NGON', face_vtx, [1, n_face_tot])
   I.newDataArray("ElementStartOffset", face_vtx_idx, parent=ngon)
