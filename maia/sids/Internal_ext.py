@@ -15,19 +15,7 @@ def getValue(t):
 
 def getChildrenFromPredicate(node, query):
   """ Return the list of first level childs of node matching a given query (callable function)"""
-  result = []
-  isStd = I.isStdNode(node)
-  if isStd >= 0:
-    for c in node[isStd:]:
-      getChildrenFromPredicate__(c, query, result)
-  else:
-    getChildrenFromPredicate__(node, query, result)
-  return result
-
-def getChildrenFromPredicate__(node, query, result):
-  for c in node[2]:
-    if query(c):
-      result.append(c)
+  return [c for c in node[2] if query(c)] if node else []
 
 def getChildrenFromName(node, name):
   """ Return the list of first level childs matching a given name -- specialized shortcut for getChildrenFromPredicate """
@@ -78,7 +66,7 @@ def getSubregionExtent(sub_region_n, zone):
   raise ValueError("ZoneSubRegion {0} has no valid extent".format(I.getName(sub_region_n)))
 
 
-def getNodesByMatching(root, queries, applies=None):
+def getNodesByMatching(root, queries):
   """Generator following queries, doing 1 level search using
   getChildrenFromLabel or getChildrenFromName. Equivalent to
   (query = 'type1_t/name2/type3_t' or ['type1_t', 'name2', lambda n: I.getType(n) == CGL.type3_t.name] )
@@ -96,33 +84,18 @@ def getNodesByMatching(root, queries, applies=None):
   else:
     raise TypeError("getNodesByMatching: queries must be a sequence or a path as with strings separated by '/'.")
 
-  apply_list = [None]*len(query_list)
-  if applies:
-    if isinstance(applies, dict):
-      for k,v in applies.items():
-        apply_list[k] = v
-    elif isinstance(applies, (list, tuple)):
-      if len(applies) != len(query_list):
-        raise TypeError(f"applies list ['{len(applies)}'] must be the same length as queries length ['{len(query_list)}'].")
-      apply_list = applies
-    else:
-      raise TypeError("getNodesByMatching: applies must be a sequence or a dict.")
+  yield from getNodesByMatching__(root, query_list)
 
-  yield from getNodesByMatching__(root, query_list, apply_list)
-
-def getNodesByMatching__(root, query_list, apply_list):
+def getNodesByMatching__(root, query_list):
   if len(query_list) > 1:
     next_roots = getNodesDispatch1(root, query_list[0])
     for node in next_roots:
-      if apply_list[0]:
-        node = apply_list[0](node)
-      yield from getNodesByMatching__(node, query_list[1:], apply_list[1:])
+      yield from getNodesByMatching__(node, query_list[1:])
   elif len(query_list) == 1:
-    nodes = getNodesDispatch1(root, query_list[0])
-    yield from [apply_list[0](n) if apply_list[0] else n for n in nodes]
+    yield from getNodesDispatch1(root, query_list[0])
 
 
-def getNodesWithParentsByMatching(root, queries, applies=None):
+def getNodesWithParentsByMatching(root, queries):
   """Same than getNodesByMatching, but return
   a tuple of size len(queries) containing the node and its parents
   """
@@ -135,35 +108,17 @@ def getNodesWithParentsByMatching(root, queries, applies=None):
   else:
     raise TypeError("getNodesWithParentsByMatching: queries must be a sequence or a path with strings separated by '/'.")
 
-  apply_list = [None]*len(query_list)
-  if applies:
-    if isinstance(applies, dict):
-      for k,v in applies.items():
-        apply_list[k] = v
-    elif isinstance(applies, (list, tuple)):
-      if len(applies) != len(query_list):
-        raise TypeError(f"applies list ['{len(applies)}'] must be the same length as queries length ['{len(query_list)}'].")
-      apply_list = applies
-    else:
-      raise TypeError("getNodesWithParentsByMatching: applies must be a sequence or a dict.")
+  yield from getNodesWithParentsByMatching__(root, query_list)
 
-  # query_list = query_path.split('/')
-  # getNodes1 = I.getNodesFromType1 if query_list[0][-2:] == '_t' else I.getNodesFromName1
-  yield from getNodesWithParentsByMatching__(root, query_list, apply_list)
-
-def getNodesWithParentsByMatching__(root, query_list, apply_list):
+def getNodesWithParentsByMatching__(root, query_list):
   if len(query_list) > 1:
     next_roots = getNodesDispatch1(root, query_list[0])
     for node in next_roots:
-      if apply_list[0]:
-        node = apply_list[0](node)
-      for subnode in getNodesWithParentsByMatching__(node, query_list[1:], apply_list[1:]):
+      for subnode in getNodesWithParentsByMatching__(node, query_list[1:]):
         yield (node, *subnode)
   elif len(query_list) == 1:
     nodes =  getNodesDispatch1(root, query_list[0])
     for node in nodes:
-      if apply_list[0]:
-        node = apply_list[0](node)
       yield (node,)
 
 

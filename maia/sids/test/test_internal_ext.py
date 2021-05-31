@@ -50,30 +50,30 @@ Base CGNSBase_t:
   # I.printTree(tree)
 
   # Test from Name
-  bases = I.getBases(tree)
-  nodes_from_name1 = I.getNodesFromName1(bases, "ZoneI")
-  assert IE.getChildrenFromPredicate(bases, lambda n: I.getName(n) == "ZoneI") == nodes_from_name1
+  base = I.getBases(tree)[0]
+  nodes_from_name1 = I.getNodesFromName1(base, "ZoneI")
+  assert IE.getChildrenFromPredicate(base, lambda n: I.getName(n) == "ZoneI") == nodes_from_name1
   # Wildcard is not allowed in getNodesFromName1() from Cassiopee
-  assert I.getNodesFromName1(bases, "Zone*") == []
-  assert IE.getChildrenFromPredicate(bases, lambda n: fnmatch.fnmatch(I.getName(n), "Zone*")) == nodes_from_name1
-  assert IE.getChildrenFromName(bases, "Zone*") == nodes_from_name1
+  assert I.getNodesFromName1(base, "Zone*") == []
+  assert IE.getChildrenFromPredicate(base, lambda n: fnmatch.fnmatch(I.getName(n), "Zone*")) == nodes_from_name1
+  assert IE.getChildrenFromName(base, "Zone*") == nodes_from_name1
   #Exclude top level which is included by Cassiopée
-  assert IE.getChildrenFromName(bases[0], "Base") == []
+  assert IE.getChildrenFromName(base[0], "Base") == []
 
   # Test from Type
-  nodes_from_type1 = I.getNodesFromType1(bases, CGL.Zone_t.name)
-  assert IE.getChildrenFromPredicate(bases, lambda n: I.getType(n) == CGL.Zone_t.name) == nodes_from_type1
-  assert IE.getChildrenFromLabel(bases, CGL.Zone_t.name) == nodes_from_type1
+  nodes_from_type1 = I.getNodesFromType1(base, CGL.Zone_t.name)
+  assert IE.getChildrenFromPredicate(base, lambda n: I.getType(n) == CGL.Zone_t.name) == nodes_from_type1
+  assert IE.getChildrenFromLabel(base, CGL.Zone_t.name) == nodes_from_type1
 
   # Test from Value
-  zones = I.getZones(tree)
+  zone = I.getZones(tree)[0]
   ngon_value = np.array([22,0], dtype=np.int32)
-  elements_from_type_value1 = [n for n in I.getNodesFromType1(zones, CGL.Elements_t.name) if np.array_equal(IE.getValue(n), ngon_value)]
-  assert IE.getChildrenFromPredicate(zones, lambda n: I.getType(n) == CGL.Elements_t.name and np.array_equal(IE.getValue(n), ngon_value)) == elements_from_type_value1
-  assert IE.getChildrenFromValue(zones, ngon_value) == elements_from_type_value1
+  elements_from_type_value1 = [n for n in I.getNodesFromType1(zone, CGL.Elements_t.name) if np.array_equal(IE.getValue(n), ngon_value)]
+  assert IE.getChildrenFromPredicate(zone, lambda n: I.getType(n) == CGL.Elements_t.name and np.array_equal(IE.getValue(n), ngon_value)) == elements_from_type_value1
+  assert IE.getChildrenFromValue(zone, ngon_value) == elements_from_type_value1
 
-  zonebcs_from_type_name1 = [n for n in I.getNodesFromType1(zones, CGL.ZoneBC_t.name) if I.getName(n) != "ZBCA"]
-  assert IE.getChildrenFromPredicate(zones, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA") == zonebcs_from_type_name1
+  zonebcs_from_type_name1 = [n for n in I.getNodesFromType1(zone, CGL.ZoneBC_t.name) if I.getName(n) != "ZBCA"]
+  assert IE.getChildrenFromPredicate(zone, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA") == zonebcs_from_type_name1
 
 def test_getNodesDispatch1():
   fs = I.newFlowSolution()
@@ -145,40 +145,6 @@ ZoneI Zone_t:
 
   with pytest.raises(TypeError):
     list(IE.getNodesByMatching(zoneI, 12))
-
-def test_getNodesByMatchingApplies():
-  yt = """
-Base CGNSBase_t:
-  ZoneI.P0.N0 Zone_t:
-    Ngon Elements_t [22,0]:
-  ZoneI.P1.N0 Zone_t:
-    Ngon Elements_t [22,0]:
-"""
-  root = parse_yaml_cgns.to_complete_pytree(yt)
-
-  zones = IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"])
-  # print(f"zones = {[I.getName(node) for node in zones]}")
-  assert [I.getName(node) for node in zones] == ["ZoneI.P0.N0", "ZoneI.P1.N0"]
-
-  def reduce_name(n):
-    name = I.getName(n)
-    new_name = p.search(name).group(1)
-    I.setName(n, new_name)
-    return n
-
-  p = re.compile('([a-zA-Z0-9_]*)(\\.P[0-9]*)(\\.N[0-9]*)')
-  zones = IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"], {1:reduce_name})
-  # print(f"zones = {[I.getName(node) for node in zones]}")
-  assert [I.getName(node) for node in zones] == ["ZoneI", "ZoneI"]
-
-  root = parse_yaml_cgns.to_complete_pytree(yt)
-  zones = IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"], [None, reduce_name])
-  assert [I.getName(node) for node in zones] == ["ZoneI", "ZoneI"]
-
-  with pytest.raises(TypeError):
-    list(IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"], 12))
-  with pytest.raises(TypeError):
-    list(IE.getNodesByMatching(root, ["CGNSBase_t", "Zone_t"], [reduce_name]))
 
 def test_getNodesWithParentsByMatching():
   yt = """
@@ -264,41 +230,6 @@ ZoneI Zone_t:
 
   with pytest.raises(TypeError):
     list(IE.getNodesWithParentsByMatching(zoneI, 12))
-
-def test_getNodesByParentsMatchingApplies():
-  yt = """
-Base CGNSBase_t:
-  ZoneI.P0.N0 Zone_t:
-    Ngon Elements_t [22,0]:
-  ZoneI.P1.N0 Zone_t:
-    Ngon Elements_t [22,0]:
-"""
-  root = parse_yaml_cgns.to_complete_pytree(yt)
-
-  zones = IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"])
-  # print(f"zones = {[(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones]}")
-  assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones] == [("Base", "ZoneI.P0.N0"), ("Base", "ZoneI.P1.N0")]
-
-  def reduce_name(n):
-    name = I.getName(n)
-    new_name = p.search(name).group(1)
-    I.setName(n, new_name)
-    return n
-
-  p = re.compile('([a-zA-Z0-9_]*)(\\.P[0-9]*)(\\.N[0-9]*)')
-  zones = IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"], {1:reduce_name})
-  # print(f"zones = {[(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones]}")
-  assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones] == [("Base", "ZoneI"), ("Base", "ZoneI")]
-
-  root = parse_yaml_cgns.to_complete_pytree(yt)
-  zones = IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"], [None, reduce_name])
-  assert [(I.getName(nodes[0]), I.getName(nodes[1])) for nodes in zones] == [("Base", "ZoneI"), ("Base", "ZoneI")]
-
-  with pytest.raises(TypeError):
-    list(IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"], 12))
-  with pytest.raises(TypeError):
-    list(IE.getNodesWithParentsByMatching(root, ["CGNSBase_t", "Zone_t"], [reduce_name]))
-
 
 def test_getSubregionExtent():
   yt = """
