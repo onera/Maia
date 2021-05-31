@@ -1,10 +1,9 @@
-#include "maia/cgns_registry/cgns_keywords.hpp"
+#include "maia/sids/cgns_keywords.hpp"
 
-
-// Coordinate system
-// ------------------
 namespace CGNS {
   namespace Name {
+    // Coordinate system
+    // ------------------
     const char* GridCoordinates        = "GridCoordinates";
     const char* CoordinateNames        = "CoordinateNames";
     const char* CoordinateX            = "CoordinateX";
@@ -25,14 +24,10 @@ namespace CGNS {
     const char* ParentElements         = "ParentElements";
     const char* ParentElementsPosition = "ParentElementsPosition";
     const char* ElementSizeBoundary    = "ElementSizeBoundary";
-  };
-};
 
-// FlowSolution Quantities
-// ------------------------
-// Patterns
-namespace CGNS {
-  namespace Name {
+    // FlowSolution Quantities
+    // ------------------------
+    // Patterns
     const char* VectorX_p                       = "%sX";
     const char* VectorY_p                       = "%sY";
     const char* VectorZ_p                       = "%sZ";
@@ -149,13 +144,9 @@ namespace CGNS {
     const char* LorentzForceZ                   = "LorentzForceZ";
     const char* ElectricConductivity            = "ElectricConductivity";
     const char* JouleHeating                    = "JouleHeating";
-  };
-};
 
-// Typical Turbulence Models
-// --------------------------
-namespace CGNS {
-  namespace Name {
+    // Typical Turbulence Models
+    // --------------------------
     const char* TurbulentDistance             = "TurbulentDistance";
     const char* TurbulentEnergyKinetic        = "TurbulentEnergyKinetic";
     const char* TurbulentDissipation          = "TurbulentDissipation";
@@ -166,13 +157,9 @@ namespace CGNS {
     const char* TurbulentEnergyKineticDensity = "TurbulentEnergyKineticDensity";
     const char* TurbulentDissipationDensity   = "TurbulentDissipationDensity";
     const char* TurbulentSANuTildeDensity     = "TurbulentSANuTildeDensity";
-  };
-};
 
-// Nondimensional Parameters
-// --------------------------
-namespace CGNS {
-  namespace Name {
+    // Nondimensional Parameters
+    // --------------------------
     const char* Mach                         = "Mach";
     const char* Mach_Velocity                = "Mach_Velocity";
     const char* Mach_VelocitySound           = "Mach_VelocitySound";
@@ -191,13 +178,9 @@ namespace CGNS {
     const char* CoefSkinFrictionZ            = "CoefSkinFrictionZ";
     const char* Coef_PressureDynamic         = "Coef_PressureDynamic";
     const char* Coef_PressureReference       = "Coef_PressureReference";
-  };
-};
 
-// Characteristics and Riemann invariant
-// --------------------------------------
-namespace CGNS {
-  namespace Name {
+    // Characteristics and Riemann invariant
+    // --------------------------------------
     const char* Vorticity                   = "Vorticity";
     const char* Acoustic                    = "Acoustic";
     const char* RiemannInvariantPlus        = "RiemannInvariantPlus";
@@ -207,13 +190,9 @@ namespace CGNS {
     const char* CharacteristicVorticity2    = "CharacteristicVorticity2";
     const char* CharacteristicAcousticPlus  = "CharacteristicAcousticPlus";
     const char* CharacteristicAcousticMinus = "CharacteristicAcousticMinus";
-  };
-};
 
-// Forces and Moments
-// -------------------
-namespace CGNS {
-  namespace Name {
+    // Forces and Moments
+    // -------------------
     const char* ForceX               = "ForceX";
     const char* ForceY               = "ForceY";
     const char* ForceZ               = "ForceZ";
@@ -247,13 +226,9 @@ namespace CGNS {
     const char* CoefMomentZeta       = "CoefMomentZeta";
     const char* Coef_Area            = "Coef_Area";
     const char* Coef_Length          = "Coef_Length";
-  };
-};
 
-// Time dependent flow
-// --------------------
-namespace CGNS {
-  namespace Name {
+    // Time dependent flow
+    // -------------------
     const char* TimeValues                   = "TimeValues";
     const char* IterationValues              = "IterationValues";
     const char* NumberOfZones                = "NumberOfZones";
@@ -269,9 +244,9 @@ namespace CGNS {
     const char* ZoneGridConnectivityPointers = "ZoneGridConnectivityPointers";
     const char* ZoneSubRegionPointers        = "ZoneSubRegionPointers";
     const char* OriginLocation               = "OriginLocation";
-    const char* Rig_idRotationAngle           = "Rig_idRotationAngle";
-    const char* Rig_idVelocity                = "Rig_idVelocity";
-    const char* Rig_idRotationRate            = "Rig_idRotationRate";
+    const char* RigidRotationAngle           = "RigidRotationAngle";
+    const char* RigidVelocity                = "RigidVelocity";
+    const char* RigidRotationRate            = "RigidRotationRate";
     const char* GridVelocityX                = "GridVelocityX";
     const char* GridVelocityY                = "GridVelocityY";
     const char* GridVelocityZ                = "GridVelocityZ";
@@ -281,13 +256,9 @@ namespace CGNS {
     const char* GridVelocityXi               = "GridVelocityXi";
     const char* GridVelocityEta              = "GridVelocityEta";
     const char* GridVelocityZeta             = "GridVelocityZeta";
-  };
-};
 
-// Miscellanous
-// -------------
-namespace CGNS {
-  namespace Name {
+    // Miscellanous
+    // ------------
     const char* CGNSLibraryVersion         = "CGNSLibraryVersion";
     const char* CellDimension              = "CellDimension";
     const char* IndexDimension             = "IndexDimension";
@@ -335,14 +306,6 @@ namespace CGNS {
     const char* BCTypeSimple               = "BCTypeSimple";
     const char* BCTypeCompound             = "BCTypeCompound";
     const char* ElementRangeList           = "ElementRangeList";
-  };
-};
-
-//The strings defined below are type names used for node labels
-//#############################################################
-
-// Types as strings
-// -----------------
-
-
+  }; /// End of Name namespace
+}; /// End of CGNS namespace
 

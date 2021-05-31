@@ -13,7 +13,6 @@ cgns_registry make_cgns_registry(const cgns_paths_by_label& paths, py::object mp
   return cgns_registry(paths, maia::mpi4py_comm_to_comm(mpi4py_obj));
 }
 
-
 PYBIND11_MODULE(cgns_registry, m) {
   m.doc() = "pybind11 utils for cgns_registry plugin"; // optional module docstring
 
@@ -38,11 +37,11 @@ PYBIND11_MODULE(cgns_registry, m) {
         "Some doc here");
 
   m.def("get_global_id_from_path_and_type",
-        py::overload_cast<const cgns_registry&, std::string, CGNS::Label::kind>(get_global_id_from_path_and_type),
+        py::overload_cast<const cgns_registry&, std::string, CGNS::Label>(get_global_id_from_path_and_type),
         "Some doc here");
 
   m.def("get_path_from_global_id_and_type",
-        py::overload_cast<const cgns_registry&, int, CGNS::Label::kind>(get_path_from_global_id_and_type),
+        py::overload_cast<const cgns_registry&, int, CGNS::Label>(get_path_from_global_id_and_type),
         "Some doc here");
 
   m.def("get_global_id_from_path_and_type",
@@ -52,5 +51,4 @@ PYBIND11_MODULE(cgns_registry, m) {
   m.def("get_path_from_global_id_and_type",
         py::overload_cast<const cgns_registry&, int, std::string>(get_path_from_global_id_and_type),
         "Some doc here");
-
 }

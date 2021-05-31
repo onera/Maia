@@ -20,7 +20,7 @@ def collect_distributed_pl(dist_zone, type_paths, filter_loc=None):
   """
   point_lists = []
   for type_path in type_paths:
-    for node in IE.getNodesFromTypePath(dist_zone, type_path):
+    for node in IE.getNodesByMatching(dist_zone, type_path):
       if filter_loc is None or SIDS.GridLocation(node) in filter_loc:
         pl_n = I.getNodeFromName1(node, 'PointList')
         pr_n = I.getNodeFromName1(node, 'PointRange')
@@ -38,7 +38,7 @@ def collect_distributed_pl(dist_zone, type_paths, filter_loc=None):
 def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
   i_pl = 0
   for pl_path in pl_pathes:
-    for nodes in IE.getNodesWithParentsFromTypePath(dist_zone, pl_path):
+    for nodes in IE.getNodesWithParentsByMatching(dist_zone, pl_path):
       ancestors, node = nodes[:-1], nodes[-1]
       if SIDS.GridLocation(node) in locations:
         pl_n = I.getNodeFromName1(node, 'PointList')

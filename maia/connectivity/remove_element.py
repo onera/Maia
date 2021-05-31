@@ -38,7 +38,7 @@ def remove_element(zone, element):
   subset_pathes = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneGridConnectivity_t/GridConnectivity_t',\
                    'FlowSolution_t', 'ZoneSubRegion_t']
   for subset_path in subset_pathes:
-    for subset in IE.getNodesFromTypePath(zone, subset_path):
+    for subset in IE.getNodesByMatching(zone, subset_path):
       pl_n = I.getNodeFromName1(subset, 'PointList')
       if sids.GridLocation(subset) != 'Vertex' and pl_n is not None:
         pl = pl_n[1]

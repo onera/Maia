@@ -38,12 +38,12 @@ def get_pl_donor(dist_zones, part_zones, comm):
   nb_face_in_joins = np.zeros(n_unique_jn, np.int32)
   gc_type_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
   for d_zone in dist_zones:
-    for gc in IE.getNodesFromTypePath(d_zone, gc_type_path):
+    for gc in IE.getNodesByMatching(d_zone, gc_type_path):
       gc_id     = I.getNodeFromName1(gc, 'Ordinal'   )[1][0] - 1
       gc_id_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0] - 1
       if (gc_id < gc_id_opp):
         nb_face_in_joins[join_to_ref[gc_id]] = te_utils.get_cgns_distribution(gc, 'Index')[2]
-        
+
   face_in_join_offset = py_utils.sizes_to_indices(nb_face_in_joins)
 
   shifted_lntogn = list()
@@ -51,7 +51,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
   for p_zone in part_zones:
     d_zone_name = conv.get_part_prefix(I.getName(p_zone))
     i_proc, i_part = conv.get_part_suffix(I.getName(p_zone))
-    for gc in IE.getNodesFromTypePath(p_zone, gc_type_path):
+    for gc in IE.getNodesByMatching(p_zone, gc_type_path):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         gc_id = I.getNodeFromName1(gc, 'Ordinal')[1][0] - 1
         lngn = IE.getGlobalNumbering(gc, 'Index')
@@ -61,7 +61,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
         part_data['irank'].append(i_proc*np.ones(pl.size, dtype=pl.dtype))
         part_data['ipart'].append(i_part*np.ones(pl.size, dtype=pl.dtype))
 
-  PTB = PDM.PartToBlock(comm, shifted_lntogn, pWeight=None, partN=len(shifted_lntogn), 
+  PTB = PDM.PartToBlock(comm, shifted_lntogn, pWeight=None, partN=len(shifted_lntogn),
                         t_distrib=0, t_post=0, t_stride=0)
   distribution = PTB.getDistributionCopy()
 
@@ -79,7 +79,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
   i_join = 0
   for p_zone in part_zones:
     i_rank, i_part = conv.get_part_suffix(I.getName(p_zone))
-    for gc in IE.getNodesFromTypePath(p_zone, gc_type_path):
+    for gc in IE.getNodesByMatching(p_zone, gc_type_path):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         pl = I.getNodeFromName1(gc, 'PointList')[1][0]
         opp_pl   = np.empty_like(pl)
