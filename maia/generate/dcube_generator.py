@@ -7,12 +7,14 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
 from maia.utils.parallel                     import utils          as par_utils
 from maia.sids                               import elements_utils as EU
+from maia.connectivity                       import connectivity_transform as CNT
 
 import maia.distribution.distribution_function as MID
 
 import numpy as np
 
 import Pypdm.Pypdm as PDM
+from mpi4py import MPI
 
 # --------------------------------------------------------------------------
 def dcube_generate(n_vtx, edge_length, origin, comm):
@@ -41,9 +43,13 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
 
   # > Grid coordinates
   grid_coord = I.newGridCoordinates(parent=dist_zone)
-  I.newDataArray('CoordinateX', dcube_val['dvtx_coord'][0::3], parent=grid_coord)
-  I.newDataArray('CoordinateY', dcube_val['dvtx_coord'][1::3], parent=grid_coord)
-  I.newDataArray('CoordinateZ', dcube_val['dvtx_coord'][2::3], parent=grid_coord)
+  # I.newDataArray('CoordinateX', dcube_val['dvtx_coord'][0::3], parent=grid_coord)
+  # I.newDataArray('CoordinateY', dcube_val['dvtx_coord'][1::3], parent=grid_coord)
+  # I.newDataArray('CoordinateZ', dcube_val['dvtx_coord'][2::3], parent=grid_coord)
+  cx, cy, cz = CNT.interlace_to_interleave_coord(dcube_val['dvtx_coord'])
+  I.newDataArray('CoordinateX', cx, parent=grid_coord)
+  I.newDataArray('CoordinateY', cy, parent=grid_coord)
+  I.newDataArray('CoordinateZ', cz, parent=grid_coord)
 
   # > NGon node
   dn_face = dcube_dims['dn_face']
@@ -102,6 +108,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
 
   t_elmt = EU.cgns_elt_name_to_pdm_element_type(cgns_elmt_type)
 
+  # t1 = MPI.Wtime()
   dcube = PDM.DCubeNodalGenerator(n_vtx, edge_length, *origin, t_elmt, comm)
 
   dmesh_nodal = dcube.get_dmesh_nodal()
@@ -109,17 +116,34 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
   sections    = dmesh_nodal.dmesh_nodal_get_sections(comm)
   groups      = dmesh_nodal.dmesh_nodal_get_group()
 
+  # t2 = MPI.Wtime()
+  # delta_t = t2 - t1
+  # if(i_rank == 0):
+  #   print("Compute = ", delta_t)
+
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
   dist_base = I.newCGNSBase(parent=dist_tree)
   dist_zone = I.newZone('zone', [[g_dims["n_vtx_abs"], g_dims["n_cell_abs"], 0]],
                         'Unstructured', parent=dist_base)
 
+  # t1 = MPI.Wtime()
   # > Grid coordinates
   grid_coord = I.newGridCoordinates(parent=dist_zone)
-  I.newDataArray('CoordinateX', sections['vtx']['np_vtx'][0::3], parent=grid_coord)
-  I.newDataArray('CoordinateY', sections['vtx']['np_vtx'][1::3], parent=grid_coord)
-  I.newDataArray('CoordinateZ', sections['vtx']['np_vtx'][2::3], parent=grid_coord)
+  # I.newDataArray('CoordinateX', sections['vtx']['np_vtx'][0::3], parent=grid_coord)
+  # I.newDataArray('CoordinateY', sections['vtx']['np_vtx'][1::3], parent=grid_coord)
+  # I.newDataArray('CoordinateZ', sections['vtx']['np_vtx'][2::3], parent=grid_coord)
+  cx, cy, cz = CNT.interlace_to_interleave_coord(sections['vtx']['np_vtx'])
+  I.newDataArray('CoordinateX', cx, parent=grid_coord)
+  I.newDataArray('CoordinateY', cy, parent=grid_coord)
+  I.newDataArray('CoordinateZ', cz, parent=grid_coord)
+
+  # t2 = MPI.Wtime()
+  # delta_t = t2 - t1
+  # if(i_rank == 0):
+  #   print("Coord = ", delta_t)
+
+  t1 = MPI.Wtime()
 
   # > Section implicitement range donc on maintiens un compteur
   shift_elmt = 1
