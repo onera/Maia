@@ -78,7 +78,7 @@ def get_zone_info(zone):
 
 
 # ------------------------------------------------------------------------
-def get_target_zone_info(zone):
+def get_target_zone_info(zone, location='CellCenter'):
   """
   """
   gridc = I.getNodeFromType1(zone, "GridCoordinates_t")
@@ -104,33 +104,27 @@ def get_target_zone_info(zone):
 
   pdm_nodes     = I.getNodeFromName1(zone, ":CGNS#Ppart")
   vtx_coords    = I.getNodeFromName1(pdm_nodes, "np_vtx_coord")[1]
-  # cell_face_idx = I.getNodeFromName1(pdm_nodes, "np_cell_face_idx")[1]
-  # cell_face     = I.getNodeFromName1(pdm_nodes, "np_cell_face")[1]
   cell_ln_to_gn = I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn")[1]
-  # face_vtx_idx  = I.getNodeFromName1(pdm_nodes, "np_face_vtx_idx")[1]
-  # face_vtx      = I.getNodeFromName1(pdm_nodes, "np_face_vtx")[1]
-  # face_ln_to_gn = I.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn")[1]
   vtx_ln_to_gn  = I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn")[1]
 
+  if(location == 'CellCenter'):
+    n_cell = SIDS.zone_n_cell(zone)
+    center_cell = np.empty(3*n_cell, dtype='double')
+    Geometry.computeCellCenter__(center_cell,
+                                 cx,
+                                 cy,
+                                 cz,
+                                 ngon_pe,
+                                 face_vtx,
+                                 face_vtx_idx,
+                                 n_cell,
+                                 0)
 
-  n_cell = SIDS.zone_n_cell(zone)
-  center_cell = np.empty(3*n_cell, dtype='double')
-  Geometry.computeCellCenter__(center_cell,
-                               cx,
-                               cy,
-                               cz,
-                               ngon_pe,
-                               face_vtx,
-                               face_vtx_idx,
-                               n_cell,
-                               0)
-
-  # > Keep alive
-  I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
-  # print("cell_center", center_cell)
-
-  return vtx_coords, vtx_ln_to_gn
-  # return center_cell, cell_ln_to_gn
+    # > Keep alive
+    I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
+    return center_cell, cell_ln_to_gn
+  else:
+    return vtx_coords, vtx_ln_to_gn
 
 
 # ------------------------------------------------------------------------
@@ -245,7 +239,7 @@ def setup_cloud_src_mesh(closest_point, dist_tree_src, part_tree_src):
     i_domain =+ 1
 
 # --------------------------------------------------------------------------
-def setup_target_mesh(mesh_loc, dist_tree_target, part_tree_target):
+def setup_target_mesh(mesh_loc, dist_tree_target, part_tree_target, location='CellCenter'):
   """
   """
   n_domain_target = len(I.getZones(dist_tree_target))
@@ -260,13 +254,13 @@ def setup_target_mesh(mesh_loc, dist_tree_target, part_tree_target):
     assert(i_domain == 0)
 
     for i_part, part_zone in enumerate(part_zones):
-      coords, ln_to_gn = get_target_zone_info(part_zone)
+      coords, ln_to_gn = get_target_zone_info(part_zone, location)
       n_points = ln_to_gn.shape[0]
       mesh_loc.cloud_set(0, i_part, n_points, coords, ln_to_gn)
     i_domain =+ 1
 
 # --------------------------------------------------------------------------
-def setup_gnum_for_unlocated(mesh_loc, closest_point, dist_tree_target, part_tree_target, comm):
+def setup_gnum_for_unlocated(mesh_loc, closest_point, dist_tree_target, part_tree_target, comm, location='CellCenter'):
   """
   """
   n_domain_target = len(I.getZones(dist_tree_target))
@@ -288,7 +282,7 @@ def setup_gnum_for_unlocated(mesh_loc, closest_point, dist_tree_target, part_tre
 
     for i_part, part_zone in enumerate(part_zones):
 
-      coords, ln_to_gn = get_target_zone_info(part_zone)
+      coords, ln_to_gn = get_target_zone_info(part_zone, location)
       results_located   = mesh_loc.located_get(0, i_part)  # Necessary for no leaks in ParaDiGM
       results_unlocated = mesh_loc.unlocated_get(0, i_part)
 
@@ -368,7 +362,7 @@ def post_and_set_closest_result(closest_point, interp_from_mesh_loc, dist_tree_t
 
 
 # --------------------------------------------------------------------------
-def setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_tree_target):
+def setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_tree_target, location='CellCenter'):
   """
   """
   n_domain_target = len(I.getZones(dist_tree_target))
@@ -384,7 +378,7 @@ def setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_
 
     for i_part, part_zone in enumerate(part_zones):
 
-      coords, ln_to_gn = get_target_zone_info(part_zone)
+      coords, ln_to_gn = get_target_zone_info(part_zone, location)
       n_points = ln_to_gn.shape[0]
       results_located   = mesh_loc.located_get(0, i_part)  # Necessary for no leaks in ParaDiGM
       results_unlocated = mesh_loc.unlocated_get(0, i_part)
@@ -415,6 +409,7 @@ def setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_
 def mesha_to_meshb(part_tree_src,
                    part_tree_target,
                    comm,
+                   location = 'CellCenter',
                    order = 0):
   """
     mesha is the src
@@ -444,7 +439,7 @@ def mesha_to_meshb(part_tree_src,
   mesh_loc = PDM.MeshLocation(mesh_nature, 1, comm)
 
   setup_src_mesh   (mesh_loc, dist_tree_src   , part_tree_src   )
-  setup_target_mesh(mesh_loc, dist_tree_target, part_tree_target)
+  setup_target_mesh(mesh_loc, dist_tree_target, part_tree_target, location)
 
   mesh_loc.tolerance_set(1.e-6)
   # mesh_loc.tolerance_set(1.e-1)
@@ -493,7 +488,7 @@ def mesha_to_meshb(part_tree_src,
   #    - At the end, for each located point we have an interpolation
   interp_from_mesh_loc = PDM.InterpolateFromMeshLocation(1, comm)
   setup_src_mesh   (interp_from_mesh_loc, dist_tree_src   , part_tree_src   )
-  setup_target_mesh(interp_from_mesh_loc, dist_tree_target, part_tree_target)
+  setup_target_mesh(interp_from_mesh_loc, dist_tree_target, part_tree_target, location)
 
   interp_from_mesh_loc.points_in_elt_set(0, 0,
                                          results_pts["elt_pts_inside_idx"],
@@ -541,8 +536,10 @@ def mesha_to_meshb(part_tree_src,
   for zone in I.getZones(part_tree_target):
     n_vtx  = SIDS.zone_n_vtx(zone)
     n_cell = SIDS.zone_n_cell(zone)
-    fs = I.newFlowSolution("FlowSolution#Init", gridLocation='Vertex', parent=zone)
-    # fs = I.newFlowSolution("FlowSolution#Init", gridLocation='CellCenter', parent=zone)
+    if(location == 'CellCenter'):
+      fs = I.newFlowSolution("FlowSolution#Init", gridLocation='CellCenter', parent=zone)
+    else:
+      fs = I.newFlowSolution("FlowSolution#Init", gridLocation='Vertex', parent=zone)
 
     da = I.newDataArray(fs_name, results_interp[0], parent=fs)
     # print(results_interp[0])
