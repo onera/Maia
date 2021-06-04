@@ -84,7 +84,7 @@ def test_getNodesDispatch1():
   assert IE.getNodesDispatch1(fs, 'DataArray_t') == [data_a, data_b]
   assert IE.getNodesDispatch1(fs, CGL.GridLocation_t) == [grid_loc]
   assert IE.getNodesDispatch1(fs, np.array([4,6,8])) == [data_b]
-  assert IE.getNodesDispatch1(fs, lambda n: I.getValue(n) == 'Vertex') == [grid_loc]
+  assert IE.getNodesDispatch1(fs, lambda n: isinstance(I.getValue(n), str) and I.getValue(n) == 'Vertex') == [grid_loc]
   with pytest.raises(TypeError):
     IE.getNodesDispatch1(fs, False)
 

@@ -1,13 +1,12 @@
 import Converter.Internal as I
-import Generator.PyTree   as G
 import maia.sids.sids     as SIDS
 import numpy              as np
 
 
 def test_ZoneType():
   #With numpy arrays
-  zone_u = G.cartNGon((0., 0., 0.), (1., 1., 1.), (10, 5, 2))
-  zone_s = G.cart((0., 0., 0.), (1., 1., 1.), (10, 5, 2))
+  zone_u = I.newZone('ZoneU', ztype='Unstructured')
+  zone_s = I.newZone('ZoneS', ztype='Structured')
   assert SIDS.ZoneType(zone_u) == 'Unstructured'
   assert SIDS.ZoneType(zone_s) == 'Structured'
   #With strings
@@ -43,7 +42,8 @@ def test_GridLocation():
   assert SIDS.GridLocation(bc_loc   ) == 'JFaceCenter'
 
 def test_zone_u_size():
-  zone_u = G.cartNGon((0., 0., 0.), (1., 1., 1.), (10, 5, 2))
+  #Simulate a 10*5*2 vtx zone
+  zone_u = I.newZone('Zone', [[100, 36, 0]], 'Unstructured')
 
   assert SIDS.VertexSize(zone_u) == 10*5*2
   assert SIDS.CellSize(zone_u) == 9*4*1
@@ -55,7 +55,8 @@ def test_zone_u_size():
 
 
 def test_zone_s_size():
-  zone_s = G.cart((0., 0., 0.), (1., 1., 1.), (10, 5, 2))
+  #Simulate a 10*5*2 vtx zone
+  zone_s = I.newZone('Zone', [[10,9,0], [5,4,0], [2,1,0]], 'Structured')
 
   assert np.all(SIDS.VertexSize(zone_s) == [10,5,2])
   assert np.all(SIDS.CellSize(zone_s) == [9,4,1])

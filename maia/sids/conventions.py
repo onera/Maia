@@ -28,4 +28,4 @@ def name_intra_gc(cur_proc, cur_part, opp_proc, opp_part):
   return f"JN.P{cur_proc}.N{cur_part}.LT.P{opp_proc}.N{opp_part}"
 
 def is_intra_gc(gc_name):
-  return bool(re.match("JN\.P\d+\.N\d+\.LT\.P\d+\.N\d+", gc_name))
+  return bool(re.match(r"JN\.P\d+\.N\d+\.LT\.P\d+\.N\d+", gc_name))
