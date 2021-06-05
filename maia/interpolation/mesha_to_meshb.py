@@ -16,7 +16,7 @@ import maia.tree_exchange.utils              as te_utils
 import maia.distribution.distribution_function as MID
 import maia.sids.Internal_ext as IE
 
-from etc.walldistance import Geometry
+from cmaia.geometry.geometry import compute_center_cell_u
 import cmaia.utils.extract_from_indices as EX
 
 import numpy as np
@@ -107,25 +107,33 @@ def get_target_zone_info(zone, location='CellCenter'):
   cell_ln_to_gn = I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn")[1]
   vtx_ln_to_gn  = I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn")[1]
 
-  if(location == 'CellCenter'):
-    n_cell = SIDS.zone_n_cell(zone)
-    center_cell = np.empty(3*n_cell, dtype='double')
-    Geometry.computeCellCenter__(center_cell,
-                                 cx,
-                                 cy,
-                                 cz,
-                                 ngon_pe,
-                                 face_vtx,
-                                 face_vtx_idx,
-                                 n_cell,
-                                 0)
+  n_cell = SIDS.CellSize(zone)
 
+  # if SIDS.ZoneType(zone) == "Unstructured":
+  if(location == 'CellCenter'):
+    center_cell = compute_center_cell_u(n_cell,
+                                        cx, cy, cz,
+                                        face_vtx,
+                                        face_vtx_idx,
+                                        ngon_pe)
     # > Keep alive
     I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
     return center_cell, cell_ln_to_gn
   else:
     return vtx_coords, vtx_ln_to_gn
 
+
+   #   n_cell = SIDS.zone_n_cell(zone)
+   #   center_cell = np.empty(3*n_cell, dtype='double')
+   #   Geometry.computeCellCenter__(center_cell,
+   #                                cx,
+   #                                cy,
+   #                                cz,
+   #                                ngon_pe,
+   #                                face_vtx,
+   #                                face_vtx_idx,
+   #                                n_cell,
+   #                                0)
 
 # ------------------------------------------------------------------------
 def get_center_cell_cloud(zone):
@@ -163,16 +171,11 @@ def get_center_cell_cloud(zone):
   vtx_ln_to_gn  = I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn")[1]
 
   n_cell = SIDS.zone_n_cell(zone)
-  center_cell = np.empty(3*n_cell, dtype='double')
-  Geometry.computeCellCenter__(center_cell,
-                               cx,
-                               cy,
-                               cz,
-                               ngon_pe,
-                               face_vtx,
-                               face_vtx_idx,
-                               n_cell,
-                               0)
+  center_cell = compute_center_cell_u(n_cell,
+                                      cx, cy, cz,
+                                      face_vtx,
+                                      face_vtx_idx,
+                                      ngon_pe)
 
   # > Keep alive
   I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
