@@ -7,6 +7,7 @@ import Pypdm.Pypdm        as PDM
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.sids import Internal_ext as IE
+from maia.sids import sids
 from maia.utils import py_utils
 from maia.utils.parallel import utils as par_utils
 
@@ -24,14 +25,15 @@ def _is_before(l, a, b):
       return False
   return False
 
-def _build_ordered_jn_face(face_vtx, face_vtx_opp, start_vtx, start_vtx_opp):
-  first_node_idx     = np.where(face_vtx == start_vtx)[0][0]
-  opp_first_node_idx = np.where(face_vtx_opp == start_vtx_opp)[0][0]
+def _roll_from(array, start_idx = None, start_value = None, reverse = False):
+  """
+  Return a new array starting from given index (or value), in normal or reversed order
+  """
+  assert (start_idx is None) != (start_value is None)
+  if start_idx is None:
+    start_idx = np.where(array == start_value)[0][0]
 
-  ordered_face_vtx     = np.roll(face_vtx, -first_node_idx)
-  ordered_face_vtx_opp = np.roll(face_vtx_opp[::-1], opp_first_node_idx + 1)
-
-  return ordered_face_vtx, ordered_face_vtx_opp
+  return np.roll(array, -start_idx) if not reverse else np.roll(array[::-1], start_idx + 1)
 
 def get_pl_face_vtx_local(pl, pl_d, ngon, comm):
   """
@@ -65,6 +67,12 @@ def get_pl_face_vtx_local(pl, pl_d, ngon, comm):
   return pl_face_vtx, pld_face_vtx, face_offset
 
 def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=None):
+  """
+  Extend a distributed face PointList (and its donor) by adding the faces present elsewhere
+  in the PL and connected to the pl faces by one (or more) vertices. 
+  If faces_to_skip is not None, ignore the faces for which the value is True when searching
+  neighbors.
+  """
 
   pl_vtx = np.unique(face_vtx_pl).astype(pdm_dtype)
   if faces_to_skip is not None:
@@ -118,22 +126,32 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
 
 def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
   """
+  Take two face_vtx arrays of matching faces and try to construct the matching
+  vertices list using face intersections (topologic).
+  Return two array of vertices : first one is simply unique(pl_face_vtx), second
+  one is same size and stores matching vertices *or* 0 if not found.
+  Also return an bool array of size n_face indicating if face has been treated
+  (ie all of its vertices have been determined) or not.
+
+  Intersection method assumes that 2 matching faces have inverted
+  face_vtx ordering, but does not  necessarily start with same vtx, 
+  ie A B C D -> C' B' A' D'. The idea of the method is to find some groups
+  of faces and maching faces sharing a unique sequence of vertices,
+  in order to identificate the common starting point.
   """
-  #But : trouver la liste des noeuds qui sont l'intersection de 2 faces
+
   n_face = len(pl_face_vtx_idx) - 1
   pl_vtx_local     = np.unique(pl_face_vtx)
   pl_vtx_local_opp = np.zeros_like(pl_vtx_local)
   face_is_treated  = np.zeros(n_face, dtype=np.bool)
 
-  #Noeud -> liste des faces auxquelles il appartient
+  # Build dict vtx -> list of faces to which its belong
   pl_vtx_local_dict = {key: [] for key in pl_vtx_local}
   for iface in range(n_face):
     for vtx in pl_face_vtx[pl_face_vtx_idx[iface]:pl_face_vtx_idx[iface+1]]:
       pl_vtx_local_dict[vtx].append(iface)
 
-  #print('pl_vtx_local_dict', pl_vtx_local_dict)
-
-  #Invert dictionnary to have couple of faces -> list of vertices
+  #Invert dictionnary to have couple of faces -> list of shared vertices
   interfaces_to_nodes = dict()
   for key, val in pl_vtx_local_dict.items():
     for pair in itertools.combinations(sorted(val), 2):
@@ -145,23 +163,27 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
   vtx_g_to_l = {v:i for i,v in enumerate(pl_vtx_local)}
 
   for interface, vtx in interfaces_to_nodes.items():
-    #interface (FA,FB) vtx = (vtx1, vtx2)
+    # For each couple of faces, we have a list of shared vertices : (fA,fB) -> [vtx0, .. vtxN]
+    fA_idx = slice(pl_face_vtx_idx[interface[0]],pl_face_vtx_idx[interface[0]+1])
+    fB_idx = slice(pl_face_vtx_idx[interface[1]],pl_face_vtx_idx[interface[1]+1])
     step = 0
-    opp_face_vtx_a = pld_face_vtx[pl_face_vtx_idx[interface[0]]:pl_face_vtx_idx[interface[0]+1]]
-    opp_face_vtx_b = pld_face_vtx[pl_face_vtx_idx[interface[1]]:pl_face_vtx_idx[interface[1]+1]]
+    #Build the list of shared vertices for the two *opposite* faces
+    opp_face_vtx_a = pld_face_vtx[fA_idx]
+    opp_face_vtx_b = pld_face_vtx[fB_idx]
     opp_vtx = np.intersect1d(opp_face_vtx_a, opp_face_vtx_b)
 
-    # Si les sommets se suivent, on peut retrouver l'ordre
-    if _is_subset_l(vtx, pl_face_vtx[pl_face_vtx_idx[interface[0]]:pl_face_vtx_idx[interface[0]+1]]):
-      step = -2*(_is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1])) + 1
-    elif _is_subset_l(vtx[::-1], pl_face_vtx[pl_face_vtx_idx[interface[0]]:pl_face_vtx_idx[interface[0]+1]]):
-      step = -2*(not _is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1])) + 1
-    elif _is_subset_l(vtx, pl_face_vtx[pl_face_vtx_idx[interface[1]]:pl_face_vtx_idx[interface[1]+1]]):
-      step = -2*(not _is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1])) + 1
-    elif _is_subset_l(vtx[::-1], pl_face_vtx[pl_face_vtx_idx[interface[1]]:pl_face_vtx_idx[interface[1]+1]]):
-      step = -2*(_is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1])) + 1
+    # If vertices are following, we can retrieve order. We may loop in normal
+    # or reverse order depending on which vtx appears first
+    if _is_subset_l(vtx, pl_face_vtx[fA_idx]):
+      step = -1 if _is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1]) else 1
+    elif _is_subset_l(vtx[::-1], pl_face_vtx[fA_idx]):
+      step = -1 if not _is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1]) else 1
+    elif _is_subset_l(vtx, pl_face_vtx[fB_idx]):
+      step = -1 if not _is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1]) else 1
+    elif _is_subset_l(vtx[::-1], pl_face_vtx[fB_idx]):
+      step = -1 if _is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1]) else 1
 
-    # Skip non continous vertices
+    # Skip non continous vertices and treat faces if possible
     if step != 0:
       l_vertices = [vtx_g_to_l[v] for v in vtx]
       assert len(opp_vtx) == len(l_vertices)
@@ -171,14 +193,16 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
         if not face_is_treated[face]:
           face_vtx     = pl_face_vtx[pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
           opp_face_vtx = pld_face_vtx[pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
-          ordered_vtx, ordered_vtx_opp = _build_ordered_jn_face(
-              face_vtx, opp_face_vtx, vtx[0], pl_vtx_local_opp[l_vertices[0]])
+
+          ordered_vtx     = _roll_from(face_vtx, start_value = vtx[0])
+          ordered_vtx_opp = _roll_from(opp_face_vtx, start_value = pl_vtx_local_opp[l_vertices[0]], reverse=True)
+
           pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
 
       face_is_treated[list(interface)] = True
 
   someone_changed = True
-  while (face_is_treated.prod() == 0 and someone_changed):
+  while (not face_is_treated.all() and someone_changed):
     someone_changed = False
     for face in np.where(~face_is_treated)[0]:
       face_vtx   = pl_face_vtx [pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
@@ -187,8 +211,8 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
         #Get any already deduced opposed vertex
         if vtx_opp != 0:
           opp_face_vtx = pld_face_vtx[pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
-          ordered_vtx, ordered_vtx_opp = _build_ordered_jn_face(
-              face_vtx, opp_face_vtx, pl_vtx_local[l_vertices[i]], vtx_opp)
+          ordered_vtx     = _roll_from(face_vtx, start_value = pl_vtx_local[l_vertices[i]])
+          ordered_vtx_opp = _roll_from(opp_face_vtx, start_value = vtx_opp, reverse=True)
 
           pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
           face_is_treated[face] = True
@@ -198,6 +222,22 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
   return pl_vtx_local, pl_vtx_local_opp, face_is_treated
 
 def _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm):
+  """
+  Take two face_vtx arrays describing two (single) matching faces,
+  know by proc owner, and try to construct the matching
+  vertices list using face intersections (geometric).
+  Return two array of vertices : first one is simply unique(pl_face_vtx), second
+  one is same size and stores matching vertices
+
+  Intersection method assumes that 2 matching faces have inverted
+  face_vtx ordering, but does not  necessarily start with same vtx,
+  ie A B C D -> D' B' A' C'. The idea of the method is to identificate the
+  starting vertex by sorting the coordinates with the same rule.
+  Note that a result will be return even if the faces are not truly matching!
+
+  Todo : manage transformation;
+         manage multizone;
+  """
   pl_vtx_local     = np.unique(pl_face_vtx)
   pl_vtx_local_opp = np.zeros_like(pl_vtx_local)
 
@@ -205,11 +245,12 @@ def _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm):
   distri_vtx = IE.getDistribution(zone, 'Vertex')
   distri_full = par_utils.partial_to_full_distribution(distri_vtx, comm)
 
+  #Prepare arrays : owner procs check who own the coordinates data
   if comm.Get_rank() == owner:
     assert len(pl_face_vtx) == len(pld_face_vtx)
     n_face_vtx = len(pl_face_vtx)
     requested_vtx = np.concatenate([pl_face_vtx, pld_face_vtx])
-    dest_ranks = np.searchsorted(distri_full, requested_vtx-1, 'right')-1
+    dest_ranks = np.searchsorted(distri_full, requested_vtx-1, 'right') - 1
     sorting_idx = np.argsort(dest_ranks)
     sizes  = np.bincount(dest_ranks, minlength = comm.Get_size())
     sizes3 = 3*sizes
@@ -244,9 +285,6 @@ def _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm):
     face_vtx_coords     = received_coords[inverted_sorting_idx[0:n_face_vtx]]
     opp_face_vtx_coords = received_coords[inverted_sorting_idx[n_face_vtx:2*n_face_vtx]]
 
-    # first_vtx     = np.lexsort((face_vtx_coords.T))[0]
-    # opp_first_vtx = np.lexsort((opp_face_vtx_coords.T))[0]
-
     # Unique should sort array following the same key (axis=0 is important!)
     sorted_face_vtx_coords, indices, counts = np.unique(face_vtx_coords, axis=0, return_index = True, return_counts = True)
     sorted_opp_face_vtx_coords, opp_indices = np.unique(opp_face_vtx_coords, axis=0, return_index=True)
@@ -259,9 +297,8 @@ def _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm):
     first_vtx     = indices[idx]
     opp_first_vtx = opp_indices[idx]
 
-    #Todo change interface to allow start_vtx_indx, and start_vtx_opp_index to avoid np.where
-    ordered_vtx, ordered_vtx_opp = _build_ordered_jn_face(
-        pl_face_vtx, pld_face_vtx, requested_vtx[first_vtx], requested_vtx[opp_first_vtx+n_face_vtx])
+    ordered_vtx     = _roll_from(pl_face_vtx, start_idx = first_vtx)
+    ordered_vtx_opp = _roll_from(pld_face_vtx, start_idx = opp_first_vtx, reverse=True)
 
     pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
 
@@ -269,8 +306,15 @@ def _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm):
 
 
 def generate_jn_vertex_list(zone, ngon, jn, comm):
+  """
+  From a FaceCenter join, create the distributed arrays VertexList
+  and VertexListDonor such that vertices are matching 1 to 1.
+  Return the two index arrays and the partial distribution array, which is
+  identical for both of them
 
-  #Suppose jn location == face
+  For now only one zone is supported"""
+
+  assert sids.GridLocation(jn) == 'FaceCenter'
   distri_jn = IE.getDistribution(jn, 'Index')
 
   pl   = I.getNodeFromName1(jn, 'PointList')[1][0]
@@ -338,13 +382,3 @@ def generate_vertex_joins(dist_zone, comm):
       I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
       I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
 
-  # Cas 1 seul sommet
-  # print("Found is", found, interface)
-  # print(_is_subset_l([3,4], [3,4,3,5]))
-  # one_neighbor = {key :val for key, val in interfaces_to_nodes.items() if len(val)==1}
-  # for interface, vtx in one_neighbor.items():
-    # opp_face_vtx_a = part_data_pld['FaceVtx'][0][face_offset[interface[0]]:face_offset[interface[0]+1]]
-    # opp_face_vtx_b = part_data_pld['FaceVtx'][0][face_offset[interface[1]]:face_offset[interface[1]+1]]
-    # opp_vtx = np.intersect1d(opp_face_vtx_a, opp_face_vtx_b)
-    # assert len(opp_vtx) == 1
-    # pl_vtx_local_opp[vtx_g_to_l[vtx[0]]] = opp_vtx[0]
