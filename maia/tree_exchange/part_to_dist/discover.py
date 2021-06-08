@@ -29,14 +29,25 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
       if I.getNodeFromPath(dist_node, leaf_path) is None and leaf_path not in collected_part_nodes:
         # Label
         labels = [I.getType(node) for node in nodes]
+
         # Values
-        ancestors, leaf = nodes[:-1], nodes[-1]
-        if get_value == "none":
-          values = len(nodes)*[None]
-        elif get_value == "all":
-          values = [I.getValue(node) for node in nodes]
+        leaf = nodes[-1]
+        if isinstance(get_value, str):
+          if get_value == "none":
+            get_value = len(nodes)*[False]
+          elif get_value == "all":
+            get_value = len(nodes)*[True]
+          elif get_value == "ancestors":
+            get_value = [True]*(len(nodes)-1) + [False]
+          elif get_value == "leaf":
+            get_value = [False]*(len(nodes)-1) + [True]
+          else:
+            raise ValueError(f"If get_value argument is a string, it must be in {{'none', 'all', 'ancestors' or 'leaf'}}, '{get_value}' given here.")
+        if isinstance(get_value, (tuple, list)):
+          values = [I.getValue(node) if value else None for node, value in zip(nodes, get_value)]
         else:
-          values = [I.getValue(node) for node in ancestors] + [None]
+          raise TypeError(f"get_value argument is a list or a string in {{'none', 'all' or 'ancestors'}}, '{get_value}' given here.")
+
         # Children
         childs = list()
         for query in child_list:

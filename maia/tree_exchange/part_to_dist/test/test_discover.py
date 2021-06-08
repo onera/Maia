@@ -1,3 +1,4 @@
+import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 
 import Converter.Internal as I
@@ -85,6 +86,7 @@ Zone.P2.N1 Zone_t:
     for zbc in I.getNodesFromName(part_tree, 'ZBC'):
       I.setValue(zbc, 'test')
 
+    # get_value as a string
     dist_zone = I.newZone('Zone')
     disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm)
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
@@ -97,7 +99,42 @@ Zone.P2.N1 Zone_t:
     disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value='all')
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == 'wall'
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value='ancestors')
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == None
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value='leaf')
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == None
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == 'wall'
 
+    # dist_zone = I.newZone('Zone')
+    # with pytest.raises(ValueError):
+    #   disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value="toto")
+
+    # get_value as a list
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value=[False, False])
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == None
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == None
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value=[True, True])
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == 'wall'
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value=[True, False])
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == None
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value=[False, True])
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == None
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == 'wall'
+
+    # dist_zone = I.newZone('Zone')
+    # with pytest.raises(TypeError):
+    #   disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value=2)
+
+    # get_value and search with predicate as lambda
     dist_zone = I.newZone('Zone')
     queries = [CGL.ZoneBC_t, lambda n : I.getType(n) == "BC_t" and I.getName(n) != "BCA"]
     disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), queries, sub_comm, get_value='all')
@@ -105,6 +142,7 @@ Zone.P2.N1 Zone_t:
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == 'farfield'
     # I.printTree(dist_zone)
+
 
   def test_with_childs(self, sub_comm):
     part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
@@ -184,3 +222,10 @@ Zone.P2.N1 Zone_t:
     assert len(I.getZones(dist_tree)) == 2
     assert I.getNodeFromPath(dist_tree, 'BaseA/Zone') is not None
     assert I.getNodeFromPath(dist_tree, 'BaseB/Zone.withdot') is not None
+
+if __name__ == "__main__":
+  from mpi4py import MPI
+  comm = MPI.COMM_WORLD
+  test = Test_discover_nodes_of_kind()
+  # test.test_simple(comm)
+  # test.test_short(comm)

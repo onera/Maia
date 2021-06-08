@@ -68,20 +68,53 @@ def check_is_index_array(f):
 class Zone:
   @staticmethod
   @check_is_zone
-  def CellSize(zone):
-    z_sizes = I.getValue(zone)
-    return list_or_only_elt(z_sizes[:,1])
-
-  @staticmethod
-  @check_is_zone
-  def VertexSize(zone):
-    z_sizes = I.getValue(zone)
+  def VertexSize(zone_node):
+    z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,0])
 
   @staticmethod
   @check_is_zone
-  def VertexBoundarySize(zone):
-    z_sizes = I.getValue(zone)
+  def CellSize(zone_node):
+    z_sizes = I.getValue(zone_node)
+    return list_or_only_elt(z_sizes[:,1])
+
+  @staticmethod
+  @check_is_zone
+  def FaceSize(zone_node):
+
+    def compute_nface_per_direction(d, dim, vtx_size, cell_size):
+      n_face_per_direction = vtx_size[d%dim]
+      if dim >= 2:
+        n_face_per_direction *= cell_size[(d+1)%dim]
+      if dim == 3:
+        n_face_per_direction *= cell_size[(d+2)%dim]
+      return n_face_per_direction
+
+    # Find face number
+    vtx_size  = Zone.VertexSize(zone_node)
+    cell_size = Zone.CellSize(zone_node)
+    if Zone.Type(zone_node) == "Structured":
+      dim = len(vtx_size)
+      print(f"dim [S] = {dim}")
+      # n_face = np.sum([vtx_size[(0+d)%dim]*cell_size[(1+d)%dim]*cell_size[(2+d)%dim] for d in range(dim)])
+      n_face = [compute_nface_per_direction(d, dim, vtx_size, cell_size) for d in range(dim)]
+      print(f"n_face [S] = {n_face}")
+    elif Zone.Type(zone_node) == "Unstructured":
+      element_node = I.getNodeFromType1(zone_node, CGL.Elements_t.name)
+      if ElementType(element_node) == CGK.ElementType.NGON_n.value:
+        face_vtx, face_vtx_idx, ngon_pe = face_connectivity(element_node)
+        n_face = [ngon_pe.shape[0]]
+      else:
+        raise NotImplementedError(f"Unstructured Zone {I.getName(zone_node)} with {ElementCGNSName(element_node)} not yet implemented.")
+      print(f"n_face [U] = {n_face}")
+    else:
+      raise TypeError(f"Unable to determine the ZoneType for Zone {I.getName(zone_node)}")
+    return list_or_only_elt(n_face)
+
+  @staticmethod
+  @check_is_zone
+  def VertexBoundarySize(zone_node):
+    z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,2])
 
   @staticmethod
@@ -101,16 +134,20 @@ class Zone:
           yield bc_node
 
   @staticmethod
-  def n_vtx(zone):
-    return np.prod(Zone.VertexSize(zone))
+  def n_vtx(zone_node):
+    return np.prod(Zone.VertexSize(zone_node))
 
   @staticmethod
-  def n_cell(zone):
-    return np.prod(Zone.CellSize(zone))
+  def n_cell(zone_node):
+    return np.prod(Zone.CellSize(zone_node))
 
   @staticmethod
-  def n_vtx_bnd(zone):
-    return np.prod(Zone.VertexBoundarySize(zone))
+  def n_face(zone_node):
+    return np.sum(Zone.FaceSize(zone_node))
+
+  @staticmethod
+  def n_vtx_bnd(zone_node):
+    return np.prod(Zone.VertexBoundarySize(zone_node))
 
 
 # --------------------------------------------------------------------------

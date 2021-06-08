@@ -9,6 +9,22 @@ def isLabelFromString(label):
   """
   return isinstance(label, str) and ((label.endswith('_t') and label in CGK.Label.__members__) or label == '')
 
+# def getChildrenFromPredicate(node, query):
+#   """ Return the list of first level childs of node matching a given query (callable function)"""
+#   result = []
+#   isStd = I.isStdNode(node)
+#   if isStd >= 0:
+#     for c in node[isStd:]:
+#       getChildrenFromPredicate__(c, query, result)
+#   else:
+#     getChildrenFromPredicate__(node, query, result)
+#   return result
+
+# def getChildrenFromPredicate__(node, query, result):
+#   for c in node[2]:
+#     if query(c):
+#       result.append(c)
+
 def getChildrenFromPredicate(node, query):
   """ Return the list of first level childs of node matching a given query (callable function)"""
   return [c for c in node[2] if query(c)] if node else []
