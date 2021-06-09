@@ -26,7 +26,7 @@ def get_cgns_distribution(dist_node, name):
   Return the (partial) distribution array of a distributed zone from
   its path. Array is converted to pdm gnum_dtype.
   """
-  return IE.getDistribution(dist_node, name).astype(pdm_gnum_dtype)
+  return I.getVal(IE.getDistribution(dist_node, name)).astype(pdm_gnum_dtype)
 
 def create_all_elt_distribution(dist_elts, comm):
   """

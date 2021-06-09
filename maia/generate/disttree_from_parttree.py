@@ -73,8 +73,8 @@ def disttree_from_parttree(part_tree, comm):
     nface_range = I.getNodeFromPath(dist_zone, 'NFaceElements/ElementRange')[1]
     nface_range += n_face_tot
 
-    cell_distri = IE.getDistribution(I.getNodeFromName(dist_zone, 'NFaceElements'), 'Element')
-    vtx_distri  = IE.getDistribution(dist_zone, 'Vertex')
+    cell_distri = I.getVal(IE.getDistribution(I.getNodeFromName(dist_zone, 'NFaceElements'), 'Element'))
+    vtx_distri  = I.getVal(IE.getDistribution(dist_zone, 'Vertex'))
     I.newDataArray('Cell', cell_distri, parent=distri_ud)
 
     I.setValue(dist_zone, np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32))

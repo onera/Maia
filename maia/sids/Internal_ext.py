@@ -163,7 +163,7 @@ def getDistribution(node, distri_name=None):
   Starting from node, return the CGNS#Distribution node if distri_name is None
   or the value of the requested distribution if distri_name is not None
   """
-  return I.getVal(I.getNodeFromPath(node, ':CGNS#Distribution/' + distri_name)) if distri_name \
+  return I.getNodeFromPath(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
       else I.getNodeFromName1(node, ':CGNS#Distribution')
 
 def getGlobalNumbering(node, lngn_name=None):

@@ -28,7 +28,7 @@ def collect_distributed_pl(dist_zone, type_paths, filter_loc=None):
           point_lists.append(pl_n[1])
         elif pr_n is not None and I.getValue(pr_n).shape[0] == 1:
           pr = I.getValue(pr_n)
-          distrib = IE.getDistribution(node, 'Index')
+          distrib = I.getVal(IE.getDistribution(node, 'Index'))
           point_lists.append(py_utils.single_dim_pr_to_pl(pr, distrib))
         # else:
           # point_lists.append(np.empty((1,0), dtype=np.int32, order='F'))

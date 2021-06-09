@@ -20,7 +20,7 @@ def pl_or_pr_size(node):
     try:
       return I.getNodeFromName1(node, 'PointList#Size')[1]
     except TypeError: #No PL#Size, try to get info from :CGNS#Distribution and suppose size = 1,N
-      distri = IE.getDistribution(node, 'Index')
+      distri = I.getVal(IE.getDistribution(node, 'Index'))
       return np.array([1, distri[2]])
   if pr_n:
     return SIDS.PointRange.VertexSize(pr_n)

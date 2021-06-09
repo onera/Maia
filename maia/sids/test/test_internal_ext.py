@@ -309,8 +309,8 @@ def test_getDistribution():
   distri_arrays = {'Cell' : [0,15,30], 'Vertex' : [100,1000,1000]}
   distri = IE.newDistribution(distri_arrays, zone)
   assert IE.getDistribution(zone) is distri
-  assert (IE.getDistribution(zone, 'Cell') == [0,15,30]).all()
-  assert (IE.getDistribution(zone, 'Vertex') == [100,1000,1000]).all()
+  assert (I.getVal(IE.getDistribution(zone, 'Cell')) == [0,15,30]).all()
+  assert (I.getVal(IE.getDistribution(zone, 'Vertex')) == [100,1000,1000]).all()
 
 def test_getGlobalNumbering():
   zone = I.newZone()

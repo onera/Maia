@@ -79,7 +79,7 @@ class Test__discover_wrapper:
     fs = I.getNodeFromName(dist_zone, 'FS')
     assert I.getType(fs) == 'DiscreteData_t'
     dist_pl     = I.getNodeFromPath(fs, 'PointList')[1]
-    dist_distri = IE.getDistribution(fs, 'Index')
+    dist_distri = I.getVal(IE.getDistribution(fs, 'Index'))
     assert dist_distri.dtype == pdm_dtype
 
     if sub_comm.Get_rank() == 0:

@@ -13,8 +13,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
   """
-  distrib_vtx      = IE.getDistribution(dist_zone, 'Vertex')
-  distrib_cell     = IE.getDistribution(dist_zone, 'Cell')
+  distrib_vtx      = I.getVal(IE.getDistribution(dist_zone, 'Vertex'))
+  distrib_cell     = I.getVal(IE.getDistribution(dist_zone, 'Cell'))
 
   # > Try to hook NGon
   found = False
@@ -25,8 +25,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
       ngon_pe   = I.getNodeFromName1(elt, 'ParentElements'     )[1]
       ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1]
 
-      distrib_face     = IE.getDistribution(elt, 'Element')
-      distrib_face_vtx = IE.getDistribution(elt, 'ElementConnectivity')
+      distrib_face     = I.getVal(IE.getDistribution(elt, 'Element'))
+      distrib_face_vtx = I.getVal(IE.getDistribution(elt, 'ElementConnectivity'))
   if not found :
     raise RuntimeError
 

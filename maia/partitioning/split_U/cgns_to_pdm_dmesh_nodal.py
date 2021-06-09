@@ -14,7 +14,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   """
   Create a pdm_dmesh_nodal structure from a distributed zone
   """
-  distrib_vtx = IE.getDistribution(dist_zone, 'Vertex')
+  distrib_vtx = I.getVal(IE.getDistribution(dist_zone, 'Vertex'))
   n_vtx   = distrib_vtx[2]
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
 
@@ -44,7 +44,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
     I.newDataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
 
   #Elements
-  to_elmt_size = lambda e : IE.getDistribution(e, 'Element')[1] - IE.getDistribution(e, 'Element')[0]
+  to_elmt_size = lambda e : I.getVal(IE.getDistribution(e, 'Element'))[1] - I.getVal(IE.getDistribution(e, 'Element'))[0]
   elt_pdm_types = np.array([EU.element_pdm_type(sids.ElementType(e)) for e in sorted_elts], dtype=np.int32)
   elt_lengths   = np.array([to_elmt_size(e) for e in sorted_elts], dtype=np.int32)
   elmts_connectivities = [I.getNodeFromName1(elt, "ElementConnectivity")[1] for elt in sorted_elts]
