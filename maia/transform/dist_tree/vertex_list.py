@@ -35,13 +35,15 @@ def _roll_from(array, start_idx = None, start_value = None, reverse = False):
 
   return np.roll(array, -start_idx) if not reverse else np.roll(array[::-1], start_idx + 1)
 
-def get_pl_face_vtx_local(pl, pl_d, ngon, comm):
+def facelist_to_vtxlist_local(pls, ngon, comm):
   """
-  From pl of faces, search in the distributed NGon node the id of vertices
-  belonging to the faces. Also seach the id of vertices belonging to plDonor
-  faces. Return the two array of vertices ids and the offset array
-  of size len(pl) + 1
-  This is a distributed fonction
+  From a list of FaceCenter PointList, search in the distributed NGon node
+  the id of vertices belonging to the faces.
+
+  Return a list (size len(pls)) of tuples (vtx_offset, vtx_list). Offset array
+  indicates to which face the vertices belongs.
+  Note that vertices ids can appears twice (or more) in vtx_list if they are
+  shared by some faces
   """
 
   distri_ngon  = IE.getDistribution(ngon, 'Element').astype(pdm_dtype)
@@ -52,19 +54,12 @@ def get_pl_face_vtx_local(pl, pl_d, ngon, comm):
 
   # Get the vertex associated to the faces in FaceList
   part_data_pl = dict()
-  BTP = PDM.BlockToPart(pdm_distrib, comm, [pl.astype(pdm_dtype)], 1)
+  BTP = PDM.BlockToPart(pdm_distrib, comm, [pl.astype(pdm_dtype) for pl in pls], len(pls))
   BTP.BlockToPart_Exchange2(dist_data, part_data_pl, 1, b_stride)
-  pl_face_vtx = part_data_pl['FaceVtx'][0]
 
-  # Get the vertex associated to the opposite faces in FaceList
-  part_data_pld = dict()
-  BTP = PDM.BlockToPart(pdm_distrib, comm, [pl_d.astype(pdm_dtype)], 1)
-  BTP.BlockToPart_Exchange2(dist_data, part_data_pld, 1, b_stride)
-  pld_face_vtx = part_data_pld['FaceVtx'][0]
+  face_offset_l = [py_utils.sizes_to_indices(p_sizes) for p_sizes in part_data_pl['FaceVtx#PDM_Stride']]
 
-  face_offset = py_utils.sizes_to_indices(part_data_pl['FaceVtx#PDM_Stride'][0])
-
-  return pl_face_vtx, pld_face_vtx, face_offset
+  return list(zip(face_offset_l, part_data_pl['FaceVtx']))
 
 def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=None):
   """
@@ -320,7 +315,8 @@ def generate_jn_vertex_list(zone, ngon, jn, comm):
   pl   = I.getNodeFromName1(jn, 'PointList')[1][0]
   pl_d = I.getNodeFromName1(jn, 'PointListDonor')[1][0]
 
-  pl_face_vtx, pld_face_vtx, face_offset = get_pl_face_vtx_local(pl, pl_d, ngon, comm)
+  face_offset, pl_face_vtx  = facelist_to_vtxlist_local([pl], ngon, comm)[0]
+  face_offset, pld_face_vtx = facelist_to_vtxlist_local([pl_d], ngon, comm)[0]
 
   #Raccord single face
   if distri_jn[2] == 1:
@@ -343,7 +339,9 @@ def generate_jn_vertex_list(zone, ngon, jn, comm):
     if comm.allreduce(not np.all(face_is_treated), op=MPI.LOR) and distri_jn[2] != 1:
 
       extended_pl, extended_pl_d = get_extended_pl(pl, pl_d, face_offset, pl_face_vtx, comm, face_is_treated)
-      pl_face_vtx_e, pld_face_vtx_e, face_offset_e = get_pl_face_vtx_local(extended_pl, extended_pl_d, ngon, comm)
+
+      face_offset_e, pl_face_vtx_e  = facelist_to_vtxlist_local([extended_pl],   ngon, comm)[0]
+      face_offset_e, pld_face_vtx_e = facelist_to_vtxlist_local([extended_pl_d], ngon, comm)[0]
 
       pl_vtx_local2, pl_vtx_local_opp2, _ = _search_by_intersection(face_offset_e, pl_face_vtx_e, pld_face_vtx_e)
       assert np.all(pl_vtx_local_opp2 != 0)
