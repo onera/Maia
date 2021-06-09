@@ -113,9 +113,15 @@ def get_zone_ln_to_gn(zone_node):
   """
   pdm_nodes = I.getNodeFromName1(zone_node, ":CGNS#Ppart")
   if pdm_nodes is not None:
-    cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
-    face_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
     vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
+    # print(f"get_zone_ln_to_gn: vtx_ln_to_gn [1] = {vtx_ln_to_gn}")
+    # vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
+    # print(f"get_zone_ln_to_gn: vtx_ln_to_gn [2] = {vtx_ln_to_gn}")
+    cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
+    # print(f"get_zone_ln_to_gn: cell_ln_to_gn [1] = {cell_ln_to_gn}")
+    # cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
+    # print(f"get_zone_ln_to_gn: cell_ln_to_gn [2] = {cell_ln_to_gn}")
+    face_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
     return cell_ln_to_gn,face_ln_to_gn, vtx_ln_to_gn
   else:
     # I.printTree(zone_node)
@@ -132,10 +138,16 @@ def get_zone_info(zone_node):
     cell_face_idx = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_face_idx"))
     cell_face     = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_face"))
     cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
+    # print(f"get_zone_info: cell_ln_to_gn [1] = {cell_ln_to_gn}")
+    # cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
+    # print(f"get_zone_info: cell_ln_to_gn [2] = {cell_ln_to_gn}")
     face_vtx_idx  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_vtx_idx"))
     face_vtx      = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_vtx"))
     face_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
     vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
+    # print(f"get_zone_info: vtx_ln_to_gn [1] = {vtx_ln_to_gn}")
+    # vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
+    # print(f"get_zone_info: vtx_ln_to_gn [2] = {vtx_ln_to_gn}")
     return cell_face_idx, cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn
   else:
     # I.printTree(zone_node)
@@ -154,8 +166,8 @@ def setup_surf_mesh(walldist, dist_tree, part_tree, families, comm):
   n_face_bnd_t = comm.allreduce(n_face_bnd_t, op=MPI.MAX)
   LOG.info(f"setup_surf_mesh: n_face_bnd_t = {n_face_bnd_t}")
   # Get the number of vertex
-  n_vtx_bnd_t  = 0 if vtx_ln_to_gn.shape[0] == 0  else np.max(vtx_ln_to_gn)
-  n_vtx_bnd_t  = comm.allreduce(n_vtx_bnd_t , op=MPI.MAX)
+  n_vtx_bnd_t = 0 if vtx_ln_to_gn.shape[0] == 0  else np.max(vtx_ln_to_gn)
+  n_vtx_bnd_t = comm.allreduce(n_vtx_bnd_t , op=MPI.MAX)
   LOG.info(f"setup_surf_mesh: n_vtx_bnd_t = {n_vtx_bnd_t}")
 
   part_base = I.getBases(part_tree)[0]
@@ -423,8 +435,11 @@ if __name__ == "__main__":
   # filename = "cubeS_join_bnd1.hdf"
   # filename = "cubeU_join_bnd-new.hdf"
   # families = ['Wall']
-  filename = "AxiT2-new.hdf"
-  families = ['WALL']
+  # filename = "AxiT2-new.hdf"
+  # families = ['WALL']
+
+  filename = "Rotor37_U_MM2-new.hdf"
+  families = ['AUBE', 'MOYEU', 'CARTER', 'BLADE']
   # t = C.convertFile2PyTree(filename)
   # I._adaptNGon12NGon2(t)
   # C.convertPyTree2File(t, "AxiT2-new.hdf")
