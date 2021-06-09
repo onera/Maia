@@ -58,7 +58,7 @@ class block_to_parts_protocol {
 
       for (int i=0; i<n_part; ++i) {
         int part_size = n_elts[i];
-        res[i].offsets = indices_from_sizes(std_e::make_span(part_stride[i],part_size));
+        res[i].offsets = indices_from_strides(std_e::make_span(part_stride[i],part_size));
 
         // TODO paradigm function take offsets instead of sizes?
         int part_cat_size = res[i].offsets.back();

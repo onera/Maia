@@ -65,8 +65,8 @@ boundary_elements_interval(const tree& z) {
 
   return
     cgns::interval<I8>(
-      element_range(bnd_elts[0]).first,
-      element_range(bnd_elts.back()).last
+      element_range(bnd_elts[0]).first(),
+      element_range(bnd_elts.back()).last()
     );
 }
 

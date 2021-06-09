@@ -2,7 +2,7 @@
 
 
 #include <array>
-#include "std_e/utils/type_traits.hpp"
+#include "std_e/meta/type_traits.hpp"
 #include "std_e/future/span.hpp"
 
 
@@ -21,7 +21,7 @@ class connectivity {
 
     template<
       class... Is,
-      std::enable_if_t<std_e::are_integrals<Is...>,int> =0
+      std::enable_if_t<std_e::are_integral<Is...>,int> =0
     > constexpr
     connectivity(Is... is)
       : impl{is...} {}

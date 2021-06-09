@@ -24,7 +24,7 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
   }
   tree& z = zs[0];
 
-  int n_rank = std_e::nb_ranks(comm);
+  int n_rank = std_e::n_rank(comm);
 
   auto n_vtx = VertexSize_U<I4>(z);
   auto n_ghost_node = 0;
@@ -112,7 +112,7 @@ auto
 distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) -> void {
   STD_E_ASSERT(b.label=="CGNSBase_t");
   int i_rank = std_e::rank(comm);
-  int n_rank = std_e::nb_ranks(comm);
+  int n_rank = std_e::n_rank(comm);
 
   for (tree& z : get_children_by_label(b,"Zone_t")) {
     int n_cell = cgns::CellSize_U<I4>(z);

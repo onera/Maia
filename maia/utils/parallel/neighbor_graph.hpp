@@ -72,7 +72,7 @@ class zone_exchange {
     MPI_Comm receiver_to_donor_comm;
     MPI_Comm donor_to_receiver_comm;
     std_e::jagged_vector<connectivity_info> cis;
-    std_e::knot_vector<int> proc_indices_in_donor;
+    std_e::interval_vector<int> proc_indices_in_donor;
   public:
     zone_exchange() = default;
     zone_exchange(tree& b, MPI_Comm comm)

@@ -6,6 +6,7 @@
 #include <cassert>
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/utils/parallel/SortAndUniqueAlgorithm.hpp"
+#include "std_e/interval/interval_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 //#include "logging/logging.hpp"
 #include "std_e/utils/vector.hpp"
@@ -19,9 +20,9 @@
 std::vector<int> generate_global_id(     int                       n_loc_id,
                                   const std::vector<std::string>& block_paths,
                                   const std::vector<int>&         send_n,
-                                  const std_e::knot_vector<int>&  send_idx,
+                                  const std_e::interval_vector<int>&  send_idx,
                                   const std::vector<int>&         recv_n,
-                                  const std_e::knot_vector<int>&  recv_idx,
+                                  const std_e::interval_vector<int>&  recv_idx,
                                         MPI_Comm                  comm)
 {
   // -------------------------------------------------------------------
@@ -150,7 +151,7 @@ std::vector<int> generate_global_id(     int                       n_loc_id,
 std::vector<int> generate_global_numbering(/* TODO const */ std::vector<std::string>& part_paths,
                                            MPI_Comm                  comm)
 {
-  int n_rank = std_e::nb_ranks(comm);
+  int n_rank = std_e::n_rank(comm);
 
   // -------------------------------------------------------------------
   // Sort local array // TODO DEL (not used)
@@ -230,10 +231,10 @@ std::vector<int> generate_global_numbering(/* TODO const */ std::vector<std::str
 
   // -------------------------------------------------------------------
   // 6 - Compute all index (need for MPI and algorithm)
-  std_e::knot_vector<int> send_idx     = std_e::indices_from_sizes(send_n   );
-  std_e::knot_vector<int> recv_idx     = std_e::indices_from_sizes(recv_n   );
-  std_e::knot_vector<int> send_str_idx = std_e::indices_from_sizes(send_str_n);
-  std_e::knot_vector<int> recv_str_idx = std_e::indices_from_sizes(recv_str_n);
+  std_e::interval_vector<int> send_idx     = std_e::indices_from_strides(send_n   );
+  std_e::interval_vector<int> recv_idx     = std_e::indices_from_strides(recv_n   );
+  std_e::interval_vector<int> send_str_idx = std_e::indices_from_strides(send_str_n);
+  std_e::interval_vector<int> recv_str_idx = std_e::indices_from_strides(recv_str_n);
 
   // -------------------------------------------------------------------
   // 7 - Allocation of buffer

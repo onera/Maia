@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <algorithm>
 #include "std_e/future/span.hpp"
-#include "std_e/utils/meta.hpp"
+#include "std_e/meta/meta.hpp"
 #include "std_e/base/not_implemented_exception.hpp"
 #include "maia/connectivity/iter/heterogenous_connectivity_ref.hpp"
 #include "maia/connectivity/iter/heterogenous_connectivity_view.hpp"

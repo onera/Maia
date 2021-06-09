@@ -14,7 +14,7 @@ partial_to_full_distribution(const Range& partial_distrib, MPI_Comm comm) {
   STD_E_ASSERT(partial_distrib.size()==3);
   using I = typename Range::value_type;
 
-  distribution_vector<I> full_distrib(std_e::nb_ranks(comm));
+  distribution_vector<I> full_distrib(std_e::n_rank(comm));
   full_distrib[0] = 0;
   std_e::all_gather(partial_distrib[1], full_distrib.data()+1, comm);
 

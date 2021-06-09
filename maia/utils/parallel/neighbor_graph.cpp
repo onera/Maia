@@ -97,7 +97,7 @@ compute_zone_infos(const tree& b, MPI_Comm comm) -> zone_infos {
 
   std::vector<PDM_g_num_t> proc_of_owned_zones(nb_owned_zones,std_e::rank(comm));
 
-  std_e::knot_vector<PDM_g_num_t> zone_reg_long(begin(zone_reg.distribution()), end(zone_reg.distribution()));
+  std_e::interval_vector<PDM_g_num_t> zone_reg_long(begin(zone_reg.distribution()), end(zone_reg.distribution()));
   auto proc_of_neighbor_zones_long = spread_then_collect(
     comm, zone_reg_long,
     owned_zone_ids, proc_of_owned_zones,

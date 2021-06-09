@@ -54,14 +54,14 @@ Local and global numbering
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If global data were to be seen only as distributed blocks of memory over processes, life would be (relatively) simple. However, many algorithms
-require to operate on partitions. Hence, global data has to be partitioned. 
+require to operate on partitions. Hence, global data has to be partitioned.
 
 However, the link between an entity in a partition (say, a vertex in a mesh partition) and the entity of the global data it was created from (the same vertex, but in the original, global mesh) must be kept for multiple reasons. Maybe the most important one is that during the partitioning process, some entities of the global data are duplicated over multiple partitions (e.g. the matching vertices of two partitions), but they still represent the same data (they represent the same original vertex).
 
 In order to know, for an element of a partition, which global entity it represents, we use a **local to global numbering array** (often called :code:`LN_to_GN` for short). Each partition has a :code:`LN_to_GN` array. For an element at index :code:`i` in array :code:`A` (called the **local numbering**), :code:`LN_to_GN[i]` gives the **global numbering**, that is, the global identifier of the element in the *global* array.
 
 
-TODO prez de référence 
+TODO prez de référence
 
 
 Parallel CGNS trees
@@ -89,7 +89,7 @@ Most of the time, the mesh we want to operate on is not partitioned. This is mai
 3. A *part tree* is computed from the *dist tree* by calling graph partitioning algorithms, then transfering fields. The *part tree* contains :code:`LN_to_GN` information to keep the link with the *dist tree* it has been generated from.
 4. The solver is called over the *part tree*
 5. The result fields are transfered back to the *dist tree*
-6. The updated *dist tree* is saved to disk. 
+6. The updated *dist tree* is saved to disk.
 
 Other workflows and refinements
 -------------------------------
