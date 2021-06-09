@@ -154,152 +154,6 @@ def get_zone_info(zone_node):
     raise ValueError(f"Unable ta access to the node named ':CGNS#Ppart' in Zone '{I.getName(zone_node)}'.")
 
 # ------------------------------------------------------------------------
-def setup_surf_mesh(walldist, dist_tree, part_tree, families, comm):
-  face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, \
-    vtx_bnd, vtx_ln_to_gn = extract_surf_from_bc(part_tree, families, comm)
-
-  n_face_bnd = face_vtx_bnd_idx.shape[0]-1
-  n_vtx_bnd  = vtx_ln_to_gn.shape[0]
-
-  # Get the number of face
-  n_face_bnd_t = 0 if face_ln_to_gn.shape[0] == 0 else np.max(face_ln_to_gn)
-  n_face_bnd_t = comm.allreduce(n_face_bnd_t, op=MPI.MAX)
-  LOG.info(f"setup_surf_mesh: n_face_bnd_t = {n_face_bnd_t}")
-  # Get the number of vertex
-  n_vtx_bnd_t = 0 if vtx_ln_to_gn.shape[0] == 0  else np.max(vtx_ln_to_gn)
-  n_vtx_bnd_t = comm.allreduce(n_vtx_bnd_t , op=MPI.MAX)
-  LOG.info(f"setup_surf_mesh: n_vtx_bnd_t = {n_vtx_bnd_t}")
-
-  part_base = I.getBases(part_tree)[0]
-  walldist_nodes = I.getNodeFromNameAndType(part_base, ':CGNS#WallDist', 'UserDefined_t')
-  if walldist_nodes is None:
-    walldist_nodes = I.createUniqueChild(part_base, ':CGNS#WallDist', 'UserDefined_t')
-  I.newDataArray("face_vtx_bnd",     face_vtx_bnd,     parent=walldist_nodes)
-  I.newDataArray("face_vtx_bnd_idx", face_vtx_bnd_idx, parent=walldist_nodes)
-  I.newDataArray("face_ln_to_gn",    face_ln_to_gn,    parent=walldist_nodes)
-  I.newDataArray("vtx_bnd",          vtx_bnd,          parent=walldist_nodes)
-  I.newDataArray("vtx_ln_to_gn",     vtx_ln_to_gn,     parent=walldist_nodes)
-  # comm.Barrier()
-  # if(comm.Get_rank() == 0):
-  #   print "surf_mesh_global_data_set ..."
-  # comm.Barrier()
-  walldist.n_part_surf = 1
-  walldist.surf_mesh_global_data_set(n_face_bnd_t, n_vtx_bnd_t)
-
-  # comm.Barrier()
-  # if(comm.Get_rank() == 0):
-  #   print "surf_mesh_part_set ..."
-  # comm.Barrier()
-  walldist.surf_mesh_part_set(0, n_face_bnd,
-                                 face_vtx_bnd_idx,
-                                 face_vtx_bnd,
-                                 face_ln_to_gn,
-                                 n_vtx_bnd,
-                                 vtx_bnd,
-                                 vtx_ln_to_gn)
-
-
-
-# ------------------------------------------------------------------------
-def setup_vol_mesh(walldist, dist_tree, part_tree):
-  n_domain = len(I.getZones(dist_tree))
-  assert(n_domain >= 1)
-
-  n_part_per_domain = np.zeros(n_domain, dtype=np.int32)
-  for i_domain, dist_zone in enumerate(IE.getNodesByMatching(dist_tree, 'CGNSBase_t/Zone_t')):
-    assert(i_domain == 0)
-    # print(f"dist_zone = {dist_zone}")
-    n_vtx_t  = SIDS.Zone.n_vtx(dist_zone)
-    n_cell_t = SIDS.Zone.n_cell(dist_zone)
-
-    # Get the list of all partition in this domain
-    is_same_zone = lambda n:I.getType(n) == CGL.Zone_t.name and conv.get_part_prefix(I.getName(n)) == I.getName(dist_zone)
-    part_zones = list(IE.getNodesByMatching(part_tree, ['CGNSBase_t', is_same_zone]))
-
-    # Get the number of local partition(s)
-    n_part = len(part_zones)
-    LOG.info(f"setup_vol_mesh: n_part   = {n_part}")
-    LOG.info(f"setup_vol_mesh: n_vtx_t  [toto] = {n_vtx_t}")
-    LOG.info(f"setup_vol_mesh: n_cell_t [toto] = {n_cell_t}")
-
-    # lsum = lambda x, y: x + y
-    # n_vtx_t  = reduce(lsum, [SIDS.Zone.n_vtx(z)  for z in part_zones], 0)
-    # n_cell_t = reduce(lsum, [SIDS.Zone.n_cell(z) for z in part_zones], 0)
-    # n_face_t = reduce(lsum, [SIDS.Zone.n_face(z) for z in part_zones], 0)
-    # print(f"n_vtx_t  = {n_vtx_t}")
-    # print(f"n_cell_t = {n_cell_t}")
-    # print(f"n_face_t = {n_face_t}")
-
-    # Get the total number of face and vertex of the configuration
-    n_vtx_t  = 0
-    n_cell_t = 0
-    n_face_t = 0
-    for i_part, part_zone in enumerate(part_zones):
-      LOG.info(f"setup_vol_mesh: parse Zone [1] : {I.getName(part_zone)}")
-      cell_ln_to_gn, face_ln_to_gn, vtx_ln_to_gn = get_zone_ln_to_gn(part_zone)
-      n_vtx_t  = np.max(vtx_ln_to_gn)
-      n_cell_t = np.max(cell_ln_to_gn)
-      n_face_t = np.max(face_ln_to_gn)
-    n_vtx_t  = comm.allreduce(n_vtx_t , op=MPI.MAX)
-    n_cell_t = comm.allreduce(n_cell_t, op=MPI.MAX)
-    n_face_t = comm.allreduce(n_face_t, op=MPI.MAX)
-
-    # LOG.info(f"n_vtx_t  = {SIDS.Zone.n_vtx(dist_zone)}")
-    # LOG.info(f"n_cell_t = {SIDS.Zone.n_cell(dist_zone)}")
-    LOG.info(f"setup_vol_mesh: n_vtx_t  = {n_vtx_t}")
-    LOG.info(f"setup_vol_mesh: n_cell_t = {n_cell_t}")
-    LOG.info(f"setup_vol_mesh: n_face_t = {n_face_t}")
-
-    # comm.Barrier()
-    # if(comm.Get_rank() == 0):
-    #   print "vol_mesh_global_data_set ..."
-    # comm.Barrier()
-    walldist.n_part_vol = n_part
-    walldist.vol_mesh_global_data_set(n_cell_t, n_face_t, n_vtx_t)
-    n_part_per_domain[i_domain] = n_part
-
-    for i_part, part_zone in enumerate(part_zones):
-      LOG.info(f"setup_vol_mesh: parse Zone [2] : {I.getName(part_zone)}")
-      cell_face_idx, cell_face, cell_ln_to_gn, \
-      face_vtx_idx, face_vtx, face_ln_to_gn,   \
-      vtx_coords, vtx_ln_to_gn = get_zone_info(part_zone)
-
-      n_cell = cell_ln_to_gn.shape[0]
-      n_face = face_ln_to_gn.shape[0]
-      n_vtx  = vtx_ln_to_gn .shape[0]
-
-      assert(SIDS.Zone.n_vtx(part_zone)  == n_vtx)
-      assert(SIDS.Zone.n_cell(part_zone) == n_cell)
-      assert(SIDS.Zone.n_face(part_zone) == n_face)
-      LOG.info(f"setup_vol_mesh: n_vtx  = {n_vtx}")
-      LOG.info(f"setup_vol_mesh: n_cell = {n_cell}")
-      LOG.info(f"setup_vol_mesh: n_face = {n_face}")
-
-      center_cell, _ = get_center_cell(part_zone)
-      assert(center_cell.size == 3*n_cell)
-
-      walldist_nodes = I.getNodeFromNameAndType(part_zone, ':CGNS#WallDist', 'UserDefined_t')
-      if walldist_nodes is None:
-        walldist_nodes = I.createUniqueChild(part_zone, ':CGNS#WallDist', 'UserDefined_t')
-      I.newDataArray("cell_face_idx",    cell_face_idx,    parent=walldist_nodes)
-      I.newDataArray("cell_face",        cell_face,        parent=walldist_nodes)
-      I.newDataArray("cell_ln_to_gn",    cell_ln_to_gn,    parent=walldist_nodes)
-      I.newDataArray("face_vtx_idx",     face_vtx_idx,     parent=walldist_nodes)
-      I.newDataArray("face_vtx",         face_vtx,         parent=walldist_nodes)
-      I.newDataArray("face_ln_to_gn",    face_ln_to_gn,    parent=walldist_nodes)
-      I.newDataArray("vtx_coords",       vtx_coords,       parent=walldist_nodes)
-      I.newDataArray("vtx_ln_to_gn",     vtx_ln_to_gn,     parent=walldist_nodes)
-
-      # comm.Barrier()
-      # if(comm.Get_rank() == 0):
-      #   print "vol_mesh_part_set ..."
-      # comm.Barrier()
-      walldist.vol_mesh_part_set(i_part,
-                                 n_cell, cell_face_idx, cell_face, center_cell, cell_ln_to_gn,
-                                 n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
-                                 n_vtx, vtx_coords, vtx_ln_to_gn)
-
-# ------------------------------------------------------------------------
 def find_bcwall(dist_tree, part_tree, comm, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']):
   all_families = I.getNodesFromType2(dist_tree, 'Family_t')
   for part_zone in I.getNodesFromType(part_tree, 'Zone_t'):
@@ -328,6 +182,8 @@ class WallDistance:
 
     self.walldist = PDM.DistCellCenterSurf(mpi_comm)
 
+    self._register = []
+
   @property
   def part_tree(self):
     return self._part_tree
@@ -352,6 +208,161 @@ class WallDistance:
   def mpi_comm(self, value):
       self._mpi_comm = value
 
+  def _setup_surf_mesh(self, skeleton_tree, part_tree, families, comm):
+    face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, \
+      vtx_bnd, vtx_ln_to_gn = extract_surf_from_bc(part_tree, families, comm)
+
+    n_face_bnd = face_vtx_bnd_idx.shape[0]-1
+    n_vtx_bnd  = vtx_ln_to_gn.shape[0]
+
+    # Get the number of face
+    n_face_bnd_t = 0 if face_ln_to_gn.shape[0] == 0 else np.max(face_ln_to_gn)
+    n_face_bnd_t = comm.allreduce(n_face_bnd_t, op=MPI.MAX)
+    LOG.info(f"setup_surf_mesh: n_face_bnd_t = {n_face_bnd_t}")
+    # Get the number of vertex
+    n_vtx_bnd_t = 0 if vtx_ln_to_gn.shape[0] == 0  else np.max(vtx_ln_to_gn)
+    n_vtx_bnd_t = comm.allreduce(n_vtx_bnd_t , op=MPI.MAX)
+    LOG.info(f"setup_surf_mesh: n_vtx_bnd_t = {n_vtx_bnd_t}")
+
+    # Keep numpy alive
+    # part_base = I.getBases(part_tree)[0]
+    # walldist_nodes = I.getNodeFromNameAndType(part_base, ':CGNS#WallDist', 'UserDefined_t')
+    # if walldist_nodes is None:
+    #   walldist_nodes = I.createUniqueChild(part_base, ':CGNS#WallDist', 'UserDefined_t')
+    # I.newDataArray("face_vtx_bnd",     face_vtx_bnd,     parent=walldist_nodes)
+    # I.newDataArray("face_vtx_bnd_idx", face_vtx_bnd_idx, parent=walldist_nodes)
+    # I.newDataArray("face_ln_to_gn",    face_ln_to_gn,    parent=walldist_nodes)
+    # I.newDataArray("vtx_bnd",          vtx_bnd,          parent=walldist_nodes)
+    # I.newDataArray("vtx_ln_to_gn",     vtx_ln_to_gn,     parent=walldist_nodes)
+    for array in (face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, vtx_bnd, vtx_ln_to_gn,):
+      self._register.append(array)
+
+    # comm.Barrier()
+    # if(comm.Get_rank() == 0):
+    #   print "surf_mesh_global_data_set ..."
+    # comm.Barrier()
+    self.walldist.n_part_surf = 1
+    self.walldist.surf_mesh_global_data_set(n_face_bnd_t, n_vtx_bnd_t)
+
+    # comm.Barrier()
+    # if(comm.Get_rank() == 0):
+    #   print "surf_mesh_part_set ..."
+    # comm.Barrier()
+    self.walldist.surf_mesh_part_set(0, n_face_bnd,
+                                   face_vtx_bnd_idx,
+                                   face_vtx_bnd,
+                                   face_ln_to_gn,
+                                   n_vtx_bnd,
+                                   vtx_bnd,
+                                   vtx_ln_to_gn)
+
+
+
+  def _setup_vol_mesh(self, skeleton_tree, part_tree, comm):
+    n_domain = len(I.getZones(skeleton_tree))
+    assert(n_domain >= 1)
+
+    n_part_per_domain = np.zeros(n_domain, dtype=np.int32)
+    for i_domain, dist_zone in enumerate(IE.getNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t')):
+      assert(i_domain == 0)
+      # print(f"dist_zone = {dist_zone}")
+      n_vtx_t  = SIDS.Zone.n_vtx(dist_zone)
+      n_cell_t = SIDS.Zone.n_cell(dist_zone)
+
+      # Get the list of all partition in this domain
+      is_same_zone = lambda n:I.getType(n) == CGL.Zone_t.name and conv.get_part_prefix(I.getName(n)) == I.getName(dist_zone)
+      part_zones = list(IE.getNodesByMatching(part_tree, ['CGNSBase_t', is_same_zone]))
+
+      # Get the number of local partition(s)
+      n_part = len(part_zones)
+      LOG.info(f"setup_vol_mesh: n_part   = {n_part}")
+      LOG.info(f"setup_vol_mesh: n_vtx_t  [toto] = {n_vtx_t}")
+      LOG.info(f"setup_vol_mesh: n_cell_t [toto] = {n_cell_t}")
+
+      # lsum = lambda x, y: x + y
+      # n_vtx_t  = reduce(lsum, [SIDS.Zone.n_vtx(z)  for z in part_zones], 0)
+      # n_cell_t = reduce(lsum, [SIDS.Zone.n_cell(z) for z in part_zones], 0)
+      # n_face_t = reduce(lsum, [SIDS.Zone.n_face(z) for z in part_zones], 0)
+      # print(f"n_vtx_t  = {n_vtx_t}")
+      # print(f"n_cell_t = {n_cell_t}")
+      # print(f"n_face_t = {n_face_t}")
+
+      # Get the total number of face and vertex of the configuration
+      n_vtx_t  = 0
+      n_cell_t = 0
+      n_face_t = 0
+      for i_part, part_zone in enumerate(part_zones):
+        LOG.info(f"setup_vol_mesh: parse Zone [1] : {I.getName(part_zone)}")
+        cell_ln_to_gn, face_ln_to_gn, vtx_ln_to_gn = get_zone_ln_to_gn(part_zone)
+        n_vtx_t  = np.max(vtx_ln_to_gn)
+        n_cell_t = np.max(cell_ln_to_gn)
+        n_face_t = np.max(face_ln_to_gn)
+      n_vtx_t  = comm.allreduce(n_vtx_t , op=MPI.MAX)
+      n_cell_t = comm.allreduce(n_cell_t, op=MPI.MAX)
+      n_face_t = comm.allreduce(n_face_t, op=MPI.MAX)
+
+      # LOG.info(f"n_vtx_t  = {SIDS.Zone.n_vtx(dist_zone)}")
+      # LOG.info(f"n_cell_t = {SIDS.Zone.n_cell(dist_zone)}")
+      LOG.info(f"setup_vol_mesh: n_vtx_t  = {n_vtx_t}")
+      LOG.info(f"setup_vol_mesh: n_cell_t = {n_cell_t}")
+      LOG.info(f"setup_vol_mesh: n_face_t = {n_face_t}")
+
+      # comm.Barrier()
+      # if(comm.Get_rank() == 0):
+      #   print "vol_mesh_global_data_set ..."
+      # comm.Barrier()
+      self.walldist.n_part_vol = n_part
+      self.walldist.vol_mesh_global_data_set(n_cell_t, n_face_t, n_vtx_t)
+      n_part_per_domain[i_domain] = n_part
+
+      for i_part, part_zone in enumerate(part_zones):
+        LOG.info(f"setup_vol_mesh: parse Zone [2] : {I.getName(part_zone)}")
+        cell_face_idx, cell_face, cell_ln_to_gn, \
+        face_vtx_idx, face_vtx, face_ln_to_gn,   \
+        vtx_coords, vtx_ln_to_gn = get_zone_info(part_zone)
+
+        n_cell = cell_ln_to_gn.shape[0]
+        n_face = face_ln_to_gn.shape[0]
+        n_vtx  = vtx_ln_to_gn .shape[0]
+
+        assert(SIDS.Zone.n_vtx(part_zone)  == n_vtx)
+        assert(SIDS.Zone.n_cell(part_zone) == n_cell)
+        assert(SIDS.Zone.n_face(part_zone) == n_face)
+        LOG.info(f"setup_vol_mesh: n_vtx  = {n_vtx}")
+        LOG.info(f"setup_vol_mesh: n_cell = {n_cell}")
+        LOG.info(f"setup_vol_mesh: n_face = {n_face}")
+
+        center_cell, _ = get_center_cell(part_zone)
+        assert(center_cell.size == 3*n_cell)
+
+        # Keep numpy alive
+        # walldist_nodes = I.getNodeFromNameAndType(part_zone, ':CGNS#WallDist', 'UserDefined_t')
+        # if walldist_nodes is None:
+        #   walldist_nodes = I.createUniqueChild(part_zone, ':CGNS#WallDist', 'UserDefined_t')
+        # I.newDataArray("cell_face_idx",    cell_face_idx,    parent=walldist_nodes)
+        # I.newDataArray("cell_face",        cell_face,        parent=walldist_nodes)
+        # I.newDataArray("cell_ln_to_gn",    cell_ln_to_gn,    parent=walldist_nodes)
+        # I.newDataArray("face_vtx_idx",     face_vtx_idx,     parent=walldist_nodes)
+        # I.newDataArray("face_vtx",         face_vtx,         parent=walldist_nodes)
+        # I.newDataArray("face_ln_to_gn",    face_ln_to_gn,    parent=walldist_nodes)
+        # I.newDataArray("vtx_coords",       vtx_coords,       parent=walldist_nodes)
+        # I.newDataArray("vtx_ln_to_gn",     vtx_ln_to_gn,     parent=walldist_nodes)
+        for array in (cell_face_idx, cell_face, cell_ln_to_gn,):
+          self._register.append(array)
+        for array in (face_vtx_idx, face_vtx, face_ln_to_gn,):
+          self._register.append(array)
+        for array in (vtx_coords, vtx_ln_to_gn,):
+          self._register.append(array)
+
+        # comm.Barrier()
+        # if(comm.Get_rank() == 0):
+        #   print "vol_mesh_part_set ..."
+        # comm.Barrier()
+        self.walldist.vol_mesh_part_set(i_part,
+                                        n_cell, cell_face_idx, cell_face, center_cell, cell_ln_to_gn,
+                                        n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
+                                        n_vtx, vtx_coords, vtx_ln_to_gn)
+
   def compute(self):
     # Create dist tree with families from CGNS base
     skeleton_tree = create_dist_from_part_tree(self.part_tree, self.mpi_comm)
@@ -374,8 +385,8 @@ class WallDistance:
       # I.printTree(self.part_tree)
       # C.convertPyTree2File(skeleton_tree, "skeleton_tree-cubeU_join_bnd-new-{}.hdf".format(self.mpi_comm.Get_rank()))
 
-      setup_surf_mesh(self.walldist, skeleton_tree, self.part_tree, self.families, self.mpi_comm)
-      setup_vol_mesh(self.walldist, skeleton_tree, self.part_tree)
+      self._setup_surf_mesh(skeleton_tree, self.part_tree, self.families, self.mpi_comm)
+      self._setup_vol_mesh(skeleton_tree, self.part_tree, self.mpi_comm)
 
       self.walldist.compute()
 
@@ -404,8 +415,8 @@ class WallDistance:
       raise ValueError(f"Unable to find BC family(ies) : {self.families} in {skeleton_families}.")
     # I.printTree(self.part_tree)
 
-  def clean_tree(self):
-    raise NotImplementedError()
+    # Free unnecessary numpy
+    del self._register
 
   def dump_times(self):
     self.walldist.dump_times()
@@ -435,11 +446,11 @@ if __name__ == "__main__":
   # filename = "cubeS_join_bnd1.hdf"
   # filename = "cubeU_join_bnd-new.hdf"
   # families = ['Wall']
-  # filename = "AxiT2-new.hdf"
-  # families = ['WALL']
+  filename = "AxiT2-new.hdf"
+  families = ['WALL']
 
-  filename = "Rotor37_U_MM2-new.hdf"
-  families = ['AUBE', 'MOYEU', 'CARTER', 'BLADE']
+  # filename = "Rotor37_U_MM2-new.hdf"
+  # families = ['AUBE', 'MOYEU', 'CARTER', 'BLADE']
   # t = C.convertFile2PyTree(filename)
   # I._adaptNGon12NGon2(t)
   # C.convertPyTree2File(t, "AxiT2-new.hdf")
