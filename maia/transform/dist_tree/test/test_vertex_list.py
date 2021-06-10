@@ -142,7 +142,7 @@ def test_search_with_geometry(sub_comm):
     pl_face_vtx = empty
     pld_face_vtx = empty
 
-  plv, plvd = VL._search_with_geometry(zone, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, sub_comm)
+  plv, plvd = VL._search_with_geometry(zone, zone, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, sub_comm)
 
   if sub_comm.Get_rank() == 0:
     assert (plv  == [2,3,6,7]).all()
@@ -159,7 +159,6 @@ class Test_generate_jn_vertex_list():
     #With this configuration, we have isolated faces when np=4
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
-    ngon = I.getNodeFromName(zone, "NGonElements")
     I._rmNodesByType(zone, 'ZoneBC_t')
     #Create fake jn
     zgc = I.newZoneGridConnectivity(parent=zone)
@@ -172,8 +171,8 @@ class Test_generate_jn_vertex_list():
     I.newPointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     IE.newDistribution({'Index' : distri_pl}, gcA)
 
-
-    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(zone, ngon, gcA, sub_comm)
+    gc_path = "Base/zone/ZoneGridConnectivity/matchA"
+    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
 
     expt_full_pl_vtx     = np.arange(1,16+1)
     expt_full_pl_vtx_opp = np.arange(49,64+1)
@@ -181,29 +180,105 @@ class Test_generate_jn_vertex_list():
     assert (pl_vtx == expt_full_pl_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
     assert (pl_vtx_opp == expt_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
-  @mark_mpi_test(2)
-  def test_single_zone_geo(self, sub_comm):
+  @mark_mpi_test([2,4])
+  def test_multi_zone_topo(self, sub_comm):
+    #With this configuration, we have isolated faces when np=4
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
-    ngon = I.getNodeFromName(zone, "NGonElements")
+    zone[0] = 'zoneA'
+    I._rmNodesByType(zone, 'ZoneBC_t')
+
+    #Create other zone
+    tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], sub_comm)
+    zoneB = I.getZones(tree2)[0]
+    zoneB[0] = 'zoneB'
+    I._rmNodesByType(zoneB, 'ZoneBC_t')
+    I._addChild(I.getNodeFromName(tree, 'Base'), zoneB)
+
+    #Create fake jn
+    zgc = I.newZoneGridConnectivity(parent=zone)
+    gcA = I.newGridConnectivity('matchA', 'zoneB', 'Abutting1to1', zgc)
+    full_pl     = np.array([64,65,66,67,68,69,70,71,72]) #xmax
+    full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
+    distri_pl   = uniform_distribution(9, sub_comm)
+    I.newGridLocation('FaceCenter', gcA)
+    I.newPointList('PointList', full_pl[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    I.newPointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    IE.newDistribution({'Index' : distri_pl}, gcA)
+
+    gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
+    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
+
+    expt_full_pl_vtx     = np.arange(4, 64+1, 4)
+    expt_full_pl_vtx_opp = np.arange(1, 64+1, 4)
+    assert (distri_jn_vtx == uniform_distribution(16, sub_comm)).all()
+    assert (pl_vtx == expt_full_pl_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx_opp == expt_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+
+  @mark_mpi_test(3)
+  def test_single_zone_all(self, sub_comm):
+    #Faces that should be treated during phase 1,2 and 3 for each proc :
+    # P0 : (2,0,1)   P1 : (0,1,0)   P2 : (0,1,1)
+    tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
+    zone = I.getZones(tree)[0]
     I._rmNodesByType(zone, 'ZoneBC_t')
     zgc = I.newZoneGridConnectivity(parent=zone)
     gcA = I.newGridConnectivity('matchA', I.getName(zone), 'Abutting1to1', zgc)
     I.newGridLocation('FaceCenter', gcA)
-    if sub_comm.Get_rank() == 1:
-      I.newPointList('PointList', [[2]], gcA)
-      I.newPointList('PointListDonor', [[29]], gcA)
-      IE.newDistribution({'Index' : [0,1,1]}, gcA)
-    else:
-      I.newPointList('PointList', np.empty((1,0), dtype=np.int), gcA)
-      I.newPointList('PointListDonor', np.empty((1,0), dtype=np.int), gcA)
-      IE.newDistribution({'Index' : [0,0,1]}, gcA)
+    if sub_comm.Get_rank() == 0:
+      pl_distri = [0,3,6]
+      expt_jn_distri = [0, 9, 21]
+    elif sub_comm.Get_rank() == 1:
+      pl_distri = [3,4,6]
+      expt_jn_distri = [9, 14, 21]
+    elif sub_comm.Get_rank() == 2:
+      pl_distri = [4,6,6]
+      expt_jn_distri = [14, 21, 21]
 
-    pl_vtx, pld_vtx, distri_jn_vtx = VL.generate_jn_vertex_list(zone, ngon, gcA, sub_comm)
+    I.newPointList('PointList', (np.array([1,2,4,11,13,16])[pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
+    I.newPointList('PointListDonor', (np.array([65,66,68,75,77,80])[pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
+    IE.newDistribution({'Index' : pl_distri}, gcA)
 
-    expt_full_pl_vtx  = [2,3,6,7]
-    expt_full_pld_vtx = [50,51,54,55]
-    assert (distri_jn_vtx == uniform_distribution(4, sub_comm)).all()
+    gc_path = "Base/zone/ZoneGridConnectivity/matchA"
+    pl_vtx, pld_vtx, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
+
+    expt_full_pl_vtx  = np.array([1,2,3,4,5,6,7,8,9,10,13,14,16,17,18,19,20,21,22,24,25])
+    expt_full_pld_vtx = expt_full_pl_vtx + 100
+    assert (distri_jn_vtx == expt_jn_distri).all()
     assert (pl_vtx == expt_full_pl_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
     assert (pld_vtx == expt_full_pld_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
+  @mark_mpi_test(2)
+  def test_multi_zone_geo(self, sub_comm):
+    tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
+    zone = I.getZones(tree)[0]
+    zone[0] = 'zoneA'
+    I._rmNodesByType(zone, 'ZoneBC_t')
+
+    #Create other zone
+    tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], sub_comm)
+    zoneB = I.getZones(tree2)[0]
+    zoneB[0] = 'zoneB'
+    I._rmNodesByType(zoneB, 'ZoneBC_t')
+    I._addChild(I.getNodeFromName(tree, 'Base'), zoneB)
+
+    #Create fake jn such that we have only isolated faces
+    zgc = I.newZoneGridConnectivity(parent=zone)
+    gcA = I.newGridConnectivity('matchA', 'zoneB', 'Abutting1to1', zgc)
+    full_pl     = np.array([64,66,71]) #xmax
+    full_pl_opp = np.array([37,39,44]) #xmin
+    distri_pl   = uniform_distribution(3, sub_comm)
+    I.newGridLocation('FaceCenter', gcA)
+    I.newPointList('PointList', full_pl[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    I.newPointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    IE.newDistribution({'Index' : distri_pl}, gcA)
+
+    gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
+    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
+
+    expected_dist = [0,7,12] if sub_comm.Get_rank() == 0 else [7,12,12]
+    expt_full_pl_vtx     = [4,8,12,16,20,24,28,32,40,44,56,60]
+    expt_full_pl_vtx_opp = [1,5,9,13,17,21,25,29,37,41,53,57]
+    assert (distri_jn_vtx == expected_dist).all()
+    assert (pl_vtx == expt_full_pl_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx_opp == expt_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()

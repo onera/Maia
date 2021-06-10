@@ -11,6 +11,8 @@ from maia.sids import sids
 from maia.utils import py_utils
 from maia.utils.parallel import utils as par_utils
 
+from maia.transform.dist_tree import add_joins_ordinal as AJO
+
 from maia.tree_exchange.dist_to_part import data_exchange as MBTP
 
 def _is_subset_l(subset, L):
@@ -146,7 +148,7 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
   (ie all of its vertices have been determined) or not.
 
   Intersection method assumes that 2 matching faces have inverted
-  face_vtx ordering, but does not  necessarily start with same vtx, 
+  face_vtx ordering, but does not  necessarily start with same vtx,
   ie A B C D -> C' B' A' D'. The idea of the method is to find some groups
   of faces and maching faces sharing a unique sequence of vertices,
   in order to identificate the common starting point.
@@ -233,7 +235,7 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
 
   return pl_vtx_local, pl_vtx_local_opp, face_is_treated
 
-def _search_with_geometry(zone, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm):
+def _search_with_geometry(zone, zone_d, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm):
   """
   Take two face_vtx arrays describing one or more matching faces (face link is given
   by pl_face_vtx_idx array), and try to construct the matching
@@ -248,32 +250,30 @@ def _search_with_geometry(zone, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm
   Note that a result will be return even if the faces are not truly matching!
 
   Todo : manage transformation;
-         manage multizone;
   """
   pl_vtx_local     = pl_face_vtx
   pl_vtx_local_opp = np.zeros_like(pl_vtx_local)
 
   vtx_g_to_l = {v:i for i,v in enumerate(pl_vtx_local)}
-  grid_coords_n = I.getNodeFromType1(zone, 'GridCoordinates_t')
-  distri_vtx = IE.getDistribution(zone, 'Vertex')
 
   assert len(pl_face_vtx) == len(pld_face_vtx) == pl_face_vtx_idx[-1]
   n_face = len(pl_face_vtx_idx) - 1
   n_face_vtx = len(pl_face_vtx)
-  requested_vtx = np.concatenate([pl_face_vtx, pld_face_vtx])
 
-  received_coords = get_vtx_coordinates(grid_coords_n, distri_vtx, requested_vtx, comm)
+  received_coords     = get_vtx_coordinates(I.getNodeFromType1(zone, 'GridCoordinates_t'),
+                                            IE.getDistribution(zone, 'Vertex'),
+                                            pl_face_vtx, comm)
+  opp_received_coords = get_vtx_coordinates(I.getNodeFromType1(zone_d, 'GridCoordinates_t'),
+                                            IE.getDistribution(zone_d, 'Vertex'),
+                                            pld_face_vtx, comm)
 
+  #Work locally on each original face to find the starting vtx
   for iface in range(n_face):
-
     vtx_idx     = slice(pl_face_vtx_idx[iface], pl_face_vtx_idx[iface+1])
-    opp_vtx_idx = slice(pl_face_vtx_idx[iface] + n_face_vtx, pl_face_vtx_idx[iface+1] + n_face_vtx)
-    face_vtx_coords     = received_coords[vtx_idx]
-    opp_face_vtx_coords = received_coords[opp_vtx_idx]
 
     # Unique should sort array following the same key (axis=0 is important!)
-    _, indices, counts = np.unique(face_vtx_coords, axis = 0, return_index = True, return_counts = True)
-    _, opp_indices = np.unique(opp_face_vtx_coords, axis = 0, return_index = True)
+    _, indices, counts = np.unique(received_coords[vtx_idx], axis = 0, return_index = True, return_counts = True)
+    _, opp_indices = np.unique(opp_received_coords[vtx_idx], axis = 0, return_index = True)
     # Search first unique element (tie breaker) and use it as starting vtx
     idx = 0
     counts_it = iter(counts)
@@ -287,57 +287,87 @@ def _search_with_geometry(zone, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm
 
     pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
 
+  #Remove duplicated elements, keeping same order for both arrays
   pl_vtx_local, order = np.unique(pl_vtx_local, return_index = True)
   pl_vtx_local_opp = pl_vtx_local_opp[order]
   return pl_vtx_local, pl_vtx_local_opp
 
 
-def generate_jn_vertex_list(zone, ngon, jn, comm):
+def generate_jn_vertex_list(dist_tree, jn_path, comm):
   """
-  From a FaceCenter join, create the distributed arrays VertexList
+  From a FaceCenter join (given by its path in the tree), create the distributed arrays VertexList
   and VertexListDonor such that vertices are matching 1 to 1.
   Return the two index arrays and the partial distribution array, which is
   identical for both of them
+  """
 
-  For now only one zone is supported"""
-
+  jn = I.getNodeFromPath(dist_tree, jn_path)
   assert sids.GridLocation(jn) == 'FaceCenter'
   distri_jn = IE.getDistribution(jn, 'Index')
+
+  base_name, zone_name = jn_path.split('/')[0:2]
+  zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
+  zone_d = I.getNodeFromPath(dist_tree, AJO._jn_opp_zone(base_name, jn))
+
+  ngon   = [elem for elem in I.getNodesFromType1(zone,   'Elements_t') if elem[1][0] == 22][0]
+  ngon_d = [elem for elem in I.getNodesFromType1(zone_d, 'Elements_t') if elem[1][0] == 22][0]
 
   pl   = I.getNodeFromName1(jn, 'PointList')[1][0]
   pl_d = I.getNodeFromName1(jn, 'PointListDonor')[1][0]
 
+  #First pass with topologic treatment
   face_offset, pl_face_vtx  = facelist_to_vtxlist_local([pl], ngon, comm)[0]
-  face_offset, pld_face_vtx = facelist_to_vtxlist_local([pl_d], ngon, comm)[0]
+  face_offset, pld_face_vtx = facelist_to_vtxlist_local([pl_d], ngon_d, comm)[0]
 
-  #Raccord single face
-  if distri_jn[2] == 1:
-    pl_vtx_local, pl_vtx_local_opp = _search_with_geometry(zone, face_offset, pl_face_vtx, pld_face_vtx, comm)
-    assert np.all(pl_vtx_local_opp != 0)
-    pl_vtx_local_list     = [pl_vtx_local.astype(pdm_dtype)]
-    pl_vtx_local_opp_list = [pl_vtx_local_opp.astype(pdm_dtype)]
+  pl_vtx_local, pl_vtx_local_opp, face_is_treated = _search_by_intersection(face_offset, pl_face_vtx, pld_face_vtx)
 
-  else:
-    pl_vtx_local, pl_vtx_local_opp, face_is_treated = _search_by_intersection(face_offset, pl_face_vtx, pld_face_vtx)
+  undermined_vtx = (pl_vtx_local_opp == 0)
+  pl_vtx_local_list     = [pl_vtx_local[~undermined_vtx].astype(pdm_dtype)]
+  pl_vtx_local_opp_list = [pl_vtx_local_opp[~undermined_vtx].astype(pdm_dtype)]
 
-    undermined_vtx = (pl_vtx_local_opp == 0)
-    pl_vtx_local_list     = [pl_vtx_local[~undermined_vtx].astype(pdm_dtype)]
-    pl_vtx_local_opp_list = [pl_vtx_local_opp[~undermined_vtx].astype(pdm_dtype)]
+  #Second pass with extended PL to try to catch locally isolated faces, having
+  # neighbor faces in the same jn on other procs
+  completed = comm.allreduce(not undermined_vtx.any(), op=MPI.LAND)
+  if not completed and distri_jn[2] != 1:
 
-    #Face isolée:  raccord avec plusieurs faces mais 1 seule connue par le proc (ou sans voisines)
-    if comm.allreduce(not np.all(face_is_treated), op=MPI.LOR) and distri_jn[2] != 1:
+    extended_pl, extended_pl_d = get_extended_pl(pl, pl_d, face_offset, pl_face_vtx, comm, face_is_treated)
 
-      extended_pl, extended_pl_d = get_extended_pl(pl, pl_d, face_offset, pl_face_vtx, comm, face_is_treated)
+    face_offset_e, pl_face_vtx_e  = facelist_to_vtxlist_local([extended_pl],   ngon, comm)[0]
+    face_offset_e, pld_face_vtx_e = facelist_to_vtxlist_local([extended_pl_d], ngon_d, comm)[0]
 
-      face_offset_e, pl_face_vtx_e  = facelist_to_vtxlist_local([extended_pl],   ngon, comm)[0]
-      face_offset_e, pld_face_vtx_e = facelist_to_vtxlist_local([extended_pl_d], ngon, comm)[0]
+    pl_vtx_local2, pl_vtx_local_opp2, face_is_treated2 = _search_by_intersection(face_offset_e, pl_face_vtx_e, pld_face_vtx_e)
 
-      pl_vtx_local2, pl_vtx_local_opp2, _ = _search_by_intersection(face_offset_e, pl_face_vtx_e, pld_face_vtx_e)
-      assert np.all(pl_vtx_local_opp2 != 0)
-      pl_vtx_local_list    .append(pl_vtx_local2.astype(pdm_dtype))
-      pl_vtx_local_opp_list.append(pl_vtx_local_opp2.astype(pdm_dtype))
+    undermined_vtx = (pl_vtx_local_opp2 == 0)
+    pl_vtx_local_list    .append(pl_vtx_local2[~undermined_vtx].astype(pdm_dtype))
+    pl_vtx_local_opp_list.append(pl_vtx_local_opp2[~undermined_vtx].astype(pdm_dtype))
+
+    completed = comm.allreduce(not undermined_vtx.any(), op=MPI.LAND)
+
+    #Update face_is_treated array
+    original_face_pos = {face:iface for iface,face in enumerate(extended_pl)} #Position of old face in extended array
+    for iface,face in enumerate(pl):
+      if not face_is_treated[iface] and face_is_treated2[original_face_pos[face]]:
+        face_is_treated[iface] = True
+
+  # Last pass : some faces remain untreated if they are totaly isolated in the original gc (in particular
+  # if the original gc has only one face). For these we do a geometric treatment
+  if not completed:
+    #Extract faces already treated on topologic pass
+    face_offset_e = py_utils.sizes_to_indices(np.diff(face_offset)[~face_is_treated])
+    vtx_to_extract = py_utils.multi_arange(face_offset[:-1][~face_is_treated], \
+                                           face_offset[1:][~face_is_treated])
+    pl_face_vtx_e  = pl_face_vtx[vtx_to_extract]
+    pld_face_vtx_e = pld_face_vtx[vtx_to_extract]
+
+    pl_vtx_local3, pl_vtx_local_opp3 = _search_with_geometry(zone, zone_d, face_offset_e, pl_face_vtx_e, pld_face_vtx_e, comm)
+    assert np.all(pl_vtx_local_opp3 != 0)
+    pl_vtx_local_list    .append(pl_vtx_local3.astype(pdm_dtype))
+    pl_vtx_local_opp_list.append(pl_vtx_local_opp3.astype(pdm_dtype))
+
 
   #Now merge vertices appearing more than once
+  #Careful, the distribution may be unequilibred since it is computed w.r.t vtx id
+  #and not using number of vertices
   part_data = {'pl_vtx_opp' : pl_vtx_local_opp_list}
   PTB = PDM.PartToBlock(comm, pl_vtx_local_list, pWeight=None, partN=len(pl_vtx_local_list),
                         t_distrib=0, t_post=1, t_stride=0)
@@ -349,18 +379,15 @@ def generate_jn_vertex_list(zone, ngon, jn, comm):
 
   return pl_vtx, dist_data['pl_vtx_opp'], distri_jn_vtx
 
-def generate_vertex_joins(dist_zone, comm):
+def generate_vertex_joins(dist_tree, dist_zone, comm):
   """For now only one zone is supported"""
-
-  ngons = [elem for elem in I.getNodesFromType1(dist_zone, 'Elements_t') if elem[1][0] == 22]
-  assert len(ngons) == 1
-  ngon = ngons[0]
 
   for zgc in I.getNodesFromType1(dist_zone, 'ZoneGridConnectivity_t'):
     zgc_vtx = I.newZoneGridConnectivity(I.getName(zgc) + '#Vtx', dist_zone)
     #Todo : do not apply algo to opposite jn, juste invert values !
     for gc in I.getNodesFromType1(zgc, 'GridConnectivity_t'):
-      pl_vtx, pl_vtx_opp, distri_jn = generate_jn_vertex_list(dist_zone, ngon, gc, comm)
+      gc_path = '/'.join(['Base', I.getName(dist_zone), I.getName(zgc), I.getName(gc)])
+      pl_vtx, pl_vtx_opp, distri_jn = generate_jn_vertex_list(dist_tree, gc_path, comm)
 
       jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
       I.newGridLocation('Vertex', jn_vtx)
