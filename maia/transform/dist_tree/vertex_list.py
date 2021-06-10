@@ -11,6 +11,8 @@ from maia.sids import sids
 from maia.utils import py_utils
 from maia.utils.parallel import utils as par_utils
 
+from maia.tree_exchange.dist_to_part import data_exchange as MBTP
+
 def _is_subset_l(subset, L):
   """Return True is subset list is included in L, allowing looping"""
   extended_l = list(L) + list(L)[:len(subset)-1]
@@ -60,6 +62,21 @@ def facelist_to_vtxlist_local(pls, ngon, comm):
   face_offset_l = [py_utils.sizes_to_indices(p_sizes) for p_sizes in part_data_pl['FaceVtx#PDM_Stride']]
 
   return list(zip(face_offset_l, part_data_pl['FaceVtx']))
+
+def get_vtx_coordinates(grid_coords_n, distri_vtx, requested_vtx, comm):
+  """
+  Get the coordinates of requested vertices ids (wraps BlockToPart) and
+  return it as a numpy (n,3) array
+  """
+  dist_data = dict()
+  for data in I.getNodesFromType1(grid_coords_n, 'DataArray_t'):
+    dist_data[I.getName(data)] = data[1]
+
+  part_data = MBTP.dist_to_part(distri_vtx, dist_data, [np.asarray(requested_vtx, dtype=pdm_dtype)], comm)
+
+  cx, cy, cz = part_data['CoordinateX'][0], part_data['CoordinateY'][0], part_data['CoordinateZ'][0]
+
+  return np.array([cx,cy,cz], order='F').transpose()
 
 def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=None):
   """
@@ -216,13 +233,13 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
 
   return pl_vtx_local, pl_vtx_local_opp, face_is_treated
 
-def _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm):
+def _search_with_geometry(zone, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm):
   """
-  Take two face_vtx arrays describing two (single) matching faces,
-  know by proc owner, and try to construct the matching
+  Take two face_vtx arrays describing one or more matching faces (face link is given
+  by pl_face_vtx_idx array), and try to construct the matching
   vertices list using face intersections (geometric).
   Return two array of vertices : first one is simply unique(pl_face_vtx), second
-  one is same size and stores matching vertices
+  one is same size and stores matching vertices.
 
   Intersection method assumes that 2 matching faces have inverted
   face_vtx ordering, but does not  necessarily start with same vtx,
@@ -233,58 +250,31 @@ def _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm):
   Todo : manage transformation;
          manage multizone;
   """
-  pl_vtx_local     = np.unique(pl_face_vtx)
+  pl_vtx_local     = pl_face_vtx
   pl_vtx_local_opp = np.zeros_like(pl_vtx_local)
 
   vtx_g_to_l = {v:i for i,v in enumerate(pl_vtx_local)}
+  grid_coords_n = I.getNodeFromType1(zone, 'GridCoordinates_t')
   distri_vtx = IE.getDistribution(zone, 'Vertex')
-  distri_full = par_utils.partial_to_full_distribution(distri_vtx, comm)
 
-  #Prepare arrays : owner procs check who own the coordinates data
-  if comm.Get_rank() == owner:
-    assert len(pl_face_vtx) == len(pld_face_vtx)
-    n_face_vtx = len(pl_face_vtx)
-    requested_vtx = np.concatenate([pl_face_vtx, pld_face_vtx])
-    dest_ranks = np.searchsorted(distri_full, requested_vtx-1, 'right') - 1
-    sorting_idx = np.argsort(dest_ranks)
-    sizes  = np.bincount(dest_ranks, minlength = comm.Get_size())
-    sizes3 = 3*sizes
-    requested_vtx_s = requested_vtx[sorting_idx].astype(np.int)
+  assert len(pl_face_vtx) == len(pld_face_vtx) == pl_face_vtx_idx[-1]
+  n_face = len(pl_face_vtx_idx) - 1
+  n_face_vtx = len(pl_face_vtx)
+  requested_vtx = np.concatenate([pl_face_vtx, pld_face_vtx])
 
-    received_coords = np.empty((len(requested_vtx),3), np.float, order='C')
-  else:
-    sizes  = None
-    sizes3 = None
-    requested_vtx_s = None
-    received_coords = None
+  received_coords = get_vtx_coordinates(grid_coords_n, distri_vtx, requested_vtx, comm)
 
-  n_vtx_to_send = comm.scatter(sizes, root=owner)
+  for iface in range(n_face):
 
-  idx_to_send = np.empty(n_vtx_to_send, dtype=np.int)
-  comm.Scatterv([requested_vtx_s, sizes], idx_to_send, root=owner)
-
-  grid_co = I.getNodeFromType1(zone, 'GridCoordinates_t')
-  cx      = I.getNodeFromName1(grid_co, 'CoordinateX')[1][idx_to_send-distri_vtx[0]-1]
-  cy      = I.getNodeFromName1(grid_co, 'CoordinateY')[1][idx_to_send-distri_vtx[0]-1]
-  cz      = I.getNodeFromName1(grid_co, 'CoordinateZ')[1][idx_to_send-distri_vtx[0]-1]
-
-  coords_to_send = np.array([cx, cy, cz], order='F').transpose()
-  comm.Gatherv(coords_to_send, [received_coords, sizes3], owner)
-
-  #Now proc master has all the coordinates
-  if comm.Get_rank() == owner:
-    inverted_sorting_idx = np.empty_like(sorting_idx)
-    for i,k in enumerate(sorting_idx):
-      inverted_sorting_idx[k] = i
-
-    face_vtx_coords     = received_coords[inverted_sorting_idx[0:n_face_vtx]]
-    opp_face_vtx_coords = received_coords[inverted_sorting_idx[n_face_vtx:2*n_face_vtx]]
+    vtx_idx     = slice(pl_face_vtx_idx[iface], pl_face_vtx_idx[iface+1])
+    opp_vtx_idx = slice(pl_face_vtx_idx[iface] + n_face_vtx, pl_face_vtx_idx[iface+1] + n_face_vtx)
+    face_vtx_coords     = received_coords[vtx_idx]
+    opp_face_vtx_coords = received_coords[opp_vtx_idx]
 
     # Unique should sort array following the same key (axis=0 is important!)
-    sorted_face_vtx_coords, indices, counts = np.unique(face_vtx_coords, axis=0, return_index = True, return_counts = True)
-    sorted_opp_face_vtx_coords, opp_indices = np.unique(opp_face_vtx_coords, axis=0, return_index=True)
-    assert len(sorted_face_vtx_coords) == len(sorted_opp_face_vtx_coords)
-    # Search first unique element and use it as starting vtx
+    _, indices, counts = np.unique(face_vtx_coords, axis = 0, return_index = True, return_counts = True)
+    _, opp_indices = np.unique(opp_face_vtx_coords, axis = 0, return_index = True)
+    # Search first unique element (tie breaker) and use it as starting vtx
     idx = 0
     counts_it = iter(counts)
     while (next(counts_it) != 1):
@@ -292,11 +282,13 @@ def _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm):
     first_vtx     = indices[idx]
     opp_first_vtx = opp_indices[idx]
 
-    ordered_vtx     = _roll_from(pl_face_vtx, start_idx = first_vtx)
-    ordered_vtx_opp = _roll_from(pld_face_vtx, start_idx = opp_first_vtx, reverse=True)
+    ordered_vtx     = _roll_from(pl_face_vtx[vtx_idx], start_idx = first_vtx)
+    ordered_vtx_opp = _roll_from(pld_face_vtx[vtx_idx], start_idx = opp_first_vtx, reverse=True)
 
     pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
 
+  pl_vtx_local, order = np.unique(pl_vtx_local, return_index = True)
+  pl_vtx_local_opp = pl_vtx_local_opp[order]
   return pl_vtx_local, pl_vtx_local_opp
 
 
@@ -320,10 +312,7 @@ def generate_jn_vertex_list(zone, ngon, jn, comm):
 
   #Raccord single face
   if distri_jn[2] == 1:
-    is_root = (distri_jn[1] - distri_jn[0]) != 0
-    owner   = comm.allgather(is_root).index(True)
-
-    pl_vtx_local, pl_vtx_local_opp = _search_with_geometry(zone, pl_face_vtx, pld_face_vtx, owner, comm)
+    pl_vtx_local, pl_vtx_local_opp = _search_with_geometry(zone, face_offset, pl_face_vtx, pld_face_vtx, comm)
     assert np.all(pl_vtx_local_opp != 0)
     pl_vtx_local_list     = [pl_vtx_local.astype(pdm_dtype)]
     pl_vtx_local_opp_list = [pl_vtx_local_opp.astype(pdm_dtype)]

@@ -78,6 +78,23 @@ def test_get_extended_pl(sub_comm):
     assert (ext_pl   == [1,2,3,4]).all()
     assert (ext_pl_d == [9,10,11,12]).all()
 
+@mark_mpi_test(2)
+def test_get_vtx_coordinates(sub_comm):
+  empty = np.empty(0, np.int)
+  tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
+  vtx_coords = I.getNodeFromType(tree, 'GridCoordinates_t')
+  vtx_lngn   = IE.getDistribution(I.getZones(tree)[0], 'Vertex')
+  if sub_comm.Get_rank() == 1:
+    requested_vtx = [2,6,7,106,3,103,107,102]
+    expected_vtx_co = np.array([[0.25, 0., 0.], [0., 0.25, 0.], [0.25, 0.25, 0.], [0., 0.25, 1.],
+                                [0.5, 0., 0.], [0.5, 0., 1.], [0.25, 0.25, 1.], [0.25, 0., 1.]])
+  else:
+    requested_vtx = empty
+    expected_vtx_co = np.empty((0,3), dtype=np.float64)
+
+  received_coords = VL.get_vtx_coordinates(vtx_coords, vtx_lngn, requested_vtx,  sub_comm)
+  assert (received_coords == expected_vtx_co).all()
+
 def test_search_by_intersection():
   empty = np.empty(0, np.int)
   plv, plv_opp, face_is_treated = VL._search_by_intersection(np.array([0]), empty, empty)
@@ -113,17 +130,26 @@ def test_search_with_geometry(sub_comm):
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
   zone = I.getZones(tree)[0]
   if sub_comm.Get_rank() == 0:
+    pl_face_vtx_idx = [0,4]
     pl_face_vtx = [2,6,7,3]
     pld_face_vtx = [51,55,54,50]
+  elif sub_comm.Get_rank() == 2:
+    pl_face_vtx_idx = [0,4,8]
+    pl_face_vtx = [11,15,16,12, 13,14,10,9]
+    pld_face_vtx = [64,63,59,60, 61,57,58,62]
   else:
+    pl_face_vtx_idx = [0]
     pl_face_vtx = empty
     pld_face_vtx = empty
 
-  plv, plvd = VL._search_with_geometry(zone, pl_face_vtx, pld_face_vtx, 0, sub_comm)
+  plv, plvd = VL._search_with_geometry(zone, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, sub_comm)
 
   if sub_comm.Get_rank() == 0:
     assert (plv  == [2,3,6,7]).all()
     assert (plvd == [50,51,54,55]).all()
+  elif sub_comm.Get_rank() == 2:
+    assert (plv  == [9,10,11,12,13,14,15,16]).all()
+    assert (plvd == [57,58,59,60,61,62,63,64]).all()
   else:
     assert (plv == plvd == empty).all()
 
