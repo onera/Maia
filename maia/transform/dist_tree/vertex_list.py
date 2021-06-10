@@ -379,14 +379,31 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
 
   return pl_vtx, dist_data['pl_vtx_opp'], distri_jn_vtx
 
-def generate_vertex_joins(dist_tree, dist_zone, comm):
-  """For now only one zone is supported"""
+def generate_jns_vertex_list(dist_tree, comm):
+  """
+  For each 1to1 FaceCenter matching join found in the distributed tree,
+  create a corresponding 1to1 Vertex matching join
 
-  for zgc in I.getNodesFromType1(dist_zone, 'ZoneGridConnectivity_t'):
-    zgc_vtx = I.newZoneGridConnectivity(I.getName(zgc) + '#Vtx', dist_zone)
-    #Todo : do not apply algo to opposite jn, juste invert values !
-    for gc in I.getNodesFromType1(zgc, 'GridConnectivity_t'):
-      gc_path = '/'.join(['Base', I.getName(dist_zone), I.getName(zgc), I.getName(gc)])
+  Todo : manage transformation and periodic
+  """
+  #Build join ids to identificate opposite joins
+  if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:
+    AJO.add_joins_ordinal(dist_tree, comm)
+
+  ordinal_to_jn = {}
+
+  query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
+      lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and sids.GridLocation(n) == 'FaceCenter']
+
+  for base, zone, zgc, gc in IE.getNodesWithParentsByMatching(dist_tree, query):
+    jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
+    jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
+
+    zgc_vtx = I.createUniqueChild(zone, I.getName(zgc)+'#Vtx', 'ZoneGridConnectivity_t')
+    #If no one of jn and jn_opp have been treated, build pl vertex
+    if min(jn_ordinal, jn_ordinal_opp) not in ordinal_to_jn:
+
+      gc_path = '/'.join([I.getName(node) for node in [base, zone, zgc, gc]])
       pl_vtx, pl_vtx_opp, distri_jn = generate_jn_vertex_list(dist_tree, gc_path, comm)
 
       jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
@@ -395,4 +412,16 @@ def generate_vertex_joins(dist_tree, dist_zone, comm):
       I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
       I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
       I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
+
+      ordinal_to_jn[jn_ordinal] = jn_vtx
+
+    #Otherwise, get result and just invert PL/PLDonor
+    else:
+      opp_jn_vtx = ordinal_to_jn[min(jn_ordinal, jn_ordinal_opp)]
+      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
+      I.newGridLocation('Vertex', jn_vtx)
+      I._addChild(jn_vtx, IE.getDistribution(opp_jn_vtx))
+      I._addChild(jn_vtx, I.getNodeFromName(opp_jn_vtx, 'PointList#Size'))
+      I.newPointList('PointList',      I.getNodeFromName1(opp_jn_vtx, 'PointListDonor')[1], parent=jn_vtx)
+      I.newPointList('PointListDonor', I.getNodeFromName1(opp_jn_vtx, 'PointList'     )[1], parent=jn_vtx)
 
