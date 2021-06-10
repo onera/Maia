@@ -19,6 +19,8 @@ import maia.sids.Internal_ext as IE
 from cmaia.geometry.geometry import compute_center_cell_u
 import cmaia.utils.extract_from_indices as EX
 
+# from etc.walldistance import Geometry
+
 import numpy as np
 
 import Pypdm.Pypdm as PDM
@@ -116,24 +118,24 @@ def get_target_zone_info(zone, location='CellCenter'):
                                         face_vtx,
                                         face_vtx_idx,
                                         ngon_pe)
+    # n_cell = SIDS.zone_n_cell(zone)
+    # center_cell = np.empty(3*n_cell, dtype='double')
+    # Geometry.computeCellCenter__(center_cell,
+    #                              cx,
+    #                              cy,
+    #                              cz,
+    #                              ngon_pe,
+    #                              face_vtx,
+    #                              face_vtx_idx,
+    #                              n_cell,
+    #                              0)
     # > Keep alive
-    I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
+    I.newDataArray("cell_center2", center_cell, parent=pdm_nodes)
     return center_cell, cell_ln_to_gn
   else:
     return vtx_coords, vtx_ln_to_gn
 
 
-   #   n_cell = SIDS.zone_n_cell(zone)
-   #   center_cell = np.empty(3*n_cell, dtype='double')
-   #   Geometry.computeCellCenter__(center_cell,
-   #                                cx,
-   #                                cy,
-   #                                cz,
-   #                                ngon_pe,
-   #                                face_vtx,
-   #                                face_vtx_idx,
-   #                                n_cell,
-   #                                0)
 
 # ------------------------------------------------------------------------
 def get_center_cell_cloud(zone):
@@ -176,6 +178,17 @@ def get_center_cell_cloud(zone):
                                       face_vtx,
                                       face_vtx_idx,
                                       ngon_pe)
+  # n_cell = SIDS.zone_n_cell(zone)
+  # center_cell = np.empty(3*n_cell, dtype='double')
+  # Geometry.computeCellCenter__(center_cell,
+  #                              cx,
+  #                              cy,
+  #                              cz,
+  #                              ngon_pe,
+  #                              face_vtx,
+  #                              face_vtx_idx,
+  #                              n_cell,
+  #                              0)
 
   # > Keep alive
   I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
@@ -308,7 +321,7 @@ def setup_gnum_for_unlocated(mesh_loc, closest_point, dist_tree_target, part_tre
 
     for i_part, part_zone in enumerate(part_zones):
       sub_ln_to_gn = gen_gnum.gnum_get(i_part)
-      print("sub_ln_to_gn : ", sub_ln_to_gn)
+      # print("sub_ln_to_gn : ", sub_ln_to_gn)
       pdm_nodes     = I.getNodeFromName1(part_zone, ":CGNS#Ppart")
       I.newDataArray("unlocated_sub_ln_to_gn"  , sub_ln_to_gn["gnum"]  , parent=pdm_nodes)
 
@@ -463,12 +476,13 @@ def mesha_to_meshb(part_tree_src,
   # > Il ne faut pas faire le get 2 fois :/ ATTENTION
   results_unlocated = mesh_loc.unlocated_get(0, 0)
   # print("Unlocated size = ", results_unlocated.shape[0])
-  print(results_unlocated)
+  # print(results_unlocated)
 
   n_unlocated = results_unlocated.shape[0]
 
   n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.MAX)
-  print(" n_tot_unlocated = ", n_tot_unlocated )
+  if(comm.Get_rank() == 0):
+    print(" n_tot_unlocated = ", n_tot_unlocated )
 
   if( n_tot_unlocated > 0):
     n_closest = 1
@@ -478,13 +492,11 @@ def mesha_to_meshb(part_tree_src,
     # > Create a global numbering for unalocated point (inside cgns ... )
     setup_gnum_for_unlocated(mesh_loc, closest_point, dist_tree_target, part_tree_target, comm)
 
-    # setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_tree_target)
-    # print()
-
     # > Pour les target on doit faire que ceux qui n'ont pas été localisé (donc extractraction des précédement calculé )
     setup_cloud_src_mesh(closest_point, dist_tree_src, part_tree_src)
 
     closest_point.compute()
+
 
   # > Interpolation
   #    - For each part we have to compute a good interpolation for the point located
