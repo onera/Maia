@@ -1,5 +1,6 @@
 import mpi4py.MPI as MPI
 import numpy as np
+from math import cos, sin
 import itertools
 
 import Converter.Internal as I
@@ -74,7 +75,7 @@ def get_vtx_coordinates(grid_coords_n, distri_vtx, requested_vtx, comm):
   for data in I.getNodesFromType1(grid_coords_n, 'DataArray_t'):
     dist_data[I.getName(data)] = data[1]
 
-  part_data = MBTP.dist_to_part(distri_vtx, dist_data, [np.asarray(requested_vtx, dtype=pdm_dtype)], comm)
+  part_data = MBTP.dist_to_part(distri_vtx.astype(pdm_dtype), dist_data, [np.asarray(requested_vtx, dtype=pdm_dtype)], comm)
 
   cx, cy, cz = part_data['CoordinateX'][0], part_data['CoordinateY'][0], part_data['CoordinateZ'][0]
 
@@ -235,7 +236,7 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
 
   return pl_vtx_local, pl_vtx_local_opp, face_is_treated
 
-def _search_with_geometry(zone, zone_d, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm):
+def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm):
   """
   Take two face_vtx arrays describing one or more matching faces (face link is given
   by pl_face_vtx_idx array), and try to construct the matching
@@ -248,10 +249,8 @@ def _search_with_geometry(zone, zone_d, pl_face_vtx_idx, pl_face_vtx, pld_face_v
   ie A B C D -> D' B' A' C'. The idea of the method is to identificate the
   starting vertex by sorting the coordinates with the same rule.
   Note that a result will be return even if the faces are not truly matching!
-
-  Todo : manage transformation;
   """
-  pl_vtx_local     = pl_face_vtx
+  pl_vtx_local     = np.unique(pl_face_vtx)
   pl_vtx_local_opp = np.zeros_like(pl_vtx_local)
 
   vtx_g_to_l = {v:i for i,v in enumerate(pl_vtx_local)}
@@ -266,6 +265,19 @@ def _search_with_geometry(zone, zone_d, pl_face_vtx_idx, pl_face_vtx, pld_face_v
   opp_received_coords = get_vtx_coordinates(I.getNodeFromType1(zone_d, 'GridCoordinates_t'),
                                             IE.getDistribution(zone_d, 'Vertex'),
                                             pld_face_vtx, comm)
+  #Apply transformation
+  if gc_prop is not None:
+    gc_periodic = I.getNodeFromType1(gc_prop, 'Periodic_t')
+    translation         = I.getNodeFromName1(gc_periodic, 'Translation')[1]
+    rotation_center     = I.getNodeFromName1(gc_periodic, 'RotationCenter')[1]
+    alpha, beta, gamma  = I.getNodeFromName1(gc_periodic, 'RotationAngle')[1]
+    rotation_matx = np.matrix([[1, 0, 0], [0, cos(alpha), -sin(alpha)], [0, sin(alpha), cos(alpha)]])
+    rotation_maty = np.matrix([[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]])
+    rotation_matz = np.matrix([[cos(gamma), -sin(gamma), 0], [sin(gamma), cos(gamma), 0], [0, 0, 1]])
+    rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
+
+    opp_received_coords = np.dot(rotation_mat, opp_received_coords.T).T + translation
+
 
   #Work locally on each original face to find the starting vtx
   for iface in range(n_face):
@@ -287,9 +299,6 @@ def _search_with_geometry(zone, zone_d, pl_face_vtx_idx, pl_face_vtx, pld_face_v
 
     pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
 
-  #Remove duplicated elements, keeping same order for both arrays
-  pl_vtx_local, order = np.unique(pl_vtx_local, return_index = True)
-  pl_vtx_local_opp = pl_vtx_local_opp[order]
   return pl_vtx_local, pl_vtx_local_opp
 
 
@@ -359,7 +368,9 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
     pl_face_vtx_e  = pl_face_vtx[vtx_to_extract]
     pld_face_vtx_e = pld_face_vtx[vtx_to_extract]
 
-    pl_vtx_local3, pl_vtx_local_opp3 = _search_with_geometry(zone, zone_d, face_offset_e, pl_face_vtx_e, pld_face_vtx_e, comm)
+    gc_prop = I.getNodeFromType1(jn, 'GridConnectivityProperty_t')
+    pl_vtx_local3, pl_vtx_local_opp3 = \
+        _search_with_geometry(zone, zone_d, gc_prop, face_offset_e, pl_face_vtx_e, pld_face_vtx_e, comm)
     assert np.all(pl_vtx_local_opp3 != 0)
     pl_vtx_local_list    .append(pl_vtx_local3.astype(pdm_dtype))
     pl_vtx_local_opp_list.append(pl_vtx_local_opp3.astype(pdm_dtype))
@@ -383,8 +394,6 @@ def generate_jns_vertex_list(dist_tree, comm):
   """
   For each 1to1 FaceCenter matching join found in the distributed tree,
   create a corresponding 1to1 Vertex matching join
-
-  Todo : manage transformation and periodic
   """
   #Build join ids to identificate opposite joins
   if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:
@@ -398,30 +407,24 @@ def generate_jns_vertex_list(dist_tree, comm):
   for base, zone, zgc, gc in IE.getNodesWithParentsByMatching(dist_tree, query):
     jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
     jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
+    jn_key = min(jn_ordinal, jn_ordinal_opp)
 
     zgc_vtx = I.createUniqueChild(zone, I.getName(zgc)+'#Vtx', 'ZoneGridConnectivity_t')
-    #If no one of jn and jn_opp have been treated, build pl vertex
-    if min(jn_ordinal, jn_ordinal_opp) not in ordinal_to_jn:
 
+    #If opposite join have already been treated, get it and switch pl-pld
+    try:
+      pl_vtx_opp, pl_vtx, distri_jn = ordinal_to_jn[jn_key]
+    #Otherwise, treat join
+    except KeyError:
       gc_path = '/'.join([I.getName(node) for node in [base, zone, zgc, gc]])
       pl_vtx, pl_vtx_opp, distri_jn = generate_jn_vertex_list(dist_tree, gc_path, comm)
+      ordinal_to_jn[jn_key] = (pl_vtx, pl_vtx_opp, distri_jn)
 
-      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
-      I.newGridLocation('Vertex', jn_vtx)
-      IE.newDistribution({'Index' : distri_jn}, jn_vtx)
-      I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
-      I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
-      I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
+    jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
+    I.newGridLocation('Vertex', jn_vtx)
+    I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
+    I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
+    I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
+    IE.newDistribution({'Index' : distri_jn}, jn_vtx)
 
-      ordinal_to_jn[jn_ordinal] = jn_vtx
-
-    #Otherwise, get result and just invert PL/PLDonor
-    else:
-      opp_jn_vtx = ordinal_to_jn[min(jn_ordinal, jn_ordinal_opp)]
-      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
-      I.newGridLocation('Vertex', jn_vtx)
-      I._addChild(jn_vtx, IE.getDistribution(opp_jn_vtx))
-      I._addChild(jn_vtx, I.getNodeFromName(opp_jn_vtx, 'PointList#Size'))
-      I.newPointList('PointList',      I.getNodeFromName1(opp_jn_vtx, 'PointListDonor')[1], parent=jn_vtx)
-      I.newPointList('PointListDonor', I.getNodeFromName1(opp_jn_vtx, 'PointList'     )[1], parent=jn_vtx)
-
+    I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))

@@ -130,6 +130,9 @@ def test_search_with_geometry(sub_comm):
   empty = np.empty(0, np.int)
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
   zone = I.getZones(tree)[0]
+  grid_prop = I.newGridConnectivityProperty()
+  perio = I.newPeriodic(rotationCenter=[0.,0.,0.], rotationAngle=[0.,0.,0.], translation=[0.,0.,1.], parent=grid_prop)
+
   if sub_comm.Get_rank() == 0:
     pl_face_vtx_idx = [0,4]
     pl_face_vtx = [2,6,7,3]
@@ -143,7 +146,7 @@ def test_search_with_geometry(sub_comm):
     pl_face_vtx = empty
     pld_face_vtx = empty
 
-  plv, plvd = VL._search_with_geometry(zone, zone, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, sub_comm)
+  plv, plvd = VL._search_with_geometry(zone, zone, grid_prop, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, sub_comm)
 
   if sub_comm.Get_rank() == 0:
     assert (plv  == [2,3,6,7]).all()
