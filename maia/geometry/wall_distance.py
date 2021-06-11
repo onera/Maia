@@ -30,7 +30,7 @@ comm = MPI.COMM_WORLD
 mpi_rank = comm.Get_rank()
 mpi_size = comm.Get_size()
 
-fmt = f"{mpi_rank}:{mpi_size}"
+fmt = f'%(levelname)s[{mpi_rank}/{mpi_size}]:%(message)s '
 LOG.basicConfig(filename = f"maia_workflow_log.{mpi_rank}.log",
                 level    = 10,
                 format   = fmt,
@@ -103,8 +103,8 @@ def get_center_cell(zone_node):
   else:
     raise TypeError(f"Unable to determine the ZoneType for Zone {I.getName(zone_node)}")
 
-  # > Keep alive
-  I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
+  # # > Keep alive
+  # I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
 
   return center_cell, cell_ln_to_gn
 
@@ -204,7 +204,7 @@ class WallDistance:
 
   def _setup_surf_mesh(self, skeleton_tree, part_tree, families, comm):
     face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, \
-      vtx_bnd, vtx_ln_to_gn = extract_surf_from_bc(part_tree, families, comm)
+      vtx_bnd, vtx_ln_to_gn = extract_surf_from_bc(skeleton_tree, part_tree, families, comm)
 
     n_face_bnd = face_vtx_bnd_idx.shape[0]-1
     n_vtx_bnd  = vtx_ln_to_gn.shape[0]
@@ -327,6 +327,7 @@ class WallDistance:
         LOG.info(f"setup_vol_mesh: n_face = {n_face}")
 
         center_cell, _ = get_center_cell(part_zone)
+        self._register.append(center_cell)
         assert(center_cell.size == 3*n_cell)
 
         # Keep numpy alive
@@ -358,6 +359,8 @@ class WallDistance:
                                         n_vtx, vtx_coords, vtx_ln_to_gn)
 
   def compute(self):
+    # 1. Search wall family(ies)
+    # ==========================
     # Create dist tree with families from CGNS base
     skeleton_tree = create_dist_from_part_tree(self.part_tree, self.mpi_comm)
     # I.printTree(skeleton_tree)
@@ -379,11 +382,20 @@ class WallDistance:
       # I.printTree(self.part_tree)
       # C.convertPyTree2File(skeleton_tree, "skeleton_tree-cubeU_join_bnd-new-{}.hdf".format(self.mpi_comm.Get_rank()))
 
+      # 2. Prepare Surface
+      # ==================
       self._setup_surf_mesh(skeleton_tree, self.part_tree, self.families, self.mpi_comm)
+
+      # 3. Prepare Volume
+      # ==================
       self._setup_vol_mesh(skeleton_tree, self.part_tree, self.mpi_comm)
 
+      # 4. Compute wall distance
+      # ========================
       self.walldist.compute()
 
+      # 5. Fill the partitioned tree with result(s)
+      # ===========================================
       for i_part, part_zone in enumerate(I.getZones(self.part_tree)):
         fields = self.walldist.get(i_part)
         LOG.info(f"fields = {fields}")
@@ -396,10 +408,15 @@ class WallDistance:
         wall_dist = wall_dist.reshape(cell_size, order='F')
         I.newDataArray('TurbulentDistance', wall_dist,parent=fs_node)
 
-        # # Wall closest element
-        # wall_closest_elt = copy.deepcopy(fields['ClosestEltProjected'])
-        # wall_closest_elt = wall_closest_elt.reshape(cell_size, order='F')
-        # I.newDataArray('ClosestEltProjected', wall_closest_elt, parent=fs_node)
+        # # Wall closest projected element
+        # wall_closest_elt_proj = copy.deepcopy(fields['ClosestEltProjected'])
+        # wall_closest_elt_proj = wall_closest_elt_proj.reshape(cell_size, order='F')
+        # I.newDataArray('ClosestEltProjected', wall_closest_elt_proj, parent=fs_node)
+
+        # Wall closest gnum element (face)
+        wall_closest_elt_gnum = copy.deepcopy(fields['ClosestEltGnum'])
+        wall_closest_elt_gnum = wall_closest_elt_gnum.reshape(cell_size, order='F')
+        I.newDataArray('ClosestEltGnum', wall_closest_elt_gnum, parent=fs_node)
 
         # Wall index
         wall_index = np.empty(cell_size, dtype='float64', order='F')
@@ -457,9 +474,8 @@ if __name__ == "__main__":
   I.printTree(dist_tree)
   # sys.exit(1)
 
-  part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool = 'ptscotch')
+  part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch')
   wall_distance(part_tree, mpi_comm=comm)
-  par_tree = PT.parallel_tree(comm, dist_tree, part_tree)
-  PT.merge_and_save(par_tree, "popo.hdf")
-
-
+  C.convertPyTree2File(part_tree, f"AxiT2-new-{mpi_rank}rank.hdf")
+  ptree = PT.parallel_tree(comm, dist_tree, part_tree)
+  PT.merge_and_save(ptree, f"AxiT2-new-{mpi_size}procs-v1.hdf")
