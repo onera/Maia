@@ -484,6 +484,8 @@ def mesha_to_meshb(part_tree_src,
   if(comm.Get_rank() == 0):
     print(" n_tot_unlocated = ", n_tot_unlocated )
 
+  n_tot_unlocated = 0
+
   if( n_tot_unlocated > 0):
     n_closest = 1
     closest_point = PDM.ClosestPoints(comm, n_closest)

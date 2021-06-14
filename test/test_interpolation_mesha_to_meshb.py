@@ -29,17 +29,19 @@ from maia.interpolation               import mesha_to_meshb          as ITP
 from maia.cgns_io                     import save_part_tree          as SPT
 
 # ---------------------------------------------------------
-n_vtx       = 9
+n_vtx       = 4
 edge_length = 1.
 origin      = [0., 0., 0.]
 dist_tree_src    = DCG.dcube_generate(n_vtx, edge_length, origin, comm)
 
 # ---------------------------------------------------------
-n_vtx       = 9
+n_vtx       = 5
 edge_length = 1.
 origin      = [0., 0., 0.]
-origin      = [-0.75, 0., 0.]
+# origin      = [-0.75, 0., 0.]
 # origin      = [-1.05, -1.05, -1.05]
+# origin      = [-1.05, 0., 0.]
+origin      = [0.85, 0.5, 0.]
 dist_tree_target = DCG.dcube_generate(n_vtx, edge_length, origin, comm)
 
 # ---------------------------------------------------------
