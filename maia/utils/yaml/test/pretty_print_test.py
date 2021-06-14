@@ -1,4 +1,4 @@
-from maia.utils.yaml.pretty_tree import pretty_string
+from maia.utils.yaml.pretty_print import pretty_tree
 
 def test_pretty_tree():
   yt = """MyBase [3,3]:
@@ -16,4 +16,4 @@ def test_pretty_tree():
     └───GridCoordinates
         └───CoordinateX [0 1 2 0 1 2 0 1 2]
 """
-  assert(pretty_string(yt) == expected_print_str)
+  assert(pretty_tree(yt) == expected_print_str)

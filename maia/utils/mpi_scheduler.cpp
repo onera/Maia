@@ -5,7 +5,7 @@
 #include "std_e/algorithm/distribution.hpp"
 #include "maia/utils/mpi_scheduler.hpp"
 #include "std_e/logging/log.hpp"
-#include "std_e/interval/knot_sequence.hpp"
+#include "std_e/interval/interval_sequence.hpp"
 
 
 // --------------------------------------------------------------------------------------
@@ -309,7 +309,7 @@ setup_test_distribution(MPI_Comm&         comm,
   std::cout << s << std::endl;
   // std_e::log("file", s);
 
-  // return std_e::to_knot_vector<int>(dtest_proc);
+  // return std_e::to_interval_vector<int>(dtest_proc);
   return dtest_proc;
 }
 
