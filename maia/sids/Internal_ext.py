@@ -65,6 +65,13 @@ def getSubregionExtent(sub_region_n, zone):
 
   raise ValueError("ZoneSubRegion {0} has no valid extent".format(I.getName(sub_region_n)))
 
+def getZoneDonorPath(current_base, gc):
+  """
+  Returns the Base/Zone path of the opposite zone of a gc node (add the Base/
+  part if not present, using current_base name
+  """
+  opp_zone = I.getValue(gc)
+  return opp_zone if '/' in opp_zone else current_base + '/' + opp_zone
 
 def getNodesByMatching(root, queries):
   """Generator following queries, doing 1 level search using

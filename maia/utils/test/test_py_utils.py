@@ -9,6 +9,24 @@ def test_list_or_only_elt():
   input = [1,2,3, "nous irons au bois"]
   assert py_utils.list_or_only_elt(input) is input
 
+def test_is_subset_l():
+  L = [2,8,10,3,3]
+  assert py_utils.is_subset_l([2],        L) == True
+  assert py_utils.is_subset_l([10,3],     L) == True
+  assert py_utils.is_subset_l([10,3,3],   L) == True
+  assert py_utils.is_subset_l([3,2,8],    L) == True
+  assert py_utils.is_subset_l([1],        L) == False
+  assert py_utils.is_subset_l([3,8,2],    L) == False
+  assert py_utils.is_subset_l([10,3,3,1], L) == False
+
+def test_is_before():
+  L = [2,8,10,3,3]
+  assert py_utils.is_before(L, 8, 10) == True
+  assert py_utils.is_before(L, 8, 9 ) == True
+  assert py_utils.is_before(L, 8, 2 ) == False
+  assert py_utils.is_before(L, 7, 2 ) == False
+  assert py_utils.is_before(L, 7, 14) == False
+
 def test_interweave_arrays():
   first  = np.array([1,2,3], dtype=np.int32)
   second = np.array([11,22,33], dtype=np.int32)
@@ -42,6 +60,14 @@ def test_multi_arange():
   assert (py_utils.multi_arange([1,3,4,6], [1,5,7,6]) == [3,4,4,5,6]).all()
   assert (py_utils.multi_arange([1,5,10,20], [3,10,12,25]) == \
       [1,2,5,6,7,8,9,10,11,20,21,22,23,24]).all()
+
+def test_roll_from():
+  assert (py_utils.roll_from(np.array([2,4,8,16]), start_idx = 1) == [4,8,16,2]).all()
+  assert (py_utils.roll_from(np.array([2,4,8,16]), start_value = 4) == [4,8,16,2]).all()
+  assert (py_utils.roll_from(np.array([2,4,8,16]), start_value = 8, reverse=True) == [8,4,2,16]).all()
+  with pytest.raises(AssertionError):
+    py_utils.roll_from(np.array([2,4,8,16]), start_idx = 1, start_value = 8)
+
 
 def test_concatenate_point_list():
   pl1 = np.array([[2, 4, 6, 8]])

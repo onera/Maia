@@ -2,13 +2,7 @@ import Converter.Internal as I
 import mpi4py.MPI as MPI
 import numpy as np
 
-def _jn_opp_zone(current_base, gc):
-  """
-  Returns the Base/Zone path of the opposite zone of a gc node (add the Base/
-  part if not present, using current_base name
-  """
-  opp_zone = I.getValue(gc)
-  return opp_zone if '/' in opp_zone else current_base + '/' + opp_zone
+from maia.sids import Internal_ext as IE
 
 def _compare_pointrange(gc1, gc2):
  """
@@ -61,10 +55,10 @@ def add_joins_ordinal(dist_tree, comm):
   for igc, gc in enumerate(gc_list):
     current_path = gc_paths[igc]
     current_base = current_path.split('/')[0]
-    opp_path = _jn_opp_zone(current_base, gc)
+    opp_path = IE.getZoneDonorPath(current_base, gc)
     #print('current', gc[0], gc_paths[igc], 'opp', opp_path)
     candidates = [i for i,path in enumerate(gc_paths) if
-        (path==opp_path and _jn_opp_zone(path.split('/')[0], gc_list[i]) == current_path)]
+        (path==opp_path and IE.getZoneDonorPath(path.split('/')[0], gc_list[i]) == current_path)]
     #print('  candidates', candidates)
     gc_has_pl = I.getNodeFromName1(gc, 'PointList') is not None
     for j in candidates:

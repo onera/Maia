@@ -2,38 +2,13 @@ import numpy as np
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 
-import Converter.Internal as I
+import Converter.Internal     as I
+import maia.sids.Internal_ext as IE
 
-from maia.transform.dist_tree import vertex_list as VL
+from maia.connectivity import vertex_list as VL
 from maia.generate import dcube_generator
 from maia.distribution.distribution_function import uniform_distribution
-from maia.sids import Internal_ext as IE
 from maia.sids import sids
-
-def test_is_subset_l():
-  L = [2,8,10,3,3]
-  assert VL._is_subset_l([2],        L) == True
-  assert VL._is_subset_l([10,3],     L) == True
-  assert VL._is_subset_l([10,3,3],   L) == True
-  assert VL._is_subset_l([3,2,8],    L) == True
-  assert VL._is_subset_l([1],        L) == False
-  assert VL._is_subset_l([3,8,2],    L) == False
-  assert VL._is_subset_l([10,3,3,1], L) == False
-
-def test_is_before():
-  L = [2,8,10,3,3]
-  assert VL._is_before(L, 8, 10) == True
-  assert VL._is_before(L, 8, 9 ) == True
-  assert VL._is_before(L, 8, 2 ) == False
-  assert VL._is_before(L, 7, 2 ) == False
-  assert VL._is_before(L, 7, 14) == False
-
-def test_roll_from():
-  assert (VL._roll_from(np.array([2,4,8,16]), start_idx = 1) == [4,8,16,2]).all()
-  assert (VL._roll_from(np.array([2,4,8,16]), start_value = 4) == [4,8,16,2]).all()
-  assert (VL._roll_from(np.array([2,4,8,16]), start_value = 8, reverse=True) == [8,4,2,16]).all()
-  with pytest.raises(AssertionError):
-    VL._roll_from(np.array([2,4,8,16]), start_idx = 1, start_value = 8)
 
 @mark_mpi_test([1,3])
 def test_facelist_to_vtxlist_local(sub_comm):

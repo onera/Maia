@@ -264,6 +264,11 @@ Zone Zone_t:
   with pytest.raises(AssertionError):
     IE.getSubregionExtent(I.getNodeFromName(zone, 'WrongZSR'), zone)
 
+def test_getZoneDonorPath():
+  jn1 = I.newGridConnectivity1to1(donorName='BaseXX/ZoneYY')
+  jn2 = I.newGridConnectivity1to1(donorName='ZoneYY')
+  assert IE.getZoneDonorPath('BaseXX', jn1) == 'BaseXX/ZoneYY'
+  assert IE.getZoneDonorPath('BaseXX', jn2) == 'BaseXX/ZoneYY'
 
 def test_newDistribution():
   distri = IE.newDistribution()

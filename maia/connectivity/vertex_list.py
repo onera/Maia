@@ -16,30 +16,6 @@ from maia.transform.dist_tree import add_joins_ordinal as AJO
 
 from maia.tree_exchange.dist_to_part import data_exchange as MBTP
 
-def _is_subset_l(subset, L):
-  """Return True is subset list is included in L, allowing looping"""
-  extended_l = list(L) + list(L)[:len(subset)-1]
-  return max([subset == extended_l[i:i+len(subset)] for i in range(len(L))])
-
-def _is_before(l, a, b):
-  """Return True is element a is present in list l before element b"""
-  for e in l:
-    if e==a:
-      return True
-    if e==b:
-      return False
-  return False
-
-def _roll_from(array, start_idx = None, start_value = None, reverse = False):
-  """
-  Return a new array starting from given index (or value), in normal or reversed order
-  """
-  assert (start_idx is None) != (start_value is None)
-  if start_idx is None:
-    start_idx = np.where(array == start_value)[0][0]
-
-  return np.roll(array, -start_idx) if not reverse else np.roll(array[::-1], start_idx + 1)
-
 def facelist_to_vtxlist_local(pls, ngon, comm):
   """
   From a list of FaceCenter PointList, search in the distributed NGon node
@@ -189,14 +165,14 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
 
     # If vertices are following, we can retrieve order. We may loop in normal
     # or reverse order depending on which vtx appears first
-    if _is_subset_l(vtx, pl_face_vtx[fA_idx]):
-      step = -1 if _is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1]) else 1
-    elif _is_subset_l(vtx[::-1], pl_face_vtx[fA_idx]):
-      step = -1 if not _is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1]) else 1
-    elif _is_subset_l(vtx, pl_face_vtx[fB_idx]):
-      step = -1 if not _is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1]) else 1
-    elif _is_subset_l(vtx[::-1], pl_face_vtx[fB_idx]):
-      step = -1 if _is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1]) else 1
+    if py_utils.is_subset_l(vtx, pl_face_vtx[fA_idx]):
+      step = -1 if py_utils.is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1]) else 1
+    elif py_utils.is_subset_l(vtx[::-1], pl_face_vtx[fA_idx]):
+      step = -1 if not py_utils.is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1]) else 1
+    elif py_utils.is_subset_l(vtx, pl_face_vtx[fB_idx]):
+      step = -1 if not py_utils.is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1]) else 1
+    elif py_utils.is_subset_l(vtx[::-1], pl_face_vtx[fB_idx]):
+      step = -1 if py_utils.is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1]) else 1
 
     # Skip non continous vertices and treat faces if possible
     if step != 0:
@@ -209,8 +185,8 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
           face_vtx     = pl_face_vtx[pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
           opp_face_vtx = pld_face_vtx[pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
 
-          ordered_vtx     = _roll_from(face_vtx, start_value = vtx[0])
-          ordered_vtx_opp = _roll_from(opp_face_vtx, start_value = pl_vtx_local_opp[l_vertices[0]], reverse=True)
+          ordered_vtx     = py_utils.roll_from(face_vtx, start_value = vtx[0])
+          ordered_vtx_opp = py_utils.roll_from(opp_face_vtx, start_value = pl_vtx_local_opp[l_vertices[0]], reverse=True)
 
           pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
 
@@ -226,8 +202,8 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
         #Get any already deduced opposed vertex
         if vtx_opp != 0:
           opp_face_vtx = pld_face_vtx[pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
-          ordered_vtx     = _roll_from(face_vtx, start_value = pl_vtx_local[l_vertices[i]])
-          ordered_vtx_opp = _roll_from(opp_face_vtx, start_value = vtx_opp, reverse=True)
+          ordered_vtx     = py_utils.roll_from(face_vtx, start_value = pl_vtx_local[l_vertices[i]])
+          ordered_vtx_opp = py_utils.roll_from(opp_face_vtx, start_value = vtx_opp, reverse=True)
 
           pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
           face_is_treated[face] = True
@@ -294,8 +270,8 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
     first_vtx     = indices[idx]
     opp_first_vtx = opp_indices[idx]
 
-    ordered_vtx     = _roll_from(pl_face_vtx[vtx_idx], start_idx = first_vtx)
-    ordered_vtx_opp = _roll_from(pld_face_vtx[vtx_idx], start_idx = opp_first_vtx, reverse=True)
+    ordered_vtx     = py_utils.roll_from(pl_face_vtx[vtx_idx], start_idx = first_vtx)
+    ordered_vtx_opp = py_utils.roll_from(pld_face_vtx[vtx_idx], start_idx = opp_first_vtx, reverse=True)
 
     pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
 
@@ -316,7 +292,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
 
   base_name, zone_name = jn_path.split('/')[0:2]
   zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
-  zone_d = I.getNodeFromPath(dist_tree, AJO._jn_opp_zone(base_name, jn))
+  zone_d = I.getNodeFromPath(dist_tree, IE.getZoneDonorPath(base_name, jn))
 
   ngon   = [elem for elem in I.getNodesFromType1(zone,   'Elements_t') if elem[1][0] == 22][0]
   ngon_d = [elem for elem in I.getNodesFromType1(zone_d, 'Elements_t') if elem[1][0] == 22][0]

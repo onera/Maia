@@ -7,12 +7,6 @@ import Converter.Internal as I
 from maia.utils import parse_yaml_cgns
 from maia.transform.dist_tree import add_joins_ordinal
 
-def test_jn_opp_zone():
-  jn1 = I.newGridConnectivity1to1(donorName='BaseXX/ZoneYY')
-  jn2 = I.newGridConnectivity1to1(donorName='ZoneYY')
-  assert add_joins_ordinal._jn_opp_zone('BaseXX', jn1) == 'BaseXX/ZoneYY'
-  assert add_joins_ordinal._jn_opp_zone('BaseXX', jn2) == 'BaseXX/ZoneYY'
-
 class Test_compare_pointrange():
   def test_ok(self):
     jn1 = I.newGridConnectivity1to1(pointRange=[[17,17],[3,9],[1,5]], pointRangeDonor=[[7,1],[9,9],[5,1]])

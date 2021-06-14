@@ -4,6 +4,20 @@ import numpy as np
 def list_or_only_elt(l):
   return l[0] if len(l) == 1 else l
 
+def is_subset_l(subset, L):
+  """Return True is subset list is included in L, allowing looping"""
+  extended_l = list(L) + list(L)[:len(subset)-1]
+  return max([subset == extended_l[i:i+len(subset)] for i in range(len(L))])
+
+def is_before(l, a, b):
+  """Return True is element a is present in list l before element b"""
+  for e in l:
+    if e==a:
+      return True
+    if e==b:
+      return False
+  return False
+
 def interweave_arrays(array_list):
   #https://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
   first  = array_list[0]
@@ -55,6 +69,16 @@ def multi_arange(starts, stops):
   stops = np.asarray(stops)
   l = stops - starts # Lengths of each range.
   return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
+
+def roll_from(array, start_idx = None, start_value = None, reverse = False):
+  """
+  Return a new array starting from given index (or value), in normal or reversed order
+  """
+  assert (start_idx is None) != (start_value is None)
+  if start_idx is None:
+    start_idx = np.where(array == start_value)[0][0]
+
+  return np.roll(array, -start_idx) if not reverse else np.roll(array[::-1], start_idx + 1)
 
 def any_in_range(array, start, end, strict=False):
   """
