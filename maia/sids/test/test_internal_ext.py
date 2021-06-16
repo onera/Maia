@@ -26,7 +26,163 @@ def test_getValue():
   assert I.getVal(node) == [1]
   assert isinstance(I.getVal(node), np.ndarray)
 
-def test_getNodesFromQuery():
+def test_requireNodeFromName():
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bc1 BC_t:
+        Index_i IndexArray_t:
+      bc2 BC_t:
+        Index_ii IndexArray_t:
+    ZBCB ZoneBC_t:
+      bc3 BC_t:
+        Index_iii IndexArray_t:
+      bc4 BC_t:
+      bc5 BC_t:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # I.printTree(tree)
+
+  assert IE.requireNodeFromName(tree, "ZoneI") == I.getNodeFromName(tree, "ZoneI")
+  assert I.getNodeFromName(tree, "ZoneB") == None
+  with pytest.raises(IE.CGNSNameNotFoundError):
+    IE.requireNodeFromName(tree, "ZoneB")
+
+  base = I.getBases(tree)[0]
+  assert IE.requireNodeFromName1(base, "ZoneI") == I.getNodeFromName1(base, "ZoneI")
+  assert I.getNodeFromName1(base, "ZoneB") == None
+  with pytest.raises(IE.CGNSNameNotFoundError):
+    IE.requireNodeFromName1(base, "ZoneB")
+
+  assert IE.requireNodeFromName2(tree, "ZoneI") == I.getNodeFromName2(tree, "ZoneI")
+  assert I.getNodeFromName2(tree, "ZoneB") == None
+  with pytest.raises(IE.CGNSNameNotFoundError):
+    IE.requireNodeFromName2(tree, "ZoneB")
+
+  assert IE.requireNodeFromName3(tree, "ZBCA") == I.getNodeFromName3(tree, "ZBCA")
+  assert I.getNodeFromName3(tree, "ZZZZZ") == None
+  with pytest.raises(IE.CGNSNameNotFoundError):
+    IE.requireNodeFromName3(tree, "ZZZZZ")
+
+def test_requireNodeFromType():
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bc1 BC_t:
+        Index_i IndexArray_t:
+      bc2 BC_t:
+        Index_ii IndexArray_t:
+    ZBCB ZoneBC_t:
+      bc3 BC_t:
+        Index_iii IndexArray_t:
+      bc4 BC_t:
+      bc5 BC_t:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # I.printTree(tree)
+
+  assert IE.requireNodeFromType(tree, "Zone_t") == I.getNodeFromType(tree, "Zone_t")
+  assert I.getNodeFromType(tree, "Family_t") == None
+  with pytest.raises(IE.CGNSLabelNotFoundError):
+    IE.requireNodeFromType(tree, "Family_t")
+
+  base = I.getBases(tree)[0]
+  assert IE.requireNodeFromType1(base, "Zone_t") == I.getNodeFromType1(base, "Zone_t")
+  assert I.getNodeFromType1(base, "Family_t") == None
+  with pytest.raises(IE.CGNSLabelNotFoundError):
+    IE.requireNodeFromType1(base, "Family_t")
+
+  assert IE.requireNodeFromType2(tree, "Zone_t") == I.getNodeFromType2(tree, "Zone_t")
+  assert I.getNodeFromType2(tree, "Family_t") == None
+  with pytest.raises(IE.CGNSLabelNotFoundError):
+    IE.requireNodeFromType2(tree, "Family_t")
+
+  assert IE.requireNodeFromType3(tree, "ZoneBC_t") == I.getNodeFromType3(tree, "ZoneBC_t")
+  assert I.getNodeFromType3(tree, "ZoneGridConnectivity_t") == None
+  with pytest.raises(IE.CGNSLabelNotFoundError):
+    IE.requireNodeFromType3(tree, "ZoneGridConnectivity_t")
+
+def test_getRequireNodeFromNameAndType():
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bc1 BC_t:
+        Index_i IndexArray_t:
+      bc2 BC_t:
+        Index_ii IndexArray_t:
+    ZBCB ZoneBC_t:
+      bc3 BC_t:
+        Index_iii IndexArray_t:
+      bc4 BC_t:
+      bc5 BC_t:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # I.printTree(tree)
+
+  assert I.getNodeFromNameAndType(tree, "ZoneI", "Zone_t") == IE.getNodeFromNameAndType(tree, "ZoneI", "Zone_t")
+  assert IE.requireNodeFromNameAndType(tree, "ZoneI", "Zone_t") == I.getNodeFromNameAndType(tree, "ZoneI", "Zone_t")
+  assert I.getNodeFromNameAndType(tree, "ZoneB", "Zone_t")   == None
+  assert I.getNodeFromNameAndType(tree, "ZoneI", "Family_t") == None
+  assert IE.getNodeFromNameAndType(tree, "ZoneB", "Zone_t")   == None
+  assert IE.getNodeFromNameAndType(tree, "ZoneI", "Family_t") == None
+  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+    IE.requireNodeFromNameAndType(tree, "ZoneB", "Zone_t")
+  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+    IE.requireNodeFromNameAndType(tree, "ZoneI", "Family_t")
+
+  base = I.getBases(tree)[0]
+  assert I.getNodeFromNameAndType(base, "ZoneI", "Zone_t") == IE.getNodeFromNameAndType1(base, "ZoneI", "Zone_t")
+  assert IE.requireNodeFromNameAndType1(base, "ZoneI", "Zone_t") == IE.getNodeFromNameAndType1(base, "ZoneI", "Zone_t")
+  assert I.getNodeFromNameAndType(base, "ZoneB", "Zone_t")   == None
+  assert I.getNodeFromNameAndType(base, "ZoneI", "Family_t") == None
+  assert IE.getNodeFromNameAndType1(base, "ZoneB", "Zone_t")   == None
+  assert IE.getNodeFromNameAndType1(base, "ZoneI", "Family_t") == None
+  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+    IE.requireNodeFromNameAndType1(base, "ZoneB", "Zone_t")
+  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+    IE.requireNodeFromNameAndType1(base, "ZoneI", "Family_t")
+
+  assert I.getNodeFromNameAndType(tree, "ZoneI", "Zone_t") == IE.getNodeFromNameAndType2(tree, "ZoneI", "Zone_t")
+  assert IE.requireNodeFromNameAndType2(tree, "ZoneI", "Zone_t") == IE.getNodeFromNameAndType2(tree, "ZoneI", "Zone_t")
+  assert I.getNodeFromNameAndType(tree, "ZoneB", "Zone_t")   == None
+  assert I.getNodeFromNameAndType(tree, "ZoneI", "Family_t") == None
+  assert IE.getNodeFromNameAndType2(tree, "ZoneB", "Zone_t")   == None
+  assert IE.getNodeFromNameAndType2(tree, "ZoneI", "Family_t") == None
+  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+    IE.requireNodeFromNameAndType2(tree, "ZoneB", "Zone_t")
+  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+    IE.requireNodeFromNameAndType2(tree, "ZoneI", "Family_t")
+
+  assert I.getNodeFromNameAndType(tree, "ZBCA", "ZoneBC_t") == IE.getNodeFromNameAndType3(tree, "ZBCA", "ZoneBC_t")
+  assert IE.requireNodeFromNameAndType3(tree, "ZBCA", "ZoneBC_t") == IE.getNodeFromNameAndType3(tree, "ZBCA", "ZoneBC_t")
+  assert I.getNodeFromNameAndType(tree, "ZZZZZ", "ZoneBC_t")              == None
+  assert I.getNodeFromNameAndType(tree, "ZBCA", "ZoneGridConnectivity_t") == None
+  assert IE.getNodeFromNameAndType3(tree, "ZZZZZ", "ZoneBC_t")              == None
+  assert IE.getNodeFromNameAndType3(tree, "ZBCA", "ZoneGridConnectivity_t") == None
+  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+    IE.requireNodeFromNameAndType3(tree, "ZZZZZ", "ZoneBC_t")
+  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+    IE.requireNodeFromNameAndType3(tree, "ZBCA", "ZoneGridConnectivity_t")
+
+def test_getNodesFromPredicate():
   yt = """
 Base CGNSBase_t:
   ZoneI Zone_t:

@@ -63,87 +63,113 @@ class NotImplementedForElementError(NotImplementedError):
         return f"Unstructured CGNS Zone_t named '{I.getName(self.zone_node)}' with CGNS Elements_t named '{SIDS.ElementCGNSName(self.element_node)}' is not yet implemented."
 
 # --------------------------------------------------------------------------
-def requireNodeFromName(parent, cgns_name):
-  node = I.getNodeFromName(parent, cgns_name)
-  if node is None:
-    raise CGNSNameNotFoundError(parent, cgns_name)
-  return node
-
-def requireNodeFromName1(parent, cgns_name):
-  node = I.getNodeFromName1(parent, cgns_name)
-  if node is None:
-    raise CGNSNameNotFoundError(parent, cgns_name)
-  return node
-
-def requireNodeFromName2(parent, cgns_name):
-  node = I.getNodeFromName2(parent, cgns_name)
-  if node is None:
-    raise CGNSNameNotFoundError(parent, cgns_name)
-  return node
-
-def requireNodeFromName3(parent, cgns_name):
-  node = I.getNodeFromName3(parent, cgns_name)
-  if node is None:
-    raise CGNSNameNotFoundError(parent, cgns_name)
-  return node
-
-# --------------------------------------------------------------------------
-def requireNodeFromType(parent, cgns_label):
-  node = I.getNodeFromType(parent, cgns_label)
-  if node is None:
-    raise CGNSLabelNotFoundError(parent, cgns_label)
-  return node
-
-def requireNodeFromType1(parent, cgns_label):
-  node = I.getNodeFromType1(parent, cgns_label)
-  if node is None:
-    raise CGNSLabelNotFoundError(parent, cgns_label)
-  return node
-
-def requireNodeFromType2(parent, cgns_label):
-  node = I.getNodeFromType2(parent, cgns_label)
-  if node is None:
-    raise CGNSLabelNotFoundError(parent, cgns_label)
-  return node
-
-def requireNodeFromType3(parent, cgns_label):
-  node = I.getNodeFromType3(parent, cgns_label)
-  if node is None:
-    raise CGNSLabelNotFoundError(parent, cgns_label)
-  return node
-
-# --------------------------------------------------------------------------
-def requireNodeFromNameAndType(parent, cgns_name, cgns_label):
-  node = I.getNodeFromNameAndType(parent, cgns_name, cgns_label)
-  if node is None:
-    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
-  return node
-
-def requireNodeFromNameAndType1(parent, cgns_name, cgns_label):
-  nodes = [I.getNodeFromName1(n, cgns_name) for n in I.getNodesFromType1(parent, cgns_label)]
-  if nodes is []:
-    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
-  return node[0]
-
-def requireNodeFromNameAndType2(parent, cgns_name, cgns_label):
-  nodes = [I.getNodeFromName2(n, cgns_name) for n in I.getNodesFromType2(parent, cgns_label)]
-  if nodes is []:
-    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
-  return node[0]
-
-def requireNodeFromNameAndType3(parent, cgns_name, cgns_label):
-  nodes = [I.getNodeFromName3(n, cgns_name) for n in I.getNodesFromType3(parent, cgns_label)]
-  if nodes is []:
-    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
-  return node[0]
-
-# --------------------------------------------------------------------------
 def isLabelFromString(label):
   """
   Return True if a string is a valid CGNS Label
   """
   return isinstance(label, str) and ((label.endswith('_t') and label in CGK.Label.__members__) or label == '')
 
+# --------------------------------------------------------------------------
+def getNodeFromNameAndType(parent: List, cgns_name: str, cgns_label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
+  nodes = [n for n in I.getNodesFromType(parent, cgns_label) if fmatch(n, cgns_name)]
+  if not bool(nodes):
+    return None
+  return nodes[0]
+
+def getNodeFromNameAndType1(parent: List, cgns_name: str, cgns_label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
+  nodes = [n for n in I.getNodesFromType1(parent, cgns_label) if fmatch(n, cgns_name)]
+  if not bool(nodes):
+    return None
+  return nodes[0]
+
+def getNodeFromNameAndType2(parent: List, cgns_name: str, cgns_label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
+  nodes = [n for n in I.getNodesFromType2(parent, cgns_label) if fmatch(n, cgns_name)]
+  if not bool(nodes):
+    return None
+  return nodes[0]
+
+def getNodeFromNameAndType3(parent: List, cgns_name: str, cgns_label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
+  nodes = [n for n in I.getNodesFromType3(parent, cgns_label) if fmatch(n, cgns_name)]
+  if not bool(nodes):
+    return None
+  return nodes[0]
+
+# --------------------------------------------------------------------------
+def requireNodeFromName(parent: List, cgns_name: str):
+  node = I.getNodeFromName(parent, cgns_name)
+  if node is None:
+    raise CGNSNameNotFoundError(parent, cgns_name)
+  return node
+
+def requireNodeFromName1(parent: List, cgns_name: str):
+  node = I.getNodeFromName1(parent, cgns_name)
+  if node is None:
+    raise CGNSNameNotFoundError(parent, cgns_name)
+  return node
+
+def requireNodeFromName2(parent: List, cgns_name: str):
+  node = I.getNodeFromName2(parent, cgns_name)
+  if node is None:
+    raise CGNSNameNotFoundError(parent, cgns_name)
+  return node
+
+def requireNodeFromName3(parent: List, cgns_name: str):
+  node = I.getNodeFromName3(parent, cgns_name)
+  if node is None:
+    raise CGNSNameNotFoundError(parent, cgns_name)
+  return node
+
+# --------------------------------------------------------------------------
+def requireNodeFromType(parent: List, cgns_label: str):
+  node = I.getNodeFromType(parent, cgns_label)
+  if node is None:
+    raise CGNSLabelNotFoundError(parent, cgns_label)
+  return node
+
+def requireNodeFromType1(parent: List, cgns_label: str):
+  node = I.getNodeFromType1(parent, cgns_label)
+  if node is None:
+    raise CGNSLabelNotFoundError(parent, cgns_label)
+  return node
+
+def requireNodeFromType2(parent: List, cgns_label: str):
+  node = I.getNodeFromType2(parent, cgns_label)
+  if node is None:
+    raise CGNSLabelNotFoundError(parent, cgns_label)
+  return node
+
+def requireNodeFromType3(parent: List, cgns_label: str):
+  node = I.getNodeFromType3(parent, cgns_label)
+  if node is None:
+    raise CGNSLabelNotFoundError(parent, cgns_label)
+  return node
+
+# --------------------------------------------------------------------------
+def requireNodeFromNameAndType(parent: List, cgns_name: str, cgns_label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
+  nodes = [n for n in I.getNodesFromType(parent, cgns_label) if fmatch(n, cgns_name)]
+  if not bool(nodes):
+    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
+  return nodes[0]
+
+def requireNodeFromNameAndType1(parent: List, cgns_name: str, cgns_label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
+  nodes = [n for n in I.getNodesFromType1(parent, cgns_label) if fmatch(n, cgns_name)]
+  if not bool(nodes):
+    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
+  return nodes[0]
+
+def requireNodeFromNameAndType2(parent: List, cgns_name: str, cgns_label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
+  nodes = [n for n in I.getNodesFromType2(parent, cgns_label) if fmatch(n, cgns_name)]
+  if not bool(nodes):
+    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
+  return nodes[0]
+
+def requireNodeFromNameAndType3(parent: List, cgns_name: str, cgns_label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
+  nodes = [n for n in I.getNodesFromType3(parent, cgns_label) if fmatch(n, cgns_name)]
+  if not bool(nodes):
+    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
+  return nodes[0]
+
+# --------------------------------------------------------------------------
 # def getChildrenFromPredicate(node, query):
 #   """ Return the list of first level childs of node matching a given query (callable function)"""
 #   result = []
