@@ -1,3 +1,7 @@
+# Same as 4_cubes.yaml, but without some label information
+# TODO
+#   Infer label in yaml parser in order not to specify it explicitly when we don't have the choice anyway
+#   Once this is done, replace 4_cubes.yaml by this one
 Base CGNSBase_t [3,3]:
   Zone Zone_t [[18,4,0]]:
     ZoneType "Unstructured":

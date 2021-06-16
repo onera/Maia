@@ -1,3 +1,4 @@
+# Incomplete tree, used for uncluttered examples in the documentation
 MyBase [3,3]:
   Wall Family_t:
     BCWall FamilyBC_t:

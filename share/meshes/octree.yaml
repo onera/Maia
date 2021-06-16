@@ -1,3 +1,5 @@
+# Base mesh of 4 cubes, where one cube has been subdivided into 8
+# TODO remove FSDM-specific information
 Base CGNSBase_t I4 [3,3]:
   Zone_0 Zone_t I4 [[31,9,0]]:
     ZoneType ZoneType_t "Unstructured":
