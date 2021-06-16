@@ -1,3 +1,4 @@
+from mpi4py import MPI
 import numpy as np
 
 import Converter.Internal as I
@@ -148,6 +149,22 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
     _update_subset(jn, part_data_pl['OldToNew'][part_offset], data_query, comm)
     part_offset += 1
 
+def _shift_cgns_subsets(zone, location, shift_value):
+  """
+  Shift all the PointList of the requested location with the given value
+  PointList are seached in every node below zone, + in BC_t, BCDataSet_t,
+  GridConnectivity_t
+  """
+  has_pl = lambda n: I.getNodeFromName1(n, 'PointList') is not None \
+                     and sids.GridLocation(n) == location
+  for node in IE.getChildrenFromPredicate(zone, has_pl):
+    I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
+  for node in IE.getNodesByMatching(zone, ['ZoneBC_t', has_pl, 'PointList']): #BC
+    I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
+  for node in IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', has_pl]): #BCDataSet
+    I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
+  for node in IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', has_pl]): #GC
+    I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
 
 def _update_vtx_data(zone, vtx_to_remove, comm):
   """
@@ -208,6 +225,11 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   _update_cgns_subsets(zone, 'Vertex', vtx_distri_ini, old_to_new_vtx, comm)
 
   _update_vtx_data(zone, vtx_to_remove, comm)
+
+  #Shift all CellCenter PL by the number of removed faces
+  if sids.ElementRange(ngon)[0] == 1:
+    n_rmvd_face = comm.allreduce(len(face_to_remove), op=MPI.SUM)
+    _shift_cgns_subsets(zone, 'CellCenter', -n_rmvd_face)
 
   # Update JN/PointListDonor if any : since PointList of JN have changed, we must change opposite PL as well
   ordinal_to_pl = {}
