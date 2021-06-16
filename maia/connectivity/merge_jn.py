@@ -20,6 +20,10 @@ from maia.connectivity import vertex_list as VL
 
 def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
   """
+  Update ngon node after face and vertex merging, ie
+   - update ParentElements to combinate faces
+   - remove faces from EC, PE and ESO and update distribution info
+   - update ElementConnectivity using vertex old_to_new order
   """
   face_distri = IE.getDistribution(ngon, 'Element').astype(pdm_dtype)
   pe          =  I.getNodeFromPath(ngon, 'ParentElements')[1]
@@ -49,6 +53,25 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
   part_data = MBTP.dist_to_part(vtx_distri_ini, dist_data, [ngon_ec_n[1].astype(pdm_dtype)], comm)
   assert len(ngon_ec_n[1]) == len(part_data['OldToNew'][0])
   I.setValue(ngon_ec_n, part_data['OldToNew'][0])
+
+def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
+  """
+  Update nface node after face merging, ie
+   - update ElementConnectivity using face old_to_new order
+   - Shift ElementRange (to substract nb of removed faces) if NFace is after NGon
+  """
+
+  #Update list of faces
+  dist_data = {'OldToNew' : old_to_new_face}
+  nface_ec_n = I.getNodeFromName1(nface, 'ElementConnectivity')
+  part_data = MBTP.dist_to_part(face_distri_ini, dist_data, [nface_ec_n[1].astype(pdm_dtype)], comm)
+  assert len(nface_ec_n[1]) == len(part_data['OldToNew'][0])
+  I.setValue(nface_ec_n, part_data['OldToNew'][0])
+
+  #Update ElementRange
+  er = sids.ElementRange(nface)
+  if er[0] > 1:
+    er -= n_rmvd_face
 
 def _update_subset(node, pl_new, data_query, comm):
   """
@@ -202,10 +225,14 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   """
   """
   base_n, zone_n, zgc_n, gc_n = jn_pathes[0].split('/')
+  gc = I.getNodeFromPath(dist_tree, jn_pathes[0])
+  assert sids.GridLocation(gc) == 'FaceCenter'
   zone = I.getNodeFromPath(dist_tree, base_n + '/' + zone_n)
-  ngon = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if elem[1][0] == 22][0]
+  ngon  = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if elem[1][0] == 22][0]
+  nface_l = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if elem[1][0] == 23]
+  nface = nface_l[0] if len(nface_l) == 1 else None
 
-  if I.getNodeFromName1(gc_n, 'Ordinal') is None:
+  if I.getNodeFromName1(gc, 'Ordinal') is None:
     AJO.add_joins_ordinal(dist_tree, comm)
 
   ref_faces      = I.getNodeFromPath(dist_tree, jn_pathes[0]+'/PointList')[1][0]
@@ -220,15 +247,18 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   old_to_new_face = merge_distributed_ids(face_distri_ini, face_to_remove, ref_faces, comm)
   old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, ref_vtx, comm)
 
+  n_rmvd_face    = comm.allreduce(len(face_to_remove), op=MPI.SUM)
+
   _update_ngon(ngon, ref_faces, face_to_remove, vtx_distri_ini, old_to_new_vtx, comm)
-  _update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, comm)
-  _update_cgns_subsets(zone, 'Vertex', vtx_distri_ini, old_to_new_vtx, comm)
+  if nface:
+    _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm)
 
   _update_vtx_data(zone, vtx_to_remove, comm)
 
+  _update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, comm)
+  _update_cgns_subsets(zone, 'Vertex', vtx_distri_ini, old_to_new_vtx, comm)
   #Shift all CellCenter PL by the number of removed faces
   if sids.ElementRange(ngon)[0] == 1:
-    n_rmvd_face = comm.allreduce(len(face_to_remove), op=MPI.SUM)
     _shift_cgns_subsets(zone, 'CellCenter', -n_rmvd_face)
 
   # Update JN/PointListDonor if any : since PointList of JN have changed, we must change opposite PL as well
@@ -242,7 +272,6 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
       I.setValue(I.getNodeFromName1(gc, 'PointListDonor'), pl_opp)
     except KeyError:
       pass
-
 
   #Cleanup
   I._rmNodeByPath(dist_tree, jn_pathes[0])

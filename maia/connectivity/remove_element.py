@@ -97,10 +97,14 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   ngon_distri[1] -= (n_rmvd_offset[comm.Get_rank()] + n_rmvd_local)
   ngon_distri[2] -= n_rmvd_total
 
-  ngon_distri_ec = IE.getDistribution(dist_ngon, 'ElementConnectivity')
-  ngon_distri_ec[0] -= n_rmvd_ec_offset[comm.Get_rank()]
-  ngon_distri_ec[1] -= (n_rmvd_ec_offset[comm.Get_rank()] + n_rmvd_ec_local)
-  ngon_distri_ec[2] -= n_rmvd_ec_total
+  #Todo : improve that (will be possible when IE.getDistribution return a node)
+  try:
+    ngon_distri_ec = IE.getDistribution(dist_ngon, 'ElementConnectivity')
+    ngon_distri_ec[0] -= n_rmvd_ec_offset[comm.Get_rank()]
+    ngon_distri_ec[1] -= (n_rmvd_ec_offset[comm.Get_rank()] + n_rmvd_ec_local)
+    ngon_distri_ec[2] -= n_rmvd_ec_total
+  except:
+    pass
 
   #Update ElementRange and size data (global)
   er_n[1][1] -= n_rmvd_total
