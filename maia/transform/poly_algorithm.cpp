@@ -29,7 +29,6 @@ ngon_new_to_old(tree& b) -> void {
       auto old_ngon_range = cgns::interleaved_ngon_range(old_connectivity);
 
       std::copy(new_ngon_range.begin(),new_ngon_range.end(),old_ngon_range.begin());
-      auto sp = std_e::make_span(old_connectivity.data(),30);
 
       rm_child_by_name(elt,"ElementConnectivity");
       rm_child_by_name(elt,"ElementStartOffset");
