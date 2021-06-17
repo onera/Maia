@@ -42,11 +42,8 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
                         'Unstructured', parent=dist_base)
 
   # > Grid coordinates
+  cx, cy, cz = CNT.interlaced_to_tuple_coords(dcube_val['dvtx_coord'])
   grid_coord = I.newGridCoordinates(parent=dist_zone)
-  # I.newDataArray('CoordinateX', dcube_val['dvtx_coord'][0::3], parent=grid_coord)
-  # I.newDataArray('CoordinateY', dcube_val['dvtx_coord'][1::3], parent=grid_coord)
-  # I.newDataArray('CoordinateZ', dcube_val['dvtx_coord'][2::3], parent=grid_coord)
-  cx, cy, cz = CNT.interlace_to_interleave_coord(dcube_val['dvtx_coord'])
   I.newDataArray('CoordinateX', cx, parent=grid_coord)
   I.newDataArray('CoordinateY', cy, parent=grid_coord)
   I.newDataArray('CoordinateZ', cz, parent=grid_coord)
@@ -55,8 +52,7 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   dn_face = dcube_dims['dn_face']
 
   # > For Offset we have to shift to be global
-  eso = np.empty(dcube_val['dface_vtx_idx'].shape[0], dtype=pdm_gnum_dtype)
-  eso[:] = distrib_facevtx[i_rank] + dcube_val['dface_vtx_idx']
+  eso = distrib_facevtx[i_rank] + dcube_val['dface_vtx_idx']
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
   ngon_n = I.newElements('NGonElements', 'NGON',
@@ -122,11 +118,8 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
                         'Unstructured', parent=dist_base)
 
   # > Grid coordinates
+  cx, cy, cz = CNT.interlaced_to_tuple_coords(sections['vtx']['np_vtx'])
   grid_coord = I.newGridCoordinates(parent=dist_zone)
-  # I.newDataArray('CoordinateX', sections['vtx']['np_vtx'][0::3], parent=grid_coord)
-  # I.newDataArray('CoordinateY', sections['vtx']['np_vtx'][1::3], parent=grid_coord)
-  # I.newDataArray('CoordinateZ', sections['vtx']['np_vtx'][2::3], parent=grid_coord)
-  cx, cy, cz = CNT.interlace_to_interleave_coord(sections['vtx']['np_vtx'])
   I.newDataArray('CoordinateX', cx, parent=grid_coord)
   I.newDataArray('CoordinateY', cy, parent=grid_coord)
   I.newDataArray('CoordinateZ', cz, parent=grid_coord)

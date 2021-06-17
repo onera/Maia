@@ -73,7 +73,7 @@ make_raw_view(py::array_t<T, py::array::f_style>& x){
 
 template<typename fld_type>
 std::tuple<py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>>
-interlace_to_interleave_coord(py::array_t<fld_type, py::array::f_style>& np_xyz){
+interlaced_to_tuple_coords(py::array_t<fld_type, py::array::f_style>& np_xyz){
 
   int size = np_xyz.size()/3;
   py::array_t<fld_type, py::array::f_style> np_coord_x(size);
@@ -122,7 +122,7 @@ PYBIND11_MODULE(connectivity_transform, m) {
         py::arg("connect_g_idx").noconvert(),
         py::arg("distrib"      ).noconvert());
 
-  m.def("interlace_to_interleave_coord", &interlace_to_interleave_coord<double>,
+  m.def("interlaced_to_tuple_coords", &interlaced_to_tuple_coords<double>,
         py::arg("np_xyz").noconvert());
 
 }
