@@ -31,25 +31,25 @@ def rebuild_partial_dist_tree(part_base, comm):
   """
   # >
   dist_tree = I.newCGNSTree()
-  disc.discover_nodes_of_kind(dist_tree, [part_base], 'CGNSBase_t', comm, child_list=['Family_t'])
-  disc.discover_nodes_of_kind(dist_tree, [part_base], 'CGNSBase_t/Zone_t', comm,
-                              merge_rule=lambda zpath : '.'.join(zpath.split('.')[:-2]))
+  disc.discover_nodes_from_matching(dist_tree, [part_base], 'CGNSBase_t', comm, child_list=['Family_t'])
+  disc.discover_nodes_from_matching(dist_tree, [part_base], 'CGNSBase_t/Zone_t', comm,
+                                    merge_rule=lambda zpath : '.'.join(zpath.split('.')[:-2]))
   # I.printTree(dist_tree)
-  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree, ['CGNSBase_t', 'Zone_t']):
 
     part_zones = te_utils.get_partitioned_zones(part_base, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
     # > BND and JNS
-    bc_t_path = 'ZoneBC_t/BC_t'
-    gc_t_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
+    bc_queries = ['ZoneBC_t', 'BC_t']
+    gc_queries = ['ZoneGridConnectivity_t', \
+                 lambda n: I.getType(n) == 'GridConnectivity_t' and not conv.is_intra_gc(I.getName(n))]
 
     # > Discover (skip GC created by partitioning)
-    disc.discover_nodes_of_kind(dist_zone, part_zones, bc_t_path, comm,
+    disc.discover_nodes_from_matching(dist_zone, part_zones, bc_queries, comm,
           child_list=['FamilyName_t', 'GridLocation_t'], get_value='none')
-    disc.discover_nodes_of_kind(dist_zone, part_zones, gc_t_path, comm,
+    disc.discover_nodes_from_matching(dist_zone, part_zones, gc_queries, comm,
           child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
-          merge_rule= lambda path: conv.get_split_prefix(path),
-          skip_rule = lambda node: conv.is_intra_gc(I.getName(node)))
+          merge_rule= lambda path: conv.get_split_prefix(path))
 
   return dist_tree
 
@@ -211,7 +211,7 @@ def setup_src_mesh(mesh_loc, dist_tree_src, part_tree_src):
 
   n_part   = np.zeros(n_domain_src, dtype='int32')
   i_domain = 0
-  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_src, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree_src, ['CGNSBase_t', 'Zone_t']):
     # > Get the list of all partition in this domain
     part_zones = te_utils.get_partitioned_zones(part_tree_src, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
@@ -241,7 +241,7 @@ def setup_cloud_src_mesh(closest_point, dist_tree_src, part_tree_src):
 
   n_part   = np.zeros(n_domain_src, dtype='int32')
   i_domain = 0
-  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_src, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree_src, ['CGNSBase_t', 'Zone_t']):
     # > Get the list of all partition in this domain
     part_zones = te_utils.get_partitioned_zones(part_tree_src, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
@@ -262,7 +262,7 @@ def setup_target_mesh(mesh_loc, dist_tree_target, part_tree_target, location='Ce
   assert(n_domain_target == 1)
 
   i_domain = 0
-  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_target, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree_target, ['CGNSBase_t', 'Zone_t']):
     # > Get the list of all partition in this domain
     part_zones = te_utils.get_partitioned_zones(part_tree_target, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
@@ -284,7 +284,7 @@ def setup_gnum_for_unlocated(mesh_loc, closest_point, dist_tree_target, part_tre
 
   n_unlocated = 0
   i_domain = 0
-  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_target, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree_target, ['CGNSBase_t', 'Zone_t']):
     # > Get the list of all partition in this domain
     part_zones = te_utils.get_partitioned_zones(part_tree_target, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
@@ -341,7 +341,7 @@ def post_and_set_closest_result(closest_point, interp_from_mesh_loc, dist_tree_t
 
   n_unlocated = 0
   i_domain = 0
-  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_target, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree_target, ['CGNSBase_t', 'Zone_t']):
     # > Get the list of all partition in this domain
     part_zones = te_utils.get_partitioned_zones(part_tree_target, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
@@ -386,7 +386,7 @@ def setup_unlocated_target_mesh(mesh_loc, closest_point, dist_tree_target, part_
 
   n_unlocated = 0
   i_domain = 0
-  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_target, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree_target, ['CGNSBase_t', 'Zone_t']):
     # > Get the list of all partition in this domain
     part_zones = te_utils.get_partitioned_zones(part_tree_target, I.getName(dist_base) + '/' + I.getName(dist_zone))
 
@@ -443,7 +443,7 @@ def mesha_to_meshb(part_tree_src,
   # > Identify the number of cloud - for now, the number of partition of target (meshb)
   n_cloud = np.zeros(n_domain_target, dtype='int32')
   i_domain = 0
-  for dist_base, dist_zone in IE.getNodesWithParentsFromTypePath(dist_tree_target, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree_target, ['CGNSBase_t', 'Zone_t']):
     # > Get the list of all partition in this domain
     part_zones = te_utils.get_partitioned_zones(part_tree_target, I.getName(dist_base) + '/' + I.getName(dist_zone))
     n_cloud[i_domain] = len(part_zones)

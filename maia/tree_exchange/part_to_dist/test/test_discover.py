@@ -8,7 +8,7 @@ from maia.sids.cgns_keywords import Label as CGL
 from maia.tree_exchange.part_to_dist import discover as disc
 
 @mark_mpi_test(3)
-class Test_discover_nodes_of_kind:
+class Test_discover_nodes_from_matching:
   pt = [\
   """
 Zone.P0.N0 Zone_t:
