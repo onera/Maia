@@ -3,7 +3,7 @@
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/utils/parallel/utils.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
-#include "std_e/interval/knot_sequence.hpp"
+#include "std_e/interval/interval_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "pdm_multi_block_to_part.h"
 #include "std_e/data_structure/multi_range.hpp"
@@ -16,7 +16,7 @@ namespace maia {
 template<class It> auto
 merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -> tree {
   int i_rank = std_e::rank(comm);
-  int n_rank = std_e::nb_ranks(comm);
+  int n_rank = std_e::n_rank(comm);
 
   int n_section = last_section-first_section;
   STD_E_ASSERT(n_section);

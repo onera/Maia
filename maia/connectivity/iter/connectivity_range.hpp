@@ -3,7 +3,7 @@
 
 #include <type_traits>
 #include "maia/connectivity/iter/connectivity_ref.hpp"
-#include "std_e/utils/meta.hpp"
+#include "std_e/meta/meta.hpp"
 
 
 template<class I, class Connectivity_kind>

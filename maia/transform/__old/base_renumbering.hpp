@@ -55,7 +55,7 @@ apply_base_renumbering(tree& b, Fun zone_renumbering, MPI_Comm comm) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
 
   interzone_point_list_info pl_infos;
-  if (std_e::nb_ranks(comm)>1) { // TODO clean (does not work for sequential with several GC)
+  if (std_e::n_rank(comm)>1) { // TODO clean (does not work for sequential with several GC)
     pl_infos = register_connectivities_PointList_infos(b,comm);
   }
 
@@ -64,7 +64,7 @@ apply_base_renumbering(tree& b, Fun zone_renumbering, MPI_Comm comm) -> void {
     zone_renumbering(z,z_plds);
   }
 
-  if (std_e::nb_ranks(comm)>1) { // TODO clean
+  if (std_e::n_rank(comm)>1) { // TODO clean
     re_number_point_lists_donors(pl_infos);
   }
 }

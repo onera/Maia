@@ -56,16 +56,16 @@ repartition_by_distributions(
   // Note: could be done in place, but needs more infrastructure
   auto multi_dist = _transposed(elt_dists);
   int n_dist = multi_dist.size()-1; // TODO length
-  auto multi_dist_knots = std_e::make_span(multi_dist.data()+1,n_dist);
+  auto multi_dist_intervals = std_e::make_span(multi_dist.data()+1,n_dist);
 
-  auto comp = [&elt_intervals,&point_list](I perm_indices, const auto& dist_knot){
+  auto comp = [&elt_intervals,&point_list](I perm_indices, const auto& dist_interval){
     I id = point_list[perm_indices];
     int idx = std_e::interval_index(id,elt_intervals);
     I base_id = id - elt_intervals[idx];
-    return base_id < dist_knot[idx];
+    return base_id < dist_interval[idx];
   };
 
-  auto partition_indices = std_e::partition_sort_indices(perm_indices,multi_dist_knots,comp);
+  auto partition_indices = std_e::partition_sort_indices(perm_indices,multi_dist_intervals,comp);
 
   std_e::permute(begin(point_list),perm_indices);
   for (auto& value : values) {

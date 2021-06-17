@@ -5,7 +5,7 @@
 Loading a distributed tree
 ==========================
 
-A *dist tree* is a CGNS tree where the tree structure is replicated across all processes, but array values of the nodes may be distributed. 
+A *dist tree* is a CGNS tree where the tree structure is replicated across all processes, but array values of the nodes may be distributed.
 
 :
 The generalized paths of the distributed nodes are listed below. For all other nodes within the tree, the node values are loaded by all processes.
@@ -14,47 +14,50 @@ TODO: make it possible to add node generalized path to the list of node that are
 TODO: warn if loading array > 10000
 
 TODO move this definition
-A *generalized path* is a path where each token of the path is either a node *name* or a node *label*. Example: "Zone_t/Hexa" is a generalized path and a node will match if it is a sub-node of any zone, and if its name is "Hexa". 
+A *generalized path* is a path where each token of the path is either a node *name* or a node *label*. Example: "Zone_t/Hexa" is a generalized path and a node will match if it is a sub-node of any zone, and if its name is "Hexa".
 Note: of course there is no way to distinguish if we mean "of type Zone_t" or "of name Zone_t" so it will match both.
 
 
 .. code::
 
+
+
+
   CGNSBase_t
-  |___Zone_t
-     |___GridCoordinates_t
-     |   |___DataArray_t
-     |
-     |___Elements_t
-     |   |___ElementConnectivity
-     |   |___ElementStartOffset
-     |   |___ParentElement
-     |   |___ParentElementPosition   [not implemented]
-     |
-     |___FlowSolution_t
-     |   |___DataArray_t
-     |   |___PointList
-     |
-     |___DiscreteData_t
-     |   |___DataArray_t
-     |   |___PointList
-     |
-     |___ZoneBC_t
-     |   |___BC_t
-     |       |___PointList
-     |       |___BCDataSet_t
-     |           |___PointList
-     |           |___BCData_t
-     |               |___DataArray_t
-     |
-     |___ZoneGridConnectivity
-     |   |___GridConnectivity
-     |       |___PointList
-     |       |___PointListDonor
-     |
-     |___ZoneSubRegion
-         |___DataArray_t
-         |___PointList
+  └───Zone_t
+      ├───GridCoordinates_t
+      │   └───DataArray_t
+      │
+      ├───Elements_t
+      │   ├───ElementConnectivity
+      │   ├───ElementStartOffset
+      │   ├───ParentElement
+      │   └───ParentElementPosition   [not implemented]
+      │
+      ├───FlowSolution_t
+      │   ├───DataArray_t
+      │   └───PointList
+      │
+      ├───DiscreteData_t
+      │   ├───DataArray_t
+      │   └───PointList
+      │
+      ├───ZoneBC_t
+      │   └───BC_t
+      │       ├───PointList
+      │       └───BCDataSet_t
+      │           ├───PointList
+      │           └───BCData_t
+      │               └───DataArray_t
+      │
+      ├───ZoneGridConnectivity
+      │   └───GridConnectivity
+      │       ├───PointList
+      │       └───PointListDonor
+      │
+      └───ZoneSubRegion
+          ├───DataArray_t
+          └───PointList
 
 
 
@@ -173,7 +176,7 @@ Elements_t
 ----------
 
 For heterogenous connectivities, the :code:`ElementStartOffset` and :code:`ElementConnectivity` arrays are not independent. The :code:`ElementStartPartialDistribution` refers to the :code:`ElementStartOffset` array (actually, the :code:`ElementStartOffset` load one more element), and the partial :code:`ElementConnectivity` block loaded by one process is the one described by the :code:`ElementStartOffset` block of that process.
-  
+
 TODO
 ElementStartPartialDistribution
 ElementConnectivityPartialDistribution
@@ -203,7 +206,7 @@ If it is distributed on two processes, the dist_tree of each process will be:
     Zone0 Zone_t [[24],[6],[0]]:
       GridCoordinates GridCoordinates_t:
         PartialDistribution Distribution_t [0,4,7]: # the block array contains data
-                                                    # from sub-interval [0,3) and the array total size is 7 
+                                                    # from sub-interval [0,3) and the array total size is 7
         CoordinateX DataArray_t [0,1,2,3]:
       Polygons Elements_t:
         ElementStartPartialDistribution Distribution_t [0,2,3]: # the block array contains connectivities [0,1) (i.e. only 0)

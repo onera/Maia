@@ -74,7 +74,7 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
   // 0. compute elt permutation
   I4 elt_first_id = ElementRange<I4>(elt_pools[0])[0];
   std::vector<I4> permutation;
-  std_e::knot_vector<I4> knots = {0};
+  std_e::interval_vector<I4> intervals = {0};
   I4 nb_owned_cells = 0;
   for (const tree& elt_pool: elt_pools) {
     auto elt_type = (ElementType_t)ElementType<I4>(elt_pool);
@@ -85,8 +85,8 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
       nb_owned_cells += nb_owned_elts;
     }
 
-    std_e::iota_n(std::back_inserter(permutation), nb_owned_elts, knots.back());
-    knots.push_back_length(nb_owned_elts);
+    std_e::iota_n(std::back_inserter(permutation), nb_owned_elts, intervals.back());
+    intervals.push_back_length(nb_owned_elts);
     std::fill_n(std::back_inserter(permutation), nb_ghost_elts, -1-1); // UGLY: -offset (here: -1) because just after, offset_permutation does +offset
   }
   std_e::offset_permutation perm(elt_first_id,1,permutation);
@@ -102,15 +102,15 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
   for (int i=0; i<nb_elt_pools; ++i) {
     tree& elt_pool = elt_pools[i];
     auto elt_range = ElementRange<I4>(elt_pool);
-    elt_range[0] = knots[i]+1;
-    elt_range[1] = knots[i+1];
+    elt_range[0] = intervals[i]+1;
+    elt_range[1] = intervals[i+1];
 
     I4 elt_type = ElementType<I4>(elt_pool);
     tree& elt_connec = get_child_by_name(elt_pool,"ElementConnectivity");
     // TODO once pybind11: do not allocate/copy/del, only resize
-    //elt_connec.value.dims[0] = knots.length(i)*number_of_nodes(elt_type);
+    //elt_connec.value.dims[0] = intervals.length(i)*number_of_nodes(elt_type);
     // del old {
-    int new_connec_size = knots.length(i)*number_of_nodes(elt_type);
+    int new_connec_size = intervals.length(i)*number_of_nodes(elt_type);
     auto old_connec_val = view_as_span<I4>(elt_connec.value);
     std_e::buffer_vector<I4> new_connec_val(new_connec_size);
     for (int i=0; i<new_connec_size; ++i) {

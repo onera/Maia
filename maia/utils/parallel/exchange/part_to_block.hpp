@@ -76,7 +76,7 @@ class parts_to_block_protocol {
       //  - change the PDM_part_to_block_exch interface to accept vector
       //  - change the PDM_part_to_block_exch interface behavior so that we allocate memory ourselves
       int block_size = PDM_part_to_block_n_elt_block_get(ptb);
-      auto offsets = indices_from_sizes(std_e::make_span(blk_strid,block_size));
+      auto offsets = indices_from_strides(std_e::make_span(blk_strid,block_size));
 
       // TODO Bruno paradigm function to get that ? (paradigm knows it for malloc)
       int block_cat_size = offsets.back();
@@ -119,7 +119,7 @@ class parts_to_block_protocol {
       //  - change the PDM_part_to_block_exch interface to accept vector
       //  - change the PDM_part_to_block_exch interface behavior so that we allocate memory ourselves
       int block_size = PDM_part_to_block_n_elt_block_get(ptb);
-      auto offsets = indices_from_sizes(std_e::make_span(blk_strid,block_size));
+      auto offsets = indices_from_strides(std_e::make_span(blk_strid,block_size));
 
       // TODO Bruno paradigm function to get that ? (paradigm knows it for malloc)
       int block_cat_size = offsets.back();

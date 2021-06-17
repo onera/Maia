@@ -2,7 +2,7 @@
 
 
 #include "std_e/algorithm/distribution.hpp"
-#include "std_e/interval/knot_sequence.hpp"
+#include "std_e/interval/interval_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 
 /*
@@ -12,11 +12,11 @@ concept Distribution : std_e::Knot_sequence
 */
 // TODO maybe a Distribution is more than that: hold the communicator?
 
-template<class Integer> using distribution_vector = std_e::knot_vector<Integer>;
-template<class Integer> using distribution_span = std_e::knot_span<Integer>;
+template<class Integer> using distribution_vector = std_e::interval_vector<Integer>;
+template<class Integer> using distribution_span = std_e::interval_span<Integer>;
 
 
-// Distribution vocabulary around knot_sequence functions {
+// Distribution vocabulary around interval_sequence functions {
 template<class Integer, class Distribution> auto
 search_rank(Integer i, const Distribution& dist) {
   return std_e::interval_index(i,dist);
@@ -24,18 +24,18 @@ search_rank(Integer i, const Distribution& dist) {
 
 template<class Random_access_range, class I = typename Random_access_range::value_type> auto
 distribution_from_sizes(const Random_access_range& r) -> distribution_vector<I> {
-  return std_e::indices_from_sizes(r);
+  return std_e::indices_from_strides(r);
 }
-// Distribution vocabulary around knot_sequence functions }
+// Distribution vocabulary around interval_sequence functions }
 
 template<class Integer> auto
 distribution_from_dsizes(Integer dn, MPI_Comm comm) -> distribution_vector<Integer> {
-  int n_rank = std_e::nb_ranks(comm);
+  int n_rank = std_e::n_rank(comm);
   std::vector<Integer> dn_elts(n_rank);
   MPI_Allgather((void*) &dn           , 1, std_e::to_mpi_type<Integer>,
                 (void*)  dn_elts.data(), 1, std_e::to_mpi_type<Integer>,
                 comm);
-  return std_e::indices_from_sizes(dn_elts);
+  return std_e::indices_from_strides(dn_elts);
 }
 
 template<class I>

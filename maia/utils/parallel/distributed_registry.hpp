@@ -27,7 +27,7 @@ generate_distribution(const std::vector<int>& sorted_local_ids, MPI_Comm comm) -
 
   int global_nb_elts = std_e::max_global(local_max_id,comm);
 
-  return uniform_distribution(std_e::nb_ranks(comm),global_nb_elts+1);
+  return uniform_distribution(std_e::n_rank(comm),global_nb_elts+1);
 }
 
 
