@@ -12,76 +12,21 @@ from maia.utils.py_utils     import list_or_only_elt
 from . import elements_utils as EU
 
 # --------------------------------------------------------------------------
-def check_is_cgnstree(f):
-    @wraps(f)
-    def wrapped_method(*args, **kwargs):
-      node = args[0]
-      if I.getType(node) != CGL.CGNSTree_t.name:
-        raise TypeError(f"node must be a CGNS CGNSTree_t, '{I.getType(node)}' given here.")
-      return f(*args, **kwargs)
-    return wrapped_method
-
-def check_is_cgnsbase(f):
-    @wraps(f)
-    def wrapped_method(*args, **kwargs):
-      node = args[0]
-      if I.getType(node) != CGL.CGNSBase_t.name:
-        raise TypeError(f"node must be a CGNS CGNSBase_t, '{I.getType(node)}' given here.")
-      return f(*args, **kwargs)
-    return wrapped_method
-
-def check_is_zone(f):
-    @wraps(f)
-    def wrapped_method(*args, **kwargs):
-      node = args[0]
-      if I.getType(node) != CGL.Zone_t.name:
-        raise TypeError(f"node must be a CGNS Zone_t, '{I.getType(node)}' given here.")
-      return f(*args, **kwargs)
-    return wrapped_method
-
-def check_is_elements(f):
-    @wraps(f)
-    def wrapped_method(*args, **kwargs):
-      node = args[0]
-      if I.getType(node) != CGL.Elements_t.name:
-        raise TypeError(f"node must be a CGNS Elements_t, '{I.getType(node)}' given here.")
-      return f(*args, **kwargs)
-    return wrapped_method
-
-def check_is_index_range(f):
-    @wraps(f)
-    def wrapped_method(*args, **kwargs):
-      node = args[0]
-      if I.getType(node) != CGL.IndexRange_t.name:
-        raise TypeError(f"node must be a CGNS IndexRange_t, '{I.getType(node)}' given here.")
-      return f(*args, **kwargs)
-    return wrapped_method
-
-def check_is_index_array(f):
-    @wraps(f)
-    def wrapped_method(*args, **kwargs):
-      node = args[0]
-      if I.getType(node) != CGL.IndexArray_t.name:
-        raise TypeError(f"node must be a CGNS IndexArray_t, '{I.getType(node)}' given here.")
-      return f(*args, **kwargs)
-    return wrapped_method
-
-# --------------------------------------------------------------------------
 class Zone:
   @staticmethod
-  @check_is_zone
+  @SIDS.check_is_zone
   def VertexSize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,0])
 
   @staticmethod
-  @check_is_zone
+  @SIDS.check_is_zone
   def CellSize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,1])
 
   @staticmethod
-  @check_is_zone
+  @SIDS.check_is_zone
   def FaceSize(zone_node):
 
     def compute_nface_per_direction(d, dim, vtx_size, cell_size):
@@ -114,19 +59,19 @@ class Zone:
     return list_or_only_elt(n_face)
 
   @staticmethod
-  @check_is_zone
+  @SIDS.check_is_zone
   def VertexBoundarySize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,2])
 
   @staticmethod
-  @check_is_zone
+  @SIDS.check_is_zone
   def Type(zone_node):
     zone_type_node = IE.requireNodeFromType1(zone_node, CGL.ZoneType_t.name)
     return I.getValue(zone_type_node)
 
   @staticmethod
-  @check_is_zone
+  @SIDS.check_is_zone
   def getBCsFromFamily(zone_node, families):
     for bc_node in IE.getNodesByMatching(zone_node, ['ZoneBC_t', 'BC_t']):
       bctype = I.getValue(bc_node)
@@ -152,7 +97,7 @@ class Zone:
     return np.prod(Zone.VertexBoundarySize(zone_node))
 
   @staticmethod
-  @check_is_zone
+  @SIDS.check_is_zone
   def get_ln_to_gn(zone_node: List) -> Tuple:
     """
     Args:
@@ -168,7 +113,7 @@ class Zone:
     return vtx_ln_to_gn, cell_ln_to_gn, face_ln_to_gn
 
   @staticmethod
-  @check_is_zone
+  @SIDS.check_is_zone
   def get_infos(zone_node: List) -> Tuple:
     """
     Args:
@@ -196,15 +141,15 @@ class Zone:
            face_vtx_idx, face_vtx, face_ln_to_gn
 
 # --------------------------------------------------------------------------
-@check_is_elements
+@SIDS.check_is_elements
 def ElementRange(elements):
   return I.getNodeFromName(elements,"ElementRange")[1]
 
-@check_is_elements
+@SIDS.check_is_elements
 def ElementType(elements):
   return elements[1][0]
 
-@check_is_elements
+@SIDS.check_is_elements
 def ElementSize(elements):
   er = I.getNodeFromName(elements,"ElementRange")[1]
   return er[1] - er[0] + 1
@@ -220,7 +165,7 @@ def ElementNVtx(element):
 
 
 # --------------------------------------------------------------------------
-# @check_is_index_range
+# @SIDS.check_is_index_range
 # def point_range_sizes(point_range_node):
 #   """Allow point_range to be inverted (PR[:,1] < PR[:,0])
 #   as it can occurs in struct GCs
@@ -230,7 +175,7 @@ def ElementNVtx(element):
 
 class PointRange:
   @staticmethod
-  @check_is_index_range
+  @SIDS.check_is_index_range
   def VertexSize(point_range_node):
     """Allow point_range to be inverted (PR[:,1] < PR[:,0])
     as it can occurs in struct GCs
@@ -239,7 +184,7 @@ class PointRange:
     return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
 
   @staticmethod
-  @check_is_index_range
+  @SIDS.check_is_index_range
   def FaceSize(point_range_node):
     return np.subtract(PointRange.VertexSize(point_range_node), 1)
 
@@ -253,14 +198,14 @@ class PointRange:
 
 
 # --------------------------------------------------------------------------
-# @check_is_index_array
+# @SIDS.check_is_index_array
 # def point_list_sizes(point_list_node):
 #   pl_values = point_list_node[1]
 #   return pl_values.shape
 
 class PointList:
   @staticmethod
-  @check_is_index_array
+  @SIDS.check_is_index_array
   def FaceSize(point_list_node):
     pl_values = point_list_node[1]
     return pl_values.shape

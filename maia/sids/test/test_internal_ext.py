@@ -8,11 +8,47 @@ from maia.sids.cgns_keywords import Label as CGL
 
 from   maia.utils        import parse_yaml_cgns
 
-def test_isLabelFromString():
-  assert IE.isLabelFromString('BC') == False
-  assert IE.isLabelFromString('BC_t') == True
-  assert IE.isLabelFromString('BC_toto') == False
-  assert IE.isLabelFromString('FakeLabel_t') == False
+def test_is_valid_label():
+  assert IE.is_valid_label('') == True
+  assert IE.is_valid_label('BC') == False
+  assert IE.is_valid_label('BC_t') == True
+  assert IE.is_valid_label('BC_toto') == False
+  assert IE.is_valid_label('FakeLabel_t') == False
+
+  assert IE.is_valid_label(CGL.BC_t.name) == True
+
+def test_check_is_label():
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bc1 BC_t:
+        Index_i IndexArray_t:
+      bc2 BC_t:
+        Index_ii IndexArray_t:
+    ZBCB ZoneBC_t:
+      bc3 BC_t:
+        Index_iii IndexArray_t:
+      bc4 BC_t:
+      bc5 BC_t:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+
+  @IE.check_is_label('Zone_t')
+  def apply_zone(node):
+    pass
+
+  for zone in I.getZones(tree):
+    apply_zone(zone)
+
+  with pytest.raises(IE.CGNSLabelNotEqualError):
+    for zone in I.getBases(tree):
+      apply_zone(zone)
 
 def test_getValue():
   node = I.newDataArray('Test', [1,2])
@@ -51,23 +87,23 @@ Base CGNSBase_t:
 
   assert IE.requireNodeFromName(tree, "ZoneI") == I.getNodeFromName(tree, "ZoneI")
   assert I.getNodeFromName(tree, "ZoneB") == None
-  with pytest.raises(IE.CGNSNameNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromName(tree, "ZoneB")
 
   base = I.getBases(tree)[0]
   assert IE.requireNodeFromName1(base, "ZoneI") == I.getNodeFromName1(base, "ZoneI")
   assert I.getNodeFromName1(base, "ZoneB") == None
-  with pytest.raises(IE.CGNSNameNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromName1(base, "ZoneB")
 
   assert IE.requireNodeFromName2(tree, "ZoneI") == I.getNodeFromName2(tree, "ZoneI")
   assert I.getNodeFromName2(tree, "ZoneB") == None
-  with pytest.raises(IE.CGNSNameNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromName2(tree, "ZoneB")
 
   assert IE.requireNodeFromName3(tree, "ZBCA") == I.getNodeFromName3(tree, "ZBCA")
   assert I.getNodeFromName3(tree, "ZZZZZ") == None
-  with pytest.raises(IE.CGNSNameNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromName3(tree, "ZZZZZ")
 
 def test_requireNodeFromType():
@@ -95,23 +131,23 @@ Base CGNSBase_t:
 
   assert IE.requireNodeFromType(tree, "Zone_t") == I.getNodeFromType(tree, "Zone_t")
   assert I.getNodeFromType(tree, "Family_t") == None
-  with pytest.raises(IE.CGNSLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromType(tree, "Family_t")
 
   base = I.getBases(tree)[0]
   assert IE.requireNodeFromType1(base, "Zone_t") == I.getNodeFromType1(base, "Zone_t")
   assert I.getNodeFromType1(base, "Family_t") == None
-  with pytest.raises(IE.CGNSLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromType1(base, "Family_t")
 
   assert IE.requireNodeFromType2(tree, "Zone_t") == I.getNodeFromType2(tree, "Zone_t")
   assert I.getNodeFromType2(tree, "Family_t") == None
-  with pytest.raises(IE.CGNSLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromType2(tree, "Family_t")
 
   assert IE.requireNodeFromType3(tree, "ZoneBC_t") == I.getNodeFromType3(tree, "ZoneBC_t")
   assert I.getNodeFromType3(tree, "ZoneGridConnectivity_t") == None
-  with pytest.raises(IE.CGNSLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromType3(tree, "ZoneGridConnectivity_t")
 
 def test_getRequireNodeFromNameAndType():
@@ -143,9 +179,9 @@ Base CGNSBase_t:
   assert I.getNodeFromNameAndType(tree, "ZoneI", "Family_t") == None
   assert IE.getNodeFromNameAndType(tree, "ZoneB", "Zone_t")   == None
   assert IE.getNodeFromNameAndType(tree, "ZoneI", "Family_t") == None
-  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromNameAndType(tree, "ZoneB", "Zone_t")
-  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromNameAndType(tree, "ZoneI", "Family_t")
 
   base = I.getBases(tree)[0]
@@ -155,9 +191,9 @@ Base CGNSBase_t:
   assert I.getNodeFromNameAndType(base, "ZoneI", "Family_t") == None
   assert IE.getNodeFromNameAndType1(base, "ZoneB", "Zone_t")   == None
   assert IE.getNodeFromNameAndType1(base, "ZoneI", "Family_t") == None
-  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromNameAndType1(base, "ZoneB", "Zone_t")
-  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromNameAndType1(base, "ZoneI", "Family_t")
 
   assert I.getNodeFromNameAndType(tree, "ZoneI", "Zone_t") == IE.getNodeFromNameAndType2(tree, "ZoneI", "Zone_t")
@@ -166,9 +202,9 @@ Base CGNSBase_t:
   assert I.getNodeFromNameAndType(tree, "ZoneI", "Family_t") == None
   assert IE.getNodeFromNameAndType2(tree, "ZoneB", "Zone_t")   == None
   assert IE.getNodeFromNameAndType2(tree, "ZoneI", "Family_t") == None
-  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromNameAndType2(tree, "ZoneB", "Zone_t")
-  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromNameAndType2(tree, "ZoneI", "Family_t")
 
   assert I.getNodeFromNameAndType(tree, "ZBCA", "ZoneBC_t") == IE.getNodeFromNameAndType3(tree, "ZBCA", "ZoneBC_t")
@@ -177,10 +213,171 @@ Base CGNSBase_t:
   assert I.getNodeFromNameAndType(tree, "ZBCA", "ZoneGridConnectivity_t") == None
   assert IE.getNodeFromNameAndType3(tree, "ZZZZZ", "ZoneBC_t")              == None
   assert IE.getNodeFromNameAndType3(tree, "ZBCA", "ZoneGridConnectivity_t") == None
-  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromNameAndType3(tree, "ZZZZZ", "ZoneBC_t")
-  with pytest.raises(IE.CGNSNameAndLabelNotFoundError):
+  with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.requireNodeFromNameAndType3(tree, "ZBCA", "ZoneGridConnectivity_t")
+
+def test_getChildFromPredicate():
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bc1 BC_t:
+        Index_i IndexArray_t:
+      bc2 BC_t:
+        Index_ii IndexArray_t:
+    ZBCB ZoneBC_t:
+      bc3 BC_t:
+        Index_iii IndexArray_t:
+      bc4 BC_t:
+      bc5 BC_t:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
+  is_base    = lambda n: I.getName(n) == 'Base' and I.getType(n) == 'CGNSBase_t'
+  is_zonei   = lambda n: I.getName(n) == 'ZoneI' and I.getType(n) == 'Zone_t'
+  is_nface   = lambda n: I.getName(n) == 'NFace' and I.getType(n) == 'Elements_t'
+  is_ngon    = lambda n: I.getName(n) == 'Ngon' and I.getType(n) == 'Elements_t'
+  is_zbca    = lambda n: I.getName(n) == 'ZBCA' and I.getType(n) == 'ZoneBC_t'
+  is_bc1     = lambda n: I.getName(n) == 'bc1' and I.getType(n) == 'BC_t'
+  is_index_i = lambda n: I.getName(n) == 'Index_i' and I.getType(n) == 'IndexArray_t'
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # I.printTree(tree)
+
+  base = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "Base")
+  assert is_base(base)
+  zone = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="bfs")
+  assert is_zonei(zone)
+  zone = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  assert is_zonei(zone)
+
+  zone = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs", depth=1)
+  assert zone is None
+  zone = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs", depth=2)
+  assert is_zonei(zone)
+  zone = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs", depth=3)
+  assert is_zonei(zone)
+
+  node = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "Base", method="dfs", depth=1)
+  assert is_base(node)
+  node = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs", depth=2)
+  assert is_zonei(node)
+  node = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "Ngon", method="dfs", depth=3)
+  assert is_ngon(node)
+  node = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "bc1", method="dfs", depth=4)
+  assert is_bc1(node)
+  node = IE.requestChildFromPredicate(tree, lambda n: I.getName(n) == "Index_i", method="dfs", depth=5)
+  assert is_index_i(node)
+
+  element = IE.requestChildFromName(tree, "NFace")
+  assert is_nface(element)
+  element = IE.requestChildFromValue(tree, np.array([23,0], order='F'))
+  assert is_nface(element)
+  element = IE.requestChildFromLabel(tree, "Elements_t")
+  assert is_ngon(element)
+  element = IE.requestChildFromNameAndValue(tree, "NFace", np.array([23,0], order='F'))
+  assert is_nface(element)
+  element = IE.requestChildFromNameAndLabel(tree, "NFace", "Elements_t")
+  assert is_nface(element)
+  element = IE.requestChildFromValueAndLabel(tree, np.array([23,0], order='F'), "Elements_t")
+  assert is_nface(element)
+  element = IE.requestChildFromNameValueAndLabel(tree, "NFace", np.array([23,0], order='F'), "Elements_t")
+  assert is_nface(element)
+  #
+  element = IE.requestChildFromName(tree, "TOTO")
+  assert element is None
+  element = IE.requestChildFromValue(tree, np.array([1230,0], order='F'))
+  assert element is None
+  element = IE.requestChildFromLabel(tree, "ZoneSubRegion_t")
+  assert element is None
+  element = IE.requestChildFromNameAndValue(tree, "TOTO", np.array([23,0], order='F'))
+  assert element is None
+  element = IE.requestChildFromNameAndValue(tree, "NFace", np.array([1230,0], order='F'))
+  assert element is None
+  element = IE.requestChildFromNameAndLabel(tree, "TOTO", "Elements_t")
+  assert element is None
+  element = IE.requestChildFromNameAndLabel(tree, "NFace", "ZoneSubRegion_t")
+  assert element is None
+  element = IE.requestChildFromValueAndLabel(tree, np.array([1230,0], order='F'), "Elements_t")
+  assert element is None
+  element = IE.requestChildFromValueAndLabel(tree, np.array([23,0], order='F'), "ZoneSubRegion_t")
+  assert element is None
+  element = IE.requestChildFromNameValueAndLabel(tree, "TOTO", np.array([23,0], order='F'), "Elements_t")
+  assert element is None
+  element = IE.requestChildFromNameValueAndLabel(tree, "NFace", np.array([1230,0], order='F'), "Elements_t")
+  assert element is None
+  element = IE.requestChildFromNameValueAndLabel(tree, "NFace", np.array([23,0], order='F'), "ZoneSubRegion_t")
+  assert element is None
+
+  # requestChildFrom... with level and dfs
+  zone = IE.requestChildFromPredicate1(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  assert zone is None
+  zone = IE.requestChildFromPredicate2(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  assert is_zonei(zone)
+  zone = IE.requestChildFromPredicate3(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  assert is_zonei(zone)
+
+  zone = IE.requestChildFromName(tree, "ZoneI", method="dfs", depth=1)
+  assert zone is None
+  zone = IE.requestChildFromName(tree, "ZoneI", method="dfs", depth=2)
+  assert is_zonei(zone)
+  zone = IE.requestChildFromName(tree, "ZoneI", method="dfs", depth=3)
+  assert is_zonei(zone)
+
+  zone = IE.requestChildFromName1(tree, "ZoneI")
+  assert zone is None
+  zone = IE.requestChildFromName2(tree, "ZoneI")
+  assert is_zonei(zone)
+  zone = IE.requestChildFromName3(tree, "ZoneI")
+  assert is_zonei(zone)
+
+  node = IE.getChildFromName1(tree, "Base")
+  assert is_base(node)
+  node = IE.getChildFromName2(tree, "ZoneI")
+  assert is_zonei(node)
+  node = IE.getChildFromName3(tree, "Ngon")
+  assert is_ngon(node)
+  node = IE.getChildFromName4(tree, "bc1")
+  assert is_bc1(node)
+  node = IE.getChildFromName5(tree, "Index_i")
+  assert is_index_i(node)
+
+  node = IE.getChildFromLabel1(tree, "CGNSBase_t")
+  assert is_base(node)
+  node = IE.getChildFromLabel2(tree, "Zone_t")
+  assert is_zonei(node)
+  node = IE.getChildFromLabel3(tree, "Elements_t")
+  assert is_ngon(node)
+  node = IE.getChildFromLabel4(tree, "BC_t")
+  assert is_bc1(node)
+  node = IE.getChildFromLabel5(tree, "IndexArray_t")
+  assert is_index_i(node)
+
+  # getChildFrom...
+  base = IE.getChildFromPredicate(tree, lambda n: I.getName(n) == "Base")
+  assert is_base(base)
+  zone = IE.getChildFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  assert is_zonei(zone)
+
+  element = IE.getChildFromName(tree, "NFace")
+  assert is_nface(element)
+  element = IE.getChildFromValue(tree, np.array([23,0], order='F'))
+  assert is_nface(element)
+  element = IE.getChildFromLabel(tree, "Elements_t")
+  assert is_ngon(element)
+  element = IE.getChildFromNameAndValue(tree, "NFace", np.array([23,0], order='F'))
+  assert is_nface(element)
+  element = IE.getChildFromNameAndLabel(tree, "NFace", "Elements_t")
+  assert is_nface(element)
+  element = IE.getChildFromValueAndLabel(tree, np.array([23,0], dtype='int64',order='F'), "Elements_t")
+  assert is_nface(element)
+  element = IE.getChildFromNameValueAndLabel(tree, "NFace", np.array([23,0], order='F'), "Elements_t")
+  assert is_nface(element)
 
 def test_getNodesFromPredicate():
   yt = """
@@ -475,3 +672,9 @@ def test_getGlobalNumbering():
   assert IE.getGlobalNumbering(zone) is gnum_node
   assert (I.getVal(IE.getGlobalNumbering(zone, 'Cell')) == [4,21,1,2,8,12]).all()
   assert  I.getVal(IE.getGlobalNumbering(zone, 'Vertex')) == None
+
+if __name__ == "__main__":
+  # test_getChildFromPredicate()
+  test_requireNodeFromName()
+  test_requireNodeFromType()
+  test_getRequireNodeFromNameAndType()
