@@ -437,6 +437,7 @@ if __name__ == "__main__":
   import maia.parallel_tree as PT
   from maia.cgns_io      import cgns_io_tree as IOT
   from maia.partitioning import part         as PPA
+  from maia.partitioning.load_balancing import setup_partition_weights as DBA
   # filename = "cubeS_join_bnd1.hdf"
   # filename = "cubeU_join_bnd.hdf"
   # filename = "cubeH.hdf"
@@ -449,7 +450,10 @@ if __name__ == "__main__":
   # filename = "cubeS_join_bnd1.hdf"
   # filename = "cubeU_join_bnd-new.hdf"
   # families = ['Wall']
-  filename = "AxiT2-new.hdf"
+  # filename = "AxiT2-new.hdf"
+  # families = ['WALL']
+
+  filename = "AxiT0-new.hdf"
   families = ['WALL']
 
   # filename = "AxiT2-tetra-new2.hdf"
@@ -470,8 +474,17 @@ if __name__ == "__main__":
   # sys.exit(1)
 
   part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch')
-  wall_distance(part_tree, mpi_comm=comm)
-  # wall_distance(part_tree, mpi_comm=comm, method="cloud")
+  # wall_distance(part_tree, mpi_comm=comm)
+  wall_distance(part_tree, mpi_comm=comm, method="cloud")
   C.convertPyTree2File(part_tree, f"AxiT2-new-{mpi_rank}rank.hdf")
   ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  PT.merge_and_save(ptree, f"AxiT2-new-{mpi_size}procs-v1.hdf")
+  PT.merge_and_save(ptree, f"AxiT2-new-{mpi_size}procs-v10-cloud.hdf")
+
+  # n_part = 2
+  # zone_to_parts = DBA.npart_per_zone(dist_tree, comm, n_part)
+  # part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch', zone_to_parts=zone_to_parts)
+  # # wall_distance(part_tree, mpi_comm=comm)
+  # wall_distance(part_tree, mpi_comm=comm, method="cloud")
+  # C.convertPyTree2File(part_tree, f"AxiT2-new-{mpi_rank}rank.hdf")
+  # ptree = PT.parallel_tree(comm, dist_tree, part_tree)
+  # PT.merge_and_save(ptree, f"AxiT2-new-{mpi_size}procs-v20-cloud.hdf")

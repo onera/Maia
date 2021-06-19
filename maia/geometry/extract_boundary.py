@@ -192,12 +192,14 @@ def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD
                                  0.,
                                  comm)
 
-  point_lists = []
+  bnd_ln_to_gns = []
   for i_part, part_zone in enumerate(part_zones):
-    vtx_ln_to_gn0, cell_ln_to_gn0, face_ln_to_gn0 = SIDS.Zone.get_ln_to_gn(part_zone)
+    _, _, face_ln_to_gn_part_zone = SIDS.Zone.get_ln_to_gn(part_zone)
 
-    # Parse filtered bc
+    n_face_bnd_part_zone = 0
     point_lists_part_zone = []
+
+    # Parse filtered all bc
     if SIDS.Zone.Type(part_zone) == 'Structured':
       raise NotImplementedError()
     else: # SIDS.Zone.Type(part_zone) == "Unstructured":
@@ -211,27 +213,31 @@ def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD
           point_list_node = IE.requireNodeFromName1(bc_node, 'PointList')
           point_list      = I.getVal(point_list_node)
           n_face_bnd = SIDS.PointList.n_face(point_list_node)
+          n_face_bnd_part_zone += n_face_bnd
 
           LOG.info(f"  point_list = {point_list}")
           point_lists_part_zone.append(point_list)
       else:
         raise ERR.NotImplementedForElementError(part_zone, element_node)
 
+    LOG.info(f"face_ln_to_gn_part_zone.shape = {face_ln_to_gn_part_zone.shape}")
+    LOG.info(f"face_ln_to_gn_part_zone = {face_ln_to_gn_part_zone}")
     LOG.info(f"point_lists_part_zone = {point_lists_part_zone}")
     merge_pl_idx_part_zone, merge_pl_part_zone = py_utils.concatenate_point_list(point_lists_part_zone)
-    point_lists.append(merge_pl_part_zone.reshape((1, merge_pl_part_zone.shape[0])))
+    LOG.info(f"merge_pl_idx_part_zone.shape[0] = {merge_pl_idx_part_zone.shape[0]}")
 
-  LOG.info(f"point_lists = {point_lists}")
-  merge_pl_idx, merge_pl = py_utils.concatenate_point_list(point_lists)
-  bnd_ln_to_gn = EX.extract_from_indices(face_ln_to_gn0, merge_pl, 1, 1)
+    bnd_ln_to_gn_part_zone = EX.extract_from_indices(face_ln_to_gn_part_zone, merge_pl_part_zone, 1, 1)
+    # bnd_ln_to_gn_part_zone += n_face_bnd_part_zone
+    bnd_ln_to_gns.append(bnd_ln_to_gn_part_zone)
 
-  LOG.info(f"face_ln_to_gn0.shape[0] = {face_ln_to_gn0.shape[0]}")
-  LOG.info(f"merge_pl.shape[0]       = {merge_pl.shape[0]}")
-  LOG.info(f"bnd_ln_to_gn.shape[0]   = {bnd_ln_to_gn.shape[0]}")
-  LOG.info(f"merge_pl     = {merge_pl}")
+  LOG.info(f"bnd_ln_to_gns = {bnd_ln_to_gns}")
+  bnd_ln_to_gn = py_utils.concatenate_numpy(bnd_ln_to_gns)
+
+  LOG.info(f"face_ln_to_gn_part_zone.shape[0] = {face_ln_to_gn_part_zone.shape[0]}")
+  LOG.info(f"bnd_ln_to_gn.shape[0] = {bnd_ln_to_gn.shape[0]}")
   LOG.info(f"bnd_ln_to_gn = {bnd_ln_to_gn}")
 
-  gen_gnum.gnum_set_from_parent(0, merge_pl.shape[0], bnd_ln_to_gn)
+  gen_gnum.gnum_set_from_parent(0, bnd_ln_to_gn.shape[0], bnd_ln_to_gn)
 
   gen_gnum.gnum_compute()
 

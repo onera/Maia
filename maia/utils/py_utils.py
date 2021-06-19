@@ -72,6 +72,25 @@ def single_dim_pr_to_pl(pr, distrib=None):
   else:
     return np.arange(pr[0,0], pr[0,1]+1, dtype=pr.dtype).reshape((1,-1), order='F')
 
+def concatenate_numpy(arrays, dtype=None):
+  sizes = [a.size for a in arrays]
+  print(f"sizes = {sizes}")
+
+  if dtype is None:
+    dtype = arrays[0].dtype if arrays != [] else np.int
+
+  merged_array = np.empty(sum(sizes), dtype=dtype)
+  print(f"merged_array = {merged_array.size}")
+  count = 0
+  for i, a in enumerate(arrays):
+    print(f"count = {count}, count+sizes[i] = {count+sizes[i]}")
+    # if i > 0:
+    #   merged_array[count:count+sizes[i]] = a
+    # else:
+    merged_array[count:count+sizes[i]] = a
+    count += sizes[i]
+  return merged_array
+
 def concatenate_point_list(point_lists, dtype=None):
   """
   Merge all the PointList arrays in point_lists list
