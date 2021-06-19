@@ -24,49 +24,6 @@ class CGNSNodeFromPredicateNotFoundError(Exception):
     def __str__(self):
         return f"Unable to find the predicate '{self.predicate}' from the CGNS node '[n:{I.getName(self.node)}, ..., l:{I.getType(self.node)}]', see : \n{I.printTree(self.node)}."
 
-# class CGNSNameNotFoundError(Exception):
-#     """
-#     Attributes:
-#         node (List): CGNS node
-#         name (str): Name of the CGNS Name
-#     """
-#     def __init__(self, node: List, name: str):
-#         self.node = node
-#         self.name = name
-#         super().__init__()
-
-#     def __str__(self):
-#         return f"Unable to find the CGNS name 'n:{self.name}' from the CGNS node '[n:{I.getName(self.node)}, ..., l:{I.getType(self.node)}]', see : \n{I.printTree(self.node)}."
-
-# class CGNSLabelNotFoundError(Exception):
-#     """
-#     Attributes:
-#         node (List): CGNS node
-#         label (str): Name of the CGNS Label
-#     """
-#     def __init__(self, node: List, label: str):
-#         self.node  = node
-#         self.label = label
-#         super().__init__()
-
-#     def __str__(self):
-#         return f"Unable to find the CGNS label 'l:{self.label}' from the CGNS node '[n:{I.getName(self.node)}, ..., l:{I.getType(self.node)}]', see : \n{I.printTree(self.node)}."
-
-# class CGNSNameAndLabelNotFoundError(Exception):
-#     """
-#     Attributes:
-#         node (List): CGNS node
-#         label (str): Name of the CGNS Label
-#     """
-#     def __init__(self, node: List, name: str, label: str):
-#         self.node  = node
-#         self.name  = name
-#         self.label = label
-#         super().__init__()
-
-#     def __str__(self):
-#         return f"Unable to find the CGNS name 'n:{I.getName(self.name)}' and label 'l:{self.label}' from the CGNS node '[n:{I.getName(self.node)}, ..., l:{I.getType(self.node)}]', see : \n{I.printTree(self.node)}."
-
 class CGNSLabelNotEqualError(Exception):
     """
     Attributes:
@@ -164,67 +121,6 @@ def check_is_label(label):
     return _check_is_label
 
 # --------------------------------------------------------------------------
-class CGNSParser:
-
-  DEFAULT="bfs"
-
-  def bfs(self, parent, predicate, level=0):
-    for n in parent[2]:
-      if predicate(n):
-        return n
-    # Explore next level
-    for n in parent[2]:
-      n = self.bfs(n, predicate, level=level+1)
-      if n is not None:
-        return n
-    return None
-
-  def dfs(self, parent, predicate, level=0):
-    for n in parent[2]:
-      if predicate(n):
-        return n
-      # Explore in depth
-      for n in parent[2]:
-        n = self.dfs(n, predicate, level=level+1)
-        if n is not None:
-          return n
-    return None
-
-# --------------------------------------------------------------------------
-class LevelCGNSParser:
-
-  MAXDEPTH=30
-
-  def __init__(self, depth=MAXDEPTH):
-    self.depth = depth
-
-  def bfs(self, parent, predicate, level=1):
-    # print(f"LevelCGNSParser.bfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for n in parent[2]:
-      if predicate(n):
-        return n
-    if level < self.depth:
-      # print(f" -> Go to the next level : {level+1}")
-      for n in parent[2]:
-        n = self.bfs(n, predicate, level=level+1)
-        if n is not None:
-          return n
-    return None
-
-  def dfs(self, parent, predicate, level=1):
-    # print(f"LevelCGNSParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for n in parent[2]:
-      if predicate(n):
-        return n
-      if level < self.depth:
-        # print(f" -> Go to the next level : {level+1}")
-        for n in parent[2]:
-          n = self.dfs(n, predicate, level=level+1)
-          if n is not None:
-            return n
-    return None
-
-# --------------------------------------------------------------------------
 def match_name(n, name: str):
   return fnmatch.fnmatch(n[0], name)
 
@@ -285,8 +181,67 @@ def create_methods(method, create_method):
       setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
 
 # --------------------------------------------------------------------------
-def requestChildFromPredicate(parent, predicate, method=CGNSParser.DEFAULT, depth=None):
-  parser = LevelCGNSParser(depth=depth) if isinstance(depth, int) else CGNSParser()
+class NodeParser:
+
+  DEFAULT="bfs"
+
+  def bfs(self, parent, predicate):
+    for child in parent[2]:
+      if predicate(child):
+        return child
+    # Explore next level
+    for child in parent[2]:
+      result = self.bfs(child, predicate)
+      if result is not None:
+        return result
+    return None
+
+  def dfs(self, parent, predicate):
+    for child in parent[2]:
+      if predicate(child):
+        return child
+      # Explore next level
+      result = self.dfs(child, predicate)
+      if result is not None:
+        return result
+    return None
+
+# --------------------------------------------------------------------------
+class LevelNodeParser:
+
+  MAXDEPTH=30
+
+  def __init__(self, depth=MAXDEPTH):
+    self.depth = depth
+
+  def bfs(self, parent, predicate, level=1):
+    # print(f"LevelNodeParser.bfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
+    for child in parent[2]:
+      if predicate(child):
+        return child
+    if level < self.depth:
+      # Explore next level
+      for child in parent[2]:
+        result = self.bfs(child, predicate, level=level+1)
+        if result is not None:
+          return result
+    return None
+
+  def dfs(self, parent, predicate, level=1):
+    # print(f"LevelNodeParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
+    for child in parent[2]:
+      if predicate(child):
+        return child
+      if level < self.depth:
+        # Explore next level
+        result = self.dfs(child, predicate, level=level+1)
+        if result is not None:
+          return result
+    return None
+
+# --------------------------------------------------------------------------
+def requestChildFromPredicate(parent, predicate, method=NodeParser.DEFAULT, depth=None):
+  parser = LevelNodeParser(depth=depth) if isinstance(depth, int) else NodeParser()
   func   = getattr(parser, method)
   return func(parent, predicate)
 
@@ -298,49 +253,8 @@ def create_request_child(predicate, nargs):
 
 create_methods(requestChildFromPredicate, create_request_child)
 
-# for depth in range(1,MAXDEPTH+1):
-#   func = partial(requestChildFromPredicate, method='dfs', depth=depth)
-#   funcname = f"requestChildFromPredicate{depth}"
-#   func.__name__ = funcname
-#   setattr(module_object, funcname, func)
-
-# for what, item in allfuncs.items():
-#   predicate, nargs = item
-#   func = create_request_child(predicate, nargs)
-#   funcname = f"requestChildFrom{what}"
-#   func.__name__ = funcname
-#   setattr(module_object, funcname, func) # bfs
-
-# for what, item in allfuncs.items():
-#   predicate, nargs = item
-#   for depth in range(1,MAXDEPTH+1):
-#     func = create_request_child(predicate, nargs)
-#     funcname = f"requestChildFrom{what}{depth}"
-#     func.__name__ = funcname
-#     setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
-
-# def requestChildFromName(parent, name, **kwargs):
-#   """ Return the first node of first level childs matching a given name -- specialized shortcut for getChildFromPredicate """
-#   return requestChildFromPredicate(parent, partial(match_name, name=check_name(name)), **kwargs)
-
-# def requestChildFromLabel(parent, label, **kwargs):
-#   """ Return the first node of first level childs matching a given label -- specialized shortcut for getChildFromPredicate """
-#   return requestChildFromPredicate(parent, partial(match_label, label=check_label(label)), **kwargs)
-
-# def requestChildFromValue(parent, value, **kwargs):
-#   """ Return the first node of first level childs matching a given value -- specialized shortcut for getChildFromPredicate """
-#   return requestChildFromPredicate(parent, partial(match_value, value=check_value(value)), **kwargs)
-
-# def requestChildFromNameAndLabel(parent, name, label, **kwargs):
-#   """ Return the first node of first level childs matching a given name and a given label -- specialized shortcut for getChildFromPredicate """
-#   return requestChildFromPredicate(parent, partial(match_name_label, name=check_name(name), label=check_label(label)), **kwargs)
-
-# def requestChildFromNameAndValue(parent, name, value, **kwargs):
-#   """ Return the first node of first level childs matching a given name and a given label -- specialized shortcut for getChildFromPredicate """
-#   return requestChildFromPredicate(parent, partial(match_name_label, name=check_name(name), label=check_label(label)), **kwargs)
-
 # --------------------------------------------------------------------------
-def getChildFromPredicate(parent, predicate, default=None, method=CGNSParser.DEFAULT, depth=None):
+def getChildFromPredicate(parent, predicate, default=None, method=NodeParser.DEFAULT, depth=None):
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
   n = requestChildFromPredicate(parent, predicate, method=method, depth=depth)
   if n is not None:
@@ -361,82 +275,114 @@ def create_get_child(predicate, nargs):
 
 create_methods(getChildFromPredicate, create_get_child)
 
-# for depth in range(1,MAXDEPTH+1):
-#   func = partial(getChildFromPredicate, method='dfs', depth=depth)
-#   funcname = f"getChildFromPredicate{depth}"
-#   func.__name__ = funcname
-#   setattr(module_object, funcname, func)
+# --------------------------------------------------------------------------
+class NodesParser:
 
-# for what, item in allfuncs.items():
-#   predicate, nargs = item
-#   func = create_get_child(predicate, nargs)
-#   funcname = f"getChildFrom{what}"
-#   func.__name__ = funcname
-#   setattr(module_object, funcname, func) # bfs
+  DEFAULT="bfs"
 
-# for what, item in allfuncs.items():
-#   predicate, nargs = item
-#   for depth in range(1,MAXDEPTH+1):
-#     func = create_get_child(predicate, nargs)
-#     funcname = f"getChildFrom{what}{depth}"
-#     func.__name__ = funcname
-#     setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+  def __init__(self):
+    self.result = []
 
-# def getChildFromName(parent, name, **kwargs):
-#   """ Return the first node of first level childs matching a given name -- specialized shortcut for getChildFromPredicate """
-#   return getChildFromPredicate(parent, partial(match_name, name=check_name(name)), **kwargs)
+  def bfs(self, parent, predicate):
+    for child in parent[2]:
+      if predicate(child):
+        self.result.append(child)
+    # Explore next level
+    for child in parent[2]:
+      self.bfs(child, predicate)
+    return self.result
 
-# def getChildFromLabel(parent, label, **kwargs):
-#   """ Return the first node of first level childs matching a given label -- specialized shortcut for getChildFromPredicate """
-#   return getChildFromPredicate(parent, partial(match_label, label=check_label(label)), **kwargs)
-
-# def getChildFromValue(parent, value, **kwargs):
-#   """ Return the first node of first level childs matching a given value -- specialized shortcut for getChildFromPredicate """
-#   return getChildFromPredicate(parent, partial(match_value, value=check_value(value)), **kwargs)
-
-# def getChildFromNameAndType(parent, name, label, **kwargs):
-#   """ Return the first node of first level childs matching a given name and a given label -- specialized shortcut for getChildFromPredicate """
-#   return getChildFromPredicate(parent, partial(match_name_label, name=check_name(name), label=check_label(label)), **kwargs)
+  def dfs(self, parent, predicate):
+    for child in parent[2]:
+      if predicate(child):
+        self.result.append(child)
+      # Explore next level
+      self.dfs(child, predicate)
+    return self.result
 
 # --------------------------------------------------------------------------
-def getChildrenFromPredicate(node, predicate):
-  """ Return the list of first level childs of node matching a given predicate (callable function)"""
-  return [n for n in node[2] if predicate(n)] if node else []
+class LevelNodesParser:
 
-def getChildrenFromName(node, name):
-  """ Return the list of first level childs matching a given name -- specialized shortcut for getChildrenFromPredicate """
-  return getChildrenFromPredicate(node, partial(match_name, name=check_name(name)))
+  MAXDEPTH=30
 
-def getChildrenFromLabel(node, label):
-  """ Return the list of first level childs matching a given label -- specialized shortcut for getChildrenFromPredicate """
-  return getChildrenFromPredicate(node, partial(match_label, label=check_label(label)))
+  def __init__(self, depth=MAXDEPTH):
+    self.depth  = depth
+    self.result = []
 
-def getChildrenFromValue(node, value):
-  """ Return the list of first level childs matching a given value -- specialized shortcut for getChildrenFromPredicate """
-  return getChildrenFromPredicate(node, partial(match_value, value=check_value(value)))
+  def bfs(self, parent, predicate, level=1):
+    # print(f"LevelNodesParser.bfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
+    for child in parent[2]:
+      if predicate(child):
+        self.result.append(child)
+    if level < self.depth:
+      # Explore next level
+      for child in parent[2]:
+        self.bfs(child, predicate, level=level+1)
+    return self.result
 
-def getChildrenFromNameAndType(node, name, label):
-  """ Return the list of first level childs matching a given name and a given label -- specialized shortcut for getChildrenFromPredicate """
-  return getChildrenFromPredicate(node, partial(match_name_label, name=check_name(name), label=check_label(label)))
+  def dfs(self, parent, predicate, level=1):
+    # print(f"LevelNodesParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
+    for child in parent[2]:
+      if predicate(child):
+        self.result.append(child)
+      if level < self.depth:
+        # Explore next level
+        self.dfs(child, predicate, level=level+1)
+    return self.result
+
+# --------------------------------------------------------------------------
+def getChildrenFromPredicate(parent, predicate, method=NodeParser.DEFAULT, depth=None):
+  parser = LevelNodesParser(depth=depth) if isinstance(depth, int) else NodesParser()
+  func   = getattr(parser, method)
+  return func(parent, predicate)
+
+def create_get_children(predicate, nargs):
+  def _get_children_from(parent, *args, **kwargs):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    return getChildrenFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+  return _get_children_from
+
+create_methods(getChildrenFromPredicate, create_get_children)
+
+# --------------------------------------------------------------------------
+# def getChildrenFromPredicate1(node, predicate):
+#   """ Return the list of first level childs of node matching a given predicate (callable function)"""
+#   return [n for n in node[2] if predicate(n)] if node else []
+
+# def getChildrenFromName1(node, name):
+#   """ Return the list of first level childs matching a given name -- specialized shortcut for getChildrenFromPredicate1 """
+#   return getChildrenFromPredicate1(node, partial(match_name, name=check_name(name)))
+
+# def getChildrenFromLabel1(node, label):
+#   """ Return the list of first level childs matching a given label -- specialized shortcut for getChildrenFromPredicate1 """
+#   return getChildrenFromPredicate1(node, partial(match_label, label=check_label(label)))
+
+# def getChildrenFromValue1(node, value):
+#   """ Return the list of first level childs matching a given value -- specialized shortcut for getChildrenFromPredicate1 """
+#   return getChildrenFromPredicate1(node, partial(match_value, value=check_value(value)))
+
+# def getChildrenFromNameAndType1(node, name, label):
+#   """ Return the list of first level childs matching a given name and a given label -- specialized shortcut for getChildrenFromPredicate1 """
+#   return getChildrenFromPredicate1(node, partial(match_name_label, name=check_name(name), label=check_label(label)))
 
 # --------------------------------------------------------------------------
 def getNodesDispatch1(node, predicate):
   """ Interface to adapted getNodesFromXXX1 function depending of predicate type"""
   if isinstance(predicate, str):
-    return getChildrenFromLabel(node, predicate) if is_valid_label(predicate) else getChildrenFromName(node, predicate)
+    return getChildrenFromLabel1(node, predicate) if is_valid_label(predicate) else getChildrenFromName1(node, predicate)
   elif isinstance(predicate, CGK.Label):
-    return getChildrenFromLabel(node, predicate.name)
+    return getChildrenFromLabel1(node, predicate.name)
   elif isinstance(predicate, np.ndarray):
-    return getChildrenFromValue(node, predicate)
+    return getChildrenFromValue1(node, predicate)
   elif callable(predicate):
-    return getChildrenFromPredicate(node, predicate)
+    return getChildrenFromPredicate1(node, predicate)
   else:
     raise TypeError("predicate must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
 
 # --------------------------------------------------------------------------
 def getNodesByMatching(root, predicates):
   """Generator following predicates, doing 1 level search using
-  getChildrenFromLabel or getChildrenFromName. Equivalent to
+  getChildrenFromLabel1 or getChildrenFromName1. Equivalent to
   (predicate = 'type1_t/name2/type3_t' or ['type1_t', 'name2', lambda n: I.getType(n) == CGL.type3_t.name] )
   for level1 in I.getNodesFromType1(root, type1_t):
     for level2 in I.getNodesFromName1(level1, name2):
@@ -490,53 +436,27 @@ def getNodesWithParentsByMatching__(root, predicate_list):
       yield (node,)
 
 # --------------------------------------------------------------------------
-# def getNodeFromNameAndType(parent: List, name: str, label: str, fmatch=lambda n, p: fnmatch.fnmatch(n, p)):
-#   nodes = [n for n in I.getNodesFromType(parent, label) if fmatch(I.getName(n), name)]
-#   if not bool(nodes):
-#     return None
-#   return nodes[0]
-
-# def getNodeFromNameAndType1(parent: List, name: str, label: str, fmatch=lambda n,m: fnmatch.fnmatch(n, m)):
-#   # nodes = [n for n in I.getNodesFromType1(parent, label) if fmatch(I.getName(n), name)]
-#   nodes = getChildrenFromPredicate(parent, lambda n : fmatch(I.getName(n), name) and n[3] == label)
-#   if not bool(nodes):
-#     return None
-#   return nodes[0]
-
-# def getNodeFromNameAndType2(parent: List, name: str, label: str, fmatch=lambda n,m: fnmatch.fnmatch(n, m)):
-#   nodes = [n for n in I.getNodesFromType2(parent, label) if fmatch(I.getName(n), name)]
-#   # nodes = getChildrenFromPredicate(parent[2], lambda n : fmatch(I.getName(n), name) and n[3] == label)
-#   if not bool(nodes):
-#     return None
-#   return nodes[0]
-
-# def getNodeFromNameAndType3(parent: List, name: str, label: str, fmatch=lambda n,m: fnmatch.fnmatch(n, m)):
-#   nodes = [n for n in I.getNodesFromType3(parent, label) if fmatch(I.getName(n), name)]
-#   if not bool(nodes):
-#     return None
-#   return nodes[0]
-
 getNodeFromNameAndType  = requestChildFromNameAndLabel
 getNodeFromNameAndType1 = requestChildFromNameAndLabel1
 getNodeFromNameAndType2 = requestChildFromNameAndLabel2
 getNodeFromNameAndType3 = requestChildFromNameAndLabel3
 
 # --------------------------------------------------------------------------
-def create_require_node(what, level):
-  def _require_node_from(parent, arg):
-    funcname = f"getNodeFrom{what}{level}"
-    node = getattr(I, funcname)(parent, arg)
-    if node is None:
-      raise getattr(module_object, f"CGNS{'Label' if what == 'Type' else what}NotFoundError")(parent, arg)
-    return node
-  return _require_node_from
+# def create_require_node(what, level):
+#   def _require_node_from(parent, arg):
+#     funcname = f"getNodeFrom{what}{level}"
+#     node = getattr(I, funcname)(parent, arg)
+#     if node is None:
+#       raise getattr(module_object, f"CGNS{'Label' if what == 'Type' else what}NotFoundError")(parent, arg)
+#     return node
+#   return _require_node_from
 
-for what in ['Name', 'Type']:
-  for level in ['']+[str(i) for i in range(1,4)]:
-    func = create_require_node(what, level)
-    funcname = f"requireNodeFrom{what}{level}"
-    func.__name__ = funcname
-    setattr(module_object, funcname, func)
+# for what in ['Name', 'Type']:
+#   for level in ['']+[str(i) for i in range(1,4)]:
+#     func = create_require_node(what, level)
+#     funcname = f"requireNodeFrom{what}{level}"
+#     func.__name__ = funcname
+#     setattr(module_object, funcname, func)
 
 requireNodeFromName  = getChildFromName
 requireNodeFromName1 = getChildFromName1
@@ -547,33 +467,6 @@ requireNodeFromType  = getChildFromLabel
 requireNodeFromType1 = getChildFromLabel1
 requireNodeFromType2 = getChildFromLabel2
 requireNodeFromType3 = getChildFromLabel3
-
-# --------------------------------------------------------------------------
-# def requireNodeFromNameAndType(parent: List, name: str, label: str, fmatch=lambda n,m: fnmatch.fnmatch(n, m)):
-#   nodes = [n for n in I.getNodesFromType(parent, label) if fmatch(I.getName(n), name)]
-#   if not bool(nodes):
-#     raise CGNSNameAndLabelNotFoundError(parent, name, label)
-#   return nodes[0]
-
-
-# def requireNodeFromNameAndType1(parent: List, name: str, label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
-#   nodes = [n for n in I.getNodesFromType1(parent, label) if fmatch(n, name)]
-#   if not bool(nodes):
-#     raise CGNSNameAndLabelNotFoundError(parent, name, label)
-#   return nodes[0]
-
-
-# def requireNodeFromNameAndType2(parent: List, name: str, label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
-#   nodes = [n for n in I.getNodesFromType2(parent, label) if fmatch(n, name)]
-#   if not bool(nodes):
-#     raise CGNSNameAndLabelNotFoundError(parent, name, label)
-#   return nodes[0]
-
-# def requireNodeFromNameAndType3(parent: List, name: str, label: str, fmatch=lambda n,m: fnmatch.fnmatch(I.getName(n), m)):
-#   nodes = [n for n in I.getNodesFromType3(parent, label) if fmatch(n, name)]
-#   if not bool(nodes):
-#     raise CGNSNameAndLabelNotFoundError(parent, name, label)
-#   return nodes[0]
 
 requireNodeFromNameAndType  = getChildFromNameAndLabel
 requireNodeFromNameAndType1 = getChildFromNameAndLabel1
