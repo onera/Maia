@@ -62,7 +62,7 @@ def test_getValue():
   assert I.getVal(node) == [1]
   assert isinstance(I.getVal(node), np.ndarray)
 
-def test_requireNodeFromName():
+def test_getChildFromName():
   yt = """
 Base CGNSBase_t:
   ZoneI Zone_t:
@@ -106,7 +106,7 @@ Base CGNSBase_t:
   with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.getChildFromName3(tree, "ZZZZZ")
 
-def test_requireNodeFromType():
+def test_getChildFromLabel():
   yt = """
 Base CGNSBase_t:
   ZoneI Zone_t:
@@ -150,7 +150,7 @@ Base CGNSBase_t:
   with pytest.raises(IE.CGNSNodeFromPredicateNotFoundError):
     IE.getChildFromLabel3(tree, "ZoneGridConnectivity_t")
 
-def test_getRequireNodeFromNameAndType():
+def test_getChildFromNameAndLabel():
   yt = """
 Base CGNSBase_t:
   ZoneI Zone_t:
@@ -379,56 +379,6 @@ Base CGNSBase_t:
   element = IE.getChildFromNameValueAndLabel(tree, "NFace", np.array([23,0], order='F'), "Elements_t")
   assert is_nface(element)
 
-def test_getNodesFromPredicate():
-  yt = """
-Base CGNSBase_t:
-  ZoneI Zone_t:
-    Ngon Elements_t [22,0]:
-    NFace Elements_t [23,0]:
-    ZBCA ZoneBC_t:
-      bc1 BC_t:
-        Index_i IndexArray_t:
-      bc2 BC_t:
-        Index_ii IndexArray_t:
-    ZBCB ZoneBC_t:
-      bc3 BC_t:
-        Index_iii IndexArray_t:
-      bc4 BC_t:
-      bc5 BC_t:
-        Index_iv IndexArray_t:
-        Index_v IndexArray_t:
-        Index_vi IndexArray_t:
-"""
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-  # I.printTree(tree)
-
-  # Test from Name
-  base = I.getBases(tree)[0]
-  nodes_from_name1 = I.getNodesFromName1(base, "ZoneI")
-  assert IE.getChildrenFromPredicate1(base, lambda n: I.getName(n) == "ZoneI") == nodes_from_name1
-  # Wildcard is not allowed in getNodesFromName1() from Cassiopee
-  assert I.getNodesFromName1(base, "Zone*") == []
-  assert IE.getChildrenFromPredicate1(base, lambda n: fnmatch.fnmatch(I.getName(n), "Zone*")) == nodes_from_name1
-  assert IE.getChildrenFromName1(base, "Zone*") == nodes_from_name1
-  #Exclude top level which is included by Cassiopée
-  assert IE.getChildrenFromName1(base[0], "Base") == []
-
-  # Test from Type
-  nodes_from_type1 = I.getNodesFromType1(base, CGL.Zone_t.name)
-  assert IE.getChildrenFromPredicate1(base, lambda n: I.getType(n) == CGL.Zone_t.name) == nodes_from_type1
-  assert IE.getChildrenFromLabel1(base, CGL.Zone_t.name) == nodes_from_type1
-
-  # Test from Value
-  zone = I.getZones(tree)[0]
-  ngon_value = np.array([22,0], dtype=np.int32)
-  elements_from_type_value1 = [n for n in I.getNodesFromType1(zone, CGL.Elements_t.name) if np.array_equal(I.getVal(n), ngon_value)]
-  assert IE.getChildrenFromPredicate1(zone, lambda n: I.getType(n) == CGL.Elements_t.name and np.array_equal(I.getVal(n), ngon_value)) == elements_from_type_value1
-  assert IE.getChildrenFromValue1(zone, ngon_value) == elements_from_type_value1
-
-  zonebcs_from_type_name1 = [n for n in I.getNodesFromType1(zone, CGL.ZoneBC_t.name) if I.getName(n) != "ZBCA"]
-  assert IE.getChildrenFromPredicate1(zone, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA") == zonebcs_from_type_name1
-
-
 def test_getChildrenFromPredicate():
   yt = """
 Base CGNSBase_t:
@@ -501,6 +451,55 @@ Base CGNSBase_t:
   assert([I.getName(n) for n in IE.getChildrenFromLabel3(tree, 'Zone_t')] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in IE.getChildrenFromLabel4(tree, 'Zone_t')] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in IE.getChildrenFromLabel5(tree, 'Zone_t')] == ['ZoneI', 'ZoneJ'])
+
+def test_getChildrenFromPredicate1():
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bc1 BC_t:
+        Index_i IndexArray_t:
+      bc2 BC_t:
+        Index_ii IndexArray_t:
+    ZBCB ZoneBC_t:
+      bc3 BC_t:
+        Index_iii IndexArray_t:
+      bc4 BC_t:
+      bc5 BC_t:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # I.printTree(tree)
+
+  # Test from Name
+  base = I.getBases(tree)[0]
+  nodes_from_name1 = I.getNodesFromName1(base, "ZoneI")
+  assert IE.getChildrenFromPredicate1(base, lambda n: I.getName(n) == "ZoneI") == nodes_from_name1
+  # Wildcard is not allowed in getNodesFromName1() from Cassiopee
+  assert I.getNodesFromName1(base, "Zone*") == []
+  assert IE.getChildrenFromPredicate1(base, lambda n: fnmatch.fnmatch(I.getName(n), "Zone*")) == nodes_from_name1
+  assert IE.getChildrenFromName1(base, "Zone*") == nodes_from_name1
+  #Exclude top level which is included by Cassiopée
+  assert IE.getChildrenFromName1(base[0], "Base") == []
+
+  # Test from Type
+  nodes_from_type1 = I.getNodesFromType1(base, CGL.Zone_t.name)
+  assert IE.getChildrenFromPredicate1(base, lambda n: I.getType(n) == CGL.Zone_t.name) == nodes_from_type1
+  assert IE.getChildrenFromLabel1(base, CGL.Zone_t.name) == nodes_from_type1
+
+  # Test from Value
+  zone = I.getZones(tree)[0]
+  ngon_value = np.array([22,0], dtype=np.int32)
+  elements_from_type_value1 = [n for n in I.getNodesFromType1(zone, CGL.Elements_t.name) if np.array_equal(I.getVal(n), ngon_value)]
+  assert IE.getChildrenFromPredicate1(zone, lambda n: I.getType(n) == CGL.Elements_t.name and np.array_equal(I.getVal(n), ngon_value)) == elements_from_type_value1
+  assert IE.getChildrenFromValue1(zone, ngon_value) == elements_from_type_value1
+
+  zonebcs_from_type_name1 = [n for n in I.getNodesFromType1(zone, CGL.ZoneBC_t.name) if I.getName(n) != "ZBCA"]
+  assert IE.getChildrenFromPredicate1(zone, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA") == zonebcs_from_type_name1
 
 def test_getNodesDispatch1():
   fs = I.newFlowSolution()

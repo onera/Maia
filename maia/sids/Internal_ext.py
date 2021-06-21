@@ -131,11 +131,6 @@ def match_value(n, value):
 def match_label(n, label: str):
   return n[3] == label
 
-def match_path(n, path: str):
-  path1 = pathlib.Path(I.getPath(n))
-  path2 = pathlib.Path(path)
-  return path1 == path2
-
 def match_name_value(n, name: str, value):
   return fnmatch.fnmatch(n[0], name) and np.array_equal(n[1], value)
 
@@ -152,7 +147,6 @@ allfuncs = {
   'Name' : (match_name,  ('name',)),
   'Value': (match_value, ('value',)),
   'Label': (match_label, ('label',)),
-  'Path' : (match_path,  ('path',)),
   'NameAndValue' : (match_name_value,  ('name', 'value',)),
   'NameAndLabel' : (match_name_label,  ('name', 'label',)),
   'ValueAndLabel': (match_value_label, ('value', 'label',)),
