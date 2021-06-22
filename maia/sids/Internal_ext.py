@@ -6,7 +6,9 @@ import pathlib
 import fnmatch
 import numpy as np
 import Converter.Internal as I
+from maia.sids.cgns_keywords import Label as CGL
 import maia.sids.cgns_keywords as CGK
+import maia.utils.py_utils as PYU
 
 module_object = sys.modules[__name__]
 
@@ -156,30 +158,65 @@ allfuncs = {
 MAXDEPTH = 10
 
 # --------------------------------------------------------------------------
-def create_methods(method, create_method, funcs):
-  alias = method.__name__.replace('Predicate', '')
-  print(f"method : {method}")
-  print(f"method.__name__ : {method.__name__}")
-  print(f"alias : {alias}")
+def create_functions(function, create_function, method, funcs, mesg):
+  snake_name = PYU.camel_to_snake(function.__name__)
+  prefix = function.__name__.replace('Predicate', '')
+  # print(f"function          : {function}")
+  # print(f"function.__name__ : {function.__name__}")
+  # print(f"prefix          : {prefix}")
+  # print(f"snake_name      : {snake_name}")
+
   for depth in range(1,MAXDEPTH+1):
-    func = partial(method, method='dfs', depth=depth)
-    funcname = f"{method.__name__}{depth}"
+    doc = """get {0} from a predicate with depth={1}""".format(mesg, depth)
+    # Generate getXXXFromPredicate1, getXXXFromPredicate2, ..., getXXXFromPredicate{MAXDEPTH}
+    funcname = f"{function.__name__}{depth}"
+    func = partial(function, method='dfs', depth=depth)
     func.__name__ = funcname
+    func.__doc__  = doc
+    setattr(module_object, funcname, func)
+    # Generate get_xxx_from_predicate1, get_xxx_from_predicate2, ..., get_xxx_from_predicate{MAXDEPTH}
+    funcname = f"{snake_name}{depth}"
+    func = partial(function, method='dfs', depth=depth)
+    func.__name__ = funcname
+    func.__doc__  = doc
     setattr(module_object, funcname, func)
 
   for what, item in funcs.items():
+    dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
     predicate, nargs = item
-    func = create_method(predicate, nargs)
-    funcname = f"{alias}{what}"
-    func.__name__ = funcname
-    setattr(module_object, funcname, func) # bfs
 
-  for what, item in funcs.items():
-    predicate, nargs = item
+    # Generate getXXXFromName, getXXXFromValue, ..., getXXXFromNameValueAndLabel
+    funcname = f"{prefix}{what}"
+    func = create_function(predicate, nargs)
+    func.__name__ = funcname
+    func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
+    setattr(module_object, funcname, partial(func, method=method))
+    # Generate get_xxx_from_name, get_xxx_from_value, ..., get_xxx_from_name_value_and_label
+    funcname = PYU.camel_to_snake(f"{prefix}{what}")
+    # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
+    func = create_function(predicate, nargs)
+    func.__name__ = funcname
+    func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
+    setattr(module_object, funcname, partial(func, method=method))
+
     for depth in range(1,MAXDEPTH+1):
-      func = create_method(predicate, nargs)
-      funcname = f"{alias}{what}{depth}"
+      # Generate getXXXFromName1, getXXXFromName2, ..., getXXXFromName{MAXDEPTH}
+      # Generate getXXXFromValue1, getXXXFromValue2, ..., getXXXFromValue{MAXDEPTH}
+      #   ...
+      # Generate getXXXFromNameValueAndLabel1, getXXXFromNameValueAndLabel2, ..., getXXXFromNameValueAndLabel{MAXDEPTH}
+      funcname = f"{prefix}{what}{depth}"
+      func = create_function(predicate, nargs)
       func.__name__ = funcname
+      func.__doc__  = """get {0} from a {1} with depth={2}""".format(mesg, dwhat, depth)
+      setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+      # Generate get_xxx_from_name1, get_xxx_from_name2, ..., get_xxx_from_name{MAXDEPTH}
+      # Generate get_xxx_from_value1, get_xxx_from_value2, ..., get_xxx_from_value{MAXDEPTH}
+      #   ...
+      # Generate get_xxx_from_name_value_and_label1, get_xxx_from_name_value_and_label2, ..., get_xxx_from_name_value_and_label{MAXDEPTH}
+      funcname = "{0}{1}".format(PYU.camel_to_snake(f"{prefix}{what}"), depth)
+      func = create_function(predicate, nargs)
+      func.__name__ = funcname
+      func.__doc__  = """get {0} from a {1} with depth={2}""".format(mesg, dwhat, depth)
       setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
 
 # --------------------------------------------------------------------------
@@ -253,7 +290,8 @@ def create_request_child(predicate, nargs):
     return requestChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_request_from
 
-create_methods(requestChildFromPredicate, create_request_child, allfuncs)
+create_functions(requestChildFromPredicate, create_request_child, "bfs", allfuncs,
+  "child CGNS node (return None if it is not found)")
 
 # --------------------------------------------------------------------------
 def getChildFromPredicate(parent, predicate, default=None, method=NodeParser.DEFAULT, depth=None):
@@ -275,7 +313,8 @@ def create_get_child(predicate, nargs):
       raise e
   return _get_child_from
 
-create_methods(getChildFromPredicate, create_get_child, allfuncs)
+create_functions(getChildFromPredicate, create_get_child, "bfs", allfuncs,
+  "child CGNS node (raise CGNSNodeFromPredicateNotFoundError if it is not found)")
 
 # --------------------------------------------------------------------------
 class NodesParser:
@@ -344,7 +383,94 @@ def create_get_children(predicate, nargs):
     return getChildrenFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_children_from
 
-create_methods(getChildrenFromPredicate, create_get_children, dict((k,v) for k,v in allfuncs.items() if k not in ['Path', 'NameValueAndLabel']))
+create_functions(getChildrenFromPredicate, create_get_children, "dfs",
+  dict((k,v) for k,v in allfuncs.items() if k not in ['Path', 'NameValueAndLabel']),
+  "all child CGNS nodes")
+
+# --------------------------------------------------------------------------
+def create_get_all_children(predicate, nargs, args):
+  def _get_all_children_from(parent, **kwargs):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    return getChildrenFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+  return _get_all_children_from
+
+for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
+  suffix = label[:-2]
+  suffix = suffix.replace('CGNS', '')
+  snake_name = PYU.camel_to_snake(suffix)
+
+  # Generate getAllBase, getAllZone, ..., getAllInvalids
+  func = create_get_all_children(match_label, ('label',), (label,))
+  funcname = f"getAll{suffix}"
+  func.__name__ = funcname
+  func.__doc__  = """get all CGNS nodes from CGNS label {0}.""".format(label)
+  setattr(module_object, funcname, func)
+  # Generate get_bases, get_zones, ..., get_invalids
+  func = create_get_all_children(match_label, ('label',), (label,))
+  funcname = f"get_all_{snake_name}"
+  func.__name__ = funcname
+  func.__doc__  = """get all CGNS nodes from CGNS label {0}.""".format(label)
+  setattr(module_object, funcname, func)
+
+  for depth in range(1,MAXDEPTH+1):
+    # Generate getAllBase1, getAllBase2, ..., getAllBase{MAXDEPTH}
+    # Generate getAllZone1, getAllZone2, ..., getAllZone{MAXDEPTH}
+    #   ...
+    # Generate getAllInvalid1, getAllInvalid2, ..., getAllInvalid{MAXDEPTH}
+    func = create_get_all_children(match_label, ('label',), (label,))
+    suffix = f"{suffix}_" if suffix[-1] in [str(i) for i in range(1,MAXDEPTH+1)] else suffix
+    funcname = f"getAll{suffix}{depth}"
+    func.__name__ = funcname
+    func.__doc__  = """get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
+    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+    # Generate get_all_base1, get_all_base2, ..., get_all_base{MAXDEPTH}
+    # Generate get_all_zone1, get_all_zone2, ..., get_all_zone{MAXDEPTH}
+    #   ...
+    # Generate get_all_invalid1, get_all_invalid2, ..., get_all_invalid{MAXDEPTH}
+    func = create_get_all_children(match_label, ('label',), (label,))
+    funcname = f"get_all_{snake_name}{depth}"
+    func.__name__ = funcname
+    func.__doc__  = """get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
+    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+
+
+# --------------------------------------------------------------------------
+def create_get_child_name(predicate, nargs, args):
+  def _get_child_name(parent, **kwargs):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    return getChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+  return _get_child_name
+
+for name in filter(lambda i : not i.startswith('__') and not i.endswith('__'), dir(CGK.Name)):
+  snake_name = PYU.camel_to_snake(name)
+
+  # Generate getAcoustic, ..., getCoordinateX, ..., getZoneSubRegionPointers
+  funcname = f"get{name}"
+  func = create_get_child_name(match_name, ('name',), (name,))
+  func.__name__ = funcname
+  func.__doc__  = """get the CGNS node with name {0}.""".format(name)
+  setattr(module_object, funcname, func)
+  # Generate get_acoustic, ..., get_coordinate_x, ..., get_zone_sub_region_pointers
+  funcname = f"get_{snake_name}"
+  func = create_get_child_name(match_name, ('name',), (name,))
+  func.__name__ = funcname
+  func.__doc__  = """get the CGNS node with name {0}.""".format(name)
+  setattr(module_object, funcname, func)
+
+  for depth in range(1,MAXDEPTH+1):
+    # Generate getAcoustic1, ..., getCoordinateX1, ..., getZoneSubRegionPointers1
+    funcname = f"get{name}{depth}"
+    func = create_get_child_name(match_name, ('name',), (name,))
+    func.__name__ = funcname
+    func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
+    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+    # Generate get_acoustic1, ..., get_coordinateX1, ..., get_zone_sub_region_pointers1
+    funcname = f"get_{snake_name}{depth}"
+    func = create_get_child_name(match_name, ('name',), (name,))
+    func.__name__ = funcname
+    func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
+    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+
 
 # --------------------------------------------------------------------------
 def getNodesDispatch1(node, predicate):
@@ -478,3 +604,16 @@ def newGlobalNumbering(glob_numberings = dict(), parent=None):
   for name, value in glob_numberings.items():
     I.newDataArray(name, value, parent=lngn_node)
   return lngn_node
+
+# --------------------------------------------------------------------------
+request_child_from_predicate     = requestChildFromPredicate
+get_child_from_predicate         = getChildFromPredicate
+get_children_from_predicate      = getChildrenFromPredicate
+get_node_dispatch1               = getNodesDispatch1
+iter_nodes_by_matching           = getNodesByMatching
+iter_nodes_with_parents_matching = getNodesWithParentsByMatching
+get_subregion_extent             = getSubregionExtent
+get_distribution                 = getDistribution
+get_global_numbering             = getGlobalNumbering
+new_distribution                 = newDistribution
+new_global_numbering             = newGlobalNumbering
