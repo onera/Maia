@@ -17,6 +17,8 @@ from maia.utils              import py_utils
 
 from cmaia.geometry.wall_distance import prepare_extract_bc_u
 from cmaia.geometry.wall_distance import prepare_extract_bc_s
+from cmaia.geometry.wall_distance import compute_point_list_vertex_bc_u
+from cmaia.geometry.wall_distance import compute_point_list_vertex_bc_s
 from cmaia.geometry.wall_distance import compute_extract_bc_u
 from cmaia.geometry.wall_distance import compute_extract_bc_s
 import cmaia.utils.extract_from_indices as EX
@@ -33,229 +35,327 @@ LOG.basicConfig(filename = f"maia_workflow_log.{mpi_rank}.log",
                 filemode = 'w')
 
 # ------------------------------------------------------------------------
+def compute_gnum_from_parent_gnum(bcs_ln_to_gn):
+  gnum = PDM.GlobalNumbering(3, # Dimension
+                             1, # n_part
+                             0, # Merge
+                             0.,
+                             comm)
+  gnum.gnum_set_from_parent(0, bcs_ln_to_gn.shape[0], bcs_ln_to_gn)
+  gnum.gnum_compute()
+  return gnum.gnum_get(0)['gnum']
+
+# ------------------------------------------------------------------------
 def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD):
 
-  # 1. Count all Boundary Vtx/Face
-  # ==============================
-  n_face_bnd_t     = 0
-  n_face_vtx_bnd_t = 0
-  n_vtx_bnd_t      = 0
-
-  # Parse zone
+  # Count all vertex
   part_zones = I.getNodesFromType(part_tree, 'Zone_t')
+  n_vtx = sum([SIDS.Zone.n_vtx(part_zone) for part_zone in part_zones])
+  LOG.info(f"extract_surf_from_bc [1]: n_vtx = {n_vtx}")
+  # marked_vtx = np.empty(n_vtx, dtype=np.int32, order='F')
+  # marked_vtx.fill(-1)
+
+  # 1. Count all Boundary vertex/face
+  # =================================
+  n_vtx_bcs        = {}
+  n_face_bcs       = {}
+  n_face_vtx_bcs_t = 0
+  point_list_vtxs  = {}
+  point_list_faces = {}
+  marked_vtxs = {}
+
   for part_zone in part_zones:
-    n_vtx = SIDS.Zone.n_vtx(part_zone)
-    LOG.info(f"extract_surf_from_bc: n_vtx = {n_vtx}")
-    work_vtx = np.empty(n_vtx, dtype=np.int32, order='F')
-    work_vtx.fill(-1)
+    zone_path = I.getPath(part_tree, part_zone)
+    n_vtx_zone = SIDS.Zone.n_vtx(part_zone)
+    LOG.info(f"extract_surf_from_bc [1]: n_vtx_zone = {n_vtx_zone}")
+    marked_vtx = np.empty(n_vtx_zone, dtype=np.int32, order='F')
+    marked_vtx.fill(-1)
+    marked_vtxs[zone_path] = marked_vtx
+
+    vtx_ln_to_gn_part, _, face_ln_to_gn_part = SIDS.Zone.get_ln_to_gn(part_zone)
+    LOG.info(f"extract_surf_from_bc: vtx_ln_to_gn_part [{vtx_ln_to_gn_part.shape[0]}] = {vtx_ln_to_gn_part}")
+    LOG.info(f"extract_surf_from_bc: face_ln_to_gn_part [{face_ln_to_gn_part.shape[0]}] = {face_ln_to_gn_part}")
 
     # Parse filtered bc
     if SIDS.Zone.Type(part_zone) == 'Structured':
       vtx_size = SIDS.Zone.VertexSize(part_zone)
       for bc_node in SIDS.Zone.getBCsFromFamily(part_zone, families):
-        bctype = I.getValue(bc_node)
-        LOG.info(f"extract_surf_from_bc: Treat bc [S]: {I.getName(bc_node)}, {bctype}")
+        bc_type = I.getValue(bc_node)
+        bc_path = I.getPath(part_tree, bc_node)
+        LOG.info(f"extract_surf_from_bc [1]: Treat bc [S]: {I.getName(bc_node)}, {bc_type}")
 
-        point_range_node = IE.getChildFromName1(bc_node, 'PointRange')
+        # Get PointRange
+        point_range_node = IE.getIndexRange(bc_node)
         point_range      = I.getVal(point_range_node)
 
-        n_face_bnd = SIDS.PointRange.n_face(point_range_node)
-        LOG.info(f"extract_surf_from_bc: n_face_bnd [S]={n_face_bnd}, n_face_bnd_t={n_face_bnd_t}")
-        n_face_vtx_bnd, n_vtx_bnd = prepare_extract_bc_s(vtx_size, point_range, work_vtx)
-        LOG.info(f"extract_surf_from_bc: n_face_vtx_bnd [S]={n_face_vtx_bnd}, n_vtx_bnd [S]={n_vtx_bnd}")
+        # Convert PointRange -> PointList
+        input_loc = sids.GridLocation(bc_node)
+        bnd_axis  = CSU.guess_bnd_normal_index(point_range, input_loc)
+        shift     = CSU.normal_index_shift(point_range, vtx_size, bnd_axis, input_loc, "FaceCenter")
+        # Prepare sub pointRanges from slabs
+        sub_pr_list = [point_range]
+        for sub_pr in sub_pr_list:
+          sub_pr[bnd_axis,:] += shift
+        point_list = CSU.compute_pointList_from_pointRanges(sub_pr_list, vtx_size, "FaceCenter", bnd_axis)
+        point_list_faces.append(point_list)
+
+        n_vtx_bc, n_face_vtx_bc = prepare_extract_bc_s(vtx_size, point_range, marked_vtx)
+
         # Cumulate counters for each bc
-        n_face_bnd_t     += n_face_bnd
-        n_face_vtx_bnd_t += n_face_vtx_bnd
-        n_vtx_bnd_t      += n_vtx_bnd
+        n_vtx_bcs[bc_path]  = n_vtx_bc
+        n_face_bcs[bc_path] = SIDS.PointRange.n_face(point_range_node)
+        n_face_vtx_bcs_t  += n_face_vtx_bc
+        # Register bc point list(s)
+        point_list_faces[bc_path] = point_list
+        LOG.info(f"extract_surf_from_bc [1]: n_vtx_bc [S]={n_vtx_bc}, n_face_bc [S]={n_face_bcs[bc_path]}, n_face_vtx_bc [S]={n_face_vtx_bc}")
+    else: # SIDS.Zone.Type(part_zone) == "Unstructured":
+      element_node = IE.getChildFromLabel1(part_zone, CGL.Elements_t.name)
+      # NGon elements
+      if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
+        face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(part_zone)
+        LOG.info(f"extract_surf_from_bc: face_vtx [{face_vtx.shape[0]}] = {face_vtx}")
+        LOG.info(f"extract_surf_from_bc: face_vtx_idx [{face_vtx_idx.shape[0]}] = {face_vtx_idx}")
+        for bc_node in SIDS.Zone.getBCsFromFamily(part_zone, families):
+          bc_type = I.getValue(bc_node)
+          bc_path = I.getPath(part_tree, bc_node)
+          LOG.info(f"extract_surf_from_bc [1]: Treat bc [U]: {I.getName(bc_node)}, {bc_type}")
+
+          # Get PointList
+          point_list_node = IE.getIndexArray(bc_node)
+          point_list      = I.getVal(point_list_node)
+
+          n_vtx_bc, n_face_vtx_bc = prepare_extract_bc_u(point_list, face_vtx, face_vtx_idx, marked_vtx)
+
+          # Cumulate counters for each bc
+          n_vtx_bcs[bc_path]  = n_vtx_bc
+          n_face_bcs[bc_path] = SIDS.PointList.n_face(point_list_node)
+          n_face_vtx_bcs_t   += n_face_vtx_bc
+          # Register bc point list(s)
+          point_list_faces[bc_path] = point_list
+          LOG.info(f"extract_surf_from_bc [1]: n_vtx_bc [U]={n_vtx_bc}, n_face_bc [U]={n_face_bcs[bc_path]}, n_face_vtx_bc [U]={n_face_vtx_bc}")
+      else:
+        raise ERR.NotImplementedForElementError(part_zone, element_node)
+
+  LOG.info(f"extract_surf_from_bc [1]: n_vtx_bcs  = {n_vtx_bcs}")
+  LOG.info(f"extract_surf_from_bc [1]: n_face_bcs = {n_face_bcs}")
+  n_vtx_bcs_t  = sum(n_vtx_bcs.values())
+  n_face_bcs_t = sum(n_face_bcs.values())
+  LOG.info(f"extract_surf_from_bc [1]: n_vtx_bcs_t      = {n_vtx_bcs_t}")
+  LOG.info(f"extract_surf_from_bc [1]: n_face_bcs_t     = {n_face_bcs_t}")
+  LOG.info(f"extract_surf_from_bc [1]: n_face_vtx_bcs_t = {n_face_vtx_bcs_t}")
+  LOG.info(f"extract_surf_from_bc [1]: point_list_faces = {point_list_faces}")
+  LOG.info(f"extract_surf_from_bc [1]: end\n\n")
+
+  # 2. Compute vertex point list
+  # ============================
+  # Parse zone
+  for part_zone in part_zones:
+    zone_path = I.getPath(part_tree, part_zone)
+    n_vtx_zone = SIDS.Zone.n_vtx(part_zone)
+    LOG.info(f"extract_surf_from_bc [2]: n_vtx_zone = {n_vtx_zone}")
+    marked_vtx = marked_vtxs[zone_path]
+    marked_vtx.fill(-1)
+
+    # Parse filtered bc
+    if SIDS.Zone.Type(part_zone) == 'Structured':
+      vtx_size = SIDS.Zone.VertexSize(part_zone)
+      for bc_node in SIDS.Zone.getBCsFromFamily(part_zone, families):
+        bc_type = I.getValue(bc_node)
+        bc_path = I.getPath(part_tree, bc_node)
+        LOG.info(f"extract_surf_from_bc [2]: Treat bc [S]: {I.getName(bc_node)}, {bc_type}")
+
+        # Get PointRange
+        point_range_node = IE.getIndexRange(bc_node)
+        point_range      = I.getVal(point_range_node)
+
+        n_vtx_bc = n_vtx_bcs[bc_path]
+        point_list_vtx = compute_vertex_point_list_s(n_vtx_bc, vtx_size, point_range, marked_vtx)
+
+        # Register bc point list(s)
+        point_list_vtxs[bc_path]  = np.reshape(point_list_vtx, (1, point_list_vtx.shape[0]),)
+        LOG.info(f"extract_surf_from_bc [2]: point_list_vtx [S]={point_list_vtx}")
     else: # SIDS.Zone.Type(part_zone) == "Unstructured":
       element_node = IE.getChildFromLabel1(part_zone, CGL.Elements_t.name)
       # NGon elements
       if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
         face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(part_zone)
         for bc_node in SIDS.Zone.getBCsFromFamily(part_zone, families):
-          bctype = I.getValue(bc_node)
-          LOG.info(f"extract_surf_from_bc: Treat bc [U]: {I.getName(bc_node)}, {bctype}")
+          bc_type = I.getValue(bc_node)
+          bc_path = I.getPath(part_tree, bc_node)
+          LOG.info(f"extract_surf_from_bc [2]: Treat bc [U]: {I.getName(bc_node)}, {bc_type}")
 
-          point_list_node = IE.getChildFromName1(bc_node, 'PointList')
+          # Get PointList
+          point_list_node = IE.getIndexArray(bc_node)
           point_list      = I.getVal(point_list_node)
 
-          n_face_bnd = SIDS.PointList.n_face(point_list_node)
-          LOG.info(f"extract_surf_from_bc: n_face_bnd [U]={n_face_bnd}, n_face_bnd_t={n_face_bnd_t}")
-          n_face_vtx_bnd, n_vtx_bnd = prepare_extract_bc_u(point_list, face_vtx, face_vtx_idx, work_vtx)
-          LOG.info(f"extract_surf_from_bc: n_face_vtx_bnd [U]={n_face_vtx_bnd}, n_vtx_bnd [U]={n_vtx_bnd}")
-          # Cumulate counters for each bc
-          n_face_bnd_t     += n_face_bnd
-          n_face_vtx_bnd_t += n_face_vtx_bnd
-          n_vtx_bnd_t      += n_vtx_bnd
+          n_vtx_bc = n_vtx_bcs[bc_path]
+          point_list_vtx = compute_point_list_vertex_bc_u(n_vtx_bc, point_list, face_vtx, face_vtx_idx, marked_vtx)
+
+          # Register bc point list(s)
+          point_list_vtxs[bc_path]  = np.reshape(point_list_vtx, (1, point_list_vtx.shape[0]),)
+          LOG.info(f"extract_surf_from_bc [2]: point_list_vtx [U]={point_list_vtx}")
       else:
         raise ERR.NotImplementedForElementError(part_zone, element_node)
-  LOG.info(f"extract_surf_from_bc: n_face_bnd_t={n_face_bnd_t}")
-  LOG.info(f"extract_surf_from_bc: n_face_vtx_bnd_t={n_face_vtx_bnd_t}, n_vtx_bnd_t={n_vtx_bnd_t}, n_face_bnd_t={n_face_bnd_t}")
+  LOG.info(f"extract_surf_from_bc [2]: point_list_vtxs [2] = {point_list_vtxs}")
+  LOG.info(f"extract_surf_from_bc [1]: end\n\n")
 
   # 2. Prepare the connectivity
   # ===========================
-  face_vtx_bnd     = np.empty(n_face_vtx_bnd_t, order='F', dtype=np.int32)
-  face_vtx_bnd_idx = np.zeros(n_face_bnd_t+1,   order='F', dtype=np.int32)
-  vtx_bnd          = np.empty(3*n_vtx_bnd_t,    order='F', dtype=np.float64)
+  face_vtx_bcs     = np.empty(n_face_vtx_bcs_t, order='F', dtype=np.int32)
+  face_vtx_bcs_idx = np.zeros(n_face_bcs_t+1,   order='F', dtype=np.int32)
+  vtx_bcs          = np.empty(3*n_vtx_bcs_t,    order='F', dtype=np.float64)
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Panic verbose
-  LOG.info("extract_surf_from_bc: ### -> extract_surf_from_bc --> Prepare the connectivity")
-  LOG.info(f"extract_surf_from_bc: ### n_face_bnd_t      : {n_face_bnd_t}")
-  LOG.info(f"extract_surf_from_bc: ### n_face_vtx_bnd_t  : {n_face_vtx_bnd_t}")
-  LOG.info(f"extract_surf_from_bc: ### n_vtx_bnd_t       : {n_vtx_bnd_t}")
-  LOG.info(f"extract_surf_from_bc: ### face_vtx_bnd      : {face_vtx_bnd}")
-  LOG.info(f"extract_surf_from_bc: ### face_vtx_bnd_idx  : {face_vtx_bnd_idx}")
+  LOG.info(f"extract_surf_from_bc: ### -> extract_surf_from_bc --> Prepare the connectivity")
+  LOG.info(f"extract_surf_from_bc: ### n_face_bcs_t           : {n_face_bcs_t}")
+  LOG.info(f"extract_surf_from_bc: ### n_face_vtx_bcs_t       : {n_face_vtx_bcs_t}")
+  LOG.info(f"extract_surf_from_bc: ### n_vtx_bcs_t            : {n_vtx_bcs_t}")
+  LOG.info(f"extract_surf_from_bc: ### face_vtx_bn.shape      : {face_vtx_bcs.shape}")
+  LOG.info(f"extract_surf_from_bc: ### face_vtx_bcs_idx.shape : {face_vtx_bcs_idx.shape}\n")
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # 3. Compute the connectivity
   # ===========================
+  vtx_bcs_ln_to_gns  = []
+  face_bcs_ln_to_gns = []
+  i_vtx_bcs         = 0
   ibeg_face_vtx_idx = 0
-  i_vtx_bnd         = 0
   for part_zone in part_zones:
+    zone_path = I.getPath(part_tree, part_zone)
+    n_vtx_zone = SIDS.Zone.n_vtx(part_zone)
+    LOG.info(f"extract_surf_from_bc: n_vtx_zone = {n_vtx_zone}")
+    marked_vtx = marked_vtxs[zone_path]
+    marked_vtx.fill(-1)
+
+    vtx_ln_to_gn_part, _, face_ln_to_gn_part = SIDS.Zone.get_ln_to_gn(part_zone)
+    assert(n_vtx_zone == vtx_ln_to_gn_part.shape[0])
+    LOG.info(f"extract_surf_from_bc: vtx_ln_to_gn_part.shape[0] = {vtx_ln_to_gn_part.shape[0]}")
+
     # Get coordinates
     cx, cy, cz = SIDS.coordinates(part_zone)
 
-    # n_vtx = SIDS.Zone.n_vtx(part_zone)
-    # work_vtx = np.empty(n_vtx, dtype=np.int32, order='F')
-    work_vtx.fill(-1)
-
     # Parse filtered bc
+    point_list_vtxs_part  = []
+    point_list_faces_part = []
     if SIDS.Zone.Type(part_zone) == 'Structured':
       vtx_size = SIDS.Zone.VertexSize(part_zone)
       for bc_node in SIDS.Zone.getBCsFromFamily(part_zone, families):
-        bctype = I.getValue(bc_node)
-        LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bctype}")
-
-        point_range_node = IE.getChildFromName1(bc_node, 'PointRange')
+        bc_type = I.getValue(bc_node)
+        bc_path = I.getPath(part_tree, bc_node)
+        LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bc_type}")
+        # Get PointRange
+        point_range_node = IE.getIndexRange(bc_node)
         point_range      = I.getVal(point_range_node)
-        n_face_bnd = SIDS.PointRange.n_face(point_range_node)
-        i_vtx_bnd = compute_extract_bc_s(ibeg_face_vtx_idx,
+
+        # Fill face_vtx_bcs, face_vtx_bcs_idx and vtx_bcs
+        i_vtx_bcs = compute_extract_bc_s(ibeg_face_vtx_idx,
                                          vtx_size, point_range,
-                                         work_vtx,
+                                         marked_vtx,
                                          cx, cy, cz,
-                                         i_vtx_bnd,
-                                         face_vtx_bnd, face_vtx_bnd_idx,
-                                         vtx_bnd)
-        ibeg_face_vtx_idx += n_face_bnd
+                                         i_vtx_bcs,
+                                         face_vtx_bcs, face_vtx_bcs_idx,
+                                         vtx_bcs)
+
+        # assert(n_face_bcs[bc_path] == point_list.shape[0])
+        ibeg_face_vtx_idx += n_face_bcs[bc_path]
+        point_list_vtxs_part.append(point_list_vtxs[bc_path])
+        point_list_faces_part.append(point_list_faces[bc_path])
     else: # SIDS.Zone.Type(part_zone) == "Unstructured":
-      element_node = I.getNodeFromType1(part_zone, CGL.Elements_t.name)
+      element_node = IE.getChildFromLabel1(part_zone, CGL.Elements_t.name)
       # NGon elements
       if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
         face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(part_zone)
         for bc_node in SIDS.Zone.getBCsFromFamily(part_zone, families):
-          bctype = I.getValue(bc_node)
-          LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bctype}")
-
-          point_list_node = IE.getChildFromName1(bc_node, 'PointList')
+          bc_type = I.getValue(bc_node)
+          bc_path = I.getPath(part_tree, bc_node)
+          LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bc_type}")
+          # Get PointList
+          point_list_node = IE.getIndexArray(bc_node)
           point_list      = I.getVal(point_list_node)
-          n_face_bnd = SIDS.PointList.n_face(point_list_node)
-          i_vtx_bnd = compute_extract_bc_u(ibeg_face_vtx_idx,
+
+          # Fill face_vtx_bcs, face_vtx_bcs_idx and vtx_bcs
+          i_vtx_bcs = compute_extract_bc_u(ibeg_face_vtx_idx,
                                            point_list,
                                            face_vtx, face_vtx_idx,
-                                           work_vtx,
+                                           marked_vtx,
                                            cx, cy, cz,
-                                           i_vtx_bnd,
-                                           face_vtx_bnd, face_vtx_bnd_idx,
-                                           vtx_bnd)
-          ibeg_face_vtx_idx += n_face_bnd
+                                           i_vtx_bcs,
+                                           face_vtx_bcs, face_vtx_bcs_idx,
+                                           vtx_bcs)
+
+          # assert(n_face_bcs[bc_path] == point_list.shape[1])
+          ibeg_face_vtx_idx += n_face_bcs[bc_path]
+          point_list_vtxs_part.append(point_list_vtxs[bc_path])
+          point_list_faces_part.append(point_list_faces[bc_path])
       else:
         raise ERR.NotImplementedForElementError(part_zone, element_node)
+
+    # Concatenate global numbering for all vertex presents in merged bc(s) for one partition
+    LOG.info(f"vtx_ln_to_gn_part [{vtx_ln_to_gn_part.shape}] = {vtx_ln_to_gn_part}")
+    LOG.info(f"point_list_vtxs_part = {point_list_vtxs_part}")
+    merge_pl_idx_part, merge_pl_part = py_utils.concatenate_point_list(point_list_vtxs_part)
+    LOG.info(f"merge_pl_idx_part.shape[0] = {merge_pl_idx_part.shape[0]}")
+    vtx_bcs_ln_to_gn_part = EX.extract_from_indices(vtx_ln_to_gn_part, merge_pl_part, 1, 1)
+    vtx_bcs_ln_to_gns.append(vtx_bcs_ln_to_gn_part)
+
+    # Concatenate global numbering for all face presents in merged bc(s) for one partition
+    LOG.info(f"face_ln_to_gn_part [{face_ln_to_gn_part.shape}] = {face_ln_to_gn_part}")
+    LOG.info(f"point_list_faces_part = {point_list_faces_part}")
+    merge_pl_idx_part, merge_pl_part = py_utils.concatenate_point_list(point_list_faces_part)
+    LOG.info(f"merge_pl_idx_part.shape[0] = {merge_pl_idx_part.shape[0]}")
+    face_bcs_ln_to_gn_part = EX.extract_from_indices(face_ln_to_gn_part, merge_pl_part, 1, 1)
+    face_bcs_ln_to_gns.append(face_bcs_ln_to_gn_part)
+  # LOG.info(f"n_face_bcs_t = {n_face_bcs_t}")
+
+  # Concatenate global numbering for all vertex presents in merged bc(s) for all partition
+  LOG.info(f"vtx_bcs_ln_to_gns = {vtx_bcs_ln_to_gns}")
+  vtx_bcs_ln_to_gn = py_utils.concatenate_numpy(vtx_bcs_ln_to_gns)
+  LOG.info(f"vtx_bcs_ln_to_gn [{vtx_bcs_ln_to_gn.shape[0]}] = {np.sort(vtx_bcs_ln_to_gn)}")
+  # Concatenate global numbering for all face presents in merged bc(s) for all partition
+  LOG.info(f"face_bcs_ln_to_gns = {face_bcs_ln_to_gns}")
+  face_bcs_ln_to_gn = py_utils.concatenate_numpy(face_bcs_ln_to_gns)
+  LOG.info(f"face_bcs_ln_to_gn [{face_bcs_ln_to_gn.shape[0]}] = {np.sort(face_bcs_ln_to_gn)}")
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Panic verbose
   LOG.info("extract_surf_from_bc: -> extract_surf_from_bc --> Compute the connectivity")
-  LOG.info(f"extract_surf_from_bc: n_face_bnd_t      : {n_face_bnd_t}")
-  LOG.info(f"extract_surf_from_bc: ibeg_face_vtx_idx : {ibeg_face_vtx_idx}")
-  LOG.info(f"extract_surf_from_bc: i_vtx_bnd         : {i_vtx_bnd}")
-  LOG.info(f"extract_surf_from_bc: n_vtx_bnd_t       : {n_vtx_bnd_t}")
+  LOG.info(f"extract_surf_from_bc: i_vtx_bcs         = {i_vtx_bcs}")
+  LOG.info(f"extract_surf_from_bc: n_vtx_bcs_t       = {n_vtx_bcs_t}")
+  LOG.info(f"extract_surf_from_bc: n_face_bcs_t      = {n_face_bcs_t}")
+  LOG.info(f"extract_surf_from_bc: ibeg_face_vtx_idx = {ibeg_face_vtx_idx}")
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  assert(n_face_bnd_t == ibeg_face_vtx_idx)
-  assert(i_vtx_bnd == n_vtx_bnd_t)
+  assert(i_vtx_bcs == n_vtx_bcs_t)
+  assert(n_face_bcs_t == ibeg_face_vtx_idx)
 
-  # 4. Compute the global numbering for Vertex
-  # ==========================================
-  shift_vtx_ln_to_gn = comm.scan(n_vtx_bnd_t , op=MPI.SUM) - n_vtx_bnd_t
-  # Shift to global
-  vtx_ln_to_gn = np.linspace(shift_vtx_ln_to_gn +1, shift_vtx_ln_to_gn +n_vtx_bnd_t , num=n_vtx_bnd_t , dtype=pdm_dtype)
-
-  # 5. Compute the global numbering for Face
-  # ========================================
-  # shift_face_ln_to_gn = comm.scan(n_face_bnd_t, op=MPI.SUM) - n_face_bnd_t
+  # 4. Compute the global numbering for Vertex/Face
+  # ===============================================
+  # shift_vtx_ln_to_gn = comm.scan(n_vtx_bcs_t , op=MPI.SUM) - n_vtx_bcs_t
   # # Shift to global
-  # face_ln_to_gn = np.linspace(shift_face_ln_to_gn+1, shift_face_ln_to_gn+n_face_bnd_t, num=n_face_bnd_t, dtype=pdm_dtype)
+  # vtx_ln_to_gn = np.linspace(shift_vtx_ln_to_gn +1, shift_vtx_ln_to_gn +n_vtx_bcs_t , num=n_vtx_bcs_t , dtype=pdm_dtype)
 
-  # Create ParaDiGM structure
-  gen_gnum = PDM.GlobalNumbering(3, # Dimension
-                                 1, # n_part
-                                 0, # Merge
-                                 0.,
-                                 comm)
+  # shift_face_ln_to_gn = comm.scan(n_face_bcs_t, op=MPI.SUM) - n_face_bcs_t
+  # # Shift to global
+  # face_ln_to_gn = np.linspace(shift_face_ln_to_gn+1, shift_face_ln_to_gn+n_face_bcs_t, num=n_face_bcs_t, dtype=pdm_dtype)
 
-  bnd_ln_to_gns = []
-  for i_part, part_zone in enumerate(part_zones):
-    _, _, face_ln_to_gn_part_zone = SIDS.Zone.get_ln_to_gn(part_zone)
-
-    n_face_bnd_part_zone = 0
-    point_lists_part_zone = []
-
-    # Parse filtered all bc
-    if SIDS.Zone.Type(part_zone) == 'Structured':
-      raise NotImplementedError()
-    else: # SIDS.Zone.Type(part_zone) == "Unstructured":
-      element_node = I.getNodeFromType1(part_zone, CGL.Elements_t.name)
-      # NGon elements
-      if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
-        for bc_node in SIDS.Zone.getBCsFromFamily(part_zone, families):
-          bctype = I.getValue(bc_node)
-          LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bctype}")
-
-          point_list_node = IE.getChildFromName1(bc_node, 'PointList')
-          point_list      = I.getVal(point_list_node)
-          n_face_bnd = SIDS.PointList.n_face(point_list_node)
-          n_face_bnd_part_zone += n_face_bnd
-
-          LOG.info(f"  point_list = {point_list}")
-          point_lists_part_zone.append(point_list)
-      else:
-        raise ERR.NotImplementedForElementError(part_zone, element_node)
-
-    LOG.info(f"face_ln_to_gn_part_zone.shape = {face_ln_to_gn_part_zone.shape}")
-    LOG.info(f"face_ln_to_gn_part_zone = {face_ln_to_gn_part_zone}")
-    LOG.info(f"point_lists_part_zone = {point_lists_part_zone}")
-    merge_pl_idx_part_zone, merge_pl_part_zone = py_utils.concatenate_point_list(point_lists_part_zone)
-    LOG.info(f"merge_pl_idx_part_zone.shape[0] = {merge_pl_idx_part_zone.shape[0]}")
-
-    bnd_ln_to_gn_part_zone = EX.extract_from_indices(face_ln_to_gn_part_zone, merge_pl_part_zone, 1, 1)
-    # bnd_ln_to_gn_part_zone += n_face_bnd_part_zone
-    bnd_ln_to_gns.append(bnd_ln_to_gn_part_zone)
-
-  LOG.info(f"bnd_ln_to_gns = {bnd_ln_to_gns}")
-  bnd_ln_to_gn = py_utils.concatenate_numpy(bnd_ln_to_gns)
-
-  LOG.info(f"face_ln_to_gn_part_zone.shape[0] = {face_ln_to_gn_part_zone.shape[0]}")
-  LOG.info(f"bnd_ln_to_gn.shape[0] = {bnd_ln_to_gn.shape[0]}")
-  LOG.info(f"bnd_ln_to_gn = {bnd_ln_to_gn}")
-
-  gen_gnum.gnum_set_from_parent(0, bnd_ln_to_gn.shape[0], bnd_ln_to_gn)
-
-  gen_gnum.gnum_compute()
-
-  face_ln_to_gn = gen_gnum.gnum_get(0)['gnum']
+  vtx_ln_to_gn  = compute_gnum_from_parent_gnum(vtx_bcs_ln_to_gn)
+  face_ln_to_gn = compute_gnum_from_parent_gnum(face_bcs_ln_to_gn)
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Panic verbose
   # LOG.info(f"extract_surf_from_bc: shift_face_ln_to_gn : {shift_face_ln_to_gn}")
-  LOG.info(f"extract_surf_from_bc: shift_vtx_ln_to_gn  : {shift_vtx_ln_to_gn}")
-  LOG.info(f"extract_surf_from_bc: n_face_bnd_t        : {n_face_bnd_t}")
-  LOG.info(f"extract_surf_from_bc: n_vtx_bnd_t         : {n_vtx_bnd_t}")
-  LOG.info(f"extract_surf_from_bc: face_ln_to_gn       : {face_ln_to_gn}")
-  LOG.info(f"extract_surf_from_bc: vtx_ln_to_gn        : {vtx_ln_to_gn}")
-  LOG.info(f"extract_surf_from_bc: face_vtx_bnd        : {face_vtx_bnd}")
-  LOG.info(f"extract_surf_from_bc: face_vtx_bnd_idx    : {face_vtx_bnd_idx}")
+  # LOG.info(f"extract_surf_from_bc: shift_vtx_ln_to_gn  : {shift_vtx_ln_to_gn}")
+  LOG.info(f"extract_surf_from_bc: n_face_bcs_t                                : {n_face_bcs_t}")
+  LOG.info(f"extract_surf_from_bc: n_vtx_bcs_t                                 : {n_vtx_bcs_t}")
+  LOG.info(f"extract_surf_from_bc: face_ln_to_gn [{face_ln_to_gn.shape}]       : {face_ln_to_gn}")
+  LOG.info(f"extract_surf_from_bc: sort(face_ln_to_gn)                         : {np.sort(face_ln_to_gn)}")
+  LOG.info(f"extract_surf_from_bc: vtx_ln_to_gn  [{vtx_ln_to_gn.shape}]        : {vtx_ln_to_gn}")
+  LOG.info(f"extract_surf_from_bc: sort(vtx_ln_to_gn)  [{vtx_ln_to_gn.shape}]  : {np.sort(vtx_ln_to_gn)}")
+  LOG.info(f"extract_surf_from_bc: face_vtx_bcs  [{face_vtx_bcs.shape}]        : {face_vtx_bcs}")
+  LOG.info(f"extract_surf_from_bc: face_vtx_bcs_idx [{face_vtx_bcs_idx.shape}] : {face_vtx_bcs_idx}")
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-  return face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, vtx_bnd, vtx_ln_to_gn
+  return face_vtx_bcs, face_vtx_bcs_idx, face_ln_to_gn, vtx_bcs, vtx_ln_to_gn
 
 if __name__ == "__main__":
   # t = C.convertFile2PyTree("cubeS_join_bnd.hdf")
