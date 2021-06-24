@@ -454,7 +454,9 @@ if __name__ == "__main__":
   # filename = "AxiT2-new.hdf"
   # families = ['WALL']
 
-  filename = "AxiT0-new.hdf"
+  # filename = "AxiT0-new.hdf"
+  # families = ['WALL']
+  filename = "AxiT2-new.hdf"
   families = ['WALL']
   # t = C.convertFile2PyTree(filename)
   # I._adaptNGon12NGon2(t)
@@ -478,20 +480,21 @@ if __name__ == "__main__":
   I.printTree(dist_tree)
   # sys.exit(1)
 
-  # part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch')
-  # C.convertPyTree2File(part_tree, f"part_tree-v10-rank{mpi_rank}.cgns", 'bin_hdf')
-  # # wall_distance(part_tree, mpi_comm=comm)
-  # wall_distance(part_tree, mpi_comm=comm, method="cloud")
-  # C.convertPyTree2File(part_tree, f"AxiT0-new-v10-{mpi_rank}rank.hdf")
-  # ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  # PT.merge_and_save(ptree, f"AxiT0-new-{mpi_size}procs-v10-cloud.cgns")
+  # method = "propagation"
+  method = "cloud"
+
+  part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch')
+  C.convertPyTree2File(part_tree, f"part_tree-v10-rank{mpi_rank}.cgns", 'bin_hdf')
+  wall_distance(part_tree, mpi_comm=comm, method=method)
+  C.convertPyTree2File(part_tree, f"AxiT0-new-v10-{mpi_rank}rank.hdf")
+  ptree = PT.parallel_tree(comm, dist_tree, part_tree)
+  PT.merge_and_save(ptree, f"AxiT0-new-{mpi_size}procs-v10-cloud.cgns")
 
   n_part = 2
   zone_to_parts = DBA.npart_per_zone(dist_tree, comm, n_part)
   part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch', zone_to_parts=zone_to_parts)
   C.convertPyTree2File(part_tree, f"part_tree-v20-rank{mpi_rank}.cgns", 'bin_hdf')
-  # wall_distance(part_tree, mpi_comm=comm)
-  wall_distance(part_tree, mpi_comm=comm, method="cloud")
+  wall_distance(part_tree, mpi_comm=comm, method=method)
   C.convertPyTree2File(part_tree, f"AxiT0-new-v20-{mpi_rank}rank.cgns")
   ptree = PT.parallel_tree(comm, dist_tree, part_tree)
   PT.merge_and_save(ptree, f"AxiT0-new-{mpi_size}procs-v20-cloud.cgns")
