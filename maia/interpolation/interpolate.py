@@ -6,8 +6,12 @@ import maia.sids.Internal_ext as IE
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
-from maia.utils import py_utils
+from maia.sids import conventions as conv
 from maia.sids import sids
+from maia.utils import py_utils
+
+from maia.tree_exchange import utils as te_utils
+from maia.tree_exchange.part_to_dist import discover as disc
 
 from cmaia.geometry.geometry import compute_center_cell_u
 import cmaia.utils.extract_from_indices as EX
@@ -130,6 +134,7 @@ def create_interpolator(src_parts_per_dom,
                         comm,
                         location = 'CellCenter',
                         strategy = 'LocationAndClosest',
+                        loc_tolerance = 1E-6,
                         order = 0):
   """
   """
@@ -172,7 +177,7 @@ def create_interpolator(src_parts_per_dom,
         ln_to_gn = all_tgt_lngn[i_domain][i_part]
         mesh_loc.cloud_set(0, i_part, ln_to_gn.shape[0], coords, ln_to_gn)
 
-    mesh_loc.tolerance_set(1.e-6)
+    mesh_loc.tolerance_set(loc_tolerance)
     mesh_loc.compute()
 
     #This is result from the target perspective -- not usefull here
@@ -274,53 +279,101 @@ def create_interpolator(src_parts_per_dom,
   # interpolator.compute()
   return interpolator, one_or_two
 
-def interpolate_field(interpolator, n_field_per_part, src_parts_per_dom, tgt_parts_per_dom, field_path):
+def interpolate_fields(interpolator, n_field_per_part, src_parts_per_dom, tgt_parts_per_dom, container_name, output_loc):
   """
-  Use interpolator to echange a data array and put solution in target tree
+  Use interpolator to echange a container and put solution in target tree
   """
   assert len(src_parts_per_dom) == len(tgt_parts_per_dom) == 1
-  container_name, field_name = field_path.split('/')
 
-  list_part_data_in = list()
+  #Check that solutions are known on each source partition
+  fields_per_part = list()
   for i_domain, src_parts in enumerate(src_parts_per_dom):
     for src_part in src_parts:
-      src_data = I.getNodeFromPath(src_part, field_path)[1]
-      for i in range(n_field_per_part):
-        list_part_data_in.append(src_data)
-
-  results_interp = interpolator.exch(0, list_part_data_in)
-  for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
-    for i_part, tgt_part in enumerate(tgt_parts):
-      fs = I.createUniqueChild(tgt_part, container_name, 'FlowSolution_t')
-      I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part])
-
-
-#Assume single zone mesh
-def mesha_to_meshb_1(part_tree_src,
-                   part_tree_target,
-                   comm,
-                   containers_name = [],
-                   location = 'CellCenter',
-                   order = 0):
-  src_parts_per_dom = [part_tree_src]
-  tgt_parts_per_dom = [part_tree_target]
-  interpolator, one_or_two = create_interpolator(src_parts_per_dom, tgt_parts_per_dom, comm, location, order=0)
-
-  #Collect the name of fields to interpolate, check location and check if present on each part
-  field_path_per_part = list()
-  for src_part in part_tree_src:
-    field_path_l = list()
-    for container_name in containers_name:
       container = I.getNodeFromPath(src_part, container_name)
       assert sids.GridLocation(container) == 'CellCenter' #Only cell center sol supported for now
-      for data in I.getNodesFromType1(container, 'DataArray_t'):
-        field_path_l.append(container_name + '/' + I.getName(data))
-    field_path_l.sort()
-    field_path_per_part.append(field_path_l)
+      fields_name = sorted([I.getName(array) for array in I.getNodesFromType1(container, 'DataArray_t')])
+    fields_per_part.append(fields_name)
+  assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
 
-  #Check that all the partitions knowns the fields
-  assert field_path_per_part.count(field_path_per_part[0]) == len(field_path_per_part)
+  #Cleanup target partitions
+  for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
+    for i_part, tgt_part in enumerate(tgt_parts):
+      I._rmNodesByName(tgt_part, container_name)
+      fs = I.createUniqueChild(tgt_part, container_name, 'FlowSolution_t')
+      I.newGridLocation(output_loc, fs)
 
-  for field_path in field_path_l:
-    interpolate_field(interpolator, one_or_two, src_parts_per_dom, tgt_parts_per_dom, field_path)
+  # Collect source data and interpolate
+  for field_name in fields_per_part[0]:
+    field_path = container_name + '/' + field_name
+    list_part_data_in = list()
+    for i_domain, src_parts in enumerate(src_parts_per_dom):
+      for src_part in src_parts:
+        src_data = I.getNodeFromPath(src_part, field_path)[1]
+        for i in range(n_field_per_part):
+          list_part_data_in.append(src_data)
+
+    results_interp = interpolator.exch(0, list_part_data_in)
+    for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
+      for i_part, tgt_part in enumerate(tgt_parts):
+        fs = I.getNodeFromPath(tgt_part, container_name)
+        I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part])
+
+
+def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options):
+  """
+  Low level interface for interpolation
+  Input are a list of partitioned zones for each src domain, and a list of partitioned zone for each tgt
+  domain. Lists mush be cohérent across procs, ie we must have an empty entry if a proc does not know a domain.
+
+  containers_name is the list of FlowSolution containers to be interpolated
+  location is the output location (CellCenter or Vertex); input location must be CellCenter
+  **options are passed to interpolator creationg function, see create_interpolator
+  """
+  interpolator, one_or_two = create_interpolator(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+  for container_name in containers_name:
+    interpolate_fields(interpolator, one_or_two, src_parts_per_dom, tgt_parts_per_dom, container_name, location)
+
+def interpolate_from_dom_names(src_tree, src_doms, tgt_tree, tgt_doms, comm, containers_name, location, **options):
+  """
+  Helper function calling interpolate_from_parts_per_dom from the src and tgt part_trees +
+  a list of src domain names and target domains names.
+  Names must be in the formalism "DistBaseName/DistZoneName"
+
+  See interpolate_from_parts_per_dom for documentation
+  """
+  assert len(src_doms) == len(tgt_doms) == 1
+  src_parts_per_dom = list()
+  tgt_parts_per_dom = list()
+  for src_dom in src_doms:
+    src_parts_per_dom.append(te_utils.get_partitioned_zones(src_tree, src_dom))
+  for tgt_dom in tgt_doms:
+    tgt_parts_per_dom.append(te_utils.get_partitioned_zones(tgt_tree, tgt_dom))
+
+  interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
+
+def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, location, **options):
+  """
+  Helper function calling interpolate_from_parts_per_dom from the source and target part_trees
+  The list of partitions per domains is rebuilded, included all the partitions of the trees.
+  Usefull to interpolate a whole mesh to an other
+
+  See interpolate_from_parts_per_dom for documentation
+  """
+
+  dist_src_doms = I.newCGNSTree()
+  disc.discover_nodes_from_matching(dist_src_doms, [src_tree], 'CGNSBase_t/Zone_t', comm,
+                                    merge_rule=lambda zpath : conv.get_part_prefix(zpath))
+  src_parts_per_dom = list()
+  for base, zone in IE.getNodesWithParentsByMatching(dist_src_doms, ['CGNSBase_t', 'Zone_t']):
+    src_parts_per_dom.append(te_utils.get_partitioned_zones(src_tree, I.getName(base) + '/' + I.getName(zone)))
+
+  dist_tgt_doms = I.newCGNSTree()
+  disc.discover_nodes_from_matching(dist_tgt_doms, [tgt_tree], 'CGNSBase_t/Zone_t', comm,
+                                    merge_rule=lambda zpath : conv.get_part_prefix(zpath))
+
+  tgt_parts_per_dom = list()
+  for base, zone in IE.getNodesWithParentsByMatching(dist_tgt_doms, ['CGNSBase_t', 'Zone_t']):
+    tgt_parts_per_dom.append(te_utils.get_partitioned_zones(tgt_tree, I.getName(base) + '/' + I.getName(zone)))
+
+  interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 
