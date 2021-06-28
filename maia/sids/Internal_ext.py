@@ -407,7 +407,7 @@ class NodeWalker:
 
 
 # --------------------------------------------------------------------------
-def requestChildFromPredicate(parent, predicate, method=NodeParser.DEFAULT, depth=None):
+def requestNodeFromPredicate(parent, predicate, method=NodeParser.DEFAULT, depth=None):
   walker = NodeWalker(parent, predicate)
   return walker(method=method, depth=depth)
   # parser = LevelNodeParser(depth=depth) if isinstance(depth, int) else NodeParser()
@@ -417,16 +417,16 @@ def requestChildFromPredicate(parent, predicate, method=NodeParser.DEFAULT, dept
 def create_request_child(predicate, nargs):
   def _get_request_from(parent, *args, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return requestChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+    return requestNodeFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_request_from
 
-create_functions(requestChildFromPredicate, create_request_child, "bfs", allfuncs,
+create_functions(requestNodeFromPredicate, create_request_child, "bfs", allfuncs,
   "Return a child CGNS node or None (if it is not found)")
 
 # --------------------------------------------------------------------------
 def getChildFromPredicate(parent, predicate, default=None, method=NodeParser.DEFAULT, depth=None):
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
-  node = requestChildFromPredicate(parent, predicate, method=method, depth=depth)
+  node = requestNodeFromPredicate(parent, predicate, method=method, depth=depth)
   if node is not None:
     return node
   if default and is_valid_node(default):
@@ -1346,7 +1346,7 @@ def newGlobalNumbering(glob_numberings = dict(), parent=None):
   return lngn_node
 
 # --------------------------------------------------------------------------
-request_child_from_predicate          = requestChildFromPredicate
+requestNodeFromPredicate          = requestNodeFromPredicate
 get_child_from_predicate              = getChildFromPredicate
 get_children_from_predicate           = getChildrenFromPredicate
 get_family                            = getFamily
