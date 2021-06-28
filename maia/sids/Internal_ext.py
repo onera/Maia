@@ -12,7 +12,21 @@ import maia.sids.cgns_keywords as CGK
 import maia.utils.py_utils as PYU
 
 # Declare a type alias for type hint checkers
+# For Python>=3.9 it is possible to set the MaxLen
+# from typing import Annotated
+# TreeNode = Annotated[List[Union[str, Optional[numpy.ndarray], List['TreeNode']]], MaxLen(4)]
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
+
+# Keys to access TreeNode values
+__NAME__     = 0
+__VALUE__    = 1
+__CHILDREN__ = 2
+__LABEL__    = 3
+
+# Default Containers naming
+__GridCoordinates__ = "GridCoordinates"
+__FlowSolutionNodes__ = "FlowSolution"
+__FlowSolutionCenters__ = "FlowSolution#Centers"
 
 module_object = sys.modules[__name__]
 
@@ -116,11 +130,11 @@ def is_valid_node(node):
   return True
 
 # --------------------------------------------------------------------------
-def check_is_label(label):
+def check_is_label(label, n=0):
   def _check_is_label(f):
     @wraps(f)
     def wrapped_method(*args, **kwargs):
-      node = args[0]
+      node = args[n]
       if I.getType(node) != label:
         raise CGNSLabelNotEqualError(node, label)
       return f(*args, **kwargs)
@@ -129,25 +143,25 @@ def check_is_label(label):
 
 # --------------------------------------------------------------------------
 def match_name(n, name: str):
-  return fnmatch.fnmatch(n[0], name)
+  return fnmatch.fnmatch(n[__NAME__], name)
 
 def match_value(n, value):
-  return np.array_equal(n[1], value)
+  return np.array_equal(n[__VALUE__], value)
 
 def match_label(n, label: str):
-  return n[3] == label
+  return n[__LABEL__] == label
 
 def match_name_value(n, name: str, value):
-  return fnmatch.fnmatch(n[0], name) and np.array_equal(n[1], value)
+  return fnmatch.fnmatch(n[__NAME__], name) and np.array_equal(n[__VALUE__], value)
 
 def match_name_label(n, name: str, label: str):
-  return n[3] == label and fnmatch.fnmatch(n[0], name)
+  return n[__LABEL__] == label and fnmatch.fnmatch(n[__NAME__], name)
 
 def match_name_value_label(n, name: str, value, label: str):
-  return n[3] == label and fnmatch.fnmatch(n[0], name) and np.array_equal(n[1], value)
+  return n[__LABEL__] == label and fnmatch.fnmatch(n[__NAME__], name) and np.array_equal(n[__VALUE__], value)
 
 def match_value_label(n, value, label: str):
-  return n[3] == label and np.array_equal(n[1], value)
+  return n[__LABEL__] == label and np.array_equal(n[__VALUE__], value)
 
 allfuncs = {
   'Name' : (match_name,  ('name',)),
@@ -237,7 +251,7 @@ class NodeParser:
       # print(f"NodeParser.bfs: node = {I.getName(node)}")
       if predicate(node):
         return node
-      for child in node[2]:
+      for child in node[__CHILDREN__]:
         temp.put(child)
     return None
 
@@ -249,7 +263,7 @@ class NodeParser:
 
   def _dfs(self, parent, predicate):
     # print(f"NodeParser._dfs: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         return child
       # Explore next level
@@ -271,7 +285,7 @@ class ShallowNodeParser:
       if predicate(node):
         return node
       else:
-        for child in node[2]:
+        for child in node[__CHILDREN__]:
           temp.put(child)
     return None
 
@@ -283,7 +297,7 @@ class ShallowNodeParser:
 
   def _dfs(self, parent, predicate, level=1):
     # print(f"ShallowNodeParser.dfs: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         return child
       else:
@@ -311,7 +325,7 @@ class LevelNodeParser:
       if predicate(node):
         return node
       if level < self.depth:
-        for child in node[2]:
+        for child in node[__CHILDREN__]:
           temp.put( (level+1, child) )
     return None
 
@@ -323,7 +337,7 @@ class LevelNodeParser:
 
   def _dfs(self, parent, predicate, level=1):
     # print(f"LevelNodeParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         return child
       if level < self.depth:
@@ -463,7 +477,7 @@ class NodesParser:
       # print(f"NodesParser.bfs: node = {I.getName(node)}")
       if predicate(node):
         self.result.append(node)
-      for child in node[2]:
+      for child in node[__CHILDREN__]:
         temp.put(child)
     return self.result
 
@@ -475,7 +489,7 @@ class NodesParser:
 
   def _dfs(self, parent, predicate):
     # print(f"NodesParser._dfs: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         self.result.append(child)
       # Explore next level
@@ -500,7 +514,7 @@ class ShallowNodesParser:
       if predicate(node):
         self.result.append(node)
       else:
-        for child in node[2]:
+        for child in node[__CHILDREN__]:
           temp.put(child)
     return self.result
 
@@ -512,7 +526,7 @@ class ShallowNodesParser:
 
   def _dfs(self, parent, predicate):
     # print(f"LevelNodesParser._dfs: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         self.result.append(child)
       else:
@@ -541,7 +555,7 @@ class LevelNodesParser:
       if predicate(node):
         self.result.append(node)
       if level < self.depth:
-        for child in node[2]:
+        for child in node[__CHILDREN__]:
           temp.put( (level+1, child) )
     return self.result
 
@@ -553,7 +567,7 @@ class LevelNodesParser:
 
   def _dfs(self, parent, predicate, level=1):
     # print(f"LevelNodesParser._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         self.result.append(child)
       if level < self.depth:
@@ -575,7 +589,7 @@ class NodesIterator:
       # print(f"NodesIterator.bfs: node = {I.getName(node)}")
       if predicate(node):
         yield node
-      for child in node[2]:
+      for child in node[__CHILDREN__]:
         temp.put(child)
 
   def dfs(self, parent, predicate):
@@ -586,7 +600,7 @@ class NodesIterator:
 
   def _dfs(self, parent, predicate):
     # print(f"NodesIterator._dfs: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         yield child
       # Explore next level
@@ -607,7 +621,7 @@ class ShallowNodesIterator:
       if predicate(node):
         yield node
       else:
-        for child in node[2]:
+        for child in node[__CHILDREN__]:
           temp.put(child)
 
   def dfs(self, parent, predicate):
@@ -618,7 +632,7 @@ class ShallowNodesIterator:
 
   def _dfs(self, parent, predicate):
     # print(f"ShallowNodesIterator._dfs: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         yield child
       else:
@@ -646,7 +660,7 @@ class LevelNodesIterator:
       if predicate(node):
         yield node
       if level < self.depth:
-        for child in node[2]:
+        for child in node[__CHILDREN__]:
           temp.put( (level+1, child) )
 
   def dfs(self, parent, predicate):
@@ -657,7 +671,7 @@ class LevelNodesIterator:
 
   def _dfs(self, parent, predicate, level=1):
     # print(f"LevelNodesIterator._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for child in parent[2]:
+    for child in parent[__CHILDREN__]:
       if predicate(child):
         yield child
       if level < self.depth:
@@ -681,7 +695,6 @@ class NodesWalker:
     self._parser  = None
     self._caching = caching
     self._cache   = []
-
 
   @property
   def parent(self):
@@ -1003,7 +1016,7 @@ for name in filter(lambda i : not i.startswith('__') and not i.endswith('__'), d
 def getFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
-  for node in I.getNodesByType(parent, 'Family_t'):
+  for node in getNodesFromLabel(parent, 'Family_t'):
     if I.getName(family_name_node) in family_name:
       return node
   raise ValueError("Unable to find Family_t with name : {family_name}")
@@ -1011,7 +1024,7 @@ def getFamily(parent, family_name):
 def getAdditionalFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
-  for node in I.getNodesByType(parent, 'Family_t'):
+  for node in getNodesFromLabel(parent, 'Family_t'):
     if I.getName(family_name_node) in family_name:
       return node
   raise ValueError("Unable to find Family_t with name : {family_name}")
@@ -1053,7 +1066,7 @@ def create_iter_all_from_family(label, family_label):
   return _iter_all_from_family
 
 for family_label in ['Family_t', 'AdditionalFamily_t']:
-  for label in ['Zone_t', 'BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t', 'ZoneSubRegion_t']:
+  for label in ['Zone_t', 'BC_t', 'ZoneSubRegion_t', 'GridConnectivity_t', 'GridConnectivity1to1_t', 'OversetHoles_t']:
 
     funcname = f"get{label[:-2]}From{family_label[:-2]}"
     func = create_get_from_family(label, family_label)
@@ -1080,8 +1093,8 @@ for family_label in ['Family_t', 'AdditionalFamily_t']:
 def getGridConnectivitiesFromFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
-  for node in I.getNodesFromType(parent, "GridConnectivity_t")+I.getNodesFromType(parent, "GridConnectivity1to1_t"):
-    family_name_node = I.getNodeFromType(node, "FamilyName_t")
+  for node in iterNodesFromPredicate(parent, lambda n: n[__LABEL__] in ["GridConnectivity_t", "GridConnectivity1to1_t"]):
+    family_name_node = requestNodeFromLabel(node, "FamilyName_t")
     if family_name_node and I.getValue(family_name_node) in family_name:
       return node
   raise ValueError("Unable to find GridConnectivity_t or GridConnectivity1to1_t from family name : {family_name}")
@@ -1090,8 +1103,8 @@ def getAllGridConnectivitiesFromFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
   nodes = []
-  for node in I.getNodesFromType(parent, "GridConnectivity_t")+I.getNodesFromType(parent, "GridConnectivity1to1_t"):
-    family_name_node = I.getNodeFromType(node, "FamilyName_t")
+  for node in iterNodesFromPredicate(parent, lambda n: n[__LABEL__] in ["GridConnectivity_t", "GridConnectivity1to1_t"]):
+    family_name_node = requestNodeFromLabel(node, "FamilyName_t")
     if family_name_node and I.getValue(family_name_node) in family_name:
       nodes.append(node)
   return nodes
@@ -1100,8 +1113,8 @@ def iterAllGridConnectivitiesFromFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
   nodes = []
-  for node in I.getNodesFromType(parent, "GridConnectivity_t")+I.getNodesFromType(parent, "GridConnectivity1to1_t"):
-    family_name_node = I.getNodeFromType(node, "FamilyName_t")
+  for node in iterNodesFromPredicate(parent, lambda n: n[__LABEL__] in ["GridConnectivity_t", "GridConnectivity1to1_t"]):
+    family_name_node = requestNodeFromLabel(node, "FamilyName_t")
     if family_name_node and I.getValue(family_name_node) in family_name:
       yield node
   return nodes
@@ -1110,8 +1123,8 @@ def iterAllGridConnectivitiesFromFamily(parent, family_name):
 def getGridConnectivitiesFromAdditionalFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
-  for node in I.getNodesFromType(parent, "GridConnectivity_t")+I.getNodesFromType(parent, "GridConnectivity1to1_t"):
-    family_name_node = I.getNodeFromType(node, "AdditionalFamilyName_t")
+  for node in iterNodesFromPredicate(parent, lambda n: n[__LABEL__] in ["GridConnectivity_t", "GridConnectivity1to1_t"]):
+    family_name_node = requestNodeFromLabel(node, "AdditionalFamilyName_t")
     if family_name_node and I.getValue(family_name_node) in family_name:
       return node
   raise ValueError("Unable to find GridConnectivity_t or GridConnectivity1to1_t from family name : {family_name}")
@@ -1120,8 +1133,8 @@ def getAllGridConnectivitiesFromAdditionalFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
   nodes = []
-  for node in I.getNodesFromType(parent, "GridConnectivity_t")+I.getNodesFromType(parent, "GridConnectivity1to1_t"):
-    family_name_node = I.getNodeFromType(node, "AdditionalFamilyName_t")
+  for node in iterNodesFromPredicate(parent, lambda n: n[__LABEL__] in ["GridConnectivity_t", "GridConnectivity1to1_t"]):
+    family_name_node = requestNodeFromLabel(node, "AdditionalFamilyName_t")
     if family_name_node and I.getValue(family_name_node) in family_name:
       nodes.append(node)
   return nodes
@@ -1130,8 +1143,8 @@ def iterAllGridConnectivitiesFromAdditionalFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
   nodes = []
-  for node in I.getNodesFromType(parent, "GridConnectivity_t")+I.getNodesFromType(parent, "GridConnectivity1to1_t"):
-    family_name_node = I.getNodeFromType(node, "AdditionalFamilyName_t")
+  for node in iterNodesFromPredicate(parent, lambda n: n[__LABEL__] in ["GridConnectivity_t", "GridConnectivity1to1_t"]):
+    family_name_node = requestNodeFromLabel(node, "AdditionalFamilyName_t")
     if family_name_node and I.getValue(family_name_node) in family_name:
       yield node
   return nodes
@@ -1271,26 +1284,27 @@ iter_children_with_parents_by_matching = iterNodesWithParentsByMatching
 get_children_with_parents_by_matching  = getNodesWithParentsByMatching
 
 # --------------------------------------------------------------------------
-def getSubregionExtent(sub_region_n, zone):
+@check_is_label('ZoneSubRegion_t', 0)
+@check_is_label('Zone_t', 1)
+def getSubregionExtent(sub_region_node, zone):
   """
-  Return the path of the node (starting from zone node) related to sub_region_n
+  Return the path of the node (starting from zone node) related to sub_region_node
   node (BC, GC or itself)
   """
-  assert I.getType(sub_region_n) == "ZoneSubRegion_t"
-  if I.getNodeFromName1(sub_region_n, "BCRegionName") is not None:
+  if requestNodeFromName1(sub_region_node, "BCRegionName") is not None:
     for zbc, bc in iterNodesWithParentsByMatching(zone, "ZoneBC_t/BC_t"):
-      if I.getName(bc) == I.getValue(I.getNodeFromName1(sub_region_n, "BCRegionName")):
+      if I.getName(bc) == I.getValue(requestNodeFromName1(sub_region_node, "BCRegionName")):
         return I.getName(zbc) + '/' + I.getName(bc)
-  elif I.getNodeFromName1(sub_region_n, "GridConnectivityRegionName") is not None:
+  elif requestNodeFromName1(sub_region_node, "GridConnectivityRegionName") is not None:
     gc_pathes = ["ZoneGridConnectivity_t/GridConnectivity_t", "ZoneGridConnectivity_t/GridConnectivity1to1_t"]
     for gc_path in gc_pathes:
       for zgc, gc in iterNodesWithParentsByMatching(zone, gc_path):
-        if I.getName(gc) == I.getValue(I.getNodeFromName1(sub_region_n, "GridConnectivityRegionName")):
+        if I.getName(gc) == I.getValue(requestNodeFromName1(sub_region_node, "GridConnectivityRegionName")):
           return I.getName(zgc) + '/' + I.getName(gc)
   else:
-    return I.getName(sub_region_n)
+    return I.getName(sub_region_node)
 
-  raise ValueError("ZoneSubRegion {0} has no valid extent".format(I.getName(sub_region_n)))
+  raise ValueError("ZoneSubRegion {0} has no valid extent".format(I.getName(sub_region_node)))
 
 def getDistribution(node, distri_name=None):
   """
@@ -1298,7 +1312,7 @@ def getDistribution(node, distri_name=None):
   or the value of the requested distribution if distri_name is not None
   """
   return I.getNodeFromPath(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
-      else I.getNodeFromName1(node, ':CGNS#Distribution')
+      else requestNodeFromName1(node, ':CGNS#Distribution')
 
 def getGlobalNumbering(node, lngn_name=None):
   """
@@ -1306,7 +1320,7 @@ def getGlobalNumbering(node, lngn_name=None):
   or the value of the requested globalnumbering if lngn_name is not None
   """
   return I.getNodeFromPath(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
-      else I.getNodeFromName1(node, ':CGNS#GlobalNumbering')
+      else requestNodeFromName1(node, ':CGNS#GlobalNumbering')
 
 # --------------------------------------------------------------------------
 def newDistribution(distributions = dict(), parent=None):

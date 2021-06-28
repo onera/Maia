@@ -1162,7 +1162,7 @@ Zone Zone_t:
 
   with pytest.raises(ValueError):
     IE.getSubregionExtent(I.getNodeFromName(zone, 'OrphelanZSR'), zone)
-  with pytest.raises(AssertionError):
+  with pytest.raises(IE.CGNSLabelNotEqualError):
     IE.getSubregionExtent(I.getNodeFromName(zone, 'WrongZSR'), zone)
 
 def test_newDistribution():
