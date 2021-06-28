@@ -788,41 +788,35 @@ class NodesWalker:
     self.clean()
 
 # --------------------------------------------------------------------------
-def getChildrenFromPredicate(parent, predicate, method=NodeParser.DEFAULT, explore='deep', depth=0):
+def getNodesFromPredicate(parent, predicate, method=NodeParser.DEFAULT, explore='deep', depth=0):
   walker = NodesWalker(parent, predicate, caching=True)
   return walker(method=method, explore=explore, depth=depth)
-  # if explore == "shallow":
-  #   parser = ShallowNodesParser()
-  # else:
-  #   parser = LevelNodesParser(depth=depth) if isinstance(depth, int) else NodesParser()
-  # func = getattr(parser, method)
-  # return func(parent, predicate)
 
-getShallowChildrenFromPredicate = partial(getChildrenFromPredicate, explore='shallow')
+getShallowNodesFromPredicate = partial(getNodesFromPredicate, explore='shallow')
 
 def create_get_children(predicate, nargs):
-  def _get_children_from(parent, *args, **kwargs):
+  def _get_nodes_from(parent, *args, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return getChildrenFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
-  return _get_children_from
+    return getNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+  return _get_nodes_from
 
 mesg = "Return a list of all child CGNS nodes"
-create_functions(getChildrenFromPredicate, create_get_children, "dfs",
+create_functions(getNodesFromPredicate, create_get_children, "dfs",
   dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
   mesg)
 
-prefix = getChildrenFromPredicate.__name__.replace('Predicate', '')
+prefix = getNodesFromPredicate.__name__.replace('Predicate', '')
 for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
   dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
   predicate, nargs = item
 
-  # Generate getChildrenFromNameP, getChildrenFromValueP, ...
+  # Generate getNodesFromNameP, getNodesFromValueP, ...
   funcname = f"{prefix}{what}P"
   func = create_get_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
   setattr(module_object, funcname, partial(func, method='dfs', explore='shallow'))
-  # Generate get_children_from_name, get_children_from_value, ...
+  # Generate get_nodes_from_name, get_nodes_from_value, ...
   funcname = PYU.camel_to_snake(f"{prefix}{what}_p")
   # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
   func = create_get_children(predicate, nargs)
@@ -831,26 +825,20 @@ for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValue
   setattr(module_object, funcname, partial(func, method='dfs', explore='shallow'))
 
 # --------------------------------------------------------------------------
-def iterChildrenFromPredicate(parent, predicate, method=NodeParser.DEFAULT, explore='deep', depth=0):
+def iterNodesFromPredicate(parent, predicate, method=NodeParser.DEFAULT, explore='deep', depth=0):
   walker = NodesWalker(parent, predicate)
   return walker(method=method, explore=explore, depth=depth)
-  # if explore == "shallow":
-  #   parser = ShallowNodesIterator()
-  # else:
-  #   parser = LevelNodesIterator(depth=depth) if isinstance(depth, int) else NodesIterator()
-  # func = getattr(parser, method)
-  # return func(parent, predicate)
 
-iterShallowChildrenFromPredicate = partial(iterChildrenFromPredicate, explore='shallow')
+iterShallowNodesFromPredicate = partial(iterNodesFromPredicate, explore='shallow')
 
 def create_iter_children(predicate, nargs):
   def _iter_children_from(parent, *args, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return getChildrenFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+    return getNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _iter_children_from
 
 mesg = "Return an iterator on all child CGNS nodes"
-create_functions(iterChildrenFromPredicate, create_iter_children, "dfs",
+create_functions(iterNodesFromPredicate, create_iter_children, "dfs",
   dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
   mesg)
 
@@ -858,13 +846,13 @@ for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValue
   dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
   predicate, nargs = item
 
-  # Generate iterChildrenFromNameP, iterChildrenFromValueP, ...
-  funcname = f"iterShallowChildrenFrom{what}"
+  # Generate iterNodesFromNameP, iterNodesFromValueP, ...
+  funcname = f"iterShallowNodesFrom{what}"
   func = create_iter_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
   setattr(module_object, funcname, partial(func, method='dfs', explore='shallow'))
-  # Generate get_children_from_name, get_children_from_value, ...
+  # Generate get_nodes_from_name, get_nodes_from_value, ...
   funcname = PYU.camel_to_snake(funcname)
   # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
   func = create_iter_children(predicate, nargs)
@@ -886,7 +874,7 @@ def create_get_child(predicate, nargs, args):
 def create_get_all_children(predicate, nargs, args):
   def _get_all_children_from(parent, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return getChildrenFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+    return getNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_all_children_from
 
 label_with_specific_depth = ['CGNSBase_t',
@@ -1033,8 +1021,8 @@ def create_get_from_family(label, family_label):
   def _get_from_family(parent, family_name):
     if isinstance(family_name, str):
       family_name = [family_name]
-    for node in getChildrenFromLabel(parent, label):
-      family_name_node = requestChildFromLabel(node, family_label)
+    for node in getNodesFromLabel(parent, label):
+      family_name_node = requestNodeFromLabel(node, family_label)
       if family_name_node and I.getValue(family_name_node) in family_name:
         return node
     raise ValueError(f"Unable to find {label} from family name : {family_name}")
@@ -1045,8 +1033,8 @@ def create_get_all_from_family(label, family_label):
     if isinstance(family_name, str):
       family_name = [family_name]
     nodes = []
-    for node in getChildrenFromLabel(parent, label):
-      family_name_node = requestChildFromLabel(node, family_label)
+    for node in getNodesFromLabel(parent, label):
+      family_name_node = requestNodeFromLabel(node, family_label)
       if family_name_node and I.getValue(family_name_node) in family_name:
         nodes.append(node)
     return nodes
@@ -1057,8 +1045,8 @@ def create_iter_all_from_family(label, family_label):
     if isinstance(family_name, str):
       family_name = [family_name]
     nodes = []
-    for node in getChildrenFromLabel(parent, label):
-      family_name_node = requestChildFromLabel(node, family_label)
+    for node in getNodesFromLabel(parent, label):
+      family_name_node = requestNodeFromLabel(node, family_label)
       if family_name_node and I.getValue(family_name_node) in family_name:
         yield node
     return nodes
@@ -1152,20 +1140,20 @@ def iterAllGridConnectivitiesFromAdditionalFamily(parent, family_name):
 def getNodesDispatch1(node, predicate):
   """ Interface to adapted getNodesFromXXX1 function depending of predicate type"""
   if isinstance(predicate, str):
-    return getChildrenFromLabel1(node, predicate) if is_valid_label(predicate) else getChildrenFromName1(node, predicate)
+    return getNodesFromLabel1(node, predicate) if is_valid_label(predicate) else getNodesFromName1(node, predicate)
   elif isinstance(predicate, CGK.Label):
-    return getChildrenFromLabel1(node, predicate.name)
+    return getNodesFromLabel1(node, predicate.name)
   elif isinstance(predicate, np.ndarray):
-    return getChildrenFromValue1(node, predicate)
+    return getNodesFromValue1(node, predicate)
   elif callable(predicate):
-    return getChildrenFromPredicate1(node, predicate)
+    return getNodesFromPredicate1(node, predicate)
   else:
     raise TypeError("predicate must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
 
 # --------------------------------------------------------------------------
 def iterNodesByMatching(root, predicates):
   """Generator following predicates, doing 1 level search using
-  getChildrenFromLabel1 or getChildrenFromName1. Equivalent to
+  getNodesFromLabel1 or getNodesFromName1. Equivalent to
   (predicate = 'type1_t/name2/type3_t' or ['type1_t', 'name2', lambda n: I.getType(n) == CGL.type3_t.name] )
   for level1 in I.getNodesFromType1(root, type1_t):
     for level2 in I.getNodesFromName1(level1, name2):
@@ -1194,7 +1182,7 @@ def iterNodesByMatching__(root, predicate_list):
 # --------------------------------------------------------------------------
 def getNodesByMatching(root, predicates):
   """Generator following predicates, doing 1 level search using
-  getChildrenFromLabel1 or getChildrenFromName1. Equivalent to
+  getNodesFromLabel1 or getNodesFromName1. Equivalent to
   (predicate = 'type1_t/name2/type3_t' or ['type1_t', 'name2', lambda n: I.getType(n) == CGL.type3_t.name] )
   for level1 in I.getNodesFromType1(root, type1_t):
     for level2 in I.getNodesFromName1(level1, name2):
@@ -1346,13 +1334,13 @@ def newGlobalNumbering(glob_numberings = dict(), parent=None):
   return lngn_node
 
 # --------------------------------------------------------------------------
-request_node_from_predicate           = requestNodeFromPredicate
-get_node_from_predicate               = getNodeFromPredicate
-get_children_from_predicate           = getChildrenFromPredicate
-get_family                            = getFamily
+request_node_from_predicate = requestNodeFromPredicate
+get_node_from_predicate     = getNodeFromPredicate
+get_nodes_from_predicate    = getNodesFromPredicate
+get_family                  = getFamily
 
-get_shallow_children_from_predicate   = getShallowChildrenFromPredicate
-iter_shallow_children_from_predicate  = iterShallowChildrenFromPredicate
+get_shallow_nodes_from_predicate  = getShallowNodesFromPredicate
+iter_shallow_nodes_from_predicate = iterShallowNodesFromPredicate
 
 get_grid_connectivities_from_family      = getGridConnectivitiesFromFamily
 get_all_grid_connectivities_from_family  = getAllGridConnectivitiesFromFamily
