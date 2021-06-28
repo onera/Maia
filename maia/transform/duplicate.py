@@ -207,20 +207,20 @@ def _duplicateNZonesFromPeriodicJoin(tree,zone,JN_for_duplication_Name,N):
   I.setValue(secondJoinDupNode,zoneNamePrefix+".D0")
   
   
-def _duplicateZonesFromPeriodicJoinByRotationTo360(tree,zone,JN_for_duplication_Name):
+def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplication_Name):
   
   #############
   ##### TODO
-  ##### > mettre un warning si translation != [0.,0.,0.]
-  ##### > definir N puis appliquer '_duplicateNZonesFromJoin'
-  ##### > transformer le raccord péridique entre 0 et N en match
+  ##### > mettre un warning si translation != [0.,0.,0.] => DONE
+  ##### > definir N puis appliquer '_duplicateNZonesFromJoin' => DONE
+  ##### > transformer le raccord péridique entre 0 et N en match => DONE
   ##### > corriger les coordonnées des noeuds de la dernière zone pour assurer le match !
   #############
   
   # Informations générales
-  pathZone       = I.getPath(tree,zone)
+  pathZone       = I.getPath(dist_tree,zone)
   pathBase       = "/".join(pathZone.split("/")[:-1])
-  base           = I.getNodeFromPath(tree,pathBase)
+  base           = I.getNodeFromPath(dist_tree,pathBase)
   zoneNamePrefix = I.getName(zone)
   
   # Récupération des raccords
@@ -231,7 +231,14 @@ def _duplicateZonesFromPeriodicJoinByRotationTo360(tree,zone,JN_for_duplication_
   GCP1 = I.getNodeFromType1(firstJoinNode, "GridConnectivityProperty_t")
   rotationAngle1Node  = I.getNodeFromName(GCP1, "RotationAngle")
   rotationAngle1      = I.getValue(rotationAngle1Node)
-  rotationAngle1[1] = np.pi
+  translation1Node    = I.getNodeFromName(GCP1, "Translation")
+  translation1        = I.getValue(translation1Node)
+  
+  if (translation1 != np.array([0.,0.,0.])).any():
+    raise ValueError("The join is not a periodic one by rotation only")
+  
+  # For test
+  rotationAngle1[1]   = np.pi
   
   # Find the number of duplication needed
   index = np.where(rotationAngle1 != 0)[0]
