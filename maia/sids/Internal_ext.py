@@ -229,24 +229,68 @@ class NodeParser:
   DEFAULT="bfs"
 
   def bfs(self, parent, predicate):
-    for child in parent[2]:
-      if predicate(child):
-        return child
-    # Explore next level
-    for child in parent[2]:
-      result = self.bfs(child, predicate)
-      if result is not None:
-        return result
+    # print(f"NodeParser.bfs: parent = {I.getName(parent)}")
+    temp = queue.Queue()
+    temp.put(parent)
+    while not temp.empty():
+      node = temp.get()
+      # print(f"NodeParser.bfs: node = {I.getName(node)}")
+      if predicate(node):
+        return node
+      for child in node[2]:
+        temp.put(child)
     return None
 
   def dfs(self, parent, predicate):
+    # print(f"NodeParser.dfs: parent = {I.getName(parent)}")
+    if predicate(parent):
+      return parent
+    return self._dfs(parent, predicate)
+
+  def _dfs(self, parent, predicate):
+    # print(f"NodeParser._dfs: parent = {I.getName(parent)}")
     for child in parent[2]:
       if predicate(child):
         return child
       # Explore next level
-      result = self.dfs(child, predicate)
+      result = self._dfs(child, predicate)
       if result is not None:
         return result
+    return None
+
+# --------------------------------------------------------------------------
+class ShallowNodeParser:
+
+  def bfs(self, parent, predicate):
+    # print(f"ShallowNodeParser.bfs: parent = {I.getName(parent)}")
+    temp = queue.Queue()
+    temp.put(parent)
+    while not temp.empty():
+      node = temp.get()
+      # print(f"ShallowNodeParser.bfs: node = {I.getName(node)}")
+      if predicate(node):
+        return node
+      else:
+        for child in node[2]:
+          temp.put(child)
+    return None
+
+  def dfs(self, parent, predicate):
+    # print(f"ShallowNodeParser.dfs: parent = {I.getName(parent)}")
+    if predicate(parent):
+      return parent
+    return self._dfs(parent, predicate)
+
+  def _dfs(self, parent, predicate, level=1):
+    # print(f"ShallowNodeParser.dfs: parent = {I.getName(parent)}")
+    for child in parent[2]:
+      if predicate(child):
+        return child
+      else:
+        # Explore next level
+        result = self._dfs(child, predicate, level=level+1)
+        if result is not None:
+          return result
     return None
 
 # --------------------------------------------------------------------------
@@ -258,35 +302,117 @@ class LevelNodeParser:
     self.depth = depth
 
   def bfs(self, parent, predicate, level=1):
-    # print(f"LevelNodeParser.bfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for child in parent[2]:
-      if predicate(child):
-        return child
-    if level < self.depth:
-      # Explore next level
-      for child in parent[2]:
-        result = self.bfs(child, predicate, level=level+1)
-        if result is not None:
-          return result
+    # print(f"LevelNodeParser.bfs: depth = {self.depth}: parent = {I.getName(parent)}")
+    temp = queue.Queue()
+    temp.put( (0, parent,) )
+    while not temp.empty():
+      level, node = temp.get()
+      # print(f"LevelNodeParser.bfs: level:{level} < depth:{self.depth}: node = {I.getName(node)}")
+      if predicate(node):
+        return node
+      if level < self.depth:
+        for child in node[2]:
+          temp.put( (level+1, child) )
     return None
 
-  def dfs(self, parent, predicate, level=1):
+  def dfs(self, parent, predicate):
+    # print(f"LevelNodeParser.dfs: depth = {self.depth}: parent = {I.getName(parent)}")
+    if predicate(parent):
+      return parent
+    return self._dfs(parent, predicate)
+
+  def _dfs(self, parent, predicate, level=1):
     # print(f"LevelNodeParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
     for child in parent[2]:
       if predicate(child):
         return child
       if level < self.depth:
         # Explore next level
-        result = self.dfs(child, predicate, level=level+1)
+        result = self._dfs(child, predicate, level=level+1)
         if result is not None:
           return result
     return None
 
 # --------------------------------------------------------------------------
+class NodeWalker:
+  """ Return the first node found in the Python/CGNS tree """
+
+  def __init__(self, parent: TreeNode, predicate: Callable[[TreeNode], bool],
+                     method=NodeParser.DEFAULT, depth=0):
+    self.parent    = parent
+    self.predicate = predicate
+    # Register default value
+    self.method  = method
+    self.depth   = depth
+
+  @property
+  def parent(self):
+    return self._parent
+
+  @parent.setter
+  def parent(self, node: TreeNode):
+    if is_valid_node(node):
+      self._parent = node
+
+  @property
+  def predicate(self):
+    return self._predicate
+
+  @predicate.setter
+  def predicate(self, predicate: Callable[[TreeNode], bool]):
+    if callable(predicate):
+      self._predicate = predicate
+    else:
+      raise TypeError("predicate must be a callable function.")
+
+  @property
+  def method(self):
+    return self._method
+
+  @method.setter
+  def method(self, value: str):
+    if value in ['bfs', 'dfs']:
+      self._method = value
+    else:
+      raise ValueError("method must 'bfs' or 'dfs'.")
+
+  @property
+  def depth(self):
+    return self._depth
+
+  @depth.setter
+  def depth(self, value: str):
+    if isinstance(value, int) and value >= 0:
+      self._depth = value
+    else:
+      raise ValueError("depth must a integer >= 0.")
+
+  @property
+  def parser(self):
+    return self._parser
+
+  def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None):
+    if parent and parent != self.parent:
+      self.parent = parent
+    if predicate and predicate != self.predicate:
+      self.predicate = predicate
+    if method and method != self.method:
+      self.method = method
+    if depth and depth != self.depth:
+      self.depth = depth
+    # Create parser
+    self._parser = LevelNodeParser(depth=self.depth) if self.depth > 0 else NodeParser()
+    func = getattr(self._parser, self.method)
+    return func(self._parent, self._predicate)
+
+
+# --------------------------------------------------------------------------
 def requestChildFromPredicate(parent, predicate, method=NodeParser.DEFAULT, depth=None):
-  parser = LevelNodeParser(depth=depth) if isinstance(depth, int) else NodeParser()
-  func   = getattr(parser, method)
-  return func(parent, predicate)
+  walker = NodeWalker(parent, predicate)
+  return walker(method=method, depth=depth)
+  # parser = LevelNodeParser(depth=depth) if isinstance(depth, int) else NodeParser()
+  # func   = getattr(parser, method)
+  # return func(parent, predicate)
 
 def create_request_child(predicate, nargs):
   def _get_request_from(parent, *args, **kwargs):
@@ -300,9 +426,9 @@ create_functions(requestChildFromPredicate, create_request_child, "bfs", allfunc
 # --------------------------------------------------------------------------
 def getChildFromPredicate(parent, predicate, default=None, method=NodeParser.DEFAULT, depth=None):
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
-  n = requestChildFromPredicate(parent, predicate, method=method, depth=depth)
-  if n is not None:
-    return n
+  node = requestChildFromPredicate(parent, predicate, method=method, depth=depth)
+  if node is not None:
+    return node
   if default and is_valid_node(default):
     return default
   raise CGNSNodeFromPredicateNotFoundError(parent, predicate)

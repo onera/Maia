@@ -1221,11 +1221,11 @@ def test_getGlobalNumbering():
   assert  I.getVal(IE.getGlobalNumbering(zone, 'Vertex')) == None
 
 if __name__ == "__main__":
-  # test_getChildFromPredicate()
+  test_getChildFromPredicate()
   # test_requireNodeFromName()
   # test_requireNodeFromType()
   # test_getRequireNodeFromNameAndType()
-  test_NodesWalker()
+  # test_NodesWalker()
   # test_iterChildrenFromPredicate()
   # test_getChildrenFromPredicate()
   # test_getAllLabel()
