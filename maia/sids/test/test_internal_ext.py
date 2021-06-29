@@ -885,6 +885,58 @@ Base CGNSBase_t:
   zonebcs_from_type_name1 = [n for n in I.getNodesFromType1(zone, CGL.ZoneBC_t.name) if I.getName(n) != "ZBCA"]
   assert IE.getNodesFromPredicate1(zone, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA") == zonebcs_from_type_name1
 
+def test_NodesWalker_order():
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bca1 BC_t:
+        FamilyName FamilyName_t ['B','C','C','1']:
+        Index_i IndexArray_t:
+      bcd2 BC_t:
+        FamilyName FamilyName_t ['B','C','A','2']:
+        Index_ii IndexArray_t:
+    FamilyName FamilyName_t ['R','O','W','1']:
+    ZBCB ZoneBC_t:
+      bcb3 BC_t:
+        FamilyName FamilyName_t ['B','C','D','3']:
+        Index_iii IndexArray_t:
+      bce4 BC_t:
+        FamilyName FamilyName_t ['B','C','E','4']:
+      bcc5 BC_t:
+        FamilyName FamilyName_t ['B','C','B','5']:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # I.printTree(tree)
+
+  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t")
+  assert([I.getName(n) for n in walker(method='bfs')] == ['bca1', 'bcd2', 'bcb3', 'bce4', 'bcc5'])
+  assert([I.getName(n) for n in walker(method='bfs', sort=lambda n:reversed(I.getChildren(n)))] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
+  assert([I.getName(n) for n in walker(method='bfs', sort=IE.NodesWalker.BACKWARD)] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
+
+  fsort = lambda parent : sorted(I.getChildren(parent), key=lambda n : I.getName(n)[2])
+  # for n in walker(method='bfs', sort=fsort):
+  #   print(f"n = {I.getName(n)}")
+  assert([''.join(I.getName(n)) for n in walker(method='bfs', sort=fsort)] == ['bca1', 'bcd2', 'bcb3', 'bcc5', 'bce4'])
+
+  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "FamilyName_t")
+  # for n in walker(method='dfs'):
+  #   print(f"n = {I.getValue(n)}")
+  # for n in walker(method='bfs'):
+  #   print(f"n = {I.getValue(n)}")
+  assert([''.join(I.getValue(n)) for n in walker(method='dfs')] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4', 'BCB5'])
+  assert([''.join(I.getValue(n)) for n in walker(method='bfs')] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5'])
+
+  assert([''.join(I.getValue(n)) for n in walker(method='dfs', sort=IE.NodesWalker.BACKWARD)] == ['BCB5', 'BCE4', 'BCD3', 'ROW1', 'BCA2', 'BCC1'])
+  # for n in walker(method='bfs', sort=IE.NodesWalker.BACKWARD):
+  #   print(f"n = {I.getValue(n)}")
+  assert([''.join(I.getValue(n)) for n in walker(method='bfs', sort=IE.NodesWalker.BACKWARD)] == ['ROW1', 'BCB5', 'BCE4', 'BCD3', 'BCA2', 'BCC1'])
+
 def test_getAllLabel():
   yt = """
 Base CGNSBase_t:
@@ -1226,6 +1278,7 @@ if __name__ == "__main__":
   # test_requireNodeFromType()
   # test_getRequireNodeFromNameAndType()
   # test_NodesWalker()
+  test_NodesWalker_order()
   # test_iterNodesFromPredicate()
   # test_getNodesFromPredicate()
   # test_getAllLabel()

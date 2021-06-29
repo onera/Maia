@@ -142,6 +142,16 @@ def check_is_label(label, n=0):
   return _check_is_label
 
 # --------------------------------------------------------------------------
+def is_same_name(n0: TreeNode, n1: TreeNode):
+  return n0[0] == n1[0]
+
+def is_same_label(n0: TreeNode, n1: TreeNode):
+  return n0[3] == n1[3]
+
+def is_same_value(n0: TreeNode, n1: TreeNode):
+  return np.array_equal(n0[1], n1[1])
+
+# --------------------------------------------------------------------------
 def match_name(n, name: str):
   return fnmatch.fnmatch(n[__NAME__], name)
 
@@ -242,6 +252,9 @@ class NodeParser:
 
   DEFAULT="bfs"
 
+  def __init__(self, sort=lambda n:n[__CHILDREN__]):
+    self.sort = sort
+
   def bfs(self, parent, predicate):
     # print(f"NodeParser.bfs: parent = {I.getName(parent)}")
     temp = queue.Queue()
@@ -251,7 +264,7 @@ class NodeParser:
       # print(f"NodeParser.bfs: node = {I.getName(node)}")
       if predicate(node):
         return node
-      for child in node[__CHILDREN__]:
+      for child in self.sort(node):
         temp.put(child)
     return None
 
@@ -263,7 +276,7 @@ class NodeParser:
 
   def _dfs(self, parent, predicate):
     # print(f"NodeParser._dfs: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
+    for child in self.sort(parent):
       if predicate(child):
         return child
       # Explore next level
@@ -273,47 +286,13 @@ class NodeParser:
     return None
 
 # --------------------------------------------------------------------------
-class ShallowNodeParser:
-
-  def bfs(self, parent, predicate):
-    # print(f"ShallowNodeParser.bfs: parent = {I.getName(parent)}")
-    temp = queue.Queue()
-    temp.put(parent)
-    while not temp.empty():
-      node = temp.get()
-      # print(f"ShallowNodeParser.bfs: node = {I.getName(node)}")
-      if predicate(node):
-        return node
-      else:
-        for child in node[__CHILDREN__]:
-          temp.put(child)
-    return None
-
-  def dfs(self, parent, predicate):
-    # print(f"ShallowNodeParser.dfs: parent = {I.getName(parent)}")
-    if predicate(parent):
-      return parent
-    return self._dfs(parent, predicate)
-
-  def _dfs(self, parent, predicate, level=1):
-    # print(f"ShallowNodeParser.dfs: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
-      if predicate(child):
-        return child
-      else:
-        # Explore next level
-        result = self._dfs(child, predicate, level=level+1)
-        if result is not None:
-          return result
-    return None
-
-# --------------------------------------------------------------------------
 class LevelNodeParser:
 
   MAXDEPTH=30
 
-  def __init__(self, depth=MAXDEPTH):
+  def __init__(self, depth=MAXDEPTH, sort=lambda n:n[__CHILDREN__]):
     self.depth = depth
+    self.sort = sort
 
   def bfs(self, parent, predicate, level=1):
     # print(f"LevelNodeParser.bfs: depth = {self.depth}: parent = {I.getName(parent)}")
@@ -325,7 +304,7 @@ class LevelNodeParser:
       if predicate(node):
         return node
       if level < self.depth:
-        for child in node[__CHILDREN__]:
+        for child in self.sort(node):
           temp.put( (level+1, child) )
     return None
 
@@ -337,7 +316,7 @@ class LevelNodeParser:
 
   def _dfs(self, parent, predicate, level=1):
     # print(f"LevelNodeParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
+    for child in self.sort(parent):
       if predicate(child):
         return child
       if level < self.depth:
@@ -351,13 +330,17 @@ class LevelNodeParser:
 class NodeWalker:
   """ Return the first node found in the Python/CGNS tree """
 
+  FORWARD  = lambda n:n[__CHILDREN__]
+  BACKWARD = lambda n:reverse(n[__CHILDREN__])
+
   def __init__(self, parent: TreeNode, predicate: Callable[[TreeNode], bool],
-                     method=NodeParser.DEFAULT, depth=0):
+                     method=NodeParser.DEFAULT, depth=0, sort=FORWARD):
     self.parent    = parent
     self.predicate = predicate
     # Register default value
-    self.method  = method
-    self.depth   = depth
+    self.method = method
+    self.depth  = depth
+    self.sort  = sort
 
   @property
   def parent(self):
@@ -402,10 +385,21 @@ class NodeWalker:
       raise ValueError("depth must a integer >= 0.")
 
   @property
+  def sort(self):
+    return self._sort
+
+  @sort.setter
+  def sort(self, value):
+    if callable(value):
+      self._sort = value
+    else:
+      raise TypeError("sort must be a callable function.")
+
+  @property
   def parser(self):
     return self._parser
 
-  def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None):
+  def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None, sort=None):
     if parent and parent != self.parent:
       self.parent = parent
     if predicate and predicate != self.predicate:
@@ -414,8 +408,10 @@ class NodeWalker:
       self.method = method
     if depth and depth != self.depth:
       self.depth = depth
+    if sort and sort != self.sort:
+      self.sort = sort
     # Create parser
-    self._parser = LevelNodeParser(depth=self.depth) if self.depth > 0 else NodeParser()
+    self._parser = LevelNodeParser(depth=self.depth, sort=self.sort) if self.depth > 0 else NodeParser(sort=self.sort)
     func = getattr(self._parser, self.method)
     return func(self._parent, self._predicate)
 
@@ -465,7 +461,8 @@ class NodesParser:
 
   DEFAULT="bfs"
 
-  def __init__(self):
+  def __init__(self, sort=lambda n:n[__CHILDREN__]):
+    self.sort = sort
     self.result = []
 
   def bfs(self, parent, predicate):
@@ -477,7 +474,7 @@ class NodesParser:
       # print(f"NodesParser.bfs: node = {I.getName(node)}")
       if predicate(node):
         self.result.append(node)
-      for child in node[__CHILDREN__]:
+      for child in self.sort(node):
         temp.put(child)
     return self.result
 
@@ -489,7 +486,7 @@ class NodesParser:
 
   def _dfs(self, parent, predicate):
     # print(f"NodesParser._dfs: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
+    for child in self.sort(parent):
       if predicate(child):
         self.result.append(child)
       # Explore next level
@@ -501,7 +498,8 @@ class ShallowNodesParser:
 
   """ Stop exploration if something found at a level """
 
-  def __init__(self):
+  def __init__(self, sort=lambda n:n[__CHILDREN__]):
+    self.sort = sort
     self.result = []
 
   def bfs(self, parent, predicate):
@@ -514,7 +512,7 @@ class ShallowNodesParser:
       if predicate(node):
         self.result.append(node)
       else:
-        for child in node[__CHILDREN__]:
+        for child in self.sort(node):
           temp.put(child)
     return self.result
 
@@ -526,7 +524,7 @@ class ShallowNodesParser:
 
   def _dfs(self, parent, predicate):
     # print(f"LevelNodesParser._dfs: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
+    for child in self.sort(parent):
       if predicate(child):
         self.result.append(child)
       else:
@@ -541,8 +539,9 @@ class LevelNodesParser:
 
   MAXDEPTH=30
 
-  def __init__(self, depth=MAXDEPTH):
+  def __init__(self, depth=MAXDEPTH, sort=lambda n:n[__CHILDREN__]):
     self.depth  = depth
+    self.sort   = sort
     self.result = []
 
   def bfs(self, parent, predicate):
@@ -555,7 +554,7 @@ class LevelNodesParser:
       if predicate(node):
         self.result.append(node)
       if level < self.depth:
-        for child in node[__CHILDREN__]:
+        for child in self.sort(node):
           temp.put( (level+1, child) )
     return self.result
 
@@ -567,7 +566,7 @@ class LevelNodesParser:
 
   def _dfs(self, parent, predicate, level=1):
     # print(f"LevelNodesParser._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
+    for child in self.sort(parent):
       if predicate(child):
         self.result.append(child)
       if level < self.depth:
@@ -580,6 +579,9 @@ class NodesIterator:
 
   DEFAULT="bfs"
 
+  def __init__(self, sort=lambda n:n[__CHILDREN__]):
+    self.sort = sort
+
   def bfs(self, parent, predicate):
     # print(f"NodesIterator.bfs: parent = {I.getName(parent)}")
     temp = queue.Queue()
@@ -589,7 +591,7 @@ class NodesIterator:
       # print(f"NodesIterator.bfs: node = {I.getName(node)}")
       if predicate(node):
         yield node
-      for child in node[__CHILDREN__]:
+      for child in self.sort(node):
         temp.put(child)
 
   def dfs(self, parent, predicate):
@@ -600,7 +602,7 @@ class NodesIterator:
 
   def _dfs(self, parent, predicate):
     # print(f"NodesIterator._dfs: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
+    for child in self.sort(parent):
       if predicate(child):
         yield child
       # Explore next level
@@ -610,6 +612,9 @@ class NodesIterator:
 class ShallowNodesIterator:
 
   """ Stop exploration if something found at a level """
+
+  def __init__(self, sort=lambda n:n[__CHILDREN__]):
+    self.sort = sort
 
   def bfs(self, parent, predicate):
     # print(f"ShallowNodesIterator.bfs: parent = {I.getName(parent)}")
@@ -621,7 +626,7 @@ class ShallowNodesIterator:
       if predicate(node):
         yield node
       else:
-        for child in node[__CHILDREN__]:
+        for child in self.sort(node):
           temp.put(child)
 
   def dfs(self, parent, predicate):
@@ -632,7 +637,7 @@ class ShallowNodesIterator:
 
   def _dfs(self, parent, predicate):
     # print(f"ShallowNodesIterator._dfs: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
+    for child in self.sort(parent):
       if predicate(child):
         yield child
       else:
@@ -646,8 +651,9 @@ class LevelNodesIterator:
 
   MAXDEPTH=30
 
-  def __init__(self, depth=MAXDEPTH):
+  def __init__(self, depth=MAXDEPTH, sort=lambda n:n[__CHILDREN__]):
     self.depth  = depth
+    self.sort  = sort
     self.result = []
 
   def bfs(self, parent, predicate):
@@ -660,7 +666,7 @@ class LevelNodesIterator:
       if predicate(node):
         yield node
       if level < self.depth:
-        for child in node[__CHILDREN__]:
+        for child in self.sort(node):
           temp.put( (level+1, child) )
 
   def dfs(self, parent, predicate):
@@ -671,7 +677,7 @@ class LevelNodesIterator:
 
   def _dfs(self, parent, predicate, level=1):
     # print(f"LevelNodesIterator._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for child in parent[__CHILDREN__]:
+    for child in self.sort(parent):
       if predicate(child):
         yield child
       if level < self.depth:
@@ -682,8 +688,11 @@ class LevelNodesIterator:
 class NodesWalker:
   """ Deep First Walker of pyTree """
 
+  FORWARD  = lambda n:n[__CHILDREN__]
+  BACKWARD = lambda n:reversed(n[__CHILDREN__])
+
   def __init__(self, parent: TreeNode, predicate: Callable[[TreeNode], bool],
-                     method=NodesParser.DEFAULT, explore='deep', depth=0,
+                     method=NodesParser.DEFAULT, explore='deep', depth=0, sort=FORWARD,
                      caching: bool=False):
     self.parent    = parent
     self.predicate = predicate
@@ -691,6 +700,7 @@ class NodesWalker:
     self.method  = method
     self.explore = explore
     self.depth   = depth
+    self.sort   = sort
     # Internal
     self._parser  = None
     self._caching = caching
@@ -755,6 +765,18 @@ class NodesWalker:
       raise ValueError("depth must a integer >= 0.")
 
   @property
+  def sort(self):
+    return self._sort
+
+  @sort.setter
+  def sort(self, value):
+    if callable(value):
+      self._sort = value
+      self.clean()
+    else:
+      raise TypeError("sort must be a callable function.")
+
+  @property
   def cache(self):
     return self._cache
 
@@ -762,7 +784,7 @@ class NodesWalker:
   def parser(self):
     return self._parser
 
-  def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None):
+  def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None, sort=None):
     """ Generator of nodes with predicate """
     if parent and parent != self.parent:
       self.parent = parent
@@ -774,22 +796,24 @@ class NodesWalker:
       self.explore = explore
     if depth and depth != self.depth:
       self.depth = depth
+    if sort and sort != self.sort:
+      self.sort = sort
     if self._caching:
       if not bool(self._cache):
         # Generate list
         if self.explore == "shallow":
-          self._parser = ShallowNodesParser()
+          self._parser = ShallowNodesParser(sort=self.sort)
         else:
-          self._parser = LevelNodesParser(depth=self.depth) if self.depth > 0 else NodesParser()
+          self._parser = LevelNodesParser(depth=self.depth, sort=self.sort) if self.depth > 0 else NodesParser(sort=self.sort)
         func = getattr(self._parser, self.method)
         self._cache = func(self._parent, self._predicate)
       return self._cache
     else:
       # Generate iterator
       if self.explore == "shallow":
-        self._parser = ShallowNodesIterator()
+        self._parser = ShallowNodesIterator(sort=self.sort)
       else:
-        self._parser = LevelNodesIterator(depth=self.depth) if self.depth > 0 else NodesIterator()
+        self._parser = LevelNodesIterator(depth=self.depth, sort=self.sort) if self.depth > 0 else NodesIterator(sort=self.sort)
       func = getattr(self._parser, self.method)
       return func(self._parent, self._predicate)
 
@@ -824,13 +848,13 @@ for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValue
   predicate, nargs = item
 
   # Generate getNodesFromNameP, getNodesFromValueP, ...
-  funcname = f"{prefix}{what}P"
+  funcname = f"getShallowNodesFrom{what}"
   func = create_get_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
   setattr(module_object, funcname, partial(func, method='dfs', explore='shallow'))
   # Generate get_nodes_from_name, get_nodes_from_value, ...
-  funcname = PYU.camel_to_snake(f"{prefix}{what}_p")
+  funcname = PYU.camel_to_snake(funcname)
   # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
   func = create_get_children(predicate, nargs)
   func.__name__ = funcname
@@ -1282,6 +1306,27 @@ def getNodesWithParentsByMatching__(root, predicate_list, results):
 
 iter_children_with_parents_by_matching = iterNodesWithParentsByMatching
 get_children_with_parents_by_matching  = getNodesWithParentsByMatching
+
+# # --------------------------------------------------------------------------
+# def rmChildrenFromPredicate(parent: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
+#   to_delete = []
+#   for num, node in enumerate(parent[__CHILDREN__]):
+#     if predicate(node):
+#       to_delete.append(num)
+#   for num in reversed(to_delete):
+#     del parent[__CHILDREN__][num]
+
+
+
+# def rm_nodes_from_predicate(parent: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
+#   to_delete = []
+#   for ichild, child in enumerate(parent[__CHILDREN__]):
+#     if predicate(child):
+#       to_delete.append(ichild)
+#     else:
+#       rm_nodes_from_predicate(child, name)
+#   for ichild in reversed(to_delete):
+#     del parent[__CHILDREN__][ichild]
 
 # --------------------------------------------------------------------------
 @check_is_label('ZoneSubRegion_t', 0)
