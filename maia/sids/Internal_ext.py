@@ -532,7 +532,7 @@ class ShallowNodesParser:
 # --------------------------------------------------------------------------
 class LevelNodesParser:
 
-  """ Stop exploration at level """
+  """ Stop exploration until a limited depth """
 
   MAXDEPTH=30
 
@@ -568,6 +568,47 @@ class LevelNodesParser:
       if level < self.depth:
         # Explore next level
         self._dfs(child, predicate, level=level+1)
+
+# --------------------------------------------------------------------------
+class ShallowLevelNodesParser:
+
+  """ Stop exploration if something found at a level until a limited depth """
+
+  def __init__(self, func, depth=MAXDEPTH, sort=lambda n:n[__CHILDREN__]):
+    self.func  = func
+    self.depth = depth
+    self.sort  = sort
+
+  def bfs(self, parent, predicate):
+    # print(f"ShallowLevelNodesParser.bfs: parent = {I.getName(parent)}")
+    temp = queue.Queue()
+    temp.put( (0, parent,) )
+    while not temp.empty():
+      level, node = temp.get()
+      # print(f"ShallowLevelNodesParser.bfs: node = {I.getName(node)}")
+      if predicate(node):
+        self.func(node)
+      else:
+        if level < self.depth:
+          for child in self.sort(node):
+            temp.put( (level+1, child) )
+
+  def dfs(self, parent, predicate):
+    # print(f"ShallowLevelNodesParser.dfs: parent = {I.getName(parent)}")
+    if predicate(parent):
+      self.func(parent)
+    return self._dfs(parent, predicate)
+
+  def _dfs(self, parent, predicate, level=1):
+    # print(f"ShallowLevelNodesParser._dfs: parent = {I.getName(parent)}")
+    results = []
+    for child in self.sort(parent):
+      if predicate(child):
+        self.func(child)
+      else:
+        if level < self.depth:
+          # Explore next level
+          self._dfs(child, predicate, level=level+1)
 
 # --------------------------------------------------------------------------
 class NodesIterator:
@@ -642,14 +683,13 @@ class ShallowNodesIterator:
 # --------------------------------------------------------------------------
 class LevelNodesIterator:
 
-  """ Stop exploration at level """
+  """ Stop exploration until a limited level """
 
   MAXDEPTH=30
 
   def __init__(self, depth=MAXDEPTH, sort=lambda n:n[__CHILDREN__]):
-    self.depth  = depth
+    self.depth = depth
     self.sort  = sort
-    self.result = []
 
   def bfs(self, parent, predicate):
     # print(f"LevelNodesIterator.bfs: depth = {self.depth}: parent = {I.getName(parent)}")
@@ -678,6 +718,45 @@ class LevelNodesIterator:
       if level < self.depth:
         # Explore next level
         yield from self._dfs(child, predicate, level=level+1)
+
+# --------------------------------------------------------------------------
+class ShallowLevelNodesIterator:
+
+  """ Stop exploration if something found at a level until a limited level """
+
+  def __init__(self, depth=MAXDEPTH, sort=lambda n:n[__CHILDREN__]):
+    self.depth = depth
+    self.sort  = sort
+
+  def bfs(self, parent, predicate):
+    # print(f"ShallowLevelNodesIterator.bfs: parent = {I.getName(parent)}")
+    temp = queue.Queue()
+    temp.put( (0, parent,) )
+    while not temp.empty():
+      level, node = temp.get()
+      # print(f"ShallowLevelNodesIterator.bfs: node = {I.getName(node)}")
+      if predicate(node):
+        yield node
+      else:
+        if level < self.depth:
+          for child in self.sort(node):
+            temp.put( (level+1, child) )
+
+  def dfs(self, parent, predicate):
+    # print(f"ShallowLevelNodesIterator.dfs: parent = {I.getName(parent)}")
+    if predicate(parent):
+      yield parent
+    yield from self._dfs(parent, predicate)
+
+  def _dfs(self, parent, predicate, level=1):
+    # print(f"ShallowLevelNodesIterator._dfs: parent = {I.getName(parent)}")
+    for child in self.sort(parent):
+      if predicate(child):
+        yield child
+      else:
+        if level < self.depth:
+          # Explore next level
+          yield from self._dfs(child, predicate, level=level+1)
 
 # --------------------------------------------------------------------------
 class NodesWalker:
@@ -813,22 +892,30 @@ class NodesWalker:
         # Generate list
         f = lambda n: self._cache.append(n)
         if self.explore == "shallow":
-          self._parser = ShallowNodesParser(f, sort=self.sort)
-        elif self.depth > 0:
-          self._parser = LevelNodesParser(f, depth=self.depth, sort=self.sort)
+          if self.depth > 0:
+            self._parser = ShallowLevelNodesParser(f, depth=self.depth, sort=self.sort)
+          else:
+            self._parser = ShallowNodesParser(f, sort=self.sort)
         else:
-          self._parser = NodesParser(f, sort=self.sort)
+          if self.depth > 0:
+            self._parser = LevelNodesParser(f, depth=self.depth, sort=self.sort)
+          else:
+            self._parser = NodesParser(f, sort=self.sort)
         parser = getattr(self._parser, self.method)
         parser(self._parent, self._predicate)
       return self._cache
     else:
       # Generate iterator
       if self.explore == "shallow":
-        self._parser = ShallowNodesIterator(sort=self.sort)
-      elif self.depth > 0:
-        self._parser = LevelNodesIterator(depth=self.depth, sort=self.sort)
+        if self.depth > 0:
+          self._parser = ShallowLevelNodesIterator(depth=self.depth, sort=self.sort)
+        else:
+          self._parser = ShallowNodesIterator(sort=self.sort)
       else:
-        self._parser = NodesIterator(sort=self.sort)
+        if self.depth > 0:
+          self._parser = LevelNodesIterator(depth=self.depth, sort=self.sort)
+        else:
+          self._parser = NodesIterator(sort=self.sort)
       parser = getattr(self._parser, self.method)
       return parser(self._parent, self._predicate)
 
