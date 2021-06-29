@@ -499,6 +499,26 @@ Base CGNSBase_t:
   base = IE.getNodeFromLabel(tree, "CGNSBase_t")
 
   # walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
+  # walker.method = 'bfs'
+  # for n in walker():
+  #   print(f"n = {I.getName(n)}")
+  # walker.method = 'dfs'
+  # for n in walker():
+  #   print(f"n = {I.getName(n)}")
+  # walker.method = 'bfs'; walker.depth = 2
+  # for n in walker():
+  #   print(f"n = {I.getName(n)}")
+  # walker.method = 'dfs'; walker.depth = 2
+  # for n in walker():
+  #   print(f"n = {I.getName(n)}")
+  # walker.method = 'bfs'; explore='shallow'
+  # for n in walker():
+  #   print(f"n = {I.getName(n)}")
+  # walker.method = 'dfs'; explore='shallow'
+  # for n in walker():
+  #   print(f"n = {I.getName(n)}")
+
+  # walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
   # for n in walker(method='bfs'):
   #   print(f"n = {I.getName(n)}")
   # for n in walker(method='dfs'):
@@ -553,100 +573,95 @@ Base CGNSBase_t:
   #   print(f"n = {I.getName(n)}")
 
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
+  for n in walker():
+    print(f"n = {I.getName(n)}")
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  assert([I.getName(n) for n in walker(method='bfs')] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  assert([I.getName(n) for n in walker(method='dfs')] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  assert([I.getName(n) for n in walker(method='bfs', depth=2)] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  assert([I.getName(n) for n in walker(method='dfs', depth=2)] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  assert([I.getName(n) for n in walker(method='bfs', explore='shallow')] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  assert([I.getName(n) for n in walker(method='dfs', explore='shallow')] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
+  walker.method='bfs'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
+  walker.method='dfs'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
+  walker.method='bfs'; walker.depth=2
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
+  walker.method='dfs'; walker.depth=2
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
+  walker.method='bfs'; walker.explore='shallow'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
+  walker.method='dfs'; walker.explore='shallow'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
 
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), caching=True)
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
   walker.predicate = lambda n: n[3] == 'BC_t'
-  assert([I.getName(n) for n in walker(method='bfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  walker.method='bfs'
+  assert([I.getName(n) for n in walker()] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   walker.predicate = lambda n: fnmatch.fnmatch(n[0], 'Zone*')
-  assert([I.getName(n) for n in walker(method='dfs')] == ['ZoneI', 'ZoneJ'])
+  walker.method='dfs'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
   walker.predicate = lambda n: n[3] == 'BC_t'
-  assert([I.getName(n) for n in walker(method='bfs', depth=4)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  walker.method='bfs'; walker.depth=4
+  assert([I.getName(n) for n in walker()] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   walker.predicate = lambda n: fnmatch.fnmatch(n[0], 'Zone*')
-  assert([I.getName(n) for n in walker(method='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
+  walker.method='dfs'; walker.depth=4
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
   walker.predicate = lambda n: n[3] == 'BC_t'
-  assert([I.getName(n) for n in walker(method='bfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  walker.method='bfs'; walker.depth=4
+  assert([I.getName(n) for n in walker()] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   walker.predicate = lambda n: fnmatch.fnmatch(n[0], 'Zone*')
-  assert([I.getName(n) for n in walker(method='dfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  walker.method='dfs'; walker.depth=4
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
 
   # Test parent
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), caching=True)
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
-  walker.parent = base
-  assert([I.getName(n) for n in walker(depth=1)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
-
-  walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), caching=True)
-  assert([I.getName(n) for n in walker(parent=base, depth=1)] == ['ZoneI', 'ZoneJ'])
+  walker.parent = base; walker.depth = 1
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
 
   # Test predicate
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), caching=True)
-  assert([I.getName(n) for n in walker(explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  walker.explore='shallow'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
   walker.predicate = lambda n: n[3] == 'BC_t'
-  assert([I.getName(n) for n in walker(explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-  assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-
-  walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), caching=True)
-  assert([I.getName(n) for n in walker(predicate=lambda n: n[3] == 'BC_t', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in walker()] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
   # Test method
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
-  assert([I.getName(n) for n in walker(explore='shallow', method='bfs')] == ['ZoneI', 'ZoneJ'])
+  walker.explore='shallow'; walker.method='bfs'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == [])
   assert(walker.method == 'bfs')
-  walker.method = 'dfs'
-  assert([I.getName(n) for n in walker(explore='shallow')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in walker.cache] == [])
-
-  walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs')
-  assert(walker.method == 'bfs')
-  assert([I.getName(n) for n in walker(method = 'dfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  walker.method = 'dfs'; walker.explore = 'shallow'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == [])
 
   # Test explore
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
-  assert([I.getName(n) for n in walker(explore='deep')] == ['ZoneI', 'ZoneJ'])
+  walker.explore='deep'
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == [])
   assert(walker.explore == 'deep')
   walker.explore = 'shallow'
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == [])
 
-  walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), explore='deep')
-  assert(walker.explore == 'deep')
-  assert([I.getName(n) for n in walker(explore='shallow')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in walker.cache] == [])
-
   # Test depth
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
-  assert([I.getName(n) for n in walker(depth=2)] == ['ZoneI', 'ZoneJ'])
+  walker.depth = 2
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == [])
   assert(walker.depth == 2)
   walker.depth = 1
   assert([I.getName(n) for n in walker()] == [])
-  assert([I.getName(n) for n in walker.cache] == [])
-
-  walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), depth=2)
-  assert(walker.depth == 2)
-  assert([I.getName(n) for n in walker(depth=1)] == [])
   assert([I.getName(n) for n in walker.cache] == [])
 
 def test_iterNodesFromPredicate():
@@ -914,28 +929,41 @@ Base CGNSBase_t:
   tree = parse_yaml_cgns.to_complete_pytree(yt)
   # I.printTree(tree)
 
-  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t")
-  assert([I.getName(n) for n in walker(method='bfs')] == ['bca1', 'bcd2', 'bcb3', 'bce4', 'bcc5'])
-  assert([I.getName(n) for n in walker(method='bfs', sort=lambda n:reversed(I.getChildren(n)))] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
-  assert([I.getName(n) for n in walker(method='bfs', sort=IE.NodesWalker.BACKWARD)] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
+  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", method='bfs')
+  assert([I.getName(n) for n in walker()] == ['bca1', 'bcd2', 'bcb3', 'bce4', 'bcc5'])
+  walker.sort = lambda n:reversed(I.getChildren(n))
+  assert([I.getName(n) for n in walker()] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
+  walker.sort = IE.NodesWalker.BACKWARD
+  assert([I.getName(n) for n in walker()] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
 
   fsort = lambda parent : sorted(I.getChildren(parent), key=lambda n : I.getName(n)[2])
+  walker.sort = fsort
   # for n in walker(method='bfs', sort=fsort):
   #   print(f"n = {I.getName(n)}")
-  assert([''.join(I.getName(n)) for n in walker(method='bfs', sort=fsort)] == ['bca1', 'bcd2', 'bcb3', 'bcc5', 'bce4'])
+  assert([''.join(I.getName(n)) for n in walker()] == ['bca1', 'bcd2', 'bcb3', 'bcc5', 'bce4'])
 
   walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "FamilyName_t")
-  # for n in walker(method='dfs'):
+  # walker.method = 'dfs'
+  # for n in walker():
   #   print(f"n = {I.getValue(n)}")
+  # walker.method = 'bfs'
   # for n in walker(method='bfs'):
   #   print(f"n = {I.getValue(n)}")
-  assert([''.join(I.getValue(n)) for n in walker(method='dfs')] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4', 'BCB5'])
-  assert([''.join(I.getValue(n)) for n in walker(method='bfs')] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5'])
+  walker.method = 'dfs'
+  assert([''.join(I.getValue(n)) for n in walker()] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4', 'BCB5'])
+  walker.method = 'bfs'
+  assert([''.join(I.getValue(n)) for n in walker()] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5'])
 
-  assert([''.join(I.getValue(n)) for n in walker(method='dfs', sort=IE.NodesWalker.BACKWARD)] == ['BCB5', 'BCE4', 'BCD3', 'ROW1', 'BCA2', 'BCC1'])
+  walker.method = 'dfs'
+  walker.sort = IE.NodesWalker.BACKWARD
+  assert([''.join(I.getValue(n)) for n in walker()] == ['BCB5', 'BCE4', 'BCD3', 'ROW1', 'BCA2', 'BCC1'])
+  # walker.method = 'bfs'
+  # walker.sort = IE.NodesWalker.BACKWARD
   # for n in walker(method='bfs', sort=IE.NodesWalker.BACKWARD):
   #   print(f"n = {I.getValue(n)}")
-  assert([''.join(I.getValue(n)) for n in walker(method='bfs', sort=IE.NodesWalker.BACKWARD)] == ['ROW1', 'BCB5', 'BCE4', 'BCD3', 'BCA2', 'BCC1'])
+  walker.method = 'bfs'
+  walker.sort = IE.NodesWalker.BACKWARD
+  assert([''.join(I.getValue(n)) for n in walker()] == ['ROW1', 'BCB5', 'BCE4', 'BCD3', 'BCA2', 'BCC1'])
 
 def test_getAllLabel():
   yt = """
@@ -1277,8 +1305,8 @@ if __name__ == "__main__":
   # test_requireNodeFromName()
   # test_requireNodeFromType()
   # test_getRequireNodeFromNameAndType()
-  # test_NodesWalker()
-  test_NodesWalker_order()
+  test_NodesWalker()
+  # test_NodesWalker_order()
   # test_iterNodesFromPredicate()
   # test_getNodesFromPredicate()
   # test_getAllLabel()
