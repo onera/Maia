@@ -92,7 +92,7 @@ def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
                                       face_vtx,
                                       face_vtx_idx,
                                       ngon_pe)
-  #keep_alive.append(cell_ln_to_gn)
+  keep_alive.append(cell_ln_to_gn)
 
   mesh_loc.part_set(i_part, n_cell, cell_face_idx, cell_face, cell_ln_to_gn,
                             n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
@@ -104,6 +104,7 @@ def create_subset_numbering(subset_l, parent_numbering_l, comm):
   """
   Create a sub (continuous) numbering from a parent numbering list (size = n_part)
   and a list of (local) indices to extract on each part (size = n_part)
+  Warning ! Local indices start at 1 and not 0
   Return a dict containing the parent global id of extracted elements for each part
   and the sub global id of extracted elements for each part
   """
