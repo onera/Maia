@@ -399,17 +399,19 @@ class NodeWalker:
   def parser(self):
     return self._parser
 
-  def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None, sort=None):
-    if parent and parent != self.parent:
-      self.parent = parent
-    if predicate and predicate != self.predicate:
-      self.predicate = predicate
-    if method and method != self.method:
-      self.method = method
-    if depth and depth != self.depth:
-      self.depth = depth
-    if sort and sort != self.sort:
-      self.sort = sort
+  # def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None, sort=None):
+  #   if parent and parent != self.parent:
+  #     self.parent = parent
+  #   if predicate and predicate != self.predicate:
+  #     self.predicate = predicate
+  #   if method and method != self.method:
+  #     self.method = method
+  #   if depth and depth != self.depth:
+  #     self.depth = depth
+  #   if sort and sort != self.sort:
+  #     self.sort = sort
+
+  def __call__(self):
     # Create parser
     self._parser = LevelNodeParser(depth=self.depth, sort=self.sort) if self.depth > 0 else NodeParser(sort=self.sort)
     func = getattr(self._parser, self.method)
@@ -417,12 +419,9 @@ class NodeWalker:
 
 
 # --------------------------------------------------------------------------
-def requestNodeFromPredicate(parent, predicate, method=NodeParser.DEFAULT, depth=None):
-  walker = NodeWalker(parent, predicate)
-  return walker(method=method, depth=depth)
-  # parser = LevelNodeParser(depth=depth) if isinstance(depth, int) else NodeParser()
-  # func   = getattr(parser, method)
-  # return func(parent, predicate)
+def requestNodeFromPredicate(*args, **kwargs):
+  walker = NodeWalker(*args, **kwargs)
+  return walker()
 
 def create_request_child(predicate, nargs):
   def _get_request_from(parent, *args, **kwargs):
@@ -434,11 +433,12 @@ create_functions(requestNodeFromPredicate, create_request_child, "bfs", allfuncs
   "Return a child CGNS node or None (if it is not found)")
 
 # --------------------------------------------------------------------------
-def getNodeFromPredicate(parent, predicate, default=None, method=NodeParser.DEFAULT, depth=None):
+def getNodeFromPredicate(parent, predicate, *args, **kwargs):
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
-  node = requestNodeFromPredicate(parent, predicate, method=method, depth=depth)
+  node = requestNodeFromPredicate(parent, predicate, *args, **kwargs)
   if node is not None:
     return node
+  default = kwargs.get('default', None)
   if default and is_valid_node(default):
     return default
   raise CGNSNodeFromPredicateNotFoundError(parent, predicate)
