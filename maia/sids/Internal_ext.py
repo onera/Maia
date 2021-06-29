@@ -919,6 +919,46 @@ class NodesWalker:
       parser = getattr(self._parser, self.method)
       return parser(self._parent, self._predicate)
 
+  def apply(self, f, *args, **kwargs):
+    if self.caching:
+      if not bool(self._cache):
+
+        def _f(n):
+          self._cache.append(n)
+          f(n, *args, **kwargs)
+
+        if self.explore == "shallow":
+          if self.depth > 0:
+            self._parser = ShallowLevelNodesParser(_f, depth=self.depth, sort=self.sort)
+          else:
+            self._parser = ShallowNodesParser(_f, sort=self.sort)
+        else:
+          if self.depth > 0:
+            self._parser = LevelNodesParser(_f, depth=self.depth, sort=self.sort)
+          else:
+            self._parser = NodesParser(_f, sort=self.sort)
+        parser = getattr(self._parser, self.method)
+        parser(self._parent, self._predicate)
+      else:
+        for n in self._cache:
+          f(n, *args, **kwargs)
+    else:
+      def _f(n):
+        f(n, *args, **kwargs)
+
+      if self.explore == "shallow":
+        if self.depth > 0:
+          self._parser = ShallowLevelNodesParser(_f, depth=self.depth, sort=self.sort)
+        else:
+          self._parser = ShallowNodesParser(_f, sort=self.sort)
+      else:
+        if self.depth > 0:
+          self._parser = LevelNodesParser(_f, depth=self.depth, sort=self.sort)
+        else:
+          self._parser = NodesParser(_f, sort=self.sort)
+      parser = getattr(self._parser, self.method)
+      parser(self._parent, self._predicate)
+
   def clean(self):
     """ Reset the cache """
     self._cache = []
