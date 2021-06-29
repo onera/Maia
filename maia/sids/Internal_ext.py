@@ -186,7 +186,7 @@ allfuncs = {
 MAXDEPTH = 10
 
 # --------------------------------------------------------------------------
-def create_functions(function, create_function, method, funcs, mesg):
+def create_functions(function, create_function, search, funcs, mesg):
   snake_name = PYU.camel_to_snake(function.__name__)
   prefix = function.__name__.replace('Predicate', '')
   # print(f"function          : {function}")
@@ -198,13 +198,13 @@ def create_functions(function, create_function, method, funcs, mesg):
     doc = """{0} from a predicate with depth={1}""".format(mesg, depth)
     # Generate getXXXFromPredicate1, getXXXFromPredicate2, ..., getXXXFromPredicate{MAXDEPTH}
     funcname = f"{function.__name__}{depth}"
-    func = partial(function, method='dfs', depth=depth)
+    func = partial(function, search='dfs', depth=depth)
     func.__name__ = funcname
     func.__doc__  = doc
     setattr(module_object, funcname, func)
     # Generate get_xxx_from_predicate1, get_xxx_from_predicate2, ..., get_xxx_from_predicate{MAXDEPTH}
     funcname = f"{snake_name}{depth}"
-    func = partial(function, method='dfs', depth=depth)
+    func = partial(function, search='dfs', depth=depth)
     func.__name__ = funcname
     func.__doc__  = doc
     setattr(module_object, funcname, func)
@@ -218,14 +218,14 @@ def create_functions(function, create_function, method, funcs, mesg):
     func = create_function(predicate, nargs)
     func.__name__ = funcname
     func.__doc__  = """{0} from a {1}""".format(mesg, dwhat)
-    setattr(module_object, funcname, partial(func, method=method))
+    setattr(module_object, funcname, partial(func, search=search))
     # Generate get_xxx_from_name, get_xxx_from_value, ..., get_xxx_from_name_value_and_label
     funcname = PYU.camel_to_snake(f"{prefix}{what}")
     # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
     func = create_function(predicate, nargs)
     func.__name__ = funcname
     func.__doc__  = """{0} from a {1}""".format(mesg, dwhat)
-    setattr(module_object, funcname, partial(func, method=method))
+    setattr(module_object, funcname, partial(func, search=search))
 
     for depth in range(1,MAXDEPTH+1):
       # Generate getXXXFromName1, getXXXFromName2, ..., getXXXFromName{MAXDEPTH}
@@ -236,7 +236,7 @@ def create_functions(function, create_function, method, funcs, mesg):
       func = create_function(predicate, nargs)
       func.__name__ = funcname
       func.__doc__  = """{0} from a {1} with depth={2}""".format(mesg, dwhat, depth)
-      setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+      setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
       # Generate get_xxx_from_name1, get_xxx_from_name2, ..., get_xxx_from_name{MAXDEPTH}
       # Generate get_xxx_from_value1, get_xxx_from_value2, ..., get_xxx_from_value{MAXDEPTH}
       #   ...
@@ -245,7 +245,7 @@ def create_functions(function, create_function, method, funcs, mesg):
       func = create_function(predicate, nargs)
       func.__name__ = funcname
       func.__doc__  = """{0} from a {1} with depth={2}""".format(mesg, dwhat, depth)
-      setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+      setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
 
 # --------------------------------------------------------------------------
 class NodeParser:
@@ -334,13 +334,15 @@ class NodeWalker:
   BACKWARD = lambda n:reverse(n[__CHILDREN__])
 
   def __init__(self, parent: TreeNode, predicate: Callable[[TreeNode], bool],
-                     method=NodeParser.DEFAULT, depth=0, sort=FORWARD):
+                     search=NodeParser.DEFAULT, depth=0, sort=FORWARD):
     self.parent    = parent
     self.predicate = predicate
     # Register default value
-    self.method = method
+    self.search = search
     self.depth  = depth
     self.sort  = sort
+
+    search
 
   @property
   def parent(self):
@@ -363,15 +365,15 @@ class NodeWalker:
       raise TypeError("predicate must be a callable function.")
 
   @property
-  def method(self):
-    return self._method
+  def search(self):
+    return self._search
 
-  @method.setter
-  def method(self, value: str):
+  @search.setter
+  def search(self, value: str):
     if value in ['bfs', 'dfs']:
-      self._method = value
+      self._search = value
     else:
-      raise ValueError("method must 'bfs' or 'dfs'.")
+      raise ValueError("search must 'bfs' or 'dfs'.")
 
   @property
   def depth(self):
@@ -399,13 +401,13 @@ class NodeWalker:
   def parser(self):
     return self._parser
 
-  # def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None, sort=None):
+  # def __call__(self, parent=None, predicate=None, search=None, explore=None, depth=None, sort=None):
   #   if parent and parent != self.parent:
   #     self.parent = parent
   #   if predicate and predicate != self.predicate:
   #     self.predicate = predicate
-  #   if method and method != self.method:
-  #     self.method = method
+  #   if search and search != self.search:
+  #     self.search = search
   #   if depth and depth != self.depth:
   #     self.depth = depth
   #   if sort and sort != self.sort:
@@ -414,7 +416,7 @@ class NodeWalker:
   def __call__(self):
     # Create parser
     self._parser = LevelNodeParser(depth=self.depth, sort=self.sort) if self.depth > 0 else NodeParser(sort=self.sort)
-    func = getattr(self._parser, self.method)
+    func = getattr(self._parser, self.search)
     return func(self._parent, self._predicate)
 
 
@@ -766,12 +768,12 @@ class NodesWalker:
   BACKWARD = lambda n:reversed(n[__CHILDREN__])
 
   def __init__(self, parent: TreeNode, predicate: Callable[[TreeNode], bool],
-                     method=NodesParser.DEFAULT, explore='deep', depth=0, sort=FORWARD,
+                     search=NodesParser.DEFAULT, explore='deep', depth=0, sort=FORWARD,
                      caching: bool=False):
     self.parent    = parent
     self.predicate = predicate
     # Register default value
-    self.method  = method
+    self.search  = search
     self.explore = explore
     self.depth   = depth
     self.sort    = sort
@@ -803,16 +805,16 @@ class NodesWalker:
       raise TypeError("predicate must be a callable function.")
 
   @property
-  def method(self):
-    return self._method
+  def search(self):
+    return self._search
 
-  @method.setter
-  def method(self, value: str):
+  @search.setter
+  def search(self, value: str):
     if value in ['bfs', 'dfs']:
-      self._method = value
+      self._search = value
       self.clean()
     else:
-      raise ValueError("method must 'bfs' or 'dfs'.")
+      raise ValueError("search must 'bfs' or 'dfs'.")
 
   @property
   def explore(self):
@@ -824,7 +826,7 @@ class NodesWalker:
       self._explore = value
       self.clean()
     else:
-      raise ValueError("method must 'deep' or 'shallow'.")
+      raise ValueError("search must 'deep' or 'shallow'.")
 
   @property
   def depth(self):
@@ -869,14 +871,14 @@ class NodesWalker:
   def parser(self):
     return self._parser
 
-  # def __call__(self, parent=None, predicate=None, method=None, explore=None, depth=None, sort=None):
+  # def __call__(self, parent=None, predicate=None, search=None, explore=None, depth=None, sort=None):
   #   """ Generator of nodes with predicate """
   #   if parent and parent != self.parent:
   #     self.parent = parent
   #   if predicate and predicate != self.predicate:
   #     self.predicate = predicate
-  #   if method and method != self.method:
-  #     self.method = method
+  #   if search and search != self.search:
+  #     self.search = search
   #   if explore and explore != self.explore:
   #     self.explore = explore
   #   if depth and depth != self.depth:
@@ -901,7 +903,7 @@ class NodesWalker:
             self._parser = LevelNodesParser(f, depth=self.depth, sort=self.sort)
           else:
             self._parser = NodesParser(f, sort=self.sort)
-        parser = getattr(self._parser, self.method)
+        parser = getattr(self._parser, self.search)
         parser(self._parent, self._predicate)
       return self._cache
     else:
@@ -916,7 +918,7 @@ class NodesWalker:
           self._parser = LevelNodesIterator(depth=self.depth, sort=self.sort)
         else:
           self._parser = NodesIterator(sort=self.sort)
-      parser = getattr(self._parser, self.method)
+      parser = getattr(self._parser, self.search)
       return parser(self._parent, self._predicate)
 
   def apply(self, f, *args, **kwargs):
@@ -937,7 +939,7 @@ class NodesWalker:
             self._parser = LevelNodesParser(_f, depth=self.depth, sort=self.sort)
           else:
             self._parser = NodesParser(_f, sort=self.sort)
-        parser = getattr(self._parser, self.method)
+        parser = getattr(self._parser, self.search)
         parser(self._parent, self._predicate)
       else:
         for n in self._cache:
@@ -956,7 +958,7 @@ class NodesWalker:
           self._parser = LevelNodesParser(_f, depth=self.depth, sort=self.sort)
         else:
           self._parser = NodesParser(_f, sort=self.sort)
-      parser = getattr(self._parser, self.method)
+      parser = getattr(self._parser, self.search)
       parser(self._parent, self._predicate)
 
   def clean(self):
@@ -967,8 +969,8 @@ class NodesWalker:
     self.clean()
 
 # --------------------------------------------------------------------------
-# def getNodesFromPredicate(parent, predicate, method=NodeParser.DEFAULT, explore='deep', depth=0):
-#   walker = NodesWalker(parent, predicate, method=method, explore=explore, depth=depth, caching=True)
+# def getNodesFromPredicate(parent, predicate, search=NodeParser.DEFAULT, explore='deep', depth=0):
+#   walker = NodesWalker(parent, predicate, search=search, explore=explore, depth=depth, caching=True)
 #   return walker()
 def getNodesFromPredicate(*args, **kwargs):
   kwargs['caching'] = True
@@ -998,18 +1000,18 @@ for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValue
   func = create_get_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, method='dfs', explore='shallow'))
+  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
   # Generate get_nodes_from_name, get_nodes_from_value, ...
   funcname = PYU.camel_to_snake(funcname)
   # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
   func = create_get_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, method='dfs', explore='shallow'))
+  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
 
 # --------------------------------------------------------------------------
-# def iterNodesFromPredicate(parent, predicate, method=NodeParser.DEFAULT, explore='deep', depth=0):
-#   walker = NodesWalker(parent, predicate, method=method, explore=explore, depth=depth, caching=False)
+# def iterNodesFromPredicate(parent, predicate, search=NodeParser.DEFAULT, explore='deep', depth=0):
+#   walker = NodesWalker(parent, predicate, search=search, explore=explore, depth=depth, caching=False)
 #   return walker()
 def iterNodesFromPredicate(*args, **kwargs):
   kwargs['caching'] = False
@@ -1038,14 +1040,14 @@ for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValue
   func = create_iter_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, method='dfs', explore='shallow'))
+  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
   # Generate get_nodes_from_name, get_nodes_from_value, ...
   funcname = PYU.camel_to_snake(funcname)
   # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
   func = create_iter_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, method='dfs', explore='shallow'))
+  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
 
 # --------------------------------------------------------------------------
 def create_get_child(predicate, nargs, args):
@@ -1084,16 +1086,16 @@ for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
   funcname = f"get{suffix}"
   func.__name__ = funcname
   func.__doc__  = """get the first CGNS node from CGNS label {0}.""".format(label)
-  setattr(module_object, funcname, partial(func, method='bfs'))
+  setattr(module_object, funcname, partial(func, search='bfs'))
   # Generate get_base, get_zone, ..., get_invalid
   func = create_get_child(match_label, ('label',), (label,))
   funcname = f"get_{snake_name}"
   func.__name__ = funcname
   func.__doc__  = """get the first CGNS node from CGNS label {0}.""".format(label)
-  setattr(module_object, funcname, partial(func, method='bfs'))
+  setattr(module_object, funcname, partial(func, search='bfs'))
 
   # Generate getAllBase, getAllZone, ..., getAllInvalid
-  pargs = {'method':'bfs', 'explore':'shallow'} if label in label_with_specific_depth else {'method':'dfs'}
+  pargs = {'search':'bfs', 'explore':'shallow'} if label in label_with_specific_depth else {'search':'dfs'}
   func = create_get_all_children(match_label, ('label',), (label,))
   funcname = f"getAll{suffix}"
   func.__name__ = funcname
@@ -1115,13 +1117,13 @@ for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
     funcname = f"get{suffix}{depth}"
     func.__name__ = funcname
     func.__doc__  = """get the first CGNS node from CGNS label {0} with depth={1}.""".format(label, depth)
-    setattr(module_object, funcname, partial(func, method='bfs', depth=depth))
+    setattr(module_object, funcname, partial(func, search='bfs', depth=depth))
     # Generate get_base1, get_zone1, ..., get_invalid1
     func = create_get_child(match_label, ('label',), (label,))
     funcname = f"get_{snake_name}{depth}"
     func.__name__ = funcname
     func.__doc__  = """get the first CGNS node from CGNS label {0} with depth={1}.""".format(label, depth)
-    setattr(module_object, funcname, partial(func, method='bfs', depth=depth))
+    setattr(module_object, funcname, partial(func, search='bfs', depth=depth))
 
     # Generate getAllBase1, getAllBase2, ..., getAllBase{MAXDEPTH}
     # Generate getAllZone1, getAllZone2, ..., getAllZone{MAXDEPTH}
@@ -1131,7 +1133,7 @@ for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
     funcname = f"getAll{suffix}{depth}"
     func.__name__ = funcname
     func.__doc__  = """get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
-    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+    setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
     # Generate get_all_base1, get_all_base2, ..., get_all_base{MAXDEPTH}
     # Generate get_all_zone1, get_all_zone2, ..., get_all_zone{MAXDEPTH}
     #   ...
@@ -1140,7 +1142,7 @@ for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
     funcname = f"get_all_{snake_name}{depth}"
     func.__name__ = funcname
     func.__doc__  = """get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
-    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+    setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
 
 # --------------------------------------------------------------------------
 def create_functions_name(create_function, name):
@@ -1151,13 +1153,13 @@ def create_functions_name(create_function, name):
   func = create_function(match_name, ('name',), (name,))
   func.__name__ = funcname
   func.__doc__  = """get the CGNS node with name {0}.""".format(name)
-  setattr(module_object, funcname, partial(func, method='dfs'))
+  setattr(module_object, funcname, partial(func, search='dfs'))
   # Generate get_acoustic, ..., get_coordinate_x, ..., get_zone_sub_region_pointers
   funcname = f"get_{snake_name}"
   func = create_function(match_name, ('name',), (name,))
   func.__name__ = funcname
   func.__doc__  = """get the CGNS node with name {0}.""".format(name)
-  setattr(module_object, funcname, partial(func, method='dfs'))
+  setattr(module_object, funcname, partial(func, search='dfs'))
 
   for depth in range(1,MAXDEPTH+1):
     # Generate getAcoustic1, ..., getCoordinateX1, ..., getZoneSubRegionPointers1
@@ -1165,13 +1167,13 @@ def create_functions_name(create_function, name):
     func = create_function(match_name, ('name',), (name,))
     func.__name__ = funcname
     func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
-    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+    setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
     # Generate get_acoustic1, ..., get_coordinateX1, ..., get_zone_sub_region_pointers1
     funcname = f"get_{snake_name}{depth}"
     func = create_function(match_name, ('name',), (name,))
     func.__name__ = funcname
     func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
-    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+    setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
 
 # --------------------------------------------------------------------------
 def create_get_child_name(predicate, nargs, args):

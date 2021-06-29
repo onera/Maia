@@ -252,33 +252,33 @@ Base CGNSBase_t:
   # requestNodeFrom...
   base = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "Base")
   assert is_base(base)
-  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="bfs")
+  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="bfs")
   assert is_zonei(zone)
-  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert is_zonei(zone)
   base = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "Base")
   assert is_base(base)
-  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="bfs")
+  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="bfs")
   assert is_zonei(zone)
-  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert is_zonei(zone)
 
-  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs", depth=1)
+  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs", depth=1)
   assert zone is None
-  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs", depth=2)
+  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs", depth=2)
   assert is_zonei(zone)
-  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs", depth=3)
+  zone = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs", depth=3)
   assert is_zonei(zone)
 
-  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "Base", method="dfs", depth=1)
+  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "Base", search="dfs", depth=1)
   assert is_base(node)
-  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs", depth=2)
+  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs", depth=2)
   assert is_zonei(node)
-  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "Ngon", method="dfs", depth=3)
+  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "Ngon", search="dfs", depth=3)
   assert is_ngon(node)
-  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "bc1", method="dfs", depth=4)
+  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "bc1", search="dfs", depth=4)
   assert is_bc1(node)
-  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "Index_i", method="dfs", depth=5)
+  node = IE.requestNodeFromPredicate(tree, lambda n: I.getName(n) == "Index_i", search="dfs", depth=5)
   assert is_index_i(node)
 
   element = IE.requestNodeFromName(tree, "NFace")
@@ -347,24 +347,24 @@ Base CGNSBase_t:
   assert element is None
 
   # requestNodeFrom... with level and dfs
-  zone = IE.requestNodeFromPredicate1(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.requestNodeFromPredicate1(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert zone is None
-  zone = IE.requestNodeFromPredicate2(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.requestNodeFromPredicate2(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert is_zonei(zone)
-  zone = IE.requestNodeFromPredicate3(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.requestNodeFromPredicate3(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert is_zonei(zone)
-  zone = IE.request_node_from_predicate1(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.request_node_from_predicate1(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert zone is None
-  zone = IE.request_node_from_predicate2(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.request_node_from_predicate2(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert is_zonei(zone)
-  zone = IE.request_node_from_predicate3(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.request_node_from_predicate3(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert is_zonei(zone)
 
-  zone = IE.requestNodeFromName(tree, "ZoneI", method="dfs", depth=1)
+  zone = IE.requestNodeFromName(tree, "ZoneI", search="dfs", depth=1)
   assert zone is None
-  zone = IE.requestNodeFromName(tree, "ZoneI", method="dfs", depth=2)
+  zone = IE.requestNodeFromName(tree, "ZoneI", search="dfs", depth=2)
   assert is_zonei(zone)
-  zone = IE.requestNodeFromName(tree, "ZoneI", method="dfs", depth=3)
+  zone = IE.requestNodeFromName(tree, "ZoneI", search="dfs", depth=3)
   assert is_zonei(zone)
 
   zone = IE.requestNodeFromName1(tree, "ZoneI")
@@ -425,11 +425,11 @@ Base CGNSBase_t:
   # getNodeFrom...
   base = IE.getNodeFromPredicate(tree, lambda n: I.getName(n) == "Base")
   assert is_base(base)
-  zone = IE.getNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.getNodeFromPredicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert is_zonei(zone)
   base = IE.get_node_from_predicate(tree, lambda n: I.getName(n) == "Base")
   assert is_base(base)
-  zone = IE.get_node_from_predicate(tree, lambda n: I.getName(n) == "ZoneI", method="dfs")
+  zone = IE.get_node_from_predicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs")
   assert is_zonei(zone)
 
   element = IE.getNodeFromName(tree, "NFace")
@@ -499,121 +499,121 @@ Base CGNSBase_t:
   base = IE.getNodeFromLabel(tree, "CGNSBase_t")
 
   # walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
-  # walker.method = 'bfs'
+  # walker.search = 'bfs'
   # for n in walker():
   #   print(f"n = {I.getName(n)}")
-  # walker.method = 'dfs'
+  # walker.search = 'dfs'
   # for n in walker():
   #   print(f"n = {I.getName(n)}")
-  # walker.method = 'bfs'; walker.depth = 2
+  # walker.search = 'bfs'; walker.depth = 2
   # for n in walker():
   #   print(f"n = {I.getName(n)}")
-  # walker.method = 'dfs'; walker.depth = 2
+  # walker.search = 'dfs'; walker.depth = 2
   # for n in walker():
   #   print(f"n = {I.getName(n)}")
-  # walker.method = 'bfs'; explore='shallow'
+  # walker.search = 'bfs'; explore='shallow'
   # for n in walker():
   #   print(f"n = {I.getName(n)}")
-  # walker.method = 'dfs'; explore='shallow'
+  # walker.search = 'dfs'; explore='shallow'
   # for n in walker():
   #   print(f"n = {I.getName(n)}")
 
   # walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
-  # for n in walker(method='bfs'):
+  # for n in walker(search='bfs'):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='dfs'):
+  # for n in walker(search='dfs'):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='bfs', depth=2):
+  # for n in walker(search='bfs', depth=2):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='dfs', depth=2):
+  # for n in walker(search='dfs', depth=2):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='bfs', explore='shallow'):
+  # for n in walker(search='bfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='dfs', explore='shallow'):
+  # for n in walker(search='dfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
 
   # print(f"Begin caching.......")
   # walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), caching=True)
-  # for n in walker(method='bfs'):
+  # for n in walker(search='bfs'):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='bfs'):
-  #   print(f"n = {I.getName(n)}")
-
-  # for n in walker(method='dfs'):
-  #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='dfs'):
+  # for n in walker(search='bfs'):
   #   print(f"n = {I.getName(n)}")
 
-  # for n in walker(method='bfs', depth=2):
+  # for n in walker(search='dfs'):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='bfs', depth=2):
-  #   print(f"n = {I.getName(n)}")
-
-  # for n in walker(method='dfs', depth=2):
-  #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='dfs', depth=2):
+  # for n in walker(search='dfs'):
   #   print(f"n = {I.getName(n)}")
 
-  # for n in walker(method='bfs', explore='shallow'):
+  # for n in walker(search='bfs', depth=2):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='bfs', explore='shallow'):
+  # for n in walker(search='bfs', depth=2):
   #   print(f"n = {I.getName(n)}")
 
-  # for n in walker(method='dfs', explore='shallow'):
+  # for n in walker(search='dfs', depth=2):
   #   print(f"n = {I.getName(n)}")
-  # for n in walker(method='dfs', explore='shallow'):
+  # for n in walker(search='dfs', depth=2):
+  #   print(f"n = {I.getName(n)}")
+
+  # for n in walker(search='bfs', explore='shallow'):
+  #   print(f"n = {I.getName(n)}")
+  # for n in walker(search='bfs', explore='shallow'):
+  #   print(f"n = {I.getName(n)}")
+
+  # for n in walker(search='dfs', explore='shallow'):
+  #   print(f"n = {I.getName(n)}")
+  # for n in walker(search='dfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
   # print(f"End caching.......")
 
   # walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
-  # for n in walker(method='bfs', explore='shallow'):
+  # for n in walker(search='bfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
   # walker.predicate = lambda n: n[3] == 'BC_t'
-  # for n in walker(method='bfs', explore='shallow'):
+  # for n in walker(search='bfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
 
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
   for n in walker():
     print(f"n = {I.getName(n)}")
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  walker.method='bfs'
+  walker.search='bfs'
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  walker.method='dfs'
+  walker.search='dfs'
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  walker.method='bfs'; walker.depth=2
+  walker.search='bfs'; walker.depth=2
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  walker.method='dfs'; walker.depth=2
+  walker.search='dfs'; walker.depth=2
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  walker.method='bfs'; walker.explore='shallow'
+  walker.search='bfs'; walker.explore='shallow'
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
-  walker.method='dfs'; walker.explore='shallow'
+  walker.search='dfs'; walker.explore='shallow'
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ']); assert(walker.cache == [])
 
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), caching=True)
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
   walker.predicate = lambda n: n[3] == 'BC_t'
-  walker.method='bfs'
+  walker.search='bfs'
   assert([I.getName(n) for n in walker()] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   walker.predicate = lambda n: fnmatch.fnmatch(n[0], 'Zone*')
-  walker.method='dfs'
+  walker.search='dfs'
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
   walker.predicate = lambda n: n[3] == 'BC_t'
-  walker.method='bfs'; walker.depth=4
+  walker.search='bfs'; walker.depth=4
   assert([I.getName(n) for n in walker()] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   walker.predicate = lambda n: fnmatch.fnmatch(n[0], 'Zone*')
-  walker.method='dfs'; walker.depth=4
+  walker.search='dfs'; walker.depth=4
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
   walker.predicate = lambda n: n[3] == 'BC_t'
-  walker.method='bfs'; walker.depth=4
+  walker.search='bfs'; walker.depth=4
   assert([I.getName(n) for n in walker()] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   walker.predicate = lambda n: fnmatch.fnmatch(n[0], 'Zone*')
-  walker.method='dfs'; walker.depth=4
+  walker.search='dfs'; walker.depth=4
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
 
@@ -634,13 +634,13 @@ Base CGNSBase_t:
   assert([I.getName(n) for n in walker()] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
   assert([I.getName(n) for n in walker.cache] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
-  # Test method
+  # Test search
   walker = IE.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
-  walker.explore='shallow'; walker.method='bfs'
+  walker.explore='shallow'; walker.search='bfs'
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == [])
-  assert(walker.method == 'bfs')
-  walker.method = 'dfs'; walker.explore = 'shallow'
+  assert(walker.search == 'bfs')
+  walker.search = 'dfs'; walker.explore = 'shallow'
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == [])
 
@@ -699,47 +699,47 @@ Base CGNSBase_t:
 """
   tree = parse_yaml_cgns.to_complete_pytree(yt)
 
-  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs'):
+  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs'):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs'):
+  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs'):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs', depth=2):
+  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs', depth=2):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs', depth=2):
+  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs', depth=2):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs', explore='shallow'):
+  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs', explore='shallow'):
+  # for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
 
   assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs', depth=2)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs', depth=2)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
 
   assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='bfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='dfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='bfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs')] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'ZoneBC_t')] == ['ZBCAI', 'ZBCBI', 'ZBCAJ', 'ZBCBJ'])
   assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='bfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='dfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', method='bfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', method='dfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='bfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='bfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='dfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
-  assert([I.getName(n) for n in IE.iterShallowNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='bfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterShallowNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='dfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterShallowNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', method='bfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-  assert([I.getName(n) for n in IE.iterShallowNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', method='dfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in IE.iterShallowNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='bfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterShallowNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterShallowNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='bfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in IE.iterShallowNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='dfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='bfs', depth=2)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', method='bfs', depth=4)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', method='dfs', depth=4)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='bfs', depth=2)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='bfs', depth=4)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in IE.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='dfs', depth=4)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
   assert([I.getName(n) for n in IE.iterNodesFromName(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in IE.iterNodesFromName1(tree, 'Zone*')] == [])
@@ -787,24 +787,24 @@ Base CGNSBase_t:
 """
   tree = parse_yaml_cgns.to_complete_pytree(yt)
 
-  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs'):
+  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs'):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs'):
+  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs'):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs', depth=2):
+  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs', depth=2):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs', depth=2):
+  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs', depth=2):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs', explore='shallow'):
+  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
-  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs', explore='shallow'):
+  # for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs', explore='shallow'):
   #   print(f"n = {I.getName(n)}")
 
   assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='bfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs', depth=1)] == [])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), method='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='bfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs', depth=1)] == [])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), search='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in IE.getNodesFromName(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in IE.getNodesFromName1(tree, 'Zone*')] == [])
   assert([I.getName(n) for n in IE.getNodesFromName2(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
@@ -818,11 +818,11 @@ Base CGNSBase_t:
 
   ngon = np.array([22,0], order='F')
   assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon))] == ['NgonI', 'NgonJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), method='bfs')] == ['NgonI', 'NgonJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), method='dfs')] == ['NgonI', 'NgonJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), method='dfs', depth=1)] == [])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), method='dfs', depth=2)] == [])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), method='dfs', depth=3)] == ['NgonI', 'NgonJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), search='bfs')] == ['NgonI', 'NgonJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), search='dfs')] == ['NgonI', 'NgonJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), search='dfs', depth=1)] == [])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), search='dfs', depth=2)] == [])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: np.array_equal(n[1], ngon), search='dfs', depth=3)] == ['NgonI', 'NgonJ'])
   assert([I.getName(n) for n in IE.getNodesFromValue(tree, ngon)] == ['NgonI', 'NgonJ'])
   assert([I.getName(n) for n in IE.getNodesFromValue1(tree, ngon)] == [])
   assert([I.getName(n) for n in IE.getNodesFromValue2(tree, ngon)] == [])
@@ -836,10 +836,10 @@ Base CGNSBase_t:
   assert([I.getName(n) for n in IE.get_nodes_from_value3(tree, ngon)] == ['NgonI', 'NgonJ'])
 
   assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='bfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='dfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='dfs', depth=1)] == [])
-  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', method='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='bfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs', depth=1)] == [])
+  assert([I.getName(n) for n in IE.getNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in IE.getNodesFromLabel(tree, 'Zone_t')] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in IE.getNodesFromLabel1(tree, 'Zone_t')] == [])
   assert([I.getName(n) for n in IE.getNodesFromLabel2(tree, 'Zone_t')] == ['ZoneI', 'ZoneJ'])
@@ -929,7 +929,7 @@ Base CGNSBase_t:
   tree = parse_yaml_cgns.to_complete_pytree(yt)
   # I.printTree(tree)
 
-  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", method='bfs')
+  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", search='bfs')
   assert([I.getName(n) for n in walker()] == ['bca1', 'bcd2', 'bcb3', 'bce4', 'bcc5'])
   walker.sort = lambda n:reversed(I.getChildren(n))
   assert([I.getName(n) for n in walker()] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
@@ -938,30 +938,30 @@ Base CGNSBase_t:
 
   fsort = lambda parent : sorted(I.getChildren(parent), key=lambda n : I.getName(n)[2])
   walker.sort = fsort
-  # for n in walker(method='bfs', sort=fsort):
+  # for n in walker(search='bfs', sort=fsort):
   #   print(f"n = {I.getName(n)}")
   assert([''.join(I.getName(n)) for n in walker()] == ['bca1', 'bcd2', 'bcb3', 'bcc5', 'bce4'])
 
   walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "FamilyName_t")
-  # walker.method = 'dfs'
+  # walker.search = 'dfs'
   # for n in walker():
   #   print(f"n = {I.getValue(n)}")
-  # walker.method = 'bfs'
-  # for n in walker(method='bfs'):
+  # walker.search = 'bfs'
+  # for n in walker(search='bfs'):
   #   print(f"n = {I.getValue(n)}")
-  walker.method = 'dfs'
+  walker.search = 'dfs'
   assert([''.join(I.getValue(n)) for n in walker()] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4', 'BCB5'])
-  walker.method = 'bfs'
+  walker.search = 'bfs'
   assert([''.join(I.getValue(n)) for n in walker()] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5'])
 
-  walker.method = 'dfs'
+  walker.search = 'dfs'
   walker.sort = IE.NodesWalker.BACKWARD
   assert([''.join(I.getValue(n)) for n in walker()] == ['BCB5', 'BCE4', 'BCD3', 'ROW1', 'BCA2', 'BCC1'])
-  # walker.method = 'bfs'
+  # walker.search = 'bfs'
   # walker.sort = IE.NodesWalker.BACKWARD
-  # for n in walker(method='bfs', sort=IE.NodesWalker.BACKWARD):
+  # for n in walker(search='bfs', sort=IE.NodesWalker.BACKWARD):
   #   print(f"n = {I.getValue(n)}")
-  walker.method = 'bfs'
+  walker.search = 'bfs'
   walker.sort = IE.NodesWalker.BACKWARD
   assert([''.join(I.getValue(n)) for n in walker()] == ['ROW1', 'BCB5', 'BCE4', 'BCD3', 'BCA2', 'BCC1'])
 
@@ -994,14 +994,14 @@ Base CGNSBase_t:
   tree = parse_yaml_cgns.to_complete_pytree(yt)
   # I.printTree(tree)
 
-  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", method='bfs')
+  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", search='bfs')
   walker.apply(lambda n : I.setName(n, I.getName(n).upper()))
   for n in walker():
     print(f"n = {I.getName(n)}")
   assert([I.getName(n) for n in walker()] == ['BCA1', 'BCD2', 'BCB3', 'BCE4', 'BCC5'])
   assert([I.getName(n) for n in walker.cache] == [])
 
-  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", method='dfs', caching=True)
+  walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", search='dfs', caching=True)
   walker.apply(lambda n : I.setName(n, f"_{I.getName(n).upper()}"))
   for n in walker():
     print(f"n = {I.getName(n)}")
