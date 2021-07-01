@@ -249,12 +249,31 @@ def create_functions(function, create_function, search, funcs, mesg):
       setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
 
 # --------------------------------------------------------------------------
-class NodeParser:
+class NodeParserBase:
 
   DEFAULT="bfs"
+  MAXDEPTH=30
 
-  def __init__(self, sort=lambda children:children):
-    self.sort = sort
+  def __init__(self, depth=MAXDEPTH, sort=lambda children:children):
+    self.depth = depth
+    self.sort  = sort
+
+  @abstractmethod
+  def bfs(self, parent, predicate):
+    pass
+
+  def dfs(self, parent, predicate):
+    # print(f"NodeParserBase.dfs: parent = {I.getName(parent)}")
+    if predicate(parent):
+      return parent
+    return self._dfs(parent, predicate)
+
+  @abstractmethod
+  def _dfs(self, parent, predicate, level=1):
+    pass
+
+# --------------------------------------------------------------------------
+class NodeParser(NodeParserBase):
 
   def bfs(self, parent, predicate):
     # print(f"NodeParser.bfs: parent = {I.getName(parent)}")
@@ -269,12 +288,6 @@ class NodeParser:
         temp.put(child)
     return None
 
-  def dfs(self, parent, predicate):
-    # print(f"NodeParser.dfs: parent = {I.getName(parent)}")
-    if predicate(parent):
-      return parent
-    return self._dfs(parent, predicate)
-
   def _dfs(self, parent, predicate):
     # print(f"NodeParser._dfs: parent = {I.getName(parent)}")
     for child in self.sort(parent[__CHILDREN__]):
@@ -286,14 +299,7 @@ class NodeParser:
         return result
     return None
 
-# --------------------------------------------------------------------------
-class LevelNodeParser:
-
-  MAXDEPTH=30
-
-  def __init__(self, depth=MAXDEPTH, sort=lambda children:children):
-    self.depth = depth
-    self.sort  = sort
+class LevelNodeParser(NodeParserBase):
 
   def bfs(self, parent, predicate, level=1):
     # print(f"LevelNodeParser.bfs: depth = {self.depth}: parent = {I.getName(parent)}")
@@ -308,12 +314,6 @@ class LevelNodeParser:
         for child in self.sort(node[__CHILDREN__]):
           temp.put( (level+1, child) )
     return None
-
-  def dfs(self, parent, predicate):
-    # print(f"LevelNodeParser.dfs: depth = {self.depth}: parent = {I.getName(parent)}")
-    if predicate(parent):
-      return parent
-    return self._dfs(parent, predicate)
 
   def _dfs(self, parent, predicate, level=1):
     # print(f"LevelNodeParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
@@ -342,8 +342,6 @@ class NodeWalker:
     self.search = search
     self.depth  = depth
     self.sort   = sort
-
-    search
 
   @property
   def parent(self):
@@ -1429,7 +1427,9 @@ class ShallowNodesParserPost(NodesParserPostBase):
     # print(f"ShallowNodesParserPost._dfs:   parent = {I.getName(parent)}")
     results = []
     for child in self.sort(parent[__CHILDREN__]):
+      # print(f"ShallowNodesParserPost._dfs:   test child = {I.getName(child)}")
       if predicate(child):
+        # print(f"ShallowNodesParserPost._dfs:     found child = {I.getName(child)}")
         results.append(parent[__CHILDREN__].index(child))
       else:
         # Explore next level
@@ -1444,7 +1444,9 @@ class LevelNodesParserPost(NodesParserPostBase):
     # print(f"LevelNodesParserPost._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
     results = []
     for child in self.sort(parent[__CHILDREN__]):
+      # print(f"LevelNodesParserPost._dfs:   test child = {I.getName(child)}")
       if predicate(child):
+        # print(f"LevelNodesParserPost._dfs:     found child = {I.getName(child)}")
         results.append(parent[__CHILDREN__].index(child))
       if level < self.depth:
         # Explore next level
