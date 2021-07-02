@@ -3,6 +3,7 @@ from abc import abstractmethod
 from functools import wraps
 from functools import partial
 import sys
+import copy
 import pathlib
 import fnmatch
 import queue
@@ -184,10 +185,31 @@ allfuncs = {
   'NameValueAndLabel': (match_name_value_label, ('name', 'value', 'label',)),
 }
 
+def search_nodes_dispatch(node, predicate, **kwargs):
+  """ Interface to adapted getNodesFromXXX1 function depending of predicate type"""
+  if isinstance(predicate, str):
+    if is_valid_label(predicate):
+      walker = NodesWalker(node, partial(match_label, label=predicate), **kwargs)
+      return walker()
+    else:
+      walker = NodesWalker(node, partial(match_name, name=predicate), **kwargs)
+      return walker()
+  elif isinstance(predicate, CGK.Label):
+    walker = NodesWalker(node, partial(match_label, label=predicate.name), **kwargs)
+    return walker()
+  elif callable(predicate):
+    walker = NodesWalker(node, predicate, **kwargs)
+    return walker()
+  elif isinstance(predicate, np.ndarray):
+    walker = NodesWalker(node, partial(match_value, value=predicate), **kwargs)
+    return walker()
+  else:
+    raise TypeError("predicate must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
+
 MAXDEPTH = 10
 
 # --------------------------------------------------------------------------
-def create_functions(function, create_function, search, funcs, mesg):
+def generate_functions(function, create_function, search, funcs, mesg):
   snake_name = PYU.camel_to_snake(function.__name__)
   prefix = function.__name__.replace('Predicate', '')
   # print(f"function          : {function}")
@@ -430,7 +452,7 @@ def create_request_child(predicate, nargs):
     return requestNodeFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_request_from
 
-create_functions(requestNodeFromPredicate, create_request_child, "bfs", allfuncs,
+generate_functions(requestNodeFromPredicate, create_request_child, "bfs", allfuncs,
   "Return a child CGNS node or None (if it is not found)")
 
 # --------------------------------------------------------------------------
@@ -454,7 +476,7 @@ def create_get_child(predicate, nargs):
       raise e
   return _get_node_from
 
-create_functions(getNodeFromPredicate, create_get_child, "bfs", allfuncs,
+generate_functions(getNodeFromPredicate, create_get_child, "bfs", allfuncs,
   "Return a child CGNS node or raise a CGNSNodeFromPredicateNotFoundError (if it is not found)")
 
 # --------------------------------------------------------------------------
@@ -587,139 +609,31 @@ class ShallowLevelNodesIterator(NodesIteratorBase):
           yield from self._dfs(child, predicate, level=level+1)
 
 # --------------------------------------------------------------------------
-class NodesParserBase(NodesIteratorBase):
-
-  def __init__(self, func, depth=MAXDEPTH, sort=lambda children:children):
-    super(NodesParserBase, self).__init__(depth=depth, sort=sort)
-    self.func = func
-
-  @abstractmethod
-  def bfs(self, parent, predicate):
-    pass
-
-  def dfs(self, parent, predicate):
-    # print(f"NodesParserBase.dfs: parent = {I.getName(parent)}")
-    if predicate(parent):
-      self.func(parent)
-    return self._dfs(parent, predicate)
-
-  @abstractmethod
-  def _dfs(self, parent, predicate, level=1):
-    pass
-
-# --------------------------------------------------------------------------
-class NodesParser(NodesParserBase):
-
-  def bfs(self, parent, predicate):
-    # print(f"NodesParser.bfs: parent = {I.getName(parent)}")
-    temp = queue.Queue()
-    temp.put(parent)
-    while not temp.empty():
-      node = temp.get()
-      # print(f"NodesParser.bfs: node = {I.getName(node)}")
-      if predicate(node):
-        self.func(node)
-      for child in self.sort(node[__CHILDREN__]):
-        temp.put(child)
-
-  def _dfs(self, parent, predicate, level=1):
-    # print(f"NodesParser._dfs: parent = {I.getName(parent)}")
-    for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
-        self.func(child)
-      # Explore next level
-      self._dfs(child, predicate)
-
-class ShallowNodesParser(NodesParserBase):
-
-  """ Stop exploration if something found at a level """
-
-  def bfs(self, parent, predicate):
-    # print(f"ShallowNodesParser.bfs: parent = {I.getName(parent)}")
-    temp = queue.Queue()
-    temp.put(parent)
-    while not temp.empty():
-      node = temp.get()
-      # print(f"ShallowNodesParser.bfs: node = {I.getName(node)}")
-      if predicate(node):
-        self.func(node)
-      else:
-        for child in self.sort(node[__CHILDREN__]):
-          temp.put(child)
-
-  def _dfs(self, parent, predicate, level=1):
-    # print(f"ShallowNodesParser._dfs: parent = {I.getName(parent)}")
-    for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
-        self.func(child)
-      else:
-        # Explore next level
-        self._dfs(child, predicate)
-
-class LevelNodesParser(NodesParserBase):
-
-  """ Stop exploration until a limited depth """
-
-  def bfs(self, parent, predicate):
-    # print(f"LevelNodesParser.bfs: depth = {self.depth}: parent = {I.getName(parent)}")
-    temp = queue.Queue()
-    temp.put( (0, parent,) )
-    while not temp.empty():
-      level, node = temp.get()
-      # print(f"LevelNodesParser.bfs: level:{level} < depth:{self.depth}: node = {I.getName(node)}")
-      if predicate(node):
-        self.func(node)
-      if level < self.depth:
-        for child in self.sort(node[__CHILDREN__]):
-          temp.put( (level+1, child) )
-
-  def _dfs(self, parent, predicate, level=1):
-    # print(f"LevelNodesParser._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
-        self.func(child)
-      if level < self.depth:
-        # Explore next level
-        self._dfs(child, predicate, level=level+1)
-
-class ShallowLevelNodesParser(NodesParserBase):
-
-  """ Stop exploration if something found at a level until a limited depth """
-
-  def bfs(self, parent, predicate):
-    # print(f"ShallowLevelNodesParser.bfs: parent = {I.getName(parent)}")
-    temp = queue.Queue()
-    temp.put( (0, parent,) )
-    while not temp.empty():
-      level, node = temp.get()
-      # print(f"ShallowLevelNodesParser.bfs: node = {I.getName(node)}")
-      if predicate(node):
-        self.func(node)
-      else:
-        if level < self.depth:
-          for child in self.sort(node[__CHILDREN__]):
-            temp.put( (level+1, child) )
-
-  def _dfs(self, parent, predicate, level=1):
-    # print(f"ShallowLevelNodesParser._dfs: parent = {I.getName(parent)}")
-    for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
-        self.func(child)
-      else:
-        if level < self.depth:
-          # Explore next level
-          self._dfs(child, predicate, level=level+1)
-
-# --------------------------------------------------------------------------
 class NodesWalker:
   """ Deep First Walker of pyTree """
 
   FORWARD  = lambda children:children
   BACKWARD = lambda children:reversed(children)
 
-  def __init__(self, parent: TreeNode, predicate: Callable[[TreeNode], bool],
-                     search=NodesParser.DEFAULT, explore='deep', depth=0, sort=FORWARD,
+  def __init__(self, parent: TreeNode,
+                     predicate: Callable[[TreeNode], bool],
+                     search: str=NodesIterator.DEFAULT,
+                     explore: str='deep',
+                     depth: int=0,
+                     sort=FORWARD,
                      caching: bool=False):
+    """
+    Hold all the manner to explore and parse the CGNS Tree
+
+    Args:
+        parent (TreeNode): CGNS node root searching
+        predicate (Callable[[TreeNode], bool]): condition to select node
+        search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
+        explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
+        depth (int, optional): stop exploring after the limited depth
+        sort (Callable[TreeNode], optional): parsing children sort
+        caching (bool, optional): Results is store into a list. Avoid parsing next call(s).
+    """
     self.parent    = parent
     self.predicate = predicate
     # Register default value
@@ -821,61 +735,46 @@ class NodesWalker:
   def parser(self):
     return self._parser
 
-  def _get_parser(self, f):
+  def _get_parser(self):
     if self.explore == "shallow":
       if self.depth > 0:
-        parser = ShallowLevelNodesParser(f, depth=self.depth, sort=self.sort)
+        parser = ShallowLevelNodesIterator(depth=self.depth, sort=self.sort)
       else:
-        parser = ShallowNodesParser(f, sort=self.sort)
+        parser = ShallowNodesIterator(sort=self.sort)
     else:
       if self.depth > 0:
-        parser = LevelNodesParser(f, depth=self.depth, sort=self.sort)
+        parser = LevelNodesIterator(depth=self.depth, sort=self.sort)
       else:
-        parser = NodesParser(f, sort=self.sort)
+        parser = NodesIterator(sort=self.sort)
     return parser
 
   def __call__(self):
+    # Generate iterator
+    self._parser = self._get_parser()
+    walker = getattr(self._parser, self.search)
+    iterator = walker(self._parent, self._predicate)
     if self.caching:
       if not bool(self._cache):
-        # Generate list
-        f = lambda n: self._cache.append(n)
-        self._parser = self._get_parser(f)
-        walker = getattr(self._parser, self.search)
-        walker(self._parent, self._predicate)
+        self._cache = list(iterator)
       return self._cache
     else:
-      # Generate iterator
-      if self.explore == "shallow":
-        if self.depth > 0:
-          self._parser = ShallowLevelNodesIterator(depth=self.depth, sort=self.sort)
-        else:
-          self._parser = ShallowNodesIterator(sort=self.sort)
-      else:
-        if self.depth > 0:
-          self._parser = LevelNodesIterator(depth=self.depth, sort=self.sort)
-        else:
-          self._parser = NodesIterator(sort=self.sort)
-      walker = getattr(self._parser, self.search)
-      return walker(self._parent, self._predicate)
+      return iterator
 
   def apply(self, f, *args, **kwargs):
     if self.caching:
       if not bool(self._cache):
-        def _f(n):
-          self._cache.append(n)
-          f(n, *args, **kwargs)
-        self._parser = self._get_parser(_f)
+        # Generate iterator
+        self._parser = self._get_parser()
         walker = getattr(self._parser, self.search)
-        walker(self._parent, self._predicate)
-      else:
-        for n in self._cache:
-          f(n, *args, **kwargs)
-    else:
-      def _f(n):
+        self._cache = list(walker(self._parent, self._predicate))
+      for n in self._cache:
         f(n, *args, **kwargs)
-      self._parser = self._get_parser(_f)
+    else:
+      # Generate iterator
+      self._parser = self._get_parser()
       walker = getattr(self._parser, self.search)
-      walker(self._parent, self._predicate)
+      for n in walker(self._parent, self._predicate):
+        f(n, *args, **kwargs)
 
   def clean(self):
     """ Reset the cache """
@@ -885,88 +784,253 @@ class NodesWalker:
     self.clean()
 
 # --------------------------------------------------------------------------
-# def getNodesFromPredicate(parent, predicate, search=NodeParser.DEFAULT, explore='deep', depth=0):
-#   walker = NodesWalker(parent, predicate, search=search, explore=explore, depth=depth, caching=True)
-#   return walker()
-def getNodesFromPredicate(*args, **kwargs):
+class NodesWalkers:
+
+  def __init__(self, parent, predicates, **kwargs):
+    self.parent     = parent
+    self.predicates = predicates
+    self.kwargs     = kwargs
+    self._cache = []
+
+  @property
+  def parent(self):
+    return self._parent
+
+  @parent.setter
+  def parent(self, node: TreeNode):
+    if is_valid_node(node):
+      self._parent = node
+      self.clean()
+
+  @property
+  def predicates(self):
+    return self._predicates
+
+  @predicates.setter
+  def predicates(self, value):
+    self._predicates = []
+    if isinstance(value, str):
+      self._predicates = value.split('/')
+      self.clean()
+    elif isinstance(value, (list, tuple, dict)):
+      self._predicates = value
+      self.clean()
+    else:
+      raise TypeError("predicates must be a sequence of predicates or a path of name or label separated by '/'.")
+
+  @property
+  def caching(self):
+    return self.kwargs.get("caching", False)
+
+  @caching.setter
+  def caching(self, value):
+    if isinstance(value, bool):
+      self.kwargs['caching'] = value
+    else:
+      raise TypeError("caching must be a boolean.")
+
+  @property
+  def cache(self):
+    return self._cache
+
+  @property
+  def parser(self):
+    return self._parser
+
+  def __call__(self):
+    if any([isinstance(kwargs, dict) for kwargs in self.predicates]):
+      predicates = []; for_each = []
+      for kwargs in self.predicates:
+        lkwargs = {}
+        for k,v in kwargs.items():
+          if k == 'predicate':
+            predicates.append(v)
+          else:
+            lkwargs[k] = v
+        for_each.append(lkwargs)
+      if len(predicates) != len(self.predicates):
+        raise ValueError(f"Missing predicate.")
+      for index, kwargs in enumerate(for_each):
+        if kwargs.get('caching'):
+          print(f"Warning: unable to activate caching for predicate at index {index}.")
+          kwargs['caching'] = False
+      if self.caching:
+        if not bool(self._cache):
+          self._cache = list(iter_nodes_from_predicates_for_each__(self.parent, predicates, for_each))
+        return self._cache
+      else:
+        return iter_nodes_from_predicates_for_each__(self.parent, predicates, for_each)
+    else:
+      if self.caching:
+        if not bool(self._cache):
+          kwargs = copy.deepcopy(self.kwargs)
+          kwargs['caching'] = False
+          self._cache = list(iter_nodes_from_predicates__(self.parent, self.predicates, **kwargs))
+        return self._cache
+      else:
+        return iter_nodes_from_predicates__(self.parent, self.predicates, **self.kwargs)
+
+  def clean(self):
+    """ Reset the cache """
+    self._cache = []
+
+  def __del__(self):
+    self.clean()
+
+def iter_nodes_from_predicates_for_each__(parent, predicates, for_each):
+  if len(predicates) > 1:
+    for node in search_nodes_dispatch(parent, predicates[0], **for_each[0]):
+      yield from iter_nodes_from_predicates_for_each__(node, predicates[1:], for_each[1:])
+  elif len(predicates) == 1:
+    yield from search_nodes_dispatch(parent, predicates[0], **for_each[0])
+
+def iter_nodes_from_predicates__(parent, predicates, **kwargs):
+  if len(predicates) > 1:
+    for node in search_nodes_dispatch(parent, predicates[0], **kwargs):
+      yield from iter_nodes_from_predicates__(node, predicates[1:], **kwargs)
+  elif len(predicates) == 1:
+    yield from search_nodes_dispatch(parent, predicates[0], **kwargs)
+
+# --------------------------------------------------------------------------
+#
+#   get_nodes_from...
+#
+# --------------------------------------------------------------------------
+def getNodesFromPredicate(*args, **kwargs) -> List[TreeNode]:
+  """
+  Alias to NodesWalker with caching=True. A list of found node(s) is created.
+
+  Args:
+      parent (TreeNode): CGNS node root searching
+      predicate (Callable[[TreeNode], bool]): condition to select node
+      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
+      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
+      depth (int, optional): stop exploring after the limited depth
+      sort (Callable[TreeNode], optional): parsing children sort
+      caching (bool, optional): Force
+
+  Returns:
+      List[TreeNode]: Description
+
+  """
+  caching = kwargs.get('caching')
+  if caching is not None and caching is False:
+    print(f"Warning: getNodesFromPredicate forces caching to True.")
   kwargs['caching'] = True
   walker = NodesWalker(*args, **kwargs)
   return walker()
 
-getShallowNodesFromPredicate = partial(getNodesFromPredicate, explore='shallow')
+sgetNodesFromPredicate = partial(getNodesFromPredicate, explore='shallow')
 
 def create_get_nodes(predicate, nargs):
+  """
+    Alias for getNodesFrom... generator. A list of found node(s) is created
+  """
   def _get_nodes_from(parent, *args, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
     return getNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_nodes_from
 
+# Alias for getNodesFrom... generation
 mesg = "Return a list of all child CGNS nodes"
-create_functions(getNodesFromPredicate, create_get_nodes, "dfs",
+generate_functions(getNodesFromPredicate, create_get_nodes, "dfs",
   dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
   mesg)
 
+# Alias for getNodesFrom... with shallow exploration and dfs traversing generation
 prefix = getNodesFromPredicate.__name__.replace('Predicate', '')
 for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
   dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
   predicate, nargs = item
 
-  # Generate getNodesFromNameP, getNodesFromValueP, ...
-  funcname = f"getShallowNodesFrom{what}"
+  # Generate sgetNodesFrom{Name, Label, ...}
+  funcname = f"sgetNodesFrom{what}"
   func = create_get_nodes(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
   setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-  # Generate get_nodes_from_name, get_nodes_from_value, ...
+  # Generate sget_nodes_from_{name, label, ...}
   funcname = PYU.camel_to_snake(funcname)
-  # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
   func = create_get_nodes(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
   setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
 
 # --------------------------------------------------------------------------
-# def iterNodesFromPredicate(parent, predicate, search=NodeParser.DEFAULT, explore='deep', depth=0):
-#   walker = NodesWalker(parent, predicate, search=search, explore=explore, depth=depth, caching=False)
-#   return walker()
+#
+#   iter_nodes_from...
+#
+# --------------------------------------------------------------------------
 def iterNodesFromPredicate(*args, **kwargs):
+  """
+  Alias to NodesWalker with caching=True. Iterator is generated each time parsing is done
+
+  Args:
+      parent (TreeNode): CGNS node root searching
+      predicate (Callable[[TreeNode], bool]): condition to select node
+      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
+      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
+      depth (int, optional): stop exploring after the limited depth
+      sort (Callable[TreeNode], optional): parsing children sort
+      caching (bool, optional): Force
+
+  Returns:
+      TYPE: TreeNode generator/iterator
+
+  """
+  caching = kwargs.get('caching')
+  if caching is not None and caching is True:
+    print(f"Warning: getNodesFromPredicate forces caching to False.")
   kwargs['caching'] = False
   walker = NodesWalker(*args, **kwargs)
   return walker()
 
-iterShallowNodesFromPredicate = partial(iterNodesFromPredicate, explore='shallow')
+siterNodesFromPredicate = partial(iterNodesFromPredicate, explore='shallow')
 
 def create_iter_children(predicate, nargs):
+  """
+    Alias for iterNodesFrom... generator
+  """
   def _iter_children_from(parent, *args, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
     return getNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _iter_children_from
 
-mesg = "Return an iterator on all child CGNS nodes"
-create_functions(iterNodesFromPredicate, create_iter_children, "dfs",
+# Alias for iterNodesFrom... generation
+generate_functions(iterNodesFromPredicate, create_iter_children, "dfs",
   dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
-  mesg)
+  "Return an iterator on all child CGNS nodes")
 
+# Alias for iterNodesFrom... with shallow exploration and dfs traversing generation
 for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
   dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
   predicate, nargs = item
 
-  # Generate iterNodesFromNameP, iterNodesFromValueP, ...
-  funcname = f"iterShallowNodesFrom{what}"
+  # Generate siterNodesFrom{Name, Label, ...}
+  funcname = f"siterNodesFrom{what}"
   func = create_iter_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
   setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-  # Generate get_nodes_from_name, get_nodes_from_value, ...
+  # Generate siter_nodes_from_{name, label, ...}
   funcname = PYU.camel_to_snake(funcname)
-  # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
   func = create_iter_children(predicate, nargs)
   func.__name__ = funcname
   func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
   setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
 
 # --------------------------------------------------------------------------
+#
+#   get_{label}, iter{label}
+#   get_all_{label}, iter_all_{label}
+#   get_{label}{depth}, iter{label}{depth}
+#   get_all_{label}{depth}, iter_all_{label}{depth}
+#
+# --------------------------------------------------------------------------
 def create_get_child(predicate, nargs, args):
+  """
+    Alias for getNodesFrom... generator
+  """
   def _get_node_from(parent, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
     try:
@@ -981,6 +1045,12 @@ def create_get_all_children(predicate, nargs, args):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
     return getNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_all_children_from
+
+def create_iter_all_children(predicate, nargs, args):
+  def _iter_all_children_from(parent, **kwargs):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    return iterNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+  return _iter_all_children_from
 
 label_with_specific_depth = ['CGNSBase_t',
   'BaseIterativeData_t', 'Zone_t', 'Family_t',
@@ -997,68 +1067,90 @@ for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
   suffix = suffix.replace('CGNS', '')
   snake_name = PYU.camel_to_snake(suffix)
 
-  # Generate getBase, getZone, ..., getInvalid
+  # Generate get{Base, Zone, ..}
   func = create_get_child(match_label, ('label',), (label,))
   funcname = f"get{suffix}"
   func.__name__ = funcname
   func.__doc__  = """get the first CGNS node from CGNS label {0}.""".format(label)
   setattr(module_object, funcname, partial(func, search='bfs'))
-  # Generate get_base, get_zone, ..., get_invalid
+  # Generate get_{base, get_zone, ...}
   func = create_get_child(match_label, ('label',), (label,))
   funcname = f"get_{snake_name}"
   func.__name__ = funcname
   func.__doc__  = """get the first CGNS node from CGNS label {0}.""".format(label)
   setattr(module_object, funcname, partial(func, search='bfs'))
 
-  # Generate getAllBase, getAllZone, ..., getAllInvalid
   pargs = {'search':'bfs', 'explore':'shallow'} if label in label_with_specific_depth else {'search':'dfs'}
+  # Generate getAll{Base, Zone, ...}
+  pargs['caching'] = True
   func = create_get_all_children(match_label, ('label',), (label,))
   funcname = f"getAll{suffix}"
   func.__name__ = funcname
   func.__doc__  = """get all CGNS nodes from CGNS label {0}.""".format(label)
   setattr(module_object, funcname, partial(func, **pargs))
-  # Generate get_bases, get_zones, ..., get_invalid
+  # Generate get_all_{base, zone, ...}
   func = create_get_all_children(match_label, ('label',), (label,))
   funcname = f"get_all_{snake_name}"
   func.__name__ = funcname
   func.__doc__  = """get all CGNS nodes from CGNS label {0}.""".format(label)
   setattr(module_object, funcname, partial(func, **pargs))
 
+  # Generate iterAll{Base, Zone, ...}
+  pargs['caching'] = False
+  func = create_iter_all_children(match_label, ('label',), (label,))
+  funcname = f"getAll{suffix}"
+  func.__name__ = funcname
+  func.__doc__  = """Get all CGNS nodes from CGNS label {0}.""".format(label)
+  setattr(module_object, funcname, partial(func, **pargs))
+  # Generate iter_all_{base, zone, ...}
+  func = create_iter_all_children(match_label, ('label',), (label,))
+  funcname = f"iter_all_{snake_name}"
+  func.__name__ = funcname
+  func.__doc__  = """Iterate on all CGNS nodes from CGNS label {0}.""".format(label)
+  setattr(module_object, funcname, partial(func, **pargs))
+
   for depth in range(1,MAXDEPTH+1):
     suffix = f"{suffix}_" if suffix[-1] in [str(i) for i in range(1,MAXDEPTH+1)] else suffix
     snake_name = PYU.camel_to_snake(suffix)
 
-    # Generate getBase1, getZone1, ..., getInvalid1
+    # Generate get{Base, Zone, ...}{depth}
     func = create_get_child(match_label, ('label',), (label,))
     funcname = f"get{suffix}{depth}"
     func.__name__ = funcname
-    func.__doc__  = """get the first CGNS node from CGNS label {0} with depth={1}.""".format(label, depth)
+    func.__doc__  = """Get the first CGNS node from CGNS label {0} with depth={1}.""".format(label, depth)
     setattr(module_object, funcname, partial(func, search='bfs', depth=depth))
-    # Generate get_base1, get_zone1, ..., get_invalid1
+    # Generate get_{base, zone, ...}{depth}
     func = create_get_child(match_label, ('label',), (label,))
     funcname = f"get_{snake_name}{depth}"
     func.__name__ = funcname
-    func.__doc__  = """get the first CGNS node from CGNS label {0} with depth={1}.""".format(label, depth)
+    func.__doc__  = """Get the first CGNS node from CGNS label {0} with depth={1}.""".format(label, depth)
     setattr(module_object, funcname, partial(func, search='bfs', depth=depth))
 
-    # Generate getAllBase1, getAllBase2, ..., getAllBase{MAXDEPTH}
-    # Generate getAllZone1, getAllZone2, ..., getAllZone{MAXDEPTH}
-    #   ...
-    # Generate getAllInvalid1, getAllInvalid2, ..., getAllInvalid{MAXDEPTH}
+    # Generate getAll{Base, Zone, ...}{depth}
     func = create_get_all_children(match_label, ('label',), (label,))
     funcname = f"getAll{suffix}{depth}"
     func.__name__ = funcname
-    func.__doc__  = """get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
-    setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
-    # Generate get_all_base1, get_all_base2, ..., get_all_base{MAXDEPTH}
-    # Generate get_all_zone1, get_all_zone2, ..., get_all_zone{MAXDEPTH}
-    #   ...
-    # Generate get_all_invalid1, get_all_invalid2, ..., get_all_invalid{MAXDEPTH}
+    func.__doc__  = """Get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
+    setattr(module_object, funcname, partial(func, search='dfs', depth=depth, caching=True))
+    # Generate get_all_{base, zone, ...}{depth}
     func = create_get_all_children(match_label, ('label',), (label,))
     funcname = f"get_all_{snake_name}{depth}"
     func.__name__ = funcname
-    func.__doc__  = """get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
-    setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
+    func.__doc__  = """Get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
+    setattr(module_object, funcname, partial(func, search='dfs', depth=depth, caching=True))
+
+    # Generate iterAll{Base, Zone, ...}{depth}
+    func = create_iter_all_children(match_label, ('label',), (label,))
+    funcname = f"iterAll{suffix}{depth}"
+    func.__name__ = funcname
+    func.__doc__  = """Iterate on all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
+    setattr(module_object, funcname, partial(func, search='dfs', depth=depth, caching=False))
+    # Generate get_all_{base, zone, ...}{depth}
+    func = create_iter_all_children(match_label, ('label',), (label,))
+    funcname = f"iter_all_{snake_name}{depth}"
+    func.__name__ = funcname
+    func.__doc__  = """Iterate on all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
+    setattr(module_object, funcname, partial(func, search='dfs', depth=depth, caching=False))
 
 # --------------------------------------------------------------------------
 def create_functions_name(create_function, name):
@@ -1091,7 +1183,6 @@ def create_functions_name(create_function, name):
     func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
     setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
 
-# --------------------------------------------------------------------------
 def create_get_child_name(predicate, nargs, args):
   def _get_child_name(parent, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
@@ -1255,7 +1346,6 @@ def getNodesDispatch1(node, predicate):
   else:
     raise TypeError("predicate must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
 
-# --------------------------------------------------------------------------
 def iterNodesByMatching(root, predicates):
   """Generator following predicates, doing 1 level search using
   getNodesFromLabel1 or getNodesFromName1. Equivalent to
@@ -1265,24 +1355,24 @@ def iterNodesByMatching(root, predicates):
       for level3 in I.getNodesFromType1(level2, type3_t):
         ...
   """
-  predicate_list = []
+  _predicates = []
   if isinstance(predicates, str):
     for predicate in predicates.split('/'):
-      predicate_list.append(eval(predicate) if predicate.startswith('lambda') else predicate)
+      _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
   elif isinstance(predicates, (list, tuple)):
-    predicate_list = predicates
+    _predicates = predicates
   else:
     raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
 
-  yield from iterNodesByMatching__(root, predicate_list)
+  yield from iterNodesByMatching__(root, _predicates)
 
-def iterNodesByMatching__(root, predicate_list):
-  if len(predicate_list) > 1:
-    next_roots = getNodesDispatch1(root, predicate_list[0])
+def iterNodesByMatching__(root, predicates):
+  if len(predicates) > 1:
+    next_roots = getNodesDispatch1(root, predicates[0])
     for node in next_roots:
-      yield from iterNodesByMatching__(node, predicate_list[1:])
-  elif len(predicate_list) == 1:
-    yield from getNodesDispatch1(root, predicate_list[0])
+      yield from iterNodesByMatching__(node, predicates[1:])
+  elif len(predicates) == 1:
+    yield from getNodesDispatch1(root, predicates[0])
 
 # --------------------------------------------------------------------------
 def getNodesByMatching(root, predicates):
@@ -1294,25 +1384,25 @@ def getNodesByMatching(root, predicates):
       for level3 in I.getNodesFromType1(level2, type3_t):
         ...
   """
-  predicate_list = []
+  _predicates = []
   if isinstance(predicates, str):
     for predicate in predicates.split('/'):
-      predicate_list.append(eval(predicate) if predicate.startswith('lambda') else predicate)
+      _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
   elif isinstance(predicates, (list, tuple)):
-    predicate_list = predicates
+    _predicates = predicates
   else:
     raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
 
   results = []
-  return getNodesByMatching__(root, predicate_list, results)
+  return getNodesByMatching__(root, _predicates, results)
 
-def getNodesByMatching__(root, predicate_list, results):
-  if len(predicate_list) > 1:
-    next_roots = getNodesDispatch1(root, predicate_list[0])
+def getNodesByMatching__(root, predicates, results):
+  if len(predicates) > 1:
+    next_roots = getNodesDispatch1(root, predicates[0])
     for node in next_roots:
-      getNodesByMatching__(node, predicate_list[1:], results)
-  elif len(predicate_list) == 1:
-    results.append( getNodesDispatch1(root, predicate_list[0]) )
+      getNodesByMatching__(node, predicates[1:], results)
+  elif len(predicates) == 1:
+    results.append( getNodesDispatch1(root, predicates[0]) )
 
 iter_children_by_matching = iterNodesByMatching
 get_children_by_matching  = getNodesByMatching
@@ -1322,25 +1412,25 @@ def iterNodesWithParentsByMatching(root, predicates):
   """Same than iterNodesByMatching, but return
   a tuple of size len(predicates) containing the node and its parents
   """
-  predicate_list = []
+  _predicates = []
   if isinstance(predicates, str):
     for predicate in predicates.split('/'):
-      predicate_list.append(eval(predicate) if predicate.startswith('lambda') else predicate)
+      _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
   elif isinstance(predicates, (list, tuple)):
-    predicate_list = predicates
+    _predicates = predicates
   else:
     raise TypeError("predicates must be a sequence or a path with strings separated by '/'.")
 
-  yield from iterNodesWithParentsByMatching__(root, predicate_list)
+  yield from iterNodesWithParentsByMatching__(root, _predicates)
 
-def iterNodesWithParentsByMatching__(root, predicate_list):
-  if len(predicate_list) > 1:
-    next_roots = getNodesDispatch1(root, predicate_list[0])
+def iterNodesWithParentsByMatching__(root, predicates):
+  if len(predicates) > 1:
+    next_roots = getNodesDispatch1(root, predicates[0])
     for node in next_roots:
-      for subnode in iterNodesWithParentsByMatching__(node, predicate_list[1:]):
+      for subnode in iterNodesWithParentsByMatching__(node, predicates[1:]):
         yield (node, *subnode)
-  elif len(predicate_list) == 1:
-    nodes =  getNodesDispatch1(root, predicate_list[0])
+  elif len(predicates) == 1:
+    nodes =  getNodesDispatch1(root, predicates[0])
     for node in nodes:
       yield (node,)
 
@@ -1349,26 +1439,26 @@ def getNodesWithParentsByMatching(root, predicates):
   """Same than iterNodesByMatching, but return
   a tuple of size len(predicates) containing the node and its parents
   """
-  predicate_list = []
+  _predicates = []
   if isinstance(predicates, str):
     for predicate in predicates.split('/'):
-      predicate_list.append(eval(predicate) if predicate.startswith('lambda') else predicate)
+      _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
   elif isinstance(predicates, (list, tuple)):
-    predicate_list = predicates
+    _predicates = predicates
   else:
     raise TypeError("predicates must be a sequence or a path with strings separated by '/'.")
 
   results = []
-  return getNodesWithParentsByMatching__(root, predicate_list, results)
+  return getNodesWithParentsByMatching__(root, _predicates, results)
 
-def getNodesWithParentsByMatching__(root, predicate_list, results):
-  if len(predicate_list) > 1:
-    next_roots = getNodesDispatch1(root, predicate_list[0])
+def getNodesWithParentsByMatching__(root, predicates, results):
+  if len(predicates) > 1:
+    next_roots = getNodesDispatch1(root, predicates[0])
     for node in next_roots:
-      for subnode in getNodesWithParentsByMatching__(node, predicate_list[1:], results):
+      for subnode in getNodesWithParentsByMatching__(node, predicates[1:], results):
         results.append( (node, *subnode,) )
-  elif len(predicate_list) == 1:
-    nodes =  getNodesDispatch1(root, predicate_list[0])
+  elif len(predicates) == 1:
+    nodes =  getNodesDispatch1(root, predicates[0])
     for node in nodes:
       results.append( (node,) )
 
@@ -1376,170 +1466,103 @@ iter_children_with_parents_by_matching = iterNodesWithParentsByMatching
 get_children_with_parents_by_matching  = getNodesWithParentsByMatching
 
 # --------------------------------------------------------------------------
-class NodesParserPostBase:
-
-  MAXDEPTH=30
-  DEFAULT="dfs"
-
-  def __init__(self, func=None, depth=MAXDEPTH, sort=lambda children:children):
-    self.func  = func
-    self.depth = depth
-    self.sort  = sort
-
-  def dfs(self, parent, predicate):
-    # print(f"NodesParserPostLevelBase.dfs: parent = {I.getName(parent)}")
-    if self.func and predicate(parent):
-      self.func(parent)
-    return self._dfs(parent, predicate)
-
-  def _dfs(self, parent, predicate, level=1):
-    # print(f"NodesParserPostLevelBase._dfs: parent = {I.getName(parent)}")
-    results = self.parse(parent, predicate, level)
-    if self.func:
-      for ichild in reversed(results):
-        self.func(parent[__CHILDREN__][ichild])
-    else:
-      for ichild in reversed(results):
-        del parent[__CHILDREN__][ichild]
-
-  @abstractmethod
-  def parse(self, parent, predicate, level=1):
-    pass
-
-# --------------------------------------------------------------------------
-class NodesParserPost(NodesParserPostBase):
-
-  def parse(self, parent, predicate, level=1):
-    # print(f"NodesParserPost._dfs:   parent = {I.getName(parent)}")
-    results = []
-    for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
-        results.append(parent[__CHILDREN__].index(child))
-      # Explore next level
-      self._dfs(child, predicate)
-    return results
-
-class ShallowNodesParserPost(NodesParserPostBase):
-
-  """ Stop exploration if something found at a certain level """
-
-  def parse(self, parent, predicate, level=1):
-    # print(f"ShallowNodesParserPost._dfs:   parent = {I.getName(parent)}")
-    results = []
-    for child in self.sort(parent[__CHILDREN__]):
-      # print(f"ShallowNodesParserPost._dfs:   test child = {I.getName(child)}")
-      if predicate(child):
-        # print(f"ShallowNodesParserPost._dfs:     found child = {I.getName(child)}")
-        results.append(parent[__CHILDREN__].index(child))
-      else:
-        # Explore next level
-        self._dfs(child, predicate)
-    return results
-
-class LevelNodesParserPost(NodesParserPostBase):
-
-  """ Stop exploration until a limited depth """
-
-  def parse(self, parent, predicate, level=1):
-    # print(f"LevelNodesParserPost._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
-    results = []
-    for child in self.sort(parent[__CHILDREN__]):
-      # print(f"LevelNodesParserPost._dfs:   test child = {I.getName(child)}")
-      if predicate(child):
-        # print(f"LevelNodesParserPost._dfs:     found child = {I.getName(child)}")
-        results.append(parent[__CHILDREN__].index(child))
-      if level < self.depth:
-        # Explore next level
-        self._dfs(child, predicate, level=level+1)
-    return results
-
-class ShallowLevelNodesParserPost(NodesParserPostBase):
-
-  """ Stop exploration if something found at a level until a limited depth """
-
-  def parse(self, parent, predicate, level=1):
-    # print(f"ShallowLevelNodesParserPost._dfs: parent = {I.getName(parent)}")
-    results = []
-    for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
-        results.append(parent[__CHILDREN__].index(child))
-      else:
-        if level < self.depth:
-          # Explore next level
-          self._dfs(child, predicate, level=level+1)
-    return results
-
-# --------------------------------------------------------------------------
-class NodesWalkerPost(NodesWalker):
-  """ Deep First Walker of pyTree """
-
-  def __init__(self, *args, **kwargs):
-    kwargs['search'] = 'dfs'
-    super(NodesWalkerPost, self).__init__(*args, **kwargs)
-
-  def _get_parser(self, f):
-    if self.explore == "shallow":
-      if self.depth > 0:
-        parser = ShallowLevelNodesParserPost(f, depth=self.depth, sort=self.sort)
-      else:
-        parser = ShallowNodesParserPost(f, sort=self.sort)
-    else:
-      if self.depth > 0:
-        parser = LevelNodesParserPost(f, depth=self.depth, sort=self.sort)
-      else:
-        parser = NodesParserPost(f, sort=self.sort)
-    return parser
-
-  def __call__(self):
-    # if parser is not None:
-    #   return parser(self._parent, self._predicate)
-    if not bool(self._cache):
-      # Generate list
-      f = lambda n: self._cache.append(n)
-      self._parser = self._get_parser(f)
-      walker = getattr(self._parser, self.search)
-      walker(self._parent, self._predicate)
-    return self._cache
-
-  def delete(self):
-    self._parser = self._get_parser(None)
-    walker = getattr(self._parser, self.search)
-    walker(self._parent, self._predicate)
-
-# --------------------------------------------------------------------------
-def rm_children_from_predicate(parent: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
-  to_delete = []
+def rmChildrenFromPredicate(parent: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
+  results = []
   for ichild, child in enumerate(parent[__CHILDREN__]):
     if predicate(child):
-      to_delete.append(ichild)
-  for num in reversed(to_delete):
+      results.append(ichild)
+  for ichild in reversed(results):
     del parent[__CHILDREN__][ichild]
 
-rmChildrenromPredicate = rm_children_from_predicate
+rm_children_from_predicate = rmChildrenFromPredicate
+
+def create_rm_children(predicate, nargs):
+  def _rm_children_from(parent, *args):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    return rmChildrenFromPredicate(parent, partial(predicate, **pkwargs))
+  return _rm_children_from
+
+def generate_rmkeep_functions(function, create_function, funcs, mesg):
+  snake_name = PYU.camel_to_snake(function.__name__)
+  prefix = function.__name__.replace('Predicate', '')
+
+  for what, item in funcs.items():
+    dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
+    predicate, nargs = item
+
+    # Generate xxxChildrenFromName, xxxChildrenFromValue, ..., xxxChildrenFromNameValueAndLabel
+    funcname = f"{prefix}{what}"
+    func = create_function(predicate, nargs)
+    func.__name__ = funcname
+    func.__doc__  = """{0} from a {1}""".format(mesg, dwhat)
+    setattr(module_object, funcname, func)
+    # Generate xxx_children_from_name, xxx_children_from_value, ..., xxx_children_from_name_value_and_label
+    funcname = PYU.camel_to_snake(f"{prefix}{what}")
+    func = create_function(predicate, nargs)
+    func.__name__ = funcname
+    func.__doc__  = """{0} from a {1}""".format(mesg, dwhat)
+    setattr(module_object, funcname, func)
+
+generate_rmkeep_functions(rmChildrenFromPredicate, create_rm_children, allfuncs,
+  "Remove all direct child CGNS nodes")
 
 # --------------------------------------------------------------------------
-def rm_nodes_from_predicate(parent: TreeNode, predicate: Callable[[TreeNode], bool]):
-  to_delete = []
+def keepChildrenFromPredicate(parent: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
+  rmChildrenFromPredicate(parent, lambda n: not predicate(n))
+
+keep_children_from_predicate = keepChildrenFromPredicate
+
+def create_keep_children(predicate, nargs):
+  def _keep_children_from(parent, *args):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    return keepChildrenFromPredicate(parent, partial(predicate, **pkwargs))
+  return _keep_children_from
+
+generate_rmkeep_functions(keepChildrenFromPredicate, create_keep_children, allfuncs,
+  "Keep all direct child CGNS nodes")
+
+# --------------------------------------------------------------------------
+def rmNodesFromPredicate(parent, predicate, **kwargs):
+  depth = kwargs.get('depth')
+  if depth and not isinstance(depth, int):
+    raise TypeError(f"depth must be an integer.")
+  if depth and depth > 1:
+    rmNodesFromPredicateWithLevel__(parent, predicate, depth)
+  else:
+    rmNodesFromPredicate__(parent, predicate)
+
+def rmNodesFromPredicateWithLevel__(parent, predicate, depth, level=1):
+  results = []
   for ichild, child in enumerate(parent[__CHILDREN__]):
     if predicate(child):
-      to_delete.append(ichild)
+      results.append(ichild)
     else:
-      rm_nodes_from_predicate(child, predicate)
-  for ichild in reversed(to_delete):
+      if level < depth:
+        rmNodesFromPredicateWithLevel__(child, predicate, depth, level=level+1)
+  for ichild in reversed(results):
     del parent[__CHILDREN__][ichild]
 
-rmNodesromPredicate = rm_nodes_from_predicate
+def rmNodesFromPredicate__(parent, predicate):
+  results = []
+  for ichild, child in enumerate(parent[__CHILDREN__]):
+    if predicate(child):
+      results.append(ichild)
+    else:
+      rmNodesFromPredicate__(child, predicate)
+  for ichild in reversed(results):
+    del parent[__CHILDREN__][ichild]
 
-# def create_rm_nodes(predicate, nargs):
-#   def _get_nodes_from(parent, *args, **kwargs):
-#     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-#     return getNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
-#   return _get_nodes_from
+rm_nodes_from_predicate = rmNodesFromPredicate
 
-# mesg = "Return a list of all child CGNS nodes"
-# create_functions(getNodesFromPredicate, create_get_children, "dfs",
-#   dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
-#   mesg)
+def create_rm_nodes(predicate, nargs):
+  def _rm_nodes_from(parent, *args, **kwargs):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    return rmNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+  return _rm_nodes_from
+
+generate_functions(rmNodesFromPredicate, create_rm_nodes, "dfs",
+  dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
+  "Remove all found child CGNS nodes")
 
 # --------------------------------------------------------------------------
 @check_is_label('ZoneSubRegion_t', 0)
@@ -1611,8 +1634,10 @@ get_node_from_predicate     = getNodeFromPredicate
 get_nodes_from_predicate    = getNodesFromPredicate
 get_family                  = getFamily
 
-get_shallow_nodes_from_predicate  = getShallowNodesFromPredicate
-iter_shallow_nodes_from_predicate = iterShallowNodesFromPredicate
+iter_nodes_from_predicate  = iterNodesFromPredicate
+
+sget_nodes_from_predicate  = sgetNodesFromPredicate
+siter_nodes_from_predicate = siterNodesFromPredicate
 
 get_grid_connectivities_from_family      = getGridConnectivitiesFromFamily
 get_all_grid_connectivities_from_family  = getAllGridConnectivitiesFromFamily
