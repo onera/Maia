@@ -761,20 +761,8 @@ class NodesWalker:
       return iterator
 
   def apply(self, f, *args, **kwargs):
-    if self.caching:
-      if not bool(self._cache):
-        # Generate iterator
-        self._parser = self._get_parser()
-        walker = getattr(self._parser, self.search)
-        self._cache = list(walker(self._parent, self._predicate))
-      for n in self._cache:
-        f(n, *args, **kwargs)
-    else:
-      # Generate iterator
-      self._parser = self._get_parser()
-      walker = getattr(self._parser, self.search)
-      for n in walker(self._parent, self._predicate):
-        f(n, *args, **kwargs)
+    for n in self.__call__():
+      f(n, *args, **kwargs)
 
   def clean(self):
     """ Reset the cache """
@@ -782,114 +770,6 @@ class NodesWalker:
 
   def __del__(self):
     self.clean()
-
-# --------------------------------------------------------------------------
-class NodesWalkers:
-
-  def __init__(self, parent, predicates, **kwargs):
-    self.parent     = parent
-    self.predicates = predicates
-    self.kwargs     = kwargs
-    self._cache = []
-
-  @property
-  def parent(self):
-    return self._parent
-
-  @parent.setter
-  def parent(self, node: TreeNode):
-    if is_valid_node(node):
-      self._parent = node
-      self.clean()
-
-  @property
-  def predicates(self):
-    return self._predicates
-
-  @predicates.setter
-  def predicates(self, value):
-    self._predicates = []
-    if isinstance(value, str):
-      self._predicates = value.split('/')
-      self.clean()
-    elif isinstance(value, (list, tuple, dict)):
-      self._predicates = value
-      self.clean()
-    else:
-      raise TypeError("predicates must be a sequence of predicates or a path of name or label separated by '/'.")
-
-  @property
-  def caching(self):
-    return self.kwargs.get("caching", False)
-
-  @caching.setter
-  def caching(self, value):
-    if isinstance(value, bool):
-      self.kwargs['caching'] = value
-    else:
-      raise TypeError("caching must be a boolean.")
-
-  @property
-  def cache(self):
-    return self._cache
-
-  @property
-  def parser(self):
-    return self._parser
-
-  def __call__(self):
-    if any([isinstance(kwargs, dict) for kwargs in self.predicates]):
-      predicates = []; for_each = []
-      for kwargs in self.predicates:
-        lkwargs = {}
-        for k,v in kwargs.items():
-          if k == 'predicate':
-            predicates.append(v)
-          else:
-            lkwargs[k] = v
-        for_each.append(lkwargs)
-      if len(predicates) != len(self.predicates):
-        raise ValueError(f"Missing predicate.")
-      for index, kwargs in enumerate(for_each):
-        if kwargs.get('caching'):
-          print(f"Warning: unable to activate caching for predicate at index {index}.")
-          kwargs['caching'] = False
-      if self.caching:
-        if not bool(self._cache):
-          self._cache = list(iter_nodes_from_predicates_for_each__(self.parent, predicates, for_each))
-        return self._cache
-      else:
-        return iter_nodes_from_predicates_for_each__(self.parent, predicates, for_each)
-    else:
-      if self.caching:
-        if not bool(self._cache):
-          kwargs = copy.deepcopy(self.kwargs)
-          kwargs['caching'] = False
-          self._cache = list(iter_nodes_from_predicates__(self.parent, self.predicates, **kwargs))
-        return self._cache
-      else:
-        return iter_nodes_from_predicates__(self.parent, self.predicates, **self.kwargs)
-
-  def clean(self):
-    """ Reset the cache """
-    self._cache = []
-
-  def __del__(self):
-    self.clean()
-
-def iter_nodes_from_predicates_for_each__(parent, predicates, for_each):
-  if len(predicates) > 1:
-    for node in search_nodes_dispatch(parent, predicates[0], **for_each[0]):
-      yield from iter_nodes_from_predicates_for_each__(node, predicates[1:], for_each[1:])
-  elif len(predicates) == 1:
-    yield from search_nodes_dispatch(parent, predicates[0], **for_each[0])
-
-def iter_nodes_from_predicates__(parent, predicates, **kwargs):
-  if len(predicates) > 1:
-    for node in search_nodes_dispatch(parent, predicates[0], **kwargs):
-      yield from iter_nodes_from_predicates__(node, predicates[1:], **kwargs)
-  elif len(predicates) == 1:
-    yield from search_nodes_dispatch(parent, predicates[0], **kwargs)
 
 # --------------------------------------------------------------------------
 #
@@ -963,7 +843,7 @@ for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValue
 # --------------------------------------------------------------------------
 def iterNodesFromPredicate(*args, **kwargs):
   """
-  Alias to NodesWalker with caching=True. Iterator is generated each time parsing is done
+  Alias to NodesWalker with caching=False. Iterator is generated each time parsing is done.
 
   Args:
       parent (TreeNode): CGNS node root searching
@@ -980,7 +860,7 @@ def iterNodesFromPredicate(*args, **kwargs):
   """
   caching = kwargs.get('caching')
   if caching is not None and caching is True:
-    print(f"Warning: getNodesFromPredicate forces caching to False.")
+    print(f"Warning: iterNodesFromPredicate forces caching to False.")
   kwargs['caching'] = False
   walker = NodesWalker(*args, **kwargs)
   return walker()
@@ -993,7 +873,7 @@ def create_iter_children(predicate, nargs):
   """
   def _iter_children_from(parent, *args, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return getNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+    return iterNodesFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _iter_children_from
 
 # Alias for iterNodesFrom... generation
@@ -1151,6 +1031,267 @@ for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
     func.__name__ = funcname
     func.__doc__  = """Iterate on all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
     setattr(module_object, funcname, partial(func, search='dfs', depth=depth, caching=False))
+
+# --------------------------------------------------------------------------
+#
+#   NodesWalkers
+#
+# --------------------------------------------------------------------------
+class NodesWalkers:
+
+  def __init__(self, parent, predicates, **kwargs):
+    self.parent     = parent
+    self.predicates = predicates
+    self.kwargs     = kwargs
+    self.ancestors  = kwargs.get('ancestors', False)
+    if kwargs.get('ancestors'):
+      kwargs.pop('ancestors')
+    self._cache = []
+
+  @property
+  def parent(self):
+    return self._parent
+
+  @parent.setter
+  def parent(self, node: TreeNode):
+    if is_valid_node(node):
+      self._parent = node
+      self.clean()
+
+  @property
+  def predicates(self):
+    return self._predicates
+
+  @predicates.setter
+  def predicates(self, value):
+    self._predicates = []
+    if isinstance(value, str):
+      self._predicates = value.split('/')
+      self.clean()
+    elif isinstance(value, (list, tuple, dict)):
+      self._predicates = value
+      self.clean()
+    else:
+      raise TypeError("predicates must be a sequence of predicates or a path of name or label separated by '/'.")
+
+  @property
+  def ancestors(self):
+    return self._ancestor
+
+  @ancestors.setter
+  def ancestors(self, value):
+    if isinstance(value, bool):
+      self._ancestor = value
+    else:
+      raise TypeError("ancestors must be a boolean.")
+
+  @property
+  def caching(self):
+    return self.kwargs.get("caching", False)
+
+  @caching.setter
+  def caching(self, value):
+    if isinstance(value, bool):
+      self.kwargs['caching'] = value
+    else:
+      raise TypeError("caching must be a boolean.")
+
+  @property
+  def cache(self):
+    return self._cache
+
+  @property
+  def parser(self):
+    return self._parser
+
+  def _deconv_kwargs(self):
+    predicates = []; for_each = []
+    for kwargs in self.predicates:
+      lkwargs = {}
+      for k,v in kwargs.items():
+        if k == 'predicate':
+          predicates.append(v)
+        else:
+          lkwargs[k] = v
+      for_each.append(lkwargs)
+    if len(predicates) != len(self.predicates):
+      raise ValueError(f"Missing predicate.")
+    return predicates, for_each
+
+  def __call__(self):
+    if self.ancestors:
+      return self._parse_with_parents()
+    else:
+      return self._parse()
+
+  def _parse_with_parents(self):
+    if any([isinstance(kwargs, dict) for kwargs in self.predicates]):
+      predicates, for_each = self._deconv_kwargs()
+      for index, kwargs in enumerate(for_each):
+        if kwargs.get('caching'):
+          print(f"Warning: unable to activate caching for predicate at index {index}.")
+          kwargs['caching'] = False
+      if self.caching:
+        if not bool(self._cache):
+          self._cache = list(iter_nodes_from_predicates_with_parents_for_each__(self.parent, predicates, for_each))
+        return self._cache
+      else:
+        return iter_nodes_from_predicates_with_parents_for_each__(self.parent, predicates, for_each)
+    else:
+      if self.caching:
+        if not bool(self._cache):
+          kwargs = copy.deepcopy(self.kwargs)
+          kwargs['caching'] = False
+          self._cache = list(iter_nodes_from_predicates_with_parents__(self.parent, self.predicates, **kwargs))
+        return self._cache
+      else:
+        return iter_nodes_from_predicates_with_parents__(self.parent, self.predicates, **self.kwargs)
+
+  def _parse(self):
+    if any([isinstance(kwargs, dict) for kwargs in self.predicates]):
+      predicates, for_each = self._deconv_kwargs()
+      for index, kwargs in enumerate(for_each):
+        if kwargs.get('caching'):
+          print(f"Warning: unable to activate caching for predicate at index {index}.")
+          kwargs['caching'] = False
+      if self.caching:
+        if not bool(self._cache):
+          self._cache = list(iter_nodes_from_predicates_for_each__(self.parent, predicates, for_each))
+        return self._cache
+      else:
+        return iter_nodes_from_predicates_for_each__(self.parent, predicates, for_each)
+    else:
+      if self.caching:
+        if not bool(self._cache):
+          kwargs = copy.deepcopy(self.kwargs)
+          kwargs['caching'] = False
+          self._cache = list(iter_nodes_from_predicates__(self.parent, self.predicates, **kwargs))
+        return self._cache
+      else:
+        return iter_nodes_from_predicates__(self.parent, self.predicates, **self.kwargs)
+
+  def apply(self, f, *args, **kwargs):
+    for n in self.__call__():
+      f(n, *args, **kwargs)
+
+  def clean(self):
+    """ Reset the cache """
+    self._cache = []
+
+  def __del__(self):
+    self.clean()
+
+def iter_nodes_from_predicates_for_each__(parent, predicates, for_each):
+  # print("iter_nodes_from_predicates_for_each__")
+  if len(predicates) > 1:
+    for node in search_nodes_dispatch(parent, predicates[0], **for_each[0]):
+      yield from iter_nodes_from_predicates_for_each__(node, predicates[1:], for_each[1:])
+  elif len(predicates) == 1:
+    yield from search_nodes_dispatch(parent, predicates[0], **for_each[0])
+
+def iter_nodes_from_predicates__(parent, predicates, **kwargs):
+  # print("iter_nodes_from_predicates__")
+  if len(predicates) > 1:
+    for node in search_nodes_dispatch(parent, predicates[0], **kwargs):
+      yield from iter_nodes_from_predicates__(node, predicates[1:], **kwargs)
+  elif len(predicates) == 1:
+    yield from search_nodes_dispatch(parent, predicates[0], **kwargs)
+
+def iter_nodes_from_predicates_with_parents_for_each__(parent, predicates, for_each):
+  # print("iter_nodes_from_predicates_with_parents_for_each__")
+  if len(predicates) > 1:
+    for node in search_nodes_dispatch(parent, predicates[0], **for_each[0]):
+      for subnode in iter_nodes_from_predicates_with_parents_for_each__(node, predicates[1:], for_each[1:]):
+        yield (node, *subnode)
+  elif len(predicates) == 1:
+    for node in search_nodes_dispatch(parent, predicates[0], **for_each[0]):
+      yield (node,)
+
+def iter_nodes_from_predicates_with_parents__(parent, predicates, **kwargs):
+  # print("iter_nodes_from_predicates_with_parents__")
+  if len(predicates) > 1:
+    for node in search_nodes_dispatch(parent, predicates[0], **kwargs):
+      for subnode in iter_nodes_from_predicates_with_parents__(node, predicates[1:], **kwargs):
+        yield (node, *subnode)
+  elif len(predicates) == 1:
+    for node in search_nodes_dispatch(parent, predicates[0], **kwargs):
+      yield (node,)
+
+# --------------------------------------------------------------------------
+#
+#   iter_nodes_from...s, alias for NodesWalkers
+#
+# --------------------------------------------------------------------------
+def iterNodesFromPredicates(parent, predicates, **kwargs):
+  """
+  Alias to NodesWalkers with caching=False. Iterator is generated each time parsing is done.
+
+  Args:
+      parent (TreeNode): CGNS node root searching
+      predicate (Callable[[TreeNode], bool]): condition to select node
+      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
+      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
+      depth (int, optional): stop exploring after the limited depth
+      sort (Callable[TreeNode], optional): parsing children sort
+      caching (bool, optional): Force
+
+  Returns:
+      TYPE: TreeNode generator/iterator
+
+  """
+  _predicates = []
+  if isinstance(predicates, str):
+    # for predicate in predicates.split('/'):
+    #   _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
+    _predicates = predicates.split('/')
+  elif isinstance(predicates, (list, tuple)):
+    _predicates = predicates
+  else:
+    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
+
+  return iterNodesFromPredicates__(parent, _predicates, **kwargs)
+
+def iterNodesFromPredicates__(*args, **kwargs):
+  caching = kwargs.get('caching')
+  if caching is not None and caching is True:
+    print(f"Warning: iterNodesFromPredicates forces caching to False.")
+  kwargs['caching'] = False
+  walker = NodesWalkers(*args, **kwargs)
+  return walker()
+
+siterNodesFromPredicates = partial(iterNodesFromPredicates, explore='shallow')
+
+def create_iter_childrens(predicate, nargs):
+  """
+    Alias for iterNodesFrom...s generator
+  """
+  def _iter_children_froms(parent, *args, **kwargs):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    return iterNodesFromPredicates(parent, partial(predicate, **pkwargs), **kwargs)
+  return _iter_children_froms
+
+# Alias for iterNodesFrom...s generation
+generate_functions(iterNodesFromPredicates, create_iter_childrens, "dfs",
+  dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
+  "Return an iterator on all CGNS nodes stifies the predicate(s)")
+
+# Alias for iterNodesFrom...s with shallow exploration and dfs traversing generation
+for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
+  dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
+  predicate, nargs = item
+
+  # Generate siterNodesFrom{Name, Label, ...}s
+  funcname = f"siterNodesFrom{what}s"
+  func = create_iter_childrens(predicate, nargs)
+  func.__name__ = funcname
+  func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
+  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
+  # Generate siter_nodes_from_{name, label, ...}s
+  funcname = PYU.camel_to_snake(funcname)
+  func = create_iter_childrens(predicate, nargs)
+  func.__name__ = funcname
+  func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
+  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
 
 # --------------------------------------------------------------------------
 def create_functions_name(create_function, name):
@@ -1357,52 +1498,27 @@ def iterNodesByMatching(root, predicates):
   """
   _predicates = []
   if isinstance(predicates, str):
-    for predicate in predicates.split('/'):
-      _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
+    # for predicate in predicates.split('/'):
+    #   _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
+    _predicates = predicates.split('/')
   elif isinstance(predicates, (list, tuple)):
     _predicates = predicates
   else:
     raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
 
-  yield from iterNodesByMatching__(root, _predicates)
+  walker = NodesWalkers(root, _predicates, search='dfs', depth=1)
+  return walker()
+  # yield from iterNodesByMatching__(root, _predicates)
 
-def iterNodesByMatching__(root, predicates):
-  if len(predicates) > 1:
-    next_roots = getNodesDispatch1(root, predicates[0])
-    for node in next_roots:
-      yield from iterNodesByMatching__(node, predicates[1:])
-  elif len(predicates) == 1:
-    yield from getNodesDispatch1(root, predicates[0])
+# def iterNodesByMatching__(root, predicates):
+#   if len(predicates) > 1:
+#     next_roots = getNodesDispatch1(root, predicates[0])
+#     for node in next_roots:
+#       yield from iterNodesByMatching__(node, predicates[1:])
+#   elif len(predicates) == 1:
+#     yield from getNodesDispatch1(root, predicates[0])
 
-# --------------------------------------------------------------------------
-def getNodesByMatching(root, predicates):
-  """Generator following predicates, doing 1 level search using
-  getNodesFromLabel1 or getNodesFromName1. Equivalent to
-  (predicate = 'type1_t/name2/type3_t' or ['type1_t', 'name2', lambda n: I.getType(n) == CGL.type3_t.name] )
-  for level1 in I.getNodesFromType1(root, type1_t):
-    for level2 in I.getNodesFromName1(level1, name2):
-      for level3 in I.getNodesFromType1(level2, type3_t):
-        ...
-  """
-  _predicates = []
-  if isinstance(predicates, str):
-    for predicate in predicates.split('/'):
-      _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
-  elif isinstance(predicates, (list, tuple)):
-    _predicates = predicates
-  else:
-    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
-
-  results = []
-  return getNodesByMatching__(root, _predicates, results)
-
-def getNodesByMatching__(root, predicates, results):
-  if len(predicates) > 1:
-    next_roots = getNodesDispatch1(root, predicates[0])
-    for node in next_roots:
-      getNodesByMatching__(node, predicates[1:], results)
-  elif len(predicates) == 1:
-    results.append( getNodesDispatch1(root, predicates[0]) )
+getNodesByMatching = iterNodesByMatching
 
 iter_children_by_matching = iterNodesByMatching
 get_children_by_matching  = getNodesByMatching
@@ -1421,46 +1537,23 @@ def iterNodesWithParentsByMatching(root, predicates):
   else:
     raise TypeError("predicates must be a sequence or a path with strings separated by '/'.")
 
-  yield from iterNodesWithParentsByMatching__(root, _predicates)
+  walker = NodesWalkers(root, _predicates, search='dfs', depth=1, ancestors=True)
+  return walker()
+  # yield from iterNodesWithParentsByMatching__(root, _predicates)
 
-def iterNodesWithParentsByMatching__(root, predicates):
-  if len(predicates) > 1:
-    next_roots = getNodesDispatch1(root, predicates[0])
-    for node in next_roots:
-      for subnode in iterNodesWithParentsByMatching__(node, predicates[1:]):
-        yield (node, *subnode)
-  elif len(predicates) == 1:
-    nodes =  getNodesDispatch1(root, predicates[0])
-    for node in nodes:
-      yield (node,)
+# def iterNodesWithParentsByMatching__(root, predicates):
+#   if len(predicates) > 1:
+#     for node in getNodesDispatch1(root, predicates[0]):
+#       # print(f"node (from getNodesDispatch1) {len(predicates)} : {I.getName(node)}")
+#       for subnode in iterNodesWithParentsByMatching__(node, predicates[1:]):
+#         # print(f"subnode (from iterNodesWithParentsByMatching__) {len(predicates)} :     {[I.getName(n) for n in subnode]}")
+#         yield (node, *subnode)
+#   elif len(predicates) == 1:
+#     for node in getNodesDispatch1(root, predicates[0]):
+#       # print(f"node (from getNodesDispatch1) {len(predicates)}==1 : -> {I.getName(node)}")
+#       yield (node,)
 
-# --------------------------------------------------------------------------
-def getNodesWithParentsByMatching(root, predicates):
-  """Same than iterNodesByMatching, but return
-  a tuple of size len(predicates) containing the node and its parents
-  """
-  _predicates = []
-  if isinstance(predicates, str):
-    for predicate in predicates.split('/'):
-      _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
-  elif isinstance(predicates, (list, tuple)):
-    _predicates = predicates
-  else:
-    raise TypeError("predicates must be a sequence or a path with strings separated by '/'.")
-
-  results = []
-  return getNodesWithParentsByMatching__(root, _predicates, results)
-
-def getNodesWithParentsByMatching__(root, predicates, results):
-  if len(predicates) > 1:
-    next_roots = getNodesDispatch1(root, predicates[0])
-    for node in next_roots:
-      for subnode in getNodesWithParentsByMatching__(node, predicates[1:], results):
-        results.append( (node, *subnode,) )
-  elif len(predicates) == 1:
-    nodes =  getNodesDispatch1(root, predicates[0])
-    for node in nodes:
-      results.append( (node,) )
+getNodesWithParentsByMatching = iterNodesWithParentsByMatching
 
 iter_children_with_parents_by_matching = iterNodesWithParentsByMatching
 get_children_with_parents_by_matching  = getNodesWithParentsByMatching

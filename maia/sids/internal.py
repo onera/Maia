@@ -257,5 +257,7 @@ _group_bc_by_bc_label                = I._groupBCByBCType              ;  _group
 _merge_elts_t_per_label              = I._mergeEltsTPerType            ;  _mergeEltsTPerType             = I._mergeEltsTPerType;
 _adapt_labels                        = I._adaptTypes                   ;  _adaptTypes                    = I._adaptTypes;
 
+getLabel = I.getType;
+
 # Overload Converter.Internal functions
 from .Internal_ext import *
