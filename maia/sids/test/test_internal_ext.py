@@ -1386,15 +1386,25 @@ Base CGNSBase_t:
   # ------------------------------------
   # Avoid Node : FamilyName FamilyName_t 'ROW1', traversal=deep
   assert [I.getValue(n) for n in I.iterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"])] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+  # ... with ancestors
+  fpathv = lambda nodes: '/'.join([I.get_name(n) for n in nodes[:-1]]+[I.get_value(nodes[-1])])
+  assert [fpathv(nodes) for nodes in I.iterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], ancestors=True)] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
 
   # Avoid Node : FamilyName FamilyName_t 'ROW1', traversal=shallow
   assert [I.getValue(n) for n in I.iterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow')] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
   assert [I.getValue(n) for n in I.siterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"])] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+  # ... with ancestors
+  assert [fpathv(nodes) for nodes in I.iterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow', ancestors=True)] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
+  assert [fpathv(nodes) for nodes in I.siterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], ancestors=True)] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
 
   # With search='dfs', depth=1 -> iterNodesByMatching
   assert [I.getValue(n) for n in I.iterNodesFromPredicates(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"], search='dfs', depth=1)] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
   assert [I.getValue(n) for n in I.iterNodesFromPredicates1(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"], search='dfs')] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
   assert [I.getValue(n) for n in I.iterNodesFromPredicates1(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"])] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+  # ... with ancestors
+  assert [fpathv(nodes) for nodes in I.iterNodesFromPredicates(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"], search='dfs', depth=1, ancestors=True)] == ["ZoneI/ZBCA/bca1/BCC1", "ZoneI/ZBCA/bcd2/BCA2", "ZoneI/ZBCB/bcb3/BCD3", "ZoneI/ZBCB/bce4/BCE4", "ZoneI/ZBCB/bcc5/BCB5"]
+  assert [fpathv(nodes) for nodes in I.iterNodesFromPredicates1(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"], search='dfs', ancestors=True)] == ["ZoneI/ZBCA/bca1/BCC1", "ZoneI/ZBCA/bcd2/BCA2", "ZoneI/ZBCB/bcb3/BCD3", "ZoneI/ZBCB/bce4/BCE4", "ZoneI/ZBCB/bcc5/BCB5"]
+  assert [fpathv(nodes) for nodes in I.iterNodesFromPredicates1(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"], ancestors=True)] == ["ZoneI/ZBCA/bca1/BCC1", "ZoneI/ZBCA/bcd2/BCA2", "ZoneI/ZBCB/bcb3/BCD3", "ZoneI/ZBCB/bce4/BCE4", "ZoneI/ZBCB/bcc5/BCB5"]
 
   # Each predicate has theirs owns options
   # --------------------------------------
@@ -1402,6 +1412,8 @@ Base CGNSBase_t:
 
   # Avoid Node : FamilyName FamilyName_t 'ROW1'
   assert [I.getValue(n) for n in I.iterNodesFromPredicates(tree, predicates)] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+  # ... with ancestors
+  assert [fpathv(nodes) for nodes in I.iterNodesFromPredicates(tree, predicates, ancestors=True)] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
 
 def test_rmChildrenFromPredicate():
   yt = """
