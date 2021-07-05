@@ -1284,6 +1284,77 @@ for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValue
   setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
 
 # --------------------------------------------------------------------------
+#
+#   get_nodes_from...s, alias for NodesWalkers
+#
+# --------------------------------------------------------------------------
+def getNodesFromPredicates(root, predicates, **kwargs):
+  """
+  Alias to NodesWalkers with caching=False. A list of found node(s) is created.
+
+  Args:
+      root (TreeNode): CGNS node root searching
+      predicate (Callable[[TreeNode], bool]): condition to select node
+      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
+      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
+      depth (int, optional): stop exploring after the limited depth
+      sort (Callable[TreeNode], optional): parsing children sort
+      caching (bool, optional): Force
+
+  Returns:
+      TYPE: TreeNode generator/iterator
+
+  """
+  _predicates = []
+  if isinstance(predicates, str):
+    # for predicate in predicates.split('/'):
+    #   _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
+    _predicates = predicates.split('/')
+  elif isinstance(predicates, (list, tuple)):
+    _predicates = predicates
+  else:
+    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
+
+  return iterNodesFromPredicates__(root, _predicates, **kwargs)
+
+def iterNodesFromPredicates__(*args, **kwargs):
+  caching = kwargs.get('caching')
+  if caching is not None and caching is True:
+    print(f"Warning: iterNodesFromPredicates forces caching to False.")
+  kwargs['caching'] = False
+  walker = NodesWalkers(*args, **kwargs)
+  return walker()
+
+sgetNodesFromPredicates = partial(getNodesFromPredicates, explore='shallow')
+
+# Alias for getNodesFrom...s generation
+generate_functions(getNodesFromPredicates, create_iter_childrens, "dfs",
+  dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
+  "Return an iterator on all CGNS nodes stifies the predicate(s)")
+
+# Alias for iterNodesFrom...s with shallow exploration and dfs traversing generation
+for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
+  dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
+  predicate, nargs = item
+
+  # Generate siterNodesFrom{Name, Label, ...}s
+  funcname = f"sgetNodesFrom{what}s"
+  func = create_iter_childrens(predicate, nargs)
+  func.__name__ = funcname
+  func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
+  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
+  # Generate siter_nodes_from_{name, label, ...}s
+  funcname = PYU.camel_to_snake(funcname)
+  func = create_iter_childrens(predicate, nargs)
+  func.__name__ = funcname
+  func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
+  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
+
+# --------------------------------------------------------------------------
+#
+#   getAcoustic, ..., getCoordinateX, ..., getZoneSubRegionPointers
+#
+# --------------------------------------------------------------------------
 def create_functions_name(create_function, name):
   snake_name = PYU.camel_to_snake(name)
 
@@ -1327,6 +1398,10 @@ for name in filter(lambda i : not i.startswith('__') and not i.endswith('__'), d
   create_functions_name(create_get_child_name, name)
 
 # --------------------------------------------------------------------------
+#
+#   getFamily, getAdditionalFamily
+#
+# --------------------------------------------------------------------------
 def getFamily(parent, family_name):
   if isinstance(family_name, str):
     family_name = [family_name]
@@ -1343,7 +1418,6 @@ def getAdditionalFamily(parent, family_name):
       return node
   raise ValueError("Unable to find Family_t with name : {family_name}")
 
-# --------------------------------------------------------------------------
 def create_get_from_family(label, family_label):
   def _get_from_family(parent, family_name):
     if isinstance(family_name, str):
@@ -1464,6 +1538,10 @@ def iterAllGridConnectivitiesFromAdditionalFamily(parent, family_name):
   return nodes
 
 # --------------------------------------------------------------------------
+#
+#   iterNodesByMatching
+#
+# --------------------------------------------------------------------------
 def getNodesDispatch1(node, predicate):
   """ Interface to adapted getNodesFromXXX1 function depending of predicate type"""
   if isinstance(predicate, str):
@@ -1498,21 +1576,16 @@ def iterNodesByMatching(root, predicates):
 
   walker = NodesWalkers(root, _predicates, search='dfs', depth=1)
   return walker()
-  # yield from iterNodesByMatching__(root, _predicates)
-
-# def iterNodesByMatching__(root, predicates):
-#   if len(predicates) > 1:
-#     next_roots = getNodesDispatch1(root, predicates[0])
-#     for node in next_roots:
-#       yield from iterNodesByMatching__(node, predicates[1:])
-#   elif len(predicates) == 1:
-#     yield from getNodesDispatch1(root, predicates[0])
 
 getNodesByMatching = iterNodesByMatching
 
 iter_children_by_matching = iterNodesByMatching
 get_children_by_matching  = getNodesByMatching
 
+# --------------------------------------------------------------------------
+#
+#   iterNodesWithParentsByMatching
+#
 # --------------------------------------------------------------------------
 def iterNodesWithParentsByMatching(root, predicates):
   """Same than iterNodesByMatching, but return
@@ -1529,25 +1602,16 @@ def iterNodesWithParentsByMatching(root, predicates):
 
   walker = NodesWalkers(root, _predicates, search='dfs', depth=1, ancestors=True)
   return walker()
-  # yield from iterNodesWithParentsByMatching__(root, _predicates)
-
-# def iterNodesWithParentsByMatching__(root, predicates):
-#   if len(predicates) > 1:
-#     for node in getNodesDispatch1(root, predicates[0]):
-#       # print(f"node (from getNodesDispatch1) {len(predicates)} : {I.getName(node)}")
-#       for subnode in iterNodesWithParentsByMatching__(node, predicates[1:]):
-#         # print(f"subnode (from iterNodesWithParentsByMatching__) {len(predicates)} :     {[I.getName(n) for n in subnode]}")
-#         yield (node, *subnode)
-#   elif len(predicates) == 1:
-#     for node in getNodesDispatch1(root, predicates[0]):
-#       # print(f"node (from getNodesDispatch1) {len(predicates)}==1 : -> {I.getName(node)}")
-#       yield (node,)
 
 getNodesWithParentsByMatching = iterNodesWithParentsByMatching
 
 iter_children_with_parents_by_matching = iterNodesWithParentsByMatching
 get_children_with_parents_by_matching  = getNodesWithParentsByMatching
 
+# --------------------------------------------------------------------------
+#
+#   rmChildrenFromPredicate
+#
 # --------------------------------------------------------------------------
 def rmChildrenFromPredicate(root: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
   results = []
@@ -1590,6 +1654,10 @@ generate_rmkeep_functions(rmChildrenFromPredicate, create_rm_children, allfuncs,
   "Remove all direct child CGNS nodes")
 
 # --------------------------------------------------------------------------
+#
+#   keepChildrenFromPredicate
+#
+# --------------------------------------------------------------------------
 def keepChildrenFromPredicate(root: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
   rmChildrenFromPredicate(root, lambda n: not predicate(n))
 
@@ -1604,6 +1672,10 @@ def create_keep_children(predicate, nargs):
 generate_rmkeep_functions(keepChildrenFromPredicate, create_keep_children, allfuncs,
   "Keep all direct child CGNS nodes")
 
+# --------------------------------------------------------------------------
+#
+#   rmNodesFromPredicate
+#
 # --------------------------------------------------------------------------
 def rmNodesFromPredicate(root, predicate, **kwargs):
   depth = kwargs.get('depth')
