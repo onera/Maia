@@ -65,6 +65,36 @@ void compute_idx_local(py::array_t<int32_t, py::array::f_style>& connect_l_idx,
 
 }
 
+template<typename T> auto
+make_raw_view(py::array_t<T, py::array::f_style>& x){
+  py::buffer_info buf = x.request();
+  return static_cast<T*>(buf.ptr);
+}
+
+template<typename fld_type>
+std::tuple<py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>>
+interlaced_to_tuple_coords(py::array_t<fld_type, py::array::f_style>& np_xyz){
+
+  int size = np_xyz.size()/3;
+  py::array_t<fld_type, py::array::f_style> np_coord_x(size);
+  py::array_t<fld_type, py::array::f_style> np_coord_y(size);
+  py::array_t<fld_type, py::array::f_style> np_coord_z(size);
+
+  auto coord_xyz = make_raw_view(np_xyz);
+  auto coord_x   = make_raw_view(np_coord_x);
+  auto coord_y   = make_raw_view(np_coord_y);
+  auto coord_z   = make_raw_view(np_coord_z);
+
+  for(int i = 0; i < size; ++i) {
+    int offset = 3*i;
+    coord_x[i] = coord_xyz[offset  ];
+    coord_y[i] = coord_xyz[offset+1];
+    coord_z[i] = coord_xyz[offset+2];
+  }
+
+  return std::make_tuple(np_coord_x, np_coord_y, np_coord_z);
+}
+
 
 PYBIND11_MODULE(connectivity_transform, m) {
   m.doc() = "pybind11 connectivity_transform plugin"; // optional module docstring
@@ -91,5 +121,8 @@ PYBIND11_MODULE(connectivity_transform, m) {
         py::arg("connect_l_idx").noconvert(),
         py::arg("connect_g_idx").noconvert(),
         py::arg("distrib"      ).noconvert());
+
+  m.def("interlaced_to_tuple_coords", &interlaced_to_tuple_coords<double>,
+        py::arg("np_xyz").noconvert());
 
 }

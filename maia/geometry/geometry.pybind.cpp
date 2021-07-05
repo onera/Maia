@@ -14,6 +14,7 @@ make_raw_view(py::array_t<T, py::array::f_style>& x){
   return static_cast<T*>(buf.ptr);
 }
 
+// --------------------------------------------------------------------
 auto
 adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
                         py::array_t<int, py::array::f_style>& np_neighbor_desc,
@@ -133,6 +134,7 @@ adapt_match_information(py::array_t<int, py::array::f_style>& np_neighbor_idx,
   return np_section_idx;
 }
 
+// --------------------------------------------------------------------
 auto
 compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_style>& np_point_list,
                                               py::array_t<double, py::array::f_style>& np_cx,
@@ -167,7 +169,7 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
     int beg = face_vtx_idx[i_face];
     int n_vtx_on_face = face_vtx_idx[i_face+1]-beg;
 
-    for(int idx_vtx = beg; idx_vtx < face_vtx_idx[i_face+1]; ++idx_vtx){
+    for(int idx_vtx = beg; idx_vtx < face_vtx_idx[i_face+1]; ++idx_vtx) {
 
       int pos1 =   idx_vtx - beg;
       int pos2 = ( pos1 + 1 ) % n_vtx_on_face;
@@ -200,17 +202,106 @@ compute_face_center_and_characteristic_length(py::array_t<int   , py::array::f_s
   return std::make_tuple(np_bnd_coord, np_characteristic_lenght);
 }
 
-// struct Xdt{
-//   Xdt(cgns_registry& reg){
-//     std::cout << to_string(reg) << std::endl;
-//     std::cout << __PRETTY_FUNCTION__ << std::endl;
-//   }
-//   // cgns_registry _reg;
-// };
+// --------------------------------------------------------------------
+auto
+compute_center_cell_u(int n_cell,
+                      py::array_t<double, py::array::f_style>& np_cx,
+                      py::array_t<double, py::array::f_style>& np_cy,
+                      py::array_t<double, py::array::f_style>& np_cz,
+                      py::array_t<int,    py::array::f_style>& np_face_vtx,
+                      py::array_t<int,    py::array::f_style>& np_face_vtx_idx,
+                      py::array_t<int,    py::array::f_style>& np_parent_elements)
+{
+  int n_face = np_parent_elements.shape()[0];
+  // int n_vtx = np_cx.size();
+  // std::cout << "compute_center_cell_u: n_cell = " << n_cell << std::endl;
+  // std::cout << "compute_center_cell_u: n_face = " << n_face << std::endl;
+  // std::cout << "compute_center_cell_u: np_face_vtx.size() = " << np_face_vtx.size() << std::endl;
+  // std::cout << "compute_center_cell_u: np_face_vtx_idx.size() = " << np_face_vtx_idx.size() << std::endl;
+  // std::cout << "compute_center_cell_u: n_vtx = " << n_vtx << std::endl;
+  py::array_t<double, py::array::f_style> np_center_cell(3*n_cell);
+  std::vector<int> countc(n_cell, 0);
+  // std::cout << "compute_center_cell_u: countc.size() = " << countc.size() << std::endl;
 
+  auto cx              = make_raw_view(np_cx);
+  auto cy              = make_raw_view(np_cy);
+  auto cz              = make_raw_view(np_cz);
+  auto face_vtx        = make_raw_view(np_face_vtx);
+  auto face_vtx_idx    = make_raw_view(np_face_vtx_idx);
+  auto parent_elements = make_raw_view(np_parent_elements);
+  auto center_cell     = make_raw_view(np_center_cell);
 
+  // Init volume to ZERO
+  // ---------------
+  for (int icell = 0; icell < n_cell; ++icell) {
+    center_cell[3*icell  ] = 0.;
+    center_cell[3*icell+1] = 0.;
+    center_cell[3*icell+2] = 0.;
+    countc[icell] = 0;
+  }
+
+  // Loop over faces
+  // ---------------
+  for (int iface = 0; iface < n_face; ++iface) {
+    // -> Face -> Cell connectivity
+    int il = parent_elements[iface       ]-1;
+    int ir = parent_elements[iface+n_face]-1;
+    // std::cout << "compute_center_cell_u: iface = " << iface << std::endl;
+    // std::cout << "compute_center_cell_u: il = " << il << ", ir = " << ir << std::endl;
+    assert(((il >= 0) && (il < n_cell)));
+    assert(((ir >= -1) && (ir < n_cell)));
+
+    // Compute the indices of vtx on faces
+    int begin_vtx = face_vtx_idx[iface  ];
+    int end_vtx   = face_vtx_idx[iface+1];
+    // std::cout << "compute_center_cell_u: begin_vtx = " << begin_vtx << ", end_vtx = " << end_vtx << std::endl;
+
+    // Loop over  vertex of each face
+    for (int indvtx = begin_vtx; indvtx < end_vtx; ++indvtx) {
+      // assert(((indvtx >= 0) && (indvtx < np_face_vtx.size())));
+      int ivtx = face_vtx[indvtx]-1;
+      // assert(((ivtx >= 0) && (ivtx < n_vtx)));
+      // std::cout << "compute_center_cell_u: ivtx = " << ivtx << ", np_face_vtx.size() = " << np_face_vtx.size() << std::endl;
+
+       center_cell[3*il  ] += cx[ivtx];
+       center_cell[3*il+1] += cy[ivtx];
+       center_cell[3*il+2] += cz[ivtx];
+       countc[il] += 1;
+
+       if (ir >= 0) {
+         center_cell[3*ir  ] += cx[ivtx];
+         center_cell[3*ir+1] += cy[ivtx];
+         center_cell[3*ir+2] += cz[ivtx];
+         countc[ir] += 1;
+       }
+    }
+  }
+
+  // Finalize center cell computation
+  // --------------------------------
+  for(int icell = 0; icell < n_cell; ++icell) {
+    assert(countc[icell] > 0);
+    center_cell[3*icell  ] /= countc[icell];
+    center_cell[3*icell+1] /= countc[icell];
+    center_cell[3*icell+2] /= countc[icell];
+    // std::cout << "compute_center_cell_u: center_cell[3*icell  ] = " << center_cell[3*icell  ]
+    //                                << ", center_cell[3*icell+1] = " << center_cell[3*icell+1]
+    //                                << ", center_cell[3*icell+2] = " << center_cell[3*icell+2] << std::endl;
+  }
+
+  return np_center_cell;
+}
+
+// --------------------------------------------------------------------
 PYBIND11_MODULE(geometry, m) {
   m.doc() = "pybind11 utils for geomery plugin"; // optional module docstring
+
+  m.def("adapt_match_information", &adapt_match_information,
+        py::arg("np_neighbor_idx"    ).noconvert(),
+        py::arg("np_neighbor_desc"   ).noconvert(),
+        py::arg("np_recv_entity_stri").noconvert(),
+        py::arg("np_point_list"      ).noconvert(),
+        py::arg("np_point_list_donor").noconvert());
 
   m.def("compute_face_center_and_characteristic_length", &compute_face_center_and_characteristic_length,
         py::arg("np_point_list").noconvert(),
@@ -220,14 +311,12 @@ PYBIND11_MODULE(geometry, m) {
         py::arg("np_face_vtx").noconvert(),
         py::arg("np_face_vtx_idx").noconvert());
 
-  m.def("adapt_match_information", &adapt_match_information,
-        py::arg("np_neighbor_idx"    ).noconvert(),
-        py::arg("np_neighbor_desc"   ).noconvert(),
-        py::arg("np_recv_entity_stri").noconvert(),
-        py::arg("np_point_list"      ).noconvert(),
-        py::arg("np_point_list_donor").noconvert());
-
-  // py::class_<Xdt> (m, "Xdt")
-  //   .def(py::init<cgns_registry&>());
-
+  m.def("compute_center_cell_u", &compute_center_cell_u,
+        py::arg("n_cell").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
+        py::arg("np_cz").noconvert(),
+        py::arg("np_face_vtx").noconvert(),
+        py::arg("np_face_vtx_idx").noconvert(),
+        py::arg("np_parent_elemnts").noconvert());
 }
