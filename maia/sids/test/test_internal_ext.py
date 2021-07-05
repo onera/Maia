@@ -776,7 +776,7 @@ Base CGNSBase_t:
   walker = I.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'), caching=True)
   assert([I.get_name(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.get_name(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
-  walker.parent = base; walker.depth = 1
+  walker.root = base; walker.depth = 1
   assert([I.get_name(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.get_name(n) for n in walker.cache] == ['ZoneI', 'ZoneJ'])
 
@@ -1702,11 +1702,11 @@ ZoneI Zone_t:
 
   walker.predicates = ['ZoneBC_t']
   assert [I.getName(node) for node in walker()] == ['ZBCA', 'ZBCB']
-  walker.parent     = zbcB
+  walker.root       = zbcB
   walker.predicates = ['bc5']
   assert [I.getName(node) for node in walker()] == ['bc5']
 
-  walker.parent     = zoneI
+  walker.root       = zoneI
   walker.predicates = ['ZoneBC_t', 'BC_t']
   assert [I.getName(node) for node in walker()] == ['bc1', 'bc2', 'bc3', 'bc4', 'bc5']
   walker.predicates = ['ZoneBC_t', 'bc5']
@@ -1804,25 +1804,25 @@ ZoneI Zone_t:
 
   walker.predicates = ['ZoneBC_t']
   assert [[I.getName(n) for n in nodes] for nodes in walker()] == [['ZBCA'], ['ZBCB']]
-  walker.parent     = zbcB
+  walker.root       = zbcB
   walker.predicates = ['BC_t']
   assert [[I.getName(n) for n in nodes] for nodes in walker()] == [['bc3'], ['bc4'], ['bc5']]
 
   fpath = lambda nodes: '/'.join([I.get_name(n) for n in nodes])
-  walker.parent     = zoneI
+  walker.root       = zoneI
   walker.predicates = ['ZoneBC_t', 'BC_t']
   assert [fpath(nodes) for nodes in walker()] == ['ZBCA/bc1', 'ZBCA/bc2', 'ZBCB/bc3', 'ZBCB/bc4', 'ZBCB/bc5']
   walker.predicates = ['ZoneBC_t', 'bc3']
   assert [fpath(nodes) for nodes in walker()] == ['ZBCB/bc3']
 
-  walker.parent     = zbcB
+  walker.root       = zbcB
   walker.predicates = ['BC_t','IndexArray_t']
   iterator = walker()
   for bc in I.getNodesFromLabel1(zbcB, 'BC_t'):
     for idx in I.getNodesFromLabel1(bc, 'IndexArray_t'):
       assert next(iterator) == (bc, idx)
 
-  walker.parent     = zoneI
+  walker.root       = zoneI
   walker.predicates = ['ZoneBC_t', 'BC_t','IndexArray_t']
   iterator = walker()
   for zbc in I.getNodesFromLabel1(zoneI, 'ZoneBC_t'):
