@@ -2,6 +2,9 @@ import Converter.Internal as I
 import numpy as np
 import copy
 
+import maia.geometry.geometry          as GEO
+import maia.connectivity.conformize_jn as CCJ
+
 
 def duplicateZoneWithTransformation(zone,nameZoneDup,
                                     rotationCenter=np.array([0.,0.,0.]),
@@ -17,10 +20,10 @@ def duplicateZoneWithTransformation(zone,nameZoneDup,
   coordYDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateY")
   coordZDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateZ")
   
-  modCx, modCy, modCz = applyTransformation(rotationCenter, rotationAngle, translation, 
-                                            I.getValue(coordXDupNode),
-                                            I.getValue(coordYDupNode),
-                                            I.getValue(coordZDupNode))
+  modCx, modCy, modCz = GEO.applyTransformation(rotationCenter, rotationAngle, translation, 
+                                                I.getValue(coordXDupNode),
+                                                I.getValue(coordYDupNode),
+                                                I.getValue(coordZDupNode))
 
   I.setValue(coordXDupNode,modCx)
   I.setValue(coordYDupNode,modCy)
@@ -29,7 +32,8 @@ def duplicateZoneWithTransformation(zone,nameZoneDup,
   return zoneDup
 
 
-def _duplicateZoneFromPeriodicJoin(tree,zone,JN_for_duplication_Name):
+def _duplicateZoneFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,
+                                   conformize=False,comm=None):
   #############
   ##### TODO
   ##### > gestion des autres raccords...
@@ -54,9 +58,9 @@ def _duplicateZoneFromPeriodicJoin(tree,zone,JN_for_duplication_Name):
   #############
 
   # Récupération de la base
-  pathZone    = I.getPath(tree,zone)
+  pathZone    = I.getPath(dist_tree,zone)
   pathBase    = "/".join(pathZone.split("/")[:-1])
-  base        = I.getNodeFromPath(tree,pathBase)
+  base        = I.getNodeFromPath(dist_tree,pathBase)
   
   # Changement de nom de la zone dupliquée
   zoneNamePrefix = I.getName(zone)
@@ -118,9 +122,18 @@ def _duplicateZoneFromPeriodicJoin(tree,zone,JN_for_duplication_Name):
   
   # Ajout de la zone dupliquée dans la base
   I._addChild(base,zoneDup)
+  
+  if conformize:
+    if comm is None:
+      raise ValueError("MPI communicator is mandatory for conformization !")
+    JN_for_duplication_paths = []
+    JN_for_duplication_paths.append(I.getPath(dist_tree,secondJoinNode,pyCGNSLike=True)[1:])
+    JN_for_duplication_paths.append(I.getPath(dist_tree,firstJoinDupNode,pyCGNSLike=True)[1:])
+    CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
 
 
-def _duplicateNZonesFromPeriodicJoin(tree,zone,JN_for_duplication_Name,N):
+def _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N,
+                                     conformize=False,comm=None):
   #############
   ##### TODO
   ##### > gestion des autres raccords...
@@ -128,9 +141,9 @@ def _duplicateNZonesFromPeriodicJoin(tree,zone,JN_for_duplication_Name,N):
   #############
 
   # Récupération de la base
-  pathZone    = I.getPath(tree,zone)
+  pathZone    = I.getPath(dist_tree,zone)
   pathBase    = "/".join(pathZone.split("/")[:-1])
-  base        = I.getNodeFromPath(tree,pathBase)
+  base        = I.getNodeFromPath(dist_tree,pathBase)
   
   # Changement de nom de la zone dupliquée
   zoneNamePrefix = I.getName(zone)
@@ -207,10 +220,16 @@ def _duplicateNZonesFromPeriodicJoin(tree,zone,JN_for_duplication_Name,N):
   I.setValue(secondJoinDupNode,zoneNamePrefix+".D0")
   
   
-def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplication_Name):
+def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplication_Name,
+                                                   conformize=False,comm=None):
   
   #############
   ##### TODO
+  ##### > astuce pour que l'angle de la rotation soit le plus proche possible de la bonne valeur
+  #####     a. définir N le nombre de secteurs
+  #####     b. recalculer l'angle de rotation exact
+  #####     c. se servir de ce nouvel angle
+  #####     => ceci doit permettre de répartir les erreurs d'arrondi sur tous les secteurs
   ##### > mettre un warning si translation != [0.,0.,0.] => DONE
   ##### > definir N puis appliquer '_duplicateNZonesFromJoin' => DONE
   ##### > transformer le raccord péridique entre 0 et N en match => DONE
@@ -235,7 +254,7 @@ def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplica
   translation1        = I.getValue(translation1Node)
   
   if (translation1 != np.array([0.,0.,0.])).any():
-    raise ValueError("The join is not a periodic one by rotation only")
+    raise ValueError("The join is not periodic only by rotation !")
   
   # For test
   rotationAngle1[1]   = np.pi
@@ -253,7 +272,8 @@ def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplica
   
   # Duplication
   if N > 1: # Sinon c'est que l'on a déjà la roue entière
-    _duplicateNZonesFromPeriodicJoin(tree,zone,JN_for_duplication_Name,N-1)
+    _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N-1,
+                                     conformize=conformize,comm=comm)
   
   # Transform periodic match join between zone.D0 and zone.D(N-1) to match join
   #> on zone.D0
