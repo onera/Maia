@@ -63,8 +63,9 @@ def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
 
   #Update list of faces
   dist_data = {'OldToNew' : old_to_new_face}
+  #Todo : preserve orientation
   nface_ec_n = I.getNodeFromName1(nface, 'ElementConnectivity')
-  part_data = MBTP.dist_to_part(face_distri_ini, dist_data, [nface_ec_n[1].astype(pdm_dtype)], comm)
+  part_data = MBTP.dist_to_part(face_distri_ini, dist_data, [np.abs(nface_ec_n[1].astype(pdm_dtype))], comm)
   assert len(nface_ec_n[1]) == len(part_data['OldToNew'][0])
   I.setValue(nface_ec_n, part_data['OldToNew'][0])
 
@@ -94,7 +95,8 @@ def _update_subset(node, pl_new, data_query, comm):
   new_distri = new_distri_full[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
   #Update distribution and size
   IE.newDistribution({'Index' : new_distri}, node)
-  I.getNodeFromPath(node, 'PointList#Size')[1][1] = new_distri[-1]
+  if I.getNodeFromPath(node, 'PointList#Size') is not None:
+    I.getNodeFromPath(node, 'PointList#Size')[1][1] = new_distri[-1]
     
   #Update PointList and data
   I.createUniqueChild(node, 'PointList', 'IndexArray_t', d_pl_new.reshape(1,-1, order='F'))
@@ -208,8 +210,9 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   is_all_vtx_sol = lambda n: I.getType(n) in ['FlowSolution_t', 'DiscreteData_t'] \
       and sids.GridLocation(n) == 'Vertex' and I.getNodeFromPath(n, 'PointList') is None
 
-  for data_n in IE.getChildrenFromPredicate(zone, is_all_vtx_sol):
-    I.setValue(data_n, np.delete(data_n[1], local_vtx_to_rmv))
+  for node in IE.getChildrenFromPredicate(zone, is_all_vtx_sol):
+    for data_n in I.getNodesFromType1(node, 'DataArray_t'):
+      I.setValue(data_n, np.delete(data_n[1], local_vtx_to_rmv))
 
   # Update vertex distribution
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
