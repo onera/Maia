@@ -25,7 +25,6 @@ def test_merge_distributed_ids(sub_comm):
     targets = np.empty(0, dtype=np.int32)
     expected_old_to_new = [7,6,8,9,8,10]
 
-  print("\n")
   old_to_new = merge_ids.merge_distributed_ids(distri, ids, targets, sub_comm)
   assert (old_to_new == expected_old_to_new).all()
 
@@ -34,12 +33,16 @@ def test_merge_distributed_ids(sub_comm):
     ids     = np.array([6,9])
     targets = np.array([1,7])
     expected_old_to_new = [1,2,3,4,5,1,6]
+    expected_signed_old_to_new = [1,2,3,4,5,-1,6]
   elif sub_comm.Get_rank() == 1:
     distri = np.array([7,13,13])
     ids     = np.array([12])
     targets = np.array([10])
     expected_old_to_new = [7,6,8,9,8,10]
+    expected_signed_old_to_new = [7,-6,8,9,-8,10]
 
   old_to_new = merge_ids.merge_distributed_ids(distri, ids, targets, sub_comm)
+  signed_old_to_new = merge_ids.merge_distributed_ids(distri, ids, targets, sub_comm, True)
   assert (old_to_new == expected_old_to_new).all()
+  assert (signed_old_to_new == expected_signed_old_to_new).all()
 

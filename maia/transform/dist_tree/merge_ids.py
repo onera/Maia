@@ -26,12 +26,14 @@ def _to_offset(array, last):
       np.concatenate([array, [last]], out=offset)
     return offset
 
-def merge_distributed_ids(distri, ids, targets, comm):
+def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   """
   Map some distributed elements (ids) to others (targets) and shift all the numbering,
   in a distributed way.
   ids and targets must be of same size and are distributed arrays
   Return an old_to_new array for all the elements in the distribution
+  If sign_rmvd is True, input ids maps to -target instead of target
+  in old_to_new array
   """
 
   distri = distri.astype(pdm_dtype)
@@ -68,6 +70,7 @@ def merge_distributed_ids(distri, ids, targets, comm):
   dist_data2 = {'OldToNew' : old_to_new}
   part_data2 = BTP.dist_to_part(distri, dist_data2, [dist_data['Targets'].astype(pdm_dtype)], comm)
 
-  old_to_new[ids_local] = part_data2['OldToNew'][0]
+  marker = -1 if sign_rmvd else 1
+  old_to_new[ids_local] = marker * part_data2['OldToNew'][0]
 
   return old_to_new

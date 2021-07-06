@@ -60,15 +60,17 @@ def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
   Update nface node after face merging, ie
    - update ElementConnectivity using face old_to_new order
    - Shift ElementRange (to substract nb of removed faces) if NFace is after NGon
+  If input array old_to_new_face is signed (ie is negative for face ids that will be removed),
+  then the orientation of nface connectivity is preserved
   """
 
   #Update list of faces
   dist_data = {'OldToNew' : old_to_new_face}
-  #Todo : preserve orientation
   nface_ec_n = I.getNodeFromName1(nface, 'ElementConnectivity')
   part_data = MBTP.dist_to_part(face_distri_ini, dist_data, [np.abs(nface_ec_n[1].astype(pdm_dtype))], comm)
   assert len(nface_ec_n[1]) == len(part_data['OldToNew'][0])
-  I.setValue(nface_ec_n, part_data['OldToNew'][0])
+  #Get sign of nface_ec to preserve orientation
+  I.setValue(nface_ec_n, np.sign(nface_ec_n[1]) * part_data['OldToNew'][0])
 
   #Update ElementRange
   er = sids.ElementRange(nface)
@@ -257,8 +259,9 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   face_distri_ini = IE.getDistribution(ngon, 'Element').astype(pdm_dtype)
   vtx_distri_ini  = IE.getDistribution(zone, 'Vertex').astype(pdm_dtype)
 
-  old_to_new_face = merge_distributed_ids(face_distri_ini, face_to_remove, ref_faces, comm)
+  old_to_new_face = merge_distributed_ids(face_distri_ini, face_to_remove, ref_faces, comm, True)
   old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, ref_vtx, comm)
+  old_to_new_face_unsg = np.abs(old_to_new_face)
 
   n_rmvd_face    = comm.allreduce(len(face_to_remove), op=MPI.SUM)
 
@@ -268,7 +271,7 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
 
   _update_vtx_data(zone, vtx_to_remove, comm)
 
-  _update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, comm)
+  _update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face_unsg, comm)
   _update_cgns_subsets(zone, 'Vertex', vtx_distri_ini, old_to_new_vtx, comm)
   #Shift all CellCenter PL by the number of removed faces
   if sids.ElementRange(ngon)[0] == 1:

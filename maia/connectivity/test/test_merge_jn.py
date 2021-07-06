@@ -69,25 +69,19 @@ def test_update_nface(sub_comm):
   IE.newDistribution({'Element' : cell_distri_ini, 'ElementConnectivity' : cell_distri_ini_e}, nface)
 
   #from maia.transform.dist_tree.merge_ids import merge_distributed_ids
-  #old_to_new_face = merge_distributed_ids(face_distri_ini, np.array([23,24]), np.array([15,16]), sub_comm)
-  old_to_new_face_f = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,15,16,23,24,25,26,27,28,29,30,31,32,33,34]
+  #old_to_new_face = merge_distributed_ids(face_distri_ini, np.array([23,24]), np.array([15,16]), sub_comm, True)
+  old_to_new_face_f = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,-15,-16,23,24,25,26,27,28,29,30,31,32,33,34]
   old_to_new_face = np.array(old_to_new_face_f[face_distri_ini[0]:face_distri_ini[1]])
   
   MJ._update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face=2, comm=sub_comm)
 
-  expected_ec_f = np.array([ 2, 5, 4, 1, 3, 6, 5, 2, 5, 8, 7, 4, 6, 9, 8, 5,10,12,11, 9, 9,11,13,11,
-                            12,14,13,11,11,13,15,13,16,18,17,15,15,17,19,17,18,20,19,17,17,19,21,19,
-                             1, 4,12,10, 4, 7,14,12,10,12,18,16, 9,11, 5, 2,11,13, 8, 5,15,17,11, 9,
-                            17,19,13,11,11,13, 6, 3,13,15, 9, 6,17,19,13,11,10, 9, 2, 1,16,15, 9,10,
-                             9,11, 3, 2,15,17,11, 9, 4, 5,11,12,12,11,17,18, 5, 6,13,11,11,13,19,17,
-                             7, 8,13,14,14,13,19,20, 8, 9,15,13,13,15,21,19])
   expected_eso_f = np.arange(0, 4*34+1, 4)
 
   expected_ec_f = [1, 5, 13, 17, 23, 27, 2, 6, -17, 21, 25, 29, 3, 7, 14, 18, -27, 31, 4, 8, -18, 22, -29, 33, \
-                  -5, 9, 15, 19, 24, 28, -6, 10, -19, 15, 26, 30, -7, 11, 16, 20, -28, 32, -8, 12, -20, 16, -30, 34]
+                  -5, 9, 15, 19, 24, 28, -6, 10, -19, -1*15, 26, 30, -7, 11, 16, 20, -28, 32, -8, 12, -20, -1*16, -30, 34]
 
   start_e, end_e = I.getNodeFromPath(nface, ':CGNS#Distribution/ElementConnectivity')[1][[0,1]]
-  assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == np.abs(expected_ec_f[start_e:end_e])).all()
+  assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == expected_ec_f[start_e:end_e]).all()
   assert (I.getNodeFromName(nface, 'ElementStartOffset')[1]  == eso_f[cell_distri_ini[0]:cell_distri_ini[1]+1]).all()
 
 @mark_mpi_test(2)
