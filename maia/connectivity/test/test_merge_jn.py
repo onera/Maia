@@ -139,20 +139,14 @@ def test_update_cgns_subsets(sub_comm):
   old_to_new_face = np.array(old_to_new_face_f[face_distri_ini[0]:face_distri_ini[1]])
   MJ._update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, sub_comm)
 
-  if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(zone, 'dcube_bnd_0/PointList')[1] == [[1,2]]).all()
-    assert (I.getNodeFromPath(zone, 'dcube_bnd_1/PointList')[1] == [[]]).all()
-    assert (I.getNodeFromPath(zone, 'ZoneBC/dcube_bnd_2/PointList')[1] == [[]]).all()
-    assert (I.getNodeFromPath(zone, 'ZoneBC/dcube_bnd_3/PointList')[1] == [[]]).all()
-    assert (I.getNodeFromPath(zone, 'ZoneGC/dcube_bnd_4/PointList')[1] == [[]]).all()
-    assert (I.getNodeFromPath(zone, 'ZoneGC/dcube_bnd_5/PointList')[1] == [[]]).all()
-  if sub_comm.Get_rank() == 1:
-    assert (I.getNodeFromPath(zone, 'dcube_bnd_0/PointList')[1] == [[3,4]]).all()
-    assert (I.getNodeFromPath(zone, 'dcube_bnd_1/PointList')[1] == [[9,10,11,12]]).all()
-    assert (I.getNodeFromPath(zone, 'ZoneBC/dcube_bnd_2/PointList')[1] == [[13,14,15,16]]).all()
-    assert (I.getNodeFromPath(zone, 'ZoneBC/dcube_bnd_3/PointList')[1] == [[15,16,21,22]]).all()
-    assert (I.getNodeFromPath(zone, 'ZoneGC/dcube_bnd_4/PointList')[1] == [[23,24,25,26]]).all()
-    assert (I.getNodeFromPath(zone, 'ZoneGC/dcube_bnd_5/PointList')[1] == [[31,32,33,34]]).all()
+  bc_distri = DIF.uniform_distribution(4, sub_comm).astype(pdm_dtype)
+  this_rank = slice(bc_distri[0], bc_distri[1])
+  assert (I.getNodeFromPath(zone, 'dcube_bnd_0/PointList')[1] == [[1,2,3,4][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'dcube_bnd_1/PointList')[1] == [[9,10,11,12][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'ZoneBC/dcube_bnd_2/PointList')[1] == [[13,14,15,16][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'ZoneBC/dcube_bnd_3/PointList')[1] == [[15,16,21,22][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'ZoneGC/dcube_bnd_4/PointList')[1] == [[23,24,25,26][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'ZoneGC/dcube_bnd_5/PointList')[1] == [[31,32,33,34][this_rank]]).all()
   assert (I.getNodeFromPath(zone, 'dcube_bnd_0/PointList')[1] == I.getNodeFromPath(zone, 'dcube_bnd_0/SubSol')[1]).all()
   assert (I.getNodeFromPath(zone, 'dcube_bnd_1/PointList')[1] == I.getNodeFromPath(zone, 'dcube_bnd_1/Sol')[1]).all()
 

@@ -12,6 +12,7 @@ from maia.tree_exchange.dist_to_part import data_exchange as MBTP
 from maia.tree_exchange.part_to_dist import data_exchange as MPTB
 
 from maia.utils.parallel import utils as par_utils
+from maia.distribution import distribution_function as DIF
 
 import maia.connectivity.remove_element as RME
 from maia.transform.dist_tree import add_joins_ordinal as AJO
@@ -83,6 +84,8 @@ def _update_subset(node, pl_new, data_query, comm):
   for data_nodes in IE.getNodesWithParentsByMatching(node, data_query):
     path = "/".join([I.getName(n) for n in data_nodes])
     part_data[path] = [data_nodes[-1][1][0]]
+  #Add PL, needed for next blocktoblock
+  part_data[r'@\PointList/@'] = [pl_new]
 
   #Dont use maia interface since we need a new distribution
   PTB = PDM.PartToBlock(comm, [pl_new.astype(pdm_dtype)], pWeight=None, partN=1,
@@ -91,18 +94,25 @@ def _update_subset(node, pl_new, data_query, comm):
 
   d_pl_new = PTB.getBlockGnumCopy()
 
-  new_distri_full = par_utils.gather_and_shift(len(d_pl_new), comm)
-  new_distri = new_distri_full[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+  new_distri_full = par_utils.gather_and_shift(len(d_pl_new), comm, pdm_dtype)
+  #Result is badly distributed, we can do a BlockToBlock to have a uniform distribution
+  ideal_distri      = DIF.uniform_distribution(new_distri_full[-1], comm)
+  ideal_distri_full = par_utils.partial_to_full_distribution(ideal_distri, comm)
+  dist_data_ideal = dict()
+  BTB = PDM.BlockToBlock(new_distri_full, ideal_distri_full, comm)
+  BTB.BlockToBlock_Exchange(dist_data, dist_data_ideal)
+
   #Update distribution and size
-  IE.newDistribution({'Index' : new_distri}, node)
+  IE.newDistribution({'Index' : ideal_distri}, node)
   if I.getNodeFromPath(node, 'PointList#Size') is not None:
-    I.getNodeFromPath(node, 'PointList#Size')[1][1] = new_distri[-1]
+    I.getNodeFromPath(node, 'PointList#Size')[1][1] = ideal_distri[-1]
     
   #Update PointList and data
-  I.createUniqueChild(node, 'PointList', 'IndexArray_t', d_pl_new.reshape(1,-1, order='F'))
+  I.createUniqueChild(node, 'PointList', 'IndexArray_t', dist_data_ideal.pop(r'@\PointList/@').reshape(1,-1, order='F'))
+  #Update data
   for data_nodes in IE.getNodesWithParentsByMatching(node, data_query):
     path = "/".join([I.getName(n) for n in data_nodes])
-    I.setValue(data_nodes[-1], dist_data[path].reshape(1,-1, order='F'))
+    I.setValue(data_nodes[-1], dist_data_ideal[path].reshape(1,-1, order='F'))
 
 def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
   """
