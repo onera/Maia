@@ -4,7 +4,7 @@
 #include "std_e/algorithm/distribution.hpp"
 #include "maia/utils/mpi_scheduler.hpp"
 #include "std_e/logging/log.hpp"
-#include "std_e/interval/knot_sequence.hpp"
+#include "std_e/interval/interval_sequence.hpp"
 
 // --------------------------------------------------------------------------------------
 void run_scheduler_old(MPI_Comm&                                    comm,
