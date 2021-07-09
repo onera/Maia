@@ -75,9 +75,9 @@ def _duplicateZoneFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,
   # Duplication de la zone
   #> récupération des paramètres de transformation
   GCP1 = I.getNodeFromType1(firstJoinNode, "GridConnectivityProperty_t")
-  rotationCenter1Node = I.getNodeFromName(GCP1, "RotationCenter")
-  rotationAngle1Node  = I.getNodeFromName(GCP1, "RotationAngle")
-  translation1Node    = I.getNodeFromName(GCP1, "Translation")
+  rotationCenter1Node = I.getNodeFromName2(GCP1, "RotationCenter")
+  rotationAngle1Node  = I.getNodeFromName2(GCP1, "RotationAngle")
+  translation1Node    = I.getNodeFromName2(GCP1, "Translation")
   rotationCenter1     = I.getValue(rotationCenter1Node)
   rotationAngle1      = I.getValue(rotationAngle1Node)
   translation1        = I.getValue(translation1Node)
@@ -110,8 +110,8 @@ def _duplicateZoneFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,
   #  c'est l'inverse
   #>>>>
   GCPDup2 = I.getNodeFromType1(secondJoinDupNode, "GridConnectivityProperty_t")
-  translationDup2Node   = I.getNodeFromName(GCPDup2, "Translation")
-  rotationAngleDup2Node = I.getNodeFromName(GCPDup2, "RotationAngle")
+  translationDup2Node   = I.getNodeFromName2(GCPDup2, "Translation")
+  rotationAngleDup2Node = I.getNodeFromName2(GCPDup2, "RotationAngle")
   I.setValue(translationDup2Node,  I.getValue(translationDup2Node)*2)
   I.setValue(rotationAngleDup2Node,I.getValue(rotationAngleDup2Node)*2)
   I.setValue(secondJoinDupNode,zoneName)
@@ -140,6 +140,9 @@ def _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N,
   ##### > autre chose ?
   #############
 
+  if N<1:
+    return
+
   # Récupération de la base
   pathZone    = I.getPath(dist_tree,zone)
   pathBase    = "/".join(pathZone.split("/")[:-1])
@@ -157,9 +160,9 @@ def _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N,
   
   # Récupération des paramètres de transformation
   GCP1 = I.getNodeFromType1(firstJoinNode, "GridConnectivityProperty_t")
-  rotationCenter1Node = I.getNodeFromName(GCP1, "RotationCenter")
-  rotationAngle1Node  = I.getNodeFromName(GCP1, "RotationAngle")
-  translation1Node    = I.getNodeFromName(GCP1, "Translation")
+  rotationCenter1Node = I.getNodeFromName2(GCP1, "RotationCenter")
+  rotationAngle1Node  = I.getNodeFromName2(GCP1, "RotationAngle")
+  translation1Node    = I.getNodeFromName2(GCP1, "Translation")
   rotationCenter1     = I.getValue(rotationCenter1Node)
   rotationAngle1      = I.getValue(rotationAngle1Node)
   translation1        = I.getValue(translation1Node)
@@ -199,6 +202,14 @@ def _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N,
     
     # Ajout de la zone dupliquée dans la base
     I._addChild(base,zoneDup)
+  
+    if conformize:
+      if comm is None:
+        raise ValueError("MPI communicator is mandatory for conformization !")
+      JN_for_duplication_paths = []
+      JN_for_duplication_paths.append(I.getPath(dist_tree,secondJoinPrevNode,pyCGNSLike=True)[1:])
+      JN_for_duplication_paths.append(I.getPath(dist_tree,firstJoinDupNode,pyCGNSLike=True)[1:])
+      CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
     
     
   # Mise a jour du raccord périodique :
@@ -212,16 +223,23 @@ def _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N,
   #>>>>
   secondJoinDupNode = I.getNodeFromName1(ZGCDup,JN_for_duplication_Name[1])
   GCPDup2 = copy.deepcopy(GCP1)
-  translationDup2Node   = I.getNodeFromName(GCPDup2, "Translation")
-  rotationAngleDup2Node = I.getNodeFromName(GCPDup2, "RotationAngle")
-  I.setValue(translationDup2Node,  I.getValue(translationDup2Node)*(-1))
-  I.setValue(rotationAngleDup2Node,I.getValue(rotationAngleDup2Node)*(-1))
+  translationDup2Node   = I.getNodeFromName2(GCPDup2, "Translation")
+  rotationAngleDup2Node = I.getNodeFromName2(GCPDup2, "RotationAngle")
+  # I.setValue(translationDup2Node,  I.getValue(translation1Node)*(-1))
+  # I.setValue(rotationAngleDup2Node,I.getValue(rotationAngle1Node)*(-1))
+  # print(translationDup2Node[1])
+  translationDup2Node[1] *= -1
+  # print(translationDup2Node[1])
+  rotationAngleDup2Node[1] *= -1
+  # print(I.getNodeFromName2(GCPDup2, "Translation")[1])
+  I._rmNodesByType1(secondJoinDupNode, "GridConnectivityProperty_t")
   I._addChild(secondJoinDupNode,GCPDup2)
+  # print(I.getNodeFromName2(I.getNodeFromType1(secondJoinDupNode, "GridConnectivityProperty_t"), "Translation")[1])
   I.setValue(secondJoinDupNode,zoneNamePrefix+".D0")
   
   
 def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplication_Name,
-                                                   conformize=False,comm=None):
+                                                   conformize=False,comm=None,rotation_correction=True):
   
   #############
   ##### TODO
@@ -248,24 +266,20 @@ def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplica
   
   # Récupération des paramètres de transformation
   GCP1 = I.getNodeFromType1(firstJoinNode, "GridConnectivityProperty_t")
-  rotationAngle1Node  = I.getNodeFromName(GCP1, "RotationAngle")
+  rotationAngle1Node  = I.getNodeFromName2(GCP1, "RotationAngle")
   rotationAngle1      = I.getValue(rotationAngle1Node)
-  translation1Node    = I.getNodeFromName(GCP1, "Translation")
+  translation1Node    = I.getNodeFromName2(GCP1, "Translation")
   translation1        = I.getValue(translation1Node)
   
   if (translation1 != np.array([0.,0.,0.])).any():
     raise ValueError("The join is not periodic only by rotation !")
   
-  # For test
-  rotationAngle1[1]   = np.pi
-  
   # Find the number of duplication needed
   index = np.where(rotationAngle1 != 0)[0]
   if index.size == 1:
-    N = int(np.round(2*np.pi/rotationAngle1[index]))
-    # N = 3
-    # rotationAngle1[1] = 1.
-    print(N)
+    N = abs(int(np.round(2*np.pi/rotationAngle1[index])))
+    if rotation_correction:
+      rotationAngle1[index] = np.sign(rotationAngle1[index])*2*np.pi/N
   else:
     # TO DO : vérifier le type de l'erreur
     raise ValueError("Zone/Join not define a section of a row")
@@ -285,5 +299,13 @@ def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplica
   finalSecondJoinNode = I.getNodeFromName1(finalZGC,JN_for_duplication_Name[1])
   # finalGCP2           = I.getNodeFromType1(finalSecondJoinNode, "GridConnectivityProperty_t")
   # I._rmNode(finalSecondJoinNode,finalGCP2)
-  I._rmNodesByType(finalSecondJoinNode,"GridConnectivityProperty_t")
+  I._rmNodesByType1(finalSecondJoinNode,"GridConnectivityProperty_t")
+  
+  if conformize:
+    if comm is None:
+      raise ValueError("MPI communicator is mandatory for conformization !")
+    JN_for_duplication_paths = []
+    JN_for_duplication_paths.append(I.getPath(dist_tree,firstJoinNode,pyCGNSLike=True)[1:])
+    JN_for_duplication_paths.append(I.getPath(dist_tree,finalSecondJoinNode,pyCGNSLike=True)[1:])
+    CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
   
