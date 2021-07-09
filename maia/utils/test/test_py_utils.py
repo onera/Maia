@@ -19,6 +19,16 @@ def test_is_subset_l():
   assert py_utils.is_subset_l([3,8,2],    L) == False
   assert py_utils.is_subset_l([10,3,3,1], L) == False
 
+def test_get_ordered_subset():
+  L = [2,8,10,3,3]
+  assert py_utils.get_ordered_subset([10,8,3], L) == (8,10,3)
+  assert py_utils.get_ordered_subset([10,2], L)   == None
+  assert py_utils.get_ordered_subset([10,3], L)   == (10,3)
+  assert py_utils.get_ordered_subset([3,2], L)    == py_utils.get_ordered_subset([2,3], L) == (3,2)
+  assert py_utils.get_ordered_subset([8], L)      == (8,)
+  assert py_utils.get_ordered_subset([], L)       == ()
+  assert py_utils.get_ordered_subset([3,8,2,10,3], L) == (3,2,8,10,3)
+
 def test_is_before():
   L = [2,8,10,3,3]
   assert py_utils.is_before(L, 8, 10) == True

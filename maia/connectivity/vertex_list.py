@@ -157,7 +157,7 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
     # For each couple of faces, we have a list of shared vertices : (fA,fB) -> [vtx0, .. vtxN]
     fA_idx = slice(pl_face_vtx_idx[interface[0]],pl_face_vtx_idx[interface[0]+1])
     fB_idx = slice(pl_face_vtx_idx[interface[1]],pl_face_vtx_idx[interface[1]+1])
-    step = 0
+
     #Build the list of shared vertices for the two *opposite* faces
     opp_face_vtx_a = pld_face_vtx[fA_idx]
     opp_face_vtx_b = pld_face_vtx[fB_idx]
@@ -165,28 +165,28 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
 
     # If vertices are following, we can retrieve order. We may loop in normal
     # or reverse order depending on which vtx appears first
-    if py_utils.is_subset_l(vtx, pl_face_vtx[fA_idx]):
-      step = -1 if py_utils.is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1]) else 1
-    elif py_utils.is_subset_l(vtx[::-1], pl_face_vtx[fA_idx]):
-      step = -1 if not py_utils.is_before(opp_face_vtx_a, opp_vtx[0], opp_vtx[-1]) else 1
-    elif py_utils.is_subset_l(vtx, pl_face_vtx[fB_idx]):
-      step = -1 if not py_utils.is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1]) else 1
-    elif py_utils.is_subset_l(vtx[::-1], pl_face_vtx[fB_idx]):
-      step = -1 if py_utils.is_before(opp_face_vtx_b, opp_vtx[0], opp_vtx[-1]) else 1
+    subset_vtx = py_utils.get_ordered_subset(vtx, pl_face_vtx[fA_idx])
+    if subset_vtx is not None:
+      subset_vtx_opp = py_utils.get_ordered_subset(opp_vtx, opp_face_vtx_a)
+    else:
+      subset_vtx = py_utils.get_ordered_subset(vtx, pl_face_vtx[fB_idx])
+      if subset_vtx is not None:
+        subset_vtx_opp = py_utils.get_ordered_subset(opp_vtx, opp_face_vtx_b)
 
     # Skip non continous vertices and treat faces if possible
-    if step != 0:
-      l_vertices = [vtx_g_to_l[v] for v in vtx]
+    if subset_vtx is not None:
+      l_vertices = [vtx_g_to_l[v] for v in subset_vtx]
+      assert subset_vtx_opp is not None
       assert len(opp_vtx) == len(l_vertices)
-      pl_vtx_local_opp[l_vertices] = opp_vtx[::step]
+      pl_vtx_local_opp[l_vertices] = subset_vtx_opp[::-1]
 
       for face in interface:
         if not face_is_treated[face]:
           face_vtx     = pl_face_vtx[pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
           opp_face_vtx = pld_face_vtx[pl_face_vtx_idx[face]:pl_face_vtx_idx[face+1]]
 
-          ordered_vtx     = py_utils.roll_from(face_vtx, start_value = vtx[0])
-          ordered_vtx_opp = py_utils.roll_from(opp_face_vtx, start_value = pl_vtx_local_opp[l_vertices[0]], reverse=True)
+          ordered_vtx     = py_utils.roll_from(face_vtx, start_value = subset_vtx[0])
+          ordered_vtx_opp = py_utils.roll_from(opp_face_vtx, start_value = subset_vtx_opp[-1], reverse=True)
 
           pl_vtx_local_opp[[vtx_g_to_l[k] for k in ordered_vtx]] = ordered_vtx_opp
 

@@ -1,5 +1,6 @@
 import Converter.Internal as I
 import numpy as np
+from itertools import permutations
 
 def list_or_only_elt(l):
   return l[0] if len(l) == 1 else l
@@ -8,6 +9,17 @@ def is_subset_l(subset, L):
   """Return True is subset list is included in L, allowing looping"""
   extended_l = list(L) + list(L)[:len(subset)-1]
   return max([subset == extended_l[i:i+len(subset)] for i in range(len(L))])
+
+def get_ordered_subset(subset, L):
+  """
+  Check is one of the permutations of subset exists in L, allowing looping
+  Return the permutation if existing, else None
+  """
+  extended_l = list(L) + list(L)[:len(subset)-1]
+  for perm in permutations(subset, len(subset)):
+    perm_l = list(perm)
+    if max([perm_l == extended_l[i:i+len(perm_l)] for i in range(len(L))]) == True:
+      return perm
 
 def is_before(l, a, b):
   """Return True is element a is present in list l before element b"""
