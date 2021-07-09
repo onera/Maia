@@ -70,8 +70,7 @@ ZoneU Zone_t [[18,6,0]]:
     Cell DataArray_t [3,4,4]:
   """
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  dist_zone  = I.getZones(dist_tree)[0]
+  dist_zone = parse_yaml_cgns.to_node(dt)
   PE = I.getNodeFromName(dist_zone, 'ParentElements')
   I.setValue(PE, PE[1]) #Trick to have fortran like array
 

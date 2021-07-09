@@ -15,7 +15,7 @@ Base0 CGNSBase_t [3,3]:
   ZoneU2 Zone_t [[216,125,0]]:
   ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
 """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   def test_one_part(self, sub_comm):
     zone_to_weights = setup_partition_weights.npart_per_zone(self.dist_tree, sub_comm)
     for zone in I.getZones(self.dist_tree):
@@ -40,7 +40,7 @@ Base0 CGNSBase_t [3,3]:
   ZoneU2 Zone_t [[216,125,0]]:
   ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
 """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   def test_uniform(self, sub_comm):
     zone_to_weights = setup_partition_weights.balance_multizone_tree(self.dist_tree,

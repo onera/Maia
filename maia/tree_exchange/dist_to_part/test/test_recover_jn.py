@@ -94,8 +94,8 @@ ZoneB.P1.N1 Zone_t:
         Index DataArray_t {0} [4]:
 """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
   JBTP.get_pl_donor(I.getZones(dist_tree), I.getZones(part_tree), sub_comm)
   

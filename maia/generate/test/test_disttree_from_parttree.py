@@ -35,7 +35,7 @@ Base CGNSBase_t:
         OrdinalOpp UserDefinedData_t [3]:
         PointList IndexArray_t [[-100,-10]]:
   """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   DFP.match_jn_from_ordinals(dist_tree)
   expected_names  = ['ZoneA', 'ZoneA', 'ZoneB', 'ZoneA']
   expected_pl_opp = [[2,4], [1,3], [-100,-10], [10,100]]

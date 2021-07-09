@@ -22,7 +22,7 @@ BaseA CGNSBase_t:
 BaseB CGNSBase_t:
   Zone3.P0.N0 Zone_t:
 """
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
   assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseA/Zone1')]\
       == ['Zone1.P0.N1', 'Zone1.P0.N2']
   assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseA/Zone2.With.dot')]\
@@ -43,8 +43,7 @@ Zone Zone_t:
   :CGNS#Distribution UserDefinedData_t:
     Cell DataArray_t [1,2,4]:
 """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
-  dist_zone = I.getZones(dist_tree)[0]
+  dist_zone = parse_yaml_cgns.to_node(yt)
   zone_distri = utils.get_cgns_distribution(dist_zone, 'Cell')
   bc_distri   = utils.get_cgns_distribution(I.getNodeFromPath(dist_zone, 'ZBC/bc1'), 'Index')
   assert zone_distri.dtype == bc_distri.dtype == npy_pdm_gnum_dtype
@@ -54,7 +53,6 @@ Zone Zone_t:
 @mark_mpi_test(2)
 def test_create_all_elt_distribution(sub_comm):
   yt = """
-Zone Zone_t:
   Hexa Elements_t:
     ElementRange IndexRange_t [61,80]:
   Quad Elements_t:
@@ -62,8 +60,7 @@ Zone Zone_t:
   Tetra Elements_t:
     ElementRange IndexRange_t [81,100]:
 """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
-  dist_elts = I.getNodesFromType(dist_tree, 'Elements_t')
+  dist_elts = parse_yaml_cgns.to_nodes(yt)
   distri = utils.create_all_elt_distribution(dist_elts, sub_comm)
   assert distri.dtype == npy_pdm_gnum_dtype
   if sub_comm.Get_rank() == 0:
@@ -86,8 +83,7 @@ Zone.P0.N1 Zone_t:
   :CGNS#GlobalNumbering UserDefinedData_t:
     Cell DataArray_t [3,4]:
 """
-  part_tree = parse_yaml_cgns.to_complete_pytree(yt)
-  part_zones = I.getZones(part_tree)
+  part_zones = parse_yaml_cgns.to_nodes(yt)
   cell_lngn = utils.collect_cgns_g_numbering(part_zones, 'Cell')
   bc1_lngn  = utils.collect_cgns_g_numbering(part_zones, 'Index', 'ZBC/bc1')
   assert len(cell_lngn) == len(bc1_lngn) == 2
@@ -121,8 +117,7 @@ Zone.P0.N1 Zone_t:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t [2,3,5]:
 """
-  part_tree = parse_yaml_cgns.to_complete_pytree(yt)
-  part_zones = I.getZones(part_tree)
+  part_zones = parse_yaml_cgns.to_nodes(yt)
   dist_elts = [I.newElements('Hexa',  erange=[7,8]),
                I.newElements('Quad',  erange=[1,6]),
                I.newElements('Tetra', erange=[9,12])]

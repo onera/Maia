@@ -33,7 +33,7 @@ Base CGNSBase_t [3,3]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,50,50]:
 """
-  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   hdf_filter = dict()
   cgns_subsets.create_zone_bc_filter(I.getZones(size_tree)[0], "Base/Zone", hdf_filter)
   assert len(hdf_filter.keys()) == 8
@@ -73,7 +73,7 @@ Base CGNSBase_t [3,3]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [5,9,9]:
 """
-  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   hdf_filter = dict()
   zoneU = I.getNodeFromName(size_tree, 'ZoneU')
   zoneS = I.getNodeFromName(size_tree, 'ZoneS')
@@ -104,7 +104,7 @@ Base CGNSBase_t [3,3]:
       Vertex DataArray_t [12,27,27]:
       Cell DataArray_t [0,8,8]:
 """
-  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   hdf_filter = dict()
   cgns_subsets.create_flow_solution_filter(I.getZones(size_tree)[0], "Base/Zone", hdf_filter)
   assert len(hdf_filter.keys()) == 4
@@ -123,7 +123,7 @@ Base CGNSBase_t [3,3]:
       Vertex DataArray_t [12,27,27]:
       Cell DataArray_t [0,8,8]:
 """
-  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   hdf_filter = dict()
   with pytest.raises(RuntimeError):
     cgns_subsets.create_flow_solution_filter(I.getZones(size_tree)[0], "Base/Zone", hdf_filter)
@@ -159,7 +159,7 @@ Base CGNSBase_t [3,3]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,40,40]:
 """
-  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   hdf_filter = dict()
   cgns_subsets.create_zone_subregion_filter(I.getZones(size_tree)[0], "Base/Zone", hdf_filter)
   assert len(hdf_filter.keys()) == 7
@@ -178,7 +178,7 @@ Base CGNSBase_t [3,3]:
       array1 DataArray_t None:
       array2 DataArray_t None:
 """
-  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   hdf_filter = dict()
   with pytest.raises(RuntimeError):
     cgns_subsets.create_zone_subregion_filter(I.getZones(size_tree)[0], "Base/Zone", hdf_filter)

@@ -50,6 +50,8 @@ def test_compute_elements_distribution(sub_comm):
 class Test_compute_zone_distribution:
   def test_unstruct(self, sub_comm):
     yt = """
+Zone Zone_t [[27,8,0]]:  
+  ZoneType ZoneType_t "Unstructured":
   Ngon Elements_t [22,0]:
     ElementRange IndexArray_t [1,36]:
   ZBC ZoneBC_t:
@@ -71,11 +73,7 @@ class Test_compute_zone_distribution:
     PointList IndexArray_t None:
     PointList#Size IndexArray [1,10]:
   """
-    tree = parse_yaml_cgns.to_complete_pytree(yt)
-    #Create zone by hand, otherwith ZoneType is misformed
-    zone = I.newZone('Zone', np.array([[27,8,0]]), 'Unstructured')
-    for child in tree[2]:
-      I.addChild(zone, child)
+    zone = parse_yaml_cgns.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, sub_comm)
     assert len(I.getNodesFromName(zone, 'Index')) == 5
     assert len(I.getNodesFromName(zone, 'Element')) == 1
@@ -92,16 +90,14 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
   ZSR ZoneSubRegion_t:
     PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
   """
-    tree = parse_yaml_cgns.to_complete_pytree(yt)
-    #Create zone by hand, otherwith ZoneType is misformed
-    zone = I.getZones(tree)[0]
+    zone = parse_yaml_cgns.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, sub_comm)
     assert len(I.getNodesFromName(zone, 'Index')) == 3
 
 
 @mark_mpi_test(2)
 def test_add_distribution_info(sub_comm):
-  dist_tree = parse_yaml_cgns.to_complete_pytree("""
+  dist_tree = parse_yaml_cgns.to_cgns_tree("""
 Base CGNSBase_t [3,3]:
   ZoneU Zone_t [[27,8,0]]:
     ZoneType ZoneType_t "Unstructured":
@@ -164,7 +160,7 @@ Base0 CGNSBase_t [3,3]:
       :CGNS#Distribution UserDefinedData_t:
     :CGNS#Distribution UserDefinedData_t:
 """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   distribution_tree.clean_distribution_info(dist_tree)
   assert I.getNodeFromName(dist_tree, ':CGNS#Distribution') is None
   assert I.getNodeFromName(dist_tree, 'PointList#Size') is None

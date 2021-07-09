@@ -3,7 +3,7 @@ import Converter.Internal as I
 import numpy as np
 
 with open("/scratchm/bberthou/travail/git_all_projects/external/maia/test/example.yaml") as yt:
-  t = parse_yaml_cgns.to_pytree(yt)
+  t = parse_yaml_cgns.to_nodes(yt)
 
   I.printTree(t)
 

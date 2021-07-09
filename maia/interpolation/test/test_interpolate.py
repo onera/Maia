@@ -230,16 +230,16 @@ def test_create_interpolator(sub_comm):
     pt = src_part_0
   else:
     pt = src_part_1
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
-  for zone in I.getZones(part_tree):
+  zones = parse_yaml_cgns.to_nodes(pt)
+  for zone in zones:
     pe = I.getNodeFromName(zone, 'ParentElements')
     #Put it in F order
     newpe = np.empty(pe[1].shape, dtype=np.int32, order='F')
     newpe[:] = np.copy(pe[1][:])
     I.setValue(pe, newpe)
 
-  src_parts_per_dom = [I.getZones(part_tree)]
-  tgt_parts_per_dom = [[I.copyTree(zone) for zone in I.getZones(part_tree)]]
+  src_parts_per_dom = [zones]
+  tgt_parts_per_dom = [[I.copyTree(zone) for zone in zones]]
   interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
   assert one_or_two == 1
   interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Closest')
@@ -262,7 +262,7 @@ def test_interpolate_fields(sub_comm):
   else:
     pt = src_part_1
     expected_sol = np.array([7., 5., 6., 5., 7., 8., 7., 7., 7., 5., 5., 2., 5., 5., 1., 7., 4., 8.])
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
   for zone in I.getZones(part_tree):
     pe = I.getNodeFromName(zone, 'ParentElements')
     #Put it in F order
@@ -287,11 +287,11 @@ def test_interpolate_fields(sub_comm):
 
 @mark_mpi_test(2)
 class Test_interpolation_api():
-  src_zone_0 = parse_yaml_cgns.to_pytree(src_part_0)[0]
-  src_zone_1 = parse_yaml_cgns.to_pytree(src_part_1)[0]
-  tgt_zone_0 = parse_yaml_cgns.to_pytree(tgt_part_0)[0]
-  tgt_zone_1 = parse_yaml_cgns.to_pytree(tgt_part_1)[0]
-  tgt_zone_2 = parse_yaml_cgns.to_pytree(tgt_part_2)[0]
+  src_zone_0 = parse_yaml_cgns.to_node(src_part_0)
+  src_zone_1 = parse_yaml_cgns.to_node(src_part_1)
+  tgt_zone_0 = parse_yaml_cgns.to_node(tgt_part_0)
+  tgt_zone_1 = parse_yaml_cgns.to_node(tgt_part_1)
+  tgt_zone_2 = parse_yaml_cgns.to_node(tgt_part_2)
   expected_vtx_sol = [ np.array([1., 3., 8., 2., 2., 4., 4., 3., 3., 8., 5., 6.]),
                        np.array([3., 8., 6., 7., 7., 2., 4., 3., 3., 3., 8., 7., 8., 5., 6., 6.]),
                        np.array([2., 4., 3., 3., 8., 2., 4., 3., 4., 3., 8., 7., 8., 8., 6., 6.])]

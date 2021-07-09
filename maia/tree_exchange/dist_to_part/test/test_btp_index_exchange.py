@@ -117,10 +117,8 @@ ZoneU Zone_t [[6,0,0]]:
       Vertex DataArray_t {0} [1,5,2]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
+  dist_zone  = parse_yaml_cgns.to_node(dt)
+  part_zones = parse_yaml_cgns.to_nodes(pt)
 
   IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['ZoneSubRegion_t'], 'Vertex', sub_comm)
 
@@ -174,10 +172,8 @@ ZoneU Zone_t [[6,0,0]]:
 ZoneU.P1.N0 Zone_t [[3,0,0]]:
 """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zone  = I.getZones(part_tree)[0]
+  dist_zone = parse_yaml_cgns.to_node(dt)
+  part_zone = parse_yaml_cgns.to_node(pt)
 
   group_part = {'npZSRGroupIdx': np.array([0, 0, 1], dtype=np.int32),
                 'npZSRGroup': np.array([42], dtype=np.int32),

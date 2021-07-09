@@ -11,8 +11,8 @@ Zone Zone_t [[27],[8],[0]]:
   Hexa Elements_t [17, 0]:
   SomeOtherNode OtherType_t:
 """
-  zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
-  elmt_gen = cgns_elements.gen_elemts(I.getZones(zone_tree)[0])
+  zone = parse_yaml_cgns.to_node(yt)
+  elmt_gen = cgns_elements.gen_elemts(zone)
   assert hasattr(elmt_gen, '__next__')
   assert [I.getName(elt) for elt in elmt_gen] == ['NGon', 'Hexa']
 
@@ -27,10 +27,10 @@ Tri Elements_t [5, 0]:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [40,60,60]:
 """
-  zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  elements = parse_yaml_cgns.to_nodes(yt)
   hdf_filter = dict()
-  cgns_elements.create_zone_std_elements_filter(I.getNodeFromName(zone_tree, 'Hexa'), "path/to/zone", hdf_filter)
-  cgns_elements.create_zone_std_elements_filter(I.getNodeFromName(zone_tree, 'Tri'), "path/to/zone", hdf_filter)
+  cgns_elements.create_zone_std_elements_filter(elements[0], "path/to/zone", hdf_filter)
+  cgns_elements.create_zone_std_elements_filter(elements[1], "path/to/zone", hdf_filter)
   assert len(hdf_filter) == 4
   assert hdf_filter['path/to/zone/Hexa/ElementConnectivity'] == \
       [[0], [1], [(7-2)*8], [1], [2*8], [1], [(7-2)*8], [1], [10*8], [0]]
@@ -48,9 +48,8 @@ NGon Elements_t [22, 0]:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [2,7,10]:
 """
-  zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  element = parse_yaml_cgns.to_node(yt)
   hdf_filter = dict()
-  element = I.getNodeFromName(zone_tree, 'NGon')
   cgns_elements.load_element_connectivity_from_eso(element, 'pathtozone', hdf_filter)
   assert hdf_filter['pathtozone/NGon/ElementConnectivity'] == \
       [[0], [1], [28-8], [1], [8], [1], [28-8], [1], [40], [0]]
@@ -67,10 +66,10 @@ NGon Elements_t [22, 0]:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [2,7,10]:
 """
-  zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  element = parse_yaml_cgns.to_node(yt)
   read_filter, write_filter = dict(), dict()
-  cgns_elements.create_zone_eso_elements_filter(I.getNodeFromName(zone_tree, 'NGon'), 'pathtozone', read_filter, 'read')
-  cgns_elements.create_zone_eso_elements_filter(I.getNodeFromName(zone_tree, 'NGon'), 'pathtozone', write_filter, 'write')
+  cgns_elements.create_zone_eso_elements_filter(element, 'pathtozone', read_filter, 'read')
+  cgns_elements.create_zone_eso_elements_filter(element, 'pathtozone', write_filter, 'write')
   assert read_filter['pathtozone/NGon/ParentElements'] == \
       [[0, 0], [1, 1], [(7-2), 2], [1, 1], [2, 0], [1, 1], [(7-2), 2], [1, 1], [10, 2], [1]]
   assert read_filter['pathtozone/NGon/ElementStartOffset'] == \
@@ -80,7 +79,7 @@ NGon Elements_t [22, 0]:
       [[0], [1], [(7-2)], [1], [2], [1], [(7-2)], [1], [10+1], [0]]
   partial_func = read_filter['pathtozone/NGon/ElementConnectivity']
   assert partial_func.func is cgns_elements.load_element_connectivity_from_eso
-  assert partial_func.args == (I.getNodeFromName(zone_tree, 'NGon'), 'pathtozone')
+  assert partial_func.args == (element, 'pathtozone')
 
 def test_create_zone_mixed_elements_filter():
   hdf_filter = dict()
@@ -90,21 +89,22 @@ def test_create_zone_mixed_elements_filter():
 
 def test_create_zone_elements_filter():
   yt = """
-NGon Elements_t [22, 0]:
-  ParentElements DataArray_t None:
-  ElementStartOffset DataArray_t None:
-  ElementConnectivity DataArray_t None:
-  :CGNS#Distribution UserDefinedData_t:
-    Element DataArray_t [2,7,10]:
-Tri Elements_t [5, 0]:
-  :CGNS#Distribution UserDefinedData_t:
-    Element DataArray_t [30,60,120]:
+Zone Zone_t:
+  NGon Elements_t [22, 0]:
+    ParentElements DataArray_t None:
+    ElementStartOffset DataArray_t None:
+    ElementConnectivity DataArray_t None:
+    :CGNS#Distribution UserDefinedData_t:
+      Element DataArray_t [2,7,10]:
+  Tri Elements_t [5, 0]:
+    :CGNS#Distribution UserDefinedData_t:
+      Element DataArray_t [30,60,120]:
 """
-  zone_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  zone = parse_yaml_cgns.to_node(yt)
   hdf_filter = dict()
-  cgns_elements.create_zone_elements_filter(zone_tree, 'zone', hdf_filter, 'read')
-  ngon = I.getNodeFromName(zone_tree, 'NGon')
-  tri  = I.getNodeFromName(zone_tree, 'Tri')
+  cgns_elements.create_zone_elements_filter(zone, 'zone', hdf_filter, 'read')
+  ngon = I.getNodeFromName(zone, 'NGon')
+  tri  = I.getNodeFromName(zone, 'Tri')
   ngon_filter, tri_filter = dict(), dict()
   cgns_elements.create_zone_eso_elements_filter(ngon, 'zone', ngon_filter, 'read')
   cgns_elements.create_zone_std_elements_filter(tri, 'zone', tri_filter)

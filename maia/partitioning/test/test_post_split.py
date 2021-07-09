@@ -32,13 +32,13 @@ Zone.P2.N3 Zone_t:
       PointList IndexArrat_t:
 """
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
-  PS.copy_additional_nodes(I.getZones(dist_tree)[0], I.getZones(part_tree)[0])
-  assert I.getType(I.getNodeFromName(dist_tree, '.Solver#BC')) == I.getType(I.getNodeFromName(part_tree, '.Solver#BC'))
-  assert I.getValue(I.getNodeFromName(dist_tree, 'Ordinal')) == I.getValue(I.getNodeFromName(part_tree, 'Ordinal'))
-  assert (I.getValue(I.getNodeFromName(dist_tree, 'Translation')) == \
-          I.getValue(I.getNodeFromName(part_tree, 'Translation'))).all()
+  dist_zone = parse_yaml_cgns.to_node(dt)
+  part_zone = parse_yaml_cgns.to_node(pt)
+  PS.copy_additional_nodes(dist_zone, part_zone)
+  assert I.getType(I.getNodeFromName(dist_zone, '.Solver#BC')) == I.getType(I.getNodeFromName(part_zone, '.Solver#BC'))
+  assert I.getValue(I.getNodeFromName(dist_zone, 'Ordinal')) == I.getValue(I.getNodeFromName(part_zone, 'Ordinal'))
+  assert (I.getValue(I.getNodeFromName(dist_zone, 'Translation')) == \
+          I.getValue(I.getNodeFromName(part_zone, 'Translation'))).all()
 
 def test_split_original_joins():
   pt = """
@@ -53,8 +53,7 @@ ZoneB.P1.N0 Zone_t:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t [5,3,1,2,6]:
 """
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
-  p_zone = I.getZones(part_tree)[0]
+  p_zone = parse_yaml_cgns.to_node(pt)
   PS.split_original_joins(p_zone)
 
   assert I.getNodeFromName(p_zone, 'matchBA') is None

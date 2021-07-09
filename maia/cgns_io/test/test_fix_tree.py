@@ -19,7 +19,7 @@ Base0 CGNSBase_t [3,3]:
         PointRangeDonor IndexArray_t [[17,17],[3,9],[1,5]]:
         Transform "int[IndexDimension]" [-2,-1,-3]:
 """
-  size_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   fix_tree.fix_point_ranges(size_tree)
   gcA = I.getNodeFromName(size_tree, 'matchAB')
   gcB = I.getNodeFromName(size_tree, 'matchBA')

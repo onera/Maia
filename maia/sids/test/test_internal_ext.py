@@ -46,7 +46,7 @@ Base CGNSBase_t:
         Index_v IndexArray_t:
         Index_vi IndexArray_t:
 """
-  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
   # I.printTree(tree)
 
   # Test from Name
@@ -106,9 +106,8 @@ ZoneI Zone_t:
       Index4_ii IndexArray_t:
       Index4_iii IndexArray_t:
 """
-  root = parse_yaml_cgns.to_complete_pytree(yt)
-  zoneI = I.getNodeFromName(root, 'ZoneI')
-  zbcB  = I.getNodeFromName(root, 'ZBCB' )
+  zoneI = parse_yaml_cgns.to_node(yt)
+  zbcB  = I.getNodeFromName(zoneI, 'ZBCB' )
 
   assert list(IE.getNodesByMatching(zoneI, '')) == []
   assert list(IE.getNodesByMatching(zoneI, 'BC_t')) == []
@@ -168,9 +167,8 @@ ZoneI Zone_t:
       Index_vi IndexArray_t:
       PL4 DataArray_t:
 """
-  root = parse_yaml_cgns.to_complete_pytree(yt)
-  zoneI = I.getNodeFromName(root, 'ZoneI')
-  zbcB  = I.getNodeFromName(root, 'ZBCB' )
+  zoneI = parse_yaml_cgns.to_node(yt)
+  zbcB  = I.getNodeFromName(zoneI, 'ZBCB' )
 
   assert list(IE.getNodesWithParentsByMatching(zoneI, '')) == []
   assert list(IE.getNodesWithParentsByMatching(zoneI, 'BC_t')) == []
@@ -255,8 +253,7 @@ Zone Zone_t:
   WrongZSR WrongType_t:
     BCRegionName Descriptor_t "BC":
   """
-  tree = parse_yaml_cgns.to_complete_pytree(yt)
-  zone = I.getZones(tree)[0]
+  zone = parse_yaml_cgns.to_node(yt)
 
   assert IE.getSubregionExtent(I.getNodeFromName(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
   assert IE.getSubregionExtent(I.getNodeFromName(zone, 'BCLinkedZSR'), zone) == 'ZBC/BC2'

@@ -174,8 +174,8 @@ def test_dist_coords_to_part_coords_U(sub_comm):
       Vertex DataArray_t {0} [3,4]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = I.getZones(part_tree)
@@ -207,8 +207,8 @@ def test_dist_coords_to_part_coords_S(sub_comm):
       Vertex DataArray_t {0} [5,6,3,4]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
   dist_zone  = I.getZones(dist_tree)[1]
   part_zones = I.getZones(part_tree)
@@ -245,8 +245,8 @@ def test_dist_sol_to_part_sol_allvtx(sub_comm):
       Vertex DataArray_t {0} [3,4]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = I.getZones(part_tree)
@@ -288,9 +288,9 @@ def test_dist_sol_to_part_sol_pl(sub_comm):
         Index DataArray_t {0} [3,1]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   I._rmNodesByName(dist_tree, 'FlowSolution') #Test only pl sol here
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = I.getZones(part_tree)
@@ -334,8 +334,8 @@ def test_dist_dataset_to_part_dataset(sub_comm):
             Index DataArray_t {0} [1]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = I.getZones(part_tree)
@@ -378,8 +378,8 @@ def test_dist_subregion_to_part_subregion(sub_comm):
           Index DataArray_t {0} [6,3,4]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = [zone for zone in I.getZones(part_tree) if 'ZoneU' in I.getName(zone)]

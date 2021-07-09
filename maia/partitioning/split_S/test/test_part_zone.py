@@ -35,8 +35,7 @@ Zone Zone_t:
     gc1 GridConnectivity1to1_t:
       PointRange IndexRange_t [[17,17],[3,9],[1,5]]:
 """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
-  zone      = I.getZones(dist_tree)[0]
+  zone = parse_yaml_cgns.to_node(yt)
 
   out = splitS.collect_S_bnd_per_dir(zone)
   assert out["xmin"] == [I.getNodeFromName(zone, name) for name in ['bc1']]
@@ -133,7 +132,7 @@ Small.P2.N1 Zone_t:
       distPRDonor IndexRange_t [[17,17],[3,9],[1,5]]:
       zone_offset DataArray_t [4,6,1]:
   """
-  part_tree  = parse_yaml_cgns.to_complete_pytree(pt)
+  part_tree  = parse_yaml_cgns.to_cgns_tree(pt)
   part_zones = I.getZones(part_tree)
   splitS.split_original_joins_S(part_zones, sub_comm)
 

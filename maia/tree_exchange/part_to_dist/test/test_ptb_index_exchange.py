@@ -188,7 +188,7 @@ Zone.P2.N1 Zone_t:
   expected_elt_distri_full  = np.array([0, 12, 24, 36])
   expected_eltc_distri_full = np.array([0, 48, 96, 144])
 
-  pT = parse_yaml_cgns.to_complete_pytree(yt)
+  pT = parse_yaml_cgns.to_cgns_tree(yt)
   # Carefull, PE are not as fortran array, let corrige that
   for zone in I.getZones(pT):
     PE = I.getNodeFromName(zone, 'ParentElements')
@@ -269,7 +269,7 @@ Zone.P2.N1 Zone_t:
   expected_elt_distri_full  = np.array([0,3,6,8])
   expected_eltc_distri_full = np.array([0,18,36,48])
 
-  pT = parse_yaml_cgns.to_complete_pytree(yt)
+  pT = parse_yaml_cgns.to_cgns_tree(yt)
 
   IPTB.part_nface_to_dist_nface(dist_zone, I.getZones(pT), 'NFace', 'Ngon', sub_comm)
 

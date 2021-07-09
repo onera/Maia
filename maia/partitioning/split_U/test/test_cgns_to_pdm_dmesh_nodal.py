@@ -67,8 +67,7 @@ ZoneU Zone_t [[18,6,0]]:
     expected_dnface = 8
     expected_facecell = [3, 4, 1, 0, 3, 0, 4, 0, 2, 0, 4, 0, 3, 0, 4, 0]
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  dist_zone  = I.getZones(dist_tree)[0]
+  dist_zone = parse_yaml_cgns.to_node(dt)
 
   dmeshnodal = CTP.cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, sub_comm)
 

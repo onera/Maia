@@ -70,13 +70,13 @@ class Test__discover_wrapper:
         PointList IndexArray_t [[1,4,3]]:
         field DataArray_t:
       """.format(dtype)
-    dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-    part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+    dist_zone  = parse_yaml_cgns.to_node(dt)
+    part_zones = parse_yaml_cgns.to_nodes(pt)
 
-    PTB._discover_wrapper(I.getZones(dist_tree)[0], I.getZones(part_tree), \
+    PTB._discover_wrapper(dist_zone, part_zones, \
         'DiscreteData_t', 'DiscreteData_t/DataArray_t', sub_comm)
 
-    fs = I.getNodeFromName(dist_tree, 'FS')
+    fs = I.getNodeFromName(dist_zone, 'FS')
     assert I.getType(fs) == 'DiscreteData_t'
     dist_pl     = I.getNodeFromPath(fs, 'PointList')[1]
     dist_distri = IE.getDistribution(fs, 'Index')
@@ -128,8 +128,8 @@ class Test__discover_wrapper:
             BCData BCData_t:
               newField4 DataArray_t:
       """
-    dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-    part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+    dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+    part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
     bc_ds_path = 'ZoneBC_t/BC_t/BCDataSet_t'
     PTB._discover_wrapper(I.getZones(dist_tree)[0], I.getZones(part_tree), \
@@ -204,11 +204,9 @@ ZoneU Zone_t [[6,0,0]]:
       CY DataArray_t [2,1]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_zone  = parse_yaml_cgns.to_node(dt)
+  part_zones = parse_yaml_cgns.to_nodes(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
   PTB.part_coords_to_dist_coords(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
@@ -275,11 +273,9 @@ ZoneU Zone_t [[6,0,0]]:
       Vertex DataArray_t {0} [5,6,2]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_zone  = parse_yaml_cgns.to_node(dt)
+  part_zones = parse_yaml_cgns.to_nodes(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
   PTB.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
 
   assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int
@@ -364,11 +360,9 @@ ZoneU Zone_t [[6,0,0]]:
       field DataArray_t R8 [[600,300,400]]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_zone  = parse_yaml_cgns.to_node(dt)
+  part_zones = parse_yaml_cgns.to_nodes(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
   PTB.part_subregion_to_dist_subregion(dist_zone, part_zones, sub_comm)
 
   assert I.getNodeFromPath(dist_zone, 'ZSRWithPL/field')[1].dtype == np.int32
@@ -451,11 +445,9 @@ ZoneS Zone_t:
             field DataArray_t [[[1,4],[3,1]]]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
-  part_tree = parse_yaml_cgns.to_complete_pytree(pt)
+  dist_zone  = parse_yaml_cgns.to_node(dt)
+  part_zones = parse_yaml_cgns.to_nodes(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
   PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, sub_comm)
 
   assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1].dtype    == np.float64

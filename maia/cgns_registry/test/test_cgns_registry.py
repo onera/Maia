@@ -49,7 +49,7 @@ Base0 CGNSBase_t [3,3]:
 def test_cgns_registry_1p(sub_comm):
   """
   """
-  tree = parse_yaml_cgns.to_complete_pytree(yt_1p)
+  tree = parse_yaml_cgns.to_cgns_tree(yt_1p)
 
   cgr = make_cgns_registry(tree, sub_comm)
 
@@ -123,7 +123,7 @@ def test_cgns_registry_1p(sub_comm):
 def test_cgns_registry_2p(sub_comm):
   """
   """
-  tree = parse_yaml_cgns.to_complete_pytree(yt_2p[sub_comm.Get_rank()])
+  tree = parse_yaml_cgns.to_cgns_tree(yt_2p[sub_comm.Get_rank()])
 
   cgr = make_cgns_registry(tree, sub_comm)
 
@@ -197,7 +197,7 @@ def test_cgns_registry_2p(sub_comm):
 def test_add_cgns_registry_information_1p(sub_comm):
   """
   """
-  tree = parse_yaml_cgns.to_complete_pytree(yt_1p)
+  tree = parse_yaml_cgns.to_cgns_tree(yt_1p)
   cgr = add_cgns_registry_information(tree, sub_comm)
 
   zone1_id_n = I.getNodeFromPath(tree, "/Base0/ZoneU1/:CGNS#Registry")
@@ -210,7 +210,7 @@ def test_add_cgns_registry_information_1p(sub_comm):
 def test_add_cgns_registry_information_2p(sub_comm):
   """
   """
-  tree = parse_yaml_cgns.to_complete_pytree(yt_2p[sub_comm.Get_rank()])
+  tree = parse_yaml_cgns.to_cgns_tree(yt_2p[sub_comm.Get_rank()])
   cgr = add_cgns_registry_information(tree, sub_comm)
 
   if sub_comm.Get_rank()==0:

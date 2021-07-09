@@ -24,8 +24,7 @@ Zone Zone_t:
   FSPL FlowSolution_t:
     PointList IndexArray_t None:
 """
-  tree = parse_yaml_cgns.to_complete_pytree(yt)
-  zone = I.getZones(tree)[0]
+  zone = parse_yaml_cgns.to_node(yt)
   size_data = {'/Zone/Hexa/ElementConnectivity' : (1, 'I4', 160),
                '/Zone/ZBC/bc/PointList' : (1, 'I4', (1,30)),
                '/Zone/ZBC/bc_withds/PointList' : (1, 'I4', (1,100)),
@@ -72,7 +71,7 @@ BaseA CGNSBase_t:
     ZSR ZoneSubRegion_t:
       PointList IndexArray_t None:
 """
-  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
   size_data_tree = {'/BaseA/Zone/Hexa/ElementConnectivity' : (1, 'I4', 160),
                     '/BaseA/Zone/ZBC/bc/PointList' : (1, 'I4', (1,30)),
                     '/BaseA/Zone/ZBC/bc_withds/PointList' : (1, 'I4', (1,100)),

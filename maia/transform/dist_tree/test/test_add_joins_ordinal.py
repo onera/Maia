@@ -77,10 +77,7 @@ Base1 CGNSBase_t [3,3]:
         PointList IndexArray_t [1,3]:
         PointListDonor IndexArray_t [32,34]:
 """
-  # May change it when we can load from relative path
-  # with open("grid_connectivity.yaml") as yt:
-   # dist_tree = parse_yaml_cgns.to_pytree(yt)
-  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   add_joins_ordinal.add_joins_ordinal(dist_tree, sub_comm)
 
@@ -129,7 +126,7 @@ Base1 CGNSBase_t [3,3]:
         PointList IndexArray_t [1,3]:
         PointListDonor IndexArray_t [32,34]:
 """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(yt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   #Correct tree to simulate join distribution. One proc have do dist data!
   match_names = ['matchAB', 'matchBA', 'matchBC1', 'matchBC2', 'matchCB1', 'matchCB2']

@@ -10,10 +10,10 @@ class Test_shorten_names:
     TurbulentSANuTildeDensityGradientY DataArray_t:
     MyShortName DataArray_t:
   """
-  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  node = parse_yaml_cgns.to_node(yt)
 
   def test_shorten_field_names(self):
-      shorten_field_names(self.tree,quiet=True)
+      shorten_field_names(self.node,quiet=True)
 
       expected_yt = """
       MyVeryLooooonnnggggFlowSolutionName FlowSolution_t:
@@ -21,11 +21,11 @@ class Test_shorten_names:
         TurbSANuTildDensGradY DataArray_t:
         MyShortName DataArray_t:
       """
-      expected_tree = parse_yaml_cgns.to_complete_pytree(expected_yt)
-      assert self.tree == expected_tree
+      expected_node = parse_yaml_cgns.to_node(expected_yt)
+      assert self.node == expected_node
 
   def test_shorten_names(self):
-      shorten_names(self.tree,quiet=True)
+      shorten_names(self.node,quiet=True)
 
       expected_yt = """
       MyVeryLoooFlowSoluName FlowSolution_t:
@@ -33,6 +33,6 @@ class Test_shorten_names:
         TurbSANuTildDensGradY DataArray_t:
         MyShortName DataArray_t:
       """
-      expected_tree = parse_yaml_cgns.to_complete_pytree(expected_yt)
-      print(self.tree)
-      assert self.tree == expected_tree
+      expected_node = parse_yaml_cgns.to_node(expected_yt)
+      print(self.node)
+      assert self.node == expected_node

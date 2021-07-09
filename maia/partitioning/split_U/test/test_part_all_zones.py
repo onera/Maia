@@ -49,10 +49,9 @@ ZoneB Zone_t:
     Vertex DataArray_t [0,0,0]:
     Cell DataArray_t [0,0,0]:
 """
-  dist_tree = parse_yaml_cgns.to_complete_pytree(dt)
+  dzones = parse_yaml_cgns.to_nodes(dt)
 
   keep_alive = []
-  dzones = I.getZones(dist_tree)
 
   mpart = PDM.MultiPart(2, np.array([1,2], dtype=np.int32), 0, 1, 1, None, sub_comm)
   partU.set_mpart_dmeshes(mpart, dzones, sub_comm, keep_alive)

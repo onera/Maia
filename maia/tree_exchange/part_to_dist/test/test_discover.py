@@ -33,38 +33,38 @@ Zone.P2.N1 Zone_t:
       Family FamilyName_t "myfamily":
   """]
   def test_simple(self, sub_comm):
-    part_tree = parse_yaml_cgns.to_complete_pytree(self.pt[sub_comm.Get_rank()])
+    part_zones = parse_yaml_cgns.to_nodes(self.pt[sub_comm.Get_rank()])
     # I.printTree(part_tree)
 
     dist_zone = I.newZone('Zone')
-    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm)
+    disc.discover_nodes_from_matching(dist_zone, part_zones, 'ZoneBC_t/BC_t', sub_comm)
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == "BC_t")
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == "BC_t")
 
     dist_zone = I.newZone('Zone')
-    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), ['ZoneBC_t', 'BC_t'], sub_comm)
+    disc.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', 'BC_t'], sub_comm)
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == "BC_t")
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == "BC_t")
 
     dist_zone = I.newZone('Zone')
-    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), [CGL.ZoneBC_t, CGL.BC_t], sub_comm)
+    disc.discover_nodes_from_matching(dist_zone, part_zones, [CGL.ZoneBC_t, CGL.BC_t], sub_comm)
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == "BC_t")
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == "BC_t")
 
     dist_zone = I.newZone('Zone')
-    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), [CGL.ZoneBC_t, 'BC_t'], sub_comm)
+    disc.discover_nodes_from_matching(dist_zone, part_zones, [CGL.ZoneBC_t, 'BC_t'], sub_comm)
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == "BC_t")
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == "BC_t")
 
     dist_zone = I.newZone('Zone')
     queries = [CGL.ZoneBC_t, lambda n : I.getType(n) == "BC_t" and I.getName(n) != "BCA"]
-    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), queries, sub_comm)
+    disc.discover_nodes_from_matching(dist_zone, part_zones, queries, sub_comm)
     assert (I.getNodeFromPath(dist_zone, 'ZBC/BCA') == None)
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == "BC_t")
     # I.printTree(dist_zone)
 
   def test_short(self, sub_comm):
-    part_tree = parse_yaml_cgns.to_complete_pytree(self.pt[sub_comm.Get_rank()])
+    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
     part_nodes = [I.getNodeFromPath(zone, 'ZBC') for zone in I.getZones(part_tree)\
       if I.getNodeFromPath(zone, 'ZBC') is not None]
 
@@ -81,7 +81,7 @@ Zone.P2.N1 Zone_t:
     # I.printTree(dist_node)
 
   def test_getvalue(self, sub_comm):
-    part_tree = parse_yaml_cgns.to_complete_pytree(self.pt[sub_comm.Get_rank()])
+    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
     for zbc in I.getNodesFromName(part_tree, 'ZBC'):
       I.setValue(zbc, 'test')
 
@@ -107,7 +107,7 @@ Zone.P2.N1 Zone_t:
     # I.printTree(dist_zone)
 
   def test_with_childs(self, sub_comm):
-    part_tree = parse_yaml_cgns.to_complete_pytree(self.pt[sub_comm.Get_rank()])
+    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
 
     dist_zone = I.newZone('Zone')
     disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm,
@@ -125,7 +125,7 @@ Zone.P2.N1 Zone_t:
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB/GridLocation')) == "GridLocation_t")
 
   def test_with_rule(self, sub_comm):
-    part_tree = parse_yaml_cgns.to_complete_pytree(self.pt[sub_comm.Get_rank()])
+    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
 
     # Exclude from node name
     dist_zone = I.newZone('Zone')
@@ -145,7 +145,7 @@ Zone.P2.N1 Zone_t:
 
   def test_multiple(self, sub_comm):
     gc_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
-    part_tree = parse_yaml_cgns.to_complete_pytree(self.pt[sub_comm.Get_rank()])
+    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
 
     # Test discover_nodes_from_matching(...)
     # --------------------------------------
