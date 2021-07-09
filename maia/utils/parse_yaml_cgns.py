@@ -67,7 +67,20 @@ def to_pytree(yaml_str):
     yaml_dict = yaml.load(yaml_str)
     return parse_yaml_dict(yaml_dict)
 
+def to_node(yaml_str):
+  if yaml_str=="":
+    return None
+  else:
+    nodes = to_pytree(yaml_str)
+    assert len(nodes) == 1, f"Cannot convert yaml tree with {len(nodes)} to single CGNS node. Use to_pytree"
+    return nodes[0]
+
 def to_complete_pytree(yaml_str):
   t = I.newCGNSTree()
-  I.addChild(t,to_pytree(yaml_str))
+  childs = to_pytree(yaml_str)
+  if len(childs) > 0 and I.getType(childs[0]) == 'Zone_t':
+    b = I.newCGNSBase(parent=t)
+    I.addChild(b, childs)
+  else:
+    I.addChild(t, childs)
   return t
