@@ -1719,6 +1719,30 @@ generate_functions(rmNodesFromPredicate, create_rm_nodes, "dfs",
   dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
   "Remove all found child CGNS nodes")
 
+
+# --------------------------------------------------------------------------
+def getParentFromPredicate(start, node, predicate, prev=None):
+    """Return thee first parent node matching type."""
+    if id(start) == id(node):
+      return prev
+    if predicate(start):
+      prev = start
+    for n in start[__CHILDREN__]:
+        ret = getParentFromPredicate(n, node, parentType, prev)
+        if ret is not None: return ret
+    return None
+
+def getParentsFromPredicate(start, node, predicate, l=[]):
+    """Return all parent nodes matching type."""
+    if id(start) == id(node):
+      return l
+    if predicate(start):
+      l.append(start)
+    for n in start[__CHILDREN__]:
+        ret = getParentsFromPredicate(n, node, predicate, l)
+        if ret != []: return ret
+    return []
+
 # --------------------------------------------------------------------------
 @check_is_label('ZoneSubRegion_t', 0)
 @check_is_label('Zone_t', 1)
