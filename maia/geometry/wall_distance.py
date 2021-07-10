@@ -18,9 +18,8 @@ from maia.sids.cgns_keywords         import Label as CGL
 from maia.sids                       import conventions as conv
 from maia.tree_exchange.part_to_dist import discover    as disc
 
-# from maia.geometry.extract_boundary  import extract_surf_from_bc
-from maia.geometry.extract_boundary2 import extract_surf_from_bc
-from maia.geometry.geometry          import get_center_cell
+from maia.geometry.extract_boundary import extract_surf_from_bc
+from maia.geometry.geometry         import get_center_cell
 
 __doc__ = """
 CGNS python module which interface the ParaDiGM library for // distance to wall computation .
@@ -316,34 +315,34 @@ class WallDistance:
       self._setup_surf_mesh(self.part_tree, self.families, self.mpi_comm)
 
       if self.method == "cloud":
+        # 2.1. Prepare Volume
+        # -------------------
         dist_zones = list(IE.iterNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'))
         for i_domain, dist_zone in enumerate(dist_zones):
           assert(i_domain == 0)
-          # 3. Prepare Volume
-          # =================
           self._setup_vol_mesh(i_domain, dist_zone, self.part_tree, self.mpi_comm)
 
-        # 4. Compute wall distance
-        # ========================
+        # 2.2. Compute wall distance
+        # --------------------------
         self.walldist.compute()
 
+        # 2.3. Fill the partitioned tree with result(s)
+        # ---------------------------------------------
         for i_domain, dist_zone in enumerate(dist_zones):
-          # 5. Fill the partitioned tree with result(s)
-          # ===========================================
           self.get(self.part_tree, i_domain)
       else:
         for i_domain, dist_zone in enumerate(IE.iterNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t')):
           assert(i_domain == 0)
-          # 3. Prepare Volume
-          # =================
+          # 2.1. Prepare Volume
+          # -------------------
           self._setup_vol_mesh(i_domain, dist_zone, self.part_tree, self.mpi_comm)
 
-          # 4. Compute wall distance
-          # ========================
-          self.walldist.compute()
+          # 2.2. Compute wall distance
+          # --------------------------
+          self.walldist.compute('rank1')
 
-          # 5. Fill the partitioned tree with result(s)
-          # ===========================================
+          # 2.3. Fill the partitioned tree with result(s)
+          # ---------------------------------------------
           self.get(self.part_tree)
     else:
       raise ValueError(f"Unable to find BC family(ies) : {self.families} in {skeleton_families}.")
@@ -477,13 +476,16 @@ def compare_npart(t1, t2):
     # print(f"tmp = {tmp}")
 
     if any([tmp[i] > 0 for i in range(tmp.shape[0])]):
+      count = 0
       for i in range(tmp.shape[0]):
         if tmp[i] > 0:
           print(f"Found tmp > 0 for i : {i} -> tmp = {tmp[i]}")
-      raise TypeError(f"Found tmp > 0.")
+          count += 1
+      raise TypeError(f"Found tmp > 0, count = {count}.")
 
 
 if __name__ == "__main__":
+  import os
   import maia.parallel_tree as PT
   from maia.cgns_io      import cgns_io_tree as IOT
   from maia.partitioning import part         as PPA
@@ -503,8 +505,9 @@ if __name__ == "__main__":
   # filename = "AxiT2-new.hdf"
   # families = ['WALL']
 
-  # method = "cloud"
-  method = "propagation"
+  dirname = "."
+  method = "cloud"
+  # method = "propagation"
   # rootname = "AxiT0"
   rootname = "AxiT2"
 
@@ -517,40 +520,69 @@ if __name__ == "__main__":
   # filename = "AxiT2-tetra-new2.hdf"
   # families = ['WALL']
 
-  # rootname = "Rotor37_U_MM2"
-  # familie['AUBE', 'MOYEU', 'CARTER', 'BLADE']
+  rootname = "Rotor37_U_MM2"
+  families = ['AUBE', 'MOYEU', 'CARTER', 'BLADE']
   # t = C.convertFile2PyTree(filename)
   # I._adaptNGon12NGon2(t)
   # C.convertPyTree2File(t, "AxiT2-new.hdf")
   # sys.exit(1)
   # filename = "cubeH-new.hdf"
   # families = []
-
   filename = f"{rootname}-new.hdf"
-  fs_name = 'FlowSolution#Init'
-  dist_tree = IOT.file_to_dist_tree(filename, comm)
-  I.printTree(dist_tree)
-  # sys.exit(1)
 
+  dirname = "data"
+  filename = "LS89_8K_FromPrevious_NewNGon.hdf"
+  # filename = "LS89_16K_NewNGon.hdf"
+  families = ['BLADE']
+  # filename = "mascot_2_input4elsA_newNGon.cgns"
+  # filename = "tatef_next_nogc.hdf"
+  filename = "tatef_previous_nogc.hdf"
+
+  families = ['extrados', 'intrados',
+  'holes', 'internal_cylinders',
+  'plenum', 'plenum_2', 'plenum_3',
+  'shaped_holes', 'top', 'bottom']
+
+  fs_name = 'FlowSolution#Init'
+  dist_tree = IOT.file_to_dist_tree(os.path.join(dirname, filename), comm)
+  IE.rmNodesFromLabel(dist_tree, "FlowSolution_t")
+  # I.printTree(dist_tree)
+  # sys.exit(1)
+  # methodf = f"{method}-rank1"
+  # methodf = f"{method}"
+
+  method = "cloud"
   part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch')
   # C.convertPyTree2File(part_tree, f"part_tree-rank{mpi_rank}-{method}.cgns", 'bin_hdf')
   wall_distance(part_tree, mpi_comm=comm, method=method)
-  C.convertPyTree2File(part_tree, f"{rootname}-new-{mpi_rank}rank-{method}.hdf")
+  # I.printTree(part_tree)
   ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
+  PT.merge_and_save(ptree, f"{filename}-new-{mpi_size}procs-{method}.cgns")
+  # PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
   # assertCGNSFileEq(f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns", f"{rootname}-new-{mpi_size}procs-v1-{method}-ref.cgns")
 
-  n_part = 2
-  zone_to_parts = DBA.npart_per_zone(dist_tree, comm, n_part)
-  part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch', zone_to_parts=zone_to_parts)
+  method = "propagation"
+  part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch')
   # C.convertPyTree2File(part_tree, f"part_tree-rank{mpi_rank}-{method}.cgns", 'bin_hdf')
   wall_distance(part_tree, mpi_comm=comm, method=method)
-  C.convertPyTree2File(part_tree, f"{rootname}-new-{mpi_rank}rank-{method}.cgns")
+  # C.convertPyTree2File(part_tree, f"{rootname}-new-{mpi_rank}rank-{methodf}.hdf")
+  I.printTree(part_tree)
   ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v2-{method}.cgns")
+  PT.merge_and_save(ptree, f"{filename}-new-{mpi_size}procs-{method}.cgns")
+  # PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
+  # assertCGNSFileEq(f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns", f"{rootname}-new-{mpi_size}procs-v1-{method}-ref.cgns")
+
+  # n_part = 2
+  # zone_to_parts = DBA.npart_per_zone(dist_tree, comm, n_part)
+  # part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch', zone_to_parts=zone_to_parts)
+  # # C.convertPyTree2File(part_tree, f"part_tree-rank{mpi_rank}-{method}.cgns", 'bin_hdf')
+  # wall_distance(part_tree, mpi_comm=comm, method=method)
+  # # C.convertPyTree2File(part_tree, f"{rootname}-new-{mpi_rank}rank-{methodf}.cgns")
+  # ptree = PT.parallel_tree(comm, dist_tree, part_tree)
+  # PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v2-{methodf}.cgns")
   # assertCGNSFileEq(f"{rootname}-new-{mpi_size}procs-v2-{method}.cgns", f"{rootname}-new-{mpi_size}procs-v2-{method}-ref.cgns")
 
-  if mpi_rank == 0:
-    t1 = C.convertFile2PyTree(f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
-    t2 = C.convertFile2PyTree(f"{rootname}-new-{mpi_size}procs-v2-{method}.cgns")
-    compare_npart(t1, t2)
+  # if mpi_rank == 0:
+  #   t1 = C.convertFile2PyTree(f"{rootname}-new-{mpi_size}procs-v1-{methodf}.cgns")
+  #   t2 = C.convertFile2PyTree(f"{rootname}-new-{mpi_size}procs-v2-{methodf}.cgns")
+  #   compare_npart(t1, t2)
