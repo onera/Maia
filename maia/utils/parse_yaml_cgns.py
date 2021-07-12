@@ -23,11 +23,11 @@ def parse_node(node):
       value         = value[2:].strip()
       i_data_type   = data_types.index(data_type_str)
       data_type_np  = np_dtypes[i_data_type]
-      value = np.array(ast.literal_eval(value), dtype=data_type_np)
+      value = np.array(ast.literal_eval(value), order='F', dtype=data_type_np)
     else:
       value = ast.literal_eval(label_value[1])
       if isinstance(value, list):
-        value = np.array(value)
+        value = np.array(value, order='F')
   return name,label,value
 
 def extract_value(sub_nodes):
@@ -37,7 +37,7 @@ def extract_value(sub_nodes):
   for data_type,np_dtype in zip(data_types,np_dtypes):
     value = sub_nodes.pop(data_type,None)
     if value is not None:
-      return np.array(value,dtype=np_dtype)
+      return np.array(value, order='F', dtype=np_dtype)
 
   return None
 

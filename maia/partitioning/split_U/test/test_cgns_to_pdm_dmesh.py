@@ -72,7 +72,6 @@ ZoneU Zone_t [[18,6,0]]:
 
   dist_zone = parse_yaml_cgns.to_node(dt)
   PE = I.getNodeFromName(dist_zone, 'ParentElements')
-  I.setValue(PE, PE[1]) #Trick to have fortran like array
 
   dmesh = CTP.cgns_dist_zone_to_pdm_dmesh(dist_zone, sub_comm)
   #No getters for dmesh so we can not check data

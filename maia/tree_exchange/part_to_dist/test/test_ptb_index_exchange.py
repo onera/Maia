@@ -189,10 +189,6 @@ Zone.P2.N1 Zone_t:
   expected_eltc_distri_full = np.array([0, 48, 96, 144])
 
   pT = parse_yaml_cgns.to_cgns_tree(yt)
-  # Carefull, PE are not as fortran array, let corrige that
-  for zone in I.getZones(pT):
-    PE = I.getNodeFromName(zone, 'ParentElements')
-    I.setValue(PE, PE[1])
 
   IPTB.part_ngon_to_dist_ngon(dist_zone, I.getZones(pT), 'Ngon', sub_comm)
 

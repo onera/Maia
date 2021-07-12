@@ -378,7 +378,7 @@ ZoneU Zone_t [[6,0,0]]:
 def test_part_dataset_to_dist_dataset(sub_comm):
   if sub_comm.Get_rank() == 0:
     dt = """
-ZoneS Zone_t:
+ZoneU Zone_t:
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -396,7 +396,7 @@ ZoneS Zone_t:
           Index DataArray_t {0} [0,1,1]:
   """.format(dtype)
     pt = """
-  ZoneS.P0.N0 Zone_t:
+  ZoneU.P0.N0 Zone_t:
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":
@@ -405,11 +405,11 @@ ZoneS Zone_t:
           Index DataArray_t {0} [2,5]:
         BCDSWithoutPL BCDataSet_t:
           DirichletData BCData_t:
-            field DataArray_t [[[2],[2]]]:
+            field DataArray_t [[2,2]]:
     """.format(dtype)
   elif sub_comm.Get_rank() == 1:
     dt = """
-ZoneS Zone_t:
+ZoneU Zone_t:
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -427,7 +427,7 @@ ZoneS Zone_t:
           Index DataArray_t {0} [1,1,1]:
   """.format(dtype)
     pt = """
-  ZoneS.P1.N0 Zone_t:
+  ZoneU.P1.N0 Zone_t:
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":
@@ -436,13 +436,13 @@ ZoneS Zone_t:
           Index DataArray_t {0} [6,3,4,1]:
         BCDSWithPL BCDataSet_t:
           DirichletData BCData_t:
-            field DataArray_t R8 [[[200.]]]:
+            field DataArray_t R8 [[200.]]:
           PointList IndexArray_t [[108]]:
           :CGNS#GlobalNumbering UserDefinedData_t:
             Index DataArray_t {0} [1]:
         BCDSWithoutPL BCDataSet_t:
           DirichletData BCData_t:
-            field DataArray_t [[[1,4],[3,1]]]:
+            field DataArray_t [[1,4,3,1]]:
   """.format(dtype)
 
   dist_zone  = parse_yaml_cgns.to_node(dt)
