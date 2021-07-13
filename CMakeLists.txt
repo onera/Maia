@@ -37,19 +37,19 @@ project(
   LANGUAGES CXX)
 
 ## Compiler flags
-### Defaults
-set(LOCAL_CMAKE_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
-include(${LOCAL_CMAKE_SCRIPTS}/default_flags.cmake)
-### Build type
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE) # default to Release
-endif()
 ### C++ standard
 set(CMAKE_CXX_STANDARD          17 )
 set(CMAKE_CXX_EXTENSIONS        OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON )
 ### fPIC
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+### Compiler-dependent flags
+set(LOCAL_CMAKE_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
+include(${LOCAL_CMAKE_SCRIPTS}/compiler_flags.cmake)
+### Default build type
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE) # default to Release
+endif()
 
 
 # ----------------------------------------------------------------------
@@ -87,7 +87,7 @@ if(NOT pdma_FOUND)
     set(PDM_ENABLE_STATIC          OFF CACHE BOOL "Maia uses ParaDiGM without static libs" FORCE)
     set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"    FORCE)
     set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"         FORCE)
-    set(PDM_ENABLE_PARMETIS        OFF CACHE BOOL "Maia uses ParaDiGM without parmetis"    FORCE)
+    set(PDM_ENABLE_PARMETIS        ON  CACHE BOOL "Maia uses ParaDiGM without parmetis"    FORCE)
     set(PDM_ENABLE_PTSCOTCH        ON  CACHE BOOL "Maia uses ParaDiGM with Scotch"         FORCE)
     set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"   FORCE)
 
