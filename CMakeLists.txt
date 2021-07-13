@@ -111,10 +111,6 @@ if(NOT pdma_FOUND)
       set(PDM_ENABLE_UNIT_TEST OFF CACHE BOOL "Maia uses ParaDiGM without unit tests"  FORCE)
     endif()
 
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-      # The C compiler does not link libm by default
-      set(CMAKE_C_FLAGS "-lm ${CMAKE_C_FLAGS}")
-    endif()
     target_add_dependency(${PROJECT_NAME} paradigm)
   endif()
 endif()
