@@ -60,7 +60,9 @@ endif()
 if(CMAKE_VERSION VERSION_LESS 3.14)
   find_package(Python 3 REQUIRED COMPONENTS Interpreter Development)
 else()
-  find_package(Python 3 REQUIRED COMPONENTS Interpreter Development NumPy)
+  find_package(Python 3 REQUIRED COMPONENTS Interpreter Development)
+  # TODO
+  #find_package(Python 3 REQUIRED COMPONENTS Interpreter Development NumPy)
 endif()
 
 find_package(MPI REQUIRED)
