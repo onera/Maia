@@ -5,7 +5,7 @@
 cmake_host_system_information(RESULT HOSTNAME QUERY HOSTNAME)
 
 if (NOT MAIA_SKIP_DEFAULT_FLAGS)
-  if (CMAKE_CXX_FLAGS)
+  if ($ENV{CXXFLAGS})
     message(WARNING "Your C++ flags will be overriden. Use MAIA_SKIP_DEFAULT_FLAGS if you want to use them")
   endif()
 

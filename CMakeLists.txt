@@ -91,19 +91,6 @@ if(NOT pdma_FOUND)
     set(PDM_ENABLE_PTSCOTCH        ON  CACHE BOOL "Maia uses ParaDiGM with Scotch"         FORCE)
     set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"   FORCE)
 
-    ## ParaDiGM does not use the same variable names as FindPython
-    #set(PYTHON_EXECUTABLE  ${Python_EXECUTABLE}   CACHE FILEPATH "" FORCE)
-    #set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS} CACHE PATH     "" FORCE)
-    #set(PYTHON_LIBRARY     ${Python_LIBRARIES}    CACHE FILEPATH "" FORCE)
-
-    # ParaDiGM needs these paths from Scotch
-    if(NOT DEFINED ENV{PTSCOTCH_DIR})
-      message(FATAL_ERROR "You need PtScotch to build ParaDiGM. Export environment variable PTSCOTCH_DIR")
-    endif()
-    set(PTSCOTCH_DIR       $ENV{PTSCOTCH_DIR}     CACHE PATH "" FORCE)
-    set(PTSCOTCH_LIBRARIES "${PTSCOTCH_DIR}/lib/libptscotch.so;${PTSCOTCH_DIR}/lib/libscotch.so;${PTSCOTCH_DIR}/lib/libptscotcherr.so" CACHE STRING "" FORCE)
-    #set(PTSCOTCH_VERSION        CACHE STRING FORCE)
-
     # ParaDiGM unit tests if Maia unit tests
     if(MAIA_ENABLE_MPI_TESTS)
       set(PDM_ENABLE_UNIT_TEST ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"     FORCE)
