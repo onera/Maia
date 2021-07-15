@@ -119,12 +119,50 @@ if(NOT range-v3_POPULATED)
 endif()
 
 ## Dependencies from submodules ##
-check_sub_repo_exists(std_e)
-set(STD_E_ENABLE_MPI ON CACHE BOOL "Maia requires MPI" FORCE)
-target_add_dependency(${PROJECT_NAME} std_e)
+include(${PROJECT_UTILS_CMAKE_DIR}/target_check_local_dependency.cmake)
+target_check_local_dependency(std_e OFF) # OFF means not required, TODO make arg optional
+if (std_e_FOUND)
+  target_add_dependency(${PROJECT_NAME} std_e)
+else()
+  # TODO fix if std_e not compiled here, doctest is not brought to cmake
+  include(FetchContent)
+  ### doctest ###
+  FetchContent_Declare(
+    doctest
+    #GIT_REPOSITORY https://github.com/onqtam/doctest.git
+    GIT_REPOSITORY https://github.com/BerengerBerthoul/doctest.git
+    GIT_TAG        f13a00607463ce211004be23b5aa0bdf24d3ab61
+    #GIT_TAG        mpi
+  )
+  FetchContent_GetProperties(doctest)
+  if(NOT doctest_POPULATED)
+    FetchContent_Populate(doctest)
+    add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR})
+  endif()
 
-check_sub_repo_exists(cpp_cgns)
-target_add_dependency(${PROJECT_NAME} cpp_cgns)
+  find_package(std_e CONFIG REQUIRED)
+endif()
+
+include(${PROJECT_UTILS_CMAKE_DIR}/target_check_local_dependency.cmake)
+target_check_local_dependency(cpp_cgns OFF) # OFF means not required, TODO make arg optional
+if (cpp_cgns_FOUND)
+  target_add_dependency(${PROJECT_NAME} cpp_cgns)
+else()
+  # TODO fix if cpp_cgns not compiled here, doctest is not brought to cmake
+  include(FetchContent)
+  FetchContent_Declare(
+    pybind11
+    GIT_REPOSITORY https://github.com/pybind/pybind11.git
+    GIT_TAG        v2.6
+  )
+  FetchContent_GetProperties(pybind11)
+  if(NOT pybind11_POPULATED)
+    FetchContent_Populate(pybind11)
+    add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
+  endif()
+
+  find_package(cpp_cgns CONFIG REQUIRED)
+endif()
 
 ## Python dependencies (just check) ##
 include(${PROJECT_UTILS_CMAKE_DIR}/has_python_module.cmake)
