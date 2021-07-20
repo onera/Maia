@@ -5,13 +5,6 @@ import numpy as np
 
 from maia.transform.dist_tree import merge_ids
 
-def test__to_offset():
-  assert (merge_ids._to_offset(np.array([0,2,7,13]), 13) == [0,2,7,13]).all()
-  assert (merge_ids._to_offset(np.array([0,2,7   ]), 13) == [0,2,7,13]).all()
-  assert (merge_ids._to_offset(np.array([2,7,13  ]), 13) == [0,2,7,13]).all()
-  assert (merge_ids._to_offset(np.array([2,7     ]), 13) == [0,2,7,13]).all()
-  assert (merge_ids._to_offset(np.array([        ]), 13) == [0,13]).all()
-
 @mark_mpi_test(2)
 def test_merge_distributed_ids(sub_comm):
   if sub_comm.Get_rank() == 0:

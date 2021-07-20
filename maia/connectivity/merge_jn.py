@@ -87,7 +87,7 @@ def _update_subset(node, pl_new, data_query, comm):
     path = "/".join([I.getName(n) for n in data_nodes])
     part_data[path] = [data_nodes[-1][1][0]]
   #Add PL, needed for next blocktoblock
-  part_data[r'@\PointList/@'] = [pl_new]
+  part_data[r'@\PointList/@'] = [pl_new.astype(pdm_dtype)]
 
   #Dont use maia interface since we need a new distribution
   PTB = PDM.PartToBlock(comm, [pl_new.astype(pdm_dtype)], pWeight=None, partN=1,
@@ -209,10 +209,11 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   managed : GridCoordinates, FlowSolution, DiscreteData)
   and update vertex distribution info
   """
-  vtx_distri_ini  = IE.getDistribution(zone, 'Vertex')
+  vtx_distri_ini  = IE.getDistribution(zone, 'Vertex').astype(pdm_dtype)
+  pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
   PTB = PDM.PartToBlock(comm, [vtx_to_remove.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=1, t_stride=0)
+                        t_distrib=0, t_post=1, t_stride=0, userDistribution=pdm_distrib)
   local_vtx_to_rmv = PTB.getBlockGnumCopy() - vtx_distri_ini[0] - 1
 
   #Update all vertex entities
@@ -230,7 +231,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
   n_rmvd   = len(local_vtx_to_rmv)
   n_rmvd_offset  = par_utils.gather_and_shift(n_rmvd, comm)
-  vtx_distri = vtx_distri_ini - [n_rmvd_offset[i_rank], n_rmvd_offset[i_rank] + n_rmvd,  n_rmvd_offset[n_rank]]
+  vtx_distri = vtx_distri_ini - [n_rmvd_offset[i_rank], n_rmvd_offset[i_rank+1],  n_rmvd_offset[n_rank]]
   IE.newDistribution({'Vertex' : vtx_distri}, zone)
   zone[1][0][0] = vtx_distri[2]
 

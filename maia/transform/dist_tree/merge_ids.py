@@ -7,25 +7,6 @@ from maia.utils.parallel import utils as par_utils
 from maia.tree_exchange.dist_to_part import data_exchange as BTP
 from maia.tree_exchange.part_to_dist import data_exchange as PTB
 
-def _to_offset(array, last):
-  """Util fonction who transform a list of sorted indices into
-  and offset array """
-  if array.shape[0] == 0:
-    return np.array([0,last], dtype=array.dtype)
-  elif array[0] == 0 and array[-1] == last:
-    return array
-  elif array[0] != 0 and array[-1] != last:
-    offset = np.empty(array.shape[0]+2, dtype=array.dtype)
-    np.concatenate([[0], array, [last]], out=offset)
-    return offset
-  else:
-    offset = np.empty(array.shape[0]+1, dtype=array.dtype)
-    if array[0] != 0:
-      np.concatenate([[0], array], out=offset)
-    else:
-      np.concatenate([array, [last]], out=offset)
-    return offset
-
 def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   """
   Map some distributed elements (ids) to others (targets) and shift all the numbering,
@@ -58,8 +39,10 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   # Shift local : for each index to remove, substract one to all the indices after him
   # Nb : elements are sorted after part_to_dist
   ids_local = dist_ids - distri[0] - 1
-  offset = _to_offset(ids_local, old_to_new.shape[0])
-  old_to_new -= np.repeat(np.arange(offset.shape[0]-1), np.diff(offset))
+  local_shift = np.zeros(old_to_new.shape[0], np.int32)
+  for k in ids_local:
+    local_shift[k:] += 1
+  old_to_new -= local_shift
 
   # Shift global : for each index, substract the number of targets removed by preceding ranks
   old_to_new -= n_rmvd_offset[comm.Get_rank()]
