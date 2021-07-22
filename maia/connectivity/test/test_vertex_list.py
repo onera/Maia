@@ -15,17 +15,14 @@ def test_facelist_to_vtxlist_local(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
   ngon = I.getNodeFromName(tree, "NGonElements")
 
-  offset, face_vtx   = VL.facelist_to_vtxlist_local([np.array([3,6,2])], ngon, sub_comm)[0]
-  offset, face_vtx_d = VL.facelist_to_vtxlist_local([np.array([1,4,5])], ngon, sub_comm)[0]
+  offset, face_vtx   = VL.facelist_to_vtxlist_local(np.array([3,6,2]), ngon, sub_comm)
   assert (offset == np.arange(0,(3+1)*4,4)).all()
   assert (face_vtx == [5,8,7,4, 11,14,15,12, 3,6,5,2]).all()
+
+  offset, face_vtx_d = VL.facelist_to_vtxlist_local(np.array([1,4,5]), ngon, sub_comm)
+  assert (offset == np.arange(0,(3+1)*4,4)).all()
   assert (face_vtx_d == [2,5,4,1, 6,9,8,5, 10,13,14,11]).all()
 
-  offset_and_facevtx_l = VL.facelist_to_vtxlist_local([np.array([3,6,2]), np.array([1,4,5])], ngon, sub_comm)
-  assert (offset_and_facevtx_l[0][0] == offset).all()
-  assert (offset_and_facevtx_l[0][1] == face_vtx).all()
-  assert (offset_and_facevtx_l[1][0] == offset).all()
-  assert (offset_and_facevtx_l[1][1] == face_vtx_d).all()
 
 @mark_mpi_test(2)
 def test_get_extended_pl(sub_comm):

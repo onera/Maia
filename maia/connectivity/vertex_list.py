@@ -16,15 +16,14 @@ from maia.transform.dist_tree import add_joins_ordinal as AJO
 
 from maia.tree_exchange.dist_to_part import data_exchange as MBTP
 
-def facelist_to_vtxlist_local(pls, ngon, comm):
+def facelist_to_vtxlist_local(pl, ngon, comm):
   """
-  From a list of FaceCenter PointList, search in the distributed NGon node
+  From an array of face ids, search in the distributed NGon node
   the id of vertices belonging to the faces.
 
-  Return a list (size len(pls)) of tuples (vtx_offset, vtx_list). Offset array
-  indicates to which face the vertices belongs.
-  Note that vertices ids can appears twice (or more) in vtx_list if they are
-  shared by some faces
+  Return a tuple (vtx_offset, vtx_list).
+  The offset array indicates to which face the vertices belong.
+  Note that vertex ids can appear twice (or more) in vtx_list if they are shared by multiple faces
   """
 
   distri_ngon  = IE.getDistribution(ngon, 'Element').astype(pdm_dtype)
@@ -35,12 +34,12 @@ def facelist_to_vtxlist_local(pls, ngon, comm):
 
   # Get the vertex associated to the faces in FaceList
   part_data_pl = dict()
-  BTP = PDM.BlockToPart(pdm_distrib, comm, [pl.astype(pdm_dtype) for pl in pls], len(pls))
+  BTP = PDM.BlockToPart(pdm_distrib, comm, [pl.astype(pdm_dtype)], 1)
   BTP.BlockToPart_Exchange2(dist_data, part_data_pl, 1, b_stride)
 
   face_offset_l = [py_utils.sizes_to_indices(p_sizes) for p_sizes in part_data_pl['FaceVtx#PDM_Stride']]
 
-  return list(zip(face_offset_l, part_data_pl['FaceVtx']))
+  return face_offset_l[0], part_data_pl['FaceVtx'][0]
 
 def get_vtx_coordinates(grid_coords_n, distri_vtx, requested_vtx, comm):
   """
@@ -60,7 +59,7 @@ def get_vtx_coordinates(grid_coords_n, distri_vtx, requested_vtx, comm):
 def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=None):
   """
   Extend a distributed face PointList (and its donor) by adding the faces present elsewhere
-  in the PL and connected to the pl faces by one (or more) vertices. 
+  in the PL and connected to the pl faces by one (or more) vertices.
   If faces_to_skip is not None, ignore the faces for which the value is True when searching
   neighbors.
   """
@@ -301,8 +300,8 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   pl_d = I.getNodeFromName1(jn, 'PointListDonor')[1][0]
 
   #First pass with topologic treatment
-  face_offset, pl_face_vtx  = facelist_to_vtxlist_local([pl], ngon, comm)[0]
-  face_offset, pld_face_vtx = facelist_to_vtxlist_local([pl_d], ngon_d, comm)[0]
+  face_offset, pl_face_vtx  = facelist_to_vtxlist_local(pl, ngon, comm)
+  face_offset, pld_face_vtx = facelist_to_vtxlist_local(pl_d, ngon_d, comm)
 
   pl_vtx_local, pl_vtx_local_opp, face_is_treated = _search_by_intersection(face_offset, pl_face_vtx, pld_face_vtx)
 
@@ -317,8 +316,8 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
 
     extended_pl, extended_pl_d = get_extended_pl(pl, pl_d, face_offset, pl_face_vtx, comm, face_is_treated)
 
-    face_offset_e, pl_face_vtx_e  = facelist_to_vtxlist_local([extended_pl],   ngon, comm)[0]
-    face_offset_e, pld_face_vtx_e = facelist_to_vtxlist_local([extended_pl_d], ngon_d, comm)[0]
+    face_offset_e, pl_face_vtx_e  = facelist_to_vtxlist_local(extended_pl,   ngon, comm)
+    face_offset_e, pld_face_vtx_e = facelist_to_vtxlist_local(extended_pl_d, ngon_d, comm)
 
     pl_vtx_local2, pl_vtx_local_opp2, face_is_treated2 = _search_by_intersection(face_offset_e, pl_face_vtx_e, pld_face_vtx_e)
 
