@@ -6,18 +6,6 @@
 #    - srun --immediate --pty --qos c1_inter_giga --time 1:00:00 --ntasks 8 bash
 #    - echo "Now running on $HOSTNAME"
 
-#Run this before each step -- load env
-before_script:
-  - module load CFD/5.0-intel-19.impi-19 cmake/3.12.3 gcc/9.2
-  - export CXX=/opt/tools/gcc-9.2/bin/g++
-  - export CASSIOPEE=/scratchm/jcoulet/aa_install_py3/Cassiopee/
-  - export ELSAPROD=spiro_mpi_py3
-  - export PYTHONPATH=$CASSIOPEE/Dist/bin/$ELSAPROD/lib/python3.7/site-packages:$PYTHONPATH
-  - export LD_LIBRARY_PATH=$CASSIOPEE/Dist/bin/$ELSAPROD/lib:$LD_LIBRARY_PATH
-  - export PARADIGM_HOME=/scratchm/jcoulet/aa_install_py3/paradigma-dbg
-  - export PYTHONPATH=$PARADIGM_HOME/lib/python3.7/site-packages:$PYTHONPATH
-  - export LD_LIBRARY_PATH=$PARADIGM_HOME/lib:$LD_LIBRARY_PATH
-
 stages:
   - build
   - test
@@ -28,6 +16,16 @@ job:build:
   variables:
     GIT_SUBMODULE_STRATEGY: normal
   stage: build
+  before_script:
+  - module load CFD/5.0-intel-19.impi-19 cmake/3.12.3 gcc/9.2
+  - export CXX=/opt/tools/gcc-9.2/bin/g++
+  - export CASSIOPEE=/scratchm/jcoulet/aa_install_py3/Cassiopee/
+  - export ELSAPROD=spiro_mpi_py3
+  - export PYTHONPATH=$CASSIOPEE/Dist/bin/$ELSAPROD/lib/python3.7/site-packages:$PYTHONPATH
+  - export LD_LIBRARY_PATH=$CASSIOPEE/Dist/bin/$ELSAPROD/lib:$LD_LIBRARY_PATH
+  - export PARADIGM_HOME=/scratchm/jcoulet/aa_install_py3/paradigma-dbg
+  - export PYTHONPATH=$PARADIGM_HOME/lib/python3.7/site-packages:$PYTHONPATH
+  - export LD_LIBRARY_PATH=$PARADIGM_HOME/lib:$LD_LIBRARY_PATH
   script:
     - mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -DMAIA_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPYBIND11_INSTALL=ON -DMAIA_USE_PDM_INSTALL=ON -Dpdm_DIR=$PARADIGM_HOME/lib/cmake ../
@@ -43,9 +41,11 @@ job:test:
     GIT_SUBMODULE_STRATEGY: none
   stage: test
   script:
+    - module load CFD/5.0-intel-19.impi-19 gcc/9.2
     - cd build
     - make test
-    - cd test
+  after_script:
+    - cd build/test
     - coverage combine --rcfile=.coveragerc_unit_tests
     - coverage report --rcfile=.coveragerc_unit_tests
     - coverage xml --rcfile=.coveragerc_unit_tests -o coverage_unit_tests.xml
