@@ -121,6 +121,7 @@ endif()
 ## Dependencies from submodules ##
 include(${PROJECT_UTILS_CMAKE_DIR}/target_check_local_dependency.cmake)
 target_check_local_dependency(std_e OFF) # OFF means not required, TODO make arg optional
+set(STD_E_ENABLE_MPI ON CACHE BOOL "Maia requires MPI" FORCE)
 if (std_e_FOUND)
   target_add_dependency(${PROJECT_NAME} std_e)
 else()
