@@ -18,8 +18,9 @@ from maia.sids.cgns_keywords         import Label as CGL
 from maia.sids                       import conventions as conv
 from maia.tree_exchange.part_to_dist import discover    as disc
 
-from maia.geometry.extract_boundary import extract_surf_from_bc
-from maia.geometry.geometry         import get_center_cell
+# from maia.geometry.extract_boundary  import extract_surf_from_bc
+from maia.geometry.extract_boundary2 import extract_surf_from_bc
+from maia.geometry.geometry          import get_center_cell
 
 __doc__ = """
 CGNS python module which interface the ParaDiGM library for // distance to wall computation .
@@ -171,9 +172,9 @@ class WallDistance:
   def walldist(self):
     return self._walldist
 
-  def _setup_surf_mesh(self, skeleton_tree, part_tree, families, comm):
+  def _setup_surf_mesh(self, part_tree, families, comm):
     face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, \
-      vtx_bnd, vtx_ln_to_gn = extract_surf_from_bc(skeleton_tree, part_tree, families, comm)
+      vtx_bnd, vtx_ln_to_gn = extract_surf_from_bc(part_tree, families, comm)
 
     # Keep numpy alive
     # part_base = I.getBases(part_tree)[0]
@@ -342,7 +343,7 @@ class WallDistance:
 
       # 2. Prepare Surface (Global)
       # ===========================
-      self._setup_surf_mesh(skeleton_tree, self.part_tree, self.families, self.mpi_comm)
+      self._setup_surf_mesh(self.part_tree, self.families, self.mpi_comm)
 
       if self.method == "cloud":
         dist_zones = list(IE.getNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'))
@@ -424,7 +425,7 @@ class WallDistance:
     self.walldist.dump_times()
 
 
-
+# ------------------------------------------------------------------------
 def wall_distance(*args, **kwargs):
   walldist = WallDistance(*args, **kwargs)
   walldist.compute()

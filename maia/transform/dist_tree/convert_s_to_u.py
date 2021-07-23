@@ -133,13 +133,15 @@ def guess_bnd_normal_index(point_range, grid_location):
 ###############################################################################
 
 ###############################################################################
-def normal_index_shift(point_range, n_vtx, bnd_axis, in_loc_is_cell, out_loc_is_cell):
+def normal_index_shift(point_range, n_vtx, bnd_axis, input_loc, output_loc):
   """
   Return the value that should be added to pr[normal_index,:] to account for cell <-> face|vtx transformation :
     +1 if we move from cell to face|vtx and if it was the last plane of cells
     -1 if we move from face|vtx to cell and if it was the last plane of face|vtx
      0 in other cases
   """
+  in_loc_is_cell  = (input_loc == 'CellCenter')
+  out_loc_is_cell = (output_loc == 'CellCenter')
   normal_index_is_last = point_range[bnd_axis,0] == (n_vtx[bnd_axis] - int(in_loc_is_cell))
   correction_sign = -int(out_loc_is_cell and not in_loc_is_cell) \
                     +int(not out_loc_is_cell and in_loc_is_cell)
@@ -180,8 +182,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   bc_range = MDIDF.uniform_distribution_at(bc_size.prod(), i_rank, n_rank)
   bc_slabs = HFR2S.compute_slabs(bc_size, bc_range)
 
-  shift = normal_index_shift(point_range, n_vtx_zone, bnd_axis,\
-      input_loc=='CellCenter', output_loc=='CellCenter')
+  shift = normal_index_shift(point_range, n_vtx_zone, bnd_axis, input_loc, output_loc)
   #Prepare sub pointRanges from slabs
   sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
   for sub_pr in sub_pr_list:
@@ -261,8 +262,8 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
     sub_pr_opp_list.append(sub_pr_opp)
 
   #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required
-  shift = normal_index_shift(point_range_loc, n_vtx_loc, bnd_axis, False, output_loc=='CellCenter')
-  shift_opp = normal_index_shift(point_range_opp_loc, n_vtx_opp_loc, bnd_axis_opp, False, output_loc=='CellCenter')
+  shift = normal_index_shift(point_range_loc, n_vtx_loc, bnd_axis, "Vertex", output_loc)
+  shift_opp = normal_index_shift(point_range_opp_loc, n_vtx_opp_loc, bnd_axis_opp, "Vertex", output_loc)
   for i_pr in range(len(sub_pr_list)):
     sub_pr_list[i_pr][bnd_axis,:] += shift
     sub_pr_opp_list[i_pr][bnd_axis_opp,:] += shift_opp
