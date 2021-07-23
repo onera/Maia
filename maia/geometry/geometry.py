@@ -52,7 +52,7 @@ def get_center_cell(zone_node: List) -> Tuple:
   LOG.info(f"vtx_coords = {vtx_coords}")
 
   if SIDS.Zone.Type(zone_node) == "Unstructured":
-    element_node = getChildFromLabel1(zone_node, CGL.Elements_t.name)
+    element_node = IE.getChildFromLabel1(zone_node, CGL.Elements_t.name)
     # NGon elements
     if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
       face_vtx, face_vtx_idx, ngon_pe = SIDS.face_connectivity(zone_node)
