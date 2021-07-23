@@ -56,7 +56,7 @@ def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD
         bctype = I.getValue(bc_node)
         LOG.info(f"extract_surf_from_bc: Treat bc [S]: {I.getName(bc_node)}, {bctype}")
 
-        point_range_node = IE.requireNodeFromName1(bc_node, 'PointRange')
+        point_range_node = IE.getChildFromName1(bc_node, 'PointRange')
         point_range      = I.getVal(point_range_node)
 
         n_face_bnd = SIDS.PointRange.n_face(point_range_node)
@@ -68,7 +68,7 @@ def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD
         n_face_vtx_bnd_t += n_face_vtx_bnd
         n_vtx_bnd_t      += n_vtx_bnd
     else: # SIDS.Zone.Type(part_zone) == "Unstructured":
-      element_node = IE.requireNodeFromType1(part_zone, CGL.Elements_t.name)
+      element_node = getChildFromLabel1(part_zone, CGL.Elements_t.name)
       # NGon elements
       if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
         face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(part_zone)
@@ -76,7 +76,7 @@ def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD
           bctype = I.getValue(bc_node)
           LOG.info(f"extract_surf_from_bc: Treat bc [U]: {I.getName(bc_node)}, {bctype}")
 
-          point_list_node = IE.requireNodeFromName1(bc_node, 'PointList')
+          point_list_node = IE.getChildFromName1(bc_node, 'PointList')
           point_list      = I.getVal(point_list_node)
 
           n_face_bnd = SIDS.PointList.n_face(point_list_node)
@@ -127,7 +127,7 @@ def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD
         bctype = I.getValue(bc_node)
         LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bctype}")
 
-        point_range_node = IE.requireNodeFromName1(bc_node, 'PointRange')
+        point_range_node = IE.getChildFromName1(bc_node, 'PointRange')
         point_range      = I.getVal(point_range_node)
         n_face_bnd = SIDS.PointRange.n_face(point_range_node)
         i_vtx_bnd = compute_extract_bc_s(ibeg_face_vtx_idx,
@@ -147,7 +147,7 @@ def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD
           bctype = I.getValue(bc_node)
           LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bctype}")
 
-          point_list_node = IE.requireNodeFromName1(bc_node, 'PointList')
+          point_list_node = IE.getChildFromName1(bc_node, 'PointList')
           point_list      = I.getVal(point_list_node)
           n_face_bnd = SIDS.PointList.n_face(point_list_node)
           i_vtx_bnd = compute_extract_bc_u(ibeg_face_vtx_idx,
@@ -210,7 +210,7 @@ def extract_surf_from_bc(skeleton_tree, part_tree, families, comm=MPI.COMM_WORLD
           bctype = I.getValue(bc_node)
           LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bctype}")
 
-          point_list_node = IE.requireNodeFromName1(bc_node, 'PointList')
+          point_list_node = IE.getChildFromName1(bc_node, 'PointList')
           point_list      = I.getVal(point_list_node)
           n_face_bnd = SIDS.PointList.n_face(point_list_node)
           n_face_bnd_part_zone += n_face_bnd
