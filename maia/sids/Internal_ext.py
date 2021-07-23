@@ -417,44 +417,6 @@ def getNodesWithParentsByMatching__(root, predicate_list):
       yield (node,)
 
 # --------------------------------------------------------------------------
-# getNodeFromNameAndType  = requestChildFromNameAndLabel
-# getNodeFromNameAndType1 = requestChildFromNameAndLabel1
-# getNodeFromNameAndType2 = requestChildFromNameAndLabel2
-# getNodeFromNameAndType3 = requestChildFromNameAndLabel3
-
-# --------------------------------------------------------------------------
-# def create_require_node(what, level):
-#   def _require_node_from(parent, arg):
-#     funcname = f"getNodeFrom{what}{level}"
-#     node = getattr(I, funcname)(parent, arg)
-#     if node is None:
-#       raise getattr(module_object, f"CGNS{'Label' if what == 'Type' else what}NotFoundError")(parent, arg)
-#     return node
-#   return _require_node_from
-
-# for what in ['Name', 'Type']:
-#   for level in ['']+[str(i) for i in range(1,4)]:
-#     func = create_require_node(what, level)
-#     funcname = f"requireNodeFrom{what}{level}"
-#     func.__name__ = funcname
-#     setattr(module_object, funcname, func)
-
-# requireNodeFromName  = getChildFromName
-# requireNodeFromName1 = getChildFromName1
-# requireNodeFromName2 = getChildFromName2
-# requireNodeFromName3 = getChildFromName3
-
-# requireNodeFromType  = getChildFromLabel
-# requireNodeFromType1 = getChildFromLabel1
-# requireNodeFromType2 = getChildFromLabel2
-# requireNodeFromType3 = getChildFromLabel3
-
-# requireNodeFromNameAndType  = getChildFromNameAndLabel
-# requireNodeFromNameAndType1 = getChildFromNameAndLabel1
-# requireNodeFromNameAndType2 = getChildFromNameAndLabel2
-# requireNodeFromNameAndType3 = getChildFromNameAndLabel3
-
-# --------------------------------------------------------------------------
 def getSubregionExtent(sub_region_n, zone):
   """
   Return the path of the node (starting from zone node) related to sub_region_n
