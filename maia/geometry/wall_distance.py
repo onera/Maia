@@ -69,27 +69,29 @@ def fill_dist_from_part_tree(dist_tree, part_base, families, comm):
 
 # ------------------------------------------------------------------------
 @SIDS.check_is_zone
-def get_center_cell(zone):
+def get_center_cell(zone_node):
   """
   """
-  n_cell = SIDS.Zone.n_cell(zone)
+  n_cell = SIDS.Zone.n_cell(zone_node)
   LOG.info(f"n_cell = {n_cell}")
 
   # Get coordinates
-  cx, cy, cz = SIDS.coordinates(zone)
+  cx, cy, cz = SIDS.coordinates(zone_node)
   LOG.info(f"cx = {cx}")
 
-  pdm_nodes     = I.getNodeFromName1(zone, ":CGNS#Ppart")
+  pdm_nodes     = I.getNodeFromName1(zone_node, ":CGNS#Ppart")
   vtx_coords    = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_coord"))
-  cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
-  vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
+  # vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
+  # cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
+  vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
+  cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
   LOG.info(f"vtx_coords = {vtx_coords}")
 
-  if SIDS.Zone.Type(zone) == "Unstructured":
-    element_node = I.getNodeFromType1(zone, CGL.Elements_t.name)
+  if SIDS.Zone.Type(zone_node) == "Unstructured":
+    element_node = I.getNodeFromType1(zone_node, CGL.Elements_t.name)
     # NGon elements
     if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
-      face_vtx, face_vtx_idx, ngon_pe = SIDS.face_connectivity(zone)
+      face_vtx, face_vtx_idx, ngon_pe = SIDS.face_connectivity(zone_node)
       center_cell = compute_center_cell_u(n_cell,
                                           cx, cy, cz,
                                           face_vtx,
@@ -97,9 +99,9 @@ def get_center_cell(zone):
                                           ngon_pe)
       # print("cell_center", center_cell)
     else:
-      raise NotImplementedError(f"Unstructured Zone {I.getName(zone)} with {SIDS.ElementCGNSName(element_node)} not yet implemented.")
+      raise NotImplementedError(f"Unstructured Zone {I.getName(zone_node)} with {SIDS.ElementCGNSName(element_node)} not yet implemented.")
   else:
-    raise TypeError(f"Unable to determine the ZoneType for Zone {I.getName(zone)}")
+    raise TypeError(f"Unable to determine the ZoneType for Zone {I.getName(zone_node)}")
 
   # > Keep alive
   I.newDataArray("cell_center", center_cell, parent=pdm_nodes)
@@ -113,16 +115,12 @@ def get_zone_ln_to_gn(zone_node):
   """
   pdm_nodes = I.getNodeFromName1(zone_node, ":CGNS#Ppart")
   if pdm_nodes is not None:
-    vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
-    # print(f"get_zone_ln_to_gn: vtx_ln_to_gn [1] = {vtx_ln_to_gn}")
-    # vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
-    # print(f"get_zone_ln_to_gn: vtx_ln_to_gn [2] = {vtx_ln_to_gn}")
-    cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
-    # print(f"get_zone_ln_to_gn: cell_ln_to_gn [1] = {cell_ln_to_gn}")
-    # cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
-    # print(f"get_zone_ln_to_gn: cell_ln_to_gn [2] = {cell_ln_to_gn}")
+    # vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
+    # cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
+    vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
+    cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
     face_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
-    return cell_ln_to_gn,face_ln_to_gn, vtx_ln_to_gn
+    return cell_ln_to_gn, face_ln_to_gn, vtx_ln_to_gn
   else:
     # I.printTree(zone_node)
     raise ValueError(f"Unable ta access to the node named ':CGNS#Ppart' in Zone '{I.getName(zone_node)}'.")
@@ -137,17 +135,13 @@ def get_zone_info(zone_node):
     vtx_coords    = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_coord"))
     cell_face_idx = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_face_idx"))
     cell_face     = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_face"))
-    cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
-    # print(f"get_zone_info: cell_ln_to_gn [1] = {cell_ln_to_gn}")
-    # cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
-    # print(f"get_zone_info: cell_ln_to_gn [2] = {cell_ln_to_gn}")
+    # cell_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
+    cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
     face_vtx_idx  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_vtx_idx"))
     face_vtx      = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_vtx"))
     face_ln_to_gn = I.getVal(I.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
-    vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
-    # print(f"get_zone_info: vtx_ln_to_gn [1] = {vtx_ln_to_gn}")
-    # vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
-    # print(f"get_zone_info: vtx_ln_to_gn [2] = {vtx_ln_to_gn}")
+    # vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
+    vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
     return cell_face_idx, cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn
   else:
     # I.printTree(zone_node)
@@ -172,7 +166,7 @@ def find_bcwall(dist_tree, part_tree, comm, bcwalls=['BCWall', 'BCWallViscous', 
           families.append(family_name)
   return families
 
-
+# ------------------------------------------------------------------------
 class WallDistance:
 
   def __init__(self, part_tree, families=[], mpi_comm=MPI.COMM_WORLD):
