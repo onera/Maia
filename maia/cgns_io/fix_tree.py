@@ -22,25 +22,27 @@ def fix_point_ranges(size_tree):
           if not '/' in gc_opp_path:
             gc_opp_path = base_name + '/' + gc_opp_path
 
-          transform     = I.getValue(I.getNodeFromName1(gc, 'Transform'))
-          point_range   = I.getValue(I.getNodeFromName1(gc, 'PointRange'))
-          point_range_d = I.getValue(I.getNodeFromName1(gc, 'PointRangeDonor'))
+          # WARNING: for hybrid case structured zone could have PointList, PointListDonor.
+          if I.getNodeFromType1(gc, 'IndexRange_t') is not None:
+            transform     = I.getValue(I.getNodeFromName1(gc, 'Transform'))
+            point_range   = I.getValue(I.getNodeFromName1(gc, 'PointRange'))
+            point_range_d = I.getValue(I.getNodeFromName1(gc, 'PointRangeDonor'))
 
-          donor_dir    = abs(transform) - 1
-          nb_points    = point_range[:,1] - point_range[:,0]
-          nb_points_d  = np.sign(transform)*(point_range_d[donor_dir,1] - point_range_d[donor_dir,0])
-          dir_to_swap  = (nb_points != nb_points_d)
+            donor_dir    = abs(transform) - 1
+            nb_points    = point_range[:,1] - point_range[:,0]
+            nb_points_d  = np.sign(transform)*(point_range_d[donor_dir,1] - point_range_d[donor_dir,0])
+            dir_to_swap  = (nb_points != nb_points_d)
 
-          if gc_path < gc_opp_path:
-            dir_to_swap = dir_to_swap[donor_dir]
-            point_range_d[dir_to_swap, 0], point_range_d[dir_to_swap, 1] = \
-                point_range_d[dir_to_swap, 1], point_range_d[dir_to_swap, 0]
-          elif gc_path > gc_opp_path:
-            point_range[dir_to_swap, 0], point_range[dir_to_swap, 1] = \
-                point_range[dir_to_swap, 1], point_range[dir_to_swap, 0]
-          # If same base/zone, transform should be 1, 2, 3
-          else:
-            assert (dir_to_swap == False).all()
+            if gc_path < gc_opp_path:
+              dir_to_swap = dir_to_swap[donor_dir]
+              point_range_d[dir_to_swap, 0], point_range_d[dir_to_swap, 1] = \
+                  point_range_d[dir_to_swap, 1], point_range_d[dir_to_swap, 0]
+            elif gc_path > gc_opp_path:
+              point_range[dir_to_swap, 0], point_range[dir_to_swap, 1] = \
+                  point_range[dir_to_swap, 1], point_range[dir_to_swap, 0]
+            # If same base/zone, transform should be 1, 2, 3
+            else:
+              assert (dir_to_swap == False).all()
 
 def load_grid_connectivity_property(filename, tree):
   """
