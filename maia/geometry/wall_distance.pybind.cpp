@@ -354,19 +354,30 @@ PYBIND11_MODULE(wall_distance, m) {
         py::arg("np_point_range").noconvert(),
         py::arg("np_work_vtx").noconvert());
 
-  m.def("compute_extract_bc_u", &compute_extract_bc_u);
-        // py::arg("ibeg_face_vtx_idx").noconvert(),
-        // py::arg("np_point_list").noconvert(),
-        // py::arg("np_face_vtx").noconvert(),
-        // py::arg("np_face_vtx_idx").noconvert(),
-        // py::arg("np_work_vtx").noconvert(),
-        // py::arg("np_x").noconvert(),
-        // py::arg("np_y").noconvert(),
-        // py::arg("np_z").noconvert(),
-        // py::arg("i_vtx_bnd").noconvert(),
-        // py::arg("np_face_vtx_bnd").noconvert(),
-        // py::arg("np_face_vtx_bnd_idx").noconvert(),
-        // py::arg("np_vtx_bnd").noconvert());
+  m.def("compute_extract_bc_u", &compute_extract_bc_u,
+        py::arg("ibeg_face_vtx_idx").noconvert(),
+        py::arg("np_point_list").noconvert(),
+        py::arg("np_face_vtx").noconvert(),
+        py::arg("np_face_vtx_idx").noconvert(),
+        py::arg("np_work_vtx").noconvert(),
+        py::arg("np_x").noconvert(),
+        py::arg("np_y").noconvert(),
+        py::arg("np_z").noconvert(),
+        py::arg("i_vtx_bnd").noconvert(),
+        py::arg("np_face_vtx_bnd").noconvert(),
+        py::arg("np_face_vtx_bnd_idx").noconvert(),
+        py::arg("np_vtx_bnd").noconvert());
 
-  m.def("compute_extract_bc_s", &compute_extract_bc_s);
+  m.def("compute_extract_bc_s", &compute_extract_bc_s,
+        py::arg("ibeg_face_vtx_idx").noconvert(),
+        py::arg("np_vtx_size").noconvert(),
+        py::arg("np_point_range").noconvert(),
+        py::arg("np_work_vtx").noconvert(),
+        py::arg("np_x").noconvert(),
+        py::arg("np_y").noconvert(),
+        py::arg("np_z").noconvert(),
+        py::arg("i_vtx_bnd").noconvert(),
+        py::arg("np_face_vtx_bnd").noconvert(),
+        py::arg("np_face_vtx_bnd_idx").noconvert(),
+        py::arg("np_vtx_bnd").noconvert());
 }
