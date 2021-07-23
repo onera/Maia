@@ -388,6 +388,16 @@ create_functions(getChildrenFromPredicate, create_get_children, "dfs",
   "all child CGNS nodes")
 
 # --------------------------------------------------------------------------
+def create_get_child(predicate, nargs, args):
+  def _get_child_from(parent, **kwargs):
+    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+    try:
+      return getChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+    except CGNSNodeFromPredicateNotFoundError as e:
+      print(f"For predicate : pkwargs = {pkwargs}", file=sys.stderr)
+      raise e
+  return _get_child_from
+
 def create_get_all_children(predicate, nargs, args):
   def _get_all_children_from(parent, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
@@ -399,26 +409,54 @@ for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
   suffix = suffix.replace('CGNS', '')
   snake_name = PYU.camel_to_snake(suffix)
 
-  # Generate getAllBase, getAllZone, ..., getAllInvalids
+  # Generate getBase, getZone, ..., getInvalid
+  func = create_get_child(match_label, ('label',), (label,))
+  funcname = f"get{suffix}"
+  func.__name__ = funcname
+  func.__doc__  = """get the first CGNS node from CGNS label {0}.""".format(label)
+  setattr(module_object, funcname, partial(func, method='bfs'))
+  # Generate get_base, get_zone, ..., get_invalid
+  func = create_get_child(match_label, ('label',), (label,))
+  funcname = f"get_{snake_name}"
+  func.__name__ = funcname
+  func.__doc__  = """get the first CGNS node from CGNS label {0}.""".format(label)
+  setattr(module_object, funcname, partial(func, method='bfs'))
+
+  # Generate getAllBase, getAllZone, ..., getAllInvalid
   func = create_get_all_children(match_label, ('label',), (label,))
   funcname = f"getAll{suffix}"
   func.__name__ = funcname
   func.__doc__  = """get all CGNS nodes from CGNS label {0}.""".format(label)
-  setattr(module_object, funcname, func)
-  # Generate get_bases, get_zones, ..., get_invalids
+  setattr(module_object, funcname, partial(func, method='bfs'))
+  # Generate get_bases, get_zones, ..., get_invalid
   func = create_get_all_children(match_label, ('label',), (label,))
   funcname = f"get_all_{snake_name}"
   func.__name__ = funcname
   func.__doc__  = """get all CGNS nodes from CGNS label {0}.""".format(label)
-  setattr(module_object, funcname, func)
+  setattr(module_object, funcname, partial(func, method='bfs'))
 
   for depth in range(1,MAXDEPTH+1):
+    suffix = f"{suffix}_" if suffix[-1] in [str(i) for i in range(1,MAXDEPTH+1)] else suffix
+    snake_name = PYU.camel_to_snake(suffix)
+
+    # Generate getBase1, getZone1, ..., getInvalid1
+    func = create_get_child(match_label, ('label',), (label,))
+    funcname = f"get{suffix}{depth}"
+    func.__name__ = funcname
+    func.__doc__  = """get the first CGNS node from CGNS label {0} with depth={1}.""".format(label, depth)
+    setattr(module_object, funcname, partial(func, method='bfs', depth=depth))
+    # Generate get_base1, get_zone1, ..., get_invalid1
+    func = create_get_child(match_label, ('label',), (label,))
+    funcname = f"get_{snake_name}{depth}"
+    func.__name__ = funcname
+    func.__doc__  = """get the first CGNS node from CGNS label {0} with depth={1}.""".format(label, depth)
+    setattr(module_object, funcname, partial(func, method='bfs', depth=depth))
+
     # Generate getAllBase1, getAllBase2, ..., getAllBase{MAXDEPTH}
     # Generate getAllZone1, getAllZone2, ..., getAllZone{MAXDEPTH}
     #   ...
     # Generate getAllInvalid1, getAllInvalid2, ..., getAllInvalid{MAXDEPTH}
     func = create_get_all_children(match_label, ('label',), (label,))
-    suffix = f"{suffix}_" if suffix[-1] in [str(i) for i in range(1,MAXDEPTH+1)] else suffix
     funcname = f"getAll{suffix}{depth}"
     func.__name__ = funcname
     func.__doc__  = """get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
@@ -433,6 +471,36 @@ for label in filter(lambda i : i not in ['CGNSTree_t'], CGL.__members__):
     func.__doc__  = """get all CGNS nodes from CGNS label {0} with depth={1}""".format(label, depth)
     setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
 
+# --------------------------------------------------------------------------
+def create_functions_name(create_function, name):
+  snake_name = PYU.camel_to_snake(name)
+
+  # Generate getAcoustic, ..., getCoordinateX, ..., getZoneSubRegionPointers
+  funcname = f"get{name}"
+  func = create_function(match_name, ('name',), (name,))
+  func.__name__ = funcname
+  func.__doc__  = """get the CGNS node with name {0}.""".format(name)
+  setattr(module_object, funcname, partial(func, method='dfs'))
+  # Generate get_acoustic, ..., get_coordinate_x, ..., get_zone_sub_region_pointers
+  funcname = f"get_{snake_name}"
+  func = create_function(match_name, ('name',), (name,))
+  func.__name__ = funcname
+  func.__doc__  = """get the CGNS node with name {0}.""".format(name)
+  setattr(module_object, funcname, partial(func, method='dfs'))
+
+  for depth in range(1,MAXDEPTH+1):
+    # Generate getAcoustic1, ..., getCoordinateX1, ..., getZoneSubRegionPointers1
+    funcname = f"get{name}{depth}"
+    func = create_function(match_name, ('name',), (name,))
+    func.__name__ = funcname
+    func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
+    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
+    # Generate get_acoustic1, ..., get_coordinateX1, ..., get_zone_sub_region_pointers1
+    funcname = f"get_{snake_name}{depth}"
+    func = create_function(match_name, ('name',), (name,))
+    func.__name__ = funcname
+    func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
+    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
 
 # --------------------------------------------------------------------------
 def create_get_child_name(predicate, nargs, args):
@@ -441,36 +509,11 @@ def create_get_child_name(predicate, nargs, args):
     return getChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_child_name
 
+# for cgns_type in filter(lambda i : i not in ['Null', 'UserDefined'] and not i.startswith('max'), CGK.PointSetType.__members__):
+#   create_functions_name(create_get_child_name, cgns_type)
+
 for name in filter(lambda i : not i.startswith('__') and not i.endswith('__'), dir(CGK.Name)):
-  snake_name = PYU.camel_to_snake(name)
-
-  # Generate getAcoustic, ..., getCoordinateX, ..., getZoneSubRegionPointers
-  funcname = f"get{name}"
-  func = create_get_child_name(match_name, ('name',), (name,))
-  func.__name__ = funcname
-  func.__doc__  = """get the CGNS node with name {0}.""".format(name)
-  setattr(module_object, funcname, func)
-  # Generate get_acoustic, ..., get_coordinate_x, ..., get_zone_sub_region_pointers
-  funcname = f"get_{snake_name}"
-  func = create_get_child_name(match_name, ('name',), (name,))
-  func.__name__ = funcname
-  func.__doc__  = """get the CGNS node with name {0}.""".format(name)
-  setattr(module_object, funcname, func)
-
-  for depth in range(1,MAXDEPTH+1):
-    # Generate getAcoustic1, ..., getCoordinateX1, ..., getZoneSubRegionPointers1
-    funcname = f"get{name}{depth}"
-    func = create_get_child_name(match_name, ('name',), (name,))
-    func.__name__ = funcname
-    func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
-    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
-    # Generate get_acoustic1, ..., get_coordinateX1, ..., get_zone_sub_region_pointers1
-    funcname = f"get_{snake_name}{depth}"
-    func = create_get_child_name(match_name, ('name',), (name,))
-    func.__name__ = funcname
-    func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
-    setattr(module_object, funcname, partial(func, method='dfs', depth=depth))
-
+  create_functions_name(create_get_child_name, name)
 
 # --------------------------------------------------------------------------
 def getNodesDispatch1(node, predicate):
