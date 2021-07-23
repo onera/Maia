@@ -931,12 +931,12 @@ Base CGNSBase_t:
 
   walker = IE.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", search='bfs')
   assert([I.getName(n) for n in walker()] == ['bca1', 'bcd2', 'bcb3', 'bce4', 'bcc5'])
-  walker.sort = lambda n:reversed(I.getChildren(n))
+  walker.sort = lambda children:reversed(children)
   assert([I.getName(n) for n in walker()] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
   walker.sort = IE.NodesWalker.BACKWARD
   assert([I.getName(n) for n in walker()] == ['bcc5', 'bce4', 'bcb3', 'bcd2', 'bca1'])
 
-  fsort = lambda parent : sorted(I.getChildren(parent), key=lambda n : I.getName(n)[2])
+  fsort = lambda children : sorted(children, key=lambda n : I.getName(n)[2])
   walker.sort = fsort
   # for n in walker(search='bfs', sort=fsort):
   #   print(f"n = {I.getName(n)}")
@@ -1007,6 +1007,174 @@ Base CGNSBase_t:
     print(f"n = {I.getName(n)}")
   assert([I.getName(n) for n in walker()] == ['_BCA1', '_BCD2', '_BCB3', '_BCE4', '_BCC5'])
   assert([I.getName(n) for n in walker.cache] == ['_BCA1', '_BCD2', '_BCB3', '_BCE4', '_BCC5'])
+
+def test_NodesWalkerPost_apply():
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bca1 BC_t:
+        FamilyName FamilyName_t ['B','C','C','1']:
+        Index_i IndexArray_t:
+      bcd2 BC_t:
+        FamilyName FamilyName_t ['B','C','A','2']:
+        Index_ii IndexArray_t:
+    FamilyName FamilyName_t ['R','O','W','1']:
+    ZBCB ZoneBC_t:
+      bcb3 BC_t:
+        FamilyName FamilyName_t ['B','C','D','3']:
+        Index_iii IndexArray_t:
+      bce4 BC_t:
+        FamilyName FamilyName_t ['B','C','E','4']:
+      bcc5 BC_t:
+        FamilyName FamilyName_t ['B','C','B','5']:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t")
+  walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+  # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["Toto"]*6
+  assert walker.cache == []
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", depth=3)
+  walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+  # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*2+["Toto"]+["FamilyName"]*3
+  assert walker.cache == []
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow')
+  walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+  # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["Toto"]*6
+  assert walker.cache == []
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow', depth=3)
+  walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+  # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*2+["Toto"]+["FamilyName"]*3
+  assert walker.cache == []
+
+  # with cache
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", caching=True)
+  walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+  # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["Toto"]*6
+  assert [I.getName(n) for n in walker.cache] == ["Toto"]*6
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", depth=3, caching=True)
+  walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+  # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*2+["Toto"]+["FamilyName"]*3
+  assert [I.getName(n) for n in walker.cache] == ["Toto"]
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow', caching=True)
+  walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+  # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["Toto"]*6
+  assert [I.getName(n) for n in walker.cache] == ["Toto"]*6
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow', depth=3, caching=True)
+  walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+  # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*2+["Toto"]+["FamilyName"]*3
+  assert [I.getName(n) for n in walker.cache] == ["Toto"]
+
+  # with delete
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t")
+  walker.delete()
+  # I.printTree(tree)
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == []
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", depth=3)
+  walker.delete()
+  # I.printTree(tree)
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*5
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow')
+  walker.delete()
+  # I.printTree(tree)
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == []
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow', depth=3)
+  walker.delete()
+  # I.printTree(tree)
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*5
+
+  # delete with sort
+  sort = lambda children:reversed(children)
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow', sort=sort)
+  walker.delete()
+  # I.printTree(tree)
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == []
+
+  tree = parse_yaml_cgns.to_complete_pytree(yt)
+  walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow', depth=3, sort=sort)
+  walker.delete()
+  # I.printTree(tree)
+  assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*5
+
+  # tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", depth=3)
+  # walker.apply(lambda n : I.setName(n, "Toto"))
+  # # I.printTree(tree)
+  # # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  # assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*2+["Toto"]+["FamilyName"]*3
+  # assert walker.cache == []
+
+  # tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow')
+  # walker.apply(lambda n : I.setName(n, "Toto"))
+  # # I.printTree(tree)
+  # # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  # assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["Toto"]*6
+  # assert walker.cache == []
+
+  # tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow', depth=3)
+  # walker.apply(lambda n : I.setName(n, "Toto"))
+  # # I.printTree(tree)
+  # # print([I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")])
+  # assert [I.getName(n) for n in IE.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*2+["Toto"]+["FamilyName"]*3
+  # assert walker.cache == []
+
+  # tree = parse_yaml_cgns.to_complete_pytree(yt)
+  # walker = IE.NodesWalkerPost(tree, lambda n: I.getType(n) == "FamilyName_t", explore='shallow', sort=IE.NodesWalker.BACKWARD)
+  # walker.apply(lambda n : I.setName(n, "Toto"))
+  # I.printTree(tree)
+
+  # I.printTree(tree)
+  # walker.apply(f)
+  # I.printTree(tree)
+
+  # walker = IE.NodesWalker(tree, lambda n: (I.getType(n) == "BC_t"), explore='shallow', sort=NodesWalker.BACKWARD, caching=False)
+  # walker.apply(lambda n : I.setName(n, I.getName(n).upper()))
+  # for n in walker():
+  #   print(f"n = {I.getName(n)}")
 
 def test_getAllLabel():
   yt = """
@@ -1350,7 +1518,8 @@ if __name__ == "__main__":
   # test_getRequireNodeFromNameAndType()
   # test_NodesWalker()
   # test_NodesWalker_sort()
-  test_NodesWalker_apply()
+  # test_NodesWalker_apply()
+  test_NodesWalkerPost_apply()
   # test_iterNodesFromPredicate()
   # test_getNodesFromPredicate()
   # test_getAllLabel()
