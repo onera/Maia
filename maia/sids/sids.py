@@ -73,7 +73,7 @@ class Zone:
   @staticmethod
   @IE.check_is_label("Zone_t")
   def getBCsFromFamily(zone_node, families):
-    for bc_node in IE.getNodesByMatching(zone_node, ['ZoneBC_t', 'BC_t']):
+    for bc_node in IE.iterNodesByMatching(zone_node, ['ZoneBC_t', 'BC_t']):
       bctype = I.getValue(bc_node)
       if bctype == 'FamilySpecified':
         family_name_node = IE.getChildFromLabel1(bc_node, CGL.FamilyName_t.name)

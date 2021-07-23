@@ -38,7 +38,7 @@ def collect_S_bnd_per_dir(zone):
   base_bound = {k : [] for k in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]}
 
   for bnd_path in ['ZoneBC_t/BC_t', 'ZoneGridConnectivity_t/GridConnectivity1to1_t']:
-    for bnd in IE.getNodesByMatching(zone, bnd_path):
+    for bnd in IE.iterNodesByMatching(zone, bnd_path):
       grid_loc    = SIDS.GridLocation(bnd)
       point_range = I.getNodeFromName(bnd, 'PointRange')[1]
       bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
@@ -217,7 +217,7 @@ def split_original_joins_S(all_part_zones, comm):
   ordinal_to_pr = dict()
   zones_offsets = dict()
   for part in all_part_zones:
-    for jn in IE.getNodesByMatching(part, 'ZoneBC_t/BC_t'):
+    for jn in IE.iterNodesByMatching(part, 'ZoneBC_t/BC_t'):
       if I.getNodeFromName1(jn, 'Ordinal') is not None:
         p_zone_offset = I.getNodeFromName1(jn, 'zone_offset')[1]
         pr_n = I.newPointRange(part[0], np.copy(I.getNodeFromName1(jn, 'PointRange')[1]))
@@ -244,7 +244,7 @@ def split_original_joins_S(all_part_zones, comm):
   for part in all_part_zones:
     zone_gc = I.createUniqueChild(part, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
     to_delete = []
-    for jn in IE.getNodesByMatching(part, 'ZoneBC_t/BC_t'):
+    for jn in IE.iterNodesByMatching(part, 'ZoneBC_t/BC_t'):
       if I.getNodeFromName1(jn, 'Ordinal') is not None:
         dist_pr = I.getNodeFromName1(jn, 'distPR')[1]
         dist_prd = I.getNodeFromName1(jn, 'distPRDonor')[1]

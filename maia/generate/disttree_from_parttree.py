@@ -20,12 +20,12 @@ def match_jn_from_ordinals(dist_tree):
   ordinal_to_data = dict() #Will store zone name & PL for each GC
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'
 
-  for base,zone,zgc,gc in IE.getNodesWithParentsByMatching(dist_tree, gc_t_path):
+  for base,zone,zgc,gc in IE.iterNodesWithParentsByMatching(dist_tree, gc_t_path):
     ordinal = I.getNodeFromName1(gc, 'Ordinal')[1][0]
     #ordinal_to_zname[ordinal] = I.getName(base) + '/' + I.getName(zone)
     ordinal_to_data[ordinal] = (I.getName(zone), I.getNodeFromName1(gc, 'PointList')[1])
 
-  for base,zone,zgc,gc in IE.getNodesWithParentsByMatching(dist_tree, gc_t_path):
+  for base,zone,zgc,gc in IE.iterNodesWithParentsByMatching(dist_tree, gc_t_path):
     ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
     donor_name, donor_pl = ordinal_to_data[ordinal_opp]
     I.setValue(gc, donor_name)
@@ -47,7 +47,7 @@ def disttree_from_parttree(part_tree, comm):
       child_list = ['ZoneType_t'],
       merge_rule=lambda zpath : conv.get_part_prefix(zpath))
 
-  for dist_base, dist_zone in IE.getNodesWithParentsByMatching(dist_tree, 'CGNSBase_t/Zone_t'):
+  for dist_base, dist_zone in IE.iterNodesWithParentsByMatching(dist_tree, 'CGNSBase_t/Zone_t'):
 
     distri_ud = IE.newDistribution(parent=dist_zone)
 
@@ -95,9 +95,9 @@ def disttree_from_parttree(part_tree, comm):
           merge_rule= lambda path: conv.get_split_prefix(path))
 
     # > Index exchange
-    for d_zbc, d_bc in IE.getNodesWithParentsByMatching(dist_zone, bc_t_path):
+    for d_zbc, d_bc in IE.iterNodesWithParentsByMatching(dist_zone, bc_t_path):
       IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zbc) + '/' + I.getName(d_bc), comm)
-    for d_zgc, d_gc in IE.getNodesWithParentsByMatching(dist_zone, gc_t_path):
+    for d_zgc, d_gc in IE.iterNodesWithParentsByMatching(dist_zone, gc_t_path):
       IPTB.part_pl_to_dist_pl(dist_zone, part_zones, I.getName(d_zgc) + '/' + I.getName(d_gc), comm, True)
 
     # > Flow Solution and Discrete Data

@@ -22,7 +22,7 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
   """
   collected_part_nodes = dict()
   for part_node in part_nodes:
-    for nodes in IE.getNodesWithParentsByMatching(part_node, queries):
+    for nodes in IE.iterNodesWithParentsByMatching(part_node, queries):
       # Apply merge rule to map splitted nodes (eg jn) to the same dist node
       leaf_path = merge_rule('/'.join([I.getName(node) for node in nodes]))
       # Avoid data duplication to minimize exchange
