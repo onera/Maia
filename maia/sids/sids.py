@@ -67,7 +67,7 @@ class Zone:
   @staticmethod
   @IE.check_is_label("Zone_t")
   def Type(zone_node):
-    zone_type_node = IE.getChildFromLabel1(zone_node, CGL.ZoneType_t.name)
+    zone_type_node = IE.getNodeFromLabel1(zone_node, CGL.ZoneType_t.name)
     return I.getValue(zone_type_node)
 
   @staticmethod
@@ -76,7 +76,7 @@ class Zone:
     for bc_node in IE.iterNodesByMatching(zone_node, ['ZoneBC_t', 'BC_t']):
       bctype = I.getValue(bc_node)
       if bctype == 'FamilySpecified':
-        family_name_node = IE.getChildFromLabel1(bc_node, CGL.FamilyName_t.name)
+        family_name_node = IE.getNodeFromLabel1(bc_node, CGL.FamilyName_t.name)
         if I.getValue(family_name_node) in families:
           yield bc_node
 
@@ -106,10 +106,10 @@ class Zone:
     Returns:
         Tuple: Return local to global numerotation of vtx, cell and face
     """
-    pdm_nodes = IE.getChildFromName1(zone_node, ":CGNS#Ppart")
+    pdm_nodes = IE.getNodeFromName1(zone_node, ":CGNS#Ppart")
     vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
     cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
-    face_ln_to_gn = I.getVal(IE.getChildFromName1(pdm_nodes, "np_face_ln_to_gn"))
+    face_ln_to_gn = I.getVal(IE.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
     return vtx_ln_to_gn, cell_ln_to_gn, face_ln_to_gn
 
   @staticmethod
@@ -122,20 +122,20 @@ class Zone:
     Returns:
         Tuple: Return local to global numerotation of vtx, cell and face
     """
-    pdm_nodes = IE.getChildFromName1(zone_node, ":CGNS#Ppart")
+    pdm_nodes = IE.getNodeFromName1(zone_node, ":CGNS#Ppart")
     # Vertex coordinates
-    vtx_coords    = I.getVal(IE.getChildFromName1(pdm_nodes, "np_vtx_coord"))
+    vtx_coords    = I.getVal(IE.getNodeFromName1(pdm_nodes, "np_vtx_coord"))
     vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
     # vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
     # Cell<->Face connectivity
-    cell_face_idx = I.getVal(IE.getChildFromName1(pdm_nodes, "np_cell_face_idx"))
-    cell_face     = I.getVal(IE.getChildFromName1(pdm_nodes, "np_cell_face"))
+    cell_face_idx = I.getVal(IE.getNodeFromName1(pdm_nodes, "np_cell_face_idx"))
+    cell_face     = I.getVal(IE.getNodeFromName1(pdm_nodes, "np_cell_face"))
     # cell_ln_to_gn = I.getVal(I.requireNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
     cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
     # Face<->Vtx connectivity
-    face_vtx_idx  = I.getVal(IE.getChildFromName1(pdm_nodes, "np_face_vtx_idx"))
-    face_vtx      = I.getVal(IE.getChildFromName1(pdm_nodes, "np_face_vtx"))
-    face_ln_to_gn = I.getVal(IE.getChildFromName1(pdm_nodes, "np_face_ln_to_gn"))
+    face_vtx_idx  = I.getVal(IE.getNodeFromName1(pdm_nodes, "np_face_vtx_idx"))
+    face_vtx      = I.getVal(IE.getNodeFromName1(pdm_nodes, "np_face_vtx"))
+    face_ln_to_gn = I.getVal(IE.getNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
     return vtx_coords, vtx_ln_to_gn, \
            cell_face_idx, cell_face, cell_ln_to_gn, \
            face_vtx_idx, face_vtx, face_ln_to_gn

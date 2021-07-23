@@ -424,7 +424,7 @@ create_functions(requestNodeFromPredicate, create_request_child, "bfs", allfuncs
   "Return a child CGNS node or None (if it is not found)")
 
 # --------------------------------------------------------------------------
-def getChildFromPredicate(parent, predicate, default=None, method=NodeParser.DEFAULT, depth=None):
+def getNodeFromPredicate(parent, predicate, default=None, method=NodeParser.DEFAULT, depth=None):
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
   node = requestNodeFromPredicate(parent, predicate, method=method, depth=depth)
   if node is not None:
@@ -434,16 +434,16 @@ def getChildFromPredicate(parent, predicate, default=None, method=NodeParser.DEF
   raise CGNSNodeFromPredicateNotFoundError(parent, predicate)
 
 def create_get_child(predicate, nargs):
-  def _get_child_from(parent, *args, **kwargs):
+  def _get_node_from(parent, *args, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
     try:
-      return getChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+      return getNodeFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
     except CGNSNodeFromPredicateNotFoundError as e:
       print(f"For predicate : pkwargs = {pkwargs}", file=sys.stderr)
       raise e
-  return _get_child_from
+  return _get_node_from
 
-create_functions(getChildFromPredicate, create_get_child, "bfs", allfuncs,
+create_functions(getNodeFromPredicate, create_get_child, "bfs", allfuncs,
   "Return a child CGNS node or raise a CGNSNodeFromPredicateNotFoundError (if it is not found)")
 
 # --------------------------------------------------------------------------
@@ -874,14 +874,14 @@ for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValue
 
 # --------------------------------------------------------------------------
 def create_get_child(predicate, nargs, args):
-  def _get_child_from(parent, **kwargs):
+  def _get_node_from(parent, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
     try:
-      return getChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+      return getNodeFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
     except CGNSNodeFromPredicateNotFoundError as e:
       print(f"For predicate : pkwargs = {pkwargs}", file=sys.stderr)
       raise e
-  return _get_child_from
+  return _get_node_from
 
 def create_get_all_children(predicate, nargs, args):
   def _get_all_children_from(parent, **kwargs):
@@ -1002,7 +1002,7 @@ def create_functions_name(create_function, name):
 def create_get_child_name(predicate, nargs, args):
   def _get_child_name(parent, **kwargs):
     pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return getChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
+    return getNodeFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_child_name
 
 # for cgns_type in filter(lambda i : i not in ['Null', 'UserDefined'] and not i.startswith('max'), CGK.PointSetType.__members__):
@@ -1346,8 +1346,8 @@ def newGlobalNumbering(glob_numberings = dict(), parent=None):
   return lngn_node
 
 # --------------------------------------------------------------------------
-requestNodeFromPredicate          = requestNodeFromPredicate
-get_child_from_predicate              = getChildFromPredicate
+request_node_from_predicate           = requestNodeFromPredicate
+get_node_from_predicate               = getNodeFromPredicate
 get_children_from_predicate           = getChildrenFromPredicate
 get_family                            = getFamily
 
