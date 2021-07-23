@@ -1,13 +1,15 @@
+from typing import List, Tuple
 from functools import wraps
 import numpy as np
 
 import Converter.Internal as I
 
-from maia.utils.py_utils import list_or_only_elt
-from maia.sids.cgns_keywords import Label as CGL
-from . import elements_utils   as EU
 import maia.sids.Internal_ext  as IE
 import maia.sids.cgns_keywords as CGK
+
+from maia.sids.cgns_keywords import Label as CGL
+from maia.utils.py_utils     import list_or_only_elt
+from . import elements_utils as EU
 
 # --------------------------------------------------------------------------
 def check_is_cgnstree(f):
@@ -120,7 +122,7 @@ class Zone:
   @staticmethod
   @check_is_zone
   def Type(zone_node):
-    zone_type_node = I.getNodeFromType1(zone_node, 'ZoneType_t')
+    zone_type_node = IE.requireNodeFromType1(zone_node, CGL.ZoneType_t.name)
     return I.getValue(zone_type_node)
 
   @staticmethod
@@ -129,7 +131,7 @@ class Zone:
     for bc_node in IE.getNodesByMatching(zone_node, ['ZoneBC_t', 'BC_t']):
       bctype = I.getValue(bc_node)
       if bctype == 'FamilySpecified':
-        family_name_node = I.getNodeFromType1(bc_node, 'FamilyName_t')
+        family_name_node = IE.requireNodeFromType1(bc_node, CGL.FamilyName_t.name)
         if I.getValue(family_name_node) in families:
           yield bc_node
 
@@ -149,6 +151,49 @@ class Zone:
   def n_vtx_bnd(zone_node):
     return np.prod(Zone.VertexBoundarySize(zone_node))
 
+  @staticmethod
+  @check_is_zone
+  def get_ln_to_gn(zone_node: List) -> Tuple:
+    """
+    Args:
+        zone_node (List): CGNS Zone_t node
+
+    Returns:
+        Tuple: Return local to global numerotation of vtx, cell and face
+    """
+    pdm_nodes = IE.requireNodeFromName1(zone_node, ":CGNS#Ppart")
+    vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
+    cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
+    face_ln_to_gn = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
+    return vtx_ln_to_gn, cell_ln_to_gn, face_ln_to_gn
+
+  @staticmethod
+  @check_is_zone
+  def get_infos(zone_node: List) -> Tuple:
+    """
+    Args:
+        zone_node (List): CGNS Zone_t
+
+    Returns:
+        Tuple: Return local to global numerotation of vtx, cell and face
+    """
+    pdm_nodes = IE.requireNodeFromName1(zone_node, ":CGNS#Ppart")
+    # Vertex coordinates
+    vtx_coords    = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_vtx_coord"))
+    vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
+    # vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
+    # Cell<->Face connectivity
+    cell_face_idx = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_cell_face_idx"))
+    cell_face     = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_cell_face"))
+    # cell_ln_to_gn = I.getVal(I.requireNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
+    cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
+    # Face<->Vtx connectivity
+    face_vtx_idx  = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_face_vtx_idx"))
+    face_vtx      = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_face_vtx"))
+    face_ln_to_gn = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
+    return vtx_coords, vtx_ln_to_gn, \
+           cell_face_idx, cell_face, cell_ln_to_gn, \
+           face_vtx_idx, face_vtx, face_ln_to_gn
 
 # --------------------------------------------------------------------------
 @check_is_elements
@@ -251,6 +296,13 @@ def GridLocation(node):
   return I.getValue(grid_loc_n) if grid_loc_n else 'Vertex'
 
 # --------------------------------------------------------------------------
+def newDataArrayFromName(parent, data_name):
+  data_node = I.getNodeFromNameAndType(parent, data_name, CGL.DataArray_t.name)
+  if not data_node:
+    data_node = I.newDataArray(data_name, parent=parent)
+  return data_node
+
+# --------------------------------------------------------------------------
 def coordinates(node, name=None):
   def get_children(grid_coord_node, name):
     coord_node = I.getNodeFromName1(grid_coord_node, name)
@@ -312,3 +364,27 @@ def cell_connectivity(node):
   if count == 0:
     raise RuntimeError(f"Unable to find NGon_n Elements_t node in {I.getName(node)}.")
   return face_vtx, face_vtx_idx, ngon_pe
+
+if __name__ == "__main__":
+    import Converter.PyTree as C
+
+    import maia.sids.cgns_keywords as CGK
+    import maia.sids.sids          as SIDS
+    from maia.sids.cgns_keywords import Label as CGL
+    t = C.convertFile2PyTree("geometry/cubeU_join_bnd-new.hdf")
+    I.printTree(t)
+
+    for zone_node in I.getZones(t):
+        zonetype_node = I.getNodeFromType1(zone_node, CGL.ZoneType_t.name)
+        I._rmNode(t, zonetype_node)
+    for zone_node in I.getZones(t):
+        if SIDS.Zone.Type(zone_node) == "Unstructured":
+            pass
+
+    for zone_node in I.getZones(t):
+        element_node = I.getNodeFromType1(zone_node, CGL.Elements_t.name)
+        # NGon elements
+        if SIDS.ElementType(element_node) == CGK.ElementType.NFACE_n.value:
+            pass
+        else:
+            raise NotImplementedForElementError(zone_node, element_node)

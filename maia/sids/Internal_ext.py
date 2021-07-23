@@ -1,8 +1,143 @@
+from typing import List, Tuple
 import fnmatch
 import numpy as np
 import Converter.Internal as I
 import maia.sids.cgns_keywords as CGK
 
+# --------------------------------------------------------------------------
+class CGNSNameNotFoundError(Exception):
+    """
+    Attributes:
+        node (List): CGNS node
+        cgns_name (str): Name of the CGNS Name
+    """
+    def __init__(self, node: List, cgns_name: str):
+        self.node      = node
+        self.cgns_name = cgns_name
+        super().__init__()
+
+    def __str__(self):
+        return f"Unable to find the CGNS node 'n:{self.cgns_name}' in CGNS node 'n:{I.getName(self.node)}, l:{I.getType(self.node)}', see : \n{I.printTree(self.node)}."
+
+class CGNSLabelNotFoundError(Exception):
+    """
+    Attributes:
+        node (List): CGNS node
+        cgns_label (str): Name of the CGNS Label
+    """
+    def __init__(self, node: List, cgns_label: str):
+        self.node       = node
+        self.cgns_label = cgns_label
+        super().__init__()
+
+    def __str__(self):
+        return f"Unable to find the CGNS node 'l:{self.cgns_label}' in CGNS node 'n:{I.getName(self.node)}, l:{I.getType(self.node)}', see : \n{I.printTree(self.node)}."
+
+class CGNSNameAndLabelNotFoundError(Exception):
+    """
+    Attributes:
+        node (List): CGNS node
+        cgns_label (str): Name of the CGNS Label
+    """
+    def __init__(self, node: List, cgns_name: str, cgns_label: str):
+        self.node       = node
+        self.cgns_name  = cgns_name
+        self.cgns_label = cgns_label
+        super().__init__()
+
+    def __str__(self):
+        return f"Unable to find the CGNS node 'n:{I.getName(self.cgns_name)}, l:{self.cgns_label}' in CGNS node 'n:{I.getName(self.node)}, l:{I.getType(self.node)}', see : \n{I.printTree(self.node)}."
+
+class NotImplementedForElementError(NotImplementedError):
+    """
+    Attributes:
+        zone_node (List): CGNS Zone_t node
+        element_node (List): CGNS Elements_t node
+    """
+    def __init__(self, zone_node: List, element_node: List):
+        self.zone_node    = zone_node
+        self.element_node = element_node
+        super().__init__()
+
+    def __str__(self):
+        return f"Unstructured CGNS Zone_t named '{I.getName(self.zone_node)}' with CGNS Elements_t named '{SIDS.ElementCGNSName(self.element_node)}' is not yet implemented."
+
+# --------------------------------------------------------------------------
+def requireNodeFromName(parent, cgns_name):
+  node = I.getNodeFromName(parent, cgns_name)
+  if node is None:
+    raise CGNSNameNotFoundError(parent, cgns_name)
+  return node
+
+def requireNodeFromName1(parent, cgns_name):
+  node = I.getNodeFromName1(parent, cgns_name)
+  if node is None:
+    raise CGNSNameNotFoundError(parent, cgns_name)
+  return node
+
+def requireNodeFromName2(parent, cgns_name):
+  node = I.getNodeFromName2(parent, cgns_name)
+  if node is None:
+    raise CGNSNameNotFoundError(parent, cgns_name)
+  return node
+
+def requireNodeFromName3(parent, cgns_name):
+  node = I.getNodeFromName3(parent, cgns_name)
+  if node is None:
+    raise CGNSNameNotFoundError(parent, cgns_name)
+  return node
+
+# --------------------------------------------------------------------------
+def requireNodeFromType(parent, cgns_label):
+  node = I.getNodeFromType(parent, cgns_label)
+  if node is None:
+    raise CGNSLabelNotFoundError(parent, cgns_label)
+  return node
+
+def requireNodeFromType1(parent, cgns_label):
+  node = I.getNodeFromType1(parent, cgns_label)
+  if node is None:
+    raise CGNSLabelNotFoundError(parent, cgns_label)
+  return node
+
+def requireNodeFromType2(parent, cgns_label):
+  node = I.getNodeFromType2(parent, cgns_label)
+  if node is None:
+    raise CGNSLabelNotFoundError(parent, cgns_label)
+  return node
+
+def requireNodeFromType3(parent, cgns_label):
+  node = I.getNodeFromType3(parent, cgns_label)
+  if node is None:
+    raise CGNSLabelNotFoundError(parent, cgns_label)
+  return node
+
+# --------------------------------------------------------------------------
+def requireNodeFromNameAndType(parent, cgns_name, cgns_label):
+  node = I.getNodeFromNameAndType(parent, cgns_name, cgns_label)
+  if node is None:
+    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
+  return node
+
+def requireNodeFromNameAndType1(parent, cgns_name, cgns_label):
+  nodes = [I.getNodeFromName1(n, cgns_name) for n in I.getNodesFromType1(parent, cgns_label)]
+  if nodes is []:
+    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
+  return node[0]
+
+def requireNodeFromNameAndType2(parent, cgns_name, cgns_label):
+  nodes = [I.getNodeFromName2(n, cgns_name) for n in I.getNodesFromType2(parent, cgns_label)]
+  if nodes is []:
+    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
+  return node[0]
+
+def requireNodeFromNameAndType3(parent, cgns_name, cgns_label):
+  nodes = [I.getNodeFromName3(n, cgns_name) for n in I.getNodesFromType3(parent, cgns_label)]
+  if nodes is []:
+    raise CGNSNameAndLabelNotFoundError(parent, cgns_name, cgns_label)
+  return node[0]
+
+# --------------------------------------------------------------------------
 def isLabelFromString(label):
   """
   Return True if a string is a valid CGNS Label
