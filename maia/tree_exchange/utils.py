@@ -45,7 +45,7 @@ def collect_cgns_g_numbering(part_nodes, name, prefix=''):
   """
   prefixed = lambda node : I.getNodeFromPath(node, prefix)
   return [np.empty(0, pdm_gnum_dtype) if prefixed(part_node) is None else \
-      IE.getGlobalNumbering(prefixed(part_node), name).astype(pdm_gnum_dtype) for part_node in part_nodes]
+      I.getVal(IE.getGlobalNumbering(prefixed(part_node), name)).astype(pdm_gnum_dtype) for part_node in part_nodes]
 
 def create_all_elt_g_numbering(p_zone, dist_elts):
   """
@@ -62,7 +62,7 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
   np_elt_ln_to_gn = np.empty(sum(elt_sections_pn), dtype=pdm_gnum_dtype)
   for i_elt, p_elt in enumerate(p_elts):
     if p_elt:
-      local_ln_gn = IE.getGlobalNumbering(p_elt, 'Element')
+      local_ln_gn = I.getVal(IE.getGlobalNumbering(p_elt, 'Element'))
       np_elt_ln_to_gn[offset:offset+elt_sections_pn[i_elt]] = local_ln_gn + elt_sections_idx[i_elt]
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn

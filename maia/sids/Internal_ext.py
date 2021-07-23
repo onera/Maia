@@ -171,5 +171,5 @@ def getGlobalNumbering(node, lngn_name=None):
   Starting from node, return the CGNS#GlobalNumbering node if lngn_name is None
   or the value of the requested globalnumbering if lngn_name is not None
   """
-  return I.getVal(I.getNodeFromPath(node, ':CGNS#GlobalNumbering/' + lngn_name)) if lngn_name \
+  return I.getNodeFromPath(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
       else I.getNodeFromName1(node, ':CGNS#GlobalNumbering')

@@ -317,5 +317,5 @@ def test_getGlobalNumbering():
   gnum_arrays = {'Cell' : [4,21,1,2,8,12], 'Vertex' : None}
   gnum_node = IE.newGlobalNumbering(gnum_arrays, zone)
   assert IE.getGlobalNumbering(zone) is gnum_node
-  assert (IE.getGlobalNumbering(zone, 'Cell') == [4,21,1,2,8,12]).all()
-  assert  IE.getGlobalNumbering(zone, 'Vertex') == None
+  assert (I.getVal(IE.getGlobalNumbering(zone, 'Cell')) == [4,21,1,2,8,12]).all()
+  assert  I.getVal(IE.getGlobalNumbering(zone, 'Vertex')) == None

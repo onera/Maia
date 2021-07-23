@@ -39,7 +39,7 @@ def split_original_joins(p_zone):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         pl       = I.getNodeFromName1(gc, 'PointList')[1]
         pl_d     = I.getNodeFromName1(gc, 'PointListDonor')[1]
-        lngn     = IE.getGlobalNumbering(gc, 'Index')
+        lngn     = I.getVal(IE.getGlobalNumbering(gc, 'Index'))
         donor    = I.getNodeFromName1(gc, 'Donor')[1]
         # > List of couples (procs, parts) holding the opposite join
         opposed_parts = np.unique(donor, axis=0)
