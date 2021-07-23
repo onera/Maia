@@ -10,12 +10,30 @@ import maia.sids.Internal_ext  as IE
 import maia.sids.cgns_keywords as CGK
 
 # --------------------------------------------------------------------------
+def check_is_cgnstree(f):
+    @wraps(f)
+    def wrapped_method(*args, **kwargs):
+      node = args[0]
+      if I.getType(node) != CGL.CGNSTree_t.name:
+        raise TypeError(f"node must be a CGNS CGNSTree_t, '{I.getType(node)}' given here.")
+      return f(*args, **kwargs)
+    return wrapped_method
+
+def check_is_cgnsbase(f):
+    @wraps(f)
+    def wrapped_method(*args, **kwargs):
+      node = args[0]
+      if I.getType(node) != CGL.CGNSBase_t.name:
+        raise TypeError(f"node must be a CGNS CGNSBase_t, '{I.getType(node)}' given here.")
+      return f(*args, **kwargs)
+    return wrapped_method
+
 def check_is_zone(f):
     @wraps(f)
     def wrapped_method(*args, **kwargs):
       node = args[0]
       if I.getType(node) != CGL.Zone_t.name:
-        raise TypeError(f"'zone' must be a CGNS Zone_t, '{I.getType(node)}' given here.")
+        raise TypeError(f"node must be a CGNS Zone_t, '{I.getType(node)}' given here.")
       return f(*args, **kwargs)
     return wrapped_method
 
@@ -24,7 +42,7 @@ def check_is_elements(f):
     def wrapped_method(*args, **kwargs):
       node = args[0]
       if I.getType(node) != CGL.Elements_t.name:
-        raise TypeError(f"'zone' must be a CGNS Elements_t, '{I.getType(node)}' given here.")
+        raise TypeError(f"node must be a CGNS Elements_t, '{I.getType(node)}' given here.")
       return f(*args, **kwargs)
     return wrapped_method
 
@@ -33,7 +51,7 @@ def check_is_index_range(f):
     def wrapped_method(*args, **kwargs):
       node = args[0]
       if I.getType(node) != CGL.IndexRange_t.name:
-        raise TypeError(f"'zone' must be a CGNS IndexRange_t, '{I.getType(node)}' given here.")
+        raise TypeError(f"node must be a CGNS IndexRange_t, '{I.getType(node)}' given here.")
       return f(*args, **kwargs)
     return wrapped_method
 
@@ -42,7 +60,7 @@ def check_is_index_array(f):
     def wrapped_method(*args, **kwargs):
       node = args[0]
       if I.getType(node) != CGL.IndexArray_t.name:
-        raise TypeError(f"'zone' must be a CGNS IndexArray_t, '{I.getType(node)}' given here.")
+        raise TypeError(f"node must be a CGNS IndexArray_t, '{I.getType(node)}' given here.")
       return f(*args, **kwargs)
     return wrapped_method
 
@@ -196,39 +214,64 @@ def GridLocation(node):
   return I.getValue(grid_loc_n) if grid_loc_n else 'Vertex'
 
 # --------------------------------------------------------------------------
-def coordinates(node):
-    def get_children(grid_coord_node, name):
-      coord_node = I.getNodeFromName1(grid_coord_node, name)
-      if coord_node is None:
-        raise RuntimeError(f"Unable to find '{name}' node in {I.getName(grid_coord_node)}.")
-      return coord_node
+def coordinates(node, name=None):
+  def get_children(grid_coord_node, name):
+    coord_node = I.getNodeFromName1(grid_coord_node, name)
+    if coord_node is None:
+      raise RuntimeError(f"Unable to find '{name}' node in {I.getName(grid_coord_node)}.")
+    return coord_node
 
+  if name:
+    grid_coord_node = I.getNodeFromNameAndType(node, name, "GridCoordinates_t")
+  else:
     grid_coord_node = I.getNodeFromType(node, "GridCoordinates_t")
-    if grid_coord_node is None:
-      raise RuntimeError(f"Unable to find GridCoordinates_t node in {I.getName(node)}.")
-    x = I.getVal(get_children(grid_coord_node, "CoordinateX"))
-    y = I.getVal(get_children(grid_coord_node, "CoordinateY"))
-    z = I.getVal(get_children(grid_coord_node, "CoordinateZ"))
 
-    return x, y, z
+  if grid_coord_node is None:
+    raise RuntimeError(f"Unable to find GridCoordinates_t node in {I.getName(node)}.")
+  x = I.getVal(get_children(grid_coord_node, "CoordinateX"))
+  y = I.getVal(get_children(grid_coord_node, "CoordinateY"))
+  z = I.getVal(get_children(grid_coord_node, "CoordinateZ"))
+
+  return x, y, z
 
 def face_connectivity(node):
-    def get_children(element_node, name):
-      elt_node = I.getNodeFromName1(element_node, name)
-      if elt_node is None:
-        raise RuntimeError(f"Unable to find '{name}' node in {I.getName(element_node)}.")
-      return elt_node
+  def get_children(element_node, name):
+    elt_node = I.getNodeFromName1(element_node, name)
+    if elt_node is None:
+      raise RuntimeError(f"Unable to find '{name}' node in {I.getName(element_node)}.")
+    return elt_node
 
-    count = 0
-    for element_node in I.getNodesFromType(node, CGL.Elements_t.name):
-      if ElementType(element_node) == CGK.ElementType.NGON_n.value:
-        if count > 0:
-          raise RuntimeError(f"Several NGON_n Elements_t node is not allowed in {I.getName(node)}.")
-        face_vtx     = I.getVal(get_children(element_node, "ElementConnectivity"))
-        face_vtx_idx = I.getVal(get_children(element_node, "ElementStartOffset"))
-        ngon_pe      = I.getVal(get_children(element_node, "ParentElements"))
-        count += 1
+  count = 0
+  for element_node in I.getNodesFromType(node, CGL.Elements_t.name):
+    if ElementType(element_node) == CGK.ElementType.NGON_n.value:
+      if count > 0:
+        raise RuntimeError(f"Several NGON_n Elements_t node is not allowed in {I.getName(node)}.")
+      face_vtx     = I.getVal(get_children(element_node, "ElementConnectivity"))
+      face_vtx_idx = I.getVal(get_children(element_node, "ElementStartOffset"))
+      ngon_pe      = I.getVal(get_children(element_node, "ParentElements"))
+      count += 1
 
-    if count == 0:
-      raise RuntimeError(f"Unable to find NGon_n Elements_t node in {I.getName(node)}.")
-    return face_vtx, face_vtx_idx, ngon_pe
+  if count == 0:
+    raise RuntimeError(f"Unable to find NGon_n Elements_t node in {I.getName(node)}.")
+  return face_vtx, face_vtx_idx, ngon_pe
+
+def cell_connectivity(node):
+  def get_children(element_node, name):
+    elt_node = I.getNodeFromName1(element_node, name)
+    if elt_node is None:
+      raise RuntimeError(f"Unable to find '{name}' node in {I.getName(element_node)}.")
+    return elt_node
+
+  count = 0
+  for element_node in I.getNodesFromType(node, CGL.Elements_t.name):
+    if ElementType(element_node) == CGK.ElementType.NGON_n.value:
+      if count > 0:
+        raise RuntimeError(f"Several NGON_n Elements_t node is not allowed in {I.getName(node)}.")
+      face_vtx     = I.getVal(get_children(element_node, "ElementConnectivity"))
+      face_vtx_idx = I.getVal(get_children(element_node, "ElementStartOffset"))
+      ngon_pe      = I.getVal(get_children(element_node, "ParentElements"))
+      count += 1
+
+  if count == 0:
+    raise RuntimeError(f"Unable to find NGon_n Elements_t node in {I.getName(node)}.")
+  return face_vtx, face_vtx_idx, ngon_pe
