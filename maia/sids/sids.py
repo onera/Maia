@@ -14,19 +14,19 @@ from . import elements_utils as EU
 # --------------------------------------------------------------------------
 class Zone:
   @staticmethod
-  @SIDS.check_is_zone
+  @IE.check_is_label("Zone_t")
   def VertexSize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,0])
 
   @staticmethod
-  @SIDS.check_is_zone
+  @IE.check_is_label("Zone_t")
   def CellSize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,1])
 
   @staticmethod
-  @SIDS.check_is_zone
+  @IE.check_is_label("Zone_t")
   def FaceSize(zone_node):
 
     def compute_nface_per_direction(d, dim, vtx_size, cell_size):
@@ -59,24 +59,24 @@ class Zone:
     return list_or_only_elt(n_face)
 
   @staticmethod
-  @SIDS.check_is_zone
+  @IE.check_is_label("Zone_t")
   def VertexBoundarySize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,2])
 
   @staticmethod
-  @SIDS.check_is_zone
+  @IE.check_is_label("Zone_t")
   def Type(zone_node):
-    zone_type_node = IE.requireNodeFromType1(zone_node, CGL.ZoneType_t.name)
+    zone_type_node = IE.getChildFromLabel1(zone_node, CGL.ZoneType_t.name)
     return I.getValue(zone_type_node)
 
   @staticmethod
-  @SIDS.check_is_zone
+  @IE.check_is_label("Zone_t")
   def getBCsFromFamily(zone_node, families):
     for bc_node in IE.getNodesByMatching(zone_node, ['ZoneBC_t', 'BC_t']):
       bctype = I.getValue(bc_node)
       if bctype == 'FamilySpecified':
-        family_name_node = IE.requireNodeFromType1(bc_node, CGL.FamilyName_t.name)
+        family_name_node = IE.getChildFromLabel1(bc_node, CGL.FamilyName_t.name)
         if I.getValue(family_name_node) in families:
           yield bc_node
 
@@ -97,7 +97,7 @@ class Zone:
     return np.prod(Zone.VertexBoundarySize(zone_node))
 
   @staticmethod
-  @SIDS.check_is_zone
+  @IE.check_is_label("Zone_t")
   def get_ln_to_gn(zone_node: List) -> Tuple:
     """
     Args:
@@ -106,14 +106,14 @@ class Zone:
     Returns:
         Tuple: Return local to global numerotation of vtx, cell and face
     """
-    pdm_nodes = IE.requireNodeFromName1(zone_node, ":CGNS#Ppart")
+    pdm_nodes = IE.getChildFromName1(zone_node, ":CGNS#Ppart")
     vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
     cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
-    face_ln_to_gn = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
+    face_ln_to_gn = I.getVal(IE.getChildFromName1(pdm_nodes, "np_face_ln_to_gn"))
     return vtx_ln_to_gn, cell_ln_to_gn, face_ln_to_gn
 
   @staticmethod
-  @SIDS.check_is_zone
+  @IE.check_is_label("Zone_t")
   def get_infos(zone_node: List) -> Tuple:
     """
     Args:
@@ -122,34 +122,34 @@ class Zone:
     Returns:
         Tuple: Return local to global numerotation of vtx, cell and face
     """
-    pdm_nodes = IE.requireNodeFromName1(zone_node, ":CGNS#Ppart")
+    pdm_nodes = IE.getChildFromName1(zone_node, ":CGNS#Ppart")
     # Vertex coordinates
-    vtx_coords    = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_vtx_coord"))
+    vtx_coords    = I.getVal(IE.getChildFromName1(pdm_nodes, "np_vtx_coord"))
     vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
     # vtx_ln_to_gn  = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_ln_to_gn"))
     # Cell<->Face connectivity
-    cell_face_idx = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_cell_face_idx"))
-    cell_face     = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_cell_face"))
+    cell_face_idx = I.getVal(IE.getChildFromName1(pdm_nodes, "np_cell_face_idx"))
+    cell_face     = I.getVal(IE.getChildFromName1(pdm_nodes, "np_cell_face"))
     # cell_ln_to_gn = I.getVal(I.requireNodeFromName1(pdm_nodes, "np_cell_ln_to_gn"))
     cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
     # Face<->Vtx connectivity
-    face_vtx_idx  = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_face_vtx_idx"))
-    face_vtx      = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_face_vtx"))
-    face_ln_to_gn = I.getVal(IE.requireNodeFromName1(pdm_nodes, "np_face_ln_to_gn"))
+    face_vtx_idx  = I.getVal(IE.getChildFromName1(pdm_nodes, "np_face_vtx_idx"))
+    face_vtx      = I.getVal(IE.getChildFromName1(pdm_nodes, "np_face_vtx"))
+    face_ln_to_gn = I.getVal(IE.getChildFromName1(pdm_nodes, "np_face_ln_to_gn"))
     return vtx_coords, vtx_ln_to_gn, \
            cell_face_idx, cell_face, cell_ln_to_gn, \
            face_vtx_idx, face_vtx, face_ln_to_gn
 
 # --------------------------------------------------------------------------
-@SIDS.check_is_elements
+@IE.check_is_label("Elements_t")
 def ElementRange(elements):
   return I.getNodeFromName(elements,"ElementRange")[1]
 
-@SIDS.check_is_elements
+@IE.check_is_label("Elements_t")
 def ElementType(elements):
   return elements[1][0]
 
-@SIDS.check_is_elements
+@IE.check_is_label("Elements_t")
 def ElementSize(elements):
   er = I.getNodeFromName(elements,"ElementRange")[1]
   return er[1] - er[0] + 1
@@ -165,7 +165,7 @@ def ElementNVtx(element):
 
 
 # --------------------------------------------------------------------------
-# @SIDS.check_is_index_range
+# @IE.check_is_label("IndexRange_t")
 # def point_range_sizes(point_range_node):
 #   """Allow point_range to be inverted (PR[:,1] < PR[:,0])
 #   as it can occurs in struct GCs
@@ -175,7 +175,7 @@ def ElementNVtx(element):
 
 class PointRange:
   @staticmethod
-  @SIDS.check_is_index_range
+  @IE.check_is_label("IndexRange_t")
   def VertexSize(point_range_node):
     """Allow point_range to be inverted (PR[:,1] < PR[:,0])
     as it can occurs in struct GCs
@@ -184,7 +184,7 @@ class PointRange:
     return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
 
   @staticmethod
-  @SIDS.check_is_index_range
+  @IE.check_is_label("IndexRange_t")
   def FaceSize(point_range_node):
     return np.subtract(PointRange.VertexSize(point_range_node), 1)
 
@@ -198,14 +198,14 @@ class PointRange:
 
 
 # --------------------------------------------------------------------------
-# @SIDS.check_is_index_array
+# @IE.check_is_label("IndexArray_t")
 # def point_list_sizes(point_list_node):
 #   pl_values = point_list_node[1]
 #   return pl_values.shape
 
 class PointList:
   @staticmethod
-  @SIDS.check_is_index_array
+  @IE.check_is_label("IndexArray_t")
   def FaceSize(point_list_node):
     pl_values = point_list_node[1]
     return pl_values.shape

@@ -2,6 +2,7 @@ from typing import List, Tuple
 from functools import wraps
 from functools import partial
 import sys
+import pathlib
 import fnmatch
 import numpy as np
 import Converter.Internal as I
@@ -130,6 +131,11 @@ def match_value(n, value):
 def match_label(n, label: str):
   return n[3] == label
 
+def match_path(n, path: str):
+  path1 = pathlib.Path(I.getPath(n))
+  path2 = pathlib.Path(path)
+  return path1 == path2
+
 def match_name_value(n, name: str, value):
   return fnmatch.fnmatch(n[0], name) and np.array_equal(n[1], value)
 
@@ -146,6 +152,7 @@ allfuncs = {
   'Name' : (match_name,  ('name',)),
   'Value': (match_value, ('value',)),
   'Label': (match_label, ('label',)),
+  'Path' : (match_path,  ('path',)),
   'NameAndValue' : (match_name_value,  ('name', 'value',)),
   'NameAndLabel' : (match_name_label,  ('name', 'label',)),
   'ValueAndLabel': (match_value_label, ('value', 'label',)),
@@ -154,7 +161,8 @@ allfuncs = {
 
 MAXDEPTH = 10
 
-def create_methods(method, create_method):
+# --------------------------------------------------------------------------
+def create_methods(method, create_method, funcs):
   alias = method.__name__.replace('Predicate', '')
   print(f"method : {method}")
   print(f"method.__name__ : {method.__name__}")
@@ -165,14 +173,14 @@ def create_methods(method, create_method):
     func.__name__ = funcname
     setattr(module_object, funcname, func)
 
-  for what, item in allfuncs.items():
+  for what, item in funcs.items():
     predicate, nargs = item
     func = create_method(predicate, nargs)
     funcname = f"{alias}{what}"
     func.__name__ = funcname
     setattr(module_object, funcname, func) # bfs
 
-  for what, item in allfuncs.items():
+  for what, item in funcs.items():
     predicate, nargs = item
     for depth in range(1,MAXDEPTH+1):
       func = create_method(predicate, nargs)
@@ -251,7 +259,7 @@ def create_request_child(predicate, nargs):
     return requestChildFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_request_from
 
-create_methods(requestChildFromPredicate, create_request_child)
+create_methods(requestChildFromPredicate, create_request_child, allfuncs)
 
 # --------------------------------------------------------------------------
 def getChildFromPredicate(parent, predicate, default=None, method=NodeParser.DEFAULT, depth=None):
@@ -273,7 +281,7 @@ def create_get_child(predicate, nargs):
       raise e
   return _get_child_from
 
-create_methods(getChildFromPredicate, create_get_child)
+create_methods(getChildFromPredicate, create_get_child, allfuncs)
 
 # --------------------------------------------------------------------------
 class NodesParser:
@@ -342,28 +350,7 @@ def create_get_children(predicate, nargs):
     return getChildrenFromPredicate(parent, partial(predicate, **pkwargs), **kwargs)
   return _get_children_from
 
-create_methods(getChildrenFromPredicate, create_get_children)
-
-# --------------------------------------------------------------------------
-# def getChildrenFromPredicate1(node, predicate):
-#   """ Return the list of first level childs of node matching a given predicate (callable function)"""
-#   return [n for n in node[2] if predicate(n)] if node else []
-
-# def getChildrenFromName1(node, name):
-#   """ Return the list of first level childs matching a given name -- specialized shortcut for getChildrenFromPredicate1 """
-#   return getChildrenFromPredicate1(node, partial(match_name, name=check_name(name)))
-
-# def getChildrenFromLabel1(node, label):
-#   """ Return the list of first level childs matching a given label -- specialized shortcut for getChildrenFromPredicate1 """
-#   return getChildrenFromPredicate1(node, partial(match_label, label=check_label(label)))
-
-# def getChildrenFromValue1(node, value):
-#   """ Return the list of first level childs matching a given value -- specialized shortcut for getChildrenFromPredicate1 """
-#   return getChildrenFromPredicate1(node, partial(match_value, value=check_value(value)))
-
-# def getChildrenFromNameAndType1(node, name, label):
-#   """ Return the list of first level childs matching a given name and a given label -- specialized shortcut for getChildrenFromPredicate1 """
-#   return getChildrenFromPredicate1(node, partial(match_name_label, name=check_name(name), label=check_label(label)))
+create_methods(getChildrenFromPredicate, create_get_children, dict((k,v) for k,v in allfuncs.items() if k not in ['Path', 'NameValueAndLabel']))
 
 # --------------------------------------------------------------------------
 def getNodesDispatch1(node, predicate):
@@ -436,10 +423,10 @@ def getNodesWithParentsByMatching__(root, predicate_list):
       yield (node,)
 
 # --------------------------------------------------------------------------
-getNodeFromNameAndType  = requestChildFromNameAndLabel
-getNodeFromNameAndType1 = requestChildFromNameAndLabel1
-getNodeFromNameAndType2 = requestChildFromNameAndLabel2
-getNodeFromNameAndType3 = requestChildFromNameAndLabel3
+# getNodeFromNameAndType  = requestChildFromNameAndLabel
+# getNodeFromNameAndType1 = requestChildFromNameAndLabel1
+# getNodeFromNameAndType2 = requestChildFromNameAndLabel2
+# getNodeFromNameAndType3 = requestChildFromNameAndLabel3
 
 # --------------------------------------------------------------------------
 # def create_require_node(what, level):
@@ -458,20 +445,20 @@ getNodeFromNameAndType3 = requestChildFromNameAndLabel3
 #     func.__name__ = funcname
 #     setattr(module_object, funcname, func)
 
-requireNodeFromName  = getChildFromName
-requireNodeFromName1 = getChildFromName1
-requireNodeFromName2 = getChildFromName2
-requireNodeFromName3 = getChildFromName3
+# requireNodeFromName  = getChildFromName
+# requireNodeFromName1 = getChildFromName1
+# requireNodeFromName2 = getChildFromName2
+# requireNodeFromName3 = getChildFromName3
 
-requireNodeFromType  = getChildFromLabel
-requireNodeFromType1 = getChildFromLabel1
-requireNodeFromType2 = getChildFromLabel2
-requireNodeFromType3 = getChildFromLabel3
+# requireNodeFromType  = getChildFromLabel
+# requireNodeFromType1 = getChildFromLabel1
+# requireNodeFromType2 = getChildFromLabel2
+# requireNodeFromType3 = getChildFromLabel3
 
-requireNodeFromNameAndType  = getChildFromNameAndLabel
-requireNodeFromNameAndType1 = getChildFromNameAndLabel1
-requireNodeFromNameAndType2 = getChildFromNameAndLabel2
-requireNodeFromNameAndType3 = getChildFromNameAndLabel3
+# requireNodeFromNameAndType  = getChildFromNameAndLabel
+# requireNodeFromNameAndType1 = getChildFromNameAndLabel1
+# requireNodeFromNameAndType2 = getChildFromNameAndLabel2
+# requireNodeFromNameAndType3 = getChildFromNameAndLabel3
 
 # --------------------------------------------------------------------------
 def getSubregionExtent(sub_region_n, zone):
