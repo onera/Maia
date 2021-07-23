@@ -71,7 +71,7 @@ def fill_skeleton_from_part_tree(skeleton_tree: List, part_base: List, families:
     return False
 
   def has_zone_bc_wall(zone_node):
-    for bc_node in IE.getNodesByMatching(zone_node, 'ZoneBC_t/BC_t'):
+    for bc_node in IE.iterNodesByMatching(zone_node, 'ZoneBC_t/BC_t'):
       if is_bc_wall(bc_node):
         return True
     return False
@@ -82,7 +82,7 @@ def fill_skeleton_from_part_tree(skeleton_tree: List, part_base: List, families:
                                     merge_rule=lambda zpath : '.'.join(zpath.split('.')[:-2]))
 
   # Search BC
-  for skeleton_base, skeleton_zone in IE.getNodesWithParentsByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'):
+  for skeleton_base, skeleton_zone in IE.iterNodesWithParentsByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'):
     disc.discover_nodes_from_matching(skeleton_zone, I.getZones(part_base), ['ZoneBC_t', is_bc_wall], comm,
                                       child_list=['FamilyName_t', 'GridLocation_t'],
                                       get_value='none')
@@ -177,15 +177,6 @@ class WallDistance:
       vtx_bnd, vtx_ln_to_gn = extract_surf_from_bc(part_tree, families, comm)
 
     # Keep numpy alive
-    # part_base = I.getBases(part_tree)[0]
-    # walldist_nodes = I.getNodeFromNameAndType(part_base, ':CGNS#WallDist', 'UserDefined_t')
-    # if walldist_nodes is None:
-    #   walldist_nodes = I.createUniqueChild(part_base, ':CGNS#WallDist', 'UserDefined_t')
-    # I.newDataArray("face_vtx_bnd",     face_vtx_bnd,     parent=walldist_nodes)
-    # I.newDataArray("face_vtx_bnd_idx", face_vtx_bnd_idx, parent=walldist_nodes)
-    # I.newDataArray("face_ln_to_gn",    face_ln_to_gn,    parent=walldist_nodes)
-    # I.newDataArray("vtx_bnd",          vtx_bnd,          parent=walldist_nodes)
-    # I.newDataArray("vtx_ln_to_gn",     vtx_ln_to_gn,     parent=walldist_nodes)
     for array in (face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, vtx_bnd, vtx_ln_to_gn,):
       self._register.append(array)
 
@@ -218,21 +209,13 @@ class WallDistance:
 
     # Get the list of all partition in this domain
     is_same_zone = lambda n:I.getType(n) == CGL.Zone_t.name and conv.get_part_prefix(I.getName(n)) == I.getName(dist_zone)
-    part_zones = list(IE.getNodesByMatching(part_tree, ['CGNSBase_t', is_same_zone]))
+    part_zones = list(IE.iterNodesByMatching(part_tree, ['CGNSBase_t', is_same_zone]))
 
     # Get the number of local partition(s)
     n_part = len(part_zones)
     LOG.info(f"setup_vol_mesh: n_part   = {n_part}")
     LOG.info(f"setup_vol_mesh: n_vtx_t  [toto] = {n_vtx_t}")
     LOG.info(f"setup_vol_mesh: n_cell_t [toto] = {n_cell_t}")
-
-    # lsum = lambda x, y: x + y
-    # n_vtx_t  = reduce(lsum, [SIDS.Zone.n_vtx(z)  for z in part_zones], 0)
-    # n_cell_t = reduce(lsum, [SIDS.Zone.n_cell(z) for z in part_zones], 0)
-    # n_face_t = reduce(lsum, [SIDS.Zone.n_face(z) for z in part_zones], 0)
-    # print(f"n_vtx_t  = {n_vtx_t}")
-    # print(f"n_cell_t = {n_cell_t}")
-    # print(f"n_face_t = {n_face_t}")
 
     # Get the total number of face and vertex of the configuration
     n_vtx_t  = 0
@@ -248,8 +231,6 @@ class WallDistance:
     n_cell_t = comm.allreduce(n_cell_t, op=MPI.MAX)
     n_face_t = comm.allreduce(n_face_t, op=MPI.MAX)
 
-    # LOG.info(f"n_vtx_t  = {SIDS.Zone.n_vtx(dist_zone)}")
-    # LOG.info(f"n_cell_t = {SIDS.Zone.n_cell(dist_zone)}")
     LOG.info(f"setup_vol_mesh: n_vtx_t  = {n_vtx_t}")
     LOG.info(f"setup_vol_mesh: n_cell_t = {n_cell_t}")
     LOG.info(f"setup_vol_mesh: n_face_t = {n_face_t}")
@@ -282,17 +263,6 @@ class WallDistance:
       assert(center_cell.size == 3*n_cell)
 
       # Keep numpy alive
-      # walldist_nodes = I.getNodeFromNameAndType(part_zone, ':CGNS#WallDist', 'UserDefined_t')
-      # if walldist_nodes is None:
-      #   walldist_nodes = I.createUniqueChild(part_zone, ':CGNS#WallDist', 'UserDefined_t')
-      # I.newDataArray("cell_face_idx",    cell_face_idx,    parent=walldist_nodes)
-      # I.newDataArray("cell_face",        cell_face,        parent=walldist_nodes)
-      # I.newDataArray("cell_ln_to_gn",    cell_ln_to_gn,    parent=walldist_nodes)
-      # I.newDataArray("face_vtx_idx",     face_vtx_idx,     parent=walldist_nodes)
-      # I.newDataArray("face_vtx",         face_vtx,         parent=walldist_nodes)
-      # I.newDataArray("face_ln_to_gn",    face_ln_to_gn,    parent=walldist_nodes)
-      # I.newDataArray("vtx_coords",       vtx_coords,       parent=walldist_nodes)
-      # I.newDataArray("vtx_ln_to_gn",     vtx_ln_to_gn,     parent=walldist_nodes)
       for array in (cell_face_idx, cell_face, cell_ln_to_gn,):
         self._register.append(array)
       for array in (face_vtx_idx, face_vtx, face_ln_to_gn,):
@@ -346,7 +316,7 @@ class WallDistance:
       self._setup_surf_mesh(self.part_tree, self.families, self.mpi_comm)
 
       if self.method == "cloud":
-        dist_zones = list(IE.getNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'))
+        dist_zones = list(IE.iterNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'))
         for i_domain, dist_zone in enumerate(dist_zones):
           assert(i_domain == 0)
           # 3. Prepare Volume
@@ -362,7 +332,7 @@ class WallDistance:
           # ===========================================
           self.get(self.part_tree, i_domain)
       else:
-        for i_domain, dist_zone in enumerate(IE.getNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t')):
+        for i_domain, dist_zone in enumerate(IE.iterNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t')):
           assert(i_domain == 0)
           # 3. Prepare Volume
           # =================
@@ -432,6 +402,85 @@ def wall_distance(*args, **kwargs):
   walldist.dump_times()
   return walldist
 
+# ------------------------------------------------------------------------
+import os, subprocess
+
+def shell_command(cmd):
+    doit = subprocess.Popen(cmd, universal_newlines=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (done, fail) = doit.communicate()
+    code = doit.wait()
+    return done, fail
+
+def compareCGNS(f1, f2):
+    return shell_command(['cgnsdiff', '-f', '-d', '-t', '1.e-12', f1, f2])
+
+class DifferentFileException(Exception):
+
+    def __init__(self, run_filename, ref_filename, stdout, stderr):
+      self.run_filename = run_filename
+      self.ref_filename = ref_filename
+      self.stdout = stdout
+      self.stderr = stderr
+
+    def __str__(self):
+      strout = """DifferentFileException :
+Generated CGNS file = {0}
+Reference CGNS file = {1}
+stdout :
+{2}
+stderr :
+{3}
+"""
+      return strout.format(self.run_filename, self.ref_filename, self.stdout, self.stderr)
+
+def assertCGNSFileEq(run_filename, ref_filename):
+  print("Generated CGNS file = ",run_filename)
+  print("Reference CGNS file = ",ref_filename)
+
+  if not os.path.exists(run_filename):
+      raise IOError(f"Generated CGNS file '{run_filename}' does not exists.")
+  if not os.path.exists(ref_filename):
+      raise IOError(f"Reference CGNS file '{ref_filename}' does not exists.")
+
+  # Compare running and reference BC case
+  stdout, stderr = compareCGNS(run_filename,
+                               ref_filename)
+  if stdout == '' and stderr == '':
+      pass
+  else:
+      print("assertCGNSFileEq: raise DifferentFileException from CGNS files.")
+      raise DifferentFileException(run_filename,
+                                   ref_filename,
+                                   stdout, stderr)
+
+def compare_npart(t1, t2):
+  zones_t2 = I.getZones(t2)
+  I.printTree(zones_t2)
+  for zone_t1 in I.getZones(t1):
+    print(I.getName(zone_t1))
+    zone_t2 = I.getNodeFromName2(t2, zone_t1[0])
+
+    # fs_t1 = I.getNodeFromName1(zone_t1, 'FlowSolution#Centers')
+    fs_t1 = I.getNodeFromName1(zone_t1, 'FlowSolution#Init')
+    fs_t2 = I.getNodeFromName1(zone_t2, 'FlowSolution#Init')
+
+    wd_t1 = I.getNodeFromName1(fs_t1, 'TurbulentDistance')
+    wd_t2 = I.getNodeFromName1(fs_t2, 'TurbulentDistance')
+    I.newDataArray("DiffTurbDist", 2*np.abs(wd_t1[1]-wd_t2[1])/np.abs(wd_t1[1]+wd_t2[1]), parent=fs_t1)
+
+    wd_t1 = I.getNodeFromName1(fs_t1, 'ClosestEltGnum')
+    wd_t2 = I.getNodeFromName1(fs_t2, 'ClosestEltGnum')
+    tmp = np.abs(wd_t1[1]-wd_t2[1])
+    I.newDataArray("DiffEltGnum", np.abs(wd_t1[1]-wd_t2[1]), parent=fs_t1)
+    C.convertPyTree2File(t1, "diff.cgns")
+    # print(f"tmp = {tmp}")
+
+    if any([tmp[i] > 0 for i in range(tmp.shape[0])]):
+      for i in range(tmp.shape[0]):
+        if tmp[i] > 0:
+          print(f"Found tmp > 0 for i : {i} -> tmp = {tmp[i]}")
+      raise TypeError(f"Found tmp > 0.")
 
 
 if __name__ == "__main__":
@@ -454,9 +503,11 @@ if __name__ == "__main__":
   # filename = "AxiT2-new.hdf"
   # families = ['WALL']
 
-  # filename = "AxiT0-new.hdf"
-  # families = ['WALL']
-  filename = "AxiT2-new.hdf"
+  # method = "cloud"
+  method = "propagation"
+  # rootname = "AxiT0"
+  rootname = "AxiT2"
+
   families = ['WALL']
   # t = C.convertFile2PyTree(filename)
   # I._adaptNGon12NGon2(t)
@@ -466,8 +517,8 @@ if __name__ == "__main__":
   # filename = "AxiT2-tetra-new2.hdf"
   # families = ['WALL']
 
-  # filename = "Rotor37_U_MM2-new.hdf"
-  # families = ['AUBE', 'MOYEU', 'CARTER', 'BLADE']
+  # rootname = "Rotor37_U_MM2"
+  # familie['AUBE', 'MOYEU', 'CARTER', 'BLADE']
   # t = C.convertFile2PyTree(filename)
   # I._adaptNGon12NGon2(t)
   # C.convertPyTree2File(t, "AxiT2-new.hdf")
@@ -475,26 +526,31 @@ if __name__ == "__main__":
   # filename = "cubeH-new.hdf"
   # families = []
 
+  filename = f"{rootname}-new.hdf"
   fs_name = 'FlowSolution#Init'
   dist_tree = IOT.file_to_dist_tree(filename, comm)
   I.printTree(dist_tree)
   # sys.exit(1)
 
-  # method = "propagation"
-  method = "cloud"
-
   part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch')
-  C.convertPyTree2File(part_tree, f"part_tree-v10-rank{mpi_rank}.cgns", 'bin_hdf')
+  # C.convertPyTree2File(part_tree, f"part_tree-rank{mpi_rank}-{method}.cgns", 'bin_hdf')
   wall_distance(part_tree, mpi_comm=comm, method=method)
-  C.convertPyTree2File(part_tree, f"AxiT0-new-v10-{mpi_rank}rank.hdf")
+  C.convertPyTree2File(part_tree, f"{rootname}-new-{mpi_rank}rank-{method}.hdf")
   ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  PT.merge_and_save(ptree, f"AxiT0-new-{mpi_size}procs-v10-cloud.cgns")
+  PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
+  # assertCGNSFileEq(f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns", f"{rootname}-new-{mpi_size}procs-v1-{method}-ref.cgns")
 
   n_part = 2
   zone_to_parts = DBA.npart_per_zone(dist_tree, comm, n_part)
   part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch', zone_to_parts=zone_to_parts)
-  C.convertPyTree2File(part_tree, f"part_tree-v20-rank{mpi_rank}.cgns", 'bin_hdf')
+  # C.convertPyTree2File(part_tree, f"part_tree-rank{mpi_rank}-{method}.cgns", 'bin_hdf')
   wall_distance(part_tree, mpi_comm=comm, method=method)
-  C.convertPyTree2File(part_tree, f"AxiT0-new-v20-{mpi_rank}rank.cgns")
+  C.convertPyTree2File(part_tree, f"{rootname}-new-{mpi_rank}rank-{method}.cgns")
   ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  PT.merge_and_save(ptree, f"AxiT0-new-{mpi_size}procs-v20-cloud.cgns")
+  PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v2-{method}.cgns")
+  # assertCGNSFileEq(f"{rootname}-new-{mpi_size}procs-v2-{method}.cgns", f"{rootname}-new-{mpi_size}procs-v2-{method}-ref.cgns")
+
+  if mpi_rank == 0:
+    t1 = C.convertFile2PyTree(f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
+    t2 = C.convertFile2PyTree(f"{rootname}-new-{mpi_size}procs-v2-{method}.cgns")
+    compare_npart(t1, t2)

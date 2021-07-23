@@ -50,7 +50,7 @@ def apply_on_zone(zone_node, funcs, *args, **kwargs):
   if SIDS.Zone.Type(zone_node) == 'Structured':
     funcs["Structured"](zone_node, *args, **kwargs)
   else: # "Unstructured":
-    element_node = IE.getChildFromLabel1(zone_node, CGL.Elements_t.name)
+    element_node = IE.getNodeFromLabel1(zone_node, CGL.Elements_t.name)
     print(f"SIDS.ElementCGNSName(element_node) = {SIDS.ElementCGNSName(element_node)}")
     funcs["Unstructured"][SIDS.ElementCGNSName(element_node)](zone_node, *args, **kwargs)
 

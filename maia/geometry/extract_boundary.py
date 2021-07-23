@@ -102,7 +102,7 @@ def extract_surf_from_bc(part_tree, families, comm=MPI.COMM_WORLD):
         point_list_faces[bc_path] = point_list
         LOG.info(f"extract_surf_from_bc [1]: n_vtx_bc [S]={n_vtx_bc}, n_face_bc [S]={n_face_bcs[bc_path]}, n_face_vtx_bc [S]={n_face_vtx_bc}")
     else: # SIDS.Zone.Type(zone_node) == "Unstructured":
-      element_node = IE.getChildFromLabel1(zone_node, CGL.Elements_t.name)
+      element_node = IE.getNodeFromLabel1(zone_node, CGL.Elements_t.name)
       # NGon elements
       if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
         face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(zone_node)
@@ -169,7 +169,7 @@ def extract_surf_from_bc(part_tree, families, comm=MPI.COMM_WORLD):
         point_list_vtxs[bc_path] = np.reshape(point_list_vtx, (1, point_list_vtx.shape[0]),)
         LOG.info(f"extract_surf_from_bc [2]: point_list_vtx [S]={point_list_vtx}")
     else: # SIDS.Zone.Type(zone_node) == "Unstructured":
-      element_node = IE.getChildFromLabel1(zone_node, CGL.Elements_t.name)
+      element_node = IE.getNodeFromLabel1(zone_node, CGL.Elements_t.name)
       # NGon elements
       if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
         face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(zone_node)
@@ -256,7 +256,7 @@ def extract_surf_from_bc(part_tree, families, comm=MPI.COMM_WORLD):
         point_list_vtxs_zone.append(point_list_vtxs[bc_path])
         point_list_faces_zone.append(point_list_faces[bc_path])
     else: # SIDS.Zone.Type(zone_node) == "Unstructured":
-      element_node = IE.getChildFromLabel1(zone_node, CGL.Elements_t.name)
+      element_node = IE.getNodeFromLabel1(zone_node, CGL.Elements_t.name)
       # NGon elements
       if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
         face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(zone_node)
