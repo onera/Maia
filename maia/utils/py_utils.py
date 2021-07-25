@@ -1,3 +1,8 @@
+import sys
+if sys.version_info.major == 3 and sys.version_info.major < 8:
+  from collections import Iterable  # < py38
+else:
+  from typing import Iterable
 import re
 import numpy as np
 import Converter.Internal as I
@@ -18,6 +23,15 @@ def camel_to_snake(text, keep_upper=False):
     return '_'.join([w if all([i.isupper() for i in w]) else w.lower() for w in word.split('_')])
   else:
     return word.lower()
+
+# https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
+def flatten(items):
+  """Yield items from any nested iterable; see Reference."""
+  for x in items:
+    if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+      yield from flatten(x)
+    else:
+      yield x
 
 def list_or_only_elt(l):
   return l[0] if len(l) == 1 else l

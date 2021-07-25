@@ -278,7 +278,7 @@ ZoneU Zone_t [[6,0,0]]:
 
   PTB.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
 
-  assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int
+  assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int32
   assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1].dtype == np.float64
   if sub_comm.Get_rank () == 0:
     assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-30]).all()
@@ -451,7 +451,7 @@ ZoneU Zone_t:
   PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, sub_comm)
 
   assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1].dtype    == np.float64
-  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1].dtype == np.int
+  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1].dtype == np.int32
   if sub_comm.Get_rank () == 0:
     assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [200.]).all()
     assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,2]).all()

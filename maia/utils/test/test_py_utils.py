@@ -10,6 +10,16 @@ def test_camel_to_snake():
   assert py_utils.camel_to_snake("StringInCamelCase") == "string_in_camel_case"
   assert py_utils.camel_to_snake("stringINCamelCase", keep_upper=True) == "string_IN_camel_case"
 
+def test_flatten():
+  l = [1,2,3,4,5,6]
+  assert list(py_utils.flatten(l)) == [1,2,3,4,5,6]
+  l = [[1,2,3],[4,5],[6]]
+  assert list(py_utils.flatten(l)) == [1,2,3,4,5,6]
+  l = [[1,[2,3]],[4,5],[6]]
+  assert list(py_utils.flatten(l)) == [1,2,3,4,5,6]
+  l = [[1,[2,[3]]],[4,[5]],[6]]
+  assert list(py_utils.flatten(l)) == [1,2,3,4,5,6]
+
 def test_list_or_only_elt():
   assert py_utils.list_or_only_elt([42]) == 42
   input = [1,2,3, "nous irons au bois"]
