@@ -13,7 +13,7 @@ from maia.tree_exchange.dist_to_part import data_exchange  as BTP
 from maia.transform.dist_tree import s_numbering_funcs as s_numb
 from maia.transform.dist_tree.convert_s_to_u import guess_bnd_normal_index, \
                                                     compute_transform_matrix, \
-                                                    apply_transformation, \
+                                                    apply_transform_matrix, \
                                                     n_face_per_dir
 
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
@@ -284,8 +284,8 @@ def split_original_joins_S(all_part_zones, comm):
 
         #Jn dans la num globale de la dist_zone opposée
         pr_in_opp_abs = np.empty((3,2), dtype=pr.dtype)
-        pr_in_opp_abs[:,0] = apply_transformation(pr[:,0], dist_pr[:,0], dist_prd[:,0], T_matrix)
-        pr_in_opp_abs[:,1] = apply_transformation(pr[:,1], dist_pr[:,0], dist_prd[:,0], T_matrix)
+        pr_in_opp_abs[:,0] = apply_transform_matrix(pr[:,0], dist_pr[:,0], dist_prd[:,0], T_matrix)
+        pr_in_opp_abs[:,1] = apply_transform_matrix(pr[:,1], dist_pr[:,0], dist_prd[:,0], T_matrix)
 
         #Jn dans la zone opposée et en cellules
         normal_idx = guess_bnd_normal_index(pr_in_opp_abs, 'Vertex')
@@ -317,8 +317,8 @@ def split_original_joins_S(all_part_zones, comm):
                     sub_prd[dir_to_swap, 1], sub_prd[dir_to_swap, 0]
             # Go back to dist_zone
             sub_pr = np.empty((3,2), dtype=pr.dtype)
-            sub_pr[:,0] = apply_transformation(sub_prd[:,0], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
-            sub_pr[:,1] = apply_transformation(sub_prd[:,1], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
+            sub_pr[:,0] = apply_transform_matrix(sub_prd[:,0], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
+            sub_pr[:,1] = apply_transform_matrix(sub_prd[:,1], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
             # Go back to local numbering
             pr_to_global_num(sub_pr, p_zone_offset, reverse=True)
             p_zone_offset_opp = all_offset_zones[I.getName(opposed_join)]
