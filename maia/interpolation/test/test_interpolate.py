@@ -85,8 +85,8 @@ tgt_part_0 = f"""
 ZoneU Zone_t [[12,2,0]]:
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0.2, 0.2, 0.2, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7]:
-    CoordinateY DataArray_t [0. , 0. , 0. , 0. , 0.5, 0.5, 0. , 0.5, 0.5, 0. , 0.5, 0.5]:
-    CoordinateZ DataArray_t [0. , 0.5, 1. , 0. , 0. , 0. , 0.5, 0.5, 0.5, 1. , 1. , 1. ]:
+    CoordinateY DataArray_t [0.2 , 0.2 , 0.2 , 0.2 , 0.7, 0.7, 0.2 , 0.7, 0.7, 0.2 , 0.7, 0.7]:
+    CoordinateZ DataArray_t [-0.2 , 0.3, 0.8 , -0.2 , -0.2 , -0.2 , 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
   NGon Elements_t [22,0]:
     ElementRange IndexRange_t [1,11]:
     ElementConnectivity DataArray_t:
@@ -106,8 +106,8 @@ tgt_part_1 = f"""
 ZoneU Zone_t [[16,3,0]]:
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0.2, 0.2, 0.2, 0.7, 1.2, 0.2, 0.7, 0.7, 0.2, 0.7, 1.2, 0.7, 1.2, 0.2, 0.7, 1.2]:
-    CoordinateY DataArray_t [1. , 1. , 1. , 1. , 1. , 0.5, 0.5, 1. , 0.5, 0.5, 0.5, 1. , 1. , 0.5, 0.5, 0.5]:
-    CoordinateZ DataArray_t [0. , 0.5, 1. , 1. , 1. , 0. , 0. , 0. , 0.5, 0.5, 0.5, 0.5, 0.5, 1. , 1. , 1. ]:
+    CoordinateY DataArray_t [1.2, 1.2, 1.2, 1.2, 1.2, 0.7, 0.7, 1.2, 0.7, 0.7, 0.7, 1.2, 1.2, 0.7, 0.7, 0.7]:
+    CoordinateZ DataArray_t [-.2, 0.3, 0.8, 0.8, 0.8, -.2,-.2 ,-.2 , 0.3, 0.3, 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
   NGon Elements_t [22,0]:
     ElementRange IndexRange_t [1,16]:
     ElementConnectivity DataArray_t:
@@ -129,8 +129,8 @@ tgt_part_2 = f"""
 ZoneU Zone_t [[16,3,0]]:
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [1.2, 1.2, 1.2, 1.2, 1.2, 0.7, 0.7, 0.7, 0.7, 0.7, 1.2, 0.7, 1.2, 0.7, 0.7, 1.2]:
-    CoordinateY DataArray_t [0. , 0.5, 1. , 0. , 0. , 0. , 0.5, 1. , 0. , 0.5, 0.5, 1. , 1. , 0. , 0.5, 0.5]:
-    CoordinateZ DataArray_t [0. , 0. , 0. , 0.5, 1. , 0. , 0. , 0. , 0.5, 0.5, 0.5, 0.5, 0.5, 1. , 1. , 1. ]:
+    CoordinateY DataArray_t [0.2, 0.7, 1.2, 0.2, 0.2, 0.2, 0.7, 1.2, 0.2, 0.7, 0.7, 1.2, 1.2, 0.2, 0.7, 0.7]:
+    CoordinateZ DataArray_t [-.2, -.2, -.2, 0.3, 0.8, -.2, -.2, -.2, 0.3, 0.3, 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
   NGon Elements_t [22,0]:
     ElementRange IndexRange_t [1,16]:
     ElementConnectivity DataArray_t:
@@ -258,24 +258,22 @@ def test_create_interpolator(sub_comm):
 def test_interpolate_fields(sub_comm):
   if sub_comm.Get_rank() == 0:
     pt = src_part_0
-    expected_sol = np.array([1., 1., 1., 4., 4., 4., 4., 4., 4., 5., 5., 2., 5., 5., 1., 7., 4., 8.])
+    expected_sol = np.array([2.,2.,2.,3.,3.,3.,3.,3.,3., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
   else:
     pt = src_part_1
-    expected_sol = np.array([7., 5., 6., 5., 7., 8., 7., 7., 7., 5., 5., 2., 5., 5., 1., 7., 4., 8.])
+    expected_sol = np.array([6.,6.,6.,8.,8.,8.,8.,8.,8., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
-  for zone in I.getZones(part_tree):
-    pe = I.getNodeFromName(zone, 'ParentElements')
-    #Put it in F order
-    newpe = np.empty(pe[1].shape, dtype=np.int32, order='F')
-    newpe[:] = np.copy(pe[1][:])
-    I.setValue(pe, newpe)
 
   src_parts_per_dom = [I.getZones(part_tree)]
   tgt_parts_per_dom = [[I.copyTree(zone) for zone in I.getZones(part_tree)]]
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
-      cx = I.getNodeFromName(zone, 'CoordinateX')
-      cx[1] += .5
+      cx = I.getNodeFromName(tgt_zone, 'CoordinateX')
+      cy = I.getNodeFromName(tgt_zone, 'CoordinateY')
+      cz = I.getNodeFromName(tgt_zone, 'CoordinateZ')
+      cx[1] += .55
+      cy[1] += .05
+      cz[1] -= .05
 
   interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm, location='Vertex')
   ITP.interpolate_fields(interpolator, one_or_two, src_parts_per_dom, tgt_parts_per_dom, 'MySolution', 'Vertex')
@@ -292,25 +290,16 @@ class Test_interpolation_api():
   tgt_zone_0 = parse_yaml_cgns.to_node(tgt_part_0)
   tgt_zone_1 = parse_yaml_cgns.to_node(tgt_part_1)
   tgt_zone_2 = parse_yaml_cgns.to_node(tgt_part_2)
-  expected_vtx_sol = [ np.array([1., 3., 8., 2., 2., 4., 4., 3., 3., 8., 5., 6.]),
-                       np.array([3., 8., 6., 7., 7., 2., 4., 3., 3., 3., 8., 7., 8., 5., 6., 6.]),
-                       np.array([2., 4., 3., 3., 8., 2., 4., 3., 4., 3., 8., 7., 8., 8., 6., 6.])]
+  # - For  1 to 9 (bottom)  : 1 2 2 4 3 3 4 3 3
+  # - For 10 to 18 (middle) : 1 2 2 4 3 3 4 3 3
+  # - For 19 to 27 (top)    : 5 6 6 7 8 8  7 8 8
+  expected_vtx_sol = [ np.array([1., 1, 5, 2, 4, 3, 2, 4, 3, 6, 7, 8]),
+                       np.array([4., 4, 7, 8, 8, 4, 3, 3, 4, 3, 3, 3, 3, 7, 8, 8]),
+                       np.array([2., 3, 3, 2, 6, 2, 3, 3, 2, 3, 3, 3, 3, 6, 8, 8])]
   expected_cell_sol = [ np.array([1., 5.]),
                         np.array([7., 8., 4.]),
                         np.array([2., 6., 3.])]
   all_zones = [src_zone_0, src_zone_1, tgt_zone_0, tgt_zone_1, tgt_zone_2]
-  for zone in all_zones:
-    pe = I.getNodeFromName(zone, 'ParentElements')
-    #Put it in F order
-    newpe = np.empty(pe[1].shape, dtype=np.int32, order='F')
-    newpe[:] = np.copy(pe[1][:])
-    I.setValue(pe, newpe)
-
-  src_tree = I.newCGNSTree()
-  src_base = I.newCGNSBase(parent=src_tree)
-  tgt_tree = I.newCGNSTree()
-  tgt_base = I.newCGNSBase(parent=tgt_tree)
-
 
   def test_interpolate_from_parts_per_dom(self,sub_comm):
     if sub_comm.Get_rank() == 0:
@@ -333,50 +322,59 @@ class Test_interpolation_api():
         assert (I.getNodeFromName(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
   def test_interpolate_from_dom_names(self,sub_comm):
+    src_tree = I.newCGNSTree()
+    src_base = I.newCGNSBase(parent=src_tree)
+    tgt_tree = I.newCGNSTree()
+    tgt_base = I.newCGNSBase(parent=tgt_tree)
+
     if sub_comm.Get_rank() == 0:
       self.src_zone_0[0] = 'Source.P0.N0'
       self.tgt_zone_0[0] = 'Target.P0.N0'
       self.tgt_zone_1[0] = 'Target.P0.N1'
-      I._addChild(self.src_base, self.src_zone_0)
-      I._addChild(self.tgt_base, self.tgt_zone_0)
-      I._addChild(self.tgt_base, self.tgt_zone_1)
+      I._addChild(src_base, self.src_zone_0)
+      I._addChild(tgt_base, self.tgt_zone_0)
+      I._addChild(tgt_base, self.tgt_zone_1)
       expected_cell_sol = [self.expected_cell_sol[k] for k in [0,1]]
     elif sub_comm.Get_rank() == 1:
       self.src_zone_1[0] = 'Source.P1.N0'
       self.tgt_zone_2[0] = 'Target.P1.N0'
-      I._addChild(self.src_base, self.src_zone_1)
-      I._addChild(self.tgt_base, self.tgt_zone_2)
+      I._addChild(src_base, self.src_zone_1)
+      I._addChild(tgt_base, self.tgt_zone_2)
       expected_cell_sol = [self.expected_cell_sol[k] for k in [2]]
 
-    ITP.interpolate_from_dom_names(self.src_tree, ['Source'], self.tgt_tree, ['Target'], sub_comm, \
+    ITP.interpolate_from_dom_names(src_tree, ['Source'], tgt_tree, ['Target'], sub_comm, \
         ['MySolution'], 'CellCenter')
 
-    for i_tgt, tgt_zone in enumerate(I.getZones(self.tgt_tree)):
+    for i_tgt, tgt_zone in enumerate(I.getZones(tgt_tree)):
       fs = I.getNodeFromName(tgt_zone, 'MySolution')
       assert sids.GridLocation(fs) == 'CellCenter'
       assert (I.getNodeFromName(fs, 'val')[1] == expected_cell_sol[i_tgt]).all()
 
   def test_interpolate_from_dom_part_trees(self,sub_comm):
+    src_tree = I.newCGNSTree()
+    src_base = I.newCGNSBase(parent=src_tree)
+    tgt_tree = I.newCGNSTree()
+    tgt_base = I.newCGNSBase(parent=tgt_tree)
+
     if sub_comm.Get_rank() == 0:
       self.src_zone_0[0] = 'Source.P0.N0'
       self.tgt_zone_0[0] = 'Target.P0.N0'
       self.tgt_zone_1[0] = 'Target.P0.N1'
       self.tgt_zone_2[0] = 'Target.P0.N2'
-      I._addChild(self.src_base, self.src_zone_0)
-      I._addChild(self.tgt_base, self.tgt_zone_0)
-      I._addChild(self.tgt_base, self.tgt_zone_1)
-      I._addChild(self.tgt_base, self.tgt_zone_2)
+      I._addChild(src_base, self.src_zone_0)
+      I._addChild(tgt_base, self.tgt_zone_0)
+      I._addChild(tgt_base, self.tgt_zone_1)
+      I._addChild(tgt_base, self.tgt_zone_2)
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in [0,1,2]]
     elif sub_comm.Get_rank() == 1:
       self.src_zone_1[0] = 'Source.P1.N0'
-      I._addChild(self.src_base, self.src_zone_1)
+      I._addChild(src_base, self.src_zone_1)
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in []]
 
-    ITP.interpolate_from_part_trees(self.src_tree, self.tgt_tree, sub_comm, \
+    ITP.interpolate_from_part_trees(src_tree, tgt_tree, sub_comm, \
         ['MySolution'], 'Vertex', strategy='Closest')
 
-    #Solution differs if strategy is not closest ?
-    for i_tgt, tgt_zone in enumerate(I.getZones(self.tgt_tree)):
+    for i_tgt, tgt_zone in enumerate(I.getZones(tgt_tree)):
       fs = I.getNodeFromName(tgt_zone, 'MySolution')
       assert sids.GridLocation(fs) == 'Vertex'
       assert (I.getNodeFromName(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
