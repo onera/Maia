@@ -14,6 +14,15 @@ def get_ordered_subset(subset, L):
   """
   Check is one of the permutations of subset exists in L, allowing looping
   Return the permutation if existing, else None
+  TODO if n=len(L) and k=len(subset), worst case complexity is k! * n. 
+  TODO Replace by this algorithm (should be n * k ln(k))
+    subset = sort(subset) # we don't care about the order of this one, might as well sort it
+    extended_l = list(L) + list(L)[:len(subset)-1] # ugly: is there a way to create a lazy circular list easily?
+    for i in range(len(extended_l)-len(subset)): # TODO: +/- 1 ?
+      if subset[0]==extended_l[i]:
+        if match(extended_l,i+1,subset[1:]) # is k ln(k) since will binary search extended_l[j] (which is ln k) k times in subset
+          return extended_l[i:i+k]
+    return None
   """
   extended_l = list(L) + list(L)[:len(subset)-1]
   for perm in permutations(subset, len(subset)):
@@ -74,13 +83,20 @@ def sizes_to_indices(nb_array, dtype=None):
 
 def multi_arange(starts, stops):
   """
-  Create concatenated ranges of integers for multiple start/stop
-  See https://codereview.stackexchange.com/questions/83018/
-  vectorized-numpy-version-of-arange-with-multiple-start-stop
+  Create concatenated np.arange of integers for multiple start/stop
   """
-  stops = np.asarray(stops)
-  l = stops - starts # Lengths of each range.
-  return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
+  assert len(starts)==len(stops)
+  if len(starts)==0: return []
+  return np.concatenate([np.arange(start,stop) for start,stop in zip(starts,stops)])
+
+def arange_with_jumps(multi_interval,jumps):
+  """
+  Create an arange, but where sub-intervals are removed
+  """
+  multi_interval = np.asarray(multi_interval)
+  jumps = np.asarray(jumps)
+  return multi_arange(multi_interval[ :-1][~jumps],
+                      multi_interval[1:  ][~jumps])
 
 def roll_from(array, start_idx = None, start_value = None, reverse = False):
   """

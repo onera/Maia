@@ -11,18 +11,34 @@ from maia.distribution.distribution_function import uniform_distribution
 from maia.sids import sids
 
 @mark_mpi_test([1,3])
-def test_facelist_to_vtxlist_local(sub_comm):
+def test_face_ids_to_vtx_ids(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
   ngon = I.getNodeFromName(tree, "NGonElements")
 
-  offset, face_vtx   = VL.facelist_to_vtxlist_local(np.array([3,6,2]), ngon, sub_comm)
+  offset, face_vtx   = VL.face_ids_to_vtx_ids(np.array([3,6,2]), ngon, sub_comm)
   assert (offset == np.arange(0,(3+1)*4,4)).all()
   assert (face_vtx == [5,8,7,4, 11,14,15,12, 3,6,5,2]).all()
 
-  offset, face_vtx_d = VL.facelist_to_vtxlist_local(np.array([1,4,5]), ngon, sub_comm)
+  offset, face_vtx_d = VL.face_ids_to_vtx_ids(np.array([1,4,5]), ngon, sub_comm)
   assert (offset == np.arange(0,(3+1)*4,4)).all()
   assert (face_vtx_d == [2,5,4,1, 6,9,8,5, 10,13,14,11]).all()
 
+@mark_mpi_test(2)
+def test_filter_vtx_coordinates(sub_comm):
+  empty = np.empty(0, np.int)
+  tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
+  vtx_coords = I.getNodeFromType(tree, 'GridCoordinates_t')
+  vtx_distri   = IE.getDistribution(I.getZones(tree)[0], 'Vertex')
+  if sub_comm.Get_rank() == 1:
+    requested_vtx_ids = [2,6,7,106,3,103,107,102]
+    expected_vtx_coords = np.array([[0.25, 0., 0.], [0., 0.25, 0.], [0.25, 0.25, 0.], [0., 0.25, 1.],
+                                    [0.5, 0., 0.], [0.5, 0., 1.], [0.25, 0.25, 1.], [0.25, 0., 1.]])
+  else:
+    requested_vtx_ids = empty
+    expected_vtx_coords = np.empty((0,3), dtype=np.float64)
+
+  received_coords = VL.filter_vtx_coordinates(vtx_coords, vtx_distri, requested_vtx_ids,  sub_comm)
+  assert (received_coords == expected_vtx_coords).all()
 
 @mark_mpi_test(2)
 def test_get_extended_pl(sub_comm):
@@ -51,23 +67,6 @@ def test_get_extended_pl(sub_comm):
     assert (ext_pl   == [1,2,3,4]).all()
     assert (ext_pl_d == [9,10,11,12]).all()
 
-@mark_mpi_test(2)
-def test_get_vtx_coordinates(sub_comm):
-  empty = np.empty(0, np.int)
-  tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
-  vtx_coords = I.getNodeFromType(tree, 'GridCoordinates_t')
-  vtx_lngn   = IE.getDistribution(I.getZones(tree)[0], 'Vertex')
-  if sub_comm.Get_rank() == 1:
-    requested_vtx = [2,6,7,106,3,103,107,102]
-    expected_vtx_co = np.array([[0.25, 0., 0.], [0., 0.25, 0.], [0.25, 0.25, 0.], [0., 0.25, 1.],
-                                [0.5, 0., 0.], [0.5, 0., 1.], [0.25, 0.25, 1.], [0.25, 0., 1.]])
-  else:
-    requested_vtx = empty
-    expected_vtx_co = np.empty((0,3), dtype=np.float64)
-
-  received_coords = VL.get_vtx_coordinates(vtx_coords, vtx_lngn, requested_vtx,  sub_comm)
-  assert (received_coords == expected_vtx_co).all()
-
 def test_search_by_intersection():
   empty = np.empty(0, np.int)
   plv, plv_opp, face_is_treated = VL._search_by_intersection(np.array([0]), empty, empty)
@@ -77,22 +76,36 @@ def test_search_by_intersection():
 
   #Some examples from cube3, top/down jns
   #Single face can not be treated
-  plv, plv_opp, face_is_treated = VL._search_by_intersection([0,4], [5,8,7,4], [22,25,26,23])
+  plv, plv_opp, face_is_treated = \
+    VL._search_by_intersection( \
+      [0          ,4], \
+      [ 5, 8, 7, 4], \
+      [22,25,26,23] \
+    )
   assert (plv == [4,5,7,8]).all()
   assert (plv_opp == [0,0,0,0]).all()
   assert (face_is_treated == [False]).all()
 
   #Example from Cube4 : solo face will not be treated
-  plv, plv_opp, face_is_treated = VL._search_by_intersection([0,4,8,12], \
-      [6,10,9,5, 12,16,15,11, 3,7,6,2], [37,41,42,38, 43,47,48,44, 34,38,39,35])
-  assert (plv == [2,3,5,6,7,9,10,11,12,15,16]).all()
-  assert (plv_opp == [34,35,37,38,39,41,42,0,0,0,0]).all()
+  plv, plv_opp, face_is_treated = \
+    VL._search_by_intersection( \
+      [0          , 4          , 8           , 12], \
+      [ 6,10, 9, 5, 12,16,15,11,  3, 7, 6, 2], \
+      [37,41,42,38, 43,47,48,44, 34,38,39,35] \
+    )
+
+  assert (plv     == [ 2, 3, 5, 6, 7, 9,10,11,12,15,16]).all()
+  assert (plv_opp == [34,35,37,38,39,41,42, 0, 0, 0, 0]).all()
   assert (face_is_treated == [True, False, True]).all()
 
   #Here is a crazy exemple where third face can not be treated on first pass,
   # but is the treated thanks to already treated faces
-  plv, plv_opp, face_is_treated = VL._search_by_intersection([0,4,9,14], \
-      [2,4,3,1, 10,9,6,8,7, 5,6,3,4,7], [12,11,13,14, 19,20,17,18,16, 13,16,15,17,14])
+  plv, plv_opp, face_is_treated = \
+    VL._search_by_intersection( \
+      [0          , 4             , 9              ,14], \
+      [ 2, 4, 3, 1, 10, 9, 6, 8, 7,  5, 6, 3, 4, 7], \
+      [12,11,13,14, 19,20,17,18,16, 13,16,15,17,14] \
+    )
   assert (plv == np.arange(1,10+1)).all()
   assert (plv_opp == np.arange(11,20+1)).all()
   assert (face_is_treated == [True, True, True]).all()

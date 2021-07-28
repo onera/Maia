@@ -67,9 +67,23 @@ def test_sizes_to_indices():
   assert py_utils.sizes_to_indices([5,0,0,10], np.int64).dtype == np.int64
 
 def test_multi_arange():
-  assert (py_utils.multi_arange([1,3,4,6], [1,5,7,6]) == [3,4,4,5,6]).all()
-  assert (py_utils.multi_arange([1,5,10,20], [3,10,12,25]) == \
-      [1,2,5,6,7,8,9,10,11,20,21,22,23,24]).all()
+  # With only one start/stop, same as np.arange
+  assert (py_utils.multi_arange([0], [10]) == [0,1,2,3,4,5,6,7,8,9]).all()
+
+  assert (py_utils.multi_arange([0,100], [10,105]) == [0,1,2,3,4,5,6,7,8,9,  100,101,102,103,104]).all()
+
+  # Empty aranges produce no values
+  assert (py_utils.multi_arange([1,3,4,6], [1,5,7,6]) == [ 3,4, 4,5,6 ]).all()
+
+  # No start/stop
+  assert py_utils.multi_arange([], []) == []
+
+def test_arange_with_jumps():
+  assert (py_utils.arange_with_jumps([0         ,5   , 10      , 13  , 18   , 20], \
+                                     [False     ,True, False   , True, False]) == \
+                                     [0,1,2,3,4      , 10,11,12      , 18,19]).all()
+
+
 
 def test_roll_from():
   assert (py_utils.roll_from(np.array([2,4,8,16]), start_idx = 1) == [4,8,16,2]).all()

@@ -18,37 +18,23 @@ def _compare_pointrange(gc1, gc2):
  return (np.all(gc1_pr == gc2_prd) and np.all(gc2_pr == gc1_prd))
 
 def _compare_pointlist(gc1, gc2):
- """  
- Compare a couple of grid_connectivity nodes and return True
- if the PointList and PointListDonor are symmetrically equals
- """
- gc1_pl  = np.asarray(I.getNodeFromName1(gc1, 'PointList')[1])
- gc1_pld = np.asarray(I.getNodeFromName1(gc1, 'PointListDonor')[1])
- gc2_pl  = np.asarray(I.getNodeFromName1(gc2, 'PointList')[1])
- gc2_pld = np.asarray(I.getNodeFromName1(gc2, 'PointListDonor')[1])
- if gc1_pl.shape != gc2_pld.shape or gc2_pl.shape != gc1_pld.shape:
-   return False
- return (np.all(gc1_pl == gc2_pld) and np.all(gc2_pl == gc1_pld))
-
-def add_joins_ordinal(dist_tree, comm):
+  """  
+  Compare a couple of grid_connectivity nodes and return True
+  if the PointList and PointListDonor are symmetrically equals
   """
-  For each GridConnectivity_t node find in the dist_tree, find the
-  opposite GC node and create for each pair of GCs the Ordinal and
-  OrdinalOpp nodes allowing to identify them
-  GC Node must have either PointList/PointListDonor arrays or
-  PointRange/PointRangeDonor arrays, not both.
-  """
-  gc_list   = []
-  gc_paths = []
-  # > First pass to collect joins
-  for base in I.getBases(dist_tree):
-    for zone in I.getZones(base):
-      for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
-        gcs = I.getNodesFromType1(zgc, 'GridConnectivity_t') + I.getNodesFromType1(zgc, 'GridConnectivity1to1_t')
-        for gc in gcs:
-          gc_list.append(gc)
-          gc_paths.append(base[0] + '/' + zone[0])
+  gc1_pl  = np.asarray(I.getNodeFromName1(gc1, 'PointList')[1])
+  gc1_pld = np.asarray(I.getNodeFromName1(gc1, 'PointListDonor')[1])
+  gc2_pl  = np.asarray(I.getNodeFromName1(gc2, 'PointList')[1])
+  gc2_pld = np.asarray(I.getNodeFromName1(gc2, 'PointListDonor')[1])
+  if gc1_pl.shape != gc2_pld.shape or gc2_pl.shape != gc1_pld.shape:
+    return False
+  return (np.all(gc1_pl == gc2_pld) and np.all(gc2_pl == gc1_pld))
 
+def _create_local_match_table(gc_list, gc_paths):
+  """
+  Iterate over a list of joins to compare the PointList / PointListDonor
+  and retrieve the pairs of matching joins
+  """
   nb_joins = len(gc_list)
   local_match_table = np.zeros((nb_joins, nb_joins), dtype=np.bool)
 
@@ -68,6 +54,28 @@ def add_joins_ordinal(dist_tree, comm):
       elif not gc_has_pl and not candidate_has_pl:
         local_match_table[igc][j] = _compare_pointrange(gc, gc_list[j])
   #print('  check_candidates', local_match_table)
+  return local_match_table
+
+def add_joins_ordinal(dist_tree, comm):
+  """
+  For each GridConnectivity_t node found in the dist_tree, find the
+  opposite GC node and create for each pair of GCs the Ordinal and
+  OrdinalOpp nodes allowing to identify them
+  GC Node must have either PointList/PointListDonor arrays or
+  PointRange/PointRangeDonor arrays, not both.
+  """
+  gc_list  = []
+  gc_paths = []
+  # > First pass to collect joins
+  for base in I.getBases(dist_tree):
+    for zone in I.getZones(base):
+      for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+        gcs = I.getNodesFromType1(zgc, 'GridConnectivity_t') + I.getNodesFromType1(zgc, 'GridConnectivity1to1_t')
+        for gc in gcs:
+          gc_list.append(gc)
+          gc_paths.append(base[0] + '/' + zone[0])
+
+  local_match_table = _create_local_match_table(gc_list, gc_paths)
 
   global_match_table = np.empty(local_match_table.shape, dtype=np.bool)
   comm.Allreduce(local_match_table, global_match_table, op=MPI.LAND)
