@@ -79,7 +79,10 @@ elt_distributions(const Tree_range& sorted_elt_sections, MPI_Comm comm) {
   for (int i=0; i<n_elt; ++i) {
     const tree& elt = sorted_elt_sections[i];
     auto partial_dist = cgns::get_node_value_by_matching<I8>(elt,":CGNS#Distribution/Element");
-    dists[i] = distribution_from_partial(partial_dist,comm);
+    auto dist_I8 = distribution_from_partial(partial_dist,comm);
+    //dists[i].resize(dist_I8.size()); // TODO make resize accessible
+    dists[i] = distribution_vector<I4>();
+    std::copy(begin(dist_I8),end(dist_I8),begin(dists));
   }
   return dists;
 }
@@ -129,7 +132,7 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
     int n_2d_section = first_section_3d - begin(elt_sections);
     auto elt_3d_sections = std_e::make_span(elt_sections.data()+n_2d_section,elt_sections.data()+n_section);
     auto elt_3d_intervals = std_e::make_span(elt_intervals.data()+n_2d_section,elt_intervals.data()+n_section+1);
-    auto elt_3d_dists = std_e::make_span(elt_dists.data()+n_2d_section,elt_dists.data()+n_section+1);
+    //auto elt_3d_dists = std_e::make_span(elt_dists.data()+n_2d_section,elt_dists.data()+n_section+1);
 
     int n_3d_section = n_section-n_2d_section;
 
@@ -151,7 +154,7 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
     const int n_part = 1;
 
     std::vector<PDM_g_num_t> merged_distri(n_rank+1);
-    std_e::uniform_distribution(begin(merged_distri),end(merged_distri),0,n_cell);
+    std_e::uniform_distribution(begin(merged_distri),end(merged_distri),0,(PDM_g_num_t)n_cell); // TODO uniform_distribution with differing args
 
     int n_elts_0 = merged_distri[i_rank+1]-merged_distri[i_rank];
     std::vector<PDM_g_num_t> ln_to_gn_0(n_elts_0);
