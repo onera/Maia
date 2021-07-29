@@ -81,6 +81,20 @@ def sizes_to_indices(nb_array, dtype=None):
   np.cumsum(nb_array, out=offset_array[1:])
   return offset_array
 
+def reverse_connectivity(ids, idx, array):
+  """
+  Reverse an strided array (idx+array) supported by some elements whose id is given by ids
+  Return a strided array(r_idx+r_array) and the ids of (initially childs) elements
+  supporting it
+  """
+  r_ids, counts = np.unique(array, return_counts=True)
+  sort_idx = np.argsort(array)
+  extended_ids = np.repeat(ids, np.diff(idx))
+  r_array = extended_ids[sort_idx]
+  r_idx = sizes_to_indices(counts)
+
+  return (r_ids, r_idx, r_array)
+
 def multi_arange(starts, stops):
   """
   Create concatenated np.arange of integers for multiple start/stop

@@ -66,6 +66,17 @@ def test_sizes_to_indices():
   assert py_utils.sizes_to_indices([5,0,0,10], np.int32).dtype == np.int32
   assert py_utils.sizes_to_indices([5,0,0,10], np.int64).dtype == np.int64
 
+def test_reverse_connectivity():
+  ids   = np.array([8,51,6,30,29])
+  idx   = np.array([0,3,6,10,13,17])
+  array = np.array([7,29,32, 32,11,13, 4,32,29,61, 32,4,13, 44,11,32,7])
+
+  r_ids, r_idx, r_array = py_utils.reverse_connectivity(ids, idx, array)
+
+  assert (r_ids == [4,7,11,13,29,32,44,61]).all()
+  assert (r_idx == [0,2,4,6,8,10,15,16,17]).all()
+  assert (r_array == [30,6, 8,29, 51,29, 51,30,  8, 6, 8,6,29,30,51, 29, 6]).all()
+
 def test_multi_arange():
   # With only one start/stop, same as np.arange
   assert (py_utils.multi_arange([0], [10]) == [0,1,2,3,4,5,6,7,8,9]).all()

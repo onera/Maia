@@ -65,33 +65,21 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
   If faces_to_skip[i]==True, it means the face is not considered
   """
 
-  pl_vtx = np.unique(face_vtx_pl).astype(pdm_dtype)
+  pl_vtx, pl_vtx_face_idx, pl_vtx_face = py_utils.reverse_connectivity(pl, face_vtx_idx_pl, face_vtx_pl)
+  _, _, pl_vtx_face_d = py_utils.reverse_connectivity(pl_d, face_vtx_idx_pl, face_vtx_pl)
   if faces_to_skip is not None:
     idx_to_extract = py_utils.arange_with_jumps(face_vtx_idx_pl,faces_to_skip)
     restricted_pl_vtx = np.unique(face_vtx_pl[idx_to_extract]).astype(pdm_dtype)
   else:
-    restricted_pl_vtx = pl_vtx
-
-  #Map each vertex of pl_vtx to the couple (face, face_opp) if its belong to face
-  pl_vtx_local_dict = {key: [] for key in pl_vtx}
-  for iface, face_pair in enumerate(zip(pl, pl_d)):
-    for vtx in face_vtx_pl[face_vtx_idx_pl[iface]:face_vtx_idx_pl[iface+1]]:
-      pl_vtx_local_dict[vtx].append(face_pair)
+    restricted_pl_vtx = pl_vtx.astype(pdm_dtype)
 
   # Exchange to locally have the list of *all* jn faces related to vertex
-  p_stride = np.array([len(pl_vtx_local_dict[vtx]) for vtx in pl_vtx], dtype=np.int32)
+  p_stride = np.diff(pl_vtx_face_idx).astype(np.int32)
 
-  part_data = dict()
-  part_data["vtx_to_face"]   = [np.empty(np.sum(p_stride), dtype=np.int)]
-  part_data["vtx_to_face_d"] = [np.empty(np.sum(p_stride), dtype=np.int)]
-  offset = 0
-  for vtx in pl_vtx:
-    n = len(pl_vtx_local_dict[vtx])
-    part_data["vtx_to_face"][0][offset:offset+n] = [t[0] for t in pl_vtx_local_dict[vtx]]
-    part_data["vtx_to_face_d"][0][offset:offset+n] = [t[1] for t in pl_vtx_local_dict[vtx]]
-    offset += n
+  part_data = {'vtx_to_face'   : [pl_vtx_face],
+               'vtx_to_face_d' : [pl_vtx_face_d]}
 
-  PTB = PDM.PartToBlock(comm, [pl_vtx], pWeight=None, partN=1,
+  PTB = PDM.PartToBlock(comm, [pl_vtx.astype(pdm_dtype)], pWeight=None, partN=1,
                         t_distrib=0, t_post=2, t_stride=1)
   dist_data = dict()
   PTB.PartToBlock_Exchange(dist_data, part_data, [p_stride])
@@ -135,21 +123,18 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
   pl_vtx_local_opp = np.zeros_like(pl_vtx_local)
   face_is_treated  = np.zeros(n_face, dtype=np.bool)
 
-  # Build dict vtx -> list of faces to which the vtx belongs
-  pl_vtx_local_dict = {key: [] for key in pl_vtx_local}
-  for iface in range(n_face):
-    for vtx in pl_face_vtx[pl_face_vtx_idx[iface]:pl_face_vtx_idx[iface+1]]:
-      pl_vtx_local_dict[vtx].append(iface)
-
+  # Build connectivity vtx -> list of faces to which the vtx belongs
+  r_pl, vtx_face_idx, vtx_face = py_utils.reverse_connectivity(np.arange(n_face), pl_face_vtx_idx, pl_face_vtx)
 
   #Invert dictionnary to have couple of faces -> list of shared vertices
   interfaces_to_nodes = dict()
-  for key, val in pl_vtx_local_dict.items():
-    for pair in itertools.combinations(sorted(val), 2):
+  for ivtx, vtx in enumerate(r_pl):
+    faces = vtx_face[vtx_face_idx[ivtx]: vtx_face_idx[ivtx+1]]
+    for pair in itertools.combinations(sorted(faces), 2):
       try:
-        interfaces_to_nodes[pair].append(key)
+        interfaces_to_nodes[pair].append(vtx)
       except KeyError:
-        interfaces_to_nodes[pair] = [key]
+        interfaces_to_nodes[pair] = [vtx]
 
   vtx_g_to_l = {v:i for i,v in enumerate(pl_vtx_local)}
 
