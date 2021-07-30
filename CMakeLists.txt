@@ -112,6 +112,10 @@ else()
   set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"     FORCE)
   set(PDM_ENABLE_UNIT_TEST       ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"       FORCE)
   set(PASS_DEFAULT_FLAGS         ON  CACHE BOOL "Maia does not use ParaDiGM default flags" FORCE)
+  # These option values are not FORCE, but the default is different than the one of ParaDiGM
+  set(PDM_ENABLE_Fortran         OFF CACHE BOOL "Maia uses ParaDiGM without Fortran"    )
+  set(PDM_ENABLE_STATIC          OFF CACHE BOOL "Maia uses ParaDiGM without static libs")
+  # Adding paradigm sources from external/paradigm
   include(${PROJECT_UTILS_CMAKE_DIR}/check_local_dependency.cmake)
   check_local_dependency(paradigm REQUIRED)
   project_add_subdirectory(paradigm)
