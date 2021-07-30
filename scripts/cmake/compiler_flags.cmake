@@ -3,9 +3,10 @@ cmake_host_system_information(RESULT HOSTNAME QUERY HOSTNAME)
 # ----------------------------------------------------------------------------------------------------------------------
 # Default flags
 # ----------------------------------------------------------------------------------------------------------------------
-if (NOT MAIA_SKIP_DEFAULT_FLAGS)
+option(${PROJECT_NAME}_USE_DEFAULT_FLAGS "Enable default compiler flags" OFF)
+if (${PROJECT_NAME}_USE_DEFAULT_FLAGS)
   if ($ENV{CXXFLAGS})
-    message(WARNING "Your C++ flags will be overriden. Use MAIA_SKIP_DEFAULT_FLAGS if you want to use them")
+    message(WARNING "CXXFLAGS is not empty but ${PROJECT_NAME}_USE_DEFAULT_FLAGS is ON. Your C++ compiler flags will be overriden")
   endif()
 
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -45,7 +46,7 @@ endif()
 set (CMAKE_CXX_FLAGS_PROFILING "${CMAKE_CXX_FLAGS_RELEASE} -march=native -p" CACHE STRING "Flags used for profiling." FORCE)
 set (CMAKE_CXX_FLAGS_SANITIZE  "${CMAKE_CXX_FLAGS_SANITIZE}" CACHE STRING "Flags used by the compiler during sanitize builds" FORCE)
 
-mark_as_advanced (CMAKE_CXX_FLAGS_PROFILING CMAKE_CXX_FLAGS_SANITIZE MAIA_SKIP_DEFAULT_FLAGS)
+mark_as_advanced (CMAKE_CXX_FLAGS_PROFILING CMAKE_CXX_FLAGS_SANITIZE)
 
 set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
     "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel Profiling Sanitize."
