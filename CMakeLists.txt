@@ -39,6 +39,7 @@ project(
 option(${PROJECT_NAME}_ENABLE_FETCH_PYBIND "Fetch Pybind11 sources on-the-fly if not found by find_package()" ON)
 option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF)
 option(${PROJECT_NAME}_ENABLE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
+option(${PROJECT_NAME}_USE_PDM_INSTALL "Use an installed ParaDiGM version" ON)
 
 ## Compiler flags
 ### C++ standard
@@ -78,18 +79,20 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(doctest)
 ### pybind11 ###
 project_find_package(pybind11 CONFIG)
-if ((NOT pybind11_FOUND) AND ${PROJECT_NAME}_ENABLE_FETCH_PYBIND)
-  message("Pybind11 was not found by find_package(). Fetching sources on-the-fly")
-  set(PYBIND11_INSTALL ON CACHE BOOL "cpp_cgns requires PyBind" FORCE)
-  include(FetchContent)
-  FetchContent_Declare(
-    pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11.git
-    GIT_TAG        v2.6
-  )
-  FetchContent_MakeAvailable(pybind11)
-else()
-  message(FATAL_ERROR "Pybind11 was not found by find_package() and ${PROJECT_NAME}_ENABLE_FETCH_PYBIND is OFF")
+if (NOT pybind11_FOUND)
+  if (${PROJECT_NAME}_ENABLE_FETCH_PYBIND)
+    message("Pybind11 was not found by find_package(). Fetching sources on-the-fly")
+    set(PYBIND11_INSTALL ON CACHE BOOL "cpp_cgns requires PyBind" FORCE)
+    include(FetchContent)
+    FetchContent_Declare(
+      pybind11
+      GIT_REPOSITORY https://github.com/pybind/pybind11.git
+      GIT_TAG        v2.6
+    )
+    FetchContent_MakeAvailable(pybind11)
+  else()
+    message(FATAL_ERROR "Pybind11 was not found by find_package() and ${PROJECT_NAME}_ENABLE_FETCH_PYBIND is OFF")
+  endif()
 endif()
 ### range-v3 ###
 FetchContent_Declare(
@@ -100,18 +103,18 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(range-v3)
 
 ### ParaDiGM ###
-# Maia uses ParaDiGM with these options
-set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"      FORCE)
-set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"           FORCE)
-set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"     FORCE)
-set(PDM_ENABLE_UNIT_TEST       ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"       FORCE)
-set(PASS_DEFAULT_FLAGS         ON  CACHE BOOL "Maia does not use ParaDiGM default flags" FORCE)
-include(${PROJECT_UTILS_CMAKE_DIR}/check_local_dependency.cmake)
-check_local_dependency(paradigm)
-if (paradigm_FOUND)
-  project_add_subdirectory(paradigm)
-else()
+if (${PROJECT_NAME}_USE_PDM_INSTALL)
   project_find_package(pdm CONFIG REQUIRED)
+else()
+  # Maia uses ParaDiGM with these options
+  set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"      FORCE)
+  set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"           FORCE)
+  set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"     FORCE)
+  set(PDM_ENABLE_UNIT_TEST       ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"       FORCE)
+  set(PASS_DEFAULT_FLAGS         ON  CACHE BOOL "Maia does not use ParaDiGM default flags" FORCE)
+  include(${PROJECT_UTILS_CMAKE_DIR}/check_local_dependency.cmake)
+  check_local_dependency(paradigm REQUIRED)
+  project_add_subdirectory(paradigm)
 endif()
 
 ### std_e + cpp_cgns ###
