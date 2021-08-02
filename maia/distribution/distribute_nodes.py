@@ -24,7 +24,7 @@ def distribute_pl_node(node, comm):
       array_n[1] = array_n[1][0][distri[0]:distri[1]].reshape(1,-1, order='F')
 
   #Additionnal treatement for subnodes with PL (eg bcdataset)
-  has_pl = lambda n : I.getNodesFromName1(n, 'PointList') != []
+  has_pl = lambda n : I.getNodeFromName1(n, 'PointList') is not None
   for child in [node for node in I.getChildren(dist_node) if has_pl(node)]:
     dist_child = distribute_pl_node(child, comm)
     child[2] = dist_child[2]
