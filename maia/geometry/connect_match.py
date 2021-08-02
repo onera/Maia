@@ -51,7 +51,7 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
   #     break
   # if(not found):
   #   raise NotImplementedError("Connect match need at least the NGonElements")
-  face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(zone)
+  face_vtx, face_vtx_idx, _ = SIDS.ngon_connectivity(zone)
 
   for bc in SIDS.Zone.getBCsFromFamily(zone, family_list):
 
