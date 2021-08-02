@@ -5,8 +5,6 @@ import maia.sids.sids     as SIDS
 
 from .geometry import compute_face_center_and_characteristic_length, adapt_match_information
 
-bcs_if_in_family_list = SIDS.Zone.getBCsFromFamily
-
 def compute_n_point_cloud(zones, family_list):
   """
   """
@@ -14,7 +12,7 @@ def compute_n_point_cloud(zones, family_list):
   for zone in zones:
     if SIDS.Zone.Type(zone) == 'Structured':
       raise NotImplementedError("connect_match_from_family for structured zone not allowed yet")
-    for bc in bcs_if_in_family_list(zone, family_list):
+    for bc in SIDS.Zone.getBCsFromFamily(zone, family_list):
       n_point_cloud = n_point_cloud + 1
 
   return n_point_cloud
@@ -55,7 +53,7 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
   #   raise NotImplementedError("Connect match need at least the NGonElements")
   face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(zone)
 
-  for bc in bcs_if_in_family_list(zone, family_list):
+  for bc in SIDS.Zone.getBCsFromFamily(zone, family_list):
 
     pl = I.getNodeFromName1(bc, 'PointList')[1]
 
@@ -166,7 +164,7 @@ def connect_match_from_family(part_tree, family_list, comm,
   i_point_cloud = 0
   for i_zone, zone in enumerate(zones):
     zgc_n = I.newZoneGridConnectivity(name="ZoneGridConnectivity", parent=zone)
-    for bc in bcs_if_in_family_list(zone, family_list):
+    for bc in SIDS.Zone.getBCsFromFamily(zone, family_list):
       section_idx = adapt_match_information(l_neighbor_idx    [i_point_cloud],
                                             l_neighbor_desc   [i_point_cloud],
                                             l_recv_entity_stri[i_point_cloud],
