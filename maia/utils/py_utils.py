@@ -3,6 +3,10 @@ import numpy as np
 import Converter.Internal as I
 
 def camel_to_snake(text, keep_upper=False):
+  """
+  Return a snake_case string from a camelCase string.
+  If keep_upper is True, upper case words in camelCase are keeped upper case
+  """
   ptou    = re.compile(r'(2)([A-Z]+)([A-Z][a-z])')
   ptol    = re.compile(r'(2)([A-Z][a-z])')
   tmp = re.sub(ptol, r'_to_\2', re.sub(ptou, r'_to_\2', text))
