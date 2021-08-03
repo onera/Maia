@@ -1,8 +1,43 @@
 import Converter.Internal as I
 import numpy as np
+from itertools import permutations
 
 def list_or_only_elt(l):
   return l[0] if len(l) == 1 else l
+
+def is_subset_l(subset, L):
+  """Return True is subset list is included in L, allowing looping"""
+  extended_l = list(L) + list(L)[:len(subset)-1]
+  return max([subset == extended_l[i:i+len(subset)] for i in range(len(L))])
+
+def get_ordered_subset(subset, L):
+  """
+  Check is one of the permutations of subset exists in L, allowing looping
+  Return the permutation if existing, else None
+  TODO if n=len(L) and k=len(subset), worst case complexity is k! * n. 
+  TODO Replace by this algorithm (should be n * k ln(k))
+    subset = sort(subset) # we don't care about the order of this one, might as well sort it
+    extended_l = list(L) + list(L)[:len(subset)-1] # ugly: is there a way to create a lazy circular list easily?
+    for i in range(len(extended_l)-len(subset)): # TODO: +/- 1 ?
+      if subset[0]==extended_l[i]:
+        if match(extended_l,i+1,subset[1:]) # is k ln(k) since will binary search extended_l[j] (which is ln k) k times in subset
+          return extended_l[i:i+k]
+    return None
+  """
+  extended_l = list(L) + list(L)[:len(subset)-1]
+  for perm in permutations(subset, len(subset)):
+    perm_l = list(perm)
+    if max([perm_l == extended_l[i:i+len(perm_l)] for i in range(len(L))]) == True:
+      return perm
+
+def is_before(l, a, b):
+  """Return True is element a is present in list l before element b"""
+  for e in l:
+    if e==a:
+      return True
+    if e==b:
+      return False
+  return False
 
 def interweave_arrays(array_list):
   #https://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
@@ -46,15 +81,55 @@ def sizes_to_indices(nb_array, dtype=None):
   np.cumsum(nb_array, out=offset_array[1:])
   return offset_array
 
+def reverse_connectivity(ids, idx, array):
+  """
+  Reverse an strided array (idx+array) supported by some elements whose id is given by ids
+  Return a strided array(r_idx+r_array) and the ids of (initially childs) elements
+  supporting it
+  """
+  r_ids, counts = np.unique(array, return_counts=True)
+  sort_idx = np.argsort(array)
+  sizes = np.diff(idx)
+  extended_ids = np.repeat(ids, sizes)
+  r_array = extended_ids[sort_idx]
+  r_idx = sizes_to_indices(counts)
+
+  return (r_ids, r_idx, r_array)
+
 def multi_arange(starts, stops):
   """
-  Create concatenated ranges of integers for multiple start/stop
-  See https://codereview.stackexchange.com/questions/83018/
-  vectorized-numpy-version-of-arange-with-multiple-start-stop
+  Create concatenated np.arange of integers for multiple start/stop
   """
-  stops = np.asarray(stops)
-  l = stops - starts # Lengths of each range.
-  return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
+  assert len(starts)==len(stops)
+  if len(starts)==0: return []
+  return np.concatenate([np.arange(start,stop) for start,stop in zip(starts,stops)])
+
+def arange_with_jumps(multi_interval,jumps):
+  """
+  Create an arange, but where sub-intervals are removed
+  """
+  multi_interval = np.asarray(multi_interval)
+  jumps = np.asarray(jumps)
+  return multi_arange(multi_interval[ :-1][~jumps],
+                      multi_interval[1:  ][~jumps])
+
+def roll_from(array, start_idx = None, start_value = None, reverse = False):
+  """
+  Return a new array starting from given index (or value), in normal or reversed order
+  """
+  assert (start_idx is None) != (start_value is None)
+  if start_idx is None:
+    start_idx = np.where(array == start_value)[0][0]
+
+  return np.roll(array, -start_idx) if not reverse else np.roll(array[::-1], start_idx + 1)
+
+def others_mask(array, ids):
+  """
+  Return a mask usefull to access elements of array whose local index *are not* in ids array
+  """
+  mask = np.ones(array.size, dtype=bool)
+  mask[ids] = False
+  return mask
 
 def any_in_range(array, start, end, strict=False):
   """

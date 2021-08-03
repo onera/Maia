@@ -9,6 +9,34 @@ def test_list_or_only_elt():
   input = [1,2,3, "nous irons au bois"]
   assert py_utils.list_or_only_elt(input) is input
 
+def test_is_subset_l():
+  L = [2,8,10,3,3]
+  assert py_utils.is_subset_l([2],        L) == True
+  assert py_utils.is_subset_l([10,3],     L) == True
+  assert py_utils.is_subset_l([10,3,3],   L) == True
+  assert py_utils.is_subset_l([3,2,8],    L) == True
+  assert py_utils.is_subset_l([1],        L) == False
+  assert py_utils.is_subset_l([3,8,2],    L) == False
+  assert py_utils.is_subset_l([10,3,3,1], L) == False
+
+def test_get_ordered_subset():
+  L = [2,8,10,3,3]
+  assert py_utils.get_ordered_subset([10,8,3], L) == (8,10,3)
+  assert py_utils.get_ordered_subset([10,2], L)   == None
+  assert py_utils.get_ordered_subset([10,3], L)   == (10,3)
+  assert py_utils.get_ordered_subset([3,2], L)    == py_utils.get_ordered_subset([2,3], L) == (3,2)
+  assert py_utils.get_ordered_subset([8], L)      == (8,)
+  assert py_utils.get_ordered_subset([], L)       == ()
+  assert py_utils.get_ordered_subset([3,8,2,10,3], L) == (3,2,8,10,3)
+
+def test_is_before():
+  L = [2,8,10,3,3]
+  assert py_utils.is_before(L, 8, 10) == True
+  assert py_utils.is_before(L, 8, 9 ) == True
+  assert py_utils.is_before(L, 8, 2 ) == False
+  assert py_utils.is_before(L, 7, 2 ) == False
+  assert py_utils.is_before(L, 7, 14) == False
+
 def test_interweave_arrays():
   first  = np.array([1,2,3], dtype=np.int32)
   second = np.array([11,22,33], dtype=np.int32)
@@ -38,10 +66,48 @@ def test_sizes_to_indices():
   assert py_utils.sizes_to_indices([5,0,0,10], np.int32).dtype == np.int32
   assert py_utils.sizes_to_indices([5,0,0,10], np.int64).dtype == np.int64
 
+def test_reverse_connectivity():
+  ids   = np.array([8,51,6,30,29])
+  idx   = np.array([0,3,6,10,13,17])
+  array = np.array([7,29,32, 32,11,13, 4,32,29,61, 32,4,13, 44,11,32,7])
+
+  r_ids, r_idx, r_array = py_utils.reverse_connectivity(ids, idx, array)
+
+  assert (r_ids == [4,7,11,13,29,32,44,61]).all()
+  assert (r_idx == [0,2,4,6,8,10,15,16,17]).all()
+  assert (r_array == [30,6, 8,29, 51,29, 51,30,  8, 6, 8,6,29,30,51, 29, 6]).all()
+
 def test_multi_arange():
-  assert (py_utils.multi_arange([1,3,4,6], [1,5,7,6]) == [3,4,4,5,6]).all()
-  assert (py_utils.multi_arange([1,5,10,20], [3,10,12,25]) == \
-      [1,2,5,6,7,8,9,10,11,20,21,22,23,24]).all()
+  # With only one start/stop, same as np.arange
+  assert (py_utils.multi_arange([0], [10]) == [0,1,2,3,4,5,6,7,8,9]).all()
+
+  assert (py_utils.multi_arange([0,100], [10,105]) == [0,1,2,3,4,5,6,7,8,9,  100,101,102,103,104]).all()
+
+  # Empty aranges produce no values
+  assert (py_utils.multi_arange([1,3,4,6], [1,5,7,6]) == [ 3,4, 4,5,6 ]).all()
+
+  # No start/stop
+  assert py_utils.multi_arange([], []) == []
+
+def test_arange_with_jumps():
+  assert (py_utils.arange_with_jumps([0         ,5   , 10      , 13  , 18   , 20], \
+                                     [False     ,True, False   , True, False]) == \
+                                     [0,1,2,3,4      , 10,11,12      , 18,19]).all()
+
+
+
+def test_roll_from():
+  assert (py_utils.roll_from(np.array([2,4,8,16]), start_idx = 1) == [4,8,16,2]).all()
+  assert (py_utils.roll_from(np.array([2,4,8,16]), start_value = 4) == [4,8,16,2]).all()
+  assert (py_utils.roll_from(np.array([2,4,8,16]), start_value = 8, reverse=True) == [8,4,2,16]).all()
+  with pytest.raises(AssertionError):
+    py_utils.roll_from(np.array([2,4,8,16]), start_idx = 1, start_value = 8)
+
+def test_others_mask():
+  array = np.array([2,4,6,1,3,5])
+  assert (py_utils.others_mask(array, np.empty(0, np.int32)) == [1,1,1,1,1,1]).all()
+  assert (py_utils.others_mask(array, np.array([2,1]))       == [1,0,0,1,1,1]).all()
+  assert (py_utils.others_mask(array, np.array([0,1,3,4,5])) == [0,0,1,0,0,0]).all()
 
 def test_concatenate_point_list():
   pl1 = np.array([[2, 4, 6, 8]])
