@@ -6,26 +6,25 @@ import Converter.Internal as I
 import maia.sids.Internal_ext  as IE
 import maia.sids.cgns_keywords as CGK
 
+import maia
 from maia.sids.cgns_keywords import Label as CGL
 from maia.utils.py_utils     import list_or_only_elt
 from . import elements_utils as EU
 
 # --------------------------------------------------------------------------
+@maia.for_all_methods(IE.check_is_label("Zone_t"))
 class Zone:
   @staticmethod
-  @IE.check_is_label("Zone_t")
   def VertexSize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,0])
 
   @staticmethod
-  @IE.check_is_label("Zone_t")
   def CellSize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,1])
 
   @staticmethod
-  @IE.check_is_label("Zone_t")
   def FaceSize(zone_node):
 
     def compute_nface_per_direction(d, dim, vtx_size, cell_size):
@@ -58,20 +57,17 @@ class Zone:
     return list_or_only_elt(n_face)
 
   @staticmethod
-  @IE.check_is_label("Zone_t")
   def VertexBoundarySize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,2])
 
   @staticmethod
-  @IE.check_is_label("Zone_t")
   def Type(zone_node):
     zone_type_node = IE.getNodeFromLabel1(zone_node, CGL.ZoneType_t.name)
     return I.getValue(zone_type_node)
 
   #Todo : this one should go in IE
   @staticmethod
-  @IE.check_is_label("Zone_t")
   def getBCsFromFamily(zone_node, families):
     bc_query = lambda n : I.getType(n) == 'BC_t' and I.getValue(n) == 'FamilySpecified' and \
       I.getValue(IE.getNodeFromLabel1(n, CGL.FamilyName_t.name)) in families
@@ -118,9 +114,9 @@ def ElementNVtx(element):
 
 
 # --------------------------------------------------------------------------
+@maia.for_all_methods(IE.check_is_label("IndexRange_t"))
 class PointRange:
   @staticmethod
-  @IE.check_is_label("IndexRange_t")
   def VertexSize(point_range_node):
     """
     Allow point_range to be inverted (PR[:,1] < PR[:,0]) as it can occurs in struct GCs
@@ -129,7 +125,6 @@ class PointRange:
     return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
 
   @staticmethod
-  @IE.check_is_label("IndexRange_t")
   def FaceSize(point_range_node):
     return np.subtract(PointRange.VertexSize(point_range_node), 1)
 
@@ -143,9 +138,9 @@ class PointRange:
 
 
 # --------------------------------------------------------------------------
+@maia.for_all_methods(IE.check_is_label("IndexArray_t"))
 class PointList:
   @staticmethod
-  @IE.check_is_label("IndexArray_t")
   def FaceSize(point_list_node):
     pl_values = point_list_node[1]
     return pl_values.shape
