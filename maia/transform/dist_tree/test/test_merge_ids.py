@@ -35,7 +35,8 @@ def test_merge_distributed_ids(sub_comm):
     expected_signed_old_to_new = [7,-6,8,9,-8,10]
 
   old_to_new = merge_ids.merge_distributed_ids(distri, ids, targets, sub_comm)
-  signed_old_to_new = merge_ids.merge_distributed_ids(distri, ids, targets, sub_comm, True)
   assert (old_to_new == expected_old_to_new).all()
+
+  signed_old_to_new = merge_ids.merge_distributed_ids(distri, ids, targets, sub_comm, True)
   assert (signed_old_to_new == expected_signed_old_to_new).all()
 

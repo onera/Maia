@@ -10,6 +10,8 @@ from maia.generate import dcube_generator
 from maia.distribution.distribution_function import uniform_distribution
 from maia.sids import sids
 
+# TODO replace dcube_generate by handwritten mesh (4_cubes?)
+
 @mark_mpi_test([1,3])
 def test_face_ids_to_vtx_ids(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
@@ -156,18 +158,18 @@ class Test_generate_jn_vertex_list():
     full_pl_opp = np.array([28,29,30,31,32,33,34,35,36])
     distri_pl   = uniform_distribution(9, sub_comm)
     I.newGridLocation('FaceCenter', gcA)
-    I.newPointList('PointList', full_pl[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    I.newPointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     I.newPointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     IE.newDistribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zone/ZoneGridConnectivity/matchA"
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
 
-    expt_full_pl_vtx     = np.arange(1,16+1)
-    expt_full_pl_vtx_opp = np.arange(49,64+1)
+    expected_full_pl_vtx     = np.arange(1,16+1)
+    expected_full_pl_vtx_opp = np.arange(49,64+1)
     assert (distri_jn_vtx == uniform_distribution(16, sub_comm)).all()
-    assert (pl_vtx == expt_full_pl_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
-    assert (pl_vtx_opp == expt_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx     == expected_full_pl_vtx    [distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
   @mark_mpi_test([2,4])
   def test_multi_zone_topo(self, sub_comm):
@@ -191,18 +193,18 @@ class Test_generate_jn_vertex_list():
     full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
     distri_pl   = uniform_distribution(9, sub_comm)
     I.newGridLocation('FaceCenter', gcA)
-    I.newPointList('PointList', full_pl[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    I.newPointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     I.newPointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     IE.newDistribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
 
-    expt_full_pl_vtx     = np.arange(4, 64+1, 4)
-    expt_full_pl_vtx_opp = np.arange(1, 64+1, 4)
+    expected_full_pl_vtx     = np.arange(4, 64+1, 4)
+    expected_full_pl_vtx_opp = np.arange(1, 64+1, 4)
     assert (distri_jn_vtx == uniform_distribution(16, sub_comm)).all()
-    assert (pl_vtx == expt_full_pl_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
-    assert (pl_vtx_opp == expt_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx     == expected_full_pl_vtx    [distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
   @mark_mpi_test(3)
   def test_single_zone_all(self, sub_comm):
@@ -224,18 +226,18 @@ class Test_generate_jn_vertex_list():
       pl_distri = [4,6,6]
       expt_jn_distri = [14, 21, 21]
 
-    I.newPointList('PointList', (np.array([1,2,4,11,13,16])[pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
+    I.newPointList('PointList'     , (np.array([1,2,4,11,13,16])   [pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
     I.newPointList('PointListDonor', (np.array([65,66,68,75,77,80])[pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
     IE.newDistribution({'Index' : pl_distri}, gcA)
 
     gc_path = "Base/zone/ZoneGridConnectivity/matchA"
     pl_vtx, pld_vtx, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
 
-    expt_full_pl_vtx  = np.array([1,2,3,4,5,6,7,8,9,10,13,14,16,17,18,19,20,21,22,24,25])
-    expt_full_pld_vtx = expt_full_pl_vtx + 100
+    expected_full_pl_vtx  = np.array([1,2,3,4,5,6,7,8,9,10,13,14,16,17,18,19,20,21,22,24,25])
+    expected_full_pld_vtx = expected_full_pl_vtx + 100
     assert (distri_jn_vtx == expt_jn_distri).all()
-    assert (pl_vtx == expt_full_pl_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
-    assert (pld_vtx == expt_full_pld_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx  == expected_full_pl_vtx [distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pld_vtx == expected_full_pld_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
   @mark_mpi_test(2)
   def test_multi_zone_geo(self, sub_comm):
@@ -258,7 +260,7 @@ class Test_generate_jn_vertex_list():
     full_pl_opp = np.array([37,39,44]) #xmin
     distri_pl   = uniform_distribution(3, sub_comm)
     I.newGridLocation('FaceCenter', gcA)
-    I.newPointList('PointList', full_pl[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    I.newPointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     I.newPointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     IE.newDistribution({'Index' : distri_pl}, gcA)
 
@@ -266,11 +268,11 @@ class Test_generate_jn_vertex_list():
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
 
     expected_dist = [0,7,12] if sub_comm.Get_rank() == 0 else [7,12,12]
-    expt_full_pl_vtx     = [4,8,12,16,20,24,28,32,40,44,56,60]
-    expt_full_pl_vtx_opp = [1,5,9,13,17,21,25,29,37,41,53,57]
+    expected_full_pl_vtx     = [4,8,12,16,20,24,28,32,40,44,56,60]
+    expected_full_pl_vtx_opp = [1,5,9,13,17,21,25,29,37,41,53,57]
     assert (distri_jn_vtx == expected_dist).all()
-    assert (pl_vtx == expt_full_pl_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
-    assert (pl_vtx_opp == expt_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx     == expected_full_pl_vtx    [distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
+    assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
 @mark_mpi_test(3)
 def test_generate_jns_vertex_list(sub_comm):
@@ -295,7 +297,7 @@ def test_generate_jns_vertex_list(sub_comm):
   full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
   distri_pl   = uniform_distribution(9, sub_comm)
   I.newGridLocation('FaceCenter', gcA)
-  I.newPointList('PointList', full_pl[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+  I.newPointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
   I.newPointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
   IE.newDistribution({'Index' : distri_pl}, gcA)
 
@@ -305,8 +307,8 @@ def test_generate_jns_vertex_list(sub_comm):
   full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
   distri_pl   = uniform_distribution(9, sub_comm)
   I.newGridLocation('FaceCenter', gcB)
-  I.newPointList('PointListDonor', full_pl[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
-  I.newPointList('PointList', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
+  I.newPointList('PointListDonor', full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
+  I.newPointList('PointList'     , full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   IE.newDistribution({'Index' : distri_pl}, gcB)
 
   VL.generate_jns_vertex_list(tree, sub_comm)
@@ -316,4 +318,3 @@ def test_generate_jns_vertex_list(sub_comm):
   jn_vtx = I.getNodeFromName(tree, "matchB#Vtx")
   assert jn_vtx is not None and sids.GridLocation(jn_vtx) == 'Vertex'
   assert I.getType(jn_vtx) == 'GridConnectivity_t' and I.getValue(jn_vtx) == I.getValue(gcB)
-

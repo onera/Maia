@@ -89,7 +89,8 @@ def reverse_connectivity(ids, idx, array):
   """
   r_ids, counts = np.unique(array, return_counts=True)
   sort_idx = np.argsort(array)
-  extended_ids = np.repeat(ids, np.diff(idx))
+  sizes = np.diff(idx)
+  extended_ids = np.repeat(ids, sizes)
   r_array = extended_ids[sort_idx]
   r_idx = sizes_to_indices(counts)
 

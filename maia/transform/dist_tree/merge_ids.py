@@ -33,16 +33,14 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   n_rmvd_local  = len(dist_ids)
   n_rmvd_offset = par_utils.gather_and_shift(n_rmvd_local, comm)
 
-  #Initial old_to_new
-  old_to_new = np.arange(distri[0], distri[1]) + 1
-
-  # Shift local : for each index to remove, substract one to all the indices after him
-  # Nb : elements are sorted after part_to_dist
+  # Initial old_to_new
+  total_ids_size = distri[1]-distri[0]
+  old_to_new = np.empty(total_ids_size, dtype=ids.dtype)
   ids_local = dist_ids - distri[0] - 1
-  local_shift = np.zeros(old_to_new.shape[0], np.int32)
-  for k in ids_local:
-    local_shift[k:] += 1
-  old_to_new -= local_shift
+  p = np.ones(total_ids_size, dtype=bool)
+  p[ids_local] = False
+  unchanged_ids_size = total_ids_size - ids_local.size
+  old_to_new[p] = np.arange(unchanged_ids_size) + distri[0] + 1
 
   # Shift global : for each index, substract the number of targets removed by preceding ranks
   old_to_new -= n_rmvd_offset[comm.Get_rank()]

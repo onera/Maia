@@ -58,7 +58,7 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   Remove a list of NGon in an NGonElements distributed node.
   Global data such as distribution are updated.
   ngon_to_remove is the list of the ids of the ngon to be remove, *local*,
-  (start at 0), each proc having its own list (he must know this ngons !)
+  (start at 0), each proc having its own list (and it must know these ngons!)
 
   ! This function only works on NGon : in particular, vertices or
   PointList are not removed
@@ -97,7 +97,7 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   ngon_distri[1] -= (n_rmvd_offset[comm.Get_rank()] + n_rmvd_local)
   ngon_distri[2] -= n_rmvd_total
 
-  #Todo : improve that (will be possible when IE.getDistribution return a node)
+  #TODO: improve that (will be possible when IE.getDistribution return a node)
   try:
     ngon_distri_ec = IE.getDistribution(dist_ngon, 'ElementConnectivity')
     ngon_distri_ec[0] -= n_rmvd_ec_offset[comm.Get_rank()]

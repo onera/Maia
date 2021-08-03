@@ -18,6 +18,7 @@ import maia.connectivity.remove_element as RME
 from maia.transform.dist_tree import add_joins_ordinal as AJO
 from maia.transform.dist_tree.merge_ids import merge_distributed_ids
 from maia.connectivity import vertex_list as VL
+import itertools
 
 def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
   """
@@ -29,12 +30,12 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
   face_distri = IE.getDistribution(ngon, 'Element').astype(pdm_dtype)
   pe          =  I.getNodeFromPath(ngon, 'ParentElements')[1]
 
-  # A/ Exchange parent cells before removing : 
+  # A/ Exchange parent cells before removing :
   # 1. Get the left cell of the faces to delete
   dist_data = {'PE' : pe[:,0]}
   part_data = MBTP.dist_to_part(face_distri, dist_data, [del_faces], comm)
   # 2. Put it in the right cell of the faces to keep
-  #Todo : exchange of ref_faces could be avoided using get gnum copy
+  #TODO : exchange of ref_faces could be avoided using get gnum copy
   part_data['FaceId'] = [ref_faces]
   dist_data = MPTB.part_to_dist(face_distri, part_data, [ref_faces], comm)
 
@@ -87,9 +88,10 @@ def _update_subset(node, pl_new, data_query, comm):
     path = "/".join([I.getName(n) for n in data_nodes])
     part_data[path] = [data_nodes[-1][1][0]]
   #Add PL, needed for next blocktoblock
-  part_data[r'@\PointList/@'] = [pl_new.astype(pdm_dtype)]
+  pl_identifier = r'@\PointList/@' # just a string that is unlikely to clash
+  part_data[pl_identifier] = [pl_new.astype(pdm_dtype)]
 
-  #Dont use maia interface since we need a new distribution
+  #Don't use maia interface since we need a new distribution
   PTB = PDM.PartToBlock(comm, [pl_new.astype(pdm_dtype)], pWeight=None, partN=1,
                         t_distrib=0, t_post=1, t_stride=0)
   PTB.PartToBlock_Exchange(dist_data, part_data)
@@ -108,9 +110,9 @@ def _update_subset(node, pl_new, data_query, comm):
   IE.newDistribution({'Index' : ideal_distri}, node)
   if I.getNodeFromPath(node, 'PointList#Size') is not None:
     I.getNodeFromPath(node, 'PointList#Size')[1][1] = ideal_distri[-1]
-    
+
   #Update PointList and data
-  I.createUniqueChild(node, 'PointList', 'IndexArray_t', dist_data_ideal.pop(r'@\PointList/@').reshape(1,-1, order='F'))
+  I.createUniqueChild(node, 'PointList', 'IndexArray_t', dist_data_ideal.pop(pl_identifier).reshape(1,-1, order='F'))
   #Update data
   for data_nodes in IE.getNodesWithParentsByMatching(node, data_query):
     path = "/".join([I.getName(n) for n in data_nodes])
@@ -121,70 +123,71 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
   Treated for now :
     BC, BCDataset (With or without PL), FlowSol, DiscreteData, ZoneSubRegion, JN
 
-    Carefull ! PointList arrays of joins present in the zone are updated, but opposite joins
+    Careful! PointList arrays of joins present in the zone are updated, but opposite joins
     are not informed of this modification. This has to be done after the function if PointListDonor
     are needed
   """
 
   # Prepare iterators
   matches_loc = lambda n : sids.GridLocation(n) == location
+  dataset_with_pl = lambda n: I.getType(n) == 'BCDataSet_t'and I.getNodeFromName1(n, 'PointList') is not None
 
-  is_face_sol  = lambda n: matches_loc(n) and I.getType(n) in ['FlowSolution_t', 'DiscreteData_t']
-  is_face_bc   = lambda n: matches_loc(n) and I.getType(n) == 'BC_t'
-  is_face_bcds = lambda n: matches_loc(n) and I.getType(n) == 'BCDataSet_t'\
-                                             and I.getNodeFromPath(n, 'PointList') is not None
-  is_face_zsr  = lambda n: matches_loc(n) and I.getType(n) == 'ZoneSubRegion_t'
-  is_face_jn   = lambda n: matches_loc(n) and I.getType(n) == 'GridConnectivity_t'
+  is_sol  = lambda n: matches_loc(n) and I.getType(n) in ['FlowSolution_t', 'DiscreteData_t']
+  is_bc   = lambda n: matches_loc(n) and I.getType(n) == 'BC_t'
+  is_bcds = lambda n: matches_loc(n) and dataset_with_pl(n)
+  is_zsr  = lambda n: matches_loc(n) and I.getType(n) == 'ZoneSubRegion_t'
+  is_jn   = lambda n: matches_loc(n) and I.getType(n) == 'GridConnectivity_t'
 
-  sol_iterator  = IE.getChildrenFromPredicate(zone, is_face_sol)
-  bc_iterator   = list(IE.getNodesByMatching(zone, ['ZoneBC_t', is_face_bc])) #To reuse generator
-  bcds_iterator = list(IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', is_face_bcds]))
-  zsr_iterator  = IE.getChildrenFromPredicate(zone, is_face_zsr)
-  jn_iterator   = list(IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', is_face_jn]))
+  sol_list  = list(IE.getChildrenFromPredicate(zone, is_sol))
+  bc_list   = list(IE.getNodesByMatching(zone, ['ZoneBC_t', is_bc])) #To reuse generator
+  bcds_list = list(IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', is_bcds]))
+  zsr_list  = list(IE.getChildrenFromPredicate(zone, is_zsr))
+  jn_list   = list(IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', is_jn]))
 
   #Trick to add a PL to each subregion to be able to use same algo
-  for zsr in zsr_iterator:
+  for zsr in zsr_list:
     if IE.getSubregionExtent(zsr, zone) != I.getName(zsr):
       I._addChild(zsr, I.getNodeFromPath(zone, IE.getSubregionExtent(zsr, zone) + '/PointList'))
       I._addChild(zsr, I.getNodeFromPath(zone, IE.getSubregionExtent(zsr, zone) + '/PointList#Size'))
 
   #Get new index for every PL at once
   all_pl_list = [I.getNodeFromName1(fs, 'PointList')[1][0].astype(pdm_dtype) for fs in \
-     sol_iterator + bc_iterator + bcds_iterator + zsr_iterator + jn_iterator]
+     sol_list + bc_list + bcds_list + zsr_list + jn_list]
   dist_data_pl = {'OldToNew' : old_to_new_face}
   part_data_pl = MBTP.dist_to_part(entity_distri, dist_data_pl, all_pl_list, comm)
 
-  part_offset = 0
 
   #Loop in same order using to get apply pl using generic func
-  data_query = ['DataArray_t']
-  for fs in sol_iterator:
-    _update_subset(fs, part_data_pl['OldToNew'][part_offset], data_query, comm)
-    part_offset +=1
+  nodes_and_queries = [
+    ( sol_list , ['DataArray_t']                              ),
+    ( bc_list  , [dataset_with_pl, 'BCData_t', 'DataArray_t'] ),
+    ( bcds_list, ['BCData_t', 'DataArray_t']                  ),
+    ( zsr_list , ['DataArray_t']                              ),
+    ( jn_list  , []                                           ),
+  ]
 
-  related_bcds = lambda n: I.getType(n) == 'BCDataSet_t' and I.getNodeFromName(n, 'PointList') is None
-  data_query = [related_bcds, 'BCData_t', 'DataArray_t']
-  for bc in bc_iterator:
-    _update_subset(bc, part_data_pl['OldToNew'][part_offset], data_query, comm)
-    part_offset +=1
+  part_offset = 0
+  for lst,data_query in nodes_and_queries:
+    for node in lst:
+      _update_subset(node, part_data_pl['OldToNew'][part_offset], data_query, comm)
+      part_offset += 1
 
-  data_query = ['BCData_t', 'DataArray_t']
-  for bcds in bcds_iterator:
-    _update_subset(bcds, part_data_pl['OldToNew'][part_offset], data_query, comm)
-    part_offset += 1
-
-  data_query = ['DataArray_t']
-  for zsr in zsr_iterator:
-    _update_subset(zsr, part_data_pl['OldToNew'][part_offset], data_query, comm)
-    #Cleanup after trick
-    part_offset += 1
+  #Cleanup after trick
+  for zsr in zsr_list:
     if IE.getSubregionExtent(zsr, zone) != I.getName(zsr):
       I._rmNodesByName(zsr, 'PointList')
 
-  data_query = []
-  for jn in jn_iterator:
-    _update_subset(jn, part_data_pl['OldToNew'][part_offset], data_query, comm)
-    part_offset += 1
+
+# TODO move to sids module, doc, unit test (take the one of _shift_cgns_subsets, and for _shift_cgns_subsets, make a trivial test)
+def all_nodes_with_point_list(zone,pl_location):
+  has_pl = lambda n: I.getNodeFromName1(n, 'PointList') is not None \
+                     and sids.GridLocation(n) == pl_location
+  return itertools.chain( \
+        IE.getChildrenFromPredicate(zone, has_pl) \
+      , IE.getNodesByMatching(zone, ['ZoneBC_t', has_pl, 'PointList']) \
+      , IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', has_pl]) \
+      , IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', has_pl]) \
+    )
 
 def _shift_cgns_subsets(zone, location, shift_value):
   """
@@ -192,20 +195,12 @@ def _shift_cgns_subsets(zone, location, shift_value):
   PointList are seached in every node below zone, + in BC_t, BCDataSet_t,
   GridConnectivity_t
   """
-  has_pl = lambda n: I.getNodeFromName1(n, 'PointList') is not None \
-                     and sids.GridLocation(n) == location
-  for node in IE.getChildrenFromPredicate(zone, has_pl):
-    I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
-  for node in IE.getNodesByMatching(zone, ['ZoneBC_t', has_pl, 'PointList']): #BC
-    I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
-  for node in IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', has_pl]): #BCDataSet
-    I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
-  for node in IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', has_pl]): #GC
+  for node in all_nodes_with_point_list(zone,location):
     I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
 
 def _update_vtx_data(zone, vtx_to_remove, comm):
   """
-  Remove the vertices in data array supported by allVertex (currently 
+  Remove the vertices in data array supported by allVertex (currently
   managed : GridCoordinates, FlowSolution, DiscreteData)
   and update vertex distribution info
   """
@@ -219,7 +214,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   #Update all vertex entities
   for coord_n in IE.getNodesByMatching(zone, ['GridCoordinates_t', 'DataArray_t']):
     I.setValue(coord_n, np.delete(coord_n[1], local_vtx_to_rmv))
-  
+
   is_all_vtx_sol = lambda n: I.getType(n) in ['FlowSolution_t', 'DiscreteData_t'] \
       and sids.GridLocation(n) == 'Vertex' and I.getNodeFromPath(n, 'PointList') is None
 
@@ -293,5 +288,3 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   #Cleanup
   I._rmNodeByPath(dist_tree, jn_pathes[0])
   I._rmNodeByPath(dist_tree, jn_pathes[1])
-  
-

@@ -65,8 +65,8 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
   If faces_to_skip[i]==True, it means the face is not considered
   """
 
-  pl_vtx, pl_vtx_face_idx, pl_vtx_face = py_utils.reverse_connectivity(pl, face_vtx_idx_pl, face_vtx_pl)
-  _, _, pl_vtx_face_d = py_utils.reverse_connectivity(pl_d, face_vtx_idx_pl, face_vtx_pl)
+  pl_vtx, pl_vtx_face_idx, pl_vtx_face   = py_utils.reverse_connectivity(pl  , face_vtx_idx_pl, face_vtx_pl)
+  _     , _              , pl_vtx_face_d = py_utils.reverse_connectivity(pl_d, face_vtx_idx_pl, face_vtx_pl)
   if faces_to_skip is not None:
     idx_to_extract = py_utils.arange_with_jumps(face_vtx_idx_pl,faces_to_skip)
     restricted_pl_vtx = np.unique(face_vtx_pl[idx_to_extract]).astype(pdm_dtype)
@@ -292,11 +292,11 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   ngon   = [elem for elem in I.getNodesFromType1(zone,   'Elements_t') if elem[1][0] == 22][0]
   ngon_d = [elem for elem in I.getNodesFromType1(zone_d, 'Elements_t') if elem[1][0] == 22][0]
 
-  pl   = I.getNodeFromName1(jn, 'PointList')[1][0]
+  pl   = I.getNodeFromName1(jn, 'PointList'     )[1][0]
   pl_d = I.getNodeFromName1(jn, 'PointListDonor')[1][0]
 
   #First pass with topologic treatment
-  face_offset, pl_face_vtx  = face_ids_to_vtx_ids(pl, ngon, comm)
+  face_offset, pl_face_vtx  = face_ids_to_vtx_ids(pl  , ngon  , comm)
   face_offset, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_d, comm)
 
   pl_vtx_local, pl_vtx_local_opp, face_is_treated = _search_by_intersection(face_offset, pl_face_vtx, pld_face_vtx)
