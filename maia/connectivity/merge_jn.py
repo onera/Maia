@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import numpy as np
+import itertools
 
 import Converter.Internal as I
 from Pypdm import Pypdm as PDM
@@ -18,7 +19,6 @@ import maia.connectivity.remove_element as RME
 from maia.transform.dist_tree import add_joins_ordinal as AJO
 from maia.transform.dist_tree.merge_ids import merge_distributed_ids
 from maia.connectivity import vertex_list as VL
-import itertools
 
 def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
   """
@@ -130,19 +130,30 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
 
   # Prepare iterators
   matches_loc = lambda n : sids.GridLocation(n) == location
-  dataset_with_pl = lambda n: I.getType(n) == 'BCDataSet_t'and I.getNodeFromName1(n, 'PointList') is not None
+  is_bcds_with_pl    = lambda n: I.getType(n) == 'BCDataSet_t'and I.getNodeFromName1(n, 'PointList') is not None
+  is_bcds_without_pl = lambda n: I.getType(n) == 'BCDataSet_t'and I.getNodeFromName1(n, 'PointList') is None
 
   is_sol  = lambda n: matches_loc(n) and I.getType(n) in ['FlowSolution_t', 'DiscreteData_t']
   is_bc   = lambda n: matches_loc(n) and I.getType(n) == 'BC_t'
-  is_bcds = lambda n: matches_loc(n) and dataset_with_pl(n)
+  is_bcds = lambda n: matches_loc(n) and is_bcds_with_pl(n)
   is_zsr  = lambda n: matches_loc(n) and I.getType(n) == 'ZoneSubRegion_t'
   is_jn   = lambda n: matches_loc(n) and I.getType(n) == 'GridConnectivity_t'
 
-  sol_list  = list(IE.getChildrenFromPredicate(zone, is_sol))
-  bc_list   = list(IE.getNodesByMatching(zone, ['ZoneBC_t', is_bc])) #To reuse generator
+  sol_list  = list(IE.getChildrenFromPredicate(zone, is_sol)) #Force lists to reuse generators
+  bc_list   = list(IE.getNodesByMatching(zone, ['ZoneBC_t', is_bc]))
   bcds_list = list(IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', is_bcds]))
   zsr_list  = list(IE.getChildrenFromPredicate(zone, is_zsr))
   jn_list   = list(IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', is_jn]))
+
+  #Loop in same order using to get apply pl using generic func
+  all_nodes_and_queries = [
+    ( sol_list , ['DataArray_t']                                 ),
+    ( bc_list  , [is_bcds_without_pl, 'BCData_t', 'DataArray_t'] ),
+    ( bcds_list, ['BCData_t', 'DataArray_t']                     ),
+    ( zsr_list , ['DataArray_t']                                 ),
+    ( jn_list  , []                                              ),
+  ]
+  all_nodes = itertools.chain.from_iterable([elem[0] for elem in all_nodes_and_queries])
 
   #Trick to add a PL to each subregion to be able to use same algo
   for zsr in zsr_list:
@@ -151,24 +162,13 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
       I._addChild(zsr, I.getNodeFromPath(zone, IE.getSubregionExtent(zsr, zone) + '/PointList#Size'))
 
   #Get new index for every PL at once
-  all_pl_list = [I.getNodeFromName1(fs, 'PointList')[1][0].astype(pdm_dtype) for fs in \
-     sol_list + bc_list + bcds_list + zsr_list + jn_list]
+  all_pl_list = [I.getNodeFromName1(fs, 'PointList')[1][0].astype(pdm_dtype) for fs in all_nodes]
   dist_data_pl = {'OldToNew' : old_to_new_face}
   part_data_pl = MBTP.dist_to_part(entity_distri, dist_data_pl, all_pl_list, comm)
 
-
-  #Loop in same order using to get apply pl using generic func
-  nodes_and_queries = [
-    ( sol_list , ['DataArray_t']                              ),
-    ( bc_list  , [dataset_with_pl, 'BCData_t', 'DataArray_t'] ),
-    ( bcds_list, ['BCData_t', 'DataArray_t']                  ),
-    ( zsr_list , ['DataArray_t']                              ),
-    ( jn_list  , []                                           ),
-  ]
-
   part_offset = 0
-  for lst,data_query in nodes_and_queries:
-    for node in lst:
+  for node_list, data_query in all_nodes_and_queries:
+    for node in node_list:
       _update_subset(node, part_data_pl['OldToNew'][part_offset], data_query, comm)
       part_offset += 1
 
@@ -178,15 +178,16 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
       I._rmNodesByName(zsr, 'PointList')
 
 
-# TODO move to sids module, doc, unit test (take the one of _shift_cgns_subsets, and for _shift_cgns_subsets, make a trivial test)
+# TODO move to sids module, doc, unit test
+#(take the one of _shift_cgns_subsets, and for _shift_cgns_subsets, make a trivial test)
 def all_nodes_with_point_list(zone,pl_location):
   has_pl = lambda n: I.getNodeFromName1(n, 'PointList') is not None \
                      and sids.GridLocation(n) == pl_location
-  return itertools.chain( \
-        IE.getChildrenFromPredicate(zone, has_pl) \
-      , IE.getNodesByMatching(zone, ['ZoneBC_t', has_pl, 'PointList']) \
-      , IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', has_pl]) \
-      , IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', has_pl]) \
+  return itertools.chain(
+      IE.getChildrenFromPredicate(zone, has_pl)                      , #FlowSolution_t, ZoneSubRegion_t, ...
+      IE.getNodesByMatching(zone, ['ZoneBC_t', has_pl])              , #BC_t
+      IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', has_pl])      , #BCDataSet_t
+      IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', has_pl]), #GridConnectivity_t
     )
 
 def _shift_cgns_subsets(zone, location, shift_value):

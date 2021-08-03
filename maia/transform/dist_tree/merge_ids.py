@@ -3,6 +3,7 @@ import numpy as np
 import Pypdm.Pypdm        as PDM
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
+from maia.utils import py_utils
 from maia.utils.parallel import utils as par_utils
 from maia.tree_exchange.dist_to_part import data_exchange as BTP
 from maia.tree_exchange.part_to_dist import data_exchange as PTB
@@ -37,10 +38,9 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   total_ids_size = distri[1]-distri[0]
   old_to_new = np.empty(total_ids_size, dtype=ids.dtype)
   ids_local = dist_ids - distri[0] - 1
-  p = np.ones(total_ids_size, dtype=bool)
-  p[ids_local] = False
+  not_ids_local = py_utils.others_mask(old_to_new, ids_local)
   unchanged_ids_size = total_ids_size - ids_local.size
-  old_to_new[p] = np.arange(unchanged_ids_size) + distri[0] + 1
+  old_to_new[not_ids_local] = np.arange(unchanged_ids_size) + distri[0] + 1
 
   # Shift global : for each index, substract the number of targets removed by preceding ranks
   old_to_new -= n_rmvd_offset[comm.Get_rank()]

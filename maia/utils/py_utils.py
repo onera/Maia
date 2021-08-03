@@ -123,6 +123,14 @@ def roll_from(array, start_idx = None, start_value = None, reverse = False):
 
   return np.roll(array, -start_idx) if not reverse else np.roll(array[::-1], start_idx + 1)
 
+def others_mask(array, ids):
+  """
+  Return a mask usefull to access elements of array whose local index *are not* in ids array
+  """
+  mask = np.ones(array.size, dtype=bool)
+  mask[ids] = False
+  return mask
+
 def any_in_range(array, start, end, strict=False):
   """
   Return True if any element of array is in interval

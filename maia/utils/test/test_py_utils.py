@@ -103,6 +103,11 @@ def test_roll_from():
   with pytest.raises(AssertionError):
     py_utils.roll_from(np.array([2,4,8,16]), start_idx = 1, start_value = 8)
 
+def test_others_mask():
+  array = np.array([2,4,6,1,3,5])
+  assert (py_utils.others_mask(array, np.empty(0, np.int32)) == [1,1,1,1,1,1]).all()
+  assert (py_utils.others_mask(array, np.array([2,1]))       == [1,0,0,1,1,1]).all()
+  assert (py_utils.others_mask(array, np.array([0,1,3,4,5])) == [0,0,1,0,0,0]).all()
 
 def test_concatenate_point_list():
   pl1 = np.array([[2, 4, 6, 8]])
