@@ -23,6 +23,7 @@ create_doctest(
   SERIAL_RUN    false
   N_PROC        ${n_proc_max_test}
 )
+set_tests_properties(maia_doctest_unit_tests PROPERTIES TIMEOUT 10)
 
 
 option(MAIA_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)

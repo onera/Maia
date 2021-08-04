@@ -176,6 +176,7 @@ target_link_libraries(${PROJECT_NAME}
     cpp_cgns::cpp_cgns
     range-v3::range-v3
     pdm::pdm_shared
+    Mpi4Py::Mpi4Py
 )
 
 # ------------------------------------------------------------------------------
