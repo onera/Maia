@@ -59,25 +59,25 @@ def parse_yaml_dict(yaml_dict):
     t += [[name,value,children,label]]
   return t
 
-def to_nodes(yaml_str):
-  if yaml_str=="":
+def to_nodes(yaml_stream):
+  if yaml_stream=="":
     return []
   else:
     yaml = YAML(typ="safe")
-    yaml_dict = yaml.load(yaml_str)
+    yaml_dict = yaml.load(yaml_stream)
     return parse_yaml_dict(yaml_dict)
 
-def to_node(yaml_str):
-  if yaml_str=="":
+def to_node(yaml_stream):
+  if yaml_stream=="":
     return None
   else:
-    nodes = to_nodes(yaml_str)
+    nodes = to_nodes(yaml_stream)
     assert len(nodes) == 1, f"Cannot convert yaml tree with {len(nodes)} to single CGNS node. Use to_nodes"
     return nodes[0]
 
-def to_cgns_tree(yaml_str):
+def to_cgns_tree(yaml_stream):
   t = I.newCGNSTree()
-  childs = to_nodes(yaml_str)
+  childs = to_nodes(yaml_stream)
   if len(childs) > 0 and I.getType(childs[0]) == 'Zone_t':
     b = I.newCGNSBase(parent=t)
     I.addChild(b, childs)
