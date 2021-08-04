@@ -6,16 +6,17 @@ import maia.geometry.geometry          as GEO
 import maia.connectivity.conformize_jn as CCJ
 
 
-def duplicateZoneWithTransformation(zone,nameZoneDup,
-                                    rotationCenter=np.array([0.,0.,0.]),
-                                    rotationAngle=np.array([0.,0.,0.]),
-                                    translation=np.array([0.,0.,0.])):
+def duplicate_zone_with_transformation(zone,nameZoneDup,
+                                       rotationCenter=np.array([0.,0.,0.]),
+                                       rotationAngle=np.array([0.,0.,0.]),
+                                       translation=np.array([0.,0.,0.])):
   # Duplication de la zone
   zoneDup     = copy.deepcopy(zone)
   I.setName(zoneDup,nameZoneDup)
   
   # Apply transformation
   coordsDupNode  = I.getNodeFromType1(zoneDup, "GridCoordinates_t")
+  assert(coordsDupNode is not None)
   coordXDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateX")
   coordYDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateY")
   coordZDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateZ")
@@ -32,8 +33,8 @@ def duplicateZoneWithTransformation(zone,nameZoneDup,
   return zoneDup
 
 
-def _duplicateZoneFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,
-                                   conformize=False,comm=None):
+def _duplicate_zone_from_periodic_join(dist_tree,zone,JN_for_duplication_Name,
+                                       conformize=False,comm=None):
   #############
   ##### TODO
   ##### > gestion des autres raccords...
@@ -83,7 +84,7 @@ def _duplicateZoneFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,
   translation1        = I.getValue(translation1Node)
   #> duplication
   zoneDupName = zoneNamePrefix+".D1"
-  zoneDup = duplicateZoneWithTransformation(zone,zoneDupName,
+  zoneDup = duplicate_zone_with_transformation(zone,zoneDupName,
                                             rotationCenter=rotationCenter1,
                                             rotationAngle=rotationAngle1,
                                             translation=translation1)
@@ -132,8 +133,8 @@ def _duplicateZoneFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,
     CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
 
 
-def _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N,
-                                     conformize=False,comm=None):
+def _duplicate_n_zones_from_periodic_join(dist_tree,zone,JN_for_duplication_Name,N,
+                                          conformize=False,comm=None):
   #############
   ##### TODO
   ##### > gestion des autres raccords...
@@ -170,7 +171,7 @@ def _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N,
   # Duplication
   for n in range(N):
     zoneDupName = zoneNamePrefix+".D{0}".format(n+1)
-    zoneDup = duplicateZoneWithTransformation(zone,zoneDupName,
+    zoneDup = duplicate_zone_with_transformation(zone,zoneDupName,
                                               rotationCenter=rotationCenter1,
                                               rotationAngle=(n+1)*rotationAngle1,
                                               translation=(n+1)*translation1)
@@ -238,8 +239,9 @@ def _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N,
   I.setValue(secondJoinDupNode,zoneNamePrefix+".D0")
   
   
-def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplication_Name,
-                                                   conformize=False,comm=None,rotation_correction=True):
+def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zone,JN_for_duplication_Name,
+                                                           conformize=False,comm=None,
+                                                           rotation_correction=True):
   
   #############
   ##### TODO
@@ -286,7 +288,7 @@ def _duplicateZonesFromPeriodicJoinByRotationTo360(dist_tree,zone,JN_for_duplica
   
   # Duplication
   if N > 1: # Sinon c'est que l'on a déjà la roue entière
-    _duplicateNZonesFromPeriodicJoin(dist_tree,zone,JN_for_duplication_Name,N-1,
+    _duplicate_n_zones_from_periodic_join(dist_tree,zone,JN_for_duplication_Name,N-1,
                                      conformize=conformize,comm=comm)
   
   # Transform periodic match join between zone.D0 and zone.D(N-1) to match join
