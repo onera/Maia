@@ -82,7 +82,7 @@ project_find_package(pybind11 CONFIG)
 if (NOT pybind11_FOUND)
   if (${PROJECT_NAME}_ENABLE_FETCH_PYBIND)
     message("Pybind11 was not found by find_package(). Fetching sources on-the-fly")
-    set(PYBIND11_INSTALL ON CACHE BOOL "cpp_cgns requires PyBind" FORCE)
+    set(PYBIND11_INSTALL ON CACHE BOOL "cpp_cgns requires PyBind" FORCE) # required for pybind to export itself
     include(FetchContent)
     FetchContent_Declare(
       pybind11
@@ -90,6 +90,7 @@ if (NOT pybind11_FOUND)
       GIT_TAG        v2.6
     )
     FetchContent_MakeAvailable(pybind11)
+    project_add_dependency(pybind11)
   else()
     message(FATAL_ERROR "Pybind11 was not found by find_package() and ${PROJECT_NAME}_ENABLE_FETCH_PYBIND is OFF")
   endif()
@@ -101,6 +102,7 @@ FetchContent_Declare(
   GIT_TAG        0.10.0
 )
 FetchContent_MakeAvailable(range-v3)
+project_add_dependency(range-v3)
 
 ### ParaDiGM ###
 if (${PROJECT_NAME}_USE_PDM_INSTALL)
