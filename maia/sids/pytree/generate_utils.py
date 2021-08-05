@@ -1,3 +1,4 @@
+import inspect
 from functools import partial
 import sys
 import numpy as np
@@ -21,66 +22,75 @@ allfuncs = {
 }
 
 
-def generate_functions(function, create_function, search, funcs, mesg):
-  snake_name = PYU.camel_to_snake(function.__name__)
-  prefix = function.__name__.replace('Predicate', '')
-  # print(f"function          : {function}")
-  # print(f"function.__name__ : {function.__name__}")
-  # print(f"prefix          : {prefix}")
-  # print(f"snake_name      : {snake_name}")
+def _overload_depth(function, depth):
+  """
+  Return a new function (with update doc and name) build from function with fixed parameter depth=depth
+  """
+  #Partial functions does not have __name__, but .func.__name__ Manage both with try/except
+  try:
+    input_name = function.__name__
+  except AttributeError:
+    input_name = function.func.__name__
 
+  func = partial(function, depth=depth)
+  func.__name__ = f"{input_name}{depth}"
+  func.__doc__  = f"Specialization of {input_name} with depth={depth}"
+  return func
+
+def _overload_predicate(function, suffix, predicate_signature):
+  """
+  Return a new function (with update doc and name) build from function with fixed predicate
+  Suffix is will replace 'Predicate' in the name of the generated function
+  predicate_signature is the tuple (predicate_function, predicate_name_of_arguments) where
+  predicate_name_of_arguments does not include node
+  """
+  input_name = function.__name__
+  predicate, nargs = predicate_signature
+  predicate_info = f"{predicate.__name__}{inspect.signature(predicate)}"
+
+  #Creation of the specialized function : arguments are the new predicate function + the name of the
+  #arguements of this predicated function
+  def create_specialized_func(predicate, nargs):
+    def _specialized(root, *args, **kwargs):
+      pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+      #At execution, replace the generic predicate with the specialized predicate function and 
+      # pass runtime arguments as named arguments to the specialized predicate
+      # Other kwargs are directly passed to the specialized function
+      return function(root, partial(predicate, **pkwargs), **kwargs)
+    return _specialized
+
+  func = create_specialized_func(predicate, nargs)
+  func.__name__ = input_name.replace('Predicate', suffix)
+  func.__doc__   = f"Specialization of {input_name} with embedded predicate\n  {predicate_info}"
+  return func
+
+def generate_functions(function):
+  """
+  From a XXXFromPredicate function, generate and register in module 
+    - the depth variants XXXFromPredicateN
+    - the 'easy predicate' variants XXXFromName, XXXFromLabel, etc.
+    - the easy predicate + depth variants XXXFromNameN
+    - the snake case functions
+  """
+  #Generate Predicate function with specific level
   for depth in range(1,MAXDEPTH+1):
-    doc = """{0} from a predicate with depth={1}""".format(mesg, depth)
-    # Generate getXXXFromPredicate1, getXXXFromPredicate2, ..., getXXXFromPredicate{MAXDEPTH}
-    funcname = f"{function.__name__}{depth}"
-    func = partial(function, search='dfs', depth=depth)
-    func.__name__ = funcname
-    func.__doc__  = doc
-    setattr(module_object, funcname, func)
-    # Generate get_xxx_from_predicate1, get_xxx_from_predicate2, ..., get_xxx_from_predicate{MAXDEPTH}
-    funcname = f"{snake_name}{depth}"
-    func = partial(function, search='dfs', depth=depth)
-    func.__name__ = funcname
-    func.__doc__  = doc
-    setattr(module_object, funcname, func)
+    func = _overload_depth(function, depth) 
+    setattr(module_object, func.__name__, func)
+    setattr(module_object, PYU.camel_to_snake(func.__name__), func)
 
-  for what, item in funcs.items():
-    dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
-    predicate, nargs = item
+  for suffix, predicate_signature in allfuncs.items():
 
-    # Generate getXXXFromName, getXXXFromValue, ..., getXXXFromNameValueAndLabel
-    funcname = f"{prefix}{what}"
-    func = create_function(predicate, nargs)
-    func.__name__ = funcname
-    func.__doc__  = """{0} from a {1}""".format(mesg, dwhat)
-    setattr(module_object, funcname, partial(func, search=search))
-    # Generate get_xxx_from_name, get_xxx_from_value, ..., get_xxx_from_name_value_and_label
-    funcname = PYU.camel_to_snake(f"{prefix}{what}")
-    # print(f"function.__name__ = {function.__name__}, funcname = {funcname}")
-    func = create_function(predicate, nargs)
-    func.__name__ = funcname
-    func.__doc__  = """{0} from a {1}""".format(mesg, dwhat)
-    setattr(module_object, funcname, partial(func, search=search))
+    #Generate Name,Type,etc function without specific level ...
+    func = _overload_predicate(function, suffix, predicate_signature)
+    setattr(module_object, func.__name__, func)
+    setattr(module_object, PYU.camel_to_snake(func.__name__), func)
 
+    # ... and with specific level
     for depth in range(1,MAXDEPTH+1):
-      # Generate getXXXFromName1, getXXXFromName2, ..., getXXXFromName{MAXDEPTH}
-      # Generate getXXXFromValue1, getXXXFromValue2, ..., getXXXFromValue{MAXDEPTH}
-      #   ...
-      # Generate getXXXFromNameValueAndLabel1, getXXXFromNameValueAndLabel2, ..., getXXXFromNameValueAndLabel{MAXDEPTH}
-      funcname = f"{prefix}{what}{depth}"
-      func = create_function(predicate, nargs)
-      func.__name__ = funcname
-      func.__doc__  = """{0} from a {1} with depth={2}""".format(mesg, dwhat, depth)
-      setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
-      # Generate get_xxx_from_name1, get_xxx_from_name2, ..., get_xxx_from_name{MAXDEPTH}
-      # Generate get_xxx_from_value1, get_xxx_from_value2, ..., get_xxx_from_value{MAXDEPTH}
-      #   ...
-      # Generate get_xxx_from_name_value_and_label1, get_xxx_from_name_value_and_label2, ..., get_xxx_from_name_value_and_label{MAXDEPTH}
-      funcname = "{0}{1}".format(PYU.camel_to_snake(f"{prefix}{what}"), depth)
-      func = create_function(predicate, nargs)
-      func.__name__ = funcname
-      func.__doc__  = """{0} from a {1} with depth={2}""".format(mesg, dwhat, depth)
-      setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
+      dfunc = _overload_depth(func, depth) 
+      setattr(module_object, dfunc.__name__, dfunc)
+      setattr(module_object, PYU.camel_to_snake(dfunc.__name__), dfunc)
+
 
 
 # RM nodes

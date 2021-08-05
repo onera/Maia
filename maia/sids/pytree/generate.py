@@ -4,11 +4,12 @@ from maia.sids.cgns_keywords import Label as CGL
 import maia.sids.cgns_keywords as CGK
 
 from .generate_utils import *
-from .walkers_api import *
+from .compare import CGNSNodeFromPredicateNotFoundError
 
 from .remove_nodes import rmChildrenFromPredicate, keepChildrenFromPredicate, rmNodesFromPredicate
-
-
+from .walkers_api  import requestNodeFromPredicate, getNodeFromPredicate, \
+                          getNodesFromPredicate,  iterNodesFromPredicate, \
+                          getNodesFromPredicates, iterNodesFromPredicates
 
 # RM nodes
 def create_rm_children(predicate, nargs):
@@ -29,179 +30,24 @@ def create_keep_children(predicate, nargs):
 generate_rmkeep_functions(keepChildrenFromPredicate, create_keep_children, allfuncs,
   "Keep all direct child CGNS nodes")
 
-def create_rm_nodes(predicate, nargs):
-  def _rm_nodes_from(root, *args, **kwargs):
-    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return rmNodesFromPredicate(root, partial(predicate, **pkwargs), **kwargs)
-  return _rm_nodes_from
-
-
-generate_functions(rmNodesFromPredicate, create_rm_nodes, "dfs",
-  dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
-  "Remove all found child CGNS nodes")
 
 #JC GENERATION FOR NodeWalker
 
-def create_request_child(predicate, nargs):
-  def _get_request_from(root, *args, **kwargs):
-    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return requestNodeFromPredicate(root, partial(predicate, **pkwargs), **kwargs)
-  return _get_request_from
+base_functions = [
+    requestNodeFromPredicate,
+    getNodeFromPredicate,
+    getNodesFromPredicate,
+    iterNodesFromPredicate,
+    getNodesFromPredicates,
+    iterNodesFromPredicates,
+    ]
 
-generate_functions(requestNodeFromPredicate, create_request_child, "bfs", allfuncs,
-  "Return a child CGNS node or None (if it is not found)")
+for base_function in base_functions:
+  generate_functions(base_function)
 
-# --------------------------------------------------------------------------
+#Generation for rm functions
+generate_functions(rmNodesFromPredicate)
 
-def create_get_child(predicate, nargs): #Duplicated
-  def _get_node_from(root, *args, **kwargs):
-    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    try:
-      return getNodeFromPredicate(root, partial(predicate, **pkwargs), **kwargs)
-    except CGNSNodeFromPredicateNotFoundError as e:
-      print(f"For predicate : pkwargs = {pkwargs}", file=sys.stderr)
-      raise e
-  return _get_node_from
-
-generate_functions(getNodeFromPredicate, create_get_child, "bfs", allfuncs,
-  "Return a child CGNS node or raise a CGNSNodeFromPredicateNotFoundError (if it is not found)")
-
-
-#JC GENERATION FOR NodesWalker
-
-
-#Get
-def create_get_nodes(predicate, nargs):
-  """
-    Alias for getNodesFrom... generator. A list of found node(s) is created
-  """
-  def _get_nodes_from(root, *args, **kwargs):
-    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return getNodesFromPredicate(root, partial(predicate, **pkwargs), **kwargs)
-  return _get_nodes_from
-
-# Alias for getNodesFrom... generation
-mesg = "Return a list of all child CGNS nodes"
-generate_functions(getNodesFromPredicate, create_get_nodes, "dfs",
-  dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
-  mesg)
-
-# Alias for getNodesFrom... with shallow exploration and dfs traversing generation
-prefix = getNodesFromPredicate.__name__.replace('Predicate', '')
-for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
-  dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
-  predicate, nargs = item
-
-  # Generate sgetNodesFrom{Name, Label, ...}
-  funcname = f"sgetNodesFrom{what}"
-  func = create_get_nodes(predicate, nargs)
-  func.__name__ = funcname
-  func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-  # Generate sget_nodes_from_{name, label, ...}
-  funcname = PYU.camel_to_snake(funcname)
-  func = create_get_nodes(predicate, nargs)
-  func.__name__ = funcname
-  func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-
-
-#Iter
-def create_iter_children(predicate, nargs):
-  """
-    Alias for iterNodesFrom... generator
-  """
-  def _iter_children_from(root, *args, **kwargs):
-    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return iterNodesFromPredicate(root, partial(predicate, **pkwargs), **kwargs)
-  return _iter_children_from
-
-# Alias for iterNodesFrom... generation
-generate_functions(iterNodesFromPredicate, create_iter_children, "dfs",
-  dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
-  "Return an iterator on all child CGNS nodes")
-
-# Alias for iterNodesFrom... with shallow exploration and dfs traversing generation
-for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
-  dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
-  predicate, nargs = item
-
-  # Generate siterNodesFrom{Name, Label, ...}
-  funcname = f"siterNodesFrom{what}"
-  func = create_iter_children(predicate, nargs)
-  func.__name__ = funcname
-  func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-  # Generate siter_nodes_from_{name, label, ...}
-  funcname = PYU.camel_to_snake(funcname)
-  func = create_iter_children(predicate, nargs)
-  func.__name__ = funcname
-  func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-
-
-
-
-
-#JC GENERATION FOR NodesWalkers
-
-#Iter
-def create_iter_childrens(predicate, nargs):
-  """
-    Alias for iterNodesFrom...s generator
-  """
-  def _iter_children_froms(root, *args, **kwargs):
-    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return iterNodesFromPredicates(root, partial(predicate, **pkwargs), **kwargs)
-  return _iter_children_froms
-
-# Alias for iterNodesFrom...s generation
-generate_functions(iterNodesFromPredicates, create_iter_childrens, "dfs",
-  dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
-  "Return an iterator on all CGNS nodes stifies the predicate(s)")
-
-
-# Alias for iterNodesFrom...s with shallow exploration and dfs traversing generation
-for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
-  dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
-  predicate, nargs = item
-
-  # Generate siterNodesFrom{Name, Label, ...}s
-  funcname = f"siterNodesFrom{what}s"
-  func = create_iter_childrens(predicate, nargs)
-  func.__name__ = funcname
-  func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-  # Generate siter_nodes_from_{name, label, ...}s
-  funcname = PYU.camel_to_snake(funcname)
-  func = create_iter_childrens(predicate, nargs)
-  func.__name__ = funcname
-  func.__doc__  = """iter {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-
-#Get
-# Alias for getNodesFrom...s generation
-generate_functions(getNodesFromPredicates, create_iter_childrens, "dfs",
-  dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']),
-  "Return an iterator on all CGNS nodes stifies the predicate(s)")
-
-# Alias for iterNodesFrom...s with shallow exploration and dfs traversing generation
-for what, item in dict((k,v) for k,v in allfuncs.items() if k not in ['NameValueAndLabel']).items():
-  dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
-  predicate, nargs = item
-
-  # Generate siterNodesFrom{Name, Label, ...}s
-  funcname = f"sgetNodesFrom{what}s"
-  func = create_iter_childrens(predicate, nargs)
-  func.__name__ = funcname
-  func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
-  # Generate siter_nodes_from_{name, label, ...}s
-  funcname = PYU.camel_to_snake(funcname)
-  func = create_iter_childrens(predicate, nargs)
-  func.__name__ = funcname
-  func.__doc__  = """get {0} from a {1}""".format(mesg, dwhat)
-  setattr(module_object, funcname, partial(func, search='dfs', explore='shallow'))
 
 
 

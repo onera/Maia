@@ -903,7 +903,7 @@ Base CGNSBase_t:
   assert([I.getName(n) for n in I.iterNodesFromName1(tree, 'Zone*')] == [])
   assert([I.getName(n) for n in I.iterNodesFromName2(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in I.iterNodesFromName3(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in I.siterNodesFromName(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in I.iterNodesFromName(tree, 'Zone*', explore='shallow')] == ['ZoneI', 'ZoneJ'])
 
   # Snake case
   # ----------
@@ -941,7 +941,7 @@ Base CGNSBase_t:
   assert([I.getName(n) for n in I.iter_nodes_from_name1(tree, 'Zone*')] == [])
   assert([I.getName(n) for n in I.iter_nodes_from_name2(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in I.iter_nodes_from_name3(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in I.siter_nodes_from_name(tree, 'Zone*')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in I.iter_nodes_from_name(tree, 'Zone*', explore='shallow')] == ['ZoneI', 'ZoneJ'])
 
 def test_getNodesFromPredicate():
   yt = """
@@ -1527,7 +1527,7 @@ Base CGNSBase_t:
     I.rmChildrenFromPredicate(bc_node, lambda n: I.getLabel(n) == "FamilyName_t" and int(I.get_value(n)[-1]) > 4)
   # I.printTree(tree)
   # print([I.get_value(n) for n in I.getNodesFromLabel(tree, "FamilyName_t")])
-  assert [I.get_value(n) for n in I.getNodesFromLabel(tree, "FamilyName_t")] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4']
+  assert [I.get_value(n) for n in I.getNodesFromLabel(tree, "FamilyName_t", search='dfs')] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4']
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   for bc_node in I.iterNodesFromLabel(tree, "BC_t"):
