@@ -45,16 +45,16 @@ class NodesWalkers:
     return self._predicates
 
   @predicates.setter
-  def predicates(self, value):
+  def predicates(self, predicates):
     self._predicates = []
-    if isinstance(value, str):
-      self._predicates = value.split('/')
-      self.clean()
-    elif isinstance(value, (list, tuple, dict)):
-      self._predicates = value
-      self.clean()
+    if isinstance(predicates, (list, tuple)):
+      for p in predicates:
+        if not (callable(p) or (isinstance(p, dict) and callable(p['predicate']))):
+          raise TypeError("Non callable function found in predicates list")
     else:
-      raise TypeError("predicates must be a sequence of predicates or a path of name or label separated by '/'.")
+      raise TypeError("predicates must be a sequence of callable functions")
+    self._predicates = predicates
+    self.clean()
 
   @property
   def ancestors(self):

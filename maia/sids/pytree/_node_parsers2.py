@@ -1,13 +1,12 @@
 from .nodes_walker import NodesWalker
-from .predicate import auto_predicate
 
 
 #Parsers for nodesWalkers
 
 
-def search_nodes_dispatch(node, predicate_like, **kwargs):
+#Dispatch is already done -- this is just a wrapper to NodesWalker
+def search_nodes_dispatch(node, predicate, **kwargs):
   """ Interface to adapted getNodesFromXXX1 function depending of predicate type"""
-  predicate = auto_predicate(predicate_like)
   walker = NodesWalker(node, predicate, **kwargs)
   return walker()
 

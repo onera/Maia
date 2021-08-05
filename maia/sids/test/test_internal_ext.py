@@ -1290,20 +1290,21 @@ Base CGNSBase_t:
   # All predicates have the same options
   # ------------------------------------
   # Avoid Node : FamilyName FamilyName_t 'ROW1'
-  walker = I.NodesWalkers(tree, ["BC_t", "FamilyName_t"])
+  predicates = [lambda n : I.getType(n) == "BC_t", lambda n : I.getType(n) == "FamilyName_t"]
+  walker = I.NodesWalkers(tree, predicates)
   print(f"nodes = {[I.getValue(n) for n in walker()]}")
   assert [I.getValue(n) for n in walker()] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
   assert [I.getValue(n) for n in walker.cache] == []
 
   # Avoid Node : FamilyName FamilyName_t 'ROW1', with caching
-  walker = I.NodesWalkers(tree, ["BC_t", "FamilyName_t"], caching=True)
+  walker = I.NodesWalkers(tree, predicates, caching=True)
   print(f"nodes = {[I.getValue(n) for n in walker()]}")
   assert [I.getValue(n) for n in walker()] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
   assert [I.getValue(n) for n in walker.cache] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
 
   fpathv = lambda nodes: '/'.join([I.get_name(n) for n in nodes[:-1]]+[I.get_value(nodes[-1])])
   # ... with ancestors
-  walker = I.NodesWalkers(tree, ["BC_t", "FamilyName_t"], ancestors = True)
+  walker = I.NodesWalkers(tree, predicates, ancestors = True)
   # for nodes in walker():
   #   print(f"nodes = {nodes}")
   print(f"nodes = {[[I.get_name(n) for n in nodes] for nodes in walker()]}")
@@ -1311,7 +1312,7 @@ Base CGNSBase_t:
   assert [fpathv(nodes) for nodes in walker.cache] == []
 
   # ... with ancestors and caching
-  walker = I.NodesWalkers(tree, ["BC_t", "FamilyName_t"], caching=True, ancestors=True)
+  walker = I.NodesWalkers(tree, predicates, caching=True, ancestors=True)
   # for nodes in walker():
   #   print(f"nodes = {nodes}")
   print(f"nodes = {[[I.get_name(n) for n in nodes] for nodes in walker()]}")
@@ -1320,7 +1321,8 @@ Base CGNSBase_t:
 
   # Each predicate has theirs owns options
   # --------------------------------------
-  predicates = [{'predicate':"BC_t", 'explore':'shallow'}, {'predicate':"FamilyName_t", 'depth':1}]
+  predicates = [{'predicate': lambda n : I.getType(n) == "BC_t", 'explore':'shallow'}, 
+                {'predicate': lambda n : I.getType(n) == "FamilyName_t", 'depth':1}]
 
   # Avoid Node : FamilyName FamilyName_t 'ROW1'
   walker = I.NodesWalkers(tree, predicates)
@@ -1770,40 +1772,38 @@ ZoneI Zone_t:
   zoneI = parse_yaml_cgns.to_node(yt)
   zbcB  = I.getNodeFromName(zoneI, 'ZBCB' )
 
+  _isbc =  lambda n : I.getType(n) == 'BC_t'
+  _iszbc = lambda n : I.getType(n) == 'ZoneBC_t'
   # Equivalence with NodesWalkers
   # -----------------------------
-  walker = I.NodesWalkers(zoneI, [''], search='dfs', depth=1)
+  walker = I.NodesWalkers(zoneI, [], search='dfs', depth=1)
   assert list(walker()) == []
-  walker.predicates = ['BC_t']
+  walker.predicates = [_isbc]
   assert list(walker()) == []
-  walker.predicates = ['Index4_ii']
+  walker.predicates = [lambda n : I.getName(n) == 'Index4_ii']
   assert list(walker()) == []
 
-  walker.predicates = ['ZoneBC_t']
+  walker.predicates = [_iszbc]
   assert [I.getName(node) for node in walker()] == ['ZBCA', 'ZBCB']
   walker.root       = zbcB
-  walker.predicates = ['bc5']
+  walker.predicates = [lambda n : I.getName(n) == 'bc5']
   assert [I.getName(node) for node in walker()] == ['bc5']
 
   walker.root       = zoneI
-  walker.predicates = ['ZoneBC_t', 'BC_t']
+  walker.predicates = [_iszbc, _isbc]
   assert [I.getName(node) for node in walker()] == ['bc1', 'bc2', 'bc3', 'bc4', 'bc5']
-  walker.predicates = ['ZoneBC_t', 'bc5']
+  walker.predicates = [_iszbc, lambda n : I.getName(n) == 'bc5']
   assert [I.getName(node) for node in walker()] == ['bc5']
 
   results3 = ['Index1_i','Index2_i','Index3_i','Index4_i','Index4_ii','Index4_iii']
 
-  walker.predicates = ['ZoneBC_t', 'BC_t','IndexArray_t']
+  walker.predicates = [_iszbc, _isbc, lambda n : I.getType(n) == 'IndexArray_t']
   assert [I.getName(node) for node in walker()] == results3
-  walker.predicates = ['ZoneBC_t', 'BC_t','Index*_i']
+  walker.predicates = [_iszbc, _isbc, lambda n : fnmatch.fnmatch(n[0], 'Index*_i')]
   assert([I.getName(node) for node in walker()] == ['Index1_i','Index2_i','Index3_i','Index4_i'])
 
-  walker.predicates = ["ZoneBC_t", CGL.BC_t.name, lambda n: I.getLabel(n) == 'IndexArray_t']
+  walker.predicates = [_iszbc, _isbc, lambda n: I.getLabel(n) == 'IndexArray_t']
   # print(f"threelvl2 = {[I.getName(node) for node in walker()]}")
-  assert [I.getName(node) for node in walker()] == results3
-
-  walker.predicates = [CGL.ZoneBC_t, CGL.BC_t.name, lambda n: I.getLabel(n) == 'IndexArray_t']
-  # print(f"threelvl3 = {[I.getName(node) for node in walker()]}")
   assert [I.getName(node) for node in walker()] == results3
 
   with pytest.raises(TypeError):
@@ -1872,44 +1872,46 @@ ZoneI Zone_t:
   zoneI = parse_yaml_cgns.to_node(yt)
   zbcB  = I.getNodeFromName(zoneI, 'ZBCB' )
 
+  _isbc =  lambda n : I.getType(n) == 'BC_t'
+  _iszbc = lambda n : I.getType(n) == 'ZoneBC_t'
   # Equivalence with NodesWalkers
   # -----------------------------
-  walker = I.NodesWalkers(zoneI, [''], search='dfs', depth=1, ancestors=True)
+  walker = I.NodesWalkers(zoneI, [], search='dfs', depth=1, ancestors=True)
   assert list(walker()) == []
-  walker.predicates = ['BC_t']
+  walker.predicates = [_isbc]
   assert list(walker()) == []
-  walker.predicates = ['Index4_ii']
+  walker.predicates = [lambda n : I.getName(n) == 'Index4_ii']
   assert list(walker()) == []
 
-  walker.predicates = ['ZoneBC_t']
+  walker.predicates = [_iszbc]
   assert [[I.getName(n) for n in nodes] for nodes in walker()] == [['ZBCA'], ['ZBCB']]
   walker.root       = zbcB
-  walker.predicates = ['BC_t']
+  walker.predicates = [_isbc]
   assert [[I.getName(n) for n in nodes] for nodes in walker()] == [['bc3'], ['bc4'], ['bc5']]
 
   fpath = lambda nodes: '/'.join([I.get_name(n) for n in nodes])
   walker.root       = zoneI
-  walker.predicates = ['ZoneBC_t', 'BC_t']
+  walker.predicates = [_iszbc, _isbc]
   assert [fpath(nodes) for nodes in walker()] == ['ZBCA/bc1', 'ZBCA/bc2', 'ZBCB/bc3', 'ZBCB/bc4', 'ZBCB/bc5']
-  walker.predicates = ['ZoneBC_t', 'bc3']
+  walker.predicates = [_iszbc, lambda n : I.getName(n) == 'bc3']
   assert [fpath(nodes) for nodes in walker()] == ['ZBCB/bc3']
 
   walker.root       = zbcB
-  walker.predicates = ['BC_t','IndexArray_t']
+  walker.predicates = [_isbc, lambda n : I.getType(n) == 'IndexArray_t']
   iterator = walker()
   for bc in I.getNodesFromLabel1(zbcB, 'BC_t'):
     for idx in I.getNodesFromLabel1(bc, 'IndexArray_t'):
       assert next(iterator) == (bc, idx)
 
   walker.root       = zoneI
-  walker.predicates = ['ZoneBC_t', 'BC_t','IndexArray_t']
+  walker.predicates = [_iszbc, _isbc, lambda n : I.getType(n) == 'IndexArray_t']
   iterator = walker()
   for zbc in I.getNodesFromLabel1(zoneI, 'ZoneBC_t'):
     for bc in I.getNodesFromLabel1(zbc, 'BC_t'):
       for idx in I.getNodesFromLabel1(bc, 'IndexArray_t'):
         assert next(iterator) == (zbc, bc, idx)
 
-  walker.predicates = ['ZoneBC_t', 'BC_t', 'PL*']
+  walker.predicates = [_iszbc, _isbc, lambda n : 'PL' in I.getName(n)]
   iterator = walker()
   for zbc in I.getNodesFromLabel1(zoneI, 'ZoneBC_t'):
     for bc in I.getNodesFromLabel1(zbc, 'BC_t'):
@@ -1917,7 +1919,7 @@ ZoneI Zone_t:
         assert next(iterator) == (zbc, bc, pl)
 
   p = re.compile('PL[12]')
-  walker.predicates = [CGL.ZoneBC_t, CGL.BC_t.name, lambda n: p.match(I.getName(n))]
+  walker.predicates = [_iszbc, _isbc, lambda n: p.match(I.getName(n))]
   iterator = walker()
   for zbc in I.getNodesFromLabel1(zoneI, 'ZoneBC_t'):
     for bc in I.getNodesFromLabel1(zbc, 'BC_t'):

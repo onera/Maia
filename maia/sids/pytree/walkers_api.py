@@ -4,6 +4,27 @@ from .node_walker   import NodeWalker
 from .nodes_walker  import NodesWalker
 from .nodes_walkers import NodesWalkers
 from .compare       import CGNSNodeFromPredicateNotFoundError
+from .predicate     import auto_predicate
+
+def _convert_to_callable(predicates):
+  """
+  Convert a list a "convenience" predicates to a list a true callable predicates
+  The list can also be given as a '/' separated string
+  """
+  _predicates = []
+  if isinstance(predicates, str):
+    _predicates = [auto_predicate(p) for p in predicates.split('/')]
+  elif isinstance(predicates, (list, tuple)):
+    _predicates = []
+    for p in predicates:
+      if isinstance(p, dict):
+        #Create a new dict with a callable predicate
+        _predicates.append({**p, 'predicate' : auto_predicate(p['predicate'])})
+      else:
+        _predicates.append(auto_predicate(p))
+  else:
+    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
+  return _predicates
 
 # ---------------------------------------------------------------------------- #
 # API for NodeWalker
@@ -46,6 +67,7 @@ def getNodesFromPredicate(*args, **kwargs):
   if caching is not None and caching is False:
     print(f"Warning: getNodesFromPredicate forces caching to True.")
   kwargs['caching'] = True
+
   walker = NodesWalker(*args, **kwargs)
   return walker()
 
@@ -72,6 +94,7 @@ def iterNodesFromPredicate(*args, **kwargs):
   if caching is not None and caching is True:
     print(f"Warning: iterNodesFromPredicate forces caching to False.")
   kwargs['caching'] = False
+
   walker = NodesWalker(*args, **kwargs)
   return walker()
 siterNodesFromPredicate = partial(iterNodesFromPredicate, explore='shallow')
@@ -96,24 +119,14 @@ def iterNodesFromPredicates(root, predicates, **kwargs):
       TYPE: TreeNode generator/iterator
 
   """
-  _predicates = []
-  if isinstance(predicates, str):
-    # for predicate in predicates.split('/'):
-    #   _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
-    _predicates = predicates.split('/')
-  elif isinstance(predicates, (list, tuple)):
-    _predicates = predicates
-  else:
-    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
+  _predicates = _convert_to_callable(predicates)
 
-  return iterNodesFromPredicates__(root, _predicates, **kwargs)
-
-def iterNodesFromPredicates__(*args, **kwargs): #Duplicated
   caching = kwargs.get('caching')
   if caching is not None and caching is True:
     print(f"Warning: iterNodesFromPredicates forces caching to False.")
   kwargs['caching'] = False
-  walker = NodesWalkers(*args, **kwargs)
+
+  walker = NodesWalkers(root, _predicates, **kwargs)
   return walker()
 
 siterNodesFromPredicates = partial(iterNodesFromPredicates, explore='shallow')
@@ -135,24 +148,14 @@ def getNodesFromPredicates(root, predicates, **kwargs):
       TYPE: TreeNode generator/iterator
 
   """
-  _predicates = []
-  if isinstance(predicates, str):
-    # for predicate in predicates.split('/'):
-    #   _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
-    _predicates = predicates.split('/')
-  elif isinstance(predicates, (list, tuple)):
-    _predicates = predicates
-  else:
-    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
+  _predicates = _convert_to_callable(predicates)
 
-  return getNodesFromPredicates__(root, _predicates, **kwargs)
-
-def getNodesFromPredicates__(*args, **kwargs): #Duplicated
   caching = kwargs.get('caching')
   if caching is not None and caching is False:
     print(f"Warning: getNodesFromPredicates forces caching to True.")
   kwargs['caching'] = True
-  walker = NodesWalkers(*args, **kwargs)
+
+  walker = NodesWalkers(root, _predicates, **kwargs)
   return walker()
 
 sgetNodesFromPredicates = partial(getNodesFromPredicates, explore='shallow')

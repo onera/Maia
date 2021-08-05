@@ -33,20 +33,10 @@ def iterNodesByMatching(root, predicates):
       for level3 in I.getNodesFromType1(level2, type3_t):
         ...
   """
-  _predicates = []
-  if isinstance(predicates, str):
-    # for predicate in predicates.split('/'):
-    #   _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
-    _predicates = predicates.split('/')
-  elif isinstance(predicates, (list, tuple)):
-    _predicates = predicates
-  else:
-    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
+  return iterNodesFromPredicates(root, predicates, search='dfs', depth=1)
 
-  walker = NodesWalkers(root, _predicates, search='dfs', depth=1)
-  return walker()
-
-getNodesByMatching = iterNodesByMatching
+def getNodesByMatching(root, predicates):
+  return getNodesFromPredicates(root, predicates, search='dfs', depth=1)
 
 iter_children_by_matching = iterNodesByMatching
 get_children_by_matching  = getNodesByMatching
@@ -60,19 +50,11 @@ def iterNodesWithParentsByMatching(root, predicates):
   """Same than iterNodesByMatching, but return
   a tuple of size len(predicates) containing the node and its parents
   """
-  _predicates = []
-  if isinstance(predicates, str):
-    for predicate in predicates.split('/'):
-      _predicates.append(eval(predicate) if predicate.startswith('lambda') else predicate)
-  elif isinstance(predicates, (list, tuple)):
-    _predicates = predicates
-  else:
-    raise TypeError("predicates must be a sequence or a path with strings separated by '/'.")
+  return iterNodesFromPredicates(root, predicates, search='dfs', depth=1, ancestors=True)
 
-  walker = NodesWalkers(root, _predicates, search='dfs', depth=1, ancestors=True)
-  return walker()
+def getNodesWithParentsByMatching(root, predicates):
+  return getNodesFromPredicates(root, predicates, search='dfs', depth=1, ancestors=True)
 
-getNodesWithParentsByMatching = iterNodesWithParentsByMatching
 
 iter_children_with_parents_by_matching = iterNodesWithParentsByMatching
 get_children_with_parents_by_matching  = getNodesWithParentsByMatching
