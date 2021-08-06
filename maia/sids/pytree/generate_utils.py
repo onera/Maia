@@ -64,21 +64,21 @@ def _overload_predicate(function, suffix, predicate_signature):
   func.__doc__   = f"Specialization of {input_name} with embedded predicate\n  {predicate_info}"
   return func
 
-def generate_functions(function):
+def generate_functions(function, maxdepth=MAXDEPTH, easypredicates=allfuncs):
   """
   From a XXXFromPredicate function, generate and register in module 
-    - the depth variants XXXFromPredicateN
-    - the 'easy predicate' variants XXXFromName, XXXFromLabel, etc.
+    - the depth variants XXXFromPredicateN from 1 to maxdepth
+    - the 'easy predicate' variants XXXFromName, XXXFromLabel, etc. depending on easy_predicates
     - the easy predicate + depth variants XXXFromNameN
     - the snake case functions
   """
   #Generate Predicate function with specific level
-  for depth in range(1,MAXDEPTH+1):
+  for depth in range(1,maxdepth+1):
     func = _overload_depth(function, depth) 
     setattr(module_object, func.__name__, func)
     setattr(module_object, PYU.camel_to_snake(func.__name__), func)
 
-  for suffix, predicate_signature in allfuncs.items():
+  for suffix, predicate_signature in easypredicates.items():
 
     #Generate Name,Type,etc function without specific level ...
     func = _overload_predicate(function, suffix, predicate_signature)
@@ -86,34 +86,10 @@ def generate_functions(function):
     setattr(module_object, PYU.camel_to_snake(func.__name__), func)
 
     # ... and with specific level
-    for depth in range(1,MAXDEPTH+1):
+    for depth in range(1,maxdepth+1):
       dfunc = _overload_depth(func, depth) 
       setattr(module_object, dfunc.__name__, dfunc)
       setattr(module_object, PYU.camel_to_snake(dfunc.__name__), dfunc)
-
-
-
-# RM nodes
-def generate_rmkeep_functions(function, create_function, funcs, mesg):
-  snake_name = PYU.camel_to_snake(function.__name__)
-  prefix = function.__name__.replace('Predicate', '')
-
-  for what, item in funcs.items():
-    dwhat = ' '.join(PYU.camel_to_snake(what).split('_'))
-    predicate, nargs = item
-
-    # Generate xxxChildrenFromName, xxxChildrenFromValue, ..., xxxChildrenFromNameValueAndLabel
-    funcname = f"{prefix}{what}"
-    func = create_function(predicate, nargs)
-    func.__name__ = funcname
-    func.__doc__  = """{0} from a {1}""".format(mesg, dwhat)
-    setattr(module_object, funcname, func)
-    # Generate xxx_children_from_name, xxx_children_from_value, ..., xxx_children_from_name_value_and_label
-    funcname = PYU.camel_to_snake(f"{prefix}{what}")
-    func = create_function(predicate, nargs)
-    func.__name__ = funcname
-    func.__doc__  = """{0} from a {1}""".format(mesg, dwhat)
-    setattr(module_object, funcname, func)
 
 #Generation for cgns names
 # --------------------------------------------------------------------------

@@ -11,28 +11,7 @@ from .walkers_api  import requestNodeFromPredicate, getNodeFromPredicate, \
                           getNodesFromPredicate,  iterNodesFromPredicate, \
                           getNodesFromPredicates, iterNodesFromPredicates
 
-# RM nodes
-def create_rm_children(predicate, nargs):
-  def _rm_children_from(root, *args):
-    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return rmChildrenFromPredicate(root, partial(predicate, **pkwargs))
-  return _rm_children_from
-
-generate_rmkeep_functions(rmChildrenFromPredicate, create_rm_children, allfuncs,
-  "Remove all direct child CGNS nodes")
-
-def create_keep_children(predicate, nargs):
-  def _keep_children_from(root, *args):
-    pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-    return keepChildrenFromPredicate(root, partial(predicate, **pkwargs))
-  return _keep_children_from
-
-generate_rmkeep_functions(keepChildrenFromPredicate, create_keep_children, allfuncs,
-  "Keep all direct child CGNS nodes")
-
-
-#JC GENERATION FOR NodeWalker
-
+#Generation for Node(s)Walker(s) based funcs
 base_functions = [
     requestNodeFromPredicate,
     getNodeFromPredicate,
@@ -45,8 +24,10 @@ base_functions = [
 for base_function in base_functions:
   generate_functions(base_function)
 
-#Generation for rm functions
+#Generation for remove functions
 generate_functions(rmNodesFromPredicate)
+generate_functions(rmChildrenFromPredicate,   maxdepth=0)
+generate_functions(keepChildrenFromPredicate, maxdepth=0)
 
 
 
