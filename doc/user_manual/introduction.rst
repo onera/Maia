@@ -17,7 +17,7 @@ Global data
 Distributed data
 ^^^^^^^^^^^^^^^^
 
-Distributed data is data that is stored over multiple memory spaces. The data can't be accessed completely by one process. It has to be distributed over memory either because it is too heavy, or in order to take advantage of parallel algorithms.
+**Distributed data** is data that is stored over multiple memory spaces. The data can't be accessed completely by one process. It has to be distributed over memory either because it is too heavy, or in order to take advantage of parallel algorithms.
 
 A **block** of distributed data is the portion of that data that is stored over one memory space. Each block can only be interpreted as a piece of the *global data*.
 

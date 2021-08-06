@@ -1,172 +1,159 @@
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # General CMake settings
-# ----------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
-cmake_policy(SET CMP0074 NEW)
+# ------------------------------------------------------------------------------
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_policy(SET CMP0074 NEW) # force find_package to take <PackageName>_ROOT variables into account
 
 if(NOT DEFINED PROJECT_ROOT)
   set(PROJECT_ROOT ${CMAKE_SOURCE_DIR} CACHE PATH "Root directory, where the submodules are populated")
 endif()
 
-macro(check_sub_repo_exists sub_repo_name)
-  set(sub_repo_path "${PROJECT_ROOT}/external/${sub_repo_name}")
-  file(GLOB sub_repo_files ${sub_repo_path}/*)
-  list(LENGTH sub_repo_files sub_repo_nb_files)
-  if(sub_repo_nb_files EQUAL 0)
-    message(FATAL_ERROR
-      "${PROJECT_ROOT}/external/${sub_repo_name} is empty.
-      Maybe you forgot to initialize it with \"git submodule update --init\""
-    )
-  endif()
-endmacro()
-
-check_sub_repo_exists(project_utils)
-set(PROJECT_UTILS_CMAKE_DIR ${PROJECT_ROOT}/external/project_utils/scripts/cmake)
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_UTILS_CMAKE_DIR}") # for custom Find*.cmake files
-include(${PROJECT_UTILS_CMAKE_DIR}/target_add_dependency.cmake) # target_add_dependency, target_add_thirdparty_dependency and target_install commands
+# Bootstrap project_utils
+set(sub_repo_path "${PROJECT_ROOT}/external/project_utils")
+file(GLOB sub_repo_files ${sub_repo_path}/*)
+list(LENGTH sub_repo_files sub_repo_nb_files)
+if(sub_repo_nb_files EQUAL 0)
+  message(FATAL_ERROR
+    "${sub_repo_path} is empty.
+    Maybe you forgot to initialize it with \"git submodule update --init\""
+  )
+endif()
+set(PROJECT_UTILS_DIR ${PROJECT_ROOT}/external/project_utils)
+set(PROJECT_UTILS_CMAKE_DIR ${PROJECT_UTILS_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_UTILS_CMAKE_DIR}/find_package") # for custom Find*.cmake files
+include(${PROJECT_UTILS_CMAKE_DIR}/dependency_management.cmake) # project_add_subdirectory, project_find_package and target_install
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
-# ----------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # Project
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 project(
   maia VERSION 0.1.0
   DESCRIPTION "Distributed algorithms for CGNS trees"
-  LANGUAGES CXX)
+  LANGUAGES CXX
+)
+
+option(${PROJECT_NAME}_ENABLE_FETCH_PYBIND "Fetch Pybind11 sources on-the-fly if not found by find_package()" ON)
+option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF)
+option(${PROJECT_NAME}_ENABLE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
+option(${PROJECT_NAME}_USE_PDM_INSTALL "Use an installed ParaDiGM version" ON)
+option(${PROJECT_NAME}_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
 
 ## Compiler flags
-### Defaults
-set(LOCAL_CMAKE_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/scripts/cmake)
-include(${LOCAL_CMAKE_SCRIPTS}/default_flags.cmake)
-### Build type
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE) # default to Release
-endif()
 ### C++ standard
 set(CMAKE_CXX_STANDARD          17 )
 set(CMAKE_CXX_EXTENSIONS        OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON )
 ### fPIC
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+### Compiler-dependent flags
+include(${PROJECT_UTILS_CMAKE_DIR}/default_flags.cmake)
+### Default build type
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE) # default to Release
+endif()
+### Additionnal build types
+include(${PROJECT_UTILS_CMAKE_DIR}/additional_build_types.cmake)
 
 
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Dependencies
-# ----------------------------------------------------------------------
-
-## Dependencies installed in the environment ##
-if(CMAKE_VERSION VERSION_LESS 3.14)
-  find_package(Python 3 REQUIRED COMPONENTS Interpreter Development)
-else()
-  find_package(Python 3 REQUIRED COMPONENTS Interpreter Development NumPy)
-endif()
-
-find_package(MPI REQUIRED)
-find_package(Mpi4Py REQUIRED)
-
-
-#option(MAIA_USE_PDM_INSTALL OFF "Use an installed ParaDiGM version")
-#if (MAIA_USE_PDM_INSTALL)
-#  find_package(pdm CONFIG REQUIRED) # "CONFIG" require the install to have a pdmConfig.cmake
-#  if(NOT pdm_FOUND)
-#    message("ParaDiGM not found please export pdm_DIR to find it")
-#  endif()
-#else()
-
-
-find_package(pdma CONFIG)
-if(NOT pdma_FOUND)
-  find_package(pdm  CONFIG)
-  if(NOT pdm_FOUND)
-    check_sub_repo_exists(paradigm)
-
-    # Maia uses ParaDiGM with these options
-    set(PDM_ENABLE_Fortran         OFF CACHE BOOL "Maia uses ParaDiGM without Fortran"     FORCE)
-    set(PDM_ENABLE_STATIC          OFF CACHE BOOL "Maia uses ParaDiGM without static libs" FORCE)
-    set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"    FORCE)
-    set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"         FORCE)
-    set(PDM_ENABLE_PARMETIS        OFF CACHE BOOL "Maia uses ParaDiGM without parmetis"    FORCE)
-    set(PDM_ENABLE_PTSCOTCH        ON  CACHE BOOL "Maia uses ParaDiGM with Scotch"         FORCE)
-    set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"   FORCE)
-
-    # ParaDiGM does not use the same variable names as FindPython
-    set(PYTHON_EXECUTABLE  ${Python_EXECUTABLE}   CACHE FILEPATH "" FORCE)
-    set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS} CACHE PATH     "" FORCE)
-    set(PYTHON_LIBRARY     ${Python_LIBRARIES}    CACHE FILEPATH "" FORCE)
-
-    # ParaDiGM needs these paths from Scotch
-    if(NOT DEFINED ENV{PTSCOTCH_DIR})
-      message(FATAL_ERROR "You need PtScotch to build ParaDiGM. Export environment variable PTSCOTCH_DIR")
-    endif()
-    set(PTSCOTCH_DIR       $ENV{PTSCOTCH_DIR}     CACHE PATH "" FORCE)
-    set(PTSCOTCH_LIBRARIES "${PTSCOTCH_DIR}/lib/libptscotch.so;${PTSCOTCH_DIR}/lib/libscotch.so;${PTSCOTCH_DIR}/lib/libptscotcherr.so" CACHE STRING "" FORCE)
-    #set(PTSCOTCH_VERSION        CACHE STRING FORCE)
-
-    # ParaDiGM unit tests if Maia unit tests
-    if(MAIA_ENABLE_MPI_TESTS)
-      set(PDM_ENABLE_UNIT_TEST ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"     FORCE)
-    else()
-      set(PDM_ENABLE_UNIT_TEST OFF CACHE BOOL "Maia uses ParaDiGM without unit tests"  FORCE)
-    endif()
-
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-      # The C compiler does not link libm by default
-      set(CMAKE_C_FLAGS "-lm ${CMAKE_C_FLAGS}")
-    endif()
-    target_add_dependency(${PROJECT_NAME} paradigm)
-  endif()
-endif()
+# ------------------------------------------------------------------------------
+## System dependencies ###
+project_find_package(Python 3 REQUIRED COMPONENTS Interpreter Development NumPy)
+project_find_package(MPI REQUIRED)
+project_find_package(Mpi4Py REQUIRED)
 
 ## Dependencies built from source ##
 include(FetchContent)
+### doctest ###
+FetchContent_Declare(
+  doctest
+  #GIT_REPOSITORY https://github.com/onqtam/doctest.git
+  #GIT_TAG        2.4.6
+  GIT_REPOSITORY https://github.com/BerengerBerthoul/doctest.git
+  GIT_TAG        f13a00607463ce211004be23b5aa0bdf24d3ab61
+)
+FetchContent_MakeAvailable(doctest)
+### pybind11 ###
+project_find_package(pybind11 CONFIG)
+if (NOT pybind11_FOUND)
+  if (${PROJECT_NAME}_ENABLE_FETCH_PYBIND)
+    message("Pybind11 was not found by find_package(). Fetching sources on-the-fly")
+    set(PYBIND11_INSTALL ON CACHE BOOL "cpp_cgns requires PyBind" FORCE) # required for pybind to export itself
+    include(FetchContent)
+    FetchContent_Declare(
+      pybind11
+      GIT_REPOSITORY https://github.com/pybind/pybind11.git
+      GIT_TAG        v2.6
+    )
+    FetchContent_MakeAvailable(pybind11)
+    project_add_dependency(pybind11)
+  else()
+    message(FATAL_ERROR "Pybind11 was not found by find_package() and ${PROJECT_NAME}_ENABLE_FETCH_PYBIND is OFF")
+  endif()
+endif()
 ### range-v3 ###
 FetchContent_Declare(
   range-v3
   GIT_REPOSITORY https://github.com/ericniebler/range-v3
   GIT_TAG        0.10.0
 )
-FetchContent_GetProperties(range-v3)
-if(NOT range-v3_POPULATED)
-  FetchContent_Populate(range-v3)
-  add_subdirectory(${range-v3_SOURCE_DIR} ${range-v3_BINARY_DIR})
+FetchContent_MakeAvailable(range-v3)
+project_add_dependency(range-v3)
+
+### ParaDiGM ###
+if (${PROJECT_NAME}_USE_PDM_INSTALL)
+  project_find_package(pdm CONFIG REQUIRED)
+  project_find_package(pdma CONFIG)
+else()
+  # Maia uses ParaDiGM with these options
+  set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"      FORCE)
+  set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"           FORCE)
+  set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"     FORCE)
+  set(PDM_ENABLE_UNIT_TEST       ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"       FORCE)
+  set(PASS_DEFAULT_FLAGS         ON  CACHE BOOL "Maia does not use ParaDiGM default flags" FORCE)
+  # These option values are not FORCE, but the default is different than the one of ParaDiGM
+  set(PDM_ENABLE_Fortran         OFF CACHE BOOL "Maia uses ParaDiGM without Fortran"    )
+  set(PDM_ENABLE_STATIC          OFF CACHE BOOL "Maia uses ParaDiGM without static libs")
+  # Adding paradigm sources from external/paradigm
+  include(${PROJECT_UTILS_CMAKE_DIR}/check_local_dependency.cmake)
+  check_local_dependency(paradigm REQUIRED)
+  project_add_subdirectory(paradigm)
 endif()
 
-## Dependencies from submodules ##
-check_sub_repo_exists(std_e)
-set(STD_E_ENABLE_MPI ON CACHE BOOL "Maia requires MPI" FORCE)
-target_add_dependency(${PROJECT_NAME} std_e)
+### std_e + cpp_cgns ###
+set(std_e_ENABLE_MPI ON CACHE BOOL "Maia uses std_e with mpi" FORCE)
+project_add_subdir_or_package(std_e REQUIRED)
+project_add_subdir_or_package(cpp_cgns REQUIRED)
 
-check_sub_repo_exists(cpp_cgns)
-target_add_dependency(${PROJECT_NAME} cpp_cgns)
-
-## Python dependencies (just check) ##
-include(${PROJECT_UTILS_CMAKE_DIR}/has_python_module.cmake)
-#has_python_module(ruamel REQUIRED)
-#has_python_module(pytest)
-#has_python_module(pytest_mpi) # TODO tell to install package pytest-mpi
-#has_python_module(pytest_html) # TODO tell to install package pytest-mpi
-#has_python_module(pytest_check)
+## Check Python dependencies ##
+include(${PROJECT_UTILS_CMAKE_DIR}/check_python_module.cmake)
+check_python_module(ruamel REQUIRED)
+check_python_module(pytest)
+check_python_module(pytest_html)
+check_local_dependency(pytest-mpi-check)
 
 
-# ----------------------------------------------------------------------
-# Code quality tools
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Code quality tools TODO
+# ------------------------------------------------------------------------------
 find_program( MEMORYCHECK_COMMAND valgrind )
 set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full" )
 
 # > Mandatory to put here to have all shared libs compile with the coverage flags
-option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF)
 #if(${${PROJECT_NAME}_ENABLE_COVERAGE})
  #include(CodeCoverage)
- #APPEND_COVERAGE_COMPILER_FLAGS()
+ #append_coverage_compiler_flags()
 #endif()
 
 
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Compilation
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 set(src_dir ${PROJECT_SOURCE_DIR}/${PROJECT_NAME})
 set(test_dir ${PROJECT_SOURCE_DIR}/test)
 set(include_dir ${PROJECT_SOURCE_DIR})
@@ -193,72 +180,49 @@ target_link_libraries(${PROJECT_NAME}
     cpp_cgns::cpp_cgns
     range-v3::range-v3
     pdm::pdm_shared
+    Mpi4Py::Mpi4Py
 )
 
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Installation
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 target_install(${PROJECT_NAME})
 
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Python and wrapping
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 include(${PROJECT_UTILS_CMAKE_DIR}/python_wrapping.cmake)
 compile_install_pybind_modules(${PROJECT_NAME})
 install_python_modules(${PROJECT_NAME})
 
-# install pytest-mpi-check
+# install pytest-mpi-check # TODO move
 install(
   DIRECTORY   "${PROJECT_ROOT}/external/pytest-mpi-check/pytest_mpi_check"
   DESTINATION "${SITE_PACKAGES_OUTPUT_DIRECTORY}"
   COMPONENT   "python"
 )
 
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Testing
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 include(CTest)
 add_subdirectory(test)
 
 
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Build documentation
-# ----------------------------------------------------------------------
-option(MAIA_BUILD_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
-if(MAIA_BUILD_DOCUMENTATION)
-  # Download bootstrap style
-  FetchContent_Declare(
-    sphinx_bootstrap_theme
-    GIT_REPOSITORY https://github.com/ryan-roemer/sphinx-bootstrap-theme.git
-    GIT_TAG        v0.8.0
-  )
-  FetchContent_GetProperties(sphinx_bootstrap_theme)
-  if(NOT sphinx_bootstrap_theme_POPULATED)
-    FetchContent_Populate(sphinx_bootstrap_theme)
-  endif()
-
-  include(UseBreathe)
-  add_breathe_doc(TARGET_NAME ${PROJECT_NAME}_doc
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/doc
-    DOXY_FILE  ${CMAKE_CURRENT_SOURCE_DIR}/doc/Doxyfile.in
-    CONF_FILE  ${CMAKE_CURRENT_SOURCE_DIR}/doc/conf.py.in
-    BUILD_DIR  ${CMAKE_CURRENT_BINARY_DIR}/_build
-    CACHE_DIR  ${CMAKE_CURRENT_BINARY_DIR}/_doctrees
-    HTML_DIR   ${CMAKE_CURRENT_BINARY_DIR}/html
-    #ENV_PATH    ${CMAKE_BINARY_DIR}
-    COMMENT "HTML documentation"
-  )
-
-  install(DIRECTORY   ${CMAKE_CURRENT_BINARY_DIR}/html
-          DESTINATION ${CMAKE_INSTALL_PREFIX}/share/doc)
+# ------------------------------------------------------------------------------
+if(${PROJECT_NAME}_ENABLE_DOCUMENTATION)
+  include(${PROJECT_UTILS_CMAKE_DIR}/build_documentation.cmake)
+  build_documentation()
 endif()
 
 
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Summary
-# ----------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 get_directory_property(top_lvl_cmakelists PARENT_DIRECTORY)
 if(top_lvl_cmakelists STREQUAL ${PROJECT_SOURCE_DIR})
   include(FeatureSummary)
-  FEATURE_SUMMARY(WHAT ALL)
+  feature_summary(WHAT ALL)
 endif()

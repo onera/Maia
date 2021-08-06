@@ -81,8 +81,8 @@ elt_distributions(const Tree_range& sorted_elt_sections, MPI_Comm comm) {
     auto partial_dist = cgns::get_node_value_by_matching<I8>(elt,":CGNS#Distribution/Element");
     auto dist_I8 = distribution_from_partial(partial_dist,comm);
     //dists[i].resize(dist_I8.size()); // TODO make resize accessible
-    dists[i] = distribution_vector<I4>();
-    std::copy(begin(dist_I8),end(dist_I8),begin(dists));
+    dists[i] = distribution_vector<I4>(dist_I8.size());
+    std::copy(begin(dist_I8),end(dist_I8),begin(dists[i]));
   }
   return dists;
 }

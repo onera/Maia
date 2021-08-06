@@ -17,7 +17,7 @@ job:build:
     GIT_SUBMODULE_STRATEGY: normal
   stage: build
   before_script:
-  - module load CFD/5.0-intel-19.impi-19 cmake/3.12.3 gcc/9.2
+  - module load CFD/5.0-intel-19.impi-19 cmake/3.19-gnu gcc/9.2
   - export CXX=/opt/tools/gcc-9.2/bin/g++
   - export CASSIOPEE=/scratchm/jcoulet/aa_install_py3/Cassiopee/
   - export ELSAPROD=spiro_mpi_py3
@@ -26,9 +26,10 @@ job:build:
   - export PARADIGM_HOME=/scratchm/jcoulet/aa_install_py3/paradigma-dbg
   - export PYTHONPATH=$PARADIGM_HOME/lib/python3.7/site-packages:$PYTHONPATH
   - export LD_LIBRARY_PATH=$PARADIGM_HOME/lib:$LD_LIBRARY_PATH
+  - export CMAKE_PREFIX_PATH=$PARADIGM_HOME:$CMAKE_PREFIX_PATH
   script:
     - mkdir build && cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DMAIA_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPYBIND11_INSTALL=ON -DMAIA_USE_PDM_INSTALL=ON -Dpdm_DIR=$PARADIGM_HOME/lib/cmake ../
+    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPYBIND11_INSTALL=ON -Dmaia_USE_PDM_INSTALL=ON ../
     - make -j8
   cache:
     paths:

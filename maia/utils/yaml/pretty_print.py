@@ -16,21 +16,19 @@ def yaml_tree_to_string(yaml_dict,prefix="",first=True):
       prefix_first_line_new = ""
       prefix_new = ""
 
-    print("node = ",node)
     res_str += prefix_first_line_new + node + "\n"
     if sub_nodes is not None:
       res_str += yaml_tree_to_string(sub_nodes,prefix_new,False)
   return res_str
 
 
-def pretty_tree(yaml_str):
-  if yaml_str=="":
+def pretty_tree(yaml_stream):
+  if yaml_stream=="":
     return []
   else:
     yaml = YAML(typ="safe")
-    print(yaml_str);
-    yaml_dict = yaml.load(yaml_str)
+    yaml_dict = yaml.load(yaml_stream)
     return yaml_tree_to_string(yaml_dict)
 
-def pretty_print(yaml_str):
-  print(pretty_tree(yaml_str))
+def pretty_print(yaml_stream):
+  print(pretty_tree(yaml_stream))
