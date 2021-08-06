@@ -1,14 +1,10 @@
 import inspect
-from functools import partial
-import sys
+from   functools import partial
 import numpy as np
-import Converter.Internal as I
-import maia.utils.py_utils as PYU
 
 from .predicate import match_name, match_value, match_label, \
     match_name_value, match_name_label, match_value_label, match_name_value_label
 
-module_object = sys.modules["maia.sids.Internal_ext"] #Todo JC : replace with __name__
 MAXDEPTH = 10
 
 allfuncs = {
@@ -68,28 +64,28 @@ def _overload_predicate(function, suffix, predicate_signature):
 
 def generate_functions(function, maxdepth=MAXDEPTH, easypredicates=allfuncs):
   """
-  From a XXXFromPredicate function, generate and register in module 
+  From a XXXFromPredicate function, generate :
     - the depth variants XXXFromPredicateN from 1 to maxdepth
     - the 'easy predicate' variants XXXFromName, XXXFromLabel, etc. depending on easy_predicates
     - the easy predicate + depth variants XXXFromNameN
     - the snake case functions
+  Return a dictionnary containing name of generated functions and generated functions
   """
+  generated = {}
   #Generate Predicate function with specific level
   for depth in range(1,maxdepth+1):
     func = _overload_depth(function, depth) 
-    setattr(module_object, func.__name__, func)
-    setattr(module_object, PYU.camel_to_snake(func.__name__), func)
+    generated[func.__name__] = func
 
   for suffix, predicate_signature in easypredicates.items():
 
     #Generate Name,Type,etc function without specific level ...
     func = _overload_predicate(function, suffix, predicate_signature)
-    setattr(module_object, func.__name__, func)
-    setattr(module_object, PYU.camel_to_snake(func.__name__), func)
+    generated[func.__name__] = func
 
     # ... and with specific level
     for depth in range(1,maxdepth+1):
       dfunc = _overload_depth(func, depth) 
-      setattr(module_object, dfunc.__name__, dfunc)
-      setattr(module_object, PYU.camel_to_snake(dfunc.__name__), dfunc)
+      generated[dfunc.__name__] = dfunc
 
+  return generated
