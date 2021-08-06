@@ -26,6 +26,7 @@ job:build:
   - export PARADIGM_HOME=/scratchm/jcoulet/aa_install_py3/paradigma-dbg
   - export PYTHONPATH=$PARADIGM_HOME/lib/python3.7/site-packages:$PYTHONPATH
   - export LD_LIBRARY_PATH=$PARADIGM_HOME/lib:$LD_LIBRARY_PATH
+  - export CMAKE_PREFIX_PATH=$PARADIGM_HOME:$CMAKE_PREFIX_PATH
   script:
     - mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPYBIND11_INSTALL=ON -Dmaia_USE_PDM_INSTALL=ON ../
