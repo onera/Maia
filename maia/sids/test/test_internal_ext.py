@@ -298,7 +298,7 @@ Base CGNSBase_t:
   with pytest.raises(I.CGNSNodeFromPredicateNotFoundError):
     I.get_node_from_name_and_label(tree, "ZoneI", "Family_t")
 
-  base = I.get_base(tree) # get the first base
+  base = I.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
   node = I.request_node_from_name_and_label1(base, "ZoneI", "Zone_t")
   assert I.get_name(node) == "ZoneI" and I.get_label(node) == "Zone_t"
   assert I.request_node_from_name_and_label1(base, "ZoneB", "Zone_t")   == None
@@ -651,7 +651,7 @@ Base CGNSBase_t:
         PL3J DataArray_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  base = I.get_base(tree)
+  base = I.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
 
   # walker = I.NodesWalker(tree, lambda n: fnmatch.fnmatch(n[0], 'Zone*'))
   # walker.search = 'bfs'
@@ -1097,7 +1097,7 @@ Base CGNSBase_t:
   # Camel case
   # ----------
   # Test from Name
-  base = I.getBase(tree)
+  base = I.getBases(tree)[0]
   nodes_from_name1 = ["ZoneI"]
   assert [I.getName(n) for n in I.getNodesFromPredicate1(base, lambda n: I.getName(n) == "ZoneI")] == nodes_from_name1
   # Wildcard is not allowed in getNodesFromName1() from Cassiopee
@@ -1112,7 +1112,7 @@ Base CGNSBase_t:
   assert [I.getLabel(n) for n in I.getNodesFromLabel1(base, CGL.Zone_t.name)] == nodes_from_type1
 
   # Test from Value
-  zone = I.getZone(tree)
+  zone = I.getNodeFromLabel(tree, 'Zone_t')
   ngon_value = np.array([22,0], dtype=np.int32)
   elements_from_type_value1 = [ngon_value[0]]
   assert [I.getVal(n)[0] for n in I.getNodesFromPredicate1(zone, lambda n: I.getLabel(n) == CGL.Elements_t.name and np.array_equal(I.getVal(n), ngon_value))] == elements_from_type_value1
@@ -1124,7 +1124,7 @@ Base CGNSBase_t:
   # Snake case
   # ----------
   # Test from Name
-  base = I.get_base(tree)
+  base = I.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
   nodes_from_name1 = ["ZoneI"]
   assert [I.get_name(n) for n in I.get_nodes_from_predicate1(base, lambda n: I.get_name(n) == "ZoneI")] == nodes_from_name1
   assert [I.get_name(n) for n in I.get_nodes_from_predicate1(base, lambda n: fnmatch.fnmatch(I.get_name(n), "Zone*"))] == nodes_from_name1
@@ -1137,7 +1137,7 @@ Base CGNSBase_t:
   assert [I.get_label(n) for n in I.get_nodes_from_label1(base, CGL.Zone_t.name)] == nodes_from_type1
 
   # Test from Value
-  zone = I.get_zone(tree)
+  zone = I.getNodeFromLabel(tree, 'Zone_t')
   ngon_value = np.array([22,0], dtype=np.int32)
   elements_from_type_value1 = [ngon_value[0]]
   assert [I.get_val(n)[0] for n in I.get_nodes_from_predicate1(zone, lambda n: I.get_label(n) == CGL.Elements_t.name and np.array_equal(I.get_val(n), ngon_value))] == elements_from_type_value1
@@ -1380,7 +1380,7 @@ Base CGNSBase_t:
         Index_vi IndexArray_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  base = I.get_base(tree)
+  base = I.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
 
   assert [I.getValue(n) for n in I.iterNodesFromPredicates(tree, [lambda n: I.getLabel(n) == "FamilyName_t"])] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
 
@@ -1444,7 +1444,7 @@ Base CGNSBase_t:
         Index_vi IndexArray_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  base = I.get_base(tree)
+  base = I.getNodesFromLabelCGNSBase(tree)[0]
 
   results = I.getNodesFromPredicates(tree, [lambda n: I.getLabel(n) == "FamilyName_t"])
   assert [I.getValue(n) for n in results] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
@@ -1667,33 +1667,27 @@ Base CGNSBase_t:
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   # Camel case
   # ==========
-  assert([I.getName(n) for n in I.getAllBase(tree)] == ['Base'])
-  assert([I.getName(n) for n in I.getAllZone(tree)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in I.getAllElements(tree)] == ['NgonI', 'NgonJ'])
-  assert([I.getName(n) for n in I.getAllZoneBC(tree)] == ['ZBCAI', 'ZBCBI', 'ZBCAJ', 'ZBCBJ'])
-  assert([I.getName(n) for n in I.getAllBC(tree)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in I.getNodesFromLabelCGNSBase(tree)] == ['Base'])
+  assert([I.getName(n) for n in I.getNodesFromLabelZone(tree)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in I.getNodesFromLabelElements(tree)] == ['NgonI', 'NgonJ'])
+  assert([I.getName(n) for n in I.getNodesFromLabelZoneBC(tree)] == ['ZBCAI', 'ZBCBI', 'ZBCAJ', 'ZBCBJ'])
+  assert([I.getName(n) for n in I.getNodesFromLabelBC(tree)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
-  assert([I.getName(n) for n in I.getAllBase1(tree)] == ['Base'])
-  assert([I.getName(n) for n in I.getAllZone1(tree)] == [])
-  assert([I.getName(n) for n in I.getAllZone2(tree)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in I.getAllElements1(tree)] == [])
-  assert([I.getName(n) for n in I.getAllElements2(tree)] == [])
-  assert([I.getName(n) for n in I.getAllElements3(tree)] == ['NgonI', 'NgonJ'])
+  assert([I.getName(n) for n in I.getNodesFromLabelCGNSBase(tree, depth=1)] == ['Base'])
+  assert([I.getName(n) for n in I.getNodesFromLabelZone(tree, depth=1)] == [])
+  assert([I.getName(n) for n in I.getNodesFromLabelZone(tree, depth=2)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in I.getNodesFromLabelElements(tree, depth=1)] == [])
+  assert([I.getName(n) for n in I.getNodesFromLabelElements(tree, depth=2)] == [])
+  assert([I.getName(n) for n in I.getNodesFromLabelElements(tree, depth=3)] == ['NgonI', 'NgonJ'])
 
   # Snake case
   # ==========
-  assert([I.get_name(n) for n in I.get_all_base(tree)] == ['Base'])
-  assert([I.get_name(n) for n in I.get_all_zone(tree)] == ['ZoneI', 'ZoneJ'])
-  assert([I.get_name(n) for n in I.get_all_elements(tree)] == ['NgonI', 'NgonJ'])
-  assert([I.get_name(n) for n in I.get_all_zone_bc(tree)] == ['ZBCAI', 'ZBCBI', 'ZBCAJ', 'ZBCBJ'])
-  assert([I.get_name(n) for n in I.get_all_bc(tree)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in I.get_nodes_from_label_cgns_base(tree)] == ['Base'])
+  assert([I.getName(n) for n in I.get_nodes_from_label_zone(tree)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in I.get_nodes_from_label_elements(tree)] == ['NgonI', 'NgonJ'])
+  assert([I.getName(n) for n in I.get_nodes_from_label_zone_bc(tree)] == ['ZBCAI', 'ZBCBI', 'ZBCAJ', 'ZBCBJ'])
+  assert([I.getName(n) for n in I.get_nodes_from_label_bc(tree)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
-  assert([I.get_name(n) for n in I.get_all_base1(tree)] == ['Base'])
-  assert([I.get_name(n) for n in I.get_all_zone1(tree)] == [])
-  assert([I.get_name(n) for n in I.get_all_zone2(tree)] == ['ZoneI', 'ZoneJ'])
-  assert([I.get_name(n) for n in I.get_all_elements1(tree)] == [])
-  assert([I.get_name(n) for n in I.get_all_elements2(tree)] == [])
-  assert([I.get_name(n) for n in I.get_all_elements3(tree)] == ['NgonI', 'NgonJ'])
 
 def test_getCGNSName():
   yt = """
@@ -1708,35 +1702,26 @@ Base CGNSBase_t:
 
   # Camel case
   # ==========
-  assert(I.getName(I.getCoordinateX(tree)) == 'CoordinateX')
-  assert(I.getName(I.getCoordinateY(tree)) == 'CoordinateY')
-  assert(I.getName(I.getCoordinateZ(tree)) == 'CoordinateZ')
+  assert(I.getName(I.getNodesFromNameCoordinateX(tree)[0]) == 'CoordinateX')
+  assert(I.getName(I.getNodesFromNameCoordinateY(tree)[0]) == 'CoordinateY')
+  assert(I.getName(I.getNodesFromNameCoordinateZ(tree)[0]) == 'CoordinateZ')
 
   grid_coordinates_node = I.getNodeFromLabel(tree,'GridCoordinates_t')
-  assert(I.getName(I.getCoordinateX1(grid_coordinates_node)) == 'CoordinateX')
-  assert(I.getName(I.getCoordinateY1(grid_coordinates_node)) == 'CoordinateY')
-  assert(I.getName(I.getCoordinateZ1(grid_coordinates_node)) == 'CoordinateZ')
+  assert(I.getName(I.getNodesFromNameCoordinateX(grid_coordinates_node, depth=1)[0]) == 'CoordinateX')
+  assert(I.getName(I.getNodesFromNameCoordinateY(grid_coordinates_node, depth=1)[0]) == 'CoordinateY')
+  assert(I.getName(I.getNodesFromNameCoordinateZ(grid_coordinates_node, depth=1)[0]) == 'CoordinateZ')
 
   zone_node = I.getNodeFromLabel(tree,'Zone_t')
-  assert(I.getName(I.getCoordinateX2(zone_node)) == 'CoordinateX')
-  assert(I.getName(I.getCoordinateY2(zone_node)) == 'CoordinateY')
-  assert(I.getName(I.getCoordinateZ2(zone_node)) == 'CoordinateZ')
+  assert(I.getNodesFromNameCoordinateX(zone_node, depth=1) == [])
+  assert(I.getNodesFromNameCoordinateY(zone_node, depth=1) == [])
+  assert(I.getNodesFromNameCoordinateZ(zone_node, depth=1) == [])
 
   # Snake case
   # ==========
-  assert(I.get_name(I.get_coordinate_x(tree)) == 'CoordinateX')
-  assert(I.get_name(I.get_coordinate_y(tree)) == 'CoordinateY')
-  assert(I.get_name(I.get_coordinate_z(tree)) == 'CoordinateZ')
+  assert(I.get_name(I.get_nodes_from_name_coordinate_x(tree)[0]) == 'CoordinateX')
+  assert(I.get_name(I.get_nodes_from_name_coordinate_y(tree)[0]) == 'CoordinateY')
+  assert(I.get_name(I.get_nodes_from_name_coordinate_z(tree)[0]) == 'CoordinateZ')
 
-  grid_coordinates_node = I.get_node_from_label(tree,'GridCoordinates_t')
-  assert(I.get_name(I.get_coordinate_x1(grid_coordinates_node)) == 'CoordinateX')
-  assert(I.get_name(I.get_coordinate_y1(grid_coordinates_node)) == 'CoordinateY')
-  assert(I.get_name(I.get_coordinate_z1(grid_coordinates_node)) == 'CoordinateZ')
-
-  zone_node = I.get_node_from_label(tree,'Zone_t')
-  assert(I.get_name(I.get_coordinate_x2(zone_node)) == 'CoordinateX')
-  assert(I.get_name(I.get_coordinate_y2(zone_node)) == 'CoordinateY')
-  assert(I.get_name(I.get_coordinate_z2(zone_node)) == 'CoordinateZ')
 
 def test_getNodesDispatch1():
   fs = I.newFlowSolution()

@@ -21,16 +21,18 @@ allfuncs = {
   'NameValueAndLabel': (match_name_value_label, ('name', 'value', 'label',)),
 }
 
+def _func_name(function):
+  #Partial functions does not have __name__, but .func.__name__ Manage both with try/except
+  try:
+    return function.__name__
+  except AttributeError:
+    return function.func.__name__
 
 def _overload_depth(function, depth):
   """
   Return a new function (with update doc and name) build from function with fixed parameter depth=depth
   """
-  #Partial functions does not have __name__, but .func.__name__ Manage both with try/except
-  try:
-    input_name = function.__name__
-  except AttributeError:
-    input_name = function.func.__name__
+  input_name = _func_name(function)
 
   func = partial(function, depth=depth)
   func.__name__ = f"{input_name}{depth}"
@@ -44,9 +46,9 @@ def _overload_predicate(function, suffix, predicate_signature):
   predicate_signature is the tuple (predicate_function, predicate_name_of_arguments) where
   predicate_name_of_arguments does not include node
   """
-  input_name = function.__name__
+  input_name = _func_name(function)
   predicate, nargs = predicate_signature
-  predicate_info = f"{predicate.__name__}{inspect.signature(predicate)}"
+  predicate_info = f"{_func_name(predicate)}{inspect.signature(predicate)}"
 
   #Creation of the specialized function : arguments are the new predicate function + the name of the
   #arguements of this predicated function
@@ -91,38 +93,3 @@ def generate_functions(function, maxdepth=MAXDEPTH, easypredicates=allfuncs):
       setattr(module_object, dfunc.__name__, dfunc)
       setattr(module_object, PYU.camel_to_snake(dfunc.__name__), dfunc)
 
-#Generation for cgns names
-# --------------------------------------------------------------------------
-#
-#   getAcoustic, ..., getCoordinateX, ..., getZoneSubRegionPointers
-#
-# --------------------------------------------------------------------------
-def create_functions_name(create_function, name):
-  snake_name = PYU.camel_to_snake(name)
-
-  # Generate getAcoustic, ..., getCoordinateX, ..., getZoneSubRegionPointers
-  funcname = f"get{name}"
-  func = create_function(match_name, ('name',), (name,))
-  func.__name__ = funcname
-  func.__doc__  = """get the CGNS node with name {0}.""".format(name)
-  setattr(module_object, funcname, partial(func, search='dfs'))
-  # Generate get_acoustic, ..., get_coordinate_x, ..., get_zone_sub_region_pointers
-  funcname = f"get_{snake_name}"
-  func = create_function(match_name, ('name',), (name,))
-  func.__name__ = funcname
-  func.__doc__  = """get the CGNS node with name {0}.""".format(name)
-  setattr(module_object, funcname, partial(func, search='dfs'))
-
-  for depth in range(1,MAXDEPTH+1):
-    # Generate getAcoustic1, ..., getCoordinateX1, ..., getZoneSubRegionPointers1
-    funcname = f"get{name}{depth}"
-    func = create_function(match_name, ('name',), (name,))
-    func.__name__ = funcname
-    func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
-    setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
-    # Generate get_acoustic1, ..., get_coordinateX1, ..., get_zone_sub_region_pointers1
-    funcname = f"get_{snake_name}{depth}"
-    func = create_function(match_name, ('name',), (name,))
-    func.__name__ = funcname
-    func.__doc__  = """get the CGNS node with name {0} with depth={1}""".format(name, depth)
-    setattr(module_object, funcname, partial(func, search='dfs', depth=depth))
