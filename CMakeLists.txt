@@ -40,6 +40,7 @@ option(${PROJECT_NAME}_ENABLE_FETCH_PYBIND "Fetch Pybind11 sources on-the-fly if
 option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF)
 option(${PROJECT_NAME}_ENABLE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
 option(${PROJECT_NAME}_USE_PDM_INSTALL "Use an installed ParaDiGM version" ON)
+option(${PROJECT_NAME}_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
 
 ## Compiler flags
 ### C++ standard
@@ -107,6 +108,7 @@ project_add_dependency(range-v3)
 ### ParaDiGM ###
 if (${PROJECT_NAME}_USE_PDM_INSTALL)
   project_find_package(pdm CONFIG REQUIRED)
+  project_find_package(pdma CONFIG)
 else()
   # Maia uses ParaDiGM with these options
   set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"      FORCE)

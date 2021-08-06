@@ -26,8 +26,7 @@ create_doctest(
 set_tests_properties(maia_doctest_unit_tests PROPERTIES TIMEOUT 10)
 
 
-option(MAIA_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
-if(MAIA_ENABLE_MPI_TESTS)
+if (${PROJECT_NAME}_ENABLE_MPI_TESTS)
   create_pytest(
     TESTED_FOLDER ${PROJECT_SOURCE_DIR}/maia
     LABEL         unit_tests

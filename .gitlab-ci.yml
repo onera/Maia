@@ -28,7 +28,7 @@ job:build:
   - export LD_LIBRARY_PATH=$PARADIGM_HOME/lib:$LD_LIBRARY_PATH
   script:
     - mkdir build && cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPYBIND11_INSTALL=ON -Dmaia_USE_PDM_INSTALL=ON -Dpdm_DIR=$PARADIGM_HOME/lib/cmake ../
+    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPYBIND11_INSTALL=ON -Dmaia_USE_PDM_INSTALL=ON ../
     - make -j8
   cache:
     paths:
