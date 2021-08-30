@@ -20,16 +20,17 @@ def match_label(n, label: str):
   return n[__LABEL__] == label
 
 def match_name_value(n, name: str, value):
-  return fnmatch.fnmatch(n[__NAME__], name) and np.array_equal(n[__VALUE__], value)
+  return match_name(n, name) and match_value(n, value)
 
 def match_name_label(n, name: str, label: str):
-  return n[__LABEL__] == label and fnmatch.fnmatch(n[__NAME__], name)
-
-def match_name_value_label(n, name: str, value, label: str):
-  return n[__LABEL__] == label and fnmatch.fnmatch(n[__NAME__], name) and np.array_equal(n[__VALUE__], value)
+  return match_name(n, name) and match_label(n, label)
 
 def match_value_label(n, value, label: str):
-  return n[__LABEL__] == label and np.array_equal(n[__VALUE__], value)
+  return match_value(n, value) and match_label(n, label)
+
+def match_name_value_label(n, name: str, value, label: str):
+  return match_name(n, name) and match_value(n, value) and match_label(n, label)
+
 
 
 def auto_predicate(query):
@@ -43,7 +44,7 @@ def auto_predicate(query):
   elif callable(query):
     predicate = query
   elif isinstance(query, np.ndarray):
-    predicate = partial(match_value, value=predicate)
+    predicate = partial(match_value, value=query)
   else:
     raise TypeError("predicate must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
   return predicate

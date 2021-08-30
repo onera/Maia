@@ -62,13 +62,17 @@ def is_valid_name(name: str):
 
 def is_valid_value(value):
   """
-  Return True if label is a valid Python/CGNS Label
+  Return True if value is a valid Python/CGNS Value
   """
-  return isinstance(value, np.ndarray) and np.isfortran(value) if value.ndim > 1 else True
+  if value is None:
+    return True
+  if isinstance(value, np.ndarray):
+    return value.flags.f_contiguous if value.ndim > 1 else True
+  return False
 
 def is_valid_children(children):
   """
-  Return True if label is a valid Python/CGNS Children
+  Return True if children is a valid Python/CGNS Children
   """
   return isinstance(children, (list, tuple))
 
@@ -101,13 +105,13 @@ def check_label(label):
 
 # --------------------------------------------------------------------------
 def is_valid_node(node):
-  if not isinstance(node, list) and len(node) != 4 and \
+  if isinstance(node, list) and len(node) == 4 and \
       is_valid_name(I.getName(node))         and \
-      is_valid_value(I.getValue(node))       and \
+      is_valid_value(I.getVal(node))       and \
       is_valid_children(I.getChildren(node)) and \
-      is_valid_label(I.getName(node)) :
-    return False
-  return True
+      is_valid_label(I.getType(node)) :
+    return True
+  return False
 
 # --------------------------------------------------------------------------
 def check_is_label(label, n=0):
