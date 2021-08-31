@@ -124,8 +124,9 @@ template<class C0, class C1, class Connectivity_kind>
 class indexed_poly_connectivity_range {
   public:
   // type traits
-    using I0 = std_e::add_other_type_constness<typename C0::value_type,C0>; // If the range is const, then make the content const
-    using I1 = std_e::add_other_type_constness<typename C1::value_type,C1>; // If the range is const, then make the content const
+    // TODO improve this (note: using pointer to circumvent the const problem with span::value_type)
+    using I0 = std_e::add_other_type_constness<std::remove_pointer_t<typename C0::pointer>,C0>; // If the range is const, then make the content const
+    using I1 = std_e::add_other_type_constness<std::remove_pointer_t<typename C1::pointer>,C1>; // If the range is const, then make the content const
     using index_type = std::remove_const_t<I1>;
     using kind = Connectivity_kind;
 

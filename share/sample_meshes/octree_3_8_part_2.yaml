@@ -89,14 +89,14 @@ Base CGNSBase_t I4 [3,3]:
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[1,2,3,4]]:
         BCDataSet BCDataSet_t "Null":
-          DonorPointsCoordinates BCData_t:
+          DonorPointCoordinates BCData_t:
             CoordinateX DataArray_t R8 [2.5, 2.5, 2.5, 2.5]:
             CoordinateY DataArray_t R8 [0.5, 1.5, 0.5, 1.5]:
             CoordinateZ DataArray_t R8 [0.5, 0.5, 1.5, 1.5]:
-          WallPointsCoordinates BCData_t:
-            CoordinateX DataArray_t R8 [0.0, 0.0, 0.0, 0.0]:
-            CoordinateY DataArray_t R8 [0.5, 1.5, 0.5, 1.5]:
-            CoordinateZ DataArray_t R8 [0.5, 0.5, 1.5, 1.5]:
+          WallPointCoordinates BCData_t:
+            CoordinateX DataArray_t R8 [-0.5, -0.5, -0.5, -0.5]:
+            CoordinateY DataArray_t R8 [ 0.5,  1.5,  0.5,  1.5]:
+            CoordinateZ DataArray_t R8 [ 0.5,  0.5,  1.5,  1.5]:
       Right BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[5]]:
@@ -171,14 +171,14 @@ Base CGNSBase_t I4 [3,3]:
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[1]]:
         BCDataSet BCDataSet_t "Null":
-          DonorPointsCoordinates BCData_t:
+          DonorPointCoordinates BCData_t:
             CoordinateX DataArray_t R8 [2.5]:
             CoordinateY DataArray_t R8 [3.0]:
             CoordinateZ DataArray_t R8 [1.0]:
-          WallPointsCoordinates BCData_t:
-            CoordinateX DataArray_t R8 [0.0]:
-            CoordinateY DataArray_t R8 [3.0]:
-            CoordinateZ DataArray_t R8 [1.0]:
+          WallPointCoordinates BCData_t:
+            CoordinateX DataArray_t R8 [-0.5]:
+            CoordinateY DataArray_t R8 [ 3.0]:
+            CoordinateZ DataArray_t R8 [ 1.0]:
       Right BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[2]]:
