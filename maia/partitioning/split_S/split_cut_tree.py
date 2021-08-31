@@ -74,7 +74,7 @@ def bct_to_partitions_bounds(tree, dims, w_tree=None):
 
   return parts
 
-def split_S_block(dims, n_parts, weights = None, max_it = 1E6):
+def split_S_block(dims, n_parts, weights = None, max_it = 720):
   """ Top level function. Split a structured block of number of cells
   dims into n_parts partitions.
   If weights is None, all the produced partition are (more or less) of

@@ -81,9 +81,14 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
   proc_elmts = [n_elmts[i_rank] for n_elmts in repart_per_zone.values()]
   LOG.info(' '*2 + '-'*20 + " REPARTITION FOR RANK {0:04d} ".format(i_rank) + '-'*19)
   LOG.info(' '*4 + "    zoneName  zoneSize :  procElem nPart TnPart %ofZone %ofProc")
+  if sum(proc_elmts) == 0:
+    LOG.warning(f"Proc {i_rank} was not affected to any zone")
   for izone, zone in enumerate(repart_per_zone.keys()):
     zone_pc = np.around(100*proc_elmts[izone]/nb_elmt_per_zone[zone])
-    proc_pc = np.around(100*proc_elmts[izone]/sum(proc_elmts))
+    try:
+      proc_pc = np.around(100*proc_elmts[izone]/sum(proc_elmts))
+    except ZeroDivisionError:
+      proc_pc = 0.
     LOG.info(' '*4 + "{0:>12.12} {1:9d} : {2:9d} {3:>5} {4:>6}  {5:>6}  {6:>6}".format(
       zone, nb_elmt_per_zone[zone], proc_elmts[izone], n_part[izone], tn_part[izone], zone_pc, proc_pc))
   LOG.info('')
