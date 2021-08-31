@@ -138,6 +138,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Ordinal'))
             I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'OrdinalOpp'))
             I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Transform'))
+            I._addChild(part_bc, I.getNodeFromType1(dist_bc, 'GridConnectivityProperty_t'))
             I.createChild(part_bc, 'distPR', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRange')[1])
             I.createChild(part_bc, 'distPRDonor', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRangeDonor')[1])
             I.newDataArray('zone_offset', p_zone_offset, parent=part_bc)
@@ -305,6 +306,7 @@ def split_original_joins_S(all_part_zones, comm):
             part_gc = I.newGridConnectivity1to1(gc_name, opp_zone,
                                                 pointRange=sub_pr, pointRangeDonor=sub_prd,
                                                 transform = transform, parent=zone_gc)
+            I._addChild(part_gc, I.getNodeFromType1(jn, 'GridConnectivityProperty_t'))
             I.newGridLocation('Vertex', parent=part_gc)
             i_sub_jn += 1
     #Cleanup
