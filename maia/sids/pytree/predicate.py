@@ -2,6 +2,8 @@ import fnmatch
 from functools import partial
 import numpy as np
 
+import Converter.Internal as I
+
 import maia.sids.cgns_keywords as CGK
 from .compare import is_valid_label
 
@@ -31,7 +33,21 @@ def match_value_label(n, value, label: str):
 def match_name_value_label(n, name: str, value, label: str):
   return match_name(n, name) and match_value(n, value) and match_label(n, label)
 
-
+def belongs_to_family(n, target_family, allow_additional=False):
+  """
+  Return True if the node n has a FamilyName_t child whose value is target_family.
+  If allow_additional is True, also return True if node n has a AdditionalFamilyName_t child
+  whose value is target_family
+  """
+  from .walkers_api import requestNodeFromPredicate, iterNodesFromPredicate
+  family_name_n = requestNodeFromPredicate(n, lambda m: match_label(m, "FamilyName_t"), depth=1)
+  if family_name_n and I.getValue(family_name_n) == target_family:
+    return True
+  if allow_additional:
+    for additional_family_n in iterNodesFromPredicate(n, lambda m: match_label(m, "AdditionalFamilyName_t"), depth=1):
+      if I.getValue(additional_family_n) == target_family:
+        return True
+  return False
 
 def auto_predicate(query):
   if isinstance(query, str):

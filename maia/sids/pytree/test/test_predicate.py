@@ -29,6 +29,25 @@ def test_matches():
   assert not P.match_value_label(nface, np.array([22,0]), 'Elements_t')
   assert P.match_name_value_label(nface, 'NFace', np.array([23,0]), 'Elements_t')
 
+def test_belongs_to_family():
+  yt = """
+ZBC ZoneBC_t:
+  BC1 BC_t:
+    FamilyName FamilyName_t "SecondFamily":
+  BC3 BC_t:
+    SubBC BC_t:
+      FamilyName FamilyName_t "FirstFamily":
+  BC4 BC_t:
+    FamilyName FamilyName_t "SecondFamily":
+    AdditionalFamilyName AdditionalFamilyName_t "ThirdFamily":
+    AdditionalFamilyName AdditionalFamilyName_t "FirstFamily":
+"""
+  node = parse_yaml_cgns.to_node(yt)
+  assert P.belongs_to_family(I.getNodeFromName(node, 'BC1'), 'SecondFamily')  == True
+  assert P.belongs_to_family(I.getNodeFromName(node, 'BC3'), 'FirstFamily') == False
+  assert P.belongs_to_family(I.getNodeFromName(node, 'BC4'), 'FirstFamily') == False
+  assert P.belongs_to_family(I.getNodeFromName(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
+
  
 def test_auto_predicate():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
