@@ -51,7 +51,7 @@ def load_grid_connectivity_property(filename, tree):
   # Prepare pathes
   zgc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t'
   gc_prop_pathes = []
-  for zone_gc in IE.iterNodesByMatching(tree, zgc_t_path):
+  for base,zone,zone_gc in IE.iterNodesWithParentsByMatching(tree, zgc_t_path):
     gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') \
         + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
     for gc in gcs:
