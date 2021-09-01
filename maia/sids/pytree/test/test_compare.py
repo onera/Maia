@@ -43,11 +43,12 @@ def test_check_children():
     PT.check_children(123)
 
 def test_is_valid_label():
-  assert PT.is_valid_label('') == True
+  assert PT.is_valid_label('') == False
   assert PT.is_valid_label('BC') == False
   assert PT.is_valid_label('BC_t') == True
   assert PT.is_valid_label('BC_toto') == False
-  assert PT.is_valid_label('FakeLabel_t') == False
+  assert PT.is_valid_label('FakeLabel_t', only_sids=False) == True
+  assert PT.is_valid_label('FakeLabel_t', only_sids=True) == False
 
   assert PT.is_valid_label(CGL.BC_t.name) == True
 

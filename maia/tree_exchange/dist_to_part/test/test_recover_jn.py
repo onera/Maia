@@ -103,7 +103,7 @@ ZoneB.P1.N1 Zone_t:
     assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/PointListDonor')[1] == [20,12,8]).all()
     assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/Donor')[1][:,0] == [1,1,1]).all()
     assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/Donor')[1][:,1] == [0,0,0]).all()
-    assert I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB')[1] == 'ZoneB'
+    assert I.getValue(I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB')) == 'ZoneB'
   if sub_comm.Get_rank() == 1:
     assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/PointListDonor')[1] == [9,1,5]).all()
     assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/Donor')[1][:,0] == [1,1,1]).all()
@@ -114,5 +114,5 @@ ZoneB.P1.N1 Zone_t:
     assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/PointListDonor')[1] == [2]).all()
     assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/Donor')[1][:,0] == [1]).all()
     assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/Donor')[1][:,1] == [0]).all()
-    assert I.getNodeFromPath(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB')[1] == 'ZoneB'
-    assert I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA')[1] == 'ZoneA'
+    assert I.getValue(I.getNodeFromPath(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB')) == 'ZoneB'
+    assert I.getValue(I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA')) == 'ZoneA'

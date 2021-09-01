@@ -58,7 +58,10 @@ def is_valid_name(name: str):
   """
   Return True if name is a valid Python/CGNS name
   """
-  return isinstance(name, str) #and len(label) < 32
+  if isinstance(name, str):
+    if name not in ['', '.', '..'] and not '/' in name:
+      return len(name) <= 32
+  return False
 
 def is_valid_value(value):
   """
@@ -76,11 +79,19 @@ def is_valid_children(children):
   """
   return isinstance(children, (list, tuple))
 
-def is_valid_label(label):
+def is_valid_label(label, only_sids: Optional[bool]=False):
   """
   Return True if label is a valid Python/CGNS Label
   """
-  return isinstance(label, str) and ((label.endswith('_t') and label in CGK.Label.__members__) or label == '')
+  legacy_labels     = ['"int[1+...+IndexDimension]"', '"int[IndexDimension]"', '"int"']
+  additional_labels = ['DiffusionModel_t', 'Transform_t', 'InwardNormalIndex_t', 'EquationDimension_t']
+
+  if isinstance(label, str) and (label.endswith('_t') or label in legacy_labels):
+    if only_sids:
+      return label in CGK.Label.__members__ or label in legacy_labels or label in additional_labels
+    else:
+      return True
+  return False
 
 # --------------------------------------------------------------------------
 def check_name(name: str):
@@ -106,9 +117,9 @@ def check_label(label):
 # --------------------------------------------------------------------------
 def is_valid_node(node):
   if isinstance(node, list) and len(node) == 4 and \
-      is_valid_name(I.getName(node))         and \
-      is_valid_value(I.getVal(node))       and \
-      is_valid_children(I.getChildren(node)) and \
+      is_valid_name(I.getName(node))           and \
+      is_valid_value(I.getVal(node))           and \
+      is_valid_children(I.getChildren(node))   and \
       is_valid_label(I.getType(node)) :
     return True
   return False
