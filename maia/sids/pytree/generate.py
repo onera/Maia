@@ -9,58 +9,71 @@ import maia.utils.py_utils as PYU
 from .generate_utils import generate_functions
 from .predicate      import match_name, match_label
 
-from .remove_nodes import rmChildrenFromPredicate, keepChildrenFromPredicate, rmNodesFromPredicate
-from .walkers_api  import requestNodeFromPredicate, getNodeFromPredicate, \
-                          getNodesFromPredicate,  iterNodesFromPredicate, \
-                          getNodesFromPredicates, iterNodesFromPredicates
+from .             import walkers_api as WAPI
+from .remove_nodes import rm_children_from_predicate, keep_children_from_predicate, rm_nodes_from_predicate
 
-def _update_module_attributes(new_functions, enable_snake=True):
+def _update_module_attributes(new_functions):
   for name, func in new_functions.items():
     setattr(module_object, name, func)
-    #Todo : We could update adapt camel_to_snake to avoid conversion of CGNSLabel
-    if enable_snake:
-      setattr(module_object, PYU.camel_to_snake(name), func)
 
 module_object = sys.modules[__name__]
 
-#Generation for Node(s)Walker(s) based funcs
+# Specialization of XXX_from_predicate(s)
+
 base_functions = [
-    requestNodeFromPredicate,
-    getNodeFromPredicate,
-    getNodesFromPredicate,
-    iterNodesFromPredicate,
-    getNodesFromPredicates,
-    iterNodesFromPredicates,
+    WAPI.request_node_from_predicate,
+    WAPI.get_node_from_predicate,
+    WAPI.get_nodes_from_predicate,
+    WAPI.iter_nodes_from_predicate,
+    WAPI.get_nodes_from_predicates,
+    WAPI.iter_nodes_from_predicates,
     ]
 
 for base_function in base_functions:
-  generated = generate_functions(base_function)
+  generated = generate_functions(base_function, maxdepth=0, child=True)
+  _update_module_attributes(generated)
+
+# Specialization of XXX_from_predicate(s) for some CGNSLabel
+base_functions = [partial(WAPI.get_nodes_from_predicate, explore='deep'),
+                  partial(WAPI.iter_nodes_from_predicate, explore='deep')]
+easypredicates = dict()
+easylabels = ['CGNSBase_t', 'Zone_t', 'BC_t', 'Family_t']
+for label in easylabels:
+  easypredicates['Label'+ label] = (partial(match_label, label=label), tuple())
+
+generated = {}
+for base_function in base_functions:
+  generated.update(generate_functions(base_function, easypredicates=easypredicates, maxdepth=0, child=False))
+#Update name to avoid snake case and remove nodes_from
+for label in easylabels:
+  for prefix in ['get', 'iter']:
+    old_key = f'{prefix}_nodes_from_label_' + PYU.camel_to_snake(label)
+    func = generated.pop(old_key)
+    func.__name__  = f'{prefix}_all_{label}'
+    generated[func.__name__] = func
+_update_module_attributes(generated)
+
+# Specialization of remove functions
+for rm_function in [rm_nodes_from_predicate, rm_children_from_predicate, keep_children_from_predicate]:
+  generated = generate_functions(rm_function, maxdepth=0, child=False)
   _update_module_attributes(generated)
 
 
-#Generation for remove functions
-generated = generate_functions(rmNodesFromPredicate)
-_update_module_attributes(generated)
-generated = generate_functions(rmChildrenFromPredicate,   maxdepth=0)
-_update_module_attributes(generated)
-generated = generate_functions(keepChildrenFromPredicate, maxdepth=0)
-_update_module_attributes(generated)
 
 
-#Generation for CGNSName -- eg getNodesFromNameCoordinateX. Only getNodes without level version
-easypredicates = dict()
-for cgnsname in dir(CGK.Name):
-  if not cgnsname.startswith('__') and not cgnsname.endswith('__'):
-    easypredicates['Name' + cgnsname] = (partial(match_name, name=cgnsname), tuple())
-generated = generate_functions(getNodesFromPredicate, easypredicates=easypredicates, maxdepth=0)
-#Names of functions could be updated here
-_update_module_attributes(generated)
+# Specialization of legacy functions
 
-#Generation for CGNSLabel -- eg getNodesFromLabelZoneSubRegion. Only getNodes without level version
-easypredicates = dict()
-for cgnslabel in CGL.__members__:
-  easypredicates['Label' + cgnslabel[:-2]] = (partial(match_label, label=cgnslabel), tuple())
-generated = generate_functions(getNodesFromPredicate, easypredicates=easypredicates, maxdepth=0)
-#Names of functions could be updated here
-_update_module_attributes(generated)
+#Generation for Node(s)Walker(s) based funcs
+base_functions = [
+    WAPI.requestNodeFromPredicate,
+    WAPI.getNodeFromPredicate,
+    WAPI.getNodesFromPredicate,
+    WAPI.iterNodesFromPredicate,
+    WAPI.getNodesFromPredicates,
+    WAPI.iterNodesFromPredicates,
+    ]
+
+for base_function in base_functions:
+  generated = generate_functions(base_function, maxdepth=3, child=True)
+  _update_module_attributes(generated)
 

@@ -2,19 +2,21 @@ import inspect
 from   functools import partial
 import numpy as np
 
+from maia.utils.py_utils import camel_to_snake
+
 from .predicate import match_name, match_value, match_label, \
     match_name_value, match_name_label, match_value_label, match_name_value_label
 
-MAXDEPTH = 10
+MAXDEPTH = 3
 
 allfuncs = {
   'Name' : (match_name,  ('name',)),
   'Value': (match_value, ('value',)),
   'Label': (match_label, ('label',)),
-  'NameAndValue' : (match_name_value,  ('name', 'value',)),
+  #'NameAndValue' : (match_name_value,  ('name', 'value',)),
   'NameAndLabel' : (match_name_label,  ('name', 'label',)),
-  'ValueAndLabel': (match_value_label, ('value', 'label',)),
-  'NameValueAndLabel': (match_name_value_label, ('name', 'value', 'label',)),
+  #'ValueAndLabel': (match_value_label, ('value', 'label',)),
+  #'NameValueAndLabel': (match_name_value_label, ('name', 'value', 'label',)),
 }
 
 def _func_name(function):
@@ -33,6 +35,21 @@ def _overload_depth(function, depth):
   func = partial(function, depth=depth)
   func.__name__ = f"{input_name}{depth}"
   func.__doc__  = f"Specialization of {input_name} with depth={depth}"
+  return func
+
+def _overload_depth1(function):
+  """
+  Return a new function (with update doc and name) build from function with fixed parameter depth=1
+  """
+  input_name = _func_name(function)
+  func_name = input_name.replace("Nodes", "Children")
+  func_name = func_name.replace("nodes", "children")
+  func_name = func_name.replace("Node", "Child")
+  func_name = func_name.replace("node", "child")
+
+  func = partial(function, depth=1)
+  func.__name__ = func_name
+  func.__doc__  = f"Specialization of {input_name} with depth=1"
   return func
 
 def _overload_predicate(function, suffix, predicate_signature):
@@ -58,23 +75,30 @@ def _overload_predicate(function, suffix, predicate_signature):
     return _specialized
 
   func = create_specialized_func(predicate, nargs)
-  func.__name__ = input_name.replace('Predicate', suffix)
+  if 'predicate' in input_name:
+    func.__name__ = input_name.replace('predicate', camel_to_snake(suffix))
+  elif 'Predicate' in input_name:
+    func.__name__ = input_name.replace('Predicate', suffix)
   func.__doc__   = f"Specialization of {input_name} with embedded predicate\n  {predicate_info}"
   return func
 
-def generate_functions(function, maxdepth=MAXDEPTH, easypredicates=allfuncs):
+def generate_functions(function, maxdepth=MAXDEPTH, child=True, easypredicates=allfuncs):
   """
-  From a XXXFromPredicate function, generate :
-    - the depth variants XXXFromPredicateN from 1 to maxdepth
-    - the 'easy predicate' variants XXXFromName, XXXFromLabel, etc. depending on easy_predicates
-    - the easy predicate + depth variants XXXFromNameN
-    - the snake case functions
+  From a XXX_from_predicate function, generate :
+    - the depth variants XXX_from_predicateN from 1 to maxdepth
+    - the 'easy predicate' variants XXX_from_name, XXX_from_label, etc. depending on easy_predicates
+    - the easy predicate + depth variants XXX_from_nameN
+    - the "child" versions (equivalent to depth=1)
   Return a dictionnary containing name of generated functions and generated functions
   """
   generated = {}
   #Generate Predicate function with specific level
   for depth in range(1,maxdepth+1):
     func = _overload_depth(function, depth) 
+    generated[func.__name__] = func
+
+  if child:
+    func = _overload_depth1(function)
     generated[func.__name__] = func
 
   for suffix, predicate_signature in easypredicates.items():
@@ -86,6 +110,10 @@ def generate_functions(function, maxdepth=MAXDEPTH, easypredicates=allfuncs):
     # ... and with specific level
     for depth in range(1,maxdepth+1):
       dfunc = _overload_depth(func, depth) 
+      generated[dfunc.__name__] = dfunc
+
+    if child:
+      dfunc = _overload_depth1(func)
       generated[dfunc.__name__] = dfunc
 
   return generated

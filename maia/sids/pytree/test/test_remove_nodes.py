@@ -31,70 +31,43 @@ Base CGNSBase_t:
         Index_vi IndexArray_t:
 """
 
-def test_rmChildrenFromPredicate():
+def test_rm_children_from_predicate():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   for bc_node in PT.iterNodesFromLabel(tree, "BC_t"):
-    PT.rmChildrenFromPredicate(bc_node, lambda n: I.getType(n) == "FamilyName_t" and int(I.getValue(n)[-1]) > 4)
+    PT.rm_children_from_predicate(bc_node, lambda n: I.getType(n) == "FamilyName_t" and int(I.getValue(n)[-1]) > 4)
   assert [I.getValue(n) for n in PT.getNodesFromLabel(tree, "FamilyName_t", search='dfs')] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4']
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   for bc_node in PT.iterNodesFromLabel(tree, "BC_t"):
-    PT.keepChildrenFromPredicate(bc_node, lambda n: I.getType(n) == "FamilyName_t" and int(I.getValue(n)[-1]) > 4)
+    PT.keep_children_from_predicate(bc_node, lambda n: I.getType(n) == "FamilyName_t" and int(I.getValue(n)[-1]) > 4)
   assert [I.getValue(n) for n in PT.getNodesFromLabel(tree, "FamilyName_t")] == ['ROW1', 'BCB5']
 
-def test_rmNodesFromPredicate():
+def test_rm_nodes_from_predicate():
   # Camel case
   # ==========
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rmNodesFromPredicate(tree, lambda n: I.getType(n) == "FamilyName_t")
+  PT.rm_nodes_from_predicate(tree, lambda n: I.getType(n) == "FamilyName_t")
   assert [I.getName(n) for n in PT.getNodesFromLabel(tree, "FamilyName_t")] == []
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rmNodesFromPredicate3(tree, lambda n: I.getType(n) == "FamilyName_t")
+  PT.rm_nodes_from_predicate(tree, lambda n: I.getType(n) == "FamilyName_t", depth=3)
   assert [I.getName(n) for n in PT.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*5
-
-  # Name
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rmNodesFromName(tree, "FamilyName")
-  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == []
-
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rmNodesFromName3(tree, "FamilyName")
-  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == ["FamilyName"]*5
-
-  # Label
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rmNodesFromLabel(tree, "FamilyName_t")
-  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == []
-
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rmNodesFromLabel3(tree, "FamilyName_t")
-  assert [I.getName(n) for n in PT.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*5
-
-  # Snake case
-  # ==========
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rm_nodes_from_predicate(tree, lambda n: I.getType(n) == "FamilyName_t")
-  assert [I.getValue(n) for n in PT.get_nodes_from_label(tree, "FamilyName_t")] == []
-
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rm_nodes_from_predicate3(tree, lambda n: I.getType(n) == "FamilyName_t")
-  assert [I.getValue(n) for n in PT.get_nodes_from_label(tree, "FamilyName_t")] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
 
   # Name
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   PT.rm_nodes_from_name(tree, "FamilyName")
-  assert [I.getValue(n) for n in PT.get_nodes_from_name(tree, "FamilyName")] == []
+  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == []
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rm_nodes_from_name3(tree, "FamilyName")
-  assert [I.getValue(n) for n in PT.get_nodes_from_name(tree, "FamilyName")] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+  PT.rm_nodes_from_name(tree, "FamilyName", depth=3)
+  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == ["FamilyName"]*5
 
   # Label
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   PT.rm_nodes_from_label(tree, "FamilyName_t")
-  assert [I.getName(n) for n in PT.get_nodes_from_label(tree, "FamilyName")] == []
+  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == []
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  PT.rm_nodes_from_label3(tree, "FamilyName_t")
-  assert [I.getName(n) for n in PT.get_nodes_from_label(tree, "FamilyName_t")] == ["FamilyName"]*5
+  PT.rm_nodes_from_label(tree, "FamilyName_t", depth=3)
+  assert [I.getName(n) for n in PT.getNodesFromLabel(tree, "FamilyName_t")] == ["FamilyName"]*5
+

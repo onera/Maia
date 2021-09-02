@@ -189,7 +189,7 @@ def test_iterNodesFromPredicate():
 def test_getNodesFromPredicates():
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  base = PT.getNodesFromLabelCGNSBase(tree)[0]
+  base = PT.get_all_CGNSBase_t(tree)[0]
 
   results = PT.getNodesFromPredicates(tree, [lambda n: I.getType(n) == "FamilyName_t"])
   assert [I.getValue(n) for n in results] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4', 'BCB5']

@@ -46,20 +46,20 @@ def test_getNodeFromName():
     PT.get_node_from_name(tree, "ZoneB")
 
   base = I.getBases(tree)[0]
-  node = PT.get_node_from_name1(base, "ZoneI")
+  node = PT.get_child_from_name(base, "ZoneI")
   assert I.getName(node) == "ZoneI"
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name1(base, "ZoneB")
+    PT.get_child_from_name(base, "ZoneB")
 
-  node = PT.get_node_from_name2(tree, "ZoneI")
+  node = PT.get_node_from_name(tree, "ZoneI", depth=2)
   assert I.getName(node) == "ZoneI"
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name2(tree, "ZoneB")
+    PT.get_node_from_name(tree, "ZoneB", depth=2)
 
-  node = PT.get_node_from_name3(tree, "ZBCA")
+  node = PT.get_node_from_name(tree, "ZBCA", depth=3)
   assert I.getName(node) == "ZBCA"
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name3(tree, "ZZZZZ")
+    PT.get_node_from_name(tree, "ZZZZZ", depth=3)
 
 def test_getNodeFromLabel():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
@@ -96,19 +96,19 @@ def test_getNodeFromLabel():
     PT.get_node_from_label(tree, "Family_t")
 
   base = I.getBases(tree)[0]
-  node = PT.get_node_from_label1(base, "Zone_t")
+  node = PT.get_child_from_label(base, "Zone_t")
   assert I.getType(node) == "Zone_t"
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_label1(base, "Family_t")
+    PT.get_child_from_label(base, "Family_t")
 
-  node = PT.get_node_from_label2(tree, "Zone_t")
+  node = PT.get_node_from_label(tree, "Zone_t", depth=2)
   assert I.getType(node) == "Zone_t"
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_label2(tree, "Family_t")
+    PT.get_node_from_label(tree, "Family_t", depth=2)
 
-  node = PT.get_node_from_label3(tree, "ZoneBC_t")
+  node = PT.get_node_from_label(tree, "ZoneBC_t", depth=3)
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_label3(tree, "ZoneGridConnectivity_t")
+    PT.get_node_from_label(tree, "ZoneGridConnectivity_t", depth=3)
 
 def test_getNodeFromNameAndLabel():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
@@ -175,38 +175,38 @@ def test_getNodeFromNameAndLabel():
     PT.get_node_from_name_and_label(tree, "ZoneI", "Family_t")
 
   base = PT.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
-  node = PT.request_node_from_name_and_label1(base, "ZoneI", "Zone_t")
+  node = PT.request_child_from_name_and_label(base, "ZoneI", "Zone_t")
   assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
-  assert PT.request_node_from_name_and_label1(base, "ZoneB", "Zone_t")   == None
-  assert PT.request_node_from_name_and_label1(base, "ZoneI", "Family_t") == None
-  node = PT.get_node_from_name_and_label1(base, "ZoneI", "Zone_t")
+  assert PT.request_child_from_name_and_label(base, "ZoneB", "Zone_t")   == None
+  assert PT.request_child_from_name_and_label(base, "ZoneI", "Family_t") == None
+  node = PT.get_child_from_name_and_label(base, "ZoneI", "Zone_t")
   assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name_and_label1(base, "ZoneB", "Zone_t")
+    PT.get_child_from_name_and_label(base, "ZoneB", "Zone_t")
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name_and_label1(base, "ZoneI", "Family_t")
+    PT.get_child_from_name_and_label(base, "ZoneI", "Family_t")
 
-  node = PT.request_node_from_name_and_label2(tree, "ZoneI", "Zone_t")
+  node = PT.request_node_from_name_and_label(tree, "ZoneI", "Zone_t", depth=2)
   assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
-  assert PT.request_node_from_name_and_label2(tree, "ZoneB", "Zone_t")   == None
-  assert PT.request_node_from_name_and_label2(tree, "ZoneI", "Family_t") == None
-  node = PT.get_node_from_name_and_label2(tree, "ZoneI", "Zone_t")
+  assert PT.request_node_from_name_and_label(tree, "ZoneB", "Zone_t", depth=2)   == None
+  assert PT.request_node_from_name_and_label(tree, "ZoneI", "Family_t", depth=2) == None
+  node = PT.get_node_from_name_and_label(tree, "ZoneI", "Zone_t", depth=2)
   assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name_and_label2(tree, "ZoneB", "Zone_t")
+    PT.get_node_from_name_and_label(tree, "ZoneB", "Zone_t", depth=2)
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name_and_label2(tree, "ZoneI", "Family_t")
+    PT.get_node_from_name_and_label(tree, "ZoneI", "Family_t", depth=2)
 
-  node = PT.request_node_from_name_and_label3(tree, "ZBCA", "ZoneBC_t")
+  node = PT.request_node_from_name_and_label(tree, "ZBCA", "ZoneBC_t", depth=3)
   assert I.getName(node) == "ZBCA" and I.getType(node) == "ZoneBC_t"
-  assert PT.request_node_from_name_and_label3(tree, "ZZZZZ", "ZoneBC_t")              == None
-  assert PT.request_node_from_name_and_label3(tree, "ZBCA", "ZoneGridConnectivity_t") == None
-  node = PT.get_node_from_name_and_label3(tree, "ZBCA", "ZoneBC_t")
+  assert PT.request_node_from_name_and_label(tree, "ZZZZZ", "ZoneBC_t", depth=3)     == None
+  assert PT.request_node_from_name_and_label(tree, "ZBCA", "ZoneGridConnectivity_t") == None
+  node = PT.get_node_from_name_and_label(tree, "ZBCA", "ZoneBC_t", depth=3)
   assert I.getName(node) == "ZBCA" and I.getType(node) == "ZoneBC_t"
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name_and_label3(tree, "ZZZZZ", "ZoneBC_t")
+    PT.get_node_from_name_and_label(tree, "ZZZZZ", "ZoneBC_t", depth=3)
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.get_node_from_name_and_label3(tree, "ZBCA", "ZoneGridConnectivity_t")
+    PT.get_node_from_name_and_label(tree, "ZBCA", "ZoneGridConnectivity_t", depth=3)
 
 def test_getNodeFromPredicate():
   is_base    = lambda n: I.getName(n) == 'Base'    and I.getType(n) == 'CGNSBase_t'
@@ -253,37 +253,20 @@ def test_getNodeFromPredicate():
   assert is_nface( PT.requestNodeFromName(tree, "NFace")                                                         )
   assert is_nface( PT.requestNodeFromValue(tree, np.array([23,0], order='F'))                                    )
   assert is_ngon(  PT.requestNodeFromLabel(tree, "Elements_t")                                                   )
-  assert is_nface( PT.requestNodeFromNameAndValue(tree, "NFace", np.array([23,0], order='F'))                    )
   assert is_nface( PT.requestNodeFromNameAndLabel(tree, "NFace", "Elements_t")                                   )
-  assert is_nface( PT.requestNodeFromValueAndLabel(tree, np.array([23,0], order='F'), "Elements_t")              )
-  assert is_nface( PT.requestNodeFromNameValueAndLabel(tree, "NFace", np.array([23,0], order='F'), "Elements_t") )
   assert PT.requestNodeFromName(tree, "TOTO")                                                               is None
   assert PT.requestNodeFromValue(tree, np.array([1230,0], order='F'))                                       is None
   assert PT.requestNodeFromLabel(tree, "ZoneSubRegion_t")                                                   is None
-  assert PT.requestNodeFromNameAndValue(tree, "TOTO", np.array([23,0], order='F'))                          is None
-  assert PT.requestNodeFromNameAndValue(tree, "NFace", np.array([1230,0], order='F'))                       is None
   assert PT.requestNodeFromNameAndLabel(tree, "TOTO", "Elements_t")                                         is None
   assert PT.requestNodeFromNameAndLabel(tree, "NFace", "ZoneSubRegion_t")                                   is None
-  assert PT.requestNodeFromValueAndLabel(tree, np.array([1230,0], order='F'), "Elements_t")                 is None
-  assert PT.requestNodeFromValueAndLabel(tree, np.array([23,0], order='F'), "ZoneSubRegion_t")              is None
-  assert PT.requestNodeFromNameValueAndLabel(tree, "TOTO", np.array([23,0], order='F'), "Elements_t")       is None
-  assert PT.requestNodeFromNameValueAndLabel(tree, "NFace", np.array([1230,0], order='F'), "Elements_t")    is None
-  assert PT.requestNodeFromNameValueAndLabel(tree, "NFace", np.array([23,0], order='F'), "ZoneSubRegion_t") is None
 
   # Snake case
   # ----------
   assert PT.request_node_from_name(tree, "TOTO")                                                                  is None
   assert PT.request_node_from_value(tree, np.array([1230,0], order='F'))                                          is None
   assert PT.request_node_from_label(tree, "ZoneSubRegion_t")                                                      is None
-  assert PT.request_node_from_name_and_value(tree, "TOTO", np.array([23,0], order='F'))                           is None
-  assert PT.request_node_from_name_and_value(tree, "NFace", np.array([1230,0], order='F'))                        is None
   assert PT.request_node_from_name_and_label(tree, "TOTO", "Elements_t")                                          is None
   assert PT.request_node_from_name_and_label(tree, "NFace", "ZoneSubRegion_t")                                    is None
-  assert PT.request_node_from_value_and_label(tree, np.array([1230,0], order='F'), "Elements_t")                  is None
-  assert PT.request_node_from_value_and_label(tree, np.array([23,0], order='F'), "ZoneSubRegion_t")               is None
-  assert PT.request_node_from_name_value_and_label(tree, "TOTO", np.array([23,0], order='F'), "Elements_t")       is None
-  assert PT.request_node_from_name_value_and_label(tree, "NFace", np.array([1230,0], order='F'), "Elements_t")    is None
-  assert PT.request_node_from_name_value_and_label(tree, "NFace", np.array([23,0], order='F'), "ZoneSubRegion_t") is None
 
   # requestNodeFromPredicate{depth} and dfs
   # =======================================
@@ -293,9 +276,7 @@ def test_getNodeFromPredicate():
   assert is_zonei(PT.requestNodeFromPredicate3(tree, lambda n: I.getName(n) == "ZoneI", search="dfs"))
 
   # Snake case
-  assert PT.request_node_from_predicate1(tree, lambda n: I.getName(n) == "ZoneI", search="dfs") is None
-  assert is_zonei(PT.request_node_from_predicate2(tree, lambda n: I.getName(n) == "ZoneI", search="dfs"))
-  assert is_zonei(PT.request_node_from_predicate3(tree, lambda n: I.getName(n) == "ZoneI", search="dfs"))
+  assert PT.request_child_from_predicate(tree, lambda n: I.getName(n) == "ZoneI", search="dfs") is None
 
   # requestNodeFrom{Name, Label, ...}{depth}
   # ========================================
@@ -309,16 +290,16 @@ def test_getNodeFromPredicate():
   assert is_zonei(PT.requestNodeFromName2(tree, "ZoneI"))
   assert is_zonei(PT.requestNodeFromName3(tree, "ZoneI"))
 
-  assert is_base    (PT.requestNodeFromName1(tree, "Base")   )
-  assert is_zonei   (PT.requestNodeFromName2(tree, "ZoneI")  )
-  assert is_ngon    (PT.requestNodeFromName3(tree, "Ngon")   )
-  assert is_bc1     (PT.requestNodeFromName4(tree, "bc1")    )
-  assert is_index_i (PT.requestNodeFromName5(tree, "Index_i"))
+  assert is_base    (PT.requestNodeFromName(tree, "Base"   , depth=1))
+  assert is_zonei   (PT.requestNodeFromName(tree, "ZoneI"  , depth=2))
+  assert is_ngon    (PT.requestNodeFromName(tree, "Ngon"   , depth=3))
+  assert is_bc1     (PT.requestNodeFromName(tree, "bc1"    , depth=4))
+  assert is_index_i (PT.requestNodeFromName(tree, "Index_i", depth=5))
 
-  assert is_base  (PT.requestNodeFromLabel1(tree, "CGNSBase_t"))
-  assert is_zonei (PT.requestNodeFromLabel2(tree, "Zone_t")    )
-  assert is_ngon  (PT.requestNodeFromLabel3(tree, "Elements_t"))
-  assert is_bc1   (PT.requestNodeFromLabel4(tree, "BC_t")      )
+  assert is_base  (PT.requestNodeFromLabel(tree, "CGNSBase_t", depth=1))
+  assert is_zonei (PT.requestNodeFromLabel(tree, "Zone_t"    , depth=2))
+  assert is_ngon  (PT.requestNodeFromLabel(tree, "Elements_t", depth=3))
+  assert is_bc1   (PT.requestNodeFromLabel(tree, "BC_t"      , depth=4))
 
   # Snake case
   # ----------
@@ -326,22 +307,21 @@ def test_getNodeFromPredicate():
   assert is_zonei( PT.request_node_from_name(tree, "ZoneI", search="dfs", depth=2) )
   assert is_zonei( PT.request_node_from_name(tree, "ZoneI", search="dfs", depth=3) )
 
-  assert PT.request_node_from_name1(tree, "ZoneI") is None
-  assert is_zonei( PT.request_node_from_name2(tree, "ZoneI") )
-  assert is_zonei( PT.request_node_from_name3(tree, "ZoneI") )
+  assert PT.request_child_from_name(tree, "ZoneI") is None
+  assert is_zonei( PT.request_node_from_name(tree, "ZoneI", depth=2) )
+  assert is_zonei( PT.request_node_from_name(tree, "ZoneI", depth=3) )
 
-  assert is_base    (PT.request_node_from_name1(tree, "Base")   )
-  assert is_zonei   (PT.request_node_from_name2(tree, "ZoneI")  )
-  assert is_ngon    (PT.request_node_from_name3(tree, "Ngon")   )
-  assert is_bc1     (PT.request_node_from_name4(tree, "bc1")    )
-  assert is_index_i (PT.request_node_from_name5(tree, "Index_i"))
+  assert is_base    (PT.request_child_from_name(tree, "Base"   ,        ))
+  assert is_zonei   (PT.request_node_from_name (tree, "ZoneI"  , depth=2))
+  assert is_ngon    (PT.request_node_from_name (tree, "Ngon"   , depth=3))
+  assert is_bc1     (PT.request_node_from_name (tree, "bc1"    , depth=4))
+  assert is_index_i (PT.request_node_from_name (tree, "Index_i", depth=5))
 
-  assert is_index_i ( PT.requestNodeFromLabel5(tree, "IndexArray_t")    )
-  assert is_base    ( PT.request_node_from_label1(tree, "CGNSBase_t")   )
-  assert is_zonei   ( PT.request_node_from_label2(tree, "Zone_t")       )
-  assert is_ngon    ( PT.request_node_from_label3(tree, "Elements_t")   )
-  assert is_bc1     ( PT.request_node_from_label4(tree, "BC_t")         )
-  assert is_index_i ( PT.request_node_from_label5(tree, "IndexArray_t") )
+  assert is_base    ( PT.request_node_from_label(tree, "CGNSBase_t"  , depth=1))
+  assert is_zonei   ( PT.request_node_from_label(tree, "Zone_t"      , depth=2))
+  assert is_ngon    ( PT.request_node_from_label(tree, "Elements_t"  , depth=3))
+  assert is_bc1     ( PT.request_node_from_label(tree, "BC_t"        , depth=4))
+  assert is_index_i ( PT.request_node_from_label(tree, "IndexArray_t", depth=5))
 
   # getNodeFrom...
   # **************
@@ -360,17 +340,13 @@ def test_getNodeFromPredicate():
   assert is_nface ( PT.getNodeFromName(tree, "NFace")                                                               )
   assert is_nface ( PT.getNodeFromValue(tree, np.array([23,0], order='F'))                                          )
   assert is_ngon  ( PT.getNodeFromLabel(tree, "Elements_t")                                                         )
-  assert is_nface ( PT.getNodeFromNameAndValue(tree, "NFace", np.array([23,0], order='F'))                          )
   assert is_nface ( PT.getNodeFromNameAndLabel(tree, "NFace", "Elements_t")                                         )
-  assert is_nface ( PT.getNodeFromValueAndLabel(tree, np.array([23,0], dtype='int64',order='F'), "Elements_t")      )
-  assert is_nface ( PT.getNodeFromNameValueAndLabel(tree, "NFace", np.array([23,0], order='F'), "Elements_t")       )
+  predicate = lambda n: PT.predicate.match_value_label(n, np.array([23,0], dtype='int64',order='F'), "Elements_t")
+  assert is_nface ( PT.getNodeFromPredicate(tree, predicate)                                                        )
   assert is_nface ( PT.get_node_from_name(tree, "NFace")                                                            )
   assert is_nface ( PT.get_node_from_value(tree, np.array([23,0], order='F'))                                       )
   assert is_ngon  ( PT.get_node_from_label(tree, "Elements_t")                                                      )
-  assert is_nface ( PT.get_node_from_name_and_value(tree, "NFace", np.array([23,0], order='F'))                     )
   assert is_nface ( PT.get_node_from_name_and_label(tree, "NFace", "Elements_t")                                    )
-  assert is_nface ( PT.get_node_from_value_and_label(tree, np.array([23,0], dtype='int64',order='F'), "Elements_t") )
-  assert is_nface ( PT.get_node_from_name_value_and_label(tree, "NFace", np.array([23,0], order='F'), "Elements_t") )
 
 def test_getNodesFromPredicate1():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
@@ -408,25 +384,25 @@ def test_getNodesFromPredicate1():
   # Test from Name
   base = PT.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
   nodes_from_name1 = ["ZoneI"]
-  assert [I.getName(n) for n in PT.get_nodes_from_predicate1(base, lambda n: I.getName(n) == "ZoneI")] == nodes_from_name1
-  assert [I.getName(n) for n in PT.get_nodes_from_predicate1(base, lambda n: fnmatch.fnmatch(I.getName(n), "Zone*"))] == nodes_from_name1
-  assert [I.getName(n) for n in PT.get_nodes_from_name1(base, "Zone*")] == nodes_from_name1
-  assert [I.getName(n) for n in PT.get_nodes_from_name1(base, "Base")] == ["Base"]
+  assert [I.getName(n) for n in PT.get_children_from_predicate(base, lambda n: I.getName(n) == "ZoneI")] == nodes_from_name1
+  assert [I.getName(n) for n in PT.get_children_from_predicate(base, lambda n: fnmatch.fnmatch(I.getName(n), "Zone*"))] == nodes_from_name1
+  assert [I.getName(n) for n in PT.get_children_from_name(base, "Zone*")] == nodes_from_name1
+  assert [I.getName(n) for n in PT.get_children_from_name(base, "Base")] == ["Base"]
 
   # Test from Type
   nodes_from_type1 = ["Zone_t"]
-  assert [I.getType(n) for n in PT.get_nodes_from_predicate1(base, lambda n: I.getType(n) == CGL.Zone_t.name)] == nodes_from_type1
-  assert [I.getType(n) for n in PT.get_nodes_from_label1(base, CGL.Zone_t.name)] == nodes_from_type1
+  assert [I.getType(n) for n in PT.get_children_from_predicate(base, lambda n: I.getType(n) == CGL.Zone_t.name)] == nodes_from_type1
+  assert [I.getType(n) for n in PT.get_children_from_label(base, CGL.Zone_t.name)] == nodes_from_type1
 
   # Test from Value
   zone = I.getNodeFromType(tree, 'Zone_t')
   ngon_value = np.array([22,0], dtype=np.int32)
   elements_from_type_value1 = [ngon_value[0]]
-  assert [I.getVal(n)[0] for n in PT.get_nodes_from_predicate1(zone, lambda n: I.getType(n) == CGL.Elements_t.name and np.array_equal(I.getVal(n), ngon_value))] == elements_from_type_value1
-  assert [I.getVal(n)[0] for n in PT.get_nodes_from_value1(zone, ngon_value)] == elements_from_type_value1
+  assert [I.getVal(n)[0] for n in PT.get_children_from_predicate(zone, lambda n: I.getType(n) == CGL.Elements_t.name and np.array_equal(I.getVal(n), ngon_value))] == elements_from_type_value1
+  assert [I.getVal(n)[0] for n in PT.get_children_from_value(zone, ngon_value)] == elements_from_type_value1
 
   zonebcs_from_type_name1 = ['ZBCB']
-  assert [I.getName(n) for n in PT.get_nodes_from_predicate1(zone, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA")] == zonebcs_from_type_name1
+  assert [I.getName(n) for n in PT.get_children_from_predicate(zone, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA")] == zonebcs_from_type_name1
 
 
 def test_getAllLabel():
@@ -463,60 +439,10 @@ Base CGNSBase_t:
         PL3J DataArray_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  # Camel case
-  # ==========
-  assert([I.getName(n) for n in PT.getNodesFromLabelCGNSBase(tree)] == ['Base'])
-  assert([I.getName(n) for n in PT.getNodesFromLabelZone(tree)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in PT.getNodesFromLabelElements(tree)] == ['NgonI', 'NgonJ'])
-  assert([I.getName(n) for n in PT.getNodesFromLabelZoneBC(tree)] == ['ZBCAI', 'ZBCBI', 'ZBCAJ', 'ZBCBJ'])
-  assert([I.getName(n) for n in PT.getNodesFromLabelBC(tree)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-
-  assert([I.getName(n) for n in PT.getNodesFromLabelCGNSBase(tree, depth=1)] == ['Base'])
-  assert([I.getName(n) for n in PT.getNodesFromLabelZone(tree, depth=1)] == [])
-  assert([I.getName(n) for n in PT.getNodesFromLabelZone(tree, depth=2)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in PT.getNodesFromLabelElements(tree, depth=1)] == [])
-  assert([I.getName(n) for n in PT.getNodesFromLabelElements(tree, depth=2)] == [])
-  assert([I.getName(n) for n in PT.getNodesFromLabelElements(tree, depth=3)] == ['NgonI', 'NgonJ'])
 
   # Snake case
   # ==========
-  assert([I.getName(n) for n in PT.get_nodes_from_label_cgns_base(tree)] == ['Base'])
-  assert([I.getName(n) for n in PT.get_nodes_from_label_zone(tree)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in PT.get_nodes_from_label_elements(tree)] == ['NgonI', 'NgonJ'])
-  assert([I.getName(n) for n in PT.get_nodes_from_label_zone_bc(tree)] == ['ZBCAI', 'ZBCBI', 'ZBCAJ', 'ZBCBJ'])
-  assert([I.getName(n) for n in PT.get_nodes_from_label_bc(tree)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-
-
-def test_getCGNSName():
-  yt = """
-Base CGNSBase_t:
-  ZoneI Zone_t:
-    Coordinates GridCoordinates_t:
-      CoordinateX DataArray_t:
-      CoordinateY DataArray_t:
-      CoordinateZ DataArray_t:
-"""
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-
-  # Camel case
-  # ==========
-  assert(I.getName(PT.getNodesFromNameCoordinateX(tree)[0]) == 'CoordinateX')
-  assert(I.getName(PT.getNodesFromNameCoordinateY(tree)[0]) == 'CoordinateY')
-  assert(I.getName(PT.getNodesFromNameCoordinateZ(tree)[0]) == 'CoordinateZ')
-
-  grid_coordinates_node = PT.getNodeFromLabel(tree,'GridCoordinates_t')
-  assert(I.getName(PT.getNodesFromNameCoordinateX(grid_coordinates_node, depth=1)[0]) == 'CoordinateX')
-  assert(I.getName(PT.getNodesFromNameCoordinateY(grid_coordinates_node, depth=1)[0]) == 'CoordinateY')
-  assert(I.getName(PT.getNodesFromNameCoordinateZ(grid_coordinates_node, depth=1)[0]) == 'CoordinateZ')
-
-  zone_node = PT.getNodeFromLabel(tree,'Zone_t')
-  assert(PT.getNodesFromNameCoordinateX(zone_node, depth=1) == [])
-  assert(PT.getNodesFromNameCoordinateY(zone_node, depth=1) == [])
-  assert(PT.getNodesFromNameCoordinateZ(zone_node, depth=1) == [])
-
-  # Snake case
-  # ==========
-  assert(I.getName(PT.get_nodes_from_name_coordinate_x(tree)[0]) == 'CoordinateX')
-  assert(I.getName(PT.get_nodes_from_name_coordinate_y(tree)[0]) == 'CoordinateY')
-  assert(I.getName(PT.get_nodes_from_name_coordinate_z(tree)[0]) == 'CoordinateZ')
+  assert([I.getName(n) for n in PT.get_all_CGNSBase_t(tree)] == ['Base'])
+  assert([I.getName(n) for n in PT.get_all_Zone_t(tree)] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in PT.get_all_BC_t(tree)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
