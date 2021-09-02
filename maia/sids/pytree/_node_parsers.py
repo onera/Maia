@@ -11,7 +11,7 @@ __LABEL__    = 3
 # --------------------------------------------------------------------------
 class NodeParserBase:
 
-  DEFAULT="bfs"
+  DEFAULT="dfs"
   MAXDEPTH=30
 
   def __init__(self, depth=MAXDEPTH, sort=lambda children:children):
@@ -93,8 +93,8 @@ class LevelNodeParser(NodeParserBase):
 # --------------------------------------------------------------------------
 class NodesIteratorBase:
 
-  MAXDEPTH=10
-  DEFAULT='bfs'
+  MAXDEPTH=30
+  DEFAULT='dfs'
 
   def __init__(self, depth=MAXDEPTH, sort=lambda children:children):
     self.depth = depth

@@ -29,13 +29,13 @@ def _convert_to_callable(predicates):
 # ---------------------------------------------------------------------------- #
 # API for NodeWalker
 # ---------------------------------------------------------------------------- #
-def requestNodeFromPredicate(*args, **kwargs):
+def request_node_from_predicate(*args, **kwargs):
   walker = NodeWalker(*args, **kwargs)
   return walker()
 
-def getNodeFromPredicate(root, predicate, *args, **kwargs):
+def get_node_from_predicate(root, predicate, *args, **kwargs):
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
-  node = requestNodeFromPredicate(root, predicate, *args, **kwargs)
+  node = request_node_from_predicate(root, predicate, *args, **kwargs)
   if node is not None:
     return node
   default = kwargs.get('default', None)
@@ -46,7 +46,7 @@ def getNodeFromPredicate(root, predicate, *args, **kwargs):
 # ---------------------------------------------------------------------------- #
 # API for NodesWalker
 # ---------------------------------------------------------------------------- #
-def getNodesFromPredicate(*args, **kwargs):
+def get_nodes_from_predicate(*args, **kwargs):
   """
   Alias to NodesWalker with caching=True. A list of found node(s) is created.
 
@@ -65,15 +65,13 @@ def getNodesFromPredicate(*args, **kwargs):
   """
   caching = kwargs.get('caching')
   if caching is not None and caching is False:
-    print(f"Warning: getNodesFromPredicate forces caching to True.")
+    print(f"Warning: get_nodes_from_predicate forces caching to True.")
   kwargs['caching'] = True
 
   walker = NodesWalker(*args, **kwargs)
   return walker()
 
-sgetNodesFromPredicate = partial(getNodesFromPredicate, explore='shallow')
-
-def iterNodesFromPredicate(*args, **kwargs):
+def iter_nodes_from_predicate(*args, **kwargs):
   """
   Alias to NodesWalker with caching=False. Iterator is generated each time parsing is done.
 
@@ -92,17 +90,17 @@ def iterNodesFromPredicate(*args, **kwargs):
   """
   caching = kwargs.get('caching')
   if caching is not None and caching is True:
-    print(f"Warning: iterNodesFromPredicate forces caching to False.")
+    print(f"Warning: iter_nodes_from_predicate forces caching to False.")
   kwargs['caching'] = False
 
   walker = NodesWalker(*args, **kwargs)
   return walker()
-siterNodesFromPredicate = partial(iterNodesFromPredicate, explore='shallow')
+
 
 # ---------------------------------------------------------------------------- #
 # API for NodesWalkers
 # ---------------------------------------------------------------------------- #
-def iterNodesFromPredicates(root, predicates, **kwargs):
+def iter_nodes_from_predicates(root, predicates, **kwargs):
   """
   Alias to NodesWalkers with caching=False. Iterator is generated each time parsing is done.
 
@@ -123,15 +121,13 @@ def iterNodesFromPredicates(root, predicates, **kwargs):
 
   caching = kwargs.get('caching')
   if caching is not None and caching is True:
-    print(f"Warning: iterNodesFromPredicates forces caching to False.")
+    print(f"Warning: iter_nodes_from_predicates forces caching to False.")
   kwargs['caching'] = False
 
   walker = NodesWalkers(root, _predicates, **kwargs)
   return walker()
 
-siterNodesFromPredicates = partial(iterNodesFromPredicates, explore='shallow')
-
-def getNodesFromPredicates(root, predicates, **kwargs):
+def get_nodes_from_predicates(root, predicates, **kwargs):
   """
   Alias to NodesWalkers with caching=True. A list of found node(s) is created.
 
@@ -152,26 +148,44 @@ def getNodesFromPredicates(root, predicates, **kwargs):
 
   caching = kwargs.get('caching')
   if caching is not None and caching is False:
-    print(f"Warning: getNodesFromPredicates forces caching to True.")
+    print(f"Warning: get_nodes_from_predicates forces caching to True.")
   kwargs['caching'] = True
 
   walker = NodesWalkers(root, _predicates, **kwargs)
   return walker()
 
-sgetNodesFromPredicates = partial(getNodesFromPredicates, explore='shallow')
+# Aliases for legacy code -- using default argument deep instead of shallow for search
 
-# ---------------------------------------------------------------------------- #
-# Shortcuts
-# ---------------------------------------------------------------------------- #
-get_node_from_predicate     = getNodeFromPredicate
-request_node_from_predicate = requestNodeFromPredicate
+def getNodeFromPredicate(root, predicate, *args, **kwargs):
+  """ Alias for get_node_from_predicate"""
+  return get_node_from_predicate(root, predicate, *args, **kwargs)
 
-get_nodes_from_predicate   = getNodesFromPredicate
-iter_nodes_from_predicate  = iterNodesFromPredicate
-sget_nodes_from_predicate  = sgetNodesFromPredicate
-siter_nodes_from_predicate = siterNodesFromPredicate
+def requestNodeFromPredicate(root, predicate, *args, **kwargs):
+  """ Alias for request_node_from_predicate"""
+  return request_node_from_predicate(root, predicate, *args, **kwargs)
 
-get_nodes_from_predicates   = getNodesFromPredicates
-iter_nodes_from_predicates  = iterNodesFromPredicates
-sget_nodes_from_predicates  = sgetNodesFromPredicates
-siter_nodes_from_predicates = siterNodesFromPredicates
+def getNodesFromPredicate(root, predicate, *args, **kwargs):
+  """ Alias for get_nodes_from_predicate (legacy), with default value 'deep' for search"""
+  if 'explore' not in kwargs:
+    kwargs['explore'] = 'deep'
+  return get_nodes_from_predicate(root, predicate, *args, **kwargs)
+
+def iterNodesFromPredicate(root, predicate, *args, **kwargs):
+  """ Alias for iter_nodes_from_predicate (legacy), with default value 'deep' for search"""
+  if 'explore' not in kwargs:
+    kwargs['explore'] = 'deep'
+  return iter_nodes_from_predicate(root, predicate, *args, **kwargs)
+
+def getNodesFromPredicates(root, predicate, *args, **kwargs):
+  """ Alias for get_nodes_from_predicates (legacy), with default value 'deep' for search"""
+  if 'explore' not in kwargs:
+    kwargs['explore'] = 'deep'
+  return get_nodes_from_predicates(root, predicate, *args, **kwargs)
+
+def iterNodesFromPredicates(root, predicate, *args, **kwargs):
+  """ Alias for iter_nodes_from_predicates (legacy), with default value 'deep' for search"""
+  if 'explore' not in kwargs:
+    kwargs['explore'] = 'deep'
+  return iter_nodes_from_predicates(root, predicate, *args, **kwargs)
+
+

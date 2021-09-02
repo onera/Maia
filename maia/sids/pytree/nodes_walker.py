@@ -21,7 +21,7 @@ class NodesWalker:
   def __init__(self, root: TreeNode,
                      predicate: Callable[[TreeNode], bool],
                      search: str=NodesIterator.DEFAULT,
-                     explore: str='deep',
+                     explore: str='shallow',
                      depth: int=0,
                      sort=FORWARD,
                      caching: bool=False):

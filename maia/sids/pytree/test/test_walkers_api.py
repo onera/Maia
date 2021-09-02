@@ -141,10 +141,10 @@ def test_iterNodesFromPredicate():
   assert([I.getName(n) for n in PT.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='dfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
   # alias for shallow exploring
-  assert([I.getName(n) for n in PT.siterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='bfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in PT.siterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in PT.siterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='bfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-  assert([I.getName(n) for n in PT.siterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='dfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in PT.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='bfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in PT.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs', explore='shallow')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in PT.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='bfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in PT.iterNodesFromPredicate(tree, lambda n: n[3] == 'BC_t', search='dfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
   assert([I.getName(n) for n in PT.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='bfs', depth=2)] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in PT.iterNodesFromPredicate(tree, lambda n: n[3] == 'Zone_t', search='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
@@ -174,10 +174,10 @@ def test_iterNodesFromPredicate():
   assert([I.getName(n) for n in PT.iter_nodes_from_predicate(tree, lambda n: n[3] == 'BC_t', search='dfs', explore='shallow')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
   # alias for shallow exploring
-  assert([I.getName(n) for n in PT.siter_nodes_from_predicate(tree, lambda n: n[3] == 'Zone_t', search='bfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in PT.siter_nodes_from_predicate(tree, lambda n: n[3] == 'Zone_t', search='dfs')] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in PT.siter_nodes_from_predicate(tree, lambda n: n[3] == 'BC_t', search='bfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
-  assert([I.getName(n) for n in PT.siter_nodes_from_predicate(tree, lambda n: n[3] == 'BC_t', search='dfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in PT.iter_nodes_from_predicate(tree, lambda n: n[3] == 'Zone_t', search='bfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in PT.iter_nodes_from_predicate(tree, lambda n: n[3] == 'Zone_t', search='dfs')] == ['ZoneI', 'ZoneJ'])
+  assert([I.getName(n) for n in PT.iter_nodes_from_predicate(tree, lambda n: n[3] == 'BC_t', search='bfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
+  assert([I.getName(n) for n in PT.iter_nodes_from_predicate(tree, lambda n: n[3] == 'BC_t', search='dfs')] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 
   assert([I.getName(n) for n in PT.iter_nodes_from_predicate(tree, lambda n: n[3] == 'Zone_t', search='bfs', depth=2)] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in PT.iter_nodes_from_predicate(tree, lambda n: n[3] == 'Zone_t', search='dfs', depth=2)] == ['ZoneI', 'ZoneJ'])
@@ -192,7 +192,7 @@ def test_getNodesFromPredicates():
   base = PT.getNodesFromLabelCGNSBase(tree)[0]
 
   results = PT.getNodesFromPredicates(tree, [lambda n: I.getType(n) == "FamilyName_t"])
-  assert [I.getValue(n) for n in results] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+  assert [I.getValue(n) for n in results] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4', 'BCB5']
 
   # All predicates have the same options
   # ------------------------------------
@@ -207,12 +207,12 @@ def test_getNodesFromPredicates():
   # Avoid Node : FamilyName FamilyName_t 'ROW1', traversal=shallow
   results = PT.getNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow')
   assert [I.getValue(n) for n in results] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
-  results = PT.sgetNodesFromPredicates(tree, ["BC_t", "FamilyName_t"])
+  results = PT.getNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow')
   assert [I.getValue(n) for n in results] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
   # ... with ancestors
   results = PT.getNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow', ancestors=True)
   assert [fpathv(nodes) for nodes in results] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
-  results = PT.sgetNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], ancestors=True)
+  results = PT.getNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow', ancestors=True)
   assert [fpathv(nodes) for nodes in results] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
 
   # With search='dfs', depth=1 -> iterNodesByMatching
@@ -245,7 +245,8 @@ def test_iterNodesFromPredicates():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   base = PT.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
 
-  assert [I.getValue(n) for n in PT.iterNodesFromPredicates(tree, [lambda n: I.getType(n) == "FamilyName_t"])] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+  assert [I.getValue(n) for n in PT.iterNodesFromPredicates(tree, [lambda n: I.getType(n) == "FamilyName_t"])] == ['BCC1', 'BCA2', 'ROW1', 'BCD3', 'BCE4', 'BCB5']
+  assert [I.getValue(n) for n in PT.iterNodesFromPredicates(tree, [lambda n: I.getType(n) == "FamilyName_t"], search='bfs')] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
 
   # All predicates have the same options
   # ------------------------------------
@@ -257,10 +258,10 @@ def test_iterNodesFromPredicates():
 
   # Avoid Node : FamilyName FamilyName_t 'ROW1', traversal=shallow
   assert [I.getValue(n) for n in PT.iterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow')] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
-  assert [I.getValue(n) for n in PT.siterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"])] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+  assert [I.getValue(n) for n in PT.iterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow')] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
   # ... with ancestors
   assert [fpathv(nodes) for nodes in PT.iterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow', ancestors=True)] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
-  assert [fpathv(nodes) for nodes in PT.siterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], ancestors=True)] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
+  assert [fpathv(nodes) for nodes in PT.iterNodesFromPredicates(tree, ["BC_t", "FamilyName_t"], explore='shallow', ancestors=True)] == ["bca1/BCC1", "bcd2/BCA2", "bcb3/BCD3", "bce4/BCE4", "bcc5/BCB5"]
 
   # With search='dfs', depth=1 -> iterNodesByMatching
   assert [I.getValue(n) for n in PT.iterNodesFromPredicates(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"], search='dfs', depth=1)] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']

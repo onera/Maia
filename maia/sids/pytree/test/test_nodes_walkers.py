@@ -34,7 +34,7 @@ Base CGNSBase_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  walker = PT.NodesWalker(tree, lambda n: I.getType(n) == "FamilyName_t")
+  walker = PT.NodesWalker(tree, lambda n: I.getType(n) == "FamilyName_t", search='bfs')
   assert [I.getValue(n) for n in walker()] == ['ROW1', 'BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
 
   # All predicates have the same options
