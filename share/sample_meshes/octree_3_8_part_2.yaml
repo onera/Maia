@@ -197,6 +197,7 @@ Base CGNSBase_t I4 [3,3]:
         PointList IndexArray_t I4 [[]]: # No faces because this is a GC, not a BC,
     ZoneGridConnectivity ZoneGridConnectivity_t:
       JN.P1.N0.LT.P0.N0 GridConnectivity_t "Zone_0":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "Vertex":
         PointList      IndexArray_t I4 [[7,8, 9,10,11,12]]:
         PointListDonor IndexArray_t I4 [[7,9,29,25,27,31]]:
