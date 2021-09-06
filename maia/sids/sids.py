@@ -63,14 +63,14 @@ class Zone:
 
   @staticmethod
   def Type(zone_node):
-    zone_type_node = IE.getNodeFromLabel1(zone_node, CGL.ZoneType_t.name)
+    zone_type_node = I.getNodeFromType1(zone_node, CGL.ZoneType_t.name)
     return I.getValue(zone_type_node)
 
   #Todo : this one should go in IE
   @staticmethod
   def getBCsFromFamily(zone_node, families):
     bc_query = lambda n : I.getType(n) == 'BC_t' and I.getValue(n) == 'FamilySpecified' and \
-      I.getValue(IE.getNodeFromLabel1(n, CGL.FamilyName_t.name)) in families
+      I.getValue(I.getNodeFromType1(n, CGL.FamilyName_t.name)) in families
     return IE.iterNodesByMatching(zone_node, ['ZoneBC_t', bc_query])
 
   @staticmethod

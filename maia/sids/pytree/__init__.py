@@ -1,3 +1,4 @@
+from . import internal as CI
 from .compare import *
 from .generate import *
 from .remove_nodes import *

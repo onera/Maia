@@ -260,4 +260,4 @@ _adapt_labels                        = I._adaptTypes                   ;  _adapt
 getLabel = I.getType;
 
 # Overload Converter.Internal functions
-from .Internal_ext import *
+#from .Internal_ext import *
