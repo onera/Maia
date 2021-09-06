@@ -33,7 +33,7 @@ def get_point_cloud(zone, location='CellCenter'):
 
   if location == 'Vertex':
     vtx_coords   = py_utils.interweave_arrays([cx,cy,cz])
-    vtx_ln_to_gn = IE.getGlobalNumbering(zone, 'Vertex').astype(pdm_gnum_dtype)
+    vtx_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone, 'Vertex')).astype(pdm_gnum_dtype)
     return vtx_coords, vtx_ln_to_gn
 
   elif location == 'CellCenter':
@@ -43,8 +43,8 @@ def get_point_cloud(zone, location='CellCenter'):
     face_vtx_idx  = I.getNodeFromName1(ngons[0], 'ElementStartOffset' )[1]
     ngon_pe       = I.getNodeFromName1(ngons[0], 'ParentElements'     )[1]
 
-    cell_ln_to_gn = IE.getGlobalNumbering(zone, 'Cell').astype(pdm_gnum_dtype)
-    n_cell = sids.zone_n_cell(zone)
+    cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone, 'Cell')).astype(pdm_gnum_dtype)
+    n_cell = sids.Zone.n_cell(zone)
 
     center_cell = compute_center_cell_u(n_cell,
                                         cx, cy, cz,
@@ -78,9 +78,9 @@ def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
   face_vtx_idx  = I.getNodeFromName1(ngons[0],  "ElementStartOffset")[1]
   face_vtx      = I.getNodeFromName1(ngons[0],  "ElementConnectivity")[1]
 
-  face_ln_to_gn = IE.getGlobalNumbering(ngons[0], 'Element').astype(pdm_gnum_dtype)
-  cell_ln_to_gn = IE.getGlobalNumbering(part_zone, 'Cell').astype(pdm_gnum_dtype)
-  vtx_ln_to_gn  = IE.getGlobalNumbering(part_zone, 'Vertex').astype(pdm_gnum_dtype)
+  face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element')).astype(pdm_gnum_dtype)
+  cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell')).astype(pdm_gnum_dtype)
+  vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex')).astype(pdm_gnum_dtype)
 
   n_cell = cell_ln_to_gn.shape[0]
   n_face = face_ln_to_gn.shape[0]

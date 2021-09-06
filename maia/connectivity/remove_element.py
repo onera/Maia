@@ -41,7 +41,7 @@ def remove_element(zone, element):
   subset_pathes = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneGridConnectivity_t/GridConnectivity_t',\
                    'FlowSolution_t', 'ZoneSubRegion_t']
   for subset_path in subset_pathes:
-    for subset in IE.getNodesByMatching(zone, subset_path):
+    for subset in IE.iterNodesByMatching(zone, subset_path):
       pl_n = I.getNodeFromName1(subset, 'PointList')
       if sids.GridLocation(subset) != 'Vertex' and pl_n is not None:
         pl = pl_n[1]
@@ -92,19 +92,17 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   n_rmvd_ec_offset  = par_utils.gather_and_shift(n_rmvd_ec_local, comm)
   n_rmvd_ec_total   = n_rmvd_ec_offset[-1]
 
-  ngon_distri = IE.getDistribution(dist_ngon, 'Element')
+  ngon_distri = I.getVal(IE.getDistribution(dist_ngon, 'Element'))
   ngon_distri[0] -= n_rmvd_offset[comm.Get_rank()]
   ngon_distri[1] -= (n_rmvd_offset[comm.Get_rank()] + n_rmvd_local)
   ngon_distri[2] -= n_rmvd_total
 
-  #TODO: improve that (will be possible when IE.getDistribution return a node)
-  try:
-    ngon_distri_ec = IE.getDistribution(dist_ngon, 'ElementConnectivity')
+  ngon_distri_ec_n = IE.getDistribution(dist_ngon, 'ElementConnectivity')
+  if ngon_distri_ec_n is not None:
+    ngon_distri_ec     = I.getVal(ngon_distri_ec_n)
     ngon_distri_ec[0] -= n_rmvd_ec_offset[comm.Get_rank()]
     ngon_distri_ec[1] -= (n_rmvd_ec_offset[comm.Get_rank()] + n_rmvd_ec_local)
     ngon_distri_ec[2] -= n_rmvd_ec_total
-  except:
-    pass
 
   #Update ElementRange and size data (global)
   er_n[1][1] -= n_rmvd_total

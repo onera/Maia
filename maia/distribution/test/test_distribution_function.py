@@ -37,7 +37,7 @@ def test_uniform_distribution(sub_comm):
 
 @mark_mpi_test(3)
 def test_create_distribution_node(sub_comm):
-  node = I.createNode('ParentNode', 'AnyType_t')
+  node = I.createNode('ParentNode', 'UserDefinedData_t')
   MID.create_distribution_node(100, sub_comm, 'MyDistribution', node)
 
   distri_ud   = IE.getDistribution(node)
@@ -51,7 +51,7 @@ def test_create_distribution_node(sub_comm):
 
 def test_create_distribution_node_from_distrib():
   distri = np.array([10,20,30])
-  node = I.createNode('ParentNode', 'AnyType_t')
+  node = I.createNode('ParentNode', 'UserDefinedData_t')
   MID.create_distribution_node_from_distrib('MyDistribution', node, distri)
   distri_ud   = IE.getDistribution(node)
   assert distri_ud is not None

@@ -95,7 +95,7 @@ def test_part_pl_to_dist_pl(sub_comm, allow_mult):
 
   dist_pl     = I.getNodeFromPath(dist_zsr, 'PointList')[1]
   dist_pl_s   = I.getNodeFromPath(dist_zsr, 'PointList#Size')[1]
-  dist_distri = IE.getDistribution(dist_zsr, 'Index')
+  dist_distri = I.getVal(IE.getDistribution(dist_zsr, 'Index'))
   assert dist_distri.dtype == pdm_gnum_dtype
   assert (dist_pl_s == [1,7]).all()
 
@@ -197,8 +197,8 @@ Zone.P2.N1 Zone_t:
   assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == expected_eso).all()
   assert (I.getNodeFromName(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec).all()
-  distri_elt  = IE.getDistribution(ngon, 'Element')
-  distri_eltc = IE.getDistribution(ngon, 'ElementConnectivity')
+  distri_elt  = I.getVal(IE.getDistribution(ngon, 'Element'))
+  distri_eltc = I.getVal(IE.getDistribution(ngon, 'ElementConnectivity'))
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
   assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()
@@ -273,8 +273,8 @@ Zone.P2.N1 Zone_t:
   assert nface is not None
   assert (I.getNodeFromName(nface, 'ElementStartOffset')[1] == expected_eso).all()
   assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == expected_ec).all()
-  distri_elt  = IE.getDistribution(nface, 'Element')
-  distri_eltc = IE.getDistribution(nface, 'ElementConnectivity')
+  distri_elt  = I.getVal(IE.getDistribution(nface, 'Element'))
+  distri_eltc = I.getVal(IE.getDistribution(nface, 'ElementConnectivity'))
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
   assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()

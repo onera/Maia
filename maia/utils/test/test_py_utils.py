@@ -4,6 +4,12 @@ import numpy as np
 import maia.utils.py_utils as py_utils
 from   maia.utils        import parse_yaml_cgns
 
+def test_camel_to_snake():
+  assert py_utils.camel_to_snake("already_snake") == "already_snake"
+  assert py_utils.camel_to_snake("stringInCamelCase") == "string_in_camel_case"
+  assert py_utils.camel_to_snake("StringInCamelCase") == "string_in_camel_case"
+  assert py_utils.camel_to_snake("stringINCamelCase", keep_upper=True) == "string_IN_camel_case"
+
 def test_list_or_only_elt():
   assert py_utils.list_or_only_elt([42]) == 42
   input = [1,2,3, "nous irons au bois"]

@@ -24,7 +24,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
     for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
       bc_path = zone_bc_path+"/"+bc[0]
 
-      distrib_bc   = IE.getDistribution(bc, 'Index')
+      distrib_bc   = I.getVal(IE.getDistribution(bc, 'Index'))
 
       bc_shape = utils.pl_or_pr_size(bc)
       data_space = create_data_array_filter(distrib_bc, bc_shape)
@@ -60,7 +60,7 @@ def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
     zone_gc_path = zone_path+"/"+zone_gc[0]
     for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
       gc_path = zone_gc_path+"/"+gc[0]
-      distrib_ia = IE.getDistribution(gc, 'Index')
+      distrib_ia = I.getVal(IE.getDistribution(gc, 'Index'))
 
       gc_shape   = utils.pl_or_pr_size(gc)
       data_space = create_data_array_filter(distrib_ia, gc_shape)
@@ -73,8 +73,8 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   if present, or using allCells / allVertex if no pointList is present.
   Filter is created for the arrays and for the PointList if present
   """
-  distrib_vtx  = IE.getDistribution(zone, 'Vertex')
-  distrib_cell = IE.getDistribution(zone, 'Cell')
+  distrib_vtx  = I.getVal(IE.getDistribution(zone, 'Vertex'))
+  distrib_cell = I.getVal(IE.getDistribution(zone, 'Cell'))
   for flow_solution in I.getNodesFromType1(zone, 'FlowSolution_t'):
     flow_solution_path = zone_path + "/" + I.getName(flow_solution)
     grid_location = SIDS.GridLocation(flow_solution)

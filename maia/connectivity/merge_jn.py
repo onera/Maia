@@ -7,6 +7,7 @@ from Pypdm import Pypdm as PDM
 
 from maia.sids import Internal_ext as IE
 from maia.sids import sids
+from maia.sids import pytree as PT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.tree_exchange.dist_to_part import data_exchange as MBTP
@@ -27,7 +28,7 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
    - remove faces from EC, PE and ESO and update distribution info
    - update ElementConnectivity using vertex old_to_new order
   """
-  face_distri = IE.getDistribution(ngon, 'Element').astype(pdm_dtype)
+  face_distri = I.getVal(IE.getDistribution(ngon, 'Element')).astype(pdm_dtype)
   pe          =  I.getNodeFromPath(ngon, 'ParentElements')[1]
 
   # A/ Exchange parent cells before removing :
@@ -139,11 +140,11 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
   is_zsr  = lambda n: matches_loc(n) and I.getType(n) == 'ZoneSubRegion_t'
   is_jn   = lambda n: matches_loc(n) and I.getType(n) == 'GridConnectivity_t'
 
-  sol_list  = list(IE.getChildrenFromPredicate(zone, is_sol)) #Force lists to reuse generators
-  bc_list   = list(IE.getNodesByMatching(zone, ['ZoneBC_t', is_bc]))
-  bcds_list = list(IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', is_bcds]))
-  zsr_list  = list(IE.getChildrenFromPredicate(zone, is_zsr))
-  jn_list   = list(IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', is_jn]))
+  sol_list  = PT.getChildrenFromPredicate(zone, is_sol)
+  bc_list   = PT.getChildrenFromPredicates(zone, ['ZoneBC_t', is_bc])
+  bcds_list = PT.getChildrenFromPredicates(zone, ['ZoneBC_t', 'BC_t', is_bcds])
+  zsr_list  = PT.getChildrenFromPredicate(zone, is_zsr)
+  jn_list   = PT.getChildrenFromPredicates(zone, ['ZoneGridConnectivity_t', is_jn])
 
   #Loop in same order using to get apply pl using generic func
   all_nodes_and_queries = [
@@ -180,14 +181,15 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
 
 # TODO move to sids module, doc, unit test
 #(take the one of _shift_cgns_subsets, and for _shift_cgns_subsets, make a trivial test)
-def all_nodes_with_point_list(zone,pl_location):
+def all_nodes_with_point_list(zone, pl_location):
   has_pl = lambda n: I.getNodeFromName1(n, 'PointList') is not None \
                      and sids.GridLocation(n) == pl_location
   return itertools.chain(
-      IE.getChildrenFromPredicate(zone, has_pl)                      , #FlowSolution_t, ZoneSubRegion_t, ...
-      IE.getNodesByMatching(zone, ['ZoneBC_t', has_pl])              , #BC_t
-      IE.getNodesByMatching(zone, ['ZoneBC_t', 'BC_t', has_pl])      , #BCDataSet_t
-      IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', has_pl]), #GridConnectivity_t
+      PT.getChildrenFromPredicate(zone, has_pl)                      , #FlowSolution_t, ZoneSubRegion_t, ...
+      PT.getChildrenFromPredicates(zone, ['ZoneBC_t', has_pl])              , #BC_t
+      #For this one we must exclude BC since predicate is also tested on root (and should not be ?)
+      PT.getChildrenFromPredicates(zone, ['ZoneBC_t', 'BC_t', lambda n : has_pl(n) and I.getType(n) != 'BC_t'])      , #BCDataSet_t
+      PT.getChildrenFromPredicates(zone, ['ZoneGridConnectivity_t', has_pl]), #GridConnectivity_t
     )
 
 def _shift_cgns_subsets(zone, location, shift_value):
@@ -205,7 +207,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   managed : GridCoordinates, FlowSolution, DiscreteData)
   and update vertex distribution info
   """
-  vtx_distri_ini  = IE.getDistribution(zone, 'Vertex').astype(pdm_dtype)
+  vtx_distri_ini  = I.getVal(IE.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
   pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
   PTB = PDM.PartToBlock(comm, [vtx_to_remove.astype(pdm_dtype)], pWeight=None, partN=1,
@@ -219,7 +221,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   is_all_vtx_sol = lambda n: I.getType(n) in ['FlowSolution_t', 'DiscreteData_t'] \
       and sids.GridLocation(n) == 'Vertex' and I.getNodeFromPath(n, 'PointList') is None
 
-  for node in IE.getChildrenFromPredicate(zone, is_all_vtx_sol):
+  for node in PT.iterChildrenFromPredicate(zone, is_all_vtx_sol):
     for data_n in I.getNodesFromType1(node, 'DataArray_t'):
       I.setValue(data_n, np.delete(data_n[1], local_vtx_to_rmv))
 
@@ -253,8 +255,8 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   ref_vtx, vtx_to_remove, _ = VL.generate_jn_vertex_list(dist_tree, jn_pathes[0], comm)
 
   #Get initial distributions
-  face_distri_ini = IE.getDistribution(ngon, 'Element').astype(pdm_dtype)
-  vtx_distri_ini  = IE.getDistribution(zone, 'Vertex').astype(pdm_dtype)
+  face_distri_ini = I.getVal(IE.getDistribution(ngon, 'Element')).astype(pdm_dtype)
+  vtx_distri_ini  = I.getVal(IE.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
 
   old_to_new_face = merge_distributed_ids(face_distri_ini, face_to_remove, ref_faces, comm, True)
   old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, ref_vtx, comm)

@@ -5,31 +5,20 @@ import maia.sids.sids     as SIDS
 
 from .geometry import compute_face_center_and_characteristic_length, adapt_match_information
 
-def bcs_if_in_family_list(zone, fams, family_list):
-  for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
-    for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
-      bctype = bc[1].tostring()
-      if(bctype == b'FamilySpecified'):
-        family_name_n = I.getNodeFromType1(bc, 'FamilyName_t')
-        family_name   = family_name_n[1].tostring().decode()
-        if(family_name in family_list):
-          yield bc
-
-
-def compute_n_point_cloud(zones, fams, family_list):
+def compute_n_point_cloud(zones, family_list):
   """
   """
   n_point_cloud = 0
   for zone in zones:
-    if SIDS.ZoneType(zone) == 'Structured':
+    if SIDS.Zone.Type(zone) == 'Structured':
       raise NotImplementedError("connect_match_from_family for structured zone not allowed yet")
-    for bc in bcs_if_in_family_list(zone, fams, family_list):
+    for bc in SIDS.Zone.getBCsFromFamily(zone, family_list):
       n_point_cloud = n_point_cloud + 1
 
   return n_point_cloud
 
 def prepare_pdm_point_merge_structured(pdm_point_merge, i_point_cloud, match_type,
-                                       i_zone, zone, fams,
+                                       i_zone, zone,
                                        bnd_to_join_path_list,
                                        l_send_entity_stri,
                                        l_send_entity_data,
@@ -40,7 +29,7 @@ def prepare_pdm_point_merge_structured(pdm_point_merge, i_point_cloud, match_typ
 
 
 def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_type,
-                                         i_zone, zone, fams, family_list,
+                                         i_zone, zone, family_list,
                                          bnd_to_join_path_list,
                                          l_send_entity_stri,
                                          l_send_entity_data,
@@ -48,21 +37,23 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
   """
   match_type can be vertex or face
   """
-  gridc_n = I.getNodeFromName1(zone   , 'GridCoordinates')
-  cx      = I.getNodeFromName1(gridc_n, 'CoordinateX'    )[1]
-  cy      = I.getNodeFromName1(gridc_n, 'CoordinateY'    )[1]
-  cz      = I.getNodeFromName1(gridc_n, 'CoordinateZ'    )[1]
+  # gridc_n = I.getNodeFromName1(zone   , 'GridCoordinates')
+  # cx      = I.getNodeFromName1(gridc_n, 'CoordinateX'    )[1]
+  # cy      = I.getNodeFromName1(gridc_n, 'CoordinateY'    )[1]
+  # cz      = I.getNodeFromName1(gridc_n, 'CoordinateZ'    )[1]
+  cx, cy, cz = SIDS.coordinates(zone)
 
-  for elmt in I.getNodesFromType1(zone, 'Elements_t'):
-    if(elmt[1][0] == 22):
-      found    = True
-      face_vtx     = I.getNodeFromName1(elmt, 'ElementConnectivity')[1]
-      face_vtx_idx = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
-      break
-  if(not found):
-    raise NotImplementedError("Connect match need at least the NGonElements")
+  # for elmt in I.getNodesFromType1(zone, 'Elements_t'):
+  #   if(elmt[1][0] == 22):
+  #     found    = True
+  #     face_vtx     = I.getNodeFromName1(elmt, 'ElementConnectivity')[1]
+  #     face_vtx_idx = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
+  #     break
+  # if(not found):
+  #   raise NotImplementedError("Connect match need at least the NGonElements")
+  face_vtx, face_vtx_idx, _ = SIDS.ngon_connectivity(zone)
 
-  for bc in bcs_if_in_family_list(zone, fams, family_list):
+  for bc in SIDS.Zone.getBCsFromFamily(zone, family_list):
 
     pl = I.getNodeFromName1(bc, 'PointList')[1]
 
@@ -94,11 +85,9 @@ def connect_match_from_family(part_tree, family_list, comm,
   Utily fonction to find in a configuration the List of Wall contains in Family or BC
   TODO : Structured / DG
   """
-
-  fams  = I.getNodesFromType2(part_tree, 'Family_t')
   zones = I.getNodesFromType2(part_tree, 'Zone_t')
 
-  n_point_cloud = compute_n_point_cloud(zones, fams, family_list)
+  n_point_cloud = compute_n_point_cloud(zones, family_list)
 
   pdm_point_merge = PDM.PointsMerge(comm, n_point_cloud, rel_tol)
 
@@ -110,16 +99,16 @@ def connect_match_from_family(part_tree, family_list, comm,
   bnd_to_join_path_list = [[]]*len(zones)
   for i_zone, zone in enumerate(zones):
     bnd_to_join_path_list_local = list()
-    if SIDS.ZoneType(zone) == 'Structured':
+    if SIDS.Zone.Type(zone) == 'Structured':
       i_point_cloud += prepare_pdm_point_merge_structured(pdm_point_merge, i_point_cloud, match_type,
-                                                          i_zone, zone, fams, family_list,
+                                                          i_zone, zone, family_list,
                                                           bnd_to_join_path_list_local,
                                                           l_send_entity_stri,
                                                           l_send_entity_data,
                                                           l_send_zone_id_data)
     else:
       i_point_cloud += prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_type,
-                                                            i_zone, zone, fams, family_list,
+                                                            i_zone, zone, family_list,
                                                             bnd_to_join_path_list_local,
                                                             l_send_entity_stri,
                                                             l_send_entity_data,
@@ -175,7 +164,7 @@ def connect_match_from_family(part_tree, family_list, comm,
   i_point_cloud = 0
   for i_zone, zone in enumerate(zones):
     zgc_n = I.newZoneGridConnectivity(name="ZoneGridConnectivity", parent=zone)
-    for bc in bcs_if_in_family_list(zone, fams, family_list):
+    for bc in SIDS.Zone.getBCsFromFamily(zone, family_list):
       section_idx = adapt_match_information(l_neighbor_idx    [i_point_cloud],
                                             l_neighbor_desc   [i_point_cloud],
                                             l_recv_entity_stri[i_point_cloud],

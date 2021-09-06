@@ -139,13 +139,13 @@ ZoneU Zone_t [[6,0,0]]:
     assert part_bc is None
     assert sids.GridLocation(part_sol) == 'CellCenter'
     assert (I.getNodeFromName1(part_sol, 'PointList')[1] == [2,3,4]).all()
-    assert (IE.getGlobalNumbering(part_sol, 'Index') == [1,3,2]).all()
+    assert (I.getVal(IE.getGlobalNumbering(part_sol, 'Index')) == [1,3,2]).all()
   if sub_comm.Get_rank() == 1:
     assert part_sol is None
     assert I.getNodeFromName1(part_bc, 'PointList') is None #No specified in list => skipped, only child are constructed
     assert sids.GridLocation(part_ds) == 'FaceCenter'
     assert (I.getNodeFromName1(part_ds, 'PointList')[1] == [1]).all()
-    assert (IE.getGlobalNumbering(part_ds, 'Index') == [1]).all()
+    assert (I.getVal(IE.getGlobalNumbering(part_ds, 'Index')) == [1]).all()
 
   with pytest.raises(AssertionError):
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t'], 'FaceCenter', sub_comm)
@@ -189,4 +189,4 @@ ZoneU.P1.N0 Zone_t [[3,0,0]]:
   assert I.getNodeFromName1(part_bc, 'PointList') is None
   assert sids.GridLocation(part_ds) == 'FaceCenter'
   assert (I.getNodeFromName1(part_ds, 'PointList')[1] == [42]).all()
-  assert (IE.getGlobalNumbering(part_ds, 'Index') == [9]).all()
+  assert (I.getVal(IE.getGlobalNumbering(part_ds, 'Index')) == [9]).all()

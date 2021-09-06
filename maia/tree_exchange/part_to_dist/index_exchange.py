@@ -52,7 +52,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
     node = I.getNodeFromPath(p_zone, node_path)
     if node:
       if SIDS.GridLocation(node) == 'Vertex':
-        ln_to_gn = IE.getGlobalNumbering(p_zone, 'Vertex')
+        ln_to_gn = I.getVal(IE.getGlobalNumbering(p_zone, 'Vertex'))
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
       part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
@@ -104,7 +104,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     ln_to_gn_list = []
     for part_zone in part_zones:
       ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
-      ln_to_gn_list.extend([IE.getGlobalNumbering(node, 'Index') \
+      ln_to_gn_list.extend([I.getVal(IE.getGlobalNumbering(node, 'Index')) \
           for node in I.getNodesFromName(ancestor_n, leaf+'*')])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
@@ -122,7 +122,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
       allowed_nodes = I.getNodesFromName(ancestor_n, leaf+'*') if allow_mult else I.getNodesFromName1(ancestor_n, leaf)
       for node in allowed_nodes:
         if SIDS.GridLocation(node) == 'Vertex':
-          ln_to_gn = IE.getGlobalNumbering(part_zone, 'Vertex')
+          ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex'))
         else:
           ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
         part_pl = I.getNodeFromName1(node, 'PointList')[1][0]

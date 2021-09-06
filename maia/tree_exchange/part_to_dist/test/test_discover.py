@@ -1,3 +1,4 @@
+import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 
 import Converter.Internal as I
@@ -6,6 +7,14 @@ from maia.sids          import conventions as conv
 from maia.utils         import parse_yaml_cgns
 from maia.sids.cgns_keywords import Label as CGL
 from maia.tree_exchange.part_to_dist import discover as disc
+
+def test_str_to_bools():
+  assert disc._str_to_bools(4, 'none') == [False, False, False, False]
+  assert disc._str_to_bools(2, 'all') == [True, True]
+  assert disc._str_to_bools(2, 'leaf') == [False, True]
+  assert disc._str_to_bools(3, 'ancestors') == [True, True, False]
+  with pytest.raises(ValueError):
+    disc._str_to_bools(4, 'wrong')
 
 @mark_mpi_test(3)
 class Test_discover_nodes_from_matching:
@@ -34,7 +43,6 @@ Zone.P2.N1 Zone_t:
   """]
   def test_simple(self, sub_comm):
     part_zones = parse_yaml_cgns.to_nodes(self.pt[sub_comm.Get_rank()])
-    # I.printTree(part_tree)
 
     dist_zone = I.newZone('Zone')
     disc.discover_nodes_from_matching(dist_zone, part_zones, 'ZoneBC_t/BC_t', sub_comm)
@@ -43,11 +51,6 @@ Zone.P2.N1 Zone_t:
 
     dist_zone = I.newZone('Zone')
     disc.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', 'BC_t'], sub_comm)
-    assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == "BC_t")
-    assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == "BC_t")
-
-    dist_zone = I.newZone('Zone')
-    disc.discover_nodes_from_matching(dist_zone, part_zones, [CGL.ZoneBC_t, CGL.BC_t], sub_comm)
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == "BC_t")
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == "BC_t")
 
@@ -61,7 +64,6 @@ Zone.P2.N1 Zone_t:
     disc.discover_nodes_from_matching(dist_zone, part_zones, queries, sub_comm)
     assert (I.getNodeFromPath(dist_zone, 'ZBC/BCA') == None)
     assert (I.getType(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == "BC_t")
-    # I.printTree(dist_zone)
 
   def test_short(self, sub_comm):
     part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
@@ -78,13 +80,13 @@ Zone.P2.N1 Zone_t:
     disc.discover_nodes_from_matching(dist_node, part_nodes, queries, sub_comm)
     assert I.getNodeFromPath(dist_node, 'BCA') is None
     assert (I.getType(I.getNodeFromPath(dist_node, 'BCB')) == "BC_t")
-    # I.printTree(dist_node)
 
   def test_getvalue(self, sub_comm):
     part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
     for zbc in I.getNodesFromName(part_tree, 'ZBC'):
       I.setValue(zbc, 'test')
 
+    # get_value as a string
     dist_zone = I.newZone('Zone')
     disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm)
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
@@ -97,14 +99,32 @@ Zone.P2.N1 Zone_t:
     disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value='all')
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == 'wall'
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value='ancestors')
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == None
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value='leaf')
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == None
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == 'wall'
 
+    # get_value as a list
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value=[False, False])
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == None
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == None
+    dist_zone = I.newZone('Zone')
+    disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), 'ZoneBC_t/BC_t', sub_comm, get_value=[True, False])
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
+    assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCA')) == None
+
+    # get_value and search with predicate as lambda
     dist_zone = I.newZone('Zone')
     queries = [CGL.ZoneBC_t, lambda n : I.getType(n) == "BC_t" and I.getName(n) != "BCA"]
     disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), queries, sub_comm, get_value='all')
     assert I.getNodeFromPath(dist_zone, 'BCA') is None
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC')) == 'test'
     assert I.getValue(I.getNodeFromPath(dist_zone, 'ZBC/BCB')) == 'farfield'
-    # I.printTree(dist_zone)
 
   def test_with_childs(self, sub_comm):
     part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
@@ -147,8 +167,6 @@ Zone.P2.N1 Zone_t:
     gc_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
     part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
 
-    # Test discover_nodes_from_matching(...)
-    # --------------------------------------
     dist_zone = I.newZone('Zone')
     disc.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), gc_path, sub_comm)
     assert I.getNodeFromPath(dist_zone, 'ZGC/match.0') is not None
@@ -175,8 +193,6 @@ Zone.P2.N1 Zone_t:
       I.newZone('Zone.P2.N0', parent=part_base)
       I.newZone('Zone.P2.N1', parent=part_base)
 
-    # Test discover_nodes_from_matching(...)
-    # --------------------------------------
     dist_tree = I.newCGNSTree()
     disc.discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', sub_comm,\
         merge_rule=lambda zpath : conv.get_part_prefix(zpath))
@@ -184,3 +200,4 @@ Zone.P2.N1 Zone_t:
     assert len(I.getZones(dist_tree)) == 2
     assert I.getNodeFromPath(dist_tree, 'BaseA/Zone') is not None
     assert I.getNodeFromPath(dist_tree, 'BaseB/Zone.withdot') is not None
+

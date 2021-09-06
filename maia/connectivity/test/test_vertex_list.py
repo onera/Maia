@@ -30,7 +30,7 @@ def test_filter_vtx_coordinates(sub_comm):
   empty = np.empty(0, np.int)
   tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
   vtx_coords = I.getNodeFromType(tree, 'GridCoordinates_t')
-  vtx_distri   = IE.getDistribution(I.getZones(tree)[0], 'Vertex')
+  vtx_distri   = I.getVal(IE.getDistribution(I.getZones(tree)[0], 'Vertex'))
   if sub_comm.Get_rank() == 1:
     requested_vtx_ids = [2,6,7,106,3,103,107,102]
     expected_vtx_coords = np.array([[0.25, 0., 0.], [0., 0.25, 0.], [0.25, 0.25, 0.], [0., 0.25, 1.],

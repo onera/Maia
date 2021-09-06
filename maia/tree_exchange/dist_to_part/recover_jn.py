@@ -14,7 +14,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
   jn_id     = []
   jn_id_opp = []
   for dist_zone in dist_zones:
-    for jn in IE.getNodesByMatching(dist_zone, path):
+    for jn in IE.iterNodesByMatching(dist_zone, path):
       jn_id.append    (I.getNodeFromName1(jn, 'Ordinal')[1][0] - 1)
       jn_id_opp.append(I.getNodeFromName1(jn, 'OrdinalOpp')[1][0] - 1)
 
@@ -38,7 +38,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
   nb_face_in_joins = np.zeros(n_unique_jn, np.int32)
   gc_type_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
   for d_zone in dist_zones:
-    for gc in IE.getNodesByMatching(d_zone, gc_type_path):
+    for gc in IE.iterNodesByMatching(d_zone, gc_type_path):
       gc_id     = I.getNodeFromName1(gc, 'Ordinal'   )[1][0] - 1
       gc_id_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0] - 1
       if (gc_id < gc_id_opp):
@@ -51,10 +51,10 @@ def get_pl_donor(dist_zones, part_zones, comm):
   for p_zone in part_zones:
     d_zone_name = conv.get_part_prefix(I.getName(p_zone))
     i_proc, i_part = conv.get_part_suffix(I.getName(p_zone))
-    for gc in IE.getNodesByMatching(p_zone, gc_type_path):
+    for gc in IE.iterNodesByMatching(p_zone, gc_type_path):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         gc_id = I.getNodeFromName1(gc, 'Ordinal')[1][0] - 1
-        lngn = IE.getGlobalNumbering(gc, 'Index')
+        lngn = I.getVal(IE.getGlobalNumbering(gc, 'Index'))
         shifted_lntogn.append(lngn + face_in_join_offset[join_to_ref[gc_id]])
         pl = I.getNodeFromName1(gc, 'PointList')[1][0]
         part_data['pl'].append(pl)
@@ -79,7 +79,7 @@ def get_pl_donor(dist_zones, part_zones, comm):
   i_join = 0
   for p_zone in part_zones:
     i_rank, i_part = conv.get_part_suffix(I.getName(p_zone))
-    for gc in IE.getNodesByMatching(p_zone, gc_type_path):
+    for gc in IE.iterNodesByMatching(p_zone, gc_type_path):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         pl = I.getNodeFromName1(gc, 'PointList')[1][0]
         opp_pl   = np.empty_like(pl)

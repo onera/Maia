@@ -20,7 +20,7 @@ def collect_distributed_pl(dist_zone, type_paths, filter_loc=None):
   """
   point_lists = []
   for type_path in type_paths:
-    for node in IE.getNodesByMatching(dist_zone, type_path):
+    for node in IE.iterNodesByMatching(dist_zone, type_path):
       if filter_loc is None or SIDS.GridLocation(node) in filter_loc:
         pl_n = I.getNodeFromName1(node, 'PointList')
         pr_n = I.getNodeFromName1(node, 'PointRange')
@@ -28,7 +28,7 @@ def collect_distributed_pl(dist_zone, type_paths, filter_loc=None):
           point_lists.append(pl_n[1])
         elif pr_n is not None and I.getValue(pr_n).shape[0] == 1:
           pr = I.getValue(pr_n)
-          distrib = IE.getDistribution(node, 'Index')
+          distrib = I.getVal(IE.getDistribution(node, 'Index'))
           point_lists.append(py_utils.single_dim_pr_to_pl(pr, distrib))
         # else:
           # point_lists.append(np.empty((1,0), dtype=np.int32, order='F'))
@@ -38,7 +38,7 @@ def collect_distributed_pl(dist_zone, type_paths, filter_loc=None):
 def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
   i_pl = 0
   for pl_path in pl_pathes:
-    for nodes in IE.getNodesWithParentsByMatching(dist_zone, pl_path):
+    for nodes in IE.iterNodesWithParentsByMatching(dist_zone, pl_path):
       ancestors, node = nodes[:-1], nodes[-1]
       if SIDS.GridLocation(node) in locations:
         pl_n = I.getNodeFromName1(node, 'PointList')

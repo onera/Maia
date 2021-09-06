@@ -13,8 +13,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
   """
-  distrib_vtx      = IE.getDistribution(dist_zone, 'Vertex')
-  distrib_cell     = IE.getDistribution(dist_zone, 'Cell'  )
+  distrib_vtx      = I.getVal(IE.getDistribution(dist_zone, 'Vertex'))
+  distrib_cell     = I.getVal(IE.getDistribution(dist_zone, 'Cell'))
 
   # > Try to hook NGon
   found = False
@@ -25,8 +25,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
       ngon_pe   = I.getNodeFromName1(elt, 'ParentElements'     )[1]
       ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1]
 
-      distrib_face     = IE.getDistribution(elt, 'Element'      )
-      distrib_face_vtx = IE.getDistribution(elt, 'ElementConnectivity')
+      distrib_face     = I.getVal(IE.getDistribution(elt, 'Element'))
+      distrib_face_vtx = I.getVal(IE.getDistribution(elt, 'ElementConnectivity'))
   if not found :
     raise RuntimeError
 
@@ -68,7 +68,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   # gc_point_lists = collect_distributed_pl(dist_zone, [gc_type_path])
   # dface_join_idx, dface_join = py_utils.concatenate_point_list(gc_point_lists, pdm_gnum_dtype)
   # joins_ids = [I.getNodeFromName1(gc, 'Ordinal')[1][0] for gc in \
-      # IE.getNodesByMatching(dist_zone, gc_type_path)]
+      # IE.iterNodesByMatching(dist_zone, gc_type_path)]
   # joins_ids = np.array(joins_ids, dtype='int32') - 1
   joins_ids      = np.empty(0, dtype=np.int32)
   dface_join_idx = np.zeros(1, dtype=np.int32)

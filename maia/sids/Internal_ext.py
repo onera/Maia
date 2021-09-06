@@ -1,69 +1,68 @@
-import fnmatch
 import numpy as np
 import Converter.Internal as I
-import maia.sids.cgns_keywords as CGK
 
-def isLabelFromString(label):
+from maia.sids.pytree import iterChildrenFromPredicates, getChildrenFromPredicates
+from maia.sids.pytree import check_is_label
+
+# Some old aliases to replace with iterNodesFromPredicates
+
+def iterNodesByMatching(root, predicates):
+  return iterChildrenFromPredicates(root, predicates)
+
+def getNodesByMatching(root, predicates):
+  return getChildrenFromPredicates(root, predicates)
+
+def iterNodesWithParentsByMatching(root, predicates):
+  return iterChildrenFromPredicates(root, predicates, ancestors=True)
+
+def getNodesWithParentsByMatching(root, predicates):
+  return getChildrenFromPredicates(root, predicates, ancestors=True)
+
+# --------------------------------------------------------------------------
+def getParentFromPredicate(start, node, predicate, prev=None):
+    """Return thee first parent node matching type."""
+    if id(start) == id(node):
+      return prev
+    if predicate(start):
+      prev = start
+    for n in start[2]:
+        ret = getParentFromPredicate(n, node, parentType, prev)
+        if ret is not None: return ret
+    return None
+
+def getParentsFromPredicate(start, node, predicate, l=[]):
+    """Return all parent nodes matching type."""
+    if id(start) == id(node):
+      return l
+    if predicate(start):
+      l.append(start)
+    for n in start[2]:
+        ret = getParentsFromPredicate(n, node, predicate, l)
+        if ret != []: return ret
+    return []
+
+# --------------------------------------------------------------------------
+@check_is_label('ZoneSubRegion_t', 0)
+@check_is_label('Zone_t', 1)
+def getSubregionExtent(sub_region_node, zone):
   """
-  Return True if a string is a valid CGNS Label
-  """
-  return isinstance(label, str) and ((label.endswith('_t') and label in CGK.Label.__members__) or label == '')
-
-def getValue(t):
-  """ Return the (raw) value of a node, without Cassiopee conversion """
-  return t[1]
-
-def getChildrenFromPredicate(node, query):
-  """ Return the list of first level childs of node matching a given query (callable function)"""
-  return [c for c in node[2] if query(c)] if node else []
-
-def getChildrenFromName(node, name):
-  """ Return the list of first level childs matching a given name -- specialized shortcut for getChildrenFromPredicate """
-  return getChildrenFromPredicate(node, lambda n : fnmatch.fnmatch(n[0], name))
-
-def getChildrenFromLabel(node, label):
-  """ Return the list of first level childs matching a given label -- specialized shortcut for getChildrenFromPredicate """
-  return getChildrenFromPredicate(node, lambda n : n[3] == label)
-
-def getChildrenFromValue(node, value):
-  """ Return the list of first level childs matching a given value -- specialized shortcut for getChildrenFromPredicate """
-  return getChildrenFromPredicate(node, lambda n : np.array_equal(n[1], value))
-
-
-def getNodesDispatch1(node, query):
-  """ Interface to adapted getNodesFromXXX1 function depending of query type"""
-  if isinstance(query, str):
-    return getChildrenFromLabel(node, query) if isLabelFromString(query) else getChildrenFromName(node, query)
-  elif isinstance(query, CGK.Label):
-    return getChildrenFromLabel(node, query.name)
-  elif isinstance(query, np.ndarray):
-    return getChildrenFromValue(node, query)
-  elif callable(query):
-    return getChildrenFromPredicate(node, query)
-  else:
-    raise TypeError("query must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
-
-
-def getSubregionExtent(sub_region_n, zone):
-  """
-  Return the path of the node (starting from zone node) related to sub_region_n
+  Return the path of the node (starting from zone node) related to sub_region_node
   node (BC, GC or itself)
   """
-  assert I.getType(sub_region_n) == "ZoneSubRegion_t"
-  if I.getNodeFromName1(sub_region_n, "BCRegionName") is not None:
-    for zbc, bc in getNodesWithParentsByMatching(zone, "ZoneBC_t/BC_t"):
-      if I.getName(bc) == I.getValue(I.getNodeFromName1(sub_region_n, "BCRegionName")):
+  if I.getNodeFromName1(sub_region_node, "BCRegionName") is not None:
+    for zbc, bc in iterNodesWithParentsByMatching(zone, "ZoneBC_t/BC_t"):
+      if I.getName(bc) == I.getValue(I.getNodeFromName1(sub_region_node, "BCRegionName")):
         return I.getName(zbc) + '/' + I.getName(bc)
-  elif I.getNodeFromName1(sub_region_n, "GridConnectivityRegionName") is not None:
+  elif I.getNodeFromName1(sub_region_node, "GridConnectivityRegionName") is not None:
     gc_pathes = ["ZoneGridConnectivity_t/GridConnectivity_t", "ZoneGridConnectivity_t/GridConnectivity1to1_t"]
     for gc_path in gc_pathes:
-      for zgc, gc in getNodesWithParentsByMatching(zone, gc_path):
-        if I.getName(gc) == I.getValue(I.getNodeFromName1(sub_region_n, "GridConnectivityRegionName")):
+      for zgc, gc in iterNodesWithParentsByMatching(zone, gc_path):
+        if I.getName(gc) == I.getValue(I.getNodeFromName1(sub_region_node, "GridConnectivityRegionName")):
           return I.getName(zgc) + '/' + I.getName(gc)
   else:
-    return I.getName(sub_region_n)
+    return I.getName(sub_region_node)
 
-  raise ValueError("ZoneSubRegion {0} has no valid extent".format(I.getName(sub_region_n)))
+  raise ValueError("ZoneSubRegion {0} has no valid extent".format(I.getName(sub_region_node)))
 
 def getZoneDonorPath(current_base, gc):
   """
@@ -73,62 +72,23 @@ def getZoneDonorPath(current_base, gc):
   opp_zone = I.getValue(gc)
   return opp_zone if '/' in opp_zone else current_base + '/' + opp_zone
 
-def getNodesByMatching(root, queries):
-  """Generator following queries, doing 1 level search using
-  getChildrenFromLabel or getChildrenFromName. Equivalent to
-  (query = 'type1_t/name2/type3_t' or ['type1_t', 'name2', lambda n: I.getType(n) == CGL.type3_t.name] )
-  for level1 in I.getNodesFromType1(root, type1_t):
-    for level2 in I.getNodesFromName1(level1, name2):
-      for level3 in I.getNodesFromType1(level2, type3_t):
-        ...
+def getDistribution(node, distri_name=None):
   """
-  query_list = []
-  if isinstance(queries, str):
-    for query in queries.split('/'):
-      query_list.append(eval(query) if query.startswith('lambda') else query)
-  elif isinstance(queries, (list, tuple)):
-    query_list = queries
-  else:
-    raise TypeError("getNodesByMatching: queries must be a sequence or a path as with strings separated by '/'.")
-
-  yield from getNodesByMatching__(root, query_list)
-
-def getNodesByMatching__(root, query_list):
-  if len(query_list) > 1:
-    next_roots = getNodesDispatch1(root, query_list[0])
-    for node in next_roots:
-      yield from getNodesByMatching__(node, query_list[1:])
-  elif len(query_list) == 1:
-    yield from getNodesDispatch1(root, query_list[0])
-
-
-def getNodesWithParentsByMatching(root, queries):
-  """Same than getNodesByMatching, but return
-  a tuple of size len(queries) containing the node and its parents
+  Starting from node, return the CGNS#Distribution node if distri_name is None
+  or the value of the requested distribution if distri_name is not None
   """
-  query_list = []
-  if isinstance(queries, str):
-    for query in queries.split('/'):
-      query_list.append(eval(query) if query.startswith('lambda') else query)
-  elif isinstance(queries, (list, tuple)):
-    query_list = queries
-  else:
-    raise TypeError("getNodesWithParentsByMatching: queries must be a sequence or a path with strings separated by '/'.")
+  return I.getNodeFromPath(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
+      else I.getNodeFromName1(node, ':CGNS#Distribution')
 
-  yield from getNodesWithParentsByMatching__(root, query_list)
+def getGlobalNumbering(node, lngn_name=None):
+  """
+  Starting from node, return the CGNS#GlobalNumbering node if lngn_name is None
+  or the value of the requested globalnumbering if lngn_name is not None
+  """
+  return I.getNodeFromPath(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
+      else I.getNodeFromName1(node, ':CGNS#GlobalNumbering')
 
-def getNodesWithParentsByMatching__(root, query_list):
-  if len(query_list) > 1:
-    next_roots = getNodesDispatch1(root, query_list[0])
-    for node in next_roots:
-      for subnode in getNodesWithParentsByMatching__(node, query_list[1:]):
-        yield (node, *subnode)
-  elif len(query_list) == 1:
-    nodes =  getNodesDispatch1(root, query_list[0])
-    for node in nodes:
-      yield (node,)
-
-
+# --------------------------------------------------------------------------
 def newDistribution(distributions = dict(), parent=None):
   """
   Create and return a CGNSNode to be used to store distribution data
@@ -153,18 +113,10 @@ def newGlobalNumbering(glob_numberings = dict(), parent=None):
     I.newDataArray(name, value, parent=lngn_node)
   return lngn_node
 
-def getDistribution(node, distri_name=None):
-  """
-  Starting from node, return the CGNS#Distribution node if distri_name is None
-  or the value of the requested distribution if distri_name is not None
-  """
-  return getValue(I.getNodeFromPath(node, ':CGNS#Distribution/' + distri_name)) if distri_name \
-      else I.getNodeFromName1(node, ':CGNS#Distribution')
+# --------------------------------------------------------------------------
 
-def getGlobalNumbering(node, lngn_name=None):
-  """
-  Starting from node, return the CGNS#GlobalNumbering node if lngn_name is None
-  or the value of the requested globalnumbering if lngn_name is not None
-  """
-  return getValue(I.getNodeFromPath(node, ':CGNS#GlobalNumbering/' + lngn_name)) if lngn_name \
-      else I.getNodeFromName1(node, ':CGNS#GlobalNumbering')
+get_subregion_extent                  = getSubregionExtent
+get_distribution                      = getDistribution
+get_global_numbering                  = getGlobalNumbering
+new_distribution                      = newDistribution
+new_global_numbering                  = newGlobalNumbering

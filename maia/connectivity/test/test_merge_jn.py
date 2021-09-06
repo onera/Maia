@@ -128,7 +128,7 @@ def test_update_cgns_subsets(sub_comm):
   I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
   I.newDataArray('Sol', np.copy(I.getNodeFromName(bc, 'PointList')[1]), parent=bc)
 
-  face_distri_ini = IE.getDistribution(I.getNodeFromPath(zone, 'NGonElements'), 'Element')
+  face_distri_ini = I.getVal(IE.getDistribution(I.getNodeFromPath(zone, 'NGonElements'), 'Element'))
   old_to_new_face_f = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,15,16,23,24,25,26,27,28,29,30,31,32,33,34]
   old_to_new_face = np.array(old_to_new_face_f[face_distri_ini[0]:face_distri_ini[1]])
   MJ._update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, sub_comm)
@@ -179,7 +179,7 @@ def test_update_vtx_data(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
   zone = I.getZones(tree)[0]
   I._rmNodesByType(tree, 'ZoneBC_t')
-  distri = IE.getDistribution(zone, 'Vertex')
+  distri = I.getVal(IE.getDistribution(zone, 'Vertex'))
   fs = I.newFlowSolution('FSol', gridLocation='Vertex', parent=zone)
   sol = I.newDataArray('Sol', np.arange(27)[distri[0]:distri[1]]+1, parent=fs)
 
@@ -196,7 +196,7 @@ def test_update_vtx_data(sub_comm):
 
   MJ._update_vtx_data(zone, vtx_to_remove, sub_comm)
 
-  assert (IE.getDistribution(zone, 'Vertex') == expected_distri).all()
+  assert (I.getVal(IE.getDistribution(zone, 'Vertex')) == expected_distri).all()
   assert (I.getNodeFromName(zone, 'CoordinateX')[1] == expected_cx).all()
   assert (I.getNodeFromName(zone, 'Sol')[1] == expected_sol).all()
 

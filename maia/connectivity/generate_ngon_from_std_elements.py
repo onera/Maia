@@ -86,7 +86,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
 
   #Manage BCs : shift PL values to reach refer ngon_elements
   group = np.copy(pdm_group) + (EU.get_range_of_ngon(zone)[0]-1)
-  for i_bc, bc in enumerate(IE.getNodesByMatching(zone, 'ZoneBC_t/BC_t')):
+  for i_bc, bc in enumerate(IE.iterNodesByMatching(zone, 'ZoneBC_t/BC_t')):
     I._rmNodesByName(bc, 'PointRange')
     I._rmNodesByName(bc, 'PointList')
     start, end = group_idx[i_bc], group_idx[i_bc+1]
@@ -100,7 +100,7 @@ def compute_ngon_from_std_elements(dist_tree, comm):
   for base in I.getNodesFromType(dist_tree, 'CGNSBase_t'):
     extract_dim = I.getValue(base)[0]
     #print("extract_dim == ", extract_dim)
-    zones_u = [zone for zone in I.getZones(base) if SIDS.ZoneType(zone) == "Unstructured"]
+    zones_u = [zone for zone in I.getZones(base) if SIDS.Zone.Type(zone) == "Unstructured"]
 
     dmn_to_dm = PDM.DMeshNodalToDMesh(len(zones_u), comm)
     dmesh_nodal_list = list()
@@ -112,7 +112,7 @@ def compute_ngon_from_std_elements(dist_tree, comm):
     # PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_FACE
     face = "EDGE" if extract_dim == 2 else "FACE"
     dmn_to_dm.compute(eval(f"PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_{face}"),
-                    eval(f"PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_{face}"))
+                      eval(f"PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_{face}"))
 
     dmn_to_dm.transform_to_coherent_dmesh(extract_dim)
 

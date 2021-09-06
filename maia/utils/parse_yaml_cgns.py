@@ -26,8 +26,11 @@ def parse_node(node):
       value = np.array(ast.literal_eval(value), order='F', dtype=data_type_np)
     else:
       value = ast.literal_eval(label_value[1])
-      if isinstance(value, list):
-        value = np.array(value, order='F')
+      if value is not None:
+        if isinstance(value, str):
+          value = np.array(tuple(value), dtype = '|S1')
+        else:
+          value = np.array(value, order='F')
   return name,label,value
 
 def extract_value(sub_nodes):

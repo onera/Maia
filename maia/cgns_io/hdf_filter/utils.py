@@ -20,10 +20,10 @@ def pl_or_pr_size(node):
     try:
       return I.getNodeFromName1(node, 'PointList#Size')[1]
     except TypeError: #No PL#Size, try to get info from :CGNS#Distribution and suppose size = 1,N
-      distri = IE.getDistribution(node, 'Index')
+      distri = I.getVal(IE.getDistribution(node, 'Index'))
       return np.array([1, distri[2]])
   if pr_n:
-    return SIDS.point_range_sizes(pr_n)
+    return SIDS.PointRange.VertexSize(pr_n)
 
 def apply_dataspace_to_arrays(node, node_path, data_space, hdf_filter):
   """
@@ -43,5 +43,5 @@ def apply_dataspace_to_pointlist(node, node_path, data_space, hdf_filter):
     hdf_filter[node_path + "/PointList"] = data_space
   if I.getNodeFromName1(node, 'PointListDonor') is not None:
     hdf_filter[node_path + "/PointListDonor"] = data_space
-    
+
 

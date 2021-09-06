@@ -26,7 +26,7 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   Note that vertex ids can appear twice (or more) in vtx_list if they are shared by multiple faces
   """
 
-  distri_ngon  = IE.getDistribution(ngon, 'Element').astype(pdm_dtype)
+  distri_ngon  = I.getVal(IE.getDistribution(ngon, 'Element')).astype(pdm_dtype)
 
   pdm_distrib = par_utils.partial_to_full_distribution(distri_ngon, comm)
   dist_data = {'FaceVtx' : I.getNodeFromName1(ngon, 'ElementConnectivity')[1]}
@@ -227,10 +227,10 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
   n_face_vtx = len(pl_face_vtx)
 
   received_coords     = filter_vtx_coordinates(I.getNodeFromType1(zone, 'GridCoordinates_t'),
-                                            IE.getDistribution(zone, 'Vertex'),
+                                            I.getVal(IE.getDistribution(zone, 'Vertex')),
                                             pl_face_vtx, comm)
   opp_received_coords = filter_vtx_coordinates(I.getNodeFromType1(zone_d, 'GridCoordinates_t'),
-                                            IE.getDistribution(zone_d, 'Vertex'),
+                                            I.getVal(IE.getDistribution(zone_d, 'Vertex')),
                                             pld_face_vtx, comm)
 
   # TODO extract in apply_periodic_transformation
@@ -283,7 +283,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
 
   jn = I.getNodeFromPath(dist_tree, jn_path)
   assert sids.GridLocation(jn) == 'FaceCenter'
-  distri_jn = IE.getDistribution(jn, 'Index')
+  distri_jn = I.getVal(IE.getDistribution(jn, 'Index'))
 
   base_name, zone_name = jn_path.split('/')[0:2]
   zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)

@@ -1,7 +1,7 @@
-import Converter.Internal as     I
+import Converter.Internal as I
 
 import maia.sids.sids as SIDS
-from   .distribution_function                 import create_distribution_node
+from   .distribution_function import create_distribution_node
 
 def compute_plist_or_prange_distribution(node, comm):
   """
@@ -17,7 +17,7 @@ def compute_plist_or_prange_distribution(node, comm):
   pl_n = I.getNodeFromName1(node, 'PointList')
 
   if(pr_n):
-    pr_lenght = SIDS.point_range_n_elt(pr_n)
+    pr_lenght = SIDS.PointRange.n_vtx(pr_n)
     create_distribution_node(pr_lenght, comm, 'Index', node)
 
   if(pl_n):
@@ -28,7 +28,7 @@ def compute_plist_or_prange_distribution(node, comm):
 def compute_elements_distribution(zone, comm):
   """
   """
-  if SIDS.ZoneType(zone) == 'Structured':
+  if SIDS.Zone.Type(zone) == 'Structured':
     pass
   else:
     elts = I.getNodesFromType1(zone, 'Elements_t')
@@ -41,11 +41,11 @@ def compute_elements_distribution(zone, comm):
 def compute_zone_distribution(zone, comm):
   """
   """
-  n_vtx  = SIDS.zone_n_vtx (zone)
-  n_cell = SIDS.zone_n_cell(zone)
+  n_vtx  = SIDS.Zone.n_vtx (zone)
+  n_cell = SIDS.Zone.n_cell(zone)
 
-  distrib_vtx  = create_distribution_node(n_vtx  , comm, 'Vertex', zone)
-  distrib_cell = create_distribution_node(n_cell , comm, 'Cell'  , zone)
+  distrib_vtx  = create_distribution_node(n_vtx , comm, 'Vertex', zone)
+  distrib_cell = create_distribution_node(n_cell, comm, 'Cell'  , zone)
 
   compute_elements_distribution(zone, comm)
 

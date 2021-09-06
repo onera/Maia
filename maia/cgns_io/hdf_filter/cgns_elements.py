@@ -63,7 +63,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
 def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
   """
   """
-  distrib_elmt = IE.getDistribution(elmt, 'Element')
+  distrib_elmt = I.getVal(IE.getDistribution(elmt, 'Element'))
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   # > For NGon only
@@ -103,7 +103,7 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
 def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  # distrib_elmt = IE.getDistribution(elmt, 'Element')
+  # distrib_elmt = I.getVal(IE.getDistribution(elmt, 'Element'))
   # dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   raise NotImplementedError("Mixed elements are not allowed ")
@@ -112,7 +112,7 @@ def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
 def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  distrib_elmt = IE.getDistribution(elmt, 'Element')
+  distrib_elmt = I.getVal(IE.getDistribution(elmt, 'Element'))
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   elmt_npe = sids.ElementNVtx(elmt)
