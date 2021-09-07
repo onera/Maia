@@ -45,17 +45,17 @@ def get_center_cell(zone_node: List) -> Tuple:
   cx, cy, cz = SIDS.coordinates(zone_node)
   LOG.info(f"cx = {cx}")
 
-  pdm_nodes = IE.getNodeFromName1(zone_node, ":CGNS#Ppart")
-  vtx_coords    = I.getVal(IE.getNodeFromName1(pdm_nodes, "np_vtx_coord"))
+  pdm_nodes = I.getNodeFromName1(zone_node, ":CGNS#Ppart")
+  vtx_coords    = I.getVal(I.getNodeFromName1(pdm_nodes, "np_vtx_coord"))
   vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
   cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone_node, 'Cell'))
   LOG.info(f"vtx_coords = {vtx_coords}")
 
   if SIDS.Zone.Type(zone_node) == "Unstructured":
-    element_node = IE.getNodeFromLabel1(zone_node, CGL.Elements_t.name)
+    element_node = I.getNodeFromType1(zone_node, CGL.Elements_t.name)
     # NGon elements
     if SIDS.ElementType(element_node) == CGK.ElementType.NGON_n.value:
-      face_vtx, face_vtx_idx, ngon_pe = SIDS.face_connectivity(zone_node)
+      face_vtx, face_vtx_idx, ngon_pe = SIDS.ngon_connectivity(zone_node)
       center_cell = compute_center_cell_u(n_cell,
                                           cx, cy, cz,
                                           face_vtx,

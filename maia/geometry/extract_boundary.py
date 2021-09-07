@@ -41,7 +41,8 @@ def compute_gnum_from_parent_gnum(bcs_ln_to_gn):
                              0, # Merge
                              0.,
                              comm)
-  gnum.gnum_set_from_parent(0, bcs_ln_to_gn.shape[0], bcs_ln_to_gn)
+  bcs_ln_to_gn_pdm = bcs_ln_to_gn.astype(pdm_dtype)
+  gnum.gnum_set_from_parent(0, bcs_ln_to_gn.shape[0], bcs_ln_to_gn_pdm)
   gnum.gnum_compute()
   return gnum.gnum_get(0)['gnum']
 
@@ -50,7 +51,7 @@ def apply_on_zone(zone_node, funcs, *args, **kwargs):
   if SIDS.Zone.Type(zone_node) == 'Structured':
     funcs["Structured"](zone_node, *args, **kwargs)
   else: # "Unstructured":
-    element_node = IE.getNodeFromLabel1(zone_node, CGL.Elements_t.name)
+    element_node = I.getNodeFromType1(zone_node, CGL.Elements_t.name)
     print(f"SIDS.ElementCGNSName(element_node) = {SIDS.ElementCGNSName(element_node)}")
     funcs["Unstructured"][SIDS.ElementCGNSName(element_node)](zone_node, *args, **kwargs)
 
@@ -97,7 +98,7 @@ class ExtractSurfFromBC:
       LOG.info(f"extract_surf_from_bc [1]: Treat bc [S]: {I.getName(bc_node)}, {bc_type}")
 
       # Get PointRange
-      point_range_node = IE.getIndexRange(bc_node)
+      point_range_node = I.getNodeFromName(bc_node, 'PointRange')
       point_range      = I.getVal(point_range_node)
 
       # Convert PointRange -> PointList
@@ -122,7 +123,7 @@ class ExtractSurfFromBC:
       LOG.info(f"extract_surf_from_bc [1]: n_vtx_bc [S]={n_vtx_bc}, n_face_bc [S]={self.n_face_bcs[bc_path]}, n_face_vtx_bc [S]={n_face_vtx_bc}")
 
   def _prepare_extract_bc_u_ngon(self, zone_node, families, marked_vtx):
-    face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(zone_node)
+    face_vtx, face_vtx_idx, _ = SIDS.ngon_connectivity(zone_node)
     LOG.info(f"extract_surf_from_bc: face_vtx [{face_vtx.shape[0]}] = {face_vtx}")
     LOG.info(f"extract_surf_from_bc: face_vtx_idx [{face_vtx_idx.shape[0]}] = {face_vtx_idx}")
     for bc_node in SIDS.Zone.getBCsFromFamily(zone_node, families):
@@ -130,7 +131,7 @@ class ExtractSurfFromBC:
       LOG.info(f"extract_surf_from_bc [1]: Treat bc [U]: {I.getName(bc_node)}, {bc_type}")
 
       # Get PointList
-      point_list_node = IE.getIndexArray(bc_node)
+      point_list_node = I.getNodeFromName(bc_node, 'PointList')
       point_list      = I.getVal(point_list_node)
 
       n_vtx_bc, n_face_vtx_bc = prepare_extract_bc_u(point_list, face_vtx, face_vtx_idx, marked_vtx)
@@ -152,7 +153,7 @@ class ExtractSurfFromBC:
       LOG.info(f"extract_surf_from_bc [2]: Treat bc [S]: {I.getName(bc_node)}, {bc_type}")
 
       # Get PointRange
-      point_range_node = IE.getIndexRange(bc_node)
+      point_range_node = I.getNodeFromName(bc_node, 'PointRange')
       point_range      = I.getVal(point_range_node)
 
       bc_path = I.getPath(zone_node, bc_node)
@@ -164,13 +165,13 @@ class ExtractSurfFromBC:
       LOG.info(f"extract_surf_from_bc [2]: point_list_vtx [S]={self.point_list_vtxs[bc_path]}")
 
   def _compute_point_list_vertex_bc_u_ngon(self, zone_node, families, marked_vtx):
-    face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(zone_node)
+    face_vtx, face_vtx_idx, _ = SIDS.ngon_connectivity(zone_node)
     for bc_node in SIDS.Zone.getBCsFromFamily(zone_node, families):
       bc_type = I.getValue(bc_node)
       LOG.info(f"extract_surf_from_bc [2]: Treat bc [U]: {I.getName(bc_node)}, {bc_type}")
 
       # Get PointList
-      point_list_node = IE.getIndexArray(bc_node)
+      point_list_node = I.getNodeFromName(bc_node, 'PointList')
       point_list      = I.getVal(point_list_node)
 
       bc_path = I.getPath(zone_node, bc_node)
@@ -189,7 +190,7 @@ class ExtractSurfFromBC:
         bc_type = I.getValue(bc_node)
         LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bc_type}")
         # Get PointRange
-        point_range_node = IE.getIndexRange(bc_node)
+        point_range_node = I.getNodeFromName(bc_node, 'PointRange')
         point_range      = I.getVal(point_range_node)
 
         # Fill face_vtx_bcs, face_vtx_bcs_idx and vtx_bcs
@@ -209,12 +210,12 @@ class ExtractSurfFromBC:
 
   def _compute_extract_bc_u_ngon(self, zone_node, families, marked_vtx,
         point_list_vtxs_zone, point_list_faces_zone):
-    face_vtx, face_vtx_idx, _ = SIDS.face_connectivity(zone_node)
+    face_vtx, face_vtx_idx, _ = SIDS.ngon_connectivity(zone_node)
     for bc_node in SIDS.Zone.getBCsFromFamily(zone_node, families):
       bc_type = I.getValue(bc_node)
       LOG.info(f"extract_surf_from_bc: Treat bc : {I.getName(bc_node)}, {bc_type}")
       # Get PointList
-      point_list_node = IE.getIndexArray(bc_node)
+      point_list_node = I.getNodeFromName(bc_node, 'PointList')
       point_list      = I.getVal(point_list_node)
 
       # Fill face_vtx_bcs, face_vtx_bcs_idx and vtx_bcs
@@ -235,7 +236,7 @@ class ExtractSurfFromBC:
 
   # ---------------------------------------------------------------------------
   def compute(self, families):
-    zones = IE.get_all_zone(self.part_tree)
+    zones = I.getZones(self.part_tree)
     n_vtx = sum([SIDS.Zone.n_vtx(part_zone) for part_zone in zones])
     LOG.info(f"extract_surf_from_bc [0]: n_vtx = {n_vtx}")
 
@@ -320,7 +321,13 @@ class ExtractSurfFromBC:
       marked_vtx = self.marked_vtxs[zone_path]
       marked_vtx.fill(-1)
 
-      vtx_ln_to_gn_zone, _, face_ln_to_gn_zone = SIDS.Zone.get_ln_to_gn(zone_node)
+      vtx_ln_to_gn_zone  = I.getVal(IE.getGlobalNumbering(zone_node, 'Vertex'))
+      if SIDS.Zone.Type(zone_node) == "Structured":
+        face_ln_to_gn_zone = I.getVal(IE.getGlobalNumbering(zone_node, 'Face'))
+      else:
+        ngons  = [e for e in I.getNodesFromType1(zone_node, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NGON_n']
+        assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
+        face_ln_to_gn_zone = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element'))
       assert(n_vtx_zone == vtx_ln_to_gn_zone.shape[0])
       LOG.info(f"extract_surf_from_bc: vtx_ln_to_gn_zone.shape[0] = {vtx_ln_to_gn_zone.shape[0]}")
 

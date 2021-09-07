@@ -47,7 +47,7 @@ class Zone:
     elif Zone.Type(zone_node) == "Unstructured":
       element_node = I.getNodeFromType1(zone_node, CGL.Elements_t.name)
       if ElementType(element_node) == CGK.ElementType.NGON_n.value:
-        face_vtx, face_vtx_idx, ngon_pe = face_connectivity(element_node)
+        face_vtx, face_vtx_idx, ngon_pe = ngon_connectivity(element_node)
         n_face = [ngon_pe.shape[0]]
       else:
         raise NotImplementedError(f"Unstructured Zone {I.getName(zone_node)} with {ElementCGNSName(element_node)} not yet implemented.")

@@ -13,9 +13,12 @@ import Pypdm.Pypdm as PDM
 import maia.sids.cgns_keywords  as CGK
 import maia.sids.sids           as SIDS
 import maia.sids.Internal_ext   as IE
+import maia.sids.pytree as PT
 
+from maia                            import npy_pdm_gnum_dtype  as pdm_dtype
 from maia.sids.cgns_keywords         import Label as CGL
 from maia.sids                       import conventions as conv
+from maia.utils                      import py_utils
 from maia.tree_exchange.part_to_dist import discover    as disc
 
 from maia.geometry.extract_boundary import extract_surf_from_bc
@@ -222,10 +225,19 @@ class WallDistance:
     n_face_t = 0
     for i_part, part_zone in enumerate(part_zones):
       LOG.info(f"setup_vol_mesh: parse Zone [1] : {I.getName(part_zone)}")
-      vtx_ln_to_gn, cell_ln_to_gn, face_ln_to_gn = SIDS.Zone.get_ln_to_gn(part_zone)
+      vtx_ln_to_gn   = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex'))
+      cell_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell'))
+      if SIDS.Zone.Type(part_zone) == "Structured":
+        face_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Face'))
+      else:
+        ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NGON_n']
+        assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
+        face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element'))
       n_vtx_t  = np.max(vtx_ln_to_gn)
       n_cell_t = np.max(cell_ln_to_gn)
       n_face_t = np.max(face_ln_to_gn)
+
+    #We could retrieve data from dist zone
     n_vtx_t  = comm.allreduce(n_vtx_t , op=MPI.MAX)
     n_cell_t = comm.allreduce(n_cell_t, op=MPI.MAX)
     n_face_t = comm.allreduce(n_face_t, op=MPI.MAX)
@@ -242,9 +254,23 @@ class WallDistance:
 
     for i_part, part_zone in enumerate(part_zones):
       LOG.info(f"setup_vol_mesh: parse Zone [2] : {I.getName(part_zone)}")
-      vtx_coords, vtx_ln_to_gn, \
-      cell_face_idx, cell_face, cell_ln_to_gn, \
-      face_vtx_idx, face_vtx, face_ln_to_gn = SIDS.Zone.get_infos(part_zone)
+
+      vtx_coords = py_utils.interweave_arrays(SIDS.coordinates(part_zone))
+      face_vtx, face_vtx_idx, _ = SIDS.ngon_connectivity(part_zone)
+
+      nfaces  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NFACE_n']
+      assert len(nfaces) == 1, "NFace connectivity is needed for wall distance computing"
+      cell_face_idx = I.getVal(I.getNodeFromName(nfaces[0], 'ElementStartOffset'))
+      cell_face     = I.getVal(I.getNodeFromName(nfaces[0], 'ElementConnectivity'))
+
+      vtx_ln_to_gn   = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex')).astype(pdm_dtype)
+      cell_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell')).astype(pdm_dtype)
+      if SIDS.Zone.Type(part_zone) == "Structured":
+        face_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Face')).astype(pdm_dtype)
+      else:
+        ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NGON_n']
+        assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
+        face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element')).astype(pdm_dtype)
 
       n_vtx  = vtx_ln_to_gn .shape[0]
       n_cell = cell_ln_to_gn.shape[0]
@@ -486,7 +512,7 @@ def compare_npart(t1, t2):
 
 if __name__ == "__main__":
   import os
-  import maia.parallel_tree as PT
+  from maia.parallel_tree import parallel_tree, merge_and_save
   from maia.cgns_io      import cgns_io_tree as IOT
   from maia.partitioning import part         as PPA
   from maia.partitioning.load_balancing import setup_partition_weights as DBA
@@ -545,7 +571,7 @@ if __name__ == "__main__":
 
   fs_name = 'FlowSolution#Init'
   dist_tree = IOT.file_to_dist_tree(os.path.join(dirname, filename), comm)
-  IE.rmNodesFromLabel(dist_tree, "FlowSolution_t")
+  PT.rm_children_from_label(dist_tree, "FlowSolution_t")
   # I.printTree(dist_tree)
   # sys.exit(1)
   # methodf = f"{method}-rank1"
@@ -556,9 +582,9 @@ if __name__ == "__main__":
   # C.convertPyTree2File(part_tree, f"part_tree-rank{mpi_rank}-{method}.cgns", 'bin_hdf')
   wall_distance(part_tree, mpi_comm=comm, method=method)
   # I.printTree(part_tree)
-  ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  PT.merge_and_save(ptree, f"{filename}-new-{mpi_size}procs-{method}.cgns")
-  # PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
+  ptree = parallel_tree(comm, dist_tree, part_tree)
+  merge_and_save(ptree, f"{filename}-new-{mpi_size}procs-{method}.cgns")
+  # merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
   # assertCGNSFileEq(f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns", f"{rootname}-new-{mpi_size}procs-v1-{method}-ref.cgns")
 
   method = "propagation"
@@ -567,9 +593,9 @@ if __name__ == "__main__":
   wall_distance(part_tree, mpi_comm=comm, method=method)
   # C.convertPyTree2File(part_tree, f"{rootname}-new-{mpi_rank}rank-{methodf}.hdf")
   I.printTree(part_tree)
-  ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  PT.merge_and_save(ptree, f"{filename}-new-{mpi_size}procs-{method}.cgns")
-  # PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
+  ptree = parallel_tree(comm, dist_tree, part_tree)
+  merge_and_save(ptree, f"{filename}-new-{mpi_size}procs-{method}.cgns")
+  # merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns")
   # assertCGNSFileEq(f"{rootname}-new-{mpi_size}procs-v1-{method}.cgns", f"{rootname}-new-{mpi_size}procs-v1-{method}-ref.cgns")
 
   # n_part = 2
@@ -578,8 +604,8 @@ if __name__ == "__main__":
   # # C.convertPyTree2File(part_tree, f"part_tree-rank{mpi_rank}-{method}.cgns", 'bin_hdf')
   # wall_distance(part_tree, mpi_comm=comm, method=method)
   # # C.convertPyTree2File(part_tree, f"{rootname}-new-{mpi_rank}rank-{methodf}.cgns")
-  # ptree = PT.parallel_tree(comm, dist_tree, part_tree)
-  # PT.merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v2-{methodf}.cgns")
+  # ptree = parallel_tree(comm, dist_tree, part_tree)
+  # merge_and_save(ptree, f"{rootname}-new-{mpi_size}procs-v2-{methodf}.cgns")
   # assertCGNSFileEq(f"{rootname}-new-{mpi_size}procs-v2-{method}.cgns", f"{rootname}-new-{mpi_size}procs-v2-{method}-ref.cgns")
 
   # if mpi_rank == 0:

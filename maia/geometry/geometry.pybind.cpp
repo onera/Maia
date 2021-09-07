@@ -213,7 +213,7 @@ compute_center_cell_u(int n_cell,
                       py::array_t<int,    py::array::f_style>& np_parent_elements)
 {
   int n_face = np_parent_elements.shape()[0];
-  int n_vtx = np_cx.size();
+  // int n_vtx = np_cx.size();
   // std::cout << "compute_center_cell_u: n_cell = " << n_cell << std::endl;
   // std::cout << "compute_center_cell_u: n_face = " << n_face << std::endl;
   // std::cout << "compute_center_cell_u: np_face_vtx.size() = " << np_face_vtx.size() << std::endl;
