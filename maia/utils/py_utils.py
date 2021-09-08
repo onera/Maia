@@ -1,6 +1,6 @@
 import sys
 if sys.version_info.major == 3 and sys.version_info.major < 8:
-  from collections import Iterable  # < py38
+  from collections.abc import Iterable  # < py38
 else:
   from typing import Iterable
 import re

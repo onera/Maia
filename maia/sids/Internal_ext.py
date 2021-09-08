@@ -1,6 +1,8 @@
 import numpy as np
 import Converter.Internal as I
 
+import maia.sids.cgns_keywords as CGK
+import maia.utils.py_utils as PYU
 from maia.sids.pytree import iter_children_from_predicates, get_children_from_predicates
 from maia.sids.pytree import check_is_label
 

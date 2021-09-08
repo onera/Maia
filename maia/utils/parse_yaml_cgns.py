@@ -4,7 +4,8 @@ from ruamel.yaml import YAML
 from ruamel.yaml import parser
 import ast
 import numpy as np
-import maia.sids.internal as I
+import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 import maia.sids.cgns_keywords as CGK
 import maia.utils.py_utils as PYU
 
@@ -50,12 +51,12 @@ def parse_node(node):
       value     = value[2:].strip().replace(' ', '')
       # value = np.array(ast.literal_eval(value), order='F', dtype=CGK.cgns_to_dtype[cgns_type])
       py_value = ast.literal_eval(value)
-      value = I.create_value(label, py_value)
+      value = IE.create_value(label, py_value)
       if value.dtype != CGK.cgns_to_dtype[cgns_type]:
         value = value.astype(CGK.cgns_to_dtype[cgns_type])
     else:
       py_value = ast.literal_eval(value)
-      value = I.create_value(label, py_value)
+      value = IE.create_value(label, py_value)
   return name,label,value
 
 def extract_value(sub_nodes):

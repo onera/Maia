@@ -1,20 +1,19 @@
-from typing import List
 from ruamel.yaml import YAML
 from ruamel.yaml import parser
 import ast
 import numpy as np
 import Converter.PyTree as C
-import maia.sids.internal as I
+import Converter.Internal as CI
 import maia.sids.cgns_keywords as CGK
 import maia.utils.py_utils as PYU
 
 LINE_MAX = 300
 
-def generate_line(node: I.TreeNode, lines: List, ident: int=0):
+def generate_line(node, lines, ident=0):
   start = True if not bool(lines) else False
 
   # Print value
-  node_value = I.get_value(node)
+  node_value = CI.getValue(node)
   value_type = ''
   if isinstance(node_value, str):
     value = f"'{node_value}'"
@@ -33,7 +32,7 @@ def generate_line(node: I.TreeNode, lines: List, ident: int=0):
   else:
     value = ''
 
-  line = f"{' '*ident}{I.get_name(node)} {I.get_label(node)} {value}:"
+  line = f"{' '*ident}{CI.getName(node)} {CI.getType(node)} {value}:"
   if len(line) > LINE_MAX:
     values = [f"{' '*ident}  {value[y-LINE_MAX:y]}" for y in range(LINE_MAX, len(value)+LINE_MAX, LINE_MAX)]
     svalues = "\n".join(values)
@@ -42,13 +41,13 @@ def generate_line(node: I.TreeNode, lines: List, ident: int=0):
 {ident}  {label}
 {value_type}{values}
 {ident}  :""".format(ident=' '*ident,
-                     name=I.get_name(node),
-                     label=I.get_label(node),
+                     name=CI.getName(node),
+                     label=CI.getType(node),
                      value_type=value_type,
                      values=svalues)
   lines.append(line)
 
-  children      = I.get_children(node)
+  children      = CI.getChildren(node)
   iend_children = len(children)-1
   for i, child in enumerate(children):
     generate_line(child, lines, ident+2)
@@ -56,9 +55,9 @@ def generate_line(node: I.TreeNode, lines: List, ident: int=0):
   if start:
     return lines
 
-def to_yaml(t: I.TreeNode):
+def to_yaml(t):
   lines = []
-  for base in I.get_all_base(t):
+  for base in CI.getBases(t):
     generate_line(base, lines=lines)
   return lines
 
@@ -68,7 +67,7 @@ if __name__ == "__main__":
     yt0 = f.read()
   # print(f"yt0 = {yt0}")
   t = parse_yaml_cgns.to_cgns_tree(yt0)
-  I.print_tree(t)
+  CI.printTree(t)
   lines = to_yaml(t)
   # for l in lines:
   #   print(f"l: {l}")
@@ -76,7 +75,7 @@ if __name__ == "__main__":
   assert(yt0 == yt1)
 
   # t = C.convertFile2PyTree('cubeU_join_bnd-new.hdf')
-  # # I.print_tree(t)
+  # # CI.printTree(t)
   # lines = to_yaml(t)
   # # for l in lines:
   # #   print(f"l: {l}")
@@ -91,6 +90,6 @@ if __name__ == "__main__":
   # yaml_dict = yaml.load(yt)
   # # print(f"yaml_dict = {yaml_dict}")
   # t = parse_yaml_cgns.to_cgns_tree(yt)
-  # I.print_tree(t)
+  # CI.printTree(t)
   # C.convertPyTree2File(t, 'toto.hdf')
 
