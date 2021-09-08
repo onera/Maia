@@ -271,7 +271,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   #is not given by the bottom left corner but by the top right. We can just shift to retrieve casual behaviour
   if 'Center' in output_loc:
     for sub_pr_opp in sub_pr_opp_list:
-      reverted = np.sum(T, axis=0) < 0
+      reverted = np.sum(T, axis=1) < 0
       reverted[bnd_axis_opp] = False
       sub_pr_opp[reverted,:] -= 1
 
@@ -373,9 +373,7 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
 
         for flow_solution_s in I.getNodesFromType1(zone_s, "FlowSolution_t"):
           flow_solution_u = I.newFlowSolution(I.getName(flow_solution_s), parent=zone_u)
-          grid_loc = I.getNodeFromType1(zone_s, "GridLocation_t")
-          if grid_loc:
-            I.addChild(flow_solution_u, grid_loc)
+          I.newGridLocation(sids.GridLocation(flow_solution_s), flow_solution_u)
           for data in I.getNodesFromType1(flow_solution_s, "DataArray_t"):
             I.addChild(flow_solution_u, data)
 
@@ -395,6 +393,13 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
             zone_opp_path = zone_opp_name if '/' in opp_name else I.getName(base_s)+'/'+opp_name
             n_vtx_opp = I.getValue(I.getNodeFromPath(disttree_s, zone_opp_path))[:,0]
             I.addChild(zonegc_u, gc_s_to_gc_u(gc_s, zone_path, n_vtx, n_vtx_opp, gc_output_loc, i_rank, n_rank))
+
+        # Top level nodes
+        top_level_types = ["FamilyName_t", "AdditionalFamilyName_t", "Descriptor_t", \
+            "FlowEquationSet_t", "ReferenceState_t", "ConvergenceHistory_t"]
+        for top_level_type in top_level_types:
+          for node in I.getNodesFromType1(zone_s, top_level_type):
+            I.addChild(zone_u, node)
 
     # Top level nodes
     top_level_types = ["FlowEquationSet_t", "ReferenceState_t", "Family_t"]
