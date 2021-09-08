@@ -119,14 +119,13 @@ def _update_subset(node, pl_new, data_query, comm):
     path = "/".join([I.getName(n) for n in data_nodes])
     I.setValue(data_nodes[-1], dist_data_ideal[path].reshape(1,-1, order='F'))
 
-def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
+def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_name, comm):
   """
   Treated for now :
     BC, BCDataset (With or without PL), FlowSol, DiscreteData, ZoneSubRegion, JN
 
-    Careful! PointList arrays of joins present in the zone are updated, but opposite joins
-    are not informed of this modification. This has to be done after the function if PointListDonor
-    are needed
+    Careful! PointList/PointListDonor arrays of joins present in the zone are updated, but opposite joins
+    are not informed of this modification. This has to be done after the function.
   """
 
   # Prepare iterators
@@ -145,6 +144,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
   bcds_list = PT.getChildrenFromPredicates(zone, ['ZoneBC_t', 'BC_t', is_bcds])
   zsr_list  = PT.getChildrenFromPredicate(zone, is_zsr)
   jn_list   = PT.getChildrenFromPredicates(zone, ['ZoneGridConnectivity_t', is_jn])
+  i_jn_list = [jn for jn in jn_list if IE.getZoneDonorPath(base_name, jn) == base_name + '/'+ I.getName(zone)]
 
   #Loop in same order using to get apply pl using generic func
   all_nodes_and_queries = [
@@ -152,7 +152,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
     ( bc_list  , [is_bcds_without_pl, 'BCData_t', 'DataArray_t'] ),
     ( bcds_list, ['BCData_t', 'DataArray_t']                     ),
     ( zsr_list , ['DataArray_t']                                 ),
-    ( jn_list  , []                                              ),
+    ( jn_list  , ['PointListDonor']                              ),
   ]
   all_nodes = itertools.chain.from_iterable([elem[0] for elem in all_nodes_and_queries])
 
@@ -172,6 +172,14 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, comm):
     for node in node_list:
       _update_subset(node, part_data_pl['OldToNew'][part_offset], data_query, comm)
       part_offset += 1
+
+  #For internal jn only, we must update PointListDonor with new face id. Non internal jn reorder the array,
+  # but do not apply old_to_new transformation.
+  # Note that we will lost symmetry PL/PLD for internal jn, we need a rule to update it afterward
+  all_pld = [I.getNodeFromName1(jn, 'PointListDonor') for jn in i_jn_list]
+  updated_pld = MBTP.dist_to_part(entity_distri, dist_data_pl, [pld[1][0].astype(pdm_dtype) for pld in all_pld], comm)
+  for i, pld in enumerate(all_pld):
+    I.setValue(pld, updated_pld['OldToNew'][i].reshape((1,-1), order='F'))
 
   #Cleanup after trick
   for zsr in zsr_list:
@@ -253,6 +261,14 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   face_to_remove = I.getNodeFromPath(dist_tree, jn_pathes[0]+'/PointListDonor')[1][0]
   #Create pl and pl_d from vertex, needed to know which vertex will be deleted
   ref_vtx, vtx_to_remove, _ = VL.generate_jn_vertex_list(dist_tree, jn_pathes[0], comm)
+  # In some cases, we can have some vertices shared between PlVtx and PldVtx (eg. when a vertex
+  # belongs to more than 2 gcs, and some of them has been deleted.
+  # We just ignore thoses vertices by removing them from the arrays
+  vtx_is_shared = ref_vtx == vtx_to_remove
+  ref_vtx       = ref_vtx[~vtx_is_shared]
+  vtx_to_remove = vtx_to_remove[~vtx_is_shared]
+  assert np.intersect1d(ref_faces, face_to_remove).size == 0
+  assert np.intersect1d(ref_vtx, vtx_to_remove).size == 0
 
   #Get initial distributions
   face_distri_ini = I.getVal(IE.getDistribution(ngon, 'Element')).astype(pdm_dtype)
@@ -270,21 +286,36 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
 
   _update_vtx_data(zone, vtx_to_remove, comm)
 
-  _update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face_unsg, comm)
-  _update_cgns_subsets(zone, 'Vertex', vtx_distri_ini, old_to_new_vtx, comm)
+  _update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face_unsg, base_n, comm)
+  _update_cgns_subsets(zone, 'Vertex', vtx_distri_ini, old_to_new_vtx, base_n, comm)
   #Shift all CellCenter PL by the number of removed faces
   if sids.ElementRange(ngon)[0] == 1:
     _shift_cgns_subsets(zone, 'CellCenter', -n_rmvd_face)
 
-  # Update JN/PointListDonor if any : since PointList of JN have changed, we must change opposite PL as well
+  # Since PointList/PointList donor of JN have changed, we must change opposite join as well
+  # Carefull : for intra zone jn, we may have a clash of actualized pl/pld. We use ordinal to break it
   ordinal_to_pl = {}
+  current_zone_path = base_n + '/' + zone_n
   all_gcs_query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
   for gc in IE.getNodesByMatching(zone, all_gcs_query[2:]):
-    ordinal_to_pl[I.getNodeFromName1(gc, 'Ordinal')[1][0]] = I.getNodeFromName1(gc, 'PointList')[1]
-  for gc in IE.getNodesByMatching(dist_tree, all_gcs_query):
+    ordinal_to_pl[I.getNodeFromName1(gc, 'Ordinal')[1][0]] = \
+        (np.copy(I.getNodeFromName1(gc, 'PointList')[1]), np.copy(I.getNodeFromName1(gc, 'PointListDonor')[1]))
+  for o_base, o_zone, o_zgc, o_gc in IE.getNodesWithParentsByMatching(dist_tree, all_gcs_query):
+    ord, ord_opp = I.getNodeFromName1(o_gc, 'Ordinal')[1][0], I.getNodeFromName1(o_gc, 'OrdinalOpp')[1][0]
     try:
-      pl_opp = ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]]
-      I.setValue(I.getNodeFromName1(gc, 'PointListDonor'), pl_opp)
+      pl_opp, pld_opp = ordinal_to_pl[ord_opp]
+      # Skip one internal jn over two
+      if I.getName(o_base) + '/' + I.getName(o_zone) == current_zone_path and ord_opp >= ord:
+        pass
+      else:
+        I.setValue(I.getNodeFromName1(o_gc, 'PointList'),     pld_opp)
+        I.setValue(I.getNodeFromName1(o_gc, 'PointListDonor'), pl_opp)
+      #Since we modify the PointList of this join, we must check that no data is related to it
+      assert I.getNodeFromType1(o_gc, 'DataArray_t') is None, \
+          "Can not reorder a GridConnectivity PointList to which data is related"
+      for zsr in I.getNodesFromType1(o_zone, 'ZoneSubRegion_t'):
+        assert sids.getSubregionExtent(zsr, o_zone) != I.getName(o_zgc) + '/' + I.getName(o_gc), \
+            "Can not reorder a GridConnectivity PointList to which data is related"
     except KeyError:
       pass
 

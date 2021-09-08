@@ -131,7 +131,7 @@ def test_update_cgns_subsets(sub_comm):
   face_distri_ini = I.getVal(IE.getDistribution(I.getNodeFromPath(zone, 'NGonElements'), 'Element'))
   old_to_new_face_f = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,15,16,23,24,25,26,27,28,29,30,31,32,33,34]
   old_to_new_face = np.array(old_to_new_face_f[face_distri_ini[0]:face_distri_ini[1]])
-  MJ._update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, sub_comm)
+  MJ._update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, 'Base', sub_comm)
 
   bc_distri = DIF.uniform_distribution(4, sub_comm).astype(pdm_dtype)
   this_rank = slice(bc_distri[0], bc_distri[1])
