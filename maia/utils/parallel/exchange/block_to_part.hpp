@@ -115,7 +115,7 @@ class block_to_part_protocol {
 
     std_e::serialized_array exchange(std_e::serialized_array& array) {
       auto res = impl.exchange(array);
-      assert(res.size()==1);
+      STD_E_ASSERT(res.size()==1);
       return res[0];
     }
   private:
@@ -125,8 +125,11 @@ class block_to_part_protocol {
 
 
 
-template<class T> auto
-exchange(block_to_part_protocol& btp, const std::vector<T>& dist_array) -> std::vector<T> {
+template<
+  class Contiguous_range,
+  class T = typename Contiguous_range::value_type
+> auto
+exchange(block_to_part_protocol& btp, const Contiguous_range& dist_array) -> std::vector<T> {
   auto dist_serial = std_e::serialize_array(dist_array);
   auto part_serial =  btp.exchange(dist_serial);
   return std_e::deserialize_array<T>(part_serial);

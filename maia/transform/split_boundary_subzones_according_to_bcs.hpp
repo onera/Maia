@@ -2,10 +2,11 @@
 
 
 #include "cpp_cgns/cgns.hpp"
+#include <mpi.h>
 
 
-namespace cgns {
+namespace maia {
 
-auto split_boundary_subzones_according_to_bcs(tree& b) -> void;
+auto split_boundary_subzones_according_to_bcs(cgns::tree& b, MPI_Comm comm) -> void;
 
-} // cgns
+} // maia

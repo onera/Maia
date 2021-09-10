@@ -10,6 +10,8 @@
 #include "pdm_multi_block_to_part.h"
 #include "std_e/algorithm/algorithm.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
+#include "maia/utils/parallel/exchange/multi_block_to_part.hpp"
+#include "std_e/log.hpp" // TODO
 #include <algorithm>
 
 using namespace cgns;
@@ -131,86 +133,176 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
     auto first_section_3d = std::partition_point(begin(elt_sections),end(elt_sections),section_is_2d);
     int n_2d_section = first_section_3d - begin(elt_sections);
     auto elt_3d_sections = std_e::make_span(elt_sections.data()+n_2d_section,elt_sections.data()+n_section);
-    auto elt_3d_intervals = std_e::make_span(elt_intervals.data()+n_2d_section,elt_intervals.data()+n_section+1);
-    //auto elt_3d_dists = std_e::make_span(elt_dists.data()+n_2d_section,elt_dists.data()+n_section+1);
 
     int n_3d_section = n_section-n_2d_section;
 
     // multi-block to part
-    std::vector<PDM_g_num_t> multi_distrib_idx(elt_3d_intervals.begin(),elt_3d_intervals.end());
-    std_e::offset(multi_distrib_idx,-elt_3d_intervals[0]);
-    std::vector<distribution_vector<PDM_g_num_t>> block_distribs_storer(n_3d_section);
-    std::vector<PDM_g_num_t*> block_distribs(n_3d_section);
+    std::vector<distribution_vector<PDM_g_num_t>> distribs(n_3d_section);
     std::vector<int> d_elt_szs(n_3d_section);
     for (int i=0; i<n_3d_section; ++i) {
       tree& section_node = elt_3d_sections[i];
       auto section_connec_partial_distri = get_node_value_by_matching<I8>(section_node,":CGNS#Distribution/Element");
       d_elt_szs[i] = section_connec_partial_distri[1]-section_connec_partial_distri[0];
-      block_distribs_storer[i] = distribution_from_partial(section_connec_partial_distri,comm);
-      block_distribs[i] = block_distribs_storer[i].data();
+      distribs[i] = distribution_from_partial(section_connec_partial_distri,comm);
     }
 
     const int n_block = n_3d_section;
-    const int n_part = 1;
 
     std::vector<PDM_g_num_t> merged_distri(n_rank+1);
     std_e::uniform_distribution(begin(merged_distri),end(merged_distri),0,(PDM_g_num_t)n_cell); // TODO uniform_distribution with differing args
 
-    int n_elts_0 = merged_distri[i_rank+1]-merged_distri[i_rank];
-    std::vector<PDM_g_num_t> ln_to_gn_0(n_elts_0);
-    std::iota(begin(ln_to_gn_0),end(ln_to_gn_0),merged_distri[i_rank]+1);
-    std::vector<PDM_g_num_t*> ln_to_gn = {ln_to_gn_0.data()};
-    std::vector<int> n_elts = {n_elts_0};
+    int n_elts = merged_distri[i_rank+1]-merged_distri[i_rank];
+    std::vector<PDM_g_num_t> ln_to_gn(n_elts);
+    std::iota(begin(ln_to_gn),end(ln_to_gn),merged_distri[i_rank]+1);
 
-    PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
-    PDM_multi_block_to_part_t* mbtp =
-      PDM_multi_block_to_part_create(multi_distrib_idx.data(),
-                                     n_block,
-               (const PDM_g_num_t**) block_distribs.data(),
-               (const PDM_g_num_t**) ln_to_gn.data(),
-                                     n_elts.data(),
-                                     n_part,
-                                     pdm_comm);
-    int stride = 1;
-    int** stride_one = (int**) malloc( n_block * sizeof(int*));
-    for(int i_block = 0; i_block < n_block; ++i_block){
-      stride_one[i_block] = (int * ) malloc( 1 * sizeof(int));
-      stride_one[i_block][0] = stride;
-    }
+    pdm::multi_block_to_part_protocol mbtp(distribs,ln_to_gn,comm);
 
     tree_range flow_sol_nodes = cgns::get_children_by_labels(z,{"FlowSolution_t","DiscreteData_t"});
     for (tree& flow_sol_node : flow_sol_nodes) {
       tree_range sol_nodes = cgns::get_children_by_label(flow_sol_node,"DataArray_t");
       for (tree& sol_node : sol_nodes) {
         auto sol = cgns::view_as_span<R8>(sol_node.value);
-        std::vector<R8*> darray_ptr(n_block);
+        std::vector<std_e::span<R8>> d_arrays(n_block);
         int offset = 0;
         for (int i=0; i<n_block; ++i) {
-          darray_ptr[i] = sol.data()+offset;
+          d_arrays[i] = std_e::make_span(sol.data()+offset , d_elt_szs[i]);
           offset += d_elt_szs[i];
         }
 
-        R8** parray = nullptr;
-        PDM_multi_block_to_part_exch2(mbtp, sizeof(R8), PDM_STRIDE_CST_INTERLACED,
-                                      stride_one,
-                           (void ** ) darray_ptr.data(),
-                                      nullptr,
-                           (void ***) &parray);
-
-        int d_sol_sz = merged_distri[i_rank+1] - merged_distri[i_rank];
-        std_e::buffer_vector<R8> new_sol(d_sol_sz);
-        std::copy_n(parray[0],d_sol_sz,begin(new_sol));
-        free(parray[0]);
-        free(parray);
+        auto p_data = mbtp.exchange(d_arrays);
+        std_e::buffer_vector<R8> new_sol(p_data.begin(),p_data.end());
 
         sol_node.value = cgns::make_node_value(std::move(new_sol));
       }
     }
-    PDM_multi_block_to_part_free(mbtp);
 
     tree& z_dist_node = cgns::get_child_by_name(z,":CGNS#Distribution");
     std_e::buffer_vector<I8> cell_partial_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
     emplace_child(z_dist_node,new_DataArray("Cell",std::move(cell_partial_dist)));
+  }
+}
+
+auto
+distribute_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) -> void {
+  STD_E_ASSERT(b.label=="CGNSBase_t");
+  int i_rank = std_e::rank(comm);
+  int n_rank = std_e::n_rank(comm);
+
+  for (tree& z : get_children_by_label(b,"Zone_t")) {
+    // 0. preparation
+    int n_cell = cgns::CellSize_U<I4>(z);
+
+    auto elt_sections = element_sections_ordered_by_range(z);
+    auto elt_intervals = elt_interval_range<I4>(elt_sections);
+    auto elt_dists = elt_distributions(elt_sections,comm);
+
+    int n_section = elt_sections.size();
+
+    auto section_is_2d = [](const tree& x){ return element_dimension(element_type(x))==2; };
+    STD_E_ASSERT(std::is_partitioned(begin(elt_sections),end(elt_sections),section_is_2d));
+    auto first_section_3d = std::partition_point(begin(elt_sections),end(elt_sections),section_is_2d);
+
+    int n_2d_section = first_section_3d - begin(elt_sections);
+    int n_3d_section = n_section-n_2d_section;
+
+    auto elt_2d_sections = std_e::make_span(elt_sections.data()             ,elt_sections.data()+n_2d_section);
+    auto elt_3d_sections = std_e::make_span(elt_sections.data()+n_2d_section,elt_sections.data()+n_section);
+
+    // 1. multi-block to part for volume fields
+    {
+      std::vector<distribution_vector<PDM_g_num_t>> distribs(n_3d_section);
+      std::vector<int> d_elt_szs(n_3d_section);
+      for (int i=0; i<n_3d_section; ++i) {
+        tree& section_node = elt_3d_sections[i];
+        auto section_connec_partial_distri = get_node_value_by_matching<I8>(section_node,":CGNS#Distribution/Element");
+        d_elt_szs[i] = section_connec_partial_distri[1]-section_connec_partial_distri[0];
+        distribs[i] = distribution_from_partial(section_connec_partial_distri,comm);
+      }
+
+      const int n_block = n_3d_section;
+
+      std::vector<PDM_g_num_t> merged_distri(n_rank+1);
+      std_e::uniform_distribution(begin(merged_distri),end(merged_distri),0,(PDM_g_num_t)n_cell); // TODO uniform_distribution with differing args
+
+      int n_elts = merged_distri[i_rank+1]-merged_distri[i_rank];
+      std::vector<PDM_g_num_t> ln_to_gn(n_elts);
+      std::iota(begin(ln_to_gn),end(ln_to_gn),merged_distri[i_rank]+1);
+
+      pdm::multi_block_to_part_protocol mbtp(distribs,ln_to_gn,comm);
+
+      tree_range flow_sol_nodes = cgns::get_children_by_labels(z,{"FlowSolution_t","DiscreteData_t"});
+      for (tree& flow_sol_node : flow_sol_nodes) {
+        tree_range sol_nodes = cgns::get_children_by_label(flow_sol_node,"DataArray_t");
+        for (tree& sol_node : sol_nodes) {
+          auto sol = cgns::view_as_span<R8>(sol_node.value);
+          std::vector<std_e::span<R8>> d_arrays(n_block);
+          int offset = 0;
+          for (int i=0; i<n_block; ++i) {
+            d_arrays[i] = std_e::make_span(sol.data()+offset , d_elt_szs[i]);
+            offset += d_elt_szs[i];
+          }
+
+          auto p_data = mbtp.exchange(d_arrays);
+          std_e::buffer_vector<R8> new_sol(p_data.begin(),p_data.end());
+
+          sol_node.value = cgns::make_node_value(std::move(new_sol));
+        }
+      }
+
+      tree& z_dist_node = cgns::get_child_by_name(z,":CGNS#Distribution");
+      std_e::buffer_vector<I8> cell_partial_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
+      emplace_child(z_dist_node,new_DataArray("Cell",std::move(cell_partial_dist)));
+    }
+
+    // 2. multi-block to part for boundary fields // TODO factor with 1.
+    {
+      std::vector<distribution_vector<PDM_g_num_t>> distribs(n_2d_section);
+      std::vector<int> d_elt_szs(n_2d_section);
+      for (int i=0; i<n_2d_section; ++i) {
+        tree& section_node = elt_2d_sections[i];
+        auto section_connec_partial_distri = get_node_value_by_matching<I8>(section_node,":CGNS#Distribution/Element");
+        d_elt_szs[i] = section_connec_partial_distri[1]-section_connec_partial_distri[0];
+        distribs[i] = distribution_from_partial(section_connec_partial_distri,comm);
+      }
+
+      const int n_block = n_2d_section;
+
+      PDM_g_num_t n_faces = 0;
+      if (elt_2d_sections.size() > 0) {
+        // since 2d sections are ordered, the total number of 2d elt is the ending of the last range
+        n_faces = ElementRange<I4>(elt_2d_sections.back())[1];
+        ELOG(n_faces);
+      }
+      std::vector<PDM_g_num_t> merged_distri(n_rank+1);
+      std_e::uniform_distribution(begin(merged_distri),end(merged_distri),0,n_faces); // TODO uniform_distribution with differing args
+
+      int n_elts = merged_distri[i_rank+1]-merged_distri[i_rank];
+      std::vector<PDM_g_num_t> ln_to_gn(n_elts);
+      std::iota(begin(ln_to_gn),end(ln_to_gn),merged_distri[i_rank]+1);
+
+      pdm::multi_block_to_part_protocol mbtp(distribs,ln_to_gn,comm);
+
+      tree_range bnd_sol_nodes = cgns::get_children_by_label(z,"ZoneSubRegion_t");
+      for (tree& bnd_sol_node : bnd_sol_nodes) {
+        tree_range sol_nodes = cgns::get_children_by_label(bnd_sol_node,"DataArray_t");
+        for (tree& sol_node : sol_nodes) {
+          auto sol = cgns::view_as_span<R8>(sol_node.value);
+          std::vector<std_e::span<R8>> d_arrays(n_block);
+          int offset = 0;
+          for (int i=0; i<n_block; ++i) {
+            d_arrays[i] = std_e::make_span(sol.data()+offset , d_elt_szs[i]);
+            offset += d_elt_szs[i];
+          }
+
+          auto p_data = mbtp.exchange(d_arrays);
+          std_e::buffer_vector<R8> new_sol(p_data.begin(),p_data.end());
+
+          sol_node.value = cgns::make_node_value(std::move(new_sol));
+        }
+        std_e::buffer_vector<I8> part_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
+        emplace_child(bnd_sol_node,new_Distribution("Index",std::move(part_dist)));
+      }
+    }
   }
 }
 

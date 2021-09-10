@@ -39,12 +39,12 @@ const auto partition_with_boundary_first = apply_cpp_cgns_par_function_to_py_bas
 const auto remove_ghost_info             = apply_cpp_cgns_par_function_to_py_base(cgns::remove_ghost_info);
 const auto merge_by_elt_type             = apply_cpp_cgns_par_function_to_py_base(maia::merge_by_elt_type);
 const auto add_fsdm_distribution         = apply_cpp_cgns_par_function_to_py_base(maia::add_fsdm_distribution);
+const auto split_boundary_subzones_according_to_bcs = apply_cpp_cgns_par_function_to_py_base(maia::split_boundary_subzones_according_to_bcs);
 
 const auto sort_nfaces_by_element_type              = apply_cpp_cgns_function_to_py_base(cgns::sort_nfaces_by_element_type);
 const auto sorted_nfaces_to_std_elements            = apply_cpp_cgns_function_to_py_base(cgns::sorted_nfaces_to_std_elements);
 const auto add_nfaces                               = apply_cpp_cgns_function_to_py_base(cgns::add_nfaces);
 const auto gcs_only_for_ghosts                      = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
-const auto split_boundary_subzones_according_to_bcs = apply_cpp_cgns_function_to_py_base(cgns::split_boundary_subzones_according_to_bcs);
 const auto ngon_new_to_old                          = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
 
 
