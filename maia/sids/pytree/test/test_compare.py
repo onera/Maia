@@ -77,3 +77,28 @@ def test_check_is_label():
   with pytest.raises(PT.CGNSLabelNotEqualError):
     for zone in I.getBases(tree):
       apply_zone(zone)
+
+def test_is_same_node():
+  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
+    tree = parse_yaml_cgns.to_cgns_tree(yt)
+  node1 = I.getNodeFromName(tree, 'bc3')
+  node2 = I.getNodeFromName(tree, 'bc5')
+  assert not PT.is_same_node(node1, node2)
+  node2[0] = 'bc3'
+  assert PT.is_same_node(node1, node2) #Children are not compared
+  
+def test_is_same_tree():
+  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
+    tree = parse_yaml_cgns.to_cgns_tree(yt)
+  node1 = I.getNodeFromName(tree, 'bc5')
+  node2 = I.copyTree(node1)
+  assert PT.is_same_tree(node1, node2)
+  #Position of child does not matter
+  node2[2][1], node2[2][2] = node2[2][2], node2[2][1]
+  assert PT.is_same_tree(node1, node2)
+  # But node must have same children names
+  I.newIndexArray('Index_vii', parent=node2)
+  assert not PT.is_same_tree(node1, node2)
+  #And those one should be equal
+  I.newIndexArray('Index_vii', value=[[1,2]], parent=node1)
+  assert not PT.is_same_tree(node1, node2)
