@@ -10,14 +10,14 @@ Base CGNSBase_t I4 [3,3]:
                0,1,2,
                0,1,2 ]
       CoordinateY DataArray_t:
-        R4 : [ 0,0,0,
+        R8 : [ 0,0,0,
                1,1,1,
                2,2,2,
                0,0,0,
                1,1,1,
                2,2,2 ]
       CoordinateZ DataArray_t:
-        R4 : [ 0,0,0,
+        R8 : [ 0,0,0,
                0,0,0,
                0,0,0,
                1,1,1,

@@ -1,0 +1,69 @@
+Base CGNSBase_t I4 [3,3]:
+  Zone Zone_t I4 [[11,4,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t:
+        R8 : [ 0, 1, 2, 0, 1,
+               0, 1, 2, 0, 1,
+               1 ]
+      CoordinateY DataArray_t:
+        R8 : [ 0, 0, 0, 1, 1,
+               0, 0, 0, 1, 1,
+               0 ]
+      CoordinateZ DataArray_t:
+        R8 : [ 0, 0, 0, 0, 0,
+               1, 1, 1, 1, 1,
+               2 ]
+    Quads Elements_t I4 [7,0]:
+      ElementRange IndexRange_t I4 [1,6]:
+      ElementConnectivity DataArray_t:
+        I4 : [ 1, 6,  9, 4,
+               3, 5, 10, 8,
+               1, 2,  7, 6,
+               2, 3,  8, 7,
+               4, 9, 10, 5,
+               1, 2,  5, 4  ]
+    Tris Elements_t I4 [5,0]:
+      ElementRange IndexRange_t I4 [7,12]:
+      ElementConnectivity DataArray_t:
+        I4 : [ 6, 11,  9,
+               8, 10, 11,
+               6,  7, 11,
+               7,  8, 11,
+               2,  5,  3,
+               9, 11, 10 ]
+    Hexas Elements_t I4 [17,0]:
+      ElementRange IndexRange_t I4 [13,13]:
+      ElementConnectivity DataArray_t:
+        I4 : [ 1, 2, 5, 4, 6, 7, 10, 9  ]
+    Prisms Elements_t I4 [14,0]:
+      ElementRange IndexRange_t I4 [14,14]:
+      ElementConnectivity DataArray_t:
+        I4 : [ 2, 3, 5, 7, 8, 10 ]
+    Pyras Elements_t I4 [12,0]:
+      ElementRange IndexRange_t I4 [15,15]:
+      ElementConnectivity DataArray_t:
+        I4 : [ 6, 7, 10, 9, 11 ]
+    Tets Elements_t I4 [10,0]:
+      ElementRange IndexRange_t I4 [16,16]:
+      ElementConnectivity DataArray_t:
+        I4 : [ 7, 8, 10, 11 ]
+    ZoneBC ZoneBC_t:
+      Left BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[1,7]]:
+      Right BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[2,8]]:
+      Bottom BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[3,4,9,10]]:
+      Top BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[5]]:
+      Back BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[6,11]]:
+      Front BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[12]]:
