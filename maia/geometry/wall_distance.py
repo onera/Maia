@@ -22,7 +22,7 @@ from maia.utils                      import py_utils
 from maia.tree_exchange.part_to_dist import discover    as disc
 
 from maia.geometry.extract_boundary import extract_surf_from_bc
-from maia.geometry.geometry         import get_center_cell
+from maia.geometry.geometry         import compute_cell_center
 
 __doc__ = """
 CGNS python module which interface the ParaDiGM library for // distance to wall computation .
@@ -283,7 +283,7 @@ class WallDistance:
       LOG.info(f"setup_vol_mesh: n_cell = {n_cell}")
       LOG.info(f"setup_vol_mesh: n_face = {n_face}")
 
-      center_cell, _ = get_center_cell(part_zone)
+      center_cell = compute_cell_center(part_zone)
       self._register.append(center_cell)
       assert(center_cell.size == 3*n_cell)
 
