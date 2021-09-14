@@ -115,6 +115,20 @@ def test_others_mask():
   assert (py_utils.others_mask(array, np.array([2,1]))       == [1,0,0,1,1,1]).all()
   assert (py_utils.others_mask(array, np.array([0,1,3,4,5])) == [0,0,1,0,0,0]).all()
 
+def test_concatenate_np_arrays():
+  a1 = np.array([2, 4, 6, 8])
+  a2 = np.array([10, 20, 30, 40, 50, 60])
+  a3 = np.array([100])
+  av = np.empty(0, np.int)
+  array_idx, array = py_utils.concatenate_np_arrays([a1,a3,av,a2])
+  assert (array_idx == [0,4,5,5,11]).all()
+  assert (array == [2,4,6,8,100,10,20,30,40,50,60]).all()
+  assert array.dtype == np.int
+
+  array_idx, array = py_utils.concatenate_np_arrays([av])
+  assert (array_idx == [0,0]).all()
+  assert (array == []).all()
+
 def test_concatenate_point_list():
   pl1 = np.array([[2, 4, 6, 8]])
   pl2 = np.array([[10, 20, 30, 40, 50, 60]])

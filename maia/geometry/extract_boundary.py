@@ -363,12 +363,12 @@ class ExtractSurfFromBC:
 
     # Concatenate global numbering for all vertex presents in merged bc(s) for all partition
     LOG.info(f"self.vtx_bcs_ln_to_gns = {self.vtx_bcs_ln_to_gns}")
-    vtx_bcs_ln_to_gn = py_utils.concatenate_numpy(self.vtx_bcs_ln_to_gns, dtype=pdm_dtype)
+    _, vtx_bcs_ln_to_gn = py_utils.concatenate_np_arrays(self.vtx_bcs_ln_to_gns, dtype=pdm_dtype)
     LOG.info(f"vtx_bcs_ln_to_gn [{vtx_bcs_ln_to_gn.shape[0]}] = {vtx_bcs_ln_to_gn.dtype}")
     LOG.info(f"vtx_bcs_ln_to_gn [{vtx_bcs_ln_to_gn.shape[0]}] = {np.sort(vtx_bcs_ln_to_gn)}")
     # Concatenate global numbering for all face presents in merged bc(s) for all partition
     LOG.info(f"self.face_bcs_ln_to_gns = {self.face_bcs_ln_to_gns}")
-    face_bcs_ln_to_gn = py_utils.concatenate_numpy(self.face_bcs_ln_to_gns, dtype=pdm_dtype)
+    _, face_bcs_ln_to_gn = py_utils.concatenate_np_arrays(self.face_bcs_ln_to_gns, dtype=pdm_dtype)
     LOG.info(f"face_bcs_ln_to_gn [{face_bcs_ln_to_gn.shape[0]}] = {np.sort(face_bcs_ln_to_gn)}")
 
     # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
