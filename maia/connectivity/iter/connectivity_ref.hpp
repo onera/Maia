@@ -63,3 +63,21 @@ template<class I0, class I1, class CK> inline auto
 operator!=(const connectivity_ref<I0,CK>& x, const connectivity_ref<I1,CK>& y) {
   return !(x == y);
 }
+
+
+template<class I, class CK> auto
+begin(connectivity_ref<I,CK>& c) {
+  return c.begin();
+}
+template<class I, class CK> auto
+begin(const connectivity_ref<I,CK>& c) {
+  return c.begin();
+}
+template<class I, class CK> auto
+end(connectivity_ref<I,CK>& c) {
+  return c.end();
+}
+template<class I, class CK> auto
+end(const connectivity_ref<I,CK>& c) {
+  return c.end();
+}

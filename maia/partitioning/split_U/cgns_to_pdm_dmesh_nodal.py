@@ -35,7 +35,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   """
   Create a pdm_dmesh_nodal structure from a distributed zone
   """
-  distrib_vtx = IE.getDistribution(dist_zone, 'Vertex')
+  distrib_vtx = I.getVal(IE.getDistribution(dist_zone, 'Vertex'))
   n_vtx   = distrib_vtx[2]
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
 

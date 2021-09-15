@@ -6,7 +6,7 @@
 #include "std_e/future/span.hpp"
 
 
-template<class I, class Connectivity_kind> 
+template<class I, class Connectivity_kind>
 class connectivity {
   public:
   // type traits
@@ -71,4 +71,3 @@ template<class I, class CK> auto
 to_string(const connectivity<I,CK>& c) -> std::string {
   return std_e::to_string(std_e::make_span(begin(c),c.size()));
 }
-
