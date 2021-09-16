@@ -20,6 +20,7 @@ from maia.sids.cgns_keywords         import Label as CGL
 from maia.sids                       import conventions as conv
 from maia.utils                      import py_utils
 from maia.tree_exchange.part_to_dist import discover    as disc
+from maia                            import tree_exchange as TE
 
 from maia.geometry.extract_boundary import extract_surf_from_bc
 from maia.geometry.extract_boundary2 import extract_surf_from_bc_new
@@ -131,6 +132,8 @@ class WallDistance:
     self.method    = method
 
     self._register = []
+    self.n_vtx_bnd_tot_idx  = [0]
+    self.n_face_bnd_tot_idx = [0]
 
   @property
   def part_tree(self):
@@ -211,12 +214,62 @@ class WallDistance:
 
   def _setup_surf_mesh2(self, part_tree, families, comm):
     import time
-    debut = time.time()
-    face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
-      vtx_bnd_l, vtx_ln_to_gn_l = extract_surf_from_bc_new(part_tree, families, comm)
-    end = time.time()
-    print ("Elapsed for bc extraction", end - debut)
-    
+
+    all_beg = time.time()
+  
+    #Get the list of Base/zones names
+    skeleton_tree = I.newCGNSTree()
+    disc.discover_nodes_from_matching(skeleton_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,
+        merge_rule = lambda path: conv.get_part_prefix(path))
+
+    #This will concatenate part data of all initial domains
+    face_vtx_bnd_l = []
+    face_vtx_bnd_idx_l = []
+    vtx_bnd_l = []
+    face_ln_to_gn_l = []
+    vtx_ln_to_gn_l = []
+
+
+    i_dom = 0
+    for dbase, dzone in IE.getNodesWithParentsByMatching(skeleton_tree, ['CGNSBase_t', 'Zone_t']):
+
+      part_zones = TE.utils.get_partitioned_zones(part_tree, I.getName(dbase) + '/' + I.getName(dzone))
+
+      face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
+        vtx_bnd_z, vtx_ln_to_gn_z = extract_surf_from_bc_new(part_zones, families, comm)
+
+      #Find the maximal vtx/face id for this initial domain
+      n_face_bnd_t = 0
+      for face_ln_to_gn in face_ln_to_gn_z:
+        n_face_bnd_t = max(n_face_bnd_t, np.max(face_ln_to_gn, initial=0))
+      n_face_bnd_t = comm.allreduce(n_face_bnd_t, op=MPI.MAX)
+      self.n_face_bnd_tot_idx.append(self.n_face_bnd_tot_idx[-1] + n_face_bnd_t)
+
+      n_vtx_bnd_t = 0
+      for vtx_ln_to_gn in vtx_ln_to_gn_z:
+        n_vtx_bnd_t = max(n_vtx_bnd_t, np.max(vtx_ln_to_gn, initial=0))
+      n_vtx_bnd_t = comm.allreduce(n_vtx_bnd_t, op=MPI.MAX)
+      self.n_vtx_bnd_tot_idx.append(self.n_vtx_bnd_tot_idx[-1] + n_vtx_bnd_t)
+
+      #Shift the face and vertex lngn because PDM does not manage multiple domain. This will avoid
+      # overlapping face / vtx coming from different domain but having same id
+      for face_ln_to_gn in face_ln_to_gn_z:
+        face_ln_to_gn += self.n_face_bnd_tot_idx[i_dom]
+      for vtx_ln_to_gn in vtx_ln_to_gn_z:
+        vtx_ln_to_gn += self.n_vtx_bnd_tot_idx[i_dom]
+
+      #Extended global lists
+      face_vtx_bnd_l.extend(face_vtx_bnd_z)
+      face_vtx_bnd_idx_l.extend(face_vtx_bnd_idx_z)
+      vtx_bnd_l.extend(vtx_bnd_z)
+      face_ln_to_gn_l.extend(face_ln_to_gn_z)
+      vtx_ln_to_gn_l.extend(vtx_ln_to_gn_z)
+
+      i_dom += 1
+
+    all_end = time.time()
+    print("Whole process" , all_end - all_beg)
+
     n_part = len(vtx_bnd_l)
     for i in range(n_part):
     # Keep numpy alive
@@ -224,21 +277,12 @@ class WallDistance:
         self._register.append(array)
 
     #Get global data (total number of faces / vertices)
-    n_face_bnd_t = 0
-    for face_ln_to_gn in face_ln_to_gn_l:
-      n_face_bnd_t = max(n_face_bnd_t, np.max(face_ln_to_gn, initial=0))
-    n_face_bnd_t = comm.allreduce(n_face_bnd_t, op=MPI.MAX)
-
-    n_vtx_bnd_t = 0
-    for vtx_ln_to_gn in vtx_ln_to_gn_l:
-      n_vtx_bnd_t = max(n_vtx_bnd_t, np.max(vtx_ln_to_gn, initial=0))
-    n_vtx_bnd_t = comm.allreduce(n_vtx_bnd_t, op=MPI.MAX)
 
     LOG.info(f"setup_surf_mesh [propagation]: n_face_bnd_t = {n_face_bnd_t}")
     LOG.info(f"setup_surf_mesh [propagation]: n_vtx_bnd_t = {n_vtx_bnd_t}")
 
     self.walldist.n_part_surf = n_part
-    self.walldist.surf_mesh_global_data_set(n_face_bnd_t, n_vtx_bnd_t)
+    self.walldist.surf_mesh_global_data_set(self.n_face_bnd_tot_idx[-1], self.n_vtx_bnd_tot_idx[-1])
     
     #Setup partitions
     for i_part in range(n_part):
@@ -393,7 +437,6 @@ class WallDistance:
         # -------------------
         dist_zones = list(IE.iterNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'))
         for i_domain, dist_zone in enumerate(dist_zones):
-          assert(i_domain == 0)
           self._setup_vol_mesh(i_domain, dist_zone, self.part_tree, self.mpi_comm)
 
         # 2.2. Compute wall distance
@@ -402,8 +445,11 @@ class WallDistance:
 
         # 2.3. Fill the partitioned tree with result(s)
         # ---------------------------------------------
-        for i_domain, dist_zone in enumerate(dist_zones):
-          self.get(self.part_tree, i_domain)
+        i_domain = 0
+        for dbase, dzone in IE.iterNodesWithParentsByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'):
+          part_zones = TE.utils.get_partitioned_zones(self.part_tree, I.getName(dbase) + '/' + I.getName(dzone))
+          self.get(part_zones, i_domain)
+          i_domain += 1
       else:
         for i_domain, dist_zone in enumerate(IE.iterNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t')):
           assert(i_domain == 0)
@@ -458,6 +504,13 @@ class WallDistance:
       closest_elt_gnum = closest_elt_gnum.reshape(cell_size, order='F')
       closest_elt_gnum_node = SIDS.newDataArrayFromName(fs_node, 'ClosestEltGnum')
       I.setValue(closest_elt_gnum_node, closest_elt_gnum)
+
+      # Find domain to which the face belongs
+      n_face_bnd_tot_idx = np.array(self.n_face_bnd_tot_idx, dtype=closest_elt_gnum.dtype)
+      closest_surf_domain = np.searchsorted(n_face_bnd_tot_idx, closest_elt_gnum-1, side='right') -1
+      closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
+      I.newDataArray("ClosestEltDomId", value=closest_surf_domain, parent=fs_node)
+      I.newDataArray("ClosestEltLocGnum", value=closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain], parent=fs_node)
 
       # # Wall index
       # wall_index = np.empty(cell_size, dtype='float64', order='F')

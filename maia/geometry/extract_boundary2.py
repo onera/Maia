@@ -53,14 +53,14 @@ def extract_faces_mesh(zone, face_ids):
   
   return cx[vtx_ids-1], cy[vtx_ids-1], cz[vtx_ids-1], ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
-def extract_surf_from_bc_new(part_tree, families, comm):
+def extract_surf_from_bc_new(part_zones, families, comm):
 
   bc_face_vtx_l     = []
   bc_face_vtx_idx_l = []
   bc_coords_l       = []
   parent_face_lngn_l = []
   parent_vtx_lngn_l  = []
-  for zone in I.getZones(part_tree):
+  for zone in part_zones:
 
     bc_face_ids = [I.getNodeFromName1(bc_node, 'PointList')[1][0] for bc_node in 
       SIDS.Zone.getBCsFromFamily(zone, families)]
