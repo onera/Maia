@@ -93,7 +93,7 @@ def test_multi_arange():
   assert (py_utils.multi_arange([1,3,4,6], [1,5,7,6]) == [ 3,4, 4,5,6 ]).all()
 
   # No start/stop
-  assert py_utils.multi_arange([], []) == []
+  assert py_utils.multi_arange(np.empty(0, np.int), np.empty(0, np.int)).size == 0
 
 def test_arange_with_jumps():
   assert (py_utils.arange_with_jumps([0         ,5   , 10      , 13  , 18   , 20], \

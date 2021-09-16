@@ -125,10 +125,18 @@ def reverse_connectivity(ids, idx, array):
 def multi_arange(starts, stops):
   """
   Create concatenated np.arange of integers for multiple start/stop
+  See https://codereview.stackexchange.com/questions/83018/
+  vectorized-numpy-version-of-arange-with-multiple-start-stop
+
+  This is equivalent to 
+  np.concatenate([np.arange(start,stop) for start,stop in zip(starts,stops)])
+  but much faster. Don't remplace it !
+
   """
   assert len(starts)==len(stops)
-  if len(starts)==0: return []
-  return np.concatenate([np.arange(start,stop) for start,stop in zip(starts,stops)])
+  stops = np.asarray(stops)
+  l = stops - starts # Lengths of each range.
+  return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
 
 def arange_with_jumps(multi_interval,jumps):
   """

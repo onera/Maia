@@ -22,6 +22,7 @@ from maia.utils                      import py_utils
 from maia.tree_exchange.part_to_dist import discover    as disc
 
 from maia.geometry.extract_boundary import extract_surf_from_bc
+from maia.geometry.extract_boundary2 import extract_surf_from_bc_new
 from maia.geometry.geometry         import compute_cell_center
 
 __doc__ = """
@@ -175,8 +176,12 @@ class WallDistance:
     return self._walldist
 
   def _setup_surf_mesh(self, part_tree, families, comm):
+    import time
+    debut = time.time()
     face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, \
       vtx_bnd, vtx_ln_to_gn = extract_surf_from_bc(part_tree, families, comm)
+    end = time.time()
+    print ("Elapsed for bc extraction", end - debut)
 
     # Keep numpy alive
     for array in (face_vtx_bnd, face_vtx_bnd_idx, face_ln_to_gn, vtx_bnd, vtx_ln_to_gn,):
@@ -203,6 +208,49 @@ class WallDistance:
                                      n_vtx_bnd,
                                      vtx_bnd,
                                      vtx_ln_to_gn)
+
+  def _setup_surf_mesh2(self, part_tree, families, comm):
+    import time
+    debut = time.time()
+    face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
+      vtx_bnd_l, vtx_ln_to_gn_l = extract_surf_from_bc_new(part_tree, families, comm)
+    end = time.time()
+    print ("Elapsed for bc extraction", end - debut)
+    
+    n_part = len(vtx_bnd_l)
+    for i in range(n_part):
+    # Keep numpy alive
+      for array in (face_vtx_bnd_l[i], face_vtx_bnd_idx_l[i], face_ln_to_gn_l[i], vtx_bnd_l[i], vtx_ln_to_gn_l[i],):
+        self._register.append(array)
+
+    #Get global data (total number of faces / vertices)
+    n_face_bnd_t = 0
+    for face_ln_to_gn in face_ln_to_gn_l:
+      n_face_bnd_t = max(n_face_bnd_t, np.max(face_ln_to_gn, initial=0))
+    n_face_bnd_t = comm.allreduce(n_face_bnd_t, op=MPI.MAX)
+
+    n_vtx_bnd_t = 0
+    for vtx_ln_to_gn in vtx_ln_to_gn_l:
+      n_vtx_bnd_t = max(n_vtx_bnd_t, np.max(vtx_ln_to_gn, initial=0))
+    n_vtx_bnd_t = comm.allreduce(n_vtx_bnd_t, op=MPI.MAX)
+
+    LOG.info(f"setup_surf_mesh [propagation]: n_face_bnd_t = {n_face_bnd_t}")
+    LOG.info(f"setup_surf_mesh [propagation]: n_vtx_bnd_t = {n_vtx_bnd_t}")
+
+    self.walldist.n_part_surf = n_part
+    self.walldist.surf_mesh_global_data_set(n_face_bnd_t, n_vtx_bnd_t)
+    
+    #Setup partitions
+    for i_part in range(n_part):
+      n_face_bnd = face_vtx_bnd_idx_l[i_part].shape[0]-1
+      n_vtx_bnd  = vtx_ln_to_gn_l[i_part].shape[0]
+      self.walldist.surf_mesh_part_set(i_part, n_face_bnd,
+                                       face_vtx_bnd_idx_l[i_part],
+                                       face_vtx_bnd_l[i_part],
+                                       face_ln_to_gn_l[i_part],
+                                       n_vtx_bnd,
+                                       vtx_bnd_l[i_part],
+                                       vtx_ln_to_gn_l[i_part])
 
   def _setup_vol_mesh(self, i_domain, dist_zone, part_tree, comm):
     # print(f"dist_zone = {dist_zone}")
@@ -338,7 +386,7 @@ class WallDistance:
 
       # 2. Prepare Surface (Global)
       # ===========================
-      self._setup_surf_mesh(self.part_tree, self.families, self.mpi_comm)
+      self._setup_surf_mesh2(self.part_tree, self.families, self.mpi_comm)
 
       if self.method == "cloud":
         # 2.1. Prepare Volume
