@@ -1,5 +1,4 @@
 from typing import List, Tuple
-import copy
 import numpy as np
 from functools import reduce
 from mpi4py import MPI
@@ -42,6 +41,23 @@ LOG.basicConfig(filename = f"maia_workflow_log.{mpi_rank}.log",
                 filemode = 'w')
 
 # ------------------------------------------------------------------------
+def get_entities_numbering(part_zone, as_pdm=True):
+  """
+  """
+  vtx_ln_to_gn   = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex'))
+  cell_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell'))
+  if SIDS.Zone.Type(part_zone) == "Structured":
+    face_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Face'))
+  else:
+    ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NGON_n']
+    assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
+    face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element'))
+  if as_pdm:
+    vtx_ln_to_gn  = vtx_ln_to_gn.astype(pdm_dtype)
+    face_ln_to_gn = face_ln_to_gn.astype(pdm_dtype)
+    cell_ln_to_gn = cell_ln_to_gn.astype(pdm_dtype)
+  return vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
+
 def create_skeleton_from_part_tree(part_base: List, comm) -> List:
   """
   Args:
@@ -212,16 +228,11 @@ class WallDistance:
                                      vtx_bnd,
                                      vtx_ln_to_gn)
 
-  def _setup_surf_mesh2(self, part_tree, families, comm):
+  def _setup_surf_mesh2(self, parts_per_dom, families, comm):
     import time
 
     all_beg = time.time()
   
-    #Get the list of Base/zones names
-    skeleton_tree = I.newCGNSTree()
-    disc.discover_nodes_from_matching(skeleton_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,
-        merge_rule = lambda path: conv.get_part_prefix(path))
-
     #This will concatenate part data of all initial domains
     face_vtx_bnd_l = []
     face_vtx_bnd_idx_l = []
@@ -229,11 +240,7 @@ class WallDistance:
     face_ln_to_gn_l = []
     vtx_ln_to_gn_l = []
 
-
-    i_dom = 0
-    for dbase, dzone in IE.getNodesWithParentsByMatching(skeleton_tree, ['CGNSBase_t', 'Zone_t']):
-
-      part_zones = TE.utils.get_partitioned_zones(part_tree, I.getName(dbase) + '/' + I.getName(dzone))
+    for i_dom, part_zones in enumerate(parts_per_dom):
 
       face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
         vtx_bnd_z, vtx_ln_to_gn_z = extract_surf_from_bc_new(part_zones, families, comm)
@@ -265,7 +272,6 @@ class WallDistance:
       face_ln_to_gn_l.extend(face_ln_to_gn_z)
       vtx_ln_to_gn_l.extend(vtx_ln_to_gn_z)
 
-      i_dom += 1
 
     all_end = time.time()
     print("Whole process" , all_end - all_beg)
@@ -296,56 +302,27 @@ class WallDistance:
                                        vtx_bnd_l[i_part],
                                        vtx_ln_to_gn_l[i_part])
 
-  def _setup_vol_mesh(self, i_domain, dist_zone, part_tree, comm):
-    # print(f"dist_zone = {dist_zone}")
-    n_vtx_t  = SIDS.Zone.n_vtx(dist_zone)
-    n_cell_t = SIDS.Zone.n_cell(dist_zone)
-
-    # Get the list of all partition in this domain
-    is_same_zone = lambda n:I.getType(n) == CGL.Zone_t.name and conv.get_part_prefix(I.getName(n)) == I.getName(dist_zone)
-    part_zones = list(IE.iterNodesByMatching(part_tree, ['CGNSBase_t', is_same_zone]))
-
-    # Get the number of local partition(s)
-    n_part = len(part_zones)
-    LOG.info(f"setup_vol_mesh: n_part   = {n_part}")
-    LOG.info(f"setup_vol_mesh: n_vtx_t  [toto] = {n_vtx_t}")
-    LOG.info(f"setup_vol_mesh: n_cell_t [toto] = {n_cell_t}")
-
-    # Get the total number of face and vertex of the configuration
-    n_vtx_t  = 0
-    n_cell_t = 0
-    n_face_t = 0
-    for i_part, part_zone in enumerate(part_zones):
-      LOG.info(f"setup_vol_mesh: parse Zone [1] : {I.getName(part_zone)}")
-      vtx_ln_to_gn   = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex'))
-      cell_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell'))
-      if SIDS.Zone.Type(part_zone) == "Structured":
-        face_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Face'))
-      else:
-        ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NGON_n']
-        assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
-        face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element'))
-      n_vtx_t  = np.max(vtx_ln_to_gn)
-      n_cell_t = np.max(cell_ln_to_gn)
-      n_face_t = np.max(face_ln_to_gn)
+  def _setup_vol_mesh(self, i_domain, part_zones, comm):
+    """
+    """
+    #First pass to compute the total number of vtx, face, cell
+    n_vtx_t, n_face_t, n_cell_t = 0, 0, 0
+    for part_zone in part_zones:
+      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = get_entities_numbering(part_zone, as_pdm=False)
+      n_vtx_t  = max(n_vtx_t,  np.max(vtx_ln_to_gn, initial=0))
+      n_cell_t = max(n_face_t, np.max(cell_ln_to_gn, initial=0))
+      n_face_t = max(n_cell_t, np.max(face_ln_to_gn, initial=0))
 
     #We could retrieve data from dist zone
     n_vtx_t  = comm.allreduce(n_vtx_t , op=MPI.MAX)
     n_cell_t = comm.allreduce(n_cell_t, op=MPI.MAX)
     n_face_t = comm.allreduce(n_face_t, op=MPI.MAX)
 
-    LOG.info(f"setup_vol_mesh: n_vtx_t  = {n_vtx_t}")
-    LOG.info(f"setup_vol_mesh: n_cell_t = {n_cell_t}")
-    LOG.info(f"setup_vol_mesh: n_face_t = {n_face_t}")
+    #Setup global data
+    self.walldist.vol_mesh_global_data_set(n_cell_t, n_face_t, n_vtx_t)
 
-    if self.method == "cloud":
-      self.walldist.set_n_part_cloud(i_domain, n_part)
-    else:
-      self.walldist.n_part_vol = n_part
-      self.walldist.vol_mesh_global_data_set(n_cell_t, n_face_t, n_vtx_t)
 
     for i_part, part_zone in enumerate(part_zones):
-      LOG.info(f"setup_vol_mesh: parse Zone [2] : {I.getName(part_zone)}")
 
       vtx_coords = py_utils.interweave_arrays(SIDS.coordinates(part_zone))
       face_vtx, face_vtx_idx, _ = SIDS.ngon_connectivity(part_zone)
@@ -355,47 +332,25 @@ class WallDistance:
       cell_face_idx = I.getVal(I.getNodeFromName(nfaces[0], 'ElementStartOffset'))
       cell_face     = I.getVal(I.getNodeFromName(nfaces[0], 'ElementConnectivity'))
 
-      vtx_ln_to_gn   = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex')).astype(pdm_dtype)
-      cell_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell')).astype(pdm_dtype)
-      if SIDS.Zone.Type(part_zone) == "Structured":
-        face_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Face')).astype(pdm_dtype)
-      else:
-        ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NGON_n']
-        assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
-        face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element')).astype(pdm_dtype)
+      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = get_entities_numbering(part_zone)
 
       n_vtx  = vtx_ln_to_gn .shape[0]
       n_cell = cell_ln_to_gn.shape[0]
       n_face = face_ln_to_gn.shape[0]
 
-      assert(SIDS.Zone.n_vtx(part_zone)  == n_vtx)
-      assert(SIDS.Zone.n_cell(part_zone) == n_cell)
-      assert(SIDS.Zone.n_face(part_zone) == n_face)
-      LOG.info(f"setup_vol_mesh: n_vtx  = {n_vtx}")
-      LOG.info(f"setup_vol_mesh: n_cell = {n_cell}")
-      LOG.info(f"setup_vol_mesh: n_face = {n_face}")
-
       center_cell = compute_cell_center(part_zone)
-      self._register.append(center_cell)
       assert(center_cell.size == 3*n_cell)
 
       # Keep numpy alive
-      for array in (cell_face_idx, cell_face, cell_ln_to_gn,):
-        self._register.append(array)
-      for array in (face_vtx_idx, face_vtx, face_ln_to_gn,):
-        self._register.append(array)
-      for array in (vtx_coords, vtx_ln_to_gn,):
+      for array in (cell_face_idx, cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, \
+          vtx_coords, vtx_ln_to_gn, center_cell):
         self._register.append(array)
 
-      if self.method == "propagation":
-        self.walldist.vol_mesh_part_set(i_part,
-                                        n_cell, cell_face_idx, cell_face, center_cell, cell_ln_to_gn,
-                                        n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
-                                        n_vtx, vtx_coords, vtx_ln_to_gn)
-      elif self.method == "cloud":
-        self.walldist.cloud_set(i_domain, i_part, n_cell, center_cell, cell_ln_to_gn)
-      else:
-        raise ValueError(f"Only 'propagation' or 'cloud' are available for method, {value} given here.")
+      self.walldist.vol_mesh_part_set(i_part,
+                                      n_cell, cell_face_idx, cell_face, center_cell, cell_ln_to_gn,
+                                      n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
+                                      n_vtx, vtx_coords, vtx_ln_to_gn)
+
 
   def compute(self):
     # 1. Search wall family(ies)
@@ -424,86 +379,80 @@ class WallDistance:
       n_domain = len(I.getZones(skeleton_tree))
       assert(n_domain >= 1)
 
+      # Group partitions by original dist domain
+      parts_per_dom = list()
+      for dbase, dzone in IE.iterNodesWithParentsByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'):
+        dzone_path = I.getName(dbase) + '/' + I.getName(dzone)
+        parts_per_dom.append(TE.utils.get_partitioned_zones(self.part_tree, dzone_path))
+
+
+      #Get the list of Base/zones names
+      # skeleton_tree = I.newCGNSTree()
+      # disc.discover_nodes_from_matching(skeleton_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,
+          # merge_rule = lambda path: conv.get_part_prefix(path))
+
+      if self.method == "propagation" and len(parts_per_dom) > 1:
+        raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
+
       if self.method == "cloud":
         # NB: Paradigm structure is created here
         self.walldist.n_point_cloud = n_domain
 
-      # 2. Prepare Surface (Global)
-      # ===========================
-      self._setup_surf_mesh2(self.part_tree, self.families, self.mpi_comm)
+      self._setup_surf_mesh2(parts_per_dom, self.families, self.mpi_comm)
 
+      # Prepare mesh depending on method
       if self.method == "cloud":
-        # 2.1. Prepare Volume
-        # -------------------
-        dist_zones = list(IE.iterNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'))
-        for i_domain, dist_zone in enumerate(dist_zones):
-          self._setup_vol_mesh(i_domain, dist_zone, self.part_tree, self.mpi_comm)
+        from maia.interpolation.interpolate import get_point_cloud
+        for i_domain, part_zones in enumerate(parts_per_dom):
+          self.walldist.set_n_part_cloud(i_domain, len(part_zones))
+          for i_part, part_zone in enumerate(part_zones):
+            center_cell, cell_ln_to_gn = get_point_cloud(part_zone)
+            self._register.append(center_cell)
+            self._register.append(cell_ln_to_gn)
+            self.walldist.cloud_set(i_domain, i_part, cell_ln_to_gn.shape[0], center_cell, cell_ln_to_gn)
 
-        # 2.2. Compute wall distance
-        # --------------------------
-        self.walldist.compute()
+      elif self.method == "propagation":
+        for i_domain, part_zones in enumerate(parts_per_dom):
+          self.walldist.n_part_vol = len(part_zones)
+          self._setup_vol_mesh(i_domain, part_zones, self.mpi_comm)
 
-        # 2.3. Fill the partitioned tree with result(s)
-        # ---------------------------------------------
-        i_domain = 0
-        for dbase, dzone in IE.iterNodesWithParentsByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'):
-          part_zones = TE.utils.get_partitioned_zones(self.part_tree, I.getName(dbase) + '/' + I.getName(dzone))
-          self.get(part_zones, i_domain)
-          i_domain += 1
-      else:
-        for i_domain, dist_zone in enumerate(IE.iterNodesByMatching(skeleton_tree, 'CGNSBase_t/Zone_t')):
-          assert(i_domain == 0)
-          # 2.1. Prepare Volume
-          # -------------------
-          self._setup_vol_mesh(i_domain, dist_zone, self.part_tree, self.mpi_comm)
+      #Compute
+      args = ['rank1'] if self.method == 'propagation' else []
+      self.walldist.compute(*args)
 
-          # 2.2. Compute wall distance
-          # --------------------------
-          self.walldist.compute('rank1')
+      # Get results -- OK because name of method is the same for 2 PDM objects
+      for i_domain, part_zones in enumerate(parts_per_dom):
+        self.get(i_domain, part_zones)
 
-          # 2.3. Fill the partitioned tree with result(s)
-          # ---------------------------------------------
-          self.get(self.part_tree)
     else:
       raise ValueError(f"Unable to find BC family(ies) : {self.families} in {skeleton_families}.")
-    # I.printTree(self.part_tree)
 
     # Free unnecessary numpy
     del self._register
 
-  def get(self, part_tree, i_domain=0):
-    for i_part, part_zone in enumerate(I.getZones(part_tree)):
+  def get(self, i_domain, part_zones):
+    for i_part, part_zone in enumerate(part_zones):
+
       fields = self.walldist.get(i_domain, i_part) if self.method == "cloud" else self.walldist.get(i_part)
-      LOG.info(f"fields = {fields}")
 
       # Test if FlowSolution already exists or create it
       fs_node = I.getNodeFromType1(part_zone, fs_name)
       if not fs_node or not SIDS.GridLocation(fs_node) == 'CellCenter':
         fs_node = I.newFlowSolution(name=fs_name, gridLocation='CellCenter', parent=part_zone)
 
-      cell_size = SIDS.Zone.CellSize(part_zone)
       # Wall distance
-      wall_dist = np.sqrt(copy.deepcopy(fields['ClosestEltDistance']))
-      wall_dist = wall_dist.reshape(cell_size, order='F')
-      wall_dist_node = SIDS.newDataArrayFromName(fs_node, 'TurbulentDistance')
-      I.setValue(wall_dist_node, wall_dist)
-      print(f"vtx_size = {3*cell_size}")
+      wall_dist = np.sqrt(fields['ClosestEltDistance'])
+      I.newDataArray('TurbulentDistance', value=wall_dist, parent=fs_node)
 
       # Closest projected element
-      closest_elt_proj = copy.deepcopy(fields['ClosestEltProjected'])
-      closest_elt_proj = closest_elt_proj.reshape(3*cell_size, order='F')
-      closest_elt_projx_node = SIDS.newDataArrayFromName(fs_node, 'ClosestEltProjectedX')
-      closest_elt_projy_node = SIDS.newDataArrayFromName(fs_node, 'ClosestEltProjectedY')
-      closest_elt_projz_node = SIDS.newDataArrayFromName(fs_node, 'ClosestEltProjectedZ')
-      I.setValue(closest_elt_projx_node, closest_elt_proj[0::3])
-      I.setValue(closest_elt_projy_node, closest_elt_proj[1::3])
-      I.setValue(closest_elt_projz_node, closest_elt_proj[2::3])
+      closest_elt_proj = np.copy(fields['ClosestEltProjected'])
+      I.newDataArray('ClosestEltProjectedX', closest_elt_proj[0::3], parent=fs_node)
+      I.newDataArray('ClosestEltProjectedY', closest_elt_proj[1::3], parent=fs_node)
+      I.newDataArray('ClosestEltProjectedZ', closest_elt_proj[2::3], parent=fs_node)
 
       # Closest gnum element (face)
-      closest_elt_gnum = copy.deepcopy(fields['ClosestEltGnum'])
-      closest_elt_gnum = closest_elt_gnum.reshape(cell_size, order='F')
-      closest_elt_gnum_node = SIDS.newDataArrayFromName(fs_node, 'ClosestEltGnum')
-      I.setValue(closest_elt_gnum_node, closest_elt_gnum)
+      closest_elt_gnum = np.copy(fields['ClosestEltGnum'])
+      I.newDataArray('ClosestEltGnum', closest_elt_gnum, parent=fs_node)
 
       # Find domain to which the face belongs
       n_face_bnd_tot_idx = np.array(self.n_face_bnd_tot_idx, dtype=closest_elt_gnum.dtype)
@@ -511,11 +460,6 @@ class WallDistance:
       closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
       I.newDataArray("ClosestEltDomId", value=closest_surf_domain, parent=fs_node)
       I.newDataArray("ClosestEltLocGnum", value=closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain], parent=fs_node)
-
-      # # Wall index
-      # wall_index = np.empty(cell_size, dtype='float64', order='F')
-      # wall_index.fill(-1);
-      # I.newDataArray('TurbulentDistanceIndex', wall_index, parent=fs_node)
 
   def dump_times(self):
     self.walldist.dump_times()
