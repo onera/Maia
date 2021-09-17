@@ -58,85 +58,6 @@ def get_entities_numbering(part_zone, as_pdm=True):
     cell_ln_to_gn = cell_ln_to_gn.astype(pdm_dtype)
   return vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
 
-def create_skeleton_from_part_tree(part_base: List, comm) -> List:
-  """
-  Args:
-      part_base (List): CGNS Base, partitioned tree
-      comm (MPI communicator): MPI communicator
-
-  Returns:
-      List: A skeleton tree with all Family_t node(s)
-  """
-  skeleton_tree = I.newCGNSTree()
-  disc.discover_nodes_from_matching(skeleton_tree, [part_base], 'CGNSBase_t', comm, child_list=['Family_t'])
-  return skeleton_tree
-
-def fill_skeleton_from_part_tree(skeleton_tree: List, part_base: List, families: List, comm) -> List:
-  """Summary
-
-  Args:
-      skeleton_tree (List): CGNS Base, skeleton tree
-      part_base (List): CGNS Base, partitioned tree
-      families (List): List of family names
-      comm (MPI communicator): MPI communicator
-
-  Returns:
-      List: A skeleton tree with all Zone(s) owns BC with FamilyName_t node(s) as wall.
-  """
-  def is_bc_wall(bc_node):
-    if I.getType(bc_node) == 'BC_t' and I.getValue(bc_node) == "FamilySpecified":
-      family_name_node = I.getNodeFromType1(bc_node, "FamilyName_t")
-      if I.getValue(family_name_node) in families:
-        return True
-    return False
-
-  def has_zone_bc_wall(zone_node):
-    for bc_node in IE.iterNodesByMatching(zone_node, 'ZoneBC_t/BC_t'):
-      if is_bc_wall(bc_node):
-        return True
-    return False
-
-  # Search Zone with concerned BC
-  disc.discover_nodes_from_matching(skeleton_tree, [part_base], ['CGNSBase_t', has_zone_bc_wall], comm,
-                                    get_value=[False, True],
-                                    merge_rule=lambda zpath : '.'.join(zpath.split('.')[:-2]))
-
-  # Search BC
-  for skeleton_base, skeleton_zone in IE.iterNodesWithParentsByMatching(skeleton_tree, 'CGNSBase_t/Zone_t'):
-    disc.discover_nodes_from_matching(skeleton_zone, I.getZones(part_base), ['ZoneBC_t', is_bc_wall], comm,
-                                      child_list=['FamilyName_t', 'GridLocation_t'],
-                                      get_value='none')
-  return skeleton_tree
-
-# ------------------------------------------------------------------------
-def find_bcwall(skeleton_tree: List,
-                part_tree: List,
-                comm=MPI.COMM_WORLD,
-                bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']) -> List[str]:
-  """Summary
-
-  Args:
-      skeleton_tree (List): skeleton tree
-      part_tree (List): partitioned tree
-      comm (MPI communicator): MPI communicator
-      bcwalls (list, optional): Description
-
-  Returns:
-      List[str]: list of wall family
-  """
-  all_families = I.getNodesFromType2(skeleton_tree, 'Family_t')
-  for part_zone in I.getNodesFromType(part_tree, 'Zone_t'):
-    zone_bcs = I.getNodeFromType1(part_zone, 'ZoneBC_t')
-    for bc_node in I.getNodesFromType1(zone_bcs, 'BC_t'):
-      if I.getValue(bc_node) == 'FamilySpecified':
-        family_name_node = I.getNodeFromType1(bc_node, 'FamilyName_t')
-        family_name = I.getValue(family_name_node)
-        found_family_name = I.getNodeFromName(all_families, family_name)
-        found_family_bc_name = I.getNodeFromType1(found_family_name, 'FamilyBC_t')
-        family_type = I.getValue(found_family_bc_name)
-        if family_type in bcwalls:
-          families.append(family_name)
-  return families
 
 # ------------------------------------------------------------------------
 class WallDistance:
@@ -355,29 +276,26 @@ class WallDistance:
   def compute(self):
     # 1. Search wall family(ies)
     # ==========================
-    # Create dist tree with families from CGNS base
-    skeleton_tree = create_skeleton_from_part_tree(self.part_tree, self.mpi_comm)
-    # I.printTree(skeleton_tree)
+
+    #Get a skeleton tree including only Base, Zones and Families
+    skeleton_tree = I.newCGNSTree()
+    disc.discover_nodes_from_matching(skeleton_tree, [self.part_tree], 'CGNSBase_t', comm, child_list=['Family_t'])
+    disc.discover_nodes_from_matching(skeleton_tree, [self.part_tree], 'CGNSBase_t/Zone_t', comm,
+        merge_rule = lambda path: conv.get_part_prefix(path))
 
     # Search families if its are not given
-    if not bool(self.families):
-      self.families = find_bcwall(skeleton_tree, self.part_tree, self.mpi_comm)
-    print(f"self.families = {self.families}")
-    LOG.info(f"self.families = {self.families}")
+    if not self.families:
+      bcwalls = ['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']
+      for family in IE.getNodesByMatching(skeleton_tree, ['CGNSBase_t', 'Family_t']):
+        family_bc = I.getNodeFromType1(family, 'FamilyBC_t')
+        if family_bc is not None and I.getValue(family_bc) in bcwalls:
+          self.families.append(I.getName(family))
 
     skeleton_families = [I.getName(f) for f in I.getNodesFromType(skeleton_tree, "Family_t")]
     found_families = any([fn in self.families for fn in skeleton_families])
     print(f"found_families = {found_families}")
 
     if found_families:
-      # Fill dist tree with zone(s) where family(ies) exist(s)
-      skeleton_tree = fill_skeleton_from_part_tree(skeleton_tree, self.part_tree, self.families, self.mpi_comm)
-      # I.printTree(skeleton_tree)
-      # I.printTree(self.part_tree)
-      # C.convertPyTree2File(skeleton_tree, "skeleton_tree-cubeU_join_bnd-new-{}.hdf".format(self.mpi_comm.Get_rank()))
-
-      n_domain = len(I.getZones(skeleton_tree))
-      assert(n_domain >= 1)
 
       # Group partitions by original dist domain
       parts_per_dom = list()
@@ -385,17 +303,15 @@ class WallDistance:
         dzone_path = I.getName(dbase) + '/' + I.getName(dzone)
         parts_per_dom.append(TE.utils.get_partitioned_zones(self.part_tree, dzone_path))
 
+      n_domain = len(parts_per_dom)
+      assert(n_domain >= 1)
 
-      #Get the list of Base/zones names
-      # skeleton_tree = I.newCGNSTree()
-      # disc.discover_nodes_from_matching(skeleton_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,
-          # merge_rule = lambda path: conv.get_part_prefix(path))
 
       if self.method == "propagation" and len(parts_per_dom) > 1:
         raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
 
       if self.method == "cloud":
-        # NB: Paradigm structure is created here
+        # NB: Paradigm structure is created here -> must be done before setup_surf_mesh
         self.walldist.n_point_cloud = n_domain
 
       self._setup_surf_mesh2(parts_per_dom, self.families, self.mpi_comm)
@@ -625,7 +541,7 @@ if __name__ == "__main__":
   method = "cloud"
   part_tree = PPA.partitioning(dist_tree, comm, graph_part_tool='ptscotch')
   # C.convertPyTree2File(part_tree, f"part_tree-rank{mpi_rank}-{method}.cgns", 'bin_hdf')
-  wall_distance(part_tree, mpi_comm=comm, method=method)
+  wall_distance(part_tree, mpi_comm=comm, method=method, families=families)
   # I.printTree(part_tree)
   ptree = parallel_tree(comm, dist_tree, part_tree)
   merge_and_save(ptree, f"{filename}-new-{mpi_size}procs-{method}.cgns")
