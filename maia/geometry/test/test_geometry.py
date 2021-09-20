@@ -27,7 +27,3 @@ def test_compute_cell_center(sub_comm):
   zone_no_ng = I.rmNodesByType(zone, 'Elements_t')
   with pytest.raises(NotImplementedError):
     geometry.compute_cell_center(zone_no_ng)
-
-  I.setValue(I.getNodeFromType1(zone, 'ZoneType_t'), 'Structured')
-  with pytest.raises(NotImplementedError):
-    geometry.compute_cell_center(zone)

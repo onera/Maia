@@ -293,6 +293,39 @@ compute_center_cell_u(int n_cell,
 }
 
 // --------------------------------------------------------------------
+auto
+compute_center_cell_s(int nx, int ny, int nz,
+                      py::array_t<double, py::array::f_style>& np_cx,
+                      py::array_t<double, py::array::f_style>& np_cy,
+                      py::array_t<double, py::array::f_style>& np_cz)
+{
+
+  auto cx = np_cx.template mutable_unchecked<3>();
+  auto cy = np_cy.template mutable_unchecked<3>();
+  auto cz = np_cz.template mutable_unchecked<3>();
+
+  py::array_t<double, py::array::f_style> np_center(3*nx*ny*nz);
+  auto center = make_raw_view(np_center);
+
+  int idx = 0;
+  for(int k = 0; k < nz; ++k) {
+    for(int j = 0; j < ny; ++j) {
+      for(int i = 0; i < nx; ++i) {
+        center[3*idx+0] = 0.125*(cx(i  ,j,k) + cx(i  ,j+1,k) + cx(i  ,j+1,k+1) + cx(i  ,j,k+1) 
+                               + cx(i+1,j,k) + cx(i+1,j+1,k) + cx(i+1,j+1,k+1) + cx(i+1,j,k+1));
+        center[3*idx+1] = 0.125*(cy(i  ,j,k) + cy(i  ,j+1,k) + cy(i  ,j+1,k+1) + cy(i  ,j,k+1)
+                               + cy(i+1,j,k) + cy(i+1,j+1,k) + cy(i+1,j+1,k+1) + cy(i+1,j,k+1));
+        center[3*idx+2] = 0.125*(cz(i  ,j,k) + cz(i  ,j+1,k) + cz(i  ,j+1,k+1) + cz(i  ,j,k+1)
+                               + cz(i+1,j,k) + cz(i+1,j+1,k) + cz(i+1,j+1,k+1) + cz(i+1,j,k+1));
+        idx++;
+      }
+    }
+  }
+
+  return np_center;
+}
+
+// --------------------------------------------------------------------
 PYBIND11_MODULE(geometry, m) {
   m.doc() = "pybind11 utils for geomery plugin"; // optional module docstring
 
@@ -319,4 +352,12 @@ PYBIND11_MODULE(geometry, m) {
         py::arg("np_face_vtx").noconvert(),
         py::arg("np_face_vtx_idx").noconvert(),
         py::arg("np_parent_elemnts").noconvert());
+
+  m.def("compute_center_cell_s", &compute_center_cell_s,
+        py::arg("nx").noconvert(),
+        py::arg("ny").noconvert(),
+        py::arg("nz").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
+        py::arg("np_cz").noconvert());
 }
