@@ -15,7 +15,7 @@ from maia.tree_exchange.part_to_dist import discover    as disc
 from maia                            import tree_exchange as TE
 
 from maia.interpolation.interpolate  import get_point_cloud
-from maia.geometry.extract_boundary2 import extract_surf_from_bc_new
+from maia.geometry.extract_boundary  import extract_surf_from_bc
 from maia.geometry.geometry          import compute_cell_center
 
 __doc__ = """
@@ -76,7 +76,7 @@ class WallDistance:
     for i_dom, part_zones in enumerate(parts_per_dom):
 
       face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
-        vtx_bnd_z, vtx_ln_to_gn_z = extract_surf_from_bc_new(part_zones, families, comm)
+        vtx_bnd_z, vtx_ln_to_gn_z = extract_surf_from_bc(part_zones, families, comm)
 
       #Find the maximal vtx/face id for this initial domain
       n_face_bnd_t = 0
@@ -265,11 +265,12 @@ class WallDistance:
       elif self.method == "propagation":
         for i_domain, part_zones in enumerate(parts_per_dom):
           self._walldist.n_part_vol = len(part_zones)
+          if len(part_zones) > 0 and sids.Zone.Type(part_zones[0]) != 'Unstructured':
+            raise NotImplementedError("Wall_distance computation with method 'propagation' does not support structured blocks")
           self._setup_vol_mesh(i_domain, part_zones, self.mpi_comm)
 
       #Compute
-      args = ['rank1'] if self.method == 'propagation' else []
-      self._walldist.compute(*args)
+      self._walldist.compute()
 
       # Get results -- OK because name of method is the same for 2 PDM objects
       for i_domain, part_zones in enumerate(parts_per_dom):
