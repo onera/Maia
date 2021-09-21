@@ -187,27 +187,30 @@ class WallDistance:
       if fs_node is None:
         fs_node = I.newFlowSolution(name=self.out_fs_n, gridLocation='CellCenter', parent=part_zone)
       assert sids.GridLocation(fs_node) == 'CellCenter'
+      shape = sids.Zone.CellSize(part_zone)
 
       # Wall distance
       wall_dist = np.sqrt(fields['ClosestEltDistance'])
-      I.newDataArray('TurbulentDistance', value=wall_dist, parent=fs_node)
+      I.newDataArray('TurbulentDistance', value=wall_dist.reshape(shape,order='F'), parent=fs_node)
 
       # Closest projected element
       closest_elt_proj = np.copy(fields['ClosestEltProjected'])
-      I.newDataArray('ClosestEltProjectedX', closest_elt_proj[0::3], parent=fs_node)
-      I.newDataArray('ClosestEltProjectedY', closest_elt_proj[1::3], parent=fs_node)
-      I.newDataArray('ClosestEltProjectedZ', closest_elt_proj[2::3], parent=fs_node)
+      I.newDataArray('ClosestEltProjectedX', closest_elt_proj[0::3].reshape(shape,order='F'), parent=fs_node)
+      I.newDataArray('ClosestEltProjectedY', closest_elt_proj[1::3].reshape(shape,order='F'), parent=fs_node)
+      I.newDataArray('ClosestEltProjectedZ', closest_elt_proj[2::3].reshape(shape,order='F'), parent=fs_node)
 
       # Closest gnum element (face)
       closest_elt_gnum = np.copy(fields['ClosestEltGnum'])
-      I.newDataArray('ClosestEltGnum', closest_elt_gnum, parent=fs_node)
+      I.newDataArray('ClosestEltGnum', closest_elt_gnum.reshape(shape,order='F'), parent=fs_node)
 
       # Find domain to which the face belongs (mainly for debug)
       n_face_bnd_tot_idx = np.array(self._n_face_bnd_tot_idx, dtype=closest_elt_gnum.dtype)
       closest_surf_domain = np.searchsorted(n_face_bnd_tot_idx, closest_elt_gnum-1, side='right') -1
       closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
-      I.newDataArray("ClosestEltDomId", value=closest_surf_domain, parent=fs_node)
-      I.newDataArray("ClosestEltLocGnum", value=closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain], parent=fs_node)
+      closest_elt_gnuml = closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain]
+      I.newDataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
+      I.newDataArray("ClosestEltLocGnum", value=closest_elt_gnuml.reshape(shape,order='F'), parent=fs_node)
+
 
 
   def compute(self):

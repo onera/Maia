@@ -7,6 +7,13 @@ def test_ijk_to_index():
   assert s_numb.ijk_to_index(1,2,3,[7,5,3]) == 1+1*7+2*7*5
   assert s_numb.ijk_to_index(7,5,3,[7,5,3]) == 7+4*7+2*7*5
 
+def test_index_to_ijk():
+  assert s_numb.index_to_ijk(1,[7,5,3]) == (1,1,1)
+  assert s_numb.index_to_ijk(78,[7,5,3]) == (1,2,3)
+  assert s_numb.index_to_ijk(105,[7,5,3]) == (7,5,3)
+  idx = np.random.randint(1, 3*5*7+1, size=20)
+  assert (s_numb.ijk_to_index(*s_numb.index_to_ijk(idx, [7,5,3]), [7,5,3]) == idx).all()
+
 def test_ijk_to_faceiIndex():
   assert s_numb.ijk_to_faceiIndex(1,1,1,[7,5,3],[8,6,4]) ==   1
   assert s_numb.ijk_to_faceiIndex(3,2,1,[7,5,3],[8,6,4]) ==  11
