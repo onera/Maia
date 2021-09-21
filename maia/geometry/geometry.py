@@ -8,7 +8,9 @@ import maia.sids.sids           as sids
 @IE.check_is_label("Zone_t")
 def compute_cell_center(zone):
   """
-  Compute the cell centers of a NGon unstructured zone and return it as a flat np array
+  Compute the cell centers of a NGon unstructured zone or a structured zone
+  and return it as a flat (interlaced) np array. Centers are computed using
+  a basic average over the vertices of the cells
   """
   cx, cy, cz = sids.coordinates(zone)
 

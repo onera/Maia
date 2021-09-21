@@ -4,10 +4,8 @@ import numpy as np
 import Pypdm.Pypdm as PDM
 
 import Converter.Internal as I
-
 import maia.sids.Internal_ext   as IE
 
-from maia                            import npy_pdm_gnum_dtype  as pdm_dtype
 from maia.sids                       import sids as sids
 from maia.sids                       import conventions as conv
 from maia.utils                      import py_utils
@@ -17,10 +15,6 @@ from maia                            import tree_exchange as TE
 from maia.interpolation.interpolate  import get_point_cloud
 from maia.geometry.extract_boundary  import extract_surf_from_bc
 from maia.geometry.geometry          import compute_cell_center
-
-__doc__ = """
-CGNS python module which interface the ParaDiGM library for // distance to wall computation .
-"""
 
 def get_entities_numbering(part_zone, as_pdm=True):
   """
@@ -41,6 +35,7 @@ def get_entities_numbering(part_zone, as_pdm=True):
 
 def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']):
   """
+  Return the list of Families having a FamilyBC_t node whose value is in bcwalls list
   """
   fam_query = lambda n : I.getType(n) == 'Family_t' and \
       I.getNodeFromType1(n, 'FamilyBC_t') is not None and I.getValue(I.getNodeFromType1(n, 'FamilyBC_t')) in bcwalls
@@ -49,6 +44,23 @@ def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscou
 
 # ------------------------------------------------------------------------
 class WallDistance:
+  """
+  PDM interface for parallel wall distance computation.
+  For each cell center, compute the distance to the nearest face belonging to a BC of kind wall.
+  Computation can be done using "cloud" or "propagation" (requires pdma) method.
+
+  Works on partitioned meshes of
+  - Structured / Unstructured (NGon) zones, possibly comming from multiples domains for cloud method
+  - Unstructured (NGon) zones from a single domain for propagation method
+
+  Output is written is a FlowSolution node whose name can be specified in out_fs_name
+
+  *Important*
+  Distance is computed to the BCs belonging to one of the families specified in families list.
+  If list is empty, we try to auto detect wall-like families.
+  In both case, families are (for now) the only way to select BCs to include in wall distance computation.
+  BCs who directly specify their type in BC[1] are not considered
+  """
 
   def __init__(self, part_tree, mpi_comm, method="cloud", families=[], out_fs_name='WallDistance'):
     self.part_tree = part_tree
@@ -65,6 +77,9 @@ class WallDistance:
 
 
   def _setup_surf_mesh(self, parts_per_dom, families, comm):
+    """
+    Setup the surfacic mesh for wall distance computing
+    """
 
     #This will concatenate part data of all initial domains
     face_vtx_bnd_l = []
@@ -130,6 +145,7 @@ class WallDistance:
 
   def _setup_vol_mesh(self, i_domain, part_zones, comm):
     """
+    Setup the volumic mesh for wall distance computing (only for propagation method)
     """
     #First pass to compute the total number of vtx, face, cell
     n_vtx_t, n_face_t, n_cell_t = 0, 0, 0
@@ -178,6 +194,10 @@ class WallDistance:
                                        n_vtx, vtx_coords, vtx_ln_to_gn)
 
   def _get(self, i_domain, part_zones):
+    """
+    Get results after wall distance computation and store it in the FlowSolution
+    node of name self.out_fs_name
+    """
     for i_part, part_zone in enumerate(part_zones):
 
       fields = self._walldist.get(i_domain, i_part) if self.method == "cloud" else self._walldist.get(i_part)
@@ -215,6 +235,7 @@ class WallDistance:
 
   def compute(self):
     """
+    Prepare, compute and get wall distance
     """
 
     #Get a skeleton tree including only Base, Zones and Families
@@ -289,7 +310,8 @@ class WallDistance:
 
 # ------------------------------------------------------------------------
 def wall_distance(*args, **kwargs):
+  """ API for WallDistance class. See class for full documentation """
   walldist = WallDistance(*args, **kwargs)
   walldist.compute()
-  walldist.dump_times()
+  #walldist.dump_times()
 

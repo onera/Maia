@@ -170,3 +170,19 @@ Small.P2.N1 Zone_t:
     assert I.getValue(match2_2) == 'Big.P2.N1'
     assert (I.getNodeFromName(match2_2, 'PointRange')[1] == [[2,1],[4,4],[5,1]]).all()
     assert (I.getNodeFromName(match2_2, 'PointRangeDonor')[1] == [[6,6],[1,2],[1,5]]).all()
+
+def test_create_zone_gnums():
+  dist_zone_cell = np.array([6,8,4])
+  cell_window = np.array([[4,6], [6,8], [1,3]])
+  vtx_gnum, face_gnum, cell_gnum = splitS.create_zone_gnums(cell_window, dist_zone_cell, dtype=np.int32)
+
+  expected_vtx = np.array([39,40,41,46,47,48,53,54,55,102,103,104,109,110,111,116,117,118,
+                           165,166,167,172,173,174,179,180,181])
+  expected_face = np.array([ 39 ,40 ,41 ,46 ,47 ,48 ,95 ,96 ,97 ,102,103,104,258,259,264,265,270,271,
+                             312,313,318,319,324,325,474,475,480,481,522,523,528,529,570,571,576,577])
+  expected_cell = np.array([34,35,40,41,82,83,88,89])
+
+  assert (vtx_gnum  == expected_vtx ).all()
+  assert (face_gnum == expected_face).all()
+  assert (cell_gnum == expected_cell).all()
+  assert vtx_gnum.dtype == face_gnum.dtype == cell_gnum.dtype == np.int32
