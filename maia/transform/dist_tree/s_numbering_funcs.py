@@ -21,6 +21,17 @@ def ijk_to_index(i,j,k,n_elmt):
   """
   return(i+(j-1)*n_elmt[0]+(k-1)*n_elmt[0]*n_elmt[1])
 
+def index_to_ijk(idx, n_elmt):
+  """
+  Convert an index to a i,j,k triplet. This fonction allows the index to describe a
+  vertex or a cell, depending if n_elmt is the number of nodes or cells of the
+  structured block
+  """
+  k = ((idx - 1) // (n_elmt[0]*n_elmt[1])) + 1
+  j = (idx - (k-1)*(n_elmt[0]*n_elmt[1]) - 1) // n_elmt[0] + 1
+  i = idx - (j-1)*n_elmt[0] - (k-1)*(n_elmt[0]*n_elmt[1])
+  return i,j,k
+
 def ijk_to_faceiIndex(i,j,k,n_cell,n_vtx):
   """
   Convert (i,j,k) indices from structured grid to unstructured index of face with

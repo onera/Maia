@@ -13,7 +13,7 @@ from maia.utils import py_utils
 from maia.tree_exchange import utils as te_utils
 from maia.tree_exchange.part_to_dist import discover as disc
 
-from cmaia.geometry.geometry import compute_center_cell_u
+from maia.geometry.geometry  import compute_cell_center
 import cmaia.utils.extract_from_indices as EX
 
 import Pypdm.Pypdm as PDM
@@ -26,31 +26,16 @@ def get_point_cloud(zone, location='CellCenter'):
   If location == Center, compute and return the (interlaced) coordinates of
   cell centers and cell global numbering of a partitioned zone
   """
-  gridc = I.getNodeFromType1(zone, "GridCoordinates_t")
-  cx    = I.getNodeFromName1(gridc, "CoordinateX")[1]
-  cy    = I.getNodeFromName1(gridc, "CoordinateY")[1]
-  cz    = I.getNodeFromName1(gridc, "CoordinateZ")[1]
-
   if location == 'Vertex':
+    cx, cy, cz = sids.coordinates(zone)
     vtx_coords   = py_utils.interweave_arrays([cx,cy,cz])
     vtx_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone, 'Vertex')).astype(pdm_gnum_dtype)
     return vtx_coords, vtx_ln_to_gn
 
   elif location == 'CellCenter':
-    ngons  = [e for e in I.getNodesFromType1(zone, 'Elements_t') if sids.ElementCGNSName(e) == 'NGON_n']
-    assert len(ngons) == 1
-    face_vtx      = I.getNodeFromName1(ngons[0], 'ElementConnectivity')[1]
-    face_vtx_idx  = I.getNodeFromName1(ngons[0], 'ElementStartOffset' )[1]
-    ngon_pe       = I.getNodeFromName1(ngons[0], 'ParentElements'     )[1]
-
     cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone, 'Cell')).astype(pdm_gnum_dtype)
-    n_cell = sids.Zone.n_cell(zone)
+    center_cell = compute_cell_center(zone)
 
-    center_cell = compute_center_cell_u(n_cell,
-                                        cx, cy, cz,
-                                        face_vtx,
-                                        face_vtx_idx,
-                                        ngon_pe)
     return center_cell, cell_ln_to_gn
 
   raise RuntimeError("Unknow location")
@@ -78,20 +63,13 @@ def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
   face_vtx_idx  = I.getNodeFromName1(ngons[0],  "ElementStartOffset")[1]
   face_vtx      = I.getNodeFromName1(ngons[0],  "ElementConnectivity")[1]
 
-  face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element')).astype(pdm_gnum_dtype)
-  cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell')).astype(pdm_gnum_dtype)
-  vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex')).astype(pdm_gnum_dtype)
+  vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 
   n_cell = cell_ln_to_gn.shape[0]
   n_face = face_ln_to_gn.shape[0]
   n_vtx  = vtx_ln_to_gn .shape[0]
 
-  ngon_pe       = I.getNodeFromName1(ngons[0], 'ParentElements'     )[1]
-  center_cell = compute_center_cell_u(n_cell,
-                                      cx, cy, cz,
-                                      face_vtx,
-                                      face_vtx_idx,
-                                      ngon_pe)
+  center_cell = compute_cell_center(part_zone)
   keep_alive.append(cell_ln_to_gn)
 
   mesh_loc.part_set(i_part, n_cell, cell_face_idx, cell_face, cell_ln_to_gn,

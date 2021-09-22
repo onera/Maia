@@ -168,19 +168,27 @@ def test_guess_bnd_normal_index():
 
 def test_normal_index_shift():
   nVtx = np.array([17,9,7])
-  vtx_range_last  = np.array([[1,17], [9,9], [1,7]])
-  vtx_range_first = np.array([[1,17], [1,1], [1,7]])
+  vtx_range_last   = np.array([[1,17], [9,9], [1,7]])
+  vtx_range_first  = np.array([[1,17], [1,1], [1,7]])
   cell_range_last  = np.array([[1,16], [8,8], [1,6]])
   cell_range_first = np.array([[1,16], [1,1], [1,6]])
+  facej_range_last  = np.array([[1,16], [9,9], [1,6]])
+  facej_range_first = np.array([[1,16], [1,1], [1,6]])
   #Same location
-  assert convert_s_to_u.normal_index_shift(vtx_range_last, nVtx, 1, False, False) == 0
-  assert convert_s_to_u.normal_index_shift(cell_range_last, nVtx, 1, True, True) == 0
+  assert convert_s_to_u.normal_index_shift(vtx_range_last, nVtx, 1, "Vertex", "Vertex") == 0
+  assert convert_s_to_u.normal_index_shift(cell_range_last, nVtx, 1, "CellCenter", "CellCenter") == 0
   #Vtx to cells
-  assert convert_s_to_u.normal_index_shift(vtx_range_last, nVtx, 1, False, True) == -1
-  assert convert_s_to_u.normal_index_shift(vtx_range_first, nVtx, 1, False, True) == 0
+  assert convert_s_to_u.normal_index_shift(vtx_range_last, nVtx, 1, "Vertex", "CellCenter") == -1
+  assert convert_s_to_u.normal_index_shift(vtx_range_first, nVtx, 1, "Vertex", "CellCenter") == 0
   #Cell to vtx
-  assert convert_s_to_u.normal_index_shift(cell_range_last, nVtx, 1, True, False) == 1
-  assert convert_s_to_u.normal_index_shift(cell_range_first, nVtx, 1, True, False) == 0
+  assert convert_s_to_u.normal_index_shift(cell_range_last, nVtx, 1, "CellCenter", "Vertex") == 1
+  assert convert_s_to_u.normal_index_shift(cell_range_first, nVtx, 1, "CellCenter", "Vertex") == 0
+  #Face to cells
+  assert convert_s_to_u.normal_index_shift(facej_range_last, nVtx, 1, "FaceCenter", "CellCenter") == -1
+  assert convert_s_to_u.normal_index_shift(facej_range_first, nVtx, 1, "FaceCenter", "CellCenter") == 0
+  #Cell to face
+  assert convert_s_to_u.normal_index_shift(cell_range_last, nVtx, 1, "CellCenter", "FaceCenter") == 1
+  assert convert_s_to_u.normal_index_shift(cell_range_first, nVtx, 1, "CellCenter", "FaceCenter") == 0
 
 class Test_transform_bnd_pr_size():
   def test_non_ambiguous(self):

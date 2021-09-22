@@ -4,25 +4,25 @@ import numpy              as np
 import Converter.Internal as I
 import maia.sids.Internal_ext as IE
 
-from maia.sids import sids as SIDS
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+from maia.sids import sids
 from maia.sids import conventions as conv
+from maia.utils import py_utils
 from .                               import split_cut_tree as SCT
 from maia.tree_exchange.dist_to_part import data_exchange  as BTP
+from maia.transform.dist_tree import s_numbering_funcs as s_numb
 from maia.transform.dist_tree.convert_s_to_u import guess_bnd_normal_index, \
                                                     compute_transform_matrix, \
-                                                    apply_transformation
-from maia.sids import sids
+                                                    apply_transformation, \
+                                                    n_face_per_dir
 
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
 dir_to_idx = {'x':0, 'y':1, 'z':2}
 min_max_as_int = lambda st : 0 if 'min' in st else 1
 
-def ijk_to_index(i,j,k,n_elmt):
-  return i+(j-1)*n_elmt[0]+(k-1)*n_elmt[0]*n_elmt[1]
-
 def zone_cell_range(zone):
   """ Return the size of a point_range 2d array """
-  n_cell = SIDS.Zone.CellSize(zone)
+  n_cell = sids.Zone.CellSize(zone)
   zone_range = np.empty((n_cell.shape[0], 2), n_cell.dtype)
   zone_range[:,0] = 1
   zone_range[:,1] = n_cell
@@ -39,7 +39,7 @@ def collect_S_bnd_per_dir(zone):
 
   for bnd_path in ['ZoneBC_t/BC_t', 'ZoneGridConnectivity_t/GridConnectivity1to1_t']:
     for bnd in IE.iterNodesByMatching(zone, bnd_path):
-      grid_loc    = SIDS.GridLocation(bnd)
+      grid_loc    = sids.GridLocation(bnd)
       point_range = I.getNodeFromName(bnd, 'PointRange')[1]
       bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
 
@@ -110,7 +110,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
       dirs = np.where(np.arange(range_part_bc_g.shape[0]) != normal_idx)[0]
       for dist_bc in dist_bnds:
         range_dist_bc = np.copy(I.getNodeFromName1(dist_bc, 'PointRange')[1])
-        grid_loc      = SIDS.GridLocation(dist_bc)
+        grid_loc      = sids.GridLocation(dist_bc)
 
         #Swap because some gc are allowed to be reversed and convert to cell
         dir_to_swap     = (range_dist_bc[:,1] < range_dist_bc[:,0])
@@ -313,6 +313,45 @@ def split_original_joins_S(all_part_zones, comm):
     for node in to_delete:
       I._rmNode(part, node)
 
+def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
+  """
+  Create the vertex, face and cell global numbering for a partitioned zone
+  from the cell_window array, a (3,2) shaped array indicating where starts and ends the
+  partition cells (semi open, start at 1) and the dist_zone_cell_size (ie number of cells
+  of the original dist_zone in each direction)
+  """
+
+  dist_cell_per_dir = dist_zone_cell_size
+  dist_vtx_per_dir  = dist_zone_cell_size + 1
+  dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
+
+  part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
+  part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
+
+  # Vertex
+  i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+1, dtype=dtype)
+  j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+1, dtype=dtype).reshape(-1,1)
+  k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+1, dtype=dtype).reshape(-1,1,1)
+  vtx_lntogn = s_numb.ijk_to_index(i_ar, j_ar, k_ar, dist_vtx_per_dir).flatten()
+
+  # Cell
+  i_ar  = np.arange(cell_window[0,0], cell_window[0,1], dtype=dtype)
+  j_ar  = np.arange(cell_window[1,0], cell_window[1,1], dtype=dtype).reshape(-1,1)
+  k_ar  = np.arange(cell_window[2,0], cell_window[2,1], dtype=dtype).reshape(-1,1,1)
+  cell_lntogn = s_numb.ijk_to_index(i_ar, j_ar, k_ar, dist_cell_per_dir).flatten()
+
+  # Faces
+  shifted_nface_p = py_utils.sizes_to_indices(part_face_per_dir)
+  ijk_to_faceIndex = [s_numb.ijk_to_faceiIndex, s_numb.ijk_to_facejIndex, s_numb.ijk_to_facekIndex]
+  face_lntogn = np.empty(shifted_nface_p[-1], dtype=dtype)
+  for idir in range(3):
+    i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+(idir==0), dtype=dtype)
+    j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+(idir==1), dtype=dtype).reshape(-1,1)
+    k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+(idir==2), dtype=dtype).reshape(-1,1,1)
+    face_lntogn[shifted_nface_p[idir]:shifted_nface_p[idir+1]] = ijk_to_faceIndex[idir](i_ar, j_ar, k_ar, \
+        dist_cell_per_dir, dist_vtx_per_dir).flatten()
+
+  return vtx_lntogn, face_lntogn, cell_lntogn
 
 def part_s_zone(d_zone, d_zone_weights, comm):
 
@@ -327,7 +366,7 @@ def part_s_zone(d_zone, d_zone_weights, comm):
   all_weights = np.empty(n_part_each_proc.sum(), dtype=np.float64)
   comm.Allgatherv(my_weights, [all_weights, n_part_each_proc])
 
-  all_parts = SCT.split_S_block(SIDS.Zone.CellSize(d_zone), len(all_weights), all_weights)
+  all_parts = SCT.split_S_block(sids.Zone.CellSize(d_zone), len(all_weights), all_weights)
 
   my_start = n_part_each_proc[:i_rank].sum()
   my_end   = my_start + n_part_this_zone
@@ -342,18 +381,8 @@ def part_s_zone(d_zone, d_zone_weights, comm):
     pzone_dims = np.hstack([n_cells+1, n_cells, np.zeros((3,1), dtype=np.int32)])
     part_zone  = I.newZone(pzone_name, pzone_dims, ztype='Structured')
 
-    #Get ln2gn : following convention i, j, k increasing. Add 1 to end for vtx
-    lngn_zone = IE.newGlobalNumbering(parent=part_zone)
-    i_ar  = np.arange(cell_bounds[0,0], cell_bounds[0,1]+1, dtype=np.int32)
-    j_ar  = np.arange(cell_bounds[1,0], cell_bounds[1,1]+1, dtype=np.int32).reshape(-1,1)
-    k_ar  = np.arange(cell_bounds[2,0], cell_bounds[2,1]+1, dtype=np.int32).reshape(-1,1,1)
-    vtx_lntogn = ijk_to_index(i_ar, j_ar, k_ar, SIDS.Zone.VertexSize(d_zone)).flatten()
-    I.newDataArray('Vertex', vtx_lntogn, parent=lngn_zone)
-    i_ar  = np.arange(cell_bounds[0,0], cell_bounds[0,1], dtype=np.int32)
-    j_ar  = np.arange(cell_bounds[1,0], cell_bounds[1,1], dtype=np.int32).reshape(-1,1)
-    k_ar  = np.arange(cell_bounds[2,0], cell_bounds[2,1], dtype=np.int32).reshape(-1,1,1)
-    cell_lntogn = ijk_to_index(i_ar, j_ar, k_ar, SIDS.Zone.CellSize(d_zone)).flatten()
-    I.newDataArray('Cell', cell_lntogn, parent=lngn_zone)
+    vtx_lntogn, face_lntogn, cell_lntogn = create_zone_gnums(cell_bounds, sids.Zone.CellSize(d_zone))
+    IE.newGlobalNumbering({'Vertex' : vtx_lntogn, 'Face' : face_lntogn, 'Cell' : cell_lntogn}, parent=part_zone)
 
     create_bcs(d_zone, part_zone, cell_bounds[:,0])
 

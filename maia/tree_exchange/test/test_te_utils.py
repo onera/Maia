@@ -1,4 +1,8 @@
+import pytest
+import numpy as np
+
 import Converter.Internal as I
+import maia.sids.Internal_ext as IE
 
 from maia import npy_pdm_gnum_dtype
 from maia.utils         import parse_yaml_cgns
@@ -125,3 +129,35 @@ Zone.P0.N1 Zone_t:
       [6,1,4,6+1,8+2,8+1,8+4,8+3]).all()
   assert (utils.create_all_elt_g_numbering(part_zones[1], dist_elts) == \
       [2,3,5,6+2]).all()
+
+def test_get_entities_numbering():
+  zoneS = I.newZone(ztype='Structured')
+  expected_vtx_lngn = np.array([4,21,1,2,8,12])
+  expected_face_lngn = np.array([44,23,94,12])
+  expected_cell_lngn = np.array([], np.int)
+
+  gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn, 'Face' : expected_face_lngn}
+  gnum_node = IE.newGlobalNumbering(gnum_arrays, zoneS)
+  vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneS, as_pdm=False)
+  assert vtx_lngn.dtype == np.int64
+  assert (cell_lngn == expected_cell_lngn).all()
+  assert (face_lngn == expected_face_lngn).all()
+
+  zoneU = I.newZone(ztype='Unstructured')
+  gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn}
+  gnum_node = IE.newGlobalNumbering(gnum_arrays, zoneU)
+
+  with pytest.raises(AssertionError):
+    vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
+
+  ngon = I.newElements(etype='NGON', parent=zoneU)
+  gnum_node = IE.newGlobalNumbering({'Element' : expected_face_lngn}, ngon)
+  vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
+  assert vtx_lngn.dtype == npy_pdm_gnum_dtype
+  assert (vtx_lngn == expected_vtx_lngn).all()
+  assert (face_lngn == expected_face_lngn).all()
+
+  I.printTree(zoneU)
+  ngon = I.newElements('ElementsTwo', etype='NGON', parent=zoneU)
+  with pytest.raises(AssertionError):
+    vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)

@@ -17,6 +17,7 @@ from maia.interpolation import interpolate as ITP
 
 src_part_0 = f"""
 ZoneU Zone_t [[18,4,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1]:
     CoordinateY DataArray_t [0, 0, 0, 0.5, 0.5, 0.5, 1, 1, 1, 0, 0, 0, 0.5, 0.5, 0.5, 1, 1, 1]:
@@ -50,6 +51,7 @@ ZoneU Zone_t [[18,4,0]]:
 """
 src_part_1 = f"""
 ZoneU Zone_t [[18,4,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1]:
     CoordinateY DataArray_t [0, 0, 0, 0.5, 0.5, 0.5, 1, 1, 1, 0, 0, 0, 0.5, 0.5, 0.5, 1, 1, 1]:
@@ -83,6 +85,7 @@ ZoneU Zone_t [[18,4,0]]:
 """
 tgt_part_0 = f"""
 ZoneU Zone_t [[12,2,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0.2, 0.2, 0.2, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7]:
     CoordinateY DataArray_t [0.2 , 0.2 , 0.2 , 0.2 , 0.7, 0.7, 0.2 , 0.7, 0.7, 0.2 , 0.7, 0.7]:
@@ -104,6 +107,7 @@ ZoneU Zone_t [[12,2,0]]:
 """
 tgt_part_1 = f"""
 ZoneU Zone_t [[16,3,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0.2, 0.2, 0.2, 0.7, 1.2, 0.2, 0.7, 0.7, 0.2, 0.7, 1.2, 0.7, 1.2, 0.2, 0.7, 1.2]:
     CoordinateY DataArray_t [1.2, 1.2, 1.2, 1.2, 1.2, 0.7, 0.7, 1.2, 0.7, 0.7, 0.7, 1.2, 1.2, 0.7, 0.7, 0.7]:
@@ -127,6 +131,7 @@ ZoneU Zone_t [[16,3,0]]:
 """
 tgt_part_2 = f"""
 ZoneU Zone_t [[16,3,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [1.2, 1.2, 1.2, 1.2, 1.2, 0.7, 0.7, 0.7, 0.7, 0.7, 1.2, 0.7, 1.2, 0.7, 0.7, 1.2]:
     CoordinateY DataArray_t [0.2, 0.7, 1.2, 0.2, 0.2, 0.2, 0.7, 1.2, 0.2, 0.7, 0.7, 1.2, 1.2, 0.2, 0.7, 0.7]:

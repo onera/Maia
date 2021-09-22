@@ -72,23 +72,32 @@ def single_dim_pr_to_pl(pr, distrib=None):
   else:
     return np.arange(pr[0,0], pr[0,1]+1, dtype=pr.dtype).reshape((1,-1), order='F')
 
+def concatenate_np_arrays(arrays, dtype=None):
+  """
+  Merge all the (1d) arrays in arrays list
+  into a flat 1d array and an index array.
+  """
+  assert ([a.ndim for a in arrays] == np.ones(len(arrays))).all()
+  sizes = [a.size for a in arrays]
+
+  merged_idx = sizes_to_indices(sizes, dtype=np.int32)
+
+  if dtype is None:
+    dtype = arrays[0].dtype if arrays != [] else np.int
+
+  merged_array = np.empty(sum(sizes), dtype=dtype)
+  for i, a in enumerate(arrays):
+    merged_array[merged_idx[i]:merged_idx[i+1]] = a
+
+  return merged_idx, merged_array
+
 def concatenate_point_list(point_lists, dtype=None):
   """
   Merge all the PointList arrays in point_lists list
   into a flat 1d array and an index array
   """
-  sizes = [pl_n.size for pl_n in point_lists]
-
-  merged_pl_idx = sizes_to_indices(sizes, dtype=np.int32)
-
-  if dtype is None:
-    dtype = point_lists[0].dtype if point_lists != [] else np.int
-
-  merged_pl = np.empty(sum(sizes), dtype=dtype)
-  for ipl, pl in enumerate(point_lists):
-    merged_pl[merged_pl_idx[ipl]:merged_pl_idx[ipl+1]] = pl[0,:]
-
-  return merged_pl_idx, merged_pl
+  arrays = [pl[0,:] for pl in point_lists]
+  return concatenate_np_arrays(arrays, dtype)
 
 def sizes_to_indices(nb_array, dtype=None):
   """ Create and offset array from a size array """
@@ -116,10 +125,18 @@ def reverse_connectivity(ids, idx, array):
 def multi_arange(starts, stops):
   """
   Create concatenated np.arange of integers for multiple start/stop
+  See https://codereview.stackexchange.com/questions/83018/
+  vectorized-numpy-version-of-arange-with-multiple-start-stop
+
+  This is equivalent to 
+  np.concatenate([np.arange(start,stop) for start,stop in zip(starts,stops)])
+  but much faster. Don't remplace it !
+
   """
   assert len(starts)==len(stops)
-  if len(starts)==0: return []
-  return np.concatenate([np.arange(start,stop) for start,stop in zip(starts,stops)])
+  stops = np.asarray(stops)
+  l = stops - starts # Lengths of each range.
+  return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
 
 def arange_with_jumps(multi_interval,jumps):
   """
