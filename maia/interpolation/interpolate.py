@@ -63,9 +63,7 @@ def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
   face_vtx_idx  = I.getNodeFromName1(ngons[0],  "ElementStartOffset")[1]
   face_vtx      = I.getNodeFromName1(ngons[0],  "ElementConnectivity")[1]
 
-  face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element')).astype(pdm_gnum_dtype)
-  cell_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell')).astype(pdm_gnum_dtype)
-  vtx_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex')).astype(pdm_gnum_dtype)
+  vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 
   n_cell = cell_ln_to_gn.shape[0]
   n_face = face_ln_to_gn.shape[0]

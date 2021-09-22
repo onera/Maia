@@ -16,22 +16,6 @@ from maia.interpolation.interpolate  import get_point_cloud
 from maia.geometry.extract_boundary  import extract_surf_from_bc
 from maia.geometry.geometry          import compute_cell_center
 
-def get_entities_numbering(part_zone, as_pdm=True):
-  """
-  """
-  vtx_ln_to_gn   = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex'))
-  cell_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell'))
-  if sids.Zone.Type(part_zone) == "Structured":
-    face_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Face'))
-  else:
-    ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if sids.ElementCGNSName(e) == 'NGON_n']
-    assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
-    face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element'))
-  if as_pdm:
-    vtx_ln_to_gn  = vtx_ln_to_gn.astype(pdm_dtype)
-    face_ln_to_gn = face_ln_to_gn.astype(pdm_dtype)
-    cell_ln_to_gn = cell_ln_to_gn.astype(pdm_dtype)
-  return vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
 
 def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']):
   """
@@ -150,7 +134,7 @@ class WallDistance:
     #First pass to compute the total number of vtx, face, cell
     n_vtx_t, n_face_t, n_cell_t = 0, 0, 0
     for part_zone in part_zones:
-      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = get_entities_numbering(part_zone, as_pdm=False)
+      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TE.utils.get_entities_numbering(part_zone, as_pdm=False)
       n_vtx_t  = max(n_vtx_t,  np.max(vtx_ln_to_gn, initial=0))
       n_cell_t = max(n_face_t, np.max(cell_ln_to_gn, initial=0))
       n_face_t = max(n_cell_t, np.max(face_ln_to_gn, initial=0))
@@ -174,7 +158,7 @@ class WallDistance:
       cell_face_idx = I.getVal(I.getNodeFromName(nfaces[0], 'ElementStartOffset'))
       cell_face     = I.getVal(I.getNodeFromName(nfaces[0], 'ElementConnectivity'))
 
-      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = get_entities_numbering(part_zone)
+      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TE.utils.get_entities_numbering(part_zone)
 
       n_vtx  = vtx_ln_to_gn .shape[0]
       n_cell = cell_ln_to_gn.shape[0]

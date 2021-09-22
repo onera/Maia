@@ -9,6 +9,7 @@ import maia.sids.Internal_ext  as IE
 from maia                     import npy_pdm_gnum_dtype as pdm_dtype
 from maia.sids                import sids
 from maia.utils               import py_utils
+from maia.tree_exchange       import utils as te_utils
 from maia.transform.dist_tree import convert_s_to_u as S2U
 from maia.transform.dist_tree import s_numbering_funcs      as s_numb
 
@@ -136,13 +137,7 @@ def extract_surf_from_bc(part_zones, families, comm):
     bc_face_vtx_l.append(bc_face_vtx)
     bc_face_vtx_idx_l.append(bc_face_vtx_idx)
 
-    vtx_ln_to_gn_zone   = I.getVal(IE.getGlobalNumbering(zone, 'Vertex')).astype(pdm_dtype)
-    if sids.Zone.Type(zone) == "Structured":
-      face_ln_to_gn_zone = I.getVal(IE.getGlobalNumbering(zone, 'Face')).astype(pdm_dtype)
-    else:
-      ngons  = [e for e in I.getNodesFromType1(zone, 'Elements_t') if sids.ElementCGNSName(e) == 'NGON_n']
-      assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
-      face_ln_to_gn_zone = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element')).astype(pdm_dtype)
+    vtx_ln_to_gn_zone, face_ln_to_gn_zone, _ = te_utils.get_entities_numbering(zone)
 
     parent_face_lngn_l.append(face_ln_to_gn_zone[bc_face_ids-1])
     parent_vtx_lngn_l .append(vtx_ln_to_gn_zone[bc_vtx_ids-1]  )

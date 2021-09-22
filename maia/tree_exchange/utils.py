@@ -67,3 +67,25 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn
 
+@IE.check_is_label('Zone_t')
+def get_entities_numbering(part_zone, as_pdm=True):
+  """
+  Shortcut to return vertex, face and cell global numbering of a partitioned
+  (structured or unstructured/ngon) zone.
+  If as_pdm is True, force output to have PDM_gnum_t data type
+  """
+  vtx_ln_to_gn   = I.getVal(IE.getGlobalNumbering(part_zone, 'Vertex'))
+  cell_ln_to_gn  = I.getVal(IE.getGlobalNumbering(part_zone, 'Cell'))
+  if SIDS.Zone.Type(part_zone) == "Structured":
+    face_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Face'))
+  else:
+    ngons = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NGON_n']
+    assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
+    face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element'))
+  if as_pdm:
+    vtx_ln_to_gn  = vtx_ln_to_gn.astype(pdm_gnum_dtype)
+    face_ln_to_gn = face_ln_to_gn.astype(pdm_gnum_dtype)
+    cell_ln_to_gn = cell_ln_to_gn.astype(pdm_gnum_dtype)
+  return vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
+
+
