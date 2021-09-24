@@ -229,6 +229,8 @@ def test_getNodesFromPredicates():
   assert [fpathv(nodes) for nodes in results] == ["ZoneI/ZBCA/bca1/BCC1", "ZoneI/ZBCA/bcd2/BCA2", "ZoneI/ZBCB/bcb3/BCD3", "ZoneI/ZBCB/bce4/BCE4", "ZoneI/ZBCB/bcc5/BCB5"]
   results = PT.getNodesFromPredicates1(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"], ancestors=True)
   assert [fpathv(nodes) for nodes in results] == ["ZoneI/ZBCA/bca1/BCC1", "ZoneI/ZBCA/bcd2/BCA2", "ZoneI/ZBCB/bcb3/BCD3", "ZoneI/ZBCB/bce4/BCE4", "ZoneI/ZBCB/bcc5/BCB5"]
+  results = PT.get_nodes_from_labels(base, ["Zone_t", "ZoneBC_t", "BC_t", "FamilyName_t"], ancestors=True)
+  assert [fpathv(nodes) for nodes in results] == ["ZoneI/ZBCA/bca1/BCC1", "ZoneI/ZBCA/bcd2/BCA2", "ZoneI/ZBCB/bcb3/BCD3", "ZoneI/ZBCB/bce4/BCE4", "ZoneI/ZBCB/bcc5/BCB5"]
 
   # Each predicate has theirs owns options
   # --------------------------------------

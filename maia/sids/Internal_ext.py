@@ -1,22 +1,22 @@
 import numpy as np
 import Converter.Internal as I
 
-from maia.sids.pytree import iterChildrenFromPredicates, getChildrenFromPredicates
+from maia.sids.pytree import iter_children_from_predicates, get_children_from_predicates
 from maia.sids.pytree import check_is_label
 
 # Some old aliases to replace with iterNodesFromPredicates
 
 def iterNodesByMatching(root, predicates):
-  return iterChildrenFromPredicates(root, predicates)
+  return iter_children_from_predicates(root, predicates)
 
 def getNodesByMatching(root, predicates):
-  return getChildrenFromPredicates(root, predicates)
+  return get_children_from_predicates(root, predicates)
 
 def iterNodesWithParentsByMatching(root, predicates):
-  return iterChildrenFromPredicates(root, predicates, ancestors=True)
+  return iter_children_from_predicates(root, predicates, ancestors=True)
 
 def getNodesWithParentsByMatching(root, predicates):
-  return getChildrenFromPredicates(root, predicates, ancestors=True)
+  return get_children_from_predicates(root, predicates, ancestors=True)
 
 # --------------------------------------------------------------------------
 def getParentFromPredicate(start, node, predicate, prev=None):

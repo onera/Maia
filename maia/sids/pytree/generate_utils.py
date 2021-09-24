@@ -66,12 +66,20 @@ def _overload_predicate(function, suffix, predicate_signature):
   #Creation of the specialized function : arguments are the new predicate function + the name of the
   #arguements of this predicated function
   def create_specialized_func(predicate, nargs):
-    def _specialized(root, *args, **kwargs):
-      pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
-      #At execution, replace the generic predicate with the specialized predicate function and 
-      # pass runtime arguments as named arguments to the specialized predicate
-      # Other kwargs are directly passed to the specialized function
-      return function(root, partial(predicate, **pkwargs), **kwargs)
+    if "predicates" in _func_name(function):
+      def _specialized(root, *args, **kwargs):
+        assert len(args) == 1, "Specialized versions of from_predicates accepts only predicate args"
+        npredicate  = len(args[0])
+        predicates = [partial(predicate, **{nargs[0] : args[0][i]}) for i in range(npredicate)]
+        return function(root, predicates, **kwargs)
+    else:
+      def _specialized(root, *args, **kwargs):
+        pkwargs = dict([(narg, arg,) for narg, arg in zip(nargs, args)])
+        #At execution, replace the generic predicate with the specialized predicate function and 
+        # pass runtime arguments as named arguments to the specialized predicate
+        # Other kwargs are directly passed to the specialized function
+        return function(root, partial(predicate, **pkwargs), **kwargs)
+
     return _specialized
 
   func = create_specialized_func(predicate, nargs)
