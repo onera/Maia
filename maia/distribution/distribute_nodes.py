@@ -25,7 +25,7 @@ def distribute_pl_node(node, comm):
       array_n[1] = array_n[1][distri[0]:distri[1]]
 
   #Additionnal treatement for subnodes with PL (eg bcdataset)
-  has_pl = lambda n : I.getNodeFromName1(n, 'PointList') is not None
+  has_pl = lambda n : I.getName(n) != 'PointList' and I.getNodeFromName1(n, 'PointList') is not None
   for child in [node for node in I.getChildren(dist_node) if has_pl(node)]:
     dist_child = distribute_pl_node(child, comm)
     child[2] = dist_child[2]
@@ -76,6 +76,80 @@ def distribute_element_node(node, comm):
   
   pe = I.getNodeFromName1(dist_node, 'ParentElements')
   if pe is not None:
-    pe[1] = pe[1][distri[0] : distri[1]]
+    pe[1] = (pe[1][distri[0] : distri[1]]).copy(order='F') #Copy is needed to have contiguous memory
   
   return dist_node
+
+def distribute_tree(tree, comm, owner=None):
+  """
+  Distribute a standard cgns tree over several processes, using uniform distribution.
+  Mainly useful for unit tests. If owner is None, tree must be know by each process;
+  otherwise, tree is broadcasted from the owner process
+  """
+
+  if owner is not None:
+    tree = comm.bcast(tree, root=owner)
+
+  # Do a copy to capture all original nodes
+  dist_tree = I.copyTree(tree)
+  for zone in IE.getNodesByMatching(dist_tree, ['CGNSBase_t', 'Zone_t']):
+    # > Cell & Vertex distribution
+    n_vtx  = sids.Zone.VertexSize(zone)
+    n_cell = sids.Zone.CellSize(zone)
+    zone_distri = {'Vertex' : DIF.uniform_distribution(n_vtx , comm).astype(pdm_dtype),
+                   'Cell'   : DIF.uniform_distribution(n_cell, comm).astype(pdm_dtype)}
+    IE.newDistribution(zone_distri, zone)
+
+    # > Coords
+    grid_coords = I.getNodesFromType1(zone, 'GridCoordinates_t')
+    for grid_coord in grid_coords:
+      I._rmNode(zone, grid_coord)
+      I._addChild(zone, distribute_data_node(grid_coord, comm))
+
+    # > Elements
+    elts = I.getNodesFromType1(zone, 'Elements_t')
+    for elt in elts:
+      I._rmNode(zone, elt)
+      I._addChild(zone, distribute_element_node(elt, comm))
+
+    # > Flow Solutions
+    sols = I.getNodesFromType1(zone, 'FlowSolution_t') + I.getNodesFromType1(zone, 'DiscreteData_t')
+    for sol in sols:
+      I._rmNode(zone, sol)
+      if I.getNodeFromName1(sol, 'PointList') is None:
+        I._addChild(zone, distribute_data_node(sol, comm))
+      else:
+        I._addChild(zone, distribute_pl_node(sol, comm))
+
+    # > BCs
+    zonebcs = I.getNodesFromType1(zone, 'ZoneBC_t')
+    for zonebc in zonebcs:
+      I._rmNode(zone, zonebc)
+      dist_zonebc = I.createChild(zone, I.getName(zonebc), 'ZoneBC_t')
+      for bc in I.getNodesFromType1(zonebc, 'BC_t'):
+        I._addChild(dist_zonebc, distribute_pl_node(bc, comm))
+
+    # > GCs
+    zonegcs = I.getNodesFromType1(zone, 'ZoneGridConnectivity_t')
+    for zonegc in zonegcs:
+      I._rmNode(zone, zonegc)
+      dist_zonegc = I.createChild(zone, I.getName(zonegc), 'ZoneGridConnectivity_t')
+      for gc in I.getNodesFromType1(zonegc, 'GridConnectivity_t'):
+        I._addChild(dist_zonegc, distribute_pl_node(gc, comm))
+
+    # > ZoneSubRegion
+    zone_subregions = I.getNodesFromType1(zone, 'ZoneSubRegion_t')
+    for zone_subregion in zone_subregions:
+      # Trick if related to an other node -> add pl
+      matching_region_path = IE.getSubregionExtent(zone_subregion, zone)
+      if matching_region_path != I.getName(zone_subregion):
+        I._addChild(zone_subregion, I.getNodeFromPath(zone, matching_region_path + '/PointList'))
+      dist_zone_subregion = distribute_pl_node(zone_subregion, comm)
+      if matching_region_path != I.getName(zone_subregion):
+        I._rmNodesByName(dist_zone_subregion, 'PointList')
+        I._rmNode(dist_zone_subregion, IE.getDistribution(dist_zone_subregion))
+
+      I._addChild(zone, dist_zone_subregion)
+      I._rmNode(zone, zone_subregion)
+
+  return dist_tree
