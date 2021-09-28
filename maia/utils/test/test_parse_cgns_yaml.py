@@ -1,27 +1,44 @@
-import os
-import pytest
-import re
-import fnmatch
 import numpy as np
-from Converter import Internal as CI
-from maia.sids import Internal_ext as IE
-from maia.sids.cgns_keywords import Label as CGL
+from Converter import Internal as I
 
-from maia.utils import parse_yaml_cgns
 from maia.utils import parse_cgns_yaml
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+def test_generate_line():
+  sol = I.newFlowSolution('FlowSolution', 'CellCenter')
+  array = I.newDataArray('Data', np.array([1,2,3,4], dtype=np.int64), parent=sol)
 
-def test_parse_cgns_yaml():
-  with open(os.path.join(dir_path, "cubeU_join_bnd-ref.yaml"), 'r') as f:
-    yt0 = f.read()
-  # print(f"yt0 = {yt0}")
-  t = parse_yaml_cgns.to_cgns_tree(yt0)
-  CI.printTree(t)
-  lines = parse_cgns_yaml.to_yaml(t)
-  # for l in lines:
-  #   print(f"l: {l}")
-  yt1 = '\n'.join(lines)
-  with open("cubeU_join_bnd-run.yaml", "w") as f:
-    f.write(yt1)
-  assert(yt0 == yt1)
+  lines = []
+  parse_cgns_yaml.generate_line(array, lines)
+  assert lines[0] == "Data DataArray_t I8 [1, 2, 3, 4]:"
+  lines = []
+  parse_cgns_yaml.generate_line(array, lines, ident=4)
+  assert lines[0] == "    Data DataArray_t I8 [1, 2, 3, 4]:"
+
+  lines = []
+  parse_cgns_yaml.generate_line(sol, lines)
+  assert lines == \
+      ["FlowSolution FlowSolution_t:", "  GridLocation GridLocation_t 'CellCenter':", "  Data DataArray_t I8 [1, 2, 3, 4]:"]
+
+  lines = []
+  parse_cgns_yaml.generate_line(sol, lines, line_max=15)
+  assert lines == \
+        ["FlowSolution FlowSolution_t:", "  GridLocation GridLocation_t 'CellCenter':", \
+        "  Data DataArray_t:\n    I8 : [1, 2,\n          3, 4]"]
+
+  #Try non numpy values
+  array[1] = 19.89
+  sol[1] = ["All your base", "are belong to us"]
+  lines = []
+  parse_cgns_yaml.generate_line(sol, lines)
+  assert lines == \
+      ["FlowSolution FlowSolution_t ['All your base', 'are belong to us']:",\
+      "  GridLocation GridLocation_t 'CellCenter':", "  Data DataArray_t 19.89:"]
+      
+def test_to_yaml():
+  sol = I.newFlowSolution('FlowSolution', 'CellCenter')
+  array = I.newDataArray('Data', np.array([1,2,3,4], dtype=np.int64), parent=sol)
+
+  lines = parse_cgns_yaml.to_yaml(sol)
+  assert lines[0] == "GridLocation GridLocation_t 'CellCenter':"
+  lines = parse_cgns_yaml.to_yaml(sol, write_root=True)
+  assert lines[0] == "FlowSolution FlowSolution_t:"

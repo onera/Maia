@@ -1,20 +1,23 @@
-from ruamel.yaml import YAML
-from ruamel.yaml import parser
-import ast
 import numpy as np
 import Converter.PyTree as C
 import Converter.Internal as CI
 import maia.sids.cgns_keywords as CGK
-import maia.utils.py_utils as PYU
 
-LINE_MAX = 300
+def generate_line(node, lines, ident=0, line_max=120):
+  """
+  Recursive function Writting a single line in yaml format for a CGNSNode : depending of line_max value,
+  line will be formated as
+  - "  NodeName NodeLabel DataType DataValue:" (for short lines, DataType and DataValue beeing optionnal)
+  - "  NodeName NodeLabel:
+         DataType : DataValue" (for long lines)
+  In both case, correct level of indentation is set.
+  The list of all generated lines is returned
+  """
 
-def generate_line(node, lines, ident=0):
-  start = True if not bool(lines) else False
-
-  # Print value
+  # Get value and type
   node_value = CI.getValue(node)
-  value_type = ''
+  value_type = None
+  value      = None
   if isinstance(node_value, str):
     value = f"'{node_value}'"
   elif isinstance(node_value, (int, float, list)):
@@ -22,74 +25,46 @@ def generate_line(node, lines, ident=0):
   elif isinstance(node_value, (tuple, set)):
     value = str(list(node_value))
   elif isinstance(node_value, np.ndarray):
-    if node_value.dtype == CGK.cgns_to_dtype[CGK.C1]: # and node_value.size < 32:
-      value = f"'{node_value.tostring()}'"
-    elif node_value.dtype in [np.dtype('<U8'), np.dtype('>U8')]:
-      value = f"{node_value.tolist()}"
-    else:
-      value_type = f"{' '*ident}  {CGK.dtype_to_cgns[node_value.dtype]}\n"
-      value = f"{node_value.tolist()}"
+    value_type = f"{CGK.dtype_to_cgns[node_value.dtype]}"
+    value = f"{node_value.tolist()}"
+
+  #Short lines, with or without value_type / value
+  if value:
+    suffix = f" {value_type} {value}:" if value_type else f" {value}:"
   else:
-    value = ''
+    suffix = ":"
+  line = f"{' '*ident}{CI.getName(node)} {CI.getType(node)}{suffix}"
 
-  line = f"{' '*ident}{CI.getName(node)} {CI.getType(node)} {value}:"
-  if len(line) > LINE_MAX:
-    values = [f"{' '*ident}  {value[y-LINE_MAX:y]}" for y in range(LINE_MAX, len(value)+LINE_MAX, LINE_MAX)]
-    svalues = "\n".join(values)
-    line = """{ident}? >
-{ident}  {name}
-{ident}  {label}
-{value_type}{values}
-{ident}  :""".format(ident=' '*ident,
-                     name=CI.getName(node),
-                     label=CI.getType(node),
-                     value_type=value_type,
-                     values=svalues)
+  #Split long lines
+  if len(line) > line_max and value_type: #Only true array can be multiline
+    first_line = f"{' '*ident}{CI.getName(node)} {CI.getType(node)}:\n{' '*(ident+2)}{value_type} : "
+    data_line = ''
+    count = len(f"{' '*(ident+2)}{value_type} : ")
+    values = value.split(',')
+    for i, val in enumerate(values):
+      data_line += f"{val}," 
+      count += len(val)+1
+      if count >= line_max and i != len(values)-1: #Dont split values, start a new line only after a ','
+        prefix = f"\n{' '*(ident+7)}"
+        data_line += prefix
+        count = len(prefix)-1
+    line = first_line + data_line[:-1] #Remove last comma
+
   lines.append(line)
+  for child in CI.getChildren(node):
+    generate_line(child, lines, ident+2, line_max)
 
-  children      = CI.getChildren(node)
-  iend_children = len(children)-1
-  for i, child in enumerate(children):
-    generate_line(child, lines, ident+2)
 
-  if start:
-    return lines
-
-def to_yaml(t):
+def to_yaml(t, write_root=False, max_line_size=120):
+  """
+  Convert a complete CGNSTree to a yaml string. If write root is True,
+  top level node is also converted
+  """
   lines = []
-  for base in CI.getBases(t):
-    generate_line(base, lines=lines)
+  if write_root:
+    generate_line(t, lines=lines, line_max=max_line_size)
+  else:
+    for node in CI.getChildren(t):
+      generate_line(node, lines=lines, line_max=max_line_size)
   return lines
-
-if __name__ == "__main__":
-  from maia.utils import parse_yaml_cgns
-  with open("test/cubeU_join_bnd-ref.yaml", "r") as f:
-    yt0 = f.read()
-  # print(f"yt0 = {yt0}")
-  t = parse_yaml_cgns.to_cgns_tree(yt0)
-  CI.printTree(t)
-  lines = to_yaml(t)
-  # for l in lines:
-  #   print(f"l: {l}")
-  yt1 = '\n'.join(lines)
-  assert(yt0 == yt1)
-
-  # t = C.convertFile2PyTree('cubeU_join_bnd-new.hdf')
-  # # CI.printTree(t)
-  # lines = to_yaml(t)
-  # # for l in lines:
-  # #   print(f"l: {l}")
-  # yt = '\n'.join(lines)
-  # with open("toto.yaml", "w") as f:
-  #   f.write(yt)
-  # from maia.utils import parse_yaml_cgns
-  # with open("toto.yaml", "r") as f:
-  #   yt = f.read()
-  # # print(f"yt = {yt}")
-  # yaml = YAML(typ="safe")
-  # yaml_dict = yaml.load(yt)
-  # # print(f"yaml_dict = {yaml_dict}")
-  # t = parse_yaml_cgns.to_cgns_tree(yt)
-  # CI.printTree(t)
-  # C.convertPyTree2File(t, 'toto.hdf')
 
