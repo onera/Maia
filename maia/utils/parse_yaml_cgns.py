@@ -8,6 +8,7 @@ import Converter.Internal as I
 import maia.sids.Internal_ext as IE
 import maia.sids.cgns_keywords as CGK
 import maia.utils.py_utils as PYU
+from maia.sids import pytree as PT
 
 data_types = [  "I4"  ,  "I8"  ,   "R4"   ,   "R8"   ]
 np_dtypes  = [np.int32,np.int64,np.float32,np.float64]
@@ -51,12 +52,12 @@ def parse_node(node):
       value     = value[2:].strip().replace(' ', '')
       # value = np.array(ast.literal_eval(value), order='F', dtype=CGK.cgns_to_dtype[cgns_type])
       py_value = ast.literal_eval(value)
-      value = IE.create_value(label, py_value)
+      value = PT.convert_value(label, py_value)
       if value.dtype != CGK.cgns_to_dtype[cgns_type]:
         value = value.astype(CGK.cgns_to_dtype[cgns_type])
     else:
       py_value = ast.literal_eval(value)
-      value = IE.create_value(label, py_value)
+      value = PT.convert_value(label, py_value)
   return name,label,value
 
 def extract_value(sub_nodes):
