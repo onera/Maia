@@ -1,13 +1,9 @@
-#from ruamel import yaml
-#import ruyaml as yaml
 from ruamel.yaml import YAML
-from ruamel.yaml import parser
 import ast
 import numpy as np
 import Converter.Internal as I
-
-data_types = [  "I4"  ,  "I8"  ,   "R4"   ,   "R8"   ]
-np_dtypes  = [np.int32,np.int64,np.float32,np.float64]
+import maia.sids.cgns_keywords as CGK
+from maia.sids import pytree as PT
 
 def parse_node(node):
   name,label_value = node.split(" ", 1)
@@ -17,27 +13,27 @@ def parse_node(node):
   if len(label_value)==1:
     value = None
   else:
-    value = label_value[1].strip()
-    if len(value) > 2 and value[:2] in data_types:
-      data_type_str = value[:2]
-      value         = value[2:].strip()
-      i_data_type   = data_types.index(data_type_str)
-      data_type_np  = np_dtypes[i_data_type]
-      value = np.array(ast.literal_eval(value), order='F', dtype=data_type_np)
+    svalue = label_value[1].replace(':', '')
+    svalue = svalue.replace('\n', '')
+    value = svalue.strip()
+    if len(value) > 2 and value[:2] in CGK.cgns_types:
+      cgns_type = value[:2]
+      value     = value[2:].strip().replace(' ', '')
+      # value = np.array(ast.literal_eval(value), order='F', dtype=CGK.cgns_to_dtype[cgns_type])
+      py_value = ast.literal_eval(value)
+      value = PT.convert_value(py_value)
+      if value.dtype != CGK.cgns_to_dtype[cgns_type]:
+        value = value.astype(CGK.cgns_to_dtype[cgns_type])
     else:
-      value = ast.literal_eval(label_value[1])
-      if value is not None:
-        if isinstance(value, str):
-          value = np.array(tuple(value), dtype = '|S1')
-        else:
-          value = np.array(value, order='F')
+      py_value = ast.literal_eval(value)
+      value = PT.convert_value(py_value)
   return name,label,value
 
 def extract_value(sub_nodes):
   if sub_nodes is None:
     return None
 
-  for data_type,np_dtype in zip(data_types,np_dtypes):
+  for data_type,np_dtype in CGK.cgns_to_dtype.items():
     value = sub_nodes.pop(data_type,None)
     if value is not None:
       return np.array(value, order='F', dtype=np_dtype)
@@ -79,11 +75,13 @@ def to_node(yaml_stream):
     return nodes[0]
 
 def to_cgns_tree(yaml_stream):
-  t = I.newCGNSTree()
+  t = I.createRootNode()
   childs = to_nodes(yaml_stream)
   if len(childs) > 0 and I.getType(childs[0]) == 'Zone_t':
     b = I.newCGNSBase(parent=t)
     I.addChild(b, childs)
   else:
     I.addChild(t, childs)
+  if I.getNodeFromType1(t, 'CGNSLibraryVersion_t') is None:
+    I._addChild(t, I.createCGNSVersionNode(), pos=0)
   return t

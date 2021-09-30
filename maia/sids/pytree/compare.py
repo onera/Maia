@@ -145,3 +145,24 @@ def is_same_label(n0: TreeNode, n1: TreeNode):
 
 def is_same_value(n0: TreeNode, n1: TreeNode):
   return np.array_equal(n0[1], n1[1])
+
+def is_same_node(node1, node2):
+  """
+  Compare two single nodes (no recursion). Node are considered equal if
+  they have same name, same label, same value.
+  Note that no check is performed on children
+  """
+  return is_same_name(node1, node2) and is_same_label(node1, node2) and is_same_value(node1, node2) 
+
+def is_same_tree(node1, node2):
+  """
+  Recursive comparaison of two nodes. Nodes are considered equal if the pass is_same_node test
+  and if the have the same childrens. Children are allowed to appear in a different order.
+  """
+  if not (is_same_node(node1, node2) and len(I.getChildren(node1)) == len(I.getChildren(node2)) ):
+    return False
+  for c1, c2 in zip(sorted(node1[2]), sorted(node2[2])):
+    if not is_same_tree(c1, c2):
+      return False
+  return True
+
