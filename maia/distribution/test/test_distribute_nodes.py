@@ -16,14 +16,14 @@ def test_distribute_pl_node(sub_comm):
     GridLocation GridLocation_t "CellCenter":
     BCDataSet BCDataSet_t:
       BCData BCData_t:
-        Data DataArray_t [[1,2,11,11]]:
+        Data DataArray_t [1,2,11,11]:
   """
   bc = parse_yaml_cgns.to_node(yt)
   dist_bc = DN.distribute_pl_node(bc, sub_comm)
   assert I.getNodeFromPath(dist_bc, ':CGNS#Distribution/Index') is not None
   assert I.getNodeFromPath(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is None
   assert I.getNodeFromName(dist_bc, 'PointList')[1].shape == (1,2)
-  assert I.getNodeFromName(dist_bc, 'Data')[1].shape == (1,2)
+  assert I.getNodeFromName(dist_bc, 'Data')[1].shape == (2,)
 
   yt = """
   bc BC_t:
@@ -33,14 +33,14 @@ def test_distribute_pl_node(sub_comm):
       GridLocation GridLocation_t "Vertex":
       PointList IndexArray_t [[100,200]]:
       BCData BCData_t:
-        Data DataArray_t [[1,2]]:
+        Data DataArray_t [1,2]:
   """
   bc = parse_yaml_cgns.to_node(yt)
   dist_bc = DN.distribute_pl_node(bc, sub_comm)
   assert I.getNodeFromPath(dist_bc, ':CGNS#Distribution/Index') is not None
   assert I.getNodeFromPath(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is not None
   assert I.getNodeFromName(dist_bc, 'PointList')[1].shape == (1,2)
-  assert I.getNodeFromName(dist_bc, 'Data')[1].shape == (1,1)
+  assert I.getNodeFromName(dist_bc, 'Data')[1].shape == (1,)
   assert I.getNodeFromPath(dist_bc, 'BCDataSet/PointList')[1].shape == (1,1)
 
 @mark_mpi_test(3)

@@ -41,11 +41,13 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
           distrib_data = I.getNodeFromName1(distrib_bcds_n, 'Index')[1]
           data_shape = utils.pl_or_pr_size(bcds)
 
-        data_space = create_data_array_filter(distrib_data, data_shape)
-        utils.apply_dataspace_to_pointlist(bcds, bcds_path, data_space, hdf_filter)
+        data_space_pl    = create_data_array_filter(distrib_data, data_shape)
+        #BCDataSet always use flat data array
+        data_space_array = create_data_array_filter(distrib_data, [data_shape.prod()])
+        utils.apply_dataspace_to_pointlist(bcds, bcds_path, data_space_pl, hdf_filter)
         for bcdata in I.getNodesFromType1(bcds, 'BCData_t'):
           bcdata_path = bcds_path + "/" + bcdata[0]
-          utils.apply_dataspace_to_arrays(bcdata, bcdata_path, data_space, hdf_filter)
+          utils.apply_dataspace_to_arrays(bcdata, bcdata_path, data_space_array, hdf_filter)
 
 
 def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):

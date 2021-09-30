@@ -159,10 +159,10 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
       distribution_bc = te_utils.get_cgns_distribution(d_bc, 'Index')
       lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
       for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
+        ds_path      = bc_path + '/' + I.getName(d_dataset)
         #If dataset has its own PointList, we must override bc distribution and lngn
         if IE.getDistribution(d_dataset) is not None:
           distribution = te_utils.get_cgns_distribution(d_dataset, 'Index')
-          ds_path      = bc_path + '/' + I.getName(d_dataset)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
           distribution = distribution_bc
@@ -174,11 +174,16 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
           part_data[I.getName(bc_data) + '/' + I.getName(field)] = list()
 
         for part_zone in part_zones:
-          p_dataset = I.getNodeFromPath(part_zone, bc_path + '/' + I.getName(d_dataset))
+          p_dataset = I.getNodeFromPath(part_zone, ds_path)
           if p_dataset is not None:
             for bc_data, field in IE.iterNodesWithParentsByMatching(p_dataset, 'BCData_t/DataArray_t'):
-              flat_data = field[1].ravel(order='A') #Reshape structured arrays for PDM exchange
-              part_data[I.getName(bc_data) + '/' + I.getName(field)].append(flat_data)
+              part_data[I.getName(bc_data) + '/' + I.getName(field)].append(field[1])
+
+        #Partitions having no data must be removed from lngn list since they have no contribution
+        empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
+            if I.getNodeFromPath(part_zone, ds_path) is None]
+        for ipart in empty_parts_ids[::-1]:
+          lngn_list.pop(ipart)
 
         #Exchange
         dist_data = part_to_dist(distribution, part_data, lngn_list, comm)

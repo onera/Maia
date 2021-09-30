@@ -23,10 +23,10 @@ ZoneU Zone_t [[6,0,0]]:
         Index DataArray_t {0} [0,2,6]:
       BCDSWithoutPL BCDataSet_t:
         DirichletData BCData_t:
-          field DataArray_t [[1,2]]:
+          field DataArray_t [1,2]:
       BCDSWithPL BCDataSet_t:
         DirichletData BCData_t:
-          field DataArray_t R8 [[100]]:
+          field DataArray_t R8 [100]:
         PointList IndexArray_t [[10]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {0} [0,1,1]:
@@ -73,10 +73,10 @@ ZoneU Zone_t [[6,0,0]]:
         Index DataArray_t {0} [2,6,6]:
       BCDSWithoutPL BCDataSet_t:
         DirichletData BCData_t:
-          field DataArray_t [[4,3,2,1]]:
+          field DataArray_t [4,3,2,1]:
       BCDSWithPL BCDataSet_t:
         DirichletData BCData_t:
-          field DataArray_t R8 [[]]:
+          field DataArray_t R8 []:
         PointList IndexArray_t [[]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {0} [1,1,1]:

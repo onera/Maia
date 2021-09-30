@@ -127,14 +127,11 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
           if lngn_list[ipart].size > 0:
             # Create dataset if no existing
             part_ds = I.createUniqueChild(part_bc, I.getName(d_dataset), I.getType(d_dataset), I.getValue(d_dataset))
-            part_ds_pl = I.getNodeFromName1(part_ds, 'PointList')
-            # Get shape
-            shape = part_ds_pl[1].shape if part_ds_pl else I.getNodeFromName1(part_bc, 'PointList')[1].shape
             # Add data
             for data_name, data in part_data.items():
               container_name, field_name = data_name.split('/')
               p_container = I.createUniqueChild(part_ds, container_name, 'BCData_t')
-              I.newDataArray(field_name, data[ipart].reshape(shape, order='F'), parent=p_container)
+              I.newDataArray(field_name, data[ipart], parent=p_container)
 
 
 def dist_subregion_to_part_subregion(dist_zone, part_zones, comm):

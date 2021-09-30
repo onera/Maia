@@ -16,12 +16,15 @@ def distribute_pl_node(node, comm):
   n_elem = pl[1].shape[1]
   distri = DIF.uniform_distribution(n_elem, comm).astype(pdm_dtype)
 
-  #Arrays & PLs
+  #PL and PLDonor
+  for array_n in IE.getNodesByMatching(dist_node, ['IndexArray_t']):
+    array_n[1] = array_n[1][0][distri[0]:distri[1]].reshape(1,-1, order='F')
+  #Data Arrays
   bcds_without_pl = lambda n : I.getType(n) == 'BCDataSet_t' and I.getNodeFromName1(n, 'PointList') is None
   bcds_without_pl_query = [bcds_without_pl, 'BCData_t', 'DataArray_t']
-  for array_path in ['IndexArray_t', 'DataArray_t', 'BCData_t/DataArray_t', bcds_without_pl_query]:
+  for array_path in ['DataArray_t', 'BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_n in IE.getNodesByMatching(dist_node, array_path):
-      array_n[1] = array_n[1][0][distri[0]:distri[1]].reshape(1,-1, order='F')
+      array_n[1] = array_n[1][distri[0]:distri[1]]
 
   #Additionnal treatement for subnodes with PL (eg bcdataset)
   has_pl = lambda n : I.getNodeFromName1(n, 'PointList') is not None

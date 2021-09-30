@@ -390,7 +390,7 @@ ZoneU Zone_t:
           field DataArray_t:
       BCDSWithPL BCDataSet_t:
         DirichletData BCData_t:
-          field DataArray_t R8 [[100]]:
+          field DataArray_t R8 [100]:
         PointList IndexArray_t [[10]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {0} [0,1,1]:
@@ -405,7 +405,7 @@ ZoneU Zone_t:
           Index DataArray_t {0} [2,5]:
         BCDSWithoutPL BCDataSet_t:
           DirichletData BCData_t:
-            field DataArray_t [[2,2]]:
+            field DataArray_t [2,2]:
     """.format(dtype)
   elif sub_comm.Get_rank() == 1:
     dt = """
@@ -421,7 +421,7 @@ ZoneU Zone_t:
           field DataArray_t:
       BCDSWithPL BCDataSet_t:
         DirichletData BCData_t:
-          field DataArray_t R8 [[]]:
+          field DataArray_t R8 []:
         PointList IndexArray_t [[]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {0} [1,1,1]:
@@ -436,13 +436,13 @@ ZoneU Zone_t:
           Index DataArray_t {0} [6,3,4,1]:
         BCDSWithPL BCDataSet_t:
           DirichletData BCData_t:
-            field DataArray_t R8 [[200.]]:
+            field DataArray_t R8 [200.]:
           PointList IndexArray_t [[108]]:
           :CGNS#GlobalNumbering UserDefinedData_t:
             Index DataArray_t {0} [1]:
         BCDSWithoutPL BCDataSet_t:
           DirichletData BCData_t:
-            field DataArray_t [[1,4,3,1]]:
+            field DataArray_t [1,4,3,1]:
   """.format(dtype)
 
   dist_zone  = parse_yaml_cgns.to_node(dt)
