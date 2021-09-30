@@ -43,11 +43,11 @@ ZoneU Zone_t [[6,0,0]]:
   ZSRWithoutPL ZoneSubRegion_t:
     GridLocation GridLocation_t "FaceCenter":
     BCRegionName Descriptor_t "BC":
-    field DataArray_t R8 [[100,200]]:
+    field DataArray_t R8 [100,200]:
   ZSRWithPL ZoneSubRegion_t:
     GridLocation GridLocation_t "Vertex":
     PointList IndexArray_t [[6]]:
-    field DataArray_t I4 [[42]]:
+    field DataArray_t I4 [42]:
     :CGNS#Distribution UserDefinedData_t:
       Index DataArray_t [0,1,2]:
   :CGNS#Distribution UserDefinedData_t:
@@ -95,11 +95,11 @@ ZoneU Zone_t [[6,0,0]]:
   ZSRWithoutPL ZoneSubRegion_t:
     GridLocation GridLocation_t "FaceCenter":
     BCRegionName Descriptor_t "BC":
-    field DataArray_t R8 [[300,400,500,600]]:
+    field DataArray_t R8 [300,400,500,600]:
   ZSRWithPL ZoneSubRegion_t:
     GridLocation GridLocation_t "Vertex":
     PointList IndexArray_t [[2]]:
-    field DataArray_t I4 [[24]]:
+    field DataArray_t I4 [24]:
     :CGNS#Distribution UserDefinedData_t:
       Index DataArray_t [1,2,2]:
 ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:

@@ -301,7 +301,7 @@ ZoneU Zone_t [[6,0,0]]:
   ZSRWithPL ZoneSubRegion_t:
     GridLocation GridLocation_t "Vertex":
     PointList IndexArray_t [[6]]:
-    field DataArray_t I4 [[42]]:
+    field DataArray_t I4 [42]:
     :CGNS#Distribution UserDefinedData_t:
       Index DataArray_t [0,1,2]:
   LinkedZSR ZoneSubRegion_t:
@@ -319,7 +319,7 @@ ZoneU Zone_t [[6,0,0]]:
     LinkedZSR ZoneSubRegion_t:
       GridLocation GridLocation_t "FaceCenter":
       GridConnectivityRegionName Descriptor_t "GC":
-      field DataArray_t R8 [[200,500,100]]:
+      field DataArray_t R8 [200,500,100]:
     """.format(dtype)
   elif sub_comm.Get_rank() == 1:
     dt = """
@@ -333,7 +333,7 @@ ZoneU Zone_t [[6,0,0]]:
   ZSRWithPL ZoneSubRegion_t:
     GridLocation GridLocation_t "Vertex":
     PointList IndexArray_t [[2]]:
-    field DataArray_t I4 [[24]]:
+    field DataArray_t I4 [24]:
     :CGNS#Distribution UserDefinedData_t:
       Index DataArray_t [1,2,2]:
   LinkedZSR ZoneSubRegion_t:
@@ -351,13 +351,13 @@ ZoneU Zone_t [[6,0,0]]:
     ZSRWithPL ZoneSubRegion_t:
       GridLocation GridLocation_t "Vertex":
       PointList IndexArray_t [[1,2]]:
-      field DataArray_t I4 [[84,48]]:
+      field DataArray_t I4 [84,48]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t {0} [1,2]:
     LinkedZSR ZoneSubRegion_t:
       GridLocation GridLocation_t "FaceCenter":
       GridConnectivityRegionName Descriptor_t "GC":
-      field DataArray_t R8 [[600,300,400]]:
+      field DataArray_t R8 [600,300,400]:
   """.format(dtype)
 
   dist_zone  = parse_yaml_cgns.to_node(dt)

@@ -132,8 +132,13 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm):
       p_zsr = I.getNodeFromPath(part_zone, I.getName(d_zsr))
       if p_zsr is not None:
         for field in I.getNodesFromType1(p_zsr, 'DataArray_t'):
-          flat_data = field[1].ravel(order='A') #Reshape structured arrays for PDM exchange
-          part_data[I.getName(field)].append(flat_data)
+          part_data[I.getName(field)].append(field[1])
+
+    #Partitions having no data must be removed from lngn list since they have no contribution
+    empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
+        if I.getNodeFromPath(part_zone, I.getName(d_zsr)) is None]
+    for ipart in empty_parts_ids[::-1]:
+      lngn_list.pop(ipart)
 
     # Exchange
     dist_data = part_to_dist(distribution, part_data, lngn_list, comm)

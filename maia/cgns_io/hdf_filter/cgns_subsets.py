@@ -122,7 +122,8 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
     distrib_data = I.getNodeFromName1(distrib_ud_n, 'Index')[1]
 
     data_shape = utils.pl_or_pr_size(matching_region)
-    data_space = create_data_array_filter(distrib_data, data_shape)
+    data_space_pl = create_data_array_filter(distrib_data, data_shape)
+    data_space_ar = create_data_array_filter(distrib_data, [data_shape.prod()])
 
-    utils.apply_dataspace_to_pointlist(zone_subregion, zone_subregion_path, data_space, hdf_filter)
-    utils.apply_dataspace_to_arrays(zone_subregion, zone_subregion_path, data_space, hdf_filter)
+    utils.apply_dataspace_to_pointlist(zone_subregion, zone_subregion_path, data_space_pl, hdf_filter)
+    utils.apply_dataspace_to_arrays(zone_subregion, zone_subregion_path, data_space_ar, hdf_filter)

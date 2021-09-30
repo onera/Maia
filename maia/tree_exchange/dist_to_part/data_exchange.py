@@ -163,6 +163,5 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm):
       if lngn_list[ipart].size > 0:
         # Create ZSR if not existing (eg was defined by bc/gc)
         p_zsr = I.createUniqueChild(part_zone, I.getName(d_zsr), I.getType(d_zsr), I.getValue(d_zsr))
-        shape = I.getNodeFromPath(part_zone, matching_region_path + '/PointList')[1].shape
         for field_name, data in part_data.items():
-          I.newDataArray(field_name, data[ipart].reshape(shape, order='F'), parent=p_zsr)
+          I.newDataArray(field_name, data[ipart], parent=p_zsr)
