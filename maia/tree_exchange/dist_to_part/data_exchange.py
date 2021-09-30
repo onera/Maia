@@ -82,7 +82,7 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
       if lntogn_list[ipart].size > 0:
         if has_pl:
           p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
-          shape = I.getNodeFromName1(p_sol, 'PointList')[1].shape
+          shape = I.getNodeFromName1(p_sol, 'PointList')[1].shape[1]
         else:
           p_sol = I.newFlowSolution(I.getName(d_sol), location, parent=part_zone)
           I.setType(p_sol, I.getType(d_sol)) #Trick to be generic between DiscreteData/FlowSol

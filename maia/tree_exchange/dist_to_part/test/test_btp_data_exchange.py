@@ -297,11 +297,11 @@ def test_dist_sol_to_part_sol_pl(sub_comm):
   BTP.dist_sol_to_part_sol(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1')[1] == [[20]]).all()
+    assert (I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1')[1] == [20]).all()
   elif sub_comm.Get_rank() == 1:
     assert I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1') is None
-    assert I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1].shape == (1,2)
-    assert (I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1] == [[30,10]]).all()
+    assert I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1].shape == (2,)
+    assert (I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1] == [30,10]).all()
 
 @mark_mpi_test(2)
 def test_dist_dataset_to_part_dataset(sub_comm):
@@ -342,12 +342,12 @@ def test_dist_dataset_to_part_dataset(sub_comm):
   BTP.dist_dataset_to_part_dataset(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [[2,2,1]]).all()
+    assert (I.getNodeFromPath(part_zones[0], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [2,2,1]).all()
     assert I.getNodeFromPath(part_zones[0], 'ZBC/BC/BCDSWitPL/DirichletData/field') is None
   elif sub_comm.Get_rank() == 1:
     assert I.getNodeFromPath(part_zones[0], 'ZBC/BC') is None
-    assert (I.getNodeFromPath(part_zones[1], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [[1,4,3]]).all()
-    assert (I.getNodeFromPath(part_zones[1], 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [[100.]]).all()
+    assert (I.getNodeFromPath(part_zones[1], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,4,3]).all()
+    assert (I.getNodeFromPath(part_zones[1], 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [100.]).all()
 
 @mark_mpi_test(2)
 def test_dist_subregion_to_part_subregion(sub_comm):
@@ -386,10 +386,10 @@ def test_dist_subregion_to_part_subregion(sub_comm):
   BTP.dist_subregion_to_part_subregion(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'ZSRWithoutPL/field')[1] == [[200,500,100]]).all()
+    assert (I.getNodeFromPath(part_zones[0], 'ZSRWithoutPL/field')[1] == [200,500,100]).all()
     assert I.getNodeFromPath(part_zones[0], 'ZSRWithPL') is None
   elif sub_comm.Get_rank() == 1:
     assert I.getNodeFromPath(part_zones[0], 'ZSRWithoutPL') is None
-    assert (I.getNodeFromPath(part_zones[0], 'ZSRWithPL/field')[1] == [[42,24]]).all()
+    assert (I.getNodeFromPath(part_zones[0], 'ZSRWithPL/field')[1] == [42,24]).all()
     assert I.getNodeFromPath(part_zones[1], 'ZSRWithPL') is None
-    assert (I.getNodeFromPath(part_zones[1], 'ZSRWithoutPL/field')[1] == [[600,300,400]]).all()
+    assert (I.getNodeFromPath(part_zones[1], 'ZSRWithoutPL/field')[1] == [600,300,400]).all()

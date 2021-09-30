@@ -84,8 +84,9 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
     if distrib_ud_n:
       distrib_data = I.getNodeFromName1(distrib_ud_n, 'Index')[1]
       data_shape = utils.pl_or_pr_size(flow_solution)
-      data_space = create_data_array_filter(distrib_data, data_shape)
-      utils.apply_dataspace_to_pointlist(flow_solution, flow_solution_path, data_space, hdf_filter)
+      data_space_pl = create_data_array_filter(distrib_data, data_shape)
+      data_space = create_data_array_filter(distrib_data, [data_shape.prod()])
+      utils.apply_dataspace_to_pointlist(flow_solution, flow_solution_path, data_space_pl, hdf_filter)
     elif(grid_location == 'CellCenter'):
       data_space = create_data_array_filter(distrib_cell, zone[1][:,1])
     elif(grid_location == 'Vertex'):
