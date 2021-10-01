@@ -18,14 +18,15 @@ def distribute_pl_node(node, comm):
   for array_n in IE.getNodesByMatching(dist_node, ['IndexArray_t']):
     array_n[1] = array_n[1][0][distri[0]:distri[1]].reshape(1,-1, order='F')
   #Data Arrays
-  bcds_without_pl = lambda n : I.getType(n) == 'BCDataSet_t' and I.getNodeFromName1(n, 'PointList') is None
+  has_subset = lambda n : I.getNodeFromName1(n, 'PointList') is not None or I.getNodeFromName1(n, 'PointRange') is not None
+  bcds_without_pl = lambda n : I.getType(n) == 'BCDataSet_t' and not has_subset(n)
   bcds_without_pl_query = [bcds_without_pl, 'BCData_t', 'DataArray_t']
   for array_path in ['DataArray_t', 'BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_n in IE.getNodesByMatching(dist_node, array_path):
       array_n[1] = array_n[1][distri[0]:distri[1]]
 
   #Additionnal treatement for subnodes with PL (eg bcdataset)
-  has_pl = lambda n : I.getName(n) != 'PointList' and I.getNodeFromName1(n, 'PointList') is not None
+  has_pl = lambda n : I.getName(n) not in ['PointList', 'PointRange'] and has_subset(n)
   for child in [node for node in I.getChildren(dist_node) if has_pl(node)]:
     dist_child = distribute_pl_node(child, comm)
     child[2] = dist_child[2]
@@ -43,8 +44,8 @@ def distribute_data_node(node, comm):
   assert I.getNodeFromName(dist_node, 'PointList') is None
 
   for array in I.getNodesFromType1(dist_node, 'DataArray_t'):
-    distri = DIF.uniform_distribution(array[1].shape[0], comm)
-    array[1] = array[1][distri[0] : distri[1]]
+    distri = DIF.uniform_distribution(array[1].size, comm)
+    array[1] = array[1].reshape(-1, order='F')[distri[0] : distri[1]]
 
   return dist_node
 
@@ -94,10 +95,13 @@ def distribute_tree(tree, comm, owner=None):
   dist_tree = I.copyTree(tree)
   for zone in IE.getNodesByMatching(dist_tree, ['CGNSBase_t', 'Zone_t']):
     # > Cell & Vertex distribution
-    n_vtx  = sids.Zone.VertexSize(zone)
-    n_cell = sids.Zone.CellSize(zone)
+    n_vtx  = sids.Zone.n_vtx(zone)
+    n_cell = sids.Zone.n_cell(zone)
     zone_distri = {'Vertex' : DIF.uniform_distribution(n_vtx , comm).astype(pdm_dtype),
                    'Cell'   : DIF.uniform_distribution(n_cell, comm).astype(pdm_dtype)}
+    if sids.Zone.Type(zone) == 'Structured':
+      zone_distri['Face'] = DIF.uniform_distribution(sids.Zone.n_face(zone), comm).astype(pdm_dtype)
+
     IE.newDistribution(zone_distri, zone)
 
     # > Coords
@@ -134,7 +138,7 @@ def distribute_tree(tree, comm, owner=None):
     for zonegc in zonegcs:
       I._rmNode(zone, zonegc)
       dist_zonegc = I.createChild(zone, I.getName(zonegc), 'ZoneGridConnectivity_t')
-      for gc in I.getNodesFromType1(zonegc, 'GridConnectivity_t'):
+      for gc in I.getNodesFromType1(zonegc, 'GridConnectivity_t') + I.getNodesFromType1(zonegc, 'GridConnectivity1to1_t'):
         I._addChild(dist_zonegc, distribute_pl_node(gc, comm))
 
     # > ZoneSubRegion
@@ -144,9 +148,11 @@ def distribute_tree(tree, comm, owner=None):
       matching_region_path = IE.getSubregionExtent(zone_subregion, zone)
       if matching_region_path != I.getName(zone_subregion):
         I._addChild(zone_subregion, I.getNodeFromPath(zone, matching_region_path + '/PointList'))
+        I._addChild(zone_subregion, I.getNodeFromPath(zone, matching_region_path + '/PointRange'))
       dist_zone_subregion = distribute_pl_node(zone_subregion, comm)
       if matching_region_path != I.getName(zone_subregion):
         I._rmNodesByName(dist_zone_subregion, 'PointList')
+        I._rmNodesByName(dist_zone_subregion, 'PointRange')
         I._rmNode(dist_zone_subregion, IE.getDistribution(dist_zone_subregion))
 
       I._addChild(zone, dist_zone_subregion)

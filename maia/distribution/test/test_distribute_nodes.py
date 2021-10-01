@@ -99,6 +99,7 @@ def test_distribute_element(sub_comm):
 def test_distribute_tree(sub_comm):
   yt = """
   Zone Zone_t [[18, 4, 0]]:
+    ZoneType ZoneType_t "Unstructured":
     Element Elements_t [22,0]:
       ElementRange IndexRange_t [1,4]:
       ElementStartOffset DataArray_t [0,4,8,11,16]:
