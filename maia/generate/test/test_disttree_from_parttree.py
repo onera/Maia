@@ -78,7 +78,7 @@ def test_disttree_from_parttree(sub_comm):
 
     #Add nface (to modify when maia become cgns compliant)
     nface_ec = np.empty(8*6, dtype=I.getNodeFromName(ngon, 'ElementConnectivity')[1].dtype)
-    nface_count = np.zeros(8, np.int)
+    nface_count = np.zeros(8, int)
     for iface, (lCell, rCell) in enumerate(I.getNodeFromName1(ngon, 'ParentElements')[1]):
       nface_ec[6*(lCell-1) + nface_count[lCell-1]] = iface + 1
       nface_count[lCell-1] += 1

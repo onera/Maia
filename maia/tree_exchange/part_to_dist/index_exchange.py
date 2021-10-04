@@ -216,7 +216,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
   # Array of bool (1d) indicating which indices of connectivity must be keeped
   # Then we just have to extract the good indices
-  duplicated_ec = np.zeros(unfiltered_eso[dn_elt], dtype=np.bool)
+  duplicated_ec = np.zeros(unfiltered_eso[dn_elt], dtype=bool)
   wrong_idx = py_utils.multi_arange(unfiltered_eso[duplicated_idx] + (d_elt_n[duplicated_idx] // 2),
                                     unfiltered_eso[duplicated_idx+1])
   duplicated_ec[wrong_idx] = 1

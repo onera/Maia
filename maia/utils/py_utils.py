@@ -97,7 +97,7 @@ def concatenate_np_arrays(arrays, dtype=None):
   merged_idx = sizes_to_indices(sizes, dtype=np.int32)
 
   if dtype is None:
-    dtype = arrays[0].dtype if arrays != [] else np.int
+    dtype = arrays[0].dtype if arrays != [] else np.int64
 
   merged_array = np.empty(sum(sizes), dtype=dtype)
   for i, a in enumerate(arrays):

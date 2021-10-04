@@ -27,7 +27,7 @@ def test_face_ids_to_vtx_ids(sub_comm):
 
 @mark_mpi_test(2)
 def test_filter_vtx_coordinates(sub_comm):
-  empty = np.empty(0, np.int)
+  empty = np.empty(0, int)
   tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
   vtx_coords = I.getNodeFromType(tree, 'GridCoordinates_t')
   vtx_distri   = I.getVal(IE.getDistribution(I.getZones(tree)[0], 'Vertex'))
@@ -70,7 +70,7 @@ def test_get_extended_pl(sub_comm):
     assert (ext_pl_d == [9,10,11,12]).all()
 
 def test_search_by_intersection():
-  empty = np.empty(0, np.int)
+  empty = np.empty(0, int)
   plv, plv_opp, face_is_treated = VL._search_by_intersection(np.array([0]), empty, empty)
   assert (plv == empty).all()
   assert (plv_opp == empty).all()
@@ -114,7 +114,7 @@ def test_search_by_intersection():
 
 @mark_mpi_test(3)
 def test_search_with_geometry(sub_comm):
-  empty = np.empty(0, np.int)
+  empty = np.empty(0, int)
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
   zone = I.getZones(tree)[0]
   grid_prop = I.newGridConnectivityProperty()
@@ -142,7 +142,7 @@ def test_search_with_geometry(sub_comm):
     assert (plv  == [9,10,11,12,13,14,15,16]).all()
     assert (plvd == [57,58,59,60,61,62,63,64]).all()
   else:
-    assert (plv == plvd == empty).all()
+    assert (plv.size == plvd.size == 0)
 
 class Test_generate_jn_vertex_list():
   @mark_mpi_test([1,3,4])

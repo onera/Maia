@@ -11,7 +11,7 @@ from maia.partitioning.split_U import pdm_part_to_cgns_zone as PTC
 def test_dump_pdm_output():
   p_zone = I.newZone('Zone.P0.N0', ztype='Unstructured')
   dims = {'n_vtx' : 3}
-  data = {'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float),
+  data = {'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float64),
           'not_numpy'    : "should_not_be_dumped" }
   PTC.dump_pdm_output(p_zone, dims, data)
   dump_node = I.getNodeFromPath(p_zone, ':CGNS#Ppart')
@@ -23,12 +23,12 @@ def test_dump_pdm_output():
 def test_pdm_vtx_to_cgns_grid_coordinates():
   p_zone = I.newZone('Zone.P0.N0', ztype='Unstructured')
   dims = {'n_vtx' : 3}
-  data = {'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float)}
+  data = {'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float64)}
 
   PTC.pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data)
   grid_co = I.getNodeFromPath(p_zone, 'GridCoordinates')
   for co in ['CoordinateX', 'CoordinateY', 'CoordinateZ']:
-    assert I.getNodeFromName1(grid_co, co)[1].dtype == np.float
+    assert I.getNodeFromName1(grid_co, co)[1].dtype == np.float64
   assert (I.getNodeFromName1(grid_co, 'CoordinateX')[1] == [1,4,7]).all()
   assert (I.getNodeFromName1(grid_co, 'CoordinateY')[1] == [2,5,8]).all()
   assert (I.getNodeFromName1(grid_co, 'CoordinateZ')[1] == [3,6,9]).all()
@@ -120,10 +120,10 @@ def test_pdm_part_to_cgns_zone():
                                         np.array([1,2,3,4,5,6,7,8], dtype=np.int32)],
            'np_elt_section_ln_to_gn' : [np.array([12,5,9,13,18,4], dtype=pdm_dtype),
                                         np.array([42], dtype=pdm_dtype)],
-           'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float),
+           'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float64),
            'np_vtx_part_bound_proc_idx'  : np.array([0,]),
            'np_vtx_part_bound_part_idx'  : np.array([0,]),
-           'np_vtx_part_bound'           : np.empty(0, dtype=np.int),
+           'np_vtx_part_bound'           : np.empty(0, dtype=np.int32),
            'np_vtx_ghost_information'    : np.array([0,0,0,1,1,2]),
            'np_vtx_ln_to_gn'             : np.array([2,4,8,16,64,32]),
            'np_cell_ln_to_gn'            : np.array([42])

@@ -134,7 +134,7 @@ def test_get_entities_numbering():
   zoneS = I.newZone(ztype='Structured')
   expected_vtx_lngn = np.array([4,21,1,2,8,12])
   expected_face_lngn = np.array([44,23,94,12])
-  expected_cell_lngn = np.array([], np.int)
+  expected_cell_lngn = np.array([], int)
 
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn, 'Face' : expected_face_lngn}
   gnum_node = IE.newGlobalNumbering(gnum_arrays, zoneS)

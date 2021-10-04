@@ -121,7 +121,7 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
   n_face = len(pl_face_vtx_idx) - 1
   pl_vtx_local     = np.unique(pl_face_vtx)
   pl_vtx_local_opp = np.zeros_like(pl_vtx_local)
-  face_is_treated  = np.zeros(n_face, dtype=np.bool)
+  face_is_treated  = np.zeros(n_face, dtype=bool)
 
   # Build connectivity vtx -> list of faces to which the vtx belongs
   r_pl, vtx_face_idx, vtx_face = py_utils.reverse_connectivity(np.arange(n_face), pl_face_vtx_idx, pl_face_vtx)
@@ -240,13 +240,13 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
     translation         = I.getNodeFromName1(gc_periodic, 'Translation')[1]
     rotation_center     = I.getNodeFromName1(gc_periodic, 'RotationCenter')[1]
     alpha, beta, gamma  = I.getNodeFromName1(gc_periodic, 'RotationAngle')[1]
-    rotation_matx = np.matrix([[1, 0, 0], [0, cos(alpha), -sin(alpha)], [0, sin(alpha), cos(alpha)]])
-    rotation_maty = np.matrix([[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]])
-    rotation_matz = np.matrix([[cos(gamma), -sin(gamma), 0], [sin(gamma), cos(gamma), 0], [0, 0, 1]])
+    rotation_matx = np.array([[1, 0, 0], [0, cos(alpha), -sin(alpha)], [0, sin(alpha), cos(alpha)]])
+    rotation_maty = np.array([[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]])
+    rotation_matz = np.array([[cos(gamma), -sin(gamma), 0], [sin(gamma), cos(gamma), 0], [0, 0, 1]])
     rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
 
     # TODO either rotation_center == 0, or translate before rotation
-    assert (rotation_center == np.zeros(3, dtype=np.float)).all()
+    assert (rotation_center == np.zeros(3, dtype=np.float64)).all()
     opp_received_coords = np.dot(rotation_mat, opp_received_coords.T).T + translation
 
 

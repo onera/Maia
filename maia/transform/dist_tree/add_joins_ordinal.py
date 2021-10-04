@@ -36,7 +36,7 @@ def _create_local_match_table(gc_list, gc_paths):
   and retrieve the pairs of matching joins
   """
   nb_joins = len(gc_list)
-  local_match_table = np.zeros((nb_joins, nb_joins), dtype=np.bool)
+  local_match_table = np.zeros((nb_joins, nb_joins), dtype=bool)
 
   for igc, gc in enumerate(gc_list):
     current_path = gc_paths[igc]
@@ -77,7 +77,7 @@ def add_joins_ordinal(dist_tree, comm):
 
   local_match_table = _create_local_match_table(gc_list, gc_paths)
 
-  global_match_table = np.empty(local_match_table.shape, dtype=np.bool)
+  global_match_table = np.empty(local_match_table.shape, dtype=bool)
   comm.Allreduce(local_match_table, global_match_table, op=MPI.LAND)
   #print('  check_candidates\n', global_match_table)
   assert(np.all(np.sum(global_match_table, axis=0) == 1))

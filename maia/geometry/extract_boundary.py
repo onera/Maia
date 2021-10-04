@@ -36,7 +36,7 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   # It is safer to reuse slabs to manage all cases (eg input location or reversed pr)
   bc_size = S2U.transform_bnd_pr_size(pr, input_loc, "FaceCenter")
 
-  slab = np.empty((3,2), order='F', dtype=np.int)
+  slab = np.empty((3,2), order='F', dtype=np.int64)
   slab[:,0] = pr[:,0]
   slab[:,1] = bc_size + pr[:,0] - 1
   slab[bnd_axis,:] += S2U.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
