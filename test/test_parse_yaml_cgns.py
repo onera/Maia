@@ -1,8 +1,11 @@
+import os
 from maia.utils import parse_yaml_cgns
 import Converter.Internal as I
 import numpy as np
 
-with open("/scratchm/bberthou/travail/git_all_projects/external/maia/test/example.yaml") as yt:
+dir_path = os.path.dirname(os.path.realpath(__file__))
+mesh_dir = dir_path+"/../share/sample_meshes/"
+with open(mesh_dir + "example.yaml") as yt:
   t = parse_yaml_cgns.to_nodes(yt)
 
   I.printTree(t)
