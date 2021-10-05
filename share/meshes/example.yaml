@@ -25,10 +25,10 @@ Base0 Base_t [3,3]:
     ZoneBC ZoneBC_t:
       Inlet BC_t:
         GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [1,2]: # 1,2 are the two i-faces at x=0
+        PointList IndexArray_t [[1,2]]: # 1,2 are the two i-faces at x=0
     ZoneGridConnectivity ZoneGridConnectivity_t:
       MixingPlane GridConnectivity "Zone1":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [7]: # 7 is the bottom i-face at x=3
-        PointListDonor IndexArray_t [1]: # cf. Zone1
+        PointList IndexArray_t [[7]]: # 7 is the bottom i-face at x=3
+        PointListDonor IndexArray_t [[1]]: # cf. Zone1

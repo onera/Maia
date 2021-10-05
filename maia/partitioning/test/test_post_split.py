@@ -15,7 +15,7 @@ Zone Zone_t:
       .Solver#BC UserDefinedData_t:
   ZGC ZoneGridConnectivity_t:
     GC GridConnectivity_t:
-      PointList IndexArrat_t:
+      PointList IndexArray_t:
       Ordinal UserDefinedData_t 2:
       GridConnectivityProperty GridConnectivityProperty_t:
         Periodic Periodic_t:
@@ -29,7 +29,7 @@ Zone.P2.N3 Zone_t:
       GridLocation GridLocation_t:
   ZGC ZoneGridConnectivity_t:
     GC GridConnectivity_t:
-      PointList IndexArrat_t:
+      PointList IndexArray_t:
 """
 
   dist_zone = parse_yaml_cgns.to_node(dt)
