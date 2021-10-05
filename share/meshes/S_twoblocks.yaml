@@ -2,7 +2,7 @@
 # https://cgns.github.io/CGNS_docs_current/sids/cnct.html#cnct_1to1_example
 # The blocks are connected through a GridConnectivity1to1_t node with a non trivial Transform node
 # BC are defined using different GridLocation values
-CGNSLibraryVersion CGNSLibraryVersion_t 3.1:
+CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
 Base CGNSBase_t I4 [3, 3]:
   Large Zone_t I4 [[17, 16, 0], [9, 8, 0], [7, 6, 0]]:
     ZoneType ZoneType_t 'Structured':

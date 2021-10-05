@@ -3,6 +3,8 @@ import numpy as np
 import maia.sids.cgns_keywords as CGK
 import maia.utils.py_utils as PYU
 
+CGNS_STR_SIZE = 32
+
 def convert_value(value):
   """
   Convert a Python input to a compliant pyCGNS value
@@ -44,7 +46,8 @@ def convert_value(value):
       elif isinstance(first_value, str):                       # "C1"
         # print(f"-> first_value as with {CGK.cgns_to_dtype[CGK.C1]}")
         # WARNING: string numpy is limited to rank=2
-        size = max([len(v) for v in PYU.flatten(value)])
+        assert max([len(v) for v in PYU.flatten(value)]) <= CGNS_STR_SIZE
+        size = CGNS_STR_SIZE
         if isinstance(value[0], str):
           v = np.empty( (size,len(value) ), dtype='c', order='F')
           for c, i in enumerate(value):

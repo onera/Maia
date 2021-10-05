@@ -2,7 +2,7 @@
 # (https://turbmodels.larc.nasa.gov/axibump_val.html)
 # This is a single zone unstructured mesh with a Periodic GridConnectivity_t between two boundaries.
 # Other BCs are family defined.
-CGNSLibraryVersion CGNSLibraryVersion_t 3.1:
+CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
 Base CGNSBase_t I4 [3, 3]:
   bump_45 Zone_t I4 [[792, 460, 0]]:
     ZoneType ZoneType_t 'Unstructured':

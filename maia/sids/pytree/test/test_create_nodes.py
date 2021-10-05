@@ -24,7 +24,7 @@ def test_convert_value():
 
   # Iterables
   converted = CN.convert_value(["Spaaaaaam", "eggs"])
-  assert isinstance(converted, np.ndarray) and converted.dtype=='S1'and converted.shape == (9,2)
+  assert isinstance(converted, np.ndarray) and converted.dtype=='S1'and converted.shape == (32,2)
   node = ['FakeNode', converted, [], 'FakeNode_t']
   assert I.getValue(node) == ["Spaaaaaam", "eggs"]
   assert CN.convert_value([]).shape == (0,)
@@ -34,4 +34,4 @@ def test_convert_value():
   converted = CN.convert_value([13.3, 14.2, 15.3])
   assert (converted == np.array([13.3, 14.2, 15.3])).all() and converted.dtype==np.float64
   converted = CN.convert_value([['Spam', 'eggs'], ["Bacon"]])
-  assert isinstance(converted, np.ndarray) and converted.dtype=='S1' and converted.shape == (5,2,2)
+  assert isinstance(converted, np.ndarray) and converted.dtype=='S1' and converted.shape == (32,2,2)
