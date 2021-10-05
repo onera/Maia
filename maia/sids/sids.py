@@ -40,10 +40,8 @@ class Zone:
     cell_size = Zone.CellSize(zone_node)
     if Zone.Type(zone_node) == "Structured":
       dim = len(vtx_size)
-      print(f"dim [S] = {dim}")
       # n_face = np.sum([vtx_size[(0+d)%dim]*cell_size[(1+d)%dim]*cell_size[(2+d)%dim] for d in range(dim)])
       n_face = [compute_nface_per_direction(d, dim, vtx_size, cell_size) for d in range(dim)]
-      print(f"n_face [S] = {n_face}")
     elif Zone.Type(zone_node) == "Unstructured":
       element_node = I.getNodeFromType1(zone_node, CGL.Elements_t.name)
       if ElementType(element_node) == CGK.ElementType.NGON_n.value:
@@ -112,12 +110,30 @@ def ElementDimension(element):
 def ElementNVtx(element):
   return EU.element_number_of_nodes(ElementType(element))
 
+class Subset:
+  """
+  A subset is a node having a PointList or a PointRange
+  """
+  
+  def getPatch(subset):
+    pl = I.getNodeFromName1(subset, 'PointList')
+    pr = I.getNodeFromName1(subset, 'PointRange')
+    assert (pl is None) ^ (pr is None)
+    return pl if pl is not None else pr
+
+  def n_elem(subset):
+    patch = Subset.getPatch(subset)
+    return PointList.n_elem(patch) if I.getType(patch) == 'IndexArray_t' else PointRange.n_elem(patch)
+
+  def GridLocation(subset):
+    return GridLocation(subset)
 
 # --------------------------------------------------------------------------
 @maia.for_all_methods(IE.check_is_label("IndexRange_t"))
 class PointRange:
+
   @staticmethod
-  def VertexSize(point_range_node):
+  def SizePerIndex(point_range_node):
     """
     Allow point_range to be inverted (PR[:,1] < PR[:,0]) as it can occurs in struct GCs
     """
@@ -125,29 +141,17 @@ class PointRange:
     return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
 
   @staticmethod
-  def FaceSize(point_range_node):
-    return np.subtract(PointRange.VertexSize(point_range_node), 1)
-
-  @staticmethod
-  def n_vtx(point_range_node):
-    return np.prod(PointRange.VertexSize(point_range_node))
-
-  @staticmethod
-  def n_face(point_range_node):
-    return np.prod([f for f in PointRange.FaceSize(point_range_node) if f > 0])
+  def n_elem(point_range_node):
+    return PointRange.SizePerIndex(point_range_node).prod()
 
 
 # --------------------------------------------------------------------------
 @maia.for_all_methods(IE.check_is_label("IndexArray_t"))
 class PointList:
-  @staticmethod
-  def FaceSize(point_list_node):
-    pl_values = point_list_node[1]
-    return pl_values.shape
 
   @staticmethod
-  def n_face(point_range_node):
-    return PointList.FaceSize(point_range_node)[1]
+  def n_elem(point_list_node):
+    return I.getVal(point_list_node).shape[1]
 
 
 # --------------------------------------------------------------------------

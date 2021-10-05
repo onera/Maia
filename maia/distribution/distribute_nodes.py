@@ -11,9 +11,7 @@ def distribute_pl_node(node, comm):
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
   """
   dist_node = I.copyTree(node)
-  pl = I.getNodeFromName(dist_node, 'PointList')
-  assert pl is not None
-  n_elem = pl[1].shape[1]
+  n_elem = sids.Subset.n_elem(dist_node)
   distri = DIF.uniform_distribution(n_elem, comm).astype(pdm_dtype)
 
   #PL and PLDonor

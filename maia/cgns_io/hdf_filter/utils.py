@@ -13,17 +13,15 @@ def pl_or_pr_size(node):
   If both node are present, size of PointList is returned (but this should not happens!)
   Raises if both are absent.
   """
-  pl_n = I.getNodeFromName1(node, 'PointList')
-  pr_n = I.getNodeFromName1(node, 'PointRange')
-  assert not(pl_n is None and pr_n is None)
-  if pl_n:
+  patch = SIDS.Subset.getPatch(node)
+  if I.getType(patch) == 'IndexArray_t':
     try:
       return I.getNodeFromName1(node, 'PointList#Size')[1]
     except TypeError: #No PL#Size, try to get info from :CGNS#Distribution and suppose size = 1,N
       distri = I.getVal(IE.getDistribution(node, 'Index'))
       return np.array([1, distri[2]])
-  if pr_n:
-    return SIDS.PointRange.VertexSize(pr_n)
+  elif I.getType(patch) == 'IndexRange_t':
+    return SIDS.PointRange.SizePerIndex(patch)
 
 def apply_dataspace_to_arrays(node, node_path, data_space, hdf_filter):
   """

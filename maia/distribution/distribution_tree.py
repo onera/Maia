@@ -17,7 +17,7 @@ def compute_plist_or_prange_distribution(node, comm):
   pl_n = I.getNodeFromName1(node, 'PointList')
 
   if(pr_n):
-    pr_lenght = SIDS.PointRange.n_vtx(pr_n)
+    pr_lenght = SIDS.PointRange.n_elem(pr_n)
     create_distribution_node(pr_lenght, comm, 'Index', node)
 
   if(pl_n):

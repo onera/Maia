@@ -1,3 +1,5 @@
+import pytest
+
 import Converter.Internal as I
 import maia.sids.sids     as SIDS
 import numpy              as np
@@ -65,25 +67,35 @@ def test_zone_s_size():
   assert SIDS.Zone.n_cell(zone_s) == 9*4*1
   assert SIDS.Zone.n_vtx_bnd(zone_s) == 0
 
-def test_point_range():
-  pr = I.newPointRange('Standard', [1,3, 3,5, 1,3])
-  assert (SIDS.PointRange.VertexSize(pr) == [3,3,3]).all()
-  assert (SIDS.PointRange.FaceSize(pr) == [2,2,2]).all()
-  assert SIDS.PointRange.n_vtx(pr) == 3*3*3
-  assert SIDS.PointRange.n_face(pr) == 2*2*2
-  pr = I.newPointRange('BCLike', [5,5, 2,4, 1,1])
-  assert (SIDS.PointRange.VertexSize(pr) == [1,3,1]).all()
-  assert (SIDS.PointRange.FaceSize(pr) == [0,2,0]).all()
-  assert SIDS.PointRange.n_vtx(pr) == 1*3*1
-  assert SIDS.PointRange.n_face(pr) == 2
-  pr = I.newPointRange('Reversed', [3,1, 5,3, 1,3])
-  assert (SIDS.PointRange.VertexSize(pr) == [3,3,3]).all()
-  assert (SIDS.PointRange.FaceSize(pr) == [2,2,2]).all()
-  assert SIDS.PointRange.n_vtx(pr) == 3*3*3
-  assert SIDS.PointRange.n_face(pr) == 2*2*2
-  pr = I.newPointRange('GCLike', [7,1, 9,9, 5,1])
-  assert (SIDS.PointRange.VertexSize(pr) == [7,1,5]).all()
-  assert (SIDS.PointRange.FaceSize(pr) == [6,0,4]).all()
-  assert SIDS.PointRange.n_vtx(pr) == 7*1*5
-  assert SIDS.PointRange.n_face(pr) == 6*4
+def test_PointRange():
+  pr = I.newPointRange('StandardPR', [1,3, 3,5, 1,3])
+  assert (SIDS.PointRange.SizePerIndex(pr) == [3,3,3]).all()
+  assert (SIDS.PointRange.n_elem(pr) == 3*3*3)
+
+  pr = I.newPointRange('GCLikePR', [7,1, 9,9, 5,1])
+  assert (SIDS.PointRange.SizePerIndex(pr) == [7,1,5]).all()
+  assert (SIDS.PointRange.n_elem(pr) == 7*1*5)
+
+  pr = I.newPointRange('ULike', [[1,15]]) # PR must be 2d
+  assert (SIDS.PointRange.SizePerIndex(pr) == [15]).all()
+  assert (SIDS.PointRange.n_elem(pr) == 15)
+
+def test_PointList():
+  pl = I.newPointList('StandartPL', [[1,6,12]])
+  assert SIDS.PointList.n_elem(pl) == 3
+
+  pl = I.newPointList('SLike', [[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
+  assert SIDS.PointList.n_elem(pl) == 5
+
+def test_Subset():
+  sol = I.newFlowSolution(gridLocation='Vertex')
+  pl = I.newPointList('PointList', [[1,6,12]], parent=sol)
+
+  assert SIDS.Subset.GridLocation(sol) == 'Vertex'
+  assert SIDS.Subset.getPatch(sol) is pl
+  assert SIDS.Subset.n_elem(sol) == SIDS.PointList.n_elem(pl)
+
+  with pytest.raises(AssertionError):
+    pr = I.newPointRange('PointRange', [[1,15]], parent=sol)
+    patch = SIDS.Subset.getPatch(sol)
 
