@@ -94,7 +94,7 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   return dist_tree
 
 # --------------------------------------------------------------------------
-def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
+def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
   """
   This function calls paradigm to generate a distributed mesh of a cube with various type of elements, and
   return a CGNS PyTree
@@ -102,7 +102,9 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  t_elmt = EU.cgns_elt_name_to_pdm_element_type(cgns_elmt_type)
+  t_elmt = EU.cgns_elt_name_to_pdm_element_type(cgns_elmt_name)
+  cgns_elt_index = [prop[0] for prop in EU.elements_properties].index(cgns_elmt_name)
+  dim = EU.element_dim(cgns_elt_index)
 
   dcube = PDM.DCubeNodalGenerator(n_vtx, edge_length, *origin, t_elmt, comm)
 
@@ -113,7 +115,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
 
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
-  dist_base = I.newCGNSBase(parent=dist_tree)
+  dist_base = I.newCGNSBase('Base', cellDim=dim, physDim=dim, parent=dist_tree)
   dist_zone = I.newZone('zone', [[g_dims["n_vtx_abs"], g_dims["n_cell_abs"], 0]],
                         'Unstructured', parent=dist_base)
 
@@ -128,10 +130,10 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_type, comm):
   shift_elmt = 1
   for i_section, section in enumerate(sections["sections"]):
     # print("section = ", section)
-    cgns_elmt_type = EU.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
-    # print("cgns_elmt_type :", cgns_elmt_type)
+    cgns_elmt_name = EU.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
+    # print("cgns_elmt_name :", cgns_elmt_name)
 
-    elmt = I.newElements(f"{cgns_elmt_type}.{i_section}", cgns_elmt_type,
+    elmt = I.newElements(f"{cgns_elmt_name}.{i_section}", cgns_elmt_name,
                          erange = [shift_elmt, shift_elmt + section["np_distrib"][n_rank]-1], parent=dist_zone)
     I.newDataArray('ElementConnectivity', section["np_connec"], parent=elmt)
 

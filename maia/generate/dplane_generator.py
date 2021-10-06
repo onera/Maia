@@ -34,7 +34,7 @@ def dplane_generate(xmin, xmax, ymin, ymax,
 
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
-  dist_base = I.newCGNSBase(parent=dist_tree)
+  dist_base = I.newCGNSBase('Base', cellDim=2, physDim=2, parent=dist_tree)
   dist_zone = I.newZone('zone', [[distri_vtx[n_rank], distrib_cell[n_rank], 0]],
                         'Unstructured', parent=dist_base)
 
@@ -42,7 +42,7 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   grid_coord = I.newGridCoordinates(parent=dist_zone)
   I.newDataArray('CoordinateX', dplane_dict['dvtx_coord'][0::3], parent=grid_coord)
   I.newDataArray('CoordinateY', dplane_dict['dvtx_coord'][1::3], parent=grid_coord)
-  I.newDataArray('CoordinateZ', dplane_dict['dvtx_coord'][2::3], parent=grid_coord)
+  assert np.max(np.abs(dplane_dict['dvtx_coord'][2::3])) < 1E-16 #In 2D, this one should be zero
 
   dplane_dict['dedge_vtx_idx'] = np.arange(0, 2*dplane_dict['dn_edge']+1, 2, dtype=dplane_dict['dedge_vtx'].dtype)
   assert dplane_dict['dedge_vtx_idx'].shape[0] == dplane_dict['dn_edge']+1
