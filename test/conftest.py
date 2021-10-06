@@ -37,6 +37,14 @@ def generate_cgns_files(comm):
 
 def pytest_addoption(parser):
   parser.addoption("--gen_hdf", dest='gen_hdf', action='store_true')
+  parser.addoption("--write_output", dest='write_output', action='store_true')
+
+@pytest.fixture
+def write_output(request):
+  """ This get the value of command line argument write_ouput before
+  launching the tests
+  """
+  return request.config.getoption("--write_output")
 
 @pytest.hookimpl(tryfirst=True) # False ?
 def pytest_configure(config):

@@ -1,11 +1,15 @@
 import pytest
+import os
 from   pytest_mpi_check._decorator import mark_mpi_test
 
+import Converter.PyTree     as C
 import Converter.Internal   as I
 
 from maia         import npy_pdm_gnum_dtype
 from maia.sids    import sids
 from maia.sids    import Internal_ext as IE
+from maia.utils   import test_utils as TU
+from maia.cgns_io import cgns_io_tree as IOT
 
 from maia.generate import dcube_generator as DCG
 from maia.generate import dplane_generator as DPG
@@ -15,7 +19,7 @@ Some regular meshes can be directly generated in their distributed version
 """
 
 @mark_mpi_test([1,3])
-def test_generate_dcube_ngons(sub_comm):
+def test_generate_dcube_ngons(sub_comm, write_output):
   n_vtx = 20
 
   # > dcube_generate create a NGon discretisation of a cube
@@ -35,9 +39,16 @@ def test_generate_dcube_ngons(sub_comm):
   # > Distribution dtype should be consistent with PDM
   assert IE.getDistribution(zone, 'Vertex')[1].dtype == npy_pdm_gnum_dtype
 
+  if write_output:
+    out_dir = TU.create_pytest_output_dir(sub_comm)
+    outfile = os.path.join(out_dir, f'dcube_ngon_{sub_comm.Get_rank()}.hdf')
+    C.convertPyTree2File(dist_tree, outfile)
+    outfile = os.path.join(out_dir, 'dcube_ngon.hdf')
+    IOT.dist_tree_to_file(dist_tree, outfile, sub_comm)
+    
 @pytest.mark.parametrize("cgns_elmt_name", ["TRI_3", "QUAD_4", "TETRA_4", "PENTA_6", "HEXA_8"])
 @mark_mpi_test([2])
-def test_generate_dcube_elts(cgns_elmt_name, sub_comm):
+def test_generate_dcube_elts(cgns_elmt_name, sub_comm, write_output):
   n_vtx = 20
 
   # > dcube_nodal_generate create an element discretisation of a cube. Several element type are supported
@@ -63,6 +74,11 @@ def test_generate_dcube_elts(cgns_elmt_name, sub_comm):
   assert IE.getDistribution(zone) is not None
   # > Distribution dtype should be consistent with PDM
   assert IE.getDistribution(zone, 'Vertex')[1].dtype == npy_pdm_gnum_dtype
+
+  if write_output:
+    out_dir = TU.create_pytest_output_dir(sub_comm)
+    outfile = os.path.join(out_dir, 'dcube_elt.hdf')
+    IOT.dist_tree_to_file(dist_tree, outfile, sub_comm)
 
 @pytest.mark.parametrize("random", [False, True])
 @mark_mpi_test([3])
