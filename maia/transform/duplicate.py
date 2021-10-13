@@ -220,9 +220,8 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
     #  précédent en raccords match
     for jn_path_b in JN_for_duplication_paths[1]:
       split_jn_path_b = jn_path_b.split("/")
-      jn_path_b_prev = "/".join(split_jn_path_b[0:2]) \
-                     + "/" + split_jn_path_b[2] + ".D{0}/".format(n) \
-                     + "/".join(split_jn_path_b[3:])
+      jn_path_b_prev = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(n) \
+                     + "/".join(split_jn_path_b[2:])
       jn_b_prev_node = I.getNodeFromPath(dist_tree, jn_path_b_prev)
       gcp_b_prev = I.getNodeFromType1(jn_b_prev_node, "GridConnectivityProperty_t")
       I._rmNode(jn_b_prev_node,gcp_b_prev)
@@ -240,9 +239,8 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
     #  courant en raccords match
     for jn_path_a in JN_for_duplication_paths[0]:
       split_jn_path_a = jn_path_a.split("/")
-      jn_path_a_curr = "/".join(split_jn_path_a[0:2]) \
-                     + "/" + split_jn_path_a[2] + ".D{0}/".format(n+1) \
-                     + "/".join(split_jn_path_a[3:])
+      jn_path_a_curr = "/".join(split_jn_path_a[0:2]) + ".D{0}/".format(n+1) \
+                     + "/".join(split_jn_path_a[2:])
       jn_a_curr_node = I.getNodeFromPath(dist_tree, jn_path_a_curr)
       gcp_a_curr = I.getNodeFromType1(jn_a_curr_node, "GridConnectivityProperty_t")
       I._rmNode(jn_a_curr_node,gcp_a_curr)
@@ -253,17 +251,16 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
       # TO DO : adapt for multi zones !!!
       if comm is None:
         raise ValueError("MPI communicator is mandatory for conformization !")
-      #JN_for_duplication_paths = []
-      #JN_for_duplication_paths.append(I.getPath(dist_tree,secondJoinPrevNode,pyCGNSLike=True)[1:])
-      #JN_for_duplication_paths.append(I.getPath(dist_tree,firstJoinDupNode,pyCGNSLike=True)[1:])
-      #CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
+      # JN_for_duplication_paths = []
+      # JN_for_duplication_paths.append(I.getPath(dist_tree,secondJoinPrevNode,pyCGNSLike=True)[1:])
+      # JN_for_duplication_paths.append(I.getPath(dist_tree,firstJoinDupNode,pyCGNSLike=True)[1:])
+      # CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
   
   #> Mise à jour des raccords périodiques "A" de l'ensemble de zones initial
   for jn_path_a in JN_for_duplication_paths[0]:
     split_jn_path_a = jn_path_a.split("/")
-    jn_path_a_init = "/".join(split_jn_path_a[0:2]) \
-                   + "/" + split_jn_path_a[2] + ".D0/" \
-                   + "/".join(split_jn_path_a[3:])
+    jn_path_a_init = "/".join(split_jn_path_a[0:2]) + ".D0/" \
+                   + "/".join(split_jn_path_a[2:])
     jn_a_init_node = I.getNodeFromPath(dist_tree, jn_path_a_init)
     gcp_a_init = I.getNodeFromType1(jn_a_init_node, "GridConnectivityProperty_t")
     rotation_angle_a_node = I.getNodeFromName2(gcp_a_init, "RotationAngle")
@@ -277,9 +274,8 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
   for jn,jn_path_b in enumerate(JN_for_duplication_paths[1]):
     split_jn_path_b = jn_path_b.split("/")
     #print(N,"b_last",split_jn_path_b)
-    jn_path_b_last = "/".join(split_jn_path_b[0:2]) \
-                   + "/" + split_jn_path_b[2] + ".D{0}/".format(N) \
-                   + "/".join(split_jn_path_b[3:])
+    jn_path_b_last = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(N) \
+                   + "/".join(split_jn_path_b[2:])
     jn_b_last_node = I.getNodeFromPath(dist_tree, jn_path_b_last)
     I._addChild(jn_b_last_node,jn_b_properties[jn])
     gcp_b_last = I.getNodeFromType1(jn_b_last_node, "GridConnectivityProperty_t")
@@ -351,15 +347,23 @@ def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_fo
   #  en raccords match
   for jn_path_a in JN_for_duplication_paths[0]:
     split_jn_path_a = jn_path_a.split("/")
-    jn_path_a_init = "/".join(split_jn_path_a[0:2]) \
-                   + "/" + split_jn_path_a[2] + ".D0/" \
-                   + "/".join(split_jn_path_a[3:])
+    jn_path_a_init = "/".join(split_jn_path_a[0:2]) + ".D0/" \
+                   + "/".join(split_jn_path_a[2:])
     jn_a_init_node = I.getNodeFromPath(dist_tree, jn_path_a_init)
     gcp_a_init = I.getNodeFromType1(jn_a_init_node, "GridConnectivityProperty_t")
     I._rmNode(jn_a_init_node,gcp_a_init)
 
   #> Transformation des raccords périodiques "B" du dernier ensemble de zones dupliqué
   #  en raccords match non nécessaire car raccords déjà match par cionstruction
+  for jn_path_b in JN_for_duplication_paths[1]:
+    split_jn_path_b = jn_path_b.split("/")
+    jn_path_b_last = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(N-1) \
+                   + "/".join(split_jn_path_b[2:])
+    jn_b_last_node = I.getNodeFromPath(dist_tree, jn_path_b_last)
+    gcp_b_last = I.getNodeFromType1(jn_b_last_node, "GridConnectivityProperty_t")
+    I._rmNode(jn_b_last_node,gcp_b_last)
+
+  
   
   if conformize:
 	# TO DO : adapt for multi zones !!!
