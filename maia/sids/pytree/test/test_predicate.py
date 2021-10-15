@@ -21,13 +21,22 @@ def test_matches():
 
   nface = I.getNodeFromName(tree, 'NFace')
   assert P.match_value(nface, np.array([23,0]))
+  assert P.match_str_label(nface, 'Elements_t')
+  assert P.match_cgk_label(nface, CGL.Elements_t)
   assert P.match_label(nface, 'Elements_t')
+  assert P.match_label(nface, CGL.Elements_t)
   assert P.match_name_value(nface, 'NFace', np.array([23,0]))
   assert not P.match_name_value(nface, 'NFAce', np.array([23,0]))
   assert P.match_name_label(nface, 'NFace', 'Elements_t')
+  assert P.match_name_label(nface, 'NFace', CGL.Elements_t)
+  assert not P.match_name_label(nface, 'NFAce', 'Elements')
   assert not P.match_name_label(nface, 'NFace', 'Elements')
+  assert not P.match_name_label(nface, 'NFace', CGL.Zone_t)
   assert not P.match_value_label(nface, np.array([22,0]), 'Elements_t')
+  assert not P.match_value_label(nface, np.array([23,0]), 'Elements')
+  assert not P.match_value_label(nface, np.array([23,0]), CGL.Zone_t)
   assert P.match_name_value_label(nface, 'NFace', np.array([23,0]), 'Elements_t')
+  assert P.match_name_value_label(nface, 'NFace', np.array([23,0]), CGL.Elements_t)
 
 def test_belongs_to_family():
   yt = """
@@ -65,3 +74,6 @@ def test_auto_predicate():
 
   with pytest.raises(TypeError):
     P.auto_predicate(123)
+
+if __name__ == "__main__":
+  test_matches()

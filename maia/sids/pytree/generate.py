@@ -7,10 +7,19 @@ import maia.sids.cgns_keywords              as CGK
 import maia.utils.py_utils as PYU
 
 from .generate_utils import generate_functions
-from .predicate      import match_name, match_label, match_value
+from .predicate import match_name
+from .predicate import match_str_label
+from .predicate import match_label
+from .predicate import match_value
+from .predicate import match_name_label
+# from .predicate import match_name_value
+# from .predicate import match_value_label
+# from .predicate import match_name_value_label
 
-from .             import walkers_api as WAPI
-from .remove_nodes import rm_children_from_predicate, keep_children_from_predicate, rm_nodes_from_predicate
+from . import walkers_api as WAPI
+from .remove_nodes import rm_children_from_predicate
+from .remove_nodes import keep_children_from_predicate
+from .remove_nodes import rm_nodes_from_predicate
 
 def _update_module_attributes(new_functions):
   for name, func in new_functions.items():
@@ -37,6 +46,10 @@ for base_function in [WAPI.iter_nodes_from_predicates, WAPI.get_nodes_from_predi
     'Name' : (match_name,  ('name',)),
     'Value': (match_value, ('value',)),
     'Label': (match_label, ('label',)),
+    'NameAndLabel' : (match_name_label,  ('name', 'label',)),
+    # 'NameAndValue' : (match_name_value,  ('name', 'value',)),
+    # 'ValueAndLabel': (match_value_label, ('value', 'label',)),
+    # 'NameValueAndLabel': (match_name_value_label, ('name', 'value', 'label',)),
   }
   generated = generate_functions(base_function, easypredicates=easypredicates, maxdepth=0, child=True)
   _update_module_attributes(generated)
@@ -47,7 +60,7 @@ base_functions = [partial(WAPI.get_nodes_from_predicate, explore='deep'),
 easypredicates = dict()
 easylabels = ['CGNSBase_t', 'Zone_t', 'BC_t', 'Family_t']
 for label in easylabels:
-  easypredicates['Label'+ label] = (partial(match_label, label=label), tuple())
+  easypredicates['Label'+ label] = (partial(match_str_label, label=label), tuple())
 
 generated = {}
 for base_function in base_functions:

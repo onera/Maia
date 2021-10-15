@@ -13,8 +13,8 @@ allfuncs = {
   'Name' : (match_name,  ('name',)),
   'Value': (match_value, ('value',)),
   'Label': (match_label, ('label',)),
-  #'NameAndValue' : (match_name_value,  ('name', 'value',)),
   'NameAndLabel' : (match_name_label,  ('name', 'label',)),
+  #'NameAndValue' : (match_name_value,  ('name', 'value',)),
   #'ValueAndLabel': (match_value_label, ('value', 'label',)),
   #'NameValueAndLabel': (match_name_value_label, ('name', 'value', 'label',)),
 }
