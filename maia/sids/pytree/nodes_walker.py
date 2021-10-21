@@ -2,10 +2,10 @@ from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
 # from functools import partial
 import numpy as np
 
-
-from ._node_parsers import NodesIterator, ShallowNodesIterator, LevelNodesIterator, ShallowLevelNodesIterator 
-
-# import maia.utils.py_utils as PYU
+from ._node_parsers import NodesIterator
+from ._node_parsers import ShallowNodesIterator
+from ._node_parsers import LevelNodesIterator
+from ._node_parsers import ShallowLevelNodesIterator
 
 from .compare import is_valid_node
 
@@ -13,7 +13,7 @@ TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 # --------------------------------------------------------------------------
 class NodesWalker:
-  """ Deep First Walker of pyTree """
+  """ Walker of pyTree """
 
   FORWARD  = lambda children:children
   BACKWARD = lambda children:reversed(children)
@@ -22,7 +22,7 @@ class NodesWalker:
                      predicate: Callable[[TreeNode], bool],
                      search: str=NodesIterator.DEFAULT,
                      explore: str='shallow',
-                     depth: int=0,
+                     depth=None,
                      sort=FORWARD,
                      caching: bool=False):
     """
@@ -100,12 +100,15 @@ class NodesWalker:
     return self._depth
 
   @depth.setter
-  def depth(self, value: str):
-    if isinstance(value, int) and value >= 0:
+  def depth(self, value):
+    if value is None:
+      self._depth = value
+      self.clean()
+    elif isinstance(value, int) and value >= 0:
       self._depth = value
       self.clean()
     else:
-      raise ValueError("depth must a integer >= 0.")
+      raise ValueError("depth must None or an integer >= 0.")
 
   @property
   def sort(self):
@@ -140,15 +143,19 @@ class NodesWalker:
 
   def _get_parser(self):
     if self.explore == "shallow":
-      if self.depth > 0:
+      if self.depth is None:
+        parser = ShallowNodesIterator(sort=self.sort)
+      elif self.depth >= 0:
         parser = ShallowLevelNodesIterator(depth=self.depth, sort=self.sort)
       else:
-        parser = ShallowNodesIterator(sort=self.sort)
+        raise Exception(f"Wrong definition of depth '{self.depth}' with shallow explore.")
     else:
-      if self.depth > 0:
+      if self.depth is None:
+        parser = NodesIterator(sort=self.sort)
+      elif self.depth >= 0:
         parser = LevelNodesIterator(depth=self.depth, sort=self.sort)
       else:
-        parser = NodesIterator(sort=self.sort)
+        raise Exception(f"Wrong definition of depth '{self.depth}' with deep explore.")
     return parser
 
   def __call__(self):

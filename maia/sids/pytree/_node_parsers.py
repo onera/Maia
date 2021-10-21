@@ -1,11 +1,12 @@
 from abc import abstractmethod
 import queue
 
+import Converter.Internal as I
+
 __NAME__     = 0
 __VALUE__    = 1
 __CHILDREN__ = 2
 __LABEL__    = 3
-
 
 
 # --------------------------------------------------------------------------
@@ -31,6 +32,7 @@ class NodeParserBase:
   @abstractmethod
   def _dfs(self, parent, predicate, level=1):
     pass
+
 
 # --------------------------------------------------------------------------
 class NodeParser(NodeParserBase):
@@ -59,7 +61,20 @@ class NodeParser(NodeParserBase):
         return result
     return None
 
-class LevelNodeParser(NodeParserBase):
+
+# --------------------------------------------------------------------------
+class LevelNodeParserBase(NodeParserBase):
+
+  def dfs(self, root, predicate):
+    # print(f"LevelNodeParserBase.dfs: root = {I.getName(root)}")
+    if predicate(root):
+      return root
+    if self.depth > 0:
+      return self._dfs(root, predicate)
+
+
+# --------------------------------------------------------------------------
+class LevelNodeParser(LevelNodeParserBase):
 
   def bfs(self, root, predicate, level=1):
     # print(f"LevelNodeParser.bfs: depth = {self.depth}: root = {I.getName(root)}")
@@ -88,15 +103,13 @@ class LevelNodeParser(NodeParserBase):
     return None
 
 
-
-
 # --------------------------------------------------------------------------
 class NodesIteratorBase:
 
   MAXDEPTH=30
   DEFAULT='dfs'
 
-  def __init__(self, depth=MAXDEPTH, sort=lambda children:children):
+  def __init__(self, depth=None, sort=lambda children:children):
     self.depth = depth
     self.sort  = sort
 
@@ -105,9 +118,11 @@ class NodesIteratorBase:
     pass
 
   def dfs(self, root, predicate):
-    # print(f"NodesIterator.dfs: root = {I.getName(root)}")
+    # print(f"NodesIteratorBase.dfs: root = {I.getName(root)}")
     if predicate(root):
+      # print(f"NodesIteratorBase.dfs: yield root")
       yield root
+    # print(f"NodesIteratorBase.dfs:   continue under root...")
     yield from self._dfs(root, predicate)
 
   @abstractmethod
@@ -166,7 +181,23 @@ class ShallowNodesIterator(NodesIteratorBase):
         # Explore next level
         yield from self._dfs(child, predicate)
 
-class LevelNodesIterator(NodesIteratorBase):
+
+# --------------------------------------------------------------------------
+class LevelNodesIteratorBase(NodesIteratorBase):
+
+  def dfs(self, root, predicate):
+    # print(f"LevelNodesIteratorBase.dfs: root = {I.getName(root)}")
+    if predicate(root):
+      # print(f"LevelNodesIteratorBase.dfs: yield root")
+      yield root
+    # print(f"LevelNodesIteratorBase.dfs: self.depth = {self.depth}")
+    if self.depth > 0:
+      # print(f"LevelNodesIteratorBase.dfs:   continue under root...")
+      yield from self._dfs(root, predicate)
+
+
+# --------------------------------------------------------------------------
+class LevelNodesIterator(LevelNodesIteratorBase):
 
   """ Stop exploration until a limited level """
 
@@ -192,7 +223,7 @@ class LevelNodesIterator(NodesIteratorBase):
         # Explore next level
         yield from self._dfs(child, predicate, level=level+1)
 
-class ShallowLevelNodesIterator(NodesIteratorBase):
+class ShallowLevelNodesIterator(LevelNodesIteratorBase):
 
   """ Stop exploration if something found at a level until a limited level """
 

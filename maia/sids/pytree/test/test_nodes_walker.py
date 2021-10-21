@@ -6,9 +6,9 @@ import Converter.Internal as I
 
 from maia.sids import pytree as PT
 
-from maia.utils        import parse_yaml_cgns
+from maia.utils import parse_yaml_cgns
 
-def test_NodesWalker():
+def test_nodes_walker():
   yt = """
 Base CGNSBase_t:
   ZoneI Zone_t:
@@ -135,7 +135,7 @@ Base CGNSBase_t:
   assert([I.getName(n) for n in walker()] == [])
   assert([I.getName(n) for n in walker.cache] == [])
 
-def test_NodesWalker_sort():
+def test_nodes_walker_sort():
   yt = """
 Base CGNSBase_t:
   ZoneI Zone_t:
@@ -202,7 +202,7 @@ Base CGNSBase_t:
   walker.sort = PT.NodesWalker.BACKWARD
   assert([I.getValue(n) for n in walker()] == ['ROW1', 'BCB5', 'BCE4', 'BCD3', 'BCA2', 'BCC1'])
 
-def test_NodesWalker_apply():
+def test_nodes_walker_apply():
   yt = """
 Base CGNSBase_t:
   ZoneI Zone_t:
@@ -240,3 +240,42 @@ Base CGNSBase_t:
   walker.apply(lambda n : I.setName(n, f"_{I.getName(n).upper()}"))
   assert([I.getName(n) for n in walker()] == ['_BCA1', '_BCD2', '_BCB3', '_BCE4', '_BCC5'])
   assert([I.getName(n) for n in walker.cache] == ['_BCA1', '_BCD2', '_BCB3', '_BCE4', '_BCC5'])
+
+def test_nodes_walker_pattern():
+  yt = """
+FamilyBCDataSet FamilyBCDataSet_t:
+  RefStateFamilyBCDataSet ReferenceState_t:
+    Density DataArray_t [1.1]:
+    MomentumX DataArray_t [1.1]:
+    MomentumY DataArray_t [0.]:
+    MomentumZ DataArray_t [0.]:
+    EnergyStagnationDensity DataArray_t [2.51]:
+  """
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+
+  check_name = lambda name : lambda n: PT.get_node_from_name(n, name, depth=1) is not None
+  pattern  = lambda n : PT.get_label(n) == 'ReferenceState_t' and [check_name(i) for i in ["Density", "MomentumX"]]
+
+  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  results = list(PT.NodesWalker(root, pattern, depth=0)())
+  assert(not bool(results))
+
+  root = PT.get_node_from_label(tree, "ReferenceState_t")
+  results = PT.NodesWalker(root, pattern, depth=0)()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
+  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  results = PT.NodesWalker(root, pattern, depth=1)()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
+  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  results = PT.NodesWalker(root, pattern, depth=None)()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
+  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  results = PT.NodesWalker(root, pattern)()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
+
+if __name__ == "__main__":
+  test_nodes_walker_pattern()
