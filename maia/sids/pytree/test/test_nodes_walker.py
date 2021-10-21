@@ -5,6 +5,7 @@ import numpy as np
 import Converter.Internal as I
 
 from maia.sids import pytree as PT
+from maia.sids.pytree import predicate as PD
 
 from maia.utils import parse_yaml_cgns
 
@@ -130,7 +131,7 @@ Base CGNSBase_t:
   walker.depth = 2
   assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
   assert([I.getName(n) for n in walker.cache] == [])
-  assert(walker.depth == 2)
+  assert(walker.depth == [0,2])
   walker.depth = 1
   assert([I.getName(n) for n in walker()] == [])
   assert([I.getName(n) for n in walker.cache] == [])
@@ -276,6 +277,48 @@ FamilyBCDataSet FamilyBCDataSet_t:
   results = PT.NodesWalker(root, pattern)()
   assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
 
+def test_nodes_walker_depth():
+  yt = """
+Base CGNSBase_t:
+  FamilyBCOut Family_t:
+    FamilyBC FamilyBC_t:
+      FamilyBCDataSet FamilyBCDataSet_t:
+        RefStateFamilyBCDataSet ReferenceState_t:
+          Density DataArray_t [1.1]:
+          MomentumX DataArray_t [1.1]:
+          MomentumY DataArray_t [0.]:
+          MomentumZ DataArray_t [0.]:
+          EnergyStagnationDensity DataArray_t [2.51]:
+  """
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+
+  # Test depth max
+  root = PT.get_node_from_label(tree, "Family_t")
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "RefStateFamilyBCDataSet"), depth=[1,2])()
+  assert(not bool(list(results)))
+
+  root = PT.get_node_from_label(tree, "Family_t")
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "RefStateFamilyBCDataSet"), depth=[1,3])()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
+  # Test depth min
+  root = PT.get_node_from_label(tree, "Family_t")
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[2,4])()
+  assert([PT.get_name(n) for n in results] == ["FamilyBCDataSet"])
+
+  root = PT.get_node_from_label(tree, "Family_t")
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,4])()
+  assert(not bool(list(results)))
+
+  # Test change root
+  root = PT.get_node_from_label(tree, "Family_t")
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "Density"), depth=[3,4])()
+  assert([PT.get_name(n) for n in results] == ["Density"])
+
+  root = PT.get_node_from_label(tree, "CGNSBase_t")
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "Density"), depth=[3,4])()
+  assert(not bool(list(results)))
 
 if __name__ == "__main__":
-  test_nodes_walker_pattern()
+  # test_nodes_walker_pattern()
+  test_nodes_walker_depth()

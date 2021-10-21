@@ -13,9 +13,8 @@ __LABEL__    = 3
 class NodeParserBase:
 
   DEFAULT="dfs"
-  MAXDEPTH=30
 
-  def __init__(self, depth=MAXDEPTH, sort=lambda children:children):
+  def __init__(self, depth=[0,None], sort=lambda children:children):
     self.depth = depth
     self.sort  = sort
 
@@ -63,39 +62,39 @@ class NodeParser(NodeParserBase):
 
 
 # --------------------------------------------------------------------------
-class LevelNodeParserBase(NodeParserBase):
+class RangeLevelNodeParserBase(NodeParserBase):
 
   def dfs(self, root, predicate):
-    # print(f"LevelNodeParserBase.dfs: root = {I.getName(root)}")
-    if predicate(root):
+    # print(f"RangeLevelNodeParserBase.dfs: root = {I.getName(root)}")
+    if self.depth[0] == 0 and predicate(root):
       return root
-    if self.depth > 0:
+    if self.depth[1] > 0:
       return self._dfs(root, predicate)
 
 
 # --------------------------------------------------------------------------
-class LevelNodeParser(LevelNodeParserBase):
+class RangeLevelNodeParser(RangeLevelNodeParserBase):
 
   def bfs(self, root, predicate, level=1):
-    # print(f"LevelNodeParser.bfs: depth = {self.depth}: root = {I.getName(root)}")
+    # print(f"RangeLevelNodeParser.bfs: depth = {self.depth}: root = {I.getName(root)}")
     temp = queue.Queue()
     temp.put( (0, root,) )
     while not temp.empty():
       level, node = temp.get()
-      # print(f"LevelNodeParser.bfs: level:{level} < depth:{self.depth}: node = {I.getName(node)}")
-      if predicate(node):
+      # print(f"RangeLevelNodeParser.bfs: level:{level} < depth:{self.depth}: node = {I.getName(node)}")
+      if level >= self.depth[0] and predicate(node):
         return node
-      if level < self.depth:
+      if level < self.depth[1] or self.depth is None:
         for child in self.sort(node[__CHILDREN__]):
           temp.put( (level+1, child) )
     return None
 
   def _dfs(self, parent, predicate, level=1):
-    # print(f"LevelNodeParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
+    # print(f"RangeLevelNodeParser.dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
     for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
+      if level >= self.depth[0] and predicate(child):
         return child
-      if level < self.depth:
+      if level < self.depth[1] or self.depth is None:
         # Explore next level
         result = self._dfs(child, predicate, level=level+1)
         if result is not None:
@@ -106,10 +105,9 @@ class LevelNodeParser(LevelNodeParserBase):
 # --------------------------------------------------------------------------
 class NodesIteratorBase:
 
-  MAXDEPTH=30
   DEFAULT='dfs'
 
-  def __init__(self, depth=None, sort=lambda children:children):
+  def __init__(self, depth=[0,None], sort=lambda children:children):
     self.depth = depth
     self.sort  = sort
 
@@ -183,70 +181,67 @@ class ShallowNodesIterator(NodesIteratorBase):
 
 
 # --------------------------------------------------------------------------
-class LevelNodesIteratorBase(NodesIteratorBase):
+class RangeLevelNodesIteratorBase(NodesIteratorBase):
 
   def dfs(self, root, predicate):
-    # print(f"LevelNodesIteratorBase.dfs: root = {I.getName(root)}")
-    if predicate(root):
-      # print(f"LevelNodesIteratorBase.dfs: yield root")
+    # print(f"RangeLevelNodesIteratorBase.dfs: root = {I.getName(root)}")
+    if self.depth[0] == 0 and predicate(root):
       yield root
-    # print(f"LevelNodesIteratorBase.dfs: self.depth = {self.depth}")
-    if self.depth > 0:
-      # print(f"LevelNodesIteratorBase.dfs:   continue under root...")
+    if self.depth[1] > 0 or self.depth is None:
       yield from self._dfs(root, predicate)
 
 
 # --------------------------------------------------------------------------
-class LevelNodesIterator(LevelNodesIteratorBase):
+class RangeLevelNodesIterator(RangeLevelNodesIteratorBase):
 
   """ Stop exploration until a limited level """
 
   def bfs(self, root, predicate):
-    # print(f"LevelNodesIterator.bfs: depth = {self.depth}: root = {I.getName(root)}")
+    # print(f"RangeLevelNodesIterator.bfs: depth = {self.depth}: root = {I.getName(root)}")
     temp = queue.Queue()
     temp.put( (0, root,) )
     while not temp.empty():
       level, node = temp.get()
-      # print(f"LevelNodesIterator.bfs: level:{level} < depth:{self.depth}: node = {I.getName(node)}")
-      if predicate(node):
+      # print(f"RangeLevelNodesIterator.bfs: level:{level} < depth:{self.depth}: node = {I.getName(node)}")
+      if level >= self.depth[0] and predicate(node):
         yield node
-      if level < self.depth:
+      if level < self.depth[1] or self.depth is None:
         for child in self.sort(node[__CHILDREN__]):
           temp.put( (level+1, child) )
 
   def _dfs(self, parent, predicate, level=1):
-    # print(f"LevelNodesIterator._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
+    # print(f"RangeLevelNodesIterator._dfs: level = {level} < depth = {self.depth}: parent = {I.getName(parent)}")
     for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
+      if level >= self.depth[0] and predicate(child):
         yield child
-      if level < self.depth:
+      if level < self.depth[1] or self.depth is None:
         # Explore next level
         yield from self._dfs(child, predicate, level=level+1)
 
-class ShallowLevelNodesIterator(LevelNodesIteratorBase):
+class ShallowRangeLevelNodesIterator(RangeLevelNodesIteratorBase):
 
   """ Stop exploration if something found at a level until a limited level """
 
   def bfs(self, root, predicate):
-    # print(f"ShallowLevelNodesIterator.bfs: root = {I.getName(root)}")
+    # print(f"ShallowRangeLevelNodesIterator.bfs: root = {I.getName(root)}")
     temp = queue.Queue()
     temp.put( (0, root,) )
     while not temp.empty():
       level, node = temp.get()
-      # print(f"ShallowLevelNodesIterator.bfs: node = {I.getName(node)}")
-      if predicate(node):
+      # print(f"ShallowRangeLevelNodesIterator.bfs: node = {I.getName(node)}")
+      if level >= self.depth[0] and predicate(node):
         yield node
       else:
-        if level < self.depth:
+        if level < self.depth[1] or self.depth is None:
           for child in self.sort(node[__CHILDREN__]):
             temp.put( (level+1, child) )
 
   def _dfs(self, parent, predicate, level=1):
-    # print(f"ShallowLevelNodesIterator._dfs: parent = {I.getName(parent)}")
+    # print(f"ShallowRangeLevelNodesIterator._dfs: parent = {I.getName(parent)}")
     for child in self.sort(parent[__CHILDREN__]):
-      if predicate(child):
+      if level >= self.depth[0] and predicate(child):
         yield child
       else:
-        if level < self.depth:
+        if level < self.depth[1] or self.depth is None:
           # Explore next level
           yield from self._dfs(child, predicate, level=level+1)

@@ -5,6 +5,7 @@ import numpy as np
 import Converter.Internal as I
 
 import maia.sids.cgns_keywords as CGK
+from maia.sids.cgns_keywords import Label as CGL
 from .compare import is_valid_label
 
 __NAME__     = 0
