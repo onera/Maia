@@ -307,7 +307,15 @@ Base CGNSBase_t:
   assert([PT.get_name(n) for n in results] == ["FamilyBCDataSet"])
 
   root = PT.get_node_from_label(tree, "Family_t")
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[2,None])()
+  assert([PT.get_name(n) for n in results] == ["FamilyBCDataSet"])
+
+  root = PT.get_node_from_label(tree, "Family_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,4])()
+  assert(not bool(list(results)))
+
+  root = PT.get_node_from_label(tree, "Family_t")
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,None])()
   assert(not bool(list(results)))
 
   # Test change root
