@@ -4,10 +4,66 @@ import numpy as np
 
 import Converter.Internal as I
 
+from maia.sids.cgns_keywords import Label as CGL
 from maia.sids import pytree as PT
 from maia.sids.pytree import predicate as PD
 
 from maia.utils import parse_yaml_cgns
+
+
+@pytest.mark.parametrize("search", ['dfs', 'bfs'])
+@pytest.mark.parametrize("explore", ['shallow', 'deep'])
+@pytest.mark.parametrize("caching", [False, True])
+def test_nodes_walker_auto(search, explore, caching):
+  yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    NgonI Elements_t [22,0]:
+    ZBCAI ZoneBC_t:
+      bc1I BC_t:
+        Index_i IndexArray_t:
+        PL1I DataArray_t:
+      bc2 BC_t:
+        Index_ii IndexArray_t:
+        PL2 DataArray_t:
+  ZoneJ Zone_t:
+    NgonJ Elements_t [22,0]:
+    ZBCAJ ZoneBC_t:
+      bc1J BC_t:
+        Index_j IndexArray_t:
+        PL1J DataArray_t:
+    ZBCBJ ZoneBC_t:
+      bc3J BC_t:
+        Index_jjj IndexArray_t:
+        PL3J DataArray_t:
+"""
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  base = PT.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
+
+  # Search with name
+  walker = PT.NodesWalker(tree, 'Zone*', search=search, explore=explore, caching=caching)
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
+  assert(([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ']) if caching else (walker.cache == []))
+
+  # Search with label as str
+  walker = PT.NodesWalker(tree, 'Zone_t', search=search, explore=explore, caching=caching)
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
+  assert(([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ']) if caching else (walker.cache == []))
+
+  # Search with label as CGL
+  walker = PT.NodesWalker(tree, CGL.Zone_t, search=search, explore=explore, caching=caching)
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
+  assert(([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ']) if caching else (walker.cache == []))
+
+  # Search with label as value
+  walker = PT.NodesWalker(tree, np.array([22,0]), search=search, explore=explore, caching=caching)
+  assert([I.getName(n) for n in walker()] == ['NgonI', 'NgonJ'])
+  assert(([I.getName(n) for n in walker.cache] == ['NgonI', 'NgonJ']) if caching else (walker.cache == []))
+
+  # Search with callable
+  walker = PT.NodesWalker(tree, lambda n: PT.get_label(n) == "Zone_t", search=search, explore=explore, caching=caching)
+  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
+  assert(([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ']) if caching else (walker.cache == []))
 
 def test_nodes_walker():
   yt = """
@@ -33,7 +89,6 @@ Base CGNSBase_t:
         PL4 DataArray_t:
   ZoneJ Zone_t:
     NgonJ Elements_t [22,0]:
-
     ZBCAJ ZoneBC_t:
       bc1J BC_t:
         Index_j IndexArray_t:
@@ -242,42 +297,10 @@ Base CGNSBase_t:
   assert([I.getName(n) for n in walker()] == ['_BCA1', '_BCD2', '_BCB3', '_BCE4', '_BCC5'])
   assert([I.getName(n) for n in walker.cache] == ['_BCA1', '_BCD2', '_BCB3', '_BCE4', '_BCC5'])
 
-def test_nodes_walker_pattern():
-  yt = """
-FamilyBCDataSet FamilyBCDataSet_t:
-  RefStateFamilyBCDataSet ReferenceState_t:
-    Density DataArray_t [1.1]:
-    MomentumX DataArray_t [1.1]:
-    MomentumY DataArray_t [0.]:
-    MomentumZ DataArray_t [0.]:
-    EnergyStagnationDensity DataArray_t [2.51]:
-  """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-
-  check_name = lambda name : lambda n: PT.get_node_from_name(n, name, depth=1) is not None
-  pattern  = lambda n : PT.get_label(n) == 'ReferenceState_t' and [check_name(i) for i in ["Density", "MomentumX"]]
-
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
-  results = list(PT.NodesWalker(root, pattern, depth=0)())
-  assert(not bool(results))
-
-  root = PT.get_node_from_label(tree, "ReferenceState_t")
-  results = PT.NodesWalker(root, pattern, depth=0)()
-  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
-
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
-  results = PT.NodesWalker(root, pattern, depth=1)()
-  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
-
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
-  results = PT.NodesWalker(root, pattern, depth=None)()
-  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
-
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
-  results = PT.NodesWalker(root, pattern)()
-  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
-
-def test_nodes_walker_depth():
+@pytest.mark.parametrize("search",  ['dfs', 'bfs'])
+@pytest.mark.parametrize("explore", ['shallow', 'deep'])
+@pytest.mark.parametrize("caching", [False, True])
+def test_nodes_walker_depth(search, explore, caching):
   yt = """
 Base CGNSBase_t:
   FamilyBCOut Family_t:
@@ -294,39 +317,78 @@ Base CGNSBase_t:
 
   # Test depth max
   root = PT.get_node_from_label(tree, "Family_t")
-  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "RefStateFamilyBCDataSet"), depth=[1,2])()
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "RefStateFamilyBCDataSet"), depth=[1,2], search=search, explore=explore, caching=caching)()
   assert(not bool(list(results)))
 
   root = PT.get_node_from_label(tree, "Family_t")
-  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "RefStateFamilyBCDataSet"), depth=[1,3])()
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "RefStateFamilyBCDataSet"), depth=[1,3], search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
 
   # Test depth min
   root = PT.get_node_from_label(tree, "Family_t")
-  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[2,4])()
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[2,4], search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["FamilyBCDataSet"])
 
   root = PT.get_node_from_label(tree, "Family_t")
-  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[2,None])()
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[2,None], search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["FamilyBCDataSet"])
 
   root = PT.get_node_from_label(tree, "Family_t")
-  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,4])()
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,4], search=search, explore=explore, caching=caching)()
   assert(not bool(list(results)))
 
   root = PT.get_node_from_label(tree, "Family_t")
-  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,None])()
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,None], search=search, explore=explore, caching=caching)()
   assert(not bool(list(results)))
 
   # Test change root
   root = PT.get_node_from_label(tree, "Family_t")
-  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "Density"), depth=[3,4])()
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "Density"), depth=[3,4], search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["Density"])
 
   root = PT.get_node_from_label(tree, "CGNSBase_t")
-  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "Density"), depth=[3,4])()
+  results = PT.NodesWalker(root, lambda n: PD.match_name(n, "Density"), depth=[3,4], search=search, explore=explore, caching=caching)()
   assert(not bool(list(results)))
 
+@pytest.mark.parametrize("search",  ['dfs', 'bfs'])
+@pytest.mark.parametrize("explore", ['shallow', 'deep'])
+@pytest.mark.parametrize("caching", [False, True])
+def test_nodes_walker_pattern(search, explore, caching):
+  yt = """
+FamilyBCDataSet FamilyBCDataSet_t:
+  RefStateFamilyBCDataSet ReferenceState_t:
+    Density DataArray_t [1.1]:
+    MomentumX DataArray_t [1.1]:
+    MomentumY DataArray_t [0.]:
+    MomentumZ DataArray_t [0.]:
+    EnergyStagnationDensity DataArray_t [2.51]:
+  """
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+
+  check_name = lambda name : lambda n: PT.get_node_from_name(n, name, depth=1) is not None
+  pattern  = lambda n : PT.get_label(n) == 'ReferenceState_t' and [check_name(i) for i in ["Density", "MomentumX"]]
+
+  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  results = list(PT.NodesWalker(root, pattern, depth=0, search=search, explore=explore, caching=caching)())
+  assert(not bool(results))
+
+  root = PT.get_node_from_label(tree, "ReferenceState_t")
+  results = PT.NodesWalker(root, pattern, depth=0, search=search, explore=explore, caching=caching)()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
+  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  results = PT.NodesWalker(root, pattern, depth=1, search=search, explore=explore, caching=caching)()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
+  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  results = PT.NodesWalker(root, pattern, depth=None, search=search, explore=explore, caching=caching)()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
+  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  results = PT.NodesWalker(root, pattern, search=search, explore=explore, caching=caching)()
+  assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
+
 if __name__ == "__main__":
+  test_nodes_walker()
   # test_nodes_walker_pattern()
-  test_nodes_walker_depth()
+  # test_nodes_walker_depth()

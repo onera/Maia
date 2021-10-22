@@ -122,7 +122,7 @@ class NodesIteratorBase:
     pass
 
   def dfs(self, root, predicate):
-    # print(f"NodesIteratorBase.dfs: root = {I.getName(root)}")
+    # print(f"NodesIteratorBase.dfs: root = {I.getName(root)}, depth = {self.depth}")
     if predicate(root):
       # print(f"NodesIteratorBase.dfs: yield root")
       yield root
