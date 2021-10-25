@@ -1,4 +1,4 @@
-#include "std_e/unit_test/doctest.hpp"
+#include "std_e/unit_test/doctest_pybind.hpp"
 
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
 
@@ -7,7 +7,7 @@
 using namespace maia;
 using namespace cgns;
 
-TEST_CASE("parse_yaml_cgns") {
+PYBIND_TEST_CASE("parse_yaml_cgns") {
   std::string yaml_tree =
     "Base CGNSBase_t I4 [3,3]:\n"
     "  Zone0 Zone_t I4 [[ 8,1,0]]:\n"

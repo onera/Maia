@@ -1,4 +1,4 @@
-#include "std_e/unit_test/doctest.hpp"
+#include "std_e/unit_test/doctest_pybind.hpp"
 
 #include "maia/transform/flip_faces.hpp"
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
@@ -10,7 +10,7 @@
 
 using namespace cgns;
 
-TEST_CASE("flip_faces") {
+PYBIND_TEST_CASE("flip_faces") {
   std::string yaml_tree = std_e::file_to_string(maia::mesh_dir+"hex_prism.yaml");
   tree b = maia::to_node(yaml_tree);
 

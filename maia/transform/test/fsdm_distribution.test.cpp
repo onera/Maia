@@ -1,4 +1,4 @@
-#include "doctest/extensions/doctest_mpi.h"
+#include "std_e/unit_test/doctest_mpi.hpp"
 
 #include "maia/transform/fsdm_distribution.hpp"
 

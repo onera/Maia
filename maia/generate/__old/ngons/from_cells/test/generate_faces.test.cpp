@@ -49,7 +49,7 @@ TEST_CASE("generate_faces: prism") {
   CHECK( std::get<4>(faces) == quad_4<int>{ 9, 3, 6, 4} );
 }
 
-TEST_CASE("generate_faces: homogenous_hex_connectivities") {
+TEST_CASE("generate_faces: hex") {
   hex_8<int> hex = {3,9,12,1,4,8,15,17};
 
   auto faces = generate_faces(hex);

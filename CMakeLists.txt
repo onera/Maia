@@ -81,7 +81,7 @@ project_find_package(pybind11 CONFIG)
 if (NOT pybind11_FOUND)
   if (${PROJECT_NAME}_ENABLE_FETCH_PYBIND)
     message("Pybind11 was not found by find_package(). Fetching sources on-the-fly")
-    set(PYBIND11_INSTALL ON CACHE BOOL "cpp_cgns requires PyBind" FORCE) # required for pybind to export itself
+    set(PYBIND11_INSTALL ON CACHE BOOL "${PROJECT_NAME} requires PyBind to export itself" FORCE)
     include(FetchContent)
     FetchContent_Declare(
       pybind11
