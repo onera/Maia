@@ -98,7 +98,7 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
   #Run and return parts
   multi_part.multipart_run_ppart()
 
-  post_options = {k:part_options[k] for k in ['part_interface_loc']}
+  post_options = {k:part_options[k] for k in ['part_interface_loc', 'dump_pdm_output']}
   u_parts = collect_mpart_partitions(multi_part, u_zones, n_part_per_zone, comm, post_options)
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array

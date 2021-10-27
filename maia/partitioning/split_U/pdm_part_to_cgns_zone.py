@@ -129,7 +129,8 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
                           zsize = [[dims['n_vtx'],dims['n_cell'],0]],
                           ztype = 'Unstructured')
 
-    dump_pdm_output(part_zone, dims, data)
+    if options['dump_pdm_output']:
+      dump_pdm_output(part_zone, dims, data)
     pdm_vtx_to_cgns_grid_coordinates(part_zone, dims, data)
     pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data)
 

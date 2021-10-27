@@ -101,7 +101,7 @@ for zone in I.getZones(dist_tree):
   dloading_procs[zone[0]] = list(range(comm.Get_size()))
 # print(dloading_procs)
 
-part_tree = PPA.partitioning(dist_tree, comm, zone_to_parts=dzone_to_weighted_parts)
+part_tree = PPA.partitioning(dist_tree, comm, zone_to_parts=dzone_to_weighted_parts, dump_pdm_output=True)
 
 for zone in I.getZones(part_tree):
   fs_n = I.newFlowSolution(name="FlowSolution#EndOfRun", gridLocation='Vertex', parent=zone)

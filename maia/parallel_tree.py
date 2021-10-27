@@ -30,7 +30,7 @@ def load(file_name,comm):
   dist_tree = load_dist_tree(file_name,comm)
 
   dzone_to_weighted_parts =  DBA.npart_per_zone(dist_tree, comm, n_part=1)
-  split_options = {'graph_part_tool' : 'ptscotch', 'zone_to_parts':dzone_to_weighted_parts}
+  split_options = {'graph_part_tool' : 'ptscotch', 'zone_to_parts':dzone_to_weighted_parts, 'dump_pdm_output':True}
 
   part_tree = PPA.partitioning(dist_tree, comm, **split_options)
 
