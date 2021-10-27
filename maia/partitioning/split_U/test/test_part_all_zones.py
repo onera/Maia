@@ -30,7 +30,7 @@ def test_set_mpart_dmeshes(sub_comm):
   dt = """
 ZoneA Zone_t:
   NGonElements Elements_t [22,0]:
-    ElementConnectivity DataArray_t:
+    ElementConnectivity DataArray_t []:
     ElementStartOffset DataArray_t [0]:
     ParentElements DataArray_t []:
     :CGNS#Distribution UserDefinedData_t:
@@ -42,7 +42,7 @@ ZoneA Zone_t:
 ZoneB Zone_t:
   Hexa Elements_t [17,0]:
     ElementRange ElementRange_t [1,1]:
-    ElementConnectivity DataArray_t:
+    ElementConnectivity DataArray_t []:
     :CGNS#Distribution UserDefinedData_t:
       Element DataArray_t [0,0,0]:
   :CGNS#Distribution UserDefinedData_t:

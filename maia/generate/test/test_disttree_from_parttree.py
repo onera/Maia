@@ -10,6 +10,7 @@ from maia.sids     import Internal_ext as IE
 from maia.utils    import parse_yaml_cgns
 from maia.generate import disttree_from_parttree as DFP
 from maia.generate.dcube_generator import dcube_generate
+from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 def test_match_jn_from_ordinals():
   dt = """
@@ -57,21 +58,23 @@ def test_disttree_from_parttree(sub_comm):
       I._rmNodesByName(part_zone, 'ZoneBC')
       I._rmNodesByName(part_zone, ':CGNS#Distribution')
 
-      vtx_gnum = [1,2,3,6,7,8,11,12,13,16,17,18,21,22,23,26,27,28,31,32,33,36,37,38,41,42,43]
-      cell_gnum = [1,2,5,6,9,10,13,14]
-      ngon_gnum = [1,2,3,6,7,8,11,12,13,16,17,18,21,22,25,26,29,30,33,34,37,38,41,42,45,46,49,50,53,54,57,58,61,62,65,66]
+      vtx_gnum = np.array([1,2,3,6,7,8,11,12,13,16,17,18,21,22,23,26,27,28,31,32,33,36,37,38,41,42,43], pdm_dtype)
+      cell_gnum = np.array([1,2,5,6,9,10,13,14], pdm_dtype)
+      ngon_gnum = np.array([1,2,3,6,7,8,11,12,13,16,17,18,21,22,25,26,29,30,33,34,37,38,41,42,45,46,49,
+                            50,53,54,57,58,61,62,65,66], pdm_dtype)
       zbc = I.newZoneBC(parent=part_zone)
       bc = I.newBC(btype='BCWall', pointList=[[1,4,2,3]], parent=zbc)
       I.newGridLocation('FaceCenter', bc)
-      IE.newGlobalNumbering({'Index' : [1,2,3,4]}, parent=bc)
+      IE.newGlobalNumbering({'Index' : np.array([1,2,3,4], pdm_dtype)}, parent=bc)
     else:
       # part_zone = G.cartNGon((1,0,0), (.5,.5,.5), (3,3,3))
       part_zone = I.getZones(dcube_generate(3, 1, [1., 0., 0.], MPI.COMM_SELF))[0]
       I._rmNodesByName(part_zone, 'ZoneBC')
       I._rmNodesByName(part_zone, ':CGNS#Distribution')
-      vtx_gnum = [3,4,5, 8,9,10,13,14,15,18,19,20,23,24,25,28,29,30,33,34,35,38,39,40,43,44,45]
-      cell_gnum = [3,4,7,8,11,12,15,16]
-      ngon_gnum = [3,4,5,8,9,10,13,14,15,18,19,20,23,24,27,28,31,32,35,36,39,40,43,44,47,48,51,52,55,56,59,60,63,64,67,68]
+      vtx_gnum =  np.array([3,4,5, 8,9,10,13,14,15,18,19,20,23,24,25,28,29,30,33,34,35,38,39,40,43,44,45], pdm_dtype)
+      cell_gnum = np.array([3,4,7,8,11,12,15,16], pdm_dtype)
+      ngon_gnum = np.array([3,4,5,8,9,10,13,14,15,18,19,20,23,24,27,28,31,32,35,36,39,40,43,44,
+                            47,48,51,52,55,56,59,60,63,64,67,68], pdm_dtype)
 
     ngon = I.getNodeFromPath(part_zone, 'NGonElements')
     IE.newGlobalNumbering({'Element' : ngon_gnum}, parent=ngon)

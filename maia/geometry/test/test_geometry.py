@@ -13,6 +13,11 @@ def test_compute_cell_center(sub_comm):
   #Test U
   tree = dcube_generate(3, 1., [0,0,0], sub_comm)
   zoneU = I.getZones(tree)[0]
+  #On partitions, element are supposed to be I4
+  for elt_node in I.getNodesFromType1(zoneU, 'Elements_t'):
+    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
+      node = I.getNodeFromName1(elt_node, name)
+      node[1] = node[1].astype(np.int32)
 
   cell_center = geometry.compute_cell_center(zoneU)
   expected_cell_center = np.array([0.25, 0.25, 0.25, 

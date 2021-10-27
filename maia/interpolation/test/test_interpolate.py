@@ -159,6 +159,11 @@ ZoneU Zone_t [[16,3,0]]:
 def test_get_point_cloud(sub_comm):
   tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
   zone = I.getZones(tree)[0]
+  #On partitions, element are supposed to be I4
+  for elt_node in I.getNodesFromType1(zone, 'Elements_t'):
+    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
+      node = I.getNodeFromName1(elt_node, name)
+      node[1] = node[1].astype(np.int32)
   I._rmNodesByType(zone, 'ZoneBC_t')
   I._rmNodesByName(zone, ':CGNS#Distribution')
   vtx_gnum = np.arange(3**3) + 1
@@ -190,6 +195,10 @@ def test_get_point_cloud(sub_comm):
 def test_register_src_part(sub_comm):
   tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
   zone = I.getZones(tree)[0]
+  for elt_node in I.getNodesFromType1(zone, 'Elements_t'):
+    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
+      node = I.getNodeFromName1(elt_node, name)
+      node[1] = node[1].astype(np.int32)
   I._rmNodesByType(zone, 'ZoneBC_t')
   I._rmNodesByName(zone, ':CGNS#Distribution')
   vtx_gnum = np.arange(3**3) + 1

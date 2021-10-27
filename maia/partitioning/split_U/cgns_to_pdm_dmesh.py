@@ -21,12 +21,12 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   for elt in I.getNodesFromType1(dist_zone, 'Elements_t'):
     if SIDS.ElementType(elt) == 22:
       found    = True
-      dface_vtx = I.getNodeFromName1(elt, 'ElementConnectivity')[1]
-      ngon_pe   = I.getNodeFromName1(elt, 'ParentElements'     )[1]
-      ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1]
+      dface_vtx = I.getNodeFromName1(elt, 'ElementConnectivity')[1].astype(pdm_gnum_dtype)
+      ngon_pe   = I.getNodeFromName1(elt, 'ParentElements'     )[1].astype(pdm_gnum_dtype)
+      ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype)
 
-      distrib_face     = I.getVal(IE.getDistribution(elt, 'Element'))
-      distrib_face_vtx = I.getVal(IE.getDistribution(elt, 'ElementConnectivity'))
+      distrib_face     = I.getVal(IE.getDistribution(elt, 'Element')).astype(pdm_gnum_dtype)
+      distrib_face_vtx = I.getVal(IE.getDistribution(elt, 'ElementConnectivity')).astype(pdm_gnum_dtype)
   if not found :
     raise RuntimeError
 

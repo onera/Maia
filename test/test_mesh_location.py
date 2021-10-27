@@ -33,6 +33,7 @@ import maia.distribution.distribution_tree                          as MDI
 from   Converter import cgnskeywords as CGK
 
 from Pypdm import Pypdm
+from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 # ------------------------------------------------------------------------
 # > Pick a file
@@ -52,7 +53,7 @@ def get_coords_and_gnum(t):
     coords = coords.transpose()
     coords = coords.reshape( 3*CX.shape[0], order='C')
     print(coords)
-    g_nums = NPY.linspace(1, CX.shape[0], CX.shape[0], dtype='int32')
+    g_nums = NPY.linspace(1, CX.shape[0], CX.shape[0], dtype=pdm_dtype)
     print(g_nums)
   return coords, g_nums
 

@@ -41,14 +41,14 @@ def test_create_part_pl_gnum(sub_comm):
   distri_ud0 = IE.newGlobalNumbering(parent=part_zones[0])
   if sub_comm.Get_rank() == 0:
     I.newZoneSubRegion("ZSR", pointList=[[1,8,5,2]], gridLocation='Vertex', parent=part_zones[0])
-    I.newDataArray('Vertex', [22,18,5,13,9,11,6,4], parent=distri_ud0)
+    I.newDataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
   elif sub_comm.Get_rank() == 1:
-    I.newDataArray('Vertex', [5,16,9,17,22], parent=distri_ud0)
+    I.newDataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
   elif sub_comm.Get_rank() == 2:
-    I.newDataArray('Vertex', [13,8,9,6,2], parent=distri_ud0)
+    I.newDataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
     part_zones.append(I.newZone('Zone.P2.N1'))
     distri_ud1 = IE.newGlobalNumbering(parent=part_zones[1])
-    I.newDataArray('Vertex', [4,9,13,1,7,6], parent=distri_ud1)
+    I.newDataArray('Vertex', np.array([4,9,13,1,7,6], pdm_dtype), parent=distri_ud1)
     I.newZoneSubRegion("ZSR", pointList=[[1,3]], gridLocation='Vertex', parent=part_zones[0])
     I.newZoneSubRegion("ZSR", pointList=[[2,4,6]], gridLocation='Vertex', parent=part_zones[1])
   elif sub_comm.Get_rank() == 3:
@@ -74,20 +74,20 @@ def test_part_pl_to_dist_pl(sub_comm, allow_mult):
   part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
   distri_ud0 = IE.newGlobalNumbering(parent=part_zones[0])
   if sub_comm.Get_rank() == 0:
-    I.newDataArray('Vertex', [22,18,5,13,9,11,6,4], parent=distri_ud0)
+    I.newDataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
     zsr = I.newZoneSubRegion("ZSR", pointList=[[1,8,5,2]], gridLocation='Vertex', parent=part_zones[0])
-    IE.newGlobalNumbering({'Index' : [7,2,4,6]}, zsr)
+    IE.newGlobalNumbering({'Index' : np.array([7,2,4,6], pdm_dtype)}, zsr)
   elif sub_comm.Get_rank() == 1:
-    I.newDataArray('Vertex', [5,16,9,17,22], parent=distri_ud0)
+    I.newDataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
   elif sub_comm.Get_rank() == 2:
-    I.newDataArray('Vertex', [13,8,9,6,2], parent=distri_ud0)
+    I.newDataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
     part_zones.append(I.newZone('Zone.P2.N1'))
     distri_ud1 = IE.newGlobalNumbering(parent=part_zones[1])
-    I.newDataArray('Vertex', [4,9,13,1,7,6], parent=distri_ud1)
+    I.newDataArray('Vertex', np.array([4,9,13,1,7,6], pdm_dtype), parent=distri_ud1)
     zsr = I.newZoneSubRegion("ZSR", pointList=[[1,3]], gridLocation='Vertex', parent=part_zones[0])
-    IE.newGlobalNumbering({'Index' : [5,4]}, zsr)
+    IE.newGlobalNumbering({'Index' : np.array([5,4], pdm_dtype)}, zsr)
     zsr = I.newZoneSubRegion("ZSR", pointList=[[2,4,6]], gridLocation='Vertex', parent=part_zones[1])
-    IE.newGlobalNumbering({'Index' : [4,1,3]}, zsr)
+    IE.newGlobalNumbering({'Index' : np.array([4,1,3], pdm_dtype)}, zsr)
   elif sub_comm.Get_rank() == 3:
     part_zones = []
 
