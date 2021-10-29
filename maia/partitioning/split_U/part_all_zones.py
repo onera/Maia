@@ -103,6 +103,8 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
   del(keep_alive)
+  for zone in u_zones:
+    I._rmNodesByName1(zone, ':CGNS#MultiPart')
 
   return u_parts
 

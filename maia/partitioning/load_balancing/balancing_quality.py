@@ -1,7 +1,7 @@
 import numpy as np
 from math import ceil
 
-def compute_balance_and_splits(repart_per_zone):
+def compute_balance_and_splits(repart_per_zone, display=False):
   """
   Evaluate the quality of the input repartition. Input repartition
   must be a 2d array of size n_zone * n_rank : cell [i][j] stores
@@ -27,14 +27,15 @@ def compute_balance_and_splits(repart_per_zone):
   rms   = np.linalg.norm(imbalance) / n_rank
   rmscp = np.linalg.norm(imbalance/ideal_load) / n_rank
 
-  print(' '*2 + "-------------------- REPARTITION STATISTICS ---------------------- " )
-  print(' '*4 + "---> Mean   size : {0} (rounded from {1:.1f})".format(ideal_load, exact_ideal_load))
-  print(' '*4 + "---> rMini  size : {0}".format(min_load))
-  print(' '*4 + "---> rMaxi  size : {0}".format(max_load))
-  print(' '*4 + "---> rms         : {0}".format(rms))
-  print(' '*4 + "---> rmscp       : {0}".format(rmscp))
-  print(' '*4 + "---> worse delta : {0} ({1:.2f}%)".format(worse_imbalance, 100.*worse_imbalance/ideal_load))
-  print(' '*4 + "---> n_cuts      : {0}".format(n_cuts))
-  print(' '*2 + "------------------------------------------------------------------ " )
+  if display:
+    print(' '*2 + "-------------------- REPARTITION STATISTICS ---------------------- " )
+    print(' '*4 + "---> Mean   size : {0} (rounded from {1:.1f})".format(ideal_load, exact_ideal_load))
+    print(' '*4 + "---> rMini  size : {0}".format(min_load))
+    print(' '*4 + "---> rMaxi  size : {0}".format(max_load))
+    print(' '*4 + "---> rms         : {0}".format(rms))
+    print(' '*4 + "---> rmscp       : {0}".format(rmscp))
+    print(' '*4 + "---> worse delta : {0} ({1:.2f}%)".format(worse_imbalance, 100.*worse_imbalance/ideal_load))
+    print(' '*4 + "---> n_cuts      : {0}".format(n_cuts))
+    print(' '*2 + "------------------------------------------------------------------ " )
 
   return ideal_load, min_load, max_load, rms, rmscp, n_cuts, min_part_size, max_part_size

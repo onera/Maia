@@ -49,7 +49,6 @@ class Zone:
         n_face = [ngon_pe.shape[0]]
       else:
         raise NotImplementedError(f"Unstructured Zone {I.getName(zone_node)} with {ElementCGNSName(element_node)} not yet implemented.")
-      print(f"n_face [U] = {n_face}")
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {I.getName(zone_node)}")
     return list_or_only_elt(n_face)

@@ -71,7 +71,7 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   repart_per_zone_array = np.array([repart for repart in repart_per_zone.values()])
-  balancing_quality.compute_balance_and_splits(repart_per_zone_array)
+  balancing_quality.compute_balance_and_splits(repart_per_zone_array, display=i_rank==0)
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
