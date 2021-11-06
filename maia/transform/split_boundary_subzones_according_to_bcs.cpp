@@ -8,6 +8,7 @@
 #include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/utils/concatenate.hpp"
 #include "maia/utils/parallel/utils.hpp"
+#include "maia/sids/element_sections.hpp"
 
 #include "maia/utils/parallel/exchange/block_to_part.hpp"
 #include "std_e/log.hpp" // TODO
@@ -62,27 +63,6 @@ split_boundary_subzone_according_to_bcs(const tree& zsr, const Tree_range& bcs, 
 }
 
 
-
-auto
-is_elt_section_2D(const tree& n) -> bool {
-  return label(n)=="Elements_t" && element_dimension(element_type(n))==2;
-}
-
-auto
-boundary_elements_interval(const tree& z) {
-  auto bnd_elts = get_children_by_predicate(z,is_elt_section_2D);
-  std::sort(begin(bnd_elts),end(bnd_elts),cgns::compare_by_range);
-
-  if (!cgns::elts_ranges_are_contiguous(bnd_elts)) {
-    throw cgns_exception("2D Elements_t ranges are expected to be contiguous");
-  }
-
-  return
-    cgns::interval<I8>(
-      element_range(bnd_elts[0]).first(),
-      element_range(bnd_elts.back()).last()
-    );
-}
 
 auto
 is_complete_bnd_zone_sub_region(const tree& t, const cgns::interval<I8>& elt_2d_range) -> bool {

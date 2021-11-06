@@ -10,7 +10,8 @@ class connectivity_ref {
   // type traits
     using index_type = std::remove_const_t<I>;
     using kind = Connectivity_kind;
-    static constexpr int nb_nodes = kind::nb_nodes;
+    static constexpr int N = kind::nb_nodes;
+    static constexpr int nb_nodes = N;
     static constexpr int elt_t = kind::elt_t;
 
   // ctors
@@ -25,6 +26,11 @@ class connectivity_ref {
 
     connectivity_ref& operator=(const connectivity_ref& other) {
       std::copy(other.ptr, other.ptr+other.size(), ptr);
+      return *this;
+    }
+
+    connectivity_ref& operator=(const I(&other)[N]) {
+      std::copy(other, other+N, ptr);
       return *this;
     }
 
@@ -44,10 +50,12 @@ class connectivity_ref {
       return nb_nodes;
     }
 
+    constexpr auto data ()       ->       I* { return ptr; }
+    constexpr auto data () const -> const I* { return ptr; }
     constexpr auto begin()       ->       I* { return ptr; }
     constexpr auto begin() const -> const I* { return ptr; }
-    constexpr auto end()         ->       I* { return ptr + nb_nodes; }
-    constexpr auto end()   const -> const I* { return ptr + nb_nodes; }
+    constexpr auto end  ()       ->       I* { return ptr + nb_nodes; }
+    constexpr auto end  () const -> const I* { return ptr + nb_nodes; }
 
     template<class I0> constexpr auto operator[](I0 i)       ->       I& { return ptr[i]; }
     template<class I0> constexpr auto operator[](I0 i) const -> const I& { return ptr[i]; }
@@ -62,6 +70,17 @@ operator==(const connectivity_ref<I0,CK>& x, const connectivity_ref<I1,CK>& y) {
 template<class I0, class I1, class CK> inline auto
 operator!=(const connectivity_ref<I0,CK>& x, const connectivity_ref<I1,CK>& y) {
   return !(x == y);
+}
+template<class I0, class I1, class CK> inline auto
+operator<(const connectivity_ref<I0,CK>& x, const connectivity_ref<I1,CK>& y) {
+  return std::lexicographical_compare( x.begin() , x.end() , y.begin() , y.end() );
+}
+template<class I0, class I1, class CK> inline auto
+swap(connectivity_ref<I0,CK> x, connectivity_ref<I1,CK> y) -> void {
+  for (int i=0; i<x.size(); ++i) {
+    using std::swap;
+    swap(x[i],y[i]);
+  }
 }
 
 

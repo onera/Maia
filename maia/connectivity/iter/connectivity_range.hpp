@@ -28,6 +28,21 @@ class connectivity_iterator {
       ptr += nb_nodes;
       return *this;
     }
+    auto operator++(int) -> connectivity_iterator& {
+      ptr += nb_nodes;
+      return *this;
+    }
+
+    auto operator+=(I i) -> connectivity_iterator& {
+      ptr += nb_nodes*i;
+      return *this;
+    }
+    friend
+    auto operator+(connectivity_iterator it, I i) -> connectivity_iterator {
+      connectivity_iterator res = it;
+      res += i;
+      return res;
+    }
 
     auto operator*() const {
       return reference(ptr);
@@ -63,7 +78,7 @@ template<class C, class Connectivity_kind>
 // requires I=C::value_type is an integer type
 class connectivity_range {
   public:
-    using I = std_e::add_other_type_constness<typename C::value_type,C>; // if the range is const, then make the content const
+    using I = std_e::add_other_type_constness<std_e::element_type<C>,C>; // if the range is const, then make the content const
 
     using index_type = std::remove_const_t<I>;
     using kind = Connectivity_kind;
@@ -91,8 +106,9 @@ class connectivity_range {
     template<class Integer> auto operator[](Integer i)       ->       reference_type { return {data() + i*nb_nodes}; }
     template<class Integer> auto operator[](Integer i) const -> const_reference_type { return {data() + i*nb_nodes}; }
 
-    auto push_back(reference_type c) {
-      // requires C is a Container
+    template<class Ref_type>
+    auto push_back(Ref_type c) { // requires C is a Container
+      static_assert(std::is_same_v<Ref_type,reference_type> || std::is_same_v<Ref_type,const_reference_type>);
       auto old_size = size();
       cs_ptr->resize( old_size + c.size() );
 
@@ -102,6 +118,11 @@ class connectivity_range {
 
     auto data()       ->       I* { return cs_ptr->data(); }
     auto data() const -> const I* { return cs_ptr->data(); }
+
+    auto
+    range() -> C& {
+      return *cs_ptr;
+    }
   private:
     C* cs_ptr;
 };

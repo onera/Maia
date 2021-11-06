@@ -22,7 +22,7 @@ Base CGNSBase_t I4 [3,3]:
                1, 2,  7, 6,
                2, 3,  8, 7,
                4, 9, 10, 5,
-               1, 4,  5, 2  ]
+               1, 2,  5, 4  ]
     Tris Elements_t I4 [5,0]:
       ElementRange IndexRange_t I4 [7,12]:
       ElementConnectivity DataArray_t:
