@@ -28,9 +28,11 @@ class connectivity_iterator {
       ptr += nb_nodes;
       return *this;
     }
-    auto operator++(int) -> connectivity_iterator& {
-      ptr += nb_nodes;
-      return *this;
+    auto operator++(int) -> connectivity_iterator {
+      connectivity_iterator tmp(*this);
+      ++(*this);
+      return tmp;
+
     }
 
     auto operator+=(I i) -> connectivity_iterator& {
@@ -92,16 +94,21 @@ class connectivity_range {
     connectivity_range() = default;
     connectivity_range(C& cs)
       : cs_ptr(&cs)
-    {}
+    {
+      STD_E_ASSERT(cs.size()%nb_nodes==0);
+    }
 
-    auto size() const -> std::ptrdiff_t {
+    auto n_vtx() const -> ptrdiff_t{
       return cs_ptr->size();
+    }
+    auto size() const -> std::ptrdiff_t {
+      return n_vtx()/nb_nodes;
     }
 
     auto begin()       ->       iterator_type { return {data()}; }
     auto begin() const -> const_iterator_type { return {data()}; }
-    auto end()         ->       iterator_type { return {data() + size()}; }
-    auto end()   const -> const_iterator_type { return {data() + size()}; }
+    auto end()         ->       iterator_type { return {data() + n_vtx()}; }
+    auto end()   const -> const_iterator_type { return {data() + n_vtx()}; }
 
     template<class Integer> auto operator[](Integer i)       ->       reference_type { return {data() + i*nb_nodes}; }
     template<class Integer> auto operator[](Integer i) const -> const_reference_type { return {data() + i*nb_nodes}; }
@@ -109,10 +116,10 @@ class connectivity_range {
     template<class Ref_type>
     auto push_back(Ref_type c) { // requires C is a Container
       static_assert(std::is_same_v<Ref_type,reference_type> || std::is_same_v<Ref_type,const_reference_type>);
-      auto old_size = size();
-      cs_ptr->resize( old_size + c.size() );
+      auto old_n_vtx = n_vtx();
+      cs_ptr->resize( old_n_vtx + c.size() );
 
-      auto c_position_in_cs = cs_ptr->begin() + old_size;
+      auto c_position_in_cs = cs_ptr->begin() + old_n_vtx;
       std::copy(c.begin(),c.end(),c_position_in_cs);
     }
 

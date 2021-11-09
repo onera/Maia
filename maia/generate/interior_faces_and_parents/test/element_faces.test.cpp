@@ -1,11 +1,31 @@
-//TODO
-//#include "std_e/unit_test/doctest.hpp"
-//
-//#include "maia/generate/interior_faces_and_parents/element_faces.hpp"
-//
-//using namespace cgns;
-//
-//TEST_CASE("generate_faces: face") {
+#include "std_e/unit_test/doctest.hpp"
+
+#include "maia/generate/interior_faces_and_parents/element_faces.hpp"
+#include "maia/connectivity/iter/connectivity_range.hpp"
+
+using namespace cgns;
+
+TEST_CASE("generate_faces: tri") {
+  std::vector<int> gen_tris(6);
+  using tri_kind = cgns::connectivity_kind<TRI_3>;
+  auto tri_range = make_connectivity_range<tri_kind>(gen_tris);
+  auto tri_it = tri_range.begin();
+
+  std::vector<int> gen_quads(0);
+  using quad_kind = cgns::connectivity_kind<QUAD_4>;
+  auto quad_range = make_connectivity_range<tri_kind>(gen_quads);
+  auto quad_it = quad_range.begin();
+
+  tri_3<int> tri0 = {10,11,12};
+  tri_3<int> tri1 = {20,21,22};
+  generate_faces(tri0,tri_it,quad_it);
+  generate_faces(tri1,tri_it,quad_it);
+
+  CHECK( gen_tris == std::vector{10,11,12,20,21,22} );
+}
+
+// TODO
+//TEST_CASE("generate_faces: quad") {
 //  quad_4<int> quad = {3,9,12,1};
 //  
 //  auto faces = generate_faces(quad);

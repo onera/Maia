@@ -2,6 +2,7 @@
 
 
 #include <algorithm>
+#include "maia/connectivity/iter/connectivity.hpp"
 
 
 template<class I, class Connectivity_kind>
@@ -26,6 +27,11 @@ class connectivity_ref {
 
     connectivity_ref& operator=(const connectivity_ref& other) {
       std::copy(other.ptr, other.ptr+other.size(), ptr);
+      return *this;
+    }
+
+    connectivity_ref& operator=(const connectivity<I,kind>& other) {
+      std::copy(other.data(), other.data()+other.size(), ptr);
       return *this;
     }
 
@@ -81,6 +87,10 @@ swap(connectivity_ref<I0,CK> x, connectivity_ref<I1,CK> y) -> void {
     using std::swap;
     swap(x[i],y[i]);
   }
+}
+template<class I, class CK> inline auto
+to_string(const connectivity_ref<I,CK>& x) {
+  return to_string(std_e::make_span(x.data(),x.size()));
 }
 
 

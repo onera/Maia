@@ -29,6 +29,13 @@ elements_interval_of_dim(const tree& z, int dim) {
       element_range(elts.back()).last()
     );
 }
+auto
+max_element_id(const tree& z) -> I8 {
+  auto elt_sections = get_children_by_label(z,"Elements_t");
+  STD_E_ASSERT(elt_sections.size()!=0);
+  auto max_end_of_range = [](I8 acc, const tree& elt_sec){ return std::max(acc,element_range(elt_sec).last()); };
+  return std::accumulate(begin(elt_sections),end(elt_sections),(I8)0,max_end_of_range);
+}
 
 auto
 boundary_elements_interval(const tree& z) -> interval<I8> {

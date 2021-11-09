@@ -32,10 +32,12 @@ class connectivity {
     }
 
   // accessors
+    constexpr auto data ()       ->       I* { return impl.data(); }
+    constexpr auto data () const -> const I* { return impl.data(); }
     constexpr auto begin()       ->       I* { return impl.begin(); }
     constexpr auto begin() const -> const I* { return impl.begin(); }
-    constexpr auto end()         ->       I* { return impl.end(); }
-    constexpr auto end()   const -> const I* { return impl.end(); }
+    constexpr auto end  ()       ->       I* { return impl.end(); }
+    constexpr auto end  () const -> const I* { return impl.end(); }
 
     template<class Integer> constexpr auto
     operator[](Integer i) -> I& {

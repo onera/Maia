@@ -67,7 +67,6 @@ repartition_by_distributions(
   };
 
   auto partition_indices = std_e::partition_sort_indices(perm_indices,multi_dist_intervals,comp);
-  partition_indices.insert(partition_indices.begin(),0);
 
   std_e::permute(begin(point_list),perm_indices);
   for (auto& value : values) {

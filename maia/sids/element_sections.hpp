@@ -29,17 +29,18 @@ volume_element_sections(Tree& z) {
 template<class Tree> auto
 element_sections_ordered_by_range(Tree& z) {
   auto elt_sections = element_sections(z);
-  std::stable_sort(begin(elt_sections),end(elt_sections),cgns::compare_by_range);
+  std::sort(begin(elt_sections),end(elt_sections),cgns::compare_by_range);
   return elt_sections;
 }
 template<class Tree> auto
 element_sections_ordered_by_range_by_type(Tree& z) {
   auto elt_sections = element_sections(z);
-  std::stable_sort(begin(elt_sections),end(elt_sections),cgns::compare_by_range);
+  std::sort(begin(elt_sections),end(elt_sections),cgns::compare_by_range);
   std::stable_sort(begin(elt_sections),end(elt_sections),cgns::compare_by_elt_type);
   return elt_sections;
 }
 
+auto max_element_id(const cgns::tree& z) -> cgns::I8;
 
 auto boundary_elements_interval(const cgns::tree& z) -> cgns::interval<cgns::I8>;
 auto volume_elements_interval(const cgns::tree& z) -> cgns::interval<cgns::I8>;
