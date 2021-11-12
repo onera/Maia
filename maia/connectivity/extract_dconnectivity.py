@@ -8,7 +8,7 @@ from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
 from maia.utils.parallel                     import utils          as par_utils
-from Pypdm.Pypdm import dconnectivity_to_extract_dconnectivity, compute_entity_distribution, part_dcoordinates_to_pcoordinates
+from Pypdm.Pypdm import dconnectivity_to_extract_dconnectivity, compute_entity_distribution, part_dcoordinates_to_pcoordinates, compute_dface_normal
 from maia.tree_exchange.dist_to_part.index_exchange import collect_distributed_pl
 
 
@@ -55,20 +55,19 @@ def extract_zone_mesh_from_bcs(dist_zone, comm):
   np_dparent_entity1_g_num, np_dparent_entity2_g_num, np_entity1_old_to_new = dconnectivity_to_extract_dconnectivity(comm, delmt_bound, np_face_distrib, dface_vtx_idx, dface_vtx)
 
 
-  print("np_extract_entity1_distrib      : ", np_extract_entity1_distrib      )
-  print("np_extract_entity2_distrib      : ", np_extract_entity2_distrib      )
-  print("np_dextract_entity1_entity2_idx : ", np_dextract_entity1_entity2_idx )
-  print("np_dextract_entity1_entity2     : ", np_dextract_entity1_entity2     )
-  print("np_dparent_entity1_g_num        : ", np_dparent_entity1_g_num        )
-  print("np_dparent_entity2_g_num        : ", np_dparent_entity2_g_num        )
-  print("np_entity1_old_to_new           : ", np_entity1_old_to_new           )
+  # print("np_extract_entity1_distrib      : ", np_extract_entity1_distrib      )
+  # print("np_extract_entity2_distrib      : ", np_extract_entity2_distrib      )
+  # print("np_dextract_entity1_entity2_idx : ", np_dextract_entity1_entity2_idx )
+  # print("np_dextract_entity1_entity2     : ", np_dextract_entity1_entity2     )
+  # print("np_dparent_entity1_g_num        : ", np_dparent_entity1_g_num        )
+  # print("np_dparent_entity2_g_num        : ", np_dparent_entity2_g_num        )
+  # print("np_entity1_old_to_new           : ", np_entity1_old_to_new           )
 
   np_vtx_distrib = compute_entity_distribution(comm, dn_vtx)
 
   l_pvtx_coord = part_dcoordinates_to_pcoordinates(comm, np_vtx_distrib, dvtx_coord, [np_dparent_entity2_g_num])
 
-  print("l_pvtx_coord : ", l_pvtx_coord)
-
+  # print("l_pvtx_coord : ", l_pvtx_coord)
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
   dn_extract_face = np_extract_entity1_distrib[i_rank+1] - np_extract_entity1_distrib[i_rank]
@@ -78,7 +77,6 @@ def extract_zone_mesh_from_bcs(dist_zone, comm):
   dist_extract_zone = I.newZone(name  = I.getName(dist_zone),
                                 zsize = [[np_extract_entity2_distrib[n_rank],np_extract_entity1_distrib[n_rank],0]],
                                 ztype = 'Unstructured')
-
 
   distrib_facevtx = par_utils.gather_and_shift(np_dextract_entity1_entity2_idx[dn_extract_face], comm, pdm_gnum_dtype)
 
@@ -104,6 +102,18 @@ def extract_zone_mesh_from_bcs(dist_zone, comm):
   create_distribution_node_from_distrib("Element"            , extract_ngon_n   , np_distrib_face   )
   create_distribution_node_from_distrib("ElementConnectivity", extract_ngon_n   , np_distrib_facevtx)
 
+  # > Compute surface normal
+  dface_normal = np.empty( 3 * dn_extract_face, dtype=np.double)
+  compute_dface_normal(comm, np_dextract_entity1_entity2_idx, np_dextract_entity1_entity2, dn_extract_face, np_extract_entity2_distrib, l_pvtx_coord[0], dface_normal)
+
+  nx, ny, nz = CNT.interlaced_to_tuple_coords(dface_normal)
+
+  fs_n = I.newFlowSolution(name="FlowSolution#EndOfRun", gridLocation='CellCenter', parent=dist_extract_zone)
+  I.newDataArray("nx", nx, parent=fs_n)
+  I.newDataArray("ny", ny, parent=fs_n)
+  I.newDataArray("nz", nz, parent=fs_n)
+
+  # print(dface_normal)
   return dist_extract_zone
 
 def extract_mesh_from_bcs(dist_tree, comm):
