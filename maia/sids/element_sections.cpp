@@ -38,7 +38,7 @@ max_element_id(const tree& z) -> I8 {
 }
 
 auto
-boundary_elements_interval(const tree& z) -> interval<I8> {
+surface_elements_interval(const tree& z) -> interval<I8> {
   return elements_interval_of_dim(z,2);
 }
 auto

@@ -39,10 +39,20 @@ class connectivity_iterator {
       ptr += nb_nodes*i;
       return *this;
     }
+    auto operator-=(I i) -> connectivity_iterator& {
+      ptr -= nb_nodes*i;
+      return *this;
+    }
     friend
     auto operator+(connectivity_iterator it, I i) -> connectivity_iterator {
       connectivity_iterator res = it;
       res += i;
+      return res;
+    }
+    friend
+    auto operator-(connectivity_iterator it, I i) -> connectivity_iterator {
+      connectivity_iterator res = it;
+      res -= i;
       return res;
     }
 

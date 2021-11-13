@@ -11,6 +11,8 @@
 #include "maia/transform/gcs_only_for_ghosts.hpp"
 #include "maia/transform/split_boundary_subzones_according_to_bcs.hpp"
 #include "maia/transform/poly_algorithm.hpp"
+#include "maia/generate/interior_faces_and_parents/interior_faces_and_parents.hpp"
+#include "maia/connectivity/std_elements_to_ngons.hpp"
 
 #include <pybind11/pybind11.h>
 
@@ -40,12 +42,15 @@ const auto remove_ghost_info             = apply_cpp_cgns_par_function_to_py_bas
 const auto merge_by_elt_type             = apply_cpp_cgns_par_function_to_py_base(maia::merge_by_elt_type);
 const auto add_fsdm_distribution         = apply_cpp_cgns_par_function_to_py_base(maia::add_fsdm_distribution);
 const auto split_boundary_subzones_according_to_bcs = apply_cpp_cgns_par_function_to_py_base(maia::split_boundary_subzones_according_to_bcs);
+const auto generate_interior_faces_and_parents      = apply_cpp_cgns_par_function_to_py_base(maia::generate_interior_faces_and_parents); // TODO move
+const auto std_elements_to_ngons                    = apply_cpp_cgns_par_function_to_py_base(maia::std_elements_to_ngons); // TODO move
 
 const auto sort_nfaces_by_element_type              = apply_cpp_cgns_function_to_py_base(cgns::sort_nfaces_by_element_type);
 const auto sorted_nfaces_to_std_elements            = apply_cpp_cgns_function_to_py_base(cgns::sorted_nfaces_to_std_elements);
 const auto add_nfaces                               = apply_cpp_cgns_function_to_py_base(cgns::add_nfaces);
 const auto gcs_only_for_ghosts                      = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
 const auto ngon_new_to_old                          = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
+
 
 
 PYBIND11_MODULE(transform, m) {
@@ -61,4 +66,6 @@ PYBIND11_MODULE(transform, m) {
   m.def("gcs_only_for_ghosts"                     , gcs_only_for_ghosts                     , "For GridConnectivities, keep only in the PointList the ones that are ghosts");
   m.def("split_boundary_subzones_according_to_bcs", split_boundary_subzones_according_to_bcs, "Split a ZoneSubRegion node with a PointRange spaning all boundary faces into multiple ZoneSubRegion with a BCRegionName");
   m.def("ngon_new_to_old"                         , ngon_new_to_old                         , "Turn Ngon description with ElementStartOffset to old convension");
+  m.def("generate_interior_faces_and_parents"     , generate_interior_faces_and_parents     , "Generate TRI_3_interior and QUAD_4_interior element sections, and adds ParentElement to interior and exterior faces");
+  m.def("std_elements_to_ngons"                   , std_elements_to_ngons                   , "Convert to NGon");
 }

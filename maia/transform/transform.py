@@ -15,6 +15,17 @@ def apply_to_bases(t,f,*args):
                     " can only be applied to a \"CGNSBase_t\" or on a complete \"CGNSTree_t\"," \
                     " not on a node of type \""+I.getType(t)+"\".")
 
+def apply_to_zones(t,f,*args):
+  if I.getType(t)=="Zone_t":
+    f(t,*args)
+  elif I.getType(t)=="CGNSTree_t" or I.getType(t)=="CGNSBase_t":
+    for z in I.getZones(t):
+      f(z,*args)
+  else:
+    raise Exception("function \""+f.__name__+"\"" \
+                    " can only be applied to a \"Zone_t\", a \"CGNSBase_t\" or on a complete \"CGNSTree_t\"," \
+                    " not on a node of type \""+I.getType(t)+"\".")
+
 
 def merge_by_elt_type(dist_tree,comm):
   apply_to_bases(dist_tree,ctransform.merge_by_elt_type,comm)
@@ -40,3 +51,9 @@ def ngon_new_to_old(t):
 
 def split_boundary_subzones_according_to_bcs(t):
   apply_to_bases(t,ctransform.split_boundary_subzones_according_to_bcs)
+
+def generate_interior_faces_and_parents(t,comm):
+  apply_to_zones(t,ctransform.generate_interior_faces_and_parents,comm)
+
+def std_elements_to_ngons(t,comm):
+  apply_to_zones(t,ctransform.std_elements_to_ngons,comm)

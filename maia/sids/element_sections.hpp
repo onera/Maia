@@ -18,7 +18,7 @@ element_sections_of_dim(Tree& z, int dim) {
   return get_children_by_predicate(z,is_section_of_dim);
 }
 template<class Tree> auto
-boundary_element_sections(Tree& z) {
+surface_element_sections(Tree& z) {
   return element_sections_of_dim(z,2);
 }
 template<class Tree> auto
@@ -42,7 +42,7 @@ element_sections_ordered_by_range_by_type(Tree& z) {
 
 auto max_element_id(const cgns::tree& z) -> cgns::I8;
 
-auto boundary_elements_interval(const cgns::tree& z) -> cgns::interval<cgns::I8>;
+auto surface_elements_interval(const cgns::tree& z) -> cgns::interval<cgns::I8>;
 auto volume_elements_interval(const cgns::tree& z) -> cgns::interval<cgns::I8>;
 
 

@@ -4,9 +4,13 @@
 #include "maia/utils/mesh_dir.hpp"
 #include "std_e/utils/file.hpp"
 #include "cpp_cgns/tree_manip.hpp"
-#include "std_e/multi_array/utils.hpp"
+#include "maia/sids/element_sections.hpp"
 
 #include "maia/generate/interior_faces_and_parents/interior_faces_and_parents.hpp"
+#include "std_e/parallel/mpi/base.hpp"
+
+
+using namespace cgns;
 
 
 PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents - seq",1) {
@@ -75,7 +79,6 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
   }
   SUBCASE("final") {
     maia::generate_interior_faces_and_parents(z,test_comm);
-    //ELOG(z);
     // tri ext
     auto parent_tri_ext = cgns::get_node_value_by_matching<I4,2>(b,"Zone/Tris/ParentElements");
     CHECK( parent_tri_ext.extent() == std_e::multi_index<I8,2>{1,2} );
@@ -99,10 +102,8 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
 
     // quad ext
     auto parent_quad_ext = cgns::get_node_value_by_matching<I4,2>(b,"Zone/Quads/ParentElements");
-    ELOG(parent_quad_ext.extent());
-    CHECK( parent_quad_ext.extent() == std_e::multi_index<I8,2>{6,2} ); // TODO
-    ELOG(parent_quad_ext);
-    MPI_CHECK(0, parent_quad_ext == cgns::md_array<I4,2>{{15,0},{16,0},{17,0},{18,0},{15,0},{17,0}                                          } ); // TODO
+    CHECK( parent_quad_ext.extent() == std_e::multi_index<I8,2>{6,2} );
+    MPI_CHECK(0, parent_quad_ext == cgns::md_array<I4,2>{{15,0},{16,0},{17,0},{18,0},{15,0},{17,0}                                          } );
     MPI_CHECK(1, parent_quad_ext == cgns::md_array<I4,2>{                                          {16,0},{18,0},{15,0},{16,0},{15,0},{16,0}} );
 
     // quad in
@@ -113,14 +114,14 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
 
     CHECK( elt_type_quad_in == (I4)cgns::QUAD_4 );
     CHECK( range_quad_in == std::vector<I4>{20,22} );
-    ELOG(connec_quad_in);
-    ELOG(parent_quad_in);
-    MPI_CHECK(0, connec_quad_in == std::vector<I4>{2,5,10,7, 6,7,10,9, 7,12,15,10} ); // Note: the first and last faces are flipped compared to sequential...
+    MPI_CHECK(0, connec_quad_in == std::vector<I4>{2,5,10,7, 6,7,10,9, 7,12,15,10} ); // Note: the first and last faces are flipped
+                                                                                      // compared to sequential...
     MPI_CHECK(1, connec_quad_in == std::vector<I4>{} );
     MPI_CHECK(0, parent_quad_in.extent() == std_e::multi_index<I8,2>{3,2} );
     MPI_CHECK(1, parent_quad_in.extent() == std_e::multi_index<I8,2>{0,2} );
     MPI_CHECK(0, parent_quad_in == cgns::md_array<I4,2>{{15,17},{15,16},{18,16}} ); // ... and so are the parent elements. So this is coherent
-                                                                                    // The difference comes from the fact that we use std::sort, not std::stable_sort
+                                                                                    // The difference comes from the fact that we use std::sort,
+                                                                                    // not std::stable_sort
     MPI_CHECK(1, parent_quad_in == cgns::md_array<I4,2>{} );
   }
 }
