@@ -6,6 +6,12 @@
 #    - srun --immediate --pty --qos c1_inter_giga --time 1:00:00 --ntasks 8 bash
 #    - echo "Now running on $HOSTNAME"
 
+#Common to both stages
+before_script:
+  - module purge
+  - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
+  - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc8.3
+
 stages:
   - build
   - test
@@ -14,19 +20,11 @@ stages:
 
 job:build:
   variables:
-    GIT_SUBMODULE_STRATEGY: normal
+    GIT_SUBMODULE_STRATEGY: recursive
   stage: build
-  before_script:
-  - module purge
-  - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
-  - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc10.1
-  - export PARADIGM_HOME=/scratchm/jcoulet/aa_install_py3/paradigma-dbg-oneapi
-  - export PYTHONPATH=$PARADIGM_HOME/lib/python3.8/site-packages:$PYTHONPATH
-  - export LD_LIBRARY_PATH=$PARADIGM_HOME/lib:$LD_LIBRARY_PATH
-  - export CMAKE_PREFIX_PATH=$PARADIGM_HOME:$CMAKE_PREFIX_PATH
   script:
     - mkdir build && cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPYBIND11_INSTALL=ON -Dmaia_USE_PDM_INSTALL=ON ../
+    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -Dmaia_USE_PDM_INSTALL=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j8
   cache:
     paths:
@@ -38,13 +36,9 @@ job:test:
   variables:
     GIT_SUBMODULE_STRATEGY: none
   stage: test
-  before_script:
-    - module purge
-    - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
-    - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc10.1
   script:
     - cd build
-    - make test
+    - ctest -E pdm #Exclude pdm tests, some of them fail
   after_script:
     - cd build/test
     - coverage combine --rcfile=.coveragerc_unit_tests
