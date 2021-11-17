@@ -4,6 +4,7 @@ import numpy as np
 
 import Converter.Internal as I
 
+import maia
 from maia.utils        import parse_yaml_cgns
 from maia.sids         import sids
 
@@ -29,6 +30,7 @@ def test_detect_wall_families():
 # For U, we reuse the meshes defined in test_interpolate
 from maia.interpolation.test.test_interpolate import src_part_0, src_part_1
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @mark_mpi_test(2)
 class Test_wallDistance:
   def test_U(self, sub_comm):
