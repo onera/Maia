@@ -129,6 +129,27 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
 
   auto elt_sections = element_sections_ordered_by_range_by_type(z);
 
+  // Handle NGon case
+  if (elt_sections.size()>=1) {
+    auto it_ngon = std::find_if(begin(elt_sections),end(elt_sections),[](const tree& n){ return element_type(n)==NGON_n; });
+    if (it_ngon != end(elt_sections)) { // found NGon
+      if (elt_sections.size()==1) { // only NGon
+        return; // only 1 NGon : nothing to merge
+      } else {
+        if (elt_sections.size()==2) {
+          auto it_nface = std::find_if(begin(elt_sections),end(elt_sections),[](const tree& n){ return element_type(n)==NFACE_n; });
+          if (it_nface == end(elt_sections)) { // did not found NFace
+            throw cgns_exception("Zone "+name(z)+" has a NGon section, but also a section different from NFace, which is forbidden by CGNS/SIDS");
+          } else {
+            return; // only 1 NGon and 1 NFace : nothing to merge
+          }
+        } else { // more sections than Ngon+NFace
+          throw cgns_exception("Zone "+name(z)+" has a NGon section and a NFace section, but also other element types, which is forbidden by CGNS/SIDS");
+        }
+      }
+    }
+  }
+
   // 0. new ranges
   I4 new_offset = 1;
   std::vector<I4> old_offsets;
