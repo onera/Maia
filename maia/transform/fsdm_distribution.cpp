@@ -11,7 +11,6 @@
 #include "std_e/algorithm/algorithm.hpp"
 #include "std_e/buffer/buffer_vector.hpp"
 #include "maia/utils/parallel/exchange/multi_block_to_part.hpp"
-#include "std_e/log.hpp" // TODO
 #include <algorithm>
 
 using namespace cgns;
@@ -82,8 +81,7 @@ elt_distributions(const Tree_range& sorted_elt_sections, MPI_Comm comm) {
     const tree& elt = sorted_elt_sections[i];
     auto partial_dist = cgns::get_node_value_by_matching<I8>(elt,":CGNS#Distribution/Element");
     auto dist_I8 = distribution_from_partial(partial_dist,comm);
-    //dists[i].resize(dist_I8.size()); // TODO make resize accessible
-    dists[i] = distribution_vector<I4>(dist_I8.size());
+    dists[i] = distribution_vector<I4>(dist_I8.n_interval()); // TODO make resize accessible
     std::copy(begin(dist_I8),end(dist_I8),begin(dists[i]));
   }
   return dists;
@@ -271,7 +269,6 @@ distribute_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) ->
       if (elt_2d_sections.size() > 0) {
         // since 2d sections are ordered, the total number of 2d elt is the ending of the last range
         n_faces = ElementRange<I4>(elt_2d_sections.back())[1];
-        ELOG(n_faces);
       }
       std::vector<PDM_g_num_t> merged_distri(n_rank+1);
       std_e::uniform_distribution(begin(merged_distri),end(merged_distri),0,n_faces); // TODO uniform_distribution with differing args
