@@ -1,8 +1,6 @@
 from abc import abstractmethod
 import queue
 
-import Converter.Internal as I
-
 __NAME__     = 0
 __VALUE__    = 1
 __CHILDREN__ = 2

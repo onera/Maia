@@ -387,8 +387,3 @@ FamilyBCDataSet FamilyBCDataSet_t:
   root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
   results = PT.NodesWalker(root, pattern, search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
-
-if __name__ == "__main__":
-  test_nodes_walker()
-  # test_nodes_walker_pattern()
-  # test_nodes_walker_depth()

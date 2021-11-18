@@ -234,8 +234,3 @@ FamilyBCDataSet FamilyBCDataSet_t:
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   # print(f"results = {results}")
   assert([PT.get_name(n) for n in results] == names)
-
-
-if __name__ == "__main__":
-  # test_nodes_walkers()
-  test_nodes_walkers_pattern()

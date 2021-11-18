@@ -12,9 +12,6 @@ from .predicate import match_str_label
 from .predicate import match_label
 from .predicate import match_value
 from .predicate import match_name_label
-# from .predicate import match_name_value
-# from .predicate import match_value_label
-# from .predicate import match_name_value_label
 
 from . import walkers_api as WAPI
 from .remove_nodes import rm_children_from_predicate
@@ -47,9 +44,6 @@ for base_function in [WAPI.iter_nodes_from_predicates, WAPI.get_nodes_from_predi
     'Value': (match_value, ('value',)),
     'Label': (match_label, ('label',)),
     'NameAndLabel' : (match_name_label,  ('name', 'label',)),
-    # 'NameAndValue' : (match_name_value,  ('name', 'value',)),
-    # 'ValueAndLabel': (match_value_label, ('value', 'label',)),
-    # 'NameValueAndLabel': (match_name_value_label, ('name', 'value', 'label',)),
   }
   generated = generate_functions(base_function, easypredicates=easypredicates, maxdepth=0, child=True)
   _update_module_attributes(generated)

@@ -74,6 +74,3 @@ def test_auto_predicate():
 
   with pytest.raises(TypeError):
     P.auto_predicate(123)
-
-if __name__ == "__main__":
-  test_matches()
