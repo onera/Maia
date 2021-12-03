@@ -5,7 +5,6 @@ else:
   from typing import Iterable
 import re
 import numpy as np
-import Converter.Internal as I
 from itertools import permutations
 
 def camel_to_snake(text, keep_upper=False):
