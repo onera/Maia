@@ -1,10 +1,10 @@
 from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
 import numpy as np
 
-from ._node_parsers import NodeParser, LevelNodeParser
+from ._node_parsers import NodeParser, RangeLevelNodeParser
 from .compare import is_valid_node
-TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
+TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 # --------------------------------------------------------------------------
 class NodeWalker:
@@ -13,8 +13,21 @@ class NodeWalker:
   FORWARD  = lambda children:children
   BACKWARD = lambda children:reverse(children)
 
-  def __init__(self, root: TreeNode, predicate: Callable[[TreeNode], bool],
-                     search=NodeParser.DEFAULT, depth=0, sort=FORWARD):
+  def __init__(self, root: TreeNode,
+                     predicate,
+                     search: str=NodeParser.DEFAULT,
+                     depth=None,
+                     sort=FORWARD):
+    """
+    Hold all the manner to explore and parse the CGNS Tree
+
+    Args:
+        root (TreeNode): CGNS node root searching
+        predicate (Callable[[TreeNode], bool]): condition to select node
+        search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
+        depth (int, optional): stop exploring after the limited depth
+        sort (Callable[TreeNode], optional): parsing children sort
+    """
     self.root      = root
     self.predicate = predicate
     # Register default value
@@ -58,11 +71,19 @@ class NodeWalker:
     return self._depth
 
   @depth.setter
-  def depth(self, value: str):
-    if isinstance(value, int) and value >= 0:
+  def depth(self, value):
+    if value is None:
+      self._depth = [0, None]
+    elif isinstance(value, int) and value >= 0:
+      self._depth = [0, value]
+    elif isinstance(value, (tuple, list)):
+      check1 = isinstance(value[1], int) and value[0] <= value[1] and all([i >= 0 for i in value])
+      check2 = value[1] is None and value[0] >= 0
+      if len(value) != 2 and (check1 or check2):
+        raise Exception(f"depth must be define with only two positive integers, '{value}' given here.")
       self._depth = value
     else:
-      raise ValueError("depth must a integer >= 0.")
+      raise ValueError("depth must None or an integer >= 0 (ex:3) or a range (ex:[1,3] or [1,None]).")
 
   @property
   def sort(self):
@@ -81,6 +102,9 @@ class NodeWalker:
 
   def __call__(self):
     # Create parser
-    self._parser = LevelNodeParser(depth=self.depth, sort=self.sort) if self.depth > 0 else NodeParser(sort=self.sort)
+    if self.depth[0] == 0 and self.depth[1] is None:
+      self._parser = NodeParser(sort=self.sort)
+    else:
+      self._parser = RangeLevelNodeParser(depth=self.depth, sort=self.sort)
     func = getattr(self._parser, self.search)
     return func(self._root, self._predicate)

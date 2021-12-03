@@ -2,27 +2,26 @@ from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
 # from functools import partial
 import numpy as np
 
-
-from ._node_parsers import NodesIterator, ShallowNodesIterator, LevelNodesIterator, ShallowLevelNodesIterator 
-
-# import maia.utils.py_utils as PYU
-
+from ._node_parsers import NodesIterator
+from ._node_parsers import ShallowNodesIterator
+from ._node_parsers import RangeLevelNodesIterator
+from ._node_parsers import ShallowRangeLevelNodesIterator
 from .compare import is_valid_node
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 # --------------------------------------------------------------------------
 class NodesWalker:
-  """ Deep First Walker of pyTree """
+  """ Walker of pyTree """
 
   FORWARD  = lambda children:children
   BACKWARD = lambda children:reversed(children)
 
   def __init__(self, root: TreeNode,
-                     predicate: Callable[[TreeNode], bool],
+                     predicate,
                      search: str=NodesIterator.DEFAULT,
                      explore: str='shallow',
-                     depth: int=0,
+                     depth=None,
                      sort=FORWARD,
                      caching: bool=False):
     """
@@ -100,12 +99,22 @@ class NodesWalker:
     return self._depth
 
   @depth.setter
-  def depth(self, value: str):
-    if isinstance(value, int) and value >= 0:
+  def depth(self, value):
+    if value is None:
+      self._depth = [0, None]
+      self.clean()
+    elif isinstance(value, int) and value >= 0:
+      self._depth = [0,value]
+      self.clean()
+    elif isinstance(value, (tuple, list)):
+      check1 = isinstance(value[1], int) and value[0] <= value[1] and all([i >= 0 for i in value])
+      check2 = value[1] is None and value[0] >= 0
+      if len(value) != 2 and (check1 or check2):
+        raise Exception(f"depth must be define with only two positive integers, '{value}' given here.")
       self._depth = value
       self.clean()
     else:
-      raise ValueError("depth must a integer >= 0.")
+      raise ValueError("depth must None or an integer >= 0 (ex:3) or a range (ex:[1,3] or [1,None]).")
 
   @property
   def sort(self):
@@ -140,15 +149,15 @@ class NodesWalker:
 
   def _get_parser(self):
     if self.explore == "shallow":
-      if self.depth > 0:
-        parser = ShallowLevelNodesIterator(depth=self.depth, sort=self.sort)
-      else:
+      if self.depth[0] == 0 and self.depth[1] is None:
         parser = ShallowNodesIterator(sort=self.sort)
-    else:
-      if self.depth > 0:
-        parser = LevelNodesIterator(depth=self.depth, sort=self.sort)
       else:
+        parser = ShallowRangeLevelNodesIterator(depth=self.depth, sort=self.sort)
+    else:
+      if self.depth[0] == 0 and self.depth[1] is None:
         parser = NodesIterator(sort=self.sort)
+      else:
+        parser = RangeLevelNodesIterator(depth=self.depth, sort=self.sort)
     return parser
 
   def __call__(self):

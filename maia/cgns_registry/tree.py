@@ -1,7 +1,9 @@
-from   mpi4py             import MPI
-import Converter.Internal as     I
+from mpi4py import MPI
+import Converter.Internal as I
 from . import cgns_registry    as CGR
 import maia.sids.cgns_keywords as CGK
+from maia.sids.cgns_keywords import Label as CGL
+from maia.sids import pytree as PT
 
 def build_paths_by_label_bcdataset(paths_by_label, bc, bc_path):
   """
@@ -17,35 +19,58 @@ def build_paths_by_label_bcdataset(paths_by_label, bc, bc_path):
 def build_paths_by_label_zone(paths_by_label, zone, zone_path):
   """
   """
-  for zone_bc in  I.getNodesFromType1(zone, 'ZoneBC_t'):
-    zone_bc_path = zone_path+"/"+I.getName(zone_bc)
-    CGR.add_path(paths_by_label, zone_bc_path, "ZoneBC_t")
+  zone_bc = PT.request_node_from_label(zone, CGL.ZoneBC_t)
+  if zone_bc is not None:
+    zone_bc_path = f"{zone_path}/{I.getName(zone_bc)}"
+    CGR.add_path(paths_by_label, zone_bc_path, CGL.ZoneBC_t.name)
     for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
-      bc_path = zone_bc_path+"/"+I.getName(bc)
+      bc_path = f"{zone_bc_path}/{PT.get_name(bc)}"
       CGR.add_path(paths_by_label, bc_path, "BC_t")
       build_paths_by_label_bcdataset(paths_by_label, bc, bc_path)
 
-  for zone_gc in  I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
-    zone_gc_path = zone_path+"/"+I.getName(zone_gc)
-    CGR.add_path(paths_by_label, zone_gc_path, "ZoneGridConnectivity_t")
+  for zone_gc in PT.iter_children_from_label(zone, CGL.ZoneGridConnectivity_t):
+    zone_gc_path = f"{zone_path}/{PT.get_name(zone_gc)}"
+    CGR.add_path(paths_by_label, zone_gc_path, CGL.ZoneGridConnectivity_t.name)
 
-    for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
-      gc_path = zone_gc_path+"/"+I.getName(gc)
-      CGR.add_path(paths_by_label, gc_path, "GridConnectivity_t")
+    for gc in PT.iter_children_from_label(zone_gc, CGL.GridConnectivity_t):
+      gc_path = f"{zone_gc_path}/{PT.get_name(gc)}"
+      CGR.add_path(paths_by_label, gc_path, CGL.GridConnectivity_t.name)
       build_paths_by_label_bcdataset(paths_by_label, gc, gc_path)
 
-    for gc1to1 in I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t'):
-      gc1to1_path = zone_gc_path+"/"+I.getName(gc1to1)
+    for gc1to1 in PT.iter_children_from_label(zone_gc, CGL.GridConnectivity1to1_t):
+      gc1to1_path = f"{zone_gc_path}/{PT.get_name(gc1to1)}"
       # > Here is a little hack to have gridConnectivity in same label
-      CGR.add_path(paths_by_label, gc1to1_path, "GridConnectivity_t")
+      CGR.add_path(paths_by_label, gc1to1_path, CGL.GridConnectivity_t.name)
       build_paths_by_label_bcdataset(paths_by_label, gc1to1, gc1to1_path)
+
+def build_paths_by_label_family(paths_by_label, parent, parent_path):
+  """
+  """
+  print(f"parent = {PT.get_name(parent), PT.get_label(parent)}, parent_path = {parent_path}")
+  for family in PT.iter_children_from_label(parent, CGL.Family_t):
+    if family != parent:
+      family_path = f"{parent_path}/{PT.get_name(family)}"
+      CGR.add_path(paths_by_label, family_path, CGL.Family_t.name)
+
+      family_bc = PT.request_node_from_label(family, CGL.FamilyBC_t, depth=1)
+      if family_bc is not None:
+        family_bc_path = f"{family_path}/{I.getName(family_bc)}"
+        CGR.add_path(paths_by_label, family_bc_path, CGL.FamilyBC_t.name)
+
+        for family_bcdataset in PT.iter_children_from_label(family_bc, CGL.FamilyBCDataSet_t):
+          family_bcdataset_path = f"{family_bc_path}/{PT.get_name(family_bcdataset)}"
+          CGR.add_path(paths_by_label, family_bcdataset_path, CGL.FamilyBCDataSet_t.name)
+          build_paths_by_label_bcdataset(paths_by_label, family_bcdataset, family_bcdataset_path)
+
+      # Hierarchic family
+      build_paths_by_label_family(paths_by_label, family, family_path)
 
 def setup_child_from_type(paths_by_label, parent, parent_path, cgns_type):
   """
   """
   for child in I.getNodesFromType1(parent, cgns_type):
     child_path = parent_path+"/"+I.getName(child)
-    CGR.add_path(paths_by_label, child_path, "Family_t")
+    CGR.add_path(paths_by_label, child_path, cgns_type)
 
 def build_paths_by_label(tree):
   """
@@ -58,16 +83,14 @@ def build_paths_by_label(tree):
     base_path = "/"+I.getName(base)
     CGR.add_path(paths_by_label, base_path, u'CGNSBase_t')
 
-    setup_child_from_type(paths_by_label, base, base_path, 'Family_t')
     setup_child_from_type(paths_by_label, base, base_path, 'FlowEquationSet_t')
     setup_child_from_type(paths_by_label, base, base_path, 'ViscosityModel_t')
-    # for fam in I.getNodesFromType1(base, 'Family_t'):
-    #   fam_path = "/"+I.getName(base)+"/"+I.getName(fam)
-    #   CGR.add_path(paths_by_label, fam_path, "Family_t")
 
-    for zone in I.getNodesFromType1(base, 'Zone_t'):
-      zone_path = "/"+I.getName(base)+"/"+I.getName(zone)
-      CGR.add_path(paths_by_label, zone_path, 'Zone_t')
+    build_paths_by_label_family(paths_by_label, base, base_path)
+
+    for zone in PT.iter_nodes_from_label(base, CGL.Zone_t):
+      zone_path = f"{base_path}/{PT.get_name(zone)}"
+      CGR.add_path(paths_by_label, zone_path, CGL.Zone_t.name)
       build_paths_by_label_zone(paths_by_label, zone, zone_path)
 
   return paths_by_label

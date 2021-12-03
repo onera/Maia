@@ -82,11 +82,9 @@ class NodesWalkers:
     self._predicates = []
     if isinstance(predicates, (list, tuple)):
       for p in predicates:
-        if not (callable(p) or (isinstance(p, dict) and callable(p['predicate']))):
-          raise TypeError("Non callable function found in predicates list")
+        self._predicates.append(p)
     else:
-      raise TypeError("predicates must be a sequence of callable functions")
-    self._predicates = predicates
+      self._predicates.append(predicates)
     self.clean()
 
   @property
