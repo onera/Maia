@@ -36,25 +36,9 @@ Base CGNSBase_t:
 def test_node_walker_auto(search):
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  # Search with name
-  walker = PT.NodeWalker(tree, 'Zone*', search=search)
-  n = walker()
-  assert(PT.get_name(n) == "ZoneI")
-
-  # Search with label as str
-  walker = PT.NodeWalker(tree, 'Zone_t', search=search)
-  n = walker()
-  assert(PT.get_name(n) == "ZoneI")
-
-  # Search with label as CGL
-  walker = PT.NodeWalker(tree, CGL.Zone_t, search=search)
-  n = walker()
-  assert(PT.get_name(n) == "ZoneI")
-
-  # Search with value
-  walker = PT.NodeWalker(tree, np.array([22,0]), search=search)
-  n = walker()
-  assert(PT.get_name(n) == "NgonI")
+  # Search with not callable is not allowed
+  with pytest.raises(TypeError):
+    walker = PT.NodeWalker(tree, 'Zone*', search=search)
 
   # Search with callable
   walker = PT.NodeWalker(tree, lambda n: PT.get_label(n) == "Zone_t", search=search)

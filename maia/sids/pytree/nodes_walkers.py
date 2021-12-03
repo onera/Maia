@@ -2,8 +2,7 @@ from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
 import numpy as np
 import copy
 
-from .compare import is_valid_node
-from .predicate import auto_predicate
+from .compare      import is_valid_node
 from .nodes_walker import NodesWalker
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
@@ -83,14 +82,9 @@ class NodesWalkers:
     self._predicates = []
     if isinstance(predicates, (list, tuple)):
       for p in predicates:
-        if isinstance(p, dict):
-          p['predicate'] = auto_predicate(p['predicate'])
-          self._predicates.append(p)
-        else:
-          self._predicates.append(auto_predicate(p))
+        self._predicates.append(p)
     else:
-      _p = auto_predicate(predicates)
-      self._predicates.append(_p)
+      self._predicates.append(predicates)
     self.clean()
 
   @property

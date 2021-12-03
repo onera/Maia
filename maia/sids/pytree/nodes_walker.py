@@ -7,7 +7,6 @@ from ._node_parsers import ShallowNodesIterator
 from ._node_parsers import RangeLevelNodesIterator
 from ._node_parsers import ShallowRangeLevelNodesIterator
 from .compare import is_valid_node
-from .predicate import auto_predicate
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
@@ -64,9 +63,12 @@ class NodesWalker:
     return self._predicate
 
   @predicate.setter
-  def predicate(self, predicate):
-    self._predicate = auto_predicate(predicate)
-    self.clean()
+  def predicate(self, predicate: Callable[[TreeNode], bool]):
+    if callable(predicate):
+      self._predicate = predicate
+      self.clean()
+    else:
+      raise TypeError("predicate must be a callable function.")
 
   @property
   def search(self):

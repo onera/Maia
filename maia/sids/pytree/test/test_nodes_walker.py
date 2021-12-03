@@ -38,27 +38,10 @@ Base CGNSBase_t:
         PL3J DataArray_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  base = PT.getNodeFromLabel(tree, 'CGNSBase_t') # get the first base
-
-  # Search with name
-  walker = PT.NodesWalker(tree, 'Zone*', search=search, explore=explore, caching=caching)
-  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
-  assert(([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ']) if caching else (walker.cache == []))
 
   # Search with label as str
-  walker = PT.NodesWalker(tree, 'Zone_t', search=search, explore=explore, caching=caching)
-  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
-  assert(([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ']) if caching else (walker.cache == []))
-
-  # Search with label as CGL
-  walker = PT.NodesWalker(tree, CGL.Zone_t, search=search, explore=explore, caching=caching)
-  assert([I.getName(n) for n in walker()] == ['ZoneI', 'ZoneJ'])
-  assert(([I.getName(n) for n in walker.cache] == ['ZoneI', 'ZoneJ']) if caching else (walker.cache == []))
-
-  # Search with label as value
-  walker = PT.NodesWalker(tree, np.array([22,0]), search=search, explore=explore, caching=caching)
-  assert([I.getName(n) for n in walker()] == ['NgonI', 'NgonJ'])
-  assert(([I.getName(n) for n in walker.cache] == ['NgonI', 'NgonJ']) if caching else (walker.cache == []))
+  with pytest.raises(TypeError):
+    walker = PT.NodesWalker(tree, 'Zone_t', search=search, explore=explore, caching=caching)
 
   # Search with callable
   walker = PT.NodesWalker(tree, lambda n: PT.get_label(n) == "Zone_t", search=search, explore=explore, caching=caching)

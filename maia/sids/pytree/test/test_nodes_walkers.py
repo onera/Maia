@@ -44,33 +44,14 @@ Base CGNSBase_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  # Search with name
-  predicates = ["ZBC*", "FamilyName"]
-  walker = PT.NodesWalkers(tree, predicates, search=search, explore=explore, caching=caching)
-  print(f"nodes = {[I.getValue(n) for n in walker()]}")
-  assert [I.getValue(n) for n in walker()] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
-  assert(([I.getValue(n) for n in walker.cache] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']) if caching else (walker.cache == []))
-
-  # Search with label as str
-  predicates = ["BC_t", "FamilyName_t"]
-  walker = PT.NodesWalkers(tree, predicates, search=search, explore=explore, caching=caching)
-  print(f"nodes = {[I.getValue(n) for n in walker()]}")
-  assert [I.getValue(n) for n in walker()] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
-  assert(([I.getValue(n) for n in walker.cache] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']) if caching else (walker.cache == []))
-
-  # Search with label as CGL
+  # Search with non callable is not allowed
   predicates = [CGL.BC_t, CGL.FamilyName_t]
-  walker = PT.NodesWalkers(tree, predicates, search=search, explore=explore, caching=caching)
-  print(f"nodes = {[I.getValue(n) for n in walker()]}")
-  assert [I.getValue(n) for n in walker()] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
-  assert(([I.getValue(n) for n in walker.cache] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']) if caching else (walker.cache == []))
+  with pytest.raises(TypeError):
+    walker = PT.NodesWalkers(tree, predicates, search=search, explore=explore, caching=caching)
+    print(f"nodes = {[I.getValue(n) for n in walker()]}")
+    assert [I.getValue(n) for n in walker()] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']
+    assert(([I.getValue(n) for n in walker.cache] == ['BCC1', 'BCA2', 'BCD3', 'BCE4', 'BCB5']) if caching else (walker.cache == []))
 
-  # Search with label as value
-  predicates = [CGL.Zone_t, np.array([22,0])]
-  walker = PT.NodesWalkers(tree, predicates, search=search, explore=explore, caching=caching)
-  print(f"nodes = {[I.getName(n) for n in walker()]}")
-  assert [I.getName(n) for n in walker()] == ['NgonI', 'NgonJ']
-  assert(([I.getName(n) for n in walker.cache] == ['NgonI', 'NgonJ']) if caching else (walker.cache == []))
 
   # Search with callable
   predicates = [lambda n : I.getType(n) == "BC_t", lambda n : I.getType(n) == "FamilyName_t"]

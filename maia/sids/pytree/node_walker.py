@@ -3,7 +3,6 @@ import numpy as np
 
 from ._node_parsers import NodeParser, RangeLevelNodeParser
 from .compare import is_valid_node
-from .predicate import auto_predicate
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
@@ -50,8 +49,11 @@ class NodeWalker:
     return self._predicate
 
   @predicate.setter
-  def predicate(self, predicate):
-    self._predicate = auto_predicate(predicate)
+  def predicate(self, predicate: Callable[[TreeNode], bool]):
+    if callable(predicate):
+      self._predicate = predicate
+    else:
+      raise TypeError("predicate must be a callable function.")
 
   @property
   def search(self):
