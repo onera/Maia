@@ -3,9 +3,9 @@ import Converter.Internal as I
 import numpy              as np
 
 from maia.sids               import sids
+from maia.sids               import Internal_ext           as IE
 from maia                    import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.distribution       import distribution_function  as MDIDF
-from maia.distribution       import distribution_tree      as MDIDT
 from maia.cgns_io.hdf_filter import range_to_slab          as HFR2S
 from .                       import s_numbering_funcs      as s_numb
 
@@ -195,7 +195,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   bc_u = I.newBC(I.getName(bc_s), btype=I.getValue(bc_s))
   I.newGridLocation(output_loc, parent=bc_u)
   I.newPointList(value=point_list, parent=bc_u)
-  I.newIndexArray('PointList#Size', [1, bc_size.prod()], parent=bc_u)
+  IE.newDistribution({'Index' : np.array([*bc_range, bc_size.prod()], pdm_gnum_dtype)}, parent=bc_u)
   allowed_types = ['FamilyName_t'] #Copy these nodes to bc_u
   for allowed_child in [c for c in I.getChildren(bc_s) if I.getType(c) in allowed_types]:
     I.addChild(bc_u, allowed_child)
@@ -288,7 +288,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   I.newGridLocation(output_loc, gc_u)
   I.newPointList('PointList'     , point_list,     parent=gc_u)
   I.newPointList('PointListDonor', point_list_opp, parent=gc_u)
-  I.newIndexArray('PointList#Size', [1, gc_size.prod()], gc_u)
+  IE.newDistribution({'Index' : np.array([*gc_range, gc_size.prod()], pdm_gnum_dtype)}, parent=gc_u)
   #Copy these nodes to gc_u
   allowed_types = ['GridConnectivityProperty_t']
   allowed_names = ['Ordinal', 'OrdinalOpp']
@@ -334,8 +334,10 @@ def zonedims_to_ngon(n_vtx_zone, comm):
 
   ngon = I.newElements('NGonElements', 'NGON', face_vtx, [1, n_face_tot])
   I.newDataArray("ElementStartOffset", face_vtx_idx, parent=ngon)
-  I.newIndexArray('ElementConnectivity#Size', [4*n_face_tot], parent=ngon)
   I.newParentElements(face_pe, parent=ngon)
+
+  cg_face_distri = np.array([*face_distri, n_face_tot], dtype=pdm_gnum_dtype)
+  IE.newDistribution({'Element' : cg_face_distri, 'ElementConnectivity' : 4*cg_face_distri}, parent=ngon)
 
   return ngon
 ###############################################################################
@@ -395,6 +397,11 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
             n_vtx_opp = I.getValue(I.getNodeFromPath(disttree_s, zone_opp_path))[:,0]
             I.addChild(zonegc_u, gc_s_to_gc_u(gc_s, zone_path, n_vtx, n_vtx_opp, gc_output_loc, i_rank, n_rank))
 
+        # Copy distribution of all Cell/Vtx, which is unchanged
+        distri = I.copyTree(IE.getDistribution(zone_s))
+        I._rmNodesByName(distri, 'Face')
+        I._addChild(zone_u, distri)
+
         # Top level nodes
         top_level_types = ["FamilyName_t", "AdditionalFamilyName_t", "Descriptor_t", \
             "FlowEquationSet_t", "ReferenceState_t", "ConvergenceHistory_t"]
@@ -408,6 +415,5 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
       for node in I.getNodesFromType1(base_s, top_level_type):
         I.addChild(base_u, node)
 
-  MDIDT.add_distribution_info(disttree_u, comm, distribution_policy='uniform')
   return disttree_u
 ###############################################################################
