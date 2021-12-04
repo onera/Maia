@@ -14,11 +14,18 @@ PYBIND_TEST_CASE("parse_yaml_cgns") {
     "  Zone1 Zone_t I4 [[12,2,0]]:\n";
   tree t = to_node(yaml_tree);
 
-  CHECK(t.name == "Base");
-  CHECK(t.label == "CGNSBase_t");
-  CHECK(view_as_span<I4>(t.value) == std::vector{3,3});
+  CHECK(name (t) == "Base");
+  CHECK(label(t) == "CGNSBase_t");
+  CHECK(get_value<I4>(t) == std::vector{3,3});
 
-  CHECK(get_child_by_name(t,"Zone0").name == "Zone0");
-  CHECK(view_as_span<I4>(get_child_by_name(t,"Zone0").value) == std::vector{8,1,0});
-  CHECK(get_child_by_name(t,"Zone1").name == "Zone1");
+  CHECK( name(get_child_by_name(t,"Zone0")) == "Zone0" );
+  CHECK( name(get_child_by_name(t,"Zone1")) == "Zone1" );
+
+  node_value& z0 = value(get_child_by_name(t,"Zone0"));
+  CHECK( z0.rank() == 2 );
+  CHECK( z0.extent(0) == 1 );
+  CHECK( z0.extent(1) == 3 );
+  CHECK( z0(0,0) == 8 );
+  CHECK( z0(0,1) == 1 );
+  CHECK( z0(0,2) == 0 );
 }

@@ -36,9 +36,8 @@ inline constexpr std::array elements_face_traits = std_e::make_array(
   element_faces_traits{HEXA_8 ,   0   ,   6  }
 );
 
-template<class I> auto
-find_face_traits_by_elt_type(I elt) {
-  auto elt_type = static_cast<ElementType_t>(elt);
+auto
+find_face_traits_by_elt_type(ElementType_t elt_type) {
   auto match_cgns_elt = [elt_type](const auto& e){ return e.elt_type==elt_type; };
   auto pos = std::find_if(begin(elements_face_traits),end(elements_face_traits),match_cgns_elt);
   if (pos==end(elements_face_traits)) {
@@ -47,13 +46,13 @@ find_face_traits_by_elt_type(I elt) {
     return pos;
   }
 }
-template<class I> auto
-n_tri_elt(I elt_type) {
+auto
+n_tri_elt(ElementType_t elt_type) {
   auto pos = find_face_traits_by_elt_type(elt_type);
   return pos->n_tri;
 }
-template<class I> auto
-n_quad_elt(I elt_type) {
+auto
+n_quad_elt(ElementType_t elt_type) {
   auto pos = find_face_traits_by_elt_type(elt_type);
   return pos->n_quad;
 }
@@ -70,14 +69,14 @@ number_of_faces(const tree_range& elt_sections) {
   for (const tree& elt_section : elt_sections) {
     auto partial_dist = cgns::get_node_value_by_matching<I8>(elt_section,":CGNS#Distribution/Element");
     I8 n_elt = partial_dist[1] - partial_dist[0]; // TODO more expressive
-    I4 elt_type = ElementType<I4>(elt_section);
+    auto elt_type = element_type(elt_section);
     n_tri  += n_elt * n_tri_elt (elt_type);
     n_quad += n_elt * n_quad_elt(elt_type);
   }
   return std::make_pair(n_tri,n_quad);
 }
 
-template<I4 elt_type> auto
+template<ElementType_t elt_type> auto
 gen_faces(const tree& elt_node, auto& tri_it, auto& quad_it, auto& tri_parent_it, auto& quad_parent_it) {
   I4 elt_start = ElementRange<I4>(elt_node)[0];
   I4 index_dist_start = cgns::get_node_value_by_matching<I8>(elt_node,":CGNS#Distribution/Element")[0];
@@ -116,8 +115,6 @@ gen_interior_faces_and_parents(const tree_range& elt_sections) -> faces_and_pare
   auto [n_tri,n_quad] = number_of_faces(elt_sections);
   faces_and_parents_t<I4> faces_and_parents(n_tri,n_quad);
 
-  I8 i_tri = 0;
-  I8 i_quad = 0;
   auto tri_connec  = faces_and_parents.tris .connectivities();
   auto quad_connec = faces_and_parents.quads.connectivities();
   auto tri_it  = tri_connec .begin();
@@ -126,7 +123,7 @@ gen_interior_faces_and_parents(const tree_range& elt_sections) -> faces_and_pare
   auto tri_parent_it  = faces_and_parents.tris .parents().begin();
   auto quad_parent_it = faces_and_parents.quads.parents().begin();
   for (const auto& elt_section : elt_sections) {
-    I4 elt_type = ElementType<I4>(elt_section);
+    auto elt_type = element_type(elt_section);
     switch(elt_type){
       case TRI_3: {
         gen_faces<TRI_3>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
@@ -341,23 +338,21 @@ scatter_parents_to_sections(tree& surf_elt, const std::vector<I>& face_ids, cons
   auto partial_dist = cgns::get_node_value_by_matching<I8>(surf_elt,":CGNS#Distribution/Element");
   auto dist_I8 = maia::distribution_from_partial(partial_dist,comm);
   auto first_face_id = cgns::get_node_value_by_matching<I>(surf_elt,"ElementRange")[0];
-  I n_face = face_ids.size();
   std::vector<I> face_indices = face_ids;
   std_e::offset(face_indices,-first_face_id);
   std_e::dist_array<I> parents(dist_I8,comm);
   std_e::scatter(parents,dist_I8,std::move(face_indices),vol_parents_ext);
 
   I n_face_res = parents.local().size();
-  std_e::buffer_vector<I> parents_array(n_face_res*2);
+  md_array<I,2> parents_array(n_face_res,2);
   std::copy(begin(parents.local()),end(parents.local()),begin(parents_array)); // only half is assign, the other is 0
 
   tree parent_elt_node = cgns::new_DataArray("ParentElements",std::move(parents_array));
-  parent_elt_node.value.dims = {n_face_res,2};
   emplace_child(surf_elt,std::move(parent_elt_node));
 }
 
 template<class I> auto
-append_element_section(cgns::tree& z, ElementType_t elt_type, const in_faces_with_parents<I>& faces_with_p, MPI_Comm comm) -> void { // TODO do not copy faces_with_p
+append_element_section(cgns::tree& z, ElementType_t elt_type, in_faces_with_parents<I>&& faces_with_p, MPI_Comm comm) -> void { // TODO do not copy faces_with_p
   //auto _ = std_e::stdout_time_logger("append_element_section");
   I n_face = faces_with_p.l_parents.size();
 
@@ -368,20 +363,19 @@ append_element_section(cgns::tree& z, ElementType_t elt_type, const in_faces_wit
   I last_sec_id = first_sec_id+n_face_tot-1;
 
   // connec
-  std_e::buffer_vector<I> connec_array(begin(faces_with_p.connec),end(faces_with_p.connec));
-  tree elt_section_node = new_Elements(to_string(elt_type)+"_interior",(I)elt_type,std::move(connec_array),first_sec_id,last_sec_id);
+  tree elt_section_node = new_Elements(to_string(elt_type)+"_interior",(I)elt_type,std::move(faces_with_p.connec),first_sec_id,last_sec_id);
 
   // parent
-  std_e::buffer_vector<I> parents_array(n_face*2);
+  md_array<I,2> parents_array(n_face,2);
+  // TODO optim with no copy
   auto mid_parent_array = std::copy(begin(faces_with_p.l_parents),end(faces_with_p.l_parents),begin(parents_array));
                           std::copy(begin(faces_with_p.r_parents),end(faces_with_p.r_parents),mid_parent_array);
 
   tree parent_elt_node = cgns::new_DataArray("ParentElements",std::move(parents_array));
-  parent_elt_node.value.dims = {n_face,2};
   emplace_child(elt_section_node,std::move(parent_elt_node));
 
   // distribution
-  std_e::buffer_vector<I8> elt_distri_mem(3);
+  std::vector<I8> elt_distri_mem(3);
   elt_distri_mem[0] = n_face_acc;
   elt_distri_mem[1] = n_face_acc + n_face;
   elt_distri_mem[2] = n_face_tot;
@@ -408,8 +402,8 @@ generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   auto unique_faces_tri  = merge_unique_faces(faces_and_parents.tris ,n_vtx,first_3d_elt_id,comm);
   auto unique_faces_quad = merge_unique_faces(faces_and_parents.quads,n_vtx,first_3d_elt_id,comm);
 
-  auto ext_tri_node  = find_if(begin(elt_sections),end(elt_sections),[](const tree& t){ return ElementType<I4>(t)==cgns::TRI_3 ; });
-  auto ext_quad_node = find_if(begin(elt_sections),end(elt_sections),[](const tree& t){ return ElementType<I4>(t)==cgns::QUAD_4; });
+  auto ext_tri_node  = std::find_if(begin(elt_sections),end(elt_sections),[](const tree& t){ return element_type(t)==cgns::TRI_3 ; });
+  auto ext_quad_node = std::find_if(begin(elt_sections),end(elt_sections),[](const tree& t){ return element_type(t)==cgns::QUAD_4; });
 
   if (ext_tri_node == end(elt_sections)) {
     STD_E_ASSERT(unique_faces_tri.ext.face_parents.size()==0);
@@ -423,8 +417,8 @@ generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
     scatter_parents_to_sections(*ext_quad_node,unique_faces_quad.ext.face_parents,unique_faces_quad.ext.vol_parents,comm);
   }
 
-  append_element_section(z,cgns::TRI_3 ,unique_faces_tri .in,comm);
-  append_element_section(z,cgns::QUAD_4,unique_faces_quad.in,comm);
+  append_element_section(z,cgns::TRI_3 ,std::move(unique_faces_tri .in),comm);
+  append_element_section(z,cgns::QUAD_4,std::move(unique_faces_quad.in),comm);
 }
 
 

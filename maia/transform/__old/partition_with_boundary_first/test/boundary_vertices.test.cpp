@@ -10,18 +10,18 @@ using namespace cgns;
 
 TEST_CASE("partition_with_boundray_vertices") {
 // tri3 connectivities
-  std_e::buffer_vector<I4> tri_cs =
+  std::vector<I4> tri_cs =
     {  1, 2, 3,
       42,43,44,
       44,43, 3  };
 
 // tet4 connectivities
-  std_e::buffer_vector<I4> tet_cs =
+  std::vector<I4> tet_cs =
     {  1, 2, 3, 4,
       42,43,44,45  };
 
 // ngon connectivities
-  std_e::buffer_vector<I4> ngon_cs =
+  std::vector<I4> ngon_cs =
     { 3,   1, 2, 3,
       4,  10,11,12,13,
       3,   5, 4, 3,

@@ -1,4 +1,3 @@
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/transform/__old/partition_with_boundary_first/boundary_vertices_at_beginning.hpp"
@@ -42,7 +41,7 @@ TEST_CASE("re_number_vertex_ids_in_elements") {
   //   should become                 { 1,2,     6,7,8,    3,4,5      9,10 };
 
   SUBCASE("tris") {
-    std_e::buffer_vector<I4> tri_cs =
+    std::vector<I4> tri_cs =
       { 1, 2, 3,
         1, 3, 4,
         4, 5, 9  };
@@ -70,7 +69,7 @@ TEST_CASE("re_number_vertex_ids_in_elements") {
   }
 
   SUBCASE("ngons") {
-    std_e::buffer_vector<I4> ngon_cs =
+    std::vector<I4> ngon_cs =
       { 3,   1, 2, 3,
         4,   4, 5, 6,10,
         3,   9, 8, 7,

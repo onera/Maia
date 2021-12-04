@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "cpp_cgns/node_manip.hpp"
+#include "cpp_cgns/cgns.hpp"
 
 
 namespace cgns {

@@ -2,7 +2,6 @@
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/utils/parallel/utils.hpp"
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/interval/interval_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "pdm_multi_block_to_part.h"
@@ -23,14 +22,14 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   auto range_first = ElementRange<I4>(*first_section);
   I4 start = range_first[0];
   I4 finish = range_first[1];
-  I4 elt_type = ElementType<I4>(*first_section);
+  auto elt_type = element_type(*first_section);
 
   It cur = first_section+1;
   while (cur != last_section) {
     auto cur_range = ElementRange<I4>(*cur);
     I4 cur_start = cur_range[0];
     I4 cur_finish = cur_range[1];
-    I4 cur_elt_type = ElementType<I4>(*first_section);
+    I4 cur_elt_type = element_type(*first_section);
     STD_E_ASSERT(cur_start == finish+1);
     STD_E_ASSERT(cur_elt_type == elt_type);
     finish = cur_finish;
@@ -93,7 +92,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
                      (void ***) &parray);
 
   int d_connec_sz = n_elts_0*stride;
-  std_e::buffer_vector<I4> d_connectivity_merge(d_connec_sz);
+  std::vector<I4> d_connectivity_merge(d_connec_sz);
   std::copy_n(parray[0],d_connec_sz,begin(d_connectivity_merge));
   free(parray[0]);
   free(parray);
@@ -106,7 +105,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
     start,finish
   );
 
-  std_e::buffer_vector<I8> partial_dist(3);
+  std::vector<I8> partial_dist(3);
   partial_dist[0] = merged_distri[i_rank];
   partial_dist[1] = merged_distri[i_rank+1];
   partial_dist[2] = merged_distri.back();
@@ -177,10 +176,9 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   // TODO fields
   auto bcs = get_nodes_by_matching(z,"ZoneBC_t/BC_t");
   for (tree& bc : bcs) {
-    if (to_string(get_child_by_name(bc,"GridLocation").value)!="Vertex") {
+    if (GridLocation(bc)!="Vertex") {
       //auto pl = get_child_value_by_name<I4>(bc,"PointList");
-      tree& pl_node = get_child_by_name(bc,"PointList");
-      auto pl = view_as_span<I4>(pl_node.value);
+      auto pl = get_child_value_by_name<I4>(bc,"PointList");
 
       for (I4& id : pl) {
         auto index = std_e::interval_index(id,old_offsets);
@@ -194,15 +192,15 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   // 2. merge element sections of the same type
   std::vector<tree> merged_sections;
   auto section_current = begin(elt_sections);
-  auto elt_type = ElementType<I4>(*section_current);
-  auto is_same_elt_type = [&elt_type](const auto& elt_node){ return ElementType<I4>(elt_node) == elt_type; };
+  auto elt_type = element_type(*section_current);
+  auto is_same_elt_type = [&elt_type](const auto& elt_node){ return element_type(elt_node) == elt_type; };
   while (section_current != end(elt_sections)){
     auto section_same_type_end = std::partition_point(section_current,end(elt_sections),is_same_elt_type);
     auto new_section = merge_same_type_elt_sections(section_current,section_same_type_end,comm);
     merged_sections.emplace_back(std::move(new_section));
     section_current = section_same_type_end;
     if (section_current != end(elt_sections)) {
-      elt_type = ElementType<I4>(*section_current);
+      elt_type = element_type(*section_current);
     }
   }
 

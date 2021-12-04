@@ -2,6 +2,7 @@
 
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 #include "cpp_cgns/sids/creation.hpp"
+#include "cpp_cgns/sids/utils.hpp"
 #include "std_e/algorithm/for_each.hpp"
 
 
@@ -19,8 +20,8 @@ constexpr auto less_cell_id = [](const auto& x, const auto& y){ return x.cell_id
 
 auto
 face_ids_by_sorted_cell_ids(const tree& ngons) -> std::vector<cell_id_and_face_id<I4>> {
-  STD_E_ASSERT(ngons.label=="Elements_t");
-  STD_E_ASSERT(ElementType<I4>(ngons)==NGON_n);
+  STD_E_ASSERT(label(ngons)=="Elements_t");
+  STD_E_ASSERT(element_type(ngons)==NGON_n);
 
   auto first_ngon_id = ElementRange<I4>(ngons)[0];
   auto parent_elts = ParentElements<I4>(ngons);
@@ -63,7 +64,7 @@ nfaces_from_cell_face(const std::vector<cell_id_and_face_id<I4>>& cell_face_ids)
 
   auto first_non_boundary = std::partition_point(begin(cell_face_ids),end(cell_face_ids),[](auto& x){ return x.cell_id==0; });
 
-  std_e::buffer_vector<I4> nfaces;
+  std::vector<I4> nfaces;
   I4 nb_nfaces = 0;
 
   auto append_nface = [&nb_nfaces,&nfaces](auto f, auto l){ append_nface_from_range(f,l,std::back_inserter(nfaces)); ++nb_nfaces; };
@@ -81,7 +82,7 @@ nfaces_from_ngons(const tree& ngons) -> tree {
 
 auto
 add_nfaces_to_zone(tree& z) -> void {
-  tree& ngons = element_pool<I4>(z,NGON_n);
+  tree& ngons = element_section(z,NGON_n);
   emplace_child(z,nfaces_from_ngons(ngons));
 }
 

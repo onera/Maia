@@ -15,14 +15,14 @@ namespace cgns {
 
 auto
 partition_with_boundary_first(tree& b, MPI_Comm comm) -> void {
-  STD_E_ASSERT(b.label=="CGNSBase_t");
+  STD_E_ASSERT(label(b)=="CGNSBase_t");
   apply_base_renumbering(b,partition_zone_with_boundary_first,comm);
 }
 
 
 auto
 partition_zone_with_boundary_first(tree& z, donated_point_lists& plds) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   if (is_unstructured_zone(z)) {
     partition_coordinates(z);
     partition_elements(z,plds);
@@ -32,7 +32,7 @@ partition_zone_with_boundary_first(tree& z, donated_point_lists& plds) -> void {
 
 auto
 partition_coordinates(tree& z) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   if (!is_boundary_partitionned_zone<I4>(z)) {
     auto elt_pools = get_children_by_label(z,"Elements_t");
     auto boundary_vertex_ids = get_ordered_boundary_vertex_ids(elt_pools);
@@ -43,7 +43,7 @@ partition_coordinates(tree& z) -> void {
 
 auto
 permute_boundary_vertices_at_beginning(tree& z, const std::vector<I4>& boundary_vertex_ids) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   auto nb_of_vertices = VertexSize_U<I4>(z);
   auto vertex_permutation = vertex_permutation_to_move_boundary_at_beginning(nb_of_vertices, boundary_vertex_ids);
 
@@ -59,10 +59,10 @@ permute_boundary_vertices_at_beginning(tree& z, const std::vector<I4>& boundary_
 
 auto
 permute_boundary_grid_coords_at_beginning(tree& grid_coords, const std::vector<I4>& vertex_permutation) -> void {
-  STD_E_ASSERT(grid_coords.label=="GridCoordinates_t");
+  STD_E_ASSERT(label(grid_coords)=="GridCoordinates_t");
   auto coords = get_children_by_label(grid_coords,"DataArray_t");
   for (tree& coord : coords) {
-    permute_boundary_vertices(coord.value,vertex_permutation);
+    permute_boundary_vertices(value(coord),vertex_permutation);
   }
 }
 
@@ -75,7 +75,7 @@ permute_boundary_vertices(node_value& coord, const std::vector<I4>& perm) -> voi
 
 auto
 update_vertex_ids_in_connectivities(tree_range& elt_pools, const std::vector<I4>& vertex_permutation) -> void {
-  /* Precondition */ for([[maybe_unused]] tree& elt_pool : elt_pools) { STD_E_ASSERT(elt_pool.label=="Elements_t"); }
+  /* Precondition */ for([[maybe_unused]] tree& elt_pool : elt_pools) { STD_E_ASSERT(label(elt_pool)=="Elements_t"); }
   for(tree& elt_pool : elt_pools) {
     re_number_vertex_ids_in_elements(elt_pool,vertex_permutation);
   };
@@ -84,16 +84,16 @@ update_vertex_ids_in_connectivities(tree_range& elt_pools, const std::vector<I4>
 
 auto
 save_partition_point(tree& z, I4 nb_of_boundary_vertices) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   VertexBoundarySize_U<I4>(z) = nb_of_boundary_vertices;
 }
 
 
 auto
 partition_elements(tree& z, donated_point_lists& plds) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   auto elt_pools = get_children_by_label(z,"Elements_t");
-  tree& ngons = element_pool<I4>(z,NGON_n);
+  tree& ngons = element_section(z,NGON_n);
   if (is_boundary_partitionned_element_pool<I4>(ngons)) return;
 
   auto elts_permutation_0 = sort_ngons_by_nb_vertices(ngons);

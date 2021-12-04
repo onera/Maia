@@ -30,7 +30,7 @@ class connectivity_iterator {
     }
     auto operator++(int) -> connectivity_iterator {
       connectivity_iterator tmp(*this);
-      ++(*this);
+      ++*this;
       return tmp;
 
     }

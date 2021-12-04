@@ -4,7 +4,6 @@
 #include "maia/transform/__old/partition_with_boundary_first/boundary_ngons_at_beginning.hpp" // TODO rename file
 #include "cpp_cgns/sids/Hierarchical_Structures.hpp"
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/future/span.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/generate/__old/ngons/from_cells/cast_heterogenous_to_homogenous.hpp"
@@ -16,8 +15,8 @@ namespace cgns {
 
 auto
 sort_zone_nface_into_simple_connectivities(tree& z) -> void {
-  tree& ngons = element_pool<I4>(z,NGON_n);
-  tree& nfaces = element_pool<I4>(z,NFACE_n);
+  tree& ngons = element_section(z,NGON_n);
+  tree& nfaces = element_section(z,NFACE_n);
   I4 partition_penta_start = sort_nfaces_by_simple_polyhedron_type(nfaces,ngons);
   mark_simple_polyhedron_groups(nfaces,ngons,partition_penta_start);
 }
@@ -33,8 +32,8 @@ auto
 convert_to_simple_boundary_connectivities(const tree& ngons) -> std::vector<tree> {
   auto ngon_range = ElementRange<I4>(ngons);
   auto ngon_connectivity = ElementConnectivity<I4>(ngons);
-  auto polygon_types = view_as_span<I4>(get_child_by_name(ngons,".#PolygonTypeBoundary").value);
-  auto polygon_type_starts = view_as_span<I4>(get_child_by_name(ngons,".#PolygonTypeStartBoundary").value);
+  auto polygon_types = get_child_value_by_name<I4>(ngons,".#PolygonTypeBoundary");
+  auto polygon_type_starts = get_child_value_by_name<I4>(ngons,".#PolygonTypeStartBoundary");
 
   STD_E_ASSERT(only_contains_tris_and_quads(polygon_types));
   STD_E_ASSERT(polygon_type_starts.size()==polygon_types.size()+1);
@@ -50,7 +49,7 @@ convert_to_simple_boundary_connectivities(const tree& ngons) -> std::vector<tree
     auto ngon_accessor = cgns::interleaved_ngon_random_access_range(homogenous_range);
     I4 nb_connec = ngon_accessor.size();
     I4 nb_vertices = nb_connec*polygon_type;
-    std_e::buffer_vector<I4> homogenous_connectivities(nb_vertices);
+    std::vector<I4> homogenous_connectivities(nb_vertices);
     I4 cgns_type = 0;
     if (polygon_type==3) { // TODO remove the if once make_connectivity_range is not templated anymore
       cgns_type = cgns::TRI_3;
@@ -97,7 +96,7 @@ convert_to_tetra(const T& tetra_accessor, const tree& ngons, I4 elt_pool_start, 
 
   I4 nb_tets = tetra_accessor.size();
   I4 nb_vertices = nb_tets*4;
-  std_e::buffer_vector<I4> homogenous_connectivities(nb_vertices);
+  std::vector<I4> homogenous_connectivities(nb_vertices);
   auto d_first = homogenous_connectivities.data();
 
   for (int k=0; k<tetra_accessor.size(); ++k) {
@@ -134,7 +133,7 @@ convert_to_pyra(const T& pyra_accessor, const tree& ngons, I4 elt_pool_start, I4
 
   I4 nb_pyras = pyra_accessor.size();
   I4 nb_vertices = nb_pyras*5;
-  std_e::buffer_vector<I4> homogenous_connectivities(nb_vertices);
+  std::vector<I4> homogenous_connectivities(nb_vertices);
   auto d_first = homogenous_connectivities.data();
 
   for (int k=0; k<pyra_accessor.size(); ++k) {
@@ -207,7 +206,7 @@ convert_to_penta(const T& penta_accessor, const tree& ngons, I4 elt_pool_start, 
 
   I4 nb_pentas = penta_accessor.size();
   I4 nb_vertices = nb_pentas*6;
-  std_e::buffer_vector<I4> homogenous_connectivities(nb_vertices);
+  std::vector<I4> homogenous_connectivities(nb_vertices);
   auto d_first = homogenous_connectivities.data();
 
   for (int k=0; k<penta_accessor.size(); ++k) {
@@ -275,7 +274,7 @@ convert_to_hexa(const T& hexa_accessor, const tree& ngons, I4 elt_pool_start, I4
 
   I4 nb_hexas = hexa_accessor.size();
   I4 nb_vertices = nb_hexas*8;
-  std_e::buffer_vector<I4> homogenous_connectivities(nb_vertices);
+  std::vector<I4> homogenous_connectivities(nb_vertices);
   auto d_first = homogenous_connectivities.data();
 
   for (int k=0; k<hexa_accessor.size(); ++k) {
@@ -331,7 +330,7 @@ auto
 convert_to_simple_volume_connectivities(const tree& nfaces, const tree& ngons, I4 vol_elt_start_id) -> std::vector<tree> {
   auto nface_connectivity = ElementConnectivity<I4>(nfaces);
   auto nface_start = nface_connectivity.data();
-  auto polyhedron_type_starts = view_as_span<I4>(get_child_by_name(nfaces,".#PolygonSimpleTypeStart").value);
+  auto polyhedron_type_starts = get_value<I4>(get_child_by_name(nfaces,".#PolygonSimpleTypeStart"));
 
   auto tetra_range = std_e::make_span(nface_start+polyhedron_type_starts[0],nface_start+polyhedron_type_starts[1]);
   auto pyra_range  = std_e::make_span(nface_start+polyhedron_type_starts[1],nface_start+polyhedron_type_starts[2]);
@@ -391,12 +390,12 @@ convert_to_simple_volume_connectivities(const tree& nfaces, const tree& ngons, I
 
 auto
 convert_zone_to_std_elements(tree& z) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
 
   sort_zone_nface_into_simple_connectivities(z);
 
-  tree& ngons = element_pool<I4>(z,NGON_n);
-  tree& nfaces = element_pool<I4>(z,NFACE_n);
+  tree& ngons = element_section(z,NGON_n);
+  tree& nfaces = element_section(z,NFACE_n);
   auto bnd_elt_pools = convert_to_simple_boundary_connectivities(ngons);
 
   auto& last_bnd_elt_pool = bnd_elt_pools.back();
@@ -406,10 +405,8 @@ convert_zone_to_std_elements(tree& z) -> void {
   // TODO deallocate if necessary => when is it? for which allocator?
   // A: it is right to dealloc if OWNED by F
   //    it is right to NOT dealloc if OWNED by anybody other than F
-  std::string ngons_name = ngons.name;
-  std::string nfaces_name = nfaces.name;
-  rm_child_by_name(z,ngons_name);
-  rm_child_by_name(z,nfaces_name);
+  rm_child_by_name(z,name(ngons));
+  rm_child_by_name(z,name(nfaces));
 
   emplace_children(z,std::move(bnd_elt_pools));
   emplace_children(z,std::move(vol_elt_pools));

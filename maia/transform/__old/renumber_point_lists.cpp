@@ -1,7 +1,6 @@
 #include "maia/transform/__old/renumber_point_lists.hpp"
 
 #include "cpp_cgns/sids/creation.hpp"
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/future/contract.hpp"
 #include "cpp_cgns/tree_manip.hpp"
 #include "cpp_cgns/sids/Building_Block_Structure_Definitions.hpp"
@@ -29,11 +28,11 @@ renumber_point_list2(std_e::span<I4> pl, const std_e::offset_permutation<I4>& pe
 
 template<class Fun> auto
 for_each_point_list(tree& z, const std::string& grid_location, Fun f) {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   std::vector<std::string> search_gen_paths = {"ZoneBC/BC_t","ZoneGridConnectivity/GridConnectivity_t"};
   for (tree& bc : get_nodes_by_matching(z,search_gen_paths)) {
     if (GridLocation(bc)==grid_location) {
-      f(get_child_by_name(bc,"PointList").value);
+      f(value(get_child_by_name(bc,"PointList")));
     }
   }
 }
@@ -41,12 +40,12 @@ for_each_point_list(tree& z, const std::string& grid_location, Fun f) {
 auto
 is_bc_gc_with_empty_point_list(const tree& t) -> bool {
   return
-      (t.label=="BC_t" || t.label=="GridConnectivity_t")
-   && get_child_by_name(t,"PointList").value.dims[1]==0;
+      (label(t)=="BC_t" || label(t)=="GridConnectivity_t")
+   && value(get_child_by_name(t,"PointList")).extent(1)==0;
 }
 auto
 remove_if_empty_point_list(tree& z) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   // TODO this is ugly, think of something better
   std::vector<std::string> search_node_names = {"ZoneBC","ZoneGridConnectivity"};
   for (const auto& search_node_name : search_node_names) {
@@ -82,9 +81,9 @@ renumber_point_lists_donated(donated_point_lists& plds, const std_e::offset_perm
 auto
 rm_invalid_ids_in_point_list(node_value& pl) -> void {
   auto old_pl_val = view_as_span<I4>(pl);
-  std_e::buffer_vector<I4> new_pl_val;
+  std::vector<I4> new_pl_val;
   std::copy_if(begin(old_pl_val),end(old_pl_val),std::back_inserter(new_pl_val),[](I4 i){ return i!=-1; });
-  pl = make_node_value(std::move(new_pl_val));
+  pl = node_value(std::move(new_pl_val));
 }
 auto
 rm_invalid_ids_in_point_lists(tree& z, const std::string& grid_location) -> void {
@@ -93,15 +92,15 @@ rm_invalid_ids_in_point_lists(tree& z, const std::string& grid_location) -> void
 }
 auto
 rm_invalid_ids_in_point_lists_with_donors(tree& z, const std::string& grid_location) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   for (tree& bc : get_nodes_by_matching(z,"ZoneGridConnectivity/GridConnectivity_t")) {
     if (GridLocation(bc)==grid_location) {
-      node_value& pl = get_child_by_name(bc,"PointList").value;
-      node_value& pld = get_child_by_name(bc,"PointListDonor").value;
+      node_value& pl = value(get_child_by_name(bc,"PointList"));
+      node_value& pld = value(get_child_by_name(bc,"PointListDonor"));
       auto old_pl_val  = view_as_span<I4>(pl);
       auto old_pld_val = view_as_span<I4>(pld);
-      std_e::buffer_vector<I4> new_pl_val;
-      std_e::buffer_vector<I4> new_pld_val;
+      std::vector<I4> new_pl_val;
+      std::vector<I4> new_pld_val;
       int old_nb_pl = old_pl_val.size();
       for (int i=0; i<old_nb_pl; ++i) {
         //STD_E_ASSERT(old_pld_val[i]!=-1); // if donor, then it means that it was owned by the donor zone, hence, not deleted by it
@@ -110,8 +109,8 @@ rm_invalid_ids_in_point_lists_with_donors(tree& z, const std::string& grid_locat
           new_pld_val.push_back(old_pld_val[i]);
         }
       }
-      pl = make_node_value(std::move(new_pl_val));
-      pld = make_node_value(std::move(new_pld_val));
+      pl = node_value(std::move(new_pl_val));
+      pld = node_value(std::move(new_pld_val));
     }
   }
   remove_if_empty_point_list(z);
@@ -119,9 +118,9 @@ rm_invalid_ids_in_point_lists_with_donors(tree& z, const std::string& grid_locat
 
 auto
 rm_grid_connectivities(tree& z, const std::string& grid_location) -> void {
-  STD_E_ASSERT(z.label=="Zone_t");
+  STD_E_ASSERT(label(z)=="Zone_t");
   tree& zgc = get_child_by_name(z,"ZoneGridConnectivity");
-  rm_children_by_predicate(zgc, [&](const tree& n){ return n.label=="GridConnectivity_t" && GridLocation(n)==grid_location; });
+  rm_children_by_predicate(zgc, [&](const tree& n){ return label(n)=="GridConnectivity_t" && GridLocation(n)==grid_location; });
 }
 
 

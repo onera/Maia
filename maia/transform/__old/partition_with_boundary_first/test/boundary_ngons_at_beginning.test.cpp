@@ -1,8 +1,6 @@
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/transform/__old/partition_with_boundary_first/boundary_ngons_at_beginning.hpp"
-#include "cpp_cgns/node_manip.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 
 using namespace cgns;
@@ -13,7 +11,7 @@ TEST_CASE("boundary_ngons_at_beginning") {
   // ngon connectivities
   I4 first_ngon_elt = 6;
   I4 last_ngon_elt = 9;
-  std_e::buffer_vector<I4> ngon_cs =
+  std::vector<I4> ngon_cs =
     { 3,   1, 2, 3,
       4,  10,11,12,13,
       3,   5, 4, 3,
@@ -95,15 +93,15 @@ TEST_CASE("boundary_ngons_at_beginning") {
           {0, 0},
           {1, 4},
           {3, 1} };
-    CHECK( view_as_md_array<I4,2>(pe_node.value) == expected_parent_elts );
+    CHECK( get_value<I4,2>(pe_node) == expected_parent_elts );
 
-    CHECK( ElementSizeBoundary<I4>(ngons) == 2 );
+    CHECK( ElementSizeBoundary(ngons) == 2 );
 
     tree_range partition_index_nodes = get_children_by_label(ngons,"UserDefinedData_t");
     REQUIRE( partition_index_nodes.size() == 1 );
     CHECK( name(partition_index_nodes[0]) == ".#PartitionIndex" );
-
-    I4* ord_ptr = (I4*)data(value(partition_index_nodes[0]));
-    CHECK( *ord_ptr == 1+4 + 1+3 );
+    CHECK( value(partition_index_nodes[0]).rank() == 1 );
+    CHECK( value(partition_index_nodes[0]).extent(0) == 1 );
+    CHECK( value(partition_index_nodes[0])(0) == 1+4 + 1+3 );
   }
 }

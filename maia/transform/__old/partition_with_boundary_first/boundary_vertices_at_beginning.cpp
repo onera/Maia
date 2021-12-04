@@ -5,7 +5,6 @@
 #include "std_e/algorithm/id_permutations.hpp"
 #include "range/v3/view/indices.hpp"
 #include "range/v3/range/conversion.hpp"
-#include "cpp_cgns/node_manip.hpp"
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 #include "std_e/utils/switch.hpp"
 #include "cpp_cgns/sids/connectivity_category.hpp"

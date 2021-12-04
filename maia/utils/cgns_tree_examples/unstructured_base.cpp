@@ -3,16 +3,14 @@
 #include "maia/generate/__old/from_structured_grid.hpp"
 #include "maia/generate/__old/ngons/from_homogenous_faces.hpp"
 #include "maia/connectivity/iter/utility.hpp"
-#include "cpp_cgns/node_manip.hpp"
 #include "range/v3/range/conversion.hpp"
 #include "range/v3/view/repeat_n.hpp"
-#include "maia/utils/cpp_cgns_utils.hpp"
 using namespace cgns;
 
 
 auto
 create_GridCoords0() -> tree {
-  auto coord_X = create_node_value(
+  auto coord_X = node_value(
     { 0.,1.,2.,3.,
       0.,1.,2.,3.,
       0.,1.,2.,3.,
@@ -20,7 +18,7 @@ create_GridCoords0() -> tree {
       0.,1.,2.,3.,
       0.,1.,2.,3. }
   );
-  auto coord_Y = create_node_value(
+  auto coord_Y = node_value(
     { 0.,0.,0.,0.,
       1.,1.,1.,1.,
       2.,2.,2.,2.,
@@ -28,7 +26,7 @@ create_GridCoords0() -> tree {
       1.,1.,1.,1.,
       2.,2.,2.,2. }
   );
-  auto coord_Z = create_node_value(
+  auto coord_Z = node_value(
     { 0.,0.,0.,0.,
       0.,0.,0.,0.,
       0.,0.,0.,0.,
@@ -44,19 +42,19 @@ create_GridCoords0() -> tree {
 }
 auto
 create_GridCoords1() -> tree {
-  auto coord_X = create_node_value(
+  auto coord_X = node_value(
     { 3.,4.,
       3.,4.,
       3.,4.,
       3.,4. }
   );
-  auto coord_Y = create_node_value(
+  auto coord_Y = node_value(
     { 0.,0.,
       1.,1.,
       0.,0.,
       1.,1. }
   );
-  auto coord_Z = create_node_value(
+  auto coord_Z = node_value(
     { 0.,0.,
       0.,0.,
       1.,1.,
@@ -98,7 +96,7 @@ create_Zone0() -> tree {
   //auto quad_faces = generate_faces(vertex_dims) | ranges::to<std::vector>;
   std::vector<quad_4<int32_t>> quad_faces = generate_faces(vertex_dims) | ranges::to<std::vector>;
   maia::offset_vertices_ids(quad_faces,1); // CGNS is 1-indexed
-  auto ngons = convert_to_interleaved_ngons(quad_faces) | to_cgns_vector();
+  auto ngons = convert_to_interleaved_ngons(quad_faces) | ranges::to_vector;
 
   I8 nb_i_faces = 8;
   I8 nb_j_faces = 9;
@@ -117,7 +115,7 @@ create_Zone0() -> tree {
   auto parent_elements = ranges::views::concat(
     i_faces_l_parent_elements , j_faces_l_parent_elements, k_faces_l_parent_elements,
     i_faces_r_parent_elements , j_faces_r_parent_elements, k_faces_r_parent_elements
-  ) | to_cgns_vector();
+  ) | ranges::to_vector;
 
   std_e::offset(parent_elements,1); // cgns indexing begin at 1
   std_e::multi_index<int,2> pe_dims = {(int)parent_elements.size()/2,2};
@@ -128,7 +126,7 @@ create_Zone0() -> tree {
     std::move(ngons),
     1,nb_ngons
   );
-  emplace_child(ngon_elts,new_DataArray("ParentElements", make_node_value(std::move(parent_elts))));
+  emplace_child(ngon_elts,new_DataArray("ParentElements", node_value(std::move(parent_elts))));
   emplace_child(zone,std::move(ngon_elts));
 
   return zone;
@@ -158,14 +156,14 @@ create_Zone1() -> tree {
 
 
   std_e::multi_index<int32_t,3> vertex_dims = {2,2,2};
-  auto quad_faces = generate_faces(vertex_dims) | ranges::to<std::vector>;
+  auto quad_faces = generate_faces(vertex_dims) | ranges::to_vector;
   maia::offset_vertices_ids(quad_faces,1); // CGNS is 1-indexed
-  auto ngons = convert_to_interleaved_ngons(quad_faces) | to_cgns_vector();
+  auto ngons = convert_to_interleaved_ngons(quad_faces) |ranges::to_vector; 
 
 
   int32_t nb_ngons = 2 + 2 + 2;
 
-  auto parent_elements = generate_faces_parent_cell_ids(vertex_dims) | to_cgns_vector();
+  auto parent_elements = generate_faces_parent_cell_ids(vertex_dims) | ranges::to_vector;
 
   std_e::offset(parent_elements,1); // cgns indexing begin at 1
   std_e::multi_index<I8,2> pe_dims = {(I8)parent_elements.size()/2,2};
@@ -176,7 +174,7 @@ create_Zone1() -> tree {
     std::move(ngons),
     1,nb_ngons
   );
-  emplace_child(ngon_elts,new_DataArray("ParentElements", make_node_value(std::move(parent_elts))));
+  emplace_child(ngon_elts,new_DataArray("ParentElements", node_value(std::move(parent_elts))));
   emplace_child(zone,std::move(ngon_elts));
 
   return zone;

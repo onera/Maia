@@ -8,13 +8,12 @@
 #include "std_e/algorithm/iota.hpp"
 #include "std_e/algorithm/algorithm.hpp"
 #include "maia/transform/__old/renumber_point_lists.hpp"
-#include "std_e/buffer/buffer_vector.hpp"
 
 namespace cgns {
 
 auto
 remove_ghost_info(tree& b, MPI_Comm comm) -> void {
-  STD_E_ASSERT(b.label=="CGNSBase_t");
+  STD_E_ASSERT(label(b)=="CGNSBase_t");
   apply_base_renumbering(b,remove_ghost_info_from_zone,comm);
 
   for (tree& z : get_children_by_label(b,"Zone_t")) {
@@ -77,7 +76,7 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
   std_e::interval_vector<I4> intervals = {0};
   I4 nb_owned_cells = 0;
   for (const tree& elt_pool: elt_pools) {
-    auto elt_type = (ElementType_t)ElementType<I4>(elt_pool);
+    ElementType_t elt_type = element_type(elt_pool);
     I4 nb_owned_elts = nb_owned_elements<I4>(elt_pool);
     I4 nb_ghost_elts = nb_ghost_elements<I4>(elt_pool);
 
@@ -105,18 +104,18 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
     elt_range[0] = intervals[i]+1;
     elt_range[1] = intervals[i+1];
 
-    I4 elt_type = ElementType<I4>(elt_pool);
+    auto elt_type = element_type(elt_pool);
     tree& elt_connec = get_child_by_name(elt_pool,"ElementConnectivity");
     // TODO once pybind11: do not allocate/copy/del, only resize
     //elt_connec.value.dims[0] = intervals.length(i)*number_of_nodes(elt_type);
     // del old {
     int new_connec_size = intervals.length(i)*number_of_nodes(elt_type);
-    auto old_connec_val = view_as_span<I4>(elt_connec.value);
-    std_e::buffer_vector<I4> new_connec_val(new_connec_size);
+    auto old_connec_val = get_value<I4>(elt_connec);
+    std::vector<I4> new_connec_val(new_connec_size);
     for (int i=0; i<new_connec_size; ++i) {
       new_connec_val[i] = old_connec_val[i];
     }
-    elt_connec.value = make_node_value(std::move(new_connec_val));
+    value(elt_connec) = node_value(std::move(new_connec_val));
     // del old }
 
     rm_child_by_name(elt_pool,"Rind");
@@ -153,15 +152,15 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
   /// 5.0. renumber GridCoordinates
   for (tree& coord : get_children_by_label(coords,"DataArray_t")) {
     // TODO once pybind11: do not allocate/copy/del, only resize
-    auto old_coord_val = view_as_span<R8>(coord.value);
-    std_e::buffer_vector<R8> new_coord_val(nb_nodes2);
+    auto old_coord_val = get_value<R8>(coord);
+    std::vector<R8> new_coord_val(nb_nodes2);
     for (I4 i=0; i<old_nb_nodes; ++i) {
       I4 new_node_pos = nodes2[i];
       if (new_node_pos!=-1) {
         new_coord_val[new_node_pos] = old_coord_val[i];
       }
     }
-    coord.value = make_node_value(std::move(new_coord_val));
+    value(coord) = node_value(std::move(new_coord_val));
   }
 
   //auto node_perm_at_0 = node_perm.perm;
@@ -169,7 +168,7 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
   //auto old_to_new_node_perm = std_e::inverse_partial_permutation(node_perm_at_0,old_nb_nodes,-1);
   /// 5.1. renumber element connectivities
   for (tree& elt_pool: elt_pools) {
-    auto connec = view_as_span<I4>(get_child_by_name(elt_pool,"ElementConnectivity").value);
+    auto connec = get_child_value_by_name<I4>(elt_pool,"ElementConnectivity");
     for (I4& node : connec) {
       node = nodes2[node-1]+1; // TODO invert in offset_permutation
     }

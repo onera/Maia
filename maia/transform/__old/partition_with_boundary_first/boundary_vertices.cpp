@@ -39,7 +39,7 @@ ngon_boundary_vertices(std_e::span<const I4> connectivities, md_array_view<const
 
   return boundary_vertices;
 }
-        
+
 
 auto
 get_elements_boundary_vertices(const tree& elts) -> std::vector<I4> {
@@ -47,7 +47,7 @@ get_elements_boundary_vertices(const tree& elts) -> std::vector<I4> {
   // - dimension == 3
   // - 2D elements are supposed to be on the boundary
   // - mixed elements are supposed to be volume elements only (Tet, Hex...)
-  auto elt_type = ElementType<I4>(elts);
+  auto elt_type = element_type(elts);
   auto connectivity = ElementConnectivity<I4>(elts);
   if (elt_type==cgns::NGON_n) {
     auto parent_elts = ParentElements<I4>(elts);
@@ -67,7 +67,7 @@ append_boundary_coordinates_indices(const tree& elts, std::vector<I4>& boundary_
 
 auto
 get_ordered_boundary_vertex_ids(const tree_range& elements_range) -> std::vector<I4> {
-  /* Precondition: */ for ([[maybe_unused]] const tree& elts : elements_range) { STD_E_ASSERT(elts.label=="Elements_t"); }
+  /* Precondition: */ for ([[maybe_unused]] const tree& elts : elements_range) { STD_E_ASSERT(label(elts)=="Elements_t"); }
   // Post-condition: the boundary nodes are unique and sorted
 
   std::vector<I4> boundary_vertex_ids;

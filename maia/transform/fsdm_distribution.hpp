@@ -91,7 +91,7 @@ redistribute_to_match_face_dist(
   auto partition_indices = repartition_by_distributions(elt_dists,elt_intervals,point_list,values);
 
   std_e::jagged_span<I,2> pl(std_e::make_span(point_list),std_e::make_span(partition_indices));
-  auto pl_new = std_e::all_to_all_v(pl,comm).retrieve_values();
+  std::vector<I> pl_new = std_e::all_to_all_v(pl,comm).retrieve_values();
 
   int n_value = values.size();
   using value_range = typename Range_of_ranges::value_type;

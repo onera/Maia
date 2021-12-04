@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <vector>
 #include "maia/partitioning/gc_name_convention.hpp"
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/utils/concatenate.hpp"
 #include "maia/utils/parallel/utils.hpp"
 #include "maia/sids/element_sections.hpp"
@@ -31,12 +30,12 @@ sub_field_for_ids(const Tree_range& fields, std_e::span<const I4> ids, I4 first_
   for (const tree& field_node : fields) {
     MPI_Barrier(comm);
     MPI_Barrier(comm);
-    auto dfield = cgns::view_as_span<R8>(field_node.value);
+    auto dfield = get_value<R8>(field_node);
     auto pfield = pdm::exchange(btp_protocol,dfield);
-    std_e::buffer_vector<R8> sub_field(sz);
+    std::vector<R8> sub_field(sz);
     std::copy(begin(pfield),end(pfield),begin(sub_field));
 
-    sub_field_nodes.push_back(cgns::new_DataArray(field_node.name,std::move(sub_field)));
+    sub_field_nodes.push_back(cgns::new_DataArray(name(field_node),std::move(sub_field)));
   }
 
   return sub_field_nodes;
@@ -50,11 +49,11 @@ split_boundary_subzone_according_to_bcs(const tree& zsr, const Tree_range& bcs, 
   std::vector<tree> sub_zsrs;
   for (const tree& bc : bcs) {
     auto& pl = get_child_by_name(bc,"PointList");
-    auto fields_on_bc = sub_field_for_ids(get_children_by_label(zsr,"DataArray_t"),view_as_span<I4>(pl.value),first_id,distri,comm);
+    auto fields_on_bc = sub_field_for_ids(get_children_by_label(zsr,"DataArray_t"),get_value<I4>(pl),first_id,distri,comm);
 
-    auto sub_zsr = new_ZoneSubRegion(zsr.name+"_"+bc.name,2,"FaceCenter");
+    auto sub_zsr = new_ZoneSubRegion(name(zsr)+"_"+name(bc),2,"FaceCenter");
     emplace_children(sub_zsr,std::move(fields_on_bc));
-    emplace_child(sub_zsr,new_Descriptor("BCRegionName",bc.name));
+    emplace_child(sub_zsr,new_Descriptor("BCRegionName",name(bc)));
 
     sub_zsrs.push_back(std::move(sub_zsr));
   }

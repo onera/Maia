@@ -98,7 +98,7 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
     MPI_CHECK(0, parent_tri_in.extent() == std_e::multi_index<I8,2>{1,2} );
     MPI_CHECK(1, parent_tri_in.extent() == std_e::multi_index<I8,2>{0,2} );
     MPI_CHECK(0, parent_tri_in == cgns::md_array<I4,2>{{17,18}} );
-    MPI_CHECK(1, parent_tri_in == cgns::md_array<I4,2>{} );
+    MPI_CHECK(1, parent_tri_in == cgns::md_array<I4,2>(0,2) );
 
     // quad ext
     auto parent_quad_ext = cgns::get_node_value_by_matching<I4,2>(b,"Zone/Quads/ParentElements");
@@ -122,6 +122,6 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
     MPI_CHECK(0, parent_quad_in == cgns::md_array<I4,2>{{15,17},{15,16},{18,16}} ); // ... and so are the parent elements. So this is coherent
                                                                                     // The difference comes from the fact that we use std::sort,
                                                                                     // not std::stable_sort
-    MPI_CHECK(1, parent_quad_in == cgns::md_array<I4,2>{} );
+    MPI_CHECK(1, parent_quad_in == cgns::md_array<I4,2>(0,2) );
   }
 }

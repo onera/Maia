@@ -28,11 +28,6 @@ PYBIND_MPI_TEST_CASE("std_elements_to_ngons",2) {
   auto range = cgns::get_node_value_by_matching<I4>(b,"Zone/NGons/ElementRange");
   auto connec = cgns::get_node_value_by_matching<I4>(b,"Zone/NGons/ElementConnectivity");
   auto parents = cgns::get_node_value_by_matching<I4,2>(b,"Zone/NGons/ParentElements");
-  ELOG(elt_type);
-  ELOG(range);
-  ELOG(connec);
-  ELOG(parents.extent());
-  ELOG(parents);
   CHECK( elt_type == (I4)cgns::NGON_n);
   CHECK( range == std::vector<I4>{1,18} );
   //MPI_CHECK(0, connec == std::vector<I4>{} ); // TODO

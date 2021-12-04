@@ -8,7 +8,6 @@
 #include "maia/partitioning/gc_name_convention.hpp"
 #include "maia/sids/element_sections.hpp"
 #include "std_e/algorithm/algorithm.hpp"
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/data_structure/multi_range.hpp"
 #include "std_e/utils/concatenate.hpp"
 
@@ -25,7 +24,7 @@ ngon_new_to_old(tree& b) -> void {
       auto new_ngon_range = polygon_range(eso,connectivity);
 
       I4 old_connectivity_sz = eso.size()-1 + eso.back();
-      std_e::buffer_vector<I4> old_connectivity(old_connectivity_sz);
+      std::vector<I4> old_connectivity(old_connectivity_sz);
       auto old_ngon_range = cgns::interleaved_ngon_range(old_connectivity);
 
       std::copy(new_ngon_range.begin(),new_ngon_range.end(),old_ngon_range.begin());

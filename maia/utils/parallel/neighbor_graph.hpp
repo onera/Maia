@@ -108,7 +108,7 @@ class zone_exchange {
       for (const auto& ci : cis.flat_view()) {
         tree& gc = *ci.node;
         tree& pld = get_child_by_name(gc,pl_name);
-        auto pld_span = view_as_span<I4>(pld.value);
+        auto pld_span = get_value<I4>(pld);
         std_e::append(pld_cat,pld_span);
 
         neighbor_data_indices.push_back(cur);
@@ -118,7 +118,7 @@ class zone_exchange {
         int donor_z_id = find_id_from_name(zis,donor_z_name);
         donor_z_ids.push_back(donor_z_id);
 
-        auto loc_str = to_string(get_child_by_name(gc,"GridLocation").value);
+        auto loc_str = to_string(value(get_child_by_name(gc,"GridLocation")));
         auto loc = std_e::to_enum<cgns::GridLocation_t>(loc_str);
         locs_neigh.push_back(loc);
       }
@@ -176,7 +176,7 @@ class zone_exchange {
         auto& ci = cis.flat_view()[i];
         tree& gc = *ci.node;
         tree& pld = get_child_by_name(gc,"PointListDonor");
-        auto pld_span = view_as_span<I4>(pld.value);
+        auto pld_span = get_value<I4>(pld);
         auto new_pld_span = pl_neighbor_data_cat[i];
         STD_E_ASSERT(new_pld_span.size()==pld_span.size());
         std::copy(begin(new_pld_span),end(new_pld_span),begin(pld_span));

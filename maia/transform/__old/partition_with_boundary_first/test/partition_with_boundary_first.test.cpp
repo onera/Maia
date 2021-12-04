@@ -29,9 +29,9 @@ TEST_CASE("cgns__partition_with_boundary_first, with 2 zones") {
   tree& z0_coordX_node = get_node_by_matching(z0,"GridCoordinates/CoordinateX");
   tree& z0_coordY_node = get_node_by_matching(z0,"GridCoordinates/CoordinateY");
   tree& z0_coordZ_node = get_node_by_matching(z0,"GridCoordinates/CoordinateZ");
-  auto z0_coordX = view_as_span<R8>(z0_coordX_node.value);
-  auto z0_coordY = view_as_span<R8>(z0_coordY_node.value);
-  auto z0_coordZ = view_as_span<R8>(z0_coordZ_node.value);
+  auto z0_coordX = get_value<R8>(z0_coordX_node);
+  auto z0_coordY = get_value<R8>(z0_coordY_node);
+  auto z0_coordZ = get_value<R8>(z0_coordZ_node);
   std::vector<std::array<double,3>> expected_interior_elts_coords = {
     {1.,1.,0}, // node 5 of simple_meshes.h
     {2.,1.,0}, // node 6
@@ -53,16 +53,16 @@ TEST_CASE("cgns__partition_with_boundary_first, with 2 zones") {
 
   // bcs
   tree& z0_inflow_pl_node = get_node_by_matching(z0,"ZoneBC/Inlet/PointList");
-  auto z0_inflow_pl = view_as_span<I4>(z0_inflow_pl_node.value);
+  auto z0_inflow_pl = get_value<I4>(z0_inflow_pl_node);
   REQUIRE( z0_inflow_pl.size() == 2 );
   CHECK( z0_inflow_pl[0] == 1 );
   CHECK( z0_inflow_pl[1] == 2 );
 
   // gcs
   tree& z0_grid_connec_pl_node = get_node_by_matching(z0,"ZoneGridConnectivity/MixingPlane/PointList");
-  auto z0_grid_connec_pl = view_as_span<I4>(z0_grid_connec_pl_node.value);
+  auto z0_grid_connec_pl = get_value<I4>(z0_grid_connec_pl_node);
   tree& z0_grid_connec_pld_node = get_node_by_matching(z0,"ZoneGridConnectivity/MixingPlane/PointListDonor");
-  auto z0_grid_connec_pld = view_as_span<I4>(z0_grid_connec_pld_node.value);
+  auto z0_grid_connec_pld = get_value<I4>(z0_grid_connec_pld_node);
   REQUIRE( z0_grid_connec_pl.size() == 1 );
   CHECK( z0_grid_connec_pl[0] == 3 );
   REQUIRE( z0_grid_connec_pld.size() == 1 );
@@ -70,7 +70,7 @@ TEST_CASE("cgns__partition_with_boundary_first, with 2 zones") {
   /// since there is no renumbering, in this case, on z0,
   /// we check the renumbering was done by looking z1
   tree& z1_grid_connec_pld_node = get_node_by_matching(z1,"ZoneGridConnectivity/MixingPlane/PointListDonor");
-  auto z1_grid_connec_pld = view_as_span<I4>(z1_grid_connec_pld_node.value);
+  auto z1_grid_connec_pld = get_value<I4>(z1_grid_connec_pld_node);
   REQUIRE( z1_grid_connec_pld.size() == 1 );
   //CHECK( z1_grid_connec_pld[0] == 3 ); // TODO fails gcc 10
 
@@ -79,7 +79,7 @@ TEST_CASE("cgns__partition_with_boundary_first, with 2 zones") {
   auto z0_ngon_elt_range = ElementRange<I4>(z0_ngon);
   CHECK( z0_ngon_elt_range[0] == 1 );
   CHECK( z0_ngon_elt_range[1] == 8 + 9 + 12 );
-  auto& z0_nb_boundary_ngons = ElementSizeBoundary<I4>(z0_ngon);
+  auto z0_nb_boundary_ngons = ElementSizeBoundary(z0_ngon);
   CHECK( z0_nb_boundary_ngons == 3+2+3+2 );
   auto z0_ngon_elt_connect = ElementConnectivity<I4>(z0_ngon);
 

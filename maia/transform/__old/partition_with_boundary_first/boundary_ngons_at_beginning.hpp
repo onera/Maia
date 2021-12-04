@@ -99,17 +99,17 @@ apply_nface_permutation_to_parent_elts(md_array_view<I,2>& parent_elts, const st
 
 inline auto
 mark_as_boundary_partitionned(tree& ngons, I8 partition_index, I8 ngon_partition_index) -> void {
-  ElementSizeBoundary<I4>(ngons) = partition_index;
+  ElementSizeBoundary(ngons) = I4(partition_index); // TODO handle I8
 
-  tree pt_node = new_UserDefinedData(".#PartitionIndex",create_scalar_node_value(ngon_partition_index));
+  tree pt_node = new_UserDefinedData(".#PartitionIndex",node_value(ngon_partition_index));
 
   emplace_child(ngons,std::move(pt_node));
 }
 
 template<class T> inline auto
 mark_polygon_groups(const std::string& bnd_or_interior, T& ngon_accessor, const I4* global_start) -> std::vector<tree> {
-  std_e::buffer_vector<I4> polygon_types;
-  std_e::buffer_vector<I4> polygon_type_starts;
+  std::vector<I4> polygon_types;
+  std::vector<I4> polygon_type_starts;
 
   auto equal_nb_vertices = [](const auto& conn0, const auto& conn1){ return conn0.nb_nodes()==conn1.nb_nodes(); };
   auto record_type_and_start = [&polygon_types,&polygon_type_starts,global_start](const auto& conn_it){
@@ -129,7 +129,7 @@ mark_polygon_groups(tree& ngons) -> void {
   auto ngon_connectivity = ElementConnectivity<I4>(ngons);
   auto ngon_start = ngon_connectivity.data();
   auto ngon_size = ngon_connectivity.size();
-  I4 bnd_finish_idx = view_as_span<I8>(get_child_by_name(ngons,".#PartitionIndex").value)[0];
+  I4 bnd_finish_idx = get_child_value_by_name<I8>(ngons,".#PartitionIndex")[0];
 
   auto ngon_bnd_connectivity = std_e::make_span(ngon_start,bnd_finish_idx);
   auto ngon_iterior_connectivity = std_e::make_span(ngon_start+bnd_finish_idx,ngon_start+ngon_size);
@@ -171,7 +171,7 @@ mark_simple_polyhedron_groups(tree& nfaces, [[maybe_unused]] const tree& ngons, 
 
   auto last_tet = std::find_if_not(nface_accessor.begin(),nface_accessor.end(),[](const auto& c){ return c.size()==4; });
   auto last_penta = std::find_if_not(last_tet,nface_accessor.end(),[](const auto& c){ return c.size()==5; });
-  std_e::buffer_vector<I4> polyhedron_type_starts(5); // tet, pyra, penta, hex, end
+  std::vector<I4> polyhedron_type_starts(5); // tet, pyra, penta, hex, end
   polyhedron_type_starts[0] = 0; // tets start at 0
   polyhedron_type_starts[1] = last_tet.data()-nface_accessor.data();
   polyhedron_type_starts[2] = penta_start; // penta start
