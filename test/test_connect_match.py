@@ -1,100 +1,106 @@
-from mpi4py import MPI
-import logging as LOG
+import pytest
+from   pytest_mpi_check._decorator import mark_mpi_test
 
-# ------------------------------------------------------------------------
-# > Initilise MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-
-# ---------------------------------------------------------
-fmt = '%(levelname)s:%(message)s '.format(rank, size)
-LOG.basicConfig(filename = '{0}.{1}.log'.format('maia_workflow_log', rank),
-                level    = 10,
-                format   = fmt,
-                filemode = 'w')
-# ---------------------------------------------------------
-
-import Converter.PyTree   as C
+import numpy as np
+import os
 import Converter.Internal as I
-import numpy              as NPY
-import sys
 
-from maia.cgns_io            import load_collective_size_tree       as LST
-from maia.cgns_io            import cgns_io_tree                    as IOT
-from maia.cgns_io            import save_part_tree                  as SPT
-from maia.cgns_io.hdf_filter import tree                            as HTF
-from maia.connectivity       import generate_ngon_from_std_elements as FTH
-from maia.partitioning.load_balancing import setup_partition_weights as DBA
-from maia.partitioning       import part                            as PPA
-from maia.geometry           import connect_match                   as CMA
-import maia.distribution.distribution_tree                          as MDI
+from maia.cgns_io             import cgns_io_tree                    as IOT
+from maia.partitioning        import part                            as PPA
+from maia.geometry            import connect_match                   as CMA
+from maia.generate            import dcube_generator                 as DCG
+from maia.transform.dist_tree import convert_s_to_u
+from maia.utils               import test_utils                      as TU
 
-from   Converter import cgnskeywords as CGK
 
-# ------------------------------------------------------------------------
-# > Pick a file
-inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C11_TwoCubes_NoJoin.hdf'
-# inputfile    = '/home/bmaugars/dev/dev-Tools/etc/test/pypart/data/CaseU_C11_TwoCubes_NoJoin_OtherOrder.hdf'
+@mark_mpi_test([2])
+def test_single_block(sub_comm):
 
-# ------------------------------------------------------------------------
-# > Load only the list of zone and sizes ...
-dist_tree = LST.load_collective_size_tree(inputfile, comm)
+  # > Create dist tree
+  dist_tree    = DCG.dcube_generate(10, 1., origin=[0,0,0], comm=sub_comm)
 
-# > ParaDiGM : dcube_gen() --> A faire
+  # > This algorithm works on partitioned trees
+  part_tree = PPA.partitioning(dist_tree, sub_comm)
 
-MDI.add_distribution_info(dist_tree, comm, distribution_policy='uniform')
+  # > Partioning procduce one matching gc
+  gc  = I.getNodeFromType(part_tree, 'GridConnectivity_t')
+  # > Test setup -- copy this jn as a bc (without pl donor) to test connect match
+  bc = I.copyTree(gc)
+  I.setName(bc, 'ToMatch')
+  I.setType(bc, 'BC_t')
+  I.setValue(bc, 'FamilySpecified')
+  I.createNode('FamilyName', 'FamilyName_t', 'JN', parent=bc)
+  I._rmNodesByName(bc, 'GridConnectivityType')
+  I._rmNodesByName(bc, 'PointListDonor')
+  I._addChild(I.getNodeFromType(part_tree, 'ZoneBC_t'), bc)
 
-# I.printTree(dist_tree)
+  base = I.getBases(part_tree)[0]
+  I.newFamily('JN', parent=base)
 
-hdf_filter = dict()
-HTF.create_tree_hdf_filter(dist_tree, hdf_filter)
+  # > Connect match
+  CMA.connect_match_from_family(part_tree, ['JN'], sub_comm,
+                                match_type = ['FaceCenter'], rel_tol=1.e-5)
 
-# for key, val in hdf_filter.items():
-#   print(key, val)
+  #PLDonor are well recovered
+  new_gc = I.getNodesFromType(part_tree, 'GridConnectivity_t')[-1]
+  for name in ['PointList', 'PointListDonor', 'GridConnectivityType', 'GridLocation']:
+    assert (I.getNodeFromName(gc, name)[1] == I.getNodeFromName(new_gc, name)[1]).all()
 
-# skip_type_ancestors = ["Zone_t/FlowSolution_t/"]
-# skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun"], ["ZoneSubRegion_t", "VelocityY"]]
-# skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "*"], ["Zone_t", "ZoneSubRegion_t", "VelocityY"]]
-skip_type_ancestors = [[CGK.Zone_t, "FlowSolution#EndOfRun", "Momentum*"],
-                       ["Zone_t", "ZoneSubRegion_t", "Velocity*"]]
-# hdf_filter_wo_fs = HTF.filtering_filter(dist_tree, hdf_filter, skip_type_ancestors, skip=True)
-# # IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
 
-# for key, val in hdf_filter_wo_fs.items():
-#   print(key, val)
-# IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter_wo_fs)
-IOT.load_tree_from_filter(inputfile, dist_tree, comm, hdf_filter)
+@mark_mpi_test([1])
+def test_two_blocks(sub_comm):
 
-# FTH.generate_ngon_from_std_elements(dist_tree, comm)
+  mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
+  dist_treeS = IOT.file_to_dist_tree(mesh_file, sub_comm)
 
-# C.convertPyTree2File(dist_tree, "dist_tree_{0}.hdf".format(rank))
+  # > Input is structured, so convert it to an unstructured tree
+  dist_tree = convert_s_to_u.convert_s_to_u(dist_treeS, sub_comm)
 
-# I.printTree(dist_tree)
-# > To copy paste in new algorithm
-# dzone_to_proc = compute_distribution_of_zones(dist_tree, distribution_policy='uniform', comm)
-# > dzone_to_weighted_parts --> Proportion de la zone initiale qu'on souhate après partitionnement
-# > dloading_procs        --> Proportion de la zone initiale avant le partitionnement (vision block)
-#
-# > ... and this is suffisent to predict your partitions sizes
-dzone_to_weighted_parts = DBA.balance_multizone_tree(dist_tree, comm)
+  # > This algorithm works on partitioned trees
+  part_tree = PPA.partitioning(dist_tree, sub_comm)
 
-# print(dzone_to_weighted_parts)
+  # > Backup GridConnectivity for verification
+  large_zone = I.getNodesFromName(part_tree, "Large*")[0]
+  small_zone = I.getNodesFromName(part_tree, "Small*")[0]
+  large_jn = I.getNodeFromType(large_zone, 'GridConnectivity_t')
+  small_jn = I.getNodeFromType(small_zone, 'GridConnectivity_t')
+  I._rmNodesByType(part_tree, 'ZoneGridConnectivity_t')
 
-dloading_procs = dict()
-for zone in I.getZones(dist_tree):
-  dloading_procs[zone[0]] = list(range(comm.Get_size()))
-# print(dloading_procs)
+  # > Test setup -- Create BC
+  large_bc = I.copyTree(large_jn)
+  I.setName(large_bc, 'ToMatch')
+  I.setType(large_bc, 'BC_t')
+  I.setValue(large_bc, 'FamilySpecified')
+  I.createNode('FamilyName', 'FamilyName_t', 'LargeJN', parent=large_bc)
+  I._rmNodesByName(large_bc, 'GridConnectivityType')
+  I._rmNodesByName(large_bc, 'PointListDonor')
+  I._addChild(I.getNodeFromType(large_zone, 'ZoneBC_t'), large_bc)
 
-part_tree = PPA.partitioning(dist_tree, comm, zone_to_parts=dzone_to_weighted_parts)
+  small_bc = I.copyTree(small_jn)
+  I.setName(small_bc, 'ToMatch')
+  I.setType(small_bc, 'BC_t')
+  I.setValue(small_bc, 'FamilySpecified')
+  I.createNode('FamilyName', 'FamilyName_t', 'SmallJN', parent=small_bc)
+  I._rmNodesByName(small_bc, 'GridConnectivityType')
+  I._rmNodesByName(small_bc, 'PointListDonor')
+  I._addChild(I.getNodeFromType(small_zone, 'ZoneBC_t'), small_bc)
 
-# part_tree = C.convertFile2PyTree(inputfile)
-CMA.connect_match_from_family(part_tree, ['JOIN_1', 'JOIN_2'], comm,
-                              match_type = ['FaceCenter'], rel_tol=1.e-5)
+  bc = I.getNodeFromName(part_tree, 'Front')
+  I.createNode('FamilyName', 'FamilyName_t', 'OtherFamily', parent=bc)
 
-# I.printTree(part_tree)
-SPT.save_part_tree(part_tree, 'part_tree', comm)
-# C.convertPyTree2File(part_tree, "part_tree_{0}.hdf".format(rank))
 
-# size_tree         = LST.load_collective_size_tree(inputfile, comm, ['CGNSBase_t/Zone_t',
-#                                                                     'CGNSBase_t/Family_t'/*])
+  # > Extra family can be present
+  CMA.connect_match_from_family(part_tree, ['LargeJN', 'SmallJN', 'OtherFamily'], sub_comm,
+                                match_type = ['FaceCenter'], rel_tol=1.e-5)
+
+  # > Check (order can differ)
+  new_large_jn = I.getNodeFromType(large_zone, 'GridConnectivity_t')
+  new_small_jn = I.getNodeFromType(small_zone, 'GridConnectivity_t')
+  assert (np.sort(I.getNodeFromName(new_large_jn, 'PointList')[1]) == \
+          np.sort(I.getNodeFromName(large_jn, 'PointList')[1])).all()
+  assert (np.sort(I.getNodeFromName(new_small_jn, 'PointList')[1]) == \
+          np.sort(I.getNodeFromName(small_jn, 'PointList')[1])).all()
+  assert (I.getNodeFromName(new_small_jn, 'PointList')[1] == \
+          I.getNodeFromName(new_large_jn, 'PointListDonor')[1]).all()
+  assert (I.getNodeFromName(new_small_jn, 'PointListDonor')[1] == \
+          I.getNodeFromName(new_large_jn, 'PointList')[1]).all()
