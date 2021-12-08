@@ -85,12 +85,13 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   create_distribution_node_from_distrib("ElementConnectivity", nfac_n, distrib_cell_face[[i_rank, i_rank+1, n_rank]])
 
   #Manage BCs : shift PL values to reach refer ngon_elements
-  group = np.copy(pdm_group) + (EU.get_range_of_ngon(zone)[0]-1)
-  for i_bc, bc in enumerate(IE.iterNodesByMatching(zone, 'ZoneBC_t/BC_t')):
-    I._rmNodesByName(bc, 'PointRange')
-    I._rmNodesByName(bc, 'PointList')
-    start, end = group_idx[i_bc], group_idx[i_bc+1]
-    I.newPointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
+  if pdm_group is not None:
+    group = np.copy(pdm_group) + (EU.get_range_of_ngon(zone)[0]-1)
+    for i_bc, bc in enumerate(IE.iterNodesByMatching(zone, 'ZoneBC_t/BC_t')):
+      I._rmNodesByName(bc, 'PointRange')
+      I._rmNodesByName(bc, 'PointList')
+      start, end = group_idx[i_bc], group_idx[i_bc+1]
+      I.newPointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
 
 # -----------------------------------------------------------------
