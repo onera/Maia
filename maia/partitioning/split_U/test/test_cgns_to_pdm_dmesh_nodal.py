@@ -8,7 +8,7 @@ from   maia.utils        import parse_yaml_cgns
 from maia.partitioning.split_U import cgns_to_pdm_dmesh_nodal as CTP
 
 @mark_mpi_test(3)
-def test_cgns_dist_zone_to_pdm_dmesh(sub_comm):
+def test_cgns_dist_zone_to_pdm_dmesh_nodal(sub_comm):
   if sub_comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t [[18,6,0]]:
@@ -72,8 +72,6 @@ ZoneU Zone_t [[18,6,0]]:
   dmeshnodal = CTP.cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, sub_comm)
 
   assert I.getNodeFromName(dist_zone, ':CGNS#MultiPart') is not None
-  dmeshnodal.compute()
-  face_cell = dmeshnodal.get_face_cell()
-  assert face_cell['n_face'] == 20
-  assert face_cell['dn_face'] == expected_dnface
-  assert (face_cell['np_dface_cell'] == expected_facecell).all()
+  dims = PDM.dmesh_nodal_get_g_dims(dmeshnodal)
+  assert dims['n_cell_abs'] == 4
+  assert dims['n_vtx_abs'] == 18

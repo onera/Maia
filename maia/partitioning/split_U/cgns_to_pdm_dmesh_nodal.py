@@ -81,8 +81,6 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
         I.newDataArray('delmt_bound'    , delmt_bound    , parent=pdm_node)
 
         dmesh_nodal.set_group_elmt(EU.elements_kind_by_dim[i_dim], n_elmt_group, delmt_bound_idx, delmt_bound)
-  else:
-    dmesh_nodal.set_group_elmt(0, np.zeros(1, dtype=np.int32), np.empty(0, dtype=pdm_gnum_dtype))
 
   return dmesh_nodal
 
