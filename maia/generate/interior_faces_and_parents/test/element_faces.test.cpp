@@ -18,8 +18,8 @@ TEST_CASE("generate_faces: tri") {
 
   tri_3<int> tri0 = {10,11,12};
   tri_3<int> tri1 = {20,21,22};
-  generate_faces(tri0,tri_it,quad_it);
-  generate_faces(tri1,tri_it,quad_it);
+  generate_faces<TRI_3>(tri0,tri_it,quad_it);
+  generate_faces<TRI_3>(tri1,tri_it,quad_it);
 
   CHECK( gen_tris == std::vector{10,11,12,20,21,22} );
 }

@@ -1,5 +1,6 @@
 #include "maia/generate/interior_faces_and_parents/interior_faces_and_parents.hpp"
 
+#include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
 #include "maia/generate/interior_faces_and_parents/element_faces.hpp"
 #include "maia/connectivity/iter/connectivity_range.hpp"
 #include "std_e/parallel/mpi/base.hpp"
@@ -10,6 +11,7 @@
 #include "std_e/algorithm/sorting_networks.hpp"
 #include "maia/utils/parallel/utils.hpp"
 #include "maia/sids/element_sections.hpp"
+#include "maia/sids/maia_cgns.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "std_e/log.hpp" // TODO
 #include "std_e/logging/time_logger.hpp" // TODO
@@ -21,145 +23,8 @@ using namespace cgns;
 namespace maia {
 
 
-struct element_faces_traits {
-  ElementType_t elt_type;
-  int n_tri;
-  int n_quad;
-};
-inline constexpr std::array elements_face_traits = std_e::make_array(
-  //                    name  , n_tri , n_quad
-  element_faces_traits{TRI_3  ,   1   ,   0  },
-  element_faces_traits{QUAD_4 ,   0   ,   1  },
-  element_faces_traits{TETRA_4,   4   ,   0  },
-  element_faces_traits{PYRA_5 ,   4   ,   1  },
-  element_faces_traits{PENTA_6,   2   ,   3  },
-  element_faces_traits{HEXA_8 ,   0   ,   6  }
-);
-
-auto
-find_face_traits_by_elt_type(ElementType_t elt_type) {
-  auto match_cgns_elt = [elt_type](const auto& e){ return e.elt_type==elt_type; };
-  auto pos = std::find_if(begin(elements_face_traits),end(elements_face_traits),match_cgns_elt);
-  if (pos==end(elements_face_traits)) {
-    throw cgns_exception(std::string("Unknown CGNS element type for number of nodes\"")+to_string(elt_type)+"\"");
-  } else {
-    return pos;
-  }
-}
-auto
-n_tri_elt(ElementType_t elt_type) {
-  auto pos = find_face_traits_by_elt_type(elt_type);
-  return pos->n_tri;
-}
-auto
-n_quad_elt(ElementType_t elt_type) {
-  auto pos = find_face_traits_by_elt_type(elt_type);
-  return pos->n_quad;
-}
-
-
-using Tri_kind = cgns::connectivity_kind<cgns::TRI_3>;
-using Quad_kind = cgns::connectivity_kind<cgns::QUAD_4>;
-
-
-auto
-number_of_faces(const tree_range& elt_sections) {
-  I8 n_tri = 0;
-  I8 n_quad = 0;
-  for (const tree& elt_section : elt_sections) {
-    auto partial_dist = cgns::get_node_value_by_matching<I8>(elt_section,":CGNS#Distribution/Element");
-    I8 n_elt = partial_dist[1] - partial_dist[0]; // TODO more expressive
-    auto elt_type = element_type(elt_section);
-    n_tri  += n_elt * n_tri_elt (elt_type);
-    n_quad += n_elt * n_quad_elt(elt_type);
-  }
-  return std::make_pair(n_tri,n_quad);
-}
-
-template<ElementType_t elt_type> auto
-gen_faces(const tree& elt_node, auto& tri_it, auto& quad_it, auto& tri_parent_it, auto& quad_parent_it) {
-  I4 elt_start = ElementRange<I4>(elt_node)[0];
-  I4 index_dist_start = cgns::get_node_value_by_matching<I8>(elt_node,":CGNS#Distribution/Element")[0];
-  auto elt_connec = ElementConnectivity<I4>(elt_node);
-
-  using connec_kind = cgns::connectivity_kind<elt_type>;
-  auto connec_range = make_connectivity_range<connec_kind>(elt_connec);
-
-  I4 elt_id = elt_start + index_dist_start;
-  for (const auto& elt : connec_range) {
-    //bool print = true;
-    //std::vector vtces = {3,6,39,42};
-    //for (int vtx : vtces) {
-    //  if (std::find(begin(elt),end(elt),vtx)==end(elt)) print=false;
-    //}
-    //if (print) {
-    //  LOG(" ======== elt =======");ELOG(elt);
-    //  ELOG(elt_id);
-    //}
-    generate_faces(elt,tri_it,quad_it);
-    tri_parent_it  = std::fill_n( tri_parent_it,n_tri_elt (elt_type),elt_id);
-    quad_parent_it = std::fill_n(quad_parent_it,n_quad_elt(elt_type),elt_id);
-    //if (print) {
-    //  ELOG(*(quad_it-3));
-    //  ELOG(*(quad_it-2));
-    //  ELOG(*(quad_it-1));
-    //}
-    ++elt_id;
-  }
-}
-
-
-auto
-gen_interior_faces_and_parents(const tree_range& elt_sections) -> faces_and_parents_t<I4> { // TODO I8 also
-  //auto _ = std_e::stdout_time_logger("gen_interior_faces_and_parents");
-  auto [n_tri,n_quad] = number_of_faces(elt_sections);
-  faces_and_parents_t<I4> faces_and_parents(n_tri,n_quad);
-
-  auto tri_connec  = faces_and_parents.tris .connectivities();
-  auto quad_connec = faces_and_parents.quads.connectivities();
-  auto tri_it  = tri_connec .begin();
-  auto quad_it = quad_connec.begin();
-
-  auto tri_parent_it  = faces_and_parents.tris .parents().begin();
-  auto quad_parent_it = faces_and_parents.quads.parents().begin();
-  for (const auto& elt_section : elt_sections) {
-    auto elt_type = element_type(elt_section);
-    switch(elt_type){
-      case TRI_3: {
-        gen_faces<TRI_3>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
-        break;
-      }
-      case QUAD_4: {
-        gen_faces<QUAD_4>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
-        break;
-      }
-      case TETRA_4: {
-        gen_faces<TETRA_4>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
-        break;
-      }
-      case PENTA_6: {
-        gen_faces<PENTA_6>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
-        break;
-      }
-      case PYRA_5: {
-        gen_faces<PYRA_5>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
-        break;
-      }
-      case HEXA_8: {
-        gen_faces<HEXA_8>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
-        break;
-      }
-      default: {
-        STD_E_ASSERT(0);
-      }
-    }
-  }
-  return faces_and_parents;
-}
-
-
 template<class I> auto
-reorder_with_smallest_vertex_first(connectivity_ref<I,cgns::connectivity_kind<cgns::TRI_3>>& tri) -> void {
+reorder_with_smallest_vertex_first(std_e::span_ref<I,3>& tri) -> void {
   auto smallest_pos = std::min_element(tri.data(),tri.data()+3);
   int i = smallest_pos-tri.data();
   int v0 = tri[i];
@@ -170,7 +35,7 @@ reorder_with_smallest_vertex_first(connectivity_ref<I,cgns::connectivity_kind<cg
   tri[2] = v2;
 }
 template<class I> auto
-reorder_with_smallest_vertex_first(connectivity_ref<I,cgns::connectivity_kind<cgns::QUAD_4>>& quad) -> void {
+reorder_with_smallest_vertex_first(std_e::span_ref<I,4>& quad) -> void {
   auto smallest_pos = std::min_element(quad.data(),quad.data()+4);
   int i = smallest_pos-quad.data();
   int v0 = quad[i];
@@ -264,7 +129,7 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
   int n_connec = cps.size();
   auto cs = cps.connectivities();
   auto parents = cps.parents();
-  constexpr int n_vtx_elt = number_of_nodes(elt_type);
+  constexpr int n_vtx_elt = number_of_vertices(elt_type);
   using connectivity_k = cgns::connectivity_kind<elt_type>;
 
   // for each face, reorder its vertices so that the smallest is first
@@ -293,7 +158,7 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
 
     auto scaled_partition_indices = partition_indices2;
     std_e::scale(scaled_partition_indices,n_vtx_elt);
-    std_e::jagged_span<I> cs_by_rank(cs.range(),scaled_partition_indices);
+    std_e::jagged_span<I> cs_by_rank(cs.underlying_range(),scaled_partition_indices);
     auto res_connec = std_e::all_to_all_v(cs_by_rank,comm);
     auto res_connec2 = res_connec.flat_view();
     auto res_cs = make_connectivity_range<connectivity_k>(res_connec2);
@@ -388,17 +253,15 @@ append_element_section(cgns::tree& z, ElementType_t elt_type, in_faces_with_pare
 }
 
 
-auto
-generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
-  auto _ = std_e::stdout_time_logger("== generate_interior_faces_and_parents ==");
-  int n_vtx = cgns::VertexSize_U<I4>(z);
-  I4 last_2d_elt_id = surface_elements_interval(z).last();
-  I4 first_3d_elt_id = volume_elements_interval(z).first();
-  STD_E_ASSERT(last_2d_elt_id+1==first_3d_elt_id);
+template<class I> auto
+_generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
+  STD_E_ASSERT(is_maia_cgns_zone(z));
+
   auto elt_sections = element_sections(z);
+  auto faces_and_parents = generate_element_faces_and_parents<I>(elt_sections);
 
-  auto faces_and_parents = gen_interior_faces_and_parents(elt_sections);
-
+  I n_vtx = cgns::VertexSize_U<I>(z);
+  I first_3d_elt_id = volume_elements_interval(z).first();
   auto unique_faces_tri  = merge_unique_faces(faces_and_parents.tris ,n_vtx,first_3d_elt_id,comm);
   auto unique_faces_quad = merge_unique_faces(faces_and_parents.quads,n_vtx,first_3d_elt_id,comm);
 
@@ -419,6 +282,15 @@ generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
 
   append_element_section(z,cgns::TRI_3 ,std::move(unique_faces_tri .in),comm);
   append_element_section(z,cgns::QUAD_4,std::move(unique_faces_quad.in),comm);
+};
+
+auto
+generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
+  STD_E_ASSERT(is_maia_cgns_zone(z));
+  auto _ = std_e::stdout_time_logger("== generate_interior_faces_and_parents ==");
+  if (value(z).data_type()=="I4") return _generate_interior_faces_and_parents<I4>(z,comm);
+  if (value(z).data_type()=="I8") return _generate_interior_faces_and_parents<I8>(z,comm);
+  throw cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
 }
 
 

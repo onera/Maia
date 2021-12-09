@@ -7,6 +7,7 @@
 #include "maia/sids/element_sections.hpp"
 
 #include "maia/generate/interior_faces_and_parents/interior_faces_and_parents.hpp"
+#include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
 #include "std_e/parallel/mpi/base.hpp"
 
 
@@ -20,8 +21,8 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents - seq",1) {
   tree& z = cgns::get_node_by_name(b,"Zone");
 
   SUBCASE("generate") {
-    auto faces_and_parents = maia::gen_interior_faces_and_parents(maia::element_sections(z));
-    CHECK(faces_and_parents.tris .connectivities().range() == std::vector{2,5,3, 12,13,15, 2,5,3, 7,8,10, 7,10,8, 12,13,15} );
+    auto faces_and_parents = maia::generate_element_faces_and_parents<I4>(maia::element_sections(z));
+    CHECK(faces_and_parents.tris .connectivities().underlying_range() == std::vector{2,5,3, 12,13,15, 2,5,3, 7,8,10, 7,10,8, 12,13,15} );
     CHECK(faces_and_parents.tris .parents() == std::vector{13,14,17,17,18,18});
   }
   SUBCASE("final") {
@@ -71,10 +72,10 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
   tree& z = cgns::get_node_by_name(b,"Zone");
 
   SUBCASE("generate") {
-    auto faces_and_parents = maia::gen_interior_faces_and_parents(maia::element_sections(z));
-    MPI_CHECK(0, faces_and_parents.tris .connectivities().range() == std::vector{2,5,3, 2,5,3, 7,8,10} );
+    auto faces_and_parents = maia::generate_element_faces_and_parents<I4>(maia::element_sections(z));
+    MPI_CHECK(0, faces_and_parents.tris .connectivities().underlying_range() == std::vector{2,5,3, 2,5,3, 7,8,10} );
     MPI_CHECK(0, faces_and_parents.tris .parents() == std::vector{13,17,17});
-    MPI_CHECK(1, faces_and_parents.tris .connectivities().range() == std::vector{12,13,15, 7,10,8, 12,13,15} );
+    MPI_CHECK(1, faces_and_parents.tris .connectivities().underlying_range() == std::vector{12,13,15, 7,10,8, 12,13,15} );
     MPI_CHECK(1, faces_and_parents.tris .parents() == std::vector{14,18,18});
   }
   SUBCASE("final") {

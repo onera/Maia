@@ -1,7 +1,7 @@
 #include "maia/transform/fsdm_distribution.hpp"
 #include "cpp_cgns/sids/Hierarchical_Structures.hpp"
 #include "cpp_cgns/sids/creation.hpp"
-#include "cpp_cgns/sids/sids.hpp"
+#include "cpp_cgns/sids.hpp"
 #include "cpp_cgns/tree_manip.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/utils/parallel/utils.hpp"

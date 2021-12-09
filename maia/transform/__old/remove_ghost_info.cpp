@@ -107,9 +107,9 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
     auto elt_type = element_type(elt_pool);
     tree& elt_connec = get_child_by_name(elt_pool,"ElementConnectivity");
     // TODO once pybind11: do not allocate/copy/del, only resize
-    //elt_connec.value.dims[0] = intervals.length(i)*number_of_nodes(elt_type);
+    //elt_connec.value.dims[0] = intervals.length(i)*number_of_vertices(elt_type);
     // del old {
-    int new_connec_size = intervals.length(i)*number_of_nodes(elt_type);
+    int new_connec_size = intervals.length(i)*number_of_vertices(elt_type);
     auto old_connec_val = get_value<I4>(elt_connec);
     std::vector<I4> new_connec_val(new_connec_size);
     for (int i=0; i<new_connec_size; ++i) {

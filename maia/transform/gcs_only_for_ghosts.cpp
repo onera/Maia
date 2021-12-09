@@ -1,7 +1,7 @@
 #include "maia/transform/gcs_only_for_ghosts.hpp"
 #include "cpp_cgns/cgns.hpp"
 #include "cpp_cgns/sids/creation.hpp"
-#include "cpp_cgns/sids/sids.hpp"
+#include "cpp_cgns/sids.hpp"
 #include <algorithm>
 #include "maia/partitioning/gc_name_convention.hpp"
 

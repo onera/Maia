@@ -31,7 +31,7 @@ auto replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
     I4 n_elt = elt_interval[1] - elt_interval[0] + 1;
     n_elts[i] = n_elt;
     //n_elts_tot[i] = elt_interval[2];
-    w_elts[i] = number_of_nodes(elt_type);
+    w_elts[i] = number_of_vertices(elt_type);
     n_surf_elt_tot += n_elt;
   }
   // 1. shift volume element ids

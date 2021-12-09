@@ -1,7 +1,7 @@
 #pragma once
 
 #include <algorithm>
-#include "cpp_cgns/sids/sids.hpp"
+#include "cpp_cgns/sids.hpp"
 
 namespace maia {
 

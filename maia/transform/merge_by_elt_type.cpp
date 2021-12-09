@@ -70,7 +70,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
                                    n_elts.data(),
                                    n_part,
                                    pdm_comm);
-  int stride = cgns::number_of_nodes(elt_type);
+  int stride = cgns::number_of_vertices(elt_type);
   int** stride_one = (int ** ) malloc( n_block * sizeof(int *));
   for(int i_block = 0; i_block < n_block; ++i_block){
     stride_one[i_block] = (int * ) malloc( 1 * sizeof(int));

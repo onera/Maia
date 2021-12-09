@@ -1,7 +1,7 @@
 #include "maia/transform/split_boundary_subzones_according_to_bcs.hpp"
 #include "cpp_cgns/cgns.hpp"
 #include "cpp_cgns/sids/creation.hpp"
-#include "cpp_cgns/sids/sids.hpp"
+#include "cpp_cgns/sids.hpp"
 #include <algorithm>
 #include <vector>
 #include "maia/partitioning/gc_name_convention.hpp"
