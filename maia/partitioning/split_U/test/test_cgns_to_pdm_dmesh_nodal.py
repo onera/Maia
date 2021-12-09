@@ -7,6 +7,21 @@ import Pypdm.Pypdm as PDM
 from   maia.utils        import parse_yaml_cgns
 from maia.partitioning.split_U import cgns_to_pdm_dmesh_nodal as CTP
 
+@mark_mpi_test(2)
+def test_split_point_list_by_dim(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    pl1 = np.array([[1,5,3]], np.int32)
+    pl2 = np.array([[14,13]], np.int32)
+  elif sub_comm.Get_rank() == 1:
+    pl1 =  np.array([[2,4,6]], np.int32)
+    pl2 =  np.empty((1,0),     np.int32)
+
+  pl_list = [pl1,pl2]
+  range_by_dim = [[0,0], [1,10], [11,20], [21,30]]
+  splitted_bc = CTP._split_point_list_by_dim(pl_list, range_by_dim, sub_comm)
+  assert splitted_bc == [[], [pl1], [pl2], []]
+  
+
 @mark_mpi_test(3)
 def test_cgns_dist_zone_to_pdm_dmesh_nodal(sub_comm):
   if sub_comm.Get_rank() == 0:

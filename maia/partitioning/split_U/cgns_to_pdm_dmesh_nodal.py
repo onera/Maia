@@ -1,5 +1,6 @@
 import Converter.Internal as I
 import numpy          as np
+from   mpi4py import MPI
 
 import maia.sids.sids as sids
 import maia.sids.Internal_ext as IE
@@ -10,6 +11,26 @@ from maia.tree_exchange.dist_to_part.index_exchange import collect_distributed_p
 
 from Pypdm.Pypdm import DistributedMeshNodal
 
+def _split_point_list_by_dim(pl_list, range_by_dim, comm):
+  """
+  Split a list of PointList nodes into 4 sublists depending on the dimension
+  of each PointList.
+  Dimension is recovered using the values of the PointList and the range_by_dim
+  array (GridLocation may be a better choice ?)
+  """
+  def _get_dim(pl):
+    min_l_pl = np.amin(pl[0,:], initial=np.iinfo(pl.dtype).max)
+    max_l_pl = np.amax(pl[0,:], initial=-1)
+
+    min_pl    = comm.allreduce(min_l_pl, op=MPI.MIN)
+    max_pl    = comm.allreduce(max_l_pl, op=MPI.MAX)
+    for i_dim in range(len(range_by_dim)):
+      if(min_pl >= range_by_dim[i_dim][0] and max_pl <= range_by_dim[i_dim][1]):
+        return i_dim
+
+  return py_utils.bucket_split(pl_list, lambda pl: _get_dim(pl), size=4)
+
+
 def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_bc=True):
   """
   Create a pdm_dmesh_nodal structure from a distributed zone
@@ -18,18 +39,11 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   n_vtx   = distrib_vtx[2]
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
 
-  # n_elt_per_dim  = [0,0,0]
-  # sorted_elts = EU.get_ordered_elements_std(dist_zone)
-  # for elt in sorted_elts:
-  #   assert sids.ElementCGNSName(elt) != "NGON_n"
-  #   n_elt_per_dim[sids.ElementDimension(elt)-1] += sids.ElementSize(elt)
-
   n_elt_per_dim  = [0,0,0]
-  sorted_elts_by_dim = EU.get_ordered_elements_std_by_geom_kind(dist_zone)
+  sorted_elts_by_dim = EU.get_ordered_elements_per_dim(dist_zone)
   for elt_dim in sorted_elts_by_dim:
     for elt in elt_dim:
-      assert sids.ElementCGNSName(elt) != "NGON_n"
-      assert sids.ElementCGNSName(elt) != "NFAC_n"
+      assert sids.ElementCGNSName(elt) not in ["NGON_n", "NFACE_n"]
       n_elt_per_dim[sids.ElementDimension(elt)-1] += sids.ElementSize(elt)
 
   #Create DMeshNodal
@@ -57,17 +71,17 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   for i_dim, elts in enumerate(sorted_elts_by_dim):
     elt_pdm_types = np.array([EU.element_pdm_type(sids.ElementType(e)) for e in elts], dtype=np.int32)
     elt_lengths   = np.array([to_elmt_size(e) for e in elts], dtype=np.int32)
-    elmts_connectivities = [I.getNodeFromName1(elt, "ElementConnectivity")[1] for elt in elts]
-    dmesh_nodal.set_sections(EU.elements_kind_by_dim[i_dim], elmts_connectivities, elt_pdm_types, elt_lengths)
-
-  range_by_dim = EU.get_range_elt_of_same_dim(dist_zone)
-  # print("range_by_dim --> ", range_by_dim)
+    elmts_connectivities = [I.getNodeFromName1(e, "ElementConnectivity")[1] for e in elts]
+    dmesh_nodal.set_sections(EU.elements_dim_to_pdm_kind[i_dim], elmts_connectivities, elt_pdm_types, elt_lengths)
 
   # Boundaries
   if needs_bc:
+    range_by_dim = EU.get_elt_range_per_dim(dist_zone)
+    # print("range_by_dim --> ", range_by_dim)
+
     bc_point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'])
     # Find out in which dim the boundary refers
-    bc_point_lists_by_dim = EU.split_point_list_by_dim(bc_point_lists, range_by_dim, comm)
+    bc_point_lists_by_dim = _split_point_list_by_dim(bc_point_lists, range_by_dim, comm)
 
     for i_dim, bc_pl in enumerate(bc_point_lists_by_dim):
       if(len(bc_pl) > 0 ):
@@ -80,7 +94,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
         I.newDataArray('delmt_bound_idx', delmt_bound_idx, parent=pdm_node)
         I.newDataArray('delmt_bound'    , delmt_bound    , parent=pdm_node)
 
-        dmesh_nodal.set_group_elmt(EU.elements_kind_by_dim[i_dim], n_elmt_group, delmt_bound_idx, delmt_bound)
+        dmesh_nodal.set_group_elmt(EU.elements_dim_to_pdm_kind[i_dim], n_elmt_group, delmt_bound_idx, delmt_bound)
 
   return dmesh_nodal
 

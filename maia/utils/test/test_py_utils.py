@@ -25,6 +25,25 @@ def test_list_or_only_elt():
   input = [1,2,3, "nous irons au bois"]
   assert py_utils.list_or_only_elt(input) is input
 
+def test_bucket_split():
+  l = ["apple", "banana", "orange", "watermelon", "grappe", "pear"]
+  assert py_utils.bucket_split(l, lambda e: len(e)) == \
+      [ [], [], [], [], ["pear"], ["apple"], ["banana", "orange", "grappe"], [], [], [], ["watermelon"]]
+  assert py_utils.bucket_split(l, lambda e: len(e), compress=True) == \
+      [["pear"], ["apple"], ["banana", "orange", "grappe"], ["watermelon"]]
+  assert py_utils.bucket_split(l, lambda e: len(e), size=13) == \
+      [ [], [], [], [], ["pear"], ["apple"], ["banana", "orange", "grappe"], [], [], [], ["watermelon"], [], []]
+  with pytest.raises(IndexError):
+    py_utils.bucket_split(l, lambda e: len(e), size=4) #To short return list
+
+def test_are_overlapping():
+  assert py_utils.are_overlapping([1,6], [2,9]) == True
+  assert py_utils.are_overlapping([5,9], [1,3]) == False
+  assert py_utils.are_overlapping([1,4], [4,9], strict=False) == True
+  assert py_utils.are_overlapping([1,4], [4,9], strict=True) == False
+  assert py_utils.are_overlapping([4,4], [2,4], strict=False) == True
+  assert py_utils.are_overlapping([4,4], [2,4], strict=True) == False
+
 def test_is_subset_l():
   L = [2,8,10,3,3]
   assert py_utils.is_subset_l([2],        L) == True
