@@ -9,18 +9,18 @@ from maia.utils          import py_utils
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
 
-def collect_distributed_pl(dist_zone, type_paths, filter_loc=None):
+def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
   """
-  Search and collect all the pointList values found under the given
-  types pathes.
+  Search and collect all the pointList values found under the nodes
+  matching one of the query of query_list
   If a 1d PR is used, it is converted to a contiguous
   pointlist using the distribution node.
   If filter_loc list is not None, select only the pointLists of given
   GridLocation.
   """
   point_lists = []
-  for type_path in type_paths:
-    for node in IE.iterNodesByMatching(dist_zone, type_path):
+  for query in query_list:
+    for node in IE.iterNodesByMatching(dist_zone, query):
       if filter_loc is None or SIDS.GridLocation(node) in filter_loc:
         pl_n = I.getNodeFromName1(node, 'PointList')
         pr_n = I.getNodeFromName1(node, 'PointRange')
@@ -76,8 +76,10 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
     pdm_distri     = par_utils.partial_to_full_distribution(distri_partial, comm)
     ln_to_gn_list = [te_utils.create_all_elt_g_numbering(p_zone, elts) for p_zone in part_zones]
 
+  # Recreate query for collect_distributed_pl interface
+  query_list = [type_path.split('/') for type_path in type_paths] 
   #Collect PL
-  point_lists = collect_distributed_pl(dist_zone, type_paths, filter_loc=filter_loc)
+  point_lists = collect_distributed_pl(dist_zone, query_list, filter_loc=filter_loc)
   d_pl_idx, d_pl = py_utils.concatenate_point_list(point_lists, pdm_gnum_dtype)
 
   #Exchange
