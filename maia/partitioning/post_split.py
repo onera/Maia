@@ -9,6 +9,12 @@ import maia.tree_exchange.dist_to_part.recover_jn     as JBTP
 def copy_additional_nodes(dist_zone, part_zone):
   """
   """
+  #Zone data
+  names = []
+  types = ['FamilyName_t']
+  for node in I.getChildren(dist_zone):
+    if I.getName(node) in names or I.getType(node) in types:
+      I._addChild(part_zone, node)
   #BCs
   names = ['.Solver#BC', 'BoundaryMarker']
   types = ['FamilyName_t']

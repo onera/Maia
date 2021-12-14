@@ -72,11 +72,11 @@ def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
   I.newDataArray('CoordinateY', data['np_vtx_coord'][1::3], parent=grid_c)
   I.newDataArray('CoordinateZ', data['np_vtx_coord'][2::3], parent=grid_c)
 
-def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data):
+def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element"):
   """
   """
-  if (ngon_zone):
   ngon_zone = [e for e in I.getNodesFromType1(d_zone, 'Elements_t') if sids.ElementCGNSName(e) == 'NGON_n'] != []
+  if  ngon_zone or connectivity_as == 'NGon':
     n_face        = dims['n_face']
     n_cell        = dims['n_cell']
     pdm_face_cell = data['np_face_cell']
@@ -133,7 +133,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     if options['dump_pdm_output']:
       dump_pdm_output(part_zone, dims, data)
     pdm_vtx_to_cgns_grid_coordinates(part_zone, dims, data)
-    pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data)
+    pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data, options['output_connectivity'])
 
     output_loc = options['part_interface_loc']
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'

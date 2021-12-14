@@ -137,7 +137,7 @@ def test_pdm_part_to_cgns_zone():
            'np_cell_ln_to_gn'            : np.array([42])
            }]
 
-  options = {'part_interface_loc' : 'Vertex', 'dump_pdm_output' : False}
+  options = {'part_interface_loc' : 'Vertex', 'dump_pdm_output' : False, 'output_connectivity':'Element'}
   part_zones = PTC.pdm_part_to_cgns_zone(d_zone, l_dims, l_data, MPI.COMM_SELF, options)
 
   assert len(part_zones) == len(l_dims)

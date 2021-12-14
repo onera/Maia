@@ -19,6 +19,7 @@ def set_default(dist_tree, comm):
              'zone_to_parts'      : {I.getName(z):[1/comm.Get_size()] for z in I.getZones(dist_tree)},
              'reordering'         : default_renum,
              'part_interface_loc' : 'Vertex',
+             'output_connectivity': 'Element',
              'dump_pdm_output'    : False }
 
   if pdm_has_ptscotch:
@@ -62,6 +63,7 @@ def partitioning(dist_tree, comm, **kwargs):
   # > Check some values
   assert options['graph_part_tool'] in ['ptscotch', 'parmetis', None]
   assert options['part_interface_loc'] in ['Vertex', 'FaceCenter']
+  assert options['output_connectivity'] in ['Element', 'NGon']
   assert isinstance(options['zone_to_parts'], dict)
 
   # > Call main function
