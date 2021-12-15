@@ -3,6 +3,4 @@
 __pycache__
 *.bak
 .nfs*
-tests/cases/*.log
-tests/cases/*.hdf
-tests/cases/html/*.html
+share/meshes/*.hdf

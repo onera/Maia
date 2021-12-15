@@ -94,3 +94,49 @@ def test_distribute_element(sub_comm):
     assert (I.getNodeFromName(dist_elem, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
     assert (I.getNodeFromName(dist_elem, 'ElementStartOffset')[1] == [8,11,16]).all()
     assert (I.getNodeFromName(dist_elem, 'ParentElements')[1] == [[2,0],[3,0]]).all()
+
+@mark_mpi_test(2)
+def test_distribute_tree(sub_comm):
+  yt = """
+  Zone Zone_t [[18, 4, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    Element Elements_t [22,0]:
+      ElementRange IndexRange_t [1,4]:
+      ElementStartOffset DataArray_t [0,4,8,11,16]:
+      ElementConnectivity DataArray_t [4,1,3,8, 8,2,3,1, 9,7,4, 11,4,2,10,1]:
+      ParentElements DataArray_t [[1,0], [2,3], [2,0], [3,0]]:
+    ZoneBC ZoneBC_t:
+      bc BC_t:
+        PointList IndexArray_t [[10,14,12,16]]:
+        GridLocation GridLocation_t "CellCenter":
+        BCDataSet BCDataSet_t:
+          GridLocation GridLocation_t "Vertex":
+          PointList IndexArray_t [[100,200]]:
+          BCData BCData_t:
+            Data DataArray_t [1,2]:
+    SolNoPl FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      Array DataArray_t [2.2, 3.3, 1.1, 0.0]:
+    SolPl FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      PointList IndexArray_t [[3]]:
+      Array DataArray_t [1000]:
+    UnrelatedZSR ZoneSubRegion_t:
+      PointList IndexArray_t [[2, 1]]:
+      Array DataArray_t [500, 550]:
+    RelatedZSR ZoneSubRegion_t:
+      Array DataArray_t [21, 12, 20, 12]:
+      BCRegionName Descriptor_t "bc":
+  """
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = DN.distribute_tree(tree, sub_comm)
+
+  zone = I.getZones(dist_tree)[0]
+  if sub_comm.Get_rank() == 0:
+    assert (I.getNodeFromName(zone, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
+    assert (I.getNodeFromPath(zone, 'SolPl/Array')[1] == [1000]).all()
+  if sub_comm.Get_rank() == 1:
+    assert (I.getNodeFromName(zone, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
+    assert (I.getNodeFromPath(zone, 'SolPl/Array')[1].size == 0)
+  assert len(I.getNodesFromName(zone, ':CGNS#Distribution')) == 6
+

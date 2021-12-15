@@ -1,8 +1,12 @@
+import os
 import Converter.Internal as     I
 import Converter.PyTree   as     C
 from   maia.distribution.distribution_tree import add_distribution_info, clean_distribution_info
+from   maia.distribution.distribute_nodes  import distribute_tree
 from   .load_collective_size_tree          import load_collective_size_tree
 from   .hdf_filter.tree                    import create_tree_hdf_filter
+
+from maia.utils import parse_yaml_cgns
 
 def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
   """
@@ -67,13 +71,22 @@ def file_to_dist_tree(filename, comm, distribution_policy='uniform'):
   """
   Distributed load of filename. Return a dist_tree.
   """
-  dist_tree = load_collective_size_tree(filename, comm)
-  add_distribution_info(dist_tree, comm, distribution_policy)
+  if os.path.splitext(filename)[1] == '.yaml':
+    if comm.Get_rank() == 0:
+      with open(filename, 'r') as f:
+        tree = parse_yaml_cgns.to_cgns_tree(f)
+    else:
+      tree = None
+    dist_tree = distribute_tree(tree, comm, owner=0) 
 
-  hdf_filter = dict()
-  create_tree_hdf_filter(dist_tree, hdf_filter)
+  else:
+    dist_tree = load_collective_size_tree(filename, comm)
+    add_distribution_info(dist_tree, comm, distribution_policy)
 
-  load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
+    hdf_filter = dict()
+    create_tree_hdf_filter(dist_tree, hdf_filter)
+
+    load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
 
   return dist_tree
 

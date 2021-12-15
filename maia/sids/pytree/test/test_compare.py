@@ -78,6 +78,27 @@ def test_check_is_label():
     for zone in I.getBases(tree):
       apply_zone(zone)
 
+def test_is_same_value_type():
+  node1 = I.createNode('Data', 'DataArray_t', value=None)
+  node2 = I.createNode('Data', 'DataArray_t', value=None)
+  assert PT.is_same_value_type(node1, node2)
+  I.setValue(node1, np.array([1,2,3], dtype=np.int64))
+  assert not PT.is_same_value_type(node1, node2)
+  I.setValue(node2, np.array([1,2,3], np.int32))
+  assert PT.is_same_value_type(node1, node2, strict=False)
+  assert not PT.is_same_value_type(node1, node2, strict=True)
+
+def test_is_same_value():
+  node1 = I.createNode('Data', 'DataArray_t', value=np.array([1,2,3]))
+  node2 = I.createNode('Data', 'DataArray_t', value=np.array([1,2,3]))
+  assert PT.is_same_value(node1, node2)
+  I.setValue(node1, np.array([1,2,3], float))
+  I.setValue(node2, np.array([1,2,3], float))
+  assert PT.is_same_value(node1, node2)
+  I.getVal(node2)[1] += 1E-8
+  assert not PT.is_same_value(node1, node2)
+  assert PT.is_same_value(node1, node2, abs_tol=1E-6)
+
 def test_is_same_node():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)

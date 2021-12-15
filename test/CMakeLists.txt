@@ -37,7 +37,7 @@ if (${PROJECT_NAME}_ENABLE_MPI_TESTS)
     TESTED_FOLDER ${PROJECT_SOURCE_DIR}/test
     LABEL         func_tests
     SERIAL_RUN    false
-    N_PROC        1
+    N_PROC        ${n_proc_max_test}
   )
 
   # TODO (not ready yet)

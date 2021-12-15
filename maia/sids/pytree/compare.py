@@ -147,26 +147,52 @@ def is_same_name(n0: TreeNode, n1: TreeNode):
 def is_same_label(n0: TreeNode, n1: TreeNode):
   return n0[3] == n1[3]
 
-def is_same_value(n0: TreeNode, n1: TreeNode):
-  return np.array_equal(n0[1], n1[1])
+def is_same_value_type(n0: TreeNode, n1: TreeNode, strict=True):
+  if (n0[1] is None) ^ (n1[1] is None):
+    return False
+  elif n0[1] is None and n1[1] is None:
+    return True
+  else:
+    if strict:
+      return n0[1].dtype == n1[1].dtype
+    else:
+      return n0[1].dtype.kind == n1[1].dtype.kind
 
-def is_same_node(node1, node2):
+
+def is_same_value(n0: TreeNode, n1: TreeNode, abs_tol=0, type_tol=False):
+  """ Compare the values of two single nodes. Node are considered equal if
+  they have
+  - same data type (if type_tol is True, only kind of types are considered equal eg.
+    I4 & I8 have not same type, but have same type kind
+  - same array len
+  - same value for each element, up to the absolute tolerance abs_tol when array kind is floats
+  """
+  if not is_same_value_type(n0, n1, strict=not type_tol):
+    return False
+  if n0[1] is None:
+    return True
+  elif n0[1].dtype.kind == 'f':
+    return np.allclose(n0[1], n1[1], rtol=0, atol=abs_tol)
+  else:
+    return np.array_equal(n0[1], n1[1])
+
+def is_same_node(node1, node2, abs_tol=0, type_tol=False):
   """
   Compare two single nodes (no recursion). Node are considered equal if
   they have same name, same label, same value.
   Note that no check is performed on children
   """
-  return is_same_name(node1, node2) and is_same_label(node1, node2) and is_same_value(node1, node2) 
+  return is_same_name(node1, node2) and is_same_label(node1, node2) and is_same_value(node1, node2, abs_tol, type_tol) 
 
-def is_same_tree(node1, node2):
+def is_same_tree(node1, node2, abs_tol=0, type_tol=False):
   """
   Recursive comparaison of two nodes. Nodes are considered equal if the pass is_same_node test
   and if the have the same childrens. Children are allowed to appear in a different order.
   """
-  if not (is_same_node(node1, node2) and len(I.getChildren(node1)) == len(I.getChildren(node2)) ):
+  if not (is_same_node(node1, node2, abs_tol, type_tol) and len(I.getChildren(node1)) == len(I.getChildren(node2)) ):
     return False
   for c1, c2 in zip(sorted(node1[2]), sorted(node2[2])):
-    if not is_same_tree(c1, c2):
+    if not is_same_tree(c1, c2, abs_tol, type_tol):
       return False
   return True
 
