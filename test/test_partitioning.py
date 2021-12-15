@@ -21,11 +21,11 @@ def test_load_balancing(sub_comm):
   zone_to_parts. This dictionnary allow to control the number of partitions
   produced on each rank, as well as their size (if parmetis is used)
 
-  The dictionnary map the name of the initial block to a list : the size
+  The dictionnary maps the name of the initial block to a list : the size
   of the list is the number of partitions to create for this rank, and
-  the value are the wanted weight (in % of cell) of each partition. Empty
+  the values are the desired weight (in % of cell) of each partition. Empty
   list means this rank will hold no partition for this block.
-  The sum of weights for a given block should be 1.
+  The sum of weights on all ranks for a given block should be 1.
 
   In this example, we have 3 procs and two blocks
   """
@@ -34,24 +34,24 @@ def test_load_balancing(sub_comm):
   mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
   dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
 
-  """ zone_to_parts dict can be specified by hand eg in this way : """
+  """ zone_to_parts dict can be specified by hand this way : """
   zone_to_parts = {}
   if sub_comm.Get_rank() == 0:
     zone_to_parts['Small'] = []
     zone_to_parts['Large'] = [.25]
   if sub_comm.Get_rank() == 1:
-    zone_to_parts['Small'] = [1.] #Small block will not be cutted
+    zone_to_parts['Small'] = [1.] #Small block will not be cut
     zone_to_parts['Large'] = [.25]
   if sub_comm.Get_rank() == 2:
     zone_to_parts['Small'] = []
-    zone_to_parts['Large'] = [.1, .1, .2, .1] #Large block will be cutted in several parts !
+    zone_to_parts['Large'] = [.1, .1, .2, .1] #Large block will be cut in several parts !
   assert sub_comm.allreduce(sum(zone_to_parts['Small']), MPI.SUM) == 1. and \
          sub_comm.allreduce(sum(zone_to_parts['Large']), MPI.SUM) == 1.
 
-  """ Maia provide some helpers to automatically compute zone_to_parts dict :
+  """ Maia provides some helpers to automatically compute zone_to_parts dict :
 
-  n_part_per_zone function make each rank to request n (usually one) partition
-  on each block. Weights will thus be homogeous : """
+  the n_part_per_zone function makes each rank request n (usually one) partitions
+  on each block. Weights will thus be homogenous : """
   zone_to_parts = SPW.npart_per_zone(dist_tree, sub_comm, 1)
 
   for zone in I.getZones(dist_tree):
@@ -66,12 +66,12 @@ def test_load_balancing(sub_comm):
     assert len(zone_to_parts[I.getName(zone)]) == n_part
     assert zone_to_parts[I.getName(zone)][0] == 1. / sub_comm.allreduce(n_part, MPI.SUM)
 
-  """ the other function balance_multizone_tree try to equilibrate the total number of
+  """ the other function balance_multizone_tree try to balance the total number of
   partitioned cells for each rank while minimizing the number of partitions : """
 
   zone_to_parts = SPW.balance_multizone_tree(dist_tree, sub_comm)
 
-  """ We can see that small zone will not be cutted """
+  """ We can see that the small zone will not be cut """
   assert sub_comm.allreduce(len(zone_to_parts['Small']), MPI.SUM) == 1 and \
          sub_comm.allreduce(len(zone_to_parts['Large']), MPI.SUM) == 3
   assert sub_comm.allreduce(sum(zone_to_parts['Small']), MPI.SUM) == 1. and \

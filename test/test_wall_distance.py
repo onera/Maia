@@ -76,7 +76,7 @@ def test_wall_distance_U(method, sub_comm, write_output):
 
   dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
 
-  #Lets WALL family be autodetected by setting its type to wall:
+  #Let WALL family be autodetected by setting its type to wall:
   wall_family = I.getNodeFromName2(dist_tree, 'WALL')
   family_bc = I.getNodeFromName1(wall_family, 'FamilyBC')
   I.setValue(family_bc, 'BCWall')

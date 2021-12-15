@@ -82,12 +82,11 @@ def test_is_same_value_type():
   node1 = I.createNode('Data', 'DataArray_t', value=None)
   node2 = I.createNode('Data', 'DataArray_t', value=None)
   assert PT.is_same_value_type(node1, node2)
-  I.setValue(node1, np.array([1,2,3]))
+  I.setValue(node1, np.array([1,2,3], dtype=np.int64))
   assert not PT.is_same_value_type(node1, node2)
-  I.setValue(node2, np.array([1,2,3]))
-  assert PT.is_same_value_type(node1, node2)
-  I.setValue(node2, np.array([1,2,3], dtype=np.int32))
-  assert not PT.is_same_value_type(node1, node2)
+  I.setValue(node2, np.array([1,2,3], np.int32))
+  assert PT.is_same_value_type(node1, node2, strict=False)
+  assert not PT.is_same_value_type(node1, node2, strict=True)
 
 def test_is_same_value():
   node1 = I.createNode('Data', 'DataArray_t', value=np.array([1,2,3]))
