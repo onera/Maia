@@ -68,6 +68,15 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
     l_dims = [multi_part.multipart_dim_get(i_part, i_zone) for i_part in range(n_part)]
     l_data = [concat_pdm_data(i_part, i_zone)              for i_part in range(n_part)]
 
+    #For element : additional conversion step to retrieve part elements
+    pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
+    if pmesh_nodal is not None:
+      for i_part in range(n_part):
+        l_data[i_part]["2dsections"] = \
+            pmesh_nodal.part_mesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, i_part)
+        l_data[i_part]["3dsections"] = \
+            pmesh_nodal.part_mesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_VOLUMIC, i_part)
+
     parts = pdm_part_to_cgns_zone(d_zone, l_dims, l_data, comm, post_options)
     all_parts.extend(parts)
 
@@ -98,7 +107,7 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
   #Run and return parts
   multi_part.multipart_run_ppart()
 
-  post_options = {k:part_options[k] for k in ['part_interface_loc', 'dump_pdm_output']}
+  post_options = {k:part_options[k] for k in ['part_interface_loc', 'dump_pdm_output', 'output_connectivity']}
   u_parts = collect_mpart_partitions(multi_part, u_zones, n_part_per_zone, comm, post_options)
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array

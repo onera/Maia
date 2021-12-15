@@ -29,10 +29,7 @@ def test_dcube_nodal_generate(sub_comm, cgns_elmt_name):
   zone = zones[0]
   assert I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex') is not None
   assert I.getNodeFromPath(zone, ':CGNS#Distribution/Cell') is not None
-  if(cgns_elmt_name == "TRI_3" or cgns_elmt_name == "QUAD_4" ):
-    assert len(I.getNodesFromType(zone, 'BC_t')) == 4
-    assert len(I.getNodesFromType(zone, 'Elements_t')) == 5
-  else:
-    assert len(I.getNodesFromType(zone, 'BC_t')) == 6
-    assert len(I.getNodesFromType(zone, 'Elements_t')) == 7
+  assert len(I.getNodesFromType(zone, 'BC_t')) == 4 if cgns_elmt_name in ['TRI_3', 'QUAD_4'] else 6
+  #For PENTA_6 we have 1 volumic and 2 surfacic
+  assert len(I.getNodesFromType(zone, 'Elements_t')) == 3 if cgns_elmt_name == 'PENTA_6' else 2
 

@@ -28,7 +28,7 @@ def test_collect_distributed_pl():
     bc = I.newBC('bc'+str(i+1+len(point_lists)), pointRange=pr, parent=zoneBC)
     distri = IE.newDistribution({'Index' : np.array([10,15,20])}, parent=bc)
 
-  collected = IBTP.collect_distributed_pl(zone, ['ZoneBC_t/BC_t'])
+  collected = IBTP.collect_distributed_pl(zone, [['ZoneBC_t', 'BC_t']])
   assert len(collected) == len(point_lists) + 1
   for i in range(len(point_lists)):
     assert (collected[i] == point_lists[i]).all()

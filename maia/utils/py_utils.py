@@ -35,6 +35,28 @@ def flatten(items):
 def list_or_only_elt(l):
   return l[0] if len(l) == 1 else l
 
+def bucket_split(l, f, compress=False, size=None):
+  """ Dispatch the elements of list l into n sublists, according to the result of function f """
+  if size is None: 
+    size = max(f(e) for e in l) + 1
+  result = [ [] for i in range(size)]
+  for e in l:
+    result[f(e)].append(e)
+  if compress:
+    result = [sub_l for sub_l in result if sub_l]
+  return result
+
+def are_overlapping(range1, range2, strict=False):
+  """ Return True if range1 and range2 share a common element.
+  If strict=True, case (eg) End1 == Start2 is not considered to overlap 
+  https://is.gd/gTBuwu """
+  assert range1[0] <= range1[1] and range2[0] <= range2[1]
+  if strict:
+    return range1[0] < range2[1] and range2[0] < range1[1]
+  else:
+    return range1[0] <= range2[1] and range2[0] <= range1[1]
+
+
 def is_subset_l(subset, L):
   """Return True is subset list is included in L, allowing looping"""
   extended_l = list(L) + list(L)[:len(subset)-1]

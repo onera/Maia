@@ -85,12 +85,13 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   create_distribution_node_from_distrib("ElementConnectivity", nfac_n, distrib_cell_face[[i_rank, i_rank+1, n_rank]])
 
   #Manage BCs : shift PL values to reach refer ngon_elements
-  group = np.copy(pdm_group) + (EU.get_range_of_ngon(zone)[0]-1)
-  for i_bc, bc in enumerate(IE.iterNodesByMatching(zone, 'ZoneBC_t/BC_t')):
-    I._rmNodesByName(bc, 'PointRange')
-    I._rmNodesByName(bc, 'PointList')
-    start, end = group_idx[i_bc], group_idx[i_bc+1]
-    I.newPointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
+  if pdm_group is not None:
+    group = np.copy(pdm_group) + (EU.get_range_of_ngon(zone)[0]-1)
+    for i_bc, bc in enumerate(IE.iterNodesByMatching(zone, 'ZoneBC_t/BC_t')):
+      I._rmNodesByName(bc, 'PointRange')
+      I._rmNodesByName(bc, 'PointList')
+      start, end = group_idx[i_bc], group_idx[i_bc+1]
+      I.newPointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
 
 # -----------------------------------------------------------------
@@ -114,14 +115,12 @@ def compute_ngon_from_std_elements(dist_tree, comm):
     dmn_to_dm.compute(eval(f"PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSFORM_TO_{face}"),
                       eval(f"PDM._PDM_DMESH_NODAL_TO_DMESH_TRANSLATE_GROUP_TO_{face}"))
 
-    dmn_to_dm.transform_to_coherent_dmesh(extract_dim)
-
     for i_zone, zone in enumerate(zones_u):
       result_dmesh = dmn_to_dm.get_dmesh(i_zone)
       pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim)
 
       # > Remove internal holder state
-      I._rmNodesByName(zone, ':CGNS#DMeshNodal#Bnd')
+      I._rmNodesByName(zone, ':CGNS#DMeshNodal#Bnd*')
 
   # > Generate correctly zone_grid_connectivity
 

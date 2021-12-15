@@ -48,12 +48,43 @@ def test_get_range_of_ngon():
   I.newElements('ElemC', 'HEXA',  erange=[54,60], parent=zone)
   assert (EU.get_range_of_ngon(zone) == [11,53]).all()
 
-def test_get_ordered_elements_std():
+def test_get_ordered_elements():
   zone = I.newZone()
   I.newElements('ElemA', erange=[11, 53], parent=zone)
   I.newElements('ElemB', erange=[1, 10], parent=zone)
   I.newElements('ElemC', erange=[54,60], parent=zone)
 
-  sorted_elems = EU.get_ordered_elements_std(zone)
+  sorted_elems = EU.get_ordered_elements(zone)
   assert [I.getName(elem) for elem in sorted_elems] == ['ElemB', 'ElemA', 'ElemC']
     
+def test_get_ordered_elements_per_dim():
+  zone = I.newZone()
+  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
+  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
+  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+
+  sorted_elems_per_dim = EU.get_ordered_elements_per_dim(zone)
+  assert sorted_elems_per_dim[0] == []
+  assert sorted_elems_per_dim[1] == []
+  assert [I.getName(elem) for elem in sorted_elems_per_dim[2]] == ['ElemC']
+  assert [I.getName(elem) for elem in sorted_elems_per_dim[3]] == ['ElemB', 'ElemA']
+    
+def get_elt_range_per_dim(zone):
+  zone = I.newZone()
+  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
+  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
+  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  assert EU.get_elt_range_per_dim(zone) == [[0,0], [0,0], [54,60], [1,53]]
+
+  zone = I.newZone()
+  I.newElements('ElemA', etype='QUAD', erange=[11, 53], parent=zone)
+  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
+  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  assert EU.get_elt_range_per_dim(zone) == [[0,0], [0,0], [11,60], [1,10]]
+
+  zone = I.newZone()
+  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
+  I.newElements('ElemB', etype='TRI',  erange=[1, 10],  parent=zone)
+  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  with pytest.raises(RuntimeError):
+    EU.get_elt_range_per_dim(zone)

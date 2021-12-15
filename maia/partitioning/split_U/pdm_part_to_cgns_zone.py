@@ -2,6 +2,7 @@ import Converter.Internal as I
 import maia.sids.Internal_ext as IE
 import numpy              as np
 
+from maia.sids import sids
 from maia.sids import conventions as conv
 from maia.connectivity import connectivity_transform as CNT
 
@@ -71,10 +72,11 @@ def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
   I.newDataArray('CoordinateY', data['np_vtx_coord'][1::3], parent=grid_c)
   I.newDataArray('CoordinateZ', data['np_vtx_coord'][2::3], parent=grid_c)
 
-def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data):
+def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element"):
   """
   """
-  if (dims['n_section']==0):
+  ngon_zone = [e for e in I.getNodesFromType1(d_zone, 'Elements_t') if sids.ElementCGNSName(e) == 'NGON_n'] != []
+  if  ngon_zone or connectivity_as == 'NGon':
     n_face        = dims['n_face']
     n_cell        = dims['n_cell']
     pdm_face_cell = data['np_face_cell']
@@ -104,19 +106,18 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data):
 
   else:
     elt_section_nodes = I.getNodesFromType(d_zone, "Elements_t")
-    assert len(elt_section_nodes) == dims['n_section']
+    assert len(elt_section_nodes) == len(data['2dsections']) + len(data['3dsections'])
 
+    #elt_section_node should have 2d first, then 3d
     n_elt_cum = 0
-    for i_elt, elt_section_node in enumerate(elt_section_nodes):
-      elt_name = I.getName(elt_section_node)
-      elt_type = I.getValue(elt_section_node)[0]
-      n_i_elt    = dims['n_elt'][i_elt]
-      elt_n = I.createUniqueChild(p_zone, elt_name, 'Elements_t', value=[elt_type,0])
-      I.newDataArray('ElementConnectivity', data['np_elt_vtx'][i_elt]       , parent=elt_n)
+    for i_section, section in enumerate(data['2dsections'] + data['3dsections']):
+      elt = elt_section_nodes[i_section]
+      n_i_elt = section['np_connec'].size // sids.ElementNVtx(elt)
+      elt_n = I.createUniqueChild(p_zone, I.getName(elt), 'Elements_t', value=I.getValue(elt))
+      I.newDataArray('ElementConnectivity', section['np_connec']       , parent=elt_n)
       I.newPointRange('ElementRange'      , [n_elt_cum+1, n_elt_cum+n_i_elt], parent=elt_n)
       n_elt_cum += n_i_elt
-      IE.newGlobalNumbering({'Element' : data['np_elt_section_ln_to_gn'][i_elt]}, elt_n)
-
+      IE.newGlobalNumbering({'Element' : section['np_numabs']}, elt_n)
 
 def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   """
@@ -132,7 +133,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     if options['dump_pdm_output']:
       dump_pdm_output(part_zone, dims, data)
     pdm_vtx_to_cgns_grid_coordinates(part_zone, dims, data)
-    pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data)
+    pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data, options['output_connectivity'])
 
     output_loc = options['part_interface_loc']
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'
