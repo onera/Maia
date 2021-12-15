@@ -3,6 +3,7 @@
 
 #include "maia/connectivity/iter/connectivity_range.hpp"
 #include "std_e/parallel/struct/distributed_array.hpp"
+#include "std_e/algorithm/distribution/weighted.hpp"
 #include "maia/sids/element_sections.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "std_e/algorithm/algorithm.hpp"
