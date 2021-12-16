@@ -17,6 +17,18 @@ def test_ZoneType():
   assert SIDS.Zone.Type(zone_u) == 'Unstructured'
   assert SIDS.Zone.Type(zone_s) == 'Structured'
 
+def test_NGonNode():
+  zone = I.newZone('Zone', [[100, 36, 0]], 'Unstructured')
+  with pytest.raises(RuntimeError):
+    SIDS.Zone.NGonNode(zone)
+  I.newElements('NGon',  etype='NGON',  parent=zone)
+  I.newElements('NFace', etype='NFACE', parent=zone)
+  ngon = SIDS.Zone.NGonNode(zone)
+  assert I.getName(ngon) == 'NGon' and I.getValue(ngon)[0] == 22
+  I.newElements('NGon2', etype='NGON', parent=zone)
+  with pytest.raises(RuntimeError):
+    SIDS.Zone.NGonNode(zone)
+
 def test_ElementSize():
   elt1 = I.newElements(etype='QUAD', erange=[1,100])
   elt2 = I.newElements(etype='QUAD', erange=[15,15])

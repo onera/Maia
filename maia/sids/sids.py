@@ -54,6 +54,16 @@ class Zone:
     return list_or_only_elt(n_face)
 
   @staticmethod
+  def NGonNode(zone_node):
+    ngons = [e for e in I.getNodesFromType1(zone_node, CGL.Elements_t.name) if ElementCGNSName(e) == 'NGON_n']
+    if len(ngons) == 0:
+      raise RuntimeError(f"NGon node not found on zone {I.getName(zone_node)}")
+    elif len(ngons) > 1:
+      raise RuntimeError(f"Multiple NGon nodes not found on zone {I.getName(zone_node)}")
+    else:
+      return ngons[0]
+
+  @staticmethod
   def VertexBoundarySize(zone_node):
     z_sizes = I.getValue(zone_node)
     return list_or_only_elt(z_sizes[:,2])

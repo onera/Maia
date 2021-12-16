@@ -218,10 +218,10 @@ class Test_generate_jn_vertex_list():
     I.newGridLocation('FaceCenter', gcA)
     if sub_comm.Get_rank() == 0:
       pl_distri = [0,3,6]
-      expt_jn_distri = [0, 9, 21]
+      expt_jn_distri = [0, 7, 21]
     elif sub_comm.Get_rank() == 1:
       pl_distri = [3,4,6]
-      expt_jn_distri = [9, 14, 21]
+      expt_jn_distri = [7, 14, 21]
     elif sub_comm.Get_rank() == 2:
       pl_distri = [4,6,6]
       expt_jn_distri = [14, 21, 21]
@@ -267,7 +267,7 @@ class Test_generate_jn_vertex_list():
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
 
-    expected_dist = [0,7,12] if sub_comm.Get_rank() == 0 else [7,12,12]
+    expected_dist = [0,6,12] if sub_comm.Get_rank() == 0 else [6,12,12]
     expected_full_pl_vtx     = [4,8,12,16,20,24,28,32,40,44,56,60]
     expected_full_pl_vtx_opp = [1,5,9,13,17,21,25,29,37,41,53,57]
     assert (distri_jn_vtx == expected_dist).all()

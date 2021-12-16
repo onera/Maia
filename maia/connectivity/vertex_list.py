@@ -272,8 +272,109 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
 
   return pl_vtx_local, pl_vtx_local_opp
 
-
 def generate_jn_vertex_list(dist_tree, jn_path, comm):
+  """
+  From a FaceCenter join (given by its path in the tree), create the distributed arrays VertexList
+  and VertexListDonor such that vertices are matching 1 to 1.
+  Return the two index arrays and the partial distribution array, which is
+  identical for both of them
+  """
+  jn = I.getNodeFromPath(dist_tree, jn_path)
+  assert sids.GridLocation(jn) == 'FaceCenter'
+
+  base_name, zone_name = jn_path.split('/')[0:2]
+  zone   = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
+  zone_d = I.getNodeFromPath(dist_tree, IE.getZoneDonorPath(base_name, jn))
+
+  ngon_node   = sids.Zone.NGonNode(zone)
+  vtx_distri  = I.getVal(IE.getDistribution(zone, 'Vertex'))
+  face_distri = I.getVal(IE.getDistribution(ngon_node, 'Element'))
+
+  ngon_node_d   = sids.Zone.NGonNode(zone_d)
+  vtx_distri_d  = I.getVal(IE.getDistribution(zone_d, 'Vertex'))
+  face_distri_d = I.getVal(IE.getDistribution(ngon_node_d, 'Element'))
+
+  distri_jn = I.getVal(IE.getDistribution(jn, 'Index'))
+  pl   = I.getNodeFromName1(jn, 'PointList'     )[1][0]
+  pl_d = I.getNodeFromName1(jn, 'PointListDonor')[1][0]
+
+  interface_dn_face  = distri_jn[1] - distri_jn[0]
+  interface_ids_face = py_utils.interweave_arrays([pl,pl_d]).astype(pdm_dtype)
+
+  dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
+  dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
+
+  shifted_eso = lambda ng: I.getNodeFromPath(ng, 'ElementStartOffset')[1] - I.getNodeFromPath(ng, 'ElementStartOffset')[1][0]
+  dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
+  dface_vtx     = [I.getNodeFromPath(ng, 'ElementConnectivity')[1] for ng in [ngon_node, ngon_node_d]]
+
+  # We have to catch joins having isolated faces, because those one will need geometric treatment
+  # Count the number of appareance of each vertex of the jn
+  pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
+  pdm_vtx_distrib = par_utils.partial_to_full_distribution(vtx_distri, comm)
+  PTB = PDM.PartToBlock(comm, [pl_face_vtx.astype(pdm_dtype)], pWeight=None, partN=1,
+                        t_distrib=0, t_post=2, t_stride=0, userDistribution=pdm_vtx_distrib)
+  block_gnum  = PTB.getBlockGnumCopy()
+  vtx_n_occur = PTB.getBlockGnumCountCopy()
+
+  vtx_n_occur_full = np.zeros(vtx_distri[1] - vtx_distri[0], np.int32)
+  vtx_n_occur_full[block_gnum-vtx_distri[0]-1] = vtx_n_occur
+  dist_data = {'n_occur' : vtx_n_occur_full}
+  part_data = MBTP.dist_to_part(vtx_distri.astype(pdm_dtype), dist_data, [pl_face_vtx.astype(pdm_dtype)], comm)
+
+  n_vtx_per_face = np.add.reduceat(part_data['n_occur'][0], indices=pl_face_vtx_idx[:-1]) #Number of total occurence of all the vertices of each face
+  solo_face_l = np.any(n_vtx_per_face == np.diff(pl_face_vtx_idx))
+  solo_face = comm.allreduce(solo_face_l, MPI.LOR)
+  if solo_face:
+    gc_prop = I.getNodeFromType1(jn, 'GridConnectivityProperty_t')
+    _, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
+    pl_vtx_local, pl_vtx_local_opp = \
+        _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm)
+
+    # Not sure if we can have vertices defined twice... merge it to be sure (and reequilibrate)
+    # Since we did not extract isolated faces, we have the whole join and thus we can have multiple vertices
+    part_data = {'pl_vtx_opp' : [pl_vtx_local_opp]}
+    PTB = PDM.PartToBlock(comm, [pl_vtx_local], pWeight=[np.ones(pl_vtx_local.size, float)], partN=1,
+                          t_distrib=0, t_post=2, t_stride=1)
+    dist_data = dict()
+    PTB.PartToBlock_Exchange(dist_data, part_data, pStrid=[np.ones(pl_vtx_local.size, np.int32)])
+    #Extract duplicated
+    idx = np.cumsum(dist_data['pl_vtx_opp#Stride']) - 1
+
+    pl_vtx = PTB.getBlockGnumCopy()
+    pld_vtx = dist_data['pl_vtx_opp'][idx]
+    dn_vtx_jn = pl_vtx.size
+
+  else:
+    vtx_interfaces = PDM.interface_face_to_vertex(1, #n_interface,
+                                                  2,
+                                                  False,
+                                                  [interface_dn_face],
+                                                  [interface_ids_face],
+                                                  [(0,1)],
+                                                  dn_vtx,
+                                                  dn_face,
+                                                  dface_vtx_idx,
+                                                  dface_vtx,
+                                                  comm)
+    dn_vtx_jn = vtx_interfaces[0]['interface_dn_vtx']
+    interface_ids_vtx = vtx_interfaces[0]['np_interface_ids_vtx'] # Can be void because of realloc
+
+    if interface_ids_vtx is not None:
+      pl_vtx  = interface_ids_vtx[::2]
+      pld_vtx = interface_ids_vtx[1::2]
+      assert pl_vtx.size == dn_vtx_jn
+      assert pld_vtx.size == dn_vtx_jn
+    else:
+      pl_vtx  = np.empty(0, dtype=pdm_dtype)
+      pld_vtx = np.empty(0, dtype=pdm_dtype)
+
+  distri = par_utils.gather_and_shift(dn_vtx_jn, comm)
+  distri_jn_vtx = distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+
+  return pl_vtx, pld_vtx, distri_jn_vtx
+
+def generate_jn_vertex_listO(dist_tree, jn_path, comm):
   """
   From a FaceCenter join (given by its path in the tree), create the distributed arrays VertexList
   and VertexListDonor such that vertices are matching 1 to 1.
