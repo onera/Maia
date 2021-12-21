@@ -145,7 +145,7 @@ def test_search_with_geometry(sub_comm):
     assert (plv.size == plvd.size == 0)
 
 class Test_generate_jn_vertex_list():
-  @mark_mpi_test([1,3,4])
+  @mark_mpi_test([1,2,4])
   def test_single_zone_topo(self, sub_comm):
     #With this configuration, we have isolated faces when np=4
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)

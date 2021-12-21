@@ -287,8 +287,8 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   zone_d = I.getNodeFromPath(dist_tree, IE.getZoneDonorPath(base_name, jn))
 
   ngon_node   = sids.Zone.NGonNode(zone)
-  vtx_distri  = I.getVal(IE.getDistribution(zone, 'Vertex'))
-  face_distri = I.getVal(IE.getDistribution(ngon_node, 'Element'))
+  vtx_distri  = I.getVal(IE.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
+  face_distri = I.getVal(IE.getDistribution(ngon_node, 'Element')).astype(pdm_dtype)
 
   ngon_node_d   = sids.Zone.NGonNode(zone_d)
   vtx_distri_d  = I.getVal(IE.getDistribution(zone_d, 'Vertex'))
@@ -298,17 +298,15 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   pl   = I.getNodeFromName1(jn, 'PointList'     )[1][0]
   pl_d = I.getNodeFromName1(jn, 'PointListDonor')[1][0]
 
-  interface_dn_face  = distri_jn[1] - distri_jn[0]
-  interface_ids_face = py_utils.interweave_arrays([pl,pl_d]).astype(pdm_dtype)
 
   dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
   dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
 
-  shifted_eso = lambda ng: I.getNodeFromPath(ng, 'ElementStartOffset')[1] - I.getNodeFromPath(ng, 'ElementStartOffset')[1][0]
+  shifted_eso = lambda ng: (I.getNodeFromPath(ng, 'ElementStartOffset')[1] - I.getNodeFromPath(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
   dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
   dface_vtx     = [I.getNodeFromPath(ng, 'ElementConnectivity')[1] for ng in [ngon_node, ngon_node_d]]
 
-  # We have to catch joins having isolated faces, because those one will need geometric treatment
+  # We have to extract isolated faces, to apply geometric treatment, pdm does not manage it
   # Count the number of appareance of each vertex of the jn
   pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
   pdm_vtx_distrib = par_utils.partial_to_full_distribution(vtx_distri, comm)
@@ -322,30 +320,33 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   dist_data = {'n_occur' : vtx_n_occur_full}
   part_data = MBTP.dist_to_part(vtx_distri.astype(pdm_dtype), dist_data, [pl_face_vtx.astype(pdm_dtype)], comm)
 
-  n_vtx_per_face = np.add.reduceat(part_data['n_occur'][0], indices=pl_face_vtx_idx[:-1]) #Number of total occurence of all the vertices of each face
-  solo_face_l = np.any(n_vtx_per_face == np.diff(pl_face_vtx_idx))
-  solo_face = comm.allreduce(solo_face_l, MPI.LOR)
+  #This is the number of total occurence of all the vertices of each face. A face is isolated if each vertex appears
+  # (globally) only once ie if this total equal the number of vertices of the face
+  n_vtx_per_face = np.add.reduceat(part_data['n_occur'][0], indices=pl_face_vtx_idx[:-1])
+  isolated_face_loc     = np.where(n_vtx_per_face == np.diff(pl_face_vtx_idx))[0]
+  not_isolated_face_loc = np.where(n_vtx_per_face != np.diff(pl_face_vtx_idx))[0]
+
+  solo_face = comm.allreduce(isolated_face_loc.size > 0, MPI.LOR)
+  conn_face = comm.allreduce(not_isolated_face_loc.size > 0, MPI.LOR)
+
+  pl_vtx_l = []
+  pld_vtx_l = []
+
   if solo_face:
     gc_prop = I.getNodeFromType1(jn, 'GridConnectivityProperty_t')
     _, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
+
+    pl_face_vtx_idx_e, pl_face_vtx_e  = py_utils.jagged_extract(pl_face_vtx_idx, pl_face_vtx,  isolated_face_loc)
+    pl_face_vtx_idx_e, pld_face_vtx_e = py_utils.jagged_extract(pl_face_vtx_idx, pld_face_vtx, isolated_face_loc)
     pl_vtx_local, pl_vtx_local_opp = \
-        _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm)
+        _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx_e, pl_face_vtx_e, pld_face_vtx_e, comm)
+    pl_vtx_l.append(pl_vtx_local)
+    pld_vtx_l.append(pl_vtx_local_opp)
 
-    # Not sure if we can have vertices defined twice... merge it to be sure (and reequilibrate)
-    # Since we did not extract isolated faces, we have the whole join and thus we can have multiple vertices
-    part_data = {'pl_vtx_opp' : [pl_vtx_local_opp]}
-    PTB = PDM.PartToBlock(comm, [pl_vtx_local], pWeight=[np.ones(pl_vtx_local.size, float)], partN=1,
-                          t_distrib=0, t_post=2, t_stride=1)
-    dist_data = dict()
-    PTB.PartToBlock_Exchange(dist_data, part_data, pStrid=[np.ones(pl_vtx_local.size, np.int32)])
-    #Extract duplicated
-    idx = np.cumsum(dist_data['pl_vtx_opp#Stride']) - 1
+  if conn_face:
+    interface_dn_face  = not_isolated_face_loc.size
+    interface_ids_face = py_utils.interweave_arrays([pl[not_isolated_face_loc],pl_d[not_isolated_face_loc]]).astype(pdm_dtype)
 
-    pl_vtx = PTB.getBlockGnumCopy()
-    pld_vtx = dist_data['pl_vtx_opp'][idx]
-    dn_vtx_jn = pl_vtx.size
-
-  else:
     vtx_interfaces = PDM.interface_face_to_vertex(1, #n_interface,
                                                   2,
                                                   False,
@@ -361,14 +362,27 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
     interface_ids_vtx = vtx_interfaces[0]['np_interface_ids_vtx'] # Can be void because of realloc
 
     if interface_ids_vtx is not None:
-      pl_vtx  = interface_ids_vtx[::2]
-      pld_vtx = interface_ids_vtx[1::2]
-      assert pl_vtx.size == dn_vtx_jn
-      assert pld_vtx.size == dn_vtx_jn
+      pl_vtx_local  = np.copy(interface_ids_vtx[::2]) #Copy is needed to have aligned memory
+      pld_vtx_local = np.copy(interface_ids_vtx[1::2])
+      assert pl_vtx_local.size == dn_vtx_jn
+      assert pld_vtx_local.size == dn_vtx_jn
     else:
-      pl_vtx  = np.empty(0, dtype=pdm_dtype)
-      pld_vtx = np.empty(0, dtype=pdm_dtype)
+      pl_vtx_local  = np.empty(0, dtype=pdm_dtype)
+      pld_vtx_local = np.empty(0, dtype=pdm_dtype)
 
+    pl_vtx_l.append(pl_vtx_local)
+    pld_vtx_l.append(pld_vtx_local)
+
+  #Final part_to_block will merge gnum from two method and reequilibrate
+  part_data = {'pl_vtx_opp' : pld_vtx_l}
+  PTB = PDM.PartToBlock(comm, pl_vtx_l, pWeight=[np.ones(pl.size, float) for pl in pl_vtx_l], partN=len(pl_vtx_l),
+                          t_distrib=0, t_post=2, t_stride=1)
+  dist_data = dict()
+  PTB.PartToBlock_Exchange(dist_data, part_data, pStrid=[np.ones(pl.size, np.int32) for pl in pl_vtx_l])
+  pl_vtx = PTB.getBlockGnumCopy()
+  pld_vtx = dist_data['pl_vtx_opp']
+  assert pld_vtx.size == pl_vtx.size
+  dn_vtx_jn = pld_vtx.size
   distri = par_utils.gather_and_shift(dn_vtx_jn, comm)
   distri_jn_vtx = distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
 
