@@ -5,6 +5,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import Converter.Internal     as I
 import maia.sids.Internal_ext as IE
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.connectivity import vertex_list as VL
 from maia.generate import dcube_generator
 from maia.distribution.distribution_function import uniform_distribution
@@ -275,7 +276,8 @@ class Test_generate_jn_vertex_list():
     assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
 @mark_mpi_test(3)
-def test_generate_jns_vertex_list(sub_comm):
+@pytest.mark.parametrize("allow_isolated", [False, True])
+def test_generate_jns_vertex_list(sub_comm, allow_isolated):
   #For this test, we reuse previous test case, but with 2 jns,
   # and do not assert on values
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
@@ -293,8 +295,8 @@ def test_generate_jns_vertex_list(sub_comm):
   #Create fake jns
   zgc = I.newZoneGridConnectivity(parent=zoneA)
   gcA = I.newGridConnectivity('matchA', 'zoneB', 'Abutting1to1', zgc)
-  full_pl     = np.array([64,65,66,67,68,69,70,71,72]) #xmax
-  full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
+  full_pl     = np.array([64,65,66,67,68,69,70,71,72], pdm_dtype) #xmax
+  full_pl_opp = np.array([37,38,39,40,41,42,43,44,45], pdm_dtype) #xmin
   distri_pl   = uniform_distribution(9, sub_comm)
   I.newGridLocation('FaceCenter', gcA)
   I.newPointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
@@ -303,15 +305,15 @@ def test_generate_jns_vertex_list(sub_comm):
 
   zgc = I.newZoneGridConnectivity(parent=zoneB)
   gcB = I.newGridConnectivity('matchB', 'Base/zoneA', 'Abutting1to1', zgc)
-  full_pl     = np.array([64,65,66,67,68,69,70,71,72]) #xmax
-  full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
+  full_pl     = np.array([64,65,66,67,68,69,70,71,72], pdm_dtype) #xmax
+  full_pl_opp = np.array([37,38,39,40,41,42,43,44,45], pdm_dtype) #xmin
   distri_pl   = uniform_distribution(9, sub_comm)
   I.newGridLocation('FaceCenter', gcB)
   I.newPointList('PointListDonor', full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   I.newPointList('PointList'     , full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   IE.newDistribution({'Index' : distri_pl}, gcB)
 
-  VL.generate_jns_vertex_list(tree, sub_comm)
+  VL.generate_jns_vertex_list(tree, sub_comm, allow_isolated=allow_isolated)
 
   assert len(I.getNodesFromName(tree, "ZoneGridConnectivity#Vtx")) == 2
   assert I.getNodeFromName(tree, "matchA#Vtx") is not None

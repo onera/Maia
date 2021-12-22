@@ -470,7 +470,7 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
   return all_pl_vtx, all_pld_vtx, all_distri_vtx
     
 
-def generate_jns_vertex_list(dist_tree, comm):
+def generate_jns_vertex_list(dist_tree, comm, allow_isolated=False):
   """
   For each 1to1 FaceCenter matching join found in the distributed tree,
   create a corresponding 1to1 Vertex matching join
@@ -479,32 +479,54 @@ def generate_jns_vertex_list(dist_tree, comm):
   if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:
     AJO.add_joins_ordinal(dist_tree, comm)
 
-  ordinal_to_jn = {}
-
   query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
       lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and sids.GridLocation(n) == 'FaceCenter']
 
+  # Retrieve interfaces pathes and call function
+  key_to_cur = {}
+  key_to_opp = {}
   for base, zone, zgc, gc in IE.getNodesWithParentsByMatching(dist_tree, query):
     jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
     jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
     jn_key = min(jn_ordinal, jn_ordinal_opp)
+    jn_path = '/'.join([I.getName(n) for n in [base, zone, zgc, gc]])
+    if jn_ordinal < jn_ordinal_opp:
+      key_to_cur[jn_key] = jn_path
+    else:
+      key_to_opp[jn_key] = jn_path
 
-    zgc_vtx = I.createUniqueChild(zone, I.getName(zgc)+'#Vtx', 'ZoneGridConnectivity_t')
+  interface_pathes_cur = key_to_cur.values()
+  interface_pathes_opp = [key_to_opp[k] for k in key_to_cur.keys()]
+    
+  if allow_isolated:
+    all_pl_vtx, all_pld_vtx, all_distri_vtx = [], [], []
+    for interface_path_cur in interface_pathes_cur:
+      r = generate_jn_vertex_list(dist_tree, interface_path_cur, comm)
+      for j, l in enumerate([all_pl_vtx, all_pld_vtx, all_distri_vtx]):
+        l.append(r[j])
+  else:
+    all_pl_vtx, all_pld_vtx, all_distri_vtx = _generate_jns_vertex_list(dist_tree, interface_pathes_cur, comm)
 
-    #If opposite join have already been treated, get it and switch pl-pld
-    try:
-      pl_vtx_opp, pl_vtx, distri_jn = ordinal_to_jn[jn_key]
-    #Otherwise, treat join
-    except KeyError:
-      gc_path = '/'.join([I.getName(node) for node in [base, zone, zgc, gc]])
-      pl_vtx, pl_vtx_opp, distri_jn = generate_jn_vertex_list(dist_tree, gc_path, comm)
-      ordinal_to_jn[jn_key] = (pl_vtx, pl_vtx_opp, distri_jn)
 
-    jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
-    I.newGridLocation('Vertex', jn_vtx)
-    I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
-    I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
-    I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
-    IE.newDistribution({'Index' : distri_jn}, jn_vtx)
+  # Create in tree
+  for i, interface_path in enumerate(zip(interface_pathes_cur, interface_pathes_opp)):
+    pl_vtx, pl_vtx_opp, distri_jn = all_pl_vtx[i], all_pld_vtx[i], all_distri_vtx[i] #Get results
+    for j, gc_path in enumerate(interface_path):
+      base_name, zone_name, zgc_name, gc_name = gc_path.split('/')
+      zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
+      gc = I.getNodeFromPath(dist_tree, gc_path)
 
-    I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))
+      zgc_vtx = I.createUniqueChild(zone, zgc_name+'#Vtx', 'ZoneGridConnectivity_t')
+
+      if j == 1: #Swap pl/pld for opposite jn
+        pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx
+      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
+      I.newGridLocation('Vertex', jn_vtx)
+      I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
+      I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
+      I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
+      IE.newDistribution({'Index' : distri_jn}, jn_vtx)
+
+      I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))
+
+
