@@ -105,11 +105,11 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
     IE.newGlobalNumbering({'Element' : data['np_cell_ln_to_gn']}, nface_n)
 
   else:
-    elt_section_nodes = I.getNodesFromType(d_zone, "Elements_t")
+    elt_section_nodes = I.getNodesFromType1(d_zone, "Elements_t")
     assert len(elt_section_nodes) == len(data['2dsections']) + len(data['3dsections'])
 
     #elt_section_node can have 2d or 3d elements first
-    first_elt_node = elt_section_nodes[0] 
+    first_elt_node = elt_section_nodes[0]
     first_elt_dim  = sids.ElementDimension(first_elt_node)
     if first_elt_dim == 2:
       first_sections, second_sections = data['2dsections'], data['3dsections']

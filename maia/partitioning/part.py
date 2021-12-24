@@ -15,11 +15,14 @@ def set_default(dist_tree, comm):
                    'n_face_per_pack'   : 0,
                    'graph_part_tool'   : None }
 
-  default = {'graph_part_tool'    : None,
-             'zone_to_parts'      : {I.getName(z):[1/comm.Get_size()] for z in I.getZones(dist_tree)},
-             'reordering'         : default_renum,
-             'part_interface_loc' : 'Vertex',
-             'output_connectivity': 'Element',
+  default = {'graph_part_tool'         : None,
+             'zone_to_parts'           : {I.getName(z):[1/comm.Get_size()] for z in I.getZones(dist_tree)},
+             'reordering'              : default_renum,
+             'part_interface_loc'      : 'Vertex',
+             'output_connectivity'     : 'Element',
+             'additional_connectivity' : [],
+             'additional_ln_to_gn'     : [],
+             'additional_color'        : [],
              'dump_pdm_output'    : False }
 
   if pdm_has_ptscotch:
