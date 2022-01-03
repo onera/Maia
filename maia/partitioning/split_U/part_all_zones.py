@@ -27,6 +27,15 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
                                     reorder_options['n_face_per_pack'],
                                     pdm_part_tool],
                                     dtype='int32', order='c')
+  elif "HPC" in reorder_options['cell_renum_method']:
+    pdm_part_tool     = 1 if reorder_options['graph_part_tool'] == 'parmetis' else 2
+    cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
+                                    0, # is_asynchrone
+                                    1,
+                                    reorder_options['n_face_per_pack'],
+                                    pdm_part_tool,
+                                    1], # n_depth
+                                    dtype='int32', order='c')
   else:
     cacheblocking_props = None
   multipart.multipart_set_reordering(-1,
@@ -53,7 +62,7 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
 maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
                       "face"   : PDM._PDM_MESH_ENTITY_FACE,
                       "edge"   : PDM._PDM_MESH_ENTITY_EDGE,
-                      "vertex" : PDM._PDM_MESH_ENTITY_VERTEX}
+                      "vtx"    : PDM._PDM_MESH_ENTITY_VERTEX}
 
 maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
                             "cell_cell" : PDM._PDM_CONNECTIVITY_TYPE_CELL_CELL,

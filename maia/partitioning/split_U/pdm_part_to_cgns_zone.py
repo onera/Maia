@@ -129,6 +129,14 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
       n_elt_cum   += n_i_elt
       n_elt_cum_d += sids.ElementSize(elt_section_nodes[i_section])
 
+      # TODO See with Julien
+      if(section['np_parent_num'] is not None):
+        I.newDataArray('np_parent_num', section['np_parent_num']       , parent=elt_n)
+      if(section['np_numabs'] is not None):
+        I.newDataArray('np_numabs', section['np_numabs']       , parent=elt_n)
+      if(section['np_parent_entity_g_num'] is not None):
+        I.newDataArray('np_parent_entity_g_num', section['np_parent_entity_g_num']       , parent=elt_n)
+
 def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   """
   """
