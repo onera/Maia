@@ -36,7 +36,7 @@ def vtx_slab_to_n_faces(vtx_slab, n_vtx):
 ###############################################################################
 
 ###############################################################################
-def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_index=None):
+def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_index=None, order='F'):
   """
   Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must
   describe entity of kind output_loc, which can take the values 'FaceCenter', 'Vertex' or 'CellCenter'
@@ -63,7 +63,10 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_
   # The lambda func ijk_to_vect_func is a wrapping to ijk_to_func (and so to the good indexing func)
   # but with args expressed as numpy arrays : this allow vectorial call of indexing function as if we did an
   # imbricated loop
-  ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
+  if order == 'F':
+    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
+  elif order == 'C':
+    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx.reshape(-1,1,1), j_idx.reshape(-1,1), k_idx)
 
   sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
   point_list = np.empty((1, sum(sub_range_sizes)), order='F', dtype=pdm_gnum_dtype)
@@ -231,10 +234,13 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
     point_range_loc, point_range_opp_loc = point_range_opp, point_range
     n_vtx_loc, n_vtx_opp_loc = n_vtx_zone_opp, n_vtx_zone
     T = T.transpose()
+  loc_transform = T.sum(axis=0) * (np.where(T.T != 0)[1] + 1) #Recompute transform from matrix, who have been (potentially) transformed
   # Refence PR must be increasing, otherwise we have troubles with slabs->sub_point_range
   # When we swap the PR, we must swap the corresponding dim of the PRD as well
   dir_to_swap     = (point_range_loc[:,1] < point_range_loc[:,0])
-  opp_dir_to_swap = dir_to_swap[abs(transform) - 1]
+  opp_dir_to_swap = np.empty_like(dir_to_swap)
+  opp_dir_to_swap[abs(loc_transform) - 1] = dir_to_swap
+
   point_range_loc[dir_to_swap, 0], point_range_loc[dir_to_swap, 1] = \
           point_range_loc[dir_to_swap, 1], point_range_loc[dir_to_swap, 0]
   point_range_opp_loc[opp_dir_to_swap,0], point_range_opp_loc[opp_dir_to_swap,1] \
@@ -276,8 +282,12 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
       reverted[bnd_axis_opp] = False
       sub_pr_opp[reverted,:] -= 1
 
+  # If the axes of opposite PointRange occurs in reverse order, vect. loop must be reverted thanks to order
+  loc_transform_2d = np.abs(np.delete(loc_transform, bnd_axis))
+  order = 'C' if loc_transform_2d[0] > loc_transform_2d[1] else 'F'
+
   point_list_loc     = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, output_loc, bnd_axis)
-  point_list_opp_loc = compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, output_loc, bnd_axis_opp)
+  point_list_opp_loc = compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, output_loc, bnd_axis_opp, order)
 
   if zone_path <= zone_path_opp:
     point_list, point_list_opp = point_list_loc, point_list_opp_loc
