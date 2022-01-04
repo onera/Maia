@@ -108,16 +108,26 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
     elt_section_nodes = I.getNodesFromType(d_zone, "Elements_t")
     assert len(elt_section_nodes) == len(data['2dsections']) + len(data['3dsections'])
 
-    #elt_section_node should have 2d first, then 3d
+    #elt_section_node can have 2d or 3d elements first
+    first_elt_node = elt_section_nodes[0] 
+    first_elt_dim  = sids.ElementDimension(first_elt_node)
+    if first_elt_dim == 2:
+      first_sections, second_sections = data['2dsections'], data['3dsections']
+    elif first_elt_dim == 3:
+      first_sections, second_sections = data['3dsections'], data['2dsections']
     n_elt_cum = 0
-    for i_section, section in enumerate(data['2dsections'] + data['3dsections']):
+    n_elt_cum_d = 0
+    for i_section, section in enumerate(first_sections + second_sections):
+      if i_section == len(first_sections): #Reset the dimension shift when changing dim
+        n_elt_cum_d = 0
       elt = elt_section_nodes[i_section]
       n_i_elt = section['np_connec'].size // sids.ElementNVtx(elt)
       elt_n = I.createUniqueChild(p_zone, I.getName(elt), 'Elements_t', value=I.getValue(elt))
       I.newDataArray('ElementConnectivity', section['np_connec']       , parent=elt_n)
       I.newPointRange('ElementRange'      , [n_elt_cum+1, n_elt_cum+n_i_elt], parent=elt_n)
-      n_elt_cum += n_i_elt
-      IE.newGlobalNumbering({'Element' : section['np_numabs']}, elt_n)
+      IE.newGlobalNumbering({'Element' : section['np_numabs'] - n_elt_cum_d}, elt_n)
+      n_elt_cum   += n_i_elt
+      n_elt_cum_d += sids.ElementSize(elt_section_nodes[i_section])
 
 def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   """
