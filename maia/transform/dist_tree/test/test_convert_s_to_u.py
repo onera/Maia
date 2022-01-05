@@ -3,6 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import mpi4py.MPI as MPI
 import numpy as np
 from maia.sids  import sids
+from maia.sids  import Internal_ext as IE
 from maia.utils import parse_yaml_cgns
 from maia.transform.dist_tree import convert_s_to_u
 import Converter.Internal as I
@@ -226,6 +227,21 @@ def test_bc_s_to_bc_u():
   assert I.getValue(bc_u) == 'BCOutflow'
   assert sids.GridLocation(bc_u) == 'FaceCenter'
   assert I.getValue(I.getNodeFromName1(bc_u, 'PointList')).shape == (1,9)
+
+def test_bcds_s_to_bcds_u():
+  #We dont test value of PL here, this is carried out by Test_compute_pointList_from_pointRanges
+  n_vtx = np.array([4,4,4])
+  bc_s = I.newBC('MyBCName', btype='BCOutflow', pointRange=[[1,4], [1,4], [4,4]])
+  IE.newDistribution({'Index' : [0,16,16]}, parent=bc_s)
+  bcds = I.newBCDataSet(parent=bc_s)
+  bcdata = I.newBCData("DirichletData", bcds)
+  I.newDataArray("array", np.arange(16), bcdata)
+  bc_u = convert_s_to_u.bc_s_to_bc_u(bc_s, n_vtx, 'FaceCenter', 0, 1)
+  bcds = I.getNodeFromName(bc_u, 'BCDataSet')
+  assert bcds is not None
+  assert sids.GridLocation(bcds) == 'Vertex'
+  assert I.getNodeFromName(bcds, 'PointList') is not None
+  assert I.getNodeFromName(bcds, 'array') is not None
 
 def test_gc_s_to_gc_u():
   #https://cgns.github.io/CGNS_docs_current/sids/cnct.html

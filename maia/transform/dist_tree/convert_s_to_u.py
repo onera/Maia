@@ -174,7 +174,6 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   deducing a point_list array from the point_range. The support of the output
   point_list must be specified throught output_loc arg (which can be one of
   'Vertex', 'FaceCenter', 'CellCenter').
-  For now, BCDataSet are not preserved.
   """
   input_loc = sids.GridLocation(bc_s)
   point_range = I.getValue(I.getNodeFromName1(bc_s, 'PointRange'))
@@ -198,6 +197,36 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   bc_u = I.newBC(I.getName(bc_s), btype=I.getValue(bc_s))
   I.newGridLocation(output_loc, parent=bc_u)
   I.newPointList(value=point_list, parent=bc_u)
+
+  # Manage datasets -- Data is already distributed, we just have to retrive the PointList
+  # of the corresponding elements following same procedure than BCs
+  for bcds in I.getNodesFromType(bc_s, 'BCDataSet_t'):
+    ds_point_range = I.getNodeFromName(bcds, 'PointRange')
+    is_related = ds_point_range is None
+    if not is_related: #BCDS has its own location / pr
+      ds_distri = IE.getDistribution(bcds, 'Index')[1]
+      ds_loc   = sids.GridLocation(bcds)
+    if is_related: #BCDS has same location / pr than bc
+      ds_point_range = I.getNodeFromName1(bc_s, 'PointRange')
+      ds_distri = IE.getDistribution(bc_s, 'Index')[1]
+      ds_loc   = input_loc
+    ds_size = sids.PointRange.SizePerIndex(ds_point_range)
+    ds_slabs = HFR2S.compute_slabs(ds_size, ds_distri[0:2])
+    ds_sub_pr_list = [np.asarray(slab) for slab in ds_slabs]
+    for sub_pr in ds_sub_pr_list:
+      sub_pr[:,0] += ds_point_range[1][:,0]
+      sub_pr[:,1] += ds_point_range[1][:,0] - 1
+    ds_output_loc = 'FaceCenter' if ds_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'] else ds_loc
+
+    if not (is_related and ds_output_loc == output_loc): #Otherwise, point list has already been computed
+      ds_pl = compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, ds_output_loc, bnd_axis)
+      I.createUniqueChild(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
+      I.newPointList(value=ds_pl, parent=bcds)
+      IE.newDistribution({'Index' : ds_distri}, parent=bcds)
+    I._rmNodesByName(bcds, 'PointRange')
+    I.addChild(bc_u, bcds)
+
+
   IE.newDistribution({'Index' : np.array([*bc_range, bc_size.prod()], pdm_gnum_dtype)}, parent=bc_u)
   allowed_types = ['FamilyName_t'] #Copy these nodes to bc_u
   for allowed_child in [c for c in I.getChildren(bc_s) if I.getType(c) in allowed_types]:
@@ -358,7 +387,7 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
   Convert a structured dist_tree into an unstructured dist_tree. This function
     - Copy the grid coordinates and flow solution nodes
     - Create the NGon connectivity
-    - Convert the BCs (BCDataSet are not managed yet) and GCs
+    - Convert the BCs (with BCDataSet) and GCs
     - Copy the top level nodes (FlowEquationSet_t, ReferenceState_t, Family_t)
   """
   n_rank = comm.Get_size()
