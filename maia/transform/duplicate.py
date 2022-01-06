@@ -8,8 +8,9 @@ import maia.connectivity.conformize_jn as CCJ
 
 def duplicate_zone_with_transformation(zone,nameZoneDup,
                                        rotationCenter=np.array([0.,0.,0.]),
-                                       rotationAngle=np.array([0.,0.,0.]),
-                                       translation=np.array([0.,0.,0.])):
+                                       rotationAngle =np.array([0.,0.,0.]),
+                                       translation   =np.array([0.,0.,0.]),
+                                       max_ordinal   =0):
   # Duplication de la zone
   zoneDup     = copy.deepcopy(zone)
   I.setName(zoneDup,nameZoneDup)
@@ -30,6 +31,15 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
   I.setValue(coordYDupNode,modCy)
   I.setValue(coordZDupNode,modCz)
   
+  if max_ordinal>0:
+    for zgc in I.getNodesFromType1(zoneDup, 'ZoneGridConnectivity_t'):
+      gcs = I.getNodesFromType1(zgc, 'GridConnectivity_t') + I.getNodesFromType1(zgc, 'GridConnectivity1to1_t')
+      for gc in gcs:
+        ordinal_n     = I.getNodeFromName(gc, 'Ordinal')
+        ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
+        I.setValue(ordinal_n,    I.getValue(ordinal_n)    +max_ordinal)
+        I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)+max_ordinal)
+
   return zoneDup
 
 
@@ -189,7 +199,16 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
         # if 'rotor_Hm' in zonesNamesPrefixes[z]:
         #   if 'match2_0' in gc[0]:
         #     print("0",I.getValue(gc))
-  
+
+  max_ordinal = 0
+  for base in I.getBases(dist_tree):
+      for zone in I.getZones(base):
+        for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+          for gc in I.getNodesFromType1(zgc, 'GridConnectivity_t')+I.getNodesFromType1(zgc, 'GridConnectivity1to1_t'):
+            ordinal_n = I.getNodeFromName(gc, 'Ordinal')
+            if ordinal_n is not None:
+              max_ordinal = max(max_ordinal,I.getValue(ordinal_n))
+
   # Duplication
   for n in range(N):
     for z,zone in enumerate(zones):
@@ -197,7 +216,8 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
       zoneDup = duplicate_zone_with_transformation(zone,zoneDupName,
                                               rotationCenter=rotationCenterA,
                                               rotationAngle=(n+1)*rotationAngleA,
-                                              translation=(n+1)*translationA)
+                                              translation=(n+1)*translationA,
+                                              max_ordinal = (n+1)*max_ordinal)
   
       # Mise à jour des raccords matchs des zones dupliquées
       zgc  = I.getNodeFromType1(zoneDup,"ZoneGridConnectivity_t")
@@ -231,6 +251,9 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
       else:
         new_gc_value = gc_value.split('.D')[0]+".D{0}".format(n+1)
       I.setValue(jn_b_prev_node,new_gc_value)
+      ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
+      if ordinal_opp_n is not None:
+        I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)+max_ordinal)
       # I.setValue(jn_b_prev_node,I.getValue(jn_b_prev_node)[:-3]+".D{0}".format(n+1))
       # if 'match2_0' in jn_b_prev_node[0]:
       #   print(n,"b_prev",jn_path_b,jn_path_b_prev,I.getValue(jn_b_prev_node))
@@ -245,6 +268,9 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
       gcp_a_curr = I.getNodeFromType1(jn_a_curr_node, "GridConnectivityProperty_t")
       I._rmNode(jn_a_curr_node,gcp_a_curr)
       I.setValue(jn_a_curr_node,I.getValue(jn_a_curr_node)+".D{0}".format(n))
+      ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
+      if ordinal_opp_n is not None:
+        I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)-max_ordinal)
       # print(n,"a_curr",jn_path_a_curr,I.getValue(jn_a_curr_node))
 
     if conformize:
@@ -269,6 +295,9 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
     I.setValue(translation_a_node, I.getValue(translation_a_node)*(N+1))
     I.setValue(jn_a_init_node,I.getValue(jn_a_init_node)+".D{0}".format(N))
     #print(N,"a_init",jn_path_a_init,I.getValue(jn_a_init_node))
+    ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
+    if ordinal_opp_n is not None:
+      I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)+N*max_ordinal)
 
   #> Mise à jour des raccords périodiques "B" du dernier ensemble de zones dupliqué
   for jn,jn_path_b in enumerate(JN_for_duplication_paths[1]):
@@ -288,8 +317,11 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
       new_gc_value = ".".join(gc_value.split('.D')[:-1])+".D0"
     else:
       new_gc_value = gc_value.split('.D')[0]+".D0"
-    I.setValue(jn_b_last_node,new_gc_value)  
-    # I.setValue(jn_b_last_node,I.getValue(jn_b_last_node)+".D0")  
+    I.setValue(jn_b_last_node,new_gc_value)
+    # I.setValue(jn_b_last_node,I.getValue(jn_b_last_node)+".D0")
+    ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
+    if ordinal_opp_n is not None:
+      I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)-N*max_ordinal)
   
   
 def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_for_duplication_paths,

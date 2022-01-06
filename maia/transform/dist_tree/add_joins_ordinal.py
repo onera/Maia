@@ -57,23 +57,41 @@ def _create_local_match_table(gc_list, gc_paths):
   #print('  check_candidates', local_match_table)
   return local_match_table
 
-def add_joins_ordinal(dist_tree, comm):
+def add_joins_ordinal(dist_tree, comm, force=False):
   """
   For each GridConnectivity_t node found in the dist_tree, find the
   opposite GC node and create for each pair of GCs the Ordinal and
   OrdinalOpp nodes allowing to identify them
   GC Node must have either PointList/PointListDonor arrays or
   PointRange/PointRangeDonor arrays, not both.
+  If force=True, ordinals are recomputed, else the computation is
+  made only if there is no ordinal
   """
+  
   gc_list  = []
   gc_paths = []
   # > First pass to collect joins
   match1to1 = lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t'] \
       and sids.GridConnectivity.is1to1(n)
   query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", match1to1]
-  for nodes in IE.iterNodesWithParentsByMatching(dist_tree, query):
-    gc_list.append(nodes[-1])
-    gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
+  if force:
+    rm_joins_ordinal(tree)
+    compute_ordinal = True
+    for nodes in IE.iterNodesWithParentsByMatching(dist_tree, query):
+      gc_list.append(nodes[-1])
+      gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
+  else:
+    compute_ordinal = False
+    for nodes in IE.iterNodesWithParentsByMatching(dist_tree, query):
+      gc_list.append(nodes[-1])
+      gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
+      ordinal_n     = I.getNodeFromName(nodes[-1], 'Ordinal')
+      ordinal_opp_n = I.getNodeFromName(nodes[-1], 'OrdinalOpp')
+      if (ordinal_n is None) or (ordinal_opp_n is None):
+        compute_ordinal = True
+  
+  if not compute_ordinal:
+    return
 
   local_match_table = _create_local_match_table(gc_list, gc_paths)
 
@@ -84,8 +102,8 @@ def add_joins_ordinal(dist_tree, comm):
 
   opp_join_id = np.where(global_match_table)[1]
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
-    I.createNode('Ordinal'   , 'UserDefinedData_t',  gc_id+1, parent=gc)
-    I.createNode('OrdinalOpp', 'UserDefinedData_t', opp_id+1, parent=gc)
+    I.createUniqueChild(gc, 'Ordinal'   , 'UserDefinedData_t',  gc_id+1)
+    I.createUniqueChild(gc, 'OrdinalOpp', 'UserDefinedData_t', opp_id+1)
 
 def rm_joins_ordinal(dist_tree):
   """
