@@ -19,10 +19,10 @@ stages:
 #  - clean
 
 job:build:
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
   stage: build
   script:
+    - git submodule sync --recursive
+    - git submodule update --init --recursive
     - mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -Dmaia_USE_PDM_INSTALL=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j8
@@ -33,8 +33,6 @@ job:build:
 
 #todo : display reports on browser eg with gitlab pages
 job:test:
-  variables:
-    GIT_SUBMODULE_STRATEGY: none
   stage: test
   script:
     - cd build
