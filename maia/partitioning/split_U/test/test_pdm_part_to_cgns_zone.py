@@ -94,11 +94,15 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   dims = {'n_section' :2, 'n_elt' : [6,1]}
   data = {'2dsections' : [
             {'np_connec' : np.array([1,4,3,2,1,2,6,5,2,3,7,6,3,4,8,7,1,5,8,4,5,6,7,8], dtype=np.int32),
-             'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32)},
+             'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32),
+             'np_parent_num' : np.array([1,2,3,4,5,6]),
+             'np_parent_entity_g_num' : np.array([101,8,6,12,102,103])}
           ],
           '3dsections' : [
             {'np_connec' : np.array([1,2,3,4,5,6,7,8], dtype=np.int32),
-             'np_numabs' : np.array([42], dtype=pdm_dtype)}
+             'np_numabs' : np.array([42], dtype=pdm_dtype),
+             'np_parent_num' : np.array([1]),
+             'np_parent_entity_g_num' : None}
             ]
          }
 
@@ -109,12 +113,19 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   assert (I.getNodeFromPath(quad_n, 'ElementConnectivity')[1] == data['2dsections'][0]['np_connec']).all()
   assert (I.getNodeFromPath(quad_n, 'ElementRange')[1] == [1,6]).all()
   assert (I.getVal(IE.getGlobalNumbering(quad_n, 'Element')) == data['2dsections'][0]['np_numabs']).all()
+  assert (I.getVal(IE.getGlobalNumbering(quad_n, 'Sections')) == data['2dsections'][0]['np_numabs']).all()
+  assert (I.getVal(IE.getGlobalNumbering(quad_n, 'ImplicitEntity')) == data['2dsections'][0]['np_parent_entity_g_num']).all()
+  assert (I.getVal(I.getNodeFromPath(quad_n, ':CGNS#LocalNumbering/ExplicitEntity')) == \
+      data['2dsections'][0]['np_parent_num']).all()
 
   hexa_n = I.getNodeFromPath(p_zone, 'Hexa')
   assert (I.getValue(hexa_n) == [17,0]).all()
   assert (I.getNodeFromPath(hexa_n, 'ElementConnectivity')[1] == data['3dsections'][0]['np_connec']).all()
   assert (I.getNodeFromPath(hexa_n, 'ElementRange')[1] == [7,7]).all()
   assert (I.getVal(IE.getGlobalNumbering(hexa_n, 'Element')) == data['3dsections'][0]['np_numabs']).all()
+  assert (I.getVal(IE.getGlobalNumbering(hexa_n, 'Sections')) == data['3dsections'][0]['np_numabs']).all()
+  assert (I.getVal(I.getNodeFromPath(hexa_n, ':CGNS#LocalNumbering/ExplicitEntity')) == \
+      data['3dsections'][0]['np_parent_num']).all()
 
 def test_pdm_part_to_cgns_zone():
   # Result of subfunction is not tested here
@@ -124,11 +135,15 @@ def test_pdm_part_to_cgns_zone():
   l_dims = [{'n_section' :2, 'n_cell' : 1, 'n_vtx': 3, 'n_elt' : [6,1]}]
   l_data = [{'2dsections' : [
               {'np_connec' : np.array([1,4,3,2,1,2,6,5,2,3,7,6,3,4,8,7,1,5,8,4,5,6,7,8], dtype=np.int32),
-               'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32)},
+               'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32),
+               'np_parent_num' : np.array([1,2,3,4,5,6]),
+               'np_parent_entity_g_num' : np.array([101,8,6,12,102,103])}
             ],
            '3dsections' : [
               {'np_connec' : np.array([1,2,3,4,5,6,7,8], dtype=np.int32),
-               'np_numabs' : np.array([42], dtype=pdm_dtype)}
+               'np_numabs' : np.array([42], dtype=pdm_dtype),
+               'np_parent_num' : np.array([1]),
+               'np_parent_entity_g_num' : None}
              ],
            'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float64),
            'np_vtx_part_bound_proc_idx'  : np.array([0,]),

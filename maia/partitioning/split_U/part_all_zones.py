@@ -8,6 +8,36 @@ from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh
 from .cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 from .pdm_part_to_cgns_zone   import pdm_part_to_cgns_zone
 
+maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
+                      "face"   : PDM._PDM_MESH_ENTITY_FACE,
+                      "edge"   : PDM._PDM_MESH_ENTITY_EDGE,
+                      "vtx"    : PDM._PDM_MESH_ENTITY_VERTEX}
+
+maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
+                            "cell_cell" : PDM._PDM_CONNECTIVITY_TYPE_CELL_CELL,
+                            "cell_face" : PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE,
+                            "cell_edge" : PDM._PDM_CONNECTIVITY_TYPE_CELL_EDGE,
+                            "cell_vtx"  : PDM._PDM_CONNECTIVITY_TYPE_CELL_VTX,
+                            "face_elmt" : PDM._PDM_CONNECTIVITY_TYPE_FACE_ELMT,
+                            "face_cell" : PDM._PDM_CONNECTIVITY_TYPE_FACE_CELL,
+                            "face_face" : PDM._PDM_CONNECTIVITY_TYPE_FACE_FACE,
+                            "face_edge" : PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE,
+                            "face_vtx"  : PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX,
+                            "edge_elmt" : PDM._PDM_CONNECTIVITY_TYPE_EDGE_ELMT,
+                            "edge_cell" : PDM._PDM_CONNECTIVITY_TYPE_EDGE_CELL,
+                            "edge_face" : PDM._PDM_CONNECTIVITY_TYPE_EDGE_FACE,
+                            "edge_edge" : PDM._PDM_CONNECTIVITY_TYPE_EDGE_EDGE,
+                            "edge_vtx"  : PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX,
+                            "vtx_elmt"  : PDM._PDM_CONNECTIVITY_TYPE_VTX_ELMT,
+                            "vtx_cell"  : PDM._PDM_CONNECTIVITY_TYPE_VTX_CELL,
+                            "vtx_face"  : PDM._PDM_CONNECTIVITY_TYPE_VTX_FACE,
+                            "vtx_edge"  : PDM._PDM_CONNECTIVITY_TYPE_VTX_EDGE,
+                            "vtx_vtx"   : PDM._PDM_CONNECTIVITY_TYPE_VTX_VTX,
+                            "elmt_cell" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_CELL,
+                            "elmt_face" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_FACE,
+                            "elmt_edge" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_EDGE,
+                            "elmt_vtx " : PDM._PDM_CONNECTIVITY_TYPE_ELMT_VTX}
+
 def prepare_part_weight(zones, n_part_per_zone, dzone_to_weighted_parts):
   part_weight = np.empty(sum(n_part_per_zone), dtype='float64')
   offset = 0
@@ -59,36 +89,6 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
       multi_part.multipart_register_dmesh_nodal(i_zone, dmesh_nodal)
 
 
-maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
-                      "face"   : PDM._PDM_MESH_ENTITY_FACE,
-                      "edge"   : PDM._PDM_MESH_ENTITY_EDGE,
-                      "vtx"    : PDM._PDM_MESH_ENTITY_VERTEX}
-
-maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
-                            "cell_cell" : PDM._PDM_CONNECTIVITY_TYPE_CELL_CELL,
-                            "cell_face" : PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE,
-                            "cell_edge" : PDM._PDM_CONNECTIVITY_TYPE_CELL_EDGE,
-                            "cell_vtx"  : PDM._PDM_CONNECTIVITY_TYPE_CELL_VTX,
-                            "face_elmt" : PDM._PDM_CONNECTIVITY_TYPE_FACE_ELMT,
-                            "face_cell" : PDM._PDM_CONNECTIVITY_TYPE_FACE_CELL,
-                            "face_face" : PDM._PDM_CONNECTIVITY_TYPE_FACE_FACE,
-                            "face_edge" : PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE,
-                            "face_vtx"  : PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX,
-                            "edge_elmt" : PDM._PDM_CONNECTIVITY_TYPE_EDGE_ELMT,
-                            "edge_cell" : PDM._PDM_CONNECTIVITY_TYPE_EDGE_CELL,
-                            "edge_face" : PDM._PDM_CONNECTIVITY_TYPE_EDGE_FACE,
-                            "edge_edge" : PDM._PDM_CONNECTIVITY_TYPE_EDGE_EDGE,
-                            "edge_vtx"  : PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX,
-                            "vtx_elmt"  : PDM._PDM_CONNECTIVITY_TYPE_VTX_ELMT,
-                            "vtx_cell"  : PDM._PDM_CONNECTIVITY_TYPE_VTX_CELL,
-                            "vtx_face"  : PDM._PDM_CONNECTIVITY_TYPE_VTX_FACE,
-                            "vtx_edge"  : PDM._PDM_CONNECTIVITY_TYPE_VTX_EDGE,
-                            "vtx_vtx"   : PDM._PDM_CONNECTIVITY_TYPE_VTX_VTX,
-                            "elmt_cell" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_CELL,
-                            "elmt_face" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_FACE,
-                            "elmt_edge" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_EDGE,
-                            "elmt_vtx " : PDM._PDM_CONNECTIVITY_TYPE_ELMT_VTX}
-
 def _add_connectivity(multi_part, l_data, i_zone, n_part, additionnal_list_key):
   """
   Enrich dictionnary with additional query of user
@@ -128,8 +128,7 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
   """
   concat_pdm_data = lambda i_part, i_zone : {**multi_part.multipart_val_get               (i_part, i_zone),
                                              **multi_part.multipart_graph_comm_vtx_val_get(i_part, i_zone),
-                                             **multi_part.multipart_ghost_information_get (i_part, i_zone),
-                                             **multi_part.multipart_color_get             (i_part, i_zone)}
+                                             **multi_part.multipart_ghost_information_get (i_part, i_zone)}
 
   #part_path_nodes = I.createNode(':Ppart#ZonePaths', 'UserDefinedData_t', parent=part_base)
 
@@ -142,12 +141,9 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
     l_dims = [multi_part.multipart_dim_get(i_part, i_zone) for i_part in range(n_part)]
     l_data = [concat_pdm_data(i_part, i_zone)              for i_part in range(n_part)]
 
-    if(post_options['additional_connectivity']):
-      _add_connectivity(multi_part, l_data, i_zone, n_part, post_options['additional_connectivity'])
-    if(post_options['additional_ln_to_gn']):
-      _add_ln_to_gn(multi_part, l_data, i_zone, n_part, post_options['additional_ln_to_gn'])
-    if(post_options['additional_color']):
-      _add_color(multi_part, l_data, i_zone, n_part, post_options['additional_color'])
+    _add_connectivity(multi_part, l_data, i_zone, n_part, post_options['additional_connectivity'])
+    _add_ln_to_gn    (multi_part, l_data, i_zone, n_part, post_options['additional_ln_to_gn'])
+    _add_color       (multi_part, l_data, i_zone, n_part, post_options['additional_color'])
 
     #For element : additional conversion step to retrieve part elements
     pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)

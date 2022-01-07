@@ -125,17 +125,27 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
       elt_n = I.createUniqueChild(p_zone, I.getName(elt), 'Elements_t', value=I.getValue(elt))
       I.newDataArray('ElementConnectivity', section['np_connec']       , parent=elt_n)
       I.newPointRange('ElementRange'      , [n_elt_cum+1, n_elt_cum+n_i_elt], parent=elt_n)
-      IE.newGlobalNumbering({'Element' : section['np_numabs'] - n_elt_cum_d}, elt_n)
+      numberings = {
+          # Original position in the section,
+          'Element' : section['np_numabs'] - n_elt_cum_d,
+          # Original position in the concatenated sections of same dimension
+          'Sections' : section['np_numabs']
+          }
+      #Original position in the numbering of all elements of the dim: for example, for faces, this is
+      # the gnum in the description of all the faces (and not only faces describred in sections
+      if section['np_parent_entity_g_num'] is not None:
+        numberings['ImplicitEntity'] = section['np_parent_entity_g_num']
+      # Corresponding face in the array of all faces described by a section,
+      # after face renumbering
+      # Local number of entity in the reordered cells of the partition
+      # (for faces, note that only face explicitly described are renumbered)
+      lnum_node = I.createNode(':CGNS#LocalNumbering', 'UserDefinedData_t', parent=elt_n)
+      I.newDataArray('ExplicitEntity', section['np_parent_num'], parent=lnum_node)
+
+      IE.newGlobalNumbering(numberings, elt_n)
+
       n_elt_cum   += n_i_elt
       n_elt_cum_d += sids.ElementSize(elt_section_nodes[i_section])
-
-      # TODO See with Julien
-      if(section['np_parent_num'] is not None):
-        I.newDataArray('np_parent_num', section['np_parent_num']       , parent=elt_n)
-      if(section['np_numabs'] is not None):
-        I.newDataArray('np_numabs', section['np_numabs']       , parent=elt_n)
-      if(section['np_parent_entity_g_num'] is not None):
-        I.newDataArray('np_parent_entity_g_num', section['np_parent_entity_g_num']       , parent=elt_n)
 
 def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   """
