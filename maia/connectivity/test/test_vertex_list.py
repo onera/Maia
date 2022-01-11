@@ -148,7 +148,7 @@ def test_search_with_geometry(sub_comm):
 class Test_generate_jn_vertex_list():
   @mark_mpi_test([1,2,4])
   def test_single_zone_topo(self, sub_comm):
-    #With this configuration, we have isolated faces when np=4
+    #With this configuration, we have locally (per rank) isolated faces when np=4
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
     I._rmNodesByType(zone, 'ZoneBC_t')
@@ -174,7 +174,6 @@ class Test_generate_jn_vertex_list():
 
   @mark_mpi_test([2,4])
   def test_multi_zone_topo(self, sub_comm):
-    #With this configuration, we have isolated faces when np=4
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
     zone[0] = 'zoneA'
@@ -276,8 +275,8 @@ class Test_generate_jn_vertex_list():
     assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
 @mark_mpi_test(3)
-@pytest.mark.parametrize("allow_isolated", [False, True])
-def test_generate_jns_vertex_list(sub_comm, allow_isolated):
+@pytest.mark.parametrize("have_isolated_faces", [False, True])
+def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   #For this test, we reuse previous test case, but with 2 jns,
   # and do not assert on values
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
@@ -313,7 +312,7 @@ def test_generate_jns_vertex_list(sub_comm, allow_isolated):
   I.newPointList('PointList'     , full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   IE.newDistribution({'Index' : distri_pl}, gcB)
 
-  VL.generate_jns_vertex_list(tree, sub_comm, allow_isolated=allow_isolated)
+  VL.generate_jns_vertex_list(tree, sub_comm, have_isolated_faces=have_isolated_faces)
 
   assert len(I.getNodesFromName(tree, "ZoneGridConnectivity#Vtx")) == 2
   assert I.getNodeFromName(tree, "matchA#Vtx") is not None
