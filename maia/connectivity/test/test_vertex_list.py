@@ -5,6 +5,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import Converter.Internal     as I
 import maia.sids.Internal_ext as IE
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.connectivity import vertex_list as VL
 from maia.generate import dcube_generator
 from maia.distribution.distribution_function import uniform_distribution
@@ -145,9 +146,9 @@ def test_search_with_geometry(sub_comm):
     assert (plv.size == plvd.size == 0)
 
 class Test_generate_jn_vertex_list():
-  @mark_mpi_test([1,3,4])
+  @mark_mpi_test([1,2,4])
   def test_single_zone_topo(self, sub_comm):
-    #With this configuration, we have isolated faces when np=4
+    #With this configuration, we have locally (per rank) isolated faces when np=4
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
     I._rmNodesByType(zone, 'ZoneBC_t')
@@ -173,7 +174,6 @@ class Test_generate_jn_vertex_list():
 
   @mark_mpi_test([2,4])
   def test_multi_zone_topo(self, sub_comm):
-    #With this configuration, we have isolated faces when np=4
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
     zone[0] = 'zoneA'
@@ -218,10 +218,10 @@ class Test_generate_jn_vertex_list():
     I.newGridLocation('FaceCenter', gcA)
     if sub_comm.Get_rank() == 0:
       pl_distri = [0,3,6]
-      expt_jn_distri = [0, 9, 21]
+      expt_jn_distri = [0, 7, 21]
     elif sub_comm.Get_rank() == 1:
       pl_distri = [3,4,6]
-      expt_jn_distri = [9, 14, 21]
+      expt_jn_distri = [7, 14, 21]
     elif sub_comm.Get_rank() == 2:
       pl_distri = [4,6,6]
       expt_jn_distri = [14, 21, 21]
@@ -267,7 +267,7 @@ class Test_generate_jn_vertex_list():
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
 
-    expected_dist = [0,7,12] if sub_comm.Get_rank() == 0 else [7,12,12]
+    expected_dist = [0,6,12] if sub_comm.Get_rank() == 0 else [6,12,12]
     expected_full_pl_vtx     = [4,8,12,16,20,24,28,32,40,44,56,60]
     expected_full_pl_vtx_opp = [1,5,9,13,17,21,25,29,37,41,53,57]
     assert (distri_jn_vtx == expected_dist).all()
@@ -275,7 +275,8 @@ class Test_generate_jn_vertex_list():
     assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
 @mark_mpi_test(3)
-def test_generate_jns_vertex_list(sub_comm):
+@pytest.mark.parametrize("have_isolated_faces", [False, True])
+def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   #For this test, we reuse previous test case, but with 2 jns,
   # and do not assert on values
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
@@ -293,8 +294,8 @@ def test_generate_jns_vertex_list(sub_comm):
   #Create fake jns
   zgc = I.newZoneGridConnectivity(parent=zoneA)
   gcA = I.newGridConnectivity('matchA', 'zoneB', 'Abutting1to1', zgc)
-  full_pl     = np.array([64,65,66,67,68,69,70,71,72]) #xmax
-  full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
+  full_pl     = np.array([64,65,66,67,68,69,70,71,72], pdm_dtype) #xmax
+  full_pl_opp = np.array([37,38,39,40,41,42,43,44,45], pdm_dtype) #xmin
   distri_pl   = uniform_distribution(9, sub_comm)
   I.newGridLocation('FaceCenter', gcA)
   I.newPointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
@@ -303,15 +304,15 @@ def test_generate_jns_vertex_list(sub_comm):
 
   zgc = I.newZoneGridConnectivity(parent=zoneB)
   gcB = I.newGridConnectivity('matchB', 'Base/zoneA', 'Abutting1to1', zgc)
-  full_pl     = np.array([64,65,66,67,68,69,70,71,72]) #xmax
-  full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
+  full_pl     = np.array([64,65,66,67,68,69,70,71,72], pdm_dtype) #xmax
+  full_pl_opp = np.array([37,38,39,40,41,42,43,44,45], pdm_dtype) #xmin
   distri_pl   = uniform_distribution(9, sub_comm)
   I.newGridLocation('FaceCenter', gcB)
   I.newPointList('PointListDonor', full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   I.newPointList('PointList'     , full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   IE.newDistribution({'Index' : distri_pl}, gcB)
 
-  VL.generate_jns_vertex_list(tree, sub_comm)
+  VL.generate_jns_vertex_list(tree, sub_comm, have_isolated_faces=have_isolated_faces)
 
   assert len(I.getNodesFromName(tree, "ZoneGridConnectivity#Vtx")) == 2
   assert I.getNodeFromName(tree, "matchA#Vtx") is not None

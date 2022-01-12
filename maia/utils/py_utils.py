@@ -182,6 +182,13 @@ def arange_with_jumps(multi_interval,jumps):
   return multi_arange(multi_interval[ :-1][~jumps],
                       multi_interval[1:  ][~jumps])
 
+def jagged_extract(idx_array, array, ids):
+  extracted_array = array[multi_arange(idx_array[ids], idx_array[ids+1])]
+  sizes = np.diff(idx_array)
+  extracted_sizes = sizes[ids]
+  extracted_idx = sizes_to_indices(extracted_sizes)
+  return extracted_idx, extracted_array
+
 def roll_from(array, start_idx = None, start_value = None, reverse = False):
   """
   Return a new array starting from given index (or value), in normal or reversed order

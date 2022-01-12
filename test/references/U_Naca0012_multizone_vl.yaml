@@ -1,0 +1,53 @@
+# Expected values of vertex GridConnectivities for test_jn_vertexlist test 
+CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
+BaseA CGNSBase_t I4 [3, 3]:
+  blk1 Zone_t I4 [[140, 54, 0]]:
+    ZoneType ZoneType_t 'Unstructured':
+    ZoneGridConnectivity#Vtx ZoneGridConnectivity_t:
+      match12#Vtx GridConnectivity_t 'BaseB/blk2':
+        GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridLocation GridLocation_t 'Vertex':
+        PointList IndexArray_t I4 [[1, 4, 5, 8, 29, 32, 43, 46, 57, 60, 71, 74, 85, 88, 99, 102, 113, 116, 127, 130]]:
+        PointListDonor IndexArray_t:
+          I4 : [[13, 14, 15, 16, 35, 36, 49, 50, 63, 64, 77, 78, 91, 92, 105, 106, 119, 120, 133, 134]]
+      match13#Vtx GridConnectivity_t 'BaseA/blk3':
+        GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridLocation GridLocation_t 'Vertex':
+        PointList IndexArray_t:
+          I4 : [[25, 26, 27, 28, 41, 42, 55, 56, 69, 70, 83, 84, 97, 98, 111, 112, 125, 126, 139, 140]]
+        PointListDonor IndexArray_t:
+          I4 : [[1, 4, 5, 8, 29, 32, 43, 46, 57, 60, 71, 74, 85, 88, 99, 102, 113, 116, 127, 130]]
+  blk3 Zone_t I4 [[140, 54, 0]]:
+    ZoneType ZoneType_t 'Unstructured':
+    ZoneGridConnectivity#Vtx ZoneGridConnectivity_t:
+      match31#Vtx GridConnectivity_t 'blk1':
+        GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridLocation GridLocation_t 'Vertex':
+        PointList IndexArray_t I4 [[1, 4, 5, 8, 29, 32, 43, 46, 57, 60, 71, 74, 85, 88, 99, 102, 113, 116, 127, 130]]:
+        PointListDonor IndexArray_t:
+          I4 : [[25, 26, 27, 28, 41, 42, 55, 56, 69, 70, 83, 84, 97, 98, 111, 112, 125, 126, 139, 140]]
+      match32#Vtx GridConnectivity_t 'BaseB/blk2':
+        GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridLocation GridLocation_t 'Vertex':
+        PointList IndexArray_t:
+          I4 : [[25, 26, 27, 28, 41, 42, 55, 56, 69, 70, 83, 84, 97, 98, 111, 112, 125, 126, 139, 140]]
+        PointListDonor IndexArray_t:
+          I4 : [[17, 20, 21, 24, 37, 40, 51, 54, 65, 68, 79, 82, 93, 96, 107, 110, 121, 124, 135, 138]]
+BaseB CGNSBase_t I4 [3, 3]:
+  blk2 Zone_t I4 [[140, 54, 0]]:
+    ZoneType ZoneType_t 'Unstructured':
+    ZoneGridConnectivity#Vtx ZoneGridConnectivity_t:
+      match21#Vtx GridConnectivity_t 'BaseA/blk1':
+        GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridLocation GridLocation_t 'Vertex':
+        PointList IndexArray_t:
+          I4 : [[13, 14, 15, 16, 35, 36, 49, 50, 63, 64, 77, 78, 91, 92, 105, 106, 119, 120, 133, 134]]
+        PointListDonor IndexArray_t:
+          I4 : [[1, 4, 5, 8, 29, 32, 43, 46, 57, 60, 71, 74, 85, 88, 99, 102, 113, 116, 127, 130]]
+      match23#Vtx GridConnectivity_t 'BaseA/blk3':
+        GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridLocation GridLocation_t 'Vertex':
+        PointList IndexArray_t:
+          I4 : [[17, 20, 21, 24, 37, 40, 51, 54, 65, 68, 79, 82, 93, 96, 107, 110, 121, 124, 135, 138]]
+        PointListDonor IndexArray_t:
+          I4 : [[25, 26, 27, 28, 41, 42, 55, 56, 69, 70, 83, 84, 97, 98, 111, 112, 125, 126, 139, 140]]

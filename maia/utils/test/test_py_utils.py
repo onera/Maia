@@ -129,7 +129,25 @@ def test_arange_with_jumps():
                                      [False     ,True, False   , True, False]) == \
                                      [0,1,2,3,4      , 10,11,12      , 18,19]).all()
 
+def test_jagged_extract():
+  idx_array = np.array([0,2,6,10,10])
+  array = np.array([0,1, 2,3,4,5, 6,7,8,9  ])
 
+  idx_e, array_e = py_utils.jagged_extract(idx_array, array, np.array([0,2]))
+  assert (idx_e == [0,2,6]).all()
+  assert (array_e == [0,1,  6,7,8,9]).all()
+  idx_e, array_e = py_utils.jagged_extract(idx_array, array, np.array([0,2,3]))
+  assert (idx_e == [0,2,6,6]).all()
+  assert (array_e == [0,1, 6,7,8,9]).all()
+  idx_e, array_e = py_utils.jagged_extract(idx_array, array, np.array([0,3]))
+  assert (idx_e == [0,2,2]).all()
+  assert (array_e == [0,1]).all()
+  idx_e, array_e = py_utils.jagged_extract(idx_array, array, np.array([0,1,2,3]))
+  assert (idx_e == idx_array).all()
+  assert (array_e == array).all()
+  idx_e, array_e = py_utils.jagged_extract(idx_array, array, np.array([], int))
+  assert (idx_e == [0]).all()
+  assert (array_e.size == 0)
 
 def test_roll_from():
   assert (py_utils.roll_from(np.array([2,4,8,16]), start_idx = 1) == [4,8,16,2]).all()

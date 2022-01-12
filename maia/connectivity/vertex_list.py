@@ -213,7 +213,7 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
 
   Intersection method assumes that 2 matching faces have inverted
   face_vtx ordering, but does not  necessarily start with same vtx,
-  ie A B C D -> D' B' A' C'. The idea of the method is to identificate the
+  ie A B C D -> C' B' A' D'. The idea of the method is to identificate the
   starting vertex by sorting the coordinates with the same rule.
   Note that a result will be return even if the faces are not truly matching!
   """
@@ -272,6 +272,30 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
 
   return pl_vtx_local, pl_vtx_local_opp
 
+def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
+  """
+  Take a list of face ids and search the faces who are isolated, ie who have no common
+  edge or vertices with the other faces of the pointlist
+  Return the array indices of theses faces
+  """
+  pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
+  pdm_vtx_distrib = par_utils.partial_to_full_distribution(vtx_distri, comm)
+  PTB = PDM.PartToBlock(comm, [pl_face_vtx.astype(pdm_dtype)], pWeight=None, partN=1,
+                        t_distrib=0, t_post=2, t_stride=0, userDistribution=pdm_vtx_distrib)
+  block_gnum  = PTB.getBlockGnumCopy()
+  vtx_n_occur = PTB.getBlockGnumCountCopy()
+
+  vtx_n_occur_full = np.zeros(vtx_distri[1] - vtx_distri[0], np.int32)
+  vtx_n_occur_full[block_gnum-vtx_distri[0]-1] = vtx_n_occur
+  dist_data = {'n_occur' : vtx_n_occur_full}
+  part_data = MBTP.dist_to_part(vtx_distri.astype(pdm_dtype), dist_data, [pl_face_vtx.astype(pdm_dtype)], comm)
+
+  #This is the number of total occurence of all the vertices of each face. A face is isolated if each vertex appears
+  # (globally) only once ie if this total equal the number of vertices of the face
+  n_vtx_per_face = np.add.reduceat(part_data['n_occur'][0], indices=pl_face_vtx_idx[:-1])
+  isolated_face     = np.where(n_vtx_per_face == np.diff(pl_face_vtx_idx))[0]
+
+  return isolated_face
 
 def generate_jn_vertex_list(dist_tree, jn_path, comm):
   """
@@ -280,88 +304,182 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   Return the two index arrays and the partial distribution array, which is
   identical for both of them
   """
-
   jn = I.getNodeFromPath(dist_tree, jn_path)
   assert sids.GridLocation(jn) == 'FaceCenter'
-  distri_jn = I.getVal(IE.getDistribution(jn, 'Index'))
 
   base_name, zone_name = jn_path.split('/')[0:2]
-  zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
+  zone   = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
   zone_d = I.getNodeFromPath(dist_tree, IE.getZoneDonorPath(base_name, jn))
 
-  ngon   = [elem for elem in I.getNodesFromType1(zone,   'Elements_t') if elem[1][0] == 22][0]
-  ngon_d = [elem for elem in I.getNodesFromType1(zone_d, 'Elements_t') if elem[1][0] == 22][0]
+  ngon_node   = sids.Zone.NGonNode(zone)
+  vtx_distri  = I.getVal(IE.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
+  face_distri = I.getVal(IE.getDistribution(ngon_node, 'Element')).astype(pdm_dtype)
 
+  ngon_node_d   = sids.Zone.NGonNode(zone_d)
+  vtx_distri_d  = I.getVal(IE.getDistribution(zone_d, 'Vertex'))
+  face_distri_d = I.getVal(IE.getDistribution(ngon_node_d, 'Element'))
+
+  distri_jn = I.getVal(IE.getDistribution(jn, 'Index'))
   pl   = I.getNodeFromName1(jn, 'PointList'     )[1][0]
   pl_d = I.getNodeFromName1(jn, 'PointListDonor')[1][0]
 
-  #First pass with topologic treatment
-  face_offset, pl_face_vtx  = face_ids_to_vtx_ids(pl  , ngon  , comm)
-  face_offset, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_d, comm)
 
-  pl_vtx_local, pl_vtx_local_opp, face_is_treated = _search_by_intersection(face_offset, pl_face_vtx, pld_face_vtx)
+  dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
+  dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
 
-  undermined_vtx = (pl_vtx_local_opp == 0)
-  pl_vtx_local_list     = [pl_vtx_local[~undermined_vtx].astype(pdm_dtype)]
-  pl_vtx_local_opp_list = [pl_vtx_local_opp[~undermined_vtx].astype(pdm_dtype)]
+  shifted_eso = lambda ng: (I.getNodeFromPath(ng, 'ElementStartOffset')[1] - I.getNodeFromPath(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
+  dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
+  dface_vtx     = [I.getNodeFromPath(ng, 'ElementConnectivity')[1] for ng in [ngon_node, ngon_node_d]]
 
-  #Second pass with extended PL to try to catch locally isolated faces, having
-  # neighbor faces in the same jn on other procs
-  completed = comm.allreduce(not undermined_vtx.any(), op=MPI.LAND)
-  if not completed and distri_jn[2] != 1:
+  isolated_face_loc = get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm)
+  not_isolated_face_loc = np.arange(pl.size)[py_utils.others_mask(pl, isolated_face_loc)]
 
-    extended_pl, extended_pl_d = get_extended_pl(pl, pl_d, face_offset, pl_face_vtx, comm, face_is_treated)
+  solo_face = comm.allreduce(isolated_face_loc.size > 0, MPI.LOR)
+  conn_face = comm.allreduce(not_isolated_face_loc.size > 0, MPI.LOR)
 
-    face_offset_e, pl_face_vtx_e  = face_ids_to_vtx_ids(extended_pl,   ngon, comm)
-    face_offset_e, pld_face_vtx_e = face_ids_to_vtx_ids(extended_pl_d, ngon_d, comm)
+  pl_vtx_l = []
+  pld_vtx_l = []
 
-    pl_vtx_local2, pl_vtx_local_opp2, face_is_treated2 = _search_by_intersection(face_offset_e, pl_face_vtx_e, pld_face_vtx_e)
-
-    undermined_vtx = (pl_vtx_local_opp2 == 0)
-    pl_vtx_local_list    .append(pl_vtx_local2[~undermined_vtx].astype(pdm_dtype))
-    pl_vtx_local_opp_list.append(pl_vtx_local_opp2[~undermined_vtx].astype(pdm_dtype))
-
-    completed = comm.allreduce(not undermined_vtx.any(), op=MPI.LAND)
-
-    #Update face_is_treated array
-    original_face_pos = {face:iface for iface,face in enumerate(extended_pl)} #Position of old face in extended array
-    for iface,face in enumerate(pl):
-      if not face_is_treated[iface] and face_is_treated2[original_face_pos[face]]:
-        face_is_treated[iface] = True
-
-  # Last pass : some faces remain untreated if they are totaly isolated in the original gc (in particular
-  # if the original gc has only one face). For these we do a geometric treatment
-  if not completed:
-    #Extract faces already treated on topologic pass
-    face_offset_e = py_utils.sizes_to_indices(np.diff(face_offset)[~face_is_treated])
-
-    vtx_to_extract = py_utils.arange_with_jumps(face_offset,face_is_treated)
-    pl_face_vtx_e  = pl_face_vtx[vtx_to_extract]
-    pld_face_vtx_e = pld_face_vtx[vtx_to_extract]
-
+  if solo_face:
     gc_prop = I.getNodeFromType1(jn, 'GridConnectivityProperty_t')
-    pl_vtx_local3, pl_vtx_local_opp3 = \
-        _search_with_geometry(zone, zone_d, gc_prop, face_offset_e, pl_face_vtx_e, pld_face_vtx_e, comm)
-    assert np.all(pl_vtx_local_opp3 != 0)
-    pl_vtx_local_list    .append(pl_vtx_local3.astype(pdm_dtype))
-    pl_vtx_local_opp_list.append(pl_vtx_local_opp3.astype(pdm_dtype))
+    _, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
 
+    pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
+    pl_face_vtx_idx_e, pl_face_vtx_e  = py_utils.jagged_extract(pl_face_vtx_idx, pl_face_vtx,  isolated_face_loc)
+    pl_face_vtx_idx_e, pld_face_vtx_e = py_utils.jagged_extract(pl_face_vtx_idx, pld_face_vtx, isolated_face_loc)
+    pl_vtx_local, pl_vtx_local_opp = \
+        _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx_e, pl_face_vtx_e, pld_face_vtx_e, comm)
+    pl_vtx_l.append(pl_vtx_local)
+    pld_vtx_l.append(pl_vtx_local_opp)
 
-  #Now merge vertices appearing more than once
-  #Careful, the distribution may be unequilibred since it is computed w.r.t vtx id
-  #and not using number of vertices
-  part_data = {'pl_vtx_opp' : pl_vtx_local_opp_list}
-  PTB = PDM.PartToBlock(comm, pl_vtx_local_list, pWeight=None, partN=len(pl_vtx_local_list),
-                        t_distrib=0, t_post=1, t_stride=0)
-  pl_vtx = PTB.getBlockGnumCopy()
+  if conn_face:
+    interface_dn_face  = not_isolated_face_loc.size
+    interface_ids_face = py_utils.interweave_arrays([pl[not_isolated_face_loc],pl_d[not_isolated_face_loc]]).astype(pdm_dtype)
+
+    vtx_interfaces = PDM.interface_face_to_vertex(1, #n_interface,
+                                                  2,
+                                                  False,
+                                                  [interface_dn_face],
+                                                  [interface_ids_face],
+                                                  [(0,1)],
+                                                  dn_vtx,
+                                                  dn_face,
+                                                  dface_vtx_idx,
+                                                  dface_vtx,
+                                                  comm)
+    dn_vtx_jn = vtx_interfaces[0]['interface_dn_vtx']
+    interface_ids_vtx = vtx_interfaces[0]['np_interface_ids_vtx'] # Can be void because of realloc
+
+    if interface_ids_vtx is not None:
+      pl_vtx_local  = np.copy(interface_ids_vtx[::2]) #Copy is needed to have aligned memory
+      pld_vtx_local = np.copy(interface_ids_vtx[1::2])
+      assert pl_vtx_local.size == dn_vtx_jn
+      assert pld_vtx_local.size == dn_vtx_jn
+    else:
+      pl_vtx_local  = np.empty(0, dtype=pdm_dtype)
+      pld_vtx_local = np.empty(0, dtype=pdm_dtype)
+
+    pl_vtx_l.append(pl_vtx_local)
+    pld_vtx_l.append(pld_vtx_local)
+
+  #Final part_to_block will merge gnum from two method and reequilibrate
+  part_data = {'pl_vtx_opp' : pld_vtx_l}
+  PTB = PDM.PartToBlock(comm, pl_vtx_l, pWeight=[np.ones(pl.size, float) for pl in pl_vtx_l], partN=len(pl_vtx_l),
+                          t_distrib=0, t_post=2, t_stride=1)
   dist_data = dict()
-  PTB.PartToBlock_Exchange(dist_data, part_data)
-  distri_jn_vtx_full =  par_utils.gather_and_shift(len(pl_vtx), comm, dtype=pdm_dtype)
-  distri_jn_vtx =  distri_jn_vtx_full[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+  PTB.PartToBlock_Exchange(dist_data, part_data, pStrid=[np.ones(pl.size, np.int32) for pl in pl_vtx_l])
+  pl_vtx = PTB.getBlockGnumCopy()
+  pld_vtx = dist_data['pl_vtx_opp']
+  assert pld_vtx.size == pl_vtx.size
+  dn_vtx_jn = pld_vtx.size
+  distri = par_utils.gather_and_shift(dn_vtx_jn, comm)
+  distri_jn_vtx = distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
 
-  return pl_vtx, dist_data['pl_vtx_opp'], distri_jn_vtx
+  return pl_vtx, pld_vtx, distri_jn_vtx
 
-def generate_jns_vertex_list(dist_tree, comm):
+def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
+  """
+  Such as generate_jn_vertex_list, create the distributed arrays VertexList
+  and VertexListDonor such that vertices are matching 1 to 1 from FaceCenter interfaces.
+  This function manage several interface at the same time, but will no work if isolated faces
+  (requiring geometric treatment) are present.
+  """
+  shifted_eso = lambda ng: (I.getNodeFromPath(ng, 'ElementStartOffset')[1] - I.getNodeFromPath(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
+
+  # Collect zones data
+  zone_to_id = {}
+  dn_vtx = []
+  dn_face = []
+  dface_vtx_idx = []
+  dface_vtx = []
+  for i, (base, zone) in enumerate(IE.getNodesWithParentsByMatching(dist_tree, ['CGNSBase_t', 'Zone_t'])):
+    zone_to_id[I.getName(base) + '/' + I.getName(zone)] = i
+
+    ngon = sids.Zone.NGonNode(zone)
+
+    face_distri = IE.getDistribution(ngon, 'Element')[1].astype(pdm_dtype)
+    vtx_distri  = IE.getDistribution(zone, 'Vertex')[1].astype(pdm_dtype)
+
+    dn_vtx.append(vtx_distri[1] - vtx_distri[0])
+    dn_face.append(face_distri[1] - face_distri[0])
+
+    eso = I.getNodeFromName1(ngon, 'ElementStartOffset')[1]
+    dface_vtx_idx.append(shifted_eso(ngon))
+    dface_vtx.append(I.getNodeFromName1(ngon, 'ElementConnectivity')[1])
+
+  # Collect interface data
+  interface_dn_face = []
+  interface_ids_face = []
+  interface_dom_face = []
+  for interface_path in interface_pathes:
+    gc = I.getNodeFromPath(dist_tree, interface_path)
+    pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
+    pld = I.getNodeFromName1(gc, 'PointListDonor')[1][0]
+
+    interface_dn_face.append(pl.size)
+    interface_ids_face.append(py_utils.interweave_arrays([pl,pld]))
+    cur_zone_path = '/'.join(interface_path.split('/')[:2])
+    opp_zone_path = IE.getZoneDonorPath(cur_zone_path.split('/')[0], gc)
+    interface_dom_face.append((zone_to_id[cur_zone_path], zone_to_id[opp_zone_path]))
+
+  #Call function
+  vtx_interfaces = PDM.interface_face_to_vertex(len(interface_pathes),
+                                                len(zone_to_id),
+                                                False,
+                                                interface_dn_face,
+                                                interface_ids_face,
+                                                interface_dom_face,
+                                                dn_vtx,
+                                                dn_face,
+                                                dface_vtx_idx,
+                                                dface_vtx,
+                                                comm)
+  
+  # Unpack results
+  all_pl_vtx = []
+  all_pld_vtx = []
+  all_distri_vtx = []
+  for vtx_interface in vtx_interfaces:
+    dn_vtx_jn = vtx_interface['interface_dn_vtx']
+    distri = par_utils.gather_and_shift(dn_vtx_jn, comm)
+    all_distri_vtx.append(distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]])
+
+    interface_ids_vtx = vtx_interface['np_interface_ids_vtx'] # Can be void because of realloc
+    if interface_ids_vtx is not None:
+      pl_vtx  = np.copy(interface_ids_vtx[::2]) #Copy is needed to have aligned memory
+      pld_vtx = np.copy(interface_ids_vtx[1::2])
+      assert pl_vtx.size == pld_vtx.size == dn_vtx_jn
+    else:
+      pl_vtx  = np.empty(0, dtype=pdm_dtype)
+      pld_vtx = np.empty(0, dtype=pdm_dtype)
+
+    all_pl_vtx.append(pl_vtx)
+    all_pld_vtx.append(pld_vtx)
+    
+  return all_pl_vtx, all_pld_vtx, all_distri_vtx
+    
+
+def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
   """
   For each 1to1 FaceCenter matching join found in the distributed tree,
   create a corresponding 1to1 Vertex matching join
@@ -370,32 +488,78 @@ def generate_jns_vertex_list(dist_tree, comm):
   if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:
     AJO.add_joins_ordinal(dist_tree, comm)
 
-  ordinal_to_jn = {}
-
   query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
       lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and sids.GridLocation(n) == 'FaceCenter']
 
+  # Retrieve interfaces pathes and call function
+  key_to_cur = {}
+  key_to_opp = {}
   for base, zone, zgc, gc in IE.getNodesWithParentsByMatching(dist_tree, query):
     jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
     jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
     jn_key = min(jn_ordinal, jn_ordinal_opp)
+    jn_path = '/'.join([I.getName(n) for n in [base, zone, zgc, gc]])
+    if jn_ordinal < jn_ordinal_opp:
+      key_to_cur[jn_key] = jn_path
+    else:
+      key_to_opp[jn_key] = jn_path
 
-    zgc_vtx = I.createUniqueChild(zone, I.getName(zgc)+'#Vtx', 'ZoneGridConnectivity_t')
+  interface_pathes_cur = list(key_to_cur.values())
+  interface_pathes_opp = [key_to_opp[k] for k in key_to_cur.keys()]
+    
+  if have_isolated_faces:
+    #Filter interfaces having isolated faces; they will be treated one by one, while other will be grouped
+    have_isolated = []
+    for interface_path_cur in interface_pathes_cur:
+      zone_path = '/'.join(interface_path_cur.split('/')[:2])
+      zone_node = I.getNodeFromPath(dist_tree, zone_path)
+      ngon_node = sids.Zone.NGonNode(zone)
+      n_isolated = get_pl_isolated_faces(ngon_node, 
+                                         I.getNodeFromPath(dist_tree, interface_path_cur + '/PointList')[1][0],
+                                         IE.getDistribution(zone_node, 'Vertex')[1],
+                                         comm).size
+      have_isolated.append(bool(comm.allreduce(n_isolated, MPI.SUM) > 0))
+    
+    itrf_cur_with_iso    = [itrf for i,itrf in enumerate(interface_pathes_cur) if have_isolated[i]]
+    itrf_cur_without_iso = [itrf for i,itrf in enumerate(interface_pathes_cur) if not have_isolated[i]]
 
-    #If opposite join have already been treated, get it and switch pl-pld
-    try:
-      pl_vtx_opp, pl_vtx, distri_jn = ordinal_to_jn[jn_key]
-    #Otherwise, treat join
-    except KeyError:
-      gc_path = '/'.join([I.getName(node) for node in [base, zone, zgc, gc]])
-      pl_vtx, pl_vtx_opp, distri_jn = generate_jn_vertex_list(dist_tree, gc_path, comm)
-      ordinal_to_jn[jn_key] = (pl_vtx, pl_vtx_opp, distri_jn)
+    itrf_opp_with_iso    = [itrf for i,itrf in enumerate(interface_pathes_opp) if have_isolated[i]]
+    itrf_opp_without_iso = [itrf for i,itrf in enumerate(interface_pathes_opp) if not have_isolated[i]]
+  else:
+    itrf_cur_with_iso    = []
+    itrf_cur_without_iso = interface_pathes_cur
+    itrf_opp_with_iso    = []
+    itrf_opp_without_iso = interface_pathes_opp
 
-    jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
-    I.newGridLocation('Vertex', jn_vtx)
-    I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
-    I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
-    I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
-    IE.newDistribution({'Index' : distri_jn}, jn_vtx)
+  interface_pathes_cur = itrf_cur_without_iso + itrf_cur_with_iso
+  interface_pathes_opp = itrf_opp_without_iso + itrf_opp_with_iso
 
-    I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))
+  all_pl_vtx, all_pld_vtx, all_distri_vtx = _generate_jns_vertex_list(dist_tree, itrf_cur_without_iso, comm)
+  for interface_path_cur in itrf_cur_with_iso:
+    r = generate_jn_vertex_list(dist_tree, interface_path_cur, comm)
+    for j, l in enumerate([all_pl_vtx, all_pld_vtx, all_distri_vtx]):
+      l.append(r[j])
+
+
+  # Create in tree
+  for i, interface_path in enumerate(zip(interface_pathes_cur, interface_pathes_opp)):
+    pl_vtx, pl_vtx_opp, distri_jn = all_pl_vtx[i], all_pld_vtx[i], all_distri_vtx[i] #Get results
+    for j, gc_path in enumerate(interface_path):
+      base_name, zone_name, zgc_name, gc_name = gc_path.split('/')
+      zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
+      gc = I.getNodeFromPath(dist_tree, gc_path)
+
+      zgc_vtx = I.createUniqueChild(zone, zgc_name+'#Vtx', 'ZoneGridConnectivity_t')
+
+      if j == 1: #Swap pl/pld for opposite jn
+        pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx
+      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
+      I.newGridLocation('Vertex', jn_vtx)
+      I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
+      I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
+      I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
+      IE.newDistribution({'Index' : distri_jn}, jn_vtx)
+
+      I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))
+
+
