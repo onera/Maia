@@ -226,6 +226,8 @@ STD_E_ENUM_CLASS(GridLocation,
   JFaceCenter,
   KFaceCenter,
   EdgeCenter,
+  // Only for SoNICS
+  DualFacetCenter,
   maxGridLocation
 );
 
