@@ -22,7 +22,7 @@ apply_cpp_cgns_function_to_py_base(F&& f) {
   return [&f](py::list py_base) {
     cgns::tree base = cgns::to_cpp_tree(py_base);
     f(base);
-    update_and_transfer_ownership_to_py_tree(std::move(base),py_base);
+    update_py_tree(std::move(base),py_base);
   };
 }
 template<class F> auto
@@ -31,7 +31,7 @@ apply_cpp_cgns_par_function_to_py_base(F&& f) {
     cgns::tree base = cgns::to_cpp_tree(py_base);
     MPI_Comm comm = maia::mpi4py_comm_to_comm(mpi4py_comm);
     f(base,comm);
-    update_and_transfer_ownership_to_py_tree(std::move(base),py_base);
+    update_py_tree(std::move(base),py_base);
   };
 }
 
