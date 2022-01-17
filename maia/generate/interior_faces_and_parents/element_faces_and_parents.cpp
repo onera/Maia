@@ -51,7 +51,13 @@ number_of_faces(const tree_range& elt_sections) {
 }
 
 template<ElementType_t elt_type> auto
-gen_faces(const tree& elt_node, auto& tri_it, auto& quad_it, auto& tri_parent_it, auto& quad_parent_it) {
+gen_faces(
+  const tree& elt_node,
+  auto& tri_it, auto& quad_it,
+  auto& tri_parent_it, auto& quad_parent_it,
+  auto& tri_ppos_it, auto& quad_ppos_it
+)
+{
   using I = typename std::remove_cvref_t<decltype(tri_it)>::index_type;
   I elt_start = ElementRange<I>(elt_node)[0];
   I index_dist_start = ElementDistribution(elt_node)[0];
@@ -63,6 +69,7 @@ gen_faces(const tree& elt_node, auto& tri_it, auto& quad_it, auto& tri_parent_it
   I elt_id = elt_start + index_dist_start;
   for (const auto& elt : connec_range) {
     generate_faces<elt_type>(elt,tri_it,quad_it);
+    generate_parent_positions<elt_type>(tri_ppos_it,quad_ppos_it);
     tri_parent_it  = std::fill_n( tri_parent_it,number_of_TRI_3_faces (elt_type),elt_id);
     quad_parent_it = std::fill_n(quad_parent_it,number_of_QUAD_4_faces(elt_type),elt_id);
     ++elt_id;
@@ -76,35 +83,37 @@ generate_element_faces_and_parents(const tree_range& elt_sections) -> faces_and_
   auto [n_tri,n_quad] = number_of_faces(elt_sections);
   faces_and_parents_by_section<I> faces_and_parents(n_tri,n_quad);
 
-  auto tri_it         = faces_and_parents.tris .connectivities().begin();
-  auto quad_it        = faces_and_parents.quads.connectivities().begin();
-  auto tri_parent_it  = faces_and_parents.tris .parents()       .begin();
-  auto quad_parent_it = faces_and_parents.quads.parents()       .begin();
+  auto tri_it         = faces_and_parents.tris .connectivities()  .begin();
+  auto quad_it        = faces_and_parents.quads.connectivities()  .begin();
+  auto tri_parent_it  = faces_and_parents.tris .parents()         .begin();
+  auto quad_parent_it = faces_and_parents.quads.parents()         .begin();
+  auto tri_ppos_it    = faces_and_parents.tris .parent_positions().begin();
+  auto quad_ppos_it   = faces_and_parents.quads.parent_positions().begin();
   for (const auto& elt_section : elt_sections) {
     auto elt_type = element_type(elt_section);
     switch(elt_type){
       case TRI_3: {
-        gen_faces<TRI_3>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
+        gen_faces<TRI_3  >(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it,tri_ppos_it,quad_ppos_it);
         break;
       }
       case QUAD_4: {
-        gen_faces<QUAD_4>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
+        gen_faces<QUAD_4 >(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it,tri_ppos_it,quad_ppos_it);
         break;
       }
       case TETRA_4: {
-        gen_faces<TETRA_4>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
+        gen_faces<TETRA_4>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it,tri_ppos_it,quad_ppos_it);
         break;
       }
       case PENTA_6: {
-        gen_faces<PENTA_6>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
+        gen_faces<PENTA_6>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it,tri_ppos_it,quad_ppos_it);
         break;
       }
       case PYRA_5: {
-        gen_faces<PYRA_5>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
+        gen_faces<PYRA_5 >(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it,tri_ppos_it,quad_ppos_it);
         break;
       }
       case HEXA_8: {
-        gen_faces<HEXA_8>(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it);
+        gen_faces<HEXA_8 >(elt_section,tri_it,quad_it,tri_parent_it,quad_parent_it,tri_ppos_it,quad_ppos_it);
         break;
       }
       default: {

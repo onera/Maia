@@ -15,10 +15,11 @@ class connectivities_with_parents {
   public:
     static constexpr int n_vtx = number_of_vertices(elt_type);
 
-    // Class invariant: connectivities().size() == parents().size()
+    // Class invariant: connectivities().size() == parents().size() == parent_positions().size()
     connectivities_with_parents(I n_connec)
       : connec(n_connec*number_of_vertices(elt_type))
       , parens(n_connec)
+      , par_pos(n_connec)
     {}
 
     auto
@@ -35,9 +36,14 @@ class connectivities_with_parents {
     parents() -> std_e::span<I> {
       return std_e::make_span(parens);
     }
+    auto
+    parent_positions() -> std_e::span<I> {
+      return std_e::make_span(par_pos);
+    }
   private:
     std::vector<I> connec;
     std::vector<I> parens;
+    std::vector<I> par_pos;
 };
 
 template<class I>

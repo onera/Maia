@@ -53,11 +53,14 @@ struct in_faces_with_parents {
   std::vector<I> connec;
   std::vector<I> l_parents;
   std::vector<I> r_parents;
+  std::vector<I> l_parent_positions;
+  std::vector<I> r_parent_positions;
 };
 template<class I>
 struct ext_faces_with_parents {
   std::vector<I> face_parents;
   std::vector<I> vol_parents;
+  std::vector<I> vol_parent_positions;
 };
 template<class I>
 struct in_ext_faces_with_parents {
@@ -79,18 +82,23 @@ same_face_but_flipped(const auto& f0, const auto& f1) {
 }
 
 template<class I> auto
-merge_uniq(auto& cs, std_e::span<I> parents, I first_3d_elt_id) -> in_ext_faces_with_parents<I> {
+merge_uniq(auto& cs, std_e::span<I> parents, std_e::span<I> parent_positions, I first_3d_elt_id) -> in_ext_faces_with_parents<I> {
   //auto _ = std_e::stdout_time_logger("  merge_uniq");
   using connectivity_k = typename std::decay_t<decltype(cs)>::kind;
   // gather parents two by two
   std::vector<I> face_parents_ext;
   std::vector<I> vol_parents_ext;
+  std::vector<I> vol_parent_positions_ext;
   std::vector<I> connec_int;
   std::vector<I> l_parents_int;
   std::vector<I> r_parents_int;
+  std::vector<I> l_parent_positions_int;
+  std::vector<I> r_parent_positions_int;
   connec_int.reserve(cs.n_vtx()/2);
   l_parents_int.reserve(parents.size()/2);
   r_parents_int.reserve(parents.size()/2);
+  l_parents_int.reserve(parent_positions.size()/2);
+  r_parents_int.reserve(parent_positions.size()/2);
   auto cs_int = make_connectivity_range<connectivity_k>(connec_int);
 
   auto n_res_cs = cs.size();
@@ -103,10 +111,12 @@ merge_uniq(auto& cs, std_e::span<I> parents, I first_3d_elt_id) -> in_ext_faces_
         STD_E_ASSERT(parents[i+1] >= first_3d_elt_id);
         face_parents_ext.push_back(parents[i]);
         vol_parents_ext.push_back(parents[i+1]);
+        vol_parent_positions_ext.push_back(parent_positions[i+1]);
       } else {
         STD_E_ASSERT(parents[i+1] < first_3d_elt_id);
         face_parents_ext.push_back(parents[i+1]);
         vol_parents_ext.push_back(parents[i]);
+        vol_parent_positions_ext.push_back(parent_positions[i]);
       }
     } else {
       //if (!same_face_but_flipped(cs[i],cs[i+1])) {
@@ -117,10 +127,15 @@ merge_uniq(auto& cs, std_e::span<I> parents, I first_3d_elt_id) -> in_ext_faces_
       cs_int.push_back(cs[i]);
       l_parents_int.push_back(parents[i]);
       r_parents_int.push_back(parents[i+1]);
+      l_parent_positions_int.push_back(parent_positions[i]);
+      r_parent_positions_int.push_back(parent_positions[i+1]);
     }
   }
 
-  return {in_faces_with_parents{connec_int,l_parents_int,r_parents_int},ext_faces_with_parents{face_parents_ext,vol_parents_ext}};
+  return {
+    in_faces_with_parents{connec_int,l_parents_int,r_parents_int,l_parent_positions_int,r_parent_positions_int},
+    ext_faces_with_parents{face_parents_ext,vol_parents_ext,vol_parent_positions_ext}
+  };
 }
 
 template<class I, ElementType_t elt_type> auto
@@ -129,6 +144,7 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
   int n_connec = cps.size();
   auto cs = cps.connectivities();
   auto parents = cps.parents();
+  auto parent_positions = cps.parent_positions();
   constexpr int n_vtx_elt = number_of_vertices(elt_type);
   using connectivity_k = cgns::connectivity_kind<elt_type>;
 
@@ -147,6 +163,7 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
     auto partition_indices2 = std_e::make_span(partition_indices.data()+1,partition_indices.size()-1);
     std_e::permute(cs.begin(),perm);
     std_e::permute(parents.begin(),perm);
+    std_e::permute(parent_positions.begin(),perm);
   //_0.stop();
 
 
@@ -155,6 +172,10 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
     std_e::jagged_span<I> parents_by_rank(parents,partition_indices2);
     auto res_parents = std_e::all_to_all_v(parents_by_rank,comm);
     auto res_parents2 = res_parents.flat_view();
+
+    std_e::jagged_span<I> parent_positions_by_rank(parent_positions,partition_indices2);
+    auto res_parent_positions = std_e::all_to_all_v(parent_positions_by_rank,comm);
+    auto res_parent_positions2 = res_parent_positions.flat_view();
 
     auto scaled_partition_indices = partition_indices2;
     std_e::scale(scaled_partition_indices,n_vtx_elt);
@@ -191,10 +212,11 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
     //_31.stop();
     //auto _32 = std_e::stdout_time_logger("    permute parents");
       std_e::permute(res_parents2.begin(),perm2);
+      std_e::permute(res_parent_positions2.begin(),perm2);
     //_32.stop();
   //_3.stop();
 
-  return merge_uniq(res_cs,res_parents2,first_3d_elt_id);
+  return merge_uniq(res_cs,res_parents2,res_parent_positions2,first_3d_elt_id);
 }
 
 template<class I> auto
@@ -239,6 +261,15 @@ append_element_section(cgns::tree& z, ElementType_t elt_type, in_faces_with_pare
   tree parent_elt_node = cgns::new_DataArray("ParentElements",std::move(parents_array));
   emplace_child(elt_section_node,std::move(parent_elt_node));
 
+  // parent position
+  md_array<I,2> parent_positions_array(n_face,2);
+  // TODO optim with no copy
+  auto mid_ppos_array = std::copy(begin(faces_with_p.l_parent_positions),end(faces_with_p.l_parent_positions),begin(parent_positions_array));
+                        std::copy(begin(faces_with_p.r_parent_positions),end(faces_with_p.r_parent_positions),mid_ppos_array);
+
+  tree parent_position_elt_node = cgns::new_DataArray("ParentElementsPosition",std::move(parent_positions_array));
+  emplace_child(elt_section_node,std::move(parent_position_elt_node));
+
   // distribution
   std::vector<I8> elt_distri_mem(3);
   elt_distri_mem[0] = n_face_acc;
@@ -257,14 +288,17 @@ template<class I> auto
 _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   STD_E_ASSERT(is_maia_cgns_zone(z));
 
+  // generate faces
   auto elt_sections = element_sections(z);
   auto faces_and_parents = generate_element_faces_and_parents<I>(elt_sections);
 
+  // make them unique
   I n_vtx = cgns::VertexSize_U<I>(z);
   I first_3d_elt_id = volume_elements_interval(z).first();
   auto unique_faces_tri  = merge_unique_faces(faces_and_parents.tris ,n_vtx,first_3d_elt_id,comm);
   auto unique_faces_quad = merge_unique_faces(faces_and_parents.quads,n_vtx,first_3d_elt_id,comm);
 
+  // scatter parent_element info back to original exterior faces
   auto ext_tri_node  = std::find_if(begin(elt_sections),end(elt_sections),[](const tree& t){ return element_type(t)==cgns::TRI_3 ; });
   auto ext_quad_node = std::find_if(begin(elt_sections),end(elt_sections),[](const tree& t){ return element_type(t)==cgns::QUAD_4; });
 
@@ -280,6 +314,7 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
     scatter_parents_to_sections(*ext_quad_node,unique_faces_quad.ext.face_parents,unique_faces_quad.ext.vol_parents,comm);
   }
 
+  // create new interior faces sections
   append_element_section(z,cgns::TRI_3 ,std::move(unique_faces_tri .in),comm);
   append_element_section(z,cgns::QUAD_4,std::move(unique_faces_quad.in),comm);
 };
