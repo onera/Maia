@@ -22,10 +22,10 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
   coordYDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateY")
   coordZDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateZ")
   
-  modCx, modCy, modCz = GEO.apply_transformation_on_separated_coords(rotationCenter, rotationAngle, translation,
-                                                                     I.getValue(coordXDupNode),
-                                                                     I.getValue(coordYDupNode),
-                                                                     I.getValue(coordZDupNode))
+  modCx, modCy, modCz = GEO.apply_transformation_on_separated_components_of_cartesian_vectors(rotationCenter, rotationAngle, translation,
+                                                                                             I.getValue(coordXDupNode),
+                                                                                             I.getValue(coordYDupNode),
+                                                                                             I.getValue(coordZDupNode))
 
   I.setValue(coordXDupNode,modCx)
   I.setValue(coordYDupNode,modCy)

@@ -242,7 +242,7 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
     rotation_center = I.getNodeFromName1(gc_periodic, 'RotationCenter')[1]
     rotation_angle  = I.getNodeFromName1(gc_periodic, 'RotationAngle')[1]
     
-    opp_received_coords = GEO.apply_transformation_on_concatenated_coords(rotation_center, rotation_angle, translation, opp_received_coords.T).T
+    opp_received_coords = GEO.apply_transformation_on_concatenated_components_of_cartesian_vectors(rotation_center, rotation_angle, translation, opp_received_coords.T).T
 
 
 
