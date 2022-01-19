@@ -6,11 +6,30 @@ import maia.geometry.geometry          as GEO
 import maia.connectivity.conformize_jn as CCJ
 
 
+def _find_cartesian_vector_names_from_names(names):
+  suffixX_names = []
+  suffixY_names = []
+  suffixZ_names = []
+  for name in names:
+    if name[-1] == "X":
+      suffixX_names.append(name[0:-1])
+    if name[-1] == "Y":
+      suffixY_names.append(name[0:-1])
+    if name[-1] == "Z":
+      suffixZ_names.append(name[0:-1])
+  basenames = []
+  for name in suffixX_names:
+    if (name in suffixY_names) and (name in suffixZ_names):
+      basenames.append(name)
+  return basenames
+
+
 def duplicate_zone_with_transformation(zone,nameZoneDup,
-                                       rotationCenter=np.array([0.,0.,0.]),
-                                       rotationAngle =np.array([0.,0.,0.]),
-                                       translation   =np.array([0.,0.,0.]),
-                                       max_ordinal   =0):
+                                       rotationCenter         =np.array([0.,0.,0.]),
+                                       rotationAngle          =np.array([0.,0.,0.]),
+                                       translation            =np.array([0.,0.,0.]),
+                                       max_ordinal            =0,
+                                       apply_to_flowsolutions = False):
   # Duplication de la zone
   zoneDup     = copy.deepcopy(zone)
   I.setName(zoneDup,nameZoneDup)
@@ -39,6 +58,25 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
         ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
         I.setValue(ordinal_n,    I.getValue(ordinal_n)    +max_ordinal)
         I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)+max_ordinal)
+        
+  if apply_to_flowsolutions:
+    for fs in I.getNodesFromType(zoneDup, "FlowSolution_t"):
+      data_names = []
+      for data_array in I.getNodesFromType(fs, "DataArray_t"):
+        data_names.append(I.getName(data_array))
+      cartesian_vectors_basenames = _find_cartesian_vector_names_from_names(data_names)
+      for basename in cartesian_vectors_basenames:
+        vectorXNode = I.getNodeFromNameAndType(fs, basename+"X", "DataArray_t")
+        vectorYNode = I.getNodeFromNameAndType(fs, basename+"Y", "DataArray_t")
+        vectorZNode = I.getNodeFromNameAndType(fs, basename+"Z", "DataArray_t")
+        modVx, modVy, modVz = GEO.apply_transformation_on_separated_components_of_cartesian_vectors(
+                                              rotationCenter, rotationAngle, translation,
+                                              I.getValue(vectorXNode),
+                                              I.getValue(vectorYNode),
+                                              I.getValue(vectorZNode))
+        I.setValue(vectorXNode,modVx)
+        I.setValue(vectorYNode,modVy)
+        I.setValue(vectorZNode,modVz)
 
   return zoneDup
 
