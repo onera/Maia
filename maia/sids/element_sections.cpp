@@ -11,6 +11,10 @@ auto
 is_section_of_dimension(const tree& n, int dim) -> bool {
   return label(n)=="Elements_t" && element_dimension(element_type(n))==dim;
 };
+auto
+is_section_of_type(const tree& n, ElementType_t et) -> bool {
+  return label(n)=="Elements_t" && element_type(n)==et;
+};
 
 auto
 elements_interval_of_dim(const tree& z, int dim) {

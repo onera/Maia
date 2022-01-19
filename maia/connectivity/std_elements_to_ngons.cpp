@@ -21,11 +21,11 @@ auto replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
   // 0. sizes
   auto surf_elt_sections = surface_element_sections(z);
   I4 n_surf_elt_tot = 0;
-  int n_section = surf_elt_sections.size();
-  std::vector<I4> n_elts(n_section);
-  //std::vector<I4> n_elts_tot(n_section);
-  std::vector<I4> w_elts(n_section);
-  for (int i=0; i<n_section; ++i) {
+  int n_surf_section = surf_elt_sections.size();
+  std::vector<I4> n_elts(n_surf_section);
+  //std::vector<I4> n_elts_tot(n_surf_section);
+  std::vector<I4> w_elts(n_surf_section);
+  for (int i=0; i<n_surf_section; ++i) {
     const tree& elt_node = surf_elt_sections[i];
     auto elt_type = element_type(elt_node);
     auto elt_interval = ElementRange<I4>(elt_node);
@@ -35,7 +35,7 @@ auto replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
     w_elts[i] = number_of_vertices(elt_type);
     n_surf_elt_tot += n_elt;
   }
-  // 1. shift volume element ids
+  // 1. shift volume element ids // TODO move to _generate_interior_faces_and_parents
   I4 first_3d_elt_id = volume_elements_interval(z).first();
   //I4 volume_elts_offset = n_surf_elt_tot+1 - first_3d_elt_id;
   I4 volume_elts_offset = 1 - first_3d_elt_id; // TODO here this is done to please cassiopee, but not CGNS compliant
@@ -47,6 +47,7 @@ auto replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
       }
     }
   }
+  // TODO also shift all PointList located at CellCenter
 
   // 2. concatenate all surface elements into one ngon
   int n_slot = std_e::n_rank(comm);
@@ -55,7 +56,7 @@ auto replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
   std_e::dist_array<I4> dconnec(dist_cat_connec_elts,comm); // TODO store a span/ref to the dist in dist_array
   I4 acc_sz = 0;
   // 2.0. send vertices
-  for (int i=0; i<n_section; ++i) {
+  for (int i=0; i<n_surf_section; ++i) {
     const tree& elt_node = surf_elt_sections[i];
 
     auto connec = get_node_value_by_matching<I4>(elt_node,"ElementConnectivity");
@@ -68,28 +69,11 @@ auto replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
     acc_sz += n_elts[i]*w_elts[i];
   }
 
-  //// 2.1. send parents OLD not working
-  //auto dist_cat_par = dist_cat_elts;
-  //std_e::scale(dist_cat_par,2); // TODO ugly
-  //std_e::dist_array<I4> parents(dist_cat_par,comm); // store a span/ref to the dist in dist_array
-  //acc_sz = 0;
-  //for (int i=0; i<n_section; ++i) {
-  //  const tree& elt_node = surf_elt_sections[i];
-
-  //  auto par = get_node_value_by_matching<I4,2>(elt_node,"ParentElements");
-  //  auto connec_dist = get_node_value_by_matching<I8>(elt_node,":CGNS#Distribution/Element");
-
-  //  std::vector<I4> indices(par.size());
-  //  std::iota(begin(indices),end(indices),acc_sz+connec_dist[0]*2);
-  //  std::vector<I4> par2(par.begin(),par.end()); // TODO no copy
-  //  std_e::scatter(parents,dist_cat_par,indices,par2); // TODO replace by interval-based description of indices
-  //  acc_sz += n_elts[i]*2;
-  //}
-  // 2.1. send parents OTHER SOL
+  // 2.1. send parents
   std_e::dist_array<I4> l_parents(dist_cat_elts,comm);
   std_e::dist_array<I4> r_parents(dist_cat_elts,comm);
   acc_sz = 0;
-  for (int i=0; i<n_section; ++i) {
+  for (int i=0; i<n_surf_section; ++i) {
     const tree& elt_node = surf_elt_sections[i];
 
     auto par = get_node_value_by_matching<I4,2>(elt_node,"ParentElements");
@@ -108,19 +92,19 @@ auto replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
   }
   // 2.1. compute displacements (ElementStartOffset)
   //auto [elt_infs,elt_sups] = elements_in_interval(dist_cat_connec_elts[rk],dist_cat_connec_elts[rk+1],n_elts_tot,w_elts);
-  std::vector<I4> w_elts2(n_section,1);
+  std::vector<I4> w_elts2(n_surf_section,1);
   auto [elt_infs,elt_sups] = std_e::elements_in_interval(dist_cat_elts[rk],dist_cat_elts[rk+1],n_elts,w_elts2); // TODO simplify since w_elt2==1
   std::vector<I4> elt_start_offset(dist_cat_elts[rk+1]-dist_cat_elts[rk] + 1);
   elt_start_offset[0] = dist_cat_connec_elts[rk];
 
   //int acc = 0;
-  //for (int i=0; i<n_section; ++i) { // TODO DEL
+  //for (int i=0; i<n_surf_section; ++i) { // TODO DEL
   //  acc += elt_sups[i]-elt_infs[i];
   //}
   //STD_E_ASSERT(acc==dist_cat_connec_elts[rk]);
 
   int k=0;
-  for (int i=0; i<n_section; ++i) {
+  for (int i=0; i<n_surf_section; ++i) {
     for (int j=0; j<elt_sups[i]-elt_infs[i]; ++j) {
       elt_start_offset[k+1] = elt_start_offset[k] + w_elts[i];
       ++k;
@@ -129,7 +113,7 @@ auto replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
 
   // 3. ngon section node
   // connec
-  std::vector<I4> connec_array(begin(dconnec.local()),end(dconnec.local()));
+  std::vector<I4> connec_array(begin(dconnec.local()),end(dconnec.local())); // TODO no copy
   tree ngon_section_node = new_Elements("NGons",(I4)cgns::NGON_n,std::move(connec_array),1,n_surf_elt_tot);
 
   // elt_start_offset
