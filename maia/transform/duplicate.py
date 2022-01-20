@@ -13,15 +13,12 @@ def _find_cartesian_vector_names_from_names(names):
   for name in names:
     if name[-1] == "X":
       suffixX_names.append(name[0:-1])
-    if name[-1] == "Y":
+    elif name[-1] == "Y":
       suffixY_names.append(name[0:-1])
-    if name[-1] == "Z":
+    elif name[-1] == "Z":
       suffixZ_names.append(name[0:-1])
-  basenames = []
-  for name in suffixX_names:
-    if (name in suffixY_names) and (name in suffixZ_names):
-      basenames.append(name)
-  return basenames
+
+  return sorted(set(suffixX_names)&set(suffixY_names)&set(suffixZ_names))
 
 
 def duplicate_zone_with_transformation(zone,nameZoneDup,
@@ -29,7 +26,7 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
                                        rotationAngle          =np.array([0.,0.,0.]),
                                        translation            =np.array([0.,0.,0.]),
                                        max_ordinal            =0,
-                                       apply_to_flowsolutions = False):
+                                       apply_to_fields = False):
   # Duplication de la zone
   zoneDup     = copy.deepcopy(zone)
   I.setName(zoneDup,nameZoneDup)
@@ -42,9 +39,9 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
   coordZDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateZ")
   
   modCx, modCy, modCz = GEO.apply_transformation_on_separated_components_of_cartesian_vectors(rotationCenter, rotationAngle, translation,
-                                                                                             I.getValue(coordXDupNode),
-                                                                                             I.getValue(coordYDupNode),
-                                                                                             I.getValue(coordZDupNode))
+                                                                                              I.getValue(coordXDupNode),
+                                                                                              I.getValue(coordYDupNode),
+                                                                                              I.getValue(coordZDupNode))
 
   I.setValue(coordXDupNode,modCx)
   I.setValue(coordYDupNode,modCy)
@@ -59,16 +56,24 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
         I.setValue(ordinal_n,    I.getValue(ordinal_n)    +max_ordinal)
         I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)+max_ordinal)
         
-  if apply_to_flowsolutions:
-    for fs in I.getNodesFromType(zoneDup, "FlowSolution_t"):
+  if apply_to_fields:
+    fields_nodes = []
+    fields_nodes += I.getNodesFromType1(zoneDup, "FlowSolution_t")
+    fields_nodes += I.getNodesFromType1(zoneDup, "DiscreteData_t")
+    fields_nodes += I.getNodesFromType1(zoneDup, "ZoneSubRegion_t")
+    zoneBC = I.getNodeFromType1(zoneDup, "ZoneBC_t")
+    if zoneBC:
+      for bc in I.getNodesFromType1(zoneBC, "BC_t"):
+        fields_nodes += I.getNodesFromType1(bc, "BCDataSet_t")
+    for fields_node in fields_nodes:
       data_names = []
-      for data_array in I.getNodesFromType(fs, "DataArray_t"):
+      for data_array in I.getNodesFromType(fields_node, "DataArray_t"):
         data_names.append(I.getName(data_array))
       cartesian_vectors_basenames = _find_cartesian_vector_names_from_names(data_names)
       for basename in cartesian_vectors_basenames:
-        vectorXNode = I.getNodeFromNameAndType(fs, basename+"X", "DataArray_t")
-        vectorYNode = I.getNodeFromNameAndType(fs, basename+"Y", "DataArray_t")
-        vectorZNode = I.getNodeFromNameAndType(fs, basename+"Z", "DataArray_t")
+        vectorXNode = I.getNodeFromNameAndType(fields_node, basename+"X", "DataArray_t")
+        vectorYNode = I.getNodeFromNameAndType(fields_node, basename+"Y", "DataArray_t")
+        vectorZNode = I.getNodeFromNameAndType(fields_node, basename+"Z", "DataArray_t")
         modVx, modVy, modVz = GEO.apply_transformation_on_separated_components_of_cartesian_vectors(
                                               rotationCenter, rotationAngle, translation,
                                               I.getValue(vectorXNode),
@@ -183,7 +188,7 @@ def _duplicate_zone_from_periodic_join(dist_tree,zone,JN_for_duplication_names,
 
 def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N,
                                           conformize=False,comm=None,
-                                          apply_to_flowsolutions = False):
+                                          apply_to_fields = False):
   #############
   ##### TODO
   ##### > gestion des autres raccords...
@@ -257,7 +262,7 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
                                               rotationAngle=(n+1)*rotationAngleA,
                                               translation=(n+1)*translationA,
                                               max_ordinal = (n+1)*max_ordinal,
-                                              apply_to_flowsolutions=apply_to_flowsolutions)
+                                              apply_to_fields=apply_to_fields)
   
       # Mise à jour des raccords matchs des zones dupliquées
       zgc  = I.getNodeFromType1(zoneDup,"ZoneGridConnectivity_t")
@@ -367,7 +372,7 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
 def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_for_duplication_paths,
                                                            conformize=False,comm=None,
                                                            rotation_correction=True,
-                                                           apply_to_flowsolutions=False):
+                                                           apply_to_fields=False):
   
   #############
   ##### TODO
@@ -415,7 +420,7 @@ def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_fo
   # Duplications
   _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N-1,
                                         conformize=conformize,comm=comm,
-                                        apply_to_flowsolutions=apply_to_flowsolutions)
+                                        apply_to_fields=apply_to_fields)
 
   #> Transformation des raccords périodiques "A" de l'ensemble de zones initial
   #  en raccords match
