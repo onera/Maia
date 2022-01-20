@@ -182,7 +182,8 @@ def _duplicate_zone_from_periodic_join(dist_tree,zone,JN_for_duplication_names,
 
 
 def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N,
-                                          conformize=False,comm=None):
+                                          conformize=False,comm=None,
+                                          apply_to_flowsolutions = False):
   #############
   ##### TODO
   ##### > gestion des autres raccords...
@@ -255,7 +256,8 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
                                               rotationCenter=rotationCenterA,
                                               rotationAngle=(n+1)*rotationAngleA,
                                               translation=(n+1)*translationA,
-                                              max_ordinal = (n+1)*max_ordinal)
+                                              max_ordinal = (n+1)*max_ordinal,
+                                              apply_to_flowsolutions=apply_to_flowsolutions)
   
       # Mise à jour des raccords matchs des zones dupliquées
       zgc  = I.getNodeFromType1(zoneDup,"ZoneGridConnectivity_t")
@@ -364,7 +366,8 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
   
 def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_for_duplication_paths,
                                                            conformize=False,comm=None,
-                                                           rotation_correction=True):
+                                                           rotation_correction=True,
+                                                           apply_to_flowsolutions=False):
   
   #############
   ##### TODO
@@ -411,7 +414,8 @@ def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_fo
   
   # Duplications
   _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N-1,
-                                        conformize=conformize,comm=comm)
+                                        conformize=conformize,comm=comm,
+                                        apply_to_flowsolutions=apply_to_flowsolutions)
 
   #> Transformation des raccords périodiques "A" de l'ensemble de zones initial
   #  en raccords match
