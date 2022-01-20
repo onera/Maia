@@ -149,7 +149,7 @@ merge_uniq(auto& cs, std_e::span<I> parents, std_e::span<I> parent_positions, I 
 
 template<class I, ElementType_t elt_type> auto
 merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I first_3d_elt_id, MPI_Comm comm) -> in_ext_faces_with_parents<I> {
-  //auto _ = std_e::stdout_time_logger("merge_unique_faces");
+  auto _ = std_e::stdout_time_logger("merge_unique_faces");
   int n_connec = cps.size();
   auto cs = cps.connectivities();
   auto parents = cps.parents();
@@ -163,7 +163,7 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
   }
 
   // partition_sort by first vertex (this is a partial sort, but good enought so we can exchange based on that)
-  //auto _0 = std_e::stdout_time_logger("  partition sort");
+  auto _0 = std_e::stdout_time_logger("  partition sort");
     auto less_first_vertex = [&cs](int i, const auto& y){ return cs[i][0] < y; }; // TODO ugly (non-symmetric)
     auto distri = uniform_distribution(std_e::n_rank(comm),n_vtx);
     std::vector<int> perm(n_connec);
@@ -173,11 +173,11 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
     std_e::permute(cs.begin(),perm);
     std_e::permute(parents.begin(),perm);
     std_e::permute(parent_positions.begin(),perm);
-  //_0.stop();
+  _0.stop();
 
 
   // exchange
-  //auto _1 = std_e::stdout_time_logger("  exchange");
+  auto _1 = std_e::stdout_time_logger("  exchange");
     std_e::jagged_span<I> parents_by_rank(parents,partition_indices2);
     auto res_parents = std_e::all_to_all_v(parents_by_rank,comm);
     auto res_parents2 = res_parents.flat_view();
@@ -192,21 +192,21 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
     auto res_connec = std_e::all_to_all_v(cs_by_rank,comm);
     auto res_connec2 = res_connec.flat_view();
     auto res_cs = make_connectivity_range<connectivity_k>(res_connec2);
-  //_1.stop();
+  _1.stop();
 
   // finish sort (if two faces are equal, they have the same first vertex, hence are on the same proc)
   // 0. sort vertices so that we can do a lexicographical comparison
-  //auto _2 = std_e::stdout_time_logger("  vertex sort");
+  auto _2 = std_e::stdout_time_logger("  vertex sort");
     std::vector<I> res_connec_ordered(res_connec2.begin(),res_connec2.end());
     auto res_cs_ordered = make_connectivity_range<connectivity_k>(res_connec_ordered);
     for (auto c : res_cs_ordered) {
       // since the first vtx is already the smallest, no need to include it in the sort
       std_e::sorting_network<n_vtx_elt-1>::sort(c.begin()+1);
     }
-  //_2.stop();
+  _2.stop();
 
   // 1. do the sort based on this lexico ordering
-  //auto _3 = std_e::stdout_time_logger("  final sort");
+  auto _3 = std_e::stdout_time_logger("  final sort");
     auto less_vertices = [&res_cs_ordered](int i, int j){ return res_cs_ordered[i]<res_cs_ordered[j]; };
     int n_res_cs = res_cs.size();
     STD_E_ASSERT(n_res_cs%2==0); // each face should be there twice (either two 3d parents if interior, or one 2d and one 3d parent if exterior)
@@ -223,7 +223,7 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
       std_e::permute(res_parents2.begin(),perm2);
       std_e::permute(res_parent_positions2.begin(),perm2);
     //_32.stop();
-  //_3.stop();
+  _3.stop();
 
   return merge_uniq(res_cs,res_parents2,res_parent_positions2,first_3d_elt_id);
 }
@@ -250,11 +250,11 @@ scatter_parents_to_sections(tree& surf_elt, const std::vector<I>& face_ids, cons
 
   // parent positions
   std_e::dist_array<I> parent_positions(dist_I8,comm);
-  ELOG(vol_parent_positions_ext);
+  //ELOG(vol_parent_positions_ext);
   std_e::scatter(parent_positions,dist_I8,std::move(face_indices),vol_parent_positions_ext); // TODO protocol (here, we needlessly recompute with face_indices)
 
   md_array<I,2> parent_positions_array(n_face_res,2);
-  ELOG(parent_positions.local());
+  //ELOG(parent_positions.local());
   std::copy(begin(parent_positions.local()),end(parent_positions.local()),begin(parent_positions_array)); // only half is assign, the other is 0
 
   tree parent_position_elt_node = cgns::new_DataArray("ParentElementsPosition",std::move(parent_positions_array));
@@ -356,8 +356,8 @@ fill_cell_face_info(
   MPI_Comm comm
 )
 {
-  LOG("--------------fill_cell_face_info-----------------");
-  ELOG(face_type);
+  auto _ = std_e::stdout_time_logger("fill_cell_face_info");
+  //ELOG(face_type);
   auto vol_section_intervals = element_sections_interval_vector<I>(vol_sections);
   auto vol_section_types = vol_sections
                          | std::views::transform([](const tree& e){ return element_type(e); })
@@ -378,9 +378,9 @@ fill_cell_face_info(
 
   fill_cell_face_ids(face_in_vol_indices_by_section,face_ids_by_section,  ext_parents ,ext_face_pos ,ext_face_ids,  vol_section_intervals, vol_section_types,face_type);
 
-  ELOG(ext_parents);
-  ELOG(face_in_vol_indices_by_section);
-  ELOG(face_ids_by_section);
+  //ELOG(ext_parents);
+  //ELOG(face_in_vol_indices_by_section);
+  //ELOG(face_ids_by_section);
 
   fill_cell_face_ids(face_in_vol_indices_by_section,face_ids_by_section,  in_l_parents,in_l_face_pos,in_face_ids ,  vol_section_intervals, vol_section_types,face_type);
   fill_cell_face_ids(face_in_vol_indices_by_section,face_ids_by_section,  in_r_parents,in_r_face_pos,in_face_ids ,  vol_section_intervals, vol_section_types,face_type);
