@@ -18,9 +18,11 @@ template<
 generate_faces(const connectivity_type& e, tri_iterator& tri_it, quad_iterator& quad_it) -> void {
   if constexpr (elt_type==TRI_3) {
     *tri_it++ = e;
+    //*tri_it++ = {e[0],e[2],e[1]};
   }
   else if constexpr (elt_type==QUAD_4) {
     *quad_it++ = e;
+    //*quad_it++ = {e[0],e[3],e[2],e[1]};
   }
   else if constexpr (elt_type==TETRA_4) {
     *tri_it++ = {e[0],e[2],e[1]};

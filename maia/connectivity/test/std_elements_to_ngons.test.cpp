@@ -22,7 +22,7 @@ PYBIND_MPI_TEST_CASE("std_elements_to_ngons",2) {
   tree& z = cgns::get_node_by_name(b,"Zone");
 
   maia::std_elements_to_ngons(z,test_comm);
-  ELOG(z);
+  //ELOG(z);
 
   auto elt_type = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n")[0];
   auto range = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n/ElementRange");
@@ -37,7 +37,6 @@ PYBIND_MPI_TEST_CASE("std_elements_to_ngons",2) {
   MPI_CHECK(1, connec == std::vector<I4>{4,9,10,5,9,14,15,10,1,4,5,2,11,12,15,14,2,5,3,12,13,15,7,8,10,2,7,10,5,6,7,10,9,7,12,15,10} );
   MPI_CHECK(0, parents.extent() == std_e::multi_index<I8,2>{8,2} );
   MPI_CHECK(1, parents.extent() == std_e::multi_index<I8,2>{10,2} );
-  ELOG(parents);
   MPI_CHECK(0, parents == cgns::md_array<I4,2>{{1,0},{2,0},{3,0},{4,0},{1,0},{3,0},{2,0},{4,0}} );
   MPI_CHECK(1, parents == cgns::md_array<I4,2>{{1,0},{2,0},{1,0},{2,0},{3,0},{4,0},{3,4},{3,1},{1,2},{4,2}} );
 }

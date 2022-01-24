@@ -8,7 +8,8 @@
 #include "cpp_cgns/sids/creation.hpp"
 #include "std_e/algorithm/algorithm.hpp"
 #include "std_e/future/ranges.hpp"
-#include "std_e/logging/time_logger.hpp" // TODO
+#include "maia/utils/log/log.hpp"
+#include "std_e/logging/mem_logger.hpp" // TODO
 
 
 using namespace cgns;
@@ -18,7 +19,7 @@ namespace maia {
 
 
 template<class I> auto
-concatenate_into_poly_section(const tree_range& sections, ElementType_t elt_type, const std::string& connec_type, const std::vector<I>& n_elts, const std::vector<I>& w_elts, MPI_Comm comm) {
+concatenate_into_poly_section(const tree_range& sections, ElementType_t elt_type, const std::string& connec_type, I first_id, const std::vector<I>& n_elts, const std::vector<I>& w_elts, MPI_Comm comm) {
   // 0. concatenate all surface elements into one ngon
   int rk = std_e::rank(comm);
   int n_slot = std_e::n_rank(comm);
@@ -60,7 +61,7 @@ concatenate_into_poly_section(const tree_range& sections, ElementType_t elt_type
   // connec
   std::vector<I> connec_array(begin(dconnec.local()),end(dconnec.local())); // TODO no copy
   I n_elt_tot = std::accumulate(begin(n_elts),end(n_elts),0);
-  tree ngon_section_node = new_Elements(to_string(elt_type),elt_type,std::move(connec_array),1,n_elt_tot);
+  tree ngon_section_node = new_Elements(to_string(elt_type),elt_type,std::move(connec_array),first_id,first_id+n_elt_tot-1);
 
   // elt_start_offset
   tree eso_node = new_DataArray("ElementStartOffset",std::move(elt_start_offset));
@@ -89,7 +90,7 @@ concatenate_into_poly_section(const tree_range& sections, ElementType_t elt_type
 
 auto
 replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
-  auto _ = std_e::stdout_time_logger("== replace_faces_by_ngons ==");
+  auto _ = maia_perf_log_lvl_1("replace_faces_by_ngons");
   int rk = std_e::rank(comm);
   // 0. sizes
   auto face_sections = surface_element_sections(z);
@@ -111,7 +112,7 @@ replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
   // 1. shift volume element ids // TODO move to _generate_interior_faces_and_parents
   I4 first_3d_elt_id = volume_elements_interval(z).first();
   I4 volume_elts_offset = n_surf_elt_tot+1 - first_3d_elt_id;
-  //I4 volume_elts_offset = 1 - first_3d_elt_id; // TODO here this is done to please cassiopee, but not CGNS compliant
+  I4 volume_elts_offset2 = 1 - first_3d_elt_id; // TODO here this is done to please cassiopee, but not CGNS compliant
   // 1.0 ElementRange
   auto cell_sections = volume_element_sections(z);
   for (tree& cell_section : cell_sections) {
@@ -124,7 +125,7 @@ replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
     auto pe = get_node_value_by_matching<I4,2>(elt_node,"ParentElements");
     for (I4& id : pe) {
       if (id != 0) {
-        id += volume_elts_offset;
+        id += volume_elts_offset2;
       }
     }
   }
@@ -132,7 +133,7 @@ replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
 
   // 2. concatenate
   // 2.0 connec + eso
-  auto [dist_cat_elts,ngon_section_node] = concatenate_into_poly_section(face_sections,cgns::NGON_n,"ElementConnectivity",n_elts,w_elts,comm);
+  auto [dist_cat_elts,ngon_section_node] = concatenate_into_poly_section(face_sections,cgns::NGON_n,"ElementConnectivity",1,n_elts,w_elts,comm);
 
   // 2.1 send parents TODO parents_position
   std_e::dist_array<I4> l_parents(dist_cat_elts,comm);
@@ -169,7 +170,7 @@ replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
 
 auto
 replace_elts_by_nfaces(tree& z, MPI_Comm comm) -> void {
-  auto _ = std_e::stdout_time_logger("== replace_elts_by_nfaces ==");
+  auto _ = maia_perf_log_lvl_1("replace_elts_by_nfaces");
   // 0. sizes
   auto cell_sections = volume_element_sections(z);
   int n_cell_section = cell_sections.size();
@@ -186,13 +187,14 @@ replace_elts_by_nfaces(tree& z, MPI_Comm comm) -> void {
   }
 
   // 1. connec + eso
-  auto [_1,nfaces_section_node] = concatenate_into_poly_section(cell_sections,cgns::NFACE_n,"CellFace",n_elts,w_elts,comm);
+  I4 first_id = element_range(get_child_by_name(z,"NGON_n")).last()+1;
+  auto [_1,nfaces_section_node] = concatenate_into_poly_section(cell_sections,cgns::NFACE_n,"CellFace",first_id,n_elts,w_elts,comm);
 
   emplace_child(z,std::move(nfaces_section_node));
 }
 
 auto std_elements_to_ngons(tree& z, MPI_Comm comm) -> void {
-  auto _ = std_e::stdout_time_logger("== std_elements_to_ngons ==");
+  auto _ = maia_perf_log_lvl_0("std_elements_to_ngons");
   generate_interior_faces_and_parents(z,comm);
 
   auto elt_sections = element_sections(z);
