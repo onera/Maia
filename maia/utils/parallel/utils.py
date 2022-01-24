@@ -22,6 +22,9 @@ def partial_to_full_distribution(partial_distrib, comm):
   np.cumsum(full_distrib, out=full_distrib)
   return full_distrib
 
+def full_to_partial_distribution(full_distrib, comm):
+  return full_distrib[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+
 def gather_and_shift(value, comm, dtype=None):
   if dtype is None:
     value = np.asarray(value)

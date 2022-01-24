@@ -87,3 +87,11 @@ def add_joins_ordinal(dist_tree, comm):
     I.createNode('Ordinal'   , 'UserDefinedData_t',  gc_id+1, parent=gc)
     I.createNode('OrdinalOpp', 'UserDefinedData_t', opp_id+1, parent=gc)
 
+def rm_joins_ordinal(dist_tree):
+  """
+  Remove Ordinal and OrdinalOpp nodes created on GC_t
+  """
+  gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  for gc in IE.getNodesByMatching(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
+    I._rmNodesByName(gc, 'Ordinal')
+    I._rmNodesByName(gc, 'OrdinalOpp')

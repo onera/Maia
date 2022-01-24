@@ -62,6 +62,11 @@ def is_subset_l(subset, L):
   extended_l = list(L) + list(L)[:len(subset)-1]
   return max([subset == extended_l[i:i+len(subset)] for i in range(len(L))])
 
+def append_unique(L, item):
+  """ Add an item in a list only if not already present"""
+  if item not in L:
+    L.append(item)
+
 def get_ordered_subset(subset, L):
   """
   Check is one of the permutations of subset exists in L, allowing looping

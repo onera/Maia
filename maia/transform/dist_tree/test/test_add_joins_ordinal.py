@@ -154,3 +154,22 @@ Base1 CGNSBase_t [3,3]:
           assert I.getNodeFromName1(gc, 'Ordinal')[1]    == expected_ordinal[i]
           assert I.getNodeFromName1(gc, 'OrdinalOpp')[1] == expected_ordinal_opp[i]
 
+def test_rm_joins_ordinal():
+  yt = """
+Base0 CGNSBase_t:
+  ZoneA Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      matchAB GridConnectivity_t "ZoneB":
+        Ordinal DataArray_t [1]:
+        OrdinalOpp DataArray_t [2]:
+  ZoneB Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      matchBA GridConnectivity_t "ZoneA":
+        Ordinal DataArray_t [2]:
+        PointList IndexArray_t [13,16,7,10]:
+        OrdinalOpp DataArray_t [1]:
+"""
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  add_joins_ordinal.rm_joins_ordinal(dist_tree)
+  assert I.getNodeFromName(dist_tree, 'Ordinal')    is None
+  assert I.getNodeFromName(dist_tree, 'OrdinalOpp') is None
