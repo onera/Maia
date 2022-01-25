@@ -109,11 +109,10 @@ def merge_zones(tree, zones_path, comm, output_path=None, remove_internal_jns=Tr
 
   for base in I.getBases(tree):
     for gc in IE.getNodesByMatching(base, ['Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']):
-      #Update name
+      #Update name and PL
       if IE.getZoneDonorPath(I.getName(base), gc) in zones_path:
         I.setValue(gc, merged_zone_path)
-      #Update PL
-      I.newIndexArray('PointListDonor', ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]], parent=gc)
+        I.newIndexArray('PointListDonor', ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]], parent=gc)
 
   #Now we can merge internal jns (PLDonor are needed for that)
   internal_jns = lambda n: I.getType(n) == 'GridConnectivity_t' and I.getValue(n) == merged_zone_path \
@@ -201,9 +200,12 @@ def _merge_zones(tree, zones_path, comm):
 
   #TODO : use basic interface OR filter tree here
   VL.generate_jns_vertex_list(tree, comm)
+  for base, zone in IE.getNodesWithParentsByMatching(tree, ['CGNSBase_t', 'Zone_t']):
+    if not f"{I.getName(base)}/{I.getName(zone)}" in zone_to_id:
+      I._rmNodesByNameAndType(zone, '*#Vtx', 'ZoneGridConnectivity_t') #Cleanup
   
   # Collect interface data
-  query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
+  query = ['ZoneGridConnectivity_t', \
       lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
                 and sids.GridLocation(n) == 'FaceCenter' 
                 and I.getNodeFromType(n, 'GridConnectivityProperty_t') is None]
@@ -213,26 +215,30 @@ def _merge_zones(tree, zones_path, comm):
   interface_dom = []
   interface_dn_v = []
   interface_ids_v = []
-  for base, zone, zgc, gc in IE.getNodesWithParentsByMatching(tree, query):
-    jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
-    jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
-    if jn_ordinal < jn_ordinal_opp:
-      cur_zone_path = f"{I.getName(base)}/{I.getName(zone)}"
-      opp_zone_path = IE.getZoneDonorPath(I.getName(base), gc)
-      interface_dom.append((zone_to_id[cur_zone_path], zone_to_id[opp_zone_path]))
+  for zone_path in zones_path:
+    base_name, zone_name = zone_path.split('/')
+    zone = I.getNodeFromPath(tree, zone_path)
+    for zgc, gc in IE.getNodesWithParentsByMatching(zone, query):
+      jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
+      jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
+      opp_zone_path = IE.getZoneDonorPath(base_name, gc)
+      if opp_zone_path in zone_to_id:
+        I.newDescriptor('__maia_merge__', parent=gc)
+      if opp_zone_path in zone_to_id and jn_ordinal < jn_ordinal_opp:
+        interface_dom.append((zone_to_id[zone_path], zone_to_id[opp_zone_path]))
 
-      pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
-      pld = I.getNodeFromName1(gc, 'PointListDonor')[1][0]
+        pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
+        pld = I.getNodeFromName1(gc, 'PointListDonor')[1][0]
 
-      interface_dn_f.append(pl.size)
-      interface_ids_f.append(py_utils.interweave_arrays([pl,pld]))
+        interface_dn_f.append(pl.size)
+        interface_ids_f.append(py_utils.interweave_arrays([pl,pld]))
 
-      # Find corresponding vertex
-      gc_vtx = I.getNodeFromPath(zone, f'{I.getName(zgc)}#Vtx/{I.getName(gc)}#Vtx')
-      pl_v  = I.getNodeFromName1(gc_vtx, 'PointList')[1][0]
-      pld_v = I.getNodeFromName1(gc_vtx, 'PointListDonor')[1][0]
-      interface_dn_v.append(pl_v.size)
-      interface_ids_v.append(py_utils.interweave_arrays([pl_v,pld_v]))
+        # Find corresponding vertex
+        gc_vtx = I.getNodeFromPath(zone, f'{I.getName(zgc)}#Vtx/{I.getName(gc)}#Vtx')
+        pl_v  = I.getNodeFromName1(gc_vtx, 'PointList')[1][0]
+        pld_v = I.getNodeFromName1(gc_vtx, 'PointListDonor')[1][0]
+        interface_dn_v.append(pl_v.size)
+        interface_ids_v.append(py_utils.interweave_arrays([pl_v,pld_v]))
 
   # Generate interfaces
   graph_idx, graph_ids, graph_dom = PDM.interface_to_graph(\
@@ -347,20 +353,22 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
   #In each case, we need to collect all the nodes, since some can be absent of a given zone
   has_pl = lambda n : I.getNodeFromName1(n, 'PointList') is not None
+  jn_to_keep = lambda n : I.getType(n) == 'GridConnectivity_t' and sids.GridLocation(n) == 'FaceCenter'\
+      and I.getNodeFromName1(n, '__maia_merge__') is None
 
   #Order : FlowSolution/DiscreteData/ZoneSubRegion, BC, BCDataSet, GridConnectivity_t, 
   all_subset_queries = [
       [lambda n : I.getType(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'] and has_pl(n)],
       ['ZoneBC_t', 'BC_t'],
       ['ZoneBC_t', 'BC_t', lambda n : I.getType(n) == 'BCDataSet_t' and has_pl(n)],
-      #['ZoneGridConnectivity_t', 'GridConnectivity_t'],
+      ['ZoneGridConnectivity_t', jn_to_keep]
       ]
 
   all_data_queries = [
-      [ [] ],
-      [ [lambda n : I.getType(n) == 'BCDataSet_t' and not has_pl(n), 'BCData_t'] ],
-      [['BCData_t']],
-      #[ ],
+      ['DataArray_t'],
+      [lambda n : I.getType(n) == 'BCDataSet_t' and not has_pl(n), 'BCData_t', 'DataArray_t'],
+      ['BCData_t', 'DataArray_t'],
+      ['PointListDonor'],
       ]
 
   # Trick to avoid spectific treatment of ZoneSubRegions (add PL)
@@ -410,7 +418,7 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
         I._rmNodesByName(zsr, 'PointList*')
 
 
-def _merge_pl_data(mbm, zones, subset_path, loc, data_queries, comm):
+def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   """
   Generic function to produced a merged node from the zone to merge and the path to a
   node having a PointList
@@ -441,14 +449,17 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_queries, comm):
 
       pl = I.getNodeFromName1(node, 'PointList')[1][0]
       part_data = {'PL' : [pl]}
-      for query in data_queries:
-        for nodes in IE.getNodesWithParentsByMatching(node, query + ['DataArray_t']):
-          path =  '/'.join([I.getName(node) for node in nodes])
-          data_n = nodes[-1]
-          try:
-            part_data[path].append(data_n[1])
-          except KeyError:
-            part_data[path] = [data_n[1]]
+      for nodes in IE.getNodesWithParentsByMatching(node, data_query):
+        path =  '/'.join([I.getName(node) for node in nodes])
+        data_n = nodes[-1]
+        data = data_n[1]
+        if data_n[1].ndim > 1:
+          assert data_n[1].ndim == 2 and data_n[1].shape[0] == 1
+          data = data_n[1][0]
+        try:
+          part_data[path].append(data)
+        except KeyError:
+          part_data[path] = [data]
       #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
       dist_data = MPTB.part_to_dist(distri_ptb, part_data, [pl.astype(pdm_dtype)], comm)
 
@@ -483,17 +494,19 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_queries, comm):
 
   #Creation of node
   merged_node = I.createNode(I.getName(ref_node), I.getType(ref_node), I.getValue(ref_node))
-  I.newIndexArray('PointList', merged_pl.reshape(1, -1, order='F'), parent=merged_node)
+  I.newIndexArray('PointList', merged_pl.reshape((1, -1), order='F'), parent=merged_node)
 
-  for query in data_queries:
-    for nodes in IE.getNodesWithParentsByMatching(ref_node, query + ['DataArray_t']):
-      path =  '/'.join([I.getName(node) for node in nodes])
-      # #Rebuild structure if any
-      sub_ref = ref_node
-      merged_parent = merged_node
-      for node in nodes[:-1]:
-        sub_ref = I.getNodeFromName1(sub_ref, I.getName(node))
-        merged_parent = I.createUniqueChild(merged_parent, I.getName(sub_ref), I.getType(sub_ref), I.getValue(sub_ref))
+  for nodes in IE.getNodesWithParentsByMatching(ref_node, data_query):
+    path =  '/'.join([I.getName(node) for node in nodes])
+    # #Rebuild structure if any
+    sub_ref = ref_node
+    merged_parent = merged_node
+    for node in nodes[:-1]:
+      sub_ref = I.getNodeFromName1(sub_ref, I.getName(node))
+      merged_parent = I.createUniqueChild(merged_parent, I.getName(sub_ref), I.getType(sub_ref), I.getValue(sub_ref))
+    if I.getType(nodes[-1]) == 'IndexArray_t':
+      I.newIndexArray(I.getName(nodes[-1]), merged_data[path].reshape((1,-1), order='F'), merged_parent)
+    else:
       I.newDataArray(I.getName(nodes[-1]), merged_data[path], merged_parent)
 
   additional_types = ['GridLocation_t', 'FamilyName_t', 'Descriptor_t',
@@ -523,8 +536,8 @@ def _merge_ngon(all_mbm, tree, zones_path, comm):
 
   # First, we need to update the PE node to include cells of opposite zone
   query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                and sids.GridLocation(n) == 'FaceCenter' \
-                and I.getNodeFromType(n, 'GridConnectivityProperty_t') is None
+                and I.getNodeFromName1(n, '__maia_merge__') is not None
+
   for zone_path_send in zones_path:
     base_n = zone_path_send.split('/')[0]
     dom_id_send = zone_to_id[zone_path_send]
