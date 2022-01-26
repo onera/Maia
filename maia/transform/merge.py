@@ -106,15 +106,21 @@ def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
         (I.getNodeFromName1(gc, 'PointList')[1], I.getNodeFromName1(gc, 'PointListDonor')[1], IE.getDistribution(gc))
         #TODO : equilibrate subsets exchanges
 
-  for base in I.getBases(tree):
-    for gc in IE.getNodesByMatching(base, ['Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']):
+  for base, zone in IE.getNodesWithParentsByMatching(tree, ['CGNSBase_t', 'Zone_t']):
+    is_merged_zone = f"{I.getName(base)}/{I.getName(zone)}" == merged_zone_path
+    for gc in IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t']):
       #Update name and PL
       if IE.getZoneDonorPath(I.getName(base), gc) in zones_path:
         I.setValue(gc, merged_zone_path)
-        I.newIndexArray('PointList'     , ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]][1], parent=gc)
-        I.newIndexArray('PointListDonor', ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]][0], parent=gc)
-        I._rmNodesByName(gc, ":CGNS#Distribution")
-        I._addChild(gc, ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]][2])
+        jn_ord = I.getNodeFromName1(gc, 'Ordinal')[1][0]
+        key    = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
+        # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
+        # merged zone
+        if not is_merged_zone or key < jn_ord:
+          I.newIndexArray('PointList'     , ordinal_to_pl[key][1], parent=gc)
+          I.newIndexArray('PointListDonor', ordinal_to_pl[key][0], parent=gc)
+          I._rmNodesByName(gc, ":CGNS#Distribution")
+          I._addChild(gc, ordinal_to_pl[key][2])
 
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
@@ -153,10 +159,10 @@ def _merge_zones(tree, zones_path, comm):
       I._rmNodesByNameAndType(zone, '*#Vtx', 'ZoneGridConnectivity_t') #Cleanup
   
   # Collect interface data
+  is_perio = lambda n : I.getNodeFromType1(n, 'GridConnectivityProperty_t') is not None
   query = ['ZoneGridConnectivity_t', \
       lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-                and sids.GridLocation(n) == 'FaceCenter' 
-                and I.getNodeFromType(n, 'GridConnectivityProperty_t') is None]
+                and sids.GridLocation(n) == 'FaceCenter']
 
   interface_dn_f = []
   interface_ids_f = []
@@ -171,8 +177,11 @@ def _merge_zones(tree, zones_path, comm):
       jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
       opp_zone_path = IE.getZoneDonorPath(base_name, gc)
       if opp_zone_path in zone_to_id:
-        I.newDescriptor('__maia_merge__', parent=gc)
-      if opp_zone_path in zone_to_id and jn_ordinal < jn_ordinal_opp:
+        if is_perio(gc):
+          I.newUserDefinedData('__maia_jn_update__', value = zone_to_id[opp_zone_path], parent=gc)
+        else:
+          I.newDescriptor('__maia_merge__', parent=gc)
+      if I.getNodeFromName1(gc, '__maia_merge__') is not None and jn_ordinal < jn_ordinal_opp:
         interface_dom.append((zone_to_id[zone_path], zone_to_id[opp_zone_path]))
 
         pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
@@ -432,10 +441,21 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
     data_it = iter(datas)
     updated_data = [next(data_it) if _has_data else zero_data for i,_has_data in enumerate(has_data)]
     all_datas[data_path] = updated_data
-
+  
   pl_data = all_datas.pop('PL')
   _, merged_pl = mbm.merge_and_update(mbm, [pl.astype(pdm_dtype) for pl in pl_data], strides)
-  merged_data = {path : mbm.merge_field(datas, strides)[1] for path, datas in all_datas.items()}
+
+  # For periodic jns of zones to merge, PointListDonor must be transported and updated.
+  # Otherwise, it must just be transported to new zone
+  merged_data = {}
+  if I.getNodeFromName(ref_node, '__maia_jn_update__') is not None:
+    opp_dom = I.getNodeFromName(ref_node, '__maia_jn_update__')[1][0]
+    pld_data = all_datas.pop('PointListDonor')
+    block_datas   = [pld.astype(pdm_dtype) for pld in pld_data]
+    block_domains = [opp_dom*np.ones(pld.size, np.int32) for pld in pld_data]
+    merged_data['PointListDonor'] = mbm.merge_and_update(mbm, block_datas, strides, block_domains)[1]
+
+  merged_data.update({path : mbm.merge_field(datas, strides)[1] for path, datas in all_datas.items()})
 
   merged_pl_distri_full = par_utils.gather_and_shift(merged_pl.size, comm)
   merged_pl_distri = par_utils.full_to_partial_distribution(merged_pl_distri_full, comm)
