@@ -374,6 +374,24 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
          I.getNodeFromName1(zsr, 'GridConnectivityRegionName') is not None:
         I._rmNodesByName(zsr, 'PointList*')
 
+def _equilibrate_data(data, comm, distri=None, distri_full=None):
+  from maia.distribution import distribution_function as DF
+  if distri_full is None:
+    if distri is None:
+      first = next(iter(data.values()))
+      distri_full = par_utils.gather_and_shift(first.size, comm, pdm_dtype)
+    else:
+      distri_full = par_utils.partial_to_full_distribution(distri, comm)
+
+  ideal_distri = DF.uniform_distribution(distri_full[-1], comm)
+  ideal_distri_full = par_utils.partial_to_full_distribution(ideal_distri, comm)
+
+  BTB = PDM.BlockToBlock(distri_full, ideal_distri_full, comm)
+  dist_data = dict()
+  BTB.BlockToBlock_Exchange(data, dist_data)
+  
+  return ideal_distri, dist_data
+
 
 def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   """
@@ -444,10 +462,10 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   
   pl_data = all_datas.pop('PL')
   _, merged_pl = mbm.merge_and_update(mbm, [pl.astype(pdm_dtype) for pl in pl_data], strides)
+  merged_data = {'PointList' : merged_pl}
 
   # For periodic jns of zones to merge, PointListDonor must be transported and updated.
   # Otherwise, it must just be transported to new zone
-  merged_data = {}
   if I.getNodeFromName(ref_node, '__maia_jn_update__') is not None:
     opp_dom = I.getNodeFromName(ref_node, '__maia_jn_update__')[1][0]
     pld_data = all_datas.pop('PointListDonor')
@@ -457,12 +475,12 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
 
   merged_data.update({path : mbm.merge_field(datas, strides)[1] for path, datas in all_datas.items()})
 
-  merged_pl_distri_full = par_utils.gather_and_shift(merged_pl.size, comm)
-  merged_pl_distri = par_utils.full_to_partial_distribution(merged_pl_distri_full, comm)
+  # Data is merged, but distributed using pl distri. We do a BtB to re equilibrate it
+  merged_pl_distri, merged_data = _equilibrate_data(merged_data, comm)
 
   #Creation of node
   merged_node = I.createNode(I.getName(ref_node), I.getType(ref_node), I.getValue(ref_node))
-  I.newIndexArray('PointList', merged_pl.reshape((1, -1), order='F'), parent=merged_node)
+  I.newIndexArray('PointList', merged_data['PointList'].reshape((1, -1), order='F'), parent=merged_node)
 
   for nodes in IE.getNodesWithParentsByMatching(ref_node, data_query):
     path =  '/'.join([I.getName(node) for node in nodes])
