@@ -5,15 +5,12 @@ import Converter.Internal as I
 from Pypdm import Pypdm as PDM
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.distribution import distribution_function as DIF
 
 from maia.sids import Internal_ext as IE
 from maia.sids import sids
-from maia.sids import elements_utils as EU
 from maia.utils import py_utils
 from maia.utils.parallel import utils as par_utils
 from maia.transform.dist_tree import add_joins_ordinal as AJO
-from maia.connectivity import merge_jn
 from maia.generate import nodes as GN
 
 from maia.sids import pytree as PT
@@ -69,7 +66,7 @@ def merge_connected_zones(tree, comm, **kwargs):
     base = zones_path[0].split('/')[0]
     merge_zones(tree, zones_path, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
-def merge_zones(tree, zones_path, comm, output_path=None, remove_internal_jns=True, concatenate_jns=True):
+def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
   """
   Highlevel function to merge some zones of a cgns dist tree.
   Zone to merge are specified by their path and must be unstructured.
@@ -105,68 +102,19 @@ def merge_zones(tree, zones_path, comm, output_path=None, remove_internal_jns=Tr
   merged_zone_path = I.getName(output_base) + '/' + I.getName(merged_zone)
   ordinal_to_pl = {}
   for gc in IE.getNodesByMatching(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']):
-    ordinal_to_pl[I.getNodeFromName1(gc, 'Ordinal')[1][0]] = I.getNodeFromName1(gc, 'PointList')[1]
+    ordinal_to_pl[I.getNodeFromName1(gc, 'Ordinal')[1][0]] = \
+        (I.getNodeFromName1(gc, 'PointList')[1], I.getNodeFromName1(gc, 'PointListDonor')[1], IE.getDistribution(gc))
+        #TODO : equilibrate subsets exchanges
 
   for base in I.getBases(tree):
     for gc in IE.getNodesByMatching(base, ['Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']):
       #Update name and PL
       if IE.getZoneDonorPath(I.getName(base), gc) in zones_path:
         I.setValue(gc, merged_zone_path)
-        I.newIndexArray('PointListDonor', ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]], parent=gc)
-
-  #Now we can merge internal jns (PLDonor are needed for that)
-  internal_jns = lambda n: I.getType(n) == 'GridConnectivity_t' and I.getValue(n) == merged_zone_path \
-                           and I.getNodeFromType(n, 'GridConnectivityProperty_t') is None\
-                           and I.getValue(I.getNodeFromType(n, 'GridConnectivityType_t')) == 'Abutting1to1'
-  #Find pairs of joins
-  jns_pathes = dict()
-  for zgc, jn in IE.getNodesWithParentsByMatching(merged_zone, ['ZoneGridConnectivity_t', internal_jns]):
-    key = min(I.getNodeFromName(jn, 'Ordinal')[1][0], I.getNodeFromName(jn, 'OrdinalOpp')[1][0])
-    jn_path = '/'.join([merged_zone_path, I.getName(zgc), I.getName(jn)])
-    try:
-      jns_pathes[key].append(jn_path)
-    except KeyError:
-      jns_pathes[key] = [jn_path]
-  jns_pathes = [val for val in jns_pathes.values()] #Key are useless now
-
-  # Merging all intrazone jns before merging is unsafe : vertex list generation will fail if three (or more) vertices
-  # join at the same point. This could be predicted if we had a global numbering on vertices, but for now we just 
-  # merge the jns two by two (wich is safe and divide the number of fusions by two)
-  # In addition, we should check the location
-  allow_two = False
-  if remove_internal_jns and allow_two:
-    jns_pathes_cat = []
-    i = 0
-    while jns_pathes:
-      jn_pathes_1 = jns_pathes.pop()
-      try:
-        jn_pathes_2 = jns_pathes.pop()
-        gcs_A = [I.getNodeFromPath(tree, jn_pathes_1[0]), I.getNodeFromPath(tree, jn_pathes_2[0])]
-        gcs_B = [I.getNodeFromPath(tree, jn_pathes_1[1]), I.getNodeFromPath(tree, jn_pathes_2[1])]
-        assert sids.GridLocation(gcs_A[0]) == sids.GridLocation(gcs_A[1]), "Multiple locations are not yet supported"
-        mergedA = GN.concatenate_subset_nodes(gcs_A, comm, output_name=f'IntraZoneJnA_{i}', \
-            additional_child_queries=['GridConnectivityType_t'])
-        mergedB = GN.concatenate_subset_nodes(gcs_B, comm, output_name=f'IntraZoneJnB_{i}', \
-            additional_child_queries=['GridConnectivityType_t'])
-        for path in jn_pathes_1 + jn_pathes_2:
-          I._rmNodeByPath(tree, path)
-
-        I._addChild(zgc, mergedA)
-        I._addChild(zgc, mergedB)
-        jns_pathes_cat.append((merged_zone_path + '/' + I.getName(zgc) + f'/IntraZoneJnA_{i}', 
-                               merged_zone_path + '/' + I.getName(zgc) + f'/IntraZoneJnB_{i}'))
-      except IndexError: #When jns_pathes is even, we can not pop 2 times for last element
-        jns_pathes_cat.append(jn_pathes_1)
-      i += 1
-
-    jns_pathes = jns_pathes_cat
-    #If we concatenate, ordinal are outdated, we must udpate it
-    AJO.rm_joins_ordinal(tree)
-  AJO.add_joins_ordinal(tree, comm)
-
-  if remove_internal_jns:
-    for jn_pathes in jns_pathes:
-      merge_jn.merge_intrazone_jn(tree, jn_pathes, comm)
+        I.newIndexArray('PointList'     , ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]][1], parent=gc)
+        I.newIndexArray('PointListDonor', ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]][0], parent=gc)
+        I._rmNodesByName(gc, ":CGNS#Distribution")
+        I._addChild(gc, ordinal_to_pl[I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]][2])
 
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
