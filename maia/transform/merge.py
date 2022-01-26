@@ -16,6 +16,11 @@ from maia.transform.dist_tree import add_joins_ordinal as AJO
 from maia.connectivity import merge_jn
 from maia.generate import nodes as GN
 
+from maia.sids import pytree as PT
+from maia.connectivity import vertex_list as VL
+from maia.tree_exchange.dist_to_part import data_exchange as MBTP
+from maia.tree_exchange.part_to_dist import data_exchange as MPTB
+
 
 def _find_connected_zones(tree):
   """
@@ -82,7 +87,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, remove_internal_jns=Tr
 
   #Merge zones
   zones = [I.getNodeFromPath(tree, zone_path) for zone_path in zones_path]
-  merged_zone = _merge_zones(zones, comm)
+  merged_zone = _merge_zones(tree, zones_path, comm)
 
   # Remove input zones and add output in tree
   for zone_path in zones_path:
@@ -183,22 +188,97 @@ def _rm_zone_suffix(zones, query):
     for node in IE.getNodesByMatching(zone, query):
       I.setName(node, '.'.join(I.getName(node).split('.')[:-1]))
 
-def _merge_zones(zones, comm):
+def _merge_zones(tree, zones_path, comm):
   """
-  Merge the input zones and return the merged with updated distributions, connectivities, subset and data.
-  All the releveant data should be updated, exepted GridConnectivity_t for which donor data is not recovered
-  here (PointListDonor and DonorName)
-  Only unstructured zones are supported
+  Interface must be described by faces
   """
+
+  n_zone = len(zones_path)
+  zones = [I.getNodeFromPath(tree, zone_path) for zone_path in zones_path]
   assert min([sids.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
 
-  # Compute merge zone cell and vertex distributions
-  n_cell_tot = sum([sids.Zone.n_cell(zone) for zone in zones])
-  n_vtx_tot  = sum([sids.Zone.n_vtx(zone) for zone in zones])
+  zone_to_id = {path : i for i, path in enumerate(zones_path)}
 
-  merged_zone = I.newZone('MergedZone', [[n_vtx_tot, n_cell_tot, 0]], ztype='Unstructured')
-  DIF.create_distribution_node(n_vtx_tot,  comm, 'Vertex', merged_zone)
-  DIF.create_distribution_node(n_cell_tot, comm, 'Cell',   merged_zone)
+  #TODO : use basic interface OR filter tree here
+  VL.generate_jns_vertex_list(tree, comm)
+  
+  # Collect interface data
+  query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
+      lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+                and sids.GridLocation(n) == 'FaceCenter' 
+                and I.getNodeFromType(n, 'GridConnectivityProperty_t') is None]
+
+  interface_dn_f = []
+  interface_ids_f = []
+  interface_dom = []
+  interface_dn_v = []
+  interface_ids_v = []
+  for base, zone, zgc, gc in IE.getNodesWithParentsByMatching(tree, query):
+    jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
+    jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
+    if jn_ordinal < jn_ordinal_opp:
+      cur_zone_path = f"{I.getName(base)}/{I.getName(zone)}"
+      opp_zone_path = IE.getZoneDonorPath(I.getName(base), gc)
+      interface_dom.append((zone_to_id[cur_zone_path], zone_to_id[opp_zone_path]))
+
+      pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
+      pld = I.getNodeFromName1(gc, 'PointListDonor')[1][0]
+
+      interface_dn_f.append(pl.size)
+      interface_ids_f.append(py_utils.interweave_arrays([pl,pld]))
+
+      # Find corresponding vertex
+      gc_vtx = I.getNodeFromPath(zone, f'{I.getName(zgc)}#Vtx/{I.getName(gc)}#Vtx')
+      pl_v  = I.getNodeFromName1(gc_vtx, 'PointList')[1][0]
+      pld_v = I.getNodeFromName1(gc_vtx, 'PointListDonor')[1][0]
+      interface_dn_v.append(pl_v.size)
+      interface_ids_v.append(py_utils.interweave_arrays([pl_v,pld_v]))
+
+  # Generate interfaces
+  graph_idx, graph_ids, graph_dom = PDM.interface_to_graph(\
+      len(interface_dn_v), False, interface_dn_v, interface_ids_v, interface_dom, comm)
+  graph_dict_v = {'graph_idx' : graph_idx, 'graph_ids' : graph_ids, 'graph_dom' : graph_dom}
+
+  graph_idx, graph_ids, graph_dom = PDM.interface_to_graph(\
+      len(interface_dn_f), False, interface_dn_f, interface_ids_f, interface_dom, comm)
+  graph_dict_f = {'graph_idx' : graph_idx, 'graph_ids' : graph_ids, 'graph_dom' : graph_dom}
+
+  # Empty graph for cells
+  graph_dict_c = {'graph_idx' : np.array([0], np.int32),
+                  'graph_ids' : np.empty(0, pdm_dtype),
+                  'graph_dom' : np.empty(0, np.int32)}
+
+  # Collect distributions
+  entities = ['Vertex', 'Face', 'Cell']
+  blocks_distri_l = {entity : [] for entity in entities}
+  selected_l      = {entity : [] for entity in entities}
+  for zone in zones:
+    for entity in entities:
+      if entity == 'Face':
+        distri = IE.getDistribution(sids.Zone.NGonNode(zone), 'Element')[1].astype(pdm_dtype)
+      else:
+        distri = IE.getDistribution(zone, entity)[1].astype(pdm_dtype)
+      blocks_distri_l[entity].append(par_utils.partial_to_full_distribution(distri, comm))
+      selected_l[entity].append(np.arange(distri[0], distri[1], dtype=pdm_dtype)+1)
+  
+  # Create merge protocols
+  mbm_vtx  = PDM.MultiBlockMerge(n_zone, blocks_distri_l['Vertex'], selected_l['Vertex'], graph_dict_v, comm)
+  mbm_face = PDM.MultiBlockMerge(n_zone, blocks_distri_l['Face'  ], selected_l['Face'  ], graph_dict_f, comm)
+  mbm_cell = PDM.MultiBlockMerge(n_zone, blocks_distri_l['Cell'  ], selected_l['Cell'  ], graph_dict_c, comm)
+  all_mbm = {'Vertex' : mbm_vtx, 'Face' : mbm_face, 'Cell' : mbm_cell}
+
+  merged_distri_vtx  = mbm_vtx .get_merged_distri()
+  merged_distri_face = mbm_face.get_merged_distri()
+  merged_distri_cell = mbm_cell.get_merged_distri()
+  
+  merged_zone = I.newZone('MergedZone', [[merged_distri_vtx[-1], merged_distri_cell[-1], 0]], ztype='Unstructured')
+
+  # NGon
+  I._addChild(merged_zone, _merge_ngon(all_mbm, tree, zones_path, comm))
+
+  # Generate NFace (TODO)
+  pass
+
 
   loc_without_pl = lambda n, loc : sids.GridLocation(n) == loc and I.getNodeFromName(n, 'PointList') is None
   # Merge all mesh data
@@ -211,43 +291,24 @@ def _merge_zones(zones, comm):
                        [lambda n: I.getType(n) == 'FlowSolution_t' and loc_without_pl(n, 'CellCenter')],
                        [lambda n: I.getType(n) == 'DiscreteData_t' and loc_without_pl(n, 'CellCenter')],
                       ]
-  _merge_allmesh_data(zones, merged_zone, 'Vertex', vtx_data_queries, comm)
-  _merge_allmesh_data(zones, merged_zone, 'CellCenter', cell_data_queries, comm)
+  _merge_allmesh_data(mbm_vtx,  zones, merged_zone, vtx_data_queries)
+  _merge_allmesh_data(mbm_cell, zones, merged_zone, cell_data_queries)
 
-  # Connectivity
-  _merge_ngon(zones, merged_zone, comm)
-  _merge_nface(zones, merged_zone, comm)
-  
-  #Shift nface 
-  if I.getNodeFromPath(merged_zone, 'NFaceElements') is not None:
-    ngon_tot = sids.ElementSize(I.getNodeFromPath(merged_zone, 'NGonElements'))
-    I.getNodeFromPath(merged_zone, 'NFaceElements/ElementRange')[1] += ngon_tot
+  _merge_pls_data(all_mbm, zones, merged_zone, comm)
 
-  _merge_pls_data(zones, merged_zone, comm)
-
+  IE.newDistribution({'Vertex' : par_utils.full_to_partial_distribution(merged_distri_vtx, comm),
+                      'Cell'   : par_utils.full_to_partial_distribution(merged_distri_cell, comm)},
+                     merged_zone)
   return merged_zone
 
-def _merge_allmesh_data(zones, merged_zone, location, data_queries, comm):
+def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
   """
-  Merge the all DataArray supported by allCells or allVertex (depending on location),
+  Merge the all DataArray supported by allCells or allVertex (depending on query and mbm),
   found under each of data_query (query must start from zone node), from input zones
   to merged_zone.
   """
-  assert location in ['Vertex', 'CellCenter']
-  distri_name = 'Cell' if location == 'CellCenter' else 'Vertex'
 
-  offset = 0
-  ln_to_gn = list()
-  for zone in zones:
-    distri = I.getVal(IE.getDistribution(zone, distri_name))
-    ln_to_gn.append(np.arange(distri[0], distri[1], dtype=pdm_dtype) + offset + 1)
-    offset += distri[2]
-
-  partial_distri = I.getVal(IE.getDistribution(merged_zone, distri_name)).astype(pdm_dtype)
-  pdm_distrib = par_utils.partial_to_full_distribution(partial_distri, comm)
-  PTB = PDM.PartToBlock(comm, ln_to_gn, None, len(zones), 0, 0, 0, userDistribution=pdm_distrib)
-
-  pField  = dict()
+  to_merge  = dict()
   
   for query in data_queries:
     for zone in zones:
@@ -255,12 +316,12 @@ def _merge_allmesh_data(zones, merged_zone, location, data_queries, comm):
       for node, data in IE.getNodesWithParentsByMatching(zone, query + ['DataArray_t']):
         dic_path = I.getName(node) + '/' + I.getName(data)
         try:
-          pField[I.getName(node) + '/' + I.getName(data)].append(data[1])
+          to_merge[dic_path].append(data[1])
         except KeyError:
-          pField[I.getName(node) + '/' + I.getName(data)] = [ data[1] ]
+          to_merge[dic_path] = [ data[1] ]
     
-  dField = dict()
-  PTB.PartToBlock_Exchange(dField, pField)
+  merged = {key : mbm.merge_field(datas) for key, datas in to_merge.items()}
+
 
   additional_types = ['GridLocation_t', 'Descriptor_t', 'DataClass_t', 'DimensionalUnits_t']
   for query in data_queries:
@@ -268,12 +329,12 @@ def _merge_allmesh_data(zones, merged_zone, location, data_queries, comm):
     for node in IE.getNodesByMatching(zones[0], query):
       m_node = I.createUniqueChild(merged_zone, I.getName(node), I.getType(node), I.getValue(node))
       for data in I.getNodesFromType1(node, 'DataArray_t'):
-        I.newDataArray(data[0], dField[I.getName(node) + '/' + I.getName(data)], parent=m_node)
+        I.newDataArray(data[0], merged[I.getName(node) + '/' + I.getName(data)], parent=m_node)
       for type in additional_types:
         for sub_node in I.getNodesFromType1(node, type):
           I._addChild(m_node, sub_node)
 
-def _merge_pls_data(zones, merged_zone, comm, merge_strategy='name'):
+def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
   Wrapper to perform a merge off the following subset nodes (when having a PointList) :
     FlowSolution_t, DiscreteData_t, ZoneSubRegion_t, BC_t, GridConnectivity_t, BCDataSet_t
@@ -292,27 +353,15 @@ def _merge_pls_data(zones, merged_zone, comm, merge_strategy='name'):
       [lambda n : I.getType(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'] and has_pl(n)],
       ['ZoneBC_t', 'BC_t'],
       ['ZoneBC_t', 'BC_t', lambda n : I.getType(n) == 'BCDataSet_t' and has_pl(n)],
-      ['ZoneGridConnectivity_t', 'GridConnectivity_t'],
+      #['ZoneGridConnectivity_t', 'GridConnectivity_t'],
       ]
 
   all_data_queries = [
       [ [] ],
       [ [lambda n : I.getType(n) == 'BCDataSet_t' and not has_pl(n), 'BCData_t'] ],
       [['BCData_t']],
-      [ ],
+      #[ ],
       ]
-
-  # Precompute offsets only once
-  ngons   = [sids.Zone.NGonNode(zone) for zone in zones]
-  nvtx_per_zone  = np.array([sids.Zone.n_vtx(zone)  for zone in zones])
-  nface_per_zone = np.array([sids.ElementSize(ngon) for ngon in ngons])
-  ncell_per_zone = np.array([sids.Zone.n_cell(zone) for zone in zones])
-  vtx_offset  = py_utils.sizes_to_indices(nvtx_per_zone)
-  #Face and Cell offset are for ngon only, standart elements not suppported
-  face_offset = py_utils.sizes_to_indices(nface_per_zone)
-  cell_offset = py_utils.sizes_to_indices(ncell_per_zone) + sum(nface_per_zone) 
-  cell_offset[:-1 ] += -nface_per_zone #Last idx is not managed, but is ok
-  offsets = {'Vertex' : vtx_offset, 'FaceCenter' : face_offset, 'CellCenter' : cell_offset}
 
   # Trick to avoid spectific treatment of ZoneSubRegions (add PL)
   for zone in zones:
@@ -342,7 +391,8 @@ def _merge_pls_data(zones, merged_zone, comm, merge_strategy='name'):
       assert master_node is not None
       parent = merged_zone
       location = sids.GridLocation(I.getNodeFromPath(master_node, pl_path))
-      merged_pl = _merge_pl_data(zones, pl_path, offsets[location], rules, comm)
+      mbm = all_mbm[location.split('Center')[0]]
+      merged_pl = _merge_pl_data(mbm, zones, pl_path, location, rules, comm)
       #Rebuild structure until last node
       for child_name in pl_path.split('/')[:-1]:
         master_node = I.getNodeFromName1(master_node, child_name)
@@ -360,7 +410,7 @@ def _merge_pls_data(zones, merged_zone, comm, merge_strategy='name'):
         I._rmNodesByName(zsr, 'PointList*')
 
 
-def _merge_pl_data(zones, subset_path, loc_offset, data_queries, comm):
+def _merge_pl_data(mbm, zones, subset_path, loc, data_queries, comm):
   """
   Generic function to produced a merged node from the zone to merge and the path to a
   node having a PointList
@@ -373,58 +423,78 @@ def _merge_pl_data(zones, subset_path, loc_offset, data_queries, comm):
   Return the merged subset node 
   """
 
-  pl_offset   = 0
-
-  ln_to_gn = list()
-  p_data   = {'PointList' : list()}
-
   ref_node = None
 
+  has_data  = []
+  strides   = []
+  all_datas = {}
   for i, zone in enumerate(zones):
     node = I.getNodeFromPath(zone, subset_path)
+    if loc == 'Vertex': 
+      distri_ptb = IE.getDistribution(zone, 'Vertex')[1]
+    elif loc == 'FaceCenter':
+      distri_ptb = IE.getDistribution(sids.Zone.NGonNode(zone), 'Element')[1]
+    elif loc == 'CellCenter':
+      distri_ptb = IE.getDistribution(zone, 'Cell')[1]
     if node is not None:
       ref_node = node #Take any node as reference, to build name/type/value of merged node
 
-      distri = I.getVal(IE.getDistribution(node, 'Index'))
-      ln_to_gn.append(np.arange(distri[0], distri[1], dtype=pdm_dtype) + pl_offset + 1)
-
-      #Pl values must be shifted since elements to match new numbering of zone
       pl = I.getNodeFromName1(node, 'PointList')[1][0]
-      p_data['PointList'].append(pl + loc_offset[i])
-
-      #Add DataArrays for FS or ZSR (not shift is needed)
+      part_data = {'PL' : [pl]}
       for query in data_queries:
         for nodes in IE.getNodesWithParentsByMatching(node, query + ['DataArray_t']):
           path =  '/'.join([I.getName(node) for node in nodes])
           data_n = nodes[-1]
           try:
-            p_data[path].append(data_n[1])
+            part_data[path].append(data_n[1])
           except KeyError:
-            p_data[path] = [data_n[1]]
+            part_data[path] = [data_n[1]]
+      #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
+      dist_data = MPTB.part_to_dist(distri_ptb, part_data, [pl.astype(pdm_dtype)], comm)
 
-      pl_offset += distri[2]
+      stride = np.zeros(distri_ptb[1] - distri_ptb[0], np.int32)
+      stride[dist_data['PL'] - distri_ptb[0] - 1] = 1
 
-  PTB = PDM.PartToBlock(comm, ln_to_gn, None, len(ln_to_gn), 0, 0, 0)
-  pdm_distri = PTB.getDistributionCopy()
-  merged_pl_distri = pdm_distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+      has_data.append(True)
+      strides.append(stride)
+      for data_path, data in dist_data.items():
+        try:
+          all_datas[data_path].append(data)
+        except KeyError:
+          all_datas[data_path] = [data]
 
-  d_data  = dict()
-  PTB.PartToBlock_Exchange(d_data, p_data)
+    else:
+      has_data.append(False)
+      strides.append(np.zeros(distri_ptb[1] - distri_ptb[0], np.int32))
+
+  #Fill data for void zones
+  for data_path, datas in all_datas.items():
+    zero_data = np.empty(0, datas[0].dtype)
+    data_it = iter(datas)
+    updated_data = [next(data_it) if _has_data else zero_data for i,_has_data in enumerate(has_data)]
+    all_datas[data_path] = updated_data
+
+  pl_data = all_datas.pop('PL')
+  _, merged_pl = mbm.merge_and_update(mbm, [pl.astype(pdm_dtype) for pl in pl_data], strides)
+  merged_data = {path : mbm.merge_field(datas, strides)[1] for path, datas in all_datas.items()}
+
+  merged_pl_distri_full = par_utils.gather_and_shift(merged_pl.size, comm)
+  merged_pl_distri = par_utils.full_to_partial_distribution(merged_pl_distri_full, comm)
 
   #Creation of node
   merged_node = I.createNode(I.getName(ref_node), I.getType(ref_node), I.getValue(ref_node))
-  I.newIndexArray('PointList', d_data['PointList'].reshape(1, -1, order='F'), parent=merged_node)
+  I.newIndexArray('PointList', merged_pl.reshape(1, -1, order='F'), parent=merged_node)
 
   for query in data_queries:
     for nodes in IE.getNodesWithParentsByMatching(ref_node, query + ['DataArray_t']):
       path =  '/'.join([I.getName(node) for node in nodes])
-      #Rebuild structure if any
+      # #Rebuild structure if any
       sub_ref = ref_node
       merged_parent = merged_node
       for node in nodes[:-1]:
         sub_ref = I.getNodeFromName1(sub_ref, I.getName(node))
         merged_parent = I.createUniqueChild(merged_parent, I.getName(sub_ref), I.getType(sub_ref), I.getValue(sub_ref))
-      I.newDataArray(I.getName(nodes[-1]), d_data[path], merged_parent)
+      I.newDataArray(I.getName(nodes[-1]), merged_data[path], merged_parent)
 
   additional_types = ['GridLocation_t', 'FamilyName_t', 'Descriptor_t',
                       'GridConnectivityType_t', 'GridConnectivityProperty_t']
@@ -440,129 +510,103 @@ def _merge_pl_data(zones, subset_path, loc_offset, data_queries, comm):
 
   return merged_node
 
-def _merge_ngon(zones, merged_zone, comm):
-  """
-  Create a new NGon Element_t node on the merged zone from the NGon nodes of zones
-  to merge.
-  Face->vtx connectivity and PE are updated to match the vertices of the merged zone
-  """
-  vtx_offset = 0
-  ngon_offset = 0
-  cell_offset = 0
-  pLNToGN = []
-  p_data_pe = {'PE' : list()}
-  p_data_ec = {'EC' : list()}
-  p_strid_ec = list()
-  p_strid_pe = list()
-  for zone in zones:
-    ngon   = sids.Zone.NGonNode(zone)
-    ngon_distri = I.getVal(IE.getDistribution(ngon, 'Element'))
-    vtx_distri  = I.getVal(IE.getDistribution(zone, 'Vertex'))
-    cell_distri = I.getVal(IE.getDistribution(zone, 'Cell'))
+def _merge_ngon(all_mbm, tree, zones_path, comm):
 
-    pLNToGN.append(np.arange(ngon_distri[0], ngon_distri[1], dtype=pdm_dtype) + ngon_offset + 1)
+  zone_to_id = {path : i for i, path in enumerate(zones_path)}
 
-    PE  = I.getNodeFromName1(ngon, 'ParentElements')[1]
-    PE += cell_offset * (PE > 0)
-    EC    = I.getNodeFromName1(ngon, 'ElementConnectivity')[1] + vtx_offset
-    ECIdx = I.getNodeFromName1(ngon, 'ElementStartOffset')[1]
+  # Create working data
+  for zone_path, dom_id in zone_to_id.items():
+    ngon_node = sids.Zone.NGonNode(I.getNodeFromPath(tree, zone_path))
+    pe = I.getNodeFromPath(ngon_node, 'ParentElements')[1]
+    I.newDataArray('UpdatedPE', pe.copy(), parent=ngon_node)
+    I.newDataArray('PEDomain',  dom_id * np.ones_like(pe), parent=ngon_node)
 
-    p_data_pe['PE'].append(PE.ravel())
-    p_data_ec['EC'].append(EC)
-    p_strid_pe.append(2*np.ones(PE.shape[0], dtype=np.int32))
-    p_strid_ec.append(np.diff(ECIdx).astype(np.int32))
+  # First, we need to update the PE node to include cells of opposite zone
+  query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+                and sids.GridLocation(n) == 'FaceCenter' \
+                and I.getNodeFromType(n, 'GridConnectivityProperty_t') is None
+  for zone_path_send in zones_path:
+    base_n = zone_path_send.split('/')[0]
+    dom_id_send = zone_to_id[zone_path_send]
+    zone_send = I.getNodeFromPath(tree, zone_path_send)
+    ngon_send = sids.Zone.NGonNode(zone_send)
+    face_distri_send = IE.getDistribution(ngon_send, 'Element')[1].astype(pdm_dtype)
+    pe_send          =  I.getNodeFromPath(ngon_send, 'UpdatedPE')[1]
+    dist_data_send = {'PE' : pe_send[:,0]}
+    for gc in PT.iter_nodes_from_predicate(zone_send, query, depth=2):
 
-    vtx_offset  += vtx_distri[2]
-    cell_offset += cell_distri[2]
-    ngon_offset += ngon_distri[2]
+      pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
+      pld = I.getNodeFromName1(gc, 'PointListDonor')[1][0]
 
-  PTB = PDM.PartToBlock(comm, pLNToGN, None, len(zones), 0, 0, 1)
-  pdm_distri = PTB.getDistributionCopy()
-  merged_ngon_distri = pdm_distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+      #This is the left cell of the join face present in PL. Send it to opposite zone
+      #TODO : collect and exchange with npart > 1
+      part_data = MBTP.dist_to_part(face_distri_send, dist_data_send, [pl], comm)
+      part_data['FaceId'] = [pld]
+    
+      # Get send data on the opposite zone and update PE
+      zone_path = IE.getZoneDonorPath(base_n, gc)
+      zone = I.getNodeFromPath(tree, zone_path)
+      ngon_node = sids.Zone.NGonNode(zone)
+      face_distri = IE.getDistribution(ngon_node, 'Element')[1].astype(pdm_dtype)
+      dist_data = MPTB.part_to_dist(face_distri, part_data, [pld], comm)
 
-  d_data_ec = dict()
-  d_data_pe = dict()
-  PTB.PartToBlock_Exchange(d_data_ec, p_data_ec, p_strid_ec)
-  PTB.PartToBlock_Exchange(d_data_pe, p_data_pe, p_strid_pe)
+      pe      = I.getNodeFromPath(ngon_node, 'UpdatedPE')[1]
+      pe_dom  = I.getNodeFromPath(ngon_node, 'PEDomain')[1]
+      local_faces = dist_data['FaceId'] - face_distri[0] - 1
+      assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
+      pe[local_faces, 1] = dist_data['PE']
+      pe_dom[local_faces, 1] = dom_id_send
 
-  #Do it by hand to have good ordering (reshape gives C ordering)
-  dist_pe = np.empty([d_data_pe['PE'].shape[0]//2, 2], order='F', dtype=np.int32)
-  dist_pe[:,0] = d_data_pe['PE'][0::2]
-  dist_pe[:,1] = d_data_pe['PE'][1::2]
-  assert (d_data_pe['PE'].reshape(-1, 2, order='A') == dist_pe).all()
+  #PE are ready, collect data
+  ec_l = []
+  ec_stride_l = []
+  pe_l = []
+  pe_stride_l = []
+  pe_dom_l = []
+  for zone_path in zones_path:
+    ngon_node = sids.Zone.NGonNode(I.getNodeFromPath(tree, zone_path))
+    eso    = I.getNodeFromName(ngon_node, 'ElementStartOffset')[1]
+    pe     = I.getNodeFromName(ngon_node, 'UpdatedPE')[1]
+    pe_dom = I.getNodeFromName(ngon_node, 'PEDomain')[1]
 
-  #Recompute ESO and ElementConnectivity distribution
-  eso_unshifted = py_utils.sizes_to_indices(d_data_ec['EC#Stride'])
-  shift_for_eso = par_utils.gather_and_shift(eso_unshifted[-1], comm)
-  eso = eso_unshifted + shift_for_eso[comm.Get_rank()]
+    ec_l.append(I.getNodeFromName(ngon_node, 'ElementConnectivity')[1])
+    ec_stride_l.append(np.diff(eso).astype(np.int32))
 
-  merged_eso_distri = np.array([eso[0], eso[-1], shift_for_eso[-1]], dtype=pdm_dtype)
+    #We have to detect and remove bnd faces from PE to use PDM stride
+    bnd_faces = np.where(pe == 0)[0]
+    stride = 2*np.ones(pe.shape[0], dtype=np.int32) 
+    stride[bnd_faces] = 1
+    pe_stride_l.append(stride)
+    #Also remove 0 from pe and pe_domain
+    pe_l.append(np.delete(pe.reshape(-1), 2*bnd_faces+1))
+    pe_dom_l.append(np.delete(pe_dom.reshape(-1), 2*bnd_faces+1))
 
-  #Now build NGon node
-  elt_node = I.newElements('NGonElements', 'NGON', parent=merged_zone)
-  I.newPointRange('ElementRange',        [1, pdm_distri[-1]], parent=elt_node)
-  I.newDataArray ('ElementStartOffset',  eso,                 parent=elt_node)
-  I.newDataArray ('ElementConnectivity', d_data_ec['EC'],     parent=elt_node)
-  I.newDataArray ('ParentElements',      dist_pe,             parent=elt_node)
+  # Now merge and update
+  merged_ec_stri, merged_ec = all_mbm['Face'].merge_and_update(all_mbm['Vertex'], ec_l, ec_stride_l)
+  merged_pe_stri, merged_pe = all_mbm['Face'].merge_and_update(all_mbm['Cell'],   pe_l, pe_stride_l, pe_dom_l)
+  merged_distri_face = all_mbm['Face'].get_merged_distri()
 
-  IE.newDistribution({'Element' : merged_ngon_distri, 'ElementConnectivity' : merged_eso_distri}, elt_node)
+  # Reshift ESO to make it global
+  eso_loc = py_utils.sizes_to_indices(merged_ec_stri)
+  ec_distri = par_utils.gather_and_shift(eso_loc[-1], comm)
+  eso = eso_loc + ec_distri[comm.Get_rank()]
+
+  #Post treat PE : we need to reintroduce 0 on boundary faces (TODO : could avoir tmp array ?)
+  bnd_faces = np.where(merged_pe_stri == 1)[0]
+  merged_pe_idx  = py_utils.sizes_to_indices(merged_pe_stri)
+  merged_pe_full = np.insert(merged_pe, merged_pe_idx[bnd_faces]+1, 0)
+  assert (merged_pe_full.size == 2*merged_pe_stri.size)
+  pe = np.empty((merged_pe_stri.size, 2), order='F', dtype=merged_pe.dtype)
+  pe[:,0] = merged_pe_full[0::2]
+  pe[:,1] = merged_pe_full[1::2]
+
+  # Finally : create ngon node
+  merged_ngon = I.newElements('NGonElements', 'NGON', erange=[1, merged_distri_face[-1]])
+  I.newDataArray('ElementStartOffset',  eso,       parent=merged_ngon)
+  I.newDataArray('ElementConnectivity', merged_ec, parent=merged_ngon)
+  I.newDataArray('ParentElements',      pe,        parent=merged_ngon)
+  IE.newDistribution({'Element' :             par_utils.full_to_partial_distribution(merged_distri_face, comm),
+                      'ElementConnectivity' : par_utils.full_to_partial_distribution(ec_distri, comm)},
+                      merged_ngon)
+  return merged_ngon
   
-def _merge_nface(zones, merged_zone, comm):
-  """
-  Create a new NFace Element_t node on the merged zone from the NFace nodes of zones
-  to merge.
-  Cell->face connectivity is updated to match the face ids of the merged zone
-  NFace output node is provided with ElementRange from 1 to nCell and should be shifted
-  afterward if needed.
-  """
-  has_nface = True
-  for zone in zones:
-    nface = [elem for elem in I.getNodesFromType1(zone,   'Elements_t') if elem[1][0] == 23]
-    has_nface = len(nface) > 0 and has_nface
-  if not has_nface:
-    return
-
-  ngon_offset  = 0
-  nface_offset = 0
-  pLNToGN = []
-  p_data_ec = {'EC' : list()}
-  p_strid_ec = list()
-  for zone in zones:
-    ngon   = sids.Zone.NGonNode(zone)
-    nface  = [e for e in I.getNodesFromType1(zone, 'Elements_t') if sids.ElementCGNSName(e) == 'NFACE_n'][0]
-
-    ngon_distri  = I.getVal(IE.getDistribution(ngon, 'Element'))
-    nface_distri = I.getVal(IE.getDistribution(nface, 'Element'))
-
-    pLNToGN.append(np.arange(nface_distri[0], nface_distri[1], dtype=pdm_dtype) + nface_offset + 1)
-
-    EC    = I.getNodeFromName1(nface, 'ElementConnectivity')[1] + ngon_offset
-    ECIdx = I.getNodeFromName1(nface, 'ElementStartOffset')[1]
-
-    p_data_ec['EC'].append(EC)
-    p_strid_ec.append(np.diff(ECIdx).astype(np.int32))
-
-    nface_offset += nface_distri[2]
-    ngon_offset  += ngon_distri[2]
-
-  PTB = PDM.PartToBlock(comm, pLNToGN, None, len(zones), 0, 0, 1)
-  pdm_distri = PTB.getDistributionCopy()
-  merged_nface_distri = pdm_distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
-
-  d_data_ec = dict()
-  PTB.PartToBlock_Exchange(d_data_ec, p_data_ec, p_strid_ec)
-
-  #Recompute ESO and ElementConnectivity distribution
-  eso_unshifted = py_utils.sizes_to_indices(d_data_ec['EC#Stride'])
-  shift_for_eso = par_utils.gather_and_shift(eso_unshifted[-1], comm)
-  eso = eso_unshifted + shift_for_eso[comm.Get_rank()]
-
-  merged_eso_distri = np.array([eso[0], eso[-1], shift_for_eso[-1]], dtype=pdm_dtype)
-
-  #Now build NFace node
-  elt_node = I.newElements('NFaceElements', 'NFACE', parent=merged_zone)
-  I.newPointRange('ElementRange',        [1, pdm_distri[-1]], parent=elt_node)
-  I.newDataArray ('ElementStartOffset',  eso,                 parent=elt_node)
-  I.newDataArray ('ElementConnectivity', d_data_ec['EC'],     parent=elt_node)
-
-  IE.newDistribution({'Element' : merged_nface_distri, 'ElementConnectivity' : merged_eso_distri}, elt_node)
