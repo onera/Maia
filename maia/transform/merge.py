@@ -82,14 +82,20 @@ def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
   #Those one will be needed for jn recovering
   AJO.add_joins_ordinal(tree, comm)
 
-  #Merge zones
-  zones = [I.getNodeFromPath(tree, zone_path) for zone_path in zones_path]
-  merged_zone = _merge_zones(tree, zones_path, comm)
-
-  # Remove input zones and add output in tree
+  # We create a tree including only the zones to merge to speed up some operations
+  masked_tree = I.newCGNSTree()
   for zone_path in zones_path:
+    base_n, zone_n = zone_path.split('/')
+    masked_base = I.createUniqueChild(masked_tree, base_n, 'CGNSBase_t')
+    I._addChild(masked_base, I.getNodeFromPath(tree, zone_path))
+
+    #Remove from input tree at the same time
     I._rmNodeByPath(tree, zone_path)
 
+  #Merge zones
+  merged_zone = _merge_zones(masked_tree, comm)
+
+  #Add output
   if output_path is None:
     output_base = I.getNodeFromPath(tree, zones_path[0].split('/')[0])
   else:
@@ -141,22 +147,23 @@ def _rm_zone_suffix(zones, query):
     for node in IE.getNodesByMatching(zone, query):
       I.setName(node, '.'.join(I.getName(node).split('.')[:-1]))
 
-def _merge_zones(tree, zones_path, comm):
+def _merge_zones(tree, comm):
   """
+  Tree must contain *only* the zones to merge. We use a tree instead of a list of zone because it's easier
+  to retrieve opposites zones througt joins
+
   Interface must be described by faces
   """
 
+  zones_path = [f'{I.getName(base)}/{I.getName(zone)}' for base, zone in \
+      IE.getNodesWithParentsByMatching(tree, ['CGNSBase_t', 'Zone_t'])]
   n_zone = len(zones_path)
-  zones = [I.getNodeFromPath(tree, zone_path) for zone_path in zones_path]
+  zones = I.getZones(tree)
   assert min([sids.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
 
   zone_to_id = {path : i for i, path in enumerate(zones_path)}
 
-  #TODO : use basic interface OR filter tree here
   VL.generate_jns_vertex_list(tree, comm)
-  for base, zone in IE.getNodesWithParentsByMatching(tree, ['CGNSBase_t', 'Zone_t']):
-    if not f"{I.getName(base)}/{I.getName(zone)}" in zone_to_id:
-      I._rmNodesByNameAndType(zone, '*#Vtx', 'ZoneGridConnectivity_t') #Cleanup
   
   # Collect interface data
   is_perio = lambda n : I.getNodeFromType1(n, 'GridConnectivityProperty_t') is not None
@@ -169,9 +176,8 @@ def _merge_zones(tree, zones_path, comm):
   interface_dom = []
   interface_dn_v = []
   interface_ids_v = []
-  for zone_path in zones_path:
+  for zone_path, zone in zip(zones_path, zones):
     base_name, zone_name = zone_path.split('/')
-    zone = I.getNodeFromPath(tree, zone_path)
     for zgc, gc in IE.getNodesWithParentsByMatching(zone, query):
       jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
       jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
@@ -237,7 +243,7 @@ def _merge_zones(tree, zones_path, comm):
   merged_zone = I.newZone('MergedZone', [[merged_distri_vtx[-1], merged_distri_cell[-1], 0]], ztype='Unstructured')
 
   # NGon
-  I._addChild(merged_zone, _merge_ngon(all_mbm, tree, zones_path, comm))
+  I._addChild(merged_zone, _merge_ngon(all_mbm, tree, comm))
 
   # Generate NFace (TODO)
   pass
@@ -509,8 +515,11 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
 
   return merged_node
 
-def _merge_ngon(all_mbm, tree, zones_path, comm):
+def _merge_ngon(all_mbm, tree, comm):
 
+
+  zones_path = [f'{I.getName(base)}/{I.getName(zone)}' for base, zone in \
+      IE.getNodesWithParentsByMatching(tree, ['CGNSBase_t', 'Zone_t'])]
   zone_to_id = {path : i for i, path in enumerate(zones_path)}
 
   # Create working data
