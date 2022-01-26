@@ -514,22 +514,24 @@ def _merge_ngon(all_mbm, tree, zones_path, comm):
     face_distri_send = IE.getDistribution(ngon_send, 'Element')[1].astype(pdm_dtype)
     pe_send          =  I.getNodeFromPath(ngon_send, 'UpdatedPE')[1]
     dist_data_send = {'PE' : pe_send[:,0]}
-    for gc in PT.iter_nodes_from_predicate(zone_send, query, depth=2):
 
-      pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
+    gcs = PT.get_nodes_from_predicate(zone_send, query, depth=2)
+    all_pls = [I.getNodeFromName1(gc, 'PointList')[1][0] for gc in gcs]
+    part_data = MBTP.dist_to_part(face_distri_send, dist_data_send, all_pls, comm)
+    for i, gc in enumerate(gcs):
+
       pld = I.getNodeFromName1(gc, 'PointListDonor')[1][0]
 
       #This is the left cell of the join face present in PL. Send it to opposite zone
-      #TODO : collect and exchange with npart > 1
-      part_data = MBTP.dist_to_part(face_distri_send, dist_data_send, [pl], comm)
-      part_data['FaceId'] = [pld]
+      part_data_gc = {key : [data[i]] for key, data in part_data.items()}
+      part_data_gc['FaceId'] = [pld]
     
       # Get send data on the opposite zone and update PE
       zone_path = IE.getZoneDonorPath(base_n, gc)
       zone = I.getNodeFromPath(tree, zone_path)
       ngon_node = sids.Zone.NGonNode(zone)
       face_distri = IE.getDistribution(ngon_node, 'Element')[1].astype(pdm_dtype)
-      dist_data = MPTB.part_to_dist(face_distri, part_data, [pld], comm)
+      dist_data = MPTB.part_to_dist(face_distri, part_data_gc, [pld], comm)
 
       pe      = I.getNodeFromPath(ngon_node, 'UpdatedPE')[1]
       pe_dom  = I.getNodeFromPath(ngon_node, 'PEDomain')[1]
