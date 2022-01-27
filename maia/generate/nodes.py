@@ -24,14 +24,17 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     master = nodes[0]
   node = I.createNode(output_name, I.getType(master), I.getValue(master))
 
-  data_queries = ['PointList', 'PointListDonor',
+  data_queries = additional_data_queries + ['PointList', 'PointListDonor',
                   [lambda n : I.getType(n) == 'DataArray_t' and I.getName(n) not in ['Ordinal', 'OrdinalOpp']]]
   for data_query in data_queries:
     #Use master node to understand queries and collect nodes
     for childs in IE.getNodesWithParentsByMatching(master, data_query):
       path =  '/'.join([I.getName(n) for n in childs])
       data_to_merge = [I.getNodeFromPath(node, path)[1] for node in nodes]
-      data_merged = py_utils.concatenate_point_list(data_to_merge)[1].reshape(1, -1, order='F')
+      if childs[-1][1].ndim == 1:
+        data_merged = py_utils.concatenate_np_arrays(data_to_merge)[1]
+      else:
+        data_merged = py_utils.concatenate_point_list(data_to_merge)[1].reshape(1, -1, order='F')
 
       #Recreate structure (still using master infos) and add merged array
       parent = node
@@ -55,7 +58,7 @@ def concatenate_jns(tree, comm):
   """
   Parse the GridConnectivity_t of a tree and concatenate the GCs related to a same zone:
   if we have two jns A and B from zone1 to zone2 and two jns C and D from zone2 to zone1,
-  producte A' from zone1 to zone2 and B' from zone2 to zone1
+  produce A' from zone1 to zone2 and B' from zone2 to zone1
   Periodic jns are merged if their Periodic node are the same
   """
   match_jns = lambda n: I.getType(n) == 'GridConnectivity_t' \

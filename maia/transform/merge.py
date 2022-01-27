@@ -74,8 +74,6 @@ def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
   (base/zone) is specified
   Input zones will be removed from the tree
 
-  Option remove_internal_jns, if True, remove all the duplicated faces obtained after merging
-  the zone (intra zone jns)
   Option concatenate_jns, if True, reduce the multiple 1to1 matching joins from or to merged_zone
   to a single one.
   """
@@ -110,7 +108,6 @@ def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
   for gc in IE.getNodesByMatching(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']):
     ordinal_to_pl[I.getNodeFromName1(gc, 'Ordinal')[1][0]] = \
         (I.getNodeFromName1(gc, 'PointList')[1], I.getNodeFromName1(gc, 'PointListDonor')[1], IE.getDistribution(gc))
-        #TODO : equilibrate subsets exchanges
 
   for base, zone in IE.getNodesWithParentsByMatching(tree, ['CGNSBase_t', 'Zone_t']):
     is_merged_zone = f"{I.getName(base)}/{I.getName(zone)}" == merged_zone_path
@@ -150,9 +147,7 @@ def _rm_zone_suffix(zones, query):
 def _merge_zones(tree, comm):
   """
   Tree must contain *only* the zones to merge. We use a tree instead of a list of zone because it's easier
-  to retrieve opposites zones througt joins
-
-  Interface must be described by faces
+  to retrieve opposites zones througt joins. Interface beetween zones shall be described by faces
   """
 
   zones_path = [f'{I.getName(base)}/{I.getName(zone)}' for base, zone in \
@@ -401,12 +396,10 @@ def _equilibrate_data(data, comm, distri=None, distri_full=None):
 
 def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   """
-  Generic function to produced a merged node from the zone to merge and the path to a
-  node having a PointList
-  PointList elements of output pl are shifted depending on their type (vtx, face, cell)
-  (supports only NGon/NFace based zones)
+  Internal function used by _merge_zones to produce a merged node from the zones to merge
+  and the path to a subset node (having a PL)
   Subset nodes comming from different zones with the same path will be merged
-  Also merge all the DataArray nodes found under each query (starting from subset_node)
+  Also merge all the nodes found under the data_query query (starting from subset_node)
   requested in data_queries list
 
   Return the merged subset node 
@@ -516,7 +509,9 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   return merged_node
 
 def _merge_ngon(all_mbm, tree, comm):
-
+  """
+  Internal function used by _merge_zones to create the merged NGonNode
+  """
 
   zones_path = [f'{I.getName(base)}/{I.getName(zone)}' for base, zone in \
       IE.getNodesWithParentsByMatching(tree, ['CGNSBase_t', 'Zone_t'])]

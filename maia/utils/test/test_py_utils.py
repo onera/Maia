@@ -54,6 +54,13 @@ def test_is_subset_l():
   assert py_utils.is_subset_l([3,8,2],    L) == False
   assert py_utils.is_subset_l([10,3,3,1], L) == False
 
+def test_append_unique():
+  L = [1,2,3]
+  py_utils.append_unique(L, 4)
+  assert L == [1,2,3,4]
+  py_utils.append_unique(L, 4)
+  assert L == [1,2,3,4]
+
 def test_get_ordered_subset():
   L = [2,8,10,3,3]
   assert py_utils.get_ordered_subset([10,8,3], L) == (8,10,3)
