@@ -402,11 +402,7 @@ convert_zone_to_std_elements(tree& z) -> void {
   I4 vol_elt_start_id = ElementRange<I4>(last_bnd_elt_pool)[1]+1;
   auto vol_elt_pools = convert_to_simple_volume_connectivities(nfaces,ngons,vol_elt_start_id);
 
-  // TODO deallocate if necessary => when is it? for which allocator?
-  // A: it is right to dealloc if OWNED by F
-  //    it is right to NOT dealloc if OWNED by anybody other than F
-  rm_child_by_name(z,name(ngons));
-  rm_child_by_name(z,name(nfaces));
+  rm_children_by_names(z,{name(ngons),name(nfaces)});
 
   emplace_children(z,std::move(bnd_elt_pools));
   emplace_children(z,std::move(vol_elt_pools));
