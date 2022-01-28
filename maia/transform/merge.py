@@ -66,7 +66,7 @@ def merge_connected_zones(tree, comm, **kwargs):
     base = zones_path[0].split('/')[0]
     merge_zones(tree, zones_path, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
-def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
+def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', concatenate_jns=True):
   """
   Highlevel function to merge some zones of a cgns dist tree.
   Zone to merge are specified by their path and must be unstructured.
@@ -80,6 +80,9 @@ def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
   #Those one will be needed for jn recovering
   AJO.add_joins_ordinal(tree, comm)
 
+  #Force full donor name, otherwise it is hard to reset jns
+  IE.enforceDonorAsPath(tree)
+
   # We create a tree including only the zones to merge to speed up some operations
   masked_tree = I.newCGNSTree()
   for zone_path in zones_path:
@@ -91,13 +94,15 @@ def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
     I._rmNodeByPath(tree, zone_path)
 
   #Merge zones
-  merged_zone = _merge_zones(masked_tree, comm)
+  merged_zone = _merge_zones(masked_tree, comm, subset_merge)
 
   #Add output
   if output_path is None:
     output_base = I.getNodeFromPath(tree, zones_path[0].split('/')[0])
   else:
     output_base = I.getNodeFromPath(tree, output_path.split('/')[0])
+    if output_base is None:
+      output_base = I.newCGNSBase(output_path.split('/')[0], 3, 3, parent=tree)
     I.setName(merged_zone, output_path.split('/')[1])
   I._addChild(output_base, merged_zone)
 
@@ -113,7 +118,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, concatenate_jns=True):
     is_merged_zone = f"{I.getName(base)}/{I.getName(zone)}" == merged_zone_path
     for gc in IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t']):
       #Update name and PL
-      if IE.getZoneDonorPath(I.getName(base), gc) in zones_path:
+      if I.getValue(gc) in zones_path:
         I.setValue(gc, merged_zone_path)
         jn_ord = I.getNodeFromName1(gc, 'Ordinal')[1][0]
         key    = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
@@ -144,7 +149,7 @@ def _rm_zone_suffix(zones, query):
     for node in IE.getNodesByMatching(zone, query):
       I.setName(node, '.'.join(I.getName(node).split('.')[:-1]))
 
-def _merge_zones(tree, comm):
+def _merge_zones(tree, comm, subset_merge_strategy='name'):
   """
   Tree must contain *only* the zones to merge. We use a tree instead of a list of zone because it's easier
   to retrieve opposites zones througt joins. Interface beetween zones shall be described by faces
@@ -158,14 +163,27 @@ def _merge_zones(tree, comm):
 
   zone_to_id = {path : i for i, path in enumerate(zones_path)}
 
-  VL.generate_jns_vertex_list(tree, comm)
-  
-  # Collect interface data
   is_perio = lambda n : I.getNodeFromType1(n, 'GridConnectivityProperty_t') is not None
   query = ['ZoneGridConnectivity_t', \
       lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
                 and sids.GridLocation(n) == 'FaceCenter']
 
+  # JNs to external zones must be excluded from vertex list computing
+  tree_vl = I.copyRef(tree)
+  for base, zone in IE.getNodesWithParentsByMatching(tree_vl, ['CGNSBase_t', 'Zone_t']):
+    for zgc, gc in IE.getNodesWithParentsByMatching(zone, query):
+      if IE.getZoneDonorPath(I.getName(base), gc) not in zone_to_id:
+        I.rmNode(zgc, gc)
+  VL.generate_jns_vertex_list(tree_vl, comm)
+  #Reput in tree
+  for zone_path in zones_path:
+    zone    = I.getNodeFromPath(tree, zone_path)
+    zone_vl = I.getNodeFromPath(tree_vl, zone_path)
+    for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+      zgc_v = I.getNodeFromName1(zone_vl, f"{I.getName(zgc)}#Vtx")
+      I._addChild(zone, zgc_v)
+  
+  # Collect interface data
   interface_dn_f = []
   interface_ids_f = []
   interface_dom = []
@@ -258,7 +276,7 @@ def _merge_zones(tree, comm):
   _merge_allmesh_data(mbm_vtx,  zones, merged_zone, vtx_data_queries)
   _merge_allmesh_data(mbm_cell, zones, merged_zone, cell_data_queries)
 
-  _merge_pls_data(all_mbm, zones, merged_zone, comm)
+  _merge_pls_data(all_mbm, zones, merged_zone, comm, subset_merge_strategy)
 
   IE.newDistribution({'Vertex' : par_utils.full_to_partial_distribution(merged_distri_vtx, comm),
                       'Cell'   : par_utils.full_to_partial_distribution(merged_distri_cell, comm)},

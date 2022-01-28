@@ -72,6 +72,14 @@ def getZoneDonorPath(current_base, gc):
   opp_zone = I.getValue(gc)
   return opp_zone if '/' in opp_zone else current_base + '/' + opp_zone
 
+def enforceDonorAsPath(tree):
+  """ Force the GCs to indicate their opposite zone under the form BaseName/ZoneName """
+  predicates = ['Zone_t', 'ZoneGridConnectivity_t', lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
+  for base in I.getBases(tree):
+    base_n = I.getName(base)
+    for gc in iterNodesByMatching(base, predicates):
+      I.setValue(gc, getZoneDonorPath(base_n, gc))
+
 def getDistribution(node, distri_name=None):
   """
   Starting from node, return the CGNS#Distribution node if distri_name is None
