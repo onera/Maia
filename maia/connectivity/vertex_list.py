@@ -513,7 +513,7 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
     for interface_path_cur in interface_pathes_cur:
       zone_path = '/'.join(interface_path_cur.split('/')[:2])
       zone_node = I.getNodeFromPath(dist_tree, zone_path)
-      ngon_node = sids.Zone.NGonNode(zone)
+      ngon_node = sids.Zone.NGonNode(zone_node)
       n_isolated = get_pl_isolated_faces(ngon_node, 
                                          I.getNodeFromPath(dist_tree, interface_path_cur + '/PointList')[1][0],
                                          IE.getDistribution(zone_node, 'Vertex')[1],
