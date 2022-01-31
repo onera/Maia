@@ -5,6 +5,8 @@ import numpy      as np
 import mpi4py.MPI as MPI
 
 import Converter.Internal as I
+
+from maia import npy_pdm_gnum_dtype
 import maia.sids.Internal_ext as IE
 import maia.distribution.distribution_function as MID
 
@@ -21,16 +23,9 @@ def test_uniform_distribution_at():
 
 @mark_mpi_test(3)
 def test_uniform_distribution(sub_comm):
-  distrib = MID.uniform_distribution(np.int32(17), sub_comm)
+  distrib = MID.uniform_distribution(17, sub_comm)
   assert isinstance(distrib, np.ndarray)
-  assert distrib.dtype == 'int32'
-  assert (distrib[0:2] == MID.uniform_distribution_at(\
-      17, sub_comm.Get_rank(), sub_comm.Get_size())).all()
-  assert distrib[2] == 17
-
-  distrib = MID.uniform_distribution(np.int64(17), sub_comm)
-  assert isinstance(distrib, np.ndarray)
-  assert distrib.dtype == 'int64'
+  assert distrib.dtype == npy_pdm_gnum_dtype
   assert (distrib[0:2] == MID.uniform_distribution_at(\
       17, sub_comm.Get_rank(), sub_comm.Get_size())).all()
   assert distrib[2] == 17

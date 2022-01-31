@@ -4,6 +4,7 @@ import numpy as np
 
 import Converter.Internal as I
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.sids         import sids
 from maia.sids         import Internal_ext as IE
 from maia.connectivity import generate_ngon_from_std_elements as GNG
@@ -18,13 +19,14 @@ class Test_compute_ngon_from_std_elements:
       tetra_ec = [1,2,4,10,2,5,4,14,4,10,14,13,2,10,11,14,2,4,10,14,2,6,5,14,2,12,3,6,14,15,12,6,12,14,2,11,12,2,14,6]
     elif sub_comm.Get_rank() == 1:
       tetra_ec = [4,8,7,16,4,14,5,8,16,17,14,8,14,16,4,13,14,4,16,8,5,6,8,14,6,9,8,18,8,14,18,17,6,14,15,18,6,8,14,18]
+    tetra_ec = np.array(tetra_ec, pdm_dtype)
 
     dist_tree = I.newCGNSTree()
     dist_base = I.newCGNSBase('Base', 3, 3, parent=dist_tree)
     dist_zone = I.newZone('Zone', [0,20,0], 'Unstructured', parent=dist_base)
     IE.newDistribution({'Vertex' : [9*rank,9*(rank+1),18], 'Cell' : [10*rank, 10*(rank+1), 20]}, dist_zone)
     tetra = I.newElements('Tetra', 'TETRA', tetra_ec, [1,20], parent=dist_zone)
-    IE.newDistribution({'Element' : [10*rank,10*(rank+1),20]}, tetra)
+    IE.newDistribution({'Element' : np.array([10*rank,10*(rank+1),20], pdm_dtype)}, tetra)
 
     GNG.compute_ngon_from_std_elements(dist_tree, sub_comm)
 
@@ -52,16 +54,17 @@ class Test_compute_ngon_from_std_elements:
     #Generated from G.cartHexa((0,0,0), (1./3, 1./2, 0), (4,3,1))
     rank = sub_comm.Get_rank()
     if sub_comm.Get_rank() == 0:
-      quad_ec = [1,2,6,5,2,3,7,6,3,4,8,7]
+      quad_ec = np.array([1,2,6,5,2,3,7,6,3,4,8,7], pdm_dtype)
     elif sub_comm.Get_rank() == 1:
-      quad_ec = [5,6,10,9,6,7,11,10,7,8,12,11]
+      quad_ec = np.array([5,6,10,9,6,7,11,10,7,8,12,11], pdm_dtype)
 
     dist_tree = I.newCGNSTree()
     dist_base = I.newCGNSBase('Base', 2, 3, parent=dist_tree)
     dist_zone = I.newZone('Zone', [12,6,0], 'Unstructured', parent=dist_base)
-    IE.newDistribution({'Vertex' : [6*rank,6*(rank+1),12], 'Cell' : [3*rank, 3*(rank+1), 6]}, dist_zone)
+    IE.newDistribution({'Vertex' : np.array([6*rank,6*(rank+1),12], pdm_dtype),
+                        'Cell' : np.array([3*rank, 3*(rank+1), 6], pdm_dtype)}, dist_zone)
     quad = I.newElements('Quad', 'QUAD', quad_ec, [1,6], parent=dist_zone)
-    IE.newDistribution({'Element' : [3*rank,3*(rank+1),6]}, quad)
+    IE.newDistribution({'Element' : np.array([3*rank,3*(rank+1),6], pdm_dtype)}, quad)
 
     GNG.compute_ngon_from_std_elements(dist_tree, sub_comm)
 
@@ -91,20 +94,20 @@ class Test_compute_ngon_from_std_elements:
   def test_2d_mesh_with_bc(self, sub_comm):
     rank = sub_comm.Get_rank()
     if sub_comm.Get_rank() == 0:
-      quad_ec = [1,2,6,5,2,3,7,6,3,4,8,7]
-      bar_ec  = [10,9,11,10,12,11,5,1,9,5]
+      quad_ec = np.array([1,2,6,5,2,3,7,6,3,4,8,7], pdm_dtype)
+      bar_ec  = np.array([10,9,11,10,12,11,5,1,9,5], pdm_dtype)
     elif sub_comm.Get_rank() == 1:
-      quad_ec = [5,6,10,9,6,7,11,10,7,8,12,11]
-      bar_ec  = np.empty(0, dtype=np.int32)
+      quad_ec = np.array([5,6,10,9,6,7,11,10,7,8,12,11], pdm_dtype)
+      bar_ec  = np.empty(0, dtype=pdm_dtype)
 
     dist_tree = I.newCGNSTree()
     dist_base = I.newCGNSBase('Base', 2, 3, parent=dist_tree)
     dist_zone = I.newZone('Zone', [12,6,0], 'Unstructured', parent=dist_base)
     IE.newDistribution({'Vertex' : [6*rank,6*(rank+1),12], 'Cell' : [3*rank, 3*(rank+1), 6]}, dist_zone)
     quad = I.newElements('Quad', 'QUAD', quad_ec, [1,6], parent=dist_zone)
-    IE.newDistribution({'Element' : [3*rank,3*(rank+1),6]}, quad)
+    IE.newDistribution({'Element' : np.array([3*rank,3*(rank+1),6], pdm_dtype)}, quad)
     bar  = I.newElements('Bar', 'BAR', bar_ec, [7,11], parent=dist_zone)
-    IE.newDistribution({'Element' : [0,5*(1-rank),5]}, bar)
+    IE.newDistribution({'Element' : np.array([0,5*(1-rank),5], pdm_dtype)}, bar)
     dist_zbc  = I.newZoneBC(dist_zone)
     if rank == 0:
       bca       = I.newBC('bcA', pointRange = [[7,9]], parent=dist_zbc)
@@ -150,8 +153,8 @@ def test_generate_ngon_from_std_elements_jc(sub_comm):
   dist_base = I.newCGNSBase('Base', 3, 3, parent=dist_tree)
   dist_zone = I.newZone('Zone', [0,20,0], 'Unstructured', parent=dist_base)
   IE.newDistribution({'Vertex' : [9*rank,9*(rank+1),18], 'Cell' : [10*rank, 10*(rank+1), 20]}, dist_zone)
-  tetra = I.newElements('Tetra', 'TETRA', tetra_ec, [1,20], parent=dist_zone)
-  IE.newDistribution({'Element' : [10*rank,10*(rank+1),20]}, tetra)
+  tetra = I.newElements('Tetra', 'TETRA', np.array(tetra_ec, pdm_dtype), [1,20], parent=dist_zone)
+  IE.newDistribution({'Element' : np.array([10*rank,10*(rank+1),20], pdm_dtype)}, tetra)
 
   GNG.generate_ngon_from_std_elements(dist_tree, sub_comm)
 

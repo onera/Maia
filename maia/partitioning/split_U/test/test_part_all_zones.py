@@ -6,6 +6,7 @@ from mpi4py import MPI
 
 import Pypdm.Pypdm as PDM
 
+from maia                      import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils                import parse_yaml_cgns
 from maia.partitioning.split_U import part_all_zones as partU
 
@@ -27,27 +28,28 @@ def test_set_mpart_reordering():
 
 @mark_mpi_test(2)
 def test_set_mpart_dmeshes(sub_comm):
-  dt = """
+  dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
+  dt = f"""
 ZoneA Zone_t:
   NGonElements Elements_t [22,0]:
-    ElementConnectivity DataArray_t []:
-    ElementStartOffset DataArray_t [0]:
-    ParentElements DataArray_t []:
+    ElementConnectivity DataArray_t {dtype} []:
+    ElementStartOffset DataArray_t {dtype} [0]:
+    ParentElements DataArray_t {dtype} []:
     :CGNS#Distribution UserDefinedData_t:
-      Element DataArray_t [0,0,0]:
-      ElementConnectivity DataArray_t [0,0,0]:
+      Element DataArray_t {dtype} [0,0,0]:
+      ElementConnectivity DataArray_t {dtype} [0,0,0]:
   :CGNS#Distribution UserDefinedData_t:
-    Vertex DataArray_t [0,0,0]:
-    Cell DataArray_t [0,0,0]:
+    Vertex DataArray_t {dtype} [0,0,0]:
+    Cell DataArray_t {dtype} [0,0,0]:
 ZoneB Zone_t:
   Hexa Elements_t [17,0]:
     ElementRange ElementRange_t [1,1]:
-    ElementConnectivity DataArray_t []:
+    ElementConnectivity DataArray_t {dtype} []:
     :CGNS#Distribution UserDefinedData_t:
-      Element DataArray_t [0,0,0]:
+      Element DataArray_t {dtype} [0,0,0]:
   :CGNS#Distribution UserDefinedData_t:
-    Vertex DataArray_t [0,0,0]:
-    Cell DataArray_t [0,0,0]:
+    Vertex DataArray_t {dtype} [0,0,0]:
+    Cell DataArray_t {dtype} [0,0,0]:
 """
   dzones = parse_yaml_cgns.to_nodes(dt)
 

@@ -78,7 +78,7 @@ def _extract_surf_zone(dist_zone, face_list, comm):
   I.newDataArray('CoordinateY', cy, parent=grid_coord)
   I.newDataArray('CoordinateZ', cz, parent=grid_coord)
 
-  eso = ex_fvtx_distri[i_rank] + ex_face_vtx_idx
+  eso = ex_fvtx_distri[i_rank] + ex_face_vtx_idx.astype(pdm_gnum_dtype)
   extract_ngon_n = I.newElements('NGonElements', 'NGON', erange = [1, ex_face_distri[n_rank]], parent=dist_extract_zone)
 
   I.newDataArray('ElementConnectivity', ex_face_vtx, parent=extract_ngon_n)

@@ -253,7 +253,8 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   merged_distri_face = mbm_face.get_merged_distri()
   merged_distri_cell = mbm_cell.get_merged_distri()
   
-  merged_zone = I.newZone('MergedZone', [[merged_distri_vtx[-1], merged_distri_cell[-1], 0]], ztype='Unstructured')
+  zone_dims = np.array([[merged_distri_vtx[-1], merged_distri_cell[-1], 0]], order='F')
+  merged_zone = I.newZone('MergedZone', zone_dims, ztype='Unstructured')
 
   # NGon
   I._addChild(merged_zone, _merge_ngon(all_mbm, tree, comm))
@@ -602,7 +603,7 @@ def _merge_ngon(all_mbm, tree, comm):
     pe_stride_l.append(stride)
     #Also remove 0 from pe and pe_domain
     pe_l.append(np.delete(pe.reshape(-1), 2*bnd_faces+1))
-    pe_dom_l.append(np.delete(pe_dom.reshape(-1), 2*bnd_faces+1))
+    pe_dom_l.append(np.delete(pe_dom.reshape(-1), 2*bnd_faces+1).astype(np.int32))
 
   # Now merge and update
   merged_ec_stri, merged_ec = all_mbm['Face'].merge_and_update(all_mbm['Vertex'], ec_l, ec_stride_l)
@@ -610,7 +611,7 @@ def _merge_ngon(all_mbm, tree, comm):
   merged_distri_face = all_mbm['Face'].get_merged_distri()
 
   # Reshift ESO to make it global
-  eso_loc = py_utils.sizes_to_indices(merged_ec_stri)
+  eso_loc = py_utils.sizes_to_indices(merged_ec_stri, pdm_dtype)
   ec_distri = par_utils.gather_and_shift(eso_loc[-1], comm)
   eso = eso_loc + ec_distri[comm.Get_rank()]
 
