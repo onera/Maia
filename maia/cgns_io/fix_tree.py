@@ -4,6 +4,7 @@ import Converter.PyTree   as     C
 import Converter.Filter   as     CFilter
 import Converter.Internal as     I
 from maia.sids import Internal_ext as IE
+from maia import npy_pdm_gnum_dtype
 
 def fix_point_ranges(size_tree):
   """
@@ -69,3 +70,17 @@ def load_grid_connectivity_property(filename, tree):
     gc_node = I.getNodeFromPath(tree, gc_node_path)
     I._rmNodesByType(gc_node, 'GridConnectivityProperty_t')
     I._addChild(gc_node, gc_prop)
+
+def enforce_pdm_dtype(tree):
+  """
+  Convert the index & connectivity arrays to expected pdm_g_num_t
+  """
+  for zone in I.getZones(tree):
+    zone[1] = zone[1].astype(npy_pdm_gnum_dtype)
+    for elmt in I.getNodesFromType1(zone, 'Elements_t'):
+      for name in ['ElementConnectivity', 'ElementStartOffset', 'ParentElements']:
+        node = I.getNodeFromName1(elmt, name)
+        if node:
+          node[1] = node[1].astype(npy_pdm_gnum_dtype)
+    for pl in I.getNodesFromType(zone, 'IndexArray_t'):
+      pl[1] = pl[1].astype(npy_pdm_gnum_dtype)
