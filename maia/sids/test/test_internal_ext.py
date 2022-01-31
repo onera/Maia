@@ -67,6 +67,45 @@ def test_enforceDonorAsPath():
   assert I.getValue(I.getNodeFromName(tree, "match3")) == "Base/ZoneB"
   assert I.getValue(I.getNodeFromName(tree, "match4")) == "Base/ZoneA"
 
+def test_find_connected_zones():
+  yt = """
+  BaseA CGNSBase_t:
+    Zone1 Zone_t:
+      ZGC ZoneGridConnectivity_t:
+        match GridConnectivity_t "Zone3":
+          GridConnectivityType GridConnectivityType_t "Abutting1to1":
+    Zone2 Zone_t:
+      ZGC ZoneGridConnectivity_t:
+        match GridConnectivity_t "Zone4":
+          GridConnectivityType GridConnectivityType_t "Abutting1to1":
+    Zone3 Zone_t:
+      ZGC ZoneGridConnectivity_t:
+        match1 GridConnectivity_t "BaseA/Zone1":
+          GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        match2 GridConnectivity_t "BaseB/Zone6":
+          GridConnectivityType GridConnectivityType_t "Abutting1to1":
+    Zone4 Zone_t:
+      ZGC ZoneGridConnectivity_t:
+        match GridConnectivity_t "Zone2":
+          GridConnectivityType GridConnectivityType_t "Abutting1to1":
+  BaseB CGNSBase_t:
+    Zone5 Zone_t:
+    Zone6 Zone_t:
+      ZGC ZoneGridConnectivity_t:
+        match GridConnectivity_t "BaseA/Zone3":
+          GridConnectivityType GridConnectivityType_t "Abutting1to1":
+  """
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  connected_path = IE.find_connected_zones(tree)
+  assert len(connected_path) == 3
+  for zones in connected_path:
+    if len(zones) == 1:
+      assert zones == ['BaseB/Zone5']
+    if len(zones) == 2:
+      assert sorted(zones) == ['BaseA/Zone2', 'BaseA/Zone4']
+    if len(zones) == 3:
+      assert sorted(zones) == ['BaseA/Zone1', 'BaseA/Zone3', 'BaseB/Zone6']
+
 def test_newDistribution():
   distri = IE.newDistribution()
   assert I.getName(distri) == ':CGNS#Distribution'

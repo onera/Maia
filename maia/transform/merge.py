@@ -18,49 +18,11 @@ from maia.connectivity import vertex_list as VL
 from maia.tree_exchange.dist_to_part import data_exchange as MBTP
 from maia.tree_exchange.part_to_dist import data_exchange as MPTB
 
-
-def _find_connected_zones(tree):
-  """
-  Define groups of independant zones
-  """
-  connected_zones = []
-  matching_gcs_u = lambda n : I.getType(n) == 'GridConnectivity_t' \
-                          and I.getValue(I.getNodeFromType1(n, 'GridConnectivityType_t')) == 'Abutting1to1'
-  matching_gcs_s = lambda n : I.getType(n) == 'GridConnectivity1to1_t'
-  matching_gcs = lambda n : (matching_gcs_u(n) or matching_gcs_s(n)) \
-                          and I.getNodeFromType1(n, 'GridConnectivityProperty_t') is None
-  
-  for base, zone in IE.getNodesWithParentsByMatching(tree, 'CGNSBase_t/Zone_t'):
-    zone_path = I.getName(base) + '/' + I.getName(zone)
-    group     = [zone_path]
-    for gc in IE.getNodesByMatching(zone, ['ZoneGridConnectivity_t', matching_gcs]):
-      opp_zone_path = IE.getZoneDonorPath(I.getName(base), gc)
-      py_utils.append_unique(group, opp_zone_path)
-    connected_zones.append(group)
-
-  for base, zone in IE.getNodesWithParentsByMatching(tree, 'CGNSBase_t/Zone_t'):
-    zone_path     = I.getName(base) + '/' + I.getName(zone)
-    groups_to_merge = []
-    for i, group in enumerate(connected_zones):
-      if zone_path in group:
-        groups_to_merge.append(i)
-    if groups_to_merge != []:
-      new_group = []
-      for i in groups_to_merge[::-1]: #Reverse loop to pop without changing idx
-        zones_paths = connected_zones.pop(i)
-        for z_p in zones_paths:
-          py_utils.append_unique(new_group, z_p)
-      connected_zones.append(new_group)
-  return connected_zones
-
 def merge_connected_zones(tree, comm, **kwargs):
   """
   Shortcut for merge_zones to merge all the zones of the tree
   """
-  # zones_path = []
-  # for base, zone in IE.getNodesWithParentsByMatching(tree, ['CGNSBase_t', 'Zone_t']):
-    # zones_path.append(I.getName(base) + '/' + I.getName(zone))
-  grouped_zones_paths = _find_connected_zones(tree)
+  grouped_zones_paths = IE.find_connected_zones(tree)
 
   for i, zones_path in enumerate(grouped_zones_paths):
     base = zones_path[0].split('/')[0]
