@@ -402,7 +402,7 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
 
       elif I.getZoneType(zone_s) == 1: #Zone is S -> convert it
         zone_dims_s = I.getValue(zone_s)
-        zone_dims_u = np.prod(zone_dims_s, axis=0).reshape(1,-1)
+        zone_dims_u = np.prod(zone_dims_s, axis=0, dtype=zone_dims_s.dtype).reshape(1,-1)
         n_vtx  = zone_dims_s[:,0]
       
         zone_u = I.createNode(I.getName(zone_s), 'Zone_t', zone_dims_u, parent=base_u)

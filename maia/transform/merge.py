@@ -136,7 +136,7 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
     for zgc, gc in IE.getNodesWithParentsByMatching(zone, query):
       if IE.getZoneDonorPath(I.getName(base), gc) not in zone_to_id:
         I.rmNode(zgc, gc)
-  VL.generate_jns_vertex_list(tree_vl, comm)
+  VL.generate_jns_vertex_list(tree_vl, comm, have_isolated_faces=True)
   #Reput in tree
   for zone_path in zones_path:
     zone    = I.getNodeFromPath(tree, zone_path)
