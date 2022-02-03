@@ -4,17 +4,19 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
+from maia.sids           import sids
 from maia.sids           import conventions as conv
 from maia.utils          import py_utils
 from maia.tree_exchange  import utils    as te_utils
 
 def get_pl_donor(dist_zones, part_zones, comm):
 
-  path = 'ZoneGridConnectivity_t/GridConnectivity_t'
+  query = ['ZoneGridConnectivity_t', \
+      lambda n : I.getType(n) == 'GridConnectivity_t' and sids.GridConnectivity.is1to1(n)]
   jn_id     = []
   jn_id_opp = []
   for dist_zone in dist_zones:
-    for jn in IE.iterNodesByMatching(dist_zone, path):
+    for jn in IE.iterNodesByMatching(dist_zone, query):
       jn_id.append    (I.getNodeFromName1(jn, 'Ordinal')[1][0] - 1)
       jn_id_opp.append(I.getNodeFromName1(jn, 'OrdinalOpp')[1][0] - 1)
 

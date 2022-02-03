@@ -20,6 +20,7 @@ ZoneA Zone_t [[6,0,0]]:
       Ordinal UserDefinedData_t [1]:
       OrdinalOpp UserDefinedData_t [2]:
       PointList IndexArray_t [[1, 7]]:
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t {0} [0,2,6]:
 ZoneB Zone_t [[12,0,0]]:
@@ -29,6 +30,7 @@ ZoneB Zone_t [[12,0,0]]:
       Ordinal UserDefinedData_t [2]:
       OrdinalOpp UserDefinedData_t [1]:
       PointList IndexArray_t [[8,6,14]]:
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t {0} [0,3,6]:
 """.format(dtype)
@@ -36,6 +38,7 @@ ZoneB Zone_t [[12,0,0]]:
 ZoneA.P0.N0 Zone_t [[6,0,0]]:
   ZGC ZoneGridConnectivity_t:
     matchAB GridConnectivity_t "ZoneB":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       GridLocation GridLocation_t "FaceCenter":
       Ordinal UserDefinedData_t [1]:
       OrdinalOpp UserDefinedData_t [2]:
@@ -48,6 +51,7 @@ ZoneA.P0.N0 Zone_t [[6,0,0]]:
 ZoneA Zone_t [[6,0,0]]:
   ZGC ZoneGridConnectivity_t:
     matchAB GridConnectivity_t "ZoneB":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       GridLocation GridLocation_t "FaceCenter":
       Ordinal UserDefinedData_t [1]:
       OrdinalOpp UserDefinedData_t [2]:
@@ -57,6 +61,7 @@ ZoneA Zone_t [[6,0,0]]:
 ZoneB Zone_t [[12,0,0]]:
   ZGC ZoneGridConnectivity_t:
     matchBA GridConnectivity_t "ZoneA":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       GridLocation GridLocation_t "FaceCenter":
       Ordinal UserDefinedData_t [2]:
       OrdinalOpp UserDefinedData_t [1]:
@@ -68,6 +73,7 @@ ZoneB Zone_t [[12,0,0]]:
 ZoneA.P1.N0 Zone_t:
   ZGC ZoneGridConnectivity_t:
     matchAB GridConnectivity_t "ZoneB":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       GridLocation GridLocation_t "FaceCenter":
       Ordinal UserDefinedData_t [1]:
       OrdinalOpp UserDefinedData_t [2]:
@@ -77,6 +83,7 @@ ZoneA.P1.N0 Zone_t:
 ZoneB.P1.N0 Zone_t:
   ZGC ZoneGridConnectivity_t:
     matchBA GridConnectivity_t "ZoneA":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       GridLocation GridLocation_t "FaceCenter":
       Ordinal UserDefinedData_t [2]:
       OrdinalOpp UserDefinedData_t [1]:
@@ -86,6 +93,7 @@ ZoneB.P1.N0 Zone_t:
 ZoneB.P1.N1 Zone_t:
   ZGC ZoneGridConnectivity_t:
     matchBA GridConnectivity_t "ZoneA":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       GridLocation GridLocation_t "FaceCenter":
       Ordinal UserDefinedData_t [2]:
       OrdinalOpp UserDefinedData_t [1]:

@@ -119,6 +119,22 @@ def ElementDimension(element):
 def ElementNVtx(element):
   return EU.element_number_of_nodes(ElementType(element))
 
+class GridConnectivity:
+
+  def Type(gc):
+    if I.getType(gc) == 'GridConnectivity1to1_t':
+      return 'Abutting1to1'
+    elif I.getType(gc) == 'GridConnectivity_t':
+      gc_type_n = I.getNodeFromName(gc, 'GridConnectivityType')
+      return I.getValue(gc_type_n) if gc_type_n is not None else 'Overset'
+    raise TypeError
+
+  def is1to1(gc):
+    return GridConnectivity.Type(gc) == 'Abutting1to1'
+
+def is_gc_1to1(node):
+  return I.getType(node) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and GridConnectivity.is1to1(node)
+
 class Subset:
   """
   A subset is a node having a PointList or a PointRange

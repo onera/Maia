@@ -41,7 +41,7 @@ def test_add_joins_ordinal(sub_comm):
 Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t [[27],[8],[0]]:
     ZGC ZoneGridConnectivity_t:
-      matchAB GridConnectivity_t "ZoneB":
+      matchAB GridConnectivity1to1_t "ZoneB":
         GridLocation GridLocation_t "FaceCenter":
         PointList      IndexArray_t [1,4,7,10]:    # HERE
         PointListDonor IndexArray_t [13,16,7,10]:  # HERE
@@ -51,22 +51,25 @@ Base0 CGNSBase_t [3,3]:
         GridLocation GridLocation_t "FaceCenter":
         PointList      IndexArray_t [13,16,7,10]:  # HERE
         PointListDonor IndexArray_t [1,4,7,10]:    # HERE
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
       matchBC1 GridConnectivity_t "Base1/ZoneC":
         GridLocation GridLocation_t "FaceCenter":
         PointList      IndexArray_t [32,34]:
         PointListDonor IndexArray_t [1,3]:
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
       matchBC2 GridConnectivity_t "Base1/ZoneC":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [33,35]:
         PointListDonor IndexArray_t [2,4]:
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
 Base1 CGNSBase_t [3,3]:
   ZoneC Zone_t [[18],[4],[0]]:
     ZGC ZoneGridConnectivity_t:
-      matchCB2 GridConnectivity_t "Base0/ZoneB":
+      matchCB2 GridConnectivity1to1_t "Base0/ZoneB":
         GridLocation GridLocation_t "FaceCenter":
         PointList      IndexArray_t [2,4]:         # HERE
         PointListDonor IndexArray_t [33,35]:       # HERE
-      matchCB1 GridConnectivity_t "Base0/ZoneB":
+      matchCB1 GridConnectivity1to1_t "Base0/ZoneB":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [1,3]:
         PointListDonor IndexArray_t [32,34]:
@@ -99,20 +102,24 @@ Base0 CGNSBase_t [3,3]:
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [1,4,7,10]:
         PointListDonor IndexArray_t [13,16,7,10]:
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
   ZoneB Zone_t [[27],[8],[0]]:
     ZGC ZoneGridConnectivity_t:
       matchBA GridConnectivity_t "ZoneA":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [13,16,7,10]:
         PointListDonor IndexArray_t [1,4,7,10]:
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
       matchBC1 GridConnectivity_t "Base1/ZoneC":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [32,34]:
         PointListDonor IndexArray_t [1,3]:
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
       matchBC2 GridConnectivity_t "Base1/ZoneC":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [33,35]:
         PointListDonor IndexArray_t [2,4]:
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
 Base1 CGNSBase_t [3,3]:
   ZoneC Zone_t [[18],[4],[0]]:
     ZGC ZoneGridConnectivity_t:
@@ -120,10 +127,12 @@ Base1 CGNSBase_t [3,3]:
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [2,4]:
         PointListDonor IndexArray_t [33,35]:
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
       matchCB1 GridConnectivity_t "Base0/ZoneB":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [1,3]:
         PointListDonor IndexArray_t [32,34]:
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
 """
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 

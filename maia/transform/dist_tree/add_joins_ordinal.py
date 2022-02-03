@@ -3,6 +3,7 @@ import mpi4py.MPI as MPI
 import numpy as np
 
 from maia.sids import Internal_ext as IE
+from maia.sids import sids
 
 def _compare_pointrange(gc1, gc2):
  """
@@ -67,13 +68,12 @@ def add_joins_ordinal(dist_tree, comm):
   gc_list  = []
   gc_paths = []
   # > First pass to collect joins
-  for base in I.getBases(dist_tree):
-    for zone in I.getZones(base):
-      for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
-        gcs = I.getNodesFromType1(zgc, 'GridConnectivity_t') + I.getNodesFromType1(zgc, 'GridConnectivity1to1_t')
-        for gc in gcs:
-          gc_list.append(gc)
-          gc_paths.append(base[0] + '/' + zone[0])
+  match1to1 = lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t'] \
+      and sids.GridConnectivity.is1to1(n)
+  query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", match1to1]
+  for nodes in IE.iterNodesWithParentsByMatching(dist_tree, query):
+    gc_list.append(nodes[-1])
+    gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
 
   local_match_table = _create_local_match_table(gc_list, gc_paths)
 

@@ -55,6 +55,20 @@ def test_GridLocation():
   assert SIDS.GridLocation(bc_no_loc) == 'Vertex'
   assert SIDS.GridLocation(bc_loc   ) == 'JFaceCenter'
 
+def test_GridConnectivity_Type():
+  gc = I.newGridConnectivity1to1("gc")
+  assert SIDS.GridConnectivity.Type(gc) == "Abutting1to1"
+  gc = I.newGridConnectivity("gc", ctype="Abutting")
+  assert SIDS.GridConnectivity.Type(gc) == "Abutting"
+  bc = I.newBC("bc")
+  with pytest.raises(TypeError):
+    SIDS.GridConnectivity.Type(bc)
+
+def test_is_gc_1to1():
+  assert SIDS.is_gc_1to1(I.newGridConnectivity1to1("gc"))
+  assert not SIDS.is_gc_1to1(I.newGridConnectivity("gc", ctype="Abutting"))
+  assert not SIDS.is_gc_1to1(I.newBC("bc"))
+
 def test_zone_u_size():
   #Simulate a 10*5*2 vtx zone
   zone_u = I.newZone('Zone', [[100, 36, 0]], 'Unstructured')

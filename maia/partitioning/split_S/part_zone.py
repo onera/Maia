@@ -37,8 +37,10 @@ def collect_S_bnd_per_dir(zone):
   """
   base_bound = {k : [] for k in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]}
 
-  for bnd_path in ['ZoneBC_t/BC_t', 'ZoneGridConnectivity_t/GridConnectivity1to1_t']:
-    for bnd in IE.iterNodesByMatching(zone, bnd_path):
+  bnd_queries = [['ZoneBC_t', 'BC_t'],
+      ['ZoneGridConnectivity_t', lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t']]]
+  for bnd_query in bnd_queries:
+    for bnd in IE.iterNodesByMatching(zone, bnd_query):
       grid_loc    = sids.GridLocation(bnd)
       point_range = I.getNodeFromName(bnd, 'PointRange')[1]
       bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
@@ -134,11 +136,12 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
           part_bc = I.newBC(I.getName(dist_bc), sub_pr, parent=zbc)
           I.setValue(part_bc, I.getValue(dist_bc))
           I.newGridLocation(grid_loc, parent=part_bc)
+          I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Ordinal'))
+          I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'OrdinalOpp'))
+          I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Transform'))
+          I._addChild(part_bc, I.getNodeFromType1(dist_bc, 'GridConnectivityType_t'))
+          I._addChild(part_bc, I.getNodeFromType1(dist_bc, 'GridConnectivityProperty_t'))
           if I.getNodeFromName1(dist_bc, 'Ordinal') is not None:
-            I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Ordinal'))
-            I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'OrdinalOpp'))
-            I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Transform'))
-            I._addChild(part_bc, I.getNodeFromType1(dist_bc, 'GridConnectivityProperty_t'))
             I.createChild(part_bc, 'distPR', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRange')[1])
             I.createChild(part_bc, 'distPRDonor', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRangeDonor')[1])
             I.newDataArray('zone_offset', p_zone_offset, parent=part_bc)
@@ -309,6 +312,12 @@ def split_original_joins_S(all_part_zones, comm):
             I._addChild(part_gc, I.getNodeFromType1(jn, 'GridConnectivityProperty_t'))
             I.newGridLocation('Vertex', parent=part_gc)
             i_sub_jn += 1
+      elif I.getNodeFromType1(jn, 'GridConnectivityType_t') is not None:
+        #This is a join, but not 1to1 because its has no ordinal. So we just move it with
+        #other jns
+        I.setType(jn, 'GridConnectivity_t')
+        I._addChild(zone_gc, jn)
+        to_delete.append(jn)
     #Cleanup
     for node in to_delete:
       I._rmNode(part, node)
