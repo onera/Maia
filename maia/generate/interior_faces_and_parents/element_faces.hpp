@@ -5,6 +5,7 @@
 #include "maia/connectivity/iter/concepts.hpp"
 #include "maia/connectivity/iter/connectivity.hpp"
 #include "maia/connectivity/iter_cgns/connectivity.hpp"
+#include "std_e/base/not_implemented_exception.hpp"
 
 
 namespace cgns {
@@ -53,8 +54,7 @@ generate_faces(const connectivity_type& e, tri_iterator& tri_it, quad_iterator& 
     *quad_it++ = {e[4],e[5],e[6],e[7]};
   }
   else {
-    throw;
-    //static_assert(0,"unsupported ElementType_t");
+    throw ;//std_e::not_implemented_exception("unsupported ElementType_t "+to_string(ElementType_t));
   }
 }
 
@@ -99,8 +99,7 @@ generate_parent_positions(tri_iterator& tri_it, quad_iterator& quad_it) -> void 
     *quad_it++ = 6;
   }
   else {
-    throw;
-    //static_assert(0,"unsupported ElementType_t");
+    throw ;//std_e::not_implemented_exception("unsupported ElementType_t "+to_string(ElementType_t));
   }
 }
 

@@ -3,6 +3,8 @@
 
 #include "pdm_multi_block_to_part.h"
 #include "std_e/future/contract.hpp"
+#include <vector>
+#include <numeric>
 
 
 namespace pdm {
