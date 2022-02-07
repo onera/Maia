@@ -33,7 +33,7 @@ def part_to_dist(partial_distri, part_data, ln_to_gn_list, comm):
   pdm_distrib = par_utils.partial_to_full_distribution(partial_distri, comm)
 
   PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
-                        t_distrib=0, t_post=1, t_stride=0, userDistribution=pdm_distrib)
+                        t_distrib=0, t_post=1, userDistribution=pdm_distrib)
 
   dist_data = dict()
   PTB.PartToBlock_Exchange(dist_data, part_data)

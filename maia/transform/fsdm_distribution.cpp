@@ -191,7 +191,7 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
         }
 
         R8** parray = nullptr;
-        PDM_multi_block_to_part_exch2(mbtp, sizeof(R8), PDM_STRIDE_CST,
+        PDM_multi_block_to_part_exch2(mbtp, sizeof(R8), PDM_STRIDE_CST_INTERLACED,
                                       stride_one,
                            (void ** ) darray_ptr.data(),
                                       nullptr,

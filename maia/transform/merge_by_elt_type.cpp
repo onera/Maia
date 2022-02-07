@@ -86,7 +86,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   }
 
   I4** parray = nullptr;
-  PDM_multi_block_to_part_exch2(mbtp, sizeof(I4), PDM_STRIDE_CST,
+  PDM_multi_block_to_part_exch2(mbtp, sizeof(I4), PDM_STRIDE_CST_INTERLACED,
                                 stride_one,
                      (void ** ) d_connectivity_sections.data(),
                                 nullptr,

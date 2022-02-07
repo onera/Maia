@@ -63,7 +63,7 @@ class parts_to_block_protocol {
       std::byte* blk_data;
       int nMaxSize = PDM_part_to_block_exch(         ptb,
                                                      sizeof(std::byte),
-                                                     PDM_STRIDE_VAR,
+                                                     PDM_STRIDE_VAR_INTERLACED,
                                                      -1,
                                                      part_stride_pt.data(),
                                             (void**) part_data_pt.data(),
@@ -106,7 +106,7 @@ class parts_to_block_protocol {
       T* blk_data;
       int nMaxSize = PDM_part_to_block_exch(         ptb,
                                                      sizeof(T),
-                                                     PDM_STRIDE_VAR,
+                                                     PDM_STRIDE_VAR_INTERLACED,
                                                      -1,
                                                      part_stride_pt.data(),
                                             (void**) part_data_pt.data(),

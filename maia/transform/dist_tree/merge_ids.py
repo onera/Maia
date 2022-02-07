@@ -20,15 +20,13 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
 
   distri = distri.astype(pdm_dtype)
   # Move data to procs holding ids, merging multiple elements
-  part_data = {'Targets' : [targets]}
   pdm_distrib = par_utils.partial_to_full_distribution(distri, comm)
 
   PTB = PDM.PartToBlock(comm, [ids.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=1, t_stride=0, userDistribution=pdm_distrib)
+                        t_distrib=0, t_post=1, userDistribution=pdm_distrib)
   dist_ids  = PTB.getBlockGnumCopy()
 
-  dist_data = dict()
-  PTB.PartToBlock_Exchange(dist_data, part_data)
+  _, dist_targets = PTB.exchange_field([targets])
 
   # Count the number of elements to be deleted (that is the number of elts received, after merge)
   n_rmvd_local  = len(dist_ids)
@@ -49,7 +47,7 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   # Since the new index of target can be on another proc, we do a (fake) BTP to
   # get the data using target numbering
   dist_data2 = {'OldToNew' : old_to_new}
-  part_data2 = BTP.dist_to_part(distri, dist_data2, [dist_data['Targets'].astype(pdm_dtype)], comm)
+  part_data2 = BTP.dist_to_part(distri, dist_data2, [dist_targets.astype(pdm_dtype)], comm)
 
   marker = -1 if sign_rmvd else 1
   old_to_new[ids_local] = marker * part_data2['OldToNew'][0]

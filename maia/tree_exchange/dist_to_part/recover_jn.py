@@ -64,17 +64,15 @@ def get_pl_donor(dist_zones, part_zones, comm):
         part_data['ipart'].append(i_part*np.ones(pl.size, dtype=pl.dtype))
 
   PTB = PDM.PartToBlock(comm, shifted_lntogn, pWeight=None, partN=len(shifted_lntogn),
-                        t_distrib=0, t_post=0, t_stride=0)
+                        t_distrib=0, t_post=0)
   distribution = PTB.getDistributionCopy()
 
   dData = dict()
   PTB.PartToBlock_Exchange(dData, part_data)
 
-  b_stride = 2*np.ones(dData['pl'].size, dtype=np.int32)
-
   BTP = PDM.BlockToPart(distribution, comm, shifted_lntogn, len(shifted_lntogn))
   part_data = dict()
-  BTP.BlockToPart_Exchange2(dData, part_data, 1, b_stride)
+  BTP.BlockToPart_Exchange2(dData, part_data, BlkStride=2)
 
 
   #Post treat

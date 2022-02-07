@@ -60,7 +60,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
 
   #Exchange is not needed. We use PTB just to count the element without multiplicity
   PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
-                        t_distrib=0, t_post=1, t_stride=0)
+                        t_distrib=0, t_post=1)
 
   # Exchange size of filtered gnum and shift to create a create global numbering
   blk_distri = PTB.getDistributionCopy()
@@ -71,13 +71,11 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
 
   # Now send this back to partitions. Caution, We have to use a variable stride 
   # (1 if gnum is know; 0 elsewhere). With variable stride exchange2 seems simpler
-  dist_data = {'lngn' : group_gnum}
   blk_stride = np.zeros(blk_distri[i_rank+1] - blk_distri[i_rank], dtype=np.int32)
   blk_stride[blk_gnum - blk_distri[i_rank] - 1] = 1
-  part_data = dict()
 
   BTP = PDM.BlockToPart(blk_distri, comm, ln_to_gn_list, len(ln_to_gn_list))
-  BTP.BlockToPart_Exchange2(dist_data, part_data, 1, blk_stride)
+  _, part_lngn = BTP.exchange_field(group_gnum, blk_stride)
 
   #Add in partitioned zones
   i_zone = 0
@@ -85,7 +83,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
     node = I.getNodeFromPath(p_zone, node_path)
     if node:
       distri_ud = IE.newGlobalNumbering(parent=node)
-      I.newDataArray('Index', part_data['lngn'][i_zone], parent=distri_ud)
+      I.newDataArray('Index', part_lngn[i_zone], parent=distri_ud)
       i_zone += 1
 
 def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False):
@@ -112,10 +110,9 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
         if I.getNodeFromPath(part_zone, gn_path) is not None]
 
   PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
-                        t_distrib=0, t_post=1, t_stride=0)
+                        t_distrib=0, t_post=1)
 
-  dist_data = dict()
-  part_data = {'pl' : []}
+  part_pl_list = []
   for part_zone in part_zones:
     ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
     if ancestor_n:
@@ -126,9 +123,9 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
         else:
           ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
         part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
-        part_data['pl'].append(ln_to_gn[part_pl-1])
+        part_pl_list.append(ln_to_gn[part_pl-1])
 
-  PTB.PartToBlock_Exchange(dist_data, part_data)
+  _, dist_pl = PTB.exchange_field(part_pl_list)
 
   # Add distribution in dist_node
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
@@ -137,7 +134,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   I.newDataArray('Index', full_distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
   # Create dist pointlist
-  I.newPointList(value = dist_data['pl'].reshape(1,-1), parent=dist_node)
+  I.newPointList(value = dist_pl.reshape(1,-1), parent=dist_node)
   I.newIndexArray('PointList#Size', value=[1, full_distri[n_rank]], parent=dist_node)
 
 
@@ -156,8 +153,8 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
 
   # Init dicts
-  p_data_pe = {'PE' : list()}
-  p_data_ec = {'Connectivity' : list()}
+  p_data_pe = list()
+  p_data_ec = list()
   p_strid_ec = list()
   p_strid_pe = list()
 
@@ -176,24 +173,22 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
     internal_cells_lids = PE[internal_cells]
     PE[internal_cells] = cell_gnum_l[ipart][internal_cells_lids-1]
 
-    p_data_pe['PE'].append(PE)
-    p_data_ec['Connectivity'].append(EC)
-    p_strid_pe.append(2*np.ones(PE.shape[0], dtype=np.int32))
+    p_data_pe.append(PE)
+    p_data_ec.append(EC)
+    p_strid_pe.append(2*np.ones(PE.shape[0]//2, dtype=np.int32))
     p_strid_ec.append(np.diff(ECIdx).astype(np.int32))
 
   # Init PTB protocol
   PTB = PDM.PartToBlock(comm, elt_gnum_l, None, len(elt_gnum_l),
-                        t_distrib = 0, t_post = 2, t_stride = 1)
+                        t_distrib = 0, t_post = 2)
   PTBDistribution = PTB.getDistributionCopy()
 
   # Two echanges are needed, one for PE (with stride == 2), one for connectivity
   d_data_ec = dict()
-  d_data_pe  = dict()
-  PTB.PartToBlock_Exchange(d_data_pe, p_data_pe, p_strid_pe)
-  PTB.PartToBlock_Exchange(d_data_ec, p_data_ec, p_strid_ec)
+  d_strid_pe, d_data_pe = PTB.exchange_field(p_data_pe, p_strid_pe)
+  d_strid_ec, d_data_ec = PTB.exchange_field(p_data_ec, p_strid_ec)
 
   # Post treat : delete duplicated faces. We chose to keep the first appearing
-  d_strid_pe = d_data_pe['PE#Stride']
   dn_elt = d_strid_pe.shape[0]
   duplicated_idx = np.where(d_strid_pe != 2)[0]
 
@@ -202,17 +197,17 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   for iFace in range(dn_elt):
     # Face was not shared with a second partition on this zone
     if d_strid_pe[iFace] == 2:
-      dist_pe[iFace,:] = d_data_pe['PE'][offset:offset+2]
+      dist_pe[iFace,:] = d_data_pe[offset:offset+2]
     # Face was a partition boundary -> we take the left cell of each received tuple
     elif d_strid_pe[iFace] == 4:
-      dist_pe[iFace,:] = [d_data_pe['PE'][offset], d_data_pe['PE'][offset+2]]
+      dist_pe[iFace,:] = [d_data_pe[offset], d_data_pe[offset+2]]
     else:
       raise RuntimeError("Something went wrong with face", iFace)
     offset += d_strid_pe[iFace]
 
-  d_elt_n = d_data_ec['Connectivity#Stride']
+  d_elt_n = d_strid_ec
   # Local elementStartOffset, but with duplicated face->vertex connectivity
-  unfiltered_eso = py_utils.sizes_to_indices(d_data_ec['Connectivity#Stride'])
+  unfiltered_eso = py_utils.sizes_to_indices(d_strid_ec)
 
   # Array of bool (1d) indicating which indices of connectivity must be keeped
   # Then we just have to extract the good indices
@@ -220,7 +215,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   wrong_idx = py_utils.multi_arange(unfiltered_eso[duplicated_idx] + (d_elt_n[duplicated_idx] // 2),
                                     unfiltered_eso[duplicated_idx+1])
   duplicated_ec[wrong_idx] = 1
-  dist_ec = d_data_ec['Connectivity'][~duplicated_ec]
+  dist_ec = d_data_ec[~duplicated_ec]
 
   #Now retrieve filtered ElementStartOffset using size and cumsum
   d_elt_n[duplicated_idx] = d_elt_n[duplicated_idx] // 2
@@ -258,7 +253,7 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   ngon_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, 'Element', ngon_name)
 
   # Init dicts
-  part_data   = {'Connectivity' : list()}
+  part_ec   = list()
   part_stride = list()
 
   # Collect partitioned data
@@ -268,19 +263,15 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
     ECIdx  = I.getNodeFromName1(nface_n, 'ElementStartOffset')[1]
 
     # Move to global and add in part_data
-    part_data['Connectivity'].append(ngon_gnum_l[ipart][np.abs(EC)-1])
+    part_ec.append(ngon_gnum_l[ipart][np.abs(EC)-1])
     part_stride.append(np.diff(ECIdx).astype(np.int32))
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do
   PTB = PDM.PartToBlock(comm, cell_gnum_l, None, len(cell_gnum_l),
-                        t_distrib = 0, t_post = 0, t_stride = 1)
+                        t_distrib = 0, t_post = 0)
   PTBDistribution = PTB.getDistributionCopy()
 
-  dist_data = dict()
-  PTB.PartToBlock_Exchange(dist_data, part_data, part_stride)
-
-  dist_ec = dist_data['Connectivity']
-  d_elt_n = dist_data['Connectivity#Stride']
+  d_elt_n, dist_ec = PTB.exchange_field(part_ec, part_stride)
 
   # ElementStartOffset must be shifted
   dist_eso = py_utils.sizes_to_indices(d_elt_n)

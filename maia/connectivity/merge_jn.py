@@ -94,7 +94,7 @@ def _update_subset(node, pl_new, data_query, comm):
 
   #Don't use maia interface since we need a new distribution
   PTB = PDM.PartToBlock(comm, [pl_new.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=1, t_stride=0)
+                        t_distrib=0, t_post=1)
   PTB.PartToBlock_Exchange(dist_data, part_data)
 
   d_pl_new = PTB.getBlockGnumCopy()
@@ -219,7 +219,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
   PTB = PDM.PartToBlock(comm, [vtx_to_remove.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=1, t_stride=0, userDistribution=pdm_distrib)
+                        t_distrib=0, t_post=1, userDistribution=pdm_distrib)
   local_vtx_to_rmv = PTB.getBlockGnumCopy() - vtx_distri_ini[0] - 1
 
   #Update all vertex entities

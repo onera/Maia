@@ -56,7 +56,7 @@ def disttree_from_parttree(part_tree, comm):
     # > Create vertex distribution and exchange vertex coordinates
     vtx_lngn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
     pdm_ptb = PDM.PartToBlock(comm, vtx_lngn_list, pWeight=None, partN=len(vtx_lngn_list),
-                              t_distrib=0, t_post=1, t_stride=0)
+                              t_distrib=0, t_post=1)
     vtx_distri_pdm = pdm_ptb.getDistributionCopy()
     I.newDataArray('Vertex', vtx_distri_pdm[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
     d_grid_co = I.newGridCoordinates('GridCoordinates', parent=dist_zone)

@@ -46,7 +46,7 @@ class block_to_parts_protocol {
       std::byte** part_data;
       PDM_block_to_part_exch2(btp,
                               sizeof(std::byte),
-                              PDM_STRIDE_VAR,
+                              PDM_STRIDE_VAR_INTERLACED,
                               blk_strid,
                               blk_data,
                              &part_stride,
