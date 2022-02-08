@@ -29,6 +29,7 @@ volume_element_sections(Tree& z) {
 
 template<class Tree> auto
 element_sections_of_type(Tree& z, cgns::ElementType_t et) {
+  STD_E_ASSERT(label(z)=="Zone_t");
   auto is_section_of_dim = [et](const cgns::tree& n) -> bool { return is_section_of_type(n,et); };
   return get_children_by_predicate(z,is_section_of_dim);
 }

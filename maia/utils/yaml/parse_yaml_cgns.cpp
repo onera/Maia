@@ -5,6 +5,7 @@
 namespace py = pybind11;
 #include "cpp_cgns/interop/pycgns_converter.hpp"
 #include "std_e/utils/embed_python.hpp"
+#include "std_e/future/ranges.hpp"
 
 
 namespace maia {
@@ -18,12 +19,18 @@ to_node(const std::string& yaml_str) -> cgns::tree {
   return cgns::to_cpp_tree_copy(py_tree);
 }
 auto
-to_nodes(const std::string& yaml_str) -> cgns::tree {
+to_nodes(const std::string& yaml_str) -> std::vector<cgns::tree> {
   std_e::throw_if_no_python_interpreter(__func__);
   auto parse_yaml_cgns = py::module_::import("maia.utils.parse_yaml_cgns");
-  py::object py_tree = parse_yaml_cgns.attr("to_nodes")(yaml_str);
+  py::object py_trees = parse_yaml_cgns.attr("to_nodes")(yaml_str);
 
-  return cgns::to_cpp_tree_copy(py_tree);
+  auto to_cpp_tree_copy_fn = [](const py::handle& py_tree) {
+    return
+      cgns::to_cpp_tree_copy(
+        py::reinterpret_borrow<py::list>(py_tree)
+      );
+  };
+  return py_trees | std::views::transform(to_cpp_tree_copy_fn) | std_e::to_vector();
 }
 auto
 to_cgns_tree(const std::string& yaml_str) -> cgns::tree {
