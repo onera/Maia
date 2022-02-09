@@ -248,7 +248,7 @@ compute_center_cell_u(int n_cell,
     int ir = parent_elements[iface+n_face]-1;
     // std::cout << "compute_center_cell_u: iface = " << iface << std::endl;
     // std::cout << "compute_center_cell_u: il = " << il << ", ir = " << ir << std::endl;
-    assert(((il >= 0) && (il < n_cell)));
+    assert(((il >= -1) && (il < n_cell)));
     assert(((ir >= -1) && (ir < n_cell)));
 
     // Compute the indices of vtx on faces
@@ -263,10 +263,12 @@ compute_center_cell_u(int n_cell,
       // assert(((ivtx >= 0) && (ivtx < n_vtx)));
       // std::cout << "compute_center_cell_u: ivtx = " << ivtx << ", np_face_vtx.size() = " << np_face_vtx.size() << std::endl;
 
-       center_cell[3*il  ] += cx[ivtx];
-       center_cell[3*il+1] += cy[ivtx];
-       center_cell[3*il+2] += cz[ivtx];
-       countc[il] += 1;
+       if (il >= 0) {
+         center_cell[3*il  ] += cx[ivtx];
+         center_cell[3*il+1] += cy[ivtx];
+         center_cell[3*il+2] += cz[ivtx];
+         countc[il] += 1;
+       }
 
        if (ir >= 0) {
          center_cell[3*ir  ] += cx[ivtx];

@@ -31,6 +31,10 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
   face_distri = I.getVal(IE.getDistribution(ngon, 'Element')).astype(pdm_dtype)
   pe          =  I.getNodeFromPath(ngon, 'ParentElements')[1]
 
+
+  #TODO This method asserts that PE is CGNS compliant ie left_parent != 0 for bnd elements
+  assert not np.any(pe[:,0] == 0)
+
   # A/ Exchange parent cells before removing :
   # 1. Get the left cell of the faces to delete
   dist_data = {'PE' : pe[:,0]}

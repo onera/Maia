@@ -17,18 +17,13 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   distrib_cell     = I.getVal(IE.getDistribution(dist_zone, 'Cell'))
 
   # > Try to hook NGon
-  found = False
-  for elt in I.getNodesFromType1(dist_zone, 'Elements_t'):
-    if SIDS.ElementType(elt) == 22:
-      found    = True
-      dface_vtx = I.getNodeFromName1(elt, 'ElementConnectivity')[1].astype(pdm_gnum_dtype)
-      ngon_pe   = I.getNodeFromName1(elt, 'ParentElements'     )[1].astype(pdm_gnum_dtype)
-      ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype)
+  ngon_node = SIDS.Zone.NGonNode(dist_zone)
+  dface_vtx = I.getNodeFromName1(ngon_node, 'ElementConnectivity')[1].astype(pdm_gnum_dtype)
+  ngon_pe   = I.getNodeFromName1(ngon_node, 'ParentElements'     )[1].astype(pdm_gnum_dtype)
+  ngon_eso  = I.getNodeFromName1(ngon_node, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype)
 
-      distrib_face     = I.getVal(IE.getDistribution(elt, 'Element')).astype(pdm_gnum_dtype)
-      distrib_face_vtx = I.getVal(IE.getDistribution(elt, 'ElementConnectivity')).astype(pdm_gnum_dtype)
-  if not found :
-    raise RuntimeError
+  distrib_face     = I.getVal(IE.getDistribution(ngon_node, 'Element')).astype(pdm_gnum_dtype)
+  distrib_face_vtx = I.getVal(IE.getDistribution(ngon_node, 'ElementConnectivity')).astype(pdm_gnum_dtype)
 
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
   dn_cell = distrib_cell[1] - distrib_cell[0]

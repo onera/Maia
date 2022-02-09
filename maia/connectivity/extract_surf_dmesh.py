@@ -20,18 +20,12 @@ def _extract_faces(dist_zone, face_list, comm):
   """
 
   # > Try to hook NGon
-  found = False
-  for elt in I.getNodesFromType1(dist_zone, 'Elements_t'):
-    if sids.ElementCGNSName(elt) == 'NGON_n':
-      found    = True
-      dface_vtx = I.getNodeFromName1(elt, 'ElementConnectivity')[1]
-      ngon_pe   = I.getNodeFromName1(elt, 'ParentElements'     )[1]
-      ngon_eso  = I.getNodeFromName1(elt, 'ElementStartOffset' )[1]
+  ngon_node = sids.Zone.NGonNode(dist_zone)
+  dface_vtx = I.getNodeFromName1(ngon_node, 'ElementConnectivity')[1]
+  ngon_eso  = I.getNodeFromName1(ngon_node, 'ElementStartOffset' )[1]
 
-      distrib_face     = I.getVal(IE.getDistribution(elt, 'Element'))
-      distrib_face_vtx = I.getVal(IE.getDistribution(elt, 'ElementConnectivity'))
-  if not found :
-    raise RuntimeError
+  distrib_face     = I.getVal(IE.getDistribution(ngon_node, 'Element'))
+  distrib_face_vtx = I.getVal(IE.getDistribution(ngon_node, 'ElementConnectivity'))
 
   dn_face = distrib_face[1] - distrib_face[0]
   np_face_distrib = par_utils.partial_to_full_distribution(distrib_face, comm)
