@@ -93,5 +93,5 @@ def rm_joins_ordinal(dist_tree):
   """
   gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for gc in IE.getNodesByMatching(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
-    I._rmNodesByName(gc, 'Ordinal')
-    I._rmNodesByName(gc, 'OrdinalOpp')
+    I._rmNodesByName1(gc, 'Ordinal')
+    I._rmNodesByName1(gc, 'OrdinalOpp')

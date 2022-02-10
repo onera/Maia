@@ -71,9 +71,10 @@ def load_grid_connectivity_property(filename, tree):
     I._rmNodesByType(gc_node, 'GridConnectivityProperty_t')
     I._addChild(gc_node, gc_prop)
 
-def enforce_pdm_dtype(tree):
+def _enforce_pdm_dtype(tree):
   """
   Convert the index & connectivity arrays to expected pdm_g_num_t
+  TODO : find better pattern for the "Subset iterator" and factorize it
   """
   for zone in I.getZones(tree):
     zone[1] = zone[1].astype(npy_pdm_gnum_dtype)

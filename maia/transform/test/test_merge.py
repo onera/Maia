@@ -1,5 +1,6 @@
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
+from mpi4py import MPI
 import numpy as np
 
 import Converter.Internal as I
@@ -10,16 +11,17 @@ from maia.sids import sids
 from maia.utils         import parse_yaml_cgns
 from maia.generate.dcube_generator import dcube_generate
 from maia.transform.dist_tree import add_joins_ordinal as AJO
+from maia.distribution import distribute_nodes as DN
 
 from maia.transform import merge
 
 @mark_mpi_test([1,3])
-@pytest.mark.parametrize("merge_bc_from_name", [True, False])
-def test_merge_zones_L(sub_comm, merge_bc_from_name):
-  # Setup : create 3 2*2*2 cubes and make them connected in L
-  n_vtx = 3
-  dcubes = [dcube_generate(n_vtx, 1., [0,0,0], sub_comm), 
-            dcube_generate(n_vtx, 1., [1,0,0], sub_comm),
+@pytest.mark.parametrize("merge_bc_from_name", [True, False])   #       __
+def test_merge_zones_L(sub_comm, merge_bc_from_name):           #      |  |
+  # Setup : create 3 2*2*2 cubes and make them connected in L   #    __|__|
+  n_vtx = 3                                                     #   |  |  |
+  dcubes = [dcube_generate(n_vtx, 1., [0,0,0], sub_comm),       #   |__|__|
+            dcube_generate(n_vtx, 1., [1,0,0], sub_comm),       # 
             dcube_generate(n_vtx, 1., [1,1,0], sub_comm)]
   zones = [I.getZones(dcube)[0] for dcube in dcubes]
   tree = I.newCGNSTree()
@@ -52,6 +54,14 @@ def test_merge_zones_L(sub_comm, merge_bc_from_name):
       ref_bc = I.getNodeFromName(tree, f'{jn_opp[izone][j]}')
       I.newIndexArray('PointListDonor', I.getNodeFromName1(ref_bc, 'PointList')[1].copy(), parent=gc)
 
+  #Setup some data
+  for i_zone, zone in enumerate(zones):
+    sol = I.newFlowSolution('FlowSolution', gridLocation='Vertex', parent=zone)
+    I.newDataArray('DomId', (i_zone+1)*np.ones(n_vtx**3, int), parent=sol)
+    pl_sol_full = I.newFlowSolution('PartialSol', gridLocation='CellCenter')
+    I.newIndexArray('PointList', value=np.array([[8]], pdm_dtype), parent=pl_sol_full)
+    I.newDataArray('SpecificSol', np.array([3.14]), parent=pl_sol_full)
+    I._addChild(zone, DN.distribute_pl_node(pl_sol_full, sub_comm))
 
   # If we use private func, we need to add ordinals
   AJO.add_joins_ordinal(tree, sub_comm)
@@ -66,11 +76,18 @@ def test_merge_zones_L(sub_comm, merge_bc_from_name):
     assert len(I.getNodesFromType(merged_zone, 'BC_t')) == 6 #BC merged by name
   else:
     assert len(I.getNodesFromType(merged_zone, 'BC_t')) == 3*6 - 4 #BC not merged
+  assert sub_comm.allreduce(I.getNodeFromName(merged_zone, 'DomId')[1].size, MPI.SUM) == sids.Zone.n_vtx(merged_zone)
+
+  expected_partial_sol_size = 3 if merge_bc_from_name else 1
+  assert sub_comm.allreduce(I.getNodeFromName(merged_zone, 'SpecificSol')[1].size, MPI.SUM) == expected_partial_sol_size
+  if merge_bc_from_name:
+    partial_pl = I.getNodeFromPath(merged_zone, 'PartialSol/PointList')
+    assert (np.concatenate(sub_comm.allgather(partial_pl[1][0])) == [8,16,24]).all()
 
 @pytest.mark.parametrize("merge_only_two", [False, True])
 @mark_mpi_test(1)
 def test_merge_zones_I(sub_comm, merge_only_two):
-  """ A setup with 3 zones I-shaped connected by match
+  """ A setup with 3 zones in I direction connected by match
   jns (2) + 1 periodic between first and last zone.
   We request to merge only the two first zones
   """
@@ -127,6 +144,12 @@ def test_merge_zones_I(sub_comm, merge_only_two):
   for izone, zone in zip(range(2), [zones[0], zones[-1]]):
     I._rmNodesByName(zone, jn_cur[izone])
 
+  #Setup some data (Only one rank so next lines are OK)
+  zsr_full = I.newZoneSubRegion('SubRegion', bcName='dcube_bnd_4', parent=zones[1])
+  old_id = I.getNodeFromPath(zones[1], 'ZoneBC/dcube_bnd_4/PointList')[1][0].copy()
+  I.newGridLocation('FaceCenter', zsr_full)
+  I.newDataArray('OldId', old_id, parent=zsr_full)
+  
 
   if merge_only_two:
     n_merged = 2
@@ -150,6 +173,10 @@ def test_merge_zones_I(sub_comm, merge_only_two):
   assert sids.Zone.n_cell(merged_zone) == n_merged*((n_vtx-1)**3)
   assert sids.Zone.n_vtx(merged_zone) == n_merged*(n_vtx**3) - (n_merged-1)*(n_vtx**2)
   assert sids.Zone.n_face(merged_zone) == n_merged*(3*n_vtx*(n_vtx-1)**2) - (n_merged-1)*(n_vtx-1)**2
+  assert I.getNodeFromPath(merged_zone, 'SubRegion/GridLocation') is not None
+  assert I.getNodeFromPath(merged_zone, 'SubRegion/BCRegionName') is None
+  assert (I.getNodeFromPath(merged_zone, 'SubRegion/OldId')[1] == old_id).all()
+  assert not (I.getNodeFromPath(merged_zone, 'SubRegion/PointList')[1] == old_id).all()
 
 @mark_mpi_test(3)
 def test_equilibrate_data(sub_comm):

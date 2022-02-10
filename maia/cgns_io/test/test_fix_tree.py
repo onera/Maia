@@ -53,7 +53,8 @@ def test_enforce_pdm_dtype():
   assert I.getNodeFromName(tree, 'PointList')[1].dtype == wrong_pdm_type
   assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == wrong_pdm_type
   assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == wrong_pdm_type
-  fix_tree.enforce_pdm_dtype(tree)
+  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == np.int32 #Always int32
+  fix_tree._enforce_pdm_dtype(tree)
   assert I.getNodeFromName(tree, 'PointList')[1].dtype == pdm_dtype
   assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == pdm_dtype
   assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == pdm_dtype

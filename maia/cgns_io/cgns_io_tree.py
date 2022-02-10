@@ -7,7 +7,7 @@ from   .load_collective_size_tree          import load_collective_size_tree
 from   .hdf_filter.tree                    import create_tree_hdf_filter
 
 from maia.utils import parse_yaml_cgns
-from .fix_tree import enforce_pdm_dtype
+from .fix_tree import _enforce_pdm_dtype
 
 def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
   """
@@ -76,7 +76,7 @@ def file_to_dist_tree(filename, comm, distribution_policy='uniform'):
     if comm.Get_rank() == 0:
       with open(filename, 'r') as f:
         tree = parse_yaml_cgns.to_cgns_tree(f)
-        enforce_pdm_dtype(tree)  
+        _enforce_pdm_dtype(tree)  
     else:
       tree = None
     dist_tree = distribute_tree(tree, comm, owner=0) 

@@ -1,3 +1,4 @@
+#Reference solution for test_merge_blocks::test_merge_all
 CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
 BaseA CGNSBase_t I4 [3, 3]:
   MergedZone Zone_t I4 [[360, 162, 0]]:

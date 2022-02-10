@@ -28,6 +28,7 @@ def test_merge_all(sub_comm, write_output):
   merge.merge_zones(dist_tree, zones_path, sub_comm)
   merged_1 = I.copyTree(dist_tree) # Do copy for further comparaisons
   assert len(I.getZones(merged_1)) == 1
+  assert I.getNodeFromPath(merged_1, 'BaseA/MergedZone') is not None #By default take same name than current base
   assert len(I.getNodesFromType(merged_1, 'ZoneGridConnectivity_t')) == 0
 
   # Note that by default, the BC (and more generally, subsets) of same name (across blocks) are concatenated :
@@ -48,7 +49,9 @@ def test_merge_all(sub_comm, write_output):
   
   # One more thing : the function has an API that can detect the zones that are connected by GCs and merge it :
   dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
-  merge.merge_zones(dist_tree, zones_path, sub_comm)
+  merge.merge_connected_zones(dist_tree, sub_comm)
+  merged_zone = I.getZones(dist_tree)[0]
+  merged_zone[0] = I.getName(I.getZones(merged_1)[0]) #Name differ so change before compare
 
   assert PT.is_same_tree(merged_1, dist_tree)
 

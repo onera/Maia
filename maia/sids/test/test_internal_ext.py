@@ -55,10 +55,10 @@ def test_enforceDonorAsPath():
       ZGC ZoneGridConnectivity_t:
         match1 GridConnectivity_t "ZoneA":
         match2 GridConnectivity_t "Base/ZoneA":
-        match3 GridConnectivity_t "ZoneB":
+        match3 GridConnectivity1to1_t "ZoneB":
     ZoneB Zone_t:
       ZGC1 ZoneGridConnectivity_t:
-        match4 GridConnectivity_t "ZoneA":
+        match4 GridConnectivity1to1_t "ZoneA":
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   IE.enforceDonorAsPath(tree)

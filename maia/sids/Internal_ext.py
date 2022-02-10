@@ -83,7 +83,9 @@ def enforceDonorAsPath(tree):
 
 def find_connected_zones(tree):
   """
-  Return a list of groups of zones (ie their path from root tree) connected through GridConnectivity_t.
+  Return a list of groups of zones (ie their path from root tree) connected through
+  non periodic match grid connectivities (GridConnectivity_t & GridConnectivity1to1_t
+  without Periodic_t node).
   """
   connected_zones = []
   matching_gcs_u = lambda n : I.getType(n) == 'GridConnectivity_t' \
@@ -113,7 +115,7 @@ def find_connected_zones(tree):
         for z_p in zones_paths:
           py_utils.append_unique(new_group, z_p)
       connected_zones.append(new_group)
-  return connected_zones
+  return [sorted(zones) for zones in connected_zones]
 
 def getDistribution(node, distri_name=None):
   """

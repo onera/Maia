@@ -20,13 +20,15 @@ from maia.tree_exchange.part_to_dist import data_exchange as MPTB
 
 def merge_connected_zones(tree, comm, **kwargs):
   """
-  Shortcut for merge_zones to merge all the zones of the tree
+  Shortcut for merge_zones to merge all the connected zones of the tree
   """
   grouped_zones_paths = IE.find_connected_zones(tree)
 
   for i, zones_path in enumerate(grouped_zones_paths):
+    zones_path_u = [path for path in zones_path \
+        if sids.Zone.Type(I.getNodeFromPath(tree, path)) == 'Unstructured']
     base = zones_path[0].split('/')[0]
-    merge_zones(tree, zones_path, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
+    merge_zones(tree, zones_path_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
 def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', concatenate_jns=True):
   """
@@ -39,6 +41,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
   Option concatenate_jns, if True, reduce the multiple 1to1 matching joins from or to merged_zone
   to a single one.
   """
+  assert all([sids.Zone.Type(I.getNodeFromPath(tree, path)) == 'Unstructured' for path in zones_path])
   #Those one will be needed for jn recovering
   AJO.add_joins_ordinal(tree, comm)
 
@@ -95,9 +98,8 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
 
-  #Finally, ordinals can be removed
+  #Finally, ordinals can be removed TODO they may be updated instead
   AJO.rm_joins_ordinal(tree)
-
 
 
 def _add_zone_suffix(zones, query):
@@ -105,8 +107,10 @@ def _add_zone_suffix(zones, query):
   for izone, zone in enumerate(zones):
     for node in IE.getNodesByMatching(zone, query):
       I.setName(node, I.getName(node) + f".{izone}")
+
 def _rm_zone_suffix(zones, query):
-  """Util function removing the number of the zone in all the nodes founds by a query"""
+  """Util function removing the number of the zone in all the nodes founds by a query
+  Use it to cleanup after _add_zone_suffix has been applied"""
   for zone in zones:
     for node in IE.getNodesByMatching(zone, query):
       I.setName(node, '.'.join(I.getName(node).split('.')[:-1]))
@@ -126,14 +130,14 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   zone_to_id = {path : i for i, path in enumerate(zones_path)}
 
   is_perio = lambda n : I.getNodeFromType1(n, 'GridConnectivityProperty_t') is not None
-  query = ['ZoneGridConnectivity_t', \
-      lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+  gc_query = ['ZoneGridConnectivity_t', \
+                lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
                 and sids.GridLocation(n) == 'FaceCenter']
 
   # JNs to external zones must be excluded from vertex list computing
   tree_vl = I.copyRef(tree)
   for base, zone in IE.getNodesWithParentsByMatching(tree_vl, ['CGNSBase_t', 'Zone_t']):
-    for zgc, gc in IE.getNodesWithParentsByMatching(zone, query):
+    for zgc, gc in IE.getNodesWithParentsByMatching(zone, gc_query):
       if IE.getZoneDonorPath(I.getName(base), gc) not in zone_to_id:
         I.rmNode(zgc, gc)
   VL.generate_jns_vertex_list(tree_vl, comm, have_isolated_faces=True)
@@ -153,7 +157,7 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   interface_ids_v = []
   for zone_path, zone in zip(zones_path, zones):
     base_name, zone_name = zone_path.split('/')
-    for zgc, gc in IE.getNodesWithParentsByMatching(zone, query):
+    for zgc, gc in IE.getNodesWithParentsByMatching(zone, gc_query):
       jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
       jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
       opp_zone_path = IE.getZoneDonorPath(base_name, gc)
@@ -281,7 +285,7 @@ def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
 
 def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
-  Wrapper to perform a merge off the following subset nodes (when having a PointList) :
+  Wrapper to perform a merge of the following subset nodes (when having a PointList) :
     FlowSolution_t, DiscreteData_t, ZoneSubRegion_t, BC_t, GridConnectivity_t, BCDataSet_t
   from the input zones to the merged zone merged_zone.
 
@@ -349,12 +353,16 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
     if merge_strategy != 'name'or query[0] == 'ZoneGridConnectivity_t':
       _rm_zone_suffix(zones, query)
 
-  # Trick to avoid spectific treatment of ZoneSubRegions (remove PL)
-  for zone in zones + [merged_zone]:
+  # Trick to avoid spectific treatment of ZoneSubRegions (remove PL on original zones)
+  for zone in zones:
     for zsr in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
       if I.getNodeFromName1(zsr, 'BCRegionName') is not None or \
          I.getNodeFromName1(zsr, 'GridConnectivityRegionName') is not None:
         I._rmNodesByName(zsr, 'PointList*')
+  # Since link may be broken in merged zone, it is safer to remove it
+  for zsr in I.getNodesFromType1(merged_zone, 'ZoneSubRegion_t'):
+    I._rmNodesByName1(zsr, 'BCRegionName')
+    I._rmNodesByName1(zsr, 'GridConnectivityRegionName')
 
 def _equilibrate_data(data, comm, distri=None, distri_full=None):
   from maia.distribution import distribution_function as DF
@@ -501,7 +509,7 @@ def _merge_ngon(all_mbm, tree, comm):
   # Create working data
   for zone_path, dom_id in zone_to_id.items():
     ngon_node = sids.Zone.NGonNode(I.getNodeFromPath(tree, zone_path))
-    pe = I.getNodeFromPath(ngon_node, 'ParentElements')[1]
+    pe = I.getNodeFromName1(ngon_node, 'ParentElements')[1]
     I.newDataArray('UpdatedPE', pe.copy(), parent=ngon_node)
     I.newDataArray('PEDomain',  dom_id * np.ones_like(pe), parent=ngon_node)
 
@@ -515,7 +523,7 @@ def _merge_ngon(all_mbm, tree, comm):
     zone_send = I.getNodeFromPath(tree, zone_path_send)
     ngon_send = sids.Zone.NGonNode(zone_send)
     face_distri_send = IE.getDistribution(ngon_send, 'Element')[1].astype(pdm_dtype)
-    pe_send          =  I.getNodeFromPath(ngon_send, 'UpdatedPE')[1]
+    pe_send          =  I.getNodeFromName1(ngon_send, 'UpdatedPE')[1]
     dist_data_send = {'PE' : pe_send[:,0]}
 
     gcs = PT.get_nodes_from_predicate(zone_send, query, depth=2)
@@ -536,8 +544,8 @@ def _merge_ngon(all_mbm, tree, comm):
       face_distri = IE.getDistribution(ngon_node, 'Element')[1].astype(pdm_dtype)
       dist_data = MPTB.part_to_dist(face_distri, part_data_gc, [pld], comm)
 
-      pe      = I.getNodeFromPath(ngon_node, 'UpdatedPE')[1]
-      pe_dom  = I.getNodeFromPath(ngon_node, 'PEDomain')[1]
+      pe      = I.getNodeFromName1(ngon_node, 'UpdatedPE')[1]
+      pe_dom  = I.getNodeFromName1(ngon_node, 'PEDomain')[1]
       local_faces = dist_data['FaceId'] - face_distri[0] - 1
       assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
       pe[local_faces, 1] = dist_data['PE']
@@ -577,7 +585,7 @@ def _merge_ngon(all_mbm, tree, comm):
   ec_distri = par_utils.gather_and_shift(eso_loc[-1], comm)
   eso = eso_loc + ec_distri[comm.Get_rank()]
 
-  #Post treat PE : we need to reintroduce 0 on boundary faces (TODO : could avoir tmp array ?)
+  #Post treat PE : we need to reintroduce 0 on boundary faces (TODO : could avoid tmp array ?)
   bnd_faces = np.where(merged_pe_stri == 1)[0]
   merged_pe_idx  = py_utils.sizes_to_indices(merged_pe_stri)
   merged_pe_full = np.insert(merged_pe, merged_pe_idx[bnd_faces]+1, 0)

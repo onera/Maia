@@ -190,10 +190,11 @@ def test_concatenate_point_list():
   plvoid = np.empty((1,0))
 
   #No pl at all in the mesh
-  none_idx, none = py_utils.concatenate_point_list([])
+  with pytest.raises(ValueError):
+    none_idx, none = py_utils.concatenate_point_list([])
+  none_idx, none = py_utils.concatenate_point_list([], np.int32)
   assert none_idx == [0]
-  assert isinstance(none, np.ndarray)
-  assert none.shape == (0,)
+  assert isinstance(none, np.ndarray) and none.shape == (0,)
 
   #A pl, but with no data
   empty_idx, empty = py_utils.concatenate_point_list([plvoid])

@@ -18,6 +18,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
   additional_data_queries argument.
   Also copy the GridLocation node + all the nodes found using additional_child_queries
   Query are understood starting from nodes[0], unless if an other node is given using master argument
+  Note that datas are only concatenated : duplicated, if any, are not removed.
   """
 
   if master is None:

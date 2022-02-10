@@ -129,7 +129,7 @@ def extract_surf_from_bc(part_zones, families, comm):
       bc_face_ids = [_pr_to_face_pl(n_vtx_z, I.getNodeFromName1(bc_node, 'PointRange')[1], sids.GridLocation(bc_node))[0] \
           for bc_node in bc_nodes]
 
-    _, bc_face_ids = py_utils.concatenate_np_arrays(bc_face_ids)
+    _, bc_face_ids = py_utils.concatenate_np_arrays(bc_face_ids, pdm_dtype)
     cx, cy, cz, bc_face_vtx_idx, bc_face_vtx, bc_vtx_ids = extract_faces_mesh(zone, bc_face_ids)
 
     ex_coords = py_utils.interweave_arrays([cx, cy, cz])
