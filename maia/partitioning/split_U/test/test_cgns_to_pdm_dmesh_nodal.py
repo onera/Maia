@@ -4,8 +4,11 @@ import numpy as np
 import Converter.Internal as I
 import Pypdm.Pypdm as PDM
 
+from maia import npy_pdm_gnum_dtype
 from   maia.utils        import parse_yaml_cgns
 from maia.partitioning.split_U import cgns_to_pdm_dmesh_nodal as CTP
+
+dtype = 'I4' if npy_pdm_gnum_dtype == np.int32 else 'I8'
 
 @mark_mpi_test(2)
 def test_split_point_list_by_dim(sub_comm):
@@ -25,7 +28,7 @@ def test_split_point_list_by_dim(sub_comm):
 @mark_mpi_test(3)
 def test_cgns_dist_zone_to_pdm_dmesh_nodal(sub_comm):
   if sub_comm.Get_rank() == 0:
-    dt = """
+    dt = f"""
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0., 0.5, 1.,  0. , 0.5, 1. ]:
@@ -33,18 +36,17 @@ ZoneU Zone_t [[18,6,0]]:
     CoordinateZ DataArray_t [0., 0.,  0.,  0. , 0. , 0. ]:
   Hexa Elements_t [17,0]:
     ElementRange ElementRange_t [1,4]:
-    ElementConnectivity DataArray_t:
-      I4 : [1,2,5,4,10,11,14,13,  2,3,6,5,11,12,15,14]
+    ElementConnectivity DataArray_t {dtype} [1,2,5,4,10,11,14,13,  2,3,6,5,11,12,15,14]:
     :CGNS#Distribution UserDefinedData_t:
-      Element DataArray_t [0,2,4]:
+      Element DataArray_t {dtype} [0,2,4]:
   :CGNS#Distribution UserDefinedData_t:
-    Vertex DataArray_t [0,6,18]:
-    Cell DataArray_t [0,2,4]:
+    Vertex DataArray_t {dtype} [0,6,18]:
+    Cell DataArray_t {dtype} [0,2,4]:
   """
     expected_dnface = 7
     expected_facecell = [1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 4, 0]
   elif sub_comm.Get_rank() == 1:
-    dt = """
+    dt = f"""
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0., 0.5, 1., 0., 0.5, 1.]:
@@ -52,18 +54,17 @@ ZoneU Zone_t [[18,6,0]]:
     CoordinateZ DataArray_t [0.,  0., 0., 1.,  1., 1.]:
   Hexa Elements_t [17,0]:
     ElementRange ElementRange_t [1,4]:
-    ElementConnectivity DataArray_t:
-      I4 : [4,5,8,7,13,14,17,16]
+    ElementConnectivity DataArray_t {dtype} [4,5,8,7,13,14,17,16]:
     :CGNS#Distribution UserDefinedData_t:
-      Element DataArray_t [2,3,4]:
+      Element DataArray_t {dtype} [2,3,4]:
   :CGNS#Distribution UserDefinedData_t:
-    Vertex DataArray_t [6,12,18]:
-    Cell DataArray_t [2,3,4]:
+    Vertex DataArray_t {dtype} [6,12,18]:
+    Cell DataArray_t {dtype} [2,3,4]:
   """
     expected_dnface = 5
     expected_facecell = [2, 1, 1, 3, 2, 0, 2, 4, 3, 0]
   elif sub_comm.Get_rank() == 2:
-    dt = """
+    dt = f"""
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [0.,  0.5, 1.,  0.,  0.5, 1.]:
@@ -71,13 +72,12 @@ ZoneU Zone_t [[18,6,0]]:
     CoordinateZ DataArray_t [1.,  1.,  1.,  1.,  1. , 1.]:
   Hexa Elements_t [17,0]:
     ElementRange ElementRange_t [1,4]:
-    ElementConnectivity DataArray_t:
-      I4 : [5,6,9,8,14,15,18,17]
+    ElementConnectivity DataArray_t {dtype} [5,6,9,8,14,15,18,17]:
     :CGNS#Distribution UserDefinedData_t:
-      Element DataArray_t [3,4,4]:
+      Element DataArray_t {dtype} [3,4,4]:
   :CGNS#Distribution UserDefinedData_t:
-    Vertex DataArray_t [12,18,18]:
-    Cell DataArray_t [3,4,4]:
+    Vertex DataArray_t {dtype} [12,18,18]:
+    Cell DataArray_t {dtype} [3,4,4]:
   """
     expected_dnface = 8
     expected_facecell = [3, 4, 1, 0, 3, 0, 4, 0, 2, 0, 4, 0, 3, 0, 4, 0]

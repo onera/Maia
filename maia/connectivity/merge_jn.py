@@ -91,7 +91,13 @@ def _update_subset(node, pl_new, data_query, comm):
   dist_data = {}
   for data_nodes in IE.getNodesWithParentsByMatching(node, data_query):
     path = "/".join([I.getName(n) for n in data_nodes])
-    part_data[path] = [data_nodes[-1][1][0]]
+    data_n = data_nodes[-1]
+    if data_n[1].ndim == 1:
+      part_data[path] = [data_n[1]]
+    else:
+      assert data_n[1].ndim == 2 and data_n[1].shape[0] == 1
+      part_data[path] = [data_n[1][0]]
+
   #Add PL, needed for next blocktoblock
   pl_identifier = r'@\PointList/@' # just a string that is unlikely to clash
   part_data[pl_identifier] = [pl_new.astype(pdm_dtype)]
@@ -121,7 +127,10 @@ def _update_subset(node, pl_new, data_query, comm):
   #Update data
   for data_nodes in IE.getNodesWithParentsByMatching(node, data_query):
     path = "/".join([I.getName(n) for n in data_nodes])
-    I.setValue(data_nodes[-1], dist_data_ideal[path].reshape(1,-1, order='F'))
+    if I.getType(data_nodes[-1]) == 'IndexArray_t':
+      I.setValue(data_nodes[-1], dist_data_ideal[path].reshape(1,-1, order='F'))
+    elif I.getType(data_nodes[-1]) == 'DataArray_t':
+      I.setValue(data_nodes[-1], dist_data_ideal[path])
 
 def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_name, comm):
   """
@@ -240,7 +249,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   # Update vertex distribution
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
   n_rmvd   = len(local_vtx_to_rmv)
-  n_rmvd_offset  = par_utils.gather_and_shift(n_rmvd, comm)
+  n_rmvd_offset  = par_utils.gather_and_shift(n_rmvd, comm, pdm_dtype)
   vtx_distri = vtx_distri_ini - [n_rmvd_offset[i_rank], n_rmvd_offset[i_rank+1],  n_rmvd_offset[n_rank]]
   IE.newDistribution({'Vertex' : vtx_distri}, zone)
   zone[1][0][0] = vtx_distri[2]

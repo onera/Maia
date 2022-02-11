@@ -54,6 +54,13 @@ def test_is_subset_l():
   assert py_utils.is_subset_l([3,8,2],    L) == False
   assert py_utils.is_subset_l([10,3,3,1], L) == False
 
+def test_append_unique():
+  L = [1,2,3]
+  py_utils.append_unique(L, 4)
+  assert L == [1,2,3,4]
+  py_utils.append_unique(L, 4)
+  assert L == [1,2,3,4]
+
 def test_get_ordered_subset():
   L = [2,8,10,3,3]
   assert py_utils.get_ordered_subset([10,8,3], L) == (8,10,3)
@@ -183,10 +190,11 @@ def test_concatenate_point_list():
   plvoid = np.empty((1,0))
 
   #No pl at all in the mesh
-  none_idx, none = py_utils.concatenate_point_list([])
+  with pytest.raises(ValueError):
+    none_idx, none = py_utils.concatenate_point_list([])
+  none_idx, none = py_utils.concatenate_point_list([], np.int32)
   assert none_idx == [0]
-  assert isinstance(none, np.ndarray)
-  assert none.shape == (0,)
+  assert isinstance(none, np.ndarray) and none.shape == (0,)
 
   #A pl, but with no data
   empty_idx, empty = py_utils.concatenate_point_list([plvoid])

@@ -62,6 +62,11 @@ def is_subset_l(subset, L):
   extended_l = list(L) + list(L)[:len(subset)-1]
   return max([subset == extended_l[i:i+len(subset)] for i in range(len(L))])
 
+def append_unique(L, item):
+  """ Add an item in a list only if not already present"""
+  if item not in L:
+    L.append(item)
+
 def get_ordered_subset(subset, L):
   """
   Check is one of the permutations of subset exists in L, allowing looping
@@ -118,7 +123,9 @@ def concatenate_np_arrays(arrays, dtype=None):
   merged_idx = sizes_to_indices(sizes, dtype=np.int32)
 
   if dtype is None:
-    dtype = arrays[0].dtype if arrays != [] else np.int64
+    if arrays == []:
+      raise ValueError("Can not concatenate empty list of arrays if dtype is not provided")
+    dtype = arrays[0].dtype
 
   merged_array = np.empty(sum(sizes), dtype=dtype)
   for i, a in enumerate(arrays):

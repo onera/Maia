@@ -3,6 +3,7 @@ import Converter.Internal as I
 
 from maia.sids.pytree import iter_children_from_predicates, get_children_from_predicates
 from maia.sids.pytree import check_is_label
+from maia.utils       import py_utils
 
 # Some old aliases to replace with iterNodesFromPredicates
 
@@ -71,6 +72,50 @@ def getZoneDonorPath(current_base, gc):
   """
   opp_zone = I.getValue(gc)
   return opp_zone if '/' in opp_zone else current_base + '/' + opp_zone
+
+def enforceDonorAsPath(tree):
+  """ Force the GCs to indicate their opposite zone under the form BaseName/ZoneName """
+  predicates = ['Zone_t', 'ZoneGridConnectivity_t', lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
+  for base in I.getBases(tree):
+    base_n = I.getName(base)
+    for gc in iterNodesByMatching(base, predicates):
+      I.setValue(gc, getZoneDonorPath(base_n, gc))
+
+def find_connected_zones(tree):
+  """
+  Return a list of groups of zones (ie their path from root tree) connected through
+  non periodic match grid connectivities (GridConnectivity_t & GridConnectivity1to1_t
+  without Periodic_t node).
+  """
+  connected_zones = []
+  matching_gcs_u = lambda n : I.getType(n) == 'GridConnectivity_t' \
+                          and I.getValue(I.getNodeFromType1(n, 'GridConnectivityType_t')) == 'Abutting1to1'
+  matching_gcs_s = lambda n : I.getType(n) == 'GridConnectivity1to1_t'
+  matching_gcs = lambda n : (matching_gcs_u(n) or matching_gcs_s(n)) \
+                          and I.getNodeFromType1(n, 'GridConnectivityProperty_t') is None
+  
+  for base, zone in getNodesWithParentsByMatching(tree, 'CGNSBase_t/Zone_t'):
+    zone_path = I.getName(base) + '/' + I.getName(zone)
+    group     = [zone_path]
+    for gc in getNodesByMatching(zone, ['ZoneGridConnectivity_t', matching_gcs]):
+      opp_zone_path = getZoneDonorPath(I.getName(base), gc)
+      py_utils.append_unique(group, opp_zone_path)
+    connected_zones.append(group)
+
+  for base, zone in getNodesWithParentsByMatching(tree, 'CGNSBase_t/Zone_t'):
+    zone_path     = I.getName(base) + '/' + I.getName(zone)
+    groups_to_merge = []
+    for i, group in enumerate(connected_zones):
+      if zone_path in group:
+        groups_to_merge.append(i)
+    if groups_to_merge != []:
+      new_group = []
+      for i in groups_to_merge[::-1]: #Reverse loop to pop without changing idx
+        zones_paths = connected_zones.pop(i)
+        for z_p in zones_paths:
+          py_utils.append_unique(new_group, z_p)
+      connected_zones.append(new_group)
+  return [sorted(zones) for zones in connected_zones]
 
 def getDistribution(node, distri_name=None):
   """

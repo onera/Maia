@@ -93,8 +93,8 @@ def test_update_subset(sub_comm):
   bcdata = I.newBCData(parent=bcds)
 
   data = np.array([10,20,30,20,50][this_rank], dtype=np.float64)
-  I.newDataArray('ArrayA', data.reshape(1,-1),   parent=bcdata)
-  I.newDataArray('ArrayB', 2*data.reshape(1,-1), parent=bcdata)
+  I.newDataArray('ArrayA', data,   parent=bcdata)
+  I.newDataArray('ArrayB', 2*data, parent=bcdata)
 
   pl_new = np.array([1,2,3,2,4][this_rank], pdm_dtype)
   MJ._update_subset(bc, pl_new, ['BCDataSet_t', 'BCData_t', 'DataArray_t'], sub_comm)
@@ -121,12 +121,12 @@ def test_update_cgns_subsets(sub_comm):
   I.setType(bc, 'ZoneSubRegion_t')
   I._addChild(zone, bc)
   I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
-  I.newDataArray('SubSol', np.copy(I.getNodeFromName(bc, 'PointList')[1]), parent=bc)
+  I.newDataArray('SubSol', np.copy(I.getNodeFromName(bc, 'PointList')[1][0]), parent=bc)
   bc = I.getNodeFromName(zone, 'dcube_bnd_1')
   I.setType(bc, 'FlowSolution_t')
   I._addChild(zone, bc)
   I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
-  I.newDataArray('Sol', np.copy(I.getNodeFromName(bc, 'PointList')[1]), parent=bc)
+  I.newDataArray('Sol', np.copy(I.getNodeFromName(bc, 'PointList')[1][0]), parent=bc)
 
   face_distri_ini = I.getVal(IE.getDistribution(I.getNodeFromPath(zone, 'NGonElements'), 'Element'))
   old_to_new_face_f = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,15,16,23,24,25,26,27,28,29,30,31,32,33,34]

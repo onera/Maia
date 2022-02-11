@@ -1,6 +1,9 @@
 import pytest
+import numpy as np
 import Converter.Internal as I
 from maia.utils   import parse_yaml_cgns
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+
 from maia.cgns_io import fix_tree
 
 def test_fix_point_ranges():
@@ -30,3 +33,29 @@ Base0 CGNSBase_t [3,3]:
 
 #def test_load_grid_connectivity_property():
   #Besoin de charger depuis un fichier, comment tester ?
+
+def test_enforce_pdm_dtype():
+  wrong_pdm_type = np.int64 if pdm_dtype == np.int32 else np.int32
+  wrong_type = 'I8' if pdm_dtype == np.int32 else 'I4'
+  yt = f"""
+  Base CGNSBase_t [3,3]:
+    Zone Zone_t {wrong_type} [[11,10,0]]:
+      NGon Elements_t [22,0]:
+        ElementRange IndexRange_t [1, 3]:
+        ElementConnectivity DataArray_t {wrong_type} [1,2,3,4]:
+        ElementStartOffset DataArray_t {wrong_type} [0,1,2]:
+      ZGC ZoneGridConnectivity_t:
+        match GridConnectivity_t "ZoneB":
+          PointList IndexArray_t {wrong_type} [[11,12,13]]:
+          PointListDonor IndexArray_t {wrong_type} [[1,2,3]]:
+  """
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  assert I.getNodeFromName(tree, 'PointList')[1].dtype == wrong_pdm_type
+  assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == wrong_pdm_type
+  assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == wrong_pdm_type
+  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == np.int32 #Always int32
+  fix_tree._enforce_pdm_dtype(tree)
+  assert I.getNodeFromName(tree, 'PointList')[1].dtype == pdm_dtype
+  assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == pdm_dtype
+  assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == pdm_dtype
+  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == np.int32 #Always int32

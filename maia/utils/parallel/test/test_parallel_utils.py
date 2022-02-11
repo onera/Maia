@@ -36,6 +36,15 @@ def test_partial_to_full_distribution(sub_comm):
   assert (full_distri_void == [0,0,0,0]).all()
 
 @mark_mpi_test(3)
+def test_full_to_partial_distribution(sub_comm):
+  partial = utils.full_to_partial_distribution(np.array([0, 0, 0, 100], np.int32), sub_comm)
+  assert partial.dtype == np.int32
+  if sub_comm.rank < 2:
+    assert (partial == [0,0,100]).all()
+  else:
+    assert (partial == [0,100,100]).all()
+
+@mark_mpi_test(3)
 def test_gather_and_shift(sub_comm):
   if sub_comm.Get_rank() == 0:
     value = 6
