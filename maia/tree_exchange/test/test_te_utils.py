@@ -147,7 +147,7 @@ def test_get_entities_numbering():
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn}
   gnum_node = IE.newGlobalNumbering(gnum_arrays, zoneU)
 
-  with pytest.raises(AssertionError):
+  with pytest.raises(RuntimeError):
     vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
 
   ngon = I.newElements(etype='NGON', parent=zoneU)
@@ -159,5 +159,5 @@ def test_get_entities_numbering():
 
   I.printTree(zoneU)
   ngon = I.newElements('ElementsTwo', etype='NGON', parent=zoneU)
-  with pytest.raises(AssertionError):
+  with pytest.raises(RuntimeError):
     vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)

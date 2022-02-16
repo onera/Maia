@@ -79,13 +79,12 @@ def get_entities_numbering(part_zone, as_pdm=True):
   if SIDS.Zone.Type(part_zone) == "Structured":
     face_ln_to_gn = I.getVal(IE.getGlobalNumbering(part_zone, 'Face'))
   else:
-    ngons = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if SIDS.ElementCGNSName(e) == 'NGON_n']
-    assert len(ngons) == 1, "For unstructured zones, only NGon connectivity is supported"
-    face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngons[0], 'Element'))
+    ngon = SIDS.Zone.NGonNode(part_zone)
+    face_ln_to_gn = I.getVal(IE.getGlobalNumbering(ngon, 'Element'))
   if as_pdm:
-    vtx_ln_to_gn  = vtx_ln_to_gn.astype(pdm_gnum_dtype)
-    face_ln_to_gn = face_ln_to_gn.astype(pdm_gnum_dtype)
-    cell_ln_to_gn = cell_ln_to_gn.astype(pdm_gnum_dtype)
+    vtx_ln_to_gn  = vtx_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
+    face_ln_to_gn = face_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
+    cell_ln_to_gn = cell_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
   return vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
 
 

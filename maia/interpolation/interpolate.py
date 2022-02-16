@@ -27,8 +27,8 @@ def get_point_cloud(zone, location='CellCenter'):
   cell centers and cell global numbering of a partitioned zone
   """
   if location == 'Vertex':
-    cx, cy, cz = sids.coordinates(zone)
-    vtx_coords   = py_utils.interweave_arrays([cx,cy,cz])
+    coords = [c.reshape(-1, order='F') for c in sids.coordinates(zone)]
+    vtx_coords   = py_utils.interweave_arrays(coords)
     vtx_ln_to_gn = I.getVal(IE.getGlobalNumbering(zone, 'Vertex')).astype(pdm_gnum_dtype)
     return vtx_coords, vtx_ln_to_gn
 
@@ -295,7 +295,11 @@ def interpolate_fields(interpolator, n_field_per_part, src_parts_per_dom, tgt_pa
     for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
       for i_part, tgt_part in enumerate(tgt_parts):
         fs = I.getNodeFromPath(tgt_part, container_name)
-        I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part])
+        if sids.Zone.Type(tgt_part) == 'Unstructured':
+          I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part])
+        else:
+          shape = sids.Zone.CellSize(tgt_part) if output_loc == 'CellCenter' else sids.Zone.VertexSize(tgt_part)
+          I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part].reshape(shape, order='F'))
 
 
 def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options):
