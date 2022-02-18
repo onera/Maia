@@ -3,6 +3,10 @@
 
 #include <vector>
 #include "cpp_cgns/cgns.hpp"
+#include "maia/generate/interior_faces_and_parents/in_ext_faces_with_parents.hpp"
+#include "maia/utils/parallel/utils.hpp"
+#include "std_e/algorithm/algorithm.hpp"
+#include "std_e/parallel/struct/distributed_array.hpp"
 
 
 namespace maia {

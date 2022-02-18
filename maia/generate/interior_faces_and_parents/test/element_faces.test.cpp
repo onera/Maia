@@ -9,11 +9,11 @@ using std::array;
 // SEE https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_3d
 TEST_CASE("generate_faces") {
   std::vector<int> gen_tris;
-  auto tri_range = std_e::make_block_range<number_of_vertices(TRI_3)>(gen_tris);
+  auto tri_range = std_e::view_as_block_range<number_of_vertices(TRI_3)>(gen_tris);
   auto tri_back = std::back_inserter(tri_range);
 
   std::vector<int> gen_quads;
-  auto quad_range = std_e::make_block_range<number_of_vertices(QUAD_4)>(gen_quads);
+  auto quad_range = std_e::view_as_block_range<number_of_vertices(QUAD_4)>(gen_quads);
   auto quad_back = std::back_inserter(quad_range);
 
   std::vector<int> tri_pos;
@@ -99,11 +99,11 @@ TEST_CASE("generate_faces") {
 TEST_CASE("generate_faces: example with several connec") {
   // prepare
   std::vector<int> gen_tris(6);
-  auto tri_range = std_e::make_block_range<number_of_vertices(TRI_3)>(gen_tris);
+  auto tri_range = std_e::view_as_block_range<number_of_vertices(TRI_3)>(gen_tris);
   auto tri_it = tri_range.begin();
 
   std::vector<int> gen_quads(8);
-  auto quad_range = std_e::make_block_range<number_of_vertices(QUAD_4)>(gen_quads);
+  auto quad_range = std_e::view_as_block_range<number_of_vertices(QUAD_4)>(gen_quads);
   auto quad_it = quad_range.begin();
 
   std::vector<int> tri_pos(2);

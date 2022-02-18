@@ -28,19 +28,20 @@ TEST_CASE("generate_element_faces_and_parents") {
     "    I4 : [ 80, 81, 82, 83, 84, 85, 86, 87 ]\n"
     "  :CGNS#Distribution UserDefinedData_t:\n"
     "    Element DataArray_t I8 [2, 3, 10]:\n";
-  auto elt_sections = maia::to_nodes(yaml_tree);
+  vector<tree> elt_sections = maia::to_nodes(yaml_tree);
+  cgns::tree_range elt_sections_rng(begin(elt_sections),end(elt_sections));
 
-  faces_and_parents_by_section<I4> fps = generate_element_faces_and_parents<I4>(elt_sections);
-  CHECK( fps.tris.size() == 2 ); // two tri faces
-  CHECK( fps.tris.connectivities()[0] == vector{30,31,32} );
-  CHECK( fps.tris.connectivities()[1] == vector{37,38,39} );
-  CHECK( fps.tris.parents() == vector{300,301} );
-  CHECK( fps.tris.parent_positions() == vector{1,1} );
+  faces_and_parents_by_section<I4> fps = generate_element_faces_and_parents<I4>(elt_sections_rng);
+  CHECK( faces<TRI_3>(fps).size() == 2 ); // two tri faces
+  CHECK( faces<TRI_3>(fps).connectivities()[0] == vector{30,31,32} );
+  CHECK( faces<TRI_3>(fps).connectivities()[1] == vector{37,38,39} );
+  CHECK( faces<TRI_3>(fps).parents() == vector{300,301} );
+  CHECK( faces<TRI_3>(fps).parent_positions() == vector{1,1} );
 
-  CHECK( fps.quads.size() == 1+6 ); // one quad face + 6 faces of 1 cube
-  CHECK( fps.quads.connectivities()[0] == vector{40,41,42,43} );
-  CHECK( fps.quads.connectivities()[1] == vector{80,83,82,81} );
+  CHECK( faces<QUAD_4>(fps).size() == 1+6 ); // one quad face + 6 faces of 1 cube
+  CHECK( faces<QUAD_4>(fps).connectivities()[0] == vector{40,41,42,43} );
+  CHECK( faces<QUAD_4>(fps).connectivities()[1] == vector{80,83,82,81} );
   // ...
-  CHECK( fps.quads.parents() == vector{400,802,802,802,802,802,802} ); // 800+2 because the distribution of node "Hexas" begins at 2
-  CHECK( fps.quads.parent_positions() == vector{1,1,2,3,4,5,6} );
+  CHECK( faces<QUAD_4>(fps).parents() == vector{400,802,802,802,802,802,802} ); // 800+2 because the distribution of node "Hexas" begins at 2
+  CHECK( faces<QUAD_4>(fps).parent_positions() == vector{1,1,2,3,4,5,6} );
 }
