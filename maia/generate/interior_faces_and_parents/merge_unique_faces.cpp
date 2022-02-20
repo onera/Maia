@@ -113,28 +113,9 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
 
   // partition_sort by first vertex (this is a partial sort, but good enought so we can exchange based on that)
   auto _0 = std_e::stdout_time_logger("  partition sort");
-    //auto less_first_vertex = [&cs](int i, const auto& y){ return cs[i][0] < y; }; // TODO ugly (non-symmetric)
-    //auto distri = uniform_distribution(std_e::n_rank(comm),n_vtx);
-    //std::vector<int> perm(n_connec);
-    //std::iota(begin(perm),end(perm),0);
-    //auto partition_indices = std_e::partition_sort_indices(perm,distri,less_first_vertex);
-    //auto partition_indices = std_e::make_span(partition_indices.data()+1,partition_indices.size()-1);
-    //std_e::permute(cs.begin(),perm);
-    //std_e::permute(parents.begin(),perm);
-    //std_e::permute(parent_positions.begin(),perm);
-
-    std::vector<int> perm(n_connec);
-    std::iota(begin(perm),end(perm),0);
-    auto proj = [&cs](I i){ return cs[i][0]; };
-    //auto _00 = std_e::stdout_time_logger("    pivot_partition_eq");
-      auto partition_indices = std_e::pivot_partition_eq(perm,comm,proj);
-    //_00.stop();
-
-    //auto _01 = std_e::stdout_time_logger("    perm");
-      std_e::permute(cs.begin(),perm);
-      std_e::permute(parents.begin(),perm);
-      std_e::permute(parent_positions.begin(),perm);
-    //_01.stop();
+    auto proj = [](const auto& x){ return get<0>(x)[0]; }; // sort cs, according to the first vertex only
+    auto mr = view_as_multi_range(cs,parents,parent_positions);
+    auto partition_indices = std_e::pivot_partition_eq(mr,comm,proj);
   _0.stop();
 
 
@@ -154,6 +135,9 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
     auto res_connec = std_e::all_to_all_v(cs_by_rank,comm);
     auto res_connec2 = res_connec.flat_view();
     auto res_cs = std_e::view_as_block_range<n_vtx_elt>(res_connec2);
+    STD_E_ASSERT(res_cs.size()%2==0); // each face should be there twice
+                                      // (either two 3d parents if interior,
+                                      //  or one 2d and one 3d parent if exterior)
   //_1.stop();
 
   // finish sort (if two faces are equal, they have the same first vertex, hence are on the same proc)
@@ -169,25 +153,10 @@ merge_unique_faces(connectivities_with_parents<I,elt_type>& cps, I n_vtx, I firs
 
   // 1. do the sort based on this lexico ordering
   auto _3 = std_e::stdout_time_logger("  final sort");
-    //auto less_vertices = [&res_cs_ordered](int i, int j){ return res_cs_ordered[i]<res_cs_ordered[j]; };
-    int n_res_cs = res_cs.size();
-    STD_E_ASSERT(n_res_cs%2==0); // each face should be there twice (either two 3d parents if interior, or one 2d and one 3d parent if exterior)
-    //std::vector<int> perm2(n_res_cs);
-    //std::iota(begin(perm2),end(perm2),0);
 
     auto proj2 = [](const auto& x){ return get<0>(x); };
-    auto mr = view_as_multi_range(res_cs_ordered,res_cs,res_parents2,res_parent_positions2);
-    //auto mr = std_e::view_as_multi_range(res_cs_ordered);
-    std_e::ranges::sort(mr,{},proj2);
-    ////auto _30 = std_e::stdout_time_logger("    sort");
-    //  std::sort(begin(perm2),end(perm2),less_vertices);
-    ////_30.stop();
-
-    ////auto _31 = std_e::stdout_time_logger("    perm");
-    //  std_e::permute(res_cs.begin(),perm2);
-    //  std_e::permute(res_parents2.begin(),perm2);
-    //  std_e::permute(res_parent_positions2.begin(),perm2);
-    ////_31.stop();
+    auto mr2 = view_as_multi_range(res_cs_ordered,res_cs,res_parents2,res_parent_positions2);
+    std_e::ranges::sort(mr2,{},proj2);
   _3.stop();
 
   return merge_uniq(res_cs,res_parents2,res_parent_positions2,first_3d_elt_id);
