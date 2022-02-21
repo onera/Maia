@@ -19,11 +19,9 @@ template<
 generate_faces(const connectivity_type& e, tri_iterator& tri_it, quad_iterator& quad_it) -> void {
   if constexpr (elt_type==TRI_3) {
     *tri_it++ = e;
-    //*tri_it++ = {e[0],e[2],e[1]};
   }
   else if constexpr (elt_type==QUAD_4) {
     *quad_it++ = e;
-    //*quad_it++ = {e[0],e[3],e[2],e[1]};
   }
   else if constexpr (elt_type==TETRA_4) {
     *tri_it++ = {e[0],e[2],e[1]};
@@ -54,7 +52,7 @@ generate_faces(const connectivity_type& e, tri_iterator& tri_it, quad_iterator& 
     *quad_it++ = {e[4],e[5],e[6],e[7]};
   }
   else {
-    throw ;//std_e::not_implemented_exception("unsupported ElementType_t "+to_string(ElementType_t));
+    throw std_e::not_implemented_exception("unsupported ElementType_t "+to_string(elt_type));
   }
 }
 
@@ -99,7 +97,7 @@ generate_parent_positions(tri_iterator& tri_it, quad_iterator& quad_it) -> void 
     *quad_it++ = 6;
   }
   else {
-    throw ;//std_e::not_implemented_exception("unsupported ElementType_t "+to_string(ElementType_t));
+    throw std_e::not_implemented_exception("unsupported ElementType_t "+to_string(elt_type));
   }
 }
 

@@ -3,7 +3,7 @@
 
 #include "cpp_cgns/cgns.hpp"
 #include "cpp_cgns/sids/elements_utils.hpp"
-#include "maia/generate/interior_faces_and_parents/faces_and_parents_by_section.hpp"
+#include "maia/generate/interior_faces_and_parents/struct/faces_and_parents_by_section.hpp"
 
 
 namespace maia {

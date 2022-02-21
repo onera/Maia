@@ -1,7 +1,7 @@
 #include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
 
 #include "maia/generate/interior_faces_and_parents/element_faces.hpp"
-#include "maia/generate/interior_faces_and_parents/faces_and_parents_by_section.hpp"
+#include "maia/generate/interior_faces_and_parents/struct/faces_and_parents_by_section.hpp"
 //#include "std_e/logging/time_logger.hpp"
 
 
@@ -59,14 +59,16 @@ template<class I> auto
 generate_element_faces_and_parents(const tree_range& elt_sections) -> faces_and_parents_by_section<I> {
   //auto _ = std_e::stdout_time_logger("generate_element_faces_and_parents");
   auto n_faces_by_type = number_of_faces(elt_sections);
-  auto faces_and_parents = maia::allocate_faces_and_parents_by_section<I>(n_faces_by_type);
+  auto faces_and_parents = allocate_faces_and_parents_by_section<I>(n_faces_by_type);
 
-  auto tri_it         = faces<TRI_3 >(faces_and_parents).connectivities()  .begin();
-  auto quad_it        = faces<QUAD_4>(faces_and_parents).connectivities()  .begin();
-  auto tri_parent_it  = faces<TRI_3 >(faces_and_parents).parents()         .begin();
-  auto quad_parent_it = faces<QUAD_4>(faces_and_parents).parents()         .begin();
-  auto tri_ppos_it    = faces<TRI_3 >(faces_and_parents).parent_positions().begin();
-  auto quad_ppos_it   = faces<QUAD_4>(faces_and_parents).parent_positions().begin();
+  auto& tris  = cgns::get_face_type(faces_and_parents,TRI_3 );
+  auto& quads = cgns::get_face_type(faces_and_parents,QUAD_4);
+  auto tri_it         = connectivities<3>(tris ).begin();
+  auto quad_it        = connectivities<4>(quads).begin();
+  auto tri_parent_it  = parent_elements  (tris ).begin();
+  auto quad_parent_it = parent_elements  (quads).begin();
+  auto tri_ppos_it    = parent_positions (tris ).begin();
+  auto quad_ppos_it   = parent_positions (quads).begin();
   for (const auto& elt_section : elt_sections) {
     auto elt_type = element_type(elt_section);
     switch(elt_type){

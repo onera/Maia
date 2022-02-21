@@ -32,16 +32,18 @@ TEST_CASE("generate_element_faces_and_parents") {
   cgns::tree_range elt_sections_rng(begin(elt_sections),end(elt_sections));
 
   faces_and_parents_by_section<I4> fps = generate_element_faces_and_parents<I4>(elt_sections_rng);
-  CHECK( faces<TRI_3>(fps).size() == 2 ); // two tri faces
-  CHECK( faces<TRI_3>(fps).connectivities()[0] == vector{30,31,32} );
-  CHECK( faces<TRI_3>(fps).connectivities()[1] == vector{37,38,39} );
-  CHECK( faces<TRI_3>(fps).parents() == vector{300,301} );
-  CHECK( faces<TRI_3>(fps).parent_positions() == vector{1,1} );
+  auto& tris  = cgns::get_face_type(fps,TRI_3 );
+  auto& quads = cgns::get_face_type(fps,QUAD_4);
+  CHECK( size(tris) == 2 ); // two tri faces
+  CHECK( connectivities<3>(tris)[0] == vector{30,31,32} );
+  CHECK( connectivities<3>(tris)[1] == vector{37,38,39} );
+  CHECK( parent_elements(tris) == vector{300,301} );
+  CHECK( parent_positions(tris) == vector{1,1} );
 
-  CHECK( faces<QUAD_4>(fps).size() == 1+6 ); // one quad face + 6 faces of 1 cube
-  CHECK( faces<QUAD_4>(fps).connectivities()[0] == vector{40,41,42,43} );
-  CHECK( faces<QUAD_4>(fps).connectivities()[1] == vector{80,83,82,81} );
+  CHECK( size(quads) == 1+6 ); // one quad face + 6 faces of 1 cube
+  CHECK( connectivities<4>(quads)[0] == vector{40,41,42,43} );
+  CHECK( connectivities<4>(quads)[1] == vector{80,83,82,81} );
   // ...
-  CHECK( faces<QUAD_4>(fps).parents() == vector{400,802,802,802,802,802,802} ); // 800+2 because the distribution of node "Hexas" begins at 2
-  CHECK( faces<QUAD_4>(fps).parent_positions() == vector{1,1,2,3,4,5,6} );
+  CHECK( parent_elements(quads) == vector{400,802,802,802,802,802,802} ); // 800+2 because the distribution of node "Hexas" begins at 2
+  CHECK( parent_positions(quads) == vector{1,1,2,3,4,5,6} );
 }

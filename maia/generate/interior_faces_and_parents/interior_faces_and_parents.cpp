@@ -9,9 +9,7 @@
 #include "std_e/algorithm/partition/copy.hpp"
 #include "maia/utils/log/log.hpp"
 #include "maia/generate/interior_faces_and_parents/scatter_parents_to_boundary_sections.hpp"
-#include "maia/generate/interior_faces_and_parents/in_ext_faces_with_parents.hpp"
 #include "maia/generate/interior_faces_and_parents/merge_unique_faces.hpp"
-//#include "std_e/plog.hpp" // TODO
 
 
 using namespace cgns;
@@ -153,9 +151,8 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   auto faces_and_parents_sections = generate_element_faces_and_parents<I>(elt_sections);
 
   // 1. Make them unique
-  I n_vtx = cgns::VertexSize_U<I>(z);
   I first_3d_elt_id = volume_elements_interval(z).first();
-  auto unique_faces_by_section = merge_unique_faces(faces_and_parents_sections,n_vtx,first_3d_elt_id,comm);
+  auto unique_faces_by_section = merge_unique_faces(faces_and_parents_sections,first_3d_elt_id,comm);
   auto& unique_faces_tri  = unique_faces_by_section[0];
   auto& unique_faces_quad = unique_faces_by_section[1];
 

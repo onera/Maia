@@ -60,9 +60,9 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents - seq",1) {
 
   CHECK( elt_type_quad_in == (I4)cgns::QUAD_4 );
   CHECK( range_quad_in == std::vector<I4>{16,18} );
-  CHECK( connec_quad_in == std::vector<I4>{2,7,10,5, 6,7,10,9, 7,10,15,12} );
+  CHECK( connec_quad_in == std::vector<I4>{2,7,10,5, 6,7,10,9, 7,12,15,10} );
   CHECK( parent_quad_in.extent() == std_e::multi_index<I8,2>{3,2} );
-  CHECK( parent_quad_in     == cgns::md_array<I4,2>{{17,15},{15,16},{16,18}} );
+  CHECK( parent_quad_in     == cgns::md_array<I4,2>{{17,15},{15,16},{18,16}} );
   CHECK( parent_pos_quad_in == cgns::md_array<I4,2>{{ 3, 3},{ 6, 1},{ 3, 3}} );
 
   // hex
@@ -100,17 +100,6 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
 
   CHECK( elt_type_tri_in == (I4)cgns::TRI_3 );
   CHECK( range_tri_in == std::vector<I4>{15,15} );
-  ELOG(connec_tri_in);
-  ELOG(parent_tri_in);
-  ELOG(parent_pos_tri_in);
-  //MPI_CHECK(0, connec_tri_in == std::vector<I4>{7,8,10} );
-  //MPI_CHECK(1, connec_tri_in == std::vector<I4>{} );
-  //MPI_CHECK(0, parent_tri_in.extent() == std_e::multi_index<I8,2>{1,2} );
-  //MPI_CHECK(1, parent_tri_in.extent() == std_e::multi_index<I8,2>{0,2} );
-  //MPI_CHECK(0, parent_tri_in == cgns::md_array<I4,2>{{17,18}} );
-  //MPI_CHECK(1, parent_tri_in == cgns::md_array<I4,2>(0,2) );
-  //MPI_CHECK(0, parent_pos_tri_in == cgns::md_array<I4,2>{{ 5, 4}} );
-  //MPI_CHECK(1, parent_pos_tri_in == cgns::md_array<I4,2>(0,2) );
   MPI_CHECK(0, connec_tri_in == std::vector<I4>{} );
   MPI_CHECK(1, connec_tri_in == std::vector<I4>{7,8,10} );
   MPI_CHECK(0, parent_tri_in.extent() == std_e::multi_index<I8,2>{0,2} );
@@ -138,28 +127,11 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
 
   CHECK( elt_type_quad_in == (I4)cgns::QUAD_4 );
   CHECK( range_quad_in == std::vector<I4>{16,18} );
-  ELOG(connec_quad_in);
-  ELOG(parent_quad_in);
-  ELOG(parent_pos_quad_in);
-  //MPI_CHECK(0, connec_quad_in == std::vector<I4>{2,7,10,5, 6,7,10,9, 7,12,15,10} ); // Note: the first and last faces are flipped
-  //                                                                                  // compared to sequential...
-  //MPI_CHECK(1, connec_quad_in == std::vector<I4>{} );
-  //MPI_CHECK(0, parent_quad_in.extent() == std_e::multi_index<I8,2>{3,2} );
-  //MPI_CHECK(1, parent_quad_in.extent() == std_e::multi_index<I8,2>{0,2} );
-  //MPI_CHECK(0, parent_quad_in == cgns::md_array<I4,2>{{17,15},{15,16},{18,16}} ); // ... and so are the parent elements. So this is coherent
-  //                                                                                // The difference comes from the fact that we use std::sort,
-  //                                                                                // not std::stable_sort
-  //MPI_CHECK(1, parent_quad_in == cgns::md_array<I4,2>(0,2) );
-  //MPI_CHECK(0, parent_pos_quad_in == cgns::md_array<I4,2>{{ 3, 3},{ 6, 1},{ 3, 3}} );
-  //MPI_CHECK(1, parent_pos_quad_in == cgns::md_array<I4,2>(0,2) );
-  MPI_CHECK(0, connec_quad_in == std::vector<I4>{2,7,10,5} ); // Note: the first and last faces are flipped
-                                                              // compared to sequential...
+  MPI_CHECK(0, connec_quad_in == std::vector<I4>{2,7,10,5} );
   MPI_CHECK(1, connec_quad_in == std::vector<I4>{6,7,10,9, 7,12,15,10} );
   MPI_CHECK(0, parent_quad_in.extent() == std_e::multi_index<I8,2>{1,2} );
   MPI_CHECK(1, parent_quad_in.extent() == std_e::multi_index<I8,2>{2,2} );
-  MPI_CHECK(0, parent_quad_in == cgns::md_array<I4,2>{{17,15}} ); // ... and so are the parent elements. So this is coherent
-                                                                 // The difference comes from the fact that we use std::sort,
-                                                                 // not std::stable_sort
+  MPI_CHECK(0, parent_quad_in == cgns::md_array<I4,2>{{17,15}} );
   MPI_CHECK(1, parent_quad_in == cgns::md_array<I4,2>{{15,16},{18,16}} );
   MPI_CHECK(0, parent_pos_quad_in == cgns::md_array<I4,2>{{ 3, 3}} );
   MPI_CHECK(1, parent_pos_quad_in == cgns::md_array<I4,2>{{ 6, 1},{ 3, 3}} );
