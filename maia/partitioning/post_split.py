@@ -39,8 +39,9 @@ def copy_additional_nodes(dist_zone, part_zone):
 def split_original_joins(p_zone):
   """
   """
-  to_remove = list()
   for zone_gc in I.getNodesFromType1(p_zone, 'ZoneGridConnectivity_t'):
+    to_remove = list()
+    to_append = list()
     for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
         pl       = I.getNodeFromName1(gc, 'PointList')[1]
@@ -52,8 +53,7 @@ def split_original_joins(p_zone):
         for i_sub_jn, opp_part in enumerate(opposed_parts):
           join_n = I.newGridConnectivity(name      = conv.add_split_suffix(I.getName(gc), i_sub_jn),
                                          donorName = conv.add_part_suffix(I.getValue(gc), *opp_part),
-                                         ctype     = 'Abutting1to1',
-                                         parent    = zone_gc)
+                                         ctype     = 'Abutting1to1')
 
           matching_faces_idx = np.all(donor == opp_part, axis=1)
 
@@ -80,10 +80,13 @@ def split_original_joins(p_zone):
           for node in I.getChildren(gc):
             if I.getName(node) not in skip_nodes:
               I._addChild(join_n, node)
+          to_append.append(join_n)
 
         to_remove.append(gc)
-  for node in to_remove:
-    I._rmNode(p_zone, node)
+    for node in to_remove:
+      I._rmNode(zone_gc, node)
+    for node in to_append: #Append everything at the end; otherwise we may find a new jn when looking for an old one
+      I._addChild(zone_gc, node)
 
 def post_partitioning(dist_tree, part_tree, comm):
   """
