@@ -20,7 +20,7 @@ namespace maia {
 
 // TODO review
 template<class I> auto
-append_element_section(cgns::tree& z, ElementType_t face_type, in_faces_with_parents<I>&& fps, MPI_Comm comm) -> void { // TODO do not copy fps
+append_interior_faces_section(cgns::tree& z, ElementType_t face_type, in_faces_with_parents<I>&& fps, MPI_Comm comm) -> void { // TODO do not copy fps
   I n_face = fps.l_parents.size();
 
   I n_face_tot = std_e::all_reduce(n_face,MPI_SUM,comm);
@@ -198,7 +198,7 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
 
   // 5. Create new interior faces sections
   for(auto& fs : unique_faces_sections) {
-    append_element_section(z,fs.face_type,std::move(fs.in),comm);
+    append_interior_faces_section(z,fs.face_type,std::move(fs.in),comm);
   }
 };
 
