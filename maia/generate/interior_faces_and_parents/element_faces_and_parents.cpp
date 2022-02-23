@@ -2,7 +2,6 @@
 
 #include "maia/generate/interior_faces_and_parents/element_faces.hpp"
 #include "maia/generate/interior_faces_and_parents/struct/faces_and_parents_by_section.hpp"
-//#include "std_e/logging/time_logger.hpp"
 
 
 using namespace cgns;

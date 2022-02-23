@@ -1,6 +1,5 @@
 #include "maia/generate/interior_faces_and_parents/interior_faces_and_parents.hpp"
 
-#include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
 #include "maia/sids/element_sections.hpp"
 #include "maia/sids/maia_cgns.hpp"
 #include "cpp_cgns/sids/creation.hpp"
@@ -8,59 +7,17 @@
 #include "std_e/future/ranges.hpp"
 #include "std_e/algorithm/partition/copy.hpp"
 #include "maia/utils/log/log.hpp"
-#include "maia/generate/interior_faces_and_parents/scatter_parents_to_boundary_sections.hpp"
+
+#include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
 #include "maia/generate/interior_faces_and_parents/merge_unique_faces.hpp"
+#include "maia/generate/interior_faces_and_parents/scatter_parents_to_boundary_sections.hpp"
+#include "maia/generate/interior_faces_and_parents/append_interior_faces_sections.hpp"
 
 
 using namespace cgns;
 
 
 namespace maia {
-
-
-// TODO review
-template<class I> auto
-append_interior_faces_section(cgns::tree& z, ElementType_t face_type, in_faces_with_parents<I>&& fps, MPI_Comm comm) -> void { // TODO do not copy fps
-  I n_face = fps.l_parents.size();
-
-  I n_face_tot = std_e::all_reduce(n_face,MPI_SUM,comm);
-  I n_face_acc = std_e::scan(n_face,MPI_SUM,comm) - n_face; // TODO exscan
-
-  I last_id = surface_elements_interval(z).last();
-  I first_sec_id = last_id+1;
-  I last_sec_id = first_sec_id+n_face_tot-1;
-
-  // connec
-  tree elt_section_node = new_Elements(to_string(face_type)+"_interior",(I)face_type,std::move(fps.connec),first_sec_id,last_sec_id);
-
-  // parent
-  md_array<I,2> parents_array(n_face,2);
-  // TODO optim with no copy
-  auto mid_parent_array = std::copy(begin(fps.l_parents),end(fps.l_parents),begin(parents_array));
-                          std::copy(begin(fps.r_parents),end(fps.r_parents),mid_parent_array);
-
-  tree parent_elt_node = cgns::new_DataArray("ParentElements",std::move(parents_array));
-  emplace_child(elt_section_node,std::move(parent_elt_node));
-
-  // parent position
-  md_array<I,2> parent_positions_array(n_face,2);
-  // TODO optim with no copy
-  auto mid_ppos_array = std::copy(begin(fps.l_parent_positions),end(fps.l_parent_positions),begin(parent_positions_array));
-                        std::copy(begin(fps.r_parent_positions),end(fps.r_parent_positions),mid_ppos_array);
-
-  tree parent_position_elt_node = cgns::new_DataArray("ParentElementsPosition",std::move(parent_positions_array));
-  emplace_child(elt_section_node,std::move(parent_position_elt_node));
-
-  // distribution
-  std::vector<I8> elt_dist(3);
-  elt_dist[0] = n_face_acc;
-  elt_dist[1] = n_face_acc + n_face;
-  elt_dist[2] = n_face_tot;
-  auto dist_node = new_Distribution("Element",std::move(elt_dist));
-  emplace_child(elt_section_node,std::move(dist_node));
-
-  emplace_child(z,std::move(elt_section_node));
-}
 
 
 template<class I> auto
@@ -187,9 +144,8 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   // 3. Send parent info back to original exterior faces
   scatter_parents_to_boundary_sections(surf_sections,unique_faces_sections,comm);
 
-  // 3. Compute cell_face
+  // 4. Compute cell_face
   auto [face_in_vol_indices_by_section,face_ids_by_section] = compute_cell_face(z,unique_faces_sections,comm);
-
   // 4.1 cell face info
   int n_cell_section = vol_sections.size();
   for (int i=0; i<n_cell_section; ++i) {
@@ -197,9 +153,7 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   }
 
   // 5. Create new interior faces sections
-  for(auto& fs : unique_faces_sections) {
-    append_interior_faces_section(z,fs.face_type,std::move(fs.in),comm);
-  }
+  append_interior_faces_sections(z,std::move(unique_faces_sections),comm);
 };
 
 auto

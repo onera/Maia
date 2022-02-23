@@ -32,7 +32,7 @@ class connectivities_with_parents {
   // Access
   //   Done through friend functions because one of them is template,
   //   and calling a template member function has an ugly syntax.
-  //   The non-template other functions are also friend for consistency
+  //   The other functions are also friend for consistency
     friend auto
     size(const connectivities_with_parents& x) -> size_t {
       return x.pe.size();
