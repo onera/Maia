@@ -32,14 +32,16 @@ TEST_CASE("generate_element_faces_and_parents") {
   cgns::tree_range elt_sections_rng(begin(elt_sections),end(elt_sections));
 
   faces_and_parents_by_section<I4> fps = generate_element_faces_and_parents<I4>(elt_sections_rng);
-  auto& tris  = cgns::get_face_type(fps,TRI_3 );
-  auto& quads = cgns::get_face_type(fps,QUAD_4);
+  auto& tris  = fps[0];
+  auto& quads = fps[1];
+  CHECK( element_type(tris) == TRI_3 );
   CHECK( size(tris) == 2 ); // two tri faces
   CHECK( connectivities<3>(tris)[0] == vector{30,31,32} );
   CHECK( connectivities<3>(tris)[1] == vector{37,38,39} );
   CHECK( parent_elements(tris) == vector{300,301} );
   CHECK( parent_positions(tris) == vector{1,1} );
 
+  CHECK( element_type(quads) == QUAD_4 );
   CHECK( size(quads) == 1+6 ); // one quad face + 6 faces of 1 cube
   CHECK( connectivities<4>(quads)[0] == vector{40,41,42,43} );
   CHECK( connectivities<4>(quads)[1] == vector{80,83,82,81} );

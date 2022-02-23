@@ -18,10 +18,10 @@ using namespace cgns;
 namespace maia {
 
 
+// TODO review
 template<class I> auto
-append_element_section(cgns::tree& z, ElementType_t elt_type, in_faces_with_parents<I>&& faces_with_p, MPI_Comm comm) -> void { // TODO do not copy faces_with_p
-  //auto _ = std_e::stdout_time_logger("append_element_section");
-  I n_face = faces_with_p.l_parents.size();
+append_element_section(cgns::tree& z, ElementType_t face_type, in_faces_with_parents<I>&& fps, MPI_Comm comm) -> void { // TODO do not copy fps
+  I n_face = fps.l_parents.size();
 
   I n_face_tot = std_e::all_reduce(n_face,MPI_SUM,comm);
   I n_face_acc = std_e::scan(n_face,MPI_SUM,comm) - n_face; // TODO exscan
@@ -31,13 +31,13 @@ append_element_section(cgns::tree& z, ElementType_t elt_type, in_faces_with_pare
   I last_sec_id = first_sec_id+n_face_tot-1;
 
   // connec
-  tree elt_section_node = new_Elements(to_string(elt_type)+"_interior",(I)elt_type,std::move(faces_with_p.connec),first_sec_id,last_sec_id);
+  tree elt_section_node = new_Elements(to_string(face_type)+"_interior",(I)face_type,std::move(fps.connec),first_sec_id,last_sec_id);
 
   // parent
   md_array<I,2> parents_array(n_face,2);
   // TODO optim with no copy
-  auto mid_parent_array = std::copy(begin(faces_with_p.l_parents),end(faces_with_p.l_parents),begin(parents_array));
-                          std::copy(begin(faces_with_p.r_parents),end(faces_with_p.r_parents),mid_parent_array);
+  auto mid_parent_array = std::copy(begin(fps.l_parents),end(fps.l_parents),begin(parents_array));
+                          std::copy(begin(fps.r_parents),end(fps.r_parents),mid_parent_array);
 
   tree parent_elt_node = cgns::new_DataArray("ParentElements",std::move(parents_array));
   emplace_child(elt_section_node,std::move(parent_elt_node));
@@ -45,8 +45,8 @@ append_element_section(cgns::tree& z, ElementType_t elt_type, in_faces_with_pare
   // parent position
   md_array<I,2> parent_positions_array(n_face,2);
   // TODO optim with no copy
-  auto mid_ppos_array = std::copy(begin(faces_with_p.l_parent_positions),end(faces_with_p.l_parent_positions),begin(parent_positions_array));
-                        std::copy(begin(faces_with_p.r_parent_positions),end(faces_with_p.r_parent_positions),mid_ppos_array);
+  auto mid_ppos_array = std::copy(begin(fps.l_parent_positions),end(fps.l_parent_positions),begin(parent_positions_array));
+                        std::copy(begin(fps.r_parent_positions),end(fps.r_parent_positions),mid_ppos_array);
 
   tree parent_position_elt_node = cgns::new_DataArray("ParentElementsPosition",std::move(parent_positions_array));
   emplace_child(elt_section_node,std::move(parent_position_elt_node));
@@ -91,23 +91,9 @@ fill_cell_face_ids(
 }
 
 template<class I> auto
-append_cell_face_info(tree& vol_section, std::vector<I> face_in_vol_indices, std::vector<I> face_ids, MPI_Comm comm) {
-  auto partial_dist = ElementDistribution(vol_section);
-  auto dist_cell_face = maia::distribution_from_partial(partial_dist,comm);
-  std_e::scale(dist_cell_face,number_of_faces(element_type(vol_section)));
-  std_e::dist_array<I> cell_face(dist_cell_face,comm);
-  //auto _ = maia_perf_log_lvl_2("scatter cell_face");
-  std_e::scatter(cell_face,dist_cell_face,std::move(face_in_vol_indices),face_ids);
-  //_.stop();
-
-  std::vector<I> connec_array(begin(cell_face.local()),end(cell_face.local()));
-  emplace_child(vol_section,cgns::new_DataArray("CellFace",std::move(connec_array)));
-}
-
-template<class I> auto
 fill_cell_face_info(
   const tree_range& vol_sections,
-  const in_ext_faces_with_parents<I>& faces,
+  const in_ext_faces<I>& faces,
   ElementType_t face_type,
   I first_ext_id, I first_in_id,
   auto& face_in_vol_indices_by_section, auto& face_ids_by_section,
@@ -139,53 +125,81 @@ fill_cell_face_info(
 
 }
 
+
+// TODO review
+template<class I> auto
+compute_cell_face(tree& z, const in_ext_faces_by_section<I>& unique_faces_sections, MPI_Comm comm) {
+  auto elt_sections = element_sections(z);
+  auto vol_sections = volume_element_sections(z);
+  I first_3d_elt_id = volume_elements_interval(z).first();
+  int n_cell_section = vol_sections.size();
+
+  std::vector<std::vector<I>> face_ids_by_section(n_cell_section);
+  std::vector<std::vector<I>> face_in_vol_indices_by_section(n_cell_section);
+  I current_last_face_id = first_3d_elt_id; // interior faces will be given an ElementRange just after exterior faces,
+                                            // starting and overlapping with cell ids
+  /// ElementRange ext
+  for(const auto& fs : unique_faces_sections) {
+    ElementType_t face_type = fs.face_type;
+
+    auto face_ext_section = unique_element_section(z,face_type);
+    I first_ext_id = element_range(face_ext_section).first();
+    // cell face info
+    fill_cell_face_info(vol_sections,fs,face_type,first_ext_id ,current_last_face_id, face_in_vol_indices_by_section,face_ids_by_section,comm);
+
+    current_last_face_id += std_e::all_reduce(fs.in.size(),MPI_SUM,comm);
+  }
+
+  return make_pair(std::move(face_in_vol_indices_by_section),std::move(face_ids_by_section));
+}
+
+
+// TODO review
+template<class I> auto
+append_cell_face_info(tree& vol_section, std::vector<I> face_in_vol_indices, std::vector<I> face_ids, MPI_Comm comm) {
+  auto partial_dist = ElementDistribution(vol_section);
+  auto dist_cell_face = maia::distribution_from_partial(partial_dist,comm);
+  std_e::scale(dist_cell_face,number_of_faces(element_type(vol_section)));
+  std_e::dist_array<I> cell_face(dist_cell_face,comm);
+  std_e::scatter(cell_face,dist_cell_face,std::move(face_in_vol_indices),face_ids);
+
+  std::vector<I> connec_array(begin(cell_face.local()),end(cell_face.local()));
+  emplace_child(vol_section,cgns::new_DataArray("CellFace",std::move(connec_array)));
+}
+
+
 template<class I> auto
 _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   STD_E_ASSERT(is_maia_cgns_zone(z));
 
-  // -1. base queries
+  // 0. Base queries
   auto elt_sections = element_sections(z);
+  auto surf_sections = surface_element_sections(z);
   auto vol_sections = volume_element_sections(z);
 
-  // 0. Generate faces
+  // 1. Generate faces
   auto faces_and_parents_sections = generate_element_faces_and_parents<I>(elt_sections);
 
-  // 1. Make them unique
+  // 2. Make them unique
   I first_3d_elt_id = volume_elements_interval(z).first();
-  auto unique_faces_by_section = merge_unique_faces(faces_and_parents_sections,first_3d_elt_id,comm);
-  auto& unique_faces_tri  = unique_faces_by_section[0];
-  auto& unique_faces_quad = unique_faces_by_section[1];
+  auto unique_faces_sections = merge_unique_faces(faces_and_parents_sections,first_3d_elt_id,comm);
+
+  // 3. Send parent info back to original exterior faces
+  scatter_parents_to_boundary_sections(surf_sections,unique_faces_sections,comm);
 
   // 3. Compute cell_face
-  /// ElementRange ext
-  auto tri_ext_section = unique_element_section(z,TRI_3);
-  auto quad_ext_section = unique_element_section(z,QUAD_4);
-  I first_tri_ext_id = element_range(tri_ext_section).first();
-  I first_quad_ext_id = element_range(quad_ext_section).first();
-  /// ElementRange in
-  I first_tri_in_id = first_3d_elt_id; // because first_3d_elt_id is the first volume element and tri_in will take its place
-  I first_quad_in_id = first_tri_in_id + std_e::all_reduce(unique_faces_tri.in.size(),MPI_SUM,comm);
+  auto [face_in_vol_indices_by_section,face_ids_by_section] = compute_cell_face(z,unique_faces_sections,comm);
 
-  // cell face info
+  // 4.1 cell face info
   int n_cell_section = vol_sections.size();
-  std::vector<std::vector<I>> face_in_vol_indices_by_section(n_cell_section);
-  std::vector<std::vector<I>> face_ids_by_section(n_cell_section);
-
-  fill_cell_face_info(vol_sections,unique_faces_tri ,TRI_3 ,first_tri_ext_id ,first_tri_in_id , face_in_vol_indices_by_section,face_ids_by_section,comm);
-  fill_cell_face_info(vol_sections,unique_faces_quad,QUAD_4,first_quad_ext_id,first_quad_in_id, face_in_vol_indices_by_section,face_ids_by_section,comm);
-
-  // 2. Scatter
-  // 2.0 parent_element info back to original exterior faces
-  scatter_parents_to_boundary_sections(elt_sections,unique_faces_tri .ext,cgns::TRI_3 ,comm);
-  scatter_parents_to_boundary_sections(elt_sections,unique_faces_quad.ext,cgns::QUAD_4,comm);
-  // 2.1 cell face info
   for (int i=0; i<n_cell_section; ++i) {
     append_cell_face_info(vol_sections[i],std::move(face_in_vol_indices_by_section[i]),std::move(face_ids_by_section[i]),comm);
   }
 
-  // 4. Create new interior faces sections
-  append_element_section(z,cgns::TRI_3 ,std::move(unique_faces_tri .in),comm);
-  append_element_section(z,cgns::QUAD_4,std::move(unique_faces_quad.in),comm);
+  // 5. Create new interior faces sections
+  for(auto& fs : unique_faces_sections) {
+    append_element_section(z,fs.face_type,std::move(fs.in),comm);
+  }
 };
 
 auto

@@ -12,19 +12,21 @@ namespace maia {
 
 template<class I>
 class connectivities_with_parents {
-  // Class invariant: connectivities().size()/n_vtx_of_type == parents().size() == parent_positions().size()
+  // Class invariant: connectivities().size()/number_of_vertices(elt_type) == parents().size() == parent_positions().size()
   private:
+    cgns::ElementType_t elt_type;
     std::vector<I> connec;
-    std::vector<I> parens;
-    std::vector<I> par_pos;
+    std::vector<I> pe;
+    std::vector<I> pp;
   public:
   // ctors
     connectivities_with_parents() = default;
 
     connectivities_with_parents(cgns::ElementType_t elt_type, I n_connec)
-      : connec(n_connec*number_of_vertices(elt_type))
-      , parens(n_connec)
-      , par_pos(n_connec)
+      : elt_type(elt_type)
+      , connec(n_connec*number_of_vertices(elt_type))
+      , pe(n_connec)
+      , pp(n_connec)
     {}
 
   // Access
@@ -33,37 +35,30 @@ class connectivities_with_parents {
   //   The non-template other functions are also friend for consistency
     friend auto
     size(const connectivities_with_parents& x) -> size_t {
-      return x.parens.size();
+      return x.pe.size();
+    }
+    friend auto
+    element_type(const connectivities_with_parents& x) -> cgns::ElementType_t {
+      return x.elt_type;
     }
     template<int n_vtx> friend auto
     connectivities(connectivities_with_parents& x) {
+      STD_E_ASSERT(n_vtx == number_of_vertices(x.elt_type));
       return std_e::view_as_block_range<n_vtx>(x.connec);
     }
     friend auto
     parent_elements(connectivities_with_parents& x) -> std_e::span<I> {
-      return std_e::make_span(x.parens);
+      return std_e::make_span(x.pe);
     }
     friend auto
     parent_positions(connectivities_with_parents& x) -> std_e::span<I> {
-      return std_e::make_span(x.par_pos);
+      return std_e::make_span(x.pp);
     }
 };
 
-// TODO ?
+
 template<class I>
-using faces_and_parents_by_section = std::array< connectivities_with_parents<I> , cgns::n_face_types >;
-
-
-template<class I> auto
-allocate_faces_and_parents_by_section(const std::array<cgns::I8,cgns::n_face_types>& n_faces_by_type) -> faces_and_parents_by_section<I> {
-  faces_and_parents_by_section<I> fps;
-  for (int i=0; i<cgns::n_face_types; ++i) {
-    cgns::ElementType_t face_type = cgns::all_face_types[i];
-    cgns::I8 n_faces = n_faces_by_type[i];
-    fps[i] = connectivities_with_parents<I>(face_type,n_faces);
-  }
-  return fps;
-}
+using faces_and_parents_by_section = std::vector<connectivities_with_parents<I>>;
 
 
 } // maia

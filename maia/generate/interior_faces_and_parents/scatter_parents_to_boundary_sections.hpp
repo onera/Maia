@@ -3,7 +3,7 @@
 
 #include <vector>
 #include "cpp_cgns/cgns.hpp"
-#include "maia/generate/interior_faces_and_parents/struct/in_ext_faces_with_parents.hpp"
+#include "maia/generate/interior_faces_and_parents/struct/in_ext_faces_by_section.hpp"
 #include "maia/utils/parallel/utils.hpp"
 #include "std_e/algorithm/algorithm.hpp"
 #include "std_e/parallel/struct/distributed_array.hpp"
@@ -12,6 +12,7 @@
 namespace maia {
 
 
+// TODO review
 template<class I> auto
 scatter_parents_to_boundary(cgns::tree& bnd_section, const ext_faces_with_parents<I>& ext_faces, MPI_Comm comm) {
   //auto _ = std_e::stdout_time_logger("scatter_parents_to_boundary");
@@ -46,16 +47,26 @@ scatter_parents_to_boundary(cgns::tree& bnd_section, const ext_faces_with_parent
 
 template<class I, class Tree_range> auto
 scatter_parents_to_boundary_sections(
-  Tree_range& elt_sections, const ext_faces_with_parents<I>& ext_faces,
-  cgns::ElementType_t elt_type, MPI_Comm comm
+  Tree_range& elt_sections,
+  cgns::ElementType_t face_type,
+  const ext_faces_with_parents<I>& ext_faces,
+  MPI_Comm comm
 )
  -> void
 {
-  auto bnd_section = std::ranges::find_if(elt_sections,[elt_type](const cgns::tree& t){ return element_type(t)==elt_type ; });
+  auto bnd_section = std::ranges::find_if(elt_sections,[face_type](const cgns::tree& t){ return element_type(t)==face_type ; });
   if (bnd_section == end(elt_sections)) {
     STD_E_ASSERT(ext_faces.size()==0);
   } else {
     scatter_parents_to_boundary(*bnd_section,ext_faces,comm);
+  }
+}
+
+
+template<class Tree_range, class I> auto
+scatter_parents_to_boundary_sections(Tree_range& elt_sections, const in_ext_faces_by_section<I>& unique_faces_sections, MPI_Comm comm) -> void {
+  for(const auto& fs : unique_faces_sections) {
+    scatter_parents_to_boundary_sections(elt_sections,fs.face_type,fs.ext,comm);
   }
 }
 

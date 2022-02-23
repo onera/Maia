@@ -12,14 +12,14 @@ namespace maia {
 
 
 auto
-number_of_faces(const tree_range& elt_sections) -> std::array<I8,n_face_types> {
-  std::array<I8,n_face_types> n_faces_by_type;
+number_of_faces(const tree_range& elt_sections) -> std::array<I8,n_face_type> {
+  std::array<I8,n_face_type> n_faces_by_type;
   std::ranges::fill(n_faces_by_type,0);
 
   for (const tree& e : elt_sections) {
     auto elt_type = element_type(e);
     I8 n_elt = distribution_local_size(ElementDistribution(e));
-    for (int i=0; i<n_face_types; ++i) {
+    for (int i=0; i<n_face_type; ++i) {
       auto face_type = all_face_types[i];
       n_faces_by_type[i] += n_elt * number_of_faces(elt_type,face_type);
     }
@@ -58,11 +58,11 @@ gen_faces(
 template<class I> auto
 generate_element_faces_and_parents(const tree_range& elt_sections) -> faces_and_parents_by_section<I> {
   //auto _ = std_e::stdout_time_logger("generate_element_faces_and_parents");
-  auto n_faces_by_type = number_of_faces(elt_sections);
-  auto faces_and_parents = allocate_faces_and_parents_by_section<I>(n_faces_by_type);
 
-  auto& tris  = cgns::get_face_type(faces_and_parents,TRI_3 );
-  auto& quads = cgns::get_face_type(faces_and_parents,QUAD_4);
+  auto n_faces_by_type = number_of_faces(elt_sections);
+  connectivities_with_parents<I> tris (TRI_3 ,cgns::at_face_type(n_faces_by_type,TRI_3 ));
+  connectivities_with_parents<I> quads(QUAD_4,cgns::at_face_type(n_faces_by_type,QUAD_4));
+
   auto tri_it         = connectivities<3>(tris ).begin();
   auto quad_it        = connectivities<4>(quads).begin();
   auto tri_parent_it  = parent_elements  (tris ).begin();
@@ -101,7 +101,7 @@ generate_element_faces_and_parents(const tree_range& elt_sections) -> faces_and_
       }
     }
   }
-  return faces_and_parents;
+  return {std::move(tris),std::move(quads)};
 }
 
 
