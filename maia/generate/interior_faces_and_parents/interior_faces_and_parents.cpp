@@ -51,7 +51,6 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
 auto
 generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   STD_E_ASSERT(is_maia_cgns_zone(z));
-  auto _ = maia_perf_log_lvl_1("generate_interior_faces_and_parents");
   if (value(z).data_type()=="I4") return _generate_interior_faces_and_parents<I4>(z,comm);
   if (value(z).data_type()=="I8") return _generate_interior_faces_and_parents<I8>(z,comm);
   throw cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
