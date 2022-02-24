@@ -6,14 +6,11 @@
 #include "mpi.h"
 
 
-using namespace cgns;
-
-
 namespace maia {
 
 
 template<class I> auto
-append_interior_faces_sections(cgns::tree& z, in_ext_faces_by_section<I>&& faces_sections, I first_interior_face_id, MPI_Comm comm) -> void;
+add_cell_face_connectivities(cgns::tree_range& cell_sections, const in_ext_faces_by_section<I>& unique_faces_sections, I first_interior_face_id, MPI_Comm comm) -> void;
 
 
 } // maia

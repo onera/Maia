@@ -94,6 +94,7 @@ replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
   int rk = std_e::rank(comm);
   // 0. sizes
   auto face_sections = surface_element_sections(z);
+  auto cell_sections = volume_element_sections(z);
   I4 n_surf_elt_tot = 0;
   int n_surf_section = face_sections.size();
   std::vector<I4> n_elts(n_surf_section);
@@ -110,11 +111,10 @@ replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
     n_surf_elt_tot += n_elt;
   }
   // 1. shift volume element ids // TODO move to _generate_interior_faces_and_parents
-  I4 first_3d_elt_id = volume_elements_interval(z).first();
+  I4 first_3d_elt_id = elements_interval(cell_sections).first();
   I4 volume_elts_offset = n_surf_elt_tot+1 - first_3d_elt_id;
   I4 volume_elts_offset2 = 1 - first_3d_elt_id; // TODO here this is done to please cassiopee, but not CGNS compliant
   // 1.0 ElementRange
-  auto cell_sections = volume_element_sections(z);
   for (tree& cell_section : cell_sections) {
     auto elt_interval = ElementRange<I4>(cell_section);
     elt_interval[0] += volume_elts_offset;

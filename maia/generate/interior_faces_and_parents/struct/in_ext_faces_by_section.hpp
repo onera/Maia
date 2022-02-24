@@ -7,26 +7,31 @@
 namespace maia {
 
 
-// TODO class because invariant: size is same for all (with connec by block)
-// TODO add first_id
+// Note: we don't bother encapsulating data members
+//       because this type is only used as a temporary computation result
+
+
 template<class I>
 struct ext_faces_with_parents {
-  std::vector<I> boundary_parents;
-  std::vector<I> vol_parents;
-  std::vector<I> vol_parent_positions;
-  auto size() const -> I { return boundary_parents.size(); }
+  // Class invariant:
+  //   all sizes are equal
+  std::vector<I> bnd_face_parent_elements;
+  std::vector<I> cell_parent_elements;
+  std::vector<I> cell_parent_positions;
+  auto size() const -> I { return bnd_face_parent_elements.size(); }
 };
-// TODO class because invariant: size is same for all (with connec by block)
-// TODO add first_id
 template<class I>
 struct in_faces_with_parents {
+  // Class invariant:
+  //   all sizes are equal
   std::vector<I> connec;
-  std::vector<I> l_parents;
-  std::vector<I> r_parents;
+  std::vector<I> l_parent_elements;
+  std::vector<I> r_parent_elements;
   std::vector<I> l_parent_positions;
   std::vector<I> r_parent_positions;
-  auto size() const -> I { return l_parents.size(); }
+  auto size() const -> I { return l_parent_elements.size(); }
 };
+
 
 template<class I>
 struct in_ext_faces {

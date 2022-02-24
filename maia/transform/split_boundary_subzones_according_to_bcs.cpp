@@ -82,7 +82,8 @@ auto
 split_boundary_subzones_according_to_bcs(tree& b, MPI_Comm comm) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   for (tree& z : zs) {
-    auto elt_2d_range = surface_elements_interval(z);
+    auto elt_2d = surface_element_sections(z);
+    auto elt_2d_range = elements_interval(elt_2d);
     auto zsrs = get_children_by_predicate(z,[&](const tree& t){ return is_complete_bnd_zone_sub_region(t,elt_2d_range); });
 
     auto& zbc = get_child_by_name(z,"ZoneBC");

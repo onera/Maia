@@ -63,8 +63,32 @@ element_sections_ordered_by_range_by_type(Tree& z) {
 
 auto max_element_id(const cgns::tree& z) -> cgns::I8;
 
-auto surface_elements_interval(const cgns::tree& z) -> cgns::interval<cgns::I8>;
-auto volume_elements_interval(const cgns::tree& z) -> cgns::interval<cgns::I8>;
+template<class Tree_range> auto
+elements_interval(const Tree_range& elt_sections) -> cgns::interval<cgns::I8> {
+  using namespace cgns;
+  STD_E_ASSERT(std::ranges::all_of(elt_sections,[](const auto& t){ return is_of_label(t,"Elements_t"); }));
+
+  if (elt_sections.size()==0) { return interval<I8>(0,-1); }
+
+  const_tree_range elts(begin(elt_sections),end(elt_sections)); // range of reference, so we can sort it locally
+  std::ranges::sort(elts,compare_by_range);
+
+  if (!elts_ranges_are_contiguous(elt_sections)) {
+    std::string s;
+    for (const auto& e : elt_sections) {
+      s += name(e) + ',';
+    }
+    s.resize(s.size()-1);
+    throw cgns_exception("The ElementRange of Elements_t \""+s+"\" are expected to be contiguous");
+  }
+
+  return
+    interval<I8>(
+      element_range(elts[0]).first(),
+      element_range(elts.back()).last()
+    );
+}
+
 
 
 } // maia
