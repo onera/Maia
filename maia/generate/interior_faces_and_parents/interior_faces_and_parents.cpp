@@ -9,6 +9,7 @@
 #include "maia/generate/interior_faces_and_parents/scatter_parents_to_boundary_sections.hpp"
 #include "maia/generate/interior_faces_and_parents/add_cell_face_connectivities.hpp"
 #include "maia/generate/interior_faces_and_parents/append_interior_faces_sections.hpp"
+#include "maia/transform/renumber/shift.hpp"
 
 
 using namespace cgns;
@@ -36,16 +37,19 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   // 3. Send parent info back to original exterior faces
   scatter_parents_to_boundary_sections(bnd_face_sections,unique_faces_sections,comm);
 
-  // 4. Start of interior faces
-  //   interior faces will be given an ElementRange just after exterior faces,
-  //   thus starting and overlapping with cell ids
-  I first_interior_face_id = elements_interval(cell_sections).first();
+  // 4. Start of interior faces just after exterior faces
+  I old_first_cell_id = elements_interval(cell_sections).first();
+  I first_interior_face_id = old_first_cell_id;
 
   // 5. Compute cell_face
   add_cell_face_connectivities(cell_sections,unique_faces_sections,first_interior_face_id,comm);
 
   // 6. Create new interior faces sections
-  append_interior_faces_sections(z,std::move(unique_faces_sections),first_interior_face_id,comm);
+  I next_available_elt_id = append_interior_faces_sections(z,std::move(unique_faces_sections),first_interior_face_id,comm);
+
+  // 7. Shift cell ids to leave room to interior faces
+  I cell_offset = next_available_elt_id - old_first_cell_id;
+  shift_cell_ids(z,cell_offset);
 };
 
 auto

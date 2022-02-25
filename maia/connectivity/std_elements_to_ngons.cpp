@@ -11,7 +11,7 @@
 #include "maia/utils/log/log.hpp"
 #include "std_e/logging/mem_logger.hpp" // TODO
 #include "maia/sids/maia_cgns.hpp"
-#include "maia/transform/renumber/shift.hpp"
+#include "cpp_cgns/sids.hpp"
 
 
 using namespace cgns;
@@ -96,23 +96,12 @@ replace_faces_by_ngons(tree& z, MPI_Comm comm) -> void {
   auto cell_sections = volume_element_sections(z);
   int n_face_section = face_sections.size();
   std::vector<I4> n_elts(n_face_section);
-  //std::vector<I4> n_elts_tot(n_face_section);
   std::vector<I4> w_elts(n_face_section);
   for (int i=0; i<n_face_section; ++i) {
     const tree& elt_node = face_sections[i];
-    auto elt_type = element_type(elt_node);
-    auto elt_interval = ElementRange<I4>(elt_node);
-    I4 n_elt = elt_interval[1] - elt_interval[0] + 1;
-    n_elts[i] = n_elt;
-    //n_elts_tot[i] = elt_interval[2];
-    w_elts[i] = number_of_vertices(elt_type);
+    n_elts[i] = length(element_range(elt_node));
+    w_elts[i] = number_of_vertices(element_type(elt_node));
   }
-
-  // 1. shift
-  I4 first_3d_elt_id = elements_interval(cell_sections).first();
-  I4 n_faces = length(elements_interval(face_sections));
-  I4 cell_offset = -first_3d_elt_id + 1 + n_faces; // substract previous start, then start at 1, then leave room for all faces before
-  shift_cell_ids(z,cell_offset);
 
   // 2. concatenate
   // 2.0 connec + eso

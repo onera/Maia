@@ -52,19 +52,20 @@ create_interior_faces_section(in_faces_with_parents<I>&& fps, I section_first_id
 
 
 template<class I> auto
-append_interior_faces_sections(cgns::tree& z, in_ext_faces_by_section<I>&& faces_sections, I first_interior_face_id, MPI_Comm comm) -> void {
-  I current_section_first_id = first_interior_face_id;
+append_interior_faces_sections(cgns::tree& z, in_ext_faces_by_section<I>&& faces_sections, I first_interior_face_id, MPI_Comm comm) -> I {
+  I current_section_id = first_interior_face_id;
   for(auto& fs : faces_sections) {
-    auto [n_in_faces,in_section_node] = create_interior_faces_section(std::move(fs.in),current_section_first_id,fs.face_type,comm);
-    current_section_first_id += n_in_faces;
+    auto [n_in_faces,in_section_node] = create_interior_faces_section(std::move(fs.in),current_section_id,fs.face_type,comm);
+    current_section_id += n_in_faces;
     emplace_child(z,std::move(in_section_node));
   }
+  return current_section_id;
 }
 
 
 // Explicit instanciations of functions defined in this .cpp file
-template auto append_interior_faces_sections(cgns::tree& z, in_ext_faces_by_section<I4>&& faces_sections, I4 first_interior_face_id, MPI_Comm comm) -> void;
-template auto append_interior_faces_sections(cgns::tree& z, in_ext_faces_by_section<I8>&& faces_sections, I8 first_interior_face_id, MPI_Comm comm) -> void;
+template auto append_interior_faces_sections(cgns::tree& z, in_ext_faces_by_section<I4>&& faces_sections, I4 first_interior_face_id, MPI_Comm comm) -> I4;
+template auto append_interior_faces_sections(cgns::tree& z, in_ext_faces_by_section<I8>&& faces_sections, I8 first_interior_face_id, MPI_Comm comm) -> I8;
 
 
 } // maia
