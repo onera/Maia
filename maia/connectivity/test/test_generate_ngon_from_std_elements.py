@@ -75,20 +75,20 @@ class Test_compute_ngon_from_std_elements:
     assert (sids.ElementRange(ngon) == [7,23]).all()
     assert (sids.ElementRange(nface) == [24,29]).all()
     if rank == 0:
-      assert (I.getVal(IE.getDistribution(ngon, 'Element')) == [0,8,17]).all()
+      assert (I.getVal(IE.getDistribution(ngon, 'Element')) == [0,9,17]).all()
       assert (I.getVal(IE.getDistribution(nface, 'Element')) == [0,3,6]).all()
       assert (I.getVal(IE.getDistribution(nface, 'ElementConnectivity')) == [0,12,24]).all()
 
-      assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == [1,2,2,3,5,1,3,4,2,6,3,7,6,5,4,8]).all()
-      assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == [0,2,4,6,8,10,12,14,16]).all()
+      assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == [1,2,2,3,5,1,3,4,2,6,3,7,6,5,4,8,7,6]).all()
+      assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == [0,2,4,6,8,10,12,14,16,18]).all()
       assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == [1,3,5,7,5,2,6,9,6,4,8,11]).all()
     elif rank == 1:
-      assert (I.getVal(IE.getDistribution(ngon, 'Element')) == [8,17,17]).all()
+      assert (I.getVal(IE.getDistribution(ngon, 'Element')) == [9,17,17]).all()
       assert (I.getVal(IE.getDistribution(nface, 'Element')) == [3,6,6]).all()
       assert (I.getVal(IE.getDistribution(nface, 'ElementConnectivity')) == [12,24,24]).all()
 
-      assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == [7,6,9,5,8,7,6,10,7,11,10,9,8,12,11,10,12,11]).all()
-      assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == [16,18,20,22,24,26,28,30,32,34]).all()
+      assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == [9,5,8,7,6,10,7,11,10,9,8,12,11,10,12,11]).all()
+      assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == [18,20,22,24,26,28,30,32,34]).all()
       assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == [7,10,12,14,12,9,13,16,13,11,15,17]).all()
 
   def test_2d_mesh_with_bc(self, sub_comm):

@@ -44,13 +44,13 @@ class block_to_parts_protocol {
 
       int**  part_stride;
       std::byte** part_data;
-      PDM_block_to_part_exch2(btp,
-                              sizeof(std::byte),
-                              PDM_STRIDE_VAR_INTERLACED,
-                              blk_strid,
-                              blk_data,
-                             &part_stride,
-                  (void ***) &part_data);
+      PDM_block_to_part_exch(btp,
+                             sizeof(std::byte),
+                             PDM_STRIDE_VAR_INTERLACED,
+                             blk_strid,
+                             blk_data,
+                            &part_stride,
+                 (void ***) &part_data);
 
       // TODO Here, copying to std::vectors ONLY to replace manual calls to free by automatic RAII,
       // Should change Paradigm interface

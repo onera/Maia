@@ -35,7 +35,7 @@ class parts_to_block_protocol {
 
       int n_part = LN_to_GNs.size();
 
-      ptb = PDM_part_to_block_create2( PDM_PART_TO_BLOCK_DISTRIB_ALL_PROC,
+      ptb = PDM_part_to_block_create_from_distrib( PDM_PART_TO_BLOCK_DISTRIB_ALL_PROC,
                                        post_treatment_kind,
                                        0.,
                                        g_num_by_partition.data(),

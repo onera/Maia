@@ -113,7 +113,7 @@ class WallDistance:
 
     #Get global data (total number of faces / vertices)
     #This create the surf_mesh objects in PDM, thus it must be done before surf_mesh_part_set
-    self._walldist.surf_mesh_global_data_set(self._n_face_bnd_tot_idx[-1], self._n_vtx_bnd_tot_idx[-1])
+    self._walldist.surf_mesh_global_data_set()
     
     #Setup partitions
     for i_part in range(n_part):
@@ -131,22 +131,8 @@ class WallDistance:
     """
     Setup the volumic mesh for wall distance computing (only for propagation method)
     """
-    #First pass to compute the total number of vtx, face, cell
-    n_vtx_t, n_face_t, n_cell_t = 0, 0, 0
-    for part_zone in part_zones:
-      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TE.utils.get_entities_numbering(part_zone, as_pdm=False)
-      n_vtx_t  = max(n_vtx_t,  np.max(vtx_ln_to_gn, initial=0))
-      n_cell_t = max(n_face_t, np.max(cell_ln_to_gn, initial=0))
-      n_face_t = max(n_cell_t, np.max(face_ln_to_gn, initial=0))
-
-    #We could retrieve data from dist zone
-    n_vtx_t  = comm.allreduce(n_vtx_t , op=MPI.MAX)
-    n_cell_t = comm.allreduce(n_cell_t, op=MPI.MAX)
-    n_face_t = comm.allreduce(n_face_t, op=MPI.MAX)
-
     #Setup global data
-    self._walldist.vol_mesh_global_data_set(n_cell_t, n_face_t, n_vtx_t)
-
+    self._walldist.vol_mesh_global_data_set()
 
     for i_part, part_zone in enumerate(part_zones):
 
