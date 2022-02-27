@@ -53,10 +53,10 @@ template<class Tree_range, class I> auto
 scatter_parents_to_boundary_sections(Tree_range& bnd_sections, const in_ext_faces_by_section<I>& unique_faces_sections, MPI_Comm comm) -> void {
   for(const auto& fs : unique_faces_sections) {
     auto bnd_section = std::ranges::find_if(bnd_sections,[&fs](const cgns::tree& t){ return element_type(t)==fs.face_type ; });
-    if (bnd_section == end(bnd_sections)) {
-      STD_E_ASSERT(fs.ext.size()==0);
-    } else {
+    if (bnd_section != end(bnd_sections)) {
       scatter_parents_to_boundary(*bnd_section,fs.ext,comm);
+    } else {
+      STD_E_ASSERT(fs.ext.size()==0);
     }
   }
 }

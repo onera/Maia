@@ -47,7 +47,7 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
   // 6. Create new interior faces sections
   I next_available_elt_id = append_interior_faces_sections(z,std::move(unique_faces_sections),first_interior_face_id,comm);
 
-  // 7. Shift cell ids to leave room to interior faces
+  // 7. Shift cell ids to leave room for interior faces
   I cell_offset = next_available_elt_id - old_first_cell_id;
   shift_cell_ids(z,cell_offset);
 };
