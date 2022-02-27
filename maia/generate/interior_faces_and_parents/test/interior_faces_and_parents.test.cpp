@@ -10,7 +10,6 @@
 #include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
 #include "std_e/parallel/mpi/base.hpp"
 #include "std_e/multi_array/utils.hpp"
-#include "std_e/log.hpp"
 
 
 using namespace cgns;
