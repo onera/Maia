@@ -8,6 +8,18 @@ from maia.transform import duplicate
 
 
 ###############################################################################
+class Test_find_cartesian_vector_names_from_names():
+  names = ["Tata","TotoY","TotoZ","Titi","totoX"]
+  # --------------------------------------------------------------------------- #
+  def test_find_cartesian_vector_names_from_names1(self):
+    assert(duplicate._find_cartesian_vector_names_from_names(self.names) == [])
+  # --------------------------------------------------------------------------- #
+  def test_find_cartesian_vector_names_from_names2(self):
+    self.names.append("TotoX")
+    assert(duplicate._find_cartesian_vector_names_from_names(self.names) == ["Toto"])
+###############################################################################
+
+###############################################################################
 class Test_duplicate_zone_with_transformation():
   yz = """
        Zone Zone_t I4 [[18,4,0]]:
