@@ -4,9 +4,6 @@
 Developer Manual
 ################
 
-.. currentmodule:: std_e
-
-
 *****************
 Table of contents
 *****************
@@ -16,3 +13,4 @@ Table of contents
 
   maia_dev/convertions
   maia_dev/development_workflow
+  std_elements_to_ngons

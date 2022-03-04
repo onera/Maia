@@ -15,6 +15,16 @@ Take a distributed `CGNSTree_t` or `CGNSBase_t`, and transform it into a NGon/NF
 Example
 -------
 
+.. code-block:: python
+  import maia.io
+  import maia.transform
+  from mpi4py import MPI
+  comm = MPI.COMM_WORLD
+
+  dist_tree = maia.io.file_to_dist_tree('element_mesh.cgns', comm)
+  maia.transform.std_elements_to_ngons(dist_tree, comm)
+  maia.io.dist_tree_to_file(dist_tree, 'poly_mesh.cgns', comm)
+
 Arguments
 ---------
 
@@ -50,17 +60,22 @@ With :math:`N` the number of zones, :math:`n_i` the number of elements of zone :
 
 Sequential time: :math:`O(\sum_{i} n_i log(n_i))` (sort all faces)
 
-Parallel time: :math:`O(\sum_{i} n_i/K log(n_i/K))`.
+Parallel time: :math:`O(\sum_{i} n_i/K log(n_i))`.
 
-Theoretical scaling: :math:`1 - log(K)/log(n_i)`
-Note: the scaling is computed as :math:`tp / ts * K` where :math:`ts` is the sequential time and :math:`tp` the parallel time. A scaling of 1 is perfect.
-(Experimentally, the scaling seems poor - under investigation)
+Theoretical scaling: :math:`1` (Experimentally, the scaling is much worse - under investigation)
+Note: the scaling is computed as :math:`ts / (tp * K)` where :math:`ts` is the sequential time and :math:`tp` the parallel time. A scaling of 1 is perfect, a scaling greater than `K` means that a sequential execution is faster.
 
+Peak memory: Approximately the size of the input tree + the output tree, i.e. :math:`\sum_{i} 2*n_i + nf_i` (:math:`*n_i` is counted twice: once for the input element connectivity, once for the output NFace connectivity)
 
-Peak memory: Approximately the size of the input tree + the output tree, i.e. :math:`\sum_{i} 2*n_i + nf_i` (:math:`*n_i` counted twice: once for the input element connectivity, once for the output NFace connectivity)
-
-Size of communications: Approximately :math:`\sum_{i} 3 nf_i + n_i` all_to_all calls (for each zone, one call to sort interior faces, one to send back the face to the NFace, one to concatenate all faces, one to concatenate all cells)
+Size of communications: Approximately :math:`\sum_{i} 3 nf_i + n_i` all_to_all calls (for each zone, one call to sort interior faces, one to send back the faces to the NFace, one to concatenate all faces, one to concatenate all cells)
 
 Number of communication calls: Should be :math:`O(\sum_{i} log(n_i/K))` (number of iterations to find a balanced distribution of interior faces)
 
 Note: in practice, :math:`nf_i` varies from :math:`2 n_i` (tet-dominant meshes) to :math:`3 n_i` (hex-dominant meshes).
+
+Design alternatives
+-------------------
+
+The final step of the computation involves concatenating faces and cells global section by global section. This requires two heavyweight all_to_all calls. An alternative would be to concatenate locally. This would imply two trade-offs:
+* the faces and cells would then not be globally gathered by type, and the exterior faces would not be first
+* all the :code:`PointLists` (including those where :code:`GridLocation=FaceCenter`) would have to be shifted

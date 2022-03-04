@@ -8,8 +8,6 @@
 
 #include "maia/connectivity/std_elements_to_ngons.hpp"
 #include "std_e/parallel/mpi/base.hpp"
-#include "std_e/log.hpp" // TODO
-#include "std_e/multi_array/utils.hpp" // TODO
 
 
 using namespace cgns;
@@ -22,14 +20,13 @@ PYBIND_MPI_TEST_CASE("std_elements_to_ngons",2) {
   tree& z = cgns::get_node_by_name(b,"Zone");
 
   maia::std_elements_to_ngons(z,test_comm);
-  //ELOG(z);
 
   auto elt_type = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n")[0];
   auto range = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n/ElementRange");
   auto eso = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n/ElementStartOffset");
   auto connec = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n/ElementConnectivity");
   auto pe = cgns::get_node_value_by_matching<I4,2>(b,"Zone/NGON_n/ParentElements");
-  //auto pp = cgns::get_node_value_by_matching<I4,2>(b,"Zone/NGON_n/ParentPositions"); // TODO
+  auto pp = cgns::get_node_value_by_matching<I4,2>(b,"Zone/NGON_n/ParentElementsPosition");
   CHECK( elt_type == (I4)cgns::NGON_n);
   CHECK( range == std::vector<I4>{1,18} );
   MPI_CHECK(0, eso == std::vector<I4>{0,4,8,12,16,20,24,28,32} );
@@ -40,4 +37,6 @@ PYBIND_MPI_TEST_CASE("std_elements_to_ngons",2) {
   MPI_CHECK(1, pe.extent() == std_e::multi_index<I8,2>{10,2} );
   MPI_CHECK(0, pe == cgns::md_array<I4,2>{{19,0},{20,0},{21,0},{22,0},{19,0},{21,0},{20, 0},{22, 0}} );
   MPI_CHECK(1, pe == cgns::md_array<I4,2>{{19,0},{20,0},{19,0},{20,0},{21,0},{22,0},{21,22},{21,19},{19,20},{22,20}} );
+  MPI_CHECK(0, pp == cgns::md_array<I4,2>{{5,0},{5,0},{2,0},{2,0},{2,0},{1,0},{2,0},{1,0}} );
+  MPI_CHECK(1, pp == cgns::md_array<I4,2>{{4,0},{4,0},{1,0},{6,0},{4,0},{5,0},{5,4},{3,3},{6,1},{3,3}} );
 }

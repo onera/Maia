@@ -14,7 +14,6 @@
 #include "maia/sids/maia_cgns.hpp"
 #include "cpp_cgns/sids.hpp"
 #include "maia/utils/parallel/utils.hpp"
-#include "std_e/log.hpp"
 
 
 using namespace cgns;

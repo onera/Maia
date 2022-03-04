@@ -4,9 +4,6 @@
 User Manual
 ###########
 
-.. currentmodule:: std_e
-
-
 *****************
 Table of contents
 *****************
