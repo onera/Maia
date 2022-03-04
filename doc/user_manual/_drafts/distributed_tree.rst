@@ -5,9 +5,10 @@
 Loading a distributed tree
 ==========================
 
+TODO
+
 A *dist tree* is a CGNS tree where the tree structure is replicated across all processes, but array values of the nodes may be distributed.
 
-:
 The generalized paths of the distributed nodes are listed below. For all other nodes within the tree, the node values are loaded by all processes.
 
 TODO: make it possible to add node generalized path to the list of node that are distributed

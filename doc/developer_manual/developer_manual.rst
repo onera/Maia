@@ -1,8 +1,8 @@
 .. _user_manual:
 
-###########
-User Manual
-###########
+################
+Developer Manual
+################
 
 .. currentmodule:: std_e
 
@@ -14,7 +14,5 @@ Table of contents
 .. toctree::
   :maxdepth: 3
 
-  introduction
-  cgns_trees
-  std_elements_to_ngons
-  
+  maia_dev/convertions
+  maia_dev/development_workflow
