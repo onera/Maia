@@ -72,10 +72,8 @@ include(FetchContent)
 ### doctest ###
 FetchContent_Declare(
   doctest
-  #GIT_REPOSITORY https://github.com/onqtam/doctest.git
-  #GIT_TAG        2.4.6
-  GIT_REPOSITORY https://github.com/BerengerBerthoul/doctest.git
-  GIT_TAG        f13a00607463ce211004be23b5aa0bdf24d3ab61
+  GIT_REPOSITORY https://github.com/doctest/doctest.git
+  GIT_TAG        110d305
 )
 FetchContent_MakeAvailable(doctest)
 ### pybind11 ###
