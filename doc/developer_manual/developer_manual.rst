@@ -1,16 +1,12 @@
-.. _user_manual:
+.. _dev_manual:
 
 ################
 Developer Manual
 ################
 
-*****************
-Table of contents
-*****************
-
 .. toctree::
-  :maxdepth: 3
+  :maxdepth: 1
 
-  maia_dev/convertions
+  maia_dev/conventions
   maia_dev/development_workflow
   std_elements_to_ngons

@@ -4,12 +4,8 @@
 User Manual
 ###########
 
-*****************
-Table of contents
-*****************
-
 .. toctree::
-  :maxdepth: 3
+  :maxdepth: 1
 
   introduction
   cgns_trees

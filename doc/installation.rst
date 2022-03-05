@@ -11,34 +11,36 @@ Maia depends on quite a few libraries of different kinds, be it system libraries
 Installation through Spack
 --------------------------
 
-* Source a Spack repository on your machine.
-* If you don't have a Spack repository ready, you can download one with `git clone https://github.com/spack/spack.git`. On ONERA machines, it is advised to use the `Spacky <https://gitlab.onera.net/informatics/infra/spacky>`_ helper.
-* Download the **ONERA Spack repository** with `git clone https://gitlab.onera.net/informatics/infra/onera_spack_repo.git`
-* Tell Spack that package recipes are in `onera_spack_repo` by adding the following lines to `$SPACK_ROOT/etc/repos.yaml`:
+1. Source a Spack repository on your machine.
+2. If you don't have a Spack repository ready, you can download one with :code:`git clone https://github.com/spack/spack.git`. On ONERA machines, it is advised to use the `Spacky <https://gitlab.onera.net/informatics/infra/spacky>`_ helper.
+3. Download the **ONERA Spack repository** with :code:`git clone https://gitlab.onera.net/informatics/infra/onera_spack_repo.git`
+4. Tell Spack that package recipes are in :code:`onera_spack_repo` by adding the following lines to :code:`$SPACK_ROOT/etc/repos.yaml`:
 
 .. code-block:: yaml
 
   repos:
   - path/to/onera_spack_repo
 
-* You should be able to see the options for installing Maia with `spack info maia`
-* To install Maia: `spack install maia`
+(note that **spacky** does steps 3. and 4. for you)
+
+5. You should be able to see the package options of Maia with :code:`spack info maia`
+6. To install Maia: :code:`spack install maia`
 
 
 Development workflow
 --------------------
 
-For development, it is advised to use Spack to have Maia dependencies, but then follow a typical CMake workflow with `cmake/make`.
+For development, it is advised to use Spack to have Maia dependencies, but then follow a typical CMake workflow with :code:`cmake/make`.
 
 
 Dependencies
 ^^^^^^^^^^^^
 
-To have Maia dependencies, you can:
+To get access to Maia dependencies in your development environment, you can:
 
 * Install a Spack version of Maia, source it in your development environment to get all the dependencies, then override with your own compiled version of Maia
-* Do the same, but use a Spack environment with Maia instead of just the Maia package
-* Source a Spack environment where Maia has been removed from the environment view. This can be done by adding the following lines to the `spack.yaml` environement file:
+* Do the same, but use a Spack environment containing Maia instead of just the Maia package
+* Source a Spack environment where Maia has been removed from the environment view. This can be done by adding the following lines to the :code:`spack.yaml` environement file:
 
 .. code-block:: yaml
 
@@ -58,7 +60,7 @@ You can develop without the need to install Maia. However, in addition to sourci
   cd $MAIA_BUILD_FOLDER
   source source.sh
 
-The `source.sh` file is created by CMake and should source all Maia artifacts (dynamic libraries, python modules...)
+The :code:`source.sh` file is created by CMake and will source all Maia artifacts (dynamic libraries, python modules...)
 
 
 Development workflow with submodules
@@ -72,7 +74,7 @@ It is often practical to develop Maia with some of its dependencies, namely:
 * paradigm
 * pytest_parallel
 
-For that, you need to use git submodules. Maia submodules are located at `$MAIA_FOLDER/external`. To populate them, use `git submodule update --init`. Once done, CMake will use these versions of the dependencies. If you don't populate the submodules, CMake will try to use the ones of your environment (for instance, the one installed by Spack).
+For that, you need to use git submodules. Maia submodules are located at :code:`$MAIA_FOLDER/external`. To populate them, use :code:`git submodule update --init`. Once done, CMake will use these versions of the dependencies. If you don't populate the submodules, CMake will try to use the ones of your environment (for instance, the one installed by Spack).
 
 We advise that you use some additional submodule configuration utilities provided in `this file <https://github.com/BerengerBerthoul/project_utils/blob/master/git/submodule_utils.sh>`_. In particular, you should use:
 
@@ -145,7 +147,7 @@ The documentation build requires:
 Build and install
 -----------------
 
-1. Install the required dependencies. They must be in your environment (`PATH`, `LD_LIBRARY_PATH`, `PYTHONPATH`).
+1. Install the required dependencies. They must be in your environment (:code:`PATH`, :code:`LD_LIBRARY_PATH`, :code:`PYTHONPATH`).
 
  For pytest, you may need these lines :
 
@@ -157,7 +159,7 @@ Build and install
   pip3 install --user pytest_check
   pip3 install --user ruamel.yaml
 
-2. Then you need to populate your :code:`external` folder. If you got Maia from a `Maia_suite` repository, then there is nothing to do. Else, you can do it with `git submodule update --init`
+2. Then you need to populate your :code:`external` folder. You can do it with :code:`git submodule update --init`
 
 3. Then use CMake to build maia, e.g.
 

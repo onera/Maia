@@ -14,3 +14,13 @@ div.indexpage p {
 .wy-table-responsive table td, .wy-table-responsive table th {
     white-space: normal;
 }
+
+.def {
+  color: #e41a1c;
+  font-weight: bold;
+}
+
+.cgns {
+  color: #08306b;
+  font-family: 'Courier New', monospace;
+}

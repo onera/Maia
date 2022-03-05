@@ -4,7 +4,15 @@ Development workflow
 Sub-modules
 -----------
 
-The **Maia** repository is compatible with the development process described in `external/project_utils/doc/main.md`. It uses git submodules to ease the joint development with other repositories compatible with this organization. TL;DR: configure the git repository with `cd external/project_utils/scripts && configure_top_level_repo.sh`.
+The **Maia** repository is compatible with the development process described `here <https://github.com/BerengerBerthoul/project_utils/blob/master/doc/Git_workflow.md>`_. It uses git submodules to ease the joint development with other repositories compatible with this organization.
+
+TL;DR: configure the git repository by sourcing `this file <https://github.com/BerengerBerthoul/project_utils/blob/master/git/submodule_utils.sh>`_ and then execute: 
+
+.. code-block:: bash
+
+  cd $MAIA_FOLDER
+  git submodule update --init
+  git_config_submodules
 
 
 Launch tests

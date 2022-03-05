@@ -24,7 +24,9 @@ Highlights
 Distributed trees algorithms
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Maia main algorithms operate on CGNS distributed trees. A distributed tree over an MPI communicator is like a regular CGNS tree where all ranks have the same tree structure, but each rank only holds a portion of each array in the tree. Distributed trees algorithms are always collective on their associated MPI communicator. A detailed description of distributed trees is given in section :ref:`dist_tree`.
+Maia main algorithms operate on distributed CGNS trees. A distributed tree over an MPI communicator is like a regular CGNS tree where all ranks have the same tree structure, but each rank only holds a portion of the arrays. Distributed trees algorithms are always collective on their associated MPI communicator. A detailed description of distributed trees is given in :ref:`this section <dist_tree>`.
+
+Sample of the main distributed tree algorithms:
 
 .. code-block:: python
 
@@ -48,12 +50,15 @@ Maia main algorithms operate on CGNS distributed trees. A distributed tree over 
   maia.std_elements_to_ngons(dist_tree_elts, comm)
 
 
-Partitionned/Distributed trees algorithms
+Partitioned/Distributed trees algorithms
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-While distributed trees are useful for many pre/post-treatment algorithms, they are not fit for other algorithms. In particular, solver algorithms operate on partitioned trees. A partitioned tree is a CGNS tree that results from the partition of a base tree: each zone of the base tree has been split into sub-zones that are distributed over the ranks of a communicator. While algorithms may operate on a partitioned tree, we generally need to keep its relationship with its base tree. Since the base tree is of arbitrary size, it is generally treated by Maia as a distributed tree.
+While distributed trees are useful for many pre/post-treatment algorithms, they are not fit for other algorithms. In particular, solver algorithms operate on partitioned trees. A partitioned tree is a CGNS tree that results from the partition of a base tree: each zone of the base tree has been split into sub-zones that are distributed over the ranks of a communicator. While an algorithm may operate on the sole partitioned tree, we generally need to keep its relationship with its base tree. Since the base tree is of arbitrary size, it is generally treated by Maia as a distributed tree.
+
+Sample of the main partitioned tree algorithms:
 
 .. code-block:: python
+
    # Partition a distributed tree
    part_tree = maia.partitioning(dist_tree, comm)
 
