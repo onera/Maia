@@ -38,12 +38,18 @@ def collect_S_bnd_per_dir(zone):
   base_bound = {k : [] for k in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]}
 
   bnd_queries = [['ZoneBC_t', 'BC_t'],
-      ['ZoneGridConnectivity_t', lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t']]]
+      ['ZoneGridConnectivity_t', lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t']],
+      ['ZoneBC_t', 'BC_t', 'BCDataSet_t']]
   for bnd_query in bnd_queries:
-    for bnd in IE.iterNodesByMatching(zone, bnd_query):
+    for nodes in IE.iterNodesWithParentsByMatching(zone, bnd_query):
+      bnd = nodes[-1]
       grid_loc    = sids.GridLocation(bnd)
       point_range = I.getNodeFromName(bnd, 'PointRange')[1]
       bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
+
+      if I.getType(bnd) == 'BCDataSet_t':
+        bcds_path = '/'.join([I.getName(n) for n in nodes[:-1]])
+        I.createUniqueChild(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
 
       pr_val = point_range[bnd_normal_index,0]
       extr = 'min' if pr_val == 1 else 'max'
@@ -133,7 +139,22 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
                   sub_pr[dir_to_swap, 1], sub_pr[dir_to_swap, 0]
 
           #Effective creation of BC in part zone
-          part_bc = I.newBC(I.getName(dist_bc), sub_pr, parent=zbc)
+          if I.getType(dist_bc) == 'BCDataSet_t':
+            path_node = I.getNodeFromName1(dist_bc, '__maia::dspath')
+            parent_path   = I.getValue(path_node)
+            I._rmNode(dist_bc, path_node) #Cleanup
+            #BC should have been created before so its ok
+            parent = I.getNodeFromPath(p_zone, parent_path)
+            part_bc = I.newBCDataSet(I.getName(dist_bc), parent=parent)
+            I.newPointRange(value=sub_pr, parent=part_bc)
+            i_ar  = np.arange(range_part_bc_g[0,0], range_part_bc_g[0,1]+1, dtype=pdm_dtype)
+            j_ar  = np.arange(range_part_bc_g[1,0], range_part_bc_g[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
+            k_ar  = np.arange(range_part_bc_g[2,0], range_part_bc_g[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
+            bcds_lntogn = s_numb.ijk_to_index(i_ar, j_ar, k_ar, range_dist_bc[:,1]).flatten()
+            assert bcds_lntogn.size == sids.Subset.n_elem(part_bc)
+            IE.newGlobalNumbering({'Index' : bcds_lntogn}, part_bc)
+          else: #GC are put with bc and treated afterward
+            part_bc = I.newBC(I.getName(dist_bc), sub_pr, parent=zbc)
           I.setValue(part_bc, I.getValue(dist_bc))
           I.newGridLocation(grid_loc, parent=part_bc)
           I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Ordinal'))
