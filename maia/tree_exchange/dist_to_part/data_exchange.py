@@ -48,13 +48,14 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       shaped_data = data[ipart].reshape(SIDS.Zone.VertexSize(part_zone), order='F')
       I.newDataArray(data_name, shaped_data, parent=part_gc)
 
-def dist_sol_to_part_sol(dist_zone, part_zones, comm):
+
+
+def _dist_to_part_sollike(dist_zone, part_zones, label, comm):
   """
-  Transfert all the data included in FlowSolution_t nodes and DiscreteData_t nodes from a distributed
-  zone to the partitioned zones
+  Shared code for FlowSolution_t and DiscreteData_t
   """
   #Get distribution
-  for d_sol in I.getNodesFromType1(dist_zone, "FlowSolution_t") + I.getNodesFromType1(dist_zone, "DiscreteData_t"):
+  for d_sol in I.getNodesFromType1(dist_zone, label):
     location = SIDS.GridLocation(d_sol)
     has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
     if has_pl:
@@ -70,9 +71,7 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
         lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
     #Get data
-    dist_data = dict()
-    for field in I.getNodesFromType1(d_sol, 'DataArray_t'):
-      dist_data[I.getName(field)] = field[1] #Prevent np->scalar conversion
+    dist_data = {I.getName(field) : I.getVal(field) for field in I.getNodesFromType1(d_sol, 'DataArray_t')}
 
     #Exchange
     part_data = dist_to_part(distribution, dist_data, lntogn_list, comm)
@@ -84,13 +83,27 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
           p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
           shape = I.getNodeFromName1(p_sol, 'PointList')[1].shape[1]
         else:
-          p_sol = I.newFlowSolution(I.getName(d_sol), location, parent=part_zone)
-          I.setType(p_sol, I.getType(d_sol)) #Trick to be generic between DiscreteData/FlowSol
+          p_sol = I.createChild(part_zone, I.getName(d_sol), I.getType(d_sol))
+          I.newGridLocation(location, parent=p_sol)
           shape = SIDS.Zone.VertexSize(part_zone) if location == 'Vertex' else SIDS.Zone.CellSize(part_zone)
         for data_name, data in part_data.items():
           #F is mandatory to keep shared reference. Normally no copy is done
           shaped_data = data[ipart].reshape(shape, order='F')
           I.newDataArray(data_name, shaped_data, parent=p_sol)
+
+def dist_sol_to_part_sol(dist_zone, part_zones, comm):
+  """
+  Transfert all the data included in FlowSolution_t nodes from a distributed
+  zone to the partitioned zones
+  """
+  _dist_to_part_sollike(dist_zone, part_zones, 'FlowSolution_t', comm)
+
+def dist_discdata_to_part_discdata(dist_zone, part_zones, comm):
+  """
+  Transfert all the data included in DiscreteData_t nodes from a distributed
+  zone to the partitioned zones
+  """
+  _dist_to_part_sollike(dist_zone, part_zones, 'DiscreteData_t', comm)
 
 def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
   """
