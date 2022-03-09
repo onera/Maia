@@ -6,7 +6,6 @@ from ._node_parsers import NodesIterator
 from ._node_parsers import ShallowNodesIterator
 from ._node_parsers import RangeLevelNodesIterator
 from ._node_parsers import ShallowRangeLevelNodesIterator
-from .compare import is_valid_node
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
@@ -54,9 +53,8 @@ class NodesWalker:
 
   @root.setter
   def root(self, node: TreeNode):
-    if is_valid_node(node):
-      self._root = node
-      self.clean()
+    self._root = node
+    self.clean()
 
   @property
   def predicate(self):

@@ -2,7 +2,6 @@ from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
 import numpy as np
 import copy
 
-from .compare      import is_valid_node
 from .nodes_walker import NodesWalker
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
@@ -69,9 +68,8 @@ class NodesWalkers:
 
   @root.setter
   def root(self, node: TreeNode):
-    if is_valid_node(node):
-      self._root = node
-      self.clean()
+    self._root = node
+    self.clean()
 
   @property
   def predicates(self):
