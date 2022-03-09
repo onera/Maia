@@ -99,7 +99,7 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
   Transfert all the data included in FlowSolution_t nodes from a distributed
   zone to the partitioned zones
   """
-  mask_tree = create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
 def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
@@ -107,102 +107,8 @@ def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], excl
   Transfert all the data included in DiscreteData_t nodes from a distributed
   zone to the partitioned zones
   """
-  mask_tree = create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
-
-def pathes_to_tree(pathes, root_name='CGNSTree'):
-  """
-  Convert a list of pathes to a CGNSTreeLike
-  """
-  def unroll(root):
-    """ Internal recursive function """
-    if root[1] is None:
-      return
-    for path in root[1]:
-      first = path.split('/')[0]
-      others = '/'.join(path.split('/')[1:])
-      node = I.getNodeFromName1(root, first)
-      if node is None:
-        if others:
-          root[2].append([first, [others], [], None])
-        else:
-          root[2].append([first, None, [], None])
-      else:
-        node[1].append(others)
-    root[1] = None
-    for child in root[2]:
-      unroll(child)
-
-  path_tree = [root_name, pathes, [], None]
-  unroll(path_tree)
-  return path_tree
-
-def predicates_to_pathes(root, predicates):
-  """
-  An utility function searching node descendance from root matching given predicates,
-  and returning the path of these nodes (instead of the nodes itselves)
-  """
-  pathes = []
-  for nodes in PT.iter_nodes_from_predicates(root, predicates, depth=[1,1], ancestors=True):
-    pathes.append('/'.join([I.getName(n) for n in nodes]))
-  return pathes
-
-def concretise_pathes(root, wanted_path_list, labels):
-  """
-  """
-  all_pathes = []
-  for path in wanted_path_list:
-    names = path.split('/')
-    assert len(names) == len(labels)
-    predicates = [lambda n, _name=name, _label=label: PT.match_name_label(n, _name, _label) \
-        for (name, label) in zip(names,labels)] 
-    pathes = predicates_to_pathes(root, predicates)
-    all_pathes.extend(pathes)
-
-  return sorted(list(set(all_pathes))) #Unique + sort
-
-def create_mask_tree(root, labels, include, exclude):
-  """
-  Create a mask tree from root using either the include or exclude list + hints on searched labels
-  """
-  if len(include) * len(exclude) != 0:
-    raise ValueError("Include and exclude args are mutally exclusive")
-
-  if len(include) > 0:
-    to_include = concretise_pathes(root, include, labels)
-  elif len(exclude) > 0:
-    #In exclusion mode, we get all the pathes matching labels and exclude the one founded
-    all_pathes = predicates_to_pathes(root, labels)
-    to_exclude = concretise_pathes(root, exclude, labels)
-    to_include = [p for p in all_pathes if not p in to_exclude]
-  else:
-    to_include = predicates_to_pathes(root, labels)
-
-  return pathes_to_tree(to_include, I.getName(root))
-
-def queries_to_pathes(root, query_list):
-  """OLD"""
-  def explore(root, i, queries, path='', pp=0):
-    try:
-      child_label = labels[i]
-      #print(2*pp*' ', "Exploring", root[0], "searching for labels", child_label)
-      for child in I.getNodesFromType1(root, child_label):
-        next_queries = [data_n for (container_n, *data_n) in queries if PT.match_name(child, container_n)]
-        # print(2*pp*' ', "For child", child[0], "next queries", next_queries)
-        explore(child, i+1, next_queries, f'{path}/{I.getName(child)}', pp+1)
-    except IndexError:
-      #print(2*pp*' ', "Exploring last level", root[0], [path+'/'+q[0] for q in queries])
-      all_path.extend( [f'{path}/{q[0]}' for q in queries])
-
-  all_path = []
-  labels = ["BC_t", "BCDataSet_t", "BCData_t"]
-  start_query = [query.split('/') for query in include]
-  if root is not None:
-    explore(root, 0, start_query)
-    all_path = [path[1:] for path in all_path] #Remove first "/"
-
-  return all_path
-
 
 def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
@@ -211,7 +117,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
   """
   for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
     labels = ['BC_t', 'BCDataSet_t', 'BCData_t', 'DataArray_t']
-    mask_tree = create_mask_tree(d_zbc, labels, include, exclude)
+    mask_tree = te_utils.create_mask_tree(d_zbc, labels, include, exclude)
     for mask_bc in I.getChildren(mask_tree):
       bc_path = I.getName(d_zbc) + '/' + I.getName(mask_bc)
       d_bc = I.getNodeFromPath(dist_zone, bc_path) #True BC
@@ -226,7 +132,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
           distribution = te_utils.get_cgns_distribution(d_bc, 'Index')
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         #Get data
-        data_pathes = predicates_to_pathes(mask_dataset, ['*', '*'])
+        data_pathes = PT.predicates_to_pathes(mask_dataset, ['*', '*'])
         dist_data = {data_path : I.getNodeFromPath(d_dataset, data_path)[1] for data_path in data_pathes}
 
         #Exchange
@@ -251,7 +157,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
   Transfert all the data included in ZoneSubRegion_t nodes from a distributed
   zone to the partitioned zones
   """
-  mask_tree = create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
   for mask_zsr in I.getChildren(mask_tree):
     d_zsr = I.getNodeFromName1(dist_zone, I.getName(mask_zsr)) #True ZSR
     # Search matching region

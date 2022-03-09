@@ -157,7 +157,6 @@ def test_get_entities_numbering():
   assert (vtx_lngn == expected_vtx_lngn).all()
   assert (face_lngn == expected_face_lngn).all()
 
-  I.printTree(zoneU)
   ngon = I.newElements('ElementsTwo', etype='NGON', parent=zoneU)
   with pytest.raises(RuntimeError):
     vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
