@@ -8,27 +8,6 @@ from maia.utils.parallel import utils as par_utils
 from maia.tree_exchange import utils as te_utils
 from maia.sids import pytree as PT
 
-def _one_level_filter(nodes, include, exclude):
-  if len(include) * len(exclude) != 0:
-    raise ValueError("Include and exclude args are mutally exclusive")
-
-  is_array = lambda n : I.getType(n) == 'DataArray_t'
-  if not (include or exclude):
-    node_and_predicates = [(node, is_array) for node in nodes]
-  else:
-    queries = include if include else exclude
-    splitted = [query.split('/') for query in queries]
-    node_and_predicates = []
-    for node in nodes:
-      data_queries = [data_n for (container_n, data_n) in splitted if PT.match_name(node, container_n)]
-      if include:
-        # Using local variable names is mandatory to avoid shared reference https://is.gd/JMmMC2
-        data_predicate = lambda n, names=data_queries : is_array(n) and any([PT.match_name(n, name) for name in names])
-      elif exclude:
-        data_predicate = lambda n, names=data_queries : is_array(n) and not any([PT.match_name(n, name) for name in names])
-      node_and_predicates.append((node, data_predicate))
-  return node_and_predicates
-
 def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
   """
   Helper function calling PDM.BlockToPart
@@ -72,63 +51,64 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
 
 
-def _dist_to_part_sollike(dist_zone, part_zones, d_sol, data_predicate, comm):
+def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
   """
   Shared code for FlowSolution_t and DiscreteData_t
   """
   #Get distribution
-  location = SIDS.GridLocation(d_sol)
-  has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
-  if has_pl:
-    distribution = te_utils.get_cgns_distribution(d_sol, 'Index')
-    lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Index', I.getName(d_sol))
-  else:
-    assert location in ['Vertex', 'CellCenter']
-    if location == 'Vertex':
-      distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
-      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
-    elif location == 'CellCenter':
-      distribution = te_utils.get_cgns_distribution(dist_zone, 'Cell')
-      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
+  for mask_sol in I.getChildren(mask_tree):
+    d_sol = I.getNodeFromName1(dist_zone, I.getName(mask_sol)) #True container
+    location = SIDS.GridLocation(d_sol)
+    has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
+    if has_pl:
+      distribution = te_utils.get_cgns_distribution(d_sol, 'Index')
+      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Index', I.getName(d_sol))
+    else:
+      assert location in ['Vertex', 'CellCenter']
+      if location == 'Vertex':
+        distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
+        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
+      elif location == 'CellCenter':
+        distribution = te_utils.get_cgns_distribution(dist_zone, 'Cell')
+        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
-  #Get data
-  dist_data = {I.getName(field) : I.getVal(field) for field in PT.iter_children_from_predicate(d_sol, data_predicate)}
+    #Get data
+    fields = [I.getName(n) for n in I.getChildren(mask_sol)]
+    dist_data = {field : I.getNodeFromName1(d_sol, field)[1] for field in fields}
 
-  #Exchange
-  part_data = dist_to_part(distribution, dist_data, lntogn_list, comm)
+    #Exchange
+    part_data = dist_to_part(distribution, dist_data, lntogn_list, comm)
 
-  for ipart, part_zone in enumerate(part_zones):
-    #Skip void flow solution (can occur with point lists)
-    if lntogn_list[ipart].size > 0:
-      if has_pl:
-        p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
-        shape = I.getNodeFromName1(p_sol, 'PointList')[1].shape[1]
-      else:
-        p_sol = I.createChild(part_zone, I.getName(d_sol), I.getType(d_sol))
-        I.newGridLocation(location, parent=p_sol)
-        shape = SIDS.Zone.VertexSize(part_zone) if location == 'Vertex' else SIDS.Zone.CellSize(part_zone)
-      for data_name, data in part_data.items():
-        #F is mandatory to keep shared reference. Normally no copy is done
-        shaped_data = data[ipart].reshape(shape, order='F')
-        I.newDataArray(data_name, shaped_data, parent=p_sol)
+    for ipart, part_zone in enumerate(part_zones):
+      #Skip void flow solution (can occur with point lists)
+      if lntogn_list[ipart].size > 0:
+        if has_pl:
+          p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
+          shape = I.getNodeFromName1(p_sol, 'PointList')[1].shape[1]
+        else:
+          p_sol = I.createChild(part_zone, I.getName(d_sol), I.getType(d_sol))
+          I.newGridLocation(location, parent=p_sol)
+          shape = SIDS.Zone.VertexSize(part_zone) if location == 'Vertex' else SIDS.Zone.CellSize(part_zone)
+        for data_name, data in part_data.items():
+          #F is mandatory to keep shared reference. Normally no copy is done
+          shaped_data = data[ipart].reshape(shape, order='F')
+          I.newDataArray(data_name, shaped_data, parent=p_sol)
 
 def dist_sol_to_part_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
   Transfert all the data included in FlowSolution_t nodes from a distributed
   zone to the partitioned zones
   """
-  nodes = PT.get_children_from_label(dist_zone, 'FlowSolution_t')
-  for node, predicates in _one_level_filter(nodes, include, exclude):
-    _dist_to_part_sollike(dist_zone, part_zones, node, predicates, comm)
+  mask_tree = create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
+  _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
 def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
   Transfert all the data included in DiscreteData_t nodes from a distributed
   zone to the partitioned zones
   """
-  nodes = PT.get_children_from_label(dist_zone, 'DiscreteData_t')
-  for node, predicates in _one_level_filter(nodes, include, exclude):
-    _dist_to_part_sollike(dist_zone, part_zones, node, predicates, comm)
+  mask_tree = create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
+  _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
 def pathes_to_tree(pathes, root_name='CGNSTree'):
   """
@@ -271,8 +251,9 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
   Transfert all the data included in ZoneSubRegion_t nodes from a distributed
   zone to the partitioned zones
   """
-  all_zsr = PT.get_children_from_label(dist_zone, 'ZoneSubRegion_t')
-  for d_zsr, data_predicate in _one_level_filter(all_zsr, include, exclude):
+  mask_tree = create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
+  for mask_zsr in I.getChildren(mask_tree):
+    d_zsr = I.getNodeFromName1(dist_zone, I.getName(mask_zsr)) #True ZSR
     # Search matching region
     matching_region_path = IE.getSubregionExtent(d_zsr, dist_zone)
     matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
@@ -283,7 +264,8 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
     lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
     #Get Data
-    dist_data = {I.getName(field) : I.getVal(field) for field in PT.iter_children_from_predicate(d_zsr, data_predicate)}
+    fields = [I.getName(n) for n in I.getChildren(mask_zsr)]
+    dist_data = {field : I.getNodeFromName1(d_zsr, field)[1] for field in fields}
 
     #Exchange
     part_data = dist_to_part(distribution, dist_data, lngn_list, comm)
