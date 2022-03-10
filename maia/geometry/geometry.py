@@ -66,7 +66,8 @@ def apply_transformation_on_concatenated_components_of_cartesian_vectors(rotatio
   rotation_maty = np.array([[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]])
   rotation_matz = np.array([[cos(gamma), -sin(gamma), 0], [sin(gamma), cos(gamma), 0], [0, 0, 1]])
   rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
-  return (((np.dot(rotation_mat, vectors-rotation_center)+rotation_center).T + translation).T)
+  rotated_vectors = ((np.dot(rotation_mat, vectors-rotation_center)+rotation_center).T + translation).T
+  return (rotated_vectors.astype(vectors.dtype,copy=False))
 
 def apply_transformation_on_separated_components_of_cartesian_vectors(rotation_center, rotation_angle, translation, vx, vy, vz):
   """
