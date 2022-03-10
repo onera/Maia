@@ -9,6 +9,18 @@ from maia.transform.dist_tree import convert_s_to_u
 import Converter.Internal as I
 
 
+def test_gc_is_reference():
+  pr  = np.array([[1,1], [1,10], [1,10]], order='F')
+  prd = np.array([[20,10], [1,10], [5,5]], order='F')
+  gc = I.newGridConnectivity1to1(pointRange=pr, pointRangeDonor=prd)
+  assert convert_s_to_u.gc_is_reference(gc, 'Base/ZoneA', 'Base/ZoneB') == True
+  assert convert_s_to_u.gc_is_reference(gc, 'Base/ZoneB', 'Base/ZoneA') == False
+  assert convert_s_to_u.gc_is_reference(gc, 'Base/ZoneA', 'Aase/ZoneA') == False
+  assert convert_s_to_u.gc_is_reference(gc, 'Base/ZoneA', 'Base/ZoneA') == True
+  with pytest.raises(ValueError):
+    gc = I.newGridConnectivity1to1(pointRange=pr, pointRangeDonor=pr)
+    convert_s_to_u.gc_is_reference(gc, 'Base/ZoneA', 'Base/ZoneA')
+  
 ###############################################################################
 def test_n_face_per_dir():
   nVtx = np.array([7,9,5])

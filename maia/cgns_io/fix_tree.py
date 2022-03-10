@@ -4,6 +4,7 @@ import Converter.PyTree   as     C
 import Converter.Filter   as     CFilter
 import Converter.Internal as     I
 from maia.sids import Internal_ext as IE
+from maia.transform.dist_tree.convert_s_to_u import compute_transform_matrix, apply_transformation
 from maia import npy_pdm_gnum_dtype
 
 def fix_point_ranges(size_tree):
@@ -42,6 +43,10 @@ def fix_point_ranges(size_tree):
       # If same base/zone, transform should be 1, 2, 3
       else:
         assert (dir_to_swap == False).all()
+
+      T = compute_transform_matrix(transform)
+      assert (point_range_d[:,1] == \
+          apply_transformation(point_range[:,1], point_range[:,0], point_range_d[:,0], T)).all()
 
 def load_grid_connectivity_property(filename, tree):
   """

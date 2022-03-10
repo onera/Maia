@@ -9,6 +9,32 @@ from maia.distribution       import distribution_function  as MDIDF
 from maia.cgns_io.hdf_filter import range_to_slab          as HFR2S
 from .                       import s_numbering_funcs      as s_numb
 
+def gc_is_reference(gc_s, zone_path, zone_path_opp):
+  """
+  Check if a structured 1to1 GC is the reference of its pair or not
+  """
+  if zone_path < zone_path_opp:
+    return True
+  elif zone_path > zone_path_opp:
+    return False
+  else: #Same zone path
+    pr  = I.getNodeFromName(gc_s, "PointRange")[1]
+    prd = I.getNodeFromName(gc_s, "PointRangeDonor")[1]
+    bnd_axis   = guess_bnd_normal_index(pr,  "Vertex")
+    bnd_axis_d = guess_bnd_normal_index(prd, "Vertex")
+    if bnd_axis < bnd_axis_d:
+      return True
+    elif bnd_axis > bnd_axis_d:
+      return False
+    else: #Same boundary axis
+      bnd_axis_val = np.abs(pr[bnd_axis,0])
+      bnd_axis_val_d = np.abs(prd[bnd_axis_d,0])
+      if bnd_axis_val < bnd_axis_val_d:
+        return True
+      elif bnd_axis_val > bnd_axis_val_d:
+        return False
+  raise ValueError("Unable to determine if node is reference")
+
 ###############################################################################
 def n_face_per_dir(n_vtx, n_edge):
   """
@@ -256,7 +282,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
 
   # One of the two connected zones is choosen to compute the slabs/sub_pointrange and to impose
   # it to the opposed zone.
-  if zone_path <= zone_path_opp:
+  if gc_is_reference(gc_s, zone_path, zone_path_opp):
     point_range_loc, point_range_opp_loc = point_range, point_range_opp
     n_vtx_loc, n_vtx_opp_loc = n_vtx_zone, n_vtx_zone_opp
   else:
@@ -318,7 +344,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   point_list_loc     = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, output_loc, bnd_axis)
   point_list_opp_loc = compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, output_loc, bnd_axis_opp, order)
 
-  if zone_path <= zone_path_opp:
+  if gc_is_reference(gc_s, zone_path, zone_path_opp):
     point_list, point_list_opp = point_list_loc, point_list_opp_loc
   else:
     point_list, point_list_opp = point_list_opp_loc, point_list_loc
