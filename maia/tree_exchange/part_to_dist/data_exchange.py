@@ -4,6 +4,7 @@ import Pypdm.Pypdm        as PDM
 
 import maia.sids.sids     as SIDS
 import maia.sids.Internal_ext as IE
+from   maia.sids import pytree as PT
 from maia.utils.parallel import utils    as par_utils
 from maia.tree_exchange  import utils    as te_utils
 from .discover           import discover_nodes_from_matching
@@ -61,26 +62,22 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm):
     dist_coord = I.getNodeFromName1(d_grid_co, coord)
     I.setValue(dist_coord, array)
 
-def part_sol_to_dist_sol(dist_zone, part_zones, comm):
+def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
   """
-  Transfert all the data included in FlowSolution_t nodes and DiscreteData_t nodes from partitioned
-  zones to the distributed zone. Data created on (one or more) partitions and not present in dist_tree
-  is also reported to the distributed zone.
+  Shared code for FlowSolution_t and DiscreteData_t
   """
+  for mask_sol in I.getChildren(mask_tree):
+    d_sol = I.getNodeFromName1(dist_zone, I.getName(mask_sol)) #True container
 
-  # Complete distree with partitioned fields and exchange PL if needed
-  for n_type in ['FlowSolution_t', 'DiscreteData_t']:
-    _discover_wrapper(dist_zone, part_zones, n_type, n_type+'/DataArray_t', comm)
+    if not par_utils.exists_anywhere(part_zones, I.getName(d_sol), comm):
+      return #Skip FS that remains on dist_tree but are not present on part tree
 
-  # > Exchange
-  for d_flow_sol in I.getNodesFromType1(dist_zone, "FlowSolution_t") + \
-                    I.getNodesFromType1(dist_zone, "DiscreteData_t"):
-    location = SIDS.GridLocation(d_flow_sol)
-    has_pl   = I.getNodeFromName1(d_flow_sol, 'PointList') is not None
+    location = SIDS.GridLocation(d_sol)
+    has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
 
     if has_pl:
-      distribution = te_utils.get_cgns_distribution(d_flow_sol, 'Index')
-      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Index', I.getName(d_flow_sol))
+      distribution = te_utils.get_cgns_distribution(d_sol, 'Index')
+      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Index', I.getName(d_sol))
     else:
       assert location in ['Vertex', 'CellCenter']
       if location == 'Vertex':
@@ -91,29 +88,52 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm):
         lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
     #Discover data
-    part_data = dict()
-    for field in I.getNodesFromType1(d_flow_sol, 'DataArray_t'):
-      part_data[I.getName(field)] = list()
+    fields = [I.getName(n) for n in I.getChildren(mask_sol)]
+    part_data = {field : [] for field in fields}
 
     for part_zone in part_zones:
-      p_flow_sol = I.getNodesFromName1(part_zone, I.getName(d_flow_sol))
-      for field in I.getNodesFromType1(p_flow_sol, 'DataArray_t'):
-        flat_data = field[1].ravel(order='A') #Reshape structured arrays for PDM exchange
-        part_data[I.getName(field)].append(flat_data)
+      p_sol = I.getNodesFromName1(part_zone, I.getName(d_sol))
+      for field in fields:
+        flat_data = I.getNodeFromName(p_sol, field)[1].ravel(order='A') #Reshape structured arrays for PDM exchange
+        part_data[field].append(flat_data)
 
     # Exchange
     dist_data = part_to_dist(distribution, part_data, lntogn_list, comm)
     for field, array in dist_data.items():
-      dist_field = I.getNodeFromName1(d_flow_sol, field)
+      dist_field = I.getNodeFromName1(d_sol, field)
       I.setValue(dist_field, array)
 
-def part_subregion_to_dist_subregion(dist_zone, part_zones, comm):
+def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
+  """
+  Transfert all the data included in FlowSolution_t nodes from partitioned
+  zones to the distributed zone. Data created on (one or more) partitions and not present in dist_tree
+  is also reported to the distributed zone.
+  """
+  # Complete distree with partitioned fields and exchange PL if needed
+  _discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', comm)
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
+  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm)
+
+def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
+  """
+  Transfert all the data included in DiscreteData_t from partitioned
+  zones to the distributed zone. Data created on (one or more) partitions and not present in dist_tree
+  is also reported to the distributed zone.
+  """
+  # Complete distree with partitioned fields and exchange PL if needed
+  _discover_wrapper(dist_zone, part_zones, 'DiscreteData_t', 'DiscreteData_t/DataArray_t', comm)
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
+  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm)
+
+def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
   Transfert all the data included in ZoneSubRegion_t nodes from the partitioned
   zones to the distributed zone.
   Zone subregions must exist on distzone
   """
-  for d_zsr in I.getNodesFromType1(dist_zone, "ZoneSubRegion_t"):
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
+  for mask_zsr in I.getChildren(mask_tree):
+    d_zsr = I.getNodeFromName1(dist_zone, I.getName(mask_zsr)) #True ZSR
     # Search matching region
     matching_region_path = IE.getSubregionExtent(d_zsr, dist_zone)
     matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
@@ -124,15 +144,14 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm):
     lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
     #Discover data
-    part_data = dict()
-    for field in I.getNodesFromType1(d_zsr, 'DataArray_t'):
-      part_data[I.getName(field)] = list()
+    fields = [I.getName(n) for n in I.getChildren(mask_zsr)]
+    part_data = {field : [] for field in fields}
 
     for part_zone in part_zones:
       p_zsr = I.getNodeFromPath(part_zone, I.getName(d_zsr))
       if p_zsr is not None:
-        for field in I.getNodesFromType1(p_zsr, 'DataArray_t'):
-          part_data[I.getName(field)].append(field[1])
+        for field in fields:
+          part_data[field].append(I.getNodeFromName(p_zsr, field)[1])
 
     #Partitions having no data must be removed from lngn list since they have no contribution
     empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
@@ -146,7 +165,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm):
       dist_field = I.getNodeFromName1(d_zsr, field)
       I.setValue(dist_field, array)
 
-def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
+def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
   Transfert all the data included in BCDataSet_t/BCData_t nodes from partitioned
   zones to the distributed zone.
@@ -156,33 +175,32 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm):
   bc_ds_path = 'ZoneBC_t/BC_t/BCDataSet_t'
   _discover_wrapper(dist_zone, part_zones, bc_ds_path, bc_ds_path+'/BCData_t/DataArray_t', comm)
 
-
   for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
-    for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
-      bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
-      #Get BC distribution and lngn
-      distribution_bc = te_utils.get_cgns_distribution(d_bc, 'Index')
-      lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
-      for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
-        ds_path      = bc_path + '/' + I.getName(d_dataset)
+    labels = ['BC_t', 'BCDataSet_t', 'BCData_t', 'DataArray_t']
+    mask_tree = te_utils.create_mask_tree(d_zbc, labels, include, exclude)
+    for mask_bc in I.getChildren(mask_tree):
+      bc_path   = I.getName(d_zbc) + '/' + I.getName(mask_bc)
+      d_bc = I.getNodeFromPath(dist_zone, bc_path) #True BC
+      for mask_dataset in I.getChildren(mask_bc):
+        ds_path = bc_path + '/' + I.getName(mask_dataset)
+        d_dataset = I.getNodeFromPath(dist_zone, ds_path) #True DataSet
         #If dataset has its own PointList, we must override bc distribution and lngn
         if IE.getDistribution(d_dataset) is not None:
           distribution = te_utils.get_cgns_distribution(d_dataset, 'Index')
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
-          distribution = distribution_bc
-          lngn_list    = lngn_list_bc
+          distribution = te_utils.get_cgns_distribution(d_bc, 'Index')
+          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
 
         #Discover data
-        part_data = dict()
-        for bc_data, field in IE.iterNodesWithParentsByMatching(d_dataset, 'BCData_t/DataArray_t'):
-          part_data[I.getName(bc_data) + '/' + I.getName(field)] = list()
+        data_pathes = PT.predicates_to_pathes(mask_dataset, ['*', '*'])
+        part_data = {path : [] for path in data_pathes}
 
         for part_zone in part_zones:
           p_dataset = I.getNodeFromPath(part_zone, ds_path)
           if p_dataset is not None:
-            for bc_data, field in IE.iterNodesWithParentsByMatching(p_dataset, 'BCData_t/DataArray_t'):
-              part_data[I.getName(bc_data) + '/' + I.getName(field)].append(field[1])
+            for path in data_pathes:
+              part_data[path].append(I.getNodeFromPath(p_dataset, path)[1])
 
         #Partitions having no data must be removed from lngn list since they have no contribution
         empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\

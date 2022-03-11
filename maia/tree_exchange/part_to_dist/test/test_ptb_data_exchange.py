@@ -277,6 +277,7 @@ ZoneU Zone_t [[6,0,0]]:
   part_zones = parse_yaml_cgns.to_nodes(pt)
 
   PTB.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
+  PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, sub_comm)
 
   assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int32
   assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1].dtype == np.float64
