@@ -69,7 +69,7 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
   for mask_sol in I.getChildren(mask_tree):
     d_sol = I.getNodeFromName1(dist_zone, I.getName(mask_sol)) #True container
 
-    if not par_utils.exists_anywhere(part_zones, I.getName(d_sol), comm):
+    if not par_utils.exists_everywhere(part_zones, I.getName(d_sol), comm):
       return #Skip FS that remains on dist_tree but are not present on part tree
 
     location = SIDS.GridLocation(d_sol)
@@ -88,7 +88,8 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
         lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
     #Discover data
-    fields = [I.getName(n) for n in I.getChildren(mask_sol)]
+    _exist_everywhere = lambda name : par_utils.exists_everywhere(part_zones, f'{I.getName(d_sol)}/{name}', comm)
+    fields = [I.getName(n) for n in I.getChildren(mask_sol) if _exist_everywhere(I.getName(n))]
     part_data = {field : [] for field in fields}
 
     for part_zone in part_zones:

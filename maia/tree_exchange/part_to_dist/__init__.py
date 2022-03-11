@@ -28,7 +28,7 @@ def _part_zones_to_dist_zone(dist_zone, part_zones, comm, filter_dict):
     elif tag == 'E':
       func(dist_zone, part_zones, comm, exclude=pathes)
 
-def part_zones_to_dist_zones_only(dist_zone, part_zones, comm, include_dict):
+def part_zones_to_dist_zone_only(dist_zone, part_zones, comm, include_dict):
   """
   High level API to transfert data fields from the partitioned zones to the distributed zone.
   Only the the data fields defined in include_dict will be transfered : include_dict is
@@ -41,7 +41,7 @@ def part_zones_to_dist_zones_only(dist_zone, part_zones, comm, include_dict):
   filter_dict.update({label : ('E', []) for label in LABELS if filter_dict[label][1] == ['*']})
   _part_zones_to_dist_zone(dist_zone, part_zones, comm, filter_dict)
 
-def part_zones_to_dist_zones_all(dist_zone, part_zones, comm, exclude_dict={}):
+def part_zones_to_dist_zone_all(dist_zone, part_zones, comm, exclude_dict={}):
   """
   High level API to transfert data fields from the partitioned zones to the distributed zone.
   All the data fields will be transfered, except the one defined in exclude_dict which is
@@ -60,10 +60,11 @@ def part_tree_to_dist_tree_only_labels(dist_tree, part_tree, labels, comm):
   to the corresponding distributed tree.
   See LABELS for admissible values of labels
   """
+  assert isinstance(labels, list)
   include_dict = {label : ['*'] for label in labels}
   for d_base, d_zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     p_zones = TE.utils.get_partitioned_zones(part_tree, I.getName(d_base) + '/' + I.getName(d_zone))
-    part_zones_to_dist_zones_only(d_zone, p_zones, comm, include_dict)
+    part_zones_to_dist_zone_only(d_zone, p_zones, comm, include_dict)
 
 def part_tree_to_dist_tree_all(dist_tree, part_tree, comm):
   """
