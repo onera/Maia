@@ -35,7 +35,7 @@ def create_pytest_output_dir(comm):
   Return the name of this directory
   """
   test_name = os.environ.get('PYTEST_CURRENT_TEST').split('::')[-1].split()[0]
-  out_dir = path.join(pytest_output_prefix, test_name) 
+  out_dir = os.path.join(pytest_output_prefix, test_name)
   if comm.Get_rank() == 0:
     if not path.exists(out_dir):
       os.makedirs(out_dir)

@@ -35,10 +35,10 @@ Sample of the main distributed tree algorithms:
   comm = MPI.COMM_WORLD
 
   # Load a distributed CGNS tree from a file
-  dist_tree = maia.cgns_io.file_to_dist_tree('file.cgns', comm)
+  dist_tree = maia.io.file_to_dist_tree('file.cgns', comm)
 
   # Write a distributed CGNS tree
-  maia.cgns_io.dist_tree_to_file(dist_tree, 'file.hdf', comm)
+  maia.io.dist_tree_to_file(dist_tree, 'file.hdf', comm)
 
   # Generate a distributed cube
   dist_tree = maia.generate.dcube_generator(n_vtx, lenght, origin, comm)

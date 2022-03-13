@@ -1,5 +1,5 @@
 from cmaia.transform import transform as ctransform
-from maia.transform.apply_to_bases import apply_to_bases
+from maia.transform.apply_function_to_nodes import apply_to_bases
 import Converter.Internal as I
 from maia import transform
 from mpi4py import MPI
