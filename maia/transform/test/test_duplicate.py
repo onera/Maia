@@ -1,12 +1,14 @@
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
+
 import numpy as np
+import os
 
 from maia.utils       import parse_yaml_cgns
 from maia.utils       import parse_cgns_yaml
 from maia.transform   import duplicate
 from maia.sids.pytree import compare
-from maia.generate    import dcube_generator         as DCG
+from maia.generate    import dcube_generator  as DCG
 
 import Converter.Internal as I
 
@@ -86,16 +88,13 @@ def test_duplicate_zone_with_transformation1():
 
 ###############################################################################
 def test_duplicate_zone_with_transformation2(sub_comm):
-  import Converter.PyTree as C
   # dist_tree = DCG.dcube_generate(3, 2., [1., -1., -1.], sub_comm)
-  # C.convertPyTree2File(dist_tree,"toto.hdf")
-  # lines = parse_cgns_yaml.to_yaml(dist_tree)
-  # for line in lines:
-  #   print(line)
-  # I.printTree(dist_tree)
-  # zone            = parse_yaml_cgns.to_node(yz)
-  # expected_zone   = parse_yaml_cgns.to_node(expected_yz)
-  tree = C.convertFile2PyTree("quart_couronne_carree.hdf")
+  # import Converter.PyTree as C
+  # tree = C.convertFile2PyTree("quart_couronne_carree.hdf")
+  yaml_dir  = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'share', 'meshes')
+  yaml_path = os.path.join(yaml_dir, 'quarter_crown_square_8.yaml')
+  yaml_file = open(yaml_path,'r')
+  tree = parse_yaml_cgns.to_cgns_tree(yaml_file.read())
   zone = I.getZones(tree)[0]
   rotationCenter  = np.array([0.,0.,0.])
   rotationAngle   = np.array([0.,0.,np.pi])
@@ -107,7 +106,6 @@ def test_duplicate_zone_with_transformation2(sub_comm):
                                                                  translation     = translation,
                                                                  max_ordinal     = max_ordinal,
                                                                  apply_to_fields = True)
-  C.convertPyTree2File(duplicated_zone,"toto.hdf")
   
   assert(duplicated_zone[0]=="DuplicatedZone")
   
