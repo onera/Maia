@@ -22,10 +22,10 @@ def _find_cartesian_vector_names_from_names(names):
 
 
 def duplicate_zone_with_transformation(zone,nameZoneDup,
-                                       rotationCenter         =np.array([0.,0.,0.]),
-                                       rotationAngle          =np.array([0.,0.,0.]),
-                                       translation            =np.array([0.,0.,0.]),
-                                       max_ordinal            =0,
+                                       rotationCenter  = np.array([0.,0.,0.]),
+                                       rotationAngle   = np.array([0.,0.,0.]),
+                                       translation     = np.array([0.,0.,0.]),
+                                       max_ordinal     = 0,
                                        apply_to_fields = False):
   # Duplication de la zone
   zoneDup     = copy.deepcopy(zone)
@@ -39,9 +39,9 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
   coordZDupNode  = I.getNodeFromName1(coordsDupNode, "CoordinateZ")
   
   modCx, modCy, modCz = GEO.apply_transformation_on_separated_components_of_cartesian_vectors(rotationCenter, rotationAngle, translation,
-                                                                                              I.getValue(coordXDupNode),
-                                                                                              I.getValue(coordYDupNode),
-                                                                                              I.getValue(coordZDupNode))
+                                                                                              I.getVal(coordXDupNode),
+                                                                                              I.getVal(coordYDupNode),
+                                                                                              I.getVal(coordZDupNode))
 
   I.setValue(coordXDupNode,modCx)
   I.setValue(coordYDupNode,modCy)
@@ -76,9 +76,9 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
         vectorZNode = I.getNodeFromNameAndType(fields_node, basename+"Z", "DataArray_t")
         modVx, modVy, modVz = GEO.apply_transformation_on_separated_components_of_cartesian_vectors(
                                               rotationCenter, rotationAngle, translation,
-                                              I.getValue(vectorXNode),
-                                              I.getValue(vectorYNode),
-                                              I.getValue(vectorZNode))
+                                              I.getVal(vectorXNode),
+                                              I.getVal(vectorYNode),
+                                              I.getVal(vectorZNode))
         I.setValue(vectorXNode,modVx)
         I.setValue(vectorYNode,modVy)
         I.setValue(vectorZNode,modVz)
@@ -86,104 +86,104 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
   return zoneDup
 
 
-def _duplicate_zone_from_periodic_join(dist_tree,zone,JN_for_duplication_names,
-                                       conformize=False,comm=None):
-  #############
-  ##### TODO
-  ##### > gestion des autres raccords...
-  ##### > autre chose ?
-  #############
+# def _duplicate_zone_from_periodic_join(dist_tree,zone,JN_for_duplication_names,
+#                                        conformize=False,comm=None):
+#   #############
+#   ##### TODO
+#   ##### > gestion des autres raccords...
+#   ##### > autre chose ?
+#   #############
   
-  #############
-  # JN = (MatchA,MatchB) => first = MatchA et second = MatchB
-  #
-  #         ________                           ________________
-  #         |      |                           |      ||      |       
-  #         |      |                           |      ||      |       
-  #         |      |                           |      ||      |       
-  #         | Zone |           ===>>>          | Zone || Zone |       
-  #         |      |                           |      || dup  |       
-  #        /|      |\                         /|      ||      |\      
-  #       / |______| \                       / |______||______| \     
-  #      /            \                     /        /  \        \
-  #   MatchA         MatchB              MatchA   MatchB \       MatchBDup
-  #                                                     MatchADup 
-  #
-  #############
+#   #############
+#   # JN = (MatchA,MatchB) => first = MatchA et second = MatchB
+#   #
+#   #         ________                           ________________
+#   #         |      |                           |      ||      |       
+#   #         |      |                           |      ||      |       
+#   #         |      |                           |      ||      |       
+#   #         | Zone |           ===>>>          | Zone || Zone |       
+#   #         |      |                           |      || dup  |       
+#   #        /|      |\                         /|      ||      |\      
+#   #       / |______| \                       / |______||______| \     
+#   #      /            \                     /        /  \        \
+#   #   MatchA         MatchB              MatchA   MatchB \       MatchBDup
+#   #                                                     MatchADup 
+#   #
+#   #############
 
-  # Récupération de la base
-  pathZone    = I.getPath(dist_tree,zone)
-  pathBase    = "/".join(pathZone.split("/")[:-1])
-  base        = I.getNodeFromPath(dist_tree,pathBase)
+#   # Récupération de la base
+#   pathZone    = I.getPath(dist_tree,zone)
+#   pathBase    = "/".join(pathZone.split("/")[:-1])
+#   base        = I.getNodeFromPath(dist_tree,pathBase)
   
-  # Changement de nom de la zone dupliquée
-  zoneNamePrefix = I.getName(zone)
-  zoneName = zoneNamePrefix+".D0"
-  I.setName(zone,zoneName)
+#   # Changement de nom de la zone dupliquée
+#   zoneNamePrefix = I.getName(zone)
+#   zoneName = zoneNamePrefix+".D0"
+#   I.setName(zone,zoneName)
 
-  # Récupération des raccords
-  ZGC               = I.getNodeFromType1(zone,"ZoneGridConnectivity_t")
-  firstJoinNode     = I.getNodeFromName1(ZGC,JN_for_duplication_names[0])
-  secondJoinNode    = I.getNodeFromName1(ZGC,JN_for_duplication_names[1])
+#   # Récupération des raccords
+#   ZGC               = I.getNodeFromType1(zone,"ZoneGridConnectivity_t")
+#   firstJoinNode     = I.getNodeFromName1(ZGC,JN_for_duplication_names[0])
+#   secondJoinNode    = I.getNodeFromName1(ZGC,JN_for_duplication_names[1])
   
-  # Duplication de la zone
-  #> récupération des paramètres de transformation
-  GCP1 = I.getNodeFromType1(firstJoinNode, "GridConnectivityProperty_t")
-  rotationCenter1Node = I.getNodeFromName2(GCP1, "RotationCenter")
-  rotationAngle1Node  = I.getNodeFromName2(GCP1, "RotationAngle")
-  translation1Node    = I.getNodeFromName2(GCP1, "Translation")
-  rotationCenter1     = I.getValue(rotationCenter1Node)
-  rotationAngle1      = I.getValue(rotationAngle1Node)
-  translation1        = I.getValue(translation1Node)
-  #> duplication
-  zoneDupName = zoneNamePrefix+".D1"
-  zoneDup = duplicate_zone_with_transformation(zone,zoneDupName,
-                                            rotationCenter=rotationCenter1,
-                                            rotationAngle=rotationAngle1,
-                                            translation=translation1)
+#   # Duplication de la zone
+#   #> récupération des paramètres de transformation
+#   GCP1 = I.getNodeFromType1(firstJoinNode, "GridConnectivityProperty_t")
+#   rotationCenter1Node = I.getNodeFromName2(GCP1, "RotationCenter")
+#   rotationAngle1Node  = I.getNodeFromName2(GCP1, "RotationAngle")
+#   translation1Node    = I.getNodeFromName2(GCP1, "Translation")
+#   rotationCenter1     = I.getValue(rotationCenter1Node)
+#   rotationAngle1      = I.getValue(rotationAngle1Node)
+#   translation1        = I.getValue(translation1Node)
+#   #> duplication
+#   zoneDupName = zoneNamePrefix+".D1"
+#   zoneDup = duplicate_zone_with_transformation(zone,zoneDupName,
+#                                             rotationCenter=rotationCenter1,
+#                                             rotationAngle=rotationAngle1,
+#                                             translation=translation1)
   
-  # Mise à jour des raccords
-  #> recuperation des raccords dupliqués
-  ZGCDup            = I.getNodeFromType1(zoneDup,"ZoneGridConnectivity_t")
-  firstJoinDupNode  = I.getNodeFromName1(ZGCDup,JN_for_duplication_names[0])
-  secondJoinDupNode = I.getNodeFromName1(ZGCDup,JN_for_duplication_names[1])
-  #> mise à jour des raccords initiaux
-  #>>>> le raccord sur lequel s'appuie la duplication (first) reste un match péridique
-  #     avec la zone dupliquée mais l'angle de rotation et la translation
-  #     sont doublés
-  I.setValue(translation1Node,  I.getValue(translation1Node)*2)
-  I.setValue(rotationAngle1Node,I.getValue(rotationAngle1Node)*2)
-  I.setValue(firstJoinNode,zoneDupName)
-  #>>>> le raccord opposé à la duplication (second) devient un match
-  #     non péridique avec la zone dupliquée mais les PointList/PointListDonor
-  #     sont conservés
-  GCP2 = I.getNodeFromType1(secondJoinNode, "GridConnectivityProperty_t")
-  I._rmNode(secondJoinNode,GCP2)
-  I.setValue(secondJoinNode,zoneDupName)
-  #> mise à jour des raccords dupliqués
-  #  c'est l'inverse
-  #>>>>
-  GCPDup2 = I.getNodeFromType1(secondJoinDupNode, "GridConnectivityProperty_t")
-  translationDup2Node   = I.getNodeFromName2(GCPDup2, "Translation")
-  rotationAngleDup2Node = I.getNodeFromName2(GCPDup2, "RotationAngle")
-  I.setValue(translationDup2Node,  I.getValue(translationDup2Node)*2)
-  I.setValue(rotationAngleDup2Node,I.getValue(rotationAngleDup2Node)*2)
-  I.setValue(secondJoinDupNode,zoneName)
-  #>>>>
-  GCPDup1 = I.getNodeFromType1(firstJoinDupNode, "GridConnectivityProperty_t")
-  I._rmNode(firstJoinDupNode,GCPDup1)
-  I.setValue(firstJoinDupNode,zoneName)
+#   # Mise à jour des raccords
+#   #> recuperation des raccords dupliqués
+#   ZGCDup            = I.getNodeFromType1(zoneDup,"ZoneGridConnectivity_t")
+#   firstJoinDupNode  = I.getNodeFromName1(ZGCDup,JN_for_duplication_names[0])
+#   secondJoinDupNode = I.getNodeFromName1(ZGCDup,JN_for_duplication_names[1])
+#   #> mise à jour des raccords initiaux
+#   #>>>> le raccord sur lequel s'appuie la duplication (first) reste un match péridique
+#   #     avec la zone dupliquée mais l'angle de rotation et la translation
+#   #     sont doublés
+#   I.setValue(translation1Node,  I.getValue(translation1Node)*2)
+#   I.setValue(rotationAngle1Node,I.getValue(rotationAngle1Node)*2)
+#   I.setValue(firstJoinNode,zoneDupName)
+#   #>>>> le raccord opposé à la duplication (second) devient un match
+#   #     non péridique avec la zone dupliquée mais les PointList/PointListDonor
+#   #     sont conservés
+#   GCP2 = I.getNodeFromType1(secondJoinNode, "GridConnectivityProperty_t")
+#   I._rmNode(secondJoinNode,GCP2)
+#   I.setValue(secondJoinNode,zoneDupName)
+#   #> mise à jour des raccords dupliqués
+#   #  c'est l'inverse
+#   #>>>>
+#   GCPDup2 = I.getNodeFromType1(secondJoinDupNode, "GridConnectivityProperty_t")
+#   translationDup2Node   = I.getNodeFromName2(GCPDup2, "Translation")
+#   rotationAngleDup2Node = I.getNodeFromName2(GCPDup2, "RotationAngle")
+#   I.setValue(translationDup2Node,  I.getValue(translationDup2Node)*2)
+#   I.setValue(rotationAngleDup2Node,I.getValue(rotationAngleDup2Node)*2)
+#   I.setValue(secondJoinDupNode,zoneName)
+#   #>>>>
+#   GCPDup1 = I.getNodeFromType1(firstJoinDupNode, "GridConnectivityProperty_t")
+#   I._rmNode(firstJoinDupNode,GCPDup1)
+#   I.setValue(firstJoinDupNode,zoneName)
   
-  # Ajout de la zone dupliquée dans la base
-  I._addChild(base,zoneDup)
+#   # Ajout de la zone dupliquée dans la base
+#   I._addChild(base,zoneDup)
   
-  if conformize:
-    if comm is None:
-      raise ValueError("MPI communicator is mandatory for conformization !")
-    JN_for_duplication_paths = []
-    JN_for_duplication_paths.append(I.getPath(dist_tree,secondJoinNode,pyCGNSLike=True)[1:])
-    JN_for_duplication_paths.append(I.getPath(dist_tree,firstJoinDupNode,pyCGNSLike=True)[1:])
-    CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
+#   if conformize:
+#     if comm is None:
+#       raise ValueError("MPI communicator is mandatory for conformization !")
+#     JN_for_duplication_paths = []
+#     JN_for_duplication_paths.append(I.getPath(dist_tree,secondJoinNode,pyCGNSLike=True)[1:])
+#     JN_for_duplication_paths.append(I.getPath(dist_tree,firstJoinDupNode,pyCGNSLike=True)[1:])
+#     CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
 
 
 def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N,
@@ -258,11 +258,11 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
     for z,zone in enumerate(zones):
       zoneDupName =  zonesNamesPrefixes[z]+".D{0}".format(n+1)
       zoneDup = duplicate_zone_with_transformation(zone,zoneDupName,
-                                              rotationCenter=rotationCenterA,
-                                              rotationAngle=(n+1)*rotationAngleA,
-                                              translation=(n+1)*translationA,
-                                              max_ordinal = (n+1)*max_ordinal,
-                                              apply_to_fields=apply_to_fields)
+                                                   rotationCenter  = rotationCenterA,
+                                                   rotationAngle   = (n+1)*rotationAngleA,
+                                                   translation     = (n+1)*translationA,
+                                                   max_ordinal     = (n+1)*max_ordinal,
+                                                   apply_to_fields = apply_to_fields)
   
       # Mise à jour des raccords matchs des zones dupliquées
       zgc  = I.getNodeFromType1(zoneDup,"ZoneGridConnectivity_t")
