@@ -54,6 +54,7 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   eso = distrib_edge_vtx[i_rank] + dplane_dict['dedge_vtx_idx']
 
   pe     = dplane_dict['dedge_face'].reshape(dn_edge, 2)
+  pe    += distrib_face[n_rank] * (pe > 0)
   ngon_n = I.newElements('NGonElements', 'NGON',
                          erange = [1, distrib_face[n_rank]], parent=dist_zone)
 

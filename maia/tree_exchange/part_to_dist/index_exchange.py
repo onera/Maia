@@ -161,6 +161,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   # Collect partitioned data
   for ipart, part_zone in enumerate(part_zones):
     elem_n = I.getNodeFromName1(part_zone, elem_name)
+    ER     = I.getNodeFromName1(elem_n, 'ElementRange')[1]
     PE     = I.getNodeFromName1(elem_n, 'ParentElements')[1]
     EC     = I.getNodeFromName1(elem_n, 'ElementConnectivity')[1]
     ECIdx  = I.getNodeFromName1(elem_n, 'ElementStartOffset')[1]
@@ -171,6 +172,8 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
     internal_cells = np.where(PE != 0)[0]
     internal_cells_lids = PE[internal_cells]
+    if ER[0] == 1:
+      internal_cells_lids -= (SIDS.ElementSize(elem_n))
     PE[internal_cells] = cell_gnum_l[ipart][internal_cells_lids-1]
 
     p_data_pe.append(PE)
@@ -225,9 +228,11 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   shift_eso = par_utils.gather_and_shift(d_elt_eso[-1], comm)
   d_elt_eso += shift_eso[i_rank]
 
+  n_faceTot = PTBDistribution[n_rank]
+  # Shift dist PE because we put NGon first
+  dist_pe += n_faceTot * (dist_pe > 0)
   # > Add in disttree
   elt_node = I.newElements(elem_name, 'NGON', parent=dist_zone)
-  n_faceTot = PTBDistribution[n_rank]
   I.newPointRange('ElementRange',        [1, n_faceTot], parent=elt_node)
   I.newDataArray ('ParentElements',      dist_pe,        parent=elt_node)
   I.newDataArray ('ElementConnectivity', dist_ec,        parent=elt_node)

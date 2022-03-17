@@ -34,9 +34,11 @@ def test_ijk_to_facekIndex():
 
 def test_PE_idx_from_i_face_idx():
   PE = s_numb.PE_idx_from_i_face_idx(np.arange(1,21), [4,2,2], [5,3,3])
+  n_face = 5*2*2 + 4*3*2 + 4*2*3
   expected_pe = np.array([ 1,0,  1,2,   2,3,   3,4,   4,0,  5,0,    5,6,
                            6,7,  7,8,   8,0,   9,0,  9,10, 10,11, 11,12,
                           12,0, 13,0, 13,14, 14,15, 15,16,  16,0       ]).reshape(20,2)
+  expected_pe += n_face * (expected_pe > 0)
   assert(PE.shape == (20,2))
   assert (PE == expected_pe).all()
 
@@ -48,9 +50,11 @@ def test_facevtx_from_i_face_idx():
 
 def test_PE_idx_from_j_face_idx():
   PE = s_numb.PE_idx_from_j_face_idx(np.arange(1,25), [4,2,2], [5,3,3])
+  n_face = 5*2*2 + 4*3*2 + 4*2*3
   expected_pe = np.array([ 1,0,   2,0,   3,0,   4,0,  1,5,  2,6,  3,7,  4,8,
                            5,0,   6,0,   7,0,   8,0,  9,0, 10,0, 11,0, 12,0,
                           9,13, 10,14, 11,15, 12,16, 13,0, 14,0, 15,0, 16,0]).reshape(24,2)
+  expected_pe += n_face * (expected_pe > 0)
   assert(PE.shape == (24,2))
   assert (PE == expected_pe).all()
 
@@ -62,9 +66,11 @@ def test_facevtx_from_j_face_idx():
 
 def test_PE_idx_from_k_face_idx():
   PE = s_numb.PE_idx_from_k_face_idx(np.arange(1,25), [4,2,2], [5,3,3])
+  n_face = 5*2*2 + 4*3*2 + 4*2*3
   expected_pe = np.array([1,0,  2,0,  3,0,  4,0,  5,0,  6,0,  7,0,  8,0,
                           1,9, 2,10, 3,11, 4,12, 5,13, 6,14, 7,15, 8,16,
                           9,0, 10,0, 11,0, 12,0, 13,0, 14,0, 15,0, 16,0]).reshape(24,2)
+  expected_pe += n_face * (expected_pe > 0)
   assert(PE.shape == (24,2))
   assert (PE == expected_pe).all()
 

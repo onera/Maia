@@ -79,15 +79,15 @@ def test_disttree_from_parttree(sub_comm):
     ngon = I.getNodeFromPath(part_zone, 'NGonElements')
     IE.newGlobalNumbering({'Element' : ngon_gnum}, parent=ngon)
 
-    #Add nface (to modify when maia become cgns compliant)
     nface_ec = np.empty(8*6, dtype=I.getNodeFromName(ngon, 'ElementConnectivity')[1].dtype)
     nface_count = np.zeros(8, int)
+    face_n = sids.ElementSize(ngon)
     for iface, (lCell, rCell) in enumerate(I.getNodeFromName1(ngon, 'ParentElements')[1]):
-      nface_ec[6*(lCell-1) + nface_count[lCell-1]] = iface + 1
-      nface_count[lCell-1] += 1
+      nface_ec[6*(lCell-1-face_n) + nface_count[lCell-1-face_n]] = iface + 1
+      nface_count[lCell-1-face_n] += 1
       if rCell > 0:
-        nface_ec[6*(rCell-1) + nface_count[rCell-1]] = iface + 1
-        nface_count[rCell-1] += 1
+        nface_ec[6*(rCell-1-face_n) + nface_count[rCell-1-face_n]] = iface + 1
+        nface_count[rCell-1-face_n] += 1
     nface = I.newElements('NFaceElements', 'NFACE', nface_ec, [36+1, 36+8], parent=part_zone)
     I.newDataArray('ElementStartOffset', np.arange(0, 6*(8+1), 6), nface)
     IE.newGlobalNumbering({'Element' : cell_gnum}, parent=nface)

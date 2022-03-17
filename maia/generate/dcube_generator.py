@@ -78,6 +78,7 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   eso = distrib_facevtx[i_rank] + dcube_val['dface_vtx_idx'].astype(pdm_gnum_dtype)
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
+  pe    += distrib_face[n_rank] * (pe > 0)
   ngon_n = I.newElements('NGonElements', 'NGON',
                          erange = [1, distrib_face[n_rank]], parent=dist_zone)
 

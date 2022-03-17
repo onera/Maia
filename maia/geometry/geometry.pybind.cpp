@@ -242,10 +242,16 @@ compute_center_cell_u(int n_cell,
 
   // Loop over faces
   // ---------------
+  int f_shift(0); // To go back to local cell numbering if ngons are before nface
+  if (n_face > 0) {
+    if (std::max(parent_elements[0], parent_elements[0+n_face]) > n_face ) {
+      f_shift = n_face;
+    }
+  }
   for (int iface = 0; iface < n_face; ++iface) {
     // -> Face -> Cell connectivity
-    int il = parent_elements[iface       ]-1;
-    int ir = parent_elements[iface+n_face]-1;
+    int il = parent_elements[iface       ]-1-(f_shift*(parent_elements[iface] > 0));
+    int ir = parent_elements[iface+n_face]-1-(f_shift*(parent_elements[iface+n_face] > 0));
     // std::cout << "compute_center_cell_u: iface = " << iface << std::endl;
     // std::cout << "compute_center_cell_u: il = " << il << ", ir = " << ir << std::endl;
     assert(((il >= -1) && (il < n_cell)));

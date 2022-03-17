@@ -32,6 +32,7 @@ def test_set_mpart_dmeshes(sub_comm):
   dt = f"""
 ZoneA Zone_t:
   NGonElements Elements_t [22,0]:
+    ElementRange IndexRange_t [1, 1]:
     ElementConnectivity DataArray_t {dtype} []:
     ElementStartOffset DataArray_t {dtype} [0]:
     ParentElements DataArray_t {dtype} []:

@@ -71,7 +71,7 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   er_n  = I.getNodeFromName1(dist_ngon, 'ElementRange')
 
   local_eso = eso_n[1] - eso_n[1][0] #Make working ElementStartOffset start at 0
-  I.setValue(pe_n, np.delete(pe_n[1], ngon_to_remove, axis=0)) #Remove faces in PE
+  new_pe = np.delete(pe_n[1], ngon_to_remove, axis=0) #Remove faces in PE
 
   ec_to_remove = py_utils.multi_arange(local_eso[ngon_to_remove], local_eso[ngon_to_remove+1])
   I.setValue(ec_n, np.delete(ec_n[1], ec_to_remove))
@@ -103,6 +103,11 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
     ngon_distri_ec[0] -= n_rmvd_ec_offset[comm.Get_rank()]
     ngon_distri_ec[1] -= (n_rmvd_ec_offset[comm.Get_rank()] + n_rmvd_ec_local)
     ngon_distri_ec[2] -= n_rmvd_ec_total
+
+  # If NGon were first in tree, cell range has moved so pe must be offseted
+  if er_n[1][0] == 1:
+    new_pe -= n_rmvd_total * (new_pe > 0)
+  I.setValue(pe_n, new_pe)
 
   #Update ElementRange and size data (global)
   er_n[1][1] -= n_rmvd_total

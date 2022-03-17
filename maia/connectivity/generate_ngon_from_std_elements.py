@@ -56,7 +56,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   pe = np.empty((dface_cell.shape[0]//2, 2), dtype=dface_cell.dtype, order='F')
   CNT.pdm_face_cell_to_pe_cgns(dface_cell, pe)
   #NGon PE must refer to nFace indexes, we have to shift
-  pe[np.where(pe != 0)] += ermax+n_face
+  pe += (ermax + n_face) * (pe > 0)
   # > Attention overflow I8
   eso_ngon = dface_vtx_idx + distrib_face_vtx[i_rank]
 

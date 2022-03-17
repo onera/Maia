@@ -18,6 +18,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
 
   # > Try to hook NGon
   ngon_node = SIDS.Zone.NGonNode(dist_zone)
+  ngon_first = SIDS.ElementRange(ngon_node)[0] == 1
   dface_vtx = I.getNodeFromName1(ngon_node, 'ElementConnectivity')[1].astype(pdm_gnum_dtype)
   ngon_pe   = I.getNodeFromName1(ngon_node, 'ParentElements'     )[1].astype(pdm_gnum_dtype)
   ngon_eso  = I.getNodeFromName1(ngon_node, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype)
@@ -43,6 +44,9 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     dface_cell    = np.empty(2*dn_face  , dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
     dface_vtx_idx = np.empty(  dn_face+1, dtype=np.int32     ) # Local index is int32bits
     CNT.pe_cgns_to_pdm_face_cell(ngon_pe      , dface_cell      )
+    # PDM expects a PE in local cell indexing, shift is needed
+    if ngon_first:
+      dface_cell -= distrib_face[2] * (dface_cell > 0)
     CNT.compute_idx_local       (dface_vtx_idx, ngon_eso, distrib_face_vtx)
   else:
     dface_vtx_idx = np.zeros(1, dtype=np.int32    )
