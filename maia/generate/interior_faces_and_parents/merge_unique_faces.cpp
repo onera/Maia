@@ -108,7 +108,6 @@ merge_faces_of_type(connectivities_with_parents<I>& cps, I first_3d_elt_id, MPI_
 
   // 0. prepare
   constexpr int n_vtx_of_face_type = number_of_vertices(face_type);
-  size_t n_connec = size(cps);
   auto cs = connectivities<n_vtx_of_face_type>(cps);
   auto pe = parent_elements(cps);
   auto pp = parent_positions(cps);
