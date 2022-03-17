@@ -186,7 +186,7 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
 #     CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
 
 
-def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N,
+def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N=1,
                                           conformize=False,comm=None,
                                           apply_to_fields = False):
   #############
