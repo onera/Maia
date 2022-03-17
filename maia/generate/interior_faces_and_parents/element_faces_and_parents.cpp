@@ -11,16 +11,16 @@ namespace maia {
 
 
 auto
-number_of_faces(const tree_range& elt_sections) -> std::array<I8,n_face_type> {
-  std::array<I8,n_face_type> n_faces_by_type;
+number_of_faces(const tree_range& elt_sections) -> std::array<I8,cgns::n_face_type> {
+  std::array<I8,cgns::n_face_type> n_faces_by_type;
   std::ranges::fill(n_faces_by_type,0);
 
   for (const tree& e : elt_sections) {
     auto elt_type = element_type(e);
     I8 n_elt = distribution_local_size(ElementDistribution(e));
-    for (int i=0; i<n_face_type; ++i) {
-      auto face_type = all_face_types[i];
-      n_faces_by_type[i] += n_elt * number_of_faces(elt_type,face_type);
+    for (int i=0; i<cgns::n_face_type; ++i) {
+      auto face_type = cgns::all_face_types[i];
+      n_faces_by_type[i] += n_elt * cgns::number_of_faces(elt_type,face_type);
     }
   }
   return n_faces_by_type;
@@ -29,9 +29,9 @@ number_of_faces(const tree_range& elt_sections) -> std::array<I8,n_face_type> {
 template<ElementType_t elt_type, class I> auto
 gen_faces(
   const tree& elt_node,
-  auto& tri_it   , auto& quad_it,
-  I*&   tri_pe_it, I*& quad_pe_it,
-  I*&   tri_pp_it, I*& quad_pp_it
+  auto& tri_it , auto& quad_it,
+  I*& tri_pe_it, I*& quad_pe_it,
+  I*& tri_pp_it, I*& quad_pp_it
 )
 {
   constexpr int n_vtx = number_of_vertices(elt_type);
@@ -45,8 +45,8 @@ gen_faces(
   for (const auto& elt : connec_range) {
     generate_faces<elt_type>(elt,tri_it,quad_it);
     generate_parent_positions<elt_type>(tri_pp_it,quad_pp_it);
-    tri_pe_it  = std::fill_n( tri_pe_it,number_of_faces(elt_type,TRI_3 ),elt_id);
-    quad_pe_it = std::fill_n(quad_pe_it,number_of_faces(elt_type,QUAD_4),elt_id);
+    tri_pe_it  = std::fill_n( tri_pe_it,cgns::number_of_faces(elt_type,TRI_3 ),elt_id);
+    quad_pe_it = std::fill_n(quad_pe_it,cgns::number_of_faces(elt_type,QUAD_4),elt_id);
     ++elt_id;
   }
 }
