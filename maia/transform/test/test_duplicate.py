@@ -9,6 +9,7 @@ from maia.utils       import parse_cgns_yaml
 from maia.transform   import duplicate
 from maia.sids.pytree import compare
 from maia.generate    import dcube_generator  as DCG
+from maia.cgns_io     import cgns_io_tree     as IOT
 
 import Converter.Internal as I
 
@@ -87,10 +88,7 @@ def test_duplicate_zone_with_transformation1():
 ###############################################################################
 
 ###############################################################################
-def test_duplicate_zone_with_transformation2(sub_comm):
-  # dist_tree = DCG.dcube_generate(3, 2., [1., -1., -1.], sub_comm)
-  # import Converter.PyTree as C
-  # tree = C.convertFile2PyTree("quart_couronne_carree.hdf")
+def test_duplicate_zone_with_transformation2():
   yaml_dir  = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'share', 'meshes')
   yaml_path = os.path.join(yaml_dir, 'quarter_crown_square_8.yaml')
   yaml_file = open(yaml_path,'r')
@@ -190,3 +188,57 @@ def test_duplicate_zone_with_transformation2(sub_comm):
   assert(np.allclose(tutu_y,-duplicated_tutu_y))
   assert(np.allclose(tutu_z, duplicated_tutu_z))
   assert((tete == duplicated_tete).all())
+###############################################################################
+
+###############################################################################
+# @mark_mpi_test([1,2,3])
+@mark_mpi_test([1,])
+def test_duplicate_n_zones_from_periodic_join(sub_comm):
+  yaml_dir  = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'share', 'meshes')
+  yaml_path = os.path.join(yaml_dir, 'quarter_crown_square_8.yaml')
+  tree = IOT.file_to_dist_tree(yaml_path,sub_comm)
+  
+  match_perio_by_trans_a = 'Base/Zone/ZoneGridConnectivity/match1_0.0'
+  match_perio_by_trans_b = 'Base/Zone/ZoneGridConnectivity/match1_1.0'
+  JN_for_duplication_paths = [[match_perio_by_trans_a],[match_perio_by_trans_b]]
+  
+  duplicate._duplicate_n_zones_from_periodic_join(tree,I.getZones(tree),
+                                                  JN_for_duplication_paths)
+  
+  assert (len(I.getZones(tree)) == 2)
+  
+  # TODO
+  # verification des coordonnees
+  # verification des ordinaux
+  # vérification des raccords
+  # >> doublement de la translation
+  # >> mise a jour des valeurs
+  # >> mise à jour des autres raccords ?
+  
+
+###############################################################################
+
+###############################################################################
+# @mark_mpi_test([1,2,3])
+@mark_mpi_test([1,])
+def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
+  yaml_dir  = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'share', 'meshes')
+  yaml_path = os.path.join(yaml_dir, 'quarter_crown_square_8.yaml')
+  tree = IOT.file_to_dist_tree(yaml_path,sub_comm)
+  
+  match_perio_by_rot_a = 'Base/Zone/ZoneGridConnectivity/match1_0'
+  match_perio_by_rot_b = 'Base/Zone/ZoneGridConnectivity/match1_1'
+  JN_for_duplication_paths = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
+  
+  duplicate._duplicate_zones_from_periodic_join_by_rotation_to_360(tree,I.getZones(tree),
+                                                                   JN_for_duplication_paths)
+  
+  assert (len(I.getZones(tree)) == 4)
+  
+  # TODO
+  # verification des coordonnees
+  # verification des ordinaux
+  # vérification des raccords
+  # >> doublement de la translation
+  # >> mise a jour des valeurs
+  # >> mise à jour des autres raccords ?
