@@ -192,7 +192,23 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
   #############
   ##### TODO
   ##### > gestion des autres raccords...
-  ##### > autre chose ?
+  #############
+  
+  #############
+  # JN = (MatchA,MatchB) => first = MatchA et second = MatchB
+  #
+  #         ________                           ________________
+  #         |      |                           |      ||      |       
+  #         |      |                           |      ||      |       
+  #         |      |                           |      ||      |       
+  #         | Zone |           ===>>>          | Zone || Zone |       
+  #         |      |                           |      || dup  |       
+  #        /|      |\                         /|      ||      |\      
+  #       / |______| \                       / |______||______| \     
+  #      /            \                     /        /  \        \
+  #   MatchA         MatchB              MatchA   MatchB \       MatchBDup
+  #                                                     MatchADup 
+  #
   #############
 
   if N<0:
