@@ -94,13 +94,13 @@ def test_duplicate_zone_with_transformation2():
   yaml_file = open(yaml_path,'r')
   tree = parse_yaml_cgns.to_cgns_tree(yaml_file.read())
   zone = I.getZones(tree)[0]
-  rotationCenter  = np.array([0.,0.,0.])
-  rotationAngle   = np.array([0.,0.,np.pi])
+  rotation_center = np.array([0.,0.,0.])
+  rotation_angle  = np.array([0.,0.,np.pi])
   translation     = np.array([0.,0.,0.])
   max_ordinal     = 4
   duplicated_zone = duplicate.duplicate_zone_with_transformation(zone,"DuplicatedZone",
-                                                                 rotationCenter  = rotationCenter,
-                                                                 rotationAngle   = rotationAngle,
+                                                                 rotation_center = rotation_center,
+                                                                 rotation_angle  = rotation_angle,
                                                                  translation     = translation,
                                                                  max_ordinal     = max_ordinal,
                                                                  apply_to_fields = True)
@@ -191,26 +191,25 @@ def test_duplicate_zone_with_transformation2():
 ###############################################################################
 
 ###############################################################################
-# @mark_mpi_test([1,2,3])
-@mark_mpi_test([1,])
+@mark_mpi_test([1,2,3])
 def test_duplicate_n_zones_from_periodic_join(sub_comm):
   yaml_dir  = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'share', 'meshes')
   yaml_path = os.path.join(yaml_dir, 'quarter_crown_square_8.yaml')
-  tree = IOT.file_to_dist_tree(yaml_path,sub_comm)
+  dist_tree = IOT.file_to_dist_tree(yaml_path,sub_comm)
   
   match_perio_by_trans_a = 'Base/Zone/ZoneGridConnectivity/match1_0.0'
   match_perio_by_trans_b = 'Base/Zone/ZoneGridConnectivity/match1_1.0'
-  JN_for_duplication_paths = [[match_perio_by_trans_a],[match_perio_by_trans_b]]
+  jn_for_duplication_paths = [[match_perio_by_trans_a],[match_perio_by_trans_b]]
   
-  zone_basename = I.getName(I.getZones(tree)[0])
+  zone_basename = I.getName(I.getZones(dist_tree)[0])
   
-  duplicate.duplicate_n_zones_from_periodic_join(tree,I.getZones(tree),
-                                                  JN_for_duplication_paths)
+  duplicate.duplicate_n_zones_from_periodic_join(dist_tree,I.getZones(dist_tree),
+                                                 jn_for_duplication_paths)
   
-  assert (len(I.getZones(tree)) == 2)
+  assert (len(I.getZones(dist_tree)) == 2)
   
-  zone0 = I.getZones(tree)[0]
-  zone1 = I.getZones(tree)[1]
+  zone0 = I.getZones(dist_tree)[0]
+  zone1 = I.getZones(dist_tree)[1]
   assert((I.getName(zone0) == zone_basename+".D0") and (I.getName(zone1) == zone_basename+".D1"))
 
   coord0_x = I.getVal(I.getNodeFromName(zone0,"CoordinateX"))
@@ -278,28 +277,27 @@ def test_duplicate_n_zones_from_periodic_join(sub_comm):
 ###############################################################################
 
 ###############################################################################
-# @mark_mpi_test([1,2,3])
-@mark_mpi_test([1,])
+@mark_mpi_test([1,2,3])
 def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
   yaml_dir  = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'share', 'meshes')
   yaml_path = os.path.join(yaml_dir, 'quarter_crown_square_8.yaml')
-  tree = IOT.file_to_dist_tree(yaml_path,sub_comm)
+  dist_tree = IOT.file_to_dist_tree(yaml_path,sub_comm)
   
   match_perio_by_rot_a = 'Base/Zone/ZoneGridConnectivity/match1_0'
   match_perio_by_rot_b = 'Base/Zone/ZoneGridConnectivity/match1_1'
-  JN_for_duplication_paths = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
+  jn_for_duplication_paths = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
   
-  zone_basename = I.getName(I.getZones(tree)[0])
+  zone_basename = I.getName(I.getZones(dist_tree)[0])
   
-  duplicate.duplicate_zones_from_periodic_join_by_rotation_to_360(tree,I.getZones(tree),
-                                                                   JN_for_duplication_paths)
+  duplicate.duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,I.getZones(dist_tree),
+                                                                  jn_for_duplication_paths)
   
-  assert (len(I.getZones(tree)) == 4)
+  assert (len(I.getZones(dist_tree)) == 4)
   
-  zone0 = I.getZones(tree)[0]
-  zone1 = I.getZones(tree)[1]
-  zone2 = I.getZones(tree)[2]
-  zone3 = I.getZones(tree)[3]
+  zone0 = I.getZones(dist_tree)[0]
+  zone1 = I.getZones(dist_tree)[1]
+  zone2 = I.getZones(dist_tree)[2]
+  zone3 = I.getZones(dist_tree)[3]
   assert((I.getName(zone0) == zone_basename+".D0") and (I.getName(zone1) == zone_basename+".D1"))
   assert((I.getName(zone2) == zone_basename+".D2") and (I.getName(zone3) == zone_basename+".D3"))
 
