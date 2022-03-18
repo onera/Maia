@@ -7,6 +7,13 @@ import maia.connectivity.conformize_jn as CCJ
 
 
 def _find_cartesian_vector_names_from_names(names):
+  """
+  Function to find basename of cartesian vectors
+  In the SIDS (https://cgns.github.io/CGNS_docs_current/sids/dataname.html), a cartesian
+  vector 'Vector' is describe by its 3 components 'VectorX', 'VectorY', 'VectorZ'
+  > names : list of potential vectors components
+  """
+  
   suffix_names_x = []
   suffix_names_y = []
   suffix_names_z = []
@@ -27,7 +34,19 @@ def duplicate_zone_with_transformation(zone,duplicated_zone_name,
                                        translation     = np.array([0.,0.,0.]),
                                        max_ordinal     = 0,
                                        apply_to_fields = False):
-  # Duplication de la zone
+  """
+  Function to create a new zone by duplication of a intial zone with prescribed transformation
+  > zone : zone will be duplicated
+  > duplicated_zone_name : name of the zone created by duplication
+  > rotation_center : center coordinates of the rotation
+  > rotation_angle : angles of the rotation 
+  > translation : translation vector components
+  > max_ordinal : if max_ordinal > 0, shift ordinal with max_ordinal value in duplicated zone
+  > apply_to_fields : apply only the rotation to all vector fields in CGNS nodes of type : 
+                      "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t"
+  """
+  
+  # Zone duplication
   duplicated_zone = copy.deepcopy(zone)
   I.setName(duplicated_zone,duplicated_zone_name)
   
@@ -96,9 +115,26 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
                                          duplication_number=1,
                                          conformize=False,comm=None,
                                          apply_to_fields = False):
+  """
+  Function to duplicate n times a set of connected zones
+  > dist_tree : distributed tree from wich 'zones' come and in wich duplicated zones will be added
+  > zones : list of connected zones to duplicate
+  > jn_for_duplication_paths : list of 2 lists (listA,listB) where listA (resp listB) is the list 
+                               that contains all GridConnectivity nodes defining the first (resp 
+                               second) part of a periodic matching
+  > duplication_number : is the number of duplication apply to 'zones'
+  > conformize : if True, compute the coordinates mean of each connected vertices and this mean replace
+                 the previous coordinates for each vertices. In this case, the matching is perfect.
+  > comm : MPI communicator
+  > apply_to_fields : apply only the rotation to all vector fields in CGNS nodes of type : 
+                      "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t"  
+  """
   
   #############
-  # JN = (MatchA,MatchB) => first = MatchA et second = MatchB
+  # Example for a monozone duplication
+  #
+  # If jn = [[Path/To/MatchA],[Path/To/MatchB]]
+  # Then first = MatchA and second = MatchB
   #
   #         ________                           ________________
   #         |      |                           |      ||      |       
@@ -112,37 +148,51 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
   #   MatchA         MatchB              MatchA   MatchB \       MatchBDup
   #                                                     MatchADup 
   #
+  # ------------------------- 
+  # Example for a multizones duplication
+  #
+  # If jn = [[Path/To/MatchA1,Path/To/MatchA2],[Path/To/MatchB1,Path/To/MatchB2]]
+  # Then first = MatchA1 and second = MatchB1
+  #
+  #                                                     MatchA1Dup 
+  #   MatchA1         MatchB1             MatchA1  MatchB1 /       MatchB1Dup  
+  #      \  _________  /                     \  ________\_/_______  /
+  #       \ |       | /                       \ |       ||       | /        
+  #        \| Zone1 |/                         \| Zone1 || Zone- |/         
+  #         |       |                           |       || dup1  |       
+  #         |-------|       ===>>>              |-------||-------|       
+  #         |       |                           |       || Zone- |       
+  #        /| Zone2 |\                         /| Zone2 || dup2  |\      
+  #       / |_______| \                       / |_______||_______| \     
+  #      /             \                     /         /  \         \
+  #   MatchA2         MatchB2             MatchA2  MatchB2 \       MatchB2Dup
+  #                                                     MatchA2Dup 
+  #
   #############
 
   if duplication_number<0:
     return
 
-  # Récupération de la base
-  zone0_path = I.getPath(dist_tree,zones[0])
-  base_path  = "/".join(zone0_path.split("/")[:-1])
-  base      = I.getNodeFromPath(dist_tree,base_path)
-
-  # Récupération du premier raccord de l'ensemble A
+  # Get first join in the first list of joins (A)
   first_join_in_matchs_a = I.getNodeFromPath(dist_tree,jn_for_duplication_paths[0][0])
   
-  # Récupération des paramètres de transformation
+  # Get transformation information
   gcp_a = I.getNodeFromType1(first_join_in_matchs_a, "GridConnectivityProperty_t")
   rotation_center_a = I.getVal(I.getNodeFromName2(gcp_a, "RotationCenter"))
   rotation_angle_a  = I.getVal(I.getNodeFromName2(gcp_a, "RotationAngle"))
   translation_a     = I.getVal(I.getNodeFromName2(gcp_a, "Translation"))
   
-  # Sauvegarde des informations de périodicité des raccords périodiques
-  # "B" initiaux
+  # Store initial periodicity information of joins of the second joins list (B)
   jn_b_properties = [None]*len(jn_for_duplication_paths[1])
   for jn,jn_path_b in enumerate(jn_for_duplication_paths[1]):
     jn_b_init_node = I.getNodeFromPath(dist_tree, jn_path_b)
     gcp_b_init = copy.deepcopy(I.getNodeFromType1(jn_b_init_node, "GridConnectivityProperty_t"))
     jn_b_properties[jn] = gcp_b_init
 
-  # Recuperation des zones a dupliquer pour permettre de mettre à jour les raccords
-  # entre ces zones qui ne sont pas dans jn_for_duplication_paths
-  # Attention : les valeurs des raccords peuvent être sous deux formes :
-  #             ZoneName ou BaseName/zoneName
+  # Get the name of all zones to duplicate in order to update the value of GridConnectivity
+  # nodes not involved in the duplication (not in jn_for_duplication_paths)
+  # WARNING : a value of a GridConnectivity node could be described in 2 ways : 
+  #           'ZoneName' or 'BaseName/ZoneName'
   zones_prefixes      = [None]*len(zones)
   gc_values_to_update = [None]*len(zones)
   for z,zone in enumerate(zones):
@@ -151,7 +201,7 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
     I.setName(zone,zones_prefixes[z]+".D0")
   gc_values_to_update += zones_prefixes
 
-  # Mise à jour dees raccords entre ces zones qui ne sont pas dans jn_for_duplication_paths
+  # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones
   for zone in zones:
     zgc  = I.getNodeFromType1(zone,"ZoneGridConnectivity_t")
     for gc in I.getNodesFromType1(zgc,"GridConnectivity_t") \
@@ -164,7 +214,8 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
         if gc_value in gc_values_to_update:
           new_gc_value = gc_value+".D0"
           I.setValue(gc,new_gc_value)
-
+  
+  # Search the maximum of 'Ordinal' number in the whole dist_tree
   max_ordinal = 0
   for base in I.getBases(dist_tree):
       for zone in I.getZones(base):
@@ -174,7 +225,7 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
             if ordinal_n is not None:
               max_ordinal = max(max_ordinal,I.getValue(ordinal_n))
 
-  # Duplication
+  # Duplicate 'duplication_number' times the list of zones 'zones'
   for n in range(duplication_number):
     for z,zone in enumerate(zones):
       duplicated_zone_name = zones_prefixes[z]+".D{0}".format(n+1)
@@ -185,7 +236,7 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
                                                    max_ordinal     = (n+1)*max_ordinal,
                                                    apply_to_fields = apply_to_fields)
   
-      # Mise à jour des raccords qui ne sont pas dans jn_for_duplication_paths pour la zone dupliquée
+      # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones
       zgc  = I.getNodeFromType1(duplicated_zone,"ZoneGridConnectivity_t")
       base_name = I.getPath(dist_tree,zone,pyCGNSLike=True)[1:].split("/")[0]
       for gc in I.getNodesFromType1(zgc,"GridConnectivity_t") \
@@ -199,11 +250,11 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
             new_gc_value = gc_value+".D{0}".format(n+1)
             I.setValue(gc,new_gc_value)
 
-      # Ajout de la zone dupliquée dans la base
+      # Add duplicated zone to the suitable base
       I._addChild(base,duplicated_zone)
 
-    #> Transformation des raccords périodiques "B" de l'ensemble de zones
-    #  précédent en raccords match
+    # Transform periodic joins of the second joins list (B) from previous set of zones
+    # to non periodic joins
     for jn_path_b in jn_for_duplication_paths[1]:
       split_jn_path_b = jn_path_b.split("/")
       jn_path_b_prev = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(n) \
@@ -221,8 +272,8 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
       if ordinal_opp_n is not None:
         I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)+max_ordinal)
 
-    #> Transformation des raccords périodiques "A" de l'ensemble de zones
-    #  courant en raccords match
+    # Transform periodic joins of the fisrt joins list (A) from current set of zones
+    # to non periodic joins
     for jn_path_a in jn_for_duplication_paths[0]:
       split_jn_path_a = jn_path_a.split("/")
       jn_path_a_curr = "/".join(split_jn_path_a[0:2]) + ".D{0}/".format(n+1) \
@@ -244,7 +295,7 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
       # jn_for_duplication_paths.append(I.getPath(dist_tree,firstJoinDupNode,pyCGNSLike=True)[1:])
       # CCJ.conformize_jn(dist_tree,jn_for_duplication_paths,comm)
   
-  #> Mise à jour des raccords périodiques "A" de l'ensemble de zones initial
+  # Update information for joins of the fisrt joins list (A) from initial set of zones
   for jn_path_a in jn_for_duplication_paths[0]:
     split_jn_path_a = jn_path_a.split("/")
     jn_path_a_init = "/".join(split_jn_path_a[0:2]) + ".D0/" \
@@ -260,7 +311,7 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
     if ordinal_opp_n is not None:
       I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)+duplication_number*max_ordinal)
 
-  #> Mise à jour des raccords périodiques "B" du dernier ensemble de zones dupliqué
+  # Update information for joins of the second joins list (B) from last set of duplicated zones
   for jn,jn_path_b in enumerate(jn_for_duplication_paths[1]):
     split_jn_path_b = jn_path_b.split("/")
     jn_path_b_last = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(duplication_number) \
@@ -287,21 +338,31 @@ def duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,jn_for
                                                           conformize=False,comm=None,
                                                           rotation_correction=True,
                                                           apply_to_fields=False):
+  """
+  Function to duplicate n times a set of connected zones
+  > dist_tree : distributed tree from wich 'zones' come and in wich duplicated zones will be added
+  > zones : list of connected zones to duplicate
+  > jn_for_duplication_paths : list of 2 lists (listA,listB) where listA (resp listB) is the list 
+                               that contains all GridConnectivity nodes defining the first (resp 
+                               second) part of a periodic matching
+  > conformize : if True, compute the coordinates mean of each connected vertices and this mean replace
+                 the previous coordinates for each vertices. In this case, the matching is perfect.
+  > comm : MPI communicator
+  > rotation_correction : if True, recompute the rotation angle by searching an integer number of
+                          angular sectors.
+  > apply_to_fields : apply only the rotation to all vector fields in CGNS nodes of type : 
+                      "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t"  
+  """
   
   #############
   ##### TODO
   ##### > corriger les coordonnées des noeuds de la dernière zone pour assurer le match !
   #############
-  
-  # Récupération de la base
-  zone0_path = I.getPath(dist_tree,zones[0])
-  base_path  = "/".join(zone0_path.split("/")[:-1])
-  base      = I.getNodeFromPath(dist_tree,base_path)
 
-  # Récupération du premier raccord de l'ensemble A
+  # Get first join in the first list of joins (A)
   first_join_in_matchs_a = I.getNodeFromPath(dist_tree,jn_for_duplication_paths[0][0])
   
-  # Récupération des paramètres de transformation
+  # Get transformation information
   gcp_a = I.getNodeFromType1(first_join_in_matchs_a, "GridConnectivityProperty_t")
   rotation_center_a = I.getVal(I.getNodeFromName2(gcp_a, "RotationCenter"))
   rotation_angle_a  = I.getVal(I.getNodeFromName2(gcp_a, "RotationAngle"))
@@ -317,17 +378,17 @@ def duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,jn_for
     if rotation_correction:
       rotation_angle_a[index] = np.sign(rotation_angle_a[index])*2*np.pi/sectors_number
   else:
-    # TO DO : vérifier le type de l'erreur
+    # TO DO : vérifier le type de l'erreur ??
     raise ValueError("Zone/Join not define a section of a row")
   
-  # Duplications
+  # Duplicate 'sectors_number - 1' times the list of zones 'zones'
   duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_paths,
                                        duplication_number=sectors_number-1,
                                        conformize=conformize,comm=comm,
                                        apply_to_fields=apply_to_fields)
 
-  #> Transformation des raccords périodiques "A" de l'ensemble de zones initial
-  #  en raccords match
+  # Transform periodic joins of the fisrt joins list (A) from initial set of zones
+  # to non periodic joins
   for jn_path_a in jn_for_duplication_paths[0]:
     split_jn_path_a = jn_path_a.split("/")
     jn_path_a_init = "/".join(split_jn_path_a[0:2]) + ".D0/" \
@@ -336,8 +397,8 @@ def duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,jn_for
     gcp_a_init = I.getNodeFromType1(jn_a_init_node, "GridConnectivityProperty_t")
     I._rmNode(jn_a_init_node,gcp_a_init)
 
-  #> Transformation des raccords périodiques "B" du dernier ensemble de zones dupliqué
-  #  en raccords match non nécessaire car raccords déjà match par cionstruction
+  # Transform periodic joins of the second joins list (B) from last set of duplicated zones
+  # to non periodic joins
   for jn_path_b in jn_for_duplication_paths[1]:
     split_jn_path_b = jn_path_b.split("/")
     jn_path_b_last = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(sectors_number-1) \
