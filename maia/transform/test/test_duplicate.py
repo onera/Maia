@@ -202,19 +202,79 @@ def test_duplicate_n_zones_from_periodic_join(sub_comm):
   match_perio_by_trans_b = 'Base/Zone/ZoneGridConnectivity/match1_1.0'
   JN_for_duplication_paths = [[match_perio_by_trans_a],[match_perio_by_trans_b]]
   
+  zone_basename = I.getName(I.getZones(tree)[0])
+  
   duplicate._duplicate_n_zones_from_periodic_join(tree,I.getZones(tree),
                                                   JN_for_duplication_paths)
   
   assert (len(I.getZones(tree)) == 2)
   
-  # TODO
-  # verification des coordonnees
-  # verification des ordinaux
-  # vérification des raccords
-  # >> doublement de la translation
-  # >> mise a jour des valeurs
-  # >> mise à jour des autres raccords ?
+  zone0 = I.getZones(tree)[0]
+  zone1 = I.getZones(tree)[1]
+  assert((I.getName(zone0) == zone_basename+".D0") and (I.getName(zone1) == zone_basename+".D1"))
+
+  coord0_x = I.getVal(I.getNodeFromName(zone0,"CoordinateX"))
+  coord0_y = I.getVal(I.getNodeFromName(zone0,"CoordinateY"))
+  coord0_z = I.getVal(I.getNodeFromName(zone0,"CoordinateZ"))
+  coord1_x = I.getVal(I.getNodeFromName(zone1,"CoordinateX"))
+  coord1_y = I.getVal(I.getNodeFromName(zone1,"CoordinateY"))
+  coord1_z = I.getVal(I.getNodeFromName(zone1,"CoordinateZ"))
+  assert(np.allclose(coord0_x,coord1_x   ))
+  assert(np.allclose(coord0_y,coord1_y   ))
+  assert(np.allclose(coord0_z,coord1_z+2.))
   
+  zgc0 = I.getNodeFromType1(zone0,"ZoneGridConnectivity_t")
+  zgc1 = I.getNodeFromType1(zone1,"ZoneGridConnectivity_t")
+  for gc0 in I.getNodesFromType1(zgc0,"GridConnectivity_t"):
+    gc0_name = I.getName(gc0)
+    gc1 = I.getNodeFromNameAndType(zgc1,gc0_name,"GridConnectivity_t")
+    ordinal0 = I.getVal(I.getNodeFromNameAndType(gc0,"Ordinal","UserDefinedData_t"))
+    ordinal1 = I.getVal(I.getNodeFromNameAndType(gc1,"Ordinal","UserDefinedData_t"))
+    assert(ordinal0 == ordinal1-4)
+    if gc0_name in ["match1_0","match1_1"]: #Joins by rotation
+      # TODO : need developpement to correct value of gcs for gcs not concerned by duplication
+      # assert(I.getValue(gc0)==zone_basename+".D0")
+      # assert(I.getValue(gc1)==zone_basename+".D1")
+      gcp0 = I.getNodeFromType1(gc0,"GridConnectivityProperty_t")
+      gcp1 = I.getNodeFromType1(gc1,"GridConnectivityProperty_t")
+      perio0 = I.getNodeFromType1(gcp0,"Periodic_t")
+      perio1 = I.getNodeFromType1(gcp1,"Periodic_t")
+      rotation_center0 = I.getVal(I.getNodeFromName1(perio0,"RotationCenter"))
+      rotation_center1 = I.getVal(I.getNodeFromName1(perio1,"RotationCenter"))
+      rotation_angle0  = I.getVal(I.getNodeFromName1(perio0,"RotationAngle"))
+      rotation_angle1  = I.getVal(I.getNodeFromName1(perio1,"RotationAngle"))
+      translation0     = I.getVal(I.getNodeFromName1(perio0,"Translation"))
+      translation1     = I.getVal(I.getNodeFromName1(perio1,"Translation"))
+      assert((rotation_center0 == rotation_center1).all())
+      assert((rotation_angle0  == rotation_angle1).all())
+      assert((translation0     == translation1).all())
+    elif gc0_name in ["match1_0.0","match1_1.0"]: #Joins by translation
+      assert(I.getValue(gc0)==zone_basename+".D1")
+      assert(I.getValue(gc1)==zone_basename+".D0")
+      if gc0_name == "match1_0.0": #Join0 => perio*2 and join1 => not perio
+        gcp0 = I.getNodeFromType1(gc0,"GridConnectivityProperty_t")
+        gcp1 = I.getNodeFromType1(gc1,"GridConnectivityProperty_t")
+        assert(gcp1 is None)
+        perio0 = I.getNodeFromType1(gcp0,"Periodic_t")
+        rotation_center0 = I.getVal(I.getNodeFromName1(perio0,"RotationCenter"))
+        rotation_angle0  = I.getVal(I.getNodeFromName1(perio0,"RotationAngle"))
+        translation0     = I.getVal(I.getNodeFromName1(perio0,"Translation"))
+        assert((rotation_center0 == np.array([0.0, 0.0,  0.0])  ).all())
+        assert((rotation_angle0  == np.array([0.0, 0.0,  0.0])  ).all())
+        assert((translation0     == np.array([0.0, 0.0, -2.0])*2).all())
+      else: #Join0 => not perio and join1 => perio*2
+        gcp0 = I.getNodeFromType1(gc0,"GridConnectivityProperty_t")
+        gcp1 = I.getNodeFromType1(gc1,"GridConnectivityProperty_t")
+        assert(gcp0 is None)
+        perio1 = I.getNodeFromType1(gcp1,"Periodic_t")
+        rotation_center1 = I.getVal(I.getNodeFromName1(perio1,"RotationCenter"))
+        rotation_angle1  = I.getVal(I.getNodeFromName1(perio1,"RotationAngle"))
+        translation1     = I.getVal(I.getNodeFromName1(perio1,"Translation"))
+        assert((rotation_center1 == np.array([0.0, 0.0, 0.0])  ).all())
+        assert((rotation_angle1  == np.array([0.0, 0.0, 0.0])  ).all())
+        assert((translation1     == np.array([0.0, 0.0, 2.0])*2).all())
+    else:
+      assert(False)
 
 ###############################################################################
 
@@ -230,15 +290,86 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
   match_perio_by_rot_b = 'Base/Zone/ZoneGridConnectivity/match1_1'
   JN_for_duplication_paths = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
   
+  zone_basename = I.getName(I.getZones(tree)[0])
+  
   duplicate._duplicate_zones_from_periodic_join_by_rotation_to_360(tree,I.getZones(tree),
                                                                    JN_for_duplication_paths)
   
   assert (len(I.getZones(tree)) == 4)
   
-  # TODO
-  # verification des coordonnees
-  # verification des ordinaux
-  # vérification des raccords
-  # >> doublement de la translation
-  # >> mise a jour des valeurs
-  # >> mise à jour des autres raccords ?
+  zone0 = I.getZones(tree)[0]
+  zone1 = I.getZones(tree)[1]
+  zone2 = I.getZones(tree)[2]
+  zone3 = I.getZones(tree)[3]
+  assert((I.getName(zone0) == zone_basename+".D0") and (I.getName(zone1) == zone_basename+".D1"))
+  assert((I.getName(zone2) == zone_basename+".D2") and (I.getName(zone3) == zone_basename+".D3"))
+
+  coord0_x = I.getVal(I.getNodeFromName(zone0,"CoordinateX"))
+  coord0_y = I.getVal(I.getNodeFromName(zone0,"CoordinateY"))
+  coord0_z = I.getVal(I.getNodeFromName(zone0,"CoordinateZ"))
+  coord1_x = I.getVal(I.getNodeFromName(zone1,"CoordinateX"))
+  coord1_y = I.getVal(I.getNodeFromName(zone1,"CoordinateY"))
+  coord1_z = I.getVal(I.getNodeFromName(zone1,"CoordinateZ"))
+  coord2_x = I.getVal(I.getNodeFromName(zone2,"CoordinateX"))
+  coord2_y = I.getVal(I.getNodeFromName(zone2,"CoordinateY"))
+  coord2_z = I.getVal(I.getNodeFromName(zone2,"CoordinateZ"))
+  coord3_x = I.getVal(I.getNodeFromName(zone3,"CoordinateX"))
+  coord3_y = I.getVal(I.getNodeFromName(zone3,"CoordinateY"))
+  coord3_z = I.getVal(I.getNodeFromName(zone3,"CoordinateZ"))
+  assert(np.allclose(coord0_x,-coord2_x))
+  assert(np.allclose(coord0_y,-coord2_y))
+  assert(np.allclose(coord0_z, coord2_z))
+  assert(np.allclose(coord1_x,-coord3_x))
+  assert(np.allclose(coord1_y,-coord3_y))
+  assert(np.allclose(coord1_z, coord3_z))
+  assert(np.allclose(coord0_x,-coord1_y))
+  assert(np.allclose(coord0_y, coord1_x))
+  assert(np.allclose(coord0_z, coord1_z))
+  assert(np.allclose(coord0_x, coord3_y))
+  assert(np.allclose(coord0_y,-coord3_x))
+  assert(np.allclose(coord0_z, coord3_z))
+  
+  zgc0 = I.getNodeFromType1(zone0,"ZoneGridConnectivity_t")
+  zgc1 = I.getNodeFromType1(zone1,"ZoneGridConnectivity_t")
+  zgc2 = I.getNodeFromType1(zone2,"ZoneGridConnectivity_t")
+  zgc3 = I.getNodeFromType1(zone3,"ZoneGridConnectivity_t")
+  for gc0 in I.getNodesFromType1(zgc0,"GridConnectivity_t"):
+    gc0_name = I.getName(gc0)
+    gc1 = I.getNodeFromNameAndType(zgc1,gc0_name,"GridConnectivity_t")
+    gc2 = I.getNodeFromNameAndType(zgc2,gc0_name,"GridConnectivity_t")
+    gc3 = I.getNodeFromNameAndType(zgc3,gc0_name,"GridConnectivity_t")
+    ordinal0 = I.getVal(I.getNodeFromNameAndType(gc0,"Ordinal","UserDefinedData_t"))
+    ordinal1 = I.getVal(I.getNodeFromNameAndType(gc1,"Ordinal","UserDefinedData_t"))
+    ordinal2 = I.getVal(I.getNodeFromNameAndType(gc2,"Ordinal","UserDefinedData_t"))
+    ordinal3 = I.getVal(I.getNodeFromNameAndType(gc3,"Ordinal","UserDefinedData_t"))
+    assert(ordinal0 == ordinal1-4)
+    assert(ordinal0 == ordinal2-8)
+    assert(ordinal0 == ordinal3-12)
+    if gc0_name in ["match1_0","match1_1"]: #Joins by rotation => not perio
+      if gc0_name == "match1_0":
+        assert(I.getValue(gc0)==zone_basename+".D3")
+        assert(I.getValue(gc1)==zone_basename+".D0")
+        assert(I.getValue(gc2)==zone_basename+".D1")
+        assert(I.getValue(gc3)==zone_basename+".D2")
+      else:
+        assert(I.getValue(gc0)==zone_basename+".D1")
+        assert(I.getValue(gc1)==zone_basename+".D2")
+        assert(I.getValue(gc2)==zone_basename+".D3")
+        assert(I.getValue(gc3)==zone_basename+".D0")
+      gcp0 = I.getNodeFromType1(gc0,"GridConnectivityProperty_t")
+      gcp1 = I.getNodeFromType1(gc1,"GridConnectivityProperty_t")
+      gcp2 = I.getNodeFromType1(gc2,"GridConnectivityProperty_t")
+      gcp3 = I.getNodeFromType1(gc3,"GridConnectivityProperty_t")
+      assert(gcp0 is None)
+      assert(gcp1 is None)
+      assert(gcp2 is None)
+      assert(gcp3 is None)
+    elif gc0_name in ["match1_0.0","match1_1.0"]: #Joins by translation => no change execpt value
+      # TODO : need developpement to correct value of gcs for gcs not concerned by duplication
+      # assert(I.getValue(gc0)==zone_basename+".D0")
+      # assert(I.getValue(gc1)==zone_basename+".D1")
+      # assert(I.getValue(gc2)==zone_basename+".D2")
+      # assert(I.getValue(gc3)==zone_basename+".D3")
+      pass
+    else:
+      assert(False)
