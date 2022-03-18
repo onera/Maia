@@ -1,36 +1,54 @@
 #include "maia/transform/flip_faces.hpp"
 
-#include "maia/connectivity/iter_cgns/range.hpp"
-#include "maia/connectivity/iter_cgns/connectivity.hpp"
 #include "cpp_cgns/sids/elements_utils.hpp"
 #include "cpp_cgns/sids/utils.hpp"
+#include "std_e/data_structure/block_range/block_range.hpp"
+#include "maia/sids/element_sections.hpp"
 
 using namespace cgns;
 
+
 namespace maia {
 
-auto
-flip_faces(tree& b) -> void {
-  for (tree& elt : get_nodes_by_matching(b,"Zone_t/Elements_t")) {
-    if (element_dimension(element_type(elt))==2) {
-      auto connectivity = ElementConnectivity<I4>(elt);
-      if (element_type(elt)==TRI_3) {
-        using con_range = connectivity_range<std_e::span<I4>,tri_3<I4>>;
-        con_range cs(connectivity);
-        for (auto&& c : cs) {
-          std::reverse(begin(c),end(c));
-        }
-      } else if (element_type(elt)==QUAD_4) {
-        using con_range = connectivity_range<std_e::span<I4>,quad_4<I4>>;
-        con_range cs(connectivity);
-        for (auto&& c : cs) {
-          std::reverse(begin(c),end(c));
-        }
-      } else {
+
+template<ElementType_t face_type, class I> auto
+flip_faces_of_type(std_e::span<I> connectivities) -> void {
+  constexpr int n_vtx_of_face_type = number_of_vertices(face_type);
+  auto cs = std_e::view_as_block_range<n_vtx_of_face_type>(connectivities);
+  for (auto&& c : cs) {
+    std::ranges::reverse(c);
+  }
+}
+
+
+template<class I> auto
+_flip_faces(tree& z) -> void {
+  auto face_sections = surface_element_sections(z);
+  for (tree& face_section: face_sections) {
+    auto connectivities = ElementConnectivity<I>(face_section);
+    auto face_type = element_type(face_section);
+    switch(face_type){
+      case TRI_3: {
+        flip_faces_of_type<TRI_3>(connectivities);
+        break;
+      }
+      case QUAD_4: {
+        flip_faces_of_type<QUAD_4>(connectivities);
+        break;
+      }
+      default: {
         throw std_e::not_implemented_exception("not implemented: flip_faces for ngon");
       }
     }
   }
+}
+
+auto
+flip_faces(tree& z) -> void {
+  STD_E_ASSERT(label(z)=="Zone_t");
+  if (value(z).data_type()=="I4") return _flip_faces<I4>(z);
+  if (value(z).data_type()=="I8") return _flip_faces<I8>(z);
+  throw cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
 }
 
 

@@ -5,33 +5,24 @@
 #include "range/v3/range/conversion.hpp"
 
 using std::vector;
-using cgns::quad_4;
-using cgns::hex_8;
+using std::array;
 
-namespace doctest {
-template<class I, class CK> struct StringMaker<connectivity<I,CK>> {
-  static String convert(const connectivity<I,CK>& v) {
-    std::string s = std_e::range_to_string(v);
-    return s.c_str();
-  }
-};
-} // doctest
 
 TEST_CASE("test__generate_connectivities__one_quad") {
   using MI = std_e::multi_index<int,3>;
   MI vertex_dims = {2,2,2};
 
   // cf. connectivities in simple_meshes.h
-  hex_8<int> expected_cell = {0,1,3,2,4,5,7,6};
-  
-  quad_4<int> expected_i_face_0 = {0,2,6,4};
-  quad_4<int> expected_i_face_1 = {1,3,7,5};
+  array<int,8> expected_cell = {0,1,3,2,4,5,7,6};
 
-  quad_4<int> expected_j_face_0 = {0,4,5,1};
-  quad_4<int> expected_j_face_1 = {2,6,7,3};
+  array<int,4> expected_i_face_0 = {0,2,6,4};
+  array<int,4> expected_i_face_1 = {1,3,7,5};
 
-  quad_4<int> expected_k_face_0 = {0,1,3,2};
-  quad_4<int> expected_k_face_1 = {4,5,7,6};
+  array<int,4> expected_j_face_0 = {0,4,5,1};
+  array<int,4> expected_j_face_1 = {2,6,7,3};
+
+  array<int,4> expected_k_face_0 = {0,1,3,2};
+  array<int,4> expected_k_face_1 = {4,5,7,6};
 
   vector<int> expected_r_parents = {{0,no_parent_element, 0,no_parent_element, 0,no_parent_element}};
   vector<int> expected_l_parents = {{no_parent_element,0, no_parent_element,0, no_parent_element,0}};
@@ -116,44 +107,44 @@ TEST_CASE("test__generate_connectivities__six_quads") {
   MI vertex_dims = {4,3,2};
 
   // cf. connectivities in simple_meshes.h
-  hex_8<int> expected_cell_0 = {0,1,5,4,12,13,17,16};
-  hex_8<int> expected_cell_1 = {1,2,6,5,13,14,18,17};
-  hex_8<int> expected_cell_2 = {2,3,7,6,14,15,19,18};
-  hex_8<int> expected_cell_3 = {4,5,9,8,16,17,21,20};
-  hex_8<int> expected_cell_4 = {5,6,10,9,17,18,22,21};
-  hex_8<int> expected_cell_5 = {6,7,11,10,18,19,23,22};
+  array<int,8> expected_cell_0 = {0,1,5,4,12,13,17,16};
+  array<int,8> expected_cell_1 = {1,2,6,5,13,14,18,17};
+  array<int,8> expected_cell_2 = {2,3,7,6,14,15,19,18};
+  array<int,8> expected_cell_3 = {4,5,9,8,16,17,21,20};
+  array<int,8> expected_cell_4 = {5,6,10,9,17,18,22,21};
+  array<int,8> expected_cell_5 = {6,7,11,10,18,19,23,22};
 
-  quad_4<int> expected_i_face_0 = {0,4,16,12};
-  quad_4<int> expected_i_face_1 = {4,8,20,16};
-  quad_4<int> expected_i_face_2 = {1,5,17,13};
-  quad_4<int> expected_i_face_3 = {5,9,21,17};
-  quad_4<int> expected_i_face_4 = {2,6,18,14};
-  quad_4<int> expected_i_face_5 = {6,10,22,18};
-  quad_4<int> expected_i_face_6 = {3,7,19,15};
-  quad_4<int> expected_i_face_7 = {7,11,23,19};
+  array<int,4> expected_i_face_0 = {0,4,16,12};
+  array<int,4> expected_i_face_1 = {4,8,20,16};
+  array<int,4> expected_i_face_2 = {1,5,17,13};
+  array<int,4> expected_i_face_3 = {5,9,21,17};
+  array<int,4> expected_i_face_4 = {2,6,18,14};
+  array<int,4> expected_i_face_5 = {6,10,22,18};
+  array<int,4> expected_i_face_6 = {3,7,19,15};
+  array<int,4> expected_i_face_7 = {7,11,23,19};
 
-  quad_4<int> expected_j_face_0 = {0,12,13,1};
-  quad_4<int> expected_j_face_1 = {1,13,14,2};
-  quad_4<int> expected_j_face_2 = {2,14,15,3};
-  quad_4<int> expected_j_face_3 = {4,16,17,5};
-  quad_4<int> expected_j_face_4 = {5,17,18,6};
-  quad_4<int> expected_j_face_5 = {6,18,19,7};
-  quad_4<int> expected_j_face_6 = {8,20,21,9};
-  quad_4<int> expected_j_face_7 = {9,21,22,10};
-  quad_4<int> expected_j_face_8 = {10,22,23,11};
+  array<int,4> expected_j_face_0 = {0,12,13,1};
+  array<int,4> expected_j_face_1 = {1,13,14,2};
+  array<int,4> expected_j_face_2 = {2,14,15,3};
+  array<int,4> expected_j_face_3 = {4,16,17,5};
+  array<int,4> expected_j_face_4 = {5,17,18,6};
+  array<int,4> expected_j_face_5 = {6,18,19,7};
+  array<int,4> expected_j_face_6 = {8,20,21,9};
+  array<int,4> expected_j_face_7 = {9,21,22,10};
+  array<int,4> expected_j_face_8 = {10,22,23,11};
 
-  quad_4<int> expected_k_face_0 = {0,1,5,4};
-  quad_4<int> expected_k_face_1 = {1,2,6,5};
-  quad_4<int> expected_k_face_2 = {2,3,7,6};
-  quad_4<int> expected_k_face_3 = {4,5,9,8};
-  quad_4<int> expected_k_face_4 = {5,6,10,9};
-  quad_4<int> expected_k_face_5 = {6,7,11,10};
-  quad_4<int> expected_k_face_6 = {12,13,17,16};
-  quad_4<int> expected_k_face_7 = {13,14,18,17};
-  quad_4<int> expected_k_face_8 = {14,15,19,18};
-  quad_4<int> expected_k_face_9 = {16,17,21,20};
-  quad_4<int> expected_k_face_10 = {17,18,22,21};
-  quad_4<int> expected_k_face_11 = {18,19,23,22};
+  array<int,4> expected_k_face_0 = {0,1,5,4};
+  array<int,4> expected_k_face_1 = {1,2,6,5};
+  array<int,4> expected_k_face_2 = {2,3,7,6};
+  array<int,4> expected_k_face_3 = {4,5,9,8};
+  array<int,4> expected_k_face_4 = {5,6,10,9};
+  array<int,4> expected_k_face_5 = {6,7,11,10};
+  array<int,4> expected_k_face_6 = {12,13,17,16};
+  array<int,4> expected_k_face_7 = {13,14,18,17};
+  array<int,4> expected_k_face_8 = {14,15,19,18};
+  array<int,4> expected_k_face_9 = {16,17,21,20};
+  array<int,4> expected_k_face_10 = {17,18,22,21};
+  array<int,4> expected_k_face_11 = {18,19,23,22};
 
   vector<int> expected_r_parents = {{
     0,3, 1,4, 2,5, no_parent_element,no_parent_element,

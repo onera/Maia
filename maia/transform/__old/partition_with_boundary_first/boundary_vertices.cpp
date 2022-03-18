@@ -7,30 +7,68 @@
 #include "std_e/algorithm/algorithm.hpp"
 #include "cpp_cgns/sids/Hierarchical_Structures.hpp"
 
-#include "maia/connectivity/iter_cgns/range.hpp"
+#include "std_e/data_structure/block_range/vblock_range.hpp"
 #include "maia/utils/multi_array_utils.hpp"
 #include "cpp_cgns/sids/utils.hpp"
 
-#include "range/v3/view/zip.hpp"
+//#include "range/v3/view/zip.hpp"
 #include <range/v3/action/sort.hpp>
 #include <range/v3/action/unique.hpp>
+#include "std_e/data_structure/multi_range/multi_range.hpp"
 
 
 namespace cgns {
 
 
+  // TODO use this
+//auto
+//parent_elements_range(const md_array_view<const I4,2>& pe) {
+//  auto l_pe = std_e::column(pe,0);
+//  auto r_pe = std_e::column(pe,1);
+//  return std_e::view_as_multi_range2(l_pe,r_pe);
+//}
+//auto face_is_boundary2(const auto& pe) -> bool {
+//  auto [l,r] = pe;
+//  return l==0 || r==0;
+//}
+//
+//
+//auto
+//ngon_boundary_vertices(std_e::span<const I4> connectivities, std_e::span<const I4> eso, md_array_view<const I4,2> parent_elts) -> std::vector<I4> {
+//  std::vector<I4> boundary_vertices;
+//
+//  auto pe_rng = parent_elements_range(parent_elts);
+//  auto connectivity_range = std_e::view_as_vblock_range(connectivities,eso);
+//
+//  auto parent_and_connectivity_zip = std_e::view_as_multi_range(pe_rng,connectivity_range);
+//
+//  for (const auto& [parent_elt,ngon] : parent_and_connectivity_zip) {
+//    if (face_is_boundary2(parent_elt)) {
+//      for (I4 vertex : ngon) {
+//        boundary_vertices.push_back(vertex);
+//      }
+//    }
+//  }
+//
+//  return boundary_vertices;
+//}
+
+// TMP
+auto face_is_boundary3(const auto& l, const auto& r) -> bool {
+  return l==0 || r==0;
+}
 auto
-ngon_boundary_vertices(std_e::span<const I4> connectivities, md_array_view<const I4,2> parent_elts) -> std::vector<I4> {
+ngon_boundary_vertices(std_e::span<const I4> connectivities, std_e::span<const I4> eso, md_array_view<const I4,2> parent_elts) -> std::vector<I4> {
   std::vector<I4> boundary_vertices;
 
-  auto parent_elt_range = rows(parent_elts);
-  auto connectivity_range = interleaved_ngon_range(connectivities);
+  auto l_pe = std_e::column(parent_elts,0);
+  auto r_pe = std_e::column(parent_elts,1);
+  auto connectivity_range = std_e::view_as_vblock_range(connectivities,eso);
 
-  using namespace ranges::views;
-  auto parent_and_connectivity_zip = zip(parent_elt_range,connectivity_range);
+  auto parent_and_connectivity_zip = std_e::view_as_multi_range(l_pe,r_pe,connectivity_range);
 
-  for (const auto& [parent_elt,ngon] : parent_and_connectivity_zip ) {
-    if (face_is_boundary(parent_elt)) {
+  for (const auto& [l_pe,r_pe,ngon] : parent_and_connectivity_zip) {
+    if (face_is_boundary3(l_pe,r_pe)) {
       for (I4 vertex : ngon) {
         boundary_vertices.push_back(vertex);
       }
@@ -39,6 +77,7 @@ ngon_boundary_vertices(std_e::span<const I4> connectivities, md_array_view<const
 
   return boundary_vertices;
 }
+// TMP end
 
 
 auto
@@ -49,9 +88,10 @@ get_elements_boundary_vertices(const tree& elts) -> std::vector<I4> {
   // - mixed elements are supposed to be volume elements only (Tet, Hex...)
   auto elt_type = element_type(elts);
   auto connectivity = ElementConnectivity<I4>(elts);
+  auto eso = ElementStartOffset<I4>(elts);
   if (elt_type==cgns::NGON_n) {
     auto parent_elts = ParentElements<I4>(elts);
-    return ngon_boundary_vertices(connectivity,parent_elts);
+    return ngon_boundary_vertices(connectivity,eso,parent_elts);
   } else if (cgns::element_dimension(elt_type)==2) {
     return std::vector<I4>(connectivity.begin(),connectivity.end());
   } else {

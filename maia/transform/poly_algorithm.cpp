@@ -4,12 +4,6 @@
 #include <algorithm>
 #include <vector>
 #include "cpp_cgns/sids/utils.hpp"
-#include "maia/connectivity/iter_cgns/range.hpp"
-#include "maia/partitioning/gc_name_convention.hpp"
-#include "maia/sids/element_sections.hpp"
-#include "std_e/algorithm/algorithm.hpp"
-#include "std_e/data_structure/multi_range.hpp"
-#include "std_e/utils/concatenate.hpp"
 #include "maia/sids/element_sections.hpp"
 #include "maia/transform/renumber/shift.hpp"
 #include "std_e/data_structure/block_range/vblock_range.hpp"

@@ -20,7 +20,7 @@ PYBIND_TEST_CASE("flip_faces") {
   CHECK( tris == std::vector{2,5,3, 7,8,10} );
   CHECK( quads == std::vector{1,6,9,4, 3,5,10,8, 1,2,7,6, 2,3,8,7, 4,9,10,5, 1,4,5,2, 6,7,10,9} );
 
-  maia::flip_faces(b);
+  maia::flip_faces(get_child_by_name(b,"Zone"));
 
   CHECK( tris == std::vector{3,5,2, 10,8,7} );
   CHECK( quads == std::vector{4,9,6,1, 8,10,5,3, 6,7,2,1, 7,8,3,2, 5,10,9,4, 2,5,4,1, 9,10,7,6} );

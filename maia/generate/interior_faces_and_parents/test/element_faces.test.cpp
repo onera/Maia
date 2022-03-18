@@ -2,25 +2,27 @@
 
 #include "maia/generate/interior_faces_and_parents/element_faces.hpp"
 #include "std_e/data_structure/block_range/block_range.hpp"
+#include "cpp_cgns/sids.hpp"
 
 using namespace cgns;
+using namespace maia;
 using std::array;
 
 // SEE https://cgns.github.io/CGNS_docs_current/sids/conv.html#unst_3d
 TEST_CASE("generate_faces") {
   std::vector<int> gen_tris;
   auto tri_range = std_e::view_as_block_range<number_of_vertices(TRI_3)>(gen_tris);
-  auto tri_back = std::back_inserter(tri_range);
+  auto tri_back = back_inserter(tri_range);
 
   std::vector<int> gen_quads;
   auto quad_range = std_e::view_as_block_range<number_of_vertices(QUAD_4)>(gen_quads);
-  auto quad_back = std::back_inserter(quad_range);
+  auto quad_back = back_inserter(quad_range);
 
   std::vector<int> tri_pos;
-  auto tri_pos_back = std::back_inserter(tri_pos);
+  auto tri_pos_back = back_inserter(tri_pos);
 
   std::vector<int> quad_pos;
-  auto quad_pos_back = std::back_inserter(quad_pos);
+  auto quad_pos_back = back_inserter(quad_pos);
 
   SUBCASE("tri_3") {
     array<int,3> tri = {1,2,3};

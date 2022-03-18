@@ -1,22 +1,20 @@
 #pragma once
 
-#include <tuple>
-#include <array>
-#include "maia/connectivity/iter/concepts.hpp"
-#include "maia/connectivity/iter/connectivity.hpp"
-#include "maia/connectivity/iter_cgns/connectivity.hpp"
+
+#include "cpp_cgns/sids/cgnslib.h"
 #include "std_e/base/not_implemented_exception.hpp"
 
 
-namespace cgns {
+namespace maia {
 
 
 template<
-  ElementType_t elt_type,
+  cgns::ElementType_t elt_type,
   class connectivity_type,
   class tri_iterator, class quad_iterator
 > auto
 generate_faces(const connectivity_type& e, tri_iterator& tri_it, quad_iterator& quad_it) -> void {
+  using namespace cgns;
   if constexpr (elt_type==TRI_3) {
     *tri_it++ = e;
   }
@@ -58,10 +56,11 @@ generate_faces(const connectivity_type& e, tri_iterator& tri_it, quad_iterator& 
 
 
 template<
-  ElementType_t elt_type,
+  cgns::ElementType_t elt_type,
   class tri_iterator, class quad_iterator
 > auto
 generate_parent_positions(tri_iterator& tri_it, quad_iterator& quad_it) -> void {
+  using namespace cgns;
   if constexpr (elt_type==TRI_3) {
     *tri_it++ = 1;
   }
@@ -102,4 +101,4 @@ generate_parent_positions(tri_iterator& tri_it, quad_iterator& quad_it) -> void 
 }
 
 
-} // cgns
+} // maia
