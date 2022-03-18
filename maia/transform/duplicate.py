@@ -74,8 +74,10 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
         vectorXNode = I.getNodeFromNameAndType(fields_node, basename+"X", "DataArray_t")
         vectorYNode = I.getNodeFromNameAndType(fields_node, basename+"Y", "DataArray_t")
         vectorZNode = I.getNodeFromNameAndType(fields_node, basename+"Z", "DataArray_t")
+        # Assume that vectors are position independant
+        # Be careful, if coordinates vector needs to be transform, the translation is not apply !
         modVx, modVy, modVz = GEO.apply_transformation_on_separated_components_of_cartesian_vectors(
-                                              rotationCenter, rotationAngle, translation,
+                                              rotationCenter, rotationAngle, np.zeros(3),
                                               I.getVal(vectorXNode),
                                               I.getVal(vectorYNode),
                                               I.getVal(vectorZNode))
