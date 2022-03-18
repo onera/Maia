@@ -188,7 +188,7 @@ def duplicate_zone_with_transformation(zone,nameZoneDup,
 #     CCJ.conformize_jn(dist_tree,JN_for_duplication_paths,comm)
 
 
-def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N=1,
+def duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N=1,
                                           conformize=False,comm=None,
                                           apply_to_fields = False):
   #############
@@ -387,7 +387,7 @@ def _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_pat
       I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)-N*max_ordinal)
   
   
-def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_for_duplication_paths,
+def duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_for_duplication_paths,
                                                            conformize=False,comm=None,
                                                            rotation_correction=True,
                                                            apply_to_fields=False):
@@ -436,7 +436,7 @@ def _duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,JN_fo
     raise ValueError("Zone/Join not define a section of a row")
   
   # Duplications
-  _duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N-1,
+  duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_paths,N-1,
                                         conformize=conformize,comm=comm,
                                         apply_to_fields=apply_to_fields)
 
