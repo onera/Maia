@@ -232,9 +232,8 @@ def test_duplicate_n_zones_from_periodic_join(sub_comm):
     ordinal1 = I.getVal(I.getNodeFromNameAndType(gc1,"Ordinal","UserDefinedData_t"))
     assert(ordinal0 == ordinal1-4)
     if gc0_name in ["match1_0","match1_1"]: #Joins by rotation
-      # TODO : need developpement to correct value of gcs for gcs not concerned by duplication
-      # assert(I.getValue(gc0)==zone_basename+".D0")
-      # assert(I.getValue(gc1)==zone_basename+".D1")
+      assert(I.getValue(gc0)==zone_basename+".D0")
+      assert(I.getValue(gc1)==zone_basename+".D1")
       gcp0 = I.getNodeFromType1(gc0,"GridConnectivityProperty_t")
       gcp1 = I.getNodeFromType1(gc1,"GridConnectivityProperty_t")
       perio0 = I.getNodeFromType1(gcp0,"Periodic_t")
@@ -365,11 +364,10 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
       assert(gcp2 is None)
       assert(gcp3 is None)
     elif gc0_name in ["match1_0.0","match1_1.0"]: #Joins by translation => no change execpt value
-      # TODO : need developpement to correct value of gcs for gcs not concerned by duplication
-      # assert(I.getValue(gc0)==zone_basename+".D0")
-      # assert(I.getValue(gc1)==zone_basename+".D1")
-      # assert(I.getValue(gc2)==zone_basename+".D2")
-      # assert(I.getValue(gc3)==zone_basename+".D3")
+      assert(I.getValue(gc0)==zone_basename+".D0")
+      assert(I.getValue(gc1)==zone_basename+".D1")
+      assert(I.getValue(gc2)==zone_basename+".D2")
+      assert(I.getValue(gc3)==zone_basename+".D3")
       pass
     else:
       assert(False)

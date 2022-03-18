@@ -242,25 +242,53 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_path
     gcp_b_init = copy.deepcopy(I.getNodeFromType1(jn_b_init_node, "GridConnectivityProperty_t"))
     jn_b_properties[jn] = gcp_b_init
 
-  # Changement de nom de la zone dupliquée
-  zonesNamesPrefixes = [None]*len(zones)
+  # # Changement de nom de la zone dupliquée
+  # zonesNamesPrefixes = [None]*len(zones)
+  # for z,zone in enumerate(zones):
+  #   zoneNamePrefix = copy.deepcopy(I.getName(zone))
+  #   zonesNamesPrefixes[z] = zoneNamePrefix
+  #   I.setName(zone,zoneNamePrefix+".D0")
+  #   #> mise à jour des raccords matchs des zones à dupliquer
+  #   zgc  = I.getNodeFromType1(zone,"ZoneGridConnectivity_t")
+  #   for gc in I.getNodesFromType1(zgc,"GridConnectivity_t") \
+  #           + I.getNodesFromType1(zgc,"GridConnectivity1to1_t"):
+  #     gcp = I.getNodeFromType1(gc,"GridConnectivityProperty_t")
+  #     # if 'rotor_Hm' in zonesNamesPrefixes[z]:
+  #     #   if 'match2_0' in gc[0]:
+  #     #     print("0",I.getValue(gc))
+  #     if gcp is None:
+  #       I.setValue(gc,I.getValue(gc)+".D0")
+  #       # if 'rotor_Hm' in zonesNamesPrefixes[z]:
+  #       #   if 'match2_0' in gc[0]:
+  #       #     print("0",I.getValue(gc))
+
+  # Recuperation des zones a dupliquer pour permettre de mettre à jour les raccords
+  # entre ces zones qui ne sont pas dans JN_for_duplication_paths
+  # Attention : les valeurs des raccords peuvent être sous deux formes :
+  #             ZoneName ou BaseName/zoneName
+  zonesNamesPrefixes  = [None]*len(zones)
+  gc_values_to_update = [None]*len(zones)
   for z,zone in enumerate(zones):
-    zoneNamePrefix = copy.deepcopy(I.getName(zone))
-    zonesNamesPrefixes[z] = zoneNamePrefix
-    I.setName(zone,zoneNamePrefix+".D0")
-    #> mise à jour des raccords matchs des zones à dupliquer
+    zonesNamesPrefixes[z]  = copy.deepcopy(I.getName(zone))
+    gc_values_to_update[z] = "/".join(I.getPath(dist_tree,zone).split("/")[-2:])
+    I.setName(zone,zonesNamesPrefixes[z]+".D0")
+  gc_values_to_update += zonesNamesPrefixes
+  print(JN_for_duplication_paths)
+  print(gc_values_to_update)
+
+  # Mise à jour dees raccords entre ces zones qui ne sont pas dans JN_for_duplication_paths
+  for zone in zones:
     zgc  = I.getNodeFromType1(zone,"ZoneGridConnectivity_t")
     for gc in I.getNodesFromType1(zgc,"GridConnectivity_t") \
             + I.getNodesFromType1(zgc,"GridConnectivity1to1_t"):
-      gcp = I.getNodeFromType1(gc,"GridConnectivityProperty_t")
-      # if 'rotor_Hm' in zonesNamesPrefixes[z]:
-      #   if 'match2_0' in gc[0]:
-      #     print("0",I.getValue(gc))
-      if gcp is None:
-        I.setValue(gc,I.getValue(gc)+".D0")
-        # if 'rotor_Hm' in zonesNamesPrefixes[z]:
-        #   if 'match2_0' in gc[0]:
-        #     print("0",I.getValue(gc))
+      gc_path = I.getPath(dist_tree,gc,pyCGNSLike=True)
+      gc_path_splitted = gc_path.split("/")
+      init_gc_path = "/".join([gc_path_splitted[1],gc_path_splitted[2].split(".D")[0]]+gc_path_splitted[3:])
+      if (init_gc_path not in JN_for_duplication_paths[0]) and (init_gc_path not in JN_for_duplication_paths[1]):
+        gc_value = I.getValue(gc)
+        if gc_value in gc_values_to_update:
+          new_gc_value = gc_value+".D0"
+          I.setValue(gc,new_gc_value)
 
   max_ordinal = 0
   for base in I.getBases(dist_tree):
@@ -282,19 +310,37 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,JN_for_duplication_path
                                                    max_ordinal     = (n+1)*max_ordinal,
                                                    apply_to_fields = apply_to_fields)
   
-      # Mise à jour des raccords matchs des zones dupliquées
+      # # Mise à jour des raccords matchs des zones dupliquées
+      # zgc  = I.getNodeFromType1(zoneDup,"ZoneGridConnectivity_t")
+      # for gc in I.getNodesFromType1(zgc,"GridConnectivity_t") \
+      #         + I.getNodesFromType1(zgc,"GridConnectivity1to1_t"):
+      #   gcp = I.getNodeFromType1(gc,"GridConnectivityProperty_t")
+      #   if gcp is None:
+      #     # I.setValue(gc,zonesNamesPrefixes[z]+".D{0}".format(n+1))
+      #     gc_value = I.getValue(gc)
+      #     new_gc_value = ".".join(gc_value.split('.D')[:-1])+".D{0}".format(n+1)
+      #     I.setValue(gc,new_gc_value)
+      #     # if 'rotor_Hm' in zonesNamesPrefixes[z]:
+      #     #   if 'match2_0' in gc[0]:
+      #     #     print(n,gc_value,new_gc_value,I.getValue(gc))
+  
+      # Mise à jour des raccords qui ne sont pas dans JN_for_duplication_paths pour la zone dupliquée
       zgc  = I.getNodeFromType1(zoneDup,"ZoneGridConnectivity_t")
+      base_name = I.getPath(dist_tree,zone,pyCGNSLike=True)[1:].split("/")[0]
       for gc in I.getNodesFromType1(zgc,"GridConnectivity_t") \
               + I.getNodesFromType1(zgc,"GridConnectivity1to1_t"):
-        gcp = I.getNodeFromType1(gc,"GridConnectivityProperty_t")
-        if gcp is None:
-          # I.setValue(gc,zonesNamesPrefixes[z]+".D{0}".format(n+1))
-          gc_value = I.getValue(gc)
-          new_gc_value = ".".join(gc_value.split('.D')[:-1])+".D{0}".format(n+1)
-          I.setValue(gc,new_gc_value)
-          # if 'rotor_Hm' in zonesNamesPrefixes[z]:
-          #   if 'match2_0' in gc[0]:
-          #     print(n,gc_value,new_gc_value,I.getValue(gc))
+        gc_path = base_name+"/"+I.getPath(zoneDup,gc)
+        gc_path_splitted = gc_path.split("/")
+        init_gc_path = "/".join(gc_path_splitted[0:1]+[gc_path_splitted[1].split(".D")[0]]+gc_path_splitted[2:])
+        print(init_gc_path)
+        if (init_gc_path not in JN_for_duplication_paths[0]) and (init_gc_path not in JN_for_duplication_paths[1]):
+          gc_value = I.getValue(gc).split(".D0")[0]
+          print("->",gc_value)
+          if gc_value in gc_values_to_update:
+            new_gc_value = gc_value+".D{0}".format(n+1)
+            print("=>=>",new_gc_value)
+            I.setValue(gc,new_gc_value)
+            
     
       # Ajout de la zone dupliquée dans la base
       I._addChild(base,zoneDup)
