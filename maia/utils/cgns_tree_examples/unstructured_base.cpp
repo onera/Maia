@@ -5,6 +5,7 @@
 #include "range/v3/range/conversion.hpp"
 #include "range/v3/view/repeat_n.hpp"
 using namespace cgns;
+using namespace maia;
 
 
 // TODO move {
@@ -111,8 +112,8 @@ create_Zone0() -> tree {
 
 
   std_e::multi_index<int32_t,3> vertex_dims = {4,3,2};
-  //auto quad_faces = generate_faces(vertex_dims) | ranges::to<std::vector>;
-  std::vector<std::array<int32_t,4>> quad_faces = generate_faces(vertex_dims) | ranges::to<std::vector>;
+  //auto quad_faces = generate_faces(vertex_dims);
+  std::vector<std::array<int32_t,4>> quad_faces = generate_faces(vertex_dims);
   auto [ngons_r,eso_r] = convert_to_ngons(quad_faces);
   auto ngons = ngons_r|ranges::to_vector;
   auto eso = eso_r|ranges::to_vector;

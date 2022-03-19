@@ -1,6 +1,6 @@
 #include "std_e/unit_test/doctest.hpp"
 
-#include "maia/generate/interior_faces_and_parents/element_faces.hpp"
+#include "maia/generate/connectivity/element_faces.hpp"
 #include "std_e/data_structure/block_range/block_range.hpp"
 #include "cpp_cgns/sids.hpp"
 

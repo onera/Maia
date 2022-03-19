@@ -1,6 +1,6 @@
-#include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/element_faces_and_parents.hpp"
 
-#include "maia/generate/interior_faces_and_parents/element_faces.hpp"
+#include "maia/generate/connectivity/element_faces.hpp"
 #include "maia/generate/interior_faces_and_parents/struct/faces_and_parents_by_section.hpp"
 
 

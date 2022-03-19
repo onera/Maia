@@ -1,4 +1,4 @@
-#include "maia/generate/interior_faces_and_parents/append_interior_faces_sections.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/append_interior_faces_sections.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 
 #include "std_e/parallel/mpi/collective/scan.hpp"

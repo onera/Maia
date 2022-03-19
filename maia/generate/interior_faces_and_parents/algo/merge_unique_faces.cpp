@@ -1,4 +1,4 @@
-#include "maia/generate/interior_faces_and_parents/merge_unique_faces.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/merge_unique_faces.hpp"
 
 
 #include "maia/utils/log/log.hpp"

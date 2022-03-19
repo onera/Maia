@@ -4,11 +4,11 @@
 #include "maia/sids/maia_cgns.hpp"
 #include "maia/utils/log/log.hpp"
 
-#include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
-#include "maia/generate/interior_faces_and_parents/merge_unique_faces.hpp"
-#include "maia/generate/interior_faces_and_parents/scatter_parents_to_boundary_sections.hpp"
-#include "maia/generate/interior_faces_and_parents/add_cell_face_connectivities.hpp"
-#include "maia/generate/interior_faces_and_parents/append_interior_faces_sections.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/element_faces_and_parents.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/merge_unique_faces.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/scatter_parents_to_boundary_sections.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/add_cell_face_connectivities.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/append_interior_faces_sections.hpp"
 #include "maia/transform/renumber/shift.hpp"
 
 

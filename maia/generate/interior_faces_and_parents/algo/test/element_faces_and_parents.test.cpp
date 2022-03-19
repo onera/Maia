@@ -1,6 +1,6 @@
 #include "std_e/unit_test/doctest.hpp"
 
-#include "maia/generate/interior_faces_and_parents/element_faces_and_parents.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/element_faces_and_parents.hpp"
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
 
 using namespace cgns;

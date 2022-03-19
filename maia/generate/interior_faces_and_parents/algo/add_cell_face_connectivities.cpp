@@ -1,4 +1,4 @@
-#include "maia/generate/interior_faces_and_parents/add_cell_face_connectivities.hpp"
+#include "maia/generate/interior_faces_and_parents/algo/add_cell_face_connectivities.hpp"
 
 #include "cpp_cgns/sids/creation.hpp"
 #include "std_e/parallel/struct/distributed_array.hpp"
