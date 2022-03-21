@@ -2,30 +2,9 @@ import Converter.Internal as I
 import numpy as np
 import copy
 
+from   maia.utils import py_utils
 import maia.geometry.geometry          as GEO
 import maia.connectivity.conformize_jn as CCJ
-
-
-def _find_cartesian_vector_names_from_names(names):
-  """
-  Function to find basename of cartesian vectors
-  In the SIDS (https://cgns.github.io/CGNS_docs_current/sids/dataname.html), a cartesian
-  vector 'Vector' is describe by its 3 components 'VectorX', 'VectorY', 'VectorZ'
-  > names : list of potential vectors components
-  """
-  
-  suffix_names_x = []
-  suffix_names_y = []
-  suffix_names_z = []
-  for name in names:
-    if name[-1] == "X":
-      suffix_names_x.append(name[0:-1])
-    elif name[-1] == "Y":
-      suffix_names_y.append(name[0:-1])
-    elif name[-1] == "Z":
-      suffix_names_z.append(name[0:-1])
-
-  return sorted(set(suffix_names_x)&set(suffix_names_y)&set(suffix_names_z))
 
 
 def duplicate_zone_with_transformation(zone,duplicated_zone_name,
@@ -91,7 +70,7 @@ def duplicate_zone_with_transformation(zone,duplicated_zone_name,
       data_names = []
       for data_array in I.getNodesFromType(fields_node, "DataArray_t"):
         data_names.append(I.getName(data_array))
-      cartesian_vectors_basenames = _find_cartesian_vector_names_from_names(data_names)
+      cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names)
       for basename in cartesian_vectors_basenames:
         vector_x_n = I.getNodeFromNameAndType(fields_node, basename+"X", "DataArray_t")
         vector_y_n = I.getNodeFromNameAndType(fields_node, basename+"Y", "DataArray_t")
