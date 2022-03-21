@@ -1,11 +1,12 @@
-#pragma once 
+#pragma once
 
+// TODO put this in doc
 /* Maillage "one_quad"
 Le maillage utilisé est le suivant:
            _      y      j
          /_/|     |_ x   |_ i
         |_|/     /      /
-                z      k     
+                z      k
 Les ids des noeuds sont les suivants: (ordre fortran, indexé à 0):
            ________________
           /2               /3
@@ -83,19 +84,86 @@ vector<int> face_vtx_k = {
   12,13,17,16,  13,14,18,17,  14,15,19,18,
   16,17,21,20,  17,18,22,21,  18,19,23,22
 };
-vector<int> face_cell_i = { 
+vector<int> face_cell_i = {
   -1, 0      ,   0, 1      ,   1, 2      ,   2,-1,
   -1, 3      ,   3, 4      ,   4, 5      ,   5,-1
 };
-vector<int> face_cell_j = { 
+vector<int> face_cell_j = {
   -1, 0      ,  -1, 1      ,  -1, 2,
    0, 3      ,   1, 4      ,   2  5,
    3,-1      ,   4,-1      ,   5,-1
 };
-vector<int> face_cell_k = { 
-  -1, 0      ,  -1, 1      ,  -1, 2      ,  
-  -1, 3      ,  -1, 4      ,  -1, 5      ,  
+vector<int> face_cell_k = {
+  -1, 0      ,  -1, 1      ,  -1, 2      ,
+  -1, 3      ,  -1, 4      ,  -1, 5      ,
    0,-1      ,   1,-1      ,   2,-1      ,
    3,-1      ,   4,-1      ,   5,-1      ,
 };
 */
+
+#include <array>
+#include <vector>
+#include "std_e/utils/concatenate.hpp"
+
+namespace maia::six_hexa_mesh {
+
+  const std::vector< std::array<int,8> > cell_vtx = {
+    {0,1, 5, 4,12,13,17,16},
+    {1,2, 6, 5,13,14,18,17},
+    {2,3, 7, 6,14,15,19,18},
+    {4,5, 9, 8,16,17,21,20},
+    {5,6,10, 9,17,18,22,21},
+    {6,7,11,10,18,19,23,22}
+  };
+
+  const std::vector< std::array<int,4> > i_face_vtx = {
+    {0, 4,16,12},
+    {4, 8,20,16},
+    {1, 5,17,13},
+    {5, 9,21,17},
+    {2, 6,18,14},
+    {6,10,22,18},
+    {3, 7,19,15},
+    {7,11,23,19}
+  };
+
+  const std::vector< std::array<int,4> > j_face_vtx = {
+    { 0,12,13, 1},
+    { 1,13,14, 2},
+    { 2,14,15, 3},
+    { 4,16,17, 5},
+    { 5,17,18, 6},
+    { 6,18,19, 7},
+    { 8,20,21, 9},
+    { 9,21,22,10},
+    {10,22,23,11}
+  };
+
+  const std::vector< std::array<int,4> > k_face_vtx = {
+    { 0, 1, 5, 4},
+    { 1, 2, 6, 5},
+    { 2, 3, 7, 6},
+    { 4, 5, 9, 8},
+    { 5, 6,10, 9},
+    { 6, 7,11,10},
+    {12,13,17,16},
+    {13,14,18,17},
+    {14,15,19,18},
+    {16,17,21,20},
+    {17,18,22,21},
+    {18,19,23,22}
+  };
+
+  const auto face_vtx = std_e::concatenate(i_face_vtx,j_face_vtx,k_face_vtx);
+
+  const std::vector<int> l_parents = {
+    -1,-1,  0,3,  1,4,  2,5,        // faces normal to i, by "face sheets" at i=0/1/2/3
+    -1,-1,-1,  0,1,2,  3,4,5,       // faces normal to j, by "face sheets" at j=0/1/2
+    -1,-1,-1,-1,-1,-1,  0,1,2,3,4,5 // faces normal to k, by "face sheets" at k=0/1
+  };
+  const std::vector<int> r_parents = {
+    0,3,  1,4,  2,5,  -1,-1,
+    0,1,2,  3,4,5,  -1,-1,-1,
+    0,1,2,3,4,5,  -1,-1,-1,-1,-1,-1
+  };
+} // maia::six_hexa_mesh

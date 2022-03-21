@@ -124,10 +124,10 @@ create_Zone0() -> tree {
   I8 nb_k_faces = 12;
   int32_t nb_ngons = nb_i_faces + nb_j_faces + nb_k_faces;
 
-  auto i_faces_l_parent_elements = generate_faces_left_parent_cell_ids (vertex_dims,0);
-  auto i_faces_r_parent_elements = generate_faces_right_parent_cell_ids(vertex_dims,0);
-  auto j_faces_l_parent_elements = generate_faces_left_parent_cell_ids (vertex_dims,1);
-  auto j_faces_r_parent_elements = generate_faces_right_parent_cell_ids(vertex_dims,1);
+  auto i_faces_l_parent_elements = generate_l_parents(vertex_dims,0);
+  auto i_faces_r_parent_elements = generate_r_parents(vertex_dims,0);
+  auto j_faces_l_parent_elements = generate_l_parents(vertex_dims,1);
+  auto j_faces_r_parent_elements = generate_r_parents(vertex_dims,1);
   // k-faces are considered interior (only for the sake of having interior nodes),
   // their parent is imaginary cell #42
   auto k_faces_l_parent_elements = ranges::views::repeat_n(42,nb_k_faces);

@@ -10,7 +10,7 @@ namespace std_e {
 
 template<class I0, class I1, class I2> constexpr auto
 step_range(I0 start, I1 n, I2 step) {
-  return ranges::views::repeat_n(step,n) | ranges::views::exclusive_scan(start);
+  return ::ranges::views::repeat_n(step,n) | ::ranges::views::exclusive_scan(start);
 }
 
 
