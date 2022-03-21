@@ -62,12 +62,6 @@ generate_faces(const Multi_index& vertex_dims) {
 
 // generate_parents {
 template<class Multi_index, class I = typename Multi_index::value_type> auto
-generate_parent_cell_id(const Multi_index& cell_dims, const Multi_index& is) -> I {
-  return std_e::fortran_order_from_dimensions( cell_dims, is );
-}
-
-
-template<class Multi_index, class I = typename Multi_index::value_type> auto
 generate_cell_parents(const Multi_index& vertex_dims, int d) {
   STD_E_ASSERT(0<=d && d<3);
 
