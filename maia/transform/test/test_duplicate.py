@@ -54,34 +54,9 @@ def test_duplicate_zone_with_transformation1():
                     1,1,1,
                     1,1,1 ]
        """
-  expected_yz = """
-                DuplicatedZone Zone_t I4 [[18,4,0]]:
-                  ZoneType ZoneType_t "Unstructured":
-                  GridCoordinates GridCoordinates_t:
-                    CoordinateX DataArray_t:
-                      R4 : [ 0,1,2,
-                             0,1,2,
-                             0,1,2,
-                             0,1,2,
-                             0,1,2,
-                             0,1,2 ]
-                    CoordinateY DataArray_t:
-                      R4 : [ 0,0,0,
-                             1,1,1,
-                             2,2,2,
-                             0,0,0,
-                             1,1,1,
-                             2,2,2 ]
-                    CoordinateZ DataArray_t:
-                      R4 : [ 0,0,0,
-                             0,0,0,
-                             0,0,0,
-                             1,1,1,
-                             1,1,1,
-                             1,1,1 ]
-                """
   zone            = parse_yaml_cgns.to_node(yz)
-  expected_zone   = parse_yaml_cgns.to_node(expected_yz)
+  expected_zone   = I.copyTree(zone)
+  I.setName(expected_zone, "DuplicatedZone")
   duplicated_zone = duplicate.duplicate_zone_with_transformation(zone,"DuplicatedZone")
   assert(duplicated_zone[0]=="DuplicatedZone")
   assert(compare.is_same_tree(duplicated_zone, expected_zone))
@@ -197,8 +172,8 @@ def test_duplicate_n_zones_from_periodic_join(sub_comm):
   yaml_path = os.path.join(yaml_dir, 'quarter_crown_square_8.yaml')
   dist_tree = IOT.file_to_dist_tree(yaml_path,sub_comm)
   
-  match_perio_by_trans_a = 'Base/Zone/ZoneGridConnectivity/match1_0.0'
-  match_perio_by_trans_b = 'Base/Zone/ZoneGridConnectivity/match1_1.0'
+  match_perio_by_trans_a = 'Base/Zone/ZoneGridConnectivity/MatchTranslationA'
+  match_perio_by_trans_b = 'Base/Zone/ZoneGridConnectivity/MatchTranslationB'
   jn_for_duplication_paths = [[match_perio_by_trans_a],[match_perio_by_trans_b]]
   
   zone_basename = I.getName(I.getZones(dist_tree)[0])
@@ -230,7 +205,7 @@ def test_duplicate_n_zones_from_periodic_join(sub_comm):
     ordinal0 = I.getVal(I.getNodeFromNameAndType(gc0,"Ordinal","UserDefinedData_t"))
     ordinal1 = I.getVal(I.getNodeFromNameAndType(gc1,"Ordinal","UserDefinedData_t"))
     assert(ordinal0 == ordinal1-4)
-    if gc0_name in ["match1_0","match1_1"]: #Joins by rotation
+    if gc0_name in ["MatchRotationA","MatchRotationB"]: #Joins by rotation
       assert(I.getValue(gc0)==zone_basename+".D0")
       assert(I.getValue(gc1)==zone_basename+".D1")
       gcp0 = I.getNodeFromType1(gc0,"GridConnectivityProperty_t")
@@ -246,10 +221,10 @@ def test_duplicate_n_zones_from_periodic_join(sub_comm):
       assert((rotation_center0 == rotation_center1).all())
       assert((rotation_angle0  == rotation_angle1).all())
       assert((translation0     == translation1).all())
-    elif gc0_name in ["match1_0.0","match1_1.0"]: #Joins by translation
+    elif gc0_name in ["MatchTranslationA","MatchTranslationB"]: #Joins by translation
       assert(I.getValue(gc0)==zone_basename+".D1")
       assert(I.getValue(gc1)==zone_basename+".D0")
-      if gc0_name == "match1_0.0": #Join0 => perio*2 and join1 => not perio
+      if gc0_name == "MatchTranslationA": #Join0 => perio*2 and join1 => not perio
         gcp0 = I.getNodeFromType1(gc0,"GridConnectivityProperty_t")
         gcp1 = I.getNodeFromType1(gc1,"GridConnectivityProperty_t")
         assert(gcp1 is None)
@@ -283,8 +258,8 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
   yaml_path = os.path.join(yaml_dir, 'quarter_crown_square_8.yaml')
   dist_tree = IOT.file_to_dist_tree(yaml_path,sub_comm)
   
-  match_perio_by_rot_a = 'Base/Zone/ZoneGridConnectivity/match1_0'
-  match_perio_by_rot_b = 'Base/Zone/ZoneGridConnectivity/match1_1'
+  match_perio_by_rot_a = 'Base/Zone/ZoneGridConnectivity/MatchRotationA'
+  match_perio_by_rot_b = 'Base/Zone/ZoneGridConnectivity/MatchRotationB'
   jn_for_duplication_paths = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
   
   zone_basename = I.getName(I.getZones(dist_tree)[0])
@@ -342,8 +317,8 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
     assert(ordinal0 == ordinal1-4)
     assert(ordinal0 == ordinal2-8)
     assert(ordinal0 == ordinal3-12)
-    if gc0_name in ["match1_0","match1_1"]: #Joins by rotation => not perio
-      if gc0_name == "match1_0":
+    if gc0_name in ["MatchRotationA","MatchRotationB"]: #Joins by rotation => not perio
+      if gc0_name == "MatchRotationA":
         assert(I.getValue(gc0)==zone_basename+".D3")
         assert(I.getValue(gc1)==zone_basename+".D0")
         assert(I.getValue(gc2)==zone_basename+".D1")
@@ -361,7 +336,7 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
       assert(gcp1 is None)
       assert(gcp2 is None)
       assert(gcp3 is None)
-    elif gc0_name in ["match1_0.0","match1_1.0"]: #Joins by translation => no change execpt value
+    elif gc0_name in ["MatchTranslationA","MatchTranslationB"]: #Joins by translation => no change execpt value
       assert(I.getValue(gc0)==zone_basename+".D0")
       assert(I.getValue(gc1)==zone_basename+".D1")
       assert(I.getValue(gc2)==zone_basename+".D2")

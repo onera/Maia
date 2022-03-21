@@ -115,7 +115,7 @@ Base CGNSBase_t I4 [3, 3]:
       ElementStartOffset DataArray_t:
         I4 : [ 0,  6, 12, 18, 24, 30, 36, 42, 48]
     ZoneGridConnectivity ZoneGridConnectivity_t:
-      match1_0 GridConnectivity_t 'Zone':
+      MatchRotationA GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[33, 34, 35, 36]]:
         PointListDonor IndexArray_t I4 [[25, 26, 27, 28]]:
@@ -128,7 +128,7 @@ Base CGNSBase_t I4 [3, 3]:
             Translation DataArray_t R8 [0.0, 0.0, 0.0]:
         Ordinal UserDefinedData_t 1:
         OrdinalOpp UserDefinedData_t 2:
-      match1_1 GridConnectivity_t 'Zone':
+      MatchRotationB GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[25, 26, 27, 28]]:
         PointListDonor IndexArray_t I4 [[33, 34, 35, 36]]:
@@ -141,7 +141,7 @@ Base CGNSBase_t I4 [3, 3]:
             Translation DataArray_t R8 [0.0, 0.0, 0.0]:
         Ordinal UserDefinedData_t 2:
         OrdinalOpp UserDefinedData_t 1:
-      match1_0.0 GridConnectivity_t 'Zone':
+      MatchTranslationA GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[9, 10, 11, 12]]:
         PointListDonor IndexArray_t I4 [[1, 2, 3, 4]]:
@@ -154,7 +154,7 @@ Base CGNSBase_t I4 [3, 3]:
             Translation DataArray_t R8 [-0.0, -0.0, -2.0]:
         Ordinal UserDefinedData_t 3:
         OrdinalOpp UserDefinedData_t 4:
-      match1_1.0 GridConnectivity_t 'Zone':
+      MatchTranslationB GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[1, 2, 3, 4]]:
         PointListDonor IndexArray_t I4 [[9, 10, 11, 12]]:
