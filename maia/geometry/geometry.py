@@ -28,31 +28,7 @@ def compute_cell_center(zone):
 
   return center_cell
 
-# def apply_transformation_on_concatenated_coords(rotation_center, rotation_angle, translation, coords):
-#   """
-#   Apply the defined transformation on concatenated coords described by :
-#   [cx1 cx2 ... cxN]
-#   [cy1 cy2 ... cyN]
-#   [cz1 cz2 ... czN]
-#   and return the modified coordinates in the same format
-#   """
-#   rotation_center = np.array(rotation_center).reshape((3,1))
-#   alpha, beta, gamma  = rotation_angle
-#   rotation_matx = np.array([[1, 0, 0], [0, cos(alpha), -sin(alpha)], [0, sin(alpha), cos(alpha)]])
-#   rotation_maty = np.array([[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]])
-#   rotation_matz = np.array([[cos(gamma), -sin(gamma), 0], [sin(gamma), cos(gamma), 0], [0, 0, 1]])
-#   rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
-#   return (((np.dot(rotation_mat, coords-rotation_center)+rotation_center).T + translation).T)
-
-# def apply_transformation_on_separated_coords(rotation_center, rotation_angle, translation, cx, cy, cz):
-#   """
-#   Apply the defined transformation on coordinates and return a tuple with each of the modified coordinates
-#   """
-#   coords = np.array([cx,cy,cz], order='F')
-#   modified_coords = apply_transformation_on_concatenated_coords(rotation_center, rotation_angle, translation, coords)
-#   return (modified_coords[0],modified_coords[1],modified_coords[2])
-
-def apply_transformation_on_concatenated_components_of_cartesian_vectors(rotation_center, rotation_angle, translation, vectors):
+def transform_cart_matrix(vectors, translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3)):
   """
   Apply the defined cartesian transformation on concatenated components of vectors described by :
   [vx1 vx2 ... vxN]
@@ -69,10 +45,10 @@ def apply_transformation_on_concatenated_components_of_cartesian_vectors(rotatio
   rotated_vectors = ((np.dot(rotation_mat, vectors-rotation_center)+rotation_center).T + translation).T
   return (rotated_vectors.astype(vectors.dtype,copy=False))
 
-def apply_transformation_on_separated_components_of_cartesian_vectors(rotation_center, rotation_angle, translation, vx, vy, vz):
+def transform_cart_vectors(vx, vy, vz, translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3)):
   """
   Apply the defined cartesian transformation on separated components of vectors and return a tuple with each of the modified components of the vectors
   """
   vectors = np.array([vx,vy,vz], order='F')
-  modified_components = apply_transformation_on_concatenated_components_of_cartesian_vectors(rotation_center, rotation_angle, translation, vectors)
-  return (modified_components[0],modified_components[1],modified_components[2])
+  modified_components = transform_cart_matrix(vectors, translation, rotation_center, rotation_angle)
+  return (modified_components[0], modified_components[1], modified_components[2])

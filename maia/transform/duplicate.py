@@ -35,13 +35,10 @@ def duplicate_zone_with_transformation(zone,duplicated_zone_name,
   duplicated_coord_x_n  = I.getNodeFromName1(duplicated_coords_n, "CoordinateX")
   duplicated_coord_y_n  = I.getNodeFromName1(duplicated_coords_n, "CoordinateY")
   duplicated_coord_z_n  = I.getNodeFromName1(duplicated_coords_n, "CoordinateZ")
+  duplicated_coords = [I.getVal(n) for n in [duplicated_coord_x_n, duplicated_coord_y_n, duplicated_coord_z_n]]
   
-  modified_coord_x, modified_coord_y, modified_coord_z = \
-                    GEO.apply_transformation_on_separated_components_of_cartesian_vectors(
-                        rotation_center, rotation_angle, translation,
-                        I.getVal(duplicated_coord_x_n),
-                        I.getVal(duplicated_coord_y_n),
-                        I.getVal(duplicated_coord_z_n))
+  modified_coord_x, modified_coord_y, modified_coord_z = GEO.transform_cart_vectors(
+      *duplicated_coords, translation, rotation_center, rotation_angle)
 
   I.setValue(duplicated_coord_x_n,modified_coord_x)
   I.setValue(duplicated_coord_y_n,modified_coord_y)
@@ -75,14 +72,11 @@ def duplicate_zone_with_transformation(zone,duplicated_zone_name,
         vector_x_n = I.getNodeFromNameAndType(fields_node, basename+"X", "DataArray_t")
         vector_y_n = I.getNodeFromNameAndType(fields_node, basename+"Y", "DataArray_t")
         vector_z_n = I.getNodeFromNameAndType(fields_node, basename+"Z", "DataArray_t")
+        vectors = [I.getVal(n) for n in [vector_x_n, vector_y_n, vector_z_n]]
         # Assume that vectors are position independant
         # Be careful, if coordinates vector needs to be transform, the translation is not apply !
-        modified_vector_x, modified_vector_y, modified_vector_z = \
-                    GEO.apply_transformation_on_separated_components_of_cartesian_vectors(
-                        rotation_center, rotation_angle, np.zeros(3),
-                        I.getVal(vector_x_n),
-                        I.getVal(vector_y_n),
-                        I.getVal(vector_z_n))
+        modified_vector_x, modified_vector_y, modified_vector_z = GEO.transform_cart_vectors(
+            *vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
         I.setValue(vector_x_n,modified_vector_x)
         I.setValue(vector_y_n,modified_vector_y)
         I.setValue(vector_z_n,modified_vector_z)

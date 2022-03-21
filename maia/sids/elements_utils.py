@@ -103,9 +103,7 @@ def get_range_of_ngon(zone):
   """
   Return the ElementRange array of the NGON elements
   """
-  ngons = get_elements_from_predicate(zone, lambda e: sids.ElementCGNSName(e) == 'NGON_n')
-  assert len(ngons) == 1
-  return sids.ElementRange(ngons[0])
+  return sids.ElementRange(sids.Zone.NGonNode(zone))
 
 def get_ordered_elements(zone):
   """
@@ -146,7 +144,3 @@ def get_elt_range_per_dim(zone):
 
   return range_by_dim
 
-def get_elements_from_predicate(zone, predicate):
-    """
-    """
-    return [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if predicate(elem)]
