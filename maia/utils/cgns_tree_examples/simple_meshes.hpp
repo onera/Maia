@@ -116,14 +116,14 @@ namespace maia::six_hexa_mesh {
   const auto face_vtx = std_e::concatenate(i_face_vtx,j_face_vtx,k_face_vtx);
 
   const std::vector<int> l_parents = {
-    -1,-1,  1,4,  2,5,  3,6,        // faces normal to i, by "face sheets" at i=1/2/3/4
-    -1,-1,-1,  1,2,3,  4,5,6,       // faces normal to j, by "face sheets" at j=1/2/3
-    -1,-1,-1,-1,-1,-1,  1,2,3,4,5,6 // faces normal to k, by "face sheets" at k=1/2
+    0,0,  1,4,  2,5,  3,6,        // faces normal to i, by "face sheets" at i=1/2/3/4
+    0,0,0,  1,2,3,  4,5,6,       // faces normal to j, by "face sheets" at j=1/2/3
+    0,0,0,0,0,0,  1,2,3,4,5,6 // faces normal to k, by "face sheets" at k=1/2
   };
   const std::vector<int> r_parents = {
-    1,4,  2,5,  3,6,  -1,-1,
-    1,2,3,  4,5,6,  -1,-1,-1,
-    1,2,3,4,5,6,  -1,-1,-1,-1,-1,-1
+    1,4,  2,5,  3,6,  0,0,
+    1,2,3,  4,5,6,  0,0,0,
+    1,2,3,4,5,6,  0,0,0,0,0,0
   };
 } // maia::six_hexa_mesh
 

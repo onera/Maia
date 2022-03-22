@@ -2,30 +2,31 @@
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/generate/__old/from_structured_grid.hpp"
 #include "maia/connectivity/iter/utility.hpp"
-#include "range/v3/range/conversion.hpp"
-#include "range/v3/view/repeat_n.hpp"
-using namespace cgns;
-using namespace maia;
-
 
 // TODO move {
-#include "range/v3/view/transform.hpp"
 #include "range/v3/view/concat.hpp"
-#include "range/v3/view/single.hpp"
 #include "range/v3/view/join.hpp"
-#include "maia/utils/std_e_utils.hpp"
+#include "std_e/algorithm/iota.hpp"
+
 template<class connectivity_range_type> auto
 convert_to_ngons(const connectivity_range_type& cs) {
   using connectivity_type = ranges::range_value_t<connectivity_range_type>;
   constexpr int N = std::tuple_size_v<connectivity_type>;
+  std::vector<cgns::I4> eso(cs.size()+1);
+  std_e::exclusive_iota(begin(eso),end(eso),0,N);
   // As of march 2019, ranges::view::join_view.size() is lacking an overload in case the inner range is of fixed size.
   // The resulting join_view is then not a sized_view, which can be detrimental for performance
   return std::make_pair(
-    std_e::step_range(0,cs.size(),N),
+    std::move(eso),
     ranges::views::all(cs) | ranges::views::join
   );
 }
 // END TODO }
+
+
+using namespace cgns;
+using namespace maia;
+
 
 auto
 create_GridCoords0() -> tree {
@@ -112,12 +113,9 @@ create_Zone0() -> tree {
 
 
   std_e::multi_index<int32_t,3> vertex_dims = {4,3,2};
-  //auto quad_faces = generate_faces(vertex_dims);
-  std::vector<std::array<int32_t,4>> quad_faces = generate_faces(vertex_dims);
-  auto [ngons_r,eso_r] = convert_to_ngons(quad_faces);
-  auto ngons = ngons_r|ranges::to_vector;
-  auto eso = eso_r|ranges::to_vector;
-  std_e::offset(ngons,1); // CGNS is 1-indexed
+  auto quad_faces = generate_faces(vertex_dims) | std_e::to_vector();
+  auto [eso,ngons_r] = convert_to_ngons(quad_faces);
+  auto ngons = ngons_r | std_e::to_vector();
 
   I8 nb_i_faces = 8;
   I8 nb_j_faces = 9;
@@ -130,15 +128,14 @@ create_Zone0() -> tree {
   auto j_faces_r_parent_elements = generate_r_parents(vertex_dims,1);
   // k-faces are considered interior (only for the sake of having interior nodes),
   // their parent is imaginary cell #42
-  auto k_faces_l_parent_elements = ranges::views::repeat_n(42,nb_k_faces);
-  auto k_faces_r_parent_elements = ranges::views::repeat_n(42,nb_k_faces);
+  auto k_faces_l_parent_elements = std_e::ranges::repeat(42,nb_k_faces);
+  auto k_faces_r_parent_elements = std_e::ranges::repeat(42,nb_k_faces);
 
   auto parent_elements = ranges::views::concat(
     i_faces_l_parent_elements , j_faces_l_parent_elements, k_faces_l_parent_elements,
     i_faces_r_parent_elements , j_faces_r_parent_elements, k_faces_r_parent_elements
-  ) | ranges::to_vector;
+  ) | std_e::to_vector();
 
-  std_e::offset(parent_elements,1); // cgns indexing begin at 1
   std_e::multi_index<int,2> pe_dims = {(int)parent_elements.size()/2,2};
   md_array<int,2> parent_elts(std::move(parent_elements),pe_dims);
 
@@ -178,18 +175,15 @@ create_Zone1() -> tree {
 
 
   std_e::multi_index<int32_t,3> vertex_dims = {2,2,2};
-  auto quad_faces = generate_faces(vertex_dims) | ranges::to_vector;
-  auto [ngons_r,eso_r] = convert_to_ngons(quad_faces);
-  auto ngons = ngons_r|ranges::to_vector;
-  auto eso = eso_r|ranges::to_vector;
-  std_e::offset(ngons,1); // CGNS is 1-indexed
+  auto quad_faces = generate_faces(vertex_dims) | std_e::to_vector();
+  auto [eso,ngons_r] = convert_to_ngons(quad_faces);
+  auto ngons = ngons_r | std_e::to_vector();
 
 
   int32_t nb_ngons = 2 + 2 + 2;
 
-  auto parent_elements = generate_faces_parent_cell_ids(vertex_dims) | ranges::to_vector;
+  auto parent_elements = generate_faces_parent_cell_ids(vertex_dims) | std_e::to_vector();
 
-  std_e::offset(parent_elements,1); // cgns indexing begin at 1
   std_e::multi_index<I8,2> pe_dims = {(I8)parent_elements.size()/2,2};
   md_array<int,2> parent_elts(std::move(parent_elements),std_e::dyn_shape<I8,2>(pe_dims));
 

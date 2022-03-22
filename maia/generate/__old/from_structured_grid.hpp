@@ -82,7 +82,7 @@ generate_l_parents(const Multi_index& vertex_dims, int d) {
 
   return
     ranges::views::concat(
-      std_e::ranges::repeat(-1,sheet_sz), // no left parents for first sheet
+      std_e::ranges::repeat(0,sheet_sz), // no left parents for first sheet
       generate_cell_parents(vertex_dims,d)
     );
 }
@@ -95,7 +95,7 @@ generate_r_parents(const Multi_index& vertex_dims, int d) {
   return
     ranges::views::concat(
       generate_cell_parents(vertex_dims,d),
-      std_e::ranges::repeat(-1,sheet_sz) // no right parents for last sheet
+      std_e::ranges::repeat(0,sheet_sz) // no right parents for last sheet
     );
 }
 
