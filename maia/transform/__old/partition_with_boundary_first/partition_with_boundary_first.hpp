@@ -6,9 +6,10 @@
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/transform/__old/donated_point_lists.hpp"
 #include "mpi.h"
+using namespace cgns; // TODO!!!
 
 
-namespace cgns {
+namespace maia {
 
 
 /**
@@ -91,4 +92,4 @@ auto
 partition_elements(tree& zone, donated_point_lists& plds) -> void;
 
 
-} // cgns
+} // maia

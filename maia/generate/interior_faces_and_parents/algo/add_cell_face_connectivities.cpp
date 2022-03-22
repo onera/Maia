@@ -142,6 +142,7 @@ add_cell_face_connectivities(tree_range& cell_sections, const in_ext_faces_by_se
 }
 
 
+// Explicit instanciations of functions defined in this .cpp file
 template auto add_cell_face_connectivities(cgns::tree_range& cell_sections, const in_ext_faces_by_section<I4>& unique_faces_sections, I4 first_interior_face_id, MPI_Comm comm) -> void;
 template auto add_cell_face_connectivities(cgns::tree_range& cell_sections, const in_ext_faces_by_section<I8>& unique_faces_sections, I8 first_interior_face_id, MPI_Comm comm) -> void;
 

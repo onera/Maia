@@ -30,8 +30,8 @@ boundary_interior_permutation(const md_array_view<I,2>& parent_elts) -> std::pai
 
   // permute
   auto connectivity_is_on_boundary = [&parent_elts](I i){ return is_boundary(parent_elts,i); };
-  auto partition_ptr = std::stable_partition(permutation.begin(),permutation.end(),connectivity_is_on_boundary);
-  I partition_index = partition_ptr - permutation.begin();
+  auto partition_sub_rng = std::ranges::stable_partition(permutation,connectivity_is_on_boundary);
+  I partition_index = partition_sub_rng.begin() - permutation.begin();
 
   return {permutation,partition_index};
 }
@@ -40,50 +40,26 @@ boundary_interior_permutation(const md_array_view<I,2>& parent_elts) -> std::pai
 
 
 template<class I> auto
-create_partitionned_ngon_connectivities(std_e::span<I> old_connectivities, std_e::span<I> old_eso, const std::vector<I>& permutation, I partition_index)
-  -> std::pair<std::vector<I>,I>
-{
+apply_partition_to_ngons(std_e::span<I> old_cs, std_e::span<I> old_eso, const std::vector<I>& permutation) -> void {
   auto _ = maia_time_log("create_partitionned_ngon_connectivities");
 
   // prepare accessors
-  auto old_ngon_accessor = std_e::view_as_vblock_range(old_connectivities,old_eso);
+  auto old_ngon_accessor = std_e::view_as_vblock_range(old_cs,old_eso);
 
-  std::vector<I> new_connectivities(old_connectivities.size());
-  std::vector<I> new_eso(old_connectivities.size());
+  std::vector<I> new_connectivities(old_cs.size());
+  std::vector<I> new_eso(old_eso.size());
   auto new_ngon_accessor = std_e::view_as_vblock_range(new_connectivities,new_eso);
 
-  // prepare partition segments
-  auto permutation_first = permutation.begin();
-  auto permutation_partition_point = permutation.begin() + partition_index;
-  auto first_part_size = partition_index;
-  auto second_part_size = permutation.size() - partition_index;
+  std_e::permute_copy(old_ngon_accessor,new_ngon_accessor,permutation);
 
-  // apply permutation copy at beginning
-  auto new_ngon_partition_point_it =
-  std_e::permute_copy_n(old_ngon_accessor.begin(),new_ngon_accessor.begin(),permutation_first          ,first_part_size);
-
-  // record partition point in ngon
-  I ngon_partition_index = new_ngon_partition_point_it.data() - new_ngon_accessor.begin().data();
-
-  // finish permutation copy
-  std_e::permute_copy_n(old_ngon_accessor.begin(),new_ngon_partition_point_it,permutation_partition_point,second_part_size);
-
-  return {new_connectivities,ngon_partition_index};
-}
-
-template<class I> auto
-apply_partition_to_ngons(std_e::span<I> old_ngon_cs, std_e::span<I> old_eso, const std::vector<I>& permutation, I partition_index) -> I {
-  auto [new_connectivities,ngon_partition_index]  = create_partitionned_ngon_connectivities(old_ngon_cs,old_eso,permutation,partition_index);
-  std::copy(new_connectivities.begin(),new_connectivities.end(),old_ngon_cs.begin());
-
-  return ngon_partition_index;
+ // Note: We use a copy so that references to the NGon nodes are not invalidated
+ //       However, strictly speaking it is not need and could be avoided
+  std::ranges::copy(new_ngon_accessor,old_ngon_accessor.begin());
 }
 
 
-
-
 template<class I> auto
-apply_ngon_permutation_to_parent_elts(md_array_view<I,2>& parent_elts, const std::vector<I>& permutation) -> void {
+apply_permutation_to_parent_elts(md_array_view<I,2>& parent_elts, const std::vector<I>& permutation) -> void {
   std_e::permute(column(parent_elts,0).begin(),permutation);
   std_e::permute(column(parent_elts,1).begin(),permutation);
 }
@@ -97,11 +73,6 @@ apply_nface_permutation_to_parent_elts(md_array_view<I,2>& parent_elts, const st
 
 
 
-
-inline auto
-mark_as_boundary_partitionned(tree& ngons, I8 partition_index, I8 ngon_partition_index) -> void {
-  ElementSizeBoundary(ngons) = I4(partition_index); // TODO handle I8
-}
 
 template<class T> inline auto
 mark_polygon_groups(const std::string& bnd_or_interior, T& ngon_accessor, const I4* global_start) -> std::vector<tree> {
@@ -207,21 +178,24 @@ mark_simple_polyhedron_groups(tree& nfaces, [[maybe_unused]] const tree& ngons, 
   emplace_child(nfaces,std::move(pts_node));
 }
 
-inline auto
-permute_boundary_ngons_at_beginning(tree& ngons) -> std::vector<I4> { // TODO find a way to do it for I4 and I8
-  // Precondition: ngons.type = "Elements_t" and elements of type NGON_n
-  auto parent_elts = ParentElements<I4>(ngons);
-  auto ngon_connectivity = ElementConnectivity<I4>(ngons);
-  auto ngon_eso = ElementStartOffset<I4>(ngons);
+template<class I> auto
+permute_boundary_ngons_at_beginning(tree& ngons) -> std::vector<I> {
+  STD_E_ASSERT(label(ngons)=="Elements_t");
+  STD_E_ASSERT(element_type(ngons)==NGON_n);
+
+  auto parent_elts = ParentElements<I>(ngons);
+  auto ngon_connectivity = ElementConnectivity<I>(ngons);
+  auto ngon_eso = ElementStartOffset<I>(ngons);
 
   // compute permutation
   auto [permutation,partition_index] = boundary_interior_permutation(parent_elts);
 
   // apply permutation
-  auto ngon_partition_index = apply_partition_to_ngons(ngon_connectivity,ngon_eso,permutation,partition_index);
-  apply_ngon_permutation_to_parent_elts(parent_elts,permutation);
+  apply_partition_to_ngons(ngon_connectivity,ngon_eso,permutation);
+  apply_permutation_to_parent_elts(parent_elts,permutation);
 
-  mark_as_boundary_partitionned(ngons,partition_index,ngon_partition_index);
+  // record number of bnd elements
+  ElementSizeBoundary(ngons) = partition_index;
 
   return permutation;
 }
@@ -267,8 +241,8 @@ create_permuted_ngon_connectivities(std_e::span<I> old_connectivities, std_e::sp
 
 template<class I> auto
 apply_permutation_to_ngon(std_e::span<I> old_ngon_cs, std_e::span<I> old_eso, const std::vector<I>& permutation) -> void {
-  auto new_connectivities  = create_permuted_ngon_connectivities(old_ngon_cs,old_eso,permutation);
-  std::copy(new_connectivities.begin(),new_connectivities.end(),old_ngon_cs.begin());
+  auto new_connectivities = create_permuted_ngon_connectivities(old_ngon_cs,old_eso,permutation);
+  std::ranges::copy(new_connectivities,old_ngon_cs.begin());
 }
 
 inline auto
@@ -283,7 +257,7 @@ sort_ngons_by_nb_vertices(tree& ngons) -> std::vector<I4> {
 
   // apply permutation
   apply_permutation_to_ngon(ngon_connectivity,ngon_eso,permutation);
-  apply_ngon_permutation_to_parent_elts(parent_elts,permutation);
+  apply_permutation_to_parent_elts(parent_elts,permutation);
 
   return permutation;
 }

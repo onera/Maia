@@ -10,7 +10,12 @@
 #include "maia/transform/__old/renumber_point_lists.hpp"
 
 
-namespace cgns {
+using cgns::tree;
+using cgns::tree_range;
+using namespace cgns; // TODO
+
+
+namespace maia {
 
 
 auto
@@ -35,7 +40,7 @@ partition_coordinates(tree& z) -> void {
   STD_E_ASSERT(label(z)=="Zone_t");
   if (!is_boundary_partitionned_zone<I4>(z)) {
     auto elt_pools = get_children_by_label(z,"Elements_t");
-    auto boundary_vertex_ids = get_ordered_boundary_vertex_ids(elt_pools);
+    auto boundary_vertex_ids = get_ordered_boundary_vertex_ids<I4>(elt_pools);
     permute_boundary_vertices_at_beginning(z,boundary_vertex_ids);
   }
 }
@@ -97,7 +102,7 @@ partition_elements(tree& z, donated_point_lists& plds) -> void {
   if (is_boundary_partitionned_element_pool<I4>(ngons)) return;
 
   auto elts_permutation_0 = sort_ngons_by_nb_vertices(ngons);
-  auto elts_permutation_1 = permute_boundary_ngons_at_beginning(ngons);
+  auto elts_permutation_1 = permute_boundary_ngons_at_beginning<I4>(ngons);
 
   mark_polygon_groups(ngons);
 
@@ -110,4 +115,4 @@ partition_elements(tree& z, donated_point_lists& plds) -> void {
 }
 
 
-} // cgns
+} // maia

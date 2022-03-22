@@ -4,14 +4,30 @@
 #include "cpp_cgns/cgns.hpp"
 
 
-namespace cgns {
+namespace maia {
 
 
-auto ngon_boundary_vertices(std_e::span<const I4> connectivities, std_e::span<const I4> eso, md_array_view<const I4,2> parent_elts) -> std::vector<I4>;
+template<class Rng, class PE_array> auto
+find_boundary_vertices(const Rng& cs, const PE_array& pe) {
+  STD_E_ASSERT(size_t(cs.size()) == size_t(pe.extent(0)));
+  STD_E_ASSERT(pe.extent(1) == 2);
+  using I = typename PE_array::value_type;
+  std::vector<I> bnd_vertices;
 
-auto get_elements_boundary_vertices(const tree& elts) -> std::vector<I4>;
-auto append_boundary_coordinates_indices(const tree& elts, std::vector<I4>& boundary_vertex_indices) -> void;
-auto get_ordered_boundary_vertex_ids(const tree_range& elements_range) -> std::vector<I4>;
+  I n = cs.size();
+  for (I i=0; i<n; ++i) {
+    if (cgns::is_boundary(pe,i)) {
+      for (I vtx : cs[i]) {
+        bnd_vertices.push_back(vtx);
+      }
+    }
+  }
+
+  return bnd_vertices;
+}
 
 
-} // cgns
+template<class I> auto get_ordered_boundary_vertex_ids(const cgns::tree_range& element_sections) -> std::vector<I>;
+
+
+} // maia

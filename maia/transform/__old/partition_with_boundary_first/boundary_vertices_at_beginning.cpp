@@ -7,7 +7,12 @@
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 
 
-namespace cgns {
+using cgns::tree;
+using cgns::I4;
+using cgns::I8;
+
+
+namespace maia {
 
 
 template<class I> auto
@@ -52,4 +57,4 @@ template auto vertex_permutation_to_move_boundary_at_beginning(I8 nb_of_vertices
 template auto re_number_vertex_ids_in_elements(tree& elt_pool, const std::vector<I4>& vertex_permutation) -> void;
 template auto re_number_vertex_ids_in_elements(tree& elt_pool, const std::vector<I8>& vertex_permutation) -> void;
 
-} // cgns
+} // maia
