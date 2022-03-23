@@ -1,5 +1,5 @@
 #include "cpp_cgns/interop/pycgns_converter.hpp"
-#include "maia/transform/__old/partition_with_boundary_first/partition_with_boundary_first.hpp"
+#include "maia/transform/__old/put_boundary_first/put_boundary_first.hpp"
 #include "maia/transform/__old/convert_to_std_elements.hpp"
 #include "maia/transform/__old/remove_ghost_info.hpp"
 #include "maia/generate/__old/nfaces_from_ngons.hpp"
@@ -35,7 +35,7 @@ apply_cpp_cgns_par_function_to_py_base(F&& f) {
   };
 }
 
-const auto partition_with_boundary_first = apply_cpp_cgns_par_function_to_py_base(cgns::partition_with_boundary_first);
+const auto put_boundary_first = apply_cpp_cgns_par_function_to_py_base(maia::put_boundary_first);
 const auto remove_ghost_info             = apply_cpp_cgns_par_function_to_py_base(cgns::remove_ghost_info);
 const auto merge_by_elt_type             = apply_cpp_cgns_par_function_to_py_base(maia::merge_by_elt_type);
 const auto add_fsdm_distribution         = apply_cpp_cgns_par_function_to_py_base(maia::add_fsdm_distribution);
@@ -54,8 +54,8 @@ const auto ngon_new_to_old                          = apply_cpp_cgns_function_to
 PYBIND11_MODULE(transform, m) {
   m.doc() = "C++ maia functions wrapped by pybind";
 
-  m.def("partition_with_boundary_first"           , partition_with_boundary_first           , "ngon sorted with boundary faces first");
-  m.def("sort_nfaces_by_element_type"             , sort_nfaces_by_element_type              , "sort nface into tet, prism, pyra, hex");
+  m.def("put_boundary_first"                      , put_boundary_first                      , "ngon sorted with boundary faces first");
+  m.def("sort_nfaces_by_element_type"             , sort_nfaces_by_element_type             , "sort nface into tet, prism, pyra, hex");
   m.def("sorted_nfaces_to_std_elements"           , sorted_nfaces_to_std_elements           , "turn ngon with boundary first and nface to tri, quad, tet, prism, pyra, hex");
   m.def("add_nfaces"                              , add_nfaces                              , "add nface Elements_t from ngons with ParentElements");
   m.def("remove_ghost_info"                       , remove_ghost_info                       , "Remove ghost nodes and ghost elements of base");

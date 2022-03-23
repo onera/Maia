@@ -1,6 +1,6 @@
 #include "std_e/unit_test/doctest.hpp"
 
-#include "maia/transform/__old/partition_with_boundary_first/boundary_vertices.hpp"
+#include "maia/transform/__old/put_boundary_first/boundary_vertices.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "cpp_cgns/sids/elements_utils.hpp"
 #include "std_e/data_structure/block_range/vblock_range.hpp"

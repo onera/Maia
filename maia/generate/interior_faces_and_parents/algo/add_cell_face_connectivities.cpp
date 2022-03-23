@@ -79,7 +79,7 @@ fill_cell_face_info(
 
   I n_face = faces.in.size();
   I n_face_acc = std_e::ex_scan(n_face,MPI_SUM,0,comm);
-  const auto& in_face_ids = std_e::iota(n_face,first_in_id+n_face_acc);
+  const auto& in_face_ids = std_e::iota_vector(n_face,first_in_id+n_face_acc);
   const auto& in_l_pe = faces.in.l_parent_elements;
   const auto& in_l_pp = faces.in.l_parent_positions;
   const auto& in_r_pe = faces.in.r_parent_elements;

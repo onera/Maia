@@ -1,7 +1,7 @@
 //#include "maia/transform/__old/convert_to_std_elements.hpp"
 //
 //
-//#include "maia/transform/__old/partition_with_boundary_first/boundary_ngons_at_beginning.hpp" // TODO rename file
+//#include "maia/transform/__old/put_boundary_first/boundary_ngons_at_beginning.hpp" // TODO rename file
 //#include "cpp_cgns/sids/Hierarchical_Structures.hpp"
 //#include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 //#include "std_e/future/span.hpp"
@@ -9,14 +9,19 @@
 //#include "std_e/data_structure/block_range/block_range.hpp"
 //
 //
+//using cgns::tree;
+//using cgns::I4;
+//using cgns::I8;
+//
+//
 //// TODO factor, nface/ngon iterator/ test
-//namespace cgns {
+//namespace maia {
 //
 //
 //auto
 //sort_zone_nface_into_simple_connectivities(tree& z) -> void {
-//  tree& ngons = element_section(z,NGON_n);
-//  tree& nfaces = element_section(z,NFACE_n);
+//  tree& ngons = element_section(z,cgns::NGON_n);
+//  tree& nfaces = element_section(z,cgns::NFACE_n);
 //  I4 partition_penta_start = sort_nfaces_by_simple_polyhedron_type(nfaces,ngons);
 //  mark_simple_polyhedron_groups(nfaces,ngons,partition_penta_start);
 //}
@@ -65,7 +70,7 @@
 //    //}
 //
 //    elt_pools.push_back(
-//      new_Elements(
+//      cgns::new_Elements(
 //        "Poly_"+std::to_string(polygon_type),
 //        cgns_type,
 //        std::move(homogenous_connectivities),
@@ -117,7 +122,7 @@
 //    *d_first++ = other_vertex;
 //  }
 //
-//  return new_Elements(
+//  return cgns::new_Elements(
 //    "TETRA_4",
 //    cgns::TETRA_4,
 //    std::move(homogenous_connectivities),
@@ -160,7 +165,7 @@
 //    }
 //  }
 //
-//  return new_Elements(
+//  return cgns::new_Elements(
 //    "PYRA_5",
 //    cgns::PYRA_5,
 //    std::move(homogenous_connectivities),
@@ -248,7 +253,7 @@
 //    *d_first++ = node_above(tri[2],quads);
 //  }
 //
-//  return new_Elements(
+//  return cgns::new_Elements(
 //    "PENTA_6",
 //    cgns::PENTA_6,
 //    std::move(homogenous_connectivities),
@@ -322,7 +327,7 @@
 //    *d_first++ = node_above(quad_0[3],side_quads);
 //  }
 //
-//  return new_Elements(
+//  return cgns::new_Elements(
 //    "HEXA_8",
 //    cgns::HEXA_8,
 //    std::move(homogenous_connectivities),
@@ -430,4 +435,4 @@
 //
 //
 //
-//} // cgns
+//} // maia

@@ -1,6 +1,6 @@
 #include "std_e/unit_test/doctest.hpp"
 
-#include "maia/transform/__old/partition_with_boundary_first/boundary_vertices_at_beginning.hpp"
+#include "maia/transform/__old/put_boundary_first/boundary_vertices_at_beginning.hpp"
 #include "std_e/algorithm/algorithm.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "cpp_cgns/sids/elements_utils.hpp"
@@ -10,17 +10,17 @@ using namespace std;
 using namespace cgns;
 
 TEST_CASE("vertex_permutation_to_move_boundary_at_beginning") {
-  const I4 nb_of_vertices = 10;
+  const I4 n_vtx = 10;
 
   std::vector<I4> boundary_vertex_ids = { 1, 2, 5, 9 };
-  auto vertex_permutation = maia::vertex_permutation_to_move_boundary_at_beginning(nb_of_vertices,boundary_vertex_ids);
+  auto vertex_permutation = maia::vertex_permutation_to_move_boundary_at_beginning(n_vtx,boundary_vertex_ids);
 
   int partition_point = 4;
   std::vector<I4> boundary_vertex_positions = { 0, 1, 4, 8 }; // == boundary_vertex_ids - 1
   std::vector<I4> interior_vertex_positions = { 2, 3, 5, 6, 7, 9 }; // remaining positions
 
-  REQUIRE( vertex_permutation.size() == nb_of_vertices );
-  for (int i=0; i<nb_of_vertices; ++i) {
+  REQUIRE( vertex_permutation.size() == n_vtx );
+  for (int i=0; i<n_vtx; ++i) {
     if (i<partition_point) {
       CHECK( std_e::contains(boundary_vertex_positions,vertex_permutation[i]) );
     } else {
@@ -70,24 +70,26 @@ TEST_CASE("re_number_vertex_ids_in_elements") {
 
   SUBCASE("ngons") {
     std::vector<I4> ngon_cs =
-      { 3,   1, 2, 3,
-        4,   4, 5, 6,10,
-        3,   9, 8, 7,
-        3,   1, 8, 9 };
+      { 1, 2, 3,
+        4, 5, 6,10,
+        9, 8, 7,
+        1, 8, 9 };
+    std::vector<I4> ngon_eso = {0,3,7,10,13};
 
     tree ngons = new_NgonElements(
       "Ngons",
       std::move(ngon_cs),
       6,9
     );
+    emplace_child(ngons,new_DataArray("ElementStartOffset", node_value(std::move(ngon_eso))));
 
     maia::re_number_vertex_ids_in_elements(ngons,my_vertex_permutation);
 
     std::vector<I4> expected_ngon_cs =
-      { 3,   1, 2, 6,
-        4,   7, 8, 3,10,
-        3,   9, 5, 4,
-        3,   1, 5, 9 };
+      { 1, 2, 6,
+        7, 8, 3,10,
+        9, 5, 4,
+        1, 5, 9 };
     CHECK( ElementConnectivity<I4>(ngons) == expected_ngon_cs );
   }
 }

@@ -6,7 +6,6 @@
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/transform/__old/donated_point_lists.hpp"
 #include "mpi.h"
-using namespace cgns; // TODO!!!
 
 
 namespace maia {
@@ -57,39 +56,7 @@ Complexity:
         Note that it would also make sense to use std::partition instead of std::stable_partition
     - Algorithms are at most linear time and space in the arrays number of elements.
 */
-auto
-partition_with_boundary_first(tree& b, MPI_Comm comm) -> void;
-
-
-auto
-partition_zone_with_boundary_first(tree& zone, donated_point_lists& plds) -> void;
-
-
-auto
-partition_coordinates(tree& zone) -> void;
-
-
-auto
-permute_boundary_vertices_at_beginning(tree& zone, const std::vector<I4>& boundary_vertex_ids) -> void;
-
-auto
-permute_boundary_vertices(node_value& coord, const std::vector<I4>& perm) -> void;
-
-
-auto
-permute_boundary_grid_coords_at_beginning(tree& grid_coords, const std::vector<I4>& vertex_permutation) -> void;
-
-
-auto
-update_vertex_ids_in_connectivities(tree_range& elt_pools, const std::vector<I4>& vertex_permutation) -> void;
-
-
-auto
-save_partition_point(tree& zone, I4 nb_of_boundary_vertices) -> void;
-
-
-auto
-partition_elements(tree& zone, donated_point_lists& plds) -> void;
+auto put_boundary_first(cgns::tree& b, MPI_Comm comm) -> void;
 
 
 } // maia

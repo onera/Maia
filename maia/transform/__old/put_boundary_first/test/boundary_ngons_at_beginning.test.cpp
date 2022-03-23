@@ -1,6 +1,6 @@
 #include "std_e/unit_test/doctest.hpp"
 
-#include "maia/transform/__old/partition_with_boundary_first/boundary_ngons_at_beginning.hpp"
+#include "maia/transform/__old/put_boundary_first/boundary_ngons_at_beginning.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 
 using namespace cgns;
