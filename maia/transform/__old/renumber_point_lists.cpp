@@ -1,20 +1,34 @@
 #include "maia/transform/__old/renumber_point_lists.hpp"
 
 #include "cpp_cgns/sids/creation.hpp"
+#include "cpp_cgns/sids/utils.hpp"
 #include "std_e/future/contract.hpp"
 #include "cpp_cgns/tree_manip.hpp"
 #include "cpp_cgns/sids/Building_Block_Structure_Definitions.hpp"
 #include <iostream> // TODO
 
 
-namespace cgns {
+using cgns::tree;
+using cgns::node_value;
+using cgns::I4;
+using cgns::I8;
 
 
-auto
-renumber_point_list(std_e::span<I4> pl, const std_e::offset_permutation<I4>& permutation) -> void {
+namespace maia {
+
+
+template<class I> auto
+renumber_point_list(std_e::span<I> pl, const std_e::offset_permutation<I>& permutation) -> void {
   // Precondition: permutation is an index permutation (i.e. sort(permutation) == integer_range(permutation.size()))
   std_e::apply(permutation,pl);
 }
+template<class I> auto
+renumber_point_lists(const std::vector<std_e::span<I>>& pls, const std_e::offset_permutation<I>& permutation) -> void {
+  for (auto pl : pls) {
+    renumber_point_list(pl,permutation);
+  }
+}
+
 auto
 renumber_point_list2(std_e::span<I4> pl, const std_e::offset_permutation<I4>& permutation) -> void {
   // Precondition: permutation is an index permutation (i.e. sort(permutation) == integer_range(permutation.size()))
@@ -29,7 +43,7 @@ renumber_point_list2(std_e::span<I4> pl, const std_e::offset_permutation<I4>& pe
 template<class Fun> auto
 for_each_point_list(tree& z, const std::string& grid_location, Fun f) {
   STD_E_ASSERT(label(z)=="Zone_t");
-  std::vector<std::string> search_gen_paths = {"ZoneBC/BC_t","ZoneGridConnectivity/GridConnectivity_t"};
+  std::vector<std::string> search_gen_paths = {"ZoneBC/BC_t","ZoneGridConnectivity/GridConnectivity_t"}; // TODO and other places!
   for (tree& bc : get_nodes_by_matching(z,search_gen_paths)) {
     if (GridLocation(bc)==grid_location) {
       f(value(get_child_by_name(bc,"PointList")));
@@ -56,9 +70,9 @@ remove_if_empty_point_list(tree& z) -> void {
   }
 }
 
-auto
-renumber_point_lists(tree& z, const std_e::offset_permutation<I4>& permutation, const std::string& grid_location) -> void {
-  auto f = [&permutation](auto& pl){ renumber_point_list(view_as_span<I4>(pl),permutation); };
+template<class I> auto
+renumber_point_lists(tree& z, const std_e::offset_permutation<I>& permutation, const std::string& grid_location) -> void {
+  auto f = [&permutation](auto& pl){ renumber_point_list(view_as_span<I>(pl),permutation); };
   for_each_point_list(z,grid_location,f);
 }
 auto
@@ -124,4 +138,9 @@ rm_grid_connectivities(tree& z, const std::string& grid_location) -> void {
 }
 
 
-} // cgns
+template auto renumber_point_lists<I4>(tree& z, const std_e::offset_permutation<I4>& permutation, const std::string& grid_location) -> void;
+template auto renumber_point_lists<I8>(tree& z, const std_e::offset_permutation<I8>& permutation, const std::string& grid_location) -> void;
+template auto renumber_point_lists<I4>(const std::vector<std_e::span<I4>>& pls, const std_e::offset_permutation<I4>& permutation) -> void;
+template auto renumber_point_lists<I8>(const std::vector<std_e::span<I8>>& pls, const std_e::offset_permutation<I8>& permutation) -> void;
+
+} // maia

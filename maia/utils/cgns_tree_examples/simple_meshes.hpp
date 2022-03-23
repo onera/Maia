@@ -56,6 +56,24 @@ Les ids des noeuds sont les suivants (ordre fortran, indexé à 1):
         |_______________|_______________|_______________|/
        13              14              15               16
 
+
+faces:
+i
+    2 4 6 8
+    1 3 5 7
+j
+    15 16 17
+    12 13 14
+     9 10 11
+k
+  back
+    21 22 23
+    18 19 20
+  front
+    27 28 29
+    24 25 26
+
+
 Le noeud 1 est en (0.,0.,0.) et le côté de chaque cube est 1.
 */
 

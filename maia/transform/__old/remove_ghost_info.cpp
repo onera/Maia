@@ -9,7 +9,12 @@
 #include "std_e/algorithm/algorithm.hpp"
 #include "maia/transform/__old/renumber_point_lists.hpp"
 
-namespace cgns {
+using cgns::tree;
+using cgns::I4;
+using cgns::I8;
+using namespace cgns; // TODO
+
+namespace maia {
 
 auto
 remove_ghost_info(tree& b, MPI_Comm comm) -> void {
@@ -180,4 +185,4 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
   renumber_point_lists_donated(plds,node_perm2,"Vertex");
 }
 
-} // cgns
+} // maia

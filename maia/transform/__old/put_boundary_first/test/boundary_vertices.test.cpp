@@ -10,7 +10,7 @@ using namespace cgns;
 using namespace maia;
 
 
-TEST_CASE("partition_with_boundray_vertices") {
+TEST_CASE("partition_with_boundary_vertices") {
 // tri3 connectivities
   vector<I4> tri_cs =
     {  1, 2, 3,

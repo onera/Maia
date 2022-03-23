@@ -178,7 +178,7 @@ class zone_exchange {
         tree& pld = get_child_by_name(gc,"PointListDonor");
         auto pld_span = get_value<I4>(pld);
         auto new_pld_span = pl_neighbor_data_cat[i];
-        STD_E_ASSERT(new_pld_span.size()==pld_span.size());
+        STD_E_ASSERT(size_t(new_pld_span.size())==size_t(pld_span.size()));
         std::copy(begin(new_pld_span),end(new_pld_span),begin(pld_span));
       }
     }

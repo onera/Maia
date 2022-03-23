@@ -43,11 +43,9 @@ const auto split_boundary_subzones_according_to_bcs = apply_cpp_cgns_par_functio
 const auto generate_interior_faces_and_parents      = apply_cpp_cgns_par_function_to_py_base(maia::generate_interior_faces_and_parents); // TODO move
 const auto std_elements_to_ngons                    = apply_cpp_cgns_par_function_to_py_base(maia::std_elements_to_ngons); // TODO move
 
-const auto sort_nfaces_by_element_type              = apply_cpp_cgns_function_to_py_base(cgns::sort_nfaces_by_element_type);
-const auto sorted_nfaces_to_std_elements            = apply_cpp_cgns_function_to_py_base(cgns::sorted_nfaces_to_std_elements);
-const auto add_nfaces                               = apply_cpp_cgns_function_to_py_base(cgns::add_nfaces);
-const auto gcs_only_for_ghosts                      = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
-const auto ngon_new_to_old                          = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
+const auto convert_zone_to_std_element = apply_cpp_cgns_function_to_py_base(maia::convert_zone_to_std_elements);
+const auto gcs_only_for_ghosts         = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
+const auto ngon_new_to_old             = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
 
 
 
@@ -55,9 +53,7 @@ PYBIND11_MODULE(transform, m) {
   m.doc() = "C++ maia functions wrapped by pybind";
 
   m.def("put_boundary_first"                      , put_boundary_first                      , "ngon sorted with boundary faces first");
-  m.def("sort_nfaces_by_element_type"             , sort_nfaces_by_element_type             , "sort nface into tet, prism, pyra, hex");
-  m.def("sorted_nfaces_to_std_elements"           , sorted_nfaces_to_std_elements           , "turn ngon with boundary first and nface to tri, quad, tet, prism, pyra, hex");
-  m.def("add_nfaces"                              , add_nfaces                              , "add nface Elements_t from ngons with ParentElements");
+  m.def("convert_zone_to_std_elements"            , convert_zone_to_std_elements            , "ngon to elements");
   m.def("remove_ghost_info"                       , remove_ghost_info                       , "Remove ghost nodes and ghost elements of base");
   m.def("merge_by_elt_type"                       , merge_by_elt_type                       , "For a distributed base, merge Elements_t nodes the same type and does the associated renumbering");
   m.def("add_fsdm_distribution"                   , add_fsdm_distribution                   , "Add FSDM-specific distribution info");

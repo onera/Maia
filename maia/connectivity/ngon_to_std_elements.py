@@ -4,14 +4,6 @@ import Converter.Internal as I
 from maia import transform
 from mpi4py import MPI
 
-def sort_nfaces_by_element_type(t):
-  apply_to_bases(t,ctransform.sort_nfaces_by_element_type)
-
-def sorted_nfaces_to_std_elements(t):
-  apply_to_bases(t,ctransform.sorted_nfaces_to_std_elements)
-
-def add_nfaces(t):
-  apply_to_bases(t,ctransform.add_nfaces)
 
 def ngon_to_std_elements(t,comm=MPI.COMM_WORLD):
   """
@@ -19,8 +11,6 @@ def ngon_to_std_elements(t,comm=MPI.COMM_WORLD):
   The ngon elements are supposed to describe only standard elements
   (i.e. tris, quads, tets, pyras, prisms and hexas only)
   """
-  I._adaptNFace2PE(t,remove=True) # PE = ParentElements, remove NFace (not updated by following step)
   transform.put_boundary_first(t,comm)
-  I._fixNGon(t) # reconstruct NFace (TODO add_nfaces [with sign])
-  sort_nfaces_by_element_type(t)
-  sorted_nfaces_to_std_elements(t)
+  apply_to_bases(t,ctransform.convert_zone_to_std_elements)
+

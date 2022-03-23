@@ -148,6 +148,23 @@ create_Zone0() -> tree {
   emplace_child(ngon_elts,new_DataArray("ElementStartOffset", node_value(std::move(eso))));
   emplace_child(zone,std::move(ngon_elts));
 
+  std::vector<I4> nface = {
+//  i i   j  j   k  k
+    1,3,  9,12, 18,24,
+    3,5, 10,13, 19,25,
+    5,7, 11,14, 20,26,
+    2,4, 12,15, 21,27,
+    4,6, 13,16, 22,28,
+    6,8, 14,17, 23,29,
+  };
+  std::vector<I4> nface_eso = {0,6,12,18,24,30,36};
+  tree nface_elts = new_NfaceElements(
+    "Nfaces",
+    std::move(nface),
+    nb_ngons+1,nb_ngons+6
+  );
+  emplace_child(nface_elts,new_DataArray("ElementStartOffset", node_value(std::move(nface_eso))));
+  emplace_child(zone,std::move(nface_elts));
   return zone;
 }
 
@@ -196,6 +213,18 @@ create_Zone1() -> tree {
   emplace_child(ngon_elts,new_DataArray("ElementStartOffset", node_value(std::move(eso))));
   emplace_child(zone,std::move(ngon_elts));
 
+  std::vector<I4> nface = {
+//  i i   j j  k k
+    1,2,  3,4, 5,6,
+  };
+  std::vector<I4> nface_eso = {0,6};
+  tree nface_elts = new_NfaceElements(
+    "Nfaces",
+    std::move(nface),
+    nb_ngons+1,nb_ngons+1
+  );
+  emplace_child(nface_elts,new_DataArray("ElementStartOffset", node_value(std::move(nface_eso))));
+  emplace_child(zone,std::move(nface_elts));
   return zone;
 }
 
