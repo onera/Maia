@@ -93,17 +93,17 @@ def create_mask_tree(root, labels, include, exclude):
   Create a mask tree from root using either the include or exclude list + hints on searched labels
   """
   if len(include) * len(exclude) != 0:
-    raise ValueError("Include and exclude args are mutally exclusive")
+    raise ValueError("`include` and `exclude` args are mutually exclusive")
 
   if len(include) > 0:
-    to_include = PT.concretise_pathes(root, include, labels)
+    to_include = PT.concretize_paths(root, include, labels)
   elif len(exclude) > 0:
-    #In exclusion mode, we get all the pathes matching labels and exclude the one founded
-    all_pathes = PT.predicates_to_pathes(root, labels)
-    to_exclude = PT.concretise_pathes(root, exclude, labels)
-    to_include = [p for p in all_pathes if not p in to_exclude]
+    #In exclusion mode, we get all the paths matching labels and exclude the one founded
+    all_paths = PT.predicates_to_paths(root, labels)
+    to_exclude = PT.concretize_paths(root, exclude, labels)
+    to_include = [p for p in all_paths if not p in to_exclude]
   else:
-    to_include = PT.predicates_to_pathes(root, labels)
+    to_include = PT.predicates_to_paths(root, labels)
 
-  return PT.pathes_to_tree(to_include, I.getName(root))
+  return PT.paths_to_tree(to_include, I.getName(root))
 

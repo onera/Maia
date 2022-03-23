@@ -88,8 +88,8 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
         lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
     #Discover data
-    _exist_everywhere = lambda name : par_utils.exists_everywhere(part_zones, f'{I.getName(d_sol)}/{name}', comm)
-    fields = [I.getName(n) for n in I.getChildren(mask_sol) if _exist_everywhere(I.getName(n))]
+    _exists_everywhere = lambda name : par_utils.exists_everywhere(part_zones, f'{I.getName(d_sol)}/{name}', comm)
+    fields = [I.getName(n) for n in I.getChildren(mask_sol) if _exists_everywhere(I.getName(n))]
     part_data = {field : [] for field in fields}
 
     for part_zone in part_zones:
@@ -194,13 +194,13 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
 
         #Discover data
-        data_pathes = PT.predicates_to_pathes(mask_dataset, ['*', '*'])
-        part_data = {path : [] for path in data_pathes}
+        data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
+        part_data = {path : [] for path in data_paths}
 
         for part_zone in part_zones:
           p_dataset = I.getNodeFromPath(part_zone, ds_path)
           if p_dataset is not None:
-            for path in data_pathes:
+            for path in data_paths:
               part_data[path].append(I.getNodeFromPath(p_dataset, path)[1])
 
         #Partitions having no data must be removed from lngn list since they have no contribution

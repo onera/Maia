@@ -160,7 +160,7 @@ class Test_multiple_labels_exchange:
     dist_zone  = I.getZones(dist_tree)[0]
     part_zones = I.getZones(part_tree)
     # At tree level API, one can use the _all and _only versions to select only
-    # some labels to exchange. Note that we can also filter the fields using the pathes
+    # some labels to exchange. Note that we can also filter the fields using the paths
     dist_to_part.dist_zone_to_part_zones_only(dist_zone, part_zones, sub_comm, \
         include_dict = {'FlowSolution_t' : ['*/*Id']})
     for part_zone in part_zones:

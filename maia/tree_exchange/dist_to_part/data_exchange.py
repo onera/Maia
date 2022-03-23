@@ -132,8 +132,8 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
           distribution = te_utils.get_cgns_distribution(d_bc, 'Index')
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         #Get data
-        data_pathes = PT.predicates_to_pathes(mask_dataset, ['*', '*'])
-        dist_data = {data_path : I.getNodeFromPath(d_dataset, data_path)[1] for data_path in data_pathes}
+        data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
+        dist_data = {data_path : I.getNodeFromPath(d_dataset, data_path)[1] for data_path in data_paths}
 
         #Exchange
         part_data = dist_to_part(distribution, dist_data, lngn_list, comm)

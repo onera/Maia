@@ -7,33 +7,33 @@ __VALUE__    = 1
 __CHILDREN__ = 2
 __LABEL__    = 3
 
-def predicates_to_pathes(root, predicates):
+def predicates_to_paths(root, predicates):
   """
-  An utility function searching node descendance from root matching given predicates,
-  and returning the path of these nodes (instead of the nodes itselves)
+  An utility function searching descendants matching predicates,
+  and returning the path of these nodes (instead of the nodes themselves)
   """
-  pathes = []
+  paths = []
   for nodes in WAPI.iter_nodes_from_predicates(root, predicates, depth=[1,1], ancestors=True):
-    pathes.append('/'.join([n[__NAME__] for n in nodes]))
-  return pathes
+    paths.append('/'.join([n[__NAME__] for n in nodes]))
+  return paths
 
-def concretise_pathes(root, wanted_path_list, labels):
+def concretize_paths(root, wanted_path_list, labels):
   """
   """
-  all_pathes = []
+  all_paths = []
   for path in wanted_path_list:
     names = path.split('/')
     assert len(names) == len(labels)
     predicates = [lambda n, _name=name, _label=label: predicate.match_name_label(n, _name, _label) \
         for (name, label) in zip(names,labels)] 
-    pathes = predicates_to_pathes(root, predicates)
-    all_pathes.extend(pathes)
+    paths = predicates_to_paths(root, predicates)
+    all_paths.extend(paths)
 
-  return sorted(list(set(all_pathes))) #Unique + sort
+  return sorted(list(set(all_paths))) #Unique + sort
 
-def pathes_to_tree(pathes, root_name='CGNSTree'):
+def paths_to_tree(paths, root_name='CGNSTree'):
   """
-  Convert a list of pathes to a CGNSTreeLike
+  Convert a list of paths to a CGNSTreeLike
   """
   def unroll(root):
     """ Internal recursive function """
@@ -54,7 +54,7 @@ def pathes_to_tree(pathes, root_name='CGNSTree'):
     for child in root[__CHILDREN__]:
       unroll(child)
 
-  path_tree = [root_name, pathes, [], None]
+  path_tree = [root_name, paths, [], None]
   unroll(path_tree)
   return path_tree
 
