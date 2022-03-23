@@ -2,6 +2,7 @@ import Converter.Internal      as I
 import maia.sids.Internal_ext  as IE
 
 from maia.sids import sids
+from maia import npy_pdm_gnum_dtype as pdm_dtype
 from . import distribution_function as DIF
 
 def distribute_pl_node(node, comm):
@@ -11,7 +12,7 @@ def distribute_pl_node(node, comm):
   """
   dist_node = I.copyTree(node)
   n_elem = sids.Subset.n_elem(dist_node)
-  distri = DIF.uniform_distribution(n_elem, comm).astype('i8')
+  distri = DIF.uniform_distribution(n_elem, comm).astype(pdm_dtype)
 
   #PL and PLDonor
   for array_n in IE.getNodesByMatching(dist_node, ['IndexArray_t']):
@@ -58,7 +59,7 @@ def distribute_element_node(node, comm):
   dist_node = I.copyTree(node)
 
   n_elem = sids.ElementSize(node)
-  distri = DIF.uniform_distribution(n_elem, comm).astype('i8')
+  distri = DIF.uniform_distribution(n_elem, comm).astype(pdm_dtype)
   IE.newDistribution({'Element' : distri}, dist_node)
 
   ec = I.getNodeFromName1(dist_node, 'ElementConnectivity')
@@ -68,16 +69,16 @@ def distribute_element_node(node, comm):
     ec[1] = ec[1][distri_ec[0] : distri_ec[1]]
     eso[1] = eso[1][distri[0]:distri[1]+1]
 
-    IE.newDistribution({'ElementConnectivity' : distri_ec.astype('i8')}, dist_node)
+    IE.newDistribution({'ElementConnectivity' : distri_ec.astype(pdm_dtype)}, dist_node)
   else:
     n_vtx = sids.ElementNVtx(node)
     ec[1] = ec[1][n_vtx*distri[0] : n_vtx*distri[1]]
     IE.newDistribution({'ElementConnectivity' : n_vtx*distri}, dist_node)
-
+  
   pe = I.getNodeFromName1(dist_node, 'ParentElements')
   if pe is not None:
     pe[1] = (pe[1][distri[0] : distri[1]]).copy(order='F') #Copy is needed to have contiguous memory
-
+  
   return dist_node
 
 def distribute_tree(tree, comm, owner=None):
@@ -96,10 +97,10 @@ def distribute_tree(tree, comm, owner=None):
     # > Cell & Vertex distribution
     n_vtx  = sids.Zone.n_vtx(zone)
     n_cell = sids.Zone.n_cell(zone)
-    zone_distri = {'Vertex' : DIF.uniform_distribution(n_vtx , comm).astype('i8'),
-                   'Cell'   : DIF.uniform_distribution(n_cell, comm).astype('i8')}
+    zone_distri = {'Vertex' : DIF.uniform_distribution(n_vtx , comm).astype(pdm_dtype),
+                   'Cell'   : DIF.uniform_distribution(n_cell, comm).astype(pdm_dtype)}
     if sids.Zone.Type(zone) == 'Structured':
-      zone_distri['Face'] = DIF.uniform_distribution(sids.Zone.n_face(zone), comm).astype('i8')
+      zone_distri['Face'] = DIF.uniform_distribution(sids.Zone.n_face(zone), comm).astype(pdm_dtype)
 
     IE.newDistribution(zone_distri, zone)
 
