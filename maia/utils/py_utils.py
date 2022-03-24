@@ -67,6 +67,12 @@ def append_unique(L, item):
   if item not in L:
     L.append(item)
 
+def loop_from(L, i):
+  """ Iterator over a list L, starting from element i (wrapping around at the end)"""
+  assert 0 <= i and i < len(L)
+  yield from L[i:]
+  yield from L[:i]
+
 def find_cartesian_vector_names(names):
   """
   Function to find basename of cartesian vectors

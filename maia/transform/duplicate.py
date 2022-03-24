@@ -146,6 +146,20 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
   if duplication_number<0:
     return
 
+  # Prepare matching jns
+  if conformize:
+    jn_to_opp = {}
+    for i, jn_path_a in enumerate(jn_for_duplication_paths[0]):
+      ord_opp = I.getNodeFromName1(I.getNodeFromPath(dist_tree, jn_path_a), 'OrdinalOpp')[1][0]
+      jn_path_b = None
+      for jn in py_utils.loop_from(jn_for_duplication_paths[1], i): # May stop earlier if jns are well ordered
+        ord = I.getNodeFromName1(I.getNodeFromPath(dist_tree, jn), 'Ordinal')[1][0]
+        if ord == ord_opp:
+          jn_path_b = jn
+          break
+      assert jn_path_b is not None
+      jn_to_opp[jn_path_a] = jn_path_b
+
   # Get first join in the first list of joins (A)
   first_join_in_matchs_a = I.getNodeFromPath(dist_tree,jn_for_duplication_paths[0][0])
   
@@ -260,13 +274,12 @@ def duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_path
         I.setValue(ordinal_opp_n,I.getValue(ordinal_opp_n)-max_ordinal)
 
     if conformize:
-      # TO DO : adapt for multi zones !!!
-      if comm is None:
-        raise ValueError("MPI communicator is mandatory for conformization !")
-      # jn_for_duplication_paths = []
-      # jn_for_duplication_paths.append(I.getPath(dist_tree,secondJoinPrevNode,pyCGNSLike=True)[1:])
-      # jn_for_duplication_paths.append(I.getPath(dist_tree,firstJoinDupNode,pyCGNSLike=True)[1:])
-      # CCJ.conformize_jn(dist_tree,jn_for_duplication_paths,comm)
+      for jn_path_a, jn_path_b in jn_to_opp.items():
+        jn_path_a_curr = "/".join(split_jn_path_a[0:2]) + ".D{0}/".format(n+1) \
+                       + "/".join(split_jn_path_a[2:])
+        jn_path_b_prev = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(n) \
+                       + "/".join(split_jn_path_b[2:])
+        CCJ.conformize_jn(dist_tree, [jn_path_a_curr, jn_path_b_prev], comm)
   
   # Update information for joins of the fisrt joins list (A) from initial set of zones
   for jn_path_a in jn_for_duplication_paths[0]:
@@ -332,8 +345,27 @@ def duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,jn_for
   ##### > corriger les coordonnées des noeuds de la dernière zone pour assurer le match !
   #############
 
+  if conformize:
+    jn_to_opp = {}
+    for i, jn_path_a in enumerate(jn_for_duplication_paths[0]):
+      ord_opp = I.getNodeFromName1(I.getNodeFromPath(dist_tree, jn_path_a), 'OrdinalOpp')[1][0]
+      jn_path_b = None
+      for jn in py_utils.loop_from(jn_for_duplication_paths[1], i): # May stop earlier if jns are well ordered
+        ord = I.getNodeFromName1(I.getNodeFromPath(dist_tree, jn), 'Ordinal')[1][0]
+        if ord == ord_opp:
+          jn_path_b = jn
+          break
+      assert jn_path_b is not None
+      jn_to_opp[jn_path_a] = jn_path_b
+    _jn_for_duplication_paths = [ [], [] ]
+    for path, path_opp in jn_to_opp.items():
+      _jn_for_duplication_paths[0].append(path)
+      _jn_for_duplication_paths[1].append(path_opp)
+  else:
+    _jn_for_duplication_paths = jn_for_duplication_paths
+
   # Get first join in the first list of joins (A)
-  first_join_in_matchs_a = I.getNodeFromPath(dist_tree,jn_for_duplication_paths[0][0])
+  first_join_in_matchs_a = I.getNodeFromPath(dist_tree, _jn_for_duplication_paths[0][0])
   
   # Get transformation information
   gcp_a = I.getNodeFromType1(first_join_in_matchs_a, "GridConnectivityProperty_t")
@@ -355,14 +387,14 @@ def duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,jn_for
     raise ValueError("Zone/Join not define a section of a row")
   
   # Duplicate 'sectors_number - 1' times the list of zones 'zones'
-  duplicate_n_zones_from_periodic_join(dist_tree,zones,jn_for_duplication_paths,
+  duplicate_n_zones_from_periodic_join(dist_tree,zones, _jn_for_duplication_paths,
                                        duplication_number=sectors_number-1,
                                        conformize=conformize,comm=comm,
                                        apply_to_fields=apply_to_fields)
 
   # Transform periodic joins of the fisrt joins list (A) from initial set of zones
   # to non periodic joins
-  for jn_path_a in jn_for_duplication_paths[0]:
+  for jn_path_a in _jn_for_duplication_paths[0]:
     split_jn_path_a = jn_path_a.split("/")
     jn_path_a_init = "/".join(split_jn_path_a[0:2]) + ".D0/" \
                    + "/".join(split_jn_path_a[2:])
@@ -372,7 +404,7 @@ def duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,jn_for
 
   # Transform periodic joins of the second joins list (B) from last set of duplicated zones
   # to non periodic joins
-  for jn_path_b in jn_for_duplication_paths[1]:
+  for jn_path_b in _jn_for_duplication_paths[1]:
     split_jn_path_b = jn_path_b.split("/")
     jn_path_b_last = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(sectors_number-1) \
                    + "/".join(split_jn_path_b[2:])
@@ -381,15 +413,12 @@ def duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,zones,jn_for
     I._rmNode(jn_b_last_node,gcp_b_last)
 
   
-  
   if conformize:
-	# TO DO : adapt for multi zones !!!
-	# Je pense que le conformize n'est pas utile ici car fait dans "_duplicate_n_zones_from_periodic_join()"
-  # Faire uniquement le conformize pour le dernier raccord entre zones{0} et zones{N-1}
-    if comm is None:
-      raise ValueError("MPI communicator is mandatory for conformization !")
-    #jn_for_duplication_paths = []
-    #jn_for_duplication_paths.append(I.getPath(dist_tree,firstJoinNode,pyCGNSLike=True)[1:])
-    #jn_for_duplication_paths.append(I.getPath(dist_tree,finalSecondJoinNode,pyCGNSLike=True)[1:])
-    #CCJ.conformize_jn(dist_tree,jn_for_duplication_paths,comm)
+    # Conformize last, other have been conformized in duplicate_n_zones_from_periodic_join
+    for jn_path_a, jn_path_b in jn_to_opp.items():
+      jn_path_a_init = "/".join(split_jn_path_a[0:2]) + ".D0/" \
+                     + "/".join(split_jn_path_a[2:])
+      jn_path_b_last = "/".join(split_jn_path_b[0:2]) + ".D{0}/".format(sectors_number-1) \
+                     + "/".join(split_jn_path_b[2:])
+      CCJ.conformize_jn(dist_tree, [jn_path_a_init, jn_path_b_last], comm)
   

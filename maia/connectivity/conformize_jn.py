@@ -1,81 +1,57 @@
-import numpy as np
-
 import Converter.Internal as I
 
-import maia.connectivity.vertex_list  as CVL
-from maia import npy_pdm_gnum_dtype as pdm_dtype
+from maia import npy_pdm_gnum_dtype   as pdm_dtype
+from maia.sids import sids
+from maia.sids import Internal_ext    as IE
+from maia.sids import pytree          as PT
+import maia.connectivity.vertex_list  as VL
 from maia.tree_exchange.dist_to_part import data_exchange as MBTP
 from maia.tree_exchange.part_to_dist import data_exchange as MPTB
-from maia.sids import Internal_ext as IE
 
-def get_vtx_coordinates(grid_coords_n, distri_vtx, requested_vtx_list, comm):
+def conformize_jn(dist_tree, jn_paths, comm):
   """
-  Get the coordinates of requested vertices ids (wraps BlockToPart) and
-  return it as 3 numpy array
+  Ensure that the vertices belonging to the two sides of a 1to1 GridConnectivity
+  have the same coordinates
   """
-  dist_data = dict()
-  for data in I.getNodesFromType1(grid_coords_n, 'DataArray_t'):
-    dist_data[I.getName(data)] = data[1]
-    
-  ln_to_gn_list = [np.asarray(requested_vtx, dtype=pdm_dtype) for requested_vtx in requested_vtx_list]
+  coord_query = ['GridCoordinates_t', 'DataArray_t']
+  
+  # Get vtx ids and opposite vtx ids for this join
+  location = sids.GridLocation(I.getNodeFromPath(dist_tree, jn_paths[0]))
+  if location == 'Vertex':
+    pl_vtx_list = [I.getNodeFromPath(dist_tree, jn_paths[0]+f'/PointList{d}')[1][0] for d in ['', 'Donor']]
+  elif location == 'FaceCenter':
+    pl_vtx_list = VL.generate_jn_vertex_list(dist_tree, jn_paths[0], comm)[:2]
+  else:
+    raise RuntimeError(f"Unsupported grid location for jn {jn_paths[0]}")
 
-  return MBTP.dist_to_part(distri_vtx.astype(pdm_dtype), dist_data, ln_to_gn_list, comm)
+  # Collect data
+  mean_coords = {}
+  vtx_distris = []
+  for i, path in enumerate(jn_paths):
+    zone = I.getNodeFromPath(dist_tree, PT.path_head(path, 2))
+    vtx_distri = I.getVal(IE.getDistribution(zone, 'Vertex')).astype(pdm_dtype, copy=False)
+    dist_coords = {}
+    for grid_co_n, coord_n in PT.iter_nodes_from_predicates(zone, coord_query, ancestors=True):
+      dist_coords[f"{I.getName(grid_co_n)}/{I.getName(coord_n)}"] = coord_n[1]
   
+    part_coords = MBTP.dist_to_part(vtx_distri, dist_coords, [pl_vtx_list[i]], comm)
+  
+    for path, value in part_coords.items():
+      try:
+        mean_coords[path][0] += 0.5*value[0]
+      except KeyError:
+        mean_coords[path] = [0.5*value[0]]
+    vtx_distris.append(vtx_distri)
+  
+  # Send back the mean value to the two zones, and update tree
+  for i, path in enumerate(jn_paths):
+    zone = I.getNodeFromPath(dist_tree, PT.path_head(path, 2))
+    mean_coords['NodeId'] = [pl_vtx_list[i]]
+    dist_data = MPTB.part_to_dist(vtx_distris[i], mean_coords, [pl_vtx_list[i]], comm)
 
+    loc_indices = dist_data.pop('NodeId') - vtx_distri[0] - 1 
 
-def update_vtx_coordinates(grid_coords_n, part_data, distri_vtx, requested_vtx_list, comm):
-  """
-  Set the coordinates of requested vertices ids (wraps PartToBlock)
-  """
-  part_data["NodeId"]=[]
-  for requested_vtx in requested_vtx_list:
-    part_data["NodeId"].append(requested_vtx)
-  
-
-  ln_to_gn_list = [np.asarray(requested_vtx, dtype=pdm_dtype) for requested_vtx in requested_vtx_list]
-
-  dist_data = MPTB.part_to_dist(distri_vtx.astype(pdm_dtype), part_data, ln_to_gn_list, comm)
-  
-  local_indices = dist_data['NodeId']-1-distri_vtx[0]
-  
-  for data in I.getNodesFromType1(grid_coords_n, 'DataArray_t'):
-    data[1][local_indices] = dist_data[I.getName(data)]
-
-
-
-def conformize_jn(dist_tree,JN_for_duplication_paths,comm):
-  """
-  conformization of join
-  
-  Etapes à réaliser :
-  1. récupérér les path des deux 'GridConnectivity' qui composent le raccord
-  2. pour chaque 'GridConnectivity', générer le PoinList et PointListDonor aux noeuds (Vertex)
-  3. récupérer les coordonnées de correspondantes et en faire la moyenne
-  4. mettre à jour les anciennes coordonnées avec celles moyennées
-  """
-  
-  joinPath1, joinPath2 = JN_for_duplication_paths
-  pl_vtx1, pl_vtx_opp1, distri_jn_vtx1 = CVL.generate_jn_vertex_list(dist_tree, joinPath1, comm)
-  
-  zone1Path = "/".join(joinPath1.split("/")[0:2])
-  zone1 = I.getNodeFromPath(dist_tree,zone1Path)
-  gridCoords1Node = I.getNodeFromType1(zone1,"GridCoordinates_t")
-  distriVtxZone1  = I.getVal(IE.getDistribution(zone1, 'Vertex'))
-  
-  zone2Path = "/".join(joinPath2.split("/")[0:2])
-  zone2 = I.getNodeFromPath(dist_tree,zone2Path)
-  gridCoords2Node = I.getNodeFromType1(zone2,"GridCoordinates_t")
-  distriVtxZone2  = I.getVal(IE.getDistribution(zone2, 'Vertex'))
-  
-  coord1 = get_vtx_coordinates(gridCoords1Node, distriVtxZone1, [pl_vtx1], comm)
-  
-  coord2 = get_vtx_coordinates(gridCoords2Node, distriVtxZone2, [pl_vtx_opp1], comm)
-  
-  part_data = dict()
-  for data in I.getNodesFromType1(gridCoords1Node, 'DataArray_t'):
-    dataName = I.getName(data)
-    part_data[dataName] = [(coord1[dataName][0]+coord2[dataName][0])/2.]
-    
-  update_vtx_coordinates(gridCoords1Node, part_data, distriVtxZone1, [pl_vtx1], comm)
-  
-  update_vtx_coordinates(gridCoords2Node, part_data, distriVtxZone2, [pl_vtx_opp1], comm)
+    # Update data
+    for coord_path, value in dist_data.items():
+      node = I.getNodeFromPath(zone, coord_path)
+      node[1][loc_indices] = value
