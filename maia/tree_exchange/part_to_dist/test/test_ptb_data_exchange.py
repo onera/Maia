@@ -7,6 +7,7 @@ import maia.sids.Internal_ext as IE
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 import maia.sids.sids     as SIDS
+from   maia.tree_exchange import part_to_dist
 import maia.tree_exchange.part_to_dist.data_exchange as PTB
 from   maia.utils        import parse_yaml_cgns
 
@@ -219,7 +220,8 @@ ZoneU Zone_t [[6,0,0]]:
     assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
 
 @mark_mpi_test(2)
-def test_part_sol_to_dist_sol(sub_comm):
+@pytest.mark.parametrize("filter", [False, True])
+def test_part_sol_to_dist_sol(sub_comm, filter):
   if sub_comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
@@ -276,19 +278,27 @@ ZoneU Zone_t [[6,0,0]]:
   dist_zone  = parse_yaml_cgns.to_node(dt)
   part_zones = parse_yaml_cgns.to_nodes(pt)
 
-  PTB.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
+  if filter:
+    part_to_dist.part_zones_to_dist_zone_only(dist_zone, part_zones, sub_comm, {'DiscreteData_t' : ['*']})
+  else:
+    PTB.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
+    PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, sub_comm)
 
-  assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int32
+  if not filter:
+    assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int32
   assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1].dtype == np.float64
   if sub_comm.Get_rank () == 0:
-    assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-30]).all()
+    if not filter:
+      assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-30]).all()
     assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1] == [0,1,0]).all()
   if sub_comm.Get_rank () == 1:
-    assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
+    if not filter:
+      assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
     assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1] == [0,1,1]).all()
 
 @mark_mpi_test(2)
-def test_part_subregion_to_dist_subregion(sub_comm):
+@pytest.mark.parametrize("from_api", [False, True])
+def test_part_subregion_to_dist_subregion(sub_comm, from_api):
   if sub_comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
@@ -363,7 +373,10 @@ ZoneU Zone_t [[6,0,0]]:
   dist_zone  = parse_yaml_cgns.to_node(dt)
   part_zones = parse_yaml_cgns.to_nodes(pt)
 
-  PTB.part_subregion_to_dist_subregion(dist_zone, part_zones, sub_comm)
+  if from_api:
+    part_to_dist.part_zones_to_dist_zone_all(dist_zone, part_zones, sub_comm)
+  else:
+    PTB.part_subregion_to_dist_subregion(dist_zone, part_zones, sub_comm)
 
   assert I.getNodeFromPath(dist_zone, 'ZSRWithPL/field')[1].dtype == np.int32
   assert I.getNodeFromPath(dist_zone, 'LinkedZSR/field')[1].dtype == np.float64
@@ -375,7 +388,8 @@ ZoneU Zone_t [[6,0,0]]:
     assert (I.getNodeFromPath(dist_zone, 'LinkedZSR/field')[1] == [300,400,500,600]).all()
 
 @mark_mpi_test(2)
-def test_part_dataset_to_dist_dataset(sub_comm):
+@pytest.mark.parametrize("from_api", [False, True])
+def test_part_dataset_to_dist_dataset(sub_comm, from_api):
   if sub_comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t:
@@ -445,10 +459,15 @@ ZoneU Zone_t:
             field DataArray_t [1,4,3,1]:
   """.format(dtype)
 
-  dist_zone  = parse_yaml_cgns.to_node(dt)
-  part_zones = parse_yaml_cgns.to_nodes(pt)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_zone  = I.getZones(dist_tree)[0]
+  part_zones = I.getZones(part_tree)
 
-  PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, sub_comm)
+  if from_api:
+    part_to_dist.part_tree_to_dist_tree_only_labels(dist_tree, part_tree, ['BCDataSet_t'], sub_comm)
+  else:
+    PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, sub_comm)
 
   assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1].dtype    == np.float64
   assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1].dtype == np.int32

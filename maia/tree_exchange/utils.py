@@ -2,6 +2,7 @@ import Converter.Internal as I
 import numpy as np
 
 import maia.sids.sids               as SIDS
+import maia.sids.pytree as PT
 import maia.sids.Internal_ext as IE
 from maia.sids  import conventions as conv
 from maia.utils import py_utils
@@ -87,4 +88,22 @@ def get_entities_numbering(part_zone, as_pdm=True):
     cell_ln_to_gn = cell_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
   return vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
 
+def create_mask_tree(root, labels, include, exclude):
+  """
+  Create a mask tree from root using either the include or exclude list + hints on searched labels
+  """
+  if len(include) * len(exclude) != 0:
+    raise ValueError("`include` and `exclude` args are mutually exclusive")
+
+  if len(include) > 0:
+    to_include = PT.concretize_paths(root, include, labels)
+  elif len(exclude) > 0:
+    #In exclusion mode, we get all the paths matching labels and exclude the one founded
+    all_paths = PT.predicates_to_paths(root, labels)
+    to_exclude = PT.concretize_paths(root, exclude, labels)
+    to_include = [p for p in all_paths if not p in to_exclude]
+  else:
+    to_include = PT.predicates_to_paths(root, labels)
+
+  return PT.paths_to_tree(to_include, I.getName(root))
 

@@ -6,6 +6,7 @@ import maia.sids.sids     as SIDS
 import maia.sids.Internal_ext as IE
 from maia.utils.parallel import utils as par_utils
 from maia.tree_exchange import utils as te_utils
+from maia.sids import pytree as PT
 
 def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
   """
@@ -48,13 +49,15 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       shaped_data = data[ipart].reshape(SIDS.Zone.VertexSize(part_zone), order='F')
       I.newDataArray(data_name, shaped_data, parent=part_gc)
 
-def dist_sol_to_part_sol(dist_zone, part_zones, comm):
+
+
+def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
   """
-  Transfert all the data included in FlowSolution_t nodes and DiscreteData_t nodes from a distributed
-  zone to the partitioned zones
+  Shared code for FlowSolution_t and DiscreteData_t
   """
   #Get distribution
-  for d_sol in I.getNodesFromType1(dist_zone, "FlowSolution_t") + I.getNodesFromType1(dist_zone, "DiscreteData_t"):
+  for mask_sol in I.getChildren(mask_tree):
+    d_sol = I.getNodeFromName1(dist_zone, I.getName(mask_sol)) #True container
     location = SIDS.GridLocation(d_sol)
     has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
     if has_pl:
@@ -70,9 +73,8 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
         lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
     #Get data
-    dist_data = dict()
-    for field in I.getNodesFromType1(d_sol, 'DataArray_t'):
-      dist_data[I.getName(field)] = field[1] #Prevent np->scalar conversion
+    fields = [I.getName(n) for n in I.getChildren(mask_sol)]
+    dist_data = {field : I.getNodeFromName1(d_sol, field)[1] for field in fields}
 
     #Exchange
     part_data = dist_to_part(distribution, dist_data, lntogn_list, comm)
@@ -84,38 +86,54 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm):
           p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
           shape = I.getNodeFromName1(p_sol, 'PointList')[1].shape[1]
         else:
-          p_sol = I.newFlowSolution(I.getName(d_sol), location, parent=part_zone)
-          I.setType(p_sol, I.getType(d_sol)) #Trick to be generic between DiscreteData/FlowSol
+          p_sol = I.createChild(part_zone, I.getName(d_sol), I.getType(d_sol))
+          I.newGridLocation(location, parent=p_sol)
           shape = SIDS.Zone.VertexSize(part_zone) if location == 'Vertex' else SIDS.Zone.CellSize(part_zone)
         for data_name, data in part_data.items():
           #F is mandatory to keep shared reference. Normally no copy is done
           shaped_data = data[ipart].reshape(shape, order='F')
           I.newDataArray(data_name, shaped_data, parent=p_sol)
 
-def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
+def dist_sol_to_part_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
+  """
+  Transfert all the data included in FlowSolution_t nodes from a distributed
+  zone to the partitioned zones
+  """
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
+  _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
+
+def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
+  """
+  Transfert all the data included in DiscreteData_t nodes from a distributed
+  zone to the partitioned zones
+  """
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
+  _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
+
+def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
   Transfert all the data included in BCDataSet_t/BCData_t nodes from a distributed
   zone to the partitioned zones
   """
   for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
-    for d_bc in I.getNodesFromType1(d_zbc, "BC_t"):
-      bc_path   = I.getName(d_zbc) + '/' + I.getName(d_bc)
-      #Get BC distribution and lngn
-      distribution_bc = te_utils.get_cgns_distribution(d_bc, 'Index')
-      lngn_list_bc    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
-      for d_dataset in I.getNodesFromType1(d_bc, 'BCDataSet_t'):
+    labels = ['BC_t', 'BCDataSet_t', 'BCData_t', 'DataArray_t']
+    mask_tree = te_utils.create_mask_tree(d_zbc, labels, include, exclude)
+    for mask_bc in I.getChildren(mask_tree):
+      bc_path = I.getName(d_zbc) + '/' + I.getName(mask_bc)
+      d_bc = I.getNodeFromPath(dist_zone, bc_path) #True BC
+      for mask_dataset in I.getChildren(mask_bc):
+        ds_path = bc_path + '/' + I.getName(mask_dataset)
+        d_dataset = I.getNodeFromPath(dist_zone, ds_path) #True DataSet
         #If dataset has its own PointList, we must override bc distribution and lngn
         if IE.getDistribution(d_dataset) is not None:
           distribution = te_utils.get_cgns_distribution(d_dataset, 'Index')
-          ds_path      = bc_path + '/' + I.getName(d_dataset)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
-          distribution = distribution_bc
-          lngn_list    = lngn_list_bc
+          distribution = te_utils.get_cgns_distribution(d_bc, 'Index')
+          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         #Get data
-        dist_data = dict()
-        for bc_data, field in IE.iterNodesWithParentsByMatching(d_dataset, 'BCData_t/DataArray_t'):
-          dist_data[I.getName(bc_data) + '/' + I.getName(field)] = field[1] #Prevent np->scalar conversion
+        data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
+        dist_data = {data_path : I.getNodeFromPath(d_dataset, data_path)[1] for data_path in data_paths}
 
         #Exchange
         part_data = dist_to_part(distribution, dist_data, lngn_list, comm)
@@ -134,12 +152,14 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm):
               I.newDataArray(field_name, data[ipart], parent=p_container)
 
 
-def dist_subregion_to_part_subregion(dist_zone, part_zones, comm):
+def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
   Transfert all the data included in ZoneSubRegion_t nodes from a distributed
   zone to the partitioned zones
   """
-  for d_zsr in I.getNodesFromType1(dist_zone, "ZoneSubRegion_t"):
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
+  for mask_zsr in I.getChildren(mask_tree):
+    d_zsr = I.getNodeFromName1(dist_zone, I.getName(mask_zsr)) #True ZSR
     # Search matching region
     matching_region_path = IE.getSubregionExtent(d_zsr, dist_zone)
     matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
@@ -150,9 +170,8 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm):
     lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
     #Get Data
-    dist_data = dict()
-    for field in I.getNodesFromType1(d_zsr, "DataArray_t"):
-      dist_data[I.getName(field)] = field[1] #Prevent np->scalar conversion
+    fields = [I.getName(n) for n in I.getChildren(mask_zsr)]
+    dist_data = {field : I.getNodeFromName1(d_zsr, field)[1] for field in fields}
 
     #Exchange
     part_data = dist_to_part(distribution, dist_data, lngn_list, comm)

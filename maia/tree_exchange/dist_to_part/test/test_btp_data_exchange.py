@@ -5,6 +5,7 @@ import Converter.Internal as I
 from pytest_mpi_check._decorator import mark_mpi_test
 
 from   maia.utils        import parse_yaml_cgns
+from   maia.tree_exchange import dist_to_part
 import maia.tree_exchange.dist_to_part.data_exchange as BTP
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
@@ -226,7 +227,8 @@ def test_dist_coords_to_part_coords_S(sub_comm):
         np.array([1,1,2,1]).reshape((2,2,1),order='F')).all()
 
 @mark_mpi_test(2)
-def test_dist_sol_to_part_sol_allvtx(sub_comm):
+@pytest.mark.parametrize("include", [["FlowSolution/field1"], ["FlowSolution/field*", "*/field2"], []])
+def test_dist_sol_to_part_sol_allvtx(sub_comm, include):
   if sub_comm.Get_rank() == 0:
     dt = dt0
     pt = """
@@ -250,22 +252,29 @@ def test_dist_sol_to_part_sol_allvtx(sub_comm):
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = I.getZones(part_tree)
-  BTP.dist_sol_to_part_sol(dist_zone, part_zones, sub_comm)
+  BTP.dist_sol_to_part_sol(dist_zone, part_zones, sub_comm, include=include)
 
+  should_have_field2 = include != ["FlowSolution/field1"]
   for zone in part_zones:
     assert I.getNodeFromPath(zone, 'FlowSolution/field1')[1].dtype == np.int32
-    assert I.getNodeFromPath(zone, 'FlowSolution/field2')[1].dtype == np.float64
+    if should_have_field2:
+      assert I.getNodeFromPath(zone, 'FlowSolution/field2')[1].dtype == np.float64
+    else:
+      assert I.getNodeFromPath(zone, 'FlowSolution/field2') is None
   if sub_comm.Get_rank() == 0:
     assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field1')[1] == [0,1]).all()
-    assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field2')[1] == [6,1]).all()
+    if should_have_field2:
+      assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field2')[1] == [6,1]).all()
   elif sub_comm.Get_rank() == 1:
     assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field1')[1] == [1,0]).all()
-    assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field2')[1] == [2,5]).all()
     assert (I.getNodeFromPath(part_zones[1], 'FlowSolution/field1')[1] == [0,1]).all()
-    assert (I.getNodeFromPath(part_zones[1], 'FlowSolution/field2')[1] == [4,3]).all()
+    if should_have_field2:
+      assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field2')[1] == [2,5]).all()
+      assert (I.getNodeFromPath(part_zones[1], 'FlowSolution/field2')[1] == [4,3]).all()
 
 @mark_mpi_test(2)
-def test_dist_sol_to_part_sol_pl(sub_comm):
+@pytest.mark.parametrize("exclude", [[], ["*/field1"]])
+def test_dist_sol_to_part_sol_pl(sub_comm, exclude):
   if sub_comm.Get_rank() == 0:
     dt = dt0
     pt = """
@@ -294,17 +303,21 @@ def test_dist_sol_to_part_sol_pl(sub_comm):
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = I.getZones(part_tree)
-  BTP.dist_sol_to_part_sol(dist_zone, part_zones, sub_comm)
+  BTP.dist_sol_to_part_sol(dist_zone, part_zones, sub_comm, exclude=exclude)
 
-  if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1')[1] == [20]).all()
-  elif sub_comm.Get_rank() == 1:
-    assert I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1') is None
-    assert I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1].shape == (2,)
-    assert (I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1] == [30,10]).all()
+  if exclude == []:
+    if sub_comm.Get_rank() == 0:
+      assert (I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1')[1] == [20]).all()
+    elif sub_comm.Get_rank() == 1:
+      assert I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1') is None
+      assert I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1].shape == (2,)
+      assert (I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1] == [30,10]).all()
+  else:
+    assert I.getNodeFromName(part_tree, 'field1') is None
 
 @mark_mpi_test(2)
-def test_dist_dataset_to_part_dataset(sub_comm):
+@pytest.mark.parametrize("from_api", [False, True])
+def test_dist_dataset_to_part_dataset(sub_comm, from_api):
   if sub_comm.Get_rank() == 0:
     dt = dt0
     pt = """
@@ -339,7 +352,10 @@ def test_dist_dataset_to_part_dataset(sub_comm):
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = I.getZones(part_tree)
-  BTP.dist_dataset_to_part_dataset(dist_zone, part_zones, sub_comm)
+  if from_api:
+    dist_to_part.dist_tree_to_part_tree_only_labels(dist_tree, part_tree, ["BCDataSet_t"], sub_comm)
+  else:
+    BTP.dist_dataset_to_part_dataset(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
     assert (I.getNodeFromPath(part_zones[0], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [2,2,1]).all()
@@ -350,7 +366,8 @@ def test_dist_dataset_to_part_dataset(sub_comm):
     assert (I.getNodeFromPath(part_zones[1], 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [100.]).all()
 
 @mark_mpi_test(2)
-def test_dist_subregion_to_part_subregion(sub_comm):
+@pytest.mark.parametrize("api_mode", [None, "ZoneAll", "ZoneOnly", "Tree"])
+def test_dist_subregion_to_part_subregion(sub_comm, api_mode):
   if sub_comm.Get_rank() == 0:
     dt = dt0
     pt = """
@@ -383,7 +400,16 @@ def test_dist_subregion_to_part_subregion(sub_comm):
 
   dist_zone  = I.getZones(dist_tree)[0]
   part_zones = [zone for zone in I.getZones(part_tree) if 'ZoneU' in I.getName(zone)]
-  BTP.dist_subregion_to_part_subregion(dist_zone, part_zones, sub_comm)
+  if api_mode is None:
+    BTP.dist_subregion_to_part_subregion(dist_zone, part_zones, sub_comm)
+  elif api_mode == "ZoneAll":
+    dist_to_part.dist_zone_to_part_zones_all(dist_zone, part_zones, sub_comm, exclude_dict={'FlowSolution_t' : ['*']})
+  elif api_mode == "ZoneOnly":
+    dist_to_part.dist_zone_to_part_zones_only(dist_zone, part_zones, sub_comm, include_dict={'ZoneSubRegion_t' : ['*']})
+  elif api_mode == "Tree":
+    dist_to_part.dist_tree_to_part_tree_only_labels(dist_tree, part_tree, ["ZoneSubRegion_t"], sub_comm)
+  else:
+    return
 
   if sub_comm.Get_rank() == 0:
     assert (I.getNodeFromPath(part_zones[0], 'ZSRWithoutPL/field')[1] == [200,500,100]).all()
