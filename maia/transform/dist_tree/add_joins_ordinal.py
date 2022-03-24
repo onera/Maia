@@ -75,7 +75,7 @@ def add_joins_ordinal(dist_tree, comm, force=False):
       and sids.GridConnectivity.is1to1(n)
   query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", match1to1]
   if force:
-    rm_joins_ordinal(tree)
+    rm_joins_ordinal(dist_tree)
     compute_ordinal = True
     for nodes in IE.iterNodesWithParentsByMatching(dist_tree, query):
       gc_list.append(nodes[-1])
@@ -85,8 +85,8 @@ def add_joins_ordinal(dist_tree, comm, force=False):
     for nodes in IE.iterNodesWithParentsByMatching(dist_tree, query):
       gc_list.append(nodes[-1])
       gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
-      ordinal_n     = I.getNodeFromName(nodes[-1], 'Ordinal')
-      ordinal_opp_n = I.getNodeFromName(nodes[-1], 'OrdinalOpp')
+      ordinal_n     = I.getNodeFromName1(nodes[-1], 'Ordinal')
+      ordinal_opp_n = I.getNodeFromName1(nodes[-1], 'OrdinalOpp')
       if (ordinal_n is None) or (ordinal_opp_n is None):
         compute_ordinal = True
   
