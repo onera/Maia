@@ -11,7 +11,6 @@ def _get_gc_root_name(gc_name):
   idx = gc_name.rfind('.D') #Find last occurence
   return gc_name[:idx] if idx > -1 else gc_name
 
-
 def duplicate_zone_with_transformation(zone, duplicated_zone_name,
                                        rotation_center = np.array([0.,0.,0.]),
                                        rotation_angle  = np.array([0.,0.,0.]),
@@ -33,21 +32,8 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
   # Zone duplication
   duplicated_zone = I.copyTree(zone)
   I.setName(duplicated_zone, duplicated_zone_name)
-  
-  # Apply transformation
-  duplicated_coords_n  = I.getNodeFromType1(duplicated_zone, "GridCoordinates_t")
-  assert duplicated_coords_n is not None
-  duplicated_coord_x_n  = I.getNodeFromName1(duplicated_coords_n, "CoordinateX")
-  duplicated_coord_y_n  = I.getNodeFromName1(duplicated_coords_n, "CoordinateY")
-  duplicated_coord_z_n  = I.getNodeFromName1(duplicated_coords_n, "CoordinateZ")
-  duplicated_coords = [I.getVal(n) for n in [duplicated_coord_x_n, duplicated_coord_y_n, duplicated_coord_z_n]]
-  
-  modified_coord_x, modified_coord_y, modified_coord_z = GEO.transform_cart_vectors(
-      *duplicated_coords, translation, rotation_center, rotation_angle)
 
-  I.setValue(duplicated_coord_x_n, modified_coord_x)
-  I.setValue(duplicated_coord_y_n, modified_coord_y)
-  I.setValue(duplicated_coord_z_n, modified_coord_z)
+  GEO.transform_zone(duplicated_zone, rotation_center, rotation_angle, translation, apply_to_fields)
   
   gc_predicate = ["ZoneGridConnectivity_t",
                   lambda n : I.getType(n) in ["GridConnectivity_t", "GridConnectivity1to1_t"]]
@@ -59,30 +45,6 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
       I.setValue(ordinal_n,     I.getValue(ordinal_n)    +max_ordinal)
       I.setValue(ordinal_opp_n, I.getValue(ordinal_opp_n)+max_ordinal)
         
-  if apply_to_fields:
-    fields_nodes  = I.getNodesFromType1(duplicated_zone, "FlowSolution_t")
-    fields_nodes += I.getNodesFromType1(duplicated_zone, "DiscreteData_t")
-    fields_nodes += I.getNodesFromType1(duplicated_zone, "ZoneSubRegion_t")
-    zoneBC = I.getNodeFromType1(duplicated_zone, "ZoneBC_t")
-    if zoneBC:
-      for bc in I.getNodesFromType1(zoneBC, "BC_t"):
-        fields_nodes += I.getNodesFromType1(bc, "BCDataSet_t")
-    for fields_node in fields_nodes:
-      data_names = [I.getName(data) for data in I.getNodesFromType(fields_node, "DataArray_t")]
-      cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names)
-      for basename in cartesian_vectors_basenames:
-        vector_x_n = I.getNodeFromNameAndType(fields_node, basename+"X", "DataArray_t")
-        vector_y_n = I.getNodeFromNameAndType(fields_node, basename+"Y", "DataArray_t")
-        vector_z_n = I.getNodeFromNameAndType(fields_node, basename+"Z", "DataArray_t")
-        vectors = [I.getVal(n) for n in [vector_x_n, vector_y_n, vector_z_n]]
-        # Assume that vectors are position independant
-        # Be careful, if coordinates vector needs to be transform, the translation is not apply !
-        modified_vector_x, modified_vector_y, modified_vector_z = GEO.transform_cart_vectors(
-            *vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
-        I.setValue(vector_x_n, modified_vector_x)
-        I.setValue(vector_y_n, modified_vector_y)
-        I.setValue(vector_z_n, modified_vector_z)
-
   return duplicated_zone
 
 
