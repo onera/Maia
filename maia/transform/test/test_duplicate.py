@@ -166,8 +166,7 @@ def test_duplicate_n_zones_from_periodic_join(sub_comm):
   
   zone_basename = I.getName(I.getZones(dist_tree)[0])
   
-  duplicate.duplicate_n_zones_from_periodic_join(dist_tree,I.getZones(dist_tree),
-                                                 jn_for_duplication_paths)
+  duplicate.duplicate_n_zones_from_periodic_join(dist_tree, I.getZones(dist_tree), jn_for_duplication_paths, 1, sub_comm)
   
   assert (len(I.getZones(dist_tree)) == 2)
   
@@ -253,7 +252,7 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
   zone_basename = I.getName(I.getZones(dist_tree)[0])
   
   duplicate.duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree,I.getZones(dist_tree),
-                                                                  jn_for_duplication_paths)
+                                                                  jn_for_duplication_paths, sub_comm)
   
   assert (len(I.getZones(dist_tree)) == 4)
   
