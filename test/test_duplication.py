@@ -83,7 +83,7 @@ def test_duplicate_from_periodic(sub_comm, write_output):
   opposite_jns = [first_side_jn, second_side_jn]
 
   assert len(I.getZones(dist_tree)) == 1
-  DUP.duplicate_n_zones_from_periodic_join(dist_tree, ['Base/zone'], opposite_jns, 4, sub_comm)
+  DUP.duplicate_from_periodic_jns(dist_tree, ['Base/zone'], opposite_jns, 4, sub_comm)
   assert len(I.getZones(dist_tree)) == 4+1
 
   # We still have only 2 periodic jns in the tree, and their translation value is updated
@@ -108,7 +108,7 @@ def test_duplicate_360(sub_comm, write_output):
   opposite_jns = [first_side_jn, second_side_jn]
 
   assert len(I.getZones(dist_tree)) == 1
-  DUP.duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree, ['Base/bump_45'], opposite_jns, sub_comm)
+  DUP.duplicate_from_rotation_jns_to_360(dist_tree, ['Base/bump_45'], opposite_jns, sub_comm)
   assert len(I.getZones(dist_tree)) == 45
 
   # There is no more periodic joins in the tree

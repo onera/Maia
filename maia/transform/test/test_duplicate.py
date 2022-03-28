@@ -114,7 +114,7 @@ def test_duplicate_zone_with_transformation2():
 
 ###############################################################################
 @mark_mpi_test([1,3])
-def test_duplicate_n_zones_from_periodic_join(sub_comm):
+def test_duplicate_from_periodic_jns(sub_comm):
 
   def get_perio_values(perio_node):
     return [I.getVal(I.getNodeFromName1(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
@@ -126,12 +126,12 @@ def test_duplicate_n_zones_from_periodic_join(sub_comm):
   
   match_perio_by_trans_a = 'Base/Zone/ZoneGridConnectivity/MatchTranslationA'
   match_perio_by_trans_b = 'Base/Zone/ZoneGridConnectivity/MatchTranslationB'
-  jn_for_duplication_paths = [[match_perio_by_trans_a],[match_perio_by_trans_b]]
+  jn_paths_for_dupl = [[match_perio_by_trans_a],[match_perio_by_trans_b]]
   
   zone_basename = I.getName(I.getZones(dist_tree)[0])
   zone_paths = ['Base/' + I.getName(zone) for zone in I.getZones(dist_tree)]
   
-  duplicate.duplicate_n_zones_from_periodic_join(dist_tree, zone_paths, jn_for_duplication_paths, 1, sub_comm)
+  duplicate.duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, 1, sub_comm)
   
   assert len(I.getZones(dist_tree)) == 2
   
@@ -201,13 +201,13 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
   
   match_perio_by_rot_a = 'Base/Zone/ZoneGridConnectivity/MatchRotationA'
   match_perio_by_rot_b = 'Base/Zone/ZoneGridConnectivity/MatchRotationB'
-  jn_for_duplication_paths = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
+  jn_paths_for_dupl = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
   
   zone_basename = I.getName(I.getZones(dist_tree)[0])
   zone_paths = ['Base/' + I.getName(zone) for zone in I.getZones(dist_tree)]
   
-  duplicate.duplicate_zones_from_periodic_join_by_rotation_to_360(dist_tree, zone_paths, 
-      jn_for_duplication_paths, sub_comm, conformize=True)
+  duplicate.duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, 
+      jn_paths_for_dupl, sub_comm, conformize=True)
   
   zones = I.getZones(dist_tree)
   assert len(zones) == 4
