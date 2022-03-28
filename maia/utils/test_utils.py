@@ -1,8 +1,12 @@
 import os
+from os import path
 import tempfile
 import shutil
 
-mesh_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'share', 'meshes')
+import maia
+
+mesh_dir        = path.normpath(path.join(path.dirname(maia.__file__), '..', 'share', 'meshes'))
+sample_mesh_dir = path.normpath(path.join(path.dirname(maia.__file__), '..', 'share', 'sample_meshes'))
 pytest_output_prefix = 'pytest_out'
 
 def create_collective_tmp_dir(comm):
@@ -31,9 +35,9 @@ def create_pytest_output_dir(comm):
   Return the name of this directory
   """
   test_name = os.environ.get('PYTEST_CURRENT_TEST').split('::')[-1].split()[0]
-  out_dir = os.path.join(pytest_output_prefix, test_name) 
+  out_dir = path.join(pytest_output_prefix, test_name) 
   if comm.Get_rank() == 0:
-    if not os.path.exists(out_dir):
+    if not path.exists(out_dir):
       os.makedirs(out_dir)
   comm.barrier()
   return out_dir
