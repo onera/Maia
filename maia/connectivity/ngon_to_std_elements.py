@@ -1,5 +1,5 @@
 from cmaia.transform import transform as ctransform
-from maia.transform.apply_function_to_nodes import apply_to_bases
+from maia.transform.apply_function_to_nodes import apply_to_zones
 import Converter.Internal as I
 from maia import transform
 from mpi4py import MPI
@@ -12,5 +12,5 @@ def ngon_to_std_elements(t,comm=MPI.COMM_WORLD):
   (i.e. tris, quads, tets, pyras, prisms and hexas only)
   """
   transform.put_boundary_first(t,comm)
-  apply_to_bases(t,ctransform.convert_zone_to_std_elements)
+  apply_to_zones(t,ctransform.convert_zone_to_std_elements)
 

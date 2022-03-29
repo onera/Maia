@@ -36,16 +36,16 @@ apply_cpp_cgns_par_function_to_py_base(F&& f) {
 }
 
 const auto put_boundary_first = apply_cpp_cgns_par_function_to_py_base(maia::put_boundary_first);
-const auto remove_ghost_info             = apply_cpp_cgns_par_function_to_py_base(cgns::remove_ghost_info);
+const auto remove_ghost_info             = apply_cpp_cgns_par_function_to_py_base(maia::remove_ghost_info);
 const auto merge_by_elt_type             = apply_cpp_cgns_par_function_to_py_base(maia::merge_by_elt_type);
 const auto add_fsdm_distribution         = apply_cpp_cgns_par_function_to_py_base(maia::add_fsdm_distribution);
 const auto split_boundary_subzones_according_to_bcs = apply_cpp_cgns_par_function_to_py_base(maia::split_boundary_subzones_according_to_bcs);
 const auto generate_interior_faces_and_parents      = apply_cpp_cgns_par_function_to_py_base(maia::generate_interior_faces_and_parents); // TODO move
 const auto std_elements_to_ngons                    = apply_cpp_cgns_par_function_to_py_base(maia::std_elements_to_ngons); // TODO move
 
-const auto convert_zone_to_std_element = apply_cpp_cgns_function_to_py_base(maia::convert_zone_to_std_elements);
-const auto gcs_only_for_ghosts         = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
-const auto ngon_new_to_old             = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
+const auto convert_zone_to_std_elements = apply_cpp_cgns_function_to_py_base(maia::convert_zone_to_std_elements);
+const auto gcs_only_for_ghosts          = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
+const auto ngon_new_to_old              = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
 
 
 
