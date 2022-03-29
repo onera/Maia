@@ -11,6 +11,5 @@ def ngon_to_std_elements(t,comm=MPI.COMM_WORLD):
   The ngon elements are supposed to describe only standard elements
   (i.e. tris, quads, tets, pyras, prisms and hexas only)
   """
-  transform.put_boundary_first(t,comm)
   apply_to_zones(t,ctransform.convert_zone_to_std_elements)
 

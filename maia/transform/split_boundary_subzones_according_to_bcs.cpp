@@ -44,7 +44,7 @@ sub_field_for_ids(const Tree_range& fields, std_e::span<const I4> ids, I4 first_
 template<class Tree_range> auto
 split_boundary_subzone_according_to_bcs(const tree& zsr, const Tree_range& bcs, MPI_Comm comm) {
   I4 first_id = get_child_value_by_name<I4,2>(zsr,"PointRange")(0,0);
-  auto partial_dist = get_node_value_by_matching<I8>(zsr,":CGNS#Distribution/Index");
+  auto partial_dist = get_node_value_by_matching<I4>(zsr,":CGNS#Distribution/Index");
   auto distri = distribution_from_partial(partial_dist,comm);
   std::vector<tree> sub_zsrs;
   for (const tree& bc : bcs) {

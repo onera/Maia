@@ -21,22 +21,21 @@ def test_ngons_to_std_elements(sub_comm, write_output):
 
   maia.connectivity.ngon_to_std_elements(dist_tree)
 
-## TODO adapt
-##  ## > Old elements are cleaned up
-##  #assert len(I.getNodesFromType(dist_tree, 'Elements_t')) == 2
-##  ## > Poly sections appear
-##  #ngon_node  = I.getNodeFromName(dist_tree, 'NGON_n')
-##  #nface_node = I.getNodeFromName(dist_tree, 'NFACE_n')
-##  #assert ngon_node  is not None
-##  #assert nface_node is not None
-##
-##  #assert I.getNodeFromName(ngon_node, 'ParentElements')
-##  #assert I.getNodeFromName(ngon_node, 'ParentElementsPosition')
-##
-##  ## > Some non-regression checks
-##  #assert np.all(I.getVal(I.getNodeFromName(ngon_node , 'ElementRange')) == [1,2694])
-##  #assert np.all(I.getVal(I.getNodeFromName(nface_node, 'ElementRange')) == [2695,3990])
-##
-##  #if write_output:
-##  #  out_dir = TU.create_pytest_output_dir(sub_comm)
-##  #  maia.cgns_io.cgns_io_tree.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'U_M6Wing_ngon.cgns'), sub_comm)
+  # > There is two sections...
+  assert len(I.getNodesFromType(dist_tree, 'Elements_t')) == 2
+  # > One for the Tris, on for the Tets
+  tris = I.getNodeFromName(dist_tree, 'TRI_3')
+  tets = I.getNodeFromName(dist_tree, 'TETRA_4')
+  assert tris is not None
+  assert tets is not None
+
+  # > Some non-regression checks
+  assert np.all(I.getVal(I.getNodeFromName(tris, 'ElementRange')) == [1,204])
+  assert np.all(I.getVal(I.getNodeFromName(tets, 'ElementRange')) == [205,1500])
+
+  if write_output:
+    out_dir = TU.create_pytest_output_dir(sub_comm)
+    import Converter.PyTree as C
+    C.convertPyTree2File(dist_tree,os.path.join(out_dir, 'U_M6Wing_ngon.cgns'))
+    # TODO replace by this when in parallel
+    #maia.cgns_io.cgns_io_tree.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'U_M6Wing_ngon.cgns'), sub_comm)

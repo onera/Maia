@@ -40,7 +40,7 @@ create_interior_faces_section(in_faces_with_parents<I>&& fps, I section_first_id
   emplace_child(elt_section_node,std::move(parent_position_elt_node));
 
   // distribution
-  std::vector<I8> elt_dist(3);
+  std::vector<I> elt_dist(3);
   elt_dist[0] = n_face_acc;
   elt_dist[1] = n_face_acc + n_face;
   elt_dist[2] = n_face_tot;

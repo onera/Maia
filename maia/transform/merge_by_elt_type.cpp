@@ -43,7 +43,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   std::vector<PDM_g_num_t*> block_distribs(n_section);
   for (int i=0; i<n_section; ++i) {
     tree& section_node = *(first_section+i);
-    auto section_connec_partial_distri = get_node_value_by_matching<I8>(section_node,":CGNS#Distribution/Element");
+    auto section_connec_partial_distri = ElementDistribution<I4>(section_node);
     block_distribs_storer[i] = distribution_from_partial(section_connec_partial_distri,comm);
     block_distribs[i] = block_distribs_storer[i].data();
     multi_distrib_idx[i+1] = multi_distrib_idx[i] + section_connec_partial_distri.back();
@@ -105,7 +105,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
     start,finish
   );
 
-  std::vector<I8> partial_dist(3);
+  std::vector<I4> partial_dist(3);
   partial_dist[0] = merged_distri[i_rank];
   partial_dist[1] = merged_distri[i_rank+1];
   partial_dist[2] = merged_distri.back();

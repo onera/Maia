@@ -10,14 +10,14 @@ using namespace cgns;
 namespace maia {
 
 
-auto
-number_of_faces(const tree_range& elt_sections) -> std::array<I8,cgns::n_face_type> {
-  std::array<I8,cgns::n_face_type> n_faces_by_type;
+template<class I> auto
+number_of_faces(const tree_range& elt_sections) -> std::array<I,cgns::n_face_type> {
+  std::array<I,cgns::n_face_type> n_faces_by_type;
   std::ranges::fill(n_faces_by_type,0);
 
   for (const tree& e : elt_sections) {
     auto elt_type = element_type(e);
-    I8 n_elt = distribution_local_size(ElementDistribution(e));
+    I n_elt = distribution_local_size(ElementDistribution<I>(e));
     for (int i=0; i<cgns::n_face_type; ++i) {
       auto face_type = cgns::all_face_types[i];
       n_faces_by_type[i] += n_elt * cgns::number_of_faces(elt_type,face_type);
@@ -39,7 +39,7 @@ gen_faces(
   auto connec_range = view_as_block_range<n_vtx>(elt_connec);
 
   I elt_start = ElementRange<I>(elt_node)[0];
-  I index_dist_start = ElementDistribution(elt_node)[0];
+  I index_dist_start = ElementDistribution<I>(elt_node)[0];
   I elt_id = elt_start + index_dist_start;
 
   for (const auto& elt : connec_range) {
@@ -56,7 +56,7 @@ template<class I> auto
 generate_element_faces_and_parents(const tree_range& elt_sections) -> faces_and_parents_by_section<I> {
   //auto _ = std_e::stdout_time_logger("generate_element_faces_and_parents");
 
-  auto n_faces_by_type = number_of_faces(elt_sections);
+  auto n_faces_by_type = number_of_faces<I>(elt_sections);
   connectivities_with_parents<I> tris (TRI_3 ,cgns::at_face_type(n_faces_by_type,TRI_3 ));
   connectivities_with_parents<I> quads(QUAD_4,cgns::at_face_type(n_faces_by_type,QUAD_4));
 

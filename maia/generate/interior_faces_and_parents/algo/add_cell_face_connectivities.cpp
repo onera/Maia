@@ -113,7 +113,7 @@ compute_cell_face(tree_range& cell_sections, const in_ext_faces_by_section<I>& u
 
 template<class I> auto
 append_cell_face_info(tree& vol_section, std::vector<I>&& cell_indices, std::vector<I>&& cell_face_ids, MPI_Comm comm) {
-  auto partial_dist = ElementDistribution(vol_section);
+  auto partial_dist = ElementDistribution<I>(vol_section);
 
   auto dist_cell_face = maia::distribution_from_partial(partial_dist,comm);
   std_e::scale(dist_cell_face,number_of_faces(element_type(vol_section)));

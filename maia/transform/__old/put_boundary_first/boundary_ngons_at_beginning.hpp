@@ -17,7 +17,6 @@
 #include "std_e/data_structure/block_range/vblock_range.hpp"
 #include "std_e/data_structure/block_range/vblock_permutation.hpp"
 #include "maia/connectivity/utils/connectivity_range.hpp"
-#include "std_e/log.hpp"
 
 
 using cgns::tree;
@@ -161,8 +160,8 @@ indirect_partition_by_number_of_faces(const Rng& cell_face_offsets) -> std::tupl
   auto [perm,partition_indices] = std_e::indirect_partition_by_block_size(cell_face_offsets);
 
   // get tet/pyra-prism and pyra-prism/hex splits TODO: retrieve them from partition_indices
-  auto last_tet        = std::ranges::find_if_not(perm,[&cell_n_faces](I i){ return cell_n_faces[i]==4; });
-  auto last_pyra_prism = std::ranges::find_if_not(perm,[&cell_n_faces](I i){ return cell_n_faces[i]==5; });
+  auto last_tet        = std::ranges::find_if_not(perm              ,[&cell_n_faces](I i){ return cell_n_faces[i]==4; });
+  auto last_pyra_prism = std::ranges::find_if_not(last_tet,end(perm),[&cell_n_faces](I i){ return cell_n_faces[i]==5; });
 
   return std::make_tuple( std::move(perm) , last_tet-begin(perm) , last_pyra_prism-begin(perm) );
 }
@@ -203,10 +202,10 @@ pyra_prism_permutation(auto& cell_face, const auto& face_vtx, I first_face_id) -
   return {perm,partition_index};
 }
 template<class I> auto
-partition_cells_pyra_prism(auto& cell_face, auto& face_cell, I first_pyra_id, const auto& face_vtx, I first_face_id) -> I {
+partition_cells_pyra_prism(auto& cell_face, auto& face_cell, I first_pyra_id, const auto& face_vtx, I first_face_id, I inf, I sup) -> I {
   auto [perm,first_prism_index] = pyra_prism_permutation(cell_face,face_vtx,first_face_id);
   std_e::permute_vblock_range(cell_face,perm);
-  inv_permute_parent_elements(face_cell,perm,first_pyra_id);
+  inv_permute_parent_elements_sub(face_cell,perm,first_pyra_id,inf,sup);
   return first_prism_index;
 }
 
@@ -229,7 +228,8 @@ partition_cells_into_simple_types(tree& ngons, tree& nfaces) -> std::vector<I> {
   auto pyra_prism_cell_face = make_connectivity_subrange(nfaces,last_tet_index,last_pyra_prism_index);
   auto first_pyra_id = first_cell_id+last_tet_index;
 
-  I first_prism_index = partition_cells_pyra_prism(pyra_prism_cell_face,face_cell,first_pyra_id,face_vtx,first_face_id);
+  I first_prism_among_pyra_prism_index = partition_cells_pyra_prism(pyra_prism_cell_face,face_cell,first_pyra_id,face_vtx,first_face_id,last_tet_index,last_pyra_prism_index);
+  I first_prism_index = last_tet_index + first_prism_among_pyra_prism_index;
   return { 0,  last_tet_index,  first_prism_index,  last_pyra_prism_index,  cell_face.size() };
 }
 

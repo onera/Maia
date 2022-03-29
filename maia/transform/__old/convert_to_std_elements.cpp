@@ -30,25 +30,31 @@ make_ElementConnectivity_subrange(const cgns::tree& elt_section, I start, I fini
 template<class I> auto
 convert_to_simple_exterior_boundary_connectivities(const tree& ngons, I n_tri) -> std::pair<std::vector<tree>,I> {
   I n_face = ElementSizeBoundary(ngons);
-  std::vector<tree> face_sections(2);
+  std::vector<tree> face_sections;
 
   auto tris  = make_ElementConnectivity_subrange(ngons, I(0),n_tri );
-  face_sections[0] =
-    cgns::new_Elements(
-      "TRI_3",
-      cgns::TRI_3,
-      std::vector(begin(tris),end(tris)),
-      I(1),n_tri
+  if (tris.size() > 0) {
+    face_sections.emplace_back(
+      cgns::new_Elements(
+        "TRI_3",
+        cgns::TRI_3,
+        std::vector(begin(tris),end(tris)),
+        I(1),n_tri
+      )
     );
+  }
 
   auto quads = make_ElementConnectivity_subrange(ngons, n_tri,n_face);
-  face_sections[1] =
-    cgns::new_Elements(
-      "QUAD_4",
-      cgns::QUAD_4,
-      std::vector(begin(quads),end(quads)),
-      n_tri+1,n_face
+  if (quads.size() > 0) {
+    face_sections.emplace_back(
+      cgns::new_Elements(
+        "QUAD_4",
+        cgns::QUAD_4,
+        std::vector(begin(quads),end(quads)),
+        n_tri+1,n_face
+      )
     );
+  }
 
   return { std::move(face_sections) , n_face+1 };
 }
@@ -355,7 +361,7 @@ convert_zone_to_std_elements(tree& z) -> void {
   STD_E_ASSERT(label(z)=="Zone_t"); // TODO is_gc_maia_zone
 
   if (value(z).data_type()=="I4") return _convert_zone_to_std_elements<I4>(z);
-  if (value(z).data_type()=="I8") return _convert_zone_to_std_elements<I8>(z);
+  //if (value(z).data_type()=="I8") return _convert_zone_to_std_elements<I8>(z); // TODO
   throw cgns::cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
 }
 

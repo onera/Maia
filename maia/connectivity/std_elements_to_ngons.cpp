@@ -33,7 +33,7 @@ concatenate_into_poly_section(const cgns::tree_range& section_nodes, ElementType
   int n_section = section_nodes.size();
   std::vector<I> n_elts(n_section);
   std::vector<I> w_elts(n_section);
-  std::vector<std_e::interval_vector<I8>> connec_distri_by_section(n_section);
+  std::vector<std_e::interval_vector<I>> connec_distri_by_section(n_section);
   std::vector<std_e::span<const I>> connec_by_section(n_section);
   for (int i=0; i<n_section; ++i) {
     const tree& elt_node = section_nodes[i];
@@ -45,7 +45,7 @@ concatenate_into_poly_section(const cgns::tree_range& section_nodes, ElementType
 
     connec_by_section[i] = get_node_value_by_matching<I>(elt_node,connec_name);
 
-    auto elt_distri = ElementDistribution(elt_node);
+    auto elt_distri = ElementDistribution<I>(elt_node);
     connec_distri_by_section[i] = partial_to_full_distribution(elt_distri,comm);
     std_e::scale(connec_distri_by_section[i],w_elts[i]);
   }
@@ -101,7 +101,7 @@ ngon_from_faces(const tree_range& face_sections, MPI_Comm comm) -> tree {
   std::vector<std_e::span<const I>> r_pe_by_section(n_section);
   std::vector<std_e::span<const I>> l_pp_by_section(n_section);
   std::vector<std_e::span<const I>> r_pp_by_section(n_section);
-  std::vector<std_e::interval_vector<I8>> distri_by_section(n_section);
+  std::vector<std_e::interval_vector<I>> distri_by_section(n_section);
   for (int i=0; i<n_section; ++i) {
     const tree& elt_node = face_sections[i];
     auto pe = ParentElements<I>(elt_node);
@@ -111,7 +111,7 @@ ngon_from_faces(const tree_range& face_sections, MPI_Comm comm) -> tree {
     l_pp_by_section[i] = column(pp,0);
     r_pp_by_section[i] = column(pp,1);
 
-    auto elt_distri = ElementDistribution(elt_node);
+    auto elt_distri = ElementDistribution<I>(elt_node);
     distri_by_section[i] = partial_to_full_distribution(elt_distri,comm);
   }
   /// 1.2. concatenate
