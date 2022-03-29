@@ -24,7 +24,7 @@ job:build:
     - git submodule sync --recursive
     - git submodule update --init --recursive
     - mkdir build && cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -Dmaia_USE_PDM_INSTALL=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -Dmaia_USE_PDM_INSTALL=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON -Dstd_e_ENABLE_CPP20=ON -Dmaia_ENABLE_CPP20=ON ../
     - make -j8
   cache:
     paths:
