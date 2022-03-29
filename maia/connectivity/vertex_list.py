@@ -15,6 +15,7 @@ from maia.utils.parallel import utils as par_utils
 from maia.transform.dist_tree import add_joins_ordinal as AJO
 
 from maia.tree_exchange.dist_to_part import data_exchange as MBTP
+from maia.geometry import geometry as GEO
 
 def face_ids_to_vtx_ids(face_ids, ngon, comm):
   """
@@ -237,17 +238,12 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
   #Apply transformation
   if gc_prop is not None:
     gc_periodic = I.getNodeFromType1(gc_prop, 'Periodic_t')
-    translation         = I.getNodeFromName1(gc_periodic, 'Translation')[1]
-    rotation_center     = I.getNodeFromName1(gc_periodic, 'RotationCenter')[1]
-    alpha, beta, gamma  = I.getNodeFromName1(gc_periodic, 'RotationAngle')[1]
-    rotation_matx = np.array([[1, 0, 0], [0, cos(alpha), -sin(alpha)], [0, sin(alpha), cos(alpha)]])
-    rotation_maty = np.array([[cos(beta), 0, sin(beta)], [0, 1, 0], [-sin(beta), 0, cos(beta)]])
-    rotation_matz = np.array([[cos(gamma), -sin(gamma), 0], [sin(gamma), cos(gamma), 0], [0, 0, 1]])
-    rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
+    translation     = I.getNodeFromName1(gc_periodic, 'Translation')[1]
+    rotation_center = I.getNodeFromName1(gc_periodic, 'RotationCenter')[1]
+    rotation_angle  = I.getNodeFromName1(gc_periodic, 'RotationAngle')[1]
+    
+    opp_received_coords = GEO.transform_cart_matrix(opp_received_coords.T, translation, rotation_center, rotation_angle).T
 
-    # TODO either rotation_center == 0, or translate before rotation
-    assert (rotation_center == np.zeros(3, dtype=np.float64)).all()
-    opp_received_coords = np.dot(rotation_mat, opp_received_coords.T).T + translation
 
 
   #Work locally on each original face to find the starting vtx

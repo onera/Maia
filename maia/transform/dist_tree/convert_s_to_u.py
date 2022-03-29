@@ -136,7 +136,7 @@ def compute_transform_matrix(transform):
 ###############################################################################
 
 ###############################################################################
-def apply_transformation(index_1, start_1, start_2, T):
+def apply_transform_matrix(index_1, start_1, start_2, T):
   """
   This function compute indices from current to oppposit or from opposite to current
   by using the transform matrix as defined in the SIDS of CGNS
@@ -318,8 +318,8 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   sub_pr_opp_list = []
   for sub_pr in sub_pr_list:
     sub_pr_opp = np.empty((3,2), dtype=sub_pr.dtype)
-    sub_pr_opp[:,0] = apply_transformation(sub_pr[:,0], point_range_loc[:,0], point_range_opp_loc[:,0], T)
-    sub_pr_opp[:,1] = apply_transformation(sub_pr[:,1], point_range_loc[:,0], point_range_opp_loc[:,0], T)
+    sub_pr_opp[:,0] = apply_transform_matrix(sub_pr[:,0], point_range_loc[:,0], point_range_opp_loc[:,0], T)
+    sub_pr_opp[:,1] = apply_transform_matrix(sub_pr[:,1], point_range_loc[:,0], point_range_opp_loc[:,0], T)
     sub_pr_opp_list.append(sub_pr_opp)
 
   #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required

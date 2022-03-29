@@ -13,6 +13,7 @@ def get_part_suffix(name):
   split = name.split('.')
   assert len(split) >= 3, \
       f"Name {name} don't seem to follow part convention"
+  assert (split[-2].startswith("P") and split[-1].startswith("N")) #TODO ? use a regex ?
   return int(split[-2][1:]), int(split[-1][1:])
 
 def add_split_suffix(name, count):

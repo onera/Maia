@@ -103,9 +103,7 @@ def get_range_of_ngon(zone):
   """
   Return the ElementRange array of the NGON elements
   """
-  ngons = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if sids.ElementType(elem) == 22]
-  assert len(ngons) == 1
-  return sids.ElementRange(ngons[0])
+  return sids.ElementRange(sids.Zone.NGonNode(zone))
 
 def get_ordered_elements(zone):
   """

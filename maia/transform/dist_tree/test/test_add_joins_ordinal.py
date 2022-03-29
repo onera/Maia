@@ -163,6 +163,34 @@ Base1 CGNSBase_t [3,3]:
           assert I.getNodeFromName1(gc, 'Ordinal')[1]    == expected_ordinal[i]
           assert I.getNodeFromName1(gc, 'OrdinalOpp')[1] == expected_ordinal_opp[i]
 
+@mark_mpi_test(1)
+def test_force(sub_comm):
+  yt = """
+Base0 CGNSBase_t:
+  ZoneA Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      matchAB GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        PointList IndexArray_t [1,4,7,10]:
+        PointListDonor IndexArray_t [13,16,7,10]:
+        Ordinal DataArray_t [5]:
+        OrdinalOpp DataArray_t [6]:
+  ZoneB Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      matchBA GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        PointList IndexArray_t [13,16,7,10]:
+        PointListDonor IndexArray_t [1,4,7,10]:
+        Ordinal DataArray_t [6]:
+        OrdinalOpp DataArray_t [5]:
+"""
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  assert I.getNodeFromPath(dist_tree, 'Base0/ZoneA/ZGC/matchAB/Ordinal')[1][0] == 5
+  add_joins_ordinal.add_joins_ordinal(dist_tree, sub_comm)
+  assert I.getNodeFromPath(dist_tree, 'Base0/ZoneA/ZGC/matchAB/Ordinal')[1][0] == 5
+  add_joins_ordinal.add_joins_ordinal(dist_tree, sub_comm, force=True)
+  assert I.getNodeFromPath(dist_tree, 'Base0/ZoneA/ZGC/matchAB/Ordinal')[1][0] == 1
+
 def test_rm_joins_ordinal():
   yt = """
 Base0 CGNSBase_t:

@@ -67,6 +67,31 @@ def append_unique(L, item):
   if item not in L:
     L.append(item)
 
+def loop_from(L, i):
+  """ Iterator over a list L, starting from element i (wrapping around at the end)"""
+  assert 0 <= i and i < len(L)
+  yield from L[i:]
+  yield from L[:i]
+
+def find_cartesian_vector_names(names):
+  """
+  Function to find basename of cartesian vectors
+  In the SIDS (https://cgns.github.io/CGNS_docs_current/sids/dataname.html), a cartesian
+  vector 'Vector' is describe by its 3 components 'VectorX', 'VectorY', 'VectorZ'
+  > names : list of potential vectors components
+  """
+  to_index = {'X' : 0, 'Y' : 1 , 'Z' : 2}
+  suffix_names = [set() for i in to_index]
+  for name in names:
+    last = name[-1]
+    try:
+      suffix_names[to_index[last]].add(name[0:-1])
+    except KeyError:
+      pass
+
+  common = suffix_names[0].intersection(*suffix_names[1:])
+  return sorted(common)
+
 def get_ordered_subset(subset, L):
   """
   Check is one of the permutations of subset exists in L, allowing looping

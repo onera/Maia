@@ -61,6 +61,19 @@ def test_append_unique():
   py_utils.append_unique(L, 4)
   assert L == [1,2,3,4]
 
+def test_loop_from():
+  L = ["apple", "banana", "orange", "mango"]
+  assert list(py_utils.loop_from(L, 0)) == L
+  assert list(py_utils.loop_from(L, 1)) == ["banana", "orange", "mango", "apple"]
+  assert list(py_utils.loop_from(L, 3)) == ["mango", "apple", "banana", "orange"]
+
+
+def test_find_cartesian_vector_names():
+  names = ["Tata","TotoY","TotoZ","Titi","totoX"]
+  assert py_utils.find_cartesian_vector_names(names) == []
+  names.append("TotoX")
+  assert py_utils.find_cartesian_vector_names(names) == ["Toto"]
+
 def test_get_ordered_subset():
   L = [2,8,10,3,3]
   assert py_utils.get_ordered_subset([10,8,3], L) == (8,10,3)
