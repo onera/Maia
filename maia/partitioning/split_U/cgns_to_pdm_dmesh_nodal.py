@@ -10,7 +10,6 @@ from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.tree_exchange.dist_to_part.index_exchange import collect_distributed_pl
 
 from Pypdm.Pypdm import DistributedMeshNodal
-import Pypdm.Pypdm as PDM
 
 def _split_point_list_by_dim(pl_list, range_by_dim, comm):
   """

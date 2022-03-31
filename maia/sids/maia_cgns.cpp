@@ -3,15 +3,14 @@
 #include "maia/sids/element_sections.hpp"
 
 
-using namespace cgns;
+using cgns::tree;
 
 
 namespace maia {
 
 
 auto
-is_maia_cgns_zone(const cgns::tree& z) -> bool {
-  STD_E_ASSERT(label(z)=="Zone_t");
+zone_sections_are_ordered_by_increasing_dimensions(const tree& z) {
   if (ZoneType(z)=="Unstructured") {
     auto face_sections = surface_element_sections(z);
     auto cell_sections = volume_element_sections(z);
@@ -20,6 +19,15 @@ is_maia_cgns_zone(const cgns::tree& z) -> bool {
     if (last_2d_elt_id+1!=first_3d_elt_id) return false;
   }
   return true;
+}
+
+
+auto
+is_maia_compliant_zone(const tree& z) -> bool {
+  STD_E_ASSERT(label(z)=="Zone_t");
+  return zone_sections_are_ordered_by_increasing_dimensions(z);
+  // TODO + at most one section per element type
+  //      + GC 1to1 with name of opposite GC
 }
 
 

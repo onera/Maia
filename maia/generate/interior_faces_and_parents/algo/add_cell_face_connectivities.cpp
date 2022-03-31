@@ -30,7 +30,7 @@ add_face_info(cell_face_info<I>& x, const auto& face_info, ElementType_t cell_ty
   I cell_index = cell_id-cell_first_id;
   auto n_face_of_cell = number_of_faces(cell_type);
   I first_face_in_vol_index = cell_index*n_face_of_cell;
-  I face_in_vol_index = first_face_in_vol_index + (face_position_in_cell-1); // -1 because CGNS starts at 0
+  I face_in_vol_index = first_face_in_vol_index + (face_position_in_cell-1); // -1 because CGNS starts at 1
   x.cell_indices .push_back(face_in_vol_index);
   x.cell_face_ids.push_back(face_id);
 }

@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from maia.utils import parse_yaml_cgns,parse_cgns_yaml, script
+from maia.utils import parse_yaml_cgns,parse_cgns_yaml, script_utils
 import os
 import Converter.PyTree as C
 
@@ -19,15 +19,15 @@ if extension==".yaml": # yaml to hdf5
   with open(args.input) as yt:
     t = parse_yaml_cgns.to_cgns_tree(yt)
 
-    output_file = script.determine_output_file_path(args,".cgns")
+    output_file = script.determine_output_file_path(args.input, args.output, ".cgns")
     C.convertPyTree2File(t,str(output_file))
 
 elif extension==".cgns" or extension==".hdf": # hdf5 to yaml
   t = C.convertFile2PyTree(str(args.input))
   yt = parse_cgns_yaml.to_yaml(t)
   yt = '\n'.join(yt)
-  output_file = script.determine_output_file_path(args,".yaml")
-  with open(output_file,mode='w+') as f:
+  output_file = script.determine_output_file_path(args.input, args.output, ".yaml")
+  with open(output_file, mode='w') as f:
     f.write(yt)
 
 else:

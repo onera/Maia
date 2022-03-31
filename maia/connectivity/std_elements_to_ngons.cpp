@@ -145,7 +145,7 @@ nface_from_cells(const tree_range& cell_sections, MPI_Comm comm) -> tree {
 }
 
 template<class I> auto
-_turn_info_ngon_nface(tree& z, MPI_Comm comm) -> void {
+_turn_into_ngon_nface(tree& z, MPI_Comm comm) -> void {
   auto elt_sections = element_sections(z);
   auto elt_names = elt_sections | std::views::transform([](const tree& x){ return name(x); }) | std_e::to_vector();
   emplace_child(z, ngon_from_faces <I>(surface_element_sections(z),comm));
@@ -155,14 +155,14 @@ _turn_info_ngon_nface(tree& z, MPI_Comm comm) -> void {
 
 auto
 turn_into_ngon_nface(tree& z, MPI_Comm comm) -> void {
-  if (value(z).data_type()=="I4") return _turn_info_ngon_nface<I4>(z,comm);
-  if (value(z).data_type()=="I8") return _turn_info_ngon_nface<I8>(z,comm);
+  if (value(z).data_type()=="I4") return _turn_into_ngon_nface<I4>(z,comm);
+  if (value(z).data_type()=="I8") return _turn_into_ngon_nface<I8>(z,comm);
   throw cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
 }
 
 auto
 std_elements_to_ngons(tree& z, MPI_Comm comm) -> void {
-  STD_E_ASSERT(is_maia_cgns_zone(z));
+  STD_E_ASSERT(is_maia_compliant_zone(z));
   auto _ = maia_perf_log_lvl_0("std_elements_to_ngons");
 
   generate_interior_faces_and_parents(z,comm);

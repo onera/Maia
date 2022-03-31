@@ -7,7 +7,7 @@
 namespace maia {
 
 
-auto is_maia_cgns_zone(const cgns::tree& z) -> bool;
+auto is_maia_compliant_zone(const cgns::tree& z) -> bool;
 
 
 } // maia

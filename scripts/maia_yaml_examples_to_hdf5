@@ -5,6 +5,7 @@ from maia.utils.test_utils import mesh_dir
 import os
 import Converter.PyTree as C
 
+# TODO merge with test/conftest.py/generate_cgns_files
 for full_mesh_name in os.listdir(mesh_dir):
   mesh_name, extension = os.path.splitext(full_mesh_name)
   if (extension==".yaml"):

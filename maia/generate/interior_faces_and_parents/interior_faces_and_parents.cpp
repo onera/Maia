@@ -20,8 +20,6 @@ namespace maia {
 
 template<class I> auto
 _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
-  STD_E_ASSERT(is_maia_cgns_zone(z));
-
   // 0. Base queries
   auto elt_sections = element_sections(z);
   auto bnd_face_sections = surface_element_sections(z);
@@ -54,7 +52,7 @@ _generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
 
 auto
 generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
-  STD_E_ASSERT(is_maia_cgns_zone(z));
+  STD_E_ASSERT(is_maia_compliant_zone(z));
   if (value(z).data_type()=="I4") return _generate_interior_faces_and_parents<I4>(z,comm);
   if (value(z).data_type()=="I8") return _generate_interior_faces_and_parents<I8>(z,comm);
   throw cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
