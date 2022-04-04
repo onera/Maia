@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 
 from maia.connectivity import connectivity_transform as CNT
+from maia.utils        import parse_yaml_cgns
 
 @pytest.mark.parametrize("dtype", ["float"])
 def test_pe_cgns_to_pdm_face_cell_bad_type(dtype):
@@ -54,3 +55,28 @@ def test_compute_idx_local(dtype):
   CNT.compute_idx_local(connect_l_idx, connect_g_idx, distrib)
   #print(connect_l_idx)
   np.testing.assert_equal(connect_l_idx, np.array([0, 4, 8, 12, 16], dtype=dtype, order='F'))
+
+def test_get_ngon_pe_local():
+  yt = """
+  NGonElements Elements_t [22, 0]:
+    ElementRange IndexRange_t [1, 8]:
+    ParentElements DataArray_t [[9, 0], [10, 0], [11, 12], [0, 12]]:
+  """
+  ngon = parse_yaml_cgns.to_node(yt)
+  assert (CNT.get_ngon_pe_local(ngon) == np.array([[1,0], [2,0], [3,4], [0,4]])).all()
+
+  yt = """
+  NGonElements Elements_t [22, 0]:
+    ElementRange IndexRange_t [1, 8]:
+    ParentElements DataArray_t [[1, 0], [2, 0], [3, 4], [0, 4]]:
+  """
+  ngon = parse_yaml_cgns.to_node(yt)
+  assert (CNT.get_ngon_pe_local(ngon) == np.array([[1,0], [2,0], [3,4], [0,4]])).all()
+
+  yt = """
+  NGonElements Elements_t [22, 0]:
+    ElementRange IndexRange_t [1, 8]:
+  """
+  ngon = parse_yaml_cgns.to_node(yt)
+  with pytest.raises(RuntimeError):
+    CNT.get_ngon_pe_local(ngon)
