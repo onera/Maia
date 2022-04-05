@@ -67,6 +67,20 @@ def append_unique(L, item):
   if item not in L:
     L.append(item)
 
+def expect_one(L, err_msg=("elem", "list")):
+  """
+  Raise a RuntimeError if L does not contains exactly one element. Otherwise,
+  return this element
+  """
+  assert isinstance(L, list)
+  if len(L) == 0:
+    raise RuntimeError(f"{err_msg[0]} not found in {err_msg[1]}")
+  elif len(L) > 1:
+    raise RuntimeError(f"Multiple {err_msg[0]} found in {err_msg[1]}")
+  else:
+    return L[0]
+
+
 def loop_from(L, i):
   """ Iterator over a list L, starting from element i (wrapping around at the end)"""
   assert 0 <= i and i < len(L)

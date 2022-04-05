@@ -61,6 +61,15 @@ def test_append_unique():
   py_utils.append_unique(L, 4)
   assert L == [1,2,3,4]
 
+def test_expect_one():
+  assert py_utils.expect_one([42]) == 42
+  with pytest.raises(RuntimeError) as e:
+    py_utils.expect_one([42,43])
+  assert str(e.value) == 'Multiple elem found in list'
+  with pytest.raises(RuntimeError) as e:
+    py_utils.expect_one([], ('fruit', 'grocery list'))
+  assert str(e.value) == 'fruit not found in grocery list'
+
 def test_loop_from():
   L = ["apple", "banana", "orange", "mango"]
   assert list(py_utils.loop_from(L, 0)) == L

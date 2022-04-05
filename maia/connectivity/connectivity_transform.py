@@ -24,3 +24,17 @@ def get_ngon_pe_local(ngon_node):
     else:
       return pe_val
 
+def enforce_boundary_pe_left(zone_node):
+  ngon  = sids.Zone.NGonNode (zone_node)
+  try:
+    nface = sids.Zone.NFaceNode(zone_node)
+    enforce_pe_left_parent(PT.get_child_from_name(ngon, 'ElementStartOffset')[1],
+                           PT.get_child_from_name(ngon, 'ElementConnectivity')[1],
+                           PT.get_child_from_name(ngon, 'ParentElements')[1],
+                           PT.get_child_from_name(nface, 'ElementStartOffset')[1],
+                           PT.get_child_from_name(nface, 'ElementConnectivity')[1])
+  except RuntimeError: #No NFace
+    enforce_pe_left_parent(PT.get_child_from_name(ngon, 'ElementStartOffset')[1],
+                           PT.get_child_from_name(ngon, 'ElementConnectivity')[1],
+                           PT.get_child_from_name(ngon, 'ParentElements')[1])
+
