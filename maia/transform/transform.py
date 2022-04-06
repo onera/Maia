@@ -24,7 +24,7 @@ def put_boundary_first(t,comm):
   apply_to_bases(t,ctransform.put_boundary_first,comm)
 
 def ngon_new_to_old(t):
-  apply_to_bases(t,ctransform.ngon_new_to_old)
+  apply_to_zones(t,ctransform.ngon_new_to_old)
 
 def split_boundary_subzones_according_to_bcs(t):
   apply_to_bases(t,ctransform.split_boundary_subzones_according_to_bcs)

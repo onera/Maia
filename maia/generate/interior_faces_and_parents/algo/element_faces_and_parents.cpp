@@ -93,6 +93,9 @@ generate_element_faces_and_parents(const tree_range& elt_sections) -> faces_and_
         gen_faces<HEXA_8 >(elt_section,tri_it,quad_it,tri_pe_it,quad_pe_it,tri_pp_it,quad_pp_it);
         break;
       }
+      case BAR_2: {
+        break; // an edge has no face!
+      }
       default: {
         throw cgns_exception(std::string("Function \"")+__func__+"\": not implemented for element type \""+to_string(elt_type)+"\"");
       }

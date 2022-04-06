@@ -147,10 +147,13 @@ nface_from_cells(const tree_range& cell_sections, MPI_Comm comm) -> tree {
 template<class I> auto
 _turn_into_ngon_nface(tree& z, MPI_Comm comm) -> void {
   auto elt_sections = element_sections(z);
-  auto elt_names = elt_sections | std::views::transform([](const tree& x){ return name(x); }) | std_e::to_vector();
+  auto elt_2D_3D_names = elt_sections
+                       | std::views::filter([](const tree& x){ return is_section_of_dimension(x,2) || is_section_of_dimension(x,3); })
+                       | std::views::transform([](const tree& x){ return name(x); })
+                       | std_e::to_vector();
   emplace_child(z, ngon_from_faces <I>(surface_element_sections(z),comm));
   emplace_child(z, nface_from_cells<I>(volume_element_sections (z),comm));
-  cgns::rm_children_by_names(z,elt_names);
+  cgns::rm_children_by_names(z,elt_2D_3D_names);
 }
 
 auto
