@@ -75,11 +75,19 @@ merge_unique(const auto& cs, const auto& pe, const auto& pp, I first_3d_elt_id) 
     } else {
       STD_E_ASSERT(same_face_but_flipped(cs[i],cs[i+1]));
       if (pe[i] >= first_3d_elt_id && pe[i+1] >= first_3d_elt_id) { // two 3d pe
-        cs_int.push_back(cs[i]);
-        l_pe_int.push_back(pe[i]);
-        r_pe_int.push_back(pe[i+1]);
-        l_pp_int.push_back(pp[i]);
-        r_pp_int.push_back(pp[i+1]);
+        if (pe[i] < pe[i+1]) {
+          cs_int.push_back(cs[i]);
+          l_pe_int.push_back(pe[i]);
+          r_pe_int.push_back(pe[i+1]);
+          l_pp_int.push_back(pp[i]);
+          r_pp_int.push_back(pp[i+1]);
+        } else {
+          cs_int.push_back(cs[i+1]);
+          l_pe_int.push_back(pe[i+1]);
+          r_pe_int.push_back(pe[i]);
+          l_pp_int.push_back(pp[i+1]);
+          r_pp_int.push_back(pp[i]);
+        }
       } else if (pe[i] < first_3d_elt_id) { // first parent is 2d and the normal is inward (wrong convention)
         STD_E_ASSERT(pe[i+1] >= first_3d_elt_id);
         face_pe_ext.push_back(pe[i]);
