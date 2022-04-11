@@ -11,6 +11,9 @@
 #include "std_e/data_structure/multi_range/multi_range.hpp"
 #include "std_e/future/sort/sort_ranges.hpp"
 
+#if defined REAL_GCC && __GNUC__ < 11
+  using std_e::get; // found by ADL with GCC 11
+#endif
 
 using namespace cgns;
 

@@ -31,7 +31,7 @@ vertex_permutation_to_move_boundary_at_beginning(I n_vtx, const std::vector<I>& 
 
 template<class I> auto
 update_ids_for_elt_type(tree& elt_section, const std::vector<I>& vertex_permutation) -> void {
-  auto elt_vtx = ElementConnectivity<I>(elt_section);
+  auto elt_vtx = cgns::ElementConnectivity<I>(elt_section);
 
   auto perm_old_to_new = std_e::inverse_permutation(vertex_permutation);
   I offset = 1; // CGNS ids begin at 1

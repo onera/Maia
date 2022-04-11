@@ -1,7 +1,6 @@
 #include "maia/utils/cgns_tree_examples/unstructured_base.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/generate/__old/from_structured_grid.hpp"
-#include "maia/connectivity/iter/utility.hpp"
 
 // TODO move {
 #include "range/v3/view/concat.hpp"

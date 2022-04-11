@@ -23,7 +23,7 @@ namespace maia {
 // TODO move
 template<class T, class I> auto
 _permute_node_value(cgns::node_value& x, const std::vector<I>& perm) -> void {
-  auto x_span = view_as_span<T>(x);
+  auto x_span = cgns::view_as_span<T>(x);
   std_e::permute(x_span.begin(), perm);
 };
 template<class I> auto
@@ -55,14 +55,14 @@ permute_boundary_grid_coords_at_beginning(tree& grid_coords, const std::vector<I
 template<class I> auto
 save_partition_point(tree& z, I nb_of_boundary_vertices) -> void {
   STD_E_ASSERT(label(z)=="Zone_t");
-  VertexBoundarySize_U<I>(z) = nb_of_boundary_vertices;
+  cgns::VertexBoundarySize_U<I>(z) = nb_of_boundary_vertices;
 }
 
 
 template<class I> auto
 permute_boundary_vertices_at_beginning(tree& z, const std::vector<I>& boundary_vertex_ids) -> void {
   STD_E_ASSERT(label(z)=="Zone_t");
-  auto nb_of_vertices = VertexSize_U<I>(z);
+  auto nb_of_vertices = cgns::VertexSize_U<I>(z);
   auto vertex_permutation = vertex_permutation_to_move_boundary_at_beginning(nb_of_vertices, boundary_vertex_ids);
 
   auto& grid_coords = get_child_by_name(z,"GridCoordinates");
@@ -78,7 +78,7 @@ permute_boundary_vertices_at_beginning(tree& z, const std::vector<I>& boundary_v
 template<class I> auto
 partition_coordinates(tree& z) -> void {
   STD_E_ASSERT(label(z)=="Zone_t");
-  if (!is_boundary_partitioned_zone<I>(z)) {
+  if (!cgns::is_boundary_partitioned_zone<I>(z)) {
     auto elt_sections = get_children_by_label(z,"Elements_t");
     auto boundary_vertex_ids = get_ordered_boundary_vertex_ids<I>(elt_sections);
     permute_boundary_vertices_at_beginning(z,boundary_vertex_ids);

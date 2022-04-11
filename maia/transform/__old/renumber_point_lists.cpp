@@ -72,12 +72,12 @@ remove_if_empty_point_list(tree& z) -> void {
 
 template<class I> auto
 renumber_point_lists(tree& z, const std_e::offset_permutation<I>& permutation, const std::string& grid_location) -> void {
-  auto f = [&permutation](auto& pl){ renumber_point_list(view_as_span<I>(pl),permutation); };
+  auto f = [&permutation](auto& pl){ renumber_point_list(cgns::view_as_span<I>(pl),permutation); };
   for_each_point_list(z,grid_location,f);
 }
 auto
 renumber_point_lists2(tree& z, const std_e::offset_permutation<I4>& permutation, const std::string& grid_location) -> void {
-  auto f = [&permutation](auto& pl){ renumber_point_list2(view_as_span<I4>(pl),permutation); };
+  auto f = [&permutation](auto& pl){ renumber_point_list2(cgns::view_as_span<I4>(pl),permutation); };
   for_each_point_list(z,grid_location,f);
 }
 

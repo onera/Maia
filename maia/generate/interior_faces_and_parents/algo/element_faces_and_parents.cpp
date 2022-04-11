@@ -36,7 +36,7 @@ gen_faces(
 {
   constexpr int n_vtx = number_of_vertices(elt_type);
   auto elt_connec = ElementConnectivity<I>(elt_node);
-  auto connec_range = view_as_block_range<n_vtx>(elt_connec);
+  auto connec_range = std_e::view_as_block_range<n_vtx>(elt_connec);
 
   I elt_start = ElementRange<I>(elt_node)[0];
   I index_dist_start = ElementDistribution<I>(elt_node)[0];

@@ -27,14 +27,14 @@ element_section_boundary_vertices(const tree& elt_section) -> std::vector<I> {
   STD_E_ASSERT(elt_type!=cgns::MIXED);
   // Other precondition: dimension == 3
 
-  auto elt_vtx = ElementConnectivity<I>(elt_section);
+  auto elt_vtx = cgns::ElementConnectivity<I>(elt_section);
   if (elt_type==cgns::NGON_n) {
-    auto pe = ParentElements<I>(elt_section);
-    auto eso = ElementStartOffset<I>(elt_section);
+    auto pe = cgns::ParentElements<I>(elt_section);
+    auto eso = cgns::ElementStartOffset<I>(elt_section);
     auto cs = std_e::view_as_vblock_range(elt_vtx,eso);
     return find_boundary_vertices(cs,pe);
   } else if (cgns::element_dimension(elt_type)==2) {
-    I n_bnd_elts = ElementSizeBoundary(elt_section);
+    I n_bnd_elts = cgns::ElementSizeBoundary(elt_section);
     if (n_bnd_elts!=0) {
       I n_bnd_vertices = n_bnd_elts * cgns::number_of_vertices(elt_type);
       return std::vector<I>(begin(elt_vtx),begin(elt_vtx)+n_bnd_vertices);

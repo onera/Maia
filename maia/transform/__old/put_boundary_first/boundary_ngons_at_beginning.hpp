@@ -49,9 +49,9 @@ permute_boundary_ngons_at_beginning(tree& ngons, tree& nfaces, const std::vector
   STD_E_ASSERT(label(ngons)=="Elements_t");
   STD_E_ASSERT(element_type(ngons)==cgns::NGON_n);
 
-  if (is_boundary_partitioned_element_section<I>(ngons)) return ElementSizeBoundary(ngons);
+  if (cgns::is_boundary_partitioned_element_section<I>(ngons)) return ElementSizeBoundary(ngons);
 
-  auto parent_elts = ParentElements<I>(ngons);
+  auto parent_elts = cgns::ParentElements<I>(ngons);
   auto face_vtx = make_connectivity_range<I>(ngons);
 
   // compute permutation
@@ -60,8 +60,8 @@ permute_boundary_ngons_at_beginning(tree& ngons, tree& nfaces, const std::vector
   // apply permutation
   std_e::permute_vblock_range(face_vtx,perm);
   permute_parent_elements(parent_elts,perm);
-  I offset = ElementRange<I>(ngons)[0];
-  auto cell_face_cs = ElementConnectivity<I>(nfaces);
+  I offset = cgns::ElementRange<I>(ngons)[0];
+  auto cell_face_cs = cgns::ElementConnectivity<I>(nfaces);
   inv_permute_connectivity(cell_face_cs,perm,offset);
 
   // TODO bundle with inv_permute_connectivity(cell_face_cs,perm);
@@ -136,8 +136,8 @@ partition_bnd_faces_by_number_of_vertices(tree& ngons, tree& nfaces, const std::
   std_e::permute_vblock_range(bnd_face_vtx,perm);
   permute_parent_elements(parent_elts,perm); // TODO supposed to work with sub-arrays?
 
-  I offset = ElementRange<I>(ngons)[0];
-  auto cell_face_cs = ElementConnectivity<I>(nfaces);
+  I offset = cgns::ElementRange<I>(ngons)[0];
+  auto cell_face_cs = cgns::ElementConnectivity<I>(nfaces);
   inv_permute_connectivity_sub(cell_face_cs,perm,offset); // TODO either _sub not needed, nor renumber_point_lists (below) also needs that
 
   // TODO bundle with inv_permute_connectivity(cell_face_cs,perm);
@@ -214,8 +214,8 @@ partition_cells_into_simple_types(tree& ngons, tree& nfaces) -> std::vector<I> {
   // Precondition: the cells described by nfaces are of type Tet4, Pyra5, Prism6 or Hex8
 
   // 0. queries
-  I first_face_id = ElementRange<I>(ngons)[0];
-  I first_cell_id = ElementRange<I>(nfaces)[0];
+  I first_face_id = cgns::ElementRange<I>(ngons)[0];
+  I first_cell_id = cgns::ElementRange<I>(nfaces)[0];
 
   auto face_vtx = make_connectivity_range<I>(ngons);
   auto cell_face = make_connectivity_range<I>(nfaces);

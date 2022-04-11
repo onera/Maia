@@ -2,7 +2,6 @@
 
 #include "maia/generate/interior_faces_and_parents/interior_faces_and_parents.hpp"
 
-#include "maia/connectivity/iter/connectivity_range.hpp"
 #include "std_e/parallel/struct/distributed_array.hpp"
 #include "std_e/algorithm/distribution/weighted.hpp"
 #include "maia/sids/element_sections.hpp"
@@ -25,7 +24,7 @@ auto
 element_conversion_traits(ElementType_t from_type, ElementType_t to_type) -> std::pair<std::string,int> {
   if (to_type==cgns::NGON_n ) return {"ElementConnectivity",number_of_vertices(from_type)};
   if (to_type==cgns::NFACE_n) return {"CellFace"           ,number_of_faces   (from_type)};
-  STD_E_ASSERT(0); throw;
+  STD_E_ASSERT(0); throw std::logic_error("expects NGON_n or NFACE_n");
 }
 
 template<class I> auto
@@ -135,13 +134,21 @@ ngon_from_faces(const tree_range& face_sections, MPI_Comm comm) -> tree {
   tree pp_node = cgns::new_DataArray("ParentElementsPosition",std::move(pp_array));
   emplace_child(ngon_section_node,std::move(pp_node));
 
-  return ngon_section_node;
+  #if defined REAL_GCC && __GNUC__ >= 11
+    return ngon_section_node;
+  #else // It seems like GCC 10 uses the copy-ctor instead of mandatory RVO
+    return std::move(ngon_section_node);
+  #endif
 }
 
 template<class I> auto
 nface_from_cells(const tree_range& cell_sections, MPI_Comm comm) -> tree {
   auto [_,nfaces_section_node] = concatenate_into_poly_section<I>(cell_sections,cgns::NFACE_n,comm);
-  return nfaces_section_node;
+  #if defined REAL_GCC && __GNUC__ >= 11
+    return nfaces_section_node;
+  #else // It seems like GCC 10 uses the copy-ctor instead of mandatory RVO
+    return std::move(nfaces_section_node);
+  #endif
 }
 
 template<class I> auto

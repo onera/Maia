@@ -71,8 +71,8 @@ find_vertex_not_in_first(const T& connec_0, const T& connec_1) {
 template<class I> auto
 convert_to_tet_vtx(const auto& tet_face, const tree& ngons, I first_cell_id) -> tree {
   auto face_vtx = make_connectivity_range<I>(ngons);
-  auto first_ngon_id = ElementRange<I>(ngons)[0];
-  auto pe = ParentElements<I>(ngons);
+  auto first_ngon_id = cgns::ElementRange<I>(ngons)[0];
+  auto pe = cgns::ParentElements<I>(ngons);
 
   I n_tet = tet_face.size();
   I n_vtx = n_tet*4;
@@ -106,8 +106,8 @@ convert_to_tet_vtx(const auto& tet_face, const tree& ngons, I first_cell_id) -> 
 template<class I> auto
 convert_to_pyra_vtx(const auto& pyra_face, const tree& ngons, I first_cell_id) -> tree {
   auto face_vtx = make_connectivity_range<I>(ngons);
-  auto first_ngon_id = ElementRange<I>(ngons)[0];
-  auto pe = ParentElements<I>(ngons);
+  auto first_ngon_id = cgns::ElementRange<I>(ngons)[0];
+  auto pe = cgns::ParentElements<I>(ngons);
 
   I n_pyra = pyra_face.size();
   I n_vtx = n_pyra*5;
@@ -177,8 +177,8 @@ node_above(I vtx, const T& quads) -> I {
 template<class I> auto
 convert_to_prism_vtx(const auto& prism_face, const tree& ngons, I first_cell_id) -> tree {
   auto face_vtx = make_connectivity_range<I>(ngons);
-  auto first_ngon_id = ElementRange<I>(ngons)[0];
-  auto pe = ParentElements<I>(ngons);
+  auto first_ngon_id = cgns::ElementRange<I>(ngons)[0];
+  auto pe = cgns::ParentElements<I>(ngons);
 
   I n_prism = prism_face.size();
   I n_vtx = n_prism*6;
@@ -242,8 +242,8 @@ share_vertices(const Connecivity_type_0& c0, const Connecivity_type_1& c1) -> bo
 template<class I> auto
 convert_to_hexa_vtx(const auto& hexa_face, const tree& ngons, I first_cell_id) -> tree {
   auto face_vtx = make_connectivity_range<I>(ngons);
-  auto first_ngon_id = ElementRange<I>(ngons)[0];
-  auto pe = ParentElements<I>(ngons);
+  auto first_ngon_id = cgns::ElementRange<I>(ngons)[0];
+  auto pe = cgns::ParentElements<I>(ngons);
 
   I n_hexa = hexa_face.size();
   I n_vtx = n_hexa*8;
