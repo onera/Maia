@@ -16,7 +16,6 @@ using cgns::I4;
 using cgns::I8;
 
 
-// TODO factor, nface/ngon iterator/ test
 namespace maia {
 
 
@@ -69,7 +68,7 @@ find_vertex_not_in_first(const T& connec_0, const T& connec_1) {
 
 
 template<class I> auto
-convert_to_tet_vtx(const auto& tet_face, const tree& ngons, I first_cell_id) -> tree {
+convert_to_tet_vtx(const auto& tet_face, const tree& ngons, I first_cell_id, I next_avail_id) -> tree {
   auto face_vtx = make_connectivity_range<I>(ngons);
   auto first_ngon_id = cgns::ElementRange<I>(ngons)[0];
   auto pe = cgns::ParentElements<I>(ngons);
@@ -100,11 +99,11 @@ convert_to_tet_vtx(const auto& tet_face, const tree& ngons, I first_cell_id) -> 
     "TETRA_4",
     cgns::TETRA_4,
     std::move(tet_vtx),
-    first_cell_id,first_cell_id+n_tet-1
+    next_avail_id,next_avail_id+n_tet-1
   );
 }
 template<class I> auto
-convert_to_pyra_vtx(const auto& pyra_face, const tree& ngons, I first_cell_id) -> tree {
+convert_to_pyra_vtx(const auto& pyra_face, const tree& ngons, I first_cell_id, I next_avail_id) -> tree {
   auto face_vtx = make_connectivity_range<I>(ngons);
   auto first_ngon_id = cgns::ElementRange<I>(ngons)[0];
   auto pe = cgns::ParentElements<I>(ngons);
@@ -140,7 +139,7 @@ convert_to_pyra_vtx(const auto& pyra_face, const tree& ngons, I first_cell_id) -
     "PYRA_5",
     cgns::PYRA_5,
     std::move(pyra_vtx),
-    first_cell_id,first_cell_id+n_pyra-1
+    next_avail_id,next_avail_id+n_pyra-1
   );
 }
 
@@ -175,7 +174,7 @@ node_above(I vtx, const T& quads) -> I {
 }
 
 template<class I> auto
-convert_to_prism_vtx(const auto& prism_face, const tree& ngons, I first_cell_id) -> tree {
+convert_to_prism_vtx(const auto& prism_face, const tree& ngons, I first_cell_id, I next_avail_id) -> tree {
   auto face_vtx = make_connectivity_range<I>(ngons);
   auto first_ngon_id = cgns::ElementRange<I>(ngons)[0];
   auto pe = cgns::ParentElements<I>(ngons);
@@ -224,7 +223,7 @@ convert_to_prism_vtx(const auto& prism_face, const tree& ngons, I first_cell_id)
     "PENTA_6",
     cgns::PENTA_6,
     std::move(prism_vtx),
-    first_cell_id,first_cell_id+n_prism-1
+    next_avail_id,next_avail_id+n_prism-1
   );
 }
 
@@ -240,7 +239,7 @@ share_vertices(const Connecivity_type_0& c0, const Connecivity_type_1& c1) -> bo
 }
 
 template<class I> auto
-convert_to_hexa_vtx(const auto& hexa_face, const tree& ngons, I first_cell_id) -> tree {
+convert_to_hexa_vtx(const auto& hexa_face, const tree& ngons, I first_cell_id, I next_avail_id) -> tree {
   auto face_vtx = make_connectivity_range<I>(ngons);
   auto first_ngon_id = cgns::ElementRange<I>(ngons)[0];
   auto pe = cgns::ParentElements<I>(ngons);
@@ -294,38 +293,42 @@ convert_to_hexa_vtx(const auto& hexa_face, const tree& ngons, I first_cell_id) -
     "HEXA_8",
     cgns::HEXA_8,
     std::move(hexa_vtx),
-    first_cell_id,first_cell_id+n_hexa-1
+    next_avail_id,next_avail_id+n_hexa-1
   );
 }
 
 template<class I> auto
-convert_to_simple_volume_connectivities(const tree& ngons, const tree& nfaces, const std::vector<I> cell_partition_indices, I first_cell_id) -> std::vector<tree> {
+convert_to_simple_volume_connectivities(const tree& ngons, const tree& nfaces, const std::vector<I> cell_partition_indices, I next_avail_id) -> std::vector<tree> {
   auto tet_face   = make_connectivity_subrange(nfaces,cell_partition_indices[0],cell_partition_indices[1]);
   auto pyra_face  = make_connectivity_subrange(nfaces,cell_partition_indices[1],cell_partition_indices[2]);
   auto prism_face = make_connectivity_subrange(nfaces,cell_partition_indices[2],cell_partition_indices[3]);
   auto hexa_face  = make_connectivity_subrange(nfaces,cell_partition_indices[3],cell_partition_indices[4]);
+  I first_cell_id = cgns::ElementRange<I>(nfaces)[0];
 
   std::vector<tree> cell_sections;
 
-  I cur_cell_id = first_cell_id;
   if (tet_face.size()>0) {
-    cell_sections.push_back(convert_to_tet_vtx(tet_face,ngons,cur_cell_id));
-    cur_cell_id += tet_face.size();
+    cell_sections.push_back(convert_to_tet_vtx(tet_face,ngons,first_cell_id,next_avail_id));
+    next_avail_id += tet_face.size();
+    first_cell_id += tet_face.size();
   }
 
   if (pyra_face.size()>0) {
-    cell_sections.push_back(convert_to_pyra_vtx(pyra_face,ngons,cur_cell_id));
-    cur_cell_id += pyra_face.size();
+    cell_sections.push_back(convert_to_pyra_vtx(pyra_face,ngons,first_cell_id,next_avail_id));
+    next_avail_id += pyra_face.size();
+    first_cell_id += pyra_face.size();
   }
 
   if (prism_face.size()>0) {
-    cell_sections.push_back(convert_to_prism_vtx(prism_face,ngons,cur_cell_id));
-    cur_cell_id += prism_face.size();
+    cell_sections.push_back(convert_to_prism_vtx(prism_face,ngons,first_cell_id,next_avail_id));
+    next_avail_id += prism_face.size();
+    first_cell_id += prism_face.size();
   }
 
   if (hexa_face.size()>0) {
-    cell_sections.push_back(convert_to_hexa_vtx(hexa_face,ngons,cur_cell_id));
-    cur_cell_id += hexa_face.size();
+    cell_sections.push_back(convert_to_hexa_vtx(hexa_face,ngons,first_cell_id,next_avail_id));
+    next_avail_id += hexa_face.size();
+    first_cell_id += hexa_face.size();
   }
 
   return cell_sections;

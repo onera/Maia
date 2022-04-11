@@ -50,9 +50,9 @@ PYBIND_TEST_CASE("convert_zone_to_std_elements") {
 
   CHECK( penta_elt_type == cgns::PENTA_6 );
   CHECK( penta_range    == std::vector<I4>{15,16} );
-  CHECK( penta_connec   == std::vector<I4>{2,5,3,7,10,8,  7,8,10,12,13,15} );
+  CHECK( penta_connec   == std::vector<I4>{3,5,2,8,10,7,  7,8,10,12,13,15} );
 
   CHECK( hexa_elt_type == cgns::HEXA_8 );
   CHECK( hexa_range    == std::vector<I4>{17,18} );
-  CHECK( hexa_connec   == std::vector<I4>{1,4,5,2,6,9,10,7,  6,7,10,9,11,12,15,14} );
+  CHECK( hexa_connec   == std::vector<I4>{2,5,4,1,7,10,9,6,  6,7,10,9,11,12,15,14} );
 }
