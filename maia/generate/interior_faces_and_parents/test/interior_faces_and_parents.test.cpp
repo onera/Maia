@@ -65,9 +65,9 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents - seq",1) {
 
   CHECK( elt_type_quad_in == (I4)cgns::QUAD_4 );
   CHECK( range_quad_in == std::vector<I4>{16,18} );
-  CHECK( connec_quad_in == std::vector<I4>{2,7,10,5, 6,7,10,9, 7,12,15,10} );
+  CHECK( connec_quad_in == std::vector<I4>{2,5,10,7, 6,7,10,9, 7,10,15,12} );
   CHECK( pe_quad_in.extent() == std_e::multi_index<I8,2>{3,2} );
-  CHECK( pe_quad_in == cgns::md_array<I4,2>{{21,19},{19,20},{22,20}} );
+  CHECK( pe_quad_in == cgns::md_array<I4,2>{{19,21},{19,20},{20,22}} );
   CHECK( pp_quad_in == cgns::md_array<I4,2>{{ 3, 3},{ 6, 1},{ 3, 3}} );
 
   // hex
@@ -132,12 +132,12 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
 
   CHECK( elt_type_quad_in == (I4)cgns::QUAD_4 );
   CHECK( range_quad_in == std::vector<I4>{16,18} );
-  MPI_CHECK(0, connec_quad_in == std::vector<I4>{2,7,10,5} );
-  MPI_CHECK(1, connec_quad_in == std::vector<I4>{6,7,10,9, 7,12,15,10} );
+  MPI_CHECK(0, connec_quad_in == std::vector<I4>{2,5,10,7} );
+  MPI_CHECK(1, connec_quad_in == std::vector<I4>{6,7,10,9, 7,10,15,12} );
   MPI_CHECK(0, pe_quad_in.extent() == std_e::multi_index<I8,2>{1,2} );
   MPI_CHECK(1, pe_quad_in.extent() == std_e::multi_index<I8,2>{2,2} );
-  MPI_CHECK(0, pe_quad_in == cgns::md_array<I4,2>{{21,19}} );
-  MPI_CHECK(1, pe_quad_in == cgns::md_array<I4,2>{{19,20},{22,20}} );
+  MPI_CHECK(0, pe_quad_in == cgns::md_array<I4,2>{{19,21}} );
+  MPI_CHECK(1, pe_quad_in == cgns::md_array<I4,2>{{19,20},{20,22}} );
   MPI_CHECK(0, pp_quad_in == cgns::md_array<I4,2>{{ 3, 3}} );
   MPI_CHECK(1, pp_quad_in == cgns::md_array<I4,2>{{ 6, 1},{ 3, 3}} );
 
