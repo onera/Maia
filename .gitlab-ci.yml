@@ -21,8 +21,8 @@ stages:
 job:build:
   stage: build
   script:
-    - git submodule sync --recursive
-    - git submodule update --init --recursive
+    - git submodule update --init
+    - (cd external/paradigm && git submodule update --init)
     - mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -Dmaia_USE_PDM_INSTALL=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j8
@@ -36,7 +36,7 @@ job:test:
   stage: test
   script:
     - cd build
-    - ctest -E pdm #Exclude pdm tests, some of them fail
+    - ctest -E pdm
   after_script:
     - cd build/test
     - coverage combine --rcfile=.coveragerc_unit_tests
