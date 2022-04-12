@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_mpi.hpp"
 
 #include "maia/transform/fsdm_distribution.hpp"
@@ -59,3 +60,4 @@ MPI_TEST_CASE("distribute_bc_ids_to_match_face_dist",2) {
     MPI_CHECK( 1 , values_new[1] == vector{10.,13.,14.,15.,18.} );
   }
 }
+#endif // C++>17

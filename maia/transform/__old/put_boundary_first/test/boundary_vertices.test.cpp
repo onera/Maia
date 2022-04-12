@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/transform/__old/put_boundary_first/boundary_vertices.hpp"
@@ -77,3 +78,4 @@ TEST_CASE("partition_with_boundary_vertices") {
     CHECK( boundary_vertices == expected_boundary_vertices );
   }
 };
+#endif // C++>17

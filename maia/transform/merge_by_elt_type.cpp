@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/merge_by_elt_type.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/utils/parallel/distribution.hpp"
@@ -209,3 +210,4 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
 }
 
 } // maia
+#endif // C++>17

@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/utils/cgns_tree_examples/unstructured_base.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/generate/__old/from_structured_grid.hpp"
@@ -235,3 +236,4 @@ create_unstructured_base() -> cgns::tree {
   return b;
 }
 
+#endif // C++>17

@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_pybind.hpp"
 
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
@@ -56,3 +57,4 @@ PYBIND_TEST_CASE("convert_zone_to_std_elements") {
   CHECK( hexa_range    == std::vector<I4>{17,18} );
   CHECK( hexa_connec   == std::vector<I4>{2,5,4,1,7,10,9,6,  6,7,10,9,11,12,15,14} );
 }
+#endif // C++>17

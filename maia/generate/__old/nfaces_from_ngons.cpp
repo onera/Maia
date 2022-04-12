@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/generate/__old/nfaces_from_ngons.hpp"
 
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
@@ -93,3 +94,4 @@ add_nfaces(tree& b) -> void {
 
 
 } // cgns
+#endif // C++>17

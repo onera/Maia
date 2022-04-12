@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/generate/__old/structured_grid_utils.hpp"
@@ -25,3 +26,4 @@ TEST_CASE("generate for maia::six_hexa_mesh") {
   CHECK( l_parents == maia::six_hexa_mesh::l_parents );
   CHECK( r_parents == maia::six_hexa_mesh::r_parents );
 };
+#endif // C++>17

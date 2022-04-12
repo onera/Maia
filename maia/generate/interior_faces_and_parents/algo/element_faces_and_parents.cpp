@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/generate/interior_faces_and_parents/algo/element_faces_and_parents.hpp"
 
 #include "maia/generate/connectivity/element_faces.hpp"
@@ -110,3 +111,4 @@ template auto generate_element_faces_and_parents<I4>(const tree_range& elt_secti
 template auto generate_element_faces_and_parents<I8>(const tree_range& elt_sections) -> faces_and_parents_by_section<I8>;
 
 } // maia
+#endif // C++>17

@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_pybind.hpp"
 
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
@@ -63,3 +64,4 @@ PYBIND_TEST_CASE("ngon_old_to_new") {
   auto pe = cgns::get_node_value_by_matching<I4,2>(b,"Zone/NGON_n/ParentElements");
   CHECK( pe == cgns::md_array<I4,2>{{19,0},{20,0},{21,0},{22,0},{19,0},{21,0},{20, 0},{22, 0},{19,0},{20,0},{19,0},{20,0},{21,0},{22,0},{21,22},{19,21},{19,20},{20,22}} );
 }
+#endif // C++>17

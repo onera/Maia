@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/__old/base_renumbering.hpp"
 
 namespace cgns {
@@ -15,3 +16,4 @@ re_number_point_lists_donors(interzone_point_list_info& pl_infos) -> void {
 }
 
 } // cgns
+#endif // C++>17

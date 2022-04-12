@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/utils/cgns_tree_examples/unstructured_base.hpp"
@@ -96,3 +97,4 @@ TEST_CASE("put_boundary_first, with 2 zones") {
   CHECK( z0_ngon_parent_elts(2,0) == 3 );  CHECK( z0_ngon_parent_elts(2,1) == 0 );
   CHECK( z0_ngon_parent_elts(3,0) == 6 );  CHECK( z0_ngon_parent_elts(3,1) == 0 );
 }
+#endif // C++>17

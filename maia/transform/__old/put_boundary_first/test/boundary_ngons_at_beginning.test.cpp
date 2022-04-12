@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/transform/__old/put_boundary_first/boundary_ngons_at_beginning.hpp"
@@ -119,3 +120,4 @@ TEST_CASE("boundary_ngons_at_beginning") {
     CHECK( pl == std::vector{6,9} );
   }
 }
+#endif // C++>17

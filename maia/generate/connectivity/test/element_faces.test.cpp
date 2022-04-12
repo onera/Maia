@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/generate/connectivity/element_faces.hpp"
@@ -136,3 +137,4 @@ TEST_CASE("generate_faces: example with several connec") {
   CHECK( tri_pos == std::vector{1,1} );
   CHECK( quad_pos == std::vector{1,1} );
 }
+#endif // C++>17

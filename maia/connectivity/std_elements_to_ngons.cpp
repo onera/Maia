@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/connectivity/std_elements_to_ngons.hpp"
 
 #include "maia/generate/interior_faces_and_parents/interior_faces_and_parents.hpp"
@@ -181,3 +182,4 @@ std_elements_to_ngons(tree& z, MPI_Comm comm) -> void {
 
 
 } // maia
+#endif // C++>17

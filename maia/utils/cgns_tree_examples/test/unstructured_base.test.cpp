@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 
@@ -72,3 +73,4 @@ TEST_CASE("unstructured mesh construction") {
   CHECK( z0_ngon_parent_elts(2,0) == 1 ); CHECK( z0_ngon_parent_elts(2,1) == 2 );
   CHECK( z0_ngon_parent_elts(3,0) == 4 ); CHECK( z0_ngon_parent_elts(3,1) == 5 );
 }
+#endif // C++>17

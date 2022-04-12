@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/generate/interior_faces_and_parents/interior_faces_and_parents.hpp"
 
 #include "maia/sids/element_sections.hpp"
@@ -60,3 +61,4 @@ generate_interior_faces_and_parents(cgns::tree& z, MPI_Comm comm) -> void {
 
 
 } // maia
+#endif // C++>17

@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/sids/maia_cgns.hpp"
 
 #include "maia/sids/element_sections.hpp"
@@ -32,3 +33,4 @@ is_maia_compliant_zone(const tree& z) -> bool {
 
 
 } // maia
+#endif // C++>17

@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/__old/put_boundary_first/put_boundary_first.hpp"
 
 #include "maia/transform/__old/put_boundary_first/boundary_vertices.hpp"
@@ -123,3 +124,4 @@ put_boundary_first(tree& b, MPI_Comm comm) -> void {
 
 
 } // maia
+#endif // C++>17

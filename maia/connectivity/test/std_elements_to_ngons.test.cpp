@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_pybind_mpi.hpp"
 
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
@@ -40,3 +41,4 @@ PYBIND_MPI_TEST_CASE("std_elements_to_ngons",2) {
   MPI_CHECK(0, pp == cgns::md_array<I4,2>{{5,0},{5,0},{2,0},{2,0},{2,0},{1,0},{2,0},{1,0}} );
   MPI_CHECK(1, pp == cgns::md_array<I4,2>{{4,0},{4,0},{1,0},{6,0},{4,0},{5,0},{5,4},{3,3},{6,1},{3,3}} );
 }
+#endif // C++>17

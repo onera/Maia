@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/__old/renumber_point_lists.hpp"
 
 #include "cpp_cgns/sids/creation.hpp"
@@ -144,3 +145,4 @@ template auto renumber_point_lists<I4>(const std::vector<std_e::span<I4>>& pls, 
 template auto renumber_point_lists<I8>(const std::vector<std_e::span<I8>>& pls, const std_e::offset_permutation<I8>& permutation) -> void;
 
 } // maia
+#endif // C++>17

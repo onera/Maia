@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "cpp_cgns/interop/pycgns_converter.hpp"
 #include "maia/transform/__old/put_boundary_first/put_boundary_first.hpp"
 #include "maia/transform/__old/convert_to_std_elements.hpp"
@@ -13,7 +14,6 @@
 #include "maia/connectivity/std_elements_to_ngons.hpp"
 
 #include <pybind11/pybind11.h>
-
 namespace py = pybind11;
 
 
@@ -63,3 +63,29 @@ PYBIND11_MODULE(transform, m) {
   m.def("generate_interior_faces_and_parents"     , generate_interior_faces_and_parents     , "Generate TRI_3_interior and QUAD_4_interior element sections, and adds ParentElement to interior and exterior faces");
   m.def("std_elements_to_ngons"                   , std_elements_to_ngons                   , "Convert to NGon");
 }
+#else // C++==17
+
+#include "std_e/base/not_implemented_exception.hpp"
+#include <pybind11/pybind11.h>
+namespace py = pybind11;
+
+auto
+not_implemented_in_cpp17(py::list) {
+  throw std_e::not_implemented_exception("This function is not implemented in C++17. Use the CMake option \"maia_ENABLE_CPP20\".");
+}
+
+PYBIND11_MODULE(transform, m) {
+  m.doc() = "C++ maia functions wrapped by pybind";
+
+  m.def("put_boundary_first"                      , not_implemented_in_cpp17 , "ngon sorted with boundary faces first");
+  m.def("convert_zone_to_std_elements"            , not_implemented_in_cpp17 , "ngon to elements");
+  m.def("remove_ghost_info"                       , not_implemented_in_cpp17 , "Remove ghost nodes and ghost elements of base");
+  m.def("merge_by_elt_type"                       , not_implemented_in_cpp17 , "For a distributed base, merge Elements_t nodes the same type and does the associated renumbering");
+  m.def("add_fsdm_distribution"                   , not_implemented_in_cpp17 , "Add FSDM-specific distribution info");
+  m.def("gcs_only_for_ghosts"                     , not_implemented_in_cpp17 , "For GridConnectivities, keep only in the PointList the ones that are ghosts");
+  m.def("split_boundary_subzones_according_to_bcs", not_implemented_in_cpp17 , "Split a ZoneSubRegion node with a PointRange spaning all boundary faces into multiple ZoneSubRegion with a BCRegionName");
+  m.def("ngon_new_to_old"                         , not_implemented_in_cpp17 , "Turn Ngon description with ElementStartOffset to old convension");
+  m.def("generate_interior_faces_and_parents"     , not_implemented_in_cpp17 , "Generate TRI_3_interior and QUAD_4_interior element sections, and adds ParentElement to interior and exterior faces");
+  m.def("std_elements_to_ngons"                   , not_implemented_in_cpp17 , "Convert to NGon");
+}
+#endif // C++>17

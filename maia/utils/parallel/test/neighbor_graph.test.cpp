@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 #include "doctest/extensions/doctest_mpi.h"
 
@@ -110,3 +111,4 @@ MPI_TEST_CASE("receive_PointListDonor_from_donor_proc",2) {
     MPI_CHECK( 1 , pl_join6 == vector{13600,13700} );
   }
 }
+#endif // C++>17

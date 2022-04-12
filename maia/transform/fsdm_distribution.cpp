@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/fsdm_distribution.hpp"
 #include "cpp_cgns/sids/Hierarchical_Structures.hpp"
 #include "cpp_cgns/sids/creation.hpp"
@@ -295,3 +296,4 @@ distribute_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) ->
 
 
 } // maia
+#endif // C++>17

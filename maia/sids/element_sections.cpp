@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/sids/element_sections.hpp"
 
 
@@ -26,3 +27,4 @@ max_element_id(const tree& z) -> I8 {
 
 
 } // maia
+#endif // C++>17

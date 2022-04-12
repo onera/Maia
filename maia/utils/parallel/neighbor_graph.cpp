@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/utils/parallel/neighbor_graph.hpp"
 #include "cpp_cgns/cgns.hpp"
 #include "cpp_cgns/tree_manip.hpp"
@@ -121,3 +122,4 @@ donor_zones_ranks(const zone_infos& zis, const std::vector<connectivity_info>& c
 
 
 } // cgns
+#endif // C++>17

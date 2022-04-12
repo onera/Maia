@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/generate/interior_faces_and_parents/algo/element_faces_and_parents.hpp"
@@ -49,3 +50,4 @@ TEST_CASE("generate_element_faces_and_parents") {
   CHECK( parent_elements(quads) == vector{400,802,802,802,802,802,802} ); // 800+2 because the distribution of node "Hexas" begins at 2
   CHECK( parent_positions(quads) == vector{1,1,2,3,4,5,6} );
 }
+#endif // C++>17

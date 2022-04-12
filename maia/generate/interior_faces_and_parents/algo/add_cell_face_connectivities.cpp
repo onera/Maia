@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/generate/interior_faces_and_parents/algo/add_cell_face_connectivities.hpp"
 
 #include "cpp_cgns/sids/creation.hpp"
@@ -148,3 +149,4 @@ template auto add_cell_face_connectivities(cgns::tree_range& cell_sections, cons
 
 
 } // maia
+#endif // C++>17

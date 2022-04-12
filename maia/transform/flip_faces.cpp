@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/flip_faces.hpp"
 
 #include "cpp_cgns/sids/elements_utils.hpp"
@@ -53,3 +54,4 @@ flip_faces(tree& z) -> void {
 
 
 } // maia
+#endif // C++>17

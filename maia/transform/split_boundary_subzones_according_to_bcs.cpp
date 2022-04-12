@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/split_boundary_subzones_according_to_bcs.hpp"
 #include "cpp_cgns/cgns.hpp"
 #include "cpp_cgns/sids/creation.hpp"
@@ -103,3 +104,4 @@ split_boundary_subzones_according_to_bcs(tree& b, MPI_Comm comm) -> void {
 
 
 } // maia
+#endif // C++>17

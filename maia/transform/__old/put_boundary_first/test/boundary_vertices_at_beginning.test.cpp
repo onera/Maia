@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/transform/__old/put_boundary_first/boundary_vertices_at_beginning.hpp"
@@ -93,3 +94,4 @@ TEST_CASE("re_number_vertex_ids_in_elements") {
     CHECK( ElementConnectivity<I4>(ngons) == expected_ngon_cs );
   }
 }
+#endif // C++>17

@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
 
 
@@ -56,3 +57,4 @@ to_cgns_tree(const std::string& yaml_str) -> cgns::tree {
 
 
 } // maia
+#endif // C++>17

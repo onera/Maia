@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/gcs_only_for_ghosts.hpp"
 #include "cpp_cgns/cgns.hpp"
 #include "cpp_cgns/sids/creation.hpp"
@@ -56,3 +57,4 @@ auto gcs_only_for_ghosts(tree& b) -> void {
 
 
 } // cgns
+#endif // C++>17

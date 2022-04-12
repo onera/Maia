@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/__old/put_boundary_first/boundary_vertices_at_beginning.hpp"
 
 #include "maia/utils/log/log.hpp"
@@ -58,3 +59,4 @@ template auto re_number_vertex_ids_in_elements(tree& elt_section, const std::vec
 template auto re_number_vertex_ids_in_elements(tree& elt_section, const std::vector<I8>& vertex_permutation) -> void;
 
 } // maia
+#endif // C++>17

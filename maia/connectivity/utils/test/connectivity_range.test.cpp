@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_pybind.hpp"
 
 #include "cpp_cgns/sids/creation.hpp"
@@ -47,3 +48,4 @@ TEST_CASE("connectivity_range") {
     CHECK( face_vtx[1] == vector{5,4,3} );
   }
 }
+#endif // C++>17

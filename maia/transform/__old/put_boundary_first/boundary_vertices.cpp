@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/__old/put_boundary_first/boundary_vertices.hpp"
 
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
@@ -74,3 +75,4 @@ template auto get_ordered_boundary_vertex_ids<cgns::I8>(const tree_range& elemen
 
 
 } // maia
+#endif // C++>17

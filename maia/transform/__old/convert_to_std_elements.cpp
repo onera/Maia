@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/__old/convert_to_std_elements.hpp"
 
 
@@ -370,3 +371,4 @@ convert_zone_to_std_elements(tree& z) -> void {
 
 
 } // maia
+#endif // C++>17

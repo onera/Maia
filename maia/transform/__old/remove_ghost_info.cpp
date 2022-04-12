@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/__old/remove_ghost_info.hpp"
 
 #include "maia/transform/__old/base_renumbering.hpp"
@@ -186,3 +187,4 @@ remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void {
 }
 
 } // maia
+#endif // C++>17

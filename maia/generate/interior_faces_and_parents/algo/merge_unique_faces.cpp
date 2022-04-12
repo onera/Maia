@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/generate/interior_faces_and_parents/algo/merge_unique_faces.hpp"
 
 
@@ -186,3 +187,4 @@ template auto merge_unique_faces<I8>(faces_and_parents_by_section<I8>& faces_and
  -> in_ext_faces_by_section<I8>;
 
 } // maia
+#endif // C++>17

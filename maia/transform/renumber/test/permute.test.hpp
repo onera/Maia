@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/transform/renumber/permute.hpp"
@@ -25,4 +26,4 @@ TEST_CASE("boundary_ngons_at_beginning") {
       {3, 1} };
   CHECK( parent_elts == expected_parent_elts );
 }
-
+#endif // C++>17

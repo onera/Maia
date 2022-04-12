@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/utils/cgns_tree_examples/base_two_ranks.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 
@@ -99,3 +100,4 @@ create_base_two_ranks(int mpi_rank) -> tree {
 }
 
 } // example
+#endif // C++>17

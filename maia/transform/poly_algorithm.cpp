@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/transform/poly_algorithm.hpp"
 #include "cpp_cgns/cgns.hpp"
 #include "cpp_cgns/sids/creation.hpp"
@@ -90,3 +91,4 @@ ngon_old_to_new(tree& z) -> void {
 }
 
 } // maia
+#endif // C++>17

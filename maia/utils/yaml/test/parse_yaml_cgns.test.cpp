@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_pybind.hpp"
 
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
@@ -46,3 +47,4 @@ PYBIND_TEST_CASE("parse_yaml_cgns") {
     CHECK( value(t[0]).extent(1) == 3 );
   }
 }
+#endif // C++>17

@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_pybind.hpp"
 
 #include "maia/transform/flip_faces.hpp"
@@ -25,3 +26,4 @@ PYBIND_TEST_CASE("flip_faces") {
   CHECK( tris == std::vector{3,5,2, 10,8,7} );
   CHECK( quads == std::vector{4,9,6,1, 8,10,5,3, 6,7,2,1, 7,8,3,2, 5,10,9,4, 2,5,4,1, 9,10,7,6} );
 }
+#endif // C++>17

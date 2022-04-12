@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "maia/generate/interior_faces_and_parents/algo/append_interior_faces_sections.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 
@@ -69,3 +70,4 @@ template auto append_interior_faces_sections(cgns::tree& z, in_ext_faces_by_sect
 
 
 } // maia
+#endif // C++>17

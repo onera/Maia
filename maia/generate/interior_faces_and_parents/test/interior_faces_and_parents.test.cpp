@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_pybind_mpi.hpp"
 
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
@@ -150,3 +151,4 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
   MPI_CHECK(0, prism_cell_face == std::vector<I4>{6,3,16,13,15              } );
   MPI_CHECK(1, prism_cell_face == std::vector<I4>{              8,4,18,15,14} );
 }
+#endif // C++>17
