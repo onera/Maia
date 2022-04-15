@@ -8,7 +8,7 @@ import maia.sids.cgns_keywords as CGK
 
 import maia
 from maia.sids.cgns_keywords import Label as CGL
-from maia.utils.py_utils     import list_or_only_elt, expect_one
+from maia.utils.py_utils     import list_or_only_elt, expects_one
 from . import elements_utils as EU
 
 # --------------------------------------------------------------------------
@@ -53,12 +53,12 @@ class Zone:
   @staticmethod
   def NGonNode(zone_node):
     ngons = [e for e in I.getNodesFromType1(zone_node, CGL.Elements_t.name) if ElementCGNSName(e) == 'NGON_n']
-    return expect_one(ngons, ("NGon node", f"zone {I.getName(zone_node)}"))
+    return expects_one(ngons, ("NGon node", f"zone {I.getName(zone_node)}"))
 
   @staticmethod
   def NFaceNode(zone_node):
     nfaces = [e for e in I.getNodesFromType1(zone_node, CGL.Elements_t.name) if ElementCGNSName(e) == 'NFACE_n']
-    return expect_one(nfaces, ("NFace node", f"zone {I.getName(zone_node)}"))
+    return expects_one(nfaces, ("NFace node", f"zone {I.getName(zone_node)}"))
 
   @staticmethod
   def VertexBoundarySize(zone_node):

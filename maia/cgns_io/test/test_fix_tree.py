@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import Converter.Internal as I
-import numpy as np
 from maia.utils   import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
@@ -72,6 +71,7 @@ def test_ensure_PE_global_indexing():
   fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
   assert (pe[1] == [[5,6],[7,0],[5,0],[6,8]]).all()
 
+  nface = I.newElements('FirstNace', 'NFACE', erange=[1,2])
   ngon = I.newElements('SecondNGon', 'NGON', erange=[3,6])
   pe   = I.newDataArray('ParentElements', [[1,0],[1,0],[1,2],[2,0]], parent=ngon)
   fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))

@@ -6,7 +6,7 @@ from cmaia.connectivity.connectivity_transform import *
 
 def get_ngon_pe_local(ngon_node):
   """
-  Shift the ParentElement array of an NGonNode to have local (starting at 1) cell
+  Shift the ParentElement array of a NGonNode to have local (starting at 1) cell
   indices.
   If PE array was already local, no copy is done
   """
@@ -25,6 +25,11 @@ def get_ngon_pe_local(ngon_node):
       return pe_val
 
 def enforce_boundary_pe_left(zone_node):
+  """
+  Force the boundary ngon to have a non zero left parent cell.
+  In such case, connetivities (FaceVtx & NFace) are reversed to preserve face
+  orientation
+  """
   ngon  = sids.Zone.NGonNode (zone_node)
   try:
     nface = sids.Zone.NFaceNode(zone_node)

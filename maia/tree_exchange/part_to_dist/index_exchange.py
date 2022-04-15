@@ -230,7 +230,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
   n_faceTot = PTBDistribution[n_rank]
   # Shift dist PE because we put NGon first
-  dist_pe += n_faceTot * (dist_pe > 0)
+  py_utils.shift_nonzeros(dist_pe, n_faceTot)
   # > Add in disttree
   elt_node = I.newElements(elem_name, 'NGON', parent=dist_zone)
   I.newPointRange('ElementRange',        [1, n_faceTot], parent=elt_node)

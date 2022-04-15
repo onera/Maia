@@ -5,6 +5,7 @@ import maia.sids.sids as SIDS
 import maia.sids.Internal_ext as IE
 from maia.sids import elements_utils as EU
 from maia.utils.parallel import utils as par_utils
+from maia.utils import py_utils
 
 from maia.connectivity import connectivity_transform as CNT
 from maia.connectivity import remove_element as RME
@@ -56,7 +57,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   pe = np.empty((dface_cell.shape[0]//2, 2), dtype=dface_cell.dtype, order='F')
   CNT.pdm_face_cell_to_pe_cgns(dface_cell, pe)
   #NGon PE must refer to nFace indexes, we have to shift
-  pe += (ermax + n_face) * (pe > 0)
+
+  py_utils.shift_nonzeros(pe, ermax+n_face)
   # > Attention overflow I8
   eso_ngon = dface_vtx_idx + distrib_face_vtx[i_rank]
 

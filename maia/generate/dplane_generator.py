@@ -6,6 +6,7 @@ from maia.distribution.distribution_function import create_distribution_node_fro
 
 import numpy as np
 from maia.utils.parallel import utils as par_utils
+from maia.utils import py_utils
 
 import Pypdm.Pypdm as PDM
 
@@ -54,7 +55,7 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   eso = distrib_edge_vtx[i_rank] + dplane_dict['dedge_vtx_idx']
 
   pe     = dplane_dict['dedge_face'].reshape(dn_edge, 2)
-  pe    += distrib_face[n_rank] * (pe > 0)
+  py_utils.shift_nonzeros(pe, distrib_face[n_rank])
   ngon_n = I.newElements('NGonElements', 'NGON',
                          erange = [1, distrib_face[n_rank]], parent=dist_zone)
 

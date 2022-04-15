@@ -46,7 +46,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     CNT.pe_cgns_to_pdm_face_cell(ngon_pe      , dface_cell      )
     # PDM expects a PE in local cell indexing, shift is needed
     if ngon_first:
-      dface_cell -= distrib_face[2] * (dface_cell > 0)
+      py_utils.shift_nonzeros(dface_cell, -distrib_face[2])
     CNT.compute_idx_local       (dface_vtx_idx, ngon_eso, distrib_face_vtx)
   else:
     dface_vtx_idx = np.zeros(1, dtype=np.int32    )

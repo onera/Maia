@@ -106,7 +106,7 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
 
   # If NGon were first in tree, cell range has moved so pe must be offseted
   if er_n[1][0] == 1:
-    new_pe -= n_rmvd_total * (new_pe > 0)
+    py_utils.shift_nonzeros(new_pe, -n_rmvd_total)
   I.setValue(pe_n, new_pe)
 
   #Update ElementRange and size data (global)
