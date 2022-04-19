@@ -3,6 +3,7 @@ from maia.transform.apply_function_to_nodes import apply_to_bases,apply_to_zones
 import Converter.Internal as I
 from mpi4py import MPI
 
+cpp20_enabled = ctransform.cpp20_enabled
 
 def merge_by_elt_type(dist_tree,comm):
   apply_to_bases(dist_tree,ctransform.merge_by_elt_type,comm)

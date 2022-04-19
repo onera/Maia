@@ -11,6 +11,7 @@ import maia.connectivity.ngon_to_std_elements
 
 
 #@mark_mpi_test([1,4])
+@pytest.mark.skipif(not maia.transform.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 @mark_mpi_test([1])
 def test_ngons_to_std_elements(sub_comm, write_output):
   # Create NGon mesh
