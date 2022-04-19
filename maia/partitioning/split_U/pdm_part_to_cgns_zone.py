@@ -82,6 +82,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
     pdm_face_cell = data['np_face_cell']
     pe = np.empty((n_face, 2), dtype=pdm_face_cell.dtype, order='F')
     CNT.pdm_face_cell_to_pe_cgns(pdm_face_cell, pe)
+    pe += n_face * (pe > 0)
 
     ngon_name  = 'NGonElements'
     nface_name = 'NFaceElements'

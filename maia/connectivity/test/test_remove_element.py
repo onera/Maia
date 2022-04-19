@@ -45,8 +45,8 @@ def test_remove_ngons(sub_comm):
   # TODO handwritten ngon (4_cubes?)
 
   ec = [1,4, 2,5, 3,6, 4,7, 5,8, 6,9, 7,10, 8,11, 9,12, 1,2, 2,3, 4,5, 5,6, 7,8, 8,9, 10,11, 11,12]
-  pe = np.array([[1,0], [1,2], [2,0], [3,0], [3,4], [4,0], [5,0], [5,6], [6,0],
-                 [1,0], [2,0], [1,3], [2,4], [3,5], [4,6], [5,0], [6,0]])
+  pe = np.array([[18,0], [18,19], [19,0],  [20,0],  [20,21], [21,0],  [22,0], [22,23], [23,0],
+                 [18,0], [19,0],  [18,20], [19,21], [20,22], [21,23], [22,0], [23,0]])
   ngon = I.newElements('NGon', 'NGON', ec, [1,17])
   I.newDataArray('ElementStartOffset', np.arange(0, 35, 2), parent=ngon)
   I.newDataArray('ParentElements', pe, parent=ngon)
@@ -58,8 +58,8 @@ def test_remove_ngons(sub_comm):
   RME.remove_ngons(ngon, [1,15], sub_comm)
 
   expected_ec = [1,4,    3,6, 4,7, 5,8, 6,9, 7,10, 8,11, 9,12, 1,2, 2,3, 4,5, 5,6, 7,8, 8,9,      11,12]
-  expected_pe = np.array([[1,0],        [2,0], [3,0], [3,4], [4,0], [5,0], [5,6], [6,0],
-                          [1,0], [2,0], [1,3], [2,4], [3,5], [4,6],        [6,0]])
+  expected_pe = np.array([[16,0],         [17,0],  [18,0],  [18,19], [19,0], [20,0], [20,21], [21,0],
+                          [16,0], [17,0], [16,18], [17,19], [18,20], [19,21],        [21,0]])
   assert (I.getNodeFromName(ngon, 'ElementRange')[1] == [1, 15]).all()
   assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   assert (I.getNodeFromName(ngon, 'ParentElements')[1] == expected_pe).all()
@@ -98,7 +98,7 @@ def test_remove_ngons_2p(sub_comm):
     expected_pe = np.array([[4,0], [5,0], [5,6], [6,0], [1,0], [2,0], [1,3], [2,4], [3,5], [4,6],        [6,0]])
     expected_eso = np.arange(8, 2*15+1, 2)
 
-  ngon = I.newElements('NGon', 'NGON', ec, [1,17])
+  ngon = I.newElements('NGon', 'NGON', ec, [7,24])
   I.newDataArray('ElementStartOffset', eso, parent=ngon)
   I.newDataArray('ParentElements', pe, parent=ngon)
   I.newIndexArray('ElementConnectivity#Size', [34], parent=ngon)
@@ -108,7 +108,7 @@ def test_remove_ngons_2p(sub_comm):
 
   RME.remove_ngons(ngon, to_remove, sub_comm)
 
-  assert (I.getNodeFromName(ngon, 'ElementRange')[1] == [1, 17-2]).all()
+  assert (I.getNodeFromName(ngon, 'ElementRange')[1] == [7, 24-2]).all()
   assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   assert (I.getNodeFromName(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == expected_eso).all()

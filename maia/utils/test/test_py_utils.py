@@ -61,6 +61,15 @@ def test_append_unique():
   py_utils.append_unique(L, 4)
   assert L == [1,2,3,4]
 
+def test_expects_one():
+  assert py_utils.expects_one([42]) == 42
+  with pytest.raises(RuntimeError) as e:
+    py_utils.expects_one([42,43])
+  assert str(e.value) == 'Multiple elem found in list'
+  with pytest.raises(RuntimeError) as e:
+    py_utils.expects_one([], ('fruit', 'grocery list'))
+  assert str(e.value) == 'fruit not found in grocery list'
+
 def test_loop_from():
   L = ["apple", "banana", "orange", "mango"]
   assert list(py_utils.loop_from(L, 0)) == L
@@ -120,6 +129,14 @@ def test_sizes_to_indices():
   assert(py_utils.sizes_to_indices([5,0,0,10]) == np.array([0,5,5,5,15])).all()
   assert py_utils.sizes_to_indices([5,0,0,10], np.int32).dtype == np.int32
   assert py_utils.sizes_to_indices([5,0,0,10], np.int64).dtype == np.int64
+
+def test_shift_nonzeros():
+  array = np.array([2,0,1,-1,0,3])
+  py_utils.shift_nonzeros(array, 4)
+  assert (array == [2+4, 0, 1+4, -1+4, 0, 3+4]).all()
+  array = np.array([[12,0], [11,12],[0,13], [0,0]])
+  py_utils.shift_nonzeros(array, -10)
+  assert (array == [[2,0], [1,2], [0,3], [0,0]]).all()
 
 def test_reverse_connectivity():
   ids   = np.array([8,51,6,30,29])

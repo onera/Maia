@@ -509,9 +509,13 @@ def _merge_ngon(all_mbm, tree, comm):
   # Create working data
   for zone_path, dom_id in zone_to_id.items():
     ngon_node = sids.Zone.NGonNode(I.getNodeFromPath(tree, zone_path))
-    pe = I.getNodeFromName1(ngon_node, 'ParentElements')[1]
-    I.newDataArray('UpdatedPE', pe.copy(), parent=ngon_node)
-    I.newDataArray('PEDomain',  dom_id * np.ones_like(pe), parent=ngon_node)
+    pe_bck = I.getNodeFromName1(ngon_node, 'ParentElements')[1]
+    pe = pe_bck.copy()
+    # If NGon are first, then PE indexes cell, we must shift : PDM expect cell starting at 1
+    if sids.ElementRange(ngon_node)[0] == 1:
+      py_utils.shift_nonzeros(pe, -sids.ElementSize(ngon_node))
+    I.newDataArray('UpdatedPE', pe, parent=ngon_node)
+    I.newDataArray('PEDomain',  dom_id * np.ones_like(pe_bck), parent=ngon_node)
 
   # First, we need to update the PE node to include cells of opposite zone
   query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
@@ -593,6 +597,7 @@ def _merge_ngon(all_mbm, tree, comm):
   pe = np.empty((merged_pe_stri.size, 2), order='F', dtype=merged_pe.dtype)
   pe[:,0] = merged_pe_full[0::2]
   pe[:,1] = merged_pe_full[1::2]
+  py_utils.shift_nonzeros(pe, merged_distri_face[-1])
 
   # Finally : create ngon node
   merged_ngon = I.newElements('NGonElements', 'NGON', erange=[1, merged_distri_face[-1]])

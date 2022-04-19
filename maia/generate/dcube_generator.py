@@ -6,6 +6,7 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 from maia.distribution.distribution_function import create_distribution_node_from_distrib
 from maia.utils.parallel                     import utils          as par_utils
+from maia.utils                              import py_utils
 from maia.sids                               import elements_utils as EU
 from maia.connectivity                       import connectivity_transform as CNT
 
@@ -78,6 +79,7 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   eso = distrib_facevtx[i_rank] + dcube_val['dface_vtx_idx'].astype(pdm_gnum_dtype)
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
+  py_utils.shift_nonzeros(pe, distrib_face[n_rank])
   ngon_n = I.newElements('NGonElements', 'NGON',
                          erange = [1, distrib_face[n_rank]], parent=dist_zone)
 

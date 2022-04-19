@@ -2,8 +2,15 @@
 #include <vector>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
+
+template<typename T> auto
+make_raw_view(py::array_t<T, py::array::f_style>& x){
+  py::buffer_info buf = x.request();
+  return static_cast<T*>(buf.ptr);
+}
 
 template<typename g_num>
 void pe_cgns_to_pdm_face_cell(py::array_t<g_num, py::array::f_style>& pe,
@@ -65,10 +72,59 @@ void compute_idx_local(py::array_t<int32_t, py::array::f_style>& connect_l_idx,
 
 }
 
-template<typename T> auto
-make_raw_view(py::array_t<T, py::array::f_style>& x){
-  py::buffer_info buf = x.request();
-  return static_cast<T*>(buf.ptr);
+void
+enforce_pe_left_parent(
+    py::array_t<int32_t, py::array::f_style>& np_face_vtx_idx,
+    py::array_t<int32_t, py::array::f_style>& np_face_vtx,
+    py::array_t<int32_t, py::array::f_style>& np_pe,
+    std::optional<py::array_t<int32_t, py::array::f_style>> &np_cell_face_idx,
+    std::optional<py::array_t<int32_t, py::array::f_style>> &np_cell_face
+)
+{
+  int n_face = np_pe.size()/2;
+  auto pe_ptr        = np_pe.template mutable_unchecked<2>();
+  auto face_vtx_idx  = make_raw_view(np_face_vtx_idx);
+  auto face_vtx      = make_raw_view(np_face_vtx);
+  int *cell_face_idx = nullptr;
+  int *cell_face     = nullptr;
+  if (np_cell_face_idx.has_value()) { //Take value if not None
+    cell_face_idx = make_raw_view(np_cell_face_idx.value());
+    cell_face     = make_raw_view(np_cell_face.value());
+  }
+
+  int f_shift(0); // To go back to local cell numbering if ngons are before nface
+  int c_shift(0); // To go back to local face numbering if nface are before ngons
+  if (n_face > 0) {
+    if (std::max(pe_ptr(0,0), pe_ptr(0,1)) > n_face ) { //NGons are first
+      f_shift = n_face;
+    }
+    else if (cell_face != nullptr) { //NFace are first
+      c_shift = np_cell_face_idx.value().size() - 1; // This is n_cell
+    }
+  }
+
+  for(int i_face = 0; i_face < n_face; ++i_face) {
+    if (pe_ptr(i_face, 0) == 0) {
+      // Swap pe
+      pe_ptr(i_face, 0) = pe_ptr(i_face, 1);
+      pe_ptr(i_face, 1) = 0;
+
+      // Change sign in cell_face
+      if (cell_face_idx != nullptr) {
+        int i_cell  = pe_ptr(i_face, 0) - f_shift - 1;
+        int face_id = i_face + c_shift + 1;
+        int* begin = &cell_face[cell_face_idx[i_cell]];
+        int* end   = &cell_face[cell_face_idx[i_cell+1]];
+        int *find = std::find_if(begin, end, [face_id](int x) {return abs(x) == face_id;});
+        if (find != end) {
+          *find *= - 1;
+        }
+      }
+
+      //Swap vertices
+      std::reverse(&face_vtx[face_vtx_idx[i_face]+1], &face_vtx[face_vtx_idx[i_face+1]]);
+    }
+  }
 }
 
 template<typename fld_type>
@@ -121,6 +177,12 @@ PYBIND11_MODULE(connectivity_transform, m) {
         py::arg("connect_l_idx").noconvert(),
         py::arg("connect_g_idx").noconvert(),
         py::arg("distrib"      ).noconvert());
+  m.def("enforce_pe_left_parent", &enforce_pe_left_parent,
+        py::arg("ngon_eso").noconvert(),
+        py::arg("ngon_ec").noconvert(),
+        py::arg("ngon_pe").noconvert(),
+        py::arg("nface_eso").noconvert() = py::none(),
+        py::arg("nface_ec").noconvert()  = py::none());
 
   m.def("interlaced_to_tuple_coords", &interlaced_to_tuple_coords<double>,
         py::arg("np_xyz").noconvert());

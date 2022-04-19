@@ -104,20 +104,20 @@ Zone.P0.N0 Zone_t:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t [6,1,4]:
   Hexa Elements_t:
-    ElementRange ElementRange_t [4,4]:
+    ElementRange IndexRange_t [4,4]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t [1]:
   Tetra Elements_t:
-    ElementRange ElementRange_t [5,8]:
+    ElementRange IndexRange_t [5,8]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t [2,1,4,3]:
 Zone.P0.N1 Zone_t:
   Hexa Elements_t:
-    ElementRange ElementRange_t [1,1]:
+    ElementRange IndexRange_t [1,1]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t [2]:
   Quad Elements_t:
-    ElementRange ElementRange_t [2,4]:
+    ElementRange IndexRange_t [2,4]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t [2,3,5]:
 """

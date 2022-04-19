@@ -34,7 +34,10 @@ def refine_mesh(tree, factor=1):
 
   I._rmNodesByName(refined_tree, 'NFaceElements') #Convert back to new norm
   ngon = I.getNodeFromName(refined_tree, 'NGonElements')
+  er_n = I.getNodeFromName1(ngon, 'ElementRange')
   ec_n = I.getNodeFromName1(ngon, 'ElementConnectivity')
+  pe_n = I.getNodeFromName1(ngon, 'ParentElements')
+  pe_n[1] += er_n[1][1] * (pe_n[1] > 0) #Cassiopee uses old indexing
   ec  = ec_n[1]
   eso = np.empty(sids.ElementSize(ngon)+1, np.int32)
   eso[0] = 0
