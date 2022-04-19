@@ -1,20 +1,9 @@
 from cmaia.transform import transform as ctransform
-from maia.transform.apply_to_bases import apply_to_bases
+from maia.transform.apply_function_to_nodes import apply_to_bases,apply_to_zones
 import Converter.Internal as I
 from mpi4py import MPI
 
-
-def apply_to_bases(t,f,*args):
-  if I.getType(t)=="CGNSBase_t":
-    f(t,*args)
-  elif I.getType(t)=="CGNSTree_t":
-    for b in I.getBases(t):
-      f(b,*args)
-  else:
-    raise Exception("function \""+f.__name__+"\"" \
-                    " can only be applied to a \"CGNSBase_t\" or on a complete \"CGNSTree_t\"," \
-                    " not on a node of type \""+I.getType(t)+"\".")
-
+cpp20_enabled = ctransform.cpp20_enabled
 
 def merge_by_elt_type(dist_tree,comm):
   apply_to_bases(dist_tree,ctransform.merge_by_elt_type,comm)
@@ -33,10 +22,16 @@ def gcs_only_for_ghosts(t):
 
 
 def put_boundary_first(t,comm):
-  apply_to_bases(t,ctransform.partition_with_boundary_first,comm)
+  apply_to_bases(t,ctransform.put_boundary_first,comm)
 
 def ngon_new_to_old(t):
-  apply_to_bases(t,ctransform.ngon_new_to_old)
+  apply_to_zones(t,ctransform.ngon_new_to_old)
 
 def split_boundary_subzones_according_to_bcs(t):
   apply_to_bases(t,ctransform.split_boundary_subzones_according_to_bcs)
+
+def generate_interior_faces_and_parents(t,comm):
+  apply_to_zones(t,ctransform.generate_interior_faces_and_parents,comm)
+
+def std_elements_to_ngons(t,comm):
+  apply_to_zones(t,ctransform.std_elements_to_ngons,comm)

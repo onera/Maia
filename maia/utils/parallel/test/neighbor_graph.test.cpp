@@ -1,3 +1,4 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 #include "doctest/extensions/doctest_mpi.h"
 
@@ -92,21 +93,22 @@ MPI_TEST_CASE("receive_PointListDonor_from_donor_proc",2) {
   ze.receive_PointListDonor_from_donor_proc(pl_donor_data);
 
   if (test_rank==0) {
-    auto pl_join0 = view_as_span<I4>(get_node_by_matching(b,"Zone0/ZoneGridConnectivity/Join0/PointListDonor").value);
-    auto pl_join1 = view_as_span<I4>(get_node_by_matching(b,"Zone0/ZoneGridConnectivity/Join1/PointListDonor").value);
-    auto pl_join2 = view_as_span<I4>(get_node_by_matching(b,"Zone3/ZoneGridConnectivity/Join2/PointListDonor").value);
-    auto pl_join3 = view_as_span<I4>(get_node_by_matching(b,"Zone3/ZoneGridConnectivity/Join3/PointListDonor").value);
+    auto pl_join0 = get_node_value_by_matching<I4>(b,"Zone0/ZoneGridConnectivity/Join0/PointListDonor");
+    auto pl_join1 = get_node_value_by_matching<I4>(b,"Zone0/ZoneGridConnectivity/Join1/PointListDonor");
+    auto pl_join2 = get_node_value_by_matching<I4>(b,"Zone3/ZoneGridConnectivity/Join2/PointListDonor");
+    auto pl_join3 = get_node_value_by_matching<I4>(b,"Zone3/ZoneGridConnectivity/Join3/PointListDonor");
     MPI_CHECK( 0 , pl_join0 == vector{100,200,300} );
     MPI_CHECK( 0 , pl_join1 == vector{1100,1200,1300,1400} );
     MPI_CHECK( 0 , pl_join2 == vector{1500} );
     MPI_CHECK( 0 , pl_join3 == vector{1600,1700} );
   }
   if (test_rank==1) {
-    auto pl_join4 = view_as_span<I4>(get_node_by_matching(b,"Zone1/ZoneGridConnectivity/Join4/PointListDonor").value);
-    auto pl_join5 = view_as_span<I4>(get_node_by_matching(b,"Zone1/ZoneGridConnectivity/Join5/PointListDonor").value);
-    auto pl_join6 = view_as_span<I4>(get_node_by_matching(b,"Zone2/ZoneGridConnectivity/Join6/PointListDonor").value);
+    auto pl_join4 = get_node_value_by_matching<I4>(b,"Zone1/ZoneGridConnectivity/Join4/PointListDonor");
+    auto pl_join5 = get_node_value_by_matching<I4>(b,"Zone1/ZoneGridConnectivity/Join5/PointListDonor");
+    auto pl_join6 = get_node_value_by_matching<I4>(b,"Zone2/ZoneGridConnectivity/Join6/PointListDonor");
     MPI_CHECK( 1 , pl_join4 == vector{10100,10200,10300,10400} );
     MPI_CHECK( 1 , pl_join5 == vector{11100,11200} );
     MPI_CHECK( 1 , pl_join6 == vector{13600,13700} );
   }
 }
+#endif // C++>17

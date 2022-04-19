@@ -2,7 +2,6 @@
 
 
 #include "cpp_cgns/cgns.hpp"
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/future/span.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "cpp_cgns/sids/utils.hpp"
@@ -15,6 +14,7 @@
 #include "range/v3/action/sort.hpp"
 #include "range/v3/view/zip.hpp"
 
+using namespace maia; // TODO
 
 namespace cgns {
 
@@ -51,7 +51,7 @@ auto re_number_point_lists_donors(interzone_point_list_info& pl_infos) -> void;
 
 template<class Fun> auto
 apply_base_renumbering(tree& b, Fun zone_renumbering, MPI_Comm comm) -> void {
-  STD_E_ASSERT(b.label=="CGNSBase_t");
+  STD_E_ASSERT(label(b)=="CGNSBase_t");
   auto zs = get_children_by_label(b,"Zone_t");
 
   interzone_point_list_info pl_infos;
@@ -60,7 +60,7 @@ apply_base_renumbering(tree& b, Fun zone_renumbering, MPI_Comm comm) -> void {
   }
 
   for (tree& z : zs) {
-    auto z_plds = find_point_list_by_zone_donor(pl_infos.pld_by_z,z.name);
+    auto z_plds = find_point_list_by_zone_donor(pl_infos.pld_by_z,name(z));
     zone_renumbering(z,z_plds);
   }
 
@@ -71,7 +71,7 @@ apply_base_renumbering(tree& b, Fun zone_renumbering, MPI_Comm comm) -> void {
 
 inline auto
 symmetrize_grid_connectivities(tree& b, MPI_Comm comm) -> void {
-  STD_E_ASSERT(b.label=="CGNSBase_t");
+  STD_E_ASSERT(label(b)=="CGNSBase_t");
 
   auto zs = get_children_by_label(b,"Zone_t");
 
@@ -82,22 +82,22 @@ symmetrize_grid_connectivities(tree& b, MPI_Comm comm) -> void {
 
   for (tree& z : zs) {
     tree& zgc = cgns::get_child_by_name(z,"ZoneGridConnectivity");
-    auto z_pls  = find_point_list_by_zone_donor(pls_by_zone ,z.name) | ranges::actions::sort(less_receiver_zone);
-    auto z_plds = find_point_list_by_zone_donor(plds_by_zone,z.name) | ranges::actions::sort(less_receiver_zone);
+    auto z_pls  = find_point_list_by_zone_donor(pls_by_zone ,name(z)) | ranges::actions::sort(less_receiver_zone);
+    auto z_plds = find_point_list_by_zone_donor(plds_by_zone,name(z)) | ranges::actions::sort(less_receiver_zone);
     auto pls_by_recv_z  = z_pls  | ranges::views::group_by(eq_receiver_zone);
     auto plds_by_recv_z = z_plds | ranges::views::group_by(eq_receiver_zone);
     auto gc_by_recv_z = ranges::views::zip(pls_by_recv_z,plds_by_recv_z);
     auto z_gcs = cgns::get_nodes_by_matching(zgc,"GridConnectivity_t");
     for (const auto& gcs : gc_by_recv_z) {
       std::string receiver_z_name = gcs.first[0].receiver_z_name;
-      std_e::buffer_vector<I4> pl;
+      std::vector<I4> pl;
       for (const auto& recv_pld : gcs.second) { // Note : using pl DONOR of the OPPOSITE zone, because they are the pl of the CURRENT zone
         for (I4 i : recv_pld.pl) {
           pl.push_back(i);
         }
       }
 
-      std_e::buffer_vector<I4> pld;
+      std::vector<I4> pld;
       for (const auto& recv_pl : gcs.first) { // Note : inverted for the same reason
         for (I4 i : recv_pl.pl) {
           pld.push_back(i);
@@ -105,7 +105,7 @@ symmetrize_grid_connectivities(tree& b, MPI_Comm comm) -> void {
       }
 
       for (tree& z_gc : z_gcs) {
-        auto opp_z_name = to_string(z_gc.value);
+        auto opp_z_name = to_string(value(z_gc));
         if (opp_z_name == receiver_z_name) {
           auto z_pl = PointList<I4>(z_gc);
           for (I4 i : z_pl) {

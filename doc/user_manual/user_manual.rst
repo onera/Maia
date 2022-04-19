@@ -4,17 +4,10 @@
 User Manual
 ###########
 
-.. currentmodule:: std_e
-
-
-*****************
-Table of contents
-*****************
-
 .. toctree::
-  :maxdepth: 3
+  :maxdepth: 1
 
   introduction
-  distributed_tree
-  loading_a_distributed_tree
-  partitioning
+  cgns_trees
+  std_elements_to_ngons
+  

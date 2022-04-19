@@ -2,27 +2,19 @@
 Welcome to Maia!
 ****************
 
-**Maia** is a Python library for parallel algorithms over CGNS trees: distributed loading, partitioning, and various kind of transformations (generation of faces, generation of ghost cells, destructuration...).
-
-Installation
-------------
-
-
-
-Table of contents
------------------
+**Maia** is a C++ and Python library for parallel algorithms over CGNS trees: distributed loading, partitioning, and various kind of transformations (generation of faces, generation of ghost cells, destructuration...).
 
 .. toctree::
-  :maxdepth: 6
+  :maxdepth: 1
   :caption: Reference:
 
   quick_start
-  user_manual/user_manual
   installation
-  design_documents/design_documents
+  user_manual/user_manual
+  developer_manual/developer_manual
 
 .. toctree::
-  :maxdepth: 6
+  :maxdepth: 1
   :caption: Appendix:
 
   releases/release_notes

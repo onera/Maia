@@ -1,6 +1,6 @@
 #include "std_e/parallel/mpi.hpp"
 #include <vector>
-#include "cpp_cgns/sids/sids.hpp"
+#include "cpp_cgns/sids.hpp"
 #include "pdm.h"
 #include "mpi.h"
 #include "maia/utils/parallel/distribution.hpp"

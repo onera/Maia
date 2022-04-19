@@ -1,9 +1,9 @@
+#if __cplusplus > 201703L
 #include "std_e/unit_test/doctest.hpp"
 
 
 #include "maia/utils/cgns_tree_examples/unstructured_base.hpp"
 #include "cpp_cgns/tree_manip.hpp"
-#include "cpp_cgns/node_manip.hpp"
 #include "cpp_cgns/sids/Hierarchical_Structures.hpp"
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 using namespace cgns;
@@ -22,7 +22,7 @@ TEST_CASE("unstructured mesh construction") {
 
   // coordinates
   tree& z0_coordX_node = get_node_by_matching(z0,"GridCoordinates/CoordinateX");
-  auto z0_coordX = view_as_span<R8>(z0_coordX_node.value);
+  auto z0_coordX = get_value<R8>(z0_coordX_node);
   std::vector<double> expected_z0_coord_X = {
     0.,1.,2.,3.,
     0.,1.,2.,3.,
@@ -38,16 +38,16 @@ TEST_CASE("unstructured mesh construction") {
 
   // bcs
   tree& z0_inflow_pl_node = get_node_by_matching(z0,"ZoneBC/Inlet/PointList");
-  auto z0_inflow_pl = view_as_span<I4>(z0_inflow_pl_node.value);
+  auto z0_inflow_pl = get_value<I4>(z0_inflow_pl_node);
   REQUIRE( z0_inflow_pl.size() == 2 );
   CHECK( z0_inflow_pl[0] == 1 );
   CHECK( z0_inflow_pl[1] == 2 );
 
   // gcs
   tree& z0_grid_connec_pl_node = get_node_by_matching(z0,"ZoneGridConnectivity/MixingPlane/PointList");
-  auto z0_grid_connec_pl = view_as_span<I4>(z0_grid_connec_pl_node.value);
+  auto z0_grid_connec_pl = get_value<I4>(z0_grid_connec_pl_node);
   tree& z0_grid_connec_pld_node = get_node_by_matching(z0,"ZoneGridConnectivity/MixingPlane/PointListDonor");
-  auto z0_grid_connec_pld = view_as_span<I4>(z0_grid_connec_pld_node.value);
+  auto z0_grid_connec_pld = get_value<I4>(z0_grid_connec_pld_node);
   REQUIRE( z0_grid_connec_pl.size() == 1 );
   CHECK( z0_grid_connec_pl[0] == 7 );
   REQUIRE( z0_grid_connec_pld.size() == 1 );
@@ -59,12 +59,13 @@ TEST_CASE("unstructured mesh construction") {
   CHECK( z0_ngon_elt_range[0] == 1 );
   CHECK( z0_ngon_elt_range[1] == 8 + 9 + 12 );
   auto z0_ngon_elt_connect = ElementConnectivity<I4>(z0_ngon);
-  REQUIRE( z0_ngon_elt_connect.size() == (8 + 9 + 12)*(1+4) );
-  CHECK( z0_ngon_elt_connect[0] ==  4 );
-  CHECK( z0_ngon_elt_connect[1] ==  1 );
-  CHECK( z0_ngon_elt_connect[2] ==  5 );
-  CHECK( z0_ngon_elt_connect[3] == 17 );
-  CHECK( z0_ngon_elt_connect[4] == 13 );
+  auto z0_ngon_eso = ElementStartOffset<I4>(z0_ngon);
+  REQUIRE( z0_ngon_eso.size() == 8+9+12 + 1 );
+  REQUIRE( z0_ngon_elt_connect.size() == (8 + 9 + 12)*4 );
+  CHECK( z0_ngon_elt_connect[0] ==  1 );
+  CHECK( z0_ngon_elt_connect[1] ==  5 );
+  CHECK( z0_ngon_elt_connect[2] == 17 );
+  CHECK( z0_ngon_elt_connect[3] == 13 );
   auto z0_ngon_parent_elts = ParentElements<I4>(z0_ngon);
   REQUIRE( z0_ngon_parent_elts.size() == (8 + 9 + 12)*2 );
   CHECK( z0_ngon_parent_elts(0,0) == 0 ); CHECK( z0_ngon_parent_elts(0,1) == 1 );
@@ -72,3 +73,4 @@ TEST_CASE("unstructured mesh construction") {
   CHECK( z0_ngon_parent_elts(2,0) == 1 ); CHECK( z0_ngon_parent_elts(2,1) == 2 );
   CHECK( z0_ngon_parent_elts(3,0) == 4 ); CHECK( z0_ngon_parent_elts(3,1) == 5 );
 }
+#endif // C++>17

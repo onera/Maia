@@ -36,6 +36,7 @@ project(
   LANGUAGES CXX
 )
 
+option(${PROJECT_NAME}_ENABLE_CPP20 "Enable c++20 for ${PROJECT_NAME}" ON)
 option(${PROJECT_NAME}_ENABLE_FETCH_PYBIND "Fetch Pybind11 sources on-the-fly if not found by find_package()" ON)
 option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF)
 option(${PROJECT_NAME}_ENABLE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
@@ -44,7 +45,12 @@ option(${PROJECT_NAME}_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
 
 ## Compiler flags
 ### C++ standard
-set(CMAKE_CXX_STANDARD          17 )
+if (${PROJECT_NAME}_ENABLE_CPP20)
+  set(CMAKE_CXX_STANDARD 20)
+  set(std_e_ENABLE_CPP20 ON CACHE BOOL "Maia uses C++20, so force C++20 for std_e" FORCE)
+else()
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 set(CMAKE_CXX_EXTENSIONS        OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON )
 ### fPIC
@@ -73,7 +79,7 @@ include(FetchContent)
 FetchContent_Declare(
   doctest
   GIT_REPOSITORY https://github.com/doctest/doctest.git
-  GIT_TAG        110d305
+  GIT_TAG        110d305 # corrected MPI SUBCASE
 )
 FetchContent_MakeAvailable(doctest)
 ### pybind11 ###
@@ -81,7 +87,7 @@ project_find_package(pybind11 CONFIG)
 if (NOT pybind11_FOUND)
   if (${PROJECT_NAME}_ENABLE_FETCH_PYBIND)
     message("Pybind11 was not found by find_package(). Fetching sources on-the-fly")
-    set(PYBIND11_INSTALL ON CACHE BOOL "cpp_cgns requires PyBind" FORCE) # required for pybind to export itself
+    set(PYBIND11_INSTALL ON CACHE BOOL "${PROJECT_NAME} requires PyBind to export itself" FORCE)
     include(FetchContent)
     FetchContent_Declare(
       pybind11
@@ -112,7 +118,7 @@ else()
   set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"      FORCE)
   set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"           FORCE)
   set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"     FORCE)
-  set(PDM_ENABLE_UNIT_TEST       ON  CACHE BOOL "Maia uses ParaDiGM with unit tests"       FORCE)
+  set(PDM_ENABLE_UNIT_TEST       OFF CACHE BOOL "Maia uses ParaDiGM with unit tests"       FORCE)
   set(PASS_DEFAULT_FLAGS         ON  CACHE BOOL "Maia does not use ParaDiGM default flags" FORCE)
   # These option values are not FORCE, but the default is different than the one of ParaDiGM
   set(PDM_ENABLE_Fortran         OFF CACHE BOOL "Maia uses ParaDiGM without Fortran"    )

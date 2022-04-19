@@ -1,8 +1,8 @@
+#if __cplusplus > 201703L
 #include "maia/transform/merge_by_elt_type.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/utils/parallel/utils.hpp"
-#include "std_e/buffer/buffer_vector.hpp"
 #include "std_e/interval/interval_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "pdm_multi_block_to_part.h"
@@ -23,14 +23,14 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   auto range_first = ElementRange<I4>(*first_section);
   I4 start = range_first[0];
   I4 finish = range_first[1];
-  I4 elt_type = ElementType<I4>(*first_section);
+  auto elt_type = element_type(*first_section);
 
   It cur = first_section+1;
   while (cur != last_section) {
     auto cur_range = ElementRange<I4>(*cur);
     I4 cur_start = cur_range[0];
     I4 cur_finish = cur_range[1];
-    I4 cur_elt_type = ElementType<I4>(*first_section);
+    I4 cur_elt_type = element_type(*first_section);
     STD_E_ASSERT(cur_start == finish+1);
     STD_E_ASSERT(cur_elt_type == elt_type);
     finish = cur_finish;
@@ -44,7 +44,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
   std::vector<PDM_g_num_t*> block_distribs(n_section);
   for (int i=0; i<n_section; ++i) {
     tree& section_node = *(first_section+i);
-    auto section_connec_partial_distri = get_node_value_by_matching<I8>(section_node,":CGNS#Distribution/Element");
+    auto section_connec_partial_distri = ElementDistribution<I4>(section_node);
     block_distribs_storer[i] = distribution_from_partial(section_connec_partial_distri,comm);
     block_distribs[i] = block_distribs_storer[i].data();
     multi_distrib_idx[i+1] = multi_distrib_idx[i] + section_connec_partial_distri.back();
@@ -71,7 +71,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
                                    n_elts.data(),
                                    n_part,
                                    pdm_comm);
-  int stride = cgns::number_of_nodes(elt_type);
+  int stride = cgns::number_of_vertices(elt_type);
   int** stride_one = (int ** ) malloc( n_block * sizeof(int *));
   for(int i_block = 0; i_block < n_block; ++i_block){
     stride_one[i_block] = (int * ) malloc( 1 * sizeof(int));
@@ -93,7 +93,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
                      (void ***) &parray);
 
   int d_connec_sz = n_elts_0*stride;
-  std_e::buffer_vector<I4> d_connectivity_merge(d_connec_sz);
+  std::vector<I4> d_connectivity_merge(d_connec_sz);
   std::copy_n(parray[0],d_connec_sz,begin(d_connectivity_merge));
   free(parray[0]);
   free(parray);
@@ -106,7 +106,7 @@ merge_same_type_elt_sections(It first_section, It last_section, MPI_Comm comm) -
     start,finish
   );
 
-  std_e::buffer_vector<I8> partial_dist(3);
+  std::vector<I4> partial_dist(3);
   partial_dist[0] = merged_distri[i_rank];
   partial_dist[1] = merged_distri[i_rank+1];
   partial_dist[2] = merged_distri.back();
@@ -128,6 +128,27 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   tree& z = zs[0];
 
   auto elt_sections = element_sections_ordered_by_range_by_type(z);
+
+  // Handle NGon case
+  if (elt_sections.size()>=1) {
+    auto it_ngon = std::find_if(begin(elt_sections),end(elt_sections),[](const tree& n){ return element_type(n)==NGON_n; });
+    if (it_ngon != end(elt_sections)) { // found NGon
+      if (elt_sections.size()==1) { // only NGon
+        return; // only 1 NGon : nothing to merge
+      } else {
+        if (elt_sections.size()==2) {
+          auto it_nface = std::find_if(begin(elt_sections),end(elt_sections),[](const tree& n){ return element_type(n)==NFACE_n; });
+          if (it_nface == end(elt_sections)) { // did not found NFace
+            throw cgns_exception("Zone "+name(z)+" has a NGon section, but also a section different from NFace, which is forbidden by CGNS/SIDS");
+          } else {
+            return; // only 1 NGon and 1 NFace : nothing to merge
+          }
+        } else { // more sections than Ngon+NFace
+          throw cgns_exception("Zone "+name(z)+" has a NGon section and a NFace section, but also other element types, which is forbidden by CGNS/SIDS");
+        }
+      }
+    }
+  }
 
   // 0. new ranges
   I4 new_offset = 1;
@@ -156,10 +177,9 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   // TODO fields
   auto bcs = get_nodes_by_matching(z,"ZoneBC_t/BC_t");
   for (tree& bc : bcs) {
-    if (to_string(get_child_by_name(bc,"GridLocation").value)!="Vertex") {
+    if (GridLocation(bc)!="Vertex") {
       //auto pl = get_child_value_by_name<I4>(bc,"PointList");
-      tree& pl_node = get_child_by_name(bc,"PointList");
-      auto pl = view_as_span<I4>(pl_node.value);
+      auto pl = get_child_value_by_name<I4>(bc,"PointList");
 
       for (I4& id : pl) {
         auto index = std_e::interval_index(id,old_offsets);
@@ -173,15 +193,15 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
   // 2. merge element sections of the same type
   std::vector<tree> merged_sections;
   auto section_current = begin(elt_sections);
-  auto elt_type = ElementType<I4>(*section_current);
-  auto is_same_elt_type = [&elt_type](const auto& elt_node){ return ElementType<I4>(elt_node) == elt_type; };
+  auto elt_type = element_type(*section_current);
+  auto is_same_elt_type = [&elt_type](const auto& elt_node){ return element_type(elt_node) == elt_type; };
   while (section_current != end(elt_sections)){
     auto section_same_type_end = std::partition_point(section_current,end(elt_sections),is_same_elt_type);
     auto new_section = merge_same_type_elt_sections(section_current,section_same_type_end,comm);
     merged_sections.emplace_back(std::move(new_section));
     section_current = section_same_type_end;
     if (section_current != end(elt_sections)) {
-      elt_type = ElementType<I4>(*section_current);
+      elt_type = element_type(*section_current);
     }
   }
 
@@ -190,3 +210,4 @@ auto merge_by_elt_type(tree& b, MPI_Comm comm) -> void {
 }
 
 } // maia
+#endif // C++>17

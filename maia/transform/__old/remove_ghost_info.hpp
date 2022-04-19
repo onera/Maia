@@ -4,10 +4,10 @@
 #include "mpi.h"
 #include "maia/transform/__old/donated_point_lists.hpp"
 
-namespace cgns {
+namespace maia {
 
-auto remove_ghost_info(tree& b, MPI_Comm comm) -> void;
+auto remove_ghost_info(cgns::tree& b, MPI_Comm comm) -> void;
 
-auto remove_ghost_info_from_zone(tree& z, donated_point_lists& plds) -> void;
+auto remove_ghost_info_from_zone(cgns::tree& z, donated_point_lists& plds) -> void;
 
-} // cgns
+} // maia

@@ -17,7 +17,7 @@ file(GLOB_RECURSE test_files
   CONFIGURE_DEPENDS "${src_dir}/*.test.cpp"
 )
 create_doctest(
-  TESTED_TARGET maia
+  TESTED_TARGET ${PROJECT_NAME} 
   LABEL         unit_tests
   SOURCES       maia_unit_tests.cpp ${test_files}
   SERIAL_RUN    false
@@ -28,7 +28,7 @@ set_tests_properties(maia_doctest_unit_tests PROPERTIES TIMEOUT 10)
 
 if (${PROJECT_NAME}_ENABLE_MPI_TESTS)
   create_pytest(
-    TESTED_FOLDER ${PROJECT_SOURCE_DIR}/maia
+    TESTED_FOLDER ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}
     LABEL         unit_tests
     SERIAL_RUN    false
     N_PROC        ${n_proc_max_test}

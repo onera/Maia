@@ -1,0 +1,33 @@
+Generating element connectivities
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+TODO:
+
+vocabulary cell_txt....
+
+* cell_vtx -> face_vtx, face_cell ("fetch")
+* face_vtx, face_cell -> cell_vtx
+* cell_cell, vtx_cell, vtx_vtx, edge_vtx
+
+Grid connectivities
+^^^^^^^^^^^^^^^^^^^
+
+* face -> vtx
+* vtx -> face
+
+Renumbering
+^^^^^^^^^^^
+
+* partitions alone
+* partitions + update LN_to_GN
+
+
+Extended partitions
+^^^^^^^^^^^^^^^^^^^
+
+* Ghost cells, ghost nodes
+* Reveral ranks
+
+
+
+

@@ -5,15 +5,14 @@
 #include "std_e/algorithm/algorithm.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/utils/parallel/exchange/global_numbering.hpp"
+#include "std_e/algorithm/unique_compress.hpp"
 #include "pdm_part_to_block.h"
 #include <algorithm>
 #include <mpi.h>
 #include <cassert>
-#include "std_e/log.hpp" // TODO
 
 
 namespace pdm {
-
 
 
 template<PDM_part_to_block_post_t post_treatment_kind>

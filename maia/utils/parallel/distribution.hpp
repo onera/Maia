@@ -6,7 +6,7 @@
 #include "std_e/parallel/mpi.hpp"
 
 /*
-concept Distribution : std_e::Knot_sequence
+concept Distribution : std_e::Interval_sequence
   value_type is Integer
   the interval starts at 0
 */
