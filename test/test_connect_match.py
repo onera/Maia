@@ -5,22 +5,21 @@ import numpy as np
 import os
 import Converter.Internal as I
 
-from maia.cgns_io             import cgns_io_tree                    as IOT
-from maia.partitioning        import part                            as PPA
-from maia.geometry            import connect_match                   as CMA
-from maia.generate            import dcube_generator                 as DCG
-from maia.transform.dist_tree import convert_s_to_u
-from maia.utils               import test_utils                      as TU
+from maia import io      as MIO
+from maia import factory as MF
+from maia import utils   as MU
 
+import maia.algo.dist as dist_algo
+import maia.algo.part as part_algo
 
 @mark_mpi_test([2])
 def test_single_block(sub_comm):
 
   # > Create dist tree
-  dist_tree    = DCG.dcube_generate(10, 1., origin=[0,0,0], comm=sub_comm)
+  dist_tree    = MF.generate_dist_block(10, "Poly", sub_comm, origin=[0,0,0])
 
   # > This algorithm works on partitioned trees
-  part_tree = PPA.partitioning(dist_tree, sub_comm)
+  part_tree = MF.partition_dist_tree(dist_tree, sub_comm)
 
   # > Partioning procduce one matching gc
   gc  = I.getNodeFromType(part_tree, 'GridConnectivity_t')
@@ -38,8 +37,8 @@ def test_single_block(sub_comm):
   I.newFamily('JN', parent=base)
 
   # > Connect match
-  CMA.connect_match_from_family(part_tree, ['JN'], sub_comm,
-                                match_type = ['FaceCenter'], rel_tol=1.e-5)
+  part_algo.connect_match_from_family(part_tree, ['JN'], sub_comm,
+                                      match_type = ['FaceCenter'], rel_tol=1.e-5)
 
   #PLDonor are well recovered
   new_gc = I.getNodesFromType(part_tree, 'GridConnectivity_t')[-1]
@@ -50,14 +49,14 @@ def test_single_block(sub_comm):
 @mark_mpi_test([1])
 def test_two_blocks(sub_comm):
 
-  mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
-  dist_treeS = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  mesh_file = os.path.join(MU.test_utils.mesh_dir, 'S_twoblocks.yaml')
+  dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
 
   # > Input is structured, so convert it to an unstructured tree
-  dist_tree = convert_s_to_u.convert_s_to_u(dist_treeS, sub_comm)
+  dist_tree = dist_algo.convert_s_to_u(dist_treeS, sub_comm)
 
   # > This algorithm works on partitioned trees
-  part_tree = PPA.partitioning(dist_tree, sub_comm)
+  part_tree = MF.partition_dist_tree(dist_tree, sub_comm)
 
   # > Backup GridConnectivity for verification
   large_zone = I.getNodesFromName(part_tree, "Large*")[0]
@@ -90,8 +89,8 @@ def test_two_blocks(sub_comm):
 
 
   # > Extra family can be present
-  CMA.connect_match_from_family(part_tree, ['LargeJN', 'SmallJN', 'OtherFamily'], sub_comm,
-                                match_type = ['FaceCenter'], rel_tol=1.e-5)
+  part_algo.connect_match_from_family(part_tree, ['LargeJN', 'SmallJN', 'OtherFamily'], sub_comm,
+                                      match_type = ['FaceCenter'], rel_tol=1.e-5)
 
   # > Check (order can differ)
   new_large_jn = I.getNodeFromType(large_zone, 'GridConnectivity_t')

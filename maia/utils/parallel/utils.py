@@ -2,6 +2,20 @@ from mpi4py import MPI
 import numpy as np
 import Converter.Internal as I
 
+from maia.utils import py_utils
+from maia       import npy_pdm_gnum_dtype
+
+def uniform_distribution(n_elt, comm):
+  """
+  """
+  u_dist = py_utils.uniform_distribution_at(n_elt, comm.Get_rank(), comm.Get_size())
+  proc_indices = np.empty(3, dtype=npy_pdm_gnum_dtype)
+  proc_indices[0] = u_dist[0]
+  proc_indices[1] = u_dist[1]
+  proc_indices[2] = n_elt
+  return proc_indices
+
+
 def partial_to_full_distribution(partial_distrib, comm):
   """
   Compute the full distribution array from the partials distribution

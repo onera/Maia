@@ -4,7 +4,20 @@ import numpy as np
 from mpi4py import MPI
 import Converter.Internal as I
 
+from maia import npy_pdm_gnum_dtype
+
+from maia.utils import py_utils
 from maia.utils.parallel import utils
+
+@mark_mpi_test(3)
+def test_uniform_distribution(sub_comm):
+  distrib = utils.uniform_distribution(17, sub_comm)
+  assert isinstance(distrib, np.ndarray)
+  assert distrib.dtype == npy_pdm_gnum_dtype
+  assert (distrib[0:2] == py_utils.uniform_distribution_at(\
+      17, sub_comm.Get_rank(), sub_comm.Get_size())).all()
+  assert distrib[2] == 17
+
 
 @mark_mpi_test(3)
 def test_partial_to_full_distribution(sub_comm):
