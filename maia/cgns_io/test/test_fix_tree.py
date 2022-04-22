@@ -6,6 +6,21 @@ from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.cgns_io import fix_tree
 
+def test_fix_zone_datatype():
+  yt = """
+  Base CGNSBase_t [3,3]:
+    ZoneA Zone_t I4 [[11,10,0]]:
+    ZoneB Zone_t I4 [[11,10,0]]:
+  """
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_data = {'/CGNSLibraryVersion': (1, 'R4', (1,)),
+               '/Base': (1, 'I4', (2,)),
+               '/Base/ZoneA': (1, 'I4', (1, 3)),
+               '/Base/ZoneB': (1, 'I8', (1, 3))}
+  fix_tree.fix_zone_datatype(size_tree, size_data)
+  assert I.getNodeFromName(size_tree, "ZoneA")[1].dtype == np.int32
+  assert I.getNodeFromName(size_tree, "ZoneB")[1].dtype == np.int64
+
 def test_fix_point_ranges():
   yt = """
 Base0 CGNSBase_t [3,3]:

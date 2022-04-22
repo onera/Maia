@@ -381,7 +381,7 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   n_face_loc = face_distri[1] - face_distri[0]
   #Bounds stores for each proc [id of first iface, id of first jface, id of first kface, id of last kface]
   # assuming that face are globally ordered i, then j, then k
-  bounds = np.empty(4, dtype=np.int32)
+  bounds = np.empty(4, dtype=n_cell_zone.dtype)
   bounds[0] = face_distri[0]
   bounds[1] = bounds[0]
   if bounds[0] < nf_i:
@@ -397,7 +397,9 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   face_vtx_idx = 4*np.arange(face_distri[0], face_distri[1]+1, dtype=pdm_gnum_dtype)
   face_vtx, face_pe = s_numb.ngon_dconnectivity_from_gnum(bounds+1,n_cell_zone, pdm_gnum_dtype)
 
-  ngon = I.newElements('NGonElements', 'NGON', face_vtx, [1, n_face_tot])
+  ngon = I.newElements('NGonElements', 'NGON')
+  I.newPointRange("ElementRange", np.array([1, n_face_tot], dtype=pdm_gnum_dtype), parent=ngon)
+  I.newDataArray("ElementConnectivity", face_vtx, parent=ngon)
   I.newDataArray("ElementStartOffset", face_vtx_idx, parent=ngon)
   I.newParentElements(face_pe, parent=ngon)
 

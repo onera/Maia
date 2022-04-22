@@ -19,9 +19,9 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   # > Try to hook NGon
   ngon_node = SIDS.Zone.NGonNode(dist_zone)
   ngon_first = SIDS.ElementRange(ngon_node)[0] == 1
-  dface_vtx = I.getNodeFromName1(ngon_node, 'ElementConnectivity')[1].astype(pdm_gnum_dtype)
-  ngon_pe   = I.getNodeFromName1(ngon_node, 'ParentElements'     )[1].astype(pdm_gnum_dtype)
-  ngon_eso  = I.getNodeFromName1(ngon_node, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype)
+  dface_vtx = I.getNodeFromName1(ngon_node, 'ElementConnectivity')[1].astype(pdm_gnum_dtype, copy=False)
+  ngon_pe   = I.getNodeFromName1(ngon_node, 'ParentElements'     )[1].astype(pdm_gnum_dtype, copy=False)
+  ngon_eso  = I.getNodeFromName1(ngon_node, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype, copy=False)
 
   distrib_face     = I.getVal(IE.getDistribution(ngon_node, 'Element')).astype(pdm_gnum_dtype)
   distrib_face_vtx = I.getVal(IE.getDistribution(ngon_node, 'ElementConnectivity')).astype(pdm_gnum_dtype)

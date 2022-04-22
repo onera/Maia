@@ -8,6 +8,15 @@ from maia import npy_pdm_gnum_dtype
 from maia.sids import sids
 from maia.utils import py_utils
 
+def fix_zone_datatype(size_tree, size_data):
+  """
+  Cassiopee always read zones as int32. Fix it if input type was int64
+  """
+  for base, zone in IE.iterNodesWithParentsByMatching(size_tree, ['CGNSBase_t', 'Zone_t']):
+    path = f"/{I.getName(base)}/{I.getName(zone)}"
+    if size_data[path][1] == 'I8':
+      zone[1] = zone[1].astype(np.int64)
+
 def fix_point_ranges(size_tree):
   """
   Permute start and end of PointRange or PointRangeDonor nodes found in GridConnectivity1to1_t
