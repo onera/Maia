@@ -9,7 +9,7 @@
 
 template<class connectivity_range_type> auto
 convert_to_ngons(const connectivity_range_type& cs) {
-  using connectivity_type = ranges::range_value_t<connectivity_range_type>;
+  using connectivity_type = std::ranges::range_value_t<connectivity_range_type>;
   constexpr int N = std::tuple_size_v<connectivity_type>;
   std::vector<cgns::I4> eso(cs.size()+1);
   std_e::exclusive_iota(begin(eso),end(eso),0,N);
@@ -128,7 +128,7 @@ create_Zone0() -> tree {
   auto k_faces_l_parent_elements = std_e::ranges::repeat(42,nb_k_faces);
   auto k_faces_r_parent_elements = std_e::ranges::repeat(42,nb_k_faces);
 
-  auto parent_elements = ranges::views::concat(
+  auto parent_elements = std_e::views::concat(
     i_faces_l_parent_elements , j_faces_l_parent_elements, k_faces_l_parent_elements,
     i_faces_r_parent_elements , j_faces_r_parent_elements, k_faces_r_parent_elements
   ) | std_e::to_vector();

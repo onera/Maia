@@ -5,15 +5,15 @@
 #include "std_e/future/algorithm.hpp"
 #include "std_e/multi_index/cartesian_product_size.hpp"
 #include "std_e/multi_index/multi_index_range.hpp"
-#include "maia/__old/generate/structured_grid_utils.hpp"
 #include "std_e/utils/concatenate.hpp"
 #include <algorithm>
 #include <ranges>
 #include <span>
 #include "std_e/future/ranges.hpp"
 #include "std_e/future/ranges/repeat.hpp"
+#include "std_e/future/ranges/concat.hpp"
 #include "maia/algo/dist/elements_to_ngons/connectivity/from_structured_grid.hpp"
-#include "range/v3/view/concat.hpp"
+#include "maia/__old/generate/structured_grid_utils.hpp"
 
 
 namespace maia {
@@ -51,7 +51,7 @@ generate_faces_normal_to(const Multi_index& vertex_dims) {
 template<class Multi_index> auto
 generate_faces(const Multi_index& vertex_dims) {
   return
-      ranges::views::concat(
+      std_e::views::concat(
         generate_faces_normal_to<0>(vertex_dims),
         generate_faces_normal_to<1>(vertex_dims),
         generate_faces_normal_to<2>(vertex_dims)
@@ -81,7 +81,7 @@ generate_l_parents(const Multi_index& vertex_dims, int d) {
   auto sheet_sz = std_e::cartesian_product_size(sheet_dims);
 
   return
-    ranges::views::concat(
+    std_e::views::concat(
       std_e::ranges::repeat(0,sheet_sz), // no left parents for first sheet
       generate_cell_parents(vertex_dims,d)
     );
@@ -93,7 +93,7 @@ generate_r_parents(const Multi_index& vertex_dims, int d) {
   auto sheet_sz = std_e::cartesian_product_size(sheet_dims);
 
   return
-    ranges::views::concat(
+    std_e::views::concat(
       generate_cell_parents(vertex_dims,d),
       std_e::ranges::repeat(0,sheet_sz) // no right parents for last sheet
     );
@@ -101,7 +101,7 @@ generate_r_parents(const Multi_index& vertex_dims, int d) {
 
 template<class Multi_index> auto
 generate_l_parents(const Multi_index& vertex_dims) {
-  return ranges::views::concat(
+  return std_e::views::concat(
     generate_l_parents(vertex_dims,0),
     generate_l_parents(vertex_dims,1),
     generate_l_parents(vertex_dims,2)
@@ -109,7 +109,7 @@ generate_l_parents(const Multi_index& vertex_dims) {
 }
 template<class Multi_index> auto
 generate_r_parents(const Multi_index& vertex_dims) {
-  return ranges::views::concat(
+  return std_e::views::concat(
     generate_r_parents(vertex_dims,0),
     generate_r_parents(vertex_dims,1),
     generate_r_parents(vertex_dims,2)
@@ -118,7 +118,7 @@ generate_r_parents(const Multi_index& vertex_dims) {
 
 template<class Multi_index> auto
 generate_faces_parent_cell_ids(const Multi_index& vertex_dims) {
-  return ranges::views::concat(
+  return std_e::views::concat(
     generate_l_parents (vertex_dims),
     generate_r_parents(vertex_dims)
   );
