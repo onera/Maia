@@ -2,14 +2,13 @@ import pytest
 from   pytest_mpi_check._decorator import mark_mpi_test
 import os
 
-import Converter.Internal     as I
+import Converter.Internal as I
+import maia.pytree        as PT
 
-from maia.cgns_io import cgns_io_tree as IOT
+import maia
+import maia.utils.test_utils as TU
 
-from maia.sids  import pytree     as PT
-from maia.utils import test_utils as TU
-
-from maia.transform import merge
+from maia.algo.dist import merge
 
 ref_dir = os.path.join(os.path.dirname(__file__), 'references')
 
@@ -18,11 +17,10 @@ def test_merge_all(sub_comm, write_output):
 
   mesh_file = os.path.join(TU.mesh_dir, 'U_Naca0012_multizone.yaml')
 
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   # Get the path of all the zones to merge
-  zones_path = [f"{I.getName(base)}/{I.getName(zone)}" for base,zone in \
-      PT.iter_nodes_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True)]
+  zones_path = PT.predicates_to_paths(dist_tree, "CGNSBase_t/Zone_t")
 
   # Merge the zones indicated in zones_path
   merge.merge_zones(dist_tree, zones_path, sub_comm)
@@ -36,7 +34,7 @@ def test_merge_all(sub_comm, write_output):
   assert len(I.getNodesFromType(merged_1, 'BC_t')) == 4
 
   #We can change this using the subset_merge arg:
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
   merge.merge_zones(dist_tree, zones_path, sub_comm, output_path="MyMergedBase/MyMergedZone", subset_merge="None")
   merged_2 = I.copyTree(dist_tree) # Do copy for further comparaisons
   assert len(I.getZones(merged_2)) == 1
@@ -48,7 +46,7 @@ def test_merge_all(sub_comm, write_output):
 
   
   # One more thing : the function has an API that can detect the zones that are connected by GCs and merge it :
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
   merge.merge_connected_zones(dist_tree, sub_comm)
   merged_zone = I.getZones(dist_tree)[0]
   merged_zone[0] = I.getName(I.getZones(merged_1)[0]) #Name differ so change before compare
@@ -57,17 +55,17 @@ def test_merge_all(sub_comm, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    IOT.dist_tree_to_file(merged_1, os.path.join(out_dir, 'merged_subset_name.hdf'), sub_comm)
-    IOT.dist_tree_to_file(merged_2, os.path.join(out_dir, 'merged_subset_none.hdf'), sub_comm)
+    maia.io.dist_tree_to_file(merged_1, os.path.join(out_dir, 'merged_subset_name.hdf'), sub_comm)
+    maia.io.dist_tree_to_file(merged_2, os.path.join(out_dir, 'merged_subset_none.hdf'), sub_comm)
 
   # Compare to reference solution (since distributions can differ in // we write/load file to
   # reequilibrate it avoid)
   tmp_dir = TU.create_collective_tmp_dir(sub_comm)
   tmp_file = os.path.join(tmp_dir, 'out.hdf')
-  IOT.dist_tree_to_file(merged_1, tmp_file, sub_comm)
-  test_tree = IOT.file_to_dist_tree(tmp_file, sub_comm)
+  maia.io.dist_tree_to_file(merged_1, tmp_file, sub_comm)
+  test_tree = maia.io.file_to_dist_tree(tmp_file, sub_comm)
   ref_file  = os.path.join(ref_dir, 'U_Naca0012_multizone_merged.yaml')
-  reference_tree = IOT.file_to_dist_tree(ref_file, sub_comm)
+  reference_tree = maia.io.file_to_dist_tree(ref_file, sub_comm)
   for tree in reference_tree, test_tree:
     I._rmNodesByName(tree, '*#Size') #This is only related to IO
     I._rmNodesByName1(tree, 'CGNSLibraryVersion')
@@ -79,7 +77,7 @@ def test_merge_partial(sub_comm, write_output):
 
   mesh_file = os.path.join(TU.mesh_dir, 'U_Naca0012_multizone.yaml')
 
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   # Here we will merge just two zones over three
   zones_path = ['BaseA/blk1', 'BaseA/blk3']
@@ -95,7 +93,7 @@ def test_merge_partial(sub_comm, write_output):
   assert len(I.getNodesFromType(unmerged_zone, 'GridConnectivity_t')) == 1
 
   # This behaviour can be changed by setting argument concatenate_jns to False :
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
   merge.merge_zones(dist_tree, zones_path, sub_comm, concatenate_jns=False)
   merged_2 = I.copyTree(dist_tree) # Do copy for further comparaisons
   assert len(I.getZones(merged_1)) == 2
@@ -112,5 +110,5 @@ def test_merge_partial(sub_comm, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    IOT.dist_tree_to_file(merged_1, os.path.join(out_dir, 'merged_concat_yes.hdf'), sub_comm)
-    IOT.dist_tree_to_file(merged_2, os.path.join(out_dir, 'merged_concat_no.hdf'), sub_comm)
+    maia.io.dist_tree_to_file(merged_1, os.path.join(out_dir, 'merged_concat_yes.hdf'), sub_comm)
+    maia.io.dist_tree_to_file(merged_2, os.path.join(out_dir, 'merged_concat_no.hdf'), sub_comm)

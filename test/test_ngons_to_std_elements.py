@@ -5,22 +5,21 @@ import os
 import numpy as np
 
 import Converter.Internal as I
-import maia.cgns_io.cgns_io_tree
-import maia.transform
-import maia.connectivity.ngon_to_std_elements
 
+import  maia
+import cmaia
 
 #@mark_mpi_test([1,4])
-@pytest.mark.skipif(not maia.transform.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 @mark_mpi_test([1])
 def test_ngons_to_std_elements(sub_comm, write_output):
   # Create NGon mesh
   mesh_file = os.path.join(TU.mesh_dir, 'Uelt_M6Wing.yaml')
-  dist_tree = maia.cgns_io.cgns_io_tree.file_to_dist_tree(mesh_file, sub_comm)
-  # Note: `std_elements_to_ngons` is supposed to work, because it is tested in another test
-  maia.transform.std_elements_to_ngons(dist_tree, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
+  # Note: `convert_std_elements_to_ngons` is supposed to work, because it is tested in another test
+  maia.algo.dist.convert_std_elements_to_ngons(dist_tree, sub_comm)
 
-  maia.connectivity.ngon_to_std_elements(dist_tree)
+  maia.algo.dist.convert_ngon_to_std_elements(dist_tree)
 
   # > There is two sections...
   assert len(I.getNodesFromType(dist_tree, 'Elements_t')) == 2
@@ -39,4 +38,4 @@ def test_ngons_to_std_elements(sub_comm, write_output):
     import Converter.PyTree as C
     C.convertPyTree2File(dist_tree, os.path.join(out_dir, 'U_M6Wing_ngon.cgns'))
     # TODO replace by this when in parallel
-    #maia.cgns_io.cgns_io_tree.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'U_M6Wing_ngon.cgns'), sub_comm)
+    #maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'U_M6Wing_ngon.cgns'), sub_comm)

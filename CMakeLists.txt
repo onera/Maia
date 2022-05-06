@@ -196,7 +196,7 @@ target_install(${PROJECT_NAME})
 # Python and wrapping
 # ------------------------------------------------------------------------------
 include(${PROJECT_UTILS_CMAKE_DIR}/python_wrapping.cmake)
-compile_install_pybind_modules(${PROJECT_NAME})
+compile_install_pybind_module(${PROJECT_NAME})
 install_python_modules(${PROJECT_NAME})
 
 # install pytest-mpi-check # TODO move

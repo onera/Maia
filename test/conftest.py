@@ -5,9 +5,9 @@ from mpi4py import MPI
 
 from pytest_mpi_check import assert_mpi
 
+import maia.io
 from maia.utils                              import test_utils as TU
-from maia.distribution.distribution_function import uniform_distribution_at
-from maia.cgns_io                            import cgns_io_tree as IOT
+from maia.utils.py_utils                     import uniform_distribution_at
 # pytest.register_assert_rewrite("pytest_check.check")
 
 def rename_reports(config, comm):
@@ -32,8 +32,8 @@ def generate_cgns_files(comm):
   filenames = glob.glob(yaml_folder + '/*.yaml')
   start, end = uniform_distribution_at(len(filenames), comm.Get_rank(), comm.Get_size())
   for filename in filenames[start:end]:
-    tree = IOT.file_to_dist_tree(filename, MPI.COMM_SELF)
-    IOT.dist_tree_to_file(tree, os.path.splitext(filename)[0] + '.hdf', MPI.COMM_SELF)
+    tree = maia.io.file_to_dist_tree(filename, MPI.COMM_SELF)
+    maia.io.dist_tree_to_file(tree, os.path.splitext(filename)[0] + '.hdf', MPI.COMM_SELF)
 
 def pytest_addoption(parser):
   parser.addoption("--gen_hdf", dest='gen_hdf', action='store_true')

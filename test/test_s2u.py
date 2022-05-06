@@ -3,58 +3,55 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 import os
 
 import Converter.Internal as I
+import maia.pytree        as PT
 
-import maia
-from   maia.sids             import sids
-from   maia.sids             import pytree       as PT
-from   maia.utils            import test_utils   as TU
-from   maia.utils            import parse_yaml_cgns
-from   maia.cgns_io          import cgns_io_tree as IOT
-from   maia.distribution     import distribute_nodes as DN
+import maia.io      as MIO
+import maia.utils   as MU
+import maia.factory as MF
 
-from maia.transform.dist_tree import convert_s_to_u as S2U
+from maia.algo.dist import convert_s_to_u
 
 ref_dir = os.path.join(os.path.dirname(__file__), 'references')
 
 @pytest.mark.parametrize("subset_output_loc", ["FaceCenter", "Vertex"])
 @mark_mpi_test([1,3])
 def test_s2u(sub_comm, subset_output_loc, write_output):
-  mesh_file = os.path.join(TU.mesh_dir,  'S_twoblocks.yaml')
+  mesh_file = os.path.join(MU.test_utils.mesh_dir,  'S_twoblocks.yaml')
   ref_file  = os.path.join(ref_dir,     f'U_twoblocks_{subset_output_loc.lower()}_subset_s2u.yaml')
 
-  dist_treeS = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
 
-  dist_treeU = S2U.convert_s_to_u(dist_treeS, sub_comm, \
+  dist_treeU = convert_s_to_u(dist_treeS, sub_comm, \
       bc_output_loc=subset_output_loc, gc_output_loc=subset_output_loc)
 
   for zone in I.getZones(dist_treeU):
-    assert sids.Zone.Type(zone) == 'Unstructured'
+    assert PT.Zone.Type(zone) == 'Unstructured'
     for node in I.getNodesFromType(zone, 'BC_t') + I.getNodesFromType(zone, 'GridConnectivity_t'):
-      assert sids.GridLocation(node) == subset_output_loc
+      assert PT.Subset.GridLocation(node) == subset_output_loc
 
   # Compare to reference
-  ref_tree = IOT.file_to_dist_tree(ref_file, sub_comm)
+  ref_tree = MIO.file_to_dist_tree(ref_file, sub_comm)
   for zone in I.getZones(dist_treeU):
     ref_zone = I.getNodeFromName2(ref_tree, I.getName(zone))
     for node_name in ["ZoneBC", "ZoneGridConnectivity"]:
       assert PT.is_same_tree(I.getNodeFromName(zone, node_name), I.getNodeFromName(ref_zone, node_name))
 
   if write_output:
-    out_dir = TU.create_pytest_output_dir(sub_comm)
-    IOT.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
+    out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
+    MIO.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
 
 @mark_mpi_test([1])
 def test_s2u_withdata(sub_comm, write_output):
-  mesh_file = os.path.join(TU.mesh_dir,  'S_twoblocks.yaml')
+  mesh_file = os.path.join(MU.test_utils.mesh_dir,  'S_twoblocks.yaml')
 
-  dist_treeS = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
 
   # Use only small zone for simplicity
   I._rmNodesByName(dist_treeS, 'Large')
   I._rmNodesByType(dist_treeS, 'ZoneGridConnectivity_t')
 
   # Add some BCDataFace data
-  bc_right = parse_yaml_cgns.to_node(
+  bc_right = MU.yaml.parse_yaml_cgns.to_node(
     """
     Right BC_t 'BCInflow':
       PointRange IndexRange_t I4 [[1, 6], [1, 1], [1, 4]]:
@@ -74,15 +71,16 @@ def test_s2u_withdata(sub_comm, write_output):
           lid DataArray_t I4 [1,2,3,4,5,6,7,8,9,10]:
     """)
   I._rmNodesByName(dist_treeS, 'Right')
-  I._addChild(I.getNodeFromType(dist_treeS, 'ZoneBC_t'), DN.distribute_pl_node(bc_right, sub_comm))
+  I._addChild(I.getNodeFromType(dist_treeS, 'ZoneBC_t'), \
+      MF.full_to_dist.distribute_pl_node(bc_right, sub_comm))
 
-  dist_treeU = S2U.convert_s_to_u(dist_treeS, sub_comm)
+  dist_treeU = convert_s_to_u(dist_treeS, sub_comm)
 
   # Some checks
   bc_right_u = I.getNodeFromName(dist_treeU, 'Right')
   assert I.getNodeFromPath(bc_right_u, 'WholeDSFace/GridLocation') is None
-  assert sids.GridLocation(I.getNodeFromName(bc_right_u, 'SubDSFace')) == 'FaceCenter'
-  assert sids.GridLocation(I.getNodeFromName(bc_right_u, 'SubDSVtx')) == 'Vertex'
+  assert PT.Subset.GridLocation(I.getNodeFromName(bc_right_u, 'SubDSFace')) == 'FaceCenter'
+  assert PT.Subset.GridLocation(I.getNodeFromName(bc_right_u, 'SubDSVtx')) == 'Vertex'
   assert I.getNodeFromPath(bc_right_u, 'WholeDSFace/PointList') is None
   assert (I.getNodeFromPath(bc_right_u, 'SubDSFace/PointList')[1] == [225,226,279,280,333,334,387,388]).all()
   assert (I.getNodeFromPath(bc_right_u, 'SubDSVtx/PointList')[1] == [1,2,64,65,127,128,190,191,253,254]).all()
@@ -91,6 +89,6 @@ def test_s2u_withdata(sub_comm, write_output):
     assert (I.getNodeFromName(bcds, 'lid')[1] == I.getNodeFromName(bcds_s, 'lid')[1]).all()
 
   if write_output:
-    out_dir = TU.create_pytest_output_dir(sub_comm)
-    IOT.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
+    out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
+    MIO.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
 

@@ -2,10 +2,10 @@ import pytest
 import os
 import tempfile
 
-from maia.utils import parse_cgns_yaml
-from maia.utils import parse_yaml_cgns
+from maia.utils.yaml import parse_cgns_yaml
+from maia.utils.yaml import parse_yaml_cgns
 
-from maia.sids import pytree as PT
+from maia       import pytree     as PT
 from maia.utils import test_utils as TU
 
 def test_yaml_loading():

@@ -3,27 +3,26 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 import os
 import numpy as np
 
-import Converter.Internal     as I
-import maia.sids.Internal_ext as IE
-import maia.sids.pytree       as PT
-from maia.sids  import sids
-
-from maia.cgns_io  import cgns_io_tree    as IOT
-from maia.generate import dcube_generator as DCG
+import Converter.Internal as I
+import maia.pytree        as PT
+import maia.pytree.maia   as MT
 
 from maia.utils import test_utils as TU
 
-from maia.transform import duplicate as DUP
+from maia.io       import file_to_dist_tree, dist_tree_to_file
+from maia.factory  import generate_dist_block
+
+from maia.algo.dist import duplicate as DUP
 
 @mark_mpi_test([2])
 @pytest.mark.parametrize("fields", [True, False])
 def test_translate_cube(sub_comm, fields, write_output):
   # Generate a disttree with one zone
-  dist_tree = DCG.dcube_generate(11, 1., [0., -.5, -.5], sub_comm)
+  dist_tree = generate_dist_block(11, "NGON_n", sub_comm, origin=[0., -.5, -.5])
   dist_zone = I.getZones(dist_tree)[0]
 
   # Initialise some fields
-  cell_distri = IE.getDistribution(dist_zone, 'Cell')[1]
+  cell_distri = MT.getDistribution(dist_zone, 'Cell')[1]
   n_cell_loc =  cell_distri[1] - cell_distri[0]
   fs = I.newFlowSolution('FlowSolution', gridLocation='CellCenter', parent=dist_zone)
   I.newDataArray('scalar', np.random.random(n_cell_loc), parent=fs)
@@ -36,8 +35,8 @@ def test_translate_cube(sub_comm, fields, write_output):
       rotation_angle = [0, 0, np.pi], apply_to_fields=fields)
 
   # Coordinates are moved :
-  coords    = sids.coordinates(dist_zone)
-  tr_coords = sids.coordinates(transformed_zone)
+  coords    = PT.Zone.coordinates(dist_zone)
+  tr_coords = PT.Zone.coordinates(transformed_zone)
   assert np.allclose(-coords[0], tr_coords[0])
   assert np.allclose(-coords[1], tr_coords[1])
   assert np.allclose(coords[2], tr_coords[2])
@@ -56,11 +55,11 @@ def test_translate_cube(sub_comm, fields, write_output):
     dist_base = I.getBases(dist_tree)[0]
     I._addChild(dist_base, transformed_zone)
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    IOT.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'duplicated.hdf'), sub_comm)
+    dist_tree_to_file(dist_tree, os.path.join(out_dir, 'duplicated.hdf'), sub_comm)
 
 @mark_mpi_test([1])
 def test_duplicate_from_periodic(sub_comm, write_output):
-  dist_tree = DCG.dcube_generate(11, 1., [0., 0., 0.], sub_comm)
+  dist_tree = generate_dist_block(11, "Poly", sub_comm)
   # Lets create a periodic join for this cube
   dist_zone = I.getZones(dist_tree)[0]
   bottom = I.getNodeFromName(dist_zone, 'dcube_bnd_0')
@@ -93,13 +92,13 @@ def test_duplicate_from_periodic(sub_comm, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    IOT.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'duplicated.hdf'), sub_comm)
+    dist_tree_to_file(dist_tree, os.path.join(out_dir, 'duplicated.hdf'), sub_comm)
   
 
 @mark_mpi_test([4])
 def test_duplicate_360(sub_comm, write_output):
   mesh_file = os.path.join(TU.mesh_dir, 'U_ATB_45.yaml')
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = file_to_dist_tree(mesh_file, sub_comm)
 
   # When working with an angular section of a cylindric object, we can easily duplicate the section
   # until the original object is reconstructed
@@ -117,5 +116,5 @@ def test_duplicate_360(sub_comm, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    IOT.dist_tree_to_file(dist_tree, os.path.join(out_dir, '360.hdf'), sub_comm)
+    dist_tree_to_file(dist_tree, os.path.join(out_dir, '360.hdf'), sub_comm)
 

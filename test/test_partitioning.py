@@ -6,12 +6,11 @@ from mpi4py import MPI
 import Converter.Internal as I
 
 import maia
-from   maia.utils            import test_utils as TU
+from maia.utils   import test_utils     as TU
+from maia.io      import cgns_io_tree   as IOT
+from maia.io      import save_part_tree as SPT
 
-from maia.cgns_io            import cgns_io_tree                     as IOT
-from maia.cgns_io            import save_part_tree                   as SPT
-from maia.partitioning       import part                             as PPA
-from maia.partitioning.load_balancing import setup_partition_weights as SPW
+from maia.factory import partitioning   as PPA
 
 
 @mark_mpi_test([3])
@@ -52,7 +51,7 @@ def test_load_balancing(sub_comm):
 
   the n_part_per_zone function makes each rank request n (usually one) partitions
   on each block. Weights will thus be homogenous : """
-  zone_to_parts = SPW.npart_per_zone(dist_tree, sub_comm, 1)
+  zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 1)
 
   for zone in I.getZones(dist_tree):
     assert len(zone_to_parts[I.getName(zone)]) == 1
@@ -60,7 +59,7 @@ def test_load_balancing(sub_comm):
 
   """ Note that n_part can be different for each proc :"""
   n_part = 3 if sub_comm.Get_rank == 1 else 1
-  zone_to_parts = SPW.npart_per_zone(dist_tree, sub_comm, n_part)
+  zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, n_part)
 
   for zone in I.getZones(dist_tree):
     assert len(zone_to_parts[I.getName(zone)]) == n_part
@@ -69,7 +68,7 @@ def test_load_balancing(sub_comm):
   """ the other function balance_multizone_tree try to balance the total number of
   partitioned cells for each rank while minimizing the number of partitions : """
 
-  zone_to_parts = SPW.balance_multizone_tree(dist_tree, sub_comm)
+  zone_to_parts = PPA.compute_balanced_weights(dist_tree, sub_comm)
 
   """ We can see that the small zone will not be cut """
   assert sub_comm.allreduce(len(zone_to_parts['Small']), MPI.SUM) == 1 and \
@@ -82,8 +81,8 @@ def test_part_S(sub_comm, write_output):
   mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
   dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
 
-  zone_to_parts = SPW.npart_per_zone(dist_tree, sub_comm, 2)
-  part_tree = PPA.partitioning(dist_tree, sub_comm, zone_to_parts=zone_to_parts)
+  zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
+  part_tree = PPA.partition_dist_tree(dist_tree, sub_comm, zone_to_parts=zone_to_parts)
   assert len(I.getZones(part_tree)) == 2*2
 
   if write_output:
@@ -98,7 +97,7 @@ def test_part_elements(sub_comm, graph_part_tool, write_output):
   dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
 
   #Note : zone_to_parts defaults to 1part_per_zone
-  part_tree = PPA.partitioning(dist_tree, sub_comm, graph_part_tool=graph_part_tool)
+  part_tree = PPA.partition_dist_tree(dist_tree, sub_comm, graph_part_tool=graph_part_tool)
   assert len(I.getZones(part_tree)) == 1
 
   if write_output:
@@ -117,7 +116,7 @@ def test_part_NGon(sub_comm, cell_renum_method, write_output):
   mesh_file = os.path.join(TU.mesh_dir, 'U_ATB_45.yaml')
   dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
 
-  zone_to_parts = SPW.balance_multizone_tree(dist_tree, sub_comm)
+  zone_to_parts = PPA.compute_balanced_weights(dist_tree, sub_comm)
 
   #Different reordering methods can be applied after partitioning
   reordering = {'cell_renum_method' : cell_renum_method,
@@ -126,7 +125,7 @@ def test_part_NGon(sub_comm, cell_renum_method, write_output):
                 'n_face_per_pack'   : 0,
                 'graph_part_tool'   : 'parmetis' }
 
-  part_tree = PPA.partitioning(dist_tree, sub_comm, zone_to_parts=zone_to_parts, reordering=reordering)
+  part_tree = PPA.partition_dist_tree(dist_tree, sub_comm, zone_to_parts=zone_to_parts, reordering=reordering)
 
   assert len(I.getZones(part_tree)) == sum([len(zone_to_parts[zone]) for zone in zone_to_parts])
 
