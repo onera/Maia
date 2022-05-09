@@ -18,8 +18,7 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
                                        translation     = np.zeros(3),
                                        max_ordinal     = 0,
                                        apply_to_fields = False):
-  """
-  Create a new zone by applying the prescribed transformation to the input zone.
+  """Create a new zone by applying the prescribed transformation to the input zone.
 
   Input zone can be either structured or unstructured, but must have cartesian coordinates.
   Transformation is defined by
@@ -41,9 +40,14 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
         if True, apply the rotation vector to the vectorial fields found under 
         following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
         Defaults to False.
-
   Returns:
     CGNSZone: Distributed duplicated zone
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #duplicate_zone_with_transformation@start
+        :end-before: #duplicate_zone_with_transformation@end
+        :dedent: 2
   """
   
   # Zone duplication
@@ -268,18 +272,20 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
 
 def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl, comm,
       conformize=False, apply_to_fields=False):
-  """
-  Function to duplicate by rotation until we retrieve a 360° case
-  > dist_tree : distributed tree from wich 'zones' come and in wich duplicated zones will be added
-  > zone_paths : list of pathes (BaseName/ZoneName) of the connected zones to duplicate
-  > jn_paths_for_dupl : list of 2 lists (listA,listB) where listA (resp listB) is the list 
-                               that contains all GridConnectivity nodes defining the first (resp 
-                               second) part of a periodic matching
-  > conformize : if True, compute the coordinates mean of each connected vertices and this mean replace
-                 the previous coordinates for each vertices. In this case, the matching is perfect.
-  > comm : MPI communicator
-  > apply_to_fields : apply only the rotation to all vector fields in CGNS nodes of type : 
-                      "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t"  
+  """Reconstitute a circular mesh from an angular section of the geometry.
+
+  Input tree is modified inplace.
+
+  Args:
+    dist_tree (CGNSTree): Input distributed tree
+    zone_paths (list of str): List of pathes (BaseName/ZoneName) of the connected zones to duplicate
+    jn_paths_for_dupl (pair of list of str): (listA, listB) where listA (resp. list B) stores all the
+        pathes of the GridConnectivity nodes defining the first (resp. second) side of a periodic match.
+    comm       (MPIComm) : Mpi communicator
+    conformize (bool, optional): If true, ensure that the generated interface vertices have exactly same
+        coordinates (see :func:`conformize_jn_pair`). Defaults to False.
+    apply_to_fields (bool, optional): See :func:`duplicate_zone_with_transformation`. Defaults to False.
+
   """
   
   if conformize:

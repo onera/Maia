@@ -16,8 +16,20 @@ from maia.transfer.dist_to_part import data_exchange as MBTP
 from maia.transfer.part_to_dist import data_exchange as MPTB
 
 def merge_connected_zones(tree, comm, **kwargs):
-  """
-  Shortcut for merge_zones to merge all the connected zones of the tree
+  """Detect all the zones connected through 1to1 matching jns and merge them.
+
+  See :func:`merge_zones` for full documentation.
+  
+  Args:
+    tree (CGNSTree): Input distributed tree
+    comm (MPIComm) : Mpi communicator
+    kwargs: any argument of :func:`merge_zones`, excepted output_path
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #merge_connected_zones@start
+        :end-before: #merge_connected_zones@end
+        :dedent: 2
   """
   grouped_zones_paths = sids.find_connected_zones(tree)
 
@@ -28,15 +40,37 @@ def merge_connected_zones(tree, comm, **kwargs):
     merge_zones(tree, zones_path_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
 def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', concatenate_jns=True):
-  """
-  Highlevel function to merge some zones of a cgns dist tree.
-  Zone to merge are specified by their path and must be unstructured.
-  Output zone will be placed under first base with name "MergedZone", unless if output_path
-  (base/zone) is specified
-  Input zones will be removed from the tree
+  """Merge the given zones into a single one.
 
-  Option concatenate_jns, if True, reduce the multiple 1to1 matching joins from or to merged_zone
-  to a single one.
+  Input tree is modified inplace : original zones will be removed from the tree and replaced
+  by the merged zone. Merged zone is added with name *MergedZone* under the first involved Base
+  except if output_path is not None : in this case, the provided path defines the base and zone name
+  of the merged block.
+
+  Subsets of the merged block can be reduced thanks to subset_merge parameter:
+  
+  - None   => no reduction occurs : all subset of all original zones remains on merged zone, with a
+    numbering suffix.
+  - 'name' => Subset having the same name on the original zones (within a same label) produces
+    and unique subset on the output merged zone.
+
+  Only unstructured-NGon trees are supported, and interfaces between the zones
+  to merge must have a FaceCenter location.
+
+  Args:
+    tree (CGNSTree): Input distributed tree
+    zones_path (list of str): List of pathes (BaseName/ZoneName) of the zones to merge
+    comm       (MPIComm): Mpi communicator
+    output_path (str, optional): Path of the output merged block. Defaults to None.
+    subset_merge (str, optional): Merging strategy for the subsets. Defaults to 'name'.
+    concatenate_jns (bool, optional): if True, reduce the multiple 1to1 matching joins related
+        to the merged_zone to a single one. Defaults to True.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #merge_zones@start
+        :end-before: #merge_zones@end
+        :dedent: 2
   """
   assert all([sids.Zone.Type(I.getNodeFromPath(tree, path)) == 'Unstructured' for path in zones_path])
   #Those one will be needed for jn recovering
