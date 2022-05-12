@@ -10,6 +10,8 @@ Welcome to Maia!
 
   quick_start
   installation
+  introduction/introduction
+  introduction/cgns_trees
   user_manual/user_manual
   developer_manual/developer_manual
 
