@@ -71,7 +71,7 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
     d_sol = I.getNodeFromName1(dist_zone, I.getName(mask_sol)) #True container
 
     if not par_utils.exists_everywhere(part_zones, I.getName(d_sol), comm):
-      return #Skip FS that remains on dist_tree but are not present on part tree
+      continue #Skip FS that remains on dist_tree but are not present on part tree
 
     location = PT.Subset.GridLocation(d_sol)
     has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
@@ -115,6 +115,9 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
   _discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
   _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm)
+  #Cleanup : if field is None, data has been added by wrapper and must be removed
+  for dist_sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t'):
+    PT.rm_children_from_predicate(dist_sol, lambda n : I.getType(n) == 'DataArray_t' and n[1] is None)
 
 def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
@@ -126,6 +129,9 @@ def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], excl
   _discover_wrapper(dist_zone, part_zones, 'DiscreteData_t', 'DiscreteData_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
   _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm)
+  #Cleanup : if field is None, data has been added by wrapper and must be removed
+  for dist_sol in I.getNodesFromType1(dist_zone, 'DiscreteData_t'):
+    PT.rm_children_from_predicate(dist_sol, lambda n : I.getType(n) == 'DataArray_t' and n[1] is None)
 
 def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
@@ -215,4 +221,7 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
         for field, array in dist_data.items():
           dist_field = I.getNodeFromPath(d_dataset, field)
           I.setValue(dist_field, array)
+  #Cleanup : if field is None, data has been added by wrapper and must be removed
+  for dist_ddata in PT.iter_nodes_from_predicates(dist_zone, bc_ds_path+'/BCData_t'):
+    PT.rm_children_from_predicate(dist_ddata, lambda n : I.getType(n) == 'DataArray_t' and n[1] is None)
 

@@ -246,6 +246,7 @@ ZoneU Zone_t [[6,0,0]]:
     NewFlowSol DiscreteData_t:
       GridLocation GridLocation_t "Vertex":
       field2 DataArray_t R8 [0,0,0]:
+      field3 DataArray_t R8 [0,0,0]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [3,4,1]:
     """.format(dtype)
@@ -272,6 +273,7 @@ ZoneU Zone_t [[6,0,0]]:
     NewFlowSol DiscreteData_t:
       GridLocation GridLocation_t "Vertex":
       field2 DataArray_t R8 [1,1,1]:
+      field3 DataArray_t R8 [-1,-1,-1]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [5,6,2]:
   """.format(dtype)
@@ -280,22 +282,24 @@ ZoneU Zone_t [[6,0,0]]:
   part_zones = parse_yaml_cgns.to_nodes(pt)
 
   if filter:
-    part_to_dist.part_zones_to_dist_zone_only(dist_zone, part_zones, sub_comm, {'DiscreteData_t' : ['*']})
+    part_to_dist.part_zones_to_dist_zone_only(dist_zone, part_zones, sub_comm, {'DiscreteData_t' : ['NewFlowSol/field3']})
   else:
     PTB.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
     PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, sub_comm)
 
-  if not filter:
+  if filter:
+    assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field2') is None
+  else:
     assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int32
-  assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1].dtype == np.float64
+  assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field3')[1].dtype == np.float64
   if sub_comm.Get_rank () == 0:
     if not filter:
       assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-30]).all()
-    assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1] == [0,1,0]).all()
+    assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,0]).all()
   if sub_comm.Get_rank () == 1:
     if not filter:
       assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
-    assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field2')[1] == [0,1,1]).all()
+    assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,-1]).all()
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("from_api", [False, True])
@@ -478,3 +482,88 @@ ZoneU Zone_t:
   if sub_comm.Get_rank () == 1:
     assert len(I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1]) == 0
     assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [4,3,2,1]).all()
+
+@mark_mpi_test(2)
+def test_part_dataset_to_dist_dataset_filter(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    dt = """
+ZoneU Zone_t:
+  ZBC ZoneBC_t:
+    BC BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[18, 22]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [0,2,6]:
+      BCDSWithoutPL BCDataSet_t:
+        DirichletData BCData_t:
+          field DataArray_t [-1, -1]:
+      BCDSWithPL BCDataSet_t:
+        DirichletData BCData_t:
+          field DataArray_t R8 [100]:
+        PointList IndexArray_t [[10]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {0} [0,1,1]:
+  """.format(dtype)
+    pt = """
+  ZoneU.P0.N0 Zone_t:
+    ZBC ZoneBC_t:
+      BC BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1, 12]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [2,5]:
+        BCDSWithoutPL BCDataSet_t:
+          DirichletData BCData_t:
+            field DataArray_t [2,2]:
+    """.format(dtype)
+  elif sub_comm.Get_rank() == 1:
+    dt = """
+ZoneU Zone_t:
+  ZBC ZoneBC_t:
+    BC BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[13, 39, 41, 9]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [2,6,6]:
+      BCDSWithoutPL BCDataSet_t:
+        DirichletData BCData_t:
+          field DataArray_t [-1,-1,-1,-1]:
+      BCDSWithPL BCDataSet_t:
+        DirichletData BCData_t:
+          field DataArray_t R8 []:
+        PointList IndexArray_t [[]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {0} [1,1,1]:
+  """.format(dtype)
+    pt = """
+  ZoneU.P1.N0 Zone_t:
+    ZBC ZoneBC_t:
+      BC BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1,29,108,21]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [6,3,4,1]:
+        BCDSWithPL BCDataSet_t:
+          DirichletData BCData_t:
+            field DataArray_t R8 [200.]:
+            field2 DataArray_t R8 [200.]:
+            field3 DataArray_t R8 [200.]:
+          PointList IndexArray_t [[108]]:
+          :CGNS#GlobalNumbering UserDefinedData_t:
+            Index DataArray_t {0} [1]:
+        BCDSWithoutPL BCDataSet_t:
+          DirichletData BCData_t:
+            field DataArray_t [1,4,3,1]:
+  """.format(dtype)
+
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_zone  = I.getZones(dist_tree)[0]
+  part_zones = I.getZones(part_tree)
+
+  PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, sub_comm, \
+      exclude=['*/BCDSWithPL/*/field', '*/BCDSWithPL/*/field2'])
+
+  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')  is not None
+  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field2') is None
+  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field3') is not None
