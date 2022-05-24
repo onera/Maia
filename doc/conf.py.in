@@ -85,5 +85,7 @@ rst_prolog = """
 
 .. role:: cgns
 
+.. role:: mono
+
 .. role:: def
 """

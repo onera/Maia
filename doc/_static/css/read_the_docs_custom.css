@@ -20,6 +20,10 @@ div.indexpage p {
   font-weight: bold;
 }
 
+.mono {
+  font-family: 'Courier New', monospace;
+}
+
 .cgns {
   color: #08306b;
   font-family: 'Courier New', monospace;

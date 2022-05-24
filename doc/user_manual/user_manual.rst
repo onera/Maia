@@ -21,6 +21,9 @@ Maia methods are accessible through three main modules :
 - **Transfer** module is a small module allowing to exchange data between maia trees.
 
 Using maia trees in your application often consists in chaining functions from this different modules.
+
+.. image:: ./images/workflow.svg
+
 A typical workflow could be:
 
 1. Load a structured tree from a file, which produce a **dist tree**.
