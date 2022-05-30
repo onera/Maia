@@ -200,7 +200,36 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
 
 
 def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_length=1.):
-  """
+  """Generate a distributed mesh with a cartesian topology.
+  
+  Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and
+  :cgns:`Zone_t`. The kind 
+  and dimension of the zone is controled by the cgns_elmt_name parameter: 
+
+  - ``"Structured"`` (or ``"S"``) produces a 3d structured zone (not yet implemented),
+  - ``"NGON_N"`` produces an unstructured 3d zone with a face based (NGON) connectivity,
+  - Other names must be in ``["TRI_3", "QUAD_4", "TETRA_4", "PENTA_6", "HEXA_8"]``
+    and produces an unstructured 2d or 3d zone with corresponding standard elements.
+
+  In all cases, the created zone contains the cartesian grid coordinates and the relevant number
+  of boundary conditions.
+
+  Args:
+    n_vtx (int or array of int) : Number of vertices in each direction. Scalars
+      automatically extend to uniform array.
+    cgns_elmt_name (str) : requested kind of elements
+    comm       (MPIComm) : MPI communicator
+    origin (array, optional) : Coordinates of the origin of the generated mesh. Defaults
+        to zero vector.
+    edge_length (float, optional) : Edge size of the generated mesh. Defaults to 1.
+  Returns:
+    CGNSTree: distributed cgns tree
+
+  Example:
+      .. literalinclude:: snippets/test_factory.py
+        :start-after: #generate_dist_block@start
+        :end-before: #generate_dist_block@end
+        :dedent: 2
   """
   if cgns_elmt_name is None or cgns_elmt_name in ["Structured", "S"]:
     raise NotImplementedError

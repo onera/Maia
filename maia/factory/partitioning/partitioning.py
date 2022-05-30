@@ -41,6 +41,30 @@ def set_default(dist_tree, comm):
   return default
 
 def partition_dist_tree(dist_tree, comm, **kwargs):
+  """Perform the partitioning operation: create a partitioned tree from the input distributed tree.
+
+  The input tree can be structured or unstuctured, but hybrid meshes are not yet supported.
+
+  Important:
+    Geometric information (such as boundary conditions, zone subregion, etc.) are reported
+    on the partitioned tree; however, data fields (BCDataSet, FlowSolution, etc.) are not
+    transfered automatically. See ``maia.transfer`` module.
+
+  See reference documentation for the description of the keyword arguments.
+
+  Args:
+    dist_tree (CGNSTree): Distributed tree
+    comm      (MPIComm) : MPI communicator
+    **kwargs  : Partitioning options
+  Returns:
+    CGNSTree: partitioned cgns tree
+
+  Example:
+      .. literalinclude:: snippets/test_factory.py
+        :start-after: #partition_dist_tree@start
+        :end-before: #partition_dist_tree@end
+        :dedent: 2
+  """
 
   options = set_default(dist_tree, comm)
   subkeys = ['reordering'] #Key for which we have sub dicts

@@ -9,11 +9,27 @@ from .multi_zone_balancing  import balance_with_uniform_weights, balance_with_no
 from .                      import balancing_quality
 
 def npart_per_zone(tree, comm, n_part=1):
-  """
-  Basic repartition of the different zones of the mesh on the available procs :
-  each proc take n_part partitions of each zone. n_part can be different for each proc.
-  The weights are homogeneous ie equal, for each zone, to the nb of cells in the zone divided
-  by the number of partitions.
+  """Compute a basic zone_to_parts repartition.
+
+  Each process request n_part partitions on each original zone (n_part can differ
+  for each proc).
+  The weights of all the parts produced from a given zone are homogeneous
+  and equal to the number of cells in the zone divided by the total
+  number of partitions requested for this zone.
+
+  Args:
+    tree (CGNSTree)  : (Minimal) distributed tree : only zone names and sizes are needed
+    comm (MPI.Comm)  : MPI Communicator
+    n_part (int,optional) : Number of partitions to produce on each zone by the proc.
+      Defaults to 1.
+  Returns:
+    dict: ``zone_to_parts`` dictionnary expected by :func:`partition_dist_tree`
+
+  Example:
+      .. literalinclude:: snippets/test_factory.py
+        :start-after: #compute_regular_weights@start
+        :end-before: #compute_regular_weights@end
+        :dedent: 2
   """
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
@@ -41,24 +57,36 @@ def npart_per_zone(tree, comm, n_part=1):
   return zone_to_weights
 
 def balance_multizone_tree(tree, comm, only_uniform=False):
-  """
-  Repart the different zones of the mesh on the available procs in
-  order to have a well balanced computational load (ie : total number
-  of cells per proc must be equal).
-  In addition, we try to minimize the number of splits within a given zone
-  and we avoid to produce small partitions.
+  """Compute a well balanced zone_to_parts repartition.
+
+  Each process request or not partitions with heterogeneous weight on each 
+  original zone such that:
+
+  - the computational load is well balanced, ie the total number of
+    cells per process is nearly equal,
+  - the number of splits within a given zone is minimized,
+  - produced partitions are not too small.
+
+  Note:
+    Heterogeneous weights are not managed by ptscotch. Use parmetis as graph_part_tool
+    for partitioning if repartition was computed with this function, or set optional
+    argument only_uniform to True.
 
   Args:
-      tree (pyTree)      : A (minimal) pyTree : only zone names and sizes
-                           are needed
-      comm (MPI.Comm)    : MPI Communicator (from mpi4py)
-      only_uniform (bool): If true, the partition weights for a given zone are
-                           homogeneous (= 1/nbProcForThisZone)
-  Returns
-      zone_to_weights(dict) : For each proc, dictionnary associating the name of
-                              the zones (key:string) to the partitioning weights
-                              attributed to this proc (value:list). Empty list means
-                              that the proc is not concerned by this zone.
+    tree (CGNSTree)  : (Minimal) distributed tree : only zone names and sizes are needed
+    comm (MPI.Comm)  : MPI Communicator
+    only_uniform (bool, optional) : If true, an alternative balancing method is used
+      in order to request homogeneous weights, but load balance is less equilibrated.
+      Default to False.
+
+  Returns:
+    dict: ``zone_to_parts`` dictionnary expected by :func:`partition_dist_tree`
+
+  Example:
+      .. literalinclude:: snippets/test_factory.py
+        :start-after: #compute_balanced_weights@start
+        :end-before: #compute_balanced_weights@end
+        :dedent: 2
   """
 
   i_rank = comm.Get_rank()
