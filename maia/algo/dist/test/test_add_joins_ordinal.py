@@ -241,3 +241,36 @@ Base0 CGNSBase_t:
   add_joins_ordinal.rm_joins_ordinal(dist_tree)
   assert I.getNodeFromName(dist_tree, 'Ordinal')    is None
   assert I.getNodeFromName(dist_tree, 'OrdinalOpp') is None
+
+def test_ordinals_to_interfaces():
+  dt = """
+Base CGNSBase_t:
+  ZoneA Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      perio1 GridConnectivity_t:
+        Ordinal UserDefinedData_t [1]:
+        OrdinalOpp UserDefinedData_t [2]:
+        PointList IndexArray_t [[1,3]]:
+      perio2 GridConnectivity_t:
+        Ordinal UserDefinedData_t [2]:
+        OrdinalOpp UserDefinedData_t [1]:
+        PointList IndexArray_t [[2,4]]:
+      match1 GridConnectivity_t:
+        Ordinal UserDefinedData_t [3]:
+        OrdinalOpp UserDefinedData_t [4]:
+        PointList IndexArray_t [[10,100]]:
+  ZoneB Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      match2 GridConnectivity_t:
+        Ordinal UserDefinedData_t [4]:
+        OrdinalOpp UserDefinedData_t [3]:
+        PointList IndexArray_t [[-100,-10]]:
+  """
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  add_joins_ordinal.ordinals_to_interfaces(dist_tree)
+  I.printTree(dist_tree)
+  expected_id = [1,1,2,2]
+  expected_pos = [0,1,0,1]
+  for i, jn in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
+    assert (I.getNodeFromName1(jn, 'InterfaceId')[1] == expected_id[i]).all()
+    assert (I.getNodeFromName1(jn, 'InterfacePos')[1] == expected_pos[i]).all()

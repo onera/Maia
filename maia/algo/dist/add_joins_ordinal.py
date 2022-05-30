@@ -132,3 +132,26 @@ def rm_joins_ordinal(dist_tree):
   for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
     I._rmNodesByName1(gc, 'Ordinal')
     I._rmNodesByName1(gc, 'OrdinalOpp')
+    I._rmNodesByName1(gc, 'InterfaceId')
+    I._rmNodesByName1(gc, 'InterfacePos')
+
+def ordinals_to_interfaces(dist_tree):
+  """
+  Attribute to each 1to1 pair a unique interace id. Ordinals must have been added in the tree.
+  Store this id and the position (first or second) in disttree.
+  """
+  gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  ordinal_to_id = {}
+  next_id = 0
+  for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
+    ordinal     = I.getNodeFromName1(gc, "Ordinal")
+    ordinal_opp = I.getNodeFromName1(gc, "OrdinalOpp")
+    if ordinal is not None: #Include only 1to1 jns
+      key = min(ordinal[1][0], ordinal_opp[1][0])
+      interface_pos = 1
+      if not key in ordinal_to_id:
+        next_id += 1
+        ordinal_to_id[key] = next_id
+        interface_pos = 0
+      I.newDataArray("InterfaceId", ordinal_to_id[key],  parent=gc)
+      I.newDataArray("InterfacePos", interface_pos,      parent=gc)
