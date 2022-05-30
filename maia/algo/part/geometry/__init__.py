@@ -12,7 +12,7 @@ def compute_cell_center(zone):
   Centers are computed using a basic average over the vertices of the cells.
 
   Args:
-    zone (CGNSZone): Partitionned Structured or U-NGon CGNS Zone
+    zone (CGNSTree): Partitionned Structured or U-NGon CGNS Zone
   Returns:
     center_cell (array): Flat (interlaced) numpy array of cell centers
 

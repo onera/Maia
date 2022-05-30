@@ -22,7 +22,7 @@ def merge_connected_zones(tree, comm, **kwargs):
   
   Args:
     tree (CGNSTree): Input distributed tree
-    comm (MPIComm) : Mpi communicator
+    comm (MPIComm) : MPI communicator
     kwargs: any argument of :func:`merge_zones`, excepted output_path
 
   Example:
@@ -60,7 +60,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
   Args:
     tree (CGNSTree): Input distributed tree
     zones_path (list of str): List of pathes (BaseName/ZoneName) of the zones to merge
-    comm       (MPIComm): Mpi communicator
+    comm       (MPIComm): MPI communicator
     output_path (str, optional): Path of the output merged block. Defaults to None.
     subset_merge (str, optional): Merging strategy for the subsets. Defaults to 'name'.
     concatenate_jns (bool, optional): if True, reduce the multiple 1to1 matching joins related

@@ -355,7 +355,7 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
   Args:
     src_tree (CGNSTree): Source tree, partitionned. Only U-NGon connectivities are managed.
     tgt_tree (CGNSTree): Target tree, partitionned. Structured or U-NGon connectivities are managed.
-    comm       (MPIComm): Mpi communicator
+    comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
     location ({'CellCenter', 'Vertex'}) : Expected target location of the fields.
     **options: Options related to interpolation strategy

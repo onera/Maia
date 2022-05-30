@@ -424,7 +424,7 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
 
   Args:
     disttree_s (CGNSTree): Structured tree
-    comm       (MPIComm) : Mpi communicator
+    comm       (MPIComm) : MPI communicator
     output_loc ({'FaceCenter', 'Vertex'}, optional):
         Expected GridLocation for the subset nodes (BC_t, BCDataSet_t, ...).
         Defaults to "FaceCenter".

@@ -10,6 +10,8 @@ two kind of trees defined by maia:
 In addition, few algorithms can be applied indistinctly to distributed or partitioned trees.
 These algorithms are accessible through the ``maia.algo`` module.
 
+.. _user_man_dist_algo:
+
 Dist algo
 ---------
 
@@ -39,6 +41,8 @@ Mesh extractions
 ..
   from .extract_surf_dmesh     import extract_surf_tree_from_bc
 
+.. _user_man_part_algo:
+
 Part algo
 ---------
 
@@ -47,6 +51,8 @@ The following algorithms applies on maia partitioned trees.
 .. autofunction:: maia.algo.part.compute_cell_center
 .. autofunction:: maia.algo.part.compute_wall_distance
 .. autofunction:: maia.algo.part.interpolate_from_part_trees
+
+.. _user_man_gen_algo:
 
 Generic algo
 ------------

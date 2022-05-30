@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = '@PROJECT_NAME@'
+project = 'Maia'
 copyright = '2021, ONERA The French Aerospace Lab'
 author = 'ONERA'
 

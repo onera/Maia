@@ -29,7 +29,7 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
   where c, t are the rotation center and translation vector and R is the rotation matrix.
 
   Args:
-    zone (CGNSZone): Input distributed zone
+    zone (CGNSTree): Input distributed zone
     duplicated_zone_name (str): name of the output zone
     rotation_center (array): center coordinates of the rotation
     rotation_angler (array): angles of the rotation
@@ -41,7 +41,7 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
         following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
         Defaults to False.
   Returns:
-    CGNSZone: Distributed duplicated zone
+    CGNSTree: Distributed duplicated zone
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -281,7 +281,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
     zone_paths (list of str): List of pathes (BaseName/ZoneName) of the connected zones to duplicate
     jn_paths_for_dupl (pair of list of str): (listA, listB) where listA (resp. list B) stores all the
         pathes of the GridConnectivity nodes defining the first (resp. second) side of a periodic match.
-    comm       (MPIComm) : Mpi communicator
+    comm       (MPIComm) : MPI communicator
     conformize (bool, optional): If true, ensure that the generated interface vertices have exactly same
         coordinates (see :func:`conformize_jn_pair`). Defaults to False.
     apply_to_fields (bool, optional): See :func:`duplicate_zone_with_transformation`. Defaults to False.

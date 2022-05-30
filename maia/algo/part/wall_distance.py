@@ -285,7 +285,7 @@ def compute_wall_distance(part_tree, comm, method="cloud", families=[], out_fs_n
   
   Args:
     part_tree (CGNSTree): Input partitionned tree
-    comm       (MPIComm): Mpi communicator
+    comm       (MPIComm): MPI communicator
     method ({'cloud', 'propagation'}, optional): Choice of method. Defaults to "cloud".
     families (list of str): List of families to consider as wall faces.
     out_fs_name (str, optional): Name of the output FlowSolution_t node storing wall distance data.

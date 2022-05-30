@@ -483,7 +483,7 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
 
   Args:
     dist_tree  (CGNSTree): Distributed tree
-    comm       (`MPIComm`) : Mpi communicator
+    comm       (`MPIComm`) : MPI communicator
     have_isolated_faces (bool, optional) : Indicate if original joins includes
       faces who does not share any edge with other external (join) faces.
       If False, disable the special treatement needed by such faces (better performances,
