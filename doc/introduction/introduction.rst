@@ -29,7 +29,7 @@ Among all the possibilities, we distinguishes two ways to do it:
 
     - the original order is preserved across the distributed data,
     - each element appears in one and only one block,
-    - a block can be empty as long as the global order is preserved.
+    - a block can be empty as long as the global order is preserved (b).
 
 2. Taking arbitrary subsets of the original data: we call such subsets :def:`partitioned data`, and we use the term :def:`partition`
    to refer to a piece of this partitioned data.
@@ -38,21 +38,21 @@ Among all the possibilities, we distinguishes two ways to do it:
 
   Due to this relaxed constraint, there is much more admissible splits since we allow in our definition the following cases:
 
-    - an element can appear in several partitions, or several times within the same partition,
-    - it is allowed that an element does not appear in a partition
+    - an element can appear in several partitions, or several times within the same partition (b),
+    - it is allowed that an element does not appear in a partition (c).
 
   Such repartitions are often useful when trying to gather the elements depending on
   some characteristics: on the above example, we created the partition of squared shaped elements, round shaped
-  elements and unfilled elements. Thus, some elements belong to more than one partition.
+  elements and unfilled elements (b). Thus, some elements belong to more than one partition.
 
 A key point is that no *absolute* best way of diving data: depending of what we want to do with the
 data, one of the way to divide it may be more adapted. In the previous example:
 
 - distributed data is fine if you want to count the number of filled shapes: you can count in each
   block and then sum the result over the blocks.
-- Now assume that you want to reorder the elements depending on their shape, then on their color:
-  since we created the two first partitions to gather the elements of same shape, each one could
-  independently order its elements by color [#f1]_.
+- Now assume that you want to renumber the elements depending on their shape, then on their color:
+  if partitioned data (b) is used, partitions 1 and 2 could independently order 
+  their elements by color since they are already sorted by shape [#f1]_.
 
 Numberings
 ^^^^^^^^^^
@@ -296,7 +296,7 @@ A **Maia tree** may be a **global tree**, a **distributed tree** or a **partitio
 
 .. rubric:: Footnotes
 
-.. [#f1] Actually, such algorithm could be written for distributed data, but is less intuitive and require some knowledge of what
+.. [#f1] Actually, such algorithm could be written for distributed data, but is less intuitive and require more knowledge of what
          if happening on the other blocks.
 
 .. [#f2] Other distributions are possible : we could, for example, affect all the CoordinateX array on the first process (using the distribution array :code:`[0,12,12]`) and the CoordinateY array on the second, but we would have to manage a different distribution for each array.
