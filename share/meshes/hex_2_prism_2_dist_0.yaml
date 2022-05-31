@@ -30,37 +30,37 @@ Base CGNSBase_t I4 [3, 3]:
       :CGNS#Distribution UserDefinedData_t:
         Element DataArray_t I4 [0, 1, 2]:
     ZoneBC ZoneBC_t:
-      Left BC_t 'Null':
+      Xmin BC_t 'Null':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t 1:
         PointList#Size IndexArray_t I4 [1, 2]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t I4 [0, 1, 2]:
-      Right BC_t 'Null':
+      Xmax BC_t 'Null':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t 3:
         PointList#Size IndexArray_t I4 [1, 2]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t I4 [0, 1, 2]:
-      Bottom BC_t 'Null':
+      Ymin BC_t 'Null':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[5, 6]]:
         PointList#Size IndexArray_t I4 [1, 4]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t I4 [0, 2, 4]:
-      Top BC_t 'Null':
+      Ymax BC_t 'Null':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t 9:
         PointList#Size IndexArray_t I4 [1, 2]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t I4 [0, 1, 2]:
-      Back BC_t 'Null':
+      Zmin BC_t 'Null':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t 11:
         PointList#Size IndexArray_t I4 [1, 2]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t I4 [0, 1, 2]:
-      Front BC_t 'Null':
+      Zmax BC_t 'Null':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t 12:
         PointList#Size IndexArray_t I4 [1, 2]:

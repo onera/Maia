@@ -31,21 +31,21 @@ Base CGNSBase_t I4 [3,3]:
       ElementConnectivity DataArray_t:
         I4 : [ 1, 2, 4, 3, 5, 6, 8, 7, ]
     ZoneBC ZoneBC_t:
-      Left BC_t "Null":
+      Xmin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[1]]:
-      Right BC_t "Null":
+      Xmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[2]]:
-      Bottom BC_t "Null":
+      Ymin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[3]]:
-      Top BC_t "Null":
+      Ymax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[4]]:
-      Back BC_t "Null":
+      Zmin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[5]]:
-      Front BC_t "Null":
+      Zmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[6]]:

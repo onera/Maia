@@ -45,21 +45,21 @@ Base CGNSBase_t I4 [3,3]:
         I4 : [ 2, 3,  5,  7,  8, 10,
                7, 8, 10, 12, 13, 15, ]
     ZoneBC ZoneBC_t:
-      Left BC_t "Null":
+      Xmin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[1,2]]:
-      Right BC_t "Null":
+      Xmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[3,4]]:
-      Bottom BC_t "Null":
+      Ymin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[5,6,7,8]]:
-      Top BC_t "Null":
+      Ymax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[9,10]]:
-      Back BC_t "Null":
+      Zmin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[11,13]]:
-      Front BC_t "Null":
+      Zmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[12,14]]:
