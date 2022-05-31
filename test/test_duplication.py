@@ -18,7 +18,7 @@ from maia.algo.dist import duplicate as DUP
 @pytest.mark.parametrize("fields", [True, False])
 def test_translate_cube(sub_comm, fields, write_output):
   # Generate a disttree with one zone
-  dist_tree = generate_dist_block(11, "NGON_n", sub_comm, origin=[0., -.5, -.5])
+  dist_tree = generate_dist_block(11, "Poly", sub_comm, origin=[0., -.5, -.5])
   dist_zone = I.getZones(dist_tree)[0]
 
   # Initialise some fields
@@ -62,8 +62,8 @@ def test_duplicate_from_periodic(sub_comm, write_output):
   dist_tree = generate_dist_block(11, "Poly", sub_comm)
   # Lets create a periodic join for this cube
   dist_zone = I.getZones(dist_tree)[0]
-  bottom = I.getNodeFromName(dist_zone, 'dcube_bnd_0')
-  top    = I.getNodeFromName(dist_zone, 'dcube_bnd_1')
+  bottom = I.getNodeFromName(dist_zone, 'Zmin')
+  top    = I.getNodeFromName(dist_zone, 'Zmax')
   for bc in [bottom, top]:
     I._rmNodesByName(dist_zone, I.getName(bc))
     I.setType(bc, 'GridConnectivity_t')

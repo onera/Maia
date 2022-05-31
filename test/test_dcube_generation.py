@@ -21,7 +21,7 @@ def test_generate_dcube_ngons(sub_comm, write_output):
   n_vtx = 20
 
   # > dcube_generate create a NGon discretisation of a cube
-  dist_tree = generate_dist_block(n_vtx, "NGON_n", sub_comm, origin=[0.,0.,0.], edge_length=1.)
+  dist_tree = generate_dist_block(n_vtx, "Poly", sub_comm, origin=[0.,0.,0.], edge_length=1.)
 
   zones = I.getZones(dist_tree)
   assert len(zones) == 1
@@ -54,7 +54,7 @@ def test_generate_dcube_elts(cgns_elmt_name, sub_comm, write_output):
 
   # 2D or 3D meshes can be generated, depending on the type of requested element
   dim = 2 if cgns_elmt_name in ["TRI_3", "QUAD_4"] else 3
-  assert (I.getVal(I.getBases(dist_tree)[0]) == [dim,dim]).all()
+  assert (I.getVal(I.getBases(dist_tree)[0]) == [dim,3]).all()
 
   zones = I.getZones(dist_tree)
   assert len(zones) == 1

@@ -4,7 +4,7 @@ def test_generate_dist_block():
   import maia
   import maia.pytree as PT
 
-  dist_tree = maia.factory.generate_dist_block(10, 'NGON_N', MPI.COMM_WORLD)
+  dist_tree = maia.factory.generate_dist_block(10, 'Poly', MPI.COMM_WORLD)
   zone = PT.getNodeFromType(dist_tree, 'Zone_t')
   assert PT.Element.CGNSName(PT.getNodeFromType(zone, 'Elements_t')) == 'NGON_n'
 
@@ -20,7 +20,7 @@ def test_partition_dist_tree():
 
   comm = MPI.COMM_WORLD
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
-  dist_tree  = maia.factory.generate_dist_block(10, 'NGON_N', comm)
+  dist_tree  = maia.factory.generate_dist_block(10, 'Poly', comm)
 
   #Basic use
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)

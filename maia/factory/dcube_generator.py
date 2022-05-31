@@ -87,8 +87,9 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
 
   face_group = dcube_val['dface_group']
 
+  bc_names = ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
   for i_bc in range(dcube_dims['n_face_group']):
-    bc_n = I.newBC('dcube_bnd_{0}'.format(i_bc), btype='BCWall', parent=zone_bc)
+    bc_n = I.newBC(bc_names[i_bc], btype='Null', parent=zone_bc)
     I.newGridLocation('FaceCenter', parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
@@ -120,7 +121,15 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
 
   t_elmt = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(cgns_elmt_name)
   cgns_elt_index = [prop[0] for prop in EU.elements_properties].index(cgns_elmt_name)
-  dim = EU.element_dim(cgns_elt_index)
+  cell_dim = EU.element_dim(cgns_elt_index)
+
+  # Manage 2D meshes with 2D PhyDim
+  phy_dim = 3
+  if len(origin) == 2:
+    phy_dim  = 2
+    origin = list(origin) + [0.]
+  if cell_dim == 3:
+    assert phy_dim == 3
 
   if isinstance(n_vtx, int):
     n_vtx = [n_vtx, n_vtx, n_vtx]
@@ -133,6 +142,8 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
   dmesh_nodal = dcube.get_dmesh_nodal()
 
   g_dims      = dmesh_nodal.dmesh_nodal_get_g_dims()
+  n_vtx_out   = g_dims['n_vtx_abs']
+  n_cell_out  = g_dims['n_face_abs'] if cell_dim == 2 else g_dims['n_cell_abs']
 
 
   sections_vol   = None
@@ -149,8 +160,8 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
 
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
-  dist_base = I.newCGNSBase('Base', cellDim=dim, physDim=dim, parent=dist_tree)
-  dist_zone = I.newZone('zone', [[g_dims["n_vtx_abs"], g_dims["n_cell_abs"], 0]],
+  dist_base = I.newCGNSBase('Base', cellDim=cell_dim, physDim=phy_dim, parent=dist_tree)
+  dist_zone = I.newZone('zone', [[n_vtx_out, n_cell_out, 0]],
                         'Unstructured', parent=dist_base)
 
   # > Grid coordinates
@@ -159,7 +170,8 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
   grid_coord = I.newGridCoordinates(parent=dist_zone)
   I.newDataArray('CoordinateX', cx, parent=grid_coord)
   I.newDataArray('CoordinateY', cy, parent=grid_coord)
-  I.newDataArray('CoordinateZ', cz, parent=grid_coord)
+  if phy_dim == 3:
+    I.newDataArray('CoordinateZ', cz, parent=grid_coord)
 
   # > Section implicitement range donc on maintiens un compteur
   shift_elmt       = 1
@@ -177,9 +189,15 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
   distri = np.empty(n_rank, dtype=face_group.dtype)
   n_face_group = face_group_idx.shape[0] - 1
 
+  if cell_dim == 2:
+    bc_names = ['Zmin', 'Zmax', 'Ymin', 'Ymax']
+    bc_loc = 'EdgeCenter'
+  else:
+    bc_names = ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
+    bc_loc = 'FaceCenter'
   for i_bc in range(n_face_group):
-    bc_n = I.newBC('dcube_bnd_{0}'.format(i_bc), btype='BCWall', parent=zone_bc)
-    I.newGridLocation('FaceCenter', parent=bc_n)
+    bc_n = I.newBC(bc_names[i_bc], btype='Null', parent=zone_bc)
+    I.newGridLocation(bc_loc, parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
     I.newPointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
@@ -204,15 +222,22 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_le
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and
   :cgns:`Zone_t`. The kind 
-  and dimension of the zone is controled by the cgns_elmt_name parameter: 
+  and cell dimension of the zone is controled by the cgns_elmt_name parameter: 
 
   - ``"Structured"`` (or ``"S"``) produces a 3d structured zone (not yet implemented),
-  - ``"NGON_N"`` produces an unstructured 3d zone with a face based (NGON) connectivity,
+  - ``"Poly"`` produces an unstructured 3d zone with a NGon+PE connectivity,
+  - ``"NFACE_n"`` produces an unstructured 3d zone with a NFace+NGon connectivity,
+  - ``"NGON_n"``  produces an unstructured 2d zone with faces described by a NGon
+    node (not yet implemented),
   - Other names must be in ``["TRI_3", "QUAD_4", "TETRA_4", "PENTA_6", "HEXA_8"]``
     and produces an unstructured 2d or 3d zone with corresponding standard elements.
 
   In all cases, the created zone contains the cartesian grid coordinates and the relevant number
   of boundary conditions.
+
+  When creating 2 dimensional zones, the
+  `physical dimension <https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase>`_
+  is set equal to the length of the origin parameter.
 
   Args:
     n_vtx (int or array of int) : Number of vertices in each direction. Scalars
@@ -233,7 +258,7 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_le
   """
   if cgns_elmt_name is None or cgns_elmt_name in ["Structured", "S"]:
     raise NotImplementedError
-  elif cgns_elmt_name.upper() in ["NGON_N", "POLY"]:
+  elif cgns_elmt_name.upper() in ["POLY"]:
     return dcube_generate(n_vtx, edge_length, origin, comm)
   else:
     return dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm)

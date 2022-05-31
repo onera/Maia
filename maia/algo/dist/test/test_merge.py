@@ -39,8 +39,8 @@ def test_merge_zones_L(sub_comm, merge_bc_from_name):           #      |  |
       I.setValue(pl, data_new['PointList'].reshape((1,-1), order='F'))
       
   #Setup connections
-  jn_cur = [['dcube_bnd_3'], ['dcube_bnd_2', 'dcube_bnd_5'], ['dcube_bnd_4']] #To copy to create jn
-  jn_opp = [['dcube_bnd_2'], ['dcube_bnd_3', 'dcube_bnd_4'], ['dcube_bnd_5']] #To copy to create pld
+  jn_cur = [['Xmax'], ['Xmin', 'Ymax'], ['Ymin']] #To copy to create jn
+  jn_opp = [['Xmin'], ['Xmax', 'Ymin'], ['Ymax']] #To copy to create pld
   zone_opp = [['zone2'], ['zone1', 'zone3'], ['zone2']]
   for izone, zone in enumerate(zones):
     zone[0] = f'zone{izone+1}'
@@ -112,8 +112,8 @@ def test_merge_zones_I(sub_comm, merge_only_two):
       I.setValue(pl, data_new['PointList'].reshape((1,-1), order='F'))
       
   #Setup connections
-  jn_cur = [['dcube_bnd_3'], ['dcube_bnd_2', 'dcube_bnd_3'], ['dcube_bnd_2']] #To copy to create jn
-  jn_opp = [['dcube_bnd_2'], ['dcube_bnd_3', 'dcube_bnd_2'], ['dcube_bnd_3']] #To copy to create pld
+  jn_cur = [['Xmax'], ['Xmin', 'Xmax'], ['Xmin']] #To copy to create jn
+  jn_opp = [['Xmin'], ['Xmax', 'Xmin'], ['Xmax']] #To copy to create pld
   zone_opp = [['zone2'], ['zone1', 'zone3'], ['zone2']]
   for izone, zone in enumerate(zones):
     zone[0] = f'zone{izone+1}'
@@ -127,8 +127,8 @@ def test_merge_zones_I(sub_comm, merge_only_two):
       ref_bc = I.getNodeFromName(tree, f'{jn_opp[izone][j]}')
       I.newIndexArray('PointListDonor', I.getNodeFromName1(ref_bc, 'PointList')[1].copy(), parent=gc)
   # Add periodic between first and last
-  jn_cur = ['dcube_bnd_2', 'dcube_bnd_3'] #To copy to create jn
-  jn_opp = ['dcube_bnd_3', 'dcube_bnd_2'] #To copy to create pld
+  jn_cur = ['Xmin', 'Xmax'] #To copy to create jn
+  jn_opp = ['Xmax', 'Xmin'] #To copy to create pld
   zone_opp = ['zone3', 'zone1']
   for izone, zone in zip(range(2), [zones[0], zones[-1]]):
     bc = I.getNodeFromName(zone, jn_cur[izone])
@@ -145,8 +145,8 @@ def test_merge_zones_I(sub_comm, merge_only_two):
     I._rmNodesByName(zone, jn_cur[izone])
 
   #Setup some data (Only one rank so next lines are OK)
-  zsr_full = I.newZoneSubRegion('SubRegion', bcName='dcube_bnd_4', parent=zones[1])
-  old_id = I.getNodeFromPath(zones[1], 'ZoneBC/dcube_bnd_4/PointList')[1][0].copy()
+  zsr_full = I.newZoneSubRegion('SubRegion', bcName='Ymin', parent=zones[1])
+  old_id = I.getNodeFromPath(zones[1], 'ZoneBC/Ymin/PointList')[1][0].copy()
   I.newGridLocation('FaceCenter', zsr_full)
   I.newDataArray('OldId', old_id, parent=zsr_full)
   
