@@ -47,7 +47,8 @@ option(${PROJECT_NAME}_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
 ### C++ standard
 if (${PROJECT_NAME}_ENABLE_CPP20)
   set(CMAKE_CXX_STANDARD 20)
-  set(std_e_ENABLE_CPP20 ON CACHE BOOL "Maia uses C++20, so force C++20 for std_e" FORCE)
+  set(std_e_ENABLE_CPP20 ON CACHE BOOL "${PROJECT_NAME} uses C++20, so force C++20 for std_e" FORCE)
+  set(cpp_cgns_ENABLE_CPP20 ON CACHE BOOL "${PROJECT_NAME} uses C++20, so force C++20 for cpp_cgns" FORCE)
 else()
   set(CMAKE_CXX_STANDARD 17)
 endif()
@@ -199,12 +200,6 @@ include(${PROJECT_UTILS_CMAKE_DIR}/python_wrapping.cmake)
 compile_install_pybind_module(${PROJECT_NAME})
 install_python_modules(${PROJECT_NAME})
 
-# install pytest-mpi-check # TODO move
-install(
-  DIRECTORY   "${PROJECT_ROOT}/external/pytest-mpi-check/pytest_mpi_check"
-  DESTINATION "${SITE_PACKAGES_OUTPUT_DIRECTORY}"
-  COMPONENT   "python"
-)
 
 # ------------------------------------------------------------------------------
 # Testing
