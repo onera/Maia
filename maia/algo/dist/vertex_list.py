@@ -551,13 +551,12 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
     for j, gc_path in enumerate(interface_path):
       base_name, zone_name, zgc_name, gc_name = gc_path.split('/')
       zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
+      zgc  = I.getNodeFromName1(zone, zgc_name)
       gc = I.getNodeFromPath(dist_tree, gc_path)
-
-      zgc_vtx = I.createUniqueChild(zone, zgc_name+'#Vtx', 'ZoneGridConnectivity_t')
 
       if j == 1: #Swap pl/pld for opposite jn
         pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx
-      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
+      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc)
       I.newGridLocation('Vertex', jn_vtx)
       I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
       I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)

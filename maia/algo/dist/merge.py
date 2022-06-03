@@ -143,8 +143,10 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
     zone    = I.getNodeFromPath(tree, zone_path)
     zone_vl = I.getNodeFromPath(tree_vl, zone_path)
     for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
-      zgc_v = I.getNodeFromName1(zone_vl, f"{I.getName(zgc)}#Vtx")
-      I._addChild(zone, zgc_v)
+      zgc_vl = I.getNodeFromName1(zone_vl, I.getName(zgc))
+      for gc_vl in PT.get_children_from_predicate(zgc_vl, lambda n: I.getType(n) == 'GridConnectivity_t' \
+          and sids.Subset.GridLocation(n) == 'Vertex'):
+        I._addChild(zgc, gc_vl)
   
   # Collect interface data
   interface_dn_f = []
@@ -173,7 +175,7 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
         interface_ids_f.append(np_utils.interweave_arrays([pl,pld]))
 
         # Find corresponding vertex
-        gc_vtx = I.getNodeFromPath(zone, f'{I.getName(zgc)}#Vtx/{I.getName(gc)}#Vtx')
+        gc_vtx = I.getNodeFromName1(zgc, f'{I.getName(gc)}#Vtx')
         pl_v  = I.getNodeFromName1(gc_vtx, 'PointList')[1][0]
         pld_v = I.getNodeFromName1(gc_vtx, 'PointListDonor')[1][0]
         interface_dn_v.append(pl_v.size)

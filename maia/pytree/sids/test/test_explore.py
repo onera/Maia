@@ -18,10 +18,9 @@ Zone Zone_t:
   ZBC ZoneBC_t:
     BC BC_t:
     BC2 BC_t:
-  ZGC1 ZoneGridConnectivity_t:
+  ZGC ZoneGridConnectivity_t:
     GCA GridConnectivity_t:
     GCB GridConnectivity_t:
-  ZGC2 ZoneGridConnectivity_t:
     GC1to1A GridConnectivity1to1_t:
     GC1to1B GridConnectivity1to1_t:
   UnLinkedZSR ZoneSubRegion_t:
@@ -40,7 +39,7 @@ Zone Zone_t:
 
   assert EX.getSubregionExtent(I.getNodeFromName(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
   assert EX.getSubregionExtent(I.getNodeFromName(zone, 'BCLinkedZSR'), zone) == 'ZBC/BC2'
-  assert EX.getSubregionExtent(I.getNodeFromName(zone, 'GCLinkedZSR'), zone) == 'ZGC2/GC1to1B'
+  assert EX.getSubregionExtent(I.getNodeFromName(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
 
   with pytest.raises(ValueError):
     EX.getSubregionExtent(I.getNodeFromName(zone, 'OrphelanZSR'), zone)
