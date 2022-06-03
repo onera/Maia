@@ -48,7 +48,8 @@ def get_pl_donor(dist_zones, part_zones, comm):
   face_in_join_offset = np_utils.sizes_to_indices(nb_face_in_joins)
 
   shifted_lntogn = list()
-  part_data = {key : [] for key in ['pl', 'irank', 'ipart']}
+  part_data = {key : [] for key in ['pl', 'irank', 'ipart', 'ijoin']}
+  part_stride = []
   for p_zone in part_zones:
     d_zone_name = MT.conv.get_part_prefix(I.getName(p_zone))
     i_proc, i_part = MT.conv.get_part_suffix(I.getName(p_zone))
@@ -61,17 +62,19 @@ def get_pl_donor(dist_zones, part_zones, comm):
         part_data['pl'].append(pl)
         part_data['irank'].append(i_proc*np.ones(pl.size, dtype=pl.dtype))
         part_data['ipart'].append(i_part*np.ones(pl.size, dtype=pl.dtype))
+        part_data['ijoin'].append( gc_id*np.ones(pl.size, dtype=pl.dtype))
+        part_stride.append(np.ones(pl.size, np.int32))
 
   PTB = PDM.PartToBlock(comm, shifted_lntogn, pWeight=None, partN=len(shifted_lntogn),
-                        t_distrib=0, t_post=0)
+                        t_distrib=0, t_post=2)
   distribution = PTB.getDistributionCopy()
 
   dData = dict()
-  PTB.PartToBlock_Exchange(dData, part_data)
+  PTB.PartToBlock_Exchange(dData, part_data, pStrid=part_stride)
 
   BTP = PDM.BlockToPart(distribution, comm, shifted_lntogn, len(shifted_lntogn))
   part_data = dict()
-  BTP.BlockToPart_Exchange2(dData, part_data, BlkStride=2)
+  BTP.BlockToPart_Exchange2(dData, part_data, BlkStride=dData['pl#PDM_Stride'])
 
 
   #Post treat
@@ -80,37 +83,68 @@ def get_pl_donor(dist_zones, part_zones, comm):
     i_rank, i_part = MT.conv.get_part_suffix(I.getName(p_zone))
     for gc in PT.iter_children_from_predicates(p_zone, gc_type_path):
       if I.getNodeFromName1(gc, 'Ordinal') is not None: #Skip part joins
-        pl = I.getNodeFromName1(gc, 'PointList')[1][0]
-        opp_pl   = np.empty_like(pl)
-        opp_rank = np.empty((pl.size,2), order='F', dtype=np.int32)
-        #opp_part = np.empty(pl.size, dtype=np.int32)
-        for i in range(pl.size):
-          if part_data['irank'][i_join][2*i] != i_rank:
-            opp_rank[i][0] = part_data['irank'][i_join][2*i]
-            opp_rank[i][1] = part_data['ipart'][i_join][2*i]
-            opp_pl[i]   = part_data['pl'   ][i_join][2*i]
-          elif part_data['irank'][i_join][2*i+1] != i_rank:
-            opp_rank[i][0] = part_data['irank'][i_join][2*i+1]
-            opp_rank[i][1] = part_data['ipart'][i_join][2*i+1]
-            opp_pl[i]   = part_data['pl'   ][i_join][2*i+1]
-          # The two joins are on the same proc, look at the parts
-          else:
-            opp_rank[i][0] = i_rank
-            if part_data['ipart'][i_join][2*i] != i_part:
-              opp_rank[i][1] = part_data['ipart'][i_join][2*i]
-              opp_pl[i]   = part_data['pl'   ][i_join][2*i]
-            elif part_data['ipart'][i_join][2*i+1] != i_part:
-              opp_rank[i][1] = part_data['ipart'][i_join][2*i+1]
-              opp_pl[i]   = part_data['pl'   ][i_join][2*i+1]
-            # The two joins have the same proc id / part id, we need to check original pl
-            else:
-              opp_rank[i][1] = i_part
-              if part_data['pl'][i_join][2*i] != pl[i]:
-                opp_pl[i] = part_data['pl'][i_join][2*i]
-              else:
-                opp_pl[i] = part_data['pl'][i_join][2*i+1]
+        gc_id = I.getNodeFromName1(gc, 'Ordinal')[1][0] - 1
+        pl_node = I.getNodeFromName1(gc, 'PointList')
+        lngn_node = MT.getGlobalNumbering(gc, 'Index')
+        lngn = lngn_node[1]
+        pl = pl_node[1][0]
+        r_idx = 0
+        ini_size = pl.size
+        # First pass to count the number of matchs for each entity
+        n_matches = np.zeros(pl.size, np.int32)
+        for i in range(ini_size):
+          n_candidates = part_data['pl#PDM_Stride'][i_join][i]
+          myself_found = False
+          for ic in range(n_candidates):
+            #For debug, check that myself is in list
+            if part_data['irank'][i_join][r_idx + ic] == i_rank and \
+               part_data['ipart'][i_join][r_idx + ic] == i_part and \
+               part_data['ijoin'][i_join][r_idx + ic] == gc_id  and \
+               part_data['pl'   ][i_join][r_idx + ic] == pl[i]:
+                 myself_found = True
+            # All the received tuples come from one of the two elements 
+            # of same original interface entity (because working by interface -- gnum was shifted)
+            # We have to select only the ones coming from the opposite side of the interface
+            if part_data['ijoin'][i_join][r_idx + ic] != gc_id:
+               n_matches[i] += 1
+          r_idx += n_candidates
+          assert n_matches[i] >= 1
+          assert (myself_found)
 
-        i_join += 1
+        # Reallocate arrays
+        new_size = n_matches.sum()
+        if new_size != ini_size:
+          pl     = np.resize(pl, new_size)
+          lngn   = np.resize(lngn, new_size)
+
+        opp_rank = np.empty((pl.size,2), order='F', dtype=np.int32)
+        opp_pl   = np.empty_like(pl)
+        w_idx = ini_size #To write at end of array
+        r_idx = 0
+        for i in range(ini_size):
+          n_candidates = part_data['pl#PDM_Stride'][i_join][i]
+          first_match = True
+          for ic in range(n_candidates):
+            if part_data['ijoin'][i_join][r_idx + ic] != gc_id:
+               if first_match: #Register first inplace
+                 opp_rank[i][0] = part_data['irank'][i_join][r_idx+ic]
+                 opp_rank[i][1] = part_data['ipart'][i_join][r_idx+ic]
+                 opp_pl[i]      = part_data['pl'   ][i_join][r_idx+ic]
+                 first_match = False
+               else: #Register other at end of array
+                 pl[w_idx]     = pl[i]
+                 lngn[w_idx]   = lngn[i]
+                 opp_pl[w_idx]      = part_data['pl'   ][i_join][r_idx+ic]
+                 opp_rank[w_idx][0] = part_data['irank'][i_join][r_idx+ic]
+                 opp_rank[w_idx][1] = part_data['ipart'][i_join][r_idx+ic]
+                 w_idx += 1
+
+          r_idx += n_candidates
+
+        assert w_idx == new_size
         I.newDataArray('PointListDonor', opp_pl.reshape((1,-1), order='F'), parent=gc)
         I.newDataArray('Donor', opp_rank, parent=gc)
+        I.setValue(pl_node, pl.reshape((1,-1), order='F'))
+        I.setValue(lngn_node, lngn)
+        i_join += 1
 
