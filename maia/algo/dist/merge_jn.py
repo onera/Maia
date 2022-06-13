@@ -265,8 +265,7 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   nface_l = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if elem[1][0] == 23]
   nface = nface_l[0] if len(nface_l) == 1 else None
 
-  if I.getNodeFromName1(gc, 'Ordinal') is None:
-    AJO.add_joins_ordinal(dist_tree, comm)
+  AJO.add_joins_ordinal(dist_tree, comm)
 
   ref_faces      = I.getNodeFromPath(dist_tree, jn_pathes[0]+'/PointList')[1][0]
   face_to_remove = I.getNodeFromPath(dist_tree, jn_pathes[0]+'/PointListDonor')[1][0]
@@ -304,19 +303,20 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
     _shift_cgns_subsets(zone, 'CellCenter', -n_rmvd_face)
 
   # Since PointList/PointList donor of JN have changed, we must change opposite join as well
-  # Carefull : for intra zone jn, we may have a clash of actualized pl/pld. We use ordinal to break it
-  ordinal_to_pl = {}
+  # Carefull : for intra zone jn, we may have a clash of actualized pl/pld. We use pathes to break it
+  jn_to_opp = {}
   current_zone_path = base_n + '/' + zone_n
   all_gcs_query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
-  for gc in PT.iter_children_from_predicates(zone, all_gcs_query[2:]):
-    ordinal_to_pl[I.getNodeFromName1(gc, 'Ordinal')[1][0]] = \
+  for zgc, gc in PT.iter_children_from_predicates(zone, all_gcs_query[2:], ancestors=True):
+    jn_to_opp[base_n + '/' + zone_n + '/' + zgc[0] + '/' + gc[0]] = \
         (np.copy(I.getNodeFromName1(gc, 'PointList')[1]), np.copy(I.getNodeFromName1(gc, 'PointListDonor')[1]))
   for o_base, o_zone, o_zgc, o_gc in PT.iter_children_from_predicates(dist_tree, all_gcs_query, ancestors=True):
-    ord, ord_opp = I.getNodeFromName1(o_gc, 'Ordinal')[1][0], I.getNodeFromName1(o_gc, 'OrdinalOpp')[1][0]
+    gc_path = '/'.join([I.getName(node) for node in [o_base, o_zone, o_zgc, o_gc]])
+    gc_path_opp = AJO.get_opposite_path(dist_tree, gc_path)
     try:
-      pl_opp, pld_opp = ordinal_to_pl[ord_opp]
+      pl_opp, pld_opp = jn_to_opp[gc_path_opp]
       # Skip one internal jn over two
-      if I.getName(o_base) + '/' + I.getName(o_zone) == current_zone_path and ord_opp >= ord:
+      if I.getName(o_base) + '/' + I.getName(o_zone) == current_zone_path and gc_path_opp >= gc_path:
         pass
       else:
         I.setValue(I.getNodeFromName1(o_gc, 'PointList'),     pld_opp)

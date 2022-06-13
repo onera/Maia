@@ -120,6 +120,7 @@ Base CGNSBase_t I4 [3, 3]:
         PointList IndexArray_t I4 [[33, 34, 35, 36]]:
         PointListDonor IndexArray_t I4 [[25, 26, 27, 28]]:
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'MatchRotationB':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationCenter DataArray_t R8 [0.0, 0.0, 0.0]:
@@ -133,6 +134,7 @@ Base CGNSBase_t I4 [3, 3]:
         PointList IndexArray_t I4 [[25, 26, 27, 28]]:
         PointListDonor IndexArray_t I4 [[33, 34, 35, 36]]:
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'MatchRotationA':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationCenter DataArray_t R8 [0.0, 0.0, 0.0]:
@@ -146,6 +148,7 @@ Base CGNSBase_t I4 [3, 3]:
         PointList IndexArray_t I4 [[9, 10, 11, 12]]:
         PointListDonor IndexArray_t I4 [[1, 2, 3, 4]]:
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'MatchTranslationB':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationCenter DataArray_t R8 [0.0, 0.0, 0.0]:
@@ -159,6 +162,7 @@ Base CGNSBase_t I4 [3, 3]:
         PointList IndexArray_t I4 [[1, 2, 3, 4]]:
         PointListDonor IndexArray_t I4 [[9, 10, 11, 12]]:
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'MatchTranslationA':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationCenter DataArray_t R8 [0.0, 0.0, 0.0]:

@@ -69,29 +69,38 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
   I._addChild(output_base, merged_zone)
 
   #First we have to retrieve PLDonor for external jn and update opposite zones
-  #Since merged zone have been removed, ordinal are unique
   merged_zone_path = I.getName(output_base) + '/' + I.getName(merged_zone)
-  ordinal_to_pl = {}
-  for gc in PT.get_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']):
-    ordinal_to_pl[I.getNodeFromName1(gc, 'Ordinal')[1][0]] = \
+  jn_to_pl = {}
+  for jn_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'):
+    gc = I.getNodeFromPath(tree, jn_path)
+    jn_to_pl[jn_path] = \
         (I.getNodeFromName1(gc, 'PointList')[1], I.getNodeFromName1(gc, 'PointListDonor')[1], MT.getDistribution(gc))
+
+  # Update opposite names when going to opp zone (intrazone have been caried before)
+  for zgc, gc in PT.get_children_from_predicates(merged_zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
+    if I.getValue(gc) not in zones_path:
+      opp_path = AJO.get_opposite_path(tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
+      opp_gc = I.getNodeFromPath(tree, opp_path)
+      opp_gc_donor_name = I.getNodeFromName1(opp_gc, 'GridConnectivityDonorName') #TODO factorize
+      I.setValue(opp_gc_donor_name, gc[0])
+  #Now all donor names are OK
 
   for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
     is_merged_zone = zone_path == merged_zone_path
     zone = I.getNodeFromPath(tree, zone_path)
-    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t']):
+    for zgc, gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
       #Update name and PL
-      if I.getValue(gc) in zones_path:
+      if I.getValue(gc) in zones_path: #Can be: jn from non concerned zone to merged zones or periodic from merged zones
         I.setValue(gc, merged_zone_path)
-        jn_ord = I.getNodeFromName1(gc, 'Ordinal')[1][0]
-        key    = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
+        jn_path = f"{zone_path}/{I.getName(zgc)}/{I.getName(gc)}"
+        jn_path_opp= AJO.get_opposite_path(tree, jn_path)
         # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
         # merged zone
-        if not is_merged_zone or key < jn_ord:
-          I.newIndexArray('PointList'     , ordinal_to_pl[key][1], parent=gc)
-          I.newIndexArray('PointListDonor', ordinal_to_pl[key][0], parent=gc)
+        if not is_merged_zone or jn_path_opp < jn_path:
+          I.newIndexArray('PointList'     , jn_to_pl[jn_path_opp][1], parent=gc)
+          I.newIndexArray('PointListDonor', jn_to_pl[jn_path_opp][0], parent=gc)
           I._rmNodesByName(gc, ":CGNS#Distribution")
-          I._addChild(gc, ordinal_to_pl[key][2])
+          I._addChild(gc, jn_to_pl[jn_path_opp][2])
 
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
@@ -105,6 +114,11 @@ def _add_zone_suffix(zones, query):
   for izone, zone in enumerate(zones):
     for node in PT.get_children_from_predicates(zone, query):
       I.setName(node, I.getName(node) + f".{izone}")
+      # Also update internal (periodic) joins with new donor name
+      if I.getNodeFromName1(node, '__maia_jn_update__') is not None:
+        opp_domain_id = I.getNodeFromName1(node, '__maia_jn_update__')[1][0]
+        donor_name_node = I.getNodeFromName1(node, "GridConnectivityDonorName")
+        I.setValue(donor_name_node, f"{I.getValue(donor_name_node)}.{opp_domain_id}")
 
 def _rm_zone_suffix(zones, query):
   """Util function removing the number of the zone in all the nodes founds by a query
@@ -157,15 +171,15 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   for zone_path, zone in zip(zones_path, zones):
     base_name, zone_name = zone_path.split('/')
     for zgc, gc in PT.get_children_from_predicates(zone, gc_query, ancestors=True):
-      jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
-      jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
       opp_zone_path = sids.getZoneDonorPath(base_name, gc)
       if opp_zone_path in zone_to_id:
         if is_perio(gc):
           I.newUserDefinedData('__maia_jn_update__', value = zone_to_id[opp_zone_path], parent=gc)
         else:
           I.newDescriptor('__maia_merge__', parent=gc)
-      if I.getNodeFromName1(gc, '__maia_merge__') is not None and jn_ordinal < jn_ordinal_opp:
+          gc_path = f"{zone_path}/{I.getName(zgc)}/{I.getName(gc)}"
+          gc_path_opp = AJO.get_opposite_path(tree, gc_path)
+      if I.getNodeFromName1(gc, '__maia_merge__') is not None and gc_path < gc_path_opp:
         interface_dom.append((zone_to_id[zone_path], zone_to_id[opp_zone_path]))
 
         pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
@@ -483,7 +497,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
 
   additional_types = ['GridLocation_t', 'FamilyName_t', 'Descriptor_t',
                       'GridConnectivityType_t', 'GridConnectivityProperty_t']
-  additional_names = ['Ordinal', 'OrdinalOpp']
+  additional_names = []
   for type in additional_types:
     for sub_node in I.getNodesFromType1(ref_node, type):
       I._addChild(merged_node, sub_node)

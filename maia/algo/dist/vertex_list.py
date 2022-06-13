@@ -489,27 +489,11 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
       Default = False.
   """
   #Build join ids to identify opposite joins
-  if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:
-    AJO.add_joins_ordinal(dist_tree, comm)
+  AJO.add_joins_ordinal(dist_tree, comm)
 
-  query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
-      lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.Subset.GridLocation(n) == 'FaceCenter']
-
-  # Retrieve interfaces pathes and call function
-  key_to_cur = {}
-  key_to_opp = {}
-  for base, zone, zgc, gc in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
-    jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
-    jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
-    jn_key = min(jn_ordinal, jn_ordinal_opp)
-    jn_path = '/'.join([I.getName(n) for n in [base, zone, zgc, gc]])
-    if jn_ordinal < jn_ordinal_opp:
-      key_to_cur[jn_key] = jn_path
-    else:
-      key_to_opp[jn_key] = jn_path
-
-  interface_pathes_cur = list(key_to_cur.values())
-  interface_pathes_opp = [key_to_opp[k] for k in key_to_cur.keys()]
+  match_jns = AJO.get_match_pathes(dist_tree)
+  interface_pathes_cur = [pair[0] for pair in match_jns]
+  interface_pathes_opp = [pair[1] for pair in match_jns]
     
   if have_isolated_faces:
     #Filter interfaces having isolated faces; they will be treated one by one, while other will be grouped
