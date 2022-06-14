@@ -73,7 +73,6 @@ def test_duplicate_zone_with_transformation2():
                                                                  rotation_center = np.array([0.,0.,0.]),
                                                                  rotation_angle  = np.array([0.,0.,np.pi]),
                                                                  translation     = np.array([0.,0.,0.]),
-                                                                 max_ordinal     = 4,
                                                                  apply_to_fields = True)
   
   assert duplicated_zone[0] == "DuplicatedZone"
@@ -82,15 +81,6 @@ def test_duplicate_zone_with_transformation2():
   
   zgc            = I.getNodeFromType1(zone,            'ZoneGridConnectivity_t')
   duplicated_zgc = I.getNodeFromType1(duplicated_zone, 'ZoneGridConnectivity_t')
-  gcs = I.getNodesFromType1(zgc, 'GridConnectivity_t')
-  for gc in gcs:
-    duplicated_gc = I.getNodeFromNameAndType(duplicated_zgc, I.getName(gc), 'GridConnectivity_t')
-    ordinal_n                = I.getNodeFromName(gc,            'Ordinal')
-    ordinal_opp_n            = I.getNodeFromName(gc,            'OrdinalOpp')
-    duplicated_ordinal_n     = I.getNodeFromName(duplicated_gc, 'Ordinal')
-    duplicated_ordinal_opp_n = I.getNodeFromName(duplicated_gc, 'OrdinalOpp')
-    assert I.getValue(ordinal_n)+4     == I.getValue(duplicated_ordinal_n)
-    assert I.getValue(ordinal_opp_n)+4 == I.getValue(duplicated_ordinal_opp_n)
     
   flow_solution            = I.getNodeFromType1(zone,            'FlowSolution_t')
   duplicated_flow_solution = I.getNodeFromType1(duplicated_zone, 'FlowSolution_t')

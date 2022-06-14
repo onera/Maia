@@ -17,7 +17,6 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
                                        rotation_center = np.zeros(3),
                                        rotation_angle  = np.zeros(3),
                                        translation     = np.zeros(3),
-                                       max_ordinal     = 0,
                                        apply_to_fields = False):
   """
   Create a new zone by applying the prescribed transformation to the input zone.
@@ -36,8 +35,6 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
     rotation_center (array): center coordinates of the rotation
     rotation_angler (array): angles of the rotation
     translation (array):  translation vector components
-    max_ordinal (int, optional): if provided, shift the joins ordinals in the created
-        zone with this value.
     apply_to_fields (bool, optional) : 
         if True, apply the rotation vector to the vectorial fields found under 
         following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
@@ -52,17 +49,7 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
   I.setName(duplicated_zone, duplicated_zone_name)
 
   TRF.transform_zone(duplicated_zone, rotation_center, rotation_angle, translation, apply_to_fields)
-  
-  gc_predicate = ["ZoneGridConnectivity_t",
-                  lambda n : I.getType(n) in ["GridConnectivity_t", "GridConnectivity1to1_t"]]
 
-  if max_ordinal > 0:
-    for gc in PT.iter_children_from_predicates(duplicated_zone, gc_predicate):
-      ordinal_n     = I.getNodeFromName(gc, 'Ordinal')
-      ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
-      I.setValue(ordinal_n,     I.getValue(ordinal_n)    +max_ordinal)
-      I.setValue(ordinal_opp_n, I.getValue(ordinal_opp_n)+max_ordinal)
-        
   return duplicated_zone
 
 def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_nb, comm,
@@ -152,12 +139,6 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
     jn_b_property  = I.getNodeFromType1(jn_b_init_node, "GridConnectivityProperty_t")
     jn_b_properties.append(I.copyTree(jn_b_property))
 
-  # Search the maximum of 'Ordinal' number in the whole dist_tree
-  try:
-    max_ordinal = 2*len(AJO.get_match_pathes(dist_tree))
-  except TypeError:
-    max_ordinal = 0 #If no ordinals in tree
-
   # Get the name of all zones to duplicate in order to update the value of GridConnectivity
   # nodes not involved in the duplication (not in jn_paths_for_dupl)
   gc_values_to_update = zone_paths + [I.getName(zone) for zone in zones] #Manage both ways BaseName/ZoneName + ZoneName
@@ -185,7 +166,6 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
                                                            rotation_center = rotation_center_a,
                                                            rotation_angle  = (n+1)*rotation_angle_a,
                                                            translation     = (n+1)*translation_a,
-                                                           max_ordinal     = (n+1)*max_ordinal,
                                                            apply_to_fields = apply_to_fields)
   
       # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones

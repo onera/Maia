@@ -127,8 +127,6 @@ Base CGNSBase_t I4 [3, 3]:
             RotationAngle DataArray_t R8 [-0.0, -0.0, -1.5707963705062866]:
               DimensionalUnits DimensionalUnits_t ['Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian']:
             Translation DataArray_t R8 [0.0, 0.0, 0.0]:
-        Ordinal UserDefinedData_t 1:
-        OrdinalOpp UserDefinedData_t 2:
       MatchRotationB GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[25, 26, 27, 28]]:
@@ -141,8 +139,6 @@ Base CGNSBase_t I4 [3, 3]:
             RotationAngle DataArray_t R8 [0.0, 0.0, 1.5707963705062866]:
               DimensionalUnits DimensionalUnits_t ['Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian']:
             Translation DataArray_t R8 [0.0, 0.0, 0.0]:
-        Ordinal UserDefinedData_t 2:
-        OrdinalOpp UserDefinedData_t 1:
       MatchTranslationA GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[9, 10, 11, 12]]:
@@ -155,8 +151,6 @@ Base CGNSBase_t I4 [3, 3]:
             RotationAngle DataArray_t R8 [0.0, 0.0, 0.0]:
               DimensionalUnits DimensionalUnits_t ['Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian']:
             Translation DataArray_t R8 [-0.0, -0.0, -2.0]:
-        Ordinal UserDefinedData_t 3:
-        OrdinalOpp UserDefinedData_t 4:
       MatchTranslationB GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[1, 2, 3, 4]]:
@@ -169,8 +163,6 @@ Base CGNSBase_t I4 [3, 3]:
             RotationAngle DataArray_t R8 [0.0, 0.0, 0.0]:
               DimensionalUnits DimensionalUnits_t ['Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian']:
             Translation DataArray_t R8 [0.0, 0.0, 2.0]:
-        Ordinal UserDefinedData_t 4:
-        OrdinalOpp UserDefinedData_t 3:
     FlowSolution FlowSolution_t:
       GridLocation GridLocation_t 'CellCenter':
       DataX DataArray_t R8 [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]:
