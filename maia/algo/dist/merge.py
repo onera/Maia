@@ -9,7 +9,7 @@ import maia.pytree.maia   as MT
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import py_utils, np_utils, par_utils
 
-from maia.algo.dist import add_joins_ordinal as AJO
+from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer.dist_to_part import data_exchange as MBTP
@@ -40,7 +40,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
   """
   assert all([sids.Zone.Type(I.getNodeFromPath(tree, path)) == 'Unstructured' for path in zones_path])
   #Those one will be needed for jn recovering
-  AJO.add_joins_ordinal(tree, comm)
+  MJT.add_joins_donor_name(tree, comm)
 
   #Force full donor name, otherwise it is hard to reset jns
   sids.enforceDonorAsPath(tree)
@@ -79,7 +79,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
   # Update opposite names when going to opp zone (intrazone have been caried before)
   for zgc, gc in PT.get_children_from_predicates(merged_zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
     if I.getValue(gc) not in zones_path:
-      opp_path = AJO.get_opposite_path(tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
+      opp_path = MJT.get_jn_donor_path(tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
       opp_gc = I.getNodeFromPath(tree, opp_path)
       opp_gc_donor_name = I.getNodeFromName1(opp_gc, 'GridConnectivityDonorName') #TODO factorize
       I.setValue(opp_gc_donor_name, gc[0])
@@ -93,7 +93,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
       if I.getValue(gc) in zones_path: #Can be: jn from non concerned zone to merged zones or periodic from merged zones
         I.setValue(gc, merged_zone_path)
         jn_path = f"{zone_path}/{I.getName(zgc)}/{I.getName(gc)}"
-        jn_path_opp= AJO.get_opposite_path(tree, jn_path)
+        jn_path_opp= MJT.get_jn_donor_path(tree, jn_path)
         # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
         # merged zone
         if not is_merged_zone or jn_path_opp < jn_path:
@@ -104,10 +104,6 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
 
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
-
-  #Finally, ordinals can be removed TODO they may be updated instead
-  AJO.rm_joins_ordinal(tree)
-
 
 def _add_zone_suffix(zones, query):
   """Util function prefixing all the nodes founds by a query by the number of the zone"""
@@ -178,7 +174,7 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
         else:
           I.newDescriptor('__maia_merge__', parent=gc)
           gc_path = f"{zone_path}/{I.getName(zgc)}/{I.getName(gc)}"
-          gc_path_opp = AJO.get_opposite_path(tree, gc_path)
+          gc_path_opp = MJT.get_jn_donor_path(tree, gc_path)
       if I.getNodeFromName1(gc, '__maia_merge__') is not None and gc_path < gc_path_opp:
         interface_dom.append((zone_to_id[zone_path], zone_to_id[opp_zone_path]))
 

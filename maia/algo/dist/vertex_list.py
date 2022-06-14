@@ -10,8 +10,8 @@ import maia.pytree.maia   as MT
 from maia       import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import py_utils, np_utils, par_utils
 
-from maia.algo.dist             import add_joins_ordinal as AJO
-from maia.transfer.dist_to_part import data_exchange     as MBTP
+from maia.algo.dist             import matching_jns_tools as MJT
+from maia.transfer.dist_to_part import data_exchange      as MBTP
 
 def face_ids_to_vtx_ids(face_ids, ngon, comm):
   """
@@ -489,9 +489,9 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
       Default = False.
   """
   #Build join ids to identify opposite joins
-  AJO.add_joins_ordinal(dist_tree, comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
 
-  match_jns = AJO.get_match_pathes(dist_tree)
+  match_jns = MJT.get_matching_jns(dist_tree)
   interface_pathes_cur = [pair[0] for pair in match_jns]
   interface_pathes_opp = [pair[1] for pair in match_jns]
     

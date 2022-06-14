@@ -3,7 +3,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
-from maia.algo.dist import add_joins_ordinal as AJO
+from maia.algo.dist import matching_jns_tools as MJT
 
 def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     additional_data_queries=[], additional_child_queries=[], master=None):
@@ -62,7 +62,7 @@ def concatenate_jns(tree, comm):
   match_jns = lambda n: I.getType(n) == 'GridConnectivity_t' \
                         and I.getValue(I.getNodeFromType(n, 'GridConnectivityType_t')) == 'Abutting1to1'
 
-  AJO.add_joins_ordinal(tree, comm)
+  MJT.add_joins_donor_name(tree, comm)
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     jns_to_merge = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
     perio_refs   = {'Vertex' : list(), 'FaceCenter' : list(), 'CellCenter' : list()}
@@ -73,7 +73,7 @@ def concatenate_jns(tree, comm):
       perio_node = I.getNodeFromType1(jn, 'GridConnectivityProperty_t')
       is_periodic = perio_node is not None
       cur_jn_path = '/'.join([I.getName(node) for node in [base, zone, zgc, jn]])
-      opp_jn_path = AJO.get_opposite_path(tree, cur_jn_path)
+      opp_jn_path = MJT.get_jn_donor_path(tree, cur_jn_path)
       key = min(cur_jn_path, opp_jn_path)
 
       #Manage periodic -- merge only if periodic values are identical

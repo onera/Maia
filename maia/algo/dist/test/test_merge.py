@@ -9,7 +9,7 @@ import maia.pytree.maia   as MT
 
 from maia            import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils.yaml import parse_yaml_cgns
-from maia.algo.dist  import add_joins_ordinal as AJO
+from maia.algo.dist  import matching_jns_tools as MJT
 from maia.factory    import full_to_dist as F2D
 from maia.factory.dcube_generator import dcube_generate
 
@@ -64,7 +64,7 @@ def test_merge_zones_L(sub_comm, merge_bc_from_name):           #      |  |
     I._addChild(zone, F2D.distribute_pl_node(pl_sol_full, sub_comm))
 
   # If we use private func, we need to add ordinals
-  AJO.add_joins_ordinal(tree, sub_comm)
+  MJT.add_joins_donor_name(tree, sub_comm)
   subset_merge = "name" if merge_bc_from_name else "none"
   merged_zone = merge._merge_zones(tree, sub_comm, subset_merge_strategy=subset_merge)
 

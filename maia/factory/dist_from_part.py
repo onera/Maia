@@ -5,10 +5,10 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.algo.dist             import add_joins_ordinal as AJO
-from maia.transfer              import utils             as tr_utils
-from maia.transfer.part_to_dist import data_exchange     as PTB
-from maia.transfer.part_to_dist import index_exchange    as IPTB
+from maia.algo.dist             import matching_jns_tools as MJT
+from maia.transfer              import utils              as tr_utils
+from maia.transfer.part_to_dist import data_exchange      as PTB
+from maia.transfer.part_to_dist import index_exchange     as IPTB
 from maia.utils                 import py_utils
 
 def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
@@ -143,7 +143,7 @@ def recover_dist_tree(part_tree, comm):
 
     # > Todo : BCDataSet
 
-  AJO.pl_donor_from_ordinals(dist_tree)
+  MJT.copy_donor_subset(dist_tree)
 
   return dist_tree
 

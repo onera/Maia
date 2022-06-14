@@ -12,7 +12,7 @@ from maia       import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import par_utils
 
 from maia.algo.dist           import remove_element    as RME
-from maia.algo.dist           import add_joins_ordinal as AJO
+from maia.algo.dist           import matching_jns_tools as MJT
 from maia.algo.dist.merge_ids import merge_distributed_ids
 from maia.algo.dist           import vertex_list as VL
 
@@ -265,7 +265,7 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   nface_l = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if elem[1][0] == 23]
   nface = nface_l[0] if len(nface_l) == 1 else None
 
-  AJO.add_joins_ordinal(dist_tree, comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
 
   ref_faces      = I.getNodeFromPath(dist_tree, jn_pathes[0]+'/PointList')[1][0]
   face_to_remove = I.getNodeFromPath(dist_tree, jn_pathes[0]+'/PointListDonor')[1][0]
@@ -312,7 +312,7 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
         (np.copy(I.getNodeFromName1(gc, 'PointList')[1]), np.copy(I.getNodeFromName1(gc, 'PointListDonor')[1]))
   for o_base, o_zone, o_zgc, o_gc in PT.iter_children_from_predicates(dist_tree, all_gcs_query, ancestors=True):
     gc_path = '/'.join([I.getName(node) for node in [o_base, o_zone, o_zgc, o_gc]])
-    gc_path_opp = AJO.get_opposite_path(dist_tree, gc_path)
+    gc_path_opp = MJT.get_jn_donor_path(dist_tree, gc_path)
     try:
       pl_opp, pld_opp = jn_to_opp[gc_path_opp]
       # Skip one internal jn over two

@@ -6,7 +6,7 @@ import maia.pytree        as PT
 from   maia.utils import py_utils
 import maia.algo.transform as TRF
 import maia.algo.dist.conformize_jn as CCJ
-import maia.algo.dist.add_joins_ordinal as AJO
+import maia.algo.dist.matching_jns_tools as MJT
 
 def _get_gc_root_name(gc_name):
   """ Remove the .D### suffix, if existing """
@@ -119,7 +119,7 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   if conformize:
     jn_to_opp = {}
     for i, jn_path_a in enumerate(jn_paths_a):
-      jn_path_b = AJO.get_opposite_path(dist_tree, jn_path_a)
+      jn_path_b = MJT.get_jn_donor_path(dist_tree, jn_path_a)
       assert jn_path_b in jn_paths_b
       jn_to_opp[jn_path_a] = jn_path_b
 
@@ -247,7 +247,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
   if conformize:
     jn_to_opp = {}
     for i, jn_path_a in enumerate(jn_paths_for_dupl[0]):
-      jn_path_b = AJO.get_opposite_path(dist_tree, jn_path_a)
+      jn_path_b = MJT.get_jn_donor_path(dist_tree, jn_path_a)
       assert jn_path_b in jn_paths_for_dupl[1]
       jn_to_opp[jn_path_a] = jn_path_b
     _jn_paths_for_dupl = [ [], [] ]

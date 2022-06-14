@@ -56,7 +56,7 @@ def _create_local_match_table(gc_list, gc_paths):
   #print('  check_candidates', local_match_table)
   return local_match_table
 
-def add_joins_ordinal(dist_tree, comm, force=False):
+def add_joins_donor_name(dist_tree, comm, force=False):
   """
   For each GridConnectivity_t node found in the dist_tree, find the
   opposite GC node and create the GridConnectivityDonorName node
@@ -99,7 +99,7 @@ def add_joins_ordinal(dist_tree, comm, force=False):
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
     I.newDescriptor("GridConnectivityDonorName", I.getName(gc_list[opp_id]), parent=gc)
 
-def get_opposite_path(dist_tree, jn_path):
+def get_jn_donor_path(dist_tree, jn_path):
   """
   Return the patch of the matching jn in the tree. GridConnectivityDonorName must exists.
   """
@@ -117,12 +117,12 @@ def update_jn_name(dist_tree, jn_path, new_name):
   Rename a 1to1 GC and update the opposite GridConnectivityDonorName.
   """
   cur_jn = I.getNodeFromPath(dist_tree, jn_path)
-  opp_jn = I.getNodeFromPath(dist_tree, get_opposite_path(dist_tree, jn_path))
+  opp_jn = I.getNodeFromPath(dist_tree, get_jn_donor_path(dist_tree, jn_path))
   opp_gc_name_n = I.getNodeFromName1(opp_jn, "GridConnectivityDonorName")
   I.setName(cur_jn, new_name)
   I.setValue(opp_gc_name_n, new_name)
   
-def get_match_pathes(dist_tree):
+def get_matching_jns(dist_tree):
   """
   Return the list of pairs of matching jns
   """
@@ -132,13 +132,13 @@ def get_match_pathes(dist_tree):
   # Retrieve interfaces pathes and call function
   jn_pairs = []
   for jn_path in PT.predicates_to_paths(dist_tree, query):
-    opp_jn_path   = get_opposite_path(dist_tree, jn_path)
+    opp_jn_path   = get_jn_donor_path(dist_tree, jn_path)
     pair = tuple(sorted([jn_path, opp_jn_path]))
     if not pair in jn_pairs:
       jn_pairs.append(pair)
   return jn_pairs
 
-def pl_donor_from_ordinals(dist_tree):
+def copy_donor_subset(dist_tree):
   """
   TODO Generalize for PointRangeDonor
   Retrieve for each GridConnectivity_t node the opposite
@@ -148,30 +148,32 @@ def pl_donor_from_ordinals(dist_tree):
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'
 
   for jn_path in PT.predicates_to_paths(dist_tree, gc_t_path):
-    opp_jn_path = get_opposite_path(dist_tree, jn_path)
+    opp_jn_path = get_jn_donor_path(dist_tree, jn_path)
     cur_jn = I.getNodeFromPath(dist_tree, jn_path)
     opp_jn = I.getNodeFromPath(dist_tree, opp_jn_path)
     I.newPointList('PointListDonor', I.getNodeFromName1(opp_jn, 'PointList')[1], parent=cur_jn)
 
 
-def rm_joins_ordinal(dist_tree):
-  """
-  Remove InterfaceId nodes nodes created on GC_t
-  """
-  gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-  for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
-    I._rmNodesByName1(gc, 'InterfaceId')
-    I._rmNodesByName1(gc, 'InterfacePos')
-
-def ordinals_to_interfaces(dist_tree):
+def store_interfaces_ids(dist_tree):
   """
   Attribute to each 1to1 pair a unique interace id. GridConnectivityDonorName must have been added in the tree.
   Store this id and the position (first or second) in disttree.
+  Note : this function does not manage (for now?) location: two jns at different interface
+  will have a different id
   """
-  matching_pairs = get_match_pathes(dist_tree)
+  matching_pairs = get_matching_jns(dist_tree)
   for i, matching_pair in enumerate(matching_pairs):
     for j,jn_path in enumerate(matching_pair):
       jn = I.getNodeFromPath(dist_tree, jn_path)
       I.newDataArray("InterfaceId",  i+1, parent=jn)
       I.newDataArray("InterfacePos", j,   parent=jn)
+
+def clear_interface_ids(dist_tree):
+  """
+  Remove InterfaceId nodes created on GC_t
+  """
+  gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
+    I._rmNodesByName1(gc, 'InterfaceId')
+    I._rmNodesByName1(gc, 'InterfacePos')
 

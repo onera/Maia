@@ -2,7 +2,7 @@ import Converter.Internal as I
 import maia.pytree.sids   as SIDS
 
 from maia import pdm_has_ptscotch, pdm_has_parmetis
-from maia.algo.dist import add_joins_ordinal      as AJO
+from maia.algo.dist import matching_jns_tools as MJT
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
 from .post_split import post_partitioning as post_split
@@ -86,7 +86,7 @@ def _partitioning(dist_tree,
   if len(u_zones)*len(s_zones) != 0:
     raise RuntimeError("Hybrid meshes are not yet supported")
 
-  AJO.add_joins_ordinal(dist_tree, comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
 
   part_tree = I.newCGNSTree()
   #For now only one base

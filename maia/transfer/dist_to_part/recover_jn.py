@@ -7,11 +7,11 @@ import maia.pytree.maia as MT
 
 from maia.utils     import np_utils
 from maia.transfer  import utils    as te_utils
-from maia.algo.dist import add_joins_ordinal as AJO
+from maia.algo.dist import matching_jns_tools as MJT
 
 def get_pl_donor(dist_tree, part_tree, comm):
 
-  _dist_jn_pairs = AJO.get_match_pathes(dist_tree)
+  _dist_jn_pairs = MJT.get_matching_jns(dist_tree)
   # Skip joins w/ PL (structured)
   dist_jn_pairs = [pathes for pathes in _dist_jn_pairs \
       if I.getNodeFromPath(dist_tree, pathes[0] + '/PointList') is not None]
@@ -41,7 +41,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     i_proc, i_part = MT.conv.get_part_suffix(p_zone_name)
 
     itrf_id = join_to_ref[d_gc_path]
-    gc_id = 2*itrf_id + int(d_gc_path < AJO.get_opposite_path(dist_tree, d_gc_path))
+    gc_id = 2*itrf_id + int(d_gc_path < MJT.get_jn_donor_path(dist_tree, d_gc_path))
 
     gc = I.getNodeFromPath(part_tree, p_gc_path)
     lngn = I.getVal(MT.getGlobalNumbering(gc, 'Index'))
@@ -73,7 +73,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     i_rank, i_part = MT.conv.get_part_suffix(p_zone_name)
 
     itrf_id = join_to_ref[d_gc_path]
-    gc_id = 2*itrf_id + int(d_gc_path < AJO.get_opposite_path(dist_tree, d_gc_path))
+    gc_id = 2*itrf_id + int(d_gc_path < MJT.get_jn_donor_path(dist_tree, d_gc_path))
 
     gc = I.getNodeFromPath(part_tree, p_gc_path)
     pl_node = I.getNodeFromName1(gc, 'PointList')
