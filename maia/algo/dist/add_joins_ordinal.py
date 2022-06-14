@@ -59,12 +59,11 @@ def _create_local_match_table(gc_list, gc_paths):
 def add_joins_ordinal(dist_tree, comm, force=False):
   """
   For each GridConnectivity_t node found in the dist_tree, find the
-  opposite GC node and create for each pair of GCs the Ordinal and
-  OrdinalOpp nodes allowing to identify them
+  opposite GC node and create the GridConnectivityDonorName node
   GC Node must have either PointList/PointListDonor arrays or
   PointRange/PointRangeDonor arrays, not both.
-  If force=True, ordinals are recomputed, else the computation is
-  made only if there is no ordinal
+  If force=True, donor are recomputed, else the computation is
+  made only if there are not in tree
   """
   
   gc_list  = []
@@ -73,25 +72,22 @@ def add_joins_ordinal(dist_tree, comm, force=False):
   match1to1 = lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t'] \
       and PT.GridConnectivity.is1to1(n)
   query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", match1to1]
+
   if force:
-    rm_joins_ordinal(dist_tree)
-    compute_ordinal = True
-    for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
-      gc_list.append(nodes[-1])
-      gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
-  else:
-    compute_ordinal = False
-    for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
-      gc_list.append(nodes[-1])
-      gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
-      ordinal_n     = I.getNodeFromName1(nodes[-1], 'Ordinal')
-      ordinal_opp_n = I.getNodeFromName1(nodes[-1], 'OrdinalOpp')
-      if (ordinal_n is None) or (ordinal_opp_n is None):
-        compute_ordinal = True
+    for gc in PT.iter_children_from_predicates(dist_tree, query):
+      I._rmNodesByName1(gc, 'GridConnectivityDonorName')
+
+  need_compute = False
+  for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
+    gc_list.append(nodes[-1])
+    gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
+    if I.getNodeFromName1(nodes[-1], 'GridConnectivityDonorName') is None:
+      need_compute = True
   
-  if not compute_ordinal:
+  if not need_compute:
     return
 
+  #gc_paths -> chemin des zones
   local_match_table = _create_local_match_table(gc_list, gc_paths)
 
   global_match_table = np.empty(local_match_table.shape, dtype=bool)
@@ -102,8 +98,6 @@ def add_joins_ordinal(dist_tree, comm, force=False):
   opp_join_id = np.where(global_match_table)[1]
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
     I.newDescriptor("GridConnectivityDonorName", I.getName(gc_list[opp_id]), parent=gc)
-    I.createUniqueChild(gc, 'Ordinal'   , 'UserDefinedData_t',  gc_id+1)
-    I.createUniqueChild(gc, 'OrdinalOpp', 'UserDefinedData_t', opp_id+1)
 
 def get_opposite_path(dist_tree, jn_path):
   """
@@ -162,32 +156,22 @@ def pl_donor_from_ordinals(dist_tree):
 
 def rm_joins_ordinal(dist_tree):
   """
-  Remove Ordinal and OrdinalOpp nodes created on GC_t
+  Remove InterfaceId nodes nodes created on GC_t
   """
   gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
-    I._rmNodesByName1(gc, 'Ordinal')
-    I._rmNodesByName1(gc, 'OrdinalOpp')
     I._rmNodesByName1(gc, 'InterfaceId')
     I._rmNodesByName1(gc, 'InterfacePos')
 
 def ordinals_to_interfaces(dist_tree):
   """
-  Attribute to each 1to1 pair a unique interace id. Ordinals must have been added in the tree.
+  Attribute to each 1to1 pair a unique interace id. GridConnectivityDonorName must have been added in the tree.
   Store this id and the position (first or second) in disttree.
   """
-  gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-  ordinal_to_id = {}
-  next_id = 0
-  for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
-    ordinal     = I.getNodeFromName1(gc, "Ordinal")
-    ordinal_opp = I.getNodeFromName1(gc, "OrdinalOpp")
-    if ordinal is not None: #Include only 1to1 jns
-      key = min(ordinal[1][0], ordinal_opp[1][0])
-      interface_pos = 1
-      if not key in ordinal_to_id:
-        next_id += 1
-        ordinal_to_id[key] = next_id
-        interface_pos = 0
-      I.newDataArray("InterfaceId", ordinal_to_id[key],  parent=gc)
-      I.newDataArray("InterfacePos", interface_pos,      parent=gc)
+  matching_pairs = get_match_pathes(dist_tree)
+  for i, matching_pair in enumerate(matching_pairs):
+    for j,jn_path in enumerate(matching_pair):
+      jn = I.getNodeFromPath(dist_tree, jn_path)
+      I.newDataArray("InterfaceId",  i+1, parent=jn)
+      I.newDataArray("InterfacePos", j,   parent=jn)
+

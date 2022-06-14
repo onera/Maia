@@ -23,8 +23,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     master = nodes[0]
   node = I.createNode(output_name, I.getType(master), I.getValue(master))
 
-  data_queries = additional_data_queries + ['PointList', 'PointListDonor',
-                  [lambda n : I.getType(n) == 'DataArray_t' and I.getName(n) not in ['Ordinal', 'OrdinalOpp']]]
+  data_queries = additional_data_queries + ['PointList', 'PointListDonor', 'DataArray_t']
   for data_query in data_queries:
     #Use master node to understand queries and collect nodes
     for childs in PT.iter_children_from_predicates(master, data_query, ancestors=True):
