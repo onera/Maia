@@ -101,28 +101,64 @@ def add_joins_ordinal(dist_tree, comm, force=False):
 
   opp_join_id = np.where(global_match_table)[1]
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
+    I.newDescriptor("GridConnectivityDonorName", I.getName(gc_list[opp_id]), parent=gc)
     I.createUniqueChild(gc, 'Ordinal'   , 'UserDefinedData_t',  gc_id+1)
     I.createUniqueChild(gc, 'OrdinalOpp', 'UserDefinedData_t', opp_id+1)
+
+def get_opposite_path(dist_tree, jn_path):
+  """
+  Return the patch of the matching jn in the tree. GridConnectivityDonorName must exists.
+  """
+  cur_jn = I.getNodeFromPath(dist_tree, jn_path)
+  base_name, zone_name, zgc_name, jn_name = jn_path.split('/')
+  opp_zone_path = PT.getZoneDonorPath(base_name, cur_jn)
+  opp_gc_name   = I.getValue(I.getNodeFromName1(cur_jn, "GridConnectivityDonorName"))
+
+  opp_zone      = I.getNodeFromPath(dist_tree, opp_zone_path)
+  opp_zgc       = I.getNodeFromType1(opp_zone, "ZoneGridConnectivity_t")
+  return f"{opp_zone_path}/{I.getName(opp_zgc)}/{opp_gc_name}"
+
+def update_jn_name(dist_tree, jn_path, new_name):
+  """
+  Rename a 1to1 GC and update the opposite GridConnectivityDonorName.
+  """
+  cur_jn = I.getNodeFromPath(dist_tree, jn_path)
+  opp_jn = I.getNodeFromPath(dist_tree, get_opposite_path(dist_tree, jn_path))
+  opp_gc_name_n = I.getNodeFromName1(opp_jn, "GridConnectivityDonorName")
+  I.setName(cur_jn, new_name)
+  I.setValue(opp_gc_name_n, new_name)
+  
+def get_match_pathes(dist_tree):
+  """
+  Return the list of pairs of matching jns
+  """
+  query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
+      lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.GridConnectivity.is1to1(n)]
+
+  # Retrieve interfaces pathes and call function
+  jn_pairs = []
+  for jn_path in PT.predicates_to_paths(dist_tree, query):
+    opp_jn_path   = get_opposite_path(dist_tree, jn_path)
+    pair = tuple(sorted([jn_path, opp_jn_path]))
+    if not pair in jn_pairs:
+      jn_pairs.append(pair)
+  return jn_pairs
 
 def pl_donor_from_ordinals(dist_tree):
   """
   TODO Generalize for PointRangeDonor
   Retrieve for each GridConnectivity_t node the opposite
-  pointlist in the tree. This assume that ordinal were added and index distribution
+  pointlist in the tree. This assume that GridConnectivityDonorName were added and index distribution
   was identical for two related gc nodes
   """
-  ordinal_to_pl = dict()
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'
-  gc_nodes = PT.get_children_from_predicates(dist_tree, gc_t_path)
 
-  for gc in gc_nodes:
-    ordinal = I.getNodeFromName1(gc, 'Ordinal')[1][0]
-    ordinal_to_pl[ordinal] = I.getNodeFromName1(gc, 'PointList')[1]
+  for jn_path in PT.predicates_to_paths(dist_tree, gc_t_path):
+    opp_jn_path = get_opposite_path(dist_tree, jn_path)
+    cur_jn = I.getNodeFromPath(dist_tree, jn_path)
+    opp_jn = I.getNodeFromPath(dist_tree, opp_jn_path)
+    I.newPointList('PointListDonor', I.getNodeFromName1(opp_jn, 'PointList')[1], parent=cur_jn)
 
-  for gc in gc_nodes:
-    ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
-    donor_pl = ordinal_to_pl[ordinal_opp]
-    I.newPointList('PointListDonor', donor_pl, parent=gc)
 
 def rm_joins_ordinal(dist_tree):
   """

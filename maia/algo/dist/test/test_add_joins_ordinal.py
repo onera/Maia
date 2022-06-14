@@ -191,35 +191,52 @@ Base0 CGNSBase_t:
   add_joins_ordinal.add_joins_ordinal(dist_tree, sub_comm, force=True)
   assert I.getNodeFromPath(dist_tree, 'Base0/ZoneA/ZGC/matchAB/Ordinal')[1][0] == 1
 
-def test_match_jn_from_ordinals():
+class Test_gcdonorname_utils:
   dt = """
 Base CGNSBase_t:
   ZoneA Zone_t:
     ZGC ZoneGridConnectivity_t:
-      perio1 GridConnectivity_t:
-        Ordinal UserDefinedData_t [1]:
-        OrdinalOpp UserDefinedData_t [2]:
+      perio1 GridConnectivity_t 'ZoneA':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridConnectivityDonorName Descriptor_t 'perio2':
         PointList IndexArray_t [[1,3]]:
-      perio2 GridConnectivity_t:
-        Ordinal UserDefinedData_t [2]:
-        OrdinalOpp UserDefinedData_t [1]:
+      perio2 GridConnectivity_t 'Base/ZoneA':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridConnectivityDonorName Descriptor_t 'perio1':
         PointList IndexArray_t [[2,4]]:
-      match1 GridConnectivity_t:
-        Ordinal UserDefinedData_t [3]:
-        OrdinalOpp UserDefinedData_t [4]:
+      match1 GridConnectivity_t 'ZoneB':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridConnectivityDonorName Descriptor_t 'match2':
         PointList IndexArray_t [[10,100]]:
   ZoneB Zone_t:
     ZGC ZoneGridConnectivity_t:
-      match2 GridConnectivity_t:
-        Ordinal UserDefinedData_t [4]:
-        OrdinalOpp UserDefinedData_t [3]:
+      match2 GridConnectivity_t 'ZoneA':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridConnectivityDonorName Descriptor_t 'match1':
         PointList IndexArray_t [[-100,-10]]:
   """
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  add_joins_ordinal.pl_donor_from_ordinals(dist_tree)
-  expected_pl_opp = [[2,4], [1,3], [-100,-10], [10,100]]
-  for i, jn in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
-    assert (I.getNodeFromName1(jn, 'PointListDonor')[1] == expected_pl_opp[i]).all()
+
+  def test_get_opposite_path(self):
+    assert add_joins_ordinal.get_opposite_path(self.dist_tree, 'Base/ZoneA/ZGC/perio2') == 'Base/ZoneA/ZGC/perio1'
+    assert add_joins_ordinal.get_opposite_path(self.dist_tree, 'Base/ZoneA/ZGC/match1') == 'Base/ZoneB/ZGC/match2'
+
+  def test_update_jn_name(self):
+    ini_gc = I.getNodeFromPath(self.dist_tree, 'Base/ZoneA/ZGC/perio2')
+    add_joins_ordinal.update_jn_name(self.dist_tree, 'Base/ZoneA/ZGC/perio2', 'PERIO2')
+    assert ini_gc[0] == 'PERIO2'
+    assert I.getValue(I.getNodeFromPath(self.dist_tree, 'Base/ZoneA/ZGC/perio1/GridConnectivityDonorName')) == 'PERIO2'
+
+  def test_get_match_pathes(self):
+    pathes = add_joins_ordinal.get_match_pathes(self.dist_tree)
+    assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
+    assert pathes[1] == ('Base/ZoneA/ZGC/match1', 'Base/ZoneB/ZGC/match2')
+
+  def test_match_jn_from_ordinals(self):
+    add_joins_ordinal.pl_donor_from_ordinals(self.dist_tree)
+    expected_pl_opp = [[2,4], [1,3], [-100,-10], [10,100]]
+    for i, jn in enumerate(I.getNodesFromType(self.dist_tree, 'GridConnectivity_t')):
+      assert (I.getNodeFromName1(jn, 'PointListDonor')[1] == expected_pl_opp[i]).all()
 
 
 def test_rm_joins_ordinal():
@@ -268,7 +285,6 @@ Base CGNSBase_t:
   """
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   add_joins_ordinal.ordinals_to_interfaces(dist_tree)
-  I.printTree(dist_tree)
   expected_id = [1,1,2,2]
   expected_pos = [0,1,0,1]
   for i, jn in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
