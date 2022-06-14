@@ -16,7 +16,7 @@ Zone Zone_t:
   ZGC ZoneGridConnectivity_t:
     GC GridConnectivity_t:
       PointList IndexArray_t:
-      Ordinal UserDefinedData_t 2:
+      GridConnectivityDonorName Descriptor_t "toto":
       GridConnectivityProperty GridConnectivityProperty_t:
         Periodic Periodic_t:
           Translation DataArray_t [1,1,1]:
@@ -36,7 +36,7 @@ Zone.P2.N3 Zone_t:
   part_zone = parse_yaml_cgns.to_node(pt)
   PS.copy_additional_nodes(dist_zone, part_zone)
   assert I.getType(I.getNodeFromName(dist_zone, '.Solver#BC')) == I.getType(I.getNodeFromName(part_zone, '.Solver#BC'))
-  assert I.getValue(I.getNodeFromName(dist_zone, 'Ordinal')) == I.getValue(I.getNodeFromName(part_zone, 'Ordinal'))
+  assert I.getValue(I.getNodeFromName(dist_zone, 'GridConnectivityDonorName')) == I.getValue(I.getNodeFromName(part_zone, 'GridConnectivityDonorName'))
   assert (I.getValue(I.getNodeFromName(dist_zone, 'Translation')) == \
           I.getValue(I.getNodeFromName(part_zone, 'Translation'))).all()
 
@@ -48,13 +48,13 @@ ZoneB.P1.N0 Zone_t:
       PointList IndexArray_t [[8,12,9,20,1]]:
       PointListDonor IndexArray_t [[11,21,8,25,13]]:
       Donor IndexArray_t [[0,0],[0,0],[1,0],[0,0],[1,0]]:
-      Ordinal UserDefinedData_t [2]:
-      OrdinalOpp UserDefinedData_t [1]:
+      GridConnectivityDonorName Descriptor_t "matchAB":
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t [5,3,1,2,6]:
 """
-  p_zone = parse_yaml_cgns.to_node(pt)
-  PS.split_original_joins(p_zone)
+  p_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  p_zone = I.getZones(p_tree)[0]
+  PS.split_original_joins(p_tree)
 
   assert I.getNodeFromName(p_zone, 'matchBA') is None
   assert len(I.getNodesFromName(p_zone, 'matchBA*')) == 2

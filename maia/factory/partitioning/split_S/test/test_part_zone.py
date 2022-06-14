@@ -91,8 +91,7 @@ Small.P0.N0 Zone_t:
 Small.P1.N0 Zone_t:
   ZBC ZoneBC_t:
     match2 BC_t "Big":
-      Ordinal UserDefinedData_t [2]:
-      OrdinalOpp UserDefinedData_t [1]:
+      GridConnectivityDonorName Descriptor_t "match1":
       Transform int[IndexDimension] [-2,-1,-3]:
       PointRange IndexRange_t [[4,1],[4,4],[5,1]]:
       distPR IndexRange_t [[7,1],[9,9],[5,1]]:
@@ -104,8 +103,7 @@ Small.P1.N0 Zone_t:
 Big.P2.N0 Zone_t:
   ZBC ZoneBC_t:
     match1 BC_t "Small":
-      Ordinal UserDefinedData_t [1]:
-      OrdinalOpp UserDefinedData_t [2]:
+      GridConnectivityDonorName Descriptor_t "match2":
       Transform int[IndexDimension] [-2,-1,-3]:
       PointRange IndexRange_t [[6,6],[3,5],[1,5]]:
       distPR IndexRange_t [[17,17],[3,9],[1,5]]:
@@ -114,8 +112,7 @@ Big.P2.N0 Zone_t:
 Big.P2.N1 Zone_t:
   ZBC ZoneBC_t:
     match1 BC_t "Small":
-      Ordinal UserDefinedData_t [1]:
-      OrdinalOpp UserDefinedData_t [2]:
+      GridConnectivityDonorName Descriptor_t "match2":
       Transform int[IndexDimension] [-2,-1,-3]:
       PointRange IndexRange_t [[6,6],[1,5],[1,5]]:
       distPR IndexRange_t [[17,17],[3,9],[1,5]]:
@@ -124,8 +121,7 @@ Big.P2.N1 Zone_t:
 Small.P2.N1 Zone_t:
   ZBC ZoneBC_t:
     match2 BC_t "Big":
-      Ordinal UserDefinedData_t [2]:
-      OrdinalOpp UserDefinedData_t [1]:
+      GridConnectivityDonorName Descriptor_t "match1":
       Transform int[IndexDimension] [-2,-1,-3]:
       PointRange IndexRange_t [[4,1],[4,4],[5,1]]:
       distPR IndexRange_t [[7,1],[9,9],[5,1]]:

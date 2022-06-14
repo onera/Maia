@@ -86,8 +86,7 @@ def _partitioning(dist_tree,
   if len(u_zones)*len(s_zones) != 0:
     raise RuntimeError("Hybrid meshes are not yet supported")
 
-  if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:
-    AJO.add_joins_ordinal(dist_tree, comm)
+  AJO.add_joins_ordinal(dist_tree, comm)
 
   part_tree = I.newCGNSTree()
   #For now only one base
