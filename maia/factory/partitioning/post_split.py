@@ -27,7 +27,7 @@ def copy_additional_nodes(dist_zone, part_zone):
             I._addChild(p_bc, node)
   #GCs
   names = ['.Solver#Property', 'Ordinal', 'OrdinalOpp', 'InterfaceId', 'InterfacePos']
-  types = ['FamilyName_t', 'GridConnectivityProperty_t']
+  types = ['FamilyName_t', 'GridConnectivityProperty_t', 'GridConnectivityType_t']
   for p_zgc in I.getNodesFromType1(part_zone, 'ZoneGridConnectivity_t'):
     for p_gc in I.getNodesFromType1(p_zgc, 'GridConnectivity_t'):
       d_gc = I.getNodeFromPath(dist_zone, I.getName(p_zgc)+'/'+I.getName(p_gc))
@@ -108,7 +108,10 @@ def post_partitioning(dist_tree, part_tree, comm):
       copy_additional_nodes(dist_zone, part_zone)
             
   # Match original joins
-  JBTP.get_pl_donor(dist_zones, all_part_zones, comm)
+  # For now only one base is supported; this function is in fact called with CGNSBase_t
+  true_dist_tree = ['CGNSTree', None, [dist_tree], 'CGNSTree_t']
+  true_part_tree = ['CGNSTree', None, [part_tree], 'CGNSTree_t']
+  JBTP.get_pl_donor(true_dist_tree, true_part_tree, comm)
   for part_zone in all_part_zones:
     split_original_joins(part_zone)
 
