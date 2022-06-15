@@ -28,6 +28,19 @@ def rm_collective_dir(path, comm):
     shutil.rmtree(path)
   comm.barrier()
 
+class collective_tmp_dir:
+  """
+  Context manager creating a tmp dir in parallel and removing it at the
+  exit
+  """
+  def __init__(self, comm):
+    self.comm = comm
+  def __enter__(self):
+    self.path = create_collective_tmp_dir(self.comm)
+    return self.path
+  def __exit__(self, type, value, traceback):
+    rm_collective_dir(self.path, self.comm)
+
 def create_pytest_output_dir(comm):
   """
   Create (in parallel) a directory named from the name of the current

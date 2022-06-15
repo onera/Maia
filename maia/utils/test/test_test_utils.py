@@ -22,3 +22,9 @@ def test_create_pytest_output_dir(sub_comm):
   #Cleanup : remove root dir if empty
   if not os.listdir(TU.pytest_output_prefix):
     TU.rm_collective_dir(TU.pytest_output_prefix, sub_comm)
+
+@mark_mpi_test(2)
+def test_collective_tmp_dir_cm(sub_comm):
+  with TU.collective_tmp_dir(sub_comm) as tmp_dir:
+    assert os.path.exists(tmp_dir)
+  assert not os.path.exists(tmp_dir)
