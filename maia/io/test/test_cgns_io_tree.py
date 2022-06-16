@@ -25,12 +25,13 @@ Base CGNSBase_t I4 [3, 3]:
 
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  out_dir = TU.create_pytest_output_dir(sub_comm)
-  out_file = os.path.join(out_dir, 'yt.cgns')
+  tmp_dir = TU.create_collective_tmp_dir(sub_comm)
+  out_file = os.path.join(tmp_dir, 'yt.cgns')
   maia.io.dist_tree_to_file(dist_tree, out_file, sub_comm)
 
   t = C.convertFile2PyTree(out_file)
   assert (I.getVal(I.getNodeByName(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
+  TU.rm_collective_dir(tmp_dir, sub_comm)
 
 
 @mark_mpi_test(2)
@@ -60,10 +61,11 @@ Base CGNSBase_t I4 [3, 3]:
 
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  out_dir = TU.create_pytest_output_dir(sub_comm)
-  out_file = os.path.join(out_dir, 'yt.cgns')
+  tmp_dir = TU.create_collective_tmp_dir(sub_comm)
+  out_file = os.path.join(tmp_dir, 'yt.cgns')
   maia.io.dist_tree_to_file(dist_tree, out_file, sub_comm)
 
   if sub_comm.Get_rank()==0:
     t = C.convertFile2PyTree(out_file)
     assert (I.getVal(I.getNodeByName(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
+  TU.rm_collective_dir(tmp_dir, sub_comm)
