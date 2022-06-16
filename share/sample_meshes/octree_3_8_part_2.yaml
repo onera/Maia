@@ -41,27 +41,27 @@ Base CGNSBase_t I4 [3,3]:
     Quads Elements_t I4 [7,0]:
       ElementRange IndexRange_t I4 [1,20]:
       ElementConnectivity DataArray_t:
-        I4 : [ 10,13, 4, 1, # Left
+        I4 : [ 10,13, 4, 1, # Ymin
                13,16, 7, 4,
                19,22,13,10,
                22,25,16,13,
-               28,29,31,30, # Right
-               10,11, 2, 1, # Bottom
+               28,29,31,30, # Ymax
+               10,11, 2, 1, # Zmin
                11,12, 3, 2,
                19,20,11,10,
                20,21,12,11,
                21,30,28, 3,
-             #  7, 8,17,16, # Top (on GC)
+             #  7, 8,17,16, # Zmax (on GC)
              #  8, 9,18,17,
              # 16,17,26,25,
              # 17,18,27,26,
              #  9,29,31,27,
-                4, 5, 2, 1, # Back
+                4, 5, 2, 1, # Xmin
                 5, 6, 3, 2,
                 7, 8, 5, 4,
                 8, 9, 6, 5,
                 9,29,28, 3,
-               19,20,23,22, # Front
+               19,20,23,22, # Xmax
                20,21,24,23,
                22,23,26,25,
                23,24,27,26,
@@ -85,7 +85,7 @@ Base CGNSBase_t I4 [3,3]:
         I4 : [  3,9,27,21,6,18,24,12,15,
                 7,9,27,25,8,18,26,16,17 ]
     ZoneBC ZoneBC_t:
-      Left BC_t "Null":
+      Xmin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[1,2,3,4]]:
         BCDataSet BCDataSet_t "Null":
@@ -97,20 +97,20 @@ Base CGNSBase_t I4 [3,3]:
             CoordinateX DataArray_t R8 [-0.5, -0.5, -0.5, -0.5]:
             CoordinateY DataArray_t R8 [ 0.5,  1.5,  0.5,  1.5]:
             CoordinateZ DataArray_t R8 [ 0.5,  0.5,  1.5,  1.5]:
-      Right BC_t "Null":
+      Xmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[5]]:
-      Bottom BC_t "Null":
+      Ymin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[6,7,8,9,10]]:
-      Top BC_t "Null":
+      Ymax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         #PointList IndexArray_t I4 [[11,12,13,14,15]]:
         PointList IndexArray_t I4 [[]]: # No faces because this is a GC, not a BC,
-      Back BC_t "Null":
+      Zmin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[11,12,13,14,15]]:
-      Front BC_t "Null":
+      Zmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[16,17,18,19,20]]:
     ZoneGridConnectivity ZoneGridConnectivity_t:
@@ -167,7 +167,7 @@ Base CGNSBase_t I4 [3,3]:
       ElementConnectivity DataArray_t:
         I4 : []
     ZoneBC ZoneBC_t:
-      Left BC_t "Null":
+      Xmin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[1]]:
         BCDataSet BCDataSet_t "Null":
@@ -179,19 +179,19 @@ Base CGNSBase_t I4 [3,3]:
             CoordinateX DataArray_t R8 [-0.5]:
             CoordinateY DataArray_t R8 [ 3.0]:
             CoordinateZ DataArray_t R8 [ 1.0]:
-      Right BC_t "Null":
+      Xmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[2]]:
-      Back BC_t "Null":
+      Zmin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[3,4]]:
-      Front BC_t "Null":
+      Zmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[5,6]]:
-      Top BC_t "Null":
+      Ymax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[7,8]]:
-      Bottom BC_t "Null":
+      Ymin BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
           #PointList IndexArray_t I4 [[9,10]]:
         PointList IndexArray_t I4 [[]]: # No faces because this is a GC, not a BC,

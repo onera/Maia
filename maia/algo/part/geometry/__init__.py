@@ -5,10 +5,22 @@ import maia.pytree        as PT
 
 @PT.check_is_label("Zone_t")
 def compute_cell_center(zone):
-  """
-  Compute the cell centers of a NGon unstructured zone or a structured zone
-  and return it as a flat (interlaced) np array. Centers are computed using
-  a basic average over the vertices of the cells
+  """Compute the cell centers of a partitioned zone.
+
+  Input zone must have cartesian coordinates recorded under a unique
+  GridCoordinates node.
+  Centers are computed using a basic average over the vertices of the cells.
+
+  Args:
+    zone (CGNSTree): Partitionned Structured or U-NGon CGNS Zone
+  Returns:
+    center_cell (array): Flat (interlaced) numpy array of cell centers
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #compute_cell_center@start
+        :end-before: #compute_cell_center@end
+        :dedent: 2
   """
   cx, cy, cz = PT.Zone.coordinates(zone)
 

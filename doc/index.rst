@@ -10,6 +10,7 @@ Welcome to Maia!
 
   quick_start
   installation
+  introduction/introduction
   user_manual/user_manual
   developer_manual/developer_manual
 
@@ -18,5 +19,5 @@ Welcome to Maia!
   :caption: Appendix:
 
   releases/release_notes
+  related_projects
   license
-  todo

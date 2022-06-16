@@ -27,22 +27,7 @@ def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscou
 
 # ------------------------------------------------------------------------
 class WallDistance:
-  """
-  PDM interface for parallel wall distance computation.
-  For each cell center, compute the distance to the nearest face belonging to a BC of kind wall.
-  Computation can be done using "cloud" or "propagation" (requires pdma) method.
-
-  Works on partitioned meshes of
-  - Structured / Unstructured (NGon) zones, possibly comming from multiples domains for cloud method
-  - Unstructured (NGon) zones from a single domain for propagation method
-
-  Output is written is a FlowSolution node whose name can be specified in out_fs_name
-
-  *Important*
-  Distance is computed to the BCs belonging to one of the families specified in families list.
-  If list is empty, we try to auto detect wall-like families.
-  In both case, families are (for now) the only way to select BCs to include in wall distance computation.
-  BCs who directly specify their type in BC[1] are not considered
+  """ Implementation of wall distance. See compute_wall_distance for full documentation.
   """
 
   def __init__(self, part_tree, mpi_comm, method="cloud", families=[], out_fs_name='WallDistance'):
@@ -278,9 +263,40 @@ class WallDistance:
 
 
 # ------------------------------------------------------------------------
-def compute_wall_distance(*args, **kwargs):
-  """ API for WallDistance class. See class for full documentation """
-  walldist = WallDistance(*args, **kwargs)
+def compute_wall_distance(part_tree, comm, method="cloud", families=[], out_fs_name="WallDistance"):
+  """Compute wall distances and add it in tree.
+
+  For each cell center, compute the distance to the nearest face belonging to a BC of kind wall.
+  Computation can be done using "cloud" or "propagation" method.
+
+  Note: 
+    Propagation method requires ParaDiGMa access and is only available for unstructured
+    NGon connectivities. In addition, partitions must have been created from a single initial domain
+    with this method.
+
+  Important:
+    Distance are computed to the BCs belonging to one of the families specified in families list.
+    If list is empty, we try to auto detect wall-like families.
+    In both case, families are (for now) the only way to select BCs to include in wall distance computation.
+    BCs who directly specify their type as value are not considered.
+
+  Tree is modified inplace: computed distance are added in a FlowSolution container whose
+  name can be specified with out_fs_name parameter.
+  
+  Args:
+    part_tree (CGNSTree): Input partitionned tree
+    comm       (MPIComm): MPI communicator
+    method ({'cloud', 'propagation'}, optional): Choice of method. Defaults to "cloud".
+    families (list of str): List of families to consider as wall faces.
+    out_fs_name (str, optional): Name of the output FlowSolution_t node storing wall distance data.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #compute_wall_distance@start
+        :end-before: #compute_wall_distance@end
+        :dedent: 2
+  """
+  walldist = WallDistance(part_tree, comm, method, families, out_fs_name)
   walldist.compute()
   #walldist.dump_times()
 

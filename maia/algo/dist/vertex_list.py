@@ -479,14 +479,22 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
   with `#Vtx`. Similarly, vertex GC nodes uses the original name suffixed
   with `#Vtx`.
 
+  Only unstructured-NGon based meshes are supported.
+
   Args:
     dist_tree  (CGNSTree): Distributed tree
-    comm       (`MPIComm`) : Mpi communicator
+    comm       (`MPIComm`) : MPI communicator
     have_isolated_faces (bool, optional) : Indicate if original joins includes
       faces who does not share any edge with other external (join) faces.
       If False, disable the special treatement needed by such faces (better performances,
       but will fail if isolated faces were actually present).
-      Default = False.
+      Defaults to False.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #generate_jns_vertex_list@start
+        :end-before: #generate_jns_vertex_list@end
+        :dedent: 2
   """
   #Build join ids to identify opposite joins
   if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:

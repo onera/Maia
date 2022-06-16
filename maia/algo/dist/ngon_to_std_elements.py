@@ -15,7 +15,7 @@ def convert_ngon_to_std_elements(t):
 
   Args:
     disttree   (CGNSTree): Tree with connectivity described by NGons
-    comm       (`MPIComm`) : Mpi communicator
+    comm       (`MPIComm`) : MPI communicator
   """
   apply_to_zones(t,cdist_algo.convert_zone_to_std_elements)
 

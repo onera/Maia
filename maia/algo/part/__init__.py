@@ -1,5 +1,5 @@
 """
-Distributed algorithms for partitioned trees
+Algorithms for partitioned trees
 """
 
 from .connectivity_transform import enforce_boundary_pe_left

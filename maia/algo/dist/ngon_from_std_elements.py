@@ -141,7 +141,7 @@ def generate_ngon_from_std_elements(dist_tree, comm):
 
   Args:
     dist_tree  (CGNSTree): Tree with connectivity described by standard elements
-    comm       (`MPIComm`) : Mpi communicator
+    comm       (`MPIComm`) : MPI communicator
   """
   #Possible optimisation : remove all the element at the same time
   #instead of looping

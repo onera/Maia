@@ -22,7 +22,7 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
     dist_tree  (CGNSTree): Input tree
     jn_pathes  (list of str): Pathes of the two matching ``GridConnectivity_t``
        nodes. Pathes must start from the root of the tree.
-    comm       (`MPIComm`) : Mpi communicator
+    comm       (`MPIComm`) : MPI communicator
 
   """
   coord_query = ['GridCoordinates_t', 'DataArray_t']

@@ -111,17 +111,17 @@ def test_update_cgns_subsets(sub_comm):
   zone = I.getZones(tree)[0]
   #Move some node to diversify the test
   zgc = I.newZoneGridConnectivity('ZoneGC', parent=zone)
-  for i in [4,5]:
-    bc = I.getNodeFromName(zone, f'dcube_bnd_{i}')
+  for bcname in ['Ymin', 'Ymax']:
+    bc = I.getNodeFromName(zone, bcname)
     I.setType(bc, 'GridConnectivity_t')
     I._addChild(zgc, bc)
     I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
-  bc = I.getNodeFromName(zone, 'dcube_bnd_0')
+  bc = I.getNodeFromName(zone, 'Zmin')
   I.setType(bc, 'ZoneSubRegion_t')
   I._addChild(zone, bc)
   I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
   I.newDataArray('SubSol', np.copy(I.getNodeFromName(bc, 'PointList')[1][0]), parent=bc)
-  bc = I.getNodeFromName(zone, 'dcube_bnd_1')
+  bc = I.getNodeFromName(zone, 'Zmax')
   I.setType(bc, 'FlowSolution_t')
   I._addChild(zone, bc)
   I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
@@ -134,14 +134,14 @@ def test_update_cgns_subsets(sub_comm):
 
   bc_distri = par_utils.uniform_distribution(4, sub_comm).astype(pdm_dtype)
   this_rank = slice(bc_distri[0], bc_distri[1])
-  assert (I.getNodeFromPath(zone, 'dcube_bnd_0/PointList')[1] == [[1,2,3,4][this_rank]]).all()
-  assert (I.getNodeFromPath(zone, 'dcube_bnd_1/PointList')[1] == [[9,10,11,12][this_rank]]).all()
-  assert (I.getNodeFromPath(zone, 'ZoneBC/dcube_bnd_2/PointList')[1] == [[13,14,15,16][this_rank]]).all()
-  assert (I.getNodeFromPath(zone, 'ZoneBC/dcube_bnd_3/PointList')[1] == [[15,16,21,22][this_rank]]).all()
-  assert (I.getNodeFromPath(zone, 'ZoneGC/dcube_bnd_4/PointList')[1] == [[23,24,25,26][this_rank]]).all()
-  assert (I.getNodeFromPath(zone, 'ZoneGC/dcube_bnd_5/PointList')[1] == [[31,32,33,34][this_rank]]).all()
-  assert (I.getNodeFromPath(zone, 'dcube_bnd_0/PointList')[1] == I.getNodeFromPath(zone, 'dcube_bnd_0/SubSol')[1]).all()
-  assert (I.getNodeFromPath(zone, 'dcube_bnd_1/PointList')[1] == I.getNodeFromPath(zone, 'dcube_bnd_1/Sol')[1]).all()
+  assert (I.getNodeFromPath(zone, 'Zmin/PointList')[1] == [[1,2,3,4][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'Zmax/PointList')[1] == [[9,10,11,12][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'ZoneBC/Xmin/PointList')[1] == [[13,14,15,16][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'ZoneBC/Xmax/PointList')[1] == [[15,16,21,22][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'ZoneGC/Ymin/PointList')[1] == [[23,24,25,26][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'ZoneGC/Ymax/PointList')[1] == [[31,32,33,34][this_rank]]).all()
+  assert (I.getNodeFromPath(zone, 'Zmin/PointList')[1] == I.getNodeFromPath(zone, 'Zmin/SubSol')[1]).all()
+  assert (I.getNodeFromPath(zone, 'Zmax/PointList')[1] == I.getNodeFromPath(zone, 'Zmax/Sol')[1]).all()
 
 def test_shift_cgns_subsets():
   yt = """

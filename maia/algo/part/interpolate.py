@@ -331,12 +331,40 @@ def interpolate_from_dom_names(src_tree, src_doms, tgt_tree, tgt_doms, comm, con
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 
 def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, location, **options):
-  """
-  Helper function calling interpolate_from_parts_per_dom from the source and target part_trees
-  The list of partitions per domains is rebuilded, included all the partitions of the trees.
-  Usefull to interpolate a whole mesh to an other
+  """Interpolate fields between two partitionned trees.
 
-  See interpolate_from_parts_per_dom for documentation
+  For now, interpolation is limited to lowest order: target points take the value of the
+  closest point (or their englobing cell, depending of choosed options) in the source mesh.
+  Interpolation strategy can be controled thought the options kwargs:
+
+  - ``strategy`` (default = 'LocationAndClosest') -- control interpolation method
+
+    - 'ClosestPoint' : Target points take the value of the closest source cell center.
+    - 'Location' : Target points take the value of the cell in which they are located.
+      Unlocated points have take a ``NaN`` value.
+    - 'LocationAndClosest' : Use 'Location' method and then 'ClosestPoint' method
+      for the unlocated points.
+
+  - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
+
+  Important:
+    - Source fields must be located at CellCenter.
+    - Source tree must be unstructured and have a ngon connectivity.
+    - Partitions must come from a single initial domain on both source and target tree.
+
+  Args:
+    src_tree (CGNSTree): Source tree, partitionned. Only U-NGon connectivities are managed.
+    tgt_tree (CGNSTree): Target tree, partitionned. Structured or U-NGon connectivities are managed.
+    comm       (MPIComm): MPI communicator
+    containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
+    location ({'CellCenter', 'Vertex'}) : Expected target location of the fields.
+    **options: Options related to interpolation strategy
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #interpolate_from_part_trees@start
+        :end-before: #interpolate_from_part_trees@end
+        :dedent: 2
   """
 
   dist_src_doms = I.newCGNSTree()
