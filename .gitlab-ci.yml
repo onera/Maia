@@ -6,6 +6,8 @@
 #    - srun --immediate --pty --qos c1_inter_giga --time 1:00:00 --ntasks 8 bash
 #    - echo "Now running on $HOSTNAME"
 
+variables:
+  GIT_STRATEGY: none # don't do anything by default
 #Common to both stages
 before_script:
   - module purge
@@ -13,23 +15,33 @@ before_script:
   - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc10.1
 
 stages:
+  - init
   - build
   - test
 #  - report
 #  - clean
 
+job:init:
+  stage: init
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: none
+  before_script: 
+    - ''
+  script: # explicitly load modules one by one, so that if one fails, it will be easy to identify
+    - git submodule update --init external/project_utils
+    - git submodule update --init external/cpp_cgns
+    - git submodule update --init external/std_e
+    - git submodule update --init external/pytest-mpi-check
+    - git submodule update --init external/paradigm
+    - (cd external/paradigm && git submodule update --init extensions/paradigma)
+
 job:build:
   stage: build
   script:
-    - git submodule update --init
-    - (cd external/paradigm && git submodule update --init)
     - mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -Dmaia_USE_PDM_INSTALL=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j8
-  cache:
-    paths:
-      - build # répertoire mis en cache
-    policy: push # le cache sera juste sauvegardé, pas de récupération d'un cache existant
 
 #todo : display reports on browser eg with gitlab pages
 job:test:
@@ -44,10 +56,6 @@ job:test:
     - coverage xml --rcfile=.coveragerc_unit_tests -o coverage_unit_tests.xml
     - sed 's@'"$CI_PROJECT_DIR"'/@@' -i coverage_unit_tests.xml
   when: on_success # s'exécutera uniquement si le job `job:build` passe
-  cache:
-    paths:
-      - build
-    policy: pull # récupération du cache
   artifacts:
     paths:
       - ./build/test/reports/*
