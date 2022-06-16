@@ -6,6 +6,13 @@
 #    - srun --immediate --pty --qos c1_inter_giga --time 1:00:00 --ntasks 8 bash
 #    - echo "Now running on $HOSTNAME"
 
+# Prevent duplicated pipeline by removing MR pipelines
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    - when: always
+
 variables:
   GIT_STRATEGY: none # don't do anything by default
 #Common to both stages
@@ -18,6 +25,7 @@ stages:
   - init
   - build
   - test
+  - deploy
 #  - report
 #  - clean
 
@@ -43,8 +51,21 @@ job:build:
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -Dmaia_USE_PDM_INSTALL=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j8
 
+# This build documentation after main build, only if branch is dev or for MR events
+job:doc:
+  stage: build
+  needs: ["job:build"]
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  script:
+    - cd build
+    - source source.sh
+    - cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
+    - make maia_sphinx
+
+
 #todo : display reports on browser eg with gitlab pages
-job:test:
+job:unitary:
   stage: test
   script:
     - cd build
@@ -66,6 +87,26 @@ job:test:
     reports:
       junit: ./build/test/reports/*_test.xml
       cobertura: ./build/test/coverage_unit_tests.xml
+
+job:doc_snippets:
+  stage: test
+  script:
+    - cd build
+    - source source.sh; unset PYTEST_PLUGINS
+    - python3 -m pytest ../doc
+
+# Deploy the documentation sphinx documentation to the site, only if branch is dev
+job:deploy_doc:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  before_script: 
+    - ''
+  script:
+    - cd build/doc/sphinx/html
+    # I dont know how to clean the repo before (deltree does not work on spiro) so lets erase everything
+    - smbclient -U jcoulet%$DROPPY_PSSWD //droopy2/Maia -c "prompt OFF; recurse ON; mput *"
+
 
 #job:report:
 #  stage: report
