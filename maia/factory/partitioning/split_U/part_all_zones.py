@@ -42,7 +42,7 @@ def prepare_part_weight(zones, n_part_per_zone, dzone_to_weighted_parts):
   part_weight = np.empty(sum(n_part_per_zone), dtype='float64')
   offset = 0
   for i_zone, zone in enumerate(zones):
-    part_weight[offset:offset+n_part_per_zone[i_zone]] = dzone_to_weighted_parts[I.getName(zone)]
+    part_weight[offset:offset+n_part_per_zone[i_zone]] = dzone_to_weighted_parts.get(I.getName(zone), [])
     offset += n_part_per_zone[i_zone]
   return part_weight
 
@@ -166,7 +166,7 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
   keep_alive = list()
 
   # Deduce the number of parts for each zone from dzone->weighted_parts dict
-  n_part_per_zone = np.array([len(dzone_to_weighted_parts[I.getName(zone)]) for zone in u_zones],
+  n_part_per_zone = np.array([len(dzone_to_weighted_parts.get(I.getName(zone), [])) for zone in u_zones],
                              dtype=np.int32)
   keep_alive.append(n_part_per_zone)
 

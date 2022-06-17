@@ -128,7 +128,7 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Convert to expected format and return
-  zone_to_weights = {zone: [repart[i_rank]/nb_elmt_per_zone[zone]] if repart[i_rank] > 0 else []
-      for zone, repart in repart_per_zone.items()}
+  zone_to_weights = {zone: [repart[i_rank]/nb_elmt_per_zone[zone]] \
+      for zone, repart in repart_per_zone.items() if repart[i_rank] > 0}
   return zone_to_weights
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

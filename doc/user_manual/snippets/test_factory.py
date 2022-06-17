@@ -58,7 +58,7 @@ def test_compute_balanced_weights():
 
   zone_to_parts = mpart.compute_balanced_weights(dist_tree, comm)
   if comm.Get_size() == 2 and comm.Get_rank() == 0:
-    assert zone_to_parts == {'Small': [1.0], 'Large': [0.375]}
+    assert zone_to_parts == {'Large': [0.375], 'Small': [1.0]}
   if comm.Get_size() == 2 and comm.Get_rank() == 1:
-    assert zone_to_parts == {'Small': [],    'Large': [0.625]}
+    assert zone_to_parts == {'Large': [0.625]}
   #compute_balanced_weights@end

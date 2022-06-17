@@ -48,10 +48,10 @@ Base0 CGNSBase_t [3,3]:
     if sub_comm.Get_rank() == 0:
       assert zone_to_weights['ZoneU1'] == [1.0]
       assert zone_to_weights['ZoneU2'] == [1.0]
-      assert zone_to_weights['ZoneS']  == []
+      assert 'ZoneS' not in zone_to_weights
     elif sub_comm.Get_rank() == 1:
-      assert zone_to_weights['ZoneU1'] == []
-      assert zone_to_weights['ZoneU2'] == []
+      assert 'ZoneU1' not in zone_to_weights
+      assert 'ZoneU2' not in zone_to_weights
       assert zone_to_weights['ZoneS']  == [1.0]
 
   def test_non_uniform(self, sub_comm):
@@ -62,6 +62,5 @@ Base0 CGNSBase_t [3,3]:
       assert zone_to_weights['ZoneS']  == [1.0]
     elif sub_comm.Get_rank() == 1:
       assert zone_to_weights['ZoneU1'] == [.762]
-      assert zone_to_weights['ZoneU2'] == []
-      assert zone_to_weights['ZoneS']  == []
-
+      assert 'ZoneU2' not in zone_to_weights
+      assert 'ZoneS'  not in zone_to_weights

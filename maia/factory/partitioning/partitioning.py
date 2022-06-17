@@ -122,7 +122,8 @@ def _partitioning(dist_tree,
   #Split S zones
   all_s_parts = []
   for zone in s_zones:
-    s_parts = partS.part_s_zone(zone, dzone_to_weighted_parts[I.getName(zone)], comm)
+    weights = dzone_to_weighted_parts.get(I.getName(zone), [])
+    s_parts = partS.part_s_zone(zone, weights, comm)
     for part in s_parts:
       I._addChild(part_base, part)
     all_s_parts.extend(s_parts)

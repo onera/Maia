@@ -67,7 +67,7 @@ The number, size, and repartition (over the processes) of the created partitions
 controlled through the ``zone_to_parts`` keyword argument: each process must provide a
 dictionary associating the name of every distributed zone to a list of floats.
 For a given distributed zone, current process will receive as many partitions
-as the length of the list (empty list means no partitions); the size of these partitions
+as the length of the list (missing path or empty list means no partitions); the size of these partitions
 corresponds to the values in the list (expressed in fraction of the input zone).
 For a given distributed zone, the sum of all the fractions across all the processes must
 be 1.

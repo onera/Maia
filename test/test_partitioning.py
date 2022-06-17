@@ -70,11 +70,11 @@ def test_load_balancing(sub_comm):
 
   zone_to_parts = PPA.compute_balanced_weights(dist_tree, sub_comm)
 
-  """ We can see that the small zone will not be cut """
-  assert sub_comm.allreduce(len(zone_to_parts['Small']), MPI.SUM) == 1 and \
-         sub_comm.allreduce(len(zone_to_parts['Large']), MPI.SUM) == 3
-  assert sub_comm.allreduce(sum(zone_to_parts['Small']), MPI.SUM) == 1. and \
-         sub_comm.allreduce(sum(zone_to_parts['Large']), MPI.SUM) == 1.
+  # """ We can see that the small zone will not be cut """
+  assert sub_comm.allreduce(len(zone_to_parts.get('Small', [])), MPI.SUM) == 1 and \
+         sub_comm.allreduce(len(zone_to_parts.get('Large', [])), MPI.SUM) == 3
+  assert sub_comm.allreduce(sum(zone_to_parts.get('Small', [])), MPI.SUM) == 1. and \
+         sub_comm.allreduce(sum(zone_to_parts.get('Large', [])), MPI.SUM) == 1.
 
 @mark_mpi_test([3])
 def test_part_S(sub_comm, write_output):
