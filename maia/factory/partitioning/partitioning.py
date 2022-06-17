@@ -2,7 +2,8 @@ import Converter.Internal as I
 import maia.pytree.sids   as SIDS
 
 from maia import pdm_has_ptscotch, pdm_has_parmetis
-from maia.algo.dist import matching_jns_tools as MJT
+from maia.algo.dist import matching_jns_tools     as MJT
+from maia.algo.part import connectivity_transform as CNT
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
 from .post_split import post_partitioning as post_split
@@ -21,6 +22,7 @@ def set_default(dist_tree, comm):
              'reordering'              : default_renum,
              'part_interface_loc'      : 'Vertex',
              'output_connectivity'     : 'Element',
+             'preserve_orientation'    : False,
              'additional_connectivity' : [],
              'additional_ln_to_gn'     : [],
              'additional_color'        : [],
@@ -133,6 +135,14 @@ def _partitioning(dist_tree,
       I._addChild(part_base, part)
 
   post_split(dist_base, part_base, comm)
+
+  if len(u_zones) > 0 and not part_options['preserve_orientation']:
+    for u_part in u_parts:
+      try:
+        SIDS.Zone.NGonNode(u_part)
+        CNT.enforce_boundary_pe_left(u_part)
+      except RuntimeError: #Zone is elements-defined
+        pass
 
   #Add top level nodes
   for node in I.getChildren(dist_base):

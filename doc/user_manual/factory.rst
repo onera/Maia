@@ -44,6 +44,14 @@ Partitioning can be customized with the following keywords arguments:
     Dictionnary of reordering options, which are used to renumber the entities in each partitioned zone. See
     corresponding documentation.
 
+.. py:attribute:: preserve_orientation
+
+    If True, the created interface faces are not reversed and keep their original orientation. Consequently,
+    NGonElements can have a zero left parent and a non zero right parent.
+    Only relevant for U/NGon partitions.
+
+    :Default value: ``False``
+
 .. py:attribute:: dump_pdm_output
 
     If True, dump the raw arrays created by paradigm in a :cgns:`CGNSNode` at (partitioned) zone level. For debug only.
