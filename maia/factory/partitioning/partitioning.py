@@ -4,6 +4,7 @@ import maia.pytree.sids   as SIDS
 from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
+from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
 from .post_split import post_partitioning as post_split
@@ -18,7 +19,7 @@ def set_default(dist_tree, comm):
                    'graph_part_tool'   : None }
 
   default = {'graph_part_tool'         : None,
-             'zone_to_parts'           : {I.getName(z):[1/comm.Get_size()] for z in I.getZones(dist_tree)},
+             'zone_to_parts'           : None,
              'reordering'              : default_renum,
              'part_interface_loc'      : 'Vertex',
              'output_connectivity'     : 'Element',
@@ -94,10 +95,13 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
   assert options['graph_part_tool'] in ['ptscotch', 'parmetis', None]
   assert options['part_interface_loc'] in ['Vertex', 'FaceCenter']
   assert options['output_connectivity'] in ['Element', 'NGon']
-  assert isinstance(options['zone_to_parts'], dict)
 
-  # > Call main function
+  # > Setup balanced weight if no provided
   zone_to_parts = options.pop('zone_to_parts')
+  if zone_to_parts is None:
+    zone_to_parts = SPW.balance_multizone_tree(dist_tree, comm)
+  assert isinstance(zone_to_parts, dict)
+  # > Call main function
   return _partitioning(dist_tree, zone_to_parts, comm, options)
 
 def _partitioning(dist_tree,
