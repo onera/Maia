@@ -31,10 +31,19 @@ def get_point_cloud(zone, location='CellCenter'):
   elif location == 'CellCenter':
     cell_ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, 'Cell')).astype(pdm_gnum_dtype)
     center_cell = compute_cell_center(zone)
-
     return center_cell, cell_ln_to_gn
+  
+  elif PT.is_valid_name(location):
+    container = I.getNodeFromName1(zone, location)
+    if container:
+      coords = [I.getVal(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
+      loc = PT.Subset.GridLocation(container)
+      _loc = loc.replace('Center', '')
+      int_coords = np_utils.interweave_arrays(coords)
+      ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, _loc)).astype(pdm_gnum_dtype)
+      return int_coords, ln_to_gn
 
-  raise RuntimeError("Unknow location")
+  raise RuntimeError("Unknow location or node")
 
 # ------------------------------------------------------------------------
 def register_src_part(mesh_loc, i_part, part_zone, keep_alive):

@@ -30,12 +30,13 @@ class WallDistance:
   """ Implementation of wall distance. See compute_wall_distance for full documentation.
   """
 
-  def __init__(self, part_tree, mpi_comm, method="cloud", families=[], out_fs_name='WallDistance'):
+  def __init__(self, part_tree, mpi_comm, method="cloud", families=[], point_cloud='CellCenter', out_fs_name='WallDistance'):
     self.part_tree = part_tree
     self.families  = families
     self.mpi_comm  = mpi_comm
     assert method in ["cloud", "propagation"]
     self.method    = method
+    self.point_cloud = point_cloud
     self.out_fs_n  = out_fs_name
 
     self._walldist = None
@@ -156,12 +157,22 @@ class WallDistance:
 
       fields = self._walldist.get(i_domain, i_part) if self.method == "cloud" else self._walldist.get(i_part)
 
+      # Retrieve location
+      if self.point_cloud in ['Vertex', 'CellCenter']:
+        output_loc = self.point_cloud
+      else:
+        output_loc = PT.Subset.GridLocation(I.getNodeFromName1(part_zone, self.point_clouds))
       # Test if FlowSolution already exists or create it
       fs_node = I.getNodeFromName1(part_zone, self.out_fs_n)
       if fs_node is None:
-        fs_node = I.newFlowSolution(name=self.out_fs_n, gridLocation='CellCenter', parent=part_zone)
-      assert PT.Subset.GridLocation(fs_node) == 'CellCenter'
-      shape = PT.Zone.CellSize(part_zone)
+        fs_node = I.newFlowSolution(name=self.out_fs_n, gridLocation=output_loc, parent=part_zone)
+      assert PT.Subset.GridLocation(fs_node) == output_loc
+      if output_loc == "CellCenter":
+        shape = PT.Zone.CellSize(part_zone)
+      elif output_loc == "Vertex":
+        shape = PT.Zone.VertexSize(part_zone)
+      else:
+        raise RuntimeError("Unmanaged output location")
 
       # Wall distance
       wall_dist = np.sqrt(fields['ClosestEltDistance'])
@@ -233,9 +244,9 @@ class WallDistance:
       if self.method == "cloud":
         for i_domain, part_zones in enumerate(parts_per_dom):
           for i_part, part_zone in enumerate(part_zones):
-            center_cell, cell_ln_to_gn = get_point_cloud(part_zone)
-            self._keep_alive.extend([center_cell, cell_ln_to_gn])
-            self._walldist.cloud_set(i_domain, i_part, cell_ln_to_gn.shape[0], center_cell, cell_ln_to_gn)
+            points, points_lngn = get_point_cloud(part_zone, self.point_cloud)
+            self._keep_alive.extend([points, points_lngn])
+            self._walldist.cloud_set(i_domain, i_part, points_lngn.shape[0], points, points_lngn)
 
       elif self.method == "propagation":
         for i_domain, part_zones in enumerate(parts_per_dom):
@@ -263,15 +274,15 @@ class WallDistance:
 
 
 # ------------------------------------------------------------------------
-def compute_wall_distance(part_tree, comm, method="cloud", families=[], out_fs_name="WallDistance"):
+def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point_cloud="CellCenter", out_fs_name="WallDistance"):
   """Compute wall distances and add it in tree.
 
-  For each cell center, compute the distance to the nearest face belonging to a BC of kind wall.
+  For each volumic point, compute the distance to the nearest face belonging to a BC of kind wall.
   Computation can be done using "cloud" or "propagation" method.
 
   Note: 
-    Propagation method requires ParaDiGMa access and is only available for unstructured
-    NGon connectivities. In addition, partitions must have been created from a single initial domain
+    Propagation method requires ParaDiGMa access and is only available for unstructured cell centered
+    NGon connectivities grids. In addition, partitions must have been created from a single initial domain
     with this method.
 
   Important:
@@ -287,6 +298,9 @@ def compute_wall_distance(part_tree, comm, method="cloud", families=[], out_fs_n
     part_tree (CGNSTree): Input partitionned tree
     comm       (MPIComm): MPI communicator
     method ({'cloud', 'propagation'}, optional): Choice of method. Defaults to "cloud".
+    point_cloud (str, optional): Points to project on the surface. Can either be one of
+      "CellCenter" or "Vertex" (coordinates are retrieved from the mesh) or the name of a FlowSolution
+      node in which coordinates are stored. Defaults to CellCenter.
     families (list of str): List of families to consider as wall faces.
     out_fs_name (str, optional): Name of the output FlowSolution_t node storing wall distance data.
 
@@ -296,7 +310,7 @@ def compute_wall_distance(part_tree, comm, method="cloud", families=[], out_fs_n
         :end-before: #compute_wall_distance@end
         :dedent: 2
   """
-  walldist = WallDistance(part_tree, comm, method, families, out_fs_name)
+  walldist = WallDistance(part_tree, comm, method, families, point_cloud, out_fs_name)
   walldist.compute()
   #walldist.dump_times()
 

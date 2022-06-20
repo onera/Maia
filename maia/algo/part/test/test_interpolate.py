@@ -167,6 +167,10 @@ def test_get_point_cloud(sub_comm):
       node[1] = node[1].astype(np.int32)
   I._rmNodesByType(zone, 'ZoneBC_t')
   I._rmNodesByName(zone, ':CGNS#Distribution')
+  fs = I.newFlowSolution('MyOwnCoords', 'CellCenter', parent=zone)
+  I.newDataArray('CoordinateX', 1*np.ones(8), parent=fs)
+  I.newDataArray('CoordinateY', 2*np.ones(8), parent=fs)
+  I.newDataArray('CoordinateZ', 3*np.ones(8), parent=fs)
   vtx_gnum = np.arange(3**3) + 1
   cell_gnum = np.arange(2**3) + 1
   MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
@@ -188,6 +192,10 @@ def test_get_point_cloud(sub_comm):
   coords, gnum = ITP.get_point_cloud(zone, 'CellCenter')
   assert (gnum == cell_gnum).all()
   assert (coords == expected_cell_co).all()
+
+  coords, gnum = ITP.get_point_cloud(zone, 'MyOwnCoords')
+  assert (gnum == cell_gnum).all()
+  assert (coords == np.tile([1,2,3], 8)).all() #Repeat motif
 
   with pytest.raises(RuntimeError):
     coords, gnum = ITP.get_point_cloud(zone, 'FaceCenter')

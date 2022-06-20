@@ -79,3 +79,36 @@ class Test_wallDistance:
     assert (I.getNodeFromName1(fs, 'TurbulentDistance')[1] == expected_wd).all()
     assert (I.getNodeFromName1(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
+@mark_mpi_test(2)
+def test_walldistance_vtx(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
+    expected_wd = [1, 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0 ]
+    expected_gnum = [1,1,1,1,1,1,2,2,2,1,1,1,1,1,1,2,2,2]
+  elif sub_comm.Get_rank() == 1:
+    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
+    expected_wd = [1, 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0 ]
+    expected_gnum = [3,3,3,3,3,3,4,4,4,1,1,1,1,1,1,2,2,2]
+  base = I.getBases(part_tree)[0]
+  base_family = I.newFamily('WALL', parent=base)
+  I.newFamilyBC('BCWall', parent=base_family)
+  zone = I.getZones(part_tree)[0]
+  zone[0] += f'.P{sub_comm.Get_rank()}.N0'
+
+  # Add BC
+  zone_bc = parse_yaml_cgns.to_node("""
+    ZoneBC ZoneBC_t:
+      BC BC_t "FamilySpecified":
+        PointList IndexArray_t [[13,14]]:
+        GridLocation GridLocation_t "FaceCenter":
+        FamilyName FamilyName_t "WALL":
+    """)
+  I._addChild(zone, zone_bc)
+
+  WD.compute_wall_distance(part_tree, sub_comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
+
+  fs = I.getNodeFromName1(zone, 'MyWallDistance')
+  assert fs is not None and sids.Subset.GridLocation(fs) == 'Vertex'
+  assert (I.getNodeFromName1(fs, 'TurbulentDistance')[1] == expected_wd).all()
+  assert (I.getNodeFromName1(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
+
