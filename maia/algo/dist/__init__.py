@@ -19,7 +19,7 @@ from .ngon_to_std_elements   import convert_ngon_to_std_elements
 
 from .std_elements_to_ngons  import convert_std_elements_to_ngons
 
-from .s_to_u                 import convert_s_to_u
+from .s_to_u                 import convert_s_to_u, convert_s_to_ngon
 
 from .vertex_list            import generate_jn_vertex_list,\
                                     generate_jns_vertex_list

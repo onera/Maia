@@ -53,7 +53,7 @@ def test_two_blocks(sub_comm):
   dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
 
   # > Input is structured, so convert it to an unstructured tree
-  dist_tree = dist_algo.convert_s_to_u(dist_treeS, sub_comm)
+  dist_tree = dist_algo.convert_s_to_ngon(dist_treeS, sub_comm)
 
   # > This algorithm works on partitioned trees
   part_tree = MF.partition_dist_tree(dist_tree, sub_comm)

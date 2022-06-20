@@ -9,7 +9,7 @@ import maia.io      as MIO
 import maia.utils   as MU
 import maia.factory as MF
 
-from maia.algo.dist import convert_s_to_u
+from maia.algo.dist import convert_s_to_u, convert_s_to_ngon
 
 ref_dir = os.path.join(os.path.dirname(__file__), 'references')
 
@@ -21,8 +21,8 @@ def test_s2u(sub_comm, subset_output_loc, write_output):
 
   dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
 
-  dist_treeU = convert_s_to_u(dist_treeS, sub_comm, \
-      bc_output_loc=subset_output_loc, gc_output_loc=subset_output_loc)
+  subset_loc = {key: subset_output_loc for key in ['BC_t', 'GC_t']}
+  dist_treeU = convert_s_to_u(dist_treeS, 'NGON_n', sub_comm, subset_loc)
 
   for zone in I.getZones(dist_treeU):
     assert PT.Zone.Type(zone) == 'Unstructured'
@@ -74,7 +74,7 @@ def test_s2u_withdata(sub_comm, write_output):
   I._addChild(I.getNodeFromType(dist_treeS, 'ZoneBC_t'), \
       MF.full_to_dist.distribute_pl_node(bc_right, sub_comm))
 
-  dist_treeU = convert_s_to_u(dist_treeS, sub_comm)
+  dist_treeU = convert_s_to_ngon(dist_treeS, sub_comm)
 
   # Some checks
   bc_right_u = I.getNodeFromName(dist_treeU, 'Right')

@@ -9,6 +9,18 @@ from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering
 from maia.utils.numbering import range_to_slab          as HFR2S
 
+def get_output_loc(request_dict, s_node):
+  """Retrieve output location from the node if not provided in argument"""
+  label_to_key = {'BC_t' : 'BC_t', 'GridConnectivity1to1_t' : 'GC_t'}
+  out_loc = request_dict.get(label_to_key[I.getType(s_node)], None)
+  if out_loc is None:
+    out_loc = PT.Subset.GridLocation(s_node)
+    if 'FaceCenter' in out_loc: #Remove 'I', 'J', or 'K' for FaceCenter
+      out_loc = 'FaceCenter'
+  if isinstance(out_loc, str):
+    out_loc = [out_loc]
+  return out_loc
+
 def gc_is_reference(gc_s, zone_path, zone_path_opp):
   """
   Check if a structured 1to1 GC is the reference of its pair or not
@@ -410,7 +422,7 @@ def zonedims_to_ngon(n_vtx_zone, comm):
 ###############################################################################
 
 ###############################################################################
-def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="FaceCenter"):
+def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
   """Performs the destructation of the input ``dist_tree``.
 
   This function copies the ``GridCoordinate_t`` and (full) ``FlowSolution_t`` nodes,
@@ -422,12 +434,19 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
   Metadata nodes ("FamilyName_t", "ReferenceState_t", ...) at zone and base level
   are also reported on the unstructured tree.
 
+  Note: 
+    Exists also as :func:`convert_s_to_ngon()` with connectivity set to 
+    NGON_n and subset_loc set to FaceCenter.
+
   Args:
     disttree_s (CGNSTree): Structured tree
+    connectivity (str): Type of elements used to describe the connectivity.
+      Admissible values are ``"NGON_n"`` and ``"HEXA"`` (not yet implemented).
     comm       (MPIComm) : MPI communicator
-    output_loc ({'FaceCenter', 'Vertex'}, optional):
-        Expected GridLocation for the subset nodes (BC_t, BCDataSet_t, ...).
-        Defaults to "FaceCenter".
+    subset_loc (dict, optional):
+        Expected output GridLocation for the following subset nodes: BC_t, GC_t.
+        For each label, output location can be a single location value, a list
+        of locations or None to preserve the input value. Defaults to None.
   Returns:
     CGNSTree: Unstructured disttree
 
@@ -468,20 +487,31 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
 
         I.addChild(zone_u, zonedims_to_ngon(n_vtx, comm))
 
+        loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'CellCenter': '#Cell'}
         zonebc_s = I.getNodeFromType1(zone_s, "ZoneBC_t")
         if zonebc_s is not None:
           zonebc_u = I.newZoneBC(zone_u)
-          for bc_s in I.getNodesFromType1(zonebc_s,"BC_t"):
-            I.addChild(zonebc_u, bc_s_to_bc_u(bc_s, n_vtx, bc_output_loc, i_rank, n_rank))
+          for bc_s in I.getNodesFromType1(zonebc_s, "BC_t"):
+            out_loc_l = get_output_loc(subset_loc, bc_s)
+            for out_loc in out_loc_l:
+              suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
+              bc_u = bc_s_to_bc_u(bc_s, n_vtx, out_loc, i_rank, n_rank)
+              I.setName(bc_u, I.getName(bc_u) + suffix)
+              I.addChild(zonebc_u, bc_u)
 
         zone_path = '/'.join([I.getName(base_s), I.getName(zone_s)])
         for zonegc_s in I.getNodesFromType1(zone_s, "ZoneGridConnectivity_t"):
           zonegc_u = I.newZoneGridConnectivity(I.getName(zonegc_s), parent=zone_u)
           for gc_s in I.getNodesFromType1(zonegc_s, "GridConnectivity1to1_t"):
             opp_name = I.getValue(gc_s)
+            out_loc_l = get_output_loc(subset_loc, gc_s)
             zone_opp_path = zone_opp_name if '/' in opp_name else I.getName(base_s)+'/'+opp_name
             n_vtx_opp = I.getValue(I.getNodeFromPath(disttree_s, zone_opp_path))[:,0]
-            I.addChild(zonegc_u, gc_s_to_gc_u(gc_s, zone_path, n_vtx, n_vtx_opp, gc_output_loc, i_rank, n_rank))
+            for out_loc in out_loc_l:
+              suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
+              gc_u = gc_s_to_gc_u(gc_s, zone_path, n_vtx, n_vtx_opp, out_loc, i_rank, n_rank)
+              I.setName(gc_u, I.getName(gc_u) + suffix)
+              I.addChild(zonegc_u, gc_u)
 
         # Copy distribution of all Cell/Vtx, which is unchanged
         distri = I.copyTree(MT.getDistribution(zone_s))
@@ -503,3 +533,9 @@ def convert_s_to_u(disttree_s, comm, bc_output_loc="FaceCenter", gc_output_loc="
 
   return disttree_u
 ###############################################################################
+def convert_s_to_ngon(disttree_s, comm):
+  """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
+  return convert_s_to_u(disttree_s,
+                        'NGON_n',
+                        comm,
+                        {'BC_t' : 'FaceCenter', 'GC_t' : 'FaceCenter'})
