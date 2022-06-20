@@ -356,7 +356,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   MT.newDistribution({'Index' : np.array([*gc_range, gc_size.prod()], pdm_gnum_dtype)}, parent=gc_u)
   #Copy these nodes to gc_u
   allowed_types = ['GridConnectivityProperty_t']
-  allowed_names = ['Ordinal', 'OrdinalOpp']
+  allowed_names = ['GridConnectivityDonorName']
   for child in I.getChildren(gc_s):
     if I.getName(child) in allowed_names or I.getType(child) in allowed_types:
       I.addChild(gc_u, child)

@@ -73,7 +73,6 @@ def test_duplicate_zone_with_transformation2():
                                                                  rotation_center = np.array([0.,0.,0.]),
                                                                  rotation_angle  = np.array([0.,0.,np.pi]),
                                                                  translation     = np.array([0.,0.,0.]),
-                                                                 max_ordinal     = 4,
                                                                  apply_to_fields = True)
   
   assert duplicated_zone[0] == "DuplicatedZone"
@@ -82,15 +81,6 @@ def test_duplicate_zone_with_transformation2():
   
   zgc            = I.getNodeFromType1(zone,            'ZoneGridConnectivity_t')
   duplicated_zgc = I.getNodeFromType1(duplicated_zone, 'ZoneGridConnectivity_t')
-  gcs = I.getNodesFromType1(zgc, 'GridConnectivity_t')
-  for gc in gcs:
-    duplicated_gc = I.getNodeFromNameAndType(duplicated_zgc, I.getName(gc), 'GridConnectivity_t')
-    ordinal_n                = I.getNodeFromName(gc,            'Ordinal')
-    ordinal_opp_n            = I.getNodeFromName(gc,            'OrdinalOpp')
-    duplicated_ordinal_n     = I.getNodeFromName(duplicated_gc, 'Ordinal')
-    duplicated_ordinal_opp_n = I.getNodeFromName(duplicated_gc, 'OrdinalOpp')
-    assert I.getValue(ordinal_n)+4     == I.getValue(duplicated_ordinal_n)
-    assert I.getValue(ordinal_opp_n)+4 == I.getValue(duplicated_ordinal_opp_n)
     
   flow_solution            = I.getNodeFromType1(zone,            'FlowSolution_t')
   duplicated_flow_solution = I.getNodeFromType1(duplicated_zone, 'FlowSolution_t')
@@ -150,9 +140,9 @@ def test_duplicate_from_periodic_jns(sub_comm):
   for gc0 in I.getNodesFromType1(zgc0, "GridConnectivity_t"):
     gc0_name = I.getName(gc0)
     gc1 = I.getNodeFromNameAndType(zgc1, gc0_name, "GridConnectivity_t")
-    ordinal0 = I.getVal(I.getNodeFromNameAndType(gc0, "Ordinal", "UserDefinedData_t"))
-    ordinal1 = I.getVal(I.getNodeFromNameAndType(gc1, "Ordinal", "UserDefinedData_t"))
-    assert ordinal0 == ordinal1-4
+    oppname0 = I.getValue(I.getNodeFromName1(gc0, "GridConnectivityDonorName"))
+    oppname1 = I.getValue(I.getNodeFromName1(gc1, "GridConnectivityDonorName"))
+    assert oppname0 == oppname1
     if gc0_name in ["MatchRotationA","MatchRotationB"]: #Joins by rotation
       assert I.getValue(gc0) == zone_basename+".D0"
       assert I.getValue(gc1) == zone_basename+".D1"
@@ -237,13 +227,11 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
     gc1 = I.getNodeFromNameAndType(zgc1, gc0_name, "GridConnectivity_t")
     gc2 = I.getNodeFromNameAndType(zgc2, gc0_name, "GridConnectivity_t")
     gc3 = I.getNodeFromNameAndType(zgc3, gc0_name, "GridConnectivity_t")
-    ordinal0 = I.getVal(I.getNodeFromNameAndType(gc0, "Ordinal","UserDefinedData_t"))
-    ordinal1 = I.getVal(I.getNodeFromNameAndType(gc1, "Ordinal","UserDefinedData_t"))
-    ordinal2 = I.getVal(I.getNodeFromNameAndType(gc2, "Ordinal","UserDefinedData_t"))
-    ordinal3 = I.getVal(I.getNodeFromNameAndType(gc3, "Ordinal","UserDefinedData_t"))
-    assert ordinal0 == ordinal1 - 4
-    assert ordinal0 == ordinal2 - 8
-    assert ordinal0 == ordinal3 - 12
+    oppname0 = I.getValue(I.getNodeFromName1(gc0, "GridConnectivityDonorName"))
+    oppname1 = I.getValue(I.getNodeFromName1(gc1, "GridConnectivityDonorName"))
+    oppname2 = I.getValue(I.getNodeFromName1(gc1, "GridConnectivityDonorName"))
+    oppname3 = I.getValue(I.getNodeFromName1(gc1, "GridConnectivityDonorName"))
+    assert oppname0 == oppname1 == oppname2 == oppname3
     if gc0_name in ["MatchRotationA","MatchRotationB"]: #Joins by rotation => not perio
       if gc0_name == "MatchRotationA":
         assert I.getValue(gc0) == zone_basename+".D3"

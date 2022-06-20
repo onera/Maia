@@ -110,7 +110,9 @@ def test_concatenate_jns(sub_comm, mode):
   GN.concatenate_jns(dist_tree, sub_comm)
 
   gcs = I.getNodesFromType(dist_tree, 'GridConnectivity_t')
+  opp_names = [I.getValue(I.getNodeFromName1(gc, "GridConnectivityDonorName")) for gc in gcs]
   assert len(gcs) == 2
+  assert opp_names == [gc[0] for gc in gcs[::-1]]
 
   if mode=='intrazone':
     assert all(['.I' in gc[0] for gc in gcs])

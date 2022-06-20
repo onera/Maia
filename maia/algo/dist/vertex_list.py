@@ -10,8 +10,8 @@ import maia.pytree.maia   as MT
 from maia       import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import py_utils, np_utils, par_utils
 
-from maia.algo.dist             import add_joins_ordinal as AJO
-from maia.transfer.dist_to_part import data_exchange     as MBTP
+from maia.algo.dist             import matching_jns_tools as MJT
+from maia.transfer.dist_to_part import data_exchange      as MBTP
 
 def face_ids_to_vtx_ids(face_ids, ngon, comm):
   """
@@ -497,27 +497,11 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
         :dedent: 2
   """
   #Build join ids to identify opposite joins
-  if I.getNodeFromName(dist_tree, 'OrdinalOpp') is None:
-    AJO.add_joins_ordinal(dist_tree, comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
 
-  query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
-      lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.Subset.GridLocation(n) == 'FaceCenter']
-
-  # Retrieve interfaces pathes and call function
-  key_to_cur = {}
-  key_to_opp = {}
-  for base, zone, zgc, gc in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
-    jn_ordinal     = I.getNodeFromName1(gc, 'Ordinal')[1][0]
-    jn_ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
-    jn_key = min(jn_ordinal, jn_ordinal_opp)
-    jn_path = '/'.join([I.getName(n) for n in [base, zone, zgc, gc]])
-    if jn_ordinal < jn_ordinal_opp:
-      key_to_cur[jn_key] = jn_path
-    else:
-      key_to_opp[jn_key] = jn_path
-
-  interface_pathes_cur = list(key_to_cur.values())
-  interface_pathes_opp = [key_to_opp[k] for k in key_to_cur.keys()]
+  match_jns = MJT.get_matching_jns(dist_tree)
+  interface_pathes_cur = [pair[0] for pair in match_jns]
+  interface_pathes_opp = [pair[1] for pair in match_jns]
     
   if have_isolated_faces:
     #Filter interfaces having isolated faces; they will be treated one by one, while other will be grouped
@@ -559,13 +543,12 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
     for j, gc_path in enumerate(interface_path):
       base_name, zone_name, zgc_name, gc_name = gc_path.split('/')
       zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
+      zgc  = I.getNodeFromName1(zone, zgc_name)
       gc = I.getNodeFromPath(dist_tree, gc_path)
-
-      zgc_vtx = I.createUniqueChild(zone, zgc_name+'#Vtx', 'ZoneGridConnectivity_t')
 
       if j == 1: #Swap pl/pld for opposite jn
         pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx
-      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc_vtx)
+      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc)
       I.newGridLocation('Vertex', jn_vtx)
       I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
       I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
@@ -573,5 +556,10 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
       MT.newDistribution({'Index' : distri_jn}, jn_vtx)
 
       I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))
+      I._addChild(jn_vtx, I.getNodeFromName1(gc, 'DistInterfaceId'))
+      I._addChild(jn_vtx, I.getNodeFromName1(gc, 'DistInterfaceOrd'))
+      donor_name_node = I.getNodeFromName(gc, 'GridConnectivityDonorName')
+      if donor_name_node is not None:
+        I.newDescriptor('GridConnectivityDonorName', I.getValue(donor_name_node)+'#Vtx', parent=jn_vtx)
 
 

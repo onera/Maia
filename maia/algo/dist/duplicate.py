@@ -6,6 +6,7 @@ import maia.pytree        as PT
 from   maia.utils import py_utils
 import maia.algo.transform as TRF
 import maia.algo.dist.conformize_jn as CCJ
+import maia.algo.dist.matching_jns_tools as MJT
 
 def _get_gc_root_name(gc_name):
   """ Remove the .D### suffix, if existing """
@@ -16,7 +17,6 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
                                        rotation_center = np.zeros(3),
                                        rotation_angle  = np.zeros(3),
                                        translation     = np.zeros(3),
-                                       max_ordinal     = 0,
                                        apply_to_fields = False):
   """Create a new zone by applying the prescribed transformation to the input zone.
 
@@ -34,8 +34,6 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
     rotation_center (array): center coordinates of the rotation
     rotation_angler (array): angles of the rotation
     translation (array):  translation vector components
-    max_ordinal (int, optional): if provided, shift the joins ordinals in the created
-        zone with this value.
     apply_to_fields (bool, optional) : 
         if True, apply the rotation vector to the vectorial fields found under 
         following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
@@ -55,17 +53,7 @@ def duplicate_zone_with_transformation(zone, duplicated_zone_name,
   I.setName(duplicated_zone, duplicated_zone_name)
 
   TRF.transform_zone(duplicated_zone, rotation_center, rotation_angle, translation, apply_to_fields)
-  
-  gc_predicate = ["ZoneGridConnectivity_t",
-                  lambda n : I.getType(n) in ["GridConnectivity_t", "GridConnectivity1to1_t"]]
 
-  if max_ordinal > 0:
-    for gc in PT.iter_children_from_predicates(duplicated_zone, gc_predicate):
-      ordinal_n     = I.getNodeFromName(gc, 'Ordinal')
-      ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
-      I.setValue(ordinal_n,     I.getValue(ordinal_n)    +max_ordinal)
-      I.setValue(ordinal_opp_n, I.getValue(ordinal_opp_n)+max_ordinal)
-        
   return duplicated_zone
 
 def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_nb, comm,
@@ -135,14 +123,8 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   if conformize:
     jn_to_opp = {}
     for i, jn_path_a in enumerate(jn_paths_a):
-      ord_opp = I.getNodeFromName1(I.getNodeFromPath(dist_tree, jn_path_a), 'OrdinalOpp')[1][0]
-      jn_path_b = None
-      for jn in py_utils.loop_from(jn_paths_b, i): # May stop earlier if jns are well ordered
-        ord_cur = I.getNodeFromName1(I.getNodeFromPath(dist_tree, jn), 'Ordinal')[1][0]
-        if ord_cur == ord_opp:
-          jn_path_b = jn
-          break
-      assert jn_path_b is not None
+      jn_path_b = MJT.get_jn_donor_path(dist_tree, jn_path_a)
+      assert jn_path_b in jn_paths_b
       jn_to_opp[jn_path_a] = jn_path_b
 
   # Get first join in the first list of joins (A)
@@ -178,13 +160,6 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
           I.setValue(gc, f"{gc_value}.D0")
     I.setName(zone, f"{I.getName(zone)}.D0") #Update zone name
   
-  # Search the maximum of 'Ordinal' number in the whole dist_tree
-  max_ordinal = 0
-  for gc in PT.iter_children_from_predicates(dist_tree, ["CGNSBase_t", "Zone_t"] + gc_predicate):
-    ordinal_n = I.getNodeFromName(gc, 'Ordinal')
-    if ordinal_n is not None:
-      max_ordinal = max(max_ordinal, I.getValue(ordinal_n))
-
   # Duplicate 'dupl_nb' times the list of zones 'zones'
   for n in range(dupl_nb):
     for zone_path, zone in zip(zone_paths, zones):
@@ -195,7 +170,6 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
                                                            rotation_center = rotation_center_a,
                                                            rotation_angle  = (n+1)*rotation_angle_a,
                                                            translation     = (n+1)*translation_a,
-                                                           max_ordinal     = (n+1)*max_ordinal,
                                                            apply_to_fields = apply_to_fields)
   
       # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones
@@ -218,9 +192,6 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
       I._rmNodesByType1(jn_b_prev_node, "GridConnectivityProperty_t")
       gc_value = I.getValue(jn_b_prev_node)
       I.setValue(jn_b_prev_node, f"{_get_gc_root_name(gc_value)}.D{n+1}")
-      ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
-      if ordinal_opp_n is not None:
-        I.setValue(ordinal_opp_n, I.getValue(ordinal_opp_n) + max_ordinal)
 
     # Transform periodic joins of the fisrt joins list (A) from current set of zones
     # to non periodic joins
@@ -229,9 +200,6 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
       jn_a_curr_node = I.getNodeFromPath(dist_tree, jn_path_a_curr)
       I._rmNodesByType1(jn_a_curr_node, "GridConnectivityProperty_t")
       I.setValue(jn_a_curr_node, f"{I.getValue(jn_a_curr_node)}.D{n}")
-      ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
-      if ordinal_opp_n is not None:
-        I.setValue(ordinal_opp_n, I.getValue(ordinal_opp_n) - max_ordinal)
 
     if conformize:
       for jn_path_a, jn_path_b in jn_to_opp.items():
@@ -249,9 +217,6 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
     I.setValue(rotation_angle_a_node, I.getValue(rotation_angle_a_node) * (dupl_nb+1))
     I.setValue(translation_a_node,    I.getValue(translation_a_node)    * (dupl_nb+1))
     I.setValue(jn_a_init_node, f"{I.getValue(jn_a_init_node)}.D{dupl_nb}")
-    ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
-    if ordinal_opp_n is not None:
-      I.setValue(ordinal_opp_n, I.getValue(ordinal_opp_n) + dupl_nb*max_ordinal)
 
   # Update information for joins of the second joins list (B) from last set of duplicated zones
   for jn, jn_path_b in enumerate(jn_paths_b):
@@ -265,9 +230,6 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
     I.setValue(translation_b_node,    I.getValue(translation_b_node)    * (dupl_nb+1))
     gc_value = I.getValue(jn_b_last_node)
     I.setValue(jn_b_last_node, f"{_get_gc_root_name(gc_value)}.D0")
-    ordinal_opp_n = I.getNodeFromName(gc, 'OrdinalOpp')
-    if ordinal_opp_n is not None:
-      I.setValue(ordinal_opp_n, I.getValue(ordinal_opp_n) - dupl_nb*max_ordinal)
   
 
 def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl, comm,
@@ -291,14 +253,8 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
   if conformize:
     jn_to_opp = {}
     for i, jn_path_a in enumerate(jn_paths_for_dupl[0]):
-      ord_opp = I.getNodeFromName1(I.getNodeFromPath(dist_tree, jn_path_a), 'OrdinalOpp')[1][0]
-      jn_path_b = None
-      for jn in py_utils.loop_from(jn_paths_for_dupl[1], i): # May stop earlier if jns are well ordered
-        ord = I.getNodeFromName1(I.getNodeFromPath(dist_tree, jn), 'Ordinal')[1][0]
-        if ord == ord_opp:
-          jn_path_b = jn
-          break
-      assert jn_path_b is not None
+      jn_path_b = MJT.get_jn_donor_path(dist_tree, jn_path_a)
+      assert jn_path_b in jn_paths_for_dupl[1]
       jn_to_opp[jn_path_a] = jn_path_b
     _jn_paths_for_dupl = [ [], [] ]
     for path, path_opp in jn_to_opp.items():

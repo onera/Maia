@@ -120,53 +120,49 @@ Base CGNSBase_t I4 [3, 3]:
         PointList IndexArray_t I4 [[33, 34, 35, 36]]:
         PointListDonor IndexArray_t I4 [[25, 26, 27, 28]]:
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'MatchRotationB':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationCenter DataArray_t R8 [0.0, 0.0, 0.0]:
             RotationAngle DataArray_t R8 [-0.0, -0.0, -1.5707963705062866]:
               DimensionalUnits DimensionalUnits_t ['Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian']:
             Translation DataArray_t R8 [0.0, 0.0, 0.0]:
-        Ordinal UserDefinedData_t 1:
-        OrdinalOpp UserDefinedData_t 2:
       MatchRotationB GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[25, 26, 27, 28]]:
         PointListDonor IndexArray_t I4 [[33, 34, 35, 36]]:
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'MatchRotationA':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationCenter DataArray_t R8 [0.0, 0.0, 0.0]:
             RotationAngle DataArray_t R8 [0.0, 0.0, 1.5707963705062866]:
               DimensionalUnits DimensionalUnits_t ['Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian']:
             Translation DataArray_t R8 [0.0, 0.0, 0.0]:
-        Ordinal UserDefinedData_t 2:
-        OrdinalOpp UserDefinedData_t 1:
       MatchTranslationA GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[9, 10, 11, 12]]:
         PointListDonor IndexArray_t I4 [[1, 2, 3, 4]]:
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'MatchTranslationB':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationCenter DataArray_t R8 [0.0, 0.0, 0.0]:
             RotationAngle DataArray_t R8 [0.0, 0.0, 0.0]:
               DimensionalUnits DimensionalUnits_t ['Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian']:
             Translation DataArray_t R8 [-0.0, -0.0, -2.0]:
-        Ordinal UserDefinedData_t 3:
-        OrdinalOpp UserDefinedData_t 4:
       MatchTranslationB GridConnectivity_t 'Zone':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[1, 2, 3, 4]]:
         PointListDonor IndexArray_t I4 [[9, 10, 11, 12]]:
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'MatchTranslationA':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationCenter DataArray_t R8 [0.0, 0.0, 0.0]:
             RotationAngle DataArray_t R8 [0.0, 0.0, 0.0]:
               DimensionalUnits DimensionalUnits_t ['Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian']:
             Translation DataArray_t R8 [0.0, 0.0, 2.0]:
-        Ordinal UserDefinedData_t 4:
-        OrdinalOpp UserDefinedData_t 3:
     FlowSolution FlowSolution_t:
       GridLocation GridLocation_t 'CellCenter':
       DataX DataArray_t R8 [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]:

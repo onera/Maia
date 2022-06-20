@@ -314,7 +314,7 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
 
   VL.generate_jns_vertex_list(tree, sub_comm, have_isolated_faces=have_isolated_faces)
 
-  assert len(I.getNodesFromName(tree, "ZoneGridConnectivity#Vtx")) == 2
+  assert len(I.getNodesFromName(tree, "ZoneGridConnectivity")) == 2
   assert I.getNodeFromName(tree, "matchA#Vtx") is not None
   jn_vtx = I.getNodeFromName(tree, "matchB#Vtx")
   assert jn_vtx is not None and PT.Subset.GridLocation(jn_vtx) == 'Vertex'

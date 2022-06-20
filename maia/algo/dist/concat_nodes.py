@@ -3,7 +3,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
-from maia.algo.dist import add_joins_ordinal as AJO
+from maia.algo.dist import matching_jns_tools as MJT
 
 def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     additional_data_queries=[], additional_child_queries=[], master=None):
@@ -23,8 +23,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     master = nodes[0]
   node = I.createNode(output_name, I.getType(master), I.getValue(master))
 
-  data_queries = additional_data_queries + ['PointList', 'PointListDonor',
-                  [lambda n : I.getType(n) == 'DataArray_t' and I.getName(n) not in ['Ordinal', 'OrdinalOpp']]]
+  data_queries = additional_data_queries + ['PointList', 'PointListDonor', 'DataArray_t']
   for data_query in data_queries:
     #Use master node to understand queries and collect nodes
     for childs in PT.iter_children_from_predicates(master, data_query, ancestors=True):
@@ -63,7 +62,7 @@ def concatenate_jns(tree, comm):
   match_jns = lambda n: I.getType(n) == 'GridConnectivity_t' \
                         and I.getValue(I.getNodeFromType(n, 'GridConnectivityType_t')) == 'Abutting1to1'
 
-  AJO.add_joins_ordinal(tree, comm)
+  MJT.add_joins_donor_name(tree, comm)
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     jns_to_merge = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
     perio_refs   = {'Vertex' : list(), 'FaceCenter' : list(), 'CellCenter' : list()}
@@ -73,23 +72,35 @@ def concatenate_jns(tree, comm):
       location = PT.Subset.GridLocation(jn)
       perio_node = I.getNodeFromType1(jn, 'GridConnectivityProperty_t')
       is_periodic = perio_node is not None
-      key = min(I.getNodeFromName(jn, 'Ordinal')[1][0], I.getNodeFromName(jn, 'OrdinalOpp')[1][0])
+      cur_jn_path = '/'.join([I.getName(node) for node in [base, zone, zgc, jn]])
+      opp_jn_path = MJT.get_jn_donor_path(tree, cur_jn_path)
+      key = min(cur_jn_path, opp_jn_path)
 
       #Manage periodic -- merge only if periodic values are identical
       if is_periodic:
         found = False
         for i,ref in enumerate(perio_refs[location]):
           if PT.is_same_tree(perio_node, ref):
-            donor_path += f'.P{i}'
+            suffix = f'.P{i}'
             found = True
             break
         if not found:
           perio_refs[location].append(perio_node)
-          donor_path += f'.P{len(perio_refs[location])-1}'
+          suffix = f'.P{len(perio_refs[location])-1}'
       #Manage intrazone -- prevent merge of two sides into one
       elif donor_path == I.getName(base) + '/' + I.getName(zone):
-        id = 0 if I.getNodeFromName(jn, 'Ordinal')[1][0] < I.getNodeFromName(jn, 'OrdinalOpp')[1][0] else 1
-        donor_path = donor_path + f'.I{id}'
+        id = 0 if cur_jn_path < opp_jn_path else 1
+        suffix = f'.I{id}'
+      else:
+        suffix = ''
+      donor_path = donor_path + suffix
+
+      # Set opposite name here -- it will be transfered on merged node
+      if suffix == '.I0':  opp_suffix = '.I1'
+      elif suffix == '.I1':  opp_suffix = '.I0'
+      else:  opp_suffix = suffix
+      opp_name_node = I.getNodeFromName1(jn, "GridConnectivityDonorName")
+      I.setValue(opp_name_node, opp_jn_path.split('/')[1] + '.To.' + I.getName(zone) + opp_suffix)
 
       try:
         jns_to_merge[location][donor_path].append((key,jn))
@@ -103,11 +114,13 @@ def concatenate_jns(tree, comm):
         sorted_jns = [elem[1] for elem in sorted(jns)]
         merged_name = I.getName(zone) + '.To.' + donor_path.split('/')[1]
         merged = concatenate_subset_nodes(sorted_jns, comm, output_name=merged_name,
-            additional_child_queries=['GridConnectivityType_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'])
+            additional_child_queries=['GridConnectivityType_t', 'GridConnectivityProperty_t', 'Descriptor_t'])
         I._addChild(zgc, merged)
     # Make name uniques if we have multiple GridLocation
-    if any([sum(ljns_to_merge.values()) for jns_to_merge in jns_to_merge.values()]):
+    if sum([len(ljns_to_merge) > 0 for ljns_to_merge in jns_to_merge.values()]) > 1:
       loc_suffix = {'Vertex' : '_v', 'FaceCenter' : '_f', 'CellCenter' : '_c'}
       for jn in I.getNodesFromType1(zgc, 'GridConnectivity_t'):
         if len(I.getNodesFromName1(zgc, I.getName(jn))) > 1:
           I.setName(jn, I.getName(jn) + '_' + PT.Subset.GridLocation(jn)[0])
+          opp_name_node = I.getNodeFromName1(jn, "GridConnectivityDonorName")
+          I.setValue(opp_name_node, I.getValue(opp_name_node) + '_' + PT.Subset.GridLocation(jn)[0])

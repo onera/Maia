@@ -56,15 +56,14 @@ def _create_local_match_table(gc_list, gc_paths):
   #print('  check_candidates', local_match_table)
   return local_match_table
 
-def add_joins_ordinal(dist_tree, comm, force=False):
+def add_joins_donor_name(dist_tree, comm, force=False):
   """
   For each GridConnectivity_t node found in the dist_tree, find the
-  opposite GC node and create for each pair of GCs the Ordinal and
-  OrdinalOpp nodes allowing to identify them
+  opposite GC node and create the GridConnectivityDonorName node
   GC Node must have either PointList/PointListDonor arrays or
   PointRange/PointRangeDonor arrays, not both.
-  If force=True, ordinals are recomputed, else the computation is
-  made only if there is no ordinal
+  If force=True, donor are recomputed, else the computation is
+  made only if there are not in tree
   """
   
   gc_list  = []
@@ -73,25 +72,22 @@ def add_joins_ordinal(dist_tree, comm, force=False):
   match1to1 = lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t'] \
       and PT.GridConnectivity.is1to1(n)
   query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", match1to1]
+
   if force:
-    rm_joins_ordinal(dist_tree)
-    compute_ordinal = True
-    for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
-      gc_list.append(nodes[-1])
-      gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
-  else:
-    compute_ordinal = False
-    for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
-      gc_list.append(nodes[-1])
-      gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
-      ordinal_n     = I.getNodeFromName1(nodes[-1], 'Ordinal')
-      ordinal_opp_n = I.getNodeFromName1(nodes[-1], 'OrdinalOpp')
-      if (ordinal_n is None) or (ordinal_opp_n is None):
-        compute_ordinal = True
+    for gc in PT.iter_children_from_predicates(dist_tree, query):
+      I._rmNodesByName1(gc, 'GridConnectivityDonorName')
+
+  need_compute = False
+  for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
+    gc_list.append(nodes[-1])
+    gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
+    if I.getNodeFromName1(nodes[-1], 'GridConnectivityDonorName') is None:
+      need_compute = True
   
-  if not compute_ordinal:
+  if not need_compute:
     return
 
+  #gc_paths -> chemin des zones
   local_match_table = _create_local_match_table(gc_list, gc_paths)
 
   global_match_table = np.empty(local_match_table.shape, dtype=bool)
@@ -101,34 +97,83 @@ def add_joins_ordinal(dist_tree, comm, force=False):
 
   opp_join_id = np.where(global_match_table)[1]
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
-    I.createUniqueChild(gc, 'Ordinal'   , 'UserDefinedData_t',  gc_id+1)
-    I.createUniqueChild(gc, 'OrdinalOpp', 'UserDefinedData_t', opp_id+1)
+    I.newDescriptor("GridConnectivityDonorName", I.getName(gc_list[opp_id]), parent=gc)
 
-def pl_donor_from_ordinals(dist_tree):
+def get_jn_donor_path(dist_tree, jn_path):
+  """
+  Return the patch of the matching jn in the tree. GridConnectivityDonorName must exists.
+  """
+  cur_jn = I.getNodeFromPath(dist_tree, jn_path)
+  base_name, zone_name, zgc_name, jn_name = jn_path.split('/')
+  opp_zone_path = PT.getZoneDonorPath(base_name, cur_jn)
+  opp_gc_name   = I.getValue(I.getNodeFromName1(cur_jn, "GridConnectivityDonorName"))
+
+  opp_zone      = I.getNodeFromPath(dist_tree, opp_zone_path)
+  opp_zgc       = I.getNodeFromType1(opp_zone, "ZoneGridConnectivity_t")
+  return f"{opp_zone_path}/{I.getName(opp_zgc)}/{opp_gc_name}"
+
+def update_jn_name(dist_tree, jn_path, new_name):
+  """
+  Rename a 1to1 GC and update the opposite GridConnectivityDonorName.
+  """
+  cur_jn = I.getNodeFromPath(dist_tree, jn_path)
+  opp_jn = I.getNodeFromPath(dist_tree, get_jn_donor_path(dist_tree, jn_path))
+  opp_gc_name_n = I.getNodeFromName1(opp_jn, "GridConnectivityDonorName")
+  I.setName(cur_jn, new_name)
+  I.setValue(opp_gc_name_n, new_name)
+  
+def get_matching_jns(dist_tree):
+  """
+  Return the list of pairs of matching jns
+  """
+  query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
+      lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.GridConnectivity.is1to1(n)]
+
+  # Retrieve interfaces pathes and call function
+  jn_pairs = []
+  for jn_path in PT.predicates_to_paths(dist_tree, query):
+    opp_jn_path   = get_jn_donor_path(dist_tree, jn_path)
+    pair = tuple(sorted([jn_path, opp_jn_path]))
+    if not pair in jn_pairs:
+      jn_pairs.append(pair)
+  return jn_pairs
+
+def copy_donor_subset(dist_tree):
   """
   TODO Generalize for PointRangeDonor
   Retrieve for each GridConnectivity_t node the opposite
-  pointlist in the tree. This assume that ordinal were added and index distribution
+  pointlist in the tree. This assume that GridConnectivityDonorName were added and index distribution
   was identical for two related gc nodes
   """
-  ordinal_to_pl = dict()
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'
-  gc_nodes = PT.get_children_from_predicates(dist_tree, gc_t_path)
 
-  for gc in gc_nodes:
-    ordinal = I.getNodeFromName1(gc, 'Ordinal')[1][0]
-    ordinal_to_pl[ordinal] = I.getNodeFromName1(gc, 'PointList')[1]
+  for jn_path in PT.predicates_to_paths(dist_tree, gc_t_path):
+    opp_jn_path = get_jn_donor_path(dist_tree, jn_path)
+    cur_jn = I.getNodeFromPath(dist_tree, jn_path)
+    opp_jn = I.getNodeFromPath(dist_tree, opp_jn_path)
+    I.newPointList('PointListDonor', I.getNodeFromName1(opp_jn, 'PointList')[1], parent=cur_jn)
 
-  for gc in gc_nodes:
-    ordinal_opp = I.getNodeFromName1(gc, 'OrdinalOpp')[1][0]
-    donor_pl = ordinal_to_pl[ordinal_opp]
-    I.newPointList('PointListDonor', donor_pl, parent=gc)
 
-def rm_joins_ordinal(dist_tree):
+def store_interfaces_ids(dist_tree):
   """
-  Remove Ordinal and OrdinalOpp nodes created on GC_t
+  Attribute to each 1to1 pair a unique interace id. GridConnectivityDonorName must have been added in the tree.
+  Store this id and the position (first or second) in disttree.
+  Note : this function does not manage (for now?) location: two jns at different interface
+  will have a different id
+  """
+  matching_pairs = get_matching_jns(dist_tree)
+  for i, matching_pair in enumerate(matching_pairs):
+    for j,jn_path in enumerate(matching_pair):
+      jn = I.getNodeFromPath(dist_tree, jn_path)
+      I.newDataArray("DistInterfaceId",  i+1, parent=jn)
+      I.newDataArray("DistInterfaceOrd", j,   parent=jn)
+
+def clear_interface_ids(dist_tree):
+  """
+  Remove DistInterfaceId nodes created on GC_t
   """
   gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
-    I._rmNodesByName1(gc, 'Ordinal')
-    I._rmNodesByName1(gc, 'OrdinalOpp')
+    I._rmNodesByName1(gc, 'DistInterfaceId')
+    I._rmNodesByName1(gc, 'DistInterfaceOrd')
+

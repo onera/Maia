@@ -5,10 +5,10 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.algo.dist             import add_joins_ordinal as AJO
-from maia.transfer              import utils             as tr_utils
-from maia.transfer.part_to_dist import data_exchange     as PTB
-from maia.transfer.part_to_dist import index_exchange    as IPTB
+from maia.algo.dist             import matching_jns_tools as MJT
+from maia.transfer              import utils              as tr_utils
+from maia.transfer.part_to_dist import data_exchange      as PTB
+from maia.transfer.part_to_dist import index_exchange     as IPTB
 from maia.utils                 import py_utils
 
 def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
@@ -121,11 +121,11 @@ def recover_dist_tree(part_tree, comm):
     discover_nodes_from_matching(dist_zone, part_zones, bc_t_path, comm,
           child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
     # discover_nodes_from_matching(dist_zone, part_zones, gc_t_path, comm,
-    #       child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
+    #       child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'GridConnectivityDonorName'],
     #       merge_rule= lambda path: MT.conv.get_split_prefix(path),
     #       skip_rule = lambda node: MT.conv.is_intra_gc(I.getName(node)))
     discover_nodes_from_matching(dist_zone, part_zones, gc_t_path, comm,
-          child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'Ordinal', 'OrdinalOpp'],
+          child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'GridConnectivityDonorName'],
           merge_rule= lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
     #After GC discovery, cleanup donor name suffix
     for jn in PT.iter_children_from_predicates(dist_zone, gc_t_path):
@@ -143,7 +143,7 @@ def recover_dist_tree(part_tree, comm):
 
     # > Todo : BCDataSet
 
-  AJO.pl_donor_from_ordinals(dist_tree)
+  MJT.copy_donor_subset(dist_tree)
 
   return dist_tree
 

@@ -155,12 +155,10 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             part_bc = I.newBC(I.getName(dist_bc), sub_pr, parent=zbc)
           I.setValue(part_bc, I.getValue(dist_bc))
           I.newGridLocation(grid_loc, parent=part_bc)
-          I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Ordinal'))
-          I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'OrdinalOpp'))
           I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'Transform'))
           I._addChild(part_bc, I.getNodeFromType1(dist_bc, 'GridConnectivityType_t'))
           I._addChild(part_bc, I.getNodeFromType1(dist_bc, 'GridConnectivityProperty_t'))
-          if I.getNodeFromName1(dist_bc, 'Ordinal') is not None:
+          if I.getNodeFromName1(dist_bc, 'GridConnectivityDonorName') is not None:
             I.createChild(part_bc, 'distPR', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRange')[1])
             I.createChild(part_bc, 'distPRDonor', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRangeDonor')[1])
             I.newDataArray('zone_offset', p_zone_offset, parent=part_bc)
@@ -237,30 +235,32 @@ def split_original_joins_S(all_part_zones, comm):
   Intersect the original joins of the meshes. Such joins must are stored in ZoneBC_t node
   at the end of S partitioning with needed information stored inside
   """
-  ordinal_to_pr = dict()
+  ori_jn_to_pr  = dict()
   zones_offsets = dict()
   for part in all_part_zones:
+    dzone_name = MT.conv.get_part_prefix(part[0])
     for jn in PT.iter_children_from_predicates(part, 'ZoneBC_t/BC_t'):
-      if I.getNodeFromName1(jn, 'Ordinal') is not None:
+      if I.getNodeFromName1(jn, 'GridConnectivityDonorName') is not None:
         p_zone_offset = I.getNodeFromName1(jn, 'zone_offset')[1]
         pr_n = I.newPointRange(part[0], np.copy(I.getNodeFromName1(jn, 'PointRange')[1]))
+        key = dzone_name + '/' + jn[0] #TODO : Be carefull if multibase ; this key may clash
         # Pr dans la num globale de la zone
         pr_to_global_num(pr_n[1], p_zone_offset)
         try:
-          ordinal_to_pr[I.getNodeFromName1(jn, 'Ordinal')[1][0]].append(pr_n)
+          ori_jn_to_pr[key].append(pr_n)
         except KeyError:
-          ordinal_to_pr[I.getNodeFromName1(jn, 'Ordinal')[1][0]] = [pr_n]
+          ori_jn_to_pr[key] = [pr_n]
         zones_offsets[I.getName(part)] = p_zone_offset
 
-  #Gather and create dic ordinal -> List of PR
-  ordinal_to_pr_glob = dict()
-  all_offset_zones   = dict()
-  for ordinal_to_pr_rank in comm.allgather(ordinal_to_pr):
-    for key, value in ordinal_to_pr_rank.items():
-      if key in ordinal_to_pr_glob:
-        ordinal_to_pr_glob[key].extend(value)
+  #Gather and create dic jn -> List of PR
+  ori_jn_to_pr_glob = dict()
+  all_offset_zones  = dict()
+  for ori_jn_to_pr_rank in comm.allgather(ori_jn_to_pr):
+    for key, value in ori_jn_to_pr_rank.items():
+      if key in ori_jn_to_pr_glob:
+        ori_jn_to_pr_glob[key].extend(value)
       else:
-        ordinal_to_pr_glob[key] = value
+        ori_jn_to_pr_glob[key] = value
   for zones_offsets_rank in comm.allgather(zones_offsets):
     all_offset_zones.update(zones_offsets_rank)
 
@@ -268,7 +268,7 @@ def split_original_joins_S(all_part_zones, comm):
     zone_gc = I.createUniqueChild(part, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
     to_delete = []
     for jn in PT.iter_children_from_predicates(part, 'ZoneBC_t/BC_t'):
-      if I.getNodeFromName1(jn, 'Ordinal') is not None:
+      if I.getNodeFromName1(jn, 'GridConnectivityDonorName') is not None:
         dist_pr = I.getNodeFromName1(jn, 'distPR')[1]
         dist_prd = I.getNodeFromName1(jn, 'distPRDonor')[1]
         transform  = I.getNodeFromName1(jn, 'Transform')[1]
@@ -294,7 +294,8 @@ def split_original_joins_S(all_part_zones, comm):
                 pr_in_opp_abs[dir_to_swap, 1], pr_in_opp_abs[dir_to_swap, 0]
         pr_to_cell_location(pr_in_opp_abs, normal_idx, 'Vertex', bnd_is_max)
 
-        opposed_joins = ordinal_to_pr_glob[I.getNodeFromName1(jn, 'OrdinalOpp')[1][0]]
+        opp_jn_key = I.getValue(jn).split('/')[-1] + '/' + I.getValue(I.getNodeFromName1(jn, 'GridConnectivityDonorName'))
+        opposed_joins = ori_jn_to_pr_glob[opp_jn_key]
 
         to_delete.append(jn)
         i_sub_jn = 0
@@ -332,8 +333,7 @@ def split_original_joins_S(all_part_zones, comm):
             I.newGridLocation('Vertex', parent=part_gc)
             i_sub_jn += 1
       elif I.getNodeFromType1(jn, 'GridConnectivityType_t') is not None:
-        #This is a join, but not 1to1 because its has no ordinal. So we just move it with
-        #other jns
+        #This is a join, but not 1to1. So we just move it with other jns
         I.setType(jn, 'GridConnectivity_t')
         I._addChild(zone_gc, jn)
         to_delete.append(jn)
