@@ -168,8 +168,8 @@ Base CGNSBase_t:
     expected_id = [1,1,2,2]
     expected_pos = [0,1,0,1]
     for i, jn in enumerate(I.getNodesFromType(self.dist_tree, 'GridConnectivity_t')):
-      assert (I.getNodeFromName1(jn, 'InterfaceId')[1] == expected_id[i]).all()
-      assert (I.getNodeFromName1(jn, 'InterfacePos')[1] == expected_pos[i]).all()
+      assert (I.getNodeFromName1(jn, 'DistInterfaceId')[1] == expected_id[i]).all()
+      assert (I.getNodeFromName1(jn, 'DistInterfaceOrd')[1] == expected_pos[i]).all()
 
 
 def test_clear_interfaces_ids():
@@ -178,7 +178,7 @@ Base0 CGNSBase_t:
   ZoneA Zone_t:
     ZGC ZoneGridConnectivity_t:
       matchAB GridConnectivity_t "ZoneB":
-        InterfaceId DataArray_t [1]:
+        DistInterfaceId DataArray_t [1]:
   ZoneB Zone_t:
     ZGC ZoneGridConnectivity_t:
       matchBA GridConnectivity_t "ZoneA":
@@ -186,5 +186,5 @@ Base0 CGNSBase_t:
 """
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   MJT.clear_interface_ids(dist_tree)
-  assert I.getNodeFromName(dist_tree, 'InterfaceId')  is None
-  assert I.getNodeFromName(dist_tree, 'InterfacePos') is None
+  assert I.getNodeFromName(dist_tree, 'DistInterfaceId')  is None
+  assert I.getNodeFromName(dist_tree, 'DistInterfaceOrd') is None

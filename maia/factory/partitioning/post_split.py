@@ -27,7 +27,7 @@ def copy_additional_nodes(dist_zone, part_zone):
           if I.getName(node) in names or I.getType(node) in types:
             I._addChild(p_bc, node)
   #GCs
-  names = ['.Solver#Property', 'GridConnectivityDonorName', 'InterfaceId', 'InterfacePos']
+  names = ['.Solver#Property', 'GridConnectivityDonorName', 'DistInterfaceId', 'DistInterfaceOrd']
   types = ['FamilyName_t', 'GridConnectivityProperty_t', 'GridConnectivityType_t']
   for p_zgc in I.getNodesFromType1(part_zone, 'ZoneGridConnectivity_t'):
     for p_gc in I.getNodesFromType1(p_zgc, 'GridConnectivity_t'):

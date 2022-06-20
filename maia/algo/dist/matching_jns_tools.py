@@ -165,15 +165,15 @@ def store_interfaces_ids(dist_tree):
   for i, matching_pair in enumerate(matching_pairs):
     for j,jn_path in enumerate(matching_pair):
       jn = I.getNodeFromPath(dist_tree, jn_path)
-      I.newDataArray("InterfaceId",  i+1, parent=jn)
-      I.newDataArray("InterfacePos", j,   parent=jn)
+      I.newDataArray("DistInterfaceId",  i+1, parent=jn)
+      I.newDataArray("DistInterfaceOrd", j,   parent=jn)
 
 def clear_interface_ids(dist_tree):
   """
-  Remove InterfaceId nodes created on GC_t
+  Remove DistInterfaceId nodes created on GC_t
   """
   gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
-    I._rmNodesByName1(gc, 'InterfaceId')
-    I._rmNodesByName1(gc, 'InterfacePos')
+    I._rmNodesByName1(gc, 'DistInterfaceId')
+    I._rmNodesByName1(gc, 'DistInterfaceOrd')
 

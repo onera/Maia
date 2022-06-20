@@ -548,8 +548,8 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
       MT.newDistribution({'Index' : distri_jn}, jn_vtx)
 
       I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))
-      I._addChild(jn_vtx, I.getNodeFromName1(gc, 'InterfaceId'))
-      I._addChild(jn_vtx, I.getNodeFromName1(gc, 'InterfacePos'))
+      I._addChild(jn_vtx, I.getNodeFromName1(gc, 'DistInterfaceId'))
+      I._addChild(jn_vtx, I.getNodeFromName1(gc, 'DistInterfaceOrd'))
       donor_name_node = I.getNodeFromName(gc, 'GridConnectivityDonorName')
       if donor_name_node is not None:
         I.newDescriptor('GridConnectivityDonorName', I.getValue(donor_name_node)+'#Vtx', parent=jn_vtx)
