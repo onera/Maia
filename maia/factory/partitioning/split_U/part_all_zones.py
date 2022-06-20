@@ -165,13 +165,15 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
   # since they are usefull for pdm
   keep_alive = list()
 
+  #TMP : to fix when multibase is supported
+  _dzone_to_weighted_parts = {key.split('/')[1]:value for key, value in dzone_to_weighted_parts.items()}
   # Deduce the number of parts for each zone from dzone->weighted_parts dict
-  n_part_per_zone = np.array([len(dzone_to_weighted_parts.get(I.getName(zone), [])) for zone in u_zones],
+  n_part_per_zone = np.array([len(_dzone_to_weighted_parts.get(I.getName(zone), [])) for zone in u_zones],
                              dtype=np.int32)
   keep_alive.append(n_part_per_zone)
 
   # Init multipart object
-  part_weight = prepare_part_weight(u_zones, n_part_per_zone, dzone_to_weighted_parts)
+  part_weight = prepare_part_weight(u_zones, n_part_per_zone, _dzone_to_weighted_parts)
 
   pdm_part_tool     = 1 if part_options['graph_part_tool'] == 'parmetis' else 2
   pdm_weight_method = 2

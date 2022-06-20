@@ -120,13 +120,15 @@ def _partitioning(dist_tree,
 
   part_tree = I.newCGNSTree()
   #For now only one base
+  assert len(I.getNodesFromType1(dist_tree, 'CGNSBase_t')) == 1
   dist_base = I.getNodeFromType1(dist_tree, 'CGNSBase_t')
   part_base = I.createNode(I.getName(dist_base), 'CGNSBase_t', I.getValue(dist_base), parent=part_tree)
 
   #Split S zones
   all_s_parts = []
   for zone in s_zones:
-    weights = dzone_to_weighted_parts.get(I.getName(zone), [])
+    zone_path = I.getName(dist_base) + '/' + I.getName(zone)
+    weights = dzone_to_weighted_parts.get(zone_path, [])
     s_parts = partS.part_s_zone(zone, weights, comm)
     for part in s_parts:
       I._addChild(part_base, part)

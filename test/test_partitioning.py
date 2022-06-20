@@ -20,7 +20,7 @@ def test_load_balancing(sub_comm):
   zone_to_parts. This dictionnary allow to control the number of partitions
   produced on each rank, as well as their size (if parmetis is used)
 
-  The dictionnary maps the name of the initial block to a list : the size
+  The dictionnary maps the path of the initial block to a list : the size
   of the list is the number of partitions to create for this rank, and
   the values are the desired weight (in % of cell) of each partition. Empty
   list means this rank will hold no partition for this block.
@@ -32,20 +32,21 @@ def test_load_balancing(sub_comm):
   # > This mesh has two blocks of different sizes (768 & 192 cells)
   mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
   dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  zone_paths = maia.pytree.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
 
   """ zone_to_parts dict can be specified by hand this way : """
   zone_to_parts = {}
   if sub_comm.Get_rank() == 0:
-    zone_to_parts['Small'] = []
-    zone_to_parts['Large'] = [.25]
+    zone_to_parts['Base/Small'] = []
+    zone_to_parts['Base/Large'] = [.25]
   if sub_comm.Get_rank() == 1:
-    zone_to_parts['Small'] = [1.] #Small block will not be cut
-    zone_to_parts['Large'] = [.25]
+    zone_to_parts['Base/Small'] = [1.] #Small block will not be cut
+    zone_to_parts['Base/Large'] = [.25]
   if sub_comm.Get_rank() == 2:
-    zone_to_parts['Small'] = []
-    zone_to_parts['Large'] = [.1, .1, .2, .1] #Large block will be cut in several parts !
-  assert sub_comm.allreduce(sum(zone_to_parts['Small']), MPI.SUM) == 1. and \
-         sub_comm.allreduce(sum(zone_to_parts['Large']), MPI.SUM) == 1.
+    zone_to_parts['Base/Small'] = []
+    zone_to_parts['Base/Large'] = [.1, .1, .2, .1] #Large block will be cut in several parts !
+  assert sub_comm.allreduce(sum(zone_to_parts['Base/Small']), MPI.SUM) == 1. and \
+         sub_comm.allreduce(sum(zone_to_parts['Base/Large']), MPI.SUM) == 1.
 
   """ Maia provides some helpers to automatically compute zone_to_parts dict :
 
@@ -53,17 +54,17 @@ def test_load_balancing(sub_comm):
   on each block. Weights will thus be homogenous : """
   zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 1)
 
-  for zone in I.getZones(dist_tree):
-    assert len(zone_to_parts[I.getName(zone)]) == 1
-    assert zone_to_parts[I.getName(zone)][0] == 1. / sub_comm.Get_size()
+  for zone_path in zone_paths:
+    assert len(zone_to_parts[zone_path]) == 1
+    assert zone_to_parts[zone_path][0] == 1. / sub_comm.Get_size()
 
   """ Note that n_part can be different for each proc :"""
   n_part = 3 if sub_comm.Get_rank == 1 else 1
   zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, n_part)
 
-  for zone in I.getZones(dist_tree):
-    assert len(zone_to_parts[I.getName(zone)]) == n_part
-    assert zone_to_parts[I.getName(zone)][0] == 1. / sub_comm.allreduce(n_part, MPI.SUM)
+  for zone_path in zone_paths:
+    assert len(zone_to_parts[zone_path]) == n_part
+    assert zone_to_parts[zone_path][0] == 1. / sub_comm.allreduce(n_part, MPI.SUM)
 
   """ the other function balance_multizone_tree try to balance the total number of
   partitioned cells for each rank while minimizing the number of partitions : """
@@ -71,10 +72,10 @@ def test_load_balancing(sub_comm):
   zone_to_parts = PPA.compute_balanced_weights(dist_tree, sub_comm)
 
   # """ We can see that the small zone will not be cut """
-  assert sub_comm.allreduce(len(zone_to_parts.get('Small', [])), MPI.SUM) == 1 and \
-         sub_comm.allreduce(len(zone_to_parts.get('Large', [])), MPI.SUM) == 3
-  assert sub_comm.allreduce(sum(zone_to_parts.get('Small', [])), MPI.SUM) == 1. and \
-         sub_comm.allreduce(sum(zone_to_parts.get('Large', [])), MPI.SUM) == 1.
+  assert sub_comm.allreduce(len(zone_to_parts.get('Base/Small', [])), MPI.SUM) == 1 and \
+         sub_comm.allreduce(len(zone_to_parts.get('Base/Large', [])), MPI.SUM) == 3
+  assert sub_comm.allreduce(sum(zone_to_parts.get('Base/Small', [])), MPI.SUM) == 1. and \
+         sub_comm.allreduce(sum(zone_to_parts.get('Base/Large', [])), MPI.SUM) == 1.
 
 @mark_mpi_test([3])
 def test_part_S(sub_comm, write_output):

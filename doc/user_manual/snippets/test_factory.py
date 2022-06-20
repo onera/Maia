@@ -28,7 +28,7 @@ def test_partition_dist_tree():
   #Crazy partitioning where each proc get as many partitions as its rank
   n_part_tot = n_rank * (n_rank + 1) // 2
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, \
-      zone_to_parts={'zone' : [1./n_part_tot for i in range(i_rank+1)]})
+      zone_to_parts={'Base/zone' : [1./n_part_tot for i in range(i_rank+1)]})
   assert len(maia.pytree.get_all_Zone_t(part_tree)) == i_rank+1
   #partition_dist_tree@end
 
@@ -43,7 +43,7 @@ def test_compute_regular_weights():
 
   zone_to_parts = mpart.compute_regular_weights(dist_tree, MPI.COMM_WORLD)
   if MPI.COMM_WORLD.Get_size() == 2:
-    assert zone_to_parts == {'Large': [0.5], 'Small': [0.5]}
+    assert zone_to_parts == {'Base/Large': [0.5], 'Base/Small': [0.5]}
   #compute_regular_weights@end
 
 def test_compute_balanced_weights():
@@ -58,7 +58,7 @@ def test_compute_balanced_weights():
 
   zone_to_parts = mpart.compute_balanced_weights(dist_tree, comm)
   if comm.Get_size() == 2 and comm.Get_rank() == 0:
-    assert zone_to_parts == {'Large': [0.375], 'Small': [1.0]}
+    assert zone_to_parts == {'Base/Large': [0.375], 'Base/Small': [1.0]}
   if comm.Get_size() == 2 and comm.Get_rank() == 1:
-    assert zone_to_parts == {'Large': [0.625]}
+    assert zone_to_parts == {'Base/Large': [0.625]}
   #compute_balanced_weights@end
