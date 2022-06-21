@@ -12,7 +12,7 @@ def copy_additional_nodes(dist_zone, part_zone):
   """
   #Zone data
   names = ['.Solver#Param']
-  types = ['FamilyName_t']
+  types = ['FamilyName_t', 'AdditionalFamilyName_t']
   for node in I.getChildren(dist_zone):
     if I.getName(node) in names or I.getType(node) in types:
       I._addChild(part_zone, node)
