@@ -175,7 +175,8 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
   # Init multipart object
   part_weight = prepare_part_weight(u_zones, n_part_per_zone, _dzone_to_weighted_parts)
 
-  pdm_part_tool     = 1 if part_options['graph_part_tool'] == 'parmetis' else 2
+  requested_tool = part_options['graph_part_tool']
+  pdm_part_tool = {'parmetis' : 1, 'ptscotch': 2, 'hilbert': 3}[requested_tool]
   pdm_weight_method = 2
   multi_part = PDM.MultiPart(len(u_zones), n_part_per_zone, 0, pdm_part_tool, pdm_weight_method, part_weight, comm)
 

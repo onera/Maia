@@ -92,7 +92,7 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
           if subkey in options[key].keys():
             options[key][subkey] = subval
   # > Check some values
-  assert options['graph_part_tool'] in ['ptscotch', 'parmetis', None]
+  assert options['graph_part_tool'] in ['ptscotch', 'parmetis', 'hilbert', None]
   assert options['part_interface_loc'] in ['Vertex', 'FaceCenter']
   assert options['output_connectivity'] in ['Element', 'NGon']
 
