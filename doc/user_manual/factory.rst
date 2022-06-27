@@ -22,8 +22,9 @@ Partitioning can be customized with the following keywords arguments:
 
     Graph partitioning library to use to split unstructured blocks. Irrelevent for structured blocks.
 
-    :Admissible values: ``parmetis``, ``ptscotch``
-    :Default value: ``ptscotch``, if installed; ``parmetis`` otherwise.
+    :Admissible values: ``parmetis``, ``ptscotch``, ``hilbert``. Blocks defined by nodal elements does 
+      not support hilbert method.
+    :Default value: ``parmetis``, if installed; else ``ptscotch``, if installed; ``hilbert`` otherwise.
 
 .. py:attribute:: zone_to_parts
 

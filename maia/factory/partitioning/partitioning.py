@@ -29,10 +29,12 @@ def set_default(dist_tree, comm):
              'additional_color'        : [],
              'dump_pdm_output'    : False }
 
-  if pdm_has_ptscotch:
-    default['graph_part_tool'] = 'ptscotch'
-  elif pdm_has_parmetis:
+  if pdm_has_parmetis:
     default['graph_part_tool'] = 'parmetis'
+  elif pdm_has_ptscotch:
+    default['graph_part_tool'] = 'ptscotch'
+  else:
+    default['graph_part_tool'] = 'hilbert'
   default['reordering']['graph_part_tool'] = default['graph_part_tool']
 
   # part_interface_loc : Vertex si Elements, FaceCenter si NGons
