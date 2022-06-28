@@ -6,6 +6,7 @@
 #else //C++==17
 #endif //C++>17
 #include "maia/algo/part/geometry/geometry.pybind.hpp"
+#include "maia/algo/part/ngon_tools/ngon_tools.pybind.hpp"
 #include "maia/algo/part/cgns_registry/cgns_registry.pybind.hpp"
 #include "maia/algo/part/part_algo.pybind.hpp"
 
@@ -112,6 +113,9 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("ngon_pe").noconvert(),
         py::arg("nface_eso").noconvert() = py::none(),
         py::arg("nface_ec").noconvert()  = py::none());
+
+  m.def("local_pe_to_local_cellface", &local_pe_to_local_cellface,
+        py::arg("local_pe").noconvert());
 
   m.def("adapt_match_information", &adapt_match_information,
         py::arg("np_neighbor_idx"    ).noconvert(),
