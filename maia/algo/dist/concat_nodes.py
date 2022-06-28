@@ -124,3 +124,12 @@ def concatenate_jns(tree, comm):
           I.setName(jn, I.getName(jn) + '_' + PT.Subset.GridLocation(jn)[0])
           opp_name_node = I.getNodeFromName1(jn, "GridConnectivityDonorName")
           I.setValue(opp_name_node, I.getValue(opp_name_node) + '_' + PT.Subset.GridLocation(jn)[0])
+  # If we have multiple periodic jns or intrazone periodics, we can not guarantee that GridConnectivityDonorName is
+  # good so rebuild it
+  perio_found = False
+  for jn in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', match_jns]):
+    perio_found = I.getNodeFromType1(jn, 'GridConnectivityProperty_t') is not None
+    if perio_found:
+      break
+  if perio_found:
+    MJT.add_joins_donor_name(tree, comm, force=True)

@@ -56,7 +56,7 @@ def test_concatenate_subset_nodes(sub_comm):
   assert (I.getNodeFromName(node, 'Data')[1] == expected_data).all()
 
 @mark_mpi_test([1])
-@pytest.mark.parametrize("mode", ['', 'intrazone', 'periodic'])
+@pytest.mark.parametrize("mode", ['', 'intrazone', 'periodic', 'intraperio'])
 def test_concatenate_jns(sub_comm, mode):
   yt = """
   ZoneA Zone_t [[11, 10, 0]]:
@@ -90,7 +90,7 @@ def test_concatenate_jns(sub_comm, mode):
   dist_tree = F2D.distribute_tree(tree, sub_comm)
   zones = I.getZones(dist_tree)
 
-  if mode=='intrazone':
+  if mode in ['intrazone', 'intraperio']:
     zgc1 = I.getNodeFromPath(dist_tree, 'Base/ZoneA/ZGC')
     for gc in I.getNodesFromType1(zgc1, 'GridConnectivity_t'):
       I.setValue(gc, "ZoneA")
@@ -99,11 +99,11 @@ def test_concatenate_jns(sub_comm, mode):
       I._addChild(zgc1, gc)
     I._rmNodesByName(dist_tree, I.getName(zones[1]))
 
-  if mode=='periodic':
-    for gc in I.getNodesFromType(zones[0], 'GridConnectivity_t'):
+  if mode in ['periodic', 'intraperio']:
+    for gc in I.getNodesFromType(dist_tree, 'GridConnectivity_t')[:2]:
       gcp = I.newGridConnectivityProperty(parent=gc)
       I.newPeriodic(rotationCenter=[0.,0.,0.], rotationAngle=[45.,0.,0.], translation=[0.,0.,0.], parent=gcp)
-    for gc in I.getNodesFromType(zones[1], 'GridConnectivity_t'):
+    for gc in I.getNodesFromType(dist_tree, 'GridConnectivity_t')[2:]:
       gcp = I.newGridConnectivityProperty(parent=gc)
       I.newPeriodic(rotationCenter=[0.,0.,0.], rotationAngle=[-45.,0.,0.], translation=[0.,0.,0.], parent=gcp)
 
