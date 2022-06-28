@@ -147,10 +147,11 @@ Base CGNSBase_t:
     assert MJT.get_jn_donor_path(self.dist_tree, 'Base/ZoneA/ZGC/match1') == 'Base/ZoneB/ZGC/match2'
 
   def test_update_jn_name(self):
-    ini_gc = I.getNodeFromPath(self.dist_tree, 'Base/ZoneA/ZGC/perio2')
-    MJT.update_jn_name(self.dist_tree, 'Base/ZoneA/ZGC/perio2', 'PERIO2')
+    dist_tree = I.copyTree(self.dist_tree)
+    ini_gc = I.getNodeFromPath(dist_tree, 'Base/ZoneA/ZGC/perio2')
+    MJT.update_jn_name(dist_tree, 'Base/ZoneA/ZGC/perio2', 'PERIO2')
     assert ini_gc[0] == 'PERIO2'
-    assert I.getValue(I.getNodeFromPath(self.dist_tree, 'Base/ZoneA/ZGC/perio1/GridConnectivityDonorName')) == 'PERIO2'
+    assert I.getValue(I.getNodeFromPath(dist_tree, 'Base/ZoneA/ZGC/perio1/GridConnectivityDonorName')) == 'PERIO2'
 
   def test_get_matching_jns(self):
     pathes = MJT.get_matching_jns(self.dist_tree)
@@ -158,16 +159,18 @@ Base CGNSBase_t:
     assert pathes[1] == ('Base/ZoneA/ZGC/match1', 'Base/ZoneB/ZGC/match2')
 
   def test_match_jn_from_ordinals(self):
-    MJT.copy_donor_subset(self.dist_tree)
+    dist_tree = I.copyTree(self.dist_tree)
+    MJT.copy_donor_subset(dist_tree)
     expected_pl_opp = [[2,4], [1,3], [-100,-10], [10,100]]
-    for i, jn in enumerate(I.getNodesFromType(self.dist_tree, 'GridConnectivity_t')):
+    for i, jn in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
       assert (I.getNodeFromName1(jn, 'PointListDonor')[1] == expected_pl_opp[i]).all()
 
   def test_store_interfaces_ids(self):
-    MJT.store_interfaces_ids(self.dist_tree)
+    dist_tree = I.copyTree(self.dist_tree)
+    MJT.store_interfaces_ids(dist_tree)
     expected_id = [1,1,2,2]
     expected_pos = [0,1,0,1]
-    for i, jn in enumerate(I.getNodesFromType(self.dist_tree, 'GridConnectivity_t')):
+    for i, jn in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
       assert (I.getNodeFromName1(jn, 'DistInterfaceId')[1] == expected_id[i]).all()
       assert (I.getNodeFromName1(jn, 'DistInterfaceOrd')[1] == expected_pos[i]).all()
 
