@@ -1,6 +1,7 @@
 import numpy as np
 
 import Converter.Internal as I
+import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -98,10 +99,10 @@ def post_partitioning(dist_tree, part_tree, comm):
   dist_zones     = I.getZones(dist_tree)
   all_part_zones = I.getZones(part_tree)
   parts_prefix    = [MT.conv.get_part_prefix(I.getName(zone)) for zone in all_part_zones]
-  for dist_zone in dist_zones:
+  for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     # Recover matching zones
-    part_zones = [part for part,prefix in zip(all_part_zones,parts_prefix) if \
-        prefix == I.getName(dist_zone)]
+    dist_zone  = I.getNodeFromPath(dist_tree, dist_zone_path)
+    part_zones = maia.transfer.utils.get_partitioned_zones(part_tree, dist_zone_path)
 
     # Create point list
     pl_paths = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneSubRegion_t', 
@@ -112,9 +113,6 @@ def post_partitioning(dist_tree, part_tree, comm):
       copy_additional_nodes(dist_zone, part_zone)
             
   # Match original joins
-  # For now only one base is supported; this function is in fact called with CGNSBase_t
-  true_dist_tree = ['CGNSTree', None, [dist_tree], 'CGNSTree_t']
-  true_part_tree = ['CGNSTree', None, [part_tree], 'CGNSTree_t']
-  JBTP.get_pl_donor(true_dist_tree, true_part_tree, comm)
-  split_original_joins(true_part_tree)
+  JBTP.get_pl_donor(dist_tree, part_tree, comm)
+  split_original_joins(part_tree)
 

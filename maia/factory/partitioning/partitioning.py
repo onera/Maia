@@ -1,9 +1,10 @@
 import Converter.Internal as I
-import maia.pytree.sids   as SIDS
+import maia.pytree as PT
 
 from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
+
 from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
@@ -39,7 +40,7 @@ def set_default(dist_tree, comm):
 
   # part_interface_loc : Vertex si Elements, FaceCenter si NGons
   for zone in I.getZones(dist_tree):
-    if 22 in [SIDS.Element.Type(elt) for elt in I.getNodesFromType1(zone, 'Elements_t')]:
+    if 22 in [PT.Element.Type(elt) for elt in I.getNodesFromType1(zone, 'Elements_t')]:
       default['part_interface_loc'] = 'FaceCenter'
       break
 
@@ -111,51 +112,52 @@ def _partitioning(dist_tree,
                   comm,
                   part_options):
 
-  all_zones = I.getZones(dist_tree)
-  u_zones   = [zone for zone in all_zones if SIDS.Zone.Type(zone) == 'Unstructured']
-  s_zones   = [zone for zone in all_zones if SIDS.Zone.Type(zone) == 'Structured']
+  u_zones   = [zone for zone in I.getZones(dist_tree) if PT.Zone.Type(zone) == 'Unstructured']
+  s_zones   = [zone for zone in I.getZones(dist_tree) if PT.Zone.Type(zone) == 'Structured']
 
   if len(u_zones)*len(s_zones) != 0:
     raise RuntimeError("Hybrid meshes are not yet supported")
 
   MJT.add_joins_donor_name(dist_tree, comm)
 
-  part_tree = I.newCGNSTree()
-  #For now only one base
-  assert len(I.getNodesFromType1(dist_tree, 'CGNSBase_t')) == 1
-  dist_base = I.getNodeFromType1(dist_tree, 'CGNSBase_t')
-  part_base = I.createNode(I.getName(dist_base), 'CGNSBase_t', I.getValue(dist_base), parent=part_tree)
+  is_s_zone = lambda n : I.getType(n) == 'Zone_t' and PT.Zone.Type(n) == 'Structured'
+  is_u_zone = lambda n : I.getType(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
 
-  #Split S zones
-  all_s_parts = []
-  for zone in s_zones:
-    zone_path = I.getName(dist_base) + '/' + I.getName(zone)
-    weights = dzone_to_weighted_parts.get(zone_path, [])
-    s_parts = partS.part_s_zone(zone, weights, comm)
-    for part in s_parts:
-      I._addChild(part_base, part)
-    all_s_parts.extend(s_parts)
+  part_tree = I.newCGNSTree()
+  for dist_base in I.getNodesFromType1(dist_tree, 'CGNSBase_t'):
+
+    part_base = I.createNode(I.getName(dist_base), 'CGNSBase_t', I.getValue(dist_base), parent=part_tree)
+    #Add top level nodes
+    for node in I.getChildren(dist_base):
+      if I.getType(node) != "Zone_t":
+        I.addChild(part_base, node)
+
+    #Split S zones
+    for zone in PT.iter_children_from_predicate(dist_base, is_s_zone):
+      zone_path = I.getName(dist_base) + '/' + I.getName(zone)
+      weights = dzone_to_weighted_parts.get(zone_path, [])
+      s_parts = partS.part_s_zone(zone, weights, comm)
+      for part in s_parts:
+        I._addChild(part_base, part)
+
+  all_s_parts = I.getZones(part_tree) #At this point we only have S parts
   partS.split_original_joins_S(all_s_parts, comm)
 
-  #Split U zones
+  #Split U zones (all at once)
+  base_to_blocks_u = {I.getName(base) : I.getZones(base) for base in I.getBases(dist_tree)}
   if len(u_zones) > 0:
-    u_parts = partU.part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options)
-    for part in u_parts:
-      I._addChild(part_base, part)
+    base_to_parts_u = partU.part_U_zones(base_to_blocks_u, dzone_to_weighted_parts, comm, part_options)
+    for base, u_parts in base_to_parts_u.items():
+      part_base = I.getNodeFromName1(part_tree, base)
+      for u_part in u_parts:
+        if not part_options['preserve_orientation']:
+          try:
+            PT.Zone.NGonNode(u_part)
+            CNT.enforce_boundary_pe_left(u_part)
+          except RuntimeError: #Zone is elements-defined
+            pass
+        I._addChild(part_base, u_part)
 
-  post_split(dist_base, part_base, comm)
-
-  if len(u_zones) > 0 and not part_options['preserve_orientation']:
-    for u_part in u_parts:
-      try:
-        SIDS.Zone.NGonNode(u_part)
-        CNT.enforce_boundary_pe_left(u_part)
-      except RuntimeError: #Zone is elements-defined
-        pass
-
-  #Add top level nodes
-  for node in I.getChildren(dist_base):
-    if I.getType(node) != "Zone_t":
-      I.addChild(part_base, node)
+  post_split(dist_tree, part_tree, comm)
 
   return part_tree

@@ -159,6 +159,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
           I._addChild(part_bc, I.getNodeFromType1(dist_bc, 'GridConnectivityType_t'))
           I._addChild(part_bc, I.getNodeFromType1(dist_bc, 'GridConnectivityProperty_t'))
           if I.getNodeFromName1(dist_bc, 'GridConnectivityDonorName') is not None:
+            I._addChild(part_bc, I.getNodeFromName1(dist_bc, 'GridConnectivityDonorName'))
             I.createChild(part_bc, 'distPR', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRange')[1])
             I.createChild(part_bc, 'distPRDonor', 'IndexRange_t', I.getNodeFromName1(dist_bc, 'PointRangeDonor')[1])
             I.newDataArray('zone_offset', p_zone_offset, parent=part_bc)
@@ -325,8 +326,11 @@ def split_original_joins_S(all_part_zones, comm):
 
             #Effective creation of GC in part zone
             gc_name  = I.getName(jn) + '.' + str(i_sub_jn)
+            # Catch opposite base if present
+            opp_path = I.getValue(jn)
+            opp_base = opp_path.split('/')[0] + '/' if '/' in opp_path else ''
             opp_zone = I.getName(opposed_join)
-            part_gc = I.newGridConnectivity1to1(gc_name, opp_zone,
+            part_gc = I.newGridConnectivity1to1(gc_name, opp_base + opp_zone,
                                                 pointRange=sub_pr, pointRangeDonor=sub_prd,
                                                 transform = transform, parent=zone_gc)
             I._addChild(part_gc, I.getNodeFromType1(jn, 'GridConnectivityProperty_t'))
