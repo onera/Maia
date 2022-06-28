@@ -101,3 +101,14 @@ def test_interpolate_from_part_trees():
   tgt_sol = PT.get_node_from_name(part_tree_tgt, 'FlowSolution')
   assert tgt_sol is not None and PT.Subset.GridLocation(tgt_sol) == 'Vertex'
   #interpolate_from_part_trees@end
+
+def test_pe_to_nface():
+  #pe_to_nface@start
+  from mpi4py import MPI
+  import maia
+  tree = maia.factory.generate_dist_block(6, 'Poly', MPI.COMM_WORLD)
+
+  for zone in maia.pytree.get_all_Zone_t(tree):
+    maia.algo.pe_to_nface(zone, MPI.COMM_WORLD)
+    assert maia.pytree.get_child_from_name(zone, 'NFaceElements') is not None
+  #pe_to_nface@end

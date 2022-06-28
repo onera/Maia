@@ -3,10 +3,12 @@ import numpy as np
 import Pypdm.Pypdm as PDM
 
 import Converter.Internal as I
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.pytree.sids import elements_utils as EU
 
+import maia
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils import np_utils, par_utils, layouts
 
@@ -258,8 +260,12 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_le
   """
   if cgns_elmt_name is None or cgns_elmt_name in ["Structured", "S"]:
     raise NotImplementedError
-  elif cgns_elmt_name.upper() in ["POLY"]:
-    return dcube_generate(n_vtx, edge_length, origin, comm)
+  elif cgns_elmt_name.upper() in ["POLY", "NFACE_N"]:
+    dist_tree = dcube_generate(n_vtx, edge_length, origin, comm)
+    if cgns_elmt_name.upper() == "NFACE_N":
+      for zone in PT.get_all_Zone_t(dist_tree):
+        maia.algo.pe_to_nface(zone, comm, removePE=True)
+    return dist_tree
   else:
     return dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm)
 
