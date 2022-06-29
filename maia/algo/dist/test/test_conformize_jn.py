@@ -1,8 +1,10 @@
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
+import numpy as np
 
 import Converter.Internal as I
 
+import maia
 from maia.utils.yaml import parse_yaml_cgns
 from maia.factory    import full_to_dist as F2D
 from maia.factory    import dcube_generator  as DCG
@@ -13,6 +15,7 @@ from maia.algo.dist  import conformize_jn as CJN
 @pytest.mark.parametrize("from_loc", ["Vertex", "FaceCenter"])
 def test_conformize_jn_pair(sub_comm, from_loc):
   dist_tree = DCG.dcube_generate(5, 1., [0., 0., 0.], sub_comm)
+  isize = 'I8' if maia.npy_pdm_gnum_dtype == np.int64 else 'I4'
   # Add a fake join
   if from_loc == "Vertex":
     loc = 'Vertex'
@@ -26,13 +29,13 @@ def test_conformize_jn_pair(sub_comm, from_loc):
   matchA GridConnectivity_t "zone":
     GridConnectivityType GridConnectivityType_t "Abutting1to1":
     GridLocation GridLocation_t "{loc}":
-    PointList IndexArray_t {pl}:
-    PointListDonor IndexArray_t {pld}:
+    PointList IndexArray_t {isize} {pl}:
+    PointListDonor IndexArray_t {isize} {pld}:
   matchB GridConnectivity_t "zone":
     GridConnectivityType GridConnectivityType_t "Abutting1to1":
     GridLocation GridLocation_t "{loc}":
-    PointList IndexArray_t {pld}:
-    PointListDonor IndexArray_t {pl}:
+    PointList IndexArray_t {isize} {pld}:
+    PointListDonor IndexArray_t {isize} {pl}:
   """
   gcs = [F2D.distribute_pl_node(gc, sub_comm) for gc in parse_yaml_cgns.to_nodes(yt)]
   zone = I.getZones(dist_tree)[0]

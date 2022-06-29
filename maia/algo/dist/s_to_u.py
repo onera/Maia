@@ -107,7 +107,7 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_
     ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx.reshape(-1,1,1), j_idx.reshape(-1,1), k_idx)
 
   sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
-  point_list = np.empty((1, sum(sub_range_sizes)), order='F', dtype=pdm_gnum_dtype)
+  point_list = np.empty((1, sum(sub_range_sizes)), order='F', dtype=n_vtx_S.dtype)
   counter = 0
 
   for ipr, pr in enumerate(sub_pr_list):

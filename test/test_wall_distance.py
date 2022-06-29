@@ -16,7 +16,7 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 def test_wall_distance_S(method, sub_comm, write_output):
 
   mesh_file = os.path.join(mesh_dir, 'S_twoblocks.yaml')
-  ref_file  = os.path.join(ref_dir,     'S_twoblocks_walldist.yaml')
+  ref_file  = os.path.join(ref_dir,  'S_twoblocks_walldist.yaml')
 
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
@@ -50,7 +50,8 @@ def test_wall_distance_S(method, sub_comm, write_output):
     for d_zone in I.getZones(d_base):
       zone_path = '/'.join([I.getName(d_base), I.getName(d_zone)])
       ref_wall_dist = I.getNodeFromPath(refence_solution, zone_path + '/WallDistance')
-      assert maia.pytree.is_same_tree(ref_wall_dist, I.getNodeFromName1(d_zone, 'WallDistance'), abs_tol=1E-14)
+      assert maia.pytree.is_same_tree(ref_wall_dist, I.getNodeFromName1(d_zone, 'WallDistance'), 
+          type_tol=True, abs_tol=1E-14)
 
 wall_dist_methods = ["cloud"]
 if maia.pdma_enabled:
@@ -89,5 +90,6 @@ def test_wall_distance_U(method, sub_comm, write_output):
     for d_zone in I.getZones(d_base):
       zone_path = '/'.join([I.getName(d_base), I.getName(d_zone)])
       ref_wall_dist = I.getNodeFromPath(refence_solution, zone_path + '/WallDistance')
-      assert maia.pytree.is_same_tree(ref_wall_dist, I.getNodeFromName1(d_zone, 'WallDistance'), abs_tol=1E-14)
+      assert maia.pytree.is_same_tree(ref_wall_dist, I.getNodeFromName1(d_zone, 'WallDistance'),
+          type_tol=True, abs_tol=1E-14)
 

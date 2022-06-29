@@ -12,13 +12,14 @@ from  maia.utils.yaml   import parse_yaml_cgns
 from maia.algo.part import extract_boundary as EXB
 
 def test_pr_to_face_pl():
-  pl = EXB._pr_to_face_pl([4,5,5], np.array([[1,1], [1,3], [1,3]], order='F'), 'Vertex')
+  n_vtx = np.array([4,5,5], np.int32)
+  pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,1], [1,3], [1,3]], order='F'), 'Vertex')
   assert (pl == [[1,5,17,21]]).all()
-  pl = EXB._pr_to_face_pl([4,5,5], np.array([[1,4], [1,5], [5,5]], order='F'), 'Vertex')
+  pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,4], [1,5], [5,5]], order='F'), 'Vertex')
   assert (pl == [[173,174,175,176,177,178,179,180,181,182,183,184]]).all()
-  pl = EXB._pr_to_face_pl([4,5,5], np.array([[1,3], [1,4], [5,5]], order='F'), 'FaceCenter')
+  pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,3], [1,4], [5,5]], order='F'), 'FaceCenter')
   assert (pl == [[173,174,175,176,177,178,179,180,181,182,183,184]]).all()
-  pl = EXB._pr_to_face_pl([4,5,5], np.array([[1,3], [1,4], [4,4]], order='F'), 'CellCenter')
+  pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,3], [1,4], [4,4]], order='F'), 'CellCenter')
   assert (pl == [[173,174,175,176,177,178,179,180,181,182,183,184]]).all()
 
 def test_extract_sub_connectivity():

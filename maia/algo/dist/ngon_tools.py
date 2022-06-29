@@ -31,10 +31,11 @@ def pe_to_nface(zone, comm, remove_PE=False):
   local_pe = indexing.get_ngon_pe_local(ngon_node).reshape(-1, order='C')
 
   cell_face_idx, cell_face = PDM.dfacecell_to_dcellface(comm, face_distri, cell_distri, local_pe)
+  cell_face_idx = cell_face_idx.astype(cell_face.dtype, copy=False) #PDM always output int32
   cell_face_range  = np.array([1, PT.Zone.n_cell(zone)], zone[1].dtype) + PT.Zone.n_face(zone)
   nface_ec_distr_f = par_utils.gather_and_shift(cell_face_idx[-1], comm)
   nface_ec_distri  = par_utils.full_to_partial_distribution(nface_ec_distr_f, comm)
-  eso = cell_face_idx+nface_ec_distri[0]
+  eso = cell_face_idx + nface_ec_distri[0]
 
   nface = I.newElements('NFaceElements', 'NFACE',  parent=zone)
   I.newPointRange("ElementRange", cell_face_range, parent=nface)
@@ -74,7 +75,7 @@ def nface_to_pe(zone, comm, remove_NFace=False):
     _cell_face_sign = np.sign(cell_face)
     _cell_face = np.abs(cell_face) - PT.Element.Size(nface_node)
     _cell_face = _cell_face * _cell_face_sign
-  _cell_face_idx = cell_face_idx - nface_distri_c[0] #Go to local idx
+  _cell_face_idx = (cell_face_idx - nface_distri_c[0]).astype(np.int32, copy=False) #Go to local idx
 
   face_cell = PDM.dcellface_to_dfacecell(comm, face_distri, cell_distri, _cell_face_idx, _cell_face)
   np_utils.shift_nonzeros(face_cell, PT.Element.Range(nface_node)[0]-1) # Refer to NFace global ids

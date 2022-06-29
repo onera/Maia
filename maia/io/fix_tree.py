@@ -95,7 +95,7 @@ def _enforce_pdm_dtype(tree):
   for zone in I.getZones(tree):
     zone[1] = zone[1].astype(npy_pdm_gnum_dtype)
     for elmt in I.getNodesFromType1(zone, 'Elements_t'):
-      for name in ['ElementConnectivity', 'ElementStartOffset', 'ParentElements']:
+      for name in ['ElementRange', 'ElementConnectivity', 'ElementStartOffset', 'ParentElements']:
         node = I.getNodeFromName1(elmt, name)
         if node:
           node[1] = node[1].astype(npy_pdm_gnum_dtype)
