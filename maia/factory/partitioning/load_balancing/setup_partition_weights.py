@@ -2,6 +2,7 @@ import numpy as np
 import logging as LOG
 
 import Converter.Internal as I
+import maia.pytree        as PT
 import maia.pytree.sids   as SIDS
 
 from .single_zone_balancing import homogeneous_repart
@@ -34,7 +35,8 @@ def npart_per_zone(tree, comm, n_part=1):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  nb_elmt_per_zone = {I.getName(zone) : SIDS.Zone.n_cell(zone) for zone in I.getZones(tree)}
+  zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
+  nb_elmt_per_zone = {zone_path : SIDS.Zone.n_cell(I.getNodeFromPath(tree, zone_path)) for zone_path in zone_paths}
 
   n_part_np = np.asarray(n_part, dtype=np.int32)
 
@@ -48,11 +50,11 @@ def npart_per_zone(tree, comm, n_part=1):
 
   start_idx = n_part_distri[i_rank]
   end_idx   = n_part_distri[i_rank+1]
-  repart_per_zone = {zone : homogeneous_repart(n_cell, n_part_tot)[start_idx:end_idx]
-      for zone, n_cell in nb_elmt_per_zone.items()}
+  repart_per_zone = {zone_path : homogeneous_repart(n_cell, n_part_tot)[start_idx:end_idx]
+      for zone_path, n_cell in nb_elmt_per_zone.items()}
 
-  zone_to_weights = {zone : [k/nb_elmt_per_zone[zone] for k in repart]
-      for zone, repart in repart_per_zone.items()}
+  zone_to_weights = {zone_path : [k/nb_elmt_per_zone[zone_path] for k in repart]
+      for zone_path, repart in repart_per_zone.items()}
 
   return zone_to_weights
 
@@ -92,7 +94,8 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  nb_elmt_per_zone = {I.getName(zone) : SIDS.Zone.n_cell(zone) for zone in I.getZones(tree)}
+  zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
+  nb_elmt_per_zone = {zone_path : SIDS.Zone.n_cell(I.getNodeFromPath(tree, zone_path)) for zone_path in zone_paths}
 
   repart_per_zone = balance_with_uniform_weights(nb_elmt_per_zone, n_rank) if only_uniform \
                else balance_with_non_uniform_weights(nb_elmt_per_zone, n_rank)
@@ -111,24 +114,24 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
   LOG.info(' '*4 + "    zoneName  zoneSize :  procElem nPart TnPart %ofZone %ofProc")
   if sum(proc_elmts) == 0:
     LOG.warning(f"Proc {i_rank} was not affected to any zone")
-  for izone, zone in enumerate(repart_per_zone.keys()):
-    zone_pc = np.around(100*proc_elmts[izone]/nb_elmt_per_zone[zone])
+  for izone, zone_path in enumerate(repart_per_zone.keys()):
+    zone_pc = np.around(100*proc_elmts[izone]/nb_elmt_per_zone[zone_path])
     try:
       proc_pc = np.around(100*proc_elmts[izone]/sum(proc_elmts))
     except ZeroDivisionError:
       proc_pc = 0.
     LOG.info(' '*4 + "{0:>12.12} {1:9d} : {2:9d} {3:>5} {4:>6}  {5:>6}  {6:>6}".format(
-      zone, nb_elmt_per_zone[zone], proc_elmts[izone], n_part[izone], tn_part[izone], zone_pc, proc_pc))
+      zone_path, nb_elmt_per_zone[zone_path], proc_elmts[izone], n_part[izone], tn_part[izone], zone_pc, proc_pc))
   LOG.info('')
   tot_pc = np.around(100*sum(proc_elmts)/sum(nb_elmt_per_zone.values()))
   LOG.info(' '*4 + "       Total {1:9d} : {2:9d} {3:>5} {4:>6}  {5:>6}  {6:>6}".format(
-    zone, sum(nb_elmt_per_zone.values()), sum(proc_elmts), sum(n_part), sum(tn_part), tot_pc, 100))
+    zone_path, sum(nb_elmt_per_zone.values()), sum(proc_elmts), sum(n_part), sum(tn_part), tot_pc, 100))
   LOG.info(' '*2 + "------------------------------------------------------------------ " )
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Convert to expected format and return
-  zone_to_weights = {zone: [repart[i_rank]/nb_elmt_per_zone[zone]] if repart[i_rank] > 0 else []
-      for zone, repart in repart_per_zone.items()}
+  zone_to_weights = {zone_path: [repart[i_rank]/nb_elmt_per_zone[zone_path]] \
+      for zone_path, repart in repart_per_zone.items() if repart[i_rank] > 0}
   return zone_to_weights
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::

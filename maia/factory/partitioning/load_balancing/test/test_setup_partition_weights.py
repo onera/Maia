@@ -19,7 +19,7 @@ Base0 CGNSBase_t [3,3]:
   def test_one_part(self, sub_comm):
     zone_to_weights = setup_partition_weights.npart_per_zone(self.dist_tree, sub_comm)
     for zone in I.getZones(self.dist_tree):
-      assert I.getName(zone) in zone_to_weights
+      assert 'Base0/'+I.getName(zone) in zone_to_weights
     for zone, weights in zone_to_weights.items():
       assert len(weights) == 1
       assert abs(weights[0] - 1./3.) < 1E-2 #Bad precision due to remainder
@@ -46,22 +46,21 @@ Base0 CGNSBase_t [3,3]:
     zone_to_weights = setup_partition_weights.balance_multizone_tree(self.dist_tree,
         sub_comm, only_uniform=True)
     if sub_comm.Get_rank() == 0:
-      assert zone_to_weights['ZoneU1'] == [1.0]
-      assert zone_to_weights['ZoneU2'] == [1.0]
-      assert zone_to_weights['ZoneS']  == []
+      assert zone_to_weights['Base0/ZoneU1'] == [1.0]
+      assert zone_to_weights['Base0/ZoneU2'] == [1.0]
+      assert 'Base0/ZoneS' not in zone_to_weights
     elif sub_comm.Get_rank() == 1:
-      assert zone_to_weights['ZoneU1'] == []
-      assert zone_to_weights['ZoneU2'] == []
-      assert zone_to_weights['ZoneS']  == [1.0]
+      assert 'Base0/ZoneU1' not in zone_to_weights
+      assert 'Base0/ZoneU2' not in zone_to_weights
+      assert zone_to_weights['Base0/ZoneS']  == [1.0]
 
   def test_non_uniform(self, sub_comm):
     zone_to_weights = setup_partition_weights.balance_multizone_tree(self.dist_tree, sub_comm)
     if sub_comm.Get_rank() == 0:
-      assert zone_to_weights['ZoneU1'] == [.238]
-      assert zone_to_weights['ZoneU2'] == [1.0]
-      assert zone_to_weights['ZoneS']  == [1.0]
+      assert zone_to_weights['Base0/ZoneU1'] == [.238]
+      assert zone_to_weights['Base0/ZoneU2'] == [1.0]
+      assert zone_to_weights['Base0/ZoneS']  == [1.0]
     elif sub_comm.Get_rank() == 1:
-      assert zone_to_weights['ZoneU1'] == [.762]
-      assert zone_to_weights['ZoneU2'] == []
-      assert zone_to_weights['ZoneS']  == []
-
+      assert zone_to_weights['Base0/ZoneU1'] == [.762]
+      assert 'Base0/ZoneU2' not in zone_to_weights
+      assert 'Base0/ZoneS'  not in zone_to_weights

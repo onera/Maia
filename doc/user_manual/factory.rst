@@ -22,8 +22,9 @@ Partitioning can be customized with the following keywords arguments:
 
     Graph partitioning library to use to split unstructured blocks. Irrelevent for structured blocks.
 
-    :Admissible values: ``parmetis``, ``ptscotch``
-    :Default value: ``ptscotch``, if installed; ``parmetis`` otherwise.
+    :Admissible values: ``parmetis``, ``ptscotch``, ``hilbert``. Blocks defined by nodal elements does 
+      not support hilbert method.
+    :Default value: ``parmetis``, if installed; else ``ptscotch``, if installed; ``hilbert`` otherwise.
 
 .. py:attribute:: zone_to_parts
 
@@ -44,6 +45,14 @@ Partitioning can be customized with the following keywords arguments:
     Dictionnary of reordering options, which are used to renumber the entities in each partitioned zone. See
     corresponding documentation.
 
+.. py:attribute:: preserve_orientation
+
+    If True, the created interface faces are not reversed and keep their original orientation. Consequently,
+    NGonElements can have a zero left parent and a non zero right parent.
+    Only relevant for U/NGon partitions.
+
+    :Default value: ``False``
+
 .. py:attribute:: dump_pdm_output
 
     If True, dump the raw arrays created by paradigm in a :cgns:`CGNSNode` at (partitioned) zone level. For debug only.
@@ -57,9 +66,9 @@ Repartition
 
 The number, size, and repartition (over the processes) of the created partitions is
 controlled through the ``zone_to_parts`` keyword argument: each process must provide a
-dictionary associating the name of every distributed zone to a list of floats.
+dictionary associating the path of every distributed zone to a list of floats.
 For a given distributed zone, current process will receive as many partitions
-as the length of the list (empty list means no partitions); the size of these partitions
+as the length of the list (missing path or empty list means no partitions); the size of these partitions
 corresponds to the values in the list (expressed in fraction of the input zone).
 For a given distributed zone, the sum of all the fractions across all the processes must
 be 1.

@@ -14,10 +14,18 @@ def test_prepare_part_weight():
   zones = [I.newZone('ZoneA', ztype='Unstructured'),
            I.newZone('ZoneB', ztype='Unstructured'),
            I.newZone('ZoneC', ztype='Unstructured')]
-  n_part_per_zone = np.array([1,0,3], dtype=np.int32)
-  d_zone_to_parts = {'ZoneA' : [.3], 'ZoneB' : [], 'ZoneC' : [.2,.5,.3]}
-  assert (partU.prepare_part_weight(zones, n_part_per_zone, d_zone_to_parts)\
-      == [.3,.2,.5,.3]).all()
+
+  base_to_blocks  = {'Base' : zones}
+  d_zone_to_parts = {'Base/ZoneA' : [.3], 'Base/ZoneB' : [], 'Base/ZoneC' : [.2,.5,.3]}
+  n_part_per_zone, part_weight = partU.prepare_part_weight(base_to_blocks, d_zone_to_parts)
+  assert (n_part_per_zone == [1,0,3]).all()
+  assert (part_weight == [.3,.2,.5,.3]).all()
+
+  base_to_blocks  = {'Base' : [zones[0]], 'Base2' : zones[1:]}
+  d_zone_to_parts = {'Base2/ZoneC' : [.2,.5,.3], 'Base/ZoneA' : [.3], 'Base2/ZoneB' : []}
+  n_part_per_zone, part_weight = partU.prepare_part_weight(base_to_blocks, d_zone_to_parts)
+  assert (n_part_per_zone == [1,0,3]).all()
+  assert (part_weight == [.3,.2,.5,.3]).all()
 
 def test_set_mpart_reordering():
   keep_alive = []

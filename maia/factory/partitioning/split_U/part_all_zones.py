@@ -38,13 +38,22 @@ maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
                             "elmt_edge" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_EDGE,
                             "elmt_vtx " : PDM._PDM_CONNECTIVITY_TYPE_ELMT_VTX}
 
-def prepare_part_weight(zones, n_part_per_zone, dzone_to_weighted_parts):
-  part_weight = np.empty(sum(n_part_per_zone), dtype='float64')
-  offset = 0
-  for i_zone, zone in enumerate(zones):
-    part_weight[offset:offset+n_part_per_zone[i_zone]] = dzone_to_weighted_parts[I.getName(zone)]
-    offset += n_part_per_zone[i_zone]
-  return part_weight
+def prepare_part_weight(bases_to_block, zone_to_weights):
+  n_zones = sum([len(zones) for zones in bases_to_block.values()])
+  n_parts = sum([len(weights) for weights in zone_to_weights.values()])
+  n_part_per_zone = np.empty(n_zones, np.int32)
+  part_weight     = np.empty(n_parts, np.float)
+  i = 0
+  j = 0
+  for base, zones in bases_to_block.items():
+    for zone in zones:
+      zone_path = f"{base}/{I.getName(zone)}"
+      weights   = zone_to_weights.get(zone_path, [])
+      n_part_per_zone[i] = len(weights)
+      part_weight[j:j+n_part_per_zone[i]] = weights
+      j += n_part_per_zone[i]
+      i += 1
+  return n_part_per_zone, part_weight
 
 def set_mpart_reordering(multipart, reorder_options, keep_alive):
   renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum_method']
@@ -159,25 +168,27 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
 
   return all_parts
 
-def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
+def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
 
   # Careful ! Some object must be deleted at the very end of the function,
   # since they are usefull for pdm
   keep_alive = list()
 
-  # Deduce the number of parts for each zone from dzone->weighted_parts dict
-  n_part_per_zone = np.array([len(dzone_to_weighted_parts[I.getName(zone)]) for zone in u_zones],
-                             dtype=np.int32)
+  # Bases_to_block_u is the same for each process, but dzone_to_weighted_parts contains
+  # partial data
+  n_part_per_zone, part_weight = prepare_part_weight(bases_to_block_u, dzone_to_weighted_parts)
+  n_zones = n_part_per_zone.size
+
   keep_alive.append(n_part_per_zone)
 
   # Init multipart object
-  part_weight = prepare_part_weight(u_zones, n_part_per_zone, dzone_to_weighted_parts)
-
-  pdm_part_tool     = 1 if part_options['graph_part_tool'] == 'parmetis' else 2
+  requested_tool = part_options['graph_part_tool']
+  pdm_part_tool = {'parmetis' : 1, 'ptscotch': 2, 'hilbert': 3}[requested_tool]
   pdm_weight_method = 2
-  multi_part = PDM.MultiPart(len(u_zones), n_part_per_zone, 0, pdm_part_tool, pdm_weight_method, part_weight, comm)
+  multi_part = PDM.MultiPart(n_zones, n_part_per_zone, 0, pdm_part_tool, pdm_weight_method, part_weight, comm)
 
   # Setup
+  u_zones = [zone for zones in bases_to_block_u.values() for zone in zones]
   set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive)
   set_mpart_reordering(multi_part, part_options['reordering'], keep_alive)
 
@@ -189,10 +200,20 @@ def part_U_zones(u_zones, dzone_to_weighted_parts, comm, part_options):
   u_parts = collect_mpart_partitions(multi_part, u_zones, n_part_per_zone, comm, post_options)
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
-  del(keep_alive)
   for zone in u_zones:
     I._rmNodesByName1(zone, ':CGNS#MultiPart')
 
-  return u_parts
+  i = 0
+  j = 0
+  bases_to_part_u = {}
+  for base, zones in bases_to_block_u.items():
+    bases_to_part_u[base] = []
+    for zone in zones:
+      bases_to_part_u[base].extend(u_parts[j:j+n_part_per_zone[i]])
+      j += n_part_per_zone[i]
+      i += 1
+
+  del(keep_alive)
+  return bases_to_part_u
 
 
