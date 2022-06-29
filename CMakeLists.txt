@@ -84,7 +84,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(doctest)
 ### pybind11 ###
-project_find_package(pybind11 CONFIG)
+project_find_package(pybind11 2.7 CONFIG)
 if (NOT pybind11_FOUND)
   if (${PROJECT_NAME}_ENABLE_FETCH_PYBIND)
     message("Pybind11 was not found by find_package(). Fetching sources on-the-fly")
@@ -93,7 +93,7 @@ if (NOT pybind11_FOUND)
     FetchContent_Declare(
       pybind11
       GIT_REPOSITORY https://github.com/pybind/pybind11.git
-      GIT_TAG        v2.6
+      GIT_TAG        v2.7
     )
     FetchContent_MakeAvailable(pybind11)
     project_add_dependency(pybind11)
