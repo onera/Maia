@@ -47,3 +47,28 @@ def pe_to_nface(zone, comm=None, removePE=False):
   else:
     from .part.ngon_tools import pe_to_nface
     pe_to_nface(zone, removePE)
+
+def nface_to_pe(zone, comm=None, removeNFace=False):
+  """Create a ParentElements node in the NGon node from a NFace node.
+
+  Input tree is modified inplace.
+
+  Args:
+    zone        (CGNSTree): Distributed or Partitioned zone
+    comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
+    removeNFace (bool, optional): If True, remove the NFace node.
+      Defaults to False.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #nface_to_pe@start
+        :end-before: #nface_to_pe@end
+        :dedent: 2
+  """
+  if PT.maia.getDistribution(zone) is not None:
+    assert comm is not None
+    from .dist.ngon_tools import nface_to_pe
+    nface_to_pe(zone, comm, removeNFace)
+  else:
+    from .part.ngon_tools import nface_to_pe
+    nface_to_pe(zone, removeNFace)

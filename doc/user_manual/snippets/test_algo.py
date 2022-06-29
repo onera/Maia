@@ -112,3 +112,14 @@ def test_pe_to_nface():
     maia.algo.pe_to_nface(zone, MPI.COMM_WORLD)
     assert maia.pytree.get_child_from_name(zone, 'NFaceElements') is not None
   #pe_to_nface@end
+
+def test_nface_to_pe():
+  #nface_to_pe@start
+  from mpi4py import MPI
+  import maia
+  tree = maia.factory.generate_dist_block(6, 'NFace_n', MPI.COMM_WORLD)
+
+  for zone in maia.pytree.get_all_Zone_t(tree):
+    maia.algo.nface_to_pe(zone, MPI.COMM_WORLD)
+    assert maia.pytree.get_node_from_name(zone, 'ParentElements') is not None
+  #nface_to_pe@end
