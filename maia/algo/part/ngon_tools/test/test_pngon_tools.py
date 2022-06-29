@@ -1,3 +1,4 @@
+import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 
 import numpy as np
@@ -30,3 +31,22 @@ def test_pe_to_nface(sub_comm):
 
   assert PT.is_same_tree(nface, nface_exp)
   assert I.getNodeFromName(zone, "ParentElements") is None
+
+@mark_mpi_test([1])
+@pytest.mark.parametrize("rmNFace",[False, True])
+def test_nface_to_pe(rmNFace, sub_comm):
+  tree = DCG.dcube_generate(3,1.,[0,0,0], sub_comm)
+  zone = I.getZones(tree)[0]
+  I._rmNodesByName(zone, ":CGNS#Distribution")
+  pe_bck = I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1]
+  NGT.pe_to_nface(zone, True)
+  nface_bck = I.getNodeFromName(zone, 'NFaceElements')
+
+  NGT.nface_to_pe(zone, rmNFace)
+
+  assert (I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1] == pe_bck).all()
+  nface_cur = I.getNodeFromName(zone, 'NFaceElements')
+  if rmNFace:
+    assert nface_cur is None
+  else:
+    assert PT.is_same_tree(nface_bck, nface_cur)

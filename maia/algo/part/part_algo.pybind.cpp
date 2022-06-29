@@ -116,6 +116,9 @@ void register_part_algo_module(py::module_& parent) {
 
   m.def("local_pe_to_local_cellface", &local_pe_to_local_cellface,
         py::arg("local_pe").noconvert());
+  m.def("local_cellface_to_local_pe", &local_cellface_to_local_pe,
+        py::arg("np_cell_face_idx").noconvert(),
+        py::arg("np_cell_face").noconvert());
 
   m.def("adapt_match_information", &adapt_match_information,
         py::arg("np_neighbor_idx"    ).noconvert(),

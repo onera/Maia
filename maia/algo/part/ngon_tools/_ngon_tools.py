@@ -7,7 +7,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.algo import indexing
-from maia.utils import par_utils
+from maia.utils import np_utils
 
 import cmaia.part_algo as cpart_algo
 
@@ -47,3 +47,33 @@ def pe_to_nface(zone, remove_PE=False):
     I._rmNodesByName(ngon_node, "ParentElements")
 
 
+def nface_to_pe(zone, remove_NFace=False):
+  """Create a ParentElements node in the NGon node from a NFace node.
+
+  Input tree is modified inplace.
+
+  Args:
+    zone         (CGNSTree): Partitioned zone
+    remove_NFace (bool, optional): If True, remove the NFace node.
+      Defaults to False.
+  """
+  ngon_node  = PT.Zone.NGonNode(zone)
+  nface_node = PT.Zone.NFaceNode(zone)
+
+  cell_face_idx = I.getNodeFromName1(nface_node, "ElementStartOffset")[1]
+  cell_face     = I.getNodeFromName1(nface_node, "ElementConnectivity")[1]
+
+  # If NFace are before NGon, then face ids must be shifted
+  if PT.Element.Range(ngon_node)[0] == 1:
+    _cell_face = cell_face
+  else:
+    _cell_face_sign = np.sign(cell_face)
+    _cell_face = np.abs(cell_face) - PT.Element.Size(nface_node)
+    _cell_face = _cell_face * _cell_face_sign
+
+  local_pe = cpart_algo.local_cellface_to_local_pe(cell_face_idx, _cell_face)
+  np_utils.shift_nonzeros(local_pe, PT.Element.Range(nface_node)[0]-1) # Refer to NFace global ids
+
+  I.newDataArray('ParentElements', local_pe, ngon_node)
+  if remove_NFace:
+    I._rmNode(zone, nface_node)
