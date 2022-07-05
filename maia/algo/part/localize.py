@@ -13,16 +13,9 @@ from maia.factory.dist_from_part import discover_nodes_from_matching
 
 from .point_cloud_utils import get_point_cloud
 
-# ------------------------------------------------------------------------
-def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
-  """
-  Get connectivity of a partitioned zone and register it a mesh_location
-  pdm object
-  """
-
+def _get_part_data(part_zone):
   cx, cy, cz = PT.Zone.coordinates(part_zone)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
-  keep_alive.append(vtx_coords)
 
   ngon  = PT.Zone.NGonNode(part_zone)
   nface = PT.Zone.NFaceNode(part_zone)
@@ -33,18 +26,56 @@ def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
   face_vtx      = I.getNodeFromName1(ngon,  "ElementConnectivity")[1]
 
   vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
-  keep_alive.append(cell_ln_to_gn)
 
-  n_cell = cell_ln_to_gn.shape[0]
-  n_face = face_ln_to_gn.shape[0]
-  n_vtx  = vtx_ln_to_gn .shape[0]
+  return cell_face_idx, cell_face, cell_ln_to_gn, \
+      face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn
 
-  mesh_loc.part_set(i_part, n_cell, cell_face_idx, cell_face, cell_ln_to_gn,
-                            n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
-                            n_vtx, vtx_coords, vtx_ln_to_gn)
+def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):
+  # For now, only 1 domain is supported so we expect source parts and target clouds
+  # as flat lists :
+  # Parts are tuple (cell_face_idx, cell_face, cell_lngn,
+  #  face_vtx_idx, face_vtx, face_lngn, vtx_coords, vtx_lngn)
+  # Cloud are tuple (coords, lngn)
 
+  n_part_src = len(src_parts)
+  n_part_tgt = len(tgt_clouds)
+  # > Create and setup global data
+  mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=comm, enable_reverse=reverse)
+  mesh_loc.mesh_global_data_set(n_part_src)  # For now only one domain is supported
+  mesh_loc.n_part_cloud_set(0, n_part_tgt)   # For now only one domain is supported
 
-# --------------------------------------------------------------------------
+  # > Register source
+  for i_part, part_data in enumerate(src_parts):
+    cell_face_idx, cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, \
+      vtx_coords, vtx_ln_to_gn = part_data
+    mesh_loc.part_set(i_part, cell_ln_to_gn.size, cell_face_idx, cell_face, cell_ln_to_gn,
+                              face_ln_to_gn.size, face_vtx_idx, face_vtx, face_ln_to_gn,
+                              vtx_ln_to_gn.size, vtx_coords, vtx_ln_to_gn)
+  # > Setup target
+  for i_part, (coords, lngn) in enumerate(tgt_clouds):
+    mesh_loc.cloud_set(0, i_part, lngn.shape[0], coords, lngn)
+
+  mesh_loc.tolerance_set(loc_tolerance)
+  mesh_loc.compute()
+
+  # This is located and unlocated indices
+  all_located_id   = [mesh_loc.located_get  (0,i_part) for i_part in range(n_part_tgt)]
+  all_unlocated_id = [mesh_loc.unlocated_get(0,i_part) for i_part in range(n_part_tgt)]
+
+  #This is result from the target perspective (api : (i_pt_cloud, i_part))
+  all_target_data = [mesh_loc.location_get(0, i_tgt_part) for i_tgt_part in range(n_part_tgt)]
+  # Add ids in dict
+  for i_part, data in enumerate(all_target_data):
+    data['located_ids']   = all_located_id[i_part]
+    data['unlocated_ids'] = all_unlocated_id[i_part]
+
+  #This is result from the source perspective (api : ((i_part, i_pt_cloud))
+  if reverse:
+    all_located_inv = [mesh_loc.points_in_elt_get(i_src_part, 0) for i_src_part in range(n_part_src)]
+    return all_target_data, all_located_inv
+  else:
+    return all_target_data
+
 def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
     reverse=False, loc_tolerance=1E-6):
   """
@@ -58,49 +89,25 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   n_part_src = sum(n_part_per_dom_src)
   n_part_tgt = sum(n_part_per_dom_tgt)
 
-  # > Create and setup global data
-  mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=comm, enable_reverse=reverse)
-  mesh_loc.mesh_global_data_set(n_part_src) # For now only one domain is supported
-  mesh_loc.n_part_cloud_set(0, n_part_tgt)  # For now only one domain is supported
-
   # > Register source
-  keep_alive = list()
+  src_parts = []
   for i_domain, src_part_zones in enumerate(src_parts_per_dom):
     for i_part, src_part in enumerate(src_part_zones):
-      register_src_part(mesh_loc, i_part, src_part, keep_alive)
+      src_parts.append(_get_part_data(src_part))
 
-  # > Compute points to be localized and register target
+  tgt_clouds = []
   for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
     for i_part, tgt_part in enumerate(tgt_part_zones):
-      coords, ln_to_gn = get_point_cloud(tgt_part, location)
-      keep_alive.append(coords)
-      keep_alive.append(ln_to_gn)
-      mesh_loc.cloud_set(0, i_part, ln_to_gn.shape[0], coords, ln_to_gn)
+      tgt_clouds.append(get_point_cloud(tgt_part, location))
 
-  mesh_loc.tolerance_set(loc_tolerance)
-  mesh_loc.compute()
+  result = _mesh_location(src_parts, tgt_clouds, comm, reverse, loc_tolerance)
 
-  all_located_id   = [mesh_loc.located_get  (0,i_part) for i_part in range(n_part_tgt)]
-  all_unlocated_id = [mesh_loc.unlocated_get(0,i_part) for i_part in range(n_part_tgt)]
-
-  #This is result from the target perspective (api : (i_pt_cloud, i_part))
-  all_target_data = [mesh_loc.location_get(0, i_tgt_part) for i_tgt_part in range(n_part_tgt)]
-  # Add ids in dict
-  for i_part, data in enumerate(all_target_data):
-    data['located_ids']   = all_located_id[i_part]
-    data['unlocated_ids'] = all_unlocated_id[i_part]
   # Reshape output to list of lists (as input domains)
-  located_per_dom = py_utils.to_nested_list(all_target_data, n_part_per_dom_tgt)
-
-  #This is result from the source perspective (api : ((i_part, i_pt_cloud))
   if reverse:
-    all_located_inv = [mesh_loc.points_in_elt_get(i_src_part, 0) for i_src_part in range(n_part_src)]
-    located_inv_per_dom = py_utils.to_nested_list(all_located_inv, n_part_per_dom_src)
-
-  if reverse:
-    return located_per_dom, located_inv_per_dom
+    return py_utils.to_nested_list(result[0], n_part_per_dom_tgt),\
+           py_utils.to_nested_list(result[1], n_part_per_dom_src)
   else:
-    return located_per_dom
+    return py_utils.to_nested_list(result, n_part_per_dom_tgt)
 
 def localize_points(src_tree, tgt_tree, location, comm, **options):
   """Localize points between two partitioned trees.
