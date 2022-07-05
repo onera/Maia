@@ -18,6 +18,14 @@ def test_flatten():
   l = [[1,[2,[3]]],[4,[5]],[6]]
   assert list(py_utils.flatten(l)) == [1,2,3,4,5,6]
 
+def test_to_nested_list():
+  l = ['a', 'b', 'c', 'd', 'e']
+  assert py_utils.to_nested_list(l, [5]) == [['a', 'b', 'c', 'd', 'e']]
+  assert py_utils.to_nested_list(l, [3,2]) == [['a', 'b', 'c'], ['d', 'e']]
+  assert py_utils.to_nested_list(l, [1,1,1,1,1]) == [['a'],['b'],['c'],['d'],['e']]
+  with pytest.raises(AssertionError):
+    py_utils.to_nested_list(l, [2])
+
 def test_list_or_only_elt():
   assert py_utils.list_or_only_elt([42]) == 42
   input = [1,2,3, "nous irons au bois"]

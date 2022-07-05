@@ -7,7 +7,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils                  import np_utils
+from maia.utils                  import py_utils, np_utils
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import discover_nodes_from_matching
 
@@ -84,8 +84,10 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   n_dom_tgt = len(tgt_parts_per_dom)
 
   assert n_dom_src == n_dom_tgt == 1
-  n_part_src = len(src_parts_per_dom[0])
-  n_part_tgt = len(tgt_parts_per_dom[0])
+  n_part_per_dom_src = [len(parts) for parts in src_parts_per_dom]
+  n_part_per_dom_tgt = [len(parts) for parts in tgt_parts_per_dom]
+  n_part_src = sum(n_part_per_dom_src)
+  n_part_tgt = sum(n_part_per_dom_tgt)
 
   # > Create and setup global data
   mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=comm, enable_reverse=reverse)
@@ -114,29 +116,17 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
 
   #This is result from the target perspective (api : (i_pt_cloud, i_part))
   all_target_data = [mesh_loc.location_get(0, i_tgt_part) for i_tgt_part in range(n_part_tgt)]
-
+  # Add ids in dict
+  for i_part, data in enumerate(all_target_data):
+    data['located_ids']   = all_located_id[i_part]
+    data['unlocated_ids'] = all_unlocated_id[i_part]
   # Reshape output to list of lists (as input domains)
-  r_idx = 0
-  located_per_dom = []
-  for i_dom, tgt_parts in enumerate(tgt_parts_per_dom):
-    located_this_dom = []
-    for i_part in range(len(tgt_parts)):
-      located_data = all_target_data[r_idx]
-      located_data['located_ids'] = all_located_id[r_idx]
-      located_data['unlocated_ids'] = all_unlocated_id[r_idx]
-      located_this_dom.append(located_data)
-      r_idx += 1
-    located_per_dom.append(located_this_dom)
+  located_per_dom = py_utils.to_nested_list(all_target_data, n_part_per_dom_tgt)
 
   #This is result from the source perspective (api : ((i_part, i_pt_cloud))
   if reverse:
     all_located_inv = [mesh_loc.points_in_elt_get(i_src_part, 0) for i_src_part in range(n_part_src)]
-    r_idx = 0
-    located_inv_per_dom = []
-    for i_dom, src_parts in enumerate(src_parts_per_dom):
-      n_part  = len(src_parts)
-      located_inv_per_dom.append(all_located_inv[r_idx:r_idx+n_part])
-      r_idx += n_part
+    located_inv_per_dom = py_utils.to_nested_list(all_located_inv, n_part_per_dom_src)
 
   if reverse:
     return located_per_dom, located_inv_per_dom

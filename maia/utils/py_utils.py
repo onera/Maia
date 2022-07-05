@@ -31,6 +31,16 @@ def flatten(items):
     else:
       yield x
 
+def to_nested_list(l, counts):
+  """ Transform a flat list to a list of lists"""
+  assert len(l) == sum(counts)
+  nested = list()
+  r_idx = 0
+  for n_elts in counts:
+    nested.append(l[r_idx:r_idx+n_elts])
+    r_idx += n_elts
+  return nested
+
 def list_or_only_elt(l):
   return l[0] if len(l) == 1 else l
 
