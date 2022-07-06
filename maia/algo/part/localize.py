@@ -66,8 +66,8 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   all_target_data = [mesh_loc.location_get(0, i_tgt_part) for i_tgt_part in range(n_part_tgt)]
   # Add ids in dict
   for i_part, data in enumerate(all_target_data):
-    data['located_ids']   = all_located_id[i_part]
-    data['unlocated_ids'] = all_unlocated_id[i_part]
+    data['located_ids']   = all_located_id[i_part] - 1
+    data['unlocated_ids'] = all_unlocated_id[i_part] - 1
 
   #This is result from the source perspective (api : ((i_part, i_pt_cloud))
   if reverse:
@@ -155,6 +155,6 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
       data = located_data[i_dom][i_part]
       n_tgts = data['located_ids'].size + data['unlocated_ids'].size,
       src_gnum = -np.ones(n_tgts, dtype=pdm_gnum_dtype) #Init with -1 to carry unlocated points
-      src_gnum[data['located_ids']-1] = data['location']
+      src_gnum[data['located_ids']] = data['location']
       I.newDataArray("SrcId", src_gnum, parent=sol)
 

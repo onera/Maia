@@ -1,9 +1,10 @@
+import Pypdm.Pypdm as PDM
 import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils                  import np_utils
+from maia.utils                  import np_utils, layouts
 
 from maia.algo.part.geometry  import compute_cell_center
 
@@ -37,3 +38,18 @@ def get_point_cloud(zone, location='CellCenter'):
 
   raise RuntimeError("Unknow location or node")
 
+def extract_sub_cloud(coords, lngn, indices):
+  sub_lngn   = layouts.extract_from_indices(lngn  , indices, 1, 0)
+  sub_coords = layouts.extract_from_indices(coords, indices, 3, 0)
+  return sub_coords, sub_lngn
+
+def create_sub_numbering(lngn_l, comm):
+  n_part = len(lngn_l)
+  gen_gnum = PDM.GlobalNumbering(3, n_part, 0, 0., comm)
+
+  for i_part, lngn in enumerate(lngn_l):
+    gen_gnum.gnum_set_from_parent(i_part, lngn.size, lngn)
+
+  gen_gnum.gnum_compute()
+
+  return [gen_gnum.gnum_get(i_part)["gnum"] for i_part in range(n_part)]

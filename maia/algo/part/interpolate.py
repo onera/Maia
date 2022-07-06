@@ -114,101 +114,56 @@ def create_interpolator(src_parts_per_dom,
       all_tgt_lngn  [i_domain].append(ln_to_gn)
 
   #Phase 1 -- localisation
-  all_located_inv = list()
+  from . import localize as LOC
+  from . import closest_points as CLO
   if strategy != 'Closest':
     one_or_two += 1
-    # > Create and setup global data
-    mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=comm)
-    mesh_loc.mesh_global_data_set(n_part_src) #  For now only on domain is supported
-    mesh_loc.n_part_cloud_set(0, n_part_tgt) # Pour l'instant 1 cloud et 1 partition
-    # > Register source and target parts
-    for i_domain, src_part_zones in enumerate(src_parts_per_dom):
-      for i_part, src_part in enumerate(src_part_zones):
-        register_src_part(mesh_loc, i_part, src_part, keep_alive)
-    for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
-      for i_part, tgt_part in enumerate(tgt_part_zones):
-        coords   = all_tgt_coords[i_domain][i_part]
-        ln_to_gn = all_tgt_lngn[i_domain][i_part]
-        mesh_loc.cloud_set(0, i_part, ln_to_gn.shape[0], coords, ln_to_gn)
+    location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
+        location, comm, True, loc_tolerance)
 
-    mesh_loc.tolerance_set(loc_tolerance)
-    mesh_loc.compute()
-
-    #This is result from the target perspective -- not usefull here
-    # for i_tgt_part in range(n_part_tgt):
-      # #Pour chaque pt target, elt source associé (i_pt_cloud, i_part)
-      # results = mesh_loc.location_get(0, i_tgt_part)
-
-    #This is result from the source perspective : for each source part, list of tgt points
-    # located in it (api : i_part,i_pt_cloud)
-    all_located_inv = [mesh_loc.points_in_elt_get(i_src_part, 0) for i_src_part in range(n_part_src)]
-
-    #To change when multi dom
-    all_unlocated = [[mesh_loc.unlocated_get(0,i_part) for i_part in range(n_part_tgt)]]
-    n_unlocated = sum([all_unlocated[0][i_part].shape[0] for i_part in range(n_part_tgt)])
-
+    all_unlocated = [data['unlocated_ids'] for data in location_out[0]]
+    all_located_inv = location_out_inv[0]
+    n_unlocated = sum([t.size for t in all_unlocated])
     n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.SUM)
     if(comm.Get_rank() == 0):
       print(" n_tot_unlocated = ", n_tot_unlocated )
 
-    #n_tot_unlocated = 0
-    #Todo : allow other than double
 
   all_closest_inv = list()
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
     one_or_two += 1
-    closest_point = PDM.ClosestPoints(comm, n_closest=1)
-    closest_point.n_part_cloud_set(n_part_src, n_part_tgt)
 
     # > Setup source for closest point
+    src_clouds = []
     for i_domain, src_part_zones in enumerate(src_parts_per_dom):
       for i_part, src_part in enumerate(src_part_zones):
-        center_cell, cell_ln_to_gn = get_point_cloud(src_part, 'CellCenter')
-        keep_alive.append(center_cell)
-        keep_alive.append(cell_ln_to_gn)
-        closest_point.src_cloud_set(i_part, cell_ln_to_gn.shape[0], center_cell, cell_ln_to_gn)
-
-    # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
-    all_unlocated_gnum = list()
-    if strategy != 'Closest':
-      for i_domain, part_zones in enumerate(tgt_parts_per_dom):
-        unlocated_gnum = create_subset_numbering(all_unlocated[i_domain], all_tgt_lngn[i_domain], comm)
-        #Store it in dict -- a kind of keep alive
-        unlocated_gnum["extracted_coords"] = [layouts.extract_from_indices(all_tgt_coords[i_domain][i_part], \
-            all_unlocated[i_domain][i_part], 3, 1) for i_part in range(len(part_zones))]
-
-        all_unlocated_gnum.append(unlocated_gnum)
+        src_clouds.append(get_point_cloud(src_part, 'CellCenter'))
 
     # > Setup target for closest point
-    for i_domain, part_zones in enumerate(tgt_parts_per_dom):
-      for i_part, part_zone in enumerate(part_zones):
+    tgt_clouds = []
+    if strategy == 'Closest':
+      for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
+        for i_part, tgt_part in enumerate(tgt_part_zones):
+          tgt_clouds.append(get_point_cloud(tgt_part, location))
+    else:
+      # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
+      from .import point_cloud_utils as PCU
+      for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
+        for i_part, tgt_part in enumerate(tgt_part_zones):
+          indices = all_unlocated[i_part] #One domain so OK
+          tgt_cloud = get_point_cloud(tgt_part, location)
+          sub_cloud = PCU.extract_sub_cloud(*tgt_cloud, indices)
+          tgt_clouds.append(sub_cloud)
+      all_extracted_lngn = [sub_cloud[1] for sub_cloud in tgt_clouds]
+      all_sub_lngn = PCU.create_sub_numbering(all_extracted_lngn, comm) #This one is collective
+      tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(tgt_clouds, all_sub_lngn)]
 
-        if strategy != 'Closest':
-          extract_coords   = all_unlocated_gnum[i_domain]["extracted_coords"][i_part]
-          sub_ln_to_gn     = all_unlocated_gnum[i_domain]["unlocated_sub_ln_to_gn"][i_part]
-        else:
-          extract_coords = all_tgt_coords[i_domain][i_part]
-          sub_ln_to_gn   = all_tgt_lngn[i_domain][i_part]
-
-        closest_point.tgt_cloud_set(i_part, sub_ln_to_gn.shape[0], extract_coords, sub_ln_to_gn)
-        keep_alive.append(extract_coords)
-        keep_alive.append(sub_ln_to_gn)
-
-
-    closest_point.compute()
-
-    #Pour chaque pt source, points cibles qui l'ont détecté comme le plus proche
-    all_closest_inv = [closest_point.tgt_in_src_get(i_part_src) for i_part_src in range(n_part_src)]
+    all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, reverse=True)
 
     #If we worked on sub gnum, we must go back to original numbering
     if strategy != 'Closest':
-      for i_domain, part_zones in enumerate(tgt_parts_per_dom):
-        gnum_to_transform = [results["tgt_in_src"] for results in all_closest_inv]
-        sub_ln_to_gn    = all_unlocated_gnum[i_domain]["unlocated_sub_ln_to_gn"]
-        parent_ln_to_gn = all_unlocated_gnum[i_domain]["unlocated_extract_ln_to_gn"]
-
-        #Inplace 
-        PDM.transform_to_parent_gnum(gnum_to_transform, sub_ln_to_gn, parent_ln_to_gn, comm)
+      gnum_to_transform = [results["tgt_in_src"] for results in all_closest_inv]
+      PDM.transform_to_parent_gnum(gnum_to_transform, all_sub_lngn, all_extracted_lngn, comm)
 
 
   # > Now create Interpolation object
@@ -318,7 +273,7 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
 
   - ``strategy`` (default = 'LocationAndClosest') -- control interpolation method
 
-    - 'ClosestPoint' : Target points take the value of the closest source cell center.
+    - 'Closest' : Target points take the value of the closest source cell center.
     - 'Location' : Target points take the value of the cell in which they are located.
       Unlocated points have take a ``NaN`` value.
     - 'LocationAndClosest' : Use 'Location' method and then 'ClosestPoint' method
