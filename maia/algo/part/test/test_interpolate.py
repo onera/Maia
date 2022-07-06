@@ -310,3 +310,13 @@ class Test_interpolation_api():
       fs = I.getNodeFromName(tgt_zone, 'MySolution')
       assert PT.Subset.GridLocation(fs) == 'Vertex'
       assert (I.getNodeFromName(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
+
+def test_jagged_merge():
+  idx1  = np.array([0, 2, 2, 3], np.int32)
+  array1 = np.array([12,13,  15])
+  idx2  = np.array([0, 1, 2, 3], np.int32)
+  array2 = np.array([101, 102, 103])
+  idx, array = ITP.jagged_merge(idx1, array1, idx2, array2)
+  assert (idx == [0, 3, 4, 6]).all()
+  assert (array == [12,13,101, 102, 15,103]).all()
+  assert array.dtype == array1.dtype

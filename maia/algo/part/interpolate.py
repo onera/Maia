@@ -15,6 +15,21 @@ from .import point_cloud_utils as PCU
 from .import localize as LOC
 from .import closest_points as CLO
 
+def jagged_merge(idx1, array1, idx2, array2):
+  assert idx1.size == idx2.size
+  counts = np.diff(idx1) + np.diff(idx2)
+  idx = np_utils.sizes_to_indices(counts)
+  array = np.empty(idx[-1], array1.dtype)
+  w_idx = 0
+  for i in range(idx.size-1):
+    size = idx1[i+1] - idx1[i]
+    array[w_idx:w_idx+size] = array1[idx1[i]:idx1[i+1]]
+    w_idx += size
+    size = idx2[i+1] - idx2[i]
+    array[w_idx:w_idx+size] = array2[idx2[i]:idx2[i+1]]
+    w_idx += size
+  return idx, array
+
 
 def create_interpolator(src_parts_per_dom,
                         tgt_parts_per_dom,
@@ -34,9 +49,6 @@ def create_interpolator(src_parts_per_dom,
   n_part_src = len(src_parts_per_dom[0])
   n_part_tgt = len(tgt_parts_per_dom[0])
 
-  keep_alive = list()
-  one_or_two = 0 #This one will be one or two depending of chosen strategy
-
   # Those one will be usefull in every strategy -> compute it only once
   all_tgt_coords = [list() for dom in range(n_dom_tgt)]
   all_tgt_lngn   = [list() for dom in range(n_dom_tgt)]
@@ -48,7 +60,6 @@ def create_interpolator(src_parts_per_dom,
 
   #Phase 1 -- localisation
   if strategy != 'Closest':
-    one_or_two += 1
     location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
         location, comm, True, loc_tolerance)
 
@@ -62,7 +73,6 @@ def create_interpolator(src_parts_per_dom,
 
   all_closest_inv = list()
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
-    one_or_two += 1
 
     # > Setup source for closest point
     src_clouds = []
@@ -95,11 +105,25 @@ def create_interpolator(src_parts_per_dom,
       gnum_to_transform = [results["tgt_in_src"] for results in all_closest_inv]
       PDM.transform_to_parent_gnum(gnum_to_transform, all_sub_lngn, all_extracted_lngn, comm)
 
-
+  #Combine Location & Closest results if both method were used
+  if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
+    tgt_in_src_idx_l = [data['elt_pts_inside_idx'] for data in all_located_inv]
+    tgt_in_src_l     = [data['points_gnum'] for data in all_located_inv]
+  elif strategy == 'Closest':
+    tgt_in_src_idx_l = [data['tgt_in_src_idx'] for data in all_closest_inv]
+    tgt_in_src_l     = [data['tgt_in_src'] for data in all_closest_inv]
+  else:
+    tgt_in_src_idx_l = []
+    tgt_in_src_l = []
+    for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
+      tgt_in_src_idx, tgt_in_src = jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum'], \
+                                                res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
+      tgt_in_src_idx_l.append(tgt_in_src_idx)
+      tgt_in_src_l.append(tgt_in_src)
+  
   # > Now create Interpolation object
-  # We use one_or_two to register or two src part if both location and closest point where enabled
   interpolator = PDM.InterpolateFromMeshLocation(n_point_cloud=1, comm=comm)
-  interpolator.mesh_global_data_set(one_or_two*n_part_src) #  For now only on domain is supported
+  interpolator.mesh_global_data_set(n_part_src) #  For now only on domain is supported
   interpolator.n_part_cloud_set(0, n_part_tgt) # Pour l'instant 1 cloud et 1 partition
 
   for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom): #For now only one domain
@@ -109,16 +133,14 @@ def create_interpolator(src_parts_per_dom,
       ln_to_gn = all_tgt_lngn[i_domain][i_part]
       interpolator.cloud_set(0, i_part, ln_to_gn.shape[0], coords, ln_to_gn)
 
-  for i_part, res_loc in enumerate(all_located_inv):
-    interpolator.points_in_elt_set(one_or_two*i_part, 0, **res_loc)
-  for i_part, res_clo in enumerate(all_closest_inv):
-    interpolator.points_in_elt_set(one_or_two*i_part+(one_or_two-1), 0, res_clo["tgt_in_src_idx"], res_clo["tgt_in_src"],
+  for i_part, (tgt_in_src_idx, tgt_in_src) in enumerate(zip(tgt_in_src_idx_l, tgt_in_src_l)):
+    interpolator.points_in_elt_set(i_part, 0, tgt_in_src_idx, tgt_in_src,
         None, None, None, None, None, None)
 
   # interpolator.compute()
-  return interpolator, one_or_two
+  return interpolator
 
-def interpolate_fields(interpolator, n_field_per_part, src_parts_per_dom, tgt_parts_per_dom, container_name, output_loc):
+def interpolate_fields(interpolator, src_parts_per_dom, tgt_parts_per_dom, container_name, output_loc):
   """
   Use interpolator to echange a container and put solution in target tree
   """
@@ -148,8 +170,7 @@ def interpolate_fields(interpolator, n_field_per_part, src_parts_per_dom, tgt_pa
     for i_domain, src_parts in enumerate(src_parts_per_dom):
       for src_part in src_parts:
         src_data = I.getNodeFromPath(src_part, field_path)[1]
-        for i in range(n_field_per_part):
-          list_part_data_in.append(src_data)
+        list_part_data_in.append(src_data)
 
     results_interp = interpolator.exch(0, list_part_data_in)
     for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
@@ -172,9 +193,9 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
   location is the output location (CellCenter or Vertex); input location must be CellCenter
   **options are passed to interpolator creationg function, see create_interpolator
   """
-  interpolator, one_or_two = create_interpolator(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+  interpolator = create_interpolator(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
   for container_name in containers_name:
-    interpolate_fields(interpolator, one_or_two, src_parts_per_dom, tgt_parts_per_dom, container_name, location)
+    interpolate_fields(interpolator, src_parts_per_dom, tgt_parts_per_dom, container_name, location)
 
 def interpolate_from_dom_names(src_tree, src_doms, tgt_tree, tgt_doms, comm, containers_name, location, **options):
   """
