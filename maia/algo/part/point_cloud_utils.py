@@ -39,11 +39,18 @@ def get_point_cloud(zone, location='CellCenter'):
   raise RuntimeError("Unknow location or node")
 
 def extract_sub_cloud(coords, lngn, indices):
+  """
+  Extract coordinates and lngn from a list of indices, starting at 0.
+  """
   sub_lngn   = layouts.extract_from_indices(lngn  , indices, 1, 0)
   sub_coords = layouts.extract_from_indices(coords, indices, 3, 0)
   return sub_coords, sub_lngn
 
 def create_sub_numbering(lngn_l, comm):
+  """
+  Create a new compact, starting at 1 numbering from a list of
+  gnums.
+  """
   n_part = len(lngn_l)
   gen_gnum = PDM.GlobalNumbering(3, n_part, 0, 0., comm)
 

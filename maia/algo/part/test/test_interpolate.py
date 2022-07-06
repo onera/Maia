@@ -155,52 +155,6 @@ ZoneU Zone_t [[16,3,0]]:
     Cell DataArray_t {dtype} [2,6,4]:
 """
 
-@mark_mpi_test(1)
-def test_register_src_part(sub_comm):
-  tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
-  zone = I.getZones(tree)[0]
-  for elt_node in I.getNodesFromType1(zone, 'Elements_t'):
-    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
-      node = I.getNodeFromName1(elt_node, name)
-      node[1] = node[1].astype(np.int32)
-  I._rmNodesByType(zone, 'ZoneBC_t')
-  I._rmNodesByName(zone, ':CGNS#Distribution')
-  vtx_gnum = np.arange(3**3) + 1
-  cell_gnum = np.arange(2**3) + 1
-  MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
-  MT.newGlobalNumbering({'Element' : np.arange(36)+1}, parent = I.getNodeFromName(zone, 'NGonElements'))
-
-  nface_ec = [1,5,13,17,25,29,  2,6,-17,21,27,31,  3,7,14,18,-29,33,  4,8,-18,22,-31,35,
-              -5,9,15,19,26,30,   -6,10,-19,23,28,32,  -7,11,16,20,-30,34,  -8,12,-20,24,-32,36]
-
-  nface = I.newElements('NFace', 'NFACE', nface_ec, [36+1,36+8], parent=zone)
-  I.newDataArray('ElementStartOffset', [0,6,12,18,24,30,36,42,48], parent=nface)
-
-  mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=sub_comm)
-  mesh_loc.mesh_global_data_set(2)
-  keep_alive = list()
-  ITP.register_src_part(mesh_loc, 1, zone, keep_alive)
-  assert len(keep_alive) == 2
-
-@mark_mpi_test(2)
-def test_create_subset_numbering(sub_comm):
-  if sub_comm.Get_rank() == 0:
-    parent_numbering_l = [np.array([3,4,1,9], pdm_gnum_dtype), np.array([10,2], pdm_gnum_dtype)]
-    subset_l = [np.array([1,4], np.int32), np.empty(0, np.int32)]
-    expected_extracted =  [ np.array([3,9]), np.array([]) ]
-    expected_sub_lngn  =  [ np.array([1,5]), np.array([]) ]
-  elif sub_comm.Get_rank() == 1:
-    parent_numbering_l = [np.array([5,8,7,6], pdm_gnum_dtype)]
-    subset_l = [np.array([3,1,4], np.int32)]
-    expected_extracted =  [ np.array([7,5,6]) ]
-    expected_sub_lngn  =  [ np.array([4,2,3]) ]
-
-  sub_gnum = ITP.create_subset_numbering(subset_l, parent_numbering_l, sub_comm)
-
-  for i in range(len(parent_numbering_l)):
-    assert (sub_gnum['unlocated_extract_ln_to_gn'][i] == expected_extracted[i]).all()
-    assert (sub_gnum['unlocated_sub_ln_to_gn'][i] == expected_sub_lngn[i]).all()
-
 @mark_mpi_test(2)
 def test_create_interpolator(sub_comm):
   #Here we just check if interpolator is created

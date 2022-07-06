@@ -7,82 +7,15 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils                  import np_utils, layouts
+from maia.utils                  import np_utils
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import discover_nodes_from_matching
 
-from maia.algo.part.geometry  import compute_cell_center
-
-from .point_cloud_utils import get_point_cloud
-
-def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
-  """
-  Get connectivity of a partitioned zone and register it a mesh_location
-  pdm object
-  """
-
-  gridc_n    = I.getNodeFromName1(part_zone, 'GridCoordinates')
-  cx         = I.getNodeFromName1(gridc_n, 'CoordinateX')[1]
-  cy         = I.getNodeFromName1(gridc_n, 'CoordinateY')[1]
-  cz         = I.getNodeFromName1(gridc_n, 'CoordinateZ')[1]
-  vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
-  keep_alive.append(vtx_coords)
-
-  ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n']
-  nfaces = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NFACE_n']
-  assert len(nfaces) == len(ngons) == 1
-
-  cell_face_idx = I.getNodeFromName1(nfaces[0], "ElementStartOffset")[1]
-  cell_face     = I.getNodeFromName1(nfaces[0], "ElementConnectivity")[1]
-  face_vtx_idx  = I.getNodeFromName1(ngons[0],  "ElementStartOffset")[1]
-  face_vtx      = I.getNodeFromName1(ngons[0],  "ElementConnectivity")[1]
-
-  vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
-
-  n_cell = cell_ln_to_gn.shape[0]
-  n_face = face_ln_to_gn.shape[0]
-  n_vtx  = vtx_ln_to_gn .shape[0]
-
-  center_cell = compute_cell_center(part_zone)
-  keep_alive.append(cell_ln_to_gn)
-
-  mesh_loc.part_set(i_part, n_cell, cell_face_idx, cell_face, cell_ln_to_gn,
-                            n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
-                            n_vtx, vtx_coords, vtx_ln_to_gn)
+from .import point_cloud_utils as PCU
+from .import localize as LOC
+from .import closest_points as CLO
 
 
-# --------------------------------------------------------------------------
-def create_subset_numbering(subset_l, parent_numbering_l, comm):
-  """
-  Create a sub (continuous) numbering from a parent numbering list (size = n_part)
-  and a list of (local) indices to extract on each part (size = n_part)
-  Warning ! Local indices start at 1 and not 0
-  Return a dict containing the parent global id of extracted elements for each part
-  and the sub global id of extracted elements for each part
-  """
-  assert len(subset_l) == len(parent_numbering_l)
-  n_part = len(parent_numbering_l)
-
-  subset_gnum = {"unlocated_extract_ln_to_gn" : list(),
-                 "unlocated_sub_ln_to_gn"     : list()}
-
-  gen_gnum = PDM.GlobalNumbering(3, n_part, 0, 0., comm)
-
-  for i_part in range(n_part):
-    extracted_ln_to_gn = layouts.extract_from_indices(parent_numbering_l[i_part], subset_l[i_part], 1, 1)
-    gen_gnum.gnum_set_from_parent(i_part, extracted_ln_to_gn.shape[0], extracted_ln_to_gn)
-    subset_gnum["unlocated_extract_ln_to_gn"].append(extracted_ln_to_gn)
-
-  gen_gnum.gnum_compute()
-
-  for i_part in range(n_part):
-    sub_ln_to_gn = gen_gnum.gnum_get(i_part)
-    subset_gnum["unlocated_sub_ln_to_gn"].append(sub_ln_to_gn["gnum"])
-
-  return subset_gnum
-
-# --------------------------------------------------------------------------
 def create_interpolator(src_parts_per_dom,
                         tgt_parts_per_dom,
                         comm,
@@ -109,13 +42,11 @@ def create_interpolator(src_parts_per_dom,
   all_tgt_lngn   = [list() for dom in range(n_dom_tgt)]
   for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
     for i_part, tgt_part in enumerate(tgt_part_zones):
-      coords, ln_to_gn = get_point_cloud(tgt_part, location)
+      coords, ln_to_gn = PCU.get_point_cloud(tgt_part, location)
       all_tgt_coords[i_domain].append(coords)
       all_tgt_lngn  [i_domain].append(ln_to_gn)
 
   #Phase 1 -- localisation
-  from . import localize as LOC
-  from . import closest_points as CLO
   if strategy != 'Closest':
     one_or_two += 1
     location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
@@ -137,21 +68,20 @@ def create_interpolator(src_parts_per_dom,
     src_clouds = []
     for i_domain, src_part_zones in enumerate(src_parts_per_dom):
       for i_part, src_part in enumerate(src_part_zones):
-        src_clouds.append(get_point_cloud(src_part, 'CellCenter'))
+        src_clouds.append(PCU.get_point_cloud(src_part, 'CellCenter'))
 
     # > Setup target for closest point
     tgt_clouds = []
     if strategy == 'Closest':
       for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
         for i_part, tgt_part in enumerate(tgt_part_zones):
-          tgt_clouds.append(get_point_cloud(tgt_part, location))
+          tgt_clouds.append(PCU.get_point_cloud(tgt_part, location))
     else:
       # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
-      from .import point_cloud_utils as PCU
       for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
         for i_part, tgt_part in enumerate(tgt_part_zones):
           indices = all_unlocated[i_part] #One domain so OK
-          tgt_cloud = get_point_cloud(tgt_part, location)
+          tgt_cloud = PCU.get_point_cloud(tgt_part, location)
           sub_cloud = PCU.extract_sub_cloud(*tgt_cloud, indices)
           tgt_clouds.append(sub_cloud)
       all_extracted_lngn = [sub_cloud[1] for sub_cloud in tgt_clouds]

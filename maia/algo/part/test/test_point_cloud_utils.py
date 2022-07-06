@@ -5,6 +5,7 @@ import numpy as np
 import Converter.Internal as I
 import maia.pytree.maia   as MT
 
+from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.factory      import dcube_generator as DCG
 
 from maia.algo.part import point_cloud_utils as PCU
@@ -52,4 +53,34 @@ def test_get_point_cloud(sub_comm):
 
   with pytest.raises(RuntimeError):
     coords, gnum = PCU.get_point_cloud(zone, 'FaceCenter')
+
+def test_extract_sub_cloud():
+  coords = np.array([0,0,0, .5,0,0, 1,0,0, 0,1,0, .5,1,0, 1,1,0])
+  lngn   = np.array([42,9,1,4,55,3], pdm_gnum_dtype)
+
+  sub_coords, sub_lngn = PCU.extract_sub_cloud(coords, lngn, np.empty(0, np.int32))
+  assert sub_coords.size == sub_lngn.size == 0
+  sub_coords, sub_lngn = PCU.extract_sub_cloud(coords, lngn, np.array([0,1,2,3,4,5], np.int32))
+  assert (sub_coords == coords).all()
+  assert (sub_lngn == lngn).all()
+  sub_coords, sub_lngn = PCU.extract_sub_cloud(coords, lngn, np.array([1,3], np.int32))
+  assert (sub_coords == [.5,0,0, 0,1,0]).all()
+  assert (sub_lngn == [9,4]).all()
+  sub_coords, sub_lngn = PCU.extract_sub_cloud(coords, lngn, np.array([3,1], np.int32))
+  assert (sub_coords == [0,1,0, .5,0,0]).all()
+  assert (sub_lngn == [4,9]).all()
+  
+@mark_mpi_test(2)
+def test_create_sub_numbering(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    lngn_l =  [ np.array([3,9], pdm_gnum_dtype), np.array([], pdm_gnum_dtype) ]
+    expected_sub_lngn_l  =  [ np.array([1,5]), np.array([]) ]
+  elif sub_comm.Get_rank() == 1:
+    lngn_l =  [ np.array([7,5,6], pdm_gnum_dtype) ]
+    expected_sub_lngn_l  =  [ np.array([4,2,3]) ]
+
+  sub_gnum_l = PCU.create_sub_numbering(lngn_l, sub_comm)
+
+  for sub_gnum, expected_sub_lngn in zip(sub_gnum_l, expected_sub_lngn_l):
+    assert (sub_gnum == expected_sub_lngn).all()
 
