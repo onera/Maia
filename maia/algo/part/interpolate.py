@@ -7,6 +7,7 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils                  import np_utils
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import discover_nodes_from_matching
@@ -48,15 +49,6 @@ def create_interpolator(src_parts_per_dom,
 
   n_part_src = len(src_parts_per_dom[0])
   n_part_tgt = len(tgt_parts_per_dom[0])
-
-  # Those one will be usefull in every strategy -> compute it only once
-  all_tgt_coords = [list() for dom in range(n_dom_tgt)]
-  all_tgt_lngn   = [list() for dom in range(n_dom_tgt)]
-  for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
-    for i_part, tgt_part in enumerate(tgt_part_zones):
-      coords, ln_to_gn = PCU.get_point_cloud(tgt_part, location)
-      all_tgt_coords[i_domain].append(coords)
-      all_tgt_lngn  [i_domain].append(ln_to_gn)
 
   #Phase 1 -- localisation
   if strategy != 'Closest':
@@ -121,26 +113,10 @@ def create_interpolator(src_parts_per_dom,
       tgt_in_src_idx_l.append(tgt_in_src_idx)
       tgt_in_src_l.append(tgt_in_src)
   
-  # > Now create Interpolation object
-  interpolator = PDM.InterpolateFromMeshLocation(n_point_cloud=1, comm=comm)
-  interpolator.mesh_global_data_set(n_part_src) #  For now only on domain is supported
-  interpolator.n_part_cloud_set(0, n_part_tgt) # Pour l'instant 1 cloud et 1 partition
+  return tgt_in_src_idx_l, tgt_in_src_l
 
-  for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom): #For now only one domain
-    for i_part, tgt_part in enumerate(tgt_part_zones):
-      #We can resuse part data, which is already computed
-      coords   = all_tgt_coords[i_domain][i_part]
-      ln_to_gn = all_tgt_lngn[i_domain][i_part]
-      interpolator.cloud_set(0, i_part, ln_to_gn.shape[0], coords, ln_to_gn)
 
-  for i_part, (tgt_in_src_idx, tgt_in_src) in enumerate(zip(tgt_in_src_idx_l, tgt_in_src_l)):
-    interpolator.points_in_elt_set(i_part, 0, tgt_in_src_idx, tgt_in_src,
-        None, None, None, None, None, None)
-
-  # interpolator.compute()
-  return interpolator
-
-def interpolate_fields(interpolator, src_parts_per_dom, tgt_parts_per_dom, container_name, output_loc):
+def interpolate_fields(src_parts_per_dom, tgt_parts_per_dom, container_name, output_loc, inv_idx, inv, comm):
   """
   Use interpolator to echange a container and put solution in target tree
   """
@@ -164,6 +140,7 @@ def interpolate_fields(interpolator, src_parts_per_dom, tgt_parts_per_dom, conta
       I.newGridLocation(output_loc, fs)
 
   # Collect source data and interpolate
+  src_field_dic = dict()
   for field_name in fields_per_part[0]:
     field_path = container_name + '/' + field_name
     list_part_data_in = list()
@@ -171,16 +148,67 @@ def interpolate_fields(interpolator, src_parts_per_dom, tgt_parts_per_dom, conta
       for src_part in src_parts:
         src_data = I.getNodeFromPath(src_part, field_path)[1]
         list_part_data_in.append(src_data)
+    src_field_dic[field_name] = list_part_data_in
 
-    results_interp = interpolator.exch(0, list_part_data_in)
-    for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
-      for i_part, tgt_part in enumerate(tgt_parts):
-        fs = I.getNodeFromPath(tgt_part, container_name)
+  #Interpolate
+
+  # Filter sol : we must extract the data to send
+  for field_path, part_data_l in src_field_dic.items():
+    for i_part, part_data in enumerate(part_data_l):
+      idx = inv_idx[i_part]
+      _part_data_filter = np.empty(idx[-1], part_data.dtype)
+      for ic in range(idx.size-1):
+        _part_data_filter[idx[ic]:idx[ic+1]] = part_data[ic]
+      part_data_l[i_part] = _part_data_filter
+
+
+  all_cloud_lngn = []
+  for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
+    for i_part, tgt_part in enumerate(tgt_parts):
+      if output_loc == 'Vertex':
+        lngn = I.getVal(MT.getGlobalNumbering(tgt_part, 'Vertex')).astype(pdm_gnum_dtype)
+      else:
+        lngn = I.getVal(MT.getGlobalNumbering(tgt_part, 'Cell')).astype(pdm_gnum_dtype)
+      all_cloud_lngn.append(lngn)
+
+  PTB = PDM.PartToBlock(comm, inv, pWeight=None, partN=len(inv), t_distrib=0, t_post=1)
+  dFields = dict()
+  PTB.PartToBlock_Exchange(dFields, src_field_dic)
+
+  #Block is partial -> adapt to full block (simplified since stride is 1)
+  max_gn = comm.allreduce(max([np.max(lngn) for lngn in all_cloud_lngn]), op=MPI.MAX)
+  distri = PTB.getDistributionCopy()
+  if comm.rank != comm.size-1:
+    block_stride_full = np.zeros(distri[comm.rank+1]-distri[comm.rank], np.int32)
+  else:
+    block_stride_full = np.zeros(max_gn-distri[comm.rank], np.int32)
+  block_stride_full[PTB.getBlockGnumCopy() - distri[comm.rank] - 1] = 1
+  distri[comm.size] = max_gn
+
+  # Send back to part on cloud mesh
+  BTP = PDM.BlockToPart(distri, comm, all_cloud_lngn, partN=len(all_cloud_lngn))
+
+  tgt_field_dic = dict()
+  BTP.BlockToPart_Exchange2(dFields, tgt_field_dic, BlkStride=block_stride_full)
+
+  
+  all_mask = []
+  stride_key = next(iter(src_field_dic.keys()))+'#PDM_Stride'
+  for i_part in range(len(all_cloud_lngn)):
+    all_mask.append(tgt_field_dic[stride_key][i_part] == 1)
+
+  for i_domain, tgt_parts in enumerate(tgt_parts_per_dom): #Ok because one domain
+    for i_part, tgt_part in enumerate(tgt_parts):
+      fs = I.getNodeFromPath(tgt_part, container_name)
+      mask = all_mask[i_part]
+      for field_name in src_field_dic:
+        data = np.nan * np.ones(mask.size)
+        data[mask] = tgt_field_dic[field_name][i_part]
         if PT.Zone.Type(tgt_part) == 'Unstructured':
-          I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part])
+          I.createUniqueChild(fs, field_name, 'DataArray_t', data)
         else:
           shape = PT.Zone.CellSize(tgt_part) if output_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
-          I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part].reshape(shape, order='F'))
+          I.createUniqueChild(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
 
 
 def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options):
@@ -193,9 +221,9 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
   location is the output location (CellCenter or Vertex); input location must be CellCenter
   **options are passed to interpolator creationg function, see create_interpolator
   """
-  interpolator = create_interpolator(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+  inv_idx, inv = create_interpolator(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
   for container_name in containers_name:
-    interpolate_fields(interpolator, src_parts_per_dom, tgt_parts_per_dom, container_name, location)
+    interpolate_fields(src_parts_per_dom, tgt_parts_per_dom, container_name, location, inv_idx, inv, comm)
 
 def interpolate_from_dom_names(src_tree, src_doms, tgt_tree, tgt_doms, comm, containers_name, location, **options):
   """
