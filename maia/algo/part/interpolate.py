@@ -150,17 +150,8 @@ def interpolate_fields(src_parts_per_dom, tgt_parts_per_dom, container_name, out
         list_part_data_in.append(src_data)
     src_field_dic[field_name] = list_part_data_in
 
+
   #Interpolate
-
-  # Filter sol : we must extract the data to send
-  for field_path, part_data_l in src_field_dic.items():
-    for i_part, part_data in enumerate(part_data_l):
-      idx = inv_idx[i_part]
-      _part_data_filter = np.empty(idx[-1], part_data.dtype)
-      for ic in range(idx.size-1):
-        _part_data_filter[idx[ic]:idx[ic+1]] = part_data[ic]
-      part_data_l[i_part] = _part_data_filter
-
 
   all_cloud_lngn = []
   for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
@@ -171,39 +162,31 @@ def interpolate_fields(src_parts_per_dom, tgt_parts_per_dom, container_name, out
         lngn = I.getVal(MT.getGlobalNumbering(tgt_part, 'Cell')).astype(pdm_gnum_dtype)
       all_cloud_lngn.append(lngn)
 
-  PTB = PDM.PartToBlock(comm, inv, pWeight=None, partN=len(inv), t_distrib=0, t_post=1)
-  dFields = dict()
-  PTB.PartToBlock_Exchange(dFields, src_field_dic)
+  all_src_lngn = []
+  for i_domain, src_parts in enumerate(src_parts_per_dom):
+    for i_part, src_part in enumerate(src_parts):
+      lngn = I.getVal(MT.getGlobalNumbering(src_part, 'Cell')).astype(pdm_gnum_dtype)
+      all_src_lngn.append(lngn)
 
-  #Block is partial -> adapt to full block (simplified since stride is 1)
-  max_gn = comm.allreduce(max([np.max(lngn) for lngn in all_cloud_lngn]), op=MPI.MAX)
-  distri = PTB.getDistributionCopy()
-  if comm.rank != comm.size-1:
-    block_stride_full = np.zeros(distri[comm.rank+1]-distri[comm.rank], np.int32)
-  else:
-    block_stride_full = np.zeros(max_gn-distri[comm.rank], np.int32)
-  block_stride_full[PTB.getBlockGnumCopy() - distri[comm.rank] - 1] = 1
-  distri[comm.size] = max_gn
 
-  # Send back to part on cloud mesh
-  BTP = PDM.BlockToPart(distri, comm, all_cloud_lngn, partN=len(all_cloud_lngn))
+  PTP = PDM.PartToPart(comm,
+                      all_src_lngn,
+                      all_cloud_lngn,
+                      inv_idx,
+                      inv)
 
-  tgt_field_dic = dict()
-  BTP.BlockToPart_Exchange2(dFields, tgt_field_dic, BlkStride=block_stride_full)
+  referenced_nums = PTP.get_referenced_lnum()
+  for field_name, src_sol in src_field_dic.items():
+    request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                        PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1,
+                        src_sol)
+    strides, lnp_part_data = PTP.wait(request)
 
-  
-  all_mask = []
-  stride_key = next(iter(src_field_dic.keys()))+'#PDM_Stride'
-  for i_part in range(len(all_cloud_lngn)):
-    all_mask.append(tgt_field_dic[stride_key][i_part] == 1)
-
-  for i_domain, tgt_parts in enumerate(tgt_parts_per_dom): #Ok because one domain
-    for i_part, tgt_part in enumerate(tgt_parts):
-      fs = I.getNodeFromPath(tgt_part, container_name)
-      mask = all_mask[i_part]
-      for field_name in src_field_dic:
-        data = np.nan * np.ones(mask.size)
-        data[mask] = tgt_field_dic[field_name][i_part]
+    for i_domain, tgt_parts in enumerate(tgt_parts_per_dom): #Ok because one domain
+      for i_part, tgt_part in enumerate(tgt_parts):
+        fs = I.getNodeFromPath(tgt_part, container_name)
+        data = np.nan * np.ones(all_cloud_lngn[i_part].size)
+        data[referenced_nums[i_part]-1] = lnp_part_data[i_part] #Use referenced ids to erase default value
         if PT.Zone.Type(tgt_part) == 'Unstructured':
           I.createUniqueChild(fs, field_name, 'DataArray_t', data)
         else:
