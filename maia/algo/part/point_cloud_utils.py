@@ -18,11 +18,11 @@ def get_point_cloud(zone, location='CellCenter'):
   if location == 'Vertex':
     coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(zone)]
     vtx_coords   = np_utils.interweave_arrays(coords)
-    vtx_ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, 'Vertex')).astype(pdm_gnum_dtype)
+    vtx_ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, 'Vertex')).astype(pdm_gnum_dtype, copy=False)
     return vtx_coords, vtx_ln_to_gn
 
   elif location == 'CellCenter':
-    cell_ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, 'Cell')).astype(pdm_gnum_dtype)
+    cell_ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, 'Cell')).astype(pdm_gnum_dtype, copy=False)
     center_cell = compute_cell_center(zone)
     return center_cell, cell_ln_to_gn
   
@@ -33,7 +33,7 @@ def get_point_cloud(zone, location='CellCenter'):
       loc = PT.Subset.GridLocation(container)
       _loc = loc.replace('Center', '')
       int_coords = np_utils.interweave_arrays(coords)
-      ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, _loc)).astype(pdm_gnum_dtype)
+      ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, _loc)).astype(pdm_gnum_dtype, copy=False)
       return int_coords, ln_to_gn
 
   raise RuntimeError("Unknow location or node")
