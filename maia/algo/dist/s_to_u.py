@@ -11,7 +11,7 @@ from maia.utils.numbering import range_to_slab          as HFR2S
 
 def get_output_loc(request_dict, s_node):
   """Retrieve output location from the node if not provided in argument"""
-  label_to_key = {'BC_t' : 'BC_t', 'GridConnectivity1to1_t' : 'GC_t'}
+  label_to_key = {'BC_t' : 'BC_t', 'GridConnectivity1to1_t' : 'GC_t', 'GridConnectivity_t': 'GC_t'}
   out_loc = request_dict.get(label_to_key[I.getType(s_node)], None)
   if out_loc is None:
     out_loc = PT.Subset.GridLocation(s_node)
@@ -232,7 +232,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
   point_list = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, output_loc, bnd_axis)
 
-  bc_u = I.newBC(I.getName(bc_s), btype=I.getValue(bc_s))
+  bc_u = I.createNode(I.getName(bc_s), I.getType(bc_s), I.getValue(bc_s))
   I.newGridLocation(output_loc, parent=bc_u)
   I.newPointList(value=point_list, parent=bc_u)
 
@@ -511,6 +511,16 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
               suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
               gc_u = gc_s_to_gc_u(gc_s, zone_path, n_vtx, n_vtx_opp, out_loc, i_rank, n_rank)
               I.setName(gc_u, I.getName(gc_u) + suffix)
+              I.addChild(zonegc_u, gc_u)
+          #Manage not 1to1 gcs as BCs
+          is_abbut = lambda n : I.getType(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting'
+          for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abbut):
+            out_loc_l = get_output_loc(subset_loc, gc_s)
+            for out_loc in out_loc_l:
+              suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
+              gc_u = bc_s_to_bc_u(gc_s, n_vtx, out_loc, i_rank, n_rank)
+              I.setName(gc_u, I.getName(gc_u) + suffix)
+              I.newGridConnectivityType('Abutting', gc_u)
               I.addChild(zonegc_u, gc_u)
 
         # Copy distribution of all Cell/Vtx, which is unchanged
