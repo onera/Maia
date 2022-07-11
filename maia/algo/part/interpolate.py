@@ -34,7 +34,7 @@ def jagged_merge(idx1, array1, idx2, array2):
 class Interpolator:
   """
   """
-  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt_idx, src_to_tgt, output_loc, comm):
+  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, output_loc, comm):
     self.src_parts = list()
     self.tgt_parts = list()
     all_src_lngn = []
@@ -54,17 +54,54 @@ class Interpolator:
         all_cloud_lngn.append(lngn)
         self.tgt_parts.append(tgt_part)
 
+    _src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
+    _src_to_tgt     = [data['target'] for data in src_to_tgt]
     self.PTP = PDM.PartToPart(comm,
                               all_src_lngn,
                               all_cloud_lngn,
-                              src_to_tgt_idx,
-                              src_to_tgt)
+                              _src_to_tgt_idx,
+                              _src_to_tgt)
 
     self.referenced_nums = self.PTP.get_referenced_lnum()
+    self.sending_gnums = self.PTP.get_gnum1_come_from()
     self.output_loc = output_loc
 
+    # Send distances to targets partitions
+    _dist = [data['dist2'] for data in src_to_tgt]
+    request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+                             _dist)
+    _, self.tgt_dist = self.PTP.wait(request)
 
-  def exchange_fields(self, container_name):
+
+  def _reduce_single_val(self, i_part, data):
+    """
+    A basic reduce function who take the first received value for each target
+    """
+    come_from_idx = self.sending_gnums[i_part]['come_from_idx']
+    assert (np.diff(come_from_idx) == 1).all()
+    return data
+
+  def _reduce_mean_dist(self, i_part, data):
+    """
+    Compute a weighted mean of the received values. Weights are the inverse of the squared distance from each source
+    """
+    come_from_idx = self.sending_gnums[i_part]['come_from_idx']
+    n_recv = come_from_idx[1] #We assert this one to be the same for each located gn
+    assert (np.diff(come_from_idx) == n_recv).all()
+    n_reduced = self.referenced_nums[i_part].size
+
+    reduced_data = np.zeros(n_reduced, float)
+    factor = np.zeros(n_reduced, float)
+    dist_threshold = np.maximum(self.tgt_dist[i_part], 1E-20)
+    for i in range(n_recv):
+      reduced_data += (1./dist_threshold[i::n_recv]) * data[i::n_recv]
+      factor += (1./dist_threshold[i::n_recv])
+    reduced_data /= factor
+    return reduced_data
+
+
+  def exchange_fields(self, container_name, reduce_func=_reduce_single_val):
 
     #Check that solutions are known on each source partition
     fields_per_part = list()
@@ -98,7 +135,8 @@ class Interpolator:
         fs = I.getNodeFromPath(tgt_part, container_name)
         data_size = PT.Zone.n_cell(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.n_vtx(tgt_part)
         data = np.nan * np.ones(data_size)
-        data[self.referenced_nums[i_part]-1] = lnp_part_data[i_part] #Use referenced ids to erase default value
+        reduced_data = reduce_func(self, i_part, lnp_part_data[i_part])
+        data[self.referenced_nums[i_part]-1] = reduced_data #Use referenced ids to erase default value
         if PT.Zone.Type(tgt_part) == 'Unstructured':
           I.createUniqueChild(fs, field_name, 'DataArray_t', data)
         else:
@@ -106,13 +144,13 @@ class Interpolator:
           I.createUniqueChild(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
 
 
-def create_interpolator(src_parts_per_dom,
-                        tgt_parts_per_dom,
-                        comm,
-                        location = 'CellCenter',
-                        strategy = 'LocationAndClosest',
-                        loc_tolerance = 1E-6,
-                        order = 0):
+def create_src_to_tgt(src_parts_per_dom,
+                      tgt_parts_per_dom,
+                      comm,
+                      location = 'CellCenter',
+                      strategy = 'LocationAndClosest',
+                      loc_tolerance = 1E-6,
+                      order = 0):
   """
   """
   n_dom_src = len(src_parts_per_dom)
@@ -164,7 +202,7 @@ def create_interpolator(src_parts_per_dom,
       all_sub_lngn = PCU.create_sub_numbering(all_extracted_lngn, comm) #This one is collective
       tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(tgt_clouds, all_sub_lngn)]
 
-    all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, reverse=True)
+    all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, 1, reverse=True)
 
     #If we worked on sub gnum, we must go back to original numbering
     if strategy != 'Closest':
@@ -173,21 +211,23 @@ def create_interpolator(src_parts_per_dom,
 
   #Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
-    tgt_in_src_idx_l = [data['elt_pts_inside_idx'] for data in all_located_inv]
-    tgt_in_src_l     = [data['points_gnum'] for data in all_located_inv]
+    src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
+                   'target'     : data['points_gnum'],
+                   'dist2'      : data['points_dist2']} for data in all_located_inv]
   elif strategy == 'Closest':
-    tgt_in_src_idx_l = [data['tgt_in_src_idx'] for data in all_closest_inv]
-    tgt_in_src_l     = [data['tgt_in_src'] for data in all_closest_inv]
+    src_to_tgt = [{'target_idx' : data['tgt_in_src_idx'],
+                   'target'     : data['tgt_in_src'],
+                   'dist2'      : data['tgt_in_src_dist2']} for data in all_closest_inv]
   else:
-    tgt_in_src_idx_l = []
-    tgt_in_src_l = []
+    src_to_tgt = []
     for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
       tgt_in_src_idx, tgt_in_src = jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum'], \
                                                 res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
-      tgt_in_src_idx_l.append(tgt_in_src_idx)
-      tgt_in_src_l.append(tgt_in_src)
+      tgt_in_src_idx, tgt_to_dis = jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_dist2'], \
+                                                res_clo['tgt_in_src_idx'], res_clo['tgt_in_src_dist2'])
+      src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src, 'dist2' :tgt_to_dis})
   
-  return tgt_in_src_idx_l, tgt_in_src_l
+  return src_to_tgt
 
 
 
@@ -199,31 +239,13 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
 
   containers_name is the list of FlowSolution containers to be interpolated
   location is the output location (CellCenter or Vertex); input location must be CellCenter
-  **options are passed to interpolator creationg function, see create_interpolator
+  **options are passed to interpolator creationg function, see create_src_to_tgt
   """
-  src_to_tgt_idx, src_to_tgt = create_interpolator(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
 
-  interpolator = Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt_idx, src_to_tgt, location, comm)
+  interpolator = Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, location, comm)
   for container_name in containers_name:
     interpolator.exchange_fields(container_name)
-
-def interpolate_from_dom_names(src_tree, src_doms, tgt_tree, tgt_doms, comm, containers_name, location, **options):
-  """
-  Helper function calling interpolate_from_parts_per_dom from the src and tgt part_trees +
-  a list of src domain names and target domains names.
-  Names must be in the formalism "DistBaseName/DistZoneName"
-
-  See interpolate_from_parts_per_dom for documentation
-  """
-  assert len(src_doms) == len(tgt_doms) == 1
-  src_parts_per_dom = list()
-  tgt_parts_per_dom = list()
-  for src_dom in src_doms:
-    src_parts_per_dom.append(te_utils.get_partitioned_zones(src_tree, src_dom))
-  for tgt_dom in tgt_doms:
-    tgt_parts_per_dom.append(te_utils.get_partitioned_zones(tgt_tree, tgt_dom))
-
-  interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 
 def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, location, **options):
   """Interpolate fields between two partitionned trees.
