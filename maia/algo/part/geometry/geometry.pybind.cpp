@@ -4,14 +4,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "std_e/algorithm/permutation.hpp"
+#include "maia/utils/pybind_utils.hpp"
 
 namespace py = pybind11;
-
-template<typename T> auto
-make_raw_view(py::array_t<T, py::array::f_style>& x){
-  py::buffer_info buf = x.request();
-  return static_cast<T*>(buf.ptr);
-}
 
 // --------------------------------------------------------------------
 py::array_t<int, py::array::f_style>

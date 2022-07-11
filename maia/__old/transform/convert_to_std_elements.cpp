@@ -365,7 +365,7 @@ convert_zone_to_std_elements(tree& z) -> void {
   STD_E_ASSERT(label(z)=="Zone_t"); // TODO is_gc_maia_zone
 
   if (value(z).data_type()=="I4") return _convert_zone_to_std_elements<I4>(z);
-  //if (value(z).data_type()=="I8") return _convert_zone_to_std_elements<I8>(z); // TODO
+  if (value(z).data_type()=="I8") return _convert_zone_to_std_elements<I8>(z);
   throw cgns::cgns_exception("Zone "+name(z)+" has a value of data type "+value(z).data_type()+" but it should be I4 or I8");
 }
 

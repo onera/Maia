@@ -45,5 +45,5 @@ def test_jn_vertexlist(sub_comm, write_output):
       node = I.getNodeFromName1(gc, I.getName(ref_node))
       if I.getName(node) in ['PointList', 'PointListDonor']:
         ref_node[1] = np.array([ref_node[1][0][distri[0]:distri[1]]])  # Extract distributed array
-      assert PT.is_same_node(ref_node, node)
+      assert PT.is_same_node(ref_node, node, type_tol=True) #Reference is stored as int32
 

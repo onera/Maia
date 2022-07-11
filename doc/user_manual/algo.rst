@@ -58,3 +58,6 @@ Generic algo
 ------------
 
 The following algorithms applies on maia distributed or partitioned trees
+
+.. autofunction:: maia.algo.pe_to_nface
+.. autofunction:: maia.algo.nface_to_pe

@@ -48,7 +48,7 @@ def test_vtx_slab_to_n_face():
 ###############################################################################
 class Test_compute_pointList_from_pointRanges():
   class Test_face():
-    nVtx       = [3, 3, 3]
+    nVtx       = np.array([3, 3, 3], np.int32)
     loc        = "FaceCenter"
     # --------------------------------------------------------------------------- #
     def test_emptyRange(self):
@@ -90,7 +90,7 @@ class Test_compute_pointList_from_pointRanges():
       assert (pointList == [[14,20]]).all()
 
   class Test_vertex():
-    nVtx       = [3, 3, 3]
+    nVtx       = np.array([3, 3, 3], np.int64)
     loc        = "Vertex"
     # --------------------------------------------------------------------------- #
     #VtxRange BC (IDir)= [[3,3], [1,3], [1,3]]
@@ -116,7 +116,7 @@ class Test_compute_pointList_from_pointRanges():
       assert (pointList == [[2,3,5,6]]).all()
 
   class Test_cell():
-    nVtx       = [3, 3, 3]
+    nVtx       = np.array([3, 3, 3])
     loc        = "CellCenter"
     # --------------------------------------------------------------------------- #
     def test_emptyRange(self):

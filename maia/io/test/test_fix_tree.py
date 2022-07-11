@@ -68,12 +68,12 @@ def test_enforce_pdm_dtype():
   assert I.getNodeFromName(tree, 'PointList')[1].dtype == wrong_pdm_type
   assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == wrong_pdm_type
   assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == wrong_pdm_type
-  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == np.int32 #Always int32
+  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == np.int32
   fix_tree._enforce_pdm_dtype(tree)
   assert I.getNodeFromName(tree, 'PointList')[1].dtype == pdm_dtype
   assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == pdm_dtype
   assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == pdm_dtype
-  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == np.int32 #Always int32
+  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == pdm_dtype
 
 def test_ensure_PE_global_indexing():
   ngon = I.newElements('WrongNGon', 'NGON', erange=[1,4])

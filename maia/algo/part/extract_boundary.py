@@ -4,7 +4,6 @@ import Pypdm.Pypdm as PDM
 import Converter.Internal as I
 import maia.pytree        as PT
 
-from maia           import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils     import np_utils, s_numbering
 from maia.transfer  import utils as te_utils
 from maia.algo.dist import s_to_u as S2U
@@ -32,7 +31,7 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   # It is safer to reuse slabs to manage all cases (eg input location or reversed pr)
   bc_size = S2U.transform_bnd_pr_size(pr, input_loc, "FaceCenter")
 
-  slab = np.empty((3,2), order='F', dtype=np.int64)
+  slab = np.empty((3,2), order='F', dtype=np.int32)
   slab[:,0] = pr[:,0]
   slab[:,1] = bc_size + pr[:,0] - 1
   slab[bnd_axis,:] += S2U.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
@@ -79,8 +78,8 @@ def extract_faces_mesh(zone, face_ids):
 
     bounds = np.array([0, nf_i, nf_i + nf_j, nf_i + nf_j + nf_k], np.int32)
 
-    face_vtx_idx = 4*np.arange(0, n_face_tot+1, dtype=pdm_dtype)
-    face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds+1, n_vtx_zone-1, dtype=pdm_dtype)
+    face_vtx_idx = 4*np.arange(0, n_face_tot+1, dtype=np.int32)
+    face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds+1, n_vtx_zone-1, dtype=np.int32)
 
   ex_face_vtx_idx, ex_face_vtx, vtx_ids = _extract_sub_connectivity(face_vtx_idx, face_vtx, face_ids)
   
@@ -125,7 +124,7 @@ def extract_surf_from_bc(part_zones, families, comm):
       bc_face_ids = [_pr_to_face_pl(n_vtx_z, I.getNodeFromName1(bc_node, 'PointRange')[1], PT.Subset.GridLocation(bc_node))[0] \
           for bc_node in bc_nodes]
 
-    _, bc_face_ids = np_utils.concatenate_np_arrays(bc_face_ids, pdm_dtype)
+    _, bc_face_ids = np_utils.concatenate_np_arrays(bc_face_ids, np.int32)
     cx, cy, cz, bc_face_vtx_idx, bc_face_vtx, bc_vtx_ids = extract_faces_mesh(zone, bc_face_ids)
 
     ex_coords = np_utils.interweave_arrays([cx, cy, cz])

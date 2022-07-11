@@ -2,13 +2,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
-namespace py = pybind11;
+#include "maia/utils/pybind_utils.hpp"
 
-template<typename T> auto
-make_raw_view(py::array_t<T, py::array::f_style>& x){
-  py::buffer_info buf = x.request();
-  return static_cast<T*>(buf.ptr);
-}
+namespace py = pybind11;
 
 template<typename T>
 py::array_t<T, py::array::f_style>
