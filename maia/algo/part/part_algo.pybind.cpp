@@ -9,18 +9,13 @@
 #include "maia/algo/part/ngon_tools/ngon_tools.pybind.hpp"
 #include "maia/algo/part/cgns_registry/cgns_registry.pybind.hpp"
 #include "maia/algo/part/part_algo.pybind.hpp"
+#include "maia/utils/pybind_utils.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
-
-template<typename T> auto
-make_raw_view(py::array_t<T, py::array::f_style>& x){
-  py::buffer_info buf = x.request();
-  return static_cast<T*>(buf.ptr);
-}
 
 void
 enforce_pe_left_parent(

@@ -31,7 +31,7 @@ def test_pe_to_nface(sub_comm):
   I.newDataArray('ElementConnectivity', nface_ec_exp, parent=nface_exp_f)
   nface_exp = nface_exp_f
 
-  NGT.pe_to_nface(zone, True)
+  NGT.pe_to_nface(zone, remove_PE=True)
   nface = PT.Zone.NFaceNode(zone)
 
   assert PT.is_same_tree(nface, nface_exp)
