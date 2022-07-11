@@ -107,6 +107,25 @@ def jagged_extract(idx_array, array, ids):
   extracted_idx = sizes_to_indices(extracted_sizes)
   return extracted_idx, extracted_array
 
+def jagged_merge(idx1, array1, idx2, array2):
+  """
+  Interwave two jagged arrays of same n_elt
+  TODO : costly fct, make a pybind
+  """
+  assert idx1.size == idx2.size
+  counts = np.diff(idx1) + np.diff(idx2)
+  idx = sizes_to_indices(counts)
+  array = np.empty(idx[-1], array1.dtype)
+  w_idx = 0
+  for i in range(idx.size-1):
+    size = idx1[i+1] - idx1[i]
+    array[w_idx:w_idx+size] = array1[idx1[i]:idx1[i+1]]
+    w_idx += size
+    size = idx2[i+1] - idx2[i]
+    array[w_idx:w_idx+size] = array2[idx2[i]:idx2[i+1]]
+    w_idx += size
+  return idx, array
+
 def roll_from(array, start_idx = None, start_value = None, reverse = False):
   """
   Return a new array starting from given index (or value), in normal or reversed order

@@ -10,26 +10,11 @@ import maia.pytree.maia   as MT
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils                  import py_utils, np_utils
 from maia.transfer               import utils as te_utils
-from maia.factory.dist_from_part import discover_nodes_from_matching
+from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .import point_cloud_utils as PCU
 from .import localize as LOC
 from .import closest_points as CLO
-
-def jagged_merge(idx1, array1, idx2, array2):
-  assert idx1.size == idx2.size
-  counts = np.diff(idx1) + np.diff(idx2)
-  idx = np_utils.sizes_to_indices(counts)
-  array = np.empty(idx[-1], array1.dtype)
-  w_idx = 0
-  for i in range(idx.size-1):
-    size = idx1[i+1] - idx1[i]
-    array[w_idx:w_idx+size] = array1[idx1[i]:idx1[i+1]]
-    w_idx += size
-    size = idx2[i+1] - idx2[i]
-    array[w_idx:w_idx+size] = array2[idx2[i]:idx2[i+1]]
-    w_idx += size
-  return idx, array
 
 class Interpolator:
   """
@@ -221,10 +206,10 @@ def create_src_to_tgt(src_parts_per_dom,
   else:
     src_to_tgt = []
     for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
-      tgt_in_src_idx, tgt_in_src = jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum'], \
-                                                res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
-      tgt_in_src_idx, tgt_to_dis = jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_dist2'], \
-                                                res_clo['tgt_in_src_idx'], res_clo['tgt_in_src_dist2'])
+      tgt_in_src_idx, tgt_in_src = np_utils.jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum'], \
+                                                         res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
+      tgt_in_src_idx, tgt_to_dis = np_utils.jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_dist2'], \
+                                                         res_clo['tgt_in_src_idx'], res_clo['tgt_in_src_dist2'])
       src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src, 'dist2' :tgt_to_dis})
   
   return src_to_tgt
@@ -283,21 +268,8 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
         :end-before: #interpolate_from_part_trees@end
         :dedent: 2
   """
-
-  dist_src_doms = I.newCGNSTree()
-  discover_nodes_from_matching(dist_src_doms, [src_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-  src_parts_per_dom = list()
-  for zone_path in PT.predicates_to_paths(dist_src_doms, 'CGNSBase_t/Zone_t'):
-    src_parts_per_dom.append(te_utils.get_partitioned_zones(src_tree, zone_path))
-
-  dist_tgt_doms = I.newCGNSTree()
-  discover_nodes_from_matching(dist_tgt_doms, [tgt_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-
-  tgt_parts_per_dom = list()
-  for zone_path in PT.predicates_to_paths(dist_tgt_doms, 'CGNSBase_t/Zone_t'):
-    tgt_parts_per_dom.append(te_utils.get_partitioned_zones(tgt_tree, zone_path))
+  src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
+  tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 

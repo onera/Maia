@@ -64,6 +64,20 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
         for child in childs:
           I._addChild(ancestor, child)
 
+def get_parts_per_blocks(part_tree, comm):
+  """
+  From the partitioned trees, retrieve the paths of the distributed blocks
+  and return a dictionnary associating each path to the list of the corresponding
+  partitioned zones
+  """
+  dist_doms = I.newCGNSTree()
+  discover_nodes_from_matching(dist_doms, [part_tree], 'CGNSBase_t/Zone_t', comm,
+                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
+  parts_per_dom = dict()
+  for zone_path in PT.predicates_to_paths(dist_doms, 'CGNSBase_t/Zone_t'):
+    parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
+  return parts_per_dom
+
 def recover_dist_tree(part_tree, comm):
   """
   Regenerate a distributed tree from partitioned trees.
