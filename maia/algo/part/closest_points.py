@@ -13,12 +13,12 @@ from maia.factory.dist_from_part import discover_nodes_from_matching
 from .point_cloud_utils import get_point_cloud
 
 
-def _closest_points(src_clouds, tgt_clouds, comm, reverse=False):
+def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
   # For now, only 1 domain is supported so we expect source and target clouds
   # as flat lists of tuples (coords, lngn)
 
   # > Create and setup global data
-  closest_point = PDM.ClosestPoints(comm, n_closest=1)
+  closest_point = PDM.ClosestPoints(comm, n_closest=n_pts)
   closest_point.n_part_cloud_set(len(src_clouds), len(tgt_clouds))
 
   # > Setup source
@@ -62,7 +62,7 @@ def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt
     for i_part, tgt_part in enumerate(tgt_part_zones):
       tgt_clouds.append(get_point_cloud(tgt_part, tgt_location))
 
-  result = _closest_points(src_clouds, tgt_clouds, comm, reverse)
+  result = _closest_points(src_clouds, tgt_clouds, comm, 1, reverse)
 
   # Reshape output to list of lists (as input domains)
   if reverse:
