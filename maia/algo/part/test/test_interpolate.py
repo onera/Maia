@@ -156,8 +156,8 @@ ZoneU Zone_t [[16,3,0]]:
 """
 
 @mark_mpi_test(2)
-def test_create_interpolator(sub_comm):
-  #Here we just check if interpolator is created
+def test_create_src_to_tgt(sub_comm):
+  #Here we just check if src_to_tgt is created
   if sub_comm.Get_rank() == 0:
     pt = src_part_0
   else:
@@ -172,19 +172,47 @@ def test_create_interpolator(sub_comm):
 
   src_parts_per_dom = [zones]
   tgt_parts_per_dom = [[I.copyTree(zone) for zone in zones]]
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
-  assert one_or_two == 1
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Closest')
-  assert one_or_two == 1
+  excp_target = np.array([1,2,3,4]) if sub_comm.Get_rank() == 0 else np.array([5,6,7,8])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
+  assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
+  assert (src_to_tgt[0]['target'] == excp_target).all()
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Closest')
+  assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
+  assert (src_to_tgt[0]['target'] == excp_target).all()
 
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
       cx = I.getNodeFromName(zone, 'CoordinateX')
       cx[1] += .5
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
-  assert one_or_two == 2
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Location')
-  assert one_or_two == 1
+  excp_target = np.array([2,1,3,4]) if sub_comm.Get_rank() == 0 else np.array([6,5,8,7])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
+  assert (src_to_tgt[0]['target'] == excp_target).all()
+
+  excp_target = np.array([2,3]) if sub_comm.Get_rank() == 0 else np.array([6,8])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Location')
+  assert (src_to_tgt[0]['target'] == excp_target).all()
+
+def test_interpolator_reductions():
+  class Empty: #Used to create a interpolator like object
+    pass
+  fake_interpolator = Empty()
+
+  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,1,2,3])}]
+  data = np.array([1,2,3], np.int32)
+  out = ITP.Interpolator._reduce_single_val(fake_interpolator, 0, data)
+  assert out is data
+
+  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,4,6])}]
+  fake_interpolator.tgt_dist = [np.array([1,1,0,1,3,1])]
+  data = np.array([1,2, 10,11, 20,30], np.float64)
+  out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
+  assert (out == np.array([1.5, 10., 27.5])).all()
+
+  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,5,6])}]
+  fake_interpolator.tgt_dist = [np.array([1,1,0,1,3,1])]
+  data = np.array([1,2, 10,11, 20,30], np.float64)
+  with pytest.raises(AssertionError):
+    out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
 
 @mark_mpi_test(2)
 def test_interpolate_fields(sub_comm):
@@ -207,8 +235,10 @@ def test_interpolate_fields(sub_comm):
       cy[1] += .05
       cz[1] -= .05
 
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm, location='Vertex')
-  ITP.interpolate_fields(interpolator, one_or_two, src_parts_per_dom, tgt_parts_per_dom, 'MySolution', 'Vertex')
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, location='Vertex')
+  interpolator = ITP.Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, 'Vertex', sub_comm)
+  interpolator.exchange_fields('MySolution')
+
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
       fs = I.getNodeFromName(tgt_zone, 'MySolution')
@@ -252,35 +282,6 @@ class Test_interpolation_api():
         fs = I.getNodeFromName(tgt_zone, 'MySolution')
         assert PT.Subset.GridLocation(fs) == 'Vertex'
         assert (I.getNodeFromName(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
-
-  def test_interpolate_from_dom_names(self,sub_comm):
-    src_tree = I.newCGNSTree()
-    src_base = I.newCGNSBase(parent=src_tree)
-    tgt_tree = I.newCGNSTree()
-    tgt_base = I.newCGNSBase(parent=tgt_tree)
-
-    if sub_comm.Get_rank() == 0:
-      self.src_zone_0[0] = 'Source.P0.N0'
-      self.tgt_zone_0[0] = 'Target.P0.N0'
-      self.tgt_zone_1[0] = 'Target.P0.N1'
-      I._addChild(src_base, self.src_zone_0)
-      I._addChild(tgt_base, self.tgt_zone_0)
-      I._addChild(tgt_base, self.tgt_zone_1)
-      expected_cell_sol = [self.expected_cell_sol[k] for k in [0,1]]
-    elif sub_comm.Get_rank() == 1:
-      self.src_zone_1[0] = 'Source.P1.N0'
-      self.tgt_zone_2[0] = 'Target.P1.N0'
-      I._addChild(src_base, self.src_zone_1)
-      I._addChild(tgt_base, self.tgt_zone_2)
-      expected_cell_sol = [self.expected_cell_sol[k] for k in [2]]
-
-    ITP.interpolate_from_dom_names(src_tree, ['Source'], tgt_tree, ['Target'], sub_comm, \
-        ['MySolution'], 'CellCenter')
-
-    for i_tgt, tgt_zone in enumerate(I.getZones(tgt_tree)):
-      fs = I.getNodeFromName(tgt_zone, 'MySolution')
-      assert PT.Subset.GridLocation(fs) == 'CellCenter'
-      assert (I.getNodeFromName(fs, 'val')[1] == expected_cell_sol[i_tgt]).all()
 
   def test_interpolate_from_dom_part_trees(self,sub_comm):
     src_tree = I.newCGNSTree()

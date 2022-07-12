@@ -11,6 +11,23 @@ from maia.factory      import dcube_generator as DCG
 from maia.algo.part import point_cloud_utils as PCU
 
 @mark_mpi_test(1)
+def test_get_zone_ln_to_gn_from_loc(sub_comm):
+  tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
+  zone = I.getZones(tree)[0]
+  #On partitions, element are supposed to be I4
+  for elt_node in I.getNodesFromType1(zone, 'Elements_t'):
+    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
+      node = I.getNodeFromName1(elt_node, name)
+      node[1] = node[1].astype(np.int32)
+  I._rmNodesByName(zone, ':CGNS#Distribution')
+  vtx_gnum = np.arange(3**3) + 1
+  cell_gnum = np.arange(2**3) + 1
+  MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
+
+  assert (PCU._get_zone_ln_to_gn_from_loc(zone, 'Vertex') == vtx_gnum).all()
+  assert (PCU._get_zone_ln_to_gn_from_loc(zone, 'CellCenter') == cell_gnum).all()
+
+@mark_mpi_test(1)
 def test_get_point_cloud(sub_comm):
   tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
   zone = I.getZones(tree)[0]

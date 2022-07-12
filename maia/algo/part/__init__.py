@@ -11,8 +11,8 @@ from .extract_boundary       import extract_faces_mesh,\
 
 from .geometry               import compute_cell_center
 
-from .interpolate            import interpolate_from_parts_per_dom,\
-                                    interpolate_from_part_trees
+from .interpolate            import interpolate_from_part_trees,\
+                                    create_interpolator_from_part_trees
 
 from .wall_distance          import compute_wall_distance
 

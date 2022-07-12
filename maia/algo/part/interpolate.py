@@ -7,7 +7,6 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils                  import py_utils, np_utils
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
@@ -17,26 +16,20 @@ from .import localize as LOC
 from .import closest_points as CLO
 
 class Interpolator:
-  """
-  """
+  """ Low level class to perform interpolations """
   def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, output_loc, comm):
     self.src_parts = list()
     self.tgt_parts = list()
     all_src_lngn = []
     for i_domain, src_parts in enumerate(src_parts_per_dom):
       for i_part, src_part in enumerate(src_parts):
-        lngn = I.getVal(MT.getGlobalNumbering(src_part, 'Cell')).astype(pdm_gnum_dtype, copy=False)
-        all_src_lngn.append(lngn)
+        all_src_lngn.append(PCU._get_zone_ln_to_gn_from_loc(src_part, 'Cell'))
         self.src_parts.append(src_part)
 
     all_cloud_lngn = []
     for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
       for i_part, tgt_part in enumerate(tgt_parts):
-        if output_loc == 'Vertex':
-          lngn = I.getVal(MT.getGlobalNumbering(tgt_part, 'Vertex')).astype(pdm_gnum_dtype, copy=False)
-        else:
-          lngn = I.getVal(MT.getGlobalNumbering(tgt_part, 'Cell')).astype(pdm_gnum_dtype, copy=False)
-        all_cloud_lngn.append(lngn)
+        all_cloud_lngn.append(PCU._get_zone_ln_to_gn_from_loc(tgt_part, output_loc))
         self.tgt_parts.append(tgt_part)
 
     _src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
@@ -74,7 +67,7 @@ class Interpolator:
     come_from_idx = self.sending_gnums[i_part]['come_from_idx']
     n_recv = come_from_idx[1] #We assert this one to be the same for each located gn
     assert (np.diff(come_from_idx) == n_recv).all()
-    n_reduced = self.referenced_nums[i_part].size
+    n_reduced = come_from_idx.size - 1
 
     reduced_data = np.zeros(n_reduced, float)
     factor = np.zeros(n_reduced, float)
@@ -87,6 +80,12 @@ class Interpolator:
 
 
   def exchange_fields(self, container_name, reduce_func=_reduce_single_val):
+    """
+    For all fields found under container_name node,
+    - Perform a part to part exchanged
+    - Reduce the received data using reduce_func (because tgt elements can receive multiple data)
+    - Fill the target sol with a default value + the reduced value
+    """
 
     #Check that solutions are known on each source partition
     fields_per_part = list()
@@ -135,8 +134,10 @@ def create_src_to_tgt(src_parts_per_dom,
                       location = 'CellCenter',
                       strategy = 'LocationAndClosest',
                       loc_tolerance = 1E-6,
-                      order = 0):
-  """
+                      n_closest_pt = 1):
+  """ Create a source to target indirection depending of the choosen strategy.
+
+  This indirection can then be used to create an interpolator object.
   """
   n_dom_src = len(src_parts_per_dom)
   n_dom_tgt = len(tgt_parts_per_dom)
@@ -187,7 +188,8 @@ def create_src_to_tgt(src_parts_per_dom,
       all_sub_lngn = PCU.create_sub_numbering(all_extracted_lngn, comm) #This one is collective
       tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(tgt_clouds, all_sub_lngn)]
 
-    all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, 1, reverse=True)
+    n_clo = n_closest_pt if strategy == 'Closest' else 1
+    all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, n_clo, reverse=True)
 
     #If we worked on sub gnum, we must go back to original numbering
     if strategy != 'Closest':
@@ -254,6 +256,11 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
     - Source tree must be unstructured and have a ngon connectivity.
     - Partitions must come from a single initial domain on both source and target tree.
 
+  See also:
+    :func:`create_interpolator_from_part_trees` takes the same parameters, excepted ``containers_name``,
+    and returns an Interpolator object which can be used to exchange containers more than once through its
+    ``Interpolator.exchange_fields(container_name)`` method.
+
   Args:
     src_tree (CGNSTree): Source tree, partitionned. Only U-NGon connectivities are managed.
     tgt_tree (CGNSTree): Target tree, partitionned. Structured or U-NGon connectivities are managed.
@@ -272,4 +279,17 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
+
+
+def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, location, **options):
+  """Same as interpolate_from_part_trees, but return the interpolator object instead
+  of doing interpolations. Interpolator can be called multiple time to exchange
+  fields without recomputing the src_to_tgt indirection (geometry must remain the same).
+  """
+  src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
+  tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
+
+  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+  return Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, location, comm)
+
 
