@@ -9,7 +9,7 @@ import maia.pytree.maia   as MT
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils                  import py_utils, np_utils
 from maia.transfer               import utils as te_utils
-from maia.factory.dist_from_part import discover_nodes_from_matching
+from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .point_cloud_utils import get_point_cloud
 
@@ -31,11 +31,13 @@ def _get_part_data(part_zone):
       face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn
 
 def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):
-  # For now, only 1 domain is supported so we expect source parts and target clouds
-  # as flat lists :
-  # Parts are tuple (cell_face_idx, cell_face, cell_lngn,
-  #  face_vtx_idx, face_vtx, face_lngn, vtx_coords, vtx_lngn)
-  # Cloud are tuple (coords, lngn)
+  """ Wrapper of PDM mesh location
+  For now, only 1 domain is supported so we expect source parts and target clouds
+  as flat lists :
+  Parts are tuple (cell_face_idx, cell_face, cell_lngn,
+   face_vtx_idx, face_vtx, face_lngn, vtx_coords, vtx_lngn)
+  Cloud are tuple (coords, lngn)
+  """
 
   n_part_src = len(src_parts)
   n_part_tgt = len(tgt_clouds)
@@ -66,6 +68,7 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   all_target_data = [mesh_loc.location_get(0, i_tgt_part) for i_tgt_part in range(n_part_tgt)]
   # Add ids in dict
   for i_part, data in enumerate(all_target_data):
+    data.pop('g_num')
     data['located_ids']   = all_located_id[i_part] - 1
     data['unlocated_ids'] = all_unlocated_id[i_part] - 1
 
@@ -115,9 +118,9 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
   For all the points of the target tree matching the given location,
   search the cell of the source tree in which it is enclosed.
   The result, i.e. the gnum of the source cell (or -1 if the point is not localized),
-  is stored in a DiscreteData_t container called "Localization" on the target zones.
+  is stored in a ``DiscreteData_t`` container called "Localization" on the target zones.
 
-  - Source tree must be unstructured and have a ngon connectivity.
+  - Source tree must be unstructured and have a NGon connectivity.
   - Partitions must come from a single initial domain on both source and target tree.
 
   Localization can be parametred thought the options kwargs:
@@ -130,21 +133,15 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
     location ({'CellCenter', 'Vertex'}) : Target points to localize
     comm       (MPIComm): MPI communicator
     **options: Additional options related to location strategy
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #localize_points@start
+        :end-before: #localize_points@end
+        :dedent: 2
   """
-  dist_src_doms = I.newCGNSTree()
-  discover_nodes_from_matching(dist_src_doms, [src_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-  src_parts_per_dom = list()
-  for zone_path in PT.predicates_to_paths(dist_src_doms, 'CGNSBase_t/Zone_t'):
-    src_parts_per_dom.append(te_utils.get_partitioned_zones(src_tree, zone_path))
-
-  dist_tgt_doms = I.newCGNSTree()
-  discover_nodes_from_matching(dist_tgt_doms, [tgt_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-
-  tgt_parts_per_dom = list()
-  for zone_path in PT.predicates_to_paths(dist_tgt_doms, 'CGNSBase_t/Zone_t'):
-    tgt_parts_per_dom.append(te_utils.get_partitioned_zones(tgt_tree, zone_path))
+  src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
+  tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
   located_data = _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm)
 
