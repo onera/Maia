@@ -47,7 +47,7 @@ class Interpolator:
                               _src_to_tgt_idx,
                               _src_to_tgt)
 
-    self.referenced_nums = self.PTP.get_referenced_lnum()
+    self.referenced_nums = self.PTP.get_referenced_lnum2()
     self.sending_gnums = self.PTP.get_gnum1_come_from()
     self.output_loc = output_loc
 
