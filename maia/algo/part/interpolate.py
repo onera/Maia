@@ -44,12 +44,15 @@ class Interpolator:
     self.sending_gnums = self.PTP.get_gnum1_come_from()
     self.output_loc = output_loc
 
-    # Send distances to targets partitions
-    _dist = [data['dist2'] for data in src_to_tgt]
-    request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
-                             _dist)
-    _, self.tgt_dist = self.PTP.wait(request)
+    # Send distances to targets partitions (if available)
+    try:
+      _dist = [data['dist2'] for data in src_to_tgt]
+      request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+                               _dist)
+      _, self.tgt_dist = self.PTP.wait(request)
+    except KeyError:
+      pass
 
 
   def _reduce_single_val(self, i_part, data):
@@ -62,7 +65,8 @@ class Interpolator:
 
   def _reduce_mean_dist(self, i_part, data):
     """
-    Compute a weighted mean of the received values. Weights are the inverse of the squared distance from each source
+    Compute a weighted mean of the received values. Weights are the inverse of the squared distance from each source.
+    Usable only if distance are available in src_to_tgt dict (eg if closestpoint method was used).
     """
     come_from_idx = self.sending_gnums[i_part]['come_from_idx']
     n_recv = come_from_idx[1] #We assert this one to be the same for each located gn
@@ -132,7 +136,7 @@ def create_src_to_tgt(src_parts_per_dom,
                       tgt_parts_per_dom,
                       comm,
                       location = 'CellCenter',
-                      strategy = 'LocationAndClosest',
+                      strategy = 'Closest',
                       loc_tolerance = 1E-6,
                       n_closest_pt = 1):
   """ Create a source to target indirection depending of the choosen strategy.
@@ -199,8 +203,7 @@ def create_src_to_tgt(src_parts_per_dom,
   #Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
     src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
-                   'target'     : data['points_gnum'],
-                   'dist2'      : data['points_dist2']} for data in all_located_inv]
+                   'target'     : data['points_gnum']} for data in all_located_inv]
   elif strategy == 'Closest':
     src_to_tgt = [{'target_idx' : data['tgt_in_src_idx'],
                    'target'     : data['tgt_in_src'],
@@ -210,9 +213,7 @@ def create_src_to_tgt(src_parts_per_dom,
     for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
       tgt_in_src_idx, tgt_in_src = np_utils.jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum'], \
                                                          res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
-      tgt_in_src_idx, tgt_to_dis = np_utils.jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_dist2'], \
-                                                         res_clo['tgt_in_src_idx'], res_clo['tgt_in_src_dist2'])
-      src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src, 'dist2' :tgt_to_dis})
+      src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src})
   
   return src_to_tgt
 
@@ -241,7 +242,7 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
   closest point (or their englobing cell, depending of choosed options) in the source mesh.
   Interpolation strategy can be controled thought the options kwargs:
 
-  - ``strategy`` (default = 'LocationAndClosest') -- control interpolation method
+  - ``strategy`` (default = 'Closest') -- control interpolation method
 
     - 'Closest' : Target points take the value of the closest source cell center.
     - 'Location' : Target points take the value of the cell in which they are located.

@@ -185,7 +185,7 @@ def test_create_src_to_tgt(sub_comm):
       cx = I.getNodeFromName(zone, 'CoordinateX')
       cx[1] += .5
   excp_target = np.array([2,1,3,4]) if sub_comm.Get_rank() == 0 else np.array([6,5,8,7])
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='LocationAndClosest')
   assert (src_to_tgt[0]['target'] == excp_target).all()
 
   excp_target = np.array([2,3]) if sub_comm.Get_rank() == 0 else np.array([6,8])

@@ -138,7 +138,7 @@ def test_interpolation_refined(sub_comm, n_part_tgt, write_output):
 
   # Here we use the Interpolator API, who could allow us to redo an interpolation later
   interpolator = MA.part.create_interpolator_from_part_trees(part_tree_src, part_tree_tgt,\
-      sub_comm, location='CellCenter')
+      sub_comm, location='CellCenter', strategy='Location')
   interpolator.exchange_fields('FlowSolution#Init')
 
   # > Check results
