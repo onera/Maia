@@ -4,18 +4,18 @@ import Pypdm.Pypdm as PDM
 
 import Converter.Internal as I
 import maia.pytree        as PT
-import maia.pytree.maia   as MT
 
 from maia.utils                  import py_utils
-from maia.transfer               import utils as te_utils
-from maia.factory.dist_from_part import discover_nodes_from_matching
+from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .point_cloud_utils import get_point_cloud
 
 
 def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
-  # For now, only 1 domain is supported so we expect source and target clouds
-  # as flat lists of tuples (coords, lngn)
+  """ Wrapper of PDM mesh location
+  For now, only 1 domain is supported so we expect source parts and target clouds
+  as flat lists of tuples (coords, lngn)
+  """
 
   # > Create and setup global data
   closest_point = PDM.ClosestPoints(comm, n_closest=n_pts)
@@ -74,9 +74,9 @@ def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt
 def find_closest_points(src_tree, tgt_tree, location, comm):
   """Find the closest points between two partitioned trees.
 
-  For all the points of the target tree matching the given location,
+  For all points of the target tree matching the given location,
   search the closest point of same location in the source tree.
-  The result, i.e. the gnum of the source point, is stored in a DiscreteData_t
+  The result, i.e. the gnum of the source point, is stored in a ``DiscreteData_t``
   container called "ClosestPoint" on the target zones.
   The ids of source points refers to cells or vertices depending on the chosen location.
 
@@ -87,21 +87,15 @@ def find_closest_points(src_tree, tgt_tree, location, comm):
     tgt_tree (CGNSTree): Target tree, partitionned
     location ({'CellCenter', 'Vertex'}) : Entity to use to compute closest points
     comm       (MPIComm): MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #find_closest_points@start
+        :end-before: #find_closest_points@end
+        :dedent: 2
   """
-  dist_src_doms = I.newCGNSTree()
-  discover_nodes_from_matching(dist_src_doms, [src_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-  src_parts_per_dom = list()
-  for zone_path in PT.predicates_to_paths(dist_src_doms, 'CGNSBase_t/Zone_t'):
-    src_parts_per_dom.append(te_utils.get_partitioned_zones(src_tree, zone_path))
-
-  dist_tgt_doms = I.newCGNSTree()
-  discover_nodes_from_matching(dist_tgt_doms, [tgt_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-
-  tgt_parts_per_dom = list()
-  for zone_path in PT.predicates_to_paths(dist_tgt_doms, 'CGNSBase_t/Zone_t'):
-    tgt_parts_per_dom.append(te_utils.get_partitioned_zones(tgt_tree, zone_path))
+  src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
+  tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
   closest_data = _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, location, location, comm)
   for i_dom, tgt_parts in enumerate(tgt_parts_per_dom):
