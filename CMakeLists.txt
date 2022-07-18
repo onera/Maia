@@ -36,21 +36,29 @@ project(
   LANGUAGES CXX
 )
 
-option(${PROJECT_NAME}_ENABLE_CPP20 "Enable c++20 for ${PROJECT_NAME}" ON)
 option(${PROJECT_NAME}_ENABLE_FETCH_PYBIND "Fetch Pybind11 sources on-the-fly if not found by find_package()" ON)
 option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF)
 option(${PROJECT_NAME}_ENABLE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
-option(${PROJECT_NAME}_USE_PDM_INSTALL "Use an installed ParaDiGM version" ON)
-option(${PROJECT_NAME}_ENABLE_MPI_TESTS "Make CTest run the parallel tests" ON)
+option(${PROJECT_NAME}_BUILD_EMBEDDED_PDM "Build the included copy of ParaDiGM" ON)
+option(${PROJECT_NAME}_ENABLE_TESTS "Make CTest run the tests" ON)
 
 ## Compiler flags
 ### C++ standard
-if (${PROJECT_NAME}_ENABLE_CPP20)
-  set(CMAKE_CXX_STANDARD 20)
+set(SUPPORTED_CXX_STANDARDS 17 20)
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ standard to compile against")
+endif()
+if(NOT CMAKE_CXX_STANDARD IN_LIST SUPPORTED_CXX_STANDARDS)
+  message(FATAL_ERROR "Supported CXX standards are: ${SUPPORTED_CXX_STANDARDS}.")
+endif()
+
+#TODO : those lines should be removed when std_e / cpp_cgns uses CMAKE_CXX_STANDARD
+if (${CMAKE_CXX_STANDARD} EQUAL 20)
   set(std_e_ENABLE_CPP20 ON CACHE BOOL "${PROJECT_NAME} uses C++20, so force C++20 for std_e" FORCE)
   set(cpp_cgns_ENABLE_CPP20 ON CACHE BOOL "${PROJECT_NAME} uses C++20, so force C++20 for cpp_cgns" FORCE)
-else()
-  set(CMAKE_CXX_STANDARD 17)
+elseif (${CMAKE_CXX_STANDARD} EQUAL 17)
+  set(std_e_ENABLE_CPP20 OFF CACHE BOOL "${PROJECT_NAME} uses C++17, so force C++17 for std_e" FORCE)
+  set(cpp_cgns_ENABLE_CPP20 OFF CACHE BOOL "${PROJECT_NAME} uses C++17, so force C++17 for cpp_cgns" FORCE)
 endif()
 set(CMAKE_CXX_EXTENSIONS        OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON )
@@ -76,13 +84,6 @@ project_find_package(Mpi4Py REQUIRED)
 
 ## Dependencies built from source ##
 include(FetchContent)
-### doctest ###
-FetchContent_Declare(
-  doctest
-  GIT_REPOSITORY https://github.com/doctest/doctest.git
-  GIT_TAG        110d305 # corrected MPI SUBCASE
-)
-FetchContent_MakeAvailable(doctest)
 ### pybind11 ###
 project_find_package(pybind11 2.7 CONFIG)
 if (NOT pybind11_FOUND)
@@ -111,7 +112,7 @@ FetchContent_MakeAvailable(range-v3)
 project_add_dependency(range-v3)
 
 ### ParaDiGM ###
-if (${PROJECT_NAME}_USE_PDM_INSTALL)
+if (NOT ${PROJECT_NAME}_BUILD_EMBEDDED_PDM)
   project_find_package(pdm CONFIG REQUIRED)
   project_find_package(pdma CONFIG)
 else()
@@ -138,9 +139,6 @@ project_add_subdir_or_package(cpp_cgns REQUIRED)
 ## Check Python dependencies ##
 include(${PROJECT_UTILS_CMAKE_DIR}/check_python_module.cmake)
 check_python_module(ruamel REQUIRED)
-check_python_module(pytest)
-check_python_module(pytest_html)
-check_local_dependency(pytest-mpi-check)
 
 
 # ------------------------------------------------------------------------------
@@ -205,7 +203,9 @@ install_python_modules(${PROJECT_NAME})
 # Testing
 # ------------------------------------------------------------------------------
 include(CTest)
-add_subdirectory(test)
+if (${PROJECT_NAME}_ENABLE_TESTS)
+  add_subdirectory(test)
+endif()
 
 
 # ------------------------------------------------------------------------------

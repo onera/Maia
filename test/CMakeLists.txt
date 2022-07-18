@@ -1,5 +1,13 @@
 include(${PROJECT_UTILS_CMAKE_DIR}/doctest_pytest.cmake)
 
+### doctest ###
+FetchContent_Declare(
+  doctest
+  GIT_REPOSITORY https://github.com/doctest/doctest.git
+  GIT_TAG        110d305 # corrected MPI SUBCASE
+)
+FetchContent_MakeAvailable(doctest)
+
 # set(pytest_mpi_check_file ${PROJECT_ROOT}/external/pytest-mpi-check/pytest_mpi_check.py)
 # set(pytest_file_in_build ${CMAKE_CURRENT_BINARY_DIR}/../external/pytest-mpi-check/pytest_mpi_check.py)
 # add_custom_command(OUTPUT  "${pytest_file_in_build}"
@@ -26,29 +34,27 @@ create_doctest(
 set_tests_properties(maia_doctest_unit_tests PROPERTIES TIMEOUT 10)
 
 
-if (${PROJECT_NAME}_ENABLE_MPI_TESTS)
-  create_pytest(
-    TESTED_FOLDER ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}
-    LABEL         unit_tests
-    SERIAL_RUN    false
-    N_PROC        ${n_proc_max_test}
-  )
-  create_pytest(
-    TESTED_FOLDER ${PROJECT_SOURCE_DIR}/test
-    LABEL         func_tests
-    SERIAL_RUN    false
-    N_PROC        ${n_proc_max_test}
-  )
+create_pytest(
+  TESTED_FOLDER ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}
+  LABEL         unit_tests
+  SERIAL_RUN    false
+  N_PROC        ${n_proc_max_test}
+)
+create_pytest(
+  TESTED_FOLDER ${PROJECT_SOURCE_DIR}/test
+  LABEL         func_tests
+  SERIAL_RUN    false
+  N_PROC        ${n_proc_max_test}
+)
 
-  # TODO (not ready yet)
-  #mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 maia 2
-  #                SOURCES
-  #                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
-  #                LABELS     unit
-  #                SERIAL_RUN false )
-  #mpi_test_create(maia_mpi_scheduler_threads.cpp maia_mpi_scheduler_threads maia 15
-  #                SOURCES
-  #                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
-  #                LABELS     unit
-  #                SERIAL_RUN false )
-endif()
+# TODO (not ready yet)
+#mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 maia 2
+#                SOURCES
+#                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
+#                LABELS     unit
+#                SERIAL_RUN false )
+#mpi_test_create(maia_mpi_scheduler_threads.cpp maia_mpi_scheduler_threads maia 15
+#                SOURCES
+#                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
+#                LABELS     unit
+#                SERIAL_RUN false )

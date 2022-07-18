@@ -48,7 +48,7 @@ job:build:
   stage: build
   script:
     - mkdir build && cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_MPI_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -Dmaia_USE_PDM_INSTALL=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j8
 
 # This build documentation after main build, only if branch is dev or for MR events
