@@ -42,6 +42,9 @@ def pe_to_nface(zone, remove_PE=False):
   I.newPointRange("ElementRange", np.array([min_cell, max_cell], dtype=np.int32), parent=nface)
   I.newDataArray("ElementStartOffset",   nface_eso, parent=nface)
   I.newDataArray("ElementConnectivity",  nface_ec,  parent=nface)
+  cell_gnum = MT.getGlobalNumbering(zone, 'Cell')
+  if cell_gnum is not None:
+    MT.newGlobalNumbering({'Element' : I.getVal(cell_gnum)}, nface)
 
   if remove_PE:
     I._rmNodesByName(ngon_node, "ParentElements")
