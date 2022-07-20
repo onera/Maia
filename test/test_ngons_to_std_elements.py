@@ -19,7 +19,7 @@ def test_ngons_to_elements(sub_comm, write_output):
   # Note: `elements_to_ngons` is supposed to work, because it is tested in another test
   maia.algo.dist.elements_to_ngons(dist_tree, sub_comm)
 
-  maia.algo.dist.ngons_to_elements(dist_tree)
+  maia.algo.dist.ngons_to_elements(dist_tree, sub_comm)
 
   # > There is two sections...
   assert len(I.getNodesFromType(dist_tree, 'Elements_t')) == 2

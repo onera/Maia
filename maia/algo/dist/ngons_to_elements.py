@@ -1,8 +1,9 @@
 from cmaia import dist_algo as cdist_algo
 from maia.algo.apply_function_to_nodes import apply_to_zones
+from maia.algo.dist.matching_jns_tools import add_joins_donor_name,copy_donor_subset
 
 
-def ngons_to_elements(t):
+def ngons_to_elements(t,comm):
   """
   Transform a polyedric (NGon) based connectivity into a standard nodal
   connectivity.

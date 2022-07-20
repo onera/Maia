@@ -8,3 +8,6 @@ from .indexing import pe_to_nface, nface_to_pe
 def ngon_new_to_old(t):
   apply_to_zones(t, ctree_algo.ngon_new_to_old)
 
+def ngon_old_to_new(t):
+  apply_to_zones(t, ctree_algo.ngon_old_to_new)
+

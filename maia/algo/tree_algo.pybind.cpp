@@ -24,13 +24,15 @@ apply_cpp_cgns_par_function_to_py_base(F&& f) {
   };
 }
 
-const auto ngon_new_to_old              = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
+const auto ngon_new_to_old = apply_cpp_cgns_function_to_py_base(maia::ngon_new_to_old);
+const auto ngon_old_to_new = apply_cpp_cgns_function_to_py_base(maia::ngon_old_to_new);
 
 
 void register_tree_algo_module(py::module_& parent) {
 
   py::module_ m = parent.def_submodule("tree_algo");
-  m.def("ngon_new_to_old"                         , ngon_new_to_old                         , "Turn Ngon description with ElementStartOffset to old convension");
+  m.def("ngon_new_to_old" , ngon_new_to_old , "Turn Ngon description with ElementStartOffset to old convention");
+  m.def("ngon_old_to_new" , ngon_old_to_new , "Turn Ngon description without ElementStartOffset to new convention");
 
   
 }
