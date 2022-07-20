@@ -344,6 +344,17 @@ _convert_zone_to_std_elements(tree& z) -> void {
   tree& nfaces = element_section(z,cgns::NFACE_n);
   auto face_pls = cgns::get_zone_point_lists<I>(z,"FaceCenter");
 
+  // The NFace node should be signed to give the normal directions
+  // We need this information when constructing cell_vtx from cell_face.
+  // However, sometimes the NFace is not SIDS-compliant
+  // So we retrieve the information through the ParentElement
+  // Since it simplifies the treatment (when renumbering the NFace), we make the NFace unsigned
+  // (Note: since the treatment is in-place, the NFace is deleted at the end anyways)
+  auto cell_face_cs = cgns::ElementConnectivity<I>(nfaces);
+  for (I& i_face : cell_face_cs) {
+    i_face = std::abs(i_face);
+  }
+
   // partition faces and cells
   permute_boundary_ngons_at_beginning<I>(ngons,nfaces,face_pls);
   auto last_tri_index = partition_bnd_faces_by_number_of_vertices<I>(ngons,nfaces,face_pls);
