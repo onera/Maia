@@ -16,7 +16,7 @@ auto gcs_only_for_ghosts(tree& b) -> void {
     auto ghost_info = get_node_value_by_matching<I4>(z,":CGNS#Ppart/np_vtx_ghost_information");
     // n_ghost
     int zone_proc = maia::proc_of_zone(name(z));
-    auto is_owned = [=](I4 ghost_proc){ return ghost_proc==-1 || ghost_proc==zone_proc; };
+    auto is_owned = [=](I4 ghost_proc){ return ghost_proc<2; }; // 2: vtx is not owned
     auto first_ghost = std::partition_point(begin(ghost_info),end(ghost_info),is_owned);
     I4 n_ghost = end(ghost_info)-first_ghost;
     tree& grid_coord_node = get_child_by_name(z,"GridCoordinates");
@@ -38,8 +38,8 @@ auto gcs_only_for_ghosts(tree& b) -> void {
         std::vector<I4> new_pld;
 
         for (int i=0; i<n_old_id; ++i) {
-          I4 owner_proc = ghost_info[old_pl[i]-1]; // -1 because PointList (refering to a vertex) is 1-indexed in CGNS
-          if (owner_proc!=zone_proc && owner_proc==opp_zone_proc)  {
+          I4 gi = ghost_info[old_pl[i]-1]; // -1 because PointList (refering to a vertex) is 1-indexed in CGNS
+          if (gi==2) { // 2: vtx is not owned
             new_pl .push_back(old_pl [i]);
             new_pld.push_back(old_pld[i]);
           }
