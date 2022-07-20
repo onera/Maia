@@ -162,6 +162,19 @@ class Zone:
 
     return range_by_dim
 
+  @staticmethod
+  def elt_ordering_by_dim(zone):
+    """Returns 1 if lower dimension elements have lower element range, -1 if
+    lower dim. elements have higher element range, and 0 if order can not be determined"""
+    status = 0
+    sect_start = [r[0] for r in Zone.get_elt_range_per_dim(zone) if r[0] > 0]
+    if len(sect_start) >= 2:
+      if sect_start[0] < sect_start[-1]:
+        status = 1
+      elif sect_start[0] > sect_start[-1]:
+        status = -1
+    return status
+
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Elements_t"))

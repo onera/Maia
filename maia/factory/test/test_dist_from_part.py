@@ -269,5 +269,6 @@ def test_recover_dist_tree_elt(sub_comm):
   assert len(I.getNodesFromType(dist_zone, 'BC_t')) == 6
   assert len(I.getNodesFromType(dist_zone, 'ZoneGridConnectivity_t')) == 0
 
-  I._rmNodesByName(dist_tree, 'PointList#Size')
+  for elt in I.getNodesFromType(dist_tree_bck, 'Elements_t'):
+    I._rmNodeByPath(elt, ':CGNS#Distribution/ElementConnectivity')
   assert PT.is_same_tree(dist_tree_bck, dist_tree)

@@ -136,7 +136,6 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
   # Create dist pointlist
   I.newPointList(value = dist_pl.reshape(1,-1), parent=dist_node)
-  I.newIndexArray('PointList#Size', value=[1, full_distri[n_rank]], parent=dist_node)
 
 def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   """
@@ -188,8 +187,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   I.newDataArray ('ElementConnectivity', dist_ec,        parent=elt_node)
 
   distri_elt = par_utils.full_to_partial_distribution(PTBDistribution, comm)
-  MT.newDistribution({'Element' : distri_elt, 'ElementConnectivity' : cst_stride*distri_elt},
-                     parent=elt_node)
+  MT.newDistribution({'Element' : distri_elt}, parent=elt_node)
 
 def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   """

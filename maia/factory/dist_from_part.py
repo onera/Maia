@@ -1,3 +1,4 @@
+from mpi4py import MPI
 import numpy      as np
 import Pypdm.Pypdm as PDM
 
@@ -95,16 +96,46 @@ def _recover_elements(dist_zone, part_zones, comm):
     for elt in elt_nodes:
       n_elt_per_dim[PT.Element.Dimension(elt)] += PT.Element.Size(elt)
 
-    for elt in elt_nodes:
-      dim_shift = sum(n_elt_per_dim[:PT.Element.Dimension(elt)])
-      ER = I.getNodeFromName(elt, 'ElementRange')
-      ER[1] += dim_shift
+    elt_order = [PT.Zone.elt_ordering_by_dim(part_zone) for part_zone in part_zones]
+    n_increase = comm.allreduce(elt_order.count(1),  MPI.SUM)
+    n_decrease = comm.allreduce(elt_order.count(-1), MPI.SUM)
+    assert n_increase * n_decrease == 0
+    
+    if n_increase > 0:
+      for elt in elt_nodes:
+        dim_shift = sum(n_elt_per_dim[:PT.Element.Dimension(elt)])
+        ER = I.getNodeFromName(elt, 'ElementRange')
+        ER[1] += dim_shift
+
+    else:
+      for elt in elt_nodes:
+        dim_shift = sum(n_elt_per_dim[PT.Element.Dimension(elt)+1:])
+        ER = I.getNodeFromName(elt, 'ElementRange')
+        ER[1] += dim_shift
 
 def recover_dist_tree(part_tree, comm):
-  """
-  Regenerate a distributed tree from partitioned trees.
-  Partitioned trees must include all GlobalNumbering data.
-  For now only NGon/NFace trees are supported
+  """ Regenerate a distributed tree from a partitioned tree.
+  
+  The partitioned tree should have been created using Maia, or
+  must at least contains GlobalNumbering nodes as defined by Maia
+  (see :ref:`part_tree`).
+  In addition, only unstructured connectivities (NGon/NFace or
+  standard elements) are supported.
+
+  The following nodes are managed : GridCoordinates, Elements, ZoneBC, ZoneGridConnectivity
+  and FlowSolution.
+
+  Args:
+    part_tree (CGNSTree) : Partitioned CGNS Tree
+    comm       (MPIComm) : MPI communicator
+  Returns:
+    CGNSTree: distributed cgns tree
+
+  Example:
+      .. literalinclude:: snippets/test_factory.py
+        :start-after: #recover_dist_tree@start
+        :end-before: #recover_dist_tree@end
+        :dedent: 2
   """
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
