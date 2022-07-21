@@ -1,5 +1,6 @@
-import os
+import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
+import os
 from mpi4py import MPI
 import numpy as np
 
@@ -252,11 +253,15 @@ def test_recover_dist_tree_ngon(sub_comm):
   assert (I.getValue(I.getNodeFromPath(dist_zone, 'ZoneBC/BC')) == "BCWall")
 
 @mark_mpi_test(2)
-def test_recover_dist_tree_elt(sub_comm):
+@pytest.mark.parametrize("void_part", [True, False])
+def test_recover_dist_tree_elt(void_part, sub_comm):
   mesh_file = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
   dist_tree_bck = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
-  weights = [1.] if sub_comm.rank == 1 else [] #May change it when part is fixed
+  if void_part:
+    weights = [1.] if sub_comm.rank == 1 else []
+  else:
+    weights = [.5]
   zone_to_parts = {'Base/Zone' : weights}
   part_tree = maia.factory.partition_dist_tree(dist_tree_bck, sub_comm, zone_to_parts=zone_to_parts)
 

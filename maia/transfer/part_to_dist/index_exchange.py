@@ -156,17 +156,20 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   max_section_gn = 0
   for ipart, part_zone in enumerate(part_zones):
     elt_n = I.getNodeFromName1(part_zone, elem_name)
-    elt_id = PT.Element.Type(elt_n)
-    cst_stride = PT.Element.NVtx(elt_n)
+    if elt_n is not None:
+      elt_id = PT.Element.Type(elt_n)
+      cst_stride = PT.Element.NVtx(elt_n)
 
-    # Retrieve the ElementRange within the given dimension
-    section_gnum = MT.getGlobalNumbering(elt_n, 'Sections')[1]
-    min_section_gn = min(min_section_gn, np.min(section_gnum))
-    max_section_gn = max(max_section_gn, np.max(section_gnum))
+      # Retrieve the ElementRange within the given dimension
+      section_gnum = MT.getGlobalNumbering(elt_n, 'Sections')[1]
+      min_section_gn = min(min_section_gn, np.min(section_gnum))
+      max_section_gn = max(max_section_gn, np.max(section_gnum))
 
-    # Move to global and add in part_data
-    EC    = I.getNodeFromName1(elt_n, 'ElementConnectivity')[1]
-    part_ec.append(vtx_gnum_l[ipart][EC-1])
+      # Move to global and add in part_data
+      EC    = I.getNodeFromName1(elt_n, 'ElementConnectivity')[1]
+      part_ec.append(vtx_gnum_l[ipart][EC-1])
+    else:
+      part_ec.append(np.empty(0, np.int32))
 
   #Get values for proc having no elt
   cst_stride = comm.allreduce(cst_stride, MPI.MAX)
