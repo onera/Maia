@@ -38,6 +38,9 @@ maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
                             "elmt_edge" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_EDGE,
                             "elmt_vtx " : PDM._PDM_CONNECTIVITY_TYPE_ELMT_VTX}
 
+pdm_geometry_kinds = [PDM._PDM_GEOMETRY_KIND_CORNER, PDM._PDM_GEOMETRY_KIND_RIDGE, 
+                      PDM._PDM_GEOMETRY_KIND_SURFACIC, PDM._PDM_GEOMETRY_KIND_VOLUMIC]
+
 def prepare_part_weight(bases_to_block, zone_to_weights):
   n_zones = sum([len(zones) for zones in bases_to_block.values()])
   n_parts = sum([len(weights) for weights in zone_to_weights.values()])
@@ -158,10 +161,8 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
     pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
     if pmesh_nodal is not None:
       for i_part in range(n_part):
-        l_data[i_part]["2dsections"] = \
-            pmesh_nodal.part_mesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, i_part)
-        l_data[i_part]["3dsections"] = \
-            pmesh_nodal.part_mesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_VOLUMIC, i_part)
+        for j, kind in enumerate(pdm_geometry_kinds):
+          l_data[i_part][f"{j}dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(kind, i_part)
 
     parts = pdm_part_to_cgns_zone(d_zone, l_dims, l_data, comm, post_options)
     all_parts.extend(parts)

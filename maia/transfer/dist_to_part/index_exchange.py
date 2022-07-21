@@ -62,7 +62,7 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
 def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
 
   assert entity in ['Vertex', 'Elements']
-  filter_loc = ['FaceCenter', 'CellCenter'] if entity=='Elements' else ['Vertex']
+  filter_loc = ['EdgeCenter', 'FaceCenter', 'CellCenter'] if entity=='Elements' else ['Vertex']
 
   #Create distri and lngn
   if entity == 'Vertex':

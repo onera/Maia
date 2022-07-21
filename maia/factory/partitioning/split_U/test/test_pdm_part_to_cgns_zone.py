@@ -93,7 +93,9 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   I.newElements('Hexa', 'HEXA', erange=[7,7], parent=d_zone)
   p_zone = I.newZone('Zone.P0.N0', ztype='Unstructured')
   dims = {'n_section' :2, 'n_elt' : [6,1]}
-  data = {'2dsections' : [
+  data = {'0dsections' : [],
+          '1dsections' : [],
+          '2dsections' : [
             {'np_connec' : np.array([1,4,3,2,1,2,6,5,2,3,7,6,3,4,8,7,1,5,8,4,5,6,7,8], dtype=np.int32),
              'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32),
              'np_parent_num' : np.array([1,2,3,4,5,6]),
@@ -134,7 +136,9 @@ def test_pdm_part_to_cgns_zone():
   I.newElements('Quad', 'QUAD', erange=[2,7], parent=d_zone)
   I.newElements('Hexa', 'HEXA', erange=[1,1], parent=d_zone)
   l_dims = [{'n_section' :2, 'n_cell' : 1, 'n_vtx': 3, 'n_elt' : [6,1]}]
-  l_data = [{'2dsections' : [
+  l_data = [{'0dsections' : [],
+            '1dsections' : [],
+            '2dsections' : [
               {'np_connec' : np.array([1,4,3,2,1,2,6,5,2,3,7,6,3,4,8,7,1,5,8,4,5,6,7,8], dtype=np.int32),
                'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32),
                'np_parent_num' : np.array([1,2,3,4,5,6]),
