@@ -58,6 +58,7 @@ def prepare_part_weight(bases_to_block, zone_to_weights):
 def set_mpart_reordering(multipart, reorder_options, keep_alive):
   renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum_method']
   renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_options['face_renum_method']
+  renum_vtx_method  = "PDM_PART_RENUM_VTX_"  + reorder_options['vtx_renum_method']
   if "CACHEBLOCKING" in reorder_options['cell_renum_method']:
     pdm_part_tool     = 1 if reorder_options['graph_part_tool'] == 'parmetis' else 2
     cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
@@ -81,6 +82,8 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
                                       renum_cell_method.encode('utf-8'),
                                       renum_face_method.encode('utf-8'),
                                       cacheblocking_props)
+  multipart.multipart_set_reordering_vtx(-1,
+                                         renum_vtx_method.encode('utf-8'))
   keep_alive.append(cacheblocking_props)
 
 def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
