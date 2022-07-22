@@ -15,6 +15,12 @@ def uniform_distribution(n_elt, comm):
   proc_indices[2] = n_elt
   return proc_indices
 
+def dn_to_distribution(dn_elt, comm):
+  """
+  """
+  distri_full = gather_and_shift(dn_elt, comm, npy_pdm_gnum_dtype)
+  distri      = full_to_partial_distribution(distri_full, comm)
+  return distri
 
 def partial_to_full_distribution(partial_distrib, comm):
   """
