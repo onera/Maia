@@ -89,12 +89,21 @@ def test_pdm_elmt_to_cgns_elmt_ngon():
 
 def test_pdm_elmt_to_cgns_elmt_elmt():
   d_zone = I.newZone('Zone', ztype='Unstructured')
-  I.newElements('Quad', 'QUAD', erange=[1,6], parent=d_zone)
-  I.newElements('Hexa', 'HEXA', erange=[7,7], parent=d_zone)
+  I.newElements('NodeB', 'NODE', erange=[5,8], parent=d_zone)
+  I.newElements('NodeA', 'NODE', erange=[1,4], parent=d_zone)
+  I.newElements('Bar', 'BAR', erange=[9,20], parent=d_zone)
+  I.newElements('Quad', 'QUAD', erange=[21,26], parent=d_zone)
+  I.newElements('Hexa', 'HEXA', erange=[27,27], parent=d_zone)
   p_zone = I.newZone('Zone.P0.N0', ztype='Unstructured')
   dims = {'n_section' :2, 'n_elt' : [6,1]}
-  data = {'0dsections' : [],
-          '1dsections' : [],
+  data = {'0dsections' : [
+            {'np_connec' : np.array([3,4], dtype=np.int32), 'np_numabs' : np.array([3,4], dtype=np.int32),
+             'np_parent_num' : np.array([3,4]), 'np_parent_entity_g_num' : np.array([3,4])},
+            {'np_connec' : np.array([1,2], dtype=np.int32), 'np_numabs' : np.array([1,2], dtype=np.int32),
+             'np_parent_num' : np.array([1,2]), 'np_parent_entity_g_num' : np.array([1,2])},
+          ],
+          '1dsections' : [{'np_connec' : np.array([], dtype=np.int32), 'np_numabs' : np.array([], dtype=np.int32),
+                           'np_parent_num' : np.array([]), 'np_parent_entity_g_num' : np.array([])}],
           '2dsections' : [
             {'np_connec' : np.array([1,4,3,2,1,2,6,5,2,3,7,6,3,4,8,7,1,5,8,4,5,6,7,8], dtype=np.int32),
              'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32),
@@ -111,10 +120,16 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
 
   PTC.pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data)
 
+  node_n = I.getNodeFromPath(p_zone, 'NodeA')
+  assert (I.getNodeFromPath(node_n, 'ElementConnectivity')[1] == data['0dsections'][1]['np_connec']).all()
+  assert (I.getNodeFromPath(node_n, 'ElementRange')[1] == [3,4]).all()
+
+  assert I.getNodeFromPath(p_zone, 'Bar') is None
+
   quad_n = I.getNodeFromPath(p_zone, 'Quad')
   assert (I.getValue(quad_n) == [7,0]).all()
   assert (I.getNodeFromPath(quad_n, 'ElementConnectivity')[1] == data['2dsections'][0]['np_connec']).all()
-  assert (I.getNodeFromPath(quad_n, 'ElementRange')[1] == [1,6]).all()
+  assert (I.getNodeFromPath(quad_n, 'ElementRange')[1] == [5,10]).all()
   assert (I.getVal(MT.getGlobalNumbering(quad_n, 'Element')) == data['2dsections'][0]['np_numabs']).all()
   assert (I.getVal(MT.getGlobalNumbering(quad_n, 'Sections')) == data['2dsections'][0]['np_numabs']).all()
   assert (I.getVal(MT.getGlobalNumbering(quad_n, 'ImplicitEntity')) == data['2dsections'][0]['np_parent_entity_g_num']).all()
@@ -124,7 +139,7 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   hexa_n = I.getNodeFromPath(p_zone, 'Hexa')
   assert (I.getValue(hexa_n) == [17,0]).all()
   assert (I.getNodeFromPath(hexa_n, 'ElementConnectivity')[1] == data['3dsections'][0]['np_connec']).all()
-  assert (I.getNodeFromPath(hexa_n, 'ElementRange')[1] == [7,7]).all()
+  assert (I.getNodeFromPath(hexa_n, 'ElementRange')[1] == [11,11]).all()
   assert (I.getVal(MT.getGlobalNumbering(hexa_n, 'Element')) == data['3dsections'][0]['np_numabs']).all()
   assert (I.getVal(MT.getGlobalNumbering(hexa_n, 'Sections')) == data['3dsections'][0]['np_numabs']).all()
   assert (I.getVal(I.getNodeFromPath(hexa_n, ':CGNS#LocalNumbering/ExplicitEntity')) == \

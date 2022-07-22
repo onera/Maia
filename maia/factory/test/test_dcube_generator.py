@@ -33,3 +33,12 @@ def test_dcube_nodal_generate(sub_comm, cgns_elmt_name):
   #For PENTA_6 we have 1 volumic and 2 surfacic
   assert len(I.getNodesFromType(zone, 'Elements_t')) == 3 if cgns_elmt_name == 'PENTA_6' else 2
 
+@mark_mpi_test([2])
+def test_dcube_nodal_generate_ridges(sub_comm):
+  # Do not test value since this is a PDM function
+  dist_tree = dcube_generator.dcube_nodal_generate(5, 1., [0., 0., 0.], 'PYRA_5', sub_comm, get_ridges=True)
+
+  zone = I.getZones(dist_tree)[0]
+  assert len(I.getNodesFromType(zone, 'BC_t')) == 6
+  assert [I.getName(n) for n in I.getNodesFromType1(zone, 'Elements_t')] == \
+                   ['PYRA_5.0', 'TRI_3.0', 'QUAD_4.1', 'BAR_2.0', 'NODE.0']
