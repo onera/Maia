@@ -44,7 +44,8 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   for elt_dim in sorted_elts_by_dim:
     for elt in elt_dim:
       assert PT.Element.CGNSName(elt) not in ["NGON_n", "NFACE_n"]
-      n_elt_per_dim[PT.Element.Dimension(elt)-1] += PT.Element.Size(elt)
+      if PT.Element.Dimension(elt) > 0:
+        n_elt_per_dim[PT.Element.Dimension(elt)-1] += PT.Element.Size(elt)
 
   #Create DMeshNodal
   dmesh_nodal = DistributedMeshNodal(comm, n_vtx, *n_elt_per_dim[::-1])

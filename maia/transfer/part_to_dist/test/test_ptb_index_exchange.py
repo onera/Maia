@@ -282,11 +282,11 @@ Zone.P0.N0 Zone_t:
     Vertex DataArray_t {0} [19,20,21,22,23,24,25,26,27,10,13,15,17,18,11,12,14,16]:
     Cell DataArray_t {0} [5,6,7,8]:
   """.format(dtype)
-    expected_ec  = [1,5,13,17,25,29,2,6,17,21,27,31,3,7,14,18,29,33]
+    expected_ec  = [1,5,13,17,25,29,2,6,17,21,27,31,3,7,14,18,-29,33]
     expected_eso = [0,6,12,18]
   elif rank == 1:
     yt = ""
-    expected_ec  = [4,8,18,22,31,35,5,9,15,19,26,30,6,10,19,23,28,32]
+    expected_ec  = [4,8,18,22,-31,35,5,9,15,19,26,30,6,10,-19,23,28,32]
     expected_eso = [18,24,30,36]
   elif rank == 2:
     yt = """
@@ -315,7 +315,7 @@ Zone.P2.N1 Zone_t:
     Vertex DataArray_t {0} [3,6,9,2,5,8,11,12,14,15,17,18]:
     Cell DataArray_t {0} [2,4]:
   """.format(dtype)
-    expected_ec  = [7,11,16,20,30,34,8,12,20,24,32,36]
+    expected_ec  = [7,11,16,20,-30,34,8,12,-20,24,-32,36]
     expected_eso = [36,42,48]
 
   expected_elt_distri_full  = np.array([0,3,6,8])

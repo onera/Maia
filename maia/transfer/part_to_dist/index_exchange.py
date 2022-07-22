@@ -257,7 +257,16 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
       dist_pe[iFace,:] = d_data_pe[offset:offset+2]
     # Face was a partition boundary -> we take the left cell of each received tuple
     elif d_strid_pe[iFace] == 4:
-      dist_pe[iFace,:] = [d_data_pe[offset], d_data_pe[offset+2]]
+      if d_data_pe[offset] == 0: #Orientation was preserved and first cell was right
+        dist_pe[iFace,0] = d_data_pe[offset+2]
+        dist_pe[iFace,1] = d_data_pe[offset+1]
+      else:
+        if d_data_pe[offset+3] != 0: #Orientation was presered and first cell was left
+          dist_pe[iFace,0] = d_data_pe[offset+0]
+          dist_pe[iFace,1] = d_data_pe[offset+3]
+        else: #Orientation was not preserved : take first coming
+          dist_pe[iFace,0] = d_data_pe[offset+0]
+          dist_pe[iFace,1] = d_data_pe[offset+2]
     else:
       raise RuntimeError("Something went wrong with face", iFace)
     offset += d_strid_pe[iFace]
@@ -322,7 +331,8 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
     ECIdx  = I.getNodeFromName1(nface_n, 'ElementStartOffset')[1]
 
     # Move to global and add in part_data
-    part_ec.append(ngon_gnum_l[ipart][np.abs(EC)-1])
+    EC_sign = np.sign(EC)
+    part_ec.append(EC_sign*ngon_gnum_l[ipart][np.abs(EC)-1])
     part_stride.append(np.diff(ECIdx).astype(np.int32))
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do
