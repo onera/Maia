@@ -24,13 +24,12 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
   }
   tree& z = zs[0];
 
-  auto n_vtx = VertexSize_U<I4>(z);
-  auto n_ghost_node = 0;
-  if (cgns::has_node(z,"GridCoordinates/FSDM#n_ghost")) {
-    n_ghost_node = get_node_value_by_matching<I4>(z,"GridCoordinates/FSDM#n_ghost")[0];
+  I4 n_vtx = VertexSize_U<I4>(z);
+  I4 n_vtx_owned = n_vtx;
+  if (cgns::has_node(z,":CGNS#LocalNumbering/VertexSizeOwned")) {
+    n_vtx_owned = get_node_value_by_matching<I4>(z,":CGNS#LocalNumbering/VertexSizeOwned")[0];
   }
-  I4 n_owned_vtx = n_vtx - n_ghost_node;
-  auto vtx_distri = distribution_from_dsizes(n_owned_vtx, comm);
+  auto vtx_distri = distribution_from_dsizes(n_vtx_owned, comm);
   auto partial_vtx_distri = full_to_partial_distribution(vtx_distri,comm);
   std::vector<I4> vtx_distri_mem(begin(partial_vtx_distri),end(partial_vtx_distri));
   tree vtx_dist = new_DataArray("Vertex",std::move(vtx_distri_mem));

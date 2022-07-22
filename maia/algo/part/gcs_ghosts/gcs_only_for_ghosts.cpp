@@ -13,19 +13,11 @@ namespace cgns {
 auto gcs_only_for_ghosts(tree& b) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   for (tree& z : zs) {
-    auto ghost_info = get_node_value_by_matching<I4>(z,":CGNS#Ppart/np_vtx_ghost_information");
-    // n_ghost
-    int zone_proc = maia::proc_of_zone(name(z));
-    auto is_owned = [=](I4 ghost_proc){ return ghost_proc<2; }; // 2: vtx is not owned
-    auto first_ghost = std::partition_point(begin(ghost_info),end(ghost_info),is_owned);
-    I4 n_ghost = end(ghost_info)-first_ghost;
-    tree& grid_coord_node = get_child_by_name(z,"GridCoordinates");
-    cgns::emplace_child(grid_coord_node,new_UserDefinedData("FSDM#n_ghost",n_ghost));
-    // GCs
+    auto n_vtx_owned = get_node_value_by_matching<I4>(z,":CGNS#LocalNumbering/VertexSizeOwned")[0];
+
     auto gcs = get_nodes_by_matching(z,"ZoneGridConnectivity_t/GridConnectivity_t");
     for (tree& gc : gcs) {
       if (GridLocation(gc)=="Vertex") {
-        int opp_zone_proc = maia::opp_proc_of_grid_connectivity(name(gc));
         tree& pl_node  = get_child_by_name(gc,"PointList");
         tree& pld_node = get_child_by_name(gc,"PointListDonor");
 
@@ -38,8 +30,8 @@ auto gcs_only_for_ghosts(tree& b) -> void {
         std::vector<I4> new_pld;
 
         for (int i=0; i<n_old_id; ++i) {
-          I4 gi = ghost_info[old_pl[i]-1]; // -1 because PointList (refering to a vertex) is 1-indexed in CGNS
-          if (gi==2) { // 2: vtx is not owned
+          bool owned = (old_pl[i] <= n_vtx_owned);
+          if (!owned) {
             new_pl .push_back(old_pl [i]);
             new_pld.push_back(old_pld[i]);
           }
