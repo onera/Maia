@@ -34,12 +34,14 @@ def _dist_zone_to_part_zones(dist_zone, part_zones, comm, filter_dict):
       func(dist_zone, part_zones, comm, exclude=paths)
 
 def dist_zone_to_part_zones_only(dist_zone, part_zones, comm, include_dict):
-  """
-  High level API to transfert data fields from the distributed zone to the partitioned zones.
-  Only the the data fields defined in include_dict will be transfered : include_dict is
-  a dictionnary of kind label : [paths/to/include]. Path must match the format expected by
-  data exchange functions, but for convenience we provide the shortcut label : ['*'] to include
-  all the fields related to this specific label
+  """ Transfer the data fields specified in include_dict from a distributed zone
+  to the corresponding partitioned zones.
+
+  Example:
+      .. literalinclude:: snippets/test_transfer.py
+        :start-after: #dist_zone_to_part_zones_only@start
+        :end-before: #dist_zone_to_part_zones_only@end
+        :dedent: 2
   """
   filter_dict = {label : ('I', include_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : includeall -> exclude nothing
@@ -47,12 +49,14 @@ def dist_zone_to_part_zones_only(dist_zone, part_zones, comm, include_dict):
   _dist_zone_to_part_zones(dist_zone, part_zones, comm, filter_dict)
 
 def dist_zone_to_part_zones_all(dist_zone, part_zones, comm, exclude_dict={}):
-  """
-  High level API to transfert data fields from the distributed zone to the partitioned zones.
-  All the data fields will be transfered, except the one defined in exclude_dict which is
-  a dictionnary of kind label : [paths/to/exclude]. Path must match the format expected by
-  data exchange functions, but for convenience we provide the shortcut label : ['*'] to exclude
-  all the fields related to this specific label
+  """ Transfer all the data fields, excepted those specified in exclude_dict,
+  from a distributed zone to the corresponding partitioned zones.
+
+  Example:
+      .. literalinclude:: snippets/test_transfer.py
+        :start-after: #dist_zone_to_part_zones_all@start
+        :end-before: #dist_zone_to_part_zones_all@end
+        :dedent: 2
   """
   filter_dict = {label : ('E', exclude_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : excludeall -> include nothing
@@ -60,10 +64,14 @@ def dist_zone_to_part_zones_all(dist_zone, part_zones, comm, exclude_dict={}):
   _dist_zone_to_part_zones(dist_zone, part_zones, comm, filter_dict)
 
 def dist_tree_to_part_tree_only_labels(dist_tree, part_tree, labels, comm):
-  """
-  High level API to transfert all the data fields of the specified labels from a distributed tree
-  to the corresponding partitionned tree.
-  See LABELS for admissible values of labels
+  """ Transfer all the data fields of the specified labels from a distributed tree
+  to the corresponding partitioned tree.
+
+  Example:
+      .. literalinclude:: snippets/test_transfer.py
+        :start-after: #dist_tree_to_part_tree_only_labels@start
+        :end-before: #dist_tree_to_part_tree_only_labels@end
+        :dedent: 2
   """
   assert isinstance(labels, list)
   include_dict = {label : ['*'] for label in labels}
@@ -72,9 +80,14 @@ def dist_tree_to_part_tree_only_labels(dist_tree, part_tree, labels, comm):
     dist_zone_to_part_zones_only(d_zone, p_zones, comm, include_dict)
 
 def dist_tree_to_part_tree_all(dist_tree, part_tree, comm):
-  """
-  High level API to transfert all the data fields from a distributed tree
-  to the corresponding partitionned tree
+  """ Transfer all the data fields from a distributed tree
+  to the corresponding partitioned tree.
+
+  Example:
+      .. literalinclude:: snippets/test_transfer.py
+        :start-after: #dist_tree_to_part_tree_all@start
+        :end-before: #dist_tree_to_part_tree_all@end
+        :dedent: 2
   """
   dist_tree_to_part_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
