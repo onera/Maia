@@ -12,14 +12,14 @@ import cmaia
 #@mark_mpi_test([1,4])
 @pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 @mark_mpi_test([1])
-def test_ngons_to_std_elements(sub_comm, write_output):
+def test_ngons_to_elements(sub_comm, write_output):
   # Create NGon mesh
   mesh_file = os.path.join(TU.mesh_dir, 'Uelt_M6Wing.yaml')
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
-  # Note: `convert_std_elements_to_ngons` is supposed to work, because it is tested in another test
-  maia.algo.dist.convert_std_elements_to_ngons(dist_tree, sub_comm)
+  # Note: `elements_to_ngons` is supposed to work, because it is tested in another test
+  maia.algo.dist.elements_to_ngons(dist_tree, sub_comm)
 
-  maia.algo.dist.convert_ngon_to_std_elements(dist_tree)
+  maia.algo.dist.ngons_to_elements(dist_tree)
 
   # > There is two sections...
   assert len(I.getNodesFromType(dist_tree, 'Elements_t')) == 2

@@ -423,7 +423,7 @@ def zonedims_to_ngon(n_vtx_zone, comm):
 
 ###############################################################################
 def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
-  """Performs the destructation of the input ``dist_tree``.
+  """Performs the destructuration of the input ``dist_tree``.
 
   This function copies the ``GridCoordinate_t`` and (full) ``FlowSolution_t`` nodes,
   generate a NGon based connectivity and create a PointList for the following

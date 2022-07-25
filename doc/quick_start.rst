@@ -47,7 +47,7 @@ Sample of the main distributed tree algorithms:
   dist_tree_u = maia.transform.convert_s_to_u(dist_tree_s, comm)
 
   # Transform a tree with standard element types to one with NGon/NFace sections
-  maia.std_elements_to_ngons(dist_tree_elts, comm)
+  maia.elements_to_ngons(dist_tree_elts, comm)
 
 
 Partitioned/Distributed trees algorithms

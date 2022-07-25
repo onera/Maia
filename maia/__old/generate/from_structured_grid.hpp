@@ -12,7 +12,7 @@
 #include <span>
 #include "std_e/future/ranges.hpp"
 #include "std_e/future/ranges/repeat.hpp"
-#include "maia/algo/dist/std_elements_to_ngons/connectivity/from_structured_grid.hpp"
+#include "maia/algo/dist/elements_to_ngons/connectivity/from_structured_grid.hpp"
 #include "range/v3/view/concat.hpp"
 
 

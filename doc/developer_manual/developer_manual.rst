@@ -9,4 +9,4 @@ Developer Manual
 
   maia_dev/conventions
   maia_dev/development_workflow
-  std_elements_to_ngons
+  elements_to_ngons

@@ -123,3 +123,26 @@ def test_nface_to_pe():
     maia.algo.nface_to_pe(zone, MPI.COMM_WORLD)
     assert maia.pytree.get_node_from_name(zone, 'ParentElements') is not None
   #nface_to_pe@end
+
+def test_elements_to_ngons():
+  #elements_to_ngons@start
+  import maia
+  from maia.utils.test_utils import mesh_dir
+  from mpi4py import MPI
+  comm = MPI.COMM_WORLD
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/cube_4.yaml', comm)
+  maia.algo.dist.elements_to_ngons(dist_tree, comm)
+  #elements_to_ngons@end
+
+def test_rearrange_element_sections():
+  #test_rearrange_element_sections@start
+  import maia
+  from maia.utils.test_utils import mesh_dir
+  from mpi4py import MPI
+  comm = MPI.COMM_WORLD
+
+  # TODO use a better input file, here it does nothing
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/cube_4.yaml', comm)
+  maia.algo.dist.rearrange_element_sections(dist_tree, comm)
+  #test_rearrange_element_sections@end

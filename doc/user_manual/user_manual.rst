@@ -45,6 +45,3 @@ This user manuel describes the main functions available in each module.
   factory
   algo
   transfer
-
-.. std_elements_to_ngons
-  

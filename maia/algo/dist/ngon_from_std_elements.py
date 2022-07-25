@@ -134,7 +134,7 @@ def generate_ngon_from_std_elements(dist_tree, comm):
   and Pointlist (under the BC_t nodes) are updated.
 
   Requirement : the ``Element_t`` nodes appearing in the distributed zones
-  must be ordered acccording to their dimension (either increasing or 
+  must be ordered according to their dimension (either increasing or 
   decreasing). 
 
   This function also works on 2d meshes.
