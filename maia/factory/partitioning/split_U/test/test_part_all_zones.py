@@ -29,7 +29,7 @@ def test_prepare_part_weight():
 
 def test_set_mpart_reordering():
   keep_alive = []
-  reorder_options = {'cell_renum_method' : 'CUTHILL', 'face_renum_method' : 'LEXICOGRAPHIC'}
+  reorder_options = {'cell_renum_method' : 'CUTHILL', 'face_renum_method' : 'LEXICOGRAPHIC', 'vtx_renum_method' : 'SORT_INT_EXT'}
   n_part_per_zones = np.array([1,2], dtype=np.int32)
   mpart = PDM.MultiPart(2, np.array([1,2], dtype=np.int32), 0, 1, 1, None, MPI.COMM_SELF)
   partU.set_mpart_reordering(mpart, reorder_options, keep_alive)

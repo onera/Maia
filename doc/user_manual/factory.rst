@@ -85,22 +85,24 @@ Reordering options
 For unstructured zones, the reordering options are transmitted to ParaDiGM in order to 
 control the renumbering of mesh entities in the partitions.
 
-+--------------------+-----------------------------------+-----------------------------------+----------------------------+
-| Kwarg              | Admissible values                 | Effect                            | Default                    |
-+====================+===================================+===================================+============================+
-| cell_renum_method  | "NONE", "RANDOM", "HILBERT",      | Renumbering method for the cells  | NONE                       |
-|                    | "CUTHILL", "CACHEBLOCKING",       |                                   |                            |
-|                    | "CACHEBLOCKING2", "HPC"           |                                   |                            |
-+--------------------+-----------------------------------+-----------------------------------+----------------------------+
-| face_renum_method  | "NONE", "RANDOM", "LEXICOGRAPHIC" | Renumbering method for the faces  | NONE                       |
-+--------------------+-----------------------------------+-----------------------------------+----------------------------+
-| n_cell_per_cache   | Integer >= 0                      | Specific to cacheblocking         | 0                          |
-+--------------------+-----------------------------------+-----------------------------------+----------------------------+
-| n_face_per_pack    | Integer >= 0                      | Specific to cacheblocking         | 0                          |
-+--------------------+-----------------------------------+-----------------------------------+----------------------------+
-| graph_part_tool    | "parmetis", "ptscotch"            | Graph partitioning library to     | Same as partitioning tool  |
-|                    |                                   | use for renumbering               |                            |
-+--------------------+-----------------------------------+-----------------------------------+----------------------------+
++--------------------+-----------------------------------+-------------------------------------+----------------------------+
+| Kwarg              | Admissible values                 | Effect                              | Default                    |
++====================+===================================+=====================================+============================+
+| cell_renum_method  | "NONE", "RANDOM", "HILBERT",      | Renumbering method for the cells    | NONE                       |
+|                    | "CUTHILL", "CACHEBLOCKING",       |                                     |                            |
+|                    | "CACHEBLOCKING2", "HPC"           |                                     |                            |
++--------------------+-----------------------------------+-------------------------------------+----------------------------+
+| face_renum_method  | "NONE", "RANDOM", "LEXICOGRAPHIC" | Renumbering method for the faces    | NONE                       |
++--------------------+-----------------------------------+-------------------------------------+----------------------------+
+| vtx_renum_method   | "NONE", "SORT_INT_EXT"            | Renumbering method for the vertices | NONE                       |
++--------------------+-----------------------------------+-------------------------------------+----------------------------+
+| n_cell_per_cache   | Integer >= 0                      | Specific to cacheblocking           | 0                          |
++--------------------+-----------------------------------+-------------------------------------+----------------------------+
+| n_face_per_pack    | Integer >= 0                      | Specific to cacheblocking           | 0                          |
++--------------------+-----------------------------------+-------------------------------------+----------------------------+
+| graph_part_tool    | "parmetis", "ptscotch"            | Graph partitioning library to       | Same as partitioning tool  |
+|                    |                                   | use for renumbering                 |                            |
++--------------------+-----------------------------------+-------------------------------------+----------------------------+
 
 Recovering from partitions
 --------------------------

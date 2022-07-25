@@ -15,6 +15,7 @@ def set_default(dist_tree, comm):
 
   default_renum = {'cell_renum_method' : 'NONE',
                    'face_renum_method' : 'NONE',
+                   'vtx_renum_method'  : 'NONE',
                    'n_cell_per_cache'  : 0,
                    'n_face_per_pack'   : 0,
                    'graph_part_tool'   : None }
