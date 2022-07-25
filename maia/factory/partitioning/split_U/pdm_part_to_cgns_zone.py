@@ -124,14 +124,15 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
     #   2. then non-unique but owned
     #   3. then non-unique and non-owned ("ghost")
     # Then we keep this information in the tree
-    pdm_ghost_info = data['np_vtx_ghost_information']
-    is_sorted = lambda a: np.all(a[:-1] <= a[1:])
-    if (is_sorted(pdm_ghost_info)):
-      n_vtx_unique = np.searchsorted(pdm_ghost_info,1)
-      n_vtx_owned  = np.searchsorted(pdm_ghost_info,2)
-      lnum_node = I.createNode(':CGNS#LocalNumbering', 'UserDefinedData_t', parent=p_zone)
-      I.newDataArray('VertexSizeUnique', n_vtx_unique, parent=lnum_node)
-      I.newDataArray('VertexSizeOwned', n_vtx_owned, parent=lnum_node)
+    if 'np_vtx_ghost_information' in data:
+      pdm_ghost_info = data['np_vtx_ghost_information']
+      is_sorted = lambda a: np.all(a[:-1] <= a[1:])
+      if (is_sorted(pdm_ghost_info)):
+        n_vtx_unique = np.searchsorted(pdm_ghost_info,1)
+        n_vtx_owned  = np.searchsorted(pdm_ghost_info,2)
+        lnum_node = I.createNode(':CGNS#LocalNumbering', 'UserDefinedData_t', parent=p_zone)
+        I.newDataArray('VertexSizeUnique', n_vtx_unique, parent=lnum_node)
+        I.newDataArray('VertexSizeOwned', n_vtx_owned, parent=lnum_node)
 
     for i_section, section in enumerate(first_sections + second_sections):
       if i_section == len(first_sections): #Reset the dimension shift when changing dim
