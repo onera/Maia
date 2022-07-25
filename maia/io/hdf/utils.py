@@ -9,18 +9,14 @@ def pl_or_pr_size(node):
   For a given node, search for a PointList of a PointRange children and return the
   size of the corresponding region:
    - directly from the value of PointRange for the PointRange case
-   - using PointList#Size, if existing, or the :CGNS#Distribution otherwise for the
-     PointList case.
+   - using :CGNS#Distribution for the PointList case.
   If both node are present, size of PointList is returned (but this should not happens!)
   Raises if both are absent.
   """
   patch = sids.Subset.getPatch(node)
   if I.getType(patch) == 'IndexArray_t':
-    try:
-      return I.getNodeFromName1(node, 'PointList#Size')[1]
-    except TypeError: #No PL#Size, try to get info from :CGNS#Distribution and suppose size = 1,N
-      distri = I.getVal(MT.getDistribution(node, 'Index'))
-      return np.array([1, distri[2]])
+    distri = I.getVal(MT.getDistribution(node, 'Index'))
+    return np.array([1, distri[2]])
   elif I.getType(patch) == 'IndexRange_t':
     return sids.PointRange.SizePerIndex(patch)
 

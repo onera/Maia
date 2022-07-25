@@ -8,11 +8,6 @@ def test_pl_or_pr_size():
   size = utils.pl_or_pr_size(bc_pr)
   assert (size == [10, 1, 5]).all()
 
-  bc_pl = I.newBC(name='BC', pointList=[[5,10,15,20,25,30]], btype='BCFarfield')
-  I.newIndexArray('PointList#Size', [1, 6], parent=bc_pl)
-  size = utils.pl_or_pr_size(bc_pl)
-  assert (size == [1, 6]).all()
-
   bc_ud = I.newBC(name='BC', pointList=[[5,10,15,20,25,30]], btype='BCFarfield')
   MT.newDistribution({'Index' : [1,6,6]}, parent=bc_ud)
   size = utils.pl_or_pr_size(bc_ud)

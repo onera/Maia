@@ -117,8 +117,6 @@ def _update_subset(node, pl_new, data_query, comm):
 
   #Update distribution and size
   MT.newDistribution({'Index' : ideal_distri}, node)
-  if I.getNodeFromPath(node, 'PointList#Size') is not None:
-    I.getNodeFromPath(node, 'PointList#Size')[1][1] = ideal_distri[-1]
 
   #Update PointList and data
   I.createUniqueChild(node, 'PointList', 'IndexArray_t', dist_data_ideal.pop(pl_identifier).reshape(1,-1, order='F'))
@@ -171,7 +169,6 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   for zsr in zsr_list:
     if PT.getSubregionExtent(zsr, zone) != I.getName(zsr):
       I._addChild(zsr, I.getNodeFromPath(zone, PT.getSubregionExtent(zsr, zone) + '/PointList'))
-      I._addChild(zsr, I.getNodeFromPath(zone, PT.getSubregionExtent(zsr, zone) + '/PointList#Size'))
 
   #Get new index for every PL at once
   all_pl_list = [I.getNodeFromName1(fs, 'PointList')[1][0].astype(pdm_dtype) for fs in all_nodes]

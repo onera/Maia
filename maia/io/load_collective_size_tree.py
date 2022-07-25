@@ -11,12 +11,12 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
   - ElementConnectivity array of Element_t nodes
   - PointList (or Unstr PointRange) array of BC_t
   - PointList array of GC_t, GC1to1_t, BCDataSet_t and ZoneSubRegion_t nodes
-  - PointListDonor array of GC_t and GC1to1_t nodes
   """
   for elmt in I.getNodesFromType1(zone, 'Elements_t'):
     elmt_path = zone_path+"/"+elmt[0]
     ec_path   = elmt_path+"/ElementConnectivity"
-    I.newIndexArray('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
+    if I.getNodeFromName1(elmt, 'ElementStartOffset') is not None:
+      I.newIndexArray('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
 
   for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
     zone_bc_path = zone_path+"/"+zone_bc[0]
@@ -41,7 +41,7 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
         I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=gc)
       if I.getNodeFromName1(gc, 'PointListDonor') is not None:
         pld_path = gc_path+"/PointListDonor"
-        I.newIndexArray('PointListDonor#Size', value=size_data[pld_path][2], parent=gc)
+        assert size_data[pld_path][2] == size_data[pl_path][2]
 
   for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
     zone_subregion_path = zone_path+"/"+zone_subregion[0]

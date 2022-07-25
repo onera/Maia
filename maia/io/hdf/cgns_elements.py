@@ -5,6 +5,7 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+from maia.io.distribution_tree import compute_connectivity_distribution
 from .hdf_dataspace import create_pe_dataspace
 
 def gen_elemts(zone_tree):
@@ -15,51 +16,22 @@ def gen_elemts(zone_tree):
 def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   """
   """
-  distrib_ud   = MT.getDistribution(elmt)
-  distrib_elmt = I.getNodeFromName1(distrib_ud, 'Element')[1]
-  dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
+  #If needed (reading), update distribution using ESO, which is now loaded
+  distrib = MT.getDistribution(elmt)
+  if I.getNodeFromName(distrib, 'ElementConnectivity') is None:
+    compute_connectivity_distribution(elmt)
 
-  eso_n = I.getNodeFromName1(elmt, 'ElementStartOffset') # Maintenant il est chargé
-  if(eso_n[1] is None):
-    raise RuntimeError
-  eso = eso_n[1]
+  distrib_ec = MT.getDistribution(elmt, "ElementConnectivity")[1]
+  dn_elmt_c  = distrib_ec[1] - distrib_ec[0]
+  n_elmt_c   = distrib_ec[2]
 
-  beg_face_vtx = eso[0]
-  end_face_vtx = eso[eso.shape[0]-1]
-  dn_face_vtx  = end_face_vtx - beg_face_vtx
-
-  # print("beg_face_vtx::", beg_face_vtx)
-  # print("end_face_vtx::", end_face_vtx)
-  distrib_n  = None
-  ec_size_n  = I.getNodeFromName1(elmt, 'ElementConnectivity#Size')
-  if(ec_size_n is not None):
-    n_face_vtx = np.prod(ec_size_n[1])
-  else:
-    distrib_ud = MT.getDistribution(elmt)
-    distrib_n  = I.getNodeFromName1(distrib_ud, "ElementConnectivity")
-    assert(distrib_n is not None)
-    n_face_vtx = distrib_n[1][2]
-
-  # print("n_face_vtx::", n_face_vtx)
-
-  n_face      = distrib_elmt[2]
-  dn_face_idx = dn_elmt + int(distrib_elmt[1] == n_face)
-  DSMMRYEC = [[0           ], [1], [dn_face_vtx], [1]]
-  DSFILEEC = [[beg_face_vtx], [1], [dn_face_vtx], [1]]
-  DSGLOBEC = [[n_face_vtx ]]
+  DSMMRYEC = [[0            ], [1], [dn_elmt_c], [1]]
+  DSFILEEC = [[distrib_ec[0]], [1], [dn_elmt_c], [1]]
+  DSGLOBEC = [[n_elmt_c]]
   DSFORMEC = [[0]]
 
   ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[ec_path] = DSMMRYEC + DSFILEEC + DSGLOBEC + DSFORMEC
-
-  if(distrib_n is None):
-    distrib = np.empty(3, dtype=eso.dtype)
-    distrib[0] = beg_face_vtx
-    distrib[1] = end_face_vtx
-    distrib[2] = n_face_vtx
-    I.newDataArray("ElementConnectivity", value=distrib, parent=distrib_ud)
-
-
 
 def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
   """

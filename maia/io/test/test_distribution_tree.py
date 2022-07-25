@@ -106,6 +106,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
   """
     zone = parse_yaml_cgns.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, sub_comm)
+    assert I.getNodeFromName(zone, 'PointList#Size') is None
     assert len(I.getNodesFromName(zone, 'Index')) == 3
 
 
@@ -144,6 +145,7 @@ Base CGNSBase_t [3,3]:
 """)
   distribution_tree.add_distribution_info(dist_tree, sub_comm)
   assert len(I.getNodesFromName(dist_tree, 'Index')) == 4+3
+  assert I.getNodeFromName(dist_tree, 'PointList#Size') is None
 
 def test_clean_distribution_info():
   yt = """
@@ -151,33 +153,26 @@ Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t [[27],[8],[0]]:
     Ngon Elements_t [22,0]:
       ElementConnectivity DataArray_t [1,2,3,4]:
-      ElementConnectivity#Size DataArray_t [12]:
       :CGNS#Distribution UserDefinedData_t:
     ZBC ZoneBC_t:
       bc1 BC_t "Farfield":
         PointList IndexArray_t [[1,2]]:
-        PointList#Size IndexArray_t [1,4]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [0,2,4]:
         bcds BCDataSet_t:
-          PointList#Size IndexArray_t [1,2]:
           :CGNS#Distribution UserDefinedData_t:
     ZGC ZoneGridConnectivity_t:
       matchAB GridConnectivity_t "ZoneB":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [1,4,7,10]:
         PointListDonor IndexArray_t [13,16,7,10]:
-        PointList#Size IndexArray_t [1,8]:
     FS FlowSolution_t:
       field DataArray_t:
-      PointList#Size IndexArray_t [1,2]:
       :CGNS#Distribution UserDefinedData_t:
     :CGNS#Distribution UserDefinedData_t:
 """
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   distribution_tree.clean_distribution_info(dist_tree)
   assert I.getNodeFromName(dist_tree, ':CGNS#Distribution') is None
-  assert I.getNodeFromName(dist_tree, 'PointList#Size') is None
   assert len(I.getNodesFromName(dist_tree, 'PointList')) == 2
-  assert I.getNodeFromName(dist_tree, 'ElementConnectivity#Size') is None
 

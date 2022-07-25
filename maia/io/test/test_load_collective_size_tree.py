@@ -37,13 +37,12 @@ Zone Zone_t:
 
   LC.add_sizes_to_zone_tree(zone, '/Zone', size_data)
 
-  assert I.getNodeFromPath(zone, 'Hexa/ElementConnectivity#Size')[1] == 160
+  assert I.getNodeFromPath(zone, 'Hexa/ElementConnectivity#Size') is None
 
   assert (I.getNodeFromPath(zone, 'ZBC/bc/PointList#Size')[1] == [1,30]).all()
   assert (I.getNodeFromPath(zone, 'ZBC/bc_withds/PointList#Size')[1] == [1,100]).all()
   assert (I.getNodeFromPath(zone, 'ZBC/bc_withds/BCDataSet/PointList#Size')[1] == [1,10]).all()
 
-  assert (I.getNodeFromPath(zone, 'ZGC/gc/PointListDonor#Size')[1] == [1,20]).all()
   assert (I.getNodeFromPath(zone, 'ZGC/gc/PointList#Size')[1] == [1,20]).all()
 
   assert (I.getNodeFromPath(zone, 'ZSR/PointList#Size')[1] == [1,34]).all()
@@ -81,4 +80,4 @@ BaseA CGNSBase_t:
                     '/BaseA/Zone/ZSR/PointList' : (1, 'I4', (1,34)),
                    }
   LC.add_sizes_to_tree(tree, size_data_tree)
-  assert len(I.getNodesFromName(tree, '*#Size')) == 7
+  assert len(I.getNodesFromName(tree, '*#Size')) == 5

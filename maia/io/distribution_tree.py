@@ -1,3 +1,4 @@
+import numpy as np
 import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -32,6 +33,26 @@ def compute_plist_or_prange_distribution(node, comm):
     pls_n   = I.getNodeFromName1(node, 'PointList#Size')
     pl_size = I.getValue(pls_n).prod()
     create_distribution_node(pl_size, comm, 'Index', node)
+    I._rmNode(node, pls_n)
+
+def compute_connectivity_distribution(node):
+  """
+  Once ESO is loaded, update element distribution with ElementConnectivity array
+  """
+  eso_n  = I.getNodeFromName1(node, 'ElementStartOffset')
+  if eso_n is None:
+    raise RuntimeError
+  size_n = I.getNodeFromName1(node, 'ElementConnectivity#Size')
+
+  beg  = eso_n[1][0]
+  end  = eso_n[1][-1]
+  size = size_n[1][0]
+
+  distri_n = MT.getDistribution(node)
+  dtype = I.getNodeFromName1(distri_n, 'Element')[1].dtype
+  I.newDataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
+  I._rmNode(node, size_n)
+
 
 def compute_elements_distribution(zone, comm):
   """
@@ -83,27 +104,21 @@ def add_distribution_info(dist_tree, comm, distribution_policy='uniform'):
 
 def clean_distribution_info(dist_tree):
   """
-  Remove the node related to distributio info from the dist_tree :
-  :CGNS#Distribution, PointList#Size, ElementConnectivity#Size
+  Remove the node related to distribution info from the dist_tree
   """
   for base in I.getNodesFromType1(dist_tree, 'CGNSBase_t'):
     for zone in I.getNodesFromType1(base, 'Zone_t'):
       I._rmNodesByName1(zone, ':CGNS#Distribution')
       for elmt in I.getNodesFromType1(zone, 'Elements_t'):
         I._rmNodesByName1(elmt, ':CGNS#Distribution')
-        I._rmNodesByName1(elmt, 'ElementConnectivity#Size')
       for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
         for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
           I._rmNodesByName2(bc, ':CGNS#Distribution')
-          I._rmNodesByName2(bc, 'PointList#Size')
       for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
         for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t') + \
                   I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t'):
           I._rmNodesByName1(gc, ':CGNS#Distribution')
-          I._rmNodesByName1(gc, 'PointList#Size')
       for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
         I._rmNodesByName1(zone_subregion, ':CGNS#Distribution')
-        I._rmNodesByName1(zone_subregion, 'PointList#Size')
       for zone_sol in I.getNodesFromType1(zone, 'FlowSolution_t'):
         I._rmNodesByName1(zone_sol, ':CGNS#Distribution')
-        I._rmNodesByName1(zone_sol, 'PointList#Size')

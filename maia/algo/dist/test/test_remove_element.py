@@ -50,7 +50,6 @@ def test_remove_ngons(sub_comm):
   ngon = I.newElements('NGon', 'NGON', ec, [1,17])
   I.newDataArray('ElementStartOffset', np.arange(0, 35, 2), parent=ngon)
   I.newDataArray('ParentElements', pe, parent=ngon)
-  I.newIndexArray('ElementConnectivity#Size', [34], parent=ngon)
   distri = I.createUniqueChild(ngon, ':CGNS#Distribution', 'UserDefinedData_t')
   I.newDataArray('Element', [0, 17, 17], parent=distri)
   I.newDataArray('ElementConnectivity', [0, 34, 34], parent=distri)
@@ -64,7 +63,6 @@ def test_remove_ngons(sub_comm):
   assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   assert (I.getNodeFromName(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == np.arange(0,31,2)).all()
-  assert  I.getNodeFromName(ngon, 'ElementConnectivity#Size')[1] == 34 - 2*2
   assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/Element')[1] == [0,15,15]).all()
   assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/ElementConnectivity')[1] == [0,30,30]).all()
 
@@ -101,7 +99,6 @@ def test_remove_ngons_2p(sub_comm):
   ngon = I.newElements('NGon', 'NGON', ec, [7,24])
   I.newDataArray('ElementStartOffset', eso, parent=ngon)
   I.newDataArray('ParentElements', pe, parent=ngon)
-  I.newIndexArray('ElementConnectivity#Size', [34], parent=ngon)
   distri = I.createUniqueChild(ngon, ':CGNS#Distribution', 'UserDefinedData_t')
   I.newDataArray('Element', distri_e, parent=distri)
   I.newDataArray('ElementConnectivity', distri_ec, parent=distri)
@@ -112,5 +109,4 @@ def test_remove_ngons_2p(sub_comm):
   assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   assert (I.getNodeFromName(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == expected_eso).all()
-  assert  I.getNodeFromName(ngon, 'ElementConnectivity#Size')[1] == 34 - 2*2
   assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/Element')[1] == expected_distri_e).all()

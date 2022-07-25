@@ -110,7 +110,3 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
 
   #Update ElementRange and size data (global)
   er_n[1][1] -= n_rmvd_total
-  size_n = I.getNodeFromPath(dist_ngon, 'ElementConnectivity#Size')
-  if size_n is not None:
-    size_n[1][0] -= n_rmvd_ec_total
-

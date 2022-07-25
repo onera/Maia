@@ -552,7 +552,6 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
       I.newGridLocation('Vertex', jn_vtx)
       I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
       I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
-      I.newIndexArray('PointList#Size', [1, distri_jn[2]], parent=jn_vtx)
       MT.newDistribution({'Index' : distri_jn}, jn_vtx)
 
       I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))

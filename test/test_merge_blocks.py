@@ -67,7 +67,6 @@ def test_merge_all(sub_comm, write_output):
   ref_file  = os.path.join(ref_dir, 'U_Naca0012_multizone_merged.yaml')
   reference_tree = maia.io.file_to_dist_tree(ref_file, sub_comm)
   for tree in reference_tree, test_tree:
-    I._rmNodesByName(tree, '*#Size') #This is only related to IO
     I._rmNodesByName1(tree, 'CGNSLibraryVersion')
   assert PT.is_same_tree(reference_tree, test_tree, type_tol=True) #Somehow reader reput tree in int32 so use type_tol before correcint that
   TU.rm_collective_dir(tmp_dir, sub_comm)
