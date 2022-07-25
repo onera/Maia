@@ -3,6 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy      as np
 
 import Converter.Internal as I
+import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils.yaml import parse_yaml_cgns
@@ -94,10 +95,8 @@ def test_part_pl_to_dist_pl(sub_comm, allow_mult):
   IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", sub_comm, allow_mult)
 
   dist_pl     = I.getNodeFromPath(dist_zsr, 'PointList')[1]
-  dist_pl_s   = I.getNodeFromPath(dist_zsr, 'PointList#Size')[1]
   dist_distri = I.getVal(MT.getDistribution(dist_zsr, 'Index'))
   assert dist_distri.dtype == pdm_gnum_dtype
-  assert (dist_pl_s == [1,7]).all()
 
   if sub_comm.Get_rank() == 0:
     assert (dist_distri == [0,2,7]).all()
@@ -111,6 +110,60 @@ def test_part_pl_to_dist_pl(sub_comm, allow_mult):
   elif sub_comm.Get_rank() == 3:
     assert (dist_distri == [6,7,7]).all()
     assert (dist_pl     == [22]   ).all()
+
+@mark_mpi_test(3)
+def test_part_elt_to_dist_elt(sub_comm):
+  rank = sub_comm.Get_rank()
+  size = sub_comm.Get_size()
+
+  dist_zone = I.newZone('Zone')
+  if rank == 0:
+    yt = """
+Zone.P0.N0 Zone_t:
+  Quad Elements_t [7,0]:
+    ElementRange IndexRange_t [1, 4]:
+    ElementConnectivity DataArray_t:
+      I4 : [10,15,17,11, 15,16,12,17, 11,17,13,18, 17,12,14,13]
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Element DataArray_t {0} [5,6,7,8]:
+      Sections DataArray_t {0} [15,16,17,18]:
+  :CGNS#GlobalNumbering UserDefinedData_t:
+    Vertex DataArray_t {0} [19,20,21,22,23,24,25,26,27,10,13,15,17,18,11,12,14,16]:
+    Cell DataArray_t {0} [5,6,7,4]:
+  """.format(dtype)
+    expected_ec=[2,5,4,1, 5,8,7,4, 10,13,14,11]
+  elif rank == 1:
+    yt = ""
+    expected_ec=[10,11,14,13,11,12,15,14]
+  elif rank == 2:
+    yt = """
+Zone.P2.N0 Zone_t:
+  Quad Elements_t [7,0]:
+    ElementRange IndexRange_t [12, 14]:
+    ElementConnectivity DataArray_t:
+      I4 : [4,5,2,1, 5,6,3,2, 10,11,8,7]
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Element DataArray_t {0} [1,2,3]:
+      Sections DataArray_t {0} [11,12,13]:
+  :CGNS#GlobalNumbering UserDefinedData_t:
+    Vertex DataArray_t {0} [1,4,7,2,5,8,11,14,16,10,13,17]:
+    Cell DataArray_t {0} [1,3]:
+  """.format(dtype)
+    expected_ec = [13,14,17,16,14,15,18,17]
+
+  expected_elt_distri_full  = np.array([0, 3, 6, 8])
+
+  pT = parse_yaml_cgns.to_cgns_tree(yt)
+
+  IPTB.part_elt_to_dist_elt(dist_zone, I.getZones(pT), 'Quad', sub_comm)
+
+  elt = I.getNodeFromName(dist_zone, 'Quad')
+  assert (PT.Element.Range(elt) == [11,18]).all()
+  assert (elt[1] == [7,0]).all()
+  assert (I.getNodeFromName(elt, 'ElementConnectivity')[1] == expected_ec).all()
+  distri_elt  = I.getVal(MT.getDistribution(elt, 'Element'))
+  assert distri_elt.dtype == pdm_gnum_dtype
+  assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
 
 @mark_mpi_test(3)
 def test_part_ngon_to_dist_ngon(sub_comm):
@@ -229,11 +282,11 @@ Zone.P0.N0 Zone_t:
     Vertex DataArray_t {0} [19,20,21,22,23,24,25,26,27,10,13,15,17,18,11,12,14,16]:
     Cell DataArray_t {0} [5,6,7,8]:
   """.format(dtype)
-    expected_ec  = [1,5,13,17,25,29,2,6,17,21,27,31,3,7,14,18,29,33]
+    expected_ec  = [1,5,13,17,25,29,2,6,17,21,27,31,3,7,14,18,-29,33]
     expected_eso = [0,6,12,18]
   elif rank == 1:
     yt = ""
-    expected_ec  = [4,8,18,22,31,35,5,9,15,19,26,30,6,10,19,23,28,32]
+    expected_ec  = [4,8,18,22,-31,35,5,9,15,19,26,30,6,10,-19,23,28,32]
     expected_eso = [18,24,30,36]
   elif rank == 2:
     yt = """
@@ -262,7 +315,7 @@ Zone.P2.N1 Zone_t:
     Vertex DataArray_t {0} [3,6,9,2,5,8,11,12,14,15,17,18]:
     Cell DataArray_t {0} [2,4]:
   """.format(dtype)
-    expected_ec  = [7,11,16,20,30,34,8,12,20,24,32,36]
+    expected_ec  = [7,11,16,20,-30,34,8,12,-20,24,-32,36]
     expected_eso = [36,42,48]
 
   expected_elt_distri_full  = np.array([0,3,6,8])

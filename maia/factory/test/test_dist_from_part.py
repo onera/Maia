@@ -1,14 +1,17 @@
+import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
+import os
 from mpi4py import MPI
 import numpy as np
 
-import Generator.PyTree   as G
 import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
+from maia.utils         import test_utils as TU
 from maia.utils.yaml    import parse_yaml_cgns
-from maia.factory.dcube_generator import dcube_generate
+from maia.factory import generate_dist_block
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.factory import dist_from_part as DFP
@@ -200,8 +203,7 @@ Zone.P2.N1 Zone_t:
 
 
 @mark_mpi_test(3)
-def test_recover_dist_tree(sub_comm):
-  # > PartTree creation (cumbersome because of old ngon norm)
+def test_recover_dist_tree_ngon(sub_comm):
   # Value test is already performed in subfunction tests
   part_tree = I.newCGNSTree()
   if sub_comm.Get_rank() < 2:
@@ -209,7 +211,7 @@ def test_recover_dist_tree(sub_comm):
     distri_ud = MT.newGlobalNumbering()
     if sub_comm.Get_rank() == 0:
       # part_zone = G.cartNGon((0,0,0), (.5,.5,.5), (3,3,3))
-      part_zone = I.getZones(dcube_generate(3, 1, [0., 0., 0.], MPI.COMM_SELF))[0]
+      part_zone = I.getZones(generate_dist_block(3, 'Poly', MPI.COMM_SELF))[0]
       I._rmNodesByName(part_zone, 'ZoneBC')
       I._rmNodesByName(part_zone, ':CGNS#Distribution')
 
@@ -223,7 +225,7 @@ def test_recover_dist_tree(sub_comm):
       MT.newGlobalNumbering({'Index' : np.array([1,2,3,4], pdm_dtype)}, parent=bc)
     else:
       # part_zone = G.cartNGon((1,0,0), (.5,.5,.5), (3,3,3))
-      part_zone = I.getZones(dcube_generate(3, 1, [1., 0., 0.], MPI.COMM_SELF))[0]
+      part_zone = I.getZones(generate_dist_block(3, 'Poly', MPI.COMM_SELF, origin=[1., 0., 0.]))[0]
       I._rmNodesByName(part_zone, 'ZoneBC')
       I._rmNodesByName(part_zone, ':CGNS#Distribution')
       vtx_gnum =  np.array([3,4,5, 8,9,10,13,14,15,18,19,20,23,24,25,28,29,30,33,34,35,38,39,40,43,44,45], pdm_dtype)
@@ -234,25 +236,13 @@ def test_recover_dist_tree(sub_comm):
     ngon = I.getNodeFromPath(part_zone, 'NGonElements')
     MT.newGlobalNumbering({'Element' : ngon_gnum}, parent=ngon)
 
-    nface_ec = np.empty(8*6, dtype=I.getNodeFromName(ngon, 'ElementConnectivity')[1].dtype)
-    nface_count = np.zeros(8, int)
-    face_n = PT.sids.Element.Size(ngon)
-    for iface, (lCell, rCell) in enumerate(I.getNodeFromName1(ngon, 'ParentElements')[1]):
-      nface_ec[6*(lCell-1-face_n) + nface_count[lCell-1-face_n]] = iface + 1
-      nface_count[lCell-1-face_n] += 1
-      if rCell > 0:
-        nface_ec[6*(rCell-1-face_n) + nface_count[rCell-1-face_n]] = iface + 1
-        nface_count[rCell-1-face_n] += 1
-    nface = I.newElements('NFaceElements', 'NFACE', nface_ec, [36+1, 36+8], parent=part_zone)
-    I.newDataArray('ElementStartOffset', np.arange(0, 6*(8+1), 6), nface)
-    MT.newGlobalNumbering({'Element' : cell_gnum}, parent=nface)
-
     I.newDataArray('Vertex', vtx_gnum,  parent=distri_ud)
     I.newDataArray('Cell',   cell_gnum, parent=distri_ud)
 
     part_zone[0] = "Zone.P{0}.N0".format(sub_comm.Get_rank())
     I._addChild(part_base, part_zone)
     I._addChild(part_zone, distri_ud)
+    maia.algo.pe_to_nface(part_zone)
 
   dist_tree = DFP.recover_dist_tree(part_tree, sub_comm)
 
@@ -261,3 +251,29 @@ def test_recover_dist_tree(sub_comm):
   assert (I.getNodeFromPath(dist_zone, 'NGonElements/ElementRange')[1] == [1,68]).all()
   assert (I.getNodeFromPath(dist_zone, 'NFaceElements/ElementRange')[1] == [69,84]).all()
   assert (I.getValue(I.getNodeFromPath(dist_zone, 'ZoneBC/BC')) == "BCWall")
+
+@mark_mpi_test(2)
+@pytest.mark.parametrize("void_part", [True, False])
+def test_recover_dist_tree_elt(void_part, sub_comm):
+  mesh_file = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
+  dist_tree_bck = maia.io.file_to_dist_tree(mesh_file, sub_comm)
+
+  if void_part:
+    weights = [1.] if sub_comm.rank == 1 else []
+  else:
+    weights = [.5]
+  zone_to_parts = {'Base/Zone' : weights}
+  part_tree = maia.factory.partition_dist_tree(dist_tree_bck, sub_comm, zone_to_parts=zone_to_parts)
+
+  dist_tree = DFP.recover_dist_tree(part_tree, sub_comm)
+
+  dist_zone = I.getNodeFromName(dist_tree, 'Zone')
+  assert (dist_zone[1] == [[11,4,0]]).all()
+  assert (I.getNodeFromPath(dist_zone, 'Tris/ElementRange')[1] == [7,12]).all()
+  assert (I.getNodeFromPath(dist_zone, 'Tets/ElementRange')[1] == [16,16]).all()
+  assert len(I.getNodesFromType(dist_zone, 'BC_t')) == 6
+  assert len(I.getNodesFromType(dist_zone, 'ZoneGridConnectivity_t')) == 0
+
+  for elt in I.getNodesFromType(dist_tree_bck, 'Elements_t'):
+    I._rmNodeByPath(elt, ':CGNS#Distribution/ElementConnectivity')
+  assert PT.is_same_tree(dist_tree_bck, dist_tree)

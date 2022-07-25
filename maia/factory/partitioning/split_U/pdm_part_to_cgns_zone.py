@@ -1,4 +1,5 @@
 import numpy              as np
+import itertools
 
 import Converter.Internal as I
 import maia.pytree        as PT
@@ -107,43 +108,42 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
 
   else:
     elt_section_nodes = I.getNodesFromType1(d_zone, "Elements_t")
-    assert len(elt_section_nodes) == len(data['2dsections']) + len(data['3dsections'])
+    pdm_sections = [data[f'{j}dsections'] for j in range(4)]
+    assert len(elt_section_nodes) == sum([len(sections) for sections in pdm_sections])
 
-    #elt_section_node can have 2d or 3d elements first
-    first_elt_node = elt_section_nodes[0]
-    first_elt_dim  = PT.Element.Dimension(first_elt_node)
-    if first_elt_dim == 2:
-      first_sections, second_sections = data['2dsections'], data['3dsections']
-    elif first_elt_dim == 3:
-      first_sections, second_sections = data['3dsections'], data['2dsections']
+    # If high dim sections are first in dist tree, reverse section order
+    if PT.Zone.elt_ordering_by_dim(d_zone) == -1:
+      pdm_sections = pdm_sections[::-1]
     n_elt_cum = 0
     n_elt_cum_d = 0
-    for i_section, section in enumerate(first_sections + second_sections):
-      if i_section == len(first_sections): #Reset the dimension shift when changing dim
+    jumps_idx = np.cumsum([len(sections) for sections in pdm_sections])
+    for i_section, section in enumerate(itertools.chain(*pdm_sections)):
+      if i_section in jumps_idx: #Reset the dimension shift when changing dim
         n_elt_cum_d = 0
       elt = elt_section_nodes[i_section]
-      n_i_elt = section['np_connec'].size // PT.Element.NVtx(elt)
-      elt_n = I.createUniqueChild(p_zone, I.getName(elt), 'Elements_t', value=I.getValue(elt))
-      I.newDataArray('ElementConnectivity', section['np_connec']       , parent=elt_n)
-      I.newPointRange('ElementRange'      , [n_elt_cum+1, n_elt_cum+n_i_elt], parent=elt_n)
-      numberings = {
-          # Original position in the section,
-          'Element' : section['np_numabs'] - n_elt_cum_d,
-          # Original position in the concatenated sections of same dimension
-          'Sections' : section['np_numabs']
-          }
-      #Original position in the numbering of all elements of the dim: for example, for faces, this is
-      # the gnum in the description of all the faces (and not only faces describred in sections
-      if section['np_parent_entity_g_num'] is not None:
-        numberings['ImplicitEntity'] = section['np_parent_entity_g_num']
-      # Corresponding face in the array of all faces described by a section,
-      # after face renumbering
-      # Local number of entity in the reordered cells of the partition
-      # (for faces, note that only face explicitly described are renumbered)
-      lnum_node = I.createNode(':CGNS#LocalNumbering', 'UserDefinedData_t', parent=elt_n)
-      I.newDataArray('ExplicitEntity', section['np_parent_num'], parent=lnum_node)
+      n_i_elt = section['np_numabs'].size
+      if n_i_elt > 0:
+        elt_n = I.createUniqueChild(p_zone, I.getName(elt), 'Elements_t', value=I.getValue(elt))
+        I.newDataArray('ElementConnectivity', section['np_connec']       , parent=elt_n)
+        I.newPointRange('ElementRange'      , [n_elt_cum+1, n_elt_cum+n_i_elt], parent=elt_n)
+        numberings = {
+            # Original position in the section,
+            'Element' : section['np_numabs'] - n_elt_cum_d,
+            # Original position in the concatenated sections of same dimension
+            'Sections' : section['np_numabs']
+            }
+        #Original position in the numbering of all elements of the dim: for example, for faces, this is
+        # the gnum in the description of all the faces (and not only faces describred in sections
+        if section['np_parent_entity_g_num'] is not None:
+          numberings['ImplicitEntity'] = section['np_parent_entity_g_num']
+        # Corresponding face in the array of all faces described by a section,
+        # after face renumbering
+        # Local number of entity in the reordered cells of the partition
+        # (for faces, note that only face explicitly described are renumbered)
+        lnum_node = I.createNode(':CGNS#LocalNumbering', 'UserDefinedData_t', parent=elt_n)
+        I.newDataArray('ExplicitEntity', section['np_parent_num'], parent=lnum_node)
 
-      MT.newGlobalNumbering(numberings, elt_n)
+        MT.newGlobalNumbering(numberings, elt_n)
 
       n_elt_cum   += n_i_elt
       n_elt_cum_d += PT.Element.Size(elt_section_nodes[i_section])

@@ -116,7 +116,7 @@ def test_get_ordered_elements_per_dim():
   assert [I.getName(elem) for elem in sorted_elems_per_dim[2]] == ['ElemC']
   assert [I.getName(elem) for elem in sorted_elems_per_dim[3]] == ['ElemB', 'ElemA']
     
-def get_elt_range_per_dim(zone):
+def test_get_elt_range_per_dim():
   zone = I.newZone()
   I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
   I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
@@ -136,6 +136,23 @@ def get_elt_range_per_dim(zone):
   with pytest.raises(RuntimeError):
     SIDS.Zone.get_elt_range_per_dim(zone)
 
+def test_elt_ordering_by_dim():
+  zone = I.newZone()
+  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
+  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
+  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  assert SIDS.Zone.elt_ordering_by_dim(zone) == -1
+
+  zone = I.newZone()
+  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
+  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
+  assert SIDS.Zone.elt_ordering_by_dim(zone) == 0
+
+  zone = I.newZone()
+  I.newElements('ElemA', etype='HEXA', erange=[18, 60], parent=zone)
+  I.newElements('ElemB', etype='HEXA', erange=[8, 17],  parent=zone)
+  I.newElements('ElemC', etype='TRI',  erange=[1,7],  parent=zone)
+  assert SIDS.Zone.elt_ordering_by_dim(zone) == 1
 
 def test_PointRange():
   pr = I.newPointRange('StandardPR', [1,3, 3,5, 1,3])

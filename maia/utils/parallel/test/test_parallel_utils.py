@@ -18,6 +18,15 @@ def test_uniform_distribution(sub_comm):
       17, sub_comm.Get_rank(), sub_comm.Get_size())).all()
   assert distrib[2] == 17
 
+@mark_mpi_test(3)
+def test_dn_to_distribution(sub_comm):
+  dn = (sub_comm.rank+1)**3 #1, 8, 27
+  expt_distri_f = np.array([0, 1, 9, 36])
+  distrib = utils.dn_to_distribution(dn, sub_comm)
+  assert isinstance(distrib, np.ndarray)
+  assert distrib.dtype == npy_pdm_gnum_dtype
+  assert (distrib == expt_distri_f[[sub_comm.rank, sub_comm.rank+1, sub_comm.size]]).all()
+
 
 @mark_mpi_test(3)
 def test_partial_to_full_distribution(sub_comm):

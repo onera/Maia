@@ -1,3 +1,4 @@
+from mpi4py import MPI
 import numpy              as np
 import Converter.Internal as I
 import Pypdm.Pypdm        as PDM
@@ -135,8 +136,61 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
   # Create dist pointlist
   I.newPointList(value = dist_pl.reshape(1,-1), parent=dist_node)
-  I.newIndexArray('PointList#Size', value=[1, full_distri[n_rank]], parent=dist_node)
 
+def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
+  """
+  Create a distributed Elements_t node on the dist_zone from partitions.
+  Partitions must have the global numbering informations.
+  On the dist_zone, ElementRange of the created node are numbered per physical dimension
+  and must be shifted afterward.
+  """
+  n_rank = comm.Get_size()
+  i_rank = comm.Get_rank()
+  vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
+  elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
+
+  part_ec   = list()
+  cst_stride = 0
+  elt_id   = 0
+  min_section_gn = np.iinfo(pdm_gnum_dtype).max
+  max_section_gn = 0
+  for ipart, part_zone in enumerate(part_zones):
+    elt_n = I.getNodeFromName1(part_zone, elem_name)
+    if elt_n is not None:
+      elt_id = PT.Element.Type(elt_n)
+      cst_stride = PT.Element.NVtx(elt_n)
+
+      # Retrieve the ElementRange within the given dimension
+      section_gnum = MT.getGlobalNumbering(elt_n, 'Sections')[1]
+      min_section_gn = min(min_section_gn, np.min(section_gnum))
+      max_section_gn = max(max_section_gn, np.max(section_gnum))
+
+      # Move to global and add in part_data
+      EC    = I.getNodeFromName1(elt_n, 'ElementConnectivity')[1]
+      part_ec.append(vtx_gnum_l[ipart][EC-1])
+    else:
+      part_ec.append(np.empty(0, np.int32))
+
+  #Get values for proc having no elt
+  cst_stride = comm.allreduce(cst_stride, MPI.MAX)
+  elt_id     = comm.allreduce(elt_id, MPI.MAX)
+  min_section_gn = comm.allreduce(min_section_gn, MPI.MIN)
+  max_section_gn = comm.allreduce(max_section_gn, MPI.MAX)
+
+  # Exchange : for multiple elements (eg. BAR) we take the first received
+  PTB = PDM.PartToBlock(comm, elt_gnum_l, None, len(elt_gnum_l),
+                        t_distrib = 0, t_post = 1)
+  PTBDistribution = PTB.getDistributionCopy()
+
+  _, dist_ec = PTB.exchange_field(part_ec, cst_stride)
+
+  # > Add in disttree
+  elt_node = I.createUniqueChild(dist_zone, elem_name, 'Elements_t', np.array([elt_id, 0], np.int32))
+  I.newPointRange('ElementRange',        [min_section_gn, max_section_gn], parent=elt_node)
+  I.newDataArray ('ElementConnectivity', dist_ec,        parent=elt_node)
+
+  distri_elt = par_utils.full_to_partial_distribution(PTBDistribution, comm)
+  MT.newDistribution({'Element' : distri_elt}, parent=elt_node)
 
 def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   """
@@ -203,7 +257,16 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
       dist_pe[iFace,:] = d_data_pe[offset:offset+2]
     # Face was a partition boundary -> we take the left cell of each received tuple
     elif d_strid_pe[iFace] == 4:
-      dist_pe[iFace,:] = [d_data_pe[offset], d_data_pe[offset+2]]
+      if d_data_pe[offset] == 0: #Orientation was preserved and first cell was right
+        dist_pe[iFace,0] = d_data_pe[offset+2]
+        dist_pe[iFace,1] = d_data_pe[offset+1]
+      else:
+        if d_data_pe[offset+3] != 0: #Orientation was presered and first cell was left
+          dist_pe[iFace,0] = d_data_pe[offset+0]
+          dist_pe[iFace,1] = d_data_pe[offset+3]
+        else: #Orientation was not preserved : take first coming
+          dist_pe[iFace,0] = d_data_pe[offset+0]
+          dist_pe[iFace,1] = d_data_pe[offset+2]
     else:
       raise RuntimeError("Something went wrong with face", iFace)
     offset += d_strid_pe[iFace]
@@ -268,7 +331,8 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
     ECIdx  = I.getNodeFromName1(nface_n, 'ElementStartOffset')[1]
 
     # Move to global and add in part_data
-    part_ec.append(ngon_gnum_l[ipart][np.abs(EC)-1])
+    EC_sign = np.sign(EC)
+    part_ec.append(EC_sign*ngon_gnum_l[ipart][np.abs(EC)-1])
     part_stride.append(np.diff(ECIdx).astype(np.int32))
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do

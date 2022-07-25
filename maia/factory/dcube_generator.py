@@ -1,4 +1,3 @@
-from mpi4py import MPI
 import numpy as np
 import Pypdm.Pypdm as PDM
 
@@ -12,28 +11,50 @@ import maia
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils import np_utils, par_utils, layouts
 
-def _add_sections_to_zone(dist_zone, section, shift_elmt, comm):
-  """
-  """
-  if section == None: return shift_elmt
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
+def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
 
-  for i_section, section in enumerate(section["sections"]):
-    # print("section = ", section)
-    cgns_elmt_type = MT.pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
-    # print("cgns_elmt_type :", cgns_elmt_type)
+  g_dims  = dmesh_nodal.dmesh_nodal_get_g_dims()
+  n_vtx   = g_dims['n_vtx_abs']
+  n_cell  = g_dims['n_face_abs'] if g_dims['n_cell_abs'] == 0 else g_dims['n_cell_abs']
+  max_dim = 3 if g_dims['n_cell_abs'] != 0 else 2
 
-    elmt = I.newElements(f"{cgns_elmt_type}.{i_section}", cgns_elmt_type,
-                         erange = [shift_elmt, shift_elmt + section["np_distrib"][n_rank]-1], parent=dist_zone)
-    I.newDataArray('ElementConnectivity', section["np_connec"], parent=elmt)
+  zone = I.newZone('zone', [[n_vtx, n_cell, 0]], 'Unstructured') 
 
-    shift_elmt += section["np_distrib"][n_rank]
+  # > Grid coordinates
+  vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
+  cx, cy, cz = layouts.interlaced_to_tuple_coords(vtx_data['np_vtx'])
+  grid_coord = I.newGridCoordinates(parent=zone)
+  I.newDataArray('CoordinateX', cx, parent=grid_coord)
+  I.newDataArray('CoordinateY', cy, parent=grid_coord)
+  I.newDataArray('CoordinateZ', cz, parent=grid_coord)
 
-    distrib   = section["np_distrib"][[i_rank, i_rank+1, n_rank]]
-    MT.newDistribution({'Element' : distrib}, parent=elmt)
+  # Carefull ! Getting elt of dim > cell_dim is not allowed
+  pdm_section_kind = [PDM._PDM_GEOMETRY_KIND_CORNER, PDM._PDM_GEOMETRY_KIND_RIDGE,
+                      PDM._PDM_GEOMETRY_KIND_SURFACIC, PDM._PDM_GEOMETRY_KIND_VOLUMIC]
+  pdm_section_kind = pdm_section_kind[elt_min_dim:max_dim+1][::-1]
 
-  return shift_elmt
+  sections_per_dim = [dmesh_nodal.dmesh_nodal_get_sections(kind, comm) for kind in pdm_section_kind]
+
+  elt_shift = 1
+  for dim_sections in sections_per_dim:
+    for i_section, section in enumerate(dim_sections["sections"]):
+      cgns_elmt_name = MT.pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
+      distrib   = par_utils.full_to_partial_distribution(section["np_distrib"], comm)
+
+      elmt = I.newElements(f"{cgns_elmt_name}.{i_section}", cgns_elmt_name, parent=zone)
+      I.newPointRange('ElementRange', [elt_shift, elt_shift + distrib[-1]-1], parent=elmt)
+      I.newDataArray('ElementConnectivity', section["np_connec"], parent=elmt)
+      MT.newDistribution({'Element' : distrib}, parent=elmt)
+      elt_shift += distrib[-1]
+
+  # > Distributions
+  np_distrib_cell = par_utils.uniform_distribution(g_dims["n_cell_abs"], comm)
+  np_distrib_vtx  = par_utils.full_to_partial_distribution(vtx_data['np_vtx_distrib'], comm)
+
+  MT.newDistribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=zone)
+
+  return zone
+    
 
 # --------------------------------------------------------------------------
 def dcube_generate(n_vtx, edge_length, origin, comm):
@@ -41,23 +62,20 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   This function calls paradigm to generate a distributed mesh of a cube, and
   return a CGNS PyTree
   """
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
-
   dcube = PDM.DCubeGenerator(n_vtx, edge_length, *origin, comm)
 
   dcube_dims = dcube.dcube_dim_get()
   dcube_val  = dcube.dcube_val_get()
 
-  distrib_cell    = par_utils.gather_and_shift(dcube_dims['dn_cell'],   comm, pdm_gnum_dtype)
-  distrib_vtx     = par_utils.gather_and_shift(dcube_dims['dn_vtx'],    comm, pdm_gnum_dtype)
-  distrib_face    = par_utils.gather_and_shift(dcube_dims['dn_face'],   comm, pdm_gnum_dtype)
-  distrib_facevtx = par_utils.gather_and_shift(dcube_dims['sface_vtx'], comm, pdm_gnum_dtype)
+  distrib_cell    = par_utils.dn_to_distribution(dcube_dims['dn_cell'],   comm)
+  distrib_vtx     = par_utils.dn_to_distribution(dcube_dims['dn_vtx'],    comm)
+  distrib_face    = par_utils.dn_to_distribution(dcube_dims['dn_face'],   comm)
+  distrib_facevtx = par_utils.dn_to_distribution(dcube_dims['sface_vtx'], comm)
 
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
   dist_base = I.newCGNSBase(parent=dist_tree)
-  dist_zone = I.newZone('zone', [[distrib_vtx[n_rank], distrib_cell[n_rank], 0]],
+  dist_zone = I.newZone('zone', [[distrib_vtx[-1], distrib_cell[-1], 0]],
                         'Unstructured', parent=dist_base)
 
   # > Grid coordinates
@@ -71,12 +89,12 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   dn_face = dcube_dims['dn_face']
 
   # > For Offset we have to shift to be global
-  eso = distrib_facevtx[i_rank] + dcube_val['dface_vtx_idx'].astype(pdm_gnum_dtype)
+  eso = distrib_facevtx[0] + dcube_val['dface_vtx_idx'].astype(pdm_gnum_dtype)
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
-  np_utils.shift_nonzeros(pe, distrib_face[n_rank])
+  np_utils.shift_nonzeros(pe, distrib_face[-1])
   ngon_n = I.newElements('NGonElements', 'NGON',
-                         erange = [1, distrib_face[n_rank]], parent=dist_zone)
+                         erange = [1, distrib_face[-1]], parent=dist_zone)
 
   I.newDataArray('ElementConnectivity', dcube_val['dface_vtx'], parent=ngon_n)
   I.newDataArray('ElementStartOffset' , eso                   , parent=ngon_n)
@@ -97,29 +115,21 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
     dn_face_bnd = end - start
     I.newPointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
 
-    bc_distrib = par_utils.gather_and_shift(dn_face_bnd, comm, pdm_gnum_dtype)
-    distrib   = np.array([bc_distrib[i_rank], bc_distrib[i_rank+1], bc_distrib[n_rank]])
+    distrib  = par_utils.dn_to_distribution(dn_face_bnd, comm)
     MT.newDistribution({'Index' : distrib}, parent=bc_n)
 
   # > Distributions
-  np_distrib_cell    = np.array([distrib_cell[i_rank]   , distrib_cell[i_rank+1]   , distrib_cell[n_rank]]   )
-  np_distrib_vtx     = np.array([distrib_vtx[i_rank]    , distrib_vtx[i_rank+1]    , distrib_vtx[n_rank]]    )
-  np_distrib_face    = np.array([distrib_face[i_rank]   , distrib_face[i_rank+1]   , distrib_face[n_rank]]   )
-  np_distrib_facevtx = np.array([distrib_facevtx[i_rank], distrib_facevtx[i_rank+1], distrib_facevtx[n_rank]])
-
-  MT.newDistribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=dist_zone)
-  MT.newDistribution({'Element' : np_distrib_face, 'ElementConnectivity' : np_distrib_facevtx}, parent=ngon_n)
+  MT.newDistribution({'Cell' : distrib_cell, 'Vertex' : distrib_vtx}, parent=dist_zone)
+  MT.newDistribution({'Element' : distrib_face, 'ElementConnectivity' : distrib_facevtx}, parent=ngon_n)
 
   return dist_tree
 
 # --------------------------------------------------------------------------
-def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
+def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_ridges=False):
   """
   This function calls paradigm to generate a distributed mesh of a cube with various type of elements, and
   return a CGNS PyTree
   """
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
 
   t_elmt = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(cgns_elmt_name)
   cgns_elt_index = [prop[0] for prop in EU.elements_properties].index(cgns_elmt_name)
@@ -143,78 +153,44 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm):
 
   dmesh_nodal = dcube.get_dmesh_nodal()
 
-  g_dims      = dmesh_nodal.dmesh_nodal_get_g_dims()
-  n_vtx_out   = g_dims['n_vtx_abs']
-  n_cell_out  = g_dims['n_face_abs'] if cell_dim == 2 else g_dims['n_cell_abs']
-
-
-  sections_vol   = None
-  sections_surf  = None
-  sections_ridge = None
-  if cgns_elmt_name.split('_')[0] in ["TRI", "QUAD"]:
-    sections_surf  = dmesh_nodal.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, comm)
-    sections_ridge = dmesh_nodal.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_RIDGE   , comm)
-    groups         = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
-  else:
-    sections_vol   = dmesh_nodal.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_VOLUMIC , comm)
-    sections_surf  = dmesh_nodal.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, comm)
-    groups         = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_SURFACIC)
-
   # > Generate dist_tree
   dist_tree = I.newCGNSTree()
   dist_base = I.newCGNSBase('Base', cellDim=cell_dim, physDim=phy_dim, parent=dist_tree)
-  dist_zone = I.newZone('zone', [[n_vtx_out, n_cell_out, 0]],
-                        'Unstructured', parent=dist_base)
 
-  # > Grid coordinates
-  vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
-  cx, cy, cz = layouts.interlaced_to_tuple_coords(vtx_data['np_vtx'])
-  grid_coord = I.newGridCoordinates(parent=dist_zone)
-  I.newDataArray('CoordinateX', cx, parent=grid_coord)
-  I.newDataArray('CoordinateY', cy, parent=grid_coord)
-  if phy_dim == 3:
-    I.newDataArray('CoordinateZ', cz, parent=grid_coord)
+  min_elt_dim = 0 if get_ridges else cell_dim - 1
+  dist_zone = _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, min_elt_dim)
+  I._addChild(dist_base, dist_zone)
 
-  # > Section implicitement range donc on maintiens un compteur
-  shift_elmt       = 1
-  shift_elmt_vol   = _add_sections_to_zone(dist_zone, sections_vol  , shift_elmt     , comm)
-  shift_elmt_surf  = _add_sections_to_zone(dist_zone, sections_surf , shift_elmt_vol , comm)
-  shift_elmt_ridge = _add_sections_to_zone(dist_zone, sections_ridge, shift_elmt_surf, comm)
+  if phy_dim == 2:
+    I.rmNodeByPath(dist_zone, 'GridCoordinates/CoordinateZ')
 
   # > BCs
-  shift_bc = shift_elmt_vol - 1 if sections_vol is not None else shift_elmt_surf - 1
+  if cell_dim == 2:
+    bc_names = ['Zmin', 'Zmax', 'Ymin', 'Ymax']
+    bc_loc = 'EdgeCenter'
+    groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
+  else:
+    bc_names = ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
+    bc_loc = 'FaceCenter'
+    groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_SURFACIC)
+
+  range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
+  shift_bc = range_per_dim[cell_dim][1]
+
   zone_bc = I.newZoneBC(parent=dist_zone)
 
   face_group_idx = groups['dgroup_elmt_idx']
 
   face_group = shift_bc + groups['dgroup_elmt']
-  distri = np.empty(n_rank, dtype=face_group.dtype)
   n_face_group = face_group_idx.shape[0] - 1
 
-  if cell_dim == 2:
-    bc_names = ['Zmin', 'Zmax', 'Ymin', 'Ymax']
-    bc_loc = 'EdgeCenter'
-  else:
-    bc_names = ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
-    bc_loc = 'FaceCenter'
   for i_bc in range(n_face_group):
     bc_n = I.newBC(bc_names[i_bc], btype='Null', parent=zone_bc)
     I.newGridLocation(bc_loc, parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
     I.newPointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
-
-    bc_distrib = par_utils.gather_and_shift(dn_face_bnd, comm, pdm_gnum_dtype)
-    distrib    = bc_distrib[[i_rank, i_rank+1, n_rank]]
-    MT.newDistribution({'Index' : distrib}, parent=bc_n)
-
-  # > Distributions
-  np_distrib_cell = par_utils.uniform_distribution(g_dims["n_cell_abs"], comm)
-
-  distri_vtx     = vtx_data['np_vtx_distrib']
-  np_distrib_vtx = distri_vtx[[i_rank, i_rank+1, n_rank]]
-
-  MT.newDistribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=dist_zone)
+    MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
 
   return dist_tree
 

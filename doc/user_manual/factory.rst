@@ -102,3 +102,7 @@ control the renumbering of mesh entities in the partitions.
 |                    |                                   | use for renumbering               |                            |
 +--------------------+-----------------------------------+-----------------------------------+----------------------------+
 
+Recovering from partitions
+--------------------------
+
+.. autofunction:: maia.factory.recover_dist_tree

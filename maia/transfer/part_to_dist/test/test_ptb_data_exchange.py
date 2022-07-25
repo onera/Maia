@@ -14,6 +14,25 @@ from   maia.utils.yaml   import parse_yaml_cgns
 
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
+@mark_mpi_test(2)
+def test_lngn_to_distri(sub_comm):
+  if sub_comm.rank == 0:
+    lngn_list = []
+    expt_distri = [0,2,4]
+  if sub_comm.rank == 1:
+    lngn_list = [np.array([2,3,1,4], pdm_dtype)]
+    expt_distri = [2,4,4]
+  assert (PTB._lngn_to_distri(lngn_list, sub_comm) == expt_distri).all()
+
+  if sub_comm.rank == 0:
+    lngn_list = [np.empty(0, pdm_dtype), np.array([4,3,1,10], pdm_dtype)]
+    expt_distri = [0,5,10]
+  if sub_comm.rank == 1:
+    lngn_list = [np.array([2,3,1,1,5,4], pdm_dtype)]
+    expt_distri = [5,10,10]
+  assert (PTB._lngn_to_distri(lngn_list, sub_comm) == expt_distri).all()
+
+
 @mark_mpi_test(3)
 class Test__discover_wrapper:
   def test_sol_without_pl(self, sub_comm):

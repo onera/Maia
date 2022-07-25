@@ -62,3 +62,16 @@ def test_compute_balanced_weights():
   if comm.Get_size() == 2 and comm.Get_rank() == 1:
     assert zone_to_parts == {'Base/Large': [0.625]}
   #compute_balanced_weights@end
+
+def test_recover_dist_tree():
+  #recover_dist_tree@start
+  from mpi4py import MPI
+  import maia
+  comm = MPI.COMM_WORLD
+
+  dist_tree_bck  = maia.factory.generate_dist_block(5, 'TETRA_4', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree_bck, comm)
+
+  dist_tree = maia.factory.recover_dist_tree(part_tree, comm)
+  assert maia.pytree.is_same_tree(dist_tree, dist_tree_bck)
+  #recover_dist_tree@end
