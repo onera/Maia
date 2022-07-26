@@ -6,7 +6,7 @@
 #include "std_e/utils/file.hpp"
 #include "cpp_cgns/tree_manip.hpp"
 
-#include "maia/algo/dist/std_elements_to_ngons/std_elements_to_ngons.hpp"
+#include "maia/algo/dist/elements_to_ngons/elements_to_ngons.hpp"
 #include "maia/algo/poly_algo/poly_algorithm.hpp"
 #include "std_e/log.hpp"
 
@@ -18,7 +18,7 @@ PYBIND_TEST_CASE("ngon_new_to_old") {
   std::string yaml_tree = std_e::file_to_string(maia::mesh_dir+"hex_2_prism_2_dist_01.yaml");
   cgns::tree b = maia::to_node(yaml_tree);
   cgns::tree& z = cgns::get_node_by_name(b,"Zone");
-  maia::std_elements_to_ngons(z,MPI_COMM_SELF); // Note: we are not testing that, its just a way to get an ngon test
+  maia::elements_to_ngons(z,MPI_COMM_SELF); // Note: we are not testing that, its just a way to get an ngon test
 
   // apply tested function
   maia::ngon_new_to_old(z);
@@ -44,7 +44,7 @@ PYBIND_TEST_CASE("ngon_old_to_new") {
   std::string yaml_tree = std_e::file_to_string(maia::mesh_dir+"hex_2_prism_2_dist_01.yaml");
   cgns::tree b = maia::to_node(yaml_tree);
   cgns::tree& z = cgns::get_node_by_name(b,"Zone");
-  maia::std_elements_to_ngons(z,MPI_COMM_SELF); // We are not testing that, its just a way to get an ngon test
+  maia::elements_to_ngons(z,MPI_COMM_SELF); // We are not testing that, its just a way to get an ngon test
   maia::ngon_new_to_old(z); // Not testing that either
 
   // apply tested function
