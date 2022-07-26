@@ -5,9 +5,10 @@ def rearrange_element_sections(dist_tree, comm):
   """
   Rearanges Elements_t sections such that for each zone,
   sections are ordered in ascending dimensions order
-  and there is only one section by ElementType
+  and there is only one section by ElementType.
+  Sections are renamed based from their ElementType.
 
-  The tree is modified in place
+  The tree is modified in place.
 
   Args:
     dist_tree  (CGNSTree): Tree with an element-based connectivity
@@ -15,8 +16,8 @@ def rearrange_element_sections(dist_tree, comm):
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #test_rearrange_element_sections@start
-        :end-before: #test_rearrange_element_sections@end
+        :start-after: #rearrange_element_sections@start
+        :end-before: #rearrange_element_sections@end
         :dedent: 2
   """
   apply_to_bases(dist_tree, cdist_algo.rearrange_element_sections, comm)

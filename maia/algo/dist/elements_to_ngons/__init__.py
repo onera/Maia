@@ -15,7 +15,7 @@ def elements_to_ngons(dist_tree,comm):
   Requirement: the ``Element_t`` nodes must be divided into:
   first 2D element sections, then 3D element sections
 
-  See details :ref:`here <elements_to_ngons>`
+  See details :ref:`here <elements_to_ngons_impl>`
 
   Args:
     dist_tree  (CGNSTree): Tree with an element-based connectivity

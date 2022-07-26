@@ -1,4 +1,4 @@
-.. _elements_to_ngons:
+.. _elements_to_ngons_impl:
 
 elements_to_ngons
 =================
@@ -15,7 +15,7 @@ Take a **distributed** :cgns:`CGNSTree_t` or :cgns:`CGNSBase_t`, and transform i
 Example
 -------
 
-.. literalinclude:: ../user_manual/snippets/test_algo.py
+.. literalinclude:: ../../user_manual/snippets/test_algo.py
   :start-after: #elements_to_ngons@start
   :end-before: #elements_to_ngons@end
   :dedent: 2

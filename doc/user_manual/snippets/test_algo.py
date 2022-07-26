@@ -126,23 +126,25 @@ def test_nface_to_pe():
 
 def test_elements_to_ngons():
   #elements_to_ngons@start
+  from mpi4py import MPI
   import maia
   from maia.utils.test_utils import mesh_dir
-  from mpi4py import MPI
-  comm = MPI.COMM_WORLD
 
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/cube_4.yaml', comm)
-  maia.algo.dist.elements_to_ngons(dist_tree, comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.elements_to_ngons(dist_tree, MPI.COMM_WORLD)
   #elements_to_ngons@end
 
 def test_rearrange_element_sections():
-  #test_rearrange_element_sections@start
-  import maia
-  from maia.utils.test_utils import mesh_dir
+  #rearrange_element_sections@start
   from mpi4py import MPI
-  comm = MPI.COMM_WORLD
+  import maia
+  import maia.pytree as PT
 
-  # TODO use a better input file, here it does nothing
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/cube_4.yaml', comm)
-  maia.algo.dist.rearrange_element_sections(dist_tree, comm)
-  #test_rearrange_element_sections@end
+  dist_tree = maia.factory.generate_dist_block(11, 'PYRA_5', MPI.COMM_WORLD)
+  pyras = PT.get_node_from_name(dist_tree, 'PYRA_5.0')
+  assert PT.Element.Range(pyras)[0] == 1 #Until now 3D elements are first
+
+  maia.algo.dist.rearrange_element_sections(dist_tree, MPI.COMM_WORLD)
+  tris = PT.get_node_from_name(dist_tree, 'TRI_3') #Now 2D elements are first
+  assert PT.Element.Range(tris)[0] == 1
+  #rearrange_element_sections@end
