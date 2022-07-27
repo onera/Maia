@@ -14,5 +14,5 @@ args = parser.parse_args()
 for input in args.inputs:
   base_name,extension = os.path.splitext(input)
   t = C.convertFile2PyTree(str(input))
-  maia.algo.ngon_new_to_old(t)
+  maia.algo.seq.poly_new_to_old(t)
   C.convertPyTree2File(t,base_name+'_old'+extension)
