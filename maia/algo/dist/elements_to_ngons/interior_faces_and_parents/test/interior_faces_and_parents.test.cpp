@@ -73,10 +73,10 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents - seq",1) {
 
   // hex
   auto hex_cell_face = cgns::get_node_value_by_matching<I4>(b,"Zone/Hexas/CellFace");
-  CHECK( hex_cell_face == std::vector<I4>{11,5,16,9,1,17,  17,7,18,10,2,12} );
+  CHECK( hex_cell_face == std::vector<I4>{11,5,16,9,1,17,  -17,7,18,10,2,12} );
   // prisms
   auto prism_cell_face = cgns::get_node_value_by_matching<I4>(b,"Zone/Prisms/CellFace");
-  CHECK( prism_cell_face == std::vector<I4>{6,3,16,13,15, 8,4,18,15,14} );
+  CHECK( prism_cell_face == std::vector<I4>{6,3,-16,13,15,  8,4,-18,-15,14} );
 }
 
 
@@ -145,10 +145,10 @@ PYBIND_MPI_TEST_CASE("generate_interior_faces_and_parents",2) {
   // hex
   auto hex_cell_face = cgns::get_node_value_by_matching<I4>(b,"Zone/Hexas/CellFace");
   MPI_CHECK(0, hex_cell_face == std::vector<I4>{11,5,16,9,1,17                 } );
-  MPI_CHECK(1, hex_cell_face == std::vector<I4>{                17,7,18,10,2,12} );
+  MPI_CHECK(1, hex_cell_face == std::vector<I4>{                -17,7,18,10,2,12} );
   // prisms
   auto prism_cell_face = cgns::get_node_value_by_matching<I4>(b,"Zone/Prisms/CellFace");
-  MPI_CHECK(0, prism_cell_face == std::vector<I4>{6,3,16,13,15              } );
-  MPI_CHECK(1, prism_cell_face == std::vector<I4>{              8,4,18,15,14} );
+  MPI_CHECK(0, prism_cell_face == std::vector<I4>{6,3,-16,13,15              } );
+  MPI_CHECK(1, prism_cell_face == std::vector<I4>{              8,4,-18,-15,14} );
 }
 #endif // C++>17
