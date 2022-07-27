@@ -5,6 +5,15 @@ import Converter.Internal as I
 import maia
 
 def poly_new_to_old(t, full_onera_compatibility=True):
+  """
+  Transform a tree with polyhedral unstructured connectivity with new CGNS 4 conventions to old CGNS 3 conventions.
+
+  The tree is modified in place.
+
+  Args:
+    t (CGNSTree): Tree with an ngon-based connectivity
+    full_onera_compatibility (bool): if ``True``, shift NFace and ParentElements ids to begin at 1, irrespective of the NGon and NFace ElementRanges, and make the NFace connectivity unsigned
+  """
   for z in I.getZones(t):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
@@ -31,6 +40,16 @@ def poly_new_to_old(t, full_onera_compatibility=True):
 
 
 def poly_old_to_new(t):
+  """
+  Transform a tree with polyhedral unstructured connectivity with old CGNS 3 conventions to new CGNS 4 conventions.
+
+  The tree is modified in place.
+
+  This function accepts trees with old ONERA conventions where NFace and ParentElements ids begin at 1, irrespective of the NGon and NFace ElementRanges, and where the NFace connectivity is unsigned. The resulting tree has the correct CGNS/SIDS conventions.
+
+  Args:
+    t (CGNSTree): Tree with an ngon-based connectivity
+  """
   for z in I.getZones(t):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
