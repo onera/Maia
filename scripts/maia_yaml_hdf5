@@ -8,7 +8,7 @@ from maia.utils      import script_utils
 import os
 import Converter.PyTree as C
 
-parser = argparse.ArgumentParser(description='Convert between a YAML/CGNS and HDF5/CGNS')
+parser = argparse.ArgumentParser(description='Convert between YAML/CGNS and HDF5/CGNS')
 parser.add_argument('input', metavar='IN', type=Path, help='input file')
 parser.add_argument('-o','--output', metavar='OUT', type=Path, help='output file')
 

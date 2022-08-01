@@ -1,19 +1,21 @@
 Algo module
 ===========
 
-The ``maia.algo`` module provides various parallel operations to be applied to one of the
-two kind of trees defined by maia:
+The ``maia.algo`` module provides various algorithms to be applied to one of the
+two kind of trees defined by Maia:
 
 - ``maia.algo.dist`` module contains some operations applying on distributed trees
 - ``maia.algo.part`` module contains some operations applying on partitioned trees
 
-In addition, few algorithms can be applied indistinctly to distributed or partitioned trees.
+In addition, some algorithms can be applied indistinctly to distributed or partitioned trees.
 These algorithms are accessible through the ``maia.algo`` module.
+
+The ``maia.algo.seq`` module contains a few sequential utility algorithms.
 
 .. _user_man_dist_algo:
 
-Dist algo
----------
+Distributed algorithms
+----------------------
 
 The following algorithms applies on maia distributed trees.
 
@@ -45,8 +47,8 @@ Mesh extractions
 
 .. _user_man_part_algo:
 
-Part algo
----------
+Partitioned algorithms
+----------------------
 
 The following algorithms applies on maia partitioned trees.
 
@@ -56,10 +58,20 @@ The following algorithms applies on maia partitioned trees.
 
 .. _user_man_gen_algo:
 
-Generic algo
-------------
+
+Generic algorithms
+------------------
 
 The following algorithms applies on maia distributed or partitioned trees
 
 .. autofunction:: maia.algo.pe_to_nface
 .. autofunction:: maia.algo.nface_to_pe
+
+
+Sequential algorithms
+---------------------
+
+The following algorithms applies on regular pytrees.
+
+.. autofunction:: maia.algo.seq.poly_new_to_old
+.. autofunction:: maia.algo.seq.poly_old_to_new

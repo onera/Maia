@@ -24,21 +24,27 @@ struct cell_face_info {
   std::vector<I> cell_indices;
   std::vector<I> cell_face_ids;
 };
+enum class parent_side {
+  left,
+  right,
+};
 
 template<class I> auto
-add_face_info(cell_face_info<I>& x, const auto& face_info, ElementType_t cell_type, I cell_first_id) -> void {
+add_face_info(cell_face_info<I>& x, parent_side side, const auto& face_info, ElementType_t cell_type, I cell_first_id) -> void {
   auto [cell_id,face_position_in_cell,face_id] = face_info;
   I cell_index = cell_id-cell_first_id;
   auto n_face_of_cell = number_of_faces(cell_type);
   I first_face_in_vol_index = cell_index*n_face_of_cell;
   I face_in_vol_index = first_face_in_vol_index + (face_position_in_cell-1); // -1 because CGNS starts at 1
   x.cell_indices .push_back(face_in_vol_index);
-  x.cell_face_ids.push_back(face_id);
+  if (side == parent_side::left ) x.cell_face_ids.push_back( face_id);
+  if (side == parent_side::right) x.cell_face_ids.push_back(-face_id);
 }
 
 template<class I> auto
 add_cell_face_infos(
   std::vector<cell_face_info<I>>& cell_face_info_by_section,
+  parent_side side,
   const auto& faces_info,
   const auto& cell_section_intervals, const auto& cell_section_types
 )
@@ -55,7 +61,7 @@ add_cell_face_infos(
     return cell_id;
   };
   auto f_copy = [&](int index, const auto& face_info) {
-    add_face_info(cell_face_info_by_section[index], face_info, cell_section_types[index], cell_section_intervals[index]);
+    add_face_info(cell_face_info_by_section[index], side, face_info, cell_section_types[index], cell_section_intervals[index]);
   };
   std_e::interval_partition_copy(faces_info,cell_section_intervals,proj,f_copy);
 }
@@ -90,9 +96,9 @@ fill_cell_face_info(
   auto in_l_faces_info = std_e::view_as_multi_range(in_l_pe, in_l_pp, in_face_ids);
   auto in_r_faces_info = std_e::view_as_multi_range(in_r_pe, in_r_pp, in_face_ids);
 
-  add_cell_face_infos(cell_face_info_by_section,   ext_faces_info,  cell_section_intervals, cell_section_types);
-  add_cell_face_infos(cell_face_info_by_section,  in_l_faces_info,  cell_section_intervals, cell_section_types);
-  add_cell_face_infos(cell_face_info_by_section,  in_r_faces_info,  cell_section_intervals, cell_section_types);
+  add_cell_face_infos(cell_face_info_by_section, parent_side::left ,  ext_faces_info,  cell_section_intervals, cell_section_types);
+  add_cell_face_infos(cell_face_info_by_section, parent_side::left , in_l_faces_info,  cell_section_intervals, cell_section_types);
+  add_cell_face_infos(cell_face_info_by_section, parent_side::right, in_r_faces_info,  cell_section_intervals, cell_section_types);
 }
 
 

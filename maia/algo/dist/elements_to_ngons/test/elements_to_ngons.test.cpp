@@ -1,9 +1,8 @@
 #if __cplusplus > 201703L
 #include "std_e/unit_test/doctest_pybind_mpi.hpp"
 
-#include "maia/utils/yaml/parse_yaml_cgns.hpp"
+#include "maia/io/file.hpp"
 #include "maia/utils/mesh_dir.hpp"
-#include "std_e/utils/file.hpp"
 #include "cpp_cgns/tree_manip.hpp"
 #include "cpp_cgns/sids/elements_utils.hpp"
 
@@ -13,21 +12,20 @@
 
 using namespace cgns;
 
-PYBIND_MPI_TEST_CASE("elements_to_ngons",2) {
-  int rk = std_e::rank(test_comm);
-  std::string yaml_tree = std_e::file_to_string(maia::mesh_dir+"hex_2_prism_2_dist_"+std::to_string(rk)+".yaml");
-  tree b = maia::to_node(yaml_tree);
 
-  tree& z = cgns::get_node_by_name(b,"Zone");
+PYBIND_MPI_TEST_CASE("elements_to_ngons",2) {
+  std::string file_name = maia::mesh_dir+"hex_2_prism_2.yaml";
+  tree t = maia::file_to_dist_tree(file_name,test_comm);
+  tree& z = cgns::get_node_by_matching(t,"Base/Zone");
 
   maia::elements_to_ngons(z,test_comm);
 
-  auto elt_type = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n")[0];
-  auto range = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n/ElementRange");
-  auto eso = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n/ElementStartOffset");
-  auto connec = cgns::get_node_value_by_matching<I4>(b,"Zone/NGON_n/ElementConnectivity");
-  auto pe = cgns::get_node_value_by_matching<I4,2>(b,"Zone/NGON_n/ParentElements");
-  auto pp = cgns::get_node_value_by_matching<I4,2>(b,"Zone/NGON_n/ParentElementsPosition");
+  auto elt_type = cgns::get_node_value_by_matching<I4>(z,"NGON_n")[0];
+  auto range = cgns::get_node_value_by_matching<I4>(z,"NGON_n/ElementRange");
+  auto eso = cgns::get_node_value_by_matching<I4>(z,"NGON_n/ElementStartOffset");
+  auto connec = cgns::get_node_value_by_matching<I4>(z,"NGON_n/ElementConnectivity");
+  auto pe = cgns::get_node_value_by_matching<I4,2>(z,"NGON_n/ParentElements");
+  auto pp = cgns::get_node_value_by_matching<I4,2>(z,"NGON_n/ParentElementsPosition");
   CHECK( elt_type == (I4)cgns::NGON_n);
   CHECK( range == std::vector<I4>{1,18} );
   MPI_CHECK(0, eso == std::vector<I4>{0,4,8,12,16,20,24,28,32} );

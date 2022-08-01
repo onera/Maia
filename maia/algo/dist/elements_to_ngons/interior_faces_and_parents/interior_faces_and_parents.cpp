@@ -10,7 +10,7 @@
 #include "maia/algo/dist/elements_to_ngons/interior_faces_and_parents/algo/scatter_parents_to_boundary_sections.hpp"
 #include "maia/algo/dist/elements_to_ngons/interior_faces_and_parents/algo/add_cell_face_connectivities.hpp"
 #include "maia/algo/dist/elements_to_ngons/interior_faces_and_parents/algo/append_interior_faces_sections.hpp"
-#include "maia/algo/poly_algo/shift.hpp"
+#include "maia/algo/common/shift.hpp"
 
 
 using namespace cgns;
