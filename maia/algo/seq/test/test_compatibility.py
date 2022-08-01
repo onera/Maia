@@ -16,7 +16,7 @@ def poly_tree_new():
   filename = os.path.join(TU.mesh_dir,'hex_2_prism_2.yaml')
   t = maia.io.file_to_dist_tree(filename,MPI.COMM_SELF)
   maia.algo.dist.elements_to_ngons(t,MPI.COMM_SELF)
-  I._rmNodesByName(t,":CGNS#Distribution") # remove distribution info to make it a regular pytree
+  maia.io.distribution_tree.clean_distribution_info(t) # remove distribution info to make it a regular pytree
   return t
 
 

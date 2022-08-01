@@ -6,7 +6,7 @@ import maia
 
 def poly_new_to_old(t, full_onera_compatibility=True):
   """
-  Transform a tree with polyhedral unstructured connectivity with new CGNS 4 conventions to old CGNS 3 conventions.
+  Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.
 
   The tree is modified in place.
 
@@ -41,7 +41,7 @@ def poly_new_to_old(t, full_onera_compatibility=True):
 
 def poly_old_to_new(t):
   """
-  Transform a tree with polyhedral unstructured connectivity with old CGNS 3 conventions to new CGNS 4 conventions.
+  Transform a tree with polyhedral unstructured connectivity with old CGNS 3.x conventions to new CGNS 4.x conventions.
 
   The tree is modified in place.
 
@@ -53,8 +53,8 @@ def poly_old_to_new(t):
   for z in I.getZones(t):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
-    ngon_range   = I.getVal(I.getNodeFromName1(ngon , "ElementRange"       ))
-    nface_range  = I.getVal(I.getNodeFromName1(nface, "ElementRange"       ))
+    ngon_range   = I.getVal(I.getNodeFromName1(ngon , "ElementRange"))
+    nface_range  = I.getVal(I.getNodeFromName1(nface, "ElementRange"))
 
     # 1. interleaved to indexed
     ctree_algo.interleaved_to_indexed_connectivity(ngon)
@@ -74,7 +74,8 @@ def poly_old_to_new(t):
 
     # 3. NFace
     nface_connec = I.getVal(I.getNodeFromName1(nface, "ElementConnectivity"))
-    if np.min(nface_connec)<0: # NFace is signed
+    n_cell = nface_range[1] - nface_range[0]
+    if np.min(nface_connec)<0 or n_cell==1: # NFace is signed (if only one cell, it is signed despite being positive)
       # 3.1. interleaved to indexed
       ctree_algo.interleaved_to_indexed_connectivity(nface)
       nface_connec = I.getVal(I.getNodeFromName1(nface, "ElementConnectivity"))

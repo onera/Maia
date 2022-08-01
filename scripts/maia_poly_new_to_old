@@ -9,11 +9,11 @@ import Converter.PyTree as C
 
 parser = argparse.ArgumentParser(description='Convert a NGon/NFace mesh from new to old CGNS convention')
 parser.add_argument('inputs', metavar='IN', type=Path, help='input files', nargs='+')
-parser.add_argument('--compat', help='preserve full onera compatibility', action="store_true")
+parser.add_argument('--sids', help='Preserve SIDS 3.x compliance', action="store_false")
 args = parser.parse_args()
 
 for input in args.inputs:
   base_name,extension = os.path.splitext(input)
   t = C.convertFile2PyTree(str(input))
-  maia.algo.seq.poly_new_to_old(t, args.compat)
+  maia.algo.seq.poly_new_to_old(t, args.sids)
   C.convertPyTree2File(t,base_name+'_old'+extension)

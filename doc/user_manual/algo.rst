@@ -59,15 +59,6 @@ The following algorithms applies on maia partitioned trees.
 .. _user_man_gen_algo:
 
 
-Sequential algorithms
----------------------
-
-The following algorithms applies on regular pytrees.
-
-.. autofunction:: maia.algo.seq.poly_new_to_old
-.. autofunction:: maia.algo.seq.poly_old_to_new
-
-
 Generic algorithms
 ------------------
 
@@ -75,3 +66,12 @@ The following algorithms applies on maia distributed or partitioned trees
 
 .. autofunction:: maia.algo.pe_to_nface
 .. autofunction:: maia.algo.nface_to_pe
+
+
+Sequential algorithms
+---------------------
+
+The following algorithms applies on regular pytrees.
+
+.. autofunction:: maia.algo.seq.poly_new_to_old
+.. autofunction:: maia.algo.seq.poly_old_to_new
