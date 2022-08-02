@@ -26,7 +26,7 @@ def test_s2u(sub_comm, subset_output_loc, write_output):
 
   for zone in I.getZones(dist_treeU):
     assert PT.Zone.Type(zone) == 'Unstructured'
-    for node in I.getNodesFromType(zone, 'BC_t') + I.getNodesFromType(zone, 'GridConnectivity_t'):
+    for node in PT.get_nodes_from_label(zone, 'BC_t') + PT.get_nodes_from_label(zone, 'GridConnectivity_t'):
       assert PT.Subset.GridLocation(node) == subset_output_loc
 
   # Compare to reference
@@ -47,8 +47,8 @@ def test_s2u_withdata(sub_comm, write_output):
   dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
 
   # Use only small zone for simplicity
-  I._rmNodesByName(dist_treeS, 'Large')
-  I._rmNodesByType(dist_treeS, 'ZoneGridConnectivity_t')
+  PT.rm_nodes_from_name(dist_treeS, 'Large')
+  PT.rm_nodes_from_label(dist_treeS, 'ZoneGridConnectivity_t')
 
   # Add some BCDataFace data
   bc_right = MU.yaml.parse_yaml_cgns.to_node(
@@ -70,7 +70,7 @@ def test_s2u_withdata(sub_comm, write_output):
         DirichletData BCData_t:
           lid DataArray_t I4 [1,2,3,4,5,6,7,8,9,10]:
     """)
-  I._rmNodesByName(dist_treeS, 'Right')
+  PT.rm_nodes_from_name(dist_treeS, 'Right')
   I._addChild(I.getNodeFromType(dist_treeS, 'ZoneBC_t'), \
       MF.full_to_dist.distribute_pl_node(bc_right, sub_comm))
 
@@ -84,7 +84,7 @@ def test_s2u_withdata(sub_comm, write_output):
   assert I.getNodeFromPath(bc_right_u, 'WholeDSFace/PointList') is None
   assert (I.getNodeFromPath(bc_right_u, 'SubDSFace/PointList')[1] == [225,226,279,280,333,334,387,388]).all()
   assert (I.getNodeFromPath(bc_right_u, 'SubDSVtx/PointList')[1] == [1,2,64,65,127,128,190,191,253,254]).all()
-  for bcds in I.getNodesFromType(bc_right_u, 'BCDataSet_t'): #Data should be the same
+  for bcds in PT.get_children_from_label(bc_right_u, 'BCDataSet_t'): #Data should be the same
     bcds_s = I.getNodeFromName(bc_right, I.getName(bcds))
     assert (I.getNodeFromName(bcds, 'lid')[1] == I.getNodeFromName(bcds_s, 'lid')[1]).all()
 

@@ -57,16 +57,16 @@ def test_rm_nodes_from_predicate():
   # Name
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   PT.rm_nodes_from_name(tree, "FamilyName")
-  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == []
+  assert [I.getName(n) for n in PT.get_nodes_from_name(tree, "FamilyName")] == []
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   PT.rm_nodes_from_name(tree, "FamilyName", depth=3)
-  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == ["FamilyName"]*5
+  assert [I.getName(n) for n in PT.get_nodes_from_name(tree, "FamilyName")] == ["FamilyName"]*5
 
   # Label
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   PT.rm_nodes_from_label(tree, "FamilyName_t")
-  assert [I.getName(n) for n in I.getNodesFromName(tree, "FamilyName")] == []
+  assert [I.getName(n) for n in PT.get_nodes_from_name(tree, "FamilyName")] == []
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   PT.rm_nodes_from_label(tree, "FamilyName_t", depth=3)

@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree        as PT
 
 import cmaia
 import maia.io
@@ -21,7 +22,7 @@ def test_elements_to_ngons_maia(sub_comm, write_output):
   elements_to_ngons(dist_tree, sub_comm)
 
   # > Old elements are cleaned up
-  assert len(I.getNodesFromType(dist_tree, 'Elements_t')) == 2
+  assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
   # > Poly sections appear
   ngon_node  = I.getNodeFromName(dist_tree, 'NGON_n')
   nface_node = I.getNodeFromName(dist_tree, 'NFACE_n')
@@ -49,7 +50,7 @@ def test_elements_to_ngons_pdm(sub_comm, write_output):
   generate_ngon_from_std_elements(dist_tree, sub_comm)
 
   # > Old elements are cleaned up
-  assert len(I.getNodesFromType(dist_tree, 'Elements_t')) == 2
+  assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
   ngon_node  = I.getNodeFromName(dist_tree, 'NGonElements')
   nface_node = I.getNodeFromName(dist_tree, 'NFaceElements')
   assert ngon_node is not None

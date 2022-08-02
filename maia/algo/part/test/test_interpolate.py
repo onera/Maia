@@ -161,12 +161,12 @@ def test_get_point_cloud(sub_comm):
   tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
   zone = I.getZones(tree)[0]
   #On partitions, element are supposed to be I4
-  for elt_node in I.getNodesFromType1(zone, 'Elements_t'):
+  for elt_node in PT.iter_children_from_label(zone, 'Elements_t'):
     for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
       node = I.getNodeFromName1(elt_node, name)
       node[1] = node[1].astype(np.int32)
-  I._rmNodesByType(zone, 'ZoneBC_t')
-  I._rmNodesByName(zone, ':CGNS#Distribution')
+  PT.rm_children_from_label(zone, 'ZoneBC_t')
+  PT.rm_nodes_from_name(zone, ':CGNS#Distribution')
   fs = I.newFlowSolution('MyOwnCoords', 'CellCenter', parent=zone)
   I.newDataArray('CoordinateX', 1*np.ones(8), parent=fs)
   I.newDataArray('CoordinateY', 2*np.ones(8), parent=fs)
@@ -204,12 +204,12 @@ def test_get_point_cloud(sub_comm):
 def test_register_src_part(sub_comm):
   tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
   zone = I.getZones(tree)[0]
-  for elt_node in I.getNodesFromType1(zone, 'Elements_t'):
+  for elt_node in PT.iter_nodes_from_label(zone, 'Elements_t'):
     for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
       node = I.getNodeFromName1(elt_node, name)
       node[1] = node[1].astype(np.int32)
-  I._rmNodesByType(zone, 'ZoneBC_t')
-  I._rmNodesByName(zone, ':CGNS#Distribution')
+  PT.rm_children_from_label(zone, 'ZoneBC_t')
+  PT.rm_nodes_from_name(zone, ':CGNS#Distribution')
   vtx_gnum = np.arange(3**3) + 1
   cell_gnum = np.arange(2**3) + 1
   MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)

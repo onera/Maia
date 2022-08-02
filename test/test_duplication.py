@@ -65,7 +65,7 @@ def test_duplicate_from_periodic(sub_comm, write_output):
   bottom = I.getNodeFromName(dist_zone, 'Zmin')
   top    = I.getNodeFromName(dist_zone, 'Zmax')
   for bc in [bottom, top]:
-    I._rmNodesByName(dist_zone, I.getName(bc))
+    PT.rm_nodes_from_name(dist_zone, I.getName(bc))
     I.setType(bc, 'GridConnectivity_t')
     I.setValue(bc, I.getName(dist_zone))
     I.newGridConnectivityType('Abutting1to1', bc)

@@ -162,7 +162,7 @@ Base CGNSBase_t:
     dist_tree = I.copyTree(self.dist_tree)
     MJT.copy_donor_subset(dist_tree)
     expected_pl_opp = [[2,4], [1,3], [-100,-10], [10,100]]
-    for i, jn in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
+    for i, jn in enumerate(PT.iter_nodes_from_label(dist_tree, 'GridConnectivity_t')):
       assert (I.getNodeFromName1(jn, 'PointListDonor')[1] == expected_pl_opp[i]).all()
 
   def test_store_interfaces_ids(self):
@@ -170,7 +170,7 @@ Base CGNSBase_t:
     MJT.store_interfaces_ids(dist_tree)
     expected_id = [1,1,2,2]
     expected_pos = [0,1,0,1]
-    for i, jn in enumerate(I.getNodesFromType(dist_tree, 'GridConnectivity_t')):
+    for i, jn in enumerate(PT.iter_nodes_from_label(dist_tree, 'GridConnectivity_t')):
       assert (I.getNodeFromName1(jn, 'DistInterfaceId')[1] == expected_id[i]).all()
       assert (I.getNodeFromName1(jn, 'DistInterfaceOrd')[1] == expected_pos[i]).all()
 

@@ -7,6 +7,7 @@ from maia.utils              import py_utils
 from maia.utils.meta         import for_all_methods
 
 from maia.pytree.compare import check_is_label, check_in_labels
+from maia.pytree         import walk
 from . import elements_utils as EU
 
 # --------------------------------------------------------------------------
@@ -50,12 +51,14 @@ class Zone:
 
   @staticmethod
   def NGonNode(zone_node):
-    ngons = [e for e in I.getNodesFromType1(zone_node, "Elements_t") if Element.CGNSName(e) == 'NGON_n']
+    predicate = lambda n: I.getType(n) == "Elements_t" and Element.CGNSName(n) == 'NGON_n'
+    ngons = walk.get_children_from_predicate(zone_node, predicate)
     return py_utils.expects_one(ngons, ("NGon node", f"zone {I.getName(zone_node)}"))
 
   @staticmethod
   def NFaceNode(zone_node):
-    nfaces = [e for e in I.getNodesFromType1(zone_node, "Elements_t") if Element.CGNSName(e) == 'NFACE_n']
+    predicate = lambda n: I.getType(n) == "Elements_t" and Element.CGNSName(n) == 'NFACE_n'
+    nfaces = walk.get_children_from_predicate(zone_node, predicate)
     return py_utils.expects_one(nfaces, ("NFace node", f"zone {I.getName(zone_node)}"))
 
   @staticmethod
@@ -125,7 +128,7 @@ class Zone:
     """
     Return the elements nodes in increasing order wrt ElementRange
     """
-    return sorted(I.getNodesFromType1(zone, 'Elements_t'),
+    return sorted(walk.get_children_from_label(zone, 'Elements_t'),
                   key = lambda item : Element.Range(item)[0])
 
   @staticmethod

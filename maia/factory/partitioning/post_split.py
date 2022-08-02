@@ -20,33 +20,32 @@ def copy_additional_nodes(dist_zone, part_zone):
   #BCs
   names = ['.Solver#BC', 'BoundaryMarker']
   types = ['FamilyName_t']
-  for p_zbc in I.getNodesFromType1(part_zone, 'ZoneBC_t'):
-    for p_bc in I.getNodesFromType1(p_zbc, 'BC_t'):
-      d_bc = I.getNodeFromPath(dist_zone, I.getName(p_zbc)+'/'+I.getName(p_bc))
-      if d_bc: #Tmp, since S splitting store external JNs as bnd
-        for node in I.getChildren(d_bc):
-          if I.getName(node) in names or I.getType(node) in types:
-            I._addChild(p_bc, node)
+  for p_zbc, p_bc in PT.iter_nodes_from_predicates(part_zone, 'ZoneBC_t/BC_t', ancestors=True):
+    d_bc = I.getNodeFromPath(dist_zone, I.getName(p_zbc)+'/'+I.getName(p_bc))
+    if d_bc: #Tmp, since S splitting store external JNs as bnd
+      for node in I.getChildren(d_bc):
+        if I.getName(node) in names or I.getType(node) in types:
+          I._addChild(p_bc, node)
   #GCs
   names = ['.Solver#Property', 'GridConnectivityDonorName', 'DistInterfaceId', 'DistInterfaceOrd']
   types = ['FamilyName_t', 'GridConnectivityProperty_t', 'GridConnectivityType_t']
-  for p_zgc in I.getNodesFromType1(part_zone, 'ZoneGridConnectivity_t'):
-    for p_gc in I.getNodesFromType1(p_zgc, 'GridConnectivity_t'):
-      d_gc = I.getNodeFromPath(dist_zone, I.getName(p_zgc)+'/'+I.getName(p_gc))
-      if d_gc: #Skip created jns
-        for node in I.getChildren(d_gc):
-          if I.getName(node) in names or I.getType(node) in types:
-            I._addChild(p_gc, node)
+  gc_predicate = 'ZoneGridConnectivity_t/GridConnectivity_t'
+  for p_zgc, p_gc in PT.iter_nodes_from_predicates(part_zone, gc_predicate, ancestors=True):
+    d_gc = I.getNodeFromPath(dist_zone, I.getName(p_zgc)+'/'+I.getName(p_gc))
+    if d_gc: #Skip created jns
+      for node in I.getChildren(d_gc):
+        if I.getName(node) in names or I.getType(node) in types:
+          I._addChild(p_gc, node)
 
 def split_original_joins(p_tree):
   """
   """
   for p_base, p_zone in PT.iter_children_from_predicates(p_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     d_zone_name = MT.conv.get_part_prefix(p_zone[0])
-    for zone_gc in I.getNodesFromType1(p_zone, 'ZoneGridConnectivity_t'):
+    for zone_gc in PT.get_children_from_label(p_zone, 'ZoneGridConnectivity_t'):
       to_remove = list()
       to_append = list()
-      for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
+      for gc in PT.get_children_from_label(zone_gc, 'GridConnectivity_t'):
         if not MT.conv.is_intra_gc(gc[0]): #Skip part joins
           pl       = I.getNodeFromName1(gc, 'PointList')[1]
           pl_d     = I.getNodeFromName1(gc, 'PointListDonor')[1]

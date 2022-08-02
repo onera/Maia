@@ -23,13 +23,13 @@ def test_jn_vertexlist(sub_comm, write_output):
 
   dist_tree = file_to_dist_tree(mesh_file, sub_comm)
 
-  n_jn_ini = len(I.getNodesFromType(dist_tree, 'GridConnectivity_t'))
+  n_jn_ini = len(PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t'))
 
   # Generate a GridConnectivity node with GridLocation==Vertex for each face GridConnectivity
   # found in the tree
   generate_jns_vertex_list(dist_tree, sub_comm)
 
-  assert len(I.getNodesFromType(dist_tree, 'GridConnectivity_t')) == 2*n_jn_ini
+  assert len(PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')) == 2*n_jn_ini
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
@@ -38,7 +38,7 @@ def test_jn_vertexlist(sub_comm, write_output):
   # Compare to reference solution
   with open(ref_file, 'r') as f:
     reference_tree = parse_yaml_cgns.to_cgns_tree(f)
-  for ref_gc in I.getNodesFromType(reference_tree, 'GridConnectivity_t'):
+  for ref_gc in PT.iter_nodes_from_label(reference_tree, 'GridConnectivity_t'):
     gc = I.getNodeFromName(dist_tree, I.getName(ref_gc))
     distri = MT.getDistribution(gc, 'Index')[1]
     for ref_node in I.getChildren(ref_gc):

@@ -1,6 +1,7 @@
 import Converter
 import Converter.PyTree   as C
 import Converter.Internal as I
+import maia.pytree        as PT
 
 from .fix_tree import fix_point_ranges, fix_zone_datatype, load_grid_connectivity_property
 
@@ -12,28 +13,28 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
   - PointList (or Unstr PointRange) array of BC_t
   - PointList array of GC_t, GC1to1_t, BCDataSet_t and ZoneSubRegion_t nodes
   """
-  for elmt in I.getNodesFromType1(zone, 'Elements_t'):
+  for elmt in PT.iter_children_from_label(zone, 'Elements_t'):
     elmt_path = zone_path+"/"+elmt[0]
     ec_path   = elmt_path+"/ElementConnectivity"
     if I.getNodeFromName1(elmt, 'ElementStartOffset') is not None:
       I.newIndexArray('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
 
-  for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
+  for zone_bc in PT.iter_children_from_label(zone, 'ZoneBC_t'):
     zone_bc_path = zone_path+"/"+zone_bc[0]
-    for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
+    for bc in PT.iter_children_from_label(zone_bc, 'BC_t'):
       bc_path = zone_bc_path+"/"+bc[0]
       if I.getNodeFromName1(bc, 'PointList') is not None:
         pl_path = bc_path+"/PointList"
         I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
-      for bcds in I.getNodesFromType1(bc, 'BCDataSet_t'):
+      for bcds in PT.iter_children_from_label(bc, 'BCDataSet_t'):
         if I.getNodeFromName1(bcds, 'PointList') is not None:
           pl_path = bc_path+"/"+bcds[0]+"/PointList"
           I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bcds)
 
-  for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+  for zone_gc in PT.iter_children_from_label(zone, 'ZoneGridConnectivity_t'):
     zone_gc_path = zone_path+"/"+zone_gc[0]
-    gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') \
-        + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
+    gcs = PT.get_children_from_label(zone_gc, 'GridConnectivity_t') \
+        + PT.get_children_from_label(zone_gc, 'GridConnectivity1to1_t')
     for gc in gcs:
       gc_path = zone_gc_path+"/"+gc[0]
       if I.getNodeFromName1(gc, 'PointList') is not None:
@@ -43,13 +44,13 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
         pld_path = gc_path+"/PointListDonor"
         assert size_data[pld_path][2] == size_data[pl_path][2]
 
-  for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
+  for zone_subregion in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
     zone_subregion_path = zone_path+"/"+zone_subregion[0]
     if I.getNodeFromName1(zone_subregion, 'PointList') is not None:
       pl_path = zone_subregion_path+"/PointList"
       I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=zone_subregion)
 
-  for flow_sol in I.getNodesFromType1(zone, 'FlowSolution_t'):
+  for flow_sol in PT.iter_children_from_label(zone, 'FlowSolution_t'):
     sol_path = zone_path + "/" + I.getName(flow_sol)
     if I.getNodeFromName1(flow_sol, 'PointList') is not None:
       pl_path = sol_path+"/PointList"
@@ -60,7 +61,7 @@ def add_sizes_to_tree(size_tree, size_data):
   Convience function which loops over zones to add size
   data in each one.
   """
-  for base in I.getNodesFromType1(size_tree, 'CGNSBase_t'):
+  for base in PT.iter_children_from_label(size_tree, 'CGNSBase_t'):
     base_path = '/'+base[0]
     for zone in I.getZones(base):
       zone_path = base_path+"/"+zone[0]

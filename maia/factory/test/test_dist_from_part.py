@@ -83,7 +83,7 @@ Zone.P2.N1 Zone_t:
 
   def test_getvalue(self, sub_comm):
     part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[sub_comm.Get_rank()])
-    for zbc in I.getNodesFromName(part_tree, 'ZBC'):
+    for zbc in PT.get_nodes_from_name(part_tree, 'ZBC'):
       I.setValue(zbc, 'test')
 
     # get_value as a string
@@ -212,8 +212,8 @@ def test_recover_dist_tree_ngon(sub_comm):
     if sub_comm.Get_rank() == 0:
       # part_zone = G.cartNGon((0,0,0), (.5,.5,.5), (3,3,3))
       part_zone = I.getZones(generate_dist_block(3, 'Poly', MPI.COMM_SELF))[0]
-      I._rmNodesByName(part_zone, 'ZoneBC')
-      I._rmNodesByName(part_zone, ':CGNS#Distribution')
+      PT.rm_children_from_label(part_zone, 'ZoneBC_t')
+      PT.rm_nodes_from_name(part_zone, ':CGNS#Distribution')
 
       vtx_gnum = np.array([1,2,3,6,7,8,11,12,13,16,17,18,21,22,23,26,27,28,31,32,33,36,37,38,41,42,43], pdm_dtype)
       cell_gnum = np.array([1,2,5,6,9,10,13,14], pdm_dtype)
@@ -226,8 +226,8 @@ def test_recover_dist_tree_ngon(sub_comm):
     else:
       # part_zone = G.cartNGon((1,0,0), (.5,.5,.5), (3,3,3))
       part_zone = I.getZones(generate_dist_block(3, 'Poly', MPI.COMM_SELF, origin=[1., 0., 0.]))[0]
-      I._rmNodesByName(part_zone, 'ZoneBC')
-      I._rmNodesByName(part_zone, ':CGNS#Distribution')
+      PT.rm_children_from_label(part_zone, 'ZoneBC_t')
+      PT.rm_nodes_from_name(part_zone, ':CGNS#Distribution')
       vtx_gnum =  np.array([3,4,5, 8,9,10,13,14,15,18,19,20,23,24,25,28,29,30,33,34,35,38,39,40,43,44,45], pdm_dtype)
       cell_gnum = np.array([3,4,7,8,11,12,15,16], pdm_dtype)
       ngon_gnum = np.array([3,4,5,8,9,10,13,14,15,18,19,20,23,24,27,28,31,32,35,36,39,40,43,44,
@@ -271,9 +271,9 @@ def test_recover_dist_tree_elt(void_part, sub_comm):
   assert (dist_zone[1] == [[11,4,0]]).all()
   assert (I.getNodeFromPath(dist_zone, 'Tris/ElementRange')[1] == [7,12]).all()
   assert (I.getNodeFromPath(dist_zone, 'Tets/ElementRange')[1] == [16,16]).all()
-  assert len(I.getNodesFromType(dist_zone, 'BC_t')) == 6
-  assert len(I.getNodesFromType(dist_zone, 'ZoneGridConnectivity_t')) == 0
+  assert len(PT.get_nodes_from_label(dist_zone, 'BC_t')) == 6
+  assert len(PT.get_nodes_from_label(dist_zone, 'ZoneGridConnectivity_t')) == 0
 
-  for elt in I.getNodesFromType(dist_tree_bck, 'Elements_t'):
+  for elt in PT.get_nodes_from_label(dist_tree_bck, 'Elements_t'):
     I._rmNodeByPath(elt, ':CGNS#Distribution/ElementConnectivity')
   assert PT.is_same_tree(dist_tree_bck, dist_tree)

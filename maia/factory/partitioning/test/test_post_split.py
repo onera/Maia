@@ -1,5 +1,6 @@
 import numpy as np
 import Converter.Internal as I
+import maia.pytree        as PT
 
 from maia.utils.yaml   import parse_yaml_cgns
 from maia.factory.partitioning import post_split as PS
@@ -57,7 +58,7 @@ ZoneB.P1.N0 Zone_t:
   PS.split_original_joins(p_tree)
 
   assert I.getNodeFromName(p_zone, 'matchBA') is None
-  assert len(I.getNodesFromName(p_zone, 'matchBA*')) == 2
+  assert len(PT.get_nodes_from_name(p_zone, 'matchBA*')) == 2
   new_jn0 = I.getNodeFromName(p_zone, 'matchBA.0')
   new_jn1 = I.getNodeFromName(p_zone, 'matchBA.1')
   assert I.getValue(new_jn0) == 'ZoneA.P0.N0'

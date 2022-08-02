@@ -34,7 +34,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   #Get data
   dist_data = dict()
   dist_gc = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
-  for grid_co in I.getNodesFromType1(dist_gc, 'DataArray_t'):
+  for grid_co in PT.iter_children_from_label(dist_gc, 'DataArray_t'):
     dist_data[I.getName(grid_co)] = grid_co[1] #Prevent np->scalar conversion
 
 
@@ -114,7 +114,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
   Transfert all the data included in BCDataSet_t/BCData_t nodes from a distributed
   zone to the partitioned zones
   """
-  for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
+  for d_zbc in PT.iter_children_from_label(dist_zone, "ZoneBC_t"):
     labels = ['BC_t', 'BCDataSet_t', 'BCData_t', 'DataArray_t']
     mask_tree = te_utils.create_mask_tree(d_zbc, labels, include, exclude)
     for mask_bc in I.getChildren(mask_tree):

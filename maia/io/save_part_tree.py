@@ -1,4 +1,5 @@
 import maia
+import maia.pytree        as PT
 import Converter.PyTree   as C
 import Converter.Internal as I
 
@@ -8,7 +9,7 @@ def save_part_tree(part_tree, filename, comm):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  zones = I.getNodesFromType2(part_tree, 'Zone_t')
+  zones = PT.get_all_Zone_t(part_tree)
   zone_name_list = list()
   for zone in zones:
     zone_name_list.append(zone[0])

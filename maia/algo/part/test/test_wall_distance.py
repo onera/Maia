@@ -3,7 +3,7 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
 import Converter.Internal as I
-import maia.pytree.sids   as sids
+import maia.pytree        as PT
 
 import maia
 from maia.utils.yaml   import parse_yaml_cgns
@@ -62,19 +62,19 @@ class Test_wallDistance:
     WD.compute_wall_distance(part_tree, sub_comm, method="propagation", families=["WALL"])
 
     fs = I.getNodeFromName1(zone, 'WallDistance')
-    assert fs is not None and sids.Subset.GridLocation(fs) == 'CellCenter'
-    for array in I.getNodesFromType1(fs, 'DataArray_t'):
+    assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+    for array in PT.iter_children_from_label(fs, 'DataArray_t'):
       assert array[1].shape == (4,)
     assert (I.getNodeFromName1(fs, 'TurbulentDistance')[1] == expected_wd).all()
     assert (I.getNodeFromName1(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
     #Test with family detection + cloud method + custom fs name
-    I._rmNodesByName(part_tree, 'WallDistance')
+    PT.rm_nodes_from_name(part_tree, 'WallDistance')
     WD.compute_wall_distance(part_tree, sub_comm, method="cloud", out_fs_name='MyWallDistance')
 
     fs = I.getNodeFromName1(zone, 'MyWallDistance')
-    assert fs is not None and sids.Subset.GridLocation(fs) == 'CellCenter'
-    for array in I.getNodesFromType1(fs, 'DataArray_t'):
+    assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+    for array in PT.iter_children_from_label(fs, 'DataArray_t'):
       assert array[1].shape == (4,)
     assert (I.getNodeFromName1(fs, 'TurbulentDistance')[1] == expected_wd).all()
     assert (I.getNodeFromName1(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
@@ -108,7 +108,7 @@ def test_walldistance_vtx(sub_comm):
   WD.compute_wall_distance(part_tree, sub_comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
 
   fs = I.getNodeFromName1(zone, 'MyWallDistance')
-  assert fs is not None and sids.Subset.GridLocation(fs) == 'Vertex'
+  assert fs is not None and PT.Subset.GridLocation(fs) == 'Vertex'
   assert (I.getNodeFromName1(fs, 'TurbulentDistance')[1] == expected_wd).all()
   assert (I.getNodeFromName1(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 

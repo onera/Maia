@@ -47,7 +47,7 @@ def pe_to_nface(zone, remove_PE=False):
     MT.newGlobalNumbering({'Element' : I.getVal(cell_gnum)}, nface)
 
   if remove_PE:
-    I._rmNodesByName(ngon_node, "ParentElements")
+    PT.rm_children_from_name(ngon_node, "ParentElements")
 
 
 def nface_to_pe(zone, remove_NFace=False):

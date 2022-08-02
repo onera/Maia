@@ -49,7 +49,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   distrib_cell_face = par_utils.gather_and_shift(dcell_face_idx[dn_cell], comm, np.int32)
 
   # Create NGon node
-  ermax   = max([PT.Element.Range(e)[1] for e in I.getNodesFromType1(zone, 'Elements_t')])
+  ermax   = max([PT.Element.Range(e)[1] for e in PT.iter_children_from_label(zone, 'Elements_t')])
 
   pe = np.empty((dface_cell.shape[0]//2, 2), dtype=dface_cell.dtype, order='F')
   layouts.pdm_face_cell_to_pe_cgns(dface_cell, pe)
@@ -70,7 +70,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
                       ngon_n)
 
   # Create NFace node
-  ermax   = max([PT.Element.Range(e)[1] for e in I.getNodesFromType1(zone, 'Elements_t')])
+  ermax   = max([PT.Element.Range(e)[1] for e in PT.iter_children_from_label(zone, 'Elements_t')])
   eso_nfac = dcell_face_idx + distrib_cell_face[i_rank]
 
   nfac_n  = I.createUniqueChild(zone, 'NFaceElements', 'Elements_t', value=[23,0])
@@ -89,8 +89,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   if pdm_group is not None:
     group = np.copy(pdm_group) + (PT.Zone.get_range_of_ngon(zone)[0]-1)
     for i_bc, bc in enumerate(PT.iter_children_from_predicates(zone, 'ZoneBC_t/BC_t')):
-      I._rmNodesByName(bc, 'PointRange')
-      I._rmNodesByName(bc, 'PointList')
+      PT.rm_nodes_by_name(bc, 'PointRange')
+      PT.rm_nodes_by_name(bc, 'PointList')
       start, end = group_idx[i_bc], group_idx[i_bc+1]
       I.newPointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
@@ -99,10 +99,10 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
 def compute_ngon_from_std_elements(dist_tree, comm):
   """
   """
-  for base in I.getNodesFromType(dist_tree, 'CGNSBase_t'):
+  for base in PT.iter_all_CGNSBase_t(dist_tree):
     extract_dim = I.getValue(base)[0]
     #print("extract_dim == ", extract_dim)
-    zones_u = [zone for zone in I.getZones(base) if PT.Zone.Type(zone) == "Unstructured"]
+    zones_u = [zone for zone in PT.iter_all_Zone_t(base) if PT.Zone.Type(zone) == "Unstructured"]
 
     dmn_to_dm = PDM.DMeshNodalToDMesh(len(zones_u), comm)
     dmesh_nodal_list = list()
@@ -121,7 +121,7 @@ def compute_ngon_from_std_elements(dist_tree, comm):
       pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim)
 
       # > Remove internal holder state
-      I._rmNodesByName(zone, ':CGNS#DMeshNodal#Bnd*')
+      PT.rm_nodes_by_name(zone, ':CGNS#DMeshNodal#Bnd*')
 
   # > Generate correctly zone_grid_connectivity
 
@@ -147,7 +147,7 @@ def generate_ngon_from_std_elements(dist_tree, comm):
   #instead of looping
   compute_ngon_from_std_elements(dist_tree,comm)
   for zone in I.getZones(dist_tree):
-    elts_to_remove = [elt for elt in I.getNodesFromType1(zone, 'Elements_t') if\
+    elts_to_remove = [elt for elt in PT.iter_children_from_label(zone, 'Elements_t') if\
         PT.Element.CGNSName(elt) not in ["NGON_n", "NFACE_n"]]
     #2D element should be removed first, to avoid probleme coming from ParentElements
     for elt in sorted(elts_to_remove, key = PT.Element.Dimension):

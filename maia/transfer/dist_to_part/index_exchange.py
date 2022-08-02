@@ -71,7 +71,7 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
 
     ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   elif entity == 'Elements':
-    elts = I.getNodesFromType1(dist_zone, 'Elements_t')
+    elts = PT.get_children_from_label(dist_zone, 'Elements_t')
     distri_partial = te_utils.create_all_elt_distribution(elts, comm)
     pdm_distri     = par_utils.partial_to_full_distribution(distri_partial, comm)
     ln_to_gn_list = [te_utils.create_all_elt_g_numbering(p_zone, elts) for p_zone in part_zones]

@@ -55,7 +55,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
       if PT.Subset.GridLocation(node) == 'Vertex':
         ln_to_gn = I.getVal(MT.getGlobalNumbering(p_zone, 'Vertex'))
       else:
-        ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
+        ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
       part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
       ln_to_gn_list.append(ln_to_gn[part_pl-1])
 
@@ -104,7 +104,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     for part_zone in part_zones:
       ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
       ln_to_gn_list.extend([I.getVal(MT.getGlobalNumbering(node, 'Index')) \
-          for node in I.getNodesFromName(ancestor_n, leaf+'*')])
+          for node in PT.get_children_from_name(ancestor_n, leaf+'*')])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
     ln_to_gn_list = [I.getNodeFromPath(part_zone, gn_path)[1] for part_zone in part_zones \
@@ -117,12 +117,12 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   for part_zone in part_zones:
     ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
     if ancestor_n:
-      allowed_nodes = I.getNodesFromName(ancestor_n, leaf+'*') if allow_mult else I.getNodesFromName1(ancestor_n, leaf)
-      for node in allowed_nodes:
+      name = leaf + '*' if allow_mult else leaf
+      for node in PT.iter_children_from_name(ancestor_n, name):
         if PT.Subset.GridLocation(node) == 'Vertex':
           ln_to_gn = I.getVal(MT.getGlobalNumbering(part_zone, 'Vertex'))
         else:
-          ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, I.getNodesFromType1(dist_zone, 'Elements_t'))
+          ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
         part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
         part_pl_list.append(ln_to_gn[part_pl-1])
 

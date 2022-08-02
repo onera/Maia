@@ -40,14 +40,6 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
   """
   cx, cy, cz = PT.Zone.coordinates(zone)
 
-  # for elmt in I.getNodesFromType1(zone, 'Elements_t'):
-  #   if(elmt[1][0] == 22):
-  #     found    = True
-  #     face_vtx     = I.getNodeFromName1(elmt, 'ElementConnectivity')[1]
-  #     face_vtx_idx = I.getNodeFromName1(elmt, 'ElementStartOffset' )[1]
-  #     break
-  # if(not found):
-  #   raise NotImplementedError("Connect match need at least the NGonElements")
   face_vtx_idx, face_vtx, _ = PT.Zone.ngon_connectivity(zone)
 
   for bc in PT.Zone.getBCsFromFamily(zone, family_list):
@@ -82,7 +74,7 @@ def connect_match_from_family(part_tree, family_list, comm,
   Utily fonction to find in a configuration the List of Wall contains in Family or BC
   TODO : Structured / DG
   """
-  zones = I.getNodesFromType2(part_tree, 'Zone_t')
+  zones = PT.get_all_Zone_t(part_tree)
 
   n_point_cloud = compute_n_point_cloud(zones, family_list)
 
@@ -195,8 +187,8 @@ def connect_match_from_family(part_tree, family_list, comm,
 
   # Remove all bcs
   for i_zone, zone in enumerate(zones):
-    for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
+    for zone_bc in PT.get_children_from_label(zone, 'ZoneBC_t'):
       for bc_name in bnd_to_join_path_list[i_zone]:
-        I._rmNodesByName(zone_bc, bc_name)
+        PT.rm_children_from_name(zone_bc, bc_name)
 
 

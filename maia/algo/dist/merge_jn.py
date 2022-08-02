@@ -192,7 +192,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   #Cleanup after trick
   for zsr in zsr_list:
     if PT.getSubregionExtent(zsr, zone) != I.getName(zsr):
-      I._rmNodesByName(zsr, 'PointList')
+      PT.rm_children_from_name(zsr, 'PointList')
 
 
 # TODO move to sids module, doc, unit test
@@ -238,7 +238,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
       and PT.Subset.GridLocation(n) == 'Vertex' and I.getNodeFromPath(n, 'PointList') is None
 
   for node in PT.iter_children_from_predicate(zone, is_all_vtx_sol):
-    for data_n in I.getNodesFromType1(node, 'DataArray_t'):
+    for data_n in PT.iter_children_from_label(node, 'DataArray_t'):
       I.setValue(data_n, np.delete(data_n[1], local_vtx_to_rmv))
 
   # Update vertex distribution
@@ -258,8 +258,8 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   gc = I.getNodeFromPath(dist_tree, jn_pathes[0])
   assert PT.Subset.GridLocation(gc) == 'FaceCenter'
   zone = I.getNodeFromPath(dist_tree, base_n + '/' + zone_n)
-  ngon  = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if elem[1][0] == 22][0]
-  nface_l = [elem for elem in I.getNodesFromType1(zone, 'Elements_t') if elem[1][0] == 23]
+  ngon  = [elem for elem in PT.iter_children_from_label(zone, 'Elements_t') if elem[1][0] == 22][0]
+  nface_l = [elem for elem in PT.iter_children_from_label(zone, 'Elements_t') if elem[1][0] == 23]
   nface = nface_l[0] if len(nface_l) == 1 else None
 
   MJT.add_joins_donor_name(dist_tree, comm)
@@ -321,7 +321,7 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
       #Since we modify the PointList of this join, we must check that no data is related to it
       assert I.getNodeFromType1(o_gc, 'DataArray_t') is None, \
           "Can not reorder a GridConnectivity PointList to which data is related"
-      for zsr in I.getNodesFromType1(o_zone, 'ZoneSubRegion_t'):
+      for zsr in PT.iter_children_from_label(o_zone, 'ZoneSubRegion_t'):
         assert PT.getSubregionExtent(zsr, o_zone) != I.getName(o_zgc) + '/' + I.getName(o_gc), \
             "Can not reorder a GridConnectivity PointList to which data is related"
     except KeyError:

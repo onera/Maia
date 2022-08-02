@@ -189,7 +189,7 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
     for jn_path_b in jn_paths_b:
       jn_path_b_prev = PT.update_path_elt(jn_path_b, 1, lambda zn : zn + f".D{n}")
       jn_b_prev_node = I.getNodeFromPath(dist_tree, jn_path_b_prev)
-      I._rmNodesByType1(jn_b_prev_node, "GridConnectivityProperty_t")
+      PT.rm_children_from_label(jn_b_prev_node, "GridConnectivityProperty_t")
       gc_value = I.getValue(jn_b_prev_node)
       I.setValue(jn_b_prev_node, f"{_get_gc_root_name(gc_value)}.D{n+1}")
 
@@ -198,7 +198,7 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
     for jn_path_a in jn_paths_a:
       jn_path_a_curr = PT.update_path_elt(jn_path_a, 1, lambda zn : zn + f".D{n+1}")
       jn_a_curr_node = I.getNodeFromPath(dist_tree, jn_path_a_curr)
-      I._rmNodesByType1(jn_a_curr_node, "GridConnectivityProperty_t")
+      PT.rm_children_from_label(jn_a_curr_node, "GridConnectivityProperty_t")
       I.setValue(jn_a_curr_node, f"{I.getValue(jn_a_curr_node)}.D{n}")
 
     if conformize:
@@ -292,14 +292,14 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
   for jn_path_a in _jn_paths_for_dupl[0]:
     jn_path_a_init = PT.update_path_elt(jn_path_a, 1, lambda zn : zn + f".D{0}")
     jn_a_init_node = I.getNodeFromPath(dist_tree, jn_path_a_init)
-    I._rmNodesFromType1(jn_a_init_node, "GridConnectivityProperty_t")
+    PT.rm_children_from_label(jn_a_init_node, "GridConnectivityProperty_t")
 
   # Transform periodic joins of the second joins list (B) from last set of duplicated zones
   # to non periodic joins
   for jn_path_b in _jn_paths_for_dupl[1]:
     jn_path_b_last = PT.update_path_elt(jn_path_b, 1, lambda zn : zn + f".D{sectors_number-1}")
     jn_b_last_node = I.getNodeFromPath(dist_tree, jn_path_b_last)
-    I._rmNodesFromType1(jn_b_last_node, "GridConnectivityProperty_t")
+    PT.rm_children_from_label(jn_b_last_node, "GridConnectivityProperty_t")
 
   if conformize:
     # Conformize last, other have been conformized in duplicate_from_periodic_jns

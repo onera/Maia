@@ -43,7 +43,7 @@ def distribute_data_node(node, comm):
   dist_node = I.copyTree(node)
   assert I.getNodeFromName(dist_node, 'PointList') is None
 
-  for array in I.getNodesFromType1(dist_node, 'DataArray_t'):
+  for array in PT.iter_children_from_label(dist_node, 'DataArray_t'):
     distri = par_utils.uniform_distribution(array[1].size, comm)
     array[1] = array[1].reshape(-1, order='F')[distri[0] : distri[1]]
 
@@ -105,19 +105,19 @@ def distribute_tree(tree, comm, owner=None):
     MT.newDistribution(zone_distri, zone)
 
     # > Coords
-    grid_coords = I.getNodesFromType1(zone, 'GridCoordinates_t')
+    grid_coords = PT.get_children_from_label(zone, 'GridCoordinates_t')
     for grid_coord in grid_coords:
       I._rmNode(zone, grid_coord)
       I._addChild(zone, distribute_data_node(grid_coord, comm))
 
     # > Elements
-    elts = I.getNodesFromType1(zone, 'Elements_t')
+    elts = PT.get_children_from_label(zone, 'Elements_t')
     for elt in elts:
       I._rmNode(zone, elt)
       I._addChild(zone, distribute_element_node(elt, comm))
 
     # > Flow Solutions
-    sols = I.getNodesFromType1(zone, 'FlowSolution_t') + I.getNodesFromType1(zone, 'DiscreteData_t')
+    sols = PT.get_children_from_label(zone, 'FlowSolution_t') + PT.get_children_from_label(zone, 'DiscreteData_t')
     for sol in sols:
       I._rmNode(zone, sol)
       if I.getNodeFromName1(sol, 'PointList') is None:
@@ -126,23 +126,23 @@ def distribute_tree(tree, comm, owner=None):
         I._addChild(zone, distribute_pl_node(sol, comm))
 
     # > BCs
-    zonebcs = I.getNodesFromType1(zone, 'ZoneBC_t')
+    zonebcs = PT.get_children_from_label(zone, 'ZoneBC_t')
     for zonebc in zonebcs:
       I._rmNode(zone, zonebc)
       dist_zonebc = I.createChild(zone, I.getName(zonebc), 'ZoneBC_t')
-      for bc in I.getNodesFromType1(zonebc, 'BC_t'):
+      for bc in PT.iter_children_from_label(zonebc, 'BC_t'):
         I._addChild(dist_zonebc, distribute_pl_node(bc, comm))
 
     # > GCs
-    zonegcs = I.getNodesFromType1(zone, 'ZoneGridConnectivity_t')
+    zonegcs = PT.get_children_from_label(zone, 'ZoneGridConnectivity_t')
     for zonegc in zonegcs:
       I._rmNode(zone, zonegc)
       dist_zonegc = I.createChild(zone, I.getName(zonegc), 'ZoneGridConnectivity_t')
-      for gc in I.getNodesFromType1(zonegc, 'GridConnectivity_t') + I.getNodesFromType1(zonegc, 'GridConnectivity1to1_t'):
+      for gc in PT.get_children_from_label(zonegc, 'GridConnectivity_t') + PT.get_children_from_label(zonegc, 'GridConnectivity1to1_t'):
         I._addChild(dist_zonegc, distribute_pl_node(gc, comm))
 
     # > ZoneSubRegion
-    zone_subregions = I.getNodesFromType1(zone, 'ZoneSubRegion_t')
+    zone_subregions = PT.get_children_from_label(zone, 'ZoneSubRegion_t')
     for zone_subregion in zone_subregions:
       # Trick if related to an other node -> add pl
       matching_region_path = PT.getSubregionExtent(zone_subregion, zone)
@@ -151,8 +151,8 @@ def distribute_tree(tree, comm, owner=None):
         I._addChild(zone_subregion, I.getNodeFromPath(zone, matching_region_path + '/PointRange'))
       dist_zone_subregion = distribute_pl_node(zone_subregion, comm)
       if matching_region_path != I.getName(zone_subregion):
-        I._rmNodesByName(dist_zone_subregion, 'PointList')
-        I._rmNodesByName(dist_zone_subregion, 'PointRange')
+        PT.rm_children_from_name(dist_zone_subregion, 'PointList')
+        PT.rm_children_from_name(dist_zone_subregion, 'PointRange')
         I._rmNode(dist_zone_subregion, MT.getDistribution(dist_zone_subregion))
 
       I._addChild(zone, dist_zone_subregion)

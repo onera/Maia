@@ -57,15 +57,8 @@ def compute_connectivity_distribution(node):
 def compute_elements_distribution(zone, comm):
   """
   """
-  if PT.Zone.Type(zone) == 'Structured':
-    pass
-  else:
-    elts = I.getNodesFromType1(zone, 'Elements_t')
-
-    for elt in elts:
-      er = I.getNodeFromName(elt, 'ElementRange')
-      n_tot_elmt = er[1][1] - er[1][0] + 1
-      create_distribution_node(n_tot_elmt, comm, 'Element', elt)
+  for elt in PT.iter_children_from_label(zone, 'Elements_t'):
+    create_distribution_node(PT.Element.Size(elt), comm, 'Element', elt)
 
 def compute_zone_distribution(zone, comm):
   """
@@ -78,47 +71,41 @@ def compute_zone_distribution(zone, comm):
 
   compute_elements_distribution(zone, comm)
 
-  for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
+  for zone_subregion in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
     compute_plist_or_prange_distribution(zone_subregion, comm)
 
-  for flow_sol in I.getNodesFromType1(zone, 'FlowSolution_t'):
+  for flow_sol in PT.iter_children_from_label(zone, 'FlowSolution_t'):
     compute_plist_or_prange_distribution(flow_sol, comm)
 
-  for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
-    for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
-      compute_plist_or_prange_distribution(bc, comm)
-      for bcds in I.getNodesFromType1(bc, 'BCDataSet_t'):
-        compute_plist_or_prange_distribution(bcds, comm)
+  for bc in PT.iter_children_from_predicates(zone, 'ZoneBC_t/BC_t'):
+    compute_plist_or_prange_distribution(bc, comm)
+    for bcds in PT.iter_children_from_label(bc, 'BCDataSet_t'):
+      compute_plist_or_prange_distribution(bcds, comm)
 
-  for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
-    gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
-    for gc in gcs:
+  for zone_gc in PT.iter_children_from_label(zone, 'ZoneGridConnectivity_t'):
+    for gc in PT.iter_children_from_label(zone_gc, 'GridConnectivity_t'):
+      compute_plist_or_prange_distribution(gc, comm)
+    for gc in PT.iter_children_from_label(zone_gc, 'GridConnectivity1to1_t'):
       compute_plist_or_prange_distribution(gc, comm)
 
 def add_distribution_info(dist_tree, comm, distribution_policy='uniform'):
   """
   """
-  for base in I.getNodesFromType1(dist_tree, 'CGNSBase_t'):
-    for zone in I.getNodesFromType1(base, 'Zone_t'):
-      compute_zone_distribution(zone, comm)
+  for zone in PT.iter_all_Zone_t(dist_tree):
+    compute_zone_distribution(zone, comm)
 
 def clean_distribution_info(dist_tree):
   """
   Remove the node related to distribution info from the dist_tree
   """
-  for base in I.getNodesFromType1(dist_tree, 'CGNSBase_t'):
-    for zone in I.getNodesFromType1(base, 'Zone_t'):
-      I._rmNodesByName1(zone, ':CGNS#Distribution')
-      for elmt in I.getNodesFromType1(zone, 'Elements_t'):
-        I._rmNodesByName1(elmt, ':CGNS#Distribution')
-      for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
-        for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
-          I._rmNodesByName2(bc, ':CGNS#Distribution')
-      for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
-        for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t') + \
-                  I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t'):
-          I._rmNodesByName1(gc, ':CGNS#Distribution')
-      for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
-        I._rmNodesByName1(zone_subregion, ':CGNS#Distribution')
-      for zone_sol in I.getNodesFromType1(zone, 'FlowSolution_t'):
-        I._rmNodesByName1(zone_sol, ':CGNS#Distribution')
+  distri_name = ":CGNS#Distribution"
+  is_dist = lambda n : I.getType(n) in ['Elements_t', 'ZoneSubRegion_t', 'FlowSolution_t']
+  is_gc   = lambda n : I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  for zone in PT.iter_all_Zone_t(dist_tree):
+    PT.rm_children_from_name(zone, distri_name)
+    for node in PT.iter_nodes_from_predicate(zone, is_dist):
+      PT.rm_children_from_name(node, distri_name)
+    for bc in PT.iter_nodes_from_predicates(zone, 'ZoneBC_t/BC_t'):
+      PT.rm_nodes_from_name(bc, distri_name, depth=2)
+    for gc in PT.iter_nodes_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+      PT.rm_children_from_name(gc, distri_name)

@@ -148,8 +148,7 @@ class Test_multiple_labels_exchange:
     return dist_tree, part_tree
 
   def _cleanup(self, part_tree):
-    for label in ['FlowSolution_t', 'BCDataSet_t']:
-      I._rmNodesByType(part_tree, label)
+    PT.rm_nodes_from_predicate(part_tree, lambda n : I.getType(n) in ['FlowSolution_t', 'BCDataSet_t'])
 
   def test_zone_level(self, sub_comm):
     dist_tree, part_tree = self.get_trees(sub_comm)

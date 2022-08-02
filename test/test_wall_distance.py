@@ -5,6 +5,7 @@ import numpy as np
 
 import Converter.Internal as I
 import Converter.PyTree   as C
+import maia.pytree        as PT
 
 import maia
 
@@ -24,7 +25,7 @@ def test_wall_distance_S(method, sub_comm, write_output):
   base = I.getBases(dist_tree)[0]
   fam = I.newFamily('WALL', parent=base)
   I.newFamilyBC(parent=fam)
-  for bc in I.getNodesFromType(dist_tree, 'BC_t'):
+  for bc in PT.iter_nodes_from_label(dist_tree, 'BC_t'):
     if I.getValue(bc) == 'BCWall':
       I.setValue(bc, 'FamilySpecified')
       I.createChild(bc, 'FamilyName', 'FamilyName_t', 'WALL')

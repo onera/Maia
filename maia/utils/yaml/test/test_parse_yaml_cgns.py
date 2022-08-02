@@ -1,5 +1,6 @@
 from maia.utils.yaml import parse_yaml_cgns
 import Converter.Internal as I
+import maia.pytree        as PT
 import numpy as np
 
 
@@ -22,13 +23,13 @@ Base0 CGNSBase_t [3,3]:
   Zone1 Zone_t R8 [[4,3,2],[3,2,1],[0,0,0]]:
 """
   t = parse_yaml_cgns.to_cgns_tree(yt)
-  bs = I.getNodesFromType1(t,"CGNSBase_t")
+  bs = PT.get_children_from_label(t,"CGNSBase_t")
   assert len(bs) == 1
   assert I.getName(bs[0]) == "Base0"
   assert I.getType(bs[0]) == "CGNSBase_t"
   assert np.all(I.getValue(bs[0]) == [3,3])
 
-  zs = I.getNodesFromType1(bs[0],"Zone_t")
+  zs = PT.get_children_from_label(bs[0],"Zone_t")
   assert np.all(I.getValue(zs[0]) == [[24],[6],[0]])
   assert I.getChildren(zs[0]) == []
   assert I.getNodeFromName(t, 'Zone1')[1].dtype == np.float64
@@ -37,7 +38,7 @@ Base0 CGNSBase_t [3,3]:
   Zone0 Zone_t [[24],[6],[0]]:
 """
   t = parse_yaml_cgns.to_cgns_tree(yt)
-  bs = I.getNodesFromType1(t,"CGNSBase_t")
+  bs = PT.get_children_from_label(t,"CGNSBase_t")
   assert len(bs) == 1
   assert I.getName(bs[0]) == "Base"
   assert I.getType(bs[0]) == "CGNSBase_t"

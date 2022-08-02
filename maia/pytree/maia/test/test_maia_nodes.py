@@ -1,5 +1,6 @@
 import pytest
 import Converter.Internal as I
+import maia.pytree        as PT
 
 from maia.pytree.maia import maia_nodes as mNode
 
@@ -25,7 +26,7 @@ def test_newDistribution():
   distri = mNode.newDistribution(distri_arrayB, parent=zone)
   assert (I.getNodeFromPath(zone, ':CGNS#Distribution/Cell')[1] == [0,15,30]).all()
   assert (I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex')[1] == [100, 1000, 1000]).all()
-  assert len(I.getNodesFromName(zone, ':CGNS#Distribution')) == 1
+  assert len(PT.get_nodes_from_name(zone, ':CGNS#Distribution')) == 1
 
 def test_newGlobalNumbering():
   gnum = mNode.newGlobalNumbering()

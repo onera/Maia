@@ -133,7 +133,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
         if not is_merged_zone or jn_path_opp < jn_path:
           I.newIndexArray('PointList'     , jn_to_pl[jn_path_opp][1], parent=gc)
           I.newIndexArray('PointListDonor', jn_to_pl[jn_path_opp][0], parent=gc)
-          I._rmNodesByName(gc, ":CGNS#Distribution")
+          PT.rm_children_from_name(gc, ":CGNS#Distribution")
           I._addChild(gc, jn_to_pl[jn_path_opp][2])
 
   if concatenate_jns:
@@ -186,7 +186,7 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   for zone_path in zones_path:
     zone    = I.getNodeFromPath(tree, zone_path)
     zone_vl = I.getNodeFromPath(tree_vl, zone_path)
-    for zgc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+    for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
       zgc_vl = I.getNodeFromName1(zone_vl, I.getName(zgc))
       for gc_vl in PT.get_children_from_predicate(zgc_vl, lambda n: I.getType(n) == 'GridConnectivity_t' \
           and sids.Subset.GridLocation(n) == 'Vertex'):
@@ -320,10 +320,10 @@ def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
     #Use zone 0 to get node type and value. Nodes must be know in every zone
     for node in PT.get_children_from_predicates(zones[0], query):
       m_node = I.createUniqueChild(merged_zone, I.getName(node), I.getType(node), I.getValue(node))
-      for data in I.getNodesFromType1(node, 'DataArray_t'):
+      for data in PT.iter_children_from_label(node, 'DataArray_t'):
         I.newDataArray(data[0], merged[I.getName(node) + '/' + I.getName(data)], parent=m_node)
       for type in additional_types:
-        for sub_node in I.getNodesFromType1(node, type):
+        for sub_node in PT.iter_children_from_label(node, type):
           I._addChild(m_node, sub_node)
 
 def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
@@ -359,7 +359,7 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
 
   # Trick to avoid spectific treatment of ZoneSubRegions (add PL)
   for zone in zones:
-    for zsr in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
+    for zsr in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
       #Copy PL when related to bc/gc to avoid specific treatement
       if I.getNodeFromName1(zsr, 'BCRegionName') is not None or \
          I.getNodeFromName1(zsr, 'GridConnectivityRegionName') is not None:
@@ -398,14 +398,14 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
 
   # Trick to avoid spectific treatment of ZoneSubRegions (remove PL on original zones)
   for zone in zones:
-    for zsr in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
+    for zsr in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
       if I.getNodeFromName1(zsr, 'BCRegionName') is not None or \
          I.getNodeFromName1(zsr, 'GridConnectivityRegionName') is not None:
-        I._rmNodesByName(zsr, 'PointList*')
+        PT.rm_children_from_name(zsr, 'PointList*')
   # Since link may be broken in merged zone, it is safer to remove it
-  for zsr in I.getNodesFromType1(merged_zone, 'ZoneSubRegion_t'):
-    I._rmNodesByName1(zsr, 'BCRegionName')
-    I._rmNodesByName1(zsr, 'GridConnectivityRegionName')
+  for zsr in PT.iter_children_from_label(merged_zone, 'ZoneSubRegion_t'):
+    PT.rm_children_from_name(zsr, 'BCRegionName')
+    PT.rm_children_from_name(zsr, 'GridConnectivityRegionName')
 
 def _equilibrate_data(data, comm, distri=None, distri_full=None):
   if distri_full is None:
@@ -529,10 +529,10 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
                       'GridConnectivityType_t', 'GridConnectivityProperty_t']
   additional_names = []
   for type in additional_types:
-    for sub_node in I.getNodesFromType1(ref_node, type):
+    for sub_node in PT.iter_children_from_label(ref_node, type):
       I._addChild(merged_node, sub_node)
   for name in additional_names:
-    for sub_node in I.getNodesFromName1(ref_node, name):
+    for sub_node in PT.iter_children_from_name(ref_node, name):
       I._addChild(merged_node, sub_node)
 
   MT.newDistribution({'Index' : merged_pl_distri}, merged_node)

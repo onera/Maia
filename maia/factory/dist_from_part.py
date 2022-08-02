@@ -68,7 +68,7 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
 def _recover_elements(dist_zone, part_zones, comm):
   # > Get the list of part elements
   discover_nodes_from_matching(dist_zone, part_zones, 'Elements_t', comm, get_value='leaf')
-  elt_nodes = I.getNodesFromType1(dist_zone, 'Elements_t')
+  elt_nodes = PT.get_children_from_label(dist_zone, 'Elements_t')
   elt_kinds = [PT.Element.CGNSName(elt) for elt in elt_nodes]
   has_ngon  = 'NGON_n'  in elt_kinds
   has_nface = 'NFACE_n' in elt_kinds

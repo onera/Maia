@@ -4,6 +4,7 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 import os
 import Converter.Internal as I
+import maia.pytree as PT
 
 from maia import io      as MIO
 from maia import factory as MF
@@ -29,8 +30,8 @@ def test_single_block(sub_comm):
   I.setType(bc, 'BC_t')
   I.setValue(bc, 'FamilySpecified')
   I.createNode('FamilyName', 'FamilyName_t', 'JN', parent=bc)
-  I._rmNodesByName(bc, 'GridConnectivityType')
-  I._rmNodesByName(bc, 'PointListDonor')
+  PT.rm_children_from_name(bc, 'GridConnectivityType')
+  PT.rm_children_from_name(bc, 'PointListDonor')
   I._addChild(I.getNodeFromType(part_tree, 'ZoneBC_t'), bc)
 
   base = I.getBases(part_tree)[0]
@@ -41,7 +42,7 @@ def test_single_block(sub_comm):
                                       match_type = ['FaceCenter'], rel_tol=1.e-5)
 
   #PLDonor are well recovered
-  new_gc = I.getNodesFromType(part_tree, 'GridConnectivity_t')[-1]
+  new_gc = PT.get_nodes_from_label(part_tree, 'GridConnectivity_t')[-1]
   for name in ['PointList', 'PointListDonor', 'GridConnectivityType', 'GridLocation']:
     assert (I.getNodeFromName(gc, name)[1] == I.getNodeFromName(new_gc, name)[1]).all()
 
@@ -59,11 +60,11 @@ def test_two_blocks(sub_comm):
   part_tree = MF.partition_dist_tree(dist_tree, sub_comm)
 
   # > Backup GridConnectivity for verification
-  large_zone = I.getNodesFromName(part_tree, "Large*")[0]
-  small_zone = I.getNodesFromName(part_tree, "Small*")[0]
+  large_zone = PT.get_nodes_from_name(part_tree, "Large*")[0]
+  small_zone = PT.get_nodes_from_name(part_tree, "Small*")[0]
   large_jn = I.getNodeFromType(large_zone, 'GridConnectivity_t')
   small_jn = I.getNodeFromType(small_zone, 'GridConnectivity_t')
-  I._rmNodesByType(part_tree, 'ZoneGridConnectivity_t')
+  PT.rm_nodes_from_label(part_tree, 'ZoneGridConnectivity_t')
 
   # > Test setup -- Create BC
   large_bc = I.copyTree(large_jn)
@@ -71,8 +72,8 @@ def test_two_blocks(sub_comm):
   I.setType(large_bc, 'BC_t')
   I.setValue(large_bc, 'FamilySpecified')
   I.createNode('FamilyName', 'FamilyName_t', 'LargeJN', parent=large_bc)
-  I._rmNodesByName(large_bc, 'GridConnectivityType')
-  I._rmNodesByName(large_bc, 'PointListDonor')
+  PT.rm_children_from_name(large_bc, 'GridConnectivityType')
+  PT.rm_children_from_name(large_bc, 'PointListDonor')
   I._addChild(I.getNodeFromType(large_zone, 'ZoneBC_t'), large_bc)
 
   small_bc = I.copyTree(small_jn)
@@ -80,8 +81,8 @@ def test_two_blocks(sub_comm):
   I.setType(small_bc, 'BC_t')
   I.setValue(small_bc, 'FamilySpecified')
   I.createNode('FamilyName', 'FamilyName_t', 'SmallJN', parent=small_bc)
-  I._rmNodesByName(small_bc, 'GridConnectivityType')
-  I._rmNodesByName(small_bc, 'PointListDonor')
+  PT.rm_children_from_name(small_bc, 'GridConnectivityType')
+  PT.rm_children_from_name(small_bc, 'PointListDonor')
   I._addChild(I.getNodeFromType(small_zone, 'ZoneBC_t'), small_bc)
 
   bc = I.getNodeFromName(part_tree, 'Front')

@@ -238,7 +238,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
   # Manage datasets -- Data is already distributed, we just have to retrive the PointList
   # of the corresponding elements following same procedure than BCs
-  for bcds in I.getNodesFromType(bc_s, 'BCDataSet_t'):
+  for bcds in PT.iter_children_from_label(bc_s, 'BCDataSet_t'):
     ds_point_range = I.getNodeFromName(bcds, 'PointRange')
     is_related = ds_point_range is None
     if not is_related: #BCDS has its own location / pr
@@ -261,7 +261,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
       I.createUniqueChild(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
       I.newPointList(value=ds_pl, parent=bcds)
       MT.newDistribution({'Index' : ds_distri}, parent=bcds)
-    I._rmNodesByName(bcds, 'PointRange')
+    PT.rm_children_from_name(bcds, 'PointRange')
     I.addChild(bc_u, bcds)
 
 
@@ -476,13 +476,13 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
 
         grid_coord_s = I.getNodeFromType1(zone_s, "GridCoordinates_t")
         grid_coord_u = I.newGridCoordinates(parent=zone_u)
-        for data in I.getNodesFromType1(grid_coord_s, "DataArray_t"):
+        for data in PT.iter_children_from_label(grid_coord_s, "DataArray_t"):
           I.addChild(grid_coord_u, data)
 
-        for flow_solution_s in I.getNodesFromType1(zone_s, "FlowSolution_t"):
+        for flow_solution_s in PT.iter_children_from_label(zone_s, "FlowSolution_t"):
           flow_solution_u = I.newFlowSolution(I.getName(flow_solution_s), parent=zone_u)
           I.newGridLocation(PT.Subset.GridLocation(flow_solution_s), flow_solution_u)
-          for data in I.getNodesFromType1(flow_solution_s, "DataArray_t"):
+          for data in PT.iter_children_from_label(flow_solution_s, "DataArray_t"):
             I.addChild(flow_solution_u, data)
 
         I.addChild(zone_u, zonedims_to_ngon(n_vtx, comm))
@@ -491,7 +491,7 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
         zonebc_s = I.getNodeFromType1(zone_s, "ZoneBC_t")
         if zonebc_s is not None:
           zonebc_u = I.newZoneBC(zone_u)
-          for bc_s in I.getNodesFromType1(zonebc_s, "BC_t"):
+          for bc_s in PT.iter_children_from_label(zonebc_s, "BC_t"):
             out_loc_l = get_output_loc(subset_loc, bc_s)
             for out_loc in out_loc_l:
               suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
@@ -500,9 +500,9 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
               I.addChild(zonebc_u, bc_u)
 
         zone_path = '/'.join([I.getName(base_s), I.getName(zone_s)])
-        for zonegc_s in I.getNodesFromType1(zone_s, "ZoneGridConnectivity_t"):
+        for zonegc_s in PT.iter_children_from_label(zone_s, "ZoneGridConnectivity_t"):
           zonegc_u = I.newZoneGridConnectivity(I.getName(zonegc_s), parent=zone_u)
-          for gc_s in I.getNodesFromType1(zonegc_s, "GridConnectivity1to1_t"):
+          for gc_s in PT.iter_children_from_label(zonegc_s, "GridConnectivity1to1_t"):
             opp_name = I.getValue(gc_s)
             out_loc_l = get_output_loc(subset_loc, gc_s)
             zone_opp_path = zone_opp_name if '/' in opp_name else I.getName(base_s)+'/'+opp_name
@@ -525,20 +525,20 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
 
         # Copy distribution of all Cell/Vtx, which is unchanged
         distri = I.copyTree(MT.getDistribution(zone_s))
-        I._rmNodesByName(distri, 'Face')
+        PT.rm_children_from_name(distri, 'Face')
         I._addChild(zone_u, distri)
 
         # Top level nodes
         top_level_types = ["FamilyName_t", "AdditionalFamilyName_t", "Descriptor_t", \
             "FlowEquationSet_t", "ReferenceState_t", "ConvergenceHistory_t"]
         for top_level_type in top_level_types:
-          for node in I.getNodesFromType1(zone_s, top_level_type):
+          for node in PT.iter_children_from_label(zone_s, top_level_type):
             I.addChild(zone_u, node)
 
     # Top level nodes
     top_level_types = ["FlowEquationSet_t", "ReferenceState_t", "Family_t"]
     for top_level_type in top_level_types:
-      for node in I.getNodesFromType1(base_s, top_level_type):
+      for node in PT.iter_children_from_label(base_s, top_level_type):
         I.addChild(base_u, node)
 
   return disttree_u

@@ -2,7 +2,7 @@ import numpy              as np
 import Pypdm.Pypdm        as PDM
 
 import Converter.Internal as I
-import maia.pytree.sids   as sids
+import maia.pytree        as PT
 
 from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh
 from .cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
@@ -92,7 +92,7 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
 def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
   for i_zone, zone in enumerate(u_zones):
     #Determine NGON or ELMT
-    elmt_types = [sids.Element.Type(elmt) for elmt in I.getNodesFromType1(zone, 'Elements_t')]
+    elmt_types = [PT.Element.Type(elmt) for elmt in PT.iter_children_from_label(zone, 'Elements_t')]
     is_ngon = 22 in elmt_types
     if is_ngon:
       dmesh    = cgns_dist_zone_to_pdm_dmesh(zone, comm)
@@ -205,7 +205,7 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
   for zone in u_zones:
-    I._rmNodesByName1(zone, ':CGNS#MultiPart')
+    PT.rm_children_from_name(zone, ':CGNS#MultiPart')
 
   i = 0
   j = 0

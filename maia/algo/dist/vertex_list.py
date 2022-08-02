@@ -44,7 +44,7 @@ def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm
   return it as a numpy (n,3) array
   """
   dist_data = dict()
-  for data in I.getNodesFromType1(grid_coords_node, 'DataArray_t'):
+  for data in PT.iter_children_from_label(grid_coords_node, 'DataArray_t'):
     dist_data[I.getName(data)] = data[1]
 
   part_data = MBTP.dist_to_part(distri_vtx.astype(pdm_dtype), dist_data, [np.asarray(requested_vtx_ids, dtype=pdm_dtype)], comm)

@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 import Converter.Internal as I
-from   maia.pytree import compare
+import maia.pytree as PT
 
 from maia.io          import file_to_dist_tree
 from maia.utils.yaml  import parse_yaml_cgns
@@ -46,7 +46,7 @@ def test_duplicate_zone_with_transformation1():
   I.setName(expected_zone, "DuplicatedZone")
   duplicated_zone = duplicate.duplicate_zone_with_transformation(zone, "DuplicatedZone")
   assert duplicated_zone[0]=="DuplicatedZone" 
-  assert compare.is_same_tree(duplicated_zone, expected_zone) 
+  assert PT.is_same_tree(duplicated_zone, expected_zone) 
 ###############################################################################
 
 ###############################################################################
@@ -137,7 +137,7 @@ def test_duplicate_from_periodic_jns(sub_comm):
   
   zgc0 = I.getNodeFromType1(zone0, "ZoneGridConnectivity_t")
   zgc1 = I.getNodeFromType1(zone1, "ZoneGridConnectivity_t")
-  for gc0 in I.getNodesFromType1(zgc0, "GridConnectivity_t"):
+  for gc0 in PT.get_children_from_label(zgc0, "GridConnectivity_t"):
     gc0_name = I.getName(gc0)
     gc1 = I.getNodeFromNameAndType(zgc1, gc0_name, "GridConnectivity_t")
     oppname0 = I.getValue(I.getNodeFromName1(gc0, "GridConnectivityDonorName"))
@@ -222,7 +222,7 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
   zgc1 = I.getNodeFromType1(zones[1], "ZoneGridConnectivity_t")
   zgc2 = I.getNodeFromType1(zones[2], "ZoneGridConnectivity_t")
   zgc3 = I.getNodeFromType1(zones[3], "ZoneGridConnectivity_t")
-  for gc0 in I.getNodesFromType1(zgc0, "GridConnectivity_t"):
+  for gc0 in PT.get_children_from_label(zgc0, "GridConnectivity_t"):
     gc0_name = I.getName(gc0)
     gc1 = I.getNodeFromNameAndType(zgc1, gc0_name, "GridConnectivity_t")
     gc2 = I.getNodeFromNameAndType(zgc2, gc0_name, "GridConnectivity_t")

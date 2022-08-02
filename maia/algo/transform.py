@@ -1,6 +1,7 @@
 import numpy as np
 
 import Converter.Internal       as I
+import maia.pytree as PT
 from maia.utils import py_utils, np_utils
 
 def transform_zone(zone,
@@ -14,7 +15,7 @@ def transform_zone(zone,
   "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t"
   """
   # Transform coords
-  for grid_co in I.getNodesFromType1(zone, "GridCoordinates_t"):
+  for grid_co in PT.iter_children_from_label(zone, "GridCoordinates_t"):
     coords_n = [I.getNodeFromName1(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
     coords = [I.getVal(n) for n in coords_n]
   
@@ -24,14 +25,13 @@ def transform_zone(zone,
 
   # Transform fields
   if apply_to_fields:
-    fields_nodes  = I.getNodesFromType1(zone, "FlowSolution_t")
-    fields_nodes += I.getNodesFromType1(zone, "DiscreteData_t")
-    fields_nodes += I.getNodesFromType1(zone, "ZoneSubRegion_t")
-    for zoneBC in I.getNodesFromType1(zone, "ZoneBC_t"):
-      for bc in I.getNodesFromType1(zoneBC, "BC_t"):
-        fields_nodes += I.getNodesFromType1(bc, "BCDataSet_t")
+    fields_nodes  = PT.get_children_from_label(zone, "FlowSolution_t")
+    fields_nodes += PT.get_children_from_label(zone, "DiscreteData_t")
+    fields_nodes += PT.get_children_from_label(zone, "ZoneSubRegion_t")
+    for bc in PT.iter_children_from_predicates(zone, "ZoneBC_t/BC_t"):
+      fields_nodes += PT.get_children_from_label(bc, "BCDataSet_t")
     for fields_node in fields_nodes:
-      data_names = [I.getName(data) for data in I.getNodesFromType(fields_node, "DataArray_t")]
+      data_names = [I.getName(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
       cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names)
       for basename in cartesian_vectors_basenames:
         vectors_n = [I.getNodeFromNameAndType(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z']]

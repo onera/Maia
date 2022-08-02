@@ -151,7 +151,7 @@ class Test_generate_jn_vertex_list():
     #With this configuration, we have locally (per rank) isolated faces when np=4
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
-    I._rmNodesByType(zone, 'ZoneBC_t')
+    PT.rm_children_from_label(zone, 'ZoneBC_t')
     #Create fake jn
     zgc = I.newZoneGridConnectivity(parent=zone)
     gcA = I.newGridConnectivity('matchA', I.getName(zone), 'Abutting1to1', zgc)
@@ -177,13 +177,13 @@ class Test_generate_jn_vertex_list():
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
     zone[0] = 'zoneA'
-    I._rmNodesByType(zone, 'ZoneBC_t')
+    PT.rm_children_from_label(zone, 'ZoneBC_t')
 
     #Create other zone
     tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], sub_comm)
     zoneB = I.getZones(tree2)[0]
     zoneB[0] = 'zoneB'
-    I._rmNodesByType(zoneB, 'ZoneBC_t')
+    PT.rm_children_from_label(zoneB, 'ZoneBC_t')
     I._addChild(I.getNodeFromName(tree, 'Base'), zoneB)
 
     #Create fake jn
@@ -212,7 +212,7 @@ class Test_generate_jn_vertex_list():
     # P0 : (2,0,1)   P1 : (0,1,0)   P2 : (0,1,1)
     tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
-    I._rmNodesByType(zone, 'ZoneBC_t')
+    PT.rm_children_from_label(zone, 'ZoneBC_t')
     zgc = I.newZoneGridConnectivity(parent=zone)
     gcA = I.newGridConnectivity('matchA', I.getName(zone), 'Abutting1to1', zgc)
     I.newGridLocation('FaceCenter', gcA)
@@ -244,13 +244,13 @@ class Test_generate_jn_vertex_list():
     tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
     zone = I.getZones(tree)[0]
     zone[0] = 'zoneA'
-    I._rmNodesByType(zone, 'ZoneBC_t')
+    PT.rm_children_from_label(zone, 'ZoneBC_t')
 
     #Create other zone
     tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], sub_comm)
     zoneB = I.getZones(tree2)[0]
     zoneB[0] = 'zoneB'
-    I._rmNodesByType(zoneB, 'ZoneBC_t')
+    PT.rm_children_from_label(zoneB, 'ZoneBC_t')
     I._addChild(I.getNodeFromName(tree, 'Base'), zoneB)
 
     #Create fake jn such that we have only isolated faces
@@ -282,13 +282,13 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
   zoneA = I.getZones(tree)[0]
   zoneA[0] = 'zoneA'
-  I._rmNodesByType(zoneA, 'ZoneBC_t')
+  PT.rm_children_from_label(zoneA, 'ZoneBC_t')
 
   #Create other zone
   tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], sub_comm)
   zoneB = I.getZones(tree2)[0]
   zoneB[0] = 'zoneB'
-  I._rmNodesByType(zoneB, 'ZoneBC_t')
+  PT.rm_children_from_label(zoneB, 'ZoneBC_t')
   I._addChild(I.getNodeFromName(tree, 'Base'), zoneB)
 
   #Create fake jns
@@ -314,7 +314,7 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
 
   VL.generate_jns_vertex_list(tree, sub_comm, have_isolated_faces=have_isolated_faces)
 
-  assert len(I.getNodesFromName(tree, "ZoneGridConnectivity")) == 2
+  assert len(PT.get_nodes_from_name(tree, "ZoneGridConnectivity")) == 2
   assert I.getNodeFromName(tree, "matchA#Vtx") is not None
   jn_vtx = I.getNodeFromName(tree, "matchB#Vtx")
   assert jn_vtx is not None and PT.Subset.GridLocation(jn_vtx) == 'Vertex'

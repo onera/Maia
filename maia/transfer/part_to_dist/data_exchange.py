@@ -54,12 +54,12 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm):
 
   d_grid_co = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
   part_data = dict()
-  for coord in I.getNodesFromType1(d_grid_co, 'DataArray_t'):
+  for coord in PT.iter_children_from_label(d_grid_co, 'DataArray_t'):
     part_data[I.getName(coord)] = list()
 
   for part_zone in part_zones:
-    p_grid_co = I.getNodesFromName1(part_zone, I.getName(d_grid_co))
-    for coord in I.getNodesFromType1(p_grid_co, 'DataArray_t'):
+    p_grid_co = I.getNodeFromName1(part_zone, I.getName(d_grid_co))
+    for coord in PT.iter_children_from_label(p_grid_co, 'DataArray_t'):
       flat_data = coord[1].ravel(order='A') #Reshape structured arrays for PDM exchange
       part_data[I.getName(coord)].append(flat_data)
 
@@ -100,7 +100,7 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
     part_data = {field : [] for field in fields}
 
     for part_zone in part_zones:
-      p_sol = I.getNodesFromName1(part_zone, I.getName(d_sol))
+      p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
       for field in fields:
         flat_data = I.getNodeFromName(p_sol, field)[1].ravel(order='A') #Reshape structured arrays for PDM exchange
         part_data[field].append(flat_data)
@@ -122,7 +122,7 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
   mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
   _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm)
   #Cleanup : if field is None, data has been added by wrapper and must be removed
-  for dist_sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t'):
+  for dist_sol in PT.iter_children_from_label(dist_zone, 'FlowSolution_t'):
     PT.rm_children_from_predicate(dist_sol, lambda n : I.getType(n) == 'DataArray_t' and n[1] is None)
 
 def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
@@ -136,7 +136,7 @@ def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], excl
   mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
   _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm)
   #Cleanup : if field is None, data has been added by wrapper and must be removed
-  for dist_sol in I.getNodesFromType1(dist_zone, 'DiscreteData_t'):
+  for dist_sol in PT.iter_children_from_label(dist_zone, 'DiscreteData_t'):
     PT.rm_children_from_predicate(dist_sol, lambda n : I.getType(n) == 'DataArray_t' and n[1] is None)
 
 def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
@@ -189,7 +189,7 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
   bc_ds_path = 'ZoneBC_t/BC_t/BCDataSet_t'
   _discover_wrapper(dist_zone, part_zones, bc_ds_path, bc_ds_path+'/BCData_t/DataArray_t', comm)
 
-  for d_zbc in I.getNodesFromType1(dist_zone, "ZoneBC_t"):
+  for d_zbc in PT.iter_children_from_label(dist_zone, "ZoneBC_t"):
     labels = ['BC_t', 'BCDataSet_t', 'BCData_t', 'DataArray_t']
     mask_tree = te_utils.create_mask_tree(d_zbc, labels, include, exclude)
     for mask_bc in I.getChildren(mask_tree):

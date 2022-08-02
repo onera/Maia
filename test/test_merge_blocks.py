@@ -27,18 +27,18 @@ def test_merge_all(sub_comm, write_output):
   merged_1 = I.copyTree(dist_tree) # Do copy for further comparaisons
   assert len(I.getZones(merged_1)) == 1
   assert I.getNodeFromPath(merged_1, 'BaseA/MergedZone') is not None #By default take same name than current base
-  assert len(I.getNodesFromType(merged_1, 'ZoneGridConnectivity_t')) == 0
+  assert len(PT.get_nodes_from_label(merged_1, 'ZoneGridConnectivity_t')) == 0
 
   # Note that by default, the BC (and more generally, subsets) of same name (across blocks) are concatenated :
   # thus, there is 4 BCs in the merged block
-  assert len(I.getNodesFromType(merged_1, 'BC_t')) == 4
+  assert len(PT.get_nodes_from_label(merged_1, 'BC_t')) == 4
 
   #We can change this using the subset_merge arg:
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
   merge.merge_zones(dist_tree, zones_path, sub_comm, output_path="MyMergedBase/MyMergedZone", subset_merge="None")
   merged_2 = I.copyTree(dist_tree) # Do copy for further comparaisons
   assert len(I.getZones(merged_2)) == 1
-  assert len(I.getNodesFromType(merged_2, 'BC_t')) == 4*3
+  assert len(PT.get_nodes_from_label(merged_2, 'BC_t')) == 4*3
 
   #Note that we also used the output_path arg to specify the name of the merge zone and of
   # the base containing it
@@ -67,7 +67,7 @@ def test_merge_all(sub_comm, write_output):
   ref_file  = os.path.join(ref_dir, 'U_Naca0012_multizone_merged.yaml')
   reference_tree = maia.io.file_to_dist_tree(ref_file, sub_comm)
   for tree in reference_tree, test_tree:
-    I._rmNodesByName1(tree, 'CGNSLibraryVersion')
+    PT.rm_children_from_name(tree, 'CGNSLibraryVersion')
   assert PT.is_same_tree(reference_tree, test_tree, type_tol=True) #Somehow reader reput tree in int32 so use type_tol before correcint that
   TU.rm_collective_dir(tmp_dir, sub_comm)
 
@@ -88,8 +88,8 @@ def test_merge_partial(sub_comm, write_output):
   unmerged_zone = I.getNodeFromPath(merged_1, 'BaseB/blk2')
   assert unmerged_zone is not None and merged_zone is not None
   #By default, remaining GridConnectivity pointing to same zone are concatenated
-  assert len(I.getNodesFromType(merged_zone, 'GridConnectivity_t')) == 1
-  assert len(I.getNodesFromType(unmerged_zone, 'GridConnectivity_t')) == 1
+  assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 1
+  assert len(PT.get_nodes_from_label(unmerged_zone, 'GridConnectivity_t')) == 1
 
   # This behaviour can be changed by setting argument concatenate_jns to False :
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
@@ -100,11 +100,11 @@ def test_merge_partial(sub_comm, write_output):
   unmerged_zone = I.getNodeFromPath(merged_2, 'BaseB/blk2')
 
   #In both cases, the name of donor zone are updated for each join
-  assert len(I.getNodesFromType(merged_zone, 'GridConnectivity_t')) == 2
-  for jn in I.getNodesFromType(merged_zone, 'GridConnectivity_t'):
+  assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 2
+  for jn in PT.iter_nodes_from_label(merged_zone, 'GridConnectivity_t'):
     assert I.getValue(jn) == 'BaseB/blk2'
-  assert len(I.getNodesFromType(unmerged_zone, 'GridConnectivity_t')) == 2
-  for jn in I.getNodesFromType(unmerged_zone, 'GridConnectivity_t'):
+  assert len(PT.get_nodes_from_label(unmerged_zone, 'GridConnectivity_t')) == 2
+  for jn in PT.iter_nodes_from_label(unmerged_zone, 'GridConnectivity_t'):
     assert I.getValue(jn) == 'BaseA/MergedZone'
 
   if write_output:

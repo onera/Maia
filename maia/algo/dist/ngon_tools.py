@@ -44,7 +44,7 @@ def pe_to_nface(zone, comm, remove_PE=False):
   MT.newDistribution({"Element" : nface_distri, "ElementConnectivity" : nface_ec_distri}, nface)
   
   if remove_PE:
-    I._rmNodesByName(ngon_node, "ParentElements")
+    PT.rm_children_from_name(ngon_node, "ParentElements")
 
 def nface_to_pe(zone, comm, remove_NFace=False):
   """Create a ParentElements node in the NGon node from a NFace node.

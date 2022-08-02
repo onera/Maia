@@ -2,6 +2,7 @@ import numpy as np
 
 import Converter.Internal as I
 import maia.pytree.sids   as sids
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 def pl_or_pr_size(node):
@@ -25,7 +26,7 @@ def apply_dataspace_to_arrays(node, node_path, data_space, hdf_filter):
   Fill the hdf_filter with the specified data_space for all the DataArray_t nodes
   below the parent node node
   """
-  for data_array in I.getNodesFromType1(node, 'DataArray_t'):
+  for data_array in PT.iter_children_from_label(node, 'DataArray_t'):
     path = node_path+"/"+data_array[0]
     hdf_filter[path] = data_space
 

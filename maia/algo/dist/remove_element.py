@@ -20,7 +20,7 @@ def remove_element(zone, element):
   """
   target_range = PT.Element.Range(element)
   target_size  = PT.Element.Size(element)
-  for elem in I.getNodesFromType1(zone, 'Elements_t'):
+  for elem in PT.get_children_from_label(zone, 'Elements_t'):
     if elem != element:
       #Shift ER
       er   = PT.Element.Range(elem)

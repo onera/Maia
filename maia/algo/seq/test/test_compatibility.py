@@ -113,7 +113,7 @@ def test_poly_old_to_new_only_index(poly_tree_new):
 def test_poly_old_to_new_no_pe(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.poly_new_to_old(t) # Note: we are not testing that!
-  I._rmNodesByName(t,"ParentElements")
+  maia.pytree.rm_nodes_from_name(t,"ParentElements")
 
   with pytest.raises(RuntimeError):
     maia.algo.seq.poly_old_to_new(t)

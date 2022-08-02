@@ -41,7 +41,7 @@ def set_default(dist_tree, comm):
 
   # part_interface_loc : Vertex si Elements, FaceCenter si NGons
   for zone in I.getZones(dist_tree):
-    if 22 in [PT.Element.Type(elt) for elt in I.getNodesFromType1(zone, 'Elements_t')]:
+    if 22 in [PT.Element.Type(elt) for elt in PT.iter_children_from_label(zone, 'Elements_t')]:
       default['part_interface_loc'] = 'FaceCenter'
       break
 
@@ -125,7 +125,7 @@ def _partitioning(dist_tree,
   is_u_zone = lambda n : I.getType(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
 
   part_tree = I.newCGNSTree()
-  for dist_base in I.getNodesFromType1(dist_tree, 'CGNSBase_t'):
+  for dist_base in PT.iter_all_CGNSBase_t(dist_tree):
 
     part_base = I.createNode(I.getName(dist_base), 'CGNSBase_t', I.getValue(dist_base), parent=part_tree)
     #Add top level nodes

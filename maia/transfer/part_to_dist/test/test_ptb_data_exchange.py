@@ -52,9 +52,9 @@ class Test__discover_wrapper:
 
     PTB._discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', sub_comm)
 
-    assert [I.getName(sol) for sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t')] \
+    assert [I.getName(sol) for sol in PT.get_children_from_label(dist_zone, 'FlowSolution_t')] \
         == ['NewSol1', 'NewSol3', 'NewSol2']
-    assert [PT.Subset.GridLocation(sol) for sol in I.getNodesFromType1(dist_zone, 'FlowSolution_t')] \
+    assert [PT.Subset.GridLocation(sol) for sol in PT.get_children_from_label(dist_zone, 'FlowSolution_t')] \
         == ['CellCenter', 'Vertex', 'Vertex']
     assert I.getNodeFromPath(dist_zone, 'NewSol2/NewField4') is not None
 
@@ -156,9 +156,9 @@ class Test__discover_wrapper:
     PTB._discover_wrapper(I.getZones(dist_tree)[0], I.getZones(part_tree), \
         bc_ds_path, bc_ds_path+'/BCData_t/DataArray_t', sub_comm)
 
-    assert [I.getValue(bcds) for bcds in I.getNodesFromType(dist_tree, 'BCDataSet_t')] \
+    assert [I.getValue(bcds) for bcds in PT.get_nodes_from_label(dist_tree, 'BCDataSet_t')] \
         == ['BCInflow', 'BCWall', 'Null']
-    assert [I.getName(field) for field in I.getNodesFromType(dist_tree, 'DataArray_t')] \
+    assert [I.getName(field) for field in PT.get_nodes_from_label(dist_tree, 'DataArray_t')] \
         == ['newField1', 'newField2', 'newField3', 'newField4']
 
 @mark_mpi_test(2)

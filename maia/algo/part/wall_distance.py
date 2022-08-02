@@ -124,7 +124,7 @@ class WallDistance:
       vtx_coords = np_utils.interweave_arrays(PT.Zone.coordinates(part_zone))
       face_vtx_idx, face_vtx, _ = PT.Zone.ngon_connectivity(part_zone)
 
-      nfaces  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NFACE_n']
+      nfaces  = [e for e in PT.iter_children_from_label(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NFACE_n']
       assert len(nfaces) == 1, "NFace connectivity is needed for wall distance computing"
       cell_face_idx = I.getVal(I.getNodeFromName(nfaces[0], 'ElementStartOffset'))
       cell_face     = I.getVal(I.getNodeFromName(nfaces[0], 'ElementConnectivity'))
@@ -213,7 +213,7 @@ class WallDistance:
     if not self.families:
       self.families = detect_wall_families(skeleton_tree)
 
-    skeleton_families = [I.getName(f) for f in I.getNodesFromType(skeleton_tree, "Family_t")]
+    skeleton_families = [I.getName(f) for f in PT.iter_nodes_from_label(skeleton_tree, "Family_t")]
     found_families = any([fn in self.families for fn in skeleton_families])
 
     if found_families:

@@ -3,6 +3,7 @@ import mpi4py.MPI as MPI
 import numpy      as np
 
 import Converter.Internal as I
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from   maia.utils.yaml     import parse_yaml_cgns
@@ -89,8 +90,8 @@ Zone Zone_t [[27,8,0]]:
   """
     zone = parse_yaml_cgns.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, sub_comm)
-    assert len(I.getNodesFromName(zone, 'Index')) == 5
-    assert len(I.getNodesFromName(zone, 'Element')) == 1
+    assert len(PT.get_nodes_from_name(zone, 'Index')) == 5
+    assert len(PT.get_nodes_from_name(zone, 'Element')) == 1
 
   def test_struct(self, sub_comm):
     yt = """
@@ -107,7 +108,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     zone = parse_yaml_cgns.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, sub_comm)
     assert I.getNodeFromName(zone, 'PointList#Size') is None
-    assert len(I.getNodesFromName(zone, 'Index')) == 3
+    assert len(PT.get_nodes_from_name(zone, 'Index')) == 3
 
 
 @mark_mpi_test(2)
@@ -144,7 +145,7 @@ Base CGNSBase_t [3,3]:
       PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
 """)
   distribution_tree.add_distribution_info(dist_tree, sub_comm)
-  assert len(I.getNodesFromName(dist_tree, 'Index')) == 4+3
+  assert len(PT.get_nodes_from_name(dist_tree, 'Index')) == 4+3
   assert I.getNodeFromName(dist_tree, 'PointList#Size') is None
 
 def test_clean_distribution_info():
@@ -166,6 +167,7 @@ Base0 CGNSBase_t [3,3]:
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [1,4,7,10]:
         PointListDonor IndexArray_t [13,16,7,10]:
+        :CGNS#Distribution UserDefinedData_t:
     FS FlowSolution_t:
       field DataArray_t:
       :CGNS#Distribution UserDefinedData_t:
@@ -174,5 +176,5 @@ Base0 CGNSBase_t [3,3]:
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   distribution_tree.clean_distribution_info(dist_tree)
   assert I.getNodeFromName(dist_tree, ':CGNS#Distribution') is None
-  assert len(I.getNodesFromName(dist_tree, 'PointList')) == 2
+  assert len(PT.get_nodes_from_name(dist_tree, 'PointList')) == 2
 

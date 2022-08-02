@@ -67,11 +67,10 @@ def load_grid_connectivity_property(filename, tree):
   """
   # Prepare pathes
   zgc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t'
+  is_gc = lambda n : I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   gc_prop_pathes = []
   for base,zone,zone_gc in PT.iter_children_from_predicates(tree, zgc_t_path, ancestors=True):
-    gcs = I.getNodesFromType1(zone_gc, 'GridConnectivity_t') \
-        + I.getNodesFromType1(zone_gc, 'GridConnectivity1to1_t')
-    for gc in gcs:
+    for gc in PT.iter_children_from_predicate(zone_gc, is_gc):
       gc_prop = I.getNodeFromType1(gc, 'GridConnectivityProperty_t')
       if gc_prop is not None:
         gc_prop_path = '/'.join([base[0], zone[0], zone_gc[0], gc[0], gc_prop[0]])
@@ -84,7 +83,7 @@ def load_grid_connectivity_property(filename, tree):
   for path, gc_prop in zip(gc_prop_pathes, gc_prop_nodes):
     gc_node_path = '/'.join(path.split('/')[:-1])
     gc_node = I.getNodeFromPath(tree, gc_node_path)
-    I._rmNodesByType(gc_node, 'GridConnectivityProperty_t')
+    PT.rm_children_from_label(gc_node, 'GridConnectivityProperty_t')
     I._addChild(gc_node, gc_prop)
 
 def _enforce_pdm_dtype(tree):
@@ -94,12 +93,12 @@ def _enforce_pdm_dtype(tree):
   """
   for zone in I.getZones(tree):
     zone[1] = zone[1].astype(npy_pdm_gnum_dtype)
-    for elmt in I.getNodesFromType1(zone, 'Elements_t'):
+    for elmt in PT.iter_children_from_label(zone, 'Elements_t'):
       for name in ['ElementRange', 'ElementConnectivity', 'ElementStartOffset', 'ParentElements']:
         node = I.getNodeFromName1(elmt, name)
         if node:
           node[1] = node[1].astype(npy_pdm_gnum_dtype)
-    for pl in I.getNodesFromType(zone, 'IndexArray_t'):
+    for pl in PT.iter_nodes_from_label(zone, 'IndexArray_t'):
       pl[1] = pl[1].astype(npy_pdm_gnum_dtype)
    
 def ensure_PE_global_indexing(dist_tree):
@@ -112,7 +111,7 @@ def ensure_PE_global_indexing(dist_tree):
    - NGonElements and standard elements can not be mixed together
   """
   for zone in I.getZones(dist_tree):
-    elts = I.getNodesFromType1(zone, 'Elements_t')
+    elts = PT.get_children_from_label(zone, 'Elements_t')
     ngon_nodes = [elt for elt in elts if PT.Element.CGNSName(elt)=='NGON_n']
     oth_nodes  = [elt for elt in elts if PT.Element.CGNSName(elt)!='NGON_n']
     if ngon_nodes == []:

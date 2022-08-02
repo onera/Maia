@@ -30,7 +30,7 @@ def test_merge_zones_L(sub_comm, merge_bc_from_name):           #      |  |
   # convert it to joins. Re distribution is done below
   for zone in zones:
     I._addChild(base, zone)
-    for bc in I.getNodesFromType(zone, 'BC_t'):
+    for bc in PT.iter_nodes_from_label(zone, 'BC_t'):
       pl = I.getNodeFromName1(bc, 'PointList')
       distri = MT.getDistribution(bc, 'Index')
       data = {'PointList' : pl[1][0]}
@@ -46,7 +46,7 @@ def test_merge_zones_L(sub_comm, merge_bc_from_name):           #      |  |
     zone[0] = f'zone{izone+1}'
     for j,bc_n in enumerate(jn_cur[izone]):
       bc = I.getNodeFromName(zone, bc_n)
-      I._rmNodesByName(zone, bc_n)
+      PT.rm_nodes_from_name(zone, bc_n)
       zgc = I.newZoneGridConnectivity(parent=zone)
       gc = I.newGridConnectivity(f'match{j}', f'{zone_opp[izone][j]}', 'Abutting1to1', zgc)
       for name in [':CGNS#Distribution', 'GridLocation', 'PointList']:
@@ -73,9 +73,9 @@ def test_merge_zones_L(sub_comm, merge_bc_from_name):           #      |  |
   assert PT.Zone.n_face(merged_zone) == 3*(3*n_vtx*(n_vtx-1)**2) - 2*(n_vtx-1)**2
   assert I.getNodeFromType(merged_zone, 'ZoneGridConnectivity_t') is None
   if merge_bc_from_name:
-    assert len(I.getNodesFromType(merged_zone, 'BC_t')) == 6 #BC merged by name
+    assert len(PT.get_nodes_from_label(merged_zone, 'BC_t')) == 6 #BC merged by name
   else:
-    assert len(I.getNodesFromType(merged_zone, 'BC_t')) == 3*6 - 4 #BC not merged
+    assert len(PT.get_nodes_from_label(merged_zone, 'BC_t')) == 3*6 - 4 #BC not merged
   assert sub_comm.allreduce(I.getNodeFromName(merged_zone, 'DomId')[1].size, MPI.SUM) == PT.Zone.n_vtx(merged_zone)
 
   expected_partial_sol_size = 3 if merge_bc_from_name else 1
@@ -103,7 +103,7 @@ def test_merge_zones_I(sub_comm, merge_only_two):
   # convert it to joins. Re distribution is done below
   for zone in zones:
     I._addChild(base, zone)
-    for bc in I.getNodesFromType(zone, 'BC_t'):
+    for bc in PT.iter_nodes_from_label(zone, 'BC_t'):
       pl = I.getNodeFromName1(bc, 'PointList')
       distri = MT.getDistribution(bc, 'Index')
       data = {'PointList' : pl[1][0]}
@@ -119,7 +119,7 @@ def test_merge_zones_I(sub_comm, merge_only_two):
     zone[0] = f'zone{izone+1}'
     for j,bc_n in enumerate(jn_cur[izone]):
       bc = I.getNodeFromName(zone, bc_n)
-      I._rmNodesByName(zone, bc_n)
+      PT.rm_nodes_from_name(zone, bc_n)
       zgc = I.newZoneGridConnectivity(parent=zone)
       gc = I.newGridConnectivity(f'match{j}', f'{zone_opp[izone][j]}', 'Abutting1to1', zgc)
       for name in [':CGNS#Distribution', 'GridLocation', 'PointList']:
@@ -142,7 +142,7 @@ def test_merge_zones_I(sub_comm, merge_only_two):
     sign = 1 if izone == 0 else -1
     I.newPeriodic(rotationCenter=[0.,0.,0.], rotationAngle=[0.,0.,0.], translation=[sign*3.,0.,0.], parent=gcp)
   for izone, zone in zip(range(2), [zones[0], zones[-1]]):
-    I._rmNodesByName(zone, jn_cur[izone])
+    PT.rm_nodes_from_name(zone, jn_cur[izone])
 
   #Setup some data (Only one rank so next lines are OK)
   zsr_full = I.newZoneSubRegion('SubRegion', bcName='Ymin', parent=zones[1])
@@ -156,20 +156,20 @@ def test_merge_zones_I(sub_comm, merge_only_two):
     merge.merge_zones(tree, ['Base/zone1', 'Base/zone2'], sub_comm, output_path='MergedBase/MergedZone')
     assert len(I.getBases(tree)) == len(I.getBases(tree)) == 2
     merged_zone = I.getNodeFromPath(tree, 'MergedBase/MergedZone')
-    assert len(I.getNodesFromType(merged_zone, 'GridConnectivity_t')) == 2
-    assert len(I.getNodesFromType(merged_zone, 'Periodic_t')) == 1
+    assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 2
+    assert len(PT.get_nodes_from_label(merged_zone, 'Periodic_t')) == 1
   else:
     n_merged = 3
     merge.merge_connected_zones(tree, sub_comm)
     assert len(I.getZones(tree)) == 1
     merged_zone = I.getZones(tree)[0]
 
-    assert len(I.getNodesFromType(merged_zone, 'GridConnectivity_t')) == 2
-    for gc in I.getNodesFromType(merged_zone, 'GridConnectivity_t'):
+    assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 2
+    for gc in PT.iter_nodes_from_label(merged_zone, 'GridConnectivity_t'):
       assert I.getValue(gc) not in ['zone1', 'zone2', 'zone3']
       assert I.getNodeFromType(gc, 'Periodic_t') is not None
 
-  assert len(I.getNodesFromType(merged_zone, 'BC_t')) == 4
+  assert len(PT.get_nodes_from_label(merged_zone, 'BC_t')) == 4
   assert PT.Zone.n_cell(merged_zone) == n_merged*((n_vtx-1)**3)
   assert PT.Zone.n_vtx(merged_zone) == n_merged*(n_vtx**3) - (n_merged-1)*(n_vtx**2)
   assert PT.Zone.n_face(merged_zone) == n_merged*(3*n_vtx*(n_vtx-1)**2) - (n_merged-1)*(n_vtx-1)**2

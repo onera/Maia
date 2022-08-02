@@ -3,7 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
 import Converter.Internal as I
-import maia.pytree.sids   as sids
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                import npy_pdm_gnum_dtype as pdm_dtype
@@ -48,7 +48,7 @@ def test_concatenate_subset_nodes(sub_comm):
       additional_data_queries = ['BCDataSet/BCData/Data'])
   assert I.getName(node) == 'BothBC'
   assert I.getValue(node) == 'BCFarfield'
-  assert sids.Subset.GridLocation(node) == 'FaceCenter'
+  assert PT.Subset.GridLocation(node) == 'FaceCenter'
   assert (MT.getDistribution(node, 'Index')[1] == expected_distri).all()
   assert (I.getNodeFromName1(node, 'PointList')[1][0] == expected_pl).all()
 
@@ -92,24 +92,24 @@ def test_concatenate_jns(sub_comm, mode):
 
   if mode in ['intrazone', 'intraperio']:
     zgc1 = I.getNodeFromPath(dist_tree, 'Base/ZoneA/ZGC')
-    for gc in I.getNodesFromType1(zgc1, 'GridConnectivity_t'):
+    for gc in PT.iter_children_from_label(zgc1, 'GridConnectivity_t'):
       I.setValue(gc, "ZoneA")
     zgc2 = I.getNodeFromPath(dist_tree, 'Base/ZoneB/ZGC')
-    for gc in I.getNodesFromType1(zgc2, 'GridConnectivity_t'):
+    for gc in PT.iter_children_from_label(zgc2, 'GridConnectivity_t'):
       I._addChild(zgc1, gc)
-    I._rmNodesByName(dist_tree, I.getName(zones[1]))
+    PT.rm_nodes_from_name(dist_tree, I.getName(zones[1]))
 
   if mode in ['periodic', 'intraperio']:
-    for gc in I.getNodesFromType(dist_tree, 'GridConnectivity_t')[:2]:
+    for gc in PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')[:2]:
       gcp = I.newGridConnectivityProperty(parent=gc)
       I.newPeriodic(rotationCenter=[0.,0.,0.], rotationAngle=[45.,0.,0.], translation=[0.,0.,0.], parent=gcp)
-    for gc in I.getNodesFromType(dist_tree, 'GridConnectivity_t')[2:]:
+    for gc in PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')[2:]:
       gcp = I.newGridConnectivityProperty(parent=gc)
       I.newPeriodic(rotationCenter=[0.,0.,0.], rotationAngle=[-45.,0.,0.], translation=[0.,0.,0.], parent=gcp)
 
   GN.concatenate_jns(dist_tree, sub_comm)
 
-  gcs = I.getNodesFromType(dist_tree, 'GridConnectivity_t')
+  gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
   opp_names = [I.getValue(I.getNodeFromName1(gc, "GridConnectivityDonorName")) for gc in gcs]
   assert len(gcs) == 2
   assert opp_names == [gc[0] for gc in gcs[::-1]]
@@ -118,4 +118,4 @@ def test_concatenate_jns(sub_comm, mode):
     assert all(['.I' in gc[0] for gc in gcs])
   if mode=='periodic':
     assert all(['.P' in gc[0] for gc in gcs])
-    assert len(I.getNodesFromType(dist_tree, 'GridConnectivityProperty_t')) == 2
+    assert len(PT.get_nodes_from_label(dist_tree, 'GridConnectivityProperty_t')) == 2

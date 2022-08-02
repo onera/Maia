@@ -2,6 +2,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia              import npy_pdm_gnum_dtype as pdm_dtype
@@ -15,7 +16,7 @@ from maia.algo.dist    import merge_jn as MJ
 def test_update_ngon(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
   zone = I.getZones(tree)[0]
-  I._rmNodesByType(tree, 'ZoneBC_t')
+  PT.rm_nodes_from_label(tree, 'ZoneBC_t')
 
   ngon = I.getNodeFromName(zone, 'NGonElements')
   vtx_distri_ini = I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex')[1]
@@ -177,7 +178,7 @@ def test_shift_cgns_subsets():
 def test_update_vtx_data(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
   zone = I.getZones(tree)[0]
-  I._rmNodesByType(tree, 'ZoneBC_t')
+  PT.rm_nodes_from_label(tree, 'ZoneBC_t')
   distri = I.getVal(MT.getDistribution(zone, 'Vertex'))
   fs = I.newFlowSolution('FSol', gridLocation='Vertex', parent=zone)
   sol = I.newDataArray('Sol', np.arange(27)[distri[0]:distri[1]]+1, parent=fs)
@@ -203,7 +204,7 @@ def test_update_vtx_data(sub_comm):
 def test_merge_intrazone_jn(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
   zone = I.getZones(tree)[0]
-  I._rmNodesByType(zone, 'ZoneBC_t')
+  PT.rm_children_from_label(zone, 'ZoneBC_t')
   #Create jns
   zgc = I.newZoneGridConnectivity('ZoneGC', parent=zone)
   pl = np.array([[15,16]], pdm_dtype) if sub_comm.Get_rank() == 0 else np.array([[]], pdm_dtype)

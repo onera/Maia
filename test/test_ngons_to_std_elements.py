@@ -5,6 +5,7 @@ import os
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree        as PT
 
 import  maia
 import cmaia
@@ -22,7 +23,7 @@ def test_ngons_to_elements(sub_comm, write_output):
   maia.algo.dist.ngons_to_elements(dist_tree, sub_comm)
 
   # > There is two sections...
-  assert len(I.getNodesFromType(dist_tree, 'Elements_t')) == 2
+  assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
   # > One for the Tris, on for the Tets
   tris = I.getNodeFromName(dist_tree, 'TRI_3')
   tets = I.getNodeFromName(dist_tree, 'TETRA_4')

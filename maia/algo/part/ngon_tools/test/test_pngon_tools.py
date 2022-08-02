@@ -10,8 +10,8 @@ from maia.factory    import dcube_generator  as DCG
 from maia.algo.part  import ngon_tools as NGT
 
 def as_partitioned(zone):
-  I._rmNodesByName(zone, ":CGNS#Distribution")
-  for array in I.getNodesFromType(zone, 'DataArray_t'):
+  PT.rm_nodes_from_name(zone, ":CGNS#Distribution")
+  for array in PT.iter_children_from_label(zone, 'DataArray_t'):
     array[1] = array[1].astype(np.int32)
 
 @mark_mpi_test([1])

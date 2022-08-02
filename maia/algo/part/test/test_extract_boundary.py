@@ -3,6 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree as PT
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
@@ -40,7 +41,7 @@ def test_extract_sub_connectivity():
 def test_extract_faces_mesh(sub_comm):
   # Test U
   tree = dcube_generate(3, 1., [0,0,0], sub_comm)
-  I._rmNodesByName(tree, ':CGNS#Distribution')
+  PT.rm_nodes_from_name(tree, ':CGNS#Distribution')
   zoneU = I.getZones(tree)[0]
 
   cx, cy, cz, face_vtx_idx, face_vtx, vtx_ids = EXB.extract_faces_mesh(zoneU, np.array([21,22,23,24]))

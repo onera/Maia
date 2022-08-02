@@ -119,8 +119,8 @@ def concatenate_jns(tree, comm):
     # Make name uniques if we have multiple GridLocation
     if sum([len(ljns_to_merge) > 0 for ljns_to_merge in jns_to_merge.values()]) > 1:
       loc_suffix = {'Vertex' : '_v', 'FaceCenter' : '_f', 'CellCenter' : '_c'}
-      for jn in I.getNodesFromType1(zgc, 'GridConnectivity_t'):
-        if len(I.getNodesFromName1(zgc, I.getName(jn))) > 1:
+      for jn in PT.get_children_from_label(zgc, 'GridConnectivity_t'):
+        if len(PT.get_children_from_name(zgc, I.getName(jn))) > 1:
           I.setName(jn, I.getName(jn) + '_' + PT.Subset.GridLocation(jn)[0])
           opp_name_node = I.getNodeFromName1(jn, "GridConnectivityDonorName")
           I.setValue(opp_name_node, I.getValue(opp_name_node) + '_' + PT.Subset.GridLocation(jn)[0])

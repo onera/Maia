@@ -39,8 +39,8 @@ def test_interpolation_non_overlaping_cubes(sub_comm, strategy, write_output):
   dist_tree_target = MF.generate_dist_block(n_vtx_tgt, "Poly", sub_comm, origin_tgt)
 
   # Remove some useless nodes
-  I._rmNodesByName(dist_tree_src, 'ZoneBC')
-  I._rmNodesByName(dist_tree_target, 'ZoneBC')
+  PT.rm_nodes_from_label(dist_tree_src, 'ZoneBC_t')
+  PT.rm_nodes_from_label(dist_tree_target, 'ZoneBC_t')
 
   # Create a field on the source mesh : we use gnum to have something independant of parallelism
   zone = I.getZones(dist_tree_src)[0]
@@ -96,8 +96,8 @@ def test_interpolation_refined(sub_comm, n_part_tgt, write_output):
     with open(mesh_file, 'r') as f:
       tree = MU.yaml.parse_yaml_cgns.to_cgns_tree(f)
     # Simplify tree
-    I._rmNodesByType(tree, 'ZoneBC_t')
-    I._rmNodesByType(tree, 'ZoneGridConnectivity_t')
+    PT.rm_nodes_from_label(tree, 'ZoneBC_t')
+    PT.rm_nodes_from_label(tree, 'ZoneGridConnectivity_t')
     zone = I.getZones(tree)[0]
     d_fs = I.newFlowSolution("FlowSolution#Centers", gridLocation='CellCenter', parent=zone)
     I.newDataArray("Density", np.arange(PT.Zone.n_cell(zone), dtype=float)+1, parent=d_fs)

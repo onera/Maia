@@ -138,5 +138,5 @@ def test_distribute_tree(sub_comm):
   if sub_comm.Get_rank() == 1:
     assert (I.getNodeFromName(zone, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
     assert (I.getNodeFromPath(zone, 'SolPl/Array')[1].size == 0)
-  assert len(I.getNodesFromName(zone, ':CGNS#Distribution')) == 6
+  assert len(PT.get_nodes_from_name(zone, ':CGNS#Distribution')) == 6
 

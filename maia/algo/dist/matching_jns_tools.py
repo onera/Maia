@@ -75,7 +75,7 @@ def add_joins_donor_name(dist_tree, comm, force=False):
 
   if force:
     for gc in PT.iter_children_from_predicates(dist_tree, query):
-      I._rmNodesByName1(gc, 'GridConnectivityDonorName')
+      PT.rm_children_from_name(gc, 'GridConnectivityDonorName')
 
   need_compute = False
   for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
@@ -174,6 +174,6 @@ def clear_interface_ids(dist_tree):
   """
   gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
-    I._rmNodesByName1(gc, 'DistInterfaceId')
-    I._rmNodesByName1(gc, 'DistInterfaceOrd')
+    PT.rm_children_from_name(gc, 'DistInterfaceId')
+    PT.rm_children_from_name(gc, 'DistInterfaceOrd')
 

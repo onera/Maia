@@ -19,9 +19,9 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
      arrays. In this case, the PointList (if any) of the BCDataSet is
      written in the filter as well.
   """
-  for zone_bc in I.getNodesFromType1(zone, 'ZoneBC_t'):
+  for zone_bc in PT.iter_children_from_label(zone, 'ZoneBC_t'):
     zone_bc_path = zone_path+"/"+zone_bc[0]
-    for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
+    for bc in PT.iter_children_from_label(zone_bc, 'BC_t'):
       bc_path = zone_bc_path+"/"+bc[0]
 
       distrib_bc   = I.getVal(MT.getDistribution(bc, 'Index'))
@@ -30,7 +30,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
       data_space = create_data_array_filter(distrib_bc, bc_shape)
       utils.apply_dataspace_to_pointlist(bc, bc_path, data_space, hdf_filter)
 
-      for bcds in I.getNodesFromType1(bc, "BCDataSet_t"):
+      for bcds in PT.iter_children_from_label(bc, "BCDataSet_t"):
         bcds_path = bc_path + "/" + bcds[0]
         distrib_bcds_n = MT.getDistribution(bcds)
 
@@ -45,7 +45,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
         #BCDataSet always use flat data array
         data_space_array = create_data_array_filter(distrib_data, [data_shape.prod()])
         utils.apply_dataspace_to_pointlist(bcds, bcds_path, data_space_pl, hdf_filter)
-        for bcdata in I.getNodesFromType1(bcds, 'BCData_t'):
+        for bcdata in PT.iter_children_from_label(bcds, 'BCData_t'):
           bcdata_path = bcds_path + "/" + bcdata[0]
           utils.apply_dataspace_to_arrays(bcdata, bcdata_path, data_space_array, hdf_filter)
 
@@ -58,9 +58,9 @@ def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
   Structured GC (GridConnectivity1to1_t) are skipped since there is
   no data to load for these nodes.
   """
-  for zone_gc in I.getNodesFromType1(zone, 'ZoneGridConnectivity_t'):
+  for zone_gc in PT.iter_children_from_label(zone, 'ZoneGridConnectivity_t'):
     zone_gc_path = zone_path+"/"+zone_gc[0]
-    for gc in I.getNodesFromType1(zone_gc, 'GridConnectivity_t'):
+    for gc in PT.iter_children_from_label(zone_gc, 'GridConnectivity_t'):
       gc_path = zone_gc_path+"/"+gc[0]
       distrib_ia = I.getVal(MT.getDistribution(gc, 'Index'))
 
@@ -77,7 +77,7 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   """
   distrib_vtx  = I.getVal(MT.getDistribution(zone, 'Vertex'))
   distrib_cell = I.getVal(MT.getDistribution(zone, 'Cell'))
-  for flow_solution in I.getNodesFromType1(zone, 'FlowSolution_t'):
+  for flow_solution in PT.iter_children_from_label(zone, 'FlowSolution_t'):
     flow_solution_path = zone_path + "/" + I.getName(flow_solution)
     grid_location = PT.Subset.GridLocation(flow_solution)
     distrib_ud_n = MT.getDistribution(flow_solution)
@@ -109,7 +109,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
    - PointList array if the zone is unstructured and if the subregion
      is not related to a BC/GC.
   """
-  for zone_subregion in I.getNodesFromType1(zone, 'ZoneSubRegion_t'):
+  for zone_subregion in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
     zone_subregion_path = zone_path+"/"+zone_subregion[0]
 
     # Search matching region

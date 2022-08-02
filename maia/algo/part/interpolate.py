@@ -59,8 +59,8 @@ def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
   keep_alive.append(vtx_coords)
 
-  ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n']
-  nfaces = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NFACE_n']
+  ngons  = [e for e in PT.iter_children_from_label(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n']
+  nfaces = [e for e in PT.iter_children_from_label(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NFACE_n']
   assert len(nfaces) == len(ngons) == 1
 
   cell_face_idx = I.getNodeFromName1(nfaces[0], "ElementStartOffset")[1]
@@ -275,14 +275,14 @@ def interpolate_fields(interpolator, n_field_per_part, src_parts_per_dom, tgt_pa
     for src_part in src_parts:
       container = I.getNodeFromPath(src_part, container_name)
       assert PT.Subset.GridLocation(container) == 'CellCenter' #Only cell center sol supported for now
-      fields_name = sorted([I.getName(array) for array in I.getNodesFromType1(container, 'DataArray_t')])
+      fields_name = sorted([I.getName(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
     fields_per_part.append(fields_name)
   assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
 
   #Cleanup target partitions
   for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
     for i_part, tgt_part in enumerate(tgt_parts):
-      I._rmNodesByName(tgt_part, container_name)
+      PT.rm_children_from_name(tgt_part, container_name)
       fs = I.createUniqueChild(tgt_part, container_name, 'FlowSolution_t')
       I.newGridLocation(output_loc, fs)
 

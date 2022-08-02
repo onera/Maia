@@ -31,7 +31,7 @@ def test_generate_dcube_ngons(sub_comm, write_output):
   assert I.getNodeFromName1(zone, 'NGonElements') is not None
 
   # > The cube include 6 boundary groups
-  assert len(I.getNodesFromType(zone, 'BC_t')) == 6
+  assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 6
 
   assert MT.getDistribution(zone) is not None
   # > Distribution dtype should be consistent with PDM
@@ -62,7 +62,7 @@ def test_generate_dcube_elts(cgns_elmt_name, sub_comm, write_output):
   assert PT.Zone.n_vtx(zone) == n_vtx ** dim
 
   assert I.getNodeFromName1(zone, 'NGonElements') is None
-  elem_nodes = I.getNodesFromType(zone, 'Elements_t')
+  elem_nodes = PT.get_nodes_from_label(zone, 'Elements_t')
   # > Volumic + boundary elements are defined in the mesh (all boundary are merged)
   n_bnd_elem_node = 2 if cgns_elmt_name == "PENTA_6" else 1
   assert len(elem_nodes) == 1 + n_bnd_elem_node
@@ -95,7 +95,7 @@ def test_generate_place_ngons(random, sub_comm):
   assert I.getNodeFromName1(zone, 'NGonElements') is not None
 
   # > The mesh include 4 boundary groups
-  assert len(I.getNodesFromType(zone, 'BC_t')) == 4
+  assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 4
 
   assert MT.getDistribution(zone) is not None
   # > Distribution dtype should be consistent with PDM

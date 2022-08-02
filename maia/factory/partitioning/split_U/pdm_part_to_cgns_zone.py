@@ -76,7 +76,7 @@ def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
 def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element"):
   """
   """
-  ngon_zone = [e for e in I.getNodesFromType1(d_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n'] != []
+  ngon_zone = [e for e in PT.iter_children_from_label(d_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n'] != []
   if  ngon_zone or connectivity_as == 'NGon':
     n_face        = dims['n_face']
     n_cell        = dims['n_cell']
@@ -87,10 +87,10 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
 
     ngon_name  = 'NGonElements'
     nface_name = 'NFaceElements'
-    for elt in I.getNodesFromType1(d_zone, 'Elements_t'):
-      if I.getValue(elt)[0] == 22:
+    for elt in PT.iter_children_from_label(d_zone, 'Elements_t'):
+      if PT.Element.CGNSName(elt) == 'NGON_n':
         ngon_name = I.getName(elt)
-      elif I.getValue(elt)[0] == 23:
+      elif PT.Element.CGNSName(elt) == 'NFACE_n':
         nface_name = I.getName(elt)
 
     ngon_n = I.createUniqueChild(p_zone, ngon_name, 'Elements_t', value=[22,0])
@@ -122,7 +122,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
         I.newDataArray('VertexSizeUnique', n_vtx_unique, parent=lnum_node)
         I.newDataArray('VertexSizeOwned', n_vtx_owned, parent=lnum_node)
     #Now create sections
-    elt_section_nodes = I.getNodesFromType1(d_zone, "Elements_t")
+    elt_section_nodes = PT.get_children_from_label(d_zone, "Elements_t")
     pdm_sections = [data[f'{j}dsections'] for j in range(4)]
     assert len(elt_section_nodes) == sum([len(sections) for sections in pdm_sections])
 

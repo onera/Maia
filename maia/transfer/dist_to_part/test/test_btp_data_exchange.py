@@ -1,6 +1,7 @@
 import pytest
 import numpy      as np
 import Converter.Internal as I
+import maia.pytree        as PT
 
 from pytest_mpi_check._decorator import mark_mpi_test
 
@@ -298,7 +299,7 @@ def test_dist_sol_to_part_sol_pl(sub_comm, exclude):
   """.format(dtype)
 
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  I._rmNodesByName(dist_tree, 'FlowSolution') #Test only pl sol here
+  PT.rm_nodes_from_name(dist_tree, 'FlowSolution') #Test only pl sol here
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
   dist_zone  = I.getZones(dist_tree)[0]

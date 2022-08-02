@@ -1,6 +1,7 @@
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 import Converter.Internal as I
+import maia.pytree as PT
 from   maia.utils.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_S import part_zone as splitS
 
@@ -133,19 +134,19 @@ Small.P2.N1 Zone_t:
   splitS.split_original_joins_S(part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
-    assert I.getNodesFromName(part_tree, 'match1.*') == []
-    assert I.getNodesFromName(part_tree, 'match2.*') == []
+    assert PT.get_nodes_from_name(part_tree, 'match1.*') == []
+    assert PT.get_nodes_from_name(part_tree, 'match2.*') == []
   elif sub_comm.Get_rank() == 1:
-    assert I.getNodesFromName(part_tree, 'match1.*') == []
-    assert len(I.getNodesFromName(part_tree, 'match2.*')) == 1
+    assert PT.get_nodes_from_name(part_tree, 'match1.*') == []
+    assert len(PT.get_nodes_from_name(part_tree, 'match2.*')) == 1
     match2 = I.getNodeFromName(part_tree, 'match2.0')
     assert I.getValue(match2) == 'Big.P2.N1'
     assert I.getType(match2) == 'GridConnectivity1to1_t'
     assert (I.getNodeFromName(match2, 'PointRange')[1] == [[4,1],[4,4],[5,1]]).all()
     assert (I.getNodeFromName(match2, 'PointRangeDonor')[1] == [[6,6],[2,5],[1,5]]).all()
   elif sub_comm.Get_rank() == 2:
-    assert len(I.getNodesFromName(part_tree, 'match1.*')) == 3
-    assert len(I.getNodesFromName(part_tree, 'match2.*')) == 2
+    assert len(PT.get_nodes_from_name(part_tree, 'match1.*')) == 3
+    assert len(PT.get_nodes_from_name(part_tree, 'match2.*')) == 2
     match1_1 = I.getNodeFromPath(part_tree, 'Base/Big.P2.N0/ZoneGridConnectivity/match1.0')
     assert I.getValue(match1_1) == 'Small.P2.N1'
     assert (I.getNodeFromName(match1_1, 'PointRange')[1] == [[6,6],[3,5],[1,5]]).all()

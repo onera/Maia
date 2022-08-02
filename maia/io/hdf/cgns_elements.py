@@ -9,7 +9,7 @@ from maia.io.distribution_tree import compute_connectivity_distribution
 from .hdf_dataspace import create_pe_dataspace
 
 def gen_elemts(zone_tree):
-  elmts_ini = I.getNodesFromType1(zone_tree, 'Elements_t')
+  elmts_ini = PT.get_children_from_label(zone_tree, 'Elements_t')
   for elmt in elmts_ini:
     yield elmt
 

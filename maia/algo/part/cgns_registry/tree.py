@@ -11,10 +11,10 @@ def build_paths_by_label_bcdataset(paths_by_label, bc, bc_path):
   """
   Factorize BC+GC
   """
-  for bcds in I.getNodesFromType1(bc, 'BCDataSet_t'):
+  for bcds in PT.get_children_from_label(bc, 'BCDataSet_t'):
     bcds_path = bc_path+"/"+I.getName(bcds)
     CGR.add_path(paths_by_label, bcds_path, "BCDataSet_t")
-    for bcd in I.getNodesFromType1(bcds, 'BCData_t'):
+    for bcd in PT.get_children_from_label(bcds, 'BCData_t'):
       bcd_path = bcds_path+"/"+I.getName(bcd)
       CGR.add_path(paths_by_label, bcd_path, "BCData_t")
 
@@ -25,7 +25,7 @@ def build_paths_by_label_zone(paths_by_label, zone, zone_path):
   if zone_bc is not None:
     zone_bc_path = f"{zone_path}/{I.getName(zone_bc)}"
     CGR.add_path(paths_by_label, zone_bc_path, CGL.ZoneBC_t.name)
-    for bc in I.getNodesFromType1(zone_bc, 'BC_t'):
+    for bc in PT.get_children_from_label(zone_bc, 'BC_t'):
       bc_path = f"{zone_bc_path}/{PT.get_name(bc)}"
       CGR.add_path(paths_by_label, bc_path, "BC_t")
       build_paths_by_label_bcdataset(paths_by_label, bc, bc_path)
@@ -70,7 +70,7 @@ def build_paths_by_label_family(paths_by_label, parent, parent_path):
 def setup_child_from_type(paths_by_label, parent, parent_path, cgns_type):
   """
   """
-  for child in I.getNodesFromType1(parent, cgns_type):
+  for child in PT.iter_children_from_label(parent, cgns_type):
     child_path = parent_path+"/"+I.getName(child)
     CGR.add_path(paths_by_label, child_path, cgns_type)
 
@@ -79,7 +79,7 @@ def build_paths_by_label(tree):
   """
   paths_by_label = CGR.cgns_paths_by_label();
 
-  for base in I.getNodesFromType1(tree, 'CGNSBase_t'):
+  for base in PT.get_all_CGNSBase_t(tree):
     base_path = "/"+I.getName(base)
     CGR.add_path(paths_by_label, base_path, u'CGNSBase_t')
 
