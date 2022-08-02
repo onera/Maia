@@ -16,29 +16,14 @@ import maia.transfer as MT
 def refine_mesh(tree, factor=1):
   """ On the fly (sequential) isotropic mesh refinement """
   import Intersector.PyTree as XOR
-  tree = I.fixNGon(tree)
+  tree = I.copyTree(tree)
+  MA.seq.poly_new_to_old(tree)
   zones = I.getZones(tree) #Go old norm
   assert len(zones) == 1
   refined_tree = XOR.adaptCells(tree, factor*np.ones(PT.Zone.n_vtx(zones[0]), dtype=int), sensor_type=2)
   refined_tree = XOR.closeCells(refined_tree)
-  I._createElsaHybrid(refined_tree, method=1)
-  I._rmNodesByName(refined_tree, ':elsA#Hybrid')
-
-  I._rmNodesByName(refined_tree, 'NFaceElements') #Convert back to new norm
-  ngon = I.getNodeFromName(refined_tree, 'NGonElements')
-  er_n = I.getNodeFromName1(ngon, 'ElementRange')
-  ec_n = I.getNodeFromName1(ngon, 'ElementConnectivity')
-  pe_n = I.getNodeFromName1(ngon, 'ParentElements')
-  pe_n[1] += er_n[1][1] * (pe_n[1] > 0) #Cassiopee uses old indexing
-  ec  = ec_n[1]
-  eso = np.empty(PT.Element.Size(ngon)+1, np.int32)
-  eso[0] = 0
-  c = 0
-  for i in range(PT.Element.Size(ngon)):
-    eso[i+1] = eso[i] + ec[c]
-    c += ec[c] + 1
-  ec_n[1] = np.delete(ec, np.arange(PT.Element.Size(ngon)) + eso[:-1])
-  I.newDataArray('ElementStartOffset', eso, parent=ngon)
+  I._adaptNFace2PE(refined_tree, remove=False)
+  MA.seq.poly_old_to_new(refined_tree)
   return refined_tree
 
 @mark_mpi_test([1])

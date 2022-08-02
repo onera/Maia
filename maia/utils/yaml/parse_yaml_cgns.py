@@ -75,7 +75,7 @@ def to_node(yaml_stream):
     return nodes[0]
 
 def to_cgns_tree(yaml_stream):
-  t = I.createRootNode()
+  t = I.createNode('CGNSTree', 'CGNSTree_t')
   childs = to_nodes(yaml_stream)
   if len(childs) > 0 and I.getType(childs[0]) == 'Zone_t':
     b = I.newCGNSBase(parent=t)

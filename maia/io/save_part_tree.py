@@ -1,3 +1,4 @@
+import maia
 import Converter.PyTree   as C
 import Converter.Internal as I
 
@@ -17,7 +18,7 @@ def save_part_tree(part_tree, filename, comm):
 
   links      = []
   nlinks     = []
-  zones_path = I.getZonePaths(part_tree, pyCGNSLike=True)
+  zones_path = [f'/{path}' for path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t')]
 
   for zone_path in zones_path:
     links += [['',subfilename, zone_path, zone_path]]

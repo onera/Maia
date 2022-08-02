@@ -334,7 +334,6 @@ class Test_interpolation_api():
       tgt_parts_per_dom = [[self.tgt_zone_2]]
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in [2]]
 
-    #I.printTree(self.src_zone_0)
     ITP.interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, sub_comm, \
         ['MySolution'], 'Vertex', strategy='Closest')
 

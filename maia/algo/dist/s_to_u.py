@@ -413,7 +413,7 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   I.newPointRange("ElementRange", np.array([1, n_face_tot], dtype=pdm_gnum_dtype), parent=ngon)
   I.newDataArray("ElementConnectivity", face_vtx, parent=ngon)
   I.newDataArray("ElementStartOffset", face_vtx_idx, parent=ngon)
-  I.newParentElements(face_pe, parent=ngon)
+  I.newDataArray("ParentElements", face_pe, parent=ngon)
 
   cg_face_distri = np.array([*face_distri, n_face_tot], dtype=pdm_gnum_dtype)
   MT.newDistribution({'Element' : cg_face_distri, 'ElementConnectivity' : 4*cg_face_distri}, parent=ngon)
@@ -463,10 +463,10 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
   for base_s in I.getBases(disttree_s):
     base_u = I.createNode(I.getName(base_s), 'CGNSBase_t', I.getValue(base_s), parent=disttree_u)
     for zone_s in I.getZones(base_s):
-      if I.getZoneType(zone_s) == 2: #Zone is already U
+      if PT.Zone.Type(zone_s) == 'Unstructured': #Zone is already U
         I.addChild(base_u, zone_s)
 
-      elif I.getZoneType(zone_s) == 1: #Zone is S -> convert it
+      elif PT.Zone.Type(zone_s) == 'Structured': #Zone is S -> convert it
         zone_dims_s = I.getValue(zone_s)
         zone_dims_u = np.prod(zone_dims_s, axis=0, dtype=zone_dims_s.dtype).reshape(1,-1)
         n_vtx  = zone_dims_s[:,0]

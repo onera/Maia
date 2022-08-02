@@ -96,7 +96,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   If allow_mult is True, leaf node of node_path is expanded search all partitioned leaf*. This can
   be usefull eg to merge splitted joins (match.0, match.1, ...)
   """
-  ancestor, leaf = I.getPathAncestor(node_path), I.getPathLeaf(node_path)
+  ancestor, leaf = PT.path_head(node_path), PT.path_tail(node_path)
   dist_node = I.getNodeFromPath(dist_zone, node_path)
 
   if allow_mult:

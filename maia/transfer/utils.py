@@ -12,7 +12,7 @@ def get_partitioned_zones(part_tree, dist_zone_path):
   Return a list of the partitioned zones created from a distributed zone name
   found in part_tree
   """
-  base_name, zone_name = I.getPathAncestor(dist_zone_path), I.getPathLeaf(dist_zone_path)
+  base_name, zone_name = PT.path_head(dist_zone_path), PT.path_tail(dist_zone_path)
   part_base = I.getNodeFromPath(part_tree, base_name)
   if part_base:
     return [part for part in I.getZones(part_base) if \

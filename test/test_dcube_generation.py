@@ -38,7 +38,7 @@ def test_generate_dcube_ngons(sub_comm, write_output):
   assert MT.getDistribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
 
   if write_output:
-    out_dir = maia.test_utils.create_pytest_output_dir(sub_comm)
+    out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
     outfile = os.path.join(out_dir, f'dcube_ngon_{sub_comm.Get_rank()}.hdf')
     C.convertPyTree2File(dist_tree, outfile)
     outfile = os.path.join(out_dir, 'dcube_ngon.hdf')

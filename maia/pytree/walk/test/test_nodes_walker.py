@@ -200,7 +200,6 @@ Base CGNSBase_t:
         Index_vi IndexArray_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  # I.printTree(tree)
 
   # Snake case
   # ==========
@@ -267,7 +266,6 @@ Base CGNSBase_t:
         Index_vi IndexArray_t:
 """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  # I.printTree(tree)
 
   walker = PT.NodesWalker(tree, lambda n: I.getType(n) == "BC_t", search='bfs')
   walker.apply(lambda n : I.setName(n, I.getName(n).upper()))

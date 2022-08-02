@@ -79,8 +79,6 @@ def build_paths_by_label(tree):
   """
   paths_by_label = CGR.cgns_paths_by_label();
 
-  bases_path = I.getPathsFromType1(tree, 'CGNSBase_t', pyCGNSLike=True)
-
   for base in I.getNodesFromType1(tree, 'CGNSBase_t'):
     base_path = "/"+I.getName(base)
     CGR.add_path(paths_by_label, base_path, u'CGNSBase_t')
