@@ -11,7 +11,7 @@ from maia.utils                      import np_utils
 from maia                            import transfer as TE
 from maia.factory.dist_from_part     import discover_nodes_from_matching
 
-from maia.algo.part.interpolate       import get_point_cloud
+from .point_cloud_utils               import get_point_cloud
 from maia.algo.part.extract_boundary  import extract_surf_from_bc
 from maia.algo.part.geometry          import compute_cell_center
 

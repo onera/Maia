@@ -88,6 +88,26 @@ def test_jagged_extract():
   assert (idx_e == [0]).all()
   assert (array_e.size == 0)
 
+def test_jagged_merge():
+  idx1   = np.array([0, 1, 4], np.int32)
+  array1 = np.array([.3,  .5,.6,.7])
+  idx2   = np.array([0, 2, 3], np.int32)
+  array2 = np.array([100.,101,  105])
+  idx, array = np_utils.jagged_merge(idx1, array1, idx2, array2)
+  assert (idx == [0, 3, 7]).all()
+  assert idx.dtype == np.int32
+  assert (array == [.3,100,101,  .5,.6,.7,105]).all()
+  assert array.dtype == float
+
+  idx1  = np.array([0, 2, 2, 3], np.int32)
+  array1 = np.array([12,13,  15])
+  idx2  = np.array([0, 1, 2, 3], np.int32)
+  array2 = np.array([101, 102, 103])
+  idx, array = np_utils.jagged_merge(idx1, array1, idx2, array2)
+  assert (idx == [0, 3, 4, 6]).all()
+  assert (array == [12,13,101, 102, 15,103]).all()
+  assert array.dtype == array1.dtype
+
 def test_roll_from():
   assert (np_utils.roll_from(np.array([2,4,8,16]), start_idx = 1) == [4,8,16,2]).all()
   assert (np_utils.roll_from(np.array([2,4,8,16]), start_value = 4) == [4,8,16,2]).all()

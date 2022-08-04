@@ -1,4 +1,5 @@
 import numpy as np
+from cmaia.utils import layouts
 
 def interweave_arrays(array_list):
   #https://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
@@ -106,6 +107,13 @@ def jagged_extract(idx_array, array, ids):
   extracted_sizes = sizes[ids]
   extracted_idx = sizes_to_indices(extracted_sizes)
   return extracted_idx, extracted_array
+
+def jagged_merge(idx1, array1, idx2, array2):
+  """
+  Interwave two jagged arrays of same n_elt
+  """
+  assert array1.dtype == array2.dtype
+  return layouts.jagged_merge(idx1, array1, idx2, array2)
 
 def roll_from(array, start_idx = None, start_value = None, reverse = False):
   """

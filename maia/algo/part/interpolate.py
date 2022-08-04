@@ -7,120 +7,141 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils                  import np_utils, layouts
+from maia.utils                  import py_utils, np_utils
 from maia.transfer               import utils as te_utils
-from maia.factory.dist_from_part import discover_nodes_from_matching
+from maia.factory.dist_from_part import get_parts_per_blocks
 
-from maia.algo.part.geometry  import compute_cell_center
+from .import point_cloud_utils as PCU
+from .import localize as LOC
+from .import closest_points as CLO
 
-# ------------------------------------------------------------------------
-def get_point_cloud(zone, location='CellCenter'):
-  """
-  If location == Vertex, return the (interlaced) coordinates of vertices 
-  and vertex global numbering of a partitioned zone
-  If location == Center, compute and return the (interlaced) coordinates of
-  cell centers and cell global numbering of a partitioned zone
-  """
-  if location == 'Vertex':
-    coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(zone)]
-    vtx_coords   = np_utils.interweave_arrays(coords)
-    vtx_ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, 'Vertex')).astype(pdm_gnum_dtype)
-    return vtx_coords, vtx_ln_to_gn
+class Interpolator:
+  """ Low level class to perform interpolations """
+  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, output_loc, comm):
+    self.src_parts = list()
+    self.tgt_parts = list()
+    all_src_lngn = []
+    for i_domain, src_parts in enumerate(src_parts_per_dom):
+      for i_part, src_part in enumerate(src_parts):
+        all_src_lngn.append(PCU._get_zone_ln_to_gn_from_loc(src_part, 'Cell'))
+        self.src_parts.append(src_part)
 
-  elif location == 'CellCenter':
-    cell_ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, 'Cell')).astype(pdm_gnum_dtype)
-    center_cell = compute_cell_center(zone)
-    return center_cell, cell_ln_to_gn
-  
-  elif PT.is_valid_name(location):
-    container = I.getNodeFromName1(zone, location)
-    if container:
-      coords = [I.getVal(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
-      loc = PT.Subset.GridLocation(container)
-      _loc = loc.replace('Center', '')
-      int_coords = np_utils.interweave_arrays(coords)
-      ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, _loc)).astype(pdm_gnum_dtype)
-      return int_coords, ln_to_gn
+    all_cloud_lngn = []
+    for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
+      for i_part, tgt_part in enumerate(tgt_parts):
+        all_cloud_lngn.append(PCU._get_zone_ln_to_gn_from_loc(tgt_part, output_loc))
+        self.tgt_parts.append(tgt_part)
 
-  raise RuntimeError("Unknow location or node")
+    _src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
+    _src_to_tgt     = [data['target'] for data in src_to_tgt]
+    self.PTP = PDM.PartToPart(comm,
+                              all_src_lngn,
+                              all_cloud_lngn,
+                              _src_to_tgt_idx,
+                              _src_to_tgt)
 
-# ------------------------------------------------------------------------
-def register_src_part(mesh_loc, i_part, part_zone, keep_alive):
-  """
-  Get connectivity of a partitioned zone and register it a mesh_location
-  pdm object
-  """
+    self.referenced_nums = self.PTP.get_referenced_lnum2()
+    self.sending_gnums = self.PTP.get_gnum1_come_from()
+    self.output_loc = output_loc
 
-  gridc_n    = I.getNodeFromName1(part_zone, 'GridCoordinates')
-  cx         = I.getNodeFromName1(gridc_n, 'CoordinateX')[1]
-  cy         = I.getNodeFromName1(gridc_n, 'CoordinateY')[1]
-  cz         = I.getNodeFromName1(gridc_n, 'CoordinateZ')[1]
-  vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
-  keep_alive.append(vtx_coords)
-
-  ngons  = [e for e in PT.iter_children_from_label(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n']
-  nfaces = [e for e in PT.iter_children_from_label(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NFACE_n']
-  assert len(nfaces) == len(ngons) == 1
-
-  cell_face_idx = I.getNodeFromName1(nfaces[0], "ElementStartOffset")[1]
-  cell_face     = I.getNodeFromName1(nfaces[0], "ElementConnectivity")[1]
-  face_vtx_idx  = I.getNodeFromName1(ngons[0],  "ElementStartOffset")[1]
-  face_vtx      = I.getNodeFromName1(ngons[0],  "ElementConnectivity")[1]
-
-  vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
-
-  n_cell = cell_ln_to_gn.shape[0]
-  n_face = face_ln_to_gn.shape[0]
-  n_vtx  = vtx_ln_to_gn .shape[0]
-
-  center_cell = compute_cell_center(part_zone)
-  keep_alive.append(cell_ln_to_gn)
-
-  mesh_loc.part_set(i_part, n_cell, cell_face_idx, cell_face, cell_ln_to_gn,
-                            n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
-                            n_vtx, vtx_coords, vtx_ln_to_gn)
+    # Send distances to targets partitions (if available)
+    try:
+      _dist = [data['dist2'] for data in src_to_tgt]
+      request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+                               _dist)
+      _, self.tgt_dist = self.PTP.wait(request)
+    except KeyError:
+      pass
 
 
-# --------------------------------------------------------------------------
-def create_subset_numbering(subset_l, parent_numbering_l, comm):
-  """
-  Create a sub (continuous) numbering from a parent numbering list (size = n_part)
-  and a list of (local) indices to extract on each part (size = n_part)
-  Warning ! Local indices start at 1 and not 0
-  Return a dict containing the parent global id of extracted elements for each part
-  and the sub global id of extracted elements for each part
-  """
-  assert len(subset_l) == len(parent_numbering_l)
-  n_part = len(parent_numbering_l)
+  def _reduce_single_val(self, i_part, data):
+    """
+    A basic reduce function who take the first received value for each target
+    """
+    come_from_idx = self.sending_gnums[i_part]['come_from_idx']
+    assert (np.diff(come_from_idx) == 1).all()
+    return data
 
-  subset_gnum = {"unlocated_extract_ln_to_gn" : list(),
-                 "unlocated_sub_ln_to_gn"     : list()}
+  def _reduce_mean_dist(self, i_part, data):
+    """
+    Compute a weighted mean of the received values. Weights are the inverse of the squared distance from each source.
+    Usable only if distance are available in src_to_tgt dict (eg if closestpoint method was used).
+    """
+    come_from_idx = self.sending_gnums[i_part]['come_from_idx']
+    n_recv = come_from_idx[1] #We assert this one to be the same for each located gn
+    assert (np.diff(come_from_idx) == n_recv).all()
+    n_reduced = come_from_idx.size - 1
 
-  gen_gnum = PDM.GlobalNumbering(3, n_part, 0, 0., comm)
+    reduced_data = np.zeros(n_reduced, float)
+    factor = np.zeros(n_reduced, float)
+    dist_threshold = np.maximum(self.tgt_dist[i_part], 1E-20)
+    for i in range(n_recv):
+      reduced_data += (1./dist_threshold[i::n_recv]) * data[i::n_recv]
+      factor += (1./dist_threshold[i::n_recv])
+    reduced_data /= factor
+    return reduced_data
 
-  for i_part in range(n_part):
-    extracted_ln_to_gn = layouts.extract_from_indices(parent_numbering_l[i_part], subset_l[i_part], 1, 1)
-    gen_gnum.gnum_set_from_parent(i_part, extracted_ln_to_gn.shape[0], extracted_ln_to_gn)
-    subset_gnum["unlocated_extract_ln_to_gn"].append(extracted_ln_to_gn)
 
-  gen_gnum.gnum_compute()
+  def exchange_fields(self, container_name, reduce_func=_reduce_single_val):
+    """
+    For all fields found under container_name node,
+    - Perform a part to part exchanged
+    - Reduce the received data using reduce_func (because tgt elements can receive multiple data)
+    - Fill the target sol with a default value + the reduced value
+    """
 
-  for i_part in range(n_part):
-    sub_ln_to_gn = gen_gnum.gnum_get(i_part)
-    subset_gnum["unlocated_sub_ln_to_gn"].append(sub_ln_to_gn["gnum"])
+    #Check that solutions are known on each source partition
+    fields_per_part = list()
+    for src_part in self.src_parts:
+      container = I.getNodeFromPath(src_part, container_name)
+      assert PT.Subset.GridLocation(container) == 'CellCenter' #Only cell center sol supported for now
+      fields_name = sorted([I.getName(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
+    fields_per_part.append(fields_name)
+    assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
 
-  return subset_gnum
+    #Cleanup target partitions
+    for tgt_part in self.tgt_parts:
+      I._rmNodesByName(tgt_part, container_name)
+      fs = I.createUniqueChild(tgt_part, container_name, 'FlowSolution_t')
+      I.newGridLocation(self.output_loc, fs)
 
-# --------------------------------------------------------------------------
-def create_interpolator(src_parts_per_dom,
-                        tgt_parts_per_dom,
-                        comm,
-                        location = 'CellCenter',
-                        strategy = 'LocationAndClosest',
-                        loc_tolerance = 1E-6,
-                        order = 0):
-  """
+    #Collect src sol
+    src_field_dic = dict()
+    for field_name in fields_per_part[0]:
+      field_path = container_name + '/' + field_name
+      src_field_dic[field_name] = [I.getNodeFromPath(part, field_path)[1] for part in self.src_parts]
+
+    #Exchange
+    for field_name, src_sol in src_field_dic.items():
+      request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1,
+                               src_sol)
+      strides, lnp_part_data = self.PTP.wait(request)
+
+      for i_part, tgt_part in enumerate(self.tgt_parts):
+        fs = I.getNodeFromPath(tgt_part, container_name)
+        data_size = PT.Zone.n_cell(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.n_vtx(tgt_part)
+        data = np.nan * np.ones(data_size)
+        reduced_data = reduce_func(self, i_part, lnp_part_data[i_part])
+        data[self.referenced_nums[i_part]-1] = reduced_data #Use referenced ids to erase default value
+        if PT.Zone.Type(tgt_part) == 'Unstructured':
+          I.createUniqueChild(fs, field_name, 'DataArray_t', data)
+        else:
+          shape = PT.Zone.CellSize(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
+          I.createUniqueChild(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
+
+
+def create_src_to_tgt(src_parts_per_dom,
+                      tgt_parts_per_dom,
+                      comm,
+                      location = 'CellCenter',
+                      strategy = 'Closest',
+                      loc_tolerance = 1E-6,
+                      n_closest_pt = 1):
+  """ Create a source to target indirection depending of the choosen strategy.
+
+  This indirection can then be used to create an interpolator object.
   """
   n_dom_src = len(src_parts_per_dom)
   n_dom_tgt = len(tgt_parts_per_dom)
@@ -131,180 +152,71 @@ def create_interpolator(src_parts_per_dom,
   n_part_src = len(src_parts_per_dom[0])
   n_part_tgt = len(tgt_parts_per_dom[0])
 
-  keep_alive = list()
-  one_or_two = 0 #This one will be one or two depending of chosen strategy
-
-  # Those one will be usefull in every strategy -> compute it only once
-  all_tgt_coords = [list() for dom in range(n_dom_tgt)]
-  all_tgt_lngn   = [list() for dom in range(n_dom_tgt)]
-  for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
-    for i_part, tgt_part in enumerate(tgt_part_zones):
-      coords, ln_to_gn = get_point_cloud(tgt_part, location)
-      all_tgt_coords[i_domain].append(coords)
-      all_tgt_lngn  [i_domain].append(ln_to_gn)
-
   #Phase 1 -- localisation
-  all_located_inv = list()
   if strategy != 'Closest':
-    one_or_two += 1
-    # > Create and setup global data
-    mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=comm)
-    mesh_loc.mesh_global_data_set(n_part_src) #  For now only on domain is supported
-    mesh_loc.n_part_cloud_set(0, n_part_tgt) # Pour l'instant 1 cloud et 1 partition
-    # > Register source and target parts
-    for i_domain, src_part_zones in enumerate(src_parts_per_dom):
-      for i_part, src_part in enumerate(src_part_zones):
-        register_src_part(mesh_loc, i_part, src_part, keep_alive)
-    for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
-      for i_part, tgt_part in enumerate(tgt_part_zones):
-        coords   = all_tgt_coords[i_domain][i_part]
-        ln_to_gn = all_tgt_lngn[i_domain][i_part]
-        mesh_loc.cloud_set(0, i_part, ln_to_gn.shape[0], coords, ln_to_gn)
+    location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
+        location, comm, True, loc_tolerance)
 
-    mesh_loc.tolerance_set(loc_tolerance)
-    mesh_loc.compute()
-
-    #This is result from the target perspective -- not usefull here
-    # for i_tgt_part in range(n_part_tgt):
-      # #Pour chaque pt target, elt source associé (i_pt_cloud, i_part)
-      # results = mesh_loc.location_get(0, i_tgt_part)
-
-    #This is result from the source perspective : for each source part, list of tgt points
-    # located in it (api : i_part,i_pt_cloud)
-    all_located_inv = [mesh_loc.points_in_elt_get(i_src_part, 0) for i_src_part in range(n_part_src)]
-
-    #To change when multi dom
-    all_unlocated = [[mesh_loc.unlocated_get(0,i_part) for i_part in range(n_part_tgt)]]
-    n_unlocated = sum([all_unlocated[0][i_part].shape[0] for i_part in range(n_part_tgt)])
-
+    all_unlocated = [data['unlocated_ids'] for data in location_out[0]]
+    all_located_inv = location_out_inv[0]
+    n_unlocated = sum([t.size for t in all_unlocated])
     n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.SUM)
     if(comm.Get_rank() == 0):
       print(" n_tot_unlocated = ", n_tot_unlocated )
 
-    #n_tot_unlocated = 0
-    #Todo : allow other than double
 
   all_closest_inv = list()
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
-    one_or_two += 1
-    closest_point = PDM.ClosestPoints(comm, n_closest=1)
-    closest_point.n_part_cloud_set(n_part_src, n_part_tgt)
 
     # > Setup source for closest point
+    src_clouds = []
     for i_domain, src_part_zones in enumerate(src_parts_per_dom):
       for i_part, src_part in enumerate(src_part_zones):
-        center_cell, cell_ln_to_gn = get_point_cloud(src_part, 'CellCenter')
-        keep_alive.append(center_cell)
-        keep_alive.append(cell_ln_to_gn)
-        closest_point.src_cloud_set(i_part, cell_ln_to_gn.shape[0], center_cell, cell_ln_to_gn)
-
-    # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
-    all_unlocated_gnum = list()
-    if strategy != 'Closest':
-      for i_domain, part_zones in enumerate(tgt_parts_per_dom):
-        unlocated_gnum = create_subset_numbering(all_unlocated[i_domain], all_tgt_lngn[i_domain], comm)
-        #Store it in dict -- a kind of keep alive
-        unlocated_gnum["extracted_coords"] = [layouts.extract_from_indices(all_tgt_coords[i_domain][i_part], \
-            all_unlocated[i_domain][i_part], 3, 1) for i_part in range(len(part_zones))]
-
-        all_unlocated_gnum.append(unlocated_gnum)
+        src_clouds.append(PCU.get_point_cloud(src_part, 'CellCenter'))
 
     # > Setup target for closest point
-    for i_domain, part_zones in enumerate(tgt_parts_per_dom):
-      for i_part, part_zone in enumerate(part_zones):
+    tgt_clouds = []
+    if strategy == 'Closest':
+      for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
+        for i_part, tgt_part in enumerate(tgt_part_zones):
+          tgt_clouds.append(PCU.get_point_cloud(tgt_part, location))
+    else:
+      # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
+      for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
+        for i_part, tgt_part in enumerate(tgt_part_zones):
+          indices = all_unlocated[i_part] #One domain so OK
+          tgt_cloud = PCU.get_point_cloud(tgt_part, location)
+          sub_cloud = PCU.extract_sub_cloud(*tgt_cloud, indices)
+          tgt_clouds.append(sub_cloud)
+      all_extracted_lngn = [sub_cloud[1] for sub_cloud in tgt_clouds]
+      all_sub_lngn = PCU.create_sub_numbering(all_extracted_lngn, comm) #This one is collective
+      tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(tgt_clouds, all_sub_lngn)]
 
-        if strategy != 'Closest':
-          extract_coords   = all_unlocated_gnum[i_domain]["extracted_coords"][i_part]
-          sub_ln_to_gn     = all_unlocated_gnum[i_domain]["unlocated_sub_ln_to_gn"][i_part]
-        else:
-          extract_coords = all_tgt_coords[i_domain][i_part]
-          sub_ln_to_gn   = all_tgt_lngn[i_domain][i_part]
-
-        closest_point.tgt_cloud_set(i_part, sub_ln_to_gn.shape[0], extract_coords, sub_ln_to_gn)
-        keep_alive.append(extract_coords)
-        keep_alive.append(sub_ln_to_gn)
-
-
-    closest_point.compute()
-
-    #Pour chaque pt source, points cibles qui l'ont détecté comme le plus proche
-    all_closest_inv = [closest_point.tgt_in_src_get(i_part_src) for i_part_src in range(n_part_src)]
+    n_clo = n_closest_pt if strategy == 'Closest' else 1
+    all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, n_clo, reverse=True)
 
     #If we worked on sub gnum, we must go back to original numbering
     if strategy != 'Closest':
-      for i_domain, part_zones in enumerate(tgt_parts_per_dom):
-        gnum_to_transform = [results["tgt_in_src"] for results in all_closest_inv]
-        sub_ln_to_gn    = all_unlocated_gnum[i_domain]["unlocated_sub_ln_to_gn"]
-        parent_ln_to_gn = all_unlocated_gnum[i_domain]["unlocated_extract_ln_to_gn"]
+      gnum_to_transform = [results["tgt_in_src"] for results in all_closest_inv]
+      PDM.transform_to_parent_gnum(gnum_to_transform, all_sub_lngn, all_extracted_lngn, comm)
 
-        #Inplace 
-        PDM.transform_to_parent_gnum(gnum_to_transform, sub_ln_to_gn, parent_ln_to_gn, comm)
+  #Combine Location & Closest results if both method were used
+  if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
+    src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
+                   'target'     : data['points_gnum']} for data in all_located_inv]
+  elif strategy == 'Closest':
+    src_to_tgt = [{'target_idx' : data['tgt_in_src_idx'],
+                   'target'     : data['tgt_in_src'],
+                   'dist2'      : data['tgt_in_src_dist2']} for data in all_closest_inv]
+  else:
+    src_to_tgt = []
+    for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
+      tgt_in_src_idx, tgt_in_src = np_utils.jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum'], \
+                                                         res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
+      src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src})
+  
+  return src_to_tgt
 
-
-  # > Now create Interpolation object
-  # We use one_or_two to register or two src part if both location and closest point where enabled
-  interpolator = PDM.InterpolateFromMeshLocation(n_point_cloud=1, comm=comm)
-  interpolator.mesh_global_data_set(one_or_two*n_part_src) #  For now only on domain is supported
-  interpolator.n_part_cloud_set(0, n_part_tgt) # Pour l'instant 1 cloud et 1 partition
-
-  for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom): #For now only one domain
-    for i_part, tgt_part in enumerate(tgt_part_zones):
-      #We can resuse part data, which is already computed
-      coords   = all_tgt_coords[i_domain][i_part]
-      ln_to_gn = all_tgt_lngn[i_domain][i_part]
-      interpolator.cloud_set(0, i_part, ln_to_gn.shape[0], coords, ln_to_gn)
-
-  for i_part, res_loc in enumerate(all_located_inv):
-    interpolator.points_in_elt_set(one_or_two*i_part, 0, **res_loc)
-  for i_part, res_clo in enumerate(all_closest_inv):
-    interpolator.points_in_elt_set(one_or_two*i_part+(one_or_two-1), 0, res_clo["tgt_in_src_idx"], res_clo["tgt_in_src"],
-        None, None, None, None, None, None)
-
-  # interpolator.compute()
-  return interpolator, one_or_two
-
-def interpolate_fields(interpolator, n_field_per_part, src_parts_per_dom, tgt_parts_per_dom, container_name, output_loc):
-  """
-  Use interpolator to echange a container and put solution in target tree
-  """
-  assert len(src_parts_per_dom) == len(tgt_parts_per_dom) == 1
-
-  #Check that solutions are known on each source partition
-  fields_per_part = list()
-  for i_domain, src_parts in enumerate(src_parts_per_dom):
-    for src_part in src_parts:
-      container = I.getNodeFromPath(src_part, container_name)
-      assert PT.Subset.GridLocation(container) == 'CellCenter' #Only cell center sol supported for now
-      fields_name = sorted([I.getName(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
-    fields_per_part.append(fields_name)
-  assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
-
-  #Cleanup target partitions
-  for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
-    for i_part, tgt_part in enumerate(tgt_parts):
-      PT.rm_children_from_name(tgt_part, container_name)
-      fs = I.createUniqueChild(tgt_part, container_name, 'FlowSolution_t')
-      I.newGridLocation(output_loc, fs)
-
-  # Collect source data and interpolate
-  for field_name in fields_per_part[0]:
-    field_path = container_name + '/' + field_name
-    list_part_data_in = list()
-    for i_domain, src_parts in enumerate(src_parts_per_dom):
-      for src_part in src_parts:
-        src_data = I.getNodeFromPath(src_part, field_path)[1]
-        for i in range(n_field_per_part):
-          list_part_data_in.append(src_data)
-
-    results_interp = interpolator.exch(0, list_part_data_in)
-    for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
-      for i_part, tgt_part in enumerate(tgt_parts):
-        fs = I.getNodeFromPath(tgt_part, container_name)
-        if PT.Zone.Type(tgt_part) == 'Unstructured':
-          I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part])
-        else:
-          shape = PT.Zone.CellSize(tgt_part) if output_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
-          I.createUniqueChild(fs, field_name, 'DataArray_t', results_interp[i_part].reshape(shape, order='F'))
 
 
 def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options):
@@ -315,29 +227,13 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
 
   containers_name is the list of FlowSolution containers to be interpolated
   location is the output location (CellCenter or Vertex); input location must be CellCenter
-  **options are passed to interpolator creationg function, see create_interpolator
+  **options are passed to interpolator creationg function, see create_src_to_tgt
   """
-  interpolator, one_or_two = create_interpolator(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+
+  interpolator = Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, location, comm)
   for container_name in containers_name:
-    interpolate_fields(interpolator, one_or_two, src_parts_per_dom, tgt_parts_per_dom, container_name, location)
-
-def interpolate_from_dom_names(src_tree, src_doms, tgt_tree, tgt_doms, comm, containers_name, location, **options):
-  """
-  Helper function calling interpolate_from_parts_per_dom from the src and tgt part_trees +
-  a list of src domain names and target domains names.
-  Names must be in the formalism "DistBaseName/DistZoneName"
-
-  See interpolate_from_parts_per_dom for documentation
-  """
-  assert len(src_doms) == len(tgt_doms) == 1
-  src_parts_per_dom = list()
-  tgt_parts_per_dom = list()
-  for src_dom in src_doms:
-    src_parts_per_dom.append(te_utils.get_partitioned_zones(src_tree, src_dom))
-  for tgt_dom in tgt_doms:
-    tgt_parts_per_dom.append(te_utils.get_partitioned_zones(tgt_tree, tgt_dom))
-
-  interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
+    interpolator.exchange_fields(container_name)
 
 def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, location, **options):
   """Interpolate fields between two partitionned trees.
@@ -346,9 +242,9 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
   closest point (or their englobing cell, depending of choosed options) in the source mesh.
   Interpolation strategy can be controled thought the options kwargs:
 
-  - ``strategy`` (default = 'LocationAndClosest') -- control interpolation method
+  - ``strategy`` (default = 'Closest') -- control interpolation method
 
-    - 'ClosestPoint' : Target points take the value of the closest source cell center.
+    - 'Closest' : Target points take the value of the closest source cell center.
     - 'Location' : Target points take the value of the cell in which they are located.
       Unlocated points have take a ``NaN`` value.
     - 'LocationAndClosest' : Use 'Location' method and then 'ClosestPoint' method
@@ -360,6 +256,11 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
     - Source fields must be located at CellCenter.
     - Source tree must be unstructured and have a ngon connectivity.
     - Partitions must come from a single initial domain on both source and target tree.
+
+  See also:
+    :func:`create_interpolator_from_part_trees` takes the same parameters, excepted ``containers_name``,
+    and returns an Interpolator object which can be used to exchange containers more than once through its
+    ``Interpolator.exchange_fields(container_name)`` method.
 
   Args:
     src_tree (CGNSTree): Source tree, partitionned. Only U-NGon connectivities are managed.
@@ -375,21 +276,21 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
         :end-before: #interpolate_from_part_trees@end
         :dedent: 2
   """
-
-  dist_src_doms = I.newCGNSTree()
-  discover_nodes_from_matching(dist_src_doms, [src_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-  src_parts_per_dom = list()
-  for zone_path in PT.predicates_to_paths(dist_src_doms, 'CGNSBase_t/Zone_t'):
-    src_parts_per_dom.append(te_utils.get_partitioned_zones(src_tree, zone_path))
-
-  dist_tgt_doms = I.newCGNSTree()
-  discover_nodes_from_matching(dist_tgt_doms, [tgt_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-
-  tgt_parts_per_dom = list()
-  for zone_path in PT.predicates_to_paths(dist_tgt_doms, 'CGNSBase_t/Zone_t'):
-    tgt_parts_per_dom.append(te_utils.get_partitioned_zones(tgt_tree, zone_path))
+  src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
+  tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
+
+
+def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, location, **options):
+  """Same as interpolate_from_part_trees, but return the interpolator object instead
+  of doing interpolations. Interpolator can be called multiple time to exchange
+  fields without recomputing the src_to_tgt indirection (geometry must remain the same).
+  """
+  src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
+  tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
+
+  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+  return Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, location, comm)
+
 

@@ -155,100 +155,9 @@ ZoneU Zone_t [[16,3,0]]:
     Cell DataArray_t {dtype} [2,6,4]:
 """
 
-
-@mark_mpi_test(1)
-def test_get_point_cloud(sub_comm):
-  tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
-  zone = I.getZones(tree)[0]
-  #On partitions, element are supposed to be I4
-  for elt_node in PT.iter_children_from_label(zone, 'Elements_t'):
-    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
-      node = I.getNodeFromName1(elt_node, name)
-      node[1] = node[1].astype(np.int32)
-  PT.rm_children_from_label(zone, 'ZoneBC_t')
-  PT.rm_nodes_from_name(zone, ':CGNS#Distribution')
-  fs = I.newFlowSolution('MyOwnCoords', 'CellCenter', parent=zone)
-  I.newDataArray('CoordinateX', 1*np.ones(8), parent=fs)
-  I.newDataArray('CoordinateY', 2*np.ones(8), parent=fs)
-  I.newDataArray('CoordinateZ', 3*np.ones(8), parent=fs)
-  vtx_gnum = np.arange(3**3) + 1
-  cell_gnum = np.arange(2**3) + 1
-  MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
-
-  expected_vtx_co = np.array([0., 0. , 0. , 0.5, 0. , 0. , 1., 0. , 0. , 0., 0.5, 0. , 0.5, 0.5, 0. , 1., 0.5, 0.,
-                              0., 1. , 0. , 0.5, 1. , 0. , 1., 1. , 0. , 0., 0. , 0.5, 0.5, 0. , 0.5, 1., 0. , 0.5,
-                              0., 0.5, 0.5, 0.5, 0.5, 0.5, 1., 0.5, 0.5, 0., 1. , 0.5, 0.5, 1. , 0.5, 1., 1. , 0.5,
-                              0., 0. , 1. , 0.5, 0. , 1. , 1., 0. , 1. , 0., 0.5, 1. , 0.5, 0.5, 1. , 1., 0.5, 1.,
-                              0., 1. , 1. , 0.5, 1. , 1. , 1., 1. , 1. ])
-  expected_cell_co = np.array(
-    [0.25, 0.25, 0.25, 0.75, 0.25, 0.25, 0.25, 0.75, 0.25, 0.75, 0.75, 0.25, 0.25, 0.25,
-     0.75, 0.75, 0.25, 0.75, 0.25, 0.75, 0.75, 0.75, 0.75, 0.75])
-
-  
-  coords, gnum = ITP.get_point_cloud(zone, 'Vertex')
-  assert (gnum == vtx_gnum).all()
-  assert (coords == expected_vtx_co).all()
-
-  coords, gnum = ITP.get_point_cloud(zone, 'CellCenter')
-  assert (gnum == cell_gnum).all()
-  assert (coords == expected_cell_co).all()
-
-  coords, gnum = ITP.get_point_cloud(zone, 'MyOwnCoords')
-  assert (gnum == cell_gnum).all()
-  assert (coords == np.tile([1,2,3], 8)).all() #Repeat motif
-
-  with pytest.raises(RuntimeError):
-    coords, gnum = ITP.get_point_cloud(zone, 'FaceCenter')
-
-@mark_mpi_test(1)
-def test_register_src_part(sub_comm):
-  tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
-  zone = I.getZones(tree)[0]
-  for elt_node in PT.iter_nodes_from_label(zone, 'Elements_t'):
-    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
-      node = I.getNodeFromName1(elt_node, name)
-      node[1] = node[1].astype(np.int32)
-  PT.rm_children_from_label(zone, 'ZoneBC_t')
-  PT.rm_nodes_from_name(zone, ':CGNS#Distribution')
-  vtx_gnum = np.arange(3**3) + 1
-  cell_gnum = np.arange(2**3) + 1
-  MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
-  MT.newGlobalNumbering({'Element' : np.arange(36)+1}, parent = I.getNodeFromName(zone, 'NGonElements'))
-
-  nface_ec = [1,5,13,17,25,29,  2,6,-17,21,27,31,  3,7,14,18,-29,33,  4,8,-18,22,-31,35,
-              -5,9,15,19,26,30,   -6,10,-19,23,28,32,  -7,11,16,20,-30,34,  -8,12,-20,24,-32,36]
-
-  nface = I.newElements('NFace', 'NFACE', nface_ec, [36+1,36+8], parent=zone)
-  I.newDataArray('ElementStartOffset', [0,6,12,18,24,30,36,42,48], parent=nface)
-
-  mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=sub_comm)
-  mesh_loc.mesh_global_data_set(2)
-  keep_alive = list()
-  ITP.register_src_part(mesh_loc, 1, zone, keep_alive)
-  assert len(keep_alive) == 2
-
 @mark_mpi_test(2)
-def test_create_subset_numbering(sub_comm):
-  if sub_comm.Get_rank() == 0:
-    parent_numbering_l = [np.array([3,4,1,9], pdm_gnum_dtype), np.array([10,2], pdm_gnum_dtype)]
-    subset_l = [np.array([1,4], np.int32), np.empty(0, np.int32)]
-    expected_extracted =  [ np.array([3,9]), np.array([]) ]
-    expected_sub_lngn  =  [ np.array([1,5]), np.array([]) ]
-  elif sub_comm.Get_rank() == 1:
-    parent_numbering_l = [np.array([5,8,7,6], pdm_gnum_dtype)]
-    subset_l = [np.array([3,1,4], np.int32)]
-    expected_extracted =  [ np.array([7,5,6]) ]
-    expected_sub_lngn  =  [ np.array([4,2,3]) ]
-
-  sub_gnum = ITP.create_subset_numbering(subset_l, parent_numbering_l, sub_comm)
-
-  for i in range(len(parent_numbering_l)):
-    assert (sub_gnum['unlocated_extract_ln_to_gn'][i] == expected_extracted[i]).all()
-    assert (sub_gnum['unlocated_sub_ln_to_gn'][i] == expected_sub_lngn[i]).all()
-
-@mark_mpi_test(2)
-def test_create_interpolator(sub_comm):
-  #Here we just check if interpolator is created
+def test_create_src_to_tgt(sub_comm):
+  #Here we just check if src_to_tgt is created
   if sub_comm.Get_rank() == 0:
     pt = src_part_0
   else:
@@ -263,19 +172,47 @@ def test_create_interpolator(sub_comm):
 
   src_parts_per_dom = [zones]
   tgt_parts_per_dom = [[I.copyTree(zone) for zone in zones]]
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
-  assert one_or_two == 1
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Closest')
-  assert one_or_two == 1
+  excp_target = np.array([1,2,3,4]) if sub_comm.Get_rank() == 0 else np.array([5,6,7,8])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
+  assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
+  assert (src_to_tgt[0]['target'] == excp_target).all()
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Closest')
+  assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
+  assert (src_to_tgt[0]['target'] == excp_target).all()
 
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
       cx = I.getNodeFromName(zone, 'CoordinateX')
       cx[1] += .5
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
-  assert one_or_two == 2
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Location')
-  assert one_or_two == 1
+  excp_target = np.array([2,1,3,4]) if sub_comm.Get_rank() == 0 else np.array([6,5,8,7])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='LocationAndClosest')
+  assert (src_to_tgt[0]['target'] == excp_target).all()
+
+  excp_target = np.array([2,3]) if sub_comm.Get_rank() == 0 else np.array([6,8])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Location')
+  assert (src_to_tgt[0]['target'] == excp_target).all()
+
+def test_interpolator_reductions():
+  class Empty: #Used to create a interpolator like object
+    pass
+  fake_interpolator = Empty()
+
+  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,1,2,3])}]
+  data = np.array([1,2,3], np.int32)
+  out = ITP.Interpolator._reduce_single_val(fake_interpolator, 0, data)
+  assert out is data
+
+  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,4,6])}]
+  fake_interpolator.tgt_dist = [np.array([1,1,0,1,3,1])]
+  data = np.array([1,2, 10,11, 20,30], np.float64)
+  out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
+  assert (out == np.array([1.5, 10., 27.5])).all()
+
+  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,5,6])}]
+  fake_interpolator.tgt_dist = [np.array([1,1,0,1,3,1])]
+  data = np.array([1,2, 10,11, 20,30], np.float64)
+  with pytest.raises(AssertionError):
+    out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
 
 @mark_mpi_test(2)
 def test_interpolate_fields(sub_comm):
@@ -298,8 +235,10 @@ def test_interpolate_fields(sub_comm):
       cy[1] += .05
       cz[1] -= .05
 
-  interpolator, one_or_two = ITP.create_interpolator(src_parts_per_dom, tgt_parts_per_dom, sub_comm, location='Vertex')
-  ITP.interpolate_fields(interpolator, one_or_two, src_parts_per_dom, tgt_parts_per_dom, 'MySolution', 'Vertex')
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, location='Vertex')
+  interpolator = ITP.Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, 'Vertex', sub_comm)
+  interpolator.exchange_fields('MySolution')
+
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
       fs = I.getNodeFromName(tgt_zone, 'MySolution')
@@ -343,35 +282,6 @@ class Test_interpolation_api():
         assert PT.Subset.GridLocation(fs) == 'Vertex'
         assert (I.getNodeFromName(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
-  def test_interpolate_from_dom_names(self,sub_comm):
-    src_tree = I.newCGNSTree()
-    src_base = I.newCGNSBase(parent=src_tree)
-    tgt_tree = I.newCGNSTree()
-    tgt_base = I.newCGNSBase(parent=tgt_tree)
-
-    if sub_comm.Get_rank() == 0:
-      self.src_zone_0[0] = 'Source.P0.N0'
-      self.tgt_zone_0[0] = 'Target.P0.N0'
-      self.tgt_zone_1[0] = 'Target.P0.N1'
-      I._addChild(src_base, self.src_zone_0)
-      I._addChild(tgt_base, self.tgt_zone_0)
-      I._addChild(tgt_base, self.tgt_zone_1)
-      expected_cell_sol = [self.expected_cell_sol[k] for k in [0,1]]
-    elif sub_comm.Get_rank() == 1:
-      self.src_zone_1[0] = 'Source.P1.N0'
-      self.tgt_zone_2[0] = 'Target.P1.N0'
-      I._addChild(src_base, self.src_zone_1)
-      I._addChild(tgt_base, self.tgt_zone_2)
-      expected_cell_sol = [self.expected_cell_sol[k] for k in [2]]
-
-    ITP.interpolate_from_dom_names(src_tree, ['Source'], tgt_tree, ['Target'], sub_comm, \
-        ['MySolution'], 'CellCenter')
-
-    for i_tgt, tgt_zone in enumerate(I.getZones(tgt_tree)):
-      fs = I.getNodeFromName(tgt_zone, 'MySolution')
-      assert PT.Subset.GridLocation(fs) == 'CellCenter'
-      assert (I.getNodeFromName(fs, 'val')[1] == expected_cell_sol[i_tgt]).all()
-
   def test_interpolate_from_dom_part_trees(self,sub_comm):
     src_tree = I.newCGNSTree()
     src_base = I.newCGNSBase(parent=src_tree)
@@ -400,3 +310,4 @@ class Test_interpolation_api():
       fs = I.getNodeFromName(tgt_zone, 'MySolution')
       assert PT.Subset.GridLocation(fs) == 'Vertex'
       assert (I.getNodeFromName(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
+

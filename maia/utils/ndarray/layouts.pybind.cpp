@@ -89,6 +89,44 @@ interlaced_to_tuple_coords(py::array_t<fld_type, py::array::f_style>& np_xyz){
   return std::make_tuple(np_coord_x, np_coord_y, np_coord_z);
 }
 
+template<typename T>
+std::tuple<py::array_t<int, py::array::f_style>, py::array_t<T, py::array::f_style>>
+jagged_merge(py::array_t<int, py::array::f_style>& np_idx1,
+             py::array_t<T, py::array::f_style>&   np_array1,
+             py::array_t<int, py::array::f_style>& np_idx2,
+             py::array_t<T, py::array::f_style>&   np_array2) {
+
+  assert(np_idx1.size() == np_idx2.size());
+
+  int r_n_elt = np_idx1.size() - 1;
+  int r_size  = np_array1.size() + np_array2.size();
+  py::array_t<int, py::array::f_style> np_idx(r_n_elt + 1);
+  py::array_t<T,   py::array::f_style> np_array(r_size);
+
+  auto idx1   = np_idx1.unchecked<1>();
+  auto array1 = np_array1.template unchecked<1>();
+  auto idx2   = np_idx2.unchecked<1>();
+  auto array2 = np_array2.template unchecked<1>();
+
+  auto idx   = np_idx.mutable_unchecked<1>();
+  auto array = np_array.template mutable_unchecked<1>();
+  
+  idx[0] = 0;
+  int w_idx(0);
+  for (int i = 0; i < r_n_elt; ++i) {
+    for (int j = idx1[i]; j < idx1[i+1]; ++j) {
+      array[w_idx++] = array1[j];
+    }
+    for (int j = idx2[i]; j < idx2[i+1]; ++j) {
+      array[w_idx++] = array2[j];
+    }
+    idx[i+1] = idx[i] + (idx1[i+1]-idx1[i]) + (idx2[i+1]-idx2[i]);
+  }
+  assert (w_idx == r_size);
+
+  return std::make_tuple(np_idx, np_array);
+}
+
 
 
 
@@ -132,4 +170,19 @@ void register_layouts_module(py::module_& parent) {
   m.def("interlaced_to_tuple_coords", &interlaced_to_tuple_coords<double>,
         py::arg("np_xyz").noconvert());
 
+  m.def("jagged_merge", &jagged_merge<int32_t>,
+        py::arg("idx1"  ).noconvert(),
+        py::arg("array1").noconvert(),
+        py::arg("idx2"  ).noconvert(),
+        py::arg("array2").noconvert());
+  m.def("jagged_merge", &jagged_merge<int64_t>,
+        py::arg("idx1"  ).noconvert(),
+        py::arg("array1").noconvert(),
+        py::arg("idx2"  ).noconvert(),
+        py::arg("array2").noconvert());
+  m.def("jagged_merge", &jagged_merge<double>,
+        py::arg("idx1"  ).noconvert(),
+        py::arg("array1").noconvert(),
+        py::arg("idx2"  ).noconvert(),
+        py::arg("array2").noconvert());
 }

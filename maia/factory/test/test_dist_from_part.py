@@ -201,6 +201,33 @@ Zone.P2.N1 Zone_t:
     assert I.getNodeFromPath(dist_tree, 'BaseA/Zone') is not None
     assert I.getNodeFromPath(dist_tree, 'BaseB/Zone.withdot') is not None
 
+@mark_mpi_test(2)
+def test_get_parts_per_blocks(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    pt = """
+    BaseI CGNSBase_t:
+      ZoneA.P0.N0 Zone_t:
+      ZoneA.P0.N1 Zone_t:
+      ZoneB.P0.N0 Zone_t:
+    """
+  elif sub_comm.Get_rank() == 1:
+    pt = """
+    BaseI  CGNSBase_t:
+      ZoneA.P1.N0 Zone_t:
+    BaseII CGNSBase_t:
+      ZoneA.P1.N0 Zone_t:
+    """
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  part_per_blocks = DFP.get_parts_per_blocks(part_tree, sub_comm)
+  if sub_comm.Get_rank() == 0:
+    assert [I.getName(z) for z in part_per_blocks['BaseI/ZoneA']] == ['ZoneA.P0.N0', 'ZoneA.P0.N1']
+    assert [I.getName(z) for z in part_per_blocks['BaseI/ZoneB']] == ['ZoneB.P0.N0']
+    assert [I.getName(z) for z in part_per_blocks['BaseII/ZoneA']] == []
+  elif sub_comm.Get_rank() == 1:
+    assert [I.getName(z) for z in part_per_blocks['BaseI/ZoneA']] == ['ZoneA.P1.N0']
+    assert [I.getName(z) for z in part_per_blocks['BaseI/ZoneB']] == []
+    assert [I.getName(z) for z in part_per_blocks['BaseII/ZoneA']] == ['ZoneA.P1.N0']
+
 
 @mark_mpi_test(3)
 def test_recover_dist_tree_ngon(sub_comm):
