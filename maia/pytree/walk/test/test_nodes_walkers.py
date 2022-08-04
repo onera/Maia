@@ -176,12 +176,12 @@ FamilyBCDataSet FamilyBCDataSet_t:
   ]
   patterns = [check_name(name) for name in names]
 
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   # print(f"results = {results}")
   assert(not bool(results))
 
-  root = PT.get_node_from_label(tree, "ReferenceState_t")
+  root = PT.request_node_from_label(tree, "ReferenceState_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   # print(f"results = {results}")
   assert([PT.get_name(n) for n in results] == names)
@@ -191,7 +191,7 @@ FamilyBCDataSet FamilyBCDataSet_t:
     {'predicate': lambda n: PD.match_name(n, name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   # print(f"results = {results}")
   assert([PT.get_name(n) for n in results] == names)
@@ -201,7 +201,7 @@ FamilyBCDataSet FamilyBCDataSet_t:
     {'predicate': lambda n: PD.match_name(n, name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   # print(f"results = {results}")
   assert([PT.get_name(n) for n in results] == names)
@@ -211,7 +211,7 @@ FamilyBCDataSet FamilyBCDataSet_t:
     {'predicate': lambda n: PD.match_name(n, name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   # print(f"results = {results}")
   assert([PT.get_name(n) for n in results] == names)

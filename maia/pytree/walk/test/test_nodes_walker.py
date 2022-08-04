@@ -296,37 +296,37 @@ Base CGNSBase_t:
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   # Test depth max
-  root = PT.get_node_from_label(tree, "Family_t")
+  root = PT.request_node_from_label(tree, "Family_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "RefStateFamilyBCDataSet"), depth=[1,2], search=search, explore=explore, caching=caching)()
   assert(not bool(list(results)))
 
-  root = PT.get_node_from_label(tree, "Family_t")
+  root = PT.request_node_from_label(tree, "Family_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "RefStateFamilyBCDataSet"), depth=[1,3], search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
 
   # Test depth min
-  root = PT.get_node_from_label(tree, "Family_t")
+  root = PT.request_node_from_label(tree, "Family_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[2,4], search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["FamilyBCDataSet"])
 
-  root = PT.get_node_from_label(tree, "Family_t")
+  root = PT.request_node_from_label(tree, "Family_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[2,None], search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["FamilyBCDataSet"])
 
-  root = PT.get_node_from_label(tree, "Family_t")
+  root = PT.request_node_from_label(tree, "Family_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,4], search=search, explore=explore, caching=caching)()
   assert(not bool(list(results)))
 
-  root = PT.get_node_from_label(tree, "Family_t")
+  root = PT.request_node_from_label(tree, "Family_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "FamilyBCDataSet"), depth=[3,None], search=search, explore=explore, caching=caching)()
   assert(not bool(list(results)))
 
   # Test change root
-  root = PT.get_node_from_label(tree, "Family_t")
+  root = PT.request_node_from_label(tree, "Family_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "Density"), depth=[3,4], search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["Density"])
 
-  root = PT.get_node_from_label(tree, "CGNSBase_t")
+  root = PT.request_node_from_label(tree, "CGNSBase_t")
   results = PT.NodesWalker(root, lambda n: PD.match_name(n, "Density"), depth=[3,4], search=search, explore=explore, caching=caching)()
   assert(not bool(list(results)))
 
@@ -345,25 +345,25 @@ FamilyBCDataSet FamilyBCDataSet_t:
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  check_name = lambda name : lambda n: PT.get_node_from_name(n, name, depth=1) is not None
+  check_name = lambda name : lambda n: PT.request_node_from_name(n, name, depth=1) is not None
   pattern  = lambda n : PT.get_label(n) == 'ReferenceState_t' and [check_name(i) for i in ["Density", "MomentumX"]]
 
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
   results = list(PT.NodesWalker(root, pattern, depth=0, search=search, explore=explore, caching=caching)())
   assert(not bool(results))
 
-  root = PT.get_node_from_label(tree, "ReferenceState_t")
+  root = PT.request_node_from_label(tree, "ReferenceState_t")
   results = PT.NodesWalker(root, pattern, depth=0, search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
 
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
   results = PT.NodesWalker(root, pattern, depth=1, search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
 
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
   results = PT.NodesWalker(root, pattern, depth=None, search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])
 
-  root = PT.get_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
   results = PT.NodesWalker(root, pattern, search=search, explore=explore, caching=caching)()
   assert([PT.get_name(n) for n in results] == ["RefStateFamilyBCDataSet"])

@@ -21,7 +21,7 @@ def build_paths_by_label_bcdataset(paths_by_label, bc, bc_path):
 def build_paths_by_label_zone(paths_by_label, zone, zone_path):
   """
   """
-  zone_bc = PT.request_node_from_label(zone, CGL.ZoneBC_t)
+  zone_bc = PT.get_node_from_label(zone, CGL.ZoneBC_t)
   if zone_bc is not None:
     zone_bc_path = f"{zone_path}/{I.getName(zone_bc)}"
     CGR.add_path(paths_by_label, zone_bc_path, CGL.ZoneBC_t.name)
@@ -54,7 +54,7 @@ def build_paths_by_label_family(paths_by_label, parent, parent_path):
       family_path = f"{parent_path}/{PT.get_name(family)}"
       CGR.add_path(paths_by_label, family_path, CGL.Family_t.name)
 
-      family_bc = PT.request_node_from_label(family, CGL.FamilyBC_t, depth=1)
+      family_bc = PT.get_node_from_label(family, CGL.FamilyBC_t, depth=1)
       if family_bc is not None:
         family_bc_path = f"{family_path}/{I.getName(family_bc)}"
         CGR.add_path(paths_by_label, family_bc_path, CGL.FamilyBC_t.name)

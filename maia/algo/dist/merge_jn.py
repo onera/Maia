@@ -198,7 +198,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 # TODO move to sids module, doc, unit test
 #(take the one of _shift_cgns_subsets, and for _shift_cgns_subsets, make a trivial test)
 def all_nodes_with_point_list(zone, pl_location):
-  has_pl = lambda n: PT.request_child_from_name(n, 'PointList') is not None \
+  has_pl = lambda n: PT.get_child_from_name(n, 'PointList') is not None \
                      and PT.Subset.GridLocation(n) == pl_location
   return itertools.chain(
       PT.getChildrenFromPredicate(zone, has_pl)                      , #FlowSolution_t, ZoneSubRegion_t, ...

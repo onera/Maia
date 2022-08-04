@@ -45,8 +45,8 @@ def belongs_to_family(n, target_family, allow_additional=False):
   If allow_additional is True, also return True if node n has a AdditionalFamilyName_t child
   whose value is target_family
   """
-  from .walkers_api import requestNodeFromPredicate, iterNodesFromPredicate
-  family_name_n = requestNodeFromPredicate(n, lambda m: match_cgk_label(m, CGK.Label.FamilyName_t), depth=1)
+  from .walkers_api import getNodeFromPredicate, iterNodesFromPredicate
+  family_name_n = getNodeFromPredicate(n, lambda m: match_cgk_label(m, CGK.Label.FamilyName_t), depth=1)
   if family_name_n and I.getValue(family_name_n) == target_family:
     return True
   if allow_additional:

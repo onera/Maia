@@ -10,7 +10,7 @@ def get_ngon_pe_local(ngon_node):
   If PE array was already local, no copy is done
   """
   assert sids.Element.CGNSName(ngon_node) == 'NGON_n'
-  pe_n = PT.request_child_from_name(ngon_node, "ParentElements")
+  pe_n = PT.get_child_from_name(ngon_node, "ParentElements")
   if pe_n is None:
     raise RuntimeError(f"ParentElements node not found on ngon node {ngon_node[0]}")
   pe_val = pe_n[1]

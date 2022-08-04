@@ -169,11 +169,11 @@ class Test_multiple_labels_exchange:
     for part_zone in part_zones:
       assert I.getNodeFromPath(part_zone, 'FlowSolution/RankId')   is not None
       assert I.getNodeFromPath(part_zone, 'FlowSolution/CstField') is None
-      bc_amont = PT.request_node_from_name_and_label(part_zone, 'amont', 'BC_t')
+      bc_amont = PT.get_node_from_name_and_label(part_zone, 'amont', 'BC_t')
       if bc_amont is not None:
         assert I.getNodeFromName(bc_amont, 'BCId') is not None
         assert I.getNodeFromName(bc_amont, 'FaceId') is not None
-      bc_aval = PT.request_node_from_name_and_label(part_zone, 'aval', 'BC_t')
+      bc_aval = PT.get_node_from_name_and_label(part_zone, 'aval', 'BC_t')
       if bc_aval is not None:
         assert I.getNodeFromName(bc_aval, 'BCId') is None
         assert I.getNodeFromName(bc_aval, 'FaceId') is not None
@@ -183,8 +183,8 @@ class Test_multiple_labels_exchange:
         exclude_dict = {'FlowSolution_t' : ['*']}) #Everything, excepted FS
     for part_zone in part_zones:
       assert I.getNodeFromPath(part_zone, 'FlowSolution') is None
-      bc_amont = PT.request_node_from_name_and_label(part_zone, 'amont', 'BC_t')
-      bc_aval  = PT.request_node_from_name_and_label(part_zone, 'aval',  'BC_t')
+      bc_amont = PT.get_node_from_name_and_label(part_zone, 'amont', 'BC_t')
+      bc_aval  = PT.get_node_from_name_and_label(part_zone, 'aval',  'BC_t')
       for bc in [bc_amont, bc_aval]:
         if bc is not None: #BC can be absent from partition
           assert I.getNodeFromName(bc, 'BCId') is not None
@@ -197,8 +197,8 @@ class Test_multiple_labels_exchange:
     MT.dist_to_part.dist_tree_to_part_tree_only_labels(dist_tree, part_tree, ['BCDataSet_t'], sub_comm)
     assert I.getNodeFromType(part_tree, 'FlowSolution_t') is None
     for part in I.getZones(part_tree):
-      bc_amont = PT.request_node_from_name_and_label(part, 'amont', 'BC_t')
-      bc_aval  = PT.request_node_from_name_and_label(part, 'aval',  'BC_t')
+      bc_amont = PT.get_node_from_name_and_label(part, 'amont', 'BC_t')
+      bc_aval  = PT.get_node_from_name_and_label(part, 'aval',  'BC_t')
       for bc in [bc_amont, bc_aval]:
         if bc is not None: #BC can be absent from partition
           assert I.getNodeFromName(bc, 'BCId') is not None

@@ -112,7 +112,7 @@ def test_duplicate_360(sub_comm, write_output):
 
   # There is no more periodic joins in the tree
   for gc in PT.iter_nodes_from_label(dist_tree, 'GridConnectivity_t'):
-    assert PT.request_node_from_label(gc, 'Periodic_t') is None
+    assert PT.get_node_from_label(gc, 'Periodic_t') is None
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)

@@ -30,14 +30,14 @@ def _convert_to_callable(predicates):
 # ---------------------------------------------------------------------------- #
 # API for NodeWalker
 # ---------------------------------------------------------------------------- #
-def request_node_from_predicate(root, predicate, **kwargs):
+def get_node_from_predicate(root, predicate, **kwargs):
   _predicate = auto_predicate(predicate)
   walker = NodeWalker(root, _predicate, **kwargs)
   return walker()
 
-def get_node_from_predicate(root, predicate, *args, **kwargs):
+def request_node_from_predicate(root, predicate, *args, **kwargs):
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
-  node = request_node_from_predicate(root, predicate, *args, **kwargs)
+  node = get_node_from_predicate(root, predicate, *args, **kwargs)
   if node is not None:
     return node
   default = kwargs.get('default', None)

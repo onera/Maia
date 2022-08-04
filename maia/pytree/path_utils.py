@@ -66,7 +66,7 @@ def paths_to_tree(paths, root_name='CGNSTree'):
     for path in root[__VALUE__]:
       first = path.split('/')[0]
       others = '/'.join(path.split('/')[1:])
-      node = WAPI.request_node_from_predicate(root, lambda n : predicate.match_name(n, first), depth=[1,1])
+      node = WAPI.get_node_from_predicate(root, lambda n : predicate.match_name(n, first), depth=[1,1])
       if node is None:
         if others:
           root[__CHILDREN__].append([first, [others], [], None])
