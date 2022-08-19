@@ -2,10 +2,9 @@
 #include "maia/__old/utils/cgns_tree_examples/unstructured_base.hpp"
 #include "cpp_cgns/sids/creation.hpp"
 #include "maia/__old/generate/from_structured_grid.hpp"
+#include "std_e/future/flatten.hpp"
 
 // TODO move {
-#include "range/v3/view/concat.hpp"
-#include "range/v3/view/join.hpp"
 #include "std_e/algorithm/iota.hpp"
 
 template<class connectivity_range_type> auto
@@ -14,11 +13,9 @@ convert_to_ngons(const connectivity_range_type& cs) {
   constexpr int N = std::tuple_size_v<connectivity_type>;
   std::vector<cgns::I4> eso(cs.size()+1);
   std_e::exclusive_iota(begin(eso),end(eso),0,N);
-  // As of march 2019, ranges::view::join_view.size() is lacking an overload in case the inner range is of fixed size.
-  // The resulting join_view is then not a sized_view, which can be detrimental for performance
   return std::make_pair(
     std::move(eso),
-    ranges::views::all(cs) | ranges::views::join
+    std_e::flat_view(cs)
   );
 }
 // END TODO }
