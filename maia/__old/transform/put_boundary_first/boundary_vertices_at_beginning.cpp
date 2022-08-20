@@ -3,8 +3,6 @@
 
 #include "maia/utils/log/log.hpp"
 #include "std_e/algorithm/id_permutations.hpp"
-#include "range/v3/view/indices.hpp"
-#include "range/v3/range/conversion.hpp"
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 
 

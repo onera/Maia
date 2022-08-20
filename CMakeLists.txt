@@ -102,14 +102,6 @@ if (NOT pybind11_FOUND)
     message(FATAL_ERROR "Pybind11 was not found by find_package() and ${PROJECT_NAME}_ENABLE_FETCH_PYBIND is OFF")
   endif()
 endif()
-### range-v3 ###
-FetchContent_Declare(
-  range-v3
-  GIT_REPOSITORY https://github.com/ericniebler/range-v3
-  GIT_TAG        0.10.0
-)
-FetchContent_MakeAvailable(range-v3)
-project_add_dependency(range-v3)
 
 ### ParaDiGM ###
 if (NOT ${PROJECT_NAME}_BUILD_EMBEDDED_PDM)
@@ -181,7 +173,6 @@ target_link_libraries(${PROJECT_NAME}
     MPI::MPI_CXX
     std_e::std_e
     cpp_cgns::cpp_cgns
-    range-v3::range-v3
     pdm::pdm_shared
     Mpi4Py::Mpi4Py
 )
