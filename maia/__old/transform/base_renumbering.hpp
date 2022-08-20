@@ -8,11 +8,8 @@
 #include "cpp_cgns/tree_manip.hpp"
 #include "maia/__old/utils/neighbor_graph.hpp"
 #include "maia/__old/transform/donated_point_lists.hpp"
-
-#include "range/v3/view/group_by.hpp"
-#include "range/v3/algorithm/sort.hpp"
-#include "range/v3/action/sort.hpp"
-#include "range/v3/view/zip.hpp"
+#include "std_e/future/zip.hpp"
+#include "std_e/future/ranges/chunk_by.hpp"
 
 using namespace maia; // TODO
 
@@ -82,11 +79,13 @@ symmetrize_grid_connectivities(tree& b, MPI_Comm comm) -> void {
 
   for (tree& z : zs) {
     tree& zgc = cgns::get_child_by_name(z,"ZoneGridConnectivity");
-    auto z_pls  = find_point_list_by_zone_donor(pls_by_zone ,name(z)) | ranges::actions::sort(less_receiver_zone);
-    auto z_plds = find_point_list_by_zone_donor(plds_by_zone,name(z)) | ranges::actions::sort(less_receiver_zone);
-    auto pls_by_recv_z  = z_pls  | ranges::views::group_by(eq_receiver_zone);
-    auto plds_by_recv_z = z_plds | ranges::views::group_by(eq_receiver_zone);
-    auto gc_by_recv_z = ranges::views::zip(pls_by_recv_z,plds_by_recv_z);
+    auto z_pls  = find_point_list_by_zone_donor(pls_by_zone ,name(z));
+    auto z_plds = find_point_list_by_zone_donor(plds_by_zone,name(z));
+    std::ranges::sort(z_pls ,less_receiver_zone);
+    std::ranges::sort(z_plds,less_receiver_zone);
+    auto pls_by_recv_z  = z_pls  | std_e::chunk_by(eq_receiver_zone);
+    auto plds_by_recv_z = z_plds | std_e::chunk_by(eq_receiver_zone);
+    auto gc_by_recv_z = std_e::zip(pls_by_recv_z,plds_by_recv_z);
     auto z_gcs = cgns::get_nodes_by_matching(zgc,"GridConnectivity_t");
     for (const auto& gcs : gc_by_recv_z) {
       std::string receiver_z_name = gcs.first[0].receiver_z_name;
