@@ -10,6 +10,7 @@
 #include "std_e/algorithm/algorithm.hpp"
 #include "maia/utils/parallel/exchange/multi_block_to_part.hpp"
 #include <algorithm>
+#include "std_e/log.hpp"
 
 using namespace cgns;
 
@@ -25,10 +26,7 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
   tree& z = zs[0];
 
   I4 n_vtx = VertexSize_U<I4>(z);
-  I4 n_vtx_owned = n_vtx;
-  if (cgns::has_node(z,":CGNS#LocalNumbering/VertexSizeOwned")) {
-    n_vtx_owned = get_node_value_by_matching<I4>(z,":CGNS#LocalNumbering/VertexSizeOwned")[0];
-  }
+  I4 n_vtx_owned = n_vtx = get_node_value_by_matching<I4>(z,":CGNS#LocalNumbering/VertexSizeOwned")[0];;
   auto vtx_distri = distribution_from_dsizes(n_vtx_owned, comm);
   auto partial_vtx_distri = full_to_partial_distribution(vtx_distri,comm);
   std::vector<I4> vtx_distri_mem(begin(partial_vtx_distri),end(partial_vtx_distri));
