@@ -30,30 +30,31 @@ make_ElementConnectivity_subrange(const cgns::tree& elt_section, I start, I fini
 template<class I> auto
 convert_to_simple_exterior_boundary_connectivities(const tree& ngons, I n_tri) -> std::pair<std::vector<tree>,I> {
   I n_face = ElementSizeBoundary(ngons);
+  I n_quad = n_face-n_tri;
   std::vector<tree> face_sections;
 
   auto tris  = make_ElementConnectivity_subrange(ngons, I(0),n_tri );
   if (tris.size() > 0) {
-    face_sections.emplace_back(
-      cgns::new_Elements(
-        "TRI_3",
-        cgns::TRI_3,
-        std::vector(begin(tris),end(tris)),
-        I(1),n_tri
-      )
+    tree tri_node = cgns::new_Elements(
+      "TRI_3",
+      cgns::TRI_3,
+      std::vector(begin(tris),end(tris)),
+      I(1),n_tri
     );
+    emplace_child(tri_node,cgns::new_ElementDistribution(std::vector<I>{0,n_tri,n_tri}));
+    face_sections.emplace_back(std::move(tri_node));
   }
 
   auto quads = make_ElementConnectivity_subrange(ngons, n_tri,n_face);
   if (quads.size() > 0) {
-    face_sections.emplace_back(
-      cgns::new_Elements(
-        "QUAD_4",
-        cgns::QUAD_4,
-        std::vector(begin(quads),end(quads)),
-        n_tri+1,n_face
-      )
+    tree quad_node = cgns::new_Elements(
+      "QUAD_4",
+      cgns::QUAD_4,
+      std::vector(begin(quads),end(quads)),
+      n_tri+1,n_face
     );
+    emplace_child(quad_node,cgns::new_ElementDistribution(std::vector<I>{0,n_quad,n_quad}));
+    face_sections.emplace_back(std::move(quad_node));
   }
 
   return { std::move(face_sections) , n_face+1 };
@@ -96,12 +97,14 @@ convert_to_tet_vtx(const auto& tet_face, const tree& ngons, I first_cell_id, I n
     *d_first++ = other_vertex;
   }
 
-  return cgns::new_Elements(
+  tree tet_node = cgns::new_Elements(
     "TETRA_4",
     cgns::TETRA_4,
     std::move(tet_vtx),
     next_avail_id,next_avail_id+n_tet-1
   );
+  emplace_child(tet_node,cgns::new_ElementDistribution(std::vector<I>{0,n_tet,n_tet}));
+  return tet_node;
 }
 template<class I> auto
 convert_to_pyra_vtx(const auto& pyra_face, const tree& ngons, I first_cell_id, I next_avail_id) -> tree {
@@ -136,12 +139,14 @@ convert_to_pyra_vtx(const auto& pyra_face, const tree& ngons, I first_cell_id, I
     }
   }
 
-  return cgns::new_Elements(
+  tree pyra_node = cgns::new_Elements(
     "PYRA_5",
     cgns::PYRA_5,
     std::move(pyra_vtx),
     next_avail_id,next_avail_id+n_pyra-1
   );
+  emplace_child(pyra_node,cgns::new_ElementDistribution(std::vector<I>{0,n_pyra,n_pyra}));
+  return pyra_node;
 }
 
 
@@ -220,12 +225,14 @@ convert_to_prism_vtx(const auto& prism_face, const tree& ngons, I first_cell_id,
     *d_first++ = node_above(tri[2],quads);
   }
 
-  return cgns::new_Elements(
+  tree penta_node = cgns::new_Elements(
     "PENTA_6",
     cgns::PENTA_6,
     std::move(prism_vtx),
     next_avail_id,next_avail_id+n_prism-1
   );
+  emplace_child(penta_node,cgns::new_ElementDistribution(std::vector<I>{0,n_prism,n_prism}));
+  return penta_node;
 }
 
 template<class Connecivity_type_0, class Connecivity_type_1> auto
@@ -290,12 +297,14 @@ convert_to_hexa_vtx(const auto& hexa_face, const tree& ngons, I first_cell_id, I
     *d_first++ = node_above(quad_0[3],side_quads);
   }
 
-  return cgns::new_Elements(
+  tree hex_node = cgns::new_Elements(
     "HEXA_8",
     cgns::HEXA_8,
     std::move(hexa_vtx),
     next_avail_id,next_avail_id+n_hexa-1
   );
+  emplace_child(hex_node,cgns::new_ElementDistribution(std::vector<I>{0,n_hexa,n_hexa}));
+  return hex_node;
 }
 
 template<class I> auto

@@ -202,10 +202,11 @@ pyra_prism_permutation(auto& cell_face, const auto& face_vtx, I first_face_id) -
   return {perm,partition_index};
 }
 template<class I> auto
-partition_cells_pyra_prism(auto& cell_face, auto& face_cell, I first_pyra_id, const auto& face_vtx, I first_face_id, I inf, I sup) -> I {
+partition_cells_pyra_prism(auto& cell_face, auto& face_cell, I first_pyra_id, const auto& face_vtx, I first_face_id) -> I {
   auto [perm,first_prism_index] = pyra_prism_permutation(cell_face,face_vtx,first_face_id);
   std_e::permute_vblock_range(cell_face,perm);
-  inv_permute_parent_elements_sub(face_cell,perm,first_pyra_id,inf,sup);
+  I n_pyra_prism = cell_face.size();
+  inv_permute_parent_elements_sub(face_cell,perm,first_pyra_id,n_pyra_prism);
   return first_prism_index;
 }
 
@@ -221,14 +222,14 @@ partition_cells_into_simple_types(tree& ngons, tree& nfaces) -> std::vector<I> {
   auto cell_face = make_connectivity_range<I>(nfaces);
   auto face_cell = ParentElements<I>(ngons);
 
-  // 1. apply partition // TODO also apply to PointList (see e.g. partition_bnd_faces_by_number_of_vertices)
+  // 1. apply partition // NOTE: not applied to PointList (so, wrong if PL for GridLoc==CellCenter) TODO do it! (see e.g. partition_bnd_faces_by_number_of_vertices)
   /// 1.0. first partition by number of faces
   auto [last_tet_index,last_pyra_prism_index] = partition_cells_by_number_of_faces(cell_face,face_cell,first_cell_id);
   /// 1.1. still need to distinguish pyra/prism
   auto pyra_prism_cell_face = make_connectivity_subrange(nfaces,last_tet_index,last_pyra_prism_index);
   auto first_pyra_id = first_cell_id+last_tet_index;
 
-  I first_prism_among_pyra_prism_index = partition_cells_pyra_prism(pyra_prism_cell_face,face_cell,first_pyra_id,face_vtx,first_face_id,last_tet_index,last_pyra_prism_index);
+  I first_prism_among_pyra_prism_index = partition_cells_pyra_prism(pyra_prism_cell_face,face_cell,first_pyra_id,face_vtx,first_face_id);
   I first_prism_index = last_tet_index + first_prism_among_pyra_prism_index;
   return { 0,  last_tet_index,  first_prism_index,  last_pyra_prism_index,  cell_face.size() };
 }

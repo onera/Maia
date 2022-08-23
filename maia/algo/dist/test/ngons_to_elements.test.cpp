@@ -59,4 +59,65 @@ PYBIND_TEST_CASE("convert_zone_to_std_elements") {
   CHECK( hexa_range    == std::vector<I4>{17,18} );
   CHECK( hexa_connec   == std::vector<I4>{2,5,4,1,7,10,9,6,  6,7,10,9,11,12,15,14} );
 }
+PYBIND_TEST_CASE("convert_zone_to_std_elements - all elt kinds") {
+  // setup
+  std::string file_name = maia::mesh_dir+"hex_prism_pyra_tet.yaml";
+  tree t = maia::file_to_dist_tree(file_name,MPI_COMM_SELF);
+  tree& z = cgns::get_node_by_matching(t,"Base/Zone");
+  maia::elements_to_ngons(z,MPI_COMM_SELF); // Note: we are not testing that, its just a way to get an ngon test
+
+  // apply tested function
+  maia::convert_zone_to_std_elements(z);
+
+  // check
+  auto tri_elt_type = cgns::get_node_value_by_matching<I4>(z,"TRI_3")[0];
+  auto tri_range    = cgns::get_node_value_by_matching<I4>(z,"TRI_3/ElementRange");
+  auto tri_connec   = cgns::get_node_value_by_matching<I4>(z,"TRI_3/ElementConnectivity");
+
+  auto quad_elt_type = cgns::get_node_value_by_matching<I4>(z,"QUAD_4")[0];
+  auto quad_range    = cgns::get_node_value_by_matching<I4>(z,"QUAD_4/ElementRange");
+  auto quad_connec   = cgns::get_node_value_by_matching<I4>(z,"QUAD_4/ElementConnectivity");
+
+  auto tetra_elt_type = cgns::get_node_value_by_matching<I4>(z,"TETRA_4")[0];
+  auto tetra_range    = cgns::get_node_value_by_matching<I4>(z,"TETRA_4/ElementRange");
+  auto tetra_connec   = cgns::get_node_value_by_matching<I4>(z,"TETRA_4/ElementConnectivity");
+
+  auto penta_elt_type = cgns::get_node_value_by_matching<I4>(z,"PENTA_6")[0];
+  auto penta_range    = cgns::get_node_value_by_matching<I4>(z,"PENTA_6/ElementRange");
+  auto penta_connec   = cgns::get_node_value_by_matching<I4>(z,"PENTA_6/ElementConnectivity");
+
+  auto pyra_elt_type = cgns::get_node_value_by_matching<I4>(z,"PYRA_5")[0];
+  auto pyra_range    = cgns::get_node_value_by_matching<I4>(z,"PYRA_5/ElementRange");
+  auto pyra_connec   = cgns::get_node_value_by_matching<I4>(z,"PYRA_5/ElementConnectivity");
+
+  auto hexa_elt_type = cgns::get_node_value_by_matching<I4>(z,"HEXA_8")[0];
+  auto hexa_range    = cgns::get_node_value_by_matching<I4>(z,"HEXA_8/ElementRange");
+  auto hexa_connec   = cgns::get_node_value_by_matching<I4>(z,"HEXA_8/ElementConnectivity");
+
+  CHECK( tri_elt_type == cgns::TRI_3 );
+  CHECK( tri_range    == std::vector<I4>{1,6} );
+  CHECK( tri_connec   == std::vector<I4>{6,11, 9,  8,10,11,  6, 7,11,
+                                         7, 8,11,  2, 5, 3,  9,11,10} );
+
+  CHECK( quad_elt_type == cgns::QUAD_4 );
+  CHECK( quad_range    == std::vector<I4>{7,12} );
+  CHECK( quad_connec   == std::vector<I4>{1,6,9,4,  3,5,10,8,  1,2,7,6,
+                                          2,3,8,7,  4,9,10,5,  1,4,5,2} );
+
+  CHECK( tetra_elt_type == cgns::TETRA_4 );
+  CHECK( tetra_range    == std::vector<I4>{13,13} );
+  CHECK( tetra_connec   == std::vector<I4>{7,8,10,11} );
+
+  CHECK( pyra_elt_type == cgns::PYRA_5 );
+  CHECK( pyra_range    == std::vector<I4>{14,14} );
+  CHECK( pyra_connec   == std::vector<I4>{6,7,10,9,11} );
+
+  CHECK( penta_elt_type == cgns::PENTA_6 );
+  CHECK( penta_range    == std::vector<I4>{15,15} );
+  CHECK( penta_connec   == std::vector<I4>{3,5,2,8,10,7} );
+
+  CHECK( hexa_elt_type == cgns::HEXA_8 );
+  CHECK( hexa_range    == std::vector<I4>{16,16} );
+  CHECK( hexa_connec   == std::vector<I4>{2,5,4,1,7,10,9,6} );
+}
 #endif // C++>17
