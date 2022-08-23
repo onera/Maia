@@ -73,7 +73,7 @@ def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
   I.newDataArray('CoordinateY', data['np_vtx_coord'][1::3], parent=grid_c)
   I.newDataArray('CoordinateZ', data['np_vtx_coord'][2::3], parent=grid_c)
 
-def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element"):
+def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element", keep_empty_sections=False):
   """
   """
   ngon_zone = [e for e in PT.iter_children_from_label(d_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n'] != []
@@ -108,7 +108,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
 
   else:
     # if vtx are ordered with:
-    #   1. unique first 
+    #   1. unique first
     #   2. then non-unique but owned
     #   3. then non-unique and non-owned ("ghost")
     # Then we keep this information in the tree
@@ -137,7 +137,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element")
         n_elt_cum_d = 0
       elt = elt_section_nodes[i_section]
       n_i_elt = section['np_numabs'].size
-      if n_i_elt > 0:
+      if n_i_elt > 0 or keep_empty_sections:
         elt_n = I.createUniqueChild(p_zone, I.getName(elt), 'Elements_t', value=I.getValue(elt))
         I.newDataArray('ElementConnectivity', section['np_connec']       , parent=elt_n)
         I.newPointRange('ElementRange'      , [n_elt_cum+1, n_elt_cum+n_i_elt], parent=elt_n)
@@ -177,7 +177,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     if options['dump_pdm_output']:
       dump_pdm_output(part_zone, dims, data)
     pdm_vtx_to_cgns_grid_coordinates(part_zone, dims, data)
-    pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data, options['output_connectivity'])
+    pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data, options['output_connectivity'],options['keep_empty_sections'])
 
     output_loc = options['part_interface_loc']
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'

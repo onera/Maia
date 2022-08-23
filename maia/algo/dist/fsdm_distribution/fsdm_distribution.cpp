@@ -10,7 +10,6 @@
 #include "std_e/algorithm/algorithm.hpp"
 #include "maia/utils/parallel/exchange/multi_block_to_part.hpp"
 #include <algorithm>
-#include "std_e/log.hpp"
 
 using namespace cgns;
 
