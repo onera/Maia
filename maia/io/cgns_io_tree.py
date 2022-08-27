@@ -73,6 +73,7 @@ def file_to_dist_tree(filename, comm, distribution_policy='uniform'):
   """
   Distributed load of filename. Return a dist_tree.
   """
+  filename = str(filename)
   if os.path.splitext(filename)[1] == '.yaml':
     if comm.Get_rank() == 0:
       with open(filename, 'r') as f:
@@ -97,6 +98,7 @@ def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None):
   """
   Distributed write of cgns_tree into filename.
   """
+  filename = str(filename)
   if hdf_filter is None:
     hdf_filter = dict()
     create_tree_hdf_filter(dist_tree, hdf_filter)
