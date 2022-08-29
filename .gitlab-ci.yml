@@ -109,6 +109,8 @@ job:deploy_doc:
 
 job:deploy_spiro:
   stage: deploy
+  tags: 
+    - spiro
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   before_script: 
