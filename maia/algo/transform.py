@@ -9,10 +9,34 @@ def transform_zone(zone,
                    rotation_angle  = np.zeros(3),
                    translation     = np.zeros(3),
                    apply_to_fields = False):
-  """
-  Apply the affine transformation to the coordinates of the given zone.
-  If apply_to_fields is True, also rotate all the vector fields in CGNS nodes of type
-  "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t"
+  """Apply the affine transformation to the coordinates of the given zone.
+
+  Input zone can be either structured or unstructured, but must have cartesian coordinates.
+  Transformation is defined by
+
+  .. math::
+     \\tilde v = R \\cdot (v - c) + c + t
+
+  where c, t are the rotation center and translation vector and R is the rotation matrix.
+
+  Input zone is modified inplace.
+
+  Args:
+    zone (CGNSTree): Zone to transform
+    duplicated_zone_name (str): name of the output zone
+    rotation_center (array): center coordinates of the rotation
+    rotation_angler (array): angles of the rotation
+    translation (array):  translation vector components
+    apply_to_fields (bool, optional) : 
+        if True, apply the rotation vector to the vectorial fields found under 
+        following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
+        Defaults to False.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #transform_zone@start
+        :end-before: #transform_zone@end
+        :dedent: 2
   """
   # Transform coords
   for grid_co in PT.iter_children_from_label(zone, "GridCoordinates_t"):

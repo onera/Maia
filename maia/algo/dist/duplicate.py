@@ -13,49 +13,6 @@ def _get_gc_root_name(gc_name):
   idx = gc_name.rfind('.D') #Find last occurence
   return gc_name[:idx] if idx > -1 else gc_name
 
-def duplicate_zone_with_transformation(zone, duplicated_zone_name,
-                                       rotation_center = np.zeros(3),
-                                       rotation_angle  = np.zeros(3),
-                                       translation     = np.zeros(3),
-                                       apply_to_fields = False):
-  """Create a new zone by applying the prescribed transformation to the input zone.
-
-  Input zone can be either structured or unstructured, but must have cartesian coordinates.
-  Transformation is defined by
-
-  .. math::
-     \\tilde v = R \\cdot (v - c) + c + t
-
-  where c, t are the rotation center and translation vector and R is the rotation matrix.
-
-  Args:
-    zone (CGNSTree): Input distributed zone
-    duplicated_zone_name (str): name of the output zone
-    rotation_center (array): center coordinates of the rotation
-    rotation_angler (array): angles of the rotation
-    translation (array):  translation vector components
-    apply_to_fields (bool, optional) : 
-        if True, apply the rotation vector to the vectorial fields found under 
-        following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
-        Defaults to False.
-  Returns:
-    CGNSTree: Distributed duplicated zone
-
-  Example:
-      .. literalinclude:: snippets/test_algo.py
-        :start-after: #duplicate_zone_with_transformation@start
-        :end-before: #duplicate_zone_with_transformation@end
-        :dedent: 2
-  """
-  
-  # Zone duplication
-  duplicated_zone = I.copyTree(zone)
-  I.setName(duplicated_zone, duplicated_zone_name)
-
-  TRF.transform_zone(duplicated_zone, rotation_center, rotation_angle, translation, apply_to_fields)
-
-  return duplicated_zone
-
 def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_nb, comm,
       conformize=False, apply_to_fields = False):
   """
@@ -165,12 +122,13 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
     for zone_path, zone in zip(zone_paths, zones):
       base_name, root_zone_name = zone_path.split('/')
       base = I.getNodeFromName1(dist_tree, base_name)
-      duplicated_zone = duplicate_zone_with_transformation(zone,
-                                                           f"{root_zone_name}.D{n+1}",
-                                                           rotation_center = rotation_center_a,
-                                                           rotation_angle  = (n+1)*rotation_angle_a,
-                                                           translation     = (n+1)*translation_a,
-                                                           apply_to_fields = apply_to_fields)
+      duplicated_zone = I.copyTree(zone)
+      I.setName(duplicated_zone, f"{root_zone_name}.D{n+1}")
+      TRF.transform_zone(duplicated_zone,
+                         rotation_center = rotation_center_a,
+                         rotation_angle  = (n+1)*rotation_angle_a,
+                         translation     = (n+1)*translation_a,
+                         apply_to_fields = apply_to_fields)
   
       # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones
       for zgc, gc in PT.iter_children_from_predicates(duplicated_zone, gc_predicate, ancestors=True):
@@ -246,7 +204,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
     comm       (MPIComm) : MPI communicator
     conformize (bool, optional): If true, ensure that the generated interface vertices have exactly same
         coordinates (see :func:`conformize_jn_pair`). Defaults to False.
-    apply_to_fields (bool, optional): See :func:`duplicate_zone_with_transformation`. Defaults to False.
+    apply_to_fields (bool, optional): See :func:`maia.algo.transform_zone`. Defaults to False.
 
   """
   

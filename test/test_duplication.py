@@ -12,6 +12,7 @@ from maia.utils import test_utils as TU
 from maia.io       import file_to_dist_tree, dist_tree_to_file
 from maia.factory  import generate_dist_block
 
+from maia.algo      import transform_zone
 from maia.algo.dist import duplicate as DUP
 
 @mark_mpi_test([2])
@@ -31,8 +32,9 @@ def test_translate_cube(sub_comm, fields, write_output):
   I.newDataArray('vectZ', np.random.random(n_cell_loc), parent=fs)
 
   # One can apply a rotation and/or a translation to the zone
-  transformed_zone = DUP.duplicate_zone_with_transformation(dist_zone, 'DuplicatedZone', \
-      rotation_angle = [0, 0, np.pi], apply_to_fields=fields)
+  transformed_zone = I.copyTree(dist_zone)
+  I.setName(transformed_zone, 'DuplicatedZone')
+  transform_zone(transformed_zone, rotation_angle=np.array([0.,0.,np.pi]), apply_to_fields=fields)
 
   # Coordinates are moved :
   coords    = PT.Zone.coordinates(dist_zone)

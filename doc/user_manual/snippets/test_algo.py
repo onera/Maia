@@ -10,15 +10,15 @@ def test_convert_s_to_u():
     assert maia.pytree.Zone.Type(zone) == "Unstructured"
   #convert_s_to_u@end
 
-def test_duplicate_zone_with_transformation():
-  #duplicate_zone_with_transformation@start
+def test_transform_zone():
+  #transform_zone@start
   from mpi4py import MPI
   import maia
   dist_tree = maia.factory.generate_dist_block(10, 'Poly', MPI.COMM_WORLD)
   zone = maia.pytree.get_all_Zone_t(dist_tree)[0]
 
-  dupl_zone = maia.algo.dist.duplicate_zone_with_transformation(zone, "Dupl_zone", translation=[3,0,0])
-  #duplicate_zone_with_transformation@end
+  maia.algo.transform_zone(zone, translation=[3,0,0])
+  #transform_zone@end
 
 def test_generate_jns_vertex_list():
   #generate_jns_vertex_list@start

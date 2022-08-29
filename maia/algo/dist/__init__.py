@@ -4,8 +4,7 @@ Distributed algorithms for distributed trees
 
 from .conformize_jn              import conformize_jn_pair
 
-from .duplicate                  import duplicate_zone_with_transformation,\
-                                        duplicate_from_periodic_jns,\
+from .duplicate                  import duplicate_from_periodic_jns,\
                                         duplicate_from_rotation_jns_to_360
 
 from .elements_to_ngons          import elements_to_ngons

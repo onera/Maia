@@ -3,11 +3,45 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+from maia.utils.yaml  import parse_yaml_cgns
 from maia.factory.dcube_generator import dcube_generate
 
 from maia.algo import transform
+
+def test_transformation_zone_void():
+  yz = """
+       Zone Zone_t I4 [[18,4,0]]:
+         ZoneType ZoneType_t "Unstructured":
+         GridCoordinates GridCoordinates_t:
+           CoordinateX DataArray_t:
+             R4 : [ 0,1,2,
+                    0,1,2,
+                    0,1,2,
+                    0,1,2,
+                    0,1,2,
+                    0,1,2 ]
+           CoordinateY DataArray_t:
+             R4 : [ 0,0,0,
+                    1,1,1,
+                    2,2,2,
+                    0,0,0,
+                    1,1,1,
+                    2,2,2 ]
+           CoordinateZ DataArray_t:
+             R4 : [ 0,0,0,
+                    0,0,0,
+                    0,0,0,
+                    1,1,1,
+                    1,1,1,
+                    1,1,1 ]
+       """
+  zone            = parse_yaml_cgns.to_node(yz)
+  zone_bck        = I.copyTree(zone)
+  transform.transform_zone(zone)
+  assert PT.is_same_tree(zone_bck, zone) 
 
 @mark_mpi_test(1)
 def test_transform_zone(sub_comm):

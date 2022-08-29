@@ -34,7 +34,6 @@ Connectivities conversions
 Geometry transformations
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: maia.algo.dist.duplicate_zone_with_transformation
 .. autofunction:: maia.algo.dist.duplicate_from_rotation_jns_to_360
 .. autofunction:: maia.algo.dist.merge_zones
 .. autofunction:: maia.algo.dist.merge_connected_zones
@@ -66,6 +65,7 @@ Generic algorithms
 
 The following algorithms applies on maia distributed or partitioned trees
 
+.. autofunction:: maia.algo.transform_zone
 .. autofunction:: maia.algo.pe_to_nface
 .. autofunction:: maia.algo.nface_to_pe
 
