@@ -2,6 +2,7 @@ import numpy as np
 
 import maia.pytree        as PT
 import maia.pytree.sids   as sids
+from maia.algo.apply_function_to_nodes import zones_iterator
 
 def get_ngon_pe_local(ngon_node):
   """
@@ -23,13 +24,14 @@ def get_ngon_pe_local(ngon_node):
     else:
       return pe_val
 
-def pe_to_nface(zone, comm=None, removePE=False):
+def pe_to_nface(t, comm=None, removePE=False):
   """Create a NFace node from a NGon node with ParentElements.
 
   Input tree is modified inplace.
 
   Args:
-    zone       (CGNSTree): Distributed or Partitioned zone
+    t           (CGNSTree(s)): Distributed or Partitioned tree (or sequences of)
+      starting at Zone_t level or higher.
     comm       (MPIComm) : MPI communicator, mandatory only for distributed zones
     remove_PE  (bool, optional): If True, remove the ParentElements node.
       Defaults to False.
@@ -40,21 +42,24 @@ def pe_to_nface(zone, comm=None, removePE=False):
         :end-before: #pe_to_nface@end
         :dedent: 2
   """
-  if PT.maia.getDistribution(zone) is not None:
-    assert comm is not None
-    from .dist.ngon_tools import pe_to_nface
-    pe_to_nface(zone, comm, removePE)
-  else:
-    from .part.ngon_tools import pe_to_nface
-    pe_to_nface(zone, removePE)
+  for zone in zones_iterator(t):
+    if PT.maia.getDistribution(zone) is not None:
+      assert comm is not None
+      from .dist.ngon_tools import pe_to_nface
+      pe_to_nface(zone, comm, removePE)
+    else:
+      from .part.ngon_tools import pe_to_nface
+      pe_to_nface(zone, removePE)
 
-def nface_to_pe(zone, comm=None, removeNFace=False):
+
+def nface_to_pe(t, comm=None, removeNFace=False):
   """Create a ParentElements node in the NGon node from a NFace node.
 
   Input tree is modified inplace.
 
   Args:
-    zone        (CGNSTree): Distributed or Partitioned zone
+    t           (CGNSTree(s)): Distributed or Partitioned tree (or sequences of)
+      starting at Zone_t level or higher.
     comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
     removeNFace (bool, optional): If True, remove the NFace node.
       Defaults to False.
@@ -65,10 +70,11 @@ def nface_to_pe(zone, comm=None, removeNFace=False):
         :end-before: #nface_to_pe@end
         :dedent: 2
   """
-  if PT.maia.getDistribution(zone) is not None:
-    assert comm is not None
-    from .dist.ngon_tools import nface_to_pe
-    nface_to_pe(zone, comm, removeNFace)
-  else:
-    from .part.ngon_tools import nface_to_pe
-    nface_to_pe(zone, removeNFace)
+  for zone in zones_iterator(t):
+    if PT.maia.getDistribution(zone) is not None:
+      assert comm is not None
+      from .dist.ngon_tools import nface_to_pe
+      nface_to_pe(zone, comm, removeNFace)
+    else:
+      from .part.ngon_tools import nface_to_pe
+      nface_to_pe(zone, removeNFace)

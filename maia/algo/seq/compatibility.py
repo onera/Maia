@@ -1,4 +1,5 @@
 from cmaia import tree_algo as ctree_algo
+from maia.algo.apply_function_to_nodes import zones_iterator
 
 import numpy as np
 import Converter.Internal as I
@@ -11,10 +12,10 @@ def poly_new_to_old(t, full_onera_compatibility=True):
   The tree is modified in place.
 
   Args:
-    t (CGNSTree): Tree with an ngon-based connectivity
+    t (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
     full_onera_compatibility (bool): if ``True``, shift NFace and ParentElements ids to begin at 1, irrespective of the NGon and NFace ElementRanges, and make the NFace connectivity unsigned
   """
-  for z in I.getZones(t):
+  for z in zones_iterator(t):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = I.getVal(I.getNodeFromName1(ngon , "ElementRange"       ))
@@ -48,9 +49,9 @@ def poly_old_to_new(t):
   This function accepts trees with old ONERA conventions where NFace and ParentElements ids begin at 1, irrespective of the NGon and NFace ElementRanges, and where the NFace connectivity is unsigned. The resulting tree has the correct CGNS/SIDS conventions.
 
   Args:
-    t (CGNSTree): Tree with an ngon-based connectivity
+    t (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
   """
-  for z in I.getZones(t):
+  for z in zones_iterator(t):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = I.getVal(I.getNodeFromName1(ngon , "ElementRange"))

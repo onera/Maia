@@ -21,5 +21,5 @@ def ngons_to_elements(t,comm):
   """
   if (comm.Get_size() > 1):
     raise RuntimeException("WARNING: this function has not been parallelized yet. Run it on only one process")
-  apply_to_zones(t,cdist_algo.convert_zone_to_std_elements)
+  apply_to_zones(cdist_algo.convert_zone_to_std_elements, t)
 

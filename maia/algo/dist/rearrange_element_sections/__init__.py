@@ -21,5 +21,5 @@ def rearrange_element_sections(dist_tree, comm):
         :end-before: #rearrange_element_sections@end
         :dedent: 2
   """
-  apply_to_bases(dist_tree, cdist_algo.rearrange_element_sections, comm)
+  apply_to_bases(cdist_algo.rearrange_element_sections, dist_tree, comm)
 

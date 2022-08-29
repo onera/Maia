@@ -2,7 +2,7 @@ import cmaia.dist_algo as cdist_algo
 from maia.algo.apply_function_to_nodes import apply_to_bases,apply_to_zones
 
 def generate_interior_faces_and_parents(dist_tree,comm):
-  apply_to_zones(dist_tree, cdist_algo.generate_interior_faces_and_parents, comm)
+  apply_to_zones(cdist_algo.generate_interior_faces_and_parents, dist_tree, comm)
 
 def elements_to_ngons(dist_tree,comm):
   """
@@ -27,4 +27,4 @@ def elements_to_ngons(dist_tree,comm):
         :end-before: #elements_to_ngons@end
         :dedent: 2
   """
-  apply_to_zones(dist_tree, cdist_algo.elements_to_ngons, comm)
+  apply_to_zones(cdist_algo.elements_to_ngons, dist_tree, comm)
