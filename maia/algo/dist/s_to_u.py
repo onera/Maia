@@ -549,3 +549,10 @@ def convert_s_to_ngon(disttree_s, comm):
                         'NGON_n',
                         comm,
                         {'BC_t' : 'FaceCenter', 'GC_t' : 'FaceCenter'})
+
+def convert_s_to_poly(disttree_s, comm):
+  """Same as convert_s_to_ngon, but also creates the NFace connectivity"""
+  disttree_u = convert_s_to_ngon(disttree_s, comm)
+  for z in I.getZones(disttree_u):
+    NGT.pe_to_nface(z,comm)
+  return disttree_u

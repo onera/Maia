@@ -23,7 +23,6 @@ poly_to_elements = ngons_to_elements
 from .rearrange_element_sections import rearrange_element_sections
 
 from .s_to_u                     import convert_s_to_u, convert_s_to_ngon
-convert_s_to_poly = convert_s_to_ngon
 
 from .vertex_list                import generate_jn_vertex_list,\
                                         generate_jns_vertex_list
