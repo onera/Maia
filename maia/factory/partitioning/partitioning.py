@@ -29,6 +29,7 @@ def set_default(dist_tree, comm):
              'additional_connectivity' : [],
              'additional_ln_to_gn'     : [],
              'additional_color'        : [],
+             'keep_empty_sections'     : False,
              'dump_pdm_output'    : False }
 
   if pdm_has_parmetis:
