@@ -1,13 +1,17 @@
 '''
 NOTES:
-- bien gérer le cas ou on fait iso-surface puis interpolation 
-  pour ne pas payer la localisation 
-- API avec Julien
-- Actuellement : base rendue mais changer en arbre
 
-[Questions pour Bruno] 
-- Le param de level pour l'isosurf ? Uniquement 0 ??
-- le type SHPERE fait avec le field ?
+[Questions - Julien]
+  - API
+  - disc.discover_nodes_from_matching() ca sert à quoix ?
+
+[Questions - Bruno] 
+  - le type SHPERE fait avec le field ?
+
+[A FAIRE] 
+  -> prévoir intégration du niveau de l'iso
+  -> prévoir intégration de l'interpolation
+
 '''
 # import sys, time
 
@@ -19,10 +23,10 @@ import Converter.Internal as I
 
 
 # Import from MAIA
-from maia.transfer    import utils           as TEU
-from maia.factory     import dist_from_part  as disc
-from maia.pytree.maia import conventions     as conv
-from maia.pytree.sids import node_inspect    as sids
+from maia.transfer    import utils                as TEU
+from maia.factory     import dist_from_part       as disc
+from maia.pytree.maia import conventions          as conv
+from maia.pytree.sids import node_inspect         as sids
 from maia.utils       import np_utils,layouts
 
 # Import from PARADIGM
@@ -30,19 +34,16 @@ import  Pypdm.Pypdm as PDM
 
 
 
-def iso_surface_one_domain(part_zones, PDM_type, fldpath, comm):
+def iso_surface_one_domain(part_zones, PDM_type, fldpath, comm, iso_value=0.):
   """
   Compute isosurface in a domain
   """
-  # print("[i] ISOSURF.PY : Entree dans la fonction",flush=True)
 
   n_part = len(part_zones)
   dim    = 3 # Mauvaise idée le codage en dur
 
   # Definition of the PDM object IsoSurface
-  # print("[i] ISOSURF.PY : deb def objet PDM.IsoSurface()",flush=True)
   pdm_isos = PDM.IsoSurface(comm, dim, PDM_type, n_part)
-  # print("[i] ISOSURF.PY : fin def objet PDM.IsoSurface()",flush=True)
 
   # Loop over domains of the partition
   for i_part, part_zone in enumerate(part_zones):
@@ -92,45 +93,62 @@ def iso_surface_one_domain(part_zones, PDM_type, fldpath, comm):
     # Get field from path to compute the isosurf / Placement in PDM object
     field = I.getNodeFromPath(part_zone, fldpath)
     pdm_isos.part_field_set(i_part, field[1])
-  # print("[i] ISOSURF.PY : fin param pdm.isosurf",flush=True)
 
   # Isosurfaces compute in PDM  
   pdm_isos.compute()
-  # print("[i] ISOSURF.PY : fin compute",flush=True)
+
 
   # Mesh build from result
   results = pdm_isos.part_iso_surface_surface_get()
-
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
-  iso_part_base = I.newCGNSBase('Base', cellDim=dim-1, physDim=3)
+  print(results.keys())
 
-  iso_part_zone = I.newZone('zone', [[n_iso_vtx, n_iso_elt, 0]],
-                            'Unstructured', parent=iso_part_base)
+  # > Tree construction
+  iso_part_tree = I.newCGNSTree()
+  iso_part_base = I.newCGNSBase('Base', cellDim=dim-1, physDim=3, parent=iso_part_tree)
 
-  ngon_n = I.newElements('NGonElements', 'NGON', erange = [1, n_iso_elt], parent=iso_part_zone)
-  I.newDataArray('ElementConnectivity', results['np_elt_vtx'    ], parent=ngon_n)
-  I.newDataArray('ElementStartOffset' , results['np_elt_vtx_idx'], parent=ngon_n)
-
+  # > Zone construction
+  iso_part_zone = I.newZone(f'zone.{comm.Get_rank()}',
+                            [[n_iso_vtx, n_iso_elt, 0]],
+                            'Unstructured',
+                            parent=iso_part_base)
   # > Grid coordinates
   cx, cy, cz      = layouts.interlaced_to_tuple_coords(results['np_vtx_coord'])
   iso_grid_coord  = I.newGridCoordinates(parent=iso_part_zone)
   I.newDataArray('CoordinateX', cx, parent=iso_grid_coord)
   I.newDataArray('CoordinateY', cy, parent=iso_grid_coord)
   I.newDataArray('CoordinateZ', cz, parent=iso_grid_coord)
-  # print("[i] ISOSURF.PY : fin traitement",flush=True)
+
+  # > Elements
+  ngon_n = I.newElements('NGonElements', 'NGON', erange = [1, n_iso_elt], parent=iso_part_zone)
+  I.newDataArray('ElementConnectivity', results['np_elt_vtx'    ]     , parent=ngon_n)
+  I.newDataArray('ElementStartOffset' , results['np_elt_vtx_idx']     , parent=ngon_n)
+
+  gn_elmt = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=ngon_n )
+  I.newDataArray('Element', results['np_elt_ln_to_gn']  , parent=gn_elmt)
+
+  # > LN to GN
+  gn_zone = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=iso_part_zone)
+  I.newDataArray('Vertex', results['np_vtx_ln_to_gn'], parent=gn_zone)
+  I.newDataArray('Cell'  , results['np_elt_ln_to_gn'], parent=gn_zone)
+
+  elmt_parent_gn = results["np_elt_parent_g_num"]
+  print("results[np_elt_parent_g_num]=",results["np_elt_parent_g_num"].shape,flush=True)
+
+  # > Interpolation -> should be moved
+
 
   return iso_part_base
 
 
 
 
-
-# def iso_surface(part_tree,var,level,comm):
 def iso_surface(part_tree,
                 type,fldpath,
-                comm):
+                comm,
+                iso_value=0.):
   ''' 
   Compute isosurface from field for a partitioned tree
   Return partition of the isosurface
@@ -139,12 +157,8 @@ def iso_surface(part_tree,
     - type       : type of isosurface ('PLANE','SPHERE','FIELD' are available)
     - fldpath    : path to the field used for isosurface
     - comm       : MPI communicator
+    - iso_value  : isosurface value
   '''
-
-  # MPI infos
-  mpi_rank = comm.Get_rank()
-  mpi_size = comm.Get_size()
-  # print("[i] ISOSURF.PY : fin def MPI",flush=True)
 
   # Type of isosurf
   if   type=="PLANE" : PDM_type = PDM._PDM_ISO_SURFACE_KIND_PLANE 
@@ -153,24 +167,17 @@ def iso_surface(part_tree,
   else:
     print("[!][WARNING] isosurface.py : Error in type of IsoSurface ; Check your script")
     return None
-  # print("[i] ISOSURF.PY : fin typeof isosurf",flush=True)
 
-  # Distribution ??
-  dist_doms = I.newCGNSTree()
-  disc.discover_nodes_from_matching(dist_doms, [part_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : conv.get_part_prefix(zpath))
+  # from the part_tree, retrieve the paths of the distributed blocks
+  # and return a dictionnary associating each path to the list of the corresponding
+  # partitioned zones
+  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
+  assert(len(part_tree_per_dom)==1) # On gère le monodomaine pour l'instanx
 
-  # Domains in the partition
-  part_tree_per_dom = list()
-  for base in I.getNodesFromType(dist_doms,'CGNSBase_t'):
-    for zone in I.getNodesFromType(dist_doms,'Zone_t'):
-      part_tree_per_dom.append(TEU.get_partitioned_zones(part_tree, I.getName(base) + '/' + I.getName(zone)))
-  # print("[i] ISOSURF.PY : fin def part",flush=True)
 
   # Piece of isosurfaces for each domains of the partition
   iso_doms = I.newCGNSTree()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
     iso_part = iso_surface_one_domain(part_zones, PDM_type, fldpath, comm)
     I._addChild(iso_doms, iso_part)
-
   return iso_doms

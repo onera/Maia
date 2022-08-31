@@ -20,3 +20,4 @@ from .localize               import localize_points
 
 from .wall_distance          import compute_wall_distance
 
+from .isosurf                import iso_surface
