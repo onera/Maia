@@ -39,7 +39,7 @@ def test_compute_regular_weights():
   from   maia.utils.test_utils import mesh_dir
   from   maia.factory import partitioning as mpart
 
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/S_twoblocks.yaml', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', MPI.COMM_WORLD)
 
   zone_to_parts = mpart.compute_regular_weights(dist_tree, MPI.COMM_WORLD)
   if MPI.COMM_WORLD.Get_size() == 2:
@@ -54,7 +54,7 @@ def test_compute_balanced_weights():
   from   maia.factory import partitioning as mpart
 
   comm = MPI.COMM_WORLD
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/S_twoblocks.yaml', comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', comm)
 
   zone_to_parts = mpart.compute_balanced_weights(dist_tree, comm)
   if comm.Get_size() == 2 and comm.Get_rank() == 0:

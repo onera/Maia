@@ -3,7 +3,7 @@ def test_convert_s_to_u():
   from mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
-  dist_tree_s = maia.io.file_to_dist_tree(mesh_dir+'/S_twoblocks.yaml', MPI.COMM_WORLD)
+  dist_tree_s = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', MPI.COMM_WORLD)
 
   dist_tree_u = maia.algo.dist.convert_s_to_u(dist_tree_s, 'NGON_n', MPI.COMM_WORLD)
   for zone in maia.pytree.get_all_Zone_t(dist_tree_u):
@@ -25,7 +25,7 @@ def test_generate_jns_vertex_list():
   from mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
-  dist_tree_s = maia.io.file_to_dist_tree(mesh_dir+'/S_twoblocks.yaml', MPI.COMM_WORLD)
+  dist_tree_s = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', MPI.COMM_WORLD)
   dist_tree = maia.algo.dist.convert_s_to_ngon(dist_tree_s, MPI.COMM_WORLD)
 
   maia.algo.dist.generate_jns_vertex_list(dist_tree, MPI.COMM_WORLD)
@@ -37,7 +37,7 @@ def test_merge_zones():
   from mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
   assert len(maia.pytree.get_all_Zone_t(dist_tree)) == 3
 
   maia.algo.dist.merge_zones(dist_tree, ["BaseA/blk1", "BaseB/blk2"], MPI.COMM_WORLD)
@@ -49,7 +49,7 @@ def test_merge_connected_zones():
   from mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
 
   maia.algo.dist.merge_connected_zones(dist_tree, MPI.COMM_WORLD)
   assert len(maia.pytree.get_all_Zone_t(dist_tree)) == 1
@@ -60,7 +60,7 @@ def test_compute_cell_center():
   from mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
 
   for zone in maia.pytree.iter_all_Zone_t(part_tree):
@@ -72,7 +72,7 @@ def test_compute_wall_distance():
   from mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
 
   maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"])
@@ -87,8 +87,8 @@ def test_localize_points():
   from   maia.utils.test_utils import mesh_dir
   comm = mpi4py.MPI.COMM_WORLD
 
-  dist_tree_src = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', comm)
-  dist_tree_tgt = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', comm)
+  dist_tree_src = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', comm)
+  dist_tree_tgt = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(dist_tree_tgt):
     maia.algo.transform_affine(tgt_zone, rotation_angle=[170*3.14/180,0,0], translation=[0,0,3])
   part_tree_src = maia.factory.partition_dist_tree(dist_tree_src, comm)
@@ -108,8 +108,8 @@ def test_find_closest_points():
   from   maia.utils.test_utils import mesh_dir
   comm = mpi4py.MPI.COMM_WORLD
 
-  dist_tree_src = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', comm)
-  dist_tree_tgt = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', comm)
+  dist_tree_src = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', comm)
+  dist_tree_tgt = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(dist_tree_tgt):
     maia.algo.transform_affine(tgt_zone, rotation_angle=[170*3.14/180,0,0], translation=[0,0,3])
   part_tree_src = maia.factory.partition_dist_tree(dist_tree_src, comm)
@@ -171,7 +171,7 @@ def test_elements_to_ngons():
   import maia
   from maia.utils.test_utils import mesh_dir
 
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir+'/Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
   maia.algo.dist.elements_to_ngons(dist_tree, MPI.COMM_WORLD)
   #elements_to_ngons@end
 
