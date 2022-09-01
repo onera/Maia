@@ -124,11 +124,11 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
       base = I.getNodeFromName1(dist_tree, base_name)
       duplicated_zone = I.copyTree(zone)
       I.setName(duplicated_zone, f"{root_zone_name}.D{n+1}")
-      TRF.transform_zone(duplicated_zone,
-                         rotation_center = rotation_center_a,
-                         rotation_angle  = (n+1)*rotation_angle_a,
-                         translation     = (n+1)*translation_a,
-                         apply_to_fields = apply_to_fields)
+      TRF.transform_affine(duplicated_zone,
+                           rotation_center = rotation_center_a,
+                           rotation_angle  = (n+1)*rotation_angle_a,
+                           translation     = (n+1)*translation_a,
+                           apply_to_fields = apply_to_fields)
   
       # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones
       for zgc, gc in PT.iter_children_from_predicates(duplicated_zone, gc_predicate, ancestors=True):
@@ -204,7 +204,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
     comm       (MPIComm) : MPI communicator
     conformize (bool, optional): If true, ensure that the generated interface vertices have exactly same
         coordinates (see :func:`conformize_jn_pair`). Defaults to False.
-    apply_to_fields (bool, optional): See :func:`maia.algo.transform_zone`. Defaults to False.
+    apply_to_fields (bool, optional): See :func:`maia.algo.transform_affine`. Defaults to False.
 
   """
   

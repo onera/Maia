@@ -40,11 +40,11 @@ def test_transformation_zone_void():
        """
   zone            = parse_yaml_cgns.to_node(yz)
   zone_bck        = I.copyTree(zone)
-  transform.transform_zone(zone)
+  transform.transform_affine(zone)
   assert PT.is_same_tree(zone_bck, zone) 
 
 @mark_mpi_test(1)
-def test_transform_zone(sub_comm):
+def test_transform_affine(sub_comm):
 
   def check_vect_field(old_node, new_node, field_name):
     old_data = [I.getNodeFromName(old_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
@@ -70,7 +70,7 @@ def test_transform_zone(sub_comm):
   I.newDataArray('fieldZ', np.random.random(n_cell_loc), parent=fs)
 
   dist_zone_ini = I.copyTree(dist_zone)
-  transform.transform_zone(dist_zone, rotation_angle=np.array([0.,0.,np.pi]), apply_to_fields=True)
+  transform.transform_affine(dist_zone, rotation_angle=np.array([0.,0.,np.pi]), apply_to_fields=True)
 
   check_vect_field(dist_zone_ini, dist_zone, "Coordinate")
   check_vect_field(dist_zone_ini, dist_zone, "field")

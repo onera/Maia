@@ -10,15 +10,15 @@ def test_convert_s_to_u():
     assert maia.pytree.Zone.Type(zone) == "Unstructured"
   #convert_s_to_u@end
 
-def test_transform_zone():
-  #transform_zone@start
+def test_transform_affine():
+  #transform_affine@start
   from mpi4py import MPI
   import maia
   dist_tree = maia.factory.generate_dist_block(10, 'Poly', MPI.COMM_WORLD)
   zone = maia.pytree.get_all_Zone_t(dist_tree)[0]
 
-  maia.algo.transform_zone(zone, translation=[3,0,0])
-  #transform_zone@end
+  maia.algo.transform_affine(zone, translation=[3,0,0])
+  #transform_affine@end
 
 def test_generate_jns_vertex_list():
   #generate_jns_vertex_list@start
@@ -90,7 +90,7 @@ def test_localize_points():
   dist_tree_src = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', comm)
   dist_tree_tgt = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(dist_tree_tgt):
-    maia.algo.transform_zone(tgt_zone, rotation_angle=[170*3.14/180,0,0], translation=[0,0,3])
+    maia.algo.transform_affine(tgt_zone, rotation_angle=[170*3.14/180,0,0], translation=[0,0,3])
   part_tree_src = maia.factory.partition_dist_tree(dist_tree_src, comm)
   part_tree_tgt = maia.factory.partition_dist_tree(dist_tree_tgt, comm)
 
@@ -111,7 +111,7 @@ def test_find_closest_points():
   dist_tree_src = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', comm)
   dist_tree_tgt = maia.io.file_to_dist_tree(mesh_dir+'/U_ATB_45.yaml', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(dist_tree_tgt):
-    maia.algo.transform_zone(tgt_zone, rotation_angle=[170*3.14/180,0,0], translation=[0,0,3])
+    maia.algo.transform_affine(tgt_zone, rotation_angle=[170*3.14/180,0,0], translation=[0,0,3])
   part_tree_src = maia.factory.partition_dist_tree(dist_tree_src, comm)
   part_tree_tgt = maia.factory.partition_dist_tree(dist_tree_tgt, comm)
 

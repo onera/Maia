@@ -5,11 +5,11 @@ import maia.pytree as PT
 from maia.utils import py_utils, np_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
 
-def transform_zone(t,
-                   rotation_center = np.zeros(3),
-                   rotation_angle  = np.zeros(3),
-                   translation     = np.zeros(3),
-                   apply_to_fields = False):
+def transform_affine(t,
+                     rotation_center = np.zeros(3),
+                     rotation_angle  = np.zeros(3),
+                     translation     = np.zeros(3),
+                     apply_to_fields = False):
   """Apply the affine transformation to the coordinates of the given zone.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -34,8 +34,8 @@ def transform_zone(t,
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #transform_zone@start
-        :end-before: #transform_zone@end
+        :start-after: #transform_affine@start
+        :end-before: #transform_affine@end
         :dedent: 2
   """
   for zone in zones_iterator(t):
