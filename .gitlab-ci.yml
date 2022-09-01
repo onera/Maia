@@ -65,7 +65,7 @@ job:doc:
 
 
 #todo : display reports on browser eg with gitlab pages
-job:unitary:
+job:ctest:
   stage: test
   script:
     - cd build
