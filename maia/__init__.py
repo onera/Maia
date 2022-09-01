@@ -11,3 +11,6 @@ from maia import io
 from maia import pytree
 from maia import transfer
 from maia import utils
+
+from maia.utils.parallel import excepthook
+excepthook.enable_mpi_excepthook()
