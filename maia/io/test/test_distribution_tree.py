@@ -18,7 +18,7 @@ def test_create_distribution_node(sub_comm):
   distri_ud   = MT.getDistribution(node)
   assert distri_ud is not None
   assert I.getType(distri_ud) == 'UserDefinedData_t'
-  distri_node = I.getNodeFromName1(distri_ud, 'MyDistribution')
+  distri_node = PT.get_child_from_name(distri_ud, 'MyDistribution')
   assert distri_node is not None
   assert (I.getValue(distri_node) == par_utils.uniform_distribution(100, sub_comm)).all()
   assert I.getType(distri_node) == 'DataArray_t'
@@ -30,7 +30,7 @@ def test_compute_plist_or_prange_distribution(sub_comm):
 
   distrib_ud = MT.getDistribution(node)
   assert I.getType(distrib_ud) == 'UserDefinedData_t'
-  distrib    = I.getNodeFromName1(distrib_ud, 'Index')
+  distrib    = PT.get_child_from_name(distrib_ud, 'Index')
   assert I.getType(distrib) == 'DataArray_t'
   assert (I.getValue(distrib) == par_utils.uniform_distribution(3*3*1, sub_comm)).all()
 
@@ -41,7 +41,7 @@ def test_compute_plist_or_prange_distribution(sub_comm):
 
   distrib_ud = MT.getDistribution(node)
   assert I.getType(distrib_ud) == 'UserDefinedData_t'
-  distrib    = I.getNodeFromName1(distrib_ud, 'Index')
+  distrib    = PT.get_child_from_name(distrib_ud, 'Index')
   assert I.getType(distrib) == 'DataArray_t'
   assert (I.getValue(distrib) == par_utils.uniform_distribution(1*9, sub_comm)).all()
 
@@ -53,11 +53,11 @@ def test_compute_elements_distribution(sub_comm):
   tri  = I.newElements('Tri', 'TRI', erange=[101,1000],parent=zoneU)
   distribution_tree.compute_elements_distribution(zoneS, sub_comm)
   distribution_tree.compute_elements_distribution(zoneU, sub_comm)
-  assert (I.getNodeFromName(hexa, 'Element')[1] == \
+  assert (PT.get_node_from_name(hexa, 'Element')[1] == \
       par_utils.uniform_distribution(100, sub_comm)).all()
-  assert (I.getNodeFromName(tri , 'Element')[1] == \
+  assert (PT.get_node_from_name(tri , 'Element')[1] == \
       par_utils.uniform_distribution(900, sub_comm)).all()
-  assert I.getNodeFromName(zoneS, 'Element') == None
+  assert PT.get_node_from_name(zoneS, 'Element') == None
 
 
 
@@ -107,7 +107,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
   """
     zone = parse_yaml_cgns.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, sub_comm)
-    assert I.getNodeFromName(zone, 'PointList#Size') is None
+    assert PT.get_node_from_name(zone, 'PointList#Size') is None
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 3
 
 
@@ -146,7 +146,7 @@ Base CGNSBase_t [3,3]:
 """)
   distribution_tree.add_distribution_info(dist_tree, sub_comm)
   assert len(PT.get_nodes_from_name(dist_tree, 'Index')) == 4+3
-  assert I.getNodeFromName(dist_tree, 'PointList#Size') is None
+  assert PT.get_node_from_name(dist_tree, 'PointList#Size') is None
 
 def test_clean_distribution_info():
   yt = """
@@ -175,6 +175,6 @@ Base0 CGNSBase_t [3,3]:
 """
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   distribution_tree.clean_distribution_info(dist_tree)
-  assert I.getNodeFromName(dist_tree, ':CGNS#Distribution') is None
+  assert PT.get_node_from_name(dist_tree, ':CGNS#Distribution') is None
   assert len(PT.get_nodes_from_name(dist_tree, 'PointList')) == 2
 

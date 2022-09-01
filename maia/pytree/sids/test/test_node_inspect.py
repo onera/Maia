@@ -3,6 +3,7 @@ import pytest
 import Converter.Internal as I
 import numpy              as np
 
+from maia.pytree      import walk
 from maia.pytree.sids import node_inspect as SIDS
 
 def test_ZoneType():
@@ -12,8 +13,8 @@ def test_ZoneType():
   assert SIDS.Zone.Type(zone_u) == 'Unstructured'
   assert SIDS.Zone.Type(zone_s) == 'Structured'
   #With strings
-  I.getNodeFromType1(zone_u, 'ZoneType_t')[1] = 'Unstructured'
-  I.getNodeFromType1(zone_s, 'ZoneType_t')[1] = 'Structured'
+  walk.get_child_from_label(zone_u, 'ZoneType_t')[1] = 'Unstructured'
+  walk.get_child_from_label(zone_s, 'ZoneType_t')[1] = 'Structured'
   assert SIDS.Zone.Type(zone_u) == 'Unstructured'
   assert SIDS.Zone.Type(zone_s) == 'Structured'
 

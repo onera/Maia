@@ -55,7 +55,7 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
   sorted_dist_elts  = [dist_elts[k] for k in sorting_idx]
   elt_sections_dn   = [PT.Element.Size(elt) for elt in sorted_dist_elts]
   elt_sections_idx  = np_utils.sizes_to_indices(elt_sections_dn, dtype=np.int32)
-  p_elts = [I.getNodeFromName(p_zone, I.getName(elt)) for elt in sorted_dist_elts]
+  p_elts = [PT.get_node_from_name(p_zone, I.getName(elt)) for elt in sorted_dist_elts]
   elt_sections_pn = [PT.Element.Size(elt) if elt else 0 for elt in p_elts]
   offset = 0
   np_elt_ln_to_gn = np.empty(sum(elt_sections_pn), dtype=pdm_gnum_dtype)

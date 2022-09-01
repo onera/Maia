@@ -25,14 +25,12 @@ def test_ngons_to_elements(sub_comm, write_output):
   # > There is two sections...
   assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
   # > One for the Tris, on for the Tets
-  tris = I.getNodeFromName(dist_tree, 'TRI_3')
-  tets = I.getNodeFromName(dist_tree, 'TETRA_4')
-  assert tris is not None
-  assert tets is not None
+  tris = PT.request_node_from_name(dist_tree, 'TRI_3')
+  tets = PT.request_node_from_name(dist_tree, 'TETRA_4')
 
   # > Some non-regression checks
-  assert np.all(I.getVal(I.getNodeFromName(tris, 'ElementRange')) == [1,204])
-  assert np.all(I.getVal(I.getNodeFromName(tets, 'ElementRange')) == [205,1500])
+  assert np.all(I.getVal(PT.get_child_from_name(tris, 'ElementRange')) == [1,204])
+  assert np.all(I.getVal(PT.get_child_from_name(tets, 'ElementRange')) == [205,1500])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)

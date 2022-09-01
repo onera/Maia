@@ -88,16 +88,16 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   first_join_in_matchs_a = I.getNodeFromPath(dist_tree, jn_paths_a[0])
   
   # Get transformation information
-  gcp_a = I.getNodeFromType1(first_join_in_matchs_a, "GridConnectivityProperty_t")
-  rotation_center_a = I.getVal(I.getNodeFromName2(gcp_a, "RotationCenter"))
-  rotation_angle_a  = I.getVal(I.getNodeFromName2(gcp_a, "RotationAngle"))
-  translation_a     = I.getVal(I.getNodeFromName2(gcp_a, "Translation"))
+  gcp_a = PT.get_child_from_label(first_join_in_matchs_a, "GridConnectivityProperty_t")
+  rotation_center_a = I.getVal(PT.get_node_from_name(gcp_a, "RotationCenter", depth=2))
+  rotation_angle_a  = I.getVal(PT.get_node_from_name(gcp_a, "RotationAngle", depth=2))
+  translation_a     = I.getVal(PT.get_node_from_name(gcp_a, "Translation", depth=2))
   
   # Store initial periodicity information of joins of the second joins list (B)
   jn_b_properties = []
   for jn_path_b in jn_paths_b:
     jn_b_init_node = I.getNodeFromPath(dist_tree, jn_path_b)
-    jn_b_property  = I.getNodeFromType1(jn_b_init_node, "GridConnectivityProperty_t")
+    jn_b_property  = PT.get_child_from_label(jn_b_init_node, "GridConnectivityProperty_t")
     jn_b_properties.append(I.copyTree(jn_b_property))
 
   # Get the name of all zones to duplicate in order to update the value of GridConnectivity
@@ -121,7 +121,7 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   for n in range(dupl_nb):
     for zone_path, zone in zip(zone_paths, zones):
       base_name, root_zone_name = zone_path.split('/')
-      base = I.getNodeFromName1(dist_tree, base_name)
+      base = PT.get_child_from_name(dist_tree, base_name)
       duplicated_zone = I.copyTree(zone)
       I.setName(duplicated_zone, f"{root_zone_name}.D{n+1}")
       TRF.transform_affine(duplicated_zone,
@@ -169,9 +169,9 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   for jn_path_a in jn_paths_a:
     jn_path_a_init = PT.update_path_elt(jn_path_a, 1, lambda zn : zn + ".D0")
     jn_a_init_node = I.getNodeFromPath(dist_tree, jn_path_a_init)
-    gcp_a_init = I.getNodeFromType1(jn_a_init_node, "GridConnectivityProperty_t")
-    rotation_angle_a_node = I.getNodeFromName2(gcp_a_init, "RotationAngle")
-    translation_a_node    = I.getNodeFromName2(gcp_a_init, "Translation")
+    gcp_a_init = PT.get_child_from_label(jn_a_init_node, "GridConnectivityProperty_t")
+    rotation_angle_a_node = PT.get_node_from_name(gcp_a_init, "RotationAngle", depth=2)
+    translation_a_node    = PT.get_node_from_name(gcp_a_init, "Translation", depth=2)
     I.setValue(rotation_angle_a_node, I.getValue(rotation_angle_a_node) * (dupl_nb+1))
     I.setValue(translation_a_node,    I.getValue(translation_a_node)    * (dupl_nb+1))
     I.setValue(jn_a_init_node, f"{I.getValue(jn_a_init_node)}.D{dupl_nb}")
@@ -181,9 +181,9 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
     jn_path_b_last = PT.update_path_elt(jn_path_b, 1, lambda zn : zn + f".D{dupl_nb}")
     jn_b_last_node = I.getNodeFromPath(dist_tree, jn_path_b_last)
     I._addChild(jn_b_last_node, jn_b_properties[jn])
-    gcp_b_last = I.getNodeFromType1(jn_b_last_node, "GridConnectivityProperty_t")
-    rotation_angle_b_node = I.getNodeFromName2(gcp_b_last, "RotationAngle")
-    translation_b_node    = I.getNodeFromName2(gcp_b_last, "Translation")
+    gcp_b_last = PT.get_child_from_label(jn_b_last_node, "GridConnectivityProperty_t")
+    rotation_angle_b_node = PT.get_node_from_name(gcp_b_last, "RotationAngle", depth=2)
+    translation_b_node    = PT.get_node_from_name(gcp_b_last, "Translation", depth=2)
     I.setValue(rotation_angle_b_node, I.getValue(rotation_angle_b_node) * (dupl_nb+1))
     I.setValue(translation_b_node,    I.getValue(translation_b_node)    * (dupl_nb+1))
     gc_value = I.getValue(jn_b_last_node)
@@ -225,10 +225,10 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
   first_join_in_matchs_a = I.getNodeFromPath(dist_tree, _jn_paths_for_dupl[0][0])
   
   # Get transformation information
-  gcp_a = I.getNodeFromType1(first_join_in_matchs_a, "GridConnectivityProperty_t")
-  rotation_center_a = I.getVal(I.getNodeFromName2(gcp_a, "RotationCenter"))
-  rotation_angle_a  = I.getVal(I.getNodeFromName2(gcp_a, "RotationAngle"))
-  translation_a     = I.getVal(I.getNodeFromName2(gcp_a, "Translation"))
+  gcp_a = PT.get_child_from_label(first_join_in_matchs_a, "GridConnectivityProperty_t")
+  rotation_center_a = I.getVal(PT.get_node_from_name(gcp_a, "RotationCenter", depth=2))
+  rotation_angle_a  = I.getVal(PT.get_node_from_name(gcp_a, "RotationAngle", depth=2))
+  translation_a     = I.getVal(PT.get_node_from_name(gcp_a, "Translation", depth=2))
   
   if (translation_a != np.array([0.,0.,0.])).any():
     raise ValueError("The join is not periodic only by rotation !")

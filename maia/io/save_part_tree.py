@@ -34,7 +34,7 @@ def save_part_tree(part_tree, filename, comm):
       for ii in l:
         nlinks.append(ii)
 
-    base_name  = I.getNodeFromType1(part_tree, 'CGNSBase_t')[0]
+    base_name  = PT.get_child_from_label(part_tree, 'CGNSBase_t')[0]
     local_tree = I.newCGNSTree()
     local_base = I.newCGNSBase(base_name, 3, 3, parent=local_tree)
     for path_zone in nlinks:

@@ -157,7 +157,7 @@ Zone.P2.N1 Zone_t:
 
     # Exclude from node content
     dist_zone = I.newZone('Zone')
-    queries = ["ZoneBC_t", lambda n : I.getType(n) == "BC_t" and I.getNodeFromType1(n, 'FamilyName_t') is not None]
+    queries = ["ZoneBC_t", lambda n : I.getType(n) == "BC_t" and PT.get_child_from_label(n, 'FamilyName_t') is not None]
     DFP.discover_nodes_from_matching(dist_zone, I.getZones(part_tree), queries, sub_comm,
                                       child_list=['FamilyName_t', 'GridLocation'])
     assert I.getNodeFromPath(dist_zone, 'ZBC/BCA') is not None
@@ -273,7 +273,7 @@ def test_recover_dist_tree_ngon(sub_comm):
 
   dist_tree = DFP.recover_dist_tree(part_tree, sub_comm)
 
-  dist_zone = I.getNodeFromName(dist_tree, 'Zone')
+  dist_zone = PT.get_node_from_name(dist_tree, 'Zone')
   assert (dist_zone[1] == [[45,16,0]]).all()
   assert (I.getNodeFromPath(dist_zone, 'NGonElements/ElementRange')[1] == [1,68]).all()
   assert (I.getNodeFromPath(dist_zone, 'NFaceElements/ElementRange')[1] == [69,84]).all()
@@ -294,7 +294,7 @@ def test_recover_dist_tree_elt(void_part, sub_comm):
 
   dist_tree = DFP.recover_dist_tree(part_tree, sub_comm)
 
-  dist_zone = I.getNodeFromName(dist_tree, 'Zone')
+  dist_zone = PT.get_node_from_name(dist_tree, 'Zone')
   assert (dist_zone[1] == [[11,4,0]]).all()
   assert (I.getNodeFromPath(dist_zone, 'Tris/ElementRange')[1] == [7,12]).all()
   assert (I.getNodeFromPath(dist_zone, 'Tets/ElementRange')[1] == [16,16]).all()

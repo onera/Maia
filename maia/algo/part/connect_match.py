@@ -44,7 +44,7 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
 
   for bc in PT.Zone.getBCsFromFamily(zone, family_list):
 
-    pl = I.getNodeFromName1(bc, 'PointList')[1]
+    pl = PT.get_child_from_name(bc, 'PointList')[1]
 
     l_send_entity_data .append(pl[0,:])
     l_send_entity_stri .append(NPY.ones(pl[0,:].shape, dtype='int32'))

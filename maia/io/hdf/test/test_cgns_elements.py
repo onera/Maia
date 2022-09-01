@@ -1,5 +1,6 @@
 import pytest
 import Converter.Internal as I
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils.yaml import parse_yaml_cgns
@@ -104,8 +105,8 @@ Zone Zone_t:
   zone = parse_yaml_cgns.to_node(yt)
   hdf_filter = dict()
   cgns_elements.create_zone_elements_filter(zone, 'zone', hdf_filter, 'read')
-  ngon = I.getNodeFromName(zone, 'NGon')
-  tri  = I.getNodeFromName(zone, 'Tri')
+  ngon = PT.get_node_from_name(zone, 'NGon')
+  tri  = PT.get_node_from_name(zone, 'Tri')
   ngon_filter, tri_filter = dict(), dict()
   cgns_elements.create_zone_eso_elements_filter(ngon, 'zone', ngon_filter, 'read')
   cgns_elements.create_zone_std_elements_filter(tri, 'zone', tri_filter)

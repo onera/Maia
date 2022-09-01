@@ -46,7 +46,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     gc = I.getNodeFromPath(part_tree, p_gc_path)
     lngn = I.getVal(MT.getGlobalNumbering(gc, 'Index'))
     shifted_lntogn.append(lngn + face_in_join_offset[itrf_id])
-    pl = I.getNodeFromName1(gc, 'PointList')[1][0]
+    pl = PT.get_child_from_name(gc, 'PointList')[1][0]
     part_data['pl'].append(pl)
     part_data['irank'].append(i_proc*np.ones(pl.size, dtype=pl.dtype))
     part_data['ipart'].append(i_part*np.ones(pl.size, dtype=pl.dtype))
@@ -76,7 +76,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     gc_id = 2*itrf_id + int(d_gc_path < MJT.get_jn_donor_path(dist_tree, d_gc_path))
 
     gc = I.getNodeFromPath(part_tree, p_gc_path)
-    pl_node = I.getNodeFromName1(gc, 'PointList')
+    pl_node = PT.get_child_from_name(gc, 'PointList')
     lngn_node = MT.getGlobalNumbering(gc, 'Index')
     lngn = lngn_node[1]
     pl = pl_node[1][0]

@@ -41,7 +41,7 @@ def transform_affine(t,
   for zone in zones_iterator(t):
     # Transform coords
     for grid_co in PT.iter_children_from_label(zone, "GridCoordinates_t"):
-      coords_n = [I.getNodeFromName1(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
+      coords_n = [PT.get_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
       coords = [I.getVal(n) for n in coords_n]
     
       tr_coords = np_utils.transform_cart_vectors(*coords, translation, rotation_center, rotation_angle)
@@ -59,7 +59,7 @@ def transform_affine(t,
         data_names = [I.getName(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
         cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names)
         for basename in cartesian_vectors_basenames:
-          vectors_n = [I.getNodeFromNameAndType(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z']]
+          vectors_n = [PT.get_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z']]
           vectors = [I.getVal(n) for n in vectors_n]
           # Assume that vectors are position independant
           # Be careful, if coordinates vector needs to be transform, the translation is not applied !

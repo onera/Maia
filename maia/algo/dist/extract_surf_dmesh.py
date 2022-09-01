@@ -18,8 +18,8 @@ def _extract_faces(dist_zone, face_list, comm):
 
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
-  dface_vtx = I.getNodeFromName1(ngon_node, 'ElementConnectivity')[1]
-  ngon_eso  = I.getNodeFromName1(ngon_node, 'ElementStartOffset' )[1]
+  dface_vtx = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+  ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1]
 
   distrib_face     = I.getVal(MT.getDistribution(ngon_node, 'Element'))
   distrib_face_vtx = I.getVal(MT.getDistribution(ngon_node, 'ElementConnectivity'))

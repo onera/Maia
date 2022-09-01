@@ -36,10 +36,10 @@ Zone.P2.N3 Zone_t:
   dist_zone = parse_yaml_cgns.to_node(dt)
   part_zone = parse_yaml_cgns.to_node(pt)
   PS.copy_additional_nodes(dist_zone, part_zone)
-  assert I.getType(I.getNodeFromName(dist_zone, '.Solver#BC')) == I.getType(I.getNodeFromName(part_zone, '.Solver#BC'))
-  assert I.getValue(I.getNodeFromName(dist_zone, 'GridConnectivityDonorName')) == I.getValue(I.getNodeFromName(part_zone, 'GridConnectivityDonorName'))
-  assert (I.getValue(I.getNodeFromName(dist_zone, 'Translation')) == \
-          I.getValue(I.getNodeFromName(part_zone, 'Translation'))).all()
+  assert I.getType(PT.get_node_from_name(dist_zone, '.Solver#BC')) == I.getType(PT.get_node_from_name(part_zone, '.Solver#BC'))
+  assert I.getValue(PT.get_node_from_name(dist_zone, 'GridConnectivityDonorName')) == I.getValue(PT.get_node_from_name(part_zone, 'GridConnectivityDonorName'))
+  assert (I.getValue(PT.get_node_from_name(dist_zone, 'Translation')) == \
+          I.getValue(PT.get_node_from_name(part_zone, 'Translation'))).all()
 
 def test_split_original_joins():
   pt = """
@@ -57,16 +57,16 @@ ZoneB.P1.N0 Zone_t:
   p_zone = I.getZones(p_tree)[0]
   PS.split_original_joins(p_tree)
 
-  assert I.getNodeFromName(p_zone, 'matchBA') is None
+  assert PT.get_node_from_name(p_zone, 'matchBA') is None
   assert len(PT.get_nodes_from_name(p_zone, 'matchBA*')) == 2
-  new_jn0 = I.getNodeFromName(p_zone, 'matchBA.0')
-  new_jn1 = I.getNodeFromName(p_zone, 'matchBA.1')
+  new_jn0 = PT.get_node_from_name(p_zone, 'matchBA.0')
+  new_jn1 = PT.get_node_from_name(p_zone, 'matchBA.1')
   assert I.getValue(new_jn0) == 'ZoneA.P0.N0'
   assert I.getValue(new_jn1) == 'ZoneA.P1.N0'
 
-  assert (I.getNodeFromName1(new_jn0, 'PointList')[1] == [8,12,20]).all()
-  assert (I.getNodeFromName1(new_jn0, 'PointListDonor')[1] == [11,21,25]).all()
-  assert (I.getNodeFromName (new_jn0, 'Index')[1] == [5,3,2]).all()
-  assert (I.getNodeFromName1(new_jn1, 'PointList')[1] == [9,1]).all()
-  assert (I.getNodeFromName1(new_jn1, 'PointListDonor')[1] == [8,13]).all()
-  assert (I.getNodeFromName (new_jn1, 'Index')[1] == [1,6]).all()
+  assert (PT.get_child_from_name(new_jn0, 'PointList')[1] == [8,12,20]).all()
+  assert (PT.get_child_from_name(new_jn0, 'PointListDonor')[1] == [11,21,25]).all()
+  assert (PT.get_node_from_name (new_jn0, 'Index')[1] == [5,3,2]).all()
+  assert (PT.get_child_from_name(new_jn1, 'PointList')[1] == [9,1]).all()
+  assert (PT.get_child_from_name(new_jn1, 'PointListDonor')[1] == [8,13]).all()
+  assert (PT.get_node_from_name (new_jn1, 'Index')[1] == [1,6]).all()

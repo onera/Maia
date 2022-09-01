@@ -53,7 +53,7 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
   RME.remove_ngons(ngon, local_faces, comm)
 
   # C/ Update vertex ids in EC
-  ngon_ec_n = I.getNodeFromName1(ngon, 'ElementConnectivity')
+  ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
   dist_data = {'OldToNew' : old_to_new_vtx}
   part_data = MBTP.dist_to_part(vtx_distri_ini, dist_data, [ngon_ec_n[1].astype(pdm_dtype)], comm)
   assert len(ngon_ec_n[1]) == len(part_data['OldToNew'][0])
@@ -70,7 +70,7 @@ def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
 
   #Update list of faces
   dist_data = {'OldToNew' : old_to_new_face}
-  nface_ec_n = I.getNodeFromName1(nface, 'ElementConnectivity')
+  nface_ec_n = PT.get_child_from_name(nface, 'ElementConnectivity')
   part_data = MBTP.dist_to_part(face_distri_ini, dist_data, [np.abs(nface_ec_n[1].astype(pdm_dtype))], comm)
   assert len(nface_ec_n[1]) == len(part_data['OldToNew'][0])
   #Get sign of nface_ec to preserve orientation
@@ -139,8 +139,8 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 
   # Prepare iterators
   matches_loc = lambda n : PT.Subset.GridLocation(n) == location
-  is_bcds_with_pl    = lambda n: I.getType(n) == 'BCDataSet_t'and I.getNodeFromName1(n, 'PointList') is not None
-  is_bcds_without_pl = lambda n: I.getType(n) == 'BCDataSet_t'and I.getNodeFromName1(n, 'PointList') is None
+  is_bcds_with_pl    = lambda n: I.getType(n) == 'BCDataSet_t'and PT.get_child_from_name(n, 'PointList') is not None
+  is_bcds_without_pl = lambda n: I.getType(n) == 'BCDataSet_t'and PT.get_child_from_name(n, 'PointList') is None
 
   is_sol  = lambda n: I.getType(n) in ['FlowSolution_t', 'DiscreteData_t'] and matches_loc(n) 
   is_bc   = lambda n: I.getType(n) == 'BC_t' and matches_loc(n) 
@@ -171,7 +171,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
       I._addChild(zsr, I.getNodeFromPath(zone, PT.getSubregionExtent(zsr, zone) + '/PointList'))
 
   #Get new index for every PL at once
-  all_pl_list = [I.getNodeFromName1(fs, 'PointList')[1][0].astype(pdm_dtype) for fs in all_nodes]
+  all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0].astype(pdm_dtype) for fs in all_nodes]
   dist_data_pl = {'OldToNew' : old_to_new_face}
   part_data_pl = MBTP.dist_to_part(entity_distri, dist_data_pl, all_pl_list, comm)
 
@@ -184,7 +184,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   #For internal jn only, we must update PointListDonor with new face id. Non internal jn reorder the array,
   # but do not apply old_to_new transformation.
   # Note that we will lost symmetry PL/PLD for internal jn, we need a rule to update it afterward
-  all_pld = [I.getNodeFromName1(jn, 'PointListDonor') for jn in i_jn_list]
+  all_pld = [PT.get_child_from_name(jn, 'PointListDonor') for jn in i_jn_list]
   updated_pld = MBTP.dist_to_part(entity_distri, dist_data_pl, [pld[1][0].astype(pdm_dtype) for pld in all_pld], comm)
   for i, pld in enumerate(all_pld):
     I.setValue(pld, updated_pld['OldToNew'][i].reshape((1,-1), order='F'))
@@ -215,7 +215,7 @@ def _shift_cgns_subsets(zone, location, shift_value):
   GridConnectivity_t
   """
   for node in all_nodes_with_point_list(zone,location):
-    I.getNodeFromName1(node, 'PointList')[1][0] += shift_value
+    PT.get_child_from_name(node, 'PointList')[1][0] += shift_value
 
 def _update_vtx_data(zone, vtx_to_remove, comm):
   """
@@ -306,7 +306,7 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   all_gcs_query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
   for zgc, gc in PT.iter_children_from_predicates(zone, all_gcs_query[2:], ancestors=True):
     jn_to_opp[base_n + '/' + zone_n + '/' + zgc[0] + '/' + gc[0]] = \
-        (np.copy(I.getNodeFromName1(gc, 'PointList')[1]), np.copy(I.getNodeFromName1(gc, 'PointListDonor')[1]))
+        (np.copy(PT.get_child_from_name(gc, 'PointList')[1]), np.copy(PT.get_child_from_name(gc, 'PointListDonor')[1]))
   for o_base, o_zone, o_zgc, o_gc in PT.iter_children_from_predicates(dist_tree, all_gcs_query, ancestors=True):
     gc_path = '/'.join([I.getName(node) for node in [o_base, o_zone, o_zgc, o_gc]])
     gc_path_opp = MJT.get_jn_donor_path(dist_tree, gc_path)
@@ -316,10 +316,10 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
       if I.getName(o_base) + '/' + I.getName(o_zone) == current_zone_path and gc_path_opp >= gc_path:
         pass
       else:
-        I.setValue(I.getNodeFromName1(o_gc, 'PointList'),     pld_opp)
-        I.setValue(I.getNodeFromName1(o_gc, 'PointListDonor'), pl_opp)
+        I.setValue(PT.get_child_from_name(o_gc, 'PointList'),     pld_opp)
+        I.setValue(PT.get_child_from_name(o_gc, 'PointListDonor'), pl_opp)
       #Since we modify the PointList of this join, we must check that no data is related to it
-      assert I.getNodeFromType1(o_gc, 'DataArray_t') is None, \
+      assert PT.get_child_from_label(o_gc, 'DataArray_t') is None, \
           "Can not reorder a GridConnectivity PointList to which data is related"
       for zsr in PT.iter_children_from_label(o_zone, 'ZoneSubRegion_t'):
         assert PT.getSubregionExtent(zsr, o_zone) != I.getName(o_zgc) + '/' + I.getName(o_gc), \

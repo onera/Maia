@@ -47,14 +47,14 @@ def test_transformation_zone_void():
 def test_transform_affine(sub_comm):
 
   def check_vect_field(old_node, new_node, field_name):
-    old_data = [I.getNodeFromName(old_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
-    new_data = [I.getNodeFromName(new_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
+    old_data = [PT.get_node_from_name(old_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
+    new_data = [PT.get_node_from_name(new_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
     assert np.allclose(old_data[0], -new_data[0])
     assert np.allclose(old_data[1], -new_data[1])
     assert np.allclose(old_data[2],  new_data[2])
   def check_scal_field(old_node, new_node, field_name):
-    old_data = I.getNodeFromName(old_node, field_name)[1]
-    new_data = I.getNodeFromName(new_node, field_name)[1]
+    old_data = PT.get_node_from_name(old_node, field_name)[1]
+    new_data = PT.get_node_from_name(new_node, field_name)[1]
     assert (old_data == new_data).all()
 
   dist_tree = dcube_generate(4, 1., [0., -.5, -.5], sub_comm)

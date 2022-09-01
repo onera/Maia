@@ -2,6 +2,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree as PT
 import Pypdm.Pypdm as PDM
 
 from maia import npy_pdm_gnum_dtype
@@ -86,7 +87,7 @@ ZoneU Zone_t [[18,6,0]]:
 
   dmeshnodal = CTP.cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, sub_comm)
 
-  assert I.getNodeFromName(dist_zone, ':CGNS#MultiPart') is not None
+  assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
   dims = PDM.dmesh_nodal_get_g_dims(dmeshnodal)
   assert dims['n_cell_abs'] == 4
   assert dims['n_vtx_abs'] == 18

@@ -18,7 +18,7 @@ def test_update_ngon(sub_comm):
   zone = I.getZones(tree)[0]
   PT.rm_nodes_from_label(tree, 'ZoneBC_t')
 
-  ngon = I.getNodeFromName(zone, 'NGonElements')
+  ngon = PT.get_node_from_name(zone, 'NGonElements')
   vtx_distri_ini = I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex')[1]
 
   #from maia.transform.dist_tree.merge_ids import merge_distributed_ids
@@ -49,10 +49,10 @@ def test_update_ngon(sub_comm):
 
   start, end     = I.getNodeFromPath(ngon, ':CGNS#Distribution/Element')[1][[0,1]]
   start_e, end_e = I.getNodeFromPath(ngon, ':CGNS#Distribution/ElementConnectivity')[1][[0,1]]
-  assert (I.getNodeFromName(ngon, 'ElementRange')[1]        == [1,34]                      ).all()
-  assert (I.getNodeFromName(ngon, 'ParentElements')[1]      == expected_pe_full[start:end]    ).all()
-  assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec_full[start_e:end_e]).all()
-  assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1]  == expected_eso_f[start:end+1] ).all()
+  assert (PT.get_node_from_name(ngon, 'ElementRange')[1]        == [1,34]                      ).all()
+  assert (PT.get_node_from_name(ngon, 'ParentElements')[1]      == expected_pe_full[start:end]    ).all()
+  assert (PT.get_node_from_name(ngon, 'ElementConnectivity')[1] == expected_ec_full[start_e:end_e]).all()
+  assert (PT.get_node_from_name(ngon, 'ElementStartOffset')[1]  == expected_eso_f[start:end+1] ).all()
 
 @mark_mpi_test(2)
 def test_update_nface(sub_comm):
@@ -81,8 +81,8 @@ def test_update_nface(sub_comm):
                   -5, 9, 15, 19, 24, 28, -6, 10, -19, -1*15, 26, 30, -7, 11, 16, 20, -28, 32, -8, 12, -20, -1*16, -30, 34]
 
   start_e, end_e = I.getNodeFromPath(nface, ':CGNS#Distribution/ElementConnectivity')[1][[0,1]]
-  assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == expected_ec_full[start_e:end_e]).all()
-  assert (I.getNodeFromName(nface, 'ElementStartOffset')[1]  == eso_full[cell_distri_ini[0]:cell_distri_ini[1]+1]).all()
+  assert (PT.get_node_from_name(nface, 'ElementConnectivity')[1] == expected_ec_full[start_e:end_e]).all()
+  assert (PT.get_node_from_name(nface, 'ElementStartOffset')[1]  == eso_full[cell_distri_ini[0]:cell_distri_ini[1]+1]).all()
 
 @mark_mpi_test(2)
 def test_update_subset(sub_comm):
@@ -102,9 +102,9 @@ def test_update_subset(sub_comm):
   new_distri = par_utils.uniform_distribution(4, sub_comm)
   this_rank = slice(new_distri[0], new_distri[1])
   assert (I.getNodeFromPath(bc, ':CGNS#Distribution/Index')[1] == new_distri).all()
-  assert (I.getNodeFromName(bc, 'PointList')[1] ==   [1,2,3,4][this_rank]).all()
-  assert (I.getNodeFromName(bc, 'ArrayA')[1] ==  [10,20,30,50][this_rank]).all()
-  assert (I.getNodeFromName(bc, 'ArrayB')[1] == [20,40,60,100][this_rank]).all()
+  assert (PT.get_node_from_name(bc, 'PointList')[1] ==   [1,2,3,4][this_rank]).all()
+  assert (PT.get_node_from_name(bc, 'ArrayA')[1] ==  [10,20,30,50][this_rank]).all()
+  assert (PT.get_node_from_name(bc, 'ArrayB')[1] == [20,40,60,100][this_rank]).all()
 
 @mark_mpi_test(2)
 def test_update_cgns_subsets(sub_comm):
@@ -113,20 +113,20 @@ def test_update_cgns_subsets(sub_comm):
   #Move some node to diversify the test
   zgc = I.newZoneGridConnectivity('ZoneGC', parent=zone)
   for bcname in ['Ymin', 'Ymax']:
-    bc = I.getNodeFromName(zone, bcname)
+    bc = PT.get_node_from_name(zone, bcname)
     I.setType(bc, 'GridConnectivity_t')
     I._addChild(zgc, bc)
-    I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
-  bc = I.getNodeFromName(zone, 'Zmin')
+    I._rmNode(PT.get_child_from_label(zone, 'ZoneBC_t'), bc)
+  bc = PT.get_node_from_name(zone, 'Zmin')
   I.setType(bc, 'ZoneSubRegion_t')
   I._addChild(zone, bc)
-  I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
-  I.newDataArray('SubSol', np.copy(I.getNodeFromName(bc, 'PointList')[1][0]), parent=bc)
-  bc = I.getNodeFromName(zone, 'Zmax')
+  I._rmNode(PT.get_child_from_label(zone, 'ZoneBC_t'), bc)
+  I.newDataArray('SubSol', np.copy(PT.get_node_from_name(bc, 'PointList')[1][0]), parent=bc)
+  bc = PT.get_node_from_name(zone, 'Zmax')
   I.setType(bc, 'FlowSolution_t')
   I._addChild(zone, bc)
-  I._rmNode(I.getNodeFromType1(zone, 'ZoneBC_t'), bc)
-  I.newDataArray('Sol', np.copy(I.getNodeFromName(bc, 'PointList')[1][0]), parent=bc)
+  I._rmNode(PT.get_child_from_label(zone, 'ZoneBC_t'), bc)
+  I.newDataArray('Sol', np.copy(PT.get_node_from_name(bc, 'PointList')[1][0]), parent=bc)
 
   face_distri_ini = I.getVal(MT.getDistribution(I.getNodeFromPath(zone, 'NGonElements'), 'Element'))
   old_to_new_face_f = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,15,16,23,24,25,26,27,28,29,30,31,32,33,34]
@@ -197,8 +197,8 @@ def test_update_vtx_data(sub_comm):
   MJ._update_vtx_data(zone, vtx_to_remove, sub_comm)
 
   assert (I.getVal(MT.getDistribution(zone, 'Vertex')) == expected_distri).all()
-  assert (I.getNodeFromName(zone, 'CoordinateX')[1] == expected_cx).all()
-  assert (I.getNodeFromName(zone, 'Sol')[1] == expected_sol).all()
+  assert (PT.get_node_from_name(zone, 'CoordinateX')[1] == expected_cx).all()
+  assert (PT.get_node_from_name(zone, 'Sol')[1] == expected_sol).all()
 
 @mark_mpi_test(2)
 def test_merge_intrazone_jn(sub_comm):
@@ -238,10 +238,10 @@ def test_merge_intrazone_jn(sub_comm):
   jn_pathes = ('Base/zone/ZoneGC/matchC', 'Base/zone/ZoneGC/matchD')
   MJ.merge_intrazone_jn(tree, jn_pathes, sub_comm)
 
-  assert I.getNodeFromName(zone, 'matchA') is not None
-  assert I.getNodeFromName(zone, 'matchB') is not None
-  assert I.getNodeFromName(zone, 'matchC') is None
-  assert I.getNodeFromName(zone, 'matchD') is None
+  assert PT.get_node_from_name(zone, 'matchA') is not None
+  assert PT.get_node_from_name(zone, 'matchB') is not None
+  assert PT.get_node_from_name(zone, 'matchC') is None
+  assert PT.get_node_from_name(zone, 'matchD') is None
 
   assert (I.getNodeFromPath(zone, 'NGonElements/ElementRange')[1] == [1,34]).all()
   assert (I.getNodeFromPath(zone, 'ZoneGC/matchA/PointList')[1] ==

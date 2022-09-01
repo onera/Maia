@@ -26,8 +26,8 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   distri_ngon  = I.getVal(MT.getDistribution(ngon, 'Element')).astype(pdm_dtype)
 
   pdm_distrib = par_utils.partial_to_full_distribution(distri_ngon, comm)
-  dist_data = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
-  b_stride = np.diff(I.getNodeFromName1(ngon, 'ElementStartOffset')[1]).astype(np.int32)
+  dist_data = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
+  b_stride = np.diff(PT.get_child_from_name(ngon, 'ElementStartOffset')[1]).astype(np.int32)
 
   # Get the vertex associated to the faces in FaceList
   part_data_pl = dict()
@@ -223,20 +223,20 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
   n_face = len(pl_face_vtx_idx) - 1
   n_face_vtx = len(pl_face_vtx)
 
-  received_coords     = filter_vtx_coordinates(I.getNodeFromType1(zone, 'GridCoordinates_t'),
+  received_coords     = filter_vtx_coordinates(PT.get_child_from_label(zone, 'GridCoordinates_t'),
                                             I.getVal(MT.getDistribution(zone, 'Vertex')),
                                             pl_face_vtx, comm)
-  opp_received_coords = filter_vtx_coordinates(I.getNodeFromType1(zone_d, 'GridCoordinates_t'),
+  opp_received_coords = filter_vtx_coordinates(PT.get_child_from_label(zone_d, 'GridCoordinates_t'),
                                             I.getVal(MT.getDistribution(zone_d, 'Vertex')),
                                             pld_face_vtx, comm)
 
   # TODO extract in apply_periodic_transformation
   #Apply transformation
   if gc_prop is not None:
-    gc_periodic = I.getNodeFromType1(gc_prop, 'Periodic_t')
-    translation     = I.getNodeFromName1(gc_periodic, 'Translation')[1]
-    rotation_center = I.getNodeFromName1(gc_periodic, 'RotationCenter')[1]
-    rotation_angle  = I.getNodeFromName1(gc_periodic, 'RotationAngle')[1]
+    gc_periodic = PT.get_child_from_label(gc_prop, 'Periodic_t')
+    translation     = PT.get_child_from_name(gc_periodic, 'Translation')[1]
+    rotation_center = PT.get_child_from_name(gc_periodic, 'RotationCenter')[1]
+    rotation_angle  = PT.get_child_from_name(gc_periodic, 'RotationAngle')[1]
     
     opp_received_coords = np_utils.transform_cart_matrix(opp_received_coords.T, translation, rotation_center, rotation_angle).T
 
@@ -312,8 +312,8 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   face_distri_d = I.getVal(MT.getDistribution(ngon_node_d, 'Element'))
 
   distri_jn = I.getVal(MT.getDistribution(jn, 'Index'))
-  pl   = I.getNodeFromName1(jn, 'PointList'     )[1][0]
-  pl_d = I.getNodeFromName1(jn, 'PointListDonor')[1][0]
+  pl   = PT.get_child_from_name(jn, 'PointList'     )[1][0]
+  pl_d = PT.get_child_from_name(jn, 'PointListDonor')[1][0]
 
 
   dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
@@ -333,7 +333,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   pld_vtx_l = []
 
   if solo_face:
-    gc_prop = I.getNodeFromType1(jn, 'GridConnectivityProperty_t')
+    gc_prop = PT.get_child_from_label(jn, 'GridConnectivityProperty_t')
     _, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
 
     pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
@@ -413,9 +413,9 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
     dn_vtx.append(vtx_distri[1] - vtx_distri[0])
     dn_face.append(face_distri[1] - face_distri[0])
 
-    eso = I.getNodeFromName1(ngon, 'ElementStartOffset')[1]
+    eso = PT.get_child_from_name(ngon, 'ElementStartOffset')[1]
     dface_vtx_idx.append(shifted_eso(ngon))
-    dface_vtx.append(I.getNodeFromName1(ngon, 'ElementConnectivity')[1])
+    dface_vtx.append(PT.get_child_from_name(ngon, 'ElementConnectivity')[1])
 
   # Collect interface data
   interface_dn_face = []
@@ -423,8 +423,8 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
   interface_dom_face = []
   for interface_path in interface_pathes:
     gc = I.getNodeFromPath(dist_tree, interface_path)
-    pl  = I.getNodeFromName1(gc, 'PointList')[1][0]
-    pld = I.getNodeFromName1(gc, 'PointListDonor')[1][0]
+    pl  = PT.get_child_from_name(gc, 'PointList')[1][0]
+    pld = PT.get_child_from_name(gc, 'PointListDonor')[1][0]
 
     interface_dn_face.append(pl.size)
     interface_ids_face.append(np_utils.interweave_arrays([pl,pld]))
@@ -543,7 +543,7 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
     for j, gc_path in enumerate(interface_path):
       base_name, zone_name, zgc_name, gc_name = gc_path.split('/')
       zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
-      zgc  = I.getNodeFromName1(zone, zgc_name)
+      zgc  = PT.get_child_from_name(zone, zgc_name)
       gc = I.getNodeFromPath(dist_tree, gc_path)
 
       if j == 1: #Swap pl/pld for opposite jn
@@ -554,10 +554,10 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
       I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
       MT.newDistribution({'Index' : distri_jn}, jn_vtx)
 
-      I._addChild(jn_vtx, I.getNodeFromType1(gc, 'GridConnectivityProperty_t'))
-      I._addChild(jn_vtx, I.getNodeFromName1(gc, 'DistInterfaceId'))
-      I._addChild(jn_vtx, I.getNodeFromName1(gc, 'DistInterfaceOrd'))
-      donor_name_node = I.getNodeFromName(gc, 'GridConnectivityDonorName')
+      I._addChild(jn_vtx, PT.get_child_from_label(gc, 'GridConnectivityProperty_t'))
+      I._addChild(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceId'))
+      I._addChild(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceOrd'))
+      donor_name_node = PT.get_child_from_name(gc, 'GridConnectivityDonorName')
       if donor_name_node is not None:
         I.newDescriptor('GridConnectivityDonorName', I.getValue(donor_name_node)+'#Vtx', parent=jn_vtx)
 

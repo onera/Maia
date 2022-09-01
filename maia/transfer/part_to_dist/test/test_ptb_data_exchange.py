@@ -97,7 +97,7 @@ class Test__discover_wrapper:
     PTB._discover_wrapper(dist_zone, part_zones, \
         'DiscreteData_t', 'DiscreteData_t/DataArray_t', sub_comm)
 
-    fs = I.getNodeFromName(dist_zone, 'FS')
+    fs = PT.get_child_from_name(dist_zone, 'FS')
     assert I.getType(fs) == 'DiscreteData_t'
     dist_pl     = I.getNodeFromPath(fs, 'PointList')[1]
     dist_distri = I.getVal(MT.getDistribution(fs, 'Index'))

@@ -9,10 +9,10 @@ def _compare_pointrange(gc1, gc2):
  Compare a couple of grid_connectivity nodes and return True
  if the PointList and PointListDonor are symmetrically equals
  """
- gc1_pr  = I.getNodeFromName1(gc1, 'PointRange')[1]
- gc1_prd = I.getNodeFromName1(gc1, 'PointRangeDonor')[1]
- gc2_pr  = I.getNodeFromName1(gc2, 'PointRange')[1]
- gc2_prd = I.getNodeFromName1(gc2, 'PointRangeDonor')[1]
+ gc1_pr  = PT.get_child_from_name(gc1, 'PointRange')[1]
+ gc1_prd = PT.get_child_from_name(gc1, 'PointRangeDonor')[1]
+ gc2_pr  = PT.get_child_from_name(gc2, 'PointRange')[1]
+ gc2_prd = PT.get_child_from_name(gc2, 'PointRangeDonor')[1]
  if gc1_pr.shape != gc2_prd.shape or gc2_pr.shape != gc1_prd.shape:
    return False
  return (np.all(gc1_pr == gc2_prd) and np.all(gc2_pr == gc1_prd))
@@ -22,10 +22,10 @@ def _compare_pointlist(gc1, gc2):
   Compare a couple of grid_connectivity nodes and return True
   if the PointList and PointListDonor are symmetrically equals
   """
-  gc1_pl  = np.asarray(I.getNodeFromName1(gc1, 'PointList')[1])
-  gc1_pld = np.asarray(I.getNodeFromName1(gc1, 'PointListDonor')[1])
-  gc2_pl  = np.asarray(I.getNodeFromName1(gc2, 'PointList')[1])
-  gc2_pld = np.asarray(I.getNodeFromName1(gc2, 'PointListDonor')[1])
+  gc1_pl  = np.asarray(PT.get_child_from_name(gc1, 'PointList')[1])
+  gc1_pld = np.asarray(PT.get_child_from_name(gc1, 'PointListDonor')[1])
+  gc2_pl  = np.asarray(PT.get_child_from_name(gc2, 'PointList')[1])
+  gc2_pld = np.asarray(PT.get_child_from_name(gc2, 'PointListDonor')[1])
   if gc1_pl.shape != gc2_pld.shape or gc2_pl.shape != gc1_pld.shape:
     return False
   return (np.all(gc1_pl == gc2_pld) and np.all(gc2_pl == gc1_pld))
@@ -46,9 +46,9 @@ def _create_local_match_table(gc_list, gc_paths):
     candidates = [i for i,path in enumerate(gc_paths) if
         (path==opp_path and PT.getZoneDonorPath(path.split('/')[0], gc_list[i]) == current_path)]
     #print('  candidates', candidates)
-    gc_has_pl = I.getNodeFromName1(gc, 'PointList') is not None
+    gc_has_pl = PT.get_child_from_name(gc, 'PointList') is not None
     for j in candidates:
-      candidate_has_pl = I.getNodeFromName1(gc_list[j], 'PointList') is not None
+      candidate_has_pl = PT.get_child_from_name(gc_list[j], 'PointList') is not None
       if gc_has_pl and candidate_has_pl:
         local_match_table[igc][j] = _compare_pointlist(gc, gc_list[j])
       elif not gc_has_pl and not candidate_has_pl:
@@ -81,7 +81,7 @@ def add_joins_donor_name(dist_tree, comm, force=False):
   for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
     gc_list.append(nodes[-1])
     gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
-    if I.getNodeFromName1(nodes[-1], 'GridConnectivityDonorName') is None:
+    if PT.get_child_from_name(nodes[-1], 'GridConnectivityDonorName') is None:
       need_compute = True
   
   if not need_compute:
@@ -106,10 +106,10 @@ def get_jn_donor_path(dist_tree, jn_path):
   cur_jn = I.getNodeFromPath(dist_tree, jn_path)
   base_name, zone_name, zgc_name, jn_name = jn_path.split('/')
   opp_zone_path = PT.getZoneDonorPath(base_name, cur_jn)
-  opp_gc_name   = I.getValue(I.getNodeFromName1(cur_jn, "GridConnectivityDonorName"))
+  opp_gc_name   = I.getValue(PT.get_child_from_name(cur_jn, "GridConnectivityDonorName"))
 
   opp_zone      = I.getNodeFromPath(dist_tree, opp_zone_path)
-  opp_zgc       = I.getNodeFromType1(opp_zone, "ZoneGridConnectivity_t")
+  opp_zgc       = PT.get_child_from_label(opp_zone, "ZoneGridConnectivity_t")
   return f"{opp_zone_path}/{I.getName(opp_zgc)}/{opp_gc_name}"
 
 def update_jn_name(dist_tree, jn_path, new_name):
@@ -118,7 +118,7 @@ def update_jn_name(dist_tree, jn_path, new_name):
   """
   cur_jn = I.getNodeFromPath(dist_tree, jn_path)
   opp_jn = I.getNodeFromPath(dist_tree, get_jn_donor_path(dist_tree, jn_path))
-  opp_gc_name_n = I.getNodeFromName1(opp_jn, "GridConnectivityDonorName")
+  opp_gc_name_n = PT.get_child_from_name(opp_jn, "GridConnectivityDonorName")
   I.setName(cur_jn, new_name)
   I.setValue(opp_gc_name_n, new_name)
   
@@ -151,7 +151,7 @@ def copy_donor_subset(dist_tree):
     opp_jn_path = get_jn_donor_path(dist_tree, jn_path)
     cur_jn = I.getNodeFromPath(dist_tree, jn_path)
     opp_jn = I.getNodeFromPath(dist_tree, opp_jn_path)
-    I.newPointList('PointListDonor', I.getNodeFromName1(opp_jn, 'PointList')[1], parent=cur_jn)
+    I.newPointList('PointListDonor', PT.get_child_from_name(opp_jn, 'PointList')[1], parent=cur_jn)
 
 
 def store_interfaces_ids(dist_tree):

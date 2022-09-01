@@ -8,6 +8,7 @@ from maia.utils import test_utils as TU
 from maia.utils.yaml   import parse_yaml_cgns
 
 import maia
+import maia.pytree as PT
 import Converter.Internal as I
 
 
@@ -24,11 +25,11 @@ def test_poly_new_to_old(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.poly_new_to_old(t)
 
-  ngon = I.getNodeFromName(t,"NGON_n")
-  nface = I.getNodeFromName(t,"NFACE_n")
-  ngon_ec = I.getVal(I.getNodeFromName1(ngon,"ElementConnectivity"))
-  pe = I.getVal(I.getNodeFromName1(ngon,"ParentElements"))
-  nface_ec = I.getVal(I.getNodeFromName1(nface,"ElementConnectivity"))
+  ngon = PT.get_node_from_name(t,"NGON_n")
+  nface = PT.get_node_from_name(t,"NFACE_n")
+  ngon_ec = I.getVal(PT.get_child_from_name(ngon,"ElementConnectivity"))
+  pe = I.getVal(PT.get_child_from_name(ngon,"ParentElements"))
+  nface_ec = I.getVal(PT.get_child_from_name(nface,"ElementConnectivity"))
 
   assert (ngon_ec == np.array([ 4, 1,6, 9,4,    4, 6 ,11,14, 9,    4, 3, 5,10, 8,    4,  8,10,15,13,
                                 4, 1,2, 7,6,    4, 2 , 3, 8, 7,    4, 6, 7,12,11,    4,  7, 8,13,12,
@@ -44,11 +45,11 @@ def test_poly_new_to_old_only_interleave(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.poly_new_to_old(t,full_onera_compatibility=False)
 
-  ngon = I.getNodeFromName(t,"NGON_n")
-  nface = I.getNodeFromName(t,"NFACE_n")
-  ngon_ec = I.getVal(I.getNodeFromName1(ngon,"ElementConnectivity"))
-  pe = I.getVal(I.getNodeFromName1(ngon,"ParentElements"))
-  nface_ec = I.getVal(I.getNodeFromName1(nface,"ElementConnectivity"))
+  ngon = PT.get_node_from_name(t,"NGON_n")
+  nface = PT.get_node_from_name(t,"NFACE_n")
+  ngon_ec = I.getVal(PT.get_child_from_name(ngon,"ElementConnectivity"))
+  pe = I.getVal(PT.get_child_from_name(ngon,"ParentElements"))
+  nface_ec = I.getVal(PT.get_child_from_name(nface,"ElementConnectivity"))
 
   assert (ngon_ec == np.array([ 4, 1,6, 9,4,    4, 6 ,11,14, 9,    4, 3, 5,10, 8,    4,  8,10,15,13,
                                 4, 1,2, 7,6,    4, 2 , 3, 8, 7,    4, 6, 7,12,11,    4,  7, 8,13,12,
@@ -65,13 +66,13 @@ def test_poly_old_to_new(poly_tree_new):
   maia.algo.seq.poly_new_to_old(t) # Note: we are not testing that!
 
   maia.algo.seq.poly_old_to_new(t)
-  ngon = I.getNodeFromName(t,"NGON_n")
-  nface = I.getNodeFromName(t,"NFaceElements")
-  ngon_ec = I.getVal(I.getNodeFromName1(ngon,"ElementConnectivity"))
-  ngon_eso = I.getVal(I.getNodeFromName1(ngon,"ElementStartOffset"))
-  pe = I.getVal(I.getNodeFromName1(ngon,"ParentElements"))
-  nface_ec = I.getVal(I.getNodeFromName1(nface,"ElementConnectivity"))
-  nface_eso = I.getVal(I.getNodeFromName1(nface,"ElementStartOffset"))
+  ngon = PT.get_node_from_name(t,"NGON_n")
+  nface = PT.get_node_from_name(t,"NFaceElements")
+  ngon_ec = I.getVal(PT.get_child_from_name(ngon,"ElementConnectivity"))
+  ngon_eso = I.getVal(PT.get_child_from_name(ngon,"ElementStartOffset"))
+  pe = I.getVal(PT.get_child_from_name(ngon,"ParentElements"))
+  nface_ec = I.getVal(PT.get_child_from_name(nface,"ElementConnectivity"))
+  nface_eso = I.getVal(PT.get_child_from_name(nface,"ElementStartOffset"))
 
   assert (ngon_eso == np.array([0,4,8,12,16,20,24,28,32,36,40,44,48,51,54,57,61,65,69])).all()
   assert (ngon_ec == np.array([ 1,6, 9,4,    6 ,11,14, 9,    3, 5,10, 8,     8,10,15,13,
@@ -90,13 +91,13 @@ def test_poly_old_to_new_only_index(poly_tree_new):
   maia.algo.seq.poly_new_to_old(t,full_onera_compatibility=False) # Note: we are not testing that!
 
   maia.algo.seq.poly_old_to_new(t)
-  ngon = I.getNodeFromName(t,"NGON_n")
-  nface = I.getNodeFromName(t,"NFACE_n")
-  ngon_ec = I.getVal(I.getNodeFromName1(ngon,"ElementConnectivity"))
-  ngon_eso = I.getVal(I.getNodeFromName1(ngon,"ElementStartOffset"))
-  pe = I.getVal(I.getNodeFromName1(ngon,"ParentElements"))
-  nface_ec = I.getVal(I.getNodeFromName1(nface,"ElementConnectivity"))
-  nface_eso = I.getVal(I.getNodeFromName1(nface,"ElementStartOffset"))
+  ngon = PT.get_node_from_name(t,"NGON_n")
+  nface = PT.get_node_from_name(t,"NFACE_n")
+  ngon_ec = I.getVal(PT.get_child_from_name(ngon,"ElementConnectivity"))
+  ngon_eso = I.getVal(PT.get_child_from_name(ngon,"ElementStartOffset"))
+  pe = I.getVal(PT.get_child_from_name(ngon,"ParentElements"))
+  nface_ec = I.getVal(PT.get_child_from_name(nface,"ElementConnectivity"))
+  nface_eso = I.getVal(PT.get_child_from_name(nface,"ElementStartOffset"))
 
   assert (ngon_eso == np.array([0,4,8,12,16,20,24,28,32,36,40,44,48,51,54,57,61,65,69])).all()
   assert (ngon_ec == np.array([ 1,6, 9,4,    6 ,11,14, 9,    3, 5,10, 8,     8,10,15,13,

@@ -4,7 +4,7 @@ import mpi4py.MPI as MPI
 import numpy as np
 
 import Converter.Internal as I
-import maia.pytree.sids   as sids
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils.yaml import parse_yaml_cgns
@@ -240,8 +240,8 @@ def test_bc_s_to_bc_u():
   bc_u = s_to_u.bc_s_to_bc_u(bc_s, n_vtx, 'FaceCenter', 0, 1)
   assert I.getName(bc_u) == 'MyBCName'
   assert I.getValue(bc_u) == 'BCOutflow'
-  assert sids.Subset.GridLocation(bc_u) == 'FaceCenter'
-  assert I.getValue(I.getNodeFromName1(bc_u, 'PointList')).shape == (1,9)
+  assert PT.Subset.GridLocation(bc_u) == 'FaceCenter'
+  assert I.getValue(PT.get_child_from_name(bc_u, 'PointList')).shape == (1,9)
 
 def test_bcds_s_to_bcds_u():
   #We dont test value of PL here, this is carried out by Test_compute_pointList_from_pointRanges
@@ -252,11 +252,11 @@ def test_bcds_s_to_bcds_u():
   bcdata = I.newBCData("DirichletData", bcds)
   I.newDataArray("array", np.arange(16), bcdata)
   bc_u = s_to_u.bc_s_to_bc_u(bc_s, n_vtx, 'FaceCenter', 0, 1)
-  bcds = I.getNodeFromName(bc_u, 'BCDataSet')
+  bcds = PT.get_node_from_name(bc_u, 'BCDataSet')
   assert bcds is not None
-  assert sids.Subset.GridLocation(bcds) == 'Vertex'
-  assert I.getNodeFromName(bcds, 'PointList') is not None
-  assert I.getNodeFromName(bcds, 'array') is not None
+  assert PT.Subset.GridLocation(bcds) == 'Vertex'
+  assert PT.get_node_from_name(bcds, 'PointList') is not None
+  assert PT.get_node_from_name(bcds, 'array') is not None
 
 def test_gc_s_to_gc_u():
   #https://cgns.github.io/CGNS_docs_current/sids/cnct.html
@@ -275,15 +275,15 @@ def test_gc_s_to_gc_u():
   assert I.getName(gcB_u) == 'matchB'
   assert I.getValue(gcA_u) == 'Base/zoneB'
   assert I.getValue(gcB_u) == 'zoneA'
-  assert sids.Subset.GridLocation(gcA_u) == 'FaceCenter'
-  assert sids.Subset.GridLocation(gcB_u) == 'FaceCenter'
-  assert I.getValue(I.getNodeFromType1(gcA_u, 'GridConnectivityType_t')) == 'Abutting1to1'
-  assert I.getValue(I.getNodeFromType1(gcB_u, 'GridConnectivityType_t')) == 'Abutting1to1'
-  assert I.getValue(I.getNodeFromName1(gcA_u, 'PointList')).shape == (1,24)
-  assert (I.getNodeFromName1(gcA_u, 'PointList')[1]\
-          == I.getNodeFromName1(gcB_u, 'PointListDonor')[1]).all()
-  assert (I.getNodeFromName1(gcB_u, 'PointList')[1]\
-          == I.getNodeFromName1(gcA_u, 'PointListDonor')[1]).all()
+  assert PT.Subset.GridLocation(gcA_u) == 'FaceCenter'
+  assert PT.Subset.GridLocation(gcB_u) == 'FaceCenter'
+  assert I.getValue(PT.get_child_from_label(gcA_u, 'GridConnectivityType_t')) == 'Abutting1to1'
+  assert I.getValue(PT.get_child_from_label(gcB_u, 'GridConnectivityType_t')) == 'Abutting1to1'
+  assert I.getValue(PT.get_child_from_name(gcA_u, 'PointList')).shape == (1,24)
+  assert (PT.get_child_from_name(gcA_u, 'PointList')[1]\
+          == PT.get_child_from_name(gcB_u, 'PointListDonor')[1]).all()
+  assert (PT.get_child_from_name(gcB_u, 'PointList')[1]\
+          == PT.get_child_from_name(gcA_u, 'PointListDonor')[1]).all()
 
   gcA_s = I.newGridConnectivity1to1('matchB', 'Base/zoneA', pointRange=[[17,17], [3,9], [1,5]], \
       pointRangeDonor=[[7,1], [9,9], [5,1]], transform = [-2,-1,-3])
@@ -291,17 +291,17 @@ def test_gc_s_to_gc_u():
       pointRangeDonor=[[17,17], [3,9], [1,5]], transform = [-2,-1,-3])
   gcA_u = s_to_u.gc_s_to_gc_u(gcA_s, 'Base/zoneB', n_vtx_B, n_vtx_A, 'FaceCenter', 0, 1)
   gcB_u = s_to_u.gc_s_to_gc_u(gcB_s, 'Base/zoneA', n_vtx_A, n_vtx_B, 'FaceCenter', 0, 1)
-  assert (I.getNodeFromName1(gcA_u, 'PointList')[1]\
-          == I.getNodeFromName1(gcB_u, 'PointListDonor')[1]).all()
-  assert (I.getNodeFromName1(gcB_u, 'PointList')[1]\
-          == I.getNodeFromName1(gcA_u, 'PointListDonor')[1]).all()
+  assert (PT.get_child_from_name(gcA_u, 'PointList')[1]\
+          == PT.get_child_from_name(gcB_u, 'PointListDonor')[1]).all()
+  assert (PT.get_child_from_name(gcB_u, 'PointList')[1]\
+          == PT.get_child_from_name(gcA_u, 'PointListDonor')[1]).all()
 
 @mark_mpi_test(2)
 def test_zonedims_to_ngon(sub_comm):
   #We dont test value of faceVtx/ngon here, this is carried out by Test_compute_all_ngon_connectivity
   n_vtx_zone = np.array([3,2,4])
   ngon = s_to_u.zonedims_to_ngon(n_vtx_zone, sub_comm)
-  n_faces = I.getNodeFromName1(ngon, "ElementStartOffset")[1].shape[0] - 1
+  n_faces = PT.get_child_from_name(ngon, "ElementStartOffset")[1].shape[0] - 1
   if sub_comm.Get_rank() == 0:
     expected_n_faces = 15
     expected_eso     = 4*np.arange(0,15+1)
@@ -309,9 +309,9 @@ def test_zonedims_to_ngon(sub_comm):
     expected_n_faces = 14
     expected_eso     = 4*np.arange(15, 15+14+1)
   assert n_faces == expected_n_faces
-  assert (I.getNodeFromName1(ngon, 'ElementRange')[1] == [1, 29]).all()
-  assert (I.getNodeFromName1(ngon, 'ElementStartOffset')[1] == expected_eso).all()
+  assert (PT.get_child_from_name(ngon, 'ElementRange')[1] == [1, 29]).all()
+  assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
   assert I.getNodeFromPath(ngon, ':CGNS#Distribution/ElementConnectivity')[1][2] == 4*29
-  assert I.getNodeFromName1(ngon, 'ParentElements')[1].shape == (expected_n_faces, 2)
-  assert I.getNodeFromName1(ngon, 'ElementConnectivity')[1].shape == (4*expected_n_faces,)
+  assert PT.get_child_from_name(ngon, 'ParentElements')[1].shape == (expected_n_faces, 2)
+  assert PT.get_child_from_name(ngon, 'ElementConnectivity')[1].shape == (4*expected_n_faces,)
 ###############################################################################

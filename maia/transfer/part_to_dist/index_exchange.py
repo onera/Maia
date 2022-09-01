@@ -22,7 +22,7 @@ def create_part_pl_gnum_unique(part_zones, node_path, comm):
   n_elems = np.empty(len(part_zones), dtype=np.int32)
   for i_zone, p_zone in enumerate(part_zones):
     node = I.getNodeFromPath(p_zone, node_path)
-    n_elems[i_zone] = I.getNodeFromName1(node, 'PointList')[1].shape[1] if node else 0
+    n_elems[i_zone] = PT.get_child_from_name(node, 'PointList')[1].shape[1] if node else 0
 
   # Exchange
   shifted_part = par_utils.gather_and_shift(len(part_zones), comm, dtype=np.int32)
@@ -56,7 +56,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
         ln_to_gn = I.getVal(MT.getGlobalNumbering(p_zone, 'Vertex'))
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
-      part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
+      part_pl = PT.get_child_from_name(node, 'PointList')[1][0]
       ln_to_gn_list.append(ln_to_gn[part_pl-1])
 
   #Exchange is not needed. We use PTB just to count the element without multiplicity
@@ -123,7 +123,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
           ln_to_gn = I.getVal(MT.getGlobalNumbering(part_zone, 'Vertex'))
         else:
           ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
-        part_pl = I.getNodeFromName1(node, 'PointList')[1][0]
+        part_pl = PT.get_child_from_name(node, 'PointList')[1][0]
         part_pl_list.append(ln_to_gn[part_pl-1])
 
   _, dist_pl = PTB.exchange_field(part_pl_list)
@@ -155,7 +155,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   min_section_gn = np.iinfo(pdm_gnum_dtype).max
   max_section_gn = 0
   for ipart, part_zone in enumerate(part_zones):
-    elt_n = I.getNodeFromName1(part_zone, elem_name)
+    elt_n = PT.get_child_from_name(part_zone, elem_name)
     if elt_n is not None:
       elt_id = PT.Element.Type(elt_n)
       cst_stride = PT.Element.NVtx(elt_n)
@@ -166,7 +166,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
       max_section_gn = max(max_section_gn, np.max(section_gnum))
 
       # Move to global and add in part_data
-      EC    = I.getNodeFromName1(elt_n, 'ElementConnectivity')[1]
+      EC    = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
       part_ec.append(vtx_gnum_l[ipart][EC-1])
     else:
       part_ec.append(np.empty(0, np.int32))
@@ -214,11 +214,11 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
   # Collect partitioned data
   for ipart, part_zone in enumerate(part_zones):
-    elem_n = I.getNodeFromName1(part_zone, elem_name)
-    ER     = I.getNodeFromName1(elem_n, 'ElementRange')[1]
-    PE     = I.getNodeFromName1(elem_n, 'ParentElements')[1]
-    EC     = I.getNodeFromName1(elem_n, 'ElementConnectivity')[1]
-    ECIdx  = I.getNodeFromName1(elem_n, 'ElementStartOffset')[1]
+    elem_n = PT.get_child_from_name(part_zone, elem_name)
+    ER     = PT.get_child_from_name(elem_n, 'ElementRange')[1]
+    PE     = PT.get_child_from_name(elem_n, 'ParentElements')[1]
+    EC     = PT.get_child_from_name(elem_n, 'ElementConnectivity')[1]
+    ECIdx  = PT.get_child_from_name(elem_n, 'ElementStartOffset')[1]
 
     # Convert in global numbering and expected shape
     PE = PE.ravel()
@@ -326,9 +326,9 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
 
   # Collect partitioned data
   for ipart, part_zone in enumerate(part_zones):
-    nface_n = I.getNodeFromName1(part_zone, elem_name)
-    EC     = I.getNodeFromName1(nface_n, 'ElementConnectivity')[1]
-    ECIdx  = I.getNodeFromName1(nface_n, 'ElementStartOffset')[1]
+    nface_n = PT.get_child_from_name(part_zone, elem_name)
+    EC     = PT.get_child_from_name(nface_n, 'ElementConnectivity')[1]
+    ECIdx  = PT.get_child_from_name(nface_n, 'ElementStartOffset')[1]
 
     # Move to global and add in part_data
     EC_sign = np.sign(EC)

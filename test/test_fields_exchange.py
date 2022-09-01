@@ -56,7 +56,7 @@ class Test_fields_exchange:
     part_tree = _split(dist_tree, sub_comm) # Split to get the partitioned tree
   
     # For now, we have no solution on the partitioned tree : 
-    assert I.getNodeFromType(part_tree, 'FlowSolution_t') is None
+    assert PT.get_node_from_label(part_tree, 'FlowSolution_t') is None
     return dist_tree, part_tree
 
 
@@ -81,7 +81,7 @@ class Test_fields_exchange:
     bck_zone = I.copyTree(dist_zone)
     MT.part_to_dist.data_exchange.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
     for field in PT.iter_nodes_from_predicates(dist_zone, 'FlowSolution_t/DataArray_t'):
-      assert np.allclose(I.getNodeFromName(bck_zone, I.getName(field))[1] * 2, field[1])
+      assert np.allclose(PT.get_node_from_name(bck_zone, I.getName(field))[1] * 2, field[1])
 
   def test_created_sol(self, sub_comm):
     dist_tree, part_tree = self.get_trees(sub_comm)
@@ -123,9 +123,9 @@ class Test_fields_exchange:
     # Wildcard are also accepted
     bck_zone = I.copyTree(dist_zone)
     MT.part_to_dist.data_exchange.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm, include=['FlowSolution/*Id'])
-    assert np.allclose(I.getNodeFromName(bck_zone, "RankId")[1] * 2, I.getNodeFromName(dist_zone, "RankId")[1]) #Only this one had a way-and-back transfert
-    assert np.allclose(I.getNodeFromName(bck_zone, "CellId")[1]    , I.getNodeFromName(dist_zone, "CellId")[1])
-    assert np.allclose(I.getNodeFromName(bck_zone, "CstField")[1]  , I.getNodeFromName(dist_zone, "CstField")[1])
+    assert np.allclose(PT.get_node_from_name(bck_zone, "RankId")[1] * 2, PT.get_node_from_name(dist_zone, "RankId")[1]) #Only this one had a way-and-back transfert
+    assert np.allclose(PT.get_node_from_name(bck_zone, "CellId")[1]    , PT.get_node_from_name(dist_zone, "CellId")[1])
+    assert np.allclose(PT.get_node_from_name(bck_zone, "CstField")[1]  , PT.get_node_from_name(dist_zone, "CstField")[1])
 
   def test_tree_level(self, sub_comm):
     dist_tree, part_tree = self.get_trees(sub_comm)
@@ -161,7 +161,7 @@ class Test_multiple_labels_exchange:
     for part_zone in part_zones:
       assert I.getNodeFromPath(part_zone, 'FlowSolution/RankId')   is not None
       assert I.getNodeFromPath(part_zone, 'FlowSolution/CstField') is None
-      assert I.getNodeFromType(part_zone, 'BCDataSet_t') is None
+      assert PT.get_node_from_label(part_zone, 'BCDataSet_t') is None
     self._cleanup(part_tree)
 
     MT.dist_to_part.dist_zone_to_part_zones_only(dist_zone, part_zones, sub_comm, \
@@ -171,12 +171,12 @@ class Test_multiple_labels_exchange:
       assert I.getNodeFromPath(part_zone, 'FlowSolution/CstField') is None
       bc_amont = PT.get_node_from_name_and_label(part_zone, 'amont', 'BC_t')
       if bc_amont is not None:
-        assert I.getNodeFromName(bc_amont, 'BCId') is not None
-        assert I.getNodeFromName(bc_amont, 'FaceId') is not None
+        assert PT.get_node_from_name(bc_amont, 'BCId') is not None
+        assert PT.get_node_from_name(bc_amont, 'FaceId') is not None
       bc_aval = PT.get_node_from_name_and_label(part_zone, 'aval', 'BC_t')
       if bc_aval is not None:
-        assert I.getNodeFromName(bc_aval, 'BCId') is None
-        assert I.getNodeFromName(bc_aval, 'FaceId') is not None
+        assert PT.get_node_from_name(bc_aval, 'BCId') is None
+        assert PT.get_node_from_name(bc_aval, 'FaceId') is not None
     self._cleanup(part_tree)
 
     MT.dist_to_part.dist_zone_to_part_zones_all(dist_zone, part_zones, sub_comm, \
@@ -187,19 +187,19 @@ class Test_multiple_labels_exchange:
       bc_aval  = PT.get_node_from_name_and_label(part_zone, 'aval',  'BC_t')
       for bc in [bc_amont, bc_aval]:
         if bc is not None: #BC can be absent from partition
-          assert I.getNodeFromName(bc, 'BCId') is not None
-          assert I.getNodeFromName(bc, 'FaceId') is not None
+          assert PT.get_node_from_name(bc, 'BCId') is not None
+          assert PT.get_node_from_name(bc, 'FaceId') is not None
     self._cleanup(part_tree)
 
   def test_tree_level(self, sub_comm):
     dist_tree, part_tree = self.get_trees(sub_comm)
     # At tree level API, one can select only some labels to exchange
     MT.dist_to_part.dist_tree_to_part_tree_only_labels(dist_tree, part_tree, ['BCDataSet_t'], sub_comm)
-    assert I.getNodeFromType(part_tree, 'FlowSolution_t') is None
+    assert PT.get_node_from_label(part_tree, 'FlowSolution_t') is None
     for part in I.getZones(part_tree):
       bc_amont = PT.get_node_from_name_and_label(part, 'amont', 'BC_t')
       bc_aval  = PT.get_node_from_name_and_label(part, 'aval',  'BC_t')
       for bc in [bc_amont, bc_aval]:
         if bc is not None: #BC can be absent from partition
-          assert I.getNodeFromName(bc, 'BCId') is not None
-          assert I.getNodeFromName(bc, 'FaceId') is not None
+          assert PT.get_node_from_name(bc, 'BCId') is not None
+          assert PT.get_node_from_name(bc, 'FaceId') is not None

@@ -24,17 +24,15 @@ def test_elements_to_ngons_maia(sub_comm, write_output):
   # > Old elements are cleaned up
   assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
   # > Poly sections appear
-  ngon_node  = I.getNodeFromName(dist_tree, 'NGON_n')
-  nface_node = I.getNodeFromName(dist_tree, 'NFACE_n')
-  assert ngon_node  is not None
-  assert nface_node is not None
+  ngon_node  = PT.request_node_from_name(dist_tree, 'NGON_n')
+  nface_node = PT.request_node_from_name(dist_tree, 'NFACE_n')
 
-  assert I.getNodeFromName(ngon_node, 'ParentElements')
-  assert I.getNodeFromName(ngon_node, 'ParentElementsPosition')
+  assert PT.get_child_from_name(ngon_node, 'ParentElements')
+  assert PT.get_child_from_name(ngon_node, 'ParentElementsPosition')
 
   # > Some non-regression checks
-  assert np.all(I.getVal(I.getNodeFromName(ngon_node , 'ElementRange')) == [1,2694])
-  assert np.all(I.getVal(I.getNodeFromName(nface_node, 'ElementRange')) == [2695,3990])
+  assert np.all(I.getVal(PT.get_child_from_name(ngon_node , 'ElementRange')) == [1,2694])
+  assert np.all(I.getVal(PT.get_child_from_name(nface_node, 'ElementRange')) == [2695,3990])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
@@ -51,13 +49,11 @@ def test_elements_to_ngons_pdm(sub_comm, write_output):
 
   # > Old elements are cleaned up
   assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
-  ngon_node  = I.getNodeFromName(dist_tree, 'NGonElements')
-  nface_node = I.getNodeFromName(dist_tree, 'NFaceElements')
-  assert ngon_node is not None
-  assert nface_node is not None
+  ngon_node  = PT.request_node_from_name(dist_tree, 'NGonElements')
+  nface_node = PT.request_node_from_name(dist_tree, 'NFaceElements')
 
-  assert np.all(I.getVal(I.getNodeFromName(ngon_node , 'ElementRange')) == [1,2694])
-  assert np.all(I.getVal(I.getNodeFromName(nface_node, 'ElementRange')) == [2695,3990])
+  assert np.all(I.getVal(PT.get_child_from_name(ngon_node , 'ElementRange')) == [1,2694])
+  assert np.all(I.getVal(PT.get_child_from_name(nface_node, 'ElementRange')) == [2695,3990])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)

@@ -53,10 +53,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   #Vertices
   if needs_vertex:
     if dn_vtx > 0:
-      gridc_n    = I.getNodeFromName1(dist_zone, 'GridCoordinates')
-      cx         = I.getNodeFromName1(gridc_n, 'CoordinateX')[1]
-      cy         = I.getNodeFromName1(gridc_n, 'CoordinateY')[1]
-      cz         = I.getNodeFromName1(gridc_n, 'CoordinateZ')[1]
+      cx, cy, cz = PT.Zone.coordinates(dist_zone)
       dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
     else:
       dvtx_coord = np.empty(0, dtype='float64', order='F')
@@ -72,7 +69,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   for i_dim, elts in enumerate(sorted_elts_by_dim):
     elt_pdm_types = np.array([MT.pdm_elts.element_pdm_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)
     elt_lengths   = np.array([to_elmt_size(e) for e in elts], dtype=np.int32)
-    elmts_connectivities = [I.getNodeFromName1(e, "ElementConnectivity")[1] for e in elts]
+    elmts_connectivities = [PT.get_child_from_name(e, "ElementConnectivity")[1] for e in elts]
     dmesh_nodal.set_sections(MT.pdm_elts.elements_dim_to_pdm_kind[i_dim], elmts_connectivities, elt_pdm_types, elt_lengths)
 
   # Boundaries

@@ -1,7 +1,5 @@
 import pytest
 
-import Converter.Internal as I
-import maia
 import maia.pytree as PT
 
 from maia.utils.yaml                   import parse_yaml_cgns
@@ -20,23 +18,24 @@ def test_apply_to_zones():
       ZoneBC ZoneBC_t:
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  zone = I.getNodeFromPath(tree, 'BaseA/zoneI')
-  other_base = I.getNodeFromPath(tree, 'BaseB')
+  zoneI = PT.get_node_from_name(tree, 'zoneI')
+  zoneII = PT.get_node_from_name(tree, 'zoneII')
+  other_base = PT.get_node_from_name(tree, 'BaseB')
 
   # Single zone
-  apply_to_zones(add_vtx, zone)
-  assert I.getNodeFromName(tree, 'zoneI')[1][0][0] == 9
+  apply_to_zones(add_vtx, zoneI)
+  assert PT.Zone.n_vtx(zoneI) == 9
   #Base
   apply_to_zones(add_vtx, other_base)
-  assert I.getNodeFromName(tree, 'zoneII')[1][0][0] == 28
+  assert PT.Zone.n_vtx(zoneII) == 28
   #Tree
   apply_to_zones(add_vtx, tree)
-  assert I.getNodeFromName(tree, 'zoneI')[1][0][0] == 10
-  assert I.getNodeFromName(tree, 'zoneII')[1][0][0] == 29
+  assert PT.Zone.n_vtx(zoneI)  == 10
+  assert PT.Zone.n_vtx(zoneII) == 29
 
   #BC (err)
   with pytest.raises(Exception):
-    apply_to_zones(add_vtx, I.getNodeFromType(tree, 'ZoneBC_t'))
+    apply_to_zones(add_vtx, PT.get_node_from_label(tree, 'ZoneBC_t'))
 
   
 def test_zones_iterator():
@@ -49,8 +48,8 @@ def test_zones_iterator():
   """
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  zone = I.getNodeFromPath(tree, 'BaseA/zoneI')
-  other_base = I.getNodeFromPath(tree, 'BaseB')
+  zone = PT.get_node_from_name(tree, 'zoneI')
+  other_base = PT.get_node_from_name(tree, 'BaseB')
 
   # Single zone
   zone = PT.get_all_Zone_t(tree)[0]
@@ -60,7 +59,7 @@ def test_zones_iterator():
 
   #Other node (err)
   with pytest.raises(ValueError):
-    for z in zones_iterator(I.getNodeFromType(tree, 'ZoneBC_t')):
+    for z in zones_iterator(PT.get_node_from_label(tree, 'ZoneBC_t')):
       pass
 
   

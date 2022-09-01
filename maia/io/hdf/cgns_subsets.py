@@ -38,7 +38,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
           distrib_data = distrib_bc
           data_shape   = bc_shape
         else: #BCDS has its own distribution
-          distrib_data = I.getNodeFromName1(distrib_bcds_n, 'Index')[1]
+          distrib_data = PT.get_child_from_name(distrib_bcds_n, 'Index')[1]
           data_shape = utils.pl_or_pr_size(bcds)
 
         data_space_pl    = create_data_array_filter(distrib_data, data_shape)
@@ -82,7 +82,7 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
     grid_location = PT.Subset.GridLocation(flow_solution)
     distrib_ud_n = MT.getDistribution(flow_solution)
     if distrib_ud_n:
-      distrib_data = I.getNodeFromName1(distrib_ud_n, 'Index')[1]
+      distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
       data_shape = utils.pl_or_pr_size(flow_solution)
       data_space_pl = create_data_array_filter(distrib_data, data_shape)
       data_space = create_data_array_filter(distrib_data, [data_shape.prod()])
@@ -120,7 +120,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
     distrib_ud_n = MT.getDistribution(matching_region)
     if not distrib_ud_n:
       raise RuntimeError("ZoneSubRegion {0} is not well defined".format(zone_subregion[0]))
-    distrib_data = I.getNodeFromName1(distrib_ud_n, 'Index')[1]
+    distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
 
     data_shape = utils.pl_or_pr_size(matching_region)
     data_space_pl = create_data_array_filter(distrib_data, data_shape)

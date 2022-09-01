@@ -65,8 +65,8 @@ def nface_to_pe(zone, comm, remove_NFace=False):
 
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   cell_distri = par_utils.partial_to_full_distribution(nface_distri, comm)
-  cell_face_idx = I.getNodeFromName1(nface_node, "ElementStartOffset")[1]
-  cell_face     = I.getNodeFromName1(nface_node, "ElementConnectivity")[1]
+  cell_face_idx = PT.get_child_from_name(nface_node, "ElementStartOffset")[1]
+  cell_face     = PT.get_child_from_name(nface_node, "ElementConnectivity")[1]
   
   # If NFace are before NGon, then face ids must be shifted
   if PT.Element.Range(ngon_node)[0] == 1:

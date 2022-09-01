@@ -51,7 +51,7 @@ def test_wall_distance_S(method, sub_comm, write_output):
     for d_zone in I.getZones(d_base):
       zone_path = '/'.join([I.getName(d_base), I.getName(d_zone)])
       ref_wall_dist = I.getNodeFromPath(refence_solution, zone_path + '/WallDistance')
-      assert maia.pytree.is_same_tree(ref_wall_dist, I.getNodeFromName1(d_zone, 'WallDistance'), 
+      assert maia.pytree.is_same_tree(ref_wall_dist, PT.get_child_from_name(d_zone, 'WallDistance'), 
           type_tol=True, abs_tol=1E-14)
 
 wall_dist_methods = ["cloud"]
@@ -67,8 +67,8 @@ def test_wall_distance_U(method, sub_comm, write_output):
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   #Let WALL family be autodetected by setting its type to wall:
-  wall_family = I.getNodeFromName2(dist_tree, 'WALL')
-  family_bc = I.getNodeFromName1(wall_family, 'FamilyBC')
+  wall_family = PT.get_node_from_name(dist_tree, 'WALL', depth=2)
+  family_bc = PT.get_child_from_name(wall_family, 'FamilyBC')
   I.setValue(family_bc, 'BCWall')
 
   # Partitioning
@@ -91,6 +91,6 @@ def test_wall_distance_U(method, sub_comm, write_output):
     for d_zone in I.getZones(d_base):
       zone_path = '/'.join([I.getName(d_base), I.getName(d_zone)])
       ref_wall_dist = I.getNodeFromPath(refence_solution, zone_path + '/WallDistance')
-      assert maia.pytree.is_same_tree(ref_wall_dist, I.getNodeFromName1(d_zone, 'WallDistance'),
+      assert maia.pytree.is_same_tree(ref_wall_dist, PT.get_child_from_name(d_zone, 'WallDistance'),
           type_tol=True, abs_tol=1E-14)
 

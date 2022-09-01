@@ -11,7 +11,7 @@ def test_newDistribution():
 
   zone = I.newZone('zone')
   distri = mNode.newDistribution(parent=zone)
-  assert I.getNodeFromName(zone, ':CGNS#Distribution') is not None
+  assert PT.get_child_from_name(zone, ':CGNS#Distribution') is not None
 
   zone = I.newZone('zone')
   distri_arrays = {'Cell' : [0,15,30], 'Vertex' : [100,1000,1000]}
@@ -35,7 +35,7 @@ def test_newGlobalNumbering():
 
   zone = I.newZone('zone')
   gnum = mNode.newGlobalNumbering(parent=zone)
-  assert I.getNodeFromName(zone, ':CGNS#GlobalNumbering') is not None
+  assert PT.get_child_from_name(zone, ':CGNS#GlobalNumbering') is not None
 
   zone = I.newZone('zone')
   gnum_arrays = {'Cell' : [4,21,1,2,8,12], 'Vertex' : None}

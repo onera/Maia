@@ -35,7 +35,7 @@ def test_pe_to_nface(sub_comm):
   nface = PT.Zone.NFaceNode(zone)
 
   assert PT.is_same_tree(nface, nface_exp)
-  assert I.getNodeFromName(zone, "ParentElements") is None
+  assert PT.get_node_from_name(zone, "ParentElements") is None
 
 @mark_mpi_test([1])
 @pytest.mark.parametrize("rmNFace",[False, True])
@@ -45,12 +45,12 @@ def test_nface_to_pe(rmNFace, sub_comm):
   as_partitioned(zone)
   pe_bck = I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1]
   NGT.pe_to_nface(zone, True)
-  nface_bck = I.getNodeFromName(zone, 'NFaceElements')
+  nface_bck = PT.get_child_from_name(zone, 'NFaceElements')
 
   NGT.nface_to_pe(zone, rmNFace)
 
   assert (I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1] == pe_bck).all()
-  nface_cur = I.getNodeFromName(zone, 'NFaceElements')
+  nface_cur = PT.get_child_from_name(zone, 'NFaceElements')
   if rmNFace:
     assert nface_cur is None
   else:

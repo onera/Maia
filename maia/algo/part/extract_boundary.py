@@ -118,10 +118,10 @@ def extract_surf_from_bc(part_zones, families, comm):
 
     bc_nodes = PT.Zone.getBCsFromFamily(zone, families)
     if PT.Zone.Type(zone) == 'Unstructured':
-      bc_face_ids = [I.getNodeFromName1(bc_node, 'PointList')[1][0] for bc_node in bc_nodes]
+      bc_face_ids = [PT.get_child_from_name(bc_node, 'PointList')[1][0] for bc_node in bc_nodes]
     else:
       n_vtx_z = PT.Zone.VertexSize(zone)
-      bc_face_ids = [_pr_to_face_pl(n_vtx_z, I.getNodeFromName1(bc_node, 'PointRange')[1], PT.Subset.GridLocation(bc_node))[0] \
+      bc_face_ids = [_pr_to_face_pl(n_vtx_z, PT.get_child_from_name(bc_node, 'PointRange')[1], PT.Subset.GridLocation(bc_node))[0] \
           for bc_node in bc_nodes]
 
     _, bc_face_ids = np_utils.concatenate_np_arrays(bc_face_ids, np.int32)

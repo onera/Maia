@@ -47,10 +47,10 @@ def split_original_joins(p_tree):
       to_append = list()
       for gc in PT.get_children_from_label(zone_gc, 'GridConnectivity_t'):
         if not MT.conv.is_intra_gc(gc[0]): #Skip part joins
-          pl       = I.getNodeFromName1(gc, 'PointList')[1]
-          pl_d     = I.getNodeFromName1(gc, 'PointListDonor')[1]
+          pl       = PT.get_child_from_name(gc, 'PointList')[1]
+          pl_d     = PT.get_child_from_name(gc, 'PointListDonor')[1]
           lngn     = I.getVal(MT.getGlobalNumbering(gc, 'Index'))
-          donor    = I.getNodeFromName1(gc, 'Donor')[1]
+          donor    = PT.get_child_from_name(gc, 'Donor')[1]
           # > List of couples (procs, parts) holding the opposite join
           opposed_parts = np.unique(donor, axis=0)
           for i_sub_jn, opp_part in enumerate(opposed_parts):
@@ -68,7 +68,7 @@ def split_original_joins(p_tree):
             # Sort both pl and pld according to min joinId to ensure that
             # order is the same
             cur_path = p_base[0] + '/' + d_zone_name + '/' + gc[0]
-            opp_path = PT.getZoneDonorPath(p_base[0], gc) + '/' + I.getValue(I.getNodeFromName1(gc, 'GridConnectivityDonorName'))
+            opp_path = PT.getZoneDonorPath(p_base[0], gc) + '/' + I.getValue(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
 
             ref_pl = sub_pl if cur_path < opp_path else sub_pl_d
             sort_idx = np.argsort(ref_pl[0])

@@ -4,6 +4,7 @@ import numpy as np
 import Converter.Internal as I
 import Pypdm.Pypdm as PDM
 
+import maia.pytree as PT
 from   maia.utils.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh as CTP
 
@@ -74,9 +75,9 @@ ZoneU Zone_t [[18,6,0]]:
   """
 
   dist_zone = parse_yaml_cgns.to_node(dt)
-  PE = I.getNodeFromName(dist_zone, 'ParentElements')
+  PE = PT.get_node_from_name(dist_zone, 'ParentElements')
 
   dmesh = CTP.cgns_dist_zone_to_pdm_dmesh(dist_zone, sub_comm)
   #No getters for dmesh so we can not check data
-  assert I.getNodeFromName(dist_zone, ':CGNS#MultiPart') is not None
+  assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
 

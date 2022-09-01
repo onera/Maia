@@ -78,7 +78,7 @@ def test_localize_points(sub_comm):
   LOC.localize_points(tree_src, tree_tgt, 'CellCenter', sub_comm)
   assert PT.is_same_tree(tree_src_back, tree_src)
   tgt_zone = I.getZones(tree_tgt)[0]
-  loc_node = I.getNodeFromNameAndType(tgt_zone, 'Localization', 'DiscreteData_t')
+  loc_node = PT.get_node_from_name_and_label(tgt_zone, 'Localization', 'DiscreteData_t')
   assert loc_node is not None and PT.Subset.GridLocation(loc_node) == 'CellCenter'
 
   if sub_comm.rank == 0:
@@ -88,4 +88,4 @@ def test_localize_points(sub_comm):
   elif sub_comm.rank == 2:
     expected_src_id = np.array([-1,-1,-1,-1,-1,-1,-1,-1,-1])
 
-  assert (I.getNodeFromName1(loc_node, 'SrcId')[1] == expected_src_id).all()
+  assert (PT.get_child_from_name(loc_node, 'SrcId')[1] == expected_src_id).all()

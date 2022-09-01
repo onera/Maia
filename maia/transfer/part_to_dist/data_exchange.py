@@ -52,13 +52,13 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm):
   distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
   lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
 
-  d_grid_co = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
+  d_grid_co = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
   part_data = dict()
   for coord in PT.iter_children_from_label(d_grid_co, 'DataArray_t'):
     part_data[I.getName(coord)] = list()
 
   for part_zone in part_zones:
-    p_grid_co = I.getNodeFromName1(part_zone, I.getName(d_grid_co))
+    p_grid_co = PT.get_child_from_name(part_zone, I.getName(d_grid_co))
     for coord in PT.iter_children_from_label(p_grid_co, 'DataArray_t'):
       flat_data = coord[1].ravel(order='A') #Reshape structured arrays for PDM exchange
       part_data[I.getName(coord)].append(flat_data)
@@ -66,7 +66,7 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm):
   # Exchange
   dist_data = part_to_dist(distribution, part_data, lntogn_list, comm)
   for coord, array in dist_data.items():
-    dist_coord = I.getNodeFromName1(d_grid_co, coord)
+    dist_coord = PT.get_child_from_name(d_grid_co, coord)
     I.setValue(dist_coord, array)
 
 def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
@@ -74,13 +74,13 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
   Shared code for FlowSolution_t and DiscreteData_t
   """
   for mask_sol in I.getChildren(mask_tree):
-    d_sol = I.getNodeFromName1(dist_zone, I.getName(mask_sol)) #True container
+    d_sol = PT.get_child_from_name(dist_zone, I.getName(mask_sol)) #True container
 
     if not par_utils.exists_everywhere(part_zones, I.getName(d_sol), comm):
       continue #Skip FS that remains on dist_tree but are not present on part tree
 
     location = PT.Subset.GridLocation(d_sol)
-    has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
+    has_pl   = PT.get_child_from_name(d_sol, 'PointList') is not None
 
     if has_pl:
       distribution = te_utils.get_cgns_distribution(d_sol, 'Index')
@@ -100,15 +100,15 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
     part_data = {field : [] for field in fields}
 
     for part_zone in part_zones:
-      p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
+      p_sol = PT.get_child_from_name(part_zone, I.getName(d_sol))
       for field in fields:
-        flat_data = I.getNodeFromName(p_sol, field)[1].ravel(order='A') #Reshape structured arrays for PDM exchange
+        flat_data = PT.get_child_from_name(p_sol, field)[1].ravel(order='A') #Reshape structured arrays for PDM exchange
         part_data[field].append(flat_data)
 
     # Exchange
     dist_data = part_to_dist(distribution, part_data, lntogn_list, comm)
     for field, array in dist_data.items():
-      dist_field = I.getNodeFromName1(d_sol, field)
+      dist_field = PT.get_child_from_name(d_sol, field)
       I.setValue(dist_field, array)
 
 def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
@@ -147,7 +147,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
   """
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
   for mask_zsr in I.getChildren(mask_tree):
-    d_zsr = I.getNodeFromName1(dist_zone, I.getName(mask_zsr)) #True ZSR
+    d_zsr = PT.get_child_from_name(dist_zone, I.getName(mask_zsr)) #True ZSR
     # Search matching region
     matching_region_path = PT.getSubregionExtent(d_zsr, dist_zone)
     matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
@@ -165,7 +165,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
       p_zsr = I.getNodeFromPath(part_zone, I.getName(d_zsr))
       if p_zsr is not None:
         for field in fields:
-          part_data[field].append(I.getNodeFromName(p_zsr, field)[1])
+          part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])
 
     #Partitions having no data must be removed from lngn list since they have no contribution
     empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
@@ -176,7 +176,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
     # Exchange
     dist_data = part_to_dist(distribution, part_data, lngn_list, comm)
     for field, array in dist_data.items():
-      dist_field = I.getNodeFromName1(d_zsr, field)
+      dist_field = PT.get_child_from_name(d_zsr, field)
       I.setValue(dist_field, array)
 
 def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):

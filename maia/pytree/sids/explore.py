@@ -21,15 +21,15 @@ def getSubregionExtent(sub_region_node, zone):
   Return the path of the node (starting from zone node) related to sub_region_node
   node (BC, GC or itself)
   """
-  if I.getNodeFromName1(sub_region_node, "BCRegionName") is not None:
+  if PT.get_child_from_name(sub_region_node, "BCRegionName") is not None:
     for zbc, bc in PT.iter_children_from_predicates(zone, "ZoneBC_t/BC_t", ancestors=True):
-      if I.getName(bc) == I.getValue(I.getNodeFromName1(sub_region_node, "BCRegionName")):
+      if I.getName(bc) == I.getValue(PT.get_child_from_name(sub_region_node, "BCRegionName")):
         return I.getName(zbc) + '/' + I.getName(bc)
-  elif I.getNodeFromName1(sub_region_node, "GridConnectivityRegionName") is not None:
+  elif PT.get_child_from_name(sub_region_node, "GridConnectivityRegionName") is not None:
     gc_pathes = ["ZoneGridConnectivity_t/GridConnectivity_t", "ZoneGridConnectivity_t/GridConnectivity1to1_t"]
     for gc_path in gc_pathes:
       for zgc, gc in PT.iter_children_from_predicates(zone, gc_path, ancestors=True):
-        if I.getName(gc) == I.getValue(I.getNodeFromName1(sub_region_node, "GridConnectivityRegionName")):
+        if I.getName(gc) == I.getValue(PT.get_child_from_name(sub_region_node, "GridConnectivityRegionName")):
           return I.getName(zgc) + '/' + I.getName(gc)
   else:
     return I.getName(sub_region_node)
@@ -44,11 +44,10 @@ def find_connected_zones(tree):
   without Periodic_t node).
   """
   connected_zones = []
-  matching_gcs_u = lambda n : I.getType(n) == 'GridConnectivity_t' \
-                          and I.getValue(I.getNodeFromType1(n, 'GridConnectivityType_t')) == 'Abutting1to1'
+  matching_gcs_u = lambda n : I.getType(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n)
   matching_gcs_s = lambda n : I.getType(n) == 'GridConnectivity1to1_t'
   matching_gcs = lambda n : (matching_gcs_u(n) or matching_gcs_s(n)) \
-                          and I.getNodeFromType1(n, 'GridConnectivityProperty_t') is None
+                          and PT.get_child_from_label(n, 'GridConnectivityProperty_t') is None
   
   for base, zone in PT.iter_children_from_predicates(tree, 'CGNSBase_t/Zone_t', ancestors=True):
     zone_path = I.getName(base) + '/' + I.getName(zone)

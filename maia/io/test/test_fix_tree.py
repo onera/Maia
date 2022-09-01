@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import Converter.Internal as I
+import maia.pytree as PT
 from maia.utils.yaml  import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
@@ -18,8 +19,8 @@ def test_fix_zone_datatype():
                '/Base/ZoneA': (1, 'I4', (1, 3)),
                '/Base/ZoneB': (1, 'I8', (1, 3))}
   fix_tree.fix_zone_datatype(size_tree, size_data)
-  assert I.getNodeFromName(size_tree, "ZoneA")[1].dtype == np.int32
-  assert I.getNodeFromName(size_tree, "ZoneB")[1].dtype == np.int64
+  assert PT.get_node_from_name(size_tree, "ZoneA")[1].dtype == np.int32
+  assert PT.get_node_from_name(size_tree, "ZoneB")[1].dtype == np.int64
 
 def test_fix_point_ranges():
   yt = """
@@ -39,12 +40,12 @@ Base0 CGNSBase_t [3,3]:
 """
   size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   fix_tree.fix_point_ranges(size_tree)
-  gcA = I.getNodeFromName(size_tree, 'matchAB')
-  gcB = I.getNodeFromName(size_tree, 'matchBA')
-  assert (I.getNodeFromName1(gcA, 'PointRange')[1]      == [[17,17], [3,9], [1,5]]).all()
-  assert (I.getNodeFromName1(gcA, 'PointRangeDonor')[1] == [[ 7, 1], [9,9], [5,1]]).all()
-  assert (I.getNodeFromName1(gcB, 'PointRange')[1]      == [[ 7, 1], [9,9], [5,1]]).all()
-  assert (I.getNodeFromName1(gcB, 'PointRangeDonor')[1] == [[17,17], [3,9], [1,5]]).all()
+  gcA = PT.get_node_from_name(size_tree, 'matchAB')
+  gcB = PT.get_node_from_name(size_tree, 'matchBA')
+  assert (PT.get_child_from_name(gcA, 'PointRange')[1]      == [[17,17], [3,9], [1,5]]).all()
+  assert (PT.get_child_from_name(gcA, 'PointRangeDonor')[1] == [[ 7, 1], [9,9], [5,1]]).all()
+  assert (PT.get_child_from_name(gcB, 'PointRange')[1]      == [[ 7, 1], [9,9], [5,1]]).all()
+  assert (PT.get_child_from_name(gcB, 'PointRangeDonor')[1] == [[17,17], [3,9], [1,5]]).all()
 
 #def test_load_grid_connectivity_property():
   #Besoin de charger depuis un fichier, comment tester ?
@@ -65,15 +66,15 @@ def test_enforce_pdm_dtype():
           PointListDonor IndexArray_t {wrong_type} [[1,2,3]]:
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  assert I.getNodeFromName(tree, 'PointList')[1].dtype == wrong_pdm_type
-  assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == wrong_pdm_type
-  assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == wrong_pdm_type
-  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == np.int32
+  assert PT.get_node_from_name(tree, 'PointList')[1].dtype == wrong_pdm_type
+  assert PT.get_node_from_name(tree, 'ElementConnectivity')[1].dtype == wrong_pdm_type
+  assert PT.get_node_from_name(tree, 'ElementStartOffset')[1].dtype == wrong_pdm_type
+  assert PT.get_node_from_name(tree, 'ElementRange')[1].dtype == np.int32
   fix_tree._enforce_pdm_dtype(tree)
-  assert I.getNodeFromName(tree, 'PointList')[1].dtype == pdm_dtype
-  assert I.getNodeFromName(tree, 'ElementConnectivity')[1].dtype == pdm_dtype
-  assert I.getNodeFromName(tree, 'ElementStartOffset')[1].dtype == pdm_dtype
-  assert I.getNodeFromName(tree, 'ElementRange')[1].dtype == pdm_dtype
+  assert PT.get_node_from_name(tree, 'PointList')[1].dtype == pdm_dtype
+  assert PT.get_node_from_name(tree, 'ElementConnectivity')[1].dtype == pdm_dtype
+  assert PT.get_node_from_name(tree, 'ElementStartOffset')[1].dtype == pdm_dtype
+  assert PT.get_node_from_name(tree, 'ElementRange')[1].dtype == pdm_dtype
 
 def test_ensure_PE_global_indexing():
   ngon = I.newElements('WrongNGon', 'NGON', erange=[1,4])

@@ -18,7 +18,7 @@ def test_extract_surf_zone(sub_comm):
   zone = I.getZones(tree)[0]
 
   #Simplify mesh keeping only 2 BCs
-  zone_bc = I.getNodeFromType1(zone, "ZoneBC_t")
+  zone_bc = PT.get_child_from_label(zone, "ZoneBC_t")
   zone_bc[2] = [zone_bc[2][0], zone_bc[2][3]]
 
 
@@ -37,7 +37,7 @@ def test_extract_surf_zone(sub_comm):
   expected_ngon_full = parse_yaml_cgns.to_node(yt)
   expected_ngon = F2D.distribute_element_node(expected_ngon_full, sub_comm)
 
-  ngon = I.getNodeFromType1(surf_zone, 'Elements_t')
+  ngon = PT.Zone.NGonNode(surf_zone)
   assert PT.is_same_tree(ngon, expected_ngon)
     
 

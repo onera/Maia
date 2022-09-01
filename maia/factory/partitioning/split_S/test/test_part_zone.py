@@ -39,12 +39,12 @@ Zone Zone_t:
   zone = parse_yaml_cgns.to_node(yt)
 
   out = splitS.collect_S_bnd_per_dir(zone)
-  assert out["xmin"] == [I.getNodeFromName(zone, name) for name in ['bc1']]
-  assert out["ymin"] == [I.getNodeFromName(zone, name) for name in ['bc2', 'bc8']]
-  assert out["zmin"] == [I.getNodeFromName(zone, name) for name in ['bc4']]
-  assert out["xmax"] == [I.getNodeFromName(zone, name) for name in ['bc6', 'bc7', 'gc1']]
-  assert out["ymax"] == [I.getNodeFromName(zone, name) for name in ['bc3']]
-  assert out["zmax"] == [I.getNodeFromName(zone, name) for name in ['bc5']]
+  assert out["xmin"] == [PT.get_node_from_name(zone, name) for name in ['bc1']]
+  assert out["ymin"] == [PT.get_node_from_name(zone, name) for name in ['bc2', 'bc8']]
+  assert out["zmin"] == [PT.get_node_from_name(zone, name) for name in ['bc4']]
+  assert out["xmax"] == [PT.get_node_from_name(zone, name) for name in ['bc6', 'bc7', 'gc1']]
+  assert out["ymax"] == [PT.get_node_from_name(zone, name) for name in ['bc3']]
+  assert out["zmax"] == [PT.get_node_from_name(zone, name) for name in ['bc5']]
 
 def test_intersect_pr():
   assert splitS.intersect_pr(np.array([[7,11],[1,5]]), np.array([[12,16],[1,5]])) is None
@@ -139,34 +139,34 @@ Small.P2.N1 Zone_t:
   elif sub_comm.Get_rank() == 1:
     assert PT.get_nodes_from_name(part_tree, 'match1.*') == []
     assert len(PT.get_nodes_from_name(part_tree, 'match2.*')) == 1
-    match2 = I.getNodeFromName(part_tree, 'match2.0')
+    match2 = PT.get_node_from_name(part_tree, 'match2.0')
     assert I.getValue(match2) == 'Big.P2.N1'
     assert I.getType(match2) == 'GridConnectivity1to1_t'
-    assert (I.getNodeFromName(match2, 'PointRange')[1] == [[4,1],[4,4],[5,1]]).all()
-    assert (I.getNodeFromName(match2, 'PointRangeDonor')[1] == [[6,6],[2,5],[1,5]]).all()
+    assert (PT.get_node_from_name(match2, 'PointRange')[1] == [[4,1],[4,4],[5,1]]).all()
+    assert (PT.get_node_from_name(match2, 'PointRangeDonor')[1] == [[6,6],[2,5],[1,5]]).all()
   elif sub_comm.Get_rank() == 2:
     assert len(PT.get_nodes_from_name(part_tree, 'match1.*')) == 3
     assert len(PT.get_nodes_from_name(part_tree, 'match2.*')) == 2
     match1_1 = I.getNodeFromPath(part_tree, 'Base/Big.P2.N0/ZoneGridConnectivity/match1.0')
     assert I.getValue(match1_1) == 'Small.P2.N1'
-    assert (I.getNodeFromName(match1_1, 'PointRange')[1] == [[6,6],[3,5],[1,5]]).all()
-    assert (I.getNodeFromName(match1_1, 'PointRangeDonor')[1] == [[4,2],[4,4],[5,1]]).all()
+    assert (PT.get_node_from_name(match1_1, 'PointRange')[1] == [[6,6],[3,5],[1,5]]).all()
+    assert (PT.get_node_from_name(match1_1, 'PointRangeDonor')[1] == [[4,2],[4,4],[5,1]]).all()
     match1_2 = I.getNodeFromPath(part_tree, 'Base/Big.P2.N1/ZoneGridConnectivity/match1.0')
     assert I.getValue(match1_2) == 'Small.P1.N0'
-    assert (I.getNodeFromName(match1_2, 'PointRange')[1] == [[6,6],[2,5],[1,5]]).all()
-    assert (I.getNodeFromName(match1_2, 'PointRangeDonor')[1] == [[4,1],[4,4],[5,1]]).all()
+    assert (PT.get_node_from_name(match1_2, 'PointRange')[1] == [[6,6],[2,5],[1,5]]).all()
+    assert (PT.get_node_from_name(match1_2, 'PointRangeDonor')[1] == [[4,1],[4,4],[5,1]]).all()
     match1_3 = I.getNodeFromPath(part_tree, 'Base/Big.P2.N1/ZoneGridConnectivity/match1.1')
     assert I.getValue(match1_3) == 'Small.P2.N1'
-    assert (I.getNodeFromName(match1_3, 'PointRange')[1] == [[6,6],[1,2],[1,5]]).all()
-    assert (I.getNodeFromName(match1_3, 'PointRangeDonor')[1] == [[2,1],[4,4],[5,1]]).all()
+    assert (PT.get_node_from_name(match1_3, 'PointRange')[1] == [[6,6],[1,2],[1,5]]).all()
+    assert (PT.get_node_from_name(match1_3, 'PointRangeDonor')[1] == [[2,1],[4,4],[5,1]]).all()
     match2_1 = I.getNodeFromPath(part_tree, 'Base/Small.P2.N1/ZoneGridConnectivity/match2.0')
     assert I.getValue(match2_1) == 'Big.P2.N0'
-    assert (I.getNodeFromName(match2_1, 'PointRange')[1] == [[4,2],[4,4],[5,1]]).all()
-    assert (I.getNodeFromName(match2_1, 'PointRangeDonor')[1] == [[6,6],[3,5],[1,5]]).all()
+    assert (PT.get_node_from_name(match2_1, 'PointRange')[1] == [[4,2],[4,4],[5,1]]).all()
+    assert (PT.get_node_from_name(match2_1, 'PointRangeDonor')[1] == [[6,6],[3,5],[1,5]]).all()
     match2_2 = I.getNodeFromPath(part_tree, 'Base/Small.P2.N1/ZoneGridConnectivity/match2.1')
     assert I.getValue(match2_2) == 'Big.P2.N1'
-    assert (I.getNodeFromName(match2_2, 'PointRange')[1] == [[2,1],[4,4],[5,1]]).all()
-    assert (I.getNodeFromName(match2_2, 'PointRangeDonor')[1] == [[6,6],[1,2],[1,5]]).all()
+    assert (PT.get_node_from_name(match2_2, 'PointRange')[1] == [[2,1],[4,4],[5,1]]).all()
+    assert (PT.get_node_from_name(match2_2, 'PointRangeDonor')[1] == [[6,6],[1,2],[1,5]]).all()
 
 def test_create_zone_gnums():
   dist_zone_cell = np.array([6,8,4])

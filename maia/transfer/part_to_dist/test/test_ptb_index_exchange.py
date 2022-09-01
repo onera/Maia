@@ -27,13 +27,13 @@ def test_create_part_pl_gnum_unique(sub_comm):
   IPTB.create_part_pl_gnum_unique(part_zones, "ZSR", sub_comm)
 
   for p_zone in part_zones:
-    if I.getNodeFromName1(p_zone, "ZSR") is not None:
+    if PT.get_child_from_name(p_zone, "ZSR") is not None:
       assert I.getNodeFromPath(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromName(part_zones[0], 'Index')[1] == [1,2,3,4]).all()
+    assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [1,2,3,4]).all()
   if sub_comm.Get_rank() == 2:
-    assert (I.getNodeFromName(part_zones[1], 'Index')[1] == [7,8,9]).all()
-    assert I.getNodeFromName(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
+    assert (PT.get_node_from_name(part_zones[1], 'Index')[1] == [7,8,9]).all()
+    assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
 
 @mark_mpi_test(4)
 def test_create_part_pl_gnum(sub_comm):
@@ -58,14 +58,14 @@ def test_create_part_pl_gnum(sub_comm):
   IPTB.create_part_pl_gnum(dist_zone, part_zones, "ZSR", sub_comm)
 
   for p_zone in part_zones:
-    if I.getNodeFromName1(p_zone, "ZSR") is not None:
+    if PT.get_child_from_name(p_zone, "ZSR") is not None:
       assert I.getNodeFromPath(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromName(part_zones[0], 'Index')[1] == [7,2,4,6]).all()
-    assert I.getNodeFromName(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
+    assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [7,2,4,6]).all()
+    assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
   if sub_comm.Get_rank() == 2:
-    assert (I.getNodeFromName(part_zones[0], 'Index')[1] == [5,4]).all()
-    assert (I.getNodeFromName(part_zones[1], 'Index')[1] == [4,1,3]).all()
+    assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [5,4]).all()
+    assert (PT.get_node_from_name(part_zones[1], 'Index')[1] == [4,1,3]).all()
 
 @mark_mpi_test(4)
 @pytest.mark.parametrize("allow_mult", [False, True])
@@ -157,10 +157,10 @@ Zone.P2.N0 Zone_t:
 
   IPTB.part_elt_to_dist_elt(dist_zone, I.getZones(pT), 'Quad', sub_comm)
 
-  elt = I.getNodeFromName(dist_zone, 'Quad')
+  elt = PT.get_node_from_name(dist_zone, 'Quad')
   assert (PT.Element.Range(elt) == [11,18]).all()
   assert (elt[1] == [7,0]).all()
-  assert (I.getNodeFromName(elt, 'ElementConnectivity')[1] == expected_ec).all()
+  assert (PT.get_child_from_name(elt, 'ElementConnectivity')[1] == expected_ec).all()
   distri_elt  = I.getVal(MT.getDistribution(elt, 'Element'))
   assert distri_elt.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
@@ -248,11 +248,10 @@ Zone.P2.N1 Zone_t:
 
   IPTB.part_ngon_to_dist_ngon(dist_zone, I.getZones(pT), 'Ngon', sub_comm)
 
-  ngon = I.getNodeFromName(dist_zone, 'Ngon')
-  assert ngon is not None
-  assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == expected_eso).all()
-  assert (I.getNodeFromName(ngon, 'ParentElements')[1] == expected_pe).all()
-  assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec).all()
+  ngon = PT.request_node_from_name(dist_zone, 'Ngon')
+  assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
+  assert (PT.get_child_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
+  assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   distri_elt  = I.getVal(MT.getDistribution(ngon, 'Element'))
   distri_eltc = I.getVal(MT.getDistribution(ngon, 'ElementConnectivity'))
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
@@ -325,10 +324,10 @@ Zone.P2.N1 Zone_t:
 
   IPTB.part_nface_to_dist_nface(dist_zone, I.getZones(pT), 'NFace', 'Ngon', sub_comm)
 
-  nface = I.getNodeFromName(dist_zone, 'NFace')
+  nface = PT.get_node_from_name(dist_zone, 'NFace')
   assert nface is not None
-  assert (I.getNodeFromName(nface, 'ElementStartOffset')[1] == expected_eso).all()
-  assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == expected_ec).all()
+  assert (PT.get_child_from_name(nface, 'ElementStartOffset')[1] == expected_eso).all()
+  assert (PT.get_child_from_name(nface, 'ElementConnectivity')[1] == expected_ec).all()
   distri_elt  = I.getVal(MT.getDistribution(nface, 'Element'))
   distri_eltc = I.getVal(MT.getDistribution(nface, 'ElementConnectivity'))
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype

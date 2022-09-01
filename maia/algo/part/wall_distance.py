@@ -21,7 +21,8 @@ def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscou
   Return the list of Families having a FamilyBC_t node whose value is in bcwalls list
   """
   fam_query = lambda n : I.getType(n) == 'Family_t' and \
-      I.getNodeFromType1(n, 'FamilyBC_t') is not None and I.getValue(I.getNodeFromType1(n, 'FamilyBC_t')) in bcwalls
+                         PT.get_child_from_label(n, 'FamilyBC_t') is not None and \
+                         I.getValue(PT.get_child_from_label(n, 'FamilyBC_t')) in bcwalls
   return [I.getName(family) for family in PT.iter_children_from_predicates(tree, ['CGNSBase_t', fam_query])]
 
 
@@ -124,10 +125,9 @@ class WallDistance:
       vtx_coords = np_utils.interweave_arrays(PT.Zone.coordinates(part_zone))
       face_vtx_idx, face_vtx, _ = PT.Zone.ngon_connectivity(part_zone)
 
-      nfaces  = [e for e in PT.iter_children_from_label(part_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NFACE_n']
-      assert len(nfaces) == 1, "NFace connectivity is needed for wall distance computing"
-      cell_face_idx = I.getVal(I.getNodeFromName(nfaces[0], 'ElementStartOffset'))
-      cell_face     = I.getVal(I.getNodeFromName(nfaces[0], 'ElementConnectivity'))
+      nface = PT.Zone.NFaceNode(part_zone)
+      cell_face_idx = I.getVal(PT.get_child_from_name(nface, 'ElementStartOffset'))
+      cell_face     = I.getVal(PT.get_child_from_name(nface, 'ElementConnectivity'))
 
       vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TE.utils.get_entities_numbering(part_zone)
 
@@ -161,9 +161,9 @@ class WallDistance:
       if self.point_cloud in ['Vertex', 'CellCenter']:
         output_loc = self.point_cloud
       else:
-        output_loc = PT.Subset.GridLocation(I.getNodeFromName1(part_zone, self.point_clouds))
+        output_loc = PT.Subset.GridLocation(PT.get_child_from_name(part_zone, self.point_clouds))
       # Test if FlowSolution already exists or create it
-      fs_node = I.getNodeFromName1(part_zone, self.out_fs_n)
+      fs_node = PT.get_child_from_name(part_zone, self.out_fs_n)
       if fs_node is None:
         fs_node = I.newFlowSolution(name=self.out_fs_n, gridLocation=output_loc, parent=part_zone)
       assert PT.Subset.GridLocation(fs_node) == output_loc

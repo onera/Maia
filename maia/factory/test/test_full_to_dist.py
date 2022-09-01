@@ -22,8 +22,8 @@ def test_distribute_pl_node(sub_comm):
   dist_bc = full_to_dist.distribute_pl_node(bc, sub_comm)
   assert I.getNodeFromPath(dist_bc, ':CGNS#Distribution/Index') is not None
   assert I.getNodeFromPath(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is None
-  assert I.getNodeFromName(dist_bc, 'PointList')[1].shape == (1,2)
-  assert I.getNodeFromName(dist_bc, 'Data')[1].shape == (2,)
+  assert PT.get_node_from_name(dist_bc, 'PointList')[1].shape == (1,2)
+  assert PT.get_node_from_name(dist_bc, 'Data')[1].shape == (2,)
 
   yt = """
   bc BC_t:
@@ -39,8 +39,8 @@ def test_distribute_pl_node(sub_comm):
   dist_bc = full_to_dist.distribute_pl_node(bc, sub_comm)
   assert I.getNodeFromPath(dist_bc, ':CGNS#Distribution/Index') is not None
   assert I.getNodeFromPath(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is not None
-  assert I.getNodeFromName(dist_bc, 'PointList')[1].shape == (1,2)
-  assert I.getNodeFromName(dist_bc, 'Data')[1].shape == (1,)
+  assert PT.get_node_from_name(dist_bc, 'PointList')[1].shape == (1,2)
+  assert PT.get_node_from_name(dist_bc, 'Data')[1].shape == (1,)
   assert I.getNodeFromPath(dist_bc, 'BCDataSet/PointList')[1].shape == (1,1)
 
 @mark_mpi_test(3)
@@ -53,8 +53,8 @@ def test_distribute_data_node(sub_comm):
   dist_fs = full_to_dist.distribute_data_node(fs, sub_comm)
   distri_f = [0,3,5,7]
 
-  assert (I.getNodeFromName(dist_fs, 'Data1')[1] == data1[1][distri_f[rank] : distri_f[rank+1]]).all()
-  assert (I.getNodeFromName(dist_fs, 'Data2')[1] == data2[1][distri_f[rank] : distri_f[rank+1]]).all()
+  assert (PT.get_node_from_name(dist_fs, 'Data1')[1] == data1[1][distri_f[rank] : distri_f[rank+1]]).all()
+  assert (PT.get_node_from_name(dist_fs, 'Data2')[1] == data2[1][distri_f[rank] : distri_f[rank+1]]).all()
 
 @mark_mpi_test(2)
 def test_distribute_element(sub_comm):
@@ -69,9 +69,9 @@ def test_distribute_element(sub_comm):
   assert (PT.Element.Range(dist_elem) == [16,20]).all()
   assert I.getNodeFromPath(dist_elem, ':CGNS#Distribution/Element') is not None
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromName(dist_elem, 'ElementConnectivity')[1] == [4,1,3, 8,2,1, 9,7,4]).all()
+    assert (PT.get_node_from_name(dist_elem, 'ElementConnectivity')[1] == [4,1,3, 8,2,1, 9,7,4]).all()
   else:
-    assert (I.getNodeFromName(dist_elem, 'ElementConnectivity')[1] == [11,4,2, 10,4,1]).all()
+    assert (PT.get_node_from_name(dist_elem, 'ElementConnectivity')[1] == [11,4,2, 10,4,1]).all()
 
   yt = """
   Element Elements_t [22,0]:
@@ -87,13 +87,13 @@ def test_distribute_element(sub_comm):
   assert I.getNodeFromPath(dist_elem, ':CGNS#Distribution/Element') is not None
   assert I.getNodeFromPath(dist_elem, ':CGNS#Distribution/ElementConnectivity') is not None
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromName(dist_elem, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
-    assert (I.getNodeFromName(dist_elem, 'ElementStartOffset')[1] == [0,4,8]).all()
-    assert (I.getNodeFromName(dist_elem, 'ParentElements')[1] == [[1,0],[2,3]]).all()
+    assert (PT.get_child_from_name(dist_elem, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
+    assert (PT.get_child_from_name(dist_elem, 'ElementStartOffset')[1] == [0,4,8]).all()
+    assert (PT.get_child_from_name(dist_elem, 'ParentElements')[1] == [[1,0],[2,3]]).all()
   else:
-    assert (I.getNodeFromName(dist_elem, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
-    assert (I.getNodeFromName(dist_elem, 'ElementStartOffset')[1] == [8,11,16]).all()
-    assert (I.getNodeFromName(dist_elem, 'ParentElements')[1] == [[2,0],[3,0]]).all()
+    assert (PT.get_child_from_name(dist_elem, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
+    assert (PT.get_child_from_name(dist_elem, 'ElementStartOffset')[1] == [8,11,16]).all()
+    assert (PT.get_child_from_name(dist_elem, 'ParentElements')[1] == [[2,0],[3,0]]).all()
 
 @mark_mpi_test(2)
 def test_distribute_tree(sub_comm):
@@ -133,10 +133,10 @@ def test_distribute_tree(sub_comm):
 
   zone = I.getZones(dist_tree)[0]
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromName(zone, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
+    assert (PT.get_node_from_name(zone, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
     assert (I.getNodeFromPath(zone, 'SolPl/Array')[1] == [1000]).all()
   if sub_comm.Get_rank() == 1:
-    assert (I.getNodeFromName(zone, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
+    assert (PT.get_node_from_name(zone, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
     assert (I.getNodeFromPath(zone, 'SolPl/Array')[1].size == 0)
   assert len(PT.get_nodes_from_name(zone, ':CGNS#Distribution')) == 6
 

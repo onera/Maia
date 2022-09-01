@@ -14,7 +14,7 @@ def test_pe_to_nface(sub_comm):
   # 1. Create test input
   tree = DCG.dcube_generate(3,1.,[0,0,0], sub_comm)
   zone = I.getZones(tree)[0]
-  dtype = I.getNodeFromName(zone, 'ParentElements')[1].dtype
+  dtype = PT.get_node_from_name(zone, 'ParentElements')[1].dtype
 
   # 2. Creating expected values
   nface_er_exp  = np.array([37,44], np.int32)
@@ -34,7 +34,7 @@ def test_pe_to_nface(sub_comm):
   # 4. Check results
   nface = PT.Zone.NFaceNode(zone)
   assert PT.is_same_tree(nface, nface_exp)
-  assert I.getNodeFromName(zone, "ParentElements") is None
+  assert PT.get_node_from_name(zone, "ParentElements") is None
 
 @mark_mpi_test([1,3])
 def test_nface_to_pe(sub_comm):
@@ -44,7 +44,7 @@ def test_nface_to_pe(sub_comm):
   pe_bck = I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1]
 
   NGT.pe_to_nface(zone, sub_comm, True)
-  nface_bck = I.getNodeFromName(zone, 'NFaceElements')
+  nface_bck = PT.get_node_from_name(zone, 'NFaceElements')
 
   # 2. Tested function
   rmNface = (sub_comm.size != 3)
@@ -52,7 +52,7 @@ def test_nface_to_pe(sub_comm):
   
   # 3. Check results
   assert (I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1] == pe_bck).all()
-  nface_cur = I.getNodeFromName(zone, 'NFaceElements')
+  nface_cur = PT.get_node_from_name(zone, 'NFaceElements')
   if rmNface:
     assert nface_cur is None
   else:

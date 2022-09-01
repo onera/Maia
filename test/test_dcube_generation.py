@@ -28,7 +28,7 @@ def test_generate_dcube_ngons(sub_comm, write_output):
   zone = zones[0]
   assert PT.Zone.n_vtx(zone) == n_vtx ** 3
 
-  assert I.getNodeFromName1(zone, 'NGonElements') is not None
+  assert PT.get_child_from_name(zone, 'NGonElements') is not None
 
   # > The cube include 6 boundary groups
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 6
@@ -61,7 +61,7 @@ def test_generate_dcube_elts(cgns_elmt_name, sub_comm, write_output):
   zone = zones[0]
   assert PT.Zone.n_vtx(zone) == n_vtx ** dim
 
-  assert I.getNodeFromName1(zone, 'NGonElements') is None
+  assert PT.get_child_from_name(zone, 'NGonElements') is None
   elem_nodes = PT.get_nodes_from_label(zone, 'Elements_t')
   # > Volumic + boundary elements are defined in the mesh (all boundary are merged)
   n_bnd_elem_node = 2 if cgns_elmt_name == "PENTA_6" else 1
@@ -92,7 +92,7 @@ def test_generate_place_ngons(random, sub_comm):
   assert len(zones) == 1
   zone = zones[0]
 
-  assert I.getNodeFromName1(zone, 'NGonElements') is not None
+  assert PT.get_child_from_name(zone, 'NGonElements') is not None
 
   # > The mesh include 4 boundary groups
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 4

@@ -34,10 +34,10 @@ def fix_point_ranges(size_tree):
     if not '/' in gc_opp_path:
       gc_opp_path = base_name + '/' + gc_opp_path
     # WARNING: for hybrid case structured zone could have PointList, PointListDonor.
-    if I.getNodeFromType1(gc, 'IndexRange_t') is not None:
-      transform     = I.getValue(I.getNodeFromName1(gc, 'Transform'))
-      point_range   = I.getValue(I.getNodeFromName1(gc, 'PointRange'))
-      point_range_d = I.getValue(I.getNodeFromName1(gc, 'PointRangeDonor'))
+    if PT.get_child_from_label(gc, 'IndexRange_t') is not None:
+      transform     = I.getValue(PT.get_child_from_name(gc, 'Transform'))
+      point_range   = I.getValue(PT.get_child_from_name(gc, 'PointRange'))
+      point_range_d = I.getValue(PT.get_child_from_name(gc, 'PointRangeDonor'))
 
       donor_dir    = abs(transform) - 1
       nb_points    = point_range[:,1] - point_range[:,0]
@@ -71,7 +71,7 @@ def load_grid_connectivity_property(filename, tree):
   gc_prop_pathes = []
   for base,zone,zone_gc in PT.iter_children_from_predicates(tree, zgc_t_path, ancestors=True):
     for gc in PT.iter_children_from_predicate(zone_gc, is_gc):
-      gc_prop = I.getNodeFromType1(gc, 'GridConnectivityProperty_t')
+      gc_prop = PT.get_child_from_label(gc, 'GridConnectivityProperty_t')
       if gc_prop is not None:
         gc_prop_path = '/'.join([base[0], zone[0], zone_gc[0], gc[0], gc_prop[0]])
         gc_prop_pathes.append(gc_prop_path)
@@ -95,7 +95,7 @@ def _enforce_pdm_dtype(tree):
     zone[1] = zone[1].astype(npy_pdm_gnum_dtype)
     for elmt in PT.iter_children_from_label(zone, 'Elements_t'):
       for name in ['ElementRange', 'ElementConnectivity', 'ElementStartOffset', 'ParentElements']:
-        node = I.getNodeFromName1(elmt, name)
+        node = PT.get_child_from_name(elmt, name)
         if node:
           node[1] = node[1].astype(npy_pdm_gnum_dtype)
     for pl in PT.iter_nodes_from_label(zone, 'IndexArray_t'):
@@ -123,7 +123,7 @@ def ensure_PE_global_indexing(dist_tree):
       raise RuntimeError(f"Multiple NGon nodes found in zone {I.getName(zone)}")
 
     ngon_n = ngon_nodes[0]
-    ngon_pe_n = I.getNodeFromName1(ngon_n, 'ParentElements')
+    ngon_pe_n = PT.get_child_from_name(ngon_n, 'ParentElements')
     if ngon_pe_n:
       n_faces = PT.Element.Size(ngon_n)
       ngon_pe = ngon_pe_n[1]

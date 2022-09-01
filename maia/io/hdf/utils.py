@@ -35,9 +35,9 @@ def apply_dataspace_to_pointlist(node, node_path, data_space, hdf_filter):
   Fill the hdf_filter with the specified data_space for PointList and PointListDonor nodes
   (if existing) below the parent node node
   """
-  if I.getNodeFromName1(node, 'PointList') is not None:
+  if PT.get_child_from_name(node, 'PointList') is not None:
     hdf_filter[node_path + "/PointList"] = data_space
-  if I.getNodeFromName1(node, 'PointListDonor') is not None:
+  if PT.get_child_from_name(node, 'PointListDonor') is not None:
     hdf_filter[node_path + "/PointListDonor"] = data_space
 
 

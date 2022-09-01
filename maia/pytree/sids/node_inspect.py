@@ -43,7 +43,7 @@ class Zone:
       n_face = [compute_nface_per_direction(d, dim, vtx_size, cell_size) for d in range(dim)]
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
-      er = I.getNodeFromName1(ngon_node, 'ElementRange')[1]
+      er = walk.get_child_from_name(ngon_node, 'ElementRange')[1]
       n_face = [er[1] - er[0] + 1]
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {I.getName(zone_node)}")
@@ -68,7 +68,7 @@ class Zone:
 
   @staticmethod
   def Type(zone_node):
-    zone_type_node = I.getNodeFromType1(zone_node, "ZoneType_t")
+    zone_type_node = walk.get_child_from_label(zone_node, "ZoneType_t")
     return I.getValue(zone_type_node)
 
   #Todo : this one should go elsewhere
@@ -76,7 +76,7 @@ class Zone:
   def getBCsFromFamily(zone_node, families):
     from maia.pytree import iter_children_from_predicates
     bc_query = lambda n : I.getType(n) == 'BC_t' and I.getValue(n) == 'FamilySpecified' and \
-      I.getValue(I.getNodeFromType1(n, "FamilyName_t")) in families
+      I.getValue(walk.get_child_from_label(n, "FamilyName_t")) in families
     return iter_children_from_predicates(zone_node, ['ZoneBC_t', bc_query])
 
   @staticmethod
@@ -97,23 +97,23 @@ class Zone:
 
   @staticmethod
   def coordinates(zone_node, name=None):
-    grid_coord_node = I.getNodeFromType1(zone_node, "GridCoordinates_t") if name is None \
-        else I.getNodeFromNameAndType(zone_node, name, "GridCoordinates_t")
+    grid_coord_node = walk.get_child_from_label(zone_node, "GridCoordinates_t") if name is None \
+        else walk.get_child_from_name_and_label(zone_node, name, "GridCoordinates_t")
     if grid_coord_node is None:
       raise RuntimeError(f"Unable to find GridCoordinates_t node in {I.getName(node)}.")
 
-    x = I.getVal(I.getNodeFromName1(grid_coord_node, "CoordinateX"))
-    y = I.getVal(I.getNodeFromName1(grid_coord_node, "CoordinateY"))
-    z = I.getVal(I.getNodeFromName1(grid_coord_node, "CoordinateZ"))
+    x = I.getVal(walk.get_child_from_name(grid_coord_node, "CoordinateX"))
+    y = I.getVal(walk.get_child_from_name(grid_coord_node, "CoordinateY"))
+    z = I.getVal(walk.get_child_from_name(grid_coord_node, "CoordinateZ"))
 
     return x, y, z
 
   @staticmethod
   def ngon_connectivity(zone_node):
     ngon_node = Zone.NGonNode(zone_node)
-    face_vtx_idx = I.getVal(I.getNodeFromName1(ngon_node, "ElementStartOffset"))
-    face_vtx     = I.getVal(I.getNodeFromName1(ngon_node, "ElementConnectivity"))
-    ngon_pe      = I.getVal(I.getNodeFromName1(ngon_node, "ParentElements"))
+    face_vtx_idx = I.getVal(walk.get_child_from_name(ngon_node, "ElementStartOffset"))
+    face_vtx     = I.getVal(walk.get_child_from_name(ngon_node, "ElementConnectivity"))
+    ngon_pe      = I.getVal(walk.get_child_from_name(ngon_node, "ParentElements"))
     return face_vtx_idx, face_vtx, ngon_pe
 
   @staticmethod
@@ -201,7 +201,7 @@ class Element:
 
   @staticmethod
   def Range(elt_node):
-    return I.getNodeFromName(elt_node,"ElementRange")[1]
+    return walk.get_child_from_name(elt_node,"ElementRange")[1]
 
   @staticmethod
   def Size(elt_node):
@@ -218,7 +218,7 @@ class GridConnectivity:
     if I.getType(gc) == 'GridConnectivity1to1_t':
       return 'Abutting1to1'
     elif I.getType(gc) == 'GridConnectivity_t':
-      gc_type_n = I.getNodeFromName(gc, 'GridConnectivityType')
+      gc_type_n = walk.get_child_from_name(gc, 'GridConnectivityType')
       return I.getValue(gc_type_n) if gc_type_n is not None else 'Overset'
 
   @staticmethod
@@ -233,8 +233,8 @@ class Subset:
   """
   
   def getPatch(subset):
-    pl = I.getNodeFromName1(subset, 'PointList')
-    pr = I.getNodeFromName1(subset, 'PointRange')
+    pl = walk.get_child_from_name(subset, 'PointList')
+    pr = walk.get_child_from_name(subset, 'PointRange')
     assert (pl is None) ^ (pr is None)
     return pl if pl is not None else pr
 
@@ -243,7 +243,7 @@ class Subset:
     return PointList.n_elem(patch) if I.getType(patch) == 'IndexArray_t' else PointRange.n_elem(patch)
 
   def GridLocation(subset):
-    grid_loc_n = I.getNodeFromType1(subset, 'GridLocation_t')
+    grid_loc_n = walk.get_child_from_label(subset, 'GridLocation_t')
     return I.getValue(grid_loc_n) if grid_loc_n else 'Vertex'
 
 # --------------------------------------------------------------------------

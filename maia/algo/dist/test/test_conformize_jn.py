@@ -3,6 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree as PT
 
 import maia
 from maia.utils.yaml import parse_yaml_cgns
@@ -48,7 +49,7 @@ def test_conformize_jn_pair(sub_comm, from_loc):
   elif sub_comm.rank == 1:
     start, end = 125-5, 125
 
-  assert (I.getNodeFromName(zone, "CoordinateX")[1][start:end] == 0.5).all()
-  assert (I.getNodeFromName(zone, "CoordinateY")[1][start:end] == 0.5).all()
-  assert (I.getNodeFromName(zone, "CoordinateZ")[1][start:end] == 0.5).all()
+  assert (PT.get_node_from_name(zone, "CoordinateX")[1][start:end] == 0.5).all()
+  assert (PT.get_node_from_name(zone, "CoordinateY")[1][start:end] == 0.5).all()
+  assert (PT.get_node_from_name(zone, "CoordinateZ")[1][start:end] == 0.5).all()
 

@@ -40,15 +40,15 @@ class Test_compute_ngon_from_std_elements:
       assert (I.getVal(MT.getDistribution(ngon, 'Element')) == [0,27,56]).all()
       assert (I.getVal(MT.getDistribution(ngon, 'ElementConnectivity')) == [0,81,168]).all()
       assert (I.getVal(MT.getDistribution(nface, 'Element')) == [0,10,20]).all()
-      assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1][:6] == [1,4,2,2,4,5]).all()
-      assert (I.getNodeFromName(ngon, 'ParentElements')[1][8:12] == [[88,0], [87,0], [92,0], [78,81]]).all()
+      assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1][:6] == [1,4,2,2,4,5]).all()
+      assert (PT.get_child_from_name(ngon, 'ParentElements')[1][8:12] == [[88,0], [87,0], [92,0], [78,81]]).all()
     elif rank == 1:
       assert (I.getVal(MT.getDistribution(ngon, 'Element')) == [27,56,56]).all()
       assert (I.getVal(MT.getDistribution(ngon, 'ElementConnectivity')) == [81,168,168]).all()
       assert (I.getVal(MT.getDistribution(nface, 'Element')) == [10,20,20]).all()
-      assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1][-6:] == [14,15,18,14,18,17]).all()
-      assert (I.getNodeFromName(ngon, 'ParentElements')[1][4:8] == [[79,90], [87,0], [84,86], [93,96]]).all()
-    assert (I.getNodeFromName(nface, 'ElementStartOffset')[1] ==  np.arange(0,44,4)+40*rank).all()
+      assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1][-6:] == [14,15,18,14,18,17]).all()
+      assert (PT.get_child_from_name(ngon, 'ParentElements')[1][4:8] == [[79,90], [87,0], [84,86], [93,96]]).all()
+    assert (PT.get_child_from_name(nface, 'ElementStartOffset')[1] ==  np.arange(0,44,4)+40*rank).all()
 
   def test_2d_mesh(self, sub_comm):
     #Generated from G.cartHexa((0,0,0), (1./3, 1./2, 0), (4,3,1))
@@ -79,17 +79,17 @@ class Test_compute_ngon_from_std_elements:
       assert (I.getVal(MT.getDistribution(nface, 'Element')) == [0,3,6]).all()
       assert (I.getVal(MT.getDistribution(nface, 'ElementConnectivity')) == [0,12,24]).all()
 
-      assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == [1,2,2,3,5,1,3,4,2,6,3,7,6,5,4,8,7,6]).all()
-      assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == [0,2,4,6,8,10,12,14,16,18]).all()
-      assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == [1,3,5,7,5,2,6,9,6,4,8,11]).all()
+      assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == [1,2,2,3,5,1,3,4,2,6,3,7,6,5,4,8,7,6]).all()
+      assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == [0,2,4,6,8,10,12,14,16,18]).all()
+      assert (PT.get_child_from_name(nface, 'ElementConnectivity')[1] == [1,3,5,7,5,2,6,9,6,4,8,11]).all()
     elif rank == 1:
       assert (I.getVal(MT.getDistribution(ngon, 'Element')) == [9,17,17]).all()
       assert (I.getVal(MT.getDistribution(nface, 'Element')) == [3,6,6]).all()
       assert (I.getVal(MT.getDistribution(nface, 'ElementConnectivity')) == [12,24,24]).all()
 
-      assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == [9,5,8,7,6,10,7,11,10,9,8,12,11,10,12,11]).all()
-      assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == [18,20,22,24,26,28,30,32,34]).all()
-      assert (I.getNodeFromName(nface, 'ElementConnectivity')[1] == [7,10,12,14,12,9,13,16,13,11,15,17]).all()
+      assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == [9,5,8,7,6,10,7,11,10,9,8,12,11,10,12,11]).all()
+      assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == [18,20,22,24,26,28,30,32,34]).all()
+      assert (PT.get_child_from_name(nface, 'ElementConnectivity')[1] == [7,10,12,14,12,9,13,16,13,11,15,17]).all()
 
   def test_2d_mesh_with_bc(self, sub_comm):
     rank = sub_comm.Get_rank()
@@ -134,11 +134,11 @@ class Test_compute_ngon_from_std_elements:
     assert (PT.Element.Range(nface) == [29,34]).all()
     assert PT.Subset.GridLocation(bca) == 'EdgeCenter'
     if rank == 0:
-      assert (I.getNodeFromName(bca, 'PointList')[1] == [25,27]).all()
-      assert (I.getNodeFromName(bcb, 'PointList')[1] == [14]).all()
+      assert (PT.get_child_from_name(bca, 'PointList')[1] == [25,27]).all()
+      assert (PT.get_child_from_name(bcb, 'PointList')[1] == [14]).all()
     elif rank == 1:
-      assert (I.getNodeFromName(bca, 'PointList')[1] == [28]).all()
-      assert (I.getNodeFromName(bcb, 'PointList')[1] == [21]).all()
+      assert (PT.get_child_from_name(bca, 'PointList')[1] == [28]).all()
+      assert (PT.get_child_from_name(bcb, 'PointList')[1] == [21]).all()
 
 @mark_mpi_test(2)
 def test_generate_ngon_from_std_elements_jc(sub_comm):
@@ -165,6 +165,6 @@ def test_generate_ngon_from_std_elements_jc(sub_comm):
   assert (PT.Element.Range(ngon) == [1,56]).all()
   assert (PT.Element.Range(nface) == [57,76]).all()
   if rank == 0:
-    assert (I.getNodeFromName(ngon, 'ParentElements')[1][8:12] == [[68,0], [67,0], [72,0], [58,61]]).all()
+    assert (PT.get_child_from_name(ngon, 'ParentElements')[1][8:12] == [[68,0], [67,0], [72,0], [58,61]]).all()
   elif rank == 1:
-    assert (I.getNodeFromName(ngon, 'ParentElements')[1][4:8] == [[59,70], [67,0], [64,66], [73,76]]).all()
+    assert (PT.get_child_from_name(ngon, 'ParentElements')[1][4:8] == [[59,70], [67,0], [64,66], [73,76]]).all()

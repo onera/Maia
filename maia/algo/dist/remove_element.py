@@ -27,7 +27,7 @@ def remove_element(zone, element):
       if target_range[0] < er[0]:
         er -= target_size
 
-      elem_pe_n = I.getNodeFromName1(elem, 'ParentElements')
+      elem_pe_n = PT.get_child_from_name(elem, 'ParentElements')
       if elem_pe_n is not None:
         elem_pe = I.getValue(elem_pe_n)
         # This will raise if PE actually refers to the section to remove
@@ -41,7 +41,7 @@ def remove_element(zone, element):
                    'FlowSolution_t', 'ZoneSubRegion_t']
   for subset_path in subset_pathes:
     for subset in PT.iter_children_from_predicates(zone, subset_path):
-      pl_n = I.getNodeFromName1(subset, 'PointList')
+      pl_n = PT.get_child_from_name(subset, 'PointList')
       if PT.Subset.GridLocation(subset) != 'Vertex' and pl_n is not None:
         pl = pl_n[1]
         #Ensure that PL is not refering to section to remove
@@ -64,10 +64,10 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   """
   ngon_to_remove = np.asarray(ngon_to_remove)
 
-  pe_n  = I.getNodeFromName1(dist_ngon, 'ParentElements')
-  eso_n = I.getNodeFromName1(dist_ngon, 'ElementStartOffset')
-  ec_n  = I.getNodeFromName1(dist_ngon, 'ElementConnectivity')
-  er_n  = I.getNodeFromName1(dist_ngon, 'ElementRange')
+  pe_n  = PT.get_child_from_name(dist_ngon, 'ParentElements')
+  eso_n = PT.get_child_from_name(dist_ngon, 'ElementStartOffset')
+  ec_n  = PT.get_child_from_name(dist_ngon, 'ElementConnectivity')
+  er_n  = PT.get_child_from_name(dist_ngon, 'ElementRange')
 
   local_eso = eso_n[1] - eso_n[1][0] #Make working ElementStartOffset start at 0
   new_pe = np.delete(pe_n[1], ngon_to_remove, axis=0) #Remove faces in PE

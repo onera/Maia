@@ -30,8 +30,8 @@ def gc_is_reference(gc_s, zone_path, zone_path_opp):
   elif zone_path > zone_path_opp:
     return False
   else: #Same zone path
-    pr  = I.getNodeFromName(gc_s, "PointRange")[1]
-    prd = I.getNodeFromName(gc_s, "PointRangeDonor")[1]
+    pr  = PT.get_child_from_name(gc_s, "PointRange")[1]
+    prd = PT.get_child_from_name(gc_s, "PointRangeDonor")[1]
     bnd_axis   = guess_bnd_normal_index(pr,  "Vertex")
     bnd_axis_d = guess_bnd_normal_index(prd, "Vertex")
     if bnd_axis < bnd_axis_d:
@@ -214,7 +214,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   'Vertex', 'FaceCenter', 'CellCenter').
   """
   input_loc = PT.Subset.GridLocation(bc_s)
-  point_range = I.getValue(I.getNodeFromName1(bc_s, 'PointRange'))
+  point_range = I.getValue(PT.get_child_from_name(bc_s, 'PointRange'))
 
   bnd_axis = guess_bnd_normal_index(point_range, input_loc)
   #Compute slabs from attended location (better load balance)
@@ -239,13 +239,13 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   # Manage datasets -- Data is already distributed, we just have to retrive the PointList
   # of the corresponding elements following same procedure than BCs
   for bcds in PT.iter_children_from_label(bc_s, 'BCDataSet_t'):
-    ds_point_range = I.getNodeFromName(bcds, 'PointRange')
+    ds_point_range = PT.get_child_from_name(bcds, 'PointRange')
     is_related = ds_point_range is None
     if not is_related: #BCDS has its own location / pr
       ds_distri = MT.getDistribution(bcds, 'Index')[1]
       ds_loc   = PT.Subset.GridLocation(bcds)
     if is_related: #BCDS has same location / pr than bc
-      ds_point_range = I.getNodeFromName1(bc_s, 'PointRange')
+      ds_point_range = PT.get_child_from_name(bc_s, 'PointRange')
       ds_distri = MT.getDistribution(bc_s, 'Index')[1]
       ds_loc   = input_loc
     ds_size = PT.PointRange.SizePerIndex(ds_point_range)
@@ -286,11 +286,11 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   zone_path_opp = I.getValue(gc_s)
   if not '/' in zone_path_opp:
     zone_path_opp = zone_path.split('/')[0] + '/' + zone_path_opp
-  transform = I.getValue(I.getNodeFromName1(gc_s, 'Transform'))
+  transform = I.getValue(PT.get_child_from_name(gc_s, 'Transform'))
   T = compute_transform_matrix(transform)
 
-  point_range     = I.getValue(I.getNodeFromName1(gc_s, 'PointRange'))
-  point_range_opp = I.getValue(I.getNodeFromName1(gc_s, 'PointRangeDonor'))
+  point_range     = I.getValue(PT.get_child_from_name(gc_s, 'PointRange'))
+  point_range_opp = I.getValue(PT.get_child_from_name(gc_s, 'PointRangeDonor'))
 
   # One of the two connected zones is choosen to compute the slabs/sub_pointrange and to impose
   # it to the opposed zone.
@@ -474,7 +474,7 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
         zone_u = I.createNode(I.getName(zone_s), 'Zone_t', zone_dims_u, parent=base_u)
         I.createNode('ZoneType', 'ZoneType_t', 'Unstructured', parent=zone_u)
 
-        grid_coord_s = I.getNodeFromType1(zone_s, "GridCoordinates_t")
+        grid_coord_s = PT.get_child_from_label(zone_s, "GridCoordinates_t")
         grid_coord_u = I.newGridCoordinates(parent=zone_u)
         for data in PT.iter_children_from_label(grid_coord_s, "DataArray_t"):
           I.addChild(grid_coord_u, data)
@@ -488,7 +488,7 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
         I.addChild(zone_u, zonedims_to_ngon(n_vtx, comm))
 
         loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'CellCenter': '#Cell'}
-        zonebc_s = I.getNodeFromType1(zone_s, "ZoneBC_t")
+        zonebc_s = PT.get_child_from_label(zone_s, "ZoneBC_t")
         if zonebc_s is not None:
           zonebc_u = I.newZoneBC(zone_u)
           for bc_s in PT.iter_children_from_label(zonebc_s, "BC_t"):

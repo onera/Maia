@@ -18,7 +18,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   """
   #If needed (reading), update distribution using ESO, which is now loaded
   distrib = MT.getDistribution(elmt)
-  if I.getNodeFromName(distrib, 'ElementConnectivity') is None:
+  if PT.get_child_from_name(distrib, 'ElementConnectivity') is None:
     compute_connectivity_distribution(elmt)
 
   distrib_ec = MT.getDistribution(elmt, "ElementConnectivity")[1]
@@ -40,14 +40,14 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   # > For NGon only
-  pe = I.getNodeFromName1(elmt, 'ParentElements')
+  pe = PT.get_child_from_name(elmt, 'ParentElements')
   if(pe):
     data_space = create_pe_dataspace(distrib_elmt)
     hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElements"] = data_space
-    if I.getNodeFromName1(elmt, 'ParentElementsPosition'):
+    if PT.get_child_from_name(elmt, 'ParentElementsPosition'):
       hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElementsPosition"] = data_space
 
-  eso = I.getNodeFromName1(elmt, 'ElementStartOffset')
+  eso = PT.get_child_from_name(elmt, 'ElementStartOffset')
   eso_path = None
   if(eso):
     # Distribution for NGon/NFace -> ElementStartOffset is the same than DistrbutionFace, except
@@ -65,7 +65,7 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
     eso_path = zone_path+"/"+elmt[0]+"/ElementStartOffset"
     hdf_filter[eso_path] = DSMMRYESO + DSFILEESO + DSGLOBESO + DSFORMESO
 
-  ec = I.getNodeFromName1(elmt, 'ElementConnectivity')
+  ec = PT.get_child_from_name(elmt, 'ElementConnectivity')
   if(ec):
     if(eso_path is None):
       raise RuntimeError("In order to load ElementConnectivity, the ElementStartOffset is mandatory")
@@ -98,11 +98,11 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[path] = DSMMRYElmt + DSFILEElmt + DSGLOBElmt + DSFORMElmt
 
-  pe = I.getNodeFromName1(elmt, 'ParentElements')
+  pe = PT.get_child_from_name(elmt, 'ParentElements')
   if(pe):
     data_space = create_pe_dataspace(distrib_elmt)
     hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElements"] = data_space
-    if I.getNodeFromName1(elmt, 'ParentElementsPosition'):
+    if PT.get_child_from_name(elmt, 'ParentElementsPosition'):
       hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElementsPosition"] = data_space
 
 

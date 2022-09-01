@@ -32,9 +32,9 @@ def test_s2u(sub_comm, subset_output_loc, write_output):
   # Compare to reference
   ref_tree = MIO.file_to_dist_tree(ref_file, sub_comm)
   for zone in I.getZones(dist_treeU):
-    ref_zone = I.getNodeFromName2(ref_tree, I.getName(zone))
+    ref_zone = PT.get_node_from_name(ref_tree, I.getName(zone), depth=2)
     for node_name in ["ZoneBC", "ZoneGridConnectivity"]:
-      assert PT.is_same_tree(I.getNodeFromName(zone, node_name), I.getNodeFromName(ref_zone, node_name))
+      assert PT.is_same_tree(PT.get_child_from_name(zone, node_name), PT.get_child_from_name(ref_zone, node_name))
 
   if write_output:
     out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
@@ -71,22 +71,22 @@ def test_s2u_withdata(sub_comm, write_output):
           lid DataArray_t I4 [1,2,3,4,5,6,7,8,9,10]:
     """)
   PT.rm_nodes_from_name(dist_treeS, 'Right')
-  I._addChild(I.getNodeFromType(dist_treeS, 'ZoneBC_t'), \
+  I._addChild(PT.get_node_from_label(dist_treeS, 'ZoneBC_t'), \
       MF.full_to_dist.distribute_pl_node(bc_right, sub_comm))
 
   dist_treeU = convert_s_to_ngon(dist_treeS, sub_comm)
 
   # Some checks
-  bc_right_u = I.getNodeFromName(dist_treeU, 'Right')
+  bc_right_u = PT.get_node_from_name(dist_treeU, 'Right')
   assert I.getNodeFromPath(bc_right_u, 'WholeDSFace/GridLocation') is None
-  assert PT.Subset.GridLocation(I.getNodeFromName(bc_right_u, 'SubDSFace')) == 'FaceCenter'
-  assert PT.Subset.GridLocation(I.getNodeFromName(bc_right_u, 'SubDSVtx')) == 'Vertex'
+  assert PT.Subset.GridLocation(PT.get_node_from_name(bc_right_u, 'SubDSFace')) == 'FaceCenter'
+  assert PT.Subset.GridLocation(PT.get_node_from_name(bc_right_u, 'SubDSVtx')) == 'Vertex'
   assert I.getNodeFromPath(bc_right_u, 'WholeDSFace/PointList') is None
   assert (I.getNodeFromPath(bc_right_u, 'SubDSFace/PointList')[1] == [225,226,279,280,333,334,387,388]).all()
   assert (I.getNodeFromPath(bc_right_u, 'SubDSVtx/PointList')[1] == [1,2,64,65,127,128,190,191,253,254]).all()
   for bcds in PT.get_children_from_label(bc_right_u, 'BCDataSet_t'): #Data should be the same
-    bcds_s = I.getNodeFromName(bc_right, I.getName(bcds))
-    assert (I.getNodeFromName(bcds, 'lid')[1] == I.getNodeFromName(bcds_s, 'lid')[1]).all()
+    bcds_s = PT.get_node_from_name(bc_right, I.getName(bcds))
+    assert (PT.get_node_from_name(bcds, 'lid')[1] == PT.get_node_from_name(bcds_s, 'lid')[1]).all()
 
   if write_output:
     out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)

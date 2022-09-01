@@ -3,6 +3,7 @@ import os
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree as PT
 
 from maia.utils.yaml   import parse_yaml_cgns
 
@@ -115,8 +116,8 @@ def test_is_same_value():
 def test_is_same_node():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
-  node1 = I.getNodeFromName(tree, 'bc3')
-  node2 = I.getNodeFromName(tree, 'bc5')
+  node1 = PT.get_node_from_name(tree, 'bc3')
+  node2 = PT.get_node_from_name(tree, 'bc5')
   assert not CP.is_same_node(node1, node2)
   node2[0] = 'bc3'
   assert CP.is_same_node(node1, node2) #Children are not compared
@@ -124,7 +125,7 @@ def test_is_same_node():
 def test_is_same_tree():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
-  node1 = I.getNodeFromName(tree, 'bc5')
+  node1 = PT.get_node_from_name(tree, 'bc5')
   node2 = I.copyTree(node1)
   assert CP.is_same_tree(node1, node2)
   #Position of child does not matter

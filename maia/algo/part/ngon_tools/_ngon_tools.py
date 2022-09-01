@@ -22,8 +22,8 @@ def pe_to_nface(zone, remove_PE=False):
       Defaults to False.
   """
   ngon_node = PT.Zone.NGonNode(zone)
-  er = I.getNodeFromName1(ngon_node, 'ElementRange')[1]
-  pe = I.getNodeFromName1(ngon_node, 'ParentElements')[1]
+  er = PT.get_child_from_name(ngon_node, 'ElementRange')[1]
+  pe = PT.get_child_from_name(ngon_node, 'ParentElements')[1]
   max_cell = np.max(pe)
   min_cell = np.min(pe[np.nonzero(pe)])
   
@@ -63,8 +63,8 @@ def nface_to_pe(zone, remove_NFace=False):
   ngon_node  = PT.Zone.NGonNode(zone)
   nface_node = PT.Zone.NFaceNode(zone)
 
-  cell_face_idx = I.getNodeFromName1(nface_node, "ElementStartOffset")[1]
-  cell_face     = I.getNodeFromName1(nface_node, "ElementConnectivity")[1]
+  cell_face_idx = PT.get_child_from_name(nface_node, "ElementStartOffset")[1]
+  cell_face     = PT.get_child_from_name(nface_node, "ElementConnectivity")[1]
 
   # If NFace are before NGon, then face ids must be shifted
   if PT.Element.Range(ngon_node)[0] == 1:

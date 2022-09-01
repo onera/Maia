@@ -44,14 +44,14 @@ def test_translate_cube(sub_comm, fields, write_output):
   assert np.allclose(coords[2], tr_coords[2])
 
   # If apply_to_fields is True, vectorial fields are moved as well :
-  assert PT.is_same_node(I.getNodeFromName(dist_zone, 'scalar'), I.getNodeFromName(transformed_zone, 'scalar'))
-  assert PT.is_same_node(I.getNodeFromName(dist_zone, 'vectZ'), I.getNodeFromName(transformed_zone, 'vectZ'))
+  assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'scalar'), PT.get_node_from_name(transformed_zone, 'scalar'))
+  assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'vectZ'), PT.get_node_from_name(transformed_zone, 'vectZ'))
   if fields:
-    assert np.allclose(-I.getNodeFromName(dist_zone, 'vectX')[1], I.getNodeFromName(transformed_zone, 'vectX')[1])
-    assert np.allclose(-I.getNodeFromName(dist_zone, 'vectY')[1], I.getNodeFromName(transformed_zone, 'vectY')[1])
+    assert np.allclose(-PT.get_node_from_name(dist_zone, 'vectX')[1], PT.get_node_from_name(transformed_zone, 'vectX')[1])
+    assert np.allclose(-PT.get_node_from_name(dist_zone, 'vectY')[1], PT.get_node_from_name(transformed_zone, 'vectY')[1])
   else:
-    assert PT.is_same_node(I.getNodeFromName(dist_zone, 'vectX'), I.getNodeFromName(transformed_zone, 'vectX'))
-    assert PT.is_same_node(I.getNodeFromName(dist_zone, 'vectY'), I.getNodeFromName(transformed_zone, 'vectY'))
+    assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'vectX'), PT.get_node_from_name(transformed_zone, 'vectX'))
+    assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'vectY'), PT.get_node_from_name(transformed_zone, 'vectY'))
 
   if write_output:
     dist_base = I.getBases(dist_tree)[0]
@@ -64,15 +64,15 @@ def test_duplicate_from_periodic(sub_comm, write_output):
   dist_tree = generate_dist_block(11, "Poly", sub_comm)
   # Lets create a periodic join for this cube
   dist_zone = I.getZones(dist_tree)[0]
-  bottom = I.getNodeFromName(dist_zone, 'Zmin')
-  top    = I.getNodeFromName(dist_zone, 'Zmax')
+  bottom = PT.get_node_from_name(dist_zone, 'Zmin')
+  top    = PT.get_node_from_name(dist_zone, 'Zmax')
   for bc in [bottom, top]:
     PT.rm_nodes_from_name(dist_zone, I.getName(bc))
     I.setType(bc, 'GridConnectivity_t')
     I.setValue(bc, I.getName(dist_zone))
     I.newGridConnectivityType('Abutting1to1', bc)
-  I.newIndexArray('PointListDonor', I.getNodeFromName(top, 'PointList')[1].copy(), parent=bottom) #OK in sequential
-  I.newIndexArray('PointListDonor', I.getNodeFromName(bottom, 'PointList')[1].copy(), parent=top) #OK in sequential
+  I.newIndexArray('PointListDonor', PT.get_node_from_name(top, 'PointList')[1].copy(), parent=bottom) #OK in sequential
+  I.newIndexArray('PointListDonor', PT.get_node_from_name(bottom, 'PointList')[1].copy(), parent=top) #OK in sequential
   I.createChild(bottom, 'GridConnectivityProperty', 'GridConnectivityProperty_t', children=[I.newPeriodic(translation=[0.,0, 1])])
   I.createChild(top,    'GridConnectivityProperty', 'GridConnectivityProperty_t', children=[I.newPeriodic(translation=[0.,0, -1])])
   I.createChild(dist_zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[bottom, top])

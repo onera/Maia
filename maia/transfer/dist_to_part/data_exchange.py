@@ -33,7 +33,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
   #Get data
   dist_data = dict()
-  dist_gc = I.getNodeFromType1(dist_zone, "GridCoordinates_t")
+  dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
   for grid_co in PT.iter_children_from_label(dist_gc, 'DataArray_t'):
     dist_data[I.getName(grid_co)] = grid_co[1] #Prevent np->scalar conversion
 
@@ -56,9 +56,9 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
   """
   #Get distribution
   for mask_sol in I.getChildren(mask_tree):
-    d_sol = I.getNodeFromName1(dist_zone, I.getName(mask_sol)) #True container
+    d_sol = PT.get_child_from_name(dist_zone, I.getName(mask_sol)) #True container
     location = PT.Subset.GridLocation(d_sol)
-    has_pl   = I.getNodeFromName1(d_sol, 'PointList') is not None
+    has_pl   = PT.get_child_from_name(d_sol, 'PointList') is not None
     if has_pl:
       distribution = te_utils.get_cgns_distribution(d_sol, 'Index')
       lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Index', I.getName(d_sol))
@@ -73,7 +73,7 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
 
     #Get data
     fields = [I.getName(n) for n in I.getChildren(mask_sol)]
-    dist_data = {field : I.getNodeFromName1(d_sol, field)[1] for field in fields}
+    dist_data = {field : PT.get_child_from_name(d_sol, field)[1] for field in fields}
 
     #Exchange
     part_data = dist_to_part(distribution, dist_data, lntogn_list, comm)
@@ -82,8 +82,8 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
       #Skip void flow solution (can occur with point lists)
       if lntogn_list[ipart].size > 0:
         if has_pl:
-          p_sol = I.getNodeFromName1(part_zone, I.getName(d_sol))
-          shape = I.getNodeFromName1(p_sol, 'PointList')[1].shape[1]
+          p_sol = PT.get_child_from_name(part_zone, I.getName(d_sol))
+          shape = PT.get_child_from_name(p_sol, 'PointList')[1].shape[1]
         else:
           p_sol = I.createChild(part_zone, I.getName(d_sol), I.getType(d_sol))
           I.newGridLocation(location, parent=p_sol)
@@ -158,7 +158,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
   """
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
   for mask_zsr in I.getChildren(mask_tree):
-    d_zsr = I.getNodeFromName1(dist_zone, I.getName(mask_zsr)) #True ZSR
+    d_zsr = PT.get_child_from_name(dist_zone, I.getName(mask_zsr)) #True ZSR
     # Search matching region
     matching_region_path = PT.getSubregionExtent(d_zsr, dist_zone)
     matching_region = I.getNodeFromPath(dist_zone, matching_region_path)
@@ -170,7 +170,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
 
     #Get Data
     fields = [I.getName(n) for n in I.getChildren(mask_zsr)]
-    dist_data = {field : I.getNodeFromName1(d_zsr, field)[1] for field in fields}
+    dist_data = {field : PT.get_child_from_name(d_zsr, field)[1] for field in fields}
 
     #Exchange
     part_data = dist_to_part(distribution, dist_data, lngn_list, comm)

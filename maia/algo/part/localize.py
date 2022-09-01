@@ -20,10 +20,10 @@ def _get_part_data(part_zone):
   ngon  = PT.Zone.NGonNode(part_zone)
   nface = PT.Zone.NFaceNode(part_zone)
 
-  cell_face_idx = I.getNodeFromName1(nface, "ElementStartOffset")[1]
-  cell_face     = I.getNodeFromName1(nface, "ElementConnectivity")[1]
-  face_vtx_idx  = I.getNodeFromName1(ngon,  "ElementStartOffset")[1]
-  face_vtx      = I.getNodeFromName1(ngon,  "ElementConnectivity")[1]
+  cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset")[1]
+  cell_face     = PT.get_child_from_name(nface, "ElementConnectivity")[1]
+  face_vtx_idx  = PT.get_child_from_name(ngon,  "ElementStartOffset")[1]
+  face_vtx      = PT.get_child_from_name(ngon,  "ElementConnectivity")[1]
 
   vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 

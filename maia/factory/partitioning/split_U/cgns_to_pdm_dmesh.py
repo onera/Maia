@@ -19,9 +19,9 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
   ngon_first = PT.Element.Range(ngon_node)[0] == 1
-  dface_vtx = I.getNodeFromName1(ngon_node, 'ElementConnectivity')[1].astype(pdm_gnum_dtype, copy=False)
-  ngon_pe   = I.getNodeFromName1(ngon_node, 'ParentElements'     )[1].astype(pdm_gnum_dtype, copy=False)
-  ngon_eso  = I.getNodeFromName1(ngon_node, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype, copy=False)
+  dface_vtx = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1].astype(pdm_gnum_dtype, copy=False)
+  ngon_pe   = PT.get_child_from_name(ngon_node, 'ParentElements'     )[1].astype(pdm_gnum_dtype, copy=False)
+  ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype, copy=False)
 
   distrib_face     = I.getVal(MT.getDistribution(ngon_node, 'Element')).astype(pdm_gnum_dtype)
   distrib_face_vtx = I.getVal(MT.getDistribution(ngon_node, 'ElementConnectivity')).astype(pdm_gnum_dtype)
@@ -32,10 +32,10 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   dn_edge = -1 #Not used
 
   if dn_vtx > 0:
-    gridc_n    = I.getNodeFromName1(dist_zone, 'GridCoordinates')
-    cx         = I.getNodeFromName1(gridc_n, 'CoordinateX')[1]
-    cy         = I.getNodeFromName1(gridc_n, 'CoordinateY')[1]
-    cz         = I.getNodeFromName1(gridc_n, 'CoordinateZ')[1]
+    gridc_n    = PT.get_child_from_name(dist_zone, 'GridCoordinates')
+    cx         = PT.get_child_from_name(gridc_n, 'CoordinateX')[1]
+    cy         = PT.get_child_from_name(gridc_n, 'CoordinateY')[1]
+    cz         = PT.get_child_from_name(gridc_n, 'CoordinateZ')[1]
     dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
   else:
     dvtx_coord = np.empty(0, dtype='float64', order='F')
@@ -66,7 +66,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   # gc_type_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
   # gc_point_lists = collect_distributed_pl(dist_zone, [gc_type_path])
   # dface_join_idx, dface_join = np_utils.concatenate_point_list(gc_point_lists, pdm_gnum_dtype)
-  # joins_ids = [I.getNodeFromName1(gc, 'Ordinal')[1][0] for gc in \
+  # joins_ids = [PT.get_child_from_name(gc, 'Ordinal')[1][0] for gc in \
       # PT.iter_children_from_predicates(dist_zone, gc_type_path)]
   # joins_ids = np.array(joins_ids, dtype='int32') - 1
   joins_ids      = np.empty(0, dtype=np.int32)

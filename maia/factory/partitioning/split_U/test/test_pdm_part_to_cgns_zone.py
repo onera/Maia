@@ -17,9 +17,9 @@ def test_dump_pdm_output():
   PTC.dump_pdm_output(p_zone, dims, data)
   dump_node = I.getNodeFromPath(p_zone, ':CGNS#Ppart')
   assert dump_node is not None
-  assert I.getNodeFromName(dump_node, 'n_vtx')[1] == 3
-  assert (I.getNodeFromName(dump_node, 'np_vtx_coord')[1] == data['np_vtx_coord']).all()
-  assert I.getNodeFromName(dump_node, 'not_numpy') is None
+  assert PT.get_child_from_name(dump_node, 'n_vtx')[1] == 3
+  assert (PT.get_child_from_name(dump_node, 'np_vtx_coord')[1] == data['np_vtx_coord']).all()
+  assert PT.get_child_from_name(dump_node, 'not_numpy') is None
 
 def test_pdm_vtx_to_cgns_grid_coordinates():
   p_zone = I.newZone('Zone.P0.N0', ztype='Unstructured')
@@ -29,10 +29,10 @@ def test_pdm_vtx_to_cgns_grid_coordinates():
   PTC.pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data)
   grid_co = I.getNodeFromPath(p_zone, 'GridCoordinates')
   for co in ['CoordinateX', 'CoordinateY', 'CoordinateZ']:
-    assert I.getNodeFromName1(grid_co, co)[1].dtype == np.float64
-  assert (I.getNodeFromName1(grid_co, 'CoordinateX')[1] == [1,4,7]).all()
-  assert (I.getNodeFromName1(grid_co, 'CoordinateY')[1] == [2,5,8]).all()
-  assert (I.getNodeFromName1(grid_co, 'CoordinateZ')[1] == [3,6,9]).all()
+    assert PT.get_child_from_name(grid_co, co)[1].dtype == np.float64
+  assert (PT.get_child_from_name(grid_co, 'CoordinateX')[1] == [1,4,7]).all()
+  assert (PT.get_child_from_name(grid_co, 'CoordinateY')[1] == [2,5,8]).all()
+  assert (PT.get_child_from_name(grid_co, 'CoordinateZ')[1] == [3,6,9]).all()
 
 @pytest.mark.parametrize("grid_loc",['FaceCenter', 'Vertex'])
 def test_zgc_created_pdm_to_cgns(grid_loc):
@@ -49,15 +49,15 @@ def test_zgc_created_pdm_to_cgns(grid_loc):
                                                     69,1,1,77,77,1,1,69,70,1,1,78,78,1,1,70])
          }
   PTC.zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc)
-  gc_n = I.getNodeFromName(p_zone, 'JN.P0.N0.LT.P1.N0')
+  gc_n = PT.get_node_from_name(p_zone, 'JN.P0.N0.LT.P1.N0')
   assert I.getValue(gc_n) == 'ZoneA.P1.N0'
-  assert I.getValue(I.getNodeFromName(gc_n, 'GridConnectivityType')) == 'Abutting1to1'
+  assert PT.GridConnectivity.is1to1(gc_n)
   assert PT.Subset.GridLocation(gc_n) == grid_loc
   if grid_loc == 'FaceCenter':
-    assert (I.getValue(I.getNodeFromName(gc_n, 'PointList')) == data['np_face_part_bound'][::4]).all()
-    assert (I.getValue(I.getNodeFromName(gc_n, 'PointListDonor')) == data['np_face_part_bound'][3::4]).all()
+    assert (I.getValue(PT.get_node_from_name(gc_n, 'PointList')) == data['np_face_part_bound'][::4]).all()
+    assert (I.getValue(PT.get_node_from_name(gc_n, 'PointListDonor')) == data['np_face_part_bound'][3::4]).all()
   elif grid_loc == 'Vertex':
-    assert (I.getValue(I.getNodeFromName(gc_n, 'PointListDonor')) == data['np_vtx_part_bound'][3::4]).all()
+    assert (I.getValue(PT.get_node_from_name(gc_n, 'PointListDonor')) == data['np_vtx_part_bound'][3::4]).all()
 
 def test_pdm_elmt_to_cgns_elmt_ngon():
   d_zone = I.newZone('Zone', ztype='Unstructured')

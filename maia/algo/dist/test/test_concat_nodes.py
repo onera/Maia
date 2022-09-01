@@ -50,10 +50,10 @@ def test_concatenate_subset_nodes(sub_comm):
   assert I.getValue(node) == 'BCFarfield'
   assert PT.Subset.GridLocation(node) == 'FaceCenter'
   assert (MT.getDistribution(node, 'Index')[1] == expected_distri).all()
-  assert (I.getNodeFromName1(node, 'PointList')[1][0] == expected_pl).all()
+  assert (PT.get_child_from_name(node, 'PointList')[1][0] == expected_pl).all()
 
   assert I.getType(I.getNodeFromPath(node, 'BCDataSet/BCData')) == 'BCData_t'
-  assert (I.getNodeFromName(node, 'Data')[1] == expected_data).all()
+  assert (PT.get_node_from_name(node, 'Data')[1] == expected_data).all()
 
 @mark_mpi_test([1])
 @pytest.mark.parametrize("mode", ['', 'intrazone', 'periodic', 'intraperio'])
@@ -110,7 +110,7 @@ def test_concatenate_jns(sub_comm, mode):
   GN.concatenate_jns(dist_tree, sub_comm)
 
   gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
-  opp_names = [I.getValue(I.getNodeFromName1(gc, "GridConnectivityDonorName")) for gc in gcs]
+  opp_names = [I.getValue(PT.get_child_from_name(gc, "GridConnectivityDonorName")) for gc in gcs]
   assert len(gcs) == 2
   assert opp_names == [gc[0] for gc in gcs[::-1]]
 

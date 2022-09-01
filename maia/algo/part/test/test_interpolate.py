@@ -164,7 +164,7 @@ def test_create_src_to_tgt(sub_comm):
     pt = src_part_1
   zones = parse_yaml_cgns.to_nodes(pt)
   for zone in zones:
-    pe = I.getNodeFromName(zone, 'ParentElements')
+    pe = PT.get_node_from_name(zone, 'ParentElements')
     #Put it in F order
     newpe = np.empty(pe[1].shape, dtype=np.int32, order='F')
     newpe[:] = np.copy(pe[1][:])
@@ -182,7 +182,7 @@ def test_create_src_to_tgt(sub_comm):
 
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
-      cx = I.getNodeFromName(zone, 'CoordinateX')
+      cx = PT.get_node_from_name(zone, 'CoordinateX')
       cx[1] += .5
   excp_target = np.array([2,1,3,4]) if sub_comm.Get_rank() == 0 else np.array([6,5,8,7])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='LocationAndClosest')
@@ -228,9 +228,9 @@ def test_interpolate_fields(sub_comm):
   tgt_parts_per_dom = [[I.copyTree(zone) for zone in I.getZones(part_tree)]]
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
-      cx = I.getNodeFromName(tgt_zone, 'CoordinateX')
-      cy = I.getNodeFromName(tgt_zone, 'CoordinateY')
-      cz = I.getNodeFromName(tgt_zone, 'CoordinateZ')
+      cx = PT.get_node_from_name(tgt_zone, 'CoordinateX')
+      cy = PT.get_node_from_name(tgt_zone, 'CoordinateY')
+      cz = PT.get_node_from_name(tgt_zone, 'CoordinateZ')
       cx[1] += .55
       cy[1] += .05
       cz[1] -= .05
@@ -241,9 +241,9 @@ def test_interpolate_fields(sub_comm):
 
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
-      fs = I.getNodeFromName(tgt_zone, 'MySolution')
+      fs = PT.get_node_from_name(tgt_zone, 'MySolution')
       assert PT.Subset.GridLocation(fs) == 'Vertex'
-      assert (I.getNodeFromName(fs, 'val')[1] == expected_sol).all()
+      assert (PT.get_child_from_name(fs, 'val')[1] == expected_sol).all()
 
 @mark_mpi_test(2)
 class Test_interpolation_api():
@@ -278,9 +278,9 @@ class Test_interpolation_api():
 
     for tgt_zones in tgt_parts_per_dom:
       for i_tgt, tgt_zone in enumerate(tgt_zones):
-        fs = I.getNodeFromName(tgt_zone, 'MySolution')
+        fs = PT.get_child_from_name(tgt_zone, 'MySolution')
         assert PT.Subset.GridLocation(fs) == 'Vertex'
-        assert (I.getNodeFromName(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
+        assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
   def test_interpolate_from_dom_part_trees(self,sub_comm):
     src_tree = I.newCGNSTree()
@@ -307,7 +307,7 @@ class Test_interpolation_api():
         ['MySolution'], 'Vertex', strategy='Closest')
 
     for i_tgt, tgt_zone in enumerate(I.getZones(tgt_tree)):
-      fs = I.getNodeFromName(tgt_zone, 'MySolution')
+      fs = PT.get_child_from_name(tgt_zone, 'MySolution')
       assert PT.Subset.GridLocation(fs) == 'Vertex'
-      assert (I.getNodeFromName(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
+      assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 

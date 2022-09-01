@@ -1,5 +1,6 @@
 import pytest
 import Converter.Internal as I
+import maia.pytree as PT
 from maia.utils.yaml import parse_yaml_cgns
 from maia.io.hdf import cgns_subsets
 
@@ -75,8 +76,8 @@ Base CGNSBase_t [3,3]:
 """
   size_tree = parse_yaml_cgns.to_cgns_tree(yt)
   hdf_filter = dict()
-  zoneU = I.getNodeFromName(size_tree, 'ZoneU')
-  zoneS = I.getNodeFromName(size_tree, 'ZoneS')
+  zoneU = PT.get_node_from_name(size_tree, 'ZoneU')
+  zoneS = PT.get_node_from_name(size_tree, 'ZoneS')
   cgns_subsets.create_zone_grid_connectivity_filter(zoneU, "Base/ZoneU", hdf_filter)
   cgns_subsets.create_zone_grid_connectivity_filter(zoneS, "Base/ZoneS", hdf_filter)
   assert len(hdf_filter.keys()) == 3

@@ -76,7 +76,7 @@ def filtering_filter(dist_tree, hdf_filter, name_or_type_list, skip=True):
     ancestors_type = []
     for idx in range(first_n, len(split_path)):
       next_name = split_path[idx]
-      next_node = I.getNodeFromName1(prev_node, next_name)
+      next_node = PT.get_child_from_name(prev_node, next_name)
       ancestors_name.append(next_node[0])
       ancestors_type.append(next_node[3])
       prev_node = next_node

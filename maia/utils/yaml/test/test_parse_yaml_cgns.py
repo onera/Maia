@@ -32,7 +32,7 @@ Base0 CGNSBase_t [3,3]:
   zs = PT.get_children_from_label(bs[0],"Zone_t")
   assert np.all(I.getValue(zs[0]) == [[24],[6],[0]])
   assert I.getChildren(zs[0]) == []
-  assert I.getNodeFromName(t, 'Zone1')[1].dtype == np.float64
+  assert PT.get_node_from_name(t, 'Zone1')[1].dtype == np.float64
 
   yt = """
   Zone0 Zone_t [[24],[6],[0]]:

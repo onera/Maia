@@ -87,7 +87,7 @@ Base1 CGNSBase_t [3,3]:
   expected_donor_names = ['matchBA', 'matchAB', 'matchCB1', 'matchCB2', 'matchBC2', 'matchBC1']
   query = lambda n : I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, query)):
-    assert I.getValue(I.getNodeFromName1(jn, 'GridConnectivityDonorName')) == expected_donor_names[i]
+    assert I.getValue(PT.get_child_from_name(jn, 'GridConnectivityDonorName')) == expected_donor_names[i]
 
 @mark_mpi_test(1)
 def test_force(sub_comm):
@@ -163,7 +163,7 @@ Base CGNSBase_t:
     MJT.copy_donor_subset(dist_tree)
     expected_pl_opp = [[2,4], [1,3], [-100,-10], [10,100]]
     for i, jn in enumerate(PT.iter_nodes_from_label(dist_tree, 'GridConnectivity_t')):
-      assert (I.getNodeFromName1(jn, 'PointListDonor')[1] == expected_pl_opp[i]).all()
+      assert (PT.get_child_from_name(jn, 'PointListDonor')[1] == expected_pl_opp[i]).all()
 
   def test_store_interfaces_ids(self):
     dist_tree = I.copyTree(self.dist_tree)
@@ -171,8 +171,8 @@ Base CGNSBase_t:
     expected_id = [1,1,2,2]
     expected_pos = [0,1,0,1]
     for i, jn in enumerate(PT.iter_nodes_from_label(dist_tree, 'GridConnectivity_t')):
-      assert (I.getNodeFromName1(jn, 'DistInterfaceId')[1] == expected_id[i]).all()
-      assert (I.getNodeFromName1(jn, 'DistInterfaceOrd')[1] == expected_pos[i]).all()
+      assert (PT.get_child_from_name(jn, 'DistInterfaceId')[1] == expected_id[i]).all()
+      assert (PT.get_child_from_name(jn, 'DistInterfaceOrd')[1] == expected_pos[i]).all()
 
 
 def test_clear_interfaces_ids():
@@ -189,5 +189,5 @@ Base0 CGNSBase_t:
 """
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   MJT.clear_interface_ids(dist_tree)
-  assert I.getNodeFromName(dist_tree, 'DistInterfaceId')  is None
-  assert I.getNodeFromName(dist_tree, 'DistInterfaceOrd') is None
+  assert PT.get_node_from_name(dist_tree, 'DistInterfaceId')  is None
+  assert PT.get_node_from_name(dist_tree, 'DistInterfaceOrd') is None

@@ -83,7 +83,7 @@ def test_localize_points(sub_comm):
   CLO.find_closest_points(tree_src, tree_tgt, 'CellCenter', sub_comm)
   assert PT.is_same_tree(tree_src_back, tree_src)
   tgt_zone = I.getZones(tree_tgt)[0]
-  clo_node = I.getNodeFromNameAndType(tgt_zone, 'ClosestPoint', 'DiscreteData_t')
+  clo_node = PT.get_node_from_name_and_label(tgt_zone, 'ClosestPoint', 'DiscreteData_t')
   assert clo_node is not None and PT.Subset.GridLocation(clo_node) == 'CellCenter'
 
   if sub_comm.rank == 0:
@@ -93,4 +93,4 @@ def test_localize_points(sub_comm):
   elif sub_comm.rank == 2:
     expected_src_id = np.array([4,48,60,52,24,8,20,16,64])
 
-  assert (I.getNodeFromName1(clo_node, 'SrcId')[1] == expected_src_id).all()
+  assert (PT.get_child_from_name(clo_node, 'SrcId')[1] == expected_src_id).all()

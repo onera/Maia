@@ -128,25 +128,25 @@ ZoneU Zone_t [[6,0,0]]:
   assert part_zsr is not None
   assert PT.Subset.GridLocation(part_zsr) == 'Vertex'
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromName1(part_zsr, 'PointList')[1] == [1,4]).all()
+    assert (PT.get_child_from_name(part_zsr, 'PointList')[1] == [1,4]).all()
   if sub_comm.Get_rank() == 1:
-    assert (I.getNodeFromName1(part_zsr, 'PointList')[1] == [3]).all()
+    assert (PT.get_child_from_name(part_zsr, 'PointList')[1] == [3]).all()
 
   IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t', 'ZoneBC_t/BC_t/BCDataSet_t'], 'Elements', sub_comm)
 
   part_sol = I.getNodeFromPath(part_zones[0], 'FlowSolWithPL')
-  part_bc  = I.getNodeFromName(part_zones[0], 'BC')
-  part_ds  = I.getNodeFromName(part_zones[0], 'BCDSWithPL')
+  part_bc  = PT.get_node_from_name(part_zones[0], 'BC')
+  part_ds  = PT.get_node_from_name(part_zones[0], 'BCDSWithPL')
   if sub_comm.Get_rank() == 0:
     assert part_bc is None
     assert PT.Subset.GridLocation(part_sol) == 'CellCenter'
-    assert (I.getNodeFromName1(part_sol, 'PointList')[1] == [2,3,4]).all()
+    assert (PT.get_child_from_name(part_sol, 'PointList')[1] == [2,3,4]).all()
     assert (I.getVal(MT.getGlobalNumbering(part_sol, 'Index')) == [1,3,2]).all()
   if sub_comm.Get_rank() == 1:
     assert part_sol is None
-    assert I.getNodeFromName1(part_bc, 'PointList') is None #No specified in list => skipped, only child are constructed
+    assert PT.get_child_from_name(part_bc, 'PointList') is None #No specified in list => skipped, only child are constructed
     assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
-    assert (I.getNodeFromName1(part_ds, 'PointList')[1] == [1]).all()
+    assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [1]).all()
     assert (I.getVal(MT.getGlobalNumbering(part_ds, 'Index')) == [1]).all()
 
   with pytest.raises(AssertionError):
@@ -185,10 +185,10 @@ ZoneU.P1.N0 Zone_t [[3,0,0]]:
       group_part, ['FlowSolution_t', 'ZoneBC_t/BC_t/BCDataSet_t'], ['FaceCenter', 'CellCenter'])
 
   assert I.getNodeFromPath(part_zone, 'FlowSolWithPL') is None
-  part_bc  = I.getNodeFromName(part_zone, 'BC')
+  part_bc  = PT.get_node_from_name(part_zone, 'BC')
   assert I.getValue(part_bc) == "BCFarfield"
-  part_ds  = I.getNodeFromName(part_zone, 'BCDSWithPL')
-  assert I.getNodeFromName1(part_bc, 'PointList') is None
+  part_ds  = PT.get_node_from_name(part_zone, 'BCDSWithPL')
+  assert PT.get_child_from_name(part_bc, 'PointList') is None
   assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
-  assert (I.getNodeFromName1(part_ds, 'PointList')[1] == [42]).all()
+  assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [42]).all()
   assert (I.getVal(MT.getGlobalNumbering(part_ds, 'Index')) == [9]).all()

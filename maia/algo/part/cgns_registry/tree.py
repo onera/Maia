@@ -115,7 +115,7 @@ def add_cgns_registry_information(tree, comm):
     for i in range(len(paths)):
       # print(paths[i], global_ids[i])
       node    = I.getNodeFromPath(tree, paths[i])
-      cgns_registry_n = I.getNodeFromNameAndType(node, ":CGNS#Registry", 'UserDefined_t')
+      cgns_registry_n = PT.get_node_from_name_and_label(node, ":CGNS#Registry", 'UserDefined_t')
       if cgns_registry_n:
         I._rmNode(node, cgns_registry_n)
       else:

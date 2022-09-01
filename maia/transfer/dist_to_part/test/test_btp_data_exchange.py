@@ -314,7 +314,7 @@ def test_dist_sol_to_part_sol_pl(sub_comm, exclude):
       assert I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1].shape == (2,)
       assert (I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1] == [30,10]).all()
   else:
-    assert I.getNodeFromName(part_tree, 'field1') is None
+    assert PT.get_node_from_name(part_tree, 'field1') is None
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("from_api", [False, True])

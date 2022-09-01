@@ -23,7 +23,7 @@ def test_single_block(sub_comm):
   part_tree = MF.partition_dist_tree(dist_tree, sub_comm)
 
   # > Partioning procduce one matching gc
-  gc  = I.getNodeFromType(part_tree, 'GridConnectivity_t')
+  gc  = PT.get_node_from_label(part_tree, 'GridConnectivity_t')
   # > Test setup -- copy this jn as a bc (without pl donor) to test connect match
   bc = I.copyTree(gc)
   I.setName(bc, 'ToMatch')
@@ -32,7 +32,7 @@ def test_single_block(sub_comm):
   I.createNode('FamilyName', 'FamilyName_t', 'JN', parent=bc)
   PT.rm_children_from_name(bc, 'GridConnectivityType')
   PT.rm_children_from_name(bc, 'PointListDonor')
-  I._addChild(I.getNodeFromType(part_tree, 'ZoneBC_t'), bc)
+  I._addChild(PT.get_node_from_label(part_tree, 'ZoneBC_t'), bc)
 
   base = I.getBases(part_tree)[0]
   I.newFamily('JN', parent=base)
@@ -44,7 +44,7 @@ def test_single_block(sub_comm):
   #PLDonor are well recovered
   new_gc = PT.get_nodes_from_label(part_tree, 'GridConnectivity_t')[-1]
   for name in ['PointList', 'PointListDonor', 'GridConnectivityType', 'GridLocation']:
-    assert (I.getNodeFromName(gc, name)[1] == I.getNodeFromName(new_gc, name)[1]).all()
+    assert (PT.get_node_from_name(gc, name)[1] == PT.get_node_from_name(new_gc, name)[1]).all()
 
 
 @mark_mpi_test([1])
@@ -62,8 +62,8 @@ def test_two_blocks(sub_comm):
   # > Backup GridConnectivity for verification
   large_zone = PT.get_nodes_from_name(part_tree, "Large*")[0]
   small_zone = PT.get_nodes_from_name(part_tree, "Small*")[0]
-  large_jn = I.getNodeFromType(large_zone, 'GridConnectivity_t')
-  small_jn = I.getNodeFromType(small_zone, 'GridConnectivity_t')
+  large_jn = PT.get_node_from_label(large_zone, 'GridConnectivity_t')
+  small_jn = PT.get_node_from_label(small_zone, 'GridConnectivity_t')
   PT.rm_nodes_from_label(part_tree, 'ZoneGridConnectivity_t')
 
   # > Test setup -- Create BC
@@ -74,7 +74,7 @@ def test_two_blocks(sub_comm):
   I.createNode('FamilyName', 'FamilyName_t', 'LargeJN', parent=large_bc)
   PT.rm_children_from_name(large_bc, 'GridConnectivityType')
   PT.rm_children_from_name(large_bc, 'PointListDonor')
-  I._addChild(I.getNodeFromType(large_zone, 'ZoneBC_t'), large_bc)
+  I._addChild(PT.get_node_from_label(large_zone, 'ZoneBC_t'), large_bc)
 
   small_bc = I.copyTree(small_jn)
   I.setName(small_bc, 'ToMatch')
@@ -83,9 +83,9 @@ def test_two_blocks(sub_comm):
   I.createNode('FamilyName', 'FamilyName_t', 'SmallJN', parent=small_bc)
   PT.rm_children_from_name(small_bc, 'GridConnectivityType')
   PT.rm_children_from_name(small_bc, 'PointListDonor')
-  I._addChild(I.getNodeFromType(small_zone, 'ZoneBC_t'), small_bc)
+  I._addChild(PT.get_node_from_label(small_zone, 'ZoneBC_t'), small_bc)
 
-  bc = I.getNodeFromName(part_tree, 'Front')
+  bc = PT.get_node_from_name(part_tree, 'Front')
   I.createNode('FamilyName', 'FamilyName_t', 'OtherFamily', parent=bc)
 
 
@@ -94,13 +94,13 @@ def test_two_blocks(sub_comm):
                                       match_type = ['FaceCenter'], rel_tol=1.e-5)
 
   # > Check (order can differ)
-  new_large_jn = I.getNodeFromType(large_zone, 'GridConnectivity_t')
-  new_small_jn = I.getNodeFromType(small_zone, 'GridConnectivity_t')
-  assert (np.sort(I.getNodeFromName(new_large_jn, 'PointList')[1]) == \
-          np.sort(I.getNodeFromName(large_jn, 'PointList')[1])).all()
-  assert (np.sort(I.getNodeFromName(new_small_jn, 'PointList')[1]) == \
-          np.sort(I.getNodeFromName(small_jn, 'PointList')[1])).all()
-  assert (I.getNodeFromName(new_small_jn, 'PointList')[1] == \
-          I.getNodeFromName(new_large_jn, 'PointListDonor')[1]).all()
-  assert (I.getNodeFromName(new_small_jn, 'PointListDonor')[1] == \
-          I.getNodeFromName(new_large_jn, 'PointList')[1]).all()
+  new_large_jn = PT.get_node_from_label(large_zone, 'GridConnectivity_t')
+  new_small_jn = PT.get_node_from_label(small_zone, 'GridConnectivity_t')
+  assert (np.sort(PT.get_node_from_name(new_large_jn, 'PointList')[1]) == \
+          np.sort(PT.get_node_from_name(large_jn, 'PointList')[1])).all()
+  assert (np.sort(PT.get_node_from_name(new_small_jn, 'PointList')[1]) == \
+          np.sort(PT.get_node_from_name(small_jn, 'PointList')[1])).all()
+  assert (PT.get_node_from_name(new_small_jn, 'PointList')[1] == \
+          PT.get_node_from_name(new_large_jn, 'PointListDonor')[1]).all()
+  assert (PT.get_node_from_name(new_small_jn, 'PointListDonor')[1] == \
+          PT.get_node_from_name(new_large_jn, 'PointList')[1]).all()

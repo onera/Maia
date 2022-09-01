@@ -82,6 +82,6 @@ def to_cgns_tree(yaml_stream):
     I.addChild(b, childs)
   else:
     I.addChild(t, childs)
-  if I.getNodeFromType1(t, 'CGNSLibraryVersion_t') is None:
+  if PT.get_child_from_label(t, 'CGNSLibraryVersion_t') is None:
     I._addChild(t, I.createCGNSVersionNode(), pos=0)
   return t

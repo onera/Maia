@@ -150,7 +150,7 @@ def _partitioning(dist_tree,
   if len(u_zones) > 0:
     base_to_parts_u = partU.part_U_zones(base_to_blocks_u, dzone_to_weighted_parts, comm, part_options)
     for base, u_parts in base_to_parts_u.items():
-      part_base = I.getNodeFromName1(part_tree, base)
+      part_base = PT.get_child_from_name(part_tree, base)
       for u_part in u_parts:
         if not part_options['preserve_orientation']:
           try:

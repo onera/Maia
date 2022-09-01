@@ -55,9 +55,9 @@ def test_extract_faces_mesh(sub_comm):
   assert (vtx_ids == [3,6,9,12,15,18,21,24,27]).all()
 
   # Test S
-  cx_s = I.getNodeFromName(zoneU, 'CoordinateX')[1].reshape((3,3,3), order='F')
-  cy_s = I.getNodeFromName(zoneU, 'CoordinateY')[1].reshape((3,3,3), order='F')
-  cz_s = I.getNodeFromName(zoneU, 'CoordinateZ')[1].reshape((3,3,3), order='F')
+  cx_s = PT.get_node_from_name(zoneU, 'CoordinateX')[1].reshape((3,3,3), order='F')
+  cy_s = PT.get_node_from_name(zoneU, 'CoordinateY')[1].reshape((3,3,3), order='F')
+  cz_s = PT.get_node_from_name(zoneU, 'CoordinateZ')[1].reshape((3,3,3), order='F')
 
   zoneS = I.newZone(zsize=[[3,2,0], [3,2,0], [3,2,0]], ztype='Structured')
   grid_coords = I.newGridCoordinates(parent=zoneS)

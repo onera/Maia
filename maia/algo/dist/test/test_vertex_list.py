@@ -16,7 +16,7 @@ from maia.utils     import par_utils
 @mark_mpi_test([1,3])
 def test_face_ids_to_vtx_ids(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
-  ngon = I.getNodeFromName(tree, "NGonElements")
+  ngon = PT.get_node_from_name(tree, "NGonElements")
 
   offset, face_vtx   = VL.face_ids_to_vtx_ids(np.array([3,6,2]), ngon, sub_comm)
   assert (offset == np.arange(0,(3+1)*4,4)).all()
@@ -30,7 +30,7 @@ def test_face_ids_to_vtx_ids(sub_comm):
 def test_filter_vtx_coordinates(sub_comm):
   empty = np.empty(0, int)
   tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
-  vtx_coords = I.getNodeFromType(tree, 'GridCoordinates_t')
+  vtx_coords = PT.get_node_from_label(tree, 'GridCoordinates_t')
   vtx_distri   = I.getVal(MT.getDistribution(I.getZones(tree)[0], 'Vertex'))
   if sub_comm.Get_rank() == 1:
     requested_vtx_ids = [2,6,7,106,3,103,107,102]
@@ -46,7 +46,7 @@ def test_filter_vtx_coordinates(sub_comm):
 @mark_mpi_test(2)
 def test_get_extended_pl(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
-  ngon = I.getNodeFromName(tree, "NGonElements")
+  ngon = PT.get_node_from_name(tree, "NGonElements")
   if sub_comm.Get_rank() == 0:
     pl   = np.array([1,2,3])
     pl_d = np.array([9,10,11])
@@ -184,7 +184,7 @@ class Test_generate_jn_vertex_list():
     zoneB = I.getZones(tree2)[0]
     zoneB[0] = 'zoneB'
     PT.rm_children_from_label(zoneB, 'ZoneBC_t')
-    I._addChild(I.getNodeFromName(tree, 'Base'), zoneB)
+    I._addChild(PT.get_node_from_name(tree, 'Base'), zoneB)
 
     #Create fake jn
     zgc = I.newZoneGridConnectivity(parent=zone)
@@ -251,7 +251,7 @@ class Test_generate_jn_vertex_list():
     zoneB = I.getZones(tree2)[0]
     zoneB[0] = 'zoneB'
     PT.rm_children_from_label(zoneB, 'ZoneBC_t')
-    I._addChild(I.getNodeFromName(tree, 'Base'), zoneB)
+    I._addChild(PT.get_node_from_name(tree, 'Base'), zoneB)
 
     #Create fake jn such that we have only isolated faces
     zgc = I.newZoneGridConnectivity(parent=zone)
@@ -289,7 +289,7 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   zoneB = I.getZones(tree2)[0]
   zoneB[0] = 'zoneB'
   PT.rm_children_from_label(zoneB, 'ZoneBC_t')
-  I._addChild(I.getNodeFromName(tree, 'Base'), zoneB)
+  I._addChild(PT.get_node_from_name(tree, 'Base'), zoneB)
 
   #Create fake jns
   zgc = I.newZoneGridConnectivity(parent=zoneA)
@@ -315,7 +315,7 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   VL.generate_jns_vertex_list(tree, sub_comm, have_isolated_faces=have_isolated_faces)
 
   assert len(PT.get_nodes_from_name(tree, "ZoneGridConnectivity")) == 2
-  assert I.getNodeFromName(tree, "matchA#Vtx") is not None
-  jn_vtx = I.getNodeFromName(tree, "matchB#Vtx")
+  assert PT.get_node_from_name(tree, "matchA#Vtx") is not None
+  jn_vtx = PT.get_node_from_name(tree, "matchB#Vtx")
   assert jn_vtx is not None and PT.Subset.GridLocation(jn_vtx) == 'Vertex'
   assert I.getType(jn_vtx) == 'GridConnectivity_t' and I.getValue(jn_vtx) == I.getValue(gcB)

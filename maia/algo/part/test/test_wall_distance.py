@@ -61,23 +61,23 @@ class Test_wallDistance:
     # Test with family specification + propagation method + default out_fs_name
     WD.compute_wall_distance(part_tree, sub_comm, method="propagation", families=["WALL"])
 
-    fs = I.getNodeFromName1(zone, 'WallDistance')
+    fs = PT.get_child_from_name(zone, 'WallDistance')
     assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
     for array in PT.iter_children_from_label(fs, 'DataArray_t'):
       assert array[1].shape == (4,)
-    assert (I.getNodeFromName1(fs, 'TurbulentDistance')[1] == expected_wd).all()
-    assert (I.getNodeFromName1(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
+    assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
+    assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
     #Test with family detection + cloud method + custom fs name
     PT.rm_nodes_from_name(part_tree, 'WallDistance')
     WD.compute_wall_distance(part_tree, sub_comm, method="cloud", out_fs_name='MyWallDistance')
 
-    fs = I.getNodeFromName1(zone, 'MyWallDistance')
+    fs = PT.get_child_from_name(zone, 'MyWallDistance')
     assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
     for array in PT.iter_children_from_label(fs, 'DataArray_t'):
       assert array[1].shape == (4,)
-    assert (I.getNodeFromName1(fs, 'TurbulentDistance')[1] == expected_wd).all()
-    assert (I.getNodeFromName1(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
+    assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
+    assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
 @mark_mpi_test(2)
 def test_walldistance_vtx(sub_comm):
@@ -107,8 +107,8 @@ def test_walldistance_vtx(sub_comm):
 
   WD.compute_wall_distance(part_tree, sub_comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
 
-  fs = I.getNodeFromName1(zone, 'MyWallDistance')
+  fs = PT.get_child_from_name(zone, 'MyWallDistance')
   assert fs is not None and PT.Subset.GridLocation(fs) == 'Vertex'
-  assert (I.getNodeFromName1(fs, 'TurbulentDistance')[1] == expected_wd).all()
-  assert (I.getNodeFromName1(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
+  assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
+  assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 

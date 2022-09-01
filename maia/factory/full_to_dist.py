@@ -18,7 +18,7 @@ def distribute_pl_node(node, comm):
   for array_n in PT.get_children_from_predicate(dist_node, 'IndexArray_t'):
     array_n[1] = array_n[1][0][distri[0]:distri[1]].reshape(1,-1, order='F')
   #Data Arrays
-  has_subset = lambda n : I.getNodeFromName1(n, 'PointList') is not None or I.getNodeFromName1(n, 'PointRange') is not None
+  has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
   bcds_without_pl = lambda n : I.getType(n) == 'BCDataSet_t' and not has_subset(n)
   bcds_without_pl_query = [bcds_without_pl, 'BCData_t', 'DataArray_t']
   for array_path in ['DataArray_t', 'BCData_t/DataArray_t', bcds_without_pl_query]:
@@ -41,7 +41,7 @@ def distribute_data_node(node, comm):
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
   """
   dist_node = I.copyTree(node)
-  assert I.getNodeFromName(dist_node, 'PointList') is None
+  assert PT.get_node_from_name(dist_node, 'PointList') is None
 
   for array in PT.iter_children_from_label(dist_node, 'DataArray_t'):
     distri = par_utils.uniform_distribution(array[1].size, comm)
@@ -62,9 +62,9 @@ def distribute_element_node(node, comm):
   distri = par_utils.uniform_distribution(n_elem, comm).astype(pdm_dtype)
   MT.newDistribution({'Element' : distri}, dist_node)
 
-  ec = I.getNodeFromName1(dist_node, 'ElementConnectivity')
+  ec = PT.get_child_from_name(dist_node, 'ElementConnectivity')
   if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n']:
-    eso = I.getNodeFromName1(dist_node, 'ElementStartOffset')
+    eso = PT.get_child_from_name(dist_node, 'ElementStartOffset')
     distri_ec = eso[1][[distri[0], distri[1], -1]]
     ec[1] = ec[1][distri_ec[0] : distri_ec[1]]
     eso[1] = eso[1][distri[0]:distri[1]+1]
@@ -75,7 +75,7 @@ def distribute_element_node(node, comm):
     ec[1] = ec[1][n_vtx*distri[0] : n_vtx*distri[1]]
     MT.newDistribution({'ElementConnectivity' : n_vtx*distri}, dist_node)
   
-  pe = I.getNodeFromName1(dist_node, 'ParentElements')
+  pe = PT.get_child_from_name(dist_node, 'ParentElements')
   if pe is not None:
     pe[1] = (pe[1][distri[0] : distri[1]]).copy(order='F') #Copy is needed to have contiguous memory
   
@@ -120,7 +120,7 @@ def distribute_tree(tree, comm, owner=None):
     sols = PT.get_children_from_label(zone, 'FlowSolution_t') + PT.get_children_from_label(zone, 'DiscreteData_t')
     for sol in sols:
       I._rmNode(zone, sol)
-      if I.getNodeFromName1(sol, 'PointList') is None:
+      if PT.get_child_from_name(sol, 'PointList') is None:
         I._addChild(zone, distribute_data_node(sol, comm))
       else:
         I._addChild(zone, distribute_pl_node(sol, comm))

@@ -108,7 +108,7 @@ def test_interpolation_refined(sub_comm, n_part_tgt, write_output):
   dist_tree_tgt = MF.distribute_tree(refined_tree, sub_comm, owner=0)
 
   zone = I.getZones(dist_tree_src)[0]
-  sol = I.copyTree(I.getNodeFromName(zone, 'FlowSolution#Centers'))
+  sol = I.copyTree(PT.get_node_from_name(zone, 'FlowSolution#Centers'))
   I.setName(sol, 'FlowSolution#Init')
   I._addChild(zone, sol)
 

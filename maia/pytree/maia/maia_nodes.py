@@ -1,4 +1,5 @@
 import Converter.Internal as I
+from maia.pytree import walk
 
 def getDistribution(node, distri_name=None):
   """
@@ -6,7 +7,7 @@ def getDistribution(node, distri_name=None):
   or the value of the requested distribution if distri_name is not None
   """
   return I.getNodeFromPath(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
-      else I.getNodeFromName1(node, ':CGNS#Distribution')
+      else walk.get_child_from_name(node, ':CGNS#Distribution')
 
 def getGlobalNumbering(node, lngn_name=None):
   """
@@ -14,7 +15,7 @@ def getGlobalNumbering(node, lngn_name=None):
   or the value of the requested globalnumbering if lngn_name is not None
   """
   return I.getNodeFromPath(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
-      else I.getNodeFromName1(node, ':CGNS#GlobalNumbering')
+      else walk.get_child_from_name(node, ':CGNS#GlobalNumbering')
 
 # --------------------------------------------------------------------------
 def newDistribution(distributions = dict(), parent=None):

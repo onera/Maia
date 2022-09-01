@@ -22,8 +22,8 @@ def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
   for query in query_list:
     for node in PT.iter_children_from_predicates(dist_zone, query):
       if filter_loc is None or PT.Subset.GridLocation(node) in filter_loc:
-        pl_n = I.getNodeFromName1(node, 'PointList')
-        pr_n = I.getNodeFromName1(node, 'PointRange')
+        pl_n = PT.get_child_from_name(node, 'PointList')
+        pr_n = PT.get_child_from_name(node, 'PointRange')
         if pl_n is not None:
           point_lists.append(pl_n[1])
         elif pr_n is not None and I.getValue(pr_n).shape[0] == 1:
@@ -41,8 +41,8 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
     for nodes in PT.iter_children_from_predicates(dist_zone, pl_path, ancestors=True):
       ancestors, node = nodes[:-1], nodes[-1]
       if PT.Subset.GridLocation(node) in locations:
-        pl_n = I.getNodeFromName1(node, 'PointList')
-        pr_n = I.getNodeFromName1(node, 'PointRange')
+        pl_n = PT.get_child_from_name(node, 'PointList')
+        pr_n = PT.get_child_from_name(node, 'PointRange')
         #Exclude nodes with no pl
         if pl_n or (pr_n and I.getValue(pr_n).shape[0] == 1):
           beg_pl = p_groups['npZSRGroupIdx'][i_pl]

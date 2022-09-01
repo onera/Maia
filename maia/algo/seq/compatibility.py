@@ -4,6 +4,7 @@ from maia.algo.apply_function_to_nodes import zones_iterator
 import numpy as np
 import Converter.Internal as I
 import maia
+import maia.pytree as PT
 
 def poly_new_to_old(t, full_onera_compatibility=True):
   """
@@ -18,13 +19,13 @@ def poly_new_to_old(t, full_onera_compatibility=True):
   for z in zones_iterator(t):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
-    ngon_range   = I.getVal(I.getNodeFromName1(ngon , "ElementRange"       ))
-    nface_range  = I.getVal(I.getNodeFromName1(nface, "ElementRange"       ))
-    nface_connec = I.getVal(I.getNodeFromName1(nface, "ElementConnectivity"))
+    ngon_range   = I.getVal(PT.get_child_from_name(ngon , "ElementRange"       ))
+    nface_range  = I.getVal(PT.get_child_from_name(nface, "ElementRange"       ))
+    nface_connec = I.getVal(PT.get_child_from_name(nface, "ElementConnectivity"))
 
     if full_onera_compatibility:
       # 1. shift ParentElements to 1
-      pe_node = I.getNodeFromName1(ngon,"ParentElements")
+      pe_node = PT.get_child_from_name(ngon,"ParentElements")
       if pe_node:
         pe = I.getVal(pe_node)
         pe += (-nface_range[0]+1)*(pe>0)
@@ -54,14 +55,14 @@ def poly_old_to_new(t):
   for z in zones_iterator(t):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
-    ngon_range   = I.getVal(I.getNodeFromName1(ngon , "ElementRange"))
-    nface_range  = I.getVal(I.getNodeFromName1(nface, "ElementRange"))
+    ngon_range   = I.getVal(PT.get_child_from_name(ngon , "ElementRange"))
+    nface_range  = I.getVal(PT.get_child_from_name(nface, "ElementRange"))
 
     # 1. interleaved to indexed
     ctree_algo.interleaved_to_indexed_connectivity(ngon)
 
     # 2. shift ParentElements if necessary
-    pe_node = I.getNodeFromName1(ngon,"ParentElements")
+    pe_node = PT.get_child_from_name(ngon,"ParentElements")
     if pe_node:
       pe = I.getVal(pe_node)
       pe_no_0 = pe[pe>0]
@@ -74,12 +75,12 @@ def poly_old_to_new(t):
           pe += (+nface_range[0]-1)*(pe>0)
 
     # 3. NFace
-    nface_connec = I.getVal(I.getNodeFromName1(nface, "ElementConnectivity"))
+    nface_connec = I.getVal(PT.get_child_from_name(nface, "ElementConnectivity"))
     n_cell = nface_range[1] - nface_range[0]
     if np.min(nface_connec)<0 or n_cell==1: # NFace is signed (if only one cell, it is signed despite being positive)
       # 3.1. interleaved to indexed
       ctree_algo.interleaved_to_indexed_connectivity(nface)
-      nface_connec = I.getVal(I.getNodeFromName1(nface, "ElementConnectivity"))
+      nface_connec = I.getVal(PT.get_child_from_name(nface, "ElementConnectivity"))
 
       # 3.2. shift
       sign_nf = np.sign(nface_connec)

@@ -37,14 +37,14 @@ Zone Zone_t:
   """
   zone = parse_yaml_cgns.to_node(yt)
 
-  assert EX.getSubregionExtent(I.getNodeFromName(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
-  assert EX.getSubregionExtent(I.getNodeFromName(zone, 'BCLinkedZSR'), zone) == 'ZBC/BC2'
-  assert EX.getSubregionExtent(I.getNodeFromName(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
+  assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
+  assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZBC/BC2'
+  assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
 
   with pytest.raises(ValueError):
-    EX.getSubregionExtent(I.getNodeFromName(zone, 'OrphelanZSR'), zone)
+    EX.getSubregionExtent(PT.get_node_from_name(zone, 'OrphelanZSR'), zone)
   with pytest.raises(PT.CGNSLabelNotEqualError):
-    EX.getSubregionExtent(I.getNodeFromName(zone, 'WrongZSR'), zone)
+    EX.getSubregionExtent(PT.get_node_from_name(zone, 'WrongZSR'), zone)
 
 def test_find_connected_zones():
   yt = """

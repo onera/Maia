@@ -39,10 +39,10 @@ def test_jn_vertexlist(sub_comm, write_output):
   with open(ref_file, 'r') as f:
     reference_tree = parse_yaml_cgns.to_cgns_tree(f)
   for ref_gc in PT.iter_nodes_from_label(reference_tree, 'GridConnectivity_t'):
-    gc = I.getNodeFromName(dist_tree, I.getName(ref_gc))
+    gc = PT.get_node_from_name(dist_tree, I.getName(ref_gc))
     distri = MT.getDistribution(gc, 'Index')[1]
     for ref_node in I.getChildren(ref_gc):
-      node = I.getNodeFromName1(gc, I.getName(ref_node))
+      node = PT.get_child_from_name(gc, I.getName(ref_node))
       if I.getName(node) in ['PointList', 'PointListDonor']:
         ref_node[1] = np.array([ref_node[1][0][distri[0]:distri[1]]])  # Extract distributed array
       assert PT.is_same_node(ref_node, node, type_tol=True) #Reference is stored as int32

@@ -2,6 +2,7 @@ import Converter.Internal as I
 
 from maia.utils.yaml   import parse_yaml_cgns
 from maia.pytree.sids import adjust
+from maia.pytree      import walk
 def test_enforceDonorAsPath():
   yt = """
   Base CGNSBase_t:
@@ -16,9 +17,9 @@ def test_enforceDonorAsPath():
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   adjust.enforceDonorAsPath(tree)
-  assert I.getValue(I.getNodeFromName(tree, "match1")) == "Base/ZoneA"
-  assert I.getValue(I.getNodeFromName(tree, "match2")) == "Base/ZoneA"
-  assert I.getValue(I.getNodeFromName(tree, "match3")) == "Base/ZoneB"
-  assert I.getValue(I.getNodeFromName(tree, "match4")) == "Base/ZoneA"
+  assert I.getValue(walk.get_node_from_name(tree, "match1")) == "Base/ZoneA"
+  assert I.getValue(walk.get_node_from_name(tree, "match2")) == "Base/ZoneA"
+  assert I.getValue(walk.get_node_from_name(tree, "match3")) == "Base/ZoneB"
+  assert I.getValue(walk.get_node_from_name(tree, "match4")) == "Base/ZoneA"
 
 

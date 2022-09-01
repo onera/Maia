@@ -118,13 +118,13 @@ def _recover_elements(dist_zone, part_zones, comm):
     if n_increase > 0:
       for elt in elt_nodes:
         dim_shift = sum(n_elt_per_dim[:PT.Element.Dimension(elt)])
-        ER = I.getNodeFromName(elt, 'ElementRange')
+        ER = PT.get_child_from_name(elt, 'ElementRange')
         ER[1] += dim_shift
 
     else:
       for elt in elt_nodes:
         dim_shift = sum(n_elt_per_dim[PT.Element.Dimension(elt)+1:])
-        ER = I.getNodeFromName(elt, 'ElementRange')
+        ER = PT.get_child_from_name(elt, 'ElementRange')
         ER[1] += dim_shift
 
 def recover_dist_tree(part_tree, comm):

@@ -16,18 +16,18 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
   for elmt in PT.iter_children_from_label(zone, 'Elements_t'):
     elmt_path = zone_path+"/"+elmt[0]
     ec_path   = elmt_path+"/ElementConnectivity"
-    if I.getNodeFromName1(elmt, 'ElementStartOffset') is not None:
+    if PT.get_child_from_name(elmt, 'ElementStartOffset') is not None:
       I.newIndexArray('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
 
   for zone_bc in PT.iter_children_from_label(zone, 'ZoneBC_t'):
     zone_bc_path = zone_path+"/"+zone_bc[0]
     for bc in PT.iter_children_from_label(zone_bc, 'BC_t'):
       bc_path = zone_bc_path+"/"+bc[0]
-      if I.getNodeFromName1(bc, 'PointList') is not None:
+      if PT.get_child_from_name(bc, 'PointList') is not None:
         pl_path = bc_path+"/PointList"
         I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
       for bcds in PT.iter_children_from_label(bc, 'BCDataSet_t'):
-        if I.getNodeFromName1(bcds, 'PointList') is not None:
+        if PT.get_child_from_name(bcds, 'PointList') is not None:
           pl_path = bc_path+"/"+bcds[0]+"/PointList"
           I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bcds)
 
@@ -37,22 +37,22 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
         + PT.get_children_from_label(zone_gc, 'GridConnectivity1to1_t')
     for gc in gcs:
       gc_path = zone_gc_path+"/"+gc[0]
-      if I.getNodeFromName1(gc, 'PointList') is not None:
+      if PT.get_child_from_name(gc, 'PointList') is not None:
         pl_path = gc_path+"/PointList"
         I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=gc)
-      if I.getNodeFromName1(gc, 'PointListDonor') is not None:
+      if PT.get_child_from_name(gc, 'PointListDonor') is not None:
         pld_path = gc_path+"/PointListDonor"
         assert size_data[pld_path][2] == size_data[pl_path][2]
 
   for zone_subregion in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
     zone_subregion_path = zone_path+"/"+zone_subregion[0]
-    if I.getNodeFromName1(zone_subregion, 'PointList') is not None:
+    if PT.get_child_from_name(zone_subregion, 'PointList') is not None:
       pl_path = zone_subregion_path+"/PointList"
       I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=zone_subregion)
 
   for flow_sol in PT.iter_children_from_label(zone, 'FlowSolution_t'):
     sol_path = zone_path + "/" + I.getName(flow_sol)
-    if I.getNodeFromName1(flow_sol, 'PointList') is not None:
+    if PT.get_child_from_name(flow_sol, 'PointList') is not None:
       pl_path = sol_path+"/PointList"
       I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=flow_sol)
 

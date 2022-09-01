@@ -33,7 +33,7 @@ def get_point_cloud(zone, location='CellCenter'):
     return center_cell, cell_ln_to_gn
   
   elif PT.is_valid_name(location):
-    container = I.getNodeFromName1(zone, location)
+    container = PT.get_child_from_name(zone, location)
     if container:
       coords = [I.getVal(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
       int_coords = np_utils.interweave_arrays(coords)

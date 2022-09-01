@@ -46,7 +46,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     for child in PT.iter_children_from_predicates(master, child_query):
       I._addChild(node, child)
 
-  newsize = I.getNodeFromName(node, 'PointList')[1].size
+  newsize = PT.get_node_from_name(node, 'PointList')[1].size
   idx_distri = I.getValue(MT.getDistribution(master, 'Index'))
   distri = par_utils.gather_and_shift(newsize, comm).astype(idx_distri.dtype)
   MT.newDistribution({'Index' : distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]}, node)
@@ -59,8 +59,7 @@ def concatenate_jns(tree, comm):
   produce A' from zone1 to zone2 and B' from zone2 to zone1
   Periodic jns are merged if their Periodic node are the same
   """
-  match_jns = lambda n: I.getType(n) == 'GridConnectivity_t' \
-                        and I.getValue(I.getNodeFromType(n, 'GridConnectivityType_t')) == 'Abutting1to1'
+  match_jns = lambda n: I.getType(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n)
 
   MJT.add_joins_donor_name(tree, comm)
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
@@ -70,7 +69,7 @@ def concatenate_jns(tree, comm):
     for zgc, jn in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', match_jns], ancestors=True):
       donor_path = PT.getZoneDonorPath(I.getName(base), jn)
       location = PT.Subset.GridLocation(jn)
-      perio_node = I.getNodeFromType1(jn, 'GridConnectivityProperty_t')
+      perio_node = PT.get_child_from_label(jn, 'GridConnectivityProperty_t')
       is_periodic = perio_node is not None
       cur_jn_path = '/'.join([I.getName(node) for node in [base, zone, zgc, jn]])
       opp_jn_path = MJT.get_jn_donor_path(tree, cur_jn_path)
@@ -99,7 +98,7 @@ def concatenate_jns(tree, comm):
       if suffix == '.I0':  opp_suffix = '.I1'
       elif suffix == '.I1':  opp_suffix = '.I0'
       else:  opp_suffix = suffix
-      opp_name_node = I.getNodeFromName1(jn, "GridConnectivityDonorName")
+      opp_name_node = PT.get_child_from_name(jn, "GridConnectivityDonorName")
       I.setValue(opp_name_node, opp_jn_path.split('/')[1] + '.To.' + I.getName(zone) + opp_suffix)
 
       try:
@@ -122,13 +121,13 @@ def concatenate_jns(tree, comm):
       for jn in PT.get_children_from_label(zgc, 'GridConnectivity_t'):
         if len(PT.get_children_from_name(zgc, I.getName(jn))) > 1:
           I.setName(jn, I.getName(jn) + '_' + PT.Subset.GridLocation(jn)[0])
-          opp_name_node = I.getNodeFromName1(jn, "GridConnectivityDonorName")
+          opp_name_node = PT.get_child_from_name(jn, "GridConnectivityDonorName")
           I.setValue(opp_name_node, I.getValue(opp_name_node) + '_' + PT.Subset.GridLocation(jn)[0])
   # If we have multiple periodic jns or intrazone periodics, we can not guarantee that GridConnectivityDonorName is
   # good so rebuild it
   perio_found = False
   for jn in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', match_jns]):
-    perio_found = I.getNodeFromType1(jn, 'GridConnectivityProperty_t') is not None
+    perio_found = PT.get_child_from_label(jn, 'GridConnectivityProperty_t') is not None
     if perio_found:
       break
   if perio_found:

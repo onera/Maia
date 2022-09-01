@@ -17,7 +17,7 @@ def test_compute_cell_center(sub_comm):
   #On partitions, element are supposed to be I4
   for elt_node in PT.iter_children_from_label(zoneU, 'Elements_t'):
     for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
-      node = I.getNodeFromName1(elt_node, name)
+      node = PT.get_child_from_name(elt_node, name)
       node[1] = node[1].astype(np.int32)
 
   cell_center = geometry.compute_cell_center(zoneU)
@@ -32,9 +32,9 @@ def test_compute_cell_center(sub_comm):
   assert (cell_center == expected_cell_center).all()
 
   #Test S
-  cx_s = I.getNodeFromName(zoneU, 'CoordinateX')[1].reshape((3,3,3), order='F')
-  cy_s = I.getNodeFromName(zoneU, 'CoordinateY')[1].reshape((3,3,3), order='F')
-  cz_s = I.getNodeFromName(zoneU, 'CoordinateZ')[1].reshape((3,3,3), order='F')
+  cx_s = PT.get_node_from_name(zoneU, 'CoordinateX')[1].reshape((3,3,3), order='F')
+  cy_s = PT.get_node_from_name(zoneU, 'CoordinateY')[1].reshape((3,3,3), order='F')
+  cz_s = PT.get_node_from_name(zoneU, 'CoordinateZ')[1].reshape((3,3,3), order='F')
 
   zoneS = I.newZone(zsize=[[3,2,0], [3,2,0], [3,2,0]], ztype='Structured')
   grid_coords = I.newGridCoordinates(parent=zoneS)

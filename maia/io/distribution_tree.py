@@ -22,15 +22,15 @@ def compute_plist_or_prange_distribution(node, comm):
   PointList#Size arrays, which store the size of the PL in each direction.
   """
 
-  pr_n = I.getNodeFromName1(node, 'PointRange')
-  pl_n = I.getNodeFromName1(node, 'PointList')
+  pr_n = PT.get_child_from_name(node, 'PointRange')
+  pl_n = PT.get_child_from_name(node, 'PointList')
 
   if(pr_n):
     pr_lenght = PT.PointRange.n_elem(pr_n)
     create_distribution_node(pr_lenght, comm, 'Index', node)
 
   if(pl_n):
-    pls_n   = I.getNodeFromName1(node, 'PointList#Size')
+    pls_n   = PT.get_child_from_name(node, 'PointList#Size')
     pl_size = I.getValue(pls_n).prod()
     create_distribution_node(pl_size, comm, 'Index', node)
     I._rmNode(node, pls_n)
@@ -39,17 +39,17 @@ def compute_connectivity_distribution(node):
   """
   Once ESO is loaded, update element distribution with ElementConnectivity array
   """
-  eso_n  = I.getNodeFromName1(node, 'ElementStartOffset')
+  eso_n  = PT.get_child_from_name(node, 'ElementStartOffset')
   if eso_n is None:
     raise RuntimeError
-  size_n = I.getNodeFromName1(node, 'ElementConnectivity#Size')
+  size_n = PT.get_child_from_name(node, 'ElementConnectivity#Size')
 
   beg  = eso_n[1][0]
   end  = eso_n[1][-1]
   size = size_n[1][0]
 
   distri_n = MT.getDistribution(node)
-  dtype = I.getNodeFromName1(distri_n, 'Element')[1].dtype
+  dtype = PT.get_child_from_name(distri_n, 'Element')[1].dtype
   I.newDataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
   I._rmNode(node, size_n)
 

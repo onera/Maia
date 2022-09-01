@@ -3,6 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
 import Converter.Internal as I
+import maia.pytree as PT
 import maia.pytree.sids   as sids
 
 from maia.algo.dist import remove_element as RME
@@ -35,9 +36,9 @@ def test_remove_element():
   assert (sids.Element.Range(quad)  == [1,6]).all()
   assert (sids.Element.Range(ngon)  == [12-5,28-5]).all()
   assert (sids.Element.Range(nface) == [29-5,34-5]).all()
-  assert (I.getNodeFromName1(ngon, 'ParentElements')[1] == expected_pe).all()
-  assert (I.getNodeFromName(zone, 'PointList')[1] == [[20,22,23]]).all()
-  assert I.getNodeFromName(zone, 'Bar') is None
+  assert (PT.get_child_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
+  assert (PT.get_node_from_name(zone, 'PointList')[1] == [[20,22,23]]).all()
+  assert PT.get_node_from_name(zone, 'Bar') is None
 
 @mark_mpi_test(1)
 def test_remove_ngons(sub_comm):
@@ -59,10 +60,10 @@ def test_remove_ngons(sub_comm):
   expected_ec = [1,4,    3,6, 4,7, 5,8, 6,9, 7,10, 8,11, 9,12, 1,2, 2,3, 4,5, 5,6, 7,8, 8,9,      11,12]
   expected_pe = np.array([[16,0],         [17,0],  [18,0],  [18,19], [19,0], [20,0], [20,21], [21,0],
                           [16,0], [17,0], [16,18], [17,19], [18,20], [19,21],        [21,0]])
-  assert (I.getNodeFromName(ngon, 'ElementRange')[1] == [1, 15]).all()
-  assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec).all()
-  assert (I.getNodeFromName(ngon, 'ParentElements')[1] == expected_pe).all()
-  assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == np.arange(0,31,2)).all()
+  assert (PT.get_node_from_name(ngon, 'ElementRange')[1] == [1, 15]).all()
+  assert (PT.get_node_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
+  assert (PT.get_node_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
+  assert (PT.get_node_from_name(ngon, 'ElementStartOffset')[1] == np.arange(0,31,2)).all()
   assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/Element')[1] == [0,15,15]).all()
   assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/ElementConnectivity')[1] == [0,30,30]).all()
 
@@ -105,8 +106,8 @@ def test_remove_ngons_2p(sub_comm):
 
   RME.remove_ngons(ngon, to_remove, sub_comm)
 
-  assert (I.getNodeFromName(ngon, 'ElementRange')[1] == [7, 24-2]).all()
-  assert (I.getNodeFromName(ngon, 'ElementConnectivity')[1] == expected_ec).all()
-  assert (I.getNodeFromName(ngon, 'ParentElements')[1] == expected_pe).all()
-  assert (I.getNodeFromName(ngon, 'ElementStartOffset')[1] == expected_eso).all()
+  assert (PT.get_node_from_name(ngon, 'ElementRange')[1] == [7, 24-2]).all()
+  assert (PT.get_node_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
+  assert (PT.get_node_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
+  assert (PT.get_node_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
   assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/Element')[1] == expected_distri_e).all()
