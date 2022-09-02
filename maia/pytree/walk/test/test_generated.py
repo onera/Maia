@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import fnmatch
-import os
 
 import Converter.Internal as I
 from maia.pytree.cgns_keywords import Label as CGL
@@ -10,205 +9,74 @@ import maia.pytree as PT
 
 from maia.utils.yaml   import parse_yaml_cgns
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+yt = """
+Base CGNSBase_t:
+  ZoneI Zone_t:
+    Ngon Elements_t [22,0]:
+    NFace Elements_t [23,0]:
+    ZBCA ZoneBC_t:
+      bc1 BC_t:
+        Index_i IndexArray_t:
+      bc2 BC_t:
+        Index_ii IndexArray_t:
+    ZBCB ZoneBC_t:
+      bc3 BC_t:
+        Index_iii IndexArray_t:
+      bc4 BC_t:
+      bc5 BC_t:
+        Index_iv IndexArray_t:
+        Index_v IndexArray_t:
+        Index_vi IndexArray_t:
+"""
 
-def test_requestNodeFromName():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+def names(nodes):
+  return [PT.get_name(n) for n in nodes]
 
-  # Camel case
-  # ==========
-  assert PT.requestNodeFromName(tree, "ZoneI") == I.getNodeFromName(tree, "ZoneI")
-  assert I.getNodeFromName(tree, "ZoneB") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromName(tree, "ZoneB")
+def test_generated_walkers():          
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  base = I.getBases(tree)[0]
-  assert PT.requestNodeFromName1(base, "ZoneI") == I.getNodeFromName1(base, "ZoneI")
-  assert I.getNodeFromName1(base, "ZoneB") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromName1(base, "ZoneB")
+  assert PT.get_node_from_name(tree, "ZoneI") == PT.get_node_from_predicate(tree, lambda n: PT.match_name(n, "ZoneI"))
+  assert PT.get_node_from_value(tree, np.array([22,0])) == \
+         PT.get_node_from_predicate(tree, lambda n: PT.match_value(n, np.array([22,0])))
+  assert list(PT.iter_nodes_from_name(tree, "IndexArray_t")) == \
+         list(PT.iter_nodes_from_predicate(tree, lambda n: PT.match_name(n, "IndexArray_t")))
+  assert PT.get_nodes_from_name_and_label(tree, "Index_iii", "IndexArray_t") == \
+         PT.get_nodes_from_predicate(tree, lambda n: PT.get_label(n) == "IndexArray_t" and PT.get_name(n) == "Index_iii")
 
-  assert PT.requestNodeFromName2(tree, "ZoneI") == I.getNodeFromName2(tree, "ZoneI")
-  assert I.getNodeFromName2(tree, "ZoneB") == None
   with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromName2(tree, "ZoneB")
+    PT.request_node_from_name(tree, "Zzz")
 
-  assert PT.requestNodeFromName3(tree, "ZBCA") == I.getNodeFromName3(tree, "ZBCA")
-  assert I.getNodeFromName3(tree, "ZZZZZ") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromName3(tree, "ZZZZZ")
+  assert PT.get_child_from_name(tree, "ZoneI") is None
+  root = PT.get_node_from_name(tree, 'ZBCA')
+  assert PT.get_children_from_label(root, CGL.BC_t.name) == PT.get_nodes_from_label(root, CGL.BC_t.name)
 
-  # Snake case
-  # ==========
-  node = PT.request_node_from_name(tree, "ZoneI")
-  assert I.getName(node) == "ZoneI"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name(tree, "ZoneB")
+def test_generated_walkers_leg():
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  base = I.getBases(tree)[0]
-  node = PT.request_child_from_name(base, "ZoneI")
-  assert I.getName(node) == "ZoneI"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_child_from_name(base, "ZoneB")
+  assert PT.getNodesFromType(tree, "IndexArray_t") == list(PT.iter_nodes_from_label(tree, "IndexArray_t"))
+  assert PT.getNodesFromType2(tree, "IndexArray_t") == list(PT.iter_nodes_from_label(tree, "IndexArray_t", depth=2))
+  assert PT.getNodesFromName1(tree, "Base") == list(PT.iter_children_from_name(tree, "Base"))
 
-  node = PT.request_node_from_name(tree, "ZoneI", depth=2)
-  assert I.getName(node) == "ZoneI"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name(tree, "ZoneB", depth=2)
 
-  node = PT.request_node_from_name(tree, "ZBCA", depth=3)
-  assert I.getName(node) == "ZBCA"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name(tree, "ZZZZZ", depth=3)
+def test_generated_remove():
+  treeA = parse_yaml_cgns.to_cgns_tree(yt)
+  treeB = parse_yaml_cgns.to_cgns_tree(yt)
 
-def test_requestNodeFromLabel():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+  PT.rm_nodes_from_predicate(treeA, lambda n: PT.match_name(n, "bc*"))
+  PT.rm_nodes_from_name(treeB, "bc*")
+  assert PT.is_same_tree(treeA, treeB)
 
-  # Camel case
-  # ==========
-  assert PT.requestNodeFromLabel(tree, "Zone_t") == I.getNodeFromType(tree, "Zone_t")
-  assert I.getNodeFromType(tree, "Family_t") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromLabel(tree, "Family_t")
+def test_get_all_label():
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  base = I.getBases(tree)[0]
-  assert PT.requestNodeFromLabel1(base, "Zone_t") == I.getNodeFromType1(base, "Zone_t")
-  assert I.getNodeFromType1(base, "Family_t") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromLabel1(base, "Family_t")
+  assert names(PT.get_all_CGNSBase_t(tree)) == ['Base']
+  assert names(PT.get_all_Zone_t(tree)) == ['ZoneI']
+  assert names(PT.iter_all_BC_t(tree)) == ['bc1', 'bc2', 'bc3', 'bc4', 'bc5']
 
-  assert PT.requestNodeFromLabel2(tree, "Zone_t") == I.getNodeFromType2(tree, "Zone_t")
-  assert I.getNodeFromType2(tree, "Family_t") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromLabel2(tree, "Family_t")
 
-  assert PT.requestNodeFromLabel3(tree, "ZoneBC_t") == I.getNodeFromType3(tree, "ZoneBC_t")
-  assert I.getNodeFromType3(tree, "ZoneGridConnectivity_t") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromLabel3(tree, "ZoneGridConnectivity_t")
 
-  # Snake case
-  # ==========
-  node = PT.request_node_from_label(tree, "Zone_t")
-  assert I.getType(node) == "Zone_t"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_label(tree, "Family_t")
 
-  base = I.getBases(tree)[0]
-  node = PT.request_child_from_label(base, "Zone_t")
-  assert I.getType(node) == "Zone_t"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_child_from_label(base, "Family_t")
-
-  node = PT.request_node_from_label(tree, "Zone_t", depth=2)
-  assert I.getType(node) == "Zone_t"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_label(tree, "Family_t", depth=2)
-
-  node = PT.request_node_from_label(tree, "ZoneBC_t", depth=3)
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_label(tree, "ZoneGridConnectivity_t", depth=3)
-
-def test_requestNodeFromNameAndLabel():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
-
-  # Camel case
-  # ==========
-  assert I.getNodeFromNameAndType(tree, "ZoneI", "Zone_t") == PT.getNodeFromNameAndLabel(tree, "ZoneI", "Zone_t")
-  assert PT.requestNodeFromNameAndLabel(tree, "ZoneI", "Zone_t") == I.getNodeFromNameAndType(tree, "ZoneI", "Zone_t")
-  assert I.getNodeFromNameAndType(tree, "ZoneB", "Zone_t")   == None
-  assert I.getNodeFromNameAndType(tree, "ZoneI", "Family_t") == None
-  assert PT.getNodeFromNameAndLabel(tree, "ZoneB", "Zone_t")   == None
-  assert PT.getNodeFromNameAndLabel(tree, "ZoneI", "Family_t") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromNameAndLabel(tree, "ZoneB", "Zone_t")
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromNameAndLabel(tree, "ZoneI", "Family_t")
-
-  base = I.getBases(tree)[0]
-  assert I.getNodeFromNameAndType(base, "ZoneI", "Zone_t") == PT.getNodeFromNameAndLabel1(base, "ZoneI", "Zone_t")
-  assert PT.requestNodeFromNameAndLabel1(base, "ZoneI", "Zone_t") == PT.getNodeFromNameAndLabel1(base, "ZoneI", "Zone_t")
-  assert I.getNodeFromNameAndType(base, "ZoneB", "Zone_t")   == None
-  assert I.getNodeFromNameAndType(base, "ZoneI", "Family_t") == None
-  assert PT.getNodeFromNameAndLabel1(base, "ZoneB", "Zone_t")   == None
-  assert PT.getNodeFromNameAndLabel1(base, "ZoneI", "Family_t") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromNameAndLabel1(base, "ZoneB", "Zone_t")
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromNameAndLabel1(base, "ZoneI", "Family_t")
-
-  assert I.getNodeFromNameAndType(tree, "ZoneI", "Zone_t") == PT.getNodeFromNameAndLabel2(tree, "ZoneI", "Zone_t")
-  assert PT.requestNodeFromNameAndLabel2(tree, "ZoneI", "Zone_t") == PT.getNodeFromNameAndLabel2(tree, "ZoneI", "Zone_t")
-  assert I.getNodeFromNameAndType(tree, "ZoneB", "Zone_t")   == None
-  assert I.getNodeFromNameAndType(tree, "ZoneI", "Family_t") == None
-  assert PT.getNodeFromNameAndLabel2(tree, "ZoneB", "Zone_t")   == None
-  assert PT.getNodeFromNameAndLabel2(tree, "ZoneI", "Family_t") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromNameAndLabel2(tree, "ZoneB", "Zone_t")
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromNameAndLabel2(tree, "ZoneI", "Family_t")
-
-  assert I.getNodeFromNameAndType(tree, "ZBCA", "ZoneBC_t") == PT.getNodeFromNameAndLabel3(tree, "ZBCA", "ZoneBC_t")
-  assert PT.requestNodeFromNameAndLabel3(tree, "ZBCA", "ZoneBC_t") == PT.getNodeFromNameAndLabel3(tree, "ZBCA", "ZoneBC_t")
-  assert I.getNodeFromNameAndType(tree, "ZZZZZ", "ZoneBC_t")              == None
-  assert I.getNodeFromNameAndType(tree, "ZBCA", "ZoneGridConnectivity_t") == None
-  assert PT.getNodeFromNameAndLabel3(tree, "ZZZZZ", "ZoneBC_t")              == None
-  assert PT.getNodeFromNameAndLabel3(tree, "ZBCA", "ZoneGridConnectivity_t") == None
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromNameAndLabel3(tree, "ZZZZZ", "ZoneBC_t")
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.requestNodeFromNameAndLabel3(tree, "ZBCA", "ZoneGridConnectivity_t")
-
-  # Snake case
-  # ==========
-  node = PT.get_node_from_name_and_label(tree, "ZoneI", "Zone_t")
-  assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
-  assert PT.get_node_from_name_and_label(tree, "ZoneB", "Zone_t")   == None
-  assert PT.get_node_from_name_and_label(tree, "ZoneI", "Family_t") == None
-  node = PT.request_node_from_name_and_label(tree, "ZoneI", "Zone_t")
-  assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name_and_label(tree, "ZoneB", "Zone_t")
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name_and_label(tree, "ZoneI", "Family_t")
-
-  base = PT.requestNodeFromLabel(tree, 'CGNSBase_t') # get the first base
-  node = PT.get_child_from_name_and_label(base, "ZoneI", "Zone_t")
-  assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
-  assert PT.get_child_from_name_and_label(base, "ZoneB", "Zone_t")   == None
-  assert PT.get_child_from_name_and_label(base, "ZoneI", "Family_t") == None
-  node = PT.request_child_from_name_and_label(base, "ZoneI", "Zone_t")
-  assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_child_from_name_and_label(base, "ZoneB", "Zone_t")
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_child_from_name_and_label(base, "ZoneI", "Family_t")
-
-  node = PT.get_node_from_name_and_label(tree, "ZoneI", "Zone_t", depth=2)
-  assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
-  assert PT.get_node_from_name_and_label(tree, "ZoneB", "Zone_t", depth=2)   == None
-  assert PT.get_node_from_name_and_label(tree, "ZoneI", "Family_t", depth=2) == None
-  node = PT.request_node_from_name_and_label(tree, "ZoneI", "Zone_t", depth=2)
-  assert I.getName(node) == "ZoneI" and I.getType(node) == "Zone_t"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name_and_label(tree, "ZoneB", "Zone_t", depth=2)
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name_and_label(tree, "ZoneI", "Family_t", depth=2)
-
-  node = PT.get_node_from_name_and_label(tree, "ZBCA", "ZoneBC_t", depth=3)
-  assert I.getName(node) == "ZBCA" and I.getType(node) == "ZoneBC_t"
-  assert PT.get_node_from_name_and_label(tree, "ZZZZZ", "ZoneBC_t", depth=3)     == None
-  assert PT.get_node_from_name_and_label(tree, "ZBCA", "ZoneGridConnectivity_t") == None
-  node = PT.request_node_from_name_and_label(tree, "ZBCA", "ZoneBC_t", depth=3)
-  assert I.getName(node) == "ZBCA" and I.getType(node) == "ZoneBC_t"
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name_and_label(tree, "ZZZZZ", "ZoneBC_t", depth=3)
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
-    PT.request_node_from_name_and_label(tree, "ZBCA", "ZoneGridConnectivity_t", depth=3)
-
+# Move in functionnal test ?
 def test_getNodeFromPredicate():
   is_base    = lambda n: I.getName(n) == 'Base'    and I.getType(n) == 'CGNSBase_t'
   is_zonei   = lambda n: I.getName(n) == 'ZoneI'   and I.getType(n) == 'Zone_t'
@@ -218,8 +86,7 @@ def test_getNodeFromPredicate():
   is_bc1     = lambda n: I.getName(n) == 'bc1'     and I.getType(n) == 'BC_t'
   is_index_i = lambda n: I.getName(n) == 'Index_i' and I.getType(n) == 'IndexArray_t'
 
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   # getNodeFrom...
   # ******************
@@ -349,9 +216,7 @@ def test_getNodeFromPredicate():
   assert is_ngon  ( PT.request_node_from_label(tree, "Elements_t")                                                      )
   assert is_nface ( PT.request_node_from_name_and_label(tree, "NFace", "Elements_t")                                    )
 
-def test_getNodesFromPredicate1():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   # Camel case
   # ----------
@@ -405,45 +270,4 @@ def test_getNodesFromPredicate1():
   zonebcs_from_type_name1 = ['ZBCB']
   assert [I.getName(n) for n in PT.get_children_from_predicate(zone, lambda n: I.getType(n) == CGL.ZoneBC_t.name and I.getName(n) != "ZBCA")] == zonebcs_from_type_name1
 
-
-def test_getAllLabel():
-  yt = """
-Base CGNSBase_t:
-  ZoneI Zone_t:
-    NgonI Elements_t [22,0]:
-    ZBCAI ZoneBC_t:
-      bc1I BC_t:
-        Index_i IndexArray_t:
-        PL1I DataArray_t:
-      bc2 BC_t:
-        Index_ii IndexArray_t:
-        PL2 DataArray_t:
-    ZBCBI ZoneBC_t:
-      bc3I BC_t:
-        Index_iii IndexArray_t:
-        PL3I DataArray_t:
-      bc4 BC_t:
-      bc5 BC_t:
-        Index_iv IndexArray_t:
-        Index_v IndexArray_t:
-        Index_vi IndexArray_t:
-        PL4 DataArray_t:
-  ZoneJ Zone_t:
-    NgonJ Elements_t [22,0]:
-    ZBCAJ ZoneBC_t:
-      bc1J BC_t:
-        Index_j IndexArray_t:
-        PL1J DataArray_t:
-    ZBCBJ ZoneBC_t:
-      bc3J BC_t:
-        Index_jjj IndexArray_t:
-        PL3J DataArray_t:
-"""
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
-
-  # Snake case
-  # ==========
-  assert([I.getName(n) for n in PT.get_all_CGNSBase_t(tree)] == ['Base'])
-  assert([I.getName(n) for n in PT.get_all_Zone_t(tree)] == ['ZoneI', 'ZoneJ'])
-  assert([I.getName(n) for n in PT.get_all_BC_t(tree)] == ['bc1I', 'bc2', 'bc3I', 'bc4', 'bc5', 'bc1J', 'bc3J'])
 

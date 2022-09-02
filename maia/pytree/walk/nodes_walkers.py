@@ -10,7 +10,7 @@ TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 #since they don't do directly tree parsing
 
 def iter_nodes_from_predicates_for_each__(parent, predicates, for_each):
-  # print("iter_nodes_from_predicates_for_each__")
+  # Different kwargs, no ancestors
   if len(predicates) > 1:
     for node in NodesWalker(parent, predicates[0], **for_each[0])():
       yield from iter_nodes_from_predicates_for_each__(node, predicates[1:], for_each[1:])
@@ -18,7 +18,7 @@ def iter_nodes_from_predicates_for_each__(parent, predicates, for_each):
     yield from NodesWalker(parent, predicates[0], **for_each[0])()
 
 def iter_nodes_from_predicates__(parent, predicates, **kwargs):
-  # print("iter_nodes_from_predicates__")
+  # Same kwargs, no ancestors
   if len(predicates) > 1:
     for node in NodesWalker(parent, predicates[0], **kwargs)():
       yield from iter_nodes_from_predicates__(node, predicates[1:], **kwargs)
@@ -26,7 +26,7 @@ def iter_nodes_from_predicates__(parent, predicates, **kwargs):
     yield from NodesWalker(parent, predicates[0], **kwargs)()
 
 def iter_nodes_from_predicates_with_parents_for_each__(parent, predicates, for_each):
-  # print("iter_nodes_from_predicates_with_parents_for_each__")
+  # Different kwargs + ancestors
   if len(predicates) > 1:
     for node in NodesWalker(parent, predicates[0], **for_each[0])():
       for subnode in iter_nodes_from_predicates_with_parents_for_each__(node, predicates[1:], for_each[1:]):
@@ -36,7 +36,7 @@ def iter_nodes_from_predicates_with_parents_for_each__(parent, predicates, for_e
       yield (node,)
 
 def iter_nodes_from_predicates_with_parents__(parent, predicates, **kwargs):
-  # print("iter_nodes_from_predicates_with_parents__")
+  # Same kwargs + ancestors
   if len(predicates) > 1:
     for node in NodesWalker(parent, predicates[0], **kwargs)():
       for subnode in iter_nodes_from_predicates_with_parents__(node, predicates[1:], **kwargs):
@@ -57,9 +57,7 @@ class NodesWalkers:
     self.root       = root
     self.predicates = predicates
     self.kwargs     = kwargs
-    self.ancestors  = kwargs.get('ancestors', False)
-    if kwargs.get('ancestors'):
-      kwargs.pop('ancestors')
+    self.ancestors  = kwargs.pop('ancestors', False)
     self._cache = []
 
   @property
