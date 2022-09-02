@@ -38,16 +38,16 @@ import numpy as np
 
 
 # def iso_surface_one_domain(part_zones, PDM_type, fldpath, comm, iso_value):
-def iso_surface_one_domain(part_zones, isosurf_type, comm):
+def iso_surface_one_domain(part_zones, isosurf_type, comm, interpolate=None):
   """
   Compute isosurface in a domain
   """
-  # PDM_type = None ; fldpath = None ; iso_value = None;
   
   assert(len(isosurf_type   )==2)
 
+
   # Type of isosurf
-  print("[i] TYPE_of_ISOSURF : ", isosurf_type[0],flush=True)
+  # print("[i] TYPE_of_ISOSURF : ", isosurf_type[0],flush=True)
   if   isosurf_type[0]=="PLANE" :
     assert(len(isosurf_type[1])==4)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_PLANE
@@ -69,6 +69,7 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm):
     return None
 
 
+
   n_part = len(part_zones)
   dim    = 3 # Mauvaise idée le codage en dur
 
@@ -76,14 +77,11 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm):
   pdm_isos = PDM.IsoSurface(comm, dim, PDM_type, n_part)
 
 
-  # Plane equation definition
+  # PDM plane/sphere equation definition
   if   isosurf_type[0]=="PLANE" :
-    # print(f"[i] PLANE PARAMS : {isosurf_type[1][0]} {isosurf_type[1][1]} {isosurf_type[1][2]} {isosurf_type[1][3]} ",flush=True)
-    pdm_isos.plane_equation_set(isosurf_type[1][0],
-                                isosurf_type[1][1],
-                                isosurf_type[1][2],
-                                isosurf_type[1][3])
-
+    pdm_isos.plane_equation_set(isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],isosurf_type[1][3])
+  elif isosurf_type[0]=="SPHERE" :
+    pdm_isos.sphere_equation_set(isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],isosurf_type[1][3])
 
 
   # Loop over domains of the partition
@@ -134,10 +132,32 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm):
     # if isosurf_type[1]=="FIELD" : 
     # Get field from path to compute the isosurf / Placement in PDM object
     field    = I.getNodeFromPath(part_zone, fldpath)
-    # print(field[1])
     field[1] = field[1] - np.full(field[1].shape[0], iso_value)
-    # print(field[1])
     pdm_isos.part_field_set(i_part, field[1])
+
+
+    # --- Node TO Center for interpolation ---
+    # --- Connectivity CELL -> VTX
+    nface         = I.getNodeFromName1(part_zone , 'NFaceElements')
+    cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
+    cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
+
+    ngon          = I.getNodeFromName1(part_zone, 'NGonElements')
+    face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
+    face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
+
+    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+
+    # --- Cell_centered solution (mean of vtx)
+    FS_cc = I.newFlowSolution('FlowSolution_cellCentered', gridLocation="CellCenter", parent=part_zone)
+    # print(interpolate)
+    for path in interpolate:
+      fld           = I.getNodeFromPath(part_zone, path)[1]
+      fld_cell_vtx  = fld[cell_vtx-1]
+      fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
+      fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
+
+      I.newDataArray(path.split('/')[1], fld_cc, parent=FS_cc)
 
 
   # Isosurfaces compute in PDM  
@@ -149,7 +169,7 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm):
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
-  print(results.keys())
+  # print(results.keys())
 
   # > Tree construction
   iso_part_tree = I.newCGNSTree()
@@ -181,7 +201,7 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm):
   I.newDataArray('Cell'  , results['np_elt_ln_to_gn'], parent=gn_zone)
 
   elmt_parent_gn = results["np_elt_parent_g_num"]
-  print("results[np_elt_parent_g_num]=",results["np_elt_parent_g_num"].shape,flush=True)
+  # print("results[np_elt_parent_g_num]=",results["np_elt_parent_g_num"].shape,flush=True)
 
 
   # ----------------------------------
@@ -190,17 +210,10 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm):
   # Part 2 = Maillage init
   for i_part, part_zone in enumerate(part_zones):
     
-    # print(f"[{comm.Get_rank()}] : results['np_elt_ln_to_gn']", results['np_elt_ln_to_gn'],flush=True)
-
     part1_elmt_ln_to_gn = results['np_elt_ln_to_gn']
     part2_cell_ln_to_gn = cell_ln_to_gn
     part1_to_part2_idx  = np.arange(0, part2_cell_ln_to_gn.shape[0], dtype=np.int32 )
     part1_to_part2      = results["np_elt_parent_g_num"]
-
-    # print(part1_to_part2_idx)
-    # print(f"[{comm.Get_rank()}] : part1_ln_to_gn(shape={part1_elmt_ln_to_gn.shape[0]})", part1_elmt_ln_to_gn,flush=True)
-
-    # print(f"[{comm.Get_rank()}] : part2_ln_to_gn(shape={part2_cell_ln_to_gn.shape[0]})", part2_cell_ln_to_gn,flush=True)
 
     # Definition de l'objet Part_to_part
     # print("DEF OBJET P2P",flush=True)
@@ -210,20 +223,26 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm):
                               [part1_to_part2_idx] ,
                               [part1_to_part2]     )
 
-    # print("GET FLD",flush=True)
-    fld_cc = I.getNodeFromPath(part_zone, "FlowSolutionCC/mandelbult_cc")[1]
-    part2_stri = np.ones(fld_cc.shape[0], dtype=np.int32)
+    FS_iso      = I.newFlowSolution('FlowSolution', gridLocation="CellCenter", parent=iso_part_zone)
+    fld_cc      = []
+    part2_stri  = []
 
-    # print(fld_cc,flush=True)
-    req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                               [fld_cc],
-                               part2_stride=[part2_stri])
-    part1_strid, part1_data = ptp.reverse_wait(req_id)
-    # print(part1_strid)
-    # print(part1_data)
-    FS = I.newFlowSolution('FlowSolution', gridLocation="CellCenter", parent=iso_part_zone)
-    I.newDataArray("mandelbult", part1_data[0], parent=FS)
+    for ifld,path in enumerate(interpolate):
+      path_to_fld = "FlowSolution_cellCentered/"+path.split('/')[1]
+      # fld_cc.append(I.getNodeFromPath(part_zone, path_to_fld)[1])
+      # part2_stri.append(np.ones(fld_cc[0].shape[0], dtype=np.int32))
+      fld_cc     = [I.getNodeFromPath(part_zone, path_to_fld)[1]]
+      part2_stri = [np.ones(fld_cc[0].shape[0], dtype=np.int32)]
+    
+      req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                 fld_cc,
+                                 part2_stride=part2_stri)
+  
+      part1_strid, part1_data = ptp.reverse_wait(req_id)
+      I.newDataArray(path.split('/')[1], part1_data[0], parent=FS_iso)
+
+    # for ifld,path in enumerate(interpolate):
 
 
   return iso_part_base
@@ -231,7 +250,7 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm):
 
 
 
-def iso_surface(part_tree,isosurf_type,comm):
+def iso_surface(part_tree,isosurf_type,comm,interpolate=None):
   ''' 
   Compute isosurface from field for a partitioned tree
   Return partition of the isosurface
@@ -264,6 +283,6 @@ def iso_surface(part_tree,isosurf_type,comm):
   # Piece of isosurfaces for each domains of the partition
   iso_doms = I.newCGNSTree()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    iso_part = iso_surface_one_domain(part_zones,isosurf_type,comm)
+    iso_part = iso_surface_one_domain(part_zones,isosurf_type,comm,interpolate=interpolate)
     I._addChild(iso_doms, iso_part)
   return iso_doms
