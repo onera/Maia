@@ -71,3 +71,23 @@ def auto_predicate(query):
     raise TypeError("predicate must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
   return predicate
 
+def auto_predicates(predicates):
+  """
+  Convert a list a "convenience" predicates to a list a true callable predicates
+  The list can also be given as a '/' separated string
+  """
+  _predicates = []
+  if isinstance(predicates, str):
+    _predicates = [auto_predicate(p) for p in predicates.split('/')]
+  elif isinstance(predicates, (list, tuple)):
+    _predicates = []
+    for p in predicates:
+      if isinstance(p, dict):
+        #Create a new dict with a callable predicate
+        _predicates.append({**p, 'predicate' : auto_predicate(p['predicate'])})
+      else:
+        _predicates.append(auto_predicate(p))
+  else:
+    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
+  return _predicates
+

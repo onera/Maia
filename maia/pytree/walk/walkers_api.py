@@ -3,29 +3,9 @@ from functools import partial
 from .node_walker   import NodeWalker
 from .nodes_walker  import NodesWalker
 from .nodes_walkers import NodesWalkers
-from .predicate     import auto_predicate
+from .predicate     import auto_predicate, auto_predicates
 
 from maia.pytree.compare import CGNSNodeFromPredicateNotFoundError
-
-def _convert_to_callable(predicates):
-  """
-  Convert a list a "convenience" predicates to a list a true callable predicates
-  The list can also be given as a '/' separated string
-  """
-  _predicates = []
-  if isinstance(predicates, str):
-    _predicates = [auto_predicate(p) for p in predicates.split('/')]
-  elif isinstance(predicates, (list, tuple)):
-    _predicates = []
-    for p in predicates:
-      if isinstance(p, dict):
-        #Create a new dict with a callable predicate
-        _predicates.append({**p, 'predicate' : auto_predicate(p['predicate'])})
-      else:
-        _predicates.append(auto_predicate(p))
-  else:
-    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
-  return _predicates
 
 # ---------------------------------------------------------------------------- #
 # API for NodeWalker
@@ -121,7 +101,7 @@ def iter_nodes_from_predicates(root, predicates, **kwargs):
       TYPE: TreeNode generator/iterator
 
   """
-  _predicates = _convert_to_callable(predicates)
+  _predicates = auto_predicates(predicates)
 
   caching = kwargs.get('caching')
   if caching is not None and caching is True:
@@ -148,7 +128,7 @@ def get_nodes_from_predicates(root, predicates, **kwargs):
       TYPE: TreeNode generator/iterator
 
   """
-  _predicates = _convert_to_callable(predicates)
+  _predicates = auto_predicates(predicates)
 
   caching = kwargs.get('caching')
   if caching is not None and caching is False:

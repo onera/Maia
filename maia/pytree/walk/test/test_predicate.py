@@ -9,7 +9,11 @@ from maia.pytree.walk import predicate as P
 
 from maia.utils.yaml   import parse_yaml_cgns
 
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
+
+def partial_funcs_equal(f1, f2):
+  return all([getattr(f1, attr) == getattr(f2, attr) for attr in ['func', 'args', 'keywords']])
 
 def test_matches():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
@@ -74,3 +78,14 @@ def test_auto_predicate():
 
   with pytest.raises(TypeError):
     P.auto_predicate(123)
+
+def test_auto_predicates():
+  auto_predicates = P.auto_predicates(['Base', 'Zone'])
+  assert partial_funcs_equal(auto_predicates[0], P.auto_predicate('Base'))
+  assert partial_funcs_equal(auto_predicates[1], P.auto_predicate('Zone'))
+  auto_predicates = P.auto_predicates('ZoneBC_t/BC_t')
+  assert partial_funcs_equal(auto_predicates[0], P.auto_predicate('ZoneBC_t'))
+  assert partial_funcs_equal(auto_predicates[1], P.auto_predicate('BC_t'))
+
+  with pytest.raises(TypeError):
+    P.auto_predicates(123)
