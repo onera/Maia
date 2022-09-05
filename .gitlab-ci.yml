@@ -124,14 +124,14 @@ job:deploy_spiro:
     - rm CMakeCache.txt
     - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-oneapi $FLAGS ../
     - make -j 24 install > oneapi_dbg.log
-    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-oneapi .
+    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-oneapi -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-oneapi .
     - make -j 24 install > oneapi_opt.log
     - module purge
     - module load CFD/5.0-intel-19.impi-19 cmake/3.19-gnu
     - rm CMakeCache.txt
     - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-intel19 $FLAGS -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lbz2 -lz' ../
     - make -j 24 install > intel19_dbg.log
-    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-intel19 .
+    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-intel19 -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-intel19 .
     - make -j 24 install > intel19_opt.log
 
 job:deploy_sator:
