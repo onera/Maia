@@ -70,7 +70,14 @@ for rm_function in [rm_nodes_from_predicate, rm_children_from_predicate, keep_ch
   generated = generate_functions(rm_function, maxdepth=0, child=False)
   _update_module_attributes(generated)
 
-
+def get_node_from_path(root, path, ancestors=False):
+  nodes = WAPI.get_nodes_from_predicates(root, path, depth=[1,1], ancestors=ancestors)
+  if len(nodes) == 0 and ancestors:
+    return []
+  if len(nodes) == 1:
+    return nodes[0]
+  elif len(nodes) > 1:
+    raise RuntimeError(f"Mutliple nodes founds for path {path}")
 
 
 # Specialization of legacy functions

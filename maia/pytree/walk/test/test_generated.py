@@ -74,7 +74,14 @@ def test_get_all_label():
   assert names(PT.iter_all_BC_t(tree)) == ['bc1', 'bc2', 'bc3', 'bc4', 'bc5']
 
 
-
+def test_from_path():
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  assert PT.get_node_from_path(tree, 'Base/ZoneI/ZBCB/bc3') == PT.get_node_from_name(tree, 'bc3')
+  assert PT.get_node_from_path(tree, 'Base/Zone/ZBCB/bc3') is None
+  #With ancestors
+  nodes = PT.get_node_from_path(tree, 'Base/ZoneI/ZBCB/bc3', ancestors=True)
+  assert [PT.get_label(n) for n in nodes] == ['CGNSBase_t', 'Zone_t', 'ZoneBC_t', 'BC_t']
+  assert PT.get_node_from_path(tree, 'Base/Zone/ZBCB/bc3', ancestors=True) == []
 
 # Move in functionnal test ?
 def test_getNodeFromPredicate():
