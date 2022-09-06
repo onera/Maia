@@ -1,61 +1,60 @@
 import pytest
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from maia.pytree.maia import maia_nodes as mNode
 
 def test_newDistribution():
   distri = mNode.newDistribution()
-  assert I.getName(distri) == ':CGNS#Distribution'
-  assert I.getType(distri) == 'UserDefinedData_t'
+  assert PT.get_name(distri)  == ':CGNS#Distribution'
+  assert PT.get_label(distri) == 'UserDefinedData_t'
 
-  zone = I.newZone('zone')
+  zone = ['zone', None, [], "Zone_t"]
   distri = mNode.newDistribution(parent=zone)
   assert PT.get_child_from_name(zone, ':CGNS#Distribution') is not None
 
-  zone = I.newZone('zone')
+  zone = ['zone', None, [], "Zone_t"]
   distri_arrays = {'Cell' : [0,15,30], 'Vertex' : [100,1000,1000]}
   distri = mNode.newDistribution(distri_arrays, zone)
-  assert (I.getNodeFromPath(zone, ':CGNS#Distribution/Cell')[1] == [0,15,30]).all()
-  assert (I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex')[1] == [100, 1000, 1000]).all()
+  assert (PT.get_node_from_path(zone, ':CGNS#Distribution/Cell')[1] == [0,15,30]).all()
+  assert (PT.get_node_from_path(zone, ':CGNS#Distribution/Vertex')[1] == [100, 1000, 1000]).all()
 
-  zone = I.newZone('zone')
+  zone = ['zone', None, [], "Zone_t"]
   distri_arrayA = {'Cell' : [0,15,30]}
   distri_arrayB = {'Vertex' : [100,1000,1000]}
   distri = mNode.newDistribution(distri_arrayA, parent=zone)
   distri = mNode.newDistribution(distri_arrayB, parent=zone)
-  assert (I.getNodeFromPath(zone, ':CGNS#Distribution/Cell')[1] == [0,15,30]).all()
-  assert (I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex')[1] == [100, 1000, 1000]).all()
+  assert (PT.get_node_from_path(zone, ':CGNS#Distribution/Cell')[1] == [0,15,30]).all()
+  assert (PT.get_node_from_path(zone, ':CGNS#Distribution/Vertex')[1] == [100, 1000, 1000]).all()
   assert len(PT.get_nodes_from_name(zone, ':CGNS#Distribution')) == 1
 
 def test_newGlobalNumbering():
   gnum = mNode.newGlobalNumbering()
-  assert I.getName(gnum) == ':CGNS#GlobalNumbering'
-  assert I.getType(gnum) == 'UserDefinedData_t'
+  assert PT.get_name(gnum)  == ':CGNS#GlobalNumbering'
+  assert PT.get_label(gnum) == 'UserDefinedData_t'
 
-  zone = I.newZone('zone')
+  zone = ['zone', None, [], "Zone_t"]
   gnum = mNode.newGlobalNumbering(parent=zone)
   assert PT.get_child_from_name(zone, ':CGNS#GlobalNumbering') is not None
 
-  zone = I.newZone('zone')
+  zone = ['zone', None, [], "Zone_t"]
   gnum_arrays = {'Cell' : [4,21,1,2,8,12], 'Vertex' : None}
   gnum = mNode.newGlobalNumbering(gnum_arrays, zone)
-  assert (I.getNodeFromPath(zone, ':CGNS#GlobalNumbering/Cell')[1] == [4,21,1,2,8,12]).all()
-  assert I.getNodeFromPath(zone, ':CGNS#GlobalNumbering/Vertex')[1] == None
+  assert (PT.get_node_from_path(zone, ':CGNS#GlobalNumbering/Cell')[1] == [4,21,1,2,8,12]).all()
+  assert PT.get_node_from_path(zone, ':CGNS#GlobalNumbering/Vertex')[1] == None
 
 def test_getDistribution():
-  zone = I.newZone()
+  zone = ['zone', None, [], "Zone_t"]
   distri_arrays = {'Cell' : [0,15,30], 'Vertex' : [100,1000,1000]}
   distri = mNode.newDistribution(distri_arrays, zone)
   assert mNode.getDistribution(zone) is distri
-  assert (I.getVal(mNode.getDistribution(zone, 'Cell')) == [0,15,30]).all()
-  assert (I.getVal(mNode.getDistribution(zone, 'Vertex')) == [100,1000,1000]).all()
+  assert (PT.get_value(mNode.getDistribution(zone, 'Cell')) == [0,15,30]).all()
+  assert (PT.get_value(mNode.getDistribution(zone, 'Vertex')) == [100,1000,1000]).all()
 
 def test_getGlobalNumbering():
-  zone = I.newZone()
+  zone = ['zone', None, [], "Zone_t"]
   gnum_arrays = {'Cell' : [4,21,1,2,8,12], 'Vertex' : None}
   gnum_node = mNode.newGlobalNumbering(gnum_arrays, zone)
   assert mNode.getGlobalNumbering(zone) is gnum_node
-  assert (I.getVal(mNode.getGlobalNumbering(zone, 'Cell')) == [4,21,1,2,8,12]).all()
-  assert  I.getVal(mNode.getGlobalNumbering(zone, 'Vertex')) == None
+  assert (PT.get_value(mNode.getGlobalNumbering(zone, 'Cell')) == [4,21,1,2,8,12]).all()
+  assert  PT.get_value(mNode.getGlobalNumbering(zone, 'Vertex')) == None
 

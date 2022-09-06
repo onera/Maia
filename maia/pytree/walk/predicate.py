@@ -2,10 +2,9 @@ import fnmatch
 from functools import partial
 import numpy as np
 
-import Converter.Internal as I
-
 import maia.pytree.cgns_keywords as CGK
 from   maia.pytree.compare import is_valid_label
+from   maia.pytree import nodes_attr as NA
 
 __NAME__     = 0
 __VALUE__    = 1
@@ -47,11 +46,11 @@ def belongs_to_family(n, target_family, allow_additional=False):
   """
   from .walkers_api import getNodeFromPredicate, iterNodesFromPredicate
   family_name_n = getNodeFromPredicate(n, lambda m: match_cgk_label(m, CGK.Label.FamilyName_t), depth=1)
-  if family_name_n and I.getValue(family_name_n) == target_family:
+  if family_name_n and NA.get_value(family_name_n) == target_family:
     return True
   if allow_additional:
     for additional_family_n in iterNodesFromPredicate(n, lambda m: match_cgk_label(m, CGK.Label.AdditionalFamilyName_t), depth=1):
-      if I.getValue(additional_family_n) == target_family:
+      if NA.get_value(additional_family_n) == target_family:
         return True
   return False
 

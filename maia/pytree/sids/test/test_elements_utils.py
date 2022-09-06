@@ -1,5 +1,4 @@
 import pytest
-import Converter.Internal as I
 
 from maia.pytree.sids import elements_utils as EU
 
