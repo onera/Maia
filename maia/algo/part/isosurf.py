@@ -38,7 +38,8 @@ import numpy as np
 
 
 # def iso_surface_one_domain(part_zones, PDM_type, fldpath, comm, iso_value):
-def iso_surface_one_domain(part_zones, isosurf_type, comm, interpolate=None):
+def iso_surface_one_domain(part_zones, isosurf_type, comm,
+                           interpolate=None, out_part=False):
   """
   Compute isosurface in a domain
   """
@@ -46,7 +47,7 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm, interpolate=None):
   assert(len(isosurf_type   )==2)
 
 
-  # Type of isosurf
+  # --- Type of isosurf ---------------------------------------------------------------------
   # print("[i] TYPE_of_ISOSURF : ", isosurf_type[0],flush=True)
   if   isosurf_type[0]=="PLANE" :
     assert(len(isosurf_type[1])==4)
@@ -55,11 +56,25 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm, interpolate=None):
     iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
   elif isosurf_type[0]=="SPHERE": 
+    assert(len(isosurf_type[1])==4)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_SPHERE
     fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
     iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
+  elif isosurf_type[0]=="ELLIPSE": 
+    assert(len(isosurf_type[1])==7)
+    PDM_type  = PDM._PDM_ISO_SURFACE_KIND_ELLIPSE
+    fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
+    iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
+
+  elif isosurf_type[0]=="QUADRIC": 
+    assert(len(isosurf_type[1])==10)
+    PDM_type  = PDM._PDM_ISO_SURFACE_KIND_QUADRIC
+    fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
+    iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
+
   elif isosurf_type[0]=="FIELD" : 
+    assert(len(isosurf_type[1])==2)
     PDM_type = PDM._PDM_ISO_SURFACE_KIND_FIELD 
     fldpath   = isosurf_type[1][0]
     iso_value = isosurf_type[1][1]
@@ -67,7 +82,7 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm, interpolate=None):
   else:
     print("[!][WARNING] isosurface.py : Error in type of IsoSurface ; Check your script")
     return None
-
+  # ------------------------------------------------------------------------------------------
 
 
   n_part = len(part_zones)
@@ -78,10 +93,22 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm, interpolate=None):
 
 
   # PDM plane/sphere equation definition
-  if   isosurf_type[0]=="PLANE" :
+  if isosurf_type[0]=="PLANE" :
     pdm_isos.plane_equation_set(isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],isosurf_type[1][3])
+
   elif isosurf_type[0]=="SPHERE" :
     pdm_isos.sphere_equation_set(isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],isosurf_type[1][3])
+  
+  elif isosurf_type[0]=="ELLIPSE" :
+    pdm_isos.ellipse_equation_set(  isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],
+                                    isosurf_type[1][3],isosurf_type[1][4],isosurf_type[1][5],
+                                    isosurf_type[1][6])
+
+  elif isosurf_type[0]=="QUADRIC" :
+    pdm_isos.quadric_equation_set(  isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],
+                                    isosurf_type[1][3],isosurf_type[1][4],isosurf_type[1][5],
+                                    isosurf_type[1][6],isosurf_type[1][7],isosurf_type[1][8],
+                                    isosurf_type[1][9])
 
 
   # Loop over domains of the partition
@@ -242,7 +269,36 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm, interpolate=None):
       part1_strid, part1_data = ptp.reverse_wait(req_id)
       I.newDataArray(path.split('/')[1], part1_data[0], parent=FS_iso)
 
-    # for ifld,path in enumerate(interpolate):
+
+
+
+  # # Part to Block
+  # if not out_part:
+  #   for i_part, part_zone in enumerate(part_zones):
+
+  #     # Get LN_to_GN
+  #     part1_elmt_ln_to_gn = results['np_elt_ln_to_gn']
+      
+  #     # DEF P2B object
+  #     ptb = PDM.PartToBlock(comm,                   # MPI.Comm comm
+  #                           [part1_elmt_ln_to_gn],  # list pLNToGN
+  #                           None,                   # list pWeight 
+  #                           1  ,                    # int partN
+  #                           t_distrib = PDM.PDM_PART_TO_BLOCK_DISTRIB_ALL_PROC,
+  #                           t_post    = PDM.PDM_PART_TO_BLOCK_POST_CLEANUP,
+  #                           partActiveNode = 1.
+  #                           )
+  #     #   t_distrib       = PDM_PART_TO_BLOCK_DISTRIB_ALL_PROC,
+  #     #   t_post          = PDM_PART_TO_BLOCK_POST_CLEANUP,
+  #     #    partActiveNode = 1.,
+  #     # **gnum_elt        = &pln_to_to_gn,
+  #     #  **weight         = NULL,
+  #     #  *n_elt           = &pn_elmt,
+  #     #   n_part          = n_part,
+  #     #   comm            = comm);
+
+  #     # Exchange P2B
+      
 
 
   return iso_part_base
@@ -250,7 +306,19 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm, interpolate=None):
 
 
 
-def iso_surface(part_tree,isosurf_type,comm,interpolate=None):
+
+
+
+
+
+
+
+
+
+
+
+
+def iso_surface(part_tree,isosurf_type,comm,interpolate=None,out_part=False):
   ''' 
   Compute isosurface from field for a partitioned tree
   Return partition of the isosurface
@@ -262,17 +330,6 @@ def iso_surface(part_tree,isosurf_type,comm,interpolate=None):
     - iso_value  : isosurface value
   '''
 
-  # # Type of isosurf
-  # if   isosurf_type[1]=="PLANE" :
-  #   PDM_type = PDM._PDM_ISO_SURFACE_KIND_PLANE 
-  # elif isosurf_type[1]=="SPHERE": 
-  #   PDM_type = PDM._PDM_ISO_SURFACE_KIND_SPHERE
-  # elif isosurf_type[1]=="FIELD" : 
-  #   PDM_type = PDM._PDM_ISO_SURFACE_KIND_FIELD 
-  # else:
-  #   print("[!][WARNING] isosurface.py : Error in type of IsoSurface ; Check your script")
-  #   return None
-
   # from the part_tree, retrieve the paths of the distributed blocks
   # and return a dictionnary associating each path to the list of the corresponding
   # partitioned zones
@@ -283,6 +340,8 @@ def iso_surface(part_tree,isosurf_type,comm,interpolate=None):
   # Piece of isosurfaces for each domains of the partition
   iso_doms = I.newCGNSTree()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    iso_part = iso_surface_one_domain(part_zones,isosurf_type,comm,interpolate=interpolate)
+    iso_part = iso_surface_one_domain(part_zones,isosurf_type,comm,
+                                      interpolate=interpolate,
+                                      out_part=False                )
     I._addChild(iso_doms, iso_part)
   return iso_doms
