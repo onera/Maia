@@ -204,7 +204,6 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
 
   # Mesh build from result
   results = pdm_isos.part_iso_surface_surface_get()
-  print(results.keys())
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
@@ -362,13 +361,15 @@ def iso_surface(part_tree,isosurf_type,comm,interpolate=None,out_part=False):
     I._addChild(iso_doms, iso_part)
 
 
-  return iso_doms
+  # return iso_doms
 
-  # if (out_part):
-  #   return iso_doms
-  # else:
-  #   # Part to Block
-  #   I.printTree(iso_doms)
-  #   diso_doms = part_to_dist(iso_doms,comm)
-  #   I.printTree(diso_doms)
-  #   return diso_doms
+  if (out_part):
+    print("[i] OUTPUT : partition")
+    return iso_doms
+  else:
+    print("[i] OUTPUT : distibution")
+    # Part to Block
+    # I.printTree(iso_doms)
+    diso_doms = part_to_dist(iso_doms,comm)
+    # I.printTree(diso_doms)
+    return diso_doms
