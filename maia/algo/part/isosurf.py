@@ -26,6 +26,7 @@ import Converter.Internal as I
 # Import from MAIA
 from maia.transfer    import utils                as TEU
 from maia.factory     import dist_from_part       as disc
+from maia.factory     import recover_dist_tree    as part_to_dist
 from maia.pytree.maia import conventions          as conv
 from maia.pytree.sids import node_inspect         as sids
 from maia.utils       import np_utils,layouts
@@ -44,36 +45,46 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
   Compute isosurface in a domain
   """
   
-  assert(len(isosurf_type   )==2)
 
 
   # --- Type of isosurf ---------------------------------------------------------------------
   # print("[i] TYPE_of_ISOSURF : ", isosurf_type[0],flush=True)
   if   isosurf_type[0]=="PLANE" :
+    assert(len(isosurf_type   )==2)
     assert(len(isosurf_type[1])==4)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_PLANE
     fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
     iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
   elif isosurf_type[0]=="SPHERE": 
+    assert(len(isosurf_type   )==2)
     assert(len(isosurf_type[1])==4)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_SPHERE
     fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
     iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
   elif isosurf_type[0]=="ELLIPSE": 
+    assert(len(isosurf_type   )==2)
     assert(len(isosurf_type[1])==7)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_ELLIPSE
     fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
     iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
   elif isosurf_type[0]=="QUADRIC": 
+    assert(len(isosurf_type   )==2)
     assert(len(isosurf_type[1])==10)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_QUADRIC
     fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
     iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
+  elif isosurf_type[0]=="HEART": 
+    assert(len(isosurf_type   )==1)
+    PDM_type  = PDM._PDM_ISO_SURFACE_KIND_HEART
+    fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
+    iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
+
   elif isosurf_type[0]=="FIELD" : 
+    assert(len(isosurf_type   )==2)
     assert(len(isosurf_type[1])==2)
     PDM_type = PDM._PDM_ISO_SURFACE_KIND_FIELD 
     fldpath   = isosurf_type[1][0]
@@ -193,6 +204,7 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
 
   # Mesh build from result
   results = pdm_isos.part_iso_surface_surface_get()
+  print(results.keys())
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
@@ -202,8 +214,8 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
   iso_part_tree = I.newCGNSTree()
   iso_part_base = I.newCGNSBase('Base', cellDim=dim-1, physDim=3, parent=iso_part_tree)
 
-  # > Zone construction
-  iso_part_zone = I.newZone(f'zone.{comm.Get_rank()}',
+  # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
+  iso_part_zone = I.newZone(f'Zone.P{comm.Get_rank()}.N{0}',
                             [[n_iso_vtx, n_iso_elt, 0]],
                             'Unstructured',
                             parent=iso_part_base)
@@ -273,6 +285,10 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
 
 
   # # Part to Block
+  # I.printTree(iso_part_base)
+  # diso_part_base = part_to_dist(iso_part_base,comm)
+  # I.printTree(diso_part_base)
+
   # if not out_part:
   #   for i_part, part_zone in enumerate(part_zones):
 
@@ -344,4 +360,15 @@ def iso_surface(part_tree,isosurf_type,comm,interpolate=None,out_part=False):
                                       interpolate=interpolate,
                                       out_part=False                )
     I._addChild(iso_doms, iso_part)
+
+
   return iso_doms
+
+  # if (out_part):
+  #   return iso_doms
+  # else:
+  #   # Part to Block
+  #   I.printTree(iso_doms)
+  #   diso_doms = part_to_dist(iso_doms,comm)
+  #   I.printTree(diso_doms)
+  #   return diso_doms
