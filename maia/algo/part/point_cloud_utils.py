@@ -32,7 +32,7 @@ def get_point_cloud(zone, location='CellCenter'):
     center_cell = compute_cell_center(zone)
     return center_cell, cell_ln_to_gn
   
-  elif PT.is_valid_name(location):
+  else: #Try to catch a container with the given name
     container = PT.get_child_from_name(zone, location)
     if container:
       coords = [I.getVal(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]

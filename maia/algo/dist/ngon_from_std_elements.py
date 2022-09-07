@@ -89,8 +89,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   if pdm_group is not None:
     group = np.copy(pdm_group) + (PT.Zone.get_range_of_ngon(zone)[0]-1)
     for i_bc, bc in enumerate(PT.iter_children_from_predicates(zone, 'ZoneBC_t/BC_t')):
-      PT.rm_nodes_by_name(bc, 'PointRange')
-      PT.rm_nodes_by_name(bc, 'PointList')
+      PT.rm_nodes_from_name(bc, 'PointRange')
+      PT.rm_nodes_from_name(bc, 'PointList')
       start, end = group_idx[i_bc], group_idx[i_bc+1]
       I.newPointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
@@ -121,7 +121,7 @@ def compute_ngon_from_std_elements(dist_tree, comm):
       pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim)
 
       # > Remove internal holder state
-      PT.rm_nodes_by_name(zone, ':CGNS#DMeshNodal#Bnd*')
+      PT.rm_nodes_from_name(zone, ':CGNS#DMeshNodal#Bnd*')
 
   # > Generate correctly zone_grid_connectivity
 
