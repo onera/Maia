@@ -46,3 +46,42 @@ def test_update_child():
   assert NA.get_children(node)[0] == child
   assert np.array_equal(NA.get_value(child), [3,2,1])
   assert NA.get_label(child) == 'Transform_t' #Old value are preserved
+
+def test_shallow_copy():
+  node = create_nodes.new_node('match', 'GridConnectivity1to1_t')
+  child = create_nodes.update_child(node, 'Transform', 'Transform_t', [1,2,3])
+
+  copied   = create_nodes.shallow_copy(node)
+  copied_c = NA.get_children(copied)[0]
+  assert NA.get_name(copied) == "match"
+  assert np.array_equal(NA.get_value(copied_c), [1,2,3])
+
+  NA.set_label(copied, "GridConnectivity_t")
+  assert NA.get_label(node) == 'GridConnectivity1to1_t' #Source label is not modified
+  copied_c[1] += 1
+  assert np.array_equal(NA.get_value(child), [2,3,4]) #Source value is modified
+  copied_c[1] = np.array([1,2,3])
+  assert np.array_equal(NA.get_value(child), [2,3,4]) #Hard set break the link
+
+  NA.set_children(copied, [])
+  assert len(NA.get_children(copied)) == 0
+  assert len(NA.get_children(node)) == 1 # Source structure is not modified
+
+def test_deep_copy():
+  node = create_nodes.new_node('match', 'GridConnectivity1to1_t')
+  child = create_nodes.update_child(node, 'Transform', 'Transform_t', [1,2,3])
+
+  copied   = create_nodes.deep_copy(node)
+  copied_c = NA.get_children(copied)[0]
+  assert NA.get_name(copied) == "match"
+  assert np.array_equal(NA.get_value(copied_c), [1,2,3])
+
+  NA.set_label(copied, "GridConnectivity_t")
+  assert NA.get_label(node) == 'GridConnectivity1to1_t' #Source label is not modified
+  copied_c[1] += 1
+  assert np.array_equal(NA.get_value(child), [1,2,3]) #Source value is not modified
+
+  NA.set_children(copied, [])
+  assert len(NA.get_children(copied)) == 0
+  assert len(NA.get_children(node)) == 1 # Source structure is not modified
+

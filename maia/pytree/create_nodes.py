@@ -32,3 +32,18 @@ def update_child(parent, name, label=UNSET, value=UNSET, children=UNSET):
     node = new_node(name, parent=parent)
   update_node(node, ..., label, value, children)
   return node
+
+def shallow_copy(t):
+  out = [NA.get_name(t), NA.get_value(t, raw=True), [], NA.get_label(t)]
+  for child in NA.get_children(t):
+    out[2].append(shallow_copy(child))
+  return out
+
+def deep_copy(t):
+  out = [NA.get_name(t), None, [], NA.get_label(t)]
+  _val = NA.get_value(t, raw=True)
+  if _val is not None:
+    out[1] = _val.copy()
+  for child in NA.get_children(t):
+    out[2].append(deep_copy(child))
+  return out

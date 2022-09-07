@@ -125,7 +125,7 @@ def test_is_same_tree():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
   node1 = PT.get_node_from_name(tree, 'bc5')
-  node2 = I.copyTree(node1)
+  node2 = PT.deep_copy(node1)
   assert CP.is_same_tree(node1, node2)
   #Position of child does not matter
   node2[2][1], node2[2][2] = node2[2][2], node2[2][1]
