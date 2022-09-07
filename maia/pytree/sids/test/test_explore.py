@@ -1,13 +1,12 @@
 import pytest
-import Converter.Internal as I
 from maia.utils.yaml   import parse_yaml_cgns
 
 import maia.pytree as PT
 from maia.pytree.sids import explore as EX
 
 def test_getZoneDonorPath():
-  jn1 = I.newGridConnectivity1to1(donorName='BaseXX/ZoneYY')
-  jn2 = I.newGridConnectivity1to1(donorName='ZoneYY')
+  jn1 = PT.new_node('match', 'GridConnectivity1to1_t', 'BaseXX/ZoneYY')
+  jn2 = PT.new_node('match', 'GridConnectivity1to1_t', 'ZoneYY')
   assert EX.getZoneDonorPath('BaseXX', jn1) == 'BaseXX/ZoneYY'
   assert EX.getZoneDonorPath('BaseXX', jn2) == 'BaseXX/ZoneYY'
 

@@ -2,7 +2,6 @@ import pytest
 import os
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree as PT
 
 from maia.utils.yaml   import parse_yaml_cgns
@@ -70,11 +69,11 @@ def test_check_is_label():
   def apply_zone(node):
     pass
 
-  for zone in I.getZones(tree):
+  for zone in PT.get_all_Zone_t(tree):
     apply_zone(zone)
 
   with pytest.raises(CP.CGNSLabelNotEqualError):
-    for zone in I.getBases(tree):
+    for zone in PT.get_all_CGNSBase_t(tree):
       apply_zone(zone)
 
 def test_check_in_labels():
@@ -85,31 +84,31 @@ def test_check_in_labels():
   def foo(node):
     pass
 
-  for zone in I.getZones(tree):
+  for zone in PT.get_all_Zone_t(tree):
     foo(zone)
-  for zone in I.getBases(tree):
+  for zone in PT.get_all_CGNSBase_t(tree):
     foo(zone)
   with pytest.raises(CP.CGNSLabelNotEqualError):
     foo(tree)
 
 def test_is_same_value_type():
-  node1 = I.createNode('Data', 'DataArray_t', value=None)
-  node2 = I.createNode('Data', 'DataArray_t', value=None)
+  node1 = PT.new_node('Data', 'DataArray_t', value=None)
+  node2 = PT.new_node('Data', 'DataArray_t', value=None)
   assert CP.is_same_value_type(node1, node2)
-  I.setValue(node1, np.array([1,2,3], dtype=np.int64))
+  PT.set_value(node1, np.array([1,2,3], dtype=np.int64))
   assert not CP.is_same_value_type(node1, node2)
-  I.setValue(node2, np.array([1,2,3], np.int32))
+  PT.set_value(node2, np.array([1,2,3], np.int32))
   assert CP.is_same_value_type(node1, node2, strict=False)
   assert not CP.is_same_value_type(node1, node2, strict=True)
 
 def test_is_same_value():
-  node1 = I.createNode('Data', 'DataArray_t', value=np.array([1,2,3]))
-  node2 = I.createNode('Data', 'DataArray_t', value=np.array([1,2,3]))
+  node1 = PT.new_node('Data', 'DataArray_t', value=np.array([1,2,3]))
+  node2 = PT.new_node('Data', 'DataArray_t', value=np.array([1,2,3]))
   assert CP.is_same_value(node1, node2)
-  I.setValue(node1, np.array([1,2,3], float))
-  I.setValue(node2, np.array([1,2,3], float))
+  PT.set_value(node1, np.array([1,2,3], float))
+  PT.set_value(node2, np.array([1,2,3], float))
   assert CP.is_same_value(node1, node2)
-  I.getVal(node2)[1] += 1E-8
+  PT.get_value(node2)[1] += 1E-8
   assert not CP.is_same_value(node1, node2)
   assert CP.is_same_value(node1, node2, abs_tol=1E-6)
 
@@ -132,8 +131,8 @@ def test_is_same_tree():
   node2[2][1], node2[2][2] = node2[2][2], node2[2][1]
   assert CP.is_same_tree(node1, node2)
   # But node must have same children names
-  I.newIndexArray('Index_vii', parent=node2)
+  PT.new_node('Index_vii', 'IndexArray_t', parent=node2)
   assert not CP.is_same_tree(node1, node2)
   #And those one should be equal
-  I.newIndexArray('Index_vii', value=[[1,2]], parent=node1)
+  PT.new_node('Index_vii', 'IndexArray_t', value=[[1,2]])
   assert not CP.is_same_tree(node1, node2)

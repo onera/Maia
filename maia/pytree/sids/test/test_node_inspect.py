@@ -4,6 +4,8 @@ import Converter.Internal as I
 import numpy              as np
 
 from maia.pytree      import walk
+from maia.pytree      import create_nodes as CN
+from maia.pytree      import nodes_attr as NA
 from maia.pytree.sids import node_inspect as SIDS
 
 def test_ZoneType():
@@ -25,7 +27,7 @@ def test_NGonNode():
   I.newElements('NGon',  etype='NGON',  parent=zone)
   I.newElements('NFace', etype='NFACE', parent=zone)
   ngon = SIDS.Zone.NGonNode(zone)
-  assert I.getName(ngon) == 'NGon' and I.getValue(ngon)[0] == 22
+  assert NA.get_name(ngon) == 'NGon' and NA.get_value(ngon)[0] == 22
   I.newElements('NGon2', etype='NGON', parent=zone)
   with pytest.raises(RuntimeError):
     SIDS.Zone.NGonNode(zone)
@@ -37,17 +39,17 @@ def test_ElementSize():
   assert SIDS.Element.Size(elt2) == 1
 
 def test_ElementCGNSName():
-  assert SIDS.Element.CGNSName(I.createNode("Toto", "Elements_t", [22, 0])) == "NGON_n"
-  assert SIDS.Element.CGNSName(I.createNode("Toto", "Elements_t", [42, 0])) == "TRI_15"
+  assert SIDS.Element.CGNSName(CN.new_node("Toto", "Elements_t", [22, 0])) == "NGON_n"
+  assert SIDS.Element.CGNSName(CN.new_node("Toto", "Elements_t", [42, 0])) == "TRI_15"
 
 def test_ElementDimension():
-  assert SIDS.Element.Dimension(I.createNode("Toto", "Elements_t", [22, 0])) == 2
-  assert SIDS.Element.Dimension(I.createNode("Toto", "Elements_t", [42, 0])) == 2
-  assert SIDS.Element.Dimension(I.createNode("Toto", "Elements_t", [34, 0])) == 3
+  assert SIDS.Element.Dimension(CN.new_node("Toto", "Elements_t", [22, 0])) == 2
+  assert SIDS.Element.Dimension(CN.new_node("Toto", "Elements_t", [42, 0])) == 2
+  assert SIDS.Element.Dimension(CN.new_node("Toto", "Elements_t", [34, 0])) == 3
 
 def test_ElementNVtx():
-  assert SIDS.Element.NVtx(I.createNode("Toto", "Elements_t", [22, 0])) == None
-  assert SIDS.Element.NVtx(I.createNode("Toto", "Elements_t", [42, 0])) == 15
+  assert SIDS.Element.NVtx(CN.new_node("Toto", "Elements_t", [22, 0])) == None
+  assert SIDS.Element.NVtx(CN.new_node("Toto", "Elements_t", [42, 0])) == 15
 
 def test_GridLocation():
   bc_no_loc = I.newBC()
@@ -103,7 +105,7 @@ def test_get_ordered_elements():
   I.newElements('ElemC', erange=[54,60], parent=zone)
 
   sorted_elems = SIDS.Zone.get_ordered_elements(zone)
-  assert [I.getName(elem) for elem in sorted_elems] == ['ElemB', 'ElemA', 'ElemC']
+  assert [NA.get_name(elem) for elem in sorted_elems] == ['ElemB', 'ElemA', 'ElemC']
     
 def test_get_ordered_elements_per_dim():
   zone = I.newZone()
@@ -114,8 +116,8 @@ def test_get_ordered_elements_per_dim():
   sorted_elems_per_dim = SIDS.Zone.get_ordered_elements_per_dim(zone)
   assert sorted_elems_per_dim[0] == []
   assert sorted_elems_per_dim[1] == []
-  assert [I.getName(elem) for elem in sorted_elems_per_dim[2]] == ['ElemC']
-  assert [I.getName(elem) for elem in sorted_elems_per_dim[3]] == ['ElemB', 'ElemA']
+  assert [NA.get_name(elem) for elem in sorted_elems_per_dim[2]] == ['ElemC']
+  assert [NA.get_name(elem) for elem in sorted_elems_per_dim[3]] == ['ElemB', 'ElemA']
     
 def test_get_elt_range_per_dim():
   zone = I.newZone()

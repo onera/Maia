@@ -19,10 +19,9 @@ def test_newDistribution():
   assert (PT.get_node_from_path(zone, ':CGNS#Distribution/Vertex')[1] == [100, 1000, 1000]).all()
 
   zone = ['zone', None, [], "Zone_t"]
-  distri_arrayA = {'Cell' : [0,15,30]}
-  distri_arrayB = {'Vertex' : [100,1000,1000]}
-  distri = mNode.newDistribution(distri_arrayA, parent=zone)
-  distri = mNode.newDistribution(distri_arrayB, parent=zone)
+  distri = mNode.newDistribution({'Cell' : [0,10,20,30]}, parent=zone)
+  distri = mNode.newDistribution({'Cell' : [0,15,30]}, parent=zone) #Try update
+  distri = mNode.newDistribution({'Vertex' : [100,1000,1000]}, parent=zone)
   assert (PT.get_node_from_path(zone, ':CGNS#Distribution/Cell')[1] == [0,15,30]).all()
   assert (PT.get_node_from_path(zone, ':CGNS#Distribution/Vertex')[1] == [100, 1000, 1000]).all()
   assert len(PT.get_nodes_from_name(zone, ':CGNS#Distribution')) == 1

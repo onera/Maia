@@ -91,7 +91,14 @@ base_functions = [
     ]
 
 for base_function in base_functions:
-  generated = generate_functions(base_function, maxdepth=3, child=True)
+  easypredicates = {
+    'Name' : (match_name,  ('name',)),
+    'Value': (match_value, ('value',)),
+    'Label': (match_label, ('label',)),
+    'Type' : (match_label, ('label',)),
+    'NameAndLabel' : (match_name_label,  ('name', 'label',)),
+  }
+  generated = generate_functions(base_function, maxdepth=3, child=True, easypredicates=easypredicates)
   _update_module_attributes(generated)
 for base_function in [WAPI.getNodesFromPredicates, WAPI.iterNodesFromPredicates]:
   generated = generate_functions(base_function, easypredicates={}, maxdepth=3, child=True)
