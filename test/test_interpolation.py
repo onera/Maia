@@ -94,7 +94,7 @@ def test_interpolation_refined(sub_comm, n_part_tgt, write_output):
   # Load mesh and create a refined version with proc 0
   if sub_comm.Get_rank() == 0:
     with open(mesh_file, 'r') as f:
-      tree = MU.yaml.parse_yaml_cgns.to_cgns_tree(f)
+      tree = PT.yaml.parse_yaml_cgns.to_cgns_tree(f)
     # Simplify tree
     PT.rm_nodes_from_label(tree, 'ZoneBC_t')
     PT.rm_nodes_from_label(tree, 'ZoneGridConnectivity_t')

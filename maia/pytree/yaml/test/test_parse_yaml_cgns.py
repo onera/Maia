@@ -1,8 +1,7 @@
-from maia.utils.yaml import parse_yaml_cgns
-import Converter.Internal as I
-import maia.pytree        as PT
 import numpy as np
+import maia.pytree        as PT
 
+from maia.pytree.yaml import parse_yaml_cgns
 
 def test_empty_tree():
   yt = ""
@@ -13,7 +12,7 @@ def test_empty_tree():
   assert node is None
 
   complete_t = parse_yaml_cgns.to_cgns_tree(yt)
-  assert complete_t == ["CGNSTree",None,[['CGNSLibraryVersion', [3.1], [], 'CGNSLibraryVersion_t']],"CGNSTree_t"]
+  assert complete_t == ["CGNSTree",None,[['CGNSLibraryVersion', [4.2], [], 'CGNSLibraryVersion_t']],"CGNSTree_t"]
 
 
 def test_simple_tree():
@@ -25,13 +24,13 @@ Base0 CGNSBase_t [3,3]:
   t = parse_yaml_cgns.to_cgns_tree(yt)
   bs = PT.get_children_from_label(t,"CGNSBase_t")
   assert len(bs) == 1
-  assert I.getName(bs[0]) == "Base0"
-  assert I.getType(bs[0]) == "CGNSBase_t"
-  assert np.all(I.getValue(bs[0]) == [3,3])
+  assert PT.get_name(bs[0]) == "Base0"
+  assert PT.get_label(bs[0]) == "CGNSBase_t"
+  assert np.all(PT.get_value(bs[0]) == [3,3])
 
   zs = PT.get_children_from_label(bs[0],"Zone_t")
-  assert np.all(I.getValue(zs[0]) == [[24],[6],[0]])
-  assert I.getChildren(zs[0]) == []
+  assert np.all(PT.get_value(zs[0]) == [[24],[6],[0]])
+  assert PT.get_children(zs[0]) == []
   assert PT.get_node_from_name(t, 'Zone1')[1].dtype == np.float64
 
   yt = """
@@ -40,8 +39,8 @@ Base0 CGNSBase_t [3,3]:
   t = parse_yaml_cgns.to_cgns_tree(yt)
   bs = PT.get_children_from_label(t,"CGNSBase_t")
   assert len(bs) == 1
-  assert I.getName(bs[0]) == "Base"
-  assert I.getType(bs[0]) == "CGNSBase_t"
+  assert PT.get_name(bs[0]) == "Base"
+  assert PT.get_label(bs[0]) == "CGNSBase_t"
 
 
 def test_multi_line_value():
@@ -54,11 +53,11 @@ CoordinateX DataArray_t:
   assert len(nodes) == 1
 
   node = nodes[0]
-  assert I.getName(node) == "CoordinateX"
-  assert I.getType(node) == "DataArray_t"
-  assert (I.getValue(node) == np.array([0,1,2,3,0,1,2,3],dtype=np.float64)).all()
-  assert I.getValue(node).dtype == np.float64
-  assert I.getChildren(node) == []
+  assert PT.get_name(node) == "CoordinateX"
+  assert PT.get_label(node) == "DataArray_t"
+  assert (PT.get_value(node) == np.array([0,1,2,3,0,1,2,3],dtype=np.float64)).all()
+  assert PT.get_value(node).dtype == np.float64
+  assert PT.get_children(node) == []
 
   single_node = parse_yaml_cgns.to_node(yt)
   assert single_node[0] == node[0]

@@ -2,7 +2,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 import Converter.Internal as I
 import maia.pytree as PT
-from   maia.utils.yaml   import parse_yaml_cgns
+from   maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_S import part_zone as splitS
 
 def test_collect_S_bnd_per_dir():

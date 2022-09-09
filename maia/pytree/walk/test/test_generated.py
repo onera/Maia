@@ -6,7 +6,7 @@ from maia.pytree.cgns_keywords import Label as CGL
 
 import maia.pytree as PT
 
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml   import parse_yaml_cgns
 
 yt = """
 Base CGNSBase_t:

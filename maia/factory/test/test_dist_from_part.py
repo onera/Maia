@@ -10,7 +10,7 @@ import maia.pytree.maia   as MT
 
 import maia
 from maia.utils         import test_utils as TU
-from maia.utils.yaml    import parse_yaml_cgns
+from maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory import generate_dist_block
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 

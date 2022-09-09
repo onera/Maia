@@ -1,5 +1,6 @@
 import numpy as np
-import Converter.Internal as I
+
+import maia.pytree.node as N
 import maia.pytree.cgns_keywords as CGK
 
 def generate_line(node, lines, ident=0, line_max=120):
@@ -14,7 +15,9 @@ def generate_line(node, lines, ident=0, line_max=120):
   """
 
   # Get value and type
-  node_value = I.getValue(node)
+  node_value = N.get_value(node)
+  if isinstance(node_value, np.ndarray) and node_value.size == 1:
+    node_value = node_value[0]
   value_type = None
   value      = None
   if isinstance(node_value, str):
@@ -32,11 +35,11 @@ def generate_line(node, lines, ident=0, line_max=120):
     suffix = f" {value_type} {value}:" if value_type else f" {value}:"
   else:
     suffix = ":"
-  line = f"{' '*ident}{I.getName(node)} {I.getType(node)}{suffix}"
+  line = f"{' '*ident}{N.get_name(node)} {N.get_label(node)}{suffix}"
 
   #Split long lines
   if len(line) > line_max and value_type: #Only true array can be multiline
-    first_line = f"{' '*ident}{I.getName(node)} {I.getType(node)}:\n{' '*(ident+2)}{value_type} : "
+    first_line = f"{' '*ident}{N.get_name(node)} {N.get_label(node)}:\n{' '*(ident+2)}{value_type} : "
     data_line = ''
     count = len(f"{' '*(ident+2)}{value_type} : ")
     values = value.split(',')
@@ -50,7 +53,7 @@ def generate_line(node, lines, ident=0, line_max=120):
     line = first_line + data_line[:-1] #Remove last comma
 
   lines.append(line)
-  for child in I.getChildren(node):
+  for child in N.get_children(node):
     generate_line(child, lines, ident+2, line_max)
 
 
@@ -63,7 +66,7 @@ def to_yaml(t, write_root=False, max_line_size=120):
   if write_root:
     generate_line(t, lines=lines, line_max=max_line_size)
   else:
-    for node in I.getChildren(t):
+    for node in N.get_children(t):
       generate_line(node, lines=lines, line_max=max_line_size)
   return lines
 

@@ -2,8 +2,8 @@ import pytest
 import os
 import tempfile
 
-from maia.utils.yaml import parse_cgns_yaml
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_cgns_yaml
+from maia.pytree.yaml import parse_yaml_cgns
 
 from maia       import pytree     as PT
 from maia.utils import test_utils as TU

@@ -2,7 +2,7 @@ import pytest
 
 import maia.pytree as PT
 
-from maia.utils.yaml                   import parse_yaml_cgns
+from maia.pytree.yaml                  import parse_yaml_cgns
 from maia.algo.apply_function_to_nodes import apply_to_zones, zones_iterator
 
 def test_apply_to_zones():

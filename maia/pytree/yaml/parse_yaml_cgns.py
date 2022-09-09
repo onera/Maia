@@ -1,9 +1,11 @@
-from ruamel.yaml import YAML
 import ast
 import numpy as np
-import Converter.Internal as I
+from ruamel.yaml import YAML
+
+import maia.pytree.node as N
+import maia.pytree.walk as W
+
 import maia.pytree.cgns_keywords as CGK
-from maia import pytree as PT
 
 def parse_node(node):
   name,label_value = node.split(" ", 1)
@@ -21,12 +23,12 @@ def parse_node(node):
       value     = value[2:].strip().replace(' ', '')
       # value = np.array(ast.literal_eval(value), order='F', dtype=CGK.cgns_to_dtype[cgns_type])
       py_value = ast.literal_eval(value)
-      value = PT.convert_value(py_value)
+      value = N.convert_value(py_value)
       if value.dtype != CGK.cgns_to_dtype[cgns_type]:
         value = value.astype(CGK.cgns_to_dtype[cgns_type])
     else:
       py_value = ast.literal_eval(value)
-      value = PT.convert_value(py_value)
+      value = N.convert_value(py_value)
   return name,label,value
 
 def extract_value(sub_nodes):
@@ -75,13 +77,13 @@ def to_node(yaml_stream):
     return nodes[0]
 
 def to_cgns_tree(yaml_stream):
-  t = I.createNode('CGNSTree', 'CGNSTree_t')
+  t = N.new_node('CGNSTree', 'CGNSTree_t')
   childs = to_nodes(yaml_stream)
-  if len(childs) > 0 and I.getType(childs[0]) == 'Zone_t':
-    b = I.newCGNSBase(parent=t)
-    I.addChild(b, childs)
+  if len(childs) > 0 and N.get_label(childs[0]) == 'Zone_t':
+    b = N.new_CGNSBase(parent=t)
+    N.set_children(b, childs)
   else:
-    I.addChild(t, childs)
-  if PT.get_child_from_label(t, 'CGNSLibraryVersion_t') is None:
-    I._addChild(t, I.createCGNSVersionNode(), pos=0)
+    N.set_children(t, childs)
+  if W.get_child_from_label(t, 'CGNSLibraryVersion_t') is None:
+    N.add_child(t, N.new_node('CGNSLibraryVersion', 'CGNSLibraryVersion_t', value=4.2))
   return t

@@ -1,6 +1,6 @@
 import Converter.Internal as I
 import maia.pytree as PT
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 from maia.io import load_collective_size_tree as LC
 
 def test_add_sizes_to_zone_tree():

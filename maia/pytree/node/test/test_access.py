@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml  import parse_yaml_cgns
 from maia.pytree.node  import access as NA
 
 def test_convert_value():

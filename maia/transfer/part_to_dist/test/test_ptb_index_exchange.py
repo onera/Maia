@@ -6,7 +6,7 @@ import Converter.Internal as I
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 import maia.transfer.part_to_dist.index_exchange as IPTB
 

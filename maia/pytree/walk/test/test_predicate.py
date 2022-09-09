@@ -5,7 +5,7 @@ from maia.pytree.cgns_keywords import Label as CGL
 from maia.pytree      import walk      as W
 from maia.pytree.walk import predicate as P
 
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml   import parse_yaml_cgns
 
 def partial_funcs_equal(f1, f2):
   return all([getattr(f1, attr) == getattr(f2, attr) for attr in ['func', 'args', 'keywords']])

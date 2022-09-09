@@ -7,7 +7,7 @@ import maia.pytree.maia   as MT
 
 from maia              import npy_pdm_gnum_dtype as pdm_dtype
 from maia.factory      import dcube_generator
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml  import parse_yaml_cgns
 from maia.utils        import par_utils
 
 from maia.algo.dist    import merge_jn as MJ

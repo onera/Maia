@@ -1,4 +1,4 @@
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree import yaml
 from maia.pytree import walk as W
 from maia.pytree import node as N
 
@@ -16,7 +16,7 @@ def test_enforceDonorAsPath():
       ZGC1 ZoneGridConnectivity_t:
         match4 GridConnectivity1to1_t "ZoneA":
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = yaml.parse_yaml_cgns.to_cgns_tree(yt)
   adjust.enforceDonorAsPath(tree)
   assert N.get_value(W.get_node_from_name(tree, "match1")) == "Base/ZoneA"
   assert N.get_value(W.get_node_from_name(tree, "match2")) == "Base/ZoneA"

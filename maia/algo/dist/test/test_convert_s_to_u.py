@@ -7,7 +7,7 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 
 from maia.algo.dist  import s_to_u
 

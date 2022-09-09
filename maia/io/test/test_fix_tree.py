@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import Converter.Internal as I
 import maia.pytree as PT
-from maia.utils.yaml  import parse_yaml_cgns
+from maia.pytree.yaml  import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.io import fix_tree

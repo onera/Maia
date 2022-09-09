@@ -1,5 +1,5 @@
 import os
-from   maia.utils.yaml   import parse_yaml_cgns
+from   maia.pytree.yaml   import parse_yaml_cgns
 
 import maia.pytree as PT
 from maia.pytree import path_utils as PU

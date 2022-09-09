@@ -1,6 +1,6 @@
 import pytest
 
-from maia.utils.yaml  import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 from maia.pytree.node import shorten_names,shorten_field_names
 
 class Test_shorten_names:

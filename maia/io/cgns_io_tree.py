@@ -7,8 +7,8 @@ from .load_collective_size_tree import load_collective_size_tree
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, _enforce_pdm_dtype
 
-from maia.factory    import distribute_tree
-from maia.utils.yaml import parse_yaml_cgns
+from maia.factory     import distribute_tree
+from maia.pytree.yaml import parse_yaml_cgns
 
 def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
   """

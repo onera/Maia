@@ -51,7 +51,7 @@ def test_s2u_withdata(sub_comm, write_output):
   PT.rm_nodes_from_label(dist_treeS, 'ZoneGridConnectivity_t')
 
   # Add some BCDataFace data
-  bc_right = MU.yaml.parse_yaml_cgns.to_node(
+  bc_right = PT.yaml.parse_yaml_cgns.to_node(
     """
     Right BC_t 'BCInflow':
       PointRange IndexRange_t I4 [[1, 6], [1, 1], [1, 4]]:

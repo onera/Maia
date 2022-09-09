@@ -1,7 +1,7 @@
 import pytest
 import Converter.Internal as I
 import maia.pytree as PT
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 from maia.io.hdf import cgns_subsets
 
 def test_create_zone_bc_filter():

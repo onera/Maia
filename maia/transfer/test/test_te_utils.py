@@ -5,7 +5,7 @@ import Converter.Internal as I
 import maia.pytree.maia as MT
 
 from maia import npy_pdm_gnum_dtype
-from maia.utils.yaml    import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 from maia.transfer import utils
 from pytest_mpi_check._decorator import mark_mpi_test
 

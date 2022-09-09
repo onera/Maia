@@ -3,7 +3,7 @@ import pytest
 import maia.pytree as PT
 from   maia.pytree.walk import predicate as PD
 
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 
 yt = """
 FamilyBC FamilyBC_t:

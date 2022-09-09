@@ -7,9 +7,9 @@ import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.io         import file_to_dist_tree, dist_tree_to_file
-from maia.utils      import test_utils as TU
-from maia.utils.yaml import parse_yaml_cgns
+from maia.io          import file_to_dist_tree, dist_tree_to_file
+from maia.utils       import test_utils as TU
+from maia.pytree.yaml import parse_yaml_cgns
 
 from maia.algo.dist import generate_jns_vertex_list
 

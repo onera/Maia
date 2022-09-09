@@ -1,4 +1,4 @@
-from maia.utils.yaml.pretty_print import pretty_tree
+from maia.pytree.yaml.pretty_print import pretty_tree
 
 def test_pretty_tree():
   yt = """MyBase [3,3]:

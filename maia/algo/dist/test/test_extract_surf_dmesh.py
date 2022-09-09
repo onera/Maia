@@ -6,7 +6,7 @@ import Converter.Internal as I
 import maia.pytree        as PT
 
 from maia              import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml  import parse_yaml_cgns
 from maia.factory      import dcube_generator
 from maia.factory      import full_to_dist as F2D
 

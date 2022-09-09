@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from maia.utils.yaml     import parse_yaml_cgns
+from maia.pytree.yaml    import parse_yaml_cgns
 from maia.pytree.compare import is_same_tree
 
 from maia.pytree import node as N

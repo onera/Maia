@@ -6,9 +6,9 @@ import Converter.Internal as I
 import maia.pytree as PT
 
 import maia
-from maia.utils.yaml import parse_yaml_cgns
-from maia.factory    import full_to_dist as F2D
-from maia.factory    import dcube_generator  as DCG
+from maia.pytree.yaml import parse_yaml_cgns
+from maia.factory     import full_to_dist as F2D
+from maia.factory     import dcube_generator  as DCG
 
 from maia.algo.dist  import conformize_jn as CJN
 

@@ -7,7 +7,7 @@ from mpi4py import MPI
 import Pypdm.Pypdm as PDM
 
 from maia                      import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils.yaml           import parse_yaml_cgns
+from maia.pytree.yaml          import parse_yaml_cgns
 from maia.factory.partitioning.split_U import part_all_zones as partU
 
 def test_prepare_part_weight():
