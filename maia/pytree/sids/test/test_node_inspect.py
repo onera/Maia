@@ -6,6 +6,11 @@ from maia.pytree      import walk as W
 
 from maia.pytree.sids import node_inspect as SIDS
 
+def test_list_or_only_elt():
+  assert SIDS._list_or_only_elt([42]) == 42
+  input = [1,2,3, "nous irons au bois"]
+  assert SIDS._list_or_only_elt(input) is input
+
 def test_ZoneType():
   #With numpy arrays
   zone_u = N.new_Zone('ZoneU', type='Unstructured')

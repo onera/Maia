@@ -1,8 +1,7 @@
+import re
 import inspect
 from   functools import partial
 import numpy as np
-
-from maia.utils.py_utils import camel_to_snake
 
 from .predicate import match_name, match_value, match_label, \
     match_name_value, match_name_label, match_value_label, match_name_value_label
@@ -89,6 +88,23 @@ def _overload_predicate(function, suffix, predicate_signature):
     func.__name__ = input_name.replace('Predicate', suffix)
   func.__doc__   = f"Specialization of {input_name} with embedded predicate\n  {predicate_info}"
   return func
+
+def camel_to_snake(text, keep_upper=False):
+  """
+  Return a snake_case string from a camelCase string.
+  If keep_upper is True, upper case words in camelCase are keeped upper case
+  """
+  ptou    = re.compile(r'(2)([A-Z]+)([A-Z][a-z])')
+  ptol    = re.compile(r'(2)([A-Z][a-z])')
+  tmp = re.sub(ptol, r'_to_\2', re.sub(ptou, r'_to_\2', text))
+  pupper = re.compile(r'([A-Z]+)([A-Z][a-z])')
+  plower = re.compile(r'([a-z\d])([A-Z])')
+  word = plower.sub(r'\1_\2', re.sub(pupper, r'\1_\2', tmp))
+  if keep_upper:
+    return '_'.join([w if all([i.isupper() for i in w]) else w.lower() for w in word.split('_')])
+  else:
+    return word.lower()
+
 
 def generate_functions(function, maxdepth=MAXDEPTH, child=True, easypredicates=allfuncs):
   """

@@ -1,7 +1,7 @@
-from maia.utils import py_utils
+import maia.pytree as PT
 
 from maia.pytree.compare import check_is_label
-import maia.pytree as PT
+from . import utils
 
 def getZoneDonorPath(current_base, gc):
   """
@@ -52,7 +52,7 @@ def find_connected_zones(tree):
     group     = [zone_path]
     for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', matching_gcs]):
       opp_zone_path = getZoneDonorPath(PT.get_name(base), gc)
-      py_utils.append_unique(group, opp_zone_path)
+      utils.append_unique(group, opp_zone_path)
     connected_zones.append(group)
 
   for base, zone in PT.iter_children_from_predicates(tree, 'CGNSBase_t/Zone_t', ancestors=True):
@@ -66,7 +66,7 @@ def find_connected_zones(tree):
       for i in groups_to_merge[::-1]: #Reverse loop to pop without changing idx
         zones_paths = connected_zones.pop(i)
         for z_p in zones_paths:
-          py_utils.append_unique(new_group, z_p)
+          utils.append_unique(new_group, z_p)
       connected_zones.append(new_group)
   return [sorted(zones) for zones in connected_zones]
 

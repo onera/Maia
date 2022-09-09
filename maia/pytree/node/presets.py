@@ -1,6 +1,6 @@
 from maia.pytree.cgns_keywords import cgns_to_dtype
 
-from maia.pytree      import node as N
+from maia.pytree.node import access as NA
 from maia.pytree.node import new_node
 
 # Specialized
@@ -74,7 +74,7 @@ def new_PointList(name='PointList', value=None, parent=None):
   return new_node(name, 'IndexArray_t', value, [], parent)
 
 def new_PointRange(name='PointRange', value=None, parent=None):
-  _value = N.convert_value(value)
+  _value = NA._convert_value(value)
   if _value is not None and _value.ndim == 1:
     _value = _value.reshape((-1,2))
   return new_node(name, 'IndexRange_t', _value, [], parent)
@@ -85,7 +85,7 @@ def new_GridLocation(loc, parent=None):
   return new_node('GridLocation', 'GridLocation_t', loc, parent=parent)
 
 def new_DataArray(name, value, *, dtype=None, parent=None):
-  _value = N.convert_value(value)
+  _value = NA._convert_value(value)
   if dtype is not None:
     _dtype = cgns_to_dtype[dtype]
     _value = _value.astype(_dtype)

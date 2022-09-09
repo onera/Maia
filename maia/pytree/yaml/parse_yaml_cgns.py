@@ -23,12 +23,12 @@ def parse_node(node):
       value     = value[2:].strip().replace(' ', '')
       # value = np.array(ast.literal_eval(value), order='F', dtype=CGK.cgns_to_dtype[cgns_type])
       py_value = ast.literal_eval(value)
-      value = N.convert_value(py_value)
+      value = N.access._convert_value(py_value)
       if value.dtype != CGK.cgns_to_dtype[cgns_type]:
         value = value.astype(CGK.cgns_to_dtype[cgns_type])
     else:
       py_value = ast.literal_eval(value)
-      value = N.convert_value(py_value)
+      value = N.access._convert_value(py_value)
   return name,label,value
 
 def extract_value(sub_nodes):

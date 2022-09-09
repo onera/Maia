@@ -1,14 +1,27 @@
+import sys
 import numpy as np
 import warnings
 
+if sys.version_info.major == 3 and sys.version_info.major < 8:
+  from collections.abc import Iterable  # < py38
+else:
+  from typing import Iterable
+
 import maia.pytree.cgns_keywords as CGK
-import maia.utils.py_utils as PYU
 
 from . import check
 
 CGNS_STR_SIZE = 32
 
-def convert_value(value):
+def _flatten(items):
+  """Yield items from any nested iterable; see https://is.gd/gE6gjc """
+  for x in items:
+    if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+      yield from _flatten(x)
+    else:
+      yield x
+
+def _convert_value(value):
   """
   Convert a Python input to a compliant pyCGNS value
   """
@@ -36,10 +49,10 @@ def convert_value(value):
     # print(f"-> value as CGK.dtypes with {np.dtype(value)}")
     result = np.array([value], np.dtype(value))
   # value as an iterable (list, tuple, set, ...)
-  elif isinstance(value, PYU.Iterable):
-    # print(f"-> value as PYU.Iterable : {PYU.flatten(value)}")
+  elif isinstance(value, Iterable):
+    # print(f"-> value as Iterable : {_flatten(value)}")
     try:
-      first_value = next(PYU.flatten(value))
+      first_value = next(_flatten(value))
       if isinstance(first_value, float):                       # "R8"
         # print(f"-> first_value as float")
         result = np.array(value, dtype=np.float64, order='F')
@@ -49,7 +62,7 @@ def convert_value(value):
       elif isinstance(first_value, str):                       # "C1"
         # print(f"-> first_value as with {CGK.cgns_to_dtype[CGK.C1]}")
         # WARNING: string numpy is limited to rank=2
-        assert max([len(v) for v in PYU.flatten(value)]) <= CGNS_STR_SIZE
+        assert max([len(v) for v in _flatten(value)]) <= CGNS_STR_SIZE
         size = CGNS_STR_SIZE
         if isinstance(value[0], str):
           v = np.empty( (size,len(value) ), dtype='c', order='F')
@@ -107,7 +120,7 @@ def get_value(node, raw=False):
     return raw_val
 
 def set_value(node, value):
-  node[1] = convert_value(value)
+  node[1] = _convert_value(value)
 
 def get_children(node):
   """ Return the list of children of the input CGNSNode """

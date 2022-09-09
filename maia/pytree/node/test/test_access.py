@@ -4,37 +4,48 @@ import numpy as np
 from maia.pytree.yaml  import parse_yaml_cgns
 from maia.pytree.node  import access as NA
 
+def test_flatten():
+  l = [1,2,3,4,5,6]
+  assert list(NA._flatten(l)) == [1,2,3,4,5,6]
+  l = [[1,2,3],[4,5],[6]]
+  assert list(NA._flatten(l)) == [1,2,3,4,5,6]
+  l = [[1,[2,3]],[4,5],[6]]
+  assert list(NA._flatten(l)) == [1,2,3,4,5,6]
+  l = [[1,[2,[3]]],[4,[5]],[6]]
+  assert list(NA._flatten(l)) == [1,2,3,4,5,6]
+
+
 def test_convert_value():
 
   #Basic values
-  assert NA.convert_value(None) is None
-  converted = NA.convert_value(12)
+  assert NA._convert_value(None) is None
+  converted = NA._convert_value(12)
   assert  converted == np.array([12]) and converted.dtype==np.int32
-  converted = NA.convert_value(-12.0)
+  converted = NA._convert_value(-12.0)
   assert converted == np.array([-12.0]) and converted.dtype==np.float64
-  converted = NA.convert_value("Spam, eggs")
+  converted = NA._convert_value("Spam, eggs")
   assert isinstance(converted, np.ndarray) and converted.dtype=='S1'
   assert converted.tobytes().decode() == "Spam, eggs"
 
   # Arrays
   np_array = np.array([[1,2,3], [4,5,6]], order='F')
-  assert NA.convert_value(np_array) is np_array
+  assert NA._convert_value(np_array) is np_array
   np_array = np.array([[1,2,3], [4,5,6]], order='C')
-  converted = NA.convert_value(np_array)
+  converted = NA._convert_value(np_array)
   assert (converted == np_array).all() and converted.flags.f_contiguous == True
 
   # Iterables
-  converted = NA.convert_value(["Spaaaaaam", "eggs"])
+  converted = NA._convert_value(["Spaaaaaam", "eggs"])
   assert isinstance(converted, np.ndarray) and converted.dtype=='S1'and converted.shape == (32,2)
   node = ['FakeNode', converted, [], 'FakeNode_t']
   assert NA.get_value(node) == ["Spaaaaaam", "eggs"]
-  assert NA.convert_value([]).shape == (0,)
-  assert NA.convert_value([[]]).shape == (1,0,)
-  converted = NA.convert_value([13, 14, 15])
+  assert NA._convert_value([]).shape == (0,)
+  assert NA._convert_value([[]]).shape == (1,0,)
+  converted = NA._convert_value([13, 14, 15])
   assert (converted == np.array([13, 14, 15])).all() and converted.dtype==np.int32
-  converted = NA.convert_value([13.3, 14.2, 15.3])
+  converted = NA._convert_value([13.3, 14.2, 15.3])
   assert (converted == np.array([13.3, 14.2, 15.3])).all() and converted.dtype==np.float64
-  converted = NA.convert_value([['Spam', 'eggs'], ["Bacon"]])
+  converted = NA._convert_value([['Spam', 'eggs'], ["Bacon"]])
   assert isinstance(converted, np.ndarray) and converted.dtype=='S1' and converted.shape == (32,2,2)
 
 yt = """

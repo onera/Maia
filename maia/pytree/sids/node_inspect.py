@@ -1,13 +1,16 @@
 import numpy as np
 import itertools
 
-from maia.utils              import py_utils
-from maia.utils.meta         import for_all_methods
 
 from maia.pytree.compare import check_is_label, check_in_labels
 from maia.pytree         import node as N
 from maia.pytree         import walk as W
 from . import elements_utils as EU
+from . import utils
+from .utils import for_all_methods
+
+def _list_or_only_elt(l):
+  return l[0] if len(l) == 1 else l
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Zone_t"))
@@ -15,12 +18,12 @@ class Zone:
   @staticmethod
   def VertexSize(zone_node):
     z_sizes = N.get_value(zone_node)
-    return py_utils.list_or_only_elt(z_sizes[:,0])
+    return _list_or_only_elt(z_sizes[:,0])
 
   @staticmethod
   def CellSize(zone_node):
     z_sizes = N.get_value(zone_node)
-    return py_utils.list_or_only_elt(z_sizes[:,1])
+    return _list_or_only_elt(z_sizes[:,1])
 
   @staticmethod
   def FaceSize(zone_node):
@@ -46,24 +49,24 @@ class Zone:
       n_face = [er[1] - er[0] + 1]
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {N.get_name(zone_node)}")
-    return py_utils.list_or_only_elt(n_face)
+    return _list_or_only_elt(n_face)
 
   @staticmethod
   def NGonNode(zone_node):
     predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NGON_n'
     ngons = W.get_children_from_predicate(zone_node, predicate)
-    return py_utils.expects_one(ngons, ("NGon node", f"zone {N.get_name(zone_node)}"))
+    return utils.expects_one(ngons, ("NGon node", f"zone {N.get_name(zone_node)}"))
 
   @staticmethod
   def NFaceNode(zone_node):
     predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NFACE_n'
     nfaces = W.get_children_from_predicate(zone_node, predicate)
-    return py_utils.expects_one(nfaces, ("NFace node", f"zone {N.get_name(zone_node)}"))
+    return utils.expects_one(nfaces, ("NFace node", f"zone {N.get_name(zone_node)}"))
 
   @staticmethod
   def VertexBoundarySize(zone_node):
     z_sizes = N.get_value(zone_node)
-    return py_utils.list_or_only_elt(z_sizes[:,2])
+    return _list_or_only_elt(z_sizes[:,2])
 
   @staticmethod
   def Type(zone_node):
@@ -137,7 +140,7 @@ class Zone:
     In addition, Element are sorted according to their ElementRange withing each dimension.
     """
     # TODO : how to prevent special case of range of elemt mixed in dim ?
-    return py_utils.bucket_split(Zone.get_ordered_elements(zone), lambda e: Element.Dimension(e), size=4)
+    return utils.bucket_split(Zone.get_ordered_elements(zone), lambda e: Element.Dimension(e), size=4)
 
     return sorted_elts_by_dim
 
@@ -159,7 +162,7 @@ class Zone:
 
     # Check if element range were not interlaced
     for first, second in itertools.combinations(range_by_dim, 2):
-      if py_utils.are_overlapping(first, second, strict=True):
+      if utils.are_overlapping(first, second, strict=True):
         raise RuntimeError("ElementRange with different dimensions are interlaced")
 
     return range_by_dim
