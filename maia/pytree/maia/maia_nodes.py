@@ -1,5 +1,5 @@
 from maia.pytree import walk
-from maia.pytree import create_nodes as CN
+from maia.pytree import node
 
 def getDistribution(node, distri_name=None):
   """
@@ -26,11 +26,11 @@ def newDistribution(distributions = dict(), parent=None):
   distributions must be a dictionnary {DistriName : distri_array}
   """
   if parent:
-    distri_node = CN.update_child(parent, ':CGNS#Distribution', 'UserDefinedData_t')
+    distri_node = node.update_child(parent, ':CGNS#Distribution', 'UserDefinedData_t')
   else:
-    distri_node = CN.new_node(':CGNS#Distribution', 'UserDefinedData_t')
+    distri_node = node.new_node(':CGNS#Distribution', 'UserDefinedData_t')
   for name, value in distributions.items():
-    CN.update_child(distri_node, name, 'DataArray_t', value)
+    node.update_child(distri_node, name, 'DataArray_t', value)
   return distri_node
 
 def newGlobalNumbering(glob_numberings = dict(), parent=None):
@@ -41,11 +41,11 @@ def newGlobalNumbering(glob_numberings = dict(), parent=None):
   glob_numberings must be a dictionnary {NumberingName : lngn_array}
   """
   if parent:
-    lngn_node = CN.update_child(parent, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    lngn_node = node.update_child(parent, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
   else:
-    lngn_node = CN.new_node(':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    lngn_node = node.new_node(':CGNS#GlobalNumbering', 'UserDefinedData_t')
   for name, value in glob_numberings.items():
-    CN.update_child(lngn_node, name, 'DataArray_t', value)
+    node.update_child(lngn_node, name, 'DataArray_t', value)
   return lngn_node
 
 # --------------------------------------------------------------------------

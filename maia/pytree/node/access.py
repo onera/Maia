@@ -4,6 +4,8 @@ import warnings
 import maia.pytree.cgns_keywords as CGK
 import maia.utils.py_utils as PYU
 
+from . import check
+
 CGNS_STR_SIZE = 32
 
 def convert_value(value):
@@ -74,42 +76,48 @@ def convert_value(value):
     result = np.array([value], order='F')
   return result
 
-def np_to_string(array):
+def _np_to_string(array):
   #Generic:  32 / taille de la premiere liste / nombre de listes
   if array.ndim == 1:
     return array.tobytes().decode().strip()
   elif array.ndim == 2:
-    return [np_to_string(array[:,i]) for i in range(array.shape[1])]
+    return [_np_to_string(array[:,i]) for i in range(array.shape[1])]
   elif array.ndim == 3:
-    return [np_to_string(array[:,:,i]) for i in range(array.shape[2])]
+    return [_np_to_string(array[:,:,i]) for i in range(array.shape[2])]
   raise ValueError(f"Incorrect dimension for bytes array: {array.ndim}")
 
 def get_name(node):
   """ Return the name of the input CGNSNode """
   return node[0]
+
 def set_name(node, name):
-  assert isinstance(name, str)
-  if len(name) > CGNS_STR_SIZE:
-    warnings.warn("Setting a CGNS node name with a string longer than 32 char", RuntimeWarning, stacklevel=2)
-  node[0] = name
+  if check.is_valid_name(name, check_len=False):
+    if not check.is_valid_name(name, check_len=True):
+      warnings.warn("Setting a CGNS node name with a string longer than 32 char", RuntimeWarning, stacklevel=2)
+    node[0] = name
+  else:
+    raise ValueError("Unvalid name for node")
 
 def get_value(node, raw=False):
   """ Return the value of the input CGNSNode """
   raw_val = node[1]
   if not raw and isinstance(raw_val, np.ndarray) and raw_val.dtype.kind == 'S':
-    return np_to_string(raw_val)
+    return _np_to_string(raw_val)
   else:
     return raw_val
+
 def set_value(node, value):
   node[1] = convert_value(value)
 
 def get_children(node):
   """ Return the list of children of the input CGNSNode """
   return node[2]
+
 def add_child(node, child):
   if get_name(child) in [get_name(n) for n in get_children(node)]:
     raise RuntimeError('Can not add child : a node with the same already exists')
   node[2].append(child)
+
 def set_children(node, children):
   children_bck = get_children(node)
   node[2] = []
@@ -123,7 +131,11 @@ def set_children(node, children):
 def get_label(node):
   """ Return the label of the input CGNSNode """
   return node[3]
-def set_label(node, label):
-  assert isinstance(label, str)
-  node[3] = label
 
+def set_label(node, label):
+  if check.is_valid_label(label, only_sids=False):
+    if not check.is_valid_label(label, only_sids=True):
+      warnings.warn("Setting a CGNS node label with a non sids label", RuntimeWarning, stacklevel=2)
+    node[3] = label
+  else:
+    raise ValueError("Unvalid label for node")

@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from maia.utils.yaml   import parse_yaml_cgns
-from maia.pytree import nodes_attr as NA
+from maia.pytree.node  import access as NA
 
 def test_convert_value():
 
@@ -48,7 +48,7 @@ def test_name():
   assert NA.get_name(node) == 'NewName'
   with pytest.warns(RuntimeWarning):
     NA.set_name(node, "AVeryLongNameButCNGSIsLimitedTo32Characters")
-  with pytest.raises(AssertionError):
+  with pytest.raises(ValueError):
     NA.set_name(node, 12)
 
 def test_value():
@@ -68,7 +68,9 @@ def test_label():
   assert NA.get_label(node) == 'UserDefinedData_t'
   NA.set_label(node, 'DataArray_t')
   assert NA.get_label(node) == 'DataArray_t'
-  with pytest.raises(AssertionError):
+  with pytest.warns(RuntimeWarning):
+    NA.set_label(node, "FakeLabel_t")
+  with pytest.raises(ValueError):
     NA.set_label(node, 12)
 
 def test_children():

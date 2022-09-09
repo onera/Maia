@@ -11,56 +11,6 @@ from maia.pytree import compare as CP
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-def test_is_valid_name():
-  assert CP.is_valid_name('MyName') == True
-  assert CP.is_valid_name(123) == False
-
-def test_check_name():
-  assert CP.check_name('MyName') == 'MyName'
-  with pytest.raises(TypeError):
-    CP.check_name(123)
-
-def test_is_valid_value():
-  assert CP.is_valid_value(123) == False
-  assert CP.is_valid_value('Coucou') == False
-  assert CP.is_valid_value(np.array(tuple('Coucou'), '|S1')) == True
-  assert CP.is_valid_value(np.array([123])) == True
-  assert CP.is_valid_value(np.ones((3,3), order='F')) == True
-  assert CP.is_valid_value(np.ones((3,3), order='C')) == False
-
-def test_check_value():
-  assert CP.check_value(np.array([123])) == np.array([123])
-  with pytest.raises(TypeError):
-    CP.check_value(123)
-
-def test_is_valid_children():
-  assert CP.is_valid_children(['BC', 'BCWall', [], 'BC_t']) == True
-  assert CP.is_valid_children(123) == False
-
-def test_check_children():
-  assert CP.check_children(['BC', 'BCWall', [], 'BC_t']) == ['BC', 'BCWall', [], 'BC_t']
-  with pytest.raises(TypeError):
-    CP.check_children(123)
-
-def test_is_valid_label():
-  assert CP.is_valid_label('') == False
-  assert CP.is_valid_label('BC') == False
-  assert CP.is_valid_label('BC_t') == True
-  assert CP.is_valid_label('BC_toto') == False
-  assert CP.is_valid_label('FakeLabel_t', only_sids=False) == True
-  assert CP.is_valid_label('FakeLabel_t', only_sids=True) == False
-
-def test_check_label():
-  assert CP.check_label('BC_t') == 'BC_t'
-  with pytest.raises(TypeError):
-    CP.check_label('BC')
-
-def test_is_valid_node():
-  assert CP.is_valid_node(['BC', np.array(tuple('BCWall'), '|S1'), [], 'BC_t']) == True
-  assert CP.is_valid_node(123) == False
-  assert CP.is_valid_node(['BC', np.array(tuple('BCWall'), '|S1'), [], 'BC_t', 'Coucou']) == False
-
-
 def test_check_is_label():
   with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)

@@ -3,8 +3,8 @@ from functools import partial
 import numpy as np
 
 import maia.pytree.cgns_keywords as CGK
-from   maia.pytree.compare import is_valid_label
-from   maia.pytree import nodes_attr as NA
+from   maia.pytree      import node as N
+from   maia.pytree.node import check
 
 __NAME__     = 0
 __VALUE__    = 1
@@ -46,17 +46,17 @@ def belongs_to_family(n, target_family, allow_additional=False):
   """
   from .walkers_api import getNodeFromPredicate, iterNodesFromPredicate
   family_name_n = getNodeFromPredicate(n, lambda m: match_cgk_label(m, CGK.Label.FamilyName_t), depth=1)
-  if family_name_n and NA.get_value(family_name_n) == target_family:
+  if family_name_n and N.get_value(family_name_n) == target_family:
     return True
   if allow_additional:
     for additional_family_n in iterNodesFromPredicate(n, lambda m: match_cgk_label(m, CGK.Label.AdditionalFamilyName_t), depth=1):
-      if NA.get_value(additional_family_n) == target_family:
+      if N.get_value(additional_family_n) == target_family:
         return True
   return False
 
 def auto_predicate(query):
   if isinstance(query, str):
-    if is_valid_label(query):
+    if check.is_valid_label(query):
       predicate = partial(match_str_label, label=query)
     else:
       predicate = partial(match_name, name=query)
