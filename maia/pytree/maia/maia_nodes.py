@@ -30,7 +30,7 @@ def newDistribution(distributions = dict(), parent=None):
   else:
     distri_node = CN.new_node(':CGNS#Distribution', 'UserDefinedData_t')
   for name, value in distributions.items():
-    CN.create_child(distri_node, name, 'DataArray_t', value)
+    CN.update_child(distri_node, name, 'DataArray_t', value)
   return distri_node
 
 def newGlobalNumbering(glob_numberings = dict(), parent=None):
@@ -45,7 +45,7 @@ def newGlobalNumbering(glob_numberings = dict(), parent=None):
   else:
     lngn_node = CN.new_node(':CGNS#GlobalNumbering', 'UserDefinedData_t')
   for name, value in glob_numberings.items():
-    CN.create_child(lngn_node, name, 'DataArray_t', value)
+    CN.update_child(lngn_node, name, 'DataArray_t', value)
   return lngn_node
 
 # --------------------------------------------------------------------------

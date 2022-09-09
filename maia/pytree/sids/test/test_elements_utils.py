@@ -8,6 +8,13 @@ def test_element_name():
   with pytest.raises(AssertionError):
     EU.element_name(1000)
 
+def test_cgns_name_to_id():
+  assert EU.cgns_name_to_id('Null') == 0
+  assert EU.cgns_name_to_id('HEXA_64') == 39
+  assert EU.cgns_name_to_id('HEXA_64') == 39
+  with pytest.raises(ValueError):
+    EU.cgns_name_to_id('NOTINLIST')
+
 def test_element_dim():
   assert EU.element_dim(5)  == 2
   assert EU.element_dim(38) == 3

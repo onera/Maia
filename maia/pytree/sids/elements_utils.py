@@ -1,7 +1,7 @@
 elements_properties = [
 #CGNS_Id, ElementName        ,  dim, nVtx,nEdge,nFace, refElt
-    ("ElementTypeNull"       , None, None, None, None,   None),
-    ("ElementTypeUserDefined", None, None, None, None,   None),
+    ("Null"                  , None, None, None, None,   None),
+    ("UserDefined"           , None, None, None, None,   None),
     ("NODE"                  ,    0,    1,    1,    0,  "NODE"),
     ("BAR_2"                 ,    1,    2,    1,    0,   "BAR"),
     ("BAR_3"                 ,    1,    3,    1,    0,   "BAR"),
@@ -62,6 +62,9 @@ elements_properties = [
 def element_name(n):
   assert n < len(elements_properties)
   return elements_properties[n][0]
+
+def cgns_name_to_id(name):
+  return [EP[0] for EP in elements_properties].index(name)
 
 def element_dim(n):
   assert n < len(elements_properties)

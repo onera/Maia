@@ -1,6 +1,4 @@
 import pytest
-
-import Converter.Internal as I
 import numpy              as np
 
 from maia.pytree      import walk
@@ -10,8 +8,8 @@ from maia.pytree.sids import node_inspect as SIDS
 
 def test_ZoneType():
   #With numpy arrays
-  zone_u = I.newZone('ZoneU', ztype='Unstructured')
-  zone_s = I.newZone('ZoneS', ztype='Structured')
+  zone_u = CN.new_Zone('ZoneU', type='Unstructured')
+  zone_s = CN.new_Zone('ZoneS', type='Structured')
   assert SIDS.Zone.Type(zone_u) == 'Unstructured'
   assert SIDS.Zone.Type(zone_s) == 'Structured'
   #With strings
@@ -21,20 +19,20 @@ def test_ZoneType():
   assert SIDS.Zone.Type(zone_s) == 'Structured'
 
 def test_NGonNode():
-  zone = I.newZone('Zone', [[100, 36, 0]], 'Unstructured')
+  zone = CN.new_Zone('Zone', size=[[100, 36, 0]], type='Unstructured')
   with pytest.raises(RuntimeError):
     SIDS.Zone.NGonNode(zone)
-  I.newElements('NGon',  etype='NGON',  parent=zone)
-  I.newElements('NFace', etype='NFACE', parent=zone)
+  CN.new_Elements('NGon',  type='NGON_n',  parent=zone)
+  CN.new_Elements('NFace', type='NFACE_n', parent=zone)
   ngon = SIDS.Zone.NGonNode(zone)
   assert NA.get_name(ngon) == 'NGon' and NA.get_value(ngon)[0] == 22
-  I.newElements('NGon2', etype='NGON', parent=zone)
+  CN.new_Elements('NGon2', type='NGON_n', parent=zone)
   with pytest.raises(RuntimeError):
     SIDS.Zone.NGonNode(zone)
 
 def test_ElementSize():
-  elt1 = I.newElements(etype='QUAD', erange=[1,100])
-  elt2 = I.newElements(etype='QUAD', erange=[15,15])
+  elt1 = CN.new_Elements(type='QUAD_4', erange=[1,100])
+  elt2 = CN.new_Elements(type='QUAD_4', erange=[15,15])
   assert SIDS.Element.Size(elt1) == 100
   assert SIDS.Element.Size(elt2) == 1
 
@@ -52,24 +50,25 @@ def test_ElementNVtx():
   assert SIDS.Element.NVtx(CN.new_node("Toto", "Elements_t", [42, 0])) == 15
 
 def test_GridLocation():
-  bc_no_loc = I.newBC()
-  bc_loc    = I.newBC()
-  I.newGridLocation('JFaceCenter', bc_loc)
+  bc_no_loc = CN.new_BC()
+  bc_loc    = CN.new_BC()
+  CN.new_GridLocation('JFaceCenter', bc_loc)
   assert SIDS.Subset.GridLocation(bc_no_loc) == 'Vertex'
   assert SIDS.Subset.GridLocation(bc_loc   ) == 'JFaceCenter'
 
 def test_GridConnectivity_Type():
-  gc = I.newGridConnectivity1to1("gc")
+  gc = CN.new_node("gc", "GridConnectivity1to1_t")
   assert SIDS.GridConnectivity.Type(gc) == "Abutting1to1"
-  gc = I.newGridConnectivity("gc", ctype="Abutting")
+  gc = CN.new_node("gc", "GridConnectivity_t", 
+      children=[CN.new_node('GridConnectivityType', 'GridConnectivityType_t', "Abutting")])
   assert SIDS.GridConnectivity.Type(gc) == "Abutting"
-  bc = I.newBC("bc")
+  bc = CN.new_BC("bc")
   with pytest.raises(Exception):
     SIDS.GridConnectivity.Type(bc)
 
 def test_zone_u_size():
   #Simulate a 10*5*2 vtx zone
-  zone_u = I.newZone('Zone', [[100, 36, 0]], 'Unstructured')
+  zone_u = CN.new_Zone('Zone', size=[[100, 36, 0]], type='Unstructured')
 
   assert SIDS.Zone.VertexSize(zone_u) == 10*5*2
   assert SIDS.Zone.CellSize(zone_u) == 9*4*1
@@ -81,7 +80,7 @@ def test_zone_u_size():
 
 def test_zone_s_size():
   #Simulate a 10*5*2 vtx zone
-  zone_s = I.newZone('Zone', [[10,9,0], [5,4,0], [2,1,0]], 'Structured')
+  zone_s = CN.new_Zone('Zone', size=[[10,9,0], [5,4,0], [2,1,0]], type='Structured')
 
   assert np.all(SIDS.Zone.VertexSize(zone_s) == [10,5,2])
   assert np.all(SIDS.Zone.CellSize(zone_s) == [9,4,1])
@@ -92,26 +91,26 @@ def test_zone_s_size():
   assert SIDS.Zone.n_vtx_bnd(zone_s) == 0
 
 def test_get_range_of_ngon():
-  zone = I.newZone()
-  I.newElements('ElemA', 'NGON',  erange=[11, 53], parent=zone)
-  I.newElements('ElemB', 'NFACE', erange=[1, 10], parent=zone)
-  I.newElements('ElemC', 'HEXA',  erange=[54,60], parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', 'NGON_n',  erange=[11, 53], parent=zone)
+  CN.new_Elements('ElemB', 'NFACE_n', erange=[1, 10], parent=zone)
+  CN.new_Elements('ElemC', 'HEXA_8',  erange=[54,60], parent=zone)
   assert (SIDS.Zone.get_range_of_ngon(zone) == [11,53]).all()
 
 def test_get_ordered_elements():
-  zone = I.newZone()
-  I.newElements('ElemA', erange=[11, 53], parent=zone)
-  I.newElements('ElemB', erange=[1, 10], parent=zone)
-  I.newElements('ElemC', erange=[54,60], parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', erange=[11, 53], parent=zone)
+  CN.new_Elements('ElemB', erange=[1, 10], parent=zone)
+  CN.new_Elements('ElemC', erange=[54,60], parent=zone)
 
   sorted_elems = SIDS.Zone.get_ordered_elements(zone)
   assert [NA.get_name(elem) for elem in sorted_elems] == ['ElemB', 'ElemA', 'ElemC']
     
 def test_get_ordered_elements_per_dim():
-  zone = I.newZone()
-  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
-  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
-  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', type='HEXA_8', erange=[11, 53], parent=zone)
+  CN.new_Elements('ElemB', type='HEXA_8', erange=[1, 10],  parent=zone)
+  CN.new_Elements('ElemC', type='TRI_3',  erange=[54,60],  parent=zone)
 
   sorted_elems_per_dim = SIDS.Zone.get_ordered_elements_per_dim(zone)
   assert sorted_elems_per_dim[0] == []
@@ -120,72 +119,72 @@ def test_get_ordered_elements_per_dim():
   assert [NA.get_name(elem) for elem in sorted_elems_per_dim[3]] == ['ElemB', 'ElemA']
     
 def test_get_elt_range_per_dim():
-  zone = I.newZone()
-  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
-  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
-  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', type='HEXA_8', erange=[11, 53], parent=zone)
+  CN.new_Elements('ElemB', type='HEXA_8', erange=[1, 10],  parent=zone)
+  CN.new_Elements('ElemC', type='TRI_3',  erange=[54,60],  parent=zone)
   assert SIDS.Zone.get_elt_range_per_dim(zone) == [[0,0], [0,0], [54,60], [1,53]]
 
-  zone = I.newZone()
-  I.newElements('ElemA', etype='QUAD', erange=[11, 53], parent=zone)
-  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
-  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', type='QUAD_4', erange=[11, 53], parent=zone)
+  CN.new_Elements('ElemB', type='HEXA_8', erange=[1, 10],  parent=zone)
+  CN.new_Elements('ElemC', type='TRI_3',  erange=[54,60],  parent=zone)
   assert SIDS.Zone.get_elt_range_per_dim(zone) == [[0,0], [0,0], [11,60], [1,10]]
 
-  zone = I.newZone()
-  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
-  I.newElements('ElemB', etype='TRI',  erange=[1, 10],  parent=zone)
-  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', type='HEXA_8', erange=[11, 53], parent=zone)
+  CN.new_Elements('ElemB', type='TRI_3',  erange=[1, 10],  parent=zone)
+  CN.new_Elements('ElemC', type='TRI_3',  erange=[54,60],  parent=zone)
   with pytest.raises(RuntimeError):
     SIDS.Zone.get_elt_range_per_dim(zone)
 
 def test_elt_ordering_by_dim():
-  zone = I.newZone()
-  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
-  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
-  I.newElements('ElemC', etype='TRI',  erange=[54,60],  parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', type='HEXA_8', erange=[11, 53], parent=zone)
+  CN.new_Elements('ElemB', type='HEXA_8', erange=[1, 10],  parent=zone)
+  CN.new_Elements('ElemC', type='TRI_3',  erange=[54,60],  parent=zone)
   assert SIDS.Zone.elt_ordering_by_dim(zone) == -1
 
-  zone = I.newZone()
-  I.newElements('ElemA', etype='HEXA', erange=[11, 53], parent=zone)
-  I.newElements('ElemB', etype='HEXA', erange=[1, 10],  parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', type='HEXA_8', erange=[11, 53], parent=zone)
+  CN.new_Elements('ElemB', type='HEXA_8', erange=[1, 10],  parent=zone)
   assert SIDS.Zone.elt_ordering_by_dim(zone) == 0
 
-  zone = I.newZone()
-  I.newElements('ElemA', etype='HEXA', erange=[18, 60], parent=zone)
-  I.newElements('ElemB', etype='HEXA', erange=[8, 17],  parent=zone)
-  I.newElements('ElemC', etype='TRI',  erange=[1,7],  parent=zone)
+  zone = CN.new_Zone()
+  CN.new_Elements('ElemA', type='HEXA_8', erange=[18, 60], parent=zone)
+  CN.new_Elements('ElemB', type='HEXA_8', erange=[8, 17],  parent=zone)
+  CN.new_Elements('ElemC', type='TRI_3',  erange=[1,7],  parent=zone)
   assert SIDS.Zone.elt_ordering_by_dim(zone) == 1
 
 def test_PointRange():
-  pr = I.newPointRange('StandardPR', [1,3, 3,5, 1,3])
+  pr = CN.new_PointRange('StandardPR', [1,3, 3,5, 1,3])
   assert (SIDS.PointRange.SizePerIndex(pr) == [3,3,3]).all()
   assert (SIDS.PointRange.n_elem(pr) == 3*3*3)
 
-  pr = I.newPointRange('GCLikePR', [7,1, 9,9, 5,1])
+  pr = CN.new_PointRange('GCLikePR', [7,1, 9,9, 5,1])
   assert (SIDS.PointRange.SizePerIndex(pr) == [7,1,5]).all()
   assert (SIDS.PointRange.n_elem(pr) == 7*1*5)
 
-  pr = I.newPointRange('ULike', [[1,15]]) # PR must be 2d
+  pr = CN.new_PointRange('ULike', [[1,15]]) # PR must be 2d
   assert (SIDS.PointRange.SizePerIndex(pr) == [15]).all()
   assert (SIDS.PointRange.n_elem(pr) == 15)
 
 def test_PointList():
-  pl = I.newPointList('StandartPL', [[1,6,12]])
+  pl = CN.new_PointList('StandartPL', [[1,6,12]])
   assert SIDS.PointList.n_elem(pl) == 3
 
-  pl = I.newPointList('SLike', [[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
+  pl = CN.new_PointList('SLike', [[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
   assert SIDS.PointList.n_elem(pl) == 5
 
 def test_Subset():
-  sol = I.newFlowSolution(gridLocation='Vertex')
-  pl = I.newPointList('PointList', [[1,6,12]], parent=sol)
+  sol = CN.new_FlowSolution(loc='Vertex')
+  pl = CN.new_PointList('PointList', [[1,6,12]], parent=sol)
 
   assert SIDS.Subset.GridLocation(sol) == 'Vertex'
   assert SIDS.Subset.getPatch(sol) is pl
   assert SIDS.Subset.n_elem(sol) == SIDS.PointList.n_elem(pl)
 
   with pytest.raises(AssertionError):
-    pr = I.newPointRange('PointRange', [[1,15]], parent=sol)
+    pr = CN.new_PointRange('PointRange', [[1,15]], parent=sol)
     patch = SIDS.Subset.getPatch(sol)
 
