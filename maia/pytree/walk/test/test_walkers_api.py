@@ -5,7 +5,7 @@ from maia.utils.yaml   import parse_yaml_cgns
 
 yt = """
 Zone Zone_t:
-  ZBC ZoneBC_t:
+  ZoneBC ZoneBC_t:
     bc1 BC_t:
       FamilyName FamilyName_t 'BC1':
       Index_i IndexArray_t:
@@ -14,9 +14,6 @@ Zone Zone_t:
       Index_ii IndexArray_t:
   FamilyName FamilyName_t 'ROW1':
 """
-
-def names(nodes):
-  return [PT.get_name(n) for n in nodes]
 
 def test_get_node_from_predicate():
   tree = parse_yaml_cgns.to_node(yt)
@@ -46,8 +43,8 @@ def test_get_nodes_from_predicates():
 
   # snake_case => shallow search, CamelCase => Deep seach
   bc_or_family = lambda n: PT.get_label(n) in ['BC_t', 'FamilyName_t']
-  assert names(PT.get_nodes_from_predicate(tree, bc_or_family)) == ['bc1', 'bc2', 'FamilyName']
-  assert names(PT.getNodesFromPredicate(tree, bc_or_family)) == ['bc1', 'FamilyName', 'bc2', 'FamilyName', 'FamilyName']
+  assert PT.get_names(PT.get_nodes_from_predicate(tree, bc_or_family)) == ['bc1', 'bc2', 'FamilyName']
+  assert PT.get_names(PT.getNodesFromPredicate(tree, bc_or_family)) == ['bc1', 'FamilyName', 'bc2', 'FamilyName', 'FamilyName']
 
 def test_iter_nodes_from_predicate():
   tree = parse_yaml_cgns.to_node(yt)
@@ -59,8 +56,8 @@ def test_iter_nodes_from_predicate():
 
   # snake_case => shallow search, CamelCase => Deep seach
   bc_or_family = lambda n: PT.get_label(n) in ['BC_t', 'FamilyName_t']
-  assert names(PT.iter_nodes_from_predicate(tree, bc_or_family)) == ['bc1', 'bc2', 'FamilyName']
-  assert names(PT.iterNodesFromPredicate(tree, bc_or_family)) == ['bc1', 'FamilyName', 'bc2', 'FamilyName', 'FamilyName']
+  assert PT.get_names(PT.iter_nodes_from_predicate(tree, bc_or_family)) == ['bc1', 'bc2', 'FamilyName']
+  assert PT.get_names(PT.iterNodesFromPredicate(tree, bc_or_family)) == ['bc1', 'FamilyName', 'bc2', 'FamilyName', 'FamilyName']
   
 
 def test_get_nodes_from_predicates():

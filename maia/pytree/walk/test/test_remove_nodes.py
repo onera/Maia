@@ -6,7 +6,7 @@ from maia.utils.yaml   import parse_yaml_cgns
 yt = """
 Base CGNSBase_t:
   Zone Zone_t:
-    ZBC ZoneBC_t:
+    ZoneBC ZoneBC_t:
       bc1 BC_t:
         FamilyName FamilyName_t 'BC1':
         Index_i IndexArray_t:

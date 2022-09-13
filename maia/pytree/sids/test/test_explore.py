@@ -14,7 +14,7 @@ def test_getZoneDonorPath():
 def test_getSubregionExtent():
   yt = """
 Zone Zone_t:
-  ZBC ZoneBC_t:
+  ZoneBC ZoneBC_t:
     BC BC_t:
     BC2 BC_t:
   ZGC ZoneGridConnectivity_t:
@@ -37,7 +37,7 @@ Zone Zone_t:
   zone = parse_yaml_cgns.to_node(yt)
 
   assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
-  assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZBC/BC2'
+  assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZoneBC/BC2'
   assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
 
   with pytest.raises(ValueError):

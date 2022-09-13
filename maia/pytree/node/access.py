@@ -139,3 +139,7 @@ def set_label(node, label):
     node[3] = label
   else:
     raise ValueError("Unvalid label for node")
+
+def get_names(nodes):
+  """ Return a list of name from a list of nodes """
+  return [get_name(node) for node in nodes]

@@ -12,7 +12,7 @@ from maia.pytree import compare as CP
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 def test_check_is_label():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
+  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   @CP.check_is_label('Zone_t')
@@ -27,7 +27,7 @@ def test_check_is_label():
       apply_zone(zone)
 
 def test_check_in_labels():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
+  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   @CP.check_in_labels(['Zone_t', 'CGNSBase_t'])
@@ -63,18 +63,18 @@ def test_is_same_value():
   assert CP.is_same_value(node1, node2, abs_tol=1E-6)
 
 def test_is_same_node():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
+  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
-  node1 = PT.get_node_from_name(tree, 'bc3')
-  node2 = PT.get_node_from_name(tree, 'bc5')
+  node1 = PT.get_node_from_name(tree, 'gc3')
+  node2 = PT.get_node_from_name(tree, 'gc5')
   assert not CP.is_same_node(node1, node2)
-  node2[0] = 'bc3'
+  node2[0] = 'gc3'
   assert CP.is_same_node(node1, node2) #Children are not compared
   
 def test_is_same_tree():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
+  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
-  node1 = PT.get_node_from_name(tree, 'bc5')
+  node1 = PT.get_node_from_name(tree, 'gc5')
   node2 = PT.deep_copy(node1)
   assert CP.is_same_tree(node1, node2)
   #Position of child does not matter

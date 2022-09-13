@@ -37,7 +37,7 @@ def test_matches():
 
 def test_belongs_to_family():
   yt = """
-ZBC ZoneBC_t:
+ZoneBC ZoneBC_t:
   BC1 BC_t:
     FamilyName FamilyName_t "SecondFamily":
   BC3 BC_t:

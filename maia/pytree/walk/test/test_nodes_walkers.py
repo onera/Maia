@@ -15,9 +15,6 @@ FamilyBC FamilyBC_t:
     SomeData DataArray_t:
 """
 
-def names(nodes):
-  return [PT.get_name(n) for n in nodes]
-
 def test_create():
   node = parse_yaml_cgns.to_node(yt)
   pattern = [lambda n : PT.get_label(n, "FamilyBCDataSet"), lambda n : PT.get_name(n).startswith("Momentum")]
@@ -44,18 +41,18 @@ def test_simple():
   node = parse_yaml_cgns.to_node(yt)
 
   walker = PT.NodesWalker(node, lambda n: PT.get_label(n) == "DataArray_t", explore='deep')
-  assert names(walker()) == ['Density', 'Density2', 'MomentumX', 'SomeData']
+  assert PT.get_names(walker()) == ['Density', 'Density2', 'MomentumX', 'SomeData']
 
   predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_label(n) == "DataArray_t"]
   walker = PT.NodesWalkers(node, predicates)
-  assert 'SomeData' not in names(walker())
+  assert 'SomeData' not in PT.get_names(walker())
 
 @pytest.mark.parametrize("caching", [False, True])
 def test_ancestors(caching):
   node = parse_yaml_cgns.to_node(yt)
   predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_label(n) == "DataArray_t"]
 
-  assert names(PT.NodesWalkers(node, predicates, caching=caching, ancestors=False)()) == ['Density', 'MomentumX']
+  assert PT.get_names(PT.NodesWalkers(node, predicates, caching=caching, ancestors=False)()) == ['Density', 'MomentumX']
   for nodes in PT.NodesWalkers(node, predicates, caching=caching, ancestors=True)():
     assert len(nodes) == 2 and PT.get_name(nodes[0]) == "RefStateFamilyBCDataSet"
 
@@ -64,14 +61,14 @@ def test_kwargs():
   # By default kwargs are applied to each predicate
   predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_label(n) == "DataArray_t"]
 
-  assert names(PT.NodesWalkers(node, predicates, depth=1)()) == [] #First predicate is not found
+  assert PT.get_names(PT.NodesWalkers(node, predicates, depth=1)()) == [] #First predicate is not found
   root = PT.get_node_from_name(node, "RefStateFamilyBCDataSet")
-  assert names(PT.NodesWalkers(root, predicates, depth=1)()) == ['Density', 'MomentumX'] 
+  assert PT.get_names(PT.NodesWalkers(root, predicates, depth=1)()) == ['Density', 'MomentumX'] 
 
   #We can set specific kwargs for each predicate
   predicates = [{'predicate':lambda n : PT.get_label(n) == "ReferenceState_t", 'depth':None},
                 {'predicate':lambda n : PT.get_label(n) == "DataArray_t", 'depth':1, 'explore':'deep'}]
-  assert names(PT.NodesWalkers(node, predicates)()) == ['Density', 'MomentumX'] 
+  assert PT.get_names(PT.NodesWalkers(node, predicates)()) == ['Density', 'MomentumX'] 
   
   for nodes in PT.NodesWalkers(node, predicates, ancestors=True)():
     assert len(nodes) == 2 and PT.get_name(nodes[0]) == "RefStateFamilyBCDataSet"

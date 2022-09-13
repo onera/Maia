@@ -13,23 +13,20 @@ Base CGNSBase_t:
   ZoneI Zone_t:
     Ngon Elements_t [22,0]:
     NFace Elements_t [23,0]:
-    ZBCA ZoneBC_t:
-      bc1 BC_t:
+    ZGCA ZoneGridConnectivity_t:
+      gc1 GridConnectivity_t:
         Index_i IndexArray_t:
-      bc2 BC_t:
+      gc2 GridConnectivity_t:
         Index_ii IndexArray_t:
-    ZBCB ZoneBC_t:
-      bc3 BC_t:
+    ZGCB ZoneGridConnectivity_t:
+      gc3 GridConnectivity_t:
         Index_iii IndexArray_t:
-      bc4 BC_t:
-      bc5 BC_t:
+      gc4 GridConnectivity_t:
+      gc5 GridConnectivity_t:
         Index_iv IndexArray_t:
         Index_v IndexArray_t:
         Index_vi IndexArray_t:
 """
-
-def names(nodes):
-  return [PT.get_name(n) for n in nodes]
 
 def test_generated_walkers():          
   tree = parse_yaml_cgns.to_cgns_tree(yt)
@@ -46,8 +43,8 @@ def test_generated_walkers():
     PT.request_node_from_name(tree, "Zzz")
 
   assert PT.get_child_from_name(tree, "ZoneI") is None
-  root = PT.get_node_from_name(tree, 'ZBCA')
-  assert PT.get_children_from_label(root, CGL.BC_t.name) == PT.get_nodes_from_label(root, CGL.BC_t.name)
+  root = PT.get_node_from_name(tree, 'ZGCA')
+  assert PT.get_children_from_label(root, CGL.GridConnectivity_t.name) == PT.get_nodes_from_label(root, CGL.GridConnectivity_t.name)
 
 def test_generated_walkers_leg():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
@@ -61,26 +58,26 @@ def test_generated_remove():
   treeA = parse_yaml_cgns.to_cgns_tree(yt)
   treeB = parse_yaml_cgns.to_cgns_tree(yt)
 
-  PT.rm_nodes_from_predicate(treeA, lambda n: PT.match_name(n, "bc*"))
-  PT.rm_nodes_from_name(treeB, "bc*")
+  PT.rm_nodes_from_predicate(treeA, lambda n: PT.match_name(n, "gc*"))
+  PT.rm_nodes_from_name(treeB, "gc*")
   assert PT.is_same_tree(treeA, treeB)
 
 def test_get_all_label():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  assert names(PT.get_all_CGNSBase_t(tree)) == ['Base']
-  assert names(PT.get_all_Zone_t(tree)) == ['ZoneI']
-  assert names(PT.iter_all_BC_t(tree)) == ['bc1', 'bc2', 'bc3', 'bc4', 'bc5']
+  assert PT.get_names(PT.get_all_CGNSBase_t(tree)) == ['Base']
+  assert PT.get_names(PT.get_all_Zone_t(tree)) == ['ZoneI']
+  assert PT.get_names(PT.iter_all_BC_t(tree)) == []
 
 
 def test_from_path():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  assert PT.get_node_from_path(tree, 'Base/ZoneI/ZBCB/bc3') == PT.get_node_from_name(tree, 'bc3')
-  assert PT.get_node_from_path(tree, 'Base/Zone/ZBCB/bc3') is None
+  assert PT.get_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
+  assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3') is None
   #With ancestors
-  nodes = PT.get_node_from_path(tree, 'Base/ZoneI/ZBCB/bc3', ancestors=True)
-  assert [PT.get_label(n) for n in nodes] == ['CGNSBase_t', 'Zone_t', 'ZoneBC_t', 'BC_t']
-  assert PT.get_node_from_path(tree, 'Base/Zone/ZBCB/bc3', ancestors=True) == []
+  nodes = PT.get_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3', ancestors=True)
+  assert [PT.get_label(n) for n in nodes] == ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
+  assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3', ancestors=True) == []
 
 # Move in functionnal test ?
 def test_getNodeFromPredicate():
@@ -88,8 +85,8 @@ def test_getNodeFromPredicate():
   is_zonei   = lambda n: PT.get_name(n) == 'ZoneI'   and PT.get_label(n) == 'Zone_t'
   is_nface   = lambda n: PT.get_name(n) == 'NFace'   and PT.get_label(n) == 'Elements_t'
   is_ngon    = lambda n: PT.get_name(n) == 'Ngon'    and PT.get_label(n) == 'Elements_t'
-  is_zbca    = lambda n: PT.get_name(n) == 'ZBCA'    and PT.get_label(n) == 'ZoneBC_t'
-  is_bc1     = lambda n: PT.get_name(n) == 'bc1'     and PT.get_label(n) == 'BC_t'
+  is_zgca    = lambda n: PT.get_name(n) == 'ZGCA'    and PT.get_label(n) == 'ZoneGridConnectivity_t'
+  is_gc1     = lambda n: PT.get_name(n) == 'gc1'     and PT.get_label(n) == 'GridConnectivity_t'
   is_index_i = lambda n: PT.get_name(n) == 'Index_i' and PT.get_label(n) == 'IndexArray_t'
 
   tree = parse_yaml_cgns.to_cgns_tree(yt)
@@ -117,7 +114,7 @@ def test_getNodeFromPredicate():
   assert is_base    ( PT.getNodeFromPredicate(tree, lambda n: PT.get_name(n) == "Base", search="dfs", depth=1)    )
   assert is_zonei   ( PT.getNodeFromPredicate(tree, lambda n: PT.get_name(n) == "ZoneI", search="dfs", depth=2)   )
   assert is_ngon    ( PT.getNodeFromPredicate(tree, lambda n: PT.get_name(n) == "Ngon", search="dfs", depth=3)    )
-  assert is_bc1     ( PT.getNodeFromPredicate(tree, lambda n: PT.get_name(n) == "bc1", search="dfs", depth=4)     )
+  assert is_gc1     ( PT.getNodeFromPredicate(tree, lambda n: PT.get_name(n) == "gc1", search="dfs", depth=4)     )
   assert is_index_i ( PT.getNodeFromPredicate(tree, lambda n: PT.get_name(n) == "Index_i", search="dfs", depth=5) )
 
   # getNodeFrom{Name, Label, ...}
@@ -167,13 +164,13 @@ def test_getNodeFromPredicate():
   assert is_base    (PT.getNodeFromName(tree, "Base"   , depth=1))
   assert is_zonei   (PT.getNodeFromName(tree, "ZoneI"  , depth=2))
   assert is_ngon    (PT.getNodeFromName(tree, "Ngon"   , depth=3))
-  assert is_bc1     (PT.getNodeFromName(tree, "bc1"    , depth=4))
+  assert is_gc1     (PT.getNodeFromName(tree, "gc1"    , depth=4))
   assert is_index_i (PT.getNodeFromName(tree, "Index_i", depth=5))
 
   assert is_base  (PT.getNodeFromLabel(tree, "CGNSBase_t", depth=1))
   assert is_zonei (PT.getNodeFromLabel(tree, "Zone_t"    , depth=2))
   assert is_ngon  (PT.getNodeFromLabel(tree, "Elements_t", depth=3))
-  assert is_bc1   (PT.getNodeFromLabel(tree, "BC_t"      , depth=4))
+  assert is_gc1   (PT.getNodeFromLabel(tree, "GridConnectivity_t"      , depth=4))
 
   # Snake case
   # ----------
@@ -188,13 +185,13 @@ def test_getNodeFromPredicate():
   assert is_base    (PT.get_child_from_name(tree, "Base"   ,        ))
   assert is_zonei   (PT.get_node_from_name (tree, "ZoneI"  , depth=2))
   assert is_ngon    (PT.get_node_from_name (tree, "Ngon"   , depth=3))
-  assert is_bc1     (PT.get_node_from_name (tree, "bc1"    , depth=4))
+  assert is_gc1     (PT.get_node_from_name (tree, "gc1"    , depth=4))
   assert is_index_i (PT.get_node_from_name (tree, "Index_i", depth=5))
 
   assert is_base    ( PT.get_node_from_label(tree, "CGNSBase_t"  , depth=1))
   assert is_zonei   ( PT.get_node_from_label(tree, "Zone_t"      , depth=2))
   assert is_ngon    ( PT.get_node_from_label(tree, "Elements_t"  , depth=3))
-  assert is_bc1     ( PT.get_node_from_label(tree, "BC_t"        , depth=4))
+  assert is_gc1     ( PT.get_node_from_label(tree, "GridConnectivity_t"        , depth=4))
   assert is_index_i ( PT.get_node_from_label(tree, "IndexArray_t", depth=5))
 
   # requestNodeFrom...
@@ -246,8 +243,8 @@ def test_getNodeFromPredicate():
   assert [PT.get_value(n)[0] for n in PT.getNodesFromPredicate1(zone, lambda n: PT.get_label(n) == CGL.Elements_t.name and np.array_equal(PT.get_value(n), ngon_value))] == elements_from_type_value1
   assert [PT.get_value(n)[0] for n in PT.getNodesFromValue1(zone, ngon_value)] == elements_from_type_value1
 
-  zonebcs_from_type_name1 = ['ZBCB']
-  assert [PT.get_name(n) for n in PT.getNodesFromPredicate1(zone, lambda n: PT.get_label(n) == CGL.ZoneBC_t.name and PT.get_name(n) != "ZBCA")] == zonebcs_from_type_name1
+  zonegcs_from_type_name1 = ['ZGCB']
+  assert [PT.get_name(n) for n in PT.getNodesFromPredicate1(zone, lambda n: PT.get_label(n) == CGL.ZoneGridConnectivity_t.name and PT.get_name(n) != "ZGCA")] == zonegcs_from_type_name1
 
   # Snake case
   # ----------
@@ -271,7 +268,7 @@ def test_getNodeFromPredicate():
   assert [PT.get_value(n)[0] for n in PT.get_children_from_predicate(zone, lambda n: PT.get_label(n) == CGL.Elements_t.name and np.array_equal(PT.get_value(n), ngon_value))] == elements_from_type_value1
   assert [PT.get_value(n)[0] for n in PT.get_children_from_value(zone, ngon_value)] == elements_from_type_value1
 
-  zonebcs_from_type_name1 = ['ZBCB']
-  assert [PT.get_name(n) for n in PT.get_children_from_predicate(zone, lambda n: PT.get_label(n) == CGL.ZoneBC_t.name and PT.get_name(n) != "ZBCA")] == zonebcs_from_type_name1
+  zonegcs_from_type_name1 = ['ZGCB']
+  assert [PT.get_name(n) for n in PT.get_children_from_predicate(zone, lambda n: PT.get_label(n) == CGL.ZoneGridConnectivity_t.name and PT.get_name(n) != "ZGCA")] == zonegcs_from_type_name1
 
 

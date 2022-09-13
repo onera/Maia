@@ -1,3 +1,5 @@
+from maia.pytree.cgns_keywords import cgns_to_dtype
+
 from maia.pytree      import node as N
 from maia.pytree.node import new_node
 
@@ -40,6 +42,13 @@ def new_NGonElements(name='NGonElements', *, erange=None, eso=None, ec=None, pe=
       new_DataArray(name, val, parent=elem)
   return elem
 
+def new_NFaceElements(name='NGonElements', *, erange=None, eso=None, ec=None, parent=None):
+  elem = new_Elements(name, 23, erange=erange, parent=parent)
+  for name, val in zip(['ElementStartOffset', 'ElementConnectivity'], [eso, ec]):
+    if val is not None:
+      new_DataArray(name, val, parent=elem)
+  return elem
+
 
 def new_BC(name='BC', type='Null', *, point_range=None, point_list=None, loc=None, family=None, parent=None):
   allowed_bc = """Null UserDefined BCAxisymmetricWedge BCDegenerateLine BCDegeneratePoint BCDirichlet BCExtrapolate
@@ -78,7 +87,8 @@ def new_GridLocation(loc, parent=None):
 def new_DataArray(name, value, *, dtype=None, parent=None):
   _value = N.convert_value(value)
   if dtype is not None:
-    print('Not yet implemented') #TODO : DataConversion
+    _dtype = cgns_to_dtype[dtype]
+    _value = _value.astype(_dtype)
   return new_node(name, 'DataArray_t', _value, [], parent)
 
 def new_FlowSolution(name='FlowSolution', *, loc=None, fields={}, parent=None):

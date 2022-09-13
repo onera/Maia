@@ -5,7 +5,7 @@ from maia.utils.yaml     import parse_yaml_cgns
 from maia.pytree.compare import is_same_tree
 
 from maia.pytree import node as N
-from maia.pytree import walk
+from maia.pytree import walk as W
 
 from maia.pytree.node import presets
 
@@ -55,7 +55,17 @@ def test_new_NGonElements():
     ElementConnectivity DataArray_t I4 [1,2,7]:
     ParentElements DataArray_t I4 [[1,0], [2,1], [2,0]]:
   """)
-  assert N.get_value(walk.get_child_from_name(elem, "ParentElements")).shape == (3,2)
+  assert N.get_value(W.get_child_from_name(elem, "ParentElements")).shape == (3,2)
+  assert is_same_tree(expected, elem)
+
+def test_new_NFaceElements():
+  elem = presets.new_NFaceElements('NFace', erange=[1,10], ec=[1,2,7], eso=[0,3])
+  expected = parse_yaml_cgns.to_node("""
+  NFace Elements_t I4 [23,0]:
+    ElementRange IndexRange_t I4 [1,10]:
+    ElementStartOffset DataArray_t I4 [0,3]:
+    ElementConnectivity DataArray_t I4 [1,2,7]:
+  """)
   assert is_same_tree(expected, elem)
 
 def test_new_BC():
@@ -97,7 +107,7 @@ def test_new_DataArray():
   assert np.array_equal(N.get_value(data), [1,2,3])
   assert N.get_value(data).dtype == np.int32
   data = presets.new_DataArray('Array', np.array([1,2,3]), dtype="R8")
-  #assert N.get_value(data).dtype == np.float64
+  assert N.get_value(data).dtype == np.float64
 
 def test_new_FlowSolution():
   sol = presets.new_FlowSolution('MySol', loc='CellCenter', \

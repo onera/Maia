@@ -91,11 +91,13 @@ base_functions = [
     ]
 
 for base_function in base_functions:
+  #Todo : raise DeprecationWarning
   easypredicates = {
     'Name' : (match_name,  ('name',)),
     'Value': (match_value, ('value',)),
     'Label': (match_label, ('label',)),
     'Type' : (match_label, ('label',)),
+    'NameAndType'  : (match_name_label,  ('name', 'label',)),
     'NameAndLabel' : (match_name_label,  ('name', 'label',)),
   }
   generated = generate_functions(base_function, maxdepth=3, child=True, easypredicates=easypredicates)

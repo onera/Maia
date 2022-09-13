@@ -1,6 +1,6 @@
 from maia.utils.yaml   import parse_yaml_cgns
-from maia.pytree      import walk
-from maia.pytree      import node
+from maia.pytree import walk as W
+from maia.pytree import node as N
 
 from maia.pytree.sids import adjust
 
@@ -18,8 +18,8 @@ def test_enforceDonorAsPath():
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   adjust.enforceDonorAsPath(tree)
-  assert node.get_value(walk.get_node_from_name(tree, "match1")) == "Base/ZoneA"
-  assert node.get_value(walk.get_node_from_name(tree, "match2")) == "Base/ZoneA"
-  assert node.get_value(walk.get_node_from_name(tree, "match3")) == "Base/ZoneB"
-  assert node.get_value(walk.get_node_from_name(tree, "match4")) == "Base/ZoneA"
+  assert N.get_value(W.get_node_from_name(tree, "match1")) == "Base/ZoneA"
+  assert N.get_value(W.get_node_from_name(tree, "match2")) == "Base/ZoneA"
+  assert N.get_value(W.get_node_from_name(tree, "match3")) == "Base/ZoneB"
+  assert N.get_value(W.get_node_from_name(tree, "match4")) == "Base/ZoneA"
 

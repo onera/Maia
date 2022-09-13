@@ -6,7 +6,7 @@ from maia.utils.meta         import for_all_methods
 
 from maia.pytree.compare import check_is_label, check_in_labels
 from maia.pytree         import node as N
-from maia.pytree         import walk
+from maia.pytree         import walk as W
 from . import elements_utils as EU
 
 # --------------------------------------------------------------------------
@@ -42,7 +42,7 @@ class Zone:
       n_face = [compute_nface_per_direction(d, dim, vtx_size, cell_size) for d in range(dim)]
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
-      er = walk.get_child_from_name(ngon_node, 'ElementRange')[1]
+      er = W.get_child_from_name(ngon_node, 'ElementRange')[1]
       n_face = [er[1] - er[0] + 1]
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {N.get_name(zone_node)}")
@@ -51,13 +51,13 @@ class Zone:
   @staticmethod
   def NGonNode(zone_node):
     predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NGON_n'
-    ngons = walk.get_children_from_predicate(zone_node, predicate)
+    ngons = W.get_children_from_predicate(zone_node, predicate)
     return py_utils.expects_one(ngons, ("NGon node", f"zone {N.get_name(zone_node)}"))
 
   @staticmethod
   def NFaceNode(zone_node):
     predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NFACE_n'
-    nfaces = walk.get_children_from_predicate(zone_node, predicate)
+    nfaces = W.get_children_from_predicate(zone_node, predicate)
     return py_utils.expects_one(nfaces, ("NFace node", f"zone {N.get_name(zone_node)}"))
 
   @staticmethod
@@ -67,7 +67,7 @@ class Zone:
 
   @staticmethod
   def Type(zone_node):
-    zone_type_node = walk.get_child_from_label(zone_node, "ZoneType_t")
+    zone_type_node = W.get_child_from_label(zone_node, "ZoneType_t")
     return N.get_value(zone_type_node)
 
   #Todo : this one should go elsewhere
@@ -75,7 +75,7 @@ class Zone:
   def getBCsFromFamily(zone_node, families):
     from maia.pytree import iter_children_from_predicates
     bc_query = lambda n : N.get_label(n) == 'BC_t' and N.get_value(n) == 'FamilySpecified' and \
-      N.get_value(walk.get_child_from_label(n, "FamilyName_t")) in families
+      N.get_value(W.get_child_from_label(n, "FamilyName_t")) in families
     return iter_children_from_predicates(zone_node, ['ZoneBC_t', bc_query])
 
   @staticmethod
@@ -96,23 +96,23 @@ class Zone:
 
   @staticmethod
   def coordinates(zone_node, name=None):
-    grid_coord_node = walk.get_child_from_label(zone_node, "GridCoordinates_t") if name is None \
-        else walk.get_child_from_name_and_label(zone_node, name, "GridCoordinates_t")
+    grid_coord_node = W.get_child_from_label(zone_node, "GridCoordinates_t") if name is None \
+        else W.get_child_from_name_and_label(zone_node, name, "GridCoordinates_t")
     if grid_coord_node is None:
       raise RuntimeError(f"Unable to find GridCoordinates_t node in {N.get_name(node)}.")
 
-    x = N.get_value(walk.get_child_from_name(grid_coord_node, "CoordinateX"))
-    y = N.get_value(walk.get_child_from_name(grid_coord_node, "CoordinateY"))
-    z = N.get_value(walk.get_child_from_name(grid_coord_node, "CoordinateZ"))
+    x = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateX"))
+    y = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateY"))
+    z = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateZ"))
 
     return x, y, z
 
   @staticmethod
   def ngon_connectivity(zone_node):
     ngon_node = Zone.NGonNode(zone_node)
-    face_vtx_idx = N.get_value(walk.get_child_from_name(ngon_node, "ElementStartOffset"))
-    face_vtx     = N.get_value(walk.get_child_from_name(ngon_node, "ElementConnectivity"))
-    ngon_pe      = N.get_value(walk.get_child_from_name(ngon_node, "ParentElements"))
+    face_vtx_idx = N.get_value(W.get_child_from_name(ngon_node, "ElementStartOffset"))
+    face_vtx     = N.get_value(W.get_child_from_name(ngon_node, "ElementConnectivity"))
+    ngon_pe      = N.get_value(W.get_child_from_name(ngon_node, "ParentElements"))
     return face_vtx_idx, face_vtx, ngon_pe
 
   @staticmethod
@@ -127,7 +127,7 @@ class Zone:
     """
     Return the elements nodes in increasing order wrt ElementRange
     """
-    return sorted(walk.get_children_from_label(zone, 'Elements_t'),
+    return sorted(W.get_children_from_label(zone, 'Elements_t'),
                   key = lambda item : Element.Range(item)[0])
 
   @staticmethod
@@ -200,7 +200,7 @@ class Element:
 
   @staticmethod
   def Range(elt_node):
-    return walk.get_child_from_name(elt_node,"ElementRange")[1]
+    return W.get_child_from_name(elt_node,"ElementRange")[1]
 
   @staticmethod
   def Size(elt_node):
@@ -217,7 +217,7 @@ class GridConnectivity:
     if N.get_label(gc) == 'GridConnectivity1to1_t':
       return 'Abutting1to1'
     elif N.get_label(gc) == 'GridConnectivity_t':
-      gc_type_n = walk.get_child_from_name(gc, 'GridConnectivityType')
+      gc_type_n = W.get_child_from_name(gc, 'GridConnectivityType')
       return N.get_value(gc_type_n) if gc_type_n is not None else 'Overset'
 
   @staticmethod
@@ -232,8 +232,8 @@ class Subset:
   """
   
   def getPatch(subset):
-    pl = walk.get_child_from_name(subset, 'PointList')
-    pr = walk.get_child_from_name(subset, 'PointRange')
+    pl = W.get_child_from_name(subset, 'PointList')
+    pr = W.get_child_from_name(subset, 'PointRange')
     assert (pl is None) ^ (pr is None)
     return pl if pl is not None else pr
 
@@ -242,7 +242,7 @@ class Subset:
     return PointList.n_elem(patch) if N.get_label(patch) == 'IndexArray_t' else PointRange.n_elem(patch)
 
   def GridLocation(subset):
-    grid_loc_n = walk.get_child_from_label(subset, 'GridLocation_t')
+    grid_loc_n = W.get_child_from_label(subset, 'GridLocation_t')
     return N.get_value(grid_loc_n) if grid_loc_n else 'Vertex'
 
 # --------------------------------------------------------------------------

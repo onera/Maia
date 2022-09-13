@@ -87,3 +87,12 @@ def test_children():
   other_child = ['SomeOtherNode', None, [], 'UserDefinedData_t']
   with pytest.raises(RuntimeError):
     NA.add_child(node, other_child)
+
+def test_get_names():
+  yt = """
+  MyNode UserDefinedData_t I4 [0]:
+  SomeOtherNode DataArray_t:
+  """
+  nodes = parse_yaml_cgns.to_nodes(yt)
+  assert NA.get_names(nodes) == ['MyNode', 'SomeOtherNode']
+

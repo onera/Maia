@@ -1,21 +1,21 @@
-from maia.pytree import walk
-from maia.pytree import node
+from maia.pytree import walk as W
+from maia.pytree import node as N
 
 def getDistribution(node, distri_name=None):
   """
   Starting from node, return the CGNS#Distribution node if distri_name is None
   or the value of the requested distribution if distri_name is not None
   """
-  return walk.get_node_from_path(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
-      else walk.get_child_from_name(node, ':CGNS#Distribution')
+  return W.get_node_from_path(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
+      else W.get_child_from_name(node, ':CGNS#Distribution')
 
 def getGlobalNumbering(node, lngn_name=None):
   """
   Starting from node, return the CGNS#GlobalNumbering node if lngn_name is None
   or the value of the requested globalnumbering if lngn_name is not None
   """
-  return walk.get_node_from_path(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
-      else walk.get_child_from_name(node, ':CGNS#GlobalNumbering')
+  return W.get_node_from_path(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
+      else W.get_child_from_name(node, ':CGNS#GlobalNumbering')
 
 # --------------------------------------------------------------------------
 def newDistribution(distributions = dict(), parent=None):
@@ -26,11 +26,11 @@ def newDistribution(distributions = dict(), parent=None):
   distributions must be a dictionnary {DistriName : distri_array}
   """
   if parent:
-    distri_node = node.update_child(parent, ':CGNS#Distribution', 'UserDefinedData_t')
+    distri_node = N.update_child(parent, ':CGNS#Distribution', 'UserDefinedData_t')
   else:
-    distri_node = node.new_node(':CGNS#Distribution', 'UserDefinedData_t')
+    distri_node = N.new_node(':CGNS#Distribution', 'UserDefinedData_t')
   for name, value in distributions.items():
-    node.update_child(distri_node, name, 'DataArray_t', value)
+    N.update_child(distri_node, name, 'DataArray_t', value)
   return distri_node
 
 def newGlobalNumbering(glob_numberings = dict(), parent=None):
@@ -41,11 +41,11 @@ def newGlobalNumbering(glob_numberings = dict(), parent=None):
   glob_numberings must be a dictionnary {NumberingName : lngn_array}
   """
   if parent:
-    lngn_node = node.update_child(parent, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    lngn_node = N.update_child(parent, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
   else:
-    lngn_node = node.new_node(':CGNS#GlobalNumbering', 'UserDefinedData_t')
+    lngn_node = N.new_node(':CGNS#GlobalNumbering', 'UserDefinedData_t')
   for name, value in glob_numberings.items():
-    node.update_child(lngn_node, name, 'DataArray_t', value)
+    N.update_child(lngn_node, name, 'DataArray_t', value)
   return lngn_node
 
 # --------------------------------------------------------------------------

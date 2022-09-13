@@ -2,16 +2,16 @@ Base CGNSBase_t:
   ZoneI Zone_t:
     Ngon Elements_t [22,0]:
     NFace Elements_t [23,0]:
-    ZBCA ZoneBC_t:
-      bc1 BC_t:
+    ZGCA ZoneGridConnectivity_t:
+      gc1 GridConnectivity_t:
         Index_i IndexArray_t:
-      bc2 BC_t:
+      gc2 GridConnectivity_t:
         Index_ii IndexArray_t:
-    ZBCB ZoneBC_t:
-      bc3 BC_t:
+    ZGCB ZoneGridConnectivity_t:
+      gc3 GridConnectivity_t:
         Index_iii IndexArray_t:
-      bc4 BC_t:
-      bc5 BC_t:
+      gc4 GridConnectivity_t:
+      gc5 GridConnectivity_t:
         Index_iv IndexArray_t:
         Index_v IndexArray_t:
         Index_vi IndexArray_t:
