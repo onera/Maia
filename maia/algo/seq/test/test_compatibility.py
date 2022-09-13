@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+
 import numpy as np
 import os
 from mpi4py import MPI
@@ -7,6 +7,7 @@ from mpi4py import MPI
 from maia.utils import test_utils as TU
 from maia.utils.yaml   import parse_yaml_cgns
 
+import cmaia
 import maia
 import maia.pytree as PT
 import Converter.Internal as I
@@ -21,6 +22,7 @@ def poly_tree_new():
   return t
 
 
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_poly_new_to_old(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.poly_new_to_old(t)
@@ -41,6 +43,7 @@ def test_poly_new_to_old(poly_tree_new):
   assert (nface_ec == np.array([ 6, 11,5,16,9,1,17,    6, 17,7,18,10,2,12,    5, 6,3,16,13,15,    5, 8,4,18,15,14])).all()
 
 
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_poly_new_to_old_only_interleave(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.poly_new_to_old(t,full_onera_compatibility=False)
@@ -61,6 +64,7 @@ def test_poly_new_to_old_only_interleave(poly_tree_new):
   assert (nface_ec == np.array([ 6, 11,5,16,9,1,17,    6, -17,7,18,10,2,12,    5, 6,3,-16,13,15,    5, 8,4,-18,-15,14])).all()
 
 
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_poly_old_to_new(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.poly_new_to_old(t) # Note: we are not testing that!
@@ -86,6 +90,7 @@ def test_poly_old_to_new(poly_tree_new):
   assert (nface_ec  == np.array([1,5,9,11,16,17,    2,7,10,12,18,-17,    3,6,13,15,-16,    4,8,14,-15,-18])).all()
 
 
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_poly_old_to_new_only_index(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.poly_new_to_old(t,full_onera_compatibility=False) # Note: we are not testing that!
@@ -111,6 +116,7 @@ def test_poly_old_to_new_only_index(poly_tree_new):
   assert (nface_ec  == np.array([11,5,16,9,1,17,    -17,7,18,10,2,12,    6,3,-16,13,15,    8,4,-18,-15,14])).all()
 
 
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_poly_old_to_new_no_pe(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.poly_new_to_old(t) # Note: we are not testing that!

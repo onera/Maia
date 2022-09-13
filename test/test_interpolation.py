@@ -7,6 +7,7 @@ import Converter.PyTree   as C
 import Converter.Internal as I
 import maia.pytree        as PT
 
+import cmaia
 import maia.utils    as MU
 import maia.algo     as MA
 import maia.factory  as MF
@@ -86,6 +87,7 @@ def test_interpolation_non_overlaping_cubes(sub_comm, strategy, write_output):
 
     assert np.array_equal(expected_sol, sol, equal_nan=True)
 
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag") #For refine_mesh
 @mark_mpi_test([2])
 @pytest.mark.parametrize("n_part_tgt", [1,3,7])
 def test_interpolation_refined(sub_comm, n_part_tgt, write_output):
