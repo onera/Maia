@@ -6,7 +6,7 @@ import maia.pytree as PT
 import Pypdm.Pypdm as PDM
 
 from maia import npy_pdm_gnum_dtype
-from   maia.utils.yaml   import parse_yaml_cgns
+from   maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh_nodal as CTP
 
 dtype = 'I4' if npy_pdm_gnum_dtype == np.int32 else 'I8'

@@ -10,7 +10,7 @@ import maia.pytree.maia as MT
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from   maia.transfer import part_to_dist
 import maia.transfer.part_to_dist.data_exchange as PTB
-from   maia.utils.yaml   import parse_yaml_cgns
+from   maia.pytree.yaml   import parse_yaml_cgns
 
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 

@@ -1,11 +1,11 @@
 import numpy as np
-from Converter import Internal as I
 
-from maia.utils.yaml import parse_cgns_yaml
+import maia.pytree as PT
+from maia.pytree.yaml import parse_cgns_yaml
 
 def test_generate_line():
-  sol = I.newFlowSolution('FlowSolution', 'CellCenter')
-  array = I.newDataArray('Data', np.array([1,2,3,4], dtype=np.int64), parent=sol)
+  sol = PT.new_FlowSolution('FlowSolution', loc='CellCenter')
+  array = PT.new_DataArray('Data', np.array([1,2,3,4], dtype=np.int64), parent=sol)
 
   lines = []
   parse_cgns_yaml.generate_line(array, lines)
@@ -35,8 +35,8 @@ def test_generate_line():
       "  GridLocation GridLocation_t 'CellCenter':", "  Data DataArray_t 19.89:"]
       
 def test_to_yaml():
-  sol = I.newFlowSolution('FlowSolution', 'CellCenter')
-  array = I.newDataArray('Data', np.array([1,2,3,4], dtype=np.int64), parent=sol)
+  sol = PT.new_FlowSolution('FlowSolution', loc='CellCenter')
+  array = PT.new_DataArray('Data', np.array([1,2,3,4], dtype=np.int64), parent=sol)
 
   lines = parse_cgns_yaml.to_yaml(sol)
   assert lines[0] == "GridLocation GridLocation_t 'CellCenter':"

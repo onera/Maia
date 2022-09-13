@@ -2,7 +2,7 @@ import numpy as np
 import Converter.Internal as I
 import maia.pytree        as PT
 
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning import post_split as PS
 
 def test_copy_additional_nodes():

@@ -9,7 +9,7 @@ import maia.pytree.maia as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 import maia.utils.py_utils as py_utils
-from   maia.utils.yaml   import parse_yaml_cgns
+from   maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.transfer.dist_to_part import index_exchange as IBTP
 

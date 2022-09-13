@@ -1,13 +1,12 @@
 import pytest
-import Converter.Internal as I
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml   import parse_yaml_cgns
 
 import maia.pytree as PT
 from maia.pytree.sids import explore as EX
 
 def test_getZoneDonorPath():
-  jn1 = I.newGridConnectivity1to1(donorName='BaseXX/ZoneYY')
-  jn2 = I.newGridConnectivity1to1(donorName='ZoneYY')
+  jn1 = PT.new_node('match', 'GridConnectivity1to1_t', 'BaseXX/ZoneYY')
+  jn2 = PT.new_node('match', 'GridConnectivity1to1_t', 'ZoneYY')
   assert EX.getZoneDonorPath('BaseXX', jn1) == 'BaseXX/ZoneYY'
   assert EX.getZoneDonorPath('BaseXX', jn2) == 'BaseXX/ZoneYY'
 
@@ -15,7 +14,7 @@ def test_getZoneDonorPath():
 def test_getSubregionExtent():
   yt = """
 Zone Zone_t:
-  ZBC ZoneBC_t:
+  ZoneBC ZoneBC_t:
     BC BC_t:
     BC2 BC_t:
   ZGC ZoneGridConnectivity_t:
@@ -38,7 +37,7 @@ Zone Zone_t:
   zone = parse_yaml_cgns.to_node(yt)
 
   assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
-  assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZBC/BC2'
+  assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZoneBC/BC2'
   assert EX.getSubregionExtent(PT.get_node_from_name(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
 
   with pytest.raises(ValueError):

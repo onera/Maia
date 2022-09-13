@@ -9,7 +9,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml  import parse_yaml_cgns
 from maia.factory      import dcube_generator as DCG
 
 from maia.algo.part import interpolate as ITP

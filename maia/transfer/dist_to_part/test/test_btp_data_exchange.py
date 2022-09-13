@@ -5,7 +5,7 @@ import maia.pytree        as PT
 
 from pytest_mpi_check._decorator import mark_mpi_test
 
-from   maia.utils.yaml   import parse_yaml_cgns
+from   maia.pytree.yaml   import parse_yaml_cgns
 from   maia.transfer import dist_to_part
 import maia.transfer.dist_to_part.data_exchange as BTP
 from maia import npy_pdm_gnum_dtype as pdm_dtype

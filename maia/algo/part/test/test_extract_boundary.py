@@ -8,7 +8,7 @@ import maia.pytree as PT
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 from maia.factory.dcube_generator import dcube_generate
-from  maia.utils.yaml   import parse_yaml_cgns
+from  maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.algo.part import extract_boundary as EXB
 

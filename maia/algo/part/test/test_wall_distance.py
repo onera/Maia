@@ -6,7 +6,7 @@ import Converter.Internal as I
 import maia.pytree        as PT
 
 import maia
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.algo.part import wall_distance as WD
 

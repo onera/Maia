@@ -1,4 +1,4 @@
-from maia.utils.yaml.pretty_print import pretty_print
+from maia.pytree.yaml.pretty_print import pretty_print
 from pathlib import Path
 import os
 

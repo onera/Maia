@@ -1,9 +1,7 @@
 import sys
 from   functools import partial
 
-import maia.utils.py_utils as PYU
-
-from .generate_utils import generate_functions
+from .generate_utils import generate_functions, camel_to_snake
 from .predicate import match_name
 from .predicate import match_str_label
 from .predicate import match_label
@@ -59,7 +57,7 @@ for base_function in base_functions:
 #Update name to avoid snake case and remove nodes_from
 for label in easylabels:
   for prefix in ['get', 'iter']:
-    old_key = f'{prefix}_nodes_from_label_' + PYU.camel_to_snake(label)
+    old_key = f'{prefix}_nodes_from_label_' + camel_to_snake(label)
     func = generated.pop(old_key)
     func.__name__  = f'{prefix}_all_{label}'
     generated[func.__name__] = func
@@ -70,7 +68,14 @@ for rm_function in [rm_nodes_from_predicate, rm_children_from_predicate, keep_ch
   generated = generate_functions(rm_function, maxdepth=0, child=False)
   _update_module_attributes(generated)
 
-
+def get_node_from_path(root, path, ancestors=False):
+  nodes = WAPI.get_nodes_from_predicates(root, path, depth=[1,1], ancestors=ancestors)
+  if len(nodes) == 0 and ancestors:
+    return []
+  if len(nodes) == 1:
+    return nodes[0]
+  elif len(nodes) > 1:
+    raise RuntimeError(f"Mutliple nodes founds for path {path}")
 
 
 # Specialization of legacy functions
@@ -84,7 +89,16 @@ base_functions = [
     ]
 
 for base_function in base_functions:
-  generated = generate_functions(base_function, maxdepth=3, child=True)
+  #Todo : raise DeprecationWarning
+  easypredicates = {
+    'Name' : (match_name,  ('name',)),
+    'Value': (match_value, ('value',)),
+    'Label': (match_label, ('label',)),
+    'Type' : (match_label, ('label',)),
+    'NameAndType'  : (match_name_label,  ('name', 'label',)),
+    'NameAndLabel' : (match_name_label,  ('name', 'label',)),
+  }
+  generated = generate_functions(base_function, maxdepth=3, child=True, easypredicates=easypredicates)
   _update_module_attributes(generated)
 for base_function in [WAPI.getNodesFromPredicates, WAPI.iterNodesFromPredicates]:
   generated = generate_functions(base_function, easypredicates={}, maxdepth=3, child=True)

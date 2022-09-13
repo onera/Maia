@@ -7,9 +7,7 @@ from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
 from functools import wraps
 import numpy as np
 
-import Converter.Internal as I
-
-import maia.pytree.cgns_keywords as CGK
+import maia.pytree as PT
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
@@ -26,7 +24,7 @@ class CGNSNodeFromPredicateNotFoundError(Exception):
         super().__init__()
 
     def __str__(self):
-        return f"Unable to find the predicate '{self.predicate}' from the CGNS node '[n:{I.getName(self.node)}, ..., l:{I.getType(self.node)}]', see : \n{I.printTree(self.node)}."
+        return f"Unable to find the predicate '{self.predicate}' from the CGNS node '[n:{PT.get_name(self.node)}, ..., l:{PT.get_label(self.node)}]"
 
 class CGNSLabelNotEqualError(Exception):
     """
@@ -40,7 +38,7 @@ class CGNSLabelNotEqualError(Exception):
         super().__init__()
 
     def __str__(self):
-        return f"Expected a CGNS node with label '{self.label}', '[n:{I.getName(self.node)}, ..., l:{I.getType(self.node)}]' found here."
+        return f"Expected a CGNS node with label '{self.label}', '[n:{PT.get_name(self.node)}, ..., l:{PT.get_label(self.node)}]' found here."
 
 class NotImplementedForElementError(NotImplementedError):
     """
@@ -54,78 +52,7 @@ class NotImplementedForElementError(NotImplementedError):
         super().__init__()
 
     def __str__(self):
-        return f"Unstructured CGNS Zone_t named '{I.getName(self.zone_node)}' with CGNS Elements_t named '{SIDS.ElementCGNSName(self.element_node)}' is not yet implemented."
-
-# --------------------------------------------------------------------------
-def is_valid_name(name: str):
-  """
-  Return True if name is a valid Python/CGNS name
-  """
-  if isinstance(name, str):
-    if name not in ['', '.', '..'] and not '/' in name:
-      return len(name) <= 32
-  return False
-
-def is_valid_value(value):
-  """
-  Return True if value is a valid Python/CGNS Value
-  """
-  if value is None:
-    return True
-  if isinstance(value, np.ndarray):
-    return value.flags.f_contiguous if value.ndim > 1 else True
-  return False
-
-def is_valid_children(children):
-  """
-  Return True if children is a valid Python/CGNS Children
-  """
-  return isinstance(children, (list, tuple))
-
-def is_valid_label(label, only_sids: Optional[bool]=False):
-  """
-  Return True if label is a valid Python/CGNS Label
-  """
-  legacy_labels     = ['"int[1+...+IndexDimension]"', '"int[IndexDimension]"', '"int"']
-  additional_labels = ['DiffusionModel_t', 'Transform_t', 'InwardNormalIndex_t', 'EquationDimension_t']
-
-  if isinstance(label, str) and (label.endswith('_t') or label in legacy_labels):
-    if only_sids:
-      return label in CGK.Label.__members__ or label in legacy_labels or label in additional_labels
-    else:
-      return True
-  return False
-
-# --------------------------------------------------------------------------
-def check_name(name: str):
-  if is_valid_name(name):
-    return name
-  raise TypeError(f"Invalid Python/CGNS name '{name}'")
-
-def check_value(value):
-  if is_valid_value(value):
-    return value
-  raise TypeError(f"Invalid Python/CGNS value '{value}'")
-
-def check_children(children):
-  if is_valid_children(children):
-    return children
-  raise TypeError(f"Invalid Python/CGNS children '{children}'")
-
-def check_label(label):
-  if is_valid_label(label):
-    return label
-  raise TypeError(f"Invalid Python/CGNS label '{label}'")
-
-# --------------------------------------------------------------------------
-def is_valid_node(node):
-  if isinstance(node, list) and len(node) == 4 and \
-      is_valid_name(I.getName(node))           and \
-      is_valid_value(I.getVal(node))           and \
-      is_valid_children(I.getChildren(node))   and \
-      is_valid_label(I.getType(node)) :
-    return True
-  return False
+        return f"Unstructured CGNS Zone_t named '{PT.get_name(self.zone_node)}' with CGNS Elements_t named '{SIDS.ElementCGNSName(self.element_node)}' is not yet implemented."
 
 # --------------------------------------------------------------------------
 def check_is_label(label, n=0):
@@ -133,7 +60,7 @@ def check_is_label(label, n=0):
     @wraps(f)
     def wrapped_method(*args, **kwargs):
       node = args[n]
-      if I.getType(node) != label:
+      if PT.get_label(node) != label:
         raise CGNSLabelNotEqualError(node, label)
       return f(*args, **kwargs)
     return wrapped_method
@@ -145,7 +72,7 @@ def check_in_labels(labels, n=0):
     @wraps(f)
     def wrapped_method(*args, **kwargs):
       node = args[n]
-      if I.getType(node) not in labels:
+      if PT.get_label(node) not in labels:
         raise CGNSLabelNotEqualError(node, labels)
       return f(*args, **kwargs)
     return wrapped_method
@@ -200,7 +127,7 @@ def is_same_tree(node1, node2, abs_tol=0, type_tol=False):
   Recursive comparaison of two nodes. Nodes are considered equal if the pass is_same_node test
   and if the have the same childrens. Children are allowed to appear in a different order.
   """
-  if not (is_same_node(node1, node2, abs_tol, type_tol) and len(I.getChildren(node1)) == len(I.getChildren(node2)) ):
+  if not (is_same_node(node1, node2, abs_tol, type_tol) and len(PT.get_children(node1)) == len(PT.get_children(node2)) ):
     return False
   for c1, c2 in zip(sorted(node1[2]), sorted(node2[2])):
     if not is_same_tree(c1, c2, abs_tol, type_tol):

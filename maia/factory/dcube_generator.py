@@ -73,8 +73,8 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   distrib_facevtx = par_utils.dn_to_distribution(dcube_dims['sface_vtx'], comm)
 
   # > Generate dist_tree
-  dist_tree = I.newCGNSTree()
-  dist_base = I.newCGNSBase(parent=dist_tree)
+  dist_tree = PT.new_CGNSTree()
+  dist_base = PT.new_CGNSBase(parent=dist_tree)
   dist_zone = I.newZone('zone', [[distrib_vtx[-1], distrib_cell[-1], 0]],
                         'Unstructured', parent=dist_base)
 
@@ -154,8 +154,8 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
   dmesh_nodal = dcube.get_dmesh_nodal()
 
   # > Generate dist_tree
-  dist_tree = I.newCGNSTree()
-  dist_base = I.newCGNSBase('Base', cellDim=cell_dim, physDim=phy_dim, parent=dist_tree)
+  dist_tree = PT.new_CGNSTree()
+  dist_base = PT.new_CGNSBase('Base', cell_dim=cell_dim, phy_dim=phy_dim, parent=dist_tree)
 
   min_elt_dim = 0 if get_ridges else cell_dim - 1
   dist_zone = _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, min_elt_dim)

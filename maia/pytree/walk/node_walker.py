@@ -1,4 +1,4 @@
-from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
+from typing import List, Optional, Union, Callable
 import numpy as np
 
 from ._node_parsers import NodeParser, RangeLevelNodeParser
@@ -10,7 +10,7 @@ class NodeWalker:
   """ Return the first node found in the Python/CGNS tree """
 
   FORWARD  = lambda children:children
-  BACKWARD = lambda children:reverse(children)
+  BACKWARD = lambda children:reversed(children)
 
   def __init__(self, root: TreeNode,
                      predicate,

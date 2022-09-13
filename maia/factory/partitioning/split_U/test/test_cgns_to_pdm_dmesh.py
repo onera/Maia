@@ -5,7 +5,7 @@ import Converter.Internal as I
 import Pypdm.Pypdm as PDM
 
 import maia.pytree as PT
-from   maia.utils.yaml   import parse_yaml_cgns
+from   maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh as CTP
 
 @mark_mpi_test(3)

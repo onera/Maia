@@ -1,5 +1,3 @@
-from functools import partial
-
 from .node_walker   import NodeWalker
 from .nodes_walker  import NodesWalker
 from .nodes_walkers import NodesWalkers
@@ -17,11 +15,11 @@ def get_node_from_predicate(root, predicate, **kwargs):
 
 def request_node_from_predicate(root, predicate, *args, **kwargs):
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
+  default = kwargs.pop('default', None)
   node = get_node_from_predicate(root, predicate, *args, **kwargs)
   if node is not None:
     return node
-  default = kwargs.get('default', None)
-  if default and is_valid_node(default):
+  if default:
     return default
   raise CGNSNodeFromPredicateNotFoundError(root, predicate)
 

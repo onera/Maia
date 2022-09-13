@@ -4,7 +4,7 @@ import Converter.Internal as I
 import numpy as np
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils.yaml   import parse_yaml_cgns
+from maia.pytree.yaml   import parse_yaml_cgns
 from maia.transfer.dist_to_part import recover_jn as JBTP
 
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'

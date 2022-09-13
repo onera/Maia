@@ -71,7 +71,7 @@ def get_parts_per_blocks(part_tree, comm):
   and return a dictionnary associating each path to the list of the corresponding
   partitioned zones
   """
-  dist_doms = I.newCGNSTree()
+  dist_doms = PT.new_CGNSTree()
   discover_nodes_from_matching(dist_doms, [part_tree], 'CGNSBase_t/Zone_t', comm,
                                     merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
   parts_per_dom = dict()
@@ -154,7 +154,7 @@ def recover_dist_tree(part_tree, comm):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  dist_tree = I.newCGNSTree()
+  dist_tree = PT.new_CGNSTree()
   # > Discover partitioned zones to build dist_tree structure
   discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=['Family_t'])
   discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\

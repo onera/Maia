@@ -3,7 +3,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 
 import maia.io
 
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 import maia.utils.test_utils as TU
 
 import Converter.PyTree as C

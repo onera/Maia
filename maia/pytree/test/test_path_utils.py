@@ -1,5 +1,5 @@
 import os
-from   maia.utils.yaml   import parse_yaml_cgns
+from   maia.pytree.yaml   import parse_yaml_cgns
 
 import maia.pytree as PT
 from maia.pytree import path_utils as PU
@@ -25,19 +25,19 @@ def test_update_path_elt():
   assert PU.update_path_elt(path, 1, lambda n : 'crazy' + n) == 'some/crazypath/to/node'
 
 def test_predicates_to_paths():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
+  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  paths = PU.predicates_to_paths(tree, ["Base", "Zone_t", "ZBC*", lambda n: int(n[0][-1]) >= 2 and int(n[0][-1]) <= 4])
-  assert paths == ['Base/ZoneI/ZBCA/bc2', 'Base/ZoneI/ZBCB/bc3', 'Base/ZoneI/ZBCB/bc4']
+  paths = PU.predicates_to_paths(tree, ["Base", "Zone_t", "ZGC*", lambda n: int(n[0][-1]) >= 2 and int(n[0][-1]) <= 4])
+  assert paths == ['Base/ZoneI/ZGCA/gc2', 'Base/ZoneI/ZGCB/gc3', 'Base/ZoneI/ZGCB/gc4']
   assert PU.predicates_to_paths(tree, 'Nope/*') == []
 
 def test_concretize_paths():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
+  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
-  paths = PU.concretize_paths(tree, ["Base/Zone*/ZBCA", "Base/ZoneI/*", "Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneBC_t'])
-  assert paths == ['Base/ZoneI/ZBCA', 'Base/ZoneI/ZBCB']
-  assert PU.concretize_paths(tree, ["Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneBC_t']) == []
+  paths = PU.concretize_paths(tree, ["Base/Zone*/ZGCA", "Base/ZoneI/*", "Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t'])
+  assert paths == ['Base/ZoneI/ZGCA', 'Base/ZoneI/ZGCB']
+  assert PU.concretize_paths(tree, ["Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t']) == []
 
 def test_paths_to_tree():
     yt = """

@@ -2,7 +2,7 @@ from .internal      import * #Load first -- will be overloaded by walker functio
 
 from .sids import *
 from .walk import *
+from .node import *
 
 from .compare       import *
-from .create_nodes  import *
 from .path_utils    import *

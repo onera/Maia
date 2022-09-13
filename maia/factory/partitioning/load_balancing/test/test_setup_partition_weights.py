@@ -4,7 +4,7 @@ from mpi4py import MPI
 
 import Converter.Internal as I
 
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 from maia.factory.partitioning.load_balancing import setup_partition_weights
 
 @mark_mpi_test(3)

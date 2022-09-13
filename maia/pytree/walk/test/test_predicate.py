@@ -1,34 +1,27 @@
 import pytest
-import os
 import numpy as np
 
-import Converter.Internal as I
-
 from maia.pytree.cgns_keywords import Label as CGL
+from maia.pytree      import walk      as W
 from maia.pytree.walk import predicate as P
 
-from maia.utils.yaml   import parse_yaml_cgns
-
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
+from maia.pytree.yaml   import parse_yaml_cgns
 
 def partial_funcs_equal(f1, f2):
   return all([getattr(f1, attr) == getattr(f2, attr) for attr in ['func', 'args', 'keywords']])
 
 def test_matches():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+  nface = ['NFace', np.array([23, 0], np.int32), [], 'Elements_t']
 
-  assert P.match_name(I.getNodeFromName(tree, 'Index_iii'), 'Index_iii')
-  assert P.match_name(I.getNodeFromName(tree, 'Index_iii'), 'Index_i*')
-  assert not P.match_name(I.getNodeFromName(tree, 'Index_iv'), 'Index_iii')
-
-  nface = I.getNodeFromName(tree, 'NFace')
+  assert P.match_name(nface, 'NFace')
+  assert P.match_name(nface, 'NFac*')
+  assert not P.match_name(nface, 'NFacE')
   assert P.match_value(nface, np.array([23,0]))
   assert P.match_str_label(nface, 'Elements_t')
   assert P.match_cgk_label(nface, CGL.Elements_t)
   assert P.match_label(nface, 'Elements_t')
   assert P.match_label(nface, CGL.Elements_t)
+
   assert P.match_name_value(nface, 'NFace', np.array([23,0]))
   assert not P.match_name_value(nface, 'NFAce', np.array([23,0]))
   assert P.match_name_label(nface, 'NFace', 'Elements_t')
@@ -44,7 +37,7 @@ def test_matches():
 
 def test_belongs_to_family():
   yt = """
-ZBC ZoneBC_t:
+ZoneBC ZoneBC_t:
   BC1 BC_t:
     FamilyName FamilyName_t "SecondFamily":
   BC3 BC_t:
@@ -56,16 +49,14 @@ ZBC ZoneBC_t:
     AdditionalFamilyName AdditionalFamilyName_t "FirstFamily":
 """
   node = parse_yaml_cgns.to_node(yt)
-  assert P.belongs_to_family(I.getNodeFromName(node, 'BC1'), 'SecondFamily')  == True
-  assert P.belongs_to_family(I.getNodeFromName(node, 'BC3'), 'FirstFamily') == False
-  assert P.belongs_to_family(I.getNodeFromName(node, 'BC4'), 'FirstFamily') == False
-  assert P.belongs_to_family(I.getNodeFromName(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
+  assert P.belongs_to_family(W.get_node_from_name(node, 'BC1'), 'SecondFamily')  == True
+  assert P.belongs_to_family(W.get_node_from_name(node, 'BC3'), 'FirstFamily') == False
+  assert P.belongs_to_family(W.get_node_from_name(node, 'BC4'), 'FirstFamily') == False
+  assert P.belongs_to_family(W.get_node_from_name(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
 
  
 def test_auto_predicate():
-  with open(os.path.join(dir_path, "minimal_bc_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
-  nface = I.getNodeFromName(tree, 'NFace')
+  nface = ['NFace', np.array([23, 0], np.int32), [], 'Elements_t']
 
   assert P.auto_predicate('NFace')(nface)
   assert P.auto_predicate('Elements_t')(nface)
@@ -73,7 +64,7 @@ def test_auto_predicate():
   assert not P.auto_predicate('Element_t')(nface)
   assert P.auto_predicate(np.array([23,0]))(nface)
   assert P.auto_predicate(lambda n : True)(nface)
-  assert P.auto_predicate(lambda n : len(I.getName(n)) == 5)(nface)
+  assert P.auto_predicate(lambda n : len(n[0]) == 5)(nface)
   assert not P.auto_predicate(lambda n : False)(nface)
 
   with pytest.raises(TypeError):

@@ -39,7 +39,7 @@ def rm_nodes_from_predicate(root, predicate, **kwargs):
   depth = kwargs.get('depth')
   if depth and not isinstance(depth, int):
     raise TypeError(f"depth must be an integer.")
-  if depth and depth > 1:
+  if depth and depth >= 1:
     rm_nodes_from_predicate_with_level__(root, predicate, depth)
   else:
     rm_nodes_from_predicate__(root, predicate)

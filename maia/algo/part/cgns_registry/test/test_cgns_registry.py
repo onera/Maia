@@ -2,7 +2,7 @@ from pytest_mpi_check            import assert_mpi
 from pytest_mpi_check._decorator import mark_mpi_test
 
 import Converter.Internal as I
-from maia.utils.yaml import parse_yaml_cgns
+from maia.pytree.yaml import parse_yaml_cgns
 
 from cmaia.part_algo                   import cgns_registry as CGR
 from maia.pytree.cgns_keywords         import Label as CGL
