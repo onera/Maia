@@ -1,6 +1,6 @@
 import os
-import Converter.Internal as     I
-import Converter.PyTree   as     C
+import Converter.PyTree   as C
+import maia.pytree        as PT
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .load_collective_size_tree import load_collective_size_tree
@@ -14,7 +14,9 @@ def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
   """
   """
   for path, data in partial_dict_load.items():
-    Node = I.getNodeFromPath(dist_tree, path)
+    if path.startswith('/'):
+      path = path[1:]
+    Node = PT.get_node_from_path(dist_tree, path)
     Node[1] = data
 
 
@@ -64,7 +66,7 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
     f(hdf_filter_with_dim)
 
   #Dont save distribution info, but work on a copy to keep it for further use
-  saving_dist_tree = I.copyRef(dist_tree)
+  saving_dist_tree = PT.shallow_copy(dist_tree)
   clean_distribution_info(saving_dist_tree)
 
   C.convertPyTree2FilePartial(saving_dist_tree, filename, comm, hdf_filter_with_dim, ParallelHDF=True)

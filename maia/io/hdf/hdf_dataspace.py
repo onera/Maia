@@ -1,5 +1,4 @@
 from maia.utils.numbering.range_to_slab import compute_slabs
-import Converter.Internal as I
 
 def create_combined_dataspace(data_shape, distrib):
   """

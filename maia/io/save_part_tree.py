@@ -1,7 +1,6 @@
 import maia
 import maia.pytree        as PT
 import Converter.PyTree   as C
-import Converter.Internal as I
 
 def save_part_tree(part_tree, filename, comm):
   """
@@ -35,10 +34,10 @@ def save_part_tree(part_tree, filename, comm):
         nlinks.append(ii)
 
     base_name  = PT.get_child_from_label(part_tree, 'CGNSBase_t')[0]
-    local_tree = I.newCGNSTree()
-    local_base = I.newCGNSBase(base_name, 3, 3, parent=local_tree)
+    local_tree = PT.new_CGNSTree()
+    local_base = PT.new_CGNSBase(base_name, cell_dim=3, phy_dim=3, parent=local_tree)
     for path_zone in nlinks:
       zone_name = path_zone[2].split("/")[2]
-      I.newZone(name=zone_name, zsize=None, parent=local_base)
+      PT.new_Zone(zone_name, parent=local_base)
 
     C.convertPyTree2File(local_tree, topfilename, links=nlinks)

@@ -2,7 +2,6 @@ from   mpi4py             import MPI
 import numpy              as     np
 import Converter.Filter   as     CFilter
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from maia                  import npy_pdm_gnum_dtype
@@ -15,7 +14,7 @@ def fix_zone_datatype(size_tree, size_data):
   """
   for zone_path in PT.predicates_to_paths(size_tree, "CGNSBase_t/Zone_t"):
     if size_data["/" + zone_path][1] == 'I8':
-      zone = I.getNodeFromPath(size_tree, zone_path)
+      zone = PT.get_node_from_path(size_tree, zone_path)
       zone[1] = zone[1].astype(np.int64)
 
 def fix_point_ranges(size_tree):
@@ -27,17 +26,17 @@ def fix_point_ranges(size_tree):
   """
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity1to1_t'
   for base, zone, zgc, gc in PT.iter_children_from_predicates(size_tree, gc_t_path, ancestors=True):
-    base_name = I.getName(base)
-    zone_name = I.getName(zone)
+    base_name = PT.get_name(base)
+    zone_name = PT.get_name(zone)
     gc_path     = base_name + '/' + zone_name
-    gc_opp_path = I.getValue(gc)
+    gc_opp_path = PT.get_value(gc)
     if not '/' in gc_opp_path:
       gc_opp_path = base_name + '/' + gc_opp_path
     # WARNING: for hybrid case structured zone could have PointList, PointListDonor.
     if PT.get_child_from_label(gc, 'IndexRange_t') is not None:
-      transform     = I.getValue(PT.get_child_from_name(gc, 'Transform'))
-      point_range   = I.getValue(PT.get_child_from_name(gc, 'PointRange'))
-      point_range_d = I.getValue(PT.get_child_from_name(gc, 'PointRangeDonor'))
+      transform     = PT.get_value(PT.get_child_from_name(gc, 'Transform'))
+      point_range   = PT.get_value(PT.get_child_from_name(gc, 'PointRange'))
+      point_range_d = PT.get_value(PT.get_child_from_name(gc, 'PointRangeDonor'))
 
       donor_dir    = abs(transform) - 1
       nb_points    = point_range[:,1] - point_range[:,0]
@@ -67,7 +66,7 @@ def load_grid_connectivity_property(filename, tree):
   """
   # Prepare pathes
   zgc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t'
-  is_gc = lambda n : I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   gc_prop_pathes = []
   for base,zone,zone_gc in PT.iter_children_from_predicates(tree, zgc_t_path, ancestors=True):
     for gc in PT.iter_children_from_predicate(zone_gc, is_gc):
@@ -82,16 +81,16 @@ def load_grid_connectivity_property(filename, tree):
   # Replace with loaded data
   for path, gc_prop in zip(gc_prop_pathes, gc_prop_nodes):
     gc_node_path = '/'.join(path.split('/')[:-1])
-    gc_node = I.getNodeFromPath(tree, gc_node_path)
+    gc_node = PT.get_node_from_path(tree, gc_node_path)
     PT.rm_children_from_label(gc_node, 'GridConnectivityProperty_t')
-    I._addChild(gc_node, gc_prop)
+    PT.add_child(gc_node, gc_prop)
 
 def _enforce_pdm_dtype(tree):
   """
   Convert the index & connectivity arrays to expected pdm_g_num_t
   TODO : find better pattern for the "Subset iterator" and factorize it
   """
-  for zone in I.getZones(tree):
+  for zone in PT.get_all_Zone_t(tree):
     zone[1] = zone[1].astype(npy_pdm_gnum_dtype)
     for elmt in PT.iter_children_from_label(zone, 'Elements_t'):
       for name in ['ElementRange', 'ElementConnectivity', 'ElementStartOffset', 'ParentElements']:
@@ -110,7 +109,7 @@ def ensure_PE_global_indexing(dist_tree):
    - At most one NGonElements node exists
    - NGonElements and standard elements can not be mixed together
   """
-  for zone in I.getZones(dist_tree):
+  for zone in PT.get_all_Zone_t(dist_tree):
     elts = PT.get_children_from_label(zone, 'Elements_t')
     ngon_nodes = [elt for elt in elts if PT.Element.CGNSName(elt)=='NGON_n']
     oth_nodes  = [elt for elt in elts if PT.Element.CGNSName(elt)!='NGON_n']
@@ -118,9 +117,9 @@ def ensure_PE_global_indexing(dist_tree):
       return
     elif len(ngon_nodes) == 1:
       if len(oth_nodes) > 1 or (len(oth_nodes) == 1 and PT.Element.CGNSName(oth_nodes[0]) != 'NFACE_n'):
-        raise RuntimeError(f"Zone {I.getName(zone)} has both NGon and Std elements nodes, which is not supported")
+        raise RuntimeError(f"Zone {PT.get_name(zone)} has both NGon and Std elements nodes, which is not supported")
     else:
-      raise RuntimeError(f"Multiple NGon nodes found in zone {I.getName(zone)}")
+      raise RuntimeError(f"Multiple NGon nodes found in zone {PT.get_name(zone)}")
 
     ngon_n = ngon_nodes[0]
     ngon_pe_n = PT.get_child_from_name(ngon_n, 'ParentElements')
@@ -129,4 +128,4 @@ def ensure_PE_global_indexing(dist_tree):
       ngon_pe = ngon_pe_n[1]
       if PT.Element.Range(ngon_n)[0] == 1 and ngon_pe.shape[0] > 0 and ngon_pe[0].max() <= n_faces:
         np_utils.shift_nonzeros(ngon_pe, n_faces)
-        print(f"Warning -- NGon/ParentElements have been shift on zone {I.getName(zone)} to be CGNS compliant")
+        print(f"Warning -- NGon/ParentElements have been shift on zone {PT.get_name(zone)} to be CGNS compliant")
