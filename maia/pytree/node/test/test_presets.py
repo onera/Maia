@@ -68,6 +68,12 @@ def test_new_NFaceElements():
   """)
   assert is_same_tree(expected, elem)
 
+def test_new_ZoneBC():
+  zbc = presets.new_ZoneBC()
+  assert N.get_name(zbc) == 'ZoneBC'
+  assert N.get_label(zbc) == 'ZoneBC_t'
+  assert N.get_value(zbc) is None
+
 def test_new_BC():
   bc = presets.new_BC('MyBC', 'FamilySpecified', family='MyFamily', point_list=[1,2,3], loc="FaceCenter")
   expected = parse_yaml_cgns.to_node("""

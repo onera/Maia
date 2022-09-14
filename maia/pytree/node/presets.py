@@ -49,6 +49,8 @@ def new_NFaceElements(name='NGonElements', *, erange=None, eso=None, ec=None, pa
       new_DataArray(name, val, parent=elem)
   return elem
 
+def new_ZoneBC(parent=None):
+  return new_node('ZoneBC', 'ZoneBC_t', None, [], parent)
 
 def new_BC(name='BC', type='Null', *, point_range=None, point_list=None, loc=None, family=None, parent=None):
   allowed_bc = """Null UserDefined BCAxisymmetricWedge BCDegenerateLine BCDegeneratePoint BCDirichlet BCExtrapolate
