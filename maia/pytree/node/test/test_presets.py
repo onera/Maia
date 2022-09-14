@@ -119,3 +119,28 @@ def test_new_FlowSolution():
     data2 DataArray_t R8 [1,2,3]:
   """)
   assert is_same_tree(expected, sol)
+
+def test_new_ZoneSubRegion():
+    #name='ZoneSubRegion', *, loc=None, point_range=None, point_list=None, bc_name=None, gc_name=None, \
+    #family=None, fields={}, parent=None):
+  zsr = presets.new_ZoneSubRegion(loc='Vertex', point_list=[[1,4,6]], fields={'data1' : [1,2,3], 'data2' : [1.,2,3]})
+  expected = parse_yaml_cgns.to_node("""
+  ZoneSubRegion ZoneSubRegion_t:
+    GridLocation GridLocation_t "Vertex":
+    PointList IndexArray_t [[1,4,6]]:
+    data1 DataArray_t I4 [1,2,3]:
+    data2 DataArray_t R8 [1,2,3]:
+  """)
+  assert is_same_tree(expected, zsr)
+
+  zsr = presets.new_ZoneSubRegion("MyZSR", loc='FaceCenter', family='Fam', bc_name="SomeBC")
+  expected = parse_yaml_cgns.to_node("""
+  MyZSR ZoneSubRegion_t:
+    GridLocation GridLocation_t "FaceCenter":
+    BCRegionName Descriptor_t "SomeBC":
+    FamilyName FamilyName_t "Fam":
+  """)
+  assert is_same_tree(expected, zsr)
+
+  with pytest.raises(AssertionError):
+    zsr = presets.new_ZoneSubRegion(point_list=[[1,4,6]], bc_name="SomeBC")

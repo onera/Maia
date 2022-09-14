@@ -187,7 +187,7 @@ class Element:
 
   @staticmethod
   def Type(elt_node):
-    return elt_node[1][0]
+    return int(elt_node[1][0])
 
   @staticmethod
   def CGNSName(elt_node):

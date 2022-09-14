@@ -1,6 +1,6 @@
 from pytest_mpi_check._decorator import mark_mpi_test
 
-import Converter.Internal as I
+import maia.pytree as PT
 import numpy as np
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
@@ -96,19 +96,19 @@ ZoneB.P1.N1 Zone_t:
   JBTP.get_pl_donor(dist_tree, part_tree, sub_comm)
   
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/PointListDonor')[1] == [20,12,8]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/Donor')[1][:,0] == [1,1,1]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/Donor')[1][:,1] == [0,0,0]).all()
-    assert I.getValue(I.getNodeFromPath(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB')) == 'ZoneB'
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/PointListDonor')[1] == [20,12,8]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/Donor')[1][:,0] == [1,1,1]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/Donor')[1][:,1] == [0,0,0]).all()
+    assert PT.get_value(PT.get_node_from_path(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB')) == 'ZoneB'
   if sub_comm.Get_rank() == 1:
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/PointListDonor')[1] == [9,1,5]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/Donor')[1][:,0] == [1,1,1]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/Donor')[1][:,1] == [0,0,1]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA/PointListDonor')[1] == [11,21,8,25,13]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA/Donor')[1][:,0] == [0,0,1,0,1]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA/Donor')[1][:,1] == [0,0,0,0,0]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/PointListDonor')[1] == [2]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/Donor')[1][:,0] == [1]).all()
-    assert (I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/Donor')[1][:,1] == [0]).all()
-    assert I.getValue(I.getNodeFromPath(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB')) == 'ZoneB'
-    assert I.getValue(I.getNodeFromPath(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA')) == 'ZoneA'
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/PointListDonor')[1] == [9,1,5]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/Donor')[1][:,0] == [1,1,1]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/Donor')[1][:,1] == [0,0,1]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA/PointListDonor')[1] == [11,21,8,25,13]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA/Donor')[1][:,0] == [0,0,1,0,1]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA/Donor')[1][:,1] == [0,0,0,0,0]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/PointListDonor')[1] == [2]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/Donor')[1][:,0] == [1]).all()
+    assert (PT.get_node_from_path(part_tree, 'Base/ZoneB.P1.N1/ZGC/matchBA/Donor')[1][:,1] == [0]).all()
+    assert PT.get_value(PT.get_node_from_path(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB')) == 'ZoneB'
+    assert PT.get_value(PT.get_node_from_path(part_tree, 'Base/ZoneB.P1.N0/ZGC/matchBA')) == 'ZoneA'

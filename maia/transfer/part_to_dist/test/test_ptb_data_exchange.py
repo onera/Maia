@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy      as np
 
-import Converter.Internal as I
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
@@ -36,27 +35,26 @@ def test_lngn_to_distri(sub_comm):
 @mark_mpi_test(3)
 class Test__discover_wrapper:
   def test_sol_without_pl(self, sub_comm):
-    dist_zone  = I.newZone('Zone')
-    part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
+    dist_zone  = PT.new_Zone('Zone')
+    part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
     if sub_comm.Get_rank() == 0:
-      p_sol = I.newFlowSolution('NewSol1', 'CellCenter', part_zones[0])
-      I.newDataArray('NewField1', parent=p_sol)
-      I.newDataArray('NewField2', parent=p_sol)
+      p_sol = PT.new_FlowSolution('NewSol1', loc='CellCenter', parent=part_zones[0])
+      PT.new_DataArray('NewField1', None, parent=p_sol)
+      PT.new_DataArray('NewField2', None, parent=p_sol)
     if sub_comm.Get_rank() == 2:
-      part_zones.append(I.newZone('Zone.P{0}.N1'.format(sub_comm.Get_rank())))
-      p_sol = I.newFlowSolution('NewSol2', 'Vertex', part_zones[1])
-      I.newDataArray('NewField3', parent=p_sol)
-      I.newDataArray('NewField4', parent=p_sol)
-    p_sol = I.newFlowSolution('NewSol3', 'Vertex', part_zones[0])
-    I.newDataArray('NewField5', parent=p_sol)
+      part_zones.append(PT.new_Zone('Zone.P{0}.N1'.format(sub_comm.Get_rank())))
+      p_sol = PT.new_FlowSolution('NewSol2', loc='Vertex', parent=part_zones[1])
+      PT.new_DataArray('NewField3', None, parent=p_sol)
+      PT.new_DataArray('NewField4', None, parent=p_sol)
+    p_sol = PT.new_FlowSolution('NewSol3', loc='Vertex', parent=part_zones[0])
+    PT.new_DataArray('NewField5', None, parent=p_sol)
 
     PTB._discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', sub_comm)
 
-    assert [I.getName(sol) for sol in PT.get_children_from_label(dist_zone, 'FlowSolution_t')] \
-        == ['NewSol1', 'NewSol3', 'NewSol2']
+    assert PT.get_names(PT.get_children_from_label(dist_zone, 'FlowSolution_t')) == ['NewSol1', 'NewSol3', 'NewSol2']
     assert [PT.Subset.GridLocation(sol) for sol in PT.get_children_from_label(dist_zone, 'FlowSolution_t')] \
         == ['CellCenter', 'Vertex', 'Vertex']
-    assert I.getNodeFromPath(dist_zone, 'NewSol2/NewField4') is not None
+    assert PT.get_node_from_path(dist_zone, 'NewSol2/NewField4') is not None
 
   def test_sol_with_pl(self, sub_comm):
     dt = """
@@ -98,9 +96,9 @@ class Test__discover_wrapper:
         'DiscreteData_t', 'DiscreteData_t/DataArray_t', sub_comm)
 
     fs = PT.get_child_from_name(dist_zone, 'FS')
-    assert I.getType(fs) == 'DiscreteData_t'
-    dist_pl     = I.getNodeFromPath(fs, 'PointList')[1]
-    dist_distri = I.getVal(MT.getDistribution(fs, 'Index'))
+    assert PT.get_label(fs) == 'DiscreteData_t'
+    dist_pl     = PT.get_node_from_path(fs, 'PointList')[1]
+    dist_distri = PT.get_value(MT.getDistribution(fs, 'Index'))
     assert dist_distri.dtype == pdm_dtype
 
     if sub_comm.Get_rank() == 0:
@@ -153,12 +151,12 @@ class Test__discover_wrapper:
     part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
     bc_ds_path = 'ZoneBC_t/BC_t/BCDataSet_t'
-    PTB._discover_wrapper(I.getZones(dist_tree)[0], I.getZones(part_tree), \
+    PTB._discover_wrapper(PT.get_all_Zone_t(dist_tree)[0], PT.get_all_Zone_t(part_tree), \
         bc_ds_path, bc_ds_path+'/BCData_t/DataArray_t', sub_comm)
 
-    assert [I.getValue(bcds) for bcds in PT.get_nodes_from_label(dist_tree, 'BCDataSet_t')] \
+    assert [PT.get_value(bcds) for bcds in PT.get_nodes_from_label(dist_tree, 'BCDataSet_t')] \
         == ['BCInflow', 'BCWall', 'Null']
-    assert [I.getName(field) for field in PT.get_nodes_from_label(dist_tree, 'DataArray_t')] \
+    assert [PT.get_name(field) for field in PT.get_nodes_from_label(dist_tree, 'DataArray_t')] \
         == ['newField1', 'newField2', 'newField3', 'newField4']
 
 @mark_mpi_test(2)
@@ -231,13 +229,13 @@ ZoneU Zone_t [[6,0,0]]:
   PTB.part_coords_to_dist_coords(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == [2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == [2,1]).all()
   elif sub_comm.Get_rank() == 1:
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == [5,2]).all()
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == [1,2]).all()
-    assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CX')[1] == [3,4]).all()
-    assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [5,2]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == [1,2]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CX')[1] == [3,4]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("filter", [False, True])
@@ -307,18 +305,18 @@ ZoneU Zone_t [[6,0,0]]:
     PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, sub_comm)
 
   if filter:
-    assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field2') is None
+    assert PT.get_node_from_path(dist_zone, 'NewFlowSol/field2') is None
   else:
-    assert I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int32
-  assert I.getNodeFromPath(dist_zone, 'NewFlowSol/field3')[1].dtype == np.float64
+    assert PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int32
+  assert PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1].dtype == np.float64
   if sub_comm.Get_rank () == 0:
     if not filter:
-      assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-30]).all()
-    assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,0]).all()
+      assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [-30]).all()
+    assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,0]).all()
   if sub_comm.Get_rank () == 1:
     if not filter:
-      assert (I.getNodeFromPath(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
-    assert (I.getNodeFromPath(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,-1]).all()
+      assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
+    assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,-1]).all()
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("from_api", [False, True])
@@ -402,14 +400,14 @@ ZoneU Zone_t [[6,0,0]]:
   else:
     PTB.part_subregion_to_dist_subregion(dist_zone, part_zones, sub_comm)
 
-  assert I.getNodeFromPath(dist_zone, 'ZSRWithPL/field')[1].dtype == np.int32
-  assert I.getNodeFromPath(dist_zone, 'LinkedZSR/field')[1].dtype == np.float64
+  assert PT.get_node_from_path(dist_zone, 'ZSRWithPL/field')[1].dtype == np.int32
+  assert PT.get_node_from_path(dist_zone, 'LinkedZSR/field')[1].dtype == np.float64
   if sub_comm.Get_rank () == 0:
-    assert (I.getNodeFromPath(dist_zone, 'ZSRWithPL/field')[1] == [84]).all()
-    assert (I.getNodeFromPath(dist_zone, 'LinkedZSR/field')[1] == [100,200]).all()
+    assert (PT.get_node_from_path(dist_zone, 'ZSRWithPL/field')[1] == [84]).all()
+    assert (PT.get_node_from_path(dist_zone, 'LinkedZSR/field')[1] == [100,200]).all()
   if sub_comm.Get_rank () == 1:
-    assert (I.getNodeFromPath(dist_zone, 'ZSRWithPL/field')[1] == [48]).all()
-    assert (I.getNodeFromPath(dist_zone, 'LinkedZSR/field')[1] == [300,400,500,600]).all()
+    assert (PT.get_node_from_path(dist_zone, 'ZSRWithPL/field')[1] == [48]).all()
+    assert (PT.get_node_from_path(dist_zone, 'LinkedZSR/field')[1] == [300,400,500,600]).all()
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("from_api", [False, True])
@@ -485,22 +483,22 @@ ZoneU Zone_t:
 
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+  part_zones = PT.get_all_Zone_t(part_tree)
 
   if from_api:
     part_to_dist.part_tree_to_dist_tree_only_labels(dist_tree, part_tree, ['BCDataSet_t'], sub_comm)
   else:
     PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, sub_comm)
 
-  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1].dtype    == np.float64
-  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1].dtype == np.int32
+  assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1].dtype    == np.float64
+  assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1].dtype == np.int32
   if sub_comm.Get_rank () == 0:
-    assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [200.]).all()
-    assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,2]).all()
+    assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [200.]).all()
+    assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,2]).all()
   if sub_comm.Get_rank () == 1:
-    assert len(I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1]) == 0
-    assert (I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [4,3,2,1]).all()
+    assert len(PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1]) == 0
+    assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [4,3,2,1]).all()
 
 @mark_mpi_test(2)
 def test_part_dataset_to_dist_dataset_filter(sub_comm):
@@ -577,12 +575,12 @@ ZoneU Zone_t:
 
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+  part_zones = PT.get_all_Zone_t(part_tree)
 
   PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, sub_comm, \
       exclude=['*/BCDSWithPL/*/field', '*/BCDSWithPL/*/field2'])
 
-  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')  is not None
-  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field2') is None
-  assert I.getNodeFromPath(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field3') is not None
+  assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')  is not None
+  assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field2') is None
+  assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field3') is not None

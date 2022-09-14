@@ -69,6 +69,8 @@ for rm_function in [rm_nodes_from_predicate, rm_children_from_predicate, keep_ch
   _update_module_attributes(generated)
 
 def get_node_from_path(root, path, ancestors=False):
+  if path == '':
+    return [root] if ancestors else root
   nodes = WAPI.get_nodes_from_predicates(root, path, depth=[1,1], ancestors=ancestors)
   if len(nodes) == 0 and ancestors:
     return []

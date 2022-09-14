@@ -1,7 +1,6 @@
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 
-import Converter.Internal as I
 import numpy as np
 
 import maia.pytree      as PT
@@ -16,8 +15,8 @@ from maia.transfer.dist_to_part import index_exchange as IBTP
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 def test_collect_distributed_pl():
-  zone   = I.newZone(ztype='Unstructured')
-  zoneBC = I.newZoneBC(parent=zone)
+  zone   = PT.new_Zone(type='Unstructured')
+  zoneBC = PT.new_node('ZoneBC', 'ZoneBC_t', parent=zone)
   point_lists = [np.array([[2,4,6,8]]          , np.int32),
                  np.array([[10,20,30,40,50,60]], np.int32),
                  np.array([[100]]              , np.int32),
@@ -25,9 +24,9 @@ def test_collect_distributed_pl():
   point_ranges = [np.array([[3,3],[1,3],[1,3]] , np.int32), #This one should be ignored
                   np.array([[35,55]]           , np.int32)]
   for i, pl in enumerate(point_lists):
-    I.newBC('bc'+str(i+1), pointList=pl, parent=zoneBC)
+    PT.new_BC('bc'+str(i+1), point_list=pl, parent=zoneBC)
   for i, pr in enumerate(point_ranges):
-    bc = I.newBC('bc'+str(i+1+len(point_lists)), pointRange=pr, parent=zoneBC)
+    bc = PT.new_BC('bc'+str(i+1+len(point_lists)), point_range=pr, parent=zoneBC)
     distri = MT.newDistribution({'Index' : np.array([10,15,20])}, parent=bc)
 
   collected = IBTP.collect_distributed_pl(zone, [['ZoneBC_t', 'BC_t']])
@@ -124,7 +123,7 @@ ZoneU Zone_t [[6,0,0]]:
 
   IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['ZoneSubRegion_t'], 'Vertex', sub_comm)
 
-  part_zsr = I.getNodeFromPath(part_zones[0], 'ZSRWithPL')
+  part_zsr = PT.get_child_from_name(part_zones[0], 'ZSRWithPL')
   assert part_zsr is not None
   assert PT.Subset.GridLocation(part_zsr) == 'Vertex'
   if sub_comm.Get_rank() == 0:
@@ -134,20 +133,20 @@ ZoneU Zone_t [[6,0,0]]:
 
   IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t', 'ZoneBC_t/BC_t/BCDataSet_t'], 'Elements', sub_comm)
 
-  part_sol = I.getNodeFromPath(part_zones[0], 'FlowSolWithPL')
+  part_sol = PT.get_child_from_name(part_zones[0], 'FlowSolWithPL')
   part_bc  = PT.get_node_from_name(part_zones[0], 'BC')
   part_ds  = PT.get_node_from_name(part_zones[0], 'BCDSWithPL')
   if sub_comm.Get_rank() == 0:
     assert part_bc is None
     assert PT.Subset.GridLocation(part_sol) == 'CellCenter'
     assert (PT.get_child_from_name(part_sol, 'PointList')[1] == [2,3,4]).all()
-    assert (I.getVal(MT.getGlobalNumbering(part_sol, 'Index')) == [1,3,2]).all()
+    assert (PT.get_value(MT.getGlobalNumbering(part_sol, 'Index')) == [1,3,2]).all()
   if sub_comm.Get_rank() == 1:
     assert part_sol is None
     assert PT.get_child_from_name(part_bc, 'PointList') is None #No specified in list => skipped, only child are constructed
     assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
     assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [1]).all()
-    assert (I.getVal(MT.getGlobalNumbering(part_ds, 'Index')) == [1]).all()
+    assert (PT.get_value(MT.getGlobalNumbering(part_ds, 'Index')) == [1]).all()
 
   with pytest.raises(AssertionError):
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t'], 'FaceCenter', sub_comm)
@@ -184,11 +183,11 @@ ZoneU.P1.N0 Zone_t [[3,0,0]]:
   IBTP.create_part_pointlists(dist_zone, part_zone,\
       group_part, ['FlowSolution_t', 'ZoneBC_t/BC_t/BCDataSet_t'], ['FaceCenter', 'CellCenter'])
 
-  assert I.getNodeFromPath(part_zone, 'FlowSolWithPL') is None
+  assert PT.get_child_from_name(part_zone, 'FlowSolWithPL') is None
   part_bc  = PT.get_node_from_name(part_zone, 'BC')
-  assert I.getValue(part_bc) == "BCFarfield"
+  assert PT.get_value(part_bc) == "BCFarfield"
   part_ds  = PT.get_node_from_name(part_zone, 'BCDSWithPL')
   assert PT.get_child_from_name(part_bc, 'PointList') is None
   assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
   assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [42]).all()
-  assert (I.getVal(MT.getGlobalNumbering(part_ds, 'Index')) == [9]).all()
+  assert (PT.get_value(MT.getGlobalNumbering(part_ds, 'Index')) == [9]).all()

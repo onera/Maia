@@ -98,3 +98,26 @@ def new_FlowSolution(name='FlowSolution', *, loc=None, fields={}, parent=None):
   for field_name, field_val in fields.items():
     new_DataArray(field_name, field_val, parent=sol)
   return sol
+
+def new_ZoneSubRegion(name='ZoneSubRegion', *, loc=None, point_range=None, point_list=None, bc_name=None, gc_name=None, \
+    family=None, fields={}, parent=None):
+  zsr = new_node(name, 'ZoneSubRegion_t', None, [], parent)
+  if loc is not None:
+    new_GridLocation(loc, zsr)
+  if family is not None:
+    new_node('FamilyName', 'FamilyName_t', family, [], zsr)
+  if point_range is not None:
+    assert point_list is None and bc_name is None and gc_name is None
+    new_PointRange('PointRange', point_range, zsr)
+  if point_list is not None:
+    assert point_range is None and bc_name is None and gc_name is None
+    new_PointList('PointList', point_list, zsr)
+  if bc_name is not None:
+    assert point_list is None and point_range is None and gc_name is None
+    new_node('BCRegionName', 'Descriptor_t', bc_name, parent=zsr)
+  if gc_name is not None:
+    assert point_list is None and point_range is None and bc_name is None
+    new_node('GridConnectivityRegionName', 'Descriptor_t', gc_name, parent=zsr)
+  for field_name, field_val in fields.items():
+    new_DataArray(field_name, field_val, parent=zsr)
+  return zsr

@@ -1,5 +1,4 @@
 import numpy              as np
-import Converter.Internal as I
 import Pypdm.Pypdm        as PDM
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -26,9 +25,9 @@ def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
         pr_n = PT.get_child_from_name(node, 'PointRange')
         if pl_n is not None:
           point_lists.append(pl_n[1])
-        elif pr_n is not None and I.getValue(pr_n).shape[0] == 1:
-          pr = I.getValue(pr_n)
-          distrib = I.getVal(MT.getDistribution(node, 'Index'))
+        elif pr_n is not None and PT.get_value(pr_n).shape[0] == 1:
+          pr = PT.get_value(pr_n)
+          distrib = PT.get_value(MT.getDistribution(node, 'Index'))
           point_lists.append(np_utils.single_dim_pr_to_pl(pr, distrib))
         # else:
           # point_lists.append(np.empty((1,0), dtype=np.int32, order='F'))
@@ -44,18 +43,18 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
         #Exclude nodes with no pl
-        if pl_n or (pr_n and I.getValue(pr_n).shape[0] == 1):
+        if pl_n or (pr_n and PT.get_value(pr_n).shape[0] == 1):
           beg_pl = p_groups['npZSRGroupIdx'][i_pl]
           end_pl = p_groups['npZSRGroupIdx'][i_pl+1]
           if beg_pl != end_pl:
             ancestor = p_zone
             for parent in ancestors:
-              ancestor = I.createUniqueChild(ancestor, I.getName(parent), I.getType(parent), I.getValue(parent))
-            p_node = I.createChild(ancestor, I.getName(node), I.getType(node), I.getValue(node))
-            I.newGridLocation(PT.Subset.GridLocation(node), parent=p_node)
-            I.newIndexArray('PointList', p_groups['npZSRGroup'][beg_pl:end_pl].reshape((1,-1), order='F'), parent=p_node)
+              ancestor = PT.update_child(ancestor, PT.get_name(parent), PT.get_label(parent), PT.get_value(parent))
+            p_node = PT.new_child(ancestor, PT.get_name(node), PT.get_label(node), PT.get_value(node))
+            PT.new_GridLocation(PT.Subset.GridLocation(node), parent=p_node)
+            PT.new_PointList('PointList', p_groups['npZSRGroup'][beg_pl:end_pl].reshape((1,-1), order='F'), parent=p_node)
             lntogn_ud = MT.newGlobalNumbering(parent=p_node)
-            I.newDataArray('Index', p_groups['npZSRGroupLNToGN'][beg_pl:end_pl], parent=lntogn_ud)
+            PT.new_DataArray('Index', p_groups['npZSRGroupLNToGN'][beg_pl:end_pl], parent=lntogn_ud)
 
           i_pl += 1
 

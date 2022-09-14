@@ -81,19 +81,20 @@ def get_parts_per_blocks(part_tree, comm):
 
 def _recover_elements(dist_zone, part_zones, comm):
   # > Get the list of part elements
-  discover_nodes_from_matching(dist_zone, part_zones, 'Elements_t', comm, get_value='leaf')
-  elt_nodes = PT.get_children_from_label(dist_zone, 'Elements_t')
-  elt_kinds = [PT.Element.CGNSName(elt) for elt in elt_nodes]
+  fake_zone = PT.new_node('Zone', 'Zone_t') #This is just to store the elements
+  discover_nodes_from_matching(fake_zone, part_zones, 'Elements_t', comm, get_value='leaf')
+  elt_names = [PT.get_name(elt) for elt in PT.get_children(fake_zone)]
+  elt_kinds = [PT.Element.CGNSName(elt) for elt in PT.get_children(fake_zone)]
   has_ngon  = 'NGON_n'  in elt_kinds
   has_nface = 'NFACE_n' in elt_kinds
 
   # Deal NGon/NFace
   if has_ngon:
     assert all([kind in ['NGON_n', 'NFACE_n'] for kind in elt_kinds])
-    ngon_name = I.getName(elt_nodes[elt_kinds.index('NGON_n')])
+    ngon_name = elt_names[elt_kinds.index('NGON_n')]
     IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
     if has_nface:
-      nface_name = I.getName(elt_nodes[elt_kinds.index('NFACE_n')])
+      nface_name = elt_names[elt_kinds.index('NFACE_n')]
       IPTB.part_nface_to_dist_nface(dist_zone, part_zones, nface_name, ngon_name, comm)
       # > Shift nface element_range and create all cell distri
       n_face_tot  = I.getNodeFromPath(dist_zone, 'NGonElements/ElementRange')[1][1]
@@ -102,9 +103,10 @@ def _recover_elements(dist_zone, part_zones, comm):
 
   # Deal standard elements
   else:
-    for elt in elt_nodes:
-      IPTB.part_elt_to_dist_elt(dist_zone, part_zones, I.getName(elt), comm)
+    for elt_name in elt_names:
+      IPTB.part_elt_to_dist_elt(dist_zone, part_zones, elt_name, comm)
 
+    elt_nodes = PT.get_children_from_label(dist_zone, 'Elements_t') #True elements
     # > Get shift per dim
     n_elt_per_dim  = [0,0,0,0]
     for elt in elt_nodes:

@@ -1,4 +1,3 @@
-import Converter.Internal as I
 import maia.pytree as PT
 
 import maia.transfer as TE
@@ -58,7 +57,7 @@ def part_tree_to_dist_tree_only_labels(dist_tree, part_tree, labels, comm):
   assert isinstance(labels, list)
   include_dict = {label : ['*'] for label in labels}
   for d_base, d_zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
-    p_zones = TE.utils.get_partitioned_zones(part_tree, I.getName(d_base) + '/' + I.getName(d_zone))
+    p_zones = TE.utils.get_partitioned_zones(part_tree, PT.get_name(d_base) + '/' + PT.get_name(d_zone))
     part_zones_to_dist_zone_only(d_zone, p_zones, comm, include_dict)
 
 def part_tree_to_dist_tree_all(dist_tree, part_tree, comm):

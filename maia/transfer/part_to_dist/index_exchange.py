@@ -1,6 +1,5 @@
 from mpi4py import MPI
 import numpy              as np
-import Converter.Internal as I
 import Pypdm.Pypdm        as PDM
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -21,7 +20,7 @@ def create_part_pl_gnum_unique(part_zones, node_path, comm):
   # Collect the size of PL for each part
   n_elems = np.empty(len(part_zones), dtype=np.int32)
   for i_zone, p_zone in enumerate(part_zones):
-    node = I.getNodeFromPath(p_zone, node_path)
+    node = PT.get_node_from_path(p_zone, node_path)
     n_elems[i_zone] = PT.get_child_from_name(node, 'PointList')[1].shape[1] if node else 0
 
   # Exchange
@@ -31,12 +30,12 @@ def create_part_pl_gnum_unique(part_zones, node_path, comm):
 
   #Shift and deduce global numbering
   for i_zone, p_zone in enumerate(part_zones):
-    node = I.getNodeFromPath(p_zone, node_path)
+    node = PT.get_node_from_path(p_zone, node_path)
     if node:
       offset = shifted_part[comm.Get_rank()] + i_zone
       start = np.sum(size_per_part[:offset]) + 1
       distri_ud = MT.newGlobalNumbering(parent=node)
-      I.newDataArray('Index', np.arange(start, start+size_per_part[offset], dtype=pdm_gnum_dtype), distri_ud)
+      PT.new_DataArray('Index', np.arange(start, start+size_per_part[offset], dtype=pdm_gnum_dtype), parent=distri_ud)
 
 def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
   """
@@ -50,10 +49,10 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
   # Collect the part pointlist and move it back to global numbering
   ln_to_gn_list = list()
   for p_zone in part_zones:
-    node = I.getNodeFromPath(p_zone, node_path)
+    node = PT.get_node_from_path(p_zone, node_path)
     if node:
       if PT.Subset.GridLocation(node) == 'Vertex':
-        ln_to_gn = I.getVal(MT.getGlobalNumbering(p_zone, 'Vertex'))
+        ln_to_gn = PT.get_value(MT.getGlobalNumbering(p_zone, 'Vertex'))
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
       part_pl = PT.get_child_from_name(node, 'PointList')[1][0]
@@ -81,10 +80,10 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
   #Add in partitioned zones
   i_zone = 0
   for p_zone in part_zones:
-    node = I.getNodeFromPath(p_zone, node_path)
+    node = PT.get_node_from_path(p_zone, node_path)
     if node:
       distri_ud = MT.newGlobalNumbering(parent=node)
-      I.newDataArray('Index', part_lngn[i_zone], parent=distri_ud)
+      PT.new_DataArray('Index', part_lngn[i_zone], parent=distri_ud)
       i_zone += 1
 
 def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False):
@@ -97,30 +96,30 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   be usefull eg to merge splitted joins (match.0, match.1, ...)
   """
   ancestor, leaf = PT.path_head(node_path), PT.path_tail(node_path)
-  dist_node = I.getNodeFromPath(dist_zone, node_path)
+  dist_node = PT.get_node_from_path(dist_zone, node_path)
 
   if allow_mult:
     ln_to_gn_list = []
     for part_zone in part_zones:
-      ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
-      ln_to_gn_list.extend([I.getVal(MT.getGlobalNumbering(node, 'Index')) \
+      ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
+      ln_to_gn_list.extend([PT.get_value(MT.getGlobalNumbering(node, 'Index')) \
           for node in PT.get_children_from_name(ancestor_n, leaf+'*')])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
-    ln_to_gn_list = [I.getNodeFromPath(part_zone, gn_path)[1] for part_zone in part_zones \
-        if I.getNodeFromPath(part_zone, gn_path) is not None]
+    ln_to_gn_list = [PT.get_node_from_path(part_zone, gn_path)[1] for part_zone in part_zones \
+        if PT.get_node_from_path(part_zone, gn_path) is not None]
 
   PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
                         t_distrib=0, t_post=1)
 
   part_pl_list = []
   for part_zone in part_zones:
-    ancestor_n = part_zone if ancestor is None else I.getNodeFromPath(part_zone, ancestor)
+    ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
     if ancestor_n:
       name = leaf + '*' if allow_mult else leaf
       for node in PT.iter_children_from_name(ancestor_n, name):
         if PT.Subset.GridLocation(node) == 'Vertex':
-          ln_to_gn = I.getVal(MT.getGlobalNumbering(part_zone, 'Vertex'))
+          ln_to_gn = PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex'))
         else:
           ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
         part_pl = PT.get_child_from_name(node, 'PointList')[1][0]
@@ -132,10 +131,10 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
   distri_ud = MT.newDistribution(parent=dist_node)
   full_distri    = PTB.getDistributionCopy()
-  I.newDataArray('Index', full_distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  PT.new_DataArray('Index', full_distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
   # Create dist pointlist
-  I.newPointList(value = dist_pl.reshape(1,-1), parent=dist_node)
+  PT.new_PointList(value = dist_pl.reshape(1,-1), parent=dist_node)
 
 def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   """
@@ -185,9 +184,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   _, dist_ec = PTB.exchange_field(part_ec, cst_stride)
 
   # > Add in disttree
-  elt_node = I.createUniqueChild(dist_zone, elem_name, 'Elements_t', np.array([elt_id, 0], np.int32))
-  I.newPointRange('ElementRange',        [min_section_gn, max_section_gn], parent=elt_node)
-  I.newDataArray ('ElementConnectivity', dist_ec,        parent=elt_node)
+  elt_node = PT.new_Elements(elem_name, type=elt_id, erange=[min_section_gn, max_section_gn], econn=dist_ec, parent=dist_zone)
 
   distri_elt = par_utils.full_to_partial_distribution(PTBDistribution, comm)
   MT.newDistribution({'Element' : distri_elt}, parent=elt_node)
@@ -305,19 +302,16 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   d_elt_eso += shift_eso[i_rank]
 
   # > Add in disttree
-  elt_node = I.newElements(elem_name, 'NGON', parent=dist_zone)
-  I.newPointRange('ElementRange',        [1, n_faceTot], parent=elt_node)
-  I.newDataArray ('ElementConnectivity', dist_ec,        parent=elt_node)
-  I.newDataArray ('ElementStartOffset',  d_elt_eso,      parent=elt_node)
+  elt_node = PT.new_NGonElements(elem_name, erange=[1, n_faceTot], eso=d_elt_eso, ec=dist_ec, parent=dist_zone)
   if has_pe:
     # Shift dist PE because we put NGon first
     np_utils.shift_nonzeros(dist_pe, n_faceTot)
-    I.newDataArray ('ParentElements',      dist_pe,        parent=elt_node)
+    PT.new_DataArray('ParentElements', dist_pe, parent=elt_node)
 
   DistriFaceVtx = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
   distri_ud = MT.newDistribution(parent=elt_node)
-  I.newDataArray('Element',           PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
-  I.newDataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  PT.new_DataArray('Element',           PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  PT.new_DataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
 def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   """
@@ -361,13 +355,10 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   dist_eso += shift_eso[comm.Get_rank()]
 
   # > Add in disttree
-  elt_node = I.newElements(elem_name, 'NFACE', parent=dist_zone)
   n_cellTot = PTBDistribution[n_rank]
-  I.newPointRange('ElementRange',        [1, n_cellTot], parent=elt_node)
-  I.newDataArray ('ElementConnectivity', dist_ec,        parent=elt_node)
-  I.newDataArray ('ElementStartOffset',  dist_eso,       parent=elt_node)
+  elt_node = PT.new_NFaceElements(elem_name, erange=[1, n_cellTot], eso=dist_eso, ec=dist_ec, parent=dist_zone)
 
   distri_cell_face = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
   distri_ud = MT.newDistribution(parent=elt_node)
-  I.newDataArray('Element',             PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
-  I.newDataArray('ElementConnectivity',distri_cell_face[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  PT.new_DataArray('Element',             PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  PT.new_DataArray('ElementConnectivity',distri_cell_face[[i_rank, i_rank+1, n_rank]], parent=distri_ud)

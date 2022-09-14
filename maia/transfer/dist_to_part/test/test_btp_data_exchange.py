@@ -1,6 +1,5 @@
 import pytest
 import numpy      as np
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from pytest_mpi_check._decorator import mark_mpi_test
@@ -179,18 +178,18 @@ def test_dist_coords_to_part_coords_U(sub_comm):
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+  part_zones = PT.get_all_Zone_t(part_tree)
   BTP.dist_coords_to_part_coords(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == [2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == [2,1]).all()
   elif sub_comm.Get_rank() == 1:
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == [5,2]).all()
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == [1,2]).all()
-    assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CX')[1] == [3,4]).all()
-    assert (I.getNodeFromPath(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [5,2]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == [1,2]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CX')[1] == [3,4]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
 
 @mark_mpi_test(2)
 def test_dist_coords_to_part_coords_S(sub_comm):
@@ -212,19 +211,19 @@ def test_dist_coords_to_part_coords_S(sub_comm):
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
-  dist_zone  = I.getZones(dist_tree)[1]
-  part_zones = I.getZones(part_tree)
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[1]
+  part_zones = PT.get_all_Zone_t(part_tree)
   BTP.dist_coords_to_part_coords(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == \
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == \
         np.array([1,2]).reshape((2,1,1), order='F')).all()
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == \
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == \
         np.array([2,2]).reshape((2,1,1), order='F')).all()
   elif sub_comm.Get_rank() == 1:
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CX')[1] == \
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == \
         np.array([5,6,3,4]).reshape((2,2,1),order='F')).all()
-    assert (I.getNodeFromPath(part_zones[0], 'GridCoordinates/CY')[1] == \
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == \
         np.array([1,1,2,1]).reshape((2,2,1),order='F')).all()
 
 @mark_mpi_test(2)
@@ -251,27 +250,27 @@ def test_dist_sol_to_part_sol_allvtx(sub_comm, include):
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+  part_zones = PT.get_all_Zone_t(part_tree)
   BTP.dist_sol_to_part_sol(dist_zone, part_zones, sub_comm, include=include)
 
   should_have_field2 = include != ["FlowSolution/field1"]
   for zone in part_zones:
-    assert I.getNodeFromPath(zone, 'FlowSolution/field1')[1].dtype == np.int32
+    assert PT.get_node_from_path(zone, 'FlowSolution/field1')[1].dtype == np.int32
     if should_have_field2:
-      assert I.getNodeFromPath(zone, 'FlowSolution/field2')[1].dtype == np.float64
+      assert PT.get_node_from_path(zone, 'FlowSolution/field2')[1].dtype == np.float64
     else:
-      assert I.getNodeFromPath(zone, 'FlowSolution/field2') is None
+      assert PT.get_node_from_path(zone, 'FlowSolution/field2') is None
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field1')[1] == [0,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'FlowSolution/field1')[1] == [0,1]).all()
     if should_have_field2:
-      assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field2')[1] == [6,1]).all()
+      assert (PT.get_node_from_path(part_zones[0], 'FlowSolution/field2')[1] == [6,1]).all()
   elif sub_comm.Get_rank() == 1:
-    assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field1')[1] == [1,0]).all()
-    assert (I.getNodeFromPath(part_zones[1], 'FlowSolution/field1')[1] == [0,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'FlowSolution/field1')[1] == [1,0]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'FlowSolution/field1')[1] == [0,1]).all()
     if should_have_field2:
-      assert (I.getNodeFromPath(part_zones[0], 'FlowSolution/field2')[1] == [2,5]).all()
-      assert (I.getNodeFromPath(part_zones[1], 'FlowSolution/field2')[1] == [4,3]).all()
+      assert (PT.get_node_from_path(part_zones[0], 'FlowSolution/field2')[1] == [2,5]).all()
+      assert (PT.get_node_from_path(part_zones[1], 'FlowSolution/field2')[1] == [4,3]).all()
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("exclude", [[], ["*/field1"]])
@@ -302,17 +301,17 @@ def test_dist_sol_to_part_sol_pl(sub_comm, exclude):
   PT.rm_nodes_from_name(dist_tree, 'FlowSolution') #Test only pl sol here
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+  part_zones = PT.get_all_Zone_t(part_tree)
   BTP.dist_sol_to_part_sol(dist_zone, part_zones, sub_comm, exclude=exclude)
 
   if exclude == []:
     if sub_comm.Get_rank() == 0:
-      assert (I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1')[1] == [20]).all()
+      assert (PT.get_node_from_path(part_zones[0], 'FlowSolWithPL/field1')[1] == [20]).all()
     elif sub_comm.Get_rank() == 1:
-      assert I.getNodeFromPath(part_zones[0], 'FlowSolWithPL/field1') is None
-      assert I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1].shape == (2,)
-      assert (I.getNodeFromPath(part_zones[1], 'FlowSolWithPL/field1')[1] == [30,10]).all()
+      assert PT.get_node_from_path(part_zones[0], 'FlowSolWithPL/field1') is None
+      assert PT.get_node_from_path(part_zones[1], 'FlowSolWithPL/field1')[1].shape == (2,)
+      assert (PT.get_node_from_path(part_zones[1], 'FlowSolWithPL/field1')[1] == [30,10]).all()
   else:
     assert PT.get_node_from_name(part_tree, 'field1') is None
 
@@ -351,20 +350,20 @@ def test_dist_dataset_to_part_dataset(sub_comm, from_api):
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = I.getZones(part_tree)
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+  part_zones = PT.get_all_Zone_t(part_tree)
   if from_api:
     dist_to_part.dist_tree_to_part_tree_only_labels(dist_tree, part_tree, ["BCDataSet_t"], sub_comm)
   else:
     BTP.dist_dataset_to_part_dataset(dist_zone, part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [2,2,1]).all()
-    assert I.getNodeFromPath(part_zones[0], 'ZBC/BC/BCDSWitPL/DirichletData/field') is None
+    assert (PT.get_node_from_path(part_zones[0], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [2,2,1]).all()
+    assert PT.get_node_from_path(part_zones[0], 'ZBC/BC/BCDSWitPL/DirichletData/field') is None
   elif sub_comm.Get_rank() == 1:
-    assert I.getNodeFromPath(part_zones[0], 'ZBC/BC') is None
-    assert (I.getNodeFromPath(part_zones[1], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,4,3]).all()
-    assert (I.getNodeFromPath(part_zones[1], 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [100.]).all()
+    assert PT.get_node_from_path(part_zones[0], 'ZBC/BC') is None
+    assert (PT.get_node_from_path(part_zones[1], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,4,3]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [100.]).all()
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("api_mode", [None, "ZoneAll", "ZoneOnly", "Tree"])
@@ -399,8 +398,8 @@ def test_dist_subregion_to_part_subregion(sub_comm, api_mode):
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
-  dist_zone  = I.getZones(dist_tree)[0]
-  part_zones = [zone for zone in I.getZones(part_tree) if 'ZoneU' in I.getName(zone)]
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+  part_zones = [zone for zone in PT.iter_all_Zone_t(part_tree) if 'ZoneU' in PT.get_name(zone)]
   if api_mode is None:
     BTP.dist_subregion_to_part_subregion(dist_zone, part_zones, sub_comm)
   elif api_mode == "ZoneAll":
@@ -413,10 +412,10 @@ def test_dist_subregion_to_part_subregion(sub_comm, api_mode):
     return
 
   if sub_comm.Get_rank() == 0:
-    assert (I.getNodeFromPath(part_zones[0], 'ZSRWithoutPL/field')[1] == [200,500,100]).all()
-    assert I.getNodeFromPath(part_zones[0], 'ZSRWithPL') is None
+    assert (PT.get_node_from_path(part_zones[0], 'ZSRWithoutPL/field')[1] == [200,500,100]).all()
+    assert PT.get_node_from_path(part_zones[0], 'ZSRWithPL') is None
   elif sub_comm.Get_rank() == 1:
-    assert I.getNodeFromPath(part_zones[0], 'ZSRWithoutPL') is None
-    assert (I.getNodeFromPath(part_zones[0], 'ZSRWithPL/field')[1] == [42,24]).all()
-    assert I.getNodeFromPath(part_zones[1], 'ZSRWithPL') is None
-    assert (I.getNodeFromPath(part_zones[1], 'ZSRWithoutPL/field')[1] == [600,300,400]).all()
+    assert PT.get_node_from_path(part_zones[0], 'ZSRWithoutPL') is None
+    assert (PT.get_node_from_path(part_zones[0], 'ZSRWithPL/field')[1] == [42,24]).all()
+    assert PT.get_node_from_path(part_zones[1], 'ZSRWithPL') is None
+    assert (PT.get_node_from_path(part_zones[1], 'ZSRWithoutPL/field')[1] == [600,300,400]).all()

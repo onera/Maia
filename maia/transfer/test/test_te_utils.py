@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-import Converter.Internal as I
+import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia import npy_pdm_gnum_dtype
@@ -27,14 +27,10 @@ BaseB CGNSBase_t:
   Zone3.P0.N0 Zone_t:
 """
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
-  assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseA/Zone1')]\
-      == ['Zone1.P0.N1', 'Zone1.P0.N2']
-  assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseA/Zone2.With.dot')]\
-      == ['Zone2.With.dot.P0.N0']
-  assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseA/Zone3')]\
-      == []
-  assert [I.getName(zone) for zone in utils.get_partitioned_zones(part_tree, 'BaseB/Zone3')]\
-      == ['Zone3.P0.N0']
+  assert PT.get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone1')) == ['Zone1.P0.N1', 'Zone1.P0.N2']
+  assert PT.get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone2.With.dot')) == ['Zone2.With.dot.P0.N0']
+  assert PT.get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone3')) == []
+  assert PT.get_names(utils.get_partitioned_zones(part_tree, 'BaseB/Zone3')) == ['Zone3.P0.N0']
 
 def test_get_cgns_distribution():
   yt = """
@@ -49,7 +45,7 @@ Zone Zone_t:
 """
   dist_zone = parse_yaml_cgns.to_node(yt)
   zone_distri = utils.get_cgns_distribution(dist_zone, 'Cell')
-  bc_distri   = utils.get_cgns_distribution(I.getNodeFromPath(dist_zone, 'ZBC/bc1'), 'Index')
+  bc_distri   = utils.get_cgns_distribution(PT.get_node_from_path(dist_zone, 'ZBC/bc1'), 'Index')
   assert zone_distri.dtype == bc_distri.dtype == npy_pdm_gnum_dtype
   assert (zone_distri == [1,2,4]).all()
   assert (bc_distri   == [1,4,4]).all()
@@ -122,16 +118,16 @@ Zone.P0.N1 Zone_t:
       Element DataArray_t [2,3,5]:
 """
   part_zones = parse_yaml_cgns.to_nodes(yt)
-  dist_elts = [I.newElements('Hexa',  erange=[7,8]),
-               I.newElements('Quad',  erange=[1,6]),
-               I.newElements('Tetra', erange=[9,12])]
+  dist_elts = [PT.new_Elements('Hexa',  erange=[7,8]),
+               PT.new_Elements('Quad',  erange=[1,6]),
+               PT.new_Elements('Tetra', erange=[9,12])]
   assert (utils.create_all_elt_g_numbering(part_zones[0], dist_elts) == \
       [6,1,4,6+1,8+2,8+1,8+4,8+3]).all()
   assert (utils.create_all_elt_g_numbering(part_zones[1], dist_elts) == \
       [2,3,5,6+2]).all()
 
 def test_get_entities_numbering():
-  zoneS = I.newZone(ztype='Structured')
+  zoneS = PT.new_Zone(type='Structured')
   expected_vtx_lngn = np.array([4,21,1,2,8,12])
   expected_face_lngn = np.array([44,23,94,12])
   expected_cell_lngn = np.array([], int)
@@ -143,20 +139,20 @@ def test_get_entities_numbering():
   assert (cell_lngn == expected_cell_lngn).all()
   assert (face_lngn == expected_face_lngn).all()
 
-  zoneU = I.newZone(ztype='Unstructured')
+  zoneU = PT.new_Zone(type='Unstructured')
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn}
   gnum_node = MT.newGlobalNumbering(gnum_arrays, zoneU)
 
   with pytest.raises(RuntimeError):
     vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
 
-  ngon = I.newElements(etype='NGON', parent=zoneU)
+  ngon = PT.new_Elements(type='NGON_n', parent=zoneU)
   gnum_node = MT.newGlobalNumbering({'Element' : expected_face_lngn}, ngon)
   vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
   assert vtx_lngn.dtype == npy_pdm_gnum_dtype
   assert (vtx_lngn == expected_vtx_lngn).all()
   assert (face_lngn == expected_face_lngn).all()
 
-  ngon = I.newElements('ElementsTwo', etype='NGON', parent=zoneU)
+  ngon = PT.new_Elements('ElementsTwo', type='NGON_n', parent=zoneU)
   with pytest.raises(RuntimeError):
     vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)

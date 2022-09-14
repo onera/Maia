@@ -74,10 +74,12 @@ def test_from_path():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   assert PT.get_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3') is None
+  assert PT.get_node_from_path(tree, '') == tree
   #With ancestors
   nodes = PT.get_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3', ancestors=True)
   assert [PT.get_label(n) for n in nodes] == ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3', ancestors=True) == []
+  assert PT.get_node_from_path(tree, '', ancestors=True) == [tree]
 
 # Move in functionnal test ?
 def test_getNodeFromPredicate():
