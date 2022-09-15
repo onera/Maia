@@ -1,11 +1,3 @@
-#This could be usefull to reserve a node
-#get-resources:
-#  stage: .pre
-#  script:
-#    - echo "Getting node"
-#    - srun --immediate --pty --qos c1_inter_giga --time 1:00:00 --ntasks 8 bash
-#    - echo "Now running on $HOSTNAME"
-
 # Prevent duplicated pipeline by removing MR pipelines
 workflow:
   rules:
@@ -26,14 +18,14 @@ stages:
   - build
   - test
   - deploy
-#  - report
-#  - clean
 
 job:init:
   stage: init
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
+  tags:
+    - shell
   before_script: 
     - ''
   script: # explicitly load modules one by one, so that if one fails, it will be easy to identify
@@ -46,6 +38,8 @@ job:init:
 
 job:build:
   stage: build
+  tags:
+    - shell
   script:
     - mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
@@ -57,16 +51,24 @@ job:doc:
   needs: ["job:build"]
   rules:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  tags:
+    - shell
   script:
     - cd build
     - source source.sh
     - cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
     - make maia_sphinx
+  artifacts:
+    paths:
+      - ./build/doc/*
+    expire_in: 24 hours
 
 
 #todo : display reports on browser eg with gitlab pages
 job:ctest:
   stage: test
+  tags:
+    - shell
   script:
     - cd build
     - ctest -E pdm
@@ -90,6 +92,9 @@ job:ctest:
 
 job:doc_snippets:
   stage: test
+  tags:
+    - shell
+  needs: ["job:ctest"] #Make it go on same runner
   script:
     - cd build
     - source source.sh; unset PYTEST_PLUGINS
@@ -98,6 +103,8 @@ job:doc_snippets:
 # Deploy the documentation sphinx documentation to the site, only if branch is dev
 job:deploy_doc:
   stage: deploy
+  tags:
+    - shell
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   before_script: 
@@ -107,71 +114,81 @@ job:deploy_doc:
     # I dont know how to clean the repo before (deltree does not work on spiro) so lets erase everything
     - smbclient -U jcoulet%$DROPPY_PSSWD //droopy2/Maia -c "prompt OFF; recurse ON; mput *"
 
-job:deploy_spiro:
+job:deploy_spiro21:
   stage: deploy
   tags: 
-    - spiro
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-  before_script: 
-    - module purge
-    - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
-    - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc8.3
-  script:
-    - export PREFIX=/scratchm/jcoulet/aa_install_py3/maia
-             FLAGS="-DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_EXTENSION_PDMA=ON"
-    - cd build
-    - rm CMakeCache.txt
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-oneapi $FLAGS ../
-    - make -j 24 install > oneapi_dbg.log
-    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-oneapi -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-oneapi .
-    - make -j 24 install > oneapi_opt.log
-    - module purge
-    - module load CFD/5.0-intel-19.impi-19 cmake/3.19-gnu
-    - rm CMakeCache.txt
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-intel19 $FLAGS -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lbz2 -lz' ../
-    - make -j 24 install > intel19_dbg.log
-    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-intel19 -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-intel19 .
-    - make -j 24 install > intel19_opt.log
-
-job:deploy_sator:
-  stage: deploy
-  tags: 
-    - sator
+    - shell
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
   before_script: 
-    - module purge
-    - source /tmp_user/sator/sonics/source-intel-oneapi-2021.2-sator-centos8.me --compiler gcc8.3
-    - export https_proxy=http://proxy.onera:80
-  script:
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
-    - mkdir build && cd build
-    - export CC=gcc CXX=g++ FC=gfortran
+    - mkdir -p build && cd build
+    - export PREFIX=/scratchm/jcoulet/aa_install_py3/maia
+             FLAGS="-DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_EXTENSION_PDMA=ON"
+  script:
+    - module purge
+    - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
+    - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc8.3
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-oneapi $FLAGS ../
+    - make -j 16 install > oneapi_dbg.log
+    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-oneapi -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-oneapi .
+    - make -j 16 install > oneapi_opt.log
+
+job:deploy_spiro19:
+  stage: deploy
+  tags: 
+    - shell
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: none
+  before_script: 
+    - git submodule update --init
+    - (cd external/paradigm && git submodule update --init)
+    - mkdir -p build && cd build
+    - export PREFIX=/scratchm/jcoulet/aa_install_py3/maia
+             FLAGS="-DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_EXTENSION_PDMA=ON"
+  script:
+    - module purge
+    - module load CFD/5.0-intel-19.impi-19 cmake/3.19-gnu
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-intel19 $FLAGS -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lbz2 -lz' ../
+    - make -j 16 install > intel19_dbg.log
+    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-intel19 -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-intel19 .
+    - make -j 16 install > intel19_opt.log
+
+job:deploy_sator:
+  stage: deploy
+  tags: 
+    - shell
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: none
+  before_script: 
+    - git submodule update --init
+    - (cd external/paradigm && git submodule update --init)
+    - mkdir -p build && cd build
+  script:
+    - |
+      cat > build_sator.sh << EOF
+      module purge
+      source /tmp_user/sator/sonics/source-intel-oneapi-2021.2-sator-centos8.me --compiler gcc8.3
+      export https_proxy=http://proxy.onera:80
+      export CC=gcc CXX=g++ FC=gfortran
              PARMETIS_ROOT=/tmp_user/sator/sonics/opt-centos8/gcc-8.3.0/parmetis-4.0.3-pznujngpl3jugn6yi44q364x6jkqugzl
              METIS_ROOT=/tmp_user/sator/sonics/opt-centos8/gcc-8.3.0/metis-5.1.0-ufi2oqocw77dkv6ks36c4jangfxhda5l
              SCOTCH_ROOT=/tmp_user/sator/sonics/opt-centos8/gcc-8.3.0/scotch-6.0.9-4wd3pamq3potrr4qv3frkb45ysrdybqn
-    - cmake ../ -DCMAKE_BUILD_TYPE=Release
-                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/jcoulet/opt/maia
-                -DCMAKE_CXX_STANDARD=17
+      cmake ../ -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/jcoulet/opt/maia \
+                -DCMAKE_CXX_STANDARD=17 \
                 -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
-    - make -j install
+      make -j install
+      EOF
+    - ssh sator6 "cd $PWD; source /etc/profile; sh ./build_sator.sh"
       
-#job:report:
-#  stage: report
-#  script:
-#    - cd build
-#    - make report
-#  when: on_failure # s'exécutera si le job `job:build` ou `job:test` ne passe pas
-
-#job:clean:
-#  stage: clean
-#  script:
-#    - cd build
-#    - make clean # s'exécutera quoi qu'il se passe
-#  when: always
-
