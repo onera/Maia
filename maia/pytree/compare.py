@@ -137,6 +137,7 @@ def is_same_tree(node1, node2, abs_tol=0, type_tol=False):
 # --------------------------------------------------------------------------
 # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
 def flatten_cgns(items):
+  from maia.pytree.node.check import is_valid_node
   """Yield items from any nested iterable; see Reference."""
   for x in items:
     if isinstance(x, Iterable) and not isinstance(x, (str, bytes)) and not is_valid_node(x):

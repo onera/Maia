@@ -7,11 +7,14 @@ workflow:
 
 variables:
   GIT_STRATEGY: none # don't do anything by default
-#Common to both stages
-before_script:
-  - module purge
-  - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
-  - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc10.1
+#Common to all stages
+default:
+  tags: #All jobs uses jamacar-shell executor
+    - shell
+  before_script:
+    - module purge
+    - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
+    - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc10.1
 
 stages:
   - init
@@ -24,37 +27,36 @@ job:init:
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
-  tags:
-    - shell
   before_script: 
     - ''
   script: # explicitly load modules one by one, so that if one fails, it will be easy to identify
+    - echo "CUSTOM_CI_DIR=$PWD" >> build.env
     - git submodule update --init external/project_utils
     - git submodule update --init external/cpp_cgns
     - git submodule update --init external/std_e
     - git submodule update --init external/pytest-mpi-check
     - git submodule update --init external/paradigm
     - (cd external/paradigm && git submodule update --init extensions/paradigma)
+  artifacts:
+    reports:
+      dotenv: build.env
 
 job:build:
   stage: build
-  tags:
-    - shell
   script:
-    - mkdir build && cd build
+    - cd $CUSTOM_CI_DIR
+    - mkdir -p build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j8
 
 # This build documentation after main build, only if branch is dev or for MR events
 job:doc:
   stage: build
-  needs: ["job:build"]
+  needs: ["job:init", "job:build"] #job:init is needed to get dotenv artifacts
   rules:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
-  tags:
-    - shell
   script:
-    - cd build
+    - cd $CUSTOM_CI_DIR/build
     - source source.sh
     - cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
     - make maia_sphinx
@@ -67,10 +69,8 @@ job:doc:
 #todo : display reports on browser eg with gitlab pages
 job:ctest:
   stage: test
-  tags:
-    - shell
   script:
-    - cd build
+    - cd $CUSTOM_CI_DIR/build
     - ctest -E pdm
   after_script:
     - cd build/test
@@ -92,19 +92,14 @@ job:ctest:
 
 job:doc_snippets:
   stage: test
-  tags:
-    - shell
-  needs: ["job:ctest"] #Make it go on same runner
   script:
-    - cd build
+    - cd $CUSTOM_CI_DIR/build
     - source source.sh; unset PYTEST_PLUGINS
     - python3 -m pytest ../doc
 
 # Deploy the documentation sphinx documentation to the site, only if branch is dev
 job:deploy_doc:
   stage: deploy
-  tags:
-    - shell
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   before_script: 
@@ -116,8 +111,6 @@ job:deploy_doc:
 
 job:deploy_spiro21:
   stage: deploy
-  tags: 
-    - shell
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   variables:
@@ -140,8 +133,6 @@ job:deploy_spiro21:
 
 job:deploy_spiro19:
   stage: deploy
-  tags: 
-    - shell
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   variables:
@@ -163,8 +154,6 @@ job:deploy_spiro19:
 
 job:deploy_sator:
   stage: deploy
-  tags: 
-    - shell
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   variables:
