@@ -1,7 +1,6 @@
 import numpy as np
 import Pypdm.Pypdm as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -18,15 +17,13 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
   n_cell  = g_dims['n_face_abs'] if g_dims['n_cell_abs'] == 0 else g_dims['n_cell_abs']
   max_dim = 3 if g_dims['n_cell_abs'] != 0 else 2
 
-  zone = I.newZone('zone', [[n_vtx, n_cell, 0]], 'Unstructured') 
+  zone = PT.new_Zone('zone', size=[[n_vtx, n_cell, 0]], type='Unstructured') 
 
   # > Grid coordinates
   vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
   cx, cy, cz = layouts.interlaced_to_tuple_coords(vtx_data['np_vtx'])
-  grid_coord = I.newGridCoordinates(parent=zone)
-  I.newDataArray('CoordinateX', cx, parent=grid_coord)
-  I.newDataArray('CoordinateY', cy, parent=grid_coord)
-  I.newDataArray('CoordinateZ', cz, parent=grid_coord)
+  coords = {'CoordinateX' : cx, 'CoordinateY' : cy, 'CoordinateZ' : cz}
+  grid_coord = PT.new_GridCoordinates(fields=coords, parent=zone)
 
   # Carefull ! Getting elt of dim > cell_dim is not allowed
   pdm_section_kind = [PDM._PDM_GEOMETRY_KIND_CORNER, PDM._PDM_GEOMETRY_KIND_RIDGE,
@@ -41,9 +38,8 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
       cgns_elmt_name = MT.pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
       distrib   = par_utils.full_to_partial_distribution(section["np_distrib"], comm)
 
-      elmt = I.newElements(f"{cgns_elmt_name}.{i_section}", cgns_elmt_name, parent=zone)
-      I.newPointRange('ElementRange', [elt_shift, elt_shift + distrib[-1]-1], parent=elmt)
-      I.newDataArray('ElementConnectivity', section["np_connec"], parent=elmt)
+      elmt = PT.new_Elements(f"{cgns_elmt_name}.{i_section}", cgns_elmt_name, \
+          erange=[elt_shift, elt_shift + distrib[-1]-1], econn=section["np_connec"], parent=zone)
       MT.newDistribution({'Element' : distrib}, parent=elmt)
       elt_shift += distrib[-1]
 
@@ -75,15 +71,13 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   # > Generate dist_tree
   dist_tree = PT.new_CGNSTree()
   dist_base = PT.new_CGNSBase(parent=dist_tree)
-  dist_zone = I.newZone('zone', [[distrib_vtx[-1], distrib_cell[-1], 0]],
-                        'Unstructured', parent=dist_base)
+  dist_zone = PT.new_Zone('zone', size=[[distrib_vtx[-1], distrib_cell[-1], 0]],
+                        type='Unstructured', parent=dist_base)
 
   # > Grid coordinates
   cx, cy, cz = layouts.interlaced_to_tuple_coords(dcube_val['dvtx_coord'])
-  grid_coord = I.newGridCoordinates(parent=dist_zone)
-  I.newDataArray('CoordinateX', cx, parent=grid_coord)
-  I.newDataArray('CoordinateY', cy, parent=grid_coord)
-  I.newDataArray('CoordinateZ', cz, parent=grid_coord)
+  coords = {'CoordinateX' : cx, 'CoordinateY' : cy, 'CoordinateZ' : cz}
+  grid_coord = PT.new_GridCoordinates(fields=coords, parent=dist_zone)
 
   # > NGon node
   dn_face = dcube_dims['dn_face']
@@ -93,15 +87,11 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
   np_utils.shift_nonzeros(pe, distrib_face[-1])
-  ngon_n = I.newElements('NGonElements', 'NGON',
-                         erange = [1, distrib_face[-1]], parent=dist_zone)
-
-  I.newDataArray('ElementConnectivity', dcube_val['dface_vtx'], parent=ngon_n)
-  I.newDataArray('ElementStartOffset' , eso                   , parent=ngon_n)
-  I.newDataArray('ParentElements'     , pe                    , parent=ngon_n)
-
+  ngon_n = PT.new_NGonElements('NGonElements', 
+                               erange = [1, distrib_face[-1]], parent=dist_zone,
+                               eso = eso, ec = dcube_val['dface_vtx'], pe = pe)
   # > BCs
-  zone_bc = I.newZoneBC(parent=dist_zone)
+  zone_bc = PT.new_ZoneBC(parent=dist_zone)
 
   face_group_idx = dcube_val['dface_group_idx']
 
@@ -109,11 +99,11 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
 
   bc_names = ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
   for i_bc in range(dcube_dims['n_face_group']):
-    bc_n = I.newBC(bc_names[i_bc], btype='Null', parent=zone_bc)
-    I.newGridLocation('FaceCenter', parent=bc_n)
+    bc_n = PT.new_BC(bc_names[i_bc], type='Null', parent=zone_bc)
+    PT.new_GridLocation('FaceCenter', parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
-    I.newPointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
+    PT.new_PointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
 
     distrib  = par_utils.dn_to_distribution(dn_face_bnd, comm)
     MT.newDistribution({'Index' : distrib}, parent=bc_n)
@@ -159,10 +149,10 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   min_elt_dim = 0 if get_ridges else cell_dim - 1
   dist_zone = _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, min_elt_dim)
-  I._addChild(dist_base, dist_zone)
+  PT.add_child(dist_base, dist_zone)
 
   if phy_dim == 2:
-    I.rmNodeByPath(dist_zone, 'GridCoordinates/CoordinateZ')
+    PT.rm_node_from_path(dist_zone, 'GridCoordinates/CoordinateZ')
 
   # > BCs
   if cell_dim == 2:
@@ -177,7 +167,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
   range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
   shift_bc = range_per_dim[cell_dim][1]
 
-  zone_bc = I.newZoneBC(parent=dist_zone)
+  zone_bc = PT.new_ZoneBC(parent=dist_zone)
 
   face_group_idx = groups['dgroup_elmt_idx']
 
@@ -185,11 +175,11 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
   n_face_group = face_group_idx.shape[0] - 1
 
   for i_bc in range(n_face_group):
-    bc_n = I.newBC(bc_names[i_bc], btype='Null', parent=zone_bc)
-    I.newGridLocation(bc_loc, parent=bc_n)
+    bc_n = PT.new_BC(bc_names[i_bc], type='Null', parent=zone_bc)
+    PT.new_GridLocation(bc_loc, parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
-    I.newPointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
+    PT.new_PointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
     MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
 
   return dist_tree

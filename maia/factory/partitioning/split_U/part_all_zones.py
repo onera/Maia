@@ -1,7 +1,6 @@
 import numpy              as np
 import Pypdm.Pypdm        as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh
@@ -50,7 +49,7 @@ def prepare_part_weight(bases_to_block, zone_to_weights):
   j = 0
   for base, zones in bases_to_block.items():
     for zone in zones:
-      zone_path = f"{base}/{I.getName(zone)}"
+      zone_path = f"{base}/{PT.get_name(zone)}"
       weights   = zone_to_weights.get(zone_path, [])
       n_part_per_zone[i] = len(weights)
       part_weight[j:j+n_part_per_zone[i]] = weights

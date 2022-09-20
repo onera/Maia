@@ -1,5 +1,4 @@
 from pytest_mpi_check._decorator import mark_mpi_test
-import Converter.Internal as I
 import maia.pytree as PT
 
 from maia.factory import dplane_generator
@@ -15,11 +14,11 @@ def test_dplane_generate(sub_comm):
   dist_tree = dplane_generator.dplane_generate(xmin, xmax, ymin, ymax,\
       have_random, init_random, nx, ny, sub_comm)
 
-  zones = I.getZones(dist_tree)
+  zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 1
   zone = zones[0]
-  assert I.getNodeFromPath(zone, ':CGNS#Distribution/Vertex') is not None
-  assert I.getNodeFromPath(zone, ':CGNS#Distribution/Cell') is not None
+  assert PT.get_node_from_path(zone, ':CGNS#Distribution/Vertex') is not None
+  assert PT.get_node_from_path(zone, ':CGNS#Distribution/Cell') is not None
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 4
-  assert I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1].shape[0] + 1 == \
-         I.getNodeFromPath(zone, 'NGonElements/ElementStartOffset')[1].shape[0]
+  assert PT.get_node_from_path(zone, 'NGonElements/ParentElements')[1].shape[0] + 1 == \
+         PT.get_node_from_path(zone, 'NGonElements/ElementStartOffset')[1].shape[0]

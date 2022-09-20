@@ -1,7 +1,6 @@
 from mpi4py import MPI
 import numpy              as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -36,7 +35,7 @@ def collect_S_bnd_per_dir(zone):
   base_bound = {k : [] for k in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]}
 
   bnd_queries = [['ZoneBC_t', 'BC_t'],
-      ['ZoneGridConnectivity_t', lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t']],
+      ['ZoneGridConnectivity_t', lambda n : PT.get_label(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t']],
       ['ZoneBC_t', 'BC_t', 'BCDataSet_t']]
   for bnd_query in bnd_queries:
     for nodes in PT.iter_children_from_predicates(zone, bnd_query, ancestors=True):
@@ -45,9 +44,9 @@ def collect_S_bnd_per_dir(zone):
       point_range = PT.get_node_from_name(bnd, 'PointRange')[1]
       bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
 
-      if I.getType(bnd) == 'BCDataSet_t':
-        bcds_path = '/'.join([I.getName(n) for n in nodes[:-1]])
-        I.createUniqueChild(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
+      if PT.get_label(bnd) == 'BCDataSet_t':
+        bcds_path = '/'.join([PT.get_name(n) for n in nodes[:-1]])
+        PT.new_child(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
 
       pr_val = point_range[bnd_normal_index,0]
       extr = 'min' if pr_val == 1 else 'max'
@@ -99,7 +98,7 @@ def pr_to_global_num(pr, zone_offset, reverse=False):
 def create_bcs(d_zone, p_zone, p_zone_offset):
   """
   """
-  zbc = I.newZoneBC(parent=p_zone)
+  zbc = PT.new_ZoneBC(parent=p_zone)
   for geo_bnd, dist_bnds in collect_S_bnd_per_dir(d_zone).items():
 
     normal_idx = dir_to_idx[geo_bnd[0]]
@@ -137,14 +136,14 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
                   sub_pr[dir_to_swap, 1], sub_pr[dir_to_swap, 0]
 
           #Effective creation of BC in part zone
-          if I.getType(dist_bc) == 'BCDataSet_t':
+          if PT.get_label(dist_bc) == 'BCDataSet_t':
             path_node = PT.get_child_from_name(dist_bc, '__maia::dspath')
-            parent_path   = I.getValue(path_node)
-            I._rmNode(dist_bc, path_node) #Cleanup
+            parent_path   = PT.get_value(path_node)
+            PT.rm_child(dist_bc, path_node) #Cleanup
             #BC should have been created before so its ok
-            parent = I.getNodeFromPath(p_zone, parent_path)
-            part_bc = I.newBCDataSet(I.getName(dist_bc), parent=parent)
-            I.newPointRange(value=sub_pr, parent=part_bc)
+            parent = PT.get_node_from_path(p_zone, parent_path)
+            part_bc = PT.new_node(PT.get_name(dist_bc), 'BCDataSet_t', parent=parent)
+            PT.new_PointRange(value=sub_pr, parent=part_bc)
             i_ar  = np.arange(range_part_bc_g[0,0], range_part_bc_g[0,1]+1, dtype=pdm_dtype)
             j_ar  = np.arange(range_part_bc_g[1,0], range_part_bc_g[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
             k_ar  = np.arange(range_part_bc_g[2,0], range_part_bc_g[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
@@ -152,17 +151,17 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             assert bcds_lntogn.size == PT.Subset.n_elem(part_bc)
             MT.newGlobalNumbering({'Index' : bcds_lntogn}, part_bc)
           else: #GC are put with bc and treated afterward
-            part_bc = I.newBC(I.getName(dist_bc), sub_pr, parent=zbc)
-          I.setValue(part_bc, I.getValue(dist_bc))
-          I.newGridLocation(grid_loc, parent=part_bc)
-          I._addChild(part_bc, PT.get_child_from_name(dist_bc, 'Transform'))
-          I._addChild(part_bc, PT.get_child_from_label(dist_bc, 'GridConnectivityType_t'))
-          I._addChild(part_bc, PT.get_child_from_label(dist_bc, 'GridConnectivityProperty_t'))
+            part_bc = PT.new_BC(PT.get_name(dist_bc), point_range=sub_pr, parent=zbc)
+          PT.set_value(part_bc, PT.get_value(dist_bc))
+          PT.new_GridLocation(grid_loc, parent=part_bc)
+          PT.add_child(part_bc, PT.get_child_from_name(dist_bc, 'Transform'))
+          PT.add_child(part_bc, PT.get_child_from_label(dist_bc, 'GridConnectivityType_t'))
+          PT.add_child(part_bc, PT.get_child_from_label(dist_bc, 'GridConnectivityProperty_t'))
           if PT.get_child_from_name(dist_bc, 'GridConnectivityDonorName') is not None:
-            I._addChild(part_bc, PT.get_child_from_name(dist_bc, 'GridConnectivityDonorName'))
-            I.createChild(part_bc, 'distPR', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRange')[1])
-            I.createChild(part_bc, 'distPRDonor', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRangeDonor')[1])
-            I.newDataArray('zone_offset', p_zone_offset, parent=part_bc)
+            PT.add_child(part_bc, PT.get_child_from_name(dist_bc, 'GridConnectivityDonorName'))
+            PT.new_child(part_bc, 'distPR', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRange')[1])
+            PT.new_child(part_bc, 'distPRDonor', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRangeDonor')[1])
+            PT.new_DataArray('zone_offset', p_zone_offset, parent=part_bc)
 
 def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
   """
@@ -180,7 +179,7 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
       #Check if part boundary is internal or comes from an old BC or GC
       is_old_bc = range_part_bc_g[normal_idx,extr] == zone_cell_range(d_zone)[normal_idx,extr]
       if not is_old_bc:
-        jn_list[i_part].append(I.newPointRange(geo_bnd, range_part_bc_g))
+        jn_list[i_part].append(PT.new_PointRange(geo_bnd, range_part_bc_g))
 
   # 2. Exchange. We will need to compare to other parts joins
   all_offset_list = comm.allgather(p_zones_offset)
@@ -188,22 +187,22 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
 
   # 3. Process
   for i_part, p_zone in enumerate(p_zones):
-    zgc = I.newZoneGridConnectivity(parent=p_zone)
+    zgc = PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', parent=p_zone)
     for jn in jn_list[i_part]:
       # Get data for the current join
-      normal_idx = dir_to_idx[I.getName(jn)[0]]
-      extr       = min_max_as_int(I.getName(jn)[1:])
+      normal_idx = dir_to_idx[PT.get_name(jn)[0]]
+      extr       = min_max_as_int(PT.get_name(jn)[1:])
       shift = 1 - 2*extr #1 si min, -1 si max
       dirs  = np.where(np.arange(3) != normal_idx)[0]
-      my_pr = I.getValue(jn)
+      my_pr = PT.get_value(jn)
 
       # Check opposite joins
       for j_proc, opp_parts in enumerate(all_jn_list):
         for j_part, opp_part in enumerate(opp_parts):
           for opp_jn in opp_part:
-            opp_normal_idx = dir_to_idx[I.getName(opp_jn)[0]]
-            opp_extr       = min_max_as_int(I.getName(opp_jn)[1:])
-            opp_pr         = I.getValue(opp_jn)
+            opp_normal_idx = dir_to_idx[PT.get_name(opp_jn)[0]]
+            opp_extr       = min_max_as_int(PT.get_name(opp_jn)[1:])
+            opp_pr         = PT.get_value(opp_jn)
             is_admissible  = opp_normal_idx == normal_idx \
                              and opp_extr != extr \
                              and my_pr[normal_idx,0] - shift == opp_pr[normal_idx,0]
@@ -225,11 +224,10 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
 
                 #Effective creation of GC in part zone
                 gc_name  = MT.conv.name_intra_gc(comm.Get_rank(), i_part, j_proc, j_part)
-                opp_zone = MT.conv.add_part_suffix(I.getName(d_zone), j_proc, j_part)
-                part_gc = I.newGridConnectivity1to1(gc_name, opp_zone,
-                                                    pointRange=sub_pr, pointRangeDonor=sub_pr_d,
-                                                    transform = [1,2,3], parent=zgc)
-                I.newGridLocation('Vertex', parent=part_gc)
+                opp_zone = MT.conv.add_part_suffix(PT.get_name(d_zone), j_proc, j_part)
+                part_gc = PT.new_GridConnectivity1to1(gc_name, opp_zone, transform=[1,2,3], parent=zgc)
+                PT.new_PointRange('PointRange',      sub_pr,   parent=part_gc)
+                PT.new_PointRange('PointRangeDonor', sub_pr_d, parent=part_gc)
 
 def split_original_joins_S(all_part_zones, comm):
   """
@@ -243,7 +241,7 @@ def split_original_joins_S(all_part_zones, comm):
     for jn in PT.iter_children_from_predicates(part, 'ZoneBC_t/BC_t'):
       if PT.get_child_from_name(jn, 'GridConnectivityDonorName') is not None:
         p_zone_offset = PT.get_child_from_name(jn, 'zone_offset')[1]
-        pr_n = I.newPointRange(part[0], np.copy(PT.get_child_from_name(jn, 'PointRange')[1]))
+        pr_n = PT.new_PointRange(part[0], np.copy(PT.get_child_from_name(jn, 'PointRange')[1]))
         key = dzone_name + '/' + jn[0] #TODO : Be carefull if multibase ; this key may clash
         # Pr dans la num globale de la zone
         pr_to_global_num(pr_n[1], p_zone_offset)
@@ -251,7 +249,7 @@ def split_original_joins_S(all_part_zones, comm):
           ori_jn_to_pr[key].append(pr_n)
         except KeyError:
           ori_jn_to_pr[key] = [pr_n]
-        zones_offsets[I.getName(part)] = p_zone_offset
+        zones_offsets[PT.get_name(part)] = p_zone_offset
 
   #Gather and create dic jn -> List of PR
   ori_jn_to_pr_glob = dict()
@@ -266,7 +264,7 @@ def split_original_joins_S(all_part_zones, comm):
     all_offset_zones.update(zones_offsets_rank)
 
   for part in all_part_zones:
-    zone_gc = I.createUniqueChild(part, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
+    zone_gc = PT.update_child(part, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
     to_delete = []
     for jn in PT.iter_children_from_predicates(part, 'ZoneBC_t/BC_t'):
       if PT.get_child_from_name(jn, 'GridConnectivityDonorName') is not None:
@@ -295,13 +293,13 @@ def split_original_joins_S(all_part_zones, comm):
                 pr_in_opp_abs[dir_to_swap, 1], pr_in_opp_abs[dir_to_swap, 0]
         pr_to_cell_location(pr_in_opp_abs, normal_idx, 'Vertex', bnd_is_max)
 
-        opp_jn_key = I.getValue(jn).split('/')[-1] + '/' + I.getValue(PT.get_child_from_name(jn, 'GridConnectivityDonorName'))
+        opp_jn_key = PT.get_value(jn).split('/')[-1] + '/' + PT.get_value(PT.get_child_from_name(jn, 'GridConnectivityDonorName'))
         opposed_joins = ori_jn_to_pr_glob[opp_jn_key]
 
         to_delete.append(jn)
         i_sub_jn = 0
         for opposed_join in opposed_joins:
-          pr_opp_abs = np.copy(I.getValue(opposed_join))
+          pr_opp_abs = np.copy(PT.get_value(opposed_join))
           # Also swap opposed jn (using same directions)
           pr_opp_abs[dir_to_swap, 0], pr_opp_abs[dir_to_swap, 1] = \
                   pr_opp_abs[dir_to_swap, 1], pr_opp_abs[dir_to_swap, 0]
@@ -321,29 +319,29 @@ def split_original_joins_S(all_part_zones, comm):
             sub_pr[:,1] = apply_transform_matrix(sub_prd[:,1], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
             # Go back to local numbering
             pr_to_global_num(sub_pr, p_zone_offset, reverse=True)
-            p_zone_offset_opp = all_offset_zones[I.getName(opposed_join)]
+            p_zone_offset_opp = all_offset_zones[PT.get_name(opposed_join)]
             pr_to_global_num(sub_prd, p_zone_offset_opp, reverse=True)
 
             #Effective creation of GC in part zone
-            gc_name  = I.getName(jn) + '.' + str(i_sub_jn)
+            gc_name  = PT.get_name(jn) + '.' + str(i_sub_jn)
             # Catch opposite base if present
-            opp_path = I.getValue(jn)
+            opp_path = PT.get_value(jn)
             opp_base = opp_path.split('/')[0] + '/' if '/' in opp_path else ''
-            opp_zone = I.getName(opposed_join)
-            part_gc = I.newGridConnectivity1to1(gc_name, opp_base + opp_zone,
-                                                pointRange=sub_pr, pointRangeDonor=sub_prd,
-                                                transform = transform, parent=zone_gc)
-            I._addChild(part_gc, PT.get_child_from_label(jn, 'GridConnectivityProperty_t'))
-            I.newGridLocation('Vertex', parent=part_gc)
+            opp_zone = PT.get_name(opposed_join)
+            part_gc = PT.new_GridConnectivity1to1(gc_name, opp_base + opp_zone, transform=transform, parent=zone_gc)
+            PT.new_PointRange('PointRange',      sub_pr,  parent=part_gc)
+            PT.new_PointRange('PointRangeDonor', sub_prd, parent=part_gc)
+            PT.add_child(part_gc, PT.get_child_from_label(jn, 'GridConnectivityProperty_t'))
             i_sub_jn += 1
       elif PT.get_child_from_label(jn, 'GridConnectivityType_t') is not None:
         #This is a join, but not 1to1. So we just move it with other jns
-        I.setType(jn, 'GridConnectivity_t')
-        I._addChild(zone_gc, jn)
+        PT.set_label(jn, 'GridConnectivity_t')
+        PT.add_child(zone_gc, jn)
         to_delete.append(jn)
     #Cleanup
+    zbc = PT.get_child_from_label(part, 'ZoneBC_t') #All jns are stored under ZBC
     for node in to_delete:
-      I._rmNode(part, node)
+      PT.rm_child(zbc, node)
 
 def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
   """
@@ -409,9 +407,9 @@ def part_s_zone(d_zone, d_zone_weights, comm):
     #Get dim and setup zone
     cell_bounds = np.asarray(part, dtype=np.int32) + 1 #Semi open, but start at 1
     n_cells = np.diff(cell_bounds)
-    pzone_name = MT.conv.add_part_suffix(I.getName(d_zone), i_rank, i_part)
+    pzone_name = MT.conv.add_part_suffix(PT.get_name(d_zone), i_rank, i_part)
     pzone_dims = np.hstack([n_cells+1, n_cells, np.zeros((3,1), dtype=np.int32)])
-    part_zone  = I.newZone(pzone_name, pzone_dims, ztype='Structured')
+    part_zone  = PT.new_Zone(pzone_name, size=pzone_dims, type='Structured')
 
     vtx_lntogn, face_lntogn, cell_lntogn = create_zone_gnums(cell_bounds, PT.Zone.CellSize(d_zone))
     MT.newGlobalNumbering({'Vertex' : vtx_lntogn, 'Face' : face_lntogn, 'Cell' : cell_lntogn}, parent=part_zone)

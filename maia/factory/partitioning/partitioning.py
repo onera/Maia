@@ -1,4 +1,3 @@
-import Converter.Internal as I
 import maia.pytree as PT
 
 from maia import pdm_has_ptscotch, pdm_has_parmetis
@@ -41,7 +40,7 @@ def set_default(dist_tree, comm):
   default['reordering']['graph_part_tool'] = default['graph_part_tool']
 
   # part_interface_loc : Vertex si Elements, FaceCenter si NGons
-  for zone in I.getZones(dist_tree):
+  for zone in PT.get_all_Zone_t(dist_tree):
     if 22 in [PT.Element.Type(elt) for elt in PT.iter_children_from_label(zone, 'Elements_t')]:
       default['part_interface_loc'] = 'FaceCenter'
       break
@@ -114,39 +113,40 @@ def _partitioning(dist_tree,
                   comm,
                   part_options):
 
-  u_zones   = [zone for zone in I.getZones(dist_tree) if PT.Zone.Type(zone) == 'Unstructured']
-  s_zones   = [zone for zone in I.getZones(dist_tree) if PT.Zone.Type(zone) == 'Structured']
+  is_s_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Structured'
+  is_u_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
+
+  u_zones = PT.get_nodes_from_predicate(dist_tree, is_u_zone, depth=2)
+  s_zones = PT.get_nodes_from_predicate(dist_tree, is_s_zone, depth=2)
 
   if len(u_zones)*len(s_zones) != 0:
     raise RuntimeError("Hybrid meshes are not yet supported")
 
   MJT.add_joins_donor_name(dist_tree, comm)
 
-  is_s_zone = lambda n : I.getType(n) == 'Zone_t' and PT.Zone.Type(n) == 'Structured'
-  is_u_zone = lambda n : I.getType(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
 
-  part_tree = I.newCGNSTree()
+  part_tree = PT.new_CGNSTree()
   for dist_base in PT.iter_all_CGNSBase_t(dist_tree):
 
-    part_base = I.createNode(I.getName(dist_base), 'CGNSBase_t', I.getValue(dist_base), parent=part_tree)
+    part_base = PT.new_node(PT.get_name(dist_base), 'CGNSBase_t', PT.get_value(dist_base), parent=part_tree)
     #Add top level nodes
-    for node in I.getChildren(dist_base):
-      if I.getType(node) != "Zone_t":
-        I.addChild(part_base, node)
+    for node in PT.get_children(dist_base):
+      if PT.get_label(node) != "Zone_t":
+        PT.add_child(part_base, node)
 
     #Split S zones
     for zone in PT.iter_children_from_predicate(dist_base, is_s_zone):
-      zone_path = I.getName(dist_base) + '/' + I.getName(zone)
+      zone_path = PT.get_name(dist_base) + '/' + PT.get_name(zone)
       weights = dzone_to_weighted_parts.get(zone_path, [])
       s_parts = partS.part_s_zone(zone, weights, comm)
       for part in s_parts:
-        I._addChild(part_base, part)
+        PT.add_child(part_base, part)
 
-  all_s_parts = I.getZones(part_tree) #At this point we only have S parts
+  all_s_parts = PT.get_all_Zone_t(part_tree) #At this point we only have S parts
   partS.split_original_joins_S(all_s_parts, comm)
 
   #Split U zones (all at once)
-  base_to_blocks_u = {I.getName(base) : I.getZones(base) for base in I.getBases(dist_tree)}
+  base_to_blocks_u = {PT.get_name(base) : PT.get_all_Zone_t(base) for base in PT.get_all_CGNSBase_t(dist_tree)}
   if len(u_zones) > 0:
     base_to_parts_u = partU.part_U_zones(base_to_blocks_u, dzone_to_weighted_parts, comm, part_options)
     for base, u_parts in base_to_parts_u.items():
@@ -158,7 +158,7 @@ def _partitioning(dist_tree,
             CNT.enforce_boundary_pe_left(u_part)
           except RuntimeError: #Zone is elements-defined
             pass
-        I._addChild(part_base, u_part)
+        PT.add_child(part_base, u_part)
 
   post_split(dist_tree, part_tree, comm)
 

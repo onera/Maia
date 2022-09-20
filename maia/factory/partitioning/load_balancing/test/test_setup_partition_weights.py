@@ -2,8 +2,7 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 from mpi4py import MPI
 
-import Converter.Internal as I
-
+import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
 from maia.factory.partitioning.load_balancing import setup_partition_weights
 
@@ -18,8 +17,8 @@ Base0 CGNSBase_t [3,3]:
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   def test_one_part(self, sub_comm):
     zone_to_weights = setup_partition_weights.npart_per_zone(self.dist_tree, sub_comm)
-    for zone in I.getZones(self.dist_tree):
-      assert 'Base0/'+I.getName(zone) in zone_to_weights
+    for zone in PT.get_all_Zone_t(self.dist_tree):
+      assert 'Base0/'+PT.get_name(zone) in zone_to_weights
     for zone, weights in zone_to_weights.items():
       assert len(weights) == 1
       assert abs(weights[0] - 1./3.) < 1E-2 #Bad precision due to remainder

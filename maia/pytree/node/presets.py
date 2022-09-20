@@ -42,7 +42,7 @@ def new_NGonElements(name='NGonElements', *, erange=None, eso=None, ec=None, pe=
       new_DataArray(name, val, parent=elem)
   return elem
 
-def new_NFaceElements(name='NGonElements', *, erange=None, eso=None, ec=None, parent=None):
+def new_NFaceElements(name='NFaceElements', *, erange=None, eso=None, ec=None, parent=None):
   elem = new_Elements(name, 23, erange=erange, parent=parent)
   for name, val in zip(['ElementStartOffset', 'ElementConnectivity'], [eso, ec]):
     if val is not None:
@@ -72,6 +72,21 @@ def new_BC(name='BC', type='Null', *, point_range=None, point_list=None, loc=Non
     new_PointList('PointList', point_list, bc)
   return bc
 
+def new_GridConnectivity(name='GC', donor_name=None, type='Null', *, loc=None, parent=None):
+  allowed_gc = "Null UserDefined Overset Abutting Abutting1to1".split()
+  assert type in allowed_gc
+  gc = new_node(name, 'GridConnectivity_t', donor_name, [], parent)
+  new_node('GridConnectivityType', 'GridConnectivityType_t', type, parent=gc)
+  if loc is not None:
+    new_GridLocation(loc, gc)
+  return gc
+
+def new_GridConnectivity1to1(name='GC', donor_name=None, *, transform=None, parent=None):
+  gc = new_node(name, 'GridConnectivity1to1_t', donor_name, [], parent)
+  if transform is not None:
+    new_node('Transform', '"int[IndexDimension]"', transform, [], parent=gc)
+  return gc
+
 def new_PointList(name='PointList', value=None, parent=None):
   return new_node(name, 'IndexArray_t', value, [], parent)
 
@@ -92,6 +107,12 @@ def new_DataArray(name, value, *, dtype=None, parent=None):
     _dtype = cgns_to_dtype[dtype]
     _value = _value.astype(_dtype)
   return new_node(name, 'DataArray_t', _value, [], parent)
+
+def new_GridCoordinates(name='GridCoordinates', *, fields={}, parent=None):
+  gc = new_node(name, 'GridCoordinates_t', parent=parent)
+  for field_name, field_val in fields.items():
+    new_DataArray(field_name, field_val, parent=gc)
+  return gc
 
 def new_FlowSolution(name='FlowSolution', *, loc=None, fields={}, parent=None):
   sol = new_node(name, 'FlowSolution_t', parent=parent)

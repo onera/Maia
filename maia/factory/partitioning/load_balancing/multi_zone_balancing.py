@@ -1,6 +1,5 @@
 from mpi4py import MPI
 import logging     as LOG
-import Converter.Internal as I
 import numpy as np
 from cmaia.utils import search_subset_match
 from maia.factory.partitioning.load_balancing import single_zone_balancing

@@ -86,6 +86,23 @@ def test_new_BC():
   with pytest.raises(AssertionError):
     presets.new_BC(point_list=[1,2,3], point_range=[[1,5], [1,5]], loc='Vertex')
 
+def test_new_GC():
+  gc = presets.new_GridConnectivity('MyGC', 'OppZone', 'Abutting1to1', loc="FaceCenter")
+  expected = parse_yaml_cgns.to_node("""
+  MyGC GridConnectivity_t "OppZone":
+    GridConnectivityType GridConnectivityType_t "Abutting1to1":
+    GridLocation GridLocation_t "FaceCenter":
+  """)
+
+def test_new_GC1to1():
+  gc = presets.new_GridConnectivity1to1('MyGC', 'OppZone', transform=[2,1,-3])
+  expected = parse_yaml_cgns.to_node("""
+  MyGC GridConnectivity1to1_t "OppZone":
+    Transform "int[IndexDimension]" [2,1,-3]:
+  """)
+  assert is_same_tree(expected, gc)
+  assert is_same_tree(expected, gc)
+
 def test_new_PointList():
   node = presets.new_PointList('MyPointList', [1,2,3])
   assert N.get_name(node)  == 'MyPointList'
@@ -114,6 +131,15 @@ def test_new_DataArray():
   assert N.get_value(data).dtype == np.int32
   data = presets.new_DataArray('Array', np.array([1,2,3]), dtype="R8")
   assert N.get_value(data).dtype == np.float64
+
+def test_new_GridCoordinates():
+  gco = presets.new_GridCoordinates('MyGridCoords', fields={'CX' : [1,2,3], 'CY' : [1.,2,3]})
+  expected = parse_yaml_cgns.to_node("""
+  MyGridCoords GridCoordinates_t:
+    CX DataArray_t I4 [1,2,3]:
+    CY DataArray_t R8 [1,2,3]:
+  """)
+  assert is_same_tree(expected, gco)
 
 def test_new_FlowSolution():
   sol = presets.new_FlowSolution('MySol', loc='CellCenter', \

@@ -1,7 +1,6 @@
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import Pypdm.Pypdm as PDM
 
 import maia.pytree as PT

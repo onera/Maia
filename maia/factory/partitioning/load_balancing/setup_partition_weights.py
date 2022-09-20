@@ -1,7 +1,6 @@
 import numpy as np
 import logging as LOG
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.sids   as SIDS
 
@@ -36,7 +35,7 @@ def npart_per_zone(tree, comm, n_part=1):
   n_rank = comm.Get_size()
 
   zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
-  nb_elmt_per_zone = {zone_path : SIDS.Zone.n_cell(I.getNodeFromPath(tree, zone_path)) for zone_path in zone_paths}
+  nb_elmt_per_zone = {zone_path : SIDS.Zone.n_cell(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths}
 
   n_part_np = np.asarray(n_part, dtype=np.int32)
 
@@ -95,7 +94,7 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
   n_rank = comm.Get_size()
 
   zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
-  nb_elmt_per_zone = {zone_path : SIDS.Zone.n_cell(I.getNodeFromPath(tree, zone_path)) for zone_path in zone_paths}
+  nb_elmt_per_zone = {zone_path : SIDS.Zone.n_cell(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths}
 
   repart_per_zone = balance_with_uniform_weights(nb_elmt_per_zone, n_rank) if only_uniform \
                else balance_with_non_uniform_weights(nb_elmt_per_zone, n_rank)

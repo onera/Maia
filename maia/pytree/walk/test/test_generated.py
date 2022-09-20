@@ -70,7 +70,7 @@ def test_get_all_label():
   assert PT.get_names(PT.iter_all_BC_t(tree)) == []
 
 
-def test_from_path():
+def test_get_node_from_path():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   assert PT.get_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3') is None
@@ -80,6 +80,21 @@ def test_from_path():
   assert [PT.get_label(n) for n in nodes] == ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3', ancestors=True) == []
   assert PT.get_node_from_path(tree, '', ancestors=True) == [tree]
+
+def test_rm_node_from_path():
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  zgc = PT.get_node_from_name(tree, 'ZGCA')
+  zgc_bck = PT.deep_copy(zgc)
+  PT.rm_node_from_path(zgc, 'gc1/NonExistingNode')
+  assert PT.is_same_tree(zgc, zgc_bck)
+  PT.rm_node_from_path(zgc, 'gc1/Index_i')
+  assert PT.get_node_from_name(tree, 'Index_i') is None
+
+  PT.rm_node_from_path(zgc, 'gc1')
+  assert PT.get_node_from_name(tree, 'gc1') is None
+  tree_bck = PT.deep_copy(tree)
+  PT.rm_node_from_path(zgc, '')
+  assert PT.is_same_tree(tree, tree_bck)
 
 # Move in functionnal test ?
 def test_getNodeFromPredicate():

@@ -1,6 +1,5 @@
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
-import Converter.Internal as I
 import maia.pytree as PT
 from   maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_S import part_zone as splitS
@@ -54,7 +53,7 @@ def test_intersect_pr():
       == np.array([[1,4],[3,3]])).all()
 
 def test_zone_cell_range():
-  zone = I.newZone(ztype='Structured', zsize=[[101,100,0],[101,100,0],[41,40,0]])
+  zone = PT.new_Zone(type='Structured', size=[[101,100,0],[101,100,0],[41,40,0]])
   assert (splitS.zone_cell_range(zone) == np.array([[1,100],[1,100],[1,40]])).all()
 
 def test_pr_to_cell_location():
@@ -130,7 +129,7 @@ Small.P2.N1 Zone_t:
       zone_offset DataArray_t [4,6,1]:
   """
   part_tree  = parse_yaml_cgns.to_cgns_tree(pt)
-  part_zones = I.getZones(part_tree)
+  part_zones = PT.get_all_Zone_t(part_tree)
   splitS.split_original_joins_S(part_zones, sub_comm)
 
   if sub_comm.Get_rank() == 0:
@@ -140,31 +139,31 @@ Small.P2.N1 Zone_t:
     assert PT.get_nodes_from_name(part_tree, 'match1.*') == []
     assert len(PT.get_nodes_from_name(part_tree, 'match2.*')) == 1
     match2 = PT.get_node_from_name(part_tree, 'match2.0')
-    assert I.getValue(match2) == 'Big.P2.N1'
-    assert I.getType(match2) == 'GridConnectivity1to1_t'
+    assert PT.get_value(match2) == 'Big.P2.N1'
+    assert PT.get_label(match2) == 'GridConnectivity1to1_t'
     assert (PT.get_node_from_name(match2, 'PointRange')[1] == [[4,1],[4,4],[5,1]]).all()
     assert (PT.get_node_from_name(match2, 'PointRangeDonor')[1] == [[6,6],[2,5],[1,5]]).all()
   elif sub_comm.Get_rank() == 2:
     assert len(PT.get_nodes_from_name(part_tree, 'match1.*')) == 3
     assert len(PT.get_nodes_from_name(part_tree, 'match2.*')) == 2
-    match1_1 = I.getNodeFromPath(part_tree, 'Base/Big.P2.N0/ZoneGridConnectivity/match1.0')
-    assert I.getValue(match1_1) == 'Small.P2.N1'
+    match1_1 = PT.get_node_from_path(part_tree, 'Base/Big.P2.N0/ZoneGridConnectivity/match1.0')
+    assert PT.get_value(match1_1) == 'Small.P2.N1'
     assert (PT.get_node_from_name(match1_1, 'PointRange')[1] == [[6,6],[3,5],[1,5]]).all()
     assert (PT.get_node_from_name(match1_1, 'PointRangeDonor')[1] == [[4,2],[4,4],[5,1]]).all()
-    match1_2 = I.getNodeFromPath(part_tree, 'Base/Big.P2.N1/ZoneGridConnectivity/match1.0')
-    assert I.getValue(match1_2) == 'Small.P1.N0'
+    match1_2 = PT.get_node_from_path(part_tree, 'Base/Big.P2.N1/ZoneGridConnectivity/match1.0')
+    assert PT.get_value(match1_2) == 'Small.P1.N0'
     assert (PT.get_node_from_name(match1_2, 'PointRange')[1] == [[6,6],[2,5],[1,5]]).all()
     assert (PT.get_node_from_name(match1_2, 'PointRangeDonor')[1] == [[4,1],[4,4],[5,1]]).all()
-    match1_3 = I.getNodeFromPath(part_tree, 'Base/Big.P2.N1/ZoneGridConnectivity/match1.1')
-    assert I.getValue(match1_3) == 'Small.P2.N1'
+    match1_3 = PT.get_node_from_path(part_tree, 'Base/Big.P2.N1/ZoneGridConnectivity/match1.1')
+    assert PT.get_value(match1_3) == 'Small.P2.N1'
     assert (PT.get_node_from_name(match1_3, 'PointRange')[1] == [[6,6],[1,2],[1,5]]).all()
     assert (PT.get_node_from_name(match1_3, 'PointRangeDonor')[1] == [[2,1],[4,4],[5,1]]).all()
-    match2_1 = I.getNodeFromPath(part_tree, 'Base/Small.P2.N1/ZoneGridConnectivity/match2.0')
-    assert I.getValue(match2_1) == 'Big.P2.N0'
+    match2_1 = PT.get_node_from_path(part_tree, 'Base/Small.P2.N1/ZoneGridConnectivity/match2.0')
+    assert PT.get_value(match2_1) == 'Big.P2.N0'
     assert (PT.get_node_from_name(match2_1, 'PointRange')[1] == [[4,2],[4,4],[5,1]]).all()
     assert (PT.get_node_from_name(match2_1, 'PointRangeDonor')[1] == [[6,6],[3,5],[1,5]]).all()
-    match2_2 = I.getNodeFromPath(part_tree, 'Base/Small.P2.N1/ZoneGridConnectivity/match2.1')
-    assert I.getValue(match2_2) == 'Big.P2.N1'
+    match2_2 = PT.get_node_from_path(part_tree, 'Base/Small.P2.N1/ZoneGridConnectivity/match2.1')
+    assert PT.get_value(match2_2) == 'Big.P2.N1'
     assert (PT.get_node_from_name(match2_2, 'PointRange')[1] == [[2,1],[4,4],[5,1]]).all()
     assert (PT.get_node_from_name(match2_2, 'PointRangeDonor')[1] == [[6,6],[1,2],[1,5]]).all()
 
