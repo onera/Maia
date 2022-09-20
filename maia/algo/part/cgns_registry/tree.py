@@ -1,6 +1,5 @@
 from mpi4py import MPI
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from   cmaia.part_algo import cgns_registry as CGR
@@ -12,10 +11,10 @@ def build_paths_by_label_bcdataset(paths_by_label, bc, bc_path):
   Factorize BC+GC
   """
   for bcds in PT.get_children_from_label(bc, 'BCDataSet_t'):
-    bcds_path = bc_path+"/"+I.getName(bcds)
+    bcds_path = bc_path+"/"+PT.get_name(bcds)
     CGR.add_path(paths_by_label, bcds_path, "BCDataSet_t")
     for bcd in PT.get_children_from_label(bcds, 'BCData_t'):
-      bcd_path = bcds_path+"/"+I.getName(bcd)
+      bcd_path = bcds_path+"/"+PT.get_name(bcd)
       CGR.add_path(paths_by_label, bcd_path, "BCData_t")
 
 def build_paths_by_label_zone(paths_by_label, zone, zone_path):
@@ -23,7 +22,7 @@ def build_paths_by_label_zone(paths_by_label, zone, zone_path):
   """
   zone_bc = PT.get_node_from_label(zone, CGL.ZoneBC_t)
   if zone_bc is not None:
-    zone_bc_path = f"{zone_path}/{I.getName(zone_bc)}"
+    zone_bc_path = f"{zone_path}/{PT.get_name(zone_bc)}"
     CGR.add_path(paths_by_label, zone_bc_path, CGL.ZoneBC_t.name)
     for bc in PT.get_children_from_label(zone_bc, 'BC_t'):
       bc_path = f"{zone_bc_path}/{PT.get_name(bc)}"
@@ -56,7 +55,7 @@ def build_paths_by_label_family(paths_by_label, parent, parent_path):
 
       family_bc = PT.get_node_from_label(family, CGL.FamilyBC_t, depth=1)
       if family_bc is not None:
-        family_bc_path = f"{family_path}/{I.getName(family_bc)}"
+        family_bc_path = f"{family_path}/{PT.get_name(family_bc)}"
         CGR.add_path(paths_by_label, family_bc_path, CGL.FamilyBC_t.name)
 
         for family_bcdataset in PT.iter_children_from_label(family_bc, CGL.FamilyBCDataSet_t):
@@ -71,7 +70,7 @@ def setup_child_from_type(paths_by_label, parent, parent_path, cgns_type):
   """
   """
   for child in PT.iter_children_from_label(parent, cgns_type):
-    child_path = parent_path+"/"+I.getName(child)
+    child_path = parent_path+"/"+PT.get_name(child)
     CGR.add_path(paths_by_label, child_path, cgns_type)
 
 def build_paths_by_label(tree):
@@ -80,7 +79,7 @@ def build_paths_by_label(tree):
   paths_by_label = CGR.cgns_paths_by_label();
 
   for base in PT.get_all_CGNSBase_t(tree):
-    base_path = "/"+I.getName(base)
+    base_path = "/"+PT.get_name(base)
     CGR.add_path(paths_by_label, base_path, u'CGNSBase_t')
 
     setup_child_from_type(paths_by_label, base, base_path, 'FlowEquationSet_t')
@@ -114,11 +113,11 @@ def add_cgns_registry_information(tree, comm):
     global_ids = cgr.global_ids(itype)
     for i in range(len(paths)):
       # print(paths[i], global_ids[i])
-      node    = I.getNodeFromPath(tree, paths[i])
+      node    = PT.get_node_from_path(tree, paths[i][1:])
       cgns_registry_n = PT.get_node_from_name_and_label(node, ":CGNS#Registry", 'UserDefined_t')
       if cgns_registry_n:
-        I._rmNode(node, cgns_registry_n)
+        PT.rm_child(node, cgns_registry_n)
       else:
-        I.createNode(name=":CGNS#Registry", value=global_ids[i], ntype='UserDefined_t', parent=node)
+        PT.new_node(name=":CGNS#Registry", value=global_ids[i], label='UserDefined_t', parent=node)
 
   return cgr

@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -16,7 +15,7 @@ from maia.algo.part import localize as LOC
 def test_get_part_data(sub_comm):
   dtree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
   tree = partition_dist_tree(dtree, sub_comm)
-  zone = I.getZones(tree)[0]
+  zone = PT.get_all_Zone_t(tree)[0]
   data = LOC._get_part_data(zone)
   assert len(data) == 8
   assert (data[2] == MT.getGlobalNumbering(zone, 'Cell')[1]).all()
@@ -33,12 +32,12 @@ def test_mesh_location(reverse, sub_comm):
     zone_to_parts = {'Base/zone' : [.25, .25]}
     tgt_clouds = [(np.array([.6,.9,0, .6,.9,.8, 1.2, 0.1, 0.1]), np.array([1,3,5], pdm_gnum_dtype))]
   tree = partition_dist_tree(dtree, sub_comm, zone_to_parts=zone_to_parts)
-  src_parts = [LOC._get_part_data(zone) for zone in I.getZones(tree)]
+  src_parts = [LOC._get_part_data(zone) for zone in PT.get_all_Zone_t(tree)]
 
   if reverse:
     tgt_data, src_data =  LOC._mesh_location(src_parts, [], sub_comm, reverse)
     assert all([data['elt_pts_inside_idx'].sum() == 0 for data in src_data])
-    assert all([data['elt_pts_inside_idx'].size-1 == PT.Zone.n_cell(part) for data,part in zip(src_data, I.getZones(tree))])
+    assert all([data['elt_pts_inside_idx'].size-1 == PT.Zone.n_cell(part) for data,part in zip(src_data, PT.get_all_Zone_t(tree))])
     assert all([data['points_gnum'].size == 0 for data in src_data])
   else:
     tgt_data = LOC._mesh_location(src_parts, [], sub_comm, reverse)
@@ -74,10 +73,10 @@ def test_localize_points(sub_comm):
   tree_src = partition_dist_tree(dtree_src, sub_comm)
   tree_tgt = partition_dist_tree(dtree_tgt, sub_comm)
 
-  tree_src_back = I.copyTree(tree_src)
+  tree_src_back = PT.deep_copy(tree_src)
   LOC.localize_points(tree_src, tree_tgt, 'CellCenter', sub_comm)
   assert PT.is_same_tree(tree_src_back, tree_src)
-  tgt_zone = I.getZones(tree_tgt)[0]
+  tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   loc_node = PT.get_node_from_name_and_label(tgt_zone, 'Localization', 'DiscreteData_t')
   assert loc_node is not None and PT.Subset.GridLocation(loc_node) == 'CellCenter'
 

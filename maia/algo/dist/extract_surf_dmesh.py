@@ -1,7 +1,6 @@
 import numpy          as np
 from Pypdm.Pypdm import dconnectivity_to_extract_dconnectivity, part_dcoordinates_to_pcoordinates
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -21,8 +20,8 @@ def _extract_faces(dist_zone, face_list, comm):
   dface_vtx = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
   ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1]
 
-  distrib_face     = I.getVal(MT.getDistribution(ngon_node, 'Element'))
-  distrib_face_vtx = I.getVal(MT.getDistribution(ngon_node, 'ElementConnectivity'))
+  distrib_face     = PT.get_value(MT.getDistribution(ngon_node, 'Element'))
+  distrib_face_vtx = PT.get_value(MT.getDistribution(ngon_node, 'ElementConnectivity'))
 
   dn_face = distrib_face[1] - distrib_face[0]
   np_face_distrib = par_utils.partial_to_full_distribution(distrib_face, comm)
@@ -44,7 +43,7 @@ def _extract_surf_zone(dist_zone, face_list, comm):
     ex_face_old_to_new = _extract_faces(dist_zone, face_list, comm)
 
   # > Transfert extracted vertex coordinates
-  distrib_vtx      = I.getVal(MT.getDistribution(dist_zone, 'Vertex'))
+  distrib_vtx      = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
   if dn_vtx > 0:
     cx, cy, cz = PT.Zone.coordinates(dist_zone)
@@ -55,24 +54,20 @@ def _extract_surf_zone(dist_zone, face_list, comm):
   ex_vtx_coords  = part_dcoordinates_to_pcoordinates(comm, ini_vtx_distri, dvtx_coord, [ex_vtx_parent_gnum])[0]
 
   # Create extracted zone
-  dist_extract_zone = I.newZone(name  = I.getName(dist_zone) + '_surf',
-                                zsize = [[ex_vtx_distri[n_rank],ex_face_distri[n_rank],0]],
-                                ztype = 'Unstructured')
+  dist_extract_zone = PT.new_Zone(name  = PT.get_name(dist_zone) + '_surf',
+                                  size = [[ex_vtx_distri[n_rank],ex_face_distri[n_rank],0]],
+                                  type = 'Unstructured')
 
   ex_fvtx_distri = par_utils.gather_and_shift(ex_face_vtx_idx[-1], comm, pdm_gnum_dtype)
 
   # > Grid coordinates
   cx, cy, cz = layouts.interlaced_to_tuple_coords(ex_vtx_coords)
-  grid_coord = I.newGridCoordinates(parent=dist_extract_zone)
-  I.newDataArray('CoordinateX', cx, parent=grid_coord)
-  I.newDataArray('CoordinateY', cy, parent=grid_coord)
-  I.newDataArray('CoordinateZ', cz, parent=grid_coord)
+  coords = {'CoordinateX': cx, 'CoordinateY': cy, 'CoordinateZ': cz}
+  grid_coord = PT.new_GridCoordinates(fields=coords, parent=dist_extract_zone)
 
   eso = ex_fvtx_distri[i_rank] + ex_face_vtx_idx.astype(pdm_gnum_dtype)
-  extract_ngon_n = I.newElements('NGonElements', 'NGON', erange = [1, ex_face_distri[n_rank]], parent=dist_extract_zone)
-
-  I.newDataArray('ElementConnectivity', ex_face_vtx, parent=extract_ngon_n)
-  I.newDataArray('ElementStartOffset' , eso        , parent=extract_ngon_n)
+  extract_ngon_n = PT.new_NGonElements(erange = [1, ex_face_distri[n_rank]], parent=dist_extract_zone,
+      eso=eso, ec=ex_face_vtx)
 
   np_distrib_vtx     = ex_vtx_distri [[i_rank, i_rank+1, n_rank]]
   np_distrib_face    = ex_face_distri[[i_rank, i_rank+1, n_rank]]
@@ -101,15 +96,15 @@ def extract_surf_tree_from_queries(dist_tree, queries, comm):
   all of this zones
   """
 
-  surf_tree = I.newCGNSTree()
+  surf_tree = PT.new_CGNSTree()
   for base, zone in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
-    surf_base = I.createUniqueChild(surf_tree, I.getName(base), 'CGNSBase_t', [2,2])
+    surf_base = PT.update_child(surf_tree, PT.get_name(base), 'CGNSBase_t', [2,2])
 
     if PT.Zone.Type(zone) == 'Unstructured':
       surf_zone = extract_surf_zone_from_queries(zone, queries, comm)
-      I._addChild(surf_base, surf_zone)
+      PT.add_child(surf_base, surf_zone)
     else:
-      print(f"Warning : skip structured zone {I.getName(zone)} in extract_surf_tree")
+      print(f"Warning : skip structured zone {PT.get_name(zone)} in extract_surf_tree")
 
   return surf_tree
 
@@ -117,6 +112,6 @@ def extract_surf_tree_from_bc(dist_tree, comm):
   """
   Shortcut for extract_surf_tree_from_queries specialized for BC_t nodes
   """
-  queries = [[lambda n: I.getType(n) == 'ZoneBC_t', lambda n: I.getType(n) == 'BC_t']]
+  queries = [[lambda n: PT.get_label(n) == 'ZoneBC_t', lambda n: PT.get_label(n) == 'BC_t']]
   return extract_surf_tree_from_queries(dist_tree, queries, comm)
 

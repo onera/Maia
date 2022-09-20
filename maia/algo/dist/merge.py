@@ -1,7 +1,6 @@
 import numpy as np
 from Pypdm import Pypdm as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.sids   as sids
 import maia.pytree.maia   as MT
@@ -35,7 +34,7 @@ def merge_connected_zones(tree, comm, **kwargs):
 
   for i, zones_path in enumerate(grouped_zones_paths):
     zones_path_u = [path for path in zones_path \
-        if sids.Zone.Type(I.getNodeFromPath(tree, path)) == 'Unstructured']
+        if sids.Zone.Type(PT.get_node_from_path(tree, path)) == 'Unstructured']
     base = zones_path[0].split('/')[0]
     merge_zones(tree, zones_path_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
@@ -72,7 +71,7 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
         :end-before: #merge_zones@end
         :dedent: 2
   """
-  assert all([sids.Zone.Type(I.getNodeFromPath(tree, path)) == 'Unstructured' for path in zones_path])
+  assert all([sids.Zone.Type(PT.get_node_from_path(tree, path)) == 'Unstructured' for path in zones_path])
   #Those one will be needed for jn recovering
   MJT.add_joins_donor_name(tree, comm)
 
@@ -80,61 +79,61 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
   sids.enforceDonorAsPath(tree)
 
   # We create a tree including only the zones to merge to speed up some operations
-  masked_tree = I.newCGNSTree()
+  masked_tree = PT.new_CGNSTree()
   for zone_path in zones_path:
     base_n, zone_n = zone_path.split('/')
-    masked_base = I.createUniqueChild(masked_tree, base_n, 'CGNSBase_t')
-    I._addChild(masked_base, I.getNodeFromPath(tree, zone_path))
+    masked_base = PT.update_child(masked_tree, base_n, 'CGNSBase_t')
+    PT.add_child(masked_base, PT.get_node_from_path(tree, zone_path))
 
     #Remove from input tree at the same time
-    I._rmNodeByPath(tree, zone_path)
+    PT.rm_node_from_path(tree, zone_path)
 
   #Merge zones
   merged_zone = _merge_zones(masked_tree, comm, subset_merge)
 
   #Add output
   if output_path is None:
-    output_base = I.getNodeFromPath(tree, zones_path[0].split('/')[0])
+    output_base = PT.get_node_from_path(tree, zones_path[0].split('/')[0])
   else:
-    output_base = I.getNodeFromPath(tree, output_path.split('/')[0])
+    output_base = PT.get_node_from_path(tree, output_path.split('/')[0])
     if output_base is None:
-      output_base = I.newCGNSBase(output_path.split('/')[0], 3, 3, parent=tree)
-    I.setName(merged_zone, output_path.split('/')[1])
-  I._addChild(output_base, merged_zone)
+      output_base = PT.new_CGNSBase(output_path.split('/')[0], cell_dim=3, phy_dim=3, parent=tree)
+    PT.set_name(merged_zone, output_path.split('/')[1])
+  PT.add_child(output_base, merged_zone)
 
   #First we have to retrieve PLDonor for external jn and update opposite zones
-  merged_zone_path = I.getName(output_base) + '/' + I.getName(merged_zone)
+  merged_zone_path = PT.get_name(output_base) + '/' + PT.get_name(merged_zone)
   jn_to_pl = {}
   for jn_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'):
-    gc = I.getNodeFromPath(tree, jn_path)
+    gc = PT.get_node_from_path(tree, jn_path)
     jn_to_pl[jn_path] = \
         (PT.get_child_from_name(gc, 'PointList')[1], PT.get_child_from_name(gc, 'PointListDonor')[1], MT.getDistribution(gc))
 
   # Update opposite names when going to opp zone (intrazone have been caried before)
   for zgc, gc in PT.get_children_from_predicates(merged_zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
-    if I.getValue(gc) not in zones_path:
+    if PT.get_value(gc) not in zones_path:
       opp_path = MJT.get_jn_donor_path(tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
-      opp_gc = I.getNodeFromPath(tree, opp_path)
+      opp_gc = PT.get_node_from_path(tree, opp_path)
       opp_gc_donor_name = PT.get_child_from_name(opp_gc, 'GridConnectivityDonorName') #TODO factorize
-      I.setValue(opp_gc_donor_name, gc[0])
+      PT.set_value(opp_gc_donor_name, gc[0])
   #Now all donor names are OK
 
   for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
     is_merged_zone = zone_path == merged_zone_path
-    zone = I.getNodeFromPath(tree, zone_path)
+    zone = PT.get_node_from_path(tree, zone_path)
     for zgc, gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
       #Update name and PL
-      if I.getValue(gc) in zones_path: #Can be: jn from non concerned zone to merged zones or periodic from merged zones
-        I.setValue(gc, merged_zone_path)
-        jn_path = f"{zone_path}/{I.getName(zgc)}/{I.getName(gc)}"
+      if PT.get_value(gc) in zones_path: #Can be: jn from non concerned zone to merged zones or periodic from merged zones
+        PT.set_value(gc, merged_zone_path)
+        jn_path = f"{zone_path}/{PT.get_name(zgc)}/{PT.get_name(gc)}"
         jn_path_opp= MJT.get_jn_donor_path(tree, jn_path)
         # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
         # merged zone
         if not is_merged_zone or jn_path_opp < jn_path:
-          I.newIndexArray('PointList'     , jn_to_pl[jn_path_opp][1], parent=gc)
-          I.newIndexArray('PointListDonor', jn_to_pl[jn_path_opp][0], parent=gc)
+          PT.update_child(gc, 'PointList'     , 'IndexArray_t', jn_to_pl[jn_path_opp][1])
+          PT.update_child(gc, 'PointListDonor', 'IndexArray_t', jn_to_pl[jn_path_opp][0])
           PT.rm_children_from_name(gc, ":CGNS#Distribution")
-          I._addChild(gc, jn_to_pl[jn_path_opp][2])
+          PT.add_child(gc, jn_to_pl[jn_path_opp][2])
 
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
@@ -143,19 +142,19 @@ def _add_zone_suffix(zones, query):
   """Util function prefixing all the nodes founds by a query by the number of the zone"""
   for izone, zone in enumerate(zones):
     for node in PT.get_children_from_predicates(zone, query):
-      I.setName(node, I.getName(node) + f".{izone}")
+      PT.set_name(node, PT.get_name(node) + f".{izone}")
       # Also update internal (periodic) joins with new donor name
       if PT.get_child_from_name(node, '__maia_jn_update__') is not None:
         opp_domain_id = PT.get_child_from_name(node, '__maia_jn_update__')[1][0]
         donor_name_node = PT.get_child_from_name(node, "GridConnectivityDonorName")
-        I.setValue(donor_name_node, f"{I.getValue(donor_name_node)}.{opp_domain_id}")
+        PT.set_value(donor_name_node, f"{PT.get_value(donor_name_node)}.{opp_domain_id}")
 
 def _rm_zone_suffix(zones, query):
   """Util function removing the number of the zone in all the nodes founds by a query
   Use it to cleanup after _add_zone_suffix has been applied"""
   for zone in zones:
     for node in PT.get_children_from_predicates(zone, query):
-      I.setName(node, '.'.join(I.getName(node).split('.')[:-1]))
+      PT.set_name(node, '.'.join(PT.get_name(node).split('.')[:-1]))
 
 def _merge_zones(tree, comm, subset_merge_strategy='name'):
   """
@@ -165,32 +164,32 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
 
   zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   n_zone = len(zones_path)
-  zones = I.getZones(tree)
+  zones = PT.get_all_Zone_t(tree)
   assert min([sids.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
 
   zone_to_id = {path : i for i, path in enumerate(zones_path)}
 
   is_perio = lambda n : PT.get_child_from_label(n, 'GridConnectivityProperty_t') is not None
   gc_query = ['ZoneGridConnectivity_t', \
-                lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+                lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
                 and sids.Subset.GridLocation(n) == 'FaceCenter']
 
   # JNs to external zones must be excluded from vertex list computing
-  tree_vl = I.copyRef(tree)
+  tree_vl = PT.shallow_copy(tree)
   for base, zone in PT.get_children_from_predicates(tree_vl, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     for zgc, gc in PT.get_children_from_predicates(zone, gc_query, ancestors=True):
-      if sids.getZoneDonorPath(I.getName(base), gc) not in zone_to_id:
-        I.rmNode(zgc, gc)
+      if sids.getZoneDonorPath(PT.get_name(base), gc) not in zone_to_id:
+        PT.rm_child(zgc, gc)
   VL.generate_jns_vertex_list(tree_vl, comm, have_isolated_faces=True)
   #Reput in tree
   for zone_path in zones_path:
-    zone    = I.getNodeFromPath(tree, zone_path)
-    zone_vl = I.getNodeFromPath(tree_vl, zone_path)
+    zone    = PT.get_node_from_path(tree, zone_path)
+    zone_vl = PT.get_node_from_path(tree_vl, zone_path)
     for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
-      zgc_vl = PT.get_child_from_name(zone_vl, I.getName(zgc))
-      for gc_vl in PT.get_children_from_predicate(zgc_vl, lambda n: I.getType(n) == 'GridConnectivity_t' \
+      zgc_vl = PT.get_child_from_name(zone_vl, PT.get_name(zgc))
+      for gc_vl in PT.get_children_from_predicate(zgc_vl, lambda n: PT.get_label(n) == 'GridConnectivity_t' \
           and sids.Subset.GridLocation(n) == 'Vertex'):
-        I._addChild(zgc, gc_vl)
+        PT.add_child(zgc, gc_vl)
   
   # Collect interface data
   interface_dn_f = []
@@ -204,10 +203,10 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
       opp_zone_path = sids.getZoneDonorPath(base_name, gc)
       if opp_zone_path in zone_to_id:
         if is_perio(gc):
-          I.newUserDefinedData('__maia_jn_update__', value = zone_to_id[opp_zone_path], parent=gc)
+          PT.new_node('__maia_jn_update__', 'UserDefinedData_t', value=zone_to_id[opp_zone_path], parent=gc)
         else:
-          I.newDescriptor('__maia_merge__', parent=gc)
-          gc_path = f"{zone_path}/{I.getName(zgc)}/{I.getName(gc)}"
+          PT.new_node('__maia_merge__', 'Descriptor_t', parent=gc)
+          gc_path = f"{zone_path}/{PT.get_name(zgc)}/{PT.get_name(gc)}"
           gc_path_opp = MJT.get_jn_donor_path(tree, gc_path)
       if PT.get_child_from_name(gc, '__maia_merge__') is not None and gc_path < gc_path_opp:
         interface_dom.append((zone_to_id[zone_path], zone_to_id[opp_zone_path]))
@@ -219,7 +218,7 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
         interface_ids_f.append(np_utils.interweave_arrays([pl,pld]))
 
         # Find corresponding vertex
-        gc_vtx = PT.get_child_from_name(zgc, f'{I.getName(gc)}#Vtx')
+        gc_vtx = PT.get_child_from_name(zgc, f'{PT.get_name(gc)}#Vtx')
         pl_v  = PT.get_child_from_name(gc_vtx, 'PointList')[1][0]
         pld_v = PT.get_child_from_name(gc_vtx, 'PointListDonor')[1][0]
         interface_dn_v.append(pl_v.size)
@@ -263,10 +262,10 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   merged_distri_cell = mbm_cell.get_merged_distri()
   
   zone_dims = np.array([[merged_distri_vtx[-1], merged_distri_cell[-1], 0]], order='F')
-  merged_zone = I.newZone('MergedZone', zone_dims, ztype='Unstructured')
+  merged_zone = PT.new_Zone('MergedZone', size=zone_dims, type='Unstructured')
 
   # NGon
-  I._addChild(merged_zone, _merge_ngon(all_mbm, tree, comm))
+  PT.add_child(merged_zone, _merge_ngon(all_mbm, tree, comm))
 
   # Generate NFace (TODO)
   pass
@@ -276,12 +275,12 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   # Merge all mesh data
   vtx_data_queries = [
                       ['GridCoordinates_t'],
-                      [lambda n: I.getType(n) == 'FlowSolution_t' and loc_without_pl(n, 'Vertex')],
-                      [lambda n: I.getType(n) == 'DiscreteData_t' and loc_without_pl(n, 'Vertex')],
+                      [lambda n: PT.get_label(n) == 'FlowSolution_t' and loc_without_pl(n, 'Vertex')],
+                      [lambda n: PT.get_label(n) == 'DiscreteData_t' and loc_without_pl(n, 'Vertex')],
                      ]
   cell_data_queries = [
-                       [lambda n: I.getType(n) == 'FlowSolution_t' and loc_without_pl(n, 'CellCenter')],
-                       [lambda n: I.getType(n) == 'DiscreteData_t' and loc_without_pl(n, 'CellCenter')],
+                       [lambda n: PT.get_label(n) == 'FlowSolution_t' and loc_without_pl(n, 'CellCenter')],
+                       [lambda n: PT.get_label(n) == 'DiscreteData_t' and loc_without_pl(n, 'CellCenter')],
                       ]
   _merge_allmesh_data(mbm_vtx,  zones, merged_zone, vtx_data_queries)
   _merge_allmesh_data(mbm_cell, zones, merged_zone, cell_data_queries)
@@ -306,7 +305,7 @@ def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
     for zone in zones:
       #For global data, we should have only one parent
       for node, data in PT.get_children_from_predicates(zone, query + ['DataArray_t'], ancestors=True):
-        dic_path = I.getName(node) + '/' + I.getName(data)
+        dic_path = PT.get_name(node) + '/' + PT.get_name(data)
         try:
           to_merge[dic_path].append(data[1])
         except KeyError:
@@ -319,12 +318,12 @@ def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
   for query in data_queries:
     #Use zone 0 to get node type and value. Nodes must be know in every zone
     for node in PT.get_children_from_predicates(zones[0], query):
-      m_node = I.createUniqueChild(merged_zone, I.getName(node), I.getType(node), I.getValue(node))
+      m_node = PT.update_child(merged_zone, PT.get_name(node), PT.get_label(node), PT.get_value(node))
       for data in PT.iter_children_from_label(node, 'DataArray_t'):
-        I.newDataArray(data[0], merged[I.getName(node) + '/' + I.getName(data)], parent=m_node)
+        PT.new_DataArray(data[0], merged[PT.get_name(node) + '/' + PT.get_name(data)], parent=m_node)
       for type in additional_types:
         for sub_node in PT.iter_children_from_label(node, type):
-          I._addChild(m_node, sub_node)
+          PT.add_child(m_node, sub_node)
 
 def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
@@ -339,20 +338,20 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
   #In each case, we need to collect all the nodes, since some can be absent of a given zone
   has_pl = lambda n : PT.get_child_from_name(n, 'PointList') is not None
-  jn_to_keep = lambda n : I.getType(n) == 'GridConnectivity_t' and sids.Subset.GridLocation(n) == 'FaceCenter'\
+  jn_to_keep = lambda n : PT.get_label(n) == 'GridConnectivity_t' and sids.Subset.GridLocation(n) == 'FaceCenter'\
       and PT.get_child_from_name(n, '__maia_merge__') is None
 
   #Order : FlowSolution/DiscreteData/ZoneSubRegion, BC, BCDataSet, GridConnectivity_t, 
   all_subset_queries = [
-      [lambda n : I.getType(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'] and has_pl(n)],
+      [lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'] and has_pl(n)],
       ['ZoneBC_t', 'BC_t'],
-      ['ZoneBC_t', 'BC_t', lambda n : I.getType(n) == 'BCDataSet_t' and has_pl(n)],
+      ['ZoneBC_t', 'BC_t', lambda n : PT.get_label(n) == 'BCDataSet_t' and has_pl(n)],
       ['ZoneGridConnectivity_t', jn_to_keep]
       ]
 
   all_data_queries = [
       ['DataArray_t'],
-      [lambda n : I.getType(n) == 'BCDataSet_t' and not has_pl(n), 'BCData_t', 'DataArray_t'],
+      [lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_pl(n), 'BCData_t', 'DataArray_t'],
       ['BCData_t', 'DataArray_t'],
       ['PointListDonor'],
       ]
@@ -363,8 +362,8 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
       #Copy PL when related to bc/gc to avoid specific treatement
       if PT.get_child_from_name(zsr, 'BCRegionName') is not None or \
          PT.get_child_from_name(zsr, 'GridConnectivityRegionName') is not None:
-        related = I.getNodeFromPath(zone, sids.getSubregionExtent(zsr, zone))
-        I._addChild(zsr, PT.get_child_from_name(related, 'PointList'))
+        related = PT.get_node_from_path(zone, sids.getSubregionExtent(zsr, zone))
+        PT.add_child(zsr, PT.get_child_from_name(related, 'PointList'))
 
   for query, rules in zip(all_subset_queries, all_data_queries):
     if merge_strategy != 'name' or query[0] == 'ZoneGridConnectivity_t':
@@ -373,26 +372,26 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
     #Collect
     for zone in zones:
       for nodes in PT.get_children_from_predicates(zone, query, ancestors=True):
-        py_utils.append_unique(collected_paths, '/'.join([I.getName(node) for node in nodes]))
+        py_utils.append_unique(collected_paths, '/'.join([PT.get_name(node) for node in nodes]))
     #Merge and add to output
     for pl_path in collected_paths:
       #We have to retrieve a zone knowing this node to deduce the kind of parent nodes and gridLocation
       master_node = None
       for zone in zones:
-        if I.getNodeFromPath(zone, pl_path) is not None:
+        if PT.get_node_from_path(zone, pl_path) is not None:
           master_node = zone
           break
       assert master_node is not None
       parent = merged_zone
-      location = sids.Subset.GridLocation(I.getNodeFromPath(master_node, pl_path))
+      location = sids.Subset.GridLocation(PT.get_node_from_path(master_node, pl_path))
       mbm = all_mbm[location.split('Center')[0]]
       merged_pl = _merge_pl_data(mbm, zones, pl_path, location, rules, comm)
       #Rebuild structure until last node
       for child_name in pl_path.split('/')[:-1]:
         master_node = PT.get_child_from_name(master_node, child_name)
-        parent = I.createUniqueChild(parent, child_name, I.getType(master_node), I.getValue(master_node))
+        parent = PT.update_child(parent, child_name, PT.get_label(master_node), PT.get_value(master_node))
 
-      I._addChild(parent, merged_pl)
+      PT.add_child(parent, merged_pl)
     if merge_strategy != 'name'or query[0] == 'ZoneGridConnectivity_t':
       _rm_zone_suffix(zones, query)
 
@@ -442,7 +441,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   strides   = []
   all_datas = {}
   for i, zone in enumerate(zones):
-    node = I.getNodeFromPath(zone, subset_path)
+    node = PT.get_node_from_path(zone, subset_path)
     if loc == 'Vertex': 
       distri_ptb = MT.getDistribution(zone, 'Vertex')[1]
     elif loc == 'FaceCenter':
@@ -455,7 +454,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
       pl = PT.get_child_from_name(node, 'PointList')[1][0]
       part_data = {'PL' : [pl]}
       for nodes in PT.get_children_from_predicates(node, data_query, ancestors=True):
-        path =  '/'.join([I.getName(node) for node in nodes])
+        path =  '/'.join([PT.get_name(node) for node in nodes])
         data_n = nodes[-1]
         data = data_n[1]
         if data_n[1].ndim > 1:
@@ -509,31 +508,31 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   merged_pl_distri, merged_data = _equilibrate_data(merged_data, comm)
 
   #Creation of node
-  merged_node = I.createNode(I.getName(ref_node), I.getType(ref_node), I.getValue(ref_node))
-  I.newIndexArray('PointList', merged_data['PointList'].reshape((1, -1), order='F'), parent=merged_node)
+  merged_node = PT.new_node(PT.get_name(ref_node), PT.get_label(ref_node), PT.get_value(ref_node))
+  PT.new_PointList(value=merged_data['PointList'].reshape((1, -1), order='F'), parent=merged_node)
 
   for nodes in PT.get_children_from_predicates(ref_node, data_query, ancestors=True):
-    path =  '/'.join([I.getName(node) for node in nodes])
+    path =  '/'.join([PT.get_name(node) for node in nodes])
     # #Rebuild structure if any
     sub_ref = ref_node
     merged_parent = merged_node
     for node in nodes[:-1]:
-      sub_ref = PT.get_child_from_name(sub_ref, I.getName(node))
-      merged_parent = I.createUniqueChild(merged_parent, I.getName(sub_ref), I.getType(sub_ref), I.getValue(sub_ref))
-    if I.getType(nodes[-1]) == 'IndexArray_t':
-      I.newIndexArray(I.getName(nodes[-1]), merged_data[path].reshape((1,-1), order='F'), merged_parent)
+      sub_ref = PT.get_child_from_name(sub_ref, PT.get_name(node))
+      merged_parent = PT.update_child(merged_parent, PT.get_name(sub_ref), PT.get_label(sub_ref), PT.get_value(sub_ref))
+    if PT.get_label(nodes[-1]) == 'IndexArray_t':
+      PT.new_PointList(PT.get_name(nodes[-1]), merged_data[path].reshape((1,-1), order='F'), merged_parent)
     else:
-      I.newDataArray(I.getName(nodes[-1]), merged_data[path], merged_parent)
+      PT.new_DataArray(PT.get_name(nodes[-1]), merged_data[path], parent=merged_parent)
 
   additional_types = ['GridLocation_t', 'FamilyName_t', 'Descriptor_t',
                       'GridConnectivityType_t', 'GridConnectivityProperty_t']
   additional_names = []
   for type in additional_types:
     for sub_node in PT.iter_children_from_label(ref_node, type):
-      I._addChild(merged_node, sub_node)
+      PT.add_child(merged_node, sub_node)
   for name in additional_names:
     for sub_node in PT.iter_children_from_name(ref_node, name):
-      I._addChild(merged_node, sub_node)
+      PT.add_child(merged_node, sub_node)
 
   MT.newDistribution({'Index' : merged_pl_distri}, merged_node)
 
@@ -549,23 +548,23 @@ def _merge_ngon(all_mbm, tree, comm):
 
   # Create working data
   for zone_path, dom_id in zone_to_id.items():
-    ngon_node = sids.Zone.NGonNode(I.getNodeFromPath(tree, zone_path))
+    ngon_node = sids.Zone.NGonNode(PT.get_node_from_path(tree, zone_path))
     pe_bck = PT.get_child_from_name(ngon_node, 'ParentElements')[1]
     pe = pe_bck.copy()
     # If NGon are first, then PE indexes cell, we must shift : PDM expect cell starting at 1
     if sids.Element.Range(ngon_node)[0] == 1:
       np_utils.shift_nonzeros(pe, -sids.Element.Size(ngon_node))
-    I.newDataArray('UpdatedPE', pe, parent=ngon_node)
-    I.newDataArray('PEDomain',  dom_id * np.ones_like(pe_bck), parent=ngon_node)
+    PT.new_DataArray('UpdatedPE', pe, parent=ngon_node)
+    PT.new_DataArray('PEDomain',  dom_id * np.ones_like(pe_bck), parent=ngon_node)
 
   # First, we need to update the PE node to include cells of opposite zone
-  query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+  query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
                 and PT.get_child_from_name(n, '__maia_merge__') is not None
 
   for zone_path_send in zones_path:
     base_n = zone_path_send.split('/')[0]
     dom_id_send = zone_to_id[zone_path_send]
-    zone_send = I.getNodeFromPath(tree, zone_path_send)
+    zone_send = PT.get_node_from_path(tree, zone_path_send)
     ngon_send = sids.Zone.NGonNode(zone_send)
     face_distri_send = MT.getDistribution(ngon_send, 'Element')[1].astype(pdm_dtype)
     pe_send          =  PT.get_child_from_name(ngon_send, 'UpdatedPE')[1]
@@ -584,7 +583,7 @@ def _merge_ngon(all_mbm, tree, comm):
     
       # Get send data on the opposite zone and update PE
       zone_path = sids.getZoneDonorPath(base_n, gc)
-      zone = I.getNodeFromPath(tree, zone_path)
+      zone = PT.get_node_from_path(tree, zone_path)
       ngon_node = sids.Zone.NGonNode(zone)
       face_distri = MT.getDistribution(ngon_node, 'Element')[1].astype(pdm_dtype)
       dist_data = MPTB.part_to_dist(face_distri, part_data_gc, [pld], comm)
@@ -603,7 +602,7 @@ def _merge_ngon(all_mbm, tree, comm):
   pe_stride_l = []
   pe_dom_l = []
   for zone_path in zones_path:
-    ngon_node = sids.Zone.NGonNode(I.getNodeFromPath(tree, zone_path))
+    ngon_node = sids.Zone.NGonNode(PT.get_node_from_path(tree, zone_path))
     eso    = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
     pe     = PT.get_child_from_name(ngon_node, 'UpdatedPE')[1]
     pe_dom = PT.get_child_from_name(ngon_node, 'PEDomain')[1]
@@ -641,10 +640,7 @@ def _merge_ngon(all_mbm, tree, comm):
   np_utils.shift_nonzeros(pe, merged_distri_face[-1])
 
   # Finally : create ngon node
-  merged_ngon = I.newElements('NGonElements', 'NGON', erange=[1, merged_distri_face[-1]])
-  I.newDataArray('ElementStartOffset',  eso,       parent=merged_ngon)
-  I.newDataArray('ElementConnectivity', merged_ec, parent=merged_ngon)
-  I.newDataArray('ParentElements',      pe,        parent=merged_ngon)
+  merged_ngon = PT.new_NGonElements(erange=[1, merged_distri_face[-1]], eso=eso, ec=merged_ec, pe=pe)
   MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(merged_distri_face, comm),
                       'ElementConnectivity' : par_utils.full_to_partial_distribution(ec_distri, comm)},
                       merged_ngon)

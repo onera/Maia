@@ -3,7 +3,6 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -20,10 +19,10 @@ def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscou
   """
   Return the list of Families having a FamilyBC_t node whose value is in bcwalls list
   """
-  fam_query = lambda n : I.getType(n) == 'Family_t' and \
+  fam_query = lambda n : PT.get_label(n) == 'Family_t' and \
                          PT.get_child_from_label(n, 'FamilyBC_t') is not None and \
-                         I.getValue(PT.get_child_from_label(n, 'FamilyBC_t')) in bcwalls
-  return [I.getName(family) for family in PT.iter_children_from_predicates(tree, ['CGNSBase_t', fam_query])]
+                         PT.get_value(PT.get_child_from_label(n, 'FamilyBC_t')) in bcwalls
+  return [PT.get_name(family) for family in PT.iter_children_from_predicates(tree, ['CGNSBase_t', fam_query])]
 
 
 # ------------------------------------------------------------------------
@@ -126,8 +125,8 @@ class WallDistance:
       face_vtx_idx, face_vtx, _ = PT.Zone.ngon_connectivity(part_zone)
 
       nface = PT.Zone.NFaceNode(part_zone)
-      cell_face_idx = I.getVal(PT.get_child_from_name(nface, 'ElementStartOffset'))
-      cell_face     = I.getVal(PT.get_child_from_name(nface, 'ElementConnectivity'))
+      cell_face_idx = PT.get_value(PT.get_child_from_name(nface, 'ElementStartOffset'))
+      cell_face     = PT.get_value(PT.get_child_from_name(nface, 'ElementConnectivity'))
 
       vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TE.utils.get_entities_numbering(part_zone)
 
@@ -165,7 +164,7 @@ class WallDistance:
       # Test if FlowSolution already exists or create it
       fs_node = PT.get_child_from_name(part_zone, self.out_fs_n)
       if fs_node is None:
-        fs_node = I.newFlowSolution(name=self.out_fs_n, gridLocation=output_loc, parent=part_zone)
+        fs_node = PT.new_FlowSolution(name=self.out_fs_n, loc=output_loc, parent=part_zone)
       assert PT.Subset.GridLocation(fs_node) == output_loc
       if output_loc == "CellCenter":
         shape = PT.Zone.CellSize(part_zone)
@@ -176,25 +175,25 @@ class WallDistance:
 
       # Wall distance
       wall_dist = np.sqrt(fields['ClosestEltDistance'])
-      I.newDataArray('TurbulentDistance', value=wall_dist.reshape(shape,order='F'), parent=fs_node)
+      PT.new_DataArray('TurbulentDistance', value=wall_dist.reshape(shape,order='F'), parent=fs_node)
 
       # Closest projected element
       closest_elt_proj = np.copy(fields['ClosestEltProjected'])
-      I.newDataArray('ClosestEltProjectedX', closest_elt_proj[0::3].reshape(shape,order='F'), parent=fs_node)
-      I.newDataArray('ClosestEltProjectedY', closest_elt_proj[1::3].reshape(shape,order='F'), parent=fs_node)
-      I.newDataArray('ClosestEltProjectedZ', closest_elt_proj[2::3].reshape(shape,order='F'), parent=fs_node)
+      PT.new_DataArray('ClosestEltProjectedX', closest_elt_proj[0::3].reshape(shape,order='F'), parent=fs_node)
+      PT.new_DataArray('ClosestEltProjectedY', closest_elt_proj[1::3].reshape(shape,order='F'), parent=fs_node)
+      PT.new_DataArray('ClosestEltProjectedZ', closest_elt_proj[2::3].reshape(shape,order='F'), parent=fs_node)
 
       # Closest gnum element (face)
       closest_elt_gnum = np.copy(fields['ClosestEltGnum'])
-      I.newDataArray('ClosestEltGnum', closest_elt_gnum.reshape(shape,order='F'), parent=fs_node)
+      PT.new_DataArray('ClosestEltGnum', closest_elt_gnum.reshape(shape,order='F'), parent=fs_node)
 
       # Find domain to which the face belongs (mainly for debug)
       n_face_bnd_tot_idx = np.array(self._n_face_bnd_tot_idx, dtype=closest_elt_gnum.dtype)
       closest_surf_domain = np.searchsorted(n_face_bnd_tot_idx, closest_elt_gnum-1, side='right') -1
       closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
       closest_elt_gnuml = closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain]
-      I.newDataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
-      I.newDataArray("ClosestEltLocGnum", value=closest_elt_gnuml.reshape(shape,order='F'), parent=fs_node)
+      PT.new_DataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
+      PT.new_DataArray("ClosestEltLocGnum", value=closest_elt_gnuml.reshape(shape,order='F'), parent=fs_node)
 
 
 
@@ -204,7 +203,7 @@ class WallDistance:
     """
 
     #Get a skeleton tree including only Base, Zones and Families
-    skeleton_tree = I.newCGNSTree()
+    skeleton_tree = PT.new_CGNSTree()
     discover_nodes_from_matching(skeleton_tree, [self.part_tree], 'CGNSBase_t', self.mpi_comm, child_list=['Family_t'])
     discover_nodes_from_matching(skeleton_tree, [self.part_tree], 'CGNSBase_t/Zone_t', self.mpi_comm,
         merge_rule = lambda path: MT.conv.get_part_prefix(path))
@@ -213,7 +212,7 @@ class WallDistance:
     if not self.families:
       self.families = detect_wall_families(skeleton_tree)
 
-    skeleton_families = [I.getName(f) for f in PT.iter_nodes_from_label(skeleton_tree, "Family_t")]
+    skeleton_families = [PT.get_name(f) for f in PT.iter_nodes_from_label(skeleton_tree, "Family_t")]
     found_families = any([fn in self.families for fn in skeleton_families])
 
     if found_families:
@@ -221,7 +220,7 @@ class WallDistance:
       # Group partitions by original dist domain
       parts_per_dom = list()
       for dbase, dzone in PT.iter_children_from_predicates(skeleton_tree, 'CGNSBase_t/Zone_t', ancestors=True):
-        dzone_path = I.getName(dbase) + '/' + I.getName(dzone)
+        dzone_path = PT.get_name(dbase) + '/' + PT.get_name(dzone)
         parts_per_dom.append(TE.utils.get_partitioned_zones(self.part_tree, dzone_path))
 
       assert len(parts_per_dom) >= 1

@@ -2,7 +2,6 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -147,11 +146,11 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
 
   for i_dom, tgt_parts in enumerate(tgt_parts_per_dom):
     for i_part, tgt_part in enumerate(tgt_parts):
-      sol = I.createUniqueChild(tgt_part, "Localization", "DiscreteData_t")
-      I.newGridLocation(location, sol)
+      sol = PT.update_child(tgt_part, "Localization", "DiscreteData_t")
+      PT.new_GridLocation(location, sol)
       data = located_data[i_dom][i_part]
       n_tgts = data['located_ids'].size + data['unlocated_ids'].size,
       src_gnum = -np.ones(n_tgts, dtype=pdm_gnum_dtype) #Init with -1 to carry unlocated points
       src_gnum[data['located_ids']] = data['location']
-      I.newDataArray("SrcId", src_gnum, parent=sol)
+      PT.new_DataArray("SrcId", src_gnum, parent=sol)
 

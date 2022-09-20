@@ -1,7 +1,5 @@
-import Converter.Internal as I
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -29,10 +27,10 @@ def remove_element(zone, element):
 
       elem_pe_n = PT.get_child_from_name(elem, 'ParentElements')
       if elem_pe_n is not None:
-        elem_pe = I.getValue(elem_pe_n)
+        elem_pe = PT.get_value(elem_pe_n)
         # This will raise if PE actually refers to the section to remove
         assert not np_utils.any_in_range(elem_pe, *target_range), \
-            f"Can not remove element {I.getName(element)}, indexed by {I.getName(elem)}/PE"
+            f"Can not remove element {PT.get_name(element)}, indexed by {PT.get_name(elem)}/PE"
         # We shift the element index of the sections that have been shifted
         elem_pe -= target_size * (target_range[0] < elem_pe)
 
@@ -46,11 +44,11 @@ def remove_element(zone, element):
         pl = pl_n[1]
         #Ensure that PL is not refering to section to remove
         assert not np_utils.any_in_range(pl, *target_range), \
-          f"Can not remove element {I.getName(element)}, indexed by at least one PointList"
+          f"Can not remove element {PT.get_name(element)}, indexed by at least one PointList"
         #Shift
         pl -= target_size * (target_range[0] < pl)
 
-  I._rmNode(zone, element)
+  PT.rm_child(zone, element)
 
 def remove_ngons(dist_ngon, ngon_to_remove, comm):
   """
@@ -73,14 +71,14 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   new_pe = np.delete(pe_n[1], ngon_to_remove, axis=0) #Remove faces in PE
 
   ec_to_remove = np_utils.multi_arange(local_eso[ngon_to_remove], local_eso[ngon_to_remove+1])
-  I.setValue(ec_n, np.delete(ec_n[1], ec_to_remove))
+  PT.set_value(ec_n, np.delete(ec_n[1], ec_to_remove))
 
   # Eso is more difficult, we have to shift when deleting, locally and then globally
   new_local_eso = np_utils.sizes_to_indices(np.delete(np.diff(local_eso), ngon_to_remove))
 
   new_eso_shift = par_utils.gather_and_shift(new_local_eso[-1], comm)
   new_eso       = new_local_eso + new_eso_shift[comm.Get_rank()]
-  I.setValue(eso_n, new_eso)
+  PT.set_value(eso_n, new_eso)
 
   #Update distributions
   n_rmvd_local   = len(ngon_to_remove)
@@ -91,14 +89,14 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   n_rmvd_ec_offset  = par_utils.gather_and_shift(n_rmvd_ec_local, comm)
   n_rmvd_ec_total   = n_rmvd_ec_offset[-1]
 
-  ngon_distri = I.getVal(MT.getDistribution(dist_ngon, 'Element'))
+  ngon_distri = PT.get_value(MT.getDistribution(dist_ngon, 'Element'))
   ngon_distri[0] -= n_rmvd_offset[comm.Get_rank()]
   ngon_distri[1] -= (n_rmvd_offset[comm.Get_rank()] + n_rmvd_local)
   ngon_distri[2] -= n_rmvd_total
 
   ngon_distri_ec_n = MT.getDistribution(dist_ngon, 'ElementConnectivity')
   if ngon_distri_ec_n is not None:
-    ngon_distri_ec     = I.getVal(ngon_distri_ec_n)
+    ngon_distri_ec     = PT.get_value(ngon_distri_ec_n)
     ngon_distri_ec[0] -= n_rmvd_ec_offset[comm.Get_rank()]
     ngon_distri_ec[1] -= (n_rmvd_ec_offset[comm.Get_rank()] + n_rmvd_ec_local)
     ngon_distri_ec[2] -= n_rmvd_ec_total
@@ -106,7 +104,7 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   # If NGon were first in tree, cell range has moved so pe must be offseted
   if er_n[1][0] == 1:
     np_utils.shift_nonzeros(new_pe, -n_rmvd_total)
-  I.setValue(pe_n, new_pe)
+  PT.set_value(pe_n, new_pe)
 
   #Update ElementRange and size data (global)
   er_n[1][1] -= n_rmvd_total

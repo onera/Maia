@@ -4,7 +4,6 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -168,10 +167,10 @@ def test_create_src_to_tgt(sub_comm):
     #Put it in F order
     newpe = np.empty(pe[1].shape, dtype=np.int32, order='F')
     newpe[:] = np.copy(pe[1][:])
-    I.setValue(pe, newpe)
+    PT.set_value(pe, newpe)
 
   src_parts_per_dom = [zones]
-  tgt_parts_per_dom = [[I.copyTree(zone) for zone in zones]]
+  tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in zones]]
   excp_target = np.array([1,2,3,4]) if sub_comm.Get_rank() == 0 else np.array([5,6,7,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
   assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
@@ -224,8 +223,8 @@ def test_interpolate_fields(sub_comm):
     expected_sol = np.array([6.,6.,6.,8.,8.,8.,8.,8.,8., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
-  src_parts_per_dom = [I.getZones(part_tree)]
-  tgt_parts_per_dom = [[I.copyTree(zone) for zone in I.getZones(part_tree)]]
+  src_parts_per_dom = [PT.get_all_Zone_t(part_tree)]
+  tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in PT.get_all_Zone_t(part_tree)]]
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
       cx = PT.get_node_from_name(tgt_zone, 'CoordinateX')
@@ -283,30 +282,30 @@ class Test_interpolation_api():
         assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
   def test_interpolate_from_dom_part_trees(self,sub_comm):
-    src_tree = I.newCGNSTree()
-    src_base = I.newCGNSBase(parent=src_tree)
-    tgt_tree = I.newCGNSTree()
-    tgt_base = I.newCGNSBase(parent=tgt_tree)
+    src_tree = PT.new_CGNSTree()
+    src_base = PT.new_CGNSBase(parent=src_tree)
+    tgt_tree = PT.new_CGNSTree()
+    tgt_base = PT.new_CGNSBase(parent=tgt_tree)
 
     if sub_comm.Get_rank() == 0:
       self.src_zone_0[0] = 'Source.P0.N0'
       self.tgt_zone_0[0] = 'Target.P0.N0'
       self.tgt_zone_1[0] = 'Target.P0.N1'
       self.tgt_zone_2[0] = 'Target.P0.N2'
-      I._addChild(src_base, self.src_zone_0)
-      I._addChild(tgt_base, self.tgt_zone_0)
-      I._addChild(tgt_base, self.tgt_zone_1)
-      I._addChild(tgt_base, self.tgt_zone_2)
+      PT.add_child(src_base, self.src_zone_0)
+      PT.add_child(tgt_base, self.tgt_zone_0)
+      PT.add_child(tgt_base, self.tgt_zone_1)
+      PT.add_child(tgt_base, self.tgt_zone_2)
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in [0,1,2]]
     elif sub_comm.Get_rank() == 1:
       self.src_zone_1[0] = 'Source.P1.N0'
-      I._addChild(src_base, self.src_zone_1)
+      PT.add_child(src_base, self.src_zone_1)
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in []]
 
     ITP.interpolate_from_part_trees(src_tree, tgt_tree, sub_comm, \
         ['MySolution'], 'Vertex', strategy='Closest')
 
-    for i_tgt, tgt_zone in enumerate(I.getZones(tgt_tree)):
+    for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
       fs = PT.get_child_from_name(tgt_zone, 'MySolution')
       assert PT.Subset.GridLocation(fs) == 'Vertex'
       assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()

@@ -11,6 +11,17 @@ def new_CGNSTree(*, version=4.2):
 def new_CGNSBase(name='Base', *, cell_dim=3, phy_dim=3, parent=None):
   return new_node(name, 'CGNSBase_t', value=[cell_dim, phy_dim], parent=parent)
 
+def new_Family(name='Family', *, family_bc=None, parent=None):
+  family = new_node(name, 'Family_t', None, [], parent=parent)
+  if family_bc is not None:
+    allowed_bc = """Null UserDefined BCAxisymmetricWedge BCDegenerateLine BCDegeneratePoint BCDirichlet BCExtrapolate
+    BCFarfield BCGeneral BCInflow BCInflowSubsonic BCInflowSupersonic BCNeumann BCOutflow BCOutflowSubsonic 
+    BCOutflowSupersonic BCSymmetryPlane BCSymmetryPolar BCTunnelInflow BCTunnelOutflow BCWall BCWallInviscid
+    BCWallViscous BCWallViscousHeatFlux BCWallViscousIsothermal FamilySpecified""".split()
+    assert family_bc in allowed_bc
+    new_node('FamilyBC', 'FamilyBC_t', family_bc, [], parent=family)
+  return family
+
 def new_Zone(name='Zone', *, type='Null', size=None, family=None, parent=None):
   assert type in ['Null', 'UserDefined', 'Structured', 'Unstructured']
   zone = new_node(name, 'Zone_t', size, [], parent)
@@ -72,19 +83,57 @@ def new_BC(name='BC', type='Null', *, point_range=None, point_list=None, loc=Non
     new_PointList('PointList', point_list, bc)
   return bc
 
-def new_GridConnectivity(name='GC', donor_name=None, type='Null', *, loc=None, parent=None):
-  allowed_gc = "Null UserDefined Overset Abutting Abutting1to1".split()
-  assert type in allowed_gc
+def new_ZoneGridConnectivity(name='ZoneGridConnectivity', parent=None):
+  return new_node(name, 'ZoneGridConnectivity_t', None, [], parent)
+
+def new_GridConnectivity(name='GC', donor_name=None, type='Null', *, loc=None, \
+    point_range=None, point_range_donor=None, point_list=None, point_list_donor=None, parent=None):
   gc = new_node(name, 'GridConnectivity_t', donor_name, [], parent)
-  new_node('GridConnectivityType', 'GridConnectivityType_t', type, parent=gc)
+  new_GridConnectivityType(type, parent=gc)
   if loc is not None:
     new_GridLocation(loc, gc)
+  if point_range is not None:
+    assert point_list is None
+    new_PointRange('PointRange', value=point_range, parent=gc)
+  if point_list is not None:
+    assert point_range is None
+    new_PointList('PointList', value=point_list, parent=gc)
+  if point_range_donor is not None:
+    assert point_list_donor is None
+    new_PointRange('PointRangeDonor', value=point_range_donor, parent=gc)
+  if point_list_donor is not None:
+    assert point_range_donor is None
+    new_PointList('PointListDonor', value=point_list_donor, parent=gc)
   return gc
 
-def new_GridConnectivity1to1(name='GC', donor_name=None, *, transform=None, parent=None):
+def new_GridConnectivityType(type="Null", parent=None):
+  allowed_gc = "Null UserDefined Overset Abutting Abutting1to1".split()
+  assert type in allowed_gc
+  return new_node('GridConnectivityType', 'GridConnectivityType_t', type, [], parent)
+
+def new_Periodic(rotation_angle=[0., 0., 0.], rotation_center=[0., 0., 0.], translation=[0.,0.,0], parent=None):
+  childs = [
+      new_DataArray('RotationAngle', rotation_angle),
+      new_DataArray('RotationCenter', rotation_center),
+      new_DataArray('Translation', translation)
+      ]
+  return new_node('Periodic', 'Periodic_t', None, childs, parent)
+
+def new_GridConnectivityProperty(periodic={}, parent=None):
+  gc_props = new_node('GridConnectivityProperty', 'GridConnectivityProperty_t', None, [], parent)
+  if periodic:
+    new_Periodic(**periodic, parent=gc_props)
+  return gc_props
+
+def new_GridConnectivity1to1(name='GC', donor_name=None, *, point_range=None, \
+    point_range_donor=None, transform=None, parent=None):
   gc = new_node(name, 'GridConnectivity1to1_t', donor_name, [], parent)
   if transform is not None:
     new_node('Transform', '"int[IndexDimension]"', transform, [], parent=gc)
+  if point_range is not None:
+    new_PointRange('PointRange',      value=point_range,       parent=gc)
+  if point_range_donor is not None:
+    new_PointRange('PointRangeDonor', value=point_range_donor, parent=gc)
   return gc
 
 def new_PointList(name='PointList', value=None, parent=None):

@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree as PT
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -42,7 +41,7 @@ def test_extract_faces_mesh(sub_comm):
   # Test U
   tree = dcube_generate(3, 1., [0,0,0], sub_comm)
   PT.rm_nodes_from_name(tree, ':CGNS#Distribution')
-  zoneU = I.getZones(tree)[0]
+  zoneU = PT.get_all_Zone_t(tree)[0]
 
   cx, cy, cz, face_vtx_idx, face_vtx, vtx_ids = EXB.extract_faces_mesh(zoneU, np.array([21,22,23,24]))
 
@@ -59,11 +58,11 @@ def test_extract_faces_mesh(sub_comm):
   cy_s = PT.get_node_from_name(zoneU, 'CoordinateY')[1].reshape((3,3,3), order='F')
   cz_s = PT.get_node_from_name(zoneU, 'CoordinateZ')[1].reshape((3,3,3), order='F')
 
-  zoneS = I.newZone(zsize=[[3,2,0], [3,2,0], [3,2,0]], ztype='Structured')
-  grid_coords = I.newGridCoordinates(parent=zoneS)
-  I.newDataArray('CoordinateX', cx_s, parent=grid_coords)
-  I.newDataArray('CoordinateY', cy_s, parent=grid_coords)
-  I.newDataArray('CoordinateZ', cz_s, parent=grid_coords)
+  zoneS = PT.new_Zone(size=[[3,2,0], [3,2,0], [3,2,0]], type='Structured')
+  grid_coords = PT.new_GridCoordinates(parent=zoneS)
+  PT.new_DataArray('CoordinateX', cx_s, parent=grid_coords)
+  PT.new_DataArray('CoordinateY', cy_s, parent=grid_coords)
+  PT.new_DataArray('CoordinateZ', cz_s, parent=grid_coords)
 
   # PDM does not use the same ordering for faces, in our structured convention xmax boundary
   # would be faces 3,6,9,12

@@ -21,6 +21,14 @@ def test_new_CGNSBase():
   base = presets.new_CGNSBase(phy_dim=2)
   assert np.array_equal(N.get_value(base), [3,2])
 
+def test_new_Family():
+  fam = presets.new_Family('WALL', family_bc='BCWall')
+  expected = parse_yaml_cgns.to_node("""
+  WALL Family_t:
+    FamilyBC FamilyBC_t "BCWall":
+  """)
+  assert is_same_tree(expected, fam)
+
 def test_new_Zone():
   zone = presets.new_Zone('SomeZone', type='Unstructured', family='Family', size=[[11, 10, 0]])
   expected = parse_yaml_cgns.to_node("""
@@ -74,6 +82,12 @@ def test_new_ZoneBC():
   assert N.get_label(zbc) == 'ZoneBC_t'
   assert N.get_value(zbc) is None
 
+def test_new_ZoneGridConnectivity():
+  zbc = presets.new_ZoneGridConnectivity('ZoneGC')
+  assert N.get_name(zbc) == 'ZoneGC'
+  assert N.get_label(zbc) == 'ZoneGridConnectivity_t'
+  assert N.get_value(zbc) is None
+
 def test_new_BC():
   bc = presets.new_BC('MyBC', 'FamilySpecified', family='MyFamily', point_list=[1,2,3], loc="FaceCenter")
   expected = parse_yaml_cgns.to_node("""
@@ -86,6 +100,40 @@ def test_new_BC():
   with pytest.raises(AssertionError):
     presets.new_BC(point_list=[1,2,3], point_range=[[1,5], [1,5]], loc='Vertex')
 
+def test_new_GCType():
+  gctype = presets.new_GridConnectivityType('Abutting1to1')
+  assert N.get_name(gctype) == 'GridConnectivityType'
+  assert N.get_label(gctype) == 'GridConnectivityType_t'
+  assert N.get_value(gctype) == 'Abutting1to1'
+  with pytest.raises(AssertionError):
+    gctype = presets.new_GridConnectivityType('WrongType')
+
+def test_new_GridConnectivityProperty():
+  props = presets.new_GridConnectivityProperty()
+  assert N.get_name(props) == 'GridConnectivityProperty'
+  assert N.get_value(props) is None
+
+  perio = {'rotation_angle' : [30.,0,0], 'translation' : [0.,0.,1.]}
+  props = presets.new_GridConnectivityProperty(periodic=perio)
+  expected = parse_yaml_cgns.to_node("""
+  GridConnectivityProperty GridConnectivityProperty_t:
+    Periodic Periodic_t:
+      RotationAngle DataArray_t [30., 0, 0]:
+      RotationCenter DataArray_t [0., 0., 0]:
+      Translation DataArray_t [0., 0, 1]:
+  """)
+  assert is_same_tree(expected, props)
+
+def test_new_Periodic():
+  perio = presets.new_Periodic(rotation_angle=[0,45.,0])
+  expected = parse_yaml_cgns.to_node("""
+  Periodic Periodic_t:
+    RotationAngle DataArray_t [0, 45., 0]:
+    RotationCenter DataArray_t [0., 0., 0]:
+    Translation DataArray_t [0., 0, 0]:
+  """)
+  assert is_same_tree(expected, perio)
+
 def test_new_GC():
   gc = presets.new_GridConnectivity('MyGC', 'OppZone', 'Abutting1to1', loc="FaceCenter")
   expected = parse_yaml_cgns.to_node("""
@@ -93,12 +141,29 @@ def test_new_GC():
     GridConnectivityType GridConnectivityType_t "Abutting1to1":
     GridLocation GridLocation_t "FaceCenter":
   """)
+  assert is_same_tree(expected, gc)
+
+  gc = presets.new_GridConnectivity('MyGC', 'OppZone', 'Abutting1to1', point_list=[[1,2,3]],
+      point_list_donor=[[4,5,6]])
+  expected = parse_yaml_cgns.to_node("""
+  MyGC GridConnectivity_t "OppZone":
+    GridConnectivityType GridConnectivityType_t "Abutting1to1":
+    PointList IndexArray_t [[1,2,3]]:
+    PointListDonor IndexArray_t [[4,5,6]]:
+  """)
+  assert is_same_tree(expected, gc)
+
+  with pytest.raises(AssertionError):
+    gc = presets.new_GridConnectivity('MyGC', 'OppZone', 'Abutting1to1', point_list=[[1,2,3]],
+        point_range=[[4,5,6]])
 
 def test_new_GC1to1():
-  gc = presets.new_GridConnectivity1to1('MyGC', 'OppZone', transform=[2,1,-3])
+  gc = presets.new_GridConnectivity1to1('MyGC', 'OppZone', transform=[2,1,-3], \
+      point_range=[[1,1], [1,5], [1,5]])
   expected = parse_yaml_cgns.to_node("""
   MyGC GridConnectivity1to1_t "OppZone":
     Transform "int[IndexDimension]" [2,1,-3]:
+    PointRange IndexRange_t [[1,1], [1,5], [1,5]]:
   """)
   assert is_same_tree(expected, gc)
   assert is_same_tree(expected, gc)

@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree as PT
 
 import maia
@@ -39,8 +38,8 @@ def test_conformize_jn_pair(sub_comm, from_loc):
     PointListDonor IndexArray_t {isize} {pl}:
   """
   gcs = [F2D.distribute_pl_node(gc, sub_comm) for gc in parse_yaml_cgns.to_nodes(yt)]
-  zone = I.getZones(dist_tree)[0]
-  I.createChild(zone, "ZGC", "ZoneGridConnectivity_t", children=gcs)
+  zone = PT.get_all_Zone_t(dist_tree)[0]
+  PT.new_child(zone, "ZGC", "ZoneGridConnectivity_t", children=gcs)
 
   CJN.conformize_jn_pair(dist_tree, ['Base/zone/ZGC/matchA', 'Base/zone/ZGC/matchB'], sub_comm)
 

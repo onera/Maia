@@ -1,4 +1,3 @@
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -28,9 +27,9 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
   coord_query = ['GridCoordinates_t', 'DataArray_t']
   
   # Get vtx ids and opposite vtx ids for this join
-  location = PT.Subset.GridLocation(I.getNodeFromPath(dist_tree, jn_paths[0]))
+  location = PT.Subset.GridLocation(PT.get_node_from_path(dist_tree, jn_paths[0]))
   if location == 'Vertex':
-    pl_vtx_list = [I.getNodeFromPath(dist_tree, jn_paths[0]+f'/PointList{d}')[1][0] for d in ['', 'Donor']]
+    pl_vtx_list = [PT.get_node_from_path(dist_tree, jn_paths[0]+f'/PointList{d}')[1][0] for d in ['', 'Donor']]
   elif location == 'FaceCenter':
     pl_vtx_list = VL.generate_jn_vertex_list(dist_tree, jn_paths[0], comm)[:2]
   else:
@@ -40,11 +39,11 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
   mean_coords = {}
   vtx_distris = []
   for i, path in enumerate(jn_paths):
-    zone = I.getNodeFromPath(dist_tree, PT.path_head(path, 2))
-    vtx_distri = I.getVal(MT.getDistribution(zone, 'Vertex')).astype(pdm_dtype, copy=False)
+    zone = PT.get_node_from_path(dist_tree, PT.path_head(path, 2))
+    vtx_distri = PT.get_value(MT.getDistribution(zone, 'Vertex')).astype(pdm_dtype, copy=False)
     dist_coords = {}
     for grid_co_n, coord_n in PT.iter_nodes_from_predicates(zone, coord_query, ancestors=True):
-      dist_coords[f"{I.getName(grid_co_n)}/{I.getName(coord_n)}"] = coord_n[1]
+      dist_coords[f"{PT.get_name(grid_co_n)}/{PT.get_name(coord_n)}"] = coord_n[1]
   
     part_coords = MBTP.dist_to_part(vtx_distri, dist_coords, [pl_vtx_list[i]], comm)
   
@@ -57,7 +56,7 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
   
   # Send back the mean value to the two zones, and update tree
   for i, path in enumerate(jn_paths):
-    zone = I.getNodeFromPath(dist_tree, PT.path_head(path, 2))
+    zone = PT.get_node_from_path(dist_tree, PT.path_head(path, 2))
     mean_coords['NodeId'] = [pl_vtx_list[i]]
     dist_data = MPTB.part_to_dist(vtx_distris[i], mean_coords, [pl_vtx_list[i]], comm)
 
@@ -65,5 +64,5 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
 
     # Update data
     for coord_path, value in dist_data.items():
-      node = I.getNodeFromPath(zone, coord_path)
+      node = PT.get_node_from_path(zone, coord_path)
       node[1][loc_indices] = value

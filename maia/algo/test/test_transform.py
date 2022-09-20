@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -39,7 +38,7 @@ def test_transformation_zone_void():
                     1,1,1 ]
        """
   zone            = parse_yaml_cgns.to_node(yz)
-  zone_bck        = I.copyTree(zone)
+  zone_bck        = PT.deep_copy(zone)
   transform.transform_affine(zone)
   assert PT.is_same_tree(zone_bck, zone) 
 
@@ -58,18 +57,18 @@ def test_transform_affine(sub_comm):
     assert (old_data == new_data).all()
 
   dist_tree = dcube_generate(4, 1., [0., -.5, -.5], sub_comm)
-  dist_zone = I.getZones(dist_tree)[0]
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields
   cell_distri = MT.getDistribution(dist_zone, 'Cell')[1]
   n_cell_loc =  cell_distri[1] - cell_distri[0]
-  fs = I.newFlowSolution('FlowSolution', gridLocation='CellCenter', parent=dist_zone)
-  I.newDataArray('scalar', np.random.random(n_cell_loc), parent=fs)
-  I.newDataArray('fieldX', np.random.random(n_cell_loc), parent=fs)
-  I.newDataArray('fieldY', np.random.random(n_cell_loc), parent=fs)
-  I.newDataArray('fieldZ', np.random.random(n_cell_loc), parent=fs)
+  fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
+  PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)
+  PT.new_DataArray('fieldX', np.random.random(n_cell_loc), parent=fs)
+  PT.new_DataArray('fieldY', np.random.random(n_cell_loc), parent=fs)
+  PT.new_DataArray('fieldZ', np.random.random(n_cell_loc), parent=fs)
 
-  dist_zone_ini = I.copyTree(dist_zone)
+  dist_zone_ini = PT.deep_copy(dist_zone)
   transform.transform_affine(dist_zone, rotation_angle=np.array([0.,0.,np.pi]), apply_to_fields=True)
 
   check_vect_field(dist_zone_ini, dist_zone, "Coordinate")

@@ -1,5 +1,4 @@
 import Pypdm.Pypdm as PDM
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -11,7 +10,7 @@ from maia.algo.part.geometry  import compute_cell_center
 def _get_zone_ln_to_gn_from_loc(zone, location):
   """ Wrapper to get the expected lngn value """
   _loc = location.replace('Center', '')
-  ln_to_gn = I.getVal(MT.getGlobalNumbering(zone, _loc)).astype(pdm_gnum_dtype, casting='same_kind', copy=False)
+  ln_to_gn = PT.get_value(MT.getGlobalNumbering(zone, _loc)).astype(pdm_gnum_dtype, casting='same_kind', copy=False)
   return ln_to_gn
 
 def get_point_cloud(zone, location='CellCenter'):
@@ -35,7 +34,7 @@ def get_point_cloud(zone, location='CellCenter'):
   else: #Try to catch a container with the given name
     container = PT.get_child_from_name(zone, location)
     if container:
-      coords = [I.getVal(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
+      coords = [PT.get_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
       int_coords = np_utils.interweave_arrays(coords)
       ln_to_gn = _get_zone_ln_to_gn_from_loc(zone, PT.Subset.GridLocation(container))
       return int_coords, ln_to_gn
