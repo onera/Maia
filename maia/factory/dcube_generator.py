@@ -38,8 +38,9 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
       cgns_elmt_name = MT.pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
       distrib   = par_utils.full_to_partial_distribution(section["np_distrib"], comm)
 
+      _erange = np.array([elt_shift, elt_shift+distrib[-1]-1], pdm_gnum_dtype)
       elmt = PT.new_Elements(f"{cgns_elmt_name}.{i_section}", cgns_elmt_name, \
-          erange=[elt_shift, elt_shift + distrib[-1]-1], econn=section["np_connec"], parent=zone)
+          erange=_erange, econn=section["np_connec"], parent=zone)
       MT.newDistribution({'Element' : distrib}, parent=elmt)
       elt_shift += distrib[-1]
 

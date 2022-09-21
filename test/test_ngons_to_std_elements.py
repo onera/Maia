@@ -4,7 +4,6 @@ from maia.utils import test_utils as TU
 import os
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 import  maia
@@ -29,8 +28,8 @@ def test_ngons_to_elements(sub_comm, write_output):
   tets = PT.request_node_from_name(dist_tree, 'TETRA_4')
 
   # > Some non-regression checks
-  assert np.all(I.getVal(PT.get_child_from_name(tris, 'ElementRange')) == [1,204])
-  assert np.all(I.getVal(PT.get_child_from_name(tets, 'ElementRange')) == [205,1500])
+  assert np.all(PT.get_value(PT.get_child_from_name(tris, 'ElementRange')) == [1,204])
+  assert np.all(PT.get_value(PT.get_child_from_name(tets, 'ElementRange')) == [205,1500])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)

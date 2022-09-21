@@ -3,7 +3,6 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 
 import numpy as np
 import os
-import Converter.Internal as I
 import maia.pytree as PT
 
 from maia import io      as MIO
@@ -25,17 +24,17 @@ def test_single_block(sub_comm):
   # > Partioning procduce one matching gc
   gc  = PT.get_node_from_label(part_tree, 'GridConnectivity_t')
   # > Test setup -- copy this jn as a bc (without pl donor) to test connect match
-  bc = I.copyTree(gc)
-  I.setName(bc, 'ToMatch')
-  I.setType(bc, 'BC_t')
-  I.setValue(bc, 'FamilySpecified')
-  I.createNode('FamilyName', 'FamilyName_t', 'JN', parent=bc)
+  bc = PT.deep_copy(gc)
+  PT.set_name(bc, 'ToMatch')
+  PT.set_label(bc, 'BC_t')
+  PT.set_value(bc, 'FamilySpecified')
+  PT.new_node('FamilyName', 'FamilyName_t', 'JN', parent=bc)
   PT.rm_children_from_name(bc, 'GridConnectivityType')
   PT.rm_children_from_name(bc, 'PointListDonor')
-  I._addChild(PT.get_node_from_label(part_tree, 'ZoneBC_t'), bc)
+  PT.add_child(PT.get_node_from_label(part_tree, 'ZoneBC_t'), bc)
 
-  base = I.getBases(part_tree)[0]
-  I.newFamily('JN', parent=base)
+  base = PT.get_all_CGNSBase_t(part_tree)[0]
+  PT.new_Family('JN', parent=base)
 
   # > Connect match
   part_algo.connect_match_from_family(part_tree, ['JN'], sub_comm,
@@ -67,26 +66,26 @@ def test_two_blocks(sub_comm):
   PT.rm_nodes_from_label(part_tree, 'ZoneGridConnectivity_t')
 
   # > Test setup -- Create BC
-  large_bc = I.copyTree(large_jn)
-  I.setName(large_bc, 'ToMatch')
-  I.setType(large_bc, 'BC_t')
-  I.setValue(large_bc, 'FamilySpecified')
-  I.createNode('FamilyName', 'FamilyName_t', 'LargeJN', parent=large_bc)
+  large_bc = PT.deep_copy(large_jn)
+  PT.set_name(large_bc, 'ToMatch')
+  PT.set_label(large_bc, 'BC_t')
+  PT.set_value(large_bc, 'FamilySpecified')
+  PT.new_node('FamilyName', 'FamilyName_t', 'LargeJN', parent=large_bc)
   PT.rm_children_from_name(large_bc, 'GridConnectivityType')
   PT.rm_children_from_name(large_bc, 'PointListDonor')
-  I._addChild(PT.get_node_from_label(large_zone, 'ZoneBC_t'), large_bc)
+  PT.add_child(PT.get_node_from_label(large_zone, 'ZoneBC_t'), large_bc)
 
-  small_bc = I.copyTree(small_jn)
-  I.setName(small_bc, 'ToMatch')
-  I.setType(small_bc, 'BC_t')
-  I.setValue(small_bc, 'FamilySpecified')
-  I.createNode('FamilyName', 'FamilyName_t', 'SmallJN', parent=small_bc)
+  small_bc = PT.deep_copy(small_jn)
+  PT.set_name(small_bc, 'ToMatch')
+  PT.set_label(small_bc, 'BC_t')
+  PT.set_value(small_bc, 'FamilySpecified')
+  PT.new_node('FamilyName', 'FamilyName_t', 'SmallJN', parent=small_bc)
   PT.rm_children_from_name(small_bc, 'GridConnectivityType')
   PT.rm_children_from_name(small_bc, 'PointListDonor')
-  I._addChild(PT.get_node_from_label(small_zone, 'ZoneBC_t'), small_bc)
+  PT.add_child(PT.get_node_from_label(small_zone, 'ZoneBC_t'), small_bc)
 
   bc = PT.get_node_from_name(part_tree, 'Front')
-  I.createNode('FamilyName', 'FamilyName_t', 'OtherFamily', parent=bc)
+  PT.new_node('FamilyName', 'FamilyName_t', 'OtherFamily', parent=bc)
 
 
   # > Extra family can be present

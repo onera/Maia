@@ -135,8 +135,8 @@ def test_interpolate_from_part_trees():
   part_tree_tgt = maia.factory.partition_dist_tree(dist_tree_tgt, comm)
   # Create fake solution
   zone = maia.pytree.get_node_from_label(part_tree_src, "Zone_t")
-  src_sol = maia.pytree.newFlowSolution('FlowSolution', 'CellCenter', parent=zone)
-  PT.newDataArray("Field", numpy.random.rand(PT.Zone.n_cell(zone)), src_sol)
+  src_sol = maia.pytree.new_FlowSolution('FlowSolution', loc='CellCenter', parent=zone)
+  PT.new_DataArray("Field", numpy.random.rand(PT.Zone.n_cell(zone)), parent=src_sol)
 
   maia.algo.part.interpolate_from_part_trees(part_tree_src, part_tree_tgt, comm,\
       ['FlowSolution'], 'Vertex')
