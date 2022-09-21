@@ -127,9 +127,22 @@ def get_children(node):
   return node[2]
 
 def add_child(node, child):
+  if child is None:
+    return
   if get_name(child) in [get_name(n) for n in get_children(node)]:
     raise RuntimeError('Can not add child : a node with the same already exists')
   node[2].append(child)
+
+def rm_child(node, child):
+  if child is None:
+    return
+  sub_nodes = get_children(node)
+  for i, sub_node in enumerate(sub_nodes):
+    if sub_node is child:
+      break
+  else:
+    raise RuntimeError('Can not remove child : not found in node')
+  sub_nodes.pop(i)
 
 def set_children(node, children):
   children_bck = get_children(node)

@@ -1,7 +1,7 @@
 from pytest_mpi_check            import assert_mpi
 from pytest_mpi_check._decorator import mark_mpi_test
 
-import Converter.Internal as I
+import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
 
 from cmaia.part_algo                   import cgns_registry as CGR
@@ -201,11 +201,11 @@ def test_add_cgns_registry_information_1p(sub_comm):
   tree = parse_yaml_cgns.to_cgns_tree(yt_1p)
   cgr = add_cgns_registry_information(tree, sub_comm)
 
-  zone1_id_n = I.getNodeFromPath(tree, "/Base0/ZoneU1/:CGNS#Registry")
-  zone2_id_n = I.getNodeFromPath(tree, "/Base0/ZoneU2/:CGNS#Registry")
+  zone1_id_n = PT.get_node_from_path(tree, "Base0/ZoneU1/:CGNS#Registry")
+  zone2_id_n = PT.get_node_from_path(tree, "Base0/ZoneU2/:CGNS#Registry")
 
-  assert I.getValue(zone1_id_n) == 1
-  assert I.getValue(zone2_id_n) == 2
+  assert PT.get_value(zone1_id_n) == 1
+  assert PT.get_value(zone2_id_n) == 2
 
 @mark_mpi_test(2)
 def test_add_cgns_registry_information_2p(sub_comm):
@@ -215,7 +215,7 @@ def test_add_cgns_registry_information_2p(sub_comm):
   cgr = add_cgns_registry_information(tree, sub_comm)
 
   if sub_comm.Get_rank()==0:
-    assert I.getValue(I.getNodeFromPath(tree, "/Base0/ZoneU1/:CGNS#Registry")) == 1
+    assert PT.get_value(PT.get_node_from_path(tree, "Base0/ZoneU1/:CGNS#Registry")) == 1
   if sub_comm.Get_rank()==1:
-    assert I.getValue(I.getNodeFromPath(tree, "/Base0/ZoneU2/:CGNS#Registry")) == 2
+    assert PT.get_value(PT.get_node_from_path(tree, "Base0/ZoneU2/:CGNS#Registry")) == 2
 

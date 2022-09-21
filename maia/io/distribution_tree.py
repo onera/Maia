@@ -1,5 +1,4 @@
 import numpy as np
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -31,9 +30,9 @@ def compute_plist_or_prange_distribution(node, comm):
 
   if(pl_n):
     pls_n   = PT.get_child_from_name(node, 'PointList#Size')
-    pl_size = I.getValue(pls_n).prod()
+    pl_size = PT.get_value(pls_n).prod()
     create_distribution_node(pl_size, comm, 'Index', node)
-    I._rmNode(node, pls_n)
+    PT.rm_children_from_name(node, 'PointList#Size')
 
 def compute_connectivity_distribution(node):
   """
@@ -50,8 +49,8 @@ def compute_connectivity_distribution(node):
 
   distri_n = MT.getDistribution(node)
   dtype = PT.get_child_from_name(distri_n, 'Element')[1].dtype
-  I.newDataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
-  I._rmNode(node, size_n)
+  PT.new_DataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
+  PT.rm_children_from_name(node, 'ElementConnectivity#Size')
 
 
 def compute_elements_distribution(zone, comm):
@@ -99,8 +98,8 @@ def clean_distribution_info(dist_tree):
   Remove the node related to distribution info from the dist_tree
   """
   distri_name = ":CGNS#Distribution"
-  is_dist = lambda n : I.getType(n) in ['Elements_t', 'ZoneSubRegion_t', 'FlowSolution_t']
-  is_gc   = lambda n : I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  is_dist = lambda n : PT.get_label(n) in ['Elements_t', 'ZoneSubRegion_t', 'FlowSolution_t']
+  is_gc   = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for zone in PT.iter_all_Zone_t(dist_tree):
     PT.rm_children_from_name(zone, distri_name)
     for node in PT.iter_nodes_from_predicate(zone, is_dist):

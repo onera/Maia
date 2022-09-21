@@ -1,7 +1,6 @@
 import numpy          as np
 from Pypdm.Pypdm import DistributedMesh
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -13,8 +12,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
   """
-  distrib_vtx      = I.getVal(MT.getDistribution(dist_zone, 'Vertex'))
-  distrib_cell     = I.getVal(MT.getDistribution(dist_zone, 'Cell'))
+  distrib_vtx      = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
+  distrib_cell     = PT.get_value(MT.getDistribution(dist_zone, 'Cell'))
 
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
@@ -23,8 +22,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   ngon_pe   = PT.get_child_from_name(ngon_node, 'ParentElements'     )[1].astype(pdm_gnum_dtype, copy=False)
   ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype, copy=False)
 
-  distrib_face     = I.getVal(MT.getDistribution(ngon_node, 'Element')).astype(pdm_gnum_dtype)
-  distrib_face_vtx = I.getVal(MT.getDistribution(ngon_node, 'ElementConnectivity')).astype(pdm_gnum_dtype)
+  distrib_face     = PT.get_value(MT.getDistribution(ngon_node, 'Element')).astype(pdm_gnum_dtype)
+  distrib_face_vtx = PT.get_value(MT.getDistribution(ngon_node, 'ElementConnectivity')).astype(pdm_gnum_dtype)
 
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
   dn_cell = distrib_cell[1] - distrib_cell[0]
@@ -82,16 +81,16 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
                   dface_join_idx, dface_join)
 
   # > Create an older --> To Suppress after all
-  multi_part_node = I.createUniqueChild(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
-  I.newDataArray('dvtx_coord'     , dvtx_coord     , parent=multi_part_node)
-  I.newDataArray('dface_vtx_idx'  , dface_vtx_idx  , parent=multi_part_node)
-  I.newDataArray('dface_vtx'      , dface_vtx      , parent=multi_part_node)
-  I.newDataArray('dface_cell'     , dface_cell     , parent=multi_part_node)
-  I.newDataArray('dface_bound_idx', dface_bound_idx, parent=multi_part_node)
-  I.newDataArray('dface_bound'    , dface_bound    , parent=multi_part_node)
-  I.newDataArray('joins_ids'      , joins_ids      , parent=multi_part_node)
-  I.newDataArray('dface_join_idx' , dface_join_idx , parent=multi_part_node)
-  I.newDataArray('dface_join'     , dface_join     , parent=multi_part_node)
+  multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
+  PT.new_DataArray('dvtx_coord'     , dvtx_coord     , parent=multi_part_node)
+  PT.new_DataArray('dface_vtx_idx'  , dface_vtx_idx  , parent=multi_part_node)
+  PT.new_DataArray('dface_vtx'      , dface_vtx      , parent=multi_part_node)
+  PT.new_DataArray('dface_cell'     , dface_cell     , parent=multi_part_node)
+  PT.new_DataArray('dface_bound_idx', dface_bound_idx, parent=multi_part_node)
+  PT.new_DataArray('dface_bound'    , dface_bound    , parent=multi_part_node)
+  PT.new_DataArray('joins_ids'      , joins_ids      , parent=multi_part_node)
+  PT.new_DataArray('dface_join_idx' , dface_join_idx , parent=multi_part_node)
+  PT.new_DataArray('dface_join'     , dface_join     , parent=multi_part_node)
 
   return dmesh
 

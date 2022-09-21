@@ -1,7 +1,6 @@
 import pytest 
 from pytest_mpi_check._decorator import mark_mpi_test
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from maia.pytree.yaml   import parse_yaml_cgns
@@ -20,8 +19,8 @@ def test_distribute_pl_node(sub_comm):
   """
   bc = parse_yaml_cgns.to_node(yt)
   dist_bc = full_to_dist.distribute_pl_node(bc, sub_comm)
-  assert I.getNodeFromPath(dist_bc, ':CGNS#Distribution/Index') is not None
-  assert I.getNodeFromPath(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is None
+  assert PT.get_node_from_path(dist_bc, ':CGNS#Distribution/Index') is not None
+  assert PT.get_node_from_path(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is None
   assert PT.get_node_from_name(dist_bc, 'PointList')[1].shape == (1,2)
   assert PT.get_node_from_name(dist_bc, 'Data')[1].shape == (2,)
 
@@ -37,18 +36,18 @@ def test_distribute_pl_node(sub_comm):
   """
   bc = parse_yaml_cgns.to_node(yt)
   dist_bc = full_to_dist.distribute_pl_node(bc, sub_comm)
-  assert I.getNodeFromPath(dist_bc, ':CGNS#Distribution/Index') is not None
-  assert I.getNodeFromPath(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is not None
+  assert PT.get_node_from_path(dist_bc, ':CGNS#Distribution/Index') is not None
+  assert PT.get_node_from_path(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is not None
   assert PT.get_node_from_name(dist_bc, 'PointList')[1].shape == (1,2)
   assert PT.get_node_from_name(dist_bc, 'Data')[1].shape == (1,)
-  assert I.getNodeFromPath(dist_bc, 'BCDataSet/PointList')[1].shape == (1,1)
+  assert PT.get_node_from_path(dist_bc, 'BCDataSet/PointList')[1].shape == (1,1)
 
 @mark_mpi_test(3)
 def test_distribute_data_node(sub_comm):
   rank = sub_comm.Get_rank()
-  fs = I.newFlowSolution(gridLocation='CellCenter')
-  data1 = I.newDataArray('Data1', [2,4,6,8,10,12,14], fs)
-  data2 = I.newDataArray('Data2', [-1,-2,-3,-4,-5,-6,-7], fs)
+  fs = PT.new_FlowSolution(loc='CellCenter')
+  data1 = PT.new_DataArray('Data1', [2,4,6,8,10,12,14], parent=fs)
+  data2 = PT.new_DataArray('Data2', [-1,-2,-3,-4,-5,-6,-7], parent=fs)
 
   dist_fs = full_to_dist.distribute_data_node(fs, sub_comm)
   distri_f = [0,3,5,7]
@@ -67,7 +66,7 @@ def test_distribute_element(sub_comm):
   dist_elem = full_to_dist.distribute_element_node(elem, sub_comm)
 
   assert (PT.Element.Range(dist_elem) == [16,20]).all()
-  assert I.getNodeFromPath(dist_elem, ':CGNS#Distribution/Element') is not None
+  assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/Element') is not None
   if sub_comm.Get_rank() == 0:
     assert (PT.get_node_from_name(dist_elem, 'ElementConnectivity')[1] == [4,1,3, 8,2,1, 9,7,4]).all()
   else:
@@ -84,8 +83,8 @@ def test_distribute_element(sub_comm):
   dist_elem = full_to_dist.distribute_element_node(elem, sub_comm)
 
   assert (PT.Element.Range(dist_elem) == [1,4]).all()
-  assert I.getNodeFromPath(dist_elem, ':CGNS#Distribution/Element') is not None
-  assert I.getNodeFromPath(dist_elem, ':CGNS#Distribution/ElementConnectivity') is not None
+  assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/Element') is not None
+  assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/ElementConnectivity') is not None
   if sub_comm.Get_rank() == 0:
     assert (PT.get_child_from_name(dist_elem, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
     assert (PT.get_child_from_name(dist_elem, 'ElementStartOffset')[1] == [0,4,8]).all()
@@ -131,12 +130,12 @@ def test_distribute_tree(sub_comm):
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   dist_tree = full_to_dist.distribute_tree(tree, sub_comm)
 
-  zone = I.getZones(dist_tree)[0]
+  zone = PT.get_all_Zone_t(dist_tree)[0]
   if sub_comm.Get_rank() == 0:
     assert (PT.get_node_from_name(zone, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
-    assert (I.getNodeFromPath(zone, 'SolPl/Array')[1] == [1000]).all()
+    assert (PT.get_node_from_path(zone, 'SolPl/Array')[1] == [1000]).all()
   if sub_comm.Get_rank() == 1:
     assert (PT.get_node_from_name(zone, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
-    assert (I.getNodeFromPath(zone, 'SolPl/Array')[1].size == 0)
+    assert (PT.get_node_from_path(zone, 'SolPl/Array')[1].size == 0)
   assert len(PT.get_nodes_from_name(zone, ':CGNS#Distribution')) == 6
 

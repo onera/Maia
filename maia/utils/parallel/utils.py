@@ -1,6 +1,7 @@
 from mpi4py import MPI
 import numpy as np
-import Converter.Internal as I
+
+import maia.pytree as PT
 
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype
@@ -61,12 +62,12 @@ def gather_and_shift(value, comm, dtype=None):
 def exists_anywhere(trees, node_path, comm):
   exists_loc = False
   for tree in trees:
-    exists_loc = exists_loc or (I.getNodeFromPath(tree, node_path) is not None)
+    exists_loc = exists_loc or (PT.get_node_from_path(tree, node_path) is not None)
   return comm.allreduce(exists_loc, op=MPI.LOR)
 
 def exists_everywhere(trees, node_path, comm):
   exists_loc = True #Allow True if list is empty
   for tree in trees:
-    exists_loc = exists_loc and (I.getNodeFromPath(tree, node_path) is not None)
+    exists_loc = exists_loc and (PT.get_node_from_path(tree, node_path) is not None)
   return comm.allreduce(exists_loc, op=MPI.LAND)
 

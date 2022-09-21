@@ -3,7 +3,6 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 import os
 import numpy as np
 
-import Converter.Internal as I
 import Converter.PyTree   as C
 import maia.pytree        as PT
 
@@ -22,13 +21,12 @@ def test_wall_distance_S(method, sub_comm, write_output):
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   # Families are not present in the tree, we need to add it
-  base = I.getBases(dist_tree)[0]
-  fam = I.newFamily('WALL', parent=base)
-  I.newFamilyBC(parent=fam)
+  base = PT.get_all_CGNSBase_t(dist_tree)[0]
+  fam = PT.new_Family('WALL', family_bc='Null', parent=base)
   for bc in PT.iter_nodes_from_label(dist_tree, 'BC_t'):
-    if I.getValue(bc) == 'BCWall':
-      I.setValue(bc, 'FamilySpecified')
-      I.createChild(bc, 'FamilyName', 'FamilyName_t', 'WALL')
+    if PT.get_value(bc) == 'BCWall':
+      PT.set_value(bc, 'FamilySpecified')
+      PT.new_child(bc, 'FamilyName', 'FamilyName_t', 'WALL')
 
   # Partitioning
   part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm, graph_part_tool='ptscotch')
@@ -47,10 +45,10 @@ def test_wall_distance_S(method, sub_comm, write_output):
 
   # Compare to reference solution
   refence_solution = maia.io.file_to_dist_tree(ref_file, sub_comm)
-  for d_base in I.getBases(dist_tree):
-    for d_zone in I.getZones(d_base):
-      zone_path = '/'.join([I.getName(d_base), I.getName(d_zone)])
-      ref_wall_dist = I.getNodeFromPath(refence_solution, zone_path + '/WallDistance')
+  for d_base in PT.iter_all_CGNSBase_t(dist_tree):
+    for d_zone in PT.iter_all_Zone_t(d_base):
+      zone_path = '/'.join([PT.get_name(d_base), PT.get_name(d_zone)])
+      ref_wall_dist = PT.get_node_from_path(refence_solution, zone_path + '/WallDistance')
       assert maia.pytree.is_same_tree(ref_wall_dist, PT.get_child_from_name(d_zone, 'WallDistance'), 
           type_tol=True, abs_tol=1E-14)
 
@@ -69,7 +67,7 @@ def test_wall_distance_U(method, sub_comm, write_output):
   #Let WALL family be autodetected by setting its type to wall:
   wall_family = PT.get_node_from_name(dist_tree, 'WALL', depth=2)
   family_bc = PT.get_child_from_name(wall_family, 'FamilyBC')
-  I.setValue(family_bc, 'BCWall')
+  PT.set_value(family_bc, 'BCWall')
 
   # Partitioning
   zone_to_parts = maia.factory.partitioning.compute_regular_weights(dist_tree, sub_comm, 3)
@@ -87,10 +85,10 @@ def test_wall_distance_U(method, sub_comm, write_output):
 
   # Compare to reference solution
   refence_solution = maia.io.file_to_dist_tree(ref_file, sub_comm)
-  for d_base in I.getBases(dist_tree):
-    for d_zone in I.getZones(d_base):
-      zone_path = '/'.join([I.getName(d_base), I.getName(d_zone)])
-      ref_wall_dist = I.getNodeFromPath(refence_solution, zone_path + '/WallDistance')
+  for d_base in PT.iter_all_CGNSBase_t(dist_tree):
+    for d_zone in PT.iter_all_Zone_t(d_base):
+      zone_path = '/'.join([PT.get_name(d_base), PT.get_name(d_zone)])
+      ref_wall_dist = PT.get_node_from_path(refence_solution, zone_path + '/WallDistance')
       assert maia.pytree.is_same_tree(ref_wall_dist, PT.get_child_from_name(d_zone, 'WallDistance'),
           type_tol=True, abs_tol=1E-14)
 

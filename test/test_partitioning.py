@@ -3,8 +3,6 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 import os
 from mpi4py import MPI
 
-import Converter.Internal as I
-
 import maia
 from maia.utils   import test_utils     as TU
 from maia.io      import cgns_io_tree   as IOT
@@ -84,7 +82,7 @@ def test_part_S(sub_comm, write_output):
 
   zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
   part_tree = PPA.partition_dist_tree(dist_tree, sub_comm, zone_to_parts=zone_to_parts)
-  assert len(I.getZones(part_tree)) == 2*2
+  assert len(maia.pytree.get_all_Zone_t(part_tree)) == 2*2
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
@@ -99,7 +97,7 @@ def test_part_elements(sub_comm, graph_part_tool, write_output):
 
   #Note : zone_to_parts defaults to 1part_per_zone
   part_tree = PPA.partition_dist_tree(dist_tree, sub_comm, graph_part_tool=graph_part_tool)
-  assert len(I.getZones(part_tree)) == 1
+  assert len(maia.pytree.get_all_Zone_t(part_tree)) == 1
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
@@ -128,7 +126,7 @@ def test_part_NGon(sub_comm, cell_renum_method, write_output):
 
   part_tree = PPA.partition_dist_tree(dist_tree, sub_comm, zone_to_parts=zone_to_parts, reordering=reordering)
 
-  assert len(I.getZones(part_tree)) == sum([len(zone_to_parts[zone]) for zone in zone_to_parts])
+  assert len(maia.pytree.get_all_Zone_t(part_tree)) == sum([len(zone_to_parts[zone]) for zone in zone_to_parts])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)

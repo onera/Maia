@@ -1,7 +1,6 @@
 import numpy as np
 
 import Pypdm.Pypdm as PDM
-import Converter.Internal as I
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
@@ -38,13 +37,11 @@ def pe_to_nface(zone, remove_PE=False):
     nface_ec_sign*(np.abs(nface_ec) + first_ngon - 1)
 
   #Create NFace node
-  nface = I.newElements('NFaceElements', 'NFACE', parent=zone)
-  I.newPointRange("ElementRange", np.array([min_cell, max_cell], dtype=np.int32), parent=nface)
-  I.newDataArray("ElementStartOffset",   nface_eso, parent=nface)
-  I.newDataArray("ElementConnectivity",  nface_ec,  parent=nface)
+  _erange = np.array([min_cell, max_cell], dtype=np.int32)
+  nface = PT.new_NFaceElements(erange=_erange, eso=nface_eso, ec=nface_ec, parent=zone)
   cell_gnum = MT.getGlobalNumbering(zone, 'Cell')
   if cell_gnum is not None:
-    MT.newGlobalNumbering({'Element' : I.getVal(cell_gnum)}, nface)
+    MT.newGlobalNumbering({'Element' : PT.get_value(cell_gnum)}, nface)
 
   if remove_PE:
     PT.rm_children_from_name(ngon_node, "ParentElements")
@@ -77,6 +74,6 @@ def nface_to_pe(zone, remove_NFace=False):
   local_pe = cpart_algo.local_cellface_to_local_pe(cell_face_idx, _cell_face)
   np_utils.shift_nonzeros(local_pe, PT.Element.Range(nface_node)[0]-1) # Refer to NFace global ids
 
-  I.newDataArray('ParentElements', local_pe, ngon_node)
+  PT.new_DataArray('ParentElements', local_pe, parent=ngon_node)
   if remove_NFace:
-    I._rmNode(zone, nface_node)
+    PT.rm_child(zone, nface_node)

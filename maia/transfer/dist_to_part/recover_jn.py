@@ -1,4 +1,3 @@
-import Converter.Internal as I
 import numpy as np
 import Pypdm.Pypdm as PDM
 
@@ -14,7 +13,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
   _dist_jn_pairs = MJT.get_matching_jns(dist_tree)
   # Skip joins w/ PL (structured)
   dist_jn_pairs = [pathes for pathes in _dist_jn_pairs \
-      if I.getNodeFromPath(dist_tree, pathes[0] + '/PointList') is not None]
+      if PT.get_node_from_path(dist_tree, pathes[0] + '/PointList') is not None]
   if len(dist_jn_pairs) == 0:
     return
 
@@ -23,13 +22,13 @@ def get_pl_donor(dist_tree, part_tree, comm):
   for i, pathes in enumerate(dist_jn_pairs):
     join_to_ref[pathes[0]] = i
     join_to_ref[pathes[1]] = i
-    gc = I.getNodeFromPath(dist_tree, pathes[0])
+    gc = PT.get_node_from_path(dist_tree, pathes[0])
     nb_face_in_joins[i] = te_utils.get_cgns_distribution(gc, 'Index')[2]
 
   face_in_join_offset = np_utils.sizes_to_indices(nb_face_in_joins)
 
   ini_gc_query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 
-      lambda n : I.getType(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n) and not MT.conv.is_intra_gc(n[0])]
+      lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n) and not MT.conv.is_intra_gc(n[0])]
 
 
   shifted_lntogn = list()
@@ -43,8 +42,8 @@ def get_pl_donor(dist_tree, part_tree, comm):
     itrf_id = join_to_ref[d_gc_path]
     gc_id = 2*itrf_id + int(d_gc_path < MJT.get_jn_donor_path(dist_tree, d_gc_path))
 
-    gc = I.getNodeFromPath(part_tree, p_gc_path)
-    lngn = I.getVal(MT.getGlobalNumbering(gc, 'Index'))
+    gc = PT.get_node_from_path(part_tree, p_gc_path)
+    lngn = PT.get_value(MT.getGlobalNumbering(gc, 'Index'))
     shifted_lntogn.append(lngn + face_in_join_offset[itrf_id])
     pl = PT.get_child_from_name(gc, 'PointList')[1][0]
     part_data['pl'].append(pl)
@@ -75,7 +74,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     itrf_id = join_to_ref[d_gc_path]
     gc_id = 2*itrf_id + int(d_gc_path < MJT.get_jn_donor_path(dist_tree, d_gc_path))
 
-    gc = I.getNodeFromPath(part_tree, p_gc_path)
+    gc = PT.get_node_from_path(part_tree, p_gc_path)
     pl_node = PT.get_child_from_name(gc, 'PointList')
     lngn_node = MT.getGlobalNumbering(gc, 'Index')
     lngn = lngn_node[1]
@@ -134,9 +133,9 @@ def get_pl_donor(dist_tree, part_tree, comm):
       r_idx += n_candidates
 
     assert w_idx == new_size
-    I.newDataArray('PointListDonor', opp_pl.reshape((1,-1), order='F'), parent=gc)
-    I.newDataArray('Donor', opp_rank, parent=gc)
-    I.setValue(pl_node, pl.reshape((1,-1), order='F'))
-    I.setValue(lngn_node, lngn)
+    PT.new_DataArray('PointListDonor', opp_pl.reshape((1,-1), order='F'), parent=gc)
+    PT.new_DataArray('Donor', opp_rank, parent=gc)
+    PT.set_value(pl_node, pl.reshape((1,-1), order='F'))
+    PT.set_value(lngn_node, lngn)
     i_join += 1
 

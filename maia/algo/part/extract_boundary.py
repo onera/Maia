@@ -1,7 +1,6 @@
 import numpy   as np
 import Pypdm.Pypdm as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from maia.utils     import np_utils, s_numbering

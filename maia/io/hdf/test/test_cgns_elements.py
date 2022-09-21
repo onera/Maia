@@ -1,5 +1,4 @@
 import pytest
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -16,7 +15,7 @@ Zone Zone_t [[27],[8],[0]]:
   zone = parse_yaml_cgns.to_node(yt)
   elmt_gen = cgns_elements.gen_elemts(zone)
   assert hasattr(elmt_gen, '__next__')
-  assert [I.getName(elt) for elt in elmt_gen] == ['NGon', 'Hexa']
+  assert PT.get_names(elmt_gen) == ['NGon', 'Hexa']
 
 def test_create_zone_std_elements_filter():
   yt = """
@@ -55,7 +54,7 @@ NGon Elements_t [22, 0]:
   cgns_elements.load_element_connectivity_from_eso(element, 'pathtozone', hdf_filter)
   assert hdf_filter['pathtozone/NGon/ElementConnectivity'] == \
       [[0], [1], [28-8], [1], [8], [1], [28-8], [1], [40], [0]]
-  element_connectivity_distri = I.getVal(MT.getDistribution(element, 'ElementConnectivity'))
+  element_connectivity_distri = PT.get_value(MT.getDistribution(element, 'ElementConnectivity'))
   assert (element_connectivity_distri == [8,28,40]).all()
       
 
@@ -85,7 +84,7 @@ NGon Elements_t [22, 0]:
 
 def test_create_zone_mixed_elements_filter():
   hdf_filter = dict()
-  element = I.newElements('Mixed', 'MIXED')
+  element = PT.new_Elements('Mixed', 'MIXED')
   with pytest.raises(NotImplementedError):
     cgns_elements.create_zone_mixed_elements_filter(element, "path/to/zone", hdf_filter)
 

@@ -2,7 +2,6 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import mpi4py.MPI as MPI
 import numpy      as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -12,45 +11,45 @@ from   maia.io             import distribution_tree
 
 @mark_mpi_test(3)
 def test_create_distribution_node(sub_comm):
-  node = I.createNode('ParentNode', 'UserDefinedData_t')
+  node = PT.new_node('ParentNode', 'UserDefinedData_t')
   distribution_tree.create_distribution_node(100, sub_comm, 'MyDistribution', node)
 
   distri_ud   = MT.getDistribution(node)
   assert distri_ud is not None
-  assert I.getType(distri_ud) == 'UserDefinedData_t'
+  assert PT.get_label(distri_ud) == 'UserDefinedData_t'
   distri_node = PT.get_child_from_name(distri_ud, 'MyDistribution')
   assert distri_node is not None
-  assert (I.getValue(distri_node) == par_utils.uniform_distribution(100, sub_comm)).all()
-  assert I.getType(distri_node) == 'DataArray_t'
+  assert (PT.get_value(distri_node) == par_utils.uniform_distribution(100, sub_comm)).all()
+  assert PT.get_label(distri_node) == 'DataArray_t'
 
 @mark_mpi_test(2)
 def test_compute_plist_or_prange_distribution(sub_comm):
-  node = I.newBC(name='BC', pointRange=[[1,3],[1,3],[3,3]])
+  node = PT.new_BC(name='BC', point_range=[[1,3],[1,3],[3,3]])
   distribution_tree.compute_plist_or_prange_distribution(node, sub_comm)
 
   distrib_ud = MT.getDistribution(node)
-  assert I.getType(distrib_ud) == 'UserDefinedData_t'
+  assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
   distrib    = PT.get_child_from_name(distrib_ud, 'Index')
-  assert I.getType(distrib) == 'DataArray_t'
-  assert (I.getValue(distrib) == par_utils.uniform_distribution(3*3*1, sub_comm)).all()
+  assert PT.get_label(distrib) == 'DataArray_t'
+  assert (PT.get_value(distrib) == par_utils.uniform_distribution(3*3*1, sub_comm)).all()
 
-  node = I.newBC(name='BC')
-  I.newIndexArray('PointList', None, parent=node)
-  I.newIndexArray('PointList#Size', [1,9], parent=node)
+  node = PT.new_BC(name='BC')
+  PT.new_PointList('PointList', None, parent=node)
+  PT.new_PointList('PointList#Size', [1,9], parent=node)
   distribution_tree.compute_plist_or_prange_distribution(node, sub_comm)
 
   distrib_ud = MT.getDistribution(node)
-  assert I.getType(distrib_ud) == 'UserDefinedData_t'
+  assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
   distrib    = PT.get_child_from_name(distrib_ud, 'Index')
-  assert I.getType(distrib) == 'DataArray_t'
-  assert (I.getValue(distrib) == par_utils.uniform_distribution(1*9, sub_comm)).all()
+  assert PT.get_label(distrib) == 'DataArray_t'
+  assert (PT.get_value(distrib) == par_utils.uniform_distribution(1*9, sub_comm)).all()
 
 @mark_mpi_test(2)
 def test_compute_elements_distribution(sub_comm):
-  zoneS = I.newZone('ZoneS', ztype='Structured')
-  zoneU = I.newZone('ZoneS', ztype='Unstructured')
-  hexa = I.newElements('Hexa', 'HEXA', erange=[1,100],parent=zoneU)
-  tri  = I.newElements('Tri', 'TRI', erange=[101,1000],parent=zoneU)
+  zoneS = PT.new_Zone('ZoneS', type='Structured')
+  zoneU = PT.new_Zone('ZoneS', type='Unstructured')
+  hexa = PT.new_Elements('Hexa', 'HEXA_8', erange=[1,100],parent=zoneU)
+  tri  = PT.new_Elements('Tri', 'TRI_3', erange=[101,1000],parent=zoneU)
   distribution_tree.compute_elements_distribution(zoneS, sub_comm)
   distribution_tree.compute_elements_distribution(zoneU, sub_comm)
   assert (PT.get_node_from_name(hexa, 'Element')[1] == \

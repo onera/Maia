@@ -3,7 +3,6 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -94,23 +93,22 @@ class Interpolator:
     #Check that solutions are known on each source partition
     fields_per_part = list()
     for src_part in self.src_parts:
-      container = I.getNodeFromPath(src_part, container_name)
+      container = PT.get_node_from_path(src_part, container_name)
       assert PT.Subset.GridLocation(container) == 'CellCenter' #Only cell center sol supported for now
-      fields_name = sorted([I.getName(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
+      fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
     fields_per_part.append(fields_name)
     assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
 
     #Cleanup target partitions
     for tgt_part in self.tgt_parts:
-      I._rmNodesByName(tgt_part, container_name)
-      fs = I.createUniqueChild(tgt_part, container_name, 'FlowSolution_t')
-      I.newGridLocation(self.output_loc, fs)
+      PT.rm_children_from_name(tgt_part, container_name)
+      fs = PT.new_FlowSolution(container_name, loc=self.output_loc, parent=tgt_part)
 
     #Collect src sol
     src_field_dic = dict()
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      src_field_dic[field_name] = [I.getNodeFromPath(part, field_path)[1] for part in self.src_parts]
+      src_field_dic[field_name] = [PT.get_node_from_path(part, field_path)[1] for part in self.src_parts]
 
     #Exchange
     for field_name, src_sol in src_field_dic.items():
@@ -120,16 +118,16 @@ class Interpolator:
       strides, lnp_part_data = self.PTP.wait(request)
 
       for i_part, tgt_part in enumerate(self.tgt_parts):
-        fs = I.getNodeFromPath(tgt_part, container_name)
+        fs = PT.get_node_from_path(tgt_part, container_name)
         data_size = PT.Zone.n_cell(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.n_vtx(tgt_part)
         data = np.nan * np.ones(data_size)
         reduced_data = reduce_func(self, i_part, lnp_part_data[i_part])
         data[self.referenced_nums[i_part]-1] = reduced_data #Use referenced ids to erase default value
         if PT.Zone.Type(tgt_part) == 'Unstructured':
-          I.createUniqueChild(fs, field_name, 'DataArray_t', data)
+          PT.update_child(fs, field_name, 'DataArray_t', data)
         else:
           shape = PT.Zone.CellSize(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
-          I.createUniqueChild(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
+          PT.update_child(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
 
 
 def create_src_to_tgt(src_parts_per_dom,

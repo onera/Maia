@@ -1,7 +1,6 @@
 from functools import partial
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -36,16 +35,16 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
 def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
   """
   """
-  distrib_elmt = I.getVal(MT.getDistribution(elmt, 'Element'))
+  distrib_elmt = PT.get_value(MT.getDistribution(elmt, 'Element'))
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   # > For NGon only
   pe = PT.get_child_from_name(elmt, 'ParentElements')
   if(pe):
     data_space = create_pe_dataspace(distrib_elmt)
-    hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElements"] = data_space
+    hdf_filter[f"{zone_path}/{PT.get_name(elmt)}/ParentElements"] = data_space
     if PT.get_child_from_name(elmt, 'ParentElementsPosition'):
-      hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElementsPosition"] = data_space
+      hdf_filter[f"{zone_path}/{PT.get_name(elmt)}/ParentElementsPosition"] = data_space
 
   eso = PT.get_child_from_name(elmt, 'ElementStartOffset')
   eso_path = None
@@ -76,7 +75,7 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
 def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  # distrib_elmt = I.getVal(MT.getDistribution(elmt, 'Element'))
+  # distrib_elmt = PT.get_value(MT.getDistribution(elmt, 'Element'))
   # dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   raise NotImplementedError("Mixed elements are not allowed ")
@@ -85,7 +84,7 @@ def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
 def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  distrib_elmt = I.getVal(MT.getDistribution(elmt, 'Element'))
+  distrib_elmt = PT.get_value(MT.getDistribution(elmt, 'Element'))
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   elmt_npe = PT.Element.NVtx(elmt)
@@ -101,9 +100,9 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   pe = PT.get_child_from_name(elmt, 'ParentElements')
   if(pe):
     data_space = create_pe_dataspace(distrib_elmt)
-    hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElements"] = data_space
+    hdf_filter[f"{zone_path}/{PT.get_name(elmt)}/ParentElements"] = data_space
     if PT.get_child_from_name(elmt, 'ParentElementsPosition'):
-      hdf_filter[f"{zone_path}/{I.getName(elmt)}/ParentElementsPosition"] = data_space
+      hdf_filter[f"{zone_path}/{PT.get_name(elmt)}/ParentElementsPosition"] = data_space
 
 
 def create_zone_elements_filter(zone_tree, zone_path, hdf_filter, mode):

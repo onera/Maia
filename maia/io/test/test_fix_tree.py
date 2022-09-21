@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-import Converter.Internal as I
+
 import maia.pytree as PT
 from maia.pytree.yaml  import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_dtype
@@ -77,31 +77,31 @@ def test_enforce_pdm_dtype():
   assert PT.get_node_from_name(tree, 'ElementRange')[1].dtype == pdm_dtype
 
 def test_ensure_PE_global_indexing():
-  ngon = I.newElements('WrongNGon', 'NGON', erange=[1,4])
-  pe   = I.newDataArray('ParentElements', [[1,2],[3,0],[1,0],[2,4]], parent=ngon)
-  fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
+  ngon = PT.new_Elements('WrongNGon', 'NGON_n', erange=[1,4])
+  pe   = PT.new_DataArray('ParentElements', [[1,2],[3,0],[1,0],[2,4]], parent=ngon)
+  fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon]))
   assert (pe[1] == [[5,6],[7,0],[5,0],[6,8]]).all()
 
-  ngon = I.newElements('GoodNGon', 'NGON', erange=[1,4])
-  pe   = I.newDataArray('ParentElements', [[5,6],[7,0],[5,0],[6,8]], parent=ngon)
-  fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
+  ngon = PT.new_Elements('GoodNGon', 'NGON_n', erange=[1,4])
+  pe   = PT.new_DataArray('ParentElements', [[5,6],[7,0],[5,0],[6,8]], parent=ngon)
+  fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon]))
   assert (pe[1] == [[5,6],[7,0],[5,0],[6,8]]).all()
 
-  nface = I.newElements('FirstNace', 'NFACE', erange=[1,2])
-  ngon = I.newElements('SecondNGon', 'NGON', erange=[3,6])
-  pe   = I.newDataArray('ParentElements', [[1,0],[1,0],[1,2],[2,0]], parent=ngon)
-  fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
+  nface = PT.new_Elements('FirstNace', 'NFACE_n', erange=[1,2])
+  ngon = PT.new_Elements('SecondNGon', 'NGON_n', erange=[3,6])
+  pe   = PT.new_DataArray('ParentElements', [[1,0],[1,0],[1,2],[2,0]], parent=ngon)
+  fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon]))
   assert (pe[1] == [[1,0],[1,0],[1,2],[2,0]]).all()
 
-  ngon = I.newElements('EmptyNGon', 'NGON', erange=[1,4])
-  pe   = I.newDataArray('ParentElements', np.empty((0,2), order='F'), parent=ngon)
-  fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon]))
+  ngon = PT.new_Elements('EmptyNGon', 'NGON_n', erange=[1,4])
+  pe   = PT.new_DataArray('ParentElements', np.empty((0,2), order='F'), parent=ngon)
+  fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon]))
 
   with pytest.raises(RuntimeError):
-    ngon = I.newElements('NGon', 'NGON')
-    fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon,ngon]))
+    ngon = PT.new_Elements('NGon', 'NGON_n')
+    fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,ngon]))
   with pytest.raises(RuntimeError):
-    ngon = I.newElements('NGon', 'NGON', erange=[1,4])
-    tri = I.newElements('Tri', 'TRI')
-    fix_tree.ensure_PE_global_indexing(I.createNode('Zone', 'Zone_t', children=[ngon,tri]))
+    ngon = PT.new_Elements('NGon', 'NGON_n', erange=[1,4])
+    tri = PT.new_Elements('Tri', 'TRI_3')
+    fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,tri]))
 

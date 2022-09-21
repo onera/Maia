@@ -3,7 +3,6 @@ from pytest_mpi_check._decorator import mark_mpi_test
 import os
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 import cmaia
@@ -31,8 +30,8 @@ def test_elements_to_ngons_maia(sub_comm, write_output):
   assert PT.get_child_from_name(ngon_node, 'ParentElementsPosition')
 
   # > Some non-regression checks
-  assert np.all(I.getVal(PT.get_child_from_name(ngon_node , 'ElementRange')) == [1,2694])
-  assert np.all(I.getVal(PT.get_child_from_name(nface_node, 'ElementRange')) == [2695,3990])
+  assert np.all(PT.get_value(PT.get_child_from_name(ngon_node , 'ElementRange')) == [1,2694])
+  assert np.all(PT.get_value(PT.get_child_from_name(nface_node, 'ElementRange')) == [2695,3990])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
@@ -52,8 +51,8 @@ def test_elements_to_ngons_pdm(sub_comm, write_output):
   ngon_node  = PT.request_node_from_name(dist_tree, 'NGonElements')
   nface_node = PT.request_node_from_name(dist_tree, 'NFaceElements')
 
-  assert np.all(I.getVal(PT.get_child_from_name(ngon_node , 'ElementRange')) == [1,2694])
-  assert np.all(I.getVal(PT.get_child_from_name(nface_node, 'ElementRange')) == [2695,3990])
+  assert np.all(PT.get_value(PT.get_child_from_name(ngon_node , 'ElementRange')) == [1,2694])
+  assert np.all(PT.get_value(PT.get_child_from_name(nface_node, 'ElementRange')) == [2695,3990])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)

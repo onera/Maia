@@ -1,7 +1,6 @@
 import numpy as np
 
 import Pypdm.Pypdm as PDM
-import Converter.Internal as I
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
@@ -37,10 +36,7 @@ def pe_to_nface(zone, comm, remove_PE=False):
   nface_ec_distri  = par_utils.full_to_partial_distribution(nface_ec_distr_f, comm)
   eso = cell_face_idx + nface_ec_distri[0]
 
-  nface = I.newElements('NFaceElements', 'NFACE',  parent=zone)
-  I.newPointRange("ElementRange", cell_face_range, parent=nface)
-  I.newDataArray("ElementStartOffset", eso,        parent=nface)
-  I.newDataArray("ElementConnectivity", cell_face, parent=nface)
+  nface = PT.new_NFaceElements(erange=cell_face_range, eso=eso, ec=cell_face, parent=zone)
   MT.newDistribution({"Element" : nface_distri, "ElementConnectivity" : nface_ec_distri}, nface)
   
   if remove_PE:
@@ -84,7 +80,7 @@ def nface_to_pe(zone, comm, remove_NFace=False):
   pe[:,0] = face_cell[0::2]
   pe[:,1] = face_cell[1::2]
 
-  I.newDataArray('ParentElements', pe, ngon_node)
+  PT.new_DataArray('ParentElements', pe, parent=ngon_node)
   if remove_NFace:
-    I._rmNode(zone, nface_node)
+    PT.rm_child(zone, nface_node)
 

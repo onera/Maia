@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -79,10 +78,10 @@ def test_localize_points(sub_comm):
   tree_src = partition_dist_tree(dtree_src, sub_comm)
   tree_tgt = partition_dist_tree(dtree_tgt, sub_comm)
 
-  tree_src_back = I.copyTree(tree_src)
+  tree_src_back = PT.deep_copy(tree_src)
   CLO.find_closest_points(tree_src, tree_tgt, 'CellCenter', sub_comm)
   assert PT.is_same_tree(tree_src_back, tree_src)
-  tgt_zone = I.getZones(tree_tgt)[0]
+  tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   clo_node = PT.get_node_from_name_and_label(tgt_zone, 'ClosestPoint', 'DiscreteData_t')
   assert clo_node is not None and PT.Subset.GridLocation(clo_node) == 'CellCenter'
 

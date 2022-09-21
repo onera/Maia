@@ -1,7 +1,5 @@
-import Converter.Internal as I
 import numpy              as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -59,11 +57,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   # > Attention overflow I8
   eso_ngon = dface_vtx_idx + distrib_face_vtx[i_rank]
 
-  ngon_n  = I.createUniqueChild(zone, 'NGonElements', 'Elements_t', value=[22,0])
-  I.createUniqueChild(ngon_n, 'ElementRange', 'IndexRange_t', [ermax+1, ermax+n_face])
-  I.newDataArray('ElementStartOffset' , eso_ngon , parent=ngon_n)
-  I.newDataArray('ElementConnectivity', dface_vtx, parent=ngon_n)
-  I.newDataArray('ParentElements'     , pe       , parent=ngon_n)
+  ngon_n  = PT.new_NGonElements(erange=[ermax+np.int32(1), ermax+n_face], eso=eso_ngon, ec=dface_vtx, pe=pe, parent=zone)
 
   MT.newDistribution({'Element' : ldistrib_face, 
                       'ElementConnectivity' : distrib_face_vtx[[i_rank, i_rank+1, n_rank]]}, 
@@ -73,13 +67,11 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   ermax   = max([PT.Element.Range(e)[1] for e in PT.iter_children_from_label(zone, 'Elements_t')])
   eso_nfac = dcell_face_idx + distrib_cell_face[i_rank]
 
-  nfac_n  = I.createUniqueChild(zone, 'NFaceElements', 'Elements_t', value=[23,0])
-  I.createUniqueChild(nfac_n, 'ElementRange', 'IndexRange_t', [ermax+1, ermax+n_cell])
-  I.newDataArray('ElementStartOffset' , eso_nfac, parent=nfac_n)
+  nfac_n = PT.new_NFaceElements(erange=[ermax+np.int32(1), ermax+n_cell], eso=eso_nfac, parent=zone)
   if dcell_face is not None:
-    I.newDataArray('ElementConnectivity', np.abs(dcell_face), parent=nfac_n)
+    PT.new_DataArray('ElementConnectivity', np.abs(dcell_face), parent=nfac_n)
   else:
-    I.newDataArray('ElementConnectivity', np.empty(0, dtype=eso_ngon.dtype), parent=nfac_n)
+    PT.new_DataArray('ElementConnectivity', np.empty(0, dtype=eso_ngon.dtype), parent=nfac_n)
 
   MT.newDistribution({'Element' : ldistrib_cell,
                       'ElementConnectivity' : distrib_cell_face[[i_rank, i_rank+1, n_rank]]}, 
@@ -92,7 +84,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
       PT.rm_nodes_from_name(bc, 'PointRange')
       PT.rm_nodes_from_name(bc, 'PointList')
       start, end = group_idx[i_bc], group_idx[i_bc+1]
-      I.newPointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
+      PT.new_PointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
 
 # -----------------------------------------------------------------
@@ -100,7 +92,7 @@ def compute_ngon_from_std_elements(dist_tree, comm):
   """
   """
   for base in PT.iter_all_CGNSBase_t(dist_tree):
-    extract_dim = I.getValue(base)[0]
+    extract_dim = PT.get_value(base)[0]
     #print("extract_dim == ", extract_dim)
     zones_u = [zone for zone in PT.iter_all_Zone_t(base) if PT.Zone.Type(zone) == "Unstructured"]
 
@@ -146,7 +138,7 @@ def generate_ngon_from_std_elements(dist_tree, comm):
   #Possible optimisation : remove all the element at the same time
   #instead of looping
   compute_ngon_from_std_elements(dist_tree,comm)
-  for zone in I.getZones(dist_tree):
+  for zone in PT.get_all_Zone_t(dist_tree):
     elts_to_remove = [elt for elt in PT.iter_children_from_label(zone, 'Elements_t') if\
         PT.Element.CGNSName(elt) not in ["NGON_n", "NFACE_n"]]
     #2D element should be removed first, to avoid probleme coming from ParentElements

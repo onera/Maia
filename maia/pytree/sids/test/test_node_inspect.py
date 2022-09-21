@@ -41,6 +41,11 @@ def test_ElementSize():
   assert SIDS.Element.Size(elt1) == 100
   assert SIDS.Element.Size(elt2) == 1
 
+def test_ElementType():
+  elt1 = N.new_Elements(type='QUAD_4', erange=[1,100])
+  elt_type = SIDS.Element.Type(elt1)
+  assert  isinstance(elt_type, int) and elt_type == 7
+
 def test_ElementCGNSName():
   assert SIDS.Element.CGNSName(N.new_node("Toto", "Elements_t", [22, 0])) == "NGON_n"
   assert SIDS.Element.CGNSName(N.new_node("Toto", "Elements_t", [42, 0])) == "TRI_15"

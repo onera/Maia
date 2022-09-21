@@ -1,7 +1,6 @@
 import numpy              as NPY
 import Pypdm.Pypdm        as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from cmaia.part_algo import compute_face_center_and_characteristic_length, adapt_match_information
@@ -56,8 +55,8 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
     pdm_point_merge.cloud_set(i_point_cloud, bnd_cl.shape[0], bnd_xyz, bnd_cl)
 
     # > Needed to hold memory
-    I.newDataArray("bnd_xyz", value=bnd_xyz, parent=bc)
-    I.newDataArray("bnd_cl" , value=bnd_cl , parent=bc)
+    PT.new_DataArray("bnd_xyz", value=bnd_xyz, parent=bc)
+    PT.new_DataArray("bnd_cl" , value=bnd_cl , parent=bc)
     # print("bnd_xyz::", bnd_xyz)
     # print("bnd_cl ::", bnd_cl)
 
@@ -152,7 +151,7 @@ def connect_match_from_family(part_tree, family_list, comm,
   # Setup at join
   i_point_cloud = 0
   for i_zone, zone in enumerate(zones):
-    zgc_n = I.newZoneGridConnectivity(name="ZoneGridConnectivity", parent=zone)
+    zgc_n = PT.update_child(zone, "ZoneGridConnectivity", "ZoneGridConnectivity_t")
     for bc in PT.Zone.getBCsFromFamily(zone, family_list):
       section_idx = adapt_match_information(l_neighbor_idx    [i_point_cloud],
                                             l_neighbor_desc   [i_point_cloud],
@@ -173,15 +172,11 @@ def connect_match_from_family(part_tree, family_list, comm,
         connect_part  = l_neighbor_desc   [i_point_cloud][1]
         zone_opp_name = all_zone_name_and_lid[connect_proc][connect_part]
 
-        join_n = I.newGridConnectivity(name      = 'JNM.P{0}.N{1}.LT.P{2}.N{3}.{4}'.format(comm.Get_rank(), i_zone, connect_proc, connect_part, i_point_cloud),
-                                       donorName = zone_opp_name,
-                                       ctype     = 'Abutting1to1',
-                                       parent    = zgc_n)
+        jn_name = 'JNM.P{0}.N{1}.LT.P{2}.N{3}.{4}'.format(comm.Get_rank(), i_zone, connect_proc, connect_part, i_point_cloud)
+        join_n = PT.new_GridConnectivity(name=jn_name, donor_name=zone_opp_name, type='Abutting1to1', loc='FaceCenter', parent=zgc_n)
 
-        grid_loc = 'FaceCenter'
-        I.newGridLocation(grid_loc, parent=join_n)
-        I.newPointList(name='PointList'     , value=pl , parent=join_n)
-        I.newPointList(name='PointListDonor', value=pld, parent=join_n)
+        PT.new_PointList(name='PointList'     , value=pl , parent=join_n)
+        PT.new_PointList(name='PointListDonor', value=pld, parent=join_n)
 
       i_point_cloud = i_point_cloud + 1
 

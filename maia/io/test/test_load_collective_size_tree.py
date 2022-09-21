@@ -1,4 +1,3 @@
-import Converter.Internal as I
 import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
 from maia.io import load_collective_size_tree as LC
@@ -38,18 +37,18 @@ Zone Zone_t:
 
   LC.add_sizes_to_zone_tree(zone, '/Zone', size_data)
 
-  assert I.getNodeFromPath(zone, 'Hexa/ElementConnectivity#Size') is None
+  assert PT.get_node_from_path(zone, 'Hexa/ElementConnectivity#Size') is None
 
-  assert (I.getNodeFromPath(zone, 'ZBC/bc/PointList#Size')[1] == [1,30]).all()
-  assert (I.getNodeFromPath(zone, 'ZBC/bc_withds/PointList#Size')[1] == [1,100]).all()
-  assert (I.getNodeFromPath(zone, 'ZBC/bc_withds/BCDataSet/PointList#Size')[1] == [1,10]).all()
+  assert (PT.get_node_from_path(zone, 'ZBC/bc/PointList#Size')[1] == [1,30]).all()
+  assert (PT.get_node_from_path(zone, 'ZBC/bc_withds/PointList#Size')[1] == [1,100]).all()
+  assert (PT.get_node_from_path(zone, 'ZBC/bc_withds/BCDataSet/PointList#Size')[1] == [1,10]).all()
 
-  assert (I.getNodeFromPath(zone, 'ZGC/gc/PointList#Size')[1] == [1,20]).all()
+  assert (PT.get_node_from_path(zone, 'ZGC/gc/PointList#Size')[1] == [1,20]).all()
 
-  assert (I.getNodeFromPath(zone, 'ZSR/PointList#Size')[1] == [1,34]).all()
+  assert (PT.get_node_from_path(zone, 'ZSR/PointList#Size')[1] == [1,34]).all()
 
-  assert (I.getNodeFromPath(zone, 'FSPL/PointList#Size')[1] == [1,10]).all()
-  assert (I.getNodeFromPath(zone, 'FS/PointList#Size') is None)
+  assert (PT.get_node_from_path(zone, 'FSPL/PointList#Size')[1] == [1,10]).all()
+  assert (PT.get_node_from_path(zone, 'FS/PointList#Size') is None)
 
 def test_add_sizes_to_tree():
   yt = """

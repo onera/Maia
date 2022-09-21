@@ -2,7 +2,6 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from maia.utils                  import py_utils
@@ -102,6 +101,6 @@ def find_closest_points(src_tree, tgt_tree, location, comm):
     for i_part, tgt_part in enumerate(tgt_parts):
       shape = PT.Zone.CellSize(tgt_part) if location == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
       data = closest_data[i_dom][i_part]
-      sol = I.createUniqueChild(tgt_part, "ClosestPoint", "DiscreteData_t")
-      I.newGridLocation(location, sol)
-      I.newDataArray("SrcId", data['closest_src_gnum'].reshape(shape, order='F'), parent=sol)
+      sol = PT.update_child(tgt_part, "ClosestPoint", "DiscreteData_t")
+      PT.new_GridLocation(location, sol)
+      PT.new_DataArray("SrcId", data['closest_src_gnum'].reshape(shape, order='F'), parent=sol)

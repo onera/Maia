@@ -1,6 +1,5 @@
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree.sids   as sids
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -15,10 +14,10 @@ def pl_or_pr_size(node):
   Raises if both are absent.
   """
   patch = sids.Subset.getPatch(node)
-  if I.getType(patch) == 'IndexArray_t':
-    distri = I.getVal(MT.getDistribution(node, 'Index'))
+  if PT.get_label(patch) == 'IndexArray_t':
+    distri = PT.get_value(MT.getDistribution(node, 'Index'))
     return np.array([1, distri[2]])
-  elif I.getType(patch) == 'IndexRange_t':
+  elif PT.get_label(patch) == 'IndexRange_t':
     return sids.PointRange.SizePerIndex(patch)
 
 def apply_dataspace_to_arrays(node, node_path, data_space, hdf_filter):

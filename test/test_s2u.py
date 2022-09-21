@@ -2,7 +2,6 @@ import pytest
 from   pytest_mpi_check._decorator import mark_mpi_test
 import os
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 import maia.io      as MIO
@@ -24,15 +23,15 @@ def test_s2u(sub_comm, subset_output_loc, write_output):
   subset_loc = {key: subset_output_loc for key in ['BC_t', 'GC_t']}
   dist_treeU = convert_s_to_u(dist_treeS, 'NGON_n', sub_comm, subset_loc)
 
-  for zone in I.getZones(dist_treeU):
+  for zone in PT.iter_all_Zone_t(dist_treeU):
     assert PT.Zone.Type(zone) == 'Unstructured'
     for node in PT.get_nodes_from_label(zone, 'BC_t') + PT.get_nodes_from_label(zone, 'GridConnectivity_t'):
       assert PT.Subset.GridLocation(node) == subset_output_loc
 
   # Compare to reference
   ref_tree = MIO.file_to_dist_tree(ref_file, sub_comm)
-  for zone in I.getZones(dist_treeU):
-    ref_zone = PT.get_node_from_name(ref_tree, I.getName(zone), depth=2)
+  for zone in PT.iter_all_Zone_t(dist_treeU):
+    ref_zone = PT.get_node_from_name(ref_tree, PT.get_name(zone), depth=2)
     for node_name in ["ZoneBC", "ZoneGridConnectivity"]:
       assert PT.is_same_tree(PT.get_child_from_name(zone, node_name), PT.get_child_from_name(ref_zone, node_name))
 
@@ -71,21 +70,21 @@ def test_s2u_withdata(sub_comm, write_output):
           lid DataArray_t I4 [1,2,3,4,5,6,7,8,9,10]:
     """)
   PT.rm_nodes_from_name(dist_treeS, 'Right')
-  I._addChild(PT.get_node_from_label(dist_treeS, 'ZoneBC_t'), \
+  PT.add_child(PT.get_node_from_label(dist_treeS, 'ZoneBC_t'), \
       MF.full_to_dist.distribute_pl_node(bc_right, sub_comm))
 
   dist_treeU = convert_s_to_ngon(dist_treeS, sub_comm)
 
   # Some checks
   bc_right_u = PT.get_node_from_name(dist_treeU, 'Right')
-  assert I.getNodeFromPath(bc_right_u, 'WholeDSFace/GridLocation') is None
+  assert PT.get_node_from_path(bc_right_u, 'WholeDSFace/GridLocation') is None
   assert PT.Subset.GridLocation(PT.get_node_from_name(bc_right_u, 'SubDSFace')) == 'FaceCenter'
   assert PT.Subset.GridLocation(PT.get_node_from_name(bc_right_u, 'SubDSVtx')) == 'Vertex'
-  assert I.getNodeFromPath(bc_right_u, 'WholeDSFace/PointList') is None
-  assert (I.getNodeFromPath(bc_right_u, 'SubDSFace/PointList')[1] == [225,226,279,280,333,334,387,388]).all()
-  assert (I.getNodeFromPath(bc_right_u, 'SubDSVtx/PointList')[1] == [1,2,64,65,127,128,190,191,253,254]).all()
+  assert PT.get_node_from_path(bc_right_u, 'WholeDSFace/PointList') is None
+  assert (PT.get_node_from_path(bc_right_u, 'SubDSFace/PointList')[1] == [225,226,279,280,333,334,387,388]).all()
+  assert (PT.get_node_from_path(bc_right_u, 'SubDSVtx/PointList')[1] == [1,2,64,65,127,128,190,191,253,254]).all()
   for bcds in PT.get_children_from_label(bc_right_u, 'BCDataSet_t'): #Data should be the same
-    bcds_s = PT.get_node_from_name(bc_right, I.getName(bcds))
+    bcds_s = PT.get_node_from_name(bc_right, PT.get_name(bcds))
     assert (PT.get_node_from_name(bcds, 'lid')[1] == PT.get_node_from_name(bcds_s, 'lid')[1]).all()
 
   if write_output:

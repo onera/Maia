@@ -1,7 +1,7 @@
 import numpy as np
 import Pypdm.Pypdm as PDM
 
-import Converter.Internal as I
+import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
@@ -30,15 +30,14 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   distrib_edge_vtx = par_utils.gather_and_shift(2*dplane_dict['dn_edge'],comm, np.int32)
 
   # > Generate dist_tree
-  dist_tree = I.newCGNSTree()
-  dist_base = I.newCGNSBase('Base', cellDim=2, physDim=2, parent=dist_tree)
-  dist_zone = I.newZone('zone', [[distri_vtx[n_rank], distrib_cell[n_rank], 0]],
-                        'Unstructured', parent=dist_base)
+  dist_tree = PT.new_CGNSTree()
+  dist_base = PT.new_CGNSBase('Base', cell_dim=2, phy_dim=2, parent=dist_tree)
+  dist_zone = PT.new_Zone('zone', size=[[distri_vtx[n_rank], distrib_cell[n_rank], 0]],
+                        type='Unstructured', parent=dist_base)
 
   # > Grid coordinates
-  grid_coord = I.newGridCoordinates(parent=dist_zone)
-  I.newDataArray('CoordinateX', dplane_dict['dvtx_coord'][0::3], parent=grid_coord)
-  I.newDataArray('CoordinateY', dplane_dict['dvtx_coord'][1::3], parent=grid_coord)
+  coords = {'CoordinateX' : dplane_dict['dvtx_coord'][0::3], 'CoordinateY' : dplane_dict['dvtx_coord'][1::3]}
+  grid_coord = PT.new_GridCoordinates(fields=coords, parent=dist_zone)
   assert np.max(np.abs(dplane_dict['dvtx_coord'][2::3])) < 1E-16 #In 2D, this one should be zero
 
   dplane_dict['dedge_vtx_idx'] = np.arange(0, 2*dplane_dict['dn_edge']+1, 2, dtype=dplane_dict['dedge_vtx'].dtype)
@@ -52,15 +51,11 @@ def dplane_generate(xmin, xmax, ymin, ymax,
 
   pe     = dplane_dict['dedge_face'].reshape(dn_edge, 2)
   np_utils.shift_nonzeros(pe, distrib_face[n_rank])
-  ngon_n = I.newElements('NGonElements', 'NGON',
-                         erange = [1, distrib_face[n_rank]], parent=dist_zone)
-
-  I.newDataArray('ElementConnectivity', dplane_dict['dedge_vtx'], parent=ngon_n)
-  I.newDataArray('ElementStartOffset' , eso                     , parent=ngon_n)
-  I.newDataArray('ParentElements'     , pe                      , parent=ngon_n)
+  ngon_n = PT.new_NGonElements('NGonElements', erange = [1, distrib_face[n_rank]], 
+      eso = eso, ec = dplane_dict['dedge_vtx'], pe = pe, parent=dist_zone)
 
   # > BCs
-  zone_bc = I.newZoneBC(parent=dist_zone)
+  zone_bc = PT.new_ZoneBC(parent=dist_zone)
 
   edge_group_idx = dplane_dict['dedge_group_idx']
   edge_group_n   = np.diff(edge_group_idx)
@@ -68,11 +63,11 @@ def dplane_generate(xmin, xmax, ymin, ymax,
   edge_group = dplane_dict['dedge_group']
 
   for i_bc in range(dplane_dict['n_edge_group']):
-    bc_n = I.newBC('dplane_bnd_{0}'.format(i_bc), btype='BCWall', parent=zone_bc)
-    I.newGridLocation('FaceCenter', parent=bc_n)
+    bc_n = PT.new_BC('dplane_bnd_{0}'.format(i_bc), type='BCWall', parent=zone_bc)
+    PT.new_GridLocation('FaceCenter', parent=bc_n)
     start, end = edge_group_idx[i_bc], edge_group_idx[i_bc+1]
     dn_edge_bnd = end - start
-    I.newPointList(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
+    PT.new_PointList(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
 
     bc_distrib = par_utils.gather_and_shift(dn_edge_bnd, comm, edge_group.dtype)
     distrib   = np.array([bc_distrib[i_rank], bc_distrib[i_rank+1], bc_distrib[n_rank]])

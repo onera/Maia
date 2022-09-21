@@ -2,7 +2,6 @@ from pytest_mpi_check._decorator import mark_mpi_test
 
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree as PT
 
 from maia.factory    import dcube_generator  as DCG
@@ -13,7 +12,7 @@ from maia.algo.dist  import ngon_tools as NGT
 def test_pe_to_nface(sub_comm):
   # 1. Create test input
   tree = DCG.dcube_generate(3,1.,[0,0,0], sub_comm)
-  zone = I.getZones(tree)[0]
+  zone = PT.get_node_from_label(tree, 'Zone_t')
   dtype = PT.get_node_from_name(zone, 'ParentElements')[1].dtype
 
   # 2. Creating expected values
@@ -23,9 +22,7 @@ def test_pe_to_nface(sub_comm):
                             -29,3,7,14,18,33,   -31,-18,4,8,22,35,
                             -5,9,15,19,26,30,   -19,-6,10,23,28,32,
                             -30,-7,11,16,20,34, -32,-20,-8,12,24,36], dtype)
-  nface_exp_f = I.newElements('NFaceElements', 'NFACE', erange=nface_er_exp)
-  I.newDataArray('ElementStartOffset', nface_eso_exp, parent=nface_exp_f)
-  I.newDataArray('ElementConnectivity', nface_ec_exp, parent=nface_exp_f)
+  nface_exp_f = PT.new_NFaceElements('NFaceElements', erange=nface_er_exp, eso=nface_eso_exp, ec=nface_ec_exp)
   nface_exp = F2D.distribute_element_node(nface_exp_f, sub_comm)
 
   # 3. Tested function
@@ -40,8 +37,8 @@ def test_pe_to_nface(sub_comm):
 def test_nface_to_pe(sub_comm):
   # 1. Create test input
   tree = DCG.dcube_generate(3,1.,[0,0,0], sub_comm)
-  zone = I.getZones(tree)[0]
-  pe_bck = I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1]
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+  pe_bck = PT.get_node_from_path(zone, 'NGonElements/ParentElements')[1]
 
   NGT.pe_to_nface(zone, sub_comm, True)
   nface_bck = PT.get_node_from_name(zone, 'NFaceElements')
@@ -51,7 +48,7 @@ def test_nface_to_pe(sub_comm):
   NGT.nface_to_pe(zone, sub_comm, rmNface)
   
   # 3. Check results
-  assert (I.getNodeFromPath(zone, 'NGonElements/ParentElements')[1] == pe_bck).all()
+  assert (PT.get_node_from_path(zone, 'NGonElements/ParentElements')[1] == pe_bck).all()
   nface_cur = PT.get_node_from_name(zone, 'NFaceElements')
   if rmNface:
     assert nface_cur is None

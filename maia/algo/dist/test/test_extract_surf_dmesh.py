@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from maia              import npy_pdm_gnum_dtype as pdm_dtype
@@ -15,7 +14,7 @@ from maia.algo.dist   import extract_surf_dmesh as EXC
 @mark_mpi_test(2)
 def test_extract_surf_zone(sub_comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
-  zone = I.getZones(tree)[0]
+  zone = PT.get_all_Zone_t(tree)[0]
 
   #Simplify mesh keeping only 2 BCs
   zone_bc = PT.get_child_from_label(zone, "ZoneBC_t")
@@ -44,11 +43,11 @@ def test_extract_surf_zone(sub_comm):
 @mark_mpi_test(3)
 def test_extract_surf_tree(sub_comm):
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
-  zone = I.getZones(tree)[0]
+  zone = PT.get_all_Zone_t(tree)[0]
 
   surf_zone = EXC.extract_surf_zone_from_queries(zone, [['ZoneBC_t', 'BC_t']], sub_comm)
   surf_tree = EXC.extract_surf_tree_from_bc(tree, sub_comm)
 
-  assert len(I.getBases(surf_tree)) == 1
-  assert len(I.getZones(surf_tree)) == 1
-  assert PT.is_same_tree(I.getZones(surf_tree)[0], surf_zone)
+  assert len(PT.get_all_CGNSBase_t(surf_tree)) == 1
+  assert len(PT.get_all_Zone_t(surf_tree)) == 1
+  assert PT.is_same_tree(PT.get_all_Zone_t(surf_tree)[0], surf_zone)

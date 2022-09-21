@@ -1,7 +1,6 @@
 from   mpi4py import MPI
 import numpy          as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -35,7 +34,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   """
   Create a pdm_dmesh_nodal structure from a distributed zone
   """
-  distrib_vtx = I.getVal(MT.getDistribution(dist_zone, 'Vertex'))
+  distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
   n_vtx   = distrib_vtx[2]
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
 
@@ -60,11 +59,11 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
     dmesh_nodal.set_coordinnates(dvtx_coord)
 
     # keep dvtx_coord object alive for ParaDiGM
-    multi_part_node = I.createUniqueChild(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
-    I.newDataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
+    multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
+    PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
 
   #Elements
-  to_elmt_size = lambda e : I.getVal(MT.getDistribution(e, 'Element'))[1] - I.getVal(MT.getDistribution(e, 'Element'))[0]
+  to_elmt_size = lambda e : PT.get_value(MT.getDistribution(e, 'Element'))[1] - PT.get_value(MT.getDistribution(e, 'Element'))[0]
 
   for i_dim, elts in enumerate(sorted_elts_by_dim):
     elt_pdm_types = np.array([MT.pdm_elts.element_pdm_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)
@@ -88,9 +87,9 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
         delmt_bound -= (range_by_dim[i_dim][0] - 1)
         n_elmt_group = delmt_bound_idx.shape[0] - 1
         #Need an holder to prevent memory deletion
-        pdm_node = I.createUniqueChild(dist_zone, ':CGNS#DMeshNodal#Bnd{0}'.format(i_dim), 'UserDefinedData_t')
-        I.newDataArray('delmt_bound_idx', delmt_bound_idx, parent=pdm_node)
-        I.newDataArray('delmt_bound'    , delmt_bound    , parent=pdm_node)
+        pdm_node = PT.update_child(dist_zone, ':CGNS#DMeshNodal#Bnd{0}'.format(i_dim), 'UserDefinedData_t')
+        PT.new_DataArray('delmt_bound_idx', delmt_bound_idx, parent=pdm_node)
+        PT.new_DataArray('delmt_bound'    , delmt_bound    , parent=pdm_node)
 
         dmesh_nodal.set_group_elmt(MT.pdm_elts.elements_dim_to_pdm_kind[i_dim], n_elmt_group, delmt_bound_idx, delmt_bound)
 

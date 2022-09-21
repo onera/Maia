@@ -3,7 +3,6 @@ import numpy as np
 import itertools
 
 import Pypdm.Pypdm        as PDM
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -23,7 +22,7 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   Note that vertex ids can appear twice (or more) in vtx_list if they are shared by multiple faces
   """
 
-  distri_ngon  = I.getVal(MT.getDistribution(ngon, 'Element')).astype(pdm_dtype)
+  distri_ngon  = PT.get_value(MT.getDistribution(ngon, 'Element')).astype(pdm_dtype)
 
   pdm_distrib = par_utils.partial_to_full_distribution(distri_ngon, comm)
   dist_data = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
@@ -45,7 +44,7 @@ def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm
   """
   dist_data = dict()
   for data in PT.iter_children_from_label(grid_coords_node, 'DataArray_t'):
-    dist_data[I.getName(data)] = data[1]
+    dist_data[PT.get_name(data)] = data[1]
 
   part_data = MBTP.dist_to_part(distri_vtx.astype(pdm_dtype), dist_data, [np.asarray(requested_vtx_ids, dtype=pdm_dtype)], comm)
 
@@ -224,10 +223,10 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
   n_face_vtx = len(pl_face_vtx)
 
   received_coords     = filter_vtx_coordinates(PT.get_child_from_label(zone, 'GridCoordinates_t'),
-                                            I.getVal(MT.getDistribution(zone, 'Vertex')),
+                                            PT.get_value(MT.getDistribution(zone, 'Vertex')),
                                             pl_face_vtx, comm)
   opp_received_coords = filter_vtx_coordinates(PT.get_child_from_label(zone_d, 'GridCoordinates_t'),
-                                            I.getVal(MT.getDistribution(zone_d, 'Vertex')),
+                                            PT.get_value(MT.getDistribution(zone_d, 'Vertex')),
                                             pld_face_vtx, comm)
 
   # TODO extract in apply_periodic_transformation
@@ -296,22 +295,22 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   Return the two index arrays and the partial distribution array, which is
   identical for both of them
   """
-  jn = I.getNodeFromPath(dist_tree, jn_path)
+  jn = PT.get_node_from_path(dist_tree, jn_path)
   assert PT.Subset.GridLocation(jn) == 'FaceCenter'
 
   base_name, zone_name = jn_path.split('/')[0:2]
-  zone   = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
-  zone_d = I.getNodeFromPath(dist_tree, PT.getZoneDonorPath(base_name, jn))
+  zone   = PT.get_node_from_path(dist_tree, base_name + '/' + zone_name)
+  zone_d = PT.get_node_from_path(dist_tree, PT.getZoneDonorPath(base_name, jn))
 
   ngon_node   = PT.Zone.NGonNode(zone)
-  vtx_distri  = I.getVal(MT.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
-  face_distri = I.getVal(MT.getDistribution(ngon_node, 'Element')).astype(pdm_dtype)
+  vtx_distri  = PT.get_value(MT.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
+  face_distri = PT.get_value(MT.getDistribution(ngon_node, 'Element')).astype(pdm_dtype)
 
   ngon_node_d   = PT.Zone.NGonNode(zone_d)
-  vtx_distri_d  = I.getVal(MT.getDistribution(zone_d, 'Vertex'))
-  face_distri_d = I.getVal(MT.getDistribution(ngon_node_d, 'Element'))
+  vtx_distri_d  = PT.get_value(MT.getDistribution(zone_d, 'Vertex'))
+  face_distri_d = PT.get_value(MT.getDistribution(ngon_node_d, 'Element'))
 
-  distri_jn = I.getVal(MT.getDistribution(jn, 'Index'))
+  distri_jn = PT.get_value(MT.getDistribution(jn, 'Index'))
   pl   = PT.get_child_from_name(jn, 'PointList'     )[1][0]
   pl_d = PT.get_child_from_name(jn, 'PointListDonor')[1][0]
 
@@ -319,9 +318,9 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
   dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
 
-  shifted_eso = lambda ng: (I.getNodeFromPath(ng, 'ElementStartOffset')[1] - I.getNodeFromPath(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
+  shifted_eso = lambda ng: (PT.get_node_from_path(ng, 'ElementStartOffset')[1] - PT.get_node_from_path(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
   dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
-  dface_vtx     = [I.getNodeFromPath(ng, 'ElementConnectivity')[1] for ng in [ngon_node, ngon_node_d]]
+  dface_vtx     = [PT.get_node_from_path(ng, 'ElementConnectivity')[1] for ng in [ngon_node, ngon_node_d]]
 
   isolated_face_loc = get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm)
   not_isolated_face_loc = np.arange(pl.size)[np_utils.others_mask(pl, isolated_face_loc)]
@@ -393,7 +392,7 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
   This function manage several interface at the same time, but will no work if isolated faces
   (requiring geometric treatment) are present.
   """
-  shifted_eso = lambda ng: (I.getNodeFromPath(ng, 'ElementStartOffset')[1] - I.getNodeFromPath(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
+  shifted_eso = lambda ng: (PT.get_node_from_path(ng, 'ElementStartOffset')[1] - PT.get_node_from_path(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
 
   # Collect zones data
   zone_to_id = {}
@@ -404,7 +403,7 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
   for i, zone_path in enumerate(PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')):
     zone_to_id[zone_path] = i
 
-    zone = I.getNodeFromPath(dist_tree, zone_path)
+    zone = PT.get_node_from_path(dist_tree, zone_path)
     ngon = PT.Zone.NGonNode(zone)
 
     face_distri = MT.getDistribution(ngon, 'Element')[1].astype(pdm_dtype)
@@ -422,7 +421,7 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
   interface_ids_face = []
   interface_dom_face = []
   for interface_path in interface_pathes:
-    gc = I.getNodeFromPath(dist_tree, interface_path)
+    gc = PT.get_node_from_path(dist_tree, interface_path)
     pl  = PT.get_child_from_name(gc, 'PointList')[1][0]
     pld = PT.get_child_from_name(gc, 'PointListDonor')[1][0]
 
@@ -508,10 +507,10 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
     have_isolated = []
     for interface_path_cur in interface_pathes_cur:
       zone_path = '/'.join(interface_path_cur.split('/')[:2])
-      zone_node = I.getNodeFromPath(dist_tree, zone_path)
+      zone_node = PT.get_node_from_path(dist_tree, zone_path)
       ngon_node = PT.Zone.NGonNode(zone_node)
       n_isolated = get_pl_isolated_faces(ngon_node, 
-                                         I.getNodeFromPath(dist_tree, interface_path_cur + '/PointList')[1][0],
+                                         PT.get_node_from_path(dist_tree, interface_path_cur + '/PointList')[1][0],
                                          MT.getDistribution(zone_node, 'Vertex')[1],
                                          comm).size
       have_isolated.append(bool(comm.allreduce(n_isolated, MPI.SUM) > 0))
@@ -542,23 +541,24 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
     pl_vtx, pl_vtx_opp, distri_jn = all_pl_vtx[i], all_pld_vtx[i], all_distri_vtx[i] #Get results
     for j, gc_path in enumerate(interface_path):
       base_name, zone_name, zgc_name, gc_name = gc_path.split('/')
-      zone = I.getNodeFromPath(dist_tree, base_name + '/' + zone_name)
+      zone = PT.get_node_from_path(dist_tree, base_name + '/' + zone_name)
       zgc  = PT.get_child_from_name(zone, zgc_name)
-      gc = I.getNodeFromPath(dist_tree, gc_path)
+      gc = PT.get_node_from_path(dist_tree, gc_path)
 
       if j == 1: #Swap pl/pld for opposite jn
         pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx
-      jn_vtx = I.newGridConnectivity(I.getName(gc)+'#Vtx', I.getValue(gc), ctype='Abutting1to1', parent=zgc)
-      I.newGridLocation('Vertex', jn_vtx)
-      I.newPointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
-      I.newPointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
+      jn_vtx = PT.new_GridConnectivity(PT.get_name(gc)+'#Vtx', PT.get_value(gc), \
+          loc='Vertex', type='Abutting1to1', parent=zgc)
+      PT.new_PointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
+      PT.new_PointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
       MT.newDistribution({'Index' : distri_jn}, jn_vtx)
 
-      I._addChild(jn_vtx, PT.get_child_from_label(gc, 'GridConnectivityProperty_t'))
-      I._addChild(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceId'))
-      I._addChild(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceOrd'))
+      PT.add_child(jn_vtx, PT.get_child_from_label(gc, 'GridConnectivityProperty_t'))
+      PT.add_child(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceId'))
+      PT.add_child(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceOrd'))
       donor_name_node = PT.get_child_from_name(gc, 'GridConnectivityDonorName')
       if donor_name_node is not None:
-        I.newDescriptor('GridConnectivityDonorName', I.getValue(donor_name_node)+'#Vtx', parent=jn_vtx)
+        PT.new_node('GridConnectivityDonorName', 'Descriptor_t', \
+            PT.get_value(donor_name_node), parent=jn_vtx)
 
 

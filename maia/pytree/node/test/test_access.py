@@ -92,12 +92,30 @@ def test_children():
   assert NA.get_children(node) == []
   NA.add_child(node, child)
   assert len(NA.get_children(node)) == 1
+  NA.add_child(node, None)
+  assert len(NA.get_children(node)) == 1
   with pytest.raises(TypeError):
     NA.set_children(node, 12)
 
   other_child = ['SomeOtherNode', None, [], 'UserDefinedData_t']
   with pytest.raises(RuntimeError):
     NA.add_child(node, other_child)
+
+def test_rm_child():
+  node = parse_yaml_cgns.to_node(yt)
+  child = NA.get_children(node)[0]
+  NA.rm_child(node, child)
+  assert len(NA.get_children(node)) == 0
+
+  with pytest.raises(RuntimeError):
+    NA.rm_child(node, child) #node has no child
+
+  node = parse_yaml_cgns.to_node(yt)
+  with pytest.raises(RuntimeError):
+    NA.rm_child(node, ['SomeOtherNode', None, [], 'DataArray_t'])  #child is not a child
+
+  NA.rm_child(node, None) #Does nothing
+  assert len(NA.get_children(node)) == 1
 
 def test_get_names():
   yt = """

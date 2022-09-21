@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -17,12 +16,12 @@ def as_partitioned(zone):
     for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
       node = PT.get_child_from_name(elt_node, name)
       node[1] = node[1].astype(np.int32)
-  I._rmNodesByName(zone, ':CGNS#Distribution')
+  PT.rm_nodes_from_name(zone, ':CGNS#Distribution')
 
 @mark_mpi_test(1)
 def test_get_zone_ln_to_gn_from_loc(sub_comm):
   tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
-  zone = I.getZones(tree)[0]
+  zone = PT.get_all_Zone_t(tree)[0]
   as_partitioned(zone)
   vtx_gnum = np.arange(3**3) + 1
   cell_gnum = np.arange(2**3) + 1
@@ -34,13 +33,13 @@ def test_get_zone_ln_to_gn_from_loc(sub_comm):
 @mark_mpi_test(1)
 def test_get_point_cloud(sub_comm):
   tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
-  zone = I.getZones(tree)[0]
+  zone = PT.get_all_Zone_t(tree)[0]
   as_partitioned(zone)
-  I._rmNodesByType(zone, 'ZoneBC_t')
-  fs = I.newFlowSolution('MyOwnCoords', 'CellCenter', parent=zone)
-  I.newDataArray('CoordinateX', 1*np.ones(8), parent=fs)
-  I.newDataArray('CoordinateY', 2*np.ones(8), parent=fs)
-  I.newDataArray('CoordinateZ', 3*np.ones(8), parent=fs)
+  PT.rm_nodes_from_label(zone, 'ZoneBC_t')
+  fs = PT.new_FlowSolution('MyOwnCoords', loc='CellCenter', parent=zone)
+  PT.new_DataArray('CoordinateX', 1*np.ones(8), parent=fs)
+  PT.new_DataArray('CoordinateY', 2*np.ones(8), parent=fs)
+  PT.new_DataArray('CoordinateZ', 3*np.ones(8), parent=fs)
   vtx_gnum = np.arange(3**3) + 1
   cell_gnum = np.arange(2**3) + 1
   MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)

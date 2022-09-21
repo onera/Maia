@@ -2,8 +2,8 @@ from pytest_mpi_check._decorator import mark_mpi_test
 
 import numpy as np
 from mpi4py import MPI
-import Converter.Internal as I
 
+import maia.pytree as PT
 from maia import npy_pdm_gnum_dtype
 
 from maia.utils import py_utils
@@ -85,9 +85,9 @@ def test_gather_and_shift(sub_comm):
 def test_exists_anywhere(sub_comm):
   trees = []
   if sub_comm.Get_rank() > 0:
-    zone = I.newZone()
-    zbc  = I.newZoneBC(parent=zone)
-    bc   = I.newBC('BCA', parent=zbc)
+    zone = PT.new_Zone()
+    zbc  = PT.new_ZoneBC(parent=zone)
+    bc   = PT.new_BC('BCA', parent=zbc)
     trees.append(zone)
   assert utils.exists_anywhere(trees, 'ZoneBC/BCA', sub_comm) == True
   assert utils.exists_anywhere(trees, 'ZoneBC/BCB', sub_comm) == False
@@ -96,11 +96,11 @@ def test_exists_anywhere(sub_comm):
 def test_exists_everywhere(sub_comm):
   trees = []
   if sub_comm.Get_rank() > 0:
-    zone = I.newZone()
-    zbc  = I.newZoneBC(parent=zone)
-    bc   = I.newBC('BCA', parent=zbc)
+    zone = PT.new_Zone()
+    zbc  = PT.new_ZoneBC(parent=zone)
+    bc   = PT.new_BC('BCA', parent=zbc)
     if sub_comm.Get_rank() > 1:
-      bc   = I.newBC('BCB', parent=zbc)
+      bc   = PT.new_BC('BCB', parent=zbc)
     trees.append(zone)
   assert utils.exists_everywhere(trees, 'ZoneBC/BCA', sub_comm) == True
   assert utils.exists_everywhere(trees, 'ZoneBC/BCB', sub_comm) == False

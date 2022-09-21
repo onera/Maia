@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy      as np
 
-import Converter.Internal as I
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
@@ -15,20 +14,20 @@ dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 @mark_mpi_test(4)
 def test_create_part_pl_gnum_unique(sub_comm):
-  part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
+  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
   if sub_comm.Get_rank() == 0:
-    I.newZoneSubRegion("ZSR", pointList=[[2,4,6,8]], gridLocation='Vertex', parent=part_zones[0])
+    PT.new_ZoneSubRegion("ZSR", point_list=[[2,4,6,8]], loc='Vertex', parent=part_zones[0])
   if sub_comm.Get_rank() == 2:
-    part_zones.append(I.newZone('Zone.P2.N1'))
-    I.newZoneSubRegion("ZSR", pointList=[[1,3]], gridLocation='Vertex', parent=part_zones[0])
-    I.newZoneSubRegion("ZSR", pointList=[[2,4,6]], gridLocation='Vertex', parent=part_zones[1])
+    part_zones.append(PT.new_Zone('Zone.P2.N1'))
+    PT.new_ZoneSubRegion("ZSR", point_list=[[1,3]], loc='Vertex', parent=part_zones[0])
+    PT.new_ZoneSubRegion("ZSR", point_list=[[2,4,6]], loc='Vertex', parent=part_zones[1])
   if sub_comm.Get_rank() == 3:
     part_zones = []
   IPTB.create_part_pl_gnum_unique(part_zones, "ZSR", sub_comm)
 
   for p_zone in part_zones:
     if PT.get_child_from_name(p_zone, "ZSR") is not None:
-      assert I.getNodeFromPath(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
+      assert PT.get_node_from_path(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
   if sub_comm.Get_rank() == 0:
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [1,2,3,4]).all()
   if sub_comm.Get_rank() == 2:
@@ -37,21 +36,21 @@ def test_create_part_pl_gnum_unique(sub_comm):
 
 @mark_mpi_test(4)
 def test_create_part_pl_gnum(sub_comm):
-  dist_zone = I.newZone('Zone')
-  part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
+  dist_zone = PT.new_Zone('Zone')
+  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
   distri_ud0 = MT.newGlobalNumbering(parent=part_zones[0])
   if sub_comm.Get_rank() == 0:
-    I.newZoneSubRegion("ZSR", pointList=[[1,8,5,2]], gridLocation='Vertex', parent=part_zones[0])
-    I.newDataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
+    PT.new_ZoneSubRegion("ZSR", point_list=[[1,8,5,2]], loc='Vertex', parent=part_zones[0])
+    PT.new_DataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
   elif sub_comm.Get_rank() == 1:
-    I.newDataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
+    PT.new_DataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
   elif sub_comm.Get_rank() == 2:
-    I.newDataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
-    part_zones.append(I.newZone('Zone.P2.N1'))
+    PT.new_DataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
+    part_zones.append(PT.new_Zone('Zone.P2.N1'))
     distri_ud1 = MT.newGlobalNumbering(parent=part_zones[1])
-    I.newDataArray('Vertex', np.array([4,9,13,1,7,6], pdm_dtype), parent=distri_ud1)
-    I.newZoneSubRegion("ZSR", pointList=[[1,3]], gridLocation='Vertex', parent=part_zones[0])
-    I.newZoneSubRegion("ZSR", pointList=[[2,4,6]], gridLocation='Vertex', parent=part_zones[1])
+    PT.new_DataArray('Vertex', np.array([4,9,13,1,7,6], pdm_dtype), parent=distri_ud1)
+    PT.new_ZoneSubRegion("ZSR", point_list=[[1,3]], loc='Vertex', parent=part_zones[0])
+    PT.new_ZoneSubRegion("ZSR", point_list=[[2,4,6]], loc='Vertex', parent=part_zones[1])
   elif sub_comm.Get_rank() == 3:
     part_zones = []
 
@@ -59,7 +58,7 @@ def test_create_part_pl_gnum(sub_comm):
 
   for p_zone in part_zones:
     if PT.get_child_from_name(p_zone, "ZSR") is not None:
-      assert I.getNodeFromPath(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
+      assert PT.get_node_from_path(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
   if sub_comm.Get_rank() == 0:
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [7,2,4,6]).all()
     assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
@@ -70,32 +69,32 @@ def test_create_part_pl_gnum(sub_comm):
 @mark_mpi_test(4)
 @pytest.mark.parametrize("allow_mult", [False, True])
 def test_part_pl_to_dist_pl(sub_comm, allow_mult):
-  dist_zone = I.newZone('Zone')
-  dist_zsr = I.newZoneSubRegion("ZSR", gridLocation='Vertex', parent=dist_zone)
-  part_zones = [I.newZone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
+  dist_zone = PT.new_Zone('Zone')
+  dist_zsr = PT.new_ZoneSubRegion("ZSR", loc='Vertex', parent=dist_zone)
+  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
   distri_ud0 = MT.newGlobalNumbering(parent=part_zones[0])
   if sub_comm.Get_rank() == 0:
-    I.newDataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
-    zsr = I.newZoneSubRegion("ZSR", pointList=[[1,8,5,2]], gridLocation='Vertex', parent=part_zones[0])
+    PT.new_DataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
+    zsr = PT.new_ZoneSubRegion("ZSR", point_list=[[1,8,5,2]], loc='Vertex', parent=part_zones[0])
     MT.newGlobalNumbering({'Index' : np.array([7,2,4,6], pdm_dtype)}, zsr)
   elif sub_comm.Get_rank() == 1:
-    I.newDataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
+    PT.new_DataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
   elif sub_comm.Get_rank() == 2:
-    I.newDataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
-    part_zones.append(I.newZone('Zone.P2.N1'))
+    PT.new_DataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
+    part_zones.append(PT.new_Zone('Zone.P2.N1'))
     distri_ud1 = MT.newGlobalNumbering(parent=part_zones[1])
-    I.newDataArray('Vertex', np.array([4,9,13,1,7,6], pdm_dtype), parent=distri_ud1)
-    zsr = I.newZoneSubRegion("ZSR", pointList=[[1,3]], gridLocation='Vertex', parent=part_zones[0])
+    PT.new_DataArray('Vertex', np.array([4,9,13,1,7,6], pdm_dtype), parent=distri_ud1)
+    zsr = PT.new_ZoneSubRegion("ZSR", point_list=[[1,3]], loc='Vertex', parent=part_zones[0])
     MT.newGlobalNumbering({'Index' : np.array([5,4], pdm_dtype)}, zsr)
-    zsr = I.newZoneSubRegion("ZSR", pointList=[[2,4,6]], gridLocation='Vertex', parent=part_zones[1])
+    zsr = PT.new_ZoneSubRegion("ZSR", point_list=[[2,4,6]], loc='Vertex', parent=part_zones[1])
     MT.newGlobalNumbering({'Index' : np.array([4,1,3], pdm_dtype)}, zsr)
   elif sub_comm.Get_rank() == 3:
     part_zones = []
 
   IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", sub_comm, allow_mult)
 
-  dist_pl     = I.getNodeFromPath(dist_zsr, 'PointList')[1]
-  dist_distri = I.getVal(MT.getDistribution(dist_zsr, 'Index'))
+  dist_pl     = PT.get_node_from_path(dist_zsr, 'PointList')[1]
+  dist_distri = PT.get_value(MT.getDistribution(dist_zsr, 'Index'))
   assert dist_distri.dtype == pdm_gnum_dtype
 
   if sub_comm.Get_rank() == 0:
@@ -116,7 +115,7 @@ def test_part_elt_to_dist_elt(sub_comm):
   rank = sub_comm.Get_rank()
   size = sub_comm.Get_size()
 
-  dist_zone = I.newZone('Zone')
+  dist_zone = PT.new_Zone('Zone')
   if rank == 0:
     yt = """
 Zone.P0.N0 Zone_t:
@@ -155,13 +154,13 @@ Zone.P2.N0 Zone_t:
 
   pT = parse_yaml_cgns.to_cgns_tree(yt)
 
-  IPTB.part_elt_to_dist_elt(dist_zone, I.getZones(pT), 'Quad', sub_comm)
+  IPTB.part_elt_to_dist_elt(dist_zone, PT.get_all_Zone_t(pT), 'Quad', sub_comm)
 
   elt = PT.get_node_from_name(dist_zone, 'Quad')
   assert (PT.Element.Range(elt) == [11,18]).all()
   assert (elt[1] == [7,0]).all()
   assert (PT.get_child_from_name(elt, 'ElementConnectivity')[1] == expected_ec).all()
-  distri_elt  = I.getVal(MT.getDistribution(elt, 'Element'))
+  distri_elt  = PT.get_value(MT.getDistribution(elt, 'Element'))
   assert distri_elt.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
 
@@ -170,7 +169,7 @@ def test_part_ngon_to_dist_ngon(sub_comm):
   rank = sub_comm.Get_rank()
   size = sub_comm.Get_size()
 
-  dist_zone = I.newZone('Zone')
+  dist_zone = PT.new_Zone('Zone')
   if rank == 0:
     yt = """
 Zone.P0.N0 Zone_t:
@@ -246,14 +245,14 @@ Zone.P2.N1 Zone_t:
 
   pT = parse_yaml_cgns.to_cgns_tree(yt)
 
-  IPTB.part_ngon_to_dist_ngon(dist_zone, I.getZones(pT), 'Ngon', sub_comm)
+  IPTB.part_ngon_to_dist_ngon(dist_zone, PT.get_all_Zone_t(pT), 'Ngon', sub_comm)
 
   ngon = PT.request_node_from_name(dist_zone, 'Ngon')
   assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
   assert (PT.get_child_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
-  distri_elt  = I.getVal(MT.getDistribution(ngon, 'Element'))
-  distri_eltc = I.getVal(MT.getDistribution(ngon, 'ElementConnectivity'))
+  distri_elt  = PT.get_value(MT.getDistribution(ngon, 'Element'))
+  distri_eltc = PT.get_value(MT.getDistribution(ngon, 'ElementConnectivity'))
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
   assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()
@@ -263,7 +262,7 @@ def test_part_nface_to_dist_nface(sub_comm):
   rank = sub_comm.Get_rank()
   size = sub_comm.Get_size()
 
-  dist_zone = I.newZone('Zone')
+  dist_zone = PT.new_Zone('Zone')
   if rank == 0:
     yt = """
 Zone.P0.N0 Zone_t:
@@ -322,14 +321,14 @@ Zone.P2.N1 Zone_t:
 
   pT = parse_yaml_cgns.to_cgns_tree(yt)
 
-  IPTB.part_nface_to_dist_nface(dist_zone, I.getZones(pT), 'NFace', 'Ngon', sub_comm)
+  IPTB.part_nface_to_dist_nface(dist_zone, PT.get_all_Zone_t(pT), 'NFace', 'Ngon', sub_comm)
 
   nface = PT.get_node_from_name(dist_zone, 'NFace')
   assert nface is not None
   assert (PT.get_child_from_name(nface, 'ElementStartOffset')[1] == expected_eso).all()
   assert (PT.get_child_from_name(nface, 'ElementConnectivity')[1] == expected_ec).all()
-  distri_elt  = I.getVal(MT.getDistribution(nface, 'Element'))
-  distri_eltc = I.getVal(MT.getDistribution(nface, 'ElementConnectivity'))
+  distri_elt  = PT.get_value(MT.getDistribution(nface, 'Element'))
+  distri_eltc = PT.get_value(MT.getDistribution(nface, 'ElementConnectivity'))
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
   assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()

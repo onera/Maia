@@ -46,7 +46,7 @@ def deep_copy(t):
   out = [NA.get_name(t), None, [], NA.get_label(t)]
   _val = NA.get_value(t, raw=True)
   if _val is not None:
-    out[1] = _val.copy()
+    out[1] = _val.copy(order='K')
   for child in NA.get_children(t):
     out[2].append(deep_copy(child))
   return out

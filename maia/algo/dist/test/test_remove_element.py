@@ -2,35 +2,31 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree as PT
 import maia.pytree.sids   as sids
 
 from maia.algo.dist import remove_element as RME
 
 def test_remove_element():
-  zone = I.newZone()
+  zone = PT.new_Zone()
 
   quad_ec = [1,2,6,5,2,3,7,6,3,4,8,7,5,6,10,9,6,7,11,10,7,8,12,11]
-  quad = I.newElements('Quad', 'QUAD', quad_ec, [1,6], parent=zone)
-  bar  = I.newElements('Bar', 'BAR', [10,9,11,10,12,11,5,1,9,5], [7,11], parent=zone)
+  quad = PT.new_Elements('Quad', 'QUAD_4', econn=quad_ec, erange=[1,6], parent=zone)
+  bar  = PT.new_Elements('Bar', 'BAR_2', econn=[10,9,11,10,12,11,5,1,9,5], erange=[7,11], parent=zone)
 
   ngon_ec = [2,1,3,2,1,5,4,3,2,6,3,7,6,5,8,4,6,7,5,9,8,7,10,6,7,11,9,10,12,8,10,11,11,12]
-  ngon = I.newElements('NGon', 'NGON', ngon_ec, [12,28], parent=zone)
   ngon_pe = np.array([[29,0],[30,0],[29,0],[31,0],[29,30],[30,31],[29,32],[31,0],[33,30],\
                       [32,0],[31,34],[33,32],[33,34],[32,0],[34,0],[33,0],[34,0]])
   expected_pe = np.copy(ngon_pe)
   expected_pe[np.where(ngon_pe > 0)] -= 5
-  I.newDataArray('ElementStartOffset', np.arange(0,35,2), parent=ngon)
-  I.newDataArray('ParentElements', ngon_pe, parent=ngon)
+  ngon = PT.new_NGonElements('NGon', parent=zone,
+      erange=[12,28], eso=np.arange(0, 35, 2), ec=ngon_ec, pe=ngon_pe)
 
   nface_ec = [7,5,1,3,6,2,5,9,11,4,6,8,7,10,12,14,13,12,9,16,11,13,15,17]
-  nface = I.newElements('NFace', 'NFACE', nface_ec, [29,34], parent=zone)
-  I.newDataArray('ElementStartOffset', np.arange(0,24+1,4), parent=nface)
+  nface = PT.new_NFaceElements('NFace', erange=[29,34], eso=np.arange(0,24+1,4), ec=nface_ec, parent=zone)
 
-  zbc = I.newZoneBC(zone)
-  bc = I.newBC(pointList = [[25,27,28]], parent=zbc)
-  I.newGridLocation('EdgeCenter', bc)
+  zbc = PT.new_ZoneBC(zone)
+  bc = PT.new_BC(point_list = [[25,27,28]], loc='EdgeCenter', parent=zbc)
 
   RME.remove_element(zone, bar)
   assert (sids.Element.Range(quad)  == [1,6]).all()
@@ -48,12 +44,10 @@ def test_remove_ngons(sub_comm):
   ec = [1,4, 2,5, 3,6, 4,7, 5,8, 6,9, 7,10, 8,11, 9,12, 1,2, 2,3, 4,5, 5,6, 7,8, 8,9, 10,11, 11,12]
   pe = np.array([[18,0], [18,19], [19,0],  [20,0],  [20,21], [21,0],  [22,0], [22,23], [23,0],
                  [18,0], [19,0],  [18,20], [19,21], [20,22], [21,23], [22,0], [23,0]])
-  ngon = I.newElements('NGon', 'NGON', ec, [1,17])
-  I.newDataArray('ElementStartOffset', np.arange(0, 35, 2), parent=ngon)
-  I.newDataArray('ParentElements', pe, parent=ngon)
-  distri = I.createUniqueChild(ngon, ':CGNS#Distribution', 'UserDefinedData_t')
-  I.newDataArray('Element', [0, 17, 17], parent=distri)
-  I.newDataArray('ElementConnectivity', [0, 34, 34], parent=distri)
+  ngon = PT.new_NGonElements('NGon', erange=[1,17], eso=np.arange(0, 35, 2), ec=ec, pe=pe)
+  distri = PT.new_child(ngon, ':CGNS#Distribution', 'UserDefinedData_t')
+  PT.new_DataArray('Element', [0, 17, 17], parent=distri)
+  PT.new_DataArray('ElementConnectivity', [0, 34, 34], parent=distri)
 
   RME.remove_ngons(ngon, [1,15], sub_comm)
 
@@ -64,8 +58,8 @@ def test_remove_ngons(sub_comm):
   assert (PT.get_node_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   assert (PT.get_node_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (PT.get_node_from_name(ngon, 'ElementStartOffset')[1] == np.arange(0,31,2)).all()
-  assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/Element')[1] == [0,15,15]).all()
-  assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/ElementConnectivity')[1] == [0,30,30]).all()
+  assert (PT.get_node_from_path(ngon, ':CGNS#Distribution/Element')[1] == [0,15,15]).all()
+  assert (PT.get_node_from_path(ngon, ':CGNS#Distribution/ElementConnectivity')[1] == [0,30,30]).all()
 
 @mark_mpi_test(2)
 def test_remove_ngons_2p(sub_comm):
@@ -97,12 +91,10 @@ def test_remove_ngons_2p(sub_comm):
     expected_pe = np.array([[4,0], [5,0], [5,6], [6,0], [1,0], [2,0], [1,3], [2,4], [3,5], [4,6],        [6,0]])
     expected_eso = np.arange(8, 2*15+1, 2)
 
-  ngon = I.newElements('NGon', 'NGON', ec, [7,24])
-  I.newDataArray('ElementStartOffset', eso, parent=ngon)
-  I.newDataArray('ParentElements', pe, parent=ngon)
-  distri = I.createUniqueChild(ngon, ':CGNS#Distribution', 'UserDefinedData_t')
-  I.newDataArray('Element', distri_e, parent=distri)
-  I.newDataArray('ElementConnectivity', distri_ec, parent=distri)
+  ngon = PT.new_NGonElements('NGon', erange=[7,24], eso=eso, ec=ec, pe=pe)
+  distri = PT.new_child(ngon, ':CGNS#Distribution', 'UserDefinedData_t')
+  PT.new_DataArray('Element', distri_e, parent=distri)
+  PT.new_DataArray('ElementConnectivity', distri_ec, parent=distri)
 
   RME.remove_ngons(ngon, to_remove, sub_comm)
 
@@ -110,4 +102,4 @@ def test_remove_ngons_2p(sub_comm):
   assert (PT.get_node_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   assert (PT.get_node_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (PT.get_node_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
-  assert (I.getNodeFromPath(ngon, ':CGNS#Distribution/Element')[1] == expected_distri_e).all()
+  assert (PT.get_node_from_path(ngon, ':CGNS#Distribution/Element')[1] == expected_distri_e).all()

@@ -2,7 +2,6 @@ import pytest
 from   pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 
 import maia
@@ -42,10 +41,9 @@ class Test_wallDistance:
       part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
       expected_wd = [0.75, 0.25, 0.75, 0.25]
       expected_gnum = [3, 3, 4, 4]
-    base = I.getBases(part_tree)[0]
-    base_family = I.newFamily('WALL', parent=base)
-    I.newFamilyBC('BCWall', parent=base_family)
-    zone = I.getZones(part_tree)[0]
+    base = PT.get_all_CGNSBase_t(part_tree)[0]
+    base_family = PT.new_Family('WALL', family_bc='BCWall', parent=base)
+    zone = PT.get_all_Zone_t(part_tree)[0]
     zone[0] += f'.P{sub_comm.Get_rank()}.N0'
 
     # Add BC
@@ -56,7 +54,7 @@ class Test_wallDistance:
           GridLocation GridLocation_t "FaceCenter":
           FamilyName FamilyName_t "WALL":
       """)
-    I._addChild(zone, zone_bc)
+    PT.add_child(zone, zone_bc)
 
     # Test with family specification + propagation method + default out_fs_name
     WD.compute_wall_distance(part_tree, sub_comm, method="propagation", families=["WALL"])
@@ -89,10 +87,9 @@ def test_walldistance_vtx(sub_comm):
     part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
     expected_wd = [1, 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0 ]
     expected_gnum = [3,3,3,3,3,3,4,4,4,1,1,1,1,1,1,2,2,2]
-  base = I.getBases(part_tree)[0]
-  base_family = I.newFamily('WALL', parent=base)
-  I.newFamilyBC('BCWall', parent=base_family)
-  zone = I.getZones(part_tree)[0]
+  base = PT.get_all_CGNSBase_t(part_tree)[0]
+  base_family = PT.new_Family('WALL', family_bc='BCWall', parent=base)
+  zone = PT.get_all_Zone_t(part_tree)[0]
   zone[0] += f'.P{sub_comm.Get_rank()}.N0'
 
   # Add BC
@@ -103,7 +100,7 @@ def test_walldistance_vtx(sub_comm):
         GridLocation GridLocation_t "FaceCenter":
         FamilyName FamilyName_t "WALL":
     """)
-  I._addChild(zone, zone_bc)
+  PT.add_child(zone, zone_bc)
 
   WD.compute_wall_distance(part_tree, sub_comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
 

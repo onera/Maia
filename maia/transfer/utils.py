@@ -1,4 +1,3 @@
-import Converter.Internal as I
 import numpy as np
 
 import maia.pytree      as PT
@@ -13,10 +12,10 @@ def get_partitioned_zones(part_tree, dist_zone_path):
   found in part_tree
   """
   base_name, zone_name = PT.path_head(dist_zone_path), PT.path_tail(dist_zone_path)
-  part_base = I.getNodeFromPath(part_tree, base_name)
+  part_base = PT.get_node_from_path(part_tree, base_name)
   if part_base:
-    return [part for part in I.getZones(part_base) if \
-        MT.conv.get_part_prefix(I.getName(part)) == zone_name]
+    return [part for part in PT.iter_all_Zone_t(part_base) if \
+        MT.conv.get_part_prefix(PT.get_name(part)) == zone_name]
   else:
     return []
 
@@ -25,7 +24,7 @@ def get_cgns_distribution(dist_node, name):
   Return the (partial) distribution array of a distributed zone from
   its path. Array is converted to pdm gnum_dtype.
   """
-  return I.getVal(MT.getDistribution(dist_node, name)).astype(pdm_gnum_dtype)
+  return PT.get_value(MT.getDistribution(dist_node, name)).astype(pdm_gnum_dtype)
 
 def create_all_elt_distribution(dist_elts, comm):
   """
@@ -42,9 +41,9 @@ def collect_cgns_g_numbering(part_nodes, name, prefix=''):
   partition, stating from part_node and searching under the (optional) prefix path
   An empty array is returned if the partitioned node does not exists
   """
-  prefixed = lambda node : I.getNodeFromPath(node, prefix)
+  prefixed = lambda node : PT.get_node_from_path(node, prefix)
   return [np.empty(0, pdm_gnum_dtype) if prefixed(part_node) is None else \
-      I.getVal(MT.getGlobalNumbering(prefixed(part_node), name)).astype(pdm_gnum_dtype) for part_node in part_nodes]
+      PT.get_value(MT.getGlobalNumbering(prefixed(part_node), name)).astype(pdm_gnum_dtype) for part_node in part_nodes]
 
 def create_all_elt_g_numbering(p_zone, dist_elts):
   """
@@ -55,13 +54,13 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
   sorted_dist_elts  = [dist_elts[k] for k in sorting_idx]
   elt_sections_dn   = [PT.Element.Size(elt) for elt in sorted_dist_elts]
   elt_sections_idx  = np_utils.sizes_to_indices(elt_sections_dn, dtype=np.int32)
-  p_elts = [PT.get_node_from_name(p_zone, I.getName(elt)) for elt in sorted_dist_elts]
+  p_elts = [PT.get_node_from_name(p_zone, PT.get_name(elt)) for elt in sorted_dist_elts]
   elt_sections_pn = [PT.Element.Size(elt) if elt else 0 for elt in p_elts]
   offset = 0
   np_elt_ln_to_gn = np.empty(sum(elt_sections_pn), dtype=pdm_gnum_dtype)
   for i_elt, p_elt in enumerate(p_elts):
     if p_elt:
-      local_ln_gn = I.getVal(MT.getGlobalNumbering(p_elt, 'Element'))
+      local_ln_gn = PT.get_value(MT.getGlobalNumbering(p_elt, 'Element'))
       np_elt_ln_to_gn[offset:offset+elt_sections_pn[i_elt]] = local_ln_gn + elt_sections_idx[i_elt]
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn
@@ -73,13 +72,13 @@ def get_entities_numbering(part_zone, as_pdm=True):
   (structured or unstructured/ngon) zone.
   If as_pdm is True, force output to have PDM_gnum_t data type
   """
-  vtx_ln_to_gn   = I.getVal(MT.getGlobalNumbering(part_zone, 'Vertex'))
-  cell_ln_to_gn  = I.getVal(MT.getGlobalNumbering(part_zone, 'Cell'))
+  vtx_ln_to_gn   = PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex'))
+  cell_ln_to_gn  = PT.get_value(MT.getGlobalNumbering(part_zone, 'Cell'))
   if PT.Zone.Type(part_zone) == "Structured":
-    face_ln_to_gn = I.getVal(MT.getGlobalNumbering(part_zone, 'Face'))
+    face_ln_to_gn = PT.get_value(MT.getGlobalNumbering(part_zone, 'Face'))
   else:
     ngon = PT.Zone.NGonNode(part_zone)
-    face_ln_to_gn = I.getVal(MT.getGlobalNumbering(ngon, 'Element'))
+    face_ln_to_gn = PT.get_value(MT.getGlobalNumbering(ngon, 'Element'))
   if as_pdm:
     vtx_ln_to_gn  = vtx_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
     face_ln_to_gn = face_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
@@ -103,5 +102,5 @@ def create_mask_tree(root, labels, include, exclude):
   else:
     to_include = PT.predicates_to_paths(root, labels)
 
-  return PT.paths_to_tree(to_include, I.getName(root))
+  return PT.paths_to_tree(to_include, PT.get_name(root))
 

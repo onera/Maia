@@ -1,6 +1,5 @@
 import Converter
 import Converter.PyTree   as C
-import Converter.Internal as I
 import maia.pytree        as PT
 
 from .fix_tree import fix_point_ranges, fix_zone_datatype, load_grid_connectivity_property
@@ -17,7 +16,7 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
     elmt_path = zone_path+"/"+elmt[0]
     ec_path   = elmt_path+"/ElementConnectivity"
     if PT.get_child_from_name(elmt, 'ElementStartOffset') is not None:
-      I.newIndexArray('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
+      PT.new_PointList('ElementConnectivity#Size', value=size_data[ec_path][2], parent=elmt)
 
   for zone_bc in PT.iter_children_from_label(zone, 'ZoneBC_t'):
     zone_bc_path = zone_path+"/"+zone_bc[0]
@@ -25,11 +24,11 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
       bc_path = zone_bc_path+"/"+bc[0]
       if PT.get_child_from_name(bc, 'PointList') is not None:
         pl_path = bc_path+"/PointList"
-        I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bc)
+        PT.new_PointList('PointList#Size', value=size_data[pl_path][2], parent=bc)
       for bcds in PT.iter_children_from_label(bc, 'BCDataSet_t'):
         if PT.get_child_from_name(bcds, 'PointList') is not None:
           pl_path = bc_path+"/"+bcds[0]+"/PointList"
-          I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=bcds)
+          PT.new_PointList('PointList#Size', value=size_data[pl_path][2], parent=bcds)
 
   for zone_gc in PT.iter_children_from_label(zone, 'ZoneGridConnectivity_t'):
     zone_gc_path = zone_path+"/"+zone_gc[0]
@@ -39,7 +38,7 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
       gc_path = zone_gc_path+"/"+gc[0]
       if PT.get_child_from_name(gc, 'PointList') is not None:
         pl_path = gc_path+"/PointList"
-        I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=gc)
+        PT.new_PointList('PointList#Size', value=size_data[pl_path][2], parent=gc)
       if PT.get_child_from_name(gc, 'PointListDonor') is not None:
         pld_path = gc_path+"/PointListDonor"
         assert size_data[pld_path][2] == size_data[pl_path][2]
@@ -48,13 +47,13 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
     zone_subregion_path = zone_path+"/"+zone_subregion[0]
     if PT.get_child_from_name(zone_subregion, 'PointList') is not None:
       pl_path = zone_subregion_path+"/PointList"
-      I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=zone_subregion)
+      PT.new_PointList('PointList#Size', value=size_data[pl_path][2], parent=zone_subregion)
 
   for flow_sol in PT.iter_children_from_label(zone, 'FlowSolution_t'):
-    sol_path = zone_path + "/" + I.getName(flow_sol)
+    sol_path = zone_path + "/" + PT.get_name(flow_sol)
     if PT.get_child_from_name(flow_sol, 'PointList') is not None:
       pl_path = sol_path+"/PointList"
-      I.newIndexArray('PointList#Size', value=size_data[pl_path][2], parent=flow_sol)
+      PT.new_PointList('PointList#Size', value=size_data[pl_path][2], parent=flow_sol)
 
 def add_sizes_to_tree(size_tree, size_data):
   """
@@ -63,7 +62,7 @@ def add_sizes_to_tree(size_tree, size_data):
   """
   for base in PT.iter_children_from_label(size_tree, 'CGNSBase_t'):
     base_path = '/'+base[0]
-    for zone in I.getZones(base):
+    for zone in PT.iter_all_Zone_t(base):
       zone_path = base_path+"/"+zone[0]
       add_sizes_to_zone_tree(zone, zone_path, size_data)
 

@@ -69,13 +69,23 @@ for rm_function in [rm_nodes_from_predicate, rm_children_from_predicate, keep_ch
   _update_module_attributes(generated)
 
 def get_node_from_path(root, path, ancestors=False):
+  if path == '':
+    return [root] if ancestors else root
   nodes = WAPI.get_nodes_from_predicates(root, path, depth=[1,1], ancestors=ancestors)
   if len(nodes) == 0 and ancestors:
     return []
   if len(nodes) == 1:
     return nodes[0]
   elif len(nodes) > 1:
-    raise RuntimeError(f"Mutliple nodes founds for path {path}")
+    raise RuntimeError(f"Multiple nodes founds for path {path}")
+
+def rm_node_from_path(root, path):
+  from maia.pytree.path_utils import path_head, path_tail
+  if not '/' in path:
+    rm_children_from_name(root, path)
+  else:
+    parent = get_node_from_path(root, path_head(path))
+    rm_nodes_from_name(parent, path_tail(path))
 
 
 # Specialization of legacy functions

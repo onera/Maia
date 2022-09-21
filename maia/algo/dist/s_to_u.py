@@ -1,7 +1,6 @@
 #coding:utf-8
 import numpy              as np
 
-import Converter.Internal as I
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -12,7 +11,7 @@ from maia.utils.numbering import range_to_slab          as HFR2S
 def get_output_loc(request_dict, s_node):
   """Retrieve output location from the node if not provided in argument"""
   label_to_key = {'BC_t' : 'BC_t', 'GridConnectivity1to1_t' : 'GC_t', 'GridConnectivity_t': 'GC_t'}
-  out_loc = request_dict.get(label_to_key[I.getType(s_node)], None)
+  out_loc = request_dict.get(label_to_key[PT.get_label(s_node)], None)
   if out_loc is None:
     out_loc = PT.Subset.GridLocation(s_node)
     if 'FaceCenter' in out_loc: #Remove 'I', 'J', or 'K' for FaceCenter
@@ -214,7 +213,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   'Vertex', 'FaceCenter', 'CellCenter').
   """
   input_loc = PT.Subset.GridLocation(bc_s)
-  point_range = I.getValue(PT.get_child_from_name(bc_s, 'PointRange'))
+  point_range = PT.get_value(PT.get_child_from_name(bc_s, 'PointRange'))
 
   bnd_axis = guess_bnd_normal_index(point_range, input_loc)
   #Compute slabs from attended location (better load balance)
@@ -232,9 +231,9 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
   point_list = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, output_loc, bnd_axis)
 
-  bc_u = I.createNode(I.getName(bc_s), I.getType(bc_s), I.getValue(bc_s))
-  I.newGridLocation(output_loc, parent=bc_u)
-  I.newPointList(value=point_list, parent=bc_u)
+  bc_u = PT.new_node(PT.get_name(bc_s), PT.get_label(bc_s), PT.get_value(bc_s))
+  PT.new_GridLocation(output_loc, parent=bc_u)
+  PT.new_PointList(value=point_list, parent=bc_u)
 
   # Manage datasets -- Data is already distributed, we just have to retrive the PointList
   # of the corresponding elements following same procedure than BCs
@@ -258,17 +257,17 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
     if not (is_related and ds_output_loc == output_loc): #Otherwise, point list has already been computed
       ds_pl = compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, ds_output_loc, bnd_axis)
-      I.createUniqueChild(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
-      I.newPointList(value=ds_pl, parent=bcds)
+      PT.update_child(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
+      PT.new_PointList(value=ds_pl, parent=bcds)
       MT.newDistribution({'Index' : ds_distri}, parent=bcds)
     PT.rm_children_from_name(bcds, 'PointRange')
-    I.addChild(bc_u, bcds)
+    PT.add_child(bc_u, bcds)
 
 
   MT.newDistribution({'Index' : np.array([*bc_range, bc_size.prod()], pdm_gnum_dtype)}, parent=bc_u)
   allowed_types = ['FamilyName_t'] #Copy these nodes to bc_u
-  for allowed_child in [c for c in I.getChildren(bc_s) if I.getType(c) in allowed_types]:
-    I.addChild(bc_u, allowed_child)
+  for allowed_child in [c for c in PT.get_children(bc_s) if PT.get_label(c) in allowed_types]:
+    PT.add_child(bc_u, allowed_child)
   return bc_u
 ###############################################################################
 
@@ -283,14 +282,14 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   """
   assert PT.Subset.GridLocation(gc_s) == 'Vertex'
 
-  zone_path_opp = I.getValue(gc_s)
+  zone_path_opp = PT.get_value(gc_s)
   if not '/' in zone_path_opp:
     zone_path_opp = zone_path.split('/')[0] + '/' + zone_path_opp
-  transform = I.getValue(PT.get_child_from_name(gc_s, 'Transform'))
+  transform = PT.get_value(PT.get_child_from_name(gc_s, 'Transform'))
   T = compute_transform_matrix(transform)
 
-  point_range     = I.getValue(PT.get_child_from_name(gc_s, 'PointRange'))
-  point_range_opp = I.getValue(PT.get_child_from_name(gc_s, 'PointRangeDonor'))
+  point_range     = PT.get_value(PT.get_child_from_name(gc_s, 'PointRange'))
+  point_range_opp = PT.get_value(PT.get_child_from_name(gc_s, 'PointRangeDonor'))
 
   # One of the two connected zones is choosen to compute the slabs/sub_pointrange and to impose
   # it to the opposed zone.
@@ -361,17 +360,16 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   else:
     point_list, point_list_opp = point_list_opp_loc, point_list_loc
 
-  gc_u = I.newGridConnectivity(I.getName(gc_s), I.getValue(gc_s), 'Abutting1to1')
-  I.newGridLocation(output_loc, gc_u)
-  I.newPointList('PointList'     , point_list,     parent=gc_u)
-  I.newPointList('PointListDonor', point_list_opp, parent=gc_u)
+  gc_u = PT.new_GridConnectivity(PT.get_name(gc_s), PT.get_value(gc_s), type='Abutting1to1', loc=output_loc)
+  PT.new_PointList('PointList'     , point_list,     parent=gc_u)
+  PT.new_PointList('PointListDonor', point_list_opp, parent=gc_u)
   MT.newDistribution({'Index' : np.array([*gc_range, gc_size.prod()], pdm_gnum_dtype)}, parent=gc_u)
   #Copy these nodes to gc_u
   allowed_types = ['GridConnectivityProperty_t']
   allowed_names = ['GridConnectivityDonorName']
-  for child in I.getChildren(gc_s):
-    if I.getName(child) in allowed_names or I.getType(child) in allowed_types:
-      I.addChild(gc_u, child)
+  for child in PT.get_children(gc_s):
+    if PT.get_name(child) in allowed_names or PT.get_label(child) in allowed_types:
+      PT.add_child(gc_u, child)
   return gc_u
 ###############################################################################
 
@@ -409,11 +407,8 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   face_vtx_idx = 4*np.arange(face_distri[0], face_distri[1]+1, dtype=pdm_gnum_dtype)
   face_vtx, face_pe = s_numbering.ngon_dconnectivity_from_gnum(bounds+1,n_cell_zone, pdm_gnum_dtype)
 
-  ngon = I.newElements('NGonElements', 'NGON')
-  I.newPointRange("ElementRange", np.array([1, n_face_tot], dtype=pdm_gnum_dtype), parent=ngon)
-  I.newDataArray("ElementConnectivity", face_vtx, parent=ngon)
-  I.newDataArray("ElementStartOffset", face_vtx_idx, parent=ngon)
-  I.newDataArray("ParentElements", face_pe, parent=ngon)
+  _erange = np.array([1, n_face_tot], dtype=pdm_gnum_dtype)
+  ngon = PT.new_NGonElements('NGonElements', erange=_erange, eso=face_vtx_idx, ec=face_vtx, pe=face_pe)
 
   cg_face_distri = np.array([*face_distri, n_face_tot], dtype=pdm_gnum_dtype)
   MT.newDistribution({'Element' : cg_face_distri, 'ElementConnectivity' : 4*cg_face_distri}, parent=ngon)
@@ -458,88 +453,87 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
   """
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
-  disttree_u = I.newCGNSTree()
+  disttree_u = PT.new_CGNSTree()
 
-  for base_s in I.getBases(disttree_s):
-    base_u = I.createNode(I.getName(base_s), 'CGNSBase_t', I.getValue(base_s), parent=disttree_u)
-    for zone_s in I.getZones(base_s):
+  for base_s in PT.iter_all_CGNSBase_t(disttree_s):
+    base_u = PT.new_node(PT.get_name(base_s), 'CGNSBase_t', PT.get_value(base_s), parent=disttree_u)
+    for zone_s in PT.iter_all_Zone_t(base_s):
       if PT.Zone.Type(zone_s) == 'Unstructured': #Zone is already U
-        I.addChild(base_u, zone_s)
+        PT.add_child(base_u, zone_s)
 
       elif PT.Zone.Type(zone_s) == 'Structured': #Zone is S -> convert it
-        zone_dims_s = I.getValue(zone_s)
+        zone_dims_s = PT.get_value(zone_s)
         zone_dims_u = np.prod(zone_dims_s, axis=0, dtype=zone_dims_s.dtype).reshape(1,-1)
         n_vtx  = zone_dims_s[:,0]
       
-        zone_u = I.createNode(I.getName(zone_s), 'Zone_t', zone_dims_u, parent=base_u)
-        I.createNode('ZoneType', 'ZoneType_t', 'Unstructured', parent=zone_u)
+        zone_u = PT.new_Zone(PT.get_name(zone_s), type='Unstructured', size=zone_dims_u, parent=base_u)
 
         grid_coord_s = PT.get_child_from_label(zone_s, "GridCoordinates_t")
-        grid_coord_u = I.newGridCoordinates(parent=zone_u)
+        grid_coord_u = PT.new_GridCoordinates(parent=zone_u)
         for data in PT.iter_children_from_label(grid_coord_s, "DataArray_t"):
-          I.addChild(grid_coord_u, data)
+          PT.add_child(grid_coord_u, data)
 
         for flow_solution_s in PT.iter_children_from_label(zone_s, "FlowSolution_t"):
-          flow_solution_u = I.newFlowSolution(I.getName(flow_solution_s), parent=zone_u)
-          I.newGridLocation(PT.Subset.GridLocation(flow_solution_s), flow_solution_u)
+          flow_solution_u = PT.new_FlowSolution(PT.get_name(flow_solution_s), parent=zone_u,
+              loc = PT.Subset.GridLocation(flow_solution_s))
           for data in PT.iter_children_from_label(flow_solution_s, "DataArray_t"):
-            I.addChild(flow_solution_u, data)
+            PT.add_child(flow_solution_u, data)
 
-        I.addChild(zone_u, zonedims_to_ngon(n_vtx, comm))
+        PT.add_child(zone_u, zonedims_to_ngon(n_vtx, comm))
 
         loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'CellCenter': '#Cell'}
         zonebc_s = PT.get_child_from_label(zone_s, "ZoneBC_t")
         if zonebc_s is not None:
-          zonebc_u = I.newZoneBC(zone_u)
+          zonebc_u = PT.new_ZoneBC(zone_u)
           for bc_s in PT.iter_children_from_label(zonebc_s, "BC_t"):
             out_loc_l = get_output_loc(subset_loc, bc_s)
             for out_loc in out_loc_l:
               suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
               bc_u = bc_s_to_bc_u(bc_s, n_vtx, out_loc, i_rank, n_rank)
-              I.setName(bc_u, I.getName(bc_u) + suffix)
-              I.addChild(zonebc_u, bc_u)
+              PT.set_name(bc_u, PT.get_name(bc_u) + suffix)
+              PT.add_child(zonebc_u, bc_u)
 
-        zone_path = '/'.join([I.getName(base_s), I.getName(zone_s)])
+        zone_path = '/'.join([PT.get_name(base_s), PT.get_name(zone_s)])
         for zonegc_s in PT.iter_children_from_label(zone_s, "ZoneGridConnectivity_t"):
-          zonegc_u = I.newZoneGridConnectivity(I.getName(zonegc_s), parent=zone_u)
+          zonegc_u = PT.new_ZoneGridConnectivity(PT.get_name(zonegc_s), parent=zone_u)
           for gc_s in PT.iter_children_from_label(zonegc_s, "GridConnectivity1to1_t"):
-            opp_name = I.getValue(gc_s)
+            opp_name = PT.get_value(gc_s)
             out_loc_l = get_output_loc(subset_loc, gc_s)
-            zone_opp_path = zone_opp_name if '/' in opp_name else I.getName(base_s)+'/'+opp_name
-            n_vtx_opp = I.getValue(I.getNodeFromPath(disttree_s, zone_opp_path))[:,0]
+            zone_opp_path = zone_opp_name if '/' in opp_name else PT.get_name(base_s)+'/'+opp_name
+            n_vtx_opp = PT.get_value(PT.get_node_from_path(disttree_s, zone_opp_path))[:,0]
             for out_loc in out_loc_l:
               suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
               gc_u = gc_s_to_gc_u(gc_s, zone_path, n_vtx, n_vtx_opp, out_loc, i_rank, n_rank)
-              I.setName(gc_u, I.getName(gc_u) + suffix)
-              I.addChild(zonegc_u, gc_u)
+              PT.set_name(gc_u, PT.get_name(gc_u) + suffix)
+              PT.add_child(zonegc_u, gc_u)
           #Manage not 1to1 gcs as BCs
-          is_abbut = lambda n : I.getType(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting'
+          is_abbut = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting'
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abbut):
             out_loc_l = get_output_loc(subset_loc, gc_s)
             for out_loc in out_loc_l:
               suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
               gc_u = bc_s_to_bc_u(gc_s, n_vtx, out_loc, i_rank, n_rank)
-              I.setName(gc_u, I.getName(gc_u) + suffix)
-              I.newGridConnectivityType('Abutting', gc_u)
-              I.addChild(zonegc_u, gc_u)
+              PT.set_name(gc_u, PT.get_name(gc_u) + suffix)
+              PT.new_GridConnectivityType('Abutting', gc_u)
+              PT.add_child(zonegc_u, gc_u)
 
         # Copy distribution of all Cell/Vtx, which is unchanged
-        distri = I.copyTree(MT.getDistribution(zone_s))
+        distri = PT.deep_copy(MT.getDistribution(zone_s))
         PT.rm_children_from_name(distri, 'Face')
-        I._addChild(zone_u, distri)
+        PT.add_child(zone_u, distri)
 
         # Top level nodes
         top_level_types = ["FamilyName_t", "AdditionalFamilyName_t", "Descriptor_t", \
             "FlowEquationSet_t", "ReferenceState_t", "ConvergenceHistory_t"]
         for top_level_type in top_level_types:
           for node in PT.iter_children_from_label(zone_s, top_level_type):
-            I.addChild(zone_u, node)
+            PT.add_child(zone_u, node)
 
     # Top level nodes
     top_level_types = ["FlowEquationSet_t", "ReferenceState_t", "Family_t"]
     for top_level_type in top_level_types:
       for node in PT.iter_children_from_label(base_s, top_level_type):
-        I.addChild(base_u, node)
+        PT.add_child(base_u, node)
 
   return disttree_u
 ###############################################################################
@@ -553,6 +547,6 @@ def convert_s_to_ngon(disttree_s, comm):
 def convert_s_to_poly(disttree_s, comm):
   """Same as convert_s_to_ngon, but also creates the NFace connectivity"""
   disttree_u = convert_s_to_ngon(disttree_s, comm)
-  for z in I.getZones(disttree_u):
+  for z in PT.iter_all_Zone_t(disttree_u):
     NGT.pe_to_nface(z,comm)
   return disttree_u

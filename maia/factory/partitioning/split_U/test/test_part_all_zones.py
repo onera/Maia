@@ -1,19 +1,19 @@
 from pytest_mpi_check._decorator import mark_mpi_test
 
-import Converter.Internal as I
 import numpy as np
 from mpi4py import MPI
 
 import Pypdm.Pypdm as PDM
+import maia.pytree as PT
 
 from maia                      import npy_pdm_gnum_dtype as pdm_dtype
 from maia.pytree.yaml          import parse_yaml_cgns
 from maia.factory.partitioning.split_U import part_all_zones as partU
 
 def test_prepare_part_weight():
-  zones = [I.newZone('ZoneA', ztype='Unstructured'),
-           I.newZone('ZoneB', ztype='Unstructured'),
-           I.newZone('ZoneC', ztype='Unstructured')]
+  zones = [PT.new_Zone('ZoneA', type='Unstructured'),
+           PT.new_Zone('ZoneB', type='Unstructured'),
+           PT.new_Zone('ZoneC', type='Unstructured')]
 
   base_to_blocks  = {'Base' : zones}
   d_zone_to_parts = {'Base/ZoneA' : [.3], 'Base/ZoneB' : [], 'Base/ZoneC' : [.2,.5,.3]}

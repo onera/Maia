@@ -1,4 +1,3 @@
-import Converter.Internal as I
 import mpi4py.MPI as MPI
 import numpy as np
 
@@ -69,7 +68,7 @@ def add_joins_donor_name(dist_tree, comm, force=False):
   gc_list  = []
   gc_paths = []
   # > First pass to collect joins
-  match1to1 = lambda n : I.getType(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t'] \
+  match1to1 = lambda n : PT.get_label(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t'] \
       and PT.GridConnectivity.is1to1(n)
   query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", match1to1]
 
@@ -80,7 +79,7 @@ def add_joins_donor_name(dist_tree, comm, force=False):
   need_compute = False
   for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
     gc_list.append(nodes[-1])
-    gc_paths.append('/'.join([I.getName(node) for node in nodes[:2]]))
+    gc_paths.append('/'.join([PT.get_name(node) for node in nodes[:2]]))
     if PT.get_child_from_name(nodes[-1], 'GridConnectivityDonorName') is None:
       need_compute = True
   
@@ -97,37 +96,37 @@ def add_joins_donor_name(dist_tree, comm, force=False):
 
   opp_join_id = np.where(global_match_table)[1]
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
-    I.newDescriptor("GridConnectivityDonorName", I.getName(gc_list[opp_id]), parent=gc)
+    PT.new_node("GridConnectivityDonorName", "Descriptor_t", PT.get_name(gc_list[opp_id]), parent=gc)
 
 def get_jn_donor_path(dist_tree, jn_path):
   """
   Return the patch of the matching jn in the tree. GridConnectivityDonorName must exists.
   """
-  cur_jn = I.getNodeFromPath(dist_tree, jn_path)
+  cur_jn = PT.get_node_from_path(dist_tree, jn_path)
   base_name, zone_name, zgc_name, jn_name = jn_path.split('/')
   opp_zone_path = PT.getZoneDonorPath(base_name, cur_jn)
-  opp_gc_name   = I.getValue(PT.get_child_from_name(cur_jn, "GridConnectivityDonorName"))
+  opp_gc_name   = PT.get_value(PT.get_child_from_name(cur_jn, "GridConnectivityDonorName"))
 
-  opp_zone      = I.getNodeFromPath(dist_tree, opp_zone_path)
+  opp_zone      = PT.get_node_from_path(dist_tree, opp_zone_path)
   opp_zgc       = PT.get_child_from_label(opp_zone, "ZoneGridConnectivity_t")
-  return f"{opp_zone_path}/{I.getName(opp_zgc)}/{opp_gc_name}"
+  return f"{opp_zone_path}/{PT.get_name(opp_zgc)}/{opp_gc_name}"
 
 def update_jn_name(dist_tree, jn_path, new_name):
   """
   Rename a 1to1 GC and update the opposite GridConnectivityDonorName.
   """
-  cur_jn = I.getNodeFromPath(dist_tree, jn_path)
-  opp_jn = I.getNodeFromPath(dist_tree, get_jn_donor_path(dist_tree, jn_path))
+  cur_jn = PT.get_node_from_path(dist_tree, jn_path)
+  opp_jn = PT.get_node_from_path(dist_tree, get_jn_donor_path(dist_tree, jn_path))
   opp_gc_name_n = PT.get_child_from_name(opp_jn, "GridConnectivityDonorName")
-  I.setName(cur_jn, new_name)
-  I.setValue(opp_gc_name_n, new_name)
+  PT.set_name(cur_jn, new_name)
+  PT.set_value(opp_gc_name_n, new_name)
   
 def get_matching_jns(dist_tree):
   """
   Return the list of pairs of matching jns
   """
   query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
-      lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.GridConnectivity.is1to1(n)]
+      lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.GridConnectivity.is1to1(n)]
 
   # Retrieve interfaces pathes and call function
   jn_pairs = []
@@ -149,9 +148,9 @@ def copy_donor_subset(dist_tree):
 
   for jn_path in PT.predicates_to_paths(dist_tree, gc_t_path):
     opp_jn_path = get_jn_donor_path(dist_tree, jn_path)
-    cur_jn = I.getNodeFromPath(dist_tree, jn_path)
-    opp_jn = I.getNodeFromPath(dist_tree, opp_jn_path)
-    I.newPointList('PointListDonor', PT.get_child_from_name(opp_jn, 'PointList')[1], parent=cur_jn)
+    cur_jn = PT.get_node_from_path(dist_tree, jn_path)
+    opp_jn = PT.get_node_from_path(dist_tree, opp_jn_path)
+    PT.new_PointList('PointListDonor', PT.get_child_from_name(opp_jn, 'PointList')[1], parent=cur_jn)
 
 
 def store_interfaces_ids(dist_tree):
@@ -164,15 +163,15 @@ def store_interfaces_ids(dist_tree):
   matching_pairs = get_matching_jns(dist_tree)
   for i, matching_pair in enumerate(matching_pairs):
     for j,jn_path in enumerate(matching_pair):
-      jn = I.getNodeFromPath(dist_tree, jn_path)
-      I.newDataArray("DistInterfaceId",  i+1, parent=jn)
-      I.newDataArray("DistInterfaceOrd", j,   parent=jn)
+      jn = PT.get_node_from_path(dist_tree, jn_path)
+      PT.new_DataArray("DistInterfaceId",  i+1, parent=jn)
+      PT.new_DataArray("DistInterfaceOrd", j,   parent=jn)
 
 def clear_interface_ids(dist_tree):
   """
   Remove DistInterfaceId nodes created on GC_t
   """
-  gc_query = lambda n: I.getType(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  gc_query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
     PT.rm_children_from_name(gc, 'DistInterfaceId')
     PT.rm_children_from_name(gc, 'DistInterfaceOrd')
