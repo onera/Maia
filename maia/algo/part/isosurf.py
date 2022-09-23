@@ -38,57 +38,123 @@ import Pypdm.Pypdm as PDM
 import numpy as np
 
 
-# def iso_surface_one_domain(part_zones, PDM_type, fldpath, comm, iso_value):
-def iso_surface_one_domain(part_zones, isosurf_type, comm,
-                           interpolate=None, out_part=False):
+# =======================================================================================
+def _exchange_field(part_tree, part_tree_iso, interpolate, comm) :
+  return None
   """
-  Compute isosurface in a domain
+  Exchange field between part_tree and part_tree_iso
+  for interpolate vol field 
   """
-  
+  # # ----------------------------------
+  # # > Interpolation -> should be moved
+  # # Part 1 = Isosurf
+  # # Part 2 = Maillage init
+  # for i_part, part_zone in enumerate(part_zones):
+    
+  #   part1_elmt_ln_to_gn = results['np_elt_ln_to_gn']
+  #   part2_cell_ln_to_gn = cell_ln_to_gn
+  #   part1_to_part2_idx  = np.arange(0, part2_cell_ln_to_gn.shape[0], dtype=np.int32 )
+  #   part1_to_part2      = results["np_elt_parent_g_num"]
 
+  #   # Definition de l'objet Part_to_part
+  #   # print("DEF OBJET P2P",flush=True)
+  #   ptp = PDM.PartToPart(comm,
+  #                             [part1_elmt_ln_to_gn],
+  #                             [part2_cell_ln_to_gn],
+  #                             [part1_to_part2_idx] ,
+  #                             [part1_to_part2]     )
+
+  #   FS_iso      = I.newFlowSolution('FlowSolution', gridLocation="CellCenter", parent=iso_part_zone)
+  #   fld_cc      = []
+  #   part2_stri  = []
+
+  #   for ifld,path in enumerate(interpolate):
+  #     path_to_fld = "FlowSolution_cellCentered/"+path.split('/')[1]
+  #     # fld_cc.append(I.getNodeFromPath(part_zone, path_to_fld)[1])
+  #     # part2_stri.append(np.ones(fld_cc[0].shape[0], dtype=np.int32))
+  #     fld_cc     = [I.getNodeFromPath(part_zone, path_to_fld)[1]]
+  #     part2_stri = [np.ones(fld_cc[0].shape[0], dtype=np.int32)]
+    
+  #     req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+  #                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+  #                                fld_cc,
+  #                                part2_stride=part2_stri)
+  
+  #     part1_strid, part1_data = ptp.reverse_wait(req_id)
+  #     I.newDataArray(path.split('/')[1], part1_data[0], parent=FS_iso)
+
+
+    # # --- Node TO Center for interpolation ---
+    # # --- Connectivity CELL -> VTX
+    # nface         = I.getNodeFromName1(part_zone , 'NFaceElements')
+    # cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
+    # cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
+
+    # ngon          = I.getNodeFromName1(part_zone, 'NGonElements')
+    # face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
+    # face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
+
+    # cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+
+    # # --- Cell_centered solution (mean of vtx)
+    # FS_cc = I.newFlowSolution('FlowSolution_cellCentered', gridLocation="CellCenter", parent=part_zone)
+    # # print(interpolate)
+    # for path in interpolate:
+    #   fld           = I.getNodeFromPath(part_zone, path)[1]
+    #   fld_cell_vtx  = fld[cell_vtx-1]
+    #   fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
+    #   fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
+
+    #   I.newDataArray(path.split('/')[1], fld_cc, parent=FS_cc)
+# =======================================================================================
+
+
+
+
+
+# =======================================================================================
+def iso_surface_one_domain(part_zones, iso_kind, comm):
+  """
+  Compute isosurface in a zone
+  """ 
 
   # --- Type of isosurf ---------------------------------------------------------------------
-  # print("[i] TYPE_of_ISOSURF : ", isosurf_type[0],flush=True)
-  if   isosurf_type[0]=="PLANE" :
-    assert(len(isosurf_type   )==2)
-    assert(len(isosurf_type[1])==4)
+  # print("[i] TYPE_of_ISOSURF : ", iso_kind[0],flush=True)
+  assert(len(iso_kind   )==2)
+  
+  fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
+  iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
+
+  if   iso_kind[0]=="PLANE" :
+    assert(len(iso_kind[1])==4)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_PLANE
-    fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
-    iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
-  elif isosurf_type[0]=="SPHERE": 
-    assert(len(isosurf_type   )==2)
-    assert(len(isosurf_type[1])==4)
+  elif iso_kind[0]=="SPHERE": 
+    assert(len(iso_kind[1])==4)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_SPHERE
-    fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
-    iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
-  elif isosurf_type[0]=="ELLIPSE": 
-    assert(len(isosurf_type   )==2)
-    assert(len(isosurf_type[1])==7)
+  elif iso_kind[0]=="ELLIPSE": 
+    assert(len(iso_kind[1])==7)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_ELLIPSE
-    fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
-    iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
-  elif isosurf_type[0]=="QUADRIC": 
-    assert(len(isosurf_type   )==2)
-    assert(len(isosurf_type[1])==10)
+  elif iso_kind[0]=="QUADRIC": 
+    assert(len(iso_kind[1])==10)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_QUADRIC
-    fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
-    iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
-  elif isosurf_type[0]=="HEART": 
-    assert(len(isosurf_type   )==1)
+  elif iso_kind[0]=="HEART": 
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_HEART
-    fldpath   = "FlowSolution/mandelbult" #-> DEBUG (fonctionne pas si on donne pas le champ)
-    iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
 
-  elif isosurf_type[0]=="FIELD" : 
-    assert(len(isosurf_type   )==2)
-    assert(len(isosurf_type[1])==2)
+  elif iso_kind[0]=="FIELD" : 
+    assert(len(iso_kind[1])==2)
+    
+    # Check : vertex centered solution
+    flowsol_node = I.getNodeFromName(part_zones  ,"FlowSolution")
+    gridloc_node = I.getNodeFromName(flowsol_node,"GridLocation")
+    assert(I.getValue(gridloc_node)=="Vertex")
+    
     PDM_type = PDM._PDM_ISO_SURFACE_KIND_FIELD 
-    fldpath   = isosurf_type[1][0]
-    iso_value = isosurf_type[1][1]
+    fldpath   = iso_kind[1][0]
+    iso_value = iso_kind[1][1]
 
   else:
     print("[!][WARNING] isosurface.py : Error in type of IsoSurface ; Check your script")
@@ -104,25 +170,13 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
 
 
   # PDM plane/sphere equation definition
-  if isosurf_type[0]=="PLANE" :
-    pdm_isos.plane_equation_set(isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],isosurf_type[1][3])
-
-  elif isosurf_type[0]=="SPHERE" :
-    pdm_isos.sphere_equation_set(isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],isosurf_type[1][3])
-  
-  elif isosurf_type[0]=="ELLIPSE" :
-    pdm_isos.ellipse_equation_set(  isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],
-                                    isosurf_type[1][3],isosurf_type[1][4],isosurf_type[1][5],
-                                    isosurf_type[1][6])
-
-  elif isosurf_type[0]=="QUADRIC" :
-    pdm_isos.quadric_equation_set(  isosurf_type[1][0],isosurf_type[1][1],isosurf_type[1][2],
-                                    isosurf_type[1][3],isosurf_type[1][4],isosurf_type[1][5],
-                                    isosurf_type[1][6],isosurf_type[1][7],isosurf_type[1][8],
-                                    isosurf_type[1][9])
+  if   iso_kind[0]=="PLANE"   : pdm_isos.plane_equation_set(*iso_kind[1])
+  elif iso_kind[0]=="SPHERE"  : pdm_isos.sphere_equation_set(*iso_kind[1])
+  elif iso_kind[0]=="ELLIPSE" : pdm_isos.ellipse_equation_set(*iso_kind[1])
+  elif iso_kind[0]=="QUADRIC" : pdm_isos.quadric_equation_set(*iso_kind[1])
 
 
-  # Loop over domains of the partition
+  # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
     # Get NGon + NFac
     gridc_n    = I.getNodeFromName1(part_zone, 'GridCoordinates')
@@ -167,35 +221,11 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
                       vtx_ln_to_gn ,
                       vtx_coords)
 
-    # if isosurf_type[1]=="FIELD" : 
+    # if iso_kind[1]=="FIELD" : 
     # Get field from path to compute the isosurf / Placement in PDM object
     field    = I.getNodeFromPath(part_zone, fldpath)
     field[1] = field[1] - np.full(field[1].shape[0], iso_value)
     pdm_isos.part_field_set(i_part, field[1])
-
-
-    # --- Node TO Center for interpolation ---
-    # --- Connectivity CELL -> VTX
-    nface         = I.getNodeFromName1(part_zone , 'NFaceElements')
-    cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
-    cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
-
-    ngon          = I.getNodeFromName1(part_zone, 'NGonElements')
-    face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
-    face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
-
-    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
-
-    # --- Cell_centered solution (mean of vtx)
-    FS_cc = I.newFlowSolution('FlowSolution_cellCentered', gridLocation="CellCenter", parent=part_zone)
-    # print(interpolate)
-    for path in interpolate:
-      fld           = I.getNodeFromPath(part_zone, path)[1]
-      fld_cell_vtx  = fld[cell_vtx-1]
-      fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
-      fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
-
-      I.newDataArray(path.split('/')[1], fld_cc, parent=FS_cc)
 
 
   # Isosurfaces compute in PDM  
@@ -218,6 +248,7 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
                             [[n_iso_vtx, n_iso_elt, 0]],
                             'Unstructured',
                             parent=iso_part_base)
+
   # > Grid coordinates
   cx, cy, cz      = layouts.interlaced_to_tuple_coords(results['np_vtx_coord'])
   iso_grid_coord  = I.newGridCoordinates(parent=iso_part_zone)
@@ -239,84 +270,9 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
   I.newDataArray('Cell'  , results['np_elt_ln_to_gn'], parent=gn_zone)
 
   elmt_parent_gn = results["np_elt_parent_g_num"]
-  # print("results[np_elt_parent_g_num]=",results["np_elt_parent_g_num"].shape,flush=True)
-
-
-  # ----------------------------------
-  # > Interpolation -> should be moved
-  # Part 1 = Isosurf
-  # Part 2 = Maillage init
-  for i_part, part_zone in enumerate(part_zones):
-    
-    part1_elmt_ln_to_gn = results['np_elt_ln_to_gn']
-    part2_cell_ln_to_gn = cell_ln_to_gn
-    part1_to_part2_idx  = np.arange(0, part2_cell_ln_to_gn.shape[0], dtype=np.int32 )
-    part1_to_part2      = results["np_elt_parent_g_num"]
-
-    # Definition de l'objet Part_to_part
-    # print("DEF OBJET P2P",flush=True)
-    ptp = PDM.PartToPart(comm,
-                              [part1_elmt_ln_to_gn],
-                              [part2_cell_ln_to_gn],
-                              [part1_to_part2_idx] ,
-                              [part1_to_part2]     )
-
-    FS_iso      = I.newFlowSolution('FlowSolution', gridLocation="CellCenter", parent=iso_part_zone)
-    fld_cc      = []
-    part2_stri  = []
-
-    for ifld,path in enumerate(interpolate):
-      path_to_fld = "FlowSolution_cellCentered/"+path.split('/')[1]
-      # fld_cc.append(I.getNodeFromPath(part_zone, path_to_fld)[1])
-      # part2_stri.append(np.ones(fld_cc[0].shape[0], dtype=np.int32))
-      fld_cc     = [I.getNodeFromPath(part_zone, path_to_fld)[1]]
-      part2_stri = [np.ones(fld_cc[0].shape[0], dtype=np.int32)]
-    
-      req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                                 fld_cc,
-                                 part2_stride=part2_stri)
-  
-      part1_strid, part1_data = ptp.reverse_wait(req_id)
-      I.newDataArray(path.split('/')[1], part1_data[0], parent=FS_iso)
-
-
-
-
-  # # Part to Block
-  # I.printTree(iso_part_base)
-  # diso_part_base = part_to_dist(iso_part_base,comm)
-  # I.printTree(diso_part_base)
-
-  # if not out_part:
-  #   for i_part, part_zone in enumerate(part_zones):
-
-  #     # Get LN_to_GN
-  #     part1_elmt_ln_to_gn = results['np_elt_ln_to_gn']
-      
-  #     # DEF P2B object
-  #     ptb = PDM.PartToBlock(comm,                   # MPI.Comm comm
-  #                           [part1_elmt_ln_to_gn],  # list pLNToGN
-  #                           None,                   # list pWeight 
-  #                           1  ,                    # int partN
-  #                           t_distrib = PDM.PDM_PART_TO_BLOCK_DISTRIB_ALL_PROC,
-  #                           t_post    = PDM.PDM_PART_TO_BLOCK_POST_CLEANUP,
-  #                           partActiveNode = 1.
-  #                           )
-  #     #   t_distrib       = PDM_PART_TO_BLOCK_DISTRIB_ALL_PROC,
-  #     #   t_post          = PDM_PART_TO_BLOCK_POST_CLEANUP,
-  #     #    partActiveNode = 1.,
-  #     # **gnum_elt        = &pln_to_to_gn,
-  #     #  **weight         = NULL,
-  #     #  *n_elt           = &pn_elmt,
-  #     #   n_part          = n_part,
-  #     #   comm            = comm);
-
-  #     # Exchange P2B
-      
-
-
+ 
   return iso_part_base
+# =======================================================================================
 
 
 
@@ -325,47 +281,40 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
 
 
 
-
-def _iso_surf(part_tree, iso_field, iso_val, comm):
+# =======================================================================================
+def _iso_surface(part_tree, iso_kind, comm):
   '''
   Arguments :
    - part_tree : [partitioned tree] from which isosurf is created
    - iso_field : [string] used for isosurf computation (FlowSolutionName/FieldName)
    - iso_value : [float] iso surf val
   '''
-  # Check : monodomain part tree (eq 1 base ?)
-  bases = I.getBases(part_tree)
-  assert(len(bases)==1)
 
-  # Part tree iso creation from zone
+  # Get zones by domains
+  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
+  
+  # Check : monodomain
+  assert(len(part_tree_per_dom)==1)
+
+  # Loop over domains
   part_tree_iso = I.newCGNSTree()
-  part_base_iso = I.newCGNSBase('Base', cellDim=dim-1, physDim=3, parent=part_tree_iso)
+  for i_domain, part_zones in enumerate(part_tree_per_dom):
 
-  # Isosurf computation for each zone
-  for part_zone in I.getZones(part_tree):
-    # Check : vertex centered solution
-    assert(I.getNodeFromName(part_zone,"GridLocation")=="CellCenter")
-    
     # Isosurf computation for zone
-    part_zone_iso = iso_surface_one_domain(part_zone)
+    part_zone_iso = iso_surface_one_domain(part_zones, iso_kind, comm)
 
-    # Fill isosurf part tree with isosurf zone
-    part_zone_iso = I.newZone(f'Zone.P{comm.Get_rank()}.N{0}',
-                              [[n_iso_vtx, n_iso_elt, 0]],
-                              'Unstructured',
-                              parent=part_base_iso)
     print("[TODO] Stocker les infos pour l'interpolation qui suivra")
+
+    I._addChild(part_tree_iso,part_zone_iso)
 
 
   return part_tree_iso
+# =======================================================================================
 
 
 
 
-
-
-
-
+# =======================================================================================
 def iso_surface(part_tree,isosurf_kind,comm,interpolate=None):
   ''' 
   Compute isosurface from field for a partitioned tree
@@ -379,18 +328,14 @@ def iso_surface(part_tree,isosurf_kind,comm,interpolate=None):
   # Check : format of isosurf_kind
   assert(len(isosurf_kind)==2)
 
-  # from the part_tree, retrieve the paths of the distributed blocks
-  # and return a dictionnary associating each path to the list of the corresponding
-  # partitioned zones
-  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
-  assert(len(part_tree_per_dom)==1) # On gère le monodomaine pour l'instanx
+  # Isosurface extraction
+  part_tree_iso = _iso_surface(part_tree,isosurf_kind,comm)
+
+  # Interpolation
+  if interpolate!=None :
+    # Assert ?
+    _exchange_field(part_tree, part_tree_iso, interpolate, comm)
 
 
-  # Piece of isosurfaces for each domains of the partition
-  iso_doms = I.newCGNSTree()
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
-    iso_part = iso_surface_one_domain(part_zones,isosurf_kind,comm,
-                                      interpolate=interpolate,
-                                      out_part=False                )
-    I._addChild(iso_doms, iso_part)
-
+  return part_tree_iso
+# =======================================================================================
