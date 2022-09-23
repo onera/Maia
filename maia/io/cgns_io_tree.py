@@ -1,5 +1,4 @@
 import os
-import Converter.PyTree   as C
 import maia.pytree        as PT
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
@@ -20,6 +19,10 @@ def load_partial_cassiopee(filename, dist_tree, hdf_filter, comm):
     node = PT.get_node_from_path(dist_tree, path)
     node[1] = data
 
+def write_partial_cassiopee(filename, dist_tree, hdf_filter, comm):
+  import Converter.PyTree   as C
+  C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter, ParallelHDF=True)
+
 def load_partial_h5py(filename, dist_tree, hdf_filter):
   from h5py import h5f
   from .hdf._hdf_cgns import open_from_path, load_data_partial
@@ -30,6 +33,39 @@ def load_partial_h5py(filename, dist_tree, hdf_filter):
       node = PT.get_node_from_path(dist_tree, path[1:]) #! Path has '/'
       gid = open_from_path(fid, path[1:])
       node[1] = load_data_partial(gid, filter)
+
+def write_partial_h5py(filename, dist_tree, hdf_filter, comm):
+  from mpi4py import MPI
+  from h5py import h5p, h5f, h5fd
+  from .hdf._hdf_cgns import write_lazy_wrapper, write_data_partial, open_from_path
+
+  if comm.Get_rank() == 0:
+
+    def skip_data(pname_and_label, name_and_label):
+      if pname_and_label[1] == 'UserDefinedData_t':
+        return False
+      if name_and_label[1] in ['IndexArray_t']:
+        return True
+      if name_and_label[1] in ['DataArray_t']:
+        if pname_and_label[1] not in ['Periodic_t', 'ReferenceState_t']:
+          return True
+      return False
+
+    write_lazy_wrapper(dist_tree, filename, skip_data)
+  comm.barrier()
+
+  fapl = h5p.create(h5p.FILE_ACCESS)
+  fapl.set_driver(h5fd.MPIO)
+  fapl.set_fapl_mpio(comm, MPI.Info())
+  fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR, fapl)
+
+  for path, filter in hdf_filter.items():
+    array = PT.get_node_from_path(dist_tree, path[1:])[1] #! Path has '/'
+    gid = open_from_path(fid, path[1:])
+    write_data_partial(gid, array, filter)
+    gid.close()
+  
+  fid.close()
 
 def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
@@ -71,7 +107,7 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   ensure_PE_global_indexing(dist_tree)
 
 
-def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
+def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
@@ -85,7 +121,10 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   saving_dist_tree = PT.shallow_copy(dist_tree)
   clean_distribution_info(saving_dist_tree)
 
-  C.convertPyTree2FilePartial(saving_dist_tree, filename, comm, hdf_filter_with_dim, ParallelHDF=True)
+  if legacy:
+    write_partial_cassiopee(filename, saving_dist_tree, hdf_filter_with_dim, comm)
+  else:
+    write_partial_h5py(filename, saving_dist_tree, hdf_filter_with_dim, comm)
 
 def file_to_dist_tree(filename, comm, distribution_policy='uniform', legacy=False):
   """
@@ -117,11 +156,11 @@ def file_to_dist_tree(filename, comm, distribution_policy='uniform', legacy=Fals
 
   return dist_tree
 
-def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None):
+def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None, legacy=False):
   """
   Distributed write of cgns_tree into filename.
   """
   filename = str(filename)
   if hdf_filter is None:
     hdf_filter = create_tree_hdf_filter(dist_tree)
-  save_tree_from_filter(filename, dist_tree, comm, hdf_filter)
+  save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)

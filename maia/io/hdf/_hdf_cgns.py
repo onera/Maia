@@ -293,26 +293,8 @@ def write_lazy_wrapper(tree, filename, skip_func):
   fid.close()
 
 def read_cgns(filename):
-  return load_lazy_wrapper(filename, full_read)
+  return load_lazy_wrapper(filename, lambda X,Y: False)
+
 def write_cgns(tree, filename):
-  return write_lazy_wrapper(tree, filename, full_read)
-
-def shallow_read_cgns(filename):
-  return load_lazy_wrapper(filename, skip_data)
-def shallow_write_cgns(tree, filename):
-  write_lazy_wrapper(tree, filename, skip_data)
-
-
-def full_read(pname_and_label, name_and_label):
-  return False
-
-def skip_data(pname_and_label, name_and_label):
-  if pname_and_label[1] == 'UserDefinedData_t':
-    return False
-  if name_and_label[1] in ['IndexArray_t']:
-    return True
-  if name_and_label[1] in ['DataArray_t']:
-    if pname_and_label[1] not in ['Periodic_t', 'ReferenceState_t']:
-      return True
-  return False
+  return write_lazy_wrapper(tree, filename, lambda X,Y: False)
 
