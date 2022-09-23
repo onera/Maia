@@ -326,6 +326,38 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
 
 
 
+def _iso_surf(part_tree, iso_field, iso_val, comm):
+  '''
+  Arguments :
+   - part_tree : [partitioned tree] from which isosurf is created
+   - iso_field : [string] used for isosurf computation (FlowSolutionName/FieldName)
+   - iso_value : [float] iso surf val
+  '''
+  # Check : monodomain part tree (eq 1 base ?)
+  bases = I.getBases(part_tree)
+  assert(len(bases)==1)
+
+  # Part tree iso creation from zone
+  part_tree_iso = I.newCGNSTree()
+  part_base_iso = I.newCGNSBase('Base', cellDim=dim-1, physDim=3, parent=part_tree_iso)
+
+  # Isosurf computation for each zone
+  for part_zone in I.getZones(part_tree):
+    # Check : vertex centered solution
+    assert(I.getNodeFromName(part_zone,"GridLocation")=="CellCenter")
+    
+    # Isosurf computation for zone
+    part_zone_iso = iso_surface_one_domain(part_zone)
+
+    # Fill isosurf part tree with isosurf zone
+    part_zone_iso = I.newZone(f'Zone.P{comm.Get_rank()}.N{0}',
+                              [[n_iso_vtx, n_iso_elt, 0]],
+                              'Unstructured',
+                              parent=part_base_iso)
+    print("[TODO] Stocker les infos pour l'interpolation qui suivra")
+
+
+  return part_tree_iso
 
 
 
@@ -333,17 +365,19 @@ def iso_surface_one_domain(part_zones, isosurf_type, comm,
 
 
 
-def iso_surface(part_tree,isosurf_type,comm,interpolate=None,out_part=False):
+
+def iso_surface(part_tree,isosurf_kind,comm,interpolate=None):
   ''' 
   Compute isosurface from field for a partitioned tree
   Return partition of the isosurface
   Arguments :
-    - part_tree  : partitioned tree
-    - type       : type of isosurface ('PLANE','SPHERE','FIELD' are available)
-    - fldpath    : path to the field used for isosurface
-    - comm       : MPI communicator
-    - iso_value  : isosurface value
+    - part_tree     : [partitioned tree] from which isosurf is created
+    - isosurf_kind  : [list]             type of isosurface and params
+    - interpolate   : [list]             paths to the field to interpolate
+    - comm          : [MPI communicator]
   '''
+  # Check : format of isosurf_kind
+  assert(len(isosurf_kind)==2)
 
   # from the part_tree, retrieve the paths of the distributed blocks
   # and return a dictionnary associating each path to the list of the corresponding
@@ -355,21 +389,8 @@ def iso_surface(part_tree,isosurf_type,comm,interpolate=None,out_part=False):
   # Piece of isosurfaces for each domains of the partition
   iso_doms = I.newCGNSTree()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    iso_part = iso_surface_one_domain(part_zones,isosurf_type,comm,
+    iso_part = iso_surface_one_domain(part_zones,isosurf_kind,comm,
                                       interpolate=interpolate,
                                       out_part=False                )
     I._addChild(iso_doms, iso_part)
 
-
-  # return iso_doms
-
-  if (out_part):
-    print("[i] OUTPUT : partition")
-    return iso_doms
-  else:
-    print("[i] OUTPUT : distibution")
-    # Part to Block
-    # I.printTree(iso_doms)
-    diso_doms = part_to_dist(iso_doms,comm)
-    # I.printTree(diso_doms)
-    return diso_doms
