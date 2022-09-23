@@ -1,5 +1,3 @@
-import Converter
-import Converter.PyTree   as C
 import maia.pytree        as PT
 
 from .fix_tree import fix_point_ranges, fix_zone_datatype, load_grid_connectivity_property
@@ -67,7 +65,7 @@ def add_sizes_to_tree(size_tree, size_data):
       add_sizes_to_zone_tree(zone, zone_path, size_data)
 
 
-def load_collective_size_tree(filename, comm):
+def load_collective_size_tree_cassiopee(filename, comm):
   """
     Load on all ranks a "size tree"
     a size tree is a partial tree that contains only the data needed to distribute the tree:
@@ -77,6 +75,7 @@ def load_collective_size_tree(filename, comm):
       then the dimensions are kept in a "MyArray#Size" node,
       at the same level as the array node would be
   """
+  import Converter
   skeleton_depth  = 7
   skeleton_n_data = 3
 
@@ -84,10 +83,10 @@ def load_collective_size_tree(filename, comm):
   if(comm.Get_rank() == 0):
     size_data = dict()
     assert Converter.checkFileType(filename) == "bin_hdf"
-    size_tree = C.convertFile2PyTree(filename,
-                                     skeletonData=[skeleton_n_data, skeleton_depth],
-                                     dataShape=size_data,
-                                     format='bin_hdf')
+    size_tree = Converter.PyTree.convertFile2PyTree(filename,
+                                                    skeletonData=[skeleton_n_data, skeleton_depth],
+                                                    dataShape=size_data,
+                                                    format='bin_hdf')
     fix_zone_datatype(size_tree, size_data)
     add_sizes_to_tree(size_tree, size_data)
     fix_point_ranges(size_tree)
@@ -99,3 +98,34 @@ def load_collective_size_tree(filename, comm):
 
   return size_tree
 
+def load_collective_size_tree_h5py(filename, comm):
+  from .hdf._hdf_cgns import load_lazy_wrapper
+
+  if comm.Get_rank() == 0:
+
+    #Define the function used to skip or not data
+    def skip_data(pname_and_label, name_and_label):
+      if pname_and_label[1] == 'UserDefinedData_t':
+        return False
+      if name_and_label[1] in ['IndexArray_t']:
+        return True
+      if name_and_label[1] in ['DataArray_t']:
+        if pname_and_label[1] not in ['Periodic_t', 'ReferenceState_t']:
+          return True
+      return False
+
+    size_tree = load_lazy_wrapper(filename, skip_data)
+
+    fix_point_ranges(size_tree)
+  else:
+    size_tree = None
+
+  size_tree = comm.bcast(size_tree, root=0)
+
+  return size_tree
+
+def load_collective_size_tree(filename, comm, legacy):
+  if legacy:
+    return load_collective_size_tree_cassiopee(filename, comm)
+  else:
+    return load_collective_size_tree_h5py(filename, comm)

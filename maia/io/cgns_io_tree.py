@@ -10,24 +10,37 @@ from .fix_tree                  import ensure_PE_global_indexing, _enforce_pdm_d
 from maia.factory     import distribute_tree
 from maia.pytree.yaml import parse_yaml_cgns
 
-def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
-  """
-  """
+def load_partial_cassiopee(filename, dist_tree, hdf_filter, comm):
+  import Converter.PyTree   as C
+  partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter, comm)
+
   for path, data in partial_dict_load.items():
     if path.startswith('/'):
       path = path[1:]
-    Node = PT.get_node_from_path(dist_tree, path)
-    Node[1] = data
+    node = PT.get_node_from_path(dist_tree, path)
+    node[1] = data
 
+def load_partial_h5py(filename, dist_tree, hdf_filter):
+  from h5py import h5f
+  from .hdf._hdf_cgns import open_from_path, load_data_partial
+  fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
 
-def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
+  for path, filter in hdf_filter.items():
+    if isinstance(filter, (list, tuple)):
+      node = PT.get_node_from_path(dist_tree, path[1:]) #! Path has '/'
+      gid = open_from_path(fid, path[1:])
+      node[1] = load_data_partial(gid, filter)
+
+def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() \
       if isinstance(value, (list, tuple))}
 
-  partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter_with_dim, comm)
-  update_tree_with_partial_load_dict(dist_tree, partial_dict_load)
+  if legacy:
+    load_partial_cassiopee(filename, dist_tree, hdf_filter_with_dim, comm)
+  else:
+    load_partial_h5py(filename, dist_tree, hdf_filter_with_dim)
 
   # > Match with callable
   hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() \
@@ -43,9 +56,12 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
         unlock_at_least_one = True
       except RuntimeError: # Not ready yet
         pass
-    partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, next_hdf_filter, comm)
 
-    update_tree_with_partial_load_dict(dist_tree, partial_dict_load)
+    if legacy:
+      load_partial_cassiopee(filename, dist_tree, next_hdf_filter, comm)
+    else:
+      load_partial_h5py(filename, dist_tree, next_hdf_filter)
+
     hdf_filter_with_func = {key: value for (key, value) in next_hdf_filter.items() \
         if not isinstance(value, (list, tuple))}
 
@@ -71,7 +87,7 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
 
   C.convertPyTree2FilePartial(saving_dist_tree, filename, comm, hdf_filter_with_dim, ParallelHDF=True)
 
-def file_to_dist_tree(filename, comm, distribution_policy='uniform'):
+def file_to_dist_tree(filename, comm, distribution_policy='uniform', legacy=False):
   """
   Distributed load of filename. Return a dist_tree.
   """
@@ -86,13 +102,18 @@ def file_to_dist_tree(filename, comm, distribution_policy='uniform'):
     dist_tree = distribute_tree(tree, comm, owner=0) 
 
   else:
-    dist_tree = load_collective_size_tree(filename, comm)
+    dist_tree = load_collective_size_tree(filename, comm, legacy)
     add_distribution_info(dist_tree, comm, distribution_policy)
 
-    hdf_filter = dict()
-    create_tree_hdf_filter(dist_tree, hdf_filter)
+    hdf_filter = create_tree_hdf_filter(dist_tree)
 
-    load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
+    # Coords#Size appears in dict -> remove it
+    if not legacy:
+      hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
+
+    load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
+    if not legacy:
+      PT.rm_nodes_from_name(dist_tree, '*#Size')
 
   return dist_tree
 
@@ -102,6 +123,5 @@ def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None):
   """
   filename = str(filename)
   if hdf_filter is None:
-    hdf_filter = dict()
-    create_tree_hdf_filter(dist_tree, hdf_filter)
+    hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter)
