@@ -24,12 +24,13 @@ import Converter.Internal as I
 
 
 # Import from MAIA
-from maia.transfer    import utils                as TEU
-from maia.factory     import dist_from_part       as disc
-from maia.factory     import recover_dist_tree    as part_to_dist
-from maia.pytree.maia import conventions          as conv
-from maia.pytree.sids import node_inspect         as sids
-from maia.utils       import np_utils,layouts
+from   maia.transfer    import utils                as TEU
+from   maia.factory     import dist_from_part       as disc
+from   maia.factory     import recover_dist_tree    as part_to_dist
+import maia.pytree.maia                             as MTM
+from   maia.pytree.maia import conventions          as conv
+from   maia.pytree.sids import node_inspect         as sids
+from   maia.utils       import np_utils,layouts
 
 # Import from PARADIGM
 import Pypdm.Pypdm as PDM
@@ -38,75 +39,126 @@ import Pypdm.Pypdm as PDM
 import numpy as np
 
 
+
+# =======================================================================================
+def exchange_field_one_domain(part_zones, part_tree_iso, interpolate, comm) :
+
+
+  # Part 1 : ISOSURF
+  # Part 2 : VOLUME
+  
+  # SUR QUE C'EST OK ? (NORMALEMENT UNE SEULE ZONE CREE PRECEDEMMENT))
+  part_tree_iso_zones = I.getZones(part_tree_iso)
+  assert(len(part_tree_iso_zones)==1)
+  iso_part_zone = part_tree_iso_zones[0]
+
+  for i_part, part_zone in enumerate(part_zones):
+    
+    
+    # --- Node TO Center for interpolation ----------------------------------------------
+    # --- Connectivity CELL -> VTX
+    nface         = I.getNodeFromName1(part_zone , 'NFaceElements')
+    cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
+    cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
+
+    ngon          = I.getNodeFromName1(part_zone, 'NGonElements')
+    face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
+    face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
+
+    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+
+    # --- Cell_centered solution (mean of vtx)
+    FS_cc = I.newFlowSolution('FlowSolution_cellCentered', gridLocation="CellCenter", parent=part_zone)
+    # print(interpolate)
+    for path in interpolate:
+      fld           = I.getNodeFromPath(part_zone, path)[1]
+      fld_cell_vtx  = fld[cell_vtx-1]
+      fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
+      fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
+
+      I.newDataArray(path.split('/')[1], fld_cc, parent=FS_cc)
+    
+
+    # --- Interpolation -----------------------------------------------------------------
+    # Get infos from isosurf needed for interpolation (OPTI AVEC FONCTION COMMENTEE ?)
+    # part1_node_gn_cell  = MTM.getGlobalNumbering(part_tree_iso)#, 'Cell') # 
+    # I.printTree(part1_node_gn_cell)
+    # import time ; time.sleep(1)
+    part1_node_gn       = I.getNodeFromName3(part_tree_iso, ":CGNS#GlobalNumbering")
+    part1_node_gn_cell  = I.getNodeFromName3(part1_node_gn, "Cell")
+    part1_elmt_ln_to_gn = I.getValue(part1_node_gn_cell)
+    
+    # Get parenting infos between part1 and part2
+    part1_to_part2       = I.getNodeFromName(part1_node_gn, "Elt_parent_gnum")[1]
+    
+    # Get infos from volume needed for interpolation
+    vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
+    part2_cell_ln_to_gn  = cell_ln_to_gn
+    part1_to_part2_idx   = np.arange(0, part2_cell_ln_to_gn.shape[0], dtype=np.int32 )
+
+    # Definition de l'objet Part_to_part
+    ptp = PDM.PartToPart(comm,
+                         [part1_elmt_ln_to_gn],
+                         [part2_cell_ln_to_gn],
+                         [part1_to_part2_idx] ,
+                         [part1_to_part2]     )
+
+    FS_iso      = I.newFlowSolution('FlowSolution', gridLocation="CellCenter", parent=iso_part_zone)
+    fld_cc      = []
+    part2_stri  = []
+
+    for ifld,path in enumerate(interpolate):
+      path_to_fld = "FlowSolution_cellCentered/"+path.split('/')[1]
+      # fld_cc.append(I.getNodeFromPath(part_zone, path_to_fld)[1])
+      # part2_stri.append(np.ones(fld_cc[0].shape[0], dtype=np.int32))
+      fld_cc     = [I.getNodeFromPath(part_zone, path_to_fld)[1]]
+      part2_stri = [np.ones(fld_cc[0].shape[0], dtype=np.int32)]
+    
+      req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                 fld_cc,
+                                 part2_stride=part2_stri)
+  
+      part1_strid, part1_data = ptp.reverse_wait(req_id)
+      I.newDataArray(path.split('/')[1], part1_data[0], parent=FS_iso)
+
+
+  return part_tree_iso
+# =======================================================================================
+
+
+
 # =======================================================================================
 def _exchange_field(part_tree, part_tree_iso, interpolate, comm) :
-  return None
   """
   Exchange field between part_tree and part_tree_iso
   for interpolate vol field 
   """
-  # # ----------------------------------
-  # # > Interpolation -> should be moved
-  # # Part 1 = Isosurf
-  # # Part 2 = Maillage init
-  # for i_part, part_zone in enumerate(part_zones):
-    
-  #   part1_elmt_ln_to_gn = results['np_elt_ln_to_gn']
-  #   part2_cell_ln_to_gn = cell_ln_to_gn
-  #   part1_to_part2_idx  = np.arange(0, part2_cell_ln_to_gn.shape[0], dtype=np.int32 )
-  #   part1_to_part2      = results["np_elt_parent_g_num"]
 
-  #   # Definition de l'objet Part_to_part
-  #   # print("DEF OBJET P2P",flush=True)
-  #   ptp = PDM.PartToPart(comm,
-  #                             [part1_elmt_ln_to_gn],
-  #                             [part2_cell_ln_to_gn],
-  #                             [part1_to_part2_idx] ,
-  #                             [part1_to_part2]     )
+  # Get zones by domains
+  part_tree_per_dom_dict = disc.get_parts_per_blocks(part_tree, comm)#.values()
+  # part_tree_per_dom_keys = part_tree_per_dom_dict.keys()
+  part_tree_per_dom      = part_tree_per_dom_dict.values()
 
-  #   FS_iso      = I.newFlowSolution('FlowSolution', gridLocation="CellCenter", parent=iso_part_zone)
-  #   fld_cc      = []
-  #   part2_stri  = []
+  # Check : monodomain (PAS PLUTOT SUR LES KEYS ?)
+  assert(len(part_tree_per_dom)==1)
 
-  #   for ifld,path in enumerate(interpolate):
-  #     path_to_fld = "FlowSolution_cellCentered/"+path.split('/')[1]
-  #     # fld_cc.append(I.getNodeFromPath(part_zone, path_to_fld)[1])
-  #     # part2_stri.append(np.ones(fld_cc[0].shape[0], dtype=np.int32))
-  #     fld_cc     = [I.getNodeFromPath(part_zone, path_to_fld)[1]]
-  #     part2_stri = [np.ones(fld_cc[0].shape[0], dtype=np.int32)]
-    
-  #     req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-  #                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-  #                                fld_cc,
-  #                                part2_stride=part2_stri)
-  
-  #     part1_strid, part1_data = ptp.reverse_wait(req_id)
-  #     I.newDataArray(path.split('/')[1], part1_data[0], parent=FS_iso)
+  # Loop over domains
+  for i_domain, part_zones in enumerate(part_tree_per_dom):
 
+    # Isosurf computation for zone
+    part_tree_iso = exchange_field_one_domain(part_zones, part_tree_iso, interpolate, comm)
 
-    # # --- Node TO Center for interpolation ---
-    # # --- Connectivity CELL -> VTX
-    # nface         = I.getNodeFromName1(part_zone , 'NFaceElements')
-    # cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
-    # cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
+  #   print("[TODO] Stocker les infos pour l'interpolation qui suivra")
 
-    # ngon          = I.getNodeFromName1(part_zone, 'NGonElements')
-    # face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
-    # face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
+  #   I._addChild(part_tree_iso,part_zone_iso)
 
-    # cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+  # return part_tree_iso
+  return part_tree_iso
 
-    # # --- Cell_centered solution (mean of vtx)
-    # FS_cc = I.newFlowSolution('FlowSolution_cellCentered', gridLocation="CellCenter", parent=part_zone)
-    # # print(interpolate)
-    # for path in interpolate:
-    #   fld           = I.getNodeFromPath(part_zone, path)[1]
-    #   fld_cell_vtx  = fld[cell_vtx-1]
-    #   fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
-    #   fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
-
-    #   I.newDataArray(path.split('/')[1], fld_cc, parent=FS_cc)
 # =======================================================================================
+
+
 
 
 
@@ -266,10 +318,11 @@ def iso_surface_one_domain(part_zones, iso_kind, comm):
 
   # > LN to GN
   gn_zone = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=iso_part_zone)
-  I.newDataArray('Vertex', results['np_vtx_ln_to_gn'], parent=gn_zone)
-  I.newDataArray('Cell'  , results['np_elt_ln_to_gn'], parent=gn_zone)
+  I.newDataArray('Vertex'         , results['np_vtx_ln_to_gn']    , parent=gn_zone)
+  I.newDataArray('Cell'           , results['np_elt_ln_to_gn']    , parent=gn_zone)
+  I.newDataArray('Elt_parent_gnum', results["np_elt_parent_g_num"], parent=gn_zone)
 
-  elmt_parent_gn = results["np_elt_parent_g_num"]
+  # elmt_parent_gn = results["np_elt_parent_g_num"]
  
   return iso_part_base
 # =======================================================================================
