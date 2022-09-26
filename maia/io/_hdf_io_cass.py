@@ -1,6 +1,10 @@
+import Converter
+import Converter.Filter
+import Converter.PyTree   as C
+
 import maia.pytree        as PT
 
-from .fix_tree import fix_point_ranges, fix_zone_datatype, load_grid_connectivity_property
+from .fix_tree import fix_point_ranges, fix_zone_datatype
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
@@ -65,7 +69,7 @@ def add_sizes_to_tree(size_tree, size_data):
       add_sizes_to_zone_tree(zone, zone_path, size_data)
 
 
-def load_collective_size_tree_cassiopee(filename, comm):
+def load_collective_size_tree(filename, comm):
   """
     Load on all ranks a "size tree"
     a size tree is a partial tree that contains only the data needed to distribute the tree:
@@ -75,7 +79,6 @@ def load_collective_size_tree_cassiopee(filename, comm):
       then the dimensions are kept in a "MyArray#Size" node,
       at the same level as the array node would be
   """
-  import Converter
   skeleton_depth  = 7
   skeleton_n_data = 3
 
@@ -98,34 +101,43 @@ def load_collective_size_tree_cassiopee(filename, comm):
 
   return size_tree
 
-def load_collective_size_tree_h5py(filename, comm):
-  from .hdf._hdf_cgns import load_lazy_wrapper
+def load_partial(filename, dist_tree, hdf_filter, comm):
+  partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter, comm)
 
-  if comm.Get_rank() == 0:
+  for path, data in partial_dict_load.items():
+    if path.startswith('/'):
+      path = path[1:]
+    node = PT.get_node_from_path(dist_tree, path)
+    node[1] = data
 
-    #Define the function used to skip or not data
-    def skip_data(pname_and_label, name_and_label):
-      if pname_and_label[1] == 'UserDefinedData_t':
-        return False
-      if name_and_label[1] in ['IndexArray_t']:
-        return True
-      if name_and_label[1] in ['DataArray_t']:
-        if pname_and_label[1] not in ['Periodic_t', 'ReferenceState_t']:
-          return True
-      return False
+def load_grid_connectivity_property(filename, tree):
+  """
+  Load the GridConnectivityProperty_t nodes that may be present in joins.
+  Because the transformation data is stored as numpy array, these nodes
+  are not loaded on the previous step.
+  """
+  # Prepare pathes
+  zgc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t'
+  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  gc_prop_pathes = []
+  for base,zone,zone_gc in PT.iter_children_from_predicates(tree, zgc_t_path, ancestors=True):
+    for gc in PT.iter_children_from_predicate(zone_gc, is_gc):
+      gc_prop = PT.get_child_from_label(gc, 'GridConnectivityProperty_t')
+      if gc_prop is not None:
+        gc_prop_path = '/'.join([base[0], zone[0], zone_gc[0], gc[0], gc_prop[0]])
+        gc_prop_pathes.append(gc_prop_path)
 
-    size_tree = load_lazy_wrapper(filename, skip_data)
+  # Load
+  gc_prop_nodes = Converter.Filter.readNodesFromPaths(filename, gc_prop_pathes)
 
-    fix_point_ranges(size_tree)
-  else:
-    size_tree = None
+  # Replace with loaded data
+  for path, gc_prop in zip(gc_prop_pathes, gc_prop_nodes):
+    gc_node_path = '/'.join(path.split('/')[:-1])
+    gc_node = PT.get_node_from_path(tree, gc_node_path)
+    PT.rm_children_from_label(gc_node, 'GridConnectivityProperty_t')
+    PT.add_child(gc_node, gc_prop)
 
-  size_tree = comm.bcast(size_tree, root=0)
 
-  return size_tree
+def write_partial(filename, dist_tree, hdf_filter, comm):
+  C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter, ParallelHDF=True)
 
-def load_collective_size_tree(filename, comm, legacy):
-  if legacy:
-    return load_collective_size_tree_cassiopee(filename, comm)
-  else:
-    return load_collective_size_tree_h5py(filename, comm)

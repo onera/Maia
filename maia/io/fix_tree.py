@@ -1,6 +1,5 @@
 from   mpi4py             import MPI
 import numpy              as     np
-import Converter.Filter   as     CFilter
 
 import maia.pytree        as PT
 
@@ -57,33 +56,6 @@ def fix_point_ranges(size_tree):
       T = compute_transform_matrix(transform)
       assert (point_range_d[:,1] == \
           apply_transform_matrix(point_range[:,1], point_range[:,0], point_range_d[:,0], T)).all()
-
-def load_grid_connectivity_property(filename, tree):
-  """
-  Load the GridConnectivityProperty_t nodes that may be present in joins.
-  Because the transformation data is stored as numpy array, these nodes
-  are not loaded on the previous step.
-  """
-  # Prepare pathes
-  zgc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t'
-  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-  gc_prop_pathes = []
-  for base,zone,zone_gc in PT.iter_children_from_predicates(tree, zgc_t_path, ancestors=True):
-    for gc in PT.iter_children_from_predicate(zone_gc, is_gc):
-      gc_prop = PT.get_child_from_label(gc, 'GridConnectivityProperty_t')
-      if gc_prop is not None:
-        gc_prop_path = '/'.join([base[0], zone[0], zone_gc[0], gc[0], gc_prop[0]])
-        gc_prop_pathes.append(gc_prop_path)
-
-  # Load
-  gc_prop_nodes = CFilter.readNodesFromPaths(filename, gc_prop_pathes)
-
-  # Replace with loaded data
-  for path, gc_prop in zip(gc_prop_pathes, gc_prop_nodes):
-    gc_node_path = '/'.join(path.split('/')[:-1])
-    gc_node = PT.get_node_from_path(tree, gc_node_path)
-    PT.rm_children_from_label(gc_node, 'GridConnectivityProperty_t')
-    PT.add_child(gc_node, gc_prop)
 
 def _enforce_pdm_dtype(tree):
   """

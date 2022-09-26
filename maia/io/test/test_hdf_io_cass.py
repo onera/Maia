@@ -1,6 +1,6 @@
 import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
-from maia.io import load_collective_size_tree as LC
+from maia.io import _hdf_io_cass as LC
 
 def test_add_sizes_to_zone_tree():
   yt = """
