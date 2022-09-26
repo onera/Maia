@@ -144,5 +144,5 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
 def read_full(filename):
   return C.convertFile2PyTree(filename)
 
-def write_full(filename, tree):
-  C.convertPyTree2File(tree, filename)
+def write_full(filename, tree, links=[]):
+  C.convertPyTree2File(tree, filename, links=links)

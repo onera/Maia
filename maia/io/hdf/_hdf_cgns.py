@@ -158,7 +158,7 @@ def load_data_partial(gid, filter):
   return array
 
 
-def write_data(gid, array):
+def write_data(gid, array, dataset_name=b' data'):
   """ Write a dataset on node gid from a numpy array,
   dumping all data (no hyperslab).  """
   array_view = array.T
@@ -166,7 +166,7 @@ def write_data(gid, array):
     array_view.dtype = np.int8
 
   space = h5s.create_simple(array_view.shape)
-  data = h5d.create(gid, b' data', h5t.py_create(array_view.dtype), space)
+  data = h5d.create(gid, dataset_name, h5t.py_create(array_view.dtype), space)
   data.write(h5s.ALL, h5s.ALL, array_view)
 
 def write_data_partial(gid, array, filter):
@@ -184,6 +184,21 @@ def write_data_partial(gid, array, filter):
   xfer_plist = h5p.create(h5p.DATASET_XFER)
   xfer_plist.set_dxpl_mpio(h5py.h5fd.MPIO_INDEPENDENT)
   data.write(m_dspace, hdf_space, array_view, dxpl=xfer_plist)
+
+def write_link(gid, node_name, target_file, target_node):
+  """ Create a linked child named node_name under the open parent node gid
+  Child links to the node target_node (absolute path) of file target_file. """
+  node_id = h5g.create(gid, node_name.encode())
+
+  attr_writter = AttributeRW()
+  attr_writter.write_str_33(node_id, b'name',  node_name)
+  attr_writter.write_str_33(node_id, b'label', '')
+  attr_writter.write_str_3 (node_id, b'type',  'LK')
+
+  write_data(node_id, np.array(tuple(target_file+'\0'), 'S1'), b' file')
+  write_data(node_id, np.array(tuple(target_node+'\0'), 'S1'), b' path')
+
+  node_id.links.create_external(" link".encode(), target_file.encode(), target_node.encode())
 
 def load_lazy(gid, parent, skip_if):
   """ Internal recursive implementation for load_lazy_wrapper.  """

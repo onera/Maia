@@ -30,12 +30,12 @@ def write_partial(filename, dist_tree, hdf_filter, comm, legacy):
     from ._hdf_io_h5py import write_partial
   write_partial(filename, dist_tree, hdf_filter, comm)
 
-def dump_tree(tree, filename, legacy):
+def dump_tree(tree, filename, links=[], legacy=False):
   if legacy:
     from ._hdf_io_cass import write_full
   else:
     from ._hdf_io_h5py import write_full
-  write_full(filename, tree)
+  write_full(filename, tree, links=links)
 
 def read_tree(filename, legacy=False):
   if legacy:

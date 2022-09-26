@@ -6,6 +6,7 @@ import maia.pytree as PT
 from .hdf._hdf_cgns import open_from_path
 from .hdf._hdf_cgns import load_lazy_wrapper, write_lazy_wrapper
 from .hdf._hdf_cgns import load_data_partial, write_data_partial
+from .hdf._hdf_cgns import write_link
 from .fix_tree      import fix_point_ranges
 
 def skip_data(pname_and_label, name_and_label):
@@ -62,6 +63,16 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
 def read_full(filename):
   return load_lazy_wrapper(filename, lambda X,Y: False)
 
-def write_full(filename, dist_tree):
+def write_full(filename, dist_tree, links=[]):
   write_lazy_wrapper(dist_tree, filename, lambda X,Y: False)
+
+  # Add links if any
+  fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
+  for link in links:
+    target_dir, target_file, target_node, local_node = link
+    parent_node_path = PT.path_head(local_node)
+    local_node_name  = PT.path_tail(local_node)
+    gid = open_from_path(fid, parent_node_path)
+    write_link(gid, local_node_name, target_file, target_node)
+  fid.close()
 
