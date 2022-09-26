@@ -141,3 +141,8 @@ def load_grid_connectivity_property(filename, tree):
 def write_partial(filename, dist_tree, hdf_filter, comm):
   C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter, ParallelHDF=True)
 
+def read_full(filename):
+  return C.convertFile2PyTree(filename)
+
+def write_full(filename, tree):
+  C.convertPyTree2File(tree, filename)

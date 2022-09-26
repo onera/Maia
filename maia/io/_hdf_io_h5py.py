@@ -58,3 +58,10 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
     gid.close()
   
   fid.close()
+
+def read_full(filename):
+  return load_lazy_wrapper(filename, lambda X,Y: False)
+
+def write_full(filename, dist_tree):
+  write_lazy_wrapper(dist_tree, filename, lambda X,Y: False)
+
