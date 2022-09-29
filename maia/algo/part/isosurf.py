@@ -39,16 +39,8 @@ import Pypdm.Pypdm as PDM
 import numpy as np
 
 
-
-# _NODE_INTERPOLATION = False
-_NODE_INTERPOLATION = True
-
-
-
-
 # =======================================================================================
-def exchange_field_one_domain_cc(part_zones, part_tree_iso, interpolate, comm) :
-
+def exchange_field_one_domain(part_zones, part_tree_iso, interpolate, comm) :
 
   # Part 1 : ISOSURF
   # Part 2 : VOLUME
@@ -59,151 +51,110 @@ def exchange_field_one_domain_cc(part_zones, part_tree_iso, interpolate, comm) :
   iso_part_zone = part_tree_iso_zones[0]
 
 
-  # --- P2P objects definition ----------------------------------------------
-  part1_elmt_ln_to_gn = []
-  part2_cell_ln_to_gn = []
-  part1_to_part2_idx  = []
-  part1_to_part2      = []
+  for container_name in interpolate :
 
-  for i_part, part_zone in enumerate(part_zones):
-    # ISOSURF infos
-    # part1_node_gn_cell  = MTM.getGlobalNumbering(part_tree_iso)#, 'Cell') # 
-    part1_node_gn       = I.getNodeFromName3(part_tree_iso, ":CGNS#GlobalNumbering")
-    part1_node_gn_cell  = I.getNodeFromName3(part1_node_gn, "Cell")
-    part1_elmt_ln_to_gn.append(I.getValue(part1_node_gn_cell))
+    # --- Get all fields names ------------------------------------------------
+    flds_in_container_names = []
+    first_zone_container    = I.getNodeFromName(part_zones[0],container_name)
+    for i_fld,fld_node in enumerate(I.getNodesFromType(first_zone_container,'DataArray_t')):
+      flds_in_container_names.append(fld_node[0])
+
+    # --- P2P objects definition ----------------------------------------------
+    part1_ln_to_gn      = []
+    part2_ln_to_gn      = []
+    part1_to_part2_idx  = []
+    part1_to_part2      = []
+    part1_weight        = []
     
-    # VOLUME infos
-    vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
-    part2_cell_ln_to_gn.append(cell_ln_to_gn)
-    
-    # LINK ISO/VOL infos
-    part1_to_part2.append(I.getNodeFromName(part1_node_gn, "Elt_parent_gnum")[1])
-    part1_to_part2_idx.append(np.arange(0, part1_elmt_ln_to_gn[i_part].shape[0]+1, dtype=np.int32 ))
-
-
-  # --- P2P Object ----------------------------------------------------------------------
-  ptp = PDM.PartToPart(comm,
-                       part1_elmt_ln_to_gn,
-                       part2_cell_ln_to_gn,
-                       part1_to_part2_idx ,
-                       part1_to_part2     )
-
-
-  # --- FlowSolution node def by zone ------------------------------------------------------------------
-  FS_iso = []
-  for i_part, part_zone in enumerate(part_zones):
-    FS_iso.append(I.newFlowSolution('FlowSolution', gridLocation="CellCenter", parent=iso_part_zone))
-
- 
-  # --- Field exchange ------------------------------------------------------------------
-  for ifld,path in enumerate(interpolate):
-    fld_vol     = []
-    part2_stri  = []
-
     for i_part, part_zone in enumerate(part_zones):
-      path_to_fld = "FlowSolution/"+path.split('/')[1]
-      fld_vol .append(I.getNodeFromPath(part_zone, path_to_fld)[1])
-      part2_stri.append(np.ones(fld_vol[0].shape[0], dtype=np.int32))
-
-    # RMQ : OK avec une stride constante ?
-    req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                               fld_vol,
-                               part2_stride=part2_stri)
-                               # part2_stride=1)
-
-    part1_strid, part1_data = ptp.reverse_wait(req_id)
-
-    for i_part, part_zone in enumerate(part_zones):
-      I.newDataArray(path.split('/')[1], part1_data[i_part], parent=FS_iso[i_part])
-
-
-  return part_tree_iso
-# =======================================================================================
-
-
-
-
-# =======================================================================================
-def exchange_field_one_domain_nc(part_zones, part_tree_iso, interpolate, comm) :
-
-
-  # Part 1 : ISOSURF
-  # Part 2 : VOLUME
-  
-  # Get Isosurf zones (just one normally)
-  part_tree_iso_zones = I.getZones(part_tree_iso)
-  assert(len(part_tree_iso_zones)==1)
-  iso_part_zone = part_tree_iso_zones[0]
-
-
-  # --- P2P objects definition ----------------------------------------------
-  part1_vtx_ln_to_gn  = []
-  part2_vtx_ln_to_gn  = []
-  part1_to_part2_idx  = []
-  part1_to_part2      = []
-  part1_weight        = []
-  
-  for i_part, part_zone in enumerate(part_zones):
-    
-    # ISOSURF infos
-    part1_node_gn       = I.getNodeFromName3(part_tree_iso, ":CGNS#GlobalNumbering")
-    part1_node_gn_vtx   = I.getNodeFromName(part1_node_gn, "Vertex")
-    part1_vtx_ln_to_gn.append(I.getValue(part1_node_gn_vtx))
-    
-    # VOLUME infos
-    vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
-    part2_vtx_ln_to_gn.append(vtx_ln_to_gn)
-    
-    # LINK ISO/VOL infos
-    part1_to_part2.append(    I.getNodeFromName(part1_node_gn, "Vtx_parent_gnum")[1])
-    part1_to_part2_idx.append(I.getNodeFromName(part1_node_gn, "Vtx_parent_idx") [1])
-    
-    # Get weight
-    part1_node_gn = I.getNodeFromName3(part_tree_iso, ":CGNS#GlobalNumbering")
-    part1_weight.append(I.getNodeFromName(part1_node_gn, "Vtx_parent_weight")[1])
-
-
-  # --- P2P Object ----------------------------------------------------------------------
-  ptp = PDM.PartToPart(comm,
-                       part1_vtx_ln_to_gn,
-                       part2_vtx_ln_to_gn,
-                       part1_to_part2_idx,
-                       part1_to_part2     )
-
-
-  # --- FlowSolution node def by zone ------------------------------------------------------------------
-  FS_iso = []
-  for i_part, part_zone in enumerate(part_zones):
-    FS_iso.append(I.newFlowSolution('FlowSolution', gridLocation="Vertex", parent=iso_part_zone))
-
-
-  # --- Field exchange ------------------------------------------------------------------
-  for ifld,path in enumerate(interpolate):
-    fld_vol     = []
-    part2_stri  = []
-
-    for i_part, part_zone in enumerate(part_zones):
-      fld_vol   .append(I.getNodeFromPath(part_zone, path)[1])
-      part2_stri.append(np.ones(fld_vol[0].shape[0], dtype=np.int32))
       
-    # Reverse iexch
-    # RMQ : OK avec une stride constante ?
-    req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                               fld_vol,
-                               # part2_stride=part2_stri)
-                               part2_stride=1)
+      # Get : Field location
+      container    = I.getNodeFromName(part_zone,container_name)
+      gridLocation = I.getValue(I.getNodeFromName(container,'GridLocation'))
+      # Check : correct GridLocation node
+      assert(gridLocation in ['Vertex','CellCenter'])
 
-    # Get result
-    part1_strid, part1_data = ptp.reverse_wait(req_id)
 
-    # Interpolation and placement
+      if gridLocation=='Vertex' :
+        # ISOSURF infos
+        part1_node_gn       = I.getNodeFromName3(part_tree_iso, ":CGNS#GlobalNumbering")
+        part1_node_gn_vtx   = I.getNodeFromName(part1_node_gn, "Vertex")
+        part1_ln_to_gn.append(I.getValue(part1_node_gn_vtx))
+        
+        # VOLUME infos
+        vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
+        part2_ln_to_gn.append(vtx_ln_to_gn)
+        
+        # LINK ISO/VOL infos
+        part1_to_part2.append(    I.getNodeFromName(part1_node_gn, "Vtx_parent_gnum")[1])
+        part1_to_part2_idx.append(I.getNodeFromName(part1_node_gn, "Vtx_parent_idx") [1])
+        
+        # Get weight
+        part1_node_gn = I.getNodeFromName3(part_tree_iso, ":CGNS#GlobalNumbering")
+        part1_weight.append(I.getNodeFromName(part1_node_gn, "Vtx_parent_weight")[1])
+
+
+      elif gridLocation=='CellCenter':
+        # ISOSURF infos
+        # part1_node_gn_cell  = MTM.getGlobalNumbering(part_tree_iso)#, 'Cell') # 
+        part1_node_gn       = I.getNodeFromName3(part_tree_iso, ":CGNS#GlobalNumbering")
+        part1_node_gn_cell  = I.getNodeFromName3(part1_node_gn, "Cell")
+        part1_ln_to_gn.append(I.getValue(part1_node_gn_cell))
+        
+        # VOLUME infos
+        vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
+        part2_ln_to_gn.append(cell_ln_to_gn)
+        
+        # LINK ISO/VOL infos
+        part1_to_part2.append(I.getNodeFromName(part1_node_gn, "Elt_parent_gnum")[1])
+        part1_to_part2_idx.append(np.arange(0, part1_ln_to_gn[i_part].shape[0]+1, dtype=np.int32 ))
+
+    # --- P2P Object --------------------------------------------------------------------
+    ptp = PDM.PartToPart(comm,
+                         part1_ln_to_gn,
+                         part2_ln_to_gn,
+                         part1_to_part2_idx,
+                         part1_to_part2     )
+
+
+    # --- FlowSolution node def by zone -------------------------------------------------
+    FS_iso = []
     for i_part, part_zone in enumerate(part_zones):
-      weighted_fld = part1_data[i_part]*part1_weight[i_part]
-      part1_fld    = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
-  
-      I.newDataArray(path.split('/')[1], part1_fld, parent=FS_iso[i_part])
+      FS_iso.append(I.newFlowSolution(container_name, gridLocation=gridLocation, parent=iso_part_zone))
+
+
+    # --- Field exchange ----------------------------------------------------------------
+    for i_fld,fld_name in enumerate(flds_in_container_names):
+      fld_data = []
+      # fld_stri = []
+      for i_part, part_zone in enumerate(part_zones):
+        container = I.getNodeFromName1(part_zone, container_name)
+        fld_node  = I.getNodeFromName1(container, fld_name)
+        fld_data.append(I.getValue(fld_node))
+        # fld_stri.append(np.ones(fld_data[i_part].shape[0], dtype=np.int32))
+
+        
+      # Reverse iexch
+      if   gridLocation=="Vertex"    : stride = 1
+      elif gridLocation=="CellCenter": stride = 1 #fld_stri[i_fld]
+
+      req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                 fld_data,
+                                 part2_stride=stride)
+      part1_strid, part1_data = ptp.reverse_wait(req_id)
+
+      
+      # Interpolation and placement
+      for i_part, part_zone in enumerate(part_zones):
+        path = fld_name
+        if   gridLocation=="Vertex"    :
+          weighted_fld = part1_data[i_part]*part1_weight[i_part]
+          part1_fld    = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
+          I.newDataArray(path, part1_fld, parent=FS_iso[i_part])    
+      
+        elif gridLocation=="CellCenter":
+          I.newDataArray(path, part1_data[i_part], parent=FS_iso[i_part])
 
   return part_tree_iso
 # =======================================================================================
@@ -218,24 +169,17 @@ def _exchange_field(part_tree, part_tree_iso, interpolate, comm) :
   """
 
   # Get zones by domains
-  part_tree_per_dom_dict = disc.get_parts_per_blocks(part_tree, comm)#.values()
-  # part_tree_per_dom_keys = part_tree_per_dom_dict.keys()
-  part_tree_per_dom      = part_tree_per_dom_dict.values()
+  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
 
-  # Check : monodomain (PAS PLUTOT SUR LES KEYS ?)
+  # Check : monodomain
   assert(len(part_tree_per_dom)==1)
 
   # Loop over domains
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    
-    # Isosurf computation for zone
-    if (_NODE_INTERPOLATION):
-      part_tree_iso = exchange_field_one_domain_nc(part_zones, part_tree_iso, interpolate, comm)
-    else :
-      part_tree_iso = exchange_field_one_domain_cc(part_zones, part_tree_iso, interpolate, comm)
-  
-  return part_tree_iso
+    part_tree_iso = exchange_field_one_domain(part_zones, part_tree_iso, interpolate, comm)
 
+
+  return part_tree_iso
 # =======================================================================================
 
 
@@ -251,12 +195,8 @@ def iso_surface_one_domain(part_zones, iso_kind, comm):
   """ 
 
   # --- Type of isosurf ---------------------------------------------------------------------
-  # print("[i] TYPE_of_ISOSURF : ", iso_kind[0],flush=True)
-  assert(len(iso_kind   )==2)
+  assert(len(iso_kind)==2)
   
-  fldpath   = "FlowSolution/Density" #-> DEBUG (fonctionne pas si on donne pas le champ)
-  iso_value = 0.                        #-> DEBUG (fonctionne pas si on donne pas le champ)
-
   if   iso_kind[0]=="PLANE" :
     assert(len(iso_kind[1])==4)
     PDM_type  = PDM._PDM_ISO_SURFACE_KIND_PLANE
@@ -279,15 +219,15 @@ def iso_surface_one_domain(part_zones, iso_kind, comm):
   elif iso_kind[0]=="FIELD" : 
     assert(len(iso_kind[1])==2)
     
-    # Check : vertex centered solution
-    flowsol_node = I.getNodeFromName(part_zones  ,"FlowSolution")
-    gridloc_node = I.getNodeFromName(flowsol_node,"GridLocation")
-    # assert(I.getValue(gridloc_node)=="Vertex")
-    assert(I.getValue(gridloc_node)=="CellCenter")
-    
-    PDM_type = PDM._PDM_ISO_SURFACE_KIND_FIELD 
     fldpath   = iso_kind[1][0]
     iso_value = iso_kind[1][1]
+    PDM_type = PDM._PDM_ISO_SURFACE_KIND_FIELD 
+
+    # Check : vertex centered solution (PDM_isosurf doesnt work with cellCentered field)
+    flowsol_node = I.getNodeFromName(part_zones  ,fldpath.split('/')[0])
+    gridloc_node = I.getNodeFromName(flowsol_node,"GridLocation")
+    assert(I.getValue(gridloc_node)=="Vertex")
+    
 
   else:
     print("[!][WARNING] isosurface.py : Error in type of IsoSurface ; Check your script")
@@ -370,8 +310,6 @@ def iso_surface_one_domain(part_zones, iso_kind, comm):
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
-  # print(results.keys())
-
   # > Tree construction
   iso_part_tree = I.newCGNSTree()
   iso_part_base = I.newCGNSBase('Base', cellDim=dim-1, physDim=3, parent=iso_part_tree)
@@ -402,22 +340,13 @@ def iso_surface_one_domain(part_zones, iso_kind, comm):
   I.newDataArray('Vertex'         , results['np_vtx_ln_to_gn']    , parent=gn_zone)
   I.newDataArray('Cell'           , results['np_elt_ln_to_gn']    , parent=gn_zone)
 
-  # I.printTree(iso_part_tree)
-
   # > Link between vol and isosurf
-  if (_NODE_INTERPOLATION):
-    print("_NODE_INTERPOLATION",_NODE_INTERPOLATION)
-    results_vtx = pdm_isos.part_iso_surface_vtx_interpolation_data_get()
-    I.newDataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=gn_zone)
-    I.newDataArray('Vtx_parent_gnum' , results_vtx["vtx_volume_vtx_g_num"] , parent=gn_zone)
-    I.newDataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=gn_zone)
+  results_vtx = pdm_isos.part_iso_surface_vtx_interpolation_data_get()
+  I.newDataArray('Elt_parent_gnum'  , results    ["np_elt_parent_g_num"]  , parent=gn_zone)
+  I.newDataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=gn_zone)
+  I.newDataArray('Vtx_parent_gnum'  , results_vtx["vtx_volume_vtx_g_num"] , parent=gn_zone)
+  I.newDataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=gn_zone)
   
-  else:
-    I.newDataArray('Elt_parent_gnum', results["np_elt_parent_g_num"], parent=gn_zone)
-
-  # elmt_parent_gn = results["np_elt_parent_g_num"]
-  # print("[DBG] FIN ISOSURF",flush=True)
- 
   return iso_part_base
 # =======================================================================================
 
@@ -433,8 +362,7 @@ def _iso_surface(part_tree, iso_kind, comm):
   '''
   Arguments :
    - part_tree : [partitioned tree] from which isosurf is created
-   - iso_field : [string] used for isosurf computation (FlowSolutionName/FieldName)
-   - iso_value : [float] iso surf val
+   - iso_kind  : [list]             [type_of_isosurf,isosurf_params]
   '''
 
   # Get zones by domains
@@ -443,15 +371,12 @@ def _iso_surface(part_tree, iso_kind, comm):
   # Check : monodomain
   assert(len(part_tree_per_dom)==1)
 
-  # Loop over domains
   part_tree_iso = I.newCGNSTree()
+
+  # Loop over domains : compute isosurf for each
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-
-    # Isosurf computation for zone
     part_zone_iso = iso_surface_one_domain(part_zones, iso_kind, comm)
-
     I._addChild(part_tree_iso,part_zone_iso)
-
 
   return part_tree_iso
 # =======================================================================================
@@ -467,7 +392,7 @@ def iso_surface(part_tree,isosurf_kind,comm,interpolate=None):
   Arguments :
     - part_tree     : [partitioned tree] from which isosurf is created
     - isosurf_kind  : [list]             type of isosurface and params
-    - interpolate   : [list]             paths to the field to interpolate
+    - interpolate   : [container]        
     - comm          : [MPI communicator]
   '''
   # Check : format of isosurf_kind
@@ -485,28 +410,3 @@ def iso_surface(part_tree,isosurf_kind,comm,interpolate=None):
 # =======================================================================================
 
 
-
-# # =======================================================================================
-# def slice(part_tree,slice_params,comm,interpolate=None):
-#   ''' 
-#   Compute isosurface from field for a partitioned tree
-#   Return partition of the isosurface
-#   Arguments :
-#     - part_tree     : [partitioned tree] from which isosurf is created
-#     - isosurf_kind  : [list]             type of isosurface and params
-#     - interpolate   : [list]             paths to the field to interpolate
-#     - comm          : [MPI communicator]
-#   '''
-#   # Check : format of isosurf_kind
-#   assert(len(isosurf_kind)==2)
-
-#   # Isosurface extraction
-#   part_tree_iso = _iso_surface(part_tree,isosurf_kind,comm)
-
-#   # Interpolation
-#   if interpolate is not None :
-#     # Assert ?
-#     part_tree_iso = _exchange_field(part_tree, part_tree_iso, interpolate, comm)
-
-#   return part_tree_iso
-# # =======================================================================================
