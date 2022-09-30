@@ -19,7 +19,7 @@ import maia
 
 
 # ----------------------------------------------------------------------------------------
-@mark_mpi_test([1, 2])
+@mark_mpi_test([1, 2, 3])
 def test_isosurf_U(sub_comm, write_output):
   
   # Cube generation
@@ -71,6 +71,7 @@ def test_isosurf_U(sub_comm, write_output):
 
 
   iso_kind = ["FIELD", ["FlowSolution_NC/cylinder",0.]]
+  iso_kind = ["PLANE", [1.,0.,0.,0.]]
 
   container     = ['FlowSolution_NC','FlowSolution_CC']
   part_tree_iso = ISS.iso_surface(part_tree,iso_kind,sub_comm,interpolate=container)
@@ -87,14 +88,14 @@ def test_isosurf_U(sub_comm, write_output):
   cylinder_cc   = I.getValue(I.getNodeFromName(node_sol_cc  ,'cylinder'      ))
 
   min_sphere_nc   = sub_comm.allreduce(np.min(sphere_nc  ),MPI.MIN)
-  max_sphere_nc   = sub_comm.allreduce(np.min(sphere_nc  ),MPI.MAX)
-  min_cylinder_nc = sub_comm.allreduce(np.min(cylinder_nc),MPI.MIN)
-  max_cylinder_nc = sub_comm.allreduce(np.min(cylinder_nc),MPI.MAX)
-
   min_sphere_cc   = sub_comm.allreduce(np.min(sphere_cc  ),MPI.MIN)
-  max_sphere_cc   = sub_comm.allreduce(np.min(sphere_cc  ),MPI.MAX)
+  max_sphere_nc   = sub_comm.allreduce(np.max(sphere_nc  ),MPI.MAX)
+  max_sphere_cc   = sub_comm.allreduce(np.max(sphere_cc  ),MPI.MAX)
+
+  min_cylinder_nc = sub_comm.allreduce(np.min(cylinder_nc),MPI.MIN)
   min_cylinder_cc = sub_comm.allreduce(np.min(cylinder_cc),MPI.MIN)
-  max_cylinder_cc = sub_comm.allreduce(np.min(cylinder_cc),MPI.MAX)
+  max_cylinder_nc = sub_comm.allreduce(np.max(cylinder_nc),MPI.MAX)
+  max_cylinder_cc = sub_comm.allreduce(np.max(cylinder_cc),MPI.MAX)
 
 
   if (sub_comm.Get_rank()==0) :
@@ -110,7 +111,7 @@ def test_isosurf_U(sub_comm, write_output):
 
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-
+    dist_tree = maia.factory.recover_dist_tree(part_tree,sub_comm)
     DTF(dist_tree, os.path.join(out_dir, 'dist_volume.cgns'), sub_comm)
     DTF(dist_tree_iso, os.path.join(out_dir, 'dist_isosurf.cgns'), sub_comm)
 
