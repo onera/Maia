@@ -79,11 +79,9 @@ def split_original_joins(p_tree):
             PT.new_PointList(name='PointListDonor', value=sub_pl_d    , parent=join_n)
             MT.newGlobalNumbering({'Index' : sub_lngn}, join_n)
             #Copy decorative nodes
-            skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', \
-                'GridConnectivityType', 'GridConnectivityDonorName']
+            skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', 'GridConnectivityType']
             for node in PT.get_children(gc):
               if PT.get_name(node) not in skip_nodes:
-                print(node[0])
                 PT.add_child(join_n, node)
             to_append.append(join_n)
 
@@ -92,6 +90,38 @@ def split_original_joins(p_tree):
         PT.rm_children_from_name(zone_gc, node)
       for node in to_append: #Append everything at the end; otherwise we may find a new jn when looking for an old one
         PT.add_child(zone_gc, node)
+
+def update_gc_donor_name(part_tree, comm):
+  """
+  Update or add the GridConnectivityDonorName name afted join splitting
+  """
+  is_initial_gc = lambda n: PT.get_label(n) == 'GridConnectivity_t' and not MT.conv.is_intra_gc(PT.get_name(n))
+  send_l = [list() for n in range(comm.Get_size())]
+  for p_base, p_zone in PT.iter_children_from_predicates(part_tree, 'CGNSBase_t/Zone_t', ancestors=True):
+    for gc in PT.iter_children_from_predicates(p_zone, ['ZoneGridConnectivity_t', is_initial_gc]):
+      cur_zone_path = PT.get_name(p_base) + '/' + PT.get_name(p_zone)
+      opp_zone_path = PT.getZoneDonorPath(PT.get_name(p_base), gc)
+      opp_rank = MT.conv.get_part_suffix(opp_zone_path)[0]
+      send_l[opp_rank].append((PT.get_name(gc), cur_zone_path, opp_zone_path))
+
+  recv_l = comm.alltoall(send_l)
+
+  for p_base, p_zone in PT.iter_children_from_predicates(part_tree, 'CGNSBase_t/Zone_t', ancestors=True):
+    for gc in PT.iter_children_from_predicates(p_zone, 'ZoneGridConnectivity_t/GridConnectivity_t'):
+      cur_zone_path = PT.get_name(p_base) + '/' + PT.get_name(p_zone)
+      opp_zone_path = PT.getZoneDonorPath(PT.get_name(p_base), gc)
+      if MT.conv.is_intra_gc(PT.get_name(gc)):
+        opp_name = MT.conv.name_intra_gc(*MT.conv.get_part_suffix(opp_zone_path),
+                                         *MT.conv.get_part_suffix(cur_zone_path))
+        PT.new_child(gc, 'GridConnectivityDonorName', 'Descriptor_t', opp_name)
+      else:
+        opp_rank = MT.conv.get_part_suffix(opp_zone_path)[0]
+        candidate_jns = [c[0] for c in recv_l[opp_rank] if c[1:] == (opp_zone_path, cur_zone_path)]
+        dist_donor_name = PT.get_value(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
+        candidate_jns = [jn for jn in candidate_jns if MT.conv.get_split_prefix(jn) == dist_donor_name]
+        assert len(candidate_jns) == 1
+        PT.rm_children_from_name(gc, 'GridConnectivityDonorName')
+        PT.new_child(gc, 'GridConnectivityDonorName', 'Descriptor_t', candidate_jns[0])
 
 def post_partitioning(dist_tree, part_tree, comm):
   """
@@ -115,4 +145,5 @@ def post_partitioning(dist_tree, part_tree, comm):
   # Match original joins
   JBTP.get_pl_donor(dist_tree, part_tree, comm)
   split_original_joins(part_tree)
+  update_gc_donor_name(part_tree, comm)
 

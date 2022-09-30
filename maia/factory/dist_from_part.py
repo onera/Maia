@@ -200,6 +200,8 @@ def recover_dist_tree(part_tree, comm):
     for jn in PT.iter_children_from_predicates(dist_zone, gc_t_path):
       val = PT.get_value(jn)
       PT.set_value(jn, MT.conv.get_part_prefix(val))
+      gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
+      PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
     # > Index exchange
     for d_zbc, d_bc in PT.iter_children_from_predicates(dist_zone, bc_t_path, ancestors=True):

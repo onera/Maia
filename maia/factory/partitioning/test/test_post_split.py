@@ -1,3 +1,5 @@
+from pytest_mpi_check._decorator import mark_mpi_test
+
 import numpy as np
 import maia.pytree        as PT
 
@@ -69,3 +71,34 @@ ZoneB.P1.N0 Zone_t:
   assert (PT.get_child_from_name(new_jn1, 'PointList')[1] == [9,1]).all()
   assert (PT.get_child_from_name(new_jn1, 'PointListDonor')[1] == [8,13]).all()
   assert (PT.get_node_from_name (new_jn1, 'Index')[1] == [1,6]).all()
+
+@mark_mpi_test(2)
+def test_update_gc_donor_name(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    pt = """
+    Base CGNSBase_t:
+      ZoneA.P0.N0 Zone_t:
+        ZGC ZoneGridConnectivity_t:
+          matchAB.0 GridConnectivity_t "ZoneB.P0.N0":
+            GridConnectivityDonorName Descriptor_t "matchBA":
+          matchAB.1 GridConnectivity_t "ZoneB.P1.N0":
+            GridConnectivityDonorName Descriptor_t "matchBA":
+      ZoneB.P0.N0 Zone_t:
+        ZGC ZoneGridConnectivity_t:
+          matchBA.0 GridConnectivity_t "ZoneA.P0.N0":
+            GridConnectivityDonorName Descriptor_t "matchAB":
+    """
+    expected = ['matchBA.0', 'matchBA.0', 'matchAB.0']
+  elif sub_comm.Get_rank() == 1:
+    pt = """
+    Base CGNSBase_t:
+      ZoneB.P1.N0 Zone_t:
+        ZGC ZoneGridConnectivity_t:
+          matchBA.0 GridConnectivity_t "ZoneA.P0.N0":
+            GridConnectivityDonorName Descriptor_t "matchAB":
+    """
+    expected = ['matchAB.1']
+  p_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  PS.update_gc_donor_name(p_tree, sub_comm)
+
+  assert [PT.get_value(n) for n in PT.get_nodes_from_name(p_tree, 'GridConnectivityDonorName')] == expected
