@@ -70,11 +70,10 @@ def test_isosurf_U(sub_comm, write_output):
       I.newDataArray(name, fld   , parent=FS_NC)
 
 
-  iso_kind = ["FIELD", ["FlowSolution_NC/cylinder",0.]]
-  iso_kind = ["PLANE", [1.,0.,0.,0.]]
+  #iso_kind = ["PLANE", [1.,0.,0.,0.]]
 
   container     = ['FlowSolution_NC','FlowSolution_CC']
-  part_tree_iso = ISS.iso_surface(part_tree,iso_kind,sub_comm,interpolate=container)
+  part_tree_iso = ISS.iso_surface(part_tree, "FlowSolution_NC/cylinder", sub_comm, interpolate=container)
   
   # Part to dist
   dist_tree_iso = part_to_dist(part_tree_iso,sub_comm)

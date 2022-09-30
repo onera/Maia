@@ -24,6 +24,7 @@ import Converter.Internal as I
 
 
 # Import from MAIA
+import maia.pytree as PT
 from   maia.transfer    import utils                as TEU
 from   maia.factory     import dist_from_part       as disc
 from   maia.factory     import recover_dist_tree    as part_to_dist
@@ -189,50 +190,19 @@ def _exchange_field(part_tree, part_tree_iso, interpolate, comm) :
 
 
 # =======================================================================================
-def iso_surface_one_domain(part_zones, iso_kind, comm):
+def iso_surface_one_domain(part_zones, iso_kind, iso_params, comm):
   """
   Compute isosurface in a zone
   """ 
+  _KIND_TO_SET_FUNC = {"PLANE"   : PDM.IsoSurface.plane_equation_set,
+                       "SPHERE"  : PDM.IsoSurface.sphere_equation_set,
+                       "ELLIPSE" : PDM.IsoSurface.ellipse_equation_set,
+                       "QUADRIC" : PDM.IsoSurface.quadric_equation_set}
 
-  # --- Type of isosurf ---------------------------------------------------------------------
-  assert(len(iso_kind)==2)
-  
-  if   iso_kind[0]=="PLANE" :
-    assert(len(iso_kind[1])==4)
-    PDM_type  = PDM._PDM_ISO_SURFACE_KIND_PLANE
+  PDM_type = eval(f"PDM._PDM_ISO_SURFACE_KIND_{iso_kind}")
 
-  elif iso_kind[0]=="SPHERE": 
-    assert(len(iso_kind[1])==4)
-    PDM_type  = PDM._PDM_ISO_SURFACE_KIND_SPHERE
-
-  elif iso_kind[0]=="ELLIPSE": 
-    assert(len(iso_kind[1])==7)
-    PDM_type  = PDM._PDM_ISO_SURFACE_KIND_ELLIPSE
-
-  elif iso_kind[0]=="QUADRIC": 
-    assert(len(iso_kind[1])==10)
-    PDM_type  = PDM._PDM_ISO_SURFACE_KIND_QUADRIC
-
-  elif iso_kind[0]=="HEART": 
-    PDM_type  = PDM._PDM_ISO_SURFACE_KIND_HEART
-
-  elif iso_kind[0]=="FIELD" : 
-    assert(len(iso_kind[1])==2)
-    
-    fldpath   = iso_kind[1][0]
-    iso_value = iso_kind[1][1]
-    PDM_type = PDM._PDM_ISO_SURFACE_KIND_FIELD 
-
-    # Check : vertex centered solution (PDM_isosurf doesnt work with cellCentered field)
-    flowsol_node = I.getNodeFromName(part_zones  ,fldpath.split('/')[0])
-    gridloc_node = I.getNodeFromName(flowsol_node,"GridLocation")
-    assert(I.getValue(gridloc_node)=="Vertex")
-    
-
-  else:
-    print("[!][WARNING] isosurface.py : Error in type of IsoSurface ; Check your script")
-    return None
-  # ------------------------------------------------------------------------------------------
+  if iso_kind=="FIELD" : 
+    assert isinstance(iso_params, list) and len(iso_params) == len(part_zones)
 
 
   n_part = len(part_zones)
@@ -241,32 +211,25 @@ def iso_surface_one_domain(part_zones, iso_kind, comm):
   # Definition of the PDM object IsoSurface
   pdm_isos = PDM.IsoSurface(comm, dim, PDM_type, n_part)
 
-
-  # PDM plane/sphere equation definition
-  if   iso_kind[0]=="PLANE"   : pdm_isos.plane_equation_set(*iso_kind[1])
-  elif iso_kind[0]=="SPHERE"  : pdm_isos.sphere_equation_set(*iso_kind[1])
-  elif iso_kind[0]=="ELLIPSE" : pdm_isos.ellipse_equation_set(*iso_kind[1])
-  elif iso_kind[0]=="QUADRIC" : pdm_isos.quadric_equation_set(*iso_kind[1])
+  if iso_kind=="FIELD":
+    for i_part, part_zone in enumerate(part_zones):
+      pdm_isos.part_field_set(i_part, iso_params[i_part])
+  else:
+    _KIND_TO_SET_FUNC[iso_kind](pdm_isos, *iso_params)
 
 
   # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
-    # Get NGon + NFac
-    gridc_n    = I.getNodeFromName1(part_zone, 'GridCoordinates')
-    cx         = I.getNodeFromName1(gridc_n  , 'CoordinateX'    )[1]
-    cy         = I.getNodeFromName1(gridc_n  , 'CoordinateY'    )[1]
-    cz         = I.getNodeFromName1(gridc_n  , 'CoordinateZ'    )[1]
+    cx, cy, cz = PT.Zone.coordinates(part_zone)
     vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
-    # Julien : fonction pour faire ca ?
-    ngons  = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if sids.Element.CGNSName(e) == 'NGON_n']
-    nfaces = [e for e in I.getNodesFromType1(part_zone, 'Elements_t') if sids.Element.CGNSName(e) == 'NFACE_n']
-    assert len(nfaces) == len(ngons) == 1
+    ngon  = PT.Zone.NGonNode(part_zone)
+    nface = PT.Zone.NFaceNode(part_zone)
 
-    cell_face_idx = I.getNodeFromName1(nfaces[0], "ElementStartOffset" )[1]
-    cell_face     = I.getNodeFromName1(nfaces[0], "ElementConnectivity")[1]
-    face_vtx_idx  = I.getNodeFromName1( ngons[0], "ElementStartOffset" )[1]
-    face_vtx      = I.getNodeFromName1( ngons[0], "ElementConnectivity")[1]
+    cell_face_idx = I.getNodeFromName1(nface, "ElementStartOffset" )[1]
+    cell_face     = I.getNodeFromName1(nface, "ElementConnectivity")[1]
+    face_vtx_idx  = I.getNodeFromName1(ngon, "ElementStartOffset" )[1]
+    face_vtx      = I.getNodeFromName1(ngon, "ElementConnectivity")[1]
 
     vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
 
@@ -293,12 +256,6 @@ def iso_surface_one_domain(part_zones, iso_kind, comm):
                       None,
                       vtx_ln_to_gn ,
                       vtx_coords)
-
-    # Get field from path to compute the isosurf / Placement in PDM object
-    if iso_kind[0]=="FIELD" : 
-      field    = I.getNodeFromPath(part_zone, fldpath)
-      field[1] = field[1] - np.full(field[1].shape[0], iso_value)
-      pdm_isos.part_field_set(i_part, field[1])
 
 
   # Isosurfaces compute in PDM  
@@ -358,12 +315,13 @@ def iso_surface_one_domain(part_zones, iso_kind, comm):
 
 
 # =======================================================================================
-def _iso_surface(part_tree, iso_kind, comm):
-  '''
+def _iso_surface(part_tree, iso_field_path, iso_val, comm):
+  """
   Arguments :
    - part_tree : [partitioned tree] from which isosurf is created
    - iso_kind  : [list]             [type_of_isosurf,isosurf_params]
-  '''
+  """
+  fs_name, field_name = iso_field_path.split('/')
 
   # Get zones by domains
   part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
@@ -375,7 +333,16 @@ def _iso_surface(part_tree, iso_kind, comm):
 
   # Loop over domains : compute isosurf for each
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    part_zone_iso = iso_surface_one_domain(part_zones, iso_kind, comm)
+
+    field_values = []
+    for part_zone in part_zones:
+      # Check : vertex centered solution (PDM_isosurf doesnt work with cellCentered field)
+      flowsol_node = I.getNodeFromName1(part_zone, fs_name)
+      field_node   = I.getNodeFromName1(flowsol_node, field_name)
+      assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
+      field_values.append(PT.get_value(field_node) - iso_val)
+
+    part_zone_iso = iso_surface_one_domain(part_zones, "FIELD", field_values, comm)
     I._addChild(part_tree_iso,part_zone_iso)
 
   return part_tree_iso
@@ -385,21 +352,21 @@ def _iso_surface(part_tree, iso_kind, comm):
 
 
 # =======================================================================================
-def iso_surface(part_tree,isosurf_kind,comm,interpolate=None):
+def iso_surface(part_tree, iso_field, comm, iso_val=0, interpolate=None):
   ''' 
   Compute isosurface from field for a partitioned tree
   Return partition of the isosurface
   Arguments :
     - part_tree     : [partitioned tree] from which isosurf is created
+    - iso_field     : [str]              Path of the field to use to compute isosurface
+    - iso_val       : [float]            Value to use to compute isosurface (default = 0)
     - isosurf_kind  : [list]             type of isosurface and params
     - interpolate   : [container]        
     - comm          : [MPI communicator]
   '''
-  # Check : format of isosurf_kind
-  assert(len(isosurf_kind)==2)
 
   # Isosurface extraction
-  part_tree_iso = _iso_surface(part_tree,isosurf_kind,comm)
+  part_tree_iso = _iso_surface(part_tree, iso_field, iso_val, comm)
 
   # Interpolation
   if interpolate is not None :
