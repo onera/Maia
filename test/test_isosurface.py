@@ -19,8 +19,9 @@ import maia
 
 
 # ----------------------------------------------------------------------------------------
+@pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
 @mark_mpi_test([1, 2, 3])
-def test_isosurf_U(sub_comm, write_output):
+def test_isosurf_U(elt_type,sub_comm, write_output):
   
   # Cube generation
   n_vtx = 10
@@ -75,7 +76,11 @@ def test_isosurf_U(sub_comm, write_output):
   #iso_kind = ["PLANE", [1.,0.,0.,0.]]
 
   container     = ['FlowSolution_NC','FlowSolution_CC']
-  part_tree_iso = ISS.iso_surface(part_tree, "FlowSolution_NC/cylinder", sub_comm, interpolate=container)
+  part_tree_iso = ISS.iso_surface(part_tree,
+                                  "FlowSolution_NC/cylinder",
+                                  sub_comm,
+                                  interpolate=container,
+                                  elt_type=elt_type)
   
   # Part to dist
   dist_tree_iso = part_to_dist(part_tree_iso,sub_comm)
