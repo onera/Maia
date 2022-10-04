@@ -1,8 +1,17 @@
+import pytest
+
+know_cassiopee = True
+try:
+  import Converter
+except ImportError:
+  know_cassiopee = False
+
 import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
-from maia.io import _hdf_io_cass as LC
 
+@pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 def test_add_sizes_to_zone_tree():
+  from maia.io import _hdf_io_cass as LC
   yt = """
 Zone Zone_t:
   Hexa Elements_t [17, 0]:
@@ -50,7 +59,9 @@ Zone Zone_t:
   assert (PT.get_node_from_path(zone, 'FSPL/PointList#Size')[1] == [1,10]).all()
   assert (PT.get_node_from_path(zone, 'FS/PointList#Size') is None)
 
+@pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 def test_add_sizes_to_tree():
+  from maia.io import _hdf_io_cass as LC
   yt = """
 BaseA CGNSBase_t:
   Zone Zone_t:

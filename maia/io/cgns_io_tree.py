@@ -143,4 +143,4 @@ def dump_trees(tree, filename, comm, legacy=False):
   base_name, extension = os.path.splitext(filename)
   base_name += f"_{comm.Get_rank()}"
   _filename = base_name + extension
-  dump_tree(tree, _filename, legacy)
+  dump_tree(tree, _filename, links=[], legacy=legacy)

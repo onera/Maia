@@ -16,9 +16,9 @@ def save_part_tree(part_tree, filename, comm, legacy=False):
   IOT.dump_tree(part_tree, subfilename, legacy=legacy) #Use direct API to manage name
 
   _links = comm.gather(links, root=0)
-  links  = [l for proc_links in _links for l in proc_links] #Flatten gather result
 
   if(comm.Get_rank() == 0):
+    links  = [l for proc_links in _links for l in proc_links] #Flatten gather result
     top_tree = PT.new_CGNSTree()
     for link in links:
       base_name, zone_name = link[2].split("/")
