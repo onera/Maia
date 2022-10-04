@@ -28,7 +28,9 @@ def test_isosurf_U(sub_comm, write_output):
   
   # Partionning option
   zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
-  part_tree     = PPA.partition_dist_tree(dist_tree, sub_comm, zone_to_parts=zone_to_parts)
+  part_tree     = PPA.partition_dist_tree(dist_tree, sub_comm,
+                                          zone_to_parts=zone_to_parts,
+                                          preserve_orientation=True)
 
   # Solution initialisation
   for zone in I.getZones(part_tree):
@@ -109,7 +111,7 @@ def test_isosurf_U(sub_comm, write_output):
     print( "========================================")
 
   if write_output:
-    out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
     dist_tree = maia.factory.recover_dist_tree(part_tree,sub_comm)
     DTF(dist_tree, os.path.join(out_dir, 'dist_volume.cgns'), sub_comm)
     DTF(dist_tree_iso, os.path.join(out_dir, 'dist_isosurf.cgns'), sub_comm)

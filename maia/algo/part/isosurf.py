@@ -303,7 +303,12 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, comm):
   I.newDataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=gn_zone)
   I.newDataArray('Vtx_parent_gnum'  , results_vtx["vtx_volume_vtx_g_num"] , parent=gn_zone)
   I.newDataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=gn_zone)
-  
+
+  results_geom = pdm_isos.part_iso_surface_geom_data_get()
+  # print(results_geom.values())
+  I.newDataArray('Surface', results_geom["elt_surface"], parent=gn_zone)
+
+
   return iso_part_base
 # =======================================================================================
 
@@ -360,13 +365,72 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0, interpolate=None):
     - part_tree     : [partitioned tree] from which isosurf is created
     - iso_field     : [str]              Path of the field to use to compute isosurface
     - iso_val       : [float]            Value to use to compute isosurface (default = 0)
-    - isosurf_kind  : [list]             type of isosurface and params
     - interpolate   : [container]        
     - comm          : [MPI communicator]
   '''
 
   # Isosurface extraction
   part_tree_iso = _iso_surface(part_tree, iso_field, iso_val, comm)
+
+  # Interpolation
+  if interpolate is not None :
+    # Assert ?
+    part_tree_iso = _exchange_field(part_tree, part_tree_iso, interpolate, comm)
+
+  return part_tree_iso
+# =======================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# =======================================================================================
+def _iso_plane(part_tree, plane_eq, comm):
+  """
+  Arguments :
+   - part_tree : [partitioned tree] from which isosurf is created
+   - iso_kind  : [list]             [type_of_isosurf,isosurf_params]
+  """
+  # Get zones by domains
+  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
+  
+  # Check : monodomain
+  assert(len(part_tree_per_dom)==1)
+
+  part_tree_iso = I.newCGNSTree()
+
+  # Loop over domains : compute isosurf for each
+  for i_domain, part_zones in enumerate(part_tree_per_dom):
+
+    part_zone_iso = iso_surface_one_domain(part_zones, "PLANE", plane_eq, comm)
+    I._addChild(part_tree_iso,part_zone_iso)
+
+  return part_tree_iso
+# =======================================================================================
+
+# =======================================================================================
+def iso_plane(part_tree, plane_eq, comm, interpolate=None):
+  ''' 
+  Compute isosurface from field for a partitioned tree
+  Return partition of the isosurface
+  Arguments :
+    - part_tree   : [partitioned tree] from which isosurf is created
+    - plane_eq    : [list]             plane equation [a,b,c,d]
+    - interpolate : [container]        
+    - comm        : [MPI communicator]
+  '''
+
+  # Isosurface extraction
+  part_tree_iso = _iso_plane(part_tree, plane_eq, comm)
 
   # Interpolation
   if interpolate is not None :
