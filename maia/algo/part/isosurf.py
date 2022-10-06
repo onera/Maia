@@ -351,7 +351,8 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       flowsol_node = I.getNodeFromName1(part_zone, fs_name)
       field_node   = I.getNodeFromName1(flowsol_node, field_name)
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
-      field_values.append(PT.get_value(field_node) - iso_val)
+      # field_values.append(PT.get_value(field_node) - iso_val)
+      field_values.append(I.getValue(field_node) - iso_val)
 
     part_zone_iso = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
     I._addChild(part_tree_iso,part_zone_iso)
@@ -360,7 +361,7 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
 # ---------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------
-def iso_surface(part_tree, iso_field, comm, iso_val=0, interpolate=None, elt_type="TRIA3"):
+def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_type="TRIA3"):
   ''' 
   Compute isosurface from field for a partitioned tree
   Return partition of the isosurface
