@@ -6,7 +6,7 @@ import maia.pytree        as PT
 
 from maia                  import npy_pdm_gnum_dtype
 from maia.utils            import np_utils
-from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix
+from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix, gc_is_reference
 
 def fix_zone_datatype(size_tree, size_data):
   """
@@ -43,16 +43,17 @@ def fix_point_ranges(size_tree):
       nb_points_d  = np.sign(transform)*(point_range_d[donor_dir,1] - point_range_d[donor_dir,0])
       dir_to_swap  = (nb_points != nb_points_d)
 
-      if gc_path < gc_opp_path:
-        dir_to_swap = dir_to_swap[donor_dir]
-        point_range_d[dir_to_swap, 0], point_range_d[dir_to_swap, 1] = \
-            point_range_d[dir_to_swap, 1], point_range_d[dir_to_swap, 0]
-      elif gc_path > gc_opp_path:
-        point_range[dir_to_swap, 0], point_range[dir_to_swap, 1] = \
-            point_range[dir_to_swap, 1], point_range[dir_to_swap, 0]
-      # If same base/zone, transform should be 1, 2, 3
-      else:
-        assert (dir_to_swap == False).all()
+      if dir_to_swap.any():
+        if gc_is_reference(gc, gc_path, gc_opp_path):
+
+          opp_dir_to_swap = np.empty_like(dir_to_swap)
+          opp_dir_to_swap[donor_dir] = dir_to_swap
+
+          point_range_d[opp_dir_to_swap, 0], point_range_d[opp_dir_to_swap, 1] = \
+              point_range_d[opp_dir_to_swap, 1], point_range_d[opp_dir_to_swap, 0]
+        else:
+          point_range[dir_to_swap, 0], point_range[dir_to_swap, 1] = \
+              point_range[dir_to_swap, 1], point_range[dir_to_swap, 0]
 
       T = compute_transform_matrix(transform)
       assert (point_range_d[:,1] == \
