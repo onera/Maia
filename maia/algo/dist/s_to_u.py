@@ -44,6 +44,11 @@ def gc_is_reference(gc_s, zone_path, zone_path_opp):
         return True
       elif bnd_axis_val > bnd_axis_val_d:
         return False
+      else: #Same position in boundary axis
+        if np.sum(pr) < np.sum(prd):
+          return True
+        elif np.sum(pr) > np.sum(prd):
+          return False
   raise ValueError("Unable to determine if node is reference")
 
 ###############################################################################
