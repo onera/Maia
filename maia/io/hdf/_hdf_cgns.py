@@ -232,8 +232,9 @@ def load_lazy(gid, parent, skip_if):
   pynode = [name, value, [], label]
   parent[2].append(pynode)
 
-  for i, child_name in enumerate(gid):
+  for i in range(len(gid)):
     if gid.get_objtype_by_idx(i) == h5g.GROUP:
+      child_name = gid.get_objname_by_idx(i)
       child_id = h5g.open(gid, child_name)
       load_lazy(child_id, pynode, skip_if)
 
