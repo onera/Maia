@@ -22,6 +22,161 @@ import Pypdm.Pypdm as PDM
 
 
 
+
+
+
+
+# =======================================================================================
+def exchange_field_one_domain(part_zones, part_tree_ep, exchange, comm) :
+
+  # Part 1 : EXTRACT_PART
+  # Part 2 : VOLUME
+  
+  # Get Isosurf zones (just one normally)
+  part_tree_ep_zones = I.getZones(part_tree_ep)
+  assert(len(part_tree_ep_zones)==1)
+  ep_part_zone = part_tree_ep_zones[0]
+
+
+  for container_name in exchange :
+
+    # --- Get all fields names ------------------------------------------------
+    flds_in_container_names = []
+    first_zone_container    = I.getNodeFromName(part_zones[0],container_name)
+    for i_fld,fld_node in enumerate(I.getNodesFromType(first_zone_container,'DataArray_t')):
+      flds_in_container_names.append(fld_node[0])
+
+    # --- P2P objects definition ----------------------------------------------
+    part1_ln_to_gn      = []
+    part2_ln_to_gn      = []
+    part1_to_part2_idx  = []
+    part1_to_part2      = []
+    part1_weight        = []
+    
+    for i_part, part_zone in enumerate(part_zones):
+      
+      # Get : Field location
+      container    = I.getNodeFromName(part_zone,container_name)
+      gridLocation = I.getValue(I.getNodeFromName(container,'GridLocation'))
+      # Check : correct GridLocation node
+      assert(gridLocation in ['Vertex','CellCenter'])
+
+      if gridLocation=='Vertex' :
+        # EXTRACT_PART infos
+        part1_node_gn       = I.getNodeFromName2(part_tree_ep, ":CGNS#GlobalNumbering")
+        part1_node_gn_vtx   = I.getNodeFromName(part1_node_gn, "Vertex")
+        part1_ln_to_gn.append(I.getValue(part1_node_gn_vtx))
+        
+        # VOLUME infos
+        vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
+        part2_ln_to_gn.append(vtx_ln_to_gn)
+        
+        # LINK EP/VOL infos
+        part1_to_part2.append(    I.getNodeFromName(part1_node_gn, "ParentVtx")[1])
+
+        part1_to_part2_idx.append(np.arange(0, part1_ln_to_gn[i_part].shape[0]+1, dtype=np.int32 ))
+
+
+      elif gridLocation=='CellCenter':
+        # EXTRACT_PART infos
+        # part1_node_gn_cell  = MTM.getGlobalNumbering(part_tree_ep)#, 'Cell') # 
+        part1_node_gn       = I.getNodeFromName2(part_tree_ep, ":CGNS#GlobalNumbering")
+        part1_node_gn_cell  = I.getNodeFromName2(part1_node_gn, "Cell")
+        part1_ln_to_gn.append(I.getValue(part1_node_gn_cell))
+        
+        # VOLUME infos
+        vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
+        part2_ln_to_gn.append(cell_ln_to_gn)
+        
+        # LINK ISO/VOL infos
+        part1_to_part2.append(I.getNodeFromName(part1_node_gn, "ParentCell")[1])
+        part1_to_part2_idx.append(np.arange(0, part1_ln_to_gn[i_part].shape[0]+1, dtype=np.int32 ))
+
+    # --- P2P Object --------------------------------------------------------------------
+    ptp = PDM.PartToPart(comm,
+                         part1_ln_to_gn,
+                         part2_ln_to_gn,
+                         part1_to_part2_idx,
+                         part1_to_part2     )
+
+
+    # --- FlowSolution node def by zone -------------------------------------------------
+    FS_ep = []
+    for i_part, part_zone in enumerate(part_zones):
+      FS_ep.append(I.newFlowSolution(container_name, gridLocation=gridLocation, parent=ep_part_zone))
+
+
+    # --- Field exchange ----------------------------------------------------------------
+    for i_fld,fld_name in enumerate(flds_in_container_names):
+      fld_data = []
+      # fld_stri = []
+      for i_part, part_zone in enumerate(part_zones):
+        container = I.getNodeFromName1(part_zone, container_name)
+        fld_node  = I.getNodeFromName1(container, fld_name)
+        fld_data.append(I.getValue(fld_node))
+        # fld_stri.append(np.ones(fld_data[i_part].shape[0], dtype=np.int32))
+
+        
+      # Reverse iexch
+      if   gridLocation=="Vertex"    : stride = 1
+      elif gridLocation=="CellCenter": stride = 1 #fld_stri[i_fld]
+
+      req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                 fld_data,
+                                 part2_stride=stride)
+      part1_strid, part1_data = ptp.reverse_wait(req_id)
+
+      
+      # Interpolation and placement
+      for i_part, part_zone in enumerate(part_zones):
+        path = fld_name
+        if   gridLocation=="Vertex"    :
+          I.newDataArray(path, part1_data[i_part], parent=FS_ep[i_part])    
+      
+        elif gridLocation=="CellCenter":
+          I.newDataArray(path, part1_data[i_part], parent=FS_ep[i_part])
+
+  return part_tree_ep
+# =======================================================================================
+
+
+
+# =======================================================================================
+def _exchange_field(part_tree, part_tree_ep, exchange, comm) :
+  """
+  Exchange field between part_tree and part_tree_ep
+  for exchange vol field 
+  """
+
+  # Get zones by domains
+  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
+
+  # Check : monodomain
+  assert(len(part_tree_per_dom)==1)
+
+  # Loop over domains
+  for i_domain, part_zones in enumerate(part_tree_per_dom):
+    part_tree_ep = exchange_field_one_domain(part_zones, part_tree_ep, exchange, comm)
+
+
+  return part_tree_ep
+# =======================================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def extract_part_one_domain(part_zones, zsrpath, comm, equilibrate=1):
@@ -152,20 +307,27 @@ def extract_part_one_domain(part_zones, zsrpath, comm, equilibrate=1):
     face_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_FACE)
     cell_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
 
-    gn_face = I.newUserDefinedData(':CGNS#GlobalNumbering',   parent=ngon_n)
+    # PARENT_LN_TO_GN nodes
+    # parent_ln_to_gn_cell = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
+    parent_ln_to_gn_vtx  = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
+
+    gn_face = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=ngon_n)
     I.newDataArray('Element', face_ln_to_gn, parent=gn_face)
     
-    gn_cell = I.newUserDefinedData(':CGNS#GlobalNumbering',   parent=nface_n)
+    gn_cell = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=nface_n)
     I.newDataArray('Element', cell_ln_to_gn, parent=gn_cell)
 
-    gn_zone = I.newUserDefinedData(':CGNS#GlobalNumbering',   parent=extract_part_zone)
-    I.newDataArray('Vertex', vtx_ln_to_gn ,  parent=gn_zone)
-    I.newDataArray('Cell'  , cell_ln_to_gn,  parent=gn_zone)
+    gn_zone = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=extract_part_zone)
+    I.newDataArray('Vertex'    , vtx_ln_to_gn        , parent=gn_zone)
+    I.newDataArray('Cell'      , cell_ln_to_gn       , parent=gn_zone)
+
 
 
   # --- P2P exchange field --------------------------------------------------------------
   np_part2_cell        = cell_ln_to_gn
   np_part2_cell_parent = pdm_ep.parent_ln_to_gn_get(0, PDM._PDM_MESH_ENTITY_CELL  )
+  I.newDataArray('ParentCell', np_part2_cell_parent, parent=gn_zone)
+  I.newDataArray('ParentVtx' , parent_ln_to_gn_vtx , parent=gn_zone)
 
   part2_to_part1_idx = np.arange(0, np_part1_cell_ln_to_gn[0].shape[0], dtype=np.int32 )
 
@@ -186,16 +348,13 @@ def extract_part_one_domain(part_zones, zsrpath, comm, equilibrate=1):
                              part2_stride=[part2_stri])
   part1_strid, part1_data = ptp.reverse_wait(req_id)
 
-
-  # TODO : communiquer sur les BC ?
-
   return extract_part_base
 # ---------------------------------------------------------------------------------------
 
 
 
 # ---------------------------------------------------------------------------------------
-def extract_part(part_tree, fspath, comm, equilibrate=1):
+def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None):
   """
   """
 
@@ -207,9 +366,24 @@ def extract_part(part_tree, fspath, comm, equilibrate=1):
 
   extract_doms = I.newCGNSTree()
   
+
+  # Compute extract part of each domain
   for i_domain, part_zones in enumerate(part_tree_per_dom):
     extract_part = extract_part_one_domain(part_zones, fspath, comm,equilibrate=equilibrate)
     I._addChild(extract_doms, extract_part)
+
+
+  # Exchange fields between two parts
+  if exchange is not None:
+    extract_part = _exchange_field(part_tree, extract_part, exchange, comm)
+  
+
+  # TODO : communiquer sur les BC ?
+
+
+  # CHECK : fonctionne sur des faces ?
+
+
 
   return extract_doms
 # ---------------------------------------------------------------------------------------
