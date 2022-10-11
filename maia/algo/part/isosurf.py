@@ -116,7 +116,6 @@ def exchange_field_one_domain(part_zones, part_tree_iso, interpolate, comm) :
                          part2_ln_to_gn,
                          part1_to_part2_idx,
                          part1_to_part2     )
-    print("[MAIA] fin init P2P")
 
 
     # --- FlowSolution node def by zone -------------------------------------------------
@@ -264,9 +263,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 
 
   # Isosurfaces compute in PDM  
-  print("[MAIA] bef calcul isosurf")
   pdm_isos.compute()
-  print("[MAIA] fin calcul isosurf")
 
   # Mesh build from result
   results = pdm_isos.part_iso_surface_surface_get()
