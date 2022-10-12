@@ -185,15 +185,20 @@ def extract_part_one_domain(part_zones, zsrpath, comm, equilibrate=1):
   n_part = len(part_zones)
   dim    = 3
 
+  print("[MAIA] EXTRACT_PART : DEF")
   pdm_ep = PDM.ExtractPart(dim,
                            n_part,
                            1, # n_part_out
                            equilibrate,
+                           # PDM._PDM_SPLIT_DUAL_WITH_PARMETIS,
+                           # PDM._PDM_SPLIT_DUAL_WITH_PTSCOTCH,
                            PDM._PDM_SPLIT_DUAL_WITH_HILBERT,
+                           True,
                            comm)
 
   np_part1_cell_ln_to_gn = list()
 
+  print("[MAIA] EXTRACT_PART : PART_SET")
   # Loop over domain zone : preparing extract part
   for i_part, part_zone in enumerate(part_zones):
     # Get NGon + NFac
@@ -240,6 +245,8 @@ def extract_part_one_domain(part_zones, zsrpath, comm, equilibrate=1):
 
     pdm_ep.selected_lnum_set(i_part, extract_l_num[1])
 
+
+  print("[MAIA] EXTRACT_PART : COMPUTE")
   pdm_ep.compute()
 
 
@@ -254,6 +261,7 @@ def extract_part_one_domain(part_zones, zsrpath, comm, equilibrate=1):
   # > Base construction
   extract_part_base = I.newCGNSBase('Base', cellDim=dim, physDim=3)
 
+  print("[MAIA] EXTRACT_PART : ZONE CONSTRUCTION")
   # > Zone construction
   # --- Extract_part 2D -----------------------------------------------------------------
   if n_extract_cell == 0:
@@ -308,7 +316,7 @@ def extract_part_one_domain(part_zones, zsrpath, comm, equilibrate=1):
     cell_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
 
     # PARENT_LN_TO_GN nodes
-    # parent_ln_to_gn_cell = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
+    parent_ln_to_gn_cell = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
     parent_ln_to_gn_vtx  = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
 
     gn_face = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=ngon_n)
@@ -320,34 +328,9 @@ def extract_part_one_domain(part_zones, zsrpath, comm, equilibrate=1):
     gn_zone = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=extract_part_zone)
     I.newDataArray('Vertex'    , vtx_ln_to_gn        , parent=gn_zone)
     I.newDataArray('Cell'      , cell_ln_to_gn       , parent=gn_zone)
-
-
-
-  # --- P2P exchange field --------------------------------------------------------------
-  np_part2_cell        = cell_ln_to_gn
-  np_part2_cell_parent = pdm_ep.parent_ln_to_gn_get(0, PDM._PDM_MESH_ENTITY_CELL  )
-  I.newDataArray('ParentCell', np_part2_cell_parent, parent=gn_zone)
-  I.newDataArray('ParentVtx' , parent_ln_to_gn_vtx , parent=gn_zone)
-
-  part2_to_part1_idx = np.arange(0, np_part1_cell_ln_to_gn[0].shape[0], dtype=np.int32 )
-
-  # > On a la connectivity part2_to_part1 car part1 = les parents
-  ptp = PDM.PartToPart(comm,
-                       [np_part2_cell],
-                       np_part1_cell_ln_to_gn,
-                       [part2_to_part1_idx],
-                       [np_part2_cell_parent])
-
-  part2_stri = np.ones(np_part1_cell_ln_to_gn[0].shape[0], dtype=np.int32)
-  part2_data = np_part1_cell_ln_to_gn
-
-  #￿> Stride variable
-  req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                             np_part1_cell_ln_to_gn,
-                             part2_stride=[part2_stri])
-  part1_strid, part1_data = ptp.reverse_wait(req_id)
-
+    I.newDataArray('ParentCell', parent_ln_to_gn_cell, parent=gn_zone)
+    I.newDataArray('ParentVtx' , parent_ln_to_gn_vtx , parent=gn_zone)
+# 
   return extract_part_base
 # ---------------------------------------------------------------------------------------
 
