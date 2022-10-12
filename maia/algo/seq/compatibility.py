@@ -23,17 +23,19 @@ def enforce_ngon_pe_local(t):
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')
     pe[1] = maia.algo.indexing.get_ngon_pe_local(ngon_node)
 
-def poly_new_to_old(t, full_onera_compatibility=True):
+def poly_new_to_old(tree, full_onera_compatibility=True):
   """
   Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.
 
   The tree is modified in place.
 
   Args:
-    t (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
+    tree (CGNSTree): Tree described with new CGNS convention.
     full_onera_compatibility (bool): if ``True``, shift NFace and ParentElements ids to begin at 1, irrespective of the NGon and NFace ElementRanges, and make the NFace connectivity unsigned
   """
-  for z in zones_iterator(t):
+  cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
+  PT.set_value(cg_version_node, 3.1)
+  for z in PT.get_all_Zone_t(tree):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = PT.get_value(PT.get_child_from_name(ngon , "ElementRange"       ))
@@ -58,7 +60,7 @@ def poly_new_to_old(t, full_onera_compatibility=True):
     ctree_algo.indexed_to_interleaved_connectivity(nface)
 
 
-def poly_old_to_new(t):
+def poly_old_to_new(tree):
   """
   Transform a tree with polyhedral unstructured connectivity with old CGNS 3.x conventions to new CGNS 4.x conventions.
 
@@ -67,9 +69,11 @@ def poly_old_to_new(t):
   This function accepts trees with old ONERA conventions where NFace and ParentElements ids begin at 1, irrespective of the NGon and NFace ElementRanges, and where the NFace connectivity is unsigned. The resulting tree has the correct CGNS/SIDS conventions.
 
   Args:
-    t (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
+    tree (CGNSTree): Tree described with old CGNS convention.
   """
-  for z in zones_iterator(t):
+  cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
+  PT.set_value(cg_version_node, 4.2)
+  for z in PT.get_all_Zone_t(tree):
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = PT.get_value(PT.get_child_from_name(ngon , "ElementRange"))

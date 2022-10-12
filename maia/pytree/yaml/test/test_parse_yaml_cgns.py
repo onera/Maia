@@ -12,7 +12,7 @@ def test_empty_tree():
   assert node is None
 
   complete_t = parse_yaml_cgns.to_cgns_tree(yt)
-  assert complete_t == ["CGNSTree",None,[['CGNSLibraryVersion', [4.2], [], 'CGNSLibraryVersion_t']],"CGNSTree_t"]
+  assert complete_t == ["CGNSTree",None,[['CGNSLibraryVersion', np.array([4.2], np.float32), [], 'CGNSLibraryVersion_t']],"CGNSTree_t"]
 
 
 def test_simple_tree():

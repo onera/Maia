@@ -36,12 +36,13 @@ def _convert_value(value):
     else:
       result = np.asfortranarray(value)
   # value as a single value
-  elif isinstance(value, float):   # "R8"
+  elif isinstance(value, float):   # "R4"
     # print(f"-> value as float")
-    result = np.array([value],'d')
+    result = np.array([value],'f')
   elif isinstance(value, int):     # "I4"
     # print(f"-> value as int")
-    result = np.array([value],'i')
+    dtype = np.int32 if abs(value) < np.iinfo(np.int32).max else np.int64
+    result = np.array([value], dtype)
   elif isinstance(value, str):     # "C1"
     # print(f"-> value as str with {CGK.cgns_to_dtype[CGK.C1]}")
     result = np.array([c for c in value], CGK.cgns_to_dtype[CGK.C1])
@@ -53,12 +54,14 @@ def _convert_value(value):
     # print(f"-> value as Iterable : {_flatten(value)}")
     try:
       first_value = next(_flatten(value))
-      if isinstance(first_value, float):                       # "R8"
+      if isinstance(first_value, float):                       # "R4"
         # print(f"-> first_value as float")
-        result = np.array(value, dtype=np.float64, order='F')
+        result = np.array(value, dtype=np.float32, order='F')
       elif isinstance(first_value, int):                       # "I4"
         # print(f"-> first_value as int")
-        result = np.array(value, dtype=np.int32, order='F')
+        max_val = max([abs(x) for x in _flatten(value)])
+        dtype = np.int32 if max_val < np.iinfo(np.int32).max else np.int64
+        result = np.array(value, dtype=dtype, order='F')
       elif isinstance(first_value, str):                       # "C1"
         # print(f"-> first_value as with {CGK.cgns_to_dtype[CGK.C1]}")
         # WARNING: string numpy is limited to rank=2

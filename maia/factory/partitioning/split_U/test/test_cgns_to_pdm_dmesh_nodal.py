@@ -31,9 +31,9 @@ def test_cgns_dist_zone_to_pdm_dmesh_nodal(sub_comm):
     dt = f"""
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0., 0.5, 1.,  0. , 0.5, 1. ]:
-    CoordinateY DataArray_t [0., 0.,  0.,  0.5, 0.5, 0.5]:
-    CoordinateZ DataArray_t [0., 0.,  0.,  0. , 0. , 0. ]:
+    CoordinateX DataArray_t R8 [0., 0.5, 1.,  0. , 0.5, 1. ]:
+    CoordinateY DataArray_t R8 [0., 0.,  0.,  0.5, 0.5, 0.5]:
+    CoordinateZ DataArray_t R8 [0., 0.,  0.,  0. , 0. , 0. ]:
   Hexa Elements_t [17,0]:
     ElementRange IndexRange_t [1,4]:
     ElementConnectivity DataArray_t {dtype} [1,2,5,4,10,11,14,13,  2,3,6,5,11,12,15,14]:
@@ -49,9 +49,9 @@ ZoneU Zone_t [[18,6,0]]:
     dt = f"""
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0., 0.5, 1., 0., 0.5, 1.]:
-    CoordinateY DataArray_t [1.,  1., 1., 0.,  0., 0.]:
-    CoordinateZ DataArray_t [0.,  0., 0., 1.,  1., 1.]:
+    CoordinateX DataArray_t R8 [0., 0.5, 1., 0., 0.5, 1.]:
+    CoordinateY DataArray_t R8 [1.,  1., 1., 0.,  0., 0.]:
+    CoordinateZ DataArray_t R8 [0.,  0., 0., 1.,  1., 1.]:
   Hexa Elements_t [17,0]:
     ElementRange IndexRange_t [1,4]:
     ElementConnectivity DataArray_t {dtype} [4,5,8,7,13,14,17,16]:
@@ -67,9 +67,9 @@ ZoneU Zone_t [[18,6,0]]:
     dt = f"""
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0.,  0.5, 1.,  0.,  0.5, 1.]:
-    CoordinateY DataArray_t [0.5, 0.5, 0.5, 1.,  1.,  1.]:
-    CoordinateZ DataArray_t [1.,  1.,  1.,  1.,  1. , 1.]:
+    CoordinateX DataArray_t R8 [0.,  0.5, 1.,  0.,  0.5, 1.]:
+    CoordinateY DataArray_t R8 [0.5, 0.5, 0.5, 1.,  1.,  1.]:
+    CoordinateZ DataArray_t R8 [1.,  1.,  1.,  1.,  1. , 1.]:
   Hexa Elements_t [17,0]:
     ElementRange IndexRange_t [1,4]:
     ElementConnectivity DataArray_t {dtype} [5,6,9,8,14,15,18,17]:

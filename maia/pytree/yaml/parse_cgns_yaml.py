@@ -22,7 +22,7 @@ def generate_line(node, lines, ident=0, line_max=120):
   value      = None
   if isinstance(node_value, str):
     value = f"'{node_value}'"
-  elif isinstance(node_value, (int, float, list)):
+  elif isinstance(node_value, (int, float, list, np.float32)):
     value = str(node_value)
   elif isinstance(node_value, (tuple, set)):
     value = str(list(node_value))

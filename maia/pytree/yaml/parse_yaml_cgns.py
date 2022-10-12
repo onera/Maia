@@ -21,9 +21,8 @@ def parse_node(node):
     if len(value) > 2 and value[:2] in CGK.cgns_types:
       cgns_type = value[:2]
       value     = value[2:].strip().replace(' ', '')
-      # value = np.array(ast.literal_eval(value), order='F', dtype=CGK.cgns_to_dtype[cgns_type])
       py_value = ast.literal_eval(value)
-      value = N.access._convert_value(py_value)
+      value = np.array(py_value, dtype=CGK.cgns_to_dtype[cgns_type], order='F')
       if value.dtype != CGK.cgns_to_dtype[cgns_type]:
         value = value.astype(CGK.cgns_to_dtype[cgns_type])
     else:

@@ -19,9 +19,9 @@ src_part_0 = f"""
 ZoneU Zone_t [[18,4,0]]:
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1.]:
-    CoordinateY DataArray_t [0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1., 0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1.]:
-    CoordinateZ DataArray_t [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]:
+    CoordinateX DataArray_t R8 [0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1.]:
+    CoordinateY DataArray_t R8 [0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1., 0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1.]:
+    CoordinateZ DataArray_t R8 [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]:
   NGon Elements_t [22,0]:
     ElementRange IndexRange_t [1,20]:
     ElementConnectivity DataArray_t:
@@ -53,9 +53,9 @@ src_part_1 = f"""
 ZoneU Zone_t [[18,4,0]]:
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1.]:
-    CoordinateY DataArray_t [0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1., 0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1.]:
-    CoordinateZ DataArray_t [1., 1., 1., 1., 1., 1., 1., 1., 1., 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]:
+    CoordinateX DataArray_t R8 [0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1.]:
+    CoordinateY DataArray_t R8 [0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1., 0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1.]:
+    CoordinateZ DataArray_t R8 [1., 1., 1., 1., 1., 1., 1., 1., 1., 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]:
   NGon Elements_t [22,0]:
     ElementRange IndexRange_t [1,20]:
     ElementConnectivity DataArray_t:
@@ -87,9 +87,9 @@ tgt_part_0 = f"""
 ZoneU Zone_t [[12,2,0]]:
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0.2, 0.2, 0.2, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7]:
-    CoordinateY DataArray_t [0.2 , 0.2 , 0.2 , 0.2 , 0.7, 0.7, 0.2 , 0.7, 0.7, 0.2 , 0.7, 0.7]:
-    CoordinateZ DataArray_t [-0.2 , 0.3, 0.8 , -0.2 , -0.2 , -0.2 , 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
+    CoordinateX DataArray_t R8 [0.2, 0.2, 0.2, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7, 0.7, 0.2, 0.7]:
+    CoordinateY DataArray_t R8 [0.2 , 0.2 , 0.2 , 0.2 , 0.7, 0.7, 0.2 , 0.7, 0.7, 0.2 , 0.7, 0.7]:
+    CoordinateZ DataArray_t R8 [-0.2 , 0.3, 0.8 , -0.2 , -0.2 , -0.2 , 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
   NGon Elements_t [22,0]:
     ElementRange IndexRange_t [1,11]:
     ElementConnectivity DataArray_t:
@@ -109,9 +109,9 @@ tgt_part_1 = f"""
 ZoneU Zone_t [[16,3,0]]:
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0.2, 0.2, 0.2, 0.7, 1.2, 0.2, 0.7, 0.7, 0.2, 0.7, 1.2, 0.7, 1.2, 0.2, 0.7, 1.2]:
-    CoordinateY DataArray_t [1.2, 1.2, 1.2, 1.2, 1.2, 0.7, 0.7, 1.2, 0.7, 0.7, 0.7, 1.2, 1.2, 0.7, 0.7, 0.7]:
-    CoordinateZ DataArray_t [-.2, 0.3, 0.8, 0.8, 0.8, -.2,-.2 ,-.2 , 0.3, 0.3, 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
+    CoordinateX DataArray_t R8 [0.2, 0.2, 0.2, 0.7, 1.2, 0.2, 0.7, 0.7, 0.2, 0.7, 1.2, 0.7, 1.2, 0.2, 0.7, 1.2]:
+    CoordinateY DataArray_t R8 [1.2, 1.2, 1.2, 1.2, 1.2, 0.7, 0.7, 1.2, 0.7, 0.7, 0.7, 1.2, 1.2, 0.7, 0.7, 0.7]:
+    CoordinateZ DataArray_t R8 [-.2, 0.3, 0.8, 0.8, 0.8, -.2,-.2 ,-.2 , 0.3, 0.3, 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
   NGon Elements_t [22,0]:
     ElementRange IndexRange_t [1,16]:
     ElementConnectivity DataArray_t:
@@ -133,9 +133,9 @@ tgt_part_2 = f"""
 ZoneU Zone_t [[16,3,0]]:
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [1.2, 1.2, 1.2, 1.2, 1.2, 0.7, 0.7, 0.7, 0.7, 0.7, 1.2, 0.7, 1.2, 0.7, 0.7, 1.2]:
-    CoordinateY DataArray_t [0.2, 0.7, 1.2, 0.2, 0.2, 0.2, 0.7, 1.2, 0.2, 0.7, 0.7, 1.2, 1.2, 0.2, 0.7, 0.7]:
-    CoordinateZ DataArray_t [-.2, -.2, -.2, 0.3, 0.8, -.2, -.2, -.2, 0.3, 0.3, 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
+    CoordinateX DataArray_t R8 [1.2, 1.2, 1.2, 1.2, 1.2, 0.7, 0.7, 0.7, 0.7, 0.7, 1.2, 0.7, 1.2, 0.7, 0.7, 1.2]:
+    CoordinateY DataArray_t R8 [0.2, 0.7, 1.2, 0.2, 0.2, 0.2, 0.7, 1.2, 0.2, 0.7, 0.7, 1.2, 1.2, 0.2, 0.7, 0.7]:
+    CoordinateZ DataArray_t R8 [-.2, -.2, -.2, 0.3, 0.8, -.2, -.2, -.2, 0.3, 0.3, 0.3, 0.3, 0.3, 0.8, 0.8, 0.8]:
   NGon Elements_t [22,0]:
     ElementRange IndexRange_t [1,16]:
     ElementConnectivity DataArray_t:

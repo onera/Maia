@@ -198,7 +198,7 @@ def test_new_DataArray():
   assert N.get_value(data).dtype == np.float64
 
 def test_new_GridCoordinates():
-  gco = presets.new_GridCoordinates('MyGridCoords', fields={'CX' : [1,2,3], 'CY' : [1.,2,3]})
+  gco = presets.new_GridCoordinates('MyGridCoords', fields={'CX' : [1,2,3], 'CY' : np.array([1.,2,3])})
   expected = parse_yaml_cgns.to_node("""
   MyGridCoords GridCoordinates_t:
     CX DataArray_t I4 [1,2,3]:
@@ -213,7 +213,7 @@ def test_new_FlowSolution():
   MySol FlowSolution_t:
     GridLocation GridLocation_t "CellCenter":
     data1 DataArray_t I4 [1,2,3]:
-    data2 DataArray_t R8 [1,2,3]:
+    data2 DataArray_t R4 [1,2,3]:
   """)
   assert is_same_tree(expected, sol)
 
@@ -226,7 +226,7 @@ def test_new_ZoneSubRegion():
     GridLocation GridLocation_t "Vertex":
     PointList IndexArray_t [[1,4,6]]:
     data1 DataArray_t I4 [1,2,3]:
-    data2 DataArray_t R8 [1,2,3]:
+    data2 DataArray_t R4 [1,2,3]:
   """)
   assert is_same_tree(expected, zsr)
 

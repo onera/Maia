@@ -13,9 +13,9 @@ def test_cgns_dist_zone_to_pdm_dmesh(sub_comm):
     dt = """
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0., 0.5, 1.,  0. , 0.5, 1. ]:
-    CoordinateY DataArray_t [0., 0.,  0.,  0.5, 0.5, 0.5]:
-    CoordinateZ DataArray_t [0., 0.,  0.,  0. , 0. , 0. ]:
+    CoordinateX DataArray_t R8 [0., 0.5, 1.,  0. , 0.5, 1. ]:
+    CoordinateY DataArray_t R8 [0., 0.,  0.,  0.5, 0.5, 0.5]:
+    CoordinateZ DataArray_t R8 [0., 0.,  0.,  0. , 0. , 0. ]:
   NGonElements Elements_t [22,0]:
     ElementRange IndexRange_t [1,20]:
     ElementConnectivity DataArray_t:
@@ -34,9 +34,9 @@ ZoneU Zone_t [[18,6,0]]:
     dt = """
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0., 0.5, 1., 0., 0.5, 1.]:
-    CoordinateY DataArray_t [1.,  1., 1., 0.,  0., 0.]:
-    CoordinateZ DataArray_t [0.,  0., 0., 1.,  1., 1.]:
+    CoordinateX DataArray_t R8 [0., 0.5, 1., 0., 0.5, 1.]:
+    CoordinateY DataArray_t R8 [1.,  1., 1., 0.,  0., 0.]:
+    CoordinateZ DataArray_t R8 [0.,  0., 0., 1.,  1., 1.]:
   NGonElements Elements_t [22,0]:
     ElementRange IndexRange_t [1,20]:
     ElementConnectivity DataArray_t:
@@ -55,9 +55,9 @@ ZoneU Zone_t [[18,6,0]]:
     dt = """
 ZoneU Zone_t [[18,6,0]]:
   GridCoordinates GridCoordinates_t:
-    CoordinateX DataArray_t [0.,  0.5, 1.,  0.,  0.5, 1.]:
-    CoordinateY DataArray_t [0.5, 0.5, 0.5, 1.,  1.,  1.]:
-    CoordinateZ DataArray_t [1.,  1.,  1.,  1.,  1. , 1.]:
+    CoordinateX DataArray_t R8 [0.,  0.5, 1.,  0.,  0.5, 1.]:
+    CoordinateY DataArray_t R8 [0.5, 0.5, 0.5, 1.,  1.,  1.]:
+    CoordinateZ DataArray_t R8 [1.,  1.,  1.,  1.,  1. , 1.]:
   NGonElements Elements_t [22,0]:
     ElementRange IndexRange_t [1,20]:
     ElementConnectivity DataArray_t:

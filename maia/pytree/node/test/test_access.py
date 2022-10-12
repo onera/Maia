@@ -21,8 +21,10 @@ def test_convert_value():
   assert NA._convert_value(None) is None
   converted = NA._convert_value(12)
   assert  converted == np.array([12]) and converted.dtype==np.int32
+  converted = NA._convert_value(12000000000)
+  assert  converted == np.array([12000000000]) and converted.dtype==np.int64
   converted = NA._convert_value(-12.0)
-  assert converted == np.array([-12.0]) and converted.dtype==np.float64
+  assert converted == np.array([-12.0]) and converted.dtype==np.float32
   converted = NA._convert_value("Spam, eggs")
   assert isinstance(converted, np.ndarray) and converted.dtype=='S1'
   assert converted.tobytes().decode() == "Spam, eggs"
@@ -43,8 +45,10 @@ def test_convert_value():
   assert NA._convert_value([[]]).shape == (1,0,)
   converted = NA._convert_value([13, 14, 15])
   assert (converted == np.array([13, 14, 15])).all() and converted.dtype==np.int32
+  converted = NA._convert_value([13, 14000000000, 15])
+  assert (converted == np.array([13, 14000000000, 15])).all() and converted.dtype==np.int64
   converted = NA._convert_value([13.3, 14.2, 15.3])
-  assert (converted == np.array([13.3, 14.2, 15.3])).all() and converted.dtype==np.float64
+  assert np.allclose(converted, np.array([13.3, 14.2, 15.3])) and converted.dtype==np.float32
   converted = NA._convert_value([['Spam', 'eggs'], ["Bacon"]])
   assert isinstance(converted, np.ndarray) and converted.dtype=='S1' and converted.shape == (32,2,2)
 
