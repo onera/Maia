@@ -89,9 +89,16 @@ def add_root_attributes(rootid):
     format = 'IEEE_LITTLE_64'
   version = 'HDF5 Version {}.{}.{}'.format(*h5.get_libversion())
 
-  attr_writter.write_str_33(rootid, b' format', format)
-  attr_writter.write_str_33(rootid, b' version', version)
-
+  # Those two are described at attributes in cgns doc, but the C lib
+  # looks for dataset (see https://cgnsorg.atlassian.net/browse/CGNS-283)
+  buffer = np.zeros(33, dtype='c')
+  for i,c in enumerate(format):
+    buffer[i] = c
+  write_data(rootid, buffer, dataset_name=b' format')
+  buffer[:] = '\0'
+  for i,c in enumerate(version):
+    buffer[i] = c
+  write_data(rootid, buffer, dataset_name=b' hdf5version')
 
 def open_from_path(fid, path):
   """ Return the hdf node registred at the specified path in the file fid.  """
@@ -235,7 +242,10 @@ def write_lazy(gid, node, skip_if):
 
   cgtype = 'MT' if node[1] is None else DTYPE_TO_CGNSTYPE[node[1].dtype.name]
 
-  node_id = h5g.create(gid, node[0].encode())
+  gc_pl = h5p.create(h5p.GROUP_CREATE)
+  gc_pl.set_link_creation_order(h5p.CRT_ORDER_TRACKED | h5p.CRT_ORDER_INDEXED)
+
+  node_id = h5g.create(gid, node[0].encode(), gcpl=gc_pl)
 
   # Write attributes
   attr_writter = AttributeRW()
@@ -297,7 +307,10 @@ def write_lazy_wrapper(tree, filename, skip_func):
   Note : if skip_func returns always False, the tree is then fully writed.
   """
 
-  fid = h5f.create(bytes(filename, 'utf-8'))
+  fc_pl = h5p.create(h5p.FILE_CREATE)
+  fc_pl.set_link_creation_order(h5p.CRT_ORDER_TRACKED | h5p.CRT_ORDER_INDEXED)
+  fid = h5f.create(bytes(filename, 'utf-8'), fcpl=fc_pl)
+
   rootid = h5g.open(fid, b'/')
 
   # Write some attributes of root node
