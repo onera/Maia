@@ -39,7 +39,7 @@ def test_wall_distance_S(method, sub_comm, write_output):
 
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    maia.io.dump_trees(part_tree, os.path.join(out_dir, 'parttree_out.hdf'), sub_comm)
+    maia.io.write_trees(part_tree, os.path.join(out_dir, 'parttree_out.hdf'), sub_comm)
     maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'result.hdf'), sub_comm)
 
   # Compare to reference solution

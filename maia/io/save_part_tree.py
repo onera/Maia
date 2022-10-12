@@ -13,7 +13,7 @@ def save_part_tree(part_tree, filename, comm, legacy=False):
   for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
     links += [['',subfilename, zone_path, zone_path]]
 
-  IOT.dump_tree(part_tree, subfilename, legacy=legacy) #Use direct API to manage name
+  IOT.write_tree(part_tree, subfilename, legacy=legacy) #Use direct API to manage name
 
   _links = comm.gather(links, root=0)
 
@@ -24,4 +24,4 @@ def save_part_tree(part_tree, filename, comm, legacy=False):
       base_name, zone_name = link[2].split("/")
       local_base = PT.update_child(top_tree, base_name, 'CGNSBase_t', value=[3,3])
 
-    IOT.dump_tree(top_tree, topfilename, links=links, legacy=legacy)
+    IOT.write_tree(top_tree, topfilename, links=links, legacy=legacy)

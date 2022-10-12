@@ -65,7 +65,7 @@ def is_combinated(dataspace):
   """ Check if the provided dataspace if combinated or not. """
   return not (len(dataspace) == 10)
 
-def grouped(iterable, n):
+def group_by(iterable, n):
   """ Iterate chunk by chunk (of size n) over an iterable object :
   s -> (s0,s1,s2,...sn-1), (sn,sn+1,sn+2,...s2n-1), ...  """
   #https://stackoverflow.com/questions/5389507/iterating-over-every-two-elements-in-a-list
@@ -114,7 +114,7 @@ def _select_file_slabs(hdf_space, filter):
   and can be combinated.  """
   if is_combinated(filter):
     src_filter = filter[4]
-    for i, src_filter_i in enumerate(grouped(src_filter, 4)): #Iterate 4 by 4 on the combinated slab
+    for i, src_filter_i in enumerate(group_by(src_filter, 4)): #Iterate 4 by 4 on the combinated slab
       src_start, src_stride, src_count, src_block = [tuple(src_filter_i[i][::-1]) for i in range(4)]
       op = h5s.SELECT_SET if i == 0 else h5s.SELECT_OR
       hdf_space.select_hyperslab(src_start, src_count, src_stride, src_block, op=op)
@@ -207,27 +207,27 @@ def write_link(gid, node_name, target_file, target_node):
 
   node_id.links.create_external(" link".encode(), target_file.encode(), target_node.encode())
 
-def load_lazy(gid, parent, skip_if):
-  """ Internal recursive implementation for load_lazy_wrapper.  """
+def _load_node_partial(gid, parent, load_if):
+  """ Internal recursive implementation for load_tree_partial.  """
 
   attr_reader = AttributeRW()
   name  = attr_reader.read_str_33(gid, b'name')
   label = attr_reader.read_str_33(gid, b'label')
   value = None
 
-  if skip_if((parent[0], parent[3]), (name, label)):
+  if load_if((parent[0], parent[3]), (name, label)):
+    b_kind = attr_reader.read_bytes_3(gid, b'type')
+    if b_kind != b'MT':
+      value = load_data(gid)
+      if b_kind==b'C1':
+        value.dtype = 'S1'
+  else:
     _data = h5d.open(gid, b' data')
     size_node = [name + '#Size', 
                  np.array(_data.shape[::-1]),
                  [],
                  'DataArray_t']
     parent[2].append(size_node)
-  else:
-    b_kind = attr_reader.read_bytes_3(gid, b'type')
-    if b_kind != b'MT':
-      value = load_data(gid)
-      if b_kind==b'C1':
-        value.dtype = 'S1'
 
   pynode = [name, value, [], label]
   parent[2].append(pynode)
@@ -236,10 +236,10 @@ def load_lazy(gid, parent, skip_if):
     if gid.get_objtype_by_idx(i) == h5g.GROUP:
       child_name = gid.get_objname_by_idx(i)
       child_id = h5g.open(gid, child_name)
-      load_lazy(child_id, pynode, skip_if)
+      _load_node_partial(child_id, pynode, load_if)
 
-def write_lazy(gid, node, skip_if):
-  """ Internal recursive implementation for write_lazy_wrapper.  """
+def _write_node_partial(gid, node, write_if):
+  """ Internal recursive implementation for write_tree_partial.  """
 
   cgtype = 'MT' if node[1] is None else DTYPE_TO_CGNSTYPE[node[1].dtype.name]
 
@@ -258,28 +258,26 @@ def write_lazy(gid, node, skip_if):
   parent_name = attr_writter.read_str_33(gid,  b'name')
   parent_label = attr_writter.read_str_33(gid, b'label')
 
-  if skip_if((parent_name, parent_label), (node[0], node[3])):
-    pass
-  elif node[1] is not None:
+  if write_if((parent_name, parent_label), (node[0], node[3])) and node[1] is not None:
     write_data(node_id, node[1])
 
   # Write children
   for child in node[2]:
-    write_lazy(node_id, child, skip_if)
+    _write_node_partial(node_id, child, write_if)
 
 
-def load_lazy_wrapper(filename, skip_func):
+def load_tree_partial(filename, load_predicate):
   """
   Create a pyCGNS tree from the (partial) read of an hdf file.
 
   For each encountered node, the name and label of node is registered in tree,
-  then the skip_func is evaluated :
-  - if skip_func return False, the data of the node is fully loaded
+  then the load_predicate is evaluated :
+  - if load_predicate return True, the data of the node is fully loaded
     and registered in tree
-  - if skip_func return True, the data is skipped, buts its shape is registered in
+  - if load_predicate return False, the data is skipped, buts its shape is registered in
     tree as the value of an additional node of name name Node#Size
 
-  Note : if skip_func returns always False, the tree is then fully read.
+  Note : if load_predicate returns always True, the tree is then fully read.
   """
   tree = ['CGNSTree', None, [], 'CGNSTree_t']
 
@@ -289,23 +287,23 @@ def load_lazy_wrapper(filename, skip_func):
   for i, child_name in enumerate(rootid):
     if rootid.get_objtype_by_idx(i) == h5g.GROUP:
       child_id = h5g.open(rootid, child_name)
-      load_lazy(child_id, tree, skip_func)
+      _load_node_partial(child_id, tree, load_predicate)
 
   fid.close()
   return tree
 
-def write_lazy_wrapper(tree, filename, skip_func):
+def write_tree_partial(tree, filename, write_predicate):
   """
   Write a (partial) hdf file from a pyCGNS tree.
 
   For each encountered node, the name and label of node is registred in file,
-  then the skip_func is evaluated :
-  - if skip_func return False, the data of the CGNS is written in the file
-  - if skip_func return True, the data is no written (meaning that the ' data'
+  then the write_predicate is evaluated :
+  - if write_predicate return True, the data of the CGNS is written in the file
+  - if write_predicate return False, the data is no written (meaning that the ' data'
     dataset is not created; nevertheless, the attribute 'type' storing the
     datakind is written)
 
-  Note : if skip_func returns always False, the tree is then fully writed.
+  Note : if write_predicate returns always False, the tree is then fully writed.
   """
 
   fc_pl = h5p.create(h5p.FILE_CREATE)
@@ -317,13 +315,7 @@ def write_lazy_wrapper(tree, filename, skip_func):
   # Write some attributes of root node
   add_root_attributes(rootid)
   for node in tree[2]:
-    write_lazy(rootid, node, skip_func)
+    _write_node_partial(rootid, node, write_predicate)
 
   fid.close()
-
-def read_cgns(filename):
-  return load_lazy_wrapper(filename, lambda X,Y: False)
-
-def write_cgns(tree, filename):
-  return write_lazy_wrapper(tree, filename, lambda X,Y: False)
 

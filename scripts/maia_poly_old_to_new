@@ -15,4 +15,4 @@ for input in args.inputs:
   base_name,extension = os.path.splitext(input)
   t = IOT.read_tree(str(input))
   maia.algo.seq.poly_old_to_new(t)
-  IOT.dump_tree(t,base_name+'_new'+extension)
+  IOT.write_tree(t,base_name+'_new'+extension)

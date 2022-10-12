@@ -21,7 +21,7 @@ if extension==".yaml": # yaml to hdf5
     t = parse_yaml_cgns.to_cgns_tree(yt)
 
     output_file = script_utils.determine_output_file_path(args.input, args.output, ".cgns")
-    IOT.dump_tree(t,str(output_file))
+    IOT.write_tree(t,str(output_file))
 
 elif extension==".cgns" or extension==".hdf": # hdf5 to yaml
   t = IOT.read_tree(str(args.input))

@@ -30,7 +30,7 @@ def write_partial(filename, dist_tree, hdf_filter, comm, legacy):
     from ._hdf_io_h5py import write_partial
   write_partial(filename, dist_tree, hdf_filter, comm)
 
-def dump_tree(tree, filename, links=[], legacy=False):
+def write_tree(tree, filename, links=[], legacy=False):
   if legacy:
     from ._hdf_io_cass import write_full
   else:
@@ -135,12 +135,12 @@ def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None, legacy=False
     hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
 
-def dump_trees(tree, filename, comm, legacy=False):
+def write_trees(tree, filename, comm, legacy=False):
   """
-  Dump separate trees for each process
+  Write separate trees for each process
   """
   # Give to each process a filename
   base_name, extension = os.path.splitext(filename)
   base_name += f"_{comm.Get_rank()}"
   _filename = base_name + extension
-  dump_tree(tree, _filename, links=[], legacy=legacy)
+  write_tree(tree, _filename, links=[], legacy=legacy)

@@ -4,26 +4,26 @@ from h5py   import h5p, h5f, h5fd
 import maia.pytree as PT
 
 from .hdf._hdf_cgns import open_from_path
-from .hdf._hdf_cgns import load_lazy_wrapper, write_lazy_wrapper
+from .hdf._hdf_cgns import load_tree_partial, write_tree_partial
 from .hdf._hdf_cgns import load_data_partial, write_data_partial
 from .hdf._hdf_cgns import write_link
 from .fix_tree      import fix_point_ranges
 
-def skip_data(pname_and_label, name_and_label):
-  """ Function used to determine if the data are heavy or not """
+def load_data(pname_and_label, name_and_label):
+  """ Function used to determine if the data is heavy or not """
   if pname_and_label[1] == 'UserDefinedData_t':
-    return False
-  if name_and_label[1] in ['IndexArray_t']:
     return True
+  if name_and_label[1] in ['IndexArray_t']:
+    return False
   if name_and_label[1] in ['DataArray_t']:
     if pname_and_label[1] not in ['Periodic_t', 'ReferenceState_t']:
-      return True
-  return False
+      return False
+  return True
 
 def load_collective_size_tree(filename, comm):
 
   if comm.Get_rank() == 0:
-    size_tree = load_lazy_wrapper(filename, skip_data)
+    size_tree = load_tree_partial(filename, load_data)
     fix_point_ranges(size_tree)
   else:
     size_tree = None
@@ -44,7 +44,7 @@ def load_partial(filename, dist_tree, hdf_filter):
 def write_partial(filename, dist_tree, hdf_filter, comm):
 
   if comm.Get_rank() == 0:
-    write_lazy_wrapper(dist_tree, filename, skip_data)
+    write_tree_partial(dist_tree, filename, load_data)
   comm.barrier()
 
   fapl = h5p.create(h5p.FILE_ACCESS)
@@ -61,10 +61,10 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
   fid.close()
 
 def read_full(filename):
-  return load_lazy_wrapper(filename, lambda X,Y: False)
+  return load_tree_partial(filename, lambda X,Y: True)
 
 def write_full(filename, dist_tree, links=[]):
-  write_lazy_wrapper(dist_tree, filename, lambda X,Y: False)
+  write_tree_partial(dist_tree, filename, lambda X,Y: True)
 
   # Add links if any
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)

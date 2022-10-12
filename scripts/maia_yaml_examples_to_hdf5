@@ -11,4 +11,4 @@ for full_mesh_name in os.listdir(mesh_dir):
   if (extension==".yaml"):
     with open(os.path.join(mesh_dir,full_mesh_name)) as yt:
       t = parse_yaml_cgns.to_cgns_tree(yt)
-      IOT.dump_tree(t,mesh_name+".cgns")
+      IOT.write_tree(t,mesh_name+".cgns")

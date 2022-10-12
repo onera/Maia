@@ -70,8 +70,8 @@ def test_interpolation_non_overlaping_cubes(sub_comm, strategy, write_output):
 
   if write_output:
     out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
-    MIO.dump_trees(part_tree_src   , os.path.join(out_dir, 'part_tree_src.hdf'), sub_comm)
-    MIO.dump_trees(part_tree_target, os.path.join(out_dir, 'part_tree_target.hdf'), sub_comm)
+    MIO.write_trees(part_tree_src   , os.path.join(out_dir, 'part_tree_src.hdf'), sub_comm)
+    MIO.write_trees(part_tree_target, os.path.join(out_dir, 'part_tree_target.hdf'), sub_comm)
 
   # > Check results
   for tgt_part in PT.get_all_Zone_t(part_tree_target):

@@ -38,7 +38,7 @@ def test_generate_dcube_ngons(sub_comm, write_output):
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
     out_file = os.path.join(out_dir, f'dcube_ngon.hdf')
-    maia.io.dump_trees(dist_tree, out_file, sub_comm)
+    maia.io.write_trees(dist_tree, out_file, sub_comm)
     maia.io.dist_tree_to_file(dist_tree, out_file, sub_comm)
     
 @pytest.mark.parametrize("cgns_elmt_name", ["TRI_3", "QUAD_4", "TETRA_4", "PENTA_6", "HEXA_8"])
