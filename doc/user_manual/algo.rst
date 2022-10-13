@@ -77,3 +77,4 @@ The following algorithms applies on regular pytrees.
 
 .. autofunction:: maia.algo.seq.poly_new_to_old
 .. autofunction:: maia.algo.seq.poly_old_to_new
+.. autofunction:: maia.algo.seq.enforce_ngon_pe_local

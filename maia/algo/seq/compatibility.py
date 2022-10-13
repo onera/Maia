@@ -5,6 +5,24 @@ import numpy as np
 import maia
 import maia.pytree as PT
 
+def enforce_ngon_pe_local(t):
+  """
+  Shift the ParentElements values in order to make it start at 1, as requested by legacy tools.
+
+  The tree is modified in place.
+
+  Args:
+    t (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
+
+  """
+  for zone in zones_iterator(t):
+    try:
+      ngon_node = PT.Zone.NGonNode(zone)
+    except RuntimeError: #If no NGon, go to next zone
+      continue
+    pe = PT.get_child_from_name(ngon_node, 'ParentElements')
+    pe[1] = maia.algo.indexing.get_ngon_pe_local(ngon_node)
+
 def poly_new_to_old(t, full_onera_compatibility=True):
   """
   Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.

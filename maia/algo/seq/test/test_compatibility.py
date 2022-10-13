@@ -20,6 +20,18 @@ def poly_tree_new():
   maia.io.distribution_tree.clean_distribution_info(t) # remove distribution info to make it a regular pytree
   return t
 
+def test_enfore_ngon_pe_local(poly_tree_new):
+  t = poly_tree_new
+  maia.algo.seq.enforce_ngon_pe_local(t)
+
+  ngon = PT.get_node_from_name(t,"NGON_n")
+  #Those two are not modified
+  assert PT.get_value(PT.get_child_from_name(ngon,"ElementStartOffset")).size == 19
+  assert PT.get_value(PT.get_child_from_name(ngon,"ElementConnectivity")).size == 69
+  pe = PT.get_value(PT.get_child_from_name(ngon,"ParentElements"))
+
+  assert (pe == np.array([[1,0],[2,0],[3,0],[4,0],[1,0],[3,0],[2,0],[4,0],[1,0],
+                          [2,0],[1,0],[2,0],[3,0],[4,0],[3,4],[1,3],[1,2],[2,4]])).all()
 
 @pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_poly_new_to_old(poly_tree_new):
