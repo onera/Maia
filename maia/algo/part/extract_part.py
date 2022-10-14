@@ -4,6 +4,7 @@ import  numpy as np
 # from    mpi4py import MPI
 
 # MAIA
+import maia
 from    maia.utils                  import np_utils, layouts
 import  maia.pytree                                           as PT
 from    maia.factory                import dist_from_part     as disc
@@ -129,15 +130,12 @@ def _exchange_field(part_tree, part_tree_ep, ptp,exchange, comm) :
 
 
 
-
-
-
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def extract_part_one_domain(part_zones, zsrpath, comm,
                             equilibrate=1,
-                            graph_part_tool="hilbert"):
+                            graph_part_tool="hilbert",
+                            put_pe=False):
   """
   TODO : AJOUTER LE CHOIX PARTIONNEMENT
   """
@@ -263,14 +261,14 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
     I.newDataArray('ElementConnectivity', cell_face    , parent=nface_n)
     I.newDataArray('ElementStartOffset' , cell_face_idx, parent=nface_n)
     
+    # Compute ParentElement nodes is requested
+    if (put_pe):
+      maia.algo.nface_to_pe(extract_part_zone, comm)
+    
     # LN_TO_GN nodes
     vtx_ln_to_gn  = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
     face_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_FACE)
     cell_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
-
-    # # PARENT_LN_TO_GN nodes
-    # parent_ln_to_gn_cell = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
-    # parent_ln_to_gn_vtx  = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
 
     gn_face = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=ngon_n)
     I.newDataArray('Element', face_ln_to_gn, parent=gn_face)
@@ -281,10 +279,8 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
     gn_zone = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=extract_part_zone)
     I.newDataArray('Vertex'    , vtx_ln_to_gn        , parent=gn_zone)
     I.newDataArray('Cell'      , cell_ln_to_gn       , parent=gn_zone)
-    # I.newDataArray('ParentCell', parent_ln_to_gn_cell, parent=gn_zone)
-    # I.newDataArray('ParentVtx' , parent_ln_to_gn_vtx , parent=gn_zone)
 
-  # - Try PtP
+  # - Get PTP by vertex and cell
   ptp = dict()
   ptp['vertex'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_VERTEX)
   ptp['cell'  ] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_CELL)
@@ -295,7 +291,7 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
 
 
 # ---------------------------------------------------------------------------------------
-def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None):
+def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
   """
   """
 
@@ -307,11 +303,17 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None):
 
   extract_doms = I.newCGNSTree()
   
+  # Is there PE node
+  if (I.getNodeFromName(part_tree,'ParentElements') is not None) : put_pe = True
+  else                                                           : put_pe = False
 
   # Compute extract part of each domain
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    extract_part,ptp = extract_part_one_domain(part_zones, fspath, comm,equilibrate=equilibrate)
-    I._addChild(extract_doms, extract_part)
+    extract_part,ptp = extract_part_one_domain( part_zones, fspath, comm,
+                                                equilibrate=equilibrate,
+                                                graph_part_tool=graph_part_tool,
+                                                put_pe=put_pe)
+    PT.add_child(extract_doms, extract_part)
 
 
   # Exchange fields between two parts
