@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-
-from maia.utils import parse_yaml_cgns
-from maia.utils.test_utils import mesh_dir
 import os
-import Converter.PyTree as C
+
+from maia.utils            import parse_yaml_cgns
+from maia.utils.test_utils import mesh_dir
+from maia.io               import cgns_io_tree as IOT
 
 # TODO merge with test/conftest.py/generate_cgns_files
 for full_mesh_name in os.listdir(mesh_dir):
@@ -11,4 +11,4 @@ for full_mesh_name in os.listdir(mesh_dir):
   if (extension==".yaml"):
     with open(os.path.join(mesh_dir,full_mesh_name)) as yt:
       t = parse_yaml_cgns.to_cgns_tree(yt)
-      C.convertPyTree2File(t,mesh_name+".cgns")
+      IOT.write_tree(t,mesh_name+".cgns")

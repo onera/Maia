@@ -1,33 +1,58 @@
 import os
-import Converter.PyTree   as C
 import maia.pytree        as PT
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
-from .load_collective_size_tree import load_collective_size_tree
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, _enforce_pdm_dtype
 
 from maia.factory     import distribute_tree
 from maia.pytree.yaml import parse_yaml_cgns
 
-def update_tree_with_partial_load_dict(dist_tree, partial_dict_load):
-  """
-  """
-  for path, data in partial_dict_load.items():
-    if path.startswith('/'):
-      path = path[1:]
-    Node = PT.get_node_from_path(dist_tree, path)
-    Node[1] = data
+def load_collective_size_tree(filename, comm, legacy):
+  if legacy:
+    from ._hdf_io_cass import load_collective_size_tree
+  else:
+    from ._hdf_io_h5py import load_collective_size_tree
+  return load_collective_size_tree(filename, comm)
+
+def load_partial(filename, dist_tree, hdf_filter, comm, legacy):
+  if legacy:
+    from ._hdf_io_cass import load_partial
+    load_partial(filename, dist_tree, hdf_filter, comm)
+  else:
+    from ._hdf_io_h5py import load_partial
+    load_partial(filename, dist_tree, hdf_filter)
+
+def write_partial(filename, dist_tree, hdf_filter, comm, legacy):
+  if legacy:
+    from ._hdf_io_cass import write_partial
+  else:
+    from ._hdf_io_h5py import write_partial
+  write_partial(filename, dist_tree, hdf_filter, comm)
+
+def write_tree(tree, filename, links=[], legacy=False):
+  if legacy:
+    from ._hdf_io_cass import write_full
+  else:
+    from ._hdf_io_h5py import write_full
+  write_full(filename, tree, links=links)
+
+def read_tree(filename, legacy=False):
+  if legacy:
+    from ._hdf_io_cass import read_full
+  else:
+    from ._hdf_io_h5py import read_full
+  return read_full(filename)
 
 
-def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
+
+def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() \
       if isinstance(value, (list, tuple))}
 
-  partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter_with_dim, comm)
-  update_tree_with_partial_load_dict(dist_tree, partial_dict_load)
+  load_partial(filename, dist_tree, hdf_filter_with_dim, comm, legacy)
 
   # > Match with callable
   hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() \
@@ -43,9 +68,9 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
         unlock_at_least_one = True
       except RuntimeError: # Not ready yet
         pass
-    partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, next_hdf_filter, comm)
 
-    update_tree_with_partial_load_dict(dist_tree, partial_dict_load)
+    load_partial(filename, dist_tree, next_hdf_filter, comm, legacy)
+
     hdf_filter_with_func = {key: value for (key, value) in next_hdf_filter.items() \
         if not isinstance(value, (list, tuple))}
 
@@ -55,7 +80,7 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   ensure_PE_global_indexing(dist_tree)
 
 
-def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
+def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
@@ -69,9 +94,9 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   saving_dist_tree = PT.shallow_copy(dist_tree)
   clean_distribution_info(saving_dist_tree)
 
-  C.convertPyTree2FilePartial(saving_dist_tree, filename, comm, hdf_filter_with_dim, ParallelHDF=True)
+  write_partial(filename, saving_dist_tree, hdf_filter_with_dim, comm, legacy)
 
-def file_to_dist_tree(filename, comm, distribution_policy='uniform'):
+def file_to_dist_tree(filename, comm, distribution_policy='uniform', legacy=False):
   """
   Distributed load of filename. Return a dist_tree.
   """
@@ -86,22 +111,36 @@ def file_to_dist_tree(filename, comm, distribution_policy='uniform'):
     dist_tree = distribute_tree(tree, comm, owner=0) 
 
   else:
-    dist_tree = load_collective_size_tree(filename, comm)
+    dist_tree = load_collective_size_tree(filename, comm, legacy)
     add_distribution_info(dist_tree, comm, distribution_policy)
 
-    hdf_filter = dict()
-    create_tree_hdf_filter(dist_tree, hdf_filter)
+    hdf_filter = create_tree_hdf_filter(dist_tree)
 
-    load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
+    # Coords#Size appears in dict -> remove it
+    if not legacy:
+      hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
+
+    load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
+    if not legacy:
+      PT.rm_nodes_from_name(dist_tree, '*#Size')
 
   return dist_tree
 
-def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None):
+def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None, legacy=False):
   """
   Distributed write of cgns_tree into filename.
   """
   filename = str(filename)
   if hdf_filter is None:
-    hdf_filter = dict()
-    create_tree_hdf_filter(dist_tree, hdf_filter)
-  save_tree_from_filter(filename, dist_tree, comm, hdf_filter)
+    hdf_filter = create_tree_hdf_filter(dist_tree)
+  save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
+
+def write_trees(tree, filename, comm, legacy=False):
+  """
+  Write separate trees for each process
+  """
+  # Give to each process a filename
+  base_name, extension = os.path.splitext(filename)
+  base_name += f"_{comm.Get_rank()}"
+  _filename = base_name + extension
+  write_tree(tree, _filename, links=[], legacy=legacy)

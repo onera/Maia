@@ -1,8 +1,10 @@
 import Converter
+import Converter.Filter
 import Converter.PyTree   as C
+
 import maia.pytree        as PT
 
-from .fix_tree import fix_point_ranges, fix_zone_datatype, load_grid_connectivity_property
+from .fix_tree import fix_point_ranges, fix_zone_datatype
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
@@ -84,10 +86,10 @@ def load_collective_size_tree(filename, comm):
   if(comm.Get_rank() == 0):
     size_data = dict()
     assert Converter.checkFileType(filename) == "bin_hdf"
-    size_tree = C.convertFile2PyTree(filename,
-                                     skeletonData=[skeleton_n_data, skeleton_depth],
-                                     dataShape=size_data,
-                                     format='bin_hdf')
+    size_tree = Converter.PyTree.convertFile2PyTree(filename,
+                                                    skeletonData=[skeleton_n_data, skeleton_depth],
+                                                    dataShape=size_data,
+                                                    format='bin_hdf')
     fix_zone_datatype(size_tree, size_data)
     add_sizes_to_tree(size_tree, size_data)
     fix_point_ranges(size_tree)
@@ -99,3 +101,48 @@ def load_collective_size_tree(filename, comm):
 
   return size_tree
 
+def load_partial(filename, dist_tree, hdf_filter, comm):
+  partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter, comm)
+
+  for path, data in partial_dict_load.items():
+    if path.startswith('/'):
+      path = path[1:]
+    node = PT.get_node_from_path(dist_tree, path)
+    node[1] = data
+
+def load_grid_connectivity_property(filename, tree):
+  """
+  Load the GridConnectivityProperty_t nodes that may be present in joins.
+  Because the transformation data is stored as a numpy array, these nodes
+  are not loaded on the previous step.
+  """
+  # Prepare paths
+  zgc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t'
+  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  gc_prop_paths = []
+  for base,zone,zone_gc in PT.iter_children_from_predicates(tree, zgc_t_path, ancestors=True):
+    for gc in PT.iter_children_from_predicate(zone_gc, is_gc):
+      gc_prop = PT.get_child_from_label(gc, 'GridConnectivityProperty_t')
+      if gc_prop is not None:
+        gc_prop_path = '/'.join([base[0], zone[0], zone_gc[0], gc[0], gc_prop[0]])
+        gc_prop_paths.append(gc_prop_path)
+
+  # Load
+  gc_prop_nodes = Converter.Filter.readNodesFromPaths(filename, gc_prop_paths)
+
+  # Replace with loaded data
+  for path, gc_prop in zip(gc_prop_paths, gc_prop_nodes):
+    gc_node_path = '/'.join(path.split('/')[:-1])
+    gc_node = PT.get_node_from_path(tree, gc_node_path)
+    PT.rm_children_from_label(gc_node, 'GridConnectivityProperty_t')
+    PT.add_child(gc_node, gc_prop)
+
+
+def write_partial(filename, dist_tree, hdf_filter, comm):
+  C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter, ParallelHDF=True)
+
+def read_full(filename):
+  return C.convertFile2PyTree(filename)
+
+def write_full(filename, tree, links=[]):
+  C.convertPyTree2File(tree, filename, links=links)

@@ -3,10 +3,10 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 import os
 
-import Converter.PyTree   as C
 import maia.pytree        as PT
 
 import cmaia
+import maia.io       as MIO
 import maia.utils    as MU
 import maia.algo     as MA
 import maia.factory  as MF
@@ -70,8 +70,8 @@ def test_interpolation_non_overlaping_cubes(sub_comm, strategy, write_output):
 
   if write_output:
     out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
-    C.convertPyTree2File(part_tree_src   , os.path.join(out_dir, 'part_tree_src.hdf'))
-    C.convertPyTree2File(part_tree_target, os.path.join(out_dir, 'part_tree_target.hdf'))
+    MIO.write_trees(part_tree_src   , os.path.join(out_dir, 'part_tree_src.hdf'), sub_comm)
+    MIO.write_trees(part_tree_target, os.path.join(out_dir, 'part_tree_target.hdf'), sub_comm)
 
   # > Check results
   for tgt_part in PT.get_all_Zone_t(part_tree_target):

@@ -1,43 +1,27 @@
 import maia
 import maia.pytree        as PT
-import Converter.PyTree   as C
 
-def save_part_tree(part_tree, filename, comm):
+from . import cgns_io_tree as IOT
+
+def save_part_tree(part_tree, filename, comm, legacy=False):
   """
   """
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
-
-  zones = PT.get_all_Zone_t(part_tree)
-  zone_name_list = list()
-  for zone in zones:
-    zone_name_list.append(zone[0])
-
-  topfilename = filename+'_TOP.hdf'
-  subfilename = filename+'_{0}_SUB.hdf'.format(i_rank)
+  topfilename = filename + '_TOP.hdf'
+  subfilename = filename + f'_{comm.Get_rank()}_SUB.hdf'
 
   links      = []
-  nlinks     = []
-  zones_path = [f'/{path}' for path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t')]
-
-  for zone_path in zones_path:
+  for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
     links += [['',subfilename, zone_path, zone_path]]
 
-  C.convertPyTree2File(part_tree, subfilename)
+  IOT.write_tree(part_tree, subfilename, legacy=legacy) #Use direct API to manage name
 
-  links      = comm.gather(links, root=0)
+  _links = comm.gather(links, root=0)
 
-  if(i_rank == 0):
+  if(comm.Get_rank() == 0):
+    links  = [l for proc_links in _links for l in proc_links] #Flatten gather result
+    top_tree = PT.new_CGNSTree()
+    for link in links:
+      base_name, zone_name = link[2].split("/")
+      local_base = PT.update_child(top_tree, base_name, 'CGNSBase_t', value=[3,3])
 
-    for l in links:
-      for ii in l:
-        nlinks.append(ii)
-
-    base_name  = PT.get_child_from_label(part_tree, 'CGNSBase_t')[0]
-    local_tree = PT.new_CGNSTree()
-    local_base = PT.new_CGNSBase(base_name, cell_dim=3, phy_dim=3, parent=local_tree)
-    for path_zone in nlinks:
-      zone_name = path_zone[2].split("/")[2]
-      PT.new_Zone(zone_name, parent=local_base)
-
-    C.convertPyTree2File(local_tree, topfilename, links=nlinks)
+    IOT.write_tree(top_tree, topfilename, links=links, legacy=legacy)

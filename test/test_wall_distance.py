@@ -3,7 +3,6 @@ from   pytest_mpi_check._decorator import mark_mpi_test
 import os
 import numpy as np
 
-import Converter.PyTree   as C
 import maia.pytree        as PT
 
 import maia
@@ -40,7 +39,7 @@ def test_wall_distance_S(method, sub_comm, write_output):
 
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    C.convertPyTree2File(part_tree, os.path.join(out_dir, f'parttree_out_{sub_comm.Get_rank()}.hdf'))
+    maia.io.write_trees(part_tree, os.path.join(out_dir, 'parttree_out.hdf'), sub_comm)
     maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'result.hdf'), sub_comm)
 
   # Compare to reference solution

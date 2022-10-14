@@ -36,14 +36,16 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
   create_zone_subregion_filter(zone, zone_path, hdf_filter)
 
 
-def create_tree_hdf_filter(dist_tree, hdf_filter, mode='read'):
+def create_tree_hdf_filter(dist_tree, mode='read'):
   """
   On a besoin du write pour gérer le ElementStartIndex
   It can be replace by a if None in tree to see if read/write ?
   """
+  hdf_filter = dict()
   for base, zone in PT.iter_nodes_from_predicates(dist_tree, 'CGNSBase_t/Zone_t', ancestors=True):
     zone_path = "/"+PT.get_name(base)+"/"+PT.get_name(zone)
     create_zone_filter(zone, zone_path, hdf_filter, mode)
+  return hdf_filter
 
 
 def filtering_filter(dist_tree, hdf_filter, name_or_type_list, skip=True):

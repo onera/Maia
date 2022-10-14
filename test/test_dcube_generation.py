@@ -2,7 +2,6 @@ import pytest
 import os
 from   pytest_mpi_check._decorator import mark_mpi_test
 
-import Converter.PyTree   as C
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -38,10 +37,9 @@ def test_generate_dcube_ngons(sub_comm, write_output):
 
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    outfile = os.path.join(out_dir, f'dcube_ngon_{sub_comm.Get_rank()}.hdf')
-    C.convertPyTree2File(dist_tree, outfile)
-    outfile = os.path.join(out_dir, 'dcube_ngon.hdf')
-    maia.io.dist_tree_to_file(dist_tree, outfile, sub_comm)
+    out_file = os.path.join(out_dir, f'dcube_ngon.hdf')
+    maia.io.write_trees(dist_tree, out_file, sub_comm)
+    maia.io.dist_tree_to_file(dist_tree, out_file, sub_comm)
     
 @pytest.mark.parametrize("cgns_elmt_name", ["TRI_3", "QUAD_4", "TETRA_4", "PENTA_6", "HEXA_8"])
 @mark_mpi_test([2])

@@ -33,7 +33,6 @@ def test_ngons_to_elements(sub_comm, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    import Converter.PyTree as C
-    C.convertPyTree2File(dist_tree, os.path.join(out_dir, 'U_M6Wing_ngon.cgns'))
+    maia.io.write_trees(dist_tree, os.path.join(out_dir, 'U_M6Wing_ngon.cgns'), sub_comm)
     # TODO replace by this when in parallel
     #maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'U_M6Wing_ngon.cgns'), sub_comm)

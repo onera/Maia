@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 
 import maia
-import Converter.PyTree as C
+import maia.io.cgns_io_tree as IOT
 
 parser = argparse.ArgumentParser(description='Convert a NGon/NFace mesh from old to new CGNS convention')
 parser.add_argument('inputs', metavar='IN', type=Path, help='input files', nargs='+')
@@ -13,6 +13,6 @@ args = parser.parse_args()
 
 for input in args.inputs:
   base_name,extension = os.path.splitext(input)
-  t = C.convertFile2PyTree(str(input))
+  t = IOT.read_tree(str(input))
   maia.algo.seq.poly_old_to_new(t)
-  C.convertPyTree2File(t,base_name+'_new'+extension)
+  IOT.write_tree(t,base_name+'_new'+extension)
