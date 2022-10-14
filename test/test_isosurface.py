@@ -132,7 +132,7 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
 # ----------------------------------------------------------------------------------------
 @pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
 @mark_mpi_test([1, 2, 3])
-def test_plane_U(elt_type,sub_comm, write_output):
+def test_isoplane_U(elt_type,sub_comm, write_output):
   
   # Cube generation
   n_vtx = 10
@@ -242,7 +242,7 @@ def test_plane_U(elt_type,sub_comm, write_output):
 # ----------------------------------------------------------------------------------------
 @pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
 @mark_mpi_test([1, 2, 3])
-def test_sphere_U(elt_type,sub_comm, write_output):
+def test_isosphere_U(elt_type,sub_comm, write_output):
   
   # Cube generation
   n_vtx = 10
@@ -352,7 +352,7 @@ def test_sphere_U(elt_type,sub_comm, write_output):
 # ----------------------------------------------------------------------------------------
 @pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
 @mark_mpi_test([1, 2, 3])
-def test_ellipse_U(elt_type,sub_comm, write_output):
+def test_isoellipse_U(elt_type,sub_comm, write_output):
   
   # Cube generation
   n_vtx = 10
@@ -361,8 +361,8 @@ def test_ellipse_U(elt_type,sub_comm, write_output):
   # Partionning option
   zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
   part_tree     = PPA.partition_dist_tree(dist_tree, sub_comm,
-                                          zone_to_parts=zone_to_parts,
-                                          preserve_orientation=True)
+                                          zone_to_parts=zone_to_parts)#,
+                                          # preserve_orientation=True)
 
   # Solution initialisation
   for zone in I.getZones(part_tree):
@@ -450,7 +450,7 @@ def test_ellipse_U(elt_type,sub_comm, write_output):
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
     dist_tree = maia.factory.recover_dist_tree(part_tree,sub_comm)
     DTF(dist_tree, os.path.join(out_dir, 'dist_volume.cgns'), sub_comm)
-    DTF(dist_tree_iso, os.path.join(out_dir, 'dist_isosphere.cgns'), sub_comm)
+    DTF(dist_tree_iso, os.path.join(out_dir, 'dist_isoellipse.cgns'), sub_comm)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
