@@ -24,7 +24,7 @@ import Converter.Internal as I
 
 
 # Import from MAIA
-import maia.pytree as PT
+import maia.pytree                                  as PT
 from   maia.transfer    import utils                as TEU
 from   maia.factory     import dist_from_part       as disc
 from   maia.factory     import recover_dist_tree    as part_to_dist
@@ -348,8 +348,8 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       flowsol_node = I.getNodeFromName1(part_zone, fs_name)
       field_node   = I.getNodeFromName1(flowsol_node, field_name)
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
-      # field_values.append(PT.get_value(field_node) - iso_val)
-      field_values.append(I.getValue(field_node) - iso_val)
+      field_values.append(PT.get_value(field_node) - iso_val)
+      # field_values.append(I.getValue(field_node) - iso_val)
 
     part_zone_iso = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
     I._addChild(part_tree_iso,part_zone_iso)
@@ -409,7 +409,8 @@ def _iso_plane(part_tree, plane_eq, elt_type, comm):
   for i_domain, part_zones in enumerate(part_tree_per_dom):
 
     part_zone_iso = iso_surface_one_domain(part_zones, "PLANE", plane_eq, elt_type, comm)
-    I._addChild(part_tree_iso,part_zone_iso)
+    # I._addChild(part_tree_iso,part_zone_iso)
+    PT.add_child(part_tree_iso,part_zone_iso)
 
   return part_tree_iso
 # ---------------------------------------------------------------------------------------
@@ -464,7 +465,8 @@ def _iso_sphere(part_tree, sphere_eq, elt_type, comm):
   for i_domain, part_zones in enumerate(part_tree_per_dom):
 
     part_zone_iso = iso_surface_one_domain(part_zones, "SPHERE", sphere_eq, elt_type, comm)
-    I._addChild(part_tree_iso,part_zone_iso)
+    # I._addChild(part_tree_iso,part_zone_iso)
+    PT.add_child(part_tree_iso,part_zone_iso)
 
   return part_tree_iso
 # ---------------------------------------------------------------------------------------
@@ -522,7 +524,8 @@ def _iso_ellipse(part_tree, ellipse_eq, elt_type, comm):
   for i_domain, part_zones in enumerate(part_tree_per_dom):
 
     part_zone_iso = iso_surface_one_domain(part_zones, "ELLIPSE", ellipse_eq, elt_type, comm)
-    I._addChild(part_tree_iso,part_zone_iso)
+    # I._addChild(part_tree_iso,part_zone_iso)
+    PT.add_child(part_tree_iso,part_zone_iso)
 
   return part_tree_iso
 # ---------------------------------------------------------------------------------------
