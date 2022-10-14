@@ -94,7 +94,6 @@ def exchange_field_one_domain(part_zones, part_tree_iso, interpolate, comm) :
         part1_node_gn = I.getNodeFromName3(part_tree_iso, ":CGNS#GlobalNumbering")
         part1_weight.append(I.getNodeFromName(part1_node_gn, "Vtx_parent_weight")[1])
 
-
       elif gridLocation=='CellCenter':
         # ISOSURF infos
         # part1_node_gn_cell  = MTM.getGlobalNumbering(part_tree_iso)#, 'Cell') # 
@@ -145,17 +144,16 @@ def exchange_field_one_domain(part_zones, part_tree_iso, interpolate, comm) :
                                  part2_stride=stride)
       part1_strid, part1_data = ptp.reverse_wait(req_id)
 
-      
-      # Interpolation and placement
-      for i_part, part_zone in enumerate(part_zones):
-        path = fld_name
-        if   gridLocation=="Vertex"    :
-          weighted_fld = part1_data[i_part]*part1_weight[i_part]
-          part1_fld    = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
-          I.newDataArray(path, part1_fld, parent=FS_iso[i_part])    
-      
-        elif gridLocation=="CellCenter":
-          I.newDataArray(path, part1_data[i_part], parent=FS_iso[i_part])
+      # CHECK BEST WAY TO DO IT REGARDING THE N_PART IN VOLUME
+      i_part = 0
+      path = fld_name
+      if   gridLocation=="Vertex"    :
+        weighted_fld = part1_data[i_part]*part1_weight[i_part]
+        part1_fld    = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
+        I.newDataArray(path, part1_fld, parent=FS_iso[i_part])    
+    
+      elif gridLocation=="CellCenter":
+        I.newDataArray(path, part1_data[i_part], parent=FS_iso[i_part])
 
   return part_tree_iso
 # =======================================================================================
