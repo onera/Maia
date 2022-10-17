@@ -10,11 +10,11 @@ from maia.utils    import np_utils, layouts, py_utils
 import Pypdm.Pypdm as PDM
 
 # =======================================================================================
-def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
+def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
   # Part 1 : ISOSURF
   # Part 2 : VOLUME
-  for container_name in interpolate :
+  for container_name in containers_name :
 
     # --- Get all fields names and location -----------------------------------
     all_fld_names = []
@@ -99,10 +99,9 @@ def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
 
 
 # =======================================================================================
-def _exchange_field(part_tree, iso_part_tree, interpolate, comm) :
+def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
   """
-  Exchange field between part_tree and iso_part_tree
-  for interpolate vol field 
+  Exchange fields found under each container from part_tree to iso_part_tree
   """
 
   # Get zones by domains
@@ -118,7 +117,7 @@ def _exchange_field(part_tree, iso_part_tree, interpolate, comm) :
 
   # Loop over domains
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm)
+    exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm)
 
 # =======================================================================================
 
@@ -279,18 +278,37 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
 # ---------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------
-def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_type="TRI_3"):
-  """
-  Computes isosurface from field defined at vertices for a partitioned tree.
-  Returns partition of the isosurface.
+def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **options):
+  """ Create an isosurface from the provided field and value on the input partitioned tree.
+
+  Isosurface is returned as an independant (2d) partitioned CGNSTree. 
+
+  Important:
+    - Input tree must be unstructured and have a ngon connectivity.
+    - Partitions must come from a single initial domain on input tree.
+    - Input field for isosurface computation must be located at vertices.
+    - This function requires ParaDiGMa access.
+
+  Note:
+    Once created, additional fields can be exchanged from volumic tree to isosurface tree using
+    ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``
 
   Args:
-    part_tree     (CGNSTree)    : Partitionned tree from which isosurf is created
-    iso_field     (str)         : Path of the field to use to compute isosurface
+    part_tree     (CGNSTree)    : Partitioned tree on which isosurf is computed. Only U-NGon
+      connectivities are managed.
+    iso_field     (str)         : Path (starting at Zone_t level) of the field to use to compute isosurface.
     comm          (MPIComm)     : MPI communicator
-    iso_val       (float)       : Value to use to compute isosurface (default = 0)
-    interpolate   (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
-    elt_type      (str)         : Type of elt in isosurface ("TRI_3","QUAD_4","NGON_n")         
+    iso_val       (float, optional) : Value to use to compute isosurface. Defaults to 0.
+    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+      on the output isosurface tree.
+    **options: Options related to plane extraction.
+  Returns:
+    isosurf_tree (CGNSTree): Surfacic tree (partitioned)
+
+  Extraction can be controled thought the optional kwargs:
+
+    - ``elt_type`` (str) -- Controls the shape of elements used to describe
+      the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Defaults to ``TRI_3``.
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -299,15 +317,15 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_ty
       :dedent: 2
   """
 
+  elt_type = options.get("elt_type", "TRI_3")
   assert(elt_type in ["TRI_3","QUAD_4","NGON_n"])
 
   # Isosurface extraction
   iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, comm)
 
   # Interpolation
-  if interpolate is not None :
-    # Assert ?
-    _exchange_field(part_tree, iso_part_tree, interpolate, comm)
+  if containers_name:
+    _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
@@ -344,17 +362,22 @@ def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def plane_slice(part_tree, plane_eq, comm, interpolate=None, elt_type="TRI_3"):
-  """
-  Computes plane resulting from the intersection between a partitionned tree 
-  and a equation defined plane. Returns a partitionned plane.
+def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
+  """ Create a slice from the provided plane equation :math:`ax + bc + cz + d = 0`
+  on the input partitioned tree.
+
+  Slice is returned as an independant (2d) partitioned CGNSTree. See :func:`iso_surface`
+  for use restrictions and additional advices.
 
   Args:
-    part_tree     (CGNSTree)     : Partitionned tree from which isosurf is created
-    plane_eq      (list of float): List of 4 floats to define the plane [a,b,c,d]
-    comm          (MPIComm)      : MPI communicator
-    interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
-    elt_type      (str)          : Type of elt in isosurface ("TRI_3","QUAD_4","NGON_n")         
+    part_tree     (CGNSTree)    : Partitioned tree to slice. Only U-NGon connectivities are managed.
+    sphere_eq     (list of float): List of 4 floats :math:`[a,b,c,d]` defining the plane equation.
+    comm          (MPIComm)     : MPI communicator
+    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+      on the output slice tree.
+    **options: Options related to plane extraction (see :func:`iso_surface`).
+  Returns:
+    slice_tree (CGNSTree): Surfacic tree (partitioned)
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -362,12 +385,13 @@ def plane_slice(part_tree, plane_eq, comm, interpolate=None, elt_type="TRI_3"):
       :end-before: #compute_plane_slice@end
       :dedent: 2
   """
+  elt_type = options.get("elt_type", "TRI_3")
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, comm)
 
   # Interpolation
-  if interpolate is not None :
-    _exchange_field(part_tree, iso_part_tree, interpolate, comm)
+  if containers_name:
+    _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
@@ -377,17 +401,23 @@ def plane_slice(part_tree, plane_eq, comm, interpolate=None, elt_type="TRI_3"):
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def spherical_slice(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRI_3"):
-  """
-  Computes sphere resulting from the intersection between a partitionned tree 
-  and a equation defined sphere. Returns a partitionned plane.
+def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
+  """ Create a spherical slice from the provided equation
+  :math:`(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2`
+  on the input partitioned tree.
+
+  Slice is returned as an independant (2d) partitioned CGNSTree. See :func:`iso_surface`
+  for use restrictions and additional advices.
 
   Args:
-    part_tree     (CGNSTree)     : Partitionned tree from which isosurf is created
-    plane_eq      (list of float): List of 4 floats to define the sphere [xc,yc,zc,R]
-    comm          (MPIComm)      : MPI communicator
-    interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
-    elt_type      (str)          : Type of elt in isosurface ("TRI_3","QUAD_4","NGON_n")         
+    part_tree     (CGNSTree)    : Partitioned tree to slice. Only U-NGon connectivities are managed.
+    plane_eq      (list of float): List of 4 floats :math:`[x_0, y_0, z_0, R]` defining the sphere equation.
+    comm          (MPIComm)     : MPI communicator
+    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+      on the output slice tree.
+    **options: Options related to plane extraction (see :func:`iso_surface`).
+  Returns:
+    slice_tree (CGNSTree): Surfacic tree (partitioned)
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -396,12 +426,13 @@ def spherical_slice(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRI_
       :dedent: 2
   """
 
+  elt_type = options.get("elt_type", "TRI_3")
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, comm)
 
   # Interpolation
-  if interpolate is not None :
-    _exchange_field(part_tree, iso_part_tree, interpolate, comm)
+  if containers_name:
+    _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
@@ -411,30 +442,38 @@ def spherical_slice(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRI_
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def elliptical_slice(part_tree, ellipse_eq, comm, interpolate=None, elt_type="TRI_3"):
-  ''' 
-  Computes ellipse resulting from the intersection between a partitionned tree 
-  and a equation defined ellipse. Returns a partitionned plane.
+def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options):
+  """ Create a elliptical slice from the provided equation
+  :math:`(x-x_0)^2/a^2 + (y-y_0)^2/b^2 + (z-z_0)^2/c^2 = R^2`
+  on the input partitioned tree.
+
+  Slice is returned as an independant (2d) partitioned CGNSTree. See :func:`iso_surface`
+  for use restrictions and additional advices.
 
   Args:
-    part_tree     (CGNSTree)     : Partitionned tree from which isosurf is created
-    plane_eq      (list of float): List of 7 floats to define the ellipse [xc,yc,zc,a,b,c,r]
-    comm          (MPIComm)      : MPI communicator
-    interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
-    elt_type      (str)          : Type of elt in isosurface ("TRI_3","QUAD_4","NGON_n")         
+    part_tree     (CGNSTree)    : Partitioned tree to slice. Only U-NGon connectivities are managed.
+    ellispe_eq   (list of float): List of 7 floats :math:`[x_0, y_0, z_0, a, b, c, R^2]`
+      defining the ellipse equation.
+    comm          (MPIComm)     : MPI communicator
+    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+      on the output slice tree.
+    **options: Options related to plane extraction (see :func:`iso_surface`).
+  Returns:
+    slice_tree (CGNSTree): Surfacic tree (partitioned)
 
   Example:
     .. literalinclude:: snippets/test_algo.py
-      :start-after: #compute_elliptical_surface@start
-      :end-before: #compute_elliptical_surface@end
+      :start-after: #compute_elliptical_slice@start
+      :end-before: #compute_elliptical_slice@end
       :dedent: 2
-  '''
+  """
+  elt_type = options.get("elt_type", "TRI_3")
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, comm)
 
   # Interpolation
-  if interpolate is not None :
-    _exchange_field(part_tree, iso_part_tree, interpolate, comm)
+  if containers_name:
+    _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------

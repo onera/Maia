@@ -82,56 +82,29 @@ def test_compute_wall_distance():
 def test_compute_iso_surface():
   #compute_iso_surface@start
   from mpi4py import MPI
-  import numpy
   import maia
-  import maia.pytree as PT
-  from   maia.algo.part import isosurf
   from   maia.utils.test_utils import mesh_dir
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  zone      = maia.pytree.get_node_from_label(part_tree, "Zone_t")
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
 
-  src_sol   = maia.pytree.new_FlowSolution('FlowSolution_CC', loc='CellCenter', parent=zone)
-  PT.new_DataArray("Field_CC", numpy.random.rand(PT.Zone.n_cell(zone)), parent=src_sol)
+  part_tree_iso = maia.algo.part.iso_surface(part_tree, "WallDistance/TurbulentDistance", iso_val=0.25,\
+      containers_name=['WallDistance'], comm=MPI.COMM_WORLD)
 
-  src_sol   = maia.pytree.new_FlowSolution('FlowSolution_NC', loc='Vertex', parent=zone)
-  PT.new_DataArray("Field_NC", numpy.random.rand(PT.Zone.n_vtx(zone)), parent=src_sol)
-
-  part_tree_iso = isosurf.iso_surface(part_tree,
-                                      "FlowSolution_NC/Field_NC",
-                                      MPI.COMM_WORLD,
-                                      iso_val=0.,
-                                      interpolate=['FlowSolution_CC','FlowSolution_NC'],
-                                      elt_type='POLY_2D')
-
-  assert maia.pytree.get_node_from_name(part_tree_iso, "maia#surface_data") is not None
+  assert maia.pytree.get_node_from_name(part_tree_iso, "WallDistance") is not None
   #compute_iso_surface@end
 
 def test_compute_plane_slice():
   #compute_plane_slice@start
   from mpi4py import MPI
-  import numpy
   import maia
-  import maia.pytree as PT
-  from   maia.algo.part import isosurf
   from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.merge_connected_zones(dist_tree, MPI.COMM_WORLD) # Isosurf requires single block mesh
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  zone      = maia.pytree.get_node_from_label(part_tree, "Zone_t")
 
-  src_sol   = maia.pytree.new_FlowSolution('FlowSolution_CC', loc='CellCenter', parent=zone)
-  PT.new_DataArray("Field_CC", numpy.random.rand(PT.Zone.n_cell(zone)), parent=src_sol)
-
-  src_sol   = maia.pytree.new_FlowSolution('FlowSolution_NC', loc='Vertex', parent=zone)
-  PT.new_DataArray("Field_NC", numpy.random.rand(PT.Zone.n_vtx(zone)), parent=src_sol)
-
-  part_tree_iso = isosurf.plane_slice(part_tree,
-                                [1.,1.,1.,0.],
-                                MPI.COMM_WORLD,
-                                interpolate=['FlowSolution_CC','FlowSolution_NC'],
-                                elt_type='POLY_2D')
-
-  assert maia.pytree.get_node_from_name(part_tree_iso, "maia#surface_data") is not None
+  slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.5], MPI.COMM_WORLD, elt_type='QUAD_4')
   #compute_plane_slice@end
 
 def test_compute_spherical_slice():
@@ -140,52 +113,31 @@ def test_compute_spherical_slice():
   import numpy
   import maia
   import maia.pytree as PT
-  from   maia.algo.part import isosurf
-  from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  zone      = maia.pytree.get_node_from_label(part_tree, "Zone_t")
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD, preserve_orientation=True)
 
-  src_sol   = maia.pytree.new_FlowSolution('FlowSolution_CC', loc='CellCenter', parent=zone)
-  PT.new_DataArray("Field_CC", numpy.random.rand(PT.Zone.n_cell(zone)), parent=src_sol)
+  # Add solution
+  zone      = PT.get_node_from_label(part_tree, "Zone_t")
+  vol_rank  = MPI.COMM_WORLD.Get_rank() * numpy.ones(PT.Zone.n_cell(zone))
+  src_sol   = PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'i_rank' : vol_rank}, parent=zone)
 
-  src_sol   = maia.pytree.new_FlowSolution('FlowSolution_NC', loc='Vertex', parent=zone)
-  PT.new_DataArray("Field_NC", numpy.random.rand(PT.Zone.n_vtx(zone)), parent=src_sol)
+  slice_tree = maia.algo.part.spherical_slice(part_tree, [0.5,0.5,0.5,0.25], MPI.COMM_WORLD, \
+      ["FlowSolution"], elt_type="NGON_n")
 
-  part_tree_iso = isosurf.spherical_slice(part_tree,
-                                          [0.,0.,0.,1.],
-                                          MPI.COMM_WORLD,
-                                          interpolate=['FlowSolution_CC','FlowSolution_NC'],
-                                          elt_type='POLY_2D')
-
-  assert maia.pytree.get_node_from_name(part_tree_iso, "maia#surface_data") is not None
+  assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is not None
   #compute_spherical_slice@end
 
 def test_compute_elliptical_slice():
   #compute_elliptical_slice@start
   from mpi4py import MPI
-  import numpy
   import maia
   import maia.pytree as PT
   from   maia.algo.part import isosurf
-  from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  zone      = maia.pytree.get_node_from_label(part_tree, "Zone_t")
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD, preserve_orientation=True)
 
-  src_sol   = maia.pytree.new_FlowSolution('FlowSolution_CC', loc='CellCenter', parent=zone)
-  PT.new_DataArray("Field_CC", numpy.random.rand(PT.Zone.n_cell(zone)), parent=src_sol)
-
-  src_sol   = maia.pytree.new_FlowSolution('FlowSolution_NC', loc='Vertex', parent=zone)
-  PT.new_DataArray("Field_NC", numpy.random.rand(PT.Zone.n_vtx(zone)), parent=src_sol)
-
-  part_tree_iso = isosurf.elliptical_slice(part_tree,
-                                           [0.,0.,0.,1.,1.,1.,2.],
-                                           MPI.COMM_WORLD,
-                                           interpolate=['FlowSolution_CC','FlowSolution_NC'],
-                                           elt_type='POLY_2D')
-
-  assert maia.pytree.get_node_from_name(part_tree_iso, "maia#surface_data") is not None
+  slice_tree = isosurf.elliptical_slice(part_tree, [0.5,0.5,0.5,.5,1.,1.,.25**2], \
+      MPI.COMM_WORLD, elt_type='NGON_n')
   #compute_elliptical_slice@end
 
 def test_localize_points():
