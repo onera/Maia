@@ -100,7 +100,7 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
   # DTF(dist_tree_iso, os.path.join(ref_dir, f'U_dist_isosurf_{elt_type}.cgns'), sub_comm)
 
   # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'U_dist_isosurf_{elt_type}.cgns')
+  ref_file = os.path.join(ref_dir, f'U_dist_isosurf_{elt_type}.yaml')
   ref_sol  = maia.io.file_to_dist_tree(ref_file, sub_comm)
 
   # Check that bases are similar (because CGNSLibraryVersion is R4)
@@ -184,7 +184,7 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
   # DTF(dist_tree_iso, os.path.join(ref_dir, f'U_dist_plane_slice_{elt_type}.cgns'), sub_comm)
 
   # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'U_dist_plane_slice_{elt_type}.cgns')
+  ref_file = os.path.join(ref_dir, f'U_dist_plane_slice_{elt_type}.yaml')
   ref_sol  = maia.io.file_to_dist_tree(ref_file, sub_comm)
 
   # Check that bases are similar (because CGNSLibraryVersion is R4)
@@ -269,7 +269,7 @@ def test_spherical_slice_U(elt_type,sub_comm, write_output):
   # DTF(dist_tree_iso, os.path.join(ref_dir, f'U_dist_spherical_slice_{elt_type}.cgns'), sub_comm)
 
   # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'U_dist_spherical_slice_{elt_type}.cgns')
+  ref_file = os.path.join(ref_dir, f'U_dist_spherical_slice_{elt_type}.yaml')
   ref_sol  = maia.io.file_to_dist_tree(ref_file, sub_comm)
 
   # Check that bases are similar (because CGNSLibraryVersion is R4)
@@ -354,7 +354,7 @@ def test_spherical_slice_U(elt_type,sub_comm, write_output):
 #   # DTF(dist_tree_iso, os.path.join(ref_dir, f'U_dist_elliptical_surface_{elt_type}.cgns'), sub_comm)
 
 #   # Compare to reference solution
-#   ref_file = os.path.join(ref_dir, f'U_dist_elliptical_surface_{elt_type}.cgns')
+#   ref_file = os.path.join(ref_dir, f'U_dist_elliptical_surface_{elt_type}.yaml')
 #   ref_sol  = maia.io.file_to_dist_tree(ref_file, sub_comm)
 
 #   # Check that bases are similar (because CGNSLibraryVersion is R4)
