@@ -1,36 +1,13 @@
-'''
-NOTES:
-
-[Questions - Julien]
-  - API
-  - disc.discover_nodes_from_matching() ca sert à quoix ?
-
-[Questions - Bruno] 
-  - le type SHPERE fait avec le field ?
-  - field nécessaire même pour le plan ?
-
-[A FAIRE] 
-  -> prévoir intégration du niveau de l'iso
-  -> prévoir intégration de l'interpolation
-
-'''
 from mpi4py import MPI
-# Import from MAIA
-import maia.pytree                                  as PT
-from   maia.transfer    import utils                as TEU
-from   maia.factory     import dist_from_part       as disc
-from   maia.factory     import recover_dist_tree    as part_to_dist
-import maia.pytree.maia                             as MTM
-from   maia.pytree.maia import conventions          as conv
-from   maia.pytree.sids import node_inspect         as sids
-from   maia.utils       import np_utils,layouts, py_utils
-
-# Import from PARADIGM
-import Pypdm.Pypdm as PDM
-
-# Import NUMPY
 import numpy as np
 
+import maia.pytree as PT
+
+from maia.transfer import utils                as TEU
+from maia.factory  import dist_from_part
+from maia.utils    import np_utils, layouts, py_utils
+
+import Pypdm.Pypdm as PDM
 
 # =======================================================================================
 def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
@@ -129,7 +106,7 @@ def _exchange_field(part_tree, iso_part_tree, interpolate, comm) :
   """
 
   # Get zones by domains
-  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
 
   # Check : monodomain
   assert(len(part_tree_per_dom)==1)
@@ -147,10 +124,6 @@ def _exchange_field(part_tree, iso_part_tree, interpolate, comm) :
 
 
 
-
-
-
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
@@ -163,7 +136,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                        "QUADRIC" : PDM.IsoSurface.quadric_equation_set}
 
   PDM_iso_type = eval(f"PDM._PDM_ISO_SURFACE_KIND_{iso_kind}")
-  PDM_elt_type = eval(f"PDM._PDM_MESH_NODAL_{elt_type}") # A CHANGER
+  PDM_elt_type = PT.maia.pdm_elts.cgns_elt_name_to_pdm_element_type(elt_type)
 
   if iso_kind=="FIELD" : 
     assert isinstance(iso_params, list) and len(iso_params) == len(part_zones)
@@ -273,11 +246,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 
 
 
-
-
-
-
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
@@ -285,10 +253,10 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
   fs_name, field_name = iso_field_path.split('/')
 
   # Get zones by domains
-  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
   
   # Check : monodomain
-  assert(len(part_tree_per_dom)==1)
+  assert len(part_tree_per_dom) == 1
 
   iso_part_tree = PT.new_CGNSTree()
   iso_part_base = PT.new_CGNSBase('Base', cell_dim=3-1, phy_dim=3, parent=iso_part_tree)
@@ -311,8 +279,8 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
 # ---------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------
-def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_type="TRIA3"):
-  ''' 
+def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_type="TRI_3"):
+  """
   Computes isosurface from field defined at vertices for a partitioned tree.
   Returns partition of the isosurface.
 
@@ -322,16 +290,16 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_ty
     comm          (MPIComm)     : MPI communicator
     iso_val       (float)       : Value to use to compute isosurface (default = 0)
     interpolate   (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
-    elt_type      (str)         : Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
+    elt_type      (str)         : Type of elt in isosurface ("TRI_3","QUAD_4","NGON_n")         
 
   Example:
     .. literalinclude:: snippets/test_algo.py
       :start-after: #compute_iso_surface@start
       :end-before: #compute_iso_surface@end
       :dedent: 2
-  '''
+  """
 
-  assert(elt_type in ["TRIA3","QUAD4","POLY_2D"])
+  assert(elt_type in ["TRI_3","QUAD_4","NGON_n"])
 
   # Isosurface extraction
   iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, comm)
@@ -347,27 +315,24 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_ty
 
 
 
-
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
 
   assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
-  assert(elt_type     in ["TRIA3","QUAD4","POLY_2D"])
+  assert(elt_type     in ["TRI_3","QUAD_4","NGON_n"])
   
   # Get zones by domains
-  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
   
   # Check : monodomain
-  assert(len(part_tree_per_dom)==1)
+  assert len(part_tree_per_dom) == 1
 
   iso_part_tree = PT.new_CGNSTree()
   iso_part_base = PT.new_CGNSBase('Base', cell_dim=3-1, phy_dim=3, parent=iso_part_tree)
 
   # Loop over domains : compute isosurf for each
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-
     iso_part_zone = iso_surface_one_domain(part_zones, surface_type, plane_eq, elt_type, comm)
     PT.add_child(iso_part_base,iso_part_zone)
 
@@ -377,11 +342,10 @@ def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
 
 
 
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def plane_slice(part_tree, plane_eq, comm, interpolate=None, elt_type="TRIA3"):
-  ''' 
+def plane_slice(part_tree, plane_eq, comm, interpolate=None, elt_type="TRI_3"):
+  """
   Computes plane resulting from the intersection between a partitionned tree 
   and a equation defined plane. Returns a partitionned plane.
 
@@ -390,20 +354,19 @@ def plane_slice(part_tree, plane_eq, comm, interpolate=None, elt_type="TRIA3"):
     plane_eq      (list of float): List of 4 floats to define the plane [a,b,c,d]
     comm          (MPIComm)      : MPI communicator
     interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
-    elt_type      (str)          : Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
+    elt_type      (str)          : Type of elt in isosurface ("TRI_3","QUAD_4","NGON_n")         
 
   Example:
     .. literalinclude:: snippets/test_algo.py
       :start-after: #compute_plane_slice@start
       :end-before: #compute_plane_slice@end
       :dedent: 2
-  '''
+  """
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, comm)
 
   # Interpolation
   if interpolate is not None :
-    # Assert ?
     _exchange_field(part_tree, iso_part_tree, interpolate, comm)
 
   return iso_part_tree
@@ -412,11 +375,10 @@ def plane_slice(part_tree, plane_eq, comm, interpolate=None, elt_type="TRIA3"):
 
 
 
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def spherical_slice(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRIA3"):
-  ''' 
+def spherical_slice(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRI_3"):
+  """
   Computes sphere resulting from the intersection between a partitionned tree 
   and a equation defined sphere. Returns a partitionned plane.
 
@@ -425,21 +387,20 @@ def spherical_slice(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRIA
     plane_eq      (list of float): List of 4 floats to define the sphere [xc,yc,zc,R]
     comm          (MPIComm)      : MPI communicator
     interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
-    elt_type      (str)          : Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
+    elt_type      (str)          : Type of elt in isosurface ("TRI_3","QUAD_4","NGON_n")         
 
   Example:
     .. literalinclude:: snippets/test_algo.py
       :start-after: #compute_spherical_slice@start
       :end-before: #compute_spherical_slice@end
       :dedent: 2
-  '''
+  """
 
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, comm)
 
   # Interpolation
   if interpolate is not None :
-    # Assert ?
     _exchange_field(part_tree, iso_part_tree, interpolate, comm)
 
   return iso_part_tree
@@ -448,10 +409,9 @@ def spherical_slice(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRIA
 
 
 
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def elliptical_slice(part_tree, ellipse_eq, comm, interpolate=None, elt_type="TRIA3"):
+def elliptical_slice(part_tree, ellipse_eq, comm, interpolate=None, elt_type="TRI_3"):
   ''' 
   Computes ellipse resulting from the intersection between a partitionned tree 
   and a equation defined ellipse. Returns a partitionned plane.
@@ -461,7 +421,7 @@ def elliptical_slice(part_tree, ellipse_eq, comm, interpolate=None, elt_type="TR
     plane_eq      (list of float): List of 7 floats to define the ellipse [xc,yc,zc,a,b,c,r]
     comm          (MPIComm)      : MPI communicator
     interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
-    elt_type      (str)          : Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
+    elt_type      (str)          : Type of elt in isosurface ("TRI_3","QUAD_4","NGON_n")         
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -469,18 +429,13 @@ def elliptical_slice(part_tree, ellipse_eq, comm, interpolate=None, elt_type="TR
       :end-before: #compute_elliptical_surface@end
       :dedent: 2
   '''
-  assert(elt_type in ["TRIA3","QUAD4","POLY_2D"])
-
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, comm)
 
   # Interpolation
   if interpolate is not None :
-    # Assert ?
     _exchange_field(part_tree, iso_part_tree, interpolate, comm)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
-
-

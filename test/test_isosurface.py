@@ -29,7 +29,7 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("elt_type", ["QUAD4","POLY_2D"])
+@pytest.mark.parametrize("elt_type", ["QUAD_4","NGON_n"])
 @mark_mpi_test([1, 3])
 def test_isosurf_U(elt_type,sub_comm, write_output):
   
@@ -115,7 +115,7 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("elt_type", ["TRIA3","POLY_2D"])
+@pytest.mark.parametrize("elt_type", ["TRI_3","NGON_n"])
 @mark_mpi_test([1, 3])
 def test_plane_slice_U(elt_type,sub_comm, write_output):
   
@@ -199,7 +199,7 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4"])
+@pytest.mark.parametrize("elt_type", ["TRI_3","QUAD_4"])
 @mark_mpi_test([1, 3])
 def test_spherical_slice_U(elt_type,sub_comm, write_output):
   
@@ -284,7 +284,7 @@ def test_spherical_slice_U(elt_type,sub_comm, write_output):
 
 # # ========================================================================================
 # # ----------------------------------------------------------------------------------------
-# @pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
+# @pytest.mark.parametrize("elt_type", ["TRI_3","QUAD_4","NGON_n"])
 # @mark_mpi_test([1, 2, 3])
 # def test_elliptical_surface_U(elt_type,sub_comm, write_output):
   

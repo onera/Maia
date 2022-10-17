@@ -18,6 +18,7 @@ cgns_to_pdm = {
         "PENTA_6":  PDM._PDM_MESH_NODAL_PRISM6,
         "HEXA_8" :  PDM._PDM_MESH_NODAL_HEXA8,
         "HEXA_20":    10,
+        "NGON_n":   PDM._PDM_MESH_NODAL_POLY_2D,
         }
 pdm_to_cgns = {val : key for key, val in cgns_to_pdm.items()}
 
