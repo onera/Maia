@@ -14,15 +14,6 @@ NOTES:
   -> prévoir intégration de l'interpolation
 
 '''
-# import sys, time
-
-
-# Import from CASSIOPEE
-import Converter.PyTree   as C
-import Generator.PyTree   as G
-import Converter.Internal as I
-
-
 # Import from MAIA
 import maia.pytree                                  as PT
 from   maia.transfer    import utils                as TEU
@@ -50,13 +41,14 @@ def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
     # --- Get all fields names ------------------------------------------------
     # A MODIFIER
     flds_in_container_names = []
-    first_zone_container    = I.getNodeFromName(part_zones[0],container_name)
-    for fld_node in I.getNodesFromType(first_zone_container,'DataArray_t'):
+    first_zone_container    = PT.get_node_from_name(part_zones[0],container_name)
+    # for fld_node in PT.get_nodes_from_type(first_zone_container,'DataArray_t'):
+    for fld_node in PT.get_nodes_from_label(first_zone_container,'DataArray_t'):
       flds_in_container_names.append(fld_node[0])
     
 
     # Get : Field location
-    gridLocation = I.getValue(I.getNodeFromName(first_zone_container,'GridLocation'))
+    gridLocation = PT.get_value(PT.get_node_from_name(first_zone_container,'GridLocation'))
     # Check : correct GridLocation node
     assert(gridLocation in ['Vertex','CellCenter'])
 
@@ -75,7 +67,7 @@ def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
       part1_to_part2_idx  = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    )[1]]
     if gridLocation=='CellCenter' :
       part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum")[1]]
-      part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[i_part].shape[0]+1, dtype=np.int32 )]
+      part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[0].shape[0]+1, dtype=np.int32 )]
     
 
     # --- Part2 (VOLUME) objects definition ----------------------------------
@@ -95,7 +87,7 @@ def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
 
 
     # --- FlowSolution node def by zone -------------------------------------------------
-    FS_iso = I.newFlowSolution(container_name, gridLocation=gridLocation, parent=iso_part_zone)
+    FS_iso = PT.new_FlowSolution(container_name, loc=gridLocation, parent=iso_part_zone)
 
 
     # --- Field exchange ----------------------------------------------------------------
@@ -118,17 +110,16 @@ def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
         weighted_fld        = part1_data[i_part]*part1_weight[i_part]
         part1_data[i_part]  = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
 
-      I.newDataArray(fld_name, part1_data[i_part], parent=FS_iso)    
-    
+      PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)    
 
 # =======================================================================================
 
 
 
 # =======================================================================================
-def _exchange_field(part_tree, part_tree_iso, interpolate, comm) :
+def _exchange_field(part_tree, iso_part_tree, interpolate, comm) :
   """
-  Exchange field between part_tree and part_tree_iso
+  Exchange field between part_tree and iso_part_tree
   for interpolate vol field 
   """
 
@@ -139,7 +130,7 @@ def _exchange_field(part_tree, part_tree_iso, interpolate, comm) :
   assert(len(part_tree_per_dom)==1)
 
   # Get zone from isosurf
-  iso_part_zone = PT.get_all_Zone_t(part_tree_iso)
+  iso_part_zone = PT.get_all_Zone_t(iso_part_tree)
   assert(len(iso_part_zone)<=1)
   iso_part_zone = iso_part_zone[0]
 
@@ -195,10 +186,10 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
     ngon  = PT.Zone.NGonNode(part_zone)
     nface = PT.Zone.NFaceNode(part_zone)
 
-    cell_face_idx = I.getNodeFromName1(nface, "ElementStartOffset" )[1]
-    cell_face     = I.getNodeFromName1(nface, "ElementConnectivity")[1]
-    face_vtx_idx  = I.getNodeFromName1(ngon, "ElementStartOffset" )[1]
-    face_vtx      = I.getNodeFromName1(ngon, "ElementConnectivity")[1]
+    cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset" )[1]
+    cell_face     = PT.get_child_from_name(nface, "ElementConnectivity")[1]
+    face_vtx_idx  = PT.get_child_from_name(ngon, "ElementStartOffset" )[1]
+    face_vtx      = PT.get_child_from_name(ngon, "ElementConnectivity")[1]
 
     vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
 
@@ -235,9 +226,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
-  # > Tree construction
-  # iso_part_tree = I.newCGNSTree()
-  # iso_part_base = I.newCGNSBase('Base', cellDim=dim-1, physDim=3, parent=iso_part_tree)
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
   iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
@@ -246,33 +234,33 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 
   # > Grid coordinates
   cx, cy, cz      = layouts.interlaced_to_tuple_coords(results['np_vtx_coord'])
-  iso_grid_coord  = I.newGridCoordinates(parent=iso_part_zone)
-  I.newDataArray('CoordinateX', cx, parent=iso_grid_coord)
-  I.newDataArray('CoordinateY', cy, parent=iso_grid_coord)
-  I.newDataArray('CoordinateZ', cz, parent=iso_grid_coord)
+  iso_grid_coord  = PT.new_GridCoordinates(parent=iso_part_zone)
+  PT.new_DataArray('CoordinateX', cx, parent=iso_grid_coord)
+  PT.new_DataArray('CoordinateY', cy, parent=iso_grid_coord)
+  PT.new_DataArray('CoordinateZ', cz, parent=iso_grid_coord)
 
   # > Elements
-  ngon_n = I.newElements('NGonElements', 'NGON', erange = [1, n_iso_elt], parent=iso_part_zone)
-  I.newDataArray('ElementConnectivity', results['np_elt_vtx'    ]     , parent=ngon_n)
-  I.newDataArray('ElementStartOffset' , results['np_elt_vtx_idx']     , parent=ngon_n)
+  ngon_n = PT.new_NGonElements( 'NGonElements',
+                                erange = [1, n_iso_elt],
+                                ec=results['np_elt_vtx'],
+                                eso=results['np_elt_vtx_idx'],
+                                parent=iso_part_zone)
 
-  gn_elmt = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=ngon_n )
-  I.newDataArray('Element', results['np_elt_ln_to_gn']  , parent=gn_elmt)
+  PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=ngon_n)
 
   # > LN to GN
-  gn_zone = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=iso_part_zone)
-  I.newDataArray('Vertex'         , results['np_vtx_ln_to_gn']    , parent=gn_zone)
-  I.newDataArray('Cell'           , results['np_elt_ln_to_gn']    , parent=gn_zone)
+  PT.maia.newGlobalNumbering({'Vertex' : results['np_vtx_ln_to_gn'],
+                              'Cell'   : results['np_elt_ln_to_gn'] }, parent=iso_part_zone)
 
   # > Link between vol and isosurf
-  maia_iso_zone = I.newUserDefinedData('maia#surface_data', parent=iso_part_zone)
+  maia_iso_zone = PT.new_node('maia#surface_data', label='UserDefinedData_t', parent=iso_part_zone)
   results_vtx   = pdm_isos.part_iso_surface_vtx_interpolation_data_get()
   results_geo   = pdm_isos.part_iso_surface_geom_data_get()
-  I.newDataArray('Cell_parent_gnum' , results    ["np_elt_parent_g_num"]  , parent=maia_iso_zone)
-  I.newDataArray('Vtx_parent_gnum'  , results_vtx["vtx_volume_vtx_g_num"] , parent=maia_iso_zone)
-  I.newDataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=maia_iso_zone)
-  I.newDataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
-  I.newDataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
+  PT.new_DataArray('Cell_parent_gnum' , results    ["np_elt_parent_g_num"]  , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_gnum'  , results_vtx["vtx_volume_vtx_g_num"] , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
+  PT.new_DataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
 
   return iso_part_zone
 # ---------------------------------------------------------------------------------------
@@ -288,11 +276,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
-  """
-  Arguments :
-   - part_tree : [partitioned tree] from which isosurf is created
-   - iso_kind  : [list]             [type_of_isosurf,isosurf_params]
-  """
+
   fs_name, field_name = iso_field_path.split('/')
 
   # Get zones by domains
@@ -316,7 +300,7 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       field_values.append(PT.get_value(field_node) - iso_val)
 
     iso_part_zone = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
-    I._addChild(iso_part_base,iso_part_zone)
+    PT.add_child(iso_part_base,iso_part_zone)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
@@ -324,15 +308,22 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
 # ---------------------------------------------------------------------------------------
 def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_type="TRIA3"):
   ''' 
-  Compute isosurface from field for a partitioned tree. Return partition of the isosurface.
+  Computes isosurface from field defined at vertices for a partitioned tree.
+  Returns partition of the isosurface.
 
   Args:
-    part_tree     (CGNSTree)    : from which isosurf is created
+    part_tree     (CGNSTree)    : Partitionned tree from which isosurf is created
     iso_field     (str)         : Path of the field to use to compute isosurface
+    comm          (MPIComm)     : MPI communicator
     iso_val       (float)       : Value to use to compute isosurface (default = 0)
     interpolate   (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
     elt_type      (str)         : Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
-    comm          (MPIComm)     : MPI communicator
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #compute_iso_surface@start
+      :end-before: #compute_iso_surface@end
+      :dedent: 2
   '''
 
   assert(elt_type in ["TRIA3","QUAD4","POLY_2D"])
@@ -355,12 +346,11 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., interpolate=None, elt_ty
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def _iso_plane(part_tree, plane_eq, elt_type, comm):
-  """
-  Arguments :
-   - part_tree : [partitioned tree] from which isosurf is created
-   - iso_kind  : [list]             [type_of_isosurf,isosurf_params]
-  """
+def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
+
+  assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
+  assert(elt_type     in ["TRIA3","QUAD4","POLY_2D"])
+  
   # Get zones by domains
   part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
   
@@ -373,29 +363,38 @@ def _iso_plane(part_tree, plane_eq, elt_type, comm):
   # Loop over domains : compute isosurf for each
   for i_domain, part_zones in enumerate(part_tree_per_dom):
 
-    iso_part_zone = iso_surface_one_domain(part_zones, "PLANE", plane_eq, elt_type, comm)
-    # I._addChild(part_tree_iso,part_zone_iso)
+    iso_part_zone = iso_surface_one_domain(part_zones, surface_type, plane_eq, elt_type, comm)
     PT.add_child(iso_part_base,iso_part_zone)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
+# =======================================================================================
 
+
+
+
+# =======================================================================================
 # ---------------------------------------------------------------------------------------
-def iso_plane(part_tree, plane_eq, comm, interpolate=None, elt_type="TRIA3"):
+def plane_slice(part_tree, plane_eq, comm, interpolate=None, elt_type="TRIA3"):
   ''' 
-  Compute isosurface from field for a partitioned tree
-  Return partition of the isosurface
-  Arguments :
-    - part_tree   : [partitioned tree] from which isosurf is created
-    - plane_eq    : [list]             plane equation [a,b,c,d]
-    - interpolate : [container]        
-    - elt_type    : [str]              Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
-    - comm        : [MPI communicator]
-  '''
-  assert(elt_type in ["TRIA3","QUAD4","POLY_2D"])
+  Computes plane resulting from the intersection between a partitionned tree 
+  and a equation defined plane. Returns a partitionned plane.
 
+  Args:
+    part_tree     (CGNSTree)     : Partitionned tree from which isosurf is created
+    plane_eq      (list of float): List of 4 floats to define the plane [a,b,c,d]
+    comm          (MPIComm)      : MPI communicator
+    interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
+    elt_type      (str)          : Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #compute_plane_slice@start
+      :end-before: #compute_plane_slice@end
+      :dedent: 2
+  '''
   # Isosurface extraction
-  iso_part_tree = _iso_plane(part_tree, plane_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, comm)
 
   # Interpolation
   if interpolate is not None :
@@ -409,115 +408,73 @@ def iso_plane(part_tree, plane_eq, comm, interpolate=None, elt_type="TRIA3"):
 
 
 
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def _iso_sphere(part_tree, sphere_eq, elt_type, comm):
-  """
-  Arguments :
-   - part_tree : [partitioned tree] from which isosurf is created
-   - iso_kind  : [list]             [type_of_isosurf,isosurf_params]
-  """
-  # Get zones by domains
-  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
-  
-  # Check : monodomain
-  assert(len(part_tree_per_dom)==1)
-
-  part_tree_iso = I.newCGNSTree()
-
-  # Loop over domains : compute isosurf for each
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
-
-    part_zone_iso = iso_surface_one_domain(part_zones, "SPHERE", sphere_eq, elt_type, comm)
-    # I._addChild(part_tree_iso,part_zone_iso)
-    PT.add_child(part_tree_iso,part_zone_iso)
-
-  return part_tree_iso
-# ---------------------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------------------
-def iso_sphere(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRIA3"):
+def spherical_slice(part_tree, sphere_eq, comm, interpolate=None, elt_type="TRIA3"):
   ''' 
-  Compute isosurface from field for a partitioned tree
-  Return partition of the isosurface
-  Arguments :
-    - part_tree   : [partitioned tree] from which isosurf is created
-    - sphere_eq   : [list]             plane equation [a,b,c,d]
-    - interpolate : [container]        
-    - elt_type    : [str]              Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
-    - comm        : [MPI communicator]
+  Computes sphere resulting from the intersection between a partitionned tree 
+  and a equation defined sphere. Returns a partitionned plane.
+
+  Args:
+    part_tree     (CGNSTree)     : Partitionned tree from which isosurf is created
+    plane_eq      (list of float): List of 4 floats to define the sphere [xc,yc,zc,R]
+    comm          (MPIComm)      : MPI communicator
+    interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
+    elt_type      (str)          : Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #compute_spherical_slice@start
+      :end-before: #compute_spherical_slice@end
+      :dedent: 2
   '''
-  assert(elt_type in ["TRIA3","QUAD4","POLY_2D"])
 
   # Isosurface extraction
-  part_tree_iso = _iso_sphere(part_tree, sphere_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, comm)
 
   # Interpolation
   if interpolate is not None :
     # Assert ?
-    _exchange_field(part_tree, part_tree_iso, interpolate, comm)
+    _exchange_field(part_tree, iso_part_tree, interpolate, comm)
 
-  return part_tree_iso
+  return iso_part_tree
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 
 
 
 
-
-
-
-
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def _iso_ellipse(part_tree, ellipse_eq, elt_type, comm):
-  """
-  Arguments :
-   - part_tree : [partitioned tree] from which isosurf is created
-   - iso_kind  : [list]             [type_of_isosurf,isosurf_params]
-  """
-  # Get zones by domains
-  part_tree_per_dom = disc.get_parts_per_blocks(part_tree, comm).values()
-  
-  # Check : monodomain
-  assert(len(part_tree_per_dom)==1)
-
-  part_tree_iso = I.newCGNSTree()
-
-  # Loop over domains : compute isosurf for each
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
-
-    part_zone_iso = iso_surface_one_domain(part_zones, "ELLIPSE", ellipse_eq, elt_type, comm)
-    # I._addChild(part_tree_iso,part_zone_iso)
-    PT.add_child(part_tree_iso,part_zone_iso)
-
-  return part_tree_iso
-# ---------------------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------------------
-def iso_ellipse(part_tree, ellipse_eq, comm, interpolate=None, elt_type="TRIA3"):
+def elliptical_slice(part_tree, ellipse_eq, comm, interpolate=None, elt_type="TRIA3"):
   ''' 
-  Compute isosurface from field for a partitioned tree
-  Return partition of the isosurface
-  Arguments :
-    - part_tree   : [partitioned tree] from which isosurf is created
-    - ellipse_eq  : [list]             plane equation [a,b,c,d]
-    - interpolate : [container]        
-    - elt_type    : [str]              Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
-    - comm        : [MPI communicator]
+  Computes ellipse resulting from the intersection between a partitionned tree 
+  and a equation defined ellipse. Returns a partitionned plane.
+
+  Args:
+    part_tree     (CGNSTree)     : Partitionned tree from which isosurf is created
+    plane_eq      (list of float): List of 7 floats to define the ellipse [xc,yc,zc,a,b,c,r]
+    comm          (MPIComm)      : MPI communicator
+    interpolate   (list of str)  : List of the names of the source FlowSolution_t nodes to transfer.
+    elt_type      (str)          : Type of elt in isosurface ("TRIA3","QUAD4","POLY_2D")         
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #compute_elliptical_surface@start
+      :end-before: #compute_elliptical_surface@end
+      :dedent: 2
   '''
   assert(elt_type in ["TRIA3","QUAD4","POLY_2D"])
 
   # Isosurface extraction
-  part_tree_iso = _iso_ellipse(part_tree, ellipse_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, comm)
 
   # Interpolation
   if interpolate is not None :
     # Assert ?
-    _exchange_field(part_tree, part_tree_iso, interpolate, comm)
+    _exchange_field(part_tree, iso_part_tree, interpolate, comm)
 
-  return part_tree_iso
+  return iso_part_tree
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 

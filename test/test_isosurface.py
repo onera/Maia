@@ -18,23 +18,109 @@ import numpy        as np
 import maia
 
 
-# # ========================================================================================
-# # ----------------------------------------------------------------------------------------
-# # Reference directory
-# ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
-# # ----------------------------------------------------------------------------------------
-# # ========================================================================================
+# ========================================================================================
+# ----------------------------------------------------------------------------------------
+# Reference directory
+ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
+# ----------------------------------------------------------------------------------------
+# ========================================================================================
 
 
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
-@mark_mpi_test([1, 2, 3])
+@pytest.mark.parametrize("elt_type", ["QUAD4","POLY_2D"])
+@mark_mpi_test([1, 3])
 def test_isosurf_U(elt_type,sub_comm, write_output):
   
   # Cube generation
-  n_vtx = 10
+  n_vtx = 6
+  dist_tree = DCG.dcube_generate(n_vtx, 5., [-2.5, -2.5, -2.5], sub_comm)
+  
+  # Partionning option
+  zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
+  part_tree     = PPA.partition_dist_tree(dist_tree, sub_comm,
+                                          zone_to_parts=zone_to_parts,
+                                          preserve_orientation=True)
+
+  # Solution initialisation
+  for zone in PT.get_all_Zone_t(part_tree):
+    # Coordinates
+    GC = PT.get_child_from_name(zone, 'GridCoordinates')
+    CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
+    CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
+    CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
+
+    # Connectivity
+    nface         = PT.get_child_from_name(zone , 'NFaceElements')
+    cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
+    cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+    ngon          = PT.get_child_from_name(zone, 'NGonElements')
+    face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
+    face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
+    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+
+    # Fields
+    fld1 =  CX**2 + CY**2 + CZ**2 - 1
+    fld2 =  CX**2 + CY**2 -1
+
+    flds    = [fld1,fld2]
+    name_f  = ["sphere","cylinder"]
+
+    # Placement
+    FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
+    FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
+    
+    for name,fld in zip(name_f,flds):
+      # Node sol -> Cell sol
+      fld_cell_vtx  = fld[cell_vtx-1]
+      fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
+      fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
+      
+      # Placement
+      PT.new_DataArray(name, fld_cc, parent=FS_CC)
+      PT.new_DataArray(name, fld   , parent=FS_NC)
+
+
+  container     = ['FlowSolution_NC','FlowSolution_CC']
+  part_tree_iso = ISS.iso_surface(part_tree,
+                                  "FlowSolution_NC/cylinder",
+                                  sub_comm,
+                                  iso_val=0.,
+                                  interpolate=container,
+                                  elt_type=elt_type)
+  
+  # Part to dist
+  dist_tree_iso = part_to_dist(part_tree_iso,sub_comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    DTF(dist_tree_iso, os.path.join(out_dir, 'U_dist_isosurf.cgns'), sub_comm)
+  
+  # DTF(dist_tree_iso, os.path.join(ref_dir, f'U_dist_isosurf_{elt_type}.cgns'), sub_comm)
+
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'U_dist_isosurf_{elt_type}.cgns')
+  ref_sol  = maia.io.file_to_dist_tree(ref_file, sub_comm)
+
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  assert maia.pytree.is_same_node(PT.get_all_CGNSBase_t(ref_sol      )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
+
+# ----------------------------------------------------------------------------------------
+# ========================================================================================
+
+
+
+
+# ========================================================================================
+# ----------------------------------------------------------------------------------------
+@pytest.mark.parametrize("elt_type", ["TRIA3","POLY_2D"])
+@mark_mpi_test([1, 3])
+def test_plane_slice_U(elt_type,sub_comm, write_output):
+  
+  # Cube generation
+  n_vtx = 6
   dist_tree = DCG.dcube_generate(n_vtx, 5., [-2.5, -2.5, -2.5], sub_comm)
   
   # Partionning option
@@ -46,31 +132,30 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
   # Solution initialisation
   for zone in I.getZones(part_tree):
     # Coordinates
-    GC = I.getNodeFromName1(zone, 'GridCoordinates')
-    CX = I.getNodeFromName1(GC, 'CoordinateX')[1]
-    CY = I.getNodeFromName1(GC, 'CoordinateY')[1]
-    CZ = I.getNodeFromName1(GC, 'CoordinateZ')[1]
+    GC = PT.get_child_from_name(zone, 'GridCoordinates')
+    CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
+    CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
+    CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
 
     # Connectivity
-    nface         = I.getNodeFromName1(zone , 'NFaceElements')
-    cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
-    cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
-    ngon          = I.getNodeFromName1(zone, 'NGonElements')
-    face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
-    face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
+    nface         = PT.get_child_from_name(zone , 'NFaceElements')
+    cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
+    cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+    ngon          = PT.get_child_from_name(zone, 'NGonElements')
+    face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
+    face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
     cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
 
     # Fields
     fld1 =  CX**2 + CY**2 + CZ**2 - 1
     fld2 =  CX**2 + CY**2 -1
-    # fld3 = (CX**2 + 9*CY**2 + CZ**2 -1 )**3 - CX**2*CZ**3 - CY**2*CZ**3
 
-    flds    = [fld1,fld2]#,fld3]
-    name_f  = ["sphere","cylinder"]#,"heart"]
+    flds    = [fld1,fld2]
+    name_f  = ["sphere","cylinder"]
 
     # Placement
-    FS_NC = I.newFlowSolution('FlowSolution_NC', gridLocation="Vertex"    , parent=zone)
-    FS_CC = I.newFlowSolution('FlowSolution_CC', gridLocation="CellCenter", parent=zone)
+    FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
+    FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
     
     for name,fld in zip(name_f,flds):
       # Node sol -> Cell sol
@@ -79,15 +164,12 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
       fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
       
       # Placement
-      I.newDataArray(name, fld_cc, parent=FS_CC)
-      I.newDataArray(name, fld   , parent=FS_NC)
-
-
-  #iso_kind = ["PLANE", [1.,0.,0.,0.]]
+      PT.new_DataArray(name, fld_cc, parent=FS_CC)
+      PT.new_DataArray(name, fld   , parent=FS_NC)
 
   container     = ['FlowSolution_NC','FlowSolution_CC']
-  part_tree_iso = ISS.iso_surface(part_tree,
-                                  "FlowSolution_NC/cylinder",
+  part_tree_iso = ISS.plane_slice(part_tree,
+                                  [1.,1.,1.,0.2],
                                   sub_comm,
                                   interpolate=container,
                                   elt_type=elt_type)
@@ -95,41 +177,19 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
   # Part to dist
   dist_tree_iso = part_to_dist(part_tree_iso,sub_comm)
 
-  # Verification
-  node_sol_nc   =            I.getNodeFromName(dist_tree_iso,'FlowSolution_NC')
-  sphere_nc     = I.getValue(I.getNodeFromName(node_sol_nc  ,'sphere'        ))
-  cylinder_nc   = I.getValue(I.getNodeFromName(node_sol_nc  ,'cylinder'      ))
-  node_sol_cc   =            I.getNodeFromName(dist_tree_iso,'FlowSolution_CC')
-  sphere_cc     = I.getValue(I.getNodeFromName(node_sol_cc  ,'sphere'        ))
-  cylinder_cc   = I.getValue(I.getNodeFromName(node_sol_cc  ,'cylinder'      ))
-
-  min_sphere_nc   = sub_comm.allreduce(np.min(sphere_nc  ),MPI.MIN)
-  min_sphere_cc   = sub_comm.allreduce(np.min(sphere_cc  ),MPI.MIN)
-  max_sphere_nc   = sub_comm.allreduce(np.max(sphere_nc  ),MPI.MAX)
-  max_sphere_cc   = sub_comm.allreduce(np.max(sphere_cc  ),MPI.MAX)
-
-  min_cylinder_nc = sub_comm.allreduce(np.min(cylinder_nc),MPI.MIN)
-  min_cylinder_cc = sub_comm.allreduce(np.min(cylinder_cc),MPI.MIN)
-  max_cylinder_nc = sub_comm.allreduce(np.max(cylinder_nc),MPI.MAX)
-  max_cylinder_cc = sub_comm.allreduce(np.max(cylinder_cc),MPI.MAX)
-
-
-  if (sub_comm.Get_rank()==0) :
-    print( "\n========================================")
-    print(f" * NPROC = {sub_comm.Get_size()}")
-    print( "    -> NODE_CENTERED FIELD : ")
-    print(f"        - MIN(sphere)   = {min_sphere_nc  } ; MAX(sphere)   = {max_sphere_nc  } ")
-    print(f"        - MIN(cylinder) = {min_cylinder_nc} ; MAX(cylinder) = {max_cylinder_nc} ")
-    print( "    -> CELL_CENTERED FIELD : ")
-    print(f"        - MIN(sphere)   = {min_sphere_cc  } ; MAX(sphere)   = {max_sphere_cc  } ")
-    print(f"        - MIN(cylinder) = {min_cylinder_cc} ; MAX(cylinder) = {max_cylinder_cc} ")
-    print( "========================================")
-
   if write_output:
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    dist_tree = maia.factory.recover_dist_tree(part_tree,sub_comm)
-    DTF(dist_tree, os.path.join(out_dir, 'dist_volume.cgns'), sub_comm)
-    DTF(dist_tree_iso, os.path.join(out_dir, 'dist_isosurf.cgns'), sub_comm)
+    DTF(dist_tree_iso, os.path.join(out_dir, f'U_dist_plane_slice_{elt_type}.cgns'), sub_comm)
+  
+  # DTF(dist_tree_iso, os.path.join(ref_dir, f'U_dist_plane_slice_{elt_type}.cgns'), sub_comm)
+
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'U_dist_plane_slice_{elt_type}.cgns')
+  ref_sol  = maia.io.file_to_dist_tree(ref_file, sub_comm)
+
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  assert maia.pytree.is_same_node(PT.get_all_CGNSBase_t(ref_sol      )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
@@ -139,12 +199,12 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
-@mark_mpi_test([1, 2, 3])
-def test_isoplane_U(elt_type,sub_comm, write_output):
+@pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4"])
+@mark_mpi_test([1, 3])
+def test_spherical_slice_U(elt_type,sub_comm, write_output):
   
   # Cube generation
-  n_vtx = 10
+  n_vtx = 5
   dist_tree = DCG.dcube_generate(n_vtx, 5., [-2.5, -2.5, -2.5], sub_comm)
   
   # Partionning option
@@ -154,33 +214,32 @@ def test_isoplane_U(elt_type,sub_comm, write_output):
                                           preserve_orientation=True)
 
   # Solution initialisation
-  for zone in I.getZones(part_tree):
+  for zone in PT.get_all_Zone_t(part_tree):
     # Coordinates
-    GC = I.getNodeFromName1(zone, 'GridCoordinates')
-    CX = I.getNodeFromName1(GC, 'CoordinateX')[1]
-    CY = I.getNodeFromName1(GC, 'CoordinateY')[1]
-    CZ = I.getNodeFromName1(GC, 'CoordinateZ')[1]
+    GC = PT.get_child_from_name(zone, 'GridCoordinates')
+    CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
+    CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
+    CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
 
     # Connectivity
-    nface         = I.getNodeFromName1(zone , 'NFaceElements')
-    cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
-    cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
-    ngon          = I.getNodeFromName1(zone, 'NGonElements')
-    face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
-    face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
+    nface         = PT.get_child_from_name(zone , 'NFaceElements')
+    cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
+    cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+    ngon          = PT.get_child_from_name(zone, 'NGonElements')
+    face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
+    face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
     cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
 
     # Fields
     fld1 =  CX**2 + CY**2 + CZ**2 - 1
     fld2 =  CX**2 + CY**2 -1
-    # fld3 = (CX**2 + 9*CY**2 + CZ**2 -1 )**3 - CX**2*CZ**3 - CY**2*CZ**3
 
-    flds    = [fld1,fld2]#,fld3]
-    name_f  = ["sphere","cylinder"]#,"heart"]
+    flds    = [fld1,fld2]
+    name_f  = ["sphere","cylinder"]
 
     # Placement
-    FS_NC = I.newFlowSolution('FlowSolution_NC', gridLocation="Vertex"    , parent=zone)
-    FS_CC = I.newFlowSolution('FlowSolution_CC', gridLocation="CellCenter", parent=zone)
+    FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
+    FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
     
     for name,fld in zip(name_f,flds):
       # Node sol -> Cell sol
@@ -189,57 +248,33 @@ def test_isoplane_U(elt_type,sub_comm, write_output):
       fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
       
       # Placement
-      I.newDataArray(name, fld_cc, parent=FS_CC)
-      I.newDataArray(name, fld   , parent=FS_NC)
-
-
-  #iso_kind = ["PLANE", [1.,0.,0.,0.]]
+      PT.new_DataArray(name, fld_cc, parent=FS_CC)
+      PT.new_DataArray(name, fld   , parent=FS_NC)
 
   container     = ['FlowSolution_NC','FlowSolution_CC']
-  part_tree_iso = ISS.iso_plane(part_tree,
-                                [1.,1.,1.,0.],
-                                sub_comm,
-                                interpolate=container,
-                                elt_type=elt_type)
+  part_tree_iso = ISS.spherical_slice(part_tree,
+                                      [0.,0.,0.,2.],
+                                      sub_comm,
+                                      interpolate=container,
+                                      elt_type=elt_type)
   
   # Part to dist
   dist_tree_iso = part_to_dist(part_tree_iso,sub_comm)
 
-  # Verification
-  node_sol_nc   =            I.getNodeFromName(dist_tree_iso,'FlowSolution_NC')
-  sphere_nc     = I.getValue(I.getNodeFromName(node_sol_nc  ,'sphere'        ))
-  cylinder_nc   = I.getValue(I.getNodeFromName(node_sol_nc  ,'cylinder'      ))
-  node_sol_cc   =            I.getNodeFromName(dist_tree_iso,'FlowSolution_CC')
-  sphere_cc     = I.getValue(I.getNodeFromName(node_sol_cc  ,'sphere'        ))
-  cylinder_cc   = I.getValue(I.getNodeFromName(node_sol_cc  ,'cylinder'      ))
-
-  min_sphere_nc   = sub_comm.allreduce(np.min(sphere_nc  ),MPI.MIN)
-  min_sphere_cc   = sub_comm.allreduce(np.min(sphere_cc  ),MPI.MIN)
-  max_sphere_nc   = sub_comm.allreduce(np.max(sphere_nc  ),MPI.MAX)
-  max_sphere_cc   = sub_comm.allreduce(np.max(sphere_cc  ),MPI.MAX)
-
-  min_cylinder_nc = sub_comm.allreduce(np.min(cylinder_nc),MPI.MIN)
-  min_cylinder_cc = sub_comm.allreduce(np.min(cylinder_cc),MPI.MIN)
-  max_cylinder_nc = sub_comm.allreduce(np.max(cylinder_nc),MPI.MAX)
-  max_cylinder_cc = sub_comm.allreduce(np.max(cylinder_cc),MPI.MAX)
-
-
-  if (sub_comm.Get_rank()==0) :
-    print( "\n========================================")
-    print(f" * NPROC = {sub_comm.Get_size()}")
-    print( "    -> NODE_CENTERED FIELD : ")
-    print(f"        - MIN(sphere)   = {min_sphere_nc  } ; MAX(sphere)   = {max_sphere_nc  } ")
-    print(f"        - MIN(cylinder) = {min_cylinder_nc} ; MAX(cylinder) = {max_cylinder_nc} ")
-    print( "    -> CELL_CENTERED FIELD : ")
-    print(f"        - MIN(sphere)   = {min_sphere_cc  } ; MAX(sphere)   = {max_sphere_cc  } ")
-    print(f"        - MIN(cylinder) = {min_cylinder_cc} ; MAX(cylinder) = {max_cylinder_cc} ")
-    print( "========================================")
 
   if write_output:
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    dist_tree = maia.factory.recover_dist_tree(part_tree,sub_comm)
-    DTF(dist_tree, os.path.join(out_dir, 'dist_volume.cgns'), sub_comm)
-    DTF(dist_tree_iso, os.path.join(out_dir, 'dist_isoplane.cgns'), sub_comm)
+    DTF(dist_tree_iso, os.path.join(out_dir, f'U_dist_spherical_slice_{elt_type}.cgns'), sub_comm)
+  
+  # DTF(dist_tree_iso, os.path.join(ref_dir, f'U_dist_spherical_slice_{elt_type}.cgns'), sub_comm)
+
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'U_dist_spherical_slice_{elt_type}.cgns')
+  ref_sol  = maia.io.file_to_dist_tree(ref_file, sub_comm)
+
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  assert maia.pytree.is_same_node(PT.get_all_CGNSBase_t(ref_sol      )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
@@ -247,222 +282,84 @@ def test_isoplane_U(elt_type,sub_comm, write_output):
 
 
 
-# ========================================================================================
-# ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
-@mark_mpi_test([1, 2, 3])
-def test_isosphere_U(elt_type,sub_comm, write_output):
+# # ========================================================================================
+# # ----------------------------------------------------------------------------------------
+# @pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
+# @mark_mpi_test([1, 2, 3])
+# def test_elliptical_surface_U(elt_type,sub_comm, write_output):
   
-  # Cube generation
-  n_vtx = 10
-  dist_tree = DCG.dcube_generate(n_vtx, 5., [-2.5, -2.5, -2.5], sub_comm)
+#   # Cube generation
+#   n_vtx = 20
+#   dist_tree = DCG.dcube_generate(n_vtx, 5., [-2.5, -2.5, -2.5], sub_comm)
   
-  # Partionning option
-  zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
-  part_tree     = PPA.partition_dist_tree(dist_tree, sub_comm,
-                                          zone_to_parts=zone_to_parts,
-                                          preserve_orientation=True)
+#   # Partionning option
+#   zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
+#   part_tree     = PPA.partition_dist_tree(dist_tree, sub_comm,
+#                                           zone_to_parts=zone_to_parts,
+#                                           preserve_orientation=True)
 
-  # Solution initialisation
-  for zone in I.getZones(part_tree):
-    # Coordinates
-    GC = I.getNodeFromName1(zone, 'GridCoordinates')
-    CX = I.getNodeFromName1(GC, 'CoordinateX')[1]
-    CY = I.getNodeFromName1(GC, 'CoordinateY')[1]
-    CZ = I.getNodeFromName1(GC, 'CoordinateZ')[1]
+#   # Solution initialisation
+#   for zone in I.getZones(part_tree):
+#     # Coordinates
+#     GC = I.getNodeFromName1(zone, 'GridCoordinates')
+#     CX = I.getNodeFromName1(GC, 'CoordinateX')[1]
+#     CY = I.getNodeFromName1(GC, 'CoordinateY')[1]
+#     CZ = I.getNodeFromName1(GC, 'CoordinateZ')[1]
 
-    # Connectivity
-    nface         = I.getNodeFromName1(zone , 'NFaceElements')
-    cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
-    cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
-    ngon          = I.getNodeFromName1(zone, 'NGonElements')
-    face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
-    face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
-    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+#     # Connectivity
+#     nface         = I.getNodeFromName1(zone , 'NFaceElements')
+#     cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
+#     cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
+#     ngon          = I.getNodeFromName1(zone, 'NGonElements')
+#     face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
+#     face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
+#     cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
 
-    # Fields
-    fld1 =  CX**2 + CY**2 + CZ**2 - 1
-    fld2 =  CX**2 + CY**2 -1
-    # fld3 = (CX**2 + 9*CY**2 + CZ**2 -1 )**3 - CX**2*CZ**3 - CY**2*CZ**3
+#     # Fields
+#     fld1 =  CX**2 + CY**2 + CZ**2 - 1
+#     fld2 =  CX**2 + CY**2 -1
 
-    flds    = [fld1,fld2]#,fld3]
-    name_f  = ["sphere","cylinder"]#,"heart"]
+#     flds    = [fld1,fld2]
+#     name_f  = ["sphere","cylinder"]
 
-    # Placement
-    FS_NC = I.newFlowSolution('FlowSolution_NC', gridLocation="Vertex"    , parent=zone)
-    FS_CC = I.newFlowSolution('FlowSolution_CC', gridLocation="CellCenter", parent=zone)
+#     # Placement
+#     FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
+#     FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
     
-    for name,fld in zip(name_f,flds):
-      # Node sol -> Cell sol
-      fld_cell_vtx  = fld[cell_vtx-1]
-      fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
-      fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
+#     for name,fld in zip(name_f,flds):
+#       # Node sol -> Cell sol
+#       fld_cell_vtx  = fld[cell_vtx-1]
+#       fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
+#       fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
       
-      # Placement
-      I.newDataArray(name, fld_cc, parent=FS_CC)
-      I.newDataArray(name, fld   , parent=FS_NC)
+#       # Placement
+#       PT.new_DataArray(name, fld_cc, parent=FS_CC)
+#       PT.new_DataArray(name, fld   , parent=FS_NC)
 
-
-  #iso_kind = ["sphere", [1.,0.,0.,0.]]
-
-  container     = ['FlowSolution_NC','FlowSolution_CC']
-  part_tree_iso = ISS.iso_sphere(part_tree,
-                                [1.,1.,1.,1.5],
-                                sub_comm,
-                                interpolate=container,
-                                elt_type=elt_type)
+#   container     = ['FlowSolution_NC','FlowSolution_CC']
+#   part_tree_iso = ISS.elliptical_surface(part_tree,
+#                                          [0.,0.,0.0,1.,3.,2.,0.9],
+#                                          sub_comm,
+#                                          interpolate=container,
+#                                          elt_type=elt_type)
   
-  # Part to dist
-  dist_tree_iso = part_to_dist(part_tree_iso,sub_comm)
-
-  # Verification
-  node_sol_nc   =            I.getNodeFromName(dist_tree_iso,'FlowSolution_NC')
-  sphere_nc     = I.getValue(I.getNodeFromName(node_sol_nc  ,'sphere'        ))
-  cylinder_nc   = I.getValue(I.getNodeFromName(node_sol_nc  ,'cylinder'      ))
-  node_sol_cc   =            I.getNodeFromName(dist_tree_iso,'FlowSolution_CC')
-  sphere_cc     = I.getValue(I.getNodeFromName(node_sol_cc  ,'sphere'        ))
-  cylinder_cc   = I.getValue(I.getNodeFromName(node_sol_cc  ,'cylinder'      ))
-
-  min_sphere_nc   = sub_comm.allreduce(np.min(sphere_nc  ),MPI.MIN)
-  min_sphere_cc   = sub_comm.allreduce(np.min(sphere_cc  ),MPI.MIN)
-  max_sphere_nc   = sub_comm.allreduce(np.max(sphere_nc  ),MPI.MAX)
-  max_sphere_cc   = sub_comm.allreduce(np.max(sphere_cc  ),MPI.MAX)
-
-  min_cylinder_nc = sub_comm.allreduce(np.min(cylinder_nc),MPI.MIN)
-  min_cylinder_cc = sub_comm.allreduce(np.min(cylinder_cc),MPI.MIN)
-  max_cylinder_nc = sub_comm.allreduce(np.max(cylinder_nc),MPI.MAX)
-  max_cylinder_cc = sub_comm.allreduce(np.max(cylinder_cc),MPI.MAX)
+#   # Part to dist
+#   dist_tree_iso = part_to_dist(part_tree_iso,sub_comm)
 
 
-  if (sub_comm.Get_rank()==0) :
-    print( "\n========================================")
-    print(f" * NPROC = {sub_comm.Get_size()}")
-    print( "    -> NODE_CENTERED FIELD : ")
-    print(f"        - MIN(sphere)   = {min_sphere_nc  } ; MAX(sphere)   = {max_sphere_nc  } ")
-    print(f"        - MIN(cylinder) = {min_cylinder_nc} ; MAX(cylinder) = {max_cylinder_nc} ")
-    print( "    -> CELL_CENTERED FIELD : ")
-    print(f"        - MIN(sphere)   = {min_sphere_cc  } ; MAX(sphere)   = {max_sphere_cc  } ")
-    print(f"        - MIN(cylinder) = {min_cylinder_cc} ; MAX(cylinder) = {max_cylinder_cc} ")
-    print( "========================================")
-
-  if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    dist_tree = maia.factory.recover_dist_tree(part_tree,sub_comm)
-    DTF(dist_tree, os.path.join(out_dir, 'dist_volume.cgns'), sub_comm)
-    DTF(dist_tree_iso, os.path.join(out_dir, 'dist_isosphere.cgns'), sub_comm)
-
-# ----------------------------------------------------------------------------------------
-# ========================================================================================
-
-
-
-
-# ========================================================================================
-# ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("elt_type", ["TRIA3","QUAD4","POLY_2D"])
-@mark_mpi_test([1, 2, 3])
-def test_isoellipse_U(elt_type,sub_comm, write_output):
+#   if write_output:
+#     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+#     DTF(dist_tree_iso, os.path.join(out_dir, f'U_dist_elliptical_surface_{elt_type}.cgns'), sub_comm)
   
-  # Cube generation
-  n_vtx = 10
-  dist_tree = DCG.dcube_generate(n_vtx, 5., [-2.5, -2.5, -2.5], sub_comm)
-  
-  # Partionning option
-  zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
-  part_tree     = PPA.partition_dist_tree(dist_tree, sub_comm,
-                                          zone_to_parts=zone_to_parts,
-                                          preserve_orientation=True)
+#   # DTF(dist_tree_iso, os.path.join(ref_dir, f'U_dist_elliptical_surface_{elt_type}.cgns'), sub_comm)
 
-  # Solution initialisation
-  for zone in I.getZones(part_tree):
-    # Coordinates
-    GC = I.getNodeFromName1(zone, 'GridCoordinates')
-    CX = I.getNodeFromName1(GC, 'CoordinateX')[1]
-    CY = I.getNodeFromName1(GC, 'CoordinateY')[1]
-    CZ = I.getNodeFromName1(GC, 'CoordinateZ')[1]
+#   # Compare to reference solution
+#   ref_file = os.path.join(ref_dir, f'U_dist_elliptical_surface_{elt_type}.cgns')
+#   ref_sol  = maia.io.file_to_dist_tree(ref_file, sub_comm)
 
-    # Connectivity
-    nface         = I.getNodeFromName1(zone , 'NFaceElements')
-    cell_face_idx = I.getNodeFromName1(nface, 'ElementStartOffset' )[1]
-    cell_face     = I.getNodeFromName1(nface, 'ElementConnectivity')[1]
-    ngon          = I.getNodeFromName1(zone, 'NGonElements')
-    face_vtx_idx  = I.getNodeFromName1(ngon, 'ElementStartOffset' )[1]
-    face_vtx      = I.getNodeFromName1(ngon, 'ElementConnectivity')[1]
-    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+#   # Check that bases are similar (because CGNSLibraryVersion is R4)
+#   assert maia.pytree.is_same_node(PT.get_all_CGNSBase_t(ref_sol      )[0],
+#                                   PT.get_all_CGNSBase_t(dist_tree_iso)[0])
 
-    # Fields
-    fld1 =  CX**2 + CY**2 + CZ**2 - 1
-    fld2 =  CX**2 + CY**2 -1
-    # fld3 = (CX**2 + 9*CY**2 + CZ**2 -1 )**3 - CX**2*CZ**3 - CY**2*CZ**3
-
-    flds    = [fld1,fld2]#,fld3]
-    name_f  = ["sphere","cylinder"]#,"heart"]
-
-    # Placement
-    FS_NC = I.newFlowSolution('FlowSolution_NC', gridLocation="Vertex"    , parent=zone)
-    FS_CC = I.newFlowSolution('FlowSolution_CC', gridLocation="CellCenter", parent=zone)
-    
-    for name,fld in zip(name_f,flds):
-      # Node sol -> Cell sol
-      fld_cell_vtx  = fld[cell_vtx-1]
-      fld_cc        = np.add.reduceat(fld_cell_vtx, cell_vtx_idx[:-1])
-      fld_cc        = fld_cc/ np.diff(cell_vtx_idx)
-      
-      # Placement
-      I.newDataArray(name, fld_cc, parent=FS_CC)
-      I.newDataArray(name, fld   , parent=FS_NC)
-
-
-  #iso_kind = ["ellipse", [1.,0.,0.,0.]]
-
-  container     = ['FlowSolution_NC','FlowSolution_CC']
-  part_tree_iso = ISS.iso_ellipse(part_tree,
-                                [1.,0.5,1.5,1.,3.,2.,1.],
-                                sub_comm,
-                                interpolate=container,
-                                elt_type=elt_type)
-  
-  # Part to dist
-  dist_tree_iso = part_to_dist(part_tree_iso,sub_comm)
-
-  # Verification
-  node_sol_nc   =            I.getNodeFromName(dist_tree_iso,'FlowSolution_NC')
-  sphere_nc     = I.getValue(I.getNodeFromName(node_sol_nc  ,'sphere'        ))
-  cylinder_nc   = I.getValue(I.getNodeFromName(node_sol_nc  ,'cylinder'      ))
-  node_sol_cc   =            I.getNodeFromName(dist_tree_iso,'FlowSolution_CC')
-  sphere_cc     = I.getValue(I.getNodeFromName(node_sol_cc  ,'sphere'        ))
-  cylinder_cc   = I.getValue(I.getNodeFromName(node_sol_cc  ,'cylinder'      ))
-
-  min_sphere_nc   = sub_comm.allreduce(np.min(sphere_nc  ),MPI.MIN)
-  min_sphere_cc   = sub_comm.allreduce(np.min(sphere_cc  ),MPI.MIN)
-  max_sphere_nc   = sub_comm.allreduce(np.max(sphere_nc  ),MPI.MAX)
-  max_sphere_cc   = sub_comm.allreduce(np.max(sphere_cc  ),MPI.MAX)
-
-  min_cylinder_nc = sub_comm.allreduce(np.min(cylinder_nc),MPI.MIN)
-  min_cylinder_cc = sub_comm.allreduce(np.min(cylinder_cc),MPI.MIN)
-  max_cylinder_nc = sub_comm.allreduce(np.max(cylinder_nc),MPI.MAX)
-  max_cylinder_cc = sub_comm.allreduce(np.max(cylinder_cc),MPI.MAX)
-
-
-  if (sub_comm.Get_rank()==0) :
-    print( "\n========================================")
-    print(f" * NPROC = {sub_comm.Get_size()}")
-    print( "    -> NODE_CENTERED FIELD : ")
-    print(f"        - MIN(sphere)   = {min_sphere_nc  } ; MAX(sphere)   = {max_sphere_nc  } ")
-    print(f"        - MIN(cylinder) = {min_cylinder_nc} ; MAX(cylinder) = {max_cylinder_nc} ")
-    print( "    -> CELL_CENTERED FIELD : ")
-    print(f"        - MIN(sphere)   = {min_sphere_cc  } ; MAX(sphere)   = {max_sphere_cc  } ")
-    print(f"        - MIN(cylinder) = {min_cylinder_cc} ; MAX(cylinder) = {max_cylinder_cc} ")
-    print( "========================================")
-
-  if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    dist_tree = maia.factory.recover_dist_tree(part_tree,sub_comm)
-    DTF(dist_tree, os.path.join(out_dir, 'dist_volume.cgns'), sub_comm)
-    DTF(dist_tree_iso, os.path.join(out_dir, 'dist_isoellipse.cgns'), sub_comm)
-
-  # # Compare to reference file
-  # ref_file  = os.path.join(ref_dir,  'U_ellipse_surface.yaml')
-
-# ----------------------------------------------------------------------------------------
-# ========================================================================================
+# # ----------------------------------------------------------------------------------------
+# # ========================================================================================
