@@ -56,6 +56,7 @@ The following algorithms applies on maia partitioned trees.
 .. autofunction:: maia.algo.part.localize_points
 .. autofunction:: maia.algo.part.find_closest_points
 .. autofunction:: maia.algo.part.interpolate_from_part_trees
+.. autofunction:: maia.algo.part.iso_surface
 
 .. _user_man_gen_algo:
 
