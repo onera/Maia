@@ -14,6 +14,7 @@ NOTES:
   -> prévoir intégration de l'interpolation
 
 '''
+from mpi4py import MPI
 # Import from MAIA
 import maia.pytree                                  as PT
 from   maia.transfer    import utils                as TEU
@@ -22,7 +23,7 @@ from   maia.factory     import recover_dist_tree    as part_to_dist
 import maia.pytree.maia                             as MTM
 from   maia.pytree.maia import conventions          as conv
 from   maia.pytree.sids import node_inspect         as sids
-from   maia.utils       import np_utils,layouts
+from   maia.utils       import np_utils,layouts, py_utils
 
 # Import from PARADIGM
 import Pypdm.Pypdm as PDM
@@ -38,18 +39,23 @@ def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
   # Part 2 : VOLUME
   for container_name in interpolate :
 
-    # --- Get all fields names ------------------------------------------------
-    # A MODIFIER
-    flds_in_container_names = []
-    first_zone_container    = PT.get_node_from_name(part_zones[0],container_name)
-    # for fld_node in PT.get_nodes_from_type(first_zone_container,'DataArray_t'):
-    for fld_node in PT.get_nodes_from_label(first_zone_container,'DataArray_t'):
-      flds_in_container_names.append(fld_node[0])
-    
-
-    # Get : Field location
-    gridLocation = PT.get_value(PT.get_node_from_name(first_zone_container,'GridLocation'))
-    # Check : correct GridLocation node
+    # --- Get all fields names and location -----------------------------------
+    all_fld_names = []
+    all_locs = []
+    for part_zone in part_zones:
+      container = PT.request_child_from_name(part_zone, container_name)
+      fld_names = {PT.get_name(n) for n in PT.iter_children_from_label(container, "DataArray_t")}
+      py_utils.append_unique(all_fld_names, fld_names)
+      py_utils.append_unique(all_locs, PT.Subset.GridLocation(container))
+    if len(part_zones) > 0:
+      assert len(all_locs) == len(all_fld_names) == 1
+      tag = comm.Get_rank()
+      loc_and_fields = all_locs[0], list(all_fld_names[0])
+    else:
+      tag = -1
+      loc_and_fields = None
+    master = comm.allreduce(tag, op=MPI.MAX) # No check global ?
+    gridLocation, flds_in_container_names = comm.bcast(loc_and_fields, master)
     assert(gridLocation in ['Vertex','CellCenter'])
 
 
@@ -67,15 +73,14 @@ def exchange_field_one_domain(part_zones, iso_part_zone, interpolate, comm) :
       part1_to_part2_idx  = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    )[1]]
     if gridLocation=='CellCenter' :
       part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum")[1]]
-      part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[0].shape[0]+1, dtype=np.int32 )]
+      part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_node_gn_elt).size+1, dtype=np.int32)]
     
 
     # --- Part2 (VOLUME) objects definition ----------------------------------
     part2_ln_to_gn      = []
-    for i_part, part_zone in enumerate(part_zones):
-      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
-      loc_dict = {"Vertex" : vtx_ln_to_gn, "CellCenter" : cell_ln_to_gn}
-      part2_ln_to_gn.append(loc_dict[gridLocation])
+    for part_zone in part_zones:
+      part2_node_gn_elt = PT.maia.getGlobalNumbering(part_zone, _gridLocation[gridLocation])
+      part2_ln_to_gn.append(PT.get_value(part2_node_gn_elt))
         
 
     # --- P2P Object --------------------------------------------------------------------
