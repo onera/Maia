@@ -92,6 +92,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolVtx/fieldC")[1], expected_C)
   
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @mark_mpi_test(2)
 def test_isosurf_one_domain(sub_comm):
   dist_tree = maia.factory.generate_dist_block(3, "Poly", sub_comm)
