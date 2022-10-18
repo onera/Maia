@@ -4,10 +4,10 @@ from    mpi4py import MPI
 import  numpy as np
 
 import  maia.pytree as PT
-# import maia
-from maia.transfer import utils                as TEU
-from maia.factory  import dist_from_part
-from maia.utils    import np_utils, layouts, py_utils
+import  maia
+from    maia.transfer import utils                as TEU
+from    maia.factory  import dist_from_part
+from    maia.utils    import np_utils, layouts, py_utils
 # from    maia.pytree.sids            import node_inspect       as sids
 # from    maia.pytree.maia            import conventions        as conv
 # from    maia.transfer.part_to_dist  import data_exchange      as PTD
@@ -235,11 +235,11 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
     # I.newDataArray('ElementConnectivity', face_vtx    , parent=ngon_n)
     # I.newDataArray('ElementStartOffset' , face_vtx_idx, parent=ngon_n)
 
-    nface_n = new_NFaceElements('NFaceElements',
-                                erange  = [n_extract_edge+1, n_extract_edge+n_extract_face],
-                                ec      = cell_face,
-                                eso     = cell_face_idx,
-                                parent  = extract_part_zone)
+    nface_n = PT.new_NFaceElements( 'NFaceElements',
+                                    erange  = [n_extract_edge+1, n_extract_edge+n_extract_face],
+                                    ec      = cell_face,
+                                    eso     = cell_face_idx,
+                                    parent  = extract_part_zone)
     # nface_n = I.newElements('NFaceElements', 'NFACE', erange = [n_extract_edge+1, n_extract_edge+n_extract_face], parent=extract_part_zone)
     # cell_face_idx, cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
     # I.newDataArray('ElementConnectivity', cell_face    , parent=nface_n)
@@ -261,25 +261,19 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
     PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord)
 
     # > Elements
+    ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
     ngon_n = PT.new_NGonElements( 'NGonElements',
                                   erange  = [1, n_extract_face],
-                                  ec      = face_vtx,
-                                  eso     = face_vtx_idx,
+                                  ec      = ep_face_vtx,
+                                  eso     = ep_face_vtx_idx,
                                   parent  = extract_part_zone)
-    # ngon_n = I.newElements('NGonElements', 'NGON', erange = [1, n_extract_face], parent=extract_part_zone)
-    # face_vtx_idx, face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
-    # I.newDataArray('ElementConnectivity', face_vtx    , parent=ngon_n)
-    # I.newDataArray('ElementStartOffset' , face_vtx_idx, parent=ngon_n)
 
+    ep_cell_face_idx, ep_cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
     nface_n = PT.new_NFaceElements( 'NFaceElements',
                                     erange  = [n_extract_face+1, n_extract_face+n_extract_cell],
-                                    ec      = cell_face,
-                                    eso     = cell_face_idx,
+                                    ec      = ep_cell_face,
+                                    eso     = ep_cell_face_idx,
                                     parent  = extract_part_zone)
-    # nface_n = I.newElements('NFaceElements', 'NFACE', erange = [n_extract_face+1, n_extract_face+n_extract_cell], parent=extract_part_zone)
-    # cell_face_idx, cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
-    # I.newDataArray('ElementConnectivity', cell_face    , parent=nface_n)
-    # I.newDataArray('ElementStartOffset' , cell_face_idx, parent=nface_n)
     
     # Compute ParentElement nodes is requested
     if (put_pe):
@@ -291,18 +285,11 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
     cell_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
 
     PT.maia.newGlobalNumbering({'Element' : face_ln_to_gn}, parent=ngon_n)
-    # gn_face = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=ngon_n)
-    # I.newDataArray('Element', face_ln_to_gn, parent=gn_face)
     
     PT.maia.newGlobalNumbering({'Element' : cell_ln_to_gn}, parent=nface_n)
-    # gn_cell = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=nface_n)
-    # I.newDataArray('Element', cell_ln_to_gn, parent=gn_cell)
 
     PT.maia.newGlobalNumbering({'Vertex' : vtx_ln_to_gn ,
                                 'Cell'   : cell_ln_to_gn }, parent=extract_part_zone)
-    # gn_zone = I.newUserDefinedData(':CGNS#GlobalNumbering', parent=extract_part_zone)
-    # I.newDataArray('Vertex'    , vtx_ln_to_gn        , parent=gn_zone)
-    # I.newDataArray('Cell'      , cell_ln_to_gn       , parent=gn_zone)
 
   # - Get PTP by vertex and cell
   ptp = dict()
@@ -340,9 +327,9 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
                                                     put_pe=put_pe)
     PT.add_child(extract_part_base, extract_part_zone)
 
-  # # Exchange fields between two parts
-  # if exchange is not None:
-  #   _exchange_field(part_tree, extract_part_tree, ptp, exchange, comm)
+  # Exchange fields between two parts
+  if exchange is not None:
+    _exchange_field(part_tree, extract_part_tree, ptp, exchange, comm)
   
 
   # TODO : communiquer sur les BC ?
