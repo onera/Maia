@@ -138,6 +138,14 @@ def merge_zones(tree, zones_path, comm, output_path=None, subset_merge='name', c
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
 
+  # Cleanup empty bases
+  to_remove = []
+  for base in PT.get_children_from_label(tree, 'CGNSBase_t'):
+    if len(PT.get_children_from_label(base, 'Zone_t')) == 0:
+      to_remove.append(PT.get_name(base))
+  for base_n in to_remove:
+    PT.rm_children_from_name(tree, base_n)
+
 def _add_zone_suffix(zones, query):
   """Util function prefixing all the nodes founds by a query by the number of the zone"""
   for izone, zone in enumerate(zones):

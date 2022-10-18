@@ -16,6 +16,10 @@ from .geometry               import compute_cell_center
 from .interpolate            import interpolate_from_part_trees,\
                                     create_interpolator_from_part_trees
 
+from .isosurf                import iso_surface,\
+                                    plane_slice,\
+                                    spherical_slice
+
 from .localize               import localize_points
 
 from .wall_distance          import compute_wall_distance
