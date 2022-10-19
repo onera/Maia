@@ -100,11 +100,14 @@ def add_root_attributes(rootid):
     buffer[i] = c
   write_data(rootid, buffer, dataset_name=b' hdf5version')
 
-def open_from_path(fid, path):
+def open_from_path(fid, path, follow_links=True):
   """ Return the hdf node registred at the specified path in the file fid.  """
+  attr_reader = AttributeRW()
   gid = h5g.open(fid, b'/')
   for name in path.split('/'):
     gid = h5g.open(gid, name.encode())
+    if follow_links and attr_reader.read_bytes_3(gid, b'type') == b'LK': #Follow link
+      gid = h5g.open(gid, b' link')
   return gid
 
 def _select_file_slabs(hdf_space, filter):
@@ -213,10 +216,14 @@ def _load_node_partial(gid, parent, load_if):
   attr_reader = AttributeRW()
   name  = attr_reader.read_str_33(gid, b'name')
   label = attr_reader.read_str_33(gid, b'label')
+  b_kind = attr_reader.read_bytes_3(gid, b'type')
   value = None
 
-  if load_if((parent[0], parent[3]), (name, label)):
+  if b_kind == b'LK': #Follow link
+    gid = h5g.open(gid, b' link')
     b_kind = attr_reader.read_bytes_3(gid, b'type')
+
+  if load_if((parent[0], parent[3]), (name, label)):
     if b_kind != b'MT':
       value = load_data(gid)
       if b_kind==b'C1':

@@ -79,8 +79,8 @@ def load_collective_size_tree(filename, comm):
       then the dimensions are kept in a "MyArray#Size" node,
       at the same level as the array node would be
   """
-  skeleton_depth  = 7
-  skeleton_n_data = 3
+  skeleton_depth  = -1
+  skeleton_n_data = 4
 
   # In order to avoid filesystem overload only 1 proc reads the squeleton, then we broadcast
   if(comm.Get_rank() == 0):
@@ -93,7 +93,6 @@ def load_collective_size_tree(filename, comm):
     fix_zone_datatype(size_tree, size_data)
     add_sizes_to_tree(size_tree, size_data)
     fix_point_ranges(size_tree)
-    load_grid_connectivity_property(filename, size_tree)
   else:
     size_tree = None
 
