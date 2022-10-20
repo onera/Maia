@@ -135,10 +135,12 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
   """
   TODO : AJOUTER LE CHOIX PARTIONNEMENT
   """
+  
   n_part = len(part_zones)
   dim    = 3
+  # dim    = 2
 
-  pdm_ep = PDM.ExtractPart(dim,
+  pdm_ep = PDM.ExtractPart(dim, # face/cells
                            n_part,
                            1, # n_part_out
                            equilibrate,
@@ -164,11 +166,13 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
 
     vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
 
+    # n_cell = cell_ln_to_gn.shape[0]
     n_cell = cell_ln_to_gn.shape[0]
     n_face = face_ln_to_gn.shape[0]
     n_edge = 0
     n_vtx  = vtx_ln_to_gn .shape[0]
 
+    print('[MAIA][EXTRACT_PART] pdm_ep.part_set()')
     pdm_ep.part_set(i_part,
                     n_cell,
                     n_face,
@@ -192,9 +196,10 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
     zsr           = PT.get_node_from_path(part_zone, zsrpath)
     extract_l_num = PT.get_child_from_name(zsr, "PointList")
 
+    print('[MAIA][EXTRACT_PART] pdm_ep.selected_lnum_set()')
     pdm_ep.selected_lnum_set(i_part, extract_l_num[1])
 
-
+  print('[MAIA][EXTRACT_PART] pdm_ep.compute()')
   pdm_ep.compute()
 
 
@@ -203,14 +208,16 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
   n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  )
   n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  )
   n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VERTEX)
+  print(f'[{comm.Get_rank()}][MAIA] n_extract_cell = {n_extract_cell}')
+  print(f'[{comm.Get_rank()}][MAIA] n_extract_face = {n_extract_face}')
+  print(f'[{comm.Get_rank()}][MAIA] n_extract_edge = {n_extract_edge}')
+  print(f'[{comm.Get_rank()}][MAIA] n_extract_vtx  = {n_extract_vtx }')
 
   extract_vtx_coords = pdm_ep.vtx_coord_get(0)
 
   # > Zone construction
   # --- Extract_part 2D -----------------------------------------------------------------
-  if n_extract_cell == 0:
-    print("[MAIA-ExtractPart] NCELL = 0 --> PROBLEME")
-    import sys ; sys.exit()
+  if (n_extract_cell == 0) and (n_extract_vtx != 0):
     # Ce IF pas cool : si pas de EP sur un proc, il peut croire qu'il est en 2D 
     #(mais en meme temps si c'est vide est ce que c'est un probleme d'ecrire en 2D ?)
     print('[MAIA] EXTRACT_PART : 2D not well implemented')
@@ -225,33 +232,41 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
     PT.new_DataArray('CoordinateY', cy, parent=extract_grid_coord)
     PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord)
 
+    # print('Get PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX')
+    # ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX)
+    # ngon_n = PT.new_NGonElements( 'NGonElements',
+    #                               erange  = [1, n_extract_face],
+    #                               ec      = ep_face_vtx,
+    #                               eso     = ep_face_vtx_idx,
+    #                               parent  = extract_part_zone)
+
+    # print('Get PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX')
+    # ep_cell_face_idx, ep_cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
+    # nface_n = PT.new_NFaceElements( 'NFaceElements',
+    #                                 erange  = [n_extract_edge+1, n_extract_edge+n_extract_face],
+    #                                 ec      = ep_cell_face,
+    #                                 eso     = ep_cell_face_idx,
+    #                                 parent  = extract_part_zone)
+    print('Get PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX')
+    ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
     ngon_n = PT.new_NGonElements( 'NGonElements',
                                   erange  = [1, n_extract_face],
-                                  ec      = face_vtx,
-                                  eso     = face_vtx_idx,
+                                  ec      = ep_face_vtx,
+                                  eso     = ep_face_vtx_idx,
                                   parent  = extract_part_zone)
-    # ngon_n = I.newElements('NGonElements', 'NGON', erange = [1, n_extract_edge], parent=extract_part_zone)
-    # face_vtx_idx, face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX)
-    # I.newDataArray('ElementConnectivity', face_vtx    , parent=ngon_n)
-    # I.newDataArray('ElementStartOffset' , face_vtx_idx, parent=ngon_n)
-
-    nface_n = PT.new_NFaceElements( 'NFaceElements',
-                                    erange  = [n_extract_edge+1, n_extract_edge+n_extract_face],
-                                    ec      = cell_face,
-                                    eso     = cell_face_idx,
-                                    parent  = extract_part_zone)
-    # nface_n = I.newElements('NFaceElements', 'NFACE', erange = [n_extract_edge+1, n_extract_edge+n_extract_face], parent=extract_part_zone)
-    # cell_face_idx, cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
-    # I.newDataArray('ElementConnectivity', cell_face    , parent=nface_n)
-    # I.newDataArray('ElementStartOffset' , cell_face_idx, parent=nface_n)
+    print("AH!")
+    # ep_cell_face_idx, ep_cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
+    # nface_n = PT.new_NFaceElements( 'NFaceElements',
+    #                                 erange  = [n_extract_edge+1, n_extract_edge+n_extract_face],
+    #                                 ec      = ep_cell_face,
+    #                                 eso     = ep_cell_face_idx,
+    #                                 parent  = extract_part_zone)
 
   # --- Extract_part 3D -----------------------------------------------------------------
   else:
     extract_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                                     size=[[n_extract_vtx, n_extract_cell, 0]],
                                     type='Unstructured')
-    # extract_part_zone = I.newZone(f'Zone.P{comm.Get_rank()}.N{0}', [[n_extract_vtx, n_extract_cell, 0]],
-    #                               'Unstructured', parent=extract_part_base)
 
     # > Grid coordinates
     cx, cy, cz = layouts.interlaced_to_tuple_coords(extract_vtx_coords)
@@ -262,14 +277,14 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
 
     # > Elements
     ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
-    ngon_n = PT.new_NGonElements( 'NGonElements',
+    ngon_n = PT.new_NGonElements('NGonElements',
                                   erange  = [1, n_extract_face],
                                   ec      = ep_face_vtx,
                                   eso     = ep_face_vtx_idx,
                                   parent  = extract_part_zone)
 
     ep_cell_face_idx, ep_cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
-    nface_n = PT.new_NFaceElements( 'NFaceElements',
+    nface_n = PT.new_NFaceElements('NFaceElements',
                                     erange  = [n_extract_face+1, n_extract_face+n_extract_cell],
                                     ec      = ep_cell_face,
                                     eso     = ep_cell_face_idx,
@@ -303,7 +318,41 @@ def extract_part_one_domain(part_zones, zsrpath, comm,
 
 # ---------------------------------------------------------------------------------------
 def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
-  """
+  """Extract vertex/edges/faces/cells from the ZSR node from the provided partitioned CGNSTree.
+
+  ExtractPart is returned as an independant partitioned CGNSTree. 
+
+  Important:
+    - Input tree must be unstructured and have a ngon connectivity.
+    - Partitions must come from a single initial domain on input tree.
+
+  Note:
+    Once created, fields from provided partitionned CGNSTree
+    can be exchanged using
+    ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``
+
+  Args:
+    part_tree     (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
+      connectivities are managed.
+    iso_field     (str)         : Path to the ZSR field.
+    comm          (MPIComm)     : MPI communicator
+    iso_val       (float, optional) : Value to use to compute isosurface. Defaults to 0.
+    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+      on the output isosurface tree.
+    **options: Options related to plane extraction.
+  Returns:
+    isosurf_tree (CGNSTree): Surfacic tree (partitioned)
+
+  Extraction can be controled thought the optional kwargs:
+
+    - ``elt_type`` (str) -- Controls the shape of elements used to describe
+      the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Defaults to ``TRI_3``.
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #compute_iso_surface@start
+      :end-before: #compute_iso_surface@end
+      :dedent: 2
   """
 
   # Get zones by domains
@@ -319,16 +368,20 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
   extract_part_tree = PT.new_CGNSTree()
   extract_part_base = PT.new_CGNSBase('Base', cell_dim=3, phy_dim=3, parent=extract_part_tree)
 
+
   # Compute extract part of each domain
   for i_domain, part_zones in enumerate(part_tree_per_dom):
+    print('[MAIA][EXTRACT_PART] call to extract_part_one_domain()')
     extract_part_zone,ptp = extract_part_one_domain(part_zones, fspath, comm,
                                                     equilibrate=equilibrate,
                                                     graph_part_tool=graph_part_tool,
                                                     put_pe=put_pe)
     PT.add_child(extract_part_base, extract_part_zone)
 
+
   # Exchange fields between two parts
   if exchange is not None:
+    print('[MAIA][EXTRACT_PART] call to _exchange_field()')
     _exchange_field(part_tree, extract_part_tree, ptp, exchange, comm)
   
 
