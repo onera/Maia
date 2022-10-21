@@ -97,17 +97,21 @@ job:doc_snippets:
     - source source.sh; unset PYTEST_PLUGINS
     - python3 -m pytest ../doc
 
-# Deploy the documentation sphinx documentation to the site, only if branch is dev
-job:deploy_doc:
+# Deploy the documentation sphinx documentation to the site and pages, only if branch is dev
+pages:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   before_script: 
     - ''
   script:
+    - cp -r build/doc/sphinx/html public
     - cd build/doc/sphinx/html
     # I dont know how to clean the repo before (deltree does not work on spiro) so lets erase everything
     - smbclient -U jcoulet%$DROPPY_PSSWD //droopy2/Maia -c "prompt OFF; recurse ON; mput *"
+  artifacts:
+    paths:
+      - public
 
 job:deploy_spiro21:
   stage: deploy
