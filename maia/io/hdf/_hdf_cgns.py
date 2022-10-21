@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t
+from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t, h5o
 
 C33_t = h5t.C_S1.copy()
 C33_t.set_size(33)
@@ -59,7 +59,10 @@ class AttributeRW:
     attr_id = h5a.create(gid, b'flags', h5t.NATIVE_INT32, space)
     attr_id.write(self.buff_flag1)
 
-                     
+def knows_crt_order(gid):
+  """ Return True if links have been added with CRT_ORDER_INDEXED prop """
+  ordering_flags = gid.get_create_plist().get_link_creation_order()
+  return ordering_flags & h5p.CRT_ORDER_INDEXED == h5p.CRT_ORDER_INDEXED
 
 def is_combinated(dataspace):
   """ Check if the provided dataspace if combinated or not. """
@@ -239,11 +242,13 @@ def _load_node_partial(gid, parent, load_if):
   pynode = [name, value, [], label]
   parent[2].append(pynode)
 
-  for i in range(len(gid)):
-    if gid.get_objtype_by_idx(i) == h5g.GROUP:
-      child_name = gid.get_objname_by_idx(i)
-      child_id = h5g.open(gid, child_name)
-      _load_node_partial(child_id, pynode, load_if)
+  # Define the function that will be applied to the child of the current hdf node
+  # thought iterate : we just start next recursion level if child is not a dataset
+  iter_func = lambda n : _load_node_partial(h5g.open(gid, n), pynode, load_if) \
+      if h5o.get_info(gid, n).type == h5o.TYPE_GROUP else None
+
+  idx_type = h5.INDEX_CRT_ORDER if knows_crt_order(gid) else h5.INDEX_NAME
+  gid.links.iterate(iter_func, idx_type=idx_type)
 
 def _write_node_partial(gid, node, write_if):
   """ Internal recursive implementation for write_tree_partial.  """
@@ -291,10 +296,10 @@ def load_tree_partial(filename, load_predicate):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
   rootid = h5g.open(fid, b'/')
 
-  for i, child_name in enumerate(rootid):
-    if rootid.get_objtype_by_idx(i) == h5g.GROUP:
-      child_id = h5g.open(rootid, child_name)
-      _load_node_partial(child_id, tree, load_predicate)
+  iter_func = lambda n : _load_node_partial(h5g.open(rootid, n), tree, load_predicate) \
+      if h5o.get_info(rootid, n).type == h5o.TYPE_GROUP else None
+  idx_type = h5.INDEX_CRT_ORDER if knows_crt_order(rootid) else h5.INDEX_NAME
+  rootid.links.iterate(iter_func, idx_type=idx_type)
 
   fid.close()
   return tree
