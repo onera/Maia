@@ -192,8 +192,10 @@ def write_data_partial(gid, array, filter):
   _select_file_slabs(hdf_space, filter)
   m_dspace = _create_mmry_slabs(filter)
 
-  data = h5d.create(gid, b' data', h5t.py_create(array.dtype), hdf_space)
   array_view = array.T
+  if array_view.dtype == 'S1':
+    array_view.dtype = np.int8
+  data = h5d.create(gid, b' data', h5t.py_create(array_view.dtype), hdf_space)
   xfer_plist = h5p.create(h5p.DATASET_XFER)
   xfer_plist.set_dxpl_mpio(h5py.h5fd.MPIO_INDEPENDENT)
   data.write(m_dspace, hdf_space, array_view, dxpl=xfer_plist)
