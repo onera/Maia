@@ -199,7 +199,7 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
   # --- ExtractPart zone construction ---------------------------------------------------
   extract_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                                   size=size_by_dim[dim],
-                                  type='UserDefined')
+                                  type='Unstructured')
 
   # > Grid coordinates
   cx, cy, cz = layouts.interlaced_to_tuple_coords(extract_vtx_coords)
@@ -323,7 +323,7 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
   
   # ExtractPart CGNSTree
   extract_part_tree = PT.new_CGNSTree()
-  extract_part_base = PT.new_CGNSBase('Base', cell_dim=dim, phy_dim=3, parent=extract_part_tree)
+  extract_part_base = PT.new_CGNSBase('Base', cell_dim=1, phy_dim=3, parent=extract_part_tree)
 
 
   # Compute extract part of each domain
