@@ -18,6 +18,7 @@ from maia.algo.part import extract_part as EXP
 # ----------------------------------------------------------------------------------------
 # Reference directory
 ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
+update_ref_output = False
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
 
@@ -168,18 +169,23 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
     # Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
   
   # Reference output
-  # Mio.dist_tree_to_file(dist_tree_ep,
-  #                       '/stck/cbenazet/workspace/maia/maia/test/references/extract_cell.cgns',
-  #                       sub_comm)
+  if (update_ref_output):
+    from maia.pytree.yaml import parse_cgns_yaml
+    yaml = parse_cgns_yaml.to_yaml(dist_tree_ep)
+    yaml = '\n'.join(yaml) #yaml is now a huge string
+    with open(os.path.join(ref_dir, f'extract_cell.yaml'), 'w') as f:
+        f.write(yaml)
+    # Mio.dist_tree_to_file(dist_tree_ep,
+    #                       '/stck/cbenazet/workspace/maia/maia/test/references/extract_cell.cgns',
+    #                       sub_comm)
   
   # Compare to reference solution
-  # ref_file = os.path.join(ref_dir, f'extract_cell.yaml')
-  ref_file = os.path.join(ref_dir, f'extract_cell.cgns')
+  ref_file = os.path.join(ref_dir, f'extract_cell.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
 
   # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_node(PT.get_all_CGNSBase_t(ref_sol      )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_epf)[0])
+  assert maia.pytree.is_same_node(PT.get_all_CGNSBase_t(ref_sol     )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
   # ---------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
