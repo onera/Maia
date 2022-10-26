@@ -18,7 +18,6 @@ from maia.algo.part import extract_part as EXP
 # ----------------------------------------------------------------------------------------
 # Reference directory
 ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
-update_ref_output = False
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
 
@@ -86,13 +85,13 @@ def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
 @pytest.mark.parametrize("graph_part_tool", ["hilbert","parmetis","ptscotch"])
 # @pytest.mark.parametrize("graph_part_tool", ["parmetis","hilbert","ptscotch"])
 # @pytest.mark.parametrize("graph_part_tool", ["ptscotch","parmetis","hilbert"])
-@mark_mpi_test([1])
+@mark_mpi_test([1,3])
 def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
 
   # --- CUBE GEN AND PART -----------------------------------------------------------------
   # Cube generation
-  n_vtx = 20
   n_vtx = 6
+  n_vtx = 20
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
 
   # Partionning option
@@ -164,20 +163,9 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
 
   if write_output:
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
-    Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
-    # Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
-  
-  # Reference output
-  if (update_ref_output):
-    from maia.pytree.yaml import parse_cgns_yaml
-    yaml = parse_cgns_yaml.to_yaml(dist_tree_ep)
-    yaml = '\n'.join(yaml) #yaml is now a huge string
-    with open(os.path.join(ref_dir, f'extract_cell.yaml'), 'w') as f:
-        f.write(yaml)
-    # Mio.dist_tree_to_file(dist_tree_ep,
-    #                       '/stck/cbenazet/workspace/maia/maia/test/references/extract_cell.cgns',
-    #                       sub_comm)
+    # Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
+    # Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
   
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell.yaml')
