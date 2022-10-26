@@ -190,7 +190,7 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
 
   extract_vtx_coords = pdm_ep.vtx_coord_get(0)
   
-  size_by_dim = {0:   None                              , # not yet implemented
+  size_by_dim = {0: [[n_extract_vtx, 0             , 0]], # not yet implemented
                  1:   None                              , # not yet implemented
                  2: [[n_extract_vtx, n_extract_face, 0]],
                  3: [[n_extract_vtx, n_extract_cell, 0]] }
@@ -199,7 +199,7 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
   # --- ExtractPart zone construction ---------------------------------------------------
   extract_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                                   size=size_by_dim[dim],
-                                  type='Unstructured')
+                                  type='UserDefined')
 
   # > Grid coordinates
   cx, cy, cz = layouts.interlaced_to_tuple_coords(extract_vtx_coords)
@@ -231,6 +231,10 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
 
     
   # > LN_TO_GN nodes
+  ep_vtx_ln_to_gn  = None
+  ep_face_ln_to_gn = None
+  ep_cell_ln_to_gn = None
+
   ep_vtx_ln_to_gn  = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
 
   if (dim>=2) : # NGON
@@ -240,9 +244,9 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
   if (dim==3) : # NFACE
     ep_cell_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
     PT.maia.newGlobalNumbering({'Element' : ep_cell_ln_to_gn}, parent=nface_n)
-
-  ln_to_gn_by_dim = { 0:   None, # not yet implemented
-                      1:   None, # not yet implemented
+  print('DIM=',dim)
+  ln_to_gn_by_dim = { 0: {'Vertex': ep_vtx_ln_to_gn },
+                      1:   None,                                                  # not yet implemented
                       2: {'Vertex': ep_vtx_ln_to_gn , 'Cell': ep_face_ln_to_gn },
                       3: {'Vertex': ep_vtx_ln_to_gn , 'Cell': ep_cell_ln_to_gn } }
   PT.maia.newGlobalNumbering(ln_to_gn_by_dim[dim], parent=extract_part_zone)
@@ -315,7 +319,7 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
   ZSR_node    = PT.get_node_from_name(part_tree,fspath)
   assert ZSR_node is not None 
   dim         = select_dim[PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))]
-  assert dim in [2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
+  assert dim in [0,2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
   
   # ExtractPart CGNSTree
   extract_part_tree = PT.new_CGNSTree()
