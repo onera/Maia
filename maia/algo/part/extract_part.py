@@ -51,12 +51,10 @@ def exchange_field_one_domain(part_zones, part_zone_ep, ptp, exchange, comm) :
 
     # --- FlowSolution node def by zone -------------------------------------------------
     FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    # print("gridLocation = ",gridLocation)
     
     # --- Field exchange ----------------------------------------------------------------
     for fld_name in flds_in_container_names:
       fld_path = f"{container_name}/{fld_name}"
-      # print(fld_path)
       fld_data = [PT.get_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
         
       # Reverse iexch
@@ -71,9 +69,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, ptp, exchange, comm) :
       
       # Interpolation and placement
       i_part = 0
-      # print("LEN(part1_data) = ",len(part1_data[0]))
       PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
-      # print("END PLACEMENT")
 
 # =======================================================================================
 
@@ -186,10 +182,10 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
 
 
   # > Reconstruction du maillage de l'extract part --------------------------------------
-  n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL  ) #print(f'[{comm.Get_rank()}][MAIA] n_extract_cell = {n_extract_cell}')
-  n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  ) #print(f'[{comm.Get_rank()}][MAIA] n_extract_face = {n_extract_face}')
-  n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  ) #print(f'[{comm.Get_rank()}][MAIA] n_extract_edge = {n_extract_edge}')
-  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VERTEX) #print(f'[{comm.Get_rank()}][MAIA] n_extract_vtx  = {n_extract_vtx }')
+  n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_cell = {n_extract_cell}')
+  n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_face = {n_extract_face}')
+  n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_edge = {n_extract_edge}')
+  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VERTEX) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_vtx  = {n_extract_vtx }')
   
 
   extract_vtx_coords = pdm_ep.vtx_coord_get(0)
@@ -239,11 +235,11 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
 
   if (dim>=2) : # NGON
     ep_face_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_FACE)
-    PT.maia.newGlobalNumbering({'Element' : face_ln_to_gn}, parent=ngon_n)
+    PT.maia.newGlobalNumbering({'Element' : ep_face_ln_to_gn}, parent=ngon_n)
     
   if (dim==3) : # NFACE
     ep_cell_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
-    PT.maia.newGlobalNumbering({'Element' : cell_ln_to_gn}, parent=nface_n)
+    PT.maia.newGlobalNumbering({'Element' : ep_cell_ln_to_gn}, parent=nface_n)
 
   ln_to_gn_by_dim = { 0:   None, # not yet implemented
                       1:   None, # not yet implemented
@@ -258,11 +254,9 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
     ptp['FaceCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_FACE)
   if (dim==3) : # NFACE
     ptp['CellCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_CELL)
-  print("[MAIA] extract_part_one_domain::ptp=",ptp)
 
   
-  return extract_part_zone, ptp, parent_cell
-  # !!!!!!!!!!!!!!!
+  return extract_part_zone, ptp
 # ---------------------------------------------------------------------------------------
 
 
@@ -307,12 +301,7 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
   """
 
   # Get zones by domains
-  # print('[MAIA] extract_part::ENTRE')
-  # import Converter.Internal as I
-  # print(part_tree)
-  # I.printTree(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-  # print('[MAIA] extract_part::ENTRE2')
 
   # Check : monodomain
   assert(len(part_tree_per_dom)==1)
@@ -328,7 +317,6 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
   dim         = select_dim[PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))]
   assert dim in [2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
   
-  print('[MAIA] extract_part::CGNSTREE')
   # ExtractPart CGNSTree
   extract_part_tree = PT.new_CGNSTree()
   extract_part_base = PT.new_CGNSBase('Base', cell_dim=dim, phy_dim=3, parent=extract_part_tree)
@@ -338,38 +326,17 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
   # pdm_ep=list()
   ptp   =list()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    print("[MAIA] extract_part::i_domain=",i_domain)
-
-    print("[MAIA] extract_part::extract_part_one_domain")
-    extract_part_zone,ptpdom,parent_cell = extract_part_one_domain(part_zones, fspath, dim, comm,
-                                                    equilibrate=equilibrate,
-                                                    graph_part_tool=graph_part_tool,
-                                                    put_pe=put_pe)
-    print("[MAIA] extract_part::extract_part_one_domain END")
-    
-    import sys
-    print('[MAIA] extract_part::refcount(ptpdom)',sys.getrefcount(ptpdom["Vertex"]),sys.getrefcount(parent_cell))
-    # print(ptpdom)
-    # pdm_ep.append(pdmepdom)
+    extract_part_zone,ptpdom = extract_part_one_domain(part_zones, fspath, dim, comm,
+                                                       equilibrate=equilibrate,
+                                                       graph_part_tool=graph_part_tool,
+                                                       put_pe=put_pe)
     ptp.append(ptpdom)
     PT.add_child(extract_part_base, extract_part_zone)
-  print('[MAIA] extract_part::refcount(ptpdom)',sys.getrefcount(ptpdom["Vertex"]),sys.getrefcount(parent_cell))
 
   # Exchange fields between two parts
   if exchange is not None:
-    print('[MAIA] extract_part::_exchange_field')
     _exchange_field(part_tree, extract_part_tree, ptp, exchange, comm)
   
-  # for ptpdom in ptp:
-  #   del(ptpdom)
-
-  # !!!! DEBUG !!!!
-  # zone    = extract_part_zone
-  fs      = PT.get_child_from_name(extract_part_zone,"FlowSolution_CC")
-  PT.new_DataArray('GN_from_PDM', parent_cell, parent=fs)
-  # !!!!!!!!!!!!!!!
-  print("COUCOU")
-
   # TODO : communiquer sur les BC ?
 
   # CHECK : fonctionne sur des faces ?
