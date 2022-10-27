@@ -18,11 +18,74 @@ import Pypdm.Pypdm as PDM
 
 
 
+# =======================================================================================
+# ---------------------------------------------------------------------------------------
+class Extractor:
+  def __init__( self,
+                part_tree, point_list, location, comm,
+                equilibrate=1,
+                graph_part_tool="hilbert"):
+
+    self.part_tree        = part_tree
+    self.point_list       = point_list
+    self.location         = location
+    self.equilibrate      = equilibrate
+    self.graph_part_tool  = graph_part_tool
+    self.ptp              = list()
+
+    # Get zones by domains
+    part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
+
+    # Check : monodomain
+    assert(len(part_tree_per_dom)==1)
+
+    # Is there PE node
+    if (PT.get_node_from_name(part_tree,'ParentElements') is not None): self.put_pe = True
+    else                                                              : self.put_pe = False
+    
+    # ExtractPart dimension
+    select_dim  = { 'Vertex':0 ,'EdgeCenter':1 ,'FaceCenter':2 ,'CellCenter':3}
+    assert self.location in select_dim.keys()
+    self.dim    = select_dim[self.location]
+    assert self.dim in [0,2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
+    
+    # ExtractPart CGNSTree
+    self.extract_part_tree = PT.new_CGNSTree()
+    self.extract_part_base = PT.new_CGNSBase('Base', cell_dim=self.dim, phy_dim=3, parent=self.extract_part_tree)
+
+    # Compute extract part of each domain
+    for i_domain, part_zones in enumerate(part_tree_per_dom):
+      
+      # extract part from point list
+      extract_part_zone,ptpdom = extract_part_one_domain(part_zones, self.point_list, self.dim, comm,
+                                                         equilibrate=self.equilibrate,
+                                                         graph_part_tool=self.graph_part_tool,
+                                                         put_pe=self.put_pe)
+      self.ptp.append(ptpdom)
+      PT.add_child(self.extract_part_base, extract_part_zone)
+# ---------------------------------------------------------------------------------------
+  
+
+# ---------------------------------------------------------------------------------------
+  def exchange_fields(self, fs_container, comm) :
+    _exchange_field(self.part_tree, self.extract_part_tree, self.ptp, fs_container, comm)
+    return None
+# ---------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------
+  def save_parent_num(self) :
+    # Possible to get parent_num from p2p or only from pdm_ep ?
+    return None
+# ---------------------------------------------------------------------------------------
+  
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
 
 
 
 
 # =======================================================================================
+# ---------------------------------------------------------------------------------------
 def exchange_field_one_domain(part_zones, part_zone_ep, ptp, exchange, comm) :
   
   # Part 1 : EXTRACT_PART
@@ -71,10 +134,8 @@ def exchange_field_one_domain(part_zones, part_zone_ep, ptp, exchange, comm) :
       i_part = 0
       PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
 
-# =======================================================================================
+# ---------------------------------------------------------------------------------------
 
-
-# =======================================================================================
 def _exchange_field(part_tree, part_tree_ep, ptp,exchange, comm) :
   """
   Exchange field between part_tree and part_tree_ep
@@ -97,13 +158,8 @@ def _exchange_field(part_tree, part_tree_ep, ptp,exchange, comm) :
   for i_domain, part_zones in enumerate(part_tree_per_dom):
     exchange_field_one_domain(part_zones, part_zone_ep, ptp[i_domain], exchange, comm)
 
+# ---------------------------------------------------------------------------------------
 # =======================================================================================
-
-
-
-
-
-
 
 
 
@@ -259,9 +315,11 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   
   return extract_part_zone, ptp
 # ---------------------------------------------------------------------------------------
+# =======================================================================================
 
 
 
+# =======================================================================================
 # ---------------------------------------------------------------------------------------
 def extract_part_from_point_list(part_tree, point_list, location, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
   """Extract vertex/edges/faces/cells from the ZSR node from the provided partitioned CGNSTree.
@@ -342,39 +400,27 @@ def extract_part_from_point_list(part_tree, point_list, location, comm, equilibr
 
 
 # ---------------------------------------------------------------------------------------
+def create_extractor_from_point_list(part_tree, point_list, location, comm, equilibrate=1, graph_part_tool='hilbert'):
+
+  return Extractor(part_tree, point_list, location, comm,
+                   equilibrate=equilibrate,
+                   graph_part_tool=graph_part_tool)
+# ---------------------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------------------
 # =======================================================================================
 
 
 
 
 
-# # =======================================================================================
-# # ---------------------------------------------------------------------------------------
-
-
-# # ---------------------------------------------------------------------------------------
-# class Extractor:
-#   def __init__(self, part_tree, point_list, location, comm,
-#                 equilibrate) : # graph_part_tool ?)
-#     self.part_tree          = part_tree
-#     self.extract_part_tree, self.ptp  = extract_part_from_point_list(part_tree, point_list, comm, equilibrate=1)
-#                     = 
-  
-
-#   def exchange_fields(self, fs_container, comm) :
-#     return None
-
-#   def save_parent_num(self) :
-#     # Possible to get parent_num from p2p or only from pdm_ep ?
-#     return None
-  
-
-# def extract_part_from_point_list(part_tree, point_list, comm, equilibrate=1, exchange=fs_container):
-# # ---------------------------------------------------------------------------------------
-
+# =======================================================================================
+# ---------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------
-def extract_part_from_zsr(part_tree, zsr_path, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
+def extract_part_from_zsr(part_tree, zsr_path, comm,
+                          equilibrate=1, exchange=None, graph_part_tool='hilbert'):
 
   # Get zones by domains
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
@@ -425,14 +471,46 @@ def extract_part_from_zsr(part_tree, zsr_path, comm, equilibrate=1, exchange=Non
   
 
   return extract_part_tree
-
-
-def create_extractor_from_zsr(part_tree, zsr_path, comm):
-  # get point list
-  return Extractor
 # ---------------------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------------------
+def create_extractor_from_zsr(part_tree, zsr_path, comm, equilibrate=1, graph_part_tool='hilbert'):
+
+  # Get zones by domains
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
+  assert(len(part_tree_per_dom)==1)
+
+  # zsr node and location
+  ZSR_node    = PT.get_node_from_name(part_tree,zsr_path)
+  assert ZSR_node is not None 
+  location    = PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))
+
+  # Get point_list or each partitioned zone
+  for i_domain, part_zones in enumerate(part_tree_per_dom):
+    point_list = list()
+    for part_zone in part_zones:
+      # Get point_list from zsr node
+      zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
+      zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
+      point_list.append(PT.get_value(zsr_pl_node))
+
+  return Extractor(part_tree, point_list, location, comm,
+                   equilibrate=equilibrate,
+                   graph_part_tool=graph_part_tool)
+# ---------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
+
+
+
+
+
+
+
+# =======================================================================================
+# ---------------------------------------------------------------------------------------
 # # ---------------------------------------------------------------------------------------
 # def extract_part_from_bnd():
 #   return extract_part_tree
@@ -443,6 +521,6 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm):
 # # ---------------------------------------------------------------------------------------
 
 
-# # ---------------------------------------------------------------------------------------
-# # =======================================================================================
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
 

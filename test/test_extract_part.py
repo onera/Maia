@@ -95,7 +95,7 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
 
   # Partionning option
-  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 1)
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
   part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
                                          zone_to_parts=zone_to_parts,
                                          preserve_orientation=True)
@@ -143,10 +143,10 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
-  part_tree_ep = EXP.extract_part(part_tree, "ZSR", sub_comm,
-                                  equilibrate=1,
-                                  exchange=['FlowSolution_NC','FlowSolution_CC'],
-                                  graph_part_tool=graph_part_tool)
+  part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR", sub_comm,
+                                            equilibrate=1,
+                                            exchange=['FlowSolution_NC','FlowSolution_CC'],
+                                            graph_part_tool=graph_part_tool)
   # ---------------------------------------------------------------------------------------
 
   # ---------------------------------------------------------------------------------------
