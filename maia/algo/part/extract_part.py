@@ -111,7 +111,7 @@ def _exchange_field(part_tree, part_tree_ep, ptp,exchange, comm) :
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def extract_part_one_domain(part_zones, zsrpath, dim, comm,
+def extract_part_one_domain(part_zones, point_list, dim, comm,
                             equilibrate=1,
                             graph_part_tool="hilbert",
                             put_pe=False):
@@ -173,10 +173,7 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
 
     np_part1_cell_ln_to_gn.append(cell_ln_to_gn)
 
-    zsr           = PT.get_node_from_path(part_zone, zsrpath)
-    extract_l_num = PT.get_child_from_name(zsr, "PointList")
-
-    pdm_ep.selected_lnum_set(i_part, extract_l_num[1])
+    pdm_ep.selected_lnum_set(i_part, point_list[i_part])
 
   pdm_ep.compute()
 
@@ -266,7 +263,7 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
 
 
 # ---------------------------------------------------------------------------------------
-def extract_part(part_tree, zsrpath, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
+def extract_part_from_point_list(part_tree, point_list, location, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
   """Extract vertex/edges/faces/cells from the ZSR node from the provided partitioned CGNSTree.
 
   ExtractPart is returned as an independant partitioned CGNSTree. 
@@ -316,9 +313,7 @@ def extract_part(part_tree, zsrpath, comm, equilibrate=1, exchange=None, graph_p
   
   # ExtractPart dimension
   select_dim  = { 'Vertex':0 ,'EdgeCenter':1 ,'FaceCenter':2 ,'CellCenter':3}
-  ZSR_node    = PT.get_node_from_name(part_tree,zsrpath)
-  assert ZSR_node is not None 
-  dim         = select_dim[PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))]
+  dim         = select_dim[location]
   assert dim in [0,2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
   
   # ExtractPart CGNSTree
@@ -330,8 +325,7 @@ def extract_part(part_tree, zsrpath, comm, equilibrate=1, exchange=None, graph_p
   # pdm_ep=list()
   ptp   =list()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    # extract_part_zone,ptpdom = extract_part_from_point_list(part_zones, pl,loc, dim, comm,
-    extract_part_zone,ptpdom = extract_part_one_domain(part_zones, zsrpath, dim, comm,
+    extract_part_zone,ptpdom = extract_part_one_domain(part_zones, point_list, dim, comm,
                                                        equilibrate=equilibrate,
                                                        graph_part_tool=graph_part_tool,
                                                        put_pe=put_pe)
@@ -342,9 +336,6 @@ def extract_part(part_tree, zsrpath, comm, equilibrate=1, exchange=None, graph_p
   if exchange is not None:
     _exchange_field(part_tree, extract_part_tree, ptp, exchange, comm)
   
-  # TODO : communiquer sur les BC ?
-
-  # CHECK : fonctionne sur des faces ?
 
   return extract_part_tree
 # ---------------------------------------------------------------------------------------
@@ -382,14 +373,64 @@ def extract_part(part_tree, zsrpath, comm, equilibrate=1, exchange=None, graph_p
 # # ---------------------------------------------------------------------------------------
 
 
-# # ---------------------------------------------------------------------------------------
-# def extract_part_from_zsr(part_tree, zsr_path, comm, equilibrate=1, exchange=fs_container):
-#   return extract_part_tree
+# ---------------------------------------------------------------------------------------
+def extract_part_from_zsr(part_tree, zsr_path, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
 
-# def create_extractor_from_zsr(part_tree, zsr_path, comm):
-#   # get point list
-#   return Extractor
-# # ---------------------------------------------------------------------------------------
+  # Get zones by domains
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
+
+  # Check : monodomain
+  assert(len(part_tree_per_dom)==1)
+
+  # Is there PE node
+  if (PT.get_node_from_name(part_tree,'ParentElements') is not None): put_pe = True
+  else                                                              : put_pe = False
+  
+  # ExtractPart dimension
+  select_dim  = { 'Vertex':0 ,'EdgeCenter':1 ,'FaceCenter':2 ,'CellCenter':3}
+  ZSR_node    = PT.get_node_from_name(part_tree,zsr_path)
+  assert ZSR_node is not None 
+  dim         = select_dim[PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))]
+  assert dim in [0,2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
+  
+  # ExtractPart CGNSTree
+  extract_part_tree = PT.new_CGNSTree()
+  extract_part_base = PT.new_CGNSBase('Base', cell_dim=dim, phy_dim=3, parent=extract_part_tree)
+
+
+  # Compute extract part of each domain
+  # pdm_ep=list()
+  ptp   =list()
+  for i_domain, part_zones in enumerate(part_tree_per_dom):
+    
+    # Get point_list for each partitioned zone in the domain
+    point_list = list()
+    for part_zone in part_zones:
+      # Get point_list from zsr node
+      zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
+      zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
+      point_list.append(PT.get_value(zsr_pl_node))
+
+    # extract part from point list
+    extract_part_zone,ptpdom = extract_part_one_domain(part_zones, point_list, dim, comm,
+                                                       equilibrate=equilibrate,
+                                                       graph_part_tool=graph_part_tool,
+                                                       put_pe=put_pe)
+    ptp.append(ptpdom)
+    PT.add_child(extract_part_base, extract_part_zone)
+
+  # Exchange fields between two parts
+  if exchange is not None:
+    _exchange_field(part_tree, extract_part_tree, ptp, exchange, comm)
+  
+
+  return extract_part_tree
+
+
+def create_extractor_from_zsr(part_tree, zsr_path, comm):
+  # get point list
+  return Extractor
+# ---------------------------------------------------------------------------------------
 
 
 # # ---------------------------------------------------------------------------------------
