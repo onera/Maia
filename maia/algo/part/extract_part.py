@@ -245,7 +245,7 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
     ep_cell_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
     PT.maia.newGlobalNumbering({'Element' : ep_cell_ln_to_gn}, parent=nface_n)
   print('DIM=',dim)
-  ln_to_gn_by_dim = { 0: {'Vertex': ep_vtx_ln_to_gn },
+  ln_to_gn_by_dim = { 0: {'Cell': ep_vtx_ln_to_gn },
                       1:   None,                                                  # not yet implemented
                       2: {'Vertex': ep_vtx_ln_to_gn , 'Cell': ep_face_ln_to_gn },
                       3: {'Vertex': ep_vtx_ln_to_gn , 'Cell': ep_cell_ln_to_gn } }
@@ -266,7 +266,7 @@ def extract_part_one_domain(part_zones, zsrpath, dim, comm,
 
 
 # ---------------------------------------------------------------------------------------
-def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
+def extract_part(part_tree, zsrpath, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
   """Extract vertex/edges/faces/cells from the ZSR node from the provided partitioned CGNSTree.
 
   ExtractPart is returned as an independant partitioned CGNSTree. 
@@ -316,21 +316,22 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
   
   # ExtractPart dimension
   select_dim  = { 'Vertex':0 ,'EdgeCenter':1 ,'FaceCenter':2 ,'CellCenter':3}
-  ZSR_node    = PT.get_node_from_name(part_tree,fspath)
+  ZSR_node    = PT.get_node_from_name(part_tree,zsrpath)
   assert ZSR_node is not None 
   dim         = select_dim[PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))]
   assert dim in [0,2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
   
   # ExtractPart CGNSTree
   extract_part_tree = PT.new_CGNSTree()
-  extract_part_base = PT.new_CGNSBase('Base', cell_dim=1, phy_dim=3, parent=extract_part_tree)
+  extract_part_base = PT.new_CGNSBase('Base', cell_dim=dim, phy_dim=3, parent=extract_part_tree)
 
 
   # Compute extract part of each domain
   # pdm_ep=list()
   ptp   =list()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    extract_part_zone,ptpdom = extract_part_one_domain(part_zones, fspath, dim, comm,
+    # extract_part_zone,ptpdom = extract_part_from_point_list(part_zones, pl,loc, dim, comm,
+    extract_part_zone,ptpdom = extract_part_one_domain(part_zones, zsrpath, dim, comm,
                                                        equilibrate=equilibrate,
                                                        graph_part_tool=graph_part_tool,
                                                        put_pe=put_pe)
@@ -351,3 +352,56 @@ def extract_part(part_tree, fspath, comm, equilibrate=1, exchange=None, graph_pa
 
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
+
+
+
+
+
+# # =======================================================================================
+# # ---------------------------------------------------------------------------------------
+
+
+# # ---------------------------------------------------------------------------------------
+# class Extractor:
+#   def __init__(self, part_tree, point_list, location, comm,
+#                 equilibrate) : # graph_part_tool ?)
+#     self.part_tree          = part_tree
+#     self.extract_part_tree, self.ptp  = extract_part_from_point_list(part_tree, point_list, comm, equilibrate=1)
+#                     = 
+  
+
+#   def exchange_fields(self, fs_container, comm) :
+#     return None
+
+#   def save_parent_num(self) :
+#     # Possible to get parent_num from p2p or only from pdm_ep ?
+#     return None
+  
+
+# def extract_part_from_point_list(part_tree, point_list, comm, equilibrate=1, exchange=fs_container):
+# # ---------------------------------------------------------------------------------------
+
+
+# # ---------------------------------------------------------------------------------------
+# def extract_part_from_zsr(part_tree, zsr_path, comm, equilibrate=1, exchange=fs_container):
+#   return extract_part_tree
+
+# def create_extractor_from_zsr(part_tree, zsr_path, comm):
+#   # get point list
+#   return Extractor
+# # ---------------------------------------------------------------------------------------
+
+
+# # ---------------------------------------------------------------------------------------
+# def extract_part_from_bnd():
+#   return extract_part_tree
+
+# def create_extractor_from_bnd():
+#   # get point list
+#   return Extractor
+# # ---------------------------------------------------------------------------------------
+
+
+# # ---------------------------------------------------------------------------------------
+# # =======================================================================================
+
