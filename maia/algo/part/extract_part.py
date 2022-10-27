@@ -113,8 +113,10 @@ def exchange_field_one_domain(part_zones, part_zone_ep, ptp, exchange, comm) :
 
 
     # --- FlowSolution node def by zone -------------------------------------------------
-    FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    
+    try :
+      FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    except :
+      FS_ep = PT.get_node_from_name(part_zone_ep,container_name)
     # --- Field exchange ----------------------------------------------------------------
     for fld_name in flds_in_container_names:
       fld_path = f"{container_name}/{fld_name}"
@@ -416,7 +418,102 @@ def create_extractor_from_point_list(part_tree, point_list, location, comm, equi
 
 
 # =======================================================================================
+# --- EXTRACT PART FROM ZSR -------------------------------------------------------------
+
 # ---------------------------------------------------------------------------------------
+def exchange_zsr_field_one_domain(part_zones, part_zone_ep, zsr_path, ptp, comm) :
+  
+  # Part 1 : EXTRACT_PART
+  # Part 2 : VOLUME
+  
+  # Get ZSR
+  # print(part)
+  zsr_nodes = list()
+  for part_zone in part_zones: # Get all nodes before ?
+    zsr_nodes.append(PT.get_child_from_name(part_zone, zsr_path))
+
+  # Get containers_name from first ZSR (assume that they would be the same in each ZSR)
+  containers_name = PT.get_names(PT.get_nodes_from_label(zsr_nodes[0],'FlowSolution_t'))
+
+  for container_name in containers_name :
+
+    # --- Get all fields names and location -----------------------------------
+    all_fld_names = []
+    all_locs = []
+    for zsr_node in zsr_nodes:
+      container = PT.request_child_from_name(zsr_node, container_name)
+      fld_names = {PT.get_name(n) for n in PT.iter_children_from_label(container, "DataArray_t")}
+      py_utils.append_unique(all_fld_names, fld_names)
+      py_utils.append_unique(all_locs, PT.Subset.GridLocation(container))
+    if len(zsr_nodes) > 0:
+      assert len(all_locs) == len(all_fld_names) == 1
+      tag = comm.Get_rank()
+      loc_and_fields = all_locs[0], list(all_fld_names[0])
+    else:
+      tag = -1
+      loc_and_fields = None
+    master = comm.allreduce(tag, op=MPI.MAX) # No check global ?
+    gridLocation, flds_in_container_names = comm.bcast(loc_and_fields, master)
+    assert(gridLocation in ['Vertex','CellCenter'])
+
+
+    # --- FlowSolution node def by zone -------------------------------------------------
+    # PUT TRY EXCEPT IN CASE OF SAME NAME FOR FLOWSOL ???
+    try:
+      FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    except:
+      FS_ep = PT.get_node_from_name(part_zone_ep,container_name)
+    # --- Field exchange ----------------------------------------------------------------
+    for fld_name in flds_in_container_names:
+      fld_path = f"{container_name}/{fld_name}"
+      print("\nfld_path=",fld_path)
+      print("gridLocation=",gridLocation)
+
+      fld_data = [PT.get_node_from_path(zsr_node,fld_path)[1] for zsr_node in zsr_nodes]
+        
+      # Reverse iexch
+      ptp_loc = ptp[gridLocation]
+
+      req_id = ptp_loc.reverse_iexch( PDM._PDM_MPI_COMM_KIND_P2P,
+                                      # PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                      PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+                                      fld_data,
+                                      part2_stride=1)
+                                      # part2_stride=[stride.astype(np.int32)])
+      part1_strid, part1_data = ptp_loc.reverse_wait(req_id)
+      print("len(part1_data)=",len(part1_data[0]))
+      
+      # Interpolation and placement
+      i_part = 0
+      PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
+
+# ---------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------
+def exchange_zsr_fields(part_tree, extract_part_tree, zsr_path, ptp, comm):
+  """
+  Exchange field between part_tree and part_tree_ep
+  for exchange vol field 
+  """
+
+  # Get zones by domains
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
+
+  # Check : monodomain
+  assert(len(part_tree_per_dom)==1)
+  assert(len(part_tree_per_dom)==len(ptp))
+
+  # Get zone from extractpart
+  extract_part_zone = PT.get_all_Zone_t(extract_part_tree)
+  assert(len(extract_part_zone)<=1)
+  extract_part_zone = extract_part_zone[0]
+
+  # Loop over domains
+  for i_domain, part_zones in enumerate(part_tree_per_dom):
+    exchange_zsr_field_one_domain(part_zones, extract_part_zone, zsr_path, ptp[i_domain], comm)
+
+# ---------------------------------------------------------------------------------------
+
 
 # ---------------------------------------------------------------------------------------
 def extract_part_from_zsr(part_tree, zsr_path, comm,
@@ -465,6 +562,8 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
     ptp.append(ptpdom)
     PT.add_child(extract_part_base, extract_part_zone)
 
+  exchange_zsr_fields(part_tree, extract_part_tree, zsr_path, ptp, comm)  
+
   # Exchange fields between two parts
   if exchange is not None:
     _exchange_field(part_tree, extract_part_tree, ptp, exchange, comm)
@@ -500,7 +599,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, equilibrate=1, graph_pa
                    graph_part_tool=graph_part_tool)
 # ---------------------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------------------
+# --- END EXTRACT PART FROM ZSR ---------------------------------------------------------
 # =======================================================================================
 
 
