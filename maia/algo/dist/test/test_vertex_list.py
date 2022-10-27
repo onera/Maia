@@ -2,8 +2,10 @@ import numpy as np
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 
+import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from maia.pytree.yaml import parse_yaml_cgns
 
 from maia           import npy_pdm_gnum_dtype as pdm_dtype
 from maia.factory   import dcube_generator
@@ -311,3 +313,97 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   jn_vtx = PT.get_node_from_name(tree, "matchB#Vtx")
   assert jn_vtx is not None and PT.Subset.GridLocation(jn_vtx) == 'Vertex'
   assert PT.get_label(jn_vtx) == 'GridConnectivity_t' and PT.get_value(jn_vtx) == PT.get_value(gcB)
+
+
+@mark_mpi_test(1)
+def test_perio_and_match_case(sub_comm):
+  # A user reported case with a translation periodic (1 cell deepth) + a match
+  # who caused troubles
+  yt = """
+CGNSLibraryVersion CGNSLibraryVersion_t 3.1:
+Base CGNSBase_t I4 [3, 3]:
+  zoneA Zone_t I4 [[3, 2, 0], [3, 2, 0], [2, 1, 0]]:
+    ZoneType ZoneType_t 'Structured':
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t:
+        R8 : [[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]], [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0]], [[2.0, 2.0], [2.0, 2.0], [2.0, 2.0]]]
+      CoordinateY DataArray_t:
+        R8 : [[[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]], [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]], [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]]]
+      CoordinateZ DataArray_t:
+        R8 : [[[0.0, 0.25], [0.0, 0.25], [0.0, 0.25]], [[0.0, 0.25], [0.0, 0.25], [0.0, 0.25]], [[0.0, 0.25], [0.0, 0.25], [0.0, 0.25]]]
+    ZoneGridConnectivity ZoneGridConnectivity_t:
+      match1 GridConnectivity1to1_t 'zoneB':
+        PointRange IndexRange_t I4 [[3, 3], [1, 3], [1, 2]]:
+        PointRangeDonor IndexRange_t I4 [[1, 1], [1, 3], [1, 2]]:
+        Transform "int[IndexDimension]" I4 [1, 2, 3]:
+      PerioA GridConnectivity1to1_t 'zoneA':
+        PointRange IndexRange_t I4 [[1, 3], [1, 3], [1, 1]]:
+        PointRangeDonor IndexRange_t I4 [[1, 3], [1, 3], [2, 2]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [0.0, 0.0, 0.0]:
+            RotationCenter DataArray_t R4 [0.0, 0.0, 0.0]:
+            Translation DataArray_t R4 [0.0, 0.0, 0.25]:
+        Transform "int[IndexDimension]" I4 [1, 2, 3]:
+      PerioB GridConnectivity1to1_t 'zoneA':
+        PointRange IndexRange_t I4 [[1, 3], [1, 3], [2, 2]]:
+        PointRangeDonor IndexRange_t I4 [[1, 3], [1, 3], [1, 1]]:
+        Transform "int[IndexDimension]" I4 [1, 2, 3]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [0.0, 0.0, 0.0]:
+            RotationCenter DataArray_t R4 [0.0, 0.0, 0.0]:
+            Translation DataArray_t R4 [0.0, 0.0, -0.25]:
+  zoneB Zone_t I4 [[3, 2, 0], [4, 3, 0], [2, 1, 0]]:
+    ZoneType ZoneType_t 'Structured':
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t:
+        R8 : [[[2.0, 2.0], [2.0, 2.0], [2.0, 2.0], [2.0, 2.0]], [[3.0, 3.0], [3.0, 3.0], [3.0, 3.0], [3.0, 3.0]], [[4.0,
+              4.0], [4.0, 4.0], [4.0, 4.0], [4.0, 4.0]]]
+      CoordinateY DataArray_t:
+        R8 : [[[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[0.0, 0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[0.0,
+              0.0], [1.0, 1.0], [2.0, 2.0], [3.0, 3.0]]]
+      CoordinateZ DataArray_t:
+        R8 : [[[0.0, 0.25], [0.0, 0.25], [0.0, 0.25], [0.0, 0.25]], [[0.0, 0.25], [0.0, 0.25], [0.0, 0.25], [0.0, 0.25]],
+              [[0.0, 0.25], [0.0, 0.25], [0.0, 0.25], [0.0, 0.25]]]
+    ZoneGridConnectivity ZoneGridConnectivity_t:
+      match2 GridConnectivity1to1_t 'zoneA':
+        PointRange IndexRange_t I4 [[1, 1], [1, 3], [1, 2]]:
+        PointRangeDonor IndexRange_t I4 [[3, 3], [1, 3], [1, 2]]:
+        Transform "int[IndexDimension]" I4 [1, 2, 3]:
+      PerioA GridConnectivity1to1_t 'zoneB':
+        PointRange IndexRange_t I4 [[1, 3], [1, 4], [1, 1]]:
+        PointRangeDonor IndexRange_t I4 [[1, 3], [1, 4], [2, 2]]:
+        Transform "int[IndexDimension]" I4 [1, 2, 3]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [0.0, 0.0, 0.0]:
+            RotationCenter DataArray_t R4 [0.0, 0.0, 0.0]:
+            Translation DataArray_t R4 [0.0, 0.0, 0.25]:
+      PerioB GridConnectivity1to1_t 'zoneB':
+        PointRange IndexRange_t I4 [[1, 3], [1, 4], [2, 2]]:
+        PointRangeDonor IndexRange_t I4 [[1, 3], [1, 4], [1, 1]]:
+        Transform "int[IndexDimension]" I4 [1, 2, 3]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [0.0, 0.0, 0.0]:
+            RotationCenter DataArray_t R4 [0.0, 0.0, 0.0]:
+            Translation DataArray_t R4 [0.0, 0.0, -0.25]:
+  """
+  treeS = parse_yaml_cgns.to_cgns_tree(yt)
+  treeS = maia.factory.distribute_tree(treeS, sub_comm)
+  treeU = maia.algo.dist.convert_s_to_ngon(treeS, sub_comm)
+  VL.generate_jns_vertex_list(treeU, sub_comm)
+
+  zoneA, zoneB = PT.get_all_Zone_t(treeU)
+  node = PT.get_node_from_name(zoneA, 'match1#Vtx')
+  assert np.array_equal(PT.get_node_from_name(node, 'PointList'     )[1], [[3,6,9,12,15,18]])
+  assert np.array_equal(PT.get_node_from_name(node, 'PointListDonor')[1], [[1,4,7,13,16,19]])
+  node = PT.get_node_from_name(zoneB, 'match2#Vtx')
+  assert np.array_equal(PT.get_node_from_name(node, 'PointListDonor')[1], [[3,6,9,12,15,18]])
+  assert np.array_equal(PT.get_node_from_name(node, 'PointList'     )[1], [[1,4,7,13,16,19]])
+  node = PT.get_node_from_name(zoneA, 'PerioA#Vtx')
+  assert np.array_equal(PT.get_node_from_name(node, 'PointList')[1], [[1,2,3,4,5,6,7,8,9]])
+  node = PT.get_node_from_name(zoneA, 'PerioB#Vtx')
+  assert np.array_equal(PT.get_node_from_name(node, 'PointList')[1], [[10,11,12,13,14,15,16,17,18]])
+  
