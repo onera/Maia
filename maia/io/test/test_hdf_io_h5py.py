@@ -12,13 +12,20 @@ import maia.utils.test_utils as TU
 from maia.io import _hdf_io_h5py as IOH
 
 def test_load_data():
-  assert IOH.load_data(('Base', 'CGNSBase_t'), ('Zone', 'Zone_t')) == True
-  assert IOH.load_data(('GCo', 'GridCoordinate_t'), ('CX', 'DataArray_t')) == False
-  assert IOH.load_data(('GCo', 'UserDefinedData_t'), ('CX', 'DataArray_t')) == True
-  assert IOH.load_data(('Periodic', 'Periodic_t'), ('RotationAngle', 'DataArray_t')) == True
-  assert IOH.load_data(('BC', 'BC_t'), ('PointList', 'IndexArray_t')) == False
-  assert IOH.load_data(('BC', 'BC_t'), ('PointRange', 'IndexRange_t')) == True
-  assert IOH.load_data(('GasModel', 'GasModel_t'), ('Toto', 'DataArray_t')) == True
+  names, labels = 'Base/Zone', 'CGNSBase_t/Zone_t'
+  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  names, labels = 'Base/Zone/GCo/CX', 'CGNSBase_t/Zone_t/GridCoordinates_t/DataArray_t'
+  assert IOH.load_data(names.split('/'), labels.split('/')) == False
+  names, labels = 'Base/Zone/GCo/CX', 'CGNSBase_t/Zone_t/UserDefinedData_t/DataArray_t'
+  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  names, labels = 'GC/GCP/Perio/RotationAngle', 'GridConnectivity_t/GridConnectivityProperty_t/Periodic_t/DataArray_t'
+  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  names, labels = 'ZBC/BC/PointList', 'ZoneBC_t/BC_t/IndexArray_t'
+  assert IOH.load_data(names.split('/'), labels.split('/')) == False
+  names, labels = 'ZBC/BC/PointRange', 'ZoneBC_t/BC_t/IndexRange_t'
+  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  names, labels = 'FSSeq/GM/Coeff', 'FlowEquationSet_t/GasModel_t/DataArray_t'
+  assert IOH.load_data(names.split('/'), labels.split('/')) == True
 
 @mark_mpi_test(3)
 def test_load_collective_size_tree(sub_comm):

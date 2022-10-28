@@ -215,7 +215,7 @@ def write_link(gid, node_name, target_file, target_node):
 
   node_id.links.create_external(" link".encode(), target_file.encode(), target_node.encode())
 
-def _load_node_partial(gid, parent, load_if):
+def _load_node_partial(gid, parent, load_if, ancestors_stack):
   """ Internal recursive implementation for load_tree_partial.  """
 
   attr_reader = AttributeRW()
@@ -223,12 +223,14 @@ def _load_node_partial(gid, parent, load_if):
   label = attr_reader.read_str_33(gid, b'label')
   b_kind = attr_reader.read_bytes_3(gid, b'type')
   value = None
+  ancestors_stack[0].append(name)
+  ancestors_stack[1].append(label)
 
   if b_kind == b'LK': #Follow link
     gid = h5g.open(gid, b' link')
     b_kind = attr_reader.read_bytes_3(gid, b'type')
 
-  if load_if((parent[0], parent[3]), (name, label)):
+  if load_if(*ancestors_stack):
     if b_kind != b'MT':
       value = load_data(gid)
       if b_kind==b'C1':
@@ -246,16 +248,20 @@ def _load_node_partial(gid, parent, load_if):
 
   # Define the function that will be applied to the child of the current hdf node
   # thought iterate : we just start next recursion level if child is not a dataset
-  iter_func = lambda n : _load_node_partial(h5g.open(gid, n), pynode, load_if) \
+  iter_func = lambda n : _load_node_partial(h5g.open(gid, n), pynode, load_if, ancestors_stack) \
       if h5o.get_info(gid, n).type == h5o.TYPE_GROUP else None
 
   idx_type = h5.INDEX_CRT_ORDER if knows_crt_order(gid) else h5.INDEX_NAME
   gid.links.iterate(iter_func, idx_type=idx_type)
+  ancestors_stack[0].pop()
+  ancestors_stack[1].pop()
 
-def _write_node_partial(gid, node, write_if):
+def _write_node_partial(gid, node, write_if, ancestors_stack):
   """ Internal recursive implementation for write_tree_partial.  """
 
   cgtype = 'MT' if node[1] is None else DTYPE_TO_CGNSTYPE[node[1].dtype.name]
+  ancestors_stack[0].append(node[0])
+  ancestors_stack[1].append(node[3])
 
   gc_pl = h5p.create(h5p.GROUP_CREATE)
   gc_pl.set_link_creation_order(h5p.CRT_ORDER_TRACKED | h5p.CRT_ORDER_INDEXED)
@@ -269,15 +275,14 @@ def _write_node_partial(gid, node, write_if):
   attr_writter.write_str_3 (node_id, b'type',  cgtype)
   attr_writter.write_flag(node_id) 
 
-  parent_name = attr_writter.read_str_33(gid,  b'name')
-  parent_label = attr_writter.read_str_33(gid, b'label')
-
-  if write_if((parent_name, parent_label), (node[0], node[3])) and node[1] is not None:
+  if write_if(*ancestors_stack) and node[1] is not None:
     write_data(node_id, node[1])
 
   # Write children
   for child in node[2]:
-    _write_node_partial(node_id, child, write_if)
+    _write_node_partial(node_id, child, write_if, ancestors_stack)
+  ancestors_stack[0].pop()
+  ancestors_stack[1].pop()
 
 
 def load_tree_partial(filename, load_predicate):
@@ -298,7 +303,7 @@ def load_tree_partial(filename, load_predicate):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
   rootid = h5g.open(fid, b'/')
 
-  iter_func = lambda n : _load_node_partial(h5g.open(rootid, n), tree, load_predicate) \
+  iter_func = lambda n : _load_node_partial(h5g.open(rootid, n), tree, load_predicate, ([],[])) \
       if h5o.get_info(rootid, n).type == h5o.TYPE_GROUP else None
   idx_type = h5.INDEX_CRT_ORDER if knows_crt_order(rootid) else h5.INDEX_NAME
   rootid.links.iterate(iter_func, idx_type=idx_type)
@@ -329,7 +334,7 @@ def write_tree_partial(tree, filename, write_predicate):
   # Write some attributes of root node
   add_root_attributes(rootid)
   for node in tree[2]:
-    _write_node_partial(rootid, node, write_predicate)
+    _write_node_partial(rootid, node, write_predicate, ([],[]))
 
   fid.close()
 

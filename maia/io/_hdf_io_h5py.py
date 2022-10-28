@@ -9,16 +9,17 @@ from .hdf._hdf_cgns import load_data_partial, write_data_partial
 from .hdf._hdf_cgns import write_link
 from .fix_tree      import fix_point_ranges
 
-def load_data(pname_and_label, name_and_label):
+def load_data(names, labels):
   """ Function used to determine if the data is heavy or not """
-  if pname_and_label[1] == 'UserDefinedData_t':
+  if len(names) == 1: #First level (Base, CGLibVersion, ...) -> always load + early return
     return True
-  if name_and_label[1] in ['IndexArray_t']:
+  if labels[-1] == 'IndexArray_t': # PointList -> do not load
     return False
-  if name_and_label[1] in ['DataArray_t']:
-    if pname_and_label[1].endswith('Model_t'): #Stuff related to FlowEquationSet:
-      return True
-    if pname_and_label[1] not in ['BaseIterativeData_t', 'Periodic_t', 'ReferenceState_t']:
+  if labels[-1] == 'DataArray_t': # Arrays -> it depends
+    if labels[-2] in ['GridCoordinates_t', 'FlowSolution_t', 'DiscreteData_t', \
+        'ZoneSubRegion_t', 'Elements_t']:
+      return False
+    if labels[-2] == 'BCData_t' and labels[-3] == 'BCDataSet_t': # Load FamilyBCDataSet, but not BCDataSet
       return False
   return True
 
