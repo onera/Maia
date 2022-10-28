@@ -137,7 +137,8 @@ def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None, legacy=False
 
 def write_trees(tree, filename, comm, legacy=False):
   """
-  Write separate trees for each process
+  Write separate trees for each process. Rank id will be automatically insered
+  in filename.
   """
   # Give to each process a filename
   base_name, extension = os.path.splitext(filename)

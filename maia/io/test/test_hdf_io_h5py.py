@@ -18,6 +18,7 @@ def test_load_data():
   assert IOH.load_data(('Periodic', 'Periodic_t'), ('RotationAngle', 'DataArray_t')) == True
   assert IOH.load_data(('BC', 'BC_t'), ('PointList', 'IndexArray_t')) == False
   assert IOH.load_data(('BC', 'BC_t'), ('PointRange', 'IndexRange_t')) == True
+  assert IOH.load_data(('GasModel', 'GasModel_t'), ('Toto', 'DataArray_t')) == True
 
 @mark_mpi_test(3)
 def test_load_collective_size_tree(sub_comm):
