@@ -115,8 +115,9 @@ def add_cgns_registry_information(tree, comm):
       # print(paths[i], global_ids[i])
       node    = PT.get_node_from_path(tree, paths[i][1:])
       cgns_registry_n = PT.get_node_from_name_and_label(node, ":CGNS#Registry", 'UserDefined_t')
+      # Looks strange
       if cgns_registry_n:
-        PT.rm_child(node, cgns_registry_n)
+        PT.rm_nodes_from_name_and_label(node, ":CGNS#Registry", "UserDefined_t")
       else:
         PT.new_node(name=":CGNS#Registry", value=global_ids[i], label='UserDefined_t', parent=node)
 

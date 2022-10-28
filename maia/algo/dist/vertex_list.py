@@ -559,6 +559,6 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
       donor_name_node = PT.get_child_from_name(gc, 'GridConnectivityDonorName')
       if donor_name_node is not None:
         PT.new_node('GridConnectivityDonorName', 'Descriptor_t', \
-            PT.get_value(donor_name_node), parent=jn_vtx)
+            PT.get_value(donor_name_node)+'#Vtx', parent=jn_vtx)
 
 
