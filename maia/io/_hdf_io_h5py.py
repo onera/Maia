@@ -16,6 +16,8 @@ def load_data(pname_and_label, name_and_label):
   if name_and_label[1] in ['IndexArray_t']:
     return False
   if name_and_label[1] in ['DataArray_t']:
+    if pname_and_label[1].endswith('Model_t'): #Stuff related to FlowEquationSet:
+      return True
     if pname_and_label[1] not in ['BaseIterativeData_t', 'Periodic_t', 'ReferenceState_t']:
       return False
   return True
