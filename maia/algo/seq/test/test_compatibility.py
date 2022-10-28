@@ -20,6 +20,7 @@ def poly_tree_new():
   maia.io.distribution_tree.clean_distribution_info(t) # remove distribution info to make it a regular pytree
   return t
 
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_enfore_ngon_pe_local(poly_tree_new):
   t = poly_tree_new
   maia.algo.seq.enforce_ngon_pe_local(t)

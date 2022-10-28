@@ -7,10 +7,11 @@ workflow:
 
 variables:
   GIT_STRATEGY: none # don't do anything by default
+  SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=1 --time=00:15:00" #Slurm default parameters
 #Common to all stages
 default:
-  tags: #All jobs uses jamacar-shell executor
-    - shell
+  tags: #All jobs uses jamacar-slurm executor by default (dsi test)
+    - slurm
   before_script:
     - module purge
     - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
@@ -43,11 +44,13 @@ job:init:
 
 job:build:
   stage: build
+  variables:
+    SCHEDULER_PARAMETERS: "--qos=co_inter_std --constraint=brw --ntasks=16 --nodes=1-1 --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR
     - mkdir -p build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
-    - make -j8
+    - make -j
 
 # This build documentation after main build, only if branch is dev or for MR events
 job:doc:
@@ -69,6 +72,8 @@ job:doc:
 #todo : display reports on browser eg with gitlab pages
 job:ctest:
   stage: test
+  variables:
+    SCHEDULER_PARAMETERS: "--qos=co_inter_std --constraint=brw --ntasks=4 --nodes=1-1 --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR/build
     - ctest -E pdm
@@ -120,6 +125,7 @@ job:deploy_spiro21:
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
+    SCHEDULER_PARAMETERS: "--qos=co_inter_std --constraint=brw --ntasks=16 --nodes=1-1 --time=00:30:00"
   before_script: 
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
@@ -131,9 +137,9 @@ job:deploy_spiro21:
     - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
     - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc8.3
     - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-oneapi $FLAGS ../
-    - make -j 16 install > oneapi_dbg.log
+    - make -j install > oneapi_dbg.log
     - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-oneapi -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-oneapi .
-    - make -j 16 install > oneapi_opt.log
+    - make -j install > oneapi_opt.log
 
 job:deploy_spiro19:
   stage: deploy
@@ -142,6 +148,7 @@ job:deploy_spiro19:
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
+    SCHEDULER_PARAMETERS: "--qos=co_inter_std --constraint=brw --ntasks=16 --nodes=1-1 --time=00:30:00"
   before_script: 
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
@@ -152,12 +159,14 @@ job:deploy_spiro19:
     - module purge
     - module load CFD/5.0-intel-19.impi-19 cmake/3.19-gnu
     - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-intel19 $FLAGS -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lbz2 -lz' ../
-    - make -j 16 install > intel19_dbg.log
+    - make -j install > intel19_dbg.log
     - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-intel19 -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-intel19 .
-    - make -j 16 install > intel19_opt.log
+    - make -j install > intel19_opt.log
 
 job:deploy_sator:
   stage: deploy
+  tags:
+    - shell
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   variables:
