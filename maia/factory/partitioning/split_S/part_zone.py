@@ -332,6 +332,7 @@ def split_original_joins_S(all_part_zones, comm):
             PT.new_PointRange('PointRange',      sub_pr,  parent=part_gc)
             PT.new_PointRange('PointRangeDonor', sub_prd, parent=part_gc)
             PT.add_child(part_gc, PT.get_child_from_label(jn, 'GridConnectivityProperty_t'))
+            PT.add_child(part_gc, PT.get_child_from_name(jn, 'GridConnectivityDonorName'))
             i_sub_jn += 1
       elif PT.get_child_from_label(jn, 'GridConnectivityType_t') is not None:
         #This is a join, but not 1to1. So we just move it with other jns

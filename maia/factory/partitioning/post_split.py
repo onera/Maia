@@ -95,7 +95,9 @@ def update_gc_donor_name(part_tree, comm):
   """
   Update or add the GridConnectivityDonorName name afted join splitting
   """
-  is_initial_gc = lambda n: PT.get_label(n) == 'GridConnectivity_t' and not MT.conv.is_intra_gc(PT.get_name(n))
+  is_1to1_gc    = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+                            and PT.GridConnectivity.is1to1(n)
+  is_initial_gc = lambda n: is_1to1_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
   send_l = [list() for n in range(comm.Get_size())]
   for p_base, p_zone in PT.iter_children_from_predicates(part_tree, 'CGNSBase_t/Zone_t', ancestors=True):
     for gc in PT.iter_children_from_predicates(p_zone, ['ZoneGridConnectivity_t', is_initial_gc]):
@@ -107,7 +109,7 @@ def update_gc_donor_name(part_tree, comm):
   recv_l = comm.alltoall(send_l)
 
   for p_base, p_zone in PT.iter_children_from_predicates(part_tree, 'CGNSBase_t/Zone_t', ancestors=True):
-    for gc in PT.iter_children_from_predicates(p_zone, 'ZoneGridConnectivity_t/GridConnectivity_t'):
+    for gc in PT.iter_children_from_predicates(p_zone, ['ZoneGridConnectivity_t', is_1to1_gc]):
       cur_zone_path = PT.get_name(p_base) + '/' + PT.get_name(p_zone)
       opp_zone_path = PT.getZoneDonorPath(PT.get_name(p_base), gc)
       if MT.conv.is_intra_gc(PT.get_name(gc)):

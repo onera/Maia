@@ -80,12 +80,15 @@ def test_update_gc_donor_name(sub_comm):
       ZoneA.P0.N0 Zone_t:
         ZGC ZoneGridConnectivity_t:
           matchAB.0 GridConnectivity_t "ZoneB.P0.N0":
+            GridConnectivityType GridConnectivityType_t "Abutting1to1":
             GridConnectivityDonorName Descriptor_t "matchBA":
           matchAB.1 GridConnectivity_t "ZoneB.P1.N0":
+            GridConnectivityType GridConnectivityType_t "Abutting1to1":
             GridConnectivityDonorName Descriptor_t "matchBA":
       ZoneB.P0.N0 Zone_t:
         ZGC ZoneGridConnectivity_t:
           matchBA.0 GridConnectivity_t "ZoneA.P0.N0":
+            GridConnectivityType GridConnectivityType_t "Abutting1to1":
             GridConnectivityDonorName Descriptor_t "matchAB":
     """
     expected = ['matchBA.0', 'matchBA.0', 'matchAB.0']
@@ -95,6 +98,7 @@ def test_update_gc_donor_name(sub_comm):
       ZoneB.P1.N0 Zone_t:
         ZGC ZoneGridConnectivity_t:
           matchBA.0 GridConnectivity_t "ZoneA.P0.N0":
+            GridConnectivityType GridConnectivityType_t "Abutting1to1":
             GridConnectivityDonorName Descriptor_t "matchAB":
     """
     expected = ['matchAB.1']
