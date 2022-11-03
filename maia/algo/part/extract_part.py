@@ -475,13 +475,15 @@ def exchange_zsr_field_one_domain(part_zones, part_zone_ep, zsr_path, ptp, comm)
     # pl_sorted  = point_list[sort_idx] 
     # order      = np.searchsorted(point_list,gnum_pdm,sorter=sort_idx)
 
+    field_nodes = PT.get_nodes_from_label(zsr_node,'DataArray_t')
+    if field_nodes==list():
+      return
+
     # FlowSol node
     try:
       FS_ep = PT.new_FlowSolution("ZSR_FlowSolution", loc=grid_loc, parent=part_zone_ep)
     except RuntimeError:
       FS_ep = PT.get_node_from_name(part_zone_ep,"ZSR_FlowSolution")
-
-    field_nodes = PT.get_nodes_from_label(zsr_node,'DataArray_t')
     for field_node in field_nodes:
       field_name = PT.get_name(field_node)
       field_data = PT.get_value(field_node)

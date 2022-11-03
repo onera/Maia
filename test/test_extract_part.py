@@ -95,7 +95,7 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
 
   # Partionning option
-  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 1)
   part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
                                          zone_to_parts=zone_to_parts,
                                          preserve_orientation=True)
@@ -163,17 +163,23 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
   fs      = PT.get_child_from_name(zone,"FlowSolution_CC")
   fld     = PT.get_child_from_name(fs,"sphere")
 
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_cell.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+
   if write_output:
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
     # Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
     # Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
   
-  # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'extract_cell.yaml')
-  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
 
   # Check that bases are similar (because CGNSLibraryVersion is R4)
+  print(ref_sol     [2][0][1])
+  print(dist_tree_ep[2][0][1])
+  print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
   assert maia.pytree.is_same_node(PT.get_all_CGNSBase_t(ref_sol     )[0],
                                   PT.get_all_CGNSBase_t(dist_tree_ep)[0])
   # ---------------------------------------------------------------------------------------
