@@ -26,8 +26,8 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def plane_eq(x,y,z) :
-  peq1 = [ 1.,0., 0., 0.5]
-  peq2 = [-1.,0., 0., 0.5]
+  peq1 = [ 1., 0., 0., 0.5]
+  peq2 = [-1., 0., 0., 0.5]
   behind_plane1 = x*peq1[0] + y*peq1[1] + z*peq1[2] - peq1[3] < 0.
   behind_plane2 = x*peq2[0] + y*peq2[1] + z*peq2[2] - peq2[3] < 0.
   between_planes = np.logical_and(behind_plane1, behind_plane2)
@@ -90,12 +90,11 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
 
   # --- CUBE GEN AND PART -----------------------------------------------------------------
   # Cube generation
-  n_vtx = 20
   n_vtx = 6
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
 
   # Partionning option
-  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 1)
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
   part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
                                          zone_to_parts=zone_to_parts,
                                          preserve_orientation=True)
@@ -143,12 +142,10 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
-  print(f"GOFOR EP {graph_part_tool}")
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR", sub_comm,
                                             equilibrate=1,
                                             exchange=['FlowSolution_NC','FlowSolution_CC'],
                                             graph_part_tool=graph_part_tool)
-  # print("ENDOF EP")
   # --------------------------------------------------------------------------------------- 
 
   # ---------------------------------------------------------------------------------------
@@ -176,11 +173,11 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
   
 
   # Check that bases are similar (because CGNSLibraryVersion is R4)
-  print(ref_sol     [2][0][1])
-  print(dist_tree_ep[2][0][1])
-  print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
-  assert maia.pytree.is_same_node(PT.get_all_CGNSBase_t(ref_sol     )[0],
+  # print(ref_sol     [2][0][1])
+  # print(dist_tree_ep[2][0][1])
+  # print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+  #                                 PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
+  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
                                   PT.get_all_CGNSBase_t(dist_tree_ep)[0])
   # ---------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
