@@ -67,7 +67,9 @@ def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
   # Get loc zsr
   extract_lnum = np.where(in_extract_part)[0]
   extract_lnum = extract_lnum.astype(np.int32)
+  extract_lnum = np.flip(extract_lnum) # to be sure that desorganize PL is not a problem
   PT.new_ZoneSubRegion("ZSR", point_list=extract_lnum, loc=location, parent=zone)
+  # print(extract_lnum)
   return in_extract_part
 # -----------------------------------------------------------------------------------
 
@@ -82,9 +84,7 @@ def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("graph_part_tool", ["hilbert","parmetis","ptscotch"])
-# @pytest.mark.parametrize("graph_part_tool", ["parmetis","hilbert","ptscotch"])
-# @pytest.mark.parametrize("graph_part_tool", ["ptscotch","parmetis","hilbert"])
+@pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
 @mark_mpi_test([1,3])
 def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
 
@@ -143,11 +143,13 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
+  print(f"GOFOR EP {graph_part_tool}")
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR", sub_comm,
                                             equilibrate=1,
                                             exchange=['FlowSolution_NC','FlowSolution_CC'],
                                             graph_part_tool=graph_part_tool)
-  # ---------------------------------------------------------------------------------------
+  # print("ENDOF EP")
+  # --------------------------------------------------------------------------------------- 
 
   # ---------------------------------------------------------------------------------------
   # Part to dist

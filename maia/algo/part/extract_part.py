@@ -72,6 +72,14 @@ class Extractor:
     return None
 # ---------------------------------------------------------------------------------------
 
+
+# ---------------------------------------------------------------------------------------
+  def exchange_zsr_fields(self, zsr_path, comm) :
+    exchange_zsr_fields(self.part_tree, self.extract_part_tree, zsr_path, self.ptp, comm)
+    return None
+# ---------------------------------------------------------------------------------------
+
+
 # ---------------------------------------------------------------------------------------
   def save_parent_num(self) :
     # Possible to get parent_num from p2p or only from pdm_ep ?
@@ -176,7 +184,6 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   """
   TODO : AJOUTER LE CHOIX PARTIONNEMENT
   """
-
   n_part = len(part_zones)
   # print(n_par)
   pdm_ep = PDM.ExtractPart(dim, # face/cells
@@ -186,8 +193,6 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                            eval(f"PDM._PDM_SPLIT_DUAL_WITH_{graph_part_tool.upper()}"),
                            True,
                            comm)
-
-  np_part1_cell_ln_to_gn = list()
 
   # Loop over domain zone : preparing extract part
   for i_part, part_zone in enumerate(part_zones):
@@ -228,10 +233,13 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                     None,
                     vtx_ln_to_gn ,
                     vtx_coords)
-
-    np_part1_cell_ln_to_gn.append(cell_ln_to_gn)
-
-    pdm_ep.selected_lnum_set(i_part, point_list[i_part])
+    # if (comm.Get_rank()==2):
+    #   print("point_list[i_part]   = ",point_list[i_part]  )
+    #   print("point_list[i_part]-1 = ",point_list[i_part]-1)
+    adjusted_point_list = point_list[i_part]  # -1 because of CGNS norm
+    pdm_ep.selected_lnum_set(i_part, adjusted_point_list)
+    # if (comm.Get_rank()==0):
+    #   print(f"i_part = {i_part} ; point_list[i_part]=",point_list[i_part])
 
   pdm_ep.compute()
 
@@ -299,7 +307,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   if (dim==3) : # NFACE
     ep_cell_ln_to_gn = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
     PT.maia.newGlobalNumbering({'Element' : ep_cell_ln_to_gn}, parent=nface_n)
-  print('DIM=',dim)
+
   ln_to_gn_by_dim = { 0: {'Cell': ep_vtx_ln_to_gn },
                       1:   None,                                                  # not yet implemented
                       2: {'Vertex': ep_vtx_ln_to_gn , 'Cell': ep_face_ln_to_gn },
@@ -315,6 +323,16 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
     ptp['CellCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_CELL)
 
   
+  # DEBUG
+  parent_cell    = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
+  parent_vertex  = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
+  parent_node    = PT.new_node('maia#parents', label='UserDefinedData_t', parent=extract_part_zone)
+  PT.new_DataArray('Cell_parent'  , parent_cell  , parent=parent_node)
+  PT.new_DataArray('Vertex_parent', parent_vertex, parent=parent_node)
+  # FIN DEBUG
+
+
+
   return extract_part_zone, ptp
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -426,66 +444,68 @@ def exchange_zsr_field_one_domain(part_zones, part_zone_ep, zsr_path, ptp, comm)
   # Part 1 : EXTRACT_PART
   # Part 2 : VOLUME
   
+  
+  field = dict()
+  
   # Get ZSR
-  # print(part)
-  zsr_nodes = list()
-  for part_zone in part_zones: # Get all nodes before ?
-    zsr_nodes.append(PT.get_child_from_name(part_zone, zsr_path))
+  for i_part,part_zone in enumerate(part_zones) :
+    zsr_node = PT.get_child_from_name(part_zone, zsr_path)
 
-  # Get containers_name from first ZSR (assume that they would be the same in each ZSR)
-  containers_name = PT.get_names(PT.get_nodes_from_label(zsr_nodes[0],'FlowSolution_t'))
+    # Field location
+    grid_loc = PT.get_value(PT.get_child_from_name(zsr_node,'GridLocation')) 
+    assert(grid_loc in ['Vertex','CellCenter'])
+    
+    # Get PointList
+    point_list = PT.get_value(PT.get_child_from_label(zsr_node,'IndexArray_t'))
 
-  for container_name in containers_name :
+    # Get PTP by locatoin
+    ptp_loc   = ptp[grid_loc]
 
-    # --- Get all fields names and location -----------------------------------
-    all_fld_names = []
-    all_locs = []
-    for zsr_node in zsr_nodes:
-      container = PT.request_child_from_name(zsr_node, container_name)
-      fld_names = {PT.get_name(n) for n in PT.iter_children_from_label(container, "DataArray_t")}
-      py_utils.append_unique(all_fld_names, fld_names)
-      py_utils.append_unique(all_locs, PT.Subset.GridLocation(container))
-    if len(zsr_nodes) > 0:
-      assert len(all_locs) == len(all_fld_names) == 1
-      tag = comm.Get_rank()
-      loc_and_fields = all_locs[0], list(all_fld_names[0])
-    else:
-      tag = -1
-      loc_and_fields = None
-    master = comm.allreduce(tag, op=MPI.MAX) # No check global ?
-    gridLocation, flds_in_container_names = comm.bcast(loc_and_fields, master)
-    assert(gridLocation in ['Vertex','CellCenter'])
+    # Reordonnancement du field en fonction du P2P
+    ref_lnum2 = ptp_loc.get_referenced_lnum2()[i_part] # Get partition order 
+    # if (comm.Get_rank()==0):
+    #   print(f'ipart={i_part} ; ref_lnum2  = ',ref_lnum2)
+    #   print(f'ipart={i_part} ; point_list = ',point_list)
+    sort_idx  = np.argsort(point_list+1)                 # Sort order of point_list ()
+    order     = np.searchsorted(point_list+1,ref_lnum2,sorter=sort_idx)
+    # gnum_pdm   = np.array([ 4, 9,25,12,31])
+    # point_list = np.array([31, 4, 9,25,12])
+    # field_pl   = 10.*point_list
+    # sort_idx   = np.argsort(point_list)
+    # pl_sorted  = point_list[sort_idx] 
+    # order      = np.searchsorted(point_list,gnum_pdm,sorter=sort_idx)
 
-
-    # --- FlowSolution node def by zone -------------------------------------------------
-    # PUT TRY EXCEPT IN CASE OF SAME NAME FOR FLOWSOL ???
+    # FlowSol node
     try:
-      FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    except:
-      FS_ep = PT.get_node_from_name(part_zone_ep,container_name)
-    # --- Field exchange ----------------------------------------------------------------
-    for fld_name in flds_in_container_names:
-      fld_path = f"{container_name}/{fld_name}"
-      print("\nfld_path=",fld_path)
-      print("gridLocation=",gridLocation)
+      FS_ep = PT.new_FlowSolution("ZSR_FlowSolution", loc=grid_loc, parent=part_zone_ep)
+    except RuntimeError:
+      FS_ep = PT.get_node_from_name(part_zone_ep,"ZSR_FlowSolution")
 
-      fld_data = [PT.get_node_from_path(zsr_node,fld_path)[1] for zsr_node in zsr_nodes]
-        
-      # Reverse iexch
-      ptp_loc = ptp[gridLocation]
+    field_nodes = PT.get_nodes_from_label(zsr_node,'DataArray_t')
+    for field_node in field_nodes:
+      field_name = PT.get_name(field_node)
+      field_data = PT.get_value(field_node)
+      field_data = field_data[sort_idx[order]]
 
-      req_id = ptp_loc.reverse_iexch( PDM._PDM_MPI_COMM_KIND_P2P,
-                                      # PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                                      PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
-                                      fld_data,
-                                      part2_stride=1)
-                                      # part2_stride=[stride.astype(np.int32)])
-      part1_strid, part1_data = ptp_loc.reverse_wait(req_id)
-      print("len(part1_data)=",len(part1_data[0]))
-      
-      # Interpolation and placement
-      i_part = 0
-      PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
+      try : 
+        field[field_name].append(field_data)
+      except KeyError:
+        field[field_name] = list()
+        field[field_name].append(field_data)
+
+
+  # print(field)
+  
+  i_part = 0 # Because just one
+  for fld_name in field.keys():
+    req_id = ptp_loc.reverse_iexch( PDM._PDM_MPI_COMM_KIND_P2P,
+                                    PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+                                    field[fld_name],
+                                    part2_stride=1)
+    part1_strid, part1_data = ptp_loc.reverse_wait(req_id)
+
+    # print(fld_name)
+    PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
 
 # ---------------------------------------------------------------------------------------
 
@@ -553,12 +573,13 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
       zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
       zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
       point_list.append(PT.get_value(zsr_pl_node))
-
+    # print(point_list)
     # extract part from point list
     extract_part_zone,ptpdom = extract_part_one_domain(part_zones, point_list, dim, comm,
                                                        equilibrate=equilibrate,
                                                        graph_part_tool=graph_part_tool,
                                                        put_pe=put_pe)
+    # print(point_list)
     ptp.append(ptpdom)
     PT.add_child(extract_part_base, extract_part_zone)
 
