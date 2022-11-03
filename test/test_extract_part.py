@@ -26,8 +26,8 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def plane_eq(x,y,z) :
-  peq1 = [ 1., 1.,  1., 0.5]
-  peq2 = [-1.,-1., -1., 0.5]
+  peq1 = [ 1.,0., 0., 0.5]
+  peq2 = [-1.,0., 0., 0.5]
   behind_plane1 = x*peq1[0] + y*peq1[1] + z*peq1[2] - peq1[3] < 0.
   behind_plane2 = x*peq2[0] + y*peq2[1] + z*peq2[2] - peq2[3] < 0.
   between_planes = np.logical_and(behind_plane1, behind_plane2)
@@ -90,8 +90,8 @@ def test_extract_cell_U(graph_part_tool, sub_comm, write_output):
 
   # --- CUBE GEN AND PART -----------------------------------------------------------------
   # Cube generation
-  n_vtx = 6
   n_vtx = 20
+  n_vtx = 6
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
 
   # Partionning option
