@@ -8,7 +8,7 @@ from .fix_tree                  import ensure_PE_global_indexing, _enforce_pdm_d
 from maia.factory     import distribute_tree
 from maia.pytree.yaml import parse_yaml_cgns
 
-def load_collective_size_tree(filename, comm, legacy):
+def load_collective_size_tree(filename, comm, legacy=False):
   if legacy:
     from ._hdf_io_cass import load_collective_size_tree
   else:
@@ -31,6 +31,19 @@ def write_partial(filename, dist_tree, hdf_filter, comm, legacy):
   write_partial(filename, dist_tree, hdf_filter, comm)
 
 def write_tree(tree, filename, links=[], legacy=False):
+  """Sequential write to a CGNS file.
+
+  Args:
+    tree (CGNSTree) : Tree to write
+    filename (str) : Path of the file
+    links   (list) : List of links to create (see SIDS-to-Python guide)
+
+  Example:
+      .. literalinclude:: snippets/test_io.py
+        :start-after: #write_tree@start
+        :end-before: #write_tree@end
+        :dedent: 2
+  """
   if legacy:
     from ._hdf_io_cass import write_full
   else:
@@ -38,6 +51,13 @@ def write_tree(tree, filename, links=[], legacy=False):
   write_full(filename, tree, links=links)
 
 def read_tree(filename, legacy=False):
+  """Sequential load of a CGNS file. 
+
+  Args:
+    filename (str) : Path of the file
+  Returns:
+    CGNSTree: Full (not distributed) CGNS tree
+  """
   if legacy:
     from ._hdf_io_cass import read_full
   else:
@@ -79,7 +99,6 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
 
   ensure_PE_global_indexing(dist_tree)
 
-
 def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
   """
@@ -96,9 +115,26 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
 
   write_partial(filename, saving_dist_tree, hdf_filter_with_dim, comm, legacy)
 
-def file_to_dist_tree(filename, comm, distribution_policy='uniform', legacy=False):
-  """
-  Distributed load of filename. Return a dist_tree.
+def fill_size_tree(tree, filename, comm, legacy=False):
+  add_distribution_info(tree, comm)
+  hdf_filter = create_tree_hdf_filter(tree)
+  # Coords#Size appears in dict -> remove it
+  if not legacy:
+    hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
+
+  load_tree_from_filter(filename, tree, comm, hdf_filter, legacy)
+  if not legacy:
+    PT.rm_nodes_from_name(tree, '*#Size')
+
+
+def file_to_dist_tree(filename, comm, legacy=False):
+  """Distributed load of a CGNS file.
+
+  Args:
+    filename (str) : Path of the file
+    comm     (MPIComm) : MPI communicator
+  Returns:
+    CGNSTree: Distributed CGNS tree
   """
   filename = str(filename)
   if os.path.splitext(filename)[1] == '.yaml':
@@ -112,33 +148,38 @@ def file_to_dist_tree(filename, comm, distribution_policy='uniform', legacy=Fals
 
   else:
     dist_tree = load_collective_size_tree(filename, comm, legacy)
-    add_distribution_info(dist_tree, comm, distribution_policy)
-
-    hdf_filter = create_tree_hdf_filter(dist_tree)
-
-    # Coords#Size appears in dict -> remove it
-    if not legacy:
-      hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
-
-    load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
-    if not legacy:
-      PT.rm_nodes_from_name(dist_tree, '*#Size')
+    fill_size_tree(dist_tree, filename, comm, legacy)
 
   return dist_tree
 
-def dist_tree_to_file(dist_tree, filename, comm, hdf_filter = None, legacy=False):
-  """
-  Distributed write of cgns_tree into filename.
+def dist_tree_to_file(dist_tree, filename, comm, legacy=False):
+  """Distributed write to a CGNS file.
+
+  Args:
+    dist_tree (CGNSTree) : Distributed tree to write
+    filename (str) : Path of the file
+    comm     (MPIComm) : MPI communicator
   """
   filename = str(filename)
-  if hdf_filter is None:
-    hdf_filter = create_tree_hdf_filter(dist_tree)
+  hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
 
 def write_trees(tree, filename, comm, legacy=False):
-  """
-  Write separate trees for each process. Rank id will be automatically insered
-  in filename.
+  """Sequential write to CGNS files.
+
+  Write separate trees for each process. Rank id will be automatically
+  inserted in the filename.
+
+  Args:
+    tree (CGNSTree) : Tree to write
+    filename (str) : Path of the file
+    comm     (MPIComm) : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_io.py
+        :start-after: #write_trees@start
+        :end-before: #write_trees@end
+        :dedent: 2
   """
   # Give to each process a filename
   base_name, extension = os.path.splitext(filename)
