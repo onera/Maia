@@ -241,9 +241,6 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
     # adjusted_point_list = point_list[i_part] - np.ones(point_list[i_part].shape[0],dtype=np.int32) # -1 because of CGNS norm
 
     adjusted_point_list.append(point_list[i_part] - 1) # -1 because of CGNS norm
-    # BUG if not saved from one i_part to another ????
-    # |--> put keep_alive() in selected_lnum_set()
-    pdm_ep.selected_lnum_set(i_part, adjusted_point_list[i_part]) 
 
 
     # if (comm.Get_rank()==0):
