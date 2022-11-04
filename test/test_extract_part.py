@@ -63,12 +63,14 @@ def compute_face_center(zone):
 def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
   # In/out selection array
   in_extract_part = function(*variables)
+  
   # Get loc zsr
   extract_lnum = np.where(in_extract_part)[0]
-  extract_lnum = extract_lnum.astype(np.int32)
+  extract_lnum = extract_lnum.astype(np.int32)+1
   extract_lnum = np.flip(extract_lnum) # to be sure that desorganized PL is not a problem
+  extract_lnum = extract_lnum.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
+
   PT.new_ZoneSubRegion("ZSR", point_list=extract_lnum, loc=location, parent=zone)
-  # print(extract_lnum)
   return np.ascontiguousarray(extract_lnum)
 # -----------------------------------------------------------------------------------
 
@@ -141,9 +143,9 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
     # Put fld in ZSR
     zsr_node   = PT.get_node_from_name(zone,'ZSR')
     point_list = PT.get_value(PT.get_child_from_name(zsr_node,'PointList'))
-    PT.new_DataArray("ZSR_ccx", ccx[point_list], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccy", ccy[point_list], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccz", ccz[point_list], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccx", ccx[point_list[0]-1], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccy", ccy[point_list[0]-1], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccz", ccz[point_list[0]-1], parent=zsr_node)
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
@@ -242,9 +244,9 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
     # Put fld in ZSR
     zsr_node   = PT.get_node_from_name(zone,'ZSR')
     point_list = PT.get_value(PT.get_child_from_name(zsr_node,'PointList'))
-    PT.new_DataArray("ZSR_ccx", ccx[point_list], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccy", ccy[point_list], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccz", ccz[point_list], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccx", ccx[point_list[0]-1], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccy", ccy[point_list[0]-1], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccz", ccz[point_list[0]-1], parent=zsr_node)
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
@@ -342,7 +344,7 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
     ccy = cell_center[1::3]
     ccz = cell_center[2::3]
     point_list_cell = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
-    point_list.append(point_list_cell)
+    point_list.append(point_list_cell[0])
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
@@ -438,7 +440,7 @@ def test_extractor_cell_from_point_list_U(graph_part_tool, sub_comm, write_outpu
     ccy = cell_center[1::3]
     ccz = cell_center[2::3]
     point_list_cell = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
-    point_list.append(point_list_cell)
+    point_list.append(point_list_cell[0])
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------

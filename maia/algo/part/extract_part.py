@@ -193,8 +193,8 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                            eval(f"PDM._PDM_SPLIT_DUAL_WITH_{graph_part_tool.upper()}"),
                            True,
                            comm)
-
   # Loop over domain zone : preparing extract part
+  adjusted_point_list = list()
   for i_part, part_zone in enumerate(part_zones):
     # Get NGon + NFac
     cx, cy, cz = PT.Zone.coordinates(part_zone)
@@ -236,19 +236,29 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
     # if (comm.Get_rank()==2):
     #   print("point_list[i_part]   = ",point_list[i_part]  )
     #   print("point_list[i_part]-1 = ",point_list[i_part]-1)
-    adjusted_point_list = point_list[i_part]  # -1 because of CGNS norm
-    pdm_ep.selected_lnum_set(i_part, adjusted_point_list)
+    # print(f"[MAIA] point_list[{i_part}].shape[0] = {point_list[i_part].shape[0]}")
+    # print(f"[MAIA] point_list[{i_part}].flags = {point_list[i_part].flags}")
+    # adjusted_point_list = point_list[i_part] - np.ones(point_list[i_part].shape[0],dtype=np.int32) # -1 because of CGNS norm
+
+    adjusted_point_list.append(point_list[i_part] - 1) # -1 because of CGNS norm
+    # BUG if not saved from one i_part to another ????
+    # |--> put keep_alive() in selected_lnum_set()
+    pdm_ep.selected_lnum_set(i_part, adjusted_point_list[i_part]) 
+
+
     # if (comm.Get_rank()==0):
     #   print(f"i_part = {i_part} ; point_list[i_part]=",point_list[i_part])
 
+  # print("[MAIA] BEGIN compute extract_part")
   pdm_ep.compute()
+  # print("[MAIA] ENDOF compute extract_part")
 
 
   # > Reconstruction du maillage de l'extract part --------------------------------------
-  n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_cell = {n_extract_cell}')
-  n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_face = {n_extract_face}')
-  n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_edge = {n_extract_edge}')
-  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VERTEX) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_vtx  = {n_extract_vtx }')
+  n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL  ) #; print(f'[{comm.Get_rank()}][MAIA] n_extract_cell = {n_extract_cell}')
+  n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  ) #; print(f'[{comm.Get_rank()}][MAIA] n_extract_face = {n_extract_face}')
+  n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  ) #; print(f'[{comm.Get_rank()}][MAIA] n_extract_edge = {n_extract_edge}')
+  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VERTEX) #; print(f'[{comm.Get_rank()}][MAIA] n_extract_vtx  = {n_extract_vtx }')
   
 
   extract_vtx_coords = pdm_ep.vtx_coord_get(0)
@@ -456,8 +466,7 @@ def exchange_zsr_field_one_domain(part_zones, part_zone_ep, zsr_path, ptp, comm)
     assert(grid_loc in ['Vertex','CellCenter'])
     
     # Get PointList
-    point_list = PT.get_value(PT.get_child_from_label(zsr_node,'IndexArray_t'))
-
+    point_list = PT.get_value(PT.get_child_from_label(zsr_node,'IndexArray_t'))[0]
     # Get PTP by locatoin
     ptp_loc   = ptp[grid_loc]
 
@@ -466,14 +475,8 @@ def exchange_zsr_field_one_domain(part_zones, part_zone_ep, zsr_path, ptp, comm)
     # if (comm.Get_rank()==0):
     #   print(f'ipart={i_part} ; ref_lnum2  = ',ref_lnum2)
     #   print(f'ipart={i_part} ; point_list = ',point_list)
-    sort_idx  = np.argsort(point_list+1)                 # Sort order of point_list ()
-    order     = np.searchsorted(point_list+1,ref_lnum2,sorter=sort_idx)
-    # gnum_pdm   = np.array([ 4, 9,25,12,31])
-    # point_list = np.array([31, 4, 9,25,12])
-    # field_pl   = 10.*point_list
-    # sort_idx   = np.argsort(point_list)
-    # pl_sorted  = point_list[sort_idx] 
-    # order      = np.searchsorted(point_list,gnum_pdm,sorter=sort_idx)
+    sort_idx  = np.argsort(point_list)                 # Sort order of point_list ()
+    order     = np.searchsorted(point_list,ref_lnum2,sorter=sort_idx)
 
     field_nodes = PT.get_nodes_from_label(zsr_node,'DataArray_t')
     if field_nodes==list():
@@ -574,8 +577,8 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
       # Get point_list from zsr node
       zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
       zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
-      point_list.append(PT.get_value(zsr_pl_node))
-    # print(point_list)
+      point_list.append(PT.get_value(zsr_pl_node)[0])
+
     # extract part from point list
     extract_part_zone,ptpdom = extract_part_one_domain(part_zones, point_list, dim, comm,
                                                        equilibrate=equilibrate,
@@ -615,7 +618,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, equilibrate=1, graph_pa
       # Get point_list from zsr node
       zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
       zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
-      point_list.append(PT.get_value(zsr_pl_node))
+      point_list.append(PT.get_value(zsr_pl_node)[0])
 
   return Extractor(part_tree, point_list, location, comm,
                    equilibrate=equilibrate,
