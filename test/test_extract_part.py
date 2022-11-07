@@ -70,7 +70,7 @@ def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
   extract_lnum = np.flip(extract_lnum) # to be sure that desorganized PL is not a problem
   extract_lnum = extract_lnum.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
 
-  PT.new_ZoneSubRegion("ZSR", point_list=extract_lnum, loc=location, parent=zone)
+  PT.new_ZoneSubRegion("ZSR_FlowSolution", point_list=extract_lnum, loc=location, parent=zone)
   return np.ascontiguousarray(extract_lnum)
 # -----------------------------------------------------------------------------------
 
@@ -141,7 +141,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
     initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
     
     # Put fld in ZSR
-    zsr_node   = PT.get_node_from_name(zone,'ZSR')
+    zsr_node   = PT.get_node_from_name(zone,'ZSR_FlowSolution')
     point_list = PT.get_value(PT.get_child_from_name(zsr_node,'PointList'))
     PT.new_DataArray("ZSR_ccx", ccx[point_list[0]-1], parent=zsr_node)
     PT.new_DataArray("ZSR_ccy", ccy[point_list[0]-1], parent=zsr_node)
@@ -149,7 +149,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
-  part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR", sub_comm,
+  part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", sub_comm,
                                             equilibrate=1,
                                             exchange=['FlowSolution_NC','FlowSolution_CC'],
                                             graph_part_tool=graph_part_tool)
@@ -242,7 +242,7 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
     initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
 
     # Put fld in ZSR
-    zsr_node   = PT.get_node_from_name(zone,'ZSR')
+    zsr_node   = PT.get_node_from_name(zone,'ZSR_FlowSolution')
     point_list = PT.get_value(PT.get_child_from_name(zsr_node,'PointList'))
     PT.new_DataArray("ZSR_ccx", ccx[point_list[0]-1], parent=zsr_node)
     PT.new_DataArray("ZSR_ccy", ccy[point_list[0]-1], parent=zsr_node)
@@ -250,11 +250,12 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
-  extractor = EXP.create_extractor_from_zsr(part_tree, "ZSR", sub_comm,
+  extractor = EXP.create_extractor_from_zsr(part_tree, "ZSR_FlowSolution", sub_comm,
                                             equilibrate=1,
                                             graph_part_tool="hilbert")
   extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
-  extractor.exchange_zsr_fields("ZSR", sub_comm)
+  # extractor.exchange_zsr_fields("ZSR_FlowSolution", sub_comm)
+  extractor.exchange_fields(["ZSR_FlowSolution"], sub_comm) # Works also with the ZSR node
   part_tree_ep = extractor.extract_part_tree
   # --------------------------------------------------------------------------------------- 
 
