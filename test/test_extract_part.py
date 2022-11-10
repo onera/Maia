@@ -151,7 +151,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
   # --- EXTRACT PART ----------------------------------------------------------------------
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", sub_comm,
                                             equilibrate=1,
-                                            exchange=['FlowSolution_NC','FlowSolution_CC'],
+                                            exchange=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"],
                                             graph_part_tool=graph_part_tool)
   # --------------------------------------------------------------------------------------- 
 

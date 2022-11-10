@@ -96,7 +96,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
   # Part 1 : EXTRACT_PART
   # Part 2 : VOLUME
   for container_name in exchange :
-    print(container_name)
+    # print(container_name)
     # --- Get all fields names and location ---------------------------------------------
     all_fld_names   = list()
     all_locs        = list()
@@ -166,13 +166,14 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 
 
     # --- FlowSolution node def by zone -------------------------------------------------
-    print(container_name, all_labels[0])
-    if (all_labels[0]=='FlowSolution_t'):
-      FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    elif (all_labels[0]=='ZoneSubRegion_t'):
-      FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
-    else :
-      raise TypeError
+    # Tout en FlowSolution pour le moment parce que le part_to_dist transfère pas les ZSR
+    FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    # if (all_labels[0]=='FlowSolution_t'):
+    #   FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    # elif (all_labels[0]=='ZoneSubRegion_t'):
+    #   FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
+    # else :
+    #   raise TypeError
 
     # Echange gnum to retrieve flowsol new point_list
     if point_list_node is not None :
@@ -192,8 +193,10 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 
       if part2_gnum[0].shape != parent_elt_loc.shape:
         new_pl_node = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
+        new_pl_node = new_pl_node.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
+      # new_pl_node = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
 
-    print('[MAIA] ExtractPart :: partial_field = ', partial_field)
+    # print('[MAIA] ExtractPart :: partial_field = ', partial_field)
     # --- Field exchange ----------------------------------------------------------------
     for fld_name in flds_in_container_names:
       fld_path = f"{container_name}/{fld_name}"
