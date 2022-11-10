@@ -124,7 +124,6 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
     assert(all_labels[0]in ['FlowSolution_t','ZoneSubRegion_t'])
 
     
-
     # --- Get PTP by location -----------------------------------------------------------
     ptp     = exch_tool_box['part_to_part']
     ptp_loc = ptp[gridLocation]
@@ -134,36 +133,47 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
     parent_elt_loc = parent_elt[gridLocation]
     
 
-
     # Get reordering informations if point_list
     # https://stackoverflow.com/questions/8251541/numpy-for-every-element-in-one-array-find-the-index-in-another-array
+    partial_field = False
     for i_part,part_zone in enumerate(part_zones):
-      # print('I_PART = ',i_part)
-      container   = PT.request_child_from_name(part_zone, container_name)
+
+      container        = PT.request_child_from_name(part_zone, container_name)
       point_list_node  = PT.get_child_from_label(container,'IndexArray_t')
-      # print(point_list_node)
+
       if point_list_node is not None :
-        
+        partial_field = True # Reverse_iexch will be different
         part_gnum1  = ptp_loc.get_gnum1_come_from()[i_part]['come_from'] # Get partition order
         ref_lnum2   = ptp_loc.get_referenced_lnum2()[i_part] # Get partition order
         point_list  = PT.get_value(point_list_node)[0]
-        
-        sort_idx    = np.argsort(point_list)                 # Sort order of point_list ()
-        order       = np.searchsorted(point_list,ref_lnum2,sorter=sort_idx)
 
-        ref_lnum2_idx = np.take(sort_idx, order, mode="clip")
+        if (point_list.size==0):
 
-        stride = point_list[ref_lnum2_idx] == ref_lnum2
-        
+          ref_lnum2_idx = np.empty(0,dtype=np.int32)
+          stride        = np.zeros(ref_lnum2.shape,dtype=np.int32)
+          all_part_gnum1.append(np.empty(0,dtype=np.int32)) # Select only part1_gnum that is in part2 point_list
+        else :
+          sort_idx    = np.argsort(point_list)                 # Sort order of point_list ()
+          order       = np.searchsorted(point_list,ref_lnum2,sorter=sort_idx)
+
+          ref_lnum2_idx = np.take(sort_idx, order, mode="clip")
+          stride = point_list[ref_lnum2_idx] == ref_lnum2
+          all_part_gnum1 .append(part_gnum1[stride]) # Select only part1_gnum that is in part2 point_list
+
         all_ordering   .append(ref_lnum2_idx)
         all_stride_bool.append(stride)
         all_stride_int .append(stride.astype(np.int32))
-        all_part_gnum1 .append(part_gnum1[stride]) # Select only part1_gnum that is in part2 point_list
 
 
     # --- FlowSolution node def by zone -------------------------------------------------
-    # try :
-    FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    print(container_name, all_labels[0])
+    if (all_labels[0]=='FlowSolution_t'):
+      FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    elif (all_labels[0]=='ZoneSubRegion_t'):
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
+    else :
+      raise TypeError
+
     # Echange gnum to retrieve flowsol new point_list
     if point_list_node is not None :
       req_id = ptp_loc.reverse_iexch( PDM._PDM_MPI_COMM_KIND_P2P,
@@ -171,26 +181,33 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
                                       all_part_gnum1,
                                       part2_stride=all_stride_int)
       part1_strid, part2_gnum = ptp_loc.reverse_wait(req_id)
+      
       sort_idx       = np.argsort(part2_gnum[0])                 # Sort order of point_list ()
       order          = np.searchsorted(part2_gnum[0],parent_elt_loc,sorter=sort_idx)
+
       parent_elt_idx = np.take(sort_idx, order, mode="clip")
+
       stride         = part2_gnum[0][parent_elt_idx] == parent_elt_loc
       new_point_list = np.where(stride)[0]
 
       if part2_gnum[0].shape != parent_elt_loc.shape:
         new_pl_node = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
-    # except :
-    #   FS_ep = PT.get_node_from_name(part_zone_ep,container_name)
 
-
+    print('[MAIA] ExtractPart :: partial_field = ', partial_field)
     # --- Field exchange ----------------------------------------------------------------
     for fld_name in flds_in_container_names:
       fld_path = f"{container_name}/{fld_name}"
       
       # Reordering if ZSR container
-      if (all_labels[0]=="ZoneSubRegion_t"): 
-        fld_data = [PT.get_node_from_path(part_zone,fld_path)[1][all_ordering[i_part]][all_stride_bool[i_part]] 
-                    for i_part,part_zone in enumerate(part_zones)]
+      if partial_field: 
+        
+        fld_data = list()
+        for i_part,part_zone in enumerate(part_zones):
+          fld_part = PT.get_node_from_path(part_zone,fld_path)[1]
+          if fld_part != np.empty(0,dtype=fld_part.dtype):
+            fld_part = fld_part[all_ordering[i_part]][all_stride_bool[i_part]]
+          fld_data.append(fld_part)
+
         req_id = ptp_loc.reverse_iexch( PDM._PDM_MPI_COMM_KIND_P2P,
                                         PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM,
                                         fld_data,
@@ -548,9 +565,6 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
                                                        put_pe=put_pe)
     exch_tool_box.append(etb)
     PT.add_child(extract_part_base, extract_part_zone)
-  import Converter.Internal as I
-  # I.printTree(extract_part_zone)
-  # exchange_zsr_fields(part_tree, extract_part_tree, zsr_path, exch_tool_box, comm)  
 
   # # Exchange fields between two parts
   # if exchange is None         : exchange = list()
