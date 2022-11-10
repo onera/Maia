@@ -18,6 +18,7 @@ import Pypdm.Pypdm as PDM
 
 
 
+
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 class Extractor:
@@ -190,10 +191,9 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 
       stride         = part2_gnum[0][parent_elt_idx] == parent_elt_loc
       new_point_list = np.where(stride)[0]
-
       if part2_gnum[0].shape != parent_elt_loc.shape:
-        new_pl_node = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
-        new_pl_node = new_pl_node.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
+        new_point_list = new_point_list.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
+        new_pl_node    = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
       # new_pl_node = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
 
     # print('[MAIA] ExtractPart :: partial_field = ', partial_field)
@@ -319,7 +319,6 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                     vtx_ln_to_gn ,
                     vtx_coords)
     adjusted_point_list.append(point_list[i_part] - 1) # -1 because of CGNS norm
-
 
 
   pdm_ep.compute()
