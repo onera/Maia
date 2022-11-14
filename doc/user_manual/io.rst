@@ -1,7 +1,7 @@
-Files management
-================
+File management
+===============
 
-Maia supports CGNS file reading and writing from or to HDF5 databases,
+Maia supports HDF5/CGNS file reading and writing,
 see `related documention <https://cgns.github.io/CGNS_docs_current/hdf5/index.html>`_.
 
 The IO functions are provided by the ``maia.io`` module. All the high level functions
@@ -24,7 +24,7 @@ Distributed IO is the privileged way to deal with CGNS files within your maia wo
 Files are loaded as distributed trees, and, inversely, distributed trees can be written
 into a single CGNS file.
 
-High level IO operation can be performed with the two following functions, which read
+High level IO operations can be performed with the two following functions, which read
 or write all data they found :
 
 .. autofunction:: maia.io.file_to_dist_tree
@@ -56,7 +56,7 @@ The example below illustrate how to filter the written or loaded nodes:
   :end-before: #file_to_dist_tree_filter@end
   :dedent: 2
 
-Writting partitioned trees
+Writing partitioned trees
 --------------------------
 
 In some cases, it may be useful to write a partitioned tree (keeping the
