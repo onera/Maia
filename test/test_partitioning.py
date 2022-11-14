@@ -5,8 +5,6 @@ from mpi4py import MPI
 
 import maia
 from maia.utils   import test_utils     as TU
-from maia.io      import cgns_io_tree   as IOT
-from maia.io      import save_part_tree as SPT
 
 from maia.factory import partitioning   as PPA
 
@@ -29,7 +27,7 @@ def test_load_balancing(sub_comm):
 
   # > This mesh has two blocks of different sizes (768 & 192 cells)
   mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
   zone_paths = maia.pytree.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
 
   """ zone_to_parts dict can be specified by hand this way : """
@@ -78,7 +76,7 @@ def test_load_balancing(sub_comm):
 @mark_mpi_test([3])
 def test_part_S(sub_comm, write_output):
   mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   zone_to_parts = PPA.compute_regular_weights(dist_tree, sub_comm, 2)
   part_tree = PPA.partition_dist_tree(dist_tree, sub_comm, zone_to_parts=zone_to_parts)
@@ -86,14 +84,14 @@ def test_part_S(sub_comm, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    SPT.save_part_tree(part_tree, os.path.join(out_dir, 'part_tree'), sub_comm)
+    maia.io.part_tree_to_file(part_tree, os.path.join(out_dir, 'part_tree.hdf'), sub_comm)
 
 @pytest.mark.parametrize("graph_part_tool", ["parmetis", "ptscotch"])
 @mark_mpi_test([2])
 def test_part_elements(sub_comm, graph_part_tool, write_output):
 
   mesh_file = os.path.join(TU.mesh_dir, 'Uelt_M6Wing.yaml')
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   #Note : zone_to_parts defaults to 1part_per_zone
   part_tree = PPA.partition_dist_tree(dist_tree, sub_comm, graph_part_tool=graph_part_tool)
@@ -101,7 +99,7 @@ def test_part_elements(sub_comm, graph_part_tool, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    SPT.save_part_tree(part_tree, os.path.join(out_dir, 'part_tree'), sub_comm)
+    maia.io.part_tree_to_file(part_tree, os.path.join(out_dir, 'part_tree.hdf'), sub_comm)
 
 
 renum_methods_to_test = ["NONE", "HILBERT"]
@@ -113,7 +111,7 @@ def test_part_NGon(sub_comm, cell_renum_method, write_output):
 
   #Todo : replace with naca3 zones
   mesh_file = os.path.join(TU.mesh_dir, 'U_ATB_45.yaml')
-  dist_tree = IOT.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   zone_to_parts = PPA.compute_balanced_weights(dist_tree, sub_comm)
 
@@ -130,5 +128,5 @@ def test_part_NGon(sub_comm, cell_renum_method, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    SPT.save_part_tree(part_tree, os.path.join(out_dir, 'part_tree'), sub_comm)
+    maia.io.part_tree_to_file(part_tree, os.path.join(out_dir, 'part_tree.hdf'), sub_comm)
 

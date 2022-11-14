@@ -7,11 +7,24 @@ from maia.factory.dist_from_part import discover_nodes_from_matching
 from .cgns_io_tree import write_tree
 
 def save_part_tree(part_tree, filename, comm, single_file=False, legacy=False):
-  """
-  Gather the partitioned zones holded by all the processes and write it in a unique
+  """Gather the partitioned zones managed by all the processes and write it in a unique
   hdf container.
-  If single_file is True, one file named "filename" storing all the partitions is written.
-  Otherwise, hdf links are used to produce a main file "filename" linking to additional subfiles.
+
+  If ``single_file`` is True, one file named *filename* storing all the partitioned
+  zones is written.  Otherwise, hdf links are used to produce a main file *filename*
+  linking to additional subfiles.
+  
+  Args:
+    part_tree (CGNSTree) : Partitioned tree
+    filename (str) : Path of the output file
+    comm     (MPIComm) : MPI communicator
+    single_file (bool) : Produce a unique file if True; use CGNS links otherwise.
+
+  Example:
+      .. literalinclude:: snippets/test_io.py
+        :start-after: #save_part_tree@start
+        :end-before: #save_part_tree@end
+        :dedent: 2
   """
   rank = comm.Get_rank()
   base_name, extension = os.path.splitext(filename)
