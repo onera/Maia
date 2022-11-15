@@ -178,6 +178,12 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # ------------------------------------------------------------------------------
+# Create file to source build environnement
+# ------------------------------------------------------------------------------
+include(${PROJECT_UTILS_CMAKE_DIR}/write_build_env_file.cmake)
+write_build_env_file()
+
+# ------------------------------------------------------------------------------
 # Installation
 # ------------------------------------------------------------------------------
 target_install(${PROJECT_NAME})
