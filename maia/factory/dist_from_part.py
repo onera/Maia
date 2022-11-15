@@ -138,7 +138,7 @@ def recover_dist_tree(part_tree, comm):
   standard elements) are supported.
 
   The following nodes are managed : GridCoordinates, Elements, ZoneBC, ZoneGridConnectivity
-  and FlowSolution.
+  FlowSolution, DiscreteData and ZoneSubRegion.
 
   Args:
     part_tree (CGNSTree) : Partitioned CGNS Tree
@@ -211,6 +211,8 @@ def recover_dist_tree(part_tree, comm):
 
     # > Flow Solution and Discrete Data
     PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm)
+    PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, comm)
+    PTB.part_subregion_to_dist_subregion(dist_zone, part_zones, comm)
 
     # > Todo : BCDataSet
 

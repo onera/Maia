@@ -144,6 +144,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
   zones to the distributed zone.
   Zone subregions must exist on distzone
   """
+  _discover_wrapper(dist_zone, part_zones, 'ZoneSubRegion_t', 'ZoneSubRegion_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
   for mask_zsr in PT.get_children(mask_tree):
     d_zsr = PT.get_child_from_name(dist_zone, PT.get_name(mask_zsr)) #True ZSR
@@ -177,6 +178,10 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_zsr, field)
       PT.set_value(dist_field, array)
+
+  #Cleanup : if field is None, data has been added by wrapper and must be removed
+  for dist_zsr in PT.iter_children_from_label(dist_zone, 'ZoneSubRegion_t'):
+    PT.rm_children_from_predicate(dist_zsr, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
 
 def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
