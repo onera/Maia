@@ -69,7 +69,7 @@ def test_mesh_location(reverse, sub_comm):
 @mark_mpi_test(3)
 def test_localize_points(sub_comm):
   dtree_src = DCG.dcube_generate(5, 1., [0.,0.,0.], sub_comm)
-  dtree_tgt = DCG.dcube_generate(4, 1., [.4,0.,0.], sub_comm)
+  dtree_tgt = DCG.dcube_generate(4, 1., [.4,.05,.05], sub_comm)
   tree_src = partition_dist_tree(dtree_src, sub_comm)
   tree_tgt = partition_dist_tree(dtree_tgt, sub_comm)
 
@@ -81,9 +81,9 @@ def test_localize_points(sub_comm):
   assert loc_node is not None and PT.Subset.GridLocation(loc_node) == 'CellCenter'
 
   if sub_comm.rank == 0:
-    expected_src_id = np.array([3,19,51,36,16,4,8,11,52])
+    expected_src_id = np.array([3,35,51,36,16,4,12,11,52])
   elif sub_comm.rank == 1:
-    expected_src_id = np.array([15,59,63,56,32,23,47,40,64])
+    expected_src_id = np.array([15,59,63,60,48,43,47,44,64])
   elif sub_comm.rank == 2:
     expected_src_id = np.array([-1,-1,-1,-1,-1,-1,-1,-1,-1])
 

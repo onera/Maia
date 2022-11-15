@@ -41,7 +41,7 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   n_part_src = len(src_parts)
   n_part_tgt = len(tgt_clouds)
   # > Create and setup global data
-  mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=comm, enable_reverse=reverse)
+  mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=comm, enable_reverse=True) #PDM crash if reverse=False
   mesh_loc.mesh_global_data_set(n_part_src)  # For now only one domain is supported
   mesh_loc.n_part_cloud_set(0, n_part_tgt)   # For now only one domain is supported
 
