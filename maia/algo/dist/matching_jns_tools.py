@@ -139,18 +139,20 @@ def get_matching_jns(dist_tree):
 
 def copy_donor_subset(dist_tree):
   """
-  TODO Generalize for PointRangeDonor
   Retrieve for each GridConnectivity_t node the opposite
   pointlist in the tree. This assume that GridConnectivityDonorName were added and index distribution
   was identical for two related gc nodes
   """
-  gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'
+  gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
+      lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
 
-  for jn_path in PT.predicates_to_paths(dist_tree, gc_t_path):
+  for jn_path in PT.predicates_to_paths(dist_tree, gc_predicates):
     opp_jn_path = get_jn_donor_path(dist_tree, jn_path)
     cur_jn = PT.get_node_from_path(dist_tree, jn_path)
     opp_jn = PT.get_node_from_path(dist_tree, opp_jn_path)
-    PT.new_PointList('PointListDonor', PT.get_child_from_name(opp_jn, 'PointList')[1], parent=cur_jn)
+    opp_patch = PT.deep_copy(PT.Subset.getPatch(opp_jn))
+    PT.set_name(opp_patch, PT.get_name(opp_patch) + 'Donor')
+    PT.add_child(cur_jn, opp_patch)
 
 
 def store_interfaces_ids(dist_tree):
