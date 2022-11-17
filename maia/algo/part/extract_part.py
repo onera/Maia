@@ -148,6 +148,14 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
         ref_lnum2   = ptp_loc.get_referenced_lnum2()[i_part] # Get partition order
         point_list  = PT.get_value(point_list_node)[0]
 
+        common = np.intersect1d(part_gnum1,parent_elt_loc)
+        print("common  = ",common)
+
+        print("part_gnum1  = ",part_gnum1)
+        print("ref_lnum2  = ",ref_lnum2)
+        print("point_list  = ",point_list)
+        print()
+
         if (point_list.size==0):
 
           ref_lnum2_idx = np.empty(0,dtype=np.int32)
@@ -156,10 +164,14 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
         else :
           sort_idx    = np.argsort(point_list)                 # Sort order of point_list ()
           order       = np.searchsorted(point_list,ref_lnum2,sorter=sort_idx)
-
+          print("order = ",order)
           ref_lnum2_idx = np.take(sort_idx, order, mode="clip")
+          print("ref_lnum2_idx = ",ref_lnum2_idx)
+          print("ref_lnum2_idx 2= ",sort_idx[order]==ref_lnum2_idx)
+          
           stride = point_list[ref_lnum2_idx] == ref_lnum2
           all_part_gnum1 .append(part_gnum1[stride]) # Select only part1_gnum that is in part2 point_list
+        print("stride  = ",stride.astype(np.int32))
 
         all_ordering   .append(ref_lnum2_idx)
         all_stride_bool.append(stride)
@@ -168,13 +180,13 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 
     # --- FlowSolution node def by zone -------------------------------------------------
     # Tout en FlowSolution pour le moment parce que le part_to_dist transfère pas les ZSR
-    FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    # if (all_labels[0]=='FlowSolution_t'):
-    #   FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    # elif (all_labels[0]=='ZoneSubRegion_t'):
-    #   FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
-    # else :
-    #   raise TypeError
+    # FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    if (all_labels[0]=='FlowSolution_t'):
+      FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    elif (all_labels[0]=='ZoneSubRegion_t'):
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
+    else :
+      raise TypeError
 
     # Echange gnum to retrieve flowsol new point_list
     if point_list_node is not None :
@@ -191,10 +203,17 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 
       stride         = part2_gnum[0][parent_elt_idx] == parent_elt_loc
       new_point_list = np.where(stride)[0]
-      if part2_gnum[0].shape != parent_elt_loc.shape:
-        new_point_list = new_point_list.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
-        new_pl_node    = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
+
+      print("parent_elt_loc = ",parent_elt_loc)
+      print("part2_gnum[0]  = ",part2_gnum[0])
+      print()
+      # if part2_gnum[0].shape != parent_elt_loc.shape:
+      new_point_list = new_point_list.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
+      print("new_point_list = ",new_point_list)
+      print("new_point_list.shape = ",new_point_list.shape)
+      new_pl_node    = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
       # new_pl_node = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
+
 
     # print('[MAIA] ExtractPart :: partial_field = ', partial_field)
     # --- Field exchange ----------------------------------------------------------------
@@ -409,6 +428,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
     parent_elt['FaceCenter'] = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_FACE)
   if (dim==3) : # NFACE
     parent_elt['CellCenter'] = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
+    print("parent_elt['CellCenter'] = ",parent_elt['CellCenter'])
   
   exch_tool_box = dict()
   exch_tool_box['part_to_part'] = ptp
