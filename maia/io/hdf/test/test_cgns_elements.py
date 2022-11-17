@@ -82,12 +82,6 @@ NGon Elements_t [22, 0]:
   assert partial_func.func is cgns_elements.load_element_connectivity_from_eso
   assert partial_func.args == (element, 'pathtozone')
 
-def test_create_zone_mixed_elements_filter():
-  hdf_filter = dict()
-  element = PT.new_Elements('Mixed', 'MIXED')
-  with pytest.raises(NotImplementedError):
-    cgns_elements.create_zone_mixed_elements_filter(element, "path/to/zone", hdf_filter)
-
 def test_create_zone_elements_filter():
   yt = """
 Zone Zone_t:

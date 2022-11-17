@@ -71,16 +71,6 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
     ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
     hdf_filter[ec_path] = partial(load_element_connectivity_from_eso, elmt, zone_path)
 
-
-def create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter):
-  """
-  """
-  # distrib_elmt = PT.get_value(MT.getDistribution(elmt, 'Element'))
-  # dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
-
-  raise NotImplementedError("Mixed elements are not allowed ")
-
-
 def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
@@ -111,10 +101,8 @@ def create_zone_elements_filter(zone_tree, zone_path, hdf_filter, mode):
   """
   zone_elmts = gen_elemts(zone_tree)
   for elmt in zone_elmts:
-    if(elmt[1][0] == 22) or (elmt[1][0] == 23):
+    if PT.Element.CGNSName(elmt) in ['NGON_n', 'NFACE_n', 'MIXED']:
       create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode)
-    elif(elmt[1][0] == 20):
-      create_zone_mixed_elements_filter(elmt, zone_path, hdf_filter)
     else:
       create_zone_std_elements_filter(elmt, zone_path, hdf_filter)
 
