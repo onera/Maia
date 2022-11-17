@@ -153,6 +153,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
   proc_bottom = list()
   proc_top = list()
+  proc_permuted = np.zeros(3, bool)
   for part_zone in part_zones:
     part_vtx_size = PT.Zone.VertexSize(part_zone)
 
@@ -160,8 +161,13 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
     part_nodes = PT.get_nodes_from_name(ancestor_node, name) if ancestor_node is not None else []
     
     for part_node in part_nodes:
-      pr = PT.get_node_from_name(part_node, 'PointRange')[1]
+      pr = PT.get_node_from_name(part_node, 'PointRange')[1].copy()
       loc = PT.Subset.GridLocation(part_node)
+
+      # In order to get max/min properly, make PR increasing but register permuted dir
+      permuted = pr[:,0] > pr[:,1]
+      pr[permuted, 0], pr[permuted, 1] = pr[permuted, 1], pr[permuted, 0]
+      proc_permuted = proc_permuted | permuted
 
       # Get the global id related to the min and max corners of the window
       ln_to_gn = MT.getGlobalNumbering(part_zone, LOC_TO_GN[loc])[1]
@@ -181,6 +187,12 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   dist_pr = np.empty((3,2), dtype=dist_vtx_size.dtype, order='F')
   dist_pr[:,0] = min(all_bottom)
   dist_pr[:,1] = max(all_top)
+
+  # Restore permuted dir
+  glob_permuted = np.empty(3, dtype=bool)
+  comm.Allreduce(proc_permuted, glob_permuted, op=MPI.LOR)
+  dist_pr[glob_permuted, 0], dist_pr[glob_permuted, 1] = \
+      dist_pr[glob_permuted, 1], dist_pr[glob_permuted, 0]
 
   # Compute distribution
   pr_size = (np.abs(dist_pr[:,1] - dist_pr[:,0]) + 1).prod()
