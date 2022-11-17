@@ -149,12 +149,6 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
         point_list  = PT.get_value(point_list_node)[0]
 
         common = np.intersect1d(part_gnum1,parent_elt_loc)
-        print("common  = ",common)
-
-        print("part_gnum1  = ",part_gnum1)
-        print("ref_lnum2  = ",ref_lnum2)
-        print("point_list  = ",point_list)
-        print()
 
         if (point_list.size==0):
 
@@ -164,14 +158,10 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
         else :
           sort_idx    = np.argsort(point_list)                 # Sort order of point_list ()
           order       = np.searchsorted(point_list,ref_lnum2,sorter=sort_idx)
-          print("order = ",order)
           ref_lnum2_idx = np.take(sort_idx, order, mode="clip")
-          print("ref_lnum2_idx = ",ref_lnum2_idx)
-          print("ref_lnum2_idx 2= ",sort_idx[order]==ref_lnum2_idx)
           
           stride = point_list[ref_lnum2_idx] == ref_lnum2
           all_part_gnum1 .append(part_gnum1[stride]) # Select only part1_gnum that is in part2 point_list
-        print("stride  = ",stride.astype(np.int32))
 
         all_ordering   .append(ref_lnum2_idx)
         all_stride_bool.append(stride)
@@ -195,24 +185,23 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
                                       all_part_gnum1,
                                       part2_stride=all_stride_int)
       part1_strid, part2_gnum = ptp_loc.reverse_wait(req_id)
+      print(f'[{comm.Get_rank()}][MAIA] part2_gnum.shape = ', part2_gnum[0].shape)
+      print(f'[{comm.Get_rank()}][MAIA] part2_gnum       = ', part2_gnum[0])
       
-      sort_idx       = np.argsort(part2_gnum[0])                 # Sort order of point_list ()
-      order          = np.searchsorted(part2_gnum[0],parent_elt_loc,sorter=sort_idx)
+      if (part2_gnum[0].size==0):
+        new_point_list = np.empty(0,dtype=np.int32)
+      else :
+        sort_idx       = np.argsort(part2_gnum[0])                 # Sort order of point_list ()
+        order          = np.searchsorted(part2_gnum[0],parent_elt_loc,sorter=sort_idx)
 
-      parent_elt_idx = np.take(sort_idx, order, mode="clip")
+        parent_elt_idx = np.take(sort_idx, order, mode="clip")
 
-      stride         = part2_gnum[0][parent_elt_idx] == parent_elt_loc
-      new_point_list = np.where(stride)[0]
-
-      print("parent_elt_loc = ",parent_elt_loc)
-      print("part2_gnum[0]  = ",part2_gnum[0])
-      print()
-      # if part2_gnum[0].shape != parent_elt_loc.shape:
+        stride         = part2_gnum[0][parent_elt_idx] == parent_elt_loc
+        new_point_list = np.where(stride)[0]
+      print(f'[{comm.Get_rank()}][MAIA] point_list.shape = ', new_point_list.shape)
+      print(f'[{comm.Get_rank()}][MAIA] point_list       = ', new_point_list+1)
       new_point_list = new_point_list.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
-      print("new_point_list = ",new_point_list)
-      print("new_point_list.shape = ",new_point_list.shape)
       new_pl_node    = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
-      # new_pl_node = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
 
 
     # print('[MAIA] ExtractPart :: partial_field = ', partial_field)
@@ -288,11 +277,15 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   """
   TODO : AJOUTER LE CHOIX PARTIONNEMENT
   """
-  n_part = len(part_zones)
+  n_part_in = len(part_zones)
+  
+  if equilibrate==0 : n_part_out = n_part_in
+  else              : n_part_out = 1
+  
   # print(n_par)
   pdm_ep = PDM.ExtractPart(dim, # face/cells
-                           n_part,
-                           1, # n_part_out
+                           n_part_in,
+                           n_part_out,
                            equilibrate,
                            eval(f"PDM._PDM_SPLIT_DUAL_WITH_{graph_part_tool.upper()}"),
                            True,
@@ -415,12 +408,13 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 
   # - Get PTP by vertex and cell
   ptp = dict()
-  ptp['Vertex']       = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_VERTEX)
-  if (dim>=2) : # NGON
-    ptp['FaceCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_FACE)
-  if (dim==3) : # NFACE
-    ptp['CellCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_CELL)
-  
+  if equilibrate==1:
+    ptp['Vertex']       = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_VERTEX)
+    if (dim>=2) : # NGON
+      ptp['FaceCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_FACE)
+    if (dim==3) : # NFACE
+      ptp['CellCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_CELL)
+    
   # - Get parent elt
   parent_elt = dict()
   parent_elt['Vertex']       = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
@@ -428,7 +422,6 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
     parent_elt['FaceCenter'] = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_FACE)
   if (dim==3) : # NFACE
     parent_elt['CellCenter'] = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
-    print("parent_elt['CellCenter'] = ",parent_elt['CellCenter'])
   
   exch_tool_box = dict()
   exch_tool_box['part_to_part'] = ptp
