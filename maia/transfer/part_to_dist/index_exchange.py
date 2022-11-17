@@ -7,8 +7,10 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.utils     import np_utils, par_utils
+from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils    as te_utils
+
+LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell'}
 
 def create_part_pl_gnum_unique(part_zones, node_path, comm):
   """
@@ -135,6 +137,57 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
   # Create dist pointlist
   PT.new_PointList(value = dist_pl.reshape(1,-1), parent=dist_node)
+
+def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False):
+  """
+  Create a distributed point range for the node specified by its node_path
+  from the partitioned point range. We assume that node_path exists in dist_tree. 
+  If allow_mult is True, leaf node of node_path is expanded search all partitioned leaf*. This can
+  be usefull eg to merge splitted joins (match.0, match.1, ...)
+  """
+  ancestor_n, leaf_n = PT.path_head(node_path), PT.path_tail(node_path)
+
+  name = leaf_n + '*' if allow_mult else leaf_n
+  dist_node = PT.get_node_from_path(dist_zone, node_path)
+  dist_vtx_size = PT.Zone.VertexSize(dist_zone)
+
+  proc_bottom = list()
+  proc_top = list()
+  for part_zone in part_zones:
+    part_vtx_size = PT.Zone.VertexSize(part_zone)
+
+    ancestor_node = PT.get_node_from_path(part_zone, ancestor_n)
+    part_nodes = PT.get_nodes_from_name(ancestor_node, name) if ancestor_node is not None else []
+    
+    for part_node in part_nodes:
+      pr = PT.get_node_from_name(part_node, 'PointRange')[1]
+      loc = PT.Subset.GridLocation(part_node)
+
+      # Get the global id related to the min and max corners of the window
+      ln_to_gn = MT.getGlobalNumbering(part_zone, LOC_TO_GN[loc])[1]
+      bottom_gnum = ln_to_gn[s_numbering.ijk_to_index(*pr[:,0], part_vtx_size)-1]
+      top_gnum = ln_to_gn[s_numbering.ijk_to_index(*pr[:,1], part_vtx_size)-1]
+
+      # Reconvert it into indices but in distributed zone
+      proc_bottom.append(s_numbering.index_to_ijk(bottom_gnum, dist_vtx_size))
+      proc_top.append(s_numbering.index_to_ijk(top_gnum, dist_vtx_size))
+
+  all_bottom = comm.allgather(proc_bottom)
+  all_top = comm.allgather(proc_top)
+  all_bottom = [item for sublist in all_bottom for item in sublist]
+  all_top = [item for sublist in all_top for item in sublist]
+
+  # Select max and min corners to create PR
+  dist_pr = np.empty((3,2), dtype=dist_vtx_size.dtype, order='F')
+  dist_pr[:,0] = min(all_bottom)
+  dist_pr[:,1] = max(all_top)
+
+  # Compute distribution
+  pr_size = (np.abs(dist_pr[:,1] - dist_pr[:,0]) + 1).prod()
+  distri = par_utils.uniform_distribution(pr_size, comm)
+
+  PT.new_PointRange(value=dist_pr, parent=dist_node)
+  MT.newDistribution({'Index' : distri}, parent=dist_node)
 
 def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   """
