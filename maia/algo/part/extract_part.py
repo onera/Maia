@@ -359,8 +359,8 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                     None,
                     vtx_ln_to_gn ,
                     vtx_coords)
-    adjusted_point_list.append(point_list[i_part] - 1) # -1 because of CGNS norm
 
+    pdm_ep.selected_lnum_set(i_part,point_list[i_part]-1)
 
   pdm_ep.compute()
 
