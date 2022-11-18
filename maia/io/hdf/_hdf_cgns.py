@@ -7,7 +7,8 @@ C33_t.set_size(33)
 C3_t = h5t.C_S1.copy()
 C3_t.set_size(3)
 
-DTYPE_TO_CGNSTYPE = {'int32'   : 'I4',
+DTYPE_TO_CGNSTYPE = {'int8'    : 'B1',
+                     'int32'   : 'I4',
                      'int64'   : 'I8',
                      'float32' : 'R4',
                      'float64' : 'R8',
