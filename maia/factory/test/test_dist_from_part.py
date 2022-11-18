@@ -329,3 +329,19 @@ def test_recover_dist_tree_elt(void_part, sub_comm):
   for elt in PT.get_nodes_from_label(dist_tree_bck, 'Elements_t'):
     PT.rm_node_from_path(elt, ':CGNS#Distribution/ElementConnectivity')
   assert PT.is_same_tree(dist_tree_bck, dist_tree)
+
+@mark_mpi_test(3)
+def test_recover_dist_tree_s(sub_comm):
+  mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
+  dist_tree_bck = maia.io.file_to_dist_tree(mesh_file, sub_comm)
+
+  part_tree = maia.factory.partition_dist_tree(dist_tree_bck, sub_comm)
+
+  dist_tree = DFP.recover_dist_tree(part_tree, sub_comm)
+
+  # Force GridLocation to appear on dtree bck for comparison
+  for bc in PT.get_nodes_from_label(dist_tree_bck, 'BC_t'):
+    if PT.get_child_from_name(bc, 'GridLocation') is None:
+      PT.new_GridLocation('Vertex', bc)
+
+  assert PT.is_same_tree(dist_tree_bck, dist_tree)

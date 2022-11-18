@@ -180,8 +180,6 @@ def recover_dist_tree(part_tree, comm):
   The partitioned tree should have been created using Maia, or
   must at least contains GlobalNumbering nodes as defined by Maia
   (see :ref:`part_tree`).
-  In addition, only unstructured connectivities (NGon/NFace or
-  standard elements) are supported.
 
   The following nodes are managed : GridCoordinates, Elements, ZoneBC, ZoneGridConnectivity
   FlowSolution, DiscreteData and ZoneSubRegion.
@@ -219,9 +217,15 @@ def recover_dist_tree(part_tree, comm):
     vtx_distri  = PTB._lngn_to_distri(vtx_lngn_list, comm)
     cell_distri = PTB._lngn_to_distri(cell_lngn_list, comm)
 
-    distri_ud = MT.newDistribution({'Vertex' : vtx_distri, 'Cell' : cell_distri}, parent=dist_zone)
-    PT.set_value(dist_zone, np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32))
-
+    MT.newDistribution({'Vertex' : vtx_distri, 'Cell' : cell_distri}, parent=dist_zone)
+    if PT.Zone.Type(dist_zone) == "Unstructured":
+      d_zone_dims = np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32)
+    elif PT.Zone.Type(dist_zone) == "Structured":
+      d_zone_dims = _recover_dist_block_size(part_zones, comm)
+      face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
+      face_distri = PTB._lngn_to_distri(face_lngn_list, comm)
+      MT.newDistribution({'Face' : face_distri}, parent=dist_zone)
+    PT.set_value(dist_zone, d_zone_dims)
 
     # > Create vertex distribution and exchange vertex coordinates
     d_grid_co = PT.new_GridCoordinates('GridCoordinates', parent=dist_zone)
@@ -234,13 +238,13 @@ def recover_dist_tree(part_tree, comm):
 
     # > BND and JNS
     bc_t_path = 'ZoneBC_t/BC_t'
-    gc_t_path = ['ZoneGridConnectivity_t', lambda n: PT.get_label(n) == 'GridConnectivity_t' and not MT.conv.is_intra_gc(PT.get_name(n))]
+    gc_t_path = ['ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and not MT.conv.is_intra_gc(PT.get_name(n))]
 
     # > Discover (skip GC created by partitioning)
     discover_nodes_from_matching(dist_zone, part_zones, bc_t_path, comm,
           child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
     discover_nodes_from_matching(dist_zone, part_zones, gc_t_path, comm,
-          child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'GridConnectivityDonorName'],
+          child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'GridConnectivityDonorName', 'Transform'],
           merge_rule= lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
     #After GC discovery, cleanup donor name suffix
     for jn in PT.iter_children_from_predicates(dist_zone, gc_t_path):
@@ -249,11 +253,17 @@ def recover_dist_tree(part_tree, comm):
       gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
       PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
-    # > Index exchange
-    for d_zbc, d_bc in PT.iter_children_from_predicates(dist_zone, bc_t_path, ancestors=True):
-      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, PT.get_name(d_zbc) + '/' + PT.get_name(d_bc), comm)
-    for d_zgc, d_gc in PT.iter_children_from_predicates(dist_zone, gc_t_path, ancestors=True):
-      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, PT.get_name(d_zgc) + '/' + PT.get_name(d_gc), comm, True)
+    # > Index exchange (BCs and GCs)
+    for bc_path in PT.predicates_to_paths(dist_zone, bc_t_path):
+      if PT.Zone.Type(dist_zone) == 'Unstructured':
+        IPTB.part_pl_to_dist_pl(dist_zone, part_zones, bc_path, comm)
+      elif PT.Zone.Type(dist_zone) == 'Structured':
+        IPTB.part_pr_to_dist_pr(dist_zone, part_zones, bc_path, comm)
+    for gc_path in PT.predicates_to_paths(dist_zone, gc_t_path):
+      if PT.Zone.Type(dist_zone) == 'Unstructured':
+        IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
+      elif PT.Zone.Type(dist_zone) == 'Structured':
+        IPTB.part_pr_to_dist_pr(dist_zone, part_zones, gc_path, comm, True)
 
     # > Flow Solution and Discrete Data
     PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm)
