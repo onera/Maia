@@ -64,10 +64,17 @@ def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
   # In/out selection array
   in_extract_part = function(*variables)
   
+  # Beware of elt numerotation for PointList
+  loc_elt_range  = {'Vertex':'NGonElements/ElementRange', 'CellCenter':'NFaceElements/ElementRange'}
+  if location=='Vertex': starting_range = 1
+  else                 : starting_range = PT.get_node_from_path(zone,loc_elt_range[location])[1][0]
+  
   # Get loc zsr
   extract_lnum = np.where(in_extract_part)[0]
-  extract_lnum = extract_lnum.astype(np.int32)+1
+  extract_lnum = extract_lnum.astype(np.int32)
   extract_lnum = np.flip(extract_lnum) # to be sure that desorganized PL is not a problem
+  extract_lnum = extract_lnum + starting_range
+
   extract_lnum = extract_lnum.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
 
   PT.new_ZoneSubRegion("ZSR_FlowSolution", point_list=extract_lnum, loc=location, parent=zone)
@@ -85,7 +92,8 @@ def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-@pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
+# @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
 @mark_mpi_test([1,3])
 def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
 
@@ -140,25 +148,29 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
     ccz = cell_center[2::3]
     initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
     
+    # Get elt range for good local numbering
+    path_elt_rge = 'NFaceElements/ElementRange'
+    elt_range    = PT.get_node_from_path(zone,path_elt_rge)[1]
+    
     # Put fld in ZSR
-    zsr_node   = PT.get_node_from_name(zone,'ZSR_FlowSolution')
-    point_list = PT.get_value(PT.get_child_from_name(zsr_node,'PointList'))
-    PT.new_DataArray("ZSR_ccx", ccx[point_list[0]-1], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccy", ccy[point_list[0]-1], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccz", ccz[point_list[0]-1], parent=zsr_node)
+    zsr_node     = PT.get_node_from_name(zone,'ZSR_FlowSolution')
+    point_list   = PT.get_value(PT.get_child_from_name(zsr_node,'PointList'))
+    PT.new_DataArray("ZSR_ccx", ccx[point_list[0]-elt_range[0]], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccy", ccy[point_list[0]-elt_range[0]], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccz", ccz[point_list[0]-elt_range[0]], parent=zsr_node)
   # ---------------------------------------------------------------------------------------
 
   # --- EXTRACT PART ----------------------------------------------------------------------
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", sub_comm,
                                             equilibrate=1,
-                                            # exchange=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"],
-                                            exchange=["ZSR_FlowSolution"],
+                                            exchange=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"],
+                                            # exchange=["ZSR_FlowSolution"],
                                             graph_part_tool=graph_part_tool)
   # --------------------------------------------------------------------------------------- 
 
   # ---------------------------------------------------------------------------------------
-  import Converter.Internal as I
-  I.printTree(part_tree_ep)
+  # import Converter.Internal as I
+  # I.printTree(part_tree_ep)
   # Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
 
@@ -187,298 +199,305 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
 
 
 
-# # ========================================================================================
-# # ----------------------------------------------------------------------------------------
+# ========================================================================================
+# ----------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
-# @mark_mpi_test([1,3])
-# def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@mark_mpi_test([1,3])
+def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
 
-#   # --- CUBE GEN AND PART -----------------------------------------------------------------
-#   # Cube generation
-#   n_vtx = 6
-#   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
+  # --- CUBE GEN AND PART -----------------------------------------------------------------
+  # Cube generation
+  n_vtx = 6
+  dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
 
-#   # Partionning option
-#   zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
-#   part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
-#                                          zone_to_parts=zone_to_parts,
-#                                          preserve_orientation=True)
-#   # ---------------------------------------------------------------------------------------
+  # Partionning option
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
+  part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
+                                         zone_to_parts=zone_to_parts,
+                                         preserve_orientation=True)
+  # ---------------------------------------------------------------------------------------
 
-#   # --- INIT ZSR FIELDS -------------------------------------------------------------------
-#   for zone in PT.get_all_Zone_t(part_tree):
-#     # Nodes coordinates
-#     GC = PT.get_child_from_name(zone, 'GridCoordinates')
-#     CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
-#     CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
-#     CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
+  # --- INIT ZSR FIELDS -------------------------------------------------------------------
+  for zone in PT.get_all_Zone_t(part_tree):
+    # Nodes coordinates
+    GC = PT.get_child_from_name(zone, 'GridCoordinates')
+    CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
+    CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
+    CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
     
-#     # Connectivity
-#     nface         = PT.get_child_from_name(zone , 'NFaceElements')
-#     cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
-#     cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
-#     ngon          = PT.get_child_from_name(zone, 'NGonElements')
-#     face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
-#     face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
-#     cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+    # Connectivity
+    nface         = PT.get_child_from_name(zone , 'NFaceElements')
+    cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
+    cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+    ngon          = PT.get_child_from_name(zone, 'NGonElements')
+    face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
+    face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
+    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
 
-#     # Fields
-#     name_f  = ["sphere"                 , "cylinder"      ]
-#     flds    = [CX**2 + CY**2 + CZ**2 - 1, CX**2 + CY**2 -1]
+    # Fields
+    name_f  = ["sphere"                 , "cylinder"      ]
+    flds    = [CX**2 + CY**2 + CZ**2 - 1, CX**2 + CY**2 -1]
     
-#     # Placement FlowSolution
-#     FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
-#     FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
+    # Placement FlowSolution
+    FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
+    FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
     
-#     # Placement flds
-#     for name,fld in zip(name_f,flds):
-#       # Node sol -> Cell sol
-#       fld_cc = np.add.reduceat(fld[cell_vtx-1], cell_vtx_idx[:-1])/ np.diff(cell_vtx_idx)
+    # Placement flds
+    for name,fld in zip(name_f,flds):
+      # Node sol -> Cell sol
+      fld_cc = np.add.reduceat(fld[cell_vtx-1], cell_vtx_idx[:-1])/ np.diff(cell_vtx_idx)
       
-#       PT.new_DataArray(name, fld_cc, parent=FS_CC)
-#       PT.new_DataArray(name, fld   , parent=FS_NC)
+      PT.new_DataArray(name, fld_cc, parent=FS_CC)
+      PT.new_DataArray(name, fld   , parent=FS_NC)
 
-#     cell_center = GEO.compute_cell_center(zone)
-#     ccx = cell_center[0::3]
-#     ccy = cell_center[1::3]
-#     ccz = cell_center[2::3]
-#     initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
+    cell_center = GEO.compute_cell_center(zone)
+    ccx = cell_center[0::3]
+    ccy = cell_center[1::3]
+    ccz = cell_center[2::3]
+    initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
+    
+    # Get elt range for good local numbering
+    path_elt_rge = 'NFaceElements/ElementRange'
+    elt_range    = PT.get_node_from_path(zone,path_elt_rge)[1]
 
-#     # Put fld in ZSR
-#     zsr_node   = PT.get_node_from_name(zone,'ZSR_FlowSolution')
-#     point_list = PT.get_value(PT.get_child_from_name(zsr_node,'PointList'))
-#     PT.new_DataArray("ZSR_ccx", ccx[point_list[0]-1], parent=zsr_node)
-#     PT.new_DataArray("ZSR_ccy", ccy[point_list[0]-1], parent=zsr_node)
-#     PT.new_DataArray("ZSR_ccz", ccz[point_list[0]-1], parent=zsr_node)
-#   # ---------------------------------------------------------------------------------------
+    # Put fld in ZSR
+    zsr_node   = PT.get_node_from_name(zone,'ZSR_FlowSolution')
+    point_list = PT.get_value(PT.get_child_from_name(zsr_node,'PointList'))
+    PT.new_DataArray("ZSR_ccx", ccx[point_list[0]-elt_range[0]], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccy", ccy[point_list[0]-elt_range[0]], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccz", ccz[point_list[0]-elt_range[0]], parent=zsr_node)
+  # ---------------------------------------------------------------------------------------
 
-#   # --- EXTRACT PART ----------------------------------------------------------------------
-#   extractor = EXP.create_extractor_from_zsr(part_tree, "ZSR_FlowSolution", sub_comm,
-#                                             equilibrate=1,
-#                                             graph_part_tool="hilbert")
-#   extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
-#   # extractor.exchange_zsr_fields("ZSR_FlowSolution", sub_comm)
-#   extractor.exchange_fields(["ZSR_FlowSolution"], sub_comm) # Works also with the ZSR node
-#   part_tree_ep = extractor.extract_part_tree
-#   # --------------------------------------------------------------------------------------- 
+  # --- EXTRACT PART ----------------------------------------------------------------------
+  extractor = EXP.create_extractor_from_zsr(part_tree, "ZSR_FlowSolution", sub_comm,
+                                            equilibrate=1,
+                                            graph_part_tool="hilbert")
+  extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
+  # extractor.exchange_zsr_fields("ZSR_FlowSolution", sub_comm)
+  extractor.exchange_fields(["ZSR_FlowSolution"], sub_comm) # Works also with the ZSR node
+  part_tree_ep = extractor.extract_part_tree
+  # --------------------------------------------------------------------------------------- 
 
-#   # ---------------------------------------------------------------------------------------
-#   # Part to dist
-#   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
+  # ---------------------------------------------------------------------------------------
+  # Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
 
-#   # Compare to reference solution
-#   ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr.yaml')
-#   ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
 
-#   if write_output:
-#     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-#     # Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
-#     # Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
-#     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
-#     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    # Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
+    # Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
   
 
-#   # Check that bases are similar (because CGNSLibraryVersion is R4)
-#   # print(ref_sol     [2][0][1])
-#   # print(dist_tree_ep[2][0][1])
-#   # print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-#   #                                 PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
-#   assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-#                                   PT.get_all_CGNSBase_t(dist_tree_ep)[0])
-#   # ---------------------------------------------------------------------------------------
-# # ---------------------------------------------------------------------------------------
-# # =======================================================================================
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  # print(ref_sol     [2][0][1])
+  # print(dist_tree_ep[2][0][1])
+  # print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+  #                                 PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
+  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # ---------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
 
 
 
-# # ========================================================================================
-# # ----------------------------------------------------------------------------------------
+# ========================================================================================
+# ----------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
-# @mark_mpi_test([1,3])
-# def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output):
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@mark_mpi_test([1,3])
+def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output):
 
-#   # --- CUBE GEN AND PART -----------------------------------------------------------------
-#   # Cube generation
-#   n_vtx = 6
-#   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
+  # --- CUBE GEN AND PART -----------------------------------------------------------------
+  # Cube generation
+  n_vtx = 6
+  dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
 
-#   # Partionning option
-#   zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
-#   part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
-#                                          zone_to_parts=zone_to_parts,
-#                                          preserve_orientation=True)
-#   # ---------------------------------------------------------------------------------------
+  # Partionning option
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
+  part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
+                                         zone_to_parts=zone_to_parts,
+                                         preserve_orientation=True)
+  # ---------------------------------------------------------------------------------------
 
-#   # --- INIT ZSR FIELDS -------------------------------------------------------------------
-#   point_list = list()
-#   for zone in PT.get_all_Zone_t(part_tree):
-#     # Nodes coordinates
-#     GC = PT.get_child_from_name(zone, 'GridCoordinates')
-#     CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
-#     CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
-#     CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
+  # --- INIT ZSR FIELDS -------------------------------------------------------------------
+  point_list = list()
+  for zone in PT.get_all_Zone_t(part_tree):
+    # Nodes coordinates
+    GC = PT.get_child_from_name(zone, 'GridCoordinates')
+    CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
+    CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
+    CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
     
-#     # Connectivity
-#     nface         = PT.get_child_from_name(zone , 'NFaceElements')
-#     cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
-#     cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
-#     ngon          = PT.get_child_from_name(zone, 'NGonElements')
-#     face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
-#     face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
-#     cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+    # Connectivity
+    nface         = PT.get_child_from_name(zone , 'NFaceElements')
+    cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
+    cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+    ngon          = PT.get_child_from_name(zone, 'NGonElements')
+    face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
+    face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
+    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
 
-#     # Fields
-#     name_f  = ["sphere"                 , "cylinder"      ]
-#     flds    = [CX**2 + CY**2 + CZ**2 - 1, CX**2 + CY**2 -1]
+    # Fields
+    name_f  = ["sphere"                 , "cylinder"      ]
+    flds    = [CX**2 + CY**2 + CZ**2 - 1, CX**2 + CY**2 -1]
     
-#     # Placement FlowSolution
-#     FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
-#     FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
+    # Placement FlowSolution
+    FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
+    FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
     
-#     # Placement flds
-#     for name,fld in zip(name_f,flds):
-#       # Node sol -> Cell sol
-#       fld_cc = np.add.reduceat(fld[cell_vtx-1], cell_vtx_idx[:-1])/ np.diff(cell_vtx_idx)
+    # Placement flds
+    for name,fld in zip(name_f,flds):
+      # Node sol -> Cell sol
+      fld_cc = np.add.reduceat(fld[cell_vtx-1], cell_vtx_idx[:-1])/ np.diff(cell_vtx_idx)
       
-#       PT.new_DataArray(name, fld_cc, parent=FS_CC)
-#       PT.new_DataArray(name, fld   , parent=FS_NC)
+      PT.new_DataArray(name, fld_cc, parent=FS_CC)
+      PT.new_DataArray(name, fld   , parent=FS_NC)
 
-#     cell_center = GEO.compute_cell_center(zone)
-#     ccx = cell_center[0::3]
-#     ccy = cell_center[1::3]
-#     ccz = cell_center[2::3]
-#     point_list_cell = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
-#     point_list.append(point_list_cell[0])
-#   # ---------------------------------------------------------------------------------------
+    cell_center = GEO.compute_cell_center(zone)
+    ccx = cell_center[0::3]
+    ccy = cell_center[1::3]
+    ccz = cell_center[2::3]
+    point_list_cell = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
+    point_list.append(point_list_cell[0])
+  # ---------------------------------------------------------------------------------------
 
-#   # --- EXTRACT PART ----------------------------------------------------------------------
-#   part_tree_ep = EXP.extract_part_from_point_list(part_tree, point_list, "CellCenter", sub_comm,
-#                                                   equilibrate=1,
-#                                                   exchange=['FlowSolution_NC','FlowSolution_CC'],
-#                                                   graph_part_tool=graph_part_tool)
-#   # --------------------------------------------------------------------------------------- 
+  # --- EXTRACT PART ----------------------------------------------------------------------
+  part_tree_ep = EXP.extract_part_from_point_list(part_tree, [point_list], "CellCenter", sub_comm,
+                                                  equilibrate=1,
+                                                  exchange=['FlowSolution_NC','FlowSolution_CC'],
+                                                  graph_part_tool=graph_part_tool)
+  # --------------------------------------------------------------------------------------- 
 
-#   # ---------------------------------------------------------------------------------------
-#   # Part to dist
-#   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
+  # ---------------------------------------------------------------------------------------
+  # Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
 
-#   # Compare to reference solution
-#   ref_file = os.path.join(ref_dir, f'extract_cell_from_point_list.yaml')
-#   ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_cell_from_point_list.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
 
-#   if write_output:
-#     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-#     # Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
-#     # Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
-#     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
-#     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    # Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
+    # Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
   
 
-#   # Check that bases are similar (because CGNSLibraryVersion is R4)
-#   # print(ref_sol     [2][0][1])
-#   # print(dist_tree_ep[2][0][1])
-#   # print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-#   #                                 PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
-#   assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-#                                   PT.get_all_CGNSBase_t(dist_tree_ep)[0])
-#   # ---------------------------------------------------------------------------------------
-# # ---------------------------------------------------------------------------------------
-# # =======================================================================================
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  # print(ref_sol     [2][0][1])
+  # print(dist_tree_ep[2][0][1])
+  # print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+  #                                 PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
+  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # ---------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
 
 
 
-# # ========================================================================================
-# # ----------------------------------------------------------------------------------------
+# ========================================================================================
+# ----------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
-# @mark_mpi_test([1,3])
-# def test_extractor_cell_from_point_list_U(graph_part_tool, sub_comm, write_output):
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@mark_mpi_test([1,3])
+def test_extractor_cell_from_point_list_U(graph_part_tool, sub_comm, write_output):
 
-#   # --- CUBE GEN AND PART -----------------------------------------------------------------
-#   # Cube generation
-#   n_vtx = 6
-#   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
+  # --- CUBE GEN AND PART -----------------------------------------------------------------
+  # Cube generation
+  n_vtx = 6
+  dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
 
-#   # Partionning option
-#   zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
-#   part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
-#                                          zone_to_parts=zone_to_parts,
-#                                          preserve_orientation=True)
-#   # ---------------------------------------------------------------------------------------
+  # Partionning option
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, 2)
+  part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
+                                         zone_to_parts=zone_to_parts,
+                                         preserve_orientation=True)
+  # ---------------------------------------------------------------------------------------
 
-#   # --- INIT ZSR FIELDS -------------------------------------------------------------------
-#   point_list = list()
-#   for zone in PT.get_all_Zone_t(part_tree):
-#     # Nodes coordinates
-#     GC = PT.get_child_from_name(zone, 'GridCoordinates')
-#     CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
-#     CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
-#     CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
+  # --- INIT ZSR FIELDS -------------------------------------------------------------------
+  point_list = list()
+  for zone in PT.get_all_Zone_t(part_tree):
+    # Nodes coordinates
+    GC = PT.get_child_from_name(zone, 'GridCoordinates')
+    CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
+    CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
+    CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
     
-#     # Connectivity
-#     nface         = PT.get_child_from_name(zone , 'NFaceElements')
-#     cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
-#     cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
-#     ngon          = PT.get_child_from_name(zone, 'NGonElements')
-#     face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
-#     face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
-#     cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+    # Connectivity
+    nface         = PT.get_child_from_name(zone , 'NFaceElements')
+    cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
+    cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+    ngon          = PT.get_child_from_name(zone, 'NGonElements')
+    face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
+    face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
+    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
 
-#     # Fields
-#     name_f  = ["sphere"                 , "cylinder"      ]
-#     flds    = [CX**2 + CY**2 + CZ**2 - 1, CX**2 + CY**2 -1]
+    # Fields
+    name_f  = ["sphere"                 , "cylinder"      ]
+    flds    = [CX**2 + CY**2 + CZ**2 - 1, CX**2 + CY**2 -1]
     
-#     # Placement FlowSolution
-#     FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
-#     FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
+    # Placement FlowSolution
+    FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
+    FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
     
-#     # Placement flds
-#     for name,fld in zip(name_f,flds):
-#       # Node sol -> Cell sol
-#       fld_cc = np.add.reduceat(fld[cell_vtx-1], cell_vtx_idx[:-1])/ np.diff(cell_vtx_idx)
+    # Placement flds
+    for name,fld in zip(name_f,flds):
+      # Node sol -> Cell sol
+      fld_cc = np.add.reduceat(fld[cell_vtx-1], cell_vtx_idx[:-1])/ np.diff(cell_vtx_idx)
       
-#       PT.new_DataArray(name, fld_cc, parent=FS_CC)
-#       PT.new_DataArray(name, fld   , parent=FS_NC)
+      PT.new_DataArray(name, fld_cc, parent=FS_CC)
+      PT.new_DataArray(name, fld   , parent=FS_NC)
 
-#     cell_center = GEO.compute_cell_center(zone)
-#     ccx = cell_center[0::3]
-#     ccy = cell_center[1::3]
-#     ccz = cell_center[2::3]
-#     point_list_cell = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
-#     point_list.append(point_list_cell[0])
-#   # ---------------------------------------------------------------------------------------
+    cell_center = GEO.compute_cell_center(zone)
+    ccx = cell_center[0::3]
+    ccy = cell_center[1::3]
+    ccz = cell_center[2::3]
+    point_list_cell = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
+    point_list.append(point_list_cell[0])
+  # ---------------------------------------------------------------------------------------
 
-#   # --- EXTRACT PART ----------------------------------------------------------------------
-#   extractor = EXP.create_extractor_from_point_list( part_tree, point_list, 'CellCenter', sub_comm,
-#                                                     equilibrate=1,
-#                                                     graph_part_tool="hilbert")
-#   extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
-#   part_tree_ep = extractor.extract_part_tree
-#   # --------------------------------------------------------------------------------------- 
+  # --- EXTRACT PART ----------------------------------------------------------------------
+  extractor = EXP.create_extractor_from_point_list( part_tree, [point_list], 'CellCenter', sub_comm,
+                                                    equilibrate=1,
+                                                    graph_part_tool="hilbert")
+  extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
+  part_tree_ep = extractor.extract_part_tree
+  # --------------------------------------------------------------------------------------- 
 
-#   # ---------------------------------------------------------------------------------------
-#   # Part to dist
-#   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
+  # ---------------------------------------------------------------------------------------
+  # Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
 
-#   # Compare to reference solution
-#   ref_file = os.path.join(ref_dir, f'extract_cell_from_point_list.yaml')
-#   ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_cell_from_point_list.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
 
-#   if write_output:
-#     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-#     # Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
-#     # Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
-#     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
-#     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    # Mio.write_trees(part_tree, os.path.join(   out_dir, f'volume_{graph_part_tool}.cgns'), sub_comm)
+    # Mio.write_trees(part_tree_ep, os.path.join(out_dir, f'extract_cell_{graph_part_tool}.cgns'), sub_comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
   
 
-#   # Check that bases are similar (because CGNSLibraryVersion is R4)
-#   # print(ref_sol     [2][0][1])
-#   # print(dist_tree_ep[2][0][1])
-#   # print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-#   #                                 PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
-#   assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-#                                   PT.get_all_CGNSBase_t(dist_tree_ep)[0])
-#   # ---------------------------------------------------------------------------------------
-# # ---------------------------------------------------------------------------------------
-# # =======================================================================================
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  # print(ref_sol     [2][0][1])
+  # print(dist_tree_ep[2][0][1])
+  # print("RESULT FORM ASSERT = ",maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+  #                                 PT.get_all_CGNSBase_t(dist_tree_ep)[0]))
+  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # ---------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
 

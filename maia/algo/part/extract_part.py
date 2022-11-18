@@ -16,6 +16,19 @@ import Pypdm.Pypdm as PDM
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 
+# =======================================================================================
+# ---------------------------------------------------------------------------------------
+
+def starting_elt(part_zone,location):
+  switcher={
+            'Vertex'    : 1,
+            'EdgeCenter': None,
+            'FaceCenter': PT.get_node_from_path(part_zone,'NGonElements/ElementRange' )[1][0],
+            'CellCenter': PT.get_node_from_path(part_zone,'NFaceElements/ElementRange')[1][0]
+            }
+  return switcher.get(location,"Invalid location")
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
 
 
 
@@ -56,9 +69,13 @@ class Extractor:
 
     # Compute extract part of each domain
     for i_domain, part_zones in enumerate(part_tree_per_dom):
+      point_list_domain = list()
+      for i_part,part_zone in enumerate(part_zones):
+        point_list_domain.append( self.point_list[i_domain][i_part]
+                                - starting_elt(part_zone,self.location) +1 )
       
       # extract part from point list
-      extract_part_zone,etb = extract_part_one_domain(part_zones, self.point_list, self.dim, comm,
+      extract_part_zone,etb = extract_part_one_domain(part_zones, point_list_domain, self.dim, comm,
                                                          equilibrate=self.equilibrate,
                                                          graph_part_tool=self.graph_part_tool,
                                                          put_pe=self.put_pe)
@@ -93,11 +110,9 @@ class Extractor:
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange, comm) :
-  
-  select_node = { 'Vertex'    :  None,
-                  'EdgeCenter':  None,
-                  'FaceCenter': 'NGonElements/ElementRange',
-                  'CellCenter': 'NFaceElements/ElementRange'}
+
+  loc_correspondance = {'Vertex'    : 'Vertex',
+                        'CellCenter': 'Cell'}
 
   # Part 1 : EXTRACT_PART
   # Part 2 : VOLUME
@@ -147,23 +162,12 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
       container        = PT.request_child_from_name(part_zone, container_name)
       point_list_node  = PT.get_child_from_label(container,'IndexArray_t')
 
-      # Get n_elt to adjust point_list
-      print("gridLocation = ", gridLocation)
-      if gridLocation in ['Face', 'CellCenter']:
-        path_elt_rge = select_node[gridLocation]
-        print('path =', path_elt_rge)
-        elt_range = PT.get_node_from_path(part_zone,path_elt_rge)[1]
-
-
       if point_list_node is not None :
         partial_field = True # Reverse_iexch will be different
         part_gnum1  = ptp_loc.get_gnum1_come_from()[i_part]['come_from'] # Get partition order
         ref_lnum2   = ptp_loc.get_referenced_lnum2()[i_part] # Get partition order
         point_list  = PT.get_value(point_list_node)[0]
-        print(point_list)
-        point_list  = point_list - elt_range[0]
-        print(point_list)
-        # common = np.intersect1d(part_gnum1,parent_elt_loc)
+        point_list  = point_list - starting_elt(part_zone, gridLocation) +1 # +1 to fit gnum indexation
 
         if (point_list.size==0):
 
@@ -185,13 +189,13 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 
     # --- FlowSolution node def by zone -------------------------------------------------
     # Tout en FlowSolution pour le moment parce que le part_to_dist transfère pas les ZSR
-    # FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    if (all_labels[0]=='FlowSolution_t'):
-      FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    elif (all_labels[0]=='ZoneSubRegion_t'):
-      FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
-    else :
-      raise TypeError
+    FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    # if (all_labels[0]=='FlowSolution_t'):
+    #   FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    # elif (all_labels[0]=='ZoneSubRegion_t'):
+    #   FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
+    # else :
+    #   raise TypeError
 
     # Echange gnum to retrieve flowsol new point_list
     if point_list_node is not None :
@@ -200,8 +204,6 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
                                       all_part_gnum1,
                                       part2_stride=all_stride_int)
       part1_strid, part2_gnum = ptp_loc.reverse_wait(req_id)
-      print(f'[{comm.Get_rank()}][MAIA] part2_gnum.shape = ', part2_gnum[0].shape)
-      print(f'[{comm.Get_rank()}][MAIA] part2_gnum       = ', part2_gnum[0])
       
       if (part2_gnum[0].size==0):
         new_point_list = np.empty(0,dtype=np.int32)
@@ -213,21 +215,14 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 
         stride         = part2_gnum[0][parent_elt_idx] == parent_elt_loc
         new_point_list = np.where(stride)[0]
-      print(f'[{comm.Get_rank()}][MAIA] point_list.shape = ', new_point_list.shape)
-      print(f'[{comm.Get_rank()}][MAIA] point_list       = ', new_point_list+1)
+
       new_point_list = new_point_list.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
-      new_pl_node    = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
+      new_pl_node    = PT.new_PointList(name='PointList', value=new_point_list+starting_elt(part_zone_ep,gridLocation), parent=FS_ep)
 
       # Boucle sur les partitoins de l'extracttion pout get PL
       # faire l'import
-      print("path = ",f':CGNS#GlobalNumbering/{loc_correspondance[gridLocation]}')
       gnum = PT.get_node_from_path(part_zone_ep,f':CGNS#GlobalNumbering/{loc_correspondance[gridLocation]}')[1]
-      print("gnum = ",gnum)
-      print("gnum.shape = ",gnum.shape)
-      print("new_point_list[0].shape = ",new_point_list[0].shape)
-      print("gnum[new_point_list[0]] = ",gnum[new_point_list])
       list_de_tab = maia.algo.part.compute_gnum_from_parent_gnum(gnum[new_point_list], comm)
-      print("list_de_tab = ", list_de_tab)
       new_gnum = dict()
       new_gnum["Index"] = list_de_tab[0]
       # /stck/cbenazet/workspace/maia/maia/maia/algo/part/extract_boundary.py
@@ -371,10 +366,10 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 
 
   # > Reconstruction du maillage de l'extract part --------------------------------------
-  n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL  ) ; print(f'[{comm.Get_rank()}][MAIA] n_extract_cell = {n_extract_cell}')
-  n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  ) ; print(f'[{comm.Get_rank()}][MAIA] n_extract_face = {n_extract_face}')
-  n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  ) ; print(f'[{comm.Get_rank()}][MAIA] n_extract_edge = {n_extract_edge}')
-  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VERTEX) ; print(f'[{comm.Get_rank()}][MAIA] n_extract_vtx  = {n_extract_vtx }')
+  n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_cell = {n_extract_cell}')
+  n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_face = {n_extract_face}')
+  n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  ) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_edge = {n_extract_edge}')
+  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VERTEX) # ; print(f'[{comm.Get_rank()}][MAIA] n_extract_vtx  = {n_extract_vtx }')
   
 
   extract_vtx_coords = pdm_ep.vtx_coord_get(0)
@@ -531,9 +526,13 @@ def extract_part_from_point_list(part_tree, point_list, location, comm, equilibr
 
   # Compute extract part of each domain
   # pdm_ep=list()
-  exch_tool_box = list()
+  exch_tool_box       = list()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    extract_part_zone,etb = extract_part_one_domain(part_zones, point_list, dim, comm,
+    adjusted_point_list = list()
+    for i_part, part_zone in enumerate(part_zones):
+      adjusted_point_list.append(point_list[i_domain][i_part] - starting_elt(part_zone,location) +1 )
+
+    extract_part_zone,etb = extract_part_one_domain(part_zones, adjusted_point_list, dim, comm,
                                                     equilibrate=equilibrate,
                                                     graph_part_tool=graph_part_tool,
                                                     put_pe=put_pe)
@@ -584,12 +583,12 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
   
   # ExtractPart dimension
   select_dim  = { 'Vertex':0 ,'EdgeCenter':1 ,'FaceCenter':2 ,'CellCenter':3}
-  select_node = { 'Vertex':None ,'EdgeCenter':None ,'FaceCenter':'NGonElements/ElementRange' ,'CellCenter':'NFaceElements/ElementRange'}
-  ZSR_node    = PT.get_node_from_name(part_tree,zsr_path)
-  assert ZSR_node is not None 
-  dim         = select_dim[PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))]
+  
+  zsr_node    = PT.get_node_from_name(part_tree,zsr_path)
+  zsr_loc     = PT.get_value(PT.get_child_from_name(zsr_node,'GridLocation'))
+  assert zsr_node is not None 
+  dim         = select_dim[zsr_loc]
   assert dim in [0,2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
-  path_elt_rge= select_node[PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))]
   
   # ExtractPart CGNSTree
   extract_part_tree = PT.new_CGNSTree()
@@ -600,7 +599,6 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
   # pdm_ep=list()
   exch_tool_box   =list()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    
     # Get point_list for each partitioned zone in the domain
     point_list = list()
     for part_zone in part_zones:
@@ -608,12 +606,7 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
       zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
       zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
       zsr_pl_data = PT.get_value(zsr_pl_node)[0]
-
-      elt_range    = PT.get_node_from_path(part_zone,path_elt_rge)[1]
-      print(elt_range)
-      print('point_list BEFORE = ', PT.get_value(zsr_pl_node)[0])
-      point_list.append(PT.get_value(zsr_pl_node)[0] - elt_range[0])
-      print('point_list AFTER  = ', PT.get_value(zsr_pl_node)[0] - elt_range[0])
+      point_list.append(PT.get_value(zsr_pl_node)[0] - starting_elt(part_zone,zsr_loc) +1 )
 
     # extract part from point list
     extract_part_zone,etb = extract_part_one_domain(part_zones, point_list, dim, comm,
@@ -622,10 +615,6 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
                                                     put_pe=put_pe)
     exch_tool_box.append(etb)
     PT.add_child(extract_part_base, extract_part_zone)
-
-  # # Exchange fields between two parts
-  # if exchange is None         : exchange = list()
-  # if zsr_path not in exchange : exchange.append(zsr_path)
 
   if exchange is not None:
     _exchange_field(part_tree, extract_part_tree, exch_tool_box, exchange, comm)
@@ -643,18 +632,20 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, equilibrate=1, graph_pa
   assert(len(part_tree_per_dom)==1)
 
   # zsr node and location
-  ZSR_node    = PT.get_node_from_name(part_tree,zsr_path)
-  assert ZSR_node is not None 
-  location    = PT.get_value(PT.get_child_from_name(ZSR_node,'GridLocation'))
+  zsr_node    = PT.get_node_from_name(part_tree,zsr_path)
+  assert zsr_node is not None 
+  location    = PT.get_value(PT.get_child_from_name(zsr_node,'GridLocation'))
 
   # Get point_list or each partitioned zone
+  point_list = list()
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    point_list = list()
+    point_list_domain = list()
     for part_zone in part_zones:
       # Get point_list from zsr node
       zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
       zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
-      point_list.append(PT.get_value(zsr_pl_node)[0])
+      point_list_domain.append(PT.get_value(zsr_pl_node)[0])
+    point_list.append(point_list_domain)
 
   return Extractor(part_tree, point_list, location, comm,
                    equilibrate=equilibrate,
