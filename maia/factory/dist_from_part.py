@@ -1,11 +1,13 @@
 from mpi4py import MPI
 import numpy      as np
+import operator
 import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.algo.dist             import matching_jns_tools as MJT
+from maia.algo.dist.s_to_u      import guess_bnd_normal_index
 from maia.transfer              import utils              as tr_utils
 from maia.transfer.part_to_dist import data_exchange      as PTB
 from maia.transfer.part_to_dist import index_exchange     as IPTB
@@ -77,6 +79,50 @@ def get_parts_per_blocks(part_tree, comm):
   for zone_path in PT.predicates_to_paths(dist_doms, 'CGNSBase_t/Zone_t'):
     parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
   return parts_per_dom
+
+def _recover_dist_block_size(part_zones, comm):
+  """ From a list of partitioned zones (coming from same initial block),
+  retrieve the size of the initial block """
+  intra1to1 = lambda n: PT.get_label(n) == 'GridConnectivity1to1_t' and MT.conv.is_intra_gc(PT.get_name(n))
+
+  # Collect zone size and pr+opposite zone thought partitioning jns
+  zones_to_size = {}
+  zones_to_join = {}
+  for part_zone in part_zones:
+    zone_name = PT.get_name(part_zone)
+    zones_to_size[zone_name] = PT.Zone.CellSize(part_zone)
+    zones_to_join[zone_name] = []
+    for intra_jn in PT.iter_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', intra1to1]):
+      zones_to_join[zone_name].append((PT.Subset.getPatch(intra_jn)[1], PT.get_value(intra_jn)))
+
+  # Gather and flatten dicts
+  zones_to_size_g = {}
+  zones_to_join_g = {}
+  for zones_to_size_rank in comm.allgather(zones_to_size):
+    zones_to_size_g.update(zones_to_size_rank)
+  for zones_to_join_rank in comm.allgather(zones_to_join):
+    zones_to_join_g.update(zones_to_join_rank)
+
+  # Choose any starting point
+  first = next(iter(zones_to_size_g))
+  d_zone_dims = np.zeros((3,3), np.int32, order='F')
+  d_zone_dims[:,1] += zones_to_size_g[first] #Cell size
+  for axis in range(3):
+    for oper in [operator.ne, operator.eq]: #Go front (vtx != 1), then back (vtx == 1)
+      # Reset
+      keep_going = True
+      current = first
+      while keep_going:
+        # Iterate jns and select one to continue in same axis/direction
+        for (pr,opposite) in zones_to_join_g[current]:
+          if guess_bnd_normal_index(pr, 'Vertex') == axis and oper(pr[axis,0], 1):
+            current = opposite
+            d_zone_dims[axis,1] += zones_to_size_g[current][axis]
+            break
+        else: #If loop did not break -> we reached the end of block
+          keep_going = False
+  d_zone_dims[:,0] = d_zone_dims[:,1] + 1 # Update vertices
+  return d_zone_dims
 
 def _recover_elements(dist_zone, part_zones, comm):
   # > Get the list of part elements
