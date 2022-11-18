@@ -20,6 +20,14 @@ def test_ijk_to_faceiIndex():
   assert s_numb.ijk_to_faceiIndex(7,5,3,[7,5,3],[8,6,4]) == 119
   assert s_numb.ijk_to_faceiIndex(8,5,3,[7,5,3],[8,6,4]) == 8+4*8+2*8*5
 
+def test_faceindex_to_idx():
+  n_vtx = [7,5,3]
+  n_cell = [6,4,2]
+  idx = np.random.randint(1, 3*5*7+1, size=20)
+  assert (s_numb.ijk_to_faceiIndex(*s_numb.faceiIndex_to_ijk(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
+  assert (s_numb.ijk_to_facejIndex(*s_numb.facejIndex_to_ijk(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
+  assert (s_numb.ijk_to_facekIndex(*s_numb.facekIndex_to_ijk(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
+
 def test_ijk_to_facejIndex():
   assert s_numb.ijk_to_facejIndex(1,1,1,[7,5,3],[8,6,4]) == 121
   assert s_numb.ijk_to_facejIndex(3,2,1,[7,5,3],[8,6,4]) == 130
