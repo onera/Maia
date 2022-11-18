@@ -203,6 +203,25 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
       new_point_list = new_point_list.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
       new_pl_node    = PT.new_PointList(name='PointList', value=new_point_list+1, parent=FS_ep)
 
+      # Boucle sur les partitoins de l'extracttion pout get PL
+      # faire l'import
+      print("path = ",f':CGNS#GlobalNumbering/{loc_correspondance[gridLocation]}')
+      gnum = PT.get_node_from_path(part_zone_ep,f':CGNS#GlobalNumbering/{loc_correspondance[gridLocation]}')[1]
+      print("gnum = ",gnum)
+      print("gnum.shape = ",gnum.shape)
+      print("new_point_list[0].shape = ",new_point_list[0].shape)
+      print("gnum[new_point_list[0]] = ",gnum[new_point_list])
+      list_de_tab = maia.algo.part.compute_gnum_from_parent_gnum(gnum[new_point_list], comm)
+      print("list_de_tab = ", list_de_tab)
+      new_gnum = dict()
+      new_gnum["Index"] = list_de_tab[0]
+      # /stck/cbenazet/workspace/maia/maia/maia/algo/part/extract_boundary.py
+      
+      # Boucle sur les partitoins de l'extracttion pour placer PL        
+      node_cgnspart = maia.pytree.maia.newGlobalNumbering(new_gnum, parent=FS_ep)
+      # /stck/cbenazet/workspace/maia/maia/maia/pytree/maia/maia_nodes.py
+
+      # sys.exit()
 
     # print('[MAIA] ExtractPart :: partial_field = ', partial_field)
     # --- Field exchange ----------------------------------------------------------------
