@@ -40,17 +40,29 @@ class my_test_graph_adaptor:
     self.g = g
     self.root_idx = root_idx
 
-  def roots(self):
-    return [[self.root_idx], 0]
-
-  @staticmethod
-  def children(n):
-    return [outward_nodes(n), 0]
-
   def first_child(self, n):
     return self.g[ outward_nodes(n)[0] ]
 
+# Below: range methods
+# The idea is that the DFS algorithm needs to save `roots()` and `children()` ranges
+#     and iterate through them at various points.
+# The algorithm does not have to know anything about the objects,
+#     it just saves them and then gives them back to `current_node`, `range_is_done`...
+#     so that these methods can decode them
 
+# range-returning methods {
+#    for this test, we choose to represent a range of nodes by a pair of:
+#        1. the underlying sequence
+#        2. the current position on the sequence
+  @staticmethod
+  def children(n):
+    return [outward_nodes(n), 0]
+  def roots(self):
+    return [[self.root_idx], 0]
+# }
+
+# range-input methods {
+#    here, we get ranges that we produced with `roots` and `children` and extract the relevant information from them
   def current_node(self, ns):
     nodes,pos = ns
     return self.g[nodes[pos]]
@@ -61,12 +73,13 @@ class my_test_graph_adaptor:
     return len(nodes) == pos
 
   @staticmethod
-  def advance_current_node(ns):
+  def advance_node_range(ns):
     ns[1] += 1
 
   @staticmethod
-  def advance_current_node_to_last(ns):
+  def advance_node_range_to_last(ns):
     ns[1] = len(ns[0])
+# }
 
 
 class visitor_for_testing_depth_first_scan:
@@ -284,7 +297,7 @@ def test_depth_first_search_adjacency_stack():
   g = create_graph_for_tests()
 
   v = visitor_for_testing_dfs()
-  depth_first_search(my_test_graph_adaptor(g,8),v);
+  depth_first_search(my_test_graph_adaptor(g,8),v) # note: 8 is the index of node '1'
 
   expected_s = \
     '[pre ] 1\n' \
@@ -331,6 +344,6 @@ def test_depth_first_search_adjacency_stack_inplace_modif():
   g = create_graph_for_tests()
 
   v = modifying_visitor_for_testing_dfs()
-  depth_first_search(my_test_graph_adaptor(g,8),v);
+  depth_first_search(my_test_graph_adaptor(g,8),v) # note: 8 is the index of node '1'
 
   assert nodes(g) == [4,7,10102,9,10108,10,11,10103,10101]

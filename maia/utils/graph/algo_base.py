@@ -48,13 +48,13 @@ class graph_traversal_stack:
       # note: unable to use Python iterators because this function needs to read several times without incrementing
       return self.adaptor.current_node( self.S.parent_level() )
 
-    def advance_current_node(self):
-      self.adaptor.advance_current_node( self.S.current_level() )
-    def advance_current_node_to_last(self):
-      self.adaptor.advance_current_node_to_last( self.S.current_level() )
+    def advance_node_range(self):
+      self.adaptor.advance_node_range( self.S.current_level() )
+    def advance_node_range_to_last(self):
+      self.adaptor.advance_node_range_to_last( self.S.current_level() )
 
-    def push_level(self, v):
-      self.S.push_level(self.adaptor.children(v))
+    def push_level(self, n):
+      self.S.push_level(self.adaptor.children(n))
     def pop_level(self):
       self.S.pop_level()
 
@@ -68,49 +68,50 @@ class graph_traversal_stack:
 
 def unwind(S, f):
   while not S.is_at_root_level():
-    v = S.current_node()
+    n = S.current_node()
     parent = S.parent_node()
-    f.post(v)
-    f.up(v,parent)
+    f.post(n)
+    f.up(n, parent)
     S.pop_level()
 
-  v = S.current_node()
-  f.post(v)
+  n = S.current_node()
+  f.post(n)
+
+
+def depth_first_search_stack(S, adaptor, f):
+  while not S.is_done():
+    if not S.level_is_done():
+      n = S.current_node()
+      next_step = f.pre(n)
+      if next_step == step.out: # stop
+        return S
+      if next_step == step.over:  # prune
+        S.push_level(n)
+        S.advance_node_range_to_last()
+      if next_step == step.into:  # go down
+        S.push_level(n)
+        if not S.level_is_done():
+          f.down(n,adaptor.first_child(n))
+
+    else:
+      S.pop_level()
+      n = S.current_node()
+      f.post(n)
+      S.advance_node_range()
+      if not S.is_at_root_level():
+        parent = S.parent_node()
+        f.up(n, parent)
+        if not S.level_is_done():
+          w = S.current_node()
+          f.down(parent, w)
+
+  return S
 
 
 def depth_first_search(adaptor, f):
   S = graph_traversal_stack(adaptor)
-
-  while not S.is_done():
-    if not S.level_is_done():
-      v = S.current_node()
-      next_step = f.pre(v)
-      if next_step == step.out: # stop
-        #matching_node = S.current_node()
-        unwind(S,f)
-        #return matching_node
-        return
-      if next_step == step.over:  # prune
-        S.push_level(v)
-        S.advance_current_node_to_last()
-      if next_step == step.into:  # go down
-        S.push_level(v)
-        if not S.level_is_done():
-          f.down(v,adaptor.first_child(v))
-
-    else:
-      S.pop_level()
-      v = S.current_node()
-      f.post(v)
-      S.advance_current_node()
-      if not S.is_at_root_level():
-        parent = S.parent_node()
-        f.up(v,parent)
-        if not S.level_is_done():
-          w = S.current_node()
-          f.down(parent,w)
-
-  #return S.current_node()
+  depth_first_search_stack(S, adaptor, f)
+  unwind(S, f)
 
 
 #// adaptation of general algorithm to find,prune and scan {
