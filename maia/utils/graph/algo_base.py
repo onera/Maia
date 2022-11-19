@@ -38,39 +38,30 @@ class graph_stack:
 
 
 class graph_traversal_stack:
-    def __init__(self, g, adaptor):
-      self.g = g
+    def __init__(self, adaptor):
       self.adaptor = adaptor
-      self.S = graph_stack([adaptor.root_nodes(g), 0])
+      self.S = graph_stack(adaptor.roots())
 
-
-    #TODO change access to g
     def current_node(self):
-      lvl_nodes,lvl_pos = self.S.current_level()
-      return self.g[0][lvl_nodes[lvl_pos]]
+      return self.adaptor.current_node( self.S.current_level() )
     def parent_node(self):
-      parent_nodes,parent_pos = self.S.parent_level()
-      return self.g[0][parent_nodes[parent_pos]]
+      # note: unable to use Python iterators because this function needs to read several times without incrementing
+      return self.adaptor.current_node( self.S.parent_level() )
 
     def advance_current_node(self):
-      self.S.current_level()[1] += 1
+      self.adaptor.advance_current_node( self.S.current_level() )
     def advance_current_node_to_last(self):
-      self.S.current_level()[1] = len(self.S.current_level()[0])
+      self.adaptor.advance_current_node_to_last( self.S.current_level() )
 
-
-    def push_level(self, children):
-      self.S.push_level([children, 0])
-
+    def push_level(self, v):
+      self.S.push_level(self.adaptor.children(v))
     def pop_level(self):
       self.S.pop_level()
 
     def level_is_done(self) -> bool:
-      lvl_nodes,lvl_pos = self.S.current_level()
-      return len(lvl_nodes) == lvl_pos
-
+      return self.adaptor.range_is_done( self.S.current_level() )
     def is_at_root_level(self) -> bool:
       return self.S.is_at_root_level()
-
     def is_done(self) -> bool:
       return self.is_at_root_level() and self.level_is_done()
 
@@ -87,24 +78,25 @@ def unwind(S, f):
   f.post(v)
 
 
-def depth_first_search(g, f, adaptor):
-  S = graph_traversal_stack(g,adaptor)
+def depth_first_search(adaptor, f):
+  S = graph_traversal_stack(adaptor)
 
   while not S.is_done():
     if not S.level_is_done():
       v = S.current_node()
       next_step = f.pre(v)
       if next_step == step.out: # stop
-        matching_node = S.current_node()
+        #matching_node = S.current_node()
         unwind(S,f)
-        return matching_node
+        #return matching_node
+        return
       if next_step == step.over:  # prune
-        S.push_level(adaptor.children(v))
+        S.push_level(v)
         S.advance_current_node_to_last()
       if next_step == step.into:  # go down
-        S.push_level(adaptor.children(v))
+        S.push_level(v)
         if not S.level_is_done():
-          f.down(v,adaptor.first_child(g,v))
+          f.down(v,adaptor.first_child(v))
 
     else:
       S.pop_level()
@@ -117,6 +109,8 @@ def depth_first_search(g, f, adaptor):
         if not S.level_is_done():
           w = S.current_node()
           f.down(parent,w)
+
+  #return S.current_node()
 
 
 #// adaptation of general algorithm to find,prune and scan {

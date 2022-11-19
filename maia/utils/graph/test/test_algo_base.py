@@ -1,7 +1,7 @@
 from maia.utils.graph.algo_base import step, depth_first_search
 
 
-def create_io_graph_for_tests():
+def create_graph_for_tests():
   #         1               lvl 3
   #      /  |  \
   #     |   |    3          lvl 2
@@ -22,52 +22,52 @@ def create_io_graph_for_tests():
     [ 1, []     , [2,7,3]], #8
   ]
 
-def node_value(x):
-  return x[0]
-def set_node_value(x, val):
-  x[0] = val
-def inward_nodes(x):
-  return x[1]
-def outward_nodes(x):
-  return x[2]
+def node_value(n):
+  return n[0]
+def set_node_value(n, val):
+  n[0] = val
+def inward_nodes(n):
+  return n[1]
+def outward_nodes(n):
+  return n[2]
 
-def create_rooted_graph_for_tests():
-  return create_io_graph_for_tests(), 8 # just give the info that 8 is the root
+def nodes(g):
+  return [n for n,_,_ in g]
+
 
 class my_test_graph_adaptor:
-  @staticmethod
-  def root_nodes(g):
-    return [ g[1] ]
+  def __init__(self, g, root_idx):
+    self.g = g
+    self.root_idx = root_idx
+
+  def roots(self):
+    return [[self.root_idx], 0]
 
   @staticmethod
   def children(n):
-    return outward_nodes(n)
+    return [outward_nodes(n), 0]
+
+  def first_child(self, n):
+    return self.g[ outward_nodes(n)[0] ]
+
+
+  def current_node(self, ns):
+    nodes,pos = ns
+    return self.g[nodes[pos]]
 
   @staticmethod
-  def first_child(g,n):
-    return g[0] [ outward_nodes(n)[0] ]
+  def range_is_done(ns) -> bool:
+    nodes,pos = ns
+    return len(nodes) == pos
 
   @staticmethod
-  def nodes(g):
-    return [n for n,_,_ in g[0]]
+  def advance_current_node(ns):
+    ns[1] += 1
 
+  @staticmethod
+  def advance_current_node_to_last(ns):
+    ns[1] = len(ns[0])
 
-#def create_rooted_graph_for_tests():
-#  return
-#    (1,[
-#       (2,[
-#          (4,[]),
-#          (7,[]),
-#        ]),
-#       (3,[
-#          (8,[
-#            (9,[]),
-#           ]),
-#          (10,[]),
-#          (11,[]),
-#        ]),
-#     ])
-#}
 
 class visitor_for_testing_depth_first_scan:
   def __init__(self):
@@ -281,10 +281,10 @@ def test_depth_first_search_adjacency_stack():
   #   |  |  \ |  |    \
   #  4    7  \9  10   11    lvl 0
   #
-  g = create_rooted_graph_for_tests()
+  g = create_graph_for_tests()
 
   v = visitor_for_testing_dfs()
-  depth_first_search(g,v,my_test_graph_adaptor);
+  depth_first_search(my_test_graph_adaptor(g,8),v);
 
   expected_s = \
     '[pre ] 1\n' \
@@ -328,9 +328,9 @@ def test_depth_first_search_adjacency_stack_inplace_modif():
   #   |  |  \ |  |    \
   #  4    7  \9  10   11    lvl 0
 
-  g = create_rooted_graph_for_tests()
+  g = create_graph_for_tests()
 
   v = modifying_visitor_for_testing_dfs()
-  depth_first_search(g,v,my_test_graph_adaptor)
+  depth_first_search(my_test_graph_adaptor(g,8),v);
 
-  assert my_test_graph_adaptor.nodes(g) == [4,7,10102,9,10108,10,11,10103,10101]
+  assert nodes(g) == [4,7,10102,9,10108,10,11,10103,10101]
