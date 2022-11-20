@@ -1,6 +1,24 @@
 from enum import Enum
 
 
+def dfs_interface_report(g):
+  report = f'dfs_interface_report of type {type(g)}:\n' 
+  is_ok = True
+
+  expected_attrs = [ \
+    'first_child', \
+    'children','roots', \
+    'current_node', \
+    'range_is_done','advance_node_range','advance_node_range_to_last' \
+  ]
+  for attr in expected_attrs:
+    if not getattr(g, attr, None):
+      is_ok = False
+      report += f'Attribute {attr} is missing'
+
+  return is_ok, report
+
+
 class step(Enum):
   out = 0
   over = 1
@@ -84,8 +102,9 @@ def depth_first_search_stack(S, g, f):
       n = S.current_node()
       next_step = f.pre(n)
       if next_step == step.out: # stop
+        matching_node = S.current_node()
         unwind(S, f)
-        return S
+        return matching_node
       if next_step == step.over:  # prune
         S.push_level(n)
         S.advance_node_range_to_last()
@@ -106,24 +125,7 @@ def depth_first_search_stack(S, g, f):
           w = S.current_node()
           f.down(parent, w)
 
-  return S
-
-def dfs_interface_report(g):
-  report = f'dfs_interface_report of type {type(g)}:\n' 
-  is_ok = True
-
-  expected_attrs = [ \
-    'first_child', \
-    'children','roots', \
-    'current_node', \
-    'range_is_done','advance_node_range','advance_node_range_to_last' \
-  ]
-  for attr in expected_attrs:
-    if not getattr(g, attr, None):
-      is_ok = False
-      report += f'Attribute {attr} is missing'
-
-  return is_ok, report
+  return None
 
 
 def depth_first_search(g, f):
@@ -131,7 +133,7 @@ def depth_first_search(g, f):
   assert is_ok, msg
 
   S = graph_traversal_stack(g)
-  depth_first_search_stack(S, g, f)
+  return depth_first_search_stack(S, g, f)
 
 
 # adaptation of general algorithm to find,prune and scan {
@@ -155,24 +157,22 @@ class depth_first_visitor_adaptor:
     self.f.up(below,above)
   def post(self, n):
     self.f.post(n)
-#
-#template<class Graph_iterator_stack, class F> constexpr auto
-#// requires Graph_iterator_stack is Array<Iterator_range<Graph>>
-#depth_first_find(Graph_iterator_stack& S, F&& f) {
-#  constexpr auto convert_to_step = [](auto&& f, auto&& n){ return f.pre(n) ? step::out : step::into }
-#  depth_first_visitor_adaptor<F,convert_to_step> vis(FWD(f))
-#  return depth_first_search(S,vis)
-#}
+
+def depth_first_find(g, f):
+  def convert_to_step(f, n): return step.out if f.pre(n) else step.into
+  vis = depth_first_visitor_adaptor(f,convert_to_step)
+  return depth_first_search(g,vis)
+
 def depth_first_prune(g, f):
-  convert_to_step = lambda f, n: step.over if f.pre(n) else step.into
+  def convert_to_step(f, n): return step.over if f.pre(n) else step.into
   vis = depth_first_visitor_adaptor(f,convert_to_step)
   depth_first_search(g,vis)
 
-#template<class Graph_iterator_stack, class F> auto
-#// requires Graph_iterator_stack is Array<Iterator_range<Graph>>
-#depth_first_scan(Graph_iterator_stack& S, F && f) -> void {
-#  constexpr auto convert_to_step = [](auto&& f, auto&& n){ f.pre(n); return step::into }
-#  depth_first_visitor_adaptor<F,convert_to_step> vis(FWD(f))
-#  depth_first_search(S,vis)
-#}
+def depth_first_scan(g, f):
+  def convert_to_step(f, n):
+    f.pre(n)
+    return step.into
+  vis = depth_first_visitor_adaptor(f,convert_to_step)
+  depth_first_search(g,vis)
+
 # adaptation of general algorithm to find, prune and scan }
