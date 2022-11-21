@@ -8,9 +8,6 @@ import  maia
 from    maia.transfer import utils                as TEU
 from    maia.factory  import dist_from_part
 from    maia.utils    import np_utils, layouts, py_utils
-# from    maia.pytree.sids            import node_inspect       as sids
-# from    maia.pytree.maia            import conventions        as conv
-# from    maia.transfer.part_to_dist  import data_exchange      as PTD
 
 import Pypdm.Pypdm as PDM
 # ---------------------------------------------------------------------------------------
@@ -93,10 +90,7 @@ class Extractor:
 
 # ---------------------------------------------------------------------------------------
   def save_parent_num(self) :
-    # # Placement in Extract_part_Tree
-    # parent_node    = PT.new_node('maia#parents', label='UserDefinedData_t', parent=extract_part_zone)
-    # PT.new_DataArray('Cell_parent'  , parent_elt['CellCenter'], parent=parent_node)
-    # PT.new_DataArray('Vertex_parent', parent_elt['Vertex']    , parent=parent_node)
+    # Placement in Extract_part_Tree
     print("Not implemented yet")
     return None
 # ---------------------------------------------------------------------------------------
@@ -117,7 +111,6 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
   # Part 1 : EXTRACT_PART
   # Part 2 : VOLUME
   for container_name in exchange :
-    # print(container_name)
     # --- Get all fields names and location ---------------------------------------------
     all_fld_names   = list()
     all_locs        = list()
@@ -189,13 +182,13 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 
     # --- FlowSolution node def by zone -------------------------------------------------
     # Tout en FlowSolution pour le moment parce que le part_to_dist transfère pas les ZSR
-    FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    # if (all_labels[0]=='FlowSolution_t'):
-    #   FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
-    # elif (all_labels[0]=='ZoneSubRegion_t'):
-    #   FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
-    # else :
-    #   raise TypeError
+    # FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    if (all_labels[0]=='FlowSolution_t'):
+      FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    elif (all_labels[0]=='ZoneSubRegion_t'):
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
+    else :
+      raise TypeError
 
     # Echange gnum to retrieve flowsol new point_list
     if point_list_node is not None :
@@ -225,13 +218,9 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
       list_de_tab = maia.algo.part.compute_gnum_from_parent_gnum(gnum[new_point_list], comm)
       new_gnum = dict()
       new_gnum["Index"] = list_de_tab[0]
-      # /stck/cbenazet/workspace/maia/maia/maia/algo/part/extract_boundary.py
       
       # Boucle sur les partitoins de l'extracttion pour placer PL        
       node_cgnspart = maia.pytree.maia.newGlobalNumbering(new_gnum, parent=FS_ep)
-      # /stck/cbenazet/workspace/maia/maia/maia/pytree/maia/maia_nodes.py
-
-      # sys.exit()
 
     # print('[MAIA] ExtractPart :: partial_field = ', partial_field)
     # --- Field exchange ----------------------------------------------------------------
@@ -455,7 +444,6 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   exch_tool_box = dict()
   exch_tool_box['part_to_part'] = ptp
   exch_tool_box['parent_elt'  ] = parent_elt
-  # exch_tool_box['pdm_ep'      ] = pdm_ep
 
 
   return extract_part_zone, exch_tool_box
