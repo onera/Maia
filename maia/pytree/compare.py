@@ -8,6 +8,7 @@ from functools import wraps
 import numpy as np
 
 import maia.pytree as PT
+from maia.pytree.algo.graph import zip_depth_first_search, zip_depth_first_find, zip_depth_first_scan, zip_depth_first_prune
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
@@ -122,17 +123,82 @@ def is_same_node(node1, node2, abs_tol=0, type_tol=False):
   """
   return is_same_name(node1, node2) and is_same_label(node1, node2) and is_same_value(node1, node2, abs_tol, type_tol) 
 
-def is_same_tree(node1, node2, abs_tol=0, type_tol=False):
+
+class same_tree_visitor:
+  def __init__(self, abs_tol, type_tol):
+    self.abs_tol = abs_tol
+    self.type_tol = type_tol
+    self.is_same = True
+
+  def pre(self, ns):
+    if ns[0] is None or ns[1] is None:
+      self.is_same = False
+    else:
+      self.is_same = is_same_node(ns[0], ns[1], self.abs_tol, self.type_tol)
+    return not self.is_same
+
+
+def diff_nodes(n0, n1, path_list, abs_tol, type_tol):
+  path =  '/' + '/'.join(path_list) + '/'
+
+  should_stop = True
+  next_name = None
+  if n0 is None:
+    report = '> ' + path + PT.get_name(n1) + '\n'
+  elif n1 is None:
+    report = '< ' + path +  PT.get_name(n0) + '\n'
+  elif not is_same_name(n0, n1):
+    report = '< ' + path + PT.get_name(n0) + '\n' \
+           + '> ' + path + PT.get_name(n1) + '\n'
+
+  else:
+    should_stop = False
+    next_name = PT.get_name(n0)
+
+    if not is_same_label(n0,n1):
+      report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
+    elif not is_same_value(n0, n1, abs_tol, type_tol):
+      report = path + PT.get_name(n0) + ' -- Values differ: ' + str(PT.get_value(n0)) + ' <> ' + str(PT.get_value(n1)) + '\n'
+    else:
+      report = ''
+
+  return should_stop, report, next_name
+
+
+class diff_tree_visitor:
+  def __init__(self, abs_tol, type_tol):
+    self.abs_tol = abs_tol
+    self.type_tol = type_tol
+    self.report = ''
+    self.path_list = []
+
+  def pre(self, ns):
+    should_stop, report, next_name = diff_nodes(ns[0], ns[1], self.path_list, self.abs_tol, self.type_tol)
+    self.report += report
+    self.path_list += [next_name]
+    return should_stop 
+
+  def post(self, ns):
+    self.path_list.pop(-1)
+
+
+def is_same_tree(t1, t2, abs_tol=0, type_tol=False):
   """
-  Recursive comparaison of two nodes. Nodes are considered equal if the pass is_same_node test
+  Recursive comparison of two nodes. Nodes are considered equal if the pass is_same_node test
   and if the have the same childrens. Children are allowed to appear in a different order.
   """
-  if not (is_same_node(node1, node2, abs_tol, type_tol) and len(PT.get_children(node1)) == len(PT.get_children(node2)) ):
-    return False
-  for c1, c2 in zip(sorted(node1[2]), sorted(node2[2])):
-    if not is_same_tree(c1, c2, abs_tol, type_tol):
-      return False
-  return True
+  v = same_tree_visitor(abs_tol, type_tol)
+  zip_depth_first_find([t1,t2], v)
+  return v.is_same
+
+def diff_tree(t1, t2, abs_tol=0, type_tol=False):
+  """
+  Recursive comparison of two nodes. Nodes are considered equal if the pass is_same_node test
+  and if the have the same childrens. Children are allowed to appear in a different order.
+  """
+  v = diff_tree_visitor(abs_tol, type_tol)
+  zip_depth_first_prune([t1,t2], v)
+  return v.report
 
 # --------------------------------------------------------------------------
 # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
