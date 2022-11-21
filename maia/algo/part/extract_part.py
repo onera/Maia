@@ -601,8 +601,7 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
   Args:
     part_tree       (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
       connectivities are managed.
-    point_list      (list)        : list of PointList of dimension [n_domain,n_part_per_domaine]
-    location        (str)         : location of the PointList
+    zsr_path        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t or ZoneSubRegion_t nodes to transfer
       on the output extract part tree.
@@ -611,8 +610,8 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
 
   Example:
     .. literalinclude:: snippets/test_algo.py
-      :start-after: #compute_extract_from_pl@start
-      :end-before:  #compute_extract_from_pl@end
+      :start-after: #compute_extract_from_zsr@start
+      :end-before:  #compute_extract_from_zsr@end
       :dedent: 2
   """
   # Get zones by domains
@@ -673,7 +672,34 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm
                               # equilibrate=1,
                               # graph_part_tool='hilbert'
                               ):
+  """Extract vertex/faces/cells from the ZSR node from the provided partitioned CGNSTree.
 
+  Object of ExtractPart class is returned. 
+
+  Important:
+    - Input tree must be unstructured and have a ngon connectivity.
+    - Partitions must come from a single initial domain on input tree.
+
+  Note:
+    Once created, fields from provided partitionned CGNSTree
+    can be exchanged using exchange_fields() class function (see Extractor class documentation)
+
+  Args:
+    part_tree       (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
+      connectivities are managed.
+    zsr_path        (str)         : Name of the ZoneSubRegion_t node
+    comm            (MPIComm)     : MPI communicator
+    containers_name (list of str) : List of the names of the FlowSolution_t or ZoneSubRegion_t nodes to transfer
+      on the output extract part tree.
+  Returns:
+    extract_part_tree (CGNSTree)  : Partitioned tree of the extraction
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #compute_extract_from_zsr@start
+      :end-before:  #compute_extract_from_zsr@end
+      :dedent: 2
+  """
   # Get zones by domains
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
   assert(len(part_tree_per_dom)==1)
