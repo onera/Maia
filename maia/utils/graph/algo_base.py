@@ -5,19 +5,19 @@ def dfs_interface_report(g):
   report = ''
   is_ok = True
 
-  expected_attrs = [ \
-    'first_child', \
-    'children','roots', \
-    'current_node', \
-    'range_is_done','advance_node_range','advance_node_range_to_last' \
-  ]
-  for attr in expected_attrs:
-    if not getattr(g, attr, None):
-      is_ok = False
-      report += f'Attribute {attr} is missing'
+  #expected_attrs = [ \
+  #  'first_child', \
+  #  'children','roots', \
+  #  'current_node', \
+  #  'range_is_done','advance_node_range','advance_node_range_to_last' \
+  #]
+  #for attr in expected_attrs:
+  #  if not getattr(g, attr, None):
+  #    is_ok = False
+  #    report += f'Attribute {attr} is missing'
 
-  if not is_ok:
-    report = f'dfs_interface_report of type {type(g)}:\n'  + report
+  #if not is_ok:
+  #  report = f'dfs_interface_report of type {type(g)}:\n'  + report
 
   return is_ok, report
 
@@ -40,61 +40,37 @@ def make_visitor(v):
   return v
 
 
-class graph_stack:
-    def __init__(self, root):
-      self.S = [root]
-
-  # basic query
-    def is_valid(self) -> bool:
-      return len(self.S)>0
-   
-    def is_at_root_level(self) -> bool:
-      return len(self.S)==1
-  
-
-  # stack functions
-    def push_level(self, x):
-      self.S.append(x)
- 
-    def pop_level(self):
-      self.S.pop(-1)
-
-
-  # accessors
-    def current_level(self):
-      assert self.is_valid()
-      return self.S[-1]
-
-    def parent_level(self):
-      assert self.is_valid() and not self.is_at_root_level()
-      return self.S[-2]
-
-
 class graph_traversal_stack:
     def __init__(self, g):
       self.g = g
-      self.S = graph_stack(g.roots())
 
-    def current_node(self):
-      return self.g.current_node( self.S.current_level() )
-    def parent_node(self):
-      # note: unable to use Python iterators because this function needs to read several times without incrementing
-      return self.g.current_node( self.S.parent_level() )
-
-    def advance_node_range(self):
-      self.g.advance_node_range( self.S.current_level() )
-    def advance_node_range_to_last(self):
-      self.g.advance_node_range_to_last( self.S.current_level() )
+      r_iter = iter(g.roots())
+      self.active_iter_stack = [r_iter]
+      self.active_node_stack = [next(r_iter)]
 
     def push_level(self, n):
-      self.S.push_level(self.g.children(n))
+      r_iter = iter(self.g.children(n))
+      self.active_iter_stack += [r_iter]
+      self.active_node_stack += [next(r_iter)]
+
     def pop_level(self):
-      self.S.pop_level()
+      self.active_iter_stack.pop(-1)
+      self.active_node_stack.pop(-1)
+
+    def current_node(self):
+      return self.active_node_stack[-1]
+    def parent_node(self):
+      return self.active_node_stack[-2]
+
+    def advance_node_range(self):
+      self.active_node_stack[-1] = next(self.active_iter_stack[-1])
+    def advance_node_range_to_last(self):
+      self.active_node_stack[-1] = None
 
     def level_is_done(self) -> bool:
-      return self.g.range_is_done( self.S.current_level() )
+      return self.active_node_stack[-1] is None
     def is_at_root_level(self) -> bool:
-      return self.S.is_at_root_level()
+      return len(self.active_node_stack) == 1
     def is_done(self) -> bool:
       return self.is_at_root_level() and self.level_is_done()
 

@@ -37,6 +37,22 @@ def inward_nodes(n):
 def outward_nodes(n):
   return n[2]
 
+class adjacency_iterator:
+  def __init__(self, g, adj_idcs):
+    self.g = g
+    self.adj_idcs = adj_idcs
+
+  def __iter__(self):
+    self.idx = 0
+    return self
+
+  def __next__(self):
+    if self.idx < len(self.adj_idcs):
+      x = self.adj_idcs[self.idx]
+      self.idx += 1
+      return self.g[x]
+    else:
+      return None
 
 class io_graph_tree_adaptor:
   """
@@ -52,44 +68,10 @@ class io_graph_tree_adaptor:
   def first_child(self, n):
     return self.g[ outward_nodes(n)[0] ]
 
-# Below: range methods
-# The idea is that the DFS algorithm needs to save `roots()` and `children()` ranges
-#     and iterate through them at various points.
-# The algorithm does not have to know anything about the objects,
-#     it just saves them and then gives them back to `current_node`, `range_is_done`...
-#     so that these methods can decode them
-
-# range-returning methods {
-#    for this test, we choose to represent a range of nodes by a pair of:
-#        1. the underlying sequence
-#        2. the current position on the sequence
-  @staticmethod
-  def children(n):
-    return [outward_nodes(n), 0]
+  def children(self, n):
+    return adjacency_iterator(self.g, outward_nodes(n))
   def roots(self):
-    return [[self.root_idx], 0]
-# }
-
-# range-input methods {
-#    here, we get ranges that we produced with `roots` and `children`
-#    and extract the relevant information from them
-  def current_node(self, ns):
-    nodes,pos = ns
-    return self.g[nodes[pos]]
-
-  @staticmethod
-  def range_is_done(ns) -> bool:
-    nodes,pos = ns
-    return len(nodes) == pos
-
-  @staticmethod
-  def advance_node_range(ns):
-    ns[1] += 1
-
-  @staticmethod
-  def advance_node_range_to_last(ns):
-    ns[1] = len(ns[0])
-# }
+    return adjacency_iterator(self.g, [self.root_idx])
 # Interface to satisfy dfs_interface_report }
 
 
