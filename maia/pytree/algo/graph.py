@@ -1,5 +1,6 @@
 import maia.pytree as PT
 from maia.utils.graph import algo_base
+from maia.utils.graph.algo_base import step
 
 class pytree_adaptor:
   def __init__(self, t):
@@ -32,26 +33,7 @@ class pytree_adaptor:
     ns[1] = len(ns[0])
 
 
-def make_visitor(v):
-  if not getattr(v, 'post', None):
-    v.post = lambda n: 0
-  if not getattr(v, 'down', None):
-    v.down = lambda above, below: 0
-  if not getattr(v, 'up', None):
-    v.up = lambda below, above: 0
-  return v
-
-def depth_first_find(t,v):
-  v = make_visitor(v)
-  return algo_base.depth_first_find(pytree_adaptor(t),v)
-def depth_first_prune(t,v):
-  v = make_visitor(v)
-  return algo_base.depth_first_prune(pytree_adaptor(t),v)
-def depth_first_scan(t,v):
-  v = make_visitor(v)
-  return algo_base.depth_first_scan(pytree_adaptor(t),v)
 def depth_first_search(t,v):
-  v = make_visitor(v)
   return algo_base.depth_first_search(pytree_adaptor(t),v)
 
 
@@ -108,15 +90,5 @@ class pytree_zip_adaptor:
     ns[1] = len(ns[0])
 
 
-def zip_depth_first_find(t,v):
-  v = make_visitor(v)
-  return algo_base.depth_first_find(pytree_zip_adaptor(t),v)
-def zip_depth_first_prune(t,v):
-  v = make_visitor(v)
-  return algo_base.depth_first_prune(pytree_zip_adaptor(t),v)
-def zip_depth_first_scan(t,v):
-  v = make_visitor(v)
-  return algo_base.depth_first_scan(pytree_zip_adaptor(t),v)
 def zip_depth_first_search(t,v):
-  v = make_visitor(v)
   return algo_base.depth_first_search(pytree_zip_adaptor(t),v)

@@ -1,4 +1,4 @@
-from maia.utils.graph.algo_base import step, depth_first_search, depth_first_find, depth_first_scan, depth_first_prune
+from maia.utils.graph.algo_base import step, depth_first_search
 
 from maia.utils.graph.io_graph import node_value, set_node_value, rooted_tree_example
 
@@ -32,7 +32,7 @@ def test_depth_first_scan():
 
   g = rooted_tree_example()
   v = visitor_for_testing_depth_first_scan()
-  depth_first_scan(g,v)
+  depth_first_search(g,v)
 
   expected_s = \
     '[pre ] 1\n' \
@@ -84,7 +84,10 @@ def test_depth_first_scan():
 class visitor_for_testing_depth_first_find(visitor_for_testing_depth_first_scan):
   def pre(self, x) -> bool:
     visitor_for_testing_depth_first_scan.pre(self,x)
-    return node_value(x) == 3
+    if node_value(x) == 3:
+      return step.out
+    else:
+      return step.into
 
 def test_depth_first_find():
   #  Reminder:
@@ -99,7 +102,7 @@ def test_depth_first_find():
 
   g = rooted_tree_example()
   v = visitor_for_testing_depth_first_find()
-  found = depth_first_find(g,v)
+  found = depth_first_search(g,v)
 
   expected_s = \
     '[pre ] 1\n' \
@@ -132,7 +135,10 @@ def test_depth_first_find():
 class visitor_for_testing_depth_first_prune(visitor_for_testing_depth_first_scan):
   def pre(self, x) -> bool:
     visitor_for_testing_depth_first_scan.pre(self,x)
-    return node_value(x) == 2
+    if node_value(x) == 2:
+      return step.over
+    else:
+      return step.into
 
 def test_depth_first_prune():
   #  Reminder:
@@ -147,7 +153,7 @@ def test_depth_first_prune():
 
   g = rooted_tree_example()
   v = visitor_for_testing_depth_first_prune()
-  depth_first_prune(g,v)
+  depth_first_search(g,v)
 
   expected_s = \
     '[pre ] 1\n' \

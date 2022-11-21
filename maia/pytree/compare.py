@@ -8,7 +8,7 @@ from functools import wraps
 import numpy as np
 
 import maia.pytree as PT
-from maia.pytree.algo.graph import zip_depth_first_search, zip_depth_first_find, zip_depth_first_scan, zip_depth_first_prune
+from maia.pytree.algo.graph import step, zip_depth_first_search
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
@@ -131,17 +131,17 @@ class same_tree_visitor:
     self.is_same = True
 
   def pre(self, ns):
-    if ns[0] is None or ns[1] is None:
+    if ns[0] is None or ns[1] is None or not is_same_node(ns[0], ns[1], self.abs_tol, self.type_tol):
       self.is_same = False
+      return step.out
     else:
-      self.is_same = is_same_node(ns[0], ns[1], self.abs_tol, self.type_tol)
-    return not self.is_same
+      return step.into
 
 
 def diff_nodes(n0, n1, path_list, abs_tol, type_tol):
   path =  '/' + '/'.join(path_list) + '/'
 
-  should_stop = True
+  next_step = step.over
   next_name = None
   if n0 is None:
     report = '> ' + path + PT.get_name(n1) + '\n'
@@ -152,7 +152,7 @@ def diff_nodes(n0, n1, path_list, abs_tol, type_tol):
            + '> ' + path + PT.get_name(n1) + '\n'
 
   else:
-    should_stop = False
+    next_step = step.into
     next_name = PT.get_name(n0)
 
     if not is_same_label(n0,n1):
@@ -162,7 +162,7 @@ def diff_nodes(n0, n1, path_list, abs_tol, type_tol):
     else:
       report = ''
 
-  return should_stop, report, next_name
+  return next_step, report, next_name
 
 
 class diff_tree_visitor:
@@ -173,10 +173,10 @@ class diff_tree_visitor:
     self.path_list = []
 
   def pre(self, ns):
-    should_stop, report, next_name = diff_nodes(ns[0], ns[1], self.path_list, self.abs_tol, self.type_tol)
+    next_step, report, next_name = diff_nodes(ns[0], ns[1], self.path_list, self.abs_tol, self.type_tol)
     self.report += report
     self.path_list += [next_name]
-    return should_stop 
+    return next_step
 
   def post(self, ns):
     self.path_list.pop(-1)
@@ -188,7 +188,7 @@ def is_same_tree(t1, t2, abs_tol=0, type_tol=False):
   and if the have the same childrens. Children are allowed to appear in a different order.
   """
   v = same_tree_visitor(abs_tol, type_tol)
-  zip_depth_first_find([t1,t2], v)
+  zip_depth_first_search([t1,t2], v)
   return v.is_same
 
 def diff_tree(t1, t2, abs_tol=0, type_tol=False):
@@ -197,7 +197,7 @@ def diff_tree(t1, t2, abs_tol=0, type_tol=False):
   and if the have the same childrens. Children are allowed to appear in a different order.
   """
   v = diff_tree_visitor(abs_tol, type_tol)
-  zip_depth_first_prune([t1,t2], v)
+  zip_depth_first_search([t1,t2], v)
   return v.report
 
 # --------------------------------------------------------------------------

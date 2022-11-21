@@ -2,7 +2,7 @@ from enum import Enum
 
 
 def dfs_interface_report(g):
-  report = f'dfs_interface_report of type {type(g)}:\n' 
+  report = ''
   is_ok = True
 
   expected_attrs = [ \
@@ -16,13 +16,28 @@ def dfs_interface_report(g):
       is_ok = False
       report += f'Attribute {attr} is missing'
 
+  if not is_ok:
+    report = f'dfs_interface_report of type {type(g)}:\n'  + report
+
   return is_ok, report
 
 
 class step(Enum):
-  out = 0
+  into = 0
   over = 1
-  into = 2
+  out = 2
+
+
+def make_visitor(v):
+  def do_nothing(*args): pass
+
+  if not getattr(v, 'post', None):
+    v.post = do_nothing
+  if not getattr(v, 'down', None):
+    v.down = do_nothing
+  if not getattr(v, 'up', None):
+    v.up = do_nothing
+  return v
 
 
 class graph_stack:
@@ -105,10 +120,10 @@ def depth_first_search_stack(S, g, f):
         matching_node = S.current_node()
         unwind(S, f)
         return matching_node
-      if next_step == step.over:  # prune
+      if next_step == step.over: # prune
         S.push_level(n)
         S.advance_node_range_to_last()
-      if next_step == step.into:  # go down
+      if next_step is None or next_step == step.into: # go down
         S.push_level(n)
         if not S.level_is_done():
           f.down(n,g.first_child(n))
@@ -133,46 +148,5 @@ def depth_first_search(g, f):
   assert is_ok, msg
 
   S = graph_traversal_stack(g)
-  return depth_first_search_stack(S, g, f)
-
-
-# adaptation of general algorithm to find,prune and scan {
-#
-## The general algorithm asks if it should step out/over/into
-## So the visitor's `pre` function must return a value of `step` type
-## Here, we handle simpler `pre` functions:
-## - find: return true to step out, return false to continue
-## - prune: return true to step over, return false to continue
-## - scan : always continue
-class depth_first_visitor_adaptor:
-  def __init__(self, f, convert_to_step):
-    self.f = f
-    self.convert_to_step = convert_to_step
-
-  def pre(self, n) -> step:
-    return self.convert_to_step(self.f,n)
-  def down(self, above, below):
-    self.f.down(above,below)
-  def up(self, below, above):
-    self.f.up(below,above)
-  def post(self, n):
-    self.f.post(n)
-
-def depth_first_find(g, f):
-  def convert_to_step(f, n): return step.out if f.pre(n) else step.into
-  vis = depth_first_visitor_adaptor(f,convert_to_step)
-  return depth_first_search(g,vis)
-
-def depth_first_prune(g, f):
-  def convert_to_step(f, n): return step.over if f.pre(n) else step.into
-  vis = depth_first_visitor_adaptor(f,convert_to_step)
-  depth_first_search(g,vis)
-
-def depth_first_scan(g, f):
-  def convert_to_step(f, n):
-    f.pre(n)
-    return step.into
-  vis = depth_first_visitor_adaptor(f,convert_to_step)
-  depth_first_search(g,vis)
-
-# adaptation of general algorithm to find, prune and scan }
+  v = make_visitor(f)
+  return depth_first_search_stack(S, g, v)

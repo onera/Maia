@@ -3,8 +3,7 @@ import pytest
 import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
 
-from maia.pytree.algo.graph import depth_first_search, depth_first_find, depth_first_scan, depth_first_prune, pytree_zip_adaptor
-from maia.pytree.algo.graph import zip_depth_first_search, zip_depth_first_find, zip_depth_first_scan, zip_depth_first_prune
+from maia.pytree.algo.graph import depth_first_search, zip_depth_first_search, pytree_zip_adaptor
 
 t0 = parse_yaml_cgns.to_node("""
 Base CGNSBase_t:
@@ -37,7 +36,7 @@ class node_name_recorder:
 
 def test_tree_algo():
   v = node_name_recorder()
-  depth_first_scan(t0, v)
+  depth_first_search(t0, v)
 
   expected_s = \
     'Base\n' \
@@ -68,7 +67,7 @@ class two_node_names_recorder:
 
 def test_zip_tree_algo():
   v = two_node_names_recorder()
-  zip_depth_first_scan([t0,t1], v)
+  zip_depth_first_search([t0,t1], v)
 
   expected_s = \
     'Base | Base\n' \
