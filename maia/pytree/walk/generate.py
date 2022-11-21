@@ -33,7 +33,7 @@ for base_function in base_functions:
   _update_module_attributes(generated)
 
 # For predicates version, only do single argument easy predicate
-for base_function in [WAPI.iter_nodes_from_predicates, WAPI.get_nodes_from_predicates]:
+for base_function in [WAPI.get_node_from_predicates, WAPI.iter_nodes_from_predicates, WAPI.get_nodes_from_predicates]:
   easypredicates = {
     'Name' : (match_name,  ('name',)),
     'Value': (match_value, ('value',)),
