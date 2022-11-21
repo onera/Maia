@@ -103,14 +103,14 @@ class Extractor:
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange, comm) :
+def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, containers_name, comm) :
 
   loc_correspondance = {'Vertex'    : 'Vertex',
                         'CellCenter': 'Cell'}
 
   # Part 1 : EXTRACT_PART
   # Part 2 : VOLUME
-  for container_name in exchange :
+  for container_name in containers_name :
     # --- Get all fields names and location ---------------------------------------------
     all_fld_names   = list()
     all_locs        = list()
@@ -257,7 +257,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, exchange,
 # ---------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 
-def _exchange_field(part_tree, part_tree_ep, ptp,exchange, comm) :
+def _exchange_field(part_tree, part_tree_ep, ptp,containers_name, comm) :
   """
   Exchange field between part_tree and part_tree_ep
   for exchange vol field 
@@ -277,7 +277,7 @@ def _exchange_field(part_tree, part_tree_ep, ptp,exchange, comm) :
 
   # Loop over domains
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    exchange_field_one_domain(part_zones, part_zone_ep, ptp[i_domain], exchange, comm)
+    exchange_field_one_domain(part_zones, part_zone_ep, ptp[i_domain], containers_name, comm)
 
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -454,8 +454,11 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def extract_part_from_point_list(part_tree, point_list, location, comm, equilibrate=1, exchange=None, graph_part_tool='hilbert'):
-  """Extract vertex/edges/faces/cells from the ZSR node from the provided partitioned CGNSTree.
+def extract_part_from_point_list(part_tree, point_list, location, comm,
+                                 containers_name=None):
+                                 # equilibrate=1,
+                                 # graph_part_tool='hilbert'):
+  """Extract vertex/faces/cells from the ZSR node from the provided partitioned CGNSTree.
 
   ExtractPart is returned as an independant partitioned CGNSTree. 
 
@@ -465,25 +468,18 @@ def extract_part_from_point_list(part_tree, point_list, location, comm, equilibr
 
   Note:
     Once created, fields from provided partitionned CGNSTree
-    can be exchanged using
-    ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``
+    can be exchanged using containers_name argument.
 
   Args:
-    part_tree     (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
+    part_tree       (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
       connectivities are managed.
-    iso_field     (str)         : Path to the ZSR field.
-    comm          (MPIComm)     : MPI communicator
-    iso_val       (float, optional) : Value to use to compute isosurface. Defaults to 0.
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
-      on the output isosurface tree.
-    **options: Options related to plane extraction.
+    point_list      (list)        : list of PointList (one element for each partition domain)
+    location        (str)         : location of the PointList
+    comm            (MPIComm)     : MPI communicator
+    containers_name (list of str) : List of the names of the FlowSolution_t or ZoneSubRegion_t nodes to transfer
+      on the output extract part tree.
   Returns:
-    isosurf_tree (CGNSTree): Surfacic tree (partitioned)
-
-  Extraction can be controled thought the optional kwargs:
-
-    - ``elt_type`` (str) -- Controls the shape of elements used to describe
-      the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Defaults to ``TRI_3``.
+    extract_part_tree (CGNSTree)  : Partitioned tree of the extraction
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -497,6 +493,7 @@ def extract_part_from_point_list(part_tree, point_list, location, comm, equilibr
 
   # Check : monodomain
   assert(len(part_tree_per_dom)==1)
+  assert(len(point_list       )==1)
 
   # Is there PE node
   if (PT.get_node_from_name(part_tree,'ParentElements') is not None): put_pe = True
@@ -521,15 +518,15 @@ def extract_part_from_point_list(part_tree, point_list, location, comm, equilibr
       adjusted_point_list.append(point_list[i_domain][i_part] - starting_elt(part_zone,location) +1 )
 
     extract_part_zone,etb = extract_part_one_domain(part_zones, adjusted_point_list, dim, comm,
-                                                    equilibrate=equilibrate,
-                                                    graph_part_tool=graph_part_tool,
+                                                    # equilibrate=equilibrate,
+                                                    # graph_part_tool=graph_part_tool,
                                                     put_pe=put_pe)
     exch_tool_box.append(etb)
     PT.add_child(extract_part_base, extract_part_zone)
 
   # Exchange fields between two parts
-  if exchange is not None:
-    _exchange_field(part_tree, extract_part_tree, exch_tool_box, exchange, comm)
+  if containers_name is not None:
+    _exchange_field(part_tree, extract_part_tree, exch_tool_box, containers_name, comm)
   
 
   return extract_part_tree
@@ -537,11 +534,15 @@ def extract_part_from_point_list(part_tree, point_list, location, comm, equilibr
 
 
 # ---------------------------------------------------------------------------------------
-def create_extractor_from_point_list(part_tree, point_list, location, comm, equilibrate=1, graph_part_tool='hilbert'):
+def create_extractor_from_point_list(part_tree, point_list, location, comm
+                                     # equilibrate=1,
+                                     # graph_part_tool='hilbert'
+                                     ):
 
-  return Extractor(part_tree, point_list, location, comm,
-                   equilibrate=equilibrate,
-                   graph_part_tool=graph_part_tool)
+  return Extractor(part_tree, point_list, location, comm
+                   # equilibrate=equilibrate,
+                   # graph_part_tool=graph_part_tool
+                   )
 # ---------------------------------------------------------------------------------------
 
 
@@ -557,7 +558,9 @@ def create_extractor_from_point_list(part_tree, point_list, location, comm, equi
 
 # ---------------------------------------------------------------------------------------
 def extract_part_from_zsr(part_tree, zsr_path, comm,
-                          equilibrate=1, exchange=None, graph_part_tool='hilbert'):
+                          # equilibrate=1,
+                          # graph_part_tool='hilbert',
+                          containers_name=None):
 
   # Get zones by domains
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
@@ -598,14 +601,14 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
 
     # extract part from point list
     extract_part_zone,etb = extract_part_one_domain(part_zones, point_list, dim, comm,
-                                                    equilibrate=equilibrate,
-                                                    graph_part_tool=graph_part_tool,
+                                                    # equilibrate=equilibrate,
+                                                    # graph_part_tool=graph_part_tool,
                                                     put_pe=put_pe)
     exch_tool_box.append(etb)
     PT.add_child(extract_part_base, extract_part_zone)
 
-  if exchange is not None:
-    _exchange_field(part_tree, extract_part_tree, exch_tool_box, exchange, comm)
+  if containers_name is not None:
+    _exchange_field(part_tree, extract_part_tree, exch_tool_box, containers_name, comm)
   
 
   return extract_part_tree
@@ -613,7 +616,10 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
 
 
 # ---------------------------------------------------------------------------------------
-def create_extractor_from_zsr(part_tree, zsr_path, comm, equilibrate=1, graph_part_tool='hilbert'):
+def create_extractor_from_zsr(part_tree, zsr_path, comm
+                              # equilibrate=1,
+                              # graph_part_tool='hilbert'
+                              ):
 
   # Get zones by domains
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
@@ -635,9 +641,10 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, equilibrate=1, graph_pa
       point_list_domain.append(PT.get_value(zsr_pl_node)[0])
     point_list.append(point_list_domain)
 
-  return Extractor(part_tree, point_list, location, comm,
-                   equilibrate=equilibrate,
-                   graph_part_tool=graph_part_tool)
+  return Extractor(part_tree, point_list, location, comm
+                   # equilibrate=equilibrate,
+                   # graph_part_tool=graph_part_tool
+                   )
 # ---------------------------------------------------------------------------------------
 
 # --- END EXTRACT PART FROM ZSR ---------------------------------------------------------

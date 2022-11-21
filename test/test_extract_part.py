@@ -176,9 +176,10 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
 
   # --- EXTRACT PART --------------------------------------------------------------------
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", sub_comm,
-                                            equilibrate=1,
-                                            exchange=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"],
-                                            graph_part_tool=graph_part_tool)
+                                            # equilibrate=1,
+                                            # graph_part_tool=graph_part_tool,
+                                            containers_name=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"]
+                                            )
   # ------------------------------------------------------------------------------------- 
 
   # -------------------------------------------------------------------------------------
@@ -218,8 +219,9 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
 
   # --- EXTRACT PART --------------------------------------------------------------------
   extractor = EXP.create_extractor_from_zsr(part_tree, "ZSR_FlowSolution", sub_comm,
-                                            equilibrate=1,
-                                            graph_part_tool="hilbert")
+                                            # equilibrate=1,
+                                            # graph_part_tool="hilbert"
+                                            )
   extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
   # extractor.exchange_zsr_fields("ZSR_FlowSolution", sub_comm)
   extractor.exchange_fields(["ZSR_FlowSolution"], sub_comm) # Works also with the ZSR node
@@ -263,9 +265,10 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
 
   # --- EXTRACT PART --------------------------------------------------------------------
   part_tree_ep = EXP.extract_part_from_point_list(part_tree, [point_list], "CellCenter", sub_comm,
-                                                  equilibrate=1,
-                                                  exchange=['FlowSolution_NC','FlowSolution_CC'],
-                                                  graph_part_tool=graph_part_tool)
+                                                  # equilibrate=1,
+                                                  # graph_part_tool=graph_part_tool,
+                                                  containers_name=['FlowSolution_NC','FlowSolution_CC']
+                                                  )
   # ------------------------------------------------------------------------------------- 
 
   # -------------------------------------------------------------------------------------
@@ -305,8 +308,9 @@ def test_extractor_cell_from_point_list_U(graph_part_tool, sub_comm, write_outpu
 
   # --- EXTRACT PART --------------------------------------------------------------------
   extractor = EXP.create_extractor_from_point_list( part_tree, [point_list], 'CellCenter', sub_comm,
-                                                    equilibrate=1,
-                                                    graph_part_tool="hilbert")
+                                                    # equilibrate=1,
+                                                    # graph_part_tool="hilbert"
+                                                    )
   extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
   part_tree_ep = extractor.extract_part_tree
   # ------------------------------------------------------------------------------------- 
