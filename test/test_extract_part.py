@@ -304,6 +304,7 @@ def test_extractor_cell_from_point_list_U(graph_part_tool, sub_comm, write_outpu
   n_vtx  = 6
   n_part = 2
   part_tree, point_list = generate_test_tree(n_vtx,n_part,sub_comm)
+  print("point_list = ",point_list)
   # ------------------------------------------------------------------------------------- 
 
   # --- EXTRACT PART --------------------------------------------------------------------
@@ -334,4 +335,3 @@ def test_extractor_cell_from_point_list_U(graph_part_tool, sub_comm, write_outpu
   # -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
-

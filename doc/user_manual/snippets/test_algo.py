@@ -127,6 +127,99 @@ def test_compute_spherical_slice():
   assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is not None
   #compute_spherical_slice@end
 
+def test_extract_bnd_from_point_list():
+  #compute_extract_from_pl@start
+  from   mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils        import mesh_dir
+  from   maia.algo.part.extract_part  import extract_part_from_point_list as extract_part_from_pl
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+
+  pl_path    = f'Base/bump_45.P{MPI.COMM_WORLD.Get_rank()}.N0/ZoneBC/wall/PointList'
+  point_list = [PT.get_node_from_path(part_tree,pl_path)[1][0]] 
+  part_tree_extract = extract_part_from_pl( part_tree,[point_list],'FaceCenter',MPI.COMM_WORLD,
+                                            containers_name=["WallDistance"])
+  # Mio.write_trees(part_tree        ,'part_tree.cgns'        , MPI.COMM_WORLD)
+  # Mio.write_trees(part_tree_extract,'part_tree_extract.cgns', MPI.COMM_WORLD)
+
+  assert maia.pytree.get_node_from_name(part_tree_extract, "WallDistance") is not None
+  #compute_extract_from_pl@end
+
+def test_extractor_bnd_from_point_list():
+  #compute_extractor_from_pl@start
+  from   mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils        import mesh_dir
+  from   maia.algo.part.extract_part  import create_extractor_from_point_list as create_extractor_from_pl
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+
+  pl_path    = f'Base/bump_45.P{MPI.COMM_WORLD.Get_rank()}.N0/ZoneBC/wall/PointList'
+  point_list = [PT.get_node_from_path(part_tree,pl_path)[1][0]] 
+  extractor  = create_extractor_from_pl( part_tree,[point_list],'FaceCenter',MPI.COMM_WORLD)
+  extractor.exchange_fields(['WallDistance'], MPI.COMM_WORLD)
+  part_tree_extract = extractor.get_extract_part_tree()
+
+  assert maia.pytree.get_node_from_name(part_tree_extract, "WallDistance") is not None
+  #compute_extractor_from_pl@end
+
+def test_extract_bnd_from_zsr():
+  #compute_extract_from_zsr@start
+  from   mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.pytree.node             import presets
+  from   maia.utils.test_utils        import mesh_dir
+  from   maia.algo.part.extract_part  import extract_part_from_zsr
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+
+  pl_path    = f'Base/bump_45.P{MPI.COMM_WORLD.Get_rank()}.N0/ZoneBC/wall/PointList'
+  point_list = PT.get_node_from_path(part_tree,pl_path)[1]
+  zsr_node   = PT.new_ZoneSubRegion(name='ZoneSubRegion', loc='FaceCenter', point_list=point_list,parent=PT.get_all_Zone_t(part_tree)[0])
+
+  part_tree_extract = extract_part_from_zsr( part_tree, 'ZoneSubRegion', MPI.COMM_WORLD,
+                                            containers_name=["WallDistance"])
+
+  assert maia.pytree.get_node_from_name(part_tree_extract, "WallDistance") is not None
+  #compute_extract_from_zsr@end
+
+def test_extractor_bnd_from_zsr():
+  #compute_extractor_from_zsr@start
+  from   mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.pytree.node             import presets
+  from   maia.utils.test_utils        import mesh_dir
+  from   maia.algo.part.extract_part  import create_extractor_from_zsr
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+
+  pl_path    = f'Base/bump_45.P{MPI.COMM_WORLD.Get_rank()}.N0/ZoneBC/wall/PointList'
+  point_list = PT.get_node_from_path(part_tree,pl_path)[1]
+  zsr_node   = PT.new_ZoneSubRegion(name='ZoneSubRegion', loc='FaceCenter', point_list=point_list,parent=PT.get_all_Zone_t(part_tree)[0])
+  extractor  = create_extractor_from_zsr( part_tree, 'ZoneSubRegion', MPI.COMM_WORLD)
+  extractor.exchange_fields(['WallDistance'], MPI.COMM_WORLD)
+  part_tree_extract = extractor.get_extract_part_tree()
+
+  assert maia.pytree.get_node_from_name(part_tree_extract, "WallDistance") is not None
+  #compute_extractor_from_zsr@end
+
 def test_compute_elliptical_slice():
   #compute_elliptical_slice@start
   from mpi4py import MPI

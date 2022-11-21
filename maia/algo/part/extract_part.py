@@ -94,6 +94,12 @@ class Extractor:
     print("Not implemented yet")
     return None
 # ---------------------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------------------
+  def get_extract_part_tree(self) :
+    return self.extract_part_tree 
+# ---------------------------------------------------------------------------------------
   
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -458,7 +464,7 @@ def extract_part_from_point_list(part_tree, point_list, location, comm,
                                  containers_name=None):
                                  # equilibrate=1,
                                  # graph_part_tool='hilbert'):
-  """Extract vertex/faces/cells from the ZSR node from the provided partitioned CGNSTree.
+  """Extract vertex/faces/cells from the given PointList from the provided partitioned CGNSTree.
 
   ExtractPart is returned as an independant partitioned CGNSTree. 
 
@@ -466,14 +472,10 @@ def extract_part_from_point_list(part_tree, point_list, location, comm,
     - Input tree must be unstructured and have a ngon connectivity.
     - Partitions must come from a single initial domain on input tree.
 
-  Note:
-    Once created, fields from provided partitionned CGNSTree
-    can be exchanged using containers_name argument.
-
   Args:
     part_tree       (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
       connectivities are managed.
-    point_list      (list)        : list of PointList (one element for each partition domain)
+    point_list      (list)        : list of PointList of dimension [n_domain,n_part_per_domaine]
     location        (str)         : location of the PointList
     comm            (MPIComm)     : MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t or ZoneSubRegion_t nodes to transfer
@@ -483,8 +485,8 @@ def extract_part_from_point_list(part_tree, point_list, location, comm,
 
   Example:
     .. literalinclude:: snippets/test_algo.py
-      :start-after: #compute_iso_surface@start
-      :end-before: #compute_iso_surface@end
+      :start-after: #compute_extract_from_pl@start
+      :end-before:  #compute_extract_from_pl@end
       :dedent: 2
   """
 
@@ -538,6 +540,33 @@ def create_extractor_from_point_list(part_tree, point_list, location, comm
                                      # equilibrate=1,
                                      # graph_part_tool='hilbert'
                                      ):
+  """Extract vertex/faces/cells from the given PointList from the provided partitioned CGNSTree.
+
+  Object of ExtractPart class is returned. 
+
+  Important:
+    - Input tree must be unstructured and have a ngon connectivity.
+    - Partitions must come from a single initial domain on input tree.
+
+  Note:
+    Once created, fields from provided partitionned CGNSTree
+    can be exchanged using exchange_fields() class function (see Extractor class documentation)
+
+  Args:
+    part_tree       (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
+      connectivities are managed.
+    point_list      (list)        : list of PointList of dimension [n_domain,n_part_per_domaine]
+    location        (str)         : location of the PointList
+    comm            (MPIComm)     : MPI communicator
+  Returns:
+    extract_part_tree (CGNSTree)  : Partitioned tree of the extraction
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #compute_extractor_from_pl@start
+      :end-before:  #compute_extractor_from_pl@end
+      :dedent: 2
+  """
 
   return Extractor(part_tree, point_list, location, comm
                    # equilibrate=equilibrate,
@@ -561,7 +590,31 @@ def extract_part_from_zsr(part_tree, zsr_path, comm,
                           # equilibrate=1,
                           # graph_part_tool='hilbert',
                           containers_name=None):
+  """Extract vertex/faces/cells from the ZSR node from the provided partitioned CGNSTree.
 
+  ExtractPart is returned as an independant partitioned CGNSTree. 
+
+  Important:
+    - Input tree must be unstructured and have a ngon connectivity.
+    - Partitions must come from a single initial domain on input tree.
+
+  Args:
+    part_tree       (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
+      connectivities are managed.
+    point_list      (list)        : list of PointList of dimension [n_domain,n_part_per_domaine]
+    location        (str)         : location of the PointList
+    comm            (MPIComm)     : MPI communicator
+    containers_name (list of str) : List of the names of the FlowSolution_t or ZoneSubRegion_t nodes to transfer
+      on the output extract part tree.
+  Returns:
+    extract_part_tree (CGNSTree)  : Partitioned tree of the extraction
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #compute_extract_from_pl@start
+      :end-before:  #compute_extract_from_pl@end
+      :dedent: 2
+  """
   # Get zones by domains
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
 
