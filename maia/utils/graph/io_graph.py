@@ -65,9 +65,6 @@ class io_graph_tree_adaptor:
     return [n for n,_,_ in self.g]
 
 # Interface to satisfy dfs_interface_report {
-  def first_child(self, n):
-    return self.g[ outward_nodes(n)[0] ]
-
   def children(self, n):
     return adjacency_iterator(self.g, outward_nodes(n))
   def roots(self):

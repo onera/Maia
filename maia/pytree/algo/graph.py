@@ -2,35 +2,31 @@ import maia.pytree as PT
 from maia.utils.graph import algo_base
 from maia.utils.graph.algo_base import step
 
+
+class adjacency_iterator:
+  def __init__(self, ts):
+    self.ts = ts
+
+  def __iter__(self):
+    self.idx = 0
+    return self
+
+  def __next__(self):
+    if self.idx < len(self.ts):
+      t = self.ts[self.idx]
+      self.idx += 1
+      return t
+    else:
+      return None
+
 class pytree_adaptor:
   def __init__(self, t):
     self.t = t
 
-  def first_child(self, n):
-    return PT.get_children(n)[0]
-
-  @staticmethod
-  def children(n):
-    return [PT.get_children(n), 0]
+  def children(self, n):
+    return adjacency_iterator(PT.get_children(n))
   def roots(self):
-    return [[self.t], 0]
-
-  def current_node(self, ns):
-    nodes,pos = ns
-    return nodes[pos]
-
-  @staticmethod
-  def range_is_done(ns) -> bool:
-    nodes,pos = ns
-    return len(nodes) == pos
-
-  @staticmethod
-  def advance_node_range(ns):
-    ns[1] += 1
-
-  @staticmethod
-  def advance_node_range_to_last(ns):
-    ns[1] = len(ns[0])
+    return adjacency_iterator([self.t])
 
 
 def depth_first_search(t,v):
@@ -50,7 +46,7 @@ def _zip_lists(ls):
     zipped.append([_value_or_none(l, i) for l in ls])
   return zipped
 
-def get_sorted_children(n):
+def _get_sorted_children(n):
   if n is None:
     return []
   else:
@@ -61,33 +57,12 @@ class pytree_zip_adaptor:
   def __init__(self, ts):
     self.ts = ts
 
-  def first_child(self, ns):
-    return [PT.get_children(t)[0] for t in self.ts]
-
-  @staticmethod
-  def children(ns):
-    sorted_ns = [get_sorted_children(n) for n in ns]
+  def children(self, ns):
+    sorted_ns = [_get_sorted_children(n) for n in ns]
     cs = _zip_lists(sorted_ns)
-    return [cs, 0]
+    return adjacency_iterator(cs)
   def roots(self):
-    return [ [self.ts] , 0]
-
-  def current_node(self, ns):
-    nodes,pos = ns
-    return nodes[pos]
-
-  @staticmethod
-  def range_is_done(ns) -> bool:
-    nodes,pos = ns
-    return len(nodes) == pos
-
-  @staticmethod
-  def advance_node_range(ns):
-    ns[1] += 1
-
-  @staticmethod
-  def advance_node_range_to_last(ns):
-    ns[1] = len(ns[0])
+    return adjacency_iterator([self.ts])
 
 
 def zip_depth_first_search(t,v):

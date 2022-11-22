@@ -102,7 +102,8 @@ def depth_first_search_stack(S, g, f):
       if next_step is None or next_step == step.into: # go down
         S.push_level(n)
         if not S.level_is_done():
-          f.down(n,g.first_child(n))
+          child = S.current_node()
+          f.down(n,child)
 
     else:
       S.pop_level()
