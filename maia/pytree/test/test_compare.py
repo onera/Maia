@@ -7,6 +7,7 @@ import maia.pytree as PT
 from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.pytree import compare as CP
+from mpi4py import MPI
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -70,7 +71,7 @@ def test_is_same_node():
   assert not CP.is_same_node(node1, node2)
   node2[0] = 'gc3'
   assert CP.is_same_node(node1, node2) #Children are not compared
-  
+
 def test_is_same_tree():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
@@ -111,7 +112,8 @@ def test_diff_tree():
   t2 = PT.deep_copy(t1)
   gc5_t2 = PT.get_node_from_name(t2, 'gc5')
   PT.set_name(gc5_t2, 'gc6')
-  assert CP.diff_tree(t1, t2) == '< /CGNSTree/Base/ZoneI/ZGCB/gc5\n> /CGNSTree/Base/ZoneI/ZGCB/gc6\n'
+  assert CP.diff_tree(t1, t2) == '< /CGNSTree/Base/ZoneI/ZGCB/gc5\n' \
+                                 '> /CGNSTree/Base/ZoneI/ZGCB/gc6\n'
 
   # ... Same label ...
   t2 = PT.deep_copy(t1)
@@ -133,3 +135,4 @@ def test_diff_tree():
   PT.new_node('Index_vii', 'IndexArray_t', value=[0], parent=gc5_t2)
   PT.new_node('Index_vii', 'IndexArray_t', value=[1], parent=gc5_t3)
   assert CP.diff_tree(t2, t3) == '/CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii -- Values differ: [0] <> [1]\n'
+

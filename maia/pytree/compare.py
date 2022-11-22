@@ -9,6 +9,7 @@ import numpy as np
 
 import maia.pytree as PT
 from maia.pytree.algo.graph import step, zip_depth_first_search
+from maia.pytree.compare_arrays import equal_array_comparison
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
@@ -81,21 +82,16 @@ def check_in_labels(labels, n=0):
 
 # --------------------------------------------------------------------------
 def is_same_name(n0: TreeNode, n1: TreeNode):
-  return n0[0] == n1[0]
+  return PT.get_name(n0) == PT.get_name(n1)
 
 def is_same_label(n0: TreeNode, n1: TreeNode):
-  return n0[3] == n1[3]
+  return PT.get_label(n0) == PT.get_label(n1)
 
 def is_same_value_type(n0: TreeNode, n1: TreeNode, strict=True):
-  if (n0[1] is None) ^ (n1[1] is None):
-    return False
-  elif n0[1] is None and n1[1] is None:
-    return True
+  if strict:
+    return PT.get_value_type(n0) == PT.get_value_type(n1)
   else:
-    if strict:
-      return n0[1].dtype == n1[1].dtype
-    else:
-      return n0[1].dtype.kind == n1[1].dtype.kind
+    return PT.get_value_kind(n0) == PT.get_value_kind(n1)
 
 
 def is_same_value(n0: TreeNode, n1: TreeNode, abs_tol=0, type_tol=False):
@@ -121,7 +117,7 @@ def is_same_node(node1, node2, abs_tol=0, type_tol=False):
   they have same name, same label, same value.
   Note that no check is performed on children
   """
-  return is_same_name(node1, node2) and is_same_label(node1, node2) and is_same_value(node1, node2, abs_tol, type_tol) 
+  return is_same_name(node1, node2) and is_same_label(node1, node2) and is_same_value(node1, node2, abs_tol, type_tol)
 
 
 class same_tree_visitor:
@@ -137,8 +133,23 @@ class same_tree_visitor:
     else:
       return step.into
 
+def value_comparison_report(n0: TreeNode, n1: TreeNode, comp):
+  """ Compare the values of two single nodes. Node are considered equal if
+  they have
+  - same data type (if type_tol is True, only kind of types are considered equal eg.
+    I4 & I8 have not same type, but have same type kind
+  - same array len
+  - same value for each element, up to the absolute tolerance abs_tol when array kind is floats
+  """
+  v0 = PT.get_value(n0, raw=True)
+  v1 = PT.get_value(n1, raw=True)
+  if v0 is None and v1 is None:
+    return ''
+  else:
+    assert v0 is not None and v1 is not None
+    return comp(v0, v1)
 
-def diff_nodes(n0, n1, path_list, abs_tol, type_tol):
+def diff_nodes(n0, n1, path_list, strict_value_type, value_comp):
   path =  '/' + '/'.join(path_list) + '/'
 
   next_step = step.over
@@ -157,23 +168,25 @@ def diff_nodes(n0, n1, path_list, abs_tol, type_tol):
 
     if not is_same_label(n0,n1):
       report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
-    elif not is_same_value(n0, n1, abs_tol, type_tol):
-      report = path + PT.get_name(n0) + ' -- Values differ: ' + str(PT.get_value(n0)) + ' <> ' + str(PT.get_value(n1)) + '\n'
+    elif not is_same_value_type(n0, n1, strict_value_type):
+      report = path + PT.get_name(n0) + ' -- Value types differ: ' + str(PT.get_value_type(n0)) + ' <> ' + str(PT.get_value_type(n1)) + '\n'
     else:
-      report = ''
+      report = value_comparison_report(n0, n1, value_comp)
+      if report != '':
+        report = path + PT.get_name(n0) + ' -- Values differ: ' + report + '\n'
 
   return next_step, report, next_name
 
 
 class diff_tree_visitor:
-  def __init__(self, abs_tol, type_tol):
-    self.abs_tol = abs_tol
-    self.type_tol = type_tol
+  def __init__(self, strict_value_type, value_comp):
+    self.value_comp = value_comp
+    self.strict_value_type = strict_value_type
     self.report = ''
     self.path_list = []
 
   def pre(self, ns):
-    next_step, report, next_name = diff_nodes(ns[0], ns[1], self.path_list, self.abs_tol, self.type_tol)
+    next_step, report, next_name = diff_nodes(ns[0], ns[1], self.path_list, self.strict_value_type, self.value_comp)
     self.report += report
     self.path_list += [next_name]
     return next_step
@@ -191,12 +204,12 @@ def is_same_tree(t1, t2, abs_tol=0, type_tol=False):
   zip_depth_first_search([t1,t2], v)
   return v.is_same
 
-def diff_tree(t1, t2, abs_tol=0, type_tol=False):
+def diff_tree(t1, t2, strict_value_type = True, comp = equal_array_comparison()):
   """
   Recursive comparison of two nodes. Nodes are considered equal if the pass is_same_node test
   and if the have the same childrens. Children are allowed to appear in a different order.
   """
-  v = diff_tree_visitor(abs_tol, type_tol)
+  v = diff_tree_visitor(strict_value_type, comp)
   zip_depth_first_search([t1,t2], v)
   return v.report
 
