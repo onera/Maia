@@ -144,22 +144,24 @@ def value_comparison_report(n0: TreeNode, n1: TreeNode, comp):
   v0 = PT.get_value(n0, raw=True)
   v1 = PT.get_value(n1, raw=True)
   if v0 is None and v1 is None:
-    return ''
+    return True, '', ''
   else:
     assert v0 is not None and v1 is not None
     return comp(v0, v1)
 
 def diff_nodes(n0, n1, path_list, strict_value_type, value_comp):
   path =  '/' + '/'.join(path_list) + '/'
+  is_ok = False
+  warn_report = ''
 
   next_step = step.over
   next_name = None
   if n0 is None:
-    report = '> ' + path + PT.get_name(n1) + '\n'
+    err_report = '> ' + path + PT.get_name(n1) + '\n'
   elif n1 is None:
-    report = '< ' + path +  PT.get_name(n0) + '\n'
+    err_report = '< ' + path +  PT.get_name(n0) + '\n'
   elif not is_same_name(n0, n1):
-    report = '< ' + path + PT.get_name(n0) + '\n' \
+    err_report = '< ' + path + PT.get_name(n0) + '\n' \
            + '> ' + path + PT.get_name(n1) + '\n'
 
   else:
@@ -167,27 +169,33 @@ def diff_nodes(n0, n1, path_list, strict_value_type, value_comp):
     next_name = PT.get_name(n0)
 
     if not is_same_label(n0,n1):
-      report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
+      err_report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
     elif not is_same_value_type(n0, n1, strict_value_type):
-      report = path + PT.get_name(n0) + ' -- Value types differ: ' + str(PT.get_value_type(n0)) + ' <> ' + str(PT.get_value_type(n1)) + '\n'
+      err_report = path + PT.get_name(n0) + ' -- Value types differ: ' + str(PT.get_value_type(n0)) + ' <> ' + str(PT.get_value_type(n1)) + '\n'
     else:
-      report = value_comparison_report(n0, n1, value_comp)
-      if report != '':
-        report = path + PT.get_name(n0) + ' -- Values differ: ' + report + '\n'
+      is_ok, err_report, warn_report = value_comparison_report(n0, n1, value_comp)
+      if err_report != '':
+        err_report = path + PT.get_name(n0) + ' -- Values differ: ' + err_report + '\n'
+      if warn_report != '':
+        warn_report = path + PT.get_name(n0) + ' -- Values differ: ' + warn_report + '\n'
 
-  return next_step, report, next_name
+  return next_step, is_ok, err_report, warn_report, next_name
 
 
 class diff_tree_visitor:
   def __init__(self, strict_value_type, value_comp):
     self.value_comp = value_comp
     self.strict_value_type = strict_value_type
-    self.report = ''
+    self.is_ok = True
+    self.err_report = ''
+    self.warn_report = ''
     self.path_list = []
 
   def pre(self, ns):
-    next_step, report, next_name = diff_nodes(ns[0], ns[1], self.path_list, self.strict_value_type, self.value_comp)
-    self.report += report
+    next_step, is_ok, err_report, warn_report, next_name = diff_nodes(ns[0], ns[1], self.path_list, self.strict_value_type, self.value_comp)
+    self.is_ok = self.is_ok and is_ok
+    self.err_report += err_report
+    self.warn_report += warn_report
     self.path_list += [next_name]
     return next_step
 
@@ -211,7 +219,7 @@ def diff_tree(t1, t2, strict_value_type = True, comp = equal_array_comparison())
   """
   v = diff_tree_visitor(strict_value_type, comp)
   zip_depth_first_search([t1,t2], v)
-  return v.report
+  return v.is_ok, v.err_report, v.warn_report
 
 # --------------------------------------------------------------------------
 # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
