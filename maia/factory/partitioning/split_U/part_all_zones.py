@@ -44,7 +44,7 @@ def prepare_part_weight(bases_to_block, zone_to_weights):
   n_zones = sum([len(zones) for zones in bases_to_block.values()])
   n_parts = sum([len(weights) for weights in zone_to_weights.values()])
   n_part_per_zone = np.empty(n_zones, np.int32)
-  part_weight     = np.empty(n_parts, np.float)
+  part_weight     = np.empty(n_parts, np.float64)
   i = 0
   j = 0
   for base, zones in bases_to_block.items():

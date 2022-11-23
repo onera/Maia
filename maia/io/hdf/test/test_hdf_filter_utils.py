@@ -15,7 +15,7 @@ def test_pl_or_pr_size():
 
 def test_apply_dataspace_to_arrays():
   hdf_filter = dict()
-  node = PT.new_node('Parent', 'AnyType_t')
+  node = PT.new_node('Parent', 'UserDefined_t')
   for child in ['child1', 'child2', 'child3']:
     PT.new_DataArray(child, None, parent=node)
   utils.apply_dataspace_to_arrays(node, "path/to/Parent", "my_data_space", hdf_filter)
@@ -25,7 +25,7 @@ def test_apply_dataspace_to_arrays():
 def test_apply_dataspace_to_pointlist():
   hdf_filter = dict()
   bc = PT.new_node('wall', 'BC_t', children=[PT.new_PointList('PointList')])
-  gc = PT.new_node('wall', 'GC_t', children=[PT.new_PointList('PointList'),
+  gc = PT.new_node('wall', 'GridConnectivity_t', children=[PT.new_PointList('PointList'),
                                               PT.new_PointList('PointListDonor')])
   utils.apply_dataspace_to_pointlist(bc, "path/to/bc", "my_data_space", hdf_filter)
   utils.apply_dataspace_to_pointlist(gc, "path/to/gc", "my_data_space", hdf_filter)

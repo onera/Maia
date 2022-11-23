@@ -144,10 +144,10 @@ def test_write_link(tmp_hdf_file):
   idx = out.index("Attribute: type scalar") #Will raise if not in list
   assert out[idx+3] == '"LK"'
   out = get_subprocess_stdout(f"h5ls -vd {tmp_hdf_file}/Base/ZoneU/GridCoordinates/CoordinateZ")
-  idx = out.index("\ file                   Dataset {18/18}")
-  idx = out.index("\ path                   Dataset {10/10}")
+  idx = out.index("\\ file                   Dataset {18/18}")
+  idx = out.index("\\ path                   Dataset {10/10}")
   for l in out:
-    if "\ link" in l:
+    if "\\ link" in l:
       assert "External Link {this/hdf/file.hdf//this/node}" in l
       break
   else:
