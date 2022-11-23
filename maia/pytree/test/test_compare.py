@@ -100,32 +100,32 @@ def test_diff_tree():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     t1 = parse_yaml_cgns.to_cgns_tree(yt)
   t2 = PT.deep_copy(t1)
-  assert CP.diff_tree(t1, t2) == ''
+  assert CP.diff_tree(t1, t2)[1] == ''
 
   # Position of child does not matter
   t2 = PT.deep_copy(t1)
   gc5_t3 = PT.get_node_from_name(t2, 'gc5')
   gc5_t3[2][1], gc5_t3[2][2] = gc5_t3[2][2], gc5_t3[2][1]
-  assert CP.diff_tree(t1, t2) == ''
+  assert CP.diff_tree(t1, t2)[1] == ''
 
   # But node must have the same name...
   t2 = PT.deep_copy(t1)
   gc5_t2 = PT.get_node_from_name(t2, 'gc5')
   PT.set_name(gc5_t2, 'gc6')
-  assert CP.diff_tree(t1, t2) == '< /CGNSTree/Base/ZoneI/ZGCB/gc5\n' \
-                                 '> /CGNSTree/Base/ZoneI/ZGCB/gc6\n'
+  assert CP.diff_tree(t1, t2)[1] == '< /CGNSTree/Base/ZoneI/ZGCB/gc5\n' \
+                                    '> /CGNSTree/Base/ZoneI/ZGCB/gc6\n'
 
   # ... Same label ...
   t2 = PT.deep_copy(t1)
   gc5_t2 = PT.get_node_from_name(t2, 'gc5')
   PT.set_label(gc5_t2, 'IndexRange_t')
-  assert CP.diff_tree(t1, t2) == '/CGNSTree/Base/ZoneI/ZGCB/gc5 -- Labels differ: GridConnectivity_t <> IndexRange_t\n'
+  assert CP.diff_tree(t1, t2)[1] == '/CGNSTree/Base/ZoneI/ZGCB/gc5 -- Labels differ: GridConnectivity_t <> IndexRange_t\n'
 
   # ... Same children ...
   t2 = PT.deep_copy(t1)
   gc5_t2 = PT.get_node_from_name(t2, 'gc5')
   PT.new_node('Index_vii', 'IndexArray_t', parent=gc5_t2)
-  assert CP.diff_tree(t1, t2) == '> /CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii\n'
+  assert CP.diff_tree(t1, t2)[1] == '> /CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii\n'
 
   # ... And values should be equal
   t2 = PT.deep_copy(t1)
@@ -134,5 +134,5 @@ def test_diff_tree():
   gc5_t3 = PT.get_node_from_name(t3, 'gc5')
   PT.new_node('Index_vii', 'IndexArray_t', value=[0], parent=gc5_t2)
   PT.new_node('Index_vii', 'IndexArray_t', value=[1], parent=gc5_t3)
-  assert CP.diff_tree(t2, t3) == '/CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii -- Values differ: [0] <> [1]\n'
+  assert CP.diff_tree(t2, t3)[1] == '/CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii -- Values differ: [0] <> [1]\n'
 
