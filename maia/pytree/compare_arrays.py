@@ -38,7 +38,15 @@ def _close_in_relative_norm(x, ref, tol, comm):
 
     # floating point value closest to 0 before loosing precision (see 'denormal numbers')
     else:
-      smallest_normal = np.finfo(np.float64).smallest_normal
+      try:
+        smallest_normal = np.finfo(np.float64).smallest_normal
+      except AttributeError:
+        smallest_normal = np.float64(2.2250738585072014e-308)
+        import warnings
+        warnings.warn(f'`np.finfo(np.float64).smallest_normal` ' \
+                      f'does not exist with your NumPy version. ' \
+                      f'using {smallest_normal}', DeprecationWarning)
+
       if norm_ref >= smallest_normal:
         denorm = False
         within_tol = (norm_diff/norm_ref) <= tol
