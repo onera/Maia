@@ -33,7 +33,7 @@ def test_request_node_from_predicate():
   assert PT.request_node_from_predicate(tree, 'bc8', default=tree)[0] == "Zone"
 
 
-def test_get_nodes_from_predicates():
+def test_get_nodes_from_predicate():
   tree = parse_yaml_cgns.to_node(yt)
 
   assert isinstance(PT.get_nodes_from_predicate(tree, 'bc*'), list)
@@ -58,7 +58,25 @@ def test_iter_nodes_from_predicate():
   bc_or_family = lambda n: PT.get_label(n) in ['BC_t', 'FamilyName_t']
   assert PT.get_names(PT.iter_nodes_from_predicate(tree, bc_or_family)) == ['bc1', 'bc2', 'FamilyName']
   assert PT.get_names(PT.iterNodesFromPredicate(tree, bc_or_family)) == ['bc1', 'FamilyName', 'bc2', 'FamilyName', 'FamilyName']
-  
+ 
+def test_get_node_from_predicates(): 
+  tree = parse_yaml_cgns.to_node(yt)
+
+  # Single predicate fallback to from_predicate
+  assert PT.get_node_from_predicates(tree, "FamilyName_t") == PT.get_node_from_predicate(tree, "FamilyName_t")
+
+  # Auto predicate
+  assert PT.get_node_from_predicates(tree, ["BC_t", "FamilyName_t"]) == \
+      PT.get_node_from_predicates(tree, [lambda n: PT.match_label(n, 'BC_t'), lambda n: PT.match_label(n, 'FamilyName_t')])
+  assert PT.get_node_from_predicates(tree, "BC_t/FamilyName_t") == \
+      PT.get_node_from_predicates(tree, [lambda n: PT.match_label(n, 'BC_t'), lambda n: PT.match_label(n, 'FamilyName_t')])
+
+  assert PT.get_value(PT.get_node_from_predicates(tree, ["BC_t", "FamilyName_t"])) == "BC1" # Only one is returned
+
+  # Common kwargs vs specific options for each predicate
+  assert PT.get_node_from_predicates(tree, "BC_t/IndexArray_t", depth=1) is None
+  predicates = [{'predicate':'BC_t', 'depth':2}, {'predicate':'IndexArray_t', 'depth':1}]
+  assert PT.get_node_from_predicates(tree, predicates) is not None
 
 def test_get_nodes_from_predicates():
   tree = parse_yaml_cgns.to_node(yt)

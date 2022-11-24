@@ -1,5 +1,6 @@
 from .node_walker   import NodeWalker
 from .nodes_walker  import NodesWalker
+from .node_walkers  import NodeWalkers
 from .nodes_walkers import NodesWalkers
 from .predicate     import auto_predicate, auto_predicates
 
@@ -76,6 +77,30 @@ def iter_nodes_from_predicate(root, predicate, **kwargs):
   kwargs['caching'] = False
 
   walker = NodesWalker(root, _predicate, **kwargs)
+  return walker()
+
+# ---------------------------------------------------------------------------- #
+# API for NodeWalkers
+# ---------------------------------------------------------------------------- #
+
+def get_node_from_predicates(root, predicates, **kwargs):
+  """
+  Alias to NodeWalkers.
+
+  Args:
+      root (TreeNode): CGNS node root searching
+      predicate (Callable[[TreeNode], bool]): condition to select node
+      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
+      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
+      depth (int, optional): stop exploring after the limited depth
+      sort (Callable[TreeNode], optional): parsing children sort
+
+  Returns:
+      TYPE: TreeNode
+
+  """
+  _predicates = auto_predicates(predicates)
+  walker = NodeWalkers(root, _predicates, **kwargs)
   return walker()
 
 
@@ -157,6 +182,12 @@ def iterNodesFromPredicate(root, predicate, *args, **kwargs):
   if 'explore' not in kwargs:
     kwargs['explore'] = 'deep'
   return iter_nodes_from_predicate(root, predicate, *args, **kwargs)
+
+def getNodeFromPredicates(root, predicate, *args, **kwargs):
+  """ Alias for get_node_from_predicates (legacy), with default value 'deep' for search"""
+  if 'explore' not in kwargs:
+    kwargs['explore'] = 'deep'
+  return get_node_from_predicates(root, predicate, *args, **kwargs)
 
 def getNodesFromPredicates(root, predicate, *args, **kwargs):
   """ Alias for get_nodes_from_predicates (legacy), with default value 'deep' for search"""
