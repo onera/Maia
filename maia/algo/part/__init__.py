@@ -11,7 +11,8 @@ from .connect_match          import connect_match_from_family
 from .extract_boundary       import extract_faces_mesh,\
                                     extract_surf_from_bc
 
-from .geometry               import compute_cell_center
+from .geometry               import compute_cell_center,\
+                                    compute_face_center
 
 from .interpolate            import interpolate_from_part_trees,\
                                     create_interpolator_from_part_trees

@@ -67,6 +67,18 @@ def test_compute_cell_center():
     cell_center = maia.algo.part.compute_cell_center(zone)
   #compute_cell_center@end
 
+def test_compute_face_center():
+  #compute_face_center@start
+  from mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+
+  for zone in maia.pytree.iter_all_Zone_t(part_tree):
+    face_center = maia.algo.part.compute_face_center(zone)
+  #compute_face_center@end
+
 def test_compute_wall_distance():
   #compute_wall_distance@start
   from mpi4py import MPI
