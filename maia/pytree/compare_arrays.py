@@ -2,13 +2,37 @@ import numpy as np
 from mpi4py import MPI
 
 
-def equal_array_comparison(comm = MPI.COMM_SELF):
-  # TODO parallel reduce
-  def impl(x, ref):
-    if np.array_equal(x, ref):
-      return True, '', ''
+def equal_array_report(x, ref, comm):
+  equal_arrays = np.array_equal(x, ref)
+  equal_arrays_tot = comm.allreduce(equal_arrays, MPI.LAND)
+  if equal_arrays_tot:
+    return True, '', ''
+  else:
+    sz_tot = comm.allreduce(len(x), MPI.SUM)
+    if sz_tot < 10:
+      xs   = comm.gather(x  , root=0)
+      refs = comm.gather(ref, root=0)
+
+      if comm.Get_rank() == 0:
+        x_tot   = np.concatenate(xs)
+        ref_tot = np.concatenate(refs)
+
+        return False, str(x_tot) + ' <> ' + str(ref_tot), ''
+      else:
+        return False, '', ''
     else:
-      return False, str(x) + ' <> ' + str(ref), ''
+      eq = np.equal(x, ref)
+      n_eq = np.count_nonzero(eq)
+      n_eq_tot = comm.reduce(n_eq, op=MPI.SUM, root=0)
+      if comm.Get_rank() == 0:
+        n_not_eq = sz_tot - n_eq_tot
+        return False, f'{n_not_eq} values are different', ''
+      else:
+        return False, '', ''
+
+def equal_array_comparison(comm = MPI.COMM_SELF):
+  def impl(x, ref):
+    return equal_array_report(x, ref, comm)
   return impl
 
 
@@ -23,7 +47,8 @@ def _close_in_relative_norm(x, ref, tol, comm):
   x   = np.array(x)
   ref = np.array(ref)
 
-  if np.array_equal(x, ref):
+  equal_arrays = equal_array_report(x, ref, comm)[0]
+  if equal_arrays:
     return {'exact_eq':True, 'within_tol': True}
   else:
     norm_ref  = norm(ref , comm)

@@ -6,7 +6,8 @@ from mpi4py import MPI
 
 import maia.pytree as PT
 from maia.pytree.yaml   import parse_yaml_cgns
-from maia.pytree.compare_arrays import close_in_relative_norm
+from maia.pytree.compare_arrays import close_in_relative_norm, equal_array_report
+from pytest_mpi_check._decorator import mark_mpi_test
 
 def test_close_in_relative_norm():
   tol = 1.e-12
@@ -75,8 +76,66 @@ def test_close_in_relative_norm():
   val = [2.,1.e20]
   assert close_in_relative_norm(val, ref, tol, MPI.COMM_SELF) == True
 
-# NOTE: commented because quick and dirty fix
+# NOTE: commented because quick and dirty fix, re-activate once close_in_relative_norm is cleaned
 #  # the first values seem close, but the field only has small absolute values
 #  ref = [1.e-20,1.e-20]
 #  val = [2.e-20,1.e-20]
 #  assert close_in_relative_norm(val, ref, tol, MPI.COMM_SELF) == False
+
+
+@mark_mpi_test(2)
+def test_equal_array_report(sub_comm):
+  # Equal
+  if sub_comm.Get_rank() == 0:
+    x   = np.array([0,1,2])
+    ref = np.array([0,1,2])
+  else:
+    x   = np.array([3,4])
+    ref = np.array([3,4])
+  assert equal_array_report(x, ref, sub_comm) == (True, '', '')
+
+  # Not equal on rank 0
+  if sub_comm.Get_rank() == 0:
+    x   = np.array([0,1,2])
+    ref = np.array([0,1,9])
+  else:
+    x   = np.array([3,4])
+    ref = np.array([3,4])
+  is_same, report, _ = equal_array_report(x, ref, sub_comm)
+  if sub_comm.Get_rank() == 0:
+    assert is_same == False
+    assert report == '[0 1 2 3 4] <> [0 1 9 3 4]'
+  else:
+    assert is_same == False
+    assert report == ''
+
+  # Not equal on rank 1
+  if sub_comm.Get_rank() == 0:
+    x   = np.array([0,1,2])
+    ref = np.array([0,1,2])
+  else:
+    x   = np.array([3,4])
+    ref = np.array([3,9])
+  is_same, report, _ = equal_array_report(x, ref, sub_comm)
+  if sub_comm.Get_rank() == 0:
+    assert is_same == False
+    assert report == '[0 1 2 3 4] <> [0 1 2 3 9]'
+  else:
+    assert is_same == False
+    assert report == ''
+
+
+  # Not equal and array too big to be printed
+  if sub_comm.Get_rank() == 0:
+    x   = np.array([0,1,2,4,5,6,7])
+    ref = np.array([9,1,2,4,5,6,7])
+  else:
+    x   = np.array([8,9,10,11,12,13])
+    ref = np.array([8,9,10,11,99,99])
+  is_same, report, _ = equal_array_report(x, ref, sub_comm)
+  if sub_comm.Get_rank() == 0:
+    assert is_same == False
+    assert report == '3 values are different'
+  else:
+    assert is_same == False
+    assert report == ''

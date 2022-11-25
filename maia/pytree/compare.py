@@ -162,7 +162,7 @@ def diff_nodes(n0, n1, path_list, strict_value_type, value_comp):
     err_report = '< ' + path +  PT.get_name(n0) + '\n'
   elif not is_same_name(n0, n1):
     err_report = '< ' + path + PT.get_name(n0) + '\n' \
-           + '> ' + path + PT.get_name(n1) + '\n'
+               + '> ' + path + PT.get_name(n1) + '\n'
 
   else:
     next_step = step.into
