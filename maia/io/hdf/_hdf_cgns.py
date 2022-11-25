@@ -230,6 +230,9 @@ def _load_node_partial(gid, parent, load_if, ancestors_stack):
   if b_kind == b'LK': #Follow link
     gid = h5g.open(gid, b' link')
     b_kind = attr_reader.read_bytes_3(gid, b'type')
+    # Label may be empty in original node and present only in linked node
+    ancestors_stack[0][-1] = attr_reader.read_str_33(gid, b'name')
+    ancestors_stack[1][-1] = attr_reader.read_str_33(gid, b'label')
 
   if load_if(*ancestors_stack):
     if b_kind != b'MT':
