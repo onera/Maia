@@ -10,6 +10,7 @@ from    maia.factory  import dist_from_part
 from    maia.utils    import np_utils, layouts, py_utils
 
 import Pypdm.Pypdm as PDM
+from maia.algo.part.extract_boundary import compute_gnum_from_parent_gnum
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 
@@ -181,7 +182,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, container
 
     # Boucle sur les partitoins de l'extraction pour get PL
     gnum = PT.maia.getGlobalNumbering(part_zone_ep, f'{loc_correspondance[gridLocation]}')[1]
-    partial_gnum = maia.algo.part.compute_gnum_from_parent_gnum([gnum[local_point_list-1]], comm)[0]
+    partial_gnum = compute_gnum_from_parent_gnum([gnum[local_point_list-1]], comm)[0]
     
     # Boucle sur les partitoins de l'extracttion pour placer PL        
     maia.pytree.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_ep)
@@ -390,6 +391,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.
 
   In addition, containers specified in ``containers_name`` list are transfered to the extracted tree.
+  Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.
 
   Important:
     - Input tree must be unstructured and have a ngon connectivity.
