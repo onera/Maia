@@ -586,84 +586,52 @@ def create_extractor_from_point_list(part_tree, point_list, location, comm
 # --- EXTRACT PART FROM ZSR -------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------
-def extract_part_from_zsr(part_tree, zsr_path, comm,
+def extract_part_from_zsr(part_tree, zsr_name, comm,
                           # equilibrate=1,
                           # graph_part_tool='hilbert',
                           containers_name=None):
-  """Extract vertex/faces/cells from the ZSR node from the provided partitioned CGNSTree.
+  """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
+  partitioned tree.
 
-  ExtractPart is returned as an independant partitioned CGNSTree. 
+  Dimension of the ouput mesh is set up accordingly to the GridLocation of the ZoneSubRegion.
+  Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.
+
+  In addition, containers specified in ``containers_name`` list are transfered to the extracted tree.
 
   Important:
     - Input tree must be unstructured and have a ngon connectivity.
     - Partitions must come from a single initial domain on input tree.
+  
+  See also:
+    :func:`create_extractor_from_zsr` takes the same parameters, excepted ``containers_name``,
+    and returns an Extractor object which can be used to exchange containers more than once through its
+    ``Extractor.exchange_fields(container_name)`` method.
 
   Args:
-    part_tree       (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
+    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. Only U-NGon
       connectivities are managed.
-    zsr_path        (str)         : Name of the ZoneSubRegion_t node
+    zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
-    containers_name (list of str) : List of the names of the FlowSolution_t or ZoneSubRegion_t nodes to transfer
-      on the output extract part tree.
+    containers_name (list of str) : List of the names of the fields containers to transfer
+      on the output extracted tree.
   Returns:
-    extract_part_tree (CGNSTree)  : Partitioned tree of the extraction
+    extracted_tree (CGNSTree)  : Extracted submesh (partitioned)
 
   Example:
     .. literalinclude:: snippets/test_algo.py
-      :start-after: #compute_extract_from_zsr@start
-      :end-before:  #compute_extract_from_zsr@end
+      :start-after: #extract_from_zsr@start
+      :end-before:  #extract_from_zsr@end
       :dedent: 2
   """
-  # Get zones by domains
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-
-  # Check : monodomain
-  assert(len(part_tree_per_dom)==1)
-
-  # Is there PE node
-  if (PT.get_node_from_name(part_tree,'ParentElements') is not None): put_pe = True
-  else                                                              : put_pe = False
-  
-  # ExtractPart dimension
-  select_dim  = { 'Vertex':0 ,'EdgeCenter':1 ,'FaceCenter':2 ,'CellCenter':3}
-  
-  zsr_node    = PT.get_node_from_name(part_tree,zsr_path)
-  zsr_loc     = PT.get_value(PT.get_child_from_name(zsr_node,'GridLocation'))
-  assert zsr_node is not None 
-  dim         = select_dim[zsr_loc]
-  assert dim in [0,2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
-  
-  # ExtractPart CGNSTree
-  extract_part_tree = PT.new_CGNSTree()
-  extract_part_base = PT.new_CGNSBase('Base', cell_dim=dim, phy_dim=3, parent=extract_part_tree)
 
 
-  # Compute extract part of each domain
-  # pdm_ep=list()
-  exch_tool_box   =list()
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
-    # Get point_list for each partitioned zone in the domain
-    point_list = list()
-    for part_zone in part_zones:
-      # Get point_list from zsr node
-      zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
-      zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
-      zsr_pl_data = PT.get_value(zsr_pl_node)[0]
-      point_list.append(PT.get_value(zsr_pl_node)[0] - starting_elt(part_zone,zsr_loc) +1 )
-
-    # extract part from point list
-    extract_part_zone,etb = extract_part_one_domain(part_zones, point_list, dim, comm,
-                                                    # equilibrate=equilibrate,
-                                                    # graph_part_tool=graph_part_tool,
-                                                    put_pe=put_pe)
-    exch_tool_box.append(etb)
-    PT.add_child(extract_part_base, extract_part_zone)
+  extractor = create_extractor_from_zsr(part_tree, zsr_name, comm)
 
   if containers_name is not None:
-    _exchange_field(part_tree, extract_part_tree, exch_tool_box, containers_name, comm)
-  
+    extractor.exchange_fields(containers_name, comm)
 
-  return extract_part_tree
+  return extractor.get_extract_part_tree()
+
 # ---------------------------------------------------------------------------------------
 
 
@@ -672,53 +640,29 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm
                               # equilibrate=1,
                               # graph_part_tool='hilbert'
                               ):
-  """Extract vertex/faces/cells from the ZSR node from the provided partitioned CGNSTree.
-
-  Object of ExtractPart class is returned. 
-
-  Important:
-    - Input tree must be unstructured and have a ngon connectivity.
-    - Partitions must come from a single initial domain on input tree.
-
-  Note:
-    Once created, fields from provided partitionned CGNSTree
-    can be exchanged using exchange_fields() class function (see Extractor class documentation)
-
-  Args:
-    part_tree       (CGNSTree)    : Partitioned tree from which ExtractPart is computed. Only U-NGon
-      connectivities are managed.
-    zsr_path        (str)         : Name of the ZoneSubRegion_t node
-    comm            (MPIComm)     : MPI communicator
-    containers_name (list of str) : List of the names of the FlowSolution_t or ZoneSubRegion_t nodes to transfer
-      on the output extract part tree.
-  Returns:
-    extract_part_tree (CGNSTree)  : Partitioned tree of the extraction
-
-  Example:
-    .. literalinclude:: snippets/test_algo.py
-      :start-after: #compute_extract_from_zsr@start
-      :end-before:  #compute_extract_from_zsr@end
-      :dedent: 2
-  """
+  """Same as extract_part_from_zsr, but return the extractor object."""
   # Get zones by domains
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-  assert(len(part_tree_per_dom)==1)
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
-  # zsr node and location
-  zsr_node    = PT.get_node_from_name(part_tree,zsr_path)
-  assert zsr_node is not None 
-  location    = PT.get_value(PT.get_child_from_name(zsr_node,'GridLocation'))
-
-  # Get point_list or each partitioned zone
+  # Get point_list for each partitioned zone and group it by domain
   point_list = list()
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
+  location = ''
+  for domain, part_zones in part_tree_per_dom.items():
     point_list_domain = list()
     for part_zone in part_zones:
-      # Get point_list from zsr node
-      zsr_node    = PT.get_node_from_path(part_zone, zsr_path)
-      zsr_pl_node = PT.get_child_from_name(zsr_node, "PointList")
-      point_list_domain.append(PT.get_value(zsr_pl_node)[0])
+      zsr_node     = PT.get_node_from_path(part_zone, zsr_path)
+      if zsr_node is not None:
+        #Follow BC or GC link
+        related_node = PT.getSubregionExtent(zsr_node, part_zone)
+        zsr_node     = PT.get_node_from_path(part_zone, related_node)
+        point_list_domain.append(PT.get_child_from_name(zsr_node, "PointList")[1][0])
+        location = PT.Subset.GridLocation(zsr_node)
+      else: # ZSR does not exists on this partition
+        point_list_domain.append(np.empty(0, np.int32))
     point_list.append(point_list_domain)
+  
+  # Get location if proc has no zsr
+  location = comm.allreduce(location, op=MPI.MAX)
 
   return Extractor(part_tree, point_list, location, comm
                    # equilibrate=equilibrate,

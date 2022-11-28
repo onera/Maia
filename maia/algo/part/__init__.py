@@ -12,6 +12,8 @@ from .extract_boundary       import extract_faces_mesh,\
                                     extract_surf_from_bc,\
                                     compute_gnum_from_parent_gnum
 
+from .extract_part           import extract_part_from_zsr
+
 from .geometry               import compute_cell_center
 
 from .interpolate            import interpolate_from_part_trees,\
