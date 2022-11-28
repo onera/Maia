@@ -264,11 +264,12 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
   # ------------------------------------------------------------------------------------- 
 
   # --- EXTRACT PART --------------------------------------------------------------------
-  part_tree_ep = EXP.extract_part_from_point_list(part_tree, [point_list], "CellCenter", sub_comm,
-                                                  # equilibrate=1,
-                                                  # graph_part_tool=graph_part_tool,
-                                                  containers_name=['FlowSolution_NC','FlowSolution_CC']
-                                                  )
+  Extractor = EXP.Extractor(part_tree, [point_list], "CellCenter", sub_comm,
+                            # equilibrate=1,
+                            # graph_part_tool=graph_part_tool,
+                           )
+  Extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
+  part_tree_ep = Extractor.get_extract_part_tree()
   # ------------------------------------------------------------------------------------- 
 
   # -------------------------------------------------------------------------------------
@@ -291,47 +292,3 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 
-
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
-# @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
-@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
-@mark_mpi_test([1,3])
-def test_extractor_cell_from_point_list_U(graph_part_tool, sub_comm, write_output):
-
-  # --- GENERATE TREE -------------------------------------------------------------------
-  n_vtx  = 6
-  n_part = 2
-  part_tree, point_list = generate_test_tree(n_vtx,n_part,sub_comm)
-  print("point_list = ",point_list)
-  # ------------------------------------------------------------------------------------- 
-
-  # --- EXTRACT PART --------------------------------------------------------------------
-  extractor = EXP.create_extractor_from_point_list( part_tree, [point_list], 'CellCenter', sub_comm,
-                                                    # equilibrate=1,
-                                                    # graph_part_tool="hilbert"
-                                                    )
-  extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
-  part_tree_ep = extractor.extract_part_tree
-  # ------------------------------------------------------------------------------------- 
-
-  # -------------------------------------------------------------------------------------
-  # Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
-
-  # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'extract_cell_from_point_list.yaml')
-  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
-
-  if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
-    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
-  
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
-  # -------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
