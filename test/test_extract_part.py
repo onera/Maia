@@ -222,10 +222,10 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
                                             # equilibrate=1,
                                             # graph_part_tool="hilbert"
                                             )
-  extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
+  extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'])
   # extractor.exchange_zsr_fields("ZSR_FlowSolution", sub_comm)
-  extractor.exchange_fields(["ZSR_FlowSolution"], sub_comm) # Works also with the ZSR node
-  part_tree_ep = extractor.extract_part_tree
+  extractor.exchange_fields(["ZSR_FlowSolution"]) # Works also with the ZSR node
+  part_tree_ep = extractor.get_extract_part_tree()
   # ------------------------------------------------------------------------------------- 
 
   # -------------------------------------------------------------------------------------
@@ -264,12 +264,12 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
   # ------------------------------------------------------------------------------------- 
 
   # --- EXTRACT PART --------------------------------------------------------------------
-  Extractor = EXP.Extractor(part_tree, [point_list], "CellCenter", sub_comm,
+  extractor = EXP.Extractor(part_tree, [point_list], "CellCenter", sub_comm,
                             # equilibrate=1,
                             # graph_part_tool=graph_part_tool,
                            )
-  Extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'], sub_comm)
-  part_tree_ep = Extractor.get_extract_part_tree()
+  extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'])
+  part_tree_ep = extractor.get_extract_part_tree()
   # ------------------------------------------------------------------------------------- 
 
   # -------------------------------------------------------------------------------------

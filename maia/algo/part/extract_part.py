@@ -30,7 +30,6 @@ def starting_elt(part_zone,location):
 
 
 # =======================================================================================
-# ---------------------------------------------------------------------------------------
 class Extractor:
   def __init__( self,
                 part_tree, point_list, location, comm,
@@ -38,70 +37,59 @@ class Extractor:
                 graph_part_tool="hilbert"):
 
     self.part_tree        = part_tree
-    self.point_list       = point_list
-    self.location         = location
-    self.equilibrate      = equilibrate
-    self.graph_part_tool  = graph_part_tool
     self.exch_tool_box    = list()
+    self.comm             = comm
 
     # Get zones by domains
     part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-
     # Check : monodomain
-    assert(len(part_tree_per_dom)==1)
+    assert len(part_tree_per_dom) == 1
 
     # Is there PE node
     if (PT.get_node_from_name(part_tree,'ParentElements') is not None): self.put_pe = True
     else                                                              : self.put_pe = False
     
     # ExtractPart dimension
-    select_dim  = { 'Vertex':0 ,'EdgeCenter':1 ,'FaceCenter':2 ,'CellCenter':3}
-    assert self.location in select_dim.keys()
-    self.dim    = select_dim[self.location]
-    assert self.dim in [0,2,3],"[MAIA] Error : dimensions 0 and 1 not yet implemented"
+    select_dim  = {'Vertex':0, 'EdgeCenter':1, 'FaceCenter':2, 'CellCenter':3}
+    assert location in select_dim.keys()
+    self.dim    = select_dim[location]
+    assert self.dim in [0,2,3], "[MAIA] Error : dimensions 0 and 1 not yet implemented"
     
     # ExtractPart CGNSTree
-    self.extract_part_tree = PT.new_CGNSTree()
-    self.extract_part_base = PT.new_CGNSBase('Base', cell_dim=self.dim, phy_dim=3, parent=self.extract_part_tree)
+    extracted_tree = PT.new_CGNSTree()
+    extracted_base = PT.new_CGNSBase('Base', cell_dim=self.dim, phy_dim=3, parent=extracted_tree)
 
     # Compute extract part of each domain
     for i_domain, part_zones in enumerate(part_tree_per_dom):
       point_list_domain = list()
       for i_part,part_zone in enumerate(part_zones):
-        point_list_domain.append( self.point_list[i_domain][i_part]
-                                - starting_elt(part_zone,self.location) +1 )
+        point_list_domain.append(point_list[i_domain][i_part] - starting_elt(part_zone, location) + 1)
       
       # extract part from point list
-      extract_part_zone,etb = extract_part_one_domain(part_zones, point_list_domain, self.dim, comm,
-                                                         equilibrate=self.equilibrate,
-                                                         graph_part_tool=self.graph_part_tool,
-                                                         put_pe=self.put_pe)
+      extracted_zone, etb = extract_part_one_domain(part_zones, point_list_domain, self.dim, comm,
+                                                    equilibrate=equilibrate,
+                                                    graph_part_tool=graph_part_tool,
+                                                    put_pe=self.put_pe)
       self.exch_tool_box.append(etb)
-      PT.add_child(self.extract_part_base, extract_part_zone)
-# ---------------------------------------------------------------------------------------
-  
+      PT.add_child(extracted_base, extracted_zone)
+    self.extracted_tree = extracted_tree
 
-# ---------------------------------------------------------------------------------------
-  def exchange_fields(self, fs_container, comm) :
-    _exchange_field(self.part_tree, self.extract_part_tree, self.exch_tool_box, fs_container, comm)
-    return None
-# ---------------------------------------------------------------------------------------
+  def exchange_fields(self, fs_container):
+    # Get zones by domains (only one domain for now)
+    part_tree_per_dom = dist_from_part.get_parts_per_blocks(self.part_tree, self.comm).values()
 
+    # Get zone from extractpart
+    extracted_zones = PT.get_all_Zone_t(self.extracted_tree)
+    assert len(extracted_zones) <= 1
+    extracted_zone = extracted_zones[0]
 
-# ---------------------------------------------------------------------------------------
-  def save_parent_num(self) :
-    # Placement in Extract_part_Tree
-    print("Not implemented yet")
-    return None
-# ---------------------------------------------------------------------------------------
+    # Loop over domains
+    for i_domain, part_zones in enumerate(part_tree_per_dom):
+      exchange_field_one_domain(part_zones, extracted_zone, self.exch_tool_box[i_domain], \
+          fs_container, self.comm)
 
-
-# ---------------------------------------------------------------------------------------
   def get_extract_part_tree(self) :
-    return self.extract_part_tree 
-# ---------------------------------------------------------------------------------------
-  
-# ---------------------------------------------------------------------------------------
+    return self.extracted_tree
 # =======================================================================================
 
 
@@ -263,27 +251,6 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, container
 # ---------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 
-def _exchange_field(part_tree, part_tree_ep, ptp,containers_name, comm) :
-  """
-  Exchange field between part_tree and part_tree_ep
-  for exchange vol field 
-  """
-
-  # Get zones by domains
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-
-  # Check : monodomain
-  assert(len(part_tree_per_dom)==1)
-  assert(len(part_tree_per_dom)==len(ptp))
-
-  # Get zone from extractpart
-  part_zone_ep = PT.get_all_Zone_t(part_tree_ep)
-  assert(len(part_zone_ep)<=1)
-  part_zone_ep = part_zone_ep[0]
-
-  # Loop over domains
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
-    exchange_field_one_domain(part_zones, part_zone_ep, ptp[i_domain], containers_name, comm)
 
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -504,7 +471,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   extractor = create_extractor_from_zsr(part_tree, zsr_name, comm)
 
   if containers_name is not None:
-    extractor.exchange_fields(containers_name, comm)
+    extractor.exchange_fields(containers_name)
 
   return extractor.get_extract_part_tree()
 
