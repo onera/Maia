@@ -384,7 +384,7 @@ def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
-  """ Create a slice from the provided plane equation :math:`ax + bc + cz - d = 0`
+  """ Create a slice from the provided plane equation :math:`ax + by + cz - d = 0`
   on the input partitioned tree.
 
   Slice is returned as an independant (2d) partitioned CGNSTree. See :func:`iso_surface`

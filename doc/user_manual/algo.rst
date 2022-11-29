@@ -39,8 +39,6 @@ Geometry transformations
 .. autofunction:: maia.algo.dist.merge_connected_zones
 .. autofunction:: maia.algo.dist.conformize_jn_pair
 
-Mesh extractions
-^^^^^^^^^^^^^^^^
 ..
   from .extract_surf_dmesh     import extract_surf_tree_from_bc
 
@@ -51,15 +49,27 @@ Partitioned algorithms
 
 The following algorithms applies on maia partitioned trees.
 
+Geometric calculations
+^^^^^^^^^^^^^^^^^^^^^^
+
 .. autofunction:: maia.algo.part.compute_cell_center
 .. autofunction:: maia.algo.part.compute_face_center
 .. autofunction:: maia.algo.part.compute_wall_distance
 .. autofunction:: maia.algo.part.localize_points
 .. autofunction:: maia.algo.part.find_closest_points
-.. autofunction:: maia.algo.part.interpolate_from_part_trees
+
+Mesh extractions
+^^^^^^^^^^^^^^^^
+
 .. autofunction:: maia.algo.part.iso_surface
 .. autofunction:: maia.algo.part.plane_slice
 .. autofunction:: maia.algo.part.spherical_slice
+.. autofunction:: maia.algo.part.extract_part_from_zsr
+
+Interpolations
+^^^^^^^^^^^^^^
+
+.. autofunction:: maia.algo.part.interpolate_from_part_trees
 
 .. _user_man_gen_algo:
 

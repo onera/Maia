@@ -139,6 +139,31 @@ def test_compute_spherical_slice():
   assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is not None
   #compute_spherical_slice@end
 
+def test_extract_from_zsr():
+  # TODO : Remplacer par un exemple volumique (ou vtx) si on
+  # a un autre exemple qui extrait une BC
+  #extract_from_zsr@start
+  from   mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils        import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+
+  # Create a 2d ZoneSubRegion on procs knowing the BC
+  for part_zone in PT.get_all_Zone_t(part_tree):
+    if PT.get_node_from_name_and_label(part_zone, 'amont', 'BC_t') is not None:
+      PT.new_ZoneSubRegion(name='ZoneSubRegion', bc_name="amont", parent=part_zone)
+
+  extracted_tree = maia.algo.part.extract_part_from_zsr(part_tree, \
+      'ZoneSubRegion', MPI.COMM_WORLD, containers_name=["WallDistance"])
+
+  assert maia.pytree.get_node_from_name(extracted_tree, "WallDistance") is not None
+  #extract_from_zsr@end
+
 def test_compute_elliptical_slice():
   #compute_elliptical_slice@start
   from mpi4py import MPI
