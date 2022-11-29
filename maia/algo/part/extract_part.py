@@ -95,6 +95,7 @@ class Extractor:
 def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, container_name, comm) :
 
   loc_correspondance = {'Vertex'    : 'Vertex',
+                        'FaceCenter': 'Cell',
                         'CellCenter': 'Cell'}
 
   # Part 1 : EXTRACT_PART
@@ -116,13 +117,14 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, container
 
   gridLocation = PT.Subset.GridLocation(mask_container)
   partial_field = PT.get_child_from_name(mask_container, 'PointList') is not None
-  assert gridLocation in ['Vertex', 'CellCenter']
+  assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
 
   # --- FlowSolution node def by zone -------------------------------------------------
   if PT.get_label(mask_container) == 'FlowSolution_t':
     FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
   elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
     FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
+    # FS_ep = PT.new_FlowSolution(container_name, loc="CellCenter", parent=part_zone_ep)
   else:
     raise TypeError
   

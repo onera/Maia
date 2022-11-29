@@ -65,7 +65,9 @@ def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
   in_extract_part = function(*variables)
   
   # Beware of elt numerotation for PointList
-  loc_elt_range  = {'Vertex':'NGonElements/ElementRange', 'CellCenter':'NFaceElements/ElementRange'}
+  loc_elt_range  = {'Vertex'    : None,
+                    'FaceCenter':'NGonElements/ElementRange',
+                    'CellCenter':'NFaceElements/ElementRange'}
   if location=='Vertex': starting_range = 1
   else                 : starting_range = PT.get_node_from_path(zone,loc_elt_range[location])[1][0]
   
@@ -83,7 +85,7 @@ def initialize_zsr_by_eq(zone, variables, function, location, sub_comm):
 
 
 # ---------------------------------------------------------------------------------------
-def generate_test_tree(n_vtx,n_part,sub_comm):
+def generate_test_tree(n_vtx,n_part,location,sub_comm):
 
   # --- CUBE GEN AND PART ---------------------------------------------------------------
   # Cube generation
@@ -130,23 +132,29 @@ def generate_test_tree(n_vtx,n_part,sub_comm):
       PT.new_DataArray(name, fld_cc, parent=FS_CC)
       PT.new_DataArray(name, fld   , parent=FS_NC)
 
-    cell_center = GEO.compute_cell_center(zone)
-    ccx = cell_center[0::3]
-    ccy = cell_center[1::3]
-    ccz = cell_center[2::3]
-    point_list_cell = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, 'CellCenter',sub_comm)
+    if   location=="CellCenter":
+      path_elt_rge = 'NFaceElements/ElementRange'
+      cell_center = GEO.compute_cell_center(zone)
+      ccx = cell_center[0::3]
+      ccy = cell_center[1::3]
+      ccz = cell_center[2::3]
+    elif location=="FaceCenter":
+      path_elt_rge  = 'NGonElements/ElementRange'
+      ccx, ccy, ccz = compute_face_center(zone)
+    else:
+      sys.exit()
+    point_list_loc = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location,sub_comm)
     
     # Get elt range for good local numbering
-    path_elt_rge = 'NFaceElements/ElementRange'
     elt_range    = PT.get_node_from_path(zone,path_elt_rge)[1]
     
     # Put fld in ZSR
     zsr_node = PT.get_node_from_name(zone,'ZSR_FlowSolution')
-    PT.new_DataArray("ZSR_ccx", ccx[point_list_cell[0]-elt_range[0]], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccy", ccy[point_list_cell[0]-elt_range[0]], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccz", ccz[point_list_cell[0]-elt_range[0]], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccx", ccx[point_list_loc[0]-elt_range[0]], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccy", ccy[point_list_loc[0]-elt_range[0]], parent=zsr_node)
+    PT.new_DataArray("ZSR_ccz", ccz[point_list_loc[0]-elt_range[0]], parent=zsr_node)
 
-    point_list.append(point_list_cell[0])
+    point_list.append(point_list_loc[0])
   # ---------------------------------------------------------------------------------------
 
   return part_tree, point_list
@@ -171,7 +179,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
   # --- GENERATE TREE -------------------------------------------------------------------
   n_vtx  = 6
   n_part = 2
-  part_tree, _ = generate_test_tree(n_vtx,n_part,sub_comm)
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',sub_comm)
   # ------------------------------------------------------------------------------------- 
 
   # --- EXTRACT PART --------------------------------------------------------------------
@@ -214,7 +222,7 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
   # --- GENERATE TREE -------------------------------------------------------------------
   n_vtx  = 6
   n_part = 2
-  part_tree, _ = generate_test_tree(n_vtx,n_part,sub_comm)
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',sub_comm)
   # ------------------------------------------------------------------------------------- 
 
   # --- EXTRACT PART --------------------------------------------------------------------
@@ -260,7 +268,7 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
   # --- GENERATE TREE -------------------------------------------------------------------
   n_vtx  = 6
   n_part = 2
-  part_tree, point_list = generate_test_tree(n_vtx,n_part,sub_comm)
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,'CellCenter',sub_comm)
   # ------------------------------------------------------------------------------------- 
 
   # --- EXTRACT PART --------------------------------------------------------------------
@@ -292,3 +300,47 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 
+
+
+
+# =======================================================================================
+# ---------------------------------------------------------------------------------------
+# @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@mark_mpi_test([1,3])
+def test_extract_face_from_point_list_U(graph_part_tool, sub_comm, write_output):
+
+  # --- GENERATE TREE -------------------------------------------------------------------
+  n_vtx  = 6
+  n_part = 2
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,'FaceCenter',sub_comm)
+  # -------------------------------------------------------------------------------------
+  print(point_list)
+  # --- EXTRACT PART --------------------------------------------------------------------
+  extractor = EXP.Extractor(part_tree, [point_list], "FaceCenter", sub_comm,
+                            # equilibrate=1,
+                            # graph_part_tool=graph_part_tool,
+                           )  
+  extractor.exchange_fields(['FlowSolution_NC',"ZSR_FlowSolution"])
+  part_tree_ep = extractor.get_extract_part_tree()
+  # -------------------------------------------------------------------------------------
+
+  # -------------------------------------------------------------------------------------
+  # Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
+
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_face_from_point_list.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_face_from_point_list.cgns'), sub_comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
+
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # -------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
