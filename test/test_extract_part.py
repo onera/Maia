@@ -26,8 +26,8 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def plane_eq(x,y,z) :
-  peq1 = [ 1., 0., 0., 0.5]
-  peq2 = [-1., 0., 0., 0.5]
+  peq1 = [ 1., 0., 0., 0.6]
+  peq2 = [-1., 0., 0., 0.6]
   behind_plane1 = x*peq1[0] + y*peq1[1] + z*peq1[2] - peq1[3] < 0.
   behind_plane2 = x*peq2[0] + y*peq2[1] + z*peq2[2] - peq2[3] < 0.
   between_planes = np.logical_and(behind_plane1, behind_plane2)
@@ -134,19 +134,21 @@ def generate_test_tree(n_vtx,n_part,location,sub_comm):
 
     if   location=="CellCenter":
       path_elt_rge = 'NFaceElements/ElementRange'
+      elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
       cell_center = GEO.compute_cell_center(zone)
       ccx = cell_center[0::3]
       ccy = cell_center[1::3]
       ccz = cell_center[2::3]
     elif location=="FaceCenter":
       path_elt_rge  = 'NGonElements/ElementRange'
+      elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
       ccx, ccy, ccz = compute_face_center(zone)
+    elif location=="Vertex":
+      ccx, ccy, ccz = CX, CY, CZ
+      elt_range     = [1]
     else:
       sys.exit()
     point_list_loc = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location,sub_comm)
-    
-    # Get elt range for good local numbering
-    elt_range    = PT.get_node_from_path(zone,path_elt_rge)[1]
     
     # Put fld in ZSR
     zsr_node = PT.get_node_from_name(zone,'ZSR_FlowSolution')
@@ -337,6 +339,56 @@ def test_extract_face_from_point_list_U(graph_part_tool, sub_comm, write_output)
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_face_from_point_list.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
+
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # -------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# =======================================================================================
+
+
+
+
+
+# =======================================================================================
+# ---------------------------------------------------------------------------------------
+# @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@mark_mpi_test([1,3])
+def test_extract_vertex_from_zsr_U(graph_part_tool, sub_comm, write_output):
+
+  # --- GENERATE TREE -------------------------------------------------------------------
+  n_vtx  = 6
+  n_part = 2
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,'Vertex',sub_comm)
+  # -------------------------------------------------------------------------------------
+
+  # # --- EXTRACT PART --------------------------------------------------------------------
+  part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", sub_comm,
+                                            # equilibrate=1,
+                                            # graph_part_tool=graph_part_tool,
+                                            containers_name=['FlowSolution_NC',"ZSR_FlowSolution"]
+                                            )
+  # Sortie VTK for visualisation
+  # part_zones = PT.get_all_Zone_t(part_tree_ep)
+  # for i_zone, part_zone in enumerate(part_zones):
+  #   write_part_zone_vtx(i_zone,part_zone,sub_comm)
+  # Mio.write_trees(part_tree_ep,'OUT_TEST_VERTEX/part_tree_extract.cgns',sub_comm)
+  # -------------------------------------------------------------------------------------
+
+  # -------------------------------------------------------------------------------------
+  # Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
+
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_vertex_from_zsr.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_vertex_from_zsr.cgns'), sub_comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')                , sub_comm)
 
   # Check that bases are similar (because CGNSLibraryVersion is R4)
   assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],

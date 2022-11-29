@@ -17,8 +17,22 @@ from maia.algo.part.extract_boundary import compute_gnum_from_parent_gnum
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 
-LOC_TO_DIM = {'Vertex':0, 'EdgeCenter':1, 'FaceCenter':2, 'CellCenter':3}
+LOC_TO_DIM   = {'Vertex':0, 'EdgeCenter':1, 'FaceCenter':2, 'CellCenter':3}
+DIMM_TO_DIMF = { 0: {'Vertex':'Vertex', 'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
+               # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
+               2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter', 'CellCenter':None},
+               3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
+def local_pl_offset(part_zone, dim):
+  # Works only for ngon / nface 3D meshes
+  if dim == 3:
+    nface = PT.Zone.NFaceNode(part_zone)
+    return PT.Element.Range(nface)[0] - 1
+  if dim == 2:
+    ngon = PT.Zone.NGonNode(part_zone)
+    return PT.Element.Range(ngon)[0] - 1
+  else:
+    return 0
 def local_pl_offset(part_zone, dim):
   # Works only for ngon / nface 3D meshes
   if dim == 3:
@@ -80,7 +94,7 @@ class Extractor:
     for container_name in fs_container:
       # Loop over domains
       for i_domain, part_zones in enumerate(part_tree_per_dom):
-        exchange_field_one_domain(part_zones, extracted_zone, self.exch_tool_box[i_domain], \
+        exchange_field_one_domain(part_zones, extracted_zone, self.dim, self.exch_tool_box[i_domain], \
             container_name, self.comm)
 
   def get_extract_part_tree(self) :
@@ -92,7 +106,7 @@ class Extractor:
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, container_name, comm) :
+def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box, container_name, comm) :
 
   loc_correspondance = {'Vertex'    : 'Vertex',
                         'FaceCenter': 'Cell',
@@ -121,9 +135,9 @@ def exchange_field_one_domain(part_zones, part_zone_ep, exch_tool_box, container
 
   # --- FlowSolution node def by zone -------------------------------------------------
   if PT.get_label(mask_container) == 'FlowSolution_t':
-    FS_ep = PT.new_FlowSolution(container_name, loc=gridLocation, parent=part_zone_ep)
+    FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=part_zone_ep)
   elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
-    FS_ep = PT.new_ZoneSubRegion(container_name, loc=gridLocation, parent=part_zone_ep)
+    FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=part_zone_ep)
     # FS_ep = PT.new_FlowSolution(container_name, loc="CellCenter", parent=part_zone_ep)
   else:
     raise TypeError
