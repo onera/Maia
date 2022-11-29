@@ -9,6 +9,19 @@ from maia.utils    import np_utils, layouts, py_utils
 
 import Pypdm.Pypdm as PDM
 
+familyname_query = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+
+def copy_referenced_families(source_base, target_base):
+  """ Copy from source_base to target_base the Family_t nodes referenced
+  by a (Additional)FamilyName (at zone level) in the target base """
+  copied_families = []
+  for fam_node in PT.get_children_from_predicates(target_base, ['Zone_t', familyname_query]):
+    fam_name = PT.get_value(fam_node)
+    if fam_name not in copied_families:
+      copied_families.append(fam_name)
+      family_node = PT.get_child_from_predicate(source_base, fam_name)
+      PT.add_child(target_base, family_node)
+
 # =======================================================================================
 def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
@@ -239,6 +252,10 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   PT.new_DataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
   PT.new_DataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
 
+  # > FamilyName(s)
+  dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [familyname_query],
+      comm, get_value='leaf')
+
   return iso_part_zone
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -273,6 +290,8 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
 
     iso_part_zone = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
     PT.add_child(iso_part_base,iso_part_zone)
+
+  copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
@@ -353,6 +372,8 @@ def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
   for i_domain, part_zones in enumerate(part_tree_per_dom):
     iso_part_zone = iso_surface_one_domain(part_zones, surface_type, plane_eq, elt_type, comm)
     PT.add_child(iso_part_base,iso_part_zone)
+
+  copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------

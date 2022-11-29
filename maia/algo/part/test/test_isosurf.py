@@ -11,6 +11,30 @@ from maia.algo.part import isosurf as ISO
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
+def test_copy_referenced_families():
+  source_base = parse_yaml_cgns.to_node(
+  """
+  Base CGNSBase_t:
+    Toto Family_t:
+    Tata Family_t:
+    Titi Family_t:
+  """)
+  target_base = parse_yaml_cgns.to_node(
+  """
+  Base CGNSBase_t:
+    Tyty Family_t: #Already in target tree
+    ZoneA Zone_t:
+      FamilyName FamilyName_t "Toto":
+      AddFamilyName AdditionalFamilyName_t "Tutu": #Not in source tree
+    ZoneB Zone_t:
+      AdditionalFamilyName AdditionalFamilyName_t "Titi":
+  """)
+  ISO.copy_referenced_families(source_base, target_base)
+  assert PT.get_child_from_name(target_base, 'Tyty') is not None
+  assert PT.get_child_from_name(target_base, 'Toto') is not None
+  assert PT.get_child_from_name(target_base, 'Titi') is not None
+  assert PT.get_child_from_name(target_base, 'Tata') is None
+
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("from_api", [False, True])
