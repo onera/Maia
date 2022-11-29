@@ -58,10 +58,12 @@ class Extractor:
     # ExtractPart dimension
     self.dim    = LOC_TO_DIM[location]
     assert self.dim in [0,2,3], "[MAIA] Error : dimensions 0 and 1 not yet implemented"
+    #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
+    cell_dim = 3 if location == 'Vertex' else self.dim 
     
     # ExtractPart CGNSTree
     extracted_tree = PT.new_CGNSTree()
-    extracted_base = PT.new_CGNSBase('Base', cell_dim=self.dim, phy_dim=3, parent=extracted_tree)
+    extracted_base = PT.new_CGNSBase('Base', cell_dim=cell_dim, phy_dim=3, parent=extracted_tree)
 
     # Compute extract part of each domain
     for i_domain, part_zones in enumerate(part_tree_per_dom):
@@ -325,6 +327,9 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   PT.new_DataArray('CoordinateX', cx, parent=extract_grid_coord)
   PT.new_DataArray('CoordinateY', cy, parent=extract_grid_coord)
   PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord)
+
+  if dim == 0:
+    PT.maia.newGlobalNumbering({'Cell' : np.empty(0, dtype=ep_vtx_ln_to_gn.dtype)}, parent=extracted_zone)
 
   # > NGON
   if dim >= 2:

@@ -1,5 +1,5 @@
 CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
-Base CGNSBase_t I4 [0, 3]:
+Base CGNSBase_t I4 [3, 3]:
   Zone Zone_t I4 [[72, 0, 0]]:
     ZoneType ZoneType_t 'Unstructured':
     GridCoordinates GridCoordinates_t:

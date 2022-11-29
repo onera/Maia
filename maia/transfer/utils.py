@@ -42,19 +42,8 @@ def collect_cgns_g_numbering(part_nodes, name, prefix=''):
   An empty array is returned if the partitioned node does not exists
   """
   prefixed = lambda node : PT.get_node_from_path(node, prefix)
-  collected_gnum = list()
-  for part_node in part_nodes:
-    if prefixed(part_node) is None:
-      collected_gnum.append(np.empty(0, pdm_gnum_dtype))
-    else :
-      gnum_n = MT.getGlobalNumbering(prefixed(part_node), name)
-      if gnum_n is None:
-        collected_gnum.append(np.empty(0, pdm_gnum_dtype))
-      else:
-        collected_gnum.append(PT.get_value(gnum_n))
-  return collected_gnum
-  # return [np.empty(0, pdm_gnum_dtype) if prefixed(part_node) is None else \
-  #     PT.get_value(MT.getGlobalNumbering(prefixed(part_node), name)).astype(pdm_gnum_dtype) for part_node in part_nodes]
+  return [np.empty(0, pdm_gnum_dtype) if prefixed(part_node) is None else \
+      PT.get_value(MT.getGlobalNumbering(prefixed(part_node), name)).astype(pdm_gnum_dtype) for part_node in part_nodes]
 
 def create_all_elt_g_numbering(p_zone, dist_elts):
   """
