@@ -203,7 +203,7 @@ def recover_dist_tree(part_tree, comm):
   # > Discover partitioned zones to build dist_tree structure
   discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=['Family_t'])
   discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\
-                               child_list = ['ZoneType_t'],
+                               child_list = ['ZoneType_t', 'FamilyName_t', 'AdditionalFamilyName_t'],
                                merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
 
   for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
