@@ -1,26 +1,8 @@
-import numpy              as np
-import Pypdm.Pypdm        as PDM
-
 import maia.pytree      as PT
 import maia.pytree.maia as MT
-from maia.utils.parallel import utils as par_utils
-from maia.transfer       import utils as te_utils
-
-def dist_to_part(partial_distri, dist_data, ln_to_gn_list, comm):
-  """
-  Helper function calling PDM.BlockToPart
-  """
-  pdm_distrib = par_utils.partial_to_full_distribution(partial_distri, comm)
-
-  part_data = dict()
-  for data_name in dist_data:
-    npy_type = dist_data[data_name].dtype
-    part_data[data_name] = [np.empty(ln_to_gn.shape[0], dtype=npy_type) for ln_to_gn in ln_to_gn_list]
-
-  BTP = PDM.BlockToPart(pdm_distrib, comm, ln_to_gn_list, len(ln_to_gn_list))
-  BTP.BlockToPart_Exchange(dist_data, part_data)
-
-  return part_data
+from maia.utils    import par_utils
+from maia.transfer import utils     as te_utils,\
+                          protocols as EP
 
 def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   """
@@ -38,7 +20,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
 
   vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
-  part_data = dist_to_part(distribution_vtx, dist_data, vtx_lntogn_list, comm)
+  part_data = EP.block_to_part(dist_data, distribution_vtx, vtx_lntogn_list, comm)
 
   for ipart, part_zone in enumerate(part_zones):
     part_gc = PT.new_node('GridCoordinates', 'GridCoordinates_t', parent=part_zone)
@@ -75,7 +57,7 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
     dist_data = {field : PT.get_child_from_name(d_sol, field)[1] for field in fields}
 
     #Exchange
-    part_data = dist_to_part(distribution, dist_data, lntogn_list, comm)
+    part_data = EP.block_to_part(dist_data, distribution, lntogn_list, comm)
 
     for ipart, part_zone in enumerate(part_zones):
       #Skip void flow solution (can occur with point lists)
@@ -134,7 +116,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
         dist_data = {data_path : PT.get_node_from_path(d_dataset, data_path)[1] for data_path in data_paths}
 
         #Exchange
-        part_data = dist_to_part(distribution, dist_data, lngn_list, comm)
+        part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
 
         #Put part data in tree
         for ipart, part_zone in enumerate(part_zones):
@@ -172,7 +154,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
     dist_data = {field : PT.get_child_from_name(d_zsr, field)[1] for field in fields}
 
     #Exchange
-    part_data = dist_to_part(distribution, dist_data, lngn_list, comm)
+    part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
 
     #Put part data in tree
     for ipart, part_zone in enumerate(part_zones):

@@ -4,7 +4,7 @@ import numpy          as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils import py_utils, np_utils
+from maia.utils import py_utils, np_utils, as_pdm_gnum
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
@@ -68,7 +68,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   for i_dim, elts in enumerate(sorted_elts_by_dim):
     elt_pdm_types = np.array([MT.pdm_elts.element_pdm_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)
     elt_lengths   = np.array([to_elmt_size(e) for e in elts], dtype=np.int32)
-    elmts_connectivities = [PT.get_child_from_name(e, "ElementConnectivity")[1] for e in elts]
+    elmts_connectivities = [as_pdm_gnum(PT.get_child_from_name(e, "ElementConnectivity")[1]) for e in elts]
     dmesh_nodal.set_sections(MT.pdm_elts.elements_dim_to_pdm_kind[i_dim], elmts_connectivities, elt_pdm_types, elt_lengths)
 
   # Boundaries

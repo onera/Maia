@@ -11,12 +11,11 @@ from maia.factory      import dcube_generator as DCG
 from maia.algo.part import point_cloud_utils as PCU
 
 def as_partitioned(zone):
-  #On partitions, element are supposed to be I4
-  for elt_node in PT.iter_children_from_label(zone, 'Elements_t'):
-    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
-      node = PT.get_child_from_name(elt_node, name)
-      node[1] = node[1].astype(np.int32)
-  PT.rm_nodes_from_name(zone, ':CGNS#Distribution')
+  PT.rm_nodes_from_name(zone, ":CGNS#Distribution")
+  predicate = lambda n : PT.get_label(n) in ['Zone_t', 'DataArray_t', 'IndexArray_t', 'IndexRange_t'] \
+      and PT.get_value(n).dtype == np.int64
+  for array in PT.iter_nodes_from_predicate(zone, predicate, explore='deep'):
+    array[1] = array[1].astype(np.int32)
 
 @mark_mpi_test(1)
 def test_get_zone_ln_to_gn_from_loc(sub_comm):

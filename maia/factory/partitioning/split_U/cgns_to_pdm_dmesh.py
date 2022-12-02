@@ -4,7 +4,7 @@ from Pypdm.Pypdm import DistributedMesh
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils import np_utils, layouts
+from maia.utils import np_utils, layouts, as_pdm_gnum
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 #from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
@@ -18,12 +18,12 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
   ngon_first = PT.Element.Range(ngon_node)[0] == 1
-  dface_vtx = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1].astype(pdm_gnum_dtype, copy=False)
-  ngon_pe   = PT.get_child_from_name(ngon_node, 'ParentElements'     )[1].astype(pdm_gnum_dtype, copy=False)
-  ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1].astype(pdm_gnum_dtype, copy=False)
+  dface_vtx = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1])
+  ngon_pe   = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ParentElements'     )[1])
+  ngon_eso  = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1])
 
-  distrib_face     = PT.get_value(MT.getDistribution(ngon_node, 'Element')).astype(pdm_gnum_dtype)
-  distrib_face_vtx = PT.get_value(MT.getDistribution(ngon_node, 'ElementConnectivity')).astype(pdm_gnum_dtype)
+  distrib_face     = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'Element')))
+  distrib_face_vtx = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'ElementConnectivity')))
 
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
   dn_cell = distrib_cell[1] - distrib_cell[0]

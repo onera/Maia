@@ -160,27 +160,6 @@ class Test__discover_wrapper:
         == ['newField1', 'newField2', 'newField3', 'newField4']
 
 @mark_mpi_test(2)
-def test_part_to_dist(sub_comm):
-  part_data = dict()
-  expected_dist_data = dict()
-  if sub_comm.Get_rank() == 0:
-    partial_distri = np.array([0, 5, 10], dtype=pdm_dtype)
-    ln_to_gn_list = [np.array([2,4,6,10], dtype=pdm_dtype)]
-    part_data["field"] = [np.array([2., 4., 6., 1000.])]
-    expected_dist_data["field"] = np.array([1., 2., 3., 4., 5.])
-  else:
-    partial_distri = np.array([5, 10, 10], dtype=pdm_dtype)
-    ln_to_gn_list = [np.array([9,7,5,3,1], dtype=pdm_dtype),
-                     np.array([8], dtype=pdm_dtype),
-                     np.array([1], dtype=pdm_dtype)]
-    part_data["field"] = [np.array([9., 7., 5., 3., 1.]), np.array([8.]), np.array([1.])]
-    expected_dist_data["field"] = np.array([6., 7., 8., 9., 1000.])
-
-  dist_data = PTB.part_to_dist(partial_distri, part_data, ln_to_gn_list, sub_comm)
-  assert dist_data["field"].dtype == np.float64
-  assert (dist_data["field"] == expected_dist_data["field"]).all()
-
-@mark_mpi_test(2)
 def test_part_coords_to_dist_coords(sub_comm):
   if sub_comm.Get_rank() == 0:
     dt = """

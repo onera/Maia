@@ -176,3 +176,16 @@ def transform_cart_vectors(vx, vy, vz, translation=np.zeros(3), rotation_center=
   modified_components = transform_cart_matrix(vectors, translation, rotation_center, rotation_angle)
   return (modified_components[0], modified_components[1], modified_components[2])
 
+
+def safe_int_cast(array, dtype):
+  """ Util function to perfom I4 <--> I8 conversions with bounds test """
+  if array.dtype == dtype:
+    return array
+  if array.dtype == np.int32 and dtype == np.int64:
+    return array.astype(np.int64)
+  if array.dtype == np.int64 and dtype == np.int32:
+    if np.abs(array).max(initial=0) <= np.iinfo(np.int32).max:
+      return array.astype(np.int32)
+    else:
+      raise OverflowError("Can not cast array to int32 type")
+  raise ValueError("Incompatibles dtypes for numpy cast")

@@ -1,10 +1,10 @@
 import numpy as np
-import Pypdm.Pypdm as PDM
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils     import np_utils
+from maia.transfer  import protocols as EP
 from maia.transfer  import utils    as te_utils
 from maia.algo.dist import matching_jns_tools as MJT
 
@@ -52,17 +52,16 @@ def get_pl_donor(dist_tree, part_tree, comm):
     part_data['ijoin'].append( gc_id*np.ones(pl.size, dtype=pl.dtype))
     part_stride.append(np.ones(pl.size, np.int32))
 
-  PTB = PDM.PartToBlock(comm, shifted_lntogn, pWeight=None, partN=len(shifted_lntogn),
-                        t_distrib=0, t_post=2)
+  PTB = EP.PartToBlock(None, shifted_lntogn, comm, keep_multiple=True)
   distribution = PTB.getDistributionCopy()
 
   dData = dict()
-  PTB.PartToBlock_Exchange(dData, part_data, pStrid=part_stride)
+  for field_name, p_field in part_data.items():
+    d_stride, d_field = PTB.exchange_field(p_field, part_stride)
+    dData[field_name] = d_field
 
-  BTP = PDM.BlockToPart(distribution, comm, shifted_lntogn, len(shifted_lntogn))
-  part_data = dict()
-  BTP.BlockToPart_Exchange2(dData, part_data, BlkStride=dData['pl#PDM_Stride'])
-
+  # Erase part stride & data
+  part_stride, part_data = EP.block_to_part_strided(d_stride, dData, distribution, shifted_lntogn, comm)
 
   #Post treat
   i_join = 0
@@ -84,7 +83,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     # First pass to count the number of matchs for each entity
     n_matches = np.zeros(pl.size, np.int32)
     for i in range(ini_size):
-      n_candidates = part_data['pl#PDM_Stride'][i_join][i]
+      n_candidates = part_stride[i_join][i]
       myself_found = False
       for ic in range(n_candidates):
         #For debug, check that myself is in list
@@ -113,7 +112,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     w_idx = ini_size #To write at end of array
     r_idx = 0
     for i in range(ini_size):
-      n_candidates = part_data['pl#PDM_Stride'][i_join][i]
+      n_candidates = part_stride[i_join][i]
       first_match = True
       for ic in range(n_candidates):
         if part_data['ijoin'][i_join][r_idx + ic] != gc_id:

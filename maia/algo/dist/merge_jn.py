@@ -2,8 +2,6 @@ from mpi4py import MPI
 import numpy as np
 import itertools
 
-from Pypdm import Pypdm as PDM
-
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -15,8 +13,7 @@ from maia.algo.dist           import matching_jns_tools as MJT
 from maia.algo.dist.merge_ids import merge_distributed_ids
 from maia.algo.dist           import vertex_list as VL
 
-from maia.transfer.dist_to_part import data_exchange as MBTP
-from maia.transfer.part_to_dist import data_exchange as MPTB
+from maia.transfer import protocols as EP
 
 def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
   """
@@ -25,7 +22,7 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
    - remove faces from EC, PE and ESO and update distribution info
    - update ElementConnectivity using vertex old_to_new order
   """
-  face_distri = PT.get_value(MT.getDistribution(ngon, 'Element')).astype(pdm_dtype)
+  face_distri = PT.get_value(MT.getDistribution(ngon, 'Element'))
   pe          = PT.get_node_from_path(ngon, 'ParentElements')[1]
 
 
@@ -35,28 +32,27 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
   # A/ Exchange parent cells before removing :
   # 1. Get the left cell of the faces to delete
   dist_data = {'PE' : pe[:,0]}
-  part_data = MBTP.dist_to_part(face_distri, dist_data, [del_faces], comm)
+  part_data = EP.block_to_part(dist_data, face_distri, [del_faces], comm)
   # 2. Put it in the right cell of the faces to keep
   #TODO : exchange of ref_faces could be avoided using get gnum copy
   part_data['FaceId'] = [ref_faces]
-  dist_data = MPTB.part_to_dist(face_distri, part_data, [ref_faces], comm)
+  dist_data = EP.part_to_block(part_data, face_distri, [ref_faces], comm)
 
   local_faces = dist_data['FaceId'] - face_distri[0] - 1
   assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
   pe[local_faces, 1] = dist_data['PE']
 
   # B/ Update EC, PE and ESO removing some faces
-  part_data = {'FaceIdDonor' : [del_faces]}
-  dist_data = MPTB.part_to_dist(face_distri, part_data, [del_faces], comm)
-  local_faces = dist_data['FaceIdDonor'] - face_distri[0] - 1
+  part_data = [del_faces]
+  dist_data = EP.part_to_block(part_data, face_distri, [del_faces], comm)
+  local_faces = dist_data - face_distri[0] - 1
   RME.remove_ngons(ngon, local_faces, comm)
 
   # C/ Update vertex ids in EC
   ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
-  dist_data = {'OldToNew' : old_to_new_vtx}
-  part_data = MBTP.dist_to_part(vtx_distri_ini, dist_data, [ngon_ec_n[1].astype(pdm_dtype)], comm)
-  assert len(ngon_ec_n[1]) == len(part_data['OldToNew'][0])
-  PT.set_value(ngon_ec_n, part_data['OldToNew'][0])
+  part_data = EP.block_to_part(old_to_new_vtx, vtx_distri_ini, [PT.get_value(ngon_ec_n)], comm)
+  assert len(ngon_ec_n[1]) == len(part_data[0])
+  PT.set_value(ngon_ec_n, part_data[0])
 
 def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
   """
@@ -68,12 +64,11 @@ def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
   """
 
   #Update list of faces
-  dist_data = {'OldToNew' : old_to_new_face}
   nface_ec_n = PT.get_child_from_name(nface, 'ElementConnectivity')
-  part_data = MBTP.dist_to_part(face_distri_ini, dist_data, [np.abs(nface_ec_n[1].astype(pdm_dtype))], comm)
-  assert len(nface_ec_n[1]) == len(part_data['OldToNew'][0])
+  part_data = EP.block_to_part(old_to_new_face, face_distri_ini, [np.abs(nface_ec_n[1])], comm)
+  assert len(nface_ec_n[1]) == len(part_data[0])
   #Get sign of nface_ec to preserve orientation
-  PT.set_value(nface_ec_n, np.sign(nface_ec_n[1]) * part_data['OldToNew'][0])
+  PT.set_value(nface_ec_n, np.sign(nface_ec_n[1]) * part_data[0])
 
   #Update ElementRange
   er = PT.Element.Range(nface)
@@ -97,11 +92,9 @@ def _update_subset(node, pl_new, data_query, comm):
 
   #Add PL, needed for next blocktoblock
   pl_identifier = r'@\PointList/@' # just a string that is unlikely to clash
-  part_data[pl_identifier] = [pl_new.astype(pdm_dtype)]
+  part_data[pl_identifier] = [pl_new]
 
-  #Don't use maia interface since we need a new distribution
-  PTB = PDM.PartToBlock(comm, [pl_new.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=1)
+  PTB = EP.PartToBlock(None, [pl_new], comm)
   PTB.PartToBlock_Exchange(dist_data, part_data)
 
   d_pl_new = PTB.getBlockGnumCopy()
@@ -109,10 +102,7 @@ def _update_subset(node, pl_new, data_query, comm):
   new_distri_full = par_utils.gather_and_shift(len(d_pl_new), comm, pdm_dtype)
   #Result is badly distributed, we can do a BlockToBlock to have a uniform distribution
   ideal_distri      = par_utils.uniform_distribution(new_distri_full[-1], comm)
-  ideal_distri_full = par_utils.partial_to_full_distribution(ideal_distri, comm)
-  dist_data_ideal = dict()
-  BTB = PDM.BlockToBlock(new_distri_full, ideal_distri_full, comm)
-  BTB.BlockToBlock_Exchange(dist_data, dist_data_ideal)
+  dist_data_ideal = EP.block_to_block(dist_data, new_distri_full, ideal_distri, comm)
 
   #Update distribution and size
   MT.newDistribution({'Index' : ideal_distri}, node)
@@ -170,23 +160,22 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
       PT.add_child(zsr, PT.get_node_from_path(zone, PT.getSubregionExtent(zsr, zone) + '/PointList'))
 
   #Get new index for every PL at once
-  all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0].astype(pdm_dtype) for fs in all_nodes]
-  dist_data_pl = {'OldToNew' : old_to_new_face}
-  part_data_pl = MBTP.dist_to_part(entity_distri, dist_data_pl, all_pl_list, comm)
+  all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0] for fs in all_nodes]
+  part_data_pl = EP.block_to_part(old_to_new_face, entity_distri, all_pl_list, comm)
 
   part_offset = 0
   for node_list, data_query in all_nodes_and_queries:
     for node in node_list:
-      _update_subset(node, part_data_pl['OldToNew'][part_offset], data_query, comm)
+      _update_subset(node, part_data_pl[part_offset], data_query, comm)
       part_offset += 1
 
   #For internal jn only, we must update PointListDonor with new face id. Non internal jn reorder the array,
   # but do not apply old_to_new transformation.
   # Note that we will lost symmetry PL/PLD for internal jn, we need a rule to update it afterward
   all_pld = [PT.get_child_from_name(jn, 'PointListDonor') for jn in i_jn_list]
-  updated_pld = MBTP.dist_to_part(entity_distri, dist_data_pl, [pld[1][0].astype(pdm_dtype) for pld in all_pld], comm)
+  updated_pld = EP.block_to_part(old_to_new_face, entity_distri, [pld[1][0] for pld in all_pld], comm)
   for i, pld in enumerate(all_pld):
-    PT.set_value(pld, updated_pld['OldToNew'][i].reshape((1,-1), order='F'))
+    PT.set_value(pld, updated_pld[i].reshape((1,-1), order='F'))
 
   #Cleanup after trick
   for zsr in zsr_list:
@@ -222,11 +211,10 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   managed : GridCoordinates, FlowSolution, DiscreteData)
   and update vertex distribution info
   """
-  vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
+  vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
   pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
-  PTB = PDM.PartToBlock(comm, [vtx_to_remove.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=1, userDistribution=pdm_distrib)
+  PTB = EP.PartToBlock(vtx_distri_ini, [vtx_to_remove], comm)
   local_vtx_to_rmv = PTB.getBlockGnumCopy() - vtx_distri_ini[0] - 1
 
   #Update all vertex entities
@@ -277,8 +265,8 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   assert np.intersect1d(ref_vtx, vtx_to_remove).size == 0
 
   #Get initial distributions
-  face_distri_ini = PT.get_value(MT.getDistribution(ngon, 'Element')).astype(pdm_dtype)
-  vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
+  face_distri_ini = PT.get_value(MT.getDistribution(ngon, 'Element')).copy()
+  vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
 
   old_to_new_face = merge_distributed_ids(face_distri_ini, face_to_remove, ref_faces, comm, True)
   old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, ref_vtx, comm)

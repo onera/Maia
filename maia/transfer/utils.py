@@ -22,9 +22,9 @@ def get_partitioned_zones(part_tree, dist_zone_path):
 def get_cgns_distribution(dist_node, name):
   """
   Return the (partial) distribution array of a distributed zone from
-  its path. Array is converted to pdm gnum_dtype.
+  its path.
   """
-  return PT.get_value(MT.getDistribution(dist_node, name)).astype(pdm_gnum_dtype)
+  return PT.get_value(MT.getDistribution(dist_node, name))
 
 def create_all_elt_distribution(dist_elts, comm):
   """
@@ -32,7 +32,7 @@ def create_all_elt_distribution(dist_elts, comm):
   have if all the Element_t nodes were concatenated
   """
   elt_sections_dn  = [PT.Element.Size(elt) for elt in dist_elts]
-  elt_sections_idx = np_utils.sizes_to_indices(elt_sections_dn, dtype=pdm_gnum_dtype)
+  elt_sections_idx = np_utils.sizes_to_indices(elt_sections_dn)
   return par_utils.uniform_distribution(elt_sections_idx[-1], comm)
 
 def collect_cgns_g_numbering(part_nodes, name, prefix=''):

@@ -1,6 +1,5 @@
 from mpi4py import MPI
 import numpy              as np
-import Pypdm.Pypdm        as PDM
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
@@ -8,7 +7,8 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils     import np_utils, par_utils
-from maia.transfer  import utils    as te_utils
+from maia.transfer  import utils     as te_utils
+from maia.transfer  import protocols as EP
 
 def create_part_pl_gnum_unique(part_zones, node_path, comm):
   """
@@ -59,8 +59,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
       ln_to_gn_list.append(ln_to_gn[part_pl-1])
 
   #Exchange is not needed. We use PTB just to count the element without multiplicity
-  PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
-                        t_distrib=0, t_post=1)
+  PTB = EP.PartToBlock(None, ln_to_gn_list, comm)
 
   # Exchange size of filtered gnum and shift to create a create global numbering
   blk_distri = PTB.getDistributionCopy()
@@ -74,8 +73,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
   blk_stride = np.zeros(blk_distri[i_rank+1] - blk_distri[i_rank], dtype=np.int32)
   blk_stride[blk_gnum - blk_distri[i_rank] - 1] = 1
 
-  BTP = PDM.BlockToPart(blk_distri, comm, ln_to_gn_list, len(ln_to_gn_list))
-  _, part_lngn = BTP.exchange_field(group_gnum, blk_stride)
+  _, part_lngn = EP.block_to_part_strided(blk_stride, group_gnum, blk_distri, ln_to_gn_list, comm)
 
   #Add in partitioned zones
   i_zone = 0
@@ -109,8 +107,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     ln_to_gn_list = [PT.get_node_from_path(part_zone, gn_path)[1] for part_zone in part_zones \
         if PT.get_node_from_path(part_zone, gn_path) is not None]
 
-  PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
-                        t_distrib=0, t_post=1)
+  PTB = EP.PartToBlock(None, ln_to_gn_list, comm)
 
   part_pl_list = []
   for part_zone in part_zones:
@@ -168,7 +165,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
       EC    = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
       part_ec.append(vtx_gnum_l[ipart][EC-1])
     else:
-      part_ec.append(np.empty(0, np.int32))
+      part_ec.append(np.empty(0, pdm_gnum_dtype))
 
   #Get values for proc having no elt
   cst_stride = comm.allreduce(cst_stride, MPI.MAX)
@@ -177,8 +174,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   max_section_gn = comm.allreduce(max_section_gn, MPI.MAX)
 
   # Exchange : for multiple elements (eg. BAR) we take the first received
-  PTB = PDM.PartToBlock(comm, elt_gnum_l, None, len(elt_gnum_l),
-                        t_distrib = 0, t_post = 1)
+  PTB = EP.PartToBlock(None, elt_gnum_l, comm)
   PTBDistribution = PTB.getDistributionCopy()
 
   _, dist_ec = PTB.exchange_field(part_ec, cst_stride)
@@ -241,8 +237,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
   has_pe = comm.allreduce(has_pe, op=MPI.LAND)
   # Init PTB protocol
-  PTB = PDM.PartToBlock(comm, elt_gnum_l, None, len(elt_gnum_l),
-                        t_distrib = 0, t_post = 2)
+  PTB = EP.PartToBlock(None, elt_gnum_l, comm, keep_multiple=True)
   PTBDistribution = PTB.getDistributionCopy()
   n_faceTot = PTBDistribution[n_rank]
 
@@ -343,8 +338,7 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
     part_stride.append(np.diff(ECIdx).astype(np.int32))
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do
-  PTB = PDM.PartToBlock(comm, cell_gnum_l, None, len(cell_gnum_l),
-                        t_distrib = 0, t_post = 0)
+  PTB = EP.PartToBlock(None, cell_gnum_l, comm)
   PTBDistribution = PTB.getDistributionCopy()
 
   d_elt_n, dist_ec = PTB.exchange_field(part_ec, part_stride)

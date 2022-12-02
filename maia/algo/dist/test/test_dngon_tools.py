@@ -16,7 +16,7 @@ def test_pe_to_nface(sub_comm):
   dtype = PT.get_node_from_name(zone, 'ParentElements')[1].dtype
 
   # 2. Creating expected values
-  nface_er_exp  = np.array([37,44], np.int32)
+  nface_er_exp  = np.array([37,44], dtype)
   nface_eso_exp = np.array([0, 6, 12, 18, 24, 30, 36, 42, 48], dtype)
   nface_ec_exp  = np.array([1,5,13,17,25,29,    -17,2,6,21,27,31,
                             -29,3,7,14,18,33,   -31,-18,4,8,22,35,

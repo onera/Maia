@@ -1,8 +1,7 @@
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils import par_utils
+from maia.utils import par_utils, np_utils
 
 def distribute_pl_node(node, comm):
   """
@@ -11,7 +10,7 @@ def distribute_pl_node(node, comm):
   """
   dist_node = PT.deep_copy(node)
   n_elem = PT.Subset.n_elem(dist_node)
-  distri = par_utils.uniform_distribution(n_elem, comm).astype(pdm_dtype)
+  distri = par_utils.uniform_distribution(n_elem, comm)
 
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(dist_node, 'IndexArray_t'):
@@ -58,7 +57,7 @@ def distribute_element_node(node, comm):
   dist_node = PT.deep_copy(node)
 
   n_elem = PT.Element.Size(node)
-  distri = par_utils.uniform_distribution(n_elem, comm).astype(pdm_dtype)
+  distri = par_utils.uniform_distribution(n_elem, comm)
   MT.newDistribution({'Element' : distri}, dist_node)
 
   ec = PT.get_child_from_name(dist_node, 'ElementConnectivity')
@@ -68,7 +67,7 @@ def distribute_element_node(node, comm):
     ec[1] = ec[1][distri_ec[0] : distri_ec[1]]
     eso[1] = eso[1][distri[0]:distri[1]+1]
 
-    MT.newDistribution({'ElementConnectivity' : distri_ec.astype(pdm_dtype)}, dist_node)
+    MT.newDistribution({'ElementConnectivity' : np_utils.safe_int_cast(distri_ec, distri.dtype)}, dist_node)
   else:
     n_vtx = PT.Element.NVtx(node)
     ec[1] = ec[1][n_vtx*distri[0] : n_vtx*distri[1]]
@@ -96,10 +95,10 @@ def distribute_tree(tree, comm, owner=None):
     # > Cell & Vertex distribution
     n_vtx  = PT.Zone.n_vtx(zone)
     n_cell = PT.Zone.n_cell(zone)
-    zone_distri = {'Vertex' : par_utils.uniform_distribution(n_vtx , comm).astype(pdm_dtype),
-                   'Cell'   : par_utils.uniform_distribution(n_cell, comm).astype(pdm_dtype)}
+    zone_distri = {'Vertex' : par_utils.uniform_distribution(n_vtx , comm),
+                   'Cell'   : par_utils.uniform_distribution(n_cell, comm)}
     if PT.Zone.Type(zone) == 'Structured':
-      zone_distri['Face'] = par_utils.uniform_distribution(PT.Zone.n_face(zone), comm).astype(pdm_dtype)
+      zone_distri['Face'] = par_utils.uniform_distribution(PT.Zone.n_face(zone), comm)
 
     MT.newDistribution(zone_distri, zone)
 

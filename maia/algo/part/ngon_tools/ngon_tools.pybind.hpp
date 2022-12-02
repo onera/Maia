@@ -8,15 +8,16 @@
 namespace py = pybind11;
 
 // --------------------------------------------------------------------
+template<typename T>
 inline
-std::tuple<py::array_t<int, py::array::f_style>, py::array_t<int, py::array::f_style>>
-local_pe_to_local_cellface(py::array_t<int, py::array::f_style>& np_pe)
+std::tuple<py::array_t<T, py::array::f_style>, py::array_t<T, py::array::f_style>>
+local_pe_to_local_cellface(py::array_t<T, py::array::f_style>& np_pe)
 {
   int n_face = np_pe.shape()[0];
   auto pe = make_raw_view(np_pe);
 
   // Find number of cells == max of PE
-  int n_cell = std::accumulate(pe, pe+2*n_face, 0, [](auto x, auto y){ return std::max(x,y); });
+  int n_cell = std::accumulate(pe, pe+2*n_face, T(0), [](auto x, auto y){ return std::max(x,y); });
   
   // Count the number of occurences of each cell
   std::vector<int> counts(n_cell+1, 0);
@@ -25,12 +26,12 @@ local_pe_to_local_cellface(py::array_t<int, py::array::f_style>& np_pe)
   }
   
   //Compute eso
-  std::vector<int> eso(n_cell+1, 0);
+  std::vector<T> eso(n_cell+1, 0);
   eso[0] = 0;
   std::partial_sum(counts.begin()+1, counts.end(), eso.begin()+1);
 
   //Allocate ec
-  py::array_t<int, py::array::f_style> np_ec(eso[n_cell]);
+  py::array_t<T, py::array::f_style> np_ec(eso[n_cell]);
   auto ec = make_raw_view(np_ec);
 
 

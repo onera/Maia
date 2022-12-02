@@ -7,7 +7,6 @@ import maia.pytree.maia   as MT
 from maia.pytree.sids import elements_utils as EU
 
 import maia
-from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils import np_utils, par_utils, layouts
 
 def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
@@ -38,7 +37,7 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
       cgns_elmt_name = MT.pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
       distrib   = par_utils.full_to_partial_distribution(section["np_distrib"], comm)
 
-      _erange = np.array([elt_shift, elt_shift+distrib[-1]-1], pdm_gnum_dtype)
+      _erange = np.array([elt_shift, elt_shift+distrib[-1]-1], section["np_connec"].dtype)
       elmt = PT.new_Elements(f"{cgns_elmt_name}.{i_section}", cgns_elmt_name, \
           erange=_erange, econn=section["np_connec"], parent=zone)
       MT.newDistribution({'Element' : distrib}, parent=elmt)
@@ -84,7 +83,7 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   dn_face = dcube_dims['dn_face']
 
   # > For Offset we have to shift to be global
-  eso = distrib_facevtx[0] + dcube_val['dface_vtx_idx'].astype(pdm_gnum_dtype)
+  eso = distrib_facevtx[0] + np_utils.safe_int_cast(dcube_val['dface_vtx_idx'], distrib_face.dtype)
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
   np_utils.shift_nonzeros(pe, distrib_face[-1])

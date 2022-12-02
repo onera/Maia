@@ -3,8 +3,7 @@ import numpy              as     np
 
 import maia.pytree        as PT
 
-from maia                  import npy_pdm_gnum_dtype
-from maia.utils            import np_utils
+from maia.utils            import np_utils, as_pdm_gnum
 from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix, gc_is_reference
 
 def fix_zone_datatype(size_tree, size_data):
@@ -64,14 +63,14 @@ def _enforce_pdm_dtype(tree):
   TODO : find better pattern for the "Subset iterator" and factorize it
   """
   for zone in PT.get_all_Zone_t(tree):
-    zone[1] = zone[1].astype(npy_pdm_gnum_dtype)
+    zone[1] = as_pdm_gnum(zone[1])
     for elmt in PT.iter_children_from_label(zone, 'Elements_t'):
       for name in ['ElementRange', 'ElementConnectivity', 'ElementStartOffset', 'ParentElements']:
         node = PT.get_child_from_name(elmt, name)
         if node:
-          node[1] = node[1].astype(npy_pdm_gnum_dtype)
+          node[1] = as_pdm_gnum(node[1])
     for pl in PT.iter_nodes_from_label(zone, 'IndexArray_t'):
-      pl[1] = pl[1].astype(npy_pdm_gnum_dtype)
+      pl[1] = as_pdm_gnum(pl[1])
    
 def ensure_PE_global_indexing(dist_tree):
   """

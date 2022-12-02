@@ -1,11 +1,7 @@
 import numpy as np
 
-import Pypdm.Pypdm        as PDM
-from maia import npy_pdm_gnum_dtype as pdm_dtype
-
 from maia.utils import np_utils, par_utils
-from maia.transfer.dist_to_part import data_exchange as BTP
-from maia.transfer.part_to_dist import data_exchange as PTB
+from maia.transfer import protocols as EP
 
 def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   """
@@ -17,12 +13,8 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   in old_to_new array
   """
 
-  distri = distri.astype(pdm_dtype)
   # Move data to procs holding ids, merging multiple elements
-  pdm_distrib = par_utils.partial_to_full_distribution(distri, comm)
-
-  PTB = PDM.PartToBlock(comm, [ids.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=1, userDistribution=pdm_distrib)
+  PTB = EP.PartToBlock(distri, [ids], comm)
   dist_ids  = PTB.getBlockGnumCopy()
 
   _, dist_targets = PTB.exchange_field([targets])
@@ -46,7 +38,7 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   # Since the new index of target can be on another proc, we do a (fake) BTP to
   # get the data using target numbering
   dist_data2 = {'OldToNew' : old_to_new}
-  part_data2 = BTP.dist_to_part(distri, dist_data2, [dist_targets.astype(pdm_dtype)], comm)
+  part_data2 = EP.block_to_part(dist_data2, distri, [dist_targets], comm)
 
   marker = -1 if sign_rmvd else 1
   old_to_new[ids_local] = marker * part_data2['OldToNew'][0]

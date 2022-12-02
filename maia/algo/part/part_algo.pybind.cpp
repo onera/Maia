@@ -109,7 +109,9 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("nface_eso").noconvert() = py::none(),
         py::arg("nface_ec").noconvert()  = py::none());
 
-  m.def("local_pe_to_local_cellface", &local_pe_to_local_cellface,
+  m.def("local_pe_to_local_cellface", &local_pe_to_local_cellface<int32_t>,
+        py::arg("local_pe").noconvert());
+  m.def("local_pe_to_local_cellface", &local_pe_to_local_cellface<int64_t>,
         py::arg("local_pe").noconvert());
   m.def("local_cellface_to_local_pe", &local_cellface_to_local_pe,
         py::arg("np_cell_face_idx").noconvert(),

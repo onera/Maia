@@ -7,10 +7,15 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia       import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils import py_utils, np_utils, par_utils
+from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum
 
 from maia.algo.dist             import matching_jns_tools as MJT
-from maia.transfer.dist_to_part import data_exchange      as MBTP
+
+from maia.transfer import protocols as EP
+
+def shifted_eso(ngon):
+  eso = PT.get_node_from_path(ngon, 'ElementStartOffset')[1]
+  return (eso - eso[0]).astype(np.int32, copy=False)
 
 def face_ids_to_vtx_ids(face_ids, ngon, comm):
   """
@@ -21,19 +26,17 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   The offset array indicates to which face the vertices belong.
   Note that vertex ids can appear twice (or more) in vtx_list if they are shared by multiple faces
   """
+  distri_ngon  = PT.get_value(MT.getDistribution(ngon, 'Element'))
 
-  distri_ngon  = PT.get_value(MT.getDistribution(ngon, 'Element')).astype(pdm_dtype)
-
-  pdm_distrib = par_utils.partial_to_full_distribution(distri_ngon, comm)
   dist_data = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
-  b_stride = np.diff(PT.get_child_from_name(ngon, 'ElementStartOffset')[1]).astype(np.int32)
+  b_stride = np.diff(PT.get_child_from_name(ngon, 'ElementStartOffset')[1])
+  b_stride = np_utils.safe_int_cast(b_stride, np.int32)
 
   # Get the vertex associated to the faces in FaceList
-  part_data_pl = dict()
-  BTP = PDM.BlockToPart(pdm_distrib, comm, [face_ids.astype(pdm_dtype)], 1)
-  part_data_stride, part_data = BTP.exchange_field(dist_data, b_stride)
+  p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
+      distri_ngon, [face_ids], comm)
 
-  face_offset_l = np_utils.sizes_to_indices(part_data_stride[0])
+  face_offset_l = np_utils.sizes_to_indices(p_stride[0])
 
   return face_offset_l, part_data[0]
 
@@ -46,7 +49,7 @@ def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm
   for data in PT.iter_children_from_label(grid_coords_node, 'DataArray_t'):
     dist_data[PT.get_name(data)] = data[1]
 
-  part_data = MBTP.dist_to_part(distri_vtx.astype(pdm_dtype), dist_data, [np.asarray(requested_vtx_ids, dtype=pdm_dtype)], comm)
+  part_data = EP.block_to_part(dist_data, distri_vtx, [requested_vtx_ids], comm)
 
   cx, cy, cz = part_data['CoordinateX'][0], part_data['CoordinateY'][0], part_data['CoordinateZ'][0]
 
@@ -65,33 +68,30 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
   _     , _              , pl_vtx_face_d = np_utils.reverse_connectivity(pl_d, face_vtx_idx_pl, face_vtx_pl)
   if faces_to_skip is not None:
     idx_to_extract = np_utils.arange_with_jumps(face_vtx_idx_pl,faces_to_skip)
-    restricted_pl_vtx = np.unique(face_vtx_pl[idx_to_extract]).astype(pdm_dtype)
+    restricted_pl_vtx = np.unique(face_vtx_pl[idx_to_extract])
   else:
-    restricted_pl_vtx = pl_vtx.astype(pdm_dtype)
+    restricted_pl_vtx = pl_vtx
 
   # Exchange to locally have the list of *all* jn faces related to vertex
-  p_stride = np.diff(pl_vtx_face_idx).astype(np.int32)
+  p_stride = [np.diff(pl_vtx_face_idx).astype(np.int32, copy=False)]
 
   part_data = {'vtx_to_face'   : [pl_vtx_face],
                'vtx_to_face_d' : [pl_vtx_face_d]}
 
-  PTB = PDM.PartToBlock(comm, [pl_vtx.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=2)
+  PTB = EP.PartToBlock(None, [pl_vtx], comm, keep_multiple=True)
   dist_data = dict()
-  PTB.PartToBlock_Exchange(dist_data, part_data, [p_stride])
+  for field_name, p_field in part_data.items():
+    d_stride, d_field = PTB.exchange_field(p_field, p_stride)
+    dist_data[field_name] = d_field
 
 
   #Recreate stride for all vertex
   first, count, total = PTB.getBeginNbEntryAndGlob()
   b_stride = np.zeros(count, np.int32)
-  b_stride[PTB.getBlockGnumCopy() - first - 1] = dist_data['vtx_to_face#PDM_Stride']
+  b_stride[PTB.getBlockGnumCopy() - first - 1] = d_stride
 
-  dist_data.pop('vtx_to_face#PDM_Stride')
-  dist_data.pop('vtx_to_face_d#PDM_Stride')
-  part_data = dict()
-
-  BTP = PDM.BlockToPart(PTB.getDistributionCopy(), comm, [restricted_pl_vtx], 1)
-  BTP.BlockToPart_Exchange2(dist_data, part_data, BlkStride=b_stride)
+  p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
+      PTB.getDistributionCopy(), [restricted_pl_vtx], comm)
 
   extended_pl, unique_idx = np.unique(part_data["vtx_to_face"][0], return_index=True)
   extended_pl_d = part_data["vtx_to_face_d"][0][unique_idx]
@@ -270,16 +270,14 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
   Return the array indices of theses faces
   """
   pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
-  pdm_vtx_distrib = par_utils.partial_to_full_distribution(vtx_distri, comm)
-  PTB = PDM.PartToBlock(comm, [pl_face_vtx.astype(pdm_dtype)], pWeight=None, partN=1,
-                        t_distrib=0, t_post=2, userDistribution=pdm_vtx_distrib)
+  PTB = EP.PartToBlock(vtx_distri, [pl_face_vtx], comm, keep_multiple=True)
   block_gnum  = PTB.getBlockGnumCopy()
   vtx_n_occur = PTB.getBlockGnumCountCopy()
 
   vtx_n_occur_full = np.zeros(vtx_distri[1] - vtx_distri[0], np.int32)
   vtx_n_occur_full[block_gnum-vtx_distri[0]-1] = vtx_n_occur
   dist_data = {'n_occur' : vtx_n_occur_full}
-  part_data = MBTP.dist_to_part(vtx_distri.astype(pdm_dtype), dist_data, [pl_face_vtx.astype(pdm_dtype)], comm)
+  part_data = EP.block_to_part(dist_data, vtx_distri, [pl_face_vtx], comm)
 
   #This is the number of total occurence of all the vertices of each face. A face is isolated if each vertex appears
   # (globally) only once ie if this total equal the number of vertices of the face
@@ -303,8 +301,8 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   zone_d = PT.get_node_from_path(dist_tree, PT.getZoneDonorPath(base_name, jn))
 
   ngon_node   = PT.Zone.NGonNode(zone)
-  vtx_distri  = PT.get_value(MT.getDistribution(zone, 'Vertex')).astype(pdm_dtype)
-  face_distri = PT.get_value(MT.getDistribution(ngon_node, 'Element')).astype(pdm_dtype)
+  vtx_distri  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
+  face_distri = PT.get_value(MT.getDistribution(ngon_node, 'Element'))
 
   ngon_node_d   = PT.Zone.NGonNode(zone_d)
   vtx_distri_d  = PT.get_value(MT.getDistribution(zone_d, 'Vertex'))
@@ -318,7 +316,6 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
   dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
 
-  shifted_eso = lambda ng: (PT.get_node_from_path(ng, 'ElementStartOffset')[1] - PT.get_node_from_path(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
   dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
   dface_vtx     = [PT.get_node_from_path(ng, 'ElementConnectivity')[1] for ng in [ngon_node, ngon_node_d]]
 
@@ -345,7 +342,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
 
   if conn_face:
     interface_dn_face  = not_isolated_face_loc.size
-    interface_ids_face = np_utils.interweave_arrays([pl[not_isolated_face_loc],pl_d[not_isolated_face_loc]]).astype(pdm_dtype)
+    interface_ids_face = as_pdm_gnum(np_utils.interweave_arrays([pl[not_isolated_face_loc],pl_d[not_isolated_face_loc]]))
 
     vtx_interfaces = PDM.interface_face_to_vertex(1, #n_interface,
                                                   2,
@@ -374,8 +371,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
     pld_vtx_l.append(pld_vtx_local)
 
   #Final part_to_block will merge gnum from two method and reequilibrate
-  PTB = PDM.PartToBlock(comm, pl_vtx_l, pWeight=[np.ones(pl.size, float) for pl in pl_vtx_l], partN=len(pl_vtx_l),
-                          t_distrib=0, t_post=2)
+  PTB = EP.PartToBlock(None, pl_vtx_l, comm, weight=True, keep_multiple=True)
   pl_vtx = PTB.getBlockGnumCopy()
   _, pld_vtx = PTB.exchange_field(pld_vtx_l, [np.ones(pl.size, np.int32) for pl in pl_vtx_l])
   assert pld_vtx.size == pl_vtx.size
@@ -392,7 +388,6 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
   This function manage several interface at the same time, but will no work if isolated faces
   (requiring geometric treatment) are present.
   """
-  shifted_eso = lambda ng: (PT.get_node_from_path(ng, 'ElementStartOffset')[1] - PT.get_node_from_path(ng, 'ElementStartOffset')[1][0]).astype(np.int32)
 
   # Collect zones data
   zone_to_id = {}
@@ -406,8 +401,8 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
     zone = PT.get_node_from_path(dist_tree, zone_path)
     ngon = PT.Zone.NGonNode(zone)
 
-    face_distri = MT.getDistribution(ngon, 'Element')[1].astype(pdm_dtype)
-    vtx_distri  = MT.getDistribution(zone, 'Vertex')[1].astype(pdm_dtype)
+    face_distri = MT.getDistribution(ngon, 'Element')[1]
+    vtx_distri  = MT.getDistribution(zone, 'Vertex')[1]
 
     dn_vtx.append(vtx_distri[1] - vtx_distri[0])
     dn_face.append(face_distri[1] - face_distri[0])
@@ -426,7 +421,7 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
     pld = PT.get_child_from_name(gc, 'PointListDonor')[1][0]
 
     interface_dn_face.append(pl.size)
-    interface_ids_face.append(np_utils.interweave_arrays([pl,pld]))
+    interface_ids_face.append(as_pdm_gnum(np_utils.interweave_arrays([pl,pld])))
     cur_zone_path = '/'.join(interface_path.split('/')[:2])
     opp_zone_path = PT.getZoneDonorPath(cur_zone_path.split('/')[0], gc)
     interface_dom_face.append((zone_to_id[cur_zone_path], zone_to_id[opp_zone_path]))

@@ -6,13 +6,12 @@ import maia.pytree.sids   as sids
 import maia.pytree.maia   as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils import py_utils, np_utils, par_utils
+from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum
 
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
-from maia.transfer.dist_to_part import data_exchange as MBTP
-from maia.transfer.part_to_dist import data_exchange as MPTB
+from maia.transfer  import protocols as EP
 
 def merge_connected_zones(tree, comm, **kwargs):
   """Detect all the zones connected through 1to1 matching jns and merge them.
@@ -253,9 +252,9 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   for zone in zones:
     for entity in entities:
       if entity == 'Face':
-        distri = MT.getDistribution(sids.Zone.NGonNode(zone), 'Element')[1].astype(pdm_dtype)
+        distri = as_pdm_gnum(MT.getDistribution(sids.Zone.NGonNode(zone), 'Element')[1])
       else:
-        distri = MT.getDistribution(zone, entity)[1].astype(pdm_dtype)
+        distri = as_pdm_gnum(MT.getDistribution(zone, entity)[1])
       blocks_distri_l[entity].append(par_utils.partial_to_full_distribution(distri, comm))
       selected_l[entity].append(np.arange(distri[0], distri[1], dtype=pdm_dtype)+1)
   
@@ -423,11 +422,7 @@ def _equilibrate_data(data, comm, distri=None, distri_full=None):
       distri_full = par_utils.partial_to_full_distribution(distri, comm)
 
   ideal_distri = par_utils.uniform_distribution(distri_full[-1], comm)
-  ideal_distri_full = par_utils.partial_to_full_distribution(ideal_distri, comm)
-
-  BTB = PDM.BlockToBlock(distri_full, ideal_distri_full, comm)
-  dist_data = dict()
-  BTB.BlockToBlock_Exchange(data, dist_data)
+  dist_data = EP.block_to_block(data, distri_full, ideal_distri, comm)
   
   return ideal_distri, dist_data
 
@@ -473,7 +468,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
         except KeyError:
           part_data[path] = [data]
       #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
-      dist_data = MPTB.part_to_dist(distri_ptb, part_data, [pl.astype(pdm_dtype)], comm)
+      dist_data = EP.part_to_block(part_data, distri_ptb, [pl], comm)
 
       stride = np.zeros(distri_ptb[1] - distri_ptb[0], np.int32)
       stride[dist_data['PL'] - distri_ptb[0] - 1] = 1
@@ -498,7 +493,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
     all_datas[data_path] = updated_data
   
   pl_data = all_datas.pop('PL')
-  _, merged_pl = mbm.merge_and_update(mbm, [pl.astype(pdm_dtype) for pl in pl_data], strides)
+  _, merged_pl = mbm.merge_and_update(mbm, [as_pdm_gnum(pl) for pl in pl_data], strides)
   merged_data = {'PointList' : merged_pl}
 
   # For periodic jns of zones to merge, PointListDonor must be transported and updated.
@@ -506,7 +501,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   if PT.get_node_from_name(ref_node, '__maia_jn_update__') is not None:
     opp_dom = PT.get_node_from_name(ref_node, '__maia_jn_update__')[1][0]
     pld_data = all_datas.pop('PointListDonor')
-    block_datas   = [pld.astype(pdm_dtype) for pld in pld_data]
+    block_datas   = [as_pdm_gnum(pld) for pld in pld_data]
     block_domains = [opp_dom*np.ones(pld.size, np.int32) for pld in pld_data]
     merged_data['PointListDonor'] = mbm.merge_and_update(mbm, block_datas, strides, block_domains)[1]
 
@@ -574,13 +569,13 @@ def _merge_ngon(all_mbm, tree, comm):
     dom_id_send = zone_to_id[zone_path_send]
     zone_send = PT.get_node_from_path(tree, zone_path_send)
     ngon_send = sids.Zone.NGonNode(zone_send)
-    face_distri_send = MT.getDistribution(ngon_send, 'Element')[1].astype(pdm_dtype)
+    face_distri_send = MT.getDistribution(ngon_send, 'Element')[1]
     pe_send          =  PT.get_child_from_name(ngon_send, 'UpdatedPE')[1]
     dist_data_send = {'PE' : pe_send[:,0]}
 
     gcs = PT.get_nodes_from_predicate(zone_send, query, depth=2)
     all_pls = [PT.get_child_from_name(gc, 'PointList')[1][0] for gc in gcs]
-    part_data = MBTP.dist_to_part(face_distri_send, dist_data_send, all_pls, comm)
+    part_data = EP.block_to_part(dist_data_send, face_distri_send, all_pls, comm)
     for i, gc in enumerate(gcs):
 
       pld = PT.get_child_from_name(gc, 'PointListDonor')[1][0]
@@ -593,8 +588,8 @@ def _merge_ngon(all_mbm, tree, comm):
       zone_path = sids.getZoneDonorPath(base_n, gc)
       zone = PT.get_node_from_path(tree, zone_path)
       ngon_node = sids.Zone.NGonNode(zone)
-      face_distri = MT.getDistribution(ngon_node, 'Element')[1].astype(pdm_dtype)
-      dist_data = MPTB.part_to_dist(face_distri, part_data_gc, [pld], comm)
+      face_distri = MT.getDistribution(ngon_node, 'Element')[1]
+      dist_data = EP.part_to_block(part_data_gc, face_distri, [pld], comm)
 
       pe      = PT.get_child_from_name(ngon_node, 'UpdatedPE')[1]
       pe_dom  = PT.get_child_from_name(ngon_node, 'PEDomain')[1]
@@ -616,7 +611,7 @@ def _merge_ngon(all_mbm, tree, comm):
     pe_dom = PT.get_child_from_name(ngon_node, 'PEDomain')[1]
 
     ec_l.append(PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1])
-    ec_stride_l.append(np.diff(eso).astype(np.int32))
+    ec_stride_l.append(np_utils.safe_int_cast(np.diff(eso), np.int32))
 
     #We have to detect and remove bnd faces from PE to use PDM stride
     bnd_faces = np.where(pe == 0)[0]
@@ -625,7 +620,7 @@ def _merge_ngon(all_mbm, tree, comm):
     pe_stride_l.append(stride)
     #Also remove 0 from pe and pe_domain
     pe_l.append(np.delete(pe.reshape(-1), 2*bnd_faces+1))
-    pe_dom_l.append(np.delete(pe_dom.reshape(-1), 2*bnd_faces+1).astype(np.int32))
+    pe_dom_l.append(np_utils.safe_int_cast(np.delete(pe_dom.reshape(-1), 2*bnd_faces+1), np.int32))
 
   # Now merge and update
   merged_ec_stri, merged_ec = all_mbm['Face'].merge_and_update(all_mbm['Vertex'], ec_l, ec_stride_l)

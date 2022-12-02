@@ -60,9 +60,9 @@ def test_update_nface(sub_comm):
                   -5, 9, 15, 19, 26, 30, -6, 10, -19, 23, 28, 32, -7, 11, 16, 20, -30, 34, -8, 12, -20, 24, -32, 36]
   eso_full      = np.arange(0, 6*8+1, 6)
 
-  face_distri_ini = par_utils.uniform_distribution(36, sub_comm).astype(pdm_dtype)
-  cell_distri_ini = par_utils.uniform_distribution((3-1)**3, sub_comm).astype(pdm_dtype)
-  cell_distri_ini_e = par_utils.uniform_distribution(6*(3-1)**3, sub_comm).astype(pdm_dtype)
+  face_distri_ini = par_utils.uniform_distribution(36, sub_comm)
+  cell_distri_ini = par_utils.uniform_distribution((3-1)**3, sub_comm)
+  cell_distri_ini_e = par_utils.uniform_distribution(6*(3-1)**3, sub_comm)
   nface = PT.new_NFaceElements(erange = [36+1,36+8],
                                eso    = eso_full[cell_distri_ini[0]:cell_distri_ini[1]+1],
                                ec     = nface_ec_full[cell_distri_ini_e[0]:cell_distri_ini_e[1]])
@@ -87,7 +87,7 @@ def test_update_nface(sub_comm):
 @mark_mpi_test(2)
 def test_update_subset(sub_comm):
   bc = PT.new_BC('BC')
-  bc_distri = par_utils.uniform_distribution(5, sub_comm).astype(pdm_dtype)
+  bc_distri = par_utils.uniform_distribution(5, sub_comm)
   this_rank = slice(bc_distri[0], bc_distri[1])
   bcds   = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
   bcdata = PT.new_child(bcds, 'BCData', 'BCData_t')
@@ -133,7 +133,7 @@ def test_update_cgns_subsets(sub_comm):
   old_to_new_face = np.array(old_to_new_face_f[face_distri_ini[0]:face_distri_ini[1]])
   MJ._update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, 'Base', sub_comm)
 
-  bc_distri = par_utils.uniform_distribution(4, sub_comm).astype(pdm_dtype)
+  bc_distri = par_utils.uniform_distribution(4, sub_comm)
   this_rank = slice(bc_distri[0], bc_distri[1])
   assert (PT.get_node_from_path(zone, 'Zmin/PointList')[1] == [[1,2,3,4][this_rank]]).all()
   assert (PT.get_node_from_path(zone, 'Zmax/PointList')[1] == [[9,10,11,12][this_rank]]).all()

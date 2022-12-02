@@ -34,7 +34,7 @@ def test_filter_vtx_coordinates(sub_comm):
   vtx_coords = PT.get_node_from_label(tree, 'GridCoordinates_t')
   vtx_distri   = PT.get_value(MT.getDistribution(PT.get_all_Zone_t(tree)[0], 'Vertex'))
   if sub_comm.Get_rank() == 1:
-    requested_vtx_ids = [2,6,7,106,3,103,107,102]
+    requested_vtx_ids = np.array([2,6,7,106,3,103,107,102])
     expected_vtx_coords = np.array([[0.25, 0., 0.], [0., 0.25, 0.], [0.25, 0.25, 0.], [0., 0.25, 1.],
                                     [0.5, 0., 0.], [0.5, 0., 1.], [0.25, 0.25, 1.], [0.25, 0., 1.]])
   else:
@@ -122,15 +122,15 @@ def test_search_with_geometry(sub_comm):
   grid_prop = PT.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]})
 
   if sub_comm.Get_rank() == 0:
-    pl_face_vtx_idx = [0,4]
-    pl_face_vtx = [2,6,7,3]
-    pld_face_vtx = [51,55,54,50]
+    pl_face_vtx_idx = np.array([0,4])
+    pl_face_vtx = np.array([2,6,7,3])
+    pld_face_vtx = np.array([51,55,54,50])
   elif sub_comm.Get_rank() == 2:
-    pl_face_vtx_idx = [0,4,8]
-    pl_face_vtx = [11,15,16,12, 13,14,10,9]
-    pld_face_vtx = [64,63,59,60, 61,57,58,62]
+    pl_face_vtx_idx = np.array([0,4,8])
+    pl_face_vtx = np.array([11,15,16,12, 13,14,10,9])
+    pld_face_vtx = np.array([64,63,59,60, 61,57,58,62])
   else:
-    pl_face_vtx_idx = [0]
+    pl_face_vtx_idx = np.zeros(1, np.int32)
     pl_face_vtx = empty
     pld_face_vtx = empty
 

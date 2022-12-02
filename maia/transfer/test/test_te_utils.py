@@ -46,7 +46,6 @@ Zone Zone_t:
   dist_zone = parse_yaml_cgns.to_node(yt)
   zone_distri = utils.get_cgns_distribution(dist_zone, 'Cell')
   bc_distri   = utils.get_cgns_distribution(PT.get_node_from_path(dist_zone, 'ZBC/bc1'), 'Index')
-  assert zone_distri.dtype == bc_distri.dtype == npy_pdm_gnum_dtype
   assert (zone_distri == [1,2,4]).all()
   assert (bc_distri   == [1,4,4]).all()
 

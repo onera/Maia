@@ -72,7 +72,7 @@ def vtx_slab_to_n_faces(vtx_slab, n_vtx):
   # Compute number of vertices and number of edges in each dir (exclude last
   # edge if slab is the end of the block
   n_vertices = np_vtx_slab[:,1] - np_vtx_slab[:,0]
-  n_edges    = n_vertices - (np_vtx_slab[:,1] == n_vtx).astype(int)
+  n_edges    = n_vertices - (np_vtx_slab[:,1] == n_vtx)
 
   return n_face_per_dir(n_vertices, n_edges)
 ###############################################################################
@@ -115,7 +115,7 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_
   counter = 0
 
   for ipr, pr in enumerate(sub_pr_list):
-    inc = 2*(pr[:,0] <= pr[:,1]).astype(int) - 1 #In each direction, 1 if pr[l,0] <= pr[l,1] else - 1
+    inc = 2*(pr[:,0] <= pr[:,1]) - 1 #In each direction, 1 if pr[l,0] <= pr[l,1] else - 1
 
     # Here we build for each direction a looping array range(start, end+1) if pr is increasing
     # or range(start, end-1, -1) if pr is decreasing
@@ -201,11 +201,11 @@ def transform_bnd_pr_size(point_range, input_loc, output_loc):
   size = np.abs(point_range[:,1] - point_range[:,0]) + 1
 
   if input_loc == 'Vertex' and 'Center' in output_loc:
-    size -= (size != 1).astype(int)
+    size -= (size != 1)
   elif 'Center' in input_loc and output_loc == 'Vertex':
     bnd_axis = guess_bnd_normal_index(point_range, input_loc)
     mask = np.arange(point_range.shape[0]) == bnd_axis
-    size += (~mask).astype(int)
+    size += (~mask)
   return size
 ###############################################################################
 

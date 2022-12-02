@@ -3,14 +3,14 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils                  import np_utils, layouts
+from maia.utils                  import np_utils, as_pdm_gnum, layouts
 
 from maia.algo.part.geometry  import compute_cell_center
 
 def _get_zone_ln_to_gn_from_loc(zone, location):
   """ Wrapper to get the expected lngn value """
   _loc = location.replace('Center', '')
-  ln_to_gn = PT.get_value(MT.getGlobalNumbering(zone, _loc)).astype(pdm_gnum_dtype, casting='same_kind', copy=False)
+  ln_to_gn = as_pdm_gnum(PT.get_value(MT.getGlobalNumbering(zone, _loc)))
   return ln_to_gn
 
 def get_point_cloud(zone, location='CellCenter'):

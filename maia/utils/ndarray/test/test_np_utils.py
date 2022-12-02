@@ -407,3 +407,24 @@ class Test_transform_cart_matrix():
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-8)
 
+
+def test_safe_int_cast():
+  array32 = np.random.randint(-10000, 10000, size=25, dtype=np.int32)
+  assert np_utils.safe_int_cast(array32, np.int32) is array32
+  array32_to_64 = np_utils.safe_int_cast(array32, np.int64)
+  assert array32_to_64 is not array32
+  assert np.array_equal(array32_to_64, array32) and array32_to_64.dtype == np.int64
+  with pytest.raises(ValueError):
+    assert np_utils.safe_int_cast(array32, float)
+
+  array64 = np.random.randint(-10000, 10000, size=25, dtype=np.int64)
+  assert np_utils.safe_int_cast(array64, np.int64) is array64
+  array64_to_32 = np_utils.safe_int_cast(array64, np.int32)
+  assert np.array_equal(array64_to_32, array64) and array64_to_32.dtype == np.int32
+
+  array64 = np.random.randint(3000000000, 4000000000, size=25, dtype=np.int64)
+  with pytest.raises(OverflowError):
+    assert np_utils.safe_int_cast(array64, np.int32)
+
+  empty = np.empty(0, np.int64)
+  assert np_utils.safe_int_cast(empty, np.int32).dtype == np.int32

@@ -47,7 +47,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
 
   newsize = PT.get_node_from_name(node, 'PointList')[1].size
   idx_distri = PT.get_value(MT.getDistribution(master, 'Index'))
-  distri = par_utils.gather_and_shift(newsize, comm).astype(idx_distri.dtype)
+  distri = np_utils.safe_int_cast(par_utils.gather_and_shift(newsize, comm), idx_distri.dtype)
   MT.newDistribution({'Index' : distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]}, node)
   return node
 

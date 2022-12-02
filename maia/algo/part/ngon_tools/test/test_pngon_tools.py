@@ -10,7 +10,9 @@ from maia.algo.part  import ngon_tools as NGT
 
 def as_partitioned(zone):
   PT.rm_nodes_from_name(zone, ":CGNS#Distribution")
-  for array in PT.iter_children_from_label(zone, 'DataArray_t'):
+  predicate = lambda n : PT.get_label(n) in ['Zone_t', 'DataArray_t', 'IndexArray_t', 'IndexRange_t'] \
+      and PT.get_value(n).dtype == np.int64
+  for array in PT.iter_nodes_from_predicate(zone, predicate, explore='deep'):
     array[1] = array[1].astype(np.int32)
 
 @mark_mpi_test([1])

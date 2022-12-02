@@ -111,49 +111,6 @@ ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
     Vertex DataArray_t {0} [3,6,6]:
 """.format(dtype)
 
-@mark_mpi_test(2)
-def test_dist_to_part(sub_comm):
-  dist_data = dict()
-  expected_part_data = dict()
-  if sub_comm.Get_rank() == 0:
-    partial_distri = np.array([0, 5, 10], dtype=pdm_dtype)
-    ln_to_gn_list = [np.array([2,4,6,10], dtype=pdm_dtype)]
-    dist_data["field"] = np.array([1., 2., 3., 4., 5.])
-    expected_part_data["field"] = [np.array([2., 4., 6., 1000.])]
-  else:
-    partial_distri = np.array([5, 10, 10], dtype=pdm_dtype)
-    ln_to_gn_list = [np.array([9,7,5,3,1], dtype=pdm_dtype),
-                     np.array([8], dtype=pdm_dtype),
-                     np.array([1], dtype=pdm_dtype)]
-    dist_data["field"] = np.array([6., 7., 8., 9., 1000.])
-    expected_part_data["field"] = [np.array([9., 7., 5., 3., 1.]), np.array([8.]), np.array([1.])]
-
-  part_data = BTP.dist_to_part(partial_distri, dist_data, ln_to_gn_list, sub_comm)
-  assert len(part_data["field"]) == len(ln_to_gn_list)
-  for i_part in range(len(ln_to_gn_list)):
-    assert part_data["field"][i_part].dtype == np.float64
-    assert (part_data["field"][i_part] == expected_part_data["field"][i_part]).all()
-
-@mark_mpi_test(2)
-def test_dist_to_part_with_void(sub_comm):
-  dist_data = dict()
-  expected_part_data = dict()
-  if sub_comm.Get_rank() == 0:
-    partial_distri = np.array([0, 5, 10], dtype=pdm_dtype)
-    ln_to_gn_list = [np.array([10,8], dtype=pdm_dtype)]
-    dist_data["field"] = np.array([1., 2., 3., 4., 5.])
-    expected_part_data["field"] = [np.array([1000., 8.])]
-  else:
-    partial_distri = np.array([5, 10, 10], dtype=pdm_dtype)
-    ln_to_gn_list = list()
-    dist_data["field"] = np.array([6., 7., 8., 9., 1000.])
-    expected_part_data["field"] = list()
-
-  part_data = BTP.dist_to_part(partial_distri, dist_data, ln_to_gn_list, sub_comm)
-  assert len(part_data["field"]) == len(ln_to_gn_list)
-  for i_part in range(len(ln_to_gn_list)):
-    assert part_data["field"][i_part].dtype == np.float64
-    assert (part_data["field"][i_part] == expected_part_data["field"][i_part]).all()
 
 @mark_mpi_test(2)
 def test_dist_coords_to_part_coords_U(sub_comm):

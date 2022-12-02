@@ -1,17 +1,15 @@
-import numpy              as np
-import Pypdm.Pypdm        as PDM
-
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.utils.parallel import utils    as par_utils
-from maia.transfer       import utils    as te_utils
+from maia.utils    import par_utils
+from maia.transfer import utils     as te_utils,\
+                          protocols as EP
 
 from maia.factory.dist_from_part import discover_nodes_from_matching
 from .                           import index_exchange as IPTB
 
 def _lngn_to_distri(lngn_list, comm):
-  ptb = PDM.PartToBlock(comm, lngn_list, pWeight=None, partN=len(lngn_list), t_distrib=0, t_post=1)
+  ptb = EP.PartToBlock(None, lngn_list, comm)
   pdm_distri = ptb.getDistributionCopy()
   return par_utils.full_to_partial_distribution(pdm_distri, comm)
 
@@ -33,19 +31,6 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
         IPTB.create_part_pl_gnum(dist_zone, part_zones, node_path, comm)
       IPTB.part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm)
 
-def part_to_dist(partial_distri, part_data, ln_to_gn_list, comm):
-  """
-  Helper function calling PDM.PartToBlock
-  """
-  pdm_distrib = par_utils.partial_to_full_distribution(partial_distri, comm)
-
-  PTB = PDM.PartToBlock(comm, ln_to_gn_list, pWeight=None, partN=len(ln_to_gn_list),
-                        t_distrib=0, t_post=1, userDistribution=pdm_distrib)
-
-  dist_data = dict()
-  PTB.PartToBlock_Exchange(dist_data, part_data)
-  return dist_data
-
 def part_coords_to_dist_coords(dist_zone, part_zones, comm):
 
   distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
@@ -63,7 +48,7 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm):
       part_data[PT.get_name(coord)].append(flat_data)
 
   # Exchange
-  dist_data = part_to_dist(distribution, part_data, lntogn_list, comm)
+  dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm)
   for coord, array in dist_data.items():
     dist_coord = PT.get_child_from_name(d_grid_co, coord)
     PT.set_value(dist_coord, array)
@@ -105,7 +90,7 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
         part_data[field].append(flat_data)
 
     # Exchange
-    dist_data = part_to_dist(distribution, part_data, lntogn_list, comm)
+    dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_sol, field)
       PT.set_value(dist_field, array)
@@ -174,7 +159,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
       lngn_list.pop(ipart)
 
     # Exchange
-    dist_data = part_to_dist(distribution, part_data, lngn_list, comm)
+    dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_zsr, field)
       PT.set_value(dist_field, array)
@@ -227,7 +212,7 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list.pop(ipart)
 
         #Exchange
-        dist_data = part_to_dist(distribution, part_data, lngn_list, comm)
+        dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm)
         for field, array in dist_data.items():
           dist_field = PT.get_node_from_path(d_dataset, field)
           PT.set_value(dist_field, array)
