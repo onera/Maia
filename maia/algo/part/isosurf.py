@@ -286,7 +286,6 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       flowsol_node = PT.get_child_from_name(part_zone, fs_name)
       field_node   = PT.get_child_from_name(flowsol_node, field_name)
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
-      print('iso_val = ', iso_val)
       field_values.append(PT.get_value(field_node) - iso_val)
 
     iso_part_zone = iso_surface_one_domain(i_domain,part_zones, "FIELD", field_values, elt_type, comm)
@@ -355,7 +354,7 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
+def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
 
   assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
   assert(elt_type     in ["TRI_3","QUAD_4","NGON_n"])
@@ -371,7 +370,7 @@ def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
 
   # Loop over domains : compute isosurf for each
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    iso_part_zone = iso_surface_one_domain(part_zones, surface_type, plane_eq, elt_type, comm)
+    iso_part_zone = iso_surface_one_domain(i_domain, part_zones, surface_type, equation, elt_type, comm)
     PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
