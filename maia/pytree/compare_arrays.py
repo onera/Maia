@@ -1,5 +1,6 @@
 import numpy as np
 from mpi4py import MPI
+import maia.pytree as PT
 
 
 def equal_array_report(x, ref, comm):
@@ -31,7 +32,10 @@ def equal_array_report(x, ref, comm):
         return False, '', ''
 
 def equal_array_comparison(comm = MPI.COMM_SELF):
-  def impl(x, ref):
+  def impl(nodes_stack):
+    node_x,node_ref = nodes_stack[-1]
+    x   = PT.get_value(node_x)
+    ref = PT.get_value(node_ref)
     return equal_array_report(x, ref, comm)
   return impl
 
@@ -78,7 +82,10 @@ def _close_in_relative_norm(x, ref, tol, comm):
         within_tol = (norm_diff/norm_ref) <= tol
 
       else:
-        denorm = True
+        if norm_ref == 0.:
+          denorm = False
+        else:
+          denorm = True
         within_tol = False # when the reference itself is extremely small, require the values to be exactly equal
                       # Notes:
                       #   - more strict than `norm_diff == 0` (rounding effects)
@@ -96,7 +103,7 @@ def _close_in_relative_norm(x, ref, tol, comm):
 def close_in_relative_norm(x, ref, tol, comm):
   return _close_in_relative_norm(x, ref, tol, comm)['within_tol']
 
-def relative_norm_comparison(tol, comm):
+def relative_norm_comparison(tol, comm, n_dim=1):
   def impl(x, ref):
     info = _close_in_relative_norm(x, ref, tol, comm)
 
@@ -105,8 +112,9 @@ def relative_norm_comparison(tol, comm):
     if not info['exact_eq']:
       norm_diff = info['norm_diff']
       norm_ref  = info['norm_ref']
-      sqN = np.sqrt(len(ref))
-      msg = f'mean diff: {norm_diff/sqN:.3e}, mean: {norm_ref/sqN:.3e}, rel error: {norm_diff/norm_ref:.3e}'
+      sqN = np.sqrt(len(ref)/n_dim)
+      with np.errstate(divide='ignore'): # do not warn if `norm_ref == 0.`
+        msg = f'RMS mean diff: {norm_diff/sqN:.3e}, RMS ref mean: {norm_ref/sqN:.3e}, rel error: {norm_diff/norm_ref:.3e}'
       if info['denorm']:
         msg += ' -- WARNING: imprecise comparison because of small reference'
 
@@ -118,10 +126,68 @@ def relative_norm_comparison(tol, comm):
     return info['within_tol'], err_msg, warn_msg
   return impl
 
+
 def field_comparison(tol, comm):
-  def impl(x, ref):
+  def impl(nodes_stack):
+    node_x,node_ref = nodes_stack[-1]
+    x   = PT.get_value(node_x,raw=True)
+    ref = PT.get_value(node_ref,raw=True)
     if x is not None and not isinstance(x,str) and x.dtype.kind == 'f':
       return relative_norm_comparison(tol, comm)(x, ref)
     else:
-      return equal_array_comparison(comm)(x, ref)
+      return equal_array_comparison(comm)(nodes_stack)
   return impl
+
+
+def _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref):
+  x_val   = [PT.get_value(PT.get_node_from_name(x  , tensor_name+suffix)) for suffix in suffixes]
+  ref_val = [PT.get_value(PT.get_node_from_name(ref, tensor_name+suffix)) for suffix in suffixes]
+
+  x_cat   = np.concatenate(x_val)
+  ref_cat = np.concatenate(ref_val)
+
+  return relative_norm_comparison(tol, comm, n_dim=len(suffixes))(x_cat, ref_cat)
+
+def relative_norm_comparison_rank_1(tol, comm, tensor_name, x, ref):
+  suffixes = ['X','Y','Z']
+  return _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref)
+
+def relative_norm_comparison_rank_2(tol, comm, tensor_name, x, ref):
+  suffixes = ['XX','XY','XZ','YX','YY','YZ','ZX','ZY','ZZ']
+  return _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref)
+
+
+def tensor_field_comparison(tol, comm):
+  class impl:
+    @staticmethod
+    def __call__(nodes_stack):
+      node_x,node_ref = nodes_stack[-1]
+      name_x = PT.get_name(node_x)
+
+      x   = PT.get_value(node_x,raw=True)
+      ref = PT.get_value(node_ref,raw=True)
+      if x is not None and not isinstance(x,str) and PT.get_label(node_x) == 'DataArray_t' and x.dtype.kind == 'f':
+        parent_x,parent_ref = nodes_stack[-2]
+        if name_x[-2:-1] == 'XX':
+          tensor_name = name_x[:-2]
+          return relative_norm_comparison_rank_2(tol, comm, tensor_name, parent_x, parent_ref)
+        elif name_x[-1] == 'X' and name_x[-2] != 'Y' and name_x[-2] != 'Z':
+          tensor_name = name_x[:-1]
+          return relative_norm_comparison_rank_1(tol, comm, tensor_name, parent_x, parent_ref)
+        elif name_x[-1] == 'Y' or  name_x[-1] == 'Z':
+          return True, '', '' # Tested within 'X' or 'XX'
+        else:
+          return relative_norm_comparison(tol, comm)(x, ref)
+      else:
+        return equal_array_comparison(comm)(nodes_stack)
+
+    @staticmethod
+    def modify_name(path): # Ugly hack around CGNS being retarded
+      suffixes = ['X','Y','Z']
+      if path[-1] in suffixes:
+        path = path[:-1]
+      # remove a second time in case of a tensor
+      if path[-1] in suffixes:
+        path = path[:-1]
+      return path
+  return impl()

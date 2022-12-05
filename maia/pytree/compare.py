@@ -133,53 +133,66 @@ class same_tree_visitor:
     else:
       return step.into
 
-def value_comparison_report(n0: TreeNode, n1: TreeNode, comp):
+def value_comparison_report(nodes_stack, comp):
   """ Compare the values of two single nodes. Node are considered equal if
   they have
-  - same data type (if type_tol is True, only kind of types are considered equal eg.
+  - same data type (if type_tol is True, only kind of types are considered equal e.g.
     I4 & I8 have not same type, but have same type kind
   - same array len
   - same value for each element, up to the absolute tolerance abs_tol when array kind is floats
   """
+  n0,n1 = nodes_stack[-1]
   v0 = PT.get_value(n0, raw=True)
   v1 = PT.get_value(n1, raw=True)
   if v0 is None and v1 is None:
     return True, '', ''
   else:
     assert v0 is not None and v1 is not None
-    return comp(v0, v1)
+    return comp(nodes_stack)
 
-def diff_nodes(n0, n1, path_list, strict_value_type, value_comp):
-  path =  '/' + '/'.join(path_list) + '/'
+def _zip_path(ns):
+  path = '/'
+  for n0,n1 in ns:
+    name0 = PT.get_name(n0)
+    name1 = PT.get_name(n1)
+    assert name0 == name1
+    path += name0 + '/'
+  return path
+
+def diff_nodes(nodes_stack, strict_value_type, value_comp):
+  n0,n1 = nodes_stack[-1]
+  path = _zip_path(nodes_stack[:-1])
+
   is_ok = False
   warn_report = ''
 
   next_step = step.over
-  next_name = None
   if n0 is None:
     err_report = '> ' + path + PT.get_name(n1) + '\n'
   elif n1 is None:
-    err_report = '< ' + path +  PT.get_name(n0) + '\n'
+    err_report = '< ' + path + PT.get_name(n0) + '\n'
   elif not is_same_name(n0, n1):
     err_report = '< ' + path + PT.get_name(n0) + '\n' \
                + '> ' + path + PT.get_name(n1) + '\n'
 
   else:
     next_step = step.into
-    next_name = PT.get_name(n0)
 
     if not is_same_label(n0,n1):
       err_report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
     elif not is_same_value_type(n0, n1, strict_value_type):
       err_report = path + PT.get_name(n0) + ' -- Value types differ: ' + str(PT.get_value_type(n0)) + ' <> ' + str(PT.get_value_type(n1)) + '\n'
     else:
-      is_ok, err_report, warn_report = value_comparison_report(n0, n1, value_comp)
+      is_ok, err_report, warn_report = value_comparison_report(nodes_stack, value_comp)
+      name = PT.get_name(n0)
+      if hasattr(value_comp,'modify_name'):
+        name = value_comp.modify_name(name)
       if err_report != '':
-        err_report = path + PT.get_name(n0) + ' -- Values differ: ' + err_report + '\n'
+        err_report = path + name + ' -- Values differ: ' + err_report + '\n'
       if warn_report != '':
-        warn_report = path + PT.get_name(n0) + ' -- Values differ: ' + warn_report + '\n'
+        warn_report = path + name + ' -- Values differ: ' + warn_report + '\n'
 
-  return next_step, is_ok, err_report, warn_report, next_name
+  return next_step, is_ok, err_report, warn_report
 
 
 class diff_tree_visitor:
@@ -189,18 +202,13 @@ class diff_tree_visitor:
     self.is_ok = True
     self.err_report = ''
     self.warn_report = ''
-    self.path_list = []
 
-  def pre(self, ns):
-    next_step, is_ok, err_report, warn_report, next_name = diff_nodes(ns[0], ns[1], self.path_list, self.strict_value_type, self.value_comp)
+  def pre(self, nodes_stack):
+    next_step, is_ok, err_report, warn_report = diff_nodes(nodes_stack, self.strict_value_type, self.value_comp)
     self.is_ok = self.is_ok and is_ok
     self.err_report += err_report
     self.warn_report += warn_report
-    self.path_list += [next_name]
     return next_step
-
-  def post(self, ns):
-    self.path_list.pop(-1)
 
 
 def is_same_tree(t1, t2, abs_tol=0, type_tol=False):
@@ -218,7 +226,7 @@ def diff_tree(t1, t2, strict_value_type = True, comp = equal_array_comparison())
   and if the have the same childrens. Children are allowed to appear in a different order.
   """
   v = diff_tree_visitor(strict_value_type, comp)
-  zip_depth_first_search([t1,t2], v)
+  zip_depth_first_search([t1,t2], v, only_nodes=False)
   return v.is_ok, v.err_report, v.warn_report
 
 # --------------------------------------------------------------------------

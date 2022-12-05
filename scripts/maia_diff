@@ -24,7 +24,7 @@ dist_tree_0 = maia.io.file_to_dist_tree(args.file0, comm)
 dist_tree_1 = maia.io.file_to_dist_tree(args.file1, comm)
 
 is_ok, error_report, warning_report = CP.diff_tree(dist_tree_0, dist_tree_1, comp = field_comparison(np.float64(args.tol), comm))
-print('=========== errors =========== \n',error_report)
-print('========== warnings ========== \n',warning_report)
-if not is_ok: 
+print('=========== errors ===========\n'+error_report)
+print('========== warnings ==========\n'+warning_report)
+if not is_ok:
   sys.exit(1)

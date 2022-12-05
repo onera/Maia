@@ -29,8 +29,8 @@ class pytree_adaptor:
     return adjacency_iterator([self.t])
 
 
-def depth_first_search(t,v):
-  return algo_base.depth_first_search(pytree_adaptor(t),v)
+def depth_first_search(t, v, only_nodes=True):
+  return algo_base.depth_first_search(pytree_adaptor(t), v, only_nodes)
 
 
 def _value_or_none(l, i):
@@ -48,7 +48,7 @@ def set_intersection_difference(x, y, comp):
     `inter_x` and `inter_y` contain elements both present in `x` and `y` according the `comp`
     `diff_x` and `diff_y` contain elements not present in both `x` and `y` according the `comp`
 
-    `x` and `y` must be sorted according to `comp` 
+    `x` and `y` must be sorted according to `comp`
     The returned lists will be sorted
   """
   i = 0
@@ -109,6 +109,5 @@ class pytree_zip_adaptor:
   def roots(self):
     return adjacency_iterator([self.ts])
 
-
-def zip_depth_first_search(t,v):
-  return algo_base.depth_first_search(pytree_zip_adaptor(t),v)
+def zip_depth_first_search(t, v, only_nodes=True):
+  return algo_base.depth_first_search(pytree_zip_adaptor(t), v, only_nodes)
