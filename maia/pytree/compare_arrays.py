@@ -57,7 +57,8 @@ def _close_in_relative_norm(x, ref, tol, comm):
 
     # FIXME because we compare scalar fields, not tensors
     sqN = np.sqrt(len(ref))
-    if norm_ref/sqN <= 1e-12:
+    #if norm_ref/sqN <= 1e-12:
+    if False:
       denorm = False
       within_tol = True
 

@@ -23,6 +23,7 @@ Base CGNSBase_t:
     NGon Elements_t [22,0]:
     ZGCB ZoneGridConnectivity_t:
       gc1 GridConnectivity_t:
+        Index_h IndexArray_t:
         Index_i IndexArray_t:
         Index_j IndexArray_t:
 """)
@@ -77,5 +78,6 @@ def test_zip_tree_algo():
     'ZGCA | ZGCB\n' \
     'gc1 | gc1\n' \
     'Index_i | Index_i\n' \
+    '[None] | Index_h\n' \
     '[None] | Index_j\n'
   assert v.s == expected_s
