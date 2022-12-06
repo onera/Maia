@@ -116,20 +116,13 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
   """
   Exchange fields found under each container from part_tree to iso_part_tree
   """
-
   # Get zones by domains
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-
-  # Check : monodomain
-  assert(len(part_tree_per_dom)==1)
-
-  # Get zone from isosurf
-  iso_part_zone = PT.get_all_Zone_t(iso_part_tree)
-  assert(len(iso_part_zone)<=1)
-  iso_part_zone = iso_part_zone[0]
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
   # Loop over domains
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
+  for domain_path, part_zones in part_tree_per_dom.items():
+    # Get zone from isosurf (one zone by domain)
+    iso_part_zone = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}_iso")[0]
     exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm)
 
 # =======================================================================================
@@ -190,22 +183,13 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 
     # Partition definition for PDM object
     pdm_isos.part_set(i_part,
-                      n_cell,
-                      n_face,
-                      n_edge,
-                      n_vtx,
-                      cell_face_idx,
-                      cell_face    ,
+                      n_cell, n_face, n_edge, n_vtx,
+                      cell_face_idx, cell_face,
+                      None, None, None,
+                      face_vtx_idx , face_vtx     ,
+                      cell_ln_to_gn, face_ln_to_gn,
                       None,
-                      None,
-                      None,
-                      face_vtx_idx ,
-                      face_vtx     ,
-                      cell_ln_to_gn,
-                      face_ln_to_gn,
-                      None,
-                      vtx_ln_to_gn ,
-                      vtx_coords)
+                      vtx_ln_to_gn, vtx_coords)
 
 
   # Isosurfaces compute in PDM  
@@ -269,16 +253,13 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
   fs_name, field_name = iso_field_path.split('/')
 
   # Get zones by domains
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
   
-  # Check : monodomain
-  assert len(part_tree_per_dom) == 1
-
   iso_part_tree = PT.new_CGNSTree()
   iso_part_base = PT.new_CGNSBase('Base', cell_dim=3-1, phy_dim=3, parent=iso_part_tree)
 
   # Loop over domains : compute isosurf for each
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
+  for domain_path, part_zones in part_tree_per_dom.items():
 
     field_values = []
     for part_zone in part_zones:
@@ -288,7 +269,9 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
       field_values.append(PT.get_value(field_node) - iso_val)
 
-    iso_part_zone = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
+    iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
+    iso_zone_name    = domain_path.split('/')[1]
+    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{iso_zone_name}_iso', comm.Get_rank(), 0)
     PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
@@ -304,7 +287,6 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
   Important:
     - Input tree must be unstructured and have a ngon connectivity.
-    - Partitions must come from a single initial domain on input tree.
     - Input field for isosurface computation must be located at vertices.
     - This function requires ParaDiGMa access.
 
@@ -341,7 +323,7 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
   # Isosurface extraction
   iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, comm)
-
+  
   # Interpolation
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
@@ -354,23 +336,22 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def _surface_from_equation(part_tree, surface_type, plane_eq, elt_type, comm):
+def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
 
   assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
   assert(elt_type     in ["TRI_3","QUAD_4","NGON_n"])
   
   # Get zones by domains
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-  
-  # Check : monodomain
-  assert len(part_tree_per_dom) == 1
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
   iso_part_tree = PT.new_CGNSTree()
   iso_part_base = PT.new_CGNSBase('Base', cell_dim=3-1, phy_dim=3, parent=iso_part_tree)
 
   # Loop over domains : compute isosurf for each
-  for i_domain, part_zones in enumerate(part_tree_per_dom):
-    iso_part_zone = iso_surface_one_domain(part_zones, surface_type, plane_eq, elt_type, comm)
+  for domain_path, part_zones in part_tree_per_dom.items():
+    iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, comm)
+    iso_zone_name    = domain_path.split('/')[1]
+    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{iso_zone_name}_iso', comm.Get_rank(), 0)
     PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
@@ -407,6 +388,7 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
       :dedent: 2
   """
   elt_type = options.get("elt_type", "TRI_3")
+
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, comm)
 
@@ -446,8 +428,8 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
       :end-before: #compute_spherical_slice@end
       :dedent: 2
   """
-
   elt_type = options.get("elt_type", "TRI_3")
+
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, comm)
 
@@ -489,6 +471,7 @@ def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options)
       :dedent: 2
   """
   elt_type = options.get("elt_type", "TRI_3")
+
   # Isosurface extraction
   iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, comm)
 
