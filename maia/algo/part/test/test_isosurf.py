@@ -124,7 +124,7 @@ def test_isosurf_one_domain(sub_comm):
   part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm)
 
   part_zones = PT.get_all_Zone_t(part_tree)
-  iso_zone = ISO.iso_surface_one_domain(0, part_zones, "PLANE", [1,0,0,0.25], "TRI_3", sub_comm)
+  iso_zone = ISO.iso_surface_one_domain(part_zones, "PLANE", [1,0,0,0.25], "TRI_3", sub_comm)
 
   assert PT.Zone.n_cell(iso_zone) == 16 and PT.Zone.n_vtx(iso_zone) == 15
 

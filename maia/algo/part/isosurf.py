@@ -117,14 +117,19 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
   Exchange fields found under each container from part_tree to iso_part_tree
   """
   # Get zones by domains
+  domain_names = list(dist_from_part.get_parts_per_blocks(part_tree, comm).keys())
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
 
-  # Get zone from isosurf (one zone by domain)
-  iso_part_zones = PT.get_all_Zone_t(iso_part_tree)
+  # # Get zone from isosurf (one zone by domain)
+  # iso_part_zones = PT.get_all_Zone_t(iso_part_tree)
 
   # Loop over domains
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    exchange_field_one_domain(part_zones, iso_part_zones[i_domain], containers_name, comm)
+    iso_zone_name  = domain_names[i_domain].split('/')[1]
+    iso_pzone_name = PT.maia.conv.add_part_suffix(f'{iso_zone_name}_iso', comm.Get_rank(), 0)
+
+    iso_part_zone = PT.get_node_from_name(iso_part_tree, iso_pzone_name)
+    exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm)
 
 # =======================================================================================
 
@@ -132,7 +137,7 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
-def iso_surface_one_domain(i_dom,part_zones, iso_kind, iso_params, elt_type, comm):
+def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   """
   Compute isosurface in a zone
   """ 
@@ -203,7 +208,7 @@ def iso_surface_one_domain(i_dom,part_zones, iso_kind, iso_params, elt_type, com
 
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
-  iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix(f'iso_dom{i_dom}', comm.Get_rank(), 0),
+  iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                               size=[[n_iso_vtx, n_iso_elt, 0]],
                               type='Unstructured')
 
@@ -254,10 +259,12 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
   fs_name, field_name = iso_field_path.split('/')
 
   # Get zones by domains
+  domain_names = list(dist_from_part.get_parts_per_blocks(part_tree, comm).keys())
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
   
   iso_part_tree = PT.new_CGNSTree()
   iso_part_base = PT.new_CGNSBase('Base', cell_dim=3-1, phy_dim=3, parent=iso_part_tree)
+
 
   # Loop over domains : compute isosurf for each
   for i_domain, part_zones in enumerate(part_tree_per_dom):
@@ -270,7 +277,9 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
       field_values.append(PT.get_value(field_node) - iso_val)
 
-    iso_part_zone = iso_surface_one_domain(i_domain,part_zones, "FIELD", field_values, elt_type, comm)
+    iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
+    iso_zone_name    = domain_names[i_domain].split('/')[1]
+    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{iso_zone_name}_iso', comm.Get_rank(), 0)
     PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
@@ -286,7 +295,6 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
   Important:
     - Input tree must be unstructured and have a ngon connectivity.
-    - Partitions must come from a single initial domain on input tree.
     - Input field for isosurface computation must be located at vertices.
     - This function requires ParaDiGMa access.
 
@@ -342,14 +350,17 @@ def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
   assert(elt_type     in ["TRI_3","QUAD_4","NGON_n"])
   
   # Get zones by domains
+  domain_names = list(dist_from_part.get_parts_per_blocks(part_tree, comm).keys())
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-  
+
   iso_part_tree = PT.new_CGNSTree()
   iso_part_base = PT.new_CGNSBase('Base', cell_dim=3-1, phy_dim=3, parent=iso_part_tree)
 
   # Loop over domains : compute isosurf for each
   for i_domain, part_zones in enumerate(part_tree_per_dom):
-    iso_part_zone = iso_surface_one_domain(i_domain, part_zones, surface_type, equation, elt_type, comm)
+    iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, comm)
+    iso_zone_name    = domain_names[i_domain].split('/')[1]
+    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{iso_zone_name}_iso', comm.Get_rank(), 0)
     PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
