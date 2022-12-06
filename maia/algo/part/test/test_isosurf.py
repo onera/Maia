@@ -54,7 +54,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
         Vertex DataArray_t {dtype} [6,4,2,5,3,1]:
     """
     yt_surf = f"""
-    IsoZone.P0.N0 Zone_t:
+    VolZone_iso.P0.N0 Zone_t:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Cell DataArray_t {dtype} [2]:
         Vertex DataArray_t {dtype} [1,2]:
@@ -66,7 +66,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
     """
   else:
     yt_surf = f"""
-    IsoZone.P0.N0 Zone_t:
+    VolZone_iso.P1.N0 Zone_t:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Cell DataArray_t {dtype} [1,3]:
         Vertex DataArray_t {dtype} [2,3]:
@@ -77,7 +77,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
         Cell_parent_gnum DataArray_t {dtype} [3, 1]:
     """
     yt_vol = f"""
-    VolZone.P0.N0 Zone_t:
+    VolZone.P1.N0 Zone_t:
       FSolVtx FlowSolution_t:
         GridLocation GridLocation_t "Vertex":
         fieldC DataArray_t [70., 80]:

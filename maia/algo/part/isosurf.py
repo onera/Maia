@@ -127,8 +127,7 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
   for i_domain, part_zones in enumerate(part_tree_per_dom):
     iso_zone_name  = domain_names[i_domain].split('/')[1]
     iso_pzone_name = PT.maia.conv.add_part_suffix(f'{iso_zone_name}_iso', comm.Get_rank(), 0)
-
-    iso_part_zone = PT.get_node_from_name(iso_part_tree, iso_pzone_name)
+    iso_part_zone  = PT.get_node_from_name(iso_part_tree, iso_pzone_name)
     exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm)
 
 # =======================================================================================
