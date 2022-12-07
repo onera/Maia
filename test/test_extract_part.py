@@ -11,7 +11,6 @@ import maia
 import maia.factory as MF
 import maia.io      as Mio
 
-from maia.algo.part import geometry     as GEO
 from maia.algo.part import extract_part as EXP
 
 # ========================================================================================
@@ -38,24 +37,6 @@ def plane_eq(x,y,z) :
 
 
 # =======================================================================================
-# ---------------------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------------------
-def compute_face_center(zone):
-  cx,cy,cz = PT.Zone.coordinates(zone)
-
-  if PT.Zone.Type(zone) == "Unstructured":
-    ngons  = [e for e in PT.iter_children_from_label(zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n']
-    if len(ngons) != 1:
-      raise NotImplementedError(f"Cell center computation is only available for NGON connectivity")
-    face_vtx_idx, face_vtx, ngon_pe = PT.Zone.ngon_connectivity(zone)
-    center_face_x = np.add.reduceat(cx[face_vtx-1], face_vtx_idx[:-1])/np.diff(face_vtx_idx)
-    center_face_y = np.add.reduceat(cy[face_vtx-1], face_vtx_idx[:-1])/np.diff(face_vtx_idx)
-    center_face_z = np.add.reduceat(cz[face_vtx-1], face_vtx_idx[:-1])/np.diff(face_vtx_idx)
-  else:
-    print('[compute_face_center] Structured not implemented')
-
-  return center_face_x,center_face_y,center_face_z
 # ---------------------------------------------------------------------------------------
 
 
@@ -102,49 +83,42 @@ def generate_test_tree(n_vtx,n_part,location,sub_comm):
   point_list = list()
   for zone in PT.get_all_Zone_t(part_tree):
     # Nodes coordinates
-    GC = PT.get_child_from_name(zone, 'GridCoordinates')
-    CX = PT.get_child_from_name(GC, 'CoordinateX')[1]
-    CY = PT.get_child_from_name(GC, 'CoordinateY')[1]
-    CZ = PT.get_child_from_name(GC, 'CoordinateZ')[1]
+    gc = PT.get_child_from_name(zone, 'GridCoordinates')
+    cx = PT.get_child_from_name(gc, 'CoordinateX')[1]
+    cy = PT.get_child_from_name(gc, 'CoordinateY')[1]
+    cz = PT.get_child_from_name(gc, 'CoordinateZ')[1]
     
-    # Connectivity
-    nface         = PT.get_child_from_name(zone , 'NFaceElements')
-    cell_face_idx = PT.get_child_from_name(nface, 'ElementStartOffset' )[1]
-    cell_face     = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
-    ngon          = PT.get_child_from_name(zone, 'NGonElements')
-    face_vtx_idx  = PT.get_child_from_name(ngon, 'ElementStartOffset' )[1]
-    face_vtx      = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
-    cell_vtx_idx,cell_vtx = PDM.combine_connectivity(cell_face_idx,cell_face,face_vtx_idx,face_vtx)
+    cell_center = maia.algo.part.geometry.compute_cell_center(zone)
+    ccx = cell_center[0::3]
+    ccy = cell_center[1::3]
+    ccz = cell_center[2::3]
 
     # Fields
-    name_f  = ["sphere"                 , "cylinder"      ]
-    flds    = [CX**2 + CY**2 + CZ**2 - 1, CX**2 + CY**2 -1]
-    
+    sphere_fld_nc =  cx**2 +  cy**2 +  cz**2 - 1
+    cylind_fld_nc =  cx**2 +  cy**2          - 1
+    sphere_fld_cc = ccx**2 + ccy**2 + ccz**2 - 1
+    cylind_fld_cc = ccx**2 + ccy**2          - 1
+
     # Placement FlowSolution
     FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
     FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
-    
-    # Placement flds
-    for name,fld in zip(name_f,flds):
-      # Node sol -> Cell sol
-      fld_cc = np.add.reduceat(fld[cell_vtx-1], cell_vtx_idx[:-1])/ np.diff(cell_vtx_idx)
-      
-      PT.new_DataArray(name, fld_cc, parent=FS_CC)
-      PT.new_DataArray(name, fld   , parent=FS_NC)
+    PT.new_DataArray('sphere'  , sphere_fld_nc, parent=FS_NC)
+    PT.new_DataArray('cylinder', cylind_fld_nc, parent=FS_NC)
+    PT.new_DataArray('sphere'  , sphere_fld_cc, parent=FS_CC)
+    PT.new_DataArray('cylinder', cylind_fld_cc, parent=FS_CC)
 
     if   location=="CellCenter":
-      path_elt_rge = 'NFaceElements/ElementRange'
+      path_elt_rge  = 'NFaceElements/ElementRange'
       elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
-      cell_center = GEO.compute_cell_center(zone)
-      ccx = cell_center[0::3]
-      ccy = cell_center[1::3]
-      ccz = cell_center[2::3]
     elif location=="FaceCenter":
       path_elt_rge  = 'NGonElements/ElementRange'
       elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
-      ccx, ccy, ccz = compute_face_center(zone)
+      face_center   = maia. algo.part.geometry.compute_face_center(zone)
+      ccx = face_center[0::3]
+      ccy = face_center[1::3]
+      ccz = face_center[2::3]
     elif location=="Vertex":
-      ccx, ccy, ccz = CX, CY, CZ
+      ccx, ccy, ccz = cx, cy, cz
       elt_range     = [1]
     else:
       sys.exit()
@@ -174,6 +148,7 @@ def generate_test_tree(n_vtx,n_part,location,sub_comm):
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
+# @pytest.mark.parametrize("graph_part_tool", ["hilbert",'parmetis'])
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
 @mark_mpi_test([1,3])
 def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
@@ -187,7 +162,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
   # --- EXTRACT PART --------------------------------------------------------------------
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", sub_comm,
                                             # equilibrate=1,
-                                            # graph_part_tool=graph_part_tool,
+                                            graph_part_tool=graph_part_tool,
                                             containers_name=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"]
                                             )
   # ------------------------------------------------------------------------------------- 
@@ -308,7 +283,7 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
-@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@pytest.mark.parametrize("graph_part_tool", ["parmetis","ptscotch"])
 @mark_mpi_test([1,3])
 def test_extract_face_from_point_list_U(graph_part_tool, sub_comm, write_output):
 
@@ -317,11 +292,11 @@ def test_extract_face_from_point_list_U(graph_part_tool, sub_comm, write_output)
   n_part = 2
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'FaceCenter',sub_comm)
   # -------------------------------------------------------------------------------------
-  print(point_list)
+
   # --- EXTRACT PART --------------------------------------------------------------------
   extractor = EXP.Extractor(part_tree, [point_list], "FaceCenter", sub_comm,
                             # equilibrate=1,
-                            # graph_part_tool=graph_part_tool,
+                            graph_part_tool=graph_part_tool
                            )  
   extractor.exchange_fields(['FlowSolution_NC',"ZSR_FlowSolution"])
   part_tree_ep = extractor.get_extract_part_tree()
@@ -367,7 +342,7 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, sub_comm, write_output):
   # # --- EXTRACT PART --------------------------------------------------------------------
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", sub_comm,
                                             # equilibrate=1,
-                                            # graph_part_tool=graph_part_tool,
+                                            graph_part_tool=graph_part_tool,
                                             containers_name=['FlowSolution_NC',"ZSR_FlowSolution"]
                                             )
   # Sortie VTK for visualisation

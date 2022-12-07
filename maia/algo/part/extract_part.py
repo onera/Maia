@@ -65,6 +65,10 @@ class Extractor:
     extracted_tree = PT.new_CGNSTree()
     extracted_base = PT.new_CGNSBase('Base', cell_dim=cell_dim, phy_dim=3, parent=extracted_tree)
 
+    assert graph_part_tool in ["hilbert","parmetis","ptscotch"]
+    assert not( (self.dim==0) and graph_part_tool in ['parmetis', 'ptscotch']),\
+           '[MAIA] Vertex extraction not available with parmetis or ptscotch partitioning. Please check your script.' 
+
     # Compute extract part of each domain
     for i_domain, part_zones in enumerate(part_tree_per_dom):
       extracted_zone, etb = extract_part_one_domain(part_zones, point_list[i_domain], self.dim, comm,
@@ -392,8 +396,8 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 # ---------------------------------------------------------------------------------------
 def extract_part_from_zsr(part_tree, zsr_name, comm,
                           # equilibrate=True,
-                          # graph_part_tool='hilbert',
-                          containers_name=None):
+                          containers_name=None,
+                          **options):
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
 
@@ -418,9 +422,16 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
     containers_name (list of str) : List of the names of the fields containers to transfer
-      on the output extracted tree.
+                                    on the output extracted tree.
+    **options: Options related to the extraction.
   Returns:
     extracted_tree (CGNSTree)  : Extracted submesh (partitioned)
+
+  Extraction can be controled thought the optional kwargs:
+
+    - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones.
+      Admissible values are ``hilbert, parmetis, ptscotch``. Note that
+      vertex-located extractions require hilbert partitioning. Defaults to ``hilbert``.
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -430,7 +441,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   """
 
 
-  extractor = create_extractor_from_zsr(part_tree, zsr_name, comm)
+  extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
   if containers_name is not None:
     extractor.exchange_fields(containers_name)
@@ -441,12 +452,15 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
 
 
 # ---------------------------------------------------------------------------------------
-def create_extractor_from_zsr(part_tree, zsr_path, comm
+def create_extractor_from_zsr(part_tree, zsr_path, comm,
                               # equilibrate=True,
-                              # graph_part_tool='hilbert'
+                              **options
                               ):
   """Same as extract_part_from_zsr, but return the extractor object."""
   # Get zones by domains
+
+  graph_part_tool = options.get("graph_part_tool", "hilbert")
+
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
   # Get point_list for each partitioned zone and group it by domain
@@ -469,9 +483,9 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm
   # Get location if proc has no zsr
   location = comm.allreduce(location, op=MPI.MAX)
 
-  return Extractor(part_tree, point_list, location, comm
+  return Extractor(part_tree, point_list, location, comm,
                    # equilibrate=equilibrate,
-                   # graph_part_tool=graph_part_tool
+                   graph_part_tool=graph_part_tool
                    )
 # ---------------------------------------------------------------------------------------
 
