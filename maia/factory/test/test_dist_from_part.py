@@ -227,6 +227,32 @@ def test_get_parts_per_blocks(sub_comm):
     assert PT.get_names(part_per_blocks['BaseI/ZoneB']) == []
     assert PT.get_names(part_per_blocks['BaseII/ZoneA']) == ['ZoneA.P1.N0']
 
+@mark_mpi_test(2)
+def test_recover_dist_block_size(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    pt = """
+    Zone.P0.N0 Zone_t [[2,1,0], [3,2,0], [4,3,0]]: #Middle
+      ZoneGridConnectivity ZoneGridConnectivity_t:
+        JN.P0.N0.LT.P0.N1 GridConnectivity1to1_t "Zone.P0.N1":
+          PointRange IndexRange_t [[1,1], [1,3], [1,4]]:
+        JN.P0.N0.LT.P1.N0 GridConnectivity1to1_t "Zone.P1.N0":
+          PointRange IndexRange_t [[2,2], [1,3], [1,4]]:
+    Zone.P0.N1 Zone_t [[2,1,0], [3,2,0], [4,3,0]]: #Left
+      ZoneGridConnectivity ZoneGridConnectivity_t:
+        JN.P0.N1.LT.P0.N0 GridConnectivity1to1_t "Zone.P0.N0":
+          PointRange IndexRange_t [[2,2], [1,3], [1,4]]:
+    """
+  elif sub_comm.Get_rank() == 1:
+    pt = """
+    Zone.P1.N0 Zone_t [[2,1,0], [3,2,0], [4,3,0]]: #Right
+      ZoneGridConnectivity ZoneGridConnectivity_t:
+        JN.P1.N0.LT.P0.N0 GridConnectivity1to1_t "Zone.P0.N0":
+          PointRange IndexRange_t [[1,1], [1,3], [1,4]]:
+    """
+  part_zones = parse_yaml_cgns.to_nodes(pt)
+  dist_size = DFP._recover_dist_block_size(part_zones, sub_comm)
+
+  assert np.array_equal(dist_size, [[4,3,0],[3,2,0],[4,3,0]])
 
 @mark_mpi_test(3)
 def test_recover_dist_tree_ngon(sub_comm):
@@ -303,3 +329,20 @@ def test_recover_dist_tree_elt(void_part, sub_comm):
   for elt in PT.get_nodes_from_label(dist_tree_bck, 'Elements_t'):
     PT.rm_node_from_path(elt, ':CGNS#Distribution/ElementConnectivity')
   assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Input tree is pdm dtype
+
+@mark_mpi_test(3)
+def test_recover_dist_tree_s(sub_comm):
+  mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
+  dist_tree_bck = maia.io.file_to_dist_tree(mesh_file, sub_comm)
+
+  part_tree = maia.factory.partition_dist_tree(dist_tree_bck, sub_comm)
+
+  dist_tree = DFP.recover_dist_tree(part_tree, sub_comm)
+
+  # Force GridLocation to appear on dtree bck for comparison
+  for bc in PT.get_nodes_from_label(dist_tree_bck, 'BC_t'):
+    if PT.get_child_from_name(bc, 'GridLocation') is None:
+      PT.new_GridLocation('Vertex', bc)
+
+  assert PT.is_same_tree(dist_tree_bck, dist_tree)
+

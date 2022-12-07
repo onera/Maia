@@ -6,9 +6,12 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.utils     import np_utils, par_utils
+from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils     as te_utils
 from maia.transfer  import protocols as EP
+
+LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell', 'FaceCenter': 'Face',
+             'IFaceCenter': 'Face', 'JFaceCenter': 'Face', 'KFaceCenter': 'Face'}
 
 def create_part_pl_gnum_unique(part_zones, node_path, comm):
   """
@@ -132,6 +135,87 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
   # Create dist pointlist
   PT.new_PointList(value = dist_pl.reshape(1,-1), parent=dist_node)
+
+def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size):
+  """ Convert a structured partitioned (local) i,j,k triplet to the corresponding
+  global triplet in the distributed block """
+  pcell_size = pvtx_size - 1
+  dcell_size = dvtx_size - 1
+  if loc == 'Vertex':
+    gnum = ln_to_gn[s_numbering.ijk_to_index(*ptriplet, pvtx_size)-1]
+    dtriplet = s_numbering.index_to_ijk(gnum, dvtx_size)
+  elif loc == 'CellCenter':
+    gnum = ln_to_gn[s_numbering.ijk_to_index(*ptriplet, pcell_size)-1]
+    dtriplet = s_numbering.index_to_ijk(gnum, dvtx_size-1)
+  elif loc == 'IFaceCenter':
+    gnum = ln_to_gn[s_numbering.ijk_to_faceiIndex(*ptriplet, pcell_size, pvtx_size)-1]
+    dtriplet = s_numbering.faceiIndex_to_ijk(gnum, dcell_size, dvtx_size)
+  elif loc == 'JFaceCenter':
+    gnum = ln_to_gn[s_numbering.ijk_to_facejIndex(*ptriplet, pcell_size, pvtx_size)-1]
+    dtriplet = s_numbering.facejIndex_to_ijk(gnum, dcell_size, dvtx_size)
+  elif loc == 'KFaceCenter':
+    gnum = ln_to_gn[s_numbering.ijk_to_facekIndex(*ptriplet, pcell_size, pvtx_size)-1]
+    dtriplet = s_numbering.facekIndex_to_ijk(gnum, dcell_size, dvtx_size)
+  return dtriplet
+
+def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False):
+  """
+  Create a distributed point range for the node specified by its node_path
+  from the partitioned point range. We assume that node_path exists in dist_tree. 
+  If allow_mult is True, leaf node of node_path is expanded search all partitioned leaf*. This can
+  be usefull eg to merge splitted joins (match.0, match.1, ...)
+  """
+  ancestor_n, leaf_n = PT.path_head(node_path), PT.path_tail(node_path)
+
+  name = leaf_n + '*' if allow_mult else leaf_n
+  dist_node = PT.get_node_from_path(dist_zone, node_path)
+  dist_vtx_size = PT.Zone.VertexSize(dist_zone)
+
+  proc_bottom = list()
+  proc_top = list()
+  proc_permuted = np.zeros(3, bool)
+  for part_zone in part_zones:
+    part_vtx_size = PT.Zone.VertexSize(part_zone)
+
+    ancestor_node = PT.get_node_from_path(part_zone, ancestor_n)
+    part_nodes = PT.get_nodes_from_name(ancestor_node, name) if ancestor_node is not None else []
+    
+    for part_node in part_nodes:
+      pr = PT.get_node_from_name(part_node, 'PointRange')[1].copy()
+      loc = PT.Subset.GridLocation(part_node)
+
+      # In order to get max/min properly, make PR increasing but register permuted dir
+      permuted = pr[:,0] > pr[:,1]
+      pr[permuted, 0], pr[permuted, 1] = pr[permuted, 1], pr[permuted, 0]
+      proc_permuted = proc_permuted | permuted
+
+      # Get the global triplet related to the min and max corners of the window
+      ln_to_gn = MT.getGlobalNumbering(part_zone, LOC_TO_GN[loc])[1]
+      proc_bottom.append(_part_triplet_to_dist_triplet(pr[:,0], loc, ln_to_gn, part_vtx_size, dist_vtx_size))
+      proc_top.append(_part_triplet_to_dist_triplet(pr[:,1], loc, ln_to_gn, part_vtx_size, dist_vtx_size))
+
+  all_bottom = comm.allgather(proc_bottom)
+  all_top = comm.allgather(proc_top)
+  all_bottom = [item for sublist in all_bottom for item in sublist]
+  all_top = [item for sublist in all_top for item in sublist]
+
+  # Select max and min corners to create PR
+  dist_pr = np.empty((3,2), dtype=dist_vtx_size.dtype, order='F')
+  dist_pr[:,0] = min(all_bottom)
+  dist_pr[:,1] = max(all_top)
+
+  # Restore permuted dir
+  glob_permuted = np.empty(3, dtype=bool)
+  comm.Allreduce(proc_permuted, glob_permuted, op=MPI.LOR)
+  dist_pr[glob_permuted, 0], dist_pr[glob_permuted, 1] = \
+      dist_pr[glob_permuted, 1], dist_pr[glob_permuted, 0]
+
+  # Compute distribution
+  pr_size = (np.abs(dist_pr[:,1] - dist_pr[:,0]) + 1).prod()
+  distri = par_utils.uniform_distribution(pr_size, comm)
+
+  PT.new_PointRange(value=dist_pr, parent=dist_node)
+  MT.newDistribution({'Index' : distri}, parent=dist_node)
 
 def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   """

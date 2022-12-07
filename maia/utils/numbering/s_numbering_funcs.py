@@ -41,6 +41,13 @@ def ijk_to_faceiIndex(i,j,k,n_cell,n_vtx):
   """
   return(i + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_cell[1])
 
+def faceiIndex_to_ijk(idx, n_cell, n_vtx):
+  """ Convert an index of I-normal face to i,j,k triplet """
+  k = ((idx - 1) // (n_vtx[0]*n_cell[1])) + 1
+  j = (idx - (k-1)*(n_vtx[0]*n_cell[1]) - 1) // n_vtx[0] + 1
+  i = idx - (j-1)*n_vtx[0] - (k-1)*(n_vtx[0]*n_cell[1])
+  return i,j,k
+
 def ijk_to_facejIndex(i,j,k,n_cell,n_vtx):
   """
   Convert (i,j,k) indices from structured grid to unstructured index of face with
@@ -50,6 +57,14 @@ def ijk_to_facejIndex(i,j,k,n_cell,n_vtx):
   """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   return(i + (j-1)*n_cell[0] + (k-1)*n_vtx[1]*n_cell[0] + nbFacesi)
+
+def facejIndex_to_ijk(idx, n_cell, n_vtx):
+  """ Convert an index of J-normal face to i,j,k triplet """
+  nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
+  k = ((idx - 1 - nbFacesi) // (n_vtx[1]*n_cell[0])) + 1
+  j = (idx - (k-1)*(n_vtx[1]*n_cell[0]) - 1 - nbFacesi) // n_cell[0] + 1
+  i = idx - (j-1)*n_cell[0] - (k-1)*(n_vtx[1]*n_cell[0]) - nbFacesi
+  return i,j,k
 
 def ijk_to_facekIndex(i,j,k,n_cell,n_vtx):
   """
@@ -61,6 +76,15 @@ def ijk_to_facekIndex(i,j,k,n_cell,n_vtx):
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   nbFacesj = n_vtx[1]*n_cell[0]*n_cell[2]
   return(i + (j-1)*n_cell[0] + (k-1)*n_cell[0]*n_cell[1] + nbFacesi + nbFacesj)
+
+def facekIndex_to_ijk(idx, n_cell, n_vtx):
+  """ Convert an index of K-normal face to i,j,k triplet """
+  nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
+  nbFacesj = n_vtx[1]*n_cell[0]*n_cell[2]
+  k = ((idx - 1 - nbFacesi - nbFacesj) // (n_cell[0]*n_cell[1])) + 1
+  j = (idx - (k-1)*(n_cell[0]*n_cell[1]) - 1 - nbFacesi - nbFacesj) // n_cell[0] + 1
+  i = idx - (j-1)*n_cell[0] - (k-1)*(n_cell[0]*n_cell[1]) - nbFacesi - nbFacesj
+  return i,j,k
 
 ###############################################################################
 
