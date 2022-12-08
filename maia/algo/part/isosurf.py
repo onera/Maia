@@ -256,10 +256,11 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
   
   iso_part_tree = PT.new_CGNSTree()
-  iso_part_base = PT.new_CGNSBase('Base', cell_dim=3-1, phy_dim=3, parent=iso_part_tree)
 
   # Loop over domains : compute isosurf for each
   for domain_path, part_zones in part_tree_per_dom.items():
+    dom_base_name, dom_zone_name = domain_path.split('/')
+    iso_part_base = PT.update_child(iso_part_tree, dom_base_name, 'CGNSBase_t', [3-1,3])
 
     field_values = []
     for part_zone in part_zones:
@@ -270,8 +271,7 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       field_values.append(PT.get_value(field_node) - iso_val)
 
     iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
-    iso_zone_name    = domain_path.split('/')[1]
-    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{iso_zone_name}_iso', comm.Get_rank(), 0)
+    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0)
     PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
@@ -345,13 +345,13 @@ def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
   iso_part_tree = PT.new_CGNSTree()
-  iso_part_base = PT.new_CGNSBase('Base', cell_dim=3-1, phy_dim=3, parent=iso_part_tree)
 
   # Loop over domains : compute isosurf for each
   for domain_path, part_zones in part_tree_per_dom.items():
+    dom_base_name, dom_zone_name = domain_path.split('/')
+    iso_part_base = PT.update_child(iso_part_tree, dom_base_name, 'CGNSBase_t', [3-1,3])
     iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, comm)
-    iso_zone_name    = domain_path.split('/')[1]
-    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{iso_zone_name}_iso', comm.Get_rank(), 0)
+    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0)
     PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
