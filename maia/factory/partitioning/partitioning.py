@@ -27,7 +27,6 @@ def set_default(dist_tree, comm):
              'preserve_orientation'    : False,
              'additional_connectivity' : [],
              'additional_ln_to_gn'     : [],
-             'additional_color'        : [],
              'keep_empty_sections'     : False,
              'dump_pdm_output'    : False }
 

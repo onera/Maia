@@ -126,12 +126,10 @@ def _add_ln_to_gn(multi_part, l_data, i_zone, n_part, additionnal_list_key):
       dict_res = multi_part.multipart_ln_to_gn_get(i_part, i_zone, entity_type)
       l_data[i_part]["np_"+key+'_ln_to_gn'] = dict_res["np_entity_ln_to_gn"]
 
-def _add_color(multi_part, l_data, i_zone, n_part, additionnal_list_key):
+def _add_color(multi_part, l_data, i_zone, n_part):
   """
-  Enrich dictionnary with additional query of user
   """
-  for key in additionnal_list_key:
-    entity_type = maia_to_pdm_entity[key]
+  for key, entity_type in maia_to_pdm_entity.items():
     for i_part in range(n_part):
       dict_res = multi_part.multipart_part_color_get(i_part, i_zone, entity_type)
       l_data[i_part]["np_"+key+'_color'] = dict_res["np_entity_color"]
@@ -157,7 +155,7 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
 
     _add_connectivity(multi_part, l_data, i_zone, n_part, post_options['additional_connectivity'])
     _add_ln_to_gn    (multi_part, l_data, i_zone, n_part, post_options['additional_ln_to_gn'])
-    _add_color       (multi_part, l_data, i_zone, n_part, post_options['additional_color'])
+    _add_color       (multi_part, l_data, i_zone, n_part)
 
     #For element : additional conversion step to retrieve part elements
     pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
@@ -200,7 +198,7 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
 
   post_options = {k:part_options[k] for k in ['part_interface_loc', 'dump_pdm_output', 'output_connectivity',
                                               'additional_connectivity', 'additional_ln_to_gn',
-                                              'additional_color','keep_empty_sections']}
+                                              'keep_empty_sections']}
   u_parts = collect_mpart_partitions(multi_part, u_zones, n_part_per_zone, comm, post_options)
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array

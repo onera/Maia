@@ -17,6 +17,20 @@ def single_dim_pr_to_pl(pr, distrib=None):
   else:
     return np.arange(pr[0,0], pr[0,1]+1, dtype=pr.dtype).reshape((1,-1), order='F')
 
+def compress(t):
+  """
+  Inverse of np.repeat. Go back to array with np.repeat(val, np.diff(idx))
+  """
+  assert t.size > 0
+  diff = t[:-1] != t[1:]
+  n_diff = diff.sum()
+  idx = np.empty(n_diff+2, np.int32)
+  idx[0] = 0
+  idx[1:-1] = np.where(diff)[0] + 1
+  idx[-1] = t.size
+  val = t[idx[:-1]]
+  return idx, val
+
 def concatenate_np_arrays(arrays, dtype=None):
   """
   Merge all the (1d) arrays in arrays list
