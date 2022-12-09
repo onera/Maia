@@ -20,6 +20,6 @@ def ngons_to_elements(t,comm):
     comm       (`MPIComm`) : MPI communicator
   """
   if (comm.Get_size() > 1):
-    raise RuntimeException("WARNING: this function has not been parallelized yet. Run it on only one process")
+    raise RuntimeError("WARNING: this function has not been parallelized yet. Run it on only one process")
   apply_to_zones(cdist_algo.convert_zone_to_std_elements, t)
 

@@ -197,7 +197,7 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_le
   - ``"NFACE_n"`` produces an unstructured 3d zone with a NFace+NGon connectivity,
   - ``"NGON_n"``  produces an unstructured 2d zone with faces described by a NGon
     node (not yet implemented),
-  - Other names must be in ``["TRI_3", "QUAD_4", "TETRA_4", "PENTA_6", "HEXA_8"]``
+  - Other names must be in ``["TRI_3", "QUAD_4", "TETRA_4", "PYRA_5", "PENTA_6", "HEXA_8"]``
     and produces an unstructured 2d or 3d zone with corresponding standard elements.
 
   In all cases, the created zone contains the cartesian grid coordinates and the relevant number
