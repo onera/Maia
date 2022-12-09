@@ -61,8 +61,10 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
   renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum_method']
   renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_options['face_renum_method']
   renum_vtx_method  = "PDM_PART_RENUM_VTX_"  + reorder_options['vtx_renum_method']
+  part_tool_dic = {'parmetis': 1, 'ptscotch': 2, 'hyperplane': 3}
   if "CACHEBLOCKING" in reorder_options['cell_renum_method']:
-    pdm_part_tool     = 1 if reorder_options['graph_part_tool'] == 'parmetis' else 2
+    pdm_part_tool     = part_tool_dic[reorder_options['graph_part_tool']]
+    assert pdm_part_tool <= 2
     cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
                                     1,
                                     1,
@@ -70,7 +72,7 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
                                     pdm_part_tool],
                                     dtype='int32', order='c')
   elif "HPC" in reorder_options['cell_renum_method']:
-    pdm_part_tool     = 1 if reorder_options['graph_part_tool'] == 'parmetis' else 2
+    pdm_part_tool     = part_tool_dic[reorder_options['graph_part_tool']]
     cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
                                     0, # is_asynchrone
                                     1,
