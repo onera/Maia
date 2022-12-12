@@ -4,6 +4,40 @@ import numpy as np
 
 import maia.transfer.protocols as EP
 
+class Test_auto_expand_distri:
+  
+  @mark_mpi_test(3)
+  def test_straightforward(self, sub_comm):
+    if sub_comm.Get_rank() == 0:
+      distri_partial = np.array([0, 10, 40])
+    if sub_comm.Get_rank() == 1:
+      distri_partial = np.array([10, 20, 40])
+    if sub_comm.Get_rank() == 2:
+      distri_partial = np.array([20,40,40])
+    assert np.array_equal(EP.auto_expand_distri(distri_partial, sub_comm), \
+        np.array([0,10,20,40]))
+
+    distri_full = np.array([0,10,20,40])
+    assert EP.auto_expand_distri(distri_full, sub_comm) is distri_full
+
+  @mark_mpi_test(2)
+  def test_corner_cases(self, sub_comm):
+    distri_partial = np.array([0, 10, 40]) if sub_comm.Get_rank() == 0 else np.array([10, 40, 40])
+    assert np.array_equal(EP.auto_expand_distri(distri_partial, sub_comm), \
+        np.array([0,10,40]))
+    distri_partial = np.array([0, 40, 40]) if sub_comm.Get_rank() == 0 else np.array([40, 40, 40])
+    assert np.array_equal(EP.auto_expand_distri(distri_partial, sub_comm), \
+        np.array([0,40,40]))
+    distri_partial = np.array([0, 0, 40]) if sub_comm.Get_rank() == 0 else np.array([0, 40, 40])
+    assert np.array_equal(EP.auto_expand_distri(distri_partial, sub_comm), \
+        np.array([0,0,40]))
+    distri_partial = np.array([0, 0, 0]) if sub_comm.Get_rank() == 0 else np.array([0, 0, 0])
+    assert np.array_equal(EP.auto_expand_distri(distri_partial, sub_comm), \
+        np.array([0,0,0]))
+    # Already full
+    for distri_full in [[0,10,40], [0,0,40], [0,40,40], [0,0,0]]:
+      _distri_full = np.array(distri_full)
+      assert np.array_equal(EP.auto_expand_distri(_distri_full, sub_comm), _distri_full)
 
 @mark_mpi_test(2)
 def test_block_to_part(sub_comm):

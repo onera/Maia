@@ -11,10 +11,8 @@ def auto_expand_distri(distri, comm):
     # Distri is partial
     return par_utils.partial_to_full_distribution(distri, comm)
   if distri.size == 3 and comm.Get_size() == 2:
-    # This is the corner case. Rank 0 have [0, s1, s1+s2]
-    # but rank 1 have either [0, s1, s1+s2] or [s1, s1+s2, s1+s2]
-    s1 = (distri[0] == 0) * distri[1] + (distri[0] != 0) * distri[0]
-    return np.array([0, s1, distri[2]], distri.dtype)
+    # This is the corner case, but rank 0 always have [0, s1, s1+s2]
+    return comm.bcast(distri, root=0)
   else:
     #Distri is already full
     return distri

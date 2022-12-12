@@ -29,6 +29,7 @@ def merge_connected_zones(tree, comm, **kwargs):
         :end-before: #merge_connected_zones@end
         :dedent: 2
   """
+  MJT.add_joins_donor_name(tree, comm)
   grouped_zones_paths = sids.find_connected_zones(tree)
 
   for i, zones_path in enumerate(grouped_zones_paths):
