@@ -73,7 +73,7 @@ def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
 
 def pdm_renumbering_data(p_zone, data):
   color_data = PT.new_node('maia#Renumbering', 'UserDefinedData_t')
-  for entity in ['cell', 'face', 'edge', 'vtx']:
+  for entity in ['cell', 'face', 'edge', 'vtx', 'thread', 'hyperplane']:
     array = data[f'np_{entity}_color']
     if array is not None:
       idx, val = np_utils.compress(array)

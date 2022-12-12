@@ -171,10 +171,9 @@ def test_pdm_part_to_cgns_zone():
            'np_vtx_ghost_information'    : np.array([0,0,0,1,1,2]),
            'np_vtx_ln_to_gn'             : np.array([2,4,8,16,64,32]),
            'np_cell_ln_to_gn'            : np.array([42]),
-           'np_cell_color' : None,
-           'np_face_color' : None,
-           'np_edge_color' : None,
-           'np_vtx_color' : None,
+           'np_cell_color' : None, 'np_face_color' : None,
+           'np_edge_color' : None, 'np_vtx_color' : None,
+           'np_thread_color' : None, 'np_hyperplane_color' : None,
            }]
 
   options = {'part_interface_loc' : 'Vertex', 'dump_pdm_output' : False, 'output_connectivity':'Element', 'keep_empty_sections':False}

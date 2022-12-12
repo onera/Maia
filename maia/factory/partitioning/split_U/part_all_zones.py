@@ -131,9 +131,14 @@ def _add_ln_to_gn(multi_part, l_data, i_zone, n_part, additionnal_list_key):
 def _add_color(multi_part, l_data, i_zone, n_part):
   """
   """
-  for key, entity_type in maia_to_pdm_entity.items():
-    for i_part in range(n_part):
-      dict_res = multi_part.multipart_part_color_get(i_part, i_zone, entity_type)
+  for i_part in range(n_part):
+    # Use both API to get thread color (needed for elsa) and avoid double get
+    for key, data in multi_part.multipart_color_get(i_part, i_zone).items():
+      if key == 'np_hyper_plane_color':
+        key = 'np_hyperplane_color'
+      l_data[i_part][key] = data
+    for key in ['edge', 'vtx']:
+      dict_res = multi_part.multipart_part_color_get(i_part, i_zone, maia_to_pdm_entity[key])
       l_data[i_part]["np_"+key+'_color'] = dict_res["np_entity_color"]
 
 
