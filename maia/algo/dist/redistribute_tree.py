@@ -214,7 +214,7 @@ def redistribute_zone(dist_zone, distribution, comm):
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_tree(dist_tree, comm, policy='uniform'):
+def func_redistribute_tree(dist_tree, comm, policy='uniform'):
   '''
   Redistribute a distribute tree following a rule.
 
