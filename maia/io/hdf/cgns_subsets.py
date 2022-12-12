@@ -2,7 +2,17 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from .              import utils
-from .hdf_dataspace import create_data_array_filter
+from .hdf_dataspace import create_pointlist_dataspace, create_data_array_filter
+
+def _create_pl_filter(node, node_path, pl_name, distri_index, hdf_filter):
+  pl_node = PT.get_child_from_name(node, pl_name)
+  if pl_node is not None:
+    # Retrieve index to create filter
+    if pl_node[1] is not None:
+      idx_dim = pl_node[1].shape[0]
+    else: #When reading, PL are None -> catch from #Size node
+      idx_dim = PT.get_child_from_name(node, f'{pl_name}#Size')[1][0]
+    hdf_filter[f"{node_path}/{pl_name}"] = create_pointlist_dataspace(distri_index, idx_dim)
 
 def create_zone_bc_filter(zone, zone_path, hdf_filter):
   """
@@ -25,9 +35,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
 
       distrib_bc   = PT.get_value(MT.getDistribution(bc, 'Index'))
 
-      bc_shape = utils.pl_or_pr_size(bc)
-      data_space = create_data_array_filter(distrib_bc, bc_shape)
-      utils.apply_dataspace_to_pointlist(bc, bc_path, data_space, hdf_filter)
+      _create_pl_filter(bc, bc_path, 'PointList', distrib_bc, hdf_filter)
 
       for bcds in PT.iter_children_from_label(bc, "BCDataSet_t"):
         bcds_path = bc_path + "/" + bcds[0]
@@ -35,15 +43,11 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
 
         if distrib_bcds_n is None: #BCDS uses BC distribution
           distrib_data = distrib_bc
-          data_shape   = bc_shape
         else: #BCDS has its own distribution
           distrib_data = PT.get_child_from_name(distrib_bcds_n, 'Index')[1]
-          data_shape = utils.pl_or_pr_size(bcds)
+          _create_pl_filter(bcds, bcds_path, 'PointList', distrib_data, hdf_filter)
 
-        data_space_pl    = create_data_array_filter(distrib_data, data_shape)
-        #BCDataSet always use flat data array
-        data_space_array = create_data_array_filter(distrib_data, [data_shape.prod()])
-        utils.apply_dataspace_to_pointlist(bcds, bcds_path, data_space_pl, hdf_filter)
+        data_space_array = create_data_array_filter(distrib_data)
         for bcdata in PT.iter_children_from_label(bcds, 'BCData_t'):
           bcdata_path = bcds_path + "/" + bcdata[0]
           utils.apply_dataspace_to_arrays(bcdata, bcdata_path, data_space_array, hdf_filter)
@@ -62,10 +66,8 @@ def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
     for gc in PT.iter_children_from_label(zone_gc, 'GridConnectivity_t'):
       gc_path = zone_gc_path+"/"+gc[0]
       distrib_ia = PT.get_value(MT.getDistribution(gc, 'Index'))
-
-      gc_shape   = utils.pl_or_pr_size(gc)
-      data_space = create_data_array_filter(distrib_ia, gc_shape)
-      utils.apply_dataspace_to_pointlist(gc, gc_path, data_space, hdf_filter)
+      _create_pl_filter(gc, gc_path, 'PointList', distrib_ia, hdf_filter)
+      _create_pl_filter(gc, gc_path, 'PointListDonor', distrib_ia, hdf_filter)
 
 def create_flow_solution_filter(zone, zone_path, hdf_filter):
   """
@@ -82,10 +84,8 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
     distrib_ud_n = MT.getDistribution(flow_solution)
     if distrib_ud_n:
       distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
-      data_shape = utils.pl_or_pr_size(flow_solution)
-      data_space_pl = create_data_array_filter(distrib_data, data_shape)
-      data_space = create_data_array_filter(distrib_data, [data_shape.prod()])
-      utils.apply_dataspace_to_pointlist(flow_solution, flow_solution_path, data_space_pl, hdf_filter)
+      _create_pl_filter(flow_solution, flow_solution_path, 'PointList', distrib_data, hdf_filter)
+      data_space = create_data_array_filter(distrib_data)
     elif(grid_location == 'CellCenter'):
       data_space = create_data_array_filter(distrib_cell, zone[1][:,1])
     elif(grid_location == 'Vertex'):
@@ -121,9 +121,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
       raise RuntimeError("ZoneSubRegion {0} is not well defined".format(zone_subregion[0]))
     distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
 
-    data_shape = utils.pl_or_pr_size(matching_region)
-    data_space_pl = create_data_array_filter(distrib_data, data_shape)
-    data_space_ar = create_data_array_filter(distrib_data, [data_shape.prod()])
+    _create_pl_filter(zone_subregion, zone_subregion_path, 'PointList', distrib_data, hdf_filter)
 
-    utils.apply_dataspace_to_pointlist(zone_subregion, zone_subregion_path, data_space_pl, hdf_filter)
+    data_space_ar = create_data_array_filter(distrib_data)
     utils.apply_dataspace_to_arrays(zone_subregion, zone_subregion_path, data_space_ar, hdf_filter)

@@ -3,6 +3,41 @@ import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
 from maia.io.hdf import cgns_subsets
 
+def test_create_pl_filter():
+  yt = """
+  match1 GridConnectivity_t "ZoneA":
+    PointList IndexArray_t None:
+    PointList#Size IndexArray_t [1,10]:
+    PointListDonor IndexArray_t None:
+    PointListDonor#Size IndexArray_t [3,10]:
+    :CGNS#Distribution UserDefinedData_t:
+      Index DataArray_t [5,10,10]:
+  """
+  hdf_filter = dict()
+  node = parse_yaml_cgns.to_node(yt)
+
+  distri = PT.maia.getDistribution(node, 'Index')[1]
+  cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
+  cgns_subsets._create_pl_filter(node, "path/to/node", "PointListDonor", distri, hdf_filter)
+
+  assert hdf_filter['path/to/node/PointList'] == [[0, 0], [1, 1], [1, 5], [1, 1], \
+      [0, 5], [1, 1], [1, 5], [1, 1],      [1, 10], [0]]
+  assert hdf_filter['path/to/node/PointListDonor'] == [[0, 0], [1, 1], [3, 5], [1, 1], \
+      [0, 5], [1, 1], [3, 5], [1, 1],      [3, 10], [0]]
+
+  yt = """
+  match1 GridConnectivity_t "ZoneA":
+    PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
+    PointRangeDonor IndexRange_t [[1,3],[1,3],[3,3]]:
+    :CGNS#Distribution UserDefinedData_t:
+      Index DataArray_t [2,4,6]:
+  """
+  hdf_filter = dict()
+  node = parse_yaml_cgns.to_node(yt)
+  distri = PT.maia.getDistribution(node, 'Index')[1]
+  cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
+  assert len(hdf_filter) == 0
+
 def test_create_zone_bc_filter():
   #Don't test the value of value of dataspace, this is done by test_hdf_dataspace
   yt = """
@@ -11,10 +46,12 @@ Base CGNSBase_t [3,3]:
     ZBC ZoneBC_t:
       bc_only BC_t "wall":
         PointList IndexArray_t None:
+        PointList#Size IndexArray_t [1,10]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [5,10,10]:
       bc_with_ds BC_t "wall":
         PointList IndexArray_t None:
+        PointList#Size IndexArray_t [1,50]:
         BCDataSet BCDataSet_t:
           BCData BCData_t:
             array1 DataArray_t None:
@@ -23,8 +60,10 @@ Base CGNSBase_t [3,3]:
           Index DataArray_t [20,50,50]:
       bc_with_subds BC_t "wall":
         PointList IndexArray_t None:
+        PointList#Size IndexArray_t [1,50]:
         BCDataSet BCDataSet_t:
           PointList IndexArray_t None:
+          PointList#Size IndexArray_t [1,30]:
           BCData BCData_t:
             array1 DataArray_t None:
             array2 DataArray_t None:
@@ -57,12 +96,15 @@ Base CGNSBase_t [3,3]:
     ZGC ZoneGridConnectivity_t:
       match1 GridConnectivity_t "ZoneA":
         PointList IndexArray_t None:
+        PointList#Size IndexArray_t [1,10]:
         PointListDonor IndexArray_t None:
+        PointListDonor#Size IndexArray_t [1,10]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [5,10,10]:
       match2 GridConnectivity_t "Base1/ZoneC":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t None:
+        PointList#Size IndexArray_t [1,50]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,50,50]:
   ZoneS Zone_t None:
@@ -97,6 +139,7 @@ Base CGNSBase_t [3,3]:
     FSpartial FlowSolution_t:
       GridLocation GridLocation_t "CellCenter":
       PointList IndexArray_t None:
+      PointList#Size IndexArray_t [1,4]:
       array3 DataArray_t None:
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t [0,4,4]:
@@ -135,6 +178,7 @@ Base CGNSBase_t [3,3]:
   Zone Zone_t [[27],[8],[0]]:
     defined_ZSR ZoneSubRegion_t:
       PointList IndexArray_t None:
+      PointList#Size IndexArray_t [1,10]:
       array1 DataArray_t None:
       array2 DataArray_t None:
       :CGNS#Distribution UserDefinedData_t:
@@ -150,11 +194,13 @@ Base CGNSBase_t [3,3]:
     ZoneBC ZoneBC_t:
       bc BC_t "farfield":
         PointList IndexArray_t None:
+        PointList#Size IndexArray_t [1,10]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [5,10,10]:
     ZoneGC ZoneGridConnectivity_t:
       bc GridConnectivity_t:
         PointList IndexArray_t None:
+        PointList#Size IndexArray_t [1,40]:
         PointListDonor IndexArray_t None:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,40,40]:

@@ -145,7 +145,6 @@ Base CGNSBase_t [3,3]:
 """)
   distribution_tree.add_distribution_info(dist_tree, sub_comm)
   assert len(PT.get_nodes_from_name(dist_tree, 'Index')) == 4+3
-  assert PT.get_node_from_name(dist_tree, 'PointList#Size') is None
 
 def test_clean_distribution_info():
   yt = """
