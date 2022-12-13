@@ -142,8 +142,6 @@ class Zone:
     # TODO : how to prevent special case of range of elemt mixed in dim ?
     return utils.bucket_split(Zone.get_ordered_elements(zone), lambda e: Element.Dimension(e), size=4)
 
-    return sorted_elts_by_dim
-
   @staticmethod
   def get_elt_range_per_dim(zone):
     """

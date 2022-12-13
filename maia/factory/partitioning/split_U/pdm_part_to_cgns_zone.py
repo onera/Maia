@@ -115,7 +115,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
         PT.new_DataArray('VertexSizeUnique', n_vtx_unique, parent=lnum_node)
         PT.new_DataArray('VertexSizeOwned', n_vtx_owned, parent=lnum_node)
     #Now create sections
-    elt_section_nodes = PT.get_children_from_label(d_zone, "Elements_t")
+    elt_section_nodes = PT.Zone.get_ordered_elements(d_zone)
     pdm_sections = [data[f'{j}dsections'] for j in range(4)]
     assert len(elt_section_nodes) == sum([len(sections) for sections in pdm_sections])
 
