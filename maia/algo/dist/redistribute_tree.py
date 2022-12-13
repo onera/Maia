@@ -86,15 +86,15 @@ def redistribute_elements_node(node, distribution, comm):
   if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n']:
     eso_n = PT.get_child_from_name(node, 'ElementStartOffset')
     eso   = PT.get_value(eso_n)
-    if elt_distrib[1]==elt_distrib[2] : eso = eso
-    else                              : eso = eso[:-1]
-  # gather_and_shift(value, comm, dtype=None):
-    eso_gather = comm.gather(eso, root=0)
+    if comm.Get_rank()==0 : eso = eso
+    else                  : eso = eso[1:]
+    
+    eso_distrib        = par_utils.gather_and_shift(eso.shape[0], comm)
+    new_eso_distrib    = np.full(comm.Get_size()+1, eso_distrib[-1])
+    new_eso_distrib[0] = 0
 
-    new_eso = np.empty(0, dtype=np.int32)
-    if comm.Get_rank()==0 :
-      new_eso = np.concatenate(eso_gather)
-    PT.set_value(eso_n, new_eso)
+    eso_gather = MTP.block_to_block(eso, eso_distrib, new_eso_distrib, comm)
+    PT.set_value(eso_n, eso_gather)
 
   else :
     raise Exception("Other elements than NGON_n or NFACE_n aren't supported yet")
@@ -205,6 +205,7 @@ def redistribute_zone(dist_zone, distribution, comm):
     PT.rm_child(zone, zone_subregion)
     PT.add_child(zone, dist_zone_subregion)
 
+
   return zone
 # ---------------------------------------------------------------------------------------
 
@@ -233,7 +234,8 @@ def func_redistribute_tree(dist_tree, comm, policy='uniform'):
 
   for zone in PT.iter_all_Zone_t(tree):
     zone = redistribute_zone(zone, distribution, comm)
-    
+  
+
   return tree
 
 # ---------------------------------------------------------------------------------------
