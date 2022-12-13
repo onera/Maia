@@ -35,11 +35,19 @@ def test_collect_distributed_pl():
     assert (collected[i] == point_lists[i]).all()
   assert (collected[-1] == np.arange(35+10, 35+15)).all()
 
+  zone   = PT.new_Zone(type='Structured', size=[[3,2,0], [3,2,0], [3,2,0]])
+  zoneBC = PT.new_node('ZoneBC', 'ZoneBC_t', parent=zone)
+  PT.new_BC('bc', loc='IFaceCenter', \
+      point_list=np.array([[1,1,1,1],[1,1,2,2], [1,2,1,2]]), parent=zoneBC)
+  collected = IBTP.collect_distributed_pl(zone, [['ZoneBC_t', 'BC_t']])
+  assert np.array_equal(collected[0], [[1,7,4,10]])
+
 @mark_mpi_test(2)
 def test_dist_pl_to_part_pl(sub_comm):
   if sub_comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
+  ZoneType ZoneType_t "Unstructured":
   Quad Elements_t [7,0]:
     ElementRange IndexRange_t [1,12]:
   Hexa Elements_t [17,0]:
@@ -70,6 +78,7 @@ ZoneU Zone_t [[6,0,0]]:
 """.format(dtype)
     pt = """
   ZoneU.P0.N0 Zone_t [[4,0,0]]:
+    ZoneType ZoneType_t "Unstructured":
     Hexa Elements_t [17,0]:
       ElementRange IndexRange_t [1,4]:
       :CGNS#GlobalNumbering UserDefinedData_t:
@@ -80,6 +89,7 @@ ZoneU Zone_t [[6,0,0]]:
   elif sub_comm.Get_rank() == 1:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
+  ZoneType ZoneType_t "Unstructured":
   Quad Elements_t [7,0]:
     ElementRange IndexRange_t [1,12]:
   Hexa Elements_t [17,0]:
@@ -110,6 +120,7 @@ ZoneU Zone_t [[6,0,0]]:
 """.format(dtype)
     pt = """
   ZoneU.P1.N0 Zone_t [[3,0,0]]:
+    ZoneType ZoneType_t "Unstructured":
     Quad Elements_t [7,0]:
       ElementRange IndexRange_t [1,5]:
       :CGNS#GlobalNumbering UserDefinedData_t:
@@ -148,13 +159,14 @@ ZoneU Zone_t [[6,0,0]]:
     assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [1]).all()
     assert (PT.get_value(MT.getGlobalNumbering(part_ds, 'Index')) == [1]).all()
 
-  with pytest.raises(AssertionError):
+  with pytest.raises(ValueError):
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t'], 'FaceCenter', sub_comm)
 
 
 def test_create_part_pointlists():
   dt = """
 ZoneU Zone_t [[6,0,0]]:
+  ZoneType ZoneType_t "Unstructured":
   ZBC ZoneBC_t:
     BC BC_t "BCFarfield":
       GridLocation GridLocation_t "FaceCenter":
@@ -171,6 +183,7 @@ ZoneU Zone_t [[6,0,0]]:
 """.format(dtype)
   pt = """
 ZoneU.P1.N0 Zone_t [[3,0,0]]:
+  ZoneType ZoneType_t "Unstructured":
 """.format(dtype)
 
   dist_zone = parse_yaml_cgns.to_node(dt)

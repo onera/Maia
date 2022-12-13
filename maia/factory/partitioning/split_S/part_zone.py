@@ -41,17 +41,19 @@ def collect_S_bnd_per_dir(zone):
     for nodes in PT.iter_children_from_predicates(zone, bnd_query, ancestors=True):
       bnd = nodes[-1]
       grid_loc    = PT.Subset.GridLocation(bnd)
-      point_range = PT.get_node_from_name(bnd, 'PointRange')[1]
-      bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
+      point_range_n = PT.get_node_from_name(bnd, 'PointRange')
+      if point_range_n is not None: #Skip BC/GC defined by a PointList -- they will be updated after
+        point_range = point_range_n[1]
+        bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
 
-      if PT.get_label(bnd) == 'BCDataSet_t':
-        bcds_path = '/'.join([PT.get_name(n) for n in nodes[:-1]])
-        PT.new_child(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
+        if PT.get_label(bnd) == 'BCDataSet_t':
+          bcds_path = '/'.join([PT.get_name(n) for n in nodes[:-1]])
+          PT.new_child(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
 
-      pr_val = point_range[bnd_normal_index,0]
-      extr = 'min' if pr_val == 1 else 'max'
+        pr_val = point_range[bnd_normal_index,0]
+        extr = 'min' if pr_val == 1 else 'max'
 
-      base_bound[idx_to_dir[bnd_normal_index] + extr].append(bnd)
+        base_bound[idx_to_dir[bnd_normal_index] + extr].append(bnd)
 
   return base_bound
 

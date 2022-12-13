@@ -61,11 +61,10 @@ def compute_elements_distribution(zone, comm):
 def compute_zone_distribution(zone, comm):
   """
   """
-  n_vtx  = PT.Zone.n_vtx (zone)
-  n_cell = PT.Zone.n_cell(zone)
-
-  distrib_vtx  = create_distribution_node(n_vtx , comm, 'Vertex', zone)
-  distrib_cell = create_distribution_node(n_cell, comm, 'Cell'  , zone)
+  create_distribution_node(PT.Zone.n_vtx(zone) , comm, 'Vertex', zone)
+  if PT.Zone.Type(zone) == 'Structured':
+    create_distribution_node(PT.Zone.n_face(zone), comm, 'Face', zone)
+  create_distribution_node(PT.Zone.n_cell(zone), comm, 'Cell'  , zone)
 
   compute_elements_distribution(zone, comm)
 
