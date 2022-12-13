@@ -111,14 +111,10 @@ def redistribute_elements_node(node, distribution, comm):
   pe_n    = PT.get_child_from_name(node, 'ParentElements')
   if pe_n is not None :
     pe      = PT.get_value(pe_n)
-    new_pe  = np.zeros((elt_distrib[2], pe.shape[1]), dtype=np.int32)
-    print('pe.shape = ', pe.shape)
-    print('new_pe.shape = ', new_pe.shape)
+    new_pe  = np.zeros((new_elt_distrib[1]-new_elt_distrib[0], pe.shape[1]), dtype=np.int32)
     for ip in range(pe.shape[1]):
       new_pe_tmp  = MTP.block_to_block(pe[:,ip], elt_distrib, new_elt_distrib, comm)
-      print('new_pe_tmp.shape = ', new_pe_tmp.shape)
-      if comm.Get_rank() == 0:
-       new_pe[:,ip] = new_pe_tmp
+      new_pe[:,ip] = new_pe_tmp
     PT.set_value(pe_n, new_pe)
 
   return node # Pas top si y'a pas de deep copy ?
