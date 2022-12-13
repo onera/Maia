@@ -176,5 +176,66 @@ def test_redistribute_elements_node_U(sub_comm):
 
 
 
+@mark_mpi_test([2])
+def test_redistribute_gc_node_U(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    yt_gc = f"""
+    ZGC ZoneGridConnectivity_t:
+        Zmin_match GridConnectivity_t 'zone':
+            GridConnectivityType     GridConnectivityType_t 'Abutting1to1':
+            GridLocation             GridLocation_t         'FaceCenter':
+            PointList                IndexArray_t       I4 [[]]:
+            PointListDonor           IndexArray_t       I4 [[]]:
+            GridConnectivityProperty GridConnectivityProperty_t:
+            :CGNS#Distribution UserDefinedData_t:
+                Index DataArray_t {dtype} [0, 0, 4]:
+        Zmax_match GridConnectivity_t 'zone':
+            GridConnectivityType     GridConnectivityType_t 'Abutting1to1':
+            GridLocation             GridLocation_t         'FaceCenter':
+            PointList                IndexArray_t       I4 [[9, 10, 11, 12]]:
+            PointListDonor           IndexArray_t       I4 [[1, 2, 3, 4]]:
+            GridConnectivityProperty GridConnectivityProperty_t:
+            :CGNS#Distribution UserDefinedData_t:
+                Index DataArray_t {dtype} [0, 4, 4]:
+                    """
+  if sub_comm.Get_rank() == 1:
+    yt_gc = f"""
+    ZGC ZoneGridConnectivity_t:
+        Zmin_match GridConnectivity_t 'zone':
+            GridConnectivityType     GridConnectivityType_t 'Abutting1to1':
+            GridLocation             GridLocation_t         'FaceCenter':
+            PointList                IndexArray_t       I4 [[1, 2, 3, 4]]:
+            PointListDonor           IndexArray_t       I4 [[9, 10, 11, 12]]:
+            GridConnectivityProperty GridConnectivityProperty_t:
+            :CGNS#Distribution UserDefinedData_t:
+                Index DataArray_t {dtype} [0, 4, 4]:
+        Zmax_match GridConnectivity_t 'zone':
+            GridConnectivityType     GridConnectivityType_t 'Abutting1to1':
+            GridLocation             GridLocation_t         'FaceCenter':
+            PointList                IndexArray_t       I4 [[]]:
+            PointListDonor           IndexArray_t       I4 [[]]:
+            GridConnectivityProperty GridConnectivityProperty_t:
+            :CGNS#Distribution UserDefinedData_t:
+                Index DataArray_t {dtype} [4, 4, 4]:
+                    """
+
+  zgc_n = parse_yaml_cgns.to_cgns_tree(yt_gc)[2][0]
+
+  for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity_t') :
+    gather_gc = RDT.redistribute_pl_node(gc_n, par_utils.gathering_distribution, sub_comm)
+
+    if sub_comm.Get_rank()==0:
+      if gc_n[0]=='Zmin_match':
+        assert np.array_equal(PT.get_node_from_path(gather_gc, 'PointList'     )[1], np.array([[1,  2,  3,  4]]))
+        assert np.array_equal(PT.get_node_from_path(gather_gc, 'PointListDonor')[1], np.array([[9, 10, 11, 12]]))
+      elif gc_n[0]=='Zmax_match':
+        assert np.array_equal(PT.get_node_from_path(gather_gc, 'PointList'     )[1], np.array([[9, 10, 11, 12]]))
+        assert np.array_equal(PT.get_node_from_path(gather_gc, 'PointListDonor')[1], np.array([[1,  2,  3,  4]]))
+      assert np.array_equal(PT.get_node_from_path(gather_gc, ':CGNS#Distribution/Index')[1], np.array([0,4,4]))
+    
+    else:
+      assert                PT.get_node_from_name(gather_gc, 'PointList')[1].size==0
+      assert np.array_equal(PT.get_node_from_path(gather_gc, ':CGNS#Distribution/Index')[1], np.array([4,4,4]))
+    
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
