@@ -33,11 +33,6 @@ def test_redistribute_zone_U(sub_comm, write_output):
   for zone in PT.get_all_Zone_t(gather_tree):
     gather_zone = RDT.redistribute_zone(zone, par_utils.gathering_distribution, sub_comm)
 
-  # if sub_comm.Get_rank()==0:
-  #   import Converter.Internal as I
-  #   I.printTree(gather_tree)
-  # print(f'[{sub_comm.Get_rank()}] final = ', PT.get_node_from_path(gather_zone, 'NGonElements/ElementRange')[1])
-
   if write_output:
     Mio.write_trees(gather_tree, os.path.join(out_dir, 'gather_tree.cgns'), sub_comm)
 
@@ -94,3 +89,28 @@ def test_redistribute_zone_U(sub_comm, write_output):
     for node in PT.get_nodes_from_label(gather_zone, 'DataArray_t'):
       assert node[1].size==0
     
+
+
+
+
+@mark_mpi_test([1, 2, 3])
+def test_redistribute_tree_U(sub_comm, write_output):
+  
+  # Reference directory and file
+  ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
+  ref_file = os.path.join(ref_dir, f'cube_bcdataset_and_periodic.yaml')
+
+  # Loading file
+  dist_tree     = Mio.file_to_dist_tree(ref_file, sub_comm)
+  dist_tree_ref = PT.deep_copy(dist_tree)
+
+  # Gather and uniform
+  gather_tree = RDT.func_redistribute_tree(dist_tree  , sub_comm, policy='gather')
+  dist_tree   = RDT.func_redistribute_tree(gather_tree, sub_comm, policy='uniform')
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    Mio.dist_tree_to_file(dist_tree_ref, os.path.join(out_dir, 'ref_tree.cgns'), sub_comm)
+    Mio.dist_tree_to_file(dist_tree    , os.path.join(out_dir, 'out_tree.cgns'), sub_comm)
+
+  # assert PT.is_same_tree(dist_tree, dist_tree_ref)

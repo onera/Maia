@@ -86,14 +86,19 @@ def redistribute_elements_node(node, distribution, comm):
   if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n']:
     eso_n = PT.get_child_from_name(node, 'ElementStartOffset')
     eso   = PT.get_value(eso_n)
-    if comm.Get_rank()==0 : eso = eso
-    else                  : eso = eso[1:]
     
-    eso_distrib        = par_utils.gather_and_shift(eso.shape[0], comm)
-    new_eso_distrib    = np.full(comm.Get_size()+1, eso_distrib[-1])
-    new_eso_distrib[0] = 0
+    if distribution==par_utils.gathering_distribution:
+      if comm.Get_rank()==0 : eso = eso
+      else                  : eso = eso[1:]
+      eso_distrib        = par_utils.gather_and_shift(eso.shape[0], comm)
+      new_eso_distrib    = np.full(comm.Get_size()+1, elt_distrib[-1]+1)
+      new_eso_distrib[0] = 0
+      eso_gather = MTP.block_to_block(eso, eso_distrib, new_eso_distrib, comm)
+    
+    else:
+      eso = comm.bcast(eso, root=0)
+      eso_gather = eso[new_elt_distrib[0]:new_elt_distrib[1]+1]
 
-    eso_gather = MTP.block_to_block(eso, eso_distrib, new_eso_distrib, comm)
     PT.set_value(eso_n, eso_gather)
 
   else :
