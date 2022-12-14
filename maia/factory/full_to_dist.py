@@ -14,7 +14,7 @@ def distribute_pl_node(node, comm):
 
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(dist_node, 'IndexArray_t'):
-    array_n[1] = array_n[1][0][distri[0]:distri[1]].reshape(1,-1, order='F')
+    array_n[1] = array_n[1][:, distri[0]:distri[1]]
   #Data Arrays
   has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
   bcds_without_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_subset(n)

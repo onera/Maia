@@ -74,6 +74,21 @@ def test_load_balancing(sub_comm):
          sub_comm.allreduce(sum(zone_to_parts.get('Base/Large', [])), MPI.SUM) == 1.
 
 @mark_mpi_test([3])
+def test_part_H(sub_comm, write_output):
+  mesh_file = os.path.join(TU.mesh_dir, 'H_elt_and_s.yaml')
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
+
+  part_tree = PPA.partition_dist_tree(dist_tree, sub_comm)
+
+  assert sub_comm.allreduce(len(maia.pytree.get_all_Zone_t(part_tree)), MPI.SUM) == 4
+  n_original_jn = len(maia.pytree.get_nodes_from_name(part_tree, '1to1Connection:dom*'))
+  assert sub_comm.allreduce(n_original_jn, MPI.SUM) == 4
+
+  if write_output:
+    out_dir = TU.create_pytest_output_dir(sub_comm)
+    maia.io.part_tree_to_file(part_tree, os.path.join(out_dir, 'part_tree.hdf'), sub_comm)
+
+@mark_mpi_test([3])
 def test_part_S(sub_comm, write_output):
   mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
