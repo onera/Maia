@@ -7,6 +7,46 @@ import maia.pytree.maia   as MT
 import maia.transfer.dist_to_part.index_exchange as IBTP
 import maia.transfer.dist_to_part.recover_jn     as JBTP
 
+from maia.utils     import s_numbering
+
+ijk_to_idx_from_loc = {'IFaceCenter' : s_numbering.ijk_to_faceiIndex,
+                       'JFaceCenter' : s_numbering.ijk_to_facejIndex,
+                       'KFaceCenter' : s_numbering.ijk_to_facejIndex}
+idx_to_ijk_from_loc = {'IFaceCenter' : s_numbering.faceiIndex_to_ijk,
+                       'JFaceCenter' : s_numbering.facejIndex_to_ijk,
+                       'KFaceCenter' : s_numbering.facekIndex_to_ijk}
+
+is_zone_s = lambda n: PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n)=='Structured'
+is_zone_u = lambda n: PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n)=='Unstructured'
+is_initial_match = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n) \
+    and not MT.conv.is_intra_gc(n[0])
+
+def pl_as_idx(zone, subset_predicate):
+  """
+  Assume that the PLs found following subset_predicates are (i,j,k) triplets
+  and convert it to global faces indexes
+  """
+  assert PT.Zone.Type(zone) == 'Structured'
+  for subset in PT.get_children_from_predicates(zone, subset_predicate):
+    pl_node = PT.get_node_from_name(subset, 'PointList')
+    if pl_node is not None:
+      loc = PT.Subset.GridLocation(subset)
+      pl = ijk_to_idx_from_loc[loc](*pl_node[1], PT.Zone.CellSize(zone), PT.Zone.VertexSize(zone))
+      pl_node[1] = pl.reshape((1,-1), order='F')
+
+def pl_as_ijk(zone, subset_predicate):
+  """
+  Assume that the PLs found following subset_predicates are global faces indexes
+  and convert it to (i,j,k) triplets
+  """
+  assert PT.Zone.Type(zone) == 'Structured'
+  for subset in PT.get_children_from_predicates(zone, subset_predicate):
+    pl_node = PT.get_node_from_name(subset, 'PointList')
+    if pl_node is not None:
+      loc = PT.Subset.GridLocation(subset)
+      pl_ijk = idx_to_ijk_from_loc[loc](pl_node[1][0], PT.Zone.CellSize(zone), PT.Zone.VertexSize(zone))
+      PT.set_value(pl_node, pl_ijk)
+
 def copy_additional_nodes(dist_zone, part_zone):
   """
   """
@@ -125,6 +165,38 @@ def update_gc_donor_name(part_tree, comm):
         PT.rm_children_from_name(gc, 'GridConnectivityDonorName')
         PT.new_child(gc, 'GridConnectivityDonorName', 'Descriptor_t', candidate_jns[0])
 
+def hybrid_jns_as_idx(part_tree):
+  for s_zone in PT.get_nodes_from_predicate(part_tree, is_zone_s, depth=2):
+    pl_as_idx(s_zone, ['ZoneGridConnectivity_t', is_initial_match])
+
+def hybrid_jns_as_ijk(part_tree, comm):
+  gc_predicate = ['ZoneGridConnectivity_t', is_initial_match]
+  zone_s_data = {}
+  for zone_s_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', is_zone_s]):
+    zone_s = PT.get_node_from_path(part_tree, zone_s_path)
+    pl_as_ijk(zone_s, gc_predicate)
+    jn_dict = dict()
+    for gc in PT.get_children_from_predicates(zone_s, gc_predicate):
+      jn_dict[PT.get_name(gc)] = PT.Subset.GridLocation(gc)
+    zone_s_data[zone_s_path] = (PT.Zone.CellSize(zone_s), jn_dict)
+  zone_s_data_all = comm.allgather(zone_s_data)
+
+  for zone_u_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', is_zone_u]):
+    basename = PT.path_head(zone_u_path, 1)
+    zone_u = PT.get_node_from_path(part_tree, zone_u_path)
+    for gc in PT.get_children_from_predicates(zone_u, gc_predicate):
+      opp_zone_path = PT.getZoneDonorPath(basename, gc)
+      opp_rank = MT.conv.get_part_suffix(opp_zone_path)[0]
+      opp_jn_name = PT.get_value(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
+      try:
+        opp_zone_size, opp_zone_jns = zone_s_data_all[opp_rank][opp_zone_path]
+        opp_loc = opp_zone_jns[opp_jn_name]
+        pl_donor = PT.get_child_from_name(gc, 'PointListDonor')
+        pld_ijk = idx_to_ijk_from_loc[opp_loc](pl_donor[1][0], opp_zone_size, opp_zone_size+1)
+        PT.set_value(pl_donor, pld_ijk)
+      except KeyError:
+        pass # Opp zone is unstructured
+
 def post_partitioning(dist_tree, part_tree, comm):
   """
   """
@@ -145,9 +217,14 @@ def post_partitioning(dist_tree, part_tree, comm):
       IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'SFace', comm)
     for part_zone in part_zones:
       copy_additional_nodes(dist_zone, part_zone)
+
+  # Next functions works on S meshes if PointList refers to global faces indices
+  hybrid_jns_as_idx(part_tree)
             
   # Match original joins
   JBTP.get_pl_donor(dist_tree, part_tree, comm)
   split_original_joins(part_tree)
   update_gc_donor_name(part_tree, comm)
 
+  # Go back to ijk for PointList
+  hybrid_jns_as_ijk(part_tree, comm)

@@ -119,8 +119,6 @@ def _partitioning(dist_tree,
   u_zones = PT.get_nodes_from_predicate(dist_tree, is_u_zone, depth=2)
   s_zones = PT.get_nodes_from_predicate(dist_tree, is_s_zone, depth=2)
 
-  if len(u_zones)*len(s_zones) != 0:
-    raise RuntimeError("Hybrid meshes are not yet supported")
 
   MJT.add_joins_donor_name(dist_tree, comm)
 
@@ -146,7 +144,8 @@ def _partitioning(dist_tree,
   partS.split_original_joins_S(all_s_parts, comm)
 
   #Split U zones (all at once)
-  base_to_blocks_u = {PT.get_name(base) : PT.get_all_Zone_t(base) for base in PT.get_all_CGNSBase_t(dist_tree)}
+  base_to_blocks_u = {PT.get_name(base) : [zone for zone in PT.get_all_Zone_t(base) if is_u_zone(zone)] \
+      for base in PT.get_all_CGNSBase_t(dist_tree)}
   if len(u_zones) > 0:
     base_to_parts_u = partU.part_U_zones(base_to_blocks_u, dzone_to_weighted_parts, comm, part_options)
     for base, u_parts in base_to_parts_u.items():
