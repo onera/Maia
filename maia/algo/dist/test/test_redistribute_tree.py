@@ -18,6 +18,7 @@ dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------------------
 @mark_mpi_test([3])
 def test_redistribute_pl_node_U(sub_comm):
   if sub_comm.Get_rank() == 0:
@@ -56,9 +57,10 @@ def test_redistribute_pl_node_U(sub_comm):
   else:
     assert np.array_equal(PT.get_node_from_name(gather_bc, 'Index'    )[1], np.array([11,11,11]))
     assert PT.get_node_from_name(gather_bc, 'PointList')[1].size==0
+# ---------------------------------------------------------------------------------------
 
 
-
+# ---------------------------------------------------------------------------------------
 @mark_mpi_test([3])
 def test_redistribute_data_node_U(sub_comm):
   if sub_comm.Get_rank() == 0:
@@ -102,80 +104,98 @@ def test_redistribute_data_node_U(sub_comm):
   else:
     assert PT.get_node_from_name(gather_fs, 'Density'  )[1].size==0
     assert PT.get_node_from_name(gather_fs, 'MomentumX')[1].size==0
+# ---------------------------------------------------------------------------------------
 
 
-
+# ---------------------------------------------------------------------------------------
+@pytest.mark.parametrize("elt", ["NGON_n", 'TRI_3'])
 @mark_mpi_test([3])
-def test_redistribute_elements_node_U(sub_comm):
+def test_redistribute_elements_node_U(elt, sub_comm):
+  cgns_elt = {'NGON_n': 22, 'TRI_3': 5}
   if sub_comm.Get_rank() == 0:
+    str_ESO = {'TRI_3' :'',
+               'NGON_n':'ElementStartOffset  DataArray_t  I4 [0, 3, 6, 9]:' }
+    str_DEC = {'TRI_3' : '',
+               'NGON_n':f'ElementConnectivity DataArray_t {dtype} [0, 9, 24]:' }
     yt_bc = f"""
-    NGonElements Elements_t I4 [22, 0]:
+    Elements Elements_t I4 [{cgns_elt[elt]}, 0]:
       ElementRange        IndexRange_t I4 [1, 8]:
-      ElementStartOffset  DataArray_t  I4 [0, 4, 7, 11]:
-      ElementConnectivity DataArray_t  I4 [1, 3, 7, 2, 3, 9, 2, 4, 7, 2, 7]:
+      {str_ESO[elt]}
+      ElementConnectivity DataArray_t  I4 [1, 3, 7, 2, 9, 2, 4, 2, 7]:
       ParentElements      DataArray_t  I4 [[1, 4], [9, 2], [9, 4]]:
       :CGNS#Distribution UserDefinedData_t:
-        Element             DataArray_t {dtype} [0, 3, 8]:
-        ElementConnectivity DataArray_t {dtype} [0, 11, 28]:
+        Element             DataArray_t {dtype} [0, 3,  8]:
+        {str_DEC[elt]}
     """
+
   if sub_comm.Get_rank() == 1:
+    str_ESO = {'TRI_3' :'',
+               'NGON_n':'ElementStartOffset  DataArray_t  I4 [9, 12, 15, 18]:' }
+    str_DEC = {'TRI_3' : '',
+               'NGON_n':f'ElementConnectivity DataArray_t {dtype} [ 9, 18, 24]:' }
     yt_bc = f"""
-    NGonElements Elements_t I4 [22, 0]:
+    Elements Elements_t I4 [{cgns_elt[elt]}, 0]:
       ElementRange        IndexRange_t I4 [1, 8]:
-      ElementStartOffset  DataArray_t  I4 [11, 15, 18, 21]:
-      ElementConnectivity DataArray_t  I4 [7, 8, 3, 6, 1, 4, 9, 2, 6, 5]:
+      {str_ESO[elt]}
+      ElementConnectivity DataArray_t  I4 [7, 8, 3, 6, 1, 4, 2, 6, 5]:
       ParentElements      DataArray_t  I4 [[2, 5], [1, 2], [7, 6]]:
       :CGNS#Distribution UserDefinedData_t:
-        Element             DataArray_t {dtype} [ 3,  6, 8]:
-        ElementConnectivity DataArray_t {dtype} [11, 21, 28]:
+        Element             DataArray_t {dtype} [ 3,  6,  8]:
+        {str_DEC[elt]}
     """
   if sub_comm.Get_rank() == 2:
+    str_ESO = {'TRI_3' :'',
+               'NGON_n':'ElementStartOffset  DataArray_t  I4 [18, 21, 24]:' }
+    str_DEC = {'TRI_3' : '',
+               'NGON_n':f'ElementConnectivity DataArray_t {dtype} [18, 24, 24]:' }
     yt_bc = f"""
-    NGonElements Elements_t I4 [22, 0]:
+    Elements Elements_t I4 [{cgns_elt[elt]}, 0]:
       ElementRange        IndexRange_t I4 [1, 8]:
-      ElementStartOffset  DataArray_t  I4 [21, 24, 28]:
-      ElementConnectivity DataArray_t  I4 [9, 2, 3, 1, 5, 4, 3]:
+      {str_ESO[elt]}
+      ElementConnectivity DataArray_t  I4 [9, 2, 3, 1, 5, 4]:
       ParentElements      DataArray_t  I4 [[8, 1], [9, 2]]:
       :CGNS#Distribution UserDefinedData_t:
-        Element             DataArray_t {dtype} [6, 8, 8]:
-        ElementConnectivity DataArray_t {dtype} [21, 28, 28]:
+        Element             DataArray_t {dtype} [ 6,  8,  8]:
+        {str_DEC[elt]}
     """
   
   dist_elt = parse_yaml_cgns.to_cgns_tree(yt_bc)[2][0]
-  
+
   gather_elt = RDT.redistribute_elements_node(dist_elt, par_utils.gathering_distribution, sub_comm)
 
-  assert np.array_equal(PT.get_node_from_name(gather_elt, 'ElementRange')[1],
-                          np.array([1, 8]))
+  assert np.array_equal(PT.get_node_from_name(gather_elt, 'ElementRange')[1], np.array([1, 8]))
 
   if sub_comm.Get_rank()==0:
-    assert np.array_equal(PT.get_child_from_name(gather_elt, 'ElementStartOffset')[1],
-                           np.array([0, 4, 7, 11, 15, 18, 21, 24, 28 ]))
-    assert np.array_equal(PT.get_child_from_name(gather_elt, 'ElementConnectivity')[1],
-                           np.array([1, 3, 7, 2, 3, 9, 2, 4, 7, 2, 7, \
-                                     7, 8, 3, 6, 1, 4, 9, 2, 6, 5, \
-                                     9, 2, 3, 1, 5, 4, 3]))
-    assert np.array_equal(PT.get_child_from_name(gather_elt, 'ParentElements')[1],
-                           np.array([ [1, 4], [9, 2], [9, 4],\
-                                      [2, 5], [1, 2], [7, 6],\
-                                      [8, 1], [9, 2]]))
-    assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/Element')[1],
-                           np.array([0, 8, 8 ]))
-    assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/ElementConnectivity')[1],
-                           np.array([0, 28, 28 ]))
+    node_value = {'ElementConnectivity'                    : np.array([1, 3, 7, 2, 9, 2, 4, 2, 7, 7, 8, 3, 6, 1, 4, 2, 6, 5, 9, 2, 3, 1, 5, 4]),
+                  'ElementStartOffset'                     : np.array([0, 3, 6, 9, 12, 15, 18, 21, 24]),
+                  'ParentElements'                         : np.array([ [1, 4], [9, 2], [9, 4], [2, 5], [1, 2], [7, 6], [8, 1], [9, 2]]),
+                  ':CGNS#Distribution/Element'             : np.array([0, 8, 8 ]),
+                  ':CGNS#Distribution/ElementConnectivity' : np.array([0, 24, 24 ]),
+                  }
+
+    for node in node_value :
+      if node in ['ElementStartOffset', ':CGNS#Distribution/ElementConnectivity']:
+        if elt=='NGON_n': assert np.array_equal(PT.get_node_from_path(gather_elt, node)[1], node_value[node])
+        else            : assert                PT.get_node_from_path(gather_elt, node)   is None
+      else:
+        assert                   np.array_equal(PT.get_node_from_path(gather_elt, node)[1], node_value[node])
   
   else:
-    assert PT.get_child_from_name(gather_elt, 'ElementStartOffset' )[1].size==0
     assert PT.get_child_from_name(gather_elt, 'ElementConnectivity')[1].size==0
     assert PT.get_child_from_name(gather_elt, 'ParentElements'     )[1].size==0
     assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/Element')[1],
-                           np.array([8, 8, 8 ]))
-    assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/ElementConnectivity')[1],
-                           np.array([28, 28, 28 ]))
+                          np.array([8, 8, 8 ]))
+    if elt=='NGON_n':
+      assert PT.get_child_from_name(gather_elt, 'ElementStartOffset' )[1].size==0
+      assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/ElementConnectivity')[1],
+                            np.array([24, 24, 24 ]))
+    else :
+      assert PT.get_node_from_name(gather_elt, 'ElementStartOffset'                    ) is None
+      assert PT.get_node_from_name(gather_elt, ':CGNS#Distribution/ElementConnectivity') is None
+# ---------------------------------------------------------------------------------------
 
 
-
-
+# ---------------------------------------------------------------------------------------
 @mark_mpi_test([2])
 def test_redistribute_gc_node_U(sub_comm):
   if sub_comm.Get_rank() == 0:
