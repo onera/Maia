@@ -9,6 +9,11 @@ import maia.transfer.protocols as MTP
 
 from   maia.utils import par_utils, np_utils
 
+vtx_in_elt = {"TETRA_4": 4, 
+              "TRI_3"  : 3, 
+              "BAR_2"  : 2  
+              }
+
 # ---------------------------------------------------------------------------------------
 def redistribute_pl_node(node, distribution, comm):
   """
@@ -67,26 +72,38 @@ def redistribute_elements_node(node, distribution, comm):
   assert PT.get_label(node) == 'Elements_t'
   assert PT.Element.CGNSName(node) != "MIXED", "Mixed elements are not supported"
 
+  ngon_vision = False
+  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n']   :  ngon_vision = True # If NGON or NFACE
+
   # Get element distribution
-  elt_distrib     = PT.get_node_from_path(node, ":CGNS#Distribution/Element")[1]
-  eltcon_distrib  = PT.get_node_from_path(node, ":CGNS#Distribution/ElementConnectivity")[1]
-  n_elt    = elt_distrib[2]
-  n_eltcon = eltcon_distrib[2]
+  elt_distrib = PT.get_node_from_path(node, ":CGNS#Distribution/Element")[1]
+  n_elt       = elt_distrib[2]
+  if ngon_vision :
+    eltcon_distrib  = PT.get_node_from_path(node, ":CGNS#Distribution/ElementConnectivity")[1]
+    n_eltcon        = eltcon_distrib[2]
+  else:
+    eltcon_distrib  = elt_distrib*vtx_in_elt[PT.Element.CGNSName(node)]
+
   PT.rm_node_from_path(node,  ":CGNS#Distribution")
 
   # New element distribution
-  new_elt_distrib    = distribution(n_elt   , comm)
-  new_eltcon_distrib = distribution(n_eltcon, comm)
-  new_distrib = {'Element'            : new_elt_distrib   ,
-                 'ElementConnectivity': new_eltcon_distrib}
+  new_elt_distrib = distribution(n_elt   , comm)
+  new_distrib     = {'Element': new_elt_distrib}
+  if ngon_vision :
+    new_eltcon_distrib = distribution(n_eltcon, comm)
+    new_distrib['ElementConnectivity'] = new_eltcon_distrib
+  else:
+    new_eltcon_distrib = new_elt_distrib*vtx_in_elt[PT.Element.CGNSName(node)]
+
   MT.newDistribution(new_distrib, node)
 
 
   # > ElementStartOffset
-  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n']:
+  if ngon_vision :
     eso_n = PT.get_child_from_name(node, 'ElementStartOffset')
     eso   = PT.get_value(eso_n)
     
+    # Gathering
     if distribution==par_utils.gathering_distribution:
       if comm.Get_rank()==0 : eso = eso
       else                  : eso = eso[1:]
@@ -95,14 +112,12 @@ def redistribute_elements_node(node, distribution, comm):
       new_eso_distrib[0] = 0
       eso_gather = MTP.block_to_block(eso, eso_distrib, new_eso_distrib, comm)
     
+    # Uniform
     else:
       eso = comm.bcast(eso, root=0)
       eso_gather = eso[new_elt_distrib[0]:new_elt_distrib[1]+1]
 
     PT.set_value(eso_n, eso_gather)
-
-  else :
-    raise Exception("Other elements than NGON_n or NFACE_n aren't supported yet")
 
 
   # > ElementConnectivity
@@ -121,6 +136,7 @@ def redistribute_elements_node(node, distribution, comm):
       new_pe_tmp  = MTP.block_to_block(pe[:,ip], elt_distrib, new_elt_distrib, comm)
       new_pe[:,ip] = new_pe_tmp
     PT.set_value(pe_n, new_pe)
+
 
   return node # Pas top si y'a pas de deep copy ?
 # ---------------------------------------------------------------------------------------
