@@ -219,8 +219,8 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
       if PT.get_child_from_name(gc, '__maia_merge__') is not None and gc_path < gc_path_opp:
         interface_dom.append((zone_to_id[zone_path], zone_to_id[opp_zone_path]))
 
-        pl  = PT.get_child_from_name(gc, 'PointList')[1][0]
-        pld = PT.get_child_from_name(gc, 'PointListDonor')[1][0]
+        pl  = as_pdm_gnum(PT.get_child_from_name(gc, 'PointList')[1][0])
+        pld = as_pdm_gnum(PT.get_child_from_name(gc, 'PointListDonor')[1][0])
 
         interface_dn_f.append(pl.size)
         interface_ids_f.append(np_utils.interweave_arrays([pl,pld]))
