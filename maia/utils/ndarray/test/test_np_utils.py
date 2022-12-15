@@ -25,6 +25,16 @@ def test_single_dim_pr_to_pl():
   with pytest.raises(AssertionError):
     np_utils.single_dim_pr_to_pl(np.array([[20, 25], [1,1]]))
 
+def test_compress():
+  idx, val = np_utils.compress(np.array([1,1,1,2,2,3,4,4,4,4,4]))
+  assert np.array_equal(idx, np.array([0,3,5,6,11]))
+  assert np.array_equal(val, np.array([1,2,3,4]))
+  idx, val = np_utils.compress(np.array([42,42,42,42]))
+  assert np.array_equal(idx, np.array([0,4]))
+  assert np.array_equal(val, np.array([42]))
+  with pytest.raises(AssertionError):
+    idx, val = np_utils.compress(np.array([]))
+
 def test_sizes_to_indices():
   assert(np_utils.sizes_to_indices([]) == np.zeros(1))
   assert(np_utils.sizes_to_indices([5,3,5,10]) == np.array([0,5,8,13,23])).all()

@@ -61,8 +61,10 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
   renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum_method']
   renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_options['face_renum_method']
   renum_vtx_method  = "PDM_PART_RENUM_VTX_"  + reorder_options['vtx_renum_method']
+  part_tool_dic = {'parmetis': 1, 'ptscotch': 2, 'hyperplane': 3}
   if "CACHEBLOCKING" in reorder_options['cell_renum_method']:
-    pdm_part_tool     = 1 if reorder_options['graph_part_tool'] == 'parmetis' else 2
+    pdm_part_tool     = part_tool_dic[reorder_options['graph_part_tool']]
+    assert pdm_part_tool <= 2
     cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
                                     1,
                                     1,
@@ -70,7 +72,7 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
                                     pdm_part_tool],
                                     dtype='int32', order='c')
   elif "HPC" in reorder_options['cell_renum_method']:
-    pdm_part_tool     = 1 if reorder_options['graph_part_tool'] == 'parmetis' else 2
+    pdm_part_tool     = part_tool_dic[reorder_options['graph_part_tool']]
     cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
                                     0, # is_asynchrone
                                     1,
@@ -126,14 +128,17 @@ def _add_ln_to_gn(multi_part, l_data, i_zone, n_part, additionnal_list_key):
       dict_res = multi_part.multipart_ln_to_gn_get(i_part, i_zone, entity_type)
       l_data[i_part]["np_"+key+'_ln_to_gn'] = dict_res["np_entity_ln_to_gn"]
 
-def _add_color(multi_part, l_data, i_zone, n_part, additionnal_list_key):
+def _add_color(multi_part, l_data, i_zone, n_part):
   """
-  Enrich dictionnary with additional query of user
   """
-  for key in additionnal_list_key:
-    entity_type = maia_to_pdm_entity[key]
-    for i_part in range(n_part):
-      dict_res = multi_part.multipart_part_color_get(i_part, i_zone, entity_type)
+  for i_part in range(n_part):
+    # Use both API to get thread color (needed for elsa) and avoid double get
+    for key, data in multi_part.multipart_color_get(i_part, i_zone).items():
+      if key == 'np_hyper_plane_color':
+        key = 'np_hyperplane_color'
+      l_data[i_part][key] = data
+    for key in ['edge', 'vtx']:
+      dict_res = multi_part.multipart_part_color_get(i_part, i_zone, maia_to_pdm_entity[key])
       l_data[i_part]["np_"+key+'_color'] = dict_res["np_entity_color"]
 
 
@@ -157,7 +162,7 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
 
     _add_connectivity(multi_part, l_data, i_zone, n_part, post_options['additional_connectivity'])
     _add_ln_to_gn    (multi_part, l_data, i_zone, n_part, post_options['additional_ln_to_gn'])
-    _add_color       (multi_part, l_data, i_zone, n_part, post_options['additional_color'])
+    _add_color       (multi_part, l_data, i_zone, n_part)
 
     #For element : additional conversion step to retrieve part elements
     pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
@@ -200,7 +205,7 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
 
   post_options = {k:part_options[k] for k in ['part_interface_loc', 'dump_pdm_output', 'output_connectivity',
                                               'additional_connectivity', 'additional_ln_to_gn',
-                                              'additional_color','keep_empty_sections']}
+                                              'keep_empty_sections']}
   u_parts = collect_mpart_partitions(multi_part, u_zones, n_part_per_zone, comm, post_options)
 
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array

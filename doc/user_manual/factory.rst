@@ -100,8 +100,8 @@ control the renumbering of mesh entities in the partitions.
 +--------------------+-----------------------------------+-------------------------------------+----------------------------+
 | n_face_per_pack    | Integer >= 0                      | Specific to cacheblocking           | 0                          |
 +--------------------+-----------------------------------+-------------------------------------+----------------------------+
-| graph_part_tool    | "parmetis", "ptscotch"            | Graph partitioning library to       | Same as partitioning tool  |
-|                    |                                   | use for renumbering                 |                            |
+| graph_part_tool    | "parmetis", "ptscotch",           | Graph partitioning library to       | Same as partitioning tool  |
+|                    | "hyperplane"                      | use for renumbering                 |                            |
 +--------------------+-----------------------------------+-------------------------------------+----------------------------+
 
 Recovering from partitions

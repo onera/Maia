@@ -4,7 +4,7 @@ import itertools
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils import layouts
+from maia.utils import layouts, np_utils
 
 def dump_pdm_output(p_zone, dims, data):
   """
@@ -70,6 +70,17 @@ def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
   coords = data['np_vtx_coord']
   fields = {'CoordinateX' : coords[0::3], 'CoordinateY' : coords[1::3], 'CoordinateZ' : coords[2::3]}
   grid_c = PT.new_GridCoordinates(fields=fields, parent=p_zone)
+
+def pdm_renumbering_data(p_zone, data):
+  color_data = PT.new_node('maia#Renumbering', 'UserDefinedData_t')
+  for entity in ['cell', 'face', 'edge', 'vtx', 'thread', 'hyperplane']:
+    array = data[f'np_{entity}_color']
+    if array is not None:
+      idx, val = np_utils.compress(array)
+      PT.new_DataArray(f"{entity.capitalize()}ColorIdx", idx, parent=color_data)
+      PT.new_DataArray(f"{entity.capitalize()}Color", val, parent=color_data)
+  if len(PT.get_children(color_data)) > 0:
+    PT.add_child(p_zone, color_data)
 
 def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element", keep_empty_sections=False):
   """
@@ -174,6 +185,8 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     output_loc = options['part_interface_loc']
     zgc_name = 'ZoneGridConnectivity#Vertex' if output_loc == 'Vertex' else 'ZoneGridConnectivity'
     zgc_created_pdm_to_cgns(part_zone, dist_zone, dims, data, output_loc, zgc_name)
+
+    pdm_renumbering_data(part_zone, data)
 
     lngn_zone = MT.newGlobalNumbering(parent=part_zone)
     PT.new_DataArray('Vertex', data['np_vtx_ln_to_gn'], parent=lngn_zone)
