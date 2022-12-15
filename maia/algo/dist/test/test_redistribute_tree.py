@@ -9,7 +9,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from   maia.utils         import par_utils
-from   maia.algo.dist     import redistribute_tree as RDT
+from   maia.algo.dist     import redistribute as RDT
 from   maia.pytree.yaml   import parse_yaml_cgns
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype

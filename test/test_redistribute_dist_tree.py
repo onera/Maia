@@ -9,7 +9,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from   maia.utils         import par_utils
-from   maia.algo.dist     import redistribute_tree as RDT
+from   maia.algo.dist     import redistribute as RDT
 from   maia.pytree.yaml   import parse_yaml_cgns
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -105,8 +105,8 @@ def test_redistribute_tree_U(sub_comm, write_output):
   dist_tree_ref = PT.deep_copy(dist_tree)
 
   # Gather and uniform
-  gather_tree = RDT.func_redistribute_tree(dist_tree  , sub_comm, policy='gather')
-  dist_tree   = RDT.func_redistribute_tree(gather_tree, sub_comm, policy='uniform')
+  gather_tree = RDT.redistribute_tree(dist_tree  , sub_comm, policy='gather')
+  dist_tree   = RDT.redistribute_tree(gather_tree, sub_comm, policy='uniform')
 
   if write_output:
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)

@@ -27,4 +27,4 @@ from .s_to_u                     import convert_s_to_u, convert_s_to_ngon
 from .vertex_list                import generate_jn_vertex_list,\
                                         generate_jns_vertex_list
 
-from .redistribute_tree          import func_redistribute_tree
+from .redistribute               import redistribute_tree
