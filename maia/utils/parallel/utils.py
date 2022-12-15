@@ -6,11 +6,11 @@ import maia.pytree as PT
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype
 
-def gathering_distribution(n_elt, comm):
+def gathering_distribution(i_rank, n_elt, comm):
   """
   """
-  if comm.Get_rank() == 0: distrib = np.array([0    , n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
-  else                   : distrib = np.array([n_elt, n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
+  if comm.Get_rank() == i_rank: distrib = np.array([0    , n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
+  else                        : distrib = np.array([n_elt, n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
   return distrib
 
 def uniform_distribution(n_elt, comm):

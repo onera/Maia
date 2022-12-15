@@ -16,7 +16,7 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
 
-@mark_mpi_test([1, 2, 3])
+@mark_mpi_test([2])
 def test_redistribute_zone_U(sub_comm, write_output):
   
   # Reference directory and file
@@ -31,7 +31,8 @@ def test_redistribute_zone_U(sub_comm, write_output):
     Mio.write_trees(dist_tree, os.path.join(out_dir, 'dist_tree.cgns'), sub_comm)
 
   for zone in PT.get_all_Zone_t(gather_tree):
-    gather_zone = RDT.redistribute_zone(zone, par_utils.gathering_distribution, sub_comm)
+    distribution = lambda n_elt, comm : par_utils.gathering_distribution(0, n_elt, comm)
+    gather_zone  = RDT.redistribute_zone(zone, distribution, sub_comm)
 
   if write_output:
     Mio.write_trees(gather_tree, os.path.join(out_dir, 'gather_tree.cgns'), sub_comm)
@@ -57,6 +58,11 @@ def test_redistribute_zone_U(sub_comm, write_output):
 
     ref_tree = Mio.read_tree(ref_file)
     PT.rm_nodes_from_name(gather_tree, ':CGNS#Distribution')
+    if write_output:
+      print(os.path.join(out_dir, ref_file.split('/')[-1].split('.')[0]+'.cgns'))
+      Mio.write_tree(ref_tree, os.path.join(out_dir, ref_file.split('/')[-1].split('.')[0]+'.cgns'))
+      Mio.write_tree(gather_tree, os.path.join(out_dir, 'gather_tree.cgns'))
+
     assert PT.is_same_tree(ref_tree[2][1], gather_tree[2][1])
 
 

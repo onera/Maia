@@ -103,8 +103,13 @@ def redistribute_elements_node(node, distribution, comm):
     eso_n = PT.get_child_from_name(node, 'ElementStartOffset')
     eso   = PT.get_value(eso_n)
     
+    # Uniform
+    if distribution==par_utils.uniform_distribution:
+      eso = comm.bcast(eso, root=0)
+      eso_gather = eso[new_elt_distrib[0]:new_elt_distrib[1]+1]
+
     # Gathering
-    if distribution==par_utils.gathering_distribution:
+    else:
       if comm.Get_rank()==0 : eso = eso
       else                  : eso = eso[1:]
       eso_distrib        = par_utils.gather_and_shift(eso.shape[0], comm)
@@ -112,11 +117,6 @@ def redistribute_elements_node(node, distribution, comm):
       new_eso_distrib[0] = 0
       eso_gather = MTP.block_to_block(eso, eso_distrib, new_eso_distrib, comm)
     
-    # Uniform
-    else:
-      eso = comm.bcast(eso, root=0)
-      eso_gather = eso[new_elt_distrib[0]:new_elt_distrib[1]+1]
-
     PT.set_value(eso_n, eso_gather)
 
 
@@ -247,9 +247,19 @@ def redistribute_tree(dist_tree, comm, policy='uniform'):
   Example :
     TODO
   '''
-  assert policy in ["uniform", "gather"]
-  if policy   == "uniform" : distribution = par_utils.uniform_distribution
-  elif policy == "gather"  : distribution = par_utils.gathering_distribution
+  policy_type = policy.split('.')[0]
+  assert policy_type in ["uniform", "gather"]
+
+  if   policy_type == "uniform" :
+    distribution = par_utils.uniform_distribution
+
+  elif policy_type == "gather"  :
+    assert len(policy.split('.')) in [1, 2]
+    if len(policy.split('.'))==2:
+      i_rank = int(policy.split('.')[1])
+      distribution = lambda n_elt, comm : par_utils.gathering_distribution(i_rank, n_elt, comm)
+    else:
+      distribution = lambda n_elt, comm : par_utils.gathering_distribution(0     , n_elt, comm)
 
   tree = dist_tree # OR deep_copy ??
 

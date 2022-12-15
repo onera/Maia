@@ -18,6 +18,8 @@ dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 
+distribution = lambda n_elt, comm : par_utils.gathering_distribution(0, n_elt, comm)
+
 # ---------------------------------------------------------------------------------------
 @mark_mpi_test([3])
 def test_redistribute_pl_node_U(sub_comm):
@@ -48,7 +50,7 @@ def test_redistribute_pl_node_U(sub_comm):
   
   dist_bc = parse_yaml_cgns.to_cgns_tree(yt_bc)[2][0]
   
-  gather_bc = RDT.redistribute_pl_node(dist_bc, par_utils.gathering_distribution, sub_comm)
+  gather_bc = RDT.redistribute_pl_node(dist_bc, distribution, sub_comm)
   
   if sub_comm.Get_rank()==0:
     assert np.array_equal(PT.get_node_from_name(gather_bc, 'Index'    )[1], np.array([0,11,11]))
@@ -161,7 +163,7 @@ def test_redistribute_elements_node_U(elt, sub_comm):
   
   dist_elt = parse_yaml_cgns.to_cgns_tree(yt_bc)[2][0]
 
-  gather_elt = RDT.redistribute_elements_node(dist_elt, par_utils.gathering_distribution, sub_comm)
+  gather_elt = RDT.redistribute_elements_node(dist_elt, distribution, sub_comm)
 
   assert np.array_equal(PT.get_node_from_name(gather_elt, 'ElementRange')[1], np.array([1, 8]))
 
@@ -242,7 +244,7 @@ def test_redistribute_gc_node_U(sub_comm):
   zgc_n = parse_yaml_cgns.to_cgns_tree(yt_gc)[2][0]
 
   for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity_t') :
-    gather_gc = RDT.redistribute_pl_node(gc_n, par_utils.gathering_distribution, sub_comm)
+    gather_gc = RDT.redistribute_pl_node(gc_n, distribution, sub_comm)
 
     if sub_comm.Get_rank()==0:
       if gc_n[0]=='Zmin_match':

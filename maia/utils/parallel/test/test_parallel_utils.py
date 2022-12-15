@@ -11,7 +11,7 @@ from maia.utils.parallel import utils
 
 @mark_mpi_test(3)
 def test_gathering_distribution(sub_comm):
-  distrib = utils.gathering_distribution(17, sub_comm)
+  distrib = utils.gathering_distribution(0, 17, sub_comm)
   assert isinstance(distrib, np.ndarray)
   assert distrib.dtype == npy_pdm_gnum_dtype
   if   sub_comm.Get_rank()==0:
