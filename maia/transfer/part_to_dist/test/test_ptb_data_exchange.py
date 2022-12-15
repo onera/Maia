@@ -59,12 +59,14 @@ class Test__discover_wrapper:
   def test_sol_with_pl(self, sub_comm):
     dt = """
   Zone Zone_t:
+    ZoneType ZoneType_t "Unstructured":
     Hexa Elements_t [17,0]:
       ElementRange IndexRange_t [1,50]:
     """
     if sub_comm.Get_rank() == 0:
       pt = """
     Zone.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       Hexa Elements_t [17,0]:
         ElementRange IndexRange_t [1,5]:
         :CGNS#GlobalNumbering UserDefinedData_t:
@@ -79,7 +81,9 @@ class Test__discover_wrapper:
     if sub_comm.Get_rank() == 2:
       pt = """
     Zone.P2.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
     Zone.P2.N1 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       Hexa Elements_t [17,0]:
         ElementRange IndexRange_t [1,4]:
         :CGNS#GlobalNumbering UserDefinedData_t:

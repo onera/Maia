@@ -69,9 +69,9 @@ def test_create_part_pl_gnum(sub_comm):
 @mark_mpi_test(4)
 @pytest.mark.parametrize("allow_mult", [False, True])
 def test_part_pl_to_dist_pl(sub_comm, allow_mult):
-  dist_zone = PT.new_Zone('Zone')
+  dist_zone = PT.new_Zone('Zone', type='Unstructured')
   dist_zsr = PT.new_ZoneSubRegion("ZSR", loc='Vertex', parent=dist_zone)
-  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
+  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()), type='Unstructured')]
   distri_ud0 = MT.newGlobalNumbering(parent=part_zones[0])
   if sub_comm.Get_rank() == 0:
     PT.new_DataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
@@ -81,7 +81,7 @@ def test_part_pl_to_dist_pl(sub_comm, allow_mult):
     PT.new_DataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
   elif sub_comm.Get_rank() == 2:
     PT.new_DataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
-    part_zones.append(PT.new_Zone('Zone.P2.N1'))
+    part_zones.append(PT.new_Zone('Zone.P2.N1', type='Unstructured'))
     distri_ud1 = MT.newGlobalNumbering(parent=part_zones[1])
     PT.new_DataArray('Vertex', np.array([4,9,13,1,7,6], pdm_dtype), parent=distri_ud1)
     zsr = PT.new_ZoneSubRegion("ZSR", point_list=[[1,3]], loc='Vertex', parent=part_zones[0])
@@ -109,6 +109,28 @@ def test_part_pl_to_dist_pl(sub_comm, allow_mult):
   elif sub_comm.Get_rank() == 3:
     assert (dist_distri == [6,7,7]).all()
     assert (dist_pl     == [22]   ).all()
+
+@mark_mpi_test(1)
+def test_part_pl_to_dist_pl_S(sub_comm):
+  dist_zone = PT.new_Zone('Zone', type='Structured', size=[[3,2,0],[3,2,0],[3,2,0]])
+  dist_zsr = PT.new_ZoneSubRegion("ZSR", loc='KFaceCenter', parent=dist_zone)
+  
+  part_zone = parse_yaml_cgns.to_node("""
+  Zone.P0.N0 Zone_t [[3,2,0], [2,1,0], [3,2,0]]:
+    ZoneType ZoneType_t "Structured":
+    ZSR ZoneSubRegion_t:
+      GridLocation GridLocation_t "KFaceCenter":
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Index DataArray_t [2,1]:
+      PointList IndexArray_t [[1,2], [1,1], [3,3]]: #(1,1,3) and (2,1,3)
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Face DataArray_t [4,5,6,10,11,12, 15,16,17,18,21,22,23,24, 27,28,31,32,35,36]:
+  """)
+
+  IPTB.part_pl_to_dist_pl(dist_zone, [part_zone], "ZSR", sub_comm)
+
+  dist_pl = PT.get_node_from_name(dist_zone, 'PointList')
+  assert (PT.get_value(dist_pl) == [[2,1],[2,2],[3,3]]).all()
 
 @mark_mpi_test(4)
 @pytest.mark.parametrize("allow_mult", [False, True])

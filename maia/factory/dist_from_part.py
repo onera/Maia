@@ -244,7 +244,8 @@ def recover_dist_tree(part_tree, comm):
     discover_nodes_from_matching(dist_zone, part_zones, bc_t_path, comm,
           child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
     discover_nodes_from_matching(dist_zone, part_zones, gc_t_path, comm,
-          child_list=['GridLocation_t', 'GridConnectivityProperty_t', 'GridConnectivityDonorName', 'Transform'],
+          child_list=['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',
+              'GridConnectivityDonorName', 'Transform'],
           merge_rule= lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
     #After GC discovery, cleanup donor name suffix
     for jn in PT.iter_children_from_predicates(dist_zone, gc_t_path):
@@ -263,7 +264,13 @@ def recover_dist_tree(part_tree, comm):
       if PT.Zone.Type(dist_zone) == 'Unstructured':
         IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
       elif PT.Zone.Type(dist_zone) == 'Structured':
-        IPTB.part_pr_to_dist_pr(dist_zone, part_zones, gc_path, comm, True)
+        jn = PT.get_node_from_path(dist_zone, gc_path)
+        opp_zone_path = PT.getZoneDonorPath(PT.path_head(dist_zone_path, 1), jn)
+        opp_zone = PT.get_node_from_path(dist_tree, opp_zone_path)
+        if PT.Zone.Type(opp_zone) == 'Structured': #S-S match, only PR are supported
+          IPTB.part_pr_to_dist_pr(dist_zone, part_zones, gc_path, comm, True)
+        else:
+          IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
 
     # > Flow Solution and Discrete Data
     PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm)
