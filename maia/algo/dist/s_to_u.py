@@ -8,6 +8,10 @@ from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering
 from maia.utils.numbering import range_to_slab          as HFR2S
 
+ijk_to_idx_from_loc = {'IFaceCenter' : s_numbering.ijk_to_faceiIndex,
+                       'JFaceCenter' : s_numbering.ijk_to_facejIndex,
+                       'KFaceCenter' : s_numbering.ijk_to_facejIndex}
+
 def get_output_loc(request_dict, s_node):
   """Retrieve output location from the node if not provided in argument"""
   label_to_key = {'BC_t' : 'BC_t', 'GridConnectivity1to1_t' : 'GC_t', 'GridConnectivity_t': 'GC_t'}
@@ -521,6 +525,36 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
               PT.set_name(gc_u, PT.get_name(gc_u) + suffix)
               PT.new_GridConnectivityType('Abutting', gc_u)
               PT.add_child(zonegc_u, gc_u)
+
+          # Hybrid joins should be here : we just have to translate the PL ijk into face index
+          is_abbut1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
+          for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abbut1to1):
+            opp_zone_path = PT.getZoneDonorPath(PT.get_name(base_s), gc_s)
+            opp_zone = PT.get_node_from_path(disttree_s, opp_zone_path)
+            if PT.Zone.Type(opp_zone) != 'Unstructured':
+              continue
+            loc = PT.Subset.GridLocation(gc_s)
+            pl = PT.get_child_from_name(gc_s, 'PointList')[1]
+            try:
+              ijk_to_idx_func = ijk_to_idx_from_loc[loc]
+            except KeyError:
+              raise ValueError("Only FaceCenter hybrid joins are supported")
+            pl_idx = ijk_to_idx_func(*pl, PT.Zone.CellSize(zone_s), PT.Zone.VertexSize(zone_s))
+            pl_idx = pl_idx.reshape((1,-1), order='F')
+            gc_u = PT.deep_copy(gc_s)
+            PT.update_child(gc_u, 'GridLocation', value='FaceCenter')
+            PT.update_child(gc_u, 'PointList', value=pl_idx)
+            PT.add_child(zonegc_u, gc_u)
+            # Now update PointListDonor of the opposite (already U) join
+            for opp_jn in PT.get_nodes_from_predicates(opp_zone, 'GridConnectivity_t'):
+              opp_base_name = PT.path_head(opp_zone_path,1)
+              if PT.getZoneDonorPath(opp_base_name, opp_jn) == zone_path:
+                pld_n = PT.get_child_from_name(opp_jn, 'PointListDonor')
+                if pld_n is not None and np.array_equal(pld_n[1], pl):
+                   PT.update_child(opp_jn, 'PointListDonor', value=pl_idx)
+                   break
+            else:
+              raise RuntimeError(f"Opposite join of {PT.get_name(gc_s)} (zone {zone_path}) has not been found")
 
         # Copy distribution of all Cell/Vtx, which is unchanged
         distri = PT.deep_copy(MT.getDistribution(zone_s))
