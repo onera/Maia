@@ -93,8 +93,6 @@ def test_redistribute_zone_U(sub_comm, write_output):
 
 
 
-# @pytest.mark.parametrize("policy", ["gather"])
-# @pytest.mark.parametrize("policy", ["uniform"])
 @pytest.mark.parametrize("policy", ["gather", "gather.0", "gather.1", "gather.2", 'uniform'])
 @mark_mpi_test([1,2,3])
 def test_redistribute_tree_U(policy, sub_comm, write_output):

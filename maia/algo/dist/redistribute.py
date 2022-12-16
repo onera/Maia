@@ -75,29 +75,16 @@ def redistribute_elements_node(node, distribution, comm):
   ngon_vision = False
   if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n']   :  ngon_vision = True # If NGON or NFACE
 
+  # print("DISTRIBUTION")
   # Get element distribution
   elt_distrib = PT.get_node_from_path(node, ":CGNS#Distribution/Element")[1]
   n_elt       = elt_distrib[2]
-  if ngon_vision :
-    eltcon_distrib  = PT.get_node_from_path(node, ":CGNS#Distribution/ElementConnectivity")[1]
-    n_eltcon        = eltcon_distrib[2]
-  else:
-    eltcon_distrib  = elt_distrib*vtx_in_elt[PT.Element.CGNSName(node)]
-
-  PT.rm_node_from_path(node,  ":CGNS#Distribution")
 
   # New element distribution
   new_elt_distrib = distribution(n_elt   , comm)
   new_distrib     = {'Element': new_elt_distrib}
-  if ngon_vision :
-    new_eltcon_distrib = distribution(n_eltcon, comm)
-    new_distrib['ElementConnectivity'] = new_eltcon_distrib
-  else:
-    new_eltcon_distrib = new_elt_distrib*vtx_in_elt[PT.Element.CGNSName(node)]
 
-  MT.newDistribution(new_distrib, node)
-
-
+  # print("ESO")
   # > ElementStartOffset
   if ngon_vision :
     eso_n = PT.get_child_from_name(node, 'ElementStartOffset')
@@ -105,8 +92,14 @@ def redistribute_elements_node(node, distribution, comm):
     
     # Uniform
     if distribution==par_utils.uniform_distribution:
-      eso = comm.bcast(eso, root=0)
-      eso_gather = eso[new_elt_distrib[0]:new_elt_distrib[1]+1]
+      i_rank = par_utils.get_gathering_rank(elt_distrib, comm)
+      eso = comm.allgather(eso)#, root=i_rank)
+
+      eso = np.concatenate(eso)
+      if (eso.shape==new_elt_distrib[2]+1):
+        eso_gather = eso[new_elt_distrib[0]:new_elt_distrib[1]+1]
+      else :
+        eso_gather = eso[new_elt_distrib[0]+1*comm.Get_rank():new_elt_distrib[1]+1+1*comm.Get_rank()]
 
     # Gathering
     else:
@@ -114,18 +107,41 @@ def redistribute_elements_node(node, distribution, comm):
       else                  : eso = eso[1:]
       eso_distrib        = par_utils.gather_and_shift(eso.shape[0], comm)
       new_eso_distrib    = np.full(comm.Get_size()+1, elt_distrib[-1]+1)
-      new_eso_distrib[0] = 0
+      i_rank = par_utils.get_gathering_rank(new_elt_distrib, comm)
+      new_eso_distrib[:i_rank+1] = 0
       eso_gather = MTP.block_to_block(eso, eso_distrib, new_eso_distrib, comm)
-    
     PT.set_value(eso_n, eso_gather)
 
+  if ngon_vision :
+    ec_distrib     = PT.get_node_from_path(node, ":CGNS#Distribution/ElementConnectivity")[1]
+
+    if (new_elt_distrib[1]-new_elt_distrib[0]!=0):
+
+      new_ec_distrib = np.zeros(3, dtype=np.int32)
+      new_ec_distrib[:2] = eso_gather[[ new_elt_distrib[0]-new_elt_distrib[0],
+                                        new_elt_distrib[1]-new_elt_distrib[0]]]
+      new_ec_distrib[2]  = ec_distrib[2]
+      
+    else:
+      if new_elt_distrib[1]==new_elt_distrib[2]:
+        new_ec_distrib = np.full(3, ec_distrib[-1], dtype=np.int32)
+      else :
+        new_ec_distrib = np.array([0, 0, ec_distrib[-1]], dtype=np.int32)
+
+    new_distrib['ElementConnectivity'] = new_ec_distrib
+  else:
+    ec_distrib     = elt_distrib*vtx_in_elt[PT.Element.CGNSName(node)]
+    new_ec_distrib = new_elt_distrib*vtx_in_elt[PT.Element.CGNSName(node)]
+
+  # > Set CGNS#Distribution node in node
+  PT.rm_node_from_path(node,  ":CGNS#Distribution")
+  MT.newDistribution(new_distrib, node)
 
   # > ElementConnectivity
   ec_n    = PT.get_child_from_name(node, 'ElementConnectivity')
   ec      = PT.get_value(ec_n)
-  new_ec  = MTP.block_to_block(ec, eltcon_distrib, new_eltcon_distrib, comm)
+  new_ec  = MTP.block_to_block(ec, ec_distrib, new_ec_distrib, comm)
   PT.set_value(ec_n, new_ec)
-
 
   # > ParentElement
   pe_n    = PT.get_child_from_name(node, 'ParentElements')
@@ -136,7 +152,6 @@ def redistribute_elements_node(node, distribution, comm):
       new_pe_tmp  = MTP.block_to_block(pe[:,ip], elt_distrib, new_elt_distrib, comm)
       new_pe[:,ip] = new_pe_tmp
     PT.set_value(pe_n, new_pe)
-
 
   return node # Pas top si y'a pas de deep copy ?
 # ---------------------------------------------------------------------------------------
@@ -225,8 +240,7 @@ def redistribute_zone(dist_zone, distribution, comm):
 
     PT.rm_child(zone, zone_subregion)
     PT.add_child(zone, dist_zone_subregion)
-
-
+    
   return zone
 # ---------------------------------------------------------------------------------------
 
@@ -234,7 +248,9 @@ def redistribute_zone(dist_zone, distribution, comm):
 # ---------------------------------------------------------------------------------------
 def redistribute_tree(dist_tree, comm, policy='uniform'):
   '''
-  Redistribute a distribute tree following a rule.
+  Redistribute a distribute tree following a rule :
+    - uniform repartition of the data over each process
+    - gather all data on one process (the tree structure remains on the other processes)
 
   Args :
     dist_tree (CGNSTree) : distributed tree that will be redistributed (in place)
@@ -244,8 +260,14 @@ def redistribute_tree(dist_tree, comm, policy='uniform'):
   Return :
     None or the CGNSTree ?? (eg deepcopy or not)
 
-  Example :
-    TODO
+  Notes : Gathering can be controlled by adding the target processor in the policy argument
+  (see in the example)
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #redistribute_dist_tree@start
+      :end-before: #redistribute_dist_tree@end
+      :dedent: 2
   '''
   policy_type = policy.split('.')[0]
   assert policy_type in ["uniform", "gather"]
@@ -257,6 +279,7 @@ def redistribute_tree(dist_tree, comm, policy='uniform'):
     assert len(policy.split('.')) in [1, 2]
     if len(policy.split('.'))==2:
       i_rank = int(policy.split('.')[1])
+      assert i_rank<comm.Get_size() 
       distribution = lambda n_elt, comm : par_utils.gathering_distribution(i_rank, n_elt, comm)
     else:
       distribution = lambda n_elt, comm : par_utils.gathering_distribution(0     , n_elt, comm)
