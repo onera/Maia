@@ -296,8 +296,6 @@ def test_redistribute_dist_tree():
   dist_tree = maia.factory.generate_dist_block(4, 'Poly', MPI.COMM_WORLD)
 
   # gathering data on proc 0
-  new_dist_tree = maia.algo.dist.redistribute_tree(dist_tree, MPI.COMM_WORLD, policy='gather')
-  # gathering data on proc 1
-  new_dist_tree = maia.algo.dist.redistribute_tree(dist_tree, MPI.COMM_WORLD, policy='gather.1')
+  new_dist_tree = maia.algo.dist.redistribute_tree(dist_tree, MPI.COMM_WORLD, policy='gather.0')
 
   #redistribute_dist_tree@end
