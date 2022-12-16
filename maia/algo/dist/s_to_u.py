@@ -10,7 +10,7 @@ from maia.utils.numbering import range_to_slab          as HFR2S
 
 ijk_to_idx_from_loc = {'IFaceCenter' : s_numbering.ijk_to_faceiIndex,
                        'JFaceCenter' : s_numbering.ijk_to_facejIndex,
-                       'KFaceCenter' : s_numbering.ijk_to_facejIndex}
+                       'KFaceCenter' : s_numbering.ijk_to_facekIndex}
 
 def get_output_loc(request_dict, s_node):
   """Retrieve output location from the node if not provided in argument"""

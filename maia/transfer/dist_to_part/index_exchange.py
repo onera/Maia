@@ -10,7 +10,7 @@ from maia.transfer  import utils    as te_utils
 
 ijk_to_idx_from_loc = {'IFaceCenter' : s_numbering.ijk_to_faceiIndex,
                        'JFaceCenter' : s_numbering.ijk_to_facejIndex,
-                       'KFaceCenter' : s_numbering.ijk_to_facejIndex}
+                       'KFaceCenter' : s_numbering.ijk_to_facekIndex}
 idx_to_ijk_from_loc = {'IFaceCenter' : s_numbering.faceiIndex_to_ijk,
                        'JFaceCenter' : s_numbering.facejIndex_to_ijk,
                        'KFaceCenter' : s_numbering.facekIndex_to_ijk}
