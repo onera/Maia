@@ -16,7 +16,7 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
 
-@mark_mpi_test([2])
+@mark_mpi_test([1, 2, 3])
 def test_redistribute_zone_U(sub_comm, write_output):
   
   # Reference directory and file
@@ -26,17 +26,12 @@ def test_redistribute_zone_U(sub_comm, write_output):
   dist_tree   = Mio.file_to_dist_tree(ref_file, sub_comm)
   gather_tree = dist_tree
   
-  if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    Mio.write_trees(dist_tree, os.path.join(out_dir, 'dist_tree.cgns'), sub_comm)
-
   for zone in PT.get_all_Zone_t(gather_tree):
     distribution = lambda n_elt, comm : par_utils.gathering_distribution(0, n_elt, comm)
     gather_zone  = RDT.redistribute_zone(zone, distribution, sub_comm)
 
   if write_output:
     Mio.write_trees(gather_tree, os.path.join(out_dir, 'gather_tree.cgns'), sub_comm)
-
 
   if sub_comm.Get_rank()==0:
     distri_to_check = {'Base/zone/NGonElements/:CGNS#Distribution/Element'                  : np.array([ 0,  36,  36]),
@@ -98,9 +93,11 @@ def test_redistribute_zone_U(sub_comm, write_output):
 
 
 
-
-@mark_mpi_test([1, 2, 3])
-def test_redistribute_tree_U(sub_comm, write_output):
+# @pytest.mark.parametrize("policy", ["gather"])
+# @pytest.mark.parametrize("policy", ["uniform"])
+@pytest.mark.parametrize("policy", ["gather", "gather.0", "gather.1", "gather.2", 'uniform'])
+@mark_mpi_test([1,2,3])
+def test_redistribute_tree_U(policy, sub_comm, write_output):
   
   # Reference directory and file
   ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
@@ -110,13 +107,18 @@ def test_redistribute_tree_U(sub_comm, write_output):
   dist_tree     = Mio.file_to_dist_tree(ref_file, sub_comm)
   dist_tree_ref = PT.deep_copy(dist_tree)
 
-  # Gather and uniform
-  gather_tree = RDT.redistribute_tree(dist_tree  , sub_comm, policy='gather')
-  dist_tree   = RDT.redistribute_tree(gather_tree, sub_comm, policy='uniform')
+  if  not((sub_comm.Get_size()==1 and policy in ["gather.1", "gather.2"]) or
+          (sub_comm.Get_size()==2 and policy in [            "gather.2"])):
+    # Gather and uniform
+    gather_tree = RDT.redistribute_tree(dist_tree  , sub_comm, policy=policy)
+    dist_tree   = RDT.redistribute_tree(gather_tree, sub_comm, policy='uniform')
 
-  if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    Mio.dist_tree_to_file(dist_tree_ref, os.path.join(out_dir, 'ref_tree.cgns'), sub_comm)
-    Mio.dist_tree_to_file(dist_tree    , os.path.join(out_dir, 'out_tree.cgns'), sub_comm)
+    if write_output:
+      out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+      Mio.write_trees(dist_tree_ref, os.path.join(out_dir, 'ref_tree.cgns'), sub_comm)
+      Mio.write_trees(dist_tree    , os.path.join(out_dir, 'out_tree.cgns'), sub_comm)
+      Mio.dist_tree_to_file(dist_tree_ref, os.path.join(out_dir, 'ref_tree.cgns'), sub_comm)
+      Mio.dist_tree_to_file(dist_tree    , os.path.join(out_dir, 'out_tree.cgns'), sub_comm)
+    
+    assert PT.is_same_tree(dist_tree, dist_tree_ref)
 
-  # assert PT.is_same_tree(dist_tree, dist_tree_ref)
