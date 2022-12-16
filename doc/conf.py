@@ -85,3 +85,8 @@ rst_prolog = """
 
 .. role:: def
 """
+
+# Generate cgns example files, some will be downloadable
+import subprocess
+subprocess.run(["../scripts/maia_yaml_examples_to_hdf5", "../share/_generated"], stdout=subprocess.DEVNULL)
+

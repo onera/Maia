@@ -3,4 +3,4 @@
 __pycache__
 *.bak
 .nfs*
-share/meshes/*.hdf
+share/_generated/*
