@@ -9,6 +9,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from   maia.utils         import par_utils
+from   maia.utils         import test_utils   as TU
 from   maia.algo.dist     import redistribute as RDT
 from   maia.pytree.yaml   import parse_yaml_cgns
 
@@ -317,11 +318,10 @@ def test_redistribute_gc_node_U(sub_comm):
 
 # ---------------------------------------------------------------------------------------
 @mark_mpi_test([1, 2, 3])
-def test_redistribute_zone_U(sub_comm, write_output):
+def test_redistribute_zone_U(sub_comm):
   
   # Reference directory and file
-  ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
-  ref_file = os.path.join(ref_dir, f'cube_bcdataset_and_periodic.yaml')
+  ref_file = os.path.join(TU.mesh_dir, 'cube_bcdataset_and_periodic.yaml')
 
   dist_tree   = Mio.file_to_dist_tree(ref_file, sub_comm)
   gather_tree = dist_tree
@@ -329,9 +329,6 @@ def test_redistribute_zone_U(sub_comm, write_output):
   for zone in PT.get_all_Zone_t(gather_tree):
     distribution = lambda n_elt, comm : par_utils.gathering_distribution(0, n_elt, comm)
     gather_zone  = RDT.redistribute_zone(zone, distribution, sub_comm)
-
-  if write_output:
-    Mio.write_trees(gather_tree, os.path.join(out_dir, 'gather_tree.cgns'), sub_comm)
 
   if sub_comm.Get_rank()==0:
     distri_to_check = {'Base/zone/NGonElements/:CGNS#Distribution/Element'                  : np.array([ 0,  36,  36]),
@@ -353,10 +350,6 @@ def test_redistribute_zone_U(sub_comm, write_output):
 
     ref_tree = Mio.read_tree(ref_file)
     PT.rm_nodes_from_name(gather_tree, ':CGNS#Distribution')
-    if write_output:
-      print(os.path.join(out_dir, ref_file.split('/')[-1].split('.')[0]+'.cgns'))
-      Mio.write_tree(ref_tree, os.path.join(out_dir, ref_file.split('/')[-1].split('.')[0]+'.cgns'))
-      Mio.write_tree(gather_tree, os.path.join(out_dir, 'gather_tree.cgns'))
 
     assert PT.is_same_tree(ref_tree[2][1], gather_tree[2][1])
 
