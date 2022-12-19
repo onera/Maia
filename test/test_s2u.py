@@ -48,6 +48,8 @@ def test_s2u_hybrid(sub_comm, write_output):
 
   for zone in PT.iter_all_Zone_t(dist_tree_u):
     assert PT.Zone.Type(zone) == 'Unstructured'
+    for pl in PT.iter_nodes_from_label(zone, 'IndexArray_t'):
+      assert PT.get_value(pl).shape[0] == 1 #All PLs should be (1,N)
 
   if write_output:
     out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)

@@ -516,8 +516,8 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
               PT.set_name(gc_u, PT.get_name(gc_u) + suffix)
               PT.add_child(zonegc_u, gc_u)
           #Manage not 1to1 gcs as BCs
-          is_abbut = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting'
-          for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abbut):
+          is_abutt = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting'
+          for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt):
             out_loc_l = get_output_loc(subset_loc, gc_s)
             for out_loc in out_loc_l:
               suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
@@ -527,8 +527,8 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
               PT.add_child(zonegc_u, gc_u)
 
           # Hybrid joins should be here : we just have to translate the PL ijk into face index
-          is_abbut1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
-          for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abbut1to1):
+          is_abutt1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
+          for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
             opp_zone_path = PT.getZoneDonorPath(PT.get_name(base_s), gc_s)
             opp_zone = PT.get_node_from_path(disttree_s, opp_zone_path)
             if PT.Zone.Type(opp_zone) != 'Unstructured':
