@@ -196,6 +196,64 @@ def test_redistribute_elements_node_U(elt, sub_comm):
       assert PT.get_node_from_name(gather_elt, ':CGNS#Distribution/ElementConnectivity') is None
 # ---------------------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------------------
+@mark_mpi_test([2])
+def test_redistribute_mixed_elements_node_U(sub_comm):
+
+  if sub_comm.Get_rank() == 0:
+    yt_bc = f"""
+    Mixed Elements_t I4 [20, 0]:
+      ElementRange        IndexRange_t I4 [1, 8]:
+      ElementStartOffset  DataArray_t  I4 [0, 3, 8, 12]:
+      ElementConnectivity DataArray_t  I4 [1, 3, 7, 2, 9, 2, 4, 2, 7, 1, 3, 4]:
+      ParentElements      DataArray_t  I4 [[1, 4], [9, 2], [9, 4]]:
+      :CGNS#Distribution  UserDefinedData_t:
+        Element             DataArray_t {dtype} [0, 3,  6]:
+        ElementConnectivity DataArray_t {dtype} [0, 12, 24]:
+    """
+
+  if sub_comm.Get_rank() == 1:
+    yt_bc = f"""
+    Mixed Elements_t I4 [20, 0]:
+      ElementRange        IndexRange_t I4 [1, 8]:
+      ElementStartOffset  DataArray_t  I4 [12, 15, 19, 24]:
+      ElementConnectivity DataArray_t  I4 [7, 8, 3, 6, 1, 4, 2, 6, 5, 6, 3, 1]:
+      ParentElements      DataArray_t  I4 [[2, 5], [1, 2], [7, 6]]:
+      :CGNS#Distribution  UserDefinedData_t:
+        Element             DataArray_t {dtype} [ 3,  6,  6]:
+        ElementConnectivity DataArray_t {dtype} [12, 24, 24]:
+    """
+
+  dist_elt = parse_yaml_cgns.to_cgns_tree(yt_bc)[2][0]
+
+  gather_elt = RDT.redistribute_elements_node(dist_elt, distribution, sub_comm)
+
+  assert np.array_equal(PT.get_node_from_name(gather_elt, 'ElementRange')[1], np.array([1, 8]))
+
+  if sub_comm.Get_rank()==0:
+    node_value = {'ElementConnectivity'                    : np.array([1, 3, 7, 2, 9, 2, 4, 2, 7, 1, 3, 4, 7, 8, 3, 6, 1, 4, 2, 6, 5, 6, 3, 1]),
+                  'ElementStartOffset'                     : np.array([0, 3, 8, 12, 15, 19, 24]),
+                  'ParentElements'                         : np.array([ [1, 4], [9, 2], [9, 4], [2, 5], [1, 2], [7, 6]]),
+                  ':CGNS#Distribution/Element'             : np.array([0, 6, 6]),
+                  ':CGNS#Distribution/ElementConnectivity' : np.array([0, 24, 24]),
+                  }
+
+    for node in node_value :
+      if node in ['ElementStartOffset', ':CGNS#Distribution/ElementConnectivity']:
+        assert np.array_equal(PT.get_node_from_path(gather_elt, node)[1], node_value[node])
+      else:
+        assert                   np.array_equal(PT.get_node_from_path(gather_elt, node)[1], node_value[node])
+
+  else:
+    assert PT.get_child_from_name(gather_elt, 'ElementConnectivity')[1].size==0
+    assert PT.get_child_from_name(gather_elt, 'ParentElements'     )[1].size==0
+    assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/Element')[1],
+                          np.array([6, 6, 6]))
+    assert PT.get_child_from_name(gather_elt, 'ElementStartOffset' )[1].size==0
+    assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/ElementConnectivity')[1],
+                          np.array([24, 24, 24]))
+# ---------------------------------------------------------------------------------------
+
 
 # ---------------------------------------------------------------------------------------
 @mark_mpi_test([2])

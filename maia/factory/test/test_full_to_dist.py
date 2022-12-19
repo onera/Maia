@@ -72,27 +72,28 @@ def test_distribute_element(sub_comm):
   else:
     assert (PT.get_node_from_name(dist_elem, 'ElementConnectivity')[1] == [11,4,2, 10,4,1]).all()
 
-  yt = """
-  Element Elements_t [22,0]:
-    ElementRange IndexRange_t [1,4]:
-    ElementStartOffset DataArray_t [0,4,8,11,16]:
-    ElementConnectivity DataArray_t [4,1,3,8, 8,2,3,1, 9,7,4, 11,4,2,10,1]:
-    ParentElements DataArray_t [[1,0], [2,3], [2,0], [3,0]]:
-  """
-  elem = parse_yaml_cgns.to_node(yt)
-  dist_elem = full_to_dist.distribute_element_node(elem, sub_comm)
+  for elt_type in ['22', '20']:
+    yt = f"""
+    Element Elements_t [{elt_type},0]:
+      ElementRange IndexRange_t [1,4]:
+      ElementStartOffset DataArray_t [0,4,8,11,16]:
+      ElementConnectivity DataArray_t [4,1,3,8, 8,2,3,1, 9,7,4, 11,4,2,10,1]:
+      ParentElements DataArray_t [[1,0], [2,3], [2,0], [3,0]]:
+    """
+    elem = parse_yaml_cgns.to_node(yt)
+    dist_elem = full_to_dist.distribute_element_node(elem, sub_comm)
 
-  assert (PT.Element.Range(dist_elem) == [1,4]).all()
-  assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/Element') is not None
-  assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/ElementConnectivity') is not None
-  if sub_comm.Get_rank() == 0:
-    assert (PT.get_child_from_name(dist_elem, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
-    assert (PT.get_child_from_name(dist_elem, 'ElementStartOffset')[1] == [0,4,8]).all()
-    assert (PT.get_child_from_name(dist_elem, 'ParentElements')[1] == [[1,0],[2,3]]).all()
-  else:
-    assert (PT.get_child_from_name(dist_elem, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
-    assert (PT.get_child_from_name(dist_elem, 'ElementStartOffset')[1] == [8,11,16]).all()
-    assert (PT.get_child_from_name(dist_elem, 'ParentElements')[1] == [[2,0],[3,0]]).all()
+    assert (PT.Element.Range(dist_elem) == [1,4]).all()
+    assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/Element') is not None
+    assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/ElementConnectivity') is not None
+    if sub_comm.Get_rank() == 0:
+      assert (PT.get_child_from_name(dist_elem, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
+      assert (PT.get_child_from_name(dist_elem, 'ElementStartOffset')[1] == [0,4,8]).all()
+      assert (PT.get_child_from_name(dist_elem, 'ParentElements')[1] == [[1,0],[2,3]]).all()
+    else:
+      assert (PT.get_child_from_name(dist_elem, 'ElementConnectivity')[1] == [9,7,4, 11,4,2,10,1]).all()
+      assert (PT.get_child_from_name(dist_elem, 'ElementStartOffset')[1] == [8,11,16]).all()
+      assert (PT.get_child_from_name(dist_elem, 'ParentElements')[1] == [[2,0],[3,0]]).all()
 
 @mark_mpi_test(2)
 def test_distribute_tree(sub_comm):

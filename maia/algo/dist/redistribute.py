@@ -7,18 +7,15 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 import maia.transfer.protocols as MTP
 
-from   maia.utils import par_utils, np_utils
+from   maia.utils                      import par_utils, np_utils
+from   maia.pytree.sids.elements_utils import elements_properties
 
-vtx_in_elt = {"TETRA_4": 4, 
-              "TRI_3"  : 3, 
-              "BAR_2"  : 2  
-              }
 
 # ---------------------------------------------------------------------------------------
 def redistribute_pl_node(node, distribution, comm):
   """
   Redistribute a standard node having a PointList (and its childs) over several processes,
-  using a given distribution function. Mainly useful for unit tests. Node must be know by 
+  using a given distribution function. Mainly useful for unit tests. Node must be known by
   each process.
   """
   node_distrib = PT.get_node_from_path(node, ':CGNS#Distribution/Index')[1]
@@ -55,7 +52,7 @@ def redistribute_pl_node(node, distribution, comm):
 def redistribute_data_node(node, distri, new_distri, comm):
   """
   Distribute a standard node having arrays supported by allCells or allVertices over several processes,
-  using given distribution. Mainly useful for unit tests. Node must be know by each process.
+  using given distribution. Mainly useful for unit tests. Node must be known by each process.
   """
   assert PT.get_node_from_name(node, 'PointList') is None
 
@@ -70,12 +67,10 @@ def redistribute_data_node(node, distri, new_distri, comm):
 def redistribute_elements_node(node, distribution, comm):
 
   assert PT.get_label(node) == 'Elements_t'
-  assert PT.Element.CGNSName(node) != "MIXED", "Mixed elements are not supported"
 
   ngon_vision = False
-  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n']   :  ngon_vision = True # If NGON or NFACE
+  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']   :  ngon_vision = True # If NGON or NFACE
 
-  # print("DISTRIBUTION")
   # Get element distribution
   elt_distrib = PT.get_node_from_path(node, ":CGNS#Distribution/Element")[1]
   n_elt       = elt_distrib[2]
@@ -84,7 +79,6 @@ def redistribute_elements_node(node, distribution, comm):
   new_elt_distrib = distribution(n_elt   , comm)
   new_distrib     = {'Element': new_elt_distrib}
 
-  # print("ESO")
   # > ElementStartOffset
   if ngon_vision :
     eso_n = PT.get_child_from_name(node, 'ElementStartOffset')
@@ -130,8 +124,8 @@ def redistribute_elements_node(node, distribution, comm):
 
     new_distrib['ElementConnectivity'] = new_ec_distrib
   else:
-    ec_distrib     = elt_distrib*vtx_in_elt[PT.Element.CGNSName(node)]
-    new_ec_distrib = new_elt_distrib*vtx_in_elt[PT.Element.CGNSName(node)]
+    ec_distrib     =     elt_distrib*PT.Element.NVtx(node)
+    new_ec_distrib = new_elt_distrib*PT.Element.NVtx(node)
 
   # > Set CGNS#Distribution node in node
   PT.rm_node_from_path(node,  ":CGNS#Distribution")
