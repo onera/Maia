@@ -381,7 +381,7 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, sub_comm, write_output):
 
   # --- GENERATE TREE -------------------------------------------------------------------
   n_vtx  = 6
-  n_part = 1
+  n_part = 4
   part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',sub_comm)
 
   for zone in PT.get_all_Zone_t(part_tree):
@@ -390,7 +390,7 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, sub_comm, write_output):
     cfy = face_center[1::3]
     cfz = face_center[2::3]
 
-    bc_n = PT.get_node_from_name(part_tree, 'Xmin')
+    bc_n = PT.get_node_from_name(zone, 'Xmin')
     if bc_n is not None:
       bc_pl  = PT.get_node_from_name(bc_n, 'PointList')[1][0]
       bc_cfx = cfx[bc_pl-1]
@@ -407,7 +407,6 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, sub_comm, write_output):
   part_tree_ep = EXP.extract_part_from_bc_name( part_tree, "Xmin", sub_comm,
                                                 graph_part_tool=graph_part_tool,
                                                 containers_name=['FlowSolution_NC'],
-                                                # transfer_dataset=False
                                                 )
   # ------------------------------------------------------------------------------------- 
 

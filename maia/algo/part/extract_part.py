@@ -549,15 +549,16 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   """
 
   transfer_dataset = options.get("transfer_dataset", True)
+  there_is_bcdataset = False
 
   # Local copy of the part_tree to add ZSR 
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # Adding ZSR to tree
+  tag=-1
   for domain, part_zones in part_tree_per_dom.items():
     for part_zone in part_zones:
-      zsr_bc_name = bc_name+'_zsr'
       bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') 
       if bc_n is not None:
         zsr_bc_n  = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
@@ -568,19 +569,25 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
           for dataset in bc_dataset:
             PT.new_DataArray(name=dataset[0], value=dataset[1], parent=zsr_bc_n)
           if len(bc_dataset)!=0:
-            if containers_name is None: containers_name = [bc_name]
-            else                      : containers_name.append(bc_name)
+            there_is_bcdataset = True
+            tag = comm.Get_rank()
             bc_pl =              PT.get_node_from_name(bc_n, 'PointList'   )[1]
             bc_gl = PT.get_value(PT.get_node_from_name(bc_n, 'GridLocation'))
             PT.new_PointList('PointList', bc_pl, parent=zsr_bc_n)
             PT.new_GridLocation(          bc_gl, parent=zsr_bc_n)
 
-  import Converter.Internal as I
   extractor = create_extractor_from_zsr(local_part_tree, bc_name, comm, **options)
+
+
+  if there_is_bcdataset:
+    if containers_name is None: containers_name = [bc_name]
+    else                      : containers_name.append(bc_name)
+  # To be sure that all procs get the info 
+  master = comm.allreduce(tag, op=MPI.MAX) # No check global ?
+  if master != -1 : containers_name = comm.bcast(containers_name, master)
 
   if containers_name is not None:
     extractor.exchange_fields(containers_name)
-
 
   return extractor.get_extract_part_tree()
 

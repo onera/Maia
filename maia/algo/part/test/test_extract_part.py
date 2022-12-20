@@ -119,7 +119,6 @@ def test_zsr_api(sub_comm):
   assert sub_comm.allreduce(n_cell_extr, op=MPI.SUM) == 4
 
 
-
 @mark_mpi_test(3)
 def test_bc_name_api(sub_comm):
   dist_tree = maia.factory.generate_dist_block(4, "Poly", sub_comm)

@@ -179,7 +179,7 @@ def test_extract_from_bc_name():
   extracted_bc = maia.algo.part.extract_part_from_bc_name(part_tree, \
                  'wall', MPI.COMM_WORLD, containers_name=["WallDistance"])
 
-  assert maia.pytree.get_node_from_name(extracted_tree, "WallDistance") is not None
+  assert maia.pytree.get_node_from_name(extracted_bc, "WallDistance") is not None
   #extract_from_bc_name@end
 
 def test_compute_elliptical_slice():
