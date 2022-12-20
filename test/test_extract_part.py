@@ -371,3 +371,63 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, sub_comm, write_output):
   # -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
+
+
+# =======================================================================================
+# ---------------------------------------------------------------------------------------
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@mark_mpi_test([1,3])
+def test_extract_bc_from_bc_name_U(graph_part_tool, sub_comm, write_output):
+
+  # --- GENERATE TREE -------------------------------------------------------------------
+  n_vtx  = 6
+  n_part = 1
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',sub_comm)
+
+  for zone in PT.get_all_Zone_t(part_tree):
+    face_center = maia.algo.part.geometry.compute_face_center(zone)
+    cfx = face_center[0::3]
+    cfy = face_center[1::3]
+    cfz = face_center[2::3]
+
+    bc_n = PT.get_node_from_name(part_tree, 'Xmin')
+    if bc_n is not None:
+      bc_pl  = PT.get_node_from_name(bc_n, 'PointList')[1][0]
+      bc_cfx = cfx[bc_pl-1]
+      bc_cfy = cfy[bc_pl-1]
+      bc_cfz = cfz[bc_pl-1]
+      bc_dataset_n = PT.new_node(name='BCDataSet'  , label='BCDataSet_t', value='UserDefined', parent=bc_n)
+      neuma_data_n = PT.new_node(name='NeumannData', label='BCData_t'   , value=None         , parent=bc_dataset_n)
+      grid_loc_n   = PT.new_GridLocation('FaceCenter', parent=neuma_data_n)
+      sphere       = PT.new_DataArray('sphere_bc'  , bc_cfx**2 + bc_cfy**2 + bc_cfz**2 - 1, parent=neuma_data_n)
+      cylinder     = PT.new_DataArray('cylinder_bc', bc_cfx**2 + bc_cfy**2             - 1, parent=neuma_data_n)
+  # ------------------------------------------------------------------------------------- 
+
+  # --- EXTRACT PART --------------------------------------------------------------------
+  part_tree_ep = EXP.extract_part_from_bc_name( part_tree, "Xmin", sub_comm,
+                                                graph_part_tool=graph_part_tool,
+                                                containers_name=['FlowSolution_NC'],
+                                                # transfer_dataset=False
+                                                )
+  # ------------------------------------------------------------------------------------- 
+
+  # -------------------------------------------------------------------------------------
+  # Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,sub_comm)
+  PT.get_node_from_label(dist_tree_ep,'ZoneSubRegion_t')[3] = 'FlowSolution_t'
+
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_bc_from_bc_name.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_bc_from_bc_name.cgns'), sub_comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')                , sub_comm)
+
+  # Check that bases are similar (because CGNSLibraryVersion is R4)
+  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
+                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # -------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# =======================================================================================

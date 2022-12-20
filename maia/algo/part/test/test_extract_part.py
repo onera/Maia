@@ -117,3 +117,15 @@ def test_zsr_api(sub_comm):
 
   n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])
   assert sub_comm.allreduce(n_cell_extr, op=MPI.SUM) == 4
+
+
+
+@mark_mpi_test(3)
+def test_bc_name_api(sub_comm):
+  dist_tree = maia.factory.generate_dist_block(4, "Poly", sub_comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm)
+
+  extracted_tree = EP.extract_part_from_bc_name(part_tree, 'Xmin', sub_comm)
+
+  n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])
+  assert sub_comm.allreduce(n_cell_extr, op=MPI.SUM) == 9

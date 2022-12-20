@@ -164,6 +164,24 @@ def test_extract_from_zsr():
   assert maia.pytree.get_node_from_name(extracted_tree, "WallDistance") is not None
   #extract_from_zsr@end
 
+def test_extract_from_bc_name():
+  #extract_from_bc_name@start
+  from   mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils        import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+
+  extracted_bc = maia.algo.part.extract_part_from_bc_name(part_tree, \
+                 'wall', MPI.COMM_WORLD, containers_name=["WallDistance"])
+
+  assert maia.pytree.get_node_from_name(extracted_tree, "WallDistance") is not None
+  #extract_from_bc_name@end
+
 def test_compute_elliptical_slice():
   #compute_elliptical_slice@start
   from mpi4py import MPI
