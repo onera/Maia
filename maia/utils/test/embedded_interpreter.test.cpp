@@ -4,5 +4,5 @@
 // Its name is *.test.cpp because it belong to the test executable
 // It starts a Python interpreter to execute Python code in otherwise pure C++ tests
 namespace {
-  const pybind11::scoped_interpreter python_interpreter = {};
+  const auto _ = pybind11::scoped_interpreter{};
 }
