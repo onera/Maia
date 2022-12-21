@@ -510,8 +510,8 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.
 
   In addition, containers specified in ``containers_name`` list are transfered to the extracted tree.
-  Containers to be transfered can only be from or ZoneSubRegion_t. BCDataSet from BC can be transfered too
-  using the ``transfer_dataset`` option.
+  Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t. BCDataSet from BC
+  can be transfered too using the ``transfer_dataset`` option.
 
   Important:
     - Input tree must be unstructured and have a ngon connectivity.
@@ -525,7 +525,7 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   Args:
     part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. Only U-NGon
       connectivities are managed.
-    zsr_name        (str)         : Name of the BC node
+    bc_name         (str)         : Name of the BC node
     comm            (MPIComm)     : MPI communicator
     containers_name (list of str) : List of the names of the fields containers to transfer
                                     on the output extracted tree.
