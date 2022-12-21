@@ -152,6 +152,7 @@ def copy_donor_subset(dist_tree):
     opp_jn = PT.get_node_from_path(dist_tree, opp_jn_path)
     opp_patch = PT.deep_copy(PT.Subset.getPatch(opp_jn))
     PT.set_name(opp_patch, PT.get_name(opp_patch) + 'Donor')
+    PT.rm_children_from_name(cur_jn, PT.get_name(opp_patch))
     PT.add_child(cur_jn, opp_patch)
 
 
