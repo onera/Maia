@@ -22,6 +22,8 @@ poly_to_elements = ngons_to_elements
 
 from .rearrange_element_sections import rearrange_element_sections
 
+from .redistribute               import redistribute_tree
+
 from .s_to_u                     import convert_s_to_u, convert_s_to_ngon
 
 from .vertex_list                import generate_jn_vertex_list,\

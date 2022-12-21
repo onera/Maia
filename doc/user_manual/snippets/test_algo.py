@@ -287,3 +287,13 @@ def test_rearrange_element_sections():
   tris = PT.get_node_from_name(dist_tree, 'TRI_3') #Now 2D elements are first
   assert PT.Element.Range(tris)[0] == 1
   #rearrange_element_sections@end
+
+def test_redistribute_dist_tree():
+  #redistribute_dist_tree@start
+  from mpi4py import MPI
+  import maia
+
+  dist_tree_ini = maia.factory.generate_dist_block(21, 'Poly', MPI.COMM_WORLD)
+  dist_tree_gathered = maia.algo.dist.redistribute_tree(dist_tree_ini, \
+      MPI.COMM_WORLD, policy='gather.0')
+  #redistribute_dist_tree@end

@@ -53,7 +53,6 @@ def distribute_element_node(node, comm):
   Mainly useful for unit tests. Node must be know by each process.
   """
   assert PT.get_label(node) == 'Elements_t'
-  assert PT.Element.CGNSName(node) != "MIXED", "Mixed elements are not supported"
   dist_node = PT.deep_copy(node)
 
   n_elem = PT.Element.Size(node)
@@ -61,7 +60,7 @@ def distribute_element_node(node, comm):
   MT.newDistribution({'Element' : distri}, dist_node)
 
   ec = PT.get_child_from_name(dist_node, 'ElementConnectivity')
-  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n']:
+  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']:
     eso = PT.get_child_from_name(dist_node, 'ElementStartOffset')
     distri_ec = eso[1][[distri[0], distri[1], -1]]
     ec[1] = ec[1][distri_ec[0] : distri_ec[1]]

@@ -58,11 +58,16 @@ def read_tree(filename, legacy=False):
   Returns:
     CGNSTree: Full (not distributed) CGNS tree
   """
-  if legacy:
-    from ._hdf_io_cass import read_full
+  if os.path.splitext(filename)[1] == '.yaml':
+    with open(filename, 'r') as f:
+      tree = parse_yaml_cgns.to_cgns_tree(f)
+    return tree
   else:
-    from ._hdf_io_h5py import read_full
-  return read_full(filename)
+    if legacy:
+      from ._hdf_io_cass import read_full
+    else:
+      from ._hdf_io_h5py import read_full
+    return read_full(filename)
 
 
 
