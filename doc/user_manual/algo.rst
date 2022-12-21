@@ -39,6 +39,11 @@ Geometry transformations
 .. autofunction:: maia.algo.dist.merge_connected_zones
 .. autofunction:: maia.algo.dist.conformize_jn_pair
 
+Data management
+^^^^^^^^^^^^^^^
+
+.. autofunction:: maia.algo.dist.redistribute_tree
+
 ..
   from .extract_surf_dmesh     import extract_surf_tree_from_bc
 

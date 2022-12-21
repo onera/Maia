@@ -198,50 +198,48 @@ def redistribute_zone(zone, distribution, comm):
 
 # ---------------------------------------------------------------------------------------
 def redistribute_tree(dist_tree, comm, policy='uniform'):
-  '''
-  Redistribute a distribute tree following a rule :
-    - uniform repartition of the data over each process
-    - gather all data on one process (the tree structure remains on the other processes)
+  """ Redistribute the data of the input tree according to the choosen distribution policy.
 
-  Args :
-    dist_tree (CGNSTree) : distributed tree that will be redistributed (in place)
+  Supported policies are:
+
+  - ``uniform``  : each data array is equally reparted over all the processes
+  - ``gather.N`` : all the data are moved on process N
+  - ``gather``   : shortcut for ``gather.0``
+
+  In both case, tree structure remains unchanged on all the processes
+  (the tree is still a valid distributed tree).
+  Input is modified inplace.
+
+  Args:
+    dist_tree (CGNSTree) : Distributed tree
     comm      (MPIComm)  : MPI communicator
-    policy    (str)      : distribution policy (uniform or gather)
-
-  Return :
-    None or the CGNSTree ?? (eg deepcopy or not)
-
-  Notes : Gathering can be controlled by adding the target processor in the policy argument
-  (see in the example)
+    policy    (str)      : distribution policy (see above)
 
   Example:
     .. literalinclude:: snippets/test_algo.py
       :start-after: #redistribute_dist_tree@start
       :end-before: #redistribute_dist_tree@end
       :dedent: 2
-  '''
-  policy_type = policy.split('.')[0]
-  assert policy_type in ["uniform", "gather"]
+  """
+  if policy == 'gather':
+    policy = 'gather.0'
+  policy_split = policy.split('.')
+  assert len(policy_split) in [1, 2]
 
-  if   policy_type == "uniform" :
+  policy_type = policy_split[0]
+
+  if policy_type == "uniform":
     distribution = par_utils.uniform_distribution
+  elif policy_type == "gather":
+    assert len(policy_split) == 2
+    i_rank = int(policy_split[1])
+    assert i_rank < comm.Get_size() 
+    distribution = lambda n_elt, comm : par_utils.gathering_distribution(i_rank, n_elt, comm)
+  else:
+    raise ValueError("Unknown policy for redistribution")
 
-  elif policy_type == "gather"  :
-    assert len(policy.split('.')) in [1, 2]
-    if len(policy.split('.'))==2:
-      i_rank = int(policy.split('.')[1])
-      assert i_rank<comm.Get_size() 
-      distribution = lambda n_elt, comm : par_utils.gathering_distribution(i_rank, n_elt, comm)
-    else:
-      distribution = lambda n_elt, comm : par_utils.gathering_distribution(0     , n_elt, comm)
-
-  tree = dist_tree # OR deep_copy ??
-
-  for zone in PT.iter_all_Zone_t(tree):
-    zone = redistribute_zone(zone, distribution, comm)
-  
-
-  return tree
+  for zone in PT.iter_all_Zone_t(dist_tree):
+    redistribute_zone(zone, distribution, comm)
 
 # ---------------------------------------------------------------------------------------
 # =======================================================================================

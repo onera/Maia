@@ -288,14 +288,12 @@ def test_rearrange_element_sections():
   assert PT.Element.Range(tris)[0] == 1
   #rearrange_element_sections@end
 
-
 def test_redistribute_dist_tree():
   #redistribute_dist_tree@start
   from mpi4py import MPI
   import maia
-  dist_tree = maia.factory.generate_dist_block(4, 'Poly', MPI.COMM_WORLD)
 
-  # gathering data on proc 0
-  new_dist_tree = maia.algo.dist.redistribute_tree(dist_tree, MPI.COMM_WORLD, policy='gather.0')
-
+  dist_tree_ini = maia.factory.generate_dist_block(21, 'Poly', MPI.COMM_WORLD)
+  dist_tree_gathered = maia.algo.dist.redistribute_tree(dist_tree_ini, \
+      MPI.COMM_WORLD, policy='gather.0')
   #redistribute_dist_tree@end

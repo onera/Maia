@@ -321,11 +321,9 @@ def test_redistribute_zone_U(sub_comm):
   
   # Reference directory and file
   ref_file = os.path.join(TU.mesh_dir, 'cube_bcdataset_and_periodic.yaml')
-
   dist_tree   = Mio.file_to_dist_tree(ref_file, sub_comm)
-  gather_tree = dist_tree
   
-  for zone in PT.get_all_Zone_t(gather_tree):
+  for zone in PT.get_all_Zone_t(dist_tree):
     distribution = lambda n_elt, comm : par_utils.gathering_distribution(0, n_elt, comm)
     RDT.redistribute_zone(zone, distribution, sub_comm)
 
@@ -345,12 +343,12 @@ def test_redistribute_zone_U(sub_comm):
     }
     # Check distribution on full  ranks
     for key,value in distri_to_check.items():
-      assert np.array_equal(PT.get_node_from_path(gather_tree, key)[1], value)
+      assert np.array_equal(PT.get_node_from_path(dist_tree, key)[1], value)
 
     ref_tree = Mio.read_tree(ref_file)
-    PT.rm_nodes_from_name(gather_tree, ':CGNS#Distribution')
+    PT.rm_nodes_from_name(dist_tree, ':CGNS#Distribution')
 
-    assert PT.is_same_tree(ref_tree[2][1], gather_tree[2][1])
+    assert PT.is_same_tree(ref_tree[2][1], dist_tree[2][1])
 
 
   else :
@@ -369,11 +367,11 @@ def test_redistribute_zone_U(sub_comm):
     }
     # Check distribution on empty ranks
     for key,value in distri_to_check.items():
-      assert np.array_equal(PT.get_node_from_path(gather_tree, key)[1], value)
+      assert np.array_equal(PT.get_node_from_path(dist_tree, key)[1], value)
 
     # Cleaning distribution and GridConnectivityProperty nodes to check arrays
-    PT.rm_nodes_from_name(gather_tree, ':CGNS#Distribution')
-    PT.rm_nodes_from_name(gather_tree, 'GridConnectivityProperty')
+    PT.rm_nodes_from_name(dist_tree, ':CGNS#Distribution')
+    PT.rm_nodes_from_name(dist_tree, 'GridConnectivityProperty')
           
     # Check arrays
     for node in PT.get_nodes_from_label(zone, 'IndexArray_t'):
