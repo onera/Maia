@@ -531,12 +531,11 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
               continue
             loc = PT.Subset.GridLocation(gc_s)
             pl = PT.get_child_from_name(gc_s, 'PointList')[1]
-            if not 'FaceCenter' in loc:
-              raise ValueError("Only FaceCenter hybrid joins are supported")
             pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, PT.Zone.VertexSize(zone_s))
             pl_idx = pl_idx.reshape((1,-1), order='F')
             gc_u = PT.deep_copy(gc_s)
-            PT.update_child(gc_u, 'GridLocation', value='FaceCenter')
+            if 'FaceCenter' in loc: #IFace, JFace or KFaceCenter -> FaceCenter
+              PT.update_child(gc_u, 'GridLocation', value='FaceCenter')
             PT.update_child(gc_u, 'PointList', value=pl_idx)
             PT.add_child(zonegc_u, gc_u)
             # Now update PointListDonor of the opposite (already U) join
