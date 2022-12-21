@@ -2,6 +2,13 @@ from enum import Enum
 
 
 def dfs_interface_report(g):
+  """ Tells if `g` conforms to the depth-first search interface, and if not, why
+
+  To be conforming, `g` has to have:
+    - a `roots(self)` method that returns the roots of the graph.
+    - a `children(self, n)` method that returns the children of node `n` in the graph.
+  Both methods should return object that are iterators over nodes of the graph
+  """
   report = ''
   is_ok = True
 
@@ -29,12 +36,21 @@ def dfs_interface_report(g):
 
 
 class step(Enum):
+  """ Information on what to do when a node is visited by a tree traversal algorithm:
+    - `step.into`: go down and visit children
+    - `step.over`: do not visit children and continue with the next sibling
+    - `step.out`: stop the traversal
+  """
   into = 0
   over = 1
   out = 2
 
 
 def make_visitor(v):
+  """ The `depth_first_search` algorithm expects a visitor with `pre`, `post`, `down` and `up`
+
+  If the user does not provide `post`, `down` or `up`, then add them on-the-fly to do nothing
+  """
   def do_nothing(*args): pass
 
   if not getattr(v, 'post', None):
@@ -47,6 +63,8 @@ def make_visitor(v):
 
 
 class graph_traversal_stack:
+  """ Main data structure that is used to capture and update the position we are in during a graph traversal
+  """
   def __init__(self, g):
     self._g = g
     self._iterators = []
@@ -87,6 +105,8 @@ class graph_traversal_stack:
 
 
 def unwind(S, f):
+  """ End a graph traversal by going up to the root level
+  """
   while not S.is_at_root_level():
     f.post(S.nodes())
     f.up(S.nodes())
@@ -96,6 +116,10 @@ def unwind(S, f):
 
 
 def depth_first_search_stack(S, g, f):
+  """ Depth-first graph traversal
+
+  This is the low-level algorithm that is called by `depth_first_search`
+  """
   while not S.is_done():
     if not S.level_is_done():
       next_step = f.pre(S.nodes())
@@ -125,14 +149,14 @@ def depth_first_search_stack(S, g, f):
 
 
 class node_visitor:
-  """
-    The `depth_first_search_stack` algorithm calls its visitor by passing it 
-    the complete list of ancestors to the current node
-    However, most ot the times, the visitor interface only takes the current node as input,
-    (because it does not care about the ancestors)
-    
-    This adaptor class turns such a visitor into a visitor acceptable by `depth_first_search_stack`
-    and delegates all calls with the list of ancestors to calls to the visitor with only the last ancestor (that is, the current node)
+  """ The `depth_first_search_stack` algorithm calls its visitor by passing it 
+  the complete list of ancestors to the current node
+
+  However, most ot the times, the visitor interface only takes the current node as input,
+  (because it does not care about the ancestors)
+  
+  This adaptor class turns such a visitor into a visitor acceptable by `depth_first_search_stack`
+  and delegates all calls with the list of ancestors to calls with only the current node)
   """
   def __init__(self, visitor):
     self.f = visitor
@@ -151,6 +175,23 @@ class node_visitor:
 
 
 def depth_first_search(g, f, only_nodes=True):
+  """
+  Depth-first graph traversal
+    
+  Args:
+    g: Graph object that should conform to the depth-first search interface. See :func:`dfs_interface_report` for full documentation.
+    f : A visitor object that has a `pre` method, and optionally `post`, `up` and `down` methods
+    only_nodes (Bool): Control the arguments that are passed to the visitor methods.
+
+  - if `only_nodes` is `True` then `pre` will be given the current node of the graph as argument
+    else it will be given all the ancestors up to the current node as arguments
+  - `pre` is called on a node as it is found for the first time
+  - `pre` can return a `step` to tell the algorithm to step over the node or to stop. By default will continue the search. See :class:`step` for more info.
+  - `post` works as `pre` but is called once all the children of the node have been visited
+  - `up` and `down` are called once the algorithm is moving from a parent to it child or inversely.
+  - `down` takes the parent then the child as its arguments
+  - `up` takes the child then the parent as its arguments
+  """
   is_ok, msg  = dfs_interface_report(g)
   assert is_ok, msg
 

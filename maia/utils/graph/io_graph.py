@@ -19,9 +19,11 @@ def io_graph_data_example():
   return [
     [ 4, [2]    , []     ], #0
     [ 7, [2]    , []     ], #1
-    [ 2, [8]    , [0,1,3]], #2
+    [ 2, [8]    , [0,1,3]], #2 
     [ 9, [4,8,2], []     ], #3
-    [ 8, [7]    , [3]    ], #4
+    [ 8, [7]    , [3]    ], #4  The node at position '4' has value '8'.
+                            #   Its parents are at positions [7], that is, it has only one parent, its value is '3'
+                            #   Its children are at positions [3], that is, it has only one child, its value is '9'
     [10, [7]    , []     ], #5
     [11, [7]    , []     ], #6
     [ 3, [8]    , [4,5,6]], #7

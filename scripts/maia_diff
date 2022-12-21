@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 
-import time
 import argparse
 from pathlib import Path
 import sys
 import numpy as np
-t = time.time()
 
 import maia
 from maia.pytree import compare as CP

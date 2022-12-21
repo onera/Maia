@@ -133,6 +133,16 @@ class same_tree_visitor:
     else:
       return step.into
 
+def is_same_tree(t1, t2, abs_tol=0, type_tol=False):
+  """
+  Recursive comparison of two nodes. Nodes are considered equal if the pass is_same_node test
+  and if the have the same childrens. Children are allowed to appear in a different order.
+  """
+  v = same_tree_visitor(abs_tol, type_tol)
+  zip_depth_first_search([t1,t2], v)
+  return v.is_same
+
+
 def value_comparison_report(nodes_stack, comp):
   """ Compare the values of two single nodes. Node are considered equal if
   they have
@@ -166,7 +176,7 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
   is_ok = False
   warn_report = ''
 
-  next_step = step.over
+  next_step = step.over # do not continue comparing children for now
   if n0 is None:
     err_report = '> ' + path + PT.get_name(n1) + '\n'
   elif n1 is None:
@@ -176,7 +186,7 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
                + '> ' + path + PT.get_name(n1) + '\n'
 
   else:
-    next_step = step.into
+    next_step = step.into # since everything it the same up to now, continue comparing children
 
     if not is_same_label(n0,n1):
       err_report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
@@ -210,20 +220,20 @@ class diff_tree_visitor:
     self.warn_report += warn_report
     return next_step
 
-
-def is_same_tree(t1, t2, abs_tol=0, type_tol=False):
-  """
-  Recursive comparison of two nodes. Nodes are considered equal if the pass is_same_node test
-  and if the have the same childrens. Children are allowed to appear in a different order.
-  """
-  v = same_tree_visitor(abs_tol, type_tol)
-  zip_depth_first_search([t1,t2], v)
-  return v.is_same
-
 def diff_tree(t1, t2, strict_value_type = True, comp = equal_array_comparison()):
   """
-  Recursive comparison of two nodes. Nodes are considered equal if the pass is_same_node test
-  and if the have the same childrens. Children are allowed to appear in a different order.
+  Report the differences between two trees.
+
+  Args:
+    t1 (CGNSTree): first tree
+    t2 (CGNSTree): second tree
+    strict_value_type (Bool): Behavior when the nodes have compatible but different types (I4/I8 or R4/R8)
+    comp: comparison function to check the value of nodes. Particularly useful to compare floating point fields
+  
+  Possible comparison funtions :
+    `maia.pytree.compare_arrays.equal_array_comparison()`: compare exactly
+    `maia.pytree.compare_arrays.field_comparison(tol, comm)`: compare scalar fields with a relative tolerance
+    `maia.pytree.compare_arrays.tensor_field_comparison(tol, comm)`: compare tensor fields with a relative tolerance
   """
   v = diff_tree_visitor(strict_value_type, comp)
   zip_depth_first_search([t1,t2], v, only_nodes=False)

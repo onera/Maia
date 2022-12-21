@@ -59,38 +59,30 @@ def _close_in_relative_norm(x, ref, tol, comm):
     diff = np.abs(x-ref)
     norm_diff = norm(diff, comm)
 
-    # FIXME because we compare scalar fields, not tensors
-    sqN = np.sqrt(len(ref))
-    #if norm_ref/sqN <= 1e-12:
-    if False:
-      denorm = False
-      within_tol = True
-
     # floating point value closest to 0 before loosing precision (see 'denormal numbers')
+    try:
+      smallest_normal = np.finfo(np.float64).smallest_normal
+    except AttributeError:
+      smallest_normal = np.float64(2.2250738585072014e-308)
+      import warnings
+      warnings.warn(f'`np.finfo(np.float64).smallest_normal` ' \
+                    f'does not exist with your NumPy version. ' \
+                    f'using {smallest_normal}', DeprecationWarning)
+
+    if norm_ref >= smallest_normal:
+      denorm = False
+      within_tol = (norm_diff/norm_ref) <= tol
+
     else:
-      try:
-        smallest_normal = np.finfo(np.float64).smallest_normal
-      except AttributeError:
-        smallest_normal = np.float64(2.2250738585072014e-308)
-        import warnings
-        warnings.warn(f'`np.finfo(np.float64).smallest_normal` ' \
-                      f'does not exist with your NumPy version. ' \
-                      f'using {smallest_normal}', DeprecationWarning)
-
-      if norm_ref >= smallest_normal:
+      if norm_ref == 0.:
         denorm = False
-        within_tol = (norm_diff/norm_ref) <= tol
-
       else:
-        if norm_ref == 0.:
-          denorm = False
-        else:
-          denorm = True
-        within_tol = False # when the reference itself is extremely small, require the values to be exactly equal
-                      # Notes:
-                      #   - more strict than `norm_diff == 0` (rounding effects)
-                      #   - not the same as `np.array_equal(diff, 0.)` (numpy bug?)
-                      #   - numpy correctly compares 0. and -0. as equal
+        denorm = True
+      within_tol = False # when the reference itself is extremely small, require the values to be exactly equal
+                    # Notes:
+                    #   - more strict than `norm_diff == 0` (rounding effects)
+                    #   - not the same as `np.array_equal(diff, 0.)` (numpy bug?)
+                    #   - numpy correctly compares 0. and -0. as equal
 
     return {
       'exact_eq': False,
@@ -114,6 +106,8 @@ def relative_norm_comparison(tol, comm, n_dim=1):
       norm_ref  = info['norm_ref']
       sqN = np.sqrt(len(ref)/n_dim)
       with np.errstate(divide='ignore'): # do not warn if `norm_ref == 0.`
+        # Report field mean information. We use the RMS (root mean square) instead of the arithmetic mean
+        # Because it it the one coherent with the L2 norm (arithmetic mean would be coherent to the L1 norm)
         msg = f'RMS mean diff: {norm_diff/sqN:.3e}, RMS ref mean: {norm_ref/sqN:.3e}, rel error: {norm_diff/norm_ref:.3e}'
       if info['denorm']:
         msg += ' -- WARNING: imprecise comparison because of small reference'
@@ -128,6 +122,12 @@ def relative_norm_comparison(tol, comm, n_dim=1):
 
 
 def field_comparison(tol, comm):
+  """ Creates a function to compare scalar fields with a relative tolerance
+
+  Args:
+    tol (Float): tolerance
+    comm (MPIComm): MPI communicator on which to call the collective comparison
+  """
   def impl(nodes_stack):
     node_x,node_ref = nodes_stack[-1]
     x   = PT.get_value(node_x,raw=True)
@@ -158,6 +158,16 @@ def relative_norm_comparison_rank_2(tol, comm, tensor_name, x, ref):
 
 
 def tensor_field_comparison(tol, comm):
+  """ Creates a function to compare tensor fields with a relative tolerance
+
+  To identify tensors, the functions looks at the name of the current field.
+  If it ends with 'X' or 'XX', then it will look for 'Y'/'Z' or 'XY'/... sibling nodes,
+  reconstruct a tensor field from them, and then do the comparison on them
+
+  Args:
+    tol (Float): tolerance
+    comm (MPIComm): MPI communicator on which to call the collective comparison
+  """
   class impl:
     @staticmethod
     def __call__(nodes_stack):
