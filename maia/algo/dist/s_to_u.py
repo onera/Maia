@@ -8,10 +8,6 @@ from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering
 from maia.utils.numbering import range_to_slab          as HFR2S
 
-ijk_to_idx_from_loc = {'IFaceCenter' : s_numbering.ijk_to_faceiIndex,
-                       'JFaceCenter' : s_numbering.ijk_to_facejIndex,
-                       'KFaceCenter' : s_numbering.ijk_to_facekIndex}
-
 def get_output_loc(request_dict, s_node):
   """Retrieve output location from the node if not provided in argument"""
   label_to_key = {'BC_t' : 'BC_t', 'GridConnectivity1to1_t' : 'GC_t', 'GridConnectivity_t': 'GC_t'}
@@ -535,11 +531,9 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
               continue
             loc = PT.Subset.GridLocation(gc_s)
             pl = PT.get_child_from_name(gc_s, 'PointList')[1]
-            try:
-              ijk_to_idx_func = ijk_to_idx_from_loc[loc]
-            except KeyError:
+            if not 'FaceCenter' in loc:
               raise ValueError("Only FaceCenter hybrid joins are supported")
-            pl_idx = ijk_to_idx_func(*pl, PT.Zone.CellSize(zone_s), PT.Zone.VertexSize(zone_s))
+            pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, PT.Zone.VertexSize(zone_s))
             pl_idx = pl_idx.reshape((1,-1), order='F')
             gc_u = PT.deep_copy(gc_s)
             PT.update_child(gc_u, 'GridLocation', value='FaceCenter')

@@ -9,13 +9,6 @@ import maia.transfer.dist_to_part.recover_jn     as JBTP
 
 from maia.utils     import s_numbering
 
-ijk_to_idx_from_loc = {'IFaceCenter' : s_numbering.ijk_to_faceiIndex,
-                       'JFaceCenter' : s_numbering.ijk_to_facejIndex,
-                       'KFaceCenter' : s_numbering.ijk_to_facekIndex}
-idx_to_ijk_from_loc = {'IFaceCenter' : s_numbering.faceiIndex_to_ijk,
-                       'JFaceCenter' : s_numbering.facejIndex_to_ijk,
-                       'KFaceCenter' : s_numbering.facekIndex_to_ijk}
-
 is_zone_s = lambda n: PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n)=='Structured'
 is_zone_u = lambda n: PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n)=='Unstructured'
 is_initial_match = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n) \
@@ -31,7 +24,7 @@ def pl_as_idx(zone, subset_predicate):
     pl_node = PT.get_node_from_name(subset, 'PointList')
     if pl_node is not None:
       loc = PT.Subset.GridLocation(subset)
-      pl = ijk_to_idx_from_loc[loc](*pl_node[1], PT.Zone.CellSize(zone), PT.Zone.VertexSize(zone))
+      pl = s_numbering.ijk_to_index_from_loc(*pl_node[1], loc, PT.Zone.VertexSize(zone))
       pl_node[1] = pl.reshape((1,-1), order='F')
 
 def pl_as_ijk(zone, subset_predicate):
@@ -44,7 +37,7 @@ def pl_as_ijk(zone, subset_predicate):
     pl_node = PT.get_node_from_name(subset, 'PointList')
     if pl_node is not None:
       loc = PT.Subset.GridLocation(subset)
-      pl_ijk = idx_to_ijk_from_loc[loc](pl_node[1][0], PT.Zone.CellSize(zone), PT.Zone.VertexSize(zone))
+      pl_ijk = s_numbering.index_to_ijk_from_loc(pl_node[1][0], loc, PT.Zone.VertexSize(zone))
       PT.set_value(pl_node, pl_ijk)
 
 def copy_additional_nodes(dist_zone, part_zone):
@@ -192,7 +185,8 @@ def hybrid_jns_as_ijk(part_tree, comm):
         opp_zone_size, opp_zone_jns = zone_s_data_all[opp_rank][opp_zone_path]
         opp_loc = opp_zone_jns[opp_jn_name]
         pl_donor = PT.get_child_from_name(gc, 'PointListDonor')
-        pld_ijk = idx_to_ijk_from_loc[opp_loc](pl_donor[1][0], opp_zone_size, opp_zone_size+1)
+        pld_ijk = s_numbering.index_to_ijk_from_loc(pl_donor[1][0], opp_loc, opp_zone_size+1)
+
         PT.set_value(pl_donor, pld_ijk)
       except KeyError:
         pass # Opp zone is unstructured

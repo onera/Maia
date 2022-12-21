@@ -32,8 +32,8 @@ Zone Zone_t [[10,9,0], [10,9,0], [10,9,0]]:
   assert PT.get_node_from_name(bcb, 'PointList') is None
 
   # Wrong location
-  PT.set_value(PT.get_node_from_name(bca, 'GridLocation'), 'Vertex')
-  with pytest.raises(KeyError):
+  PT.set_value(PT.get_node_from_name(bca, 'GridLocation'), 'Vertexx')
+  with pytest.raises(ValueError):
     PS.pl_as_idx(zone, 'ZoneBC_t/BC_t')
   # Wrong zone type
   PT.set_value(PT.get_node_from_name(zone, 'ZoneType'), 'Unstructured')

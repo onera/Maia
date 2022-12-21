@@ -8,13 +8,6 @@ import maia.pytree.maia as MT
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils    as te_utils
 
-ijk_to_idx_from_loc = {'IFaceCenter' : s_numbering.ijk_to_faceiIndex,
-                       'JFaceCenter' : s_numbering.ijk_to_facejIndex,
-                       'KFaceCenter' : s_numbering.ijk_to_facekIndex}
-idx_to_ijk_from_loc = {'IFaceCenter' : s_numbering.faceiIndex_to_ijk,
-                       'JFaceCenter' : s_numbering.facejIndex_to_ijk,
-                       'KFaceCenter' : s_numbering.facekIndex_to_ijk}
-
 def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
   """
   Search and collect all the pointList values found under the nodes
@@ -34,7 +27,7 @@ def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
           pl_raw = pl_n[1]
           if PT.Zone.Type(dist_zone) == 'Structured':
             loc = PT.Subset.GridLocation(node)
-            idx = ijk_to_idx_from_loc[loc](*pl_raw, PT.Zone.CellSize(dist_zone), PT.Zone.VertexSize(dist_zone))
+            idx = s_numbering.ijk_to_index_from_loc(*pl_raw, loc, PT.Zone.VertexSize(dist_zone))
             point_lists.append(idx.reshape((1,-1), order='F'))
           else:
             point_lists.append(pl_raw)
@@ -68,7 +61,7 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
             PT.new_GridLocation(PT.Subset.GridLocation(node), parent=p_node)
             pl_raw = p_groups['npZSRGroup'][beg_pl:end_pl]
             if PT.Zone.Type(p_zone) == 'Structured':
-              pl_value = idx_to_ijk_from_loc[loc](pl_raw, PT.Zone.CellSize(p_zone), PT.Zone.VertexSize(p_zone))
+              pl_value = s_numbering.index_to_ijk_from_loc(pl_raw, loc, PT.Zone.VertexSize(dist_zone))
             else:
               pl_value = pl_raw.reshape((1,-1), order='F')
             PT.new_PointList('PointList', pl_value, parent=p_node)
