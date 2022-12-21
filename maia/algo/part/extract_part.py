@@ -406,15 +406,6 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   In addition, containers specified in ``containers_name`` list are transfered to the extracted tree.
   Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.
 
-  Important:
-    - Input tree must be unstructured and have a ngon connectivity.
-    - Partitions must come from a single initial domain on input tree.
-  
-  See also:
-    :func:`create_extractor_from_zsr` takes the same parameters, excepted ``containers_name``,
-    and returns an Extractor object which can be used to exchange containers more than once through its
-    ``Extractor.exchange_fields(container_name)`` method.
-
   Args:
     part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. Only U-NGon
       connectivities are managed.
@@ -426,12 +417,21 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   Returns:
     extracted_tree (CGNSTree)  : Extracted submesh (partitioned)
 
-  Extraction can be controled thought the optional kwargs:
+  Extraction can be controled by the optional kwargs:
 
     - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones.
       Admissible values are ``hilbert, parmetis, ptscotch``. Note that
       vertex-located extractions require hilbert partitioning. Defaults to ``hilbert``.
-
+  
+  Important:
+    - Input tree must be unstructured and have a ngon connectivity.
+    - Partitions must come from a single initial domain on input tree.
+  
+  See also:
+    :func:`create_extractor_from_zsr` takes the same parameters, excepted ``containers_name``,
+    and returns an Extractor object which can be used to exchange containers more than once through its
+    ``Extractor.exchange_fields(container_name)`` method.
+  
   Example:
     .. literalinclude:: snippets/test_algo.py
       :start-after: #extract_from_zsr@start
@@ -506,40 +506,9 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
 
-  Dimension of the output mesh is set up accordingly to the GridLocation of the BC.
-  Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.
-
-  In addition, containers specified in ``containers_name`` list are transfered to the extracted tree.
-  Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t. BCDataSet from BC
-  can be transfered too using the ``transfer_dataset`` option.
-
-  Important:
-    - Input tree must be unstructured and have a ngon connectivity.
-    - Partitions must come from a single initial domain on input tree.
-  
-  See also:
-    :func:`create_extractor_from_bc_name` takes the same parameters, excepted ``containers_name``,
-    and returns an Extractor object which can be used to exchange containers more than once through its
-    ``Extractor.exchange_fields(container_name)`` method.
-
-  Args:
-    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. Only U-NGon
-      connectivities are managed.
-    bc_name         (str)         : Name of the BC node
-    comm            (MPIComm)     : MPI communicator
-    containers_name (list of str) : List of the names of the fields containers to transfer
-                                    on the output extracted tree.
-    **options: Options related to the extraction.
-  Returns:
-    extracted_tree (CGNSTree)  : Extracted submesh (partitioned)
-
-  Extraction can be controled thought the optional kwargs:
-
-    - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones.
-      Admissible values are ``hilbert, parmetis, ptscotch``. Note that
-      vertex-located extractions require hilbert partitioning. Defaults to ``hilbert``.
-    - ``transfer_dataset`` (bool) -- Allows the BCDataSet transfer from input to output tree
-      (in a FlowSolution_t node). Defaults to ``True``.
+  Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`
+  (``zsr_name`` becomes ``bc_name``). Optional ``transfer_dataset`` argument allows to 
+  transfer BCDataSet from BC to the extracted mesh (default to ``True``).
 
   Example:
     .. literalinclude:: snippets/test_algo.py
