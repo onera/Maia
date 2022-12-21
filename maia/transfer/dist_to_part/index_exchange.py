@@ -5,7 +5,7 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.utils     import np_utils, par_utils
+from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils    as te_utils
 
 def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
@@ -24,7 +24,13 @@ def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
         if pl_n is not None:
-          point_lists.append(pl_n[1])
+          pl_raw = pl_n[1]
+          if PT.Zone.Type(dist_zone) == 'Structured':
+            loc = PT.Subset.GridLocation(node)
+            idx = s_numbering.ijk_to_index_from_loc(*pl_raw, loc, PT.Zone.VertexSize(dist_zone))
+            point_lists.append(idx.reshape((1,-1), order='F'))
+          else:
+            point_lists.append(pl_raw)
         elif pr_n is not None and PT.get_value(pr_n).shape[0] == 1:
           pr = PT.get_value(pr_n)
           distrib = PT.get_value(MT.getDistribution(node, 'Index'))
@@ -39,7 +45,8 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
   for pl_path in pl_pathes:
     for nodes in PT.iter_children_from_predicates(dist_zone, pl_path, ancestors=True):
       ancestors, node = nodes[:-1], nodes[-1]
-      if PT.Subset.GridLocation(node) in locations:
+      loc = PT.Subset.GridLocation(node)
+      if loc in locations:
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
         #Exclude nodes with no pl
@@ -52,7 +59,12 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
               ancestor = PT.update_child(ancestor, PT.get_name(parent), PT.get_label(parent), PT.get_value(parent))
             p_node = PT.new_child(ancestor, PT.get_name(node), PT.get_label(node), PT.get_value(node))
             PT.new_GridLocation(PT.Subset.GridLocation(node), parent=p_node)
-            PT.new_PointList('PointList', p_groups['npZSRGroup'][beg_pl:end_pl].reshape((1,-1), order='F'), parent=p_node)
+            pl_raw = p_groups['npZSRGroup'][beg_pl:end_pl]
+            if PT.Zone.Type(p_zone) == 'Structured':
+              pl_value = s_numbering.index_to_ijk_from_loc(pl_raw, loc, PT.Zone.VertexSize(dist_zone))
+            else:
+              pl_value = pl_raw.reshape((1,-1), order='F')
+            PT.new_PointList('PointList', pl_value, parent=p_node)
             lntogn_ud = MT.newGlobalNumbering(parent=p_node)
             PT.new_DataArray('Index', p_groups['npZSRGroupLNToGN'][beg_pl:end_pl], parent=lntogn_ud)
 
@@ -60,20 +72,30 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
 
 def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
 
-  assert entity in ['Vertex', 'Elements']
-  filter_loc = ['EdgeCenter', 'FaceCenter', 'CellCenter'] if entity=='Elements' else ['Vertex']
+  if entity == 'Elements':
+    filter_loc = ['EdgeCenter', 'FaceCenter', 'CellCenter']
+  elif entity == 'Vertex':
+    filter_loc = ['Vertex']
+  elif entity == 'SFace': #Only for structured meshes
+    assert PT.Zone.Type(dist_zone) == 'Structured'
+    filter_loc = ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']
+  else:
+    raise ValueError("Unsupported location for PointList exchange")
 
   #Create distri and lngn
   if entity == 'Vertex':
     distri_partial = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
-    pdm_distri     = par_utils.partial_to_full_distribution(distri_partial, comm)
-
     ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
+  elif entity == 'SFace':
+    distri_partial = te_utils.get_cgns_distribution(dist_zone, 'Face')
+    ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Face')
+
   elif entity == 'Elements':
     elts = PT.get_children_from_label(dist_zone, 'Elements_t')
     distri_partial = te_utils.create_all_elt_distribution(elts, comm)
-    pdm_distri     = par_utils.partial_to_full_distribution(distri_partial, comm)
     ln_to_gn_list = [te_utils.create_all_elt_g_numbering(p_zone, elts) for p_zone in part_zones]
+
+  pdm_distri = par_utils.partial_to_full_distribution(distri_partial, comm)
 
   # Recreate query for collect_distributed_pl interface
   query_list = [type_path.split('/') for type_path in type_paths] 

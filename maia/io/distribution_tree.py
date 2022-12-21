@@ -30,9 +30,8 @@ def compute_plist_or_prange_distribution(node, comm):
 
   if(pl_n):
     pls_n   = PT.get_child_from_name(node, 'PointList#Size')
-    pl_size = PT.get_value(pls_n).prod()
+    pl_size = PT.get_value(pls_n)[1]
     create_distribution_node(pl_size, comm, 'Index', node)
-    PT.rm_children_from_name(node, 'PointList#Size')
 
 def compute_connectivity_distribution(node):
   """
@@ -62,11 +61,10 @@ def compute_elements_distribution(zone, comm):
 def compute_zone_distribution(zone, comm):
   """
   """
-  n_vtx  = PT.Zone.n_vtx (zone)
-  n_cell = PT.Zone.n_cell(zone)
-
-  distrib_vtx  = create_distribution_node(n_vtx , comm, 'Vertex', zone)
-  distrib_cell = create_distribution_node(n_cell, comm, 'Cell'  , zone)
+  create_distribution_node(PT.Zone.n_vtx(zone) , comm, 'Vertex', zone)
+  if PT.Zone.Type(zone) == 'Structured':
+    create_distribution_node(PT.Zone.n_face(zone), comm, 'Face', zone)
+  create_distribution_node(PT.Zone.n_cell(zone), comm, 'Cell'  , zone)
 
   compute_elements_distribution(zone, comm)
 

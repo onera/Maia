@@ -51,16 +51,16 @@ def create_pe_dataspace(distrib):
   DSFORMPE = [[1]]
   return DSMMRYPE + DSFILEPE + DSGLOBPE + DSFORMPE
 
-def create_pointlist_dataspace(distrib):
+def create_pointlist_dataspace(distrib, idx_dim=1):
   """
   Create a dataspace from a flat distribution, but adapted to "fake 2d" arrays
-  ie (1,N) numpy arrays.
+  ie (idx_dim, N) numpy arrays.
   Mostly usefull for PointList arrays and DataArray of the related BCDataSets.
   """
   dn_pl    = distrib[1] - distrib[0]
-  DSMMRYPL = [[0,0          ], [1, 1], [1, dn_pl], [1, 1]]
-  DSFILEPL = [[0, distrib[0]], [1, 1], [1, dn_pl], [1, 1]]
-  DSGLOBPL = [[1, distrib[2]]]
+  DSMMRYPL = [[0,0          ], [1, 1], [idx_dim, dn_pl], [1, 1]]
+  DSFILEPL = [[0, distrib[0]], [1, 1], [idx_dim, dn_pl], [1, 1]]
+  DSGLOBPL = [[idx_dim, distrib[2]]]
   DSFORMPL = [[0]]
   return DSMMRYPL + DSFILEPL + DSGLOBPL + DSFORMPL
 
@@ -70,14 +70,11 @@ def create_data_array_filter(distrib, data_shape=None):
   dataspace depends of the data_shape optional argument, representing
   the size of the array for which the dataspace is created in each dimension:
   - If data_shape is None or a single value, dataspace is 1d/flat
-  - If data_shape is a 2d list [1, N], a dataspace adpated to pointlist is created
-  - In other cases (which should correspond to true 2d array or 3d array), the
+  - Otherwise (which should correspond to true 2d array or 3d array), the
     dataspace is create from combine method (flat in memory, block in file).
   """
   if data_shape is None or len(data_shape) == 1: #Unstructured
     hdf_data_space = create_flat_dataspace(distrib)
-  elif len(data_shape) == 2 and data_shape[0] == 1:
-    hdf_data_space = create_pointlist_dataspace(distrib)
   else: #Structured
     hdf_data_space = create_combined_dataspace(data_shape, distrib)
 

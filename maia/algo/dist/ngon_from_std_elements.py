@@ -6,6 +6,7 @@ import maia.pytree.maia   as MT
 from maia.utils import np_utils, par_utils, layouts
 
 from maia.algo.dist   import remove_element as RME
+from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 
 import Pypdm.Pypdm as PDM
@@ -91,6 +92,12 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
 def compute_ngon_from_std_elements(dist_tree, comm):
   """
   """
+  MJT.add_joins_donor_name(dist_tree, comm)
+  for zgc in PT.iter_nodes_from_label(dist_tree, 'ZoneGridConnectivity_t'):
+    PT.set_label(zgc, 'ZoneBC_t')
+    PT.new_node('__maia::isZGC', parent=zgc)
+    for gc in PT.iter_children_from_label(zgc, 'GridConnectivity_t'):
+      PT.set_label(gc, 'BC_t')
   for base in PT.iter_all_CGNSBase_t(dist_tree):
     extract_dim = PT.get_value(base)[0]
     #print("extract_dim == ", extract_dim)
@@ -116,6 +123,13 @@ def compute_ngon_from_std_elements(dist_tree, comm):
       PT.rm_nodes_from_name(zone, ':CGNS#DMeshNodal#Bnd*')
 
   # > Generate correctly zone_grid_connectivity
+  for zbc in PT.iter_nodes_from_label(dist_tree, 'ZoneBC_t'):
+    if PT.get_child_from_name(zbc, '__maia::isZGC'):
+      PT.set_label(zbc, 'ZoneGridConnectivity_t')
+      PT.rm_children_from_name(zbc, '__maia::isZGC')
+      for bc in PT.iter_children_from_label(zbc, 'BC_t'):
+          PT.set_label(bc, 'GridConnectivity_t')
+  MJT.copy_donor_subset(dist_tree)
 
 def generate_ngon_from_std_elements(dist_tree, comm):
   """
@@ -144,3 +158,4 @@ def generate_ngon_from_std_elements(dist_tree, comm):
     #2D element should be removed first, to avoid probleme coming from ParentElements
     for elt in sorted(elts_to_remove, key = PT.Element.Dimension):
       RME.remove_element(zone, elt)
+  MJT.copy_donor_subset(dist_tree)

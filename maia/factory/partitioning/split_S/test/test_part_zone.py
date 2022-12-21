@@ -31,6 +31,9 @@ Zone Zone_t:
     bc7 BC_t:
       PointRange IndexRange_t [[17,17],[3,8],[5,6]]:
       GridLocation GridLocation_t "IFaceCenter":
+    bc10 BC_t:
+      PointList IndexArray_t [[1,1,1,1,1],[1,1,1,2,2],[1,2,3,1,2]]:
+      GridLocation GridLocation_t "IFaceCenter":
   ZGC ZoneGridConnectivity_t:
     gc1 GridConnectivity1to1_t:
       PointRange IndexRange_t [[17,17],[3,9],[1,5]]:

@@ -120,8 +120,8 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   PTC.pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data)
 
   node_n = PT.get_node_from_path(p_zone, 'NodeA')
-  assert (PT.get_node_from_path(node_n, 'ElementConnectivity')[1] == data['0dsections'][1]['np_connec']).all()
-  assert (PT.get_node_from_path(node_n, 'ElementRange')[1] == [3,4]).all()
+  assert (PT.get_node_from_path(node_n, 'ElementConnectivity')[1] == data['0dsections'][0]['np_connec']).all()
+  assert (PT.get_node_from_path(node_n, 'ElementRange')[1] == [1,2]).all()
 
   assert PT.get_node_from_path(p_zone, 'Bar') is None
 

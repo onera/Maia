@@ -13,6 +13,37 @@ Some conventions shared by all the functions:
 - Functions should be call directly on numpy arrays for optimal performance
 """
 ###############################################################################
+
+def ijk_to_index_from_loc(i,j,k, loc, n_vtx):
+  n_cell = n_vtx - 1
+  if loc == 'Vertex':
+    return ijk_to_index(i,j,k, n_vtx)
+  elif loc == 'CellCenter':
+    return ijk_to_index(i,j,k, n_cell)
+  elif loc == 'IFaceCenter':
+    return ijk_to_faceiIndex(i,j,k,n_cell,n_vtx)
+  elif loc == 'JFaceCenter':
+    return ijk_to_facejIndex(i,j,k,n_cell,n_vtx)
+  elif loc == 'KFaceCenter':
+    return ijk_to_facekIndex(i,j,k,n_cell,n_vtx)
+  raise ValueError("Unsupported location")
+
+def index_to_ijk_from_loc(idx, loc, n_vtx):
+  n_cell = n_vtx - 1
+  if loc == 'Vertex':
+    return index_to_ijk(idx, n_vtx)
+  elif loc == 'CellCenter':
+    return index_to_ijk(idx, n_cell)
+  elif loc == 'IFaceCenter':
+    return faceiIndex_to_ijk(idx, n_cell, n_vtx)
+  elif loc == 'JFaceCenter':
+    return ijk_to_facejIndex(i,j,k,n_cell,n_vtx)
+    return facejIndex_to_ijk(idx, n_cell, n_vtx)
+  elif loc == 'KFaceCenter':
+    return facekIndex_to_ijk(idx, n_cell, n_vtx)
+  raise ValueError("Unsupported location")
+
+
 def ijk_to_index(i,j,k,n_elmt):
   """
   Convert (i,j,k) indices from structured grid to unstructured index

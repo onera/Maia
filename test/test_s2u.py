@@ -39,6 +39,22 @@ def test_s2u(sub_comm, subset_output_loc, write_output):
     out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
     MIO.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
 
+@mark_mpi_test(2)
+def test_s2u_hybrid(sub_comm, write_output):
+  mesh_file = os.path.join(MU.test_utils.mesh_dir, 'H_elt_and_s.yaml')
+  dist_tree = MIO.file_to_dist_tree(mesh_file, sub_comm)
+
+  dist_tree_u = convert_s_to_ngon(dist_tree, sub_comm)
+
+  for zone in PT.iter_all_Zone_t(dist_tree_u):
+    assert PT.Zone.Type(zone) == 'Unstructured'
+    for pl in PT.iter_nodes_from_label(zone, 'IndexArray_t'):
+      assert PT.get_value(pl).shape[0] == 1 #All PLs should be (1,N)
+
+  if write_output:
+    out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
+    MIO.dist_tree_to_file(dist_tree_u, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
+
 @mark_mpi_test([1])
 def test_s2u_withdata(sub_comm, write_output):
   mesh_file = os.path.join(MU.test_utils.mesh_dir,  'S_twoblocks.yaml')

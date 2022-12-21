@@ -112,29 +112,42 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
   PTB = EP.PartToBlock(None, ln_to_gn_list, comm)
 
-  part_pl_list = []
+  idx_dim = 1 if PT.Zone.Type(dist_zone) == 'Unstructured' else dist_zone[1].shape[0]
+  keys = ['pl_i', 'pl_j', 'pl_k'][:idx_dim]
+  part_pl_list = {key: [] for key in keys}
+
   for part_zone in part_zones:
     ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
     if ancestor_n:
       name = leaf + '*' if allow_mult else leaf
       for node in PT.iter_children_from_name(ancestor_n, name):
-        if PT.Subset.GridLocation(node) == 'Vertex':
-          ln_to_gn = PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex'))
+        part_pl = PT.get_child_from_name(node, 'PointList')[1]
+        loc = PT.Subset.GridLocation(node)
+        if PT.Zone.Type(part_zone) == 'Unstructured':
+          if loc == 'Vertex':
+            ln_to_gn = PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex'))
+          else:
+            ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
+          part_pl_list['pl_i'].append(ln_to_gn[part_pl[0]-1])
         else:
-          ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
-        part_pl = PT.get_child_from_name(node, 'PointList')[1][0]
-        part_pl_list.append(ln_to_gn[part_pl-1])
+          ln_to_gn = MT.getGlobalNumbering(part_zone, LOC_TO_GN[loc])[1]
+          ijk_glob = _part_triplet_to_dist_triplet(part_pl, loc, ln_to_gn, PT.Zone.VertexSize(part_zone), PT.Zone.VertexSize(dist_zone))
+          for i, key in enumerate(keys):
+            part_pl_list[key].append(ijk_glob[i])
 
-  _, dist_pl = PTB.exchange_field(part_pl_list)
+  # Exchange and create dist pointlist
+  dist_pl = []
+  for key in keys: #This factorize U and S PL shapes
+    _, dist_pl_key = PTB.exchange_field(part_pl_list[key])
+    dist_pl.append(dist_pl_key)
+  pl = PT.new_PointList(value=dist_pl, parent=dist_node)
+  assert pl[1].ndim == 2 and pl[1].shape[0] == idx_dim
 
   # Add distribution in dist_node
-  i_rank, n_rank = comm.Get_rank(), comm.Get_size()
   distri_ud = MT.newDistribution(parent=dist_node)
   full_distri    = PTB.getDistributionCopy()
-  PT.new_DataArray('Index', full_distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  PT.new_DataArray('Index', par_utils.full_to_partial_distribution(full_distri, comm), parent=distri_ud)
 
-  # Create dist pointlist
-  PT.new_PointList(value = dist_pl.reshape(1,-1), parent=dist_node)
 
 def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size):
   """ Convert a structured partitioned (local) i,j,k triplet to the corresponding

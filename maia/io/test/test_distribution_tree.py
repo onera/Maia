@@ -108,6 +108,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     distribution_tree.compute_zone_distribution(zone, sub_comm)
     assert PT.get_node_from_name(zone, 'PointList#Size') is None
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 3
+    assert MT.getDistribution(zone, 'Face') is not None
 
 
 @mark_mpi_test(2)
@@ -145,7 +146,6 @@ Base CGNSBase_t [3,3]:
 """)
   distribution_tree.add_distribution_info(dist_tree, sub_comm)
   assert len(PT.get_nodes_from_name(dist_tree, 'Index')) == 4+3
-  assert PT.get_node_from_name(dist_tree, 'PointList#Size') is None
 
 def test_clean_distribution_info():
   yt = """

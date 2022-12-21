@@ -1,3 +1,4 @@
+import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 
 import numpy as np
@@ -5,6 +6,76 @@ import maia.pytree        as PT
 
 from maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning import post_split as PS
+
+def test_pl_idx_ijk():
+  yt = """
+Zone Zone_t [[10,9,0], [10,9,0], [10,9,0]]:
+  ZoneType ZoneType_t "Structured":
+  ZoneBC ZoneBC_t:
+    BCa BC_t:
+      PointList IndexArray_t [[1,1,1,1], [1,2,3,5], [1,1,1,1]]:
+      GridLocation GridLocation_t "IFaceCenter":
+    BCb BC_t: #This one is ignored
+      PointRange IndexRange_t [[1,9], [10,10], [1,9]]:
+      GridLocation GridLocation_t "JFaceCenter":
+  """
+  zone = parse_yaml_cgns.to_node(yt)
+  bca = PT.get_node_from_name(zone, 'BCa')
+  bcb = PT.get_node_from_name(zone, 'BCb')
+
+  PS.pl_as_idx(zone, 'ZoneBC_t/BC_t')
+  assert np.array_equal(PT.get_node_from_name(bca, 'PointList')[1], [[1,11,21,41]])
+  assert PT.get_node_from_name(bcb, 'PointList') is None
+
+  PS.pl_as_ijk(zone, 'ZoneBC_t/BC_t')
+  assert np.array_equal(PT.get_node_from_name(bca, 'PointList')[1], [[1,1,1,1], [1,2,3,5], [1,1,1,1]])
+  assert PT.get_node_from_name(bcb, 'PointList') is None
+
+  # Wrong location
+  PT.set_value(PT.get_node_from_name(bca, 'GridLocation'), 'Vertexx')
+  with pytest.raises(ValueError):
+    PS.pl_as_idx(zone, 'ZoneBC_t/BC_t')
+  # Wrong zone type
+  PT.set_value(PT.get_node_from_name(zone, 'ZoneType'), 'Unstructured')
+  with pytest.raises(AssertionError):
+    PS.pl_as_idx(zone, 'ZoneBC_t/BC_t')
+
+@mark_mpi_test(2)
+def test_hybrid_jns_as_ijk(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    pt = """
+    ZoneU.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
+      ZGC ZoneGridConnectivity_t:
+        GCU GridConnectivity_t "ZoneS.P1.N0":
+          GridConnectivityType GridConnectivityProperty_t "Abutting1to1":
+          PointList IndexArray_t [[101,102,103,104]]:
+          PointListDonor IndexArray_t [[1,11,21,41]]:
+          GridLocation GridLocation_t "FaceCenter":
+          GridConnectivityDonorName Descriptor_t "GCS":
+    """
+  elif sub_comm.Get_rank() == 1:
+    pt = """
+    ZoneS.P1.N0 Zone_t [[10,9,0], [10,9,0], [10,9,0]]:
+      ZoneType ZoneType_t "Structured":
+      ZGC ZoneGridConnectivity_t:
+        GCS GridConnectivity_t "ZoneU.P0.N0":
+          GridConnectivityType GridConnectivityProperty_t "Abutting1to1":
+          PointList IndexArray_t [[1,11,21,41]]:
+          PointListDonor IndexArray_t [[101,102,103,104]]:
+          GridLocation GridLocation_t "IFaceCenter":
+          GridConnectivityDonorName Descriptor_t "GCS":
+    """
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  PS.hybrid_jns_as_ijk(part_tree, sub_comm)
+
+  expected_pl  = np.array([[101,102,103,104]])
+  expected_pld = np.array([[1,1,1,1], [1,2,3,5], [1,1,1,1]])
+  if sub_comm.Get_rank() == 1:
+    expected_pl, expected_pld = expected_pld, expected_pl
+
+  assert np.array_equal(PT.get_node_from_name(part_tree, 'PointList')[1], expected_pl)
+  assert np.array_equal(PT.get_node_from_name(part_tree, 'PointListDonor')[1], expected_pld)
 
 def test_copy_additional_nodes():
   dt = """
