@@ -6,15 +6,6 @@ import maia.pytree as PT
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype
 
-def get_gathering_rank(distrib, comm):
-  '''
-  '''
-  assert distrib.size == 3 # assert partial distribution
-  g_distrib = gather_and_shift(distrib[1]-distrib[0], comm)
-  count     = np.diff(g_distrib)
-  i_rank    = np.where(count!=0)[0][0]
-  return i_rank
-
 def gathering_distribution(i_rank, n_elt, comm):
   """
   """

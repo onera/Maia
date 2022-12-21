@@ -1,4 +1,3 @@
-import os
 import mpi4py.MPI as MPI
 import numpy      as np
 
@@ -7,8 +6,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 import maia.transfer.protocols as MTP
 
-from   maia.utils                      import par_utils, np_utils
-from   maia.pytree.sids.elements_utils import elements_properties
+from maia.utils import par_utils
 
 
 # ---------------------------------------------------------------------------------------
@@ -68,67 +66,56 @@ def redistribute_elements_node(node, distribution, comm):
 
   assert PT.get_label(node) == 'Elements_t'
 
-  ngon_vision = False
-  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']   :  ngon_vision = True # If NGON or NFACE
+  has_eso = PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']
 
   # Get element distribution
-  elt_distrib = PT.get_node_from_path(node, ":CGNS#Distribution/Element")[1]
+  elt_distrib = MT.getDistribution(node, "Element")[1]
   n_elt       = elt_distrib[2]
 
   # New element distribution
-  new_elt_distrib = distribution(n_elt   , comm)
+  new_elt_distrib = distribution(n_elt, comm)
   new_distrib     = {'Element': new_elt_distrib}
 
   # > ElementStartOffset
-  if ngon_vision :
+  if has_eso :
+    ec_distrib     = MT.getDistribution(node, "ElementConnectivity")[1]
+
     eso_n = PT.get_child_from_name(node, 'ElementStartOffset')
     eso   = PT.get_value(eso_n)
-    
-    # Uniform
-    if distribution==par_utils.uniform_distribution:
-      i_rank = par_utils.get_gathering_rank(elt_distrib, comm)
-      eso = comm.allgather(eso)#, root=i_rank)
 
-      eso = np.concatenate(eso)
-      if (eso.shape==new_elt_distrib[2]+1):
-        eso_gather = eso[new_elt_distrib[0]:new_elt_distrib[1]+1]
-      else :
-        eso_gather = eso[new_elt_distrib[0]+1*comm.Get_rank():new_elt_distrib[1]+1+1*comm.Get_rank()]
+    # To be consistent with initial distribution, send everything excepted last elt
+    eso_wo_last = MTP.block_to_block(eso[:-1], elt_distrib, new_elt_distrib, comm)
 
-    # Gathering
-    else:
-      if comm.Get_rank()==0 : eso = eso
-      else                  : eso = eso[1:]
-      eso_distrib        = par_utils.gather_and_shift(eso.shape[0], comm)
-      new_eso_distrib    = np.full(comm.Get_size()+1, elt_distrib[-1]+1)
-      i_rank = par_utils.get_gathering_rank(new_elt_distrib, comm)
-      new_eso_distrib[:i_rank+1] = 0
-      eso_gather = MTP.block_to_block(eso, eso_distrib, new_eso_distrib, comm)
+    # Now we have to recover the last on each proc (with is the first
+    # of the next proc *having data*)
+
+    # Each rank gather its first element of eso array
+    bound_elt = eso_wo_last[0] if eso_wo_last.size > 0 else -1
+    all_bound_elt = np.empty(comm.Get_size()+1, dtype=eso.dtype)
+    all_bound_elt_view = all_bound_elt[:-1]
+    comm.Allgather(np.array([bound_elt], dtype=eso.dtype), all_bound_elt_view)
+    all_bound_elt[-1] = ec_distrib[2]
+
+    eso_gather = np.empty(eso_wo_last.size+1, eso_wo_last.dtype)
+    eso_gather[:-1] = eso_wo_last
+    # Now search the start of the next rank having data
+    j = comm.Get_rank() + 1
+    while (all_bound_elt[j] == -1):
+      j += 1
+    eso_gather[-1] = all_bound_elt[j]
+
     PT.set_value(eso_n, eso_gather)
 
-  if ngon_vision :
-    ec_distrib     = PT.get_node_from_path(node, ":CGNS#Distribution/ElementConnectivity")[1]
-
-    if (new_elt_distrib[1]-new_elt_distrib[0]!=0):
-
-      new_ec_distrib = np.zeros(3, dtype=np.int32)
-      new_ec_distrib[:2] = eso_gather[[ new_elt_distrib[0]-new_elt_distrib[0],
-                                        new_elt_distrib[1]-new_elt_distrib[0]]]
-      new_ec_distrib[2]  = ec_distrib[2]
-      
-    else:
-      if new_elt_distrib[1]==new_elt_distrib[2]:
-        new_ec_distrib = np.full(3, ec_distrib[-1], dtype=np.int32)
-      else :
-        new_ec_distrib = np.array([0, 0, ec_distrib[-1]], dtype=np.int32)
-
+    new_ec_distrib = np.copy(ec_distrib)
+    new_ec_distrib[0] = eso_gather[0]
+    new_ec_distrib[1] = eso_gather[-1]
     new_distrib['ElementConnectivity'] = new_ec_distrib
+
   else:
     ec_distrib     =     elt_distrib*PT.Element.NVtx(node)
     new_ec_distrib = new_elt_distrib*PT.Element.NVtx(node)
 
   # > Set CGNS#Distribution node in node
-  PT.rm_node_from_path(node,  ":CGNS#Distribution")
   MT.newDistribution(new_distrib, node)
 
   # > ElementConnectivity
@@ -141,7 +128,7 @@ def redistribute_elements_node(node, distribution, comm):
   pe_n    = PT.get_child_from_name(node, 'ParentElements')
   if pe_n is not None :
     pe      = PT.get_value(pe_n)
-    new_pe  = np.zeros((new_elt_distrib[1]-new_elt_distrib[0], pe.shape[1]), dtype=np.int32)
+    new_pe  = np.zeros((new_elt_distrib[1]-new_elt_distrib[0], pe.shape[1]), dtype=pe.dtype)
     for ip in range(pe.shape[1]):
       new_pe_tmp  = MTP.block_to_block(pe[:,ip], elt_distrib, new_elt_distrib, comm)
       new_pe[:,ip] = new_pe_tmp

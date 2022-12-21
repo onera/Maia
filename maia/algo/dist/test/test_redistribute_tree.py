@@ -187,7 +187,7 @@ def test_redistribute_elements_node_U(elt, sub_comm):
     assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/Element')[1],
                           np.array([8, 8, 8 ]))
     if elt=='NGON_n':
-      assert PT.get_child_from_name(gather_elt, 'ElementStartOffset' )[1].size==0
+      assert PT.get_child_from_name(gather_elt, 'ElementStartOffset' )[1].size==1
       assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/ElementConnectivity')[1],
                             np.array([24, 24, 24 ]))
     else :
@@ -248,7 +248,7 @@ def test_redistribute_mixed_elements_node_U(sub_comm):
     assert PT.get_child_from_name(gather_elt, 'ParentElements'     )[1].size==0
     assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/Element')[1],
                           np.array([6, 6, 6]))
-    assert PT.get_child_from_name(gather_elt, 'ElementStartOffset' )[1].size==0
+    assert PT.get_child_from_name(gather_elt, 'ElementStartOffset' )[1].size==1
     assert np.array_equal(PT.get_node_from_path(gather_elt, ':CGNS#Distribution/ElementConnectivity')[1],
                           np.array([24, 24, 24]))
 # ---------------------------------------------------------------------------------------
@@ -381,7 +381,10 @@ def test_redistribute_zone_U(sub_comm):
       assert node[1].size==0
 
     for node in PT.get_nodes_from_label(gather_zone, 'DataArray_t'):
-      assert node[1].size==0
+      if PT.get_name(node) == 'ElementStartOffset':
+        assert node[1].size==1
+      else:
+        assert node[1].size==0
 # ---------------------------------------------------------------------------------------
     
 
