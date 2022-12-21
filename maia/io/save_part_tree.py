@@ -52,7 +52,7 @@ def save_part_tree(part_tree, filename, comm, single_file=False, legacy=False):
           for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
             zone = PT.get_node_from_path(part_tree, zone_path)
             gid = open_from_path(fid, zone_path.split('/')[0])
-            _write_node_partial(gid, zone, lambda X,Y: True)
+            _write_node_partial(gid, zone, lambda X,Y: True, ([],[]))
             gid.close()
           fid.close()
       comm.barrier()
