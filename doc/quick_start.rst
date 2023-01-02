@@ -169,7 +169,7 @@ Resources and Troubleshouting
 
 The :ref:`user manual <user_manual>` describes most of the high level APIs provided by Maia.
 If you want to be comfortable with the underlying concepts of distributed and
-partitioned trees, have a look at the :ref:`introduction <user_man_intro>` section.
+partitioned trees, have a look at the :ref:`introduction <intro>` section.
 
 The user manual is illustrated with basic examples. Additional
 test cases can be found in 

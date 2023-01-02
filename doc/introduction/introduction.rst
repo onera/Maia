@@ -1,4 +1,4 @@
-.. _user_man_intro:
+.. _intro:
 
 Introduction
 ============
