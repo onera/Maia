@@ -4,7 +4,7 @@ import Converter.PyTree   as C
 
 import maia.pytree        as PT
 
-from .fix_tree import fix_point_ranges, fix_zone_datatype
+from .fix_tree import fix_point_ranges, fix_zone_datatype, rm_legacy_nodes
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
@@ -93,6 +93,7 @@ def load_collective_size_tree(filename, comm):
     fix_zone_datatype(size_tree, size_data)
     add_sizes_to_tree(size_tree, size_data)
     fix_point_ranges(size_tree)
+    rm_legacy_nodes(size_tree)
   else:
     size_tree = None
 

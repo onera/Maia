@@ -7,7 +7,7 @@ from .hdf._hdf_cgns import open_from_path
 from .hdf._hdf_cgns import load_tree_partial, write_tree_partial
 from .hdf._hdf_cgns import load_data_partial, write_data_partial
 from .hdf._hdf_cgns import write_link
-from .fix_tree      import fix_point_ranges
+from .fix_tree      import fix_point_ranges, rm_legacy_nodes
 
 def load_data(names, labels):
   """ Function used to determine if the data is heavy or not """
@@ -19,6 +19,8 @@ def load_data(names, labels):
     if labels[-2] in ['GridCoordinates_t', 'FlowSolution_t', 'DiscreteData_t', \
         'ZoneSubRegion_t', 'Elements_t']:
       return False
+    if names[-2] in [':elsA#Hybrid']: # Do not load legacy nodes
+      return False
     if labels[-2] == 'BCData_t' and labels[-3] == 'BCDataSet_t': # Load FamilyBCDataSet, but not BCDataSet
       return False
   return True
@@ -27,6 +29,7 @@ def load_collective_size_tree(filename, comm):
 
   if comm.Get_rank() == 0:
     size_tree = load_tree_partial(filename, load_data)
+    rm_legacy_nodes(size_tree)
     fix_point_ranges(size_tree)
   else:
     size_tree = None

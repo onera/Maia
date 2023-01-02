@@ -101,3 +101,11 @@ def ensure_PE_global_indexing(dist_tree):
       if PT.Element.Range(ngon_n)[0] == 1 and ngon_pe.shape[0] > 0 and ngon_pe[0].max() <= n_faces:
         np_utils.shift_nonzeros(ngon_pe, n_faces)
         print(f"Warning -- NGon/ParentElements have been shift on zone {PT.get_name(zone)} to be CGNS compliant")
+
+def rm_legacy_nodes(tree):
+  eh_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/:elsA#Hybrid')
+  if len(eh_paths) > 0:
+    print(f"Warning -- Legacy nodes ':elsA#Hybrid' skipped when reading file")
+    for eh_path in eh_paths:
+      PT.rm_node_from_path(tree, eh_path)
+

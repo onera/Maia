@@ -105,3 +105,18 @@ def test_ensure_PE_global_indexing():
     tri = PT.new_Elements('Tri', 'TRI_3')
     fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,tri]))
 
+def test_rm_legacy_nodes():
+  yt = f"""
+  ZoneA Zone_t [[11,10,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    :elsA#Hybrid UserDefinedData_t:
+      SortedCrossTable DataArray_t:
+      IndexNGONCrossTable DataArray_t:
+  ZoneB Zone_t [[11,10,0]]:
+  ZoneC Zone_t [[11,10,0]]:
+    :elsA#Hybrid UserDefinedData_t:
+  """
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  fix_tree.rm_legacy_nodes(tree)
+  assert PT.get_node_from_name(tree, ':elsA#Hybrid') is None
+

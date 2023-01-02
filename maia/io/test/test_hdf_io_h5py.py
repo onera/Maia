@@ -22,6 +22,8 @@ def test_load_data():
   assert IOH.load_data(names.split('/'), labels.split('/')) == True
   names, labels = 'ZBC/BC/PointList', 'ZoneBC_t/BC_t/IndexArray_t'
   assert IOH.load_data(names.split('/'), labels.split('/')) == False
+  names, labels = 'Base/Zone/:elsA#Hybrid/IndexNGONCrossTable', 'CGNSBase_t/Zone_t/UserDefinedData_t/DataArray_t'
+  assert IOH.load_data(names.split('/'), labels.split('/')) == False
   names, labels = 'ZBC/BC/PointRange', 'ZoneBC_t/BC_t/IndexRange_t'
   assert IOH.load_data(names.split('/'), labels.split('/')) == True
   names, labels = 'FSSeq/GM/Coeff', 'FlowEquationSet_t/GasModel_t/DataArray_t'
