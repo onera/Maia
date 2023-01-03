@@ -3,14 +3,14 @@
 from    mpi4py import MPI
 import  numpy as np
 
-import  maia.pytree as PT
 import  maia
-from    maia.transfer import utils                as TEU
+import  maia.pytree   as     PT
 from    maia.factory  import dist_from_part
+from    maia.transfer import utils                as TEU
 from    maia.utils    import np_utils, layouts, py_utils
 
 import Pypdm.Pypdm as PDM
-from maia.algo.part.extract_boundary import compute_gnum_from_parent_gnum
+from   maia.algo.part.extract_boundary import compute_gnum_from_parent_gnum
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 
@@ -170,7 +170,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
       all_stride_int .append(stride.astype(np.int32))
 
 
-    # Echange gnum to retrieve flowsol new point_list
+    # Exchange gnum to retrieve flowsol new point_list
     req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM,
                                all_part_gnum1,
@@ -191,11 +191,9 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
 
     new_pl_node    = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
 
-    # Boucle sur les partitoins de l'extraction pour get PL
+    # Update global numbering in FS
     gnum = PT.maia.getGlobalNumbering(part_zone_ep, f'{loc_correspondance[gridLocation]}')[1]
     partial_gnum = compute_gnum_from_parent_gnum([gnum[local_point_list-1]], comm)[0]
-    
-    # Boucle sur les partitoins de l'extracttion pour placer PL        
     maia.pytree.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_ep)
 
   # --- Field exchange ----------------------------------------------------------------
@@ -284,22 +282,13 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
     n_vtx  = vtx_ln_to_gn .shape[0]
 
     pdm_ep.part_set(i_part,
-                    n_cell,
-                    n_face,
-                    n_edge,
-                    n_vtx,
-                    cell_face_idx,
-                    cell_face    ,
+                    n_cell, n_face, n_edge, n_vtx,
+                    cell_face_idx, cell_face    ,
+                    None, None, None,
+                    face_vtx_idx , face_vtx     ,
+                    cell_ln_to_gn, face_ln_to_gn,
                     None,
-                    None,
-                    None,
-                    face_vtx_idx ,
-                    face_vtx     ,
-                    cell_ln_to_gn,
-                    face_ln_to_gn,
-                    None,
-                    vtx_ln_to_gn ,
-                    vtx_coords)
+                    vtx_ln_to_gn , vtx_coords)
 
     pdm_ep.selected_lnum_set(i_part, point_list[i_part] - local_pl_offset(part_zone, dim) - 1)
 
@@ -476,9 +465,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
   location = comm.allreduce(location, op=MPI.MAX)
 
   return Extractor(part_tree, point_list, location, comm,
-                   # equilibrate=equilibrate,
-                   graph_part_tool=graph_part_tool
-                   )
+                   graph_part_tool=graph_part_tool)
 # ---------------------------------------------------------------------------------------
 
 # --- END EXTRACT PART FROM ZSR ---------------------------------------------------------
@@ -537,10 +524,6 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
     containers_name.append(bc_name)
 
   return extract_part_from_zsr(local_part_tree, bc_name, comm, containers_name, **options)
-
-# ---------------------------------------------------------------------------------------
-
-
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 
