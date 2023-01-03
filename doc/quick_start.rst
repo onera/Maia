@@ -32,7 +32,7 @@ elsA spiro3_mpi production :
 
   source /home/elsa/Public/v5.1.03/Dist/bin/spiro3_mpi/.env_elsA
 
-  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/dev_part-intel19/
+  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-intel19/
   export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
   export PYTHONPATH=$MAIA_HOME/lib/python3.7/site-packages:$PYTHONPATH
 
