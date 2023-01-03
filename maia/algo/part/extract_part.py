@@ -393,10 +393,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 # --- EXTRACT PART FROM ZSR -------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------
-def extract_part_from_zsr(part_tree, zsr_name, comm,
-                          # equilibrate=True,
-                          containers_name=None,
-                          **options):
+def extract_part_from_zsr(part_tree, zsr_name, comm, containers_name=[], **options):
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
 
@@ -442,8 +439,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
 
   extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
-  if containers_name is not None:
-    extractor.exchange_fields(containers_name)
+  extractor.exchange_fields(containers_name)
 
   return extractor.get_extract_part_tree()
 
@@ -451,10 +447,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
 
 
 # ---------------------------------------------------------------------------------------
-def create_extractor_from_zsr(part_tree, zsr_path, comm,
-                              # equilibrate=True,
-                              **options
-                              ):
+def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
   """Same as extract_part_from_zsr, but return the extractor object."""
   # Get zones by domains
 
@@ -501,7 +494,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm,
 # ---------------------------------------------------------------------------------------
 def extract_part_from_bc_name(part_tree, bc_name, comm,
                               transfer_dataset=True,
-                              containers_name=None,
+                              containers_name=[],
                               **options):
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
@@ -541,10 +534,7 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
               PT.add_child(zsr_bc_n, PT.get_child_from_name(bc_n, name))
 
   if transfer_dataset and comm.allreduce(there_is_bcdataset, MPI.LOR):
-    if containers_name is None:
-      containers_name = [bc_name]
-    else:
-      containers_name.append(bc_name)
+    containers_name.append(bc_name)
 
   return extract_part_from_zsr(local_part_tree, bc_name, comm, containers_name, **options)
 
