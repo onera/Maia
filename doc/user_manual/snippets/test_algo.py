@@ -142,10 +142,10 @@ def test_compute_spherical_slice():
 def test_extract_from_zsr():
   #extract_from_zsr@start
   from   mpi4py import MPI
+  import numpy as np
   import maia
   import maia.pytree as PT
-  from   maia.utils.test_utils        import mesh_dir
-  import numpy as np
+  from   maia.utils.test_utils import mesh_dir
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
@@ -155,7 +155,7 @@ def test_extract_from_zsr():
   # Create a ZoneSubRegion on procs for extracting odd cells
   for part_zone in PT.get_all_Zone_t(part_tree):
     ncell       = PT.Zone.n_cell(part_zone)
-    start_range = PT.get_node_from_path(part_zone,'NFaceElements/ElementRange')[1][0]
+    start_range = PT.Element.Range(PT.Zone.NFaceNode(part_zone))[0]
     point_list  = np.arange(start_range, start_range+ncell, 2, dtype=np.int32).reshape((1,-1), order='F')
     PT.new_ZoneSubRegion(name='ZoneSubRegion', point_list=point_list, loc='CellCenter', parent=part_zone)
 
@@ -169,8 +169,7 @@ def test_extract_from_bc_name():
   #extract_from_bc_name@start
   from   mpi4py import MPI
   import maia
-  import maia.pytree as PT
-  from   maia.utils.test_utils        import mesh_dir
+  from   maia.utils.test_utils import mesh_dir
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)

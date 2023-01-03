@@ -500,7 +500,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm,
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 def extract_part_from_bc_name(part_tree, bc_name, comm,
-                              # equilibrate=True,
+                              transfer_dataset=True,
                               containers_name=None,
                               **options):
   """Extract the submesh defined by the provided BC name from the input volumic
@@ -517,48 +517,36 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
       :dedent: 2
   """
 
-  transfer_dataset = options.get("transfer_dataset", True)
-  there_is_bcdataset = False
-
   # Local copy of the part_tree to add ZSR 
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # Adding ZSR to tree
-  tag=-1
+  there_is_bcdataset = False
   for domain, part_zones in part_tree_per_dom.items():
     for part_zone in part_zones:
       bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') 
       if bc_n is not None:
         zsr_bc_n  = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
         if transfer_dataset:
-          bc_dataset = PT.get_children_from_predicates(bc_n, 'BCDataSet_t/BCData_t/DataArray_t')
           assert PT.get_child_from_predicates(bc_n, 'BCDataSet_t/IndexArray_t') is None,\
                  'BCDataSet_t with PointList aren\'t managed'
-          for dataset in bc_dataset:
-            PT.new_DataArray(name=dataset[0], value=dataset[1], parent=zsr_bc_n)
-          if len(bc_dataset)!=0:
+          ds_arrays = PT.get_children_from_predicates(bc_n, 'BCDataSet_t/BCData_t/DataArray_t')
+          for ds_array in ds_arrays:
+            PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_value(ds_array), parent=zsr_bc_n)
+          if len(ds_arrays) != 0:
             there_is_bcdataset = True
-            tag = comm.Get_rank()
-            bc_pl =              PT.get_node_from_name(bc_n, 'PointList'   )[1]
-            bc_gl = PT.get_value(PT.get_node_from_name(bc_n, 'GridLocation'))
-            PT.new_PointList('PointList', bc_pl, parent=zsr_bc_n)
-            PT.new_GridLocation(          bc_gl, parent=zsr_bc_n)
+            # PL and Location is needed for data exchange, but this should be done in ZSR func
+            for name in ['PointList', 'GridLocation']:
+              PT.add_child(zsr_bc_n, PT.get_child_from_name(bc_n, name))
 
-  extractor = create_extractor_from_zsr(local_part_tree, bc_name, comm, **options)
+  if transfer_dataset and comm.allreduce(there_is_bcdataset, MPI.LOR):
+    if containers_name is None:
+      containers_name = [bc_name]
+    else:
+      containers_name.append(bc_name)
 
-
-  if there_is_bcdataset:
-    if containers_name is None: containers_name = [bc_name]
-    else                      : containers_name.append(bc_name)
-  # To be sure that all procs get the info 
-  master = comm.allreduce(tag, op=MPI.MAX) # No check global ?
-  if master != -1 : containers_name = comm.bcast(containers_name, master)
-
-  if containers_name is not None:
-    extractor.exchange_fields(containers_name)
-
-  return extractor.get_extract_part_tree()
+  return extract_part_from_zsr(local_part_tree, bc_name, comm, containers_name, **options)
 
 # ---------------------------------------------------------------------------------------
 
