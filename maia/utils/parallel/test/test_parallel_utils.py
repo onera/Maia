@@ -99,6 +99,16 @@ def test_gather_and_shift(sub_comm):
   assert distri.dtype == np.int32
   assert (distri == [0,6,15,17]).all()
 
+@mark_mpi_test(3)
+def test_arrays_max(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    arrays = [np.array([1,6,2]), np.array([3,4,2])]
+  elif sub_comm.Get_rank() == 1:
+    arrays = [np.array([1,3,5,7]), np.empty(0, np.int64)]
+  elif sub_comm.Get_rank() == 2:
+    arrays = []
+  assert utils.arrays_max(arrays, sub_comm) == 7
+
 @mark_mpi_test(2)
 def test_exists_anywhere(sub_comm):
   trees = []

@@ -50,6 +50,13 @@ def test_shift_nonzeros():
   np_utils.shift_nonzeros(array, -10)
   assert (array == [[2,0], [1,2], [0,3], [0,0]]).all()
 
+def test_shift_absvalue():
+  array = np.array([2,9,1,-1,3,-8,0])
+  id_bck = id(array)
+  np_utils.shift_absvalue(array, 100)
+  assert (array == [102,109,101,-101,103,-108,100]).all()
+  assert id(array) == id_bck
+
 def test_reverse_connectivity():
   ids   = np.array([8,51,6,30,29])
   idx   = np.array([0,3,6,10,13,17])

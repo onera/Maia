@@ -67,6 +67,13 @@ def gather_and_shift(value, comm, dtype=None):
   np.cumsum(distrib, out=distrib)
   return distrib
 
+def arrays_max(array_list, comm):
+  if len(array_list) > 0:
+    local_max = max([array.max(initial=0) for array in array_list])
+  else:
+    local_max = 0
+  return comm.allreduce(local_max, MPI.MAX)
+
 def exists_anywhere(trees, node_path, comm):
   exists_loc = False
   for tree in trees:

@@ -75,6 +75,17 @@ def shift_nonzeros(array, shift):
   """
   array += shift * (array != 0)
 
+def shift_absvalue(array, shift):
+  """
+  Add the scalar value shift to the element of array
+  regardless of their sign
+  """
+  if shift == 0: return
+  neg = array < 0
+  np.abs(array, out=array)
+  array += shift
+  array[neg] *= -1
+
 def reverse_connectivity(ids, idx, array):
   """
   Reverse an strided array (idx+array) supported by some elements whose id is given by ids
