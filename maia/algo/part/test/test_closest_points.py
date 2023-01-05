@@ -1,3 +1,4 @@
+import os
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
@@ -5,10 +6,12 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.factory      import dcube_generator as DCG
 from maia.factory      import partition_dist_tree
 
+from maia.utils     import test_utils as TU
 from maia.algo.part import closest_points as CLO
 
 @mark_mpi_test(2)
@@ -71,8 +74,33 @@ class Test_closest_points:
       for key in expct_data:
         assert np.allclose(tgt_data[i_part][key], expct_data[key])
 
+@mark_mpi_test(1)
+def test_closestpoint_mdom(sub_comm):
+  yaml_path = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
+  dtree_src = maia.io.file_to_dist_tree(yaml_path, sub_comm)
+  dtree_tgt = DCG.dcube_generate(5, 4., [0.,0.,0.], sub_comm)
+  maia.algo.transform_affine(dtree_tgt, translation=np.array([13.25, 2.25, 0.25]))
+
+  maia.io.dist_tree_to_file(dtree_tgt, 'target.hdf', sub_comm)
+  tree_src = partition_dist_tree(dtree_src, sub_comm)
+  tree_tgt = partition_dist_tree(dtree_tgt, sub_comm)
+  tgt_parts_per_dom = [PT.get_all_Zone_t(tree_tgt)]
+  src_parts_per_dom = [PT.get_nodes_from_name_and_label(tree_src, 'Large*', 'Zone_t'),
+                       PT.get_nodes_from_name_and_label(tree_src, 'Small*', 'Zone_t')]
+
+  result, result_inv = CLO._find_closest_points(
+      src_parts_per_dom, tgt_parts_per_dom, 'Vertex', 'Vertex', sub_comm, reverse=True)
+  _result = result[0][0]
+  dom1_idx = np.where(_result['domain'] == 1)[0]
+  dom2_idx = np.where(_result['domain'] == 2)[0] 
+  assert dom1_idx.size == 87 #Carefull, 25 resulting points are on the interface, result can change
+  assert dom2_idx.size == 38
+  # Gnum should have been reshifted
+  assert _result['closest_src_gnum'][dom1_idx].max() <= PT.Zone.n_vtx(src_parts_per_dom[0][0])
+  assert _result['closest_src_gnum'][dom2_idx].max() <= PT.Zone.n_vtx(src_parts_per_dom[1][0])
+  
 @mark_mpi_test(3)
-def test_localize_points(sub_comm):
+def test_closest_points(sub_comm):
   dtree_src = DCG.dcube_generate(5, 1., [0.,0.,0.], sub_comm)
   dtree_tgt = DCG.dcube_generate(4, 1., [.4,0.,0.], sub_comm)
   tree_src = partition_dist_tree(dtree_src, sub_comm)
@@ -93,3 +121,4 @@ def test_localize_points(sub_comm):
     expected_src_id = np.array([4,48,60,52,24,8,20,16,64])
 
   assert (PT.get_child_from_name(clo_node, 'SrcId')[1] == expected_src_id).all()
+  assert PT.get_value(PT.get_child_from_name(clo_node, 'DomainList')) == "Base/zone"
