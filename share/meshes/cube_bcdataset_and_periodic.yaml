@@ -80,3 +80,6 @@ Base CGNSBase_t I4 [3, 3]:
             RotationAngle DataArray_t R4 [0.0, 0.0, 0.0]:
             RotationCenter DataArray_t R4 [0.0, 0.0, 0.0]:
             Translation DataArray_t R4 [0.0, 0.0, 1.0]:
+    FlowSolution FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      CstField DataArray_t I4 [1,1,1,1,1,1,1,1]:
