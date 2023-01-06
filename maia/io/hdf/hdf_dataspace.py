@@ -15,12 +15,16 @@ def create_combined_dataspace(data_shape, distrib):
 
   Mostly usefull for structured blocks.
   """
+  dim = len(data_shape)
   slab_list  = compute_slabs(data_shape, distrib[0:2])
   dn_da    = distrib[1] - distrib[0]
   DSFILEDA = []
   for slab in slab_list:
     iS,iE, jS,jE, kS,kE = [item for bounds in slab for item in bounds]
-    DSFILEDA.extend([[iS,jS,kS], [1,1,1], [iE-iS, jE-jS, kE-kS], [1,1,1]])
+    if dim == 3:
+      DSFILEDA.extend([[iS,jS,kS], [1,1,1], [iE-iS, jE-jS, kE-kS], [1,1,1]])
+    else:
+      DSFILEDA.extend([[iS,jS], [1,1], [iE-iS, jE-jS], [1,1]])
   DSMMRYDA = [[0]    , [1]    , [dn_da], [1]]
   DSFILEDA = list([list(DSFILEDA)])
   DSGLOBDA = [list(data_shape)]
