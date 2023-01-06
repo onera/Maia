@@ -47,14 +47,15 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
           distrib_data = PT.get_child_from_name(distrib_bcds_n, 'Index')[1]
           _create_pl_filter(bcds, bcds_path, 'PointList', distrib_data, hdf_filter)
 
-        print(bc[0], bcds[0])
+        # At read time, BCDataSet can be badly shaped (1,N) or (N1,N2) instead of (M,)
+        # We use the #Size node to reshape it
         size_node = PT.get_child_from_name(bcds,'*#Size',depth=2)
-        if size_node is not None:
-          print(bc[0], bcds[0], "-> hdf_filter")
-          data_space_array = create_data_array_filter(distrib_data, data_shape=PT.get_value(size_node))
-          for bcdata in PT.iter_children_from_label(bcds, 'BCData_t'):
-            bcdata_path = bcds_path + "/" + bcdata[0]
-            utils.apply_dataspace_to_arrays(bcdata, bcdata_path, data_space_array, hdf_filter)
+        data_shape = PT.get_value(size_node) if size_node else None
+        data_space_array = create_data_array_filter(distrib_data, data_shape)
+
+        for bcdata in PT.iter_children_from_label(bcds, 'BCData_t'):
+          bcdata_path = bcds_path + "/" + bcdata[0]
+          utils.apply_dataspace_to_arrays(bcdata, bcdata_path, data_space_array, hdf_filter)
 
 
 def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):

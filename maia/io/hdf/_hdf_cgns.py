@@ -241,7 +241,6 @@ def _load_node_partial(gid, parent, load_if, ancestors_stack):
       if b_kind==b'C1':
         value.dtype = 'S1'
   else:
-    print(name, label)
     _data = h5d.open(gid, b' data')
     size_node = [name + '#Size', 
                  np.array(_data.shape[::-1]),
