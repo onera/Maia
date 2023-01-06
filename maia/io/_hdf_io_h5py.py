@@ -3,11 +3,12 @@ from h5py   import h5p, h5f, h5fd
 
 import maia.pytree as PT
 
-from .hdf._hdf_cgns import open_from_path
-from .hdf._hdf_cgns import load_tree_partial, write_tree_partial
-from .hdf._hdf_cgns import load_data_partial, write_data_partial
-from .hdf._hdf_cgns import write_link
-from .fix_tree      import fix_point_ranges, rm_legacy_nodes
+from .hdf._hdf_cgns import open_from_path,\
+                           load_tree_partial, write_tree_partial,\
+                           load_data_partial, write_data_partial,\
+                           write_link
+from .fix_tree      import fix_point_ranges, rm_legacy_nodes,\
+                           add_missing_pr_in_bcdataset
 
 def load_data(names, labels):
   """ Function used to determine if the data is heavy or not """
@@ -31,6 +32,7 @@ def load_collective_size_tree(filename, comm):
     size_tree = load_tree_partial(filename, load_data)
     rm_legacy_nodes(size_tree)
     fix_point_ranges(size_tree)
+    add_missing_pr_in_bcdataset(size_tree)
   else:
     size_tree = None
 
