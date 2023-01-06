@@ -80,12 +80,9 @@ def add_missing_pr_in_bcdataset(tree):
       if not (bcds_grid_location in ['IFaceCenter','JFaceCenter','KFaceCenter','FaceCenter'] and bc_grid_location == 'Vertex'):
         continue
       face_dir   = guess_bnd_normal_index(bc_point_range,  bc_grid_location)
-      print(zone[0],bc[0],face_dir,PT.Subset.GridLocation(bcds))
       bcds_point_range             = bc_point_range.copy(order='F')
-      print("before", bcds_point_range)
       bcds_point_range[:,1]       -= 1
       bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]
-      print("after", bcds_point_range)
       new_pr = PT.new_PointRange(value=bcds_point_range, parent=bcds)
 
 def _enforce_pdm_dtype(tree):
