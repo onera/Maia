@@ -102,9 +102,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
       src_offsets[loc][i_domain+1] = src_offsets[loc][i_domain] + dom_max
     # Shift source arrays (inplace)
     for src_part in src_parts_domain:
-      np_utils.shift_absvalue(src_part[1], src_offsets['Face'][i_domain]) # cell_face
       src_part[2] += src_offsets['Cell'][i_domain] #cell_ln_to_gn
-      src_part[4] += src_offsets['Vtx' ][i_domain] #face_vtx
       src_part[5] += src_offsets['Face'][i_domain] #face_ln_to_gn
       src_part[7] += src_offsets['Vtx' ][i_domain] #vtx_ln_to_gn
     src_parts.extend(src_parts_domain)
@@ -124,9 +122,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   # Shift back source data
   for i_domain, src_parts_domain in enumerate(py_utils.to_nested_list(src_parts, n_part_per_dom_src)):
     for src_part in src_parts_domain:
-      np_utils.shift_absvalue(src_part[1], -src_offsets['Face'][i_domain]) # cell_face
       src_part[2] -= src_offsets['Cell'][i_domain] #cell_ln_to_gn
-      src_part[4] -= src_offsets['Vtx' ][i_domain] #face_vtx
       src_part[5] -= src_offsets['Face'][i_domain] #face_ln_to_gn
       src_part[7] -= src_offsets['Vtx' ][i_domain] #vtx_ln_to_gn
 
@@ -137,12 +133,14 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
     dom_id = np.searchsorted(src_offsets['Cell'], loc) # Source domain in which we are
     loc -= src_offsets['Cell'][dom_id - 1]
     tgt_result['domain'] = dom_id.astype(np.int32)
+    tgt_result['location_shifted'] = loc + src_offsets['Cell'][dom_id-1]
   if reverse:
     for src_result in result[1]:
       inv_loc = src_result['points_gnum']
       dom_id = np.searchsorted(tgt_offset, inv_loc) # Target domain in which we are
       inv_loc -= tgt_offset[dom_id - 1]
       src_result['domain'] = dom_id.astype(np.int32)
+      src_result['points_gnum_shifted'] = inv_loc + tgt_offset[dom_id-1]
 
   # Reshape output to list of lists (as input domains)
   if reverse:
