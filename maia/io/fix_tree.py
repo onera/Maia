@@ -4,7 +4,8 @@ import numpy              as     np
 import maia.pytree        as PT
 
 from maia.utils            import np_utils, as_pdm_gnum
-from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix, gc_is_reference
+from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
+                                  gc_is_reference, guess_bnd_normal_index
 
 def fix_zone_datatype(size_tree, size_data):
   """
@@ -56,6 +57,36 @@ def fix_point_ranges(size_tree):
       T = compute_transform_matrix(transform)
       assert (point_range_d[:,1] == \
           apply_transform_matrix(point_range[:,1], point_range[:,0], point_range_d[:,0], T)).all()
+
+def add_missing_pr_in_bcdataset(tree):
+  """
+  When the GridLocation values of BC and BCDataSet are respectively 'Vertex' and '*FaceCenter',
+  if the PointRange is not given in the BCDataSet, the function compute it
+  Remark : if the shape of DataArrays in BCDataSet is coherent with a '*FaceCenter' GridLocation
+  but the GridLocation node is not defined, this function does not add the PointRange
+  """
+  bc_t_path = 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t'
+  for base, zone, zbc, bc in PT.iter_children_from_predicates(tree, bc_t_path, ancestors=True):
+    if PT.get_value(PT.get_child_from_label(zone, 'ZoneType_t')) == 'Unstructured':
+      continue
+    if PT.get_child_from_label(bc, 'BCDataSet_t') is None:
+      continue
+    bc_grid_location = PT.Subset.GridLocation(bc)
+    bc_point_range   = PT.get_value(PT.get_child_from_name(bc, 'PointRange'))
+    for bcds in PT.get_children_from_label(bc, 'BCDataSet_t'):
+      if PT.get_child_from_name(bcds, 'PointRange') is not None:
+        continue
+      bcds_grid_location = PT.Subset.GridLocation(bcds)
+      if not (bcds_grid_location in ['IFaceCenter','JFaceCenter','KFaceCenter','FaceCenter'] and bc_grid_location == 'Vertex'):
+        continue
+      face_dir   = guess_bnd_normal_index(bc_point_range,  bc_grid_location)
+      print(zone[0],bc[0],face_dir,PT.Subset.GridLocation(bcds))
+      bcds_point_range             = bc_point_range.copy(order='F')
+      print("before", bcds_point_range)
+      bcds_point_range[:,1]       -= 1
+      bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]
+      print("after", bcds_point_range)
+      new_pr = PT.new_PointRange(value=bcds_point_range, parent=bcds)
 
 def _enforce_pdm_dtype(tree):
   """
