@@ -33,8 +33,6 @@ def mesh_adaptation(dist_tree, complexity, comm,
   Mad.redistribute_tree(dist_tree, comm, policy='gather') # Modifie le dist_tree 
 
   # CGNS to meshb conversion
-  if rank==0 : print('[MAIA] cgns to meshb conversion')
-
   dicttag_to_bcinfo = list()
   families = list()
   if rank==0:
@@ -48,3 +46,16 @@ def mesh_adaptation(dist_tree, complexity, comm,
                                     {feflo_optargs} \
                               -c    {complexity} \
                               -cmax {complexity}")
+
+
+  if rank==0 : print('[MAIA] meshb to cgns conversion')
+  # Broadcast
+  dicttag_to_bcinfo = comm.bcast(dicttag_to_bcinfo, root=0)
+  families          = comm.bcast(families, root=0)
+
+  output_adapted_name = tmp_repo+output_name+".o.mesh"
+  print(f'[SCRIPT-adapt] meshb_to_cgns : {output_adapted_name}')
+  dist_tree = meshb_to_cgns(output_adapted_name, dicttag_to_bcinfo, families, is_isotrop)
+
+  print('[SCRIPT-adapt] dist_tree_to_file')
+  maia.io.dist_tree_to_file(dist_tree, output_repo+f'delery_nc_o2_adapted_{method}_step{step+1}.cgns', comm)
