@@ -6,7 +6,7 @@ import Pypdm.Pypdm as PDM
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils                  import py_utils, np_utils, par_utils
+from maia.utils                  import py_utils, np_utils
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
@@ -17,31 +17,20 @@ from .import closest_points as CLO
 class Interpolator:
   """ Low level class to perform interpolations """
   def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, output_loc, comm):
-    self.src_parts = list()
-    self.tgt_parts = list()
-    all_src_lngn = [] # To be collected with shifts since src_to_tgt is shifted
-    src_offset = 0
-    for i_domain, src_parts in enumerate(src_parts_per_dom):
-      self.src_parts.extend(src_parts)
-      src_lngn_dom = [PCU._get_zone_ln_to_gn_from_loc(src_part, 'Cell') for src_part in src_parts]
-      dom_max = par_utils.arrays_max(src_lngn_dom, comm)
-      all_src_lngn.extend([src_lngn + src_offset for src_lngn in src_lngn_dom])
-      src_offset += dom_max
+    self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
+    self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
 
-    all_cloud_lngn = [] # To be collected with shifts since src_to_tgt is shifted
-    tgt_offset = 0
-    for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
-      self.tgt_parts.extend(tgt_parts)
-      tgt_lngn_dom = [PCU._get_zone_ln_to_gn_from_loc(tgt_part, output_loc) for tgt_part in tgt_parts]
-      dom_max = par_utils.arrays_max(tgt_lngn_dom, comm)
-      all_cloud_lngn.extend([tgt_lngn + tgt_offset for tgt_lngn in tgt_lngn_dom])
-      tgt_offset += dom_max
+    _, src_lngn_per_dom = PCU.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, 'CellCenter', comm)
+    all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
+
+    _, tgt_lngn_per_dom = PCU.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, output_loc, comm)
+    all_tgt_lngn = py_utils.to_flat_list(tgt_lngn_per_dom)
 
     _src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
     _src_to_tgt     = [data['target'] for data in src_to_tgt]
     self.PTP = PDM.PartToPart(comm,
                               all_src_lngn,
-                              all_cloud_lngn,
+                              all_tgt_lngn,
                               _src_to_tgt_idx,
                               _src_to_tgt)
 
@@ -157,7 +146,7 @@ def create_src_to_tgt(src_parts_per_dom,
 
     # output is nested by domain so we need to flatten it
     all_unlocated = [data['unlocated_ids'] for domain in location_out for data in domain]
-    all_located_inv = [data for domain in location_out_inv for data in domain]
+    all_located_inv = py_utils.to_flat_list(location_out_inv)
     n_unlocated = sum([t.size for t in all_unlocated])
     n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.SUM)
     if(comm.Get_rank() == 0):
@@ -168,10 +157,12 @@ def create_src_to_tgt(src_parts_per_dom,
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
 
     # > Setup source for closest point (with shift to manage multidomain)
-    _, src_clouds = CLO._get_shifted_clouds(src_parts_per_dom, 'CellCenter', comm)
+    _, src_clouds = PCU.get_shifted_point_clouds(src_parts_per_dom, 'CellCenter', comm)
+    src_clouds = py_utils.to_flat_list(src_clouds)
 
     # > Setup target for closest point (with shift to manage multidomain)
-    _, tgt_clouds = CLO._get_shifted_clouds(tgt_parts_per_dom, location, comm)
+    _, tgt_clouds = PCU.get_shifted_point_clouds(tgt_parts_per_dom, location, comm)
+    tgt_clouds = py_utils.to_flat_list(tgt_clouds)
 
     # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
     if strategy != 'Closest':

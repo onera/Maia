@@ -1,17 +1,35 @@
+import numpy as np
+
 import Pypdm.Pypdm as PDM
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils                  import np_utils, as_pdm_gnum, layouts
+from maia.utils                  import np_utils, par_utils, as_pdm_gnum, layouts
 
 from maia.algo.part.geometry  import compute_cell_center
+
+def _get_shifted_arrays(arrays_per_dom, comm):
+  shifted_per_dom = []
+  offset = np.zeros(len(arrays_per_dom)+1, dtype=pdm_gnum_dtype)
+  for i_dom, arrays in enumerate(arrays_per_dom):
+    offset[i_dom+1] = offset[i_dom] + par_utils.arrays_max(arrays, comm)
+    shifted_per_dom.append([array + offset[i_dom] for array in arrays]) # Shift (with copy)
+  return offset, shifted_per_dom
 
 def _get_zone_ln_to_gn_from_loc(zone, location):
   """ Wrapper to get the expected lngn value """
   _loc = location.replace('Center', '')
   ln_to_gn = as_pdm_gnum(PT.get_value(MT.getGlobalNumbering(zone, _loc)))
   return ln_to_gn
+
+def get_shifted_ln_to_gn_from_loc(parts_per_dom, location, comm):
+  """ Wraps _get_zone_ln_to_gn_from_loc around multiple domains,
+  shifting lngn with previous values"""
+  lngns_per_dom = []
+  for part_zones in parts_per_dom:
+    lngns_per_dom.append([_get_zone_ln_to_gn_from_loc(part, location) for part in part_zones])
+  return _get_shifted_arrays(lngns_per_dom, comm)
 
 def get_point_cloud(zone, location='CellCenter'):
   """
@@ -40,6 +58,23 @@ def get_point_cloud(zone, location='CellCenter'):
       return int_coords, ln_to_gn
 
   raise RuntimeError("Unknow location or node")
+
+def get_shifted_point_clouds(parts_per_dom, location, comm):
+  """ Wraps get_point_cloud around multiple domains,
+  shifting lngn with previous values"""
+  coords_per_dom = []
+  lngn_per_dom = []
+  for part_zones in parts_per_dom:
+    point_clouds_dom = [get_point_cloud(part, location) for part in part_zones]
+    coords_per_dom.append([pc[0] for pc in point_clouds_dom])
+    lngn_per_dom.append([pc[1] for pc in point_clouds_dom])
+
+  offset, shifted_lgns = _get_shifted_arrays(lngn_per_dom, comm)
+
+  clouds_per_dom = []
+  for dom_coords, dom_lngns in zip(coords_per_dom, shifted_lgns):
+    clouds_per_dom.append(list(zip(dom_coords, dom_lngns)))
+  return offset, clouds_per_dom
 
 def extract_sub_cloud(coords, lngn, indices):
   """

@@ -4,11 +4,10 @@ import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 
-from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils                  import py_utils, par_utils
+from maia.utils                  import py_utils, np_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
-from .point_cloud_utils import get_point_cloud
+from .point_cloud_utils import get_shifted_point_clouds
 
 
 def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
@@ -39,22 +38,6 @@ def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
   else:
     return all_closest
 
-def _get_shifted_clouds(parts_per_dom, location, comm):
-  """ Wrapts get_point_cloud and shift the LNGN according
-  to the domain """
-  n_dom = len(parts_per_dom)
-  clouds = []
-  offset = np.zeros(n_dom+1, dtype=pdm_gnum_dtype)
-  for i_domain, part_zones in enumerate(parts_per_dom):
-    clouds_domain = [get_point_cloud(part, location) for part in part_zones]
-    dom_max = par_utils.arrays_max([cloud[1] for cloud in clouds_domain], comm)
-    offset[i_domain+1] = offset[i_domain] + dom_max
-    # Shift (with copy for this one -- only one array)
-    clouds_domain = [(coords, lngn + offset[i_domain]) for (coords, lngn) in clouds_domain]
-    clouds.extend(clouds_domain)
-  return offset, clouds
-
-
 def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt_location, comm, reverse=False):
   n_dom_src = len(src_parts_per_dom)
   n_dom_tgt = len(tgt_parts_per_dom)
@@ -65,26 +48,24 @@ def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt
   n_part_tgt = sum(n_part_per_dom_tgt)
 
   # > Setup source
-  src_offset, src_clouds = _get_shifted_clouds(src_parts_per_dom, src_location, comm)
+  src_offset, src_clouds = get_shifted_point_clouds(src_parts_per_dom, src_location, comm)
+  src_clouds = py_utils.to_flat_list(src_clouds)
 
   # > Setup target
-  tgt_offset, tgt_clouds = _get_shifted_clouds(tgt_parts_per_dom, tgt_location, comm)
+  tgt_offset, tgt_clouds = get_shifted_point_clouds(tgt_parts_per_dom, tgt_location, comm)
+  tgt_clouds = py_utils.to_flat_list(tgt_clouds)
 
   result = _closest_points(src_clouds, tgt_clouds, comm, 1, reverse)
 
   # Shift back result
   direct_result = result[0] if reverse else result
   for tgt_result in direct_result:
-    gnum = tgt_result['closest_src_gnum']
-    dom_id = np.searchsorted(src_offset, gnum)
-    gnum -= src_offset[dom_id-1]
-    tgt_result['domain'] = dom_id.astype(np.int32)
+    gnum_shifted = tgt_result.pop('closest_src_gnum')
+    tgt_result['closest_src_gnum'], tgt_result['domain'] = np_utils.shifted_to_local(gnum_shifted, src_offset)
   if reverse:
     for src_result in result[1]:
-      gnum = src_result['tgt_in_src']
-      dom_id = np.searchsorted(tgt_offset, gnum)
-      gnum -= tgt_offset[dom_id-1]
-      src_result['domain'] = dom_id.astype(np.int32)
+      gnum_shifted = src_result.pop('tgt_in_src')
+      src_result['tgt_in_src'], src_result['domain'] = np_utils.shifted_to_local(gnum_shifted, tgt_offset)
   # Reshape output to list of lists (as input domains)
   if reverse:
     return py_utils.to_nested_list(result[0], n_part_per_dom_tgt),\

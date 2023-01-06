@@ -10,7 +10,7 @@ from maia.utils                  import py_utils, np_utils, par_utils
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
-from .point_cloud_utils import get_point_cloud
+from .point_cloud_utils import get_shifted_point_clouds
 
 def _get_part_data(part_zone):
   cx, cy, cz = PT.Zone.coordinates(part_zone)
@@ -107,15 +107,8 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
       src_part[7] += src_offsets['Vtx' ][i_domain] #vtx_ln_to_gn
     src_parts.extend(src_parts_domain)
 
-  tgt_clouds = []
-  tgt_offset = np.zeros(n_dom_tgt+1, dtype=pdm_gnum_dtype)
-  for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
-    tgt_clouds_domain = [get_point_cloud(tgt_part, location) for tgt_part in tgt_part_zones]
-    dom_max = par_utils.arrays_max([tgt_cloud[1] for tgt_cloud in tgt_clouds_domain], comm)
-    tgt_offset[i_domain+1] = tgt_offset[i_domain] + dom_max
-    # Shift (with copy for this one -- only one array)
-    tgt_clouds_domain = [(coords, lngn + tgt_offset[i_domain]) for (coords, lngn) in tgt_clouds_domain]
-    tgt_clouds.extend(tgt_clouds_domain)
+  tgt_offset, tgt_clouds = get_shifted_point_clouds(tgt_parts_per_dom, location, comm)
+  tgt_clouds = py_utils.to_flat_list(tgt_clouds)
 
   result = _mesh_location(src_parts, tgt_clouds, comm, reverse, loc_tolerance)
 
@@ -129,18 +122,14 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   # Shift results and get domain ids
   direct_result = result[0] if reverse else result
   for tgt_result in direct_result:
-    loc = tgt_result['location']
-    dom_id = np.searchsorted(src_offsets['Cell'], loc) # Source domain in which we are
-    loc -= src_offsets['Cell'][dom_id - 1]
-    tgt_result['domain'] = dom_id.astype(np.int32)
-    tgt_result['location_shifted'] = loc + src_offsets['Cell'][dom_id-1]
+    tgt_result['location_shifted'] = tgt_result.pop('location') #Rename key
+    tgt_result['location'], tgt_result['domain'] = np_utils.shifted_to_local(
+        tgt_result['location_shifted'], src_offsets['Cell'])
   if reverse:
     for src_result in result[1]:
-      inv_loc = src_result['points_gnum']
-      dom_id = np.searchsorted(tgt_offset, inv_loc) # Target domain in which we are
-      inv_loc -= tgt_offset[dom_id - 1]
-      src_result['domain'] = dom_id.astype(np.int32)
-      src_result['points_gnum_shifted'] = inv_loc + tgt_offset[dom_id-1]
+      src_result['points_gnum_shifted'] = src_result.pop('points_gnum') #Rename key
+      src_result['points_gnum'], src_result['domain'] = np_utils.shifted_to_local(
+          src_result['points_gnum_shifted'], tgt_offset)
 
   # Reshape output to list of lists (as input domains)
   if reverse:

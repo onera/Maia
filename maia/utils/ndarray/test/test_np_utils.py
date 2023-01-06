@@ -57,6 +57,13 @@ def test_shift_absvalue():
   assert (array == [102,109,101,-101,103,-108,100]).all()
   assert id(array) == id_bck
 
+def test_shifted_to_local():
+  out, ids = np_utils.shifted_to_local(np.array([]), np.array([0, 10, 15, 20]))
+  assert out.size == ids.size == 0
+  out, ids = np_utils.shifted_to_local(np.array([1,16,8,4,12,20]), np.array([0, 10, 15, 20]))
+  assert np.array_equal(out, [1,1,8,4,2,5])
+  assert np.array_equal(ids, [1,3,1,1,2,3])
+
 def test_reverse_connectivity():
   ids   = np.array([8,51,6,30,29])
   idx   = np.array([0,3,6,10,13,17])

@@ -86,6 +86,14 @@ def shift_absvalue(array, shift):
   array += shift
   array[neg] *= -1
 
+def shifted_to_local(array, offset):
+  """ Assuming that offset describes intervals and array global
+  values between offset[0]; offset[N], retrieve the
+  interval + position within this interval of each value """
+  interval_num = np.searchsorted(offset, array)
+  output = array - offset[interval_num - 1]
+  return output, interval_num.astype(np.int32)
+
 def reverse_connectivity(ids, idx, array):
   """
   Reverse an strided array (idx+array) supported by some elements whose id is given by ids
