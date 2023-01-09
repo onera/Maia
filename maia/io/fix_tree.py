@@ -136,4 +136,16 @@ def rm_legacy_nodes(tree):
     print(f"Warning -- Legacy nodes ':elsA#Hybrid' skipped when reading file")
     for eh_path in eh_paths:
       PT.rm_node_from_path(tree, eh_path)
+  
+  arrays_removed = False
+  for zone in PT.iter_all_Zone_t(tree):
+    for fs in PT.iter_nodes_from_label(zone, 'FlowSolution_t'):
+      all_arrays  = PT.get_names(PT.get_children_from_label(fs, 'DataArray_t'))
+      size_arrays = [name for name in all_arrays if name.endswith('#Size')]
+      has_no_size = lambda n: not PT.get_name(n).endswith('#Size') and f'{PT.get_name(n)}#Size' not in size_arrays
 
+      n_child_bck = len(PT.get_children(fs))
+      PT.rm_children_from_predicate(fs, lambda n: PT.get_label(n) == 'DataArray_t' and has_no_size(n))
+      arrays_removed = arrays_removed or len(PT.get_children(fs)) < n_child_bck
+  if arrays_removed:
+    print(f"Warning -- Some empty arrays under FlowSolution_t nodes have been skipped when reading file")

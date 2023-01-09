@@ -175,10 +175,18 @@ def test_rm_legacy_nodes():
       SortedCrossTable DataArray_t:
       IndexNGONCrossTable DataArray_t:
   ZoneB Zone_t [[11,10,0]]:
+    FlowSol FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      GoodArray DataArray_t:
+      GoodArray#Size DataArray_t [10]:
+      WrongArray DataArray_t:
   ZoneC Zone_t [[11,10,0]]:
     :elsA#Hybrid UserDefinedData_t:
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   fix_tree.rm_legacy_nodes(tree)
   assert PT.get_node_from_name(tree, ':elsA#Hybrid') is None
+
+  assert PT.get_node_from_name(tree, 'GoodArray') is not None
+  assert PT.get_node_from_name(tree, 'WrongArray') is None
 
