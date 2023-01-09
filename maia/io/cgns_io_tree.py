@@ -124,12 +124,10 @@ def fill_size_tree(tree, filename, comm, legacy=False):
   add_distribution_info(tree, comm)
   hdf_filter = create_tree_hdf_filter(tree)
   # Coords#Size appears in dict -> remove it
-  if not legacy:
-    hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
+  hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
 
   load_tree_from_filter(filename, tree, comm, hdf_filter, legacy)
-  if not legacy:
-    PT.rm_nodes_from_name(tree, '*#Size')
+  PT.rm_nodes_from_name(tree, '*#Size')
 
 
 def file_to_dist_tree(filename, comm, legacy=False):

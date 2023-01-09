@@ -4,7 +4,8 @@ import Converter.PyTree   as C
 
 import maia.pytree        as PT
 
-from .fix_tree import fix_point_ranges, fix_zone_datatype, rm_legacy_nodes
+from .fix_tree import fix_point_ranges, fix_zone_datatype,\
+                      rm_legacy_nodes, add_missing_pr_in_bcdataset
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
@@ -31,6 +32,9 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
         if PT.get_child_from_name(bcds, 'PointList') is not None:
           pl_path = bc_path+"/"+bcds[0]+"/PointList"
           PT.new_PointList('PointList#Size', value=size_data[pl_path][2], parent=bcds)
+        for bcdata, array in PT.get_children_from_predicates(bcds, 'BCData_t/DataArray_t', ancestors=True):
+          data_path = '/'.join([bc_path, bcds[0], bcdata[0], array[0]])
+          PT.new_PointList(f'{array[0]}#Size', value=size_data[data_path][2], parent=bcdata)
 
   for zone_gc in PT.iter_children_from_label(zone, 'ZoneGridConnectivity_t'):
     zone_gc_path = zone_path+"/"+zone_gc[0]
@@ -56,6 +60,10 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
     if PT.get_child_from_name(flow_sol, 'PointList') is not None:
       pl_path = sol_path+"/PointList"
       PT.new_PointList('PointList#Size', value=size_data[pl_path][2], parent=flow_sol)
+    for array in PT.get_children_from_label(flow_sol, 'DataArray_t'):
+      #This one is DataArray to be detected in fix_tree.rm_legacy_nodes
+      if size_data[sol_path+'/'+array[0]][1] != 'MT':
+        PT.new_DataArray(f'{array[0]}#Size', value=size_data[sol_path+'/'+array[0]][2], parent=flow_sol)
 
 def add_sizes_to_tree(size_tree, size_data):
   """
@@ -93,6 +101,7 @@ def load_collective_size_tree(filename, comm):
     fix_zone_datatype(size_tree, size_data)
     add_sizes_to_tree(size_tree, size_data)
     fix_point_ranges(size_tree)
+    add_missing_pr_in_bcdataset(size_tree)
     rm_legacy_nodes(size_tree)
   else:
     size_tree = None

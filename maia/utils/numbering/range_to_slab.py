@@ -21,8 +21,10 @@ def compute_slabs(array_shape, gnum_interval):
   semi open intervals, starting at zero. The flattening order for the 3d
   array is increasing i, j, k.
   """
+  dim = len(array_shape)
   hslab_list = []
-  nx, ny, nz = array_shape
+  nx, ny = array_shape[0:2]
+  if dim == 3 : nz = array_shape[2]
   line_size = nx
   plan_size = nx*ny
 
@@ -60,13 +62,14 @@ def compute_slabs(array_shape, gnum_interval):
       # print('start_plane {0}, loaded {1} lines ({2} elmts)\n'.format(
         # start_plane, start_plane[1][1] - start_plane[1][0], nx*(start_plane[1][1] - start_plane[1][0])))
 
-  this_block_size = min(nz, kstart+(ncell_to_load // plan_size)) - kstart
-  if this_block_size > 0:
-    central_block = [[0, nx], [0, ny], [kstart, min(nz, kstart+(ncell_to_load // plan_size))]]
-    ncell_to_load -= plan_size*this_block_size
-    hslab_list.append(central_block)
-    # print('central_block {0}, loaded {1} planes ({2} elmts)\n'.format(
-      # central_block, central_block[2][1] - central_block[2][0], plan_size*(central_block[2][1] - central_block[2][0])))
+  if dim == 3:
+    this_block_size = min(nz, kstart+(ncell_to_load // plan_size)) - kstart
+    if this_block_size > 0:
+      central_block = [[0, nx], [0, ny], [kstart, min(nz, kstart+(ncell_to_load // plan_size))]]
+      ncell_to_load -= plan_size*this_block_size
+      hslab_list.append(central_block)
+      # print('central_block {0}, loaded {1} planes ({2} elmts)\n'.format(
+        # central_block, central_block[2][1] - central_block[2][0], plan_size*(central_block[2][1] - central_block[2][0])))
 
   if ncell_to_load >= nx:
     end_plane = [[0, nx], [0, (ncell_to_load // nx)], [kmax, kmax+1]]

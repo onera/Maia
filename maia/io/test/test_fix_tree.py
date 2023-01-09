@@ -47,6 +47,68 @@ Base0 CGNSBase_t [3,3]:
   assert (PT.get_child_from_name(gcB, 'PointRange')[1]      == [[ 7, 1], [9,9], [5,1]]).all()
   assert (PT.get_child_from_name(gcB, 'PointRangeDonor')[1] == [[17,17], [3,9], [1,5]]).all()
 
+def test_add_missing_pr_in_dataset():
+  yt = """
+Base0 CGNSBase_t [3,3]:
+  ZoneA Zone_t:
+    ZoneType ZoneType_t "Structured":
+    ZBC ZoneBC_t:
+      BCA1 BC_t:
+        PointRange IndexRange_t [[1,1],[1,29],[1,85]]:
+        BCDS BCDataSet_t:
+          GridLocation GridLocation_t "FaceCenter":
+      BCA2 BC_t:
+        PointRange IndexRange_t [[1,1],[1,29],[1,85]]:
+        BCDS BCDataSet_t:
+          GridLocation GridLocation_t "IFaceCenter":
+      BCA3 BC_t:
+        PointRange IndexRange_t [[1,29],[1,1],[1,85]]:
+        BCDS BCDataSet_t:
+          GridLocation GridLocation_t "JFaceCenter":
+      BCA4 BC_t:
+        PointRange IndexRange_t [[1,29],[1,85],[1,1]]:
+        BCDS BCDataSet_t:
+          GridLocation GridLocation_t "KFaceCenter":
+      BCB BC_t:
+        PointRange IndexRange_t [[1,1],[1,3],[1,2]]:
+        GridLocation GridLocation_t "FaceCenter":
+        BCDS BCDataSet_t:
+          GridLocation GridLocation_t "FaceCenter":
+      BCC BC_t:
+        PointRange IndexRange_t [[1,1],[1,3],[1,2]]:
+        BCDS BCDataSet_t:
+  ZoneB Zone_t:
+    ZoneType ZoneType_t "Unstructured":
+    ZBC ZoneBC_t:
+      BC BC_t:
+        PointRange IndexRange_t [[1,1],[1,3],[1,2]]:
+        BCDS BCDataSet_t:
+          GridLocation GridLocation_t "FaceCenter":
+"""
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  fix_tree.add_missing_pr_in_bcdataset(size_tree)
+  bcA1 = PT.get_node_from_name(size_tree, 'BCA1')
+  bcdsA1 = PT.get_child_from_label(bcA1, 'BCDataSet_t')
+  assert (PT.get_child_from_name(bcdsA1, 'PointRange')[1] == [[1,1], [1,28], [1,84]]).all()
+  bcA2 = PT.get_node_from_name(size_tree, 'BCA2')
+  bcdsA2 = PT.get_child_from_label(bcA2, 'BCDataSet_t')
+  assert (PT.get_child_from_name(bcdsA2, 'PointRange')[1] == [[1,1], [1,28], [1,84]]).all()
+  bcA3 = PT.get_node_from_name(size_tree, 'BCA3')
+  bcdsA3 = PT.get_child_from_label(bcA3, 'BCDataSet_t')
+  assert (PT.get_child_from_name(bcdsA3, 'PointRange')[1] == [[1,28], [1,1], [1,84]]).all()
+  bcA4 = PT.get_node_from_name(size_tree, 'BCA4')
+  bcdsA4 = PT.get_child_from_label(bcA4, 'BCDataSet_t')
+  assert (PT.get_child_from_name(bcdsA4, 'PointRange')[1] == [[1,28], [1,84], [1,1]]).all()
+  bcB = PT.get_node_from_name(size_tree, 'BCB')
+  bcdsB = PT.get_child_from_label(bcB, 'BCDataSet_t')
+  assert (PT.get_child_from_name(bcdsB, 'PointRange') is None)
+  bcC = PT.get_node_from_name(size_tree, 'BCB')
+  bcdsC = PT.get_child_from_label(bcC, 'BCDataSet_t')
+  assert (PT.get_child_from_name(bcdsC, 'PointRange') is None)
+  bc = PT.get_node_from_name(size_tree, 'BCB')
+  bcds = PT.get_child_from_label(bc, 'BCDataSet_t')
+  assert (PT.get_child_from_name(bcds, 'PointRange') is None)
+
 #def test_load_grid_connectivity_property():
   #Besoin de charger depuis un fichier, comment tester ?
 
@@ -113,10 +175,18 @@ def test_rm_legacy_nodes():
       SortedCrossTable DataArray_t:
       IndexNGONCrossTable DataArray_t:
   ZoneB Zone_t [[11,10,0]]:
+    FlowSol FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      GoodArray DataArray_t:
+      GoodArray#Size DataArray_t [10]:
+      WrongArray DataArray_t:
   ZoneC Zone_t [[11,10,0]]:
     :elsA#Hybrid UserDefinedData_t:
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   fix_tree.rm_legacy_nodes(tree)
   assert PT.get_node_from_name(tree, ':elsA#Hybrid') is None
+
+  assert PT.get_node_from_name(tree, 'GoodArray') is not None
+  assert PT.get_node_from_name(tree, 'WrongArray') is None
 

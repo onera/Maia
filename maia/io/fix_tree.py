@@ -4,7 +4,8 @@ import numpy              as     np
 import maia.pytree        as PT
 
 from maia.utils            import np_utils, as_pdm_gnum
-from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix, gc_is_reference
+from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
+                                  gc_is_reference, guess_bnd_normal_index
 
 def fix_zone_datatype(size_tree, size_data):
   """
@@ -22,6 +23,7 @@ def fix_point_ranges(size_tree):
   a. be consistent with the transform node
   b. keep the symmetry PR|a->b = PRDonor|b->a
   """
+  permuted = False
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity1to1_t'
   for base, zone, zgc, gc in PT.iter_children_from_predicates(size_tree, gc_t_path, ancestors=True):
     base_name = PT.get_name(base)
@@ -42,6 +44,7 @@ def fix_point_ranges(size_tree):
       dir_to_swap  = (nb_points != nb_points_d)
 
       if dir_to_swap.any():
+        permuted = True
         if gc_is_reference(gc, gc_path, gc_opp_path):
 
           opp_dir_to_swap = np.empty_like(dir_to_swap)
@@ -56,6 +59,41 @@ def fix_point_ranges(size_tree):
       T = compute_transform_matrix(transform)
       assert (point_range_d[:,1] == \
           apply_transform_matrix(point_range[:,1], point_range[:,0], point_range_d[:,0], T)).all()
+  if permuted:
+    print(f"Warning -- Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
+
+def add_missing_pr_in_bcdataset(tree):
+  """
+  When the GridLocation values of BC and BCDataSet are respectively 'Vertex' and '*FaceCenter',
+  if the PointRange is not given in the BCDataSet, the function compute it
+  Remark : if the shape of DataArrays in BCDataSet is coherent with a '*FaceCenter' GridLocation
+  but the GridLocation node is not defined, this function does not add the PointRange
+  """
+  pr_added = False
+  bc_t_path = 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t'
+  for base, zone, zbc, bc in PT.iter_children_from_predicates(tree, bc_t_path, ancestors=True):
+    if PT.get_value(PT.get_child_from_label(zone, 'ZoneType_t')) == 'Unstructured':
+      continue
+    if PT.get_child_from_label(bc, 'BCDataSet_t') is None:
+      continue
+    bc_grid_location = PT.Subset.GridLocation(bc)
+    bc_point_range   = PT.get_value(PT.get_child_from_name(bc, 'PointRange'))
+    for bcds in PT.get_children_from_label(bc, 'BCDataSet_t'):
+      if PT.get_child_from_name(bcds, 'PointRange') is not None:
+        continue
+      bcds_grid_location = PT.Subset.GridLocation(bcds)
+      if not (bcds_grid_location.endswith('FaceCenter') and bc_grid_location == 'Vertex'):
+        continue
+      face_dir   = guess_bnd_normal_index(bc_point_range,  bc_grid_location)
+      bcds_point_range             = bc_point_range.copy(order='F')
+      bcds_point_range[:,1]       -= 1
+      bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]
+      new_pr = PT.new_PointRange(value=bcds_point_range, parent=bcds)
+      pr_added = True
+      # print(f"Warning -- PointRange has been added on BCDataSet {zone[0]}/{bc[0]}/{bcds[0]}"
+             # " since data shape was no consistent with BC PointRange")
+  if pr_added:
+    print(f"Warning -- PointRange has been added on some BCDataSet nodes because data size was inconsistent")
 
 def _enforce_pdm_dtype(tree):
   """
@@ -108,4 +146,16 @@ def rm_legacy_nodes(tree):
     print(f"Warning -- Legacy nodes ':elsA#Hybrid' skipped when reading file")
     for eh_path in eh_paths:
       PT.rm_node_from_path(tree, eh_path)
+  
+  arrays_removed = False
+  for zone in PT.iter_all_Zone_t(tree):
+    for fs in PT.iter_nodes_from_label(zone, 'FlowSolution_t'):
+      all_arrays  = PT.get_names(PT.get_children_from_label(fs, 'DataArray_t'))
+      size_arrays = [name for name in all_arrays if name.endswith('#Size')]
+      has_no_size = lambda n: not PT.get_name(n).endswith('#Size') and f'{PT.get_name(n)}#Size' not in size_arrays
 
+      n_child_bck = len(PT.get_children(fs))
+      PT.rm_children_from_predicate(fs, lambda n: PT.get_label(n) == 'DataArray_t' and has_no_size(n))
+      arrays_removed = arrays_removed or len(PT.get_children(fs)) < n_child_bck
+  if arrays_removed:
+    print(f"Warning -- Some empty arrays under FlowSolution_t nodes have been skipped when reading file")

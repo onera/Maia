@@ -240,7 +240,7 @@ def _load_node_partial(gid, parent, load_if, ancestors_stack):
       value = load_data(gid)
       if b_kind==b'C1':
         value.dtype = 'S1'
-  else:
+  elif b_kind != b'MT':
     _data = h5d.open(gid, b' data')
     size_node = [name + '#Size', 
                  np.array(_data.shape[::-1]),
