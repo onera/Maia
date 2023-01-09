@@ -23,6 +23,7 @@ def fix_point_ranges(size_tree):
   a. be consistent with the transform node
   b. keep the symmetry PR|a->b = PRDonor|b->a
   """
+  permuted = False
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity1to1_t'
   for base, zone, zgc, gc in PT.iter_children_from_predicates(size_tree, gc_t_path, ancestors=True):
     base_name = PT.get_name(base)
@@ -43,6 +44,7 @@ def fix_point_ranges(size_tree):
       dir_to_swap  = (nb_points != nb_points_d)
 
       if dir_to_swap.any():
+        permuted = True
         if gc_is_reference(gc, gc_path, gc_opp_path):
 
           opp_dir_to_swap = np.empty_like(dir_to_swap)
@@ -57,6 +59,8 @@ def fix_point_ranges(size_tree):
       T = compute_transform_matrix(transform)
       assert (point_range_d[:,1] == \
           apply_transform_matrix(point_range[:,1], point_range[:,0], point_range_d[:,0], T)).all()
+  if permuted:
+    print(f"Warning -- Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
 
 def add_missing_pr_in_bcdataset(tree):
   """
@@ -65,6 +69,7 @@ def add_missing_pr_in_bcdataset(tree):
   Remark : if the shape of DataArrays in BCDataSet is coherent with a '*FaceCenter' GridLocation
   but the GridLocation node is not defined, this function does not add the PointRange
   """
+  pr_added = False
   bc_t_path = 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t'
   for base, zone, zbc, bc in PT.iter_children_from_predicates(tree, bc_t_path, ancestors=True):
     if PT.get_value(PT.get_child_from_label(zone, 'ZoneType_t')) == 'Unstructured':
@@ -77,13 +82,18 @@ def add_missing_pr_in_bcdataset(tree):
       if PT.get_child_from_name(bcds, 'PointRange') is not None:
         continue
       bcds_grid_location = PT.Subset.GridLocation(bcds)
-      if not (bcds_grid_location in ['IFaceCenter','JFaceCenter','KFaceCenter','FaceCenter'] and bc_grid_location == 'Vertex'):
+      if not (bcds_grid_location.endswith('FaceCenter') and bc_grid_location == 'Vertex'):
         continue
       face_dir   = guess_bnd_normal_index(bc_point_range,  bc_grid_location)
       bcds_point_range             = bc_point_range.copy(order='F')
       bcds_point_range[:,1]       -= 1
       bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]
       new_pr = PT.new_PointRange(value=bcds_point_range, parent=bcds)
+      pr_added = True
+      # print(f"Warning -- PointRange has been added on BCDataSet {zone[0]}/{bc[0]}/{bcds[0]}"
+             # " since data shape was no consistent with BC PointRange")
+  if pr_added:
+    print(f"Warning -- PointRange has been added on some BCDataSet nodes because data size was inconsistent")
 
 def _enforce_pdm_dtype(tree):
   """
