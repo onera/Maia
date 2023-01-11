@@ -354,5 +354,8 @@ def test_interpolation_mdom(strategy, sub_comm):
   maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tgt_tree, sub_comm)
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/dom')[1] == 1).all()
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTB/FlowSol/dom')[1] == [1,2,1,2]).all()
+  # Careful, expected gnum depends on how the mesh is split. Today same value for two ranks
+  assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/gnum')[1] == [1,2,4,5]).all()
+  assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTB/FlowSol/gnum')[1] == [21,19,24,22]).all()
   # maia.algo.pe_to_nface(dtree_tgt, sub_comm)
   # maia.io.dist_tree_to_file(dtree_tgt, 'dtgt_with_sol.cgns', sub_comm)

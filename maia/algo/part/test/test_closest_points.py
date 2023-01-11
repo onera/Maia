@@ -81,7 +81,6 @@ def test_closestpoint_mdom(sub_comm):
   dtree_tgt = DCG.dcube_generate(5, 4., [0.,0.,0.], sub_comm)
   maia.algo.transform_affine(dtree_tgt, translation=np.array([13.25, 2.25, 0.25]))
 
-  maia.io.dist_tree_to_file(dtree_tgt, 'target.hdf', sub_comm)
   tree_src = partition_dist_tree(dtree_src, sub_comm)
   tree_tgt = partition_dist_tree(dtree_tgt, sub_comm)
   tgt_parts_per_dom = [PT.get_all_Zone_t(tree_tgt)]
