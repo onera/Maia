@@ -10,6 +10,10 @@ def to_nested_list(l, counts):
     r_idx += n_elts
   return nested
 
+def to_flat_list(nested_list):
+  """ Transform a list of list to a flat list"""
+  return [obj for l in nested_list for obj in l]
+
 def bucket_split(l, f, compress=False, size=None):
   """ Dispatch the elements of list l into n sublists, according to the result of function f """
   if size is None: 

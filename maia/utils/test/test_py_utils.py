@@ -10,6 +10,11 @@ def test_to_nested_list():
   with pytest.raises(AssertionError):
     py_utils.to_nested_list(l, [2])
 
+def test_to_flat_list():
+  assert py_utils.to_flat_list([]) == []
+  assert py_utils.to_flat_list([['a', 'b'], [], ['c'], ['d', 'e']]) == ['a', 'b', 'c', 'd', 'e']
+  assert py_utils.to_flat_list([[[1, 2]], [], [[3]], [[4], [5]]]) == [[1,2], [3], [4], [5]]
+
 def test_bucket_split():
   l = ["apple", "banana", "orange", "watermelon", "grappe", "pear"]
   assert py_utils.bucket_split(l, lambda e: len(e)) == \

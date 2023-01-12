@@ -7,6 +7,7 @@ import Pypdm.Pypdm as PDM
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.pytree.yaml  import parse_yaml_cgns
 from maia.factory      import dcube_generator as DCG
@@ -310,3 +311,51 @@ class Test_interpolation_api():
       assert PT.Subset.GridLocation(fs) == 'Vertex'
       assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
+@mark_mpi_test(2)
+@pytest.mark.parametrize("strategy", ['Closest', 'LocationAndClosest'])
+def test_interpolation_mdom(strategy, sub_comm):
+  # Source tree : 2 blocks 3**3
+  dtree_src = PT.new_CGNSTree()
+  dbase_src = PT.new_CGNSBase(parent=dtree_src)
+  zoneA = PT.get_node_from_label(DCG.dcube_generate(4, 1.5, [0.,0.,0.], sub_comm), 'Zone_t')
+  zoneB = PT.get_node_from_label(DCG.dcube_generate(4, 1.5, [1.5,0.,0.], sub_comm), 'Zone_t')
+  PT.set_name(zoneA, 'SRCA')
+  PT.set_name(zoneB, 'SRCB')
+  PT.set_children(dbase_src, [zoneA, zoneB])
+  # Target tree : 2 blocks 2**3
+  dtree_tgt = PT.new_CGNSTree()
+  dbase_tgt = PT.new_CGNSBase(parent=dtree_tgt)
+  zoneA = PT.get_node_from_label(DCG.dcube_generate(3, 1., [0.,0.,-0.6], sub_comm), 'Zone_t')
+  zoneB = PT.get_node_from_label(DCG.dcube_generate(3, 1., [1.,0.,1.1], sub_comm), 'Zone_t')
+  PT.set_name(zoneA, 'TGTA')
+  PT.set_name(zoneB, 'TGTB')
+  PT.set_children(dbase_tgt, [zoneA, zoneB])
+  #maia.io.dist_tree_to_file(dtree_src, 'source.hdf', sub_comm)
+  #maia.io.dist_tree_to_file(dtree_tgt, 'target.hdf', sub_comm)
+
+  if sub_comm.Get_rank() == 0:
+    z_to_p = {'Base/TGTA' : [ ], 'Base/TGTB' : [.5]}
+  if sub_comm.Get_rank() == 1:
+    z_to_p = {'Base/TGTA' : [1], 'Base/TGTB' : [.5]}
+  src_tree = maia.factory.partition_dist_tree(dtree_src, sub_comm)
+  tgt_tree = maia.factory.partition_dist_tree(dtree_tgt, sub_comm, zone_to_parts=z_to_p)
+
+  interpolator = ITP.create_interpolator_from_part_trees(src_tree, tgt_tree, sub_comm, \
+      'CellCenter', strategy=strategy)
+
+  # Add sol to exchange
+  for zone in PT.get_all_Zone_t(src_tree):
+    dom_flag = {'A': 1, 'B':2}[PT.get_name(zone)[3]]
+    fields = {'gnum' : MT.getGlobalNumbering(zone, 'Cell')[1],
+              'dom'  : dom_flag*np.ones(PT.Zone.n_cell(zone), np.int32)}
+    PT.new_FlowSolution('FlowSol', loc='CellCenter', fields=fields, parent=zone)
+  interpolator.exchange_fields('FlowSol')
+
+  maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tgt_tree, sub_comm)
+  assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/dom')[1] == 1).all()
+  assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTB/FlowSol/dom')[1] == [1,2,1,2]).all()
+  # Careful, expected gnum depends on how the mesh is split. Today same value for two ranks
+  assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/gnum')[1] == [1,2,4,5]).all()
+  assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTB/FlowSol/gnum')[1] == [21,19,24,22]).all()
+  # maia.algo.pe_to_nface(dtree_tgt, sub_comm)
+  # maia.io.dist_tree_to_file(dtree_tgt, 'dtgt_with_sol.cgns', sub_comm)

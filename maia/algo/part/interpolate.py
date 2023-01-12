@@ -17,25 +17,20 @@ from .import closest_points as CLO
 class Interpolator:
   """ Low level class to perform interpolations """
   def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, output_loc, comm):
-    self.src_parts = list()
-    self.tgt_parts = list()
-    all_src_lngn = []
-    for i_domain, src_parts in enumerate(src_parts_per_dom):
-      for i_part, src_part in enumerate(src_parts):
-        all_src_lngn.append(PCU._get_zone_ln_to_gn_from_loc(src_part, 'Cell'))
-        self.src_parts.append(src_part)
+    self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
+    self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
 
-    all_cloud_lngn = []
-    for i_domain, tgt_parts in enumerate(tgt_parts_per_dom):
-      for i_part, tgt_part in enumerate(tgt_parts):
-        all_cloud_lngn.append(PCU._get_zone_ln_to_gn_from_loc(tgt_part, output_loc))
-        self.tgt_parts.append(tgt_part)
+    _, src_lngn_per_dom = PCU.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, 'CellCenter', comm)
+    all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
+
+    _, tgt_lngn_per_dom = PCU.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, output_loc, comm)
+    all_tgt_lngn = py_utils.to_flat_list(tgt_lngn_per_dom)
 
     _src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
     _src_to_tgt     = [data['target'] for data in src_to_tgt]
     self.PTP = PDM.PartToPart(comm,
                               all_src_lngn,
-                              all_cloud_lngn,
+                              all_tgt_lngn,
                               _src_to_tgt_idx,
                               _src_to_tgt)
 
@@ -141,22 +136,17 @@ def create_src_to_tgt(src_parts_per_dom,
 
   This indirection can then be used to create an interpolator object.
   """
-  n_dom_src = len(src_parts_per_dom)
-  n_dom_tgt = len(tgt_parts_per_dom)
 
-  assert n_dom_src == n_dom_tgt == 1
   assert strategy in ['LocationAndClosest', 'Location', 'Closest']
-
-  n_part_src = len(src_parts_per_dom[0])
-  n_part_tgt = len(tgt_parts_per_dom[0])
 
   #Phase 1 -- localisation
   if strategy != 'Closest':
     location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
         location, comm, True, loc_tolerance)
 
-    all_unlocated = [data['unlocated_ids'] for data in location_out[0]]
-    all_located_inv = location_out_inv[0]
+    # output is nested by domain so we need to flatten it
+    all_unlocated = [data['unlocated_ids'] for domain in location_out for data in domain]
+    all_located_inv = py_utils.to_flat_list(location_out_inv)
     n_unlocated = sum([t.size for t in all_unlocated])
     n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.SUM)
     if(comm.Get_rank() == 0):
@@ -166,29 +156,21 @@ def create_src_to_tgt(src_parts_per_dom,
   all_closest_inv = list()
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
 
-    # > Setup source for closest point
-    src_clouds = []
-    for i_domain, src_part_zones in enumerate(src_parts_per_dom):
-      for i_part, src_part in enumerate(src_part_zones):
-        src_clouds.append(PCU.get_point_cloud(src_part, 'CellCenter'))
+    # > Setup source for closest point (with shift to manage multidomain)
+    _, src_clouds = PCU.get_shifted_point_clouds(src_parts_per_dom, 'CellCenter', comm)
+    src_clouds = py_utils.to_flat_list(src_clouds)
 
-    # > Setup target for closest point
-    tgt_clouds = []
-    if strategy == 'Closest':
-      for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
-        for i_part, tgt_part in enumerate(tgt_part_zones):
-          tgt_clouds.append(PCU.get_point_cloud(tgt_part, location))
-    else:
-      # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
-      for i_domain, tgt_part_zones in enumerate(tgt_parts_per_dom):
-        for i_part, tgt_part in enumerate(tgt_part_zones):
-          indices = all_unlocated[i_part] #One domain so OK
-          tgt_cloud = PCU.get_point_cloud(tgt_part, location)
-          sub_cloud = PCU.extract_sub_cloud(*tgt_cloud, indices)
-          tgt_clouds.append(sub_cloud)
-      all_extracted_lngn = [sub_cloud[1] for sub_cloud in tgt_clouds]
+    # > Setup target for closest point (with shift to manage multidomain)
+    _, tgt_clouds = PCU.get_shifted_point_clouds(tgt_parts_per_dom, location, comm)
+    tgt_clouds = py_utils.to_flat_list(tgt_clouds)
+
+    # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
+    if strategy != 'Closest':
+      assert len(all_unlocated) == len(tgt_clouds)
+      sub_clouds = [PCU.extract_sub_cloud(*tgt_cloud, all_unlocated[i]) for i,tgt_cloud in enumerate(tgt_clouds)]
+      all_extracted_lngn = [sub_cloud[1] for sub_cloud in sub_clouds]
       all_sub_lngn = PCU.create_sub_numbering(all_extracted_lngn, comm) #This one is collective
-      tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(tgt_clouds, all_sub_lngn)]
+      tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(sub_clouds, all_sub_lngn)]
 
     n_clo = n_closest_pt if strategy == 'Closest' else 1
     all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, n_clo, reverse=True)
@@ -198,10 +180,10 @@ def create_src_to_tgt(src_parts_per_dom,
       gnum_to_transform = [results["tgt_in_src"] for results in all_closest_inv]
       PDM.transform_to_parent_gnum(gnum_to_transform, all_sub_lngn, all_extracted_lngn, comm)
 
-  #Combine Location & Closest results if both method were used
+  # Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
     src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
-                   'target'     : data['points_gnum']} for data in all_located_inv]
+                   'target'     : data['points_gnum_shifted']} for data in all_located_inv]
   elif strategy == 'Closest':
     src_to_tgt = [{'target_idx' : data['tgt_in_src_idx'],
                    'target'     : data['tgt_in_src'],
@@ -209,7 +191,7 @@ def create_src_to_tgt(src_parts_per_dom,
   else:
     src_to_tgt = []
     for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
-      tgt_in_src_idx, tgt_in_src = np_utils.jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum'], \
+      tgt_in_src_idx, tgt_in_src = np_utils.jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum_shifted'], \
                                                          res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
       src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src})
   
@@ -253,7 +235,6 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
   Important:
     - Source fields must be located at CellCenter.
     - Source tree must be unstructured and have a ngon connectivity.
-    - Partitions must come from a single initial domain on both source and target tree.
 
   See also:
     :func:`create_interpolator_from_part_trees` takes the same parameters, excepted ``containers_name``,

@@ -1,14 +1,17 @@
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
+import os
 import numpy as np
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.factory      import dcube_generator as DCG
 from maia.factory      import partition_dist_tree
 
+from maia.utils     import test_utils as TU
 from maia.algo.part import localize as LOC
 
 @mark_mpi_test(1)
@@ -65,6 +68,31 @@ def test_mesh_location(reverse, sub_comm):
       for key in expct_data:
         assert np.allclose(src_data[i_part][key], expct_data[key])
 
+@mark_mpi_test(1)
+def test_mesh_location_mdom(sub_comm):
+  yaml_path = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
+  dtree_src = DCG.dcube_generate(11, 20., [0.,0.,0.], sub_comm)
+  dtree_tgt = maia.io.file_to_dist_tree(yaml_path, sub_comm)
+
+  tree_src = partition_dist_tree(dtree_src, sub_comm)
+  tree_tgt = partition_dist_tree(dtree_tgt, sub_comm)
+
+  tgt_parts_per_dom = [PT.get_nodes_from_name_and_label(tree_tgt, 'Large*', 'Zone_t'),
+                       PT.get_nodes_from_name_and_label(tree_tgt, 'Small*', 'Zone_t')]
+  src_parts_per_dom = [PT.get_all_Zone_t(tree_src)]
+
+  result, result_inv = LOC._localize_points(
+      src_parts_per_dom, tgt_parts_per_dom, 'CellCenter', sub_comm, reverse=True)
+  # We should get all the cells of Large + 4*4*6 cells of Small
+  _result_inv = result_inv[0][0]
+  dom1_idx = np.where(_result_inv['domain'] == 1)[0]
+  dom2_idx = np.where(_result_inv['domain'] == 2)[0]
+  assert dom1_idx.size == PT.Zone.n_cell(tgt_parts_per_dom[0][0])
+  assert dom2_idx.size == 4*4*6
+  # Gnum should have been reshifted
+  assert _result_inv['points_gnum'][dom1_idx].max() <= PT.Zone.n_cell(tgt_parts_per_dom[0][0])
+  assert _result_inv['points_gnum'][dom2_idx].max() <= PT.Zone.n_cell(tgt_parts_per_dom[1][0])
+  
 
 @mark_mpi_test(3)
 def test_localize_points(sub_comm):
@@ -88,3 +116,4 @@ def test_localize_points(sub_comm):
     expected_src_id = np.array([-1,-1,-1,-1,-1,-1,-1,-1,-1])
 
   assert (PT.get_child_from_name(loc_node, 'SrcId')[1] == expected_src_id).all()
+  assert PT.get_value(PT.get_child_from_name(loc_node, 'DomainList')) == "Base/zone"
