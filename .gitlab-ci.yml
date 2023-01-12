@@ -45,7 +45,7 @@ job:init:
 job:build:
   stage: build
   variables:
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --constraint=brw --ntasks=16 --nodes=1-1 --time=00:15:00"
+    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=16 --nodes=1-1 --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR
     - mkdir -p build && cd build
@@ -73,7 +73,7 @@ job:doc:
 job:ctest:
   stage: test
   variables:
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --constraint=brw --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
+    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR/build
     - ctest -E pdm
@@ -122,7 +122,7 @@ job:deploy_spiro21:
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --constraint=brw --ntasks=16 --nodes=1-1 --time=00:30:00"
+    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=16 --nodes=1-1 --time=00:30:00"
   before_script: 
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
@@ -145,7 +145,7 @@ job:deploy_spiro19:
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --constraint=brw --ntasks=16 --nodes=1-1 --time=00:30:00"
+    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=16 --nodes=1-1 --time=00:30:00"
   before_script: 
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
