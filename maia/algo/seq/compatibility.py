@@ -5,6 +5,8 @@ import numpy as np
 import maia
 import maia.pytree as PT
 
+from maia.utils import require_cpp20
+
 def enforce_ngon_pe_local(t):
   """
   Shift the ParentElements values in order to make it start at 1, as requested by legacy tools.
@@ -23,6 +25,7 @@ def enforce_ngon_pe_local(t):
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')
     pe[1] = maia.algo.indexing.get_ngon_pe_local(ngon_node)
 
+@require_cpp20
 def poly_new_to_old(tree, full_onera_compatibility=True):
   """
   Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.
@@ -60,6 +63,7 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
     ctree_algo.indexed_to_interleaved_connectivity(nface)
 
 
+@require_cpp20
 def poly_old_to_new(tree):
   """
   Transform a tree with polyhedral unstructured connectivity with old CGNS 3.x conventions to new CGNS 4.x conventions.

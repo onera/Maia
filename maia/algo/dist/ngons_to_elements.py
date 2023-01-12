@@ -1,7 +1,9 @@
 from cmaia import dist_algo as cdist_algo
 from maia.algo.apply_function_to_nodes import apply_to_zones
 
+from maia.utils import require_cpp20
 
+@require_cpp20
 def ngons_to_elements(t,comm):
   """
   Transform a polyedric (NGon) based connectivity into a standard nodal
