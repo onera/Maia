@@ -8,9 +8,9 @@ import  maia.pytree   as     PT
 from    maia.factory  import dist_from_part
 from    maia.transfer import utils                as TEU
 from    maia.utils    import np_utils, layouts, py_utils
+from    .point_cloud_utils import create_sub_numbering
 
 import Pypdm.Pypdm as PDM
-from   maia.algo.part.extract_boundary import compute_gnum_from_parent_gnum
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
 
@@ -193,7 +193,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
 
     # Update global numbering in FS
     gnum = PT.maia.getGlobalNumbering(part_zone_ep, f'{loc_correspondance[gridLocation]}')[1]
-    partial_gnum = compute_gnum_from_parent_gnum([gnum[local_point_list-1]], comm)[0]
+    partial_gnum = create_sub_numbering([gnum[local_point_list-1]], comm)[0]
     maia.pytree.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_ep)
 
   # --- Field exchange ----------------------------------------------------------------
