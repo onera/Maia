@@ -103,8 +103,9 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     ln_to_gn_list = []
     for part_zone in part_zones:
       ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
-      ln_to_gn_list.extend([PT.get_value(MT.getGlobalNumbering(node, 'Index')) \
-          for node in PT.get_children_from_name(ancestor_n, leaf+'*')])
+      if ancestor_n is not None:
+        ln_to_gn_list.extend([PT.get_value(MT.getGlobalNumbering(node, 'Index')) \
+            for node in PT.get_children_from_name(ancestor_n, leaf+'*')])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
     ln_to_gn_list = [PT.get_node_from_path(part_zone, gn_path)[1] for part_zone in part_zones \
