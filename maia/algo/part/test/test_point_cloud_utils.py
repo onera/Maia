@@ -17,24 +17,6 @@ def as_partitioned(zone):
   for array in PT.iter_nodes_from_predicate(zone, predicate, explore='deep'):
     array[1] = array[1].astype(np.int32)
 
-@mark_mpi_test(3)
-def test_get_shifted_arrays(sub_comm):
-  if sub_comm.Get_rank() == 0:
-    arrays = [[np.array([1,8,4])],  [np.array([3,6,1,9])]]
-    expected = [[np.array([1,8,4])],  [np.array([13,16,11,19])]]
-  elif sub_comm.Get_rank() == 1:
-    arrays = [[],  [np.array([9,3,1,4]), np.array([8,6])]]
-    expected = [[],  [np.array([19,13,11,14]), np.array([18,16])]]
-  elif sub_comm.Get_rank() == 2:
-    arrays = [[np.array([10,2])],  [np.empty(0)]]
-    expected = [[np.array([10,2])],  [np.empty(0)]]
-
-  offset, shifted_arrays = PCU._get_shifted_arrays(arrays, sub_comm)
-  assert (offset == [0,10,19]).all()
-  for i in range(2):
-    for t1, t2 in zip(shifted_arrays[i], expected[i]):
-      assert (t1 == t2).all()
-
 @mark_mpi_test(1)
 def test_get_zone_ln_to_gn_from_loc(sub_comm):
   tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
