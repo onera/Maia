@@ -227,6 +227,39 @@ def test_get_parts_per_blocks(sub_comm):
     assert PT.get_names(part_per_blocks['BaseI/ZoneB']) == []
     assert PT.get_names(part_per_blocks['BaseII/ZoneA']) == ['ZoneA.P1.N0']
 
+@mark_mpi_test(1)
+def test_get_joins_dist_tree(sub_comm):
+  pt = """
+  BaseI CGNSBase_t:
+    ZoneA.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
+      ZGC ZoneGridConnectivity_t:
+        matchAB.0 GridConnectivity_t "ZoneB.P0.N0":
+          GridConnectivityDonorName Descriptor_t "matchBA.0":
+          GridLocation GridLocation_t "Vertex":
+          PointList IndexArray_t [[8,3,5]]:
+          :CGNS#GlobalNumbering UserDefinedData_t:
+            Index DataArray_t [3,1,2]: 
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Vertex DataArray_t [10,20,30,40,50,60,70,80,90,100]: 
+  """
+  expected_dt =  """
+  BaseI CGNSBase_t:
+    ZoneA Zone_t:
+      ZoneType ZoneType_t "Unstructured":
+      ZGC ZoneGridConnectivity_t:
+        matchAB GridConnectivity_t "ZoneB":
+          GridConnectivityDonorName Descriptor_t "matchBA":
+          GridLocation GridLocation_t "Vertex":
+          PointList IndexArray_t [[30,50,80]]:
+          :CGNS#Distribution UserDefinedData_t:
+            Index DataArray_t [0,3,3]: 
+  """
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  expected_base = parse_yaml_cgns.to_node(expected_dt)
+  dist_tree_jn = DFP.get_joins_dist_tree(part_tree, sub_comm)
+  assert PT.is_same_tree(PT.get_all_CGNSBase_t(dist_tree_jn)[0], expected_base)
+
 @mark_mpi_test(2)
 def test_recover_dist_block_size(sub_comm):
   if sub_comm.Get_rank() == 0:

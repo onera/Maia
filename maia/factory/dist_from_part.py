@@ -11,7 +11,7 @@ from maia.algo.dist.s_to_u      import guess_bnd_normal_index
 from maia.transfer              import utils              as tr_utils
 from maia.transfer.part_to_dist import data_exchange      as PTB
 from maia.transfer.part_to_dist import index_exchange     as IPTB
-from maia.utils                 import py_utils
+from maia.utils                 import py_utils, par_utils
 
 def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
                                  child_list=[], get_value="ancestors",
@@ -79,6 +79,27 @@ def get_parts_per_blocks(part_tree, comm):
   for zone_path in PT.predicates_to_paths(dist_doms, 'CGNSBase_t/Zone_t'):
     parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
   return parts_per_dom
+
+def _get_joins_dist_tree(parts_per_dom, comm):
+  """
+  """
+  dist_tree = PT.new_CGNSTree()
+
+  for dist_zone_path, part_zones in parts_per_dom.items():
+    dist_base_name, dist_zone_name = dist_zone_path.split('/')
+    dist_base = PT.update_child(dist_tree, dist_base_name, 'CGNSBase_t')
+    dist_zone = PT.update_child(dist_base, dist_zone_name, 'Zone_t')
+
+    PT.new_child(dist_zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
+    _recover_GC(dist_zone, part_zones, comm)
+
+  return dist_tree
+
+def get_joins_dist_tree(part_tree, comm):
+  """ Recreate a dist tree containing only original jns from
+  the partitioned tree (with PL). Only for U blocks !"""
+  parts_per_dom = get_parts_per_blocks(part_tree, comm)
+  return _get_joins_dist_tree(parts_per_dom, comm)
 
 def _recover_dist_block_size(part_zones, comm):
   """ From a list of partitioned zones (coming from same initial block),
@@ -174,6 +195,49 @@ def _recover_elements(dist_zone, part_zones, comm):
         ER = PT.get_child_from_name(elt, 'ElementRange')
         ER[1] += dim_shift
 
+def _recover_BC(dist_zone, part_zones, comm):
+  bc_predicate = ['ZoneBC_t', 'BC_t']
+
+  discover_nodes_from_matching(dist_zone, part_zones, bc_predicate, comm,
+        child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
+
+  for bc_path in PT.predicates_to_paths(dist_zone, bc_predicate):
+    if PT.Zone.Type(dist_zone) == 'Unstructured':
+      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, bc_path, comm)
+    elif PT.Zone.Type(dist_zone) == 'Structured':
+      IPTB.part_pr_to_dist_pr(dist_zone, part_zones, bc_path, comm)
+
+def _recover_GC(dist_zone, part_zones, comm):
+  is_gc       = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+  is_gc_intra = lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+
+  gc_predicate = ['ZoneGridConnectivity_t', is_gc_intra]
+
+  discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
+        child_list=['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',
+                    'GridConnectivityDonorName', 'Transform'],
+        merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
+
+  #After GC discovery, cleanup donor name suffix
+  for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
+    val = PT.get_value(jn)
+    PT.set_value(jn, MT.conv.get_part_prefix(val))
+    gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
+    PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
+
+  # Index exchange
+  for gc_path in PT.predicates_to_paths(dist_zone, gc_predicate):
+    if PT.Zone.Type(dist_zone) == 'Unstructured':
+      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
+    elif PT.Zone.Type(dist_zone) == 'Structured':
+      zgc_name, gc_name = gc_path.split('/')
+      part_gcs = [PT.get_nodes_from_predicates(part, [zgc_name, gc_name+'*']) for part in part_zones]
+      part_gcs = py_utils.to_flat_list(part_gcs)
+      if par_utils.exists_everywhere(part_gcs, 'PointRange', comm):
+        IPTB.part_pr_to_dist_pr(dist_zone, part_zones, gc_path, comm, True)
+      elif par_utils.exists_everywhere(part_gcs, 'PointList', comm):
+        IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
+
 def recover_dist_tree(part_tree, comm):
   """ Regenerate a distributed tree from a partitioned tree.
   
@@ -237,40 +301,8 @@ def recover_dist_tree(part_tree, comm):
     _recover_elements(dist_zone, part_zones, comm)
 
     # > BND and JNS
-    bc_t_path = 'ZoneBC_t/BC_t'
-    gc_t_path = ['ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and not MT.conv.is_intra_gc(PT.get_name(n))]
-
-    # > Discover (skip GC created by partitioning)
-    discover_nodes_from_matching(dist_zone, part_zones, bc_t_path, comm,
-          child_list=['FamilyName_t', 'GridLocation_t'], get_value='all')
-    discover_nodes_from_matching(dist_zone, part_zones, gc_t_path, comm,
-          child_list=['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',
-              'GridConnectivityDonorName', 'Transform'],
-          merge_rule= lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
-    #After GC discovery, cleanup donor name suffix
-    for jn in PT.iter_children_from_predicates(dist_zone, gc_t_path):
-      val = PT.get_value(jn)
-      PT.set_value(jn, MT.conv.get_part_prefix(val))
-      gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
-      PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
-
-    # > Index exchange (BCs and GCs)
-    for bc_path in PT.predicates_to_paths(dist_zone, bc_t_path):
-      if PT.Zone.Type(dist_zone) == 'Unstructured':
-        IPTB.part_pl_to_dist_pl(dist_zone, part_zones, bc_path, comm)
-      elif PT.Zone.Type(dist_zone) == 'Structured':
-        IPTB.part_pr_to_dist_pr(dist_zone, part_zones, bc_path, comm)
-    for gc_path in PT.predicates_to_paths(dist_zone, gc_t_path):
-      if PT.Zone.Type(dist_zone) == 'Unstructured':
-        IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
-      elif PT.Zone.Type(dist_zone) == 'Structured':
-        jn = PT.get_node_from_path(dist_zone, gc_path)
-        opp_zone_path = PT.getZoneDonorPath(PT.path_head(dist_zone_path, 1), jn)
-        opp_zone = PT.get_node_from_path(dist_tree, opp_zone_path)
-        if PT.Zone.Type(opp_zone) == 'Structured': #S-S match, only PR are supported
-          IPTB.part_pr_to_dist_pr(dist_zone, part_zones, gc_path, comm, True)
-        else:
-          IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
+    _recover_BC(dist_zone, part_zones, comm)
+    _recover_GC(dist_zone, part_zones, comm)
 
     # > Flow Solution and Discrete Data
     PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm)
