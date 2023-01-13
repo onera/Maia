@@ -26,5 +26,7 @@ from .isosurf                import iso_surface,\
 
 from .localize               import localize_points
 
+from .move_loc               import centers_to_nodes
+
 from .wall_distance          import compute_wall_distance
 
