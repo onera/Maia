@@ -39,6 +39,8 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
   cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 3.1)
   for z in PT.get_all_Zone_t(tree):
+    if PT.Zone.Type(z) != 'Unstructured':
+      continue
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = PT.get_value(PT.get_child_from_name(ngon , "ElementRange"       ))
@@ -78,6 +80,8 @@ def poly_old_to_new(tree):
   cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 4.2)
   for z in PT.get_all_Zone_t(tree):
+    if PT.Zone.Type(z) != 'Unstructured':
+      continue
     ngon  = maia.pytree.Zone.NGonNode (z)
     nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = PT.get_value(PT.get_child_from_name(ngon , "ElementRange"))
