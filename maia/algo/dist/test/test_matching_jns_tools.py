@@ -132,12 +132,14 @@ Base CGNSBase_t:
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridConnectivityDonorName Descriptor_t 'match2':
         PointList IndexArray_t [[10,100]]:
+        GridLocation GridLocation_t "FaceCenter":
   ZoneB Zone_t:
     ZGC ZoneGridConnectivity_t:
       match2 GridConnectivity_t 'ZoneA':
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridConnectivityDonorName Descriptor_t 'match1':
         PointList IndexArray_t [[-100,-10]]:
+        GridLocation GridLocation_t "FaceCenter":
   """
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
 
@@ -156,6 +158,9 @@ Base CGNSBase_t:
     pathes = MJT.get_matching_jns(self.dist_tree)
     assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
     assert pathes[1] == ('Base/ZoneA/ZGC/match1', 'Base/ZoneB/ZGC/match2')
+    pathes = MJT.get_matching_jns(self.dist_tree, 'Vertex')
+    assert len(pathes) == 1
+    assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
 
   def test_match_jn_from_ordinals(self):
     dist_tree = PT.deep_copy(self.dist_tree)

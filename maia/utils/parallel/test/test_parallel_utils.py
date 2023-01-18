@@ -110,6 +110,18 @@ def test_arrays_max(sub_comm):
   assert utils.arrays_max(arrays, sub_comm) == 7
 
 @mark_mpi_test(2)
+def test_any_true(sub_comm):
+  f = lambda e: e < 10
+  if sub_comm.Get_rank() == 0:
+    L1 = [15,18,1,19]
+    L2 = []
+  if sub_comm.Get_rank() == 1:
+    L1 = [1,4]
+    L2 = [41,44]
+  assert utils.any_true(L1, f, sub_comm) == True
+  assert utils.any_true(L2, f, sub_comm) == False
+
+@mark_mpi_test(2)
 def test_exists_anywhere(sub_comm):
   trees = []
   if sub_comm.Get_rank() > 0:

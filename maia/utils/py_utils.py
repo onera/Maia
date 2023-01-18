@@ -89,6 +89,12 @@ def is_before(l, a, b):
       return False
   return False
 
+def any_true(iterable, predicate):
+  return any(predicate(elem) for elem in iterable)
+
+def all_true(iterable, predicate):
+  return all(predicate(elem) for elem in iterable)
+
 def uniform_distribution_at(n_elt, i, n_interval):
   """
   """

@@ -74,11 +74,13 @@ def arrays_max(array_list, comm):
     local_max = 0
   return comm.allreduce(local_max, MPI.MAX)
 
+def any_true(L, f, comm):
+  return comm.allreduce(py_utils.any_true(L, f), op=MPI.LOR)
+
 def exists_anywhere(trees, node_path, comm):
-  exists_loc = False
-  for tree in trees:
-    exists_loc = exists_loc or (PT.get_node_from_path(tree, node_path) is not None)
-  return comm.allreduce(exists_loc, op=MPI.LOR)
+  return any_true(trees, 
+                  lambda t: PT.get_node_from_path(t, node_path) is not None,
+                  comm)
 
 def exists_everywhere(trees, node_path, comm):
   exists_loc = True #Allow True if list is empty

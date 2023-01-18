@@ -65,6 +65,18 @@ def test_get_ordered_subset():
   assert py_utils.get_ordered_subset([], L)       == ()
   assert py_utils.get_ordered_subset([3,8,2,10,3], L) == (3,2,8,10,3)
 
+def test_any_true():
+  func = lambda e: e < 10
+  assert py_utils.any_true([11, 14, 3], func) == True
+  assert py_utils.any_true([11, 14], func) == False
+  assert py_utils.any_true([], func) == False
+
+def test_all_true():
+  func = lambda e: e < 10
+  assert py_utils.all_true([1, 4, 9], func) == True
+  assert py_utils.all_true([11, 9, 14], func) == False
+  assert py_utils.all_true([], func) == True
+
 def test_uniform_distribution_at():
   assert py_utils.uniform_distribution_at(15,0,3) == (0,5)
   assert py_utils.uniform_distribution_at(15,1,3) == (5,10)
