@@ -76,6 +76,7 @@ Interpolations
 ^^^^^^^^^^^^^^
 
 .. autofunction:: maia.algo.part.interpolate_from_part_trees
+.. autofunction:: maia.algo.part.centers_to_nodes
 
 .. _user_man_gen_algo:
 

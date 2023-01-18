@@ -260,6 +260,30 @@ def test_interpolate_from_part_trees():
   assert tgt_sol is not None and PT.Subset.GridLocation(tgt_sol) == 'Vertex'
   #interpolate_from_part_trees@end
 
+def test_centers_to_nodes():
+  #centers_to_nodes@start
+  import mpi4py
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils import mesh_dir
+  comm = mpi4py.MPI.COMM_WORLD
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+  # Init a FlowSolution located at Cells
+  for part in PT.get_all_Zone_t(part_tree):
+    cell_center = maia.algo.part.compute_cell_center(part)
+    fields = {'ccX': cell_center[0::3], 'ccY': cell_center[1::3], 'ccZ': cell_center[2::3]}
+    PT.new_FlowSolution('FSol', loc='CellCenter', fields=fields, parent=part)
+
+  maia.algo.part.centers_to_nodes(part_tree, comm, ['FSol'])
+
+  for part in PT.get_all_Zone_t(part_tree):
+    vtx_sol = PT.get_node_from_name(part, 'FSol#Vtx')
+    assert PT.Subset.GridLocation(vtx_sol) == 'Vertex'
+  #centers_to_nodes@end
+
 def test_pe_to_nface():
   #pe_to_nface@start
   from mpi4py import MPI

@@ -11,7 +11,7 @@ import Pypdm.Pypdm as PDM
 
 class CenterToNode:
 
-  def __init__(self, tree, comm):
+  def __init__(self, tree, comm, idw_power=1, cross_domain=True):
 
     self.parts        = []
     self.weights      = []
@@ -19,7 +19,7 @@ class CenterToNode:
     self.vtx_cell_idx = []
 
     parts_per_dom = get_parts_per_blocks(tree, comm)
-    vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, True)
+    vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, cross_domain)
 
     gnum_list   = []
     for i_dom, parts in enumerate(parts_per_dom.values()):
@@ -50,7 +50,7 @@ class CenterToNode:
           diff_x = cx[vtx_idx_rep] - cell_center[0::3][vtx_cell-1]
           diff_y = cy[vtx_idx_rep] - cell_center[1::3][vtx_cell-1]
           diff_z = cz[vtx_idx_rep] - cell_center[2::3][vtx_cell-1]
-          norm_rep = np.sqrt(diff_x**2 + diff_y**2 + diff_z**2)
+          norm_rep = (diff_x**2 + diff_y**2 + diff_z**2)**(0.5*idw_power)
           
           gnum_rep = vtx_gnum_shifted[i_dom][i_part][vtx_idx_rep]
 
@@ -98,9 +98,38 @@ class CenterToNode:
 
 
 def centers_to_nodes(tree, comm, containers_name=[], **options):
+  """ Create Vertex located FlowSolution_t from CellCenter located FlowSolution_t.
+
+  Interpolation is based on Inverse Distance Weighting 
+  `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
+  each cell contributes to each of its vertices with a weight computed from the distance
+  between the cell isobarycenter and the vertice.  The method can be tuned with
+  the following kwargs:
+
+  - ``idw_power`` (float, default = 1) -- Power to which the cell-vertex distance is elevated.
+
+  - ``cross_domain`` (bool, default = True) -- If True, vertices located at domain
+    interfaces also receive data from the opposite domain cells. This parameter does not
+    apply to internal partitioning interfaces, which are always crossed.
+
+  Args:
+    tree      (CGNSTree): Partionned tree. Only U-NGon connectivities are managed.
+    comm       (MPIComm): MPI communicator
+    containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
+    **options: Options related to interpolation, see above.
+
+  See also:
+    A :class:`CenterToNode` object can be instanciated with the same parameters, excluding ``containers_name``,
+    and then be used to move containers more than once with its
+    ``move_fields(container_name)`` method.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #centers_to_nodes@start
+        :end-before: #centers_to_nodes@end
+        :dedent: 2
   """
-  """
-  C2N = CenterToNode(tree, comm)
+  C2N = CenterToNode(tree, comm, **options)
 
   for container_name in containers_name:
     C2N.move_fields(container_name)
