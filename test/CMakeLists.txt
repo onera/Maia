@@ -4,7 +4,7 @@ include(${PROJECT_UTILS_CMAKE_DIR}/doctest_pytest.cmake)
 FetchContent_Declare(
   doctest
   GIT_REPOSITORY https://github.com/doctest/doctest.git
-  GIT_TAG        110d305 # corrected MPI SUBCASE
+  GIT_TAG        v2.4.9
 )
 FetchContent_MakeAvailable(doctest)
 
