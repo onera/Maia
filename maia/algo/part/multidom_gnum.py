@@ -1,6 +1,7 @@
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 import Pypdm.Pypdm as PDM
 
@@ -8,6 +9,11 @@ from maia           import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils     import np_utils, py_utils, par_utils, as_pdm_gnum
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.factory   import dist_from_part     as DFP
+
+from maia.algo                  import dist             as MAD
+
+from maia.transfer.part_to_dist import data_exchange    as  PTB
+from maia.transfer.dist_to_part import index_exchange   as IBTP
 
 def _get_shifted_arrays(arrays_per_dom, comm):
   shifted_per_dom = []
@@ -44,6 +50,32 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   # 1. Go back to distribute vision of GC to build graph of connected vertices
   dist_tree_jn = DFP._get_joins_dist_tree(parts_per_dom, comm)
 
+  # If there is some FaceCenter interfaces, convert it to Vertex
+  tree_has_face_gc = False
+  face_loc_query = lambda n : PT.get_label(n) == 'GridLocation_t' and PT.get_value(n) == 'FaceCenter'
+  for dom_name, parts in parts_per_dom.items():
+    dist_zone = PT.get_node_from_path(dist_tree_jn, dom_name)
+    has_face_gc = PT.get_node_from_predicate(dist_zone, face_loc_query) is not None
+    if has_face_gc:
+      # Vtx gnum is needed for face->vtx conversion.
+      # Connectivities should have been already added by _get_joins_dist_tree
+      vtx_lngn_l  = [MT.getGlobalNumbering(part, 'Vertex')[1] for part in parts]
+      vtx_distri  = PTB._lngn_to_distri(vtx_lngn_l, comm)
+
+      MT.newDistribution({'Vertex' : vtx_distri}, parent=dist_zone)
+      tree_has_face_gc = True
+
+  if tree_has_face_gc:
+    MJT.copy_donor_subset(dist_tree_jn) #Needed for Vertexlist
+    MAD.generate_jns_vertex_list(dist_tree_jn, comm, True)
+
+    # We need to put vtx joins on partitioned trees, but recovering donor
+    # and order is useless
+    for dom_name, parts in parts_per_dom.items():
+      dist_zone = PT.get_node_from_path(dist_tree_jn, dom_name)
+      IBTP.dist_pl_to_part_pl(dist_zone, parts, ['ZoneGridConnectivity_t/GridConnectivity_t'], 'Vertex', comm)
+
+
   zone_to_dom = {dom : i for i, dom in enumerate(parts_per_dom.keys())}
 
   interface_ids_v = []
@@ -52,7 +84,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   
   is_gc           = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
   is_vtx_gc       = lambda n: is_gc(n)     and PT.Subset.GridLocation(n) == 'Vertex'
-  is_vtx_gc_intra = lambda n: is_vtx_gc(n) and not PT.maia.conv.is_intra_gc(PT.get_name(n))
+  is_vtx_gc_intra = lambda n: is_vtx_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
 
   for gc_path_cur in PT.predicates_to_paths(dist_tree_jn, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_vtx_gc]):
     gc_path_opp = MJT.get_jn_donor_path(dist_tree_jn, gc_path_cur)
@@ -85,7 +117,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   vtx_ggnum_parts = []
   for vtx_mdom_offset, parts in zip(vtx_mdom_offsets, parts_per_dom.values()):
     for part in parts:
-      vtx_gnum = as_pdm_gnum(PT.maia.getGlobalNumbering(part, 'Vertex')[1])
+      vtx_gnum = as_pdm_gnum(MT.getGlobalNumbering(part, 'Vertex')[1])
       for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]):
         pl = PT.get_child_from_name(gc, 'PointList')[1][0]
         vtx_ggnum_parts.append(vtx_gnum[pl-1] + vtx_mdom_offset) #Domain gnum on part side

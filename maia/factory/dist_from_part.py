@@ -83,14 +83,22 @@ def get_parts_per_blocks(part_tree, comm):
 def _get_joins_dist_tree(parts_per_dom, comm):
   """
   """
-  dist_tree = PT.new_CGNSTree()
+  is_face_intra_gc = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+                               and PT.Subset.GridLocation(n) == 'FaceCenter' \
+                               and not MT.conv.is_intra_gc(PT.get_name(n))
+  has_face_intra_gc = \
+      lambda z: PT.get_node_from_predicates(z,  ['ZoneGridConnectivity_t', is_face_intra_gc]) is not None
 
+  dist_tree = PT.new_CGNSTree()
   for dist_zone_path, part_zones in parts_per_dom.items():
     dist_base_name, dist_zone_name = dist_zone_path.split('/')
     dist_base = PT.update_child(dist_tree, dist_base_name, 'CGNSBase_t')
     dist_zone = PT.update_child(dist_base, dist_zone_name, 'Zone_t')
 
     PT.new_child(dist_zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
+    # Elements are needed only if there are some FaceCenter jns
+    if par_utils.any_true(part_zones, has_face_intra_gc, comm):
+      _recover_elements(dist_zone, part_zones, comm)
     _recover_GC(dist_zone, part_zones, comm)
 
   return dist_tree

@@ -10,13 +10,14 @@ import maia.utils.test_utils as TU
 ref_dir = os.path.join(os.path.dirname(__file__), 'references')
 
 @mark_mpi_test(2)
-def test_centers_to_node(sub_comm, write_output):
+@pytest.mark.parametrize("jn_loc", ["Vertex", "FaceCenter"])
+def test_centers_to_node(jn_loc, sub_comm, write_output):
 
   mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   # This feature is U only
-  dist_tree = maia.algo.dist.convert_s_to_u(dist_tree, 'NGON_n', sub_comm)
+  dist_tree = maia.algo.dist.convert_s_to_u(dist_tree, 'NGON_n', sub_comm, subset_loc={'GC_t':jn_loc})
 
   part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm)
 
