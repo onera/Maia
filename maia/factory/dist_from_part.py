@@ -91,7 +91,7 @@ def _get_joins_dist_tree(parts_per_dom, comm):
     dist_zone = PT.update_child(dist_base, dist_zone_name, 'Zone_t')
 
     PT.new_child(dist_zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
-    _recover_GC(dist_zone, part_zones, comm, False)
+    _recover_GC(dist_zone, part_zones, comm)
 
   return dist_tree
 
@@ -207,7 +207,7 @@ def _recover_BC(dist_zone, part_zones, comm):
     elif PT.Zone.Type(dist_zone) == 'Structured':
       IPTB.part_pr_to_dist_pr(dist_zone, part_zones, bc_path, comm)
 
-def _recover_GC(dist_zone, part_zones, comm, need_index=True):
+def _recover_GC(dist_zone, part_zones, comm):
   is_gc       = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
   is_gc_intra = lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
 
@@ -226,18 +226,17 @@ def _recover_GC(dist_zone, part_zones, comm, need_index=True):
     PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
   # Index exchange
-  if need_index:
-    for gc_path in PT.predicates_to_paths(dist_zone, gc_predicate):
-      if PT.Zone.Type(dist_zone) == 'Unstructured':
+  for gc_path in PT.predicates_to_paths(dist_zone, gc_predicate):
+    if PT.Zone.Type(dist_zone) == 'Unstructured':
+      IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
+    elif PT.Zone.Type(dist_zone) == 'Structured':
+      zgc_name, gc_name = gc_path.split('/')
+      part_gcs = [PT.get_nodes_from_predicates(part, [zgc_name, gc_name+'*']) for part in part_zones]
+      part_gcs = py_utils.to_flat_list(part_gcs)
+      if par_utils.exists_everywhere(part_gcs, 'PointRange', comm):
+        IPTB.part_pr_to_dist_pr(dist_zone, part_zones, gc_path, comm, True)
+      elif par_utils.exists_everywhere(part_gcs, 'PointList', comm):
         IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
-      elif PT.Zone.Type(dist_zone) == 'Structured':
-        zgc_name, gc_name = gc_path.split('/')
-        part_gcs = [PT.get_nodes_from_predicates(part, [zgc_name, gc_name+'*']) for part in part_zones]
-        part_gcs = py_utils.to_flat_list(part_gcs)
-        if par_utils.exists_everywhere(part_gcs, 'PointRange', comm):
-          IPTB.part_pr_to_dist_pr(dist_zone, part_zones, gc_path, comm, True)
-        elif par_utils.exists_everywhere(part_gcs, 'PointList', comm):
-          IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
 
 def recover_dist_tree(part_tree, comm):
   """ Regenerate a distributed tree from a partitioned tree.

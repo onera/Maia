@@ -1,4 +1,3 @@
-from mpi4py import MPI
 import numpy as np
 
 import maia.pytree as PT
@@ -28,79 +27,6 @@ def get_shifted_ln_to_gn_from_loc(parts_per_dom, location, comm):
   return _get_shifted_arrays(lngns_per_dom, comm)
 
 def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
-  is_gc           = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-  is_vtx_gc       = lambda n: is_gc(n)     and PT.Subset.GridLocation(n) == 'Vertex'
-  is_face_gc      = lambda n: is_gc(n)     and PT.Subset.GridLocation(n) == 'FaceCenter'
-  is_vtx_gc_intra = lambda n: is_vtx_gc(n) and not PT.maia.conv.is_intra_gc(PT.get_name(n))
-  is_face_gc_intra = lambda n: is_face_gc(n) and not PT.maia.conv.is_intra_gc(PT.get_name(n))
-
-  has_face_jns = False
-  has_vtx_jns = False
-  for part in py_utils.to_flat_list(parts_per_dom.values()):
-    if PT.get_node_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]) is not None:
-      has_vtx_jns = True
-    if PT.get_node_from_predicates(part, ['ZoneGridConnectivity_t', is_face_gc_intra]) is not None:
-      has_face_jns = True
-  has_face_jns = comm.allreduce(has_face_jns, MPI.LOR)
-  has_vtx_jns = comm.allreduce(has_vtx_jns, MPI.LOR)
-
-  print("Face", has_face_jns, "Vtx", has_vtx_jns)
-  dist_tree_jn = DFP._get_joins_dist_tree(parts_per_dom, comm)
-  MJT.store_interfaces_ids(dist_tree_jn)
-  zone_to_dom = {dom : i for i, dom in enumerate(parts_per_dom.keys())}
-
-  n_interface = max([n[1][0] for n in PT.get_nodes_from_name(dist_tree_jn, 'DistInterfaceId')])
-
-  n_part_per_dom = np.array([len(parts) for parts in parts_per_dom.values()], np.int32)
-  pdm_part_dom_interface = PDM.PartDomainInterface(n_interface, len(parts_per_dom.keys()), n_part_per_dom, 1, comm)
-
-  for i_dom, (dom_name, parts) in enumerate(parts_per_dom.items()):
-    dist_dom = PT.get_node_from_path(dist_tree_jn, dom_name)
-    for gc_path in PT.predicates_to_paths(dist_dom, ['ZoneGridConnectivity_t', is_face_gc]):
-      gc = PT.get_node_from_path(dist_dom, gc_path)
-      itrf_id  = PT.get_node_from_path(dist_dom, gc_path+'/DistInterfaceId')[1][0]
-      itrf_pos = PT.get_node_from_path(dist_dom, gc_path+'/DistInterfaceOrd')[1][0]
-      itrf_dom    = zone_to_dom[dom_name]
-      itrf_dom_op = zone_to_dom[PT.getZoneDonorPath(dom_name.split('/')[0], gc)]
-
-      zgc_name, gc_name = gc_path.split('/')
-      for i_part, part in enumerate(parts):
-        part_jns = PT.get_nodes_from_predicates(part, [zgc_name, gc_name+'*'])
-    
-        if len(part_jns) > 0:
-          part_jns_lngn = [PT.maia.getGlobalNumbering(jn, 'Index')[1] for jn in part_jns]
-          part_jns_size = [lngn.size for lngn in part_jns_lngn]
-          itrf_size     = sum(part_jns_size)
-
-          rank_cur = comm.Get_rank() * np.ones(itrf_size, np.int32)
-          part_cur = i_part # This one can be scalar, it will be broadcasted
-
-          opposite = [PT.maia.conv.get_part_suffix(PT.get_value(jn)) for jn in part_jns]
-          _, rank_opp = np_utils.concatenate_np_arrays(
-              [opp[0]*np.ones(size, np.int32) for opp,size in zip(opposite, part_jns_size)])
-          _, part_opp = np_utils.concatenate_np_arrays(
-              [opp[1]*np.ones(size, np.int32) for opp,size in zip(opposite, part_jns_size)])
-          _, pl  = np_utils.concatenate_np_arrays([PT.get_node_from_name(jn, 'PointList')[1][0] for jn in part_jns])
-          _, pld = np_utils.concatenate_np_arrays([PT.get_node_from_name(jn, 'PointListDonor')[1][0] for jn in part_jns])
-          itrf_ids = np_utils.interweave_arrays([rank_cur, part_cur, pl-1, rank_opp, part_opp, pld-1])
-          _, itrf_lngn = np_utils.concatenate_np_arrays(part_jns_lngn)
-          itrf_sign = (2*itrf_pos-1) * np.ones(itrf_size, dtype=np.int32) # Map 0 to -1, 1 to 1
-          itrf_sens = np.ones(itrf_size, dtype=np.int32)
-          itrf_ids_idx = np.arange(0, 2*itrf_size+1, 2, dtype=np.int32)
-          itrf_doms = np.tile(np.array([itrf_dom, itrf_dom_op], np.int32), itrf_size)
-
-          pdm_part_dom_interface.interface_set(PDM._PDM_BOUND_TYPE_VTX,
-                                               i_dom,
-                                               i_part,
-                                               itrf_id-1,
-                                               itrf_size,
-                                               itrf_lngn,
-                                               itrf_sign,
-                                               itrf_sens,
-                                               itrf_ids,
-                                               itrf_ids_idx,
-                                               itrf_doms)
-
 
   # Get gnum shifted for vertices
   vtx_mdom_offsets, shifted_lngn = get_shifted_ln_to_gn_from_loc(parts_per_dom.values(), 'Vertex', comm)
