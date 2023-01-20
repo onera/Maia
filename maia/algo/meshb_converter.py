@@ -329,7 +329,7 @@ def cgns_to_meshb(dist_tree, files, criterion):
         ronu  = PT.get_node_from_name(fs, "TurbulentSANuTildeDensity")[1]
       except TypeError:
         ronu  = np.zeros(density.shape[0], np.double)
-      cons    = np_utils.interweave_arrays([density, momx, momy, momz, roe, ronu, mach])
+      cons    = np_utils.interweave_arrays([density, momx, momy, momz, roe, mach, ronu])
 
       PDM.write_solb(bytes(files["fld"], 'utf-8'), n_vtx, 7, cons)
 
