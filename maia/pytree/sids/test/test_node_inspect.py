@@ -115,6 +115,13 @@ def test_get_ordered_elements():
 
   sorted_elems = SIDS.Zone.get_ordered_elements(zone)
   assert [N.get_name(elem) for elem in sorted_elems] == ['ElemB', 'ElemA', 'ElemC']
+
+def test_has_ngon_elements():
+  zone = N.new_Zone()
+  N.new_Elements('ElemA', erange=[11, 53], parent=zone)
+  assert not SIDS.Zone.has_ngon_elements(zone)
+  N.new_Elements('ElemB', type='NGON_n', erange=[1, 11], parent=zone)
+  assert SIDS.Zone.has_ngon_elements(zone)
     
 def test_get_ordered_elements_per_dim():
   zone = N.new_Zone()
