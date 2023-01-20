@@ -6,6 +6,8 @@ import maia.pytree as PT
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from . import multidom_gnum
+from . import connectivity_utils
+from . import geometry
 
 import Pypdm.Pypdm as PDM
 
@@ -24,22 +26,15 @@ class CenterToNode:
     gnum_list   = []
     for i_dom, parts in enumerate(parts_per_dom.values()):
       for i_part, zone in enumerate(parts):
-          ngon_node = PT.Zone.NGonNode(zone)
-          nface_node = PT.Zone.NFaceNode(zone)
+
           n_vtx = PT.Zone.n_vtx(zone)
-
-          nface_eso = PT.get_child_from_name(nface_node, 'ElementStartOffset')[1]
-          ngon_eso = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-          nface_ec = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
-          ngon_ec = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-          cell_vtx_idx, cell_vtx = PDM.combine_connectivity(nface_eso, nface_ec, ngon_eso, ngon_ec)
-
-          vtx_cell_idx, vtx_cell = PDM.connectivity_transpose(int(PT.Zone.n_vtx(zone)), cell_vtx_idx, cell_vtx)
+          cell_vtx_idx, cell_vtx = connectivity_utils.cell_vtx_connectivity(zone)
+          vtx_cell_idx, vtx_cell = PDM.connectivity_transpose(int(n_vtx), cell_vtx_idx, cell_vtx)
           
-          cell_center = maia.algo.part.compute_cell_center(zone)
-
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
+          # Use direct api since cell_vtx is already computed
+          cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, cx,cy,cz)
 
           # This one is just the local index of each vertices, repeated for
           # each cell the vertex touches. Eg [0, 1, 1, 2,2,2,2] if vtx 0,
@@ -113,7 +108,7 @@ def centers_to_nodes(tree, comm, containers_name=[], **options):
     apply to internal partitioning interfaces, which are always crossed.
 
   Args:
-    tree      (CGNSTree): Partionned tree. Only U-NGon connectivities are managed.
+    tree      (CGNSTree): Partionned tree. Only unstructured connectivities are managed.
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
     **options: Options related to interpolation, see above.
