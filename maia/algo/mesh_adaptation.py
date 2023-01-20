@@ -42,6 +42,11 @@ feflo_args    = { 'isotrop'  :  '-iso',
 def mesh_adapt(dist_tree, complexity, comm,
                tool='feflo', criterion='mach_fld', feflo_optargs='-p 4 -hgrad=1.'):
 
+  '''
+  * Gerer le maillage back (avec le patch paradigm) :
+      - garder le meshb du premier passage -> maillage_back.mesh
+      - ajouter  "-nordg -back maillage_back.mesh" aux itérations suivantes
+  '''
   assert tool      in ['feflo']
   assert criterion in ['isotrop', 'mach_fld', 'mach_hess']
 
