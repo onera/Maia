@@ -43,10 +43,16 @@ def test_compute_cell_center(sub_comm):
   cell_center = centers.compute_cell_center(zoneS)
   assert (cell_center == expected_cell_center).all()
 
-  #Test wrong case
-  PT.rm_children_from_label(zoneU, 'Elements_t')
-  with pytest.raises(NotImplementedError):
-    centers.compute_cell_center(zoneU)
+  #Test Elts
+  tree = maia.factory.generate_dist_block(3, 'HEXA_8', sub_comm)
+  zoneU = PT.get_all_Zone_t(tree)[0]
+  #On partitions, element are supposed to be I4
+  for elt_node in PT.iter_children_from_label(zoneU, 'Elements_t'):
+    for name in ['ElementConnectivity']:
+      node = PT.get_child_from_name(elt_node, name)
+      node[1] = node[1].astype(np.int32)
+  cell_center = centers.compute_cell_center(zoneU)
+  assert (cell_center == expected_cell_center).all()
 
 @mark_mpi_test(1)
 def test_compute_face_center_3d(sub_comm):
