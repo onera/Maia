@@ -75,8 +75,8 @@ class CenterToNode:
     cell_fields = {}
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      cell_fields[field_name] = [PT.get_node_from_path(part, field_path)[1][vtx_cell-1] for \
-          part, vtx_cell in zip(self.parts, self.vtx_cell)]
+      cell_fields[field_name] = [PT.get_node_from_path(part, field_path)[1][vtx_cell-1].astype(float, copy=False) \
+          for part, vtx_cell in zip(self.parts, self.vtx_cell)]
 
     # Do all reductions
     node_fields = {}
