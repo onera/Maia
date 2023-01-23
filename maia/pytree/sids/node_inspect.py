@@ -98,6 +98,11 @@ class Zone:
     return np.prod(Zone.VertexBoundarySize(zone_node))
 
   @staticmethod
+  def has_ngon_elements(zone_node):
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NGON_n'
+    return W.get_child_from_predicate(zone_node, predicate) is not None
+
+  @staticmethod
   def coordinates(zone_node, name=None):
     grid_coord_node = W.get_child_from_label(zone_node, "GridCoordinates_t") if name is None \
         else W.get_child_from_name_and_label(zone_node, name, "GridCoordinates_t")

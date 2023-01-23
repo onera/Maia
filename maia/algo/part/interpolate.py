@@ -11,6 +11,7 @@ from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .import point_cloud_utils as PCU
+from .import multidom_gnum     as MDG
 from .import localize as LOC
 from .import closest_points as CLO
 
@@ -20,10 +21,10 @@ class Interpolator:
     self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
     self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
 
-    _, src_lngn_per_dom = PCU.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, 'CellCenter', comm)
+    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, 'CellCenter', comm)
     all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
 
-    _, tgt_lngn_per_dom = PCU.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, output_loc, comm)
+    _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, output_loc, comm)
     all_tgt_lngn = py_utils.to_flat_list(tgt_lngn_per_dom)
 
     _src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]

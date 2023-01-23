@@ -7,15 +7,7 @@ from maia.utils     import np_utils, s_numbering
 from maia.transfer  import utils as te_utils
 from maia.algo.dist import s_to_u as S2U
 
-# ------------------------------------------------------------------------
-def compute_gnum_from_parent_gnum(parent_gnum_l, comm):
-  n_part = len(parent_gnum_l)
-  gnum = PDM.GlobalNumbering(3, n_part, 0, 0., comm)
-  for i_part, parent_gnum in enumerate(parent_gnum_l):
-    gnum.gnum_set_from_parent(i_part, parent_gnum.shape[0], parent_gnum)
-  gnum.gnum_compute()
-  return [gnum.gnum_get(i_part)['gnum'] for i_part in range(n_part)]
-# ------------------------------------------------------------------------
+from .point_cloud_utils import create_sub_numbering
 
 def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   """
@@ -137,8 +129,8 @@ def extract_surf_from_bc(part_zones, families, comm):
     parent_vtx_lngn_l .append(vtx_ln_to_gn_zone[bc_vtx_ids-1]  )
 
   # Compute extracted gnum from parents
-  bc_face_lngn_l = compute_gnum_from_parent_gnum(parent_face_lngn_l, comm)
-  bc_vtx_lngn_l  = compute_gnum_from_parent_gnum(parent_vtx_lngn_l, comm)
+  bc_face_lngn_l = create_sub_numbering(parent_face_lngn_l, comm)
+  bc_vtx_lngn_l  = create_sub_numbering(parent_vtx_lngn_l, comm)
 
   return bc_face_vtx_l, bc_face_vtx_idx_l, bc_face_lngn_l, bc_coords_l, bc_vtx_lngn_l
 
