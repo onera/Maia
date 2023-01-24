@@ -3,7 +3,9 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils import par_utils, np_utils
+from maia.io          import distribution_tree
+from maia.algo.dist   import redistribute
+from maia.utils       import par_utils, np_utils
 
 def distribute_pl_node(node, comm):
   """
@@ -85,68 +87,11 @@ def distribute_element_node(node, comm):
   
   return dist_node
 
-def distribute_tree(tree, comm, owner=None):
+def _distribute_tree(tree, comm):
   """
   Distribute a standard cgns tree over several processes, using uniform distribution.
-  Mainly useful for unit tests. If owner is None, tree must be know by each process;
-  otherwise, tree is broadcasted from the owner process
+  Mainly useful for unit tests. Tree must be know by each process.
   """
-
-  if owner is not None:
-    if comm.Get_rank() == owner:
-
-      da_container = lambda n: PT.get_label(n) in ['GridCoordinates_t', 'Elements_t', \
-          'BC_t', 'BCDataSet_t', 'BCData_t', 'GridConnectivity_t', 'GridConnectivity1to1_t', \
-          'FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']
-
-      is_data_array = lambda n: PT.get_label(n) == 'DataArray_t' and not PT.get_name(n).endswith('#Size')
-
-      dist_tree      = PT.deep_copy(tree)
-
-      # Add #Size node to easily compute distribution
-      for zone in PT.iter_all_Zone_t(dist_tree):
-        for container in PT.iter_nodes_from_predicate(zone, da_container, explore='deep'):
-          for node in PT.get_children_from_predicate(container, 'DataArray_t'):
-            if PT.get_name(node) != 'ParentElements':
-              node[1] = node[1].reshape((-1), order='F')
-            PT.new_node(PT.get_name(node) + "#Size", "DataArray_t", np.array(node[1].shape), parent=container)
-          for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
-            PT.new_node(PT.get_name(node) + "#Size", "DataArray_t", np.array(node[1].shape), parent=container)
-
-      void_dist_tree = PT.shallow_copy(dist_tree)
-      for zone in PT.iter_all_Zone_t(void_dist_tree):
-        for container in PT.iter_nodes_from_predicate(zone, da_container, explore='deep'):
-          for node in PT.get_children_from_predicate(container, is_data_array):
-            # Be carefull with PE
-            if PT.get_name(node) == 'ParentElements':
-              node[1] = np.empty((0,2), dtype=node[1].dtype)
-            else:
-              node[1] = np.empty(0, dtype=node[1].dtype)
-          for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
-            index_dimension = PT.get_child_from_name(container, node[0]+'#Size')[1][0]
-            node[1] = np.empty((index_dimension,0), dtype=node[1].dtype)
-
-    else:
-      void_dist_tree = None
-
-    recv_tree = comm.bcast(void_dist_tree, root=owner)
-    if comm.Get_rank() != owner:
-      dist_tree = recv_tree
-      for zone in PT.get_all_Zone_t(dist_tree):
-        for elt in PT.get_children_from_label(zone, 'Elements_t'):
-          eso_n = PT.get_child_from_name(elt, 'ElementStartOffset')
-          if eso_n is not None:
-            ec_size = PT.get_child_from_name(elt, 'ElementConnectivity#Size')[1]
-            eso_n[1] = (comm.Get_rank() > owner) * np.array(ec_size, dtype=eso_n[1].dtype)
-
-    from maia.io.distribution_tree import add_distribution_info
-    from maia.algo.dist import redistribute_tree
-    add_distribution_info(dist_tree, comm, f'gather.{owner}')
-    PT.rm_nodes_from_name(dist_tree, '*#Size')
-    redistribute_tree(dist_tree, comm)
-
-    return dist_tree
-
   # Do a copy to capture all original nodes
   dist_tree = PT.deep_copy(tree)
   for zone in PT.iter_all_Zone_t(dist_tree):
@@ -215,3 +160,75 @@ def distribute_tree(tree, comm, owner=None):
       PT.add_child(zone, dist_zone_subregion)
 
   return dist_tree
+
+def _broadcast_full_to_dist(tree, comm, owner):
+  """
+  Create a distributed tree from a full tree holded by only one proc.
+  """
+
+  da_container = ['GridCoordinates_t', 'Elements_t', 'FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t',
+      'BC_t', 'BCDataSet_t', 'BCData_t', 'GridConnectivity_t', 'GridConnectivity1to1_t']
+
+  if comm.Get_rank() == owner:
+    is_da_container = lambda n: PT.get_label(n) in da_container
+    is_data_array   = lambda n: PT.get_label(n) == 'DataArray_t' and not PT.get_name(n).endswith('#Size')
+
+    # Prepare disttree for owning rank : add #Size node to easily compute distribution and flatten S data
+    dist_tree     = PT.deep_copy(tree)
+    for zone in PT.iter_all_Zone_t(dist_tree):
+      for container in PT.iter_nodes_from_predicate(zone, is_da_container, explore='deep'):
+        for node in PT.get_children_from_predicate(container, 'DataArray_t'):
+          if PT.get_name(node) != 'ParentElements':
+            node[1] = node[1].reshape((-1), order='F')
+          PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node[1].shape, parent=container)
+        for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
+          PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node[1].shape, parent=container)
+
+    # Prepare disttree for other rank: data are empty arrays. #Size node already added
+    send_size_tree = PT.shallow_copy(dist_tree)
+    for zone in PT.iter_all_Zone_t(send_size_tree):
+      for container in PT.iter_nodes_from_predicate(zone, is_da_container, explore='deep'):
+        for node in PT.get_children_from_predicate(container, is_data_array):
+          # Be carefull with PE
+          if PT.get_name(node) == 'ParentElements':
+            PT.set_value(node, np.empty((0,2), dtype=node[1].dtype, order='F'))
+          else:
+            PT.set_value(node, np.empty(0, dtype=node[1].dtype))
+        for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
+          index_dimension = PT.get_child_from_name(container, PT.get_name(node)+'#Size')[1][0]
+          PT.set_value(node, np.empty((index_dimension,0), dtype=node[1].dtype, order='F'))
+  else:
+    send_size_tree = None
+
+  recv_size_tree = comm.bcast(send_size_tree, root=owner)
+
+  # Fix ElementStartOffset depending on receiving rank (0 or cnt#size)
+  if comm.Get_rank() != owner:
+    dist_tree = recv_size_tree
+    for zone in PT.get_all_Zone_t(dist_tree):
+      for elt in PT.get_children_from_label(zone, 'Elements_t'):
+        eso_n = PT.get_child_from_name(elt, 'ElementStartOffset')
+        if eso_n is not None:
+          ec_size = PT.get_child_from_name(elt, 'ElementConnectivity#Size')[1]
+          eso_n[1] = (comm.Get_rank() > owner) * np.array(ec_size, dtype=eso_n[1].dtype)
+
+  # Create Distribution nodes from Size nodes
+  distribution_tree.add_distribution_info(dist_tree, comm, f'gather.{owner}')
+  PT.rm_nodes_from_name(dist_tree, '*#Size')
+
+  return dist_tree
+
+def distribute_tree(tree, comm, owner=None):
+  """
+  Distribute a standard cgns tree over several processes, using uniform distribution.
+  Mainly useful for unit tests. If owner is None, tree must be know by each process;
+  otherwise, tree is broadcasted from the owner process
+  """
+
+  if owner is not None:
+    dist_tree = _broadcast_full_to_dist(tree, comm, owner)
+    redistribute.redistribute_tree(dist_tree, comm)
+    return dist_tree
+  else:
+    return _distribute_tree(tree, comm)
+
