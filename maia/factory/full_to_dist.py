@@ -1,3 +1,5 @@
+import numpy as np
+
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -38,12 +40,17 @@ def distribute_data_node(node, comm):
   Distribute a standard node having arrays supported by allCells or allVertices over several processes,
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
   """
-  dist_node = PT.deep_copy(node)
-  assert PT.get_node_from_name(dist_node, 'PointList') is None
+  is_data_array = lambda n: PT.get_label(n) == 'DataArray_t'
+  assert PT.get_node_from_name(node, 'PointList') is None
+  dist_node = PT.new_node(PT.get_name(node), PT.get_label(node), PT.get_value(node))
 
-  for array in PT.iter_children_from_label(dist_node, 'DataArray_t'):
+  for array in PT.iter_children_from_predicate(node, is_data_array):
     distri = par_utils.uniform_distribution(array[1].size, comm)
-    array[1] = array[1].reshape(-1, order='F')[distri[0] : distri[1]]
+    PT.new_DataArray(PT.get_name(array),
+                     (array[1].reshape(-1, order='F')[distri[0] : distri[1]]).copy(),
+                     parent=dist_node) 
+  for child in PT.iter_children_from_predicate(node, lambda n: not is_data_array(n)):
+    PT.add_child(dist_node, PT.deep_copy(child))
 
   return dist_node
 
@@ -86,7 +93,59 @@ def distribute_tree(tree, comm, owner=None):
   """
 
   if owner is not None:
-    tree = comm.bcast(tree, root=owner)
+    if comm.Get_rank() == owner:
+
+      da_container = lambda n: PT.get_label(n) in ['GridCoordinates_t', 'Elements_t', \
+          'BC_t', 'BCDataSet_t', 'BCData_t', 'GridConnectivity_t', 'GridConnectivity1to1_t', \
+          'FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']
+
+      is_data_array = lambda n: PT.get_label(n) == 'DataArray_t' and not PT.get_name(n).endswith('#Size')
+
+      dist_tree      = PT.deep_copy(tree)
+
+      # Add #Size node to easily compute distribution
+      for zone in PT.iter_all_Zone_t(dist_tree):
+        for container in PT.iter_nodes_from_predicate(zone, da_container, explore='deep'):
+          for node in PT.get_children_from_predicate(container, 'DataArray_t'):
+            if PT.get_name(node) != 'ParentElements':
+              node[1] = node[1].reshape((-1), order='F')
+            PT.new_node(PT.get_name(node) + "#Size", "DataArray_t", np.array(node[1].shape), parent=container)
+          for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
+            PT.new_node(PT.get_name(node) + "#Size", "DataArray_t", np.array(node[1].shape), parent=container)
+
+      void_dist_tree = PT.shallow_copy(dist_tree)
+      for zone in PT.iter_all_Zone_t(void_dist_tree):
+        for container in PT.iter_nodes_from_predicate(zone, da_container, explore='deep'):
+          for node in PT.get_children_from_predicate(container, is_data_array):
+            # Be carefull with PE
+            if PT.get_name(node) == 'ParentElements':
+              node[1] = np.empty((0,2), dtype=node[1].dtype)
+            else:
+              node[1] = np.empty(0, dtype=node[1].dtype)
+          for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
+            index_dimension = PT.get_child_from_name(container, node[0]+'#Size')[1][0]
+            node[1] = np.empty((index_dimension,0), dtype=node[1].dtype)
+
+    else:
+      void_dist_tree = None
+
+    recv_tree = comm.bcast(void_dist_tree, root=owner)
+    if comm.Get_rank() != owner:
+      dist_tree = recv_tree
+      for zone in PT.get_all_Zone_t(dist_tree):
+        for elt in PT.get_children_from_label(zone, 'Elements_t'):
+          eso_n = PT.get_child_from_name(elt, 'ElementStartOffset')
+          if eso_n is not None:
+            ec_size = PT.get_child_from_name(elt, 'ElementConnectivity#Size')[1]
+            eso_n[1] = (comm.Get_rank() > owner) * np.array(ec_size, dtype=eso_n[1].dtype)
+
+    from maia.io.distribution_tree import add_distribution_info
+    from maia.algo.dist import redistribute_tree
+    add_distribution_info(dist_tree, comm, f'gather.{owner}')
+    PT.rm_nodes_from_name(dist_tree, '*#Size')
+    redistribute_tree(dist_tree, comm)
+
+    return dist_tree
 
   # Do a copy to capture all original nodes
   dist_tree = PT.deep_copy(tree)
