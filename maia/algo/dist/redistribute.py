@@ -6,7 +6,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 import maia.transfer.protocols as MTP
 
-from maia.utils import par_utils
+from maia.io.distribution_tree import interpret_policy
 
 
 # ---------------------------------------------------------------------------------------
@@ -222,22 +222,7 @@ def redistribute_tree(dist_tree, comm, policy='uniform'):
       :end-before: #redistribute_dist_tree@end
       :dedent: 2
   """
-  if policy == 'gather':
-    policy = 'gather.0'
-  policy_split = policy.split('.')
-  assert len(policy_split) in [1, 2]
-
-  policy_type = policy_split[0]
-
-  if policy_type == "uniform":
-    distribution = par_utils.uniform_distribution
-  elif policy_type == "gather":
-    assert len(policy_split) == 2
-    i_rank = int(policy_split[1])
-    assert i_rank < comm.Get_size() 
-    distribution = lambda n_elt, comm : par_utils.gathering_distribution(i_rank, n_elt, comm)
-  else:
-    raise ValueError("Unknown policy for redistribution")
+  distribution = interpret_policy(policy, comm)
 
   for zone in PT.iter_all_Zone_t(dist_tree):
     redistribute_zone(zone, distribution, comm)
