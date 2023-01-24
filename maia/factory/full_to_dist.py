@@ -219,10 +219,25 @@ def _broadcast_full_to_dist(tree, comm, owner):
   return dist_tree
 
 def distribute_tree(tree, comm, owner=None):
-  """
-  Distribute a standard cgns tree over several processes, using uniform distribution.
-  Mainly useful for unit tests. If owner is None, tree must be know by each process;
-  otherwise, tree is broadcasted from the owner process
+  """ Generate a distributed tree from a standard (full) CGNS Tree.
+
+  Input tree can be defined on a single process (using ``owner = rank_id``),
+  or a copy can be known by all the processes (using ``owner=None``).
+
+  In both cases, output distributed tree will be equilibrated over all the processes.
+
+  Args:
+    tree       (CGNSTree) : Full (not distributed) tree.
+    comm        (MPIComm) : MPI communicator
+    owner (int, optional) : MPI rank holding the input tree. Defaults to None.
+  Returns:
+    CGNSTree: distributed cgns tree
+
+  Example:
+      .. literalinclude:: snippets/test_factory.py
+        :start-after: #distribute_tree@start
+        :end-before: #distribute_tree@end
+        :dedent: 2
   """
 
   if owner is not None:
