@@ -283,5 +283,5 @@ def test_write_tree_partial(tmp_path, ref_hdf_file):
   tree = parse_yaml_cgns.to_cgns_tree(sample_tree)
   outfile = str(tmp_path / Path('only_coords.hdf'))
   HCG.write_tree_partial(tree, outfile, lambda N,L : True)
-  cmd = ["h5diff", f"{ref_hdf_file}", f"{outfile}"]
+  cmd = ["h5diff", f"{ref_hdf_file}", f"{outfile}", "Base"] #hdf5version dataset can vary
   assert subprocess.run(cmd).returncode == 0

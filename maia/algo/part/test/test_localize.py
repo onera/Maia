@@ -107,13 +107,15 @@ def test_localize_points(sub_comm):
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   loc_node = PT.get_node_from_name_and_label(tgt_zone, 'Localization', 'DiscreteData_t')
   assert loc_node is not None and PT.Subset.GridLocation(loc_node) == 'CellCenter'
-
-  if sub_comm.rank == 0:
-    expected_src_id = np.array([3,35,51,36,16,4,12,11,52])
-  elif sub_comm.rank == 1:
-    expected_src_id = np.array([15,59,63,60,48,43,47,44,64])
-  elif sub_comm.rank == 2:
-    expected_src_id = np.array([-1,-1,-1,-1,-1,-1,-1,-1,-1])
-
-  assert (PT.get_child_from_name(loc_node, 'SrcId')[1] == expected_src_id).all()
   assert PT.get_value(PT.get_child_from_name(loc_node, 'DomainList')) == "Base/zone"
+
+  # Check result on dist tree to not rely on partitioning
+  maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tree_tgt, sub_comm)
+  if sub_comm.rank == 0:
+    expected_dsrc_id = np.array([3,4,-1,11,12,-1,15,16,-1])
+  elif sub_comm.rank == 1:
+    expected_dsrc_id = np.array([35,36,-1,43,44,-1,47,48,-1])
+  elif sub_comm.rank == 2:
+    expected_dsrc_id = np.array([51,52,-1,59,60,-1,63,64,-1])
+
+  assert (PT.get_node_from_name(dtree_tgt, 'SrcId')[1] == expected_dsrc_id).all()

@@ -7,15 +7,16 @@ workflow:
 
 variables:
   GIT_STRATEGY: none # don't do anything by default
-  SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=1 --time=00:15:00" #Slurm default parameters
+  #SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=1 --time=00:15:00" #Slurm default parameters #Go back to spiro-commun when el8 is deployed
+  SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=1 --time=00:15:00" #Slurm default parameters #Go back to spiro-commun when el8 is deployed
 #Common to all stages
 default:
   tags: #All jobs uses jamacar-slurm executor by default (dsi test)
     - slurm
   before_script:
+    - unset _LMFILES_ ; unset LOADEDMODULES
     - module purge
-    - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
-    - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc10.1
+    - source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi
 
 stages:
   - init
@@ -45,7 +46,7 @@ job:init:
 job:build:
   stage: build
   variables:
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=16 --nodes=1-1 --time=00:15:00"
+    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=16 --nodes=1-1 --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR
     - mkdir -p build && cd build
@@ -73,7 +74,7 @@ job:doc:
 job:ctest:
   stage: test
   variables:
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
+    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR/build
     - ctest -E pdm
@@ -115,50 +116,56 @@ pages:
     paths:
       - public
 
-job:deploy_spiro21:
+job:deploy_spiro_sonics:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=16 --nodes=1-1 --time=00:30:00"
+    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=16 --nodes=1-1 --time=00:30:00"
   before_script: 
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
     - mkdir -p build && cd build
     - export PREFIX=/scratchm/jcoulet/aa_install_py3/maia
-             FLAGS="-DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_EXTENSION_PDMA=ON"
+             FLAGS="-DPDM_ENABLE_EXTENSION_PDMA=ON"
   script:
+    - unset _LMFILES_ ; unset LOADEDMODULES
     - module purge
-    - source /home/sonics/spack_new/spack/share/spack/setup-env.sh
-    - source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc8.3
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-oneapi $FLAGS ../
-    - make -j install > oneapi_dbg.log
-    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-oneapi -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-oneapi .
-    - make -j install > oneapi_opt.log
+    - source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-impi21 $FLAGS ../
+    - make -j install > dbg-impi21.log
+    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-impi21 .
+    - make -j install > opt-impi21.log
 
-job:deploy_spiro19:
+job:deploy_spiro_socle5:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
+  tags:
+    - shell
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=16 --nodes=1-1 --time=00:30:00"
   before_script: 
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
     - mkdir -p build && cd build
-    - export PREFIX=/scratchm/jcoulet/aa_install_py3/maia
-             FLAGS="-DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_EXTENSION_PDMA=ON"
   script:
-    - module purge
-    - module load CFD/5.0-intel-19.impi-19 cmake/3.19-gnu
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-intel19 $FLAGS -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lbz2 -lz' ../
-    - make -j install > intel19_dbg.log
-    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-intel19 -DCMAKE_PDM_INSTALL_PYTHON_DIR=$PREFIX/opt-intel19 .
-    - make -j install > intel19_opt.log
+    - |
+      cat > build_socle5.sh << EOF
+      module purge
+      module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
+      export https_proxy=http://proxy.onera:80
+      export PREFIX=/scratchm/jcoulet/aa_install_py3/maia
+             FLAGS="-DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_EXTENSION_PDMA=ON"
+      cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=\$PREFIX/dbg-cfd5_21 \$FLAGS ../
+      make -j install > dbg-cfd5_21.log
+      cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/opt-cfd5_21 .
+      make -j install > opt-cfd5_21.log
+      EOF
+    - ssh spiro02 "cd $PWD; source /etc/profile; sh ./build_socle5.sh"
 
 job:deploy_sator:
   stage: deploy

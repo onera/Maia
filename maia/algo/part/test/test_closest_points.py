@@ -111,13 +111,14 @@ def test_closest_points(sub_comm):
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   clo_node = PT.get_node_from_name_and_label(tgt_zone, 'ClosestPoint', 'DiscreteData_t')
   assert clo_node is not None and PT.Subset.GridLocation(clo_node) == 'CellCenter'
-
-  if sub_comm.rank == 0:
-    expected_src_id = np.array([3,19,51,20,16,4,8,7,52])
-  elif sub_comm.rank == 1:
-    expected_src_id = np.array([15,59,63,60,32,23,47,24,64])
-  elif sub_comm.rank == 2:
-    expected_src_id = np.array([4,48,60,52,24,8,20,16,64])
-
-  assert (PT.get_child_from_name(clo_node, 'SrcId')[1] == expected_src_id).all()
   assert PT.get_value(PT.get_child_from_name(clo_node, 'DomainList')) == "Base/zone"
+
+  # Check result on dist tree to not rely on partitioning
+  maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tree_tgt, sub_comm)
+  if sub_comm.rank == 0:
+    expected_dsrc_id = np.array([3,4,4,7,8,8,15,16,16])
+  elif sub_comm.rank == 1:
+    expected_dsrc_id = np.array([19,20,20,23,24,24,47,32,48])
+  elif sub_comm.rank == 2:
+    expected_dsrc_id = np.array([51,52,52,59,60,60,63,64,64])
+  assert (PT.get_node_from_name(dtree_tgt, 'SrcId')[1] == expected_dsrc_id).all()

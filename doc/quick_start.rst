@@ -10,43 +10,30 @@ Environnements
 
 We provide ready-to-go environments including Maia and its dependencies on the following clusters:
 
-**Spiro-EL7**
-
-This is the recommended environment for standalone usage of Maia. It works with intel mpi library (2021)
-and python version 3.8.
-
-.. code-block:: sh
-
-  module purge
-  source /home/sonics/spack_new/spack/share/spack/setup-env.sh
-  source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc8.3
-
-  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-oneapi
-  export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
-  export PYTHONPATH=$MAIA_HOME/lib/python3.8/site-packages:$PYTHONPATH
-
-If you want to use maia in elsA framework, the next installation is compatible with
-elsA spiro3_mpi production :
-
-.. code-block:: sh
-
-  source /home/elsa/Public/v5.1.03/Dist/bin/spiro3_mpi/.env_elsA
-
-  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-intel19/
-  export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
-  export PYTHONPATH=$MAIA_HOME/lib/python3.7/site-packages:$PYTHONPATH
-
 **Spiro-EL8**
 
+This is the recommended environment for standalone usage of Maia. It works with intel mpi library (2021)
+and python version 3.9.
+
 .. code-block:: sh
 
   module purge
-  source /scratchm/sonics/dist/spiro-el8.sh --compiler=gcc@12 --mpi=impi
-  
-  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-spiro8
+  source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi
+
+  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-impi21
   export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
   export PYTHONPATH=$MAIA_HOME/lib/python3.9/site-packages:$PYTHONPATH
 
+If you want to use maia in elsA framework, the next installation is compatible with
+elsA spiro-el8_mpi production :
+
+.. code-block:: sh
+
+  source /stck/elsa/Public/v5.1.03/Dist/bin/spiro-el8_mpi/source.me
+
+  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-cfd5_21/
+  export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
+  export PYTHONPATH=$MAIA_HOME/lib/python3.7/site-packages:$PYTHONPATH
 
 **Sator**
 

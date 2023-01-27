@@ -5,16 +5,15 @@
 ### Onera users 
 User documentation is deployed on the Gitlab pages server: https://numerics.gitlab-pages.onera.net/mesh/maia/index.html.
 
-Stable installations are provided on Spiro and Sator clusters: for example, on Spiro-EL7 partition, Maia environment can be loaded with the following lines:
+Stable installations are provided on Spiro and Sator clusters: for example, on Spiro-EL8 partition, Maia environment can be loaded with the following lines:
 
 ```bash
 module purge
-source /home/sonics/spack_new/spack/share/spack/setup-env.sh
-source /home/sonics/source-intel-oneapi-2021.2-spiro.me --compiler gcc8.3
+source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi
 
-export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-oneapi
+export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-impi21
 export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
-export PYTHONPATH=$MAIA_HOME/lib/python3.8/site-packages:$PYTHONPATH
+export PYTHONPATH=$MAIA_HOME/lib/python3.9/site-packages:$PYTHONPATH
 ```
 
 Additional environments are provided in the [Quick start](https://numerics.gitlab-pages.onera.net/mesh/maia/quick_start.html) page of the documention.
