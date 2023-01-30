@@ -229,7 +229,6 @@ def _load_node_partial(gid, parent, load_if, ancestors_stack):
     gid = h5g.open(gid, b' link')
     b_kind = attr_reader.read_bytes_3(gid, b'type')
     # Label may be empty in original node and present only in linked node
-    name  = attr_reader.read_str_33(gid, b'name')
     label = attr_reader.read_str_33(gid, b'label')
 
   ancestors_stack[0].append(name)
