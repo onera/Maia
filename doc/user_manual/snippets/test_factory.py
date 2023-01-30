@@ -13,6 +13,20 @@ def test_generate_dist_block():
   assert PT.Element.CGNSName(PT.getNodeFromType(zone, 'Elements_t')) == 'TETRA_4'
   #generate_dist_block@end
 
+def test_distribute_tree():
+  #distribute_tree@start
+  from   mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+  comm = MPI.COMM_WORLD
+
+  if comm.Get_rank() == 0:
+    tree = maia.io.read_tree(mesh_dir/'S_twoblocks.yaml', comm)
+  else:
+    tree = None
+  dist_tree = maia.factory.distribute_tree(tree, comm, owner=0)
+  #distribute_tree@end
+
 def test_partition_dist_tree():
   #partition_dist_tree@start
   from mpi4py import MPI

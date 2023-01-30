@@ -2,16 +2,29 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from   maia.utils.parallel.utils import uniform_distribution
+from maia.utils import par_utils
 
-def create_distribution_node(n_elt, comm, name, parent_node):
-  """
-  setup CGNS node with distribution
-  """
-  distrib    = uniform_distribution(n_elt, comm)
-  MT.newDistribution({name : distrib}, parent=parent_node)
+def interpret_policy(policy, comm):
+  if policy == 'gather':
+    policy = 'gather.0'
+  policy_split = policy.split('.')
+  assert len(policy_split) in [1, 2]
 
-def compute_plist_or_prange_distribution(node, comm):
+  policy_type = policy_split[0]
+
+  if policy_type == "uniform":
+    distribution = par_utils.uniform_distribution
+  elif policy_type == "gather":
+    assert len(policy_split) == 2
+    i_rank = int(policy_split[1])
+    assert i_rank < comm.Get_size() 
+    distribution = lambda n_elt, comm : par_utils.gathering_distribution(i_rank, n_elt, comm)
+  else:
+    raise ValueError("Unknown policy for distribution")
+
+  return distribution
+
+def compute_subset_distribution(node, comm, distri_func):
   """
   Compute the distribution for a given node using its PointList or PointRange child
   If a PointRange node is found, the total lenght is getted from the product
@@ -25,13 +38,15 @@ def compute_plist_or_prange_distribution(node, comm):
   pl_n = PT.get_child_from_name(node, 'PointList')
 
   if(pr_n):
+    assert pl_n is None
     pr_lenght = PT.PointRange.n_elem(pr_n)
-    create_distribution_node(pr_lenght, comm, 'Index', node)
+    MT.newDistribution({'Index' : distri_func(pr_lenght, comm)}, parent=node)
 
   if(pl_n):
+    assert pr_n is None
     pls_n   = PT.get_child_from_name(node, 'PointList#Size')
     pl_size = PT.get_value(pls_n)[1]
-    create_distribution_node(pl_size, comm, 'Index', node)
+    MT.newDistribution({'Index' : distri_func(pl_size, comm)}, parent=node)
 
 def compute_connectivity_distribution(node):
   """
@@ -49,47 +64,47 @@ def compute_connectivity_distribution(node):
   distri_n = MT.getDistribution(node)
   dtype = PT.get_child_from_name(distri_n, 'Element')[1].dtype
   PT.new_DataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
-  PT.rm_children_from_name(node, 'ElementConnectivity#Size')
 
 
-def compute_elements_distribution(zone, comm):
+def compute_elements_distribution(zone, comm, distri_func):
   """
   """
   for elt in PT.iter_children_from_label(zone, 'Elements_t'):
-    create_distribution_node(PT.Element.Size(elt), comm, 'Element', elt)
+    MT.newDistribution({'Element' : distri_func(PT.Element.Size(elt), comm)}, parent=elt)
+    eso_n = PT.get_child_from_name(elt, 'ElementStartOffset')
+    if eso_n is not None and eso_n[1] is not None:
+      compute_connectivity_distribution(elt)
 
-def compute_zone_distribution(zone, comm):
+def compute_zone_distribution(zone, comm, distri_func):
   """
   """
-  create_distribution_node(PT.Zone.n_vtx(zone) , comm, 'Vertex', zone)
+  zone_distri = {'Vertex' : distri_func(PT.Zone.n_vtx(zone), comm),
+                 'Cell'   : distri_func(PT.Zone.n_cell(zone), comm)}
   if PT.Zone.Type(zone) == 'Structured':
-    create_distribution_node(PT.Zone.n_face(zone), comm, 'Face', zone)
-  create_distribution_node(PT.Zone.n_cell(zone), comm, 'Cell'  , zone)
+    zone_distri['Face']  = distri_func(PT.Zone.n_face(zone), comm)
 
-  compute_elements_distribution(zone, comm)
+  MT.newDistribution(zone_distri, parent=zone)
 
-  for zone_subregion in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
-    compute_plist_or_prange_distribution(zone_subregion, comm)
+  compute_elements_distribution(zone, comm, distri_func)
 
-  for flow_sol in PT.iter_children_from_label(zone, 'FlowSolution_t'):
-    compute_plist_or_prange_distribution(flow_sol, comm)
+  predicate_list = [
+      [lambda n : PT.get_label(n) in ['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t']],
+      'ZoneBC_t/BC_t',
+      'ZoneBC_t/BC_t/BCDataSet_t',
+      ['ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
+      ]
 
-  for bc in PT.iter_children_from_predicates(zone, 'ZoneBC_t/BC_t'):
-    compute_plist_or_prange_distribution(bc, comm)
-    for bcds in PT.iter_children_from_label(bc, 'BCDataSet_t'):
-      compute_plist_or_prange_distribution(bcds, comm)
+  for predicate in predicate_list:
+    for node in PT.iter_children_from_predicates(zone, predicate):
+      compute_subset_distribution(node, comm, distri_func)
 
-  for zone_gc in PT.iter_children_from_label(zone, 'ZoneGridConnectivity_t'):
-    for gc in PT.iter_children_from_label(zone_gc, 'GridConnectivity_t'):
-      compute_plist_or_prange_distribution(gc, comm)
-    for gc in PT.iter_children_from_label(zone_gc, 'GridConnectivity1to1_t'):
-      compute_plist_or_prange_distribution(gc, comm)
 
 def add_distribution_info(dist_tree, comm, distribution_policy='uniform'):
   """
   """
+  distri_func = interpret_policy(distribution_policy, comm)
   for zone in PT.iter_all_Zone_t(dist_tree):
-    compute_zone_distribution(zone, comm)
+    compute_zone_distribution(zone, comm, distri_func)
 
 def clean_distribution_info(dist_tree):
   """

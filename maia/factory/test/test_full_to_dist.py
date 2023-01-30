@@ -96,7 +96,8 @@ def test_distribute_element(sub_comm):
       assert (PT.get_child_from_name(dist_elem, 'ParentElements')[1] == [[2,0],[3,0]]).all()
 
 @mark_mpi_test(2)
-def test_distribute_tree(sub_comm):
+@pytest.mark.parametrize("owner", [None, 0, 1])
+def test_distribute_tree(owner, sub_comm):
   yt = """
   Zone Zone_t [[18, 4, 0]]:
     ZoneType ZoneType_t "Unstructured":
@@ -129,7 +130,7 @@ def test_distribute_tree(sub_comm):
       BCRegionName Descriptor_t "bc":
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  dist_tree = full_to_dist.distribute_tree(tree, sub_comm)
+  dist_tree = full_to_dist.distribute_tree(tree, sub_comm, owner=owner)
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
   if sub_comm.Get_rank() == 0:

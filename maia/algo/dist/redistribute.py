@@ -6,7 +6,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 import maia.transfer.protocols as MTP
 
-from maia.utils import par_utils
+from maia.io.distribution_tree import interpret_policy
 
 
 # ---------------------------------------------------------------------------------------
@@ -18,11 +18,16 @@ def redistribute_pl_node(node, distribution, comm):
   """
   node_distrib = MT.getDistribution(node, 'Index')[1]
   new_distrib = distribution(node_distrib[2], comm)
+  new_size = new_distrib[1] - new_distrib[0]
   MT.newDistribution({'Index' : new_distrib}, node)
 
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(node, 'IndexArray_t'):
-    array_n[1] = MTP.block_to_block(array_n[1][0], node_distrib, new_distrib, comm).reshape(1,-1, order='F')
+    idx_dimension = array_n[1].shape[0]
+    new_pl = np.empty((idx_dimension, new_size), order='F', dtype=array_n[1].dtype)
+    for ip in range(idx_dimension):
+      new_pl[ip,:] = MTP.block_to_block(array_n[1][ip], node_distrib, new_distrib, comm)
+    array_n[1] = new_pl
 
   #Data Arrays
   has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
@@ -35,7 +40,7 @@ def redistribute_pl_node(node, distribution, comm):
   #Additionnal treatement for subnodes with PL (eg bcdataset)
   has_pl = lambda n : PT.get_name(n) not in ['PointList', 'PointRange'] and has_subset(n)
   for child in [node for node in PT.get_children(node) if has_pl(node)]:
-    redistribute_pl_node(child, comm)
+    redistribute_pl_node(child, distribution, comm)
 
 # ---------------------------------------------------------------------------------------
 
@@ -121,7 +126,7 @@ def redistribute_elements_node(node, distribution, comm):
   pe_n    = PT.get_child_from_name(node, 'ParentElements')
   if pe_n is not None :
     pe      = PT.get_value(pe_n)
-    new_pe  = np.zeros((new_elt_distrib[1]-new_elt_distrib[0], pe.shape[1]), dtype=pe.dtype)
+    new_pe  = np.zeros((new_elt_distrib[1]-new_elt_distrib[0], pe.shape[1]), order='F', dtype=pe.dtype)
     for ip in range(pe.shape[1]):
       new_pe_tmp  = MTP.block_to_block(pe[:,ip], elt_distrib, new_elt_distrib, comm)
       new_pe[:,ip] = new_pe_tmp
@@ -134,23 +139,23 @@ def redistribute_elements_node(node, distribution, comm):
 def redistribute_zone(zone, distribution, comm):
 
   # Get distribution
-  vtx_distrib  = MT.getDistribution(zone, "Vertex")[1]
-  cell_distrib = MT.getDistribution(zone, "Cell")[1]
-  old_distrib = {'Vertex' : vtx_distrib ,
-                 'Cell'   : cell_distrib}
+  old_distrib = {'Vertex' : MT.getDistribution(zone, "Vertex")[1],
+                 'Cell'   : MT.getDistribution(zone, "Cell")[1]}
+  if PT.Zone.Type(zone) == 'Structured':
+    old_distrib['Face'] = MT.getDistribution(zone, "Face")[1]
 
   # New distribution
-  new_vtx_distrib  = distribution(PT.Zone.n_vtx(zone) , comm)
-  new_cell_distrib = distribution(PT.Zone.n_cell(zone), comm)
-  new_distrib = {'Vertex' : new_vtx_distrib ,
-                 'Cell'   : new_cell_distrib}
+  new_distrib = {'Vertex' : distribution(PT.Zone.n_vtx(zone) , comm),
+                 'Cell'   : distribution(PT.Zone.n_cell(zone), comm)}
+  if PT.Zone.Type(zone) == 'Structured':
+    new_distrib['Face'] = distribution(PT.Zone.n_face(zone), comm)
+
   MT.newDistribution(new_distrib, zone)
-   
 
   # > Coords
   grid_coords = PT.get_children_from_label(zone, 'GridCoordinates_t')
   for grid_coord in grid_coords:
-    redistribute_data_node(grid_coord, vtx_distrib, new_vtx_distrib, comm)
+    redistribute_data_node(grid_coord, old_distrib['Vertex'], new_distrib['Vertex'], comm)
 
   # > Elements
   elts = PT.get_children_from_label(zone, 'Elements_t')
@@ -167,6 +172,18 @@ def redistribute_zone(zone, distribution, comm):
     else:
       redistribute_pl_node(sol, distribution, comm)
 
+  # > ZoneSubRegion (Do it before BC_t because we need old BC distribution) 
+  zone_subregions = PT.get_children_from_label(zone, 'ZoneSubRegion_t')
+  for zone_subregion in zone_subregions:
+    # Trick if related to an other node -> add pl
+    matching_region_path = PT.getSubregionExtent(zone_subregion, zone)
+    if matching_region_path != PT.get_name(zone_subregion):
+      distri_node = PT.get_node_from_path(zone, matching_region_path + '/:CGNS#Distribution')
+      PT.add_child(zone_subregion, PT.deep_copy(distri_node))
+    redistribute_pl_node(zone_subregion, distribution, comm)
+    if matching_region_path != PT.get_name(zone_subregion):
+      PT.rm_child(zone_subregion, MT.getDistribution(zone_subregion))
+
   # > BCs
   for bc in PT.iter_children_from_predicates(zone, 'ZoneBC_t/BC_t'):
     redistribute_pl_node(bc, distribution, comm)
@@ -176,22 +193,6 @@ def redistribute_zone(zone, distribution, comm):
   for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', gc_pred]):
     redistribute_pl_node(gc, distribution, comm)
 
-  # > ZoneSubRegion
-  zone_subregions = PT.get_children_from_label(zone, 'ZoneSubRegion_t')
-  for zone_subregion in zone_subregions:
-    # Trick if related to an other node -> add pl
-    matching_region_path = PT.getSubregionExtent(zone_subregion, zone)
-    if matching_region_path != PT.get_name(zone_subregion):
-      PT.add_child(zone_subregion, PT.get_node_from_path(zone, matching_region_path + '/PointList'))
-      PT.add_child(zone_subregion, PT.get_node_from_path(zone, matching_region_path + '/PointRange'))
-    redistribute_pl_node(zone_subregion, distribution, comm)
-    if matching_region_path != PT.get_name(zone_subregion):
-      PT.rm_children_from_name(dist_zone_subregion, 'PointList')
-      PT.rm_children_from_name(dist_zone_subregion, 'PointRange')
-      PT.rm_child(dist_zone_subregion, MT.getDistribution(dist_zone_subregion))
-
-    PT.rm_child(zone, zone_subregion)
-    PT.add_child(zone, dist_zone_subregion)
     
 # ---------------------------------------------------------------------------------------
 
@@ -221,22 +222,7 @@ def redistribute_tree(dist_tree, comm, policy='uniform'):
       :end-before: #redistribute_dist_tree@end
       :dedent: 2
   """
-  if policy == 'gather':
-    policy = 'gather.0'
-  policy_split = policy.split('.')
-  assert len(policy_split) in [1, 2]
-
-  policy_type = policy_split[0]
-
-  if policy_type == "uniform":
-    distribution = par_utils.uniform_distribution
-  elif policy_type == "gather":
-    assert len(policy_split) == 2
-    i_rank = int(policy_split[1])
-    assert i_rank < comm.Get_size() 
-    distribution = lambda n_elt, comm : par_utils.gathering_distribution(i_rank, n_elt, comm)
-  else:
-    raise ValueError("Unknown policy for redistribution")
+  distribution = interpret_policy(policy, comm)
 
   for zone in PT.iter_all_Zone_t(dist_tree):
     redistribute_zone(zone, distribution, comm)

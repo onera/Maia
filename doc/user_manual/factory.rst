@@ -8,6 +8,7 @@ Generation
 ----------
 
 .. autofunction:: maia.factory.generate_dist_block
+.. autofunction:: maia.factory.distribute_tree
 
 Partitioning
 ------------

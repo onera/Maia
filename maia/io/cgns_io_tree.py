@@ -5,7 +5,7 @@ from .distribution_tree         import add_distribution_info, clean_distribution
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, _enforce_pdm_dtype
 
-from maia.factory     import distribute_tree
+from maia.factory     import full_to_dist
 from maia.pytree.yaml import parse_yaml_cgns
 
 def load_collective_size_tree(filename, comm, legacy=False):
@@ -147,7 +147,7 @@ def file_to_dist_tree(filename, comm, legacy=False):
         _enforce_pdm_dtype(tree)  
     else:
       tree = None
-    dist_tree = distribute_tree(tree, comm, owner=0) 
+    dist_tree = full_to_dist.distribute_tree(tree, comm, owner=0) 
 
   else:
     dist_tree = load_collective_size_tree(filename, comm, legacy)

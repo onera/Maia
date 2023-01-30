@@ -9,23 +9,10 @@ from   maia.pytree.yaml    import parse_yaml_cgns
 from   maia.utils.parallel import utils as par_utils
 from   maia.io             import distribution_tree
 
-@mark_mpi_test(3)
-def test_create_distribution_node(sub_comm):
-  node = PT.new_node('ParentNode', 'UserDefinedData_t')
-  distribution_tree.create_distribution_node(100, sub_comm, 'MyDistribution', node)
-
-  distri_ud   = MT.getDistribution(node)
-  assert distri_ud is not None
-  assert PT.get_label(distri_ud) == 'UserDefinedData_t'
-  distri_node = PT.get_child_from_name(distri_ud, 'MyDistribution')
-  assert distri_node is not None
-  assert (PT.get_value(distri_node) == par_utils.uniform_distribution(100, sub_comm)).all()
-  assert PT.get_label(distri_node) == 'DataArray_t'
-
 @mark_mpi_test(2)
-def test_compute_plist_or_prange_distribution(sub_comm):
+def test_compute_subset_distribution(sub_comm):
   node = PT.new_BC(name='BC', point_range=[[1,3],[1,3],[3,3]])
-  distribution_tree.compute_plist_or_prange_distribution(node, sub_comm)
+  distribution_tree.compute_subset_distribution(node, sub_comm, par_utils.uniform_distribution)
 
   distrib_ud = MT.getDistribution(node)
   assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
@@ -36,7 +23,7 @@ def test_compute_plist_or_prange_distribution(sub_comm):
   node = PT.new_BC(name='BC')
   PT.new_PointList('PointList', None, parent=node)
   PT.new_PointList('PointList#Size', [1,9], parent=node)
-  distribution_tree.compute_plist_or_prange_distribution(node, sub_comm)
+  distribution_tree.compute_subset_distribution(node, sub_comm, par_utils.uniform_distribution)
 
   distrib_ud = MT.getDistribution(node)
   assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
@@ -50,8 +37,8 @@ def test_compute_elements_distribution(sub_comm):
   zoneU = PT.new_Zone('ZoneS', type='Unstructured')
   hexa = PT.new_Elements('Hexa', 'HEXA_8', erange=[1,100],parent=zoneU)
   tri  = PT.new_Elements('Tri', 'TRI_3', erange=[101,1000],parent=zoneU)
-  distribution_tree.compute_elements_distribution(zoneS, sub_comm)
-  distribution_tree.compute_elements_distribution(zoneU, sub_comm)
+  distribution_tree.compute_elements_distribution(zoneS, sub_comm, par_utils.uniform_distribution)
+  distribution_tree.compute_elements_distribution(zoneU, sub_comm, par_utils.uniform_distribution)
   assert (PT.get_node_from_name(hexa, 'Element')[1] == \
       par_utils.uniform_distribution(100, sub_comm)).all()
   assert (PT.get_node_from_name(tri , 'Element')[1] == \
@@ -88,7 +75,7 @@ Zone Zone_t [[27,8,0]]:
     PointList#Size IndexArray [1,10]:
   """
     zone = parse_yaml_cgns.to_node(yt)
-    distribution_tree.compute_zone_distribution(zone, sub_comm)
+    distribution_tree.compute_zone_distribution(zone, sub_comm, par_utils.uniform_distribution)
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 5
     assert len(PT.get_nodes_from_name(zone, 'Element')) == 1
 
@@ -105,7 +92,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
   """
     zone = parse_yaml_cgns.to_node(yt)
-    distribution_tree.compute_zone_distribution(zone, sub_comm)
+    distribution_tree.compute_zone_distribution(zone, sub_comm, par_utils.uniform_distribution)
     assert PT.get_node_from_name(zone, 'PointList#Size') is None
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 3
     assert MT.getDistribution(zone, 'Face') is not None
