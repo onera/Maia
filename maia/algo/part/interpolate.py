@@ -64,18 +64,11 @@ class Interpolator:
     Usable only if distance are available in src_to_tgt dict (eg if closestpoint method was used).
     """
     come_from_idx = self.sending_gnums[i_part]['come_from_idx']
-    n_recv = come_from_idx[1] #We assert this one to be the same for each located gn
-    assert (np.diff(come_from_idx) == n_recv).all()
-    n_reduced = come_from_idx.size - 1
-
-    reduced_data = np.zeros(n_reduced, float)
-    factor = np.zeros(n_reduced, float)
     dist_threshold = np.maximum(self.tgt_dist[i_part], 1E-20)
-    for i in range(n_recv):
-      reduced_data += (1./dist_threshold[i::n_recv]) * data[i::n_recv]
-      factor += (1./dist_threshold[i::n_recv])
-    reduced_data /= factor
-    return reduced_data
+    reduced_data   = np.add.reduceat(data/dist_threshold, come_from_idx[:-1])
+    reduced_factor = np.add.reduceat(1/dist_threshold, come_from_idx[:-1])
+    assert reduced_data.size == come_from_idx.size - 1
+    return reduced_data / reduced_factor
 
 
   def exchange_fields(self, container_name, reduce_func=_reduce_single_val):

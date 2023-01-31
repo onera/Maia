@@ -209,10 +209,10 @@ def test_interpolator_reductions():
   assert (out == np.array([1.5, 10., 27.5])).all()
 
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,5,6])}]
-  fake_interpolator.tgt_dist = [np.array([1,1,0,1,3,1])]
-  data = np.array([1,2, 10,11, 20,30], np.float64)
-  with pytest.raises(AssertionError):
-    out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
+  fake_interpolator.tgt_dist = [np.array([1,1, 0,1,3, 1])]
+  data = np.array([1,2, 10,11,20, 30], np.float64)
+  out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
+  assert (out == np.array([1.5, 10., 30.0])).all()
 
 @mark_mpi_test(2)
 def test_interpolate_fields(sub_comm):
