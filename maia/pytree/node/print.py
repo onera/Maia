@@ -28,6 +28,7 @@ def _render_value(value, line_prefix, verbose):
   elif value.dtype.kind == 'S': # Strings
     str_value = NA._np_to_string(value)
     if value.ndim == 1:
+      str_value = str_value.replace('\n', '\\n')
       str_value = '"' + str_value + '"'
       if len(str_value) < 20: # Short string
         out = str_value
@@ -38,6 +39,7 @@ def _render_value(value, line_prefix, verbose):
         else: # Long string, non verbose mode
           out = f'{str_value[:20]}[...]{str_value[-5:]}'
     elif value.ndim == 2:
+      str_value = [s.replace('\n', '\\n') for s in str_value]  
       if sum([len(s) for s in str_value]) < 20: # Short strings
         out = '['
         for word in str_value:
@@ -87,7 +89,7 @@ def print_node(node, depth, is_last_child, line_prefix, plabel, cst_props, out_l
 
   verbose    = cst_props['verbose']
   max_depth  = cst_props['max_depth']
-  no_colors  = cst_props['no_colors']
+  colors     = cst_props['colors']
   
 
   # Format : line_header has the "├───" stuff, line prefix has just indentation
@@ -111,7 +113,7 @@ def print_node(node, depth, is_last_child, line_prefix, plabel, cst_props, out_l
   # Set colors
   rendered_label = label
   rendered_name  = name
-  if not no_colors:
+  if colors:
     rendered_label = label_color + label + reset
     if label in ['CGNSTree_t', 'CGNSBase_t', 'Zone_t']:
       rendered_name = bold + hierar_color + name + reset
@@ -132,15 +134,15 @@ def print_node(node, depth, is_last_child, line_prefix, plabel, cst_props, out_l
 
 
 def print_tree(tree, out=sys.stdout, *, 
-        verbose=False, max_depth=1000, no_colors=False, print_if=lambda n: True):
-  """ Print arborescence of a CGNSTree.
+        verbose=False, max_depth=1000, colors=True, print_if=lambda n: True):
+  """ Print the arborescence of a CGNSTree.
 
   Args:
     tree      (CGNSTree) : CGNSTree or node to be printed
     out       ()         : Where to print
     verbose   (bool)     : If True, dataset are printed
     max_depth (int)      : Stop printing once max_depth is reached
-    no_colors (bool)     : If True, discard colors in output
+    colors    (bool)     : If False, discard colors in output
     print_if (callable)  : Nodes are printed only if print_if returns True on one of their children
   """
 
@@ -160,10 +162,10 @@ def print_tree(tree, out=sys.stdout, *,
     node[1] = node[1][0]
    
   if out not in [sys.stdout, sys.stderr]:
-    no_colors = True
+    colors = False
 
   print_traits = {'max_depth' : max_depth,
-                  'no_colors' : no_colors,
+                  'colors'    : colors,
                   'verbose'   : verbose}
 
   out_lines = []
