@@ -120,23 +120,23 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, dicttag_to_bcinfo, families, out_file
       PT.add_child(bc_n, solbc)
       PT.add_child(bc_n, famname)
 
-  if edge_groups is not None:
-    shift_bc = shift_elmt_surf - 1 if sections_surf is not None else shift_elmt_ridge - 1
-    edge_group_idx = edge_groups['dgroup_elmt_idx']
-    edge_group = shift_bc + edge_groups['dgroup_elmt']
-    distri = np.empty(n_rank, dtype=edge_group.dtype)
-    n_edge_group = edge_group_idx.shape[0] - 1
+  # if edge_groups is not None:
+  #   shift_bc = shift_elmt_surf - 1 if sections_surf is not None else shift_elmt_ridge - 1
+  #   edge_group_idx = edge_groups['dgroup_elmt_idx']
+  #   edge_group = shift_bc + edge_groups['dgroup_elmt']
+  #   distri = np.empty(n_rank, dtype=edge_group.dtype)
+  #   n_edge_group = edge_group_idx.shape[0] - 1
 
-    for i_bc in range(n_edge_group):
-      bc_n = PT.new_BC('dcube_ridge_{0}'.format(i_bc), type='BCWall', parent=zone_bc)
-      PT.new_GridLocation('EdgeCenter', parent=bc_n)
-      start, end = edge_group_idx[i_bc], edge_group_idx[i_bc+1]
-      dn_edge_bnd = end - start
-      PT.new_PointList(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
+  #   for i_bc in range(n_edge_group):
+  #     bc_n = PT.new_BC('dcube_ridge_{0}'.format(i_bc), type='BCWall', parent=zone_bc)
+  #     PT.new_GridLocation('EdgeCenter', parent=bc_n)
+  #     start, end = edge_group_idx[i_bc], edge_group_idx[i_bc+1]
+  #     dn_edge_bnd = end - start
+  #     PT.new_PointList(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
 
-      bc_distrib = par_utils.gather_and_shift(dn_edge_bnd, comm, pdm_gnum_dtype)
-      distrib    = bc_distrib[[i_rank, i_rank+1, n_rank]]
-      MT.newDistribution({'Index' : distrib}, parent=bc_n)
+  #     bc_distrib = par_utils.gather_and_shift(dn_edge_bnd, comm, pdm_gnum_dtype)
+  #     distrib    = bc_distrib[[i_rank, i_rank+1, n_rank]]
+  #     MT.newDistribution({'Index' : distrib}, parent=bc_n)
 
   if vtx_groups is not None:
     shift_bc = shift_elmt_ridge - 1 if sections_ridge is not None else shift_elmt_corner - 1
@@ -251,10 +251,15 @@ def cgns_to_meshb(dist_tree, files, criterion):
     n_vtx   = PT.Zone.n_vtx(zone)
     n_tetra = elmt_by_dim[3].shape[0]//4
     n_tri   = elmt_by_dim[2].shape[0]//3
+    try:
+      n_edge  = elmt_by_dim[1].shape[0]//2
+    except AttributeError:
+      n_edge = 0
 
 
     # PointList BC to BC tag
     elmt_tag2 = -np.ones(n_tri, dtype=np.int32)
+    edge_tag2 =  np.ones(n_edge, dtype=np.int32)
 
     n_tag = 0
 
@@ -292,10 +297,11 @@ def cgns_to_meshb(dist_tree, files, criterion):
     tetra_tag = np.zeros(n_tetra, dtype=np.int32)
 
     PDM.write_meshb(bytes(files["mesh"], 'utf-8'),
-                    n_vtx, n_tetra, n_tri,
+                    n_vtx, n_tetra, n_tri, n_edge,
                     xyz,            vtx_tag,
                     elmt_by_dim[3], tetra_tag,
-                    elmt_by_dim[2], elmt_tag2)
+                    elmt_by_dim[2], elmt_tag2,
+                    elmt_by_dim[1], edge_tag2)
 
 
     # Write criterion file
