@@ -210,7 +210,7 @@ def test_depth_first_search():
   #
   g = rooted_tree_example()
   v = visitor_for_testing_dfs()
-  depth_first_search(g,v)
+  found = depth_first_search(g,v)
 
   expected_s = \
     '[pre ] 1\n' \
@@ -229,6 +229,7 @@ def test_depth_first_search():
     '[post] 1\n'
 
   assert v.accumulation_string() == expected_s
+  assert node_value(found) == 8
 
 
 class modifying_visitor_for_testing_dfs(visitor_for_testing_depth_first_scan):

@@ -115,7 +115,7 @@ def unwind(S, f):
   f.post(S.nodes())
 
 
-def depth_first_search_stack(S, g, f):
+def depth_first_search_stack(S, f):
   """ Depth-first graph traversal
 
   This is the low-level algorithm that is called by `depth_first_search`
@@ -199,4 +199,4 @@ def depth_first_search(g, f, only_nodes=True):
   v = make_visitor(f)
   if only_nodes:
     v = node_visitor(v)
-  return depth_first_search_stack(S, g, v)
+  return depth_first_search_stack(S, v)
