@@ -24,11 +24,5 @@ def elements_to_ngons(dist_tree,comm):
   Args:
     dist_tree  (CGNSTree): Tree with an element-based connectivity
     comm       (`MPIComm`): MPI communicator
-
-  Example:
-      .. literalinclude:: snippets/test_algo.py
-        :start-after: #elements_to_ngons@start
-        :end-before: #elements_to_ngons@end
-        :dedent: 2
   """
   apply_to_zones(cdist_algo.elements_to_ngons, dist_tree, comm)

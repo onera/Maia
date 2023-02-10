@@ -159,3 +159,41 @@ def generate_ngon_from_std_elements(dist_tree, comm):
     for elt in sorted(elts_to_remove, key = PT.Element.Dimension):
       RME.remove_element(zone, elt)
   MJT.copy_donor_subset(dist_tree)
+
+def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
+  """
+  Transform an element based connectivity into a polyedric (NGon based)
+  connectivity.
+  
+  Tree is modified in place : standard element are removed from the zones
+  and the PointList are updated. If ``stable_sort`` is True, face based PointList
+  keep their original values.
+
+  Requirement : the ``Element_t`` nodes appearing in the distributed zones
+  must be ordered according to their dimension (either increasing or 
+  decreasing). 
+
+  Args:
+    dist_tree  (CGNSTree): Tree with connectivity described by standard elements
+    comm       (`MPIComm`) : MPI communicator
+    stable_sort (bool, optional) : If True, 2D elements described in the
+      elements section keep their original id. Defaults to False.
+
+  Note that ``stable_sort`` is an experimental feature that brings the additional
+  constraints:
+    
+    - 2D meshes are not supported;
+    - 2D sections must have lower ElementRange than 3D sections.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #convert_elements_to_ngon@start
+        :end-before: #convert_elements_to_ngon@end
+        :dedent: 2
+  """
+  if stable_sort: 
+    from .elements_to_ngons import elements_to_ngons
+    elements_to_ngons(dist_tree, comm)
+  else:
+    generate_ngon_from_std_elements(dist_tree, comm)
+

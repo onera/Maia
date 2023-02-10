@@ -29,6 +29,7 @@ elsA spiro-el8_mpi production :
 
 .. code-block:: sh
 
+  module purge
   source /stck/elsa/Public/v5.1.03/Dist/bin/spiro-el8_mpi/source.me
 
   export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-cfd5_21/
