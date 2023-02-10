@@ -122,6 +122,26 @@ def get_value(node, raw=False):
   else:
     return raw_val
 
+def get_value_type(node):
+  """ Return the value type of the input CGNSNode """
+  val = get_value(node, raw=True)
+  if val is None:
+    return 'MT'
+  if isinstance(val,str):
+    return 'C1'
+  else:
+    return val.dtype
+
+def get_value_kind(node):
+  """ Return the value kind of the input CGNSNode """
+  val = get_value(node, raw=True)
+  if val is None:
+    return 'MT'
+  if isinstance(val,str):
+    return 'C1'
+  else:
+    return val.dtype.kind
+
 def set_value(node, value):
   node[1] = _convert_value(value)
 

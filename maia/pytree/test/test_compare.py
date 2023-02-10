@@ -7,6 +7,8 @@ import maia.pytree as PT
 from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.pytree import compare as CP
+from maia.pytree.compare_arrays import field_comparison, tensor_field_comparison
+from mpi4py import MPI
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -70,19 +72,115 @@ def test_is_same_node():
   assert not CP.is_same_node(node1, node2)
   node2[0] = 'gc3'
   assert CP.is_same_node(node1, node2) #Children are not compared
-  
+
 def test_is_same_tree():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)
-  node1 = PT.get_node_from_name(tree, 'gc5')
-  node2 = PT.deep_copy(node1)
-  assert CP.is_same_tree(node1, node2)
-  #Position of child does not matter
-  node2[2][1], node2[2][2] = node2[2][2], node2[2][1]
-  assert CP.is_same_tree(node1, node2)
+  t1 = PT.get_node_from_name(tree, 'gc5')
+  t2 = PT.deep_copy(t1)
+  assert CP.is_same_tree(t1, t2)
+
+  # Position of child does not matter
+  t2 = PT.deep_copy(t1)
+  t2[2][1], t2[2][2] = t2[2][2], t2[2][1]
+  assert CP.is_same_tree(t1, t2)
+
   # But node must have same children names
-  PT.new_node('Index_vii', 'IndexArray_t', parent=node2)
-  assert not CP.is_same_tree(node1, node2)
-  #And those one should be equal
-  PT.new_node('Index_vii', 'IndexArray_t', value=[[1,2]])
-  assert not CP.is_same_tree(node1, node2)
+  t2 = PT.deep_copy(t1)
+  PT.new_node('Index_vii', 'IndexArray_t', parent=t2)
+  assert not CP.is_same_tree(t1, t2)
+
+  # And those one should be equal
+  t2 = PT.deep_copy(t1)
+  t3 = PT.deep_copy(t1)
+  PT.new_node('Index_vii', 'IndexArray_t', value=[0], parent=t2)
+  PT.new_node('Index_vii', 'IndexArray_t', value=[1], parent=t3)
+  assert not CP.is_same_tree(t2, t3)
+
+def test_diff_tree():
+  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
+    t1 = parse_yaml_cgns.to_cgns_tree(yt)
+  t2 = PT.deep_copy(t1)
+  assert CP.diff_tree(t1, t2)[1] == ''
+
+  # Position of child does not matter
+  t2 = PT.deep_copy(t1)
+  gc5_t3 = PT.get_node_from_name(t2, 'gc5')
+  gc5_t3[2][1], gc5_t3[2][2] = gc5_t3[2][2], gc5_t3[2][1]
+  assert CP.diff_tree(t1, t2)[1] == ''
+
+  # But node must have the same name...
+  t2 = PT.deep_copy(t1)
+  gc5_t2 = PT.get_node_from_name(t2, 'gc5')
+  PT.set_name(gc5_t2, 'gc6')
+  assert CP.diff_tree(t1, t2)[1] == '< /CGNSTree/Base/ZoneI/ZGCB/gc5\n' \
+                                    '> /CGNSTree/Base/ZoneI/ZGCB/gc6\n'
+
+  # ... Same label ...
+  t2 = PT.deep_copy(t1)
+  gc5_t2 = PT.get_node_from_name(t2, 'gc5')
+  PT.set_label(gc5_t2, 'IndexRange_t')
+  assert CP.diff_tree(t1, t2)[1] == '/CGNSTree/Base/ZoneI/ZGCB/gc5 -- Labels differ: GridConnectivity_t <> IndexRange_t\n'
+
+  # ... Same children ...
+  t2 = PT.deep_copy(t1)
+  gc5_t2 = PT.get_node_from_name(t2, 'gc5')
+  PT.new_node('Index_vii', 'IndexArray_t', parent=gc5_t2)
+  assert CP.diff_tree(t1, t2)[1] == '> /CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii\n'
+
+  # ... And values should be equal
+  t2 = PT.deep_copy(t1)
+  t3 = PT.deep_copy(t1)
+  gc5_t2 = PT.get_node_from_name(t2, 'gc5')
+  gc5_t3 = PT.get_node_from_name(t3, 'gc5')
+  PT.new_node('Index_vii', 'IndexArray_t', value=[0], parent=gc5_t2)
+  PT.new_node('Index_vii', 'IndexArray_t', value=[1], parent=gc5_t3)
+  assert CP.diff_tree(t2, t3)[1] == '/CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii -- Values differ: [0] <> [1]\n'
+
+
+def test_diff_tree_field_comp():
+  t_ref = """
+FlowSolution FlowSolution_t []:
+  MomentumX DataArray_t [1.,1.,1.,1.]:
+  MomentumY DataArray_t [2.,2.,2.,2.]:
+  MomentumZ DataArray_t [3.,3.,3.,3.]:
+  StressXX DataArray_t [1.,1.]:
+  StressXY DataArray_t [0.,0.]:
+  StressXZ DataArray_t [0.,0.]:
+  StressYX DataArray_t [0.,0.]:
+  StressYY DataArray_t [0.,0.]:
+  StressYZ DataArray_t [0.,0.]:
+  StressZX DataArray_t [0.,0.]:
+  StressZY DataArray_t [0.,0.]:
+  StressZZ DataArray_t [0.,0.]:
+"""
+  t = """
+FlowSolution FlowSolution_t []:
+  MomentumX DataArray_t [0.,1.,1.,1.]: # DIFF HERE
+  MomentumY DataArray_t [2.,2.,2.,2.]:
+  MomentumZ DataArray_t [3.,3.,3.,3.]:
+  StressXX DataArray_t [1.,1.]:
+  StressXY DataArray_t [0.,1.e-20]: # DIFF HERE
+  StressXZ DataArray_t [0.,0.]:
+  StressYX DataArray_t [0.,0.]:
+  StressYY DataArray_t [0.,0.]:
+  StressYZ DataArray_t [0.,0.]:
+  StressZX DataArray_t [0.,0.]:
+  StressZY DataArray_t [0.,0.]:
+  StressZZ DataArray_t [0.,0.]:
+"""
+  t_ref = parse_yaml_cgns.to_node(t_ref)
+  t     = parse_yaml_cgns.to_node(t)
+
+  # Compare scalar fields
+  is_ok, err_report, warn_report = CP.diff_tree(t, t_ref, comp = field_comparison(1.e-12, MPI.COMM_SELF))
+  assert not is_ok
+  assert err_report == '/FlowSolution/MomentumX -- Values differ: RMS mean diff: 5.000e-01, RMS ref mean: 1.000e+00, rel error: 5.000e-01\n' \
+                       '/FlowSolution/StressXY -- Values differ: RMS mean diff: 7.071e-21, RMS ref mean: 0.000e+00, rel error: inf\n'
+
+  # Compare tensor fields
+  # Now 'Stress' is compared as a tensor, so the difference on component XY is not significant compared to the overall field
+  is_ok, err_report, warn_report = CP.diff_tree(t, t_ref, comp = tensor_field_comparison(1.e-12, MPI.COMM_SELF))
+  assert not is_ok
+  assert err_report == '/FlowSolution/Momentum -- Values differ: RMS mean diff: 5.000e-01, RMS ref mean: 3.742e+00, rel error: 1.336e-01\n'
+

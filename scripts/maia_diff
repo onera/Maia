@@ -1,0 +1,28 @@
+#!/usr/bin/env python
+
+import argparse
+from pathlib import Path
+import sys
+import numpy as np
+
+import maia
+from maia.pytree import compare as CP
+from maia.pytree.compare_arrays import field_comparison
+
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+
+parser = argparse.ArgumentParser(description='Diff between two CGNS files')
+parser.add_argument('file0', metavar='IN', type=Path, help='first input file')
+parser.add_argument('file1', metavar='IN', type=Path, help='second input file')
+parser.add_argument('--tol', help='tolerance')
+args = parser.parse_args()
+
+dist_tree_0 = maia.io.file_to_dist_tree(args.file0, comm)
+dist_tree_1 = maia.io.file_to_dist_tree(args.file1, comm)
+
+is_ok, error_report, warning_report = CP.diff_tree(dist_tree_0, dist_tree_1, comp = field_comparison(np.float64(args.tol), comm))
+print('=========== errors ===========\n'+error_report)
+print('========== warnings ==========\n'+warning_report)
+if not is_ok:
+  sys.exit(1)

@@ -1,11 +1,11 @@
 from mpi4py import MPI
-from maia.utils.log import log
+from maia.utils.log import debug
 
 def test_variable_log_string():
   my_variable = 123
   assert \
-      log.variable_log_string(my_variable,0) \
-   == log.bold+log.blue + \
+      debug.variable_log_string(my_variable,0) \
+   == debug.colors.bold+debug.colors.blue + \
         "rank "+str(MPI.COMM_WORLD.Get_rank())+": " + \
-      log.reset + \
+      debug.colors.reset + \
       "my_variable = 123" # notice that the name "my_variable" has been stringified
