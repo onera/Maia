@@ -19,7 +19,7 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   Wrapper for discover_nodes_from_matching which add the node path in distree,
   but also recreate the distributed pointlist if needed
   """
-  discover_nodes_from_matching(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t'])
+  discover_nodes_from_matching(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t', 'Descriptor_t'])
   discover_nodes_from_matching(dist_zone, part_zones, data_path, comm)
   for nodes in PT.iter_children_from_predicates(dist_zone, pl_path, ancestors=True):
     node_path   = '/'.join([PT.get_name(node) for node in nodes])

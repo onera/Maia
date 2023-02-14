@@ -307,6 +307,12 @@ def test_part_subregion_to_dist_subregion(sub_comm, from_api):
   if sub_comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
+  ZBC ZoneBC_t:
+    BC BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[19, 23, 11]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [0,3,6]:
   ZGC ZoneGridConnectivity_t:
     GC GridConnectivity_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -326,6 +332,12 @@ ZoneU Zone_t [[6,0,0]]:
   """.format(dtype)
     pt = """
   ZoneU.P0.N0 Zone_t [[3,0,0]]:
+    ZBC ZoneBC_t:
+      BC BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[11, 13, 15, 12, 14, 16]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [1,3,5,2,4,6]:
     ZGC ZoneGridConnectivity_t:
       GC GridConnectivity_t:
         PointList IndexArray_t [[1, 12, 21]]:
@@ -335,10 +347,20 @@ ZoneU Zone_t [[6,0,0]]:
       GridLocation GridLocation_t "FaceCenter":
       GridConnectivityRegionName Descriptor_t "GC":
       field DataArray_t R8 [200,500,100]:
+    CreatedZSR ZoneSubRegion_t:
+      GridLocation GridLocation_t "FaceCenter":
+      BCRegionName Descriptor_t "BC":
+      field DataArray_t R8 [111., 113., 115., 112., 114., 116.]:
     """.format(dtype)
   elif sub_comm.Get_rank() == 1:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
+  ZBC ZoneBC_t:
+    BC BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[40, 42, 10]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [3,6,6]:
   ZGC ZoneGridConnectivity_t:
     GC GridConnectivity_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -384,13 +406,16 @@ ZoneU Zone_t [[6,0,0]]:
     PTB.part_subregion_to_dist_subregion(dist_zone, part_zones, sub_comm)
 
   assert PT.get_node_from_path(dist_zone, 'ZSRWithPL/field')[1].dtype == np.int32
-  assert PT.get_node_from_path(dist_zone, 'LinkedZSR/field')[1].dtype == np.float64
+  assert PT.get_node_from_path(dist_zone, 'LinkedZSR/field') [1].dtype == np.float64
+  assert PT.get_node_from_path(dist_zone, 'CreatedZSR/field')[1].dtype == np.float64
   if sub_comm.Get_rank () == 0:
     assert (PT.get_node_from_path(dist_zone, 'ZSRWithPL/field')[1] == [84]).all()
     assert (PT.get_node_from_path(dist_zone, 'LinkedZSR/field')[1] == [100,200]).all()
+    assert (PT.get_node_from_path(dist_zone, 'CreatedZSR/field')[1] == [111., 112., 113.]).all()
   if sub_comm.Get_rank () == 1:
     assert (PT.get_node_from_path(dist_zone, 'ZSRWithPL/field')[1] == [48]).all()
     assert (PT.get_node_from_path(dist_zone, 'LinkedZSR/field')[1] == [300,400,500,600]).all()
+    assert (PT.get_node_from_path(dist_zone, 'CreatedZSR/field')[1] == [114., 115., 116.]).all()
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("from_api", [False, True])
