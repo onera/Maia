@@ -171,8 +171,8 @@ def _recover_elements(dist_zone, part_zones, comm):
       nface_name = elt_names[elt_kinds.index('NFACE_n')]
       IPTB.part_nface_to_dist_nface(dist_zone, part_zones, nface_name, ngon_name, comm)
       # > Shift nface element_range and create all cell distri
-      n_face_tot  = PT.get_node_from_path(dist_zone, 'NGonElements/ElementRange')[1][1]
-      nface_range = PT.get_node_from_path(dist_zone, 'NFaceElements/ElementRange')[1]
+      n_face_tot  = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1][1]
+      nface_range = PT.get_node_from_path(dist_zone, f'{nface_name}/ElementRange')[1]
       nface_range += n_face_tot
 
   # Deal standard elements
