@@ -1,3 +1,9 @@
+"""
+Maia: Distributed algorithms and manipulations over CGNS meshes
+"""
+
+__version__ = '0.9'
+
 import Pypdm.Pypdm as PDM
 
 pdm_has_parmetis = PDM.pdm_has_parmetis
