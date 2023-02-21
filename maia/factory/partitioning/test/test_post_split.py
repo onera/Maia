@@ -93,6 +93,9 @@ Zone Zone_t:
       GridConnectivityProperty GridConnectivityProperty_t:
         Periodic Periodic_t:
           Translation DataArray_t [1,1,1]:
+  ZSR ZoneSubRegion_t:
+    GridLocation GridLocation_t:
+    BCRegionName Descriptor_t "BC":
 """
   pt = """
 Zone.P2.N3 Zone_t:
@@ -108,6 +111,7 @@ Zone.P2.N3 Zone_t:
   dist_zone = parse_yaml_cgns.to_node(dt)
   part_zone = parse_yaml_cgns.to_node(pt)
   PS.copy_additional_nodes(dist_zone, part_zone)
+  assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'BCRegionName'), PT.get_node_from_name(part_zone, 'BCRegionName'))
   assert PT.get_label(PT.get_node_from_name(dist_zone, '.Solver#BC')) == PT.get_label(PT.get_node_from_name(part_zone, '.Solver#BC'))
   assert PT.get_value(PT.get_node_from_name(dist_zone, 'GridConnectivityDonorName')) == PT.get_value(PT.get_node_from_name(part_zone, 'GridConnectivityDonorName'))
   assert (PT.get_value(PT.get_node_from_name(dist_zone, 'Translation')) == \

@@ -68,6 +68,16 @@ def copy_additional_nodes(dist_zone, part_zone):
       for node in PT.get_children(d_gc):
         if PT.get_name(node) in names or PT.get_label(node) in types:
           PT.add_child(p_gc, node)
+  #ZSRs
+  for d_zsr in PT.iter_nodes_from_predicates(dist_zone, 'ZoneSubRegion_t'):
+    descript_n = PT.get_child_from_label(d_zsr, 'Descriptor_t')
+    if descript_n is not None:
+      bc_name = PT.get_value(descript_n)
+      bc_n = PT.get_child_from_predicates(part_zone, f'ZoneBC_t/{bc_name}')
+      if bc_n is not None:
+        dzsr_name = PT.get_name(d_zsr)
+        dzsr_loc  = PT.get_value(PT.get_child_from_label(d_zsr, 'GridLocation_t'))
+        PT.new_ZoneSubRegion(dzsr_name, loc=dzsr_loc, bc_name=bc_name, parent=part_zone)
 
 def split_original_joins(p_tree):
   """
