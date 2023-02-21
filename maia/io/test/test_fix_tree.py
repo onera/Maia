@@ -7,6 +7,23 @@ from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.io import fix_tree
 
+def test_check_datasize(capsys):
+  yt = """
+  Base CGNSBase_t [3,3]:
+    ZoneA Zone_t I4 [[11,10,0]]:
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t:
+  """
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  fix_tree.check_datasize(tree)
+  out, err = capsys.readouterr()
+  assert out == ''
+  grid_co = PT.get_node_from_name(tree, 'GridCoordinates')
+  PT.new_DataArray('CoordinateY', np.arange(1000), parent=grid_co)
+  fix_tree.check_datasize(tree)
+  out, err = capsys.readouterr()
+  assert out == "Warning -- Some heavy data are not distributed: ['CoordinateY']\n"
+
 def test_fix_zone_datatype():
   yt = """
   Base CGNSBase_t [3,3]:

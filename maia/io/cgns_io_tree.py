@@ -102,7 +102,9 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   if(unlock_at_least_one is False):
     raise RuntimeError("Something strange in the loading process")
 
-  ensure_PE_global_indexing(dist_tree)
+  n_shifted = ensure_PE_global_indexing(dist_tree)
+  if n_shifted > 0 and comm.Get_rank() == 0:
+    print(f"Warning -- Some NGon/ParentElements have been shift to be CGNS compliant")
 
 def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
