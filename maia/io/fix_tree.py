@@ -137,7 +137,7 @@ def ensure_PE_global_indexing(dist_tree):
     ngon_nodes = [elt for elt in elts if PT.Element.CGNSName(elt)=='NGON_n']
     oth_nodes  = [elt for elt in elts if PT.Element.CGNSName(elt)!='NGON_n']
     if ngon_nodes == []:
-      return
+      return n_shifted
     elif len(ngon_nodes) == 1:
       if len(oth_nodes) > 1 or (len(oth_nodes) == 1 and PT.Element.CGNSName(oth_nodes[0]) != 'NFACE_n'):
         raise RuntimeError(f"Zone {PT.get_name(zone)} has both NGon and Std elements nodes, which is not supported")

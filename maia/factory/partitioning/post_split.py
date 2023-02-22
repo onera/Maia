@@ -68,16 +68,35 @@ def copy_additional_nodes(dist_zone, part_zone):
       for node in PT.get_children(d_gc):
         if PT.get_name(node) in names or PT.get_label(node) in types:
           PT.add_child(p_gc, node)
+
+def generate_related_zsr(dist_zone, part_zone):
+  """
+  """
   #ZSRs
   for d_zsr in PT.iter_nodes_from_predicates(dist_zone, 'ZoneSubRegion_t'):
     descript_n = PT.get_child_from_label(d_zsr, 'Descriptor_t')
     if descript_n is not None:
-      bc_name = PT.get_value(descript_n)
-      bc_n = PT.get_child_from_predicates(part_zone, f'ZoneBC_t/{bc_name}')
-      if bc_n is not None:
-        dzsr_name = PT.get_name(d_zsr)
-        dzsr_loc  = PT.get_value(PT.get_child_from_label(d_zsr, 'GridLocation_t'))
-        PT.new_ZoneSubRegion(dzsr_name, loc=dzsr_loc, bc_name=bc_name, parent=part_zone)
+      if PT.get_name(descript_n)=='BCRegionName':
+        bc_name = PT.get_value(descript_n)
+        bc_n = PT.get_child_from_predicates(part_zone, f'ZoneBC_t/{bc_name}')
+        if bc_n is not None:
+          dzsr_name = PT.get_name(d_zsr)
+          # dzsr_loc  = PT.get_value(PT.get_child_from_label(d_zsr, 'GridLocation_t')) # ZSR location useless if linked to BC
+          PT.new_ZoneSubRegion(dzsr_name, bc_name=bc_name, parent=part_zone)
+
+      elif PT.get_name(descript_n)=='GridConnectivityRegionName':
+        PT.print_tree(descript_n)
+        gc_name = PT.get_value(descript_n)
+        gcs_n = PT.get_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', lambda n : PT.get_name(n).split('.')[0]==gc_name])
+        for gc_n in gcs_n:
+          pgc_name = PT.get_name(gc_n)
+          gc_name_suffix = pgc_name.split('.')[1]
+          pzsr_name = PT.get_name(d_zsr)+'.'+gc_name_suffix
+          PT.new_ZoneSubRegion(pzsr_name, gc_name=pgc_name, parent=part_zone)
+        # PT.print_tree(part_zone)
+
+      else:
+        raise ValueError("ZSR Descriptor_t should be BCRegionName or GridConnectivityRegionName")
 
 def split_original_joins(p_tree):
   """
@@ -228,6 +247,11 @@ def post_partitioning(dist_tree, part_tree, comm):
   # Match original joins
   JBTP.get_pl_donor(dist_tree, part_tree, comm)
   split_original_joins(part_tree)
+  for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
+    dist_zone  = PT.get_node_from_path(dist_tree, dist_zone_path)
+    part_zones = maia.transfer.utils.get_partitioned_zones(part_tree, dist_zone_path)
+    for part_zone in part_zones:
+      generate_related_zsr(dist_zone, part_zone) # Make BC_ZSR and GC_ZSR
   update_gc_donor_name(part_tree, comm)
 
   # Go back to ijk for PointList
