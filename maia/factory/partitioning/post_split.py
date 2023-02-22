@@ -93,7 +93,6 @@ def generate_related_zsr(dist_zone, part_zone):
           gc_name_suffix = pgc_name.split('.')[1]
           pzsr_name = PT.get_name(d_zsr)+'.'+gc_name_suffix
           PT.new_ZoneSubRegion(pzsr_name, gc_name=pgc_name, parent=part_zone)
-        # PT.print_tree(part_zone)
 
       else:
         raise ValueError("ZSR Descriptor_t should be BCRegionName or GridConnectivityRegionName")

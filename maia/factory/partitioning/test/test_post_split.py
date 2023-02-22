@@ -83,7 +83,7 @@ Zone Zone_t:
   ZBC ZoneBC_t:
     BC BC_t:
       PointList IndexArray_t:
-      GridLocation GridLocation_t:
+      GridLocation GridLocation_t 'FaceCenter':
       FamilyName FamilyName_t "FAM":
       .Solver#BC UserDefinedData_t:
   ZGC ZoneGridConnectivity_t:
@@ -93,16 +93,13 @@ Zone Zone_t:
       GridConnectivityProperty GridConnectivityProperty_t:
         Periodic Periodic_t:
           Translation DataArray_t [1,1,1]:
-  ZSR ZoneSubRegion_t:
-    GridLocation GridLocation_t:
-    BCRegionName Descriptor_t "BC":
 """
   pt = """
 Zone.P2.N3 Zone_t:
   ZBC ZoneBC_t:
     BC BC_t:
       PointList IndexArray_t:
-      GridLocation GridLocation_t:
+      GridLocation GridLocation_t 'FaceCenter':
   ZGC ZoneGridConnectivity_t:
     GC GridConnectivity_t:
       PointList IndexArray_t:
@@ -111,11 +108,51 @@ Zone.P2.N3 Zone_t:
   dist_zone = parse_yaml_cgns.to_node(dt)
   part_zone = parse_yaml_cgns.to_node(pt)
   PS.copy_additional_nodes(dist_zone, part_zone)
-  assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'BCRegionName'), PT.get_node_from_name(part_zone, 'BCRegionName'))
   assert PT.get_label(PT.get_node_from_name(dist_zone, '.Solver#BC')) == PT.get_label(PT.get_node_from_name(part_zone, '.Solver#BC'))
   assert PT.get_value(PT.get_node_from_name(dist_zone, 'GridConnectivityDonorName')) == PT.get_value(PT.get_node_from_name(part_zone, 'GridConnectivityDonorName'))
   assert (PT.get_value(PT.get_node_from_name(dist_zone, 'Translation')) == \
           PT.get_value(PT.get_node_from_name(part_zone, 'Translation'))).all()
+
+def test_generate_related_zsr():
+  dt = """
+Zone Zone_t:
+  ZBC ZoneBC_t:
+    BC BC_t:
+      PointList IndexArray_t:
+      GridLocation GridLocation_t "FaceCenter":
+      FamilyName FamilyName_t "FAM":
+      .Solver#BC UserDefinedData_t:
+  ZGC ZoneGridConnectivity_t:
+    GC GridConnectivity_t:
+      PointList IndexArray_t:
+      GridConnectivityDonorName Descriptor_t "toto":
+      GridConnectivityProperty GridConnectivityProperty_t:
+        Periodic Periodic_t:
+          Translation DataArray_t [1,1,1]:
+  ZSR_BC ZoneSubRegion_t:
+    BCRegionName Descriptor_t "BC":
+  ZSR_GC ZoneSubRegion_t:
+    GridConnectivityRegionName Descriptor_t "GC":
+"""
+  pt = """
+Zone.P2.N3 Zone_t:
+  ZBC ZoneBC_t:
+    BC BC_t:
+      PointList IndexArray_t:
+      GridLocation GridLocation_t "FaceCenter":
+  ZGC ZoneGridConnectivity_t:
+    GC.0 GridConnectivity_t:
+      PointList IndexArray_t:
+    GC.1 GridConnectivity_t:
+      PointList IndexArray_t:
+"""
+
+  dist_zone = parse_yaml_cgns.to_node(dt)
+  part_zone = parse_yaml_cgns.to_node(pt)
+  PS.generate_related_zsr(dist_zone, part_zone)
+  assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'ZSR_BC'), PT.get_node_from_name(part_zone, 'ZSR_BC'))
+  assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.0/Descriptor_t'))=='GC.0'
+  assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.1/Descriptor_t'))=='GC.1'
 
 def test_split_original_joins():
   pt = """
