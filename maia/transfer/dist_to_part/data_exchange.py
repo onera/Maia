@@ -166,37 +166,44 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
 
     else:
       distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
+      ancestor, leaf = PT.path_head(matching_region_path), PT.path_tail(matching_region_path)
+      lngn_list    = list()
+      pgc_name_list = dict()
+      for i_part, part_zone in enumerate(part_zones):
+        ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
+        if ancestor_n is not None:
+          lgc_name_list = list()
+          for node in PT.get_children_from_name(ancestor_n, leaf+'*'):
+            lngn_list.append(PT.get_value(MT.getGlobalNumbering(node, 'Index')))
+            lgc_name_list.append(PT.get_name(node))
+        pgc_name_list[i_part] = lgc_name_list
 
-      path_m1 = '/'.join(matching_region_path.split('/')[:-1])
-      dgc_name = matching_region_path.split('/')[-1]
-      all_paths = list()
-      for part_zone in part_zones:
-        ppaths = PT.predicates_to_paths(part_zone, [path_m1, lambda n: PT.get_name(n).split('.')[0]==dgc_name])
-        for path in ppaths:
-          if path not in all_paths:
-            all_paths.append(path)
+      #Get Data
+      fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
+      dist_data = {field : PT.get_child_from_name(d_zsr, field)[1] for field in fields}
+      #Exchange
+      part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
 
-      for path in all_paths:
-        #Get distribution and lngn
-        distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
-        lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', path)
-
-        #Get Data
-        fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
-        dist_data = {field : PT.get_child_from_name(d_zsr, field)[1] for field in fields}
-
-        #Exchange
-        part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
-
-        #Put part data in tree
-        for ipart, part_zone in enumerate(part_zones):
+      #Put part data in tree
+      i_pseudo_part = 0
+      for i_part, part_zone in enumerate(part_zones):
+        for pgc_name in pgc_name_list[i_part]:
           # Skip void zsr
-          if lngn_list[ipart].size > 0:
+          if lngn_list[i_pseudo_part].size > 0:
             # Create ZSR if not existing (eg was defined by bc/gc)
-            # p_zsr = PT.update_child(part_zone, PT.get_name(d_zsr), PT.get_label(d_zsr), PT.get_value(d_zsr))
-            matching_region_name = path.split('/')[-1]
-            is_matching_pzsr = lambda n:  PT.get_label(n)=='ZoneSubRegion_t' and \
-                                          PT.get_value(PT.get_child_from_label(n, 'Descriptor_t'))==matching_region_name
-            p_zsr = PT.get_node_from_predicate(part_zone, is_matching_pzsr)
-            for field_name, data in part_data.items():
-              PT.new_DataArray(field_name, data[ipart], parent=p_zsr)
+            def is_good_node(n): # Lambda not working because of PT.get_value()
+              if PT.get_label(n)=="ZoneSubRegion_t":
+                descript_n = PT.get_child_from_label(n, 'Descriptor_t')
+                if descript_n is not None:
+                  return PT.get_value(descript_n)==pgc_name
+              return False
+
+            tmp_n = PT.get_node_from_predicate(part_zone, is_good_node)
+            n_name_to_get = PT.get_name(tmp_n)
+            # p_zsr = PT.update_child(part_zone, name_to_get, PT.get_label(d_zsr), PT.get_value(d_zsr))
+            p_zsr = PT.update_child(part_zone, n_name_to_get)
+            if p_zsr is not None:
+              for field_name, data in part_data.items():
+                PT.new_DataArray(field_name, data[i_pseudo_part], parent=p_zsr)
+                i_pseudo_part +=1
+

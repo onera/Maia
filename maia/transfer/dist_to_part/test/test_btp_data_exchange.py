@@ -31,6 +31,14 @@ ZoneU Zone_t [[6,0,0]]:
         PointList IndexArray_t [[10]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {0} [0,1,1]:
+  ZGC ZoneGridConnectivity_t:
+    GC GridConnectivity_t "GhostZone":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
+      GridLocation GridLocation_t "Vertex":
+      PointList IndexArray_t I4 [1,3]:
+      PointListDonor IndexArray_t I4 [102,104]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t I4 [0,2,3]:
   FlowSolution FlowSolution_t:
     GridLocation GridLocation_t "Vertex":
     field1 DataArray_t I4 [0,0,0]:
@@ -51,6 +59,9 @@ ZoneU Zone_t [[6,0,0]]:
     field DataArray_t I4 [42]:
     :CGNS#Distribution UserDefinedData_t:
       Index DataArray_t [0,1,2]:
+  ZSRWithGC ZoneSubRegion_t:
+    GridConnectivityRegionName Descriptor_t "GC":
+    fieldGC DataArray_t R8 [1., 9.]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [0,3,6]:
 ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
@@ -81,8 +92,14 @@ ZoneU Zone_t [[6,0,0]]:
         PointList IndexArray_t [[]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {0} [1,1,1]:
-  :CGNS#Distribution UserDefinedData_t:
-    Vertex DataArray_t {0} [3,6,6]:
+  ZGC ZoneGridConnectivity_t:
+    GC GridConnectivity_t "GhostZone":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
+      GridLocation GridLocation_t "Vertex":
+      PointList IndexArray_t I4 [5]:
+      PointListDonor IndexArray_t I4 [106]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t I4 [2,3,3]:
   FlowSolution FlowSolution_t:
     GridLocation GridLocation_t "Vertex":
     field1 DataArray_t I4 [1,1,1]:
@@ -103,6 +120,11 @@ ZoneU Zone_t [[6,0,0]]:
     field DataArray_t I4 [24]:
     :CGNS#Distribution UserDefinedData_t:
       Index DataArray_t [1,2,2]:
+  ZSRWithGC ZoneSubRegion_t:
+    GridConnectivityRegionName Descriptor_t "GC":
+    fieldGC DataArray_t R8 [25.]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t {0} [3,6,6]:
 ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
   GridCoordinates GridCoordinates_t:
     CX DataArray_t [4,5,6]:
@@ -334,6 +356,16 @@ def test_dist_subregion_to_part_subregion(sub_comm, api_mode):
         PointList IndexArray_t [[1, 12, 21]]:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Index DataArray_t {0} [2,5,1]:
+    ZGC ZoneGridConnectivity_t:
+      GC.0 GridConnectivity_t "GhostZone.P0.N0":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "Vertex":
+        PointList IndexArray_t I4 [2]:
+        PointListDonor IndexArray_t I4 [202]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t I4 [2]:
+    ZSRWithGC.0 ZoneSubRegion_t:
+      GridConnectivityRegionName Descriptor_t "GC.0":
     """.format(dtype)
   elif sub_comm.Get_rank() == 1:
     dt = dt1
@@ -344,12 +376,41 @@ def test_dist_subregion_to_part_subregion(sub_comm, api_mode):
       PointList IndexArray_t [[1,2]]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t {0} [1,2]:
+    ZGC ZoneGridConnectivity_t:
+      GC.0 GridConnectivity_t "GhostZone.P1.N0":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "Vertex":
+        PointList IndexArray_t I4 [1]:
+        PointListDonor IndexArray_t I4 [206]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t I4 [1]:
+      GC.1 GridConnectivity_t "GhostZone.P0.N1":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "Vertex":
+        PointList IndexArray_t I4 [3]:
+        PointListDonor IndexArray_t I4 [204]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t I4 [3]:
+    ZSRWithGC.0 ZoneSubRegion_t:
+      GridConnectivityRegionName Descriptor_t "GC.0":
+    ZSRWithGC.1 ZoneSubRegion_t:
+      GridConnectivityRegionName Descriptor_t "GC.1":
   ZoneU.P1.N1 Zone_t [[2,0,0]]:
     ZBC ZoneBC_t:
       BC BC_t:
         PointList IndexArray_t [[1, 29, 108]]:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Index DataArray_t {0} [6,3,4]:
+    ZGC ZoneGridConnectivity_t:
+      GC.0 GridConnectivity_t "GhostZone.P1.N0":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "Vertex":
+        PointList IndexArray_t I4 [1]:
+        PointListDonor IndexArray_t I4 [206]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t I4 [1]:
+    ZSRWithGC.0 ZoneSubRegion_t:
+      GridConnectivityRegionName Descriptor_t "GC.0":
   """.format(dtype)
 
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
@@ -371,8 +432,12 @@ def test_dist_subregion_to_part_subregion(sub_comm, api_mode):
   if sub_comm.Get_rank() == 0:
     assert (PT.get_node_from_path(part_zones[0], 'ZSRWithoutPL/field')[1] == [200,500,100]).all()
     assert PT.get_node_from_path(part_zones[0], 'ZSRWithPL') is None
+    assert (PT.get_node_from_path(part_zones[0], 'ZSRWithGC.0/fieldGC')[1] == [9.]).all()
   elif sub_comm.Get_rank() == 1:
     assert PT.get_node_from_path(part_zones[0], 'ZSRWithoutPL') is None
     assert (PT.get_node_from_path(part_zones[0], 'ZSRWithPL/field')[1] == [42,24]).all()
     assert PT.get_node_from_path(part_zones[1], 'ZSRWithPL') is None
     assert (PT.get_node_from_path(part_zones[1], 'ZSRWithoutPL/field')[1] == [600,300,400]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'ZSRWithGC.0/fieldGC')[1] == [1.]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'ZSRWithGC.1/fieldGC')[1] == [25.]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'ZSRWithGC.0/fieldGC')[1] == [1.]).all()
