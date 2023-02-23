@@ -131,7 +131,6 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
               p_container = PT.update_child(part_ds, container_name, 'BCData_t')
               PT.new_DataArray(field_name, data[ipart], parent=p_container)
 
-
 def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
   """
   Transfert all the data included in ZoneSubRegion_t nodes from a distributed
@@ -145,22 +144,59 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
     matching_region = PT.get_node_from_path(dist_zone, matching_region_path)
     assert matching_region is not None
 
-    #Get distribution and lngn
-    distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
-    lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
+    if PT.get_label(matching_region)!='GridConnectivity_t':
+      #Get distribution and lngn
+      distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
+      lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
-    #Get Data
-    fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
-    dist_data = {field : PT.get_child_from_name(d_zsr, field)[1] for field in fields}
+      #Get Data
+      fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
+      dist_data = {field : PT.get_child_from_name(d_zsr, field)[1] for field in fields}
+      #Exchange
+      part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
 
-    #Exchange
-    part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
+      #Put part data in tree
+      for ipart, part_zone in enumerate(part_zones):
+        # Skip void zsr
+        if lngn_list[ipart].size > 0:
+          # Create ZSR if not existing (eg was defined by bc/gc)
+          p_zsr = PT.update_child(part_zone, PT.get_name(d_zsr), PT.get_label(d_zsr), PT.get_value(d_zsr))
+          for field_name, data in part_data.items():
+            PT.new_DataArray(field_name, data[ipart], parent=p_zsr)
 
-    #Put part data in tree
-    for ipart, part_zone in enumerate(part_zones):
-      # Skip void zsr
-      if lngn_list[ipart].size > 0:
-        # Create ZSR if not existing (eg was defined by bc/gc)
-        p_zsr = PT.update_child(part_zone, PT.get_name(d_zsr), PT.get_label(d_zsr), PT.get_value(d_zsr))
-        for field_name, data in part_data.items():
-          PT.new_DataArray(field_name, data[ipart], parent=p_zsr)
+    else:
+      distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
+
+      path_m1 = '/'.join(matching_region_path.split('/')[:-1])
+      dgc_name = matching_region_path.split('/')[-1]
+      all_paths = list()
+      for part_zone in part_zones:
+        ppaths = PT.predicates_to_paths(part_zone, [path_m1, lambda n: PT.get_name(n).split('.')[0]==dgc_name])
+        for path in ppaths:
+          if path not in all_paths:
+            all_paths.append(path)
+
+      for path in all_paths:
+        #Get distribution and lngn
+        distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
+        lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', path)
+
+        #Get Data
+        fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
+        dist_data = {field : PT.get_child_from_name(d_zsr, field)[1] for field in fields}
+
+        #Exchange
+        part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
+
+        #Put part data in tree
+        for ipart, part_zone in enumerate(part_zones):
+          # Skip void zsr
+          if lngn_list[ipart].size > 0:
+            # Create ZSR if not existing (eg was defined by bc/gc)
+            # p_zsr = PT.update_child(part_zone, PT.get_name(d_zsr), PT.get_label(d_zsr), PT.get_value(d_zsr))
+            matching_region_name = path.split('/')[-1]
+            is_matching_pzsr = lambda n:  PT.get_label(n)=='ZoneSubRegion_t' and \
+                                          PT.get_value(PT.get_child_from_label(n, 'Descriptor_t'))==matching_region_name
+            p_zsr = PT.get_node_from_predicate(part_zone, is_matching_pzsr)
+            for field_name, data in part_data.items():
+              PT.new_DataArray(field_name, data[ipart], parent=p_zsr)

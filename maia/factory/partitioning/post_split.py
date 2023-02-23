@@ -85,7 +85,6 @@ def generate_related_zsr(dist_zone, part_zone):
           PT.new_ZoneSubRegion(dzsr_name, bc_name=bc_name, parent=part_zone)
 
       elif PT.get_name(descript_n)=='GridConnectivityRegionName':
-        PT.print_tree(descript_n)
         gc_name = PT.get_value(descript_n)
         gcs_n = PT.get_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', lambda n : PT.get_name(n).split('.')[0]==gc_name])
         for gc_n in gcs_n:
