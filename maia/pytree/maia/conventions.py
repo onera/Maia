@@ -26,6 +26,12 @@ def get_split_prefix(name):
       f"Name {name} don't seem to follow split convention"
   return '.'.join(split[:-1])
 
+def get_split_suffix(name):
+  split = name.split('.')
+  assert len(split) >= 2, \
+      f"Name {name} don't seem to follow split convention"
+  return split[-1]
+
 def name_intra_gc(cur_proc, cur_part, opp_proc, opp_part):
   return f"JN.P{cur_proc}.N{cur_part}.LT.P{opp_proc}.N{opp_part}"
 

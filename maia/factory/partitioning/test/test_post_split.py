@@ -130,6 +130,7 @@ Zone Zone_t:
         Periodic Periodic_t:
           Translation DataArray_t [1,1,1]:
   ZSR_BC ZoneSubRegion_t:
+    SomeRandomDescriptor Descriptor_t "Let's go party":
     BCRegionName Descriptor_t "BC":
   ZSR_GC ZoneSubRegion_t:
     GridConnectivityRegionName Descriptor_t "GC":
@@ -145,6 +146,7 @@ Zone.P2.N3 Zone_t:
       PointList IndexArray_t:
     GC.1 GridConnectivity_t:
       PointList IndexArray_t:
+    JN.P2.N3.LT.P1.N0 GridConnectivity_t: # Simulate an intra JN
 """
 
   dist_zone = parse_yaml_cgns.to_node(dt)

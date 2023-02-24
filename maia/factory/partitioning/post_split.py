@@ -72,29 +72,23 @@ def copy_additional_nodes(dist_zone, part_zone):
 def generate_related_zsr(dist_zone, part_zone):
   """
   """
-  #ZSRs
+  is_inter_gc = lambda n: PT.get_label(n).startswith('GridConnectivity') and not MT.conv.is_intra_gc(PT.get_name(n))
   for d_zsr in PT.iter_nodes_from_predicates(dist_zone, 'ZoneSubRegion_t'):
-    descript_n = PT.get_child_from_label(d_zsr, 'Descriptor_t')
-    if descript_n is not None:
-      if PT.get_name(descript_n)=='BCRegionName':
-        bc_name = PT.get_value(descript_n)
-        bc_n = PT.get_child_from_predicates(part_zone, f'ZoneBC_t/{bc_name}')
-        if bc_n is not None:
-          dzsr_name = PT.get_name(d_zsr)
-          # dzsr_loc  = PT.get_value(PT.get_child_from_label(d_zsr, 'GridLocation_t')) # ZSR location useless if linked to BC
-          PT.new_ZoneSubRegion(dzsr_name, bc_name=bc_name, parent=part_zone)
-
-      elif PT.get_name(descript_n)=='GridConnectivityRegionName':
-        gc_name = PT.get_value(descript_n)
-        gcs_n = PT.get_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', lambda n : PT.get_name(n).split('.')[0]==gc_name])
-        for gc_n in gcs_n:
-          pgc_name = PT.get_name(gc_n)
-          gc_name_suffix = pgc_name.split('.')[1]
-          pzsr_name = PT.get_name(d_zsr)+'.'+gc_name_suffix
-          PT.new_ZoneSubRegion(pzsr_name, gc_name=pgc_name, parent=part_zone)
-
-      else:
-        raise ValueError("ZSR Descriptor_t should be BCRegionName or GridConnectivityRegionName")
+    bc_descriptor = PT.get_child_from_name(d_zsr, 'BCRegionName')
+    gc_descriptor = PT.get_child_from_name(d_zsr, 'GridConnectivityRegionName')
+    assert not (bc_descriptor and gc_descriptor)
+    if bc_descriptor is not None:
+      bc_name = PT.get_value(bc_descriptor)
+      bc_n = PT.get_child_from_predicates(part_zone, f'ZoneBC_t/{bc_name}')
+      if bc_n is not None:
+        PT.new_ZoneSubRegion(PT.get_name(d_zsr), bc_name=bc_name, parent=part_zone)
+    elif gc_descriptor is not None:
+      gc_name = PT.get_value(gc_descriptor)
+      gcs_n = PT.get_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', is_inter_gc])
+      for gc_n in gcs_n:
+        pgc_name = PT.get_name(gc_n)
+        pzsr_name = MT.conv.add_split_suffix(PT.get_name(d_zsr), MT.conv.get_split_suffix(pgc_name))
+        PT.new_ZoneSubRegion(pzsr_name, gc_name=pgc_name, parent=part_zone)
 
 def split_original_joins(p_tree):
   """
