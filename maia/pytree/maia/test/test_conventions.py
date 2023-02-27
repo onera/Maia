@@ -27,6 +27,12 @@ def test_get_split_prefix():
   with pytest.raises(AssertionError):
     conv.get_split_prefix('myjoin')
 
+def test_get_split_suffix():
+  assert conv.get_split_suffix('myjoin.5') == '5'
+  assert conv.get_split_suffix('myjoin.5.9') == '9'
+  with pytest.raises(AssertionError):
+    conv.get_split_suffix('myjoin')
+
 def test_name_intra_gc():
   assert conv.name_intra_gc(4,8,0,12) == 'JN.P4.N8.LT.P0.N12'
 

@@ -69,6 +69,28 @@ def copy_additional_nodes(dist_zone, part_zone):
         if PT.get_name(node) in names or PT.get_label(node) in types:
           PT.add_child(p_gc, node)
 
+def generate_related_zsr(dist_zone, part_zone):
+  """
+  """
+  is_inter_gc = lambda n: PT.get_label(n).startswith('GridConnectivity') and not MT.conv.is_intra_gc(PT.get_name(n))
+  for d_zsr in PT.iter_nodes_from_predicates(dist_zone, 'ZoneSubRegion_t'):
+    bc_descriptor = PT.get_child_from_name(d_zsr, 'BCRegionName')
+    gc_descriptor = PT.get_child_from_name(d_zsr, 'GridConnectivityRegionName')
+    assert not (bc_descriptor and gc_descriptor)
+    if bc_descriptor is not None:
+      bc_name = PT.get_value(bc_descriptor)
+      bc_n = PT.get_child_from_predicates(part_zone, f'ZoneBC_t/{bc_name}')
+      if bc_n is not None:
+        PT.new_ZoneSubRegion(PT.get_name(d_zsr), bc_name=bc_name, parent=part_zone)
+    elif gc_descriptor is not None:
+      gc_name = PT.get_value(gc_descriptor)
+      is_related_gc = lambda n: is_inter_gc(n) and PT.get_name(n).startswith(gc_name)
+      gcs_n = PT.get_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', is_related_gc])
+      for gc_n in gcs_n:
+        pgc_name = PT.get_name(gc_n)
+        pzsr_name = MT.conv.add_split_suffix(PT.get_name(d_zsr), MT.conv.get_split_suffix(pgc_name))
+        PT.new_ZoneSubRegion(pzsr_name, gc_name=pgc_name, parent=part_zone)
+
 def split_original_joins(p_tree):
   """
   """
@@ -218,6 +240,11 @@ def post_partitioning(dist_tree, part_tree, comm):
   # Match original joins
   JBTP.get_pl_donor(dist_tree, part_tree, comm)
   split_original_joins(part_tree)
+  for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
+    dist_zone  = PT.get_node_from_path(dist_tree, dist_zone_path)
+    part_zones = maia.transfer.utils.get_partitioned_zones(part_tree, dist_zone_path)
+    for part_zone in part_zones:
+      generate_related_zsr(dist_zone, part_zone) # Make BC_ZSR and GC_ZSR
   update_gc_donor_name(part_tree, comm)
 
   # Go back to ijk for PointList

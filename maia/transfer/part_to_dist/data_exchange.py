@@ -19,6 +19,11 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   Wrapper for discover_nodes_from_matching which add the node path in distree,
   but also recreate the distributed pointlist if needed
   """
+  if pl_path.split('/')[0] == 'ZoneSubRegion_t':
+    is_gc_zsr = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' and \
+                          PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None
+    ini_zsr_nodes_names = [PT.get_name(n) for n in PT.get_nodes_from_predicate(dist_zone, is_gc_zsr)]
+
   discover_nodes_from_matching(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t', 'Descriptor_t'])
   discover_nodes_from_matching(dist_zone, part_zones, data_path, comm)
   for nodes in PT.iter_children_from_predicates(dist_zone, pl_path, ancestors=True):
@@ -30,7 +35,23 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
         # > GlobalNumbering is required to do that
         IPTB.create_part_pl_gnum(dist_zone, part_zones, node_path, comm)
       IPTB.part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm)
-
+  
+  if pl_path.split('/')[0] == 'ZoneSubRegion_t':
+    # If we have a splitted ZSR (because of GridConnectivityRegionName), we need to merge it
+    # Here we assume that GC related ZSR can only refer to original jns, named using maia conventions
+    # First remove split node already present in dist_zone
+    is_gc_zsr_split = lambda n: is_gc_zsr(n) and PT.get_name(n) != name and PT.get_name(n).startswith(name)
+    for name in ini_zsr_nodes_names:
+      PT.rm_children_from_predicate(dist_zone, is_gc_zsr_split)
+    # Now manage split node not present in dist zone (remove all but .0 and rename .0)
+    is_gc_zsr_split = lambda n: is_gc_zsr(n) and PT.get_name(n) not in ini_zsr_nodes_names
+    PT.rm_children_from_predicate(dist_zone, lambda n: is_gc_zsr_split(n) \
+            and int(MT.conv.get_split_suffix(PT.get_name(n))) > 0)
+    for zsr in PT.get_children_from_predicate(dist_zone, is_gc_zsr_split):
+      PT.update_node(zsr, name=MT.conv.get_split_prefix(PT.get_name(zsr)))
+      descri = PT.get_child_from_name(zsr, 'GridConnectivityRegionName')
+      PT.update_node(descri, value=MT.conv.get_split_prefix(PT.get_value(descri)))
+          
 def part_coords_to_dist_coords(dist_zone, part_zones, comm):
 
   distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
@@ -127,7 +148,6 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
   """
   Transfert all the data included in ZoneSubRegion_t nodes from the partitioned
   zones to the distributed zone.
-  Zone subregions must exist on distzone
   """
   _discover_wrapper(dist_zone, part_zones, 'ZoneSubRegion_t', 'ZoneSubRegion_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
@@ -138,25 +158,40 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
     matching_region = PT.get_node_from_path(dist_zone, matching_region_path)
     assert matching_region is not None
 
-    #Get distribution and lngn
+    #Get distribution
     distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
-    lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
-    #Discover data
+    #Get lngn and data
     fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
     part_data = {field : [] for field in fields}
+    if PT.get_label(matching_region) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
+      # ZSR have been split
+      ancestor, leaf = PT.path_head(matching_region_path), PT.path_tail(matching_region_path)
+      lngn_list = []
+      for part_zone in part_zones:
+        for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
+          # Get corresponding part ZSR
+          lngn_list.append(PT.get_value(MT.getGlobalNumbering(node, 'Index')))
+          good_zsr = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' \
+                               and PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None \
+                               and PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node)
+          p_zsr = PT.get_node_from_predicate(part_zone, good_zsr)
+          for field in fields:
+            part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])
+    else:
+      lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
+      #Discover data
+      for part_zone in part_zones:
+        p_zsr = PT.get_node_from_path(part_zone, PT.get_name(d_zsr))
+        if p_zsr is not None:
+          for field in fields:
+            part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])
 
-    for part_zone in part_zones:
-      p_zsr = PT.get_node_from_path(part_zone, PT.get_name(d_zsr))
-      if p_zsr is not None:
-        for field in fields:
-          part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])
-
-    #Partitions having no data must be removed from lngn list since they have no contribution
-    empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
-        if PT.get_node_from_path(part_zone, PT.get_name(d_zsr)) is None]
-    for ipart in empty_parts_ids[::-1]:
-      lngn_list.pop(ipart)
+      #Partitions having no data must be removed from lngn list since they have no contribution
+      empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
+          if PT.get_node_from_path(part_zone, PT.get_name(d_zsr)) is None]
+      for ipart in empty_parts_ids[::-1]:
+        lngn_list.pop(ipart)
 
     # Exchange
     dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm)

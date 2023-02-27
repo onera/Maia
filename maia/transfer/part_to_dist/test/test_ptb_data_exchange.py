@@ -115,6 +115,43 @@ class Test__discover_wrapper:
       assert (dist_distri == [3,4,4]).all()
       assert (dist_pl     == [42]   ).all()
 
+  def test_zsr(self, sub_comm):
+    dt = """
+  Zone Zone_t:
+    InitialZSR ZoneSubRegion_t:
+      GridConnectivityRegionName Descriptor_t "match":
+    """
+    if sub_comm.Get_rank() == 0:
+      pt = """
+    Zone.P0.N0 Zone_t:
+      CreatedZSR.0 ZoneSubRegion_t:
+        GridConnectivityRegionName Descriptor_t "gc.0":
+      """
+    elif sub_comm.Get_rank() == 1:
+      pt = """
+    Zone.P1.N0 Zone_t:
+      InitialZSR.0 ZoneSubRegion_t:
+        GridConnectivityRegionName Descriptor_t "gc.0":
+      """
+    if sub_comm.Get_rank() == 2:
+      pt = """
+    Zone.P2.N0 Zone_t:
+      CreatedZSR.0 ZoneSubRegion_t:
+        GridConnectivityRegionName Descriptor_t "gc.0":
+      CreatedZSR.1 ZoneSubRegion_t:
+        GridConnectivityRegionName Descriptor_t "gc.1":
+      """
+    dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+    part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+
+    PTB._discover_wrapper(PT.get_all_Zone_t(dist_tree)[0], PT.get_all_Zone_t(part_tree), \
+        'ZoneSubRegion_t', 'DataArray_t', sub_comm)
+    dist_zsr = PT.get_nodes_from_label(dist_tree, 'ZoneSubRegion_t')
+    assert [PT.get_name(n) for n in dist_zsr] \
+        == ['InitialZSR', 'CreatedZSR']
+    assert [PT.get_value(PT.get_node_from_label(n, 'Descriptor_t')) for n in dist_zsr] \
+        == ['match', 'gc']
+
   def test_dataset(self, sub_comm):
     dt = """
   Zone Zone_t:
@@ -339,13 +376,13 @@ ZoneU Zone_t [[6,0,0]]:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Index DataArray_t {0} [1,3,5,2,4,6]:
     ZGC ZoneGridConnectivity_t:
-      GC GridConnectivity_t:
+      GC.0 GridConnectivity_t:
         PointList IndexArray_t [[1, 12, 21]]:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Index DataArray_t {0} [2,5,1]:
-    LinkedZSR ZoneSubRegion_t:
+    LinkedZSR.0 ZoneSubRegion_t:
       GridLocation GridLocation_t "FaceCenter":
-      GridConnectivityRegionName Descriptor_t "GC":
+      GridConnectivityRegionName Descriptor_t "GC.0":
       field DataArray_t R8 [200,500,100]:
     CreatedZSR ZoneSubRegion_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -381,20 +418,28 @@ ZoneU Zone_t [[6,0,0]]:
     pt = """
   ZoneU.P1.N0 Zone_t [[3,0,0]]:
     ZGC ZoneGridConnectivity_t:
-      GC GridConnectivity_t:
-        PointList IndexArray_t [[1, 29, 108]]:
+      GC.0 GridConnectivity_t:
+        PointList IndexArray_t [[1, 108]]:
         :CGNS#GlobalNumbering UserDefinedData_t:
-          Index DataArray_t {0} [6,3,4]:
+          Index DataArray_t {0} [6,4]:
+      GC.1 GridConnectivity_t:
+        PointList IndexArray_t [[29]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [3]:
     ZSRWithPL ZoneSubRegion_t:
       GridLocation GridLocation_t "Vertex":
       PointList IndexArray_t [[1,2]]:
       field DataArray_t I4 [84,48]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t {0} [1,2]:
-    LinkedZSR ZoneSubRegion_t:
+    LinkedZSR.0 ZoneSubRegion_t:
       GridLocation GridLocation_t "FaceCenter":
-      GridConnectivityRegionName Descriptor_t "GC":
-      field DataArray_t R8 [600,300,400]:
+      GridConnectivityRegionName Descriptor_t "GC.0":
+      field DataArray_t R8 [600,400]:
+    LinkedZSR.1 ZoneSubRegion_t:
+      GridLocation GridLocation_t "FaceCenter":
+      GridConnectivityRegionName Descriptor_t "GC.1":
+      field DataArray_t R8 [300]:
   """.format(dtype)
 
   dist_zone  = parse_yaml_cgns.to_node(dt)
