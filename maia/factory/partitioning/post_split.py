@@ -84,7 +84,8 @@ def generate_related_zsr(dist_zone, part_zone):
         PT.new_ZoneSubRegion(PT.get_name(d_zsr), bc_name=bc_name, parent=part_zone)
     elif gc_descriptor is not None:
       gc_name = PT.get_value(gc_descriptor)
-      gcs_n = PT.get_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', is_inter_gc])
+      is_related_gc = lambda n: is_inter_gc(n) and PT.get_name(n).startswith(gc_name)
+      gcs_n = PT.get_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', is_related_gc])
       for gc_n in gcs_n:
         pgc_name = PT.get_name(gc_n)
         pzsr_name = MT.conv.add_split_suffix(PT.get_name(d_zsr), MT.conv.get_split_suffix(pgc_name))
