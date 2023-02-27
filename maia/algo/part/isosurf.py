@@ -160,6 +160,17 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   else:
     _KIND_TO_SET_FUNC[iso_kind](pdm_isos, *iso_params)
 
+  # Discover BCs over part_zones
+  part_zones_bcs = list()
+  for i_part, part_zone in enumerate(part_zones):
+    zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
+    bcs_n     = PT.get_children_from_label(zone_bc_n, 'BC_t')
+    for bc_n in bcs_n:
+      bc_name = PT.get_name(bc_n)
+      print(bc_name)
+      if bc_name not in part_zones_bcs:
+        part_zones_bcs.append(bc_name)
+  print(f'BC_names = {part_zones_bcs}')
 
   # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
@@ -191,6 +202,33 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                       None,
                       vtx_ln_to_gn, vtx_coords)
 
+    # Add BC information
+    zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
+    bcs_n     = PT.get_children_from_label(zone_bc_n, 'BC_t')
+    n_bnd     = len(part_zones_bcs)
+    group_face_idx = np.full(n_bnd+1, 0, dtype=np.int32)
+    group_face     = np.empty(0, dtype=np.int32)
+    # for i_bc, bc_n in enumerate(bcs_n):
+    #   bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
+    #   group_face_idx[i_bc+1] = group_face_idx[i_bc]+bc_pl.shape[1]
+    #   group_face = np.concatenate([group_face, bc_pl[0]])
+    # PT.print_tree(zone_bc_n)
+    # print(f'ipart{i_part} : group_face_idx = {group_face_idx}')
+    for i_group, bc_name in enumerate(part_zones_bcs):
+      print(f'i_group = {i_group} ; bc_name = {bc_name}')
+      bc_n  = PT.get_node_from_name(zone_bc_n, bc_name)
+      if bc_n is not None:
+        bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
+        group_face_idx[i_group+1] = bc_pl.shape[1]
+        print(f'type(bc_pl) = {type(bc_pl[0][0])}')
+        group_face = np.concatenate([group_face, bc_pl[0]])
+    PT.print_tree(zone_bc_n)
+    group_face_idx = np.cumsum(group_face_idx, dtype=np.int32)
+    print(f'ipart{i_part} : group_face_idx = {group_face_idx}')
+    print(f'type(group_face_idx) = {type(group_face_idx[0])}')
+    print(f'ipart{i_part} : group_face     = {group_face}')
+    pdm_isos.isosurf_bnd_set(i_part, n_bnd, group_face_idx, group_face)
+  # sys.exit()
 
   # Isosurfaces compute in PDM  
   pdm_isos.compute()
@@ -199,7 +237,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   results = pdm_isos.part_iso_surface_surface_get()
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
-
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
   iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
@@ -213,14 +250,50 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   PT.new_DataArray('CoordinateY', cy, parent=iso_grid_coord)
   PT.new_DataArray('CoordinateZ', cz, parent=iso_grid_coord)
 
-  # > Elements
-  ngon_n = PT.new_NGonElements( 'NGonElements',
-                                erange = [1, n_iso_elt],
-                                ec=results['np_elt_vtx'],
-                                eso=results['np_elt_vtx_idx'],
-                                parent=iso_part_zone)
+  # Bnd edges
+  if elt_type in ['TRI_3']:
+    results_edge = pdm_isos.isosurf_bnd_get()
+    n_bnd_edge = results_edge['bnd_edge_group_idx'][-1]
+    bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
+    print(results_edge['bnd_edge_group_idx'])
+    print(f'n_bnd_edge = {n_bnd_edge}')
+    bar_n = PT.new_Elements('BAR_2', type='BAR_2', 
+                            erange=np.array([1, n_bnd_edge]),
+                            econn=results_edge['bnd_edge_vtx'],
+                            parent=iso_part_zone)
+    PT.maia.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
+                                'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
-  PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=ngon_n)
+    zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
+    for i_group, bc_name in enumerate(part_zones_bcs):
+      n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
+      if n_edge_in_bc!=0:
+        edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
+                            bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+1
+        bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+        PT.maia.newGlobalNumbering({'Index' : np.arange(1, n_edge_in_bc+1, dtype=np.int32)}, parent=bc_n)
+
+
+    # n_bnd_edge = 0
+  else:
+    n_bnd_edge = 0
+
+  # > Elements
+  if elt_type in ['TRI_3', 'QUAD_4']:
+    ngon_n = PT.new_Elements( elt_type,
+                              type=elt_type,
+                              erange=[n_bnd_edge+1, n_bnd_edge+n_iso_elt],
+                              econn=results['np_elt_vtx'],
+                              parent=iso_part_zone)
+  else:
+    ngon_n = PT.new_NGonElements( 'NGonElements',
+                                  erange = [1, n_iso_elt],
+                                  ec=results['np_elt_vtx'],
+                                  eso=results['np_elt_vtx_idx'],
+                                  parent=iso_part_zone)
+
+  PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
+                              'Sections': results['np_elt_ln_to_gn']}, parent=ngon_n)
 
   # > LN to GN
   PT.maia.newGlobalNumbering({'Vertex' : results['np_vtx_ln_to_gn'],
@@ -230,11 +303,13 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   maia_iso_zone = PT.new_node('maia#surface_data', label='UserDefinedData_t', parent=iso_part_zone)
   results_vtx   = pdm_isos.part_iso_surface_vtx_interpolation_data_get()
   results_geo   = pdm_isos.part_iso_surface_geom_data_get()
-  PT.new_DataArray('Cell_parent_gnum' , results    ["np_elt_parent_g_num"]  , parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_gnum'  , results_vtx["vtx_volume_vtx_g_num"] , parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
-  PT.new_DataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
+  PT.new_DataArray('Cell_parent_gnum' , results     ["np_elt_parent_g_num"]  , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_gnum'  , results_vtx ["vtx_volume_vtx_g_num"] , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_idx'   , results_vtx ["vtx_volume_vtx_idx"]   , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_weight', results_vtx ["vtx_volume_vtx_weight"], parent=maia_iso_zone)
+  PT.new_DataArray('Surface'          , results_geo ["elt_surface"]          , parent=maia_iso_zone)
+  if elt_type in ['TRI_3']:
+    PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
 
   # > FamilyName(s)
   dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [familyname_query],
