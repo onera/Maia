@@ -6,6 +6,7 @@ import maia.pytree as PT
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.utils    import np_utils, layouts, py_utils
+from .point_cloud_utils import create_sub_numbering
 
 import Pypdm.Pypdm as PDM
 
@@ -161,16 +162,18 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
     _KIND_TO_SET_FUNC[iso_kind](pdm_isos, *iso_params)
 
   # Discover BCs over part_zones
-  part_zones_bcs = list()
-  for i_part, part_zone in enumerate(part_zones):
-    zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
-    bcs_n     = PT.get_children_from_label(zone_bc_n, 'BC_t')
-    for bc_n in bcs_n:
-      bc_name = PT.get_name(bc_n)
-      print(bc_name)
-      if bc_name not in part_zones_bcs:
-        part_zones_bcs.append(bc_name)
-  print(f'BC_names = {part_zones_bcs}')
+  dist_zone = PT.new_Zone('Zone')
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", 'BC_t'], comm)
+  all_bcs = list()
+  zone_bc_n = PT.get_child_from_label(dist_zone, "ZoneBC_t")
+  bcs_n     = PT.get_children_from_label(zone_bc_n, 'BC_t')
+  for bc_n in bcs_n:
+    bc_name = PT.get_name(bc_n)
+    # print(bc_name)
+    if bc_name not in all_bcs:
+      all_bcs.append(bc_name)
+  print(f'BC_names = {all_bcs}')
+  dist_zone = PT.new_Zone('Zone')
 
   # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
@@ -205,28 +208,22 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
     # Add BC information
     zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
     bcs_n     = PT.get_children_from_label(zone_bc_n, 'BC_t')
-    n_bnd     = len(part_zones_bcs)
+    n_bnd     = len(all_bcs)
     group_face_idx = np.full(n_bnd+1, 0, dtype=np.int32)
     group_face     = np.empty(0, dtype=np.int32)
-    # for i_bc, bc_n in enumerate(bcs_n):
-    #   bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
-    #   group_face_idx[i_bc+1] = group_face_idx[i_bc]+bc_pl.shape[1]
-    #   group_face = np.concatenate([group_face, bc_pl[0]])
-    # PT.print_tree(zone_bc_n)
-    # print(f'ipart{i_part} : group_face_idx = {group_face_idx}')
-    for i_group, bc_name in enumerate(part_zones_bcs):
-      print(f'i_group = {i_group} ; bc_name = {bc_name}')
+    for i_group, bc_name in enumerate(all_bcs):
+      # print(f'i_group = {i_group} ; bc_name = {bc_name}')
       bc_n  = PT.get_node_from_name(zone_bc_n, bc_name)
       if bc_n is not None:
         bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
         group_face_idx[i_group+1] = bc_pl.shape[1]
-        print(f'type(bc_pl) = {type(bc_pl[0][0])}')
+        # print(f'type(bc_pl) = {type(bc_pl[0][0])}')
         group_face = np.concatenate([group_face, bc_pl[0]])
-    PT.print_tree(zone_bc_n)
+    # PT.print_tree(zone_bc_n)
     group_face_idx = np.cumsum(group_face_idx, dtype=np.int32)
     print(f'ipart{i_part} : group_face_idx = {group_face_idx}')
-    print(f'type(group_face_idx) = {type(group_face_idx[0])}')
     print(f'ipart{i_part} : group_face     = {group_face}')
+    comm.Barrier()
     pdm_isos.isosurf_bnd_set(i_part, n_bnd, group_face_idx, group_face)
   # sys.exit()
 
@@ -255,8 +252,9 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
     results_edge = pdm_isos.isosurf_bnd_get()
     n_bnd_edge = results_edge['bnd_edge_group_idx'][-1]
     bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
-    print(results_edge['bnd_edge_group_idx'])
-    print(f'n_bnd_edge = {n_bnd_edge}')
+    print(f'RANK{comm.Get_rank()}::bnd_edge_group_idx = {results_edge["bnd_edge_group_idx"]}')
+    print(f'RANK{comm.Get_rank()}::bnd_edge_lngn      = {results_edge["bnd_edge_lngn"]}')
+    print(f'RANK{comm.Get_rank()}::n_bnd_edge = {n_bnd_edge}')
     bar_n = PT.new_Elements('BAR_2', type='BAR_2', 
                             erange=np.array([1, n_bnd_edge]),
                             econn=results_edge['bnd_edge_vtx'],
@@ -265,13 +263,21 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                                 'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
     zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
-    for i_group, bc_name in enumerate(part_zones_bcs):
+    for i_group, bc_name in enumerate(all_bcs):
+      print(f'RANK{comm.Get_rank()}:: bc {bc_name}')
       n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
       if n_edge_in_bc!=0:
         edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
                             bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+1
         bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-        PT.maia.newGlobalNumbering({'Index' : np.arange(1, n_edge_in_bc+1, dtype=np.int32)}, parent=bc_n)
+
+        gnum = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
+        print(f'RANK{comm.Get_rank()}::  - pl {edge_pl[0]}')
+        partial_gnum = create_sub_numbering([gnum[edge_pl[0]-1]], comm)[0]
+        print(f'RANK{comm.Get_rank()}::  - gnum[pl] {gnum[edge_pl[0]-1]}')
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+        print(f'RANK{comm.Get_rank()}::  - partial_gnum {partial_gnum}')
+        # PT.maia.newGlobalNumbering({'Index' : np.arange(1, n_edge_in_bc+1, dtype=np.int32)}, parent=bc_n)
 
 
     # n_bnd_edge = 0
