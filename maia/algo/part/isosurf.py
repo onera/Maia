@@ -218,6 +218,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   results = pdm_isos.part_iso_surface_surface_get()
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
+  print(n_iso_vtx, n_iso_elt)
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
   iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
@@ -250,26 +251,27 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
     # > Add element node
     results_edge = pdm_isos.isosurf_bnd_get()
     n_bnd_edge         = results_edge['n_bnd_edge']
-    bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
-    bar_n = PT.new_Elements('BAR_2', type='BAR_2', 
-                            erange=np.array([n_iso_elt+1, n_iso_elt+n_bnd_edge]),
-                            econn=results_edge['bnd_edge_vtx'],
-                            parent=iso_part_zone)
-    PT.maia.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
-                                'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
+    if n_bnd_edge!=0:
+      bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
+      bar_n = PT.new_Elements('BAR_2', type='BAR_2', 
+                              erange=np.array([n_iso_elt+1, n_iso_elt+n_bnd_edge]),
+                              econn=results_edge['bnd_edge_vtx'],
+                              parent=iso_part_zone)
+      PT.maia.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
+                                  'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
-    # > Create BC described by edges
-    zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
-    for i_group, bc_name in enumerate(gdom_bcs):
-      n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
-      if n_edge_in_bc!=0:
+      # > Create BC described by edges
+      zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
+      for i_group, bc_name in enumerate(gdom_bcs):
+        n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
         edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
                             bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
-        bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-
-        gnum = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
+        gnum    = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
         partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
-        PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+
+        if partial_gnum.size!=0:
+          bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
   else:
     n_bnd_edge = 0
 
