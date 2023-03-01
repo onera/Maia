@@ -18,5 +18,8 @@ from maia import pytree
 from maia import transfer
 from maia import utils
 
+# Change the default Python handling of uncaught exceptions
+# By default, if one proc raises an uncaught exception, it may lead to deadlocks
+# With `enable_mpi_excepthook`, if one proc raises an uncaught exception, MPI_Abort(1) is called
 from maia.utils.parallel import excepthook
 excepthook.enable_mpi_excepthook()
