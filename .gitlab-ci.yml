@@ -8,7 +8,7 @@ workflow:
 variables:
   GIT_STRATEGY: none # don't do anything by default
   #SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=1 --time=00:15:00" #Slurm default parameters #Go back to spiro-commun when el8 is deployed
-  SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=1 --time=00:15:00" #Slurm default parameters #Go back to spiro-commun when el8 is deployed
+  SCHEDULER_PARAMETERS: "-M c1 --qos=c1_test_giga --ntasks=1 --time=00:15:00" #Slurm default parameters #Go back to spiro-commun when el8 is deployed
 #Common to all stages
 default:
   tags: #All jobs uses jamacar-slurm executor by default (dsi test)
@@ -46,7 +46,7 @@ job:init:
 job:build:
   stage: build
   variables:
-    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=16 --nodes=1-1 --time=00:15:00"
+    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_test_giga --ntasks=16 --nodes=1-1 --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR
     - mkdir -p build && cd build
@@ -74,7 +74,7 @@ job:doc:
 job:ctest:
   stage: test
   variables:
-    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
+    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_test_giga --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR/build
     - ctest -E pdm
@@ -123,7 +123,7 @@ job:deploy_spiro_sonics:
   variables:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
-    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=16 --nodes=1-1 --time=00:30:00"
+    SCHEDULER_PARAMETERS: "-M c1 --qos=c1_test_giga --ntasks=16 --nodes=1-1 --time=00:30:00"
   before_script: 
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
