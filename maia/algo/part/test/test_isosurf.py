@@ -129,7 +129,7 @@ def test_isosurf_one_domain(sub_comm):
   assert PT.Zone.n_cell(iso_zone) == 16 and PT.Zone.n_vtx(iso_zone) == 15
 
   assert (PT.get_node_from_name(iso_zone, 'CoordinateX')[1] == 0.25).all()
-  assert (np.diff(PT.get_node_from_name(iso_zone, 'ElementStartOffset')[1]) == 3).all()
+  assert (PT.get_node_from_name(iso_zone, 'ElementRange')[1] == np.array([1, 16], dtype=np.int32)).all()
 
   assert PT.get_label(PT.get_child_from_name(iso_zone, "maia#surface_data")) == 'UserDefinedData_t'
 

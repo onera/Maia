@@ -218,7 +218,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   results = pdm_isos.part_iso_surface_surface_get()
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
-  print(n_iso_vtx, n_iso_elt)
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
   iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
