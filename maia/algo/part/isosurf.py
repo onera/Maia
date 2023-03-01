@@ -164,9 +164,9 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   # > Discover BCs over part_zones
   dist_zone = PT.new_Zone('Zone')
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", 'BC_t'], comm)
-  zone_bc_n = PT.get_child_from_label(dist_zone, "ZoneBC_t")
-  bcs_n     = PT.get_children_from_label(zone_bc_n, 'BC_t')
-  gdom_bcs  = [ PT.get_name(bc_n) for bc_n in bcs_n]
+  bcs_n     = PT.get_children_from_predicates(dist_zone, ['ZoneBC_t','BC_t'])
+  gdom_bcs  = [PT.get_name(bc_n) for bc_n in bcs_n]
+  n_gdom_bcs= len(gdom_bcs)
 
   # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
@@ -199,10 +199,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                       vtx_ln_to_gn, vtx_coords)
 
     # Add BC information
-    zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
-    bcs_n     = PT.get_children_from_label(zone_bc_n, 'BC_t')
-    n_bnd     = len(gdom_bcs)
-    group_face_idx = np.full(n_bnd+1, 0, dtype=np.int32)
+    zone_bc_n      = PT.get_child_from_label(part_zone, "ZoneBC_t")
+    group_face_idx = np.full(n_gdom_bcs+1, 0, dtype=np.int32)
     group_face     = np.empty(0, dtype=np.int32)
     for i_group, bc_name in enumerate(gdom_bcs):
       bc_n  = PT.get_child_from_name(zone_bc_n, bc_name)
@@ -211,7 +209,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
         group_face_idx[i_group+1] = bc_pl.shape[1]
         group_face = np.concatenate([group_face, bc_pl[0]])
     group_face_idx = np.cumsum(group_face_idx, dtype=np.int32)
-    pdm_isos.isosurf_bnd_set(i_part, n_bnd, group_face_idx, group_face)
+    pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs, group_face_idx, group_face)
 
   # Isosurfaces compute in PDM  
   pdm_isos.compute()
@@ -249,8 +247,9 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   
   # Bnd edges
   if elt_type in ['TRI_3']:
+    # > Add element node
     results_edge = pdm_isos.isosurf_bnd_get()
-    n_bnd_edge   = results_edge['bnd_edge_group_idx'][-1]
+    n_bnd_edge         = results_edge['n_bnd_edge']
     bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
     bar_n = PT.new_Elements('BAR_2', type='BAR_2', 
                             erange=np.array([n_iso_elt+1, n_iso_elt+n_bnd_edge]),
@@ -259,6 +258,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
     PT.maia.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
                                 'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
+    # > Create BC described by edges
     zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
     for i_group, bc_name in enumerate(gdom_bcs):
       n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
@@ -284,11 +284,11 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   maia_iso_zone = PT.new_node('maia#surface_data', label='UserDefinedData_t', parent=iso_part_zone)
   results_vtx   = pdm_isos.part_iso_surface_vtx_interpolation_data_get()
   results_geo   = pdm_isos.part_iso_surface_geom_data_get()
-  PT.new_DataArray('Cell_parent_gnum' , results     ["np_elt_parent_g_num"]  , parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_gnum'  , results_vtx ["vtx_volume_vtx_g_num"] , parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_idx'   , results_vtx ["vtx_volume_vtx_idx"]   , parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_weight', results_vtx ["vtx_volume_vtx_weight"], parent=maia_iso_zone)
-  PT.new_DataArray('Surface'          , results_geo ["elt_surface"]          , parent=maia_iso_zone)
+  PT.new_DataArray('Cell_parent_gnum' , results    ["np_elt_parent_g_num"]  , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_gnum'  , results_vtx["vtx_volume_vtx_g_num"] , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
+  PT.new_DataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
   if elt_type in ['TRI_3']:
     PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
 
