@@ -101,6 +101,30 @@ def test_exch_field(partial, sub_comm):
     assert np.array_equal(PT.get_node_from_name(extr_sol, 'gnum')[1],
                           extractor.exch_tool_box[0]['parent_elt']['Vertex'])
 
+@mark_mpi_test(2)
+def test_exch_field_from_bc_zsr(sub_comm):
+  part_tree = sample_part_tree(sub_comm)
+
+  # Add field
+  for zone in PT.get_all_Zone_t(part_tree):
+    gnum = PT.maia.getGlobalNumbering(PT.get_node_from_name(zone, 'NGonElements'), 'Element')[1]
+    bc_n = PT.get_child_from_predicates(zone, 'ZoneBC_t/Xmin')
+    if bc_n is not None:
+      bc_pl   = PT.get_value(PT.get_node_from_name(bc_n, "PointList"))
+      bc_gnum = gnum[bc_pl[0]-1]
+      PT.new_ZoneSubRegion('ZSR_Xmin', bc_name="Xmin", fields={'gnum': bc_gnum}, parent=zone)
+
+  extractor = EP.Extractor(part_tree, [bc_pl], "FaceCenter", sub_comm)
+  extractor.exchange_fields(['ZSR_Xmin'])
+  extr_tree = extractor.get_extract_part_tree()
+
+  extr_sol = PT.get_node_from_name(extr_tree, 'ZSR_Xmin')
+  assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
+  assert PT.Subset.GridLocation(extr_sol) == 'CellCenter'
+  pl    = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
+  data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
+  assert np.array_equal(extractor.exch_tool_box[0]['parent_elt']['FaceCenter'][pl-1], data)
+
 
 @mark_mpi_test(3)
 def test_zsr_api(sub_comm):

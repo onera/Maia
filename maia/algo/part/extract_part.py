@@ -120,13 +120,28 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   # is not know by every partition
   mask_zone = ['MaskedZone', None, [], 'Zone_t']
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
-      child_list=['GridLocation'])
+      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
+  
   fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexArray_t']
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
   mask_container = PT.get_child_from_name(mask_zone, container_name)
-
-  gridLocation = PT.Subset.GridLocation(mask_container)
-  partial_field = PT.get_child_from_name(mask_container, 'PointList') is not None
+  
+  # > Manage BC and GC ZSR
+  ref_zsr_node    = mask_container
+  bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
+  gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
+  assert not (bc_descriptor_n and gc_descriptor_n)
+  if bc_descriptor_n is not None:
+    bc_name      = PT.get_value(bc_descriptor_n)
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
+    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
+  elif gc_descriptor_n is not None:
+    gc_name      = PT.get_value(gc_descriptor_n)
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
+    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
+  
+  gridLocation = PT.Subset.GridLocation(ref_zsr_node)
+  partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
   assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
 
   # --- FlowSolution node def by zone -------------------------------------------------
@@ -147,7 +162,18 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
     for i_part, part_zone in enumerate(part_zones):
       container        = PT.get_child_from_name(part_zone, container_name)
       if container is not None:
-        point_list_node  = PT.get_child_from_name(container, 'PointList')
+        # > Get the right node to get PL (if ZSR linked to BC or GC)
+        ref_zsr_node = container
+        bc_descriptor_n = PT.get_child_from_name(container, 'BCRegionName')
+        gc_descriptor_n = PT.get_child_from_name(container, 'GridConnectivityRegionName')
+        assert not (bc_descriptor_n and gc_descriptor_n)
+        if bc_descriptor_n is not None:
+          bc_name      = PT.get_value(bc_descriptor_n)
+          ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneBC/{bc_name}')
+        elif gc_descriptor_n is not None:
+          gc_name      = PT.get_value(gc_descriptor_n)
+          ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneGridConnectivity_t/{gc_name})')
+        point_list_node  = PT.get_child_from_name(ref_zsr_node, 'PointList')
         point_list  = point_list_node[1][0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
 
       part_gnum1  = ptp.get_gnum1_come_from()[i_part]['come_from'] # Get partition order
