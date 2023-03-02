@@ -29,26 +29,38 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
   # Part 1 : ISOSURF
   # Part 2 : VOLUME
   for container_name in containers_name :
+    # Retrieve fields name + GridLocation + PointList if container
+    # is not know by every partition
+    mask_zone = ['MaskedZone', None, [], 'Zone_t']
+    print(f"container_name = {container_name}")
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
+      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
+    PT.print_tree(mask_zone)
+  
+    fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexArray_t']
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
+    mask_container = PT.get_child_from_name(mask_zone, container_name)
+    if mask_container is None:
+      raise ValueError("[maia-isosurfaces] asked container for exchange is not in tree")
 
-    # --- Get all fields names and location -----------------------------------
-    all_fld_names = []
-    all_locs = []
-    for part_zone in part_zones:
-      container = PT.request_child_from_name(part_zone, container_name)
-      fld_names = {PT.get_name(n) for n in PT.iter_children_from_label(container, "DataArray_t")}
-      py_utils.append_unique(all_fld_names, fld_names)
-      py_utils.append_unique(all_locs, PT.Subset.GridLocation(container))
-    if len(part_zones) > 0:
-      assert len(all_locs) == len(all_fld_names) == 1
-      tag = comm.Get_rank()
-      loc_and_fields = all_locs[0], list(all_fld_names[0])
-    else:
-      tag = -1
-      loc_and_fields = None
-    master = comm.allreduce(tag, op=MPI.MAX) # No check global ?
-    gridLocation, flds_in_container_names = comm.bcast(loc_and_fields, master)
-    assert(gridLocation in ['Vertex','CellCenter'])
-
+    PT.print_tree(mask_container)
+    # > Manage BC and GC ZSR
+    ref_zsr_node    = mask_container
+    bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
+    gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
+    assert not (bc_descriptor_n and gc_descriptor_n)
+    if bc_descriptor_n is not None:
+      bc_name      = PT.get_value(bc_descriptor_n)
+      dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
+      ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
+    elif gc_descriptor_n is not None:
+      gc_name      = PT.get_value(gc_descriptor_n)
+      dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
+      ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
+    
+    gridLocation = PT.Subset.GridLocation(ref_zsr_node)
+    partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
+    assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
 
     # --- Part1 (ISOSURF) objects definition ----------------------------------
     # LN_TO_GN
@@ -87,7 +99,8 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
 
     # --- Field exchange ----------------------------------------------------------------
-    for fld_name in flds_in_container_names:
+    for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
+      fld_name = PT.get_name(fld_node)
       fld_path = f"{container_name}/{fld_name}"
       fld_data = [PT.get_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
 

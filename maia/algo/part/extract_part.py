@@ -125,7 +125,9 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexArray_t']
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
   mask_container = PT.get_child_from_name(mask_zone, container_name)
-  
+  if mask_container is None:
+    raise ValueError("[maia-extract_part] asked container for exchange is not in tree")
+
   # > Manage BC and GC ZSR
   ref_zsr_node    = mask_container
   bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
@@ -224,7 +226,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
 
   # --- Field exchange ----------------------------------------------------------------
   for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
-    fld_name = fld_node[0]
+    fld_name = PT.get_name(fld_node)
     fld_path = f"{container_name}/{fld_name}"
     
     # Reordering if ZSR container
