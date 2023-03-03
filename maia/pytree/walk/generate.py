@@ -87,6 +87,30 @@ def rm_node_from_path(root, path):
     parent = get_node_from_path(root, path_head(path))
     rm_nodes_from_name(parent, path_tail(path))
 
+def get_all_subsets(root,filter_loc=None):
+  """
+  Search and collect all the subsets nodes found under root
+  If filter_loc list is not None, select only the subsets nodes of given
+  GridLocation.
+  """
+  subset_paths = ['CGNSBase_t/Zone_t/ZoneBC_t/BC_t', 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/BCDataSet_t',
+              'CGNSBase_t/Zone_t/ZoneSubRegion_t', 'CGNSBase_t/Zone_t/FlowSolution_t',
+              'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t']
+
+  root_label = PT.get_label(root)
+  if root_label != 'CGNSTree_t':
+    subset_paths = [path.split(root_label+'/')[1] for path in subset_paths]
+
+  subset_nodes = []
+  for path in subset_paths:
+    for subset_n in PT.iter_children_from_predicates(root, path):
+      if filter_loc is None or PT.Subset.GridLocation(subset_n) in filter_loc:
+        pl_n = PT.get_child_from_name(subset_n, 'PointList')
+        pr_n = PT.get_child_from_name(subset_n, 'PointRange')
+        if (pl_n is not None) or (pr_n is not None):
+          subset_nodes.append(subset_n)
+  return subset_nodes
+
 
 # Specialization of legacy functions
 
