@@ -13,6 +13,34 @@ from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
 
+def merge_zones_from_family(tree, family_name, comm, **kwargs):
+  """Merge the zones belonging to the given family into a single one.
+
+  See :func:`merge_zones` for full documentation.
+
+  Args:
+    tree (CGNSTree): Input distributed tree
+    family_name (str): Name of the family (read from ``FamilyName_t`` node)
+        used to select the zones.
+    comm (MPIComm) : MPI communicator
+    kwargs: any argument of :func:`merge_zones`, excepted output_path
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #merge_zones_from_family@start
+        :end-before: #merge_zones_from_family@end
+        :dedent: 2
+  """
+  match_fam = lambda m: PT.get_node_from_label(m, 'FamilyName_t') is not None and \
+                        PT.get_value(PT.get_node_from_label(m, 'FamilyName_t')) == family_name
+
+  is_zone_with_fam = lambda n: PT.get_label(n) == 'Zone_t' and match_fam(n)
+
+  zones_path = PT.predicates_to_paths(tree, ['CGNSBase_t', is_zone_with_fam])
+  if zones_path:
+    base_name = zones_path[0].split('/')[0]
+    merge_zones(tree, zones_path, comm, output_path=f'{base_name}/{family_name}', **kwargs)
+
 def merge_connected_zones(tree, comm, **kwargs):
   """Detect all the zones connected through 1to1 matching jns and merge them.
 
