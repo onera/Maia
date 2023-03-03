@@ -5,7 +5,7 @@ import numpy as np
 
 import maia
 
-from maia            import pytree        as MP
+from maia            import pytree        as PT
 from maia.io         import cgns_io_tree  as IOT
 from maia.algo       import dist          as MAD
 from maia.algo.dist  import s_to_u        as CSU
@@ -16,6 +16,30 @@ from maia.utils      import par_utils     as MUPar
 import maia.pytree.sids.elements_utils    as MPSEU
 
 import Pypdm.Pypdm as PDM
+
+def collect_pl_nodes(root, filter_loc=None):
+  """
+  Search and collect all the pointList nodes found in subsets found
+  under root
+  If filter_loc list is not None, select only the PointList nodes of given
+  GridLocation.
+  Remark : if the subset is defined by a PointRange, we replace the PointRange node
+           to the equivalent PointList node and collect the new PointList node
+  """
+  pointlist_nodes = []
+  for node in PT.get_all_subsets(root,filter_loc):
+    pl_n = PT.get_child_from_name(node, 'PointList')
+    pr_n = PT.get_child_from_name(node, 'PointRange')
+    if pl_n is not None:
+      pointlist_nodes.append(pl_n)
+    elif pr_n is not None and PT.get_value(pr_n).shape[0] == 1:
+      pr = PT.get_value(pr_n)
+      distrib = PT.get_value(MT.getDistribution(node, 'Index'))
+      pl = np_utils.single_dim_pr_to_pl(pr, distrib)
+      new_pl_n = PT.new_node(name='PointList', value=pl, label='IndexArray_t', parent=node)
+      PT.rm_nodes_from_label(zone,'Elements_t')
+      pointlist_nodes.append(new_pl_n)
+  return pointlist_nodes
 
 def convert_mixed_to_elements(dist_tree, comm):
     """
@@ -35,7 +59,7 @@ def convert_mixed_to_elements(dist_tree, comm):
           :dedent: 2
     """
 
-    for zone in MP.get_all_Zone_t(dist_tree):
+    for zone in PT.get_all_Zone_t(dist_tree):
         elem_types = {}
         ec_per_elem_type_loc = {}
         ln_to_gn_loc = {}
@@ -44,11 +68,11 @@ def convert_mixed_to_elements(dist_tree, comm):
         
         # 1/ Create local element connectivity for each element type found in each mixed node
         #    and deduce the local number of each element type
-        for elem_pos,element in enumerate(MP.Zone.get_ordered_elements(zone)):
-            assert MP.get_value(element)[0] == 20
-            elem_er  = MP.get_node_from_name(element,'ElementRange',depth=1)[1]
-            elem_ec  = MP.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
-            elem_eso = MP.get_node_from_name(element,'ElementStartOffset',depth=1)[1]
+        for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
+            assert PT.get_value(element)[0] == 20
+            elem_er  = PT.get_node_from_name(element,'ElementRange',depth=1)[1]
+            elem_ec  = PT.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
+            elem_eso = PT.get_node_from_name(element,'ElementStartOffset',depth=1)[1]
             elem_types_tab = elem_ec[elem_eso[:-1]-elem_eso[0]]
             elem_types_loc, nb_elems_per_types_loc = np.unique(elem_types_tab,return_counts=True)
             for e, elem_type in enumerate(elem_types_loc):
@@ -94,10 +118,10 @@ def convert_mixed_to_elements(dist_tree, comm):
         ln_to_gn_element_list = []
         old_to_new_element_numbering_list = []
         nb_elem_prev_element_t_nodes = 0
-        for elem_pos,element in enumerate(MP.Zone.get_ordered_elements(zone)):
-            elem_ec  = MP.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
-            elem_eso = MP.get_node_from_name(element,'ElementStartOffset',depth=1)[1]
-            elem_distrib = MP.get_node_from_path(element,':CGNS#Distribution/Element')[1]
+        for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
+            elem_ec  = PT.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
+            elem_eso = PT.get_node_from_name(element,'ElementStartOffset',depth=1)[1]
+            elem_distrib = PT.get_node_from_path(element,':CGNS#Distribution/Element')[1]
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
             old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_eso.dtype)
             ln_to_gn_element = np.arange(nb_elem_loc,dtype=np.int32) + 1 \
@@ -127,7 +151,7 @@ def convert_mixed_to_elements(dist_tree, comm):
         
         
         # 5/ Delete mixed nodes and add standard elements nodes
-        MP.rm_nodes_from_label(zone,'Elements_t')
+        PT.rm_nodes_from_label(zone,'Elements_t')
         beg_erange = 1
         for elem_type in key_types:
             nb_elems_per_type = all_types[elem_type]
@@ -164,18 +188,17 @@ def convert_mixed_to_elements(dist_tree, comm):
             __, econn = ptb.exchange_field(part_data_ec,part_stride_ec)
             
             beg_erange += nb_elems_per_type
-            elem_n = MP.new_Elements(name,label,erange=erange,econn=econn,parent=zone)
-            elem_n_distrib = MP.new_node(name=':CGNS#Distribution', label='UserDefined_t', parent=elem_n)
-            MP.new_DataArray('Element', elem_distrib, parent=elem_n_distrib)
+            elem_n = PT.new_Elements(name,label,erange=erange,econn=econn,parent=zone)
+            elem_n_distrib = PT.new_node(name=':CGNS#Distribution', label='UserDefined_t', parent=elem_n)
+            PT.new_DataArray('Element', elem_distrib, parent=elem_n_distrib)
         
         # 6/ Update all PointList with GridLocation != Vertex
-        ##########################
-        ## TO DO : ne mettre dans la liste que les pl avec gridlocation different de Vertex !!!
-        ##########################
-        pl_list = MP.get_nodes_from_name(zone,'PointList')
+        filter_loc = ['EdgeCenter','FaceCenter','CellCenter']
+        pl_list = collect_pl_nodes(zone,filter_loc)
+        
         ln_to_gn_pl_list = []
         for p,pl in enumerate(pl_list):
-            ln_to_gn_pl_list.append(MP.get_value(pl)[0].astype(np.int32))
+            ln_to_gn_pl_list.append(PT.get_value(pl)[0].astype(np.int32))
         part1_to_part2_idx_list = []
         for l in ln_to_gn_element_list:
             part1_to_part2_idx = np.arange(l.size+1, dtype=np.int32)
@@ -190,5 +213,5 @@ def convert_mixed_to_elements(dist_tree, comm):
         __, old_to_new_pl_list = PTP.wait(request)
     
         for p, pl in enumerate(pl_list):
-            MP.set_value(pl,np.array(old_to_new_pl_list[p]).reshape((1,len(old_to_new_pl_list[p]))))
+            PT.set_value(pl,np.array(old_to_new_pl_list[p]).reshape((1,len(old_to_new_pl_list[p]))))
     
