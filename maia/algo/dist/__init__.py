@@ -18,6 +18,8 @@ from .merge                      import merge_connected_zones,\
 from .ngon_from_std_elements     import convert_elements_to_ngon,\
                                         generate_ngon_from_std_elements
 
+from .mixed_to_std_elements      import convert_mixed_to_elements
+
 from .ngons_to_elements          import ngons_to_elements
 poly_to_elements = ngons_to_elements
 
@@ -26,6 +28,8 @@ from .rearrange_element_sections import rearrange_element_sections
 from .redistribute               import redistribute_tree
 
 from .s_to_u                     import convert_s_to_u, convert_s_to_ngon
+
+from .std_elements_to_mixed      import convert_elements_to_mixed
 
 from .vertex_list                import generate_jn_vertex_list,\
                                         generate_jns_vertex_list
