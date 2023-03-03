@@ -19,7 +19,7 @@ import Pypdm.Pypdm as PDM
 
 def convert_mixed_to_elements(dist_tree, comm):
     """
-    Transform an mixed connectivity into an element based connectivity.
+    Transform a mixed connectivity into an element based connectivity.
     
     Tree is modified in place : mixed elements are removed from the zones
     and the PointList are updated.
@@ -42,7 +42,7 @@ def convert_mixed_to_elements(dist_tree, comm):
         nb_elem_prev = 0
         
         
-        # 1/ Create local element connectivity for each element type found in each mixed element
+        # 1/ Create local element connectivity for each element type found in each mixed node
         #    and deduce the local number of each element type
         for elem_pos,element in enumerate(MP.Zone.get_ordered_elements(zone)):
             assert MP.get_value(element)[0] == 20
@@ -75,6 +75,8 @@ def convert_mixed_to_elements(dist_tree, comm):
                     all_types[kd] = 0
                 for pos, nb in vd.items():
                     all_types[kd] += nb
+                    
+        
         # 3/ To take into a count Paraview limitation, elements are sorted by
         #    decreased dimensions : 3D->2D->1D->0D
         #    Without this limitations, replace the following lines by:
@@ -124,7 +126,7 @@ def convert_mixed_to_elements(dist_tree, comm):
             ln_to_gn_element_list.append(ln_to_gn_element)
         
         
-        # 5/ Delete mixed nodes and add standart elements nodes
+        # 5/ Delete mixed nodes and add standard elements nodes
         MP.rm_nodes_from_label(zone,'Elements_t')
         beg_erange = 1
         for elem_type in key_types:
