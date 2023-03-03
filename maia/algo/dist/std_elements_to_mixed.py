@@ -5,7 +5,7 @@ import numpy as np
 
 import maia
 
-from maia            import pytree        as MP
+from maia            import pytree        as PT
 from maia.io         import cgns_io_tree  as IOT
 from maia.algo       import dist          as MAD
 from maia.algo.dist  import s_to_u        as CSU
@@ -35,7 +35,7 @@ def convert_elements_to_mixed(dist_tree, comm):
           :dedent: 2
     """
     
-    for zone in MP.get_all_Zone_t(dist_tree):
+    for zone in PT.get_all_Zone_t(dist_tree):
         part_data_ec = []
         part_data_eso = []
         part_stride_ec = []
@@ -46,12 +46,12 @@ def convert_elements_to_mixed(dist_tree, comm):
         
         # 1/ Create local mixed connectivity and element start offeset tab for each element node
         #    and deduce the local number of each element type        
-        for element in MP.Zone.get_ordered_elements(zone):
-            assert MP.get_value(element)[0] not in [20,22,23]
-            elem_type = MP.get_value(element)[0]
-            elem_er = MP.get_node_from_name(element,'ElementRange',depth=1)[1]
-            elem_ec = MP.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
-            elem_distrib = MP.get_node_from_path(element,':CGNS#Distribution/Element')[1]
+        for element in PT.Zone.get_ordered_elements(zone):
+            assert PT.get_value(element)[0] not in [20,22,23]
+            elem_type = PT.get_value(element)[0]
+            elem_er = PT.get_node_from_name(element,'ElementRange',depth=1)[1]
+            elem_ec = PT.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
+            elem_distrib = PT.get_node_from_path(element,':CGNS#Distribution/Element')[1]
             
             nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
@@ -78,7 +78,7 @@ def convert_elements_to_mixed(dist_tree, comm):
         
         
         # 2/ Delete standard nodes and add mixed nodes
-        MP.rm_nodes_from_label(zone,'Elements_t')
+        PT.rm_nodes_from_label(zone,'Elements_t')
         elem_distrib = MUPar.uniform_distribution(nb_elem_prev,comm)
         ptb = MTP.PartToBlock(elem_distrib,ln_to_gn_list,comm)
     
@@ -89,9 +89,9 @@ def convert_elements_to_mixed(dist_tree, comm):
         dist_data_eso[:-1] = dist_data_eso_wo_last
         dist_data_eso[-1] = dist_data_eso_wo_last[-1] + dist_stride_ec[-1]
         
-        mixed = MP.new_Elements('Mixed','MIXED',erange=[1,nb_elem_prev],econn=dist_data_ec,parent=zone)
-        eso = MP.new_DataArray('ElementStartOffset',dist_data_eso,parent=mixed)
-        mixed_distrib = MP.new_node(name=':CGNS#Distribution', label='UserDefined_t', parent=mixed)
-        MP.new_DataArray('Element', elem_distrib, parent=mixed_distrib)
+        mixed = PT.new_Elements('Mixed','MIXED',erange=[1,nb_elem_prev],econn=dist_data_ec,parent=zone)
+        eso = PT.new_DataArray('ElementStartOffset',dist_data_eso,parent=mixed)
+        mixed_distrib = PT.new_node(name=':CGNS#Distribution', label='UserDefined_t', parent=mixed)
+        PT.new_DataArray('Element', elem_distrib, parent=mixed_distrib)
         distri_ec = np.array((dist_data_eso[0],dist_data_eso[-1],nb_nodes_prev),dtype=elem_distrib.dtype)
-        MP.new_DataArray('ElementConnectivity', distri_ec, parent=mixed_distrib)
+        PT.new_DataArray('ElementConnectivity', distri_ec, parent=mixed_distrib)
