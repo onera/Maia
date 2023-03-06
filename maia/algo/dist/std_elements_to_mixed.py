@@ -87,7 +87,11 @@ def convert_elements_to_mixed(dist_tree, comm):
         
         dist_data_eso = np.empty(len(dist_data_eso_wo_last)+1,dtype=dist_data_eso_wo_last.dtype)
         dist_data_eso[:-1] = dist_data_eso_wo_last
-        dist_data_eso[-1] = dist_data_eso_wo_last[-1] + dist_stride_ec[-1]
+        if len(dist_stride_ec) > 0:
+            dist_data_eso[-1] = dist_data_eso_wo_last[-1] + dist_stride_ec[-1]
+        else:
+            assert rank >= nb_elem_prev
+            dist_data_eso[-1] = nb_nodes_prev
         
         mixed = PT.new_Elements('Mixed','MIXED',erange=[1,nb_elem_prev],econn=dist_data_ec,parent=zone)
         eso = PT.new_DataArray('ElementStartOffset',dist_data_eso,parent=mixed)
