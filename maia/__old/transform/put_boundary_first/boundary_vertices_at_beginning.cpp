@@ -1,7 +1,7 @@
 #if __cplusplus > 201703L
 #include "maia/__old/transform/put_boundary_first/boundary_vertices_at_beginning.hpp"
 
-#include "maia/utils/log/log.hpp"
+#include "maia/utils/logging/log.hpp"
 #include "std_e/algorithm/id_permutations.hpp"
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 

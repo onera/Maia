@@ -2,7 +2,6 @@
 //
 //#include "maia/utils/parallel/exchange/part_to_block.hpp"
 //#include "maia/utils/parallel/exchange/test/example.hpp"
-//#include "std_e/log.hpp" // TODO
 //
 //MPI_TEST_CASE("part_to_block",2) {
 //  SUBCASE("cells") {

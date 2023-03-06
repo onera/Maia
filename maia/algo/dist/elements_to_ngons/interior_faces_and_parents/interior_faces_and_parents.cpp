@@ -3,7 +3,7 @@
 
 #include "maia/pytree/maia/element_sections.hpp"
 #include "maia/pytree/maia/maia_cgns.hpp"
-#include "maia/utils/log/log.hpp"
+#include "maia/utils/logging/log.hpp"
 
 #include "maia/algo/dist/elements_to_ngons/interior_faces_and_parents/algo/element_faces_and_parents.hpp"
 #include "maia/algo/dist/elements_to_ngons/interior_faces_and_parents/algo/merge_unique_faces.hpp"
