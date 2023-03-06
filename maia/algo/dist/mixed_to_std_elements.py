@@ -58,6 +58,8 @@ def convert_mixed_to_elements(dist_tree, comm):
           :end-before: #convert_mixed_to_elements@end
           :dedent: 2
     """
+    rank = comm.Get_rank()
+    size = comm.Get_size()
 
     for zone in PT.get_all_Zone_t(dist_tree):
         elem_types = {}

@@ -5,20 +5,20 @@ import numpy as np
 
 import maia.pytree        as PT
 
-import cmaia
 import maia.io
 import maia.utils.test_utils as TU
 
-from maia.algo.dist import elements_to_mixed
+from maia.algo.dist import convert_elements_to_mixed
 
-@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 @mark_mpi_test([1,4])
 def test_elements_to_mixed(sub_comm, write_output):
   mesh_file = os.path.join(TU.mesh_dir, 'Uelt_M6Wing.yaml')
   dist_tree = maia.io.file_to_dist_tree(mesh_file, sub_comm)
 
   # > As simple as it looks
-  elements_to_mixed(dist_tree, sub_comm)
+  convert_elements_to_mixed(dist_tree, sub_comm)
+  
+  zone = PT.get_node_from_label(dist_tree,'Zone_t')
   
   assert len(PT.Zone.get_ordered_elements(zone)) == 1
   
@@ -30,7 +30,7 @@ def test_elements_to_mixed(sub_comm, write_output):
   assert PT.get_child_from_name(mixed_node, 'ElementStartOffset')
 
   # > Some non-regression checks
-  assert np.all(PT.get_value(PT.get_child_from_name(ngon_node , 'ElementRange')) == [1,1500])
+  assert np.all(PT.get_value(PT.get_child_from_name(mixed_node, 'ElementRange')) == [1,1500])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)

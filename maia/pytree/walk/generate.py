@@ -93,6 +93,7 @@ def get_all_subsets(root,filter_loc=None):
   If filter_loc list is not None, select only the subsets nodes of given
   GridLocation.
   """
+  import maia.pytree as PT
   subset_paths = ['CGNSBase_t/Zone_t/ZoneBC_t/BC_t', 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/BCDataSet_t',
               'CGNSBase_t/Zone_t/ZoneSubRegion_t', 'CGNSBase_t/Zone_t/FlowSolution_t',
               'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t']
