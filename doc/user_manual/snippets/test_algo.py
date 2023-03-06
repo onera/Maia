@@ -44,6 +44,24 @@ def test_merge_zones():
   assert len(maia.pytree.get_all_Zone_t(dist_tree)) == 2
   #merge_zones@end
 
+def test_merge_zones_from_family():
+  #merge_zones_from_family@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
+
+  # FamilyName are not included in the mesh
+  for zone in PT.get_all_Zone_t(dist_tree):
+    PT.new_child(zone, 'FamilyName', 'FamilyName_t', 'Naca0012')  
+
+  maia.algo.dist.merge_zones_from_family(dist_tree, 'Naca0012', MPI.COMM_WORLD)
+
+  zones = PT.get_all_Zone_t(dist_tree)
+  assert len(zones) == 1 and PT.get_name(zones[0]) == 'Naca0012'
+  #merge_zones_from_family@end
+
 def test_merge_connected_zones():
   #merge_connected_zones@start
   from mpi4py import MPI
