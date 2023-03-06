@@ -25,8 +25,8 @@ def test_mixed_to_elements(sub_comm, write_output):
   tets = PT.request_node_from_name(dist_tree, 'Tetra_4')
 
   # > Some non-regression checks
-  assert np.all(PT.get_value(PT.get_child_from_name(tris, 'ElementRange')) == [1,1296])
-  assert np.all(PT.get_value(PT.get_child_from_name(tets, 'ElementRange')) == [1297,1500])
+  assert np.all(PT.get_value(PT.get_child_from_name(tris, 'ElementRange')) == [1297,1500])
+  assert np.all(PT.get_value(PT.get_child_from_name(tets, 'ElementRange')) == [1,1296])
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
