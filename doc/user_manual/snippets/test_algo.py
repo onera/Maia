@@ -342,6 +342,7 @@ def test_convert_mixed_to_elements():
   from maia.utils.test_utils import mesh_dir
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.convert_elements_to_mixed(dist_tree, MPI.COMM_WORLD)
   maia.algo.dist.convert_mixed_to_elements(dist_tree, MPI.COMM_WORLD)
   #convert_mixed_to_elements@end
 
