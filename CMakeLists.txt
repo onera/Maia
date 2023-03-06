@@ -36,7 +36,6 @@ project(
   LANGUAGES CXX
 )
 
-option(${PROJECT_NAME}_ENABLE_FETCH_PYBIND "Fetch Pybind11 sources on-the-fly if not found by find_package()" ON)
 option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF)
 option(${PROJECT_NAME}_ENABLE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
 option(${PROJECT_NAME}_BUILD_EMBEDDED_PDM "Build the included copy of ParaDiGM" ON)
@@ -83,25 +82,8 @@ project_find_package(MPI REQUIRED)
 project_find_package(Mpi4Py REQUIRED)
 
 ## Dependencies built from source ##
-include(FetchContent)
-### pybind11 ###
-project_find_package(pybind11 2.7 CONFIG)
-if (NOT pybind11_FOUND)
-  if (${PROJECT_NAME}_ENABLE_FETCH_PYBIND)
-    message("Pybind11 was not found by find_package(). Fetching sources on-the-fly")
-    set(PYBIND11_INSTALL ON CACHE BOOL "${PROJECT_NAME} requires PyBind to export itself" FORCE)
-    include(FetchContent)
-    FetchContent_Declare(
-      pybind11
-      GIT_REPOSITORY https://github.com/pybind/pybind11.git
-      GIT_TAG        v2.7
-    )
-    FetchContent_MakeAvailable(pybind11)
-    project_add_dependency(pybind11)
-  else()
-    message(FATAL_ERROR "Pybind11 was not found by find_package() and ${PROJECT_NAME}_ENABLE_FETCH_PYBIND is OFF")
-  endif()
-endif()
+include(${PROJECT_UTILS_CMAKE_DIR}/find_or_fetch.cmake)
+find_or_fetch_pybind11()
 
 ### ParaDiGM ###
 if (NOT ${PROJECT_NAME}_BUILD_EMBEDDED_PDM)
