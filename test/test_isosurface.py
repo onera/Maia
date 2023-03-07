@@ -23,7 +23,7 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-def generate_test_tree(n_vtx,n_part,sub_comm):
+def generate_test_tree(n_vtx,n_part,sub_comm, build_bc_zsr=False):
 
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
   
@@ -59,6 +59,12 @@ def generate_test_tree(n_vtx,n_part,sub_comm):
     PT.new_DataArray('cylinder', fld2_nc, parent=FS_NC)
     PT.new_DataArray('sphere'  , fld1_cc, parent=FS_CC)
     PT.new_DataArray('cylinder', fld2_cc, parent=FS_CC)
+
+    # BCs ZSR
+    bcs_pl = np.concatenate([PT.get_value(pl_n)[0] for pl_n in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/PointList')])
+    bcs_gnum = PT.maia.getGlobalNumbering(PT.get_child_from_name(zone, 'NGonElements'), 'Element')[1][bcs_pl-1]
+    zsr_n = PT.new_ZoneSubRegion("ZSR_BC", loc='FaceCenter', point_list=bcs_pl.reshape(1,-1), parent=zone)
+    PT.new_DataArray('face_gnum', bcs_gnum, parent=zsr_n)
 
   return part_tree
 # ----------------------------------------------------------------------------------------
@@ -117,9 +123,9 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
   # Cube generation
   n_vtx  = 6
   n_part = 2
-  part_tree = generate_test_tree(n_vtx, n_part, sub_comm)
+  part_tree = generate_test_tree(n_vtx, n_part, sub_comm, build_bc_zsr=True)
 
-  containers    = ['FlowSolution_NC','FlowSolution_CC']
+  containers    = ['FlowSolution_NC','FlowSolution_CC','ZSR_BC']
   part_tree_iso = ISS.plane_slice(part_tree,
                                   [1.,1.,1.,0.2],
                                   sub_comm,

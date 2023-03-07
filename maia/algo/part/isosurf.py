@@ -14,6 +14,75 @@ familyname_query = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFami
 
 LOC_TO_DIM   = {'Vertex':0, 'EdgeCenter':1, 'FaceCenter':2, 'CellCenter':3}
 
+def get_relative_pl(node, part_zone):
+  ref_zsr_node = node
+  bc_descriptor_n = PT.get_child_from_name(node, 'BCRegionName')
+  gc_descriptor_n = PT.get_child_from_name(node, 'GridConnectivityRegionName')
+  assert not (bc_descriptor_n and gc_descriptor_n)
+  if bc_descriptor_n is not None:
+    bc_name      = PT.get_value(bc_descriptor_n)
+    ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneBC/{bc_name}')
+  elif gc_descriptor_n is not None:
+    gc_name      = PT.get_value(gc_descriptor_n)
+    ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneGridConnectivity_t/{gc_name})')
+  point_list_node  = PT.get_child_from_name(ref_zsr_node, 'PointList')
+  return point_list_node
+
+def get_partial_container_ptp_tools(part_zones, container_name, gridLocation, ptp, comm):
+  pl_gnum1 = list()
+  stride   = list()
+
+  for i_part, part_zone in enumerate(part_zones):
+    container = PT.get_child_from_name(part_zone, container_name)
+    if container is not None:
+      # > Get the right node to get PL (if ZSR linked to BC or GC)
+      point_list_node = get_relative_pl(container, part_zone)
+      point_list  = point_list_node[1][0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
+
+    # Get p2p gnums
+    part_gnum1_idx = ptp.get_gnum1_come_from() [i_part]['come_from_idx'] # Get partition order
+    part_gnum1     = ptp.get_gnum1_come_from() [i_part]['come_from']     # Get partition order
+    ref_lnum2      = ptp.get_referenced_lnum2()[i_part]                  # Get partition order
+
+    if container is None or point_list.size==0 or ref_lnum2.size==0:
+      stride_tmp   = np.zeros(part_gnum1_idx[-1],dtype=np.int32)
+      pl_gnum1_tmp = np.empty(0,dtype=np.int32)
+      stride  .append(stride_tmp)
+      pl_gnum1.append(pl_gnum1_tmp)
+    else:
+      order    = np.argsort(ref_lnum2)                 # Sort order of point_list ()
+      idx      = np.searchsorted(ref_lnum2,point_list,sorter=order)
+      pl_mask  = point_list==ref_lnum2[np.take(order, idx, mode='clip')]
+      true_idx = idx[pl_mask]
+
+      # Number of part1 elements in an element of part2 
+      n_elt_of1_in2 = np.diff(part_gnum1_idx)[true_idx]
+
+      # PL in part2 order
+      pl_gnum1_tmp = np.arange(0, point_list.shape[0], dtype=np.int32)[pl_mask]
+      pl_gnum1_tmp = np.repeat(pl_gnum1_tmp, n_elt_of1_in2)
+      pl_gnum1.append(pl_gnum1_tmp)
+
+      # PL in gnum1 order
+      pl_to_gnum1_start = part_gnum1_idx[true_idx]         
+      pl_to_gnum1_stop  = pl_to_gnum1_start+n_elt_of1_in2
+      pl_to_gnum1 = np_utils.multi_arange(pl_to_gnum1_start, pl_to_gnum1_stop)
+      
+      # Stride variable
+      stride_tmp    = np.zeros(part_gnum1_idx[-1], dtype=np.int32)
+      stride_tmp[pl_to_gnum1] = 1
+      stride.append(stride_tmp)
+
+  # Fake exchange to build PL on part1
+  req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM,
+                             pl_gnum1,
+                             part2_stride=stride)
+  part1_stride, part1_data = ptp.reverse_wait(req_id)
+  new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
+    
+  return new_point_list, pl_gnum1, stride
+
 def local_pl_offset(part_zone, dim):
   # Works only for ngon / nface 3D meshes
   if   dim == 3:
@@ -50,14 +119,11 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
   # Part 1 : ISOSURF
   # Part 2 : VOLUME
-  all_ordering    = list()
-  all_stride_int  = list()
-  all_stride_bool = list()
-  all_part_gnum1  = list()
 
   for container_name in containers_name :
-    # Retrieve fields name + GridLocation + PointList if container
-    # is not know by every partition
+
+    # > Retrieve fields name + GridLocation + PointList if container
+    #   is not know by every partition
     mask_zone = ['MaskedZone', None, [], 'Zone_t']
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
       child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
@@ -86,10 +152,12 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
     partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
     assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
 
-    # --- Part1 (ISOSURF) objects definition ----------------------------------
+
+    # > Part1 (ISOSURF) objects definition
     # LN_TO_GN
     _gridLocation    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
     elt_n            = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
+    if elt_n is None :return
     part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
     part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
     
@@ -106,9 +174,8 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum")[1]]
       part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]
     
-    # TODO : be sure edge->FaceCenter and vtx+cell->Verter and CellCenter
 
-    # --- Part2 (VOLUME) objects definition ----------------------------------
+    # > Part2 (VOLUME) objects definition
     part2_ln_to_gn      = list()
     for part_zone in part_zones:
       elt_n            = part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(part_zone, 'NGonElements')
@@ -116,7 +183,7 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       part2_ln_to_gn.append(PT.get_value(part2_elt_gnum_n))
         
 
-    # --- P2P Object --------------------------------------------------------------------
+    # > P2P Object
     ptp = PDM.PartToPart(comm,
                          part1_ln_to_gn,
                          part2_ln_to_gn,
@@ -124,99 +191,15 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
                          part1_to_part2     )
 
 
-    # --- FlowSolution node def by zone -------------------------------------------------
+    # > FlowSolution node def in isosurf zone
     FS_iso = PT.new_FlowSolution(container_name, loc=gridLocation, parent=iso_part_zone)
-    pl_gnum1 = list()
-    stride   = list()
     if partial_field:
-      for i_part, part_zone in enumerate(part_zones):
-        container = PT.get_child_from_name(part_zone, container_name)
-        if container is not None:
-          # > Get the right node to get PL (if ZSR linked to BC or GC)
-          ref_zsr_node = container
-          bc_descriptor_n = PT.get_child_from_name(container, 'BCRegionName')
-          gc_descriptor_n = PT.get_child_from_name(container, 'GridConnectivityRegionName')
-          assert not (bc_descriptor_n and gc_descriptor_n)
-          if bc_descriptor_n is not None:
-            bc_name      = PT.get_value(bc_descriptor_n)
-            ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneBC/{bc_name}')
-          elif gc_descriptor_n is not None:
-            gc_name      = PT.get_value(gc_descriptor_n)
-            ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneGridConnectivity_t/{gc_name})')
-          point_list_node  = PT.get_child_from_name(ref_zsr_node, 'PointList')
-          point_list  = point_list_node[1][0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
+      new_point_list, pl_gnum1, stride = get_partial_container_ptp_tools(part_zones, container_name, gridLocation, ptp, comm)
+      point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
+      new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
 
-        part_gnum1_idx = ptp.get_gnum1_come_from() [i_part]['come_from_idx'] # Get partition order
-        part_gnum1     = ptp.get_gnum1_come_from() [i_part]['come_from']     # Get partition order
-        ref_lnum2      = ptp.get_referenced_lnum2()[i_part]                  # Get partition order
 
-        if container is None or point_list.size == 0:
-          # ref_lnum2_idx = np.empty(0,dtype=np.int32)
-          # print(f"ref_lnum2.shape = {ref_lnum2.shape}")
-          # all_part_gnum1.append(np.empty(0,dtype=np.int32)) # Select only part1_gnum that is in part2 point_list
-          stride_tmp = np.zeros(part_gnum1_idx[-1],dtype=np.int32)
-          stride.append(stride_tmp)
-
-          pl_gnum1_tmp = np.empty(0,dtype=np.int32)
-          print(f"none pl_gnum1_tmp.dtype = {pl_gnum1_tmp.dtype}")
-          pl_gnum1.append(pl_gnum1_tmp)
-        else:
-          # print(f"point_list = {point_list} {point_list.shape}")
-          # all_part_gnum1.append(part_gnum1)
-          order    = np.argsort(ref_lnum2)                 # Sort order of point_list ()
-          idx      = np.searchsorted(ref_lnum2,point_list,sorter=order)
-          # print(f"IDX = {idx} {idx.shape}")
-          # print(f"np.take(order, idx = {np.take(order, idx, mode='clip')}")
-          # print(f"point_list = {point_list}")
-          # print(f"ref_lnum2[order]= {np.take(ref_lnum2[order], idx)}")
-          pl_mask  = point_list==ref_lnum2[np.take(order, idx, mode='clip')]
-          true_idx = idx[pl_mask]
-          # print(f'true_idx = {true_idx} {true_idx.shape}')
-
-          # Number of part1 elements in an element of part2 
-          n_elt_of1_in2 = np.diff(part_gnum1_idx)[true_idx]
-
-          # Get idx on gnum1 array
-          pl_gnum1_tmp = np.arange(0, point_list.shape[0], dtype=np.int32)[pl_mask]
-          pl_gnum1_tmp = np.repeat(pl_gnum1_tmp, n_elt_of1_in2)
-          pl_gnum1.append(pl_gnum1_tmp)
-          print(f"here pl_gnum1_tmp.dtype = {pl_gnum1_tmp.dtype}")
-
-          # Ouep
-          pl_to_gnum1_start = part_gnum1_idx[true_idx]         
-          pl_to_gnum1_stop  = pl_to_gnum1_start+n_elt_of1_in2
-          pl_to_gnum1 = np_utils.multi_arange(pl_to_gnum1_start, pl_to_gnum1_stop)
-          
-          # Stride variable
-          stride_tmp    = np.zeros(part_gnum1_idx[-1], dtype=np.int32)
-          stride_tmp[pl_to_gnum1] = 1
-          stride.append(stride_tmp)
-
-      # Fake exchange to build PL on part1
-      req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM,
-                                 pl_gnum1,
-                                 part2_stride=stride)
-      part1_stride, part1_data = ptp.reverse_wait(req_id)
-
-      # print(f"part1_stride = {part1_stride}")
-      # print(f"part1_data = {part1_data}")
-      if part1_data[0].size == 0:
-        new_point_list = np.empty(0, dtype=np.int32)
-      else :
-        new_point_list = np.where(part1_stride[0]==1)[0]
-        # print(f"new_point_list = {new_point_list}")
-        # print(f"LOC_TO_DIM[gridLocation] = {LOC_TO_DIM[gridLocation]}")
-        # print(f"local_pl_offset = {local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation])}")
-        # elt
-        # pl_offset = PT.get_child_from_name(iso_part_zone, "Q")
-        point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
-# 
-      new_pl_node    = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
-      # print(f'new_point_list = {point_list}')
-    PT.print_tree(FS_iso)
-
-    # --- Field exchange ----------------------------------------------------------------
+    # > Field exchange
     for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
       fld_name = PT.get_name(fld_node)
       fld_path = f"{container_name}/{fld_name}"
@@ -231,9 +214,9 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
       
       else :
-        p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2
         fld_data = [PT.get_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
         stride   = 1
+        p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2
 
       # Reverse iexch
       req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
@@ -245,12 +228,11 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       # Placement
       i_part = 0 # One isosurface partition
       # Ponderation if vertex
-      if   gridLocation=="Vertex"    :
-        weighted_fld        = part1_data[i_part]*part1_weight[i_part]
-        part1_data[i_part]  = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
+      if gridLocation=="Vertex"    :
+        weighted_fld       = part1_data[i_part]*part1_weight[i_part]
+        part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
 
       PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)    
-    PT.print_tree(FS_iso)
 
 # =======================================================================================
 
