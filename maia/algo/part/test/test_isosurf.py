@@ -11,6 +11,38 @@ from maia.algo.part import isosurf as ISO
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
+
+def test_get_relative_pl():
+  part_zone = parse_yaml_cgns.to_node(
+  """
+  VolZone.P0.N0 Zone_t:
+    ZSR1 ZoneSubRegion_t:
+      BCRegionName Descriptor_t "BC":
+    ZSR2 ZoneSubRegion_t:
+      GridConnectivityRegionName Descriptor_t "GC":
+    ZSR3 ZoneSubRegion_t:
+      GridLocation GridLocation_t "CellCenter" :
+      PointList    IndexArray_t   [[4,8,1]]:
+    ZoneBC ZoneBC_t:
+      BC BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList    IndexArray_t   [[9,3,2]]:
+    ZoneGC ZoneGridConnectivity_t:
+      GC GridConnectivity_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList    IndexArray_t   [[4,3,7]]:
+  """)
+  zsr1  = PT.get_child_from_name(part_zone,'ZSR1')
+  zsr2  = PT.get_child_from_name(part_zone,'ZSR2')
+  zsr3  = PT.get_child_from_name(part_zone,'ZSR3')
+  pl1_n = PT.get_value(ISO.get_relative_pl(zsr1, part_zone))[0]
+  pl2_n = PT.get_value(ISO.get_relative_pl(zsr2, part_zone))[0]
+  pl3_n = PT.get_value(ISO.get_relative_pl(zsr3, part_zone))[0]
+  assert np.array_equal(pl1_n, np.array([9,3,2],dtype=np.int32))
+  assert np.array_equal(pl2_n, np.array([4,3,7],dtype=np.int32))
+  assert np.array_equal(pl3_n, np.array([4,8,1],dtype=np.int32))
+
+
 def test_copy_referenced_families():
   source_base = parse_yaml_cgns.to_node(
   """
@@ -42,6 +74,14 @@ def test_exchange_field_one_domain(from_api, sub_comm):
   if sub_comm.Get_rank() == 0:
     yt_vol = f"""
     VolZone.P0.N0 Zone_t:
+      NGonElements Elements_t [22,0]:
+        ElementRange IndexRange_t [1,8]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Element DataArray_t {dtype} [1,3,5,7]:
+      ZoneBC ZoneBC_t:
+        Zmin BC_t:
+          GridLocation GridLocation_t "FaceCenter":
+          PointList    IndexArray_t {dtype} [[1,2,3,4]]:
       FSolVtx FlowSolution_t:
         GridLocation GridLocation_t "Vertex":
         fieldC DataArray_t [60., 40, 20, 50, 30, 10]:
@@ -49,12 +89,19 @@ def test_exchange_field_one_domain(from_api, sub_comm):
         GridLocation GridLocation_t "CellCenter":
         fieldA DataArray_t [40., 30., 20., 10.]:
         fieldB DataArray_t [400., 300., 200., 100.]:
+      FSolBC FlowSolution_t:
+        BCRegionName Descriptor_t "Zmin":
+        fieldD DataArray_t R8 [-1., -3., -5., -7.]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Cell DataArray_t {dtype} [4,3,2,1]:
         Vertex DataArray_t {dtype} [6,4,2,5,3,1]:
     """
     yt_surf = f"""
     VolZone_iso.P0.N0 Zone_t:
+      BAR_2 Elements_t:
+        ElementRange IndexRange_t [1,3]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Element DataArray_t {dtype} [3,2]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Cell DataArray_t {dtype} [2]:
         Vertex DataArray_t {dtype} [1,2]:
@@ -63,10 +110,15 @@ def test_exchange_field_one_domain(from_api, sub_comm):
         Vtx_parent_gnum DataArray_t {dtype} [6,5]:
         Vtx_parent_idx DataArray_t I4 [0,1,2]:
         Cell_parent_gnum DataArray_t {dtype} [4]:
+        Face_parent_bnd_edges DataArray_t {dtype} [5, 1]:
     """
   else:
     yt_surf = f"""
     VolZone_iso.P1.N0 Zone_t:
+      BAR_2 Elements_t:
+        ElementRange IndexRange_t [1,3]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Element DataArray_t {dtype} [1]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Cell DataArray_t {dtype} [1,3]:
         Vertex DataArray_t {dtype} [2,3]:
@@ -75,9 +127,14 @@ def test_exchange_field_one_domain(from_api, sub_comm):
         Vtx_parent_gnum DataArray_t {dtype} [5,1,2]:
         Vtx_parent_idx DataArray_t I4 [0,1,3]:
         Cell_parent_gnum DataArray_t {dtype} [3, 1]:
+        Face_parent_bnd_edges DataArray_t {dtype} [3]:
     """
     yt_vol = f"""
     VolZone.P1.N0 Zone_t:
+      NGonElements Elements_t [22,0]:
+        ElementRange IndexRange_t [1,8]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Element DataArray_t {dtype} [2,4,6,8]:
       FSolVtx FlowSolution_t:
         GridLocation GridLocation_t "Vertex":
         fieldC DataArray_t [70., 80]:
@@ -94,42 +151,44 @@ def test_exchange_field_one_domain(from_api, sub_comm):
     expected_A = np.array([40.])
     expected_B = np.array([400.])
     expected_C = np.array([60., 50.])
+    expected_D = np.array([-5., -1.])
   else:
     expected_A = np.array([30., 10.])
     expected_B = np.array([300., 100.])
     expected_C = np.array([50., 15.])
+    expected_D = np.array([-3.])
 
   if from_api:
     iso_tree  = parse_yaml_cgns.to_cgns_tree(yt_surf)
     vol_tree  = parse_yaml_cgns.to_cgns_tree(yt_vol)
-    ISO._exchange_field(vol_tree, iso_tree, ["FSolCell", "FSolVtx"], sub_comm)
+    ISO._exchange_field(vol_tree, iso_tree, ["FSolCell", "FSolVtx", "FSolBC"], sub_comm)
     iso_zone = PT.get_all_Zone_t(iso_tree)[0]
   else:
     iso_zone  = parse_yaml_cgns.to_node(yt_surf)
     vol_zones = parse_yaml_cgns.to_nodes(yt_vol)
-    ISO.exchange_field_one_domain(vol_zones, iso_zone, ["FSolCell", "FSolVtx"], sub_comm)
-
+    ISO.exchange_field_one_domain(vol_zones, iso_zone, ["FSolCell", "FSolVtx", "FSolBC"], sub_comm)
+  
   assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolCell")) == "CellCenter"
   assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolVtx")) == "Vertex"
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolCell/fieldA")[1], expected_A)
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolCell/fieldB")[1], expected_B)
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolVtx/fieldC")[1], expected_C)
+  assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolBC/fieldD")[1], expected_D)
   
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @mark_mpi_test(2)
 def test_isosurf_one_domain(sub_comm):
   dist_tree = maia.factory.generate_dist_block(3, "Poly", sub_comm)
-  PT.rm_nodes_from_label(dist_tree, "ZoneBC_t") # Cleanup
   part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm)
 
   part_zones = PT.get_all_Zone_t(part_tree)
   iso_zone = ISO.iso_surface_one_domain(part_zones, "PLANE", [1,0,0,0.25], "TRI_3", sub_comm)
 
   assert PT.Zone.n_cell(iso_zone) == 16 and PT.Zone.n_vtx(iso_zone) == 15
-
   assert (PT.get_node_from_name(iso_zone, 'CoordinateX')[1] == 0.25).all()
-  assert (PT.get_node_from_name(iso_zone, 'ElementRange')[1] == np.array([1, 16], dtype=np.int32)).all()
+  assert (PT.get_child_from_predicates(iso_zone, 'TRI_3/ElementRange')[1] == np.array([ 1, 16], dtype=np.int32)).all()
+  assert (PT.get_child_from_predicates(iso_zone, 'BAR_2/ElementRange')[1] == np.array([17, 24], dtype=np.int32)).all()
 
   assert PT.get_label(PT.get_child_from_name(iso_zone, "maia#surface_data")) == 'UserDefinedData_t'
 

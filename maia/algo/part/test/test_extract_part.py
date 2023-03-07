@@ -26,6 +26,12 @@ def test_local_pl_offset():
   PT.new_NGonElements('NGon', erange=[6, 10], parent=zone)
   assert EP.local_pl_offset(zone, 2) == 5
   assert EP.local_pl_offset(zone, 3) == 0
+  zone = PT.new_Zone('Zone', type='Unstructured')
+  PT.new_Elements('TRI_3', type='TRI_3',erange=[1, 5], parent=zone)
+  PT.new_Elements('BAR_2', type='BAR_2',erange=[6,15], parent=zone)
+  assert EP.local_pl_offset(zone, 0) == 0
+  assert EP.local_pl_offset(zone, 1) == 5
+  assert EP.local_pl_offset(zone, 2) == 0
 
 @mark_mpi_test(2)
 @pytest.mark.parametrize("dim", [0,2,3])

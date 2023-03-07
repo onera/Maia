@@ -6,6 +6,7 @@ import maia.pytree as PT
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.utils    import np_utils, layouts, py_utils
+from .extract_part      import local_pl_offset
 from .point_cloud_utils import create_sub_numbering
 
 import Pypdm.Pypdm as PDM
@@ -24,7 +25,7 @@ def get_relative_pl(node, part_zone):
     ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneBC/{bc_name}')
   elif gc_descriptor_n is not None:
     gc_name      = PT.get_value(gc_descriptor_n)
-    ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneGridConnectivity_t/{gc_name})')
+    ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneGridConnectivity_t/{gc_name}')
   point_list_node  = PT.get_child_from_name(ref_zsr_node, 'PointList')
   return point_list_node
 
@@ -82,26 +83,6 @@ def get_partial_container_ptp_tools(part_zones, container_name, gridLocation, pt
   new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
     
   return new_point_list, pl_gnum1, stride
-
-def local_pl_offset(part_zone, dim):
-  # Works only for ngon / nface 3D meshes
-  if   dim == 3:
-    nface = PT.Zone.NFaceNode(part_zone)
-    return PT.Element.Range(nface)[0] - 1
-  elif dim == 2:
-    if PT.Zone.has_ngon_elements(part_zone):
-      ngon = PT.Zone.NGonNode(part_zone)
-      return PT.Element.Range(ngon)[0] - 1
-    else:
-      tri_or_quad_elts = lambda n: PT.get_label(n)=='Elements_t' and PT.get_name(n) in ['TRI_3', 'QUAD_4']
-      elt_n     = PT.get_child_from_predicate(part_zone, tri_or_quad_elts)
-      return PT.Element.Range(elt_n)[0] - 1
-  elif dim == 1:
-    bar_elts  = lambda n: PT.get_label(n)=='Elements_t' and PT.get_name(n) in ['BAR_2']
-    elt_n     = PT.get_child_from_predicate(part_zone, bar_elts)
-    return PT.Element.Range(elt_n)[0] - 1
-  else:
-    return 0
 
 def copy_referenced_families(source_base, target_base):
   """ Copy from source_base to target_base the Family_t nodes referenced
@@ -416,7 +397,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   PT.new_DataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=maia_iso_zone)
   PT.new_DataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
   PT.new_DataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
-  if elt_type in ['TRI_3']:
+  if elt_type in ['TRI_3'] and n_bnd_edge!=0:
     PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
 
   # > FamilyName(s)

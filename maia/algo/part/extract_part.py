@@ -23,14 +23,24 @@ DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                  2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
+
 def local_pl_offset(part_zone, dim):
-  # Works only for ngon / nface 3D meshes
-  if dim == 3:
+  # Works only for ngon / nface 3D meshes and elements meshes with one type of element per dim
+  if   dim == 3:
     nface = PT.Zone.NFaceNode(part_zone)
     return PT.Element.Range(nface)[0] - 1
-  if dim == 2:
-    ngon = PT.Zone.NGonNode(part_zone)
-    return PT.Element.Range(ngon)[0] - 1
+  elif dim == 2:
+    if PT.Zone.has_ngon_elements(part_zone):
+      ngon = PT.Zone.NGonNode(part_zone)
+      return PT.Element.Range(ngon)[0] - 1
+    else:
+      tri_or_quad_elts = lambda n: PT.get_label(n)=='Elements_t' and PT.get_name(n) in ['TRI_3', 'QUAD_4']
+      elt_n     = PT.get_child_from_predicate(part_zone, tri_or_quad_elts)
+      return PT.Element.Range(elt_n)[0] - 1
+  elif dim == 1:
+    bar_elts  = lambda n: PT.get_label(n)=='Elements_t' and PT.get_name(n) in ['BAR_2']
+    elt_n     = PT.get_child_from_predicate(part_zone, bar_elts)
+    return PT.Element.Range(elt_n)[0] - 1
   else:
     return 0
 
