@@ -12,6 +12,7 @@ from maia.algo.dist  import s_to_u        as CSU
 from maia.algo.dist  import merge         as ME
 from maia.transfer   import protocols     as MTP
 from maia.utils      import par_utils     as MUPar
+from maia.utils.ndarray import np_utils
 
 import maia.pytree.sids.elements_utils    as MPSEU
 
@@ -34,7 +35,7 @@ def collect_pl_nodes(root, filter_loc=None):
       pointlist_nodes.append(pl_n)
     elif pr_n is not None and PT.get_value(pr_n).shape[0] == 1:
       pr = PT.get_value(pr_n)
-      distrib = PT.get_value(MT.getDistribution(node, 'Index'))
+      distrib = PT.get_value(PT.maia.getDistribution(node, 'Index'))
       pl = np_utils.single_dim_pr_to_pl(pr, distrib)
       new_pl_n = PT.new_node(name='PointList', value=pl, label='IndexArray_t', parent=node)
       PT.rm_nodes_from_label(zone,'Elements_t')
@@ -101,19 +102,19 @@ def convert_mixed_to_elements(dist_tree, comm):
                     all_types[kd] = 0
                 for pos, nb in vd.items():
                     all_types[kd] += nb
+        all_types = dict(sorted(all_types.items()))
                     
         
         # 3/ To take into a count Paraview limitation, elements are sorted by
         #    decreased dimensions : 3D->2D->1D->0D
-        #    Without this limitations, replace the following lines by:
-        #        `all_types = dict(sorted(all_types.items()))`
+        #    Without this limitation, replace the following lines by:
         #        `key_types = np.array(list(all_types.keys()),dtype=np.int32)`
         dim_types = -1*np.ones(len(all_types.keys()),dtype=np.int32)
         key_types = np.array(list(all_types.keys()),dtype=np.int32)
         for k,key in enumerate(all_types.keys()):
             dim_types[k] = MPSEU.elements_properties[key][1]
         sort_indices = np.argsort(dim_types)
-        key_types = key_types[sort_indices[::-1]] 
+        key_types = key_types[sort_indices[::-1]]
         
         
         # 4/ Create old to new element numbering for PointList update      
