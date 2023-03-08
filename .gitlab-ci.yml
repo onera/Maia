@@ -77,7 +77,7 @@ job:ctest:
     SCHEDULER_PARAMETERS: "-M c1 --qos=c1_inter_giga --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR/build
-    - ctest -E pdm
+    - ctest -R maia
   after_script:
     - cd build/test
     - coverage combine --rcfile=.coveragerc_unit_tests
