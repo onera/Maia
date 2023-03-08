@@ -89,7 +89,8 @@ def rm_node_from_path(root, path):
 
 def get_all_subsets(root,filter_loc=None):
   """
-  Search and collect all the subsets nodes found under root
+  Search and collect all the subsets nodes found under root and the root
+  itself if it is a subset
   If filter_loc list is not None, select only the subsets nodes of given
   GridLocation.
   """
@@ -97,13 +98,14 @@ def get_all_subsets(root,filter_loc=None):
   eligible_subset_paths = ['CGNSBase_t/Zone_t/ZoneBC_t/BC_t',
                            'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/BCDataSet_t',
                            'CGNSBase_t/Zone_t/ZoneSubRegion_t',
+                           'CGNSBase_t/Zone_t/DiscreteData_t',
                            'CGNSBase_t/Zone_t/FlowSolution_t',
                            'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t']
 
   root_label = PT.get_label(root)
   if root_label != 'CGNSTree_t':
     eligible_subset_paths = [path for path in eligible_subset_paths if root_label in path]
-  
+
   subset_nodes = []
   subset_paths = []
   for path in eligible_subset_paths:
