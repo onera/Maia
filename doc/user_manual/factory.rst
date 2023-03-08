@@ -74,11 +74,12 @@ corresponds to the values in the list (expressed in fraction of the input zone).
 For a given distributed zone, the sum of all the fractions across all the processes must
 be 1.
 
-This dictionary can be created by hand; for convenience, Maia provides two functions in the
+This dictionary can be created by hand; for convenience, Maia provides three functions in the
 :mod:`maia.factory.partitioning` module to create this dictionary.
 
 .. autofunction:: maia.factory.partitioning.compute_regular_weights
 .. autofunction:: maia.factory.partitioning.compute_balanced_weights
+.. autofunction:: maia.factory.partitioning.compute_nosplit_weights
 
 Reordering options
 ^^^^^^^^^^^^^^^^^^

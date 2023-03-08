@@ -1,6 +1,8 @@
 from mpi4py import MPI
 import logging     as LOG
 import numpy as np
+import heapq
+
 from cmaia.utils import search_subset_match
 from maia.factory.partitioning.load_balancing import single_zone_balancing
 
@@ -454,3 +456,42 @@ def balance_with_non_uniform_weights(n_elem_per_zone, n_rank,
   LOG.info(' '*2 + "=================  End Computing Distribution  ================= " )
   LOG.info(' '*2 + "================================================================ " )
   return repart_per_zone
+
+def karmarkar_karp(numbers, n_bin):
+    """
+    Solves the multiway number partitioning using Karmarkar-Karp
+    algorithm (aka Largest differencing method), see
+    https://en.wikipedia.org/wiki/Largest_differencing_method
+
+    Reparts the (integer positive) numbers into n_bin bin
+    such that the largest sum is minimized.
+    Return a list of size n_bin storing the indices in the numbers
+    array
+    """
+    subset_weight = lambda s: numbers[s].sum()
+    numbers = np.asarray(numbers)
+    all_subsets = []
+    for i, number in enumerate(numbers):
+        # At the begining, max - min is simply the number
+        ini_subset = [[] for k in range(n_bin-1)] + [[i]]
+        # heapq is used to easily select the most loaded from list
+        heapq.heappush(all_subsets, (-number, ini_subset))
+
+    while len(all_subsets) > 1:
+        # Get the two larger max-min
+        _, first  = heapq.heappop(all_subsets)
+        _, second = heapq.heappop(all_subsets)
+        # Combine rule: most loaded of first with least loaded of second and so on
+        # Because we sorted the subset wrt their size we can just join them
+        combined_subset = [first[i] + second[n_bin-i-1] for i in range(n_bin)]
+
+        # Sort to prepare next it
+        combined_subset = sorted(combined_subset, key=subset_weight)
+        # Prepare next key (max subset size - min subset size)
+        max_subset, min_subset = combined_subset[-1], combined_subset[0]
+        next_key = subset_weight(max_subset) - subset_weight(min_subset)
+
+        heapq.heappush(all_subsets, (-next_key, combined_subset))
+
+    final_subsets = all_subsets[0][1]
+    return final_subsets
