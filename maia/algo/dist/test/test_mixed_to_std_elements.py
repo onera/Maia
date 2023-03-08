@@ -18,6 +18,32 @@ def test_collect_pl_nodes(sub_comm):
     yaml_path = os.path.join(TU.sample_mesh_dir, 'cube_4.yaml')
     dist_tree = file_to_dist_tree(yaml_path, sub_comm)
 
+    zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+    pointlist_nodes = collect_pl_nodes(zone)
+    assert len(pointlist_nodes) == 7
+    for pointlist_node in pointlist_nodes:
+        assert PT.get_name(pointlist_node)  == 'PointList'
+        assert PT.get_label(pointlist_node) == 'IndexArray_t'
+
+    pointlist_nodes = collect_pl_nodes(zone, filter_loc = 'Vertex')
+    assert len(pointlist_nodes) == 1
+    for pointlist_node in pointlist_nodes:
+        assert PT.get_name(pointlist_node)  == 'PointList'
+        assert PT.get_label(pointlist_node) == 'IndexArray_t'
+
+    pointlist_nodes = collect_pl_nodes(zone, filter_loc = ['Vertex','FaceCenter'])
+    assert len(pointlist_nodes) == 7
+    for pointlist_node in pointlist_nodes:
+       assert PT.get_name(pointlist_node)  == 'PointList'
+       assert PT.get_label(pointlist_node) == 'IndexArray_t'
+
+    pointlist_nodes = collect_pl_nodes(zone, filter_loc = ['FaceCenter'])
+    assert len(pointlist_nodes) == 6
+    for pointlist_node in pointlist_nodes:
+        assert PT.get_name(pointlist_node)  == 'PointList'
+        assert PT.get_label(pointlist_node) == 'IndexArray_t'
+
 @mark_mpi_test([1,2,3,7])
 def test_convert_mixed_to_elements(sub_comm):
     rank = sub_comm.Get_rank()

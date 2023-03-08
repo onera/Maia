@@ -68,11 +68,11 @@ Base CGNSBase_t I4 [3,3]:
       Zmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[13,14,15,16]]:
-    ZoneSubRegion1 ZoneSubRegion_t:
+    ZoneSubRegion1 ZoneSubRegion_t [3]:
       PointList IndexArray_t I4 [[1,2,3,4]]:
       Data DataArray_t:
         I4 : [1, 2, 3, 4]
-    ZoneSubRegion2 ZoneSubRegion_t:
+    ZoneSubRegion2 ZoneSubRegion_t [3]:
       BCRegionName Descriptor_t "Ymin":
       Data DataArray_t:
         I4 : [5, 6]

@@ -7,6 +7,7 @@ from maia.pytree.cgns_keywords import Label as CGL
 import maia.pytree as PT
 
 from maia.pytree.yaml   import parse_yaml_cgns
+from maia.utils         import test_utils as TU
 
 yt = """
 Base CGNSBase_t:
@@ -95,6 +96,47 @@ def test_rm_node_from_path():
   tree_bck = PT.deep_copy(tree)
   PT.rm_node_from_path(zgc, '')
   assert PT.is_same_tree(tree, tree_bck)
+
+def test_get_all_subsets():
+  yaml_path = os.path.join(TU.sample_mesh_dir, 'cube_4.yaml')
+  yaml_file = open(file)
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yaml_file)
+
+  all_tested_subsets_nodes = []
+
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+   
+  subset_nodes = get_all_subsets(zone)
+  assert len(subset_nodes) == 7
+  all_tested_subsets_nodes += subset_nodes
+  subset_nodes = get_all_subsets(zone, 'Vertex')
+  assert len(subset_nodes) == 1
+  all_tested_subsets_nodes += subset_nodes
+  subset_nodes = get_all_subsets(zone, 'FaceCenter')
+  assert len(subset_nodes) == 6
+  all_tested_subsets_nodes += subset_nodes
+  subset_nodes = get_all_subsets(zone, 'CellCenter')
+  assert len(subset_nodes) == 0
+  all_tested_subsets_nodes += subset_nodes
+  subset_nodes = get_all_subsets(zone, ['Vertex','FaceCenter'])
+  assert len(subset_nodes) == 7
+  all_tested_subsets_nodes += subset_nodes
+
+  zsr = PT.get_node_from_label(zone,'ZoneSubRegion_t')
+
+  subset_nodes = get_all_subsets(zsr)
+  assert len(subset_nodes) == 1
+  all_tested_subsets_nodes += subset_nodes
+  subset_nodes = get_all_subsets(zsr,'Vertex')
+  assert len(subset_nodes) == 1
+  all_tested_subsets_nodes += subset_nodes
+  subset_nodes = get_all_subsets(zsr,'FaceCenter')
+  assert len(subset_nodes) == 0
+  all_tested_subsets_nodes += subset_nodes
+
+  for subset_node in all_tested_subsets_nodes:
+    assert PT.get_node_from_name(subset_node,'PointList')     or PT.get_node_from_name(subset_node,'PointRange')
+    assert PT.get_node_from_label(subset_node,'IndexArray_t') or PT.get_node_from_label(subset_node,'IndexRange_t')
 
 # Move in functionnal test ?
 def test_getNodeFromPredicate():
