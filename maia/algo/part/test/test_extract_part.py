@@ -13,26 +13,6 @@ def sample_part_tree(comm):
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
   return part_tree
 
-
-def test_local_pl_offset():
-  zone = PT.new_Zone('Zone', type='Unstructured')
-  PT.new_NGonElements('NGon', erange=[1, 10], parent=zone)
-  PT.new_NFaceElements('NFace', erange=[11, 20], parent=zone)
-  assert EP.local_pl_offset(zone, 0) == 0
-  assert EP.local_pl_offset(zone, 2) == 0
-  assert EP.local_pl_offset(zone, 3) == 10
-  zone = PT.new_Zone('Zone', type='Unstructured')
-  PT.new_NFaceElements('NFace', erange=[1, 5], parent=zone)
-  PT.new_NGonElements('NGon', erange=[6, 10], parent=zone)
-  assert EP.local_pl_offset(zone, 2) == 5
-  assert EP.local_pl_offset(zone, 3) == 0
-  zone = PT.new_Zone('Zone', type='Unstructured')
-  PT.new_Elements('TRI_3', type='TRI_3',erange=[1, 5], parent=zone)
-  PT.new_Elements('BAR_2', type='BAR_2',erange=[6,15], parent=zone)
-  assert EP.local_pl_offset(zone, 0) == 0
-  assert EP.local_pl_offset(zone, 1) == 5
-  assert EP.local_pl_offset(zone, 2) == 0
-
 @mark_mpi_test(2)
 @pytest.mark.parametrize("dim", [0,2,3])
 def test_extract_part_simple(dim, sub_comm):
