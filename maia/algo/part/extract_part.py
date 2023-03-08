@@ -8,6 +8,7 @@ import  maia.pytree   as     PT
 from    maia.factory  import dist_from_part
 from    maia.transfer import utils                as TEU
 from    maia.utils    import np_utils, layouts, py_utils
+# from    .isosurf import get_partial_container_ptp_tools
 from    .point_cloud_utils import create_sub_numbering
 
 import Pypdm.Pypdm as PDM
@@ -43,6 +44,84 @@ def local_pl_offset(part_zone, dim):
     return PT.Element.Range(elt_n)[0] - 1
   else:
     return 0
+
+
+def get_relative_pl(node, part_zone):
+  ref_zsr_node = node
+  bc_descriptor_n = PT.get_child_from_name(node, 'BCRegionName')
+  gc_descriptor_n = PT.get_child_from_name(node, 'GridConnectivityRegionName')
+  assert not (bc_descriptor_n and gc_descriptor_n)
+  if bc_descriptor_n is not None:
+    bc_name      = PT.get_value(bc_descriptor_n)
+    ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneBC/{bc_name}')
+  elif gc_descriptor_n is not None:
+    gc_name      = PT.get_value(gc_descriptor_n)
+    ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneGridConnectivity_t/{gc_name}')
+  point_list_node  = PT.get_child_from_name(ref_zsr_node, 'PointList')
+  return point_list_node
+
+
+def get_partial_container_ptp_tools(part_zones, container_name, gridLocation, ptp, part1_lngn, comm):
+  pl_gnum1 = list()
+  stride   = list()
+  to_send  = list()
+
+  for i_part, part_zone in enumerate(part_zones):
+    container = PT.get_child_from_name(part_zone, container_name)
+    if container is not None:
+      # > Get the right node to get PL (if ZSR linked to BC or GC)
+      point_list_node = get_relative_pl(container, part_zone)
+      point_list  = point_list_node[1][0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
+
+    # Get p2p gnums
+    part_gnum1_idx = ptp.get_gnum1_come_from() [i_part]['come_from_idx'] # Get partition order
+    part_gnum1     = ptp.get_gnum1_come_from() [i_part]['come_from']     # Get partition order
+    ref_lnum2      = ptp.get_referenced_lnum2()[i_part]                  # Get partition order
+
+    if container is None or point_list.size==0 or ref_lnum2.size==0:
+      stride_tmp   = np.zeros(part_gnum1_idx[-1],dtype=np.int32)
+      pl_gnum1_tmp = np.empty(0,dtype=np.int32)
+      stride  .append(stride_tmp)
+      pl_gnum1.append(pl_gnum1_tmp)
+    else:
+      order    = np.argsort(ref_lnum2)                 # Sort order of point_list ()
+      idx      = np.searchsorted(ref_lnum2,point_list,sorter=order)
+      pl_mask  = point_list==ref_lnum2[np.take(order, idx, mode='clip')]
+      true_idx = idx[pl_mask]
+
+      # Number of part1 elements in an element of part2 
+      n_elt_of1_in2 = np.diff(part_gnum1_idx)[true_idx]
+
+      sort_true_idx = np.argsort(true_idx)
+
+      # PL in part2 order
+      pl_gnum1_tmp = np.arange(0, point_list.shape[0], dtype=np.int32)[pl_mask][sort_true_idx]
+      pl_gnum1_tmp = np.repeat(pl_gnum1_tmp, n_elt_of1_in2)
+      pl_gnum1.append(pl_gnum1_tmp)
+
+      # PL in gnum1 order
+      pl_to_gnum1_start = part_gnum1_idx[true_idx]         
+      pl_to_gnum1_stop  = pl_to_gnum1_start+n_elt_of1_in2
+      pl_to_gnum1 = np_utils.multi_arange(pl_to_gnum1_start, pl_to_gnum1_stop)
+      to_send.append(part_gnum1[pl_to_gnum1])
+
+      # Stride variable
+      stride_tmp    = np.zeros(part_gnum1_idx[-1], dtype=np.int32)
+      stride_tmp[pl_to_gnum1] = 1
+      stride.append(stride_tmp)
+
+  # Fake exchange to build PL on part1
+  req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM,
+                             pl_gnum1,
+                             part2_stride=stride)
+  part1_stride, part1_data = ptp.reverse_wait(req_id)
+
+  new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
+    
+  return new_point_list, pl_gnum1, stride
+
+
 
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -118,16 +197,8 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
                         'FaceCenter': 'Cell',
                         'CellCenter': 'Cell'}
 
-  # Part 1 : EXTRACT_PART
-  # Part 2 : VOLUME
-  # --- Get all fields names and location ---------------------------------------------
-  all_ordering    = list()
-  all_stride_int  = list()
-  all_stride_bool = list()
-  all_part_gnum1  = list()
-
-  # Retrieve fields name + GridLocation + PointList if container
-  # is not know by every partition
+  # > Retrieve fields name + GridLocation + PointList if container
+  #   is not know by every partition
   mask_zone = ['MaskedZone', None, [], 'Zone_t']
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
       child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
@@ -156,7 +227,8 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
   assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
 
-  # --- FlowSolution node def by zone -------------------------------------------------
+
+  # > FlowSolution node def by zone
   if PT.get_label(mask_container) == 'FlowSolution_t':
     FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=part_zone_ep)
   elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
@@ -164,107 +236,53 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   else:
     raise TypeError
   
-  # --- Get PTP and parentElement for the good location
+
+  # > Get PTP and parentElement for the good location
   ptp        = exch_tool_box['part_to_part'][gridLocation]
-  parent_elt = exch_tool_box['parent_elt'][gridLocation]
+  
+  # LN_TO_GN
+  _gridLocation    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
+  elt_n            = part_zone_ep if gridLocation!='FaceCenter' else PT.Zone.NGonNode(part_zone_ep)
+  if elt_n is None :return
+  part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
+  part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
 
   # Get reordering informations if point_list
   # https://stackoverflow.com/questions/8251541/numpy-for-every-element-in-one-array-find-the-index-in-another-array
   if partial_field:
-    for i_part, part_zone in enumerate(part_zones):
-      container        = PT.get_child_from_name(part_zone, container_name)
-      if container is not None:
-        # > Get the right node to get PL (if ZSR linked to BC or GC)
-        ref_zsr_node = container
-        bc_descriptor_n = PT.get_child_from_name(container, 'BCRegionName')
-        gc_descriptor_n = PT.get_child_from_name(container, 'GridConnectivityRegionName')
-        assert not (bc_descriptor_n and gc_descriptor_n)
-        if bc_descriptor_n is not None:
-          bc_name      = PT.get_value(bc_descriptor_n)
-          ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneBC/{bc_name}')
-        elif gc_descriptor_n is not None:
-          gc_name      = PT.get_value(gc_descriptor_n)
-          ref_zsr_node = PT.get_child_from_predicates(part_zone, f'ZoneGridConnectivity_t/{gc_name})')
-        point_list_node  = PT.get_child_from_name(ref_zsr_node, 'PointList')
-        point_list  = point_list_node[1][0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
-
-      part_gnum1  = ptp.get_gnum1_come_from()[i_part]['come_from'] # Get partition order
-      ref_lnum2   = ptp.get_referenced_lnum2()[i_part] # Get partition order
-
-      if container is None or point_list.size == 0:
-        ref_lnum2_idx = np.empty(0,dtype=np.int32)
-        stride        = np.zeros(ref_lnum2.shape,dtype=np.int32)
-        all_part_gnum1.append(np.empty(0,dtype=np.int32)) # Select only part1_gnum that is in part2 point_list
-      else:
-        sort_idx    = np.argsort(point_list)                 # Sort order of point_list ()
-        order       = np.searchsorted(point_list,ref_lnum2,sorter=sort_idx)
-        ref_lnum2_idx = np.take(sort_idx, order, mode="clip")
-        
-        stride = point_list[ref_lnum2_idx] == ref_lnum2
-        all_part_gnum1.append(part_gnum1[stride]) # Select only part1_gnum that is in part2 point_list
-
-      all_ordering   .append(ref_lnum2_idx)
-      all_stride_bool.append(stride)
-      all_stride_int .append(stride.astype(np.int32))
-
-
-    # Exchange gnum to retrieve flowsol new point_list
-    req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM,
-                               all_part_gnum1,
-                               part2_stride=all_stride_int)
-    part1_strid, part2_gnum = ptp.reverse_wait(req_id)
-    
-    if part2_gnum[0].size == 0:
-      new_point_list = np.empty(0, dtype=np.int32)
-    else :
-      sort_idx       = np.argsort(part2_gnum[0]) # Sort order of point_list ()
-      order          = np.searchsorted(part2_gnum[0],parent_elt,sorter=sort_idx)
-
-      parent_elt_idx = np.take(sort_idx, order, mode="clip")
-
-      stride         = part2_gnum[0][parent_elt_idx] == parent_elt
-      local_point_list = np.where(stride)[0] + 1
-      point_list = local_point_list + local_pl_offset(part_zone_ep, LOC_TO_DIM[gridLocation])
-
-    new_pl_node    = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
+    new_point_list, pl_gnum1, stride = get_partial_container_ptp_tools(part_zones, container_name, gridLocation, ptp, part1_ln_to_gn[0], comm)
+    point_list = new_point_list + local_pl_offset(part_zone_ep, LOC_TO_DIM[gridLocation])+1
+    new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
 
     # Update global numbering in FS
-    gnum = PT.maia.getGlobalNumbering(part_zone_ep, f'{loc_correspondance[gridLocation]}')[1]
-    partial_gnum = create_sub_numbering([gnum[local_point_list-1]], comm)[0]
-    maia.pytree.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_ep)
+    partial_gnum = create_sub_numbering([part1_ln_to_gn[0][new_point_list]], comm)[0]
+    PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_ep)
 
   # --- Field exchange ----------------------------------------------------------------
   for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
     fld_name = PT.get_name(fld_node)
     fld_path = f"{container_name}/{fld_name}"
     
-    # Reordering if ZSR container
-    if partial_field: 
-      
+    if partial_field:
+      # Get field and organize it according to the gnum1_come_from arrays order
       fld_data = list()
-      for i_part, part_zone in enumerate(part_zones):
-        fld_part_n = PT.get_node_from_path(part_zone, fld_path)
-        if fld_part_n is None:
-          fld_part = np.empty(0, dtype=np.float64) #We should search the numpy dtype
-        else:
-          fld_part = PT.get_value(fld_part_n)
-          if fld_part.size != 0:
-            fld_part = fld_part[all_ordering[i_part]][all_stride_bool[i_part]]
-        fld_data.append(fld_part)
+      for i_part, part_zone in enumerate(part_zones) :
+        fld_n = PT.get_node_from_path(part_zone,fld_path)
+        fld_data_tmp = PT.get_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
+        fld_data.append(fld_data_tmp[pl_gnum1[i_part]])
+      p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
+    
+    else :
+      fld_data = [PT.get_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
+      stride   = 1
+      p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2
 
-      req_id = ptp.reverse_iexch( PDM._PDM_MPI_COMM_KIND_P2P,
-                                      PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM,
-                                      fld_data,
-                                      part2_stride=all_stride_int)
-    else:
-      fld_data = [PT.get_node_from_path(part_zone, fld_path)[1] for part_zone in part_zones]
-      req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                                 fld_data,
-                                 part2_stride=1)
-
-    part1_strid, part1_data = ptp.reverse_wait(req_id)
+    # Reverse iexch
+    req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                               p2p_type,
+                               fld_data,
+                               part2_stride=stride)
+    part1_stride, part1_data = ptp.reverse_wait(req_id)
 
     # Interpolation and placement
     i_part = 0

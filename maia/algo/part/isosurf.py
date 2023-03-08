@@ -194,8 +194,6 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
         for i_part, part_zone in enumerate(part_zones) :
           fld_n = PT.get_node_from_path(part_zone,fld_path)
           fld_data_tmp = PT.get_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
-          print(f"fld_data = {fld_data_tmp}")
-          print(f"fld_data[pl_gnum1[i_part]] = {fld_data_tmp[pl_gnum1[i_part]]}")
           fld_data.append(fld_data_tmp[pl_gnum1[i_part]])
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
       
@@ -214,7 +212,7 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       # Placement
       i_part = 0 # One isosurface partition
       # Ponderation if vertex
-      if gridLocation=="Vertex"    :
+      if gridLocation=="Vertex" :
         weighted_fld       = part1_data[i_part]*part1_weight[i_part]
         part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
 
