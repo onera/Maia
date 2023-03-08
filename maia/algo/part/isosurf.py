@@ -59,8 +59,10 @@ def get_partial_container_ptp_tools(part_zones, container_name, gridLocation, pt
       # Number of part1 elements in an element of part2 
       n_elt_of1_in2 = np.diff(part_gnum1_idx)[true_idx]
 
+      sort_true_idx = np.argsort(true_idx)
+
       # PL in part2 order
-      pl_gnum1_tmp = np.arange(0, point_list.shape[0], dtype=np.int32)[pl_mask]
+      pl_gnum1_tmp = np.arange(0, point_list.shape[0], dtype=np.int32)[pl_mask][sort_true_idx]
       pl_gnum1_tmp = np.repeat(pl_gnum1_tmp, n_elt_of1_in2)
       pl_gnum1.append(pl_gnum1_tmp)
 
@@ -97,9 +99,6 @@ def copy_referenced_families(source_base, target_base):
 
 # =======================================================================================
 def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
-
-  # Part 1 : ISOSURF
-  # Part 2 : VOLUME
 
   for container_name in containers_name :
 
@@ -179,6 +178,10 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
       new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
 
+      # Update global numbering in FS
+      partial_gnum = create_sub_numbering([part1_ln_to_gn[0][new_point_list]], comm)[0]
+      PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_iso)
+
 
     # > Field exchange
     for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
@@ -191,6 +194,8 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
         for i_part, part_zone in enumerate(part_zones) :
           fld_n = PT.get_node_from_path(part_zone,fld_path)
           fld_data_tmp = PT.get_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
+          print(f"fld_data = {fld_data_tmp}")
+          print(f"fld_data[pl_gnum1[i_part]] = {fld_data_tmp[pl_gnum1[i_part]]}")
           fld_data.append(fld_data_tmp[pl_gnum1[i_part]])
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
       
