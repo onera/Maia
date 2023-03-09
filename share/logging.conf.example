@@ -1,2 +1,2 @@
 maia       : mpi_stdout_printer
-maia.rank_0: mpi_rank_0_stdout_printer
+maia-stats : mpi_file_printer(maia-stats.log)
