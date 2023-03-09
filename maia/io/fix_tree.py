@@ -3,7 +3,7 @@ import numpy              as     np
 
 import maia.pytree        as PT
 
-from maia.utils            import np_utils, as_pdm_gnum
+from maia.utils            import np_utils, as_pdm_gnum, logging
 from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
                                   gc_is_reference, guess_bnd_normal_index
 
@@ -17,7 +17,7 @@ def check_datasize(tree):
           PT.iter_nodes_from_predicate(tree, is_heavy_node, explore='deep')]
 
   if heavy_arrays:
-    print(f"Warning -- Some heavy data are not distributed: {heavy_arrays}")
+    logging.warning(f"Some heavy data are not distributed: {heavy_arrays}")
 
 def fix_zone_datatype(size_tree, size_data):
   """
@@ -72,7 +72,7 @@ def fix_point_ranges(size_tree):
       assert (point_range_d[:,1] == \
           apply_transform_matrix(point_range[:,1], point_range[:,0], point_range_d[:,0], T)).all()
   if permuted:
-    print(f"Warning -- Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
+    logging.warning(f"Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
 
 def add_missing_pr_in_bcdataset(tree):
   """
@@ -102,10 +102,10 @@ def add_missing_pr_in_bcdataset(tree):
       bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]
       new_pr = PT.new_PointRange(value=bcds_point_range, parent=bcds)
       pr_added = True
-      # print(f"Warning -- PointRange has been added on BCDataSet {zone[0]}/{bc[0]}/{bcds[0]}"
+      # logging.warning(f"Warning -- PointRange has been added on BCDataSet {zone[0]}/{bc[0]}/{bcds[0]}"
              # " since data shape was no consistent with BC PointRange")
   if pr_added:
-    print(f"Warning -- PointRange has been added on some BCDataSet nodes because data size was inconsistent")
+    logging.warning(f"PointRange has been added on some BCDataSet nodes because data size was inconsistent")
 
 def _enforce_pdm_dtype(tree):
   """
@@ -158,7 +158,7 @@ def ensure_PE_global_indexing(dist_tree):
 def rm_legacy_nodes(tree):
   eh_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/:elsA#Hybrid')
   if len(eh_paths) > 0:
-    print(f"Warning -- Legacy nodes ':elsA#Hybrid' skipped when reading file")
+    logging.warning(f"Legacy nodes ':elsA#Hybrid' skipped when reading file")
     for eh_path in eh_paths:
       PT.rm_node_from_path(tree, eh_path)
   
@@ -173,4 +173,4 @@ def rm_legacy_nodes(tree):
       PT.rm_children_from_predicate(fs, lambda n: PT.get_label(n) == 'DataArray_t' and has_no_size(n))
       arrays_removed = arrays_removed or len(PT.get_children(fs)) < n_child_bck
   if arrays_removed:
-    print(f"Warning -- Some empty arrays under FlowSolution_t nodes have been skipped when reading file")
+    logging.warning(f"Some empty arrays under FlowSolution_t nodes have been skipped when reading file")

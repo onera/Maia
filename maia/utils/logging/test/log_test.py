@@ -1,4 +1,5 @@
 from maia.utils.logging import add_logger, log, add_printer_to_logger, turn_on, turn_off
+from maia.utils.logging import size_to_str, bsize_to_str
 import sys
 import gc
 
@@ -50,3 +51,8 @@ def test_log():
   log('logger_for_unit_tests', 'msg 5')
   assert p0.buffer == 'msg 1\nmsg 3\nmsg 4\n' # no change
   assert p2.buffer == 'msg 5\n'
+
+
+def test_size_display():
+    assert  size_to_str(4280938) == "4.3 M"
+    assert bsize_to_str(4280938) == "4.1 MiB"
