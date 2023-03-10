@@ -59,7 +59,7 @@ def test_merge_zones_from_family():
   maia.algo.dist.merge_zones_from_family(dist_tree, 'Naca0012', MPI.COMM_WORLD)
 
   zones = PT.get_all_Zone_t(dist_tree)
-  assert len(zones) == 1 and PT.get_name(zones[0]) == 'Naca0012'
+  assert len(zones) == 1 and PT.get_name(zones[0]) == 'naca0012'
   #merge_zones_from_family@end
 
 def test_merge_connected_zones():

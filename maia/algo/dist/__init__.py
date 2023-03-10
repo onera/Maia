@@ -12,7 +12,8 @@ elements_to_poly = elements_to_ngons
 
 from .extract_surf_dmesh         import extract_surf_tree_from_bc
 
-from .merge                      import merge_connected_zones,\
+from .merge                      import merge_all_zones_from_families,\
+                                        merge_connected_zones,\
                                         merge_zones,\
                                         merge_zones_from_family
 
