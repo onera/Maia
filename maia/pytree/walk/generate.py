@@ -94,40 +94,7 @@ def get_all_subsets(root,filter_loc=None):
   If filter_loc list is not None, select only the subsets nodes of given
   GridLocation.
   """
-  import maia.pytree as PT
-  eligible_subset_paths = ['CGNSBase_t/Zone_t/ZoneBC_t/BC_t',
-                           'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/BCDataSet_t',
-                           'CGNSBase_t/Zone_t/ZoneSubRegion_t',
-                           'CGNSBase_t/Zone_t/DiscreteData_t',
-                           'CGNSBase_t/Zone_t/FlowSolution_t',
-                           'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t']
-
-  root_label = PT.get_label(root)
-  if root_label != 'CGNSTree_t':
-    eligible_subset_paths = [path for path in eligible_subset_paths if root_label in path]
-
-  subset_nodes = []
-  subset_paths = []
-  for path in eligible_subset_paths:
-    path_split = path.split(root_label+'/')
-    if len(path_split)>1:
-      subset_paths.append(path_split[1])
-    else:
-      if filter_loc is None or PT.Subset.GridLocation(root) in filter_loc:
-        pl_n = PT.get_child_from_name(root, 'PointList')
-        pr_n = PT.get_child_from_name(root, 'PointRange')
-        if (pl_n is not None) or (pr_n is not None):
-          subset_nodes.append(root)
-
-  for path in subset_paths:
-    for subset_n in PT.iter_children_from_predicates(root, path):
-      if filter_loc is None or PT.Subset.GridLocation(subset_n) in filter_loc:
-        pl_n = PT.get_child_from_name(subset_n, 'PointList')
-        pr_n = PT.get_child_from_name(subset_n, 'PointRange')
-        if (pl_n is not None) or (pr_n is not None):
-          subset_nodes.append(subset_n)
-          
-  return subset_nodes
+  return list(iter_all_subsets(root,filter_loc))
 
 def iter_all_subsets(root,filter_loc=None):
   """
