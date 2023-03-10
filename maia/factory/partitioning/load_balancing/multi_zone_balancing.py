@@ -1,6 +1,8 @@
 from mpi4py import MPI
 import logging     as LOG
 import numpy as np
+import heapq
+
 from cmaia.utils import search_subset_match
 from maia.factory.partitioning.load_balancing import single_zone_balancing
 
@@ -454,3 +456,65 @@ def balance_with_non_uniform_weights(n_elem_per_zone, n_rank,
   LOG.info(' '*2 + "=================  End Computing Distribution  ================= " )
   LOG.info(' '*2 + "================================================================ " )
   return repart_per_zone
+
+def karmarkar_karp(numbers, n_bin):
+    """
+    Solves the multiway number partitioning using Karmarkar-Karp
+    algorithm (aka Largest differencing method), see
+    https://en.wikipedia.org/wiki/Largest_differencing_method
+
+    Reparts the (integer positive) numbers into n_bin bin
+    such that the largest sum is minimized.
+    Return a list of size n_bin storing the indices in the numbers
+    array
+    """
+    subset_weight = lambda s: numbers[s].sum()
+    numbers = np.asarray(numbers)
+    all_subsets = []
+    for i, number in enumerate(numbers):
+        # At the begining, max - min is simply the number
+        ini_subset = [[] for k in range(n_bin-1)] + [[i]]
+        # heapq is used to easily select the most loaded from list
+        heapq.heappush(all_subsets, (-number, ini_subset))
+
+    # Example with numbers = [9,4,7,6,8,5] and n_bin=3
+    # After initialisation we have for each number n_bin list: one have the index,
+    # other are empty. Thanks to heapq the list is order such that max number are first
+    #[[[],[],[0]], [[],[],[4]], [[],[],[2]], [[],[],[3]], [[],[],[5]], [[],[],[1]]]
+    # At each step we pop the two first elt of subset list and merge it in reverse
+    # order: so at step 1, we take [[], [], [0]] and [[], [], [4]], compute the 
+    # sums from number array (0, 0, 9) and (0,0,8) and merge subset
+    # to obtain [[0], [], [4]]. This merged subset has corresponding sizes (9,0,8),
+    # so we insert it in ordered list using weight max(sizes) - min(sizes) = 9 - 0 = 9
+    # List is now  
+    #[[[0],[],[4]], [[],[],[2]], [[],[],[3]], [[],[],[5]], [[],[],[1]]]
+    # We select 2 first of size (9,0,8) & (0,0,7) and merge it to [[0], [4], [2]].
+    # Sizes are (9, 8, 7) so key for insertion is 9-7 = 2, which make it last of list
+    #[[[],[],[3]], [[],[],[5]], [[],[],[1]], [[0],[4],[2]]] (Keys = 6, 5, 4, 2)
+    # Continuing :  first to are merged to [[3], [5], []] insered with key 6:
+    #[[[5],[],[3]], [[],[],[1]], [[0],[4],[2]]] (Keys 6,4,2)
+    # Continuing :  first to are merged to [[3], [5], [1]] insered with key 2:
+    #[[[3],[5],[1]], [[0],[4],[2]]] (Keys 2,2)
+    # Corresponding size are (6,5,4) and (9,8,7) so merge gives [[0,1],[4,5],[2,3]]
+    # which is the final indices for each bin since there is nothing left to merge
+
+    # Only diff below is that we sort (wrt sizes) before insering in list, which
+    # makes easy the reversed order merge at next iteration
+    while len(all_subsets) > 1:
+        # Get the two larger max-min
+        _, first  = heapq.heappop(all_subsets)
+        _, second = heapq.heappop(all_subsets)
+        # Combine rule: most loaded of first with least loaded of second and so on
+        # Because we sorted the subset wrt their size we can just join them
+        combined_subset = [first[i] + second[n_bin-i-1] for i in range(n_bin)]
+
+        # Sort to prepare next it
+        combined_subset = sorted(combined_subset, key=subset_weight)
+        # Prepare next key (max subset size - min subset size)
+        max_subset, min_subset = combined_subset[-1], combined_subset[0]
+        next_key = subset_weight(max_subset) - subset_weight(min_subset)
+
+        heapq.heappush(all_subsets, (-next_key, combined_subset))
+
+    final_subsets = all_subsets[0][1]
+    return final_subsets

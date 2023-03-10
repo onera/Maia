@@ -5,8 +5,54 @@ import maia.pytree        as PT
 import maia.pytree.sids   as SIDS
 
 from .single_zone_balancing import homogeneous_repart
-from .multi_zone_balancing  import balance_with_uniform_weights, balance_with_non_uniform_weights
+from .multi_zone_balancing  import balance_with_uniform_weights, balance_with_non_uniform_weights, karmarkar_karp
 from .                      import balancing_quality
+
+def compute_nosplit_weights(tree, comm):
+  """Compute a zone_to_parts repartition without splitting the blocks.
+
+  The initial blocks will be simply distributed over the available processes,
+  minimizing the total number of cells affected to a proc. This leads to a poor load
+  balancing and possibly to procs having no partitions at all.
+
+  Args:
+    tree (CGNSTree)  : (Minimal) distributed tree : only zone names and sizes are needed
+    comm (MPI.Comm)  : MPI Communicator
+  Returns:
+    dict: ``zone_to_parts`` dictionnary expected by :func:`partition_dist_tree`
+
+  Example:
+      .. literalinclude:: snippets/test_factory.py
+        :start-after: #compute_nosplit_weights@start
+        :end-before: #compute_nosplit_weights@end
+        :dedent: 2
+  """
+  # Note : this is the multiway number partitioning problem
+  # https://en.wikipedia.org/wiki/Multiway_number_partitioning
+  i_rank = comm.Get_rank()
+  n_rank = comm.Get_size()
+
+  zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
+  n_blocks   = len(zone_paths)
+  nb_cell    = np.array([SIDS.Zone.n_cell(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths])
+
+  # Early return in simplified cases
+  repart_per_zone = np.zeros((n_blocks, n_rank), dtype=int) #Full array for statistics
+  if n_rank == 1:
+    repart_per_zone[:,0] = nb_cell
+  elif n_rank >= n_blocks:
+    repart_per_zone[0:n_blocks,0:n_blocks] = np.diag(nb_cell)
+  else:
+    subset_indices = karmarkar_karp(nb_cell, n_rank)
+    for j, rank_idx in enumerate(subset_indices):
+      repart_per_zone[rank_idx, j] = nb_cell[rank_idx]
+
+  balancing_quality.compute_balance_and_splits(repart_per_zone, display=i_rank==0)
+
+  zone_to_weights = {zone_path: [1.] for j, zone_path in enumerate(zone_paths) \
+          if repart_per_zone[j][i_rank] > 0}
+
+  return zone_to_weights
 
 def npart_per_zone(tree, comm, n_part=1):
   """Compute a basic zone_to_parts repartition.

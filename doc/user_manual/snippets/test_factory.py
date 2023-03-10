@@ -46,6 +46,20 @@ def test_partition_dist_tree():
   assert len(maia.pytree.get_all_Zone_t(part_tree)) == i_rank+1
   #partition_dist_tree@end
 
+def test_compute_nosplit_weights():
+  #compute_nosplit_weights@start
+  from mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+  from   maia.factory import partitioning as mpart
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', MPI.COMM_WORLD)
+
+  zone_to_parts = mpart.compute_nosplit_weights(dist_tree, MPI.COMM_WORLD)
+  if MPI.COMM_WORLD.Get_size() == 2:
+    assert len(zone_to_parts) == 1
+  #compute_nosplit_weights@end
+
 def test_compute_regular_weights():
   #compute_regular_weights@start
   from mpi4py import MPI

@@ -63,3 +63,23 @@ Base0 CGNSBase_t [3,3]:
       assert zone_to_weights['Base0/ZoneU1'] == [.762]
       assert 'Base0/ZoneU2' not in zone_to_weights
       assert 'Base0/ZoneS'  not in zone_to_weights
+
+@mark_mpi_test([2,4])
+def test_compute_nosplit_weights(sub_comm):
+  yt = """
+Base0 CGNSBase_t [3,3]:
+  ZoneU1 Zone_t [[1331,1000,0]]:
+  ZoneU2 Zone_t [[216,125,0]]:
+  ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
+"""
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  zone_to_weights = setup_partition_weights.compute_nosplit_weights(dist_tree, sub_comm)
+  if sub_comm.Get_size() == 2:
+    if sub_comm.Get_rank() == 0:
+      assert len(zone_to_weights) == 2
+      assert zone_to_weights['Base0/ZoneU2'] == [1.0]
+      assert zone_to_weights['Base0/ZoneS']  == [1.0]
+    if sub_comm.Get_rank() == 1:
+      assert len(zone_to_weights) == 1
+      assert zone_to_weights['Base0/ZoneU1']  == [1.0]
+  assert sub_comm.allreduce(len(zone_to_weights), MPI.SUM) == 3
