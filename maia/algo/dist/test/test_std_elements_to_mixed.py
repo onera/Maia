@@ -16,12 +16,12 @@ def test_convert_mixed_to_elements(sub_comm):
     rank = sub_comm.Get_rank()
     size = sub_comm.Get_size()
     
-    yaml_path = os.path.join(TU.sample_mesh_dir, 'hex_prism_pyra_tet.yaml')
+    yaml_path = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
     dist_tree = file_to_dist_tree(yaml_path, sub_comm)
     
     ref_dist_tree = copy.deepcopy(dist_tree)
     
-    convert_elements_to_mixed(dist_tree, comm)
+    convert_elements_to_mixed(dist_tree, sub_comm)
     
     ref_base = PT.get_node_from_label(ref_dist_tree,'CGNSBase_t')
     base = PT.get_node_from_label(dist_tree,'CGNSBase_t')  

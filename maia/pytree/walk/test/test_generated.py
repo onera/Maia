@@ -105,7 +105,7 @@ def test_rm_node_from_path():
 
 
 def test_get_all_subsets():
-  yaml_path = os.path.join(TU.sample_mesh_dir, 'cube_4.yaml')
+  yaml_path = os.path.join(TU.mesh_dir, 'cube_4.yaml')
   with open(yaml_path) as yt:
     dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
@@ -113,31 +113,31 @@ def test_get_all_subsets():
 
   zone = PT.get_node_from_label(dist_tree, 'Zone_t')
    
-  subset_nodes = get_all_subsets(zone)
+  subset_nodes = PT.get_all_subsets(zone)
   assert len(subset_nodes) == 7
   all_tested_subsets_nodes += subset_nodes
-  subset_nodes = get_all_subsets(zone, 'Vertex')
+  subset_nodes = PT.get_all_subsets(zone, 'Vertex')
   assert len(subset_nodes) == 1
   all_tested_subsets_nodes += subset_nodes
-  subset_nodes = get_all_subsets(zone, 'FaceCenter')
+  subset_nodes = PT.get_all_subsets(zone, 'FaceCenter')
   assert len(subset_nodes) == 6
   all_tested_subsets_nodes += subset_nodes
-  subset_nodes = get_all_subsets(zone, 'CellCenter')
+  subset_nodes = PT.get_all_subsets(zone, 'CellCenter')
   assert len(subset_nodes) == 0
   all_tested_subsets_nodes += subset_nodes
-  subset_nodes = get_all_subsets(zone, ['Vertex','FaceCenter'])
+  subset_nodes = PT.get_all_subsets(zone, ['Vertex','FaceCenter'])
   assert len(subset_nodes) == 7
   all_tested_subsets_nodes += subset_nodes
 
   zsr = PT.get_node_from_label(zone,'ZoneSubRegion_t')
 
-  subset_nodes = get_all_subsets(zsr)
+  subset_nodes = PT.get_all_subsets(zsr)
   assert len(subset_nodes) == 1
   all_tested_subsets_nodes += subset_nodes
-  subset_nodes = get_all_subsets(zsr,'Vertex')
+  subset_nodes = PT.get_all_subsets(zsr,'Vertex')
   assert len(subset_nodes) == 1
   all_tested_subsets_nodes += subset_nodes
-  subset_nodes = get_all_subsets(zsr,'FaceCenter')
+  subset_nodes = PT.get_all_subsets(zsr,'FaceCenter')
   assert len(subset_nodes) == 0
   all_tested_subsets_nodes += subset_nodes
 
@@ -147,7 +147,7 @@ def test_get_all_subsets():
 
 
 def test_iter_all_subsets():
-  yaml_path = os.path.join(TU.sample_mesh_dir, 'cube_4.yaml')
+  yaml_path = os.path.join(TU.mesh_dir, 'cube_4.yaml')
   with open(yaml_path) as yt:
     dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
@@ -156,30 +156,30 @@ def test_iter_all_subsets():
   zone = PT.get_node_from_label(dist_tree, 'Zone_t')
 
   all_tested_subsets_nodes = range(0)
-  iter_subset_nodes = iter_all_subsets(zone)
+  iter_subset_nodes = PT.iter_all_subsets(zone)
   assert sum(1 for _ in iter_subset_nodes) == 7
   all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
-  iter_subset_nodes = iter_all_subsets(zone, 'Vertex')
+  iter_subset_nodes = PT.iter_all_subsets(zone, 'Vertex')
   assert sum(1 for _ in iter_subset_nodes) == 1
   all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
-  iter_subset_nodes = iter_all_subsets(zone, 'FaceCenter')
+  iter_subset_nodes = PT.iter_all_subsets(zone, 'FaceCenter')
   assert sum(1 for _ in iter_subset_nodes) == 6
   all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
-  iter_subset_nodes = iter_all_subsets(zone, 'CellCenter')
+  iter_subset_nodes = PT.iter_all_subsets(zone, 'CellCenter')
   assert sum(1 for _ in iter_subset_nodes) == 0
   all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
-  iter_subset_nodes = iter_all_subsets(zone, ['Vertex','FaceCenter'])
+  iter_subset_nodes = PT.iter_all_subsets(zone, ['Vertex','FaceCenter'])
   assert sum(1 for _ in iter_subset_nodes) == 7
   all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
 
   zsr = PT.get_node_from_label(zone,'ZoneSubRegion_t')
-  iter_subset_nodes = iter_all_subsets(zsr)
+  iter_subset_nodes = PT.iter_all_subsets(zsr)
   assert sum(1 for _ in iter_subset_nodes) == 1
   all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
-  iter_subset_nodes = iter_all_subsets(zsr,'Vertex')
+  iter_subset_nodes = PT.iter_all_subsets(zsr,'Vertex')
   assert sum(1 for _ in iter_subset_nodes) == 1
   all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
-  iter_subset_nodes = iter_all_subsets(zsr,'FaceCenter')
+  iter_subset_nodes = PT.iter_all_subsets(zsr,'FaceCenter')
   assert sum(1 for _ in iter_subset_nodes) == 0
   all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
 

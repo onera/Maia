@@ -15,7 +15,7 @@ from maia.algo.dist.mixed_to_std_elements   import convert_mixed_to_elements, \
 
 @mark_mpi_test([1,2,3,7])
 def test_collect_pl_nodes(sub_comm):
-    yaml_path = os.path.join(TU.sample_mesh_dir, 'cube_4.yaml')
+    yaml_path = os.path.join(TU.mesh_dir, 'cube_4.yaml')
     dist_tree = file_to_dist_tree(yaml_path, sub_comm)
 
     zone = PT.get_node_from_label(dist_tree, 'Zone_t')
@@ -25,6 +25,8 @@ def test_collect_pl_nodes(sub_comm):
     for pointlist_node in pointlist_nodes:
         assert PT.get_name(pointlist_node)  == 'PointList'
         assert PT.get_label(pointlist_node) == 'IndexArray_t'
+    
+    assert PT.get_nodes_from_label(zone, 'PointRange') == []
 
     pointlist_nodes = collect_pl_nodes(zone, filter_loc = 'Vertex')
     assert len(pointlist_nodes) == 1
@@ -49,7 +51,7 @@ def test_convert_mixed_to_elements(sub_comm):
     rank = sub_comm.Get_rank()
     size = sub_comm.Get_size()
     
-    yaml_path = os.path.join(TU.sample_mesh_dir, 'hex_prism_pyra_tet.yaml')
+    yaml_path = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
     dist_tree = file_to_dist_tree(yaml_path, sub_comm)
     
     # Assume this function is already tested

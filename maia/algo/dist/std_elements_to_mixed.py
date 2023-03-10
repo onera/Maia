@@ -34,6 +34,7 @@ def convert_elements_to_mixed(dist_tree, comm):
           :end-before: #convert_elements_to_mixed@end
           :dedent: 2
     """
+    rank = comm.Get_rank()
     
     for zone in PT.get_all_Zone_t(dist_tree):
         part_data_ec = []

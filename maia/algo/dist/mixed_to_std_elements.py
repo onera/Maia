@@ -38,7 +38,7 @@ def collect_pl_nodes(root, filter_loc=None):
       distrib = PT.get_value(PT.maia.getDistribution(node, 'Index'))
       pl = np_utils.single_dim_pr_to_pl(pr, distrib)
       new_pl_n = PT.new_node(name='PointList', value=pl, label='IndexArray_t', parent=node)
-      PT.rm_nodes_from_label(zone,'Elements_t')
+      PT.rm_nodes_from_label(node,'IndexRange_t')
       pointlist_nodes.append(new_pl_n)
   return pointlist_nodes
 
