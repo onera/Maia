@@ -94,7 +94,9 @@ job:ctest:
     # Use it in combination with --junitxml=reports/pytest-junit.xml in the pytest launcher (TestCreate.cmake)
     reports:
       junit: ./build/test/reports/*_test.xml
-      cobertura: ./build/test/coverage_unit_tests.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: ./build/test/coverage_unit_tests.xml
 
 job:doc_snippets:
   stage: test
