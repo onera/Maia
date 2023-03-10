@@ -17,11 +17,6 @@ import Pypdm.Pypdm as PDM
 feflo_path = "/stck/jvanhare/wkdir/spiro/bin/feflo.a"
 
 
-
-
-
-
-# ---------------------------------------------------------
 def _add_sections_to_zone(dist_zone, section, shift_elmt, comm):
   """
   """
@@ -204,13 +199,6 @@ def meshb_to_cgns(out_files, dicttag_to_bcinfo, families, comm, isotrop=True):
   dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, dicttag_to_bcinfo, families, out_files, isotrop)
 
   return dist_tree
-
-
-
-
-
-
-
 
 
 def cgns_to_meshb(dist_tree, files, criterion):
