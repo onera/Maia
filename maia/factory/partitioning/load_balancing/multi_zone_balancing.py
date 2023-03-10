@@ -477,6 +477,29 @@ def karmarkar_karp(numbers, n_bin):
         # heapq is used to easily select the most loaded from list
         heapq.heappush(all_subsets, (-number, ini_subset))
 
+    # Example with numbers = [9,4,7,6,8,5] and n_bin=3
+    # After initialisation we have for each number n_bin list: one have the index,
+    # other are empty. Thanks to heapq the list is order such that max number are first
+    #[[[],[],[0]], [[],[],[4]], [[],[],[2]], [[],[],[3]], [[],[],[5]], [[],[],[1]]]
+    # At each step we pop the two first elt of subset list and merge it in reverse
+    # order: so at step 1, we take [[], [], [0]] and [[], [], [4]], compute the 
+    # sums from number array (0, 0, 9) and (0,0,8) and merge subset
+    # to obtain [[0], [], [4]]. This merged subset has corresponding sizes (9,0,8),
+    # so we insert it in ordered list using weight max(sizes) - min(sizes) = 9 - 0 = 9
+    # List is now  
+    #[[[0],[],[4]], [[],[],[2]], [[],[],[3]], [[],[],[5]], [[],[],[1]]]
+    # We select 2 first of size (9,0,8) & (0,0,7) and merge it to [[0], [4], [2]].
+    # Sizes are (9, 8, 7) so key for insertion is 9-7 = 2, which make it last of list
+    #[[[],[],[3]], [[],[],[5]], [[],[],[1]], [[0],[4],[2]]] (Keys = 6, 5, 4, 2)
+    # Continuing :  first to are merged to [[3], [5], []] insered with key 6:
+    #[[[5],[],[3]], [[],[],[1]], [[0],[4],[2]]] (Keys 6,4,2)
+    # Continuing :  first to are merged to [[3], [5], [1]] insered with key 2:
+    #[[[3],[5],[1]], [[0],[4],[2]]] (Keys 2,2)
+    # Corresponding size are (6,5,4) and (9,8,7) so merge gives [[0,1],[4,5],[2,3]]
+    # which is the final indices for each bin since there is nothing left to merge
+
+    # Only diff below is that we sort (wrt sizes) before insering in list, which
+    # makes easy the reversed order merge at next iteration
     while len(all_subsets) > 1:
         # Get the two larger max-min
         _, first  = heapq.heappop(all_subsets)
