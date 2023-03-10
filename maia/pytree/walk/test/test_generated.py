@@ -1,6 +1,9 @@
 import pytest
 import numpy as np
 import fnmatch
+import os
+
+from itertools import chain
 
 from maia.pytree.cgns_keywords import Label as CGL
 
@@ -47,6 +50,7 @@ def test_generated_walkers():
   root = PT.get_node_from_name(tree, 'ZGCA')
   assert PT.get_children_from_label(root, CGL.GridConnectivity_t.name) == PT.get_nodes_from_label(root, CGL.GridConnectivity_t.name)
 
+
 def test_generated_walkers_leg():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
@@ -62,6 +66,7 @@ def test_generated_remove():
   PT.rm_nodes_from_predicate(treeA, lambda n: PT.match_name(n, "gc*"))
   PT.rm_nodes_from_name(treeB, "gc*")
   assert PT.is_same_tree(treeA, treeB)
+
 
 def test_get_all_label():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
@@ -82,6 +87,7 @@ def test_get_node_from_path():
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3', ancestors=True) == []
   assert PT.get_node_from_path(tree, '', ancestors=True) == [tree]
 
+
 def test_rm_node_from_path():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   zgc = PT.get_node_from_name(tree, 'ZGCA')
@@ -97,10 +103,11 @@ def test_rm_node_from_path():
   PT.rm_node_from_path(zgc, '')
   assert PT.is_same_tree(tree, tree_bck)
 
+
 def test_get_all_subsets():
   yaml_path = os.path.join(TU.sample_mesh_dir, 'cube_4.yaml')
-  yaml_file = open(file)
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yaml_file)
+  with open(yaml_path) as yt:
+    dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
   all_tested_subsets_nodes = []
 
@@ -137,6 +144,49 @@ def test_get_all_subsets():
   for subset_node in all_tested_subsets_nodes:
     assert PT.get_node_from_name(subset_node,'PointList')     or PT.get_node_from_name(subset_node,'PointRange')
     assert PT.get_node_from_label(subset_node,'IndexArray_t') or PT.get_node_from_label(subset_node,'IndexRange_t')
+
+
+def test_iter_all_subsets():
+  yaml_path = os.path.join(TU.sample_mesh_dir, 'cube_4.yaml')
+  with open(yaml_path) as yt:
+    dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+
+  all_tested_subsets_nodes = []
+
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  all_tested_subsets_nodes = range(0)
+  iter_subset_nodes = iter_all_subsets(zone)
+  assert sum(1 for _ in iter_subset_nodes) == 7
+  all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
+  iter_subset_nodes = iter_all_subsets(zone, 'Vertex')
+  assert sum(1 for _ in iter_subset_nodes) == 1
+  all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
+  iter_subset_nodes = iter_all_subsets(zone, 'FaceCenter')
+  assert sum(1 for _ in iter_subset_nodes) == 6
+  all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
+  iter_subset_nodes = iter_all_subsets(zone, 'CellCenter')
+  assert sum(1 for _ in iter_subset_nodes) == 0
+  all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
+  iter_subset_nodes = iter_all_subsets(zone, ['Vertex','FaceCenter'])
+  assert sum(1 for _ in iter_subset_nodes) == 7
+  all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
+
+  zsr = PT.get_node_from_label(zone,'ZoneSubRegion_t')
+  iter_subset_nodes = iter_all_subsets(zsr)
+  assert sum(1 for _ in iter_subset_nodes) == 1
+  all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
+  iter_subset_nodes = iter_all_subsets(zsr,'Vertex')
+  assert sum(1 for _ in iter_subset_nodes) == 1
+  all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
+  iter_subset_nodes = iter_all_subsets(zsr,'FaceCenter')
+  assert sum(1 for _ in iter_subset_nodes) == 0
+  all_tested_subsets_nodes = chain(all_tested_subsets_nodes, iter_subset_nodes)
+
+  for subset_node in all_tested_subsets_nodes:
+    assert PT.get_node_from_name(subset_node,'PointList')     or PT.get_node_from_name(subset_node,'PointRange')
+    assert PT.get_node_from_label(subset_node,'IndexArray_t') or PT.get_node_from_label(subset_node,'IndexRange_t')
+
 
 # Move in functionnal test ?
 def test_getNodeFromPredicate():
