@@ -78,7 +78,10 @@ class graph_traversal_stack:
 
   def _push_level(self, siblings):
     sibling_iter = iter(siblings)
-    first_sibling = next(sibling_iter)
+    try:
+      first_sibling = next(sibling_iter)
+    except StopIteration:
+      first_sibling = None
     self._iterators += [sibling_iter]
     self._nodes     += [first_sibling]
 
@@ -87,7 +90,10 @@ class graph_traversal_stack:
     self._nodes    .pop(-1)
 
   def advance_node_range(self):
-    self._nodes[-1] = next(self._iterators[-1])
+    try:
+      self._nodes[-1] = next(self._iterators[-1])
+    except StopIteration:
+      self._nodes[-1] = None
   def advance_node_range_to_last(self):
     self._nodes[-1] = None
 
@@ -148,40 +154,61 @@ def depth_first_search_stack(S, f):
   return None
 
 
-class node_visitor:
+class close_ancestor_visitor:
   """ The `depth_first_search_stack` algorithm calls its visitor by passing it 
-  the complete list of ancestors to the current node
+  the complete list of ancestors of the current node
 
-  However, most ot the times, the visitor interface only takes the current node as input,
-  (because it does not care about the ancestors)
+  However, most ot the times, the visitor only cares about 
+  the current node (or just the first few ancestors) as input
   
   This adaptor class turns such a visitor into a visitor acceptable by `depth_first_search_stack`
-  and delegates all calls with the list of ancestors to calls with only the current node)
+  and delegates all calls with the list of ancestors to calls with only the first `depth` ancestors
+    depth = 1: only the current node
+    depth = 2: the current node + its parent
+    ...
   """
-  def __init__(self, visitor):
+  def __init__(self, visitor, depth):
     self.f = visitor
+    assert depth >= 1
+    self.depth = depth
+
+  def _ancestors_list(self, ancestors):
+    res = ancestors[-self.depth:]
+    sz = len(res)
+    if sz < self.depth:
+      diff = self.depth-sz
+      padding = [None] * diff
+      res = padding + res
+    return res
 
   def pre(self, ancestors):
-    return self.f.pre ( ancestors[-1] )
-
+    return self.f.pre ( *self._ancestors_list(ancestors) )
   def post(self, ancestors):
-    return self.f.post( ancestors[-1] )
+    return self.f.post( *self._ancestors_list(ancestors) )
 
+  # For `down` and `up`, we don't have enough examples to really make the correct decision for the interface
+  # Here we take:
+  #   the current node (i.e. ancestors[-1]) for the `below` arguement
+  #   the parent node (i.e. ancestors[-2]) for the `above` arguement
+  # Which at least seems natural for depth==1
   def down(self, ancestors):
     return self.f.down( ancestors[-2], ancestors[-1] )
-
   def up(self, ancestors):
     return self.f.up  ( ancestors[-1], ancestors[-2] )
 
 
-def depth_first_search(g, f, only_nodes=True):
+def depth_first_search(g, f, depth='node'):
   """
   Depth-first graph traversal
     
   Args:
     g: Graph object that should conform to the depth-first search interface. See :func:`dfs_interface_report` for full documentation.
     f : A visitor object that has a `pre` method, and optionally `post`, `up` and `down` methods
-    only_nodes (Bool): Control the arguments that are passed to the visitor methods.
+    depth ('node','parent','all' or integer): Control the arguments that are passed to the visitor methods.
+      - If `depth==1` or `depth='node', passes the current node as the only argument to `pre` and `post`
+      - If `depth==2` or `depth='parent', passes the parent and the current nodes as the two arguments to `pre` and `post`
+      - ...
+      - If `depth=='all', passes the list of all the ancestors as the only argument to `pre` and `post`
 
   - if `only_nodes` is `True` then `pre` will be given the current node of the graph as argument
     else it will be given all the ancestors up to the current node as arguments
@@ -197,6 +224,8 @@ def depth_first_search(g, f, only_nodes=True):
 
   S = graph_traversal_stack(g)
   v = make_visitor(f)
-  if only_nodes:
-    v = node_visitor(v)
+  if depth != 'all':
+    if depth == 'node'  : depth = 1
+    if depth == 'parent': depth = 2
+    v = close_ancestor_visitor(v,depth)
   return depth_first_search_stack(S, v)

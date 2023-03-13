@@ -1,6 +1,6 @@
-from maia.utils.graph.algo_base import step, depth_first_search
+from maia.pytree.graph.algo import step, depth_first_search
 
-from maia.utils.graph.io_graph import node_value, set_node_value, rooted_tree_example
+from maia.pytree.graph.io_graph import node_value, set_node_value, rooted_tree_example
 
 
 class visitor_for_testing_depth_first_scan:

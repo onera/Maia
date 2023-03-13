@@ -3,7 +3,7 @@ import pytest
 import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
 
-from maia.pytree.algo.graph import depth_first_search, zip_depth_first_search, pytree_zip_adaptor
+from maia.pytree.graph.cgns import depth_first_search, zip_depth_first_search, pytree_zip_adaptor
 
 t0 = parse_yaml_cgns.to_node("""
 Base CGNSBase_t:
@@ -47,6 +47,32 @@ def test_tree_algo():
     'ZGCA\n' \
     'gc1\n' \
     'Index_i\n'
+  assert v.s == expected_s
+
+
+class node_and_parent_name_recorder:
+  def __init__(self):
+    self.s = ''
+
+  def pre(self, parent, node):
+    if parent is None:
+      self.s += '[None] '
+    else:
+      self.s += PT.get_name(parent) + ' '
+    self.s += PT.get_name(node) + '\n'
+
+def test_tree_algo_with_ancestors():
+  v = node_and_parent_name_recorder()
+  depth_first_search(t0, v, depth='parent')
+
+  expected_s = \
+    '[None] Base\n' \
+    'Base ZoneI0\n' \
+    'ZoneI0 NGon\n' \
+    'ZoneI0 NFace\n' \
+    'ZoneI0 ZGCA\n' \
+    'ZGCA gc1\n' \
+    'gc1 Index_i\n'
   assert v.s == expected_s
 
 

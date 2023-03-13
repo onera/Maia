@@ -54,7 +54,7 @@ class adjacency_iterator:
       self.idx += 1
       return self.g[x]
     else:
-      return None
+      raise StopIteration()
 
 class io_graph_tree_adaptor:
   """
