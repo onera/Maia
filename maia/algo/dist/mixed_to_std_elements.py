@@ -81,9 +81,6 @@ def convert_mixed_to_elements(dist_tree, comm):
                 ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_ec.dtype)
                 # Retrive start idx of mixed elements having this type
                 indices = np.intersect1d(np.where(elem_ec==elem_type),elem_eso_loc, assume_unique=True)
-                # print("indices",indices)
-                # indices2 = np.where(elem_ec[elem_eso_loc]==elem_type)[0]
-                # print("indices2",indices2)
                 for n in range(nb_nodes_per_elem):
                     ec_per_type[n::nb_nodes_per_elem] = elem_ec[indices+n+1]
                 try:
@@ -91,7 +88,6 @@ def convert_mixed_to_elements(dist_tree, comm):
                 except KeyError:
                     ec_per_elem_type_loc[elem_type] = [ec_per_type]
         
-        # exit()
         # 2/ Find all element types described in the mesh and the number of each
         elem_types_all = comm.allgather(elem_types)
         all_types = {} # For each type : total number of elts appearing in zone
@@ -166,7 +162,6 @@ def convert_mixed_to_elements(dist_tree, comm):
                 # Add number of cells on previous mixed nodes for this rank
                 for p in range(elem_pos):
                     try:
-                        # print([rank, "elem_pos", elem_type, p])
                         old_to_new_element_numbering[indices_elem] += elem_types[elem_type][p]
                     except KeyError:
                         continue
@@ -269,16 +264,11 @@ def convert_mixed_to_elements(dist_tree, comm):
         ptb_fs = MTP.PartToBlock(cells_distrib,[dist_old_to_new_cell_numbering],comm)
 
         old_fs_data_dict = {}
-        for fs in PT.get_children_from_label(zone, 'FlowSolution_t'):
+        for fs in PT.get_children_from_predicate(zone, lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t']):
             if PT.get_value(PT.get_child_from_name(fs,'GridLocation')) == 'CellCenter' \
                and PT.get_child_from_name(fs,'PointList') is None:
-                fs_name = PT.get_name(fs)
                 for data in PT.get_children_from_label(fs,'DataArray_t'):
-                    data_name = fs_name+"/"+PT.get_name(data)
-                    try:
-                        old_fs_data_dict[data_name].append(PT.get_value(data))
-                    except KeyError:
-                        old_fs_data_dict[data_name] = [PT.get_value(data)]
+                    old_fs_data_dict[PT.get_name(fs)+"/"+PT.get_name(data)] = [PT.get_value(data)]
 
         for fs_data_name, old_fs_data in old_fs_data_dict.items():
             _, new_fs_data = ptb_fs.exchange_field(old_fs_data)
