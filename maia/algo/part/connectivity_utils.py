@@ -11,10 +11,15 @@ def cell_vtx_connectivity(zone, dim=3):
   """
   Compute and return the cell->vtx connectivity on a partitioned zone
   """
+  assert dim in [1,2,3]
+  
   if PT.Zone.Type(zone) == 'Structured':
     raise NotImplementedError("Structured zones are not supported")
   else:
     if PT.Zone.has_ngon_elements(zone):
+      if dim==1:
+        raise NotImplementedError("U-NGON meshes doesn't support dimension 1 elements")
+
       ngon_node = PT.Zone.NGonNode(zone)
       ngon_eso = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
       ngon_ec = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]

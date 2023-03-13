@@ -100,12 +100,18 @@ def test_compute_face_center_elmts_3d(sub_comm):
                        1.,0.5,0.5, 0.5,0.,0.5, 0.5,1.,0.5])
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
 
+@pytest.mark.parametrize("elt_kind", ["QUAD_4" ,'NFACE_n'])
 @mark_mpi_test(1)
-def test_compute_edge_center_2d(sub_comm):
-  tree = maia.factory.generate_dist_block(3, "QUAD_4", sub_comm)
+def test_compute_edge_center_2d(elt_kind, sub_comm):
+  tree = maia.factory.generate_dist_block(3, elt_kind, sub_comm)
   zone = PT.get_all_Zone_t(tree)[0]
   PT.rm_nodes_from_name(zone, ":CGNS#Distribution") # Fake part_zone (from test_connectivity_utils)
 
-  expected = np.array([0.25,0.,0., 0.75,0.,0., 0.25,1.,0., 0.75,1.,0.,
-                       0.,0.25,0., 0.,0.75,0., 1.,0.25,0., 1.,0.75,0.])
-  assert np.allclose(centers.compute_edge_center(zone), expected, atol=1e-2)
+  if elt_kind=="QUAD_4":
+    expected = np.array([0.25,0.,0., 0.75,0.,0., 0.25,1.,0., 0.75,1.,0.,
+                         0.,0.25,0., 0.,0.75,0., 1.,0.25,0., 1.,0.75,0.])
+    assert np.allclose(centers.compute_edge_center(zone), expected, atol=1e-2)
+
+  elif elt_kind=="NFACE_n":
+    with pytest.raises(NotImplementedError):
+      centers.compute_edge_center(zone)
