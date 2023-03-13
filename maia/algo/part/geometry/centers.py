@@ -84,7 +84,6 @@ def compute_face_center(zone):
   else:
     raise NotImplementedError("Only U zones are managed")
 
-
 @PT.check_is_label("Zone_t")
 def compute_edge_center(zone):
   """Compute the edge centers of a partitioned zone.
@@ -108,6 +107,5 @@ def compute_edge_center(zone):
   if PT.Zone.Type(zone) == "Unstructured":
     edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
     return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, cx, cy, cz)
-    raise NotImplementedError("Only U zones are managed")
   else:
     raise NotImplementedError("Only U/Elts zones are managed")
