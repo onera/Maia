@@ -10,7 +10,6 @@ from maia.pytree.cgns_keywords import Label as CGL
 import maia.pytree as PT
 
 from maia.pytree.yaml   import parse_yaml_cgns
-from maia.utils         import test_utils as TU
 
 yt = """
 Base CGNSBase_t:
@@ -30,6 +29,87 @@ Base CGNSBase_t:
         Index_iv IndexArray_t:
         Index_v IndexArray_t:
         Index_vi IndexArray_t:
+"""
+
+yt2= """
+Base CGNSBase_t I4 [3,3]:
+  Zone Zone_t I4 [[18,4,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t:
+        R8 : [ 0,1,2,
+               0,1,2,
+               0,1,2,
+               0,1,2,
+               0,1,2,
+               0,1,2 ]
+      CoordinateY DataArray_t:
+        R8 : [ 0,0,0,
+               1,1,1,
+               2,2,2,
+               0,0,0,
+               1,1,1,
+               2,2,2 ]
+      CoordinateZ DataArray_t:
+        R8 : [ 0,0,0,
+               0,0,0,
+               0,0,0,
+               1,1,1,
+               1,1,1,
+               1,1,1 ]
+    Quads Elements_t I4 [7,0]:
+      ElementRange IndexRange_t I4 [1,16]:
+      ElementConnectivity DataArray_t:
+        I4 : [ 1, 10, 13,  4,
+               4, 13, 16,  7,
+               3,  6, 15, 12,
+               6,  9, 18, 15,
+               1,  2, 11, 10,
+               2,  3, 12, 11,
+               7, 16, 17,  8,
+               8, 17, 18,  9,
+               1,  4,  5,  2,
+               2,  5,  6,  3,
+               4,  7,  8,  5,
+               5,  8,  9,  6,
+              10, 11, 14, 13,
+              11, 12, 15, 14,
+              13, 14, 17, 16,
+              14, 15, 18, 17, ]
+    Hexas Elements_t I4 [17,0]:
+      ElementRange IndexRange_t I4 [17,20]:
+      ElementConnectivity DataArray_t:
+        I4 : [ 1,2,5,4, 10,11,14,13,
+               2,3,6,5, 11,12,15,14,
+               4,5,8,7, 13,14,17,16,
+               5,6,9,8, 14,15,18,17 ]
+    ZoneBC ZoneBC_t:
+      Xmin BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointRange IndexRange_t I4 [[1,2]]:
+      Xmax BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[3,4]]:
+      Ymin BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointRange IndexRange_t I4 [[5,6]]:
+      Ymax BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[7,8]]:
+      Zmin BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointRange IndexRange_t I4 [[9,12]]:
+      Zmax BC_t "Null":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t I4 [[13,14,15,16]]:
+    ZoneSubRegion1 ZoneSubRegion_t [3]:
+      PointList IndexArray_t I4 [[1,2,3,4]]:
+      Data DataArray_t:
+        I4 : [1, 2, 3, 4]
+    ZoneSubRegion2 ZoneSubRegion_t [3]:
+      BCRegionName Descriptor_t "Ymin":
+      Data DataArray_t:
+        I4 : [5, 6]
 """
 
 def test_generated_walkers():          
@@ -105,13 +185,11 @@ def test_rm_node_from_path():
 
 
 def test_get_all_subsets():
-  yaml_path = os.path.join(TU.mesh_dir, 'cube_4.yaml')
-  with open(yaml_path) as yt:
-    dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = parse_yaml_cgns.to_cgns_tree(yt2)
 
   all_tested_subsets_nodes = []
 
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  zone = PT.get_node_from_label(tree, 'Zone_t')
    
   subset_nodes = PT.get_all_subsets(zone)
   assert len(subset_nodes) == 7
@@ -147,13 +225,11 @@ def test_get_all_subsets():
 
 
 def test_iter_all_subsets():
-  yaml_path = os.path.join(TU.mesh_dir, 'cube_4.yaml')
-  with open(yaml_path) as yt:
-    dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = parse_yaml_cgns.to_cgns_tree(yt2)
 
   all_tested_subsets_nodes = []
 
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  zone = PT.get_node_from_label(tree, 'Zone_t')
 
   all_tested_subsets_nodes = range(0)
   iter_subset_nodes = PT.iter_all_subsets(zone)

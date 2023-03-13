@@ -30,4 +30,4 @@ def test_mixed_to_elements(sub_comm, write_output):
 
   if write_output:
     out_dir = TU.create_pytest_output_dir(sub_comm)
-    maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'U_M6Wing_mixed.cgns'), sub_comm)
+    maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'U_M6Wing_elements.cgns'), sub_comm)

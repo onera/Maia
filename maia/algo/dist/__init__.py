@@ -15,10 +15,10 @@ from .extract_surf_dmesh         import extract_surf_tree_from_bc
 from .merge                      import merge_connected_zones,\
                                         merge_zones
 
+from .mixed_to_std_elements      import convert_mixed_to_elements
+
 from .ngon_from_std_elements     import convert_elements_to_ngon,\
                                         generate_ngon_from_std_elements
-
-from .mixed_to_std_elements      import convert_mixed_to_elements
 
 from .ngons_to_elements          import ngons_to_elements
 poly_to_elements = ngons_to_elements

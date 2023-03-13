@@ -1,17 +1,11 @@
 import mpi4py.MPI as mpi
 
-import os
 import numpy as np
 
 import maia
-
-from maia            import pytree        as PT
-from maia.io         import cgns_io_tree  as IOT
-from maia.algo       import dist          as MAD
-from maia.algo.dist  import s_to_u        as CSU
-from maia.algo.dist  import merge         as ME
-from maia.transfer   import protocols     as MTP
-from maia.utils      import par_utils     as MUPar
+from maia               import pytree        as PT
+from maia.transfer      import protocols     as MTP
+from maia.utils         import par_utils     as MUPar
 from maia.utils.ndarray import np_utils
 
 import maia.pytree.sids.elements_utils    as MPSEU
@@ -72,19 +66,20 @@ def convert_mixed_to_elements(dist_tree, comm):
         # 1/ Create local element connectivity for each element type found in each mixed node
         #    and deduce the local number of each element type
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
-            assert PT.get_value(element)[0] == 20
-            elem_er  = PT.get_node_from_name(element,'ElementRange',depth=1)[1]
+            assert PT.Element.CGNSName(element) == 'MIXED'
+            elem_er = PT.Element.Range(element)
             elem_ec  = PT.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
             elem_eso = PT.get_node_from_name(element,'ElementStartOffset',depth=1)[1]
             elem_types_tab = elem_ec[elem_eso[:-1]-elem_eso[0]]
             elem_types_loc, nb_elems_per_types_loc = np.unique(elem_types_tab,return_counts=True)
+            elem_eso_loc = elem_eso[:-1]-elem_eso[0]
             for e, elem_type in enumerate(elem_types_loc):
                 if elem_type not in elem_types.keys():
                     elem_types[elem_type] = {}
                 elem_types[elem_type][elem_pos] = nb_elems_per_types_loc[e]
                 nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
                 ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_ec.dtype)
-                indices = np.intersect1d(np.where(elem_ec==elem_type),elem_eso[:-1]-elem_eso[0], assume_unique=True)
+                indices = np.intersect1d(np.where(elem_ec==elem_type),elem_eso_loc, assume_unique=True)
                 for n in range(nb_nodes_per_elem):
                     ec_per_type[n::nb_nodes_per_elem] = elem_ec[indices+n+1]
                 try:
@@ -105,16 +100,17 @@ def convert_mixed_to_elements(dist_tree, comm):
         all_types = dict(sorted(all_types.items()))
                     
         
-        # 3/ To take into a count Paraview limitation, elements are sorted by
+        # 3/ To take into account Paraview limitation, elements are sorted by
         #    decreased dimensions : 3D->2D->1D->0D
         #    Without this limitation, replace the following lines by:
         #        `key_types = np.array(list(all_types.keys()),dtype=np.int32)`
         dim_types = -1*np.ones(len(all_types.keys()),dtype=np.int32)
         key_types = np.array(list(all_types.keys()),dtype=np.int32)
         for k,key in enumerate(all_types.keys()):
-            dim_types[k] = MPSEU.elements_properties[key][1]
+            dim_types[k] = MPSEU.element_dim(key)
         sort_indices = np.argsort(dim_types)
         key_types = key_types[sort_indices[::-1]]
+        # key_types = sorted(all_types.keys(), key=MPSEU.element_dim(key), reverse=True)
         
         
         # 4/ Create old to new element numbering for PointList update      
@@ -127,14 +123,15 @@ def convert_mixed_to_elements(dist_tree, comm):
             elem_distrib = PT.get_node_from_path(element,':CGNS#Distribution/Element')[1]
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
             old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_eso.dtype)
-            ln_to_gn_element = np.arange(nb_elem_loc,dtype=np.int32) + 1 \
-                           + elem_distrib[0] + nb_elem_prev_element_t_nodes
+            ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) \
+                             + 1 + elem_distrib[0] + nb_elem_prev_element_t_nodes
             nb_elem_prev_element_t_nodes += elem_distrib[2]
             all_elem_previous_types = 0
             
+            elem_ec_type_pos = elem_ec[elem_eso[:-1]-elem_eso[0]]
             for elem_type in key_types:
                 nb_elems_per_type = all_types[elem_type]
-                indices = np.where(elem_ec[elem_eso[:-1]-elem_eso[0]]==elem_type)[0]
+                indices = np.where(elem_ec_type_pos==elem_type)[0]
                 old_to_new_element_numbering[indices] = np.arange(len(indices),dtype=elem_eso.dtype) \
                                                       + 1 + all_elem_previous_types
                 for p in range(elem_pos):
@@ -192,8 +189,7 @@ def convert_mixed_to_elements(dist_tree, comm):
             
             beg_erange += nb_elems_per_type
             elem_n = PT.new_Elements(name,label,erange=erange,econn=econn,parent=zone)
-            elem_n_distrib = PT.new_node(name=':CGNS#Distribution', label='UserDefined_t', parent=elem_n)
-            PT.new_DataArray('Element', elem_distrib, parent=elem_n_distrib)
+            PT.maia.newDistribution({'Element' : elem_distrib}, parent=elem_n)
         
         # 6/ Update all PointList with GridLocation != Vertex
         filter_loc = ['EdgeCenter','FaceCenter','CellCenter']

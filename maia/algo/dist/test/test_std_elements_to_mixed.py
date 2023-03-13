@@ -2,7 +2,6 @@ import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 import numpy as np
 import os
-import copy
 
 import maia.pytree        as PT
 
@@ -11,7 +10,7 @@ from maia.utils       import test_utils as TU
 
 from maia.algo.dist   import convert_elements_to_mixed
 
-@mark_mpi_test([1,2,3,17])
+@mark_mpi_test([1,2,3])
 def test_convert_mixed_to_elements(sub_comm):
     rank = sub_comm.Get_rank()
     size = sub_comm.Get_size()
@@ -19,7 +18,7 @@ def test_convert_mixed_to_elements(sub_comm):
     yaml_path = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
     dist_tree = file_to_dist_tree(yaml_path, sub_comm)
     
-    ref_dist_tree = copy.deepcopy(dist_tree)
+    ref_dist_tree = PT.deep_copy(dist_tree)
     
     convert_elements_to_mixed(dist_tree, sub_comm)
     

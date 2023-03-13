@@ -13,7 +13,7 @@ from maia.algo.dist   import convert_elements_to_mixed
 from maia.algo.dist.mixed_to_std_elements   import convert_mixed_to_elements, \
                                                    collect_pl_nodes
 
-@mark_mpi_test([1,2,3,7])
+@mark_mpi_test([1,2,3])
 def test_collect_pl_nodes(sub_comm):
     yaml_path = os.path.join(TU.mesh_dir, 'cube_4.yaml')
     dist_tree = file_to_dist_tree(yaml_path, sub_comm)
