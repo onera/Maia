@@ -51,14 +51,6 @@ if(NOT CMAKE_CXX_STANDARD IN_LIST SUPPORTED_CXX_STANDARDS)
   message(FATAL_ERROR "Supported CXX standards are: ${SUPPORTED_CXX_STANDARDS}.")
 endif()
 
-#TODO : those lines should be removed when std_e / cpp_cgns uses CMAKE_CXX_STANDARD
-if (${CMAKE_CXX_STANDARD} EQUAL 20)
-  set(std_e_ENABLE_CPP20 ON CACHE BOOL "${PROJECT_NAME} uses C++20, so force C++20 for std_e" FORCE)
-  set(cpp_cgns_ENABLE_CPP20 ON CACHE BOOL "${PROJECT_NAME} uses C++20, so force C++20 for cpp_cgns" FORCE)
-elseif (${CMAKE_CXX_STANDARD} EQUAL 17)
-  set(std_e_ENABLE_CPP20 OFF CACHE BOOL "${PROJECT_NAME} uses C++17, so force C++17 for std_e" FORCE)
-  set(cpp_cgns_ENABLE_CPP20 OFF CACHE BOOL "${PROJECT_NAME} uses C++17, so force C++17 for cpp_cgns" FORCE)
-endif()
 set(CMAKE_CXX_EXTENSIONS        OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON )
 ### fPIC
