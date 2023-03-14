@@ -4,6 +4,7 @@ import numpy as np
 
 import maia
 from maia               import pytree        as PT
+from maia.pytree        import maia          as MT
 from maia.transfer      import protocols     as MTP
 from maia.utils         import par_utils     as MUPar
 from maia.utils.ndarray import np_utils
@@ -57,7 +58,7 @@ def convert_mixed_to_elements(dist_tree, comm):
     size = comm.Get_size()
 
     for zone in PT.get_all_Zone_t(dist_tree):
-        elem_types = {}
+        elem_types = {} # For each element type: dict id of mixed node -> number of elts
         ec_per_elem_type_loc = {}
         ln_to_gn_loc = {}
         nb_elem_prev = 0
@@ -68,35 +69,35 @@ def convert_mixed_to_elements(dist_tree, comm):
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
             assert PT.Element.CGNSName(element) == 'MIXED'
             elem_er = PT.Element.Range(element)
-            elem_ec  = PT.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
-            elem_eso = PT.get_node_from_name(element,'ElementStartOffset',depth=1)[1]
-            elem_types_tab = elem_ec[elem_eso[:-1]-elem_eso[0]]
-            elem_types_loc, nb_elems_per_types_loc = np.unique(elem_types_tab,return_counts=True)
+            elem_ec  = PT.get_child_from_name(element,'ElementConnectivity')[1]
+            elem_eso = PT.get_child_from_name(element,'ElementStartOffset')[1]
             elem_eso_loc = elem_eso[:-1]-elem_eso[0]
+            elem_types_tab = elem_ec[elem_eso_loc]
+            elem_types_loc, nb_elems_per_types_loc = np.unique(elem_types_tab,return_counts=True)
             for e, elem_type in enumerate(elem_types_loc):
                 if elem_type not in elem_types.keys():
                     elem_types[elem_type] = {}
                 elem_types[elem_type][elem_pos] = nb_elems_per_types_loc[e]
                 nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
                 ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_ec.dtype)
+                # Retrive start idx of mixed elements having this type
                 indices = np.intersect1d(np.where(elem_ec==elem_type),elem_eso_loc, assume_unique=True)
                 for n in range(nb_nodes_per_elem):
                     ec_per_type[n::nb_nodes_per_elem] = elem_ec[indices+n+1]
                 try:
                     ec_per_elem_type_loc[elem_type].append(ec_per_type)
-                except:
+                except KeyError:
                     ec_per_elem_type_loc[elem_type] = [ec_per_type]
         
         
         # 2/ Find all element types described in the mesh and the number of each
         elem_types_all = comm.allgather(elem_types)
-        all_types = {}
-        for d in elem_types_all:
-            for kd,vd in d.items():
-                if kd not in all_types.keys():
+        all_types = {} # For each type : total number of elts appearing in zone
+        for proc_dict in elem_types_all:
+            for kd,vd in proc_dict.items():
+                if kd not in all_types:
                     all_types[kd] = 0
-                for pos, nb in vd.items():
-                    all_types[kd] += nb
+                all_types[kd] += sum(vd.values())
         all_types = dict(sorted(all_types.items()))
                     
         
@@ -112,9 +113,9 @@ def convert_mixed_to_elements(dist_tree, comm):
         old_to_new_element_numbering_list = []
         nb_elem_prev_element_t_nodes = 0
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
-            elem_ec  = PT.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
-            elem_eso = PT.get_node_from_name(element,'ElementStartOffset',depth=1)[1]
-            elem_distrib = PT.get_node_from_path(element,':CGNS#Distribution/Element')[1]
+            elem_ec  = PT.get_child_from_name(element, 'ElementConnectivity')[1]
+            elem_eso = PT.get_child_from_name(element, 'ElementStartOffset')[1]
+            elem_distrib = MT.getDistribution(element, 'Element')[1]
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
             old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_eso.dtype)
             ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) \
@@ -122,22 +123,26 @@ def convert_mixed_to_elements(dist_tree, comm):
             nb_elem_prev_element_t_nodes += elem_distrib[2]
             all_elem_previous_types = 0
             
-            elem_ec_type_pos = elem_ec[elem_eso[:-1]-elem_eso[0]]
+            elem_ec_type_pos = elem_ec[elem_eso[:-1]-elem_eso[0]] # Type of each element
             for elem_type in key_types:
                 nb_elems_per_type = all_types[elem_type]
                 indices = np.where(elem_ec_type_pos==elem_type)[0]
-                old_to_new_element_numbering[indices] = np.arange(len(indices),dtype=elem_eso.dtype) \
-                                                      + 1 + all_elem_previous_types
+                old_to_new_element_numbering[indices] = np.arange(len(indices),dtype=elem_eso.dtype) + 1
+
+                # Add total elements of others (previous) type
+                old_to_new_element_numbering[indices] += all_elem_previous_types
+                # Add number of elts on previous mixed nodes for this rank
                 for p in range(elem_pos):
                     try:
                         old_to_new_element_numbering[indices] += elem_types[elem_type][p]
-                    except:
-                        old_to_new_element_numbering[indices] += 0
+                    except KeyError:
+                        pass
+                # Add number of elts on previous procs for this mixed node
                 for r in range(rank):
                     try:
                         old_to_new_element_numbering[indices] += elem_types_all[r][elem_type][elem_pos]
-                    except:
-                        old_to_new_element_numbering[indices] += 0
+                    except KeyError:
+                        pass
                 all_elem_previous_types += all_types[elem_type]
             
             old_to_new_element_numbering_list.append(old_to_new_element_numbering)
@@ -153,49 +158,41 @@ def convert_mixed_to_elements(dist_tree, comm):
             part_stride_ec = []
             ln_to_gn_list = []
             label = MPSEU.element_name(elem_type)
-            name = label[0].upper() + label[1:].lower()
             nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
             erange = [beg_erange, beg_erange+nb_elems_per_type-1]
             
-            if elem_type in ec_per_elem_type_loc.keys():
-                for p,pos in enumerate(elem_types[elem_type].keys()):
+            if elem_type in ec_per_elem_type_loc:
+                for p,pos in enumerate(elem_types[elem_type]):
                     nb_nodes_loc = elem_types[elem_type][pos]
                     part_data_ec.append(ec_per_elem_type_loc[elem_type][p])
                     stride_ec = (nb_nodes_per_elem)*np.ones(nb_nodes_loc,dtype = np.int32)
                     part_stride_ec.append(stride_ec)
                     ln_to_gn = np.arange(nb_nodes_loc,dtype=elem_distrib.dtype) + 1
-                    for r in range(size):
-                        elem_types_all_next = elem_types_all[r]
-                        if elem_type in elem_types_all_next.keys():
-                            for elem_pos in elem_types_all_next[elem_type]:
-                                if elem_pos < pos:
-                                    ln_to_gn += elem_types_all_next[elem_type][elem_pos]
-                    for r in range(rank):
-                        elem_types_all_prev = elem_types_all[r]
-                        if elem_type in elem_types_all_prev.keys():
-                            if pos in elem_types_all_prev[elem_type].keys():
-                                ln_to_gn += elem_types_all_prev[elem_type][pos]
-                    ln_to_gn_list.append(ln_to_gn)
+
+                    offset = 0
+                    for r,elem_types_rank in enumerate(elem_types_all):
+                        if elem_type in elem_types_rank:
+                            # Add number of elts on previous mixed nodes for all ranks
+                            offset += sum([nb for pos, nb in elem_types_rank[elem_type].items() if elem_pos < pos])
+                            # Add number of elts on this mixed node, but only for previous ranks
+                            if r < rank and pos in elem_types_rank[elem_type]:
+                                offset += elem_types_rank[elem_type][pos]
+                    ln_to_gn_list.append(ln_to_gn + offset)
             
             elem_distrib = MUPar.uniform_distribution(nb_elems_per_type,comm)
             ptb = MTP.PartToBlock(elem_distrib,ln_to_gn_list,comm)
-            __, econn = ptb.exchange_field(part_data_ec,part_stride_ec)
+            _, econn = ptb.exchange_field(part_data_ec,part_stride_ec)
             
             beg_erange += nb_elems_per_type
-            elem_n = PT.new_Elements(name,label,erange=erange,econn=econn,parent=zone)
+            elem_n = PT.new_Elements(label.capitalize(),label,erange=erange,econn=econn,parent=zone)
             PT.maia.newDistribution({'Element' : elem_distrib}, parent=elem_n)
         
         # 6/ Update all PointList with GridLocation != Vertex
         filter_loc = ['EdgeCenter','FaceCenter','CellCenter']
         pl_list = collect_pl_nodes(zone,filter_loc)
         
-        ln_to_gn_pl_list = []
-        for p,pl in enumerate(pl_list):
-            ln_to_gn_pl_list.append(PT.get_value(pl)[0].astype(np.int32))
-        part1_to_part2_idx_list = []
-        for l in ln_to_gn_element_list:
-            part1_to_part2_idx = np.arange(l.size+1, dtype=np.int32)
-            part1_to_part2_idx_list.append(part1_to_part2_idx)
+        ln_to_gn_pl_list = [maia.utils.as_pdm_gnum(PT.get_value(pl)[0]) for pl in pl_list]
+        part1_to_part2_idx_list = [np.arange(l.size+1, dtype=np.int32) for l in ln_to_gn_element_list]
             
         PTP = PDM.PartToPart(comm, ln_to_gn_element_list, ln_to_gn_pl_list, \
                              part1_to_part2_idx_list, ln_to_gn_element_list)
@@ -203,8 +200,8 @@ def convert_mixed_to_elements(dist_tree, comm):
         request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
                             old_to_new_element_numbering_list)
-        __, old_to_new_pl_list = PTP.wait(request)
+        _, old_to_new_pl_list = PTP.wait(request)
     
-        for p, pl in enumerate(pl_list):
-            PT.set_value(pl,np.array(old_to_new_pl_list[p]).reshape((1,len(old_to_new_pl_list[p]))))
+        for pl_node, new_pl in zip(pl_list, old_to_new_pl_list):
+            PT.set_value(pl_node, np.array(new_pl).reshape((1,-1), order='F'))
     
