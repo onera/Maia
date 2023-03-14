@@ -69,7 +69,12 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
       pl_gnum1.append(pl_gnum1_tmp)
     else:
       order    = np.argsort(ref_lnum2)                 # Sort order of point_list ()
+      # Next lines create 2 arrays : pl_mask and true_idx
+      # pl_mask (size=pl.size, bool) tell for each pl element if it appears in ref_lnum2
+      # true_idx (size=pl_mask.sum(), int) give for each pl element its position in ref_lnum2
+      # (if pl_mask is True)
       idx      = np.searchsorted(ref_lnum2,point_list,sorter=order)
+      # Take is equivalent to order[idx], but if idx > order.size, last elt of order is taken
       pl_mask  = point_list==ref_lnum2[np.take(order, idx, mode='clip')]
       true_idx = idx[pl_mask]
 

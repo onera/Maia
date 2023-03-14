@@ -8,7 +8,7 @@ import  maia.pytree   as     PT
 from    maia.factory  import dist_from_part
 from    maia.transfer import utils                as TEU
 from    maia.utils    import np_utils, layouts, py_utils
-from    .part_to_part_utils import *
+from    .extraction_utils   import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from    .point_cloud_utils  import create_sub_numbering
 
 import Pypdm.Pypdm as PDM

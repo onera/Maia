@@ -6,7 +6,7 @@ import maia.pytree as PT
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.utils    import np_utils, layouts, py_utils
-from .part_to_part_utils import *
+from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
 
 import Pypdm.Pypdm as PDM
@@ -389,9 +389,9 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
   Note:
     - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
-    ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
-    - Boundaries from volumic mesh are extracted as edges on isosurface (Only with ``TRI_3`` isosurfaces
-    at this time). FaceCenter fields can be exchanged in this case.
+      ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
+    - If ``elt_type`` is set to 'TRI_3', boundaries from volumic mesh are extracted as edges on 
+      the isosurface and FaceCenter are allowed to be exchanged.
 
   Args:
     part_tree     (CGNSTree)    : Partitioned tree on which isosurf is computed. Only U-NGon
