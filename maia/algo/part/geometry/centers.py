@@ -81,10 +81,9 @@ def compute_face_center(zone):
       ngon_node = PT.Zone.NGonNode(zone)
       face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-      return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, cx, cy, cz)
     else:
       face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
-      return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, cx, cy, cz)
+    return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, cx, cy, cz)
   else:
     raise NotImplementedError("Only U zones are managed")
 
@@ -93,7 +92,7 @@ def compute_edge_center(zone):
   """Compute the edge centers of a partitioned zone.
 
   Input zone must have cartesian coordinates recorded under a unique
-  GridCoordinates node, and a unstructured connectivity.
+  GridCoordinates node, and a unstructured standard elements connectivity.
 
   Note:
     If zone is described with standard elements, centers will be computed for elements
