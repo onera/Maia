@@ -14,6 +14,9 @@ def local_pl_offset(part_zone, dim):
   """
   if   dim == 3:
     nface = PT.Zone.NFaceNode(part_zone)
+    if nface is None:
+      # Extract_part and isosurfaces use trees with NGon and NFace
+      raise ValueError("NGon trees must have NFace connectivity to extract pl offset")
     return PT.Element.Range(nface)[0] - 1
   elif dim == 2:
     if PT.Zone.has_ngon_elements(part_zone):
