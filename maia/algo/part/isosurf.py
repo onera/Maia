@@ -6,6 +6,8 @@ import maia.pytree as PT
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.utils    import np_utils, layouts, py_utils
+from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
+from .point_cloud_utils import create_sub_numbering
 
 import Pypdm.Pypdm as PDM
 
@@ -25,35 +27,46 @@ def copy_referenced_families(source_base, target_base):
 # =======================================================================================
 def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
-  # Part 1 : ISOSURF
-  # Part 2 : VOLUME
   for container_name in containers_name :
 
-    # --- Get all fields names and location -----------------------------------
-    all_fld_names = []
-    all_locs = []
-    for part_zone in part_zones:
-      container = PT.request_child_from_name(part_zone, container_name)
-      fld_names = {PT.get_name(n) for n in PT.iter_children_from_label(container, "DataArray_t")}
-      py_utils.append_unique(all_fld_names, fld_names)
-      py_utils.append_unique(all_locs, PT.Subset.GridLocation(container))
-    if len(part_zones) > 0:
-      assert len(all_locs) == len(all_fld_names) == 1
-      tag = comm.Get_rank()
-      loc_and_fields = all_locs[0], list(all_fld_names[0])
-    else:
-      tag = -1
-      loc_and_fields = None
-    master = comm.allreduce(tag, op=MPI.MAX) # No check global ?
-    gridLocation, flds_in_container_names = comm.bcast(loc_and_fields, master)
-    assert(gridLocation in ['Vertex','CellCenter'])
+    # > Retrieve fields name + GridLocation + PointList if container
+    #   is not know by every partition
+    mask_zone = ['MaskedZone', None, [], 'Zone_t']
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
+      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
+  
+    fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexArray_t']
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
+    mask_container = PT.get_child_from_name(mask_zone, container_name)
+    if mask_container is None:
+      raise ValueError("[maia-isosurfaces] asked container for exchange is not in tree")
+
+    # > Manage BC and GC ZSR
+    ref_zsr_node    = mask_container
+    bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
+    gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
+    assert not (bc_descriptor_n and gc_descriptor_n)
+    if bc_descriptor_n is not None:
+      bc_name      = PT.get_value(bc_descriptor_n)
+      dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
+      ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
+    elif gc_descriptor_n is not None:
+      gc_name      = PT.get_value(gc_descriptor_n)
+      dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
+      ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
+    
+    gridLocation = PT.Subset.GridLocation(ref_zsr_node)
+    partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
+    assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
 
 
-    # --- Part1 (ISOSURF) objects definition ----------------------------------
+    # > Part1 (ISOSURF) objects definition
     # LN_TO_GN
-    _gridLocation     = {"Vertex" : "Vertex", "CellCenter" : "Cell"}
-    part1_node_gn_elt = PT.maia.getGlobalNumbering(iso_part_zone, _gridLocation[gridLocation])
-    part1_ln_to_gn    = [PT.get_value(part1_node_gn_elt)]
+    _gridLocation    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
+    elt_n            = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
+    if elt_n is None :return
+    part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
+    part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
     
     # Link between part1 and part2
     part1_maia_iso_zone = PT.get_child_from_name(iso_part_zone, "maia#surface_data")
@@ -61,19 +74,23 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       part1_weight        = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" )[1]]
       part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   )[1]]
       part1_to_part2_idx  = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    )[1]]
+    if gridLocation=='FaceCenter' :
+      part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges")[1]]
+      part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]
     if gridLocation=='CellCenter' :
       part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum")[1]]
-      part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_node_gn_elt).size+1, dtype=np.int32)]
+      part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]
     
 
-    # --- Part2 (VOLUME) objects definition ----------------------------------
-    part2_ln_to_gn      = []
+    # > Part2 (VOLUME) objects definition
+    part2_ln_to_gn      = list()
     for part_zone in part_zones:
-      part2_node_gn_elt = PT.maia.getGlobalNumbering(part_zone, _gridLocation[gridLocation])
-      part2_ln_to_gn.append(PT.get_value(part2_node_gn_elt))
+      elt_n            = part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(part_zone, 'NGonElements')
+      part2_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
+      part2_ln_to_gn.append(PT.get_value(part2_elt_gnum_n))
         
 
-    # --- P2P Object --------------------------------------------------------------------
+    # > P2P Object
     ptp = PDM.PartToPart(comm,
                          part1_ln_to_gn,
                          part2_ln_to_gn,
@@ -81,31 +98,55 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
                          part1_to_part2     )
 
 
-    # --- FlowSolution node def by zone -------------------------------------------------
+    # > FlowSolution node def in isosurf zone
     FS_iso = PT.new_FlowSolution(container_name, loc=gridLocation, parent=iso_part_zone)
+    if partial_field:
+      pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm)
 
-
-    # --- Field exchange ----------------------------------------------------------------
-    for fld_name in flds_in_container_names:
+    # > Field exchange
+    for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
+      fld_name = PT.get_name(fld_node)
       fld_path = f"{container_name}/{fld_name}"
-      fld_data = [PT.get_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
+
+      if partial_field:
+        # Get field and organize it according to the gnum1_come_from arrays order
+        fld_data = list()
+        for i_part, part_zone in enumerate(part_zones) :
+          fld_n = PT.get_node_from_path(part_zone,fld_path)
+          fld_data_tmp = PT.get_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
+          fld_data.append(fld_data_tmp[pl_gnum1[i_part]])
+        p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
+      
+      else :
+        fld_data = [PT.get_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
+        stride   = 1
+        p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2
 
       # Reverse iexch
       req_id = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                 p2p_type,
                                  fld_data,
-                                 part2_stride=1)
-      part1_strid, part1_data = ptp.reverse_wait(req_id)
+                                 part2_stride=stride)
+      part1_stride, part1_data = ptp.reverse_wait(req_id)
 
       # Placement
       i_part = 0 # One isosurface partition
-
       # Ponderation if vertex
-      if   gridLocation=="Vertex"    :
-        weighted_fld        = part1_data[i_part]*part1_weight[i_part]
-        part1_data[i_part]  = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
+      if gridLocation=="Vertex" :
+        weighted_fld       = part1_data[i_part]*part1_weight[i_part]
+        part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
 
       PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)    
+    
+    # Build PL with the last exchange stride
+    if partial_field:
+      new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
+      point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
+      new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
+
+      # Update global numbering in FS
+      partial_gnum = create_sub_numbering([part1_ln_to_gn[0][new_point_list]], comm)[0]
+      PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_iso)
 
 # =======================================================================================
 
@@ -160,6 +201,12 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   else:
     _KIND_TO_SET_FUNC[iso_kind](pdm_isos, *iso_params)
 
+  # > Discover BCs over part_zones
+  dist_zone = PT.new_Zone('Zone')
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", 'BC_t'], comm)
+  bcs_n     = PT.get_children_from_predicates(dist_zone, ['ZoneBC_t','BC_t'])
+  gdom_bcs  = [PT.get_name(bc_n) for bc_n in bcs_n]
+  n_gdom_bcs= len(gdom_bcs)
 
   # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
@@ -191,6 +238,17 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                       None,
                       vtx_ln_to_gn, vtx_coords)
 
+    # Add BC information
+    zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
+    all_bc_pl = list()
+    for i_group, bc_name in enumerate(gdom_bcs):
+      bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
+      if bc_n is not None:
+        all_bc_pl.append(PT.get_value(PT.get_child_from_name(bc_n, 'PointList')))
+      else :
+        all_bc_pl.append(np.empty((1,0), np.int32))
+    group_face_idx, group_face = np_utils.concatenate_point_list(all_bc_pl)
+    pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs, group_face_idx, group_face)
 
   # Isosurfaces compute in PDM  
   pdm_isos.compute()
@@ -199,7 +257,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   results = pdm_isos.part_iso_surface_surface_get()
   n_iso_vtx = results['np_vtx_ln_to_gn'].shape[0]
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
-
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
   iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
@@ -214,13 +271,51 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   PT.new_DataArray('CoordinateZ', cz, parent=iso_grid_coord)
 
   # > Elements
-  ngon_n = PT.new_NGonElements( 'NGonElements',
-                                erange = [1, n_iso_elt],
-                                ec=results['np_elt_vtx'],
-                                eso=results['np_elt_vtx_idx'],
-                                parent=iso_part_zone)
+  if elt_type in ['TRI_3', 'QUAD_4']:
+    elt_n = PT.new_Elements(elt_type,
+                            type=elt_type,
+                            erange=[1, n_iso_elt],
+                            econn=results['np_elt_vtx'],
+                            parent=iso_part_zone)
+    PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
+                                'Sections': results['np_elt_ln_to_gn']}, parent=elt_n)
+  else:
+    elt_n = PT.new_NGonElements('NGonElements',
+                                 erange = [1, n_iso_elt],
+                                 ec=results['np_elt_vtx'],
+                                 eso=results['np_elt_vtx_idx'],
+                                 parent=iso_part_zone)
+    PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=elt_n)
+  
+  # Bnd edges
+  if elt_type in ['TRI_3']:
+    # > Add element node
+    results_edge = pdm_isos.isosurf_bnd_get()
+    n_bnd_edge         = results_edge['n_bnd_edge']
+    if n_bnd_edge!=0:
+      bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
+      bar_n = PT.new_Elements('BAR_2', type='BAR_2', 
+                              erange=np.array([n_iso_elt+1, n_iso_elt+n_bnd_edge]),
+                              econn=results_edge['bnd_edge_vtx'],
+                              parent=iso_part_zone)
+      PT.maia.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
+                                  'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
-  PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=ngon_n)
+      # > Create BC described by edges
+      gnum     = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
+      zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
+      for i_group, bc_name in enumerate(gdom_bcs):
+        n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
+        edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
+                            bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
+        partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
+
+        if partial_gnum.size!=0:
+          bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+  else:
+    n_bnd_edge = 0
+
 
   # > LN to GN
   PT.maia.newGlobalNumbering({'Vertex' : results['np_vtx_ln_to_gn'],
@@ -235,6 +330,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   PT.new_DataArray('Vtx_parent_idx'   , results_vtx["vtx_volume_vtx_idx"]   , parent=maia_iso_zone)
   PT.new_DataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
   PT.new_DataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
+  if elt_type in ['TRI_3'] and n_bnd_edge!=0:
+    PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
 
   # > FamilyName(s)
   dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [familyname_query],
@@ -291,8 +388,10 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
     - This function requires ParaDiGMa access.
 
   Note:
-    Once created, additional fields can be exchanged from volumic tree to isosurface tree using
-    ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``
+    - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
+      ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
+    - If ``elt_type`` is set to 'TRI_3', boundaries from volumic mesh are extracted as edges on 
+      the isosurface and FaceCenter are allowed to be exchanged.
 
   Args:
     part_tree     (CGNSTree)    : Partitioned tree on which isosurf is computed. Only U-NGon

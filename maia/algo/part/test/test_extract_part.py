@@ -13,20 +13,6 @@ def sample_part_tree(comm):
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
   return part_tree
 
-
-def test_local_pl_offset():
-  zone = PT.new_Zone('Zone', type='Unstructured')
-  PT.new_NGonElements('NGon', erange=[1, 10], parent=zone)
-  PT.new_NFaceElements('NFace', erange=[11, 20], parent=zone)
-  assert EP.local_pl_offset(zone, 0) == 0
-  assert EP.local_pl_offset(zone, 2) == 0
-  assert EP.local_pl_offset(zone, 3) == 10
-  zone = PT.new_Zone('Zone', type='Unstructured')
-  PT.new_NFaceElements('NFace', erange=[1, 5], parent=zone)
-  PT.new_NGonElements('NGon', erange=[6, 10], parent=zone)
-  assert EP.local_pl_offset(zone, 2) == 5
-  assert EP.local_pl_offset(zone, 3) == 0
-
 @mark_mpi_test(2)
 @pytest.mark.parametrize("dim", [0,2,3])
 def test_extract_part_simple(dim, sub_comm):
@@ -100,6 +86,30 @@ def test_exch_field(partial, sub_comm):
     assert PT.get_label(extr_sol) == 'FlowSolution_t'
     assert np.array_equal(PT.get_node_from_name(extr_sol, 'gnum')[1],
                           extractor.exch_tool_box[0]['parent_elt']['Vertex'])
+
+@mark_mpi_test(2)
+def test_exch_field_from_bc_zsr(sub_comm):
+  part_tree = sample_part_tree(sub_comm)
+
+  # Add field
+  for zone in PT.get_all_Zone_t(part_tree):
+    gnum = PT.maia.getGlobalNumbering(PT.get_node_from_name(zone, 'NGonElements'), 'Element')[1]
+    bc_n = PT.get_child_from_predicates(zone, 'ZoneBC_t/Xmin')
+    if bc_n is not None:
+      bc_pl   = PT.get_value(PT.get_node_from_name(bc_n, "PointList"))
+      bc_gnum = gnum[bc_pl[0]-1]
+      PT.new_ZoneSubRegion('ZSR_Xmin', bc_name="Xmin", fields={'gnum': bc_gnum}, parent=zone)
+
+  extractor = EP.Extractor(part_tree, [bc_pl], "FaceCenter", sub_comm)
+  extractor.exchange_fields(['ZSR_Xmin'])
+  extr_tree = extractor.get_extract_part_tree()
+
+  extr_sol = PT.get_node_from_name(extr_tree, 'ZSR_Xmin')
+  assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
+  assert PT.Subset.GridLocation(extr_sol) == 'CellCenter'
+  pl    = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
+  data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
+  assert np.array_equal(extractor.exch_tool_box[0]['parent_elt']['FaceCenter'][pl-1], data)
 
 
 @mark_mpi_test(3)
