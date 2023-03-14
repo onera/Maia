@@ -239,16 +239,15 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                       vtx_ln_to_gn, vtx_coords)
 
     # Add BC information
-    zone_bc_n      = PT.get_child_from_label(part_zone, "ZoneBC_t")
-    group_face_idx = np.full(n_gdom_bcs+1, 0, dtype=np.int32)
-    group_face     = np.empty(0, dtype=np.int32)
+    zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
+    all_bc_pl = list()
     for i_group, bc_name in enumerate(gdom_bcs):
-      bc_n  = PT.get_child_from_name(zone_bc_n, bc_name)
+      bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
       if bc_n is not None:
-        bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
-        group_face_idx[i_group+1] = bc_pl.shape[1]
-        group_face = np.concatenate([group_face, bc_pl[0]])
-    group_face_idx = np.cumsum(group_face_idx, dtype=np.int32)
+        all_bc_pl.append(PT.get_value(PT.get_child_from_name(bc_n, 'PointList')))
+      else :
+        all_bc_pl.append(np.empty((1,0), np.int32))
+    group_face_idx, group_face = np_utils.concatenate_point_list(all_bc_pl)
     pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs, group_face_idx, group_face)
 
   # Isosurfaces compute in PDM  
@@ -278,12 +277,15 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                             erange=[1, n_iso_elt],
                             econn=results['np_elt_vtx'],
                             parent=iso_part_zone)
+    PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
+                                'Sections': results['np_elt_ln_to_gn']}, parent=elt_n)
   else:
     elt_n = PT.new_NGonElements('NGonElements',
                                  erange = [1, n_iso_elt],
                                  ec=results['np_elt_vtx'],
                                  eso=results['np_elt_vtx_idx'],
                                  parent=iso_part_zone)
+    PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=elt_n)
   
   # Bnd edges
   if elt_type in ['TRI_3']:
@@ -300,12 +302,12 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
       # > Create BC described by edges
+      gnum     = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
       zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
       for i_group, bc_name in enumerate(gdom_bcs):
         n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
         edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
                             bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
-        gnum    = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
         partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
 
         if partial_gnum.size!=0:
@@ -314,8 +316,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   else:
     n_bnd_edge = 0
 
-  PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
-                              'Sections': results['np_elt_ln_to_gn']}, parent=elt_n)
 
   # > LN to GN
   PT.maia.newGlobalNumbering({'Vertex' : results['np_vtx_ln_to_gn'],
@@ -388,8 +388,10 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
     - This function requires ParaDiGMa access.
 
   Note:
-    Once created, additional fields can be exchanged from volumic tree to isosurface tree using
-    ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``
+    - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
+    ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
+    - Boundaries from volumic mesh are extracted as edges on isosurface (Only with ``TRI_3`` isosurfaces
+    at this time). FaceCenter fields can be exchanged in this case.
 
   Args:
     part_tree     (CGNSTree)    : Partitioned tree on which isosurf is computed. Only U-NGon

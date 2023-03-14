@@ -79,11 +79,11 @@ def test_get_partial_container_stride_and_order(sub_comm):
       NGonElements Elements_t I4 [22,0]:
         ElementRange IndexRange_t I4 [1,3]:
     """
-    p1_lngn      = [np.array([1,3,5,7,9],dtype=pdm_gnum_dtype)]
-    p2_lngn      = [np.array([1,2,3,4,5],dtype=pdm_gnum_dtype),
-                    np.array([6,7,8], dtype=pdm_gnum_dtype)]
+    p1_lngn      = [np.array([1,3,5,7,9],   dtype=pdm_gnum_dtype)]
+    p2_lngn      = [np.array([1,2,3,4,5],   dtype=pdm_gnum_dtype),
+                    np.array([6,7,8],       dtype=pdm_gnum_dtype)]
     p1_to_p2     = [np.array([9,10,9,10,13],dtype=pdm_gnum_dtype)]
-    p1_to_p2_idx = [np.array([0,1,2,3,4,5],dtype=pdm_gnum_dtype)]
+    p1_to_p2_idx = [np.array([0,1,2,3,4,5], dtype=pdm_gnum_dtype)]
   else:
     pt = """
     Zone.P1.N0 Zone_t:
@@ -93,12 +93,16 @@ def test_get_partial_container_stride_and_order(sub_comm):
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[4,2]]:
     """
-    p1_lngn      = [np.array([2,4,6,8],     dtype=pdm_gnum_dtype)]
-    p2_lngn      = [np.array([9,10,11,12,13],  dtype=pdm_gnum_dtype)]
-    p1_to_p2     = [np.array([1,2,6,7], dtype=pdm_gnum_dtype)]
+    p1_lngn      = [np.array([2,4,6,8],       dtype=pdm_gnum_dtype)]
+    p2_lngn      = [np.array([9,10,11,12,13], dtype=pdm_gnum_dtype)]
+    p1_to_p2     = [np.array([1,2,6,7],       dtype=pdm_gnum_dtype)]
     p1_to_p2_idx = [np.array([0,1,2,3,4],     dtype=pdm_gnum_dtype)]
 
   '''
+  part1 = isosurface or extract_part (only defined here by its lngn `p1_lngn` 
+          and parent connectivity `p1_to_p2*`)
+  part2 = volumic parent (defined by the yaml tree `pt`)
+
   PROC 0:
     part0:
       part_gnum1_idx = [0 1 2]
@@ -154,6 +158,6 @@ def test_get_partial_container_stride_and_order(sub_comm):
     assert np.array_equal(  stride[0], np.array([1,1], dtype=pdm_gnum_dtype))
     assert np.array_equal(  stride[1], np.array([0,0], dtype=pdm_gnum_dtype))
   if sub_comm.Get_rank()==1:
-    assert np.array_equal(pl_gnum1[0], np.array([1,1], dtype=pdm_gnum_dtype))
+    assert np.array_equal(pl_gnum1[0], np.array([1,1],       dtype=pdm_gnum_dtype))
     assert np.array_equal(  stride[0], np.array([0,0,1,1,0], dtype=pdm_gnum_dtype))
   

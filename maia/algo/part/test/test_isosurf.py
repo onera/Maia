@@ -58,7 +58,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
         GridLocation GridLocation_t "CellCenter":
         fieldA DataArray_t [40., 30., 20., 10.]:
         fieldB DataArray_t [400., 300., 200., 100.]:
-      FSolBC FlowSolution_t:
+      FSolBC ZoneSubRegion_t:
         BCRegionName Descriptor_t "Zmin":
         fieldD DataArray_t R8 [-1., -3., -5., -7.]:
       :CGNS#GlobalNumbering UserDefinedData_t:
@@ -67,7 +67,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
     """
     yt_surf = f"""
     VolZone_iso.P0.N0 Zone_t:
-      BAR_2 Elements_t:
+      BAR_2 Elements_t [3,0]:
         ElementRange IndexRange_t [1,3]:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Element DataArray_t {dtype} [3,2]:
@@ -84,7 +84,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
   else:
     yt_surf = f"""
     VolZone_iso.P1.N0 Zone_t:
-      BAR_2 Elements_t:
+      BAR_2 Elements_t [3,0]:
         ElementRange IndexRange_t [1,3]:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Element DataArray_t {dtype} [1]:
