@@ -104,9 +104,6 @@ def iter_all_subsets(root,filter_loc=None):
   """
   import maia.pytree as PT
 
-  if isinstance(filter_loc, str):
-    filter_loc = [filter_loc]
-
   eligible_subset_paths = ['CGNSBase_t/Zone_t/ZoneBC_t/BC_t',
                            'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/BCDataSet_t',
                            'CGNSBase_t/Zone_t/ZoneSubRegion_t',

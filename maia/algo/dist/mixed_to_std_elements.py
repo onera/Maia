@@ -104,13 +104,7 @@ def convert_mixed_to_elements(dist_tree, comm):
         #    decreased dimensions : 3D->2D->1D->0D
         #    Without this limitation, replace the following lines by:
         #        `key_types = np.array(list(all_types.keys()),dtype=np.int32)`
-        dim_types = -1*np.ones(len(all_types.keys()),dtype=np.int32)
-        key_types = np.array(list(all_types.keys()),dtype=np.int32)
-        for k,key in enumerate(all_types.keys()):
-            dim_types[k] = MPSEU.element_dim(key)
-        sort_indices = np.argsort(dim_types)
-        key_types = key_types[sort_indices[::-1]]
-        # key_types = sorted(all_types.keys(), key=MPSEU.element_dim(key), reverse=True)
+        key_types = sorted(all_types.keys(), key=MPSEU.element_dim, reverse=True)
         
         
         # 4/ Create old to new element numbering for PointList update      

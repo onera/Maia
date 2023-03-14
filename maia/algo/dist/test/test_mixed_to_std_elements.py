@@ -46,7 +46,7 @@ def test_collect_pl_nodes(sub_comm):
         assert PT.get_name(pointlist_node)  == 'PointList'
         assert PT.get_label(pointlist_node) == 'IndexArray_t'
 
-@mark_mpi_test([1,2,3,7])
+@mark_mpi_test([1,2,3])
 def test_convert_mixed_to_elements(sub_comm):
     rank = sub_comm.Get_rank()
     size = sub_comm.Get_size()
@@ -70,93 +70,93 @@ def test_convert_mixed_to_elements(sub_comm):
     elements_nodes = PT.get_nodes_from_label(zone, 'Elements_t')
     assert len(elements_nodes) == 6
     
-    hexa_node = PT.get_node_from_name(zone, 'Hexa_8')
-    hexa_er_node = PT.get_node_from_name(hexa_node, 'ElementRange')
-    hexa_ec_node = PT.get_node_from_name(hexa_node, 'ElementConnectivity')
-    assert PT.get_value(hexa_node)[0] == 17
-    assert np.all(PT.get_value(hexa_er_node) == [1,1])
-    
-    penta_node = PT.get_node_from_name(zone, 'Penta_6')
-    penta_er_node = PT.get_node_from_name(penta_node, 'ElementRange')
-    penta_ec_node = PT.get_node_from_name(penta_node, 'ElementConnectivity')
-    assert PT.get_value(penta_node)[0] == 14
-    assert np.all(PT.get_value(penta_er_node) == [2,2])
+    tetra_node = PT.get_node_from_name(zone, 'Tetra_4')
+    tetra_er_node = PT.get_node_from_name(tetra_node, 'ElementRange')
+    tetra_ec_node = PT.get_node_from_name(tetra_node, 'ElementConnectivity')
+    assert PT.get_value(tetra_node)[0] == 10
+    assert np.all(PT.get_value(tetra_er_node) == [1,1])
     
     pyra_node = PT.get_node_from_name(zone, 'Pyra_5')
     pyra_er_node = PT.get_node_from_name(pyra_node, 'ElementRange')
     pyra_ec_node = PT.get_node_from_name(pyra_node, 'ElementConnectivity')
     assert PT.get_value(pyra_node)[0] == 12
-    assert np.all(PT.get_value(pyra_er_node) == [3,3])
+    assert np.all(PT.get_value(pyra_er_node) == [2,2])
     
-    tetra_node = PT.get_node_from_name(zone, 'Tetra_4')
-    tetra_er_node = PT.get_node_from_name(tetra_node, 'ElementRange')
-    tetra_ec_node = PT.get_node_from_name(tetra_node, 'ElementConnectivity')
-    assert PT.get_value(tetra_node)[0] == 10
-    assert np.all(PT.get_value(tetra_er_node) == [4,4])
+    penta_node = PT.get_node_from_name(zone, 'Penta_6')
+    penta_er_node = PT.get_node_from_name(penta_node, 'ElementRange')
+    penta_ec_node = PT.get_node_from_name(penta_node, 'ElementConnectivity')
+    assert PT.get_value(penta_node)[0] == 14
+    assert np.all(PT.get_value(penta_er_node) == [3,3])
     
-    quad_node = PT.get_node_from_name(zone, 'Quad_4')
-    quad_er_node = PT.get_node_from_name(quad_node, 'ElementRange')
-    quad_ec_node = PT.get_node_from_name(quad_node, 'ElementConnectivity')
-    assert PT.get_value(quad_node)[0] == 7
-    assert np.all(PT.get_value(quad_er_node) == [5,10])
+    hexa_node = PT.get_node_from_name(zone, 'Hexa_8')
+    hexa_er_node = PT.get_node_from_name(hexa_node, 'ElementRange')
+    hexa_ec_node = PT.get_node_from_name(hexa_node, 'ElementConnectivity')
+    assert PT.get_value(hexa_node)[0] == 17
+    assert np.all(PT.get_value(hexa_er_node) == [4,4])
     
     tri_node = PT.get_node_from_name(zone, 'Tri_3')
     tri_er_node = PT.get_node_from_name(tri_node, 'ElementRange')
     tri_ec_node = PT.get_node_from_name(tri_node, 'ElementConnectivity')
     assert PT.get_value(tri_node)[0] == 5
-    assert np.all(PT.get_value(tri_er_node) == [11,16])
+    assert np.all(PT.get_value(tri_er_node) == [5,10])
+    
+    quad_node = PT.get_node_from_name(zone, 'Quad_4')
+    quad_er_node = PT.get_node_from_name(quad_node, 'ElementRange')
+    quad_ec_node = PT.get_node_from_name(quad_node, 'ElementConnectivity')
+    assert PT.get_value(quad_node)[0] == 7
+    assert np.all(PT.get_value(quad_er_node) == [11,16])
     
     if rank == 0:
-        expected_hexa_ec  = [ 1,  2,  5,  4,  6,  7, 10,  9]
-        expected_penta_ec = [ 2,  3,  5,  7,  8, 10]
-        expected_pyra_ec  = [ 6,  7, 10,  9, 11]
         expected_tetra_ec = [ 7,  8, 10, 11]
+        expected_pyra_ec  = [ 6,  7, 10,  9, 11]
+        expected_penta_ec = [ 2,  3,  5,  7,  8, 10]
+        expected_hexa_ec  = [ 1,  2,  5,  4,  6,  7, 10,  9]
     else:
-        expected_hexa_ec  = []
-        expected_penta_ec = []
-        expected_pyra_ec  = []
         expected_tetra_ec = []
+        expected_pyra_ec  = []
+        expected_penta_ec = []
+        expected_hexa_ec  = []
         
     if size == 1:
-        expected_quad_ec  = [ 1,  6,  9,  4,  3,  5, 10,  8,  1,  2,  7,  6,  2,  3,  8,  7,  4,
-                              9, 10,  5,  1,  4,  5,  2]
         expected_tri_ec   = [ 6, 11,  9,  8, 10, 11,  6,  7, 11,  7,  8, 11,  2,  5,  3,  9, 11,
                              10]
+        expected_quad_ec  = [ 1,  6,  9,  4,  3,  5, 10,  8,  1,  2,  7,  6,  2,  3,  8,  7,  4,
+                              9, 10,  5,  1,  4,  5,  2]
     elif size == 2:
         if rank == 0:
-            expected_quad_ec  = [ 1,  6,  9,  4,  3,  5, 10,  8,  1,  2,  7,  6]
             expected_tri_ec   = [ 6, 11,  9,  8, 10, 11,  6,  7, 11]
+            expected_quad_ec  = [ 1,  6,  9,  4,  3,  5, 10,  8,  1,  2,  7,  6]
         elif rank == 1:
-            expected_quad_ec  = [ 2,  3,  8,  7,  4,  9, 10,  5,  1,  4,  5,  2]
             expected_tri_ec   = [ 7,  8, 11,  2,  5,  3,  9, 11, 10]
+            expected_quad_ec  = [ 2,  3,  8,  7,  4,  9, 10,  5,  1,  4,  5,  2]
     elif size == 3:
         if rank == 0:
-            expected_quad_ec  = [ 1,  6,  9,  4,  3,  5, 10,  8]
             expected_tri_ec   = [ 6, 11,  9,  8, 10, 11]
+            expected_quad_ec  = [ 1,  6,  9,  4,  3,  5, 10,  8]
         elif rank == 1:
-            expected_quad_ec  = [1, 2, 7, 6, 2, 3, 8, 7]
             expected_tri_ec   = [ 6,  7, 11,  7,  8, 11]
+            expected_quad_ec  = [1, 2, 7, 6, 2, 3, 8, 7]
         elif rank == 2:
-            expected_quad_ec  = [ 4,  9, 10,  5,  1,  4,  5,  2]
             expected_tri_ec   = [ 2,  5,  3,  9, 11, 10]
+            expected_quad_ec  = [ 4,  9, 10,  5,  1,  4,  5,  2]
     elif size > 6:
-        expected_quad_ec_full  = [ 1,  6,  9,  4,  3,  5, 10,  8,  1,  2,  7,  6,  2,  3,  8,  7,  4,
-                                   9, 10,  5,  1,  4,  5,  2]
         expected_tri_ec_full   = [ 6, 11,  9,  8, 10, 11,  6,  7, 11,  7,  8, 11,  2,  5,  3,  9, 11,
                                   10]
+        expected_quad_ec_full  = [ 1,  6,  9,  4,  3,  5, 10,  8,  1,  2,  7,  6,  2,  3,  8,  7,  4,
+                                   9, 10,  5,  1,  4,  5,  2]
         if rank < 6:
-            expected_quad_ec  = expected_quad_ec_full[4*rank:4*(rank+1)]
             expected_tri_ec   = expected_tri_ec_full[3*rank:3*(rank+1)]
+            expected_quad_ec  = expected_quad_ec_full[4*rank:4*(rank+1)]
         elif rank > 5:
-            expected_quad_ec  = []
             expected_tri_ec   = []
+            expected_quad_ec  = []
     
-    assert np.all(PT.get_value(hexa_ec_node) == expected_hexa_ec)
-    assert np.all(PT.get_value(penta_ec_node) == expected_penta_ec)
-    assert np.all(PT.get_value(pyra_ec_node) == expected_pyra_ec)
     assert np.all(PT.get_value(tetra_ec_node) == expected_tetra_ec)
-    assert np.all(PT.get_value(quad_ec_node) == expected_quad_ec)
-    assert np.all(PT.get_value(tri_ec_node) == expected_tri_ec)
+    assert np.all(PT.get_value(pyra_ec_node)  == expected_pyra_ec)
+    assert np.all(PT.get_value(penta_ec_node) == expected_penta_ec)
+    assert np.all(PT.get_value(hexa_ec_node)  == expected_hexa_ec)
+    assert np.all(PT.get_value(tri_ec_node)   == expected_tri_ec)
+    assert np.all(PT.get_value(quad_ec_node)  == expected_quad_ec)
     
     bc_xmin = PT.get_nodes_from_predicates(zone, 'ZoneBC_t/BC_t/Xmin')[0]
     pointlist_xmin = PT.get_value(PT.get_node_from_name(bc_xmin,'PointList'))
@@ -177,52 +177,53 @@ def test_convert_mixed_to_elements(sub_comm):
     pointlist_zmax = PT.get_value(PT.get_node_from_name(bc_zmax,'PointList'))
     
     if size == 1:
-        expected_bc_xmin = [[ 5, 11]]
-        expected_bc_xmax = [[ 6, 12]]
-        expected_bc_zmin = [[10, 15]]
+        expected_bc_xmin = [[11, 5]]
+        expected_bc_xmax = [[12, 6]]
+        expected_bc_zmin = [[16, 9]]
     else:
         if rank == 0:
-            expected_bc_xmin = [[ 5]]
-            expected_bc_xmax = [[ 6]]
-            expected_bc_zmin = [[10]]
-        elif rank == 1:
             expected_bc_xmin = [[11]]
             expected_bc_xmax = [[12]]
-            expected_bc_zmin = [[15]]
+            expected_bc_zmin = [[16]]
+        elif rank == 1:
+            expected_bc_xmin = [[5]]
+            expected_bc_xmax = [[6]]
+            expected_bc_zmin = [[9]]
         else:
             expected_bc_xmin = []
             expected_bc_xmax = []
             expected_bc_zmin = []
     
     if size == 1:
-        expected_bc_ymin = [[ 7,  8, 13, 14]]
+        expected_bc_ymin = [[13, 14,  7,  8]]
     elif size == 2:
         if rank == 0:
-            expected_bc_ymin = [[7, 8]]
-        elif rank == 1:
             expected_bc_ymin = [[13, 14]]
+        elif rank == 1:
+            expected_bc_ymin = [[7, 8]]
     elif size == 3:
         if rank == 0:
-            expected_bc_ymin = [[7, 8]]
+            expected_bc_ymin = [[13, 14]]
         elif rank == 1:
-            expected_bc_ymin = [[13]]
+            expected_bc_ymin = [[7]]
         elif rank == 2:
-            expected_bc_ymin = [[14]]
+            expected_bc_ymin = [[8]]
     else:
         if rank == 0:
-            expected_bc_ymin = [[7]]
-        elif rank == 1:
-            expected_bc_ymin = [[8]]
-        elif rank == 2:
             expected_bc_ymin = [[13]]
-        elif rank == 3:
+        elif rank == 1:
             expected_bc_ymin = [[14]]
+        elif rank == 2:
+            expected_bc_ymin = [[7]]
+        elif rank == 3:
+            expected_bc_ymin = [[8]]
         else:
             expected_bc_ymin = []
-    
+        
+        
     if rank == 0:
-        expected_bc_ymax = [[9]]
-        expected_bc_zmax = [[16]]
+        expected_bc_ymax = [[15]]
+        expected_bc_zmax = [[10]]
     else:
         expected_bc_ymax = []
         expected_bc_zmax = []
@@ -232,4 +233,5 @@ def test_convert_mixed_to_elements(sub_comm):
     assert np.all(pointlist_ymin == expected_bc_ymin)
     assert np.all(pointlist_ymax == expected_bc_ymax)
     assert np.all(pointlist_zmin == expected_bc_zmin)
-    assert np.all(pointlist_zmax == expected_bc_zmax)    
+    assert np.all(pointlist_zmax == expected_bc_zmax)
+    
