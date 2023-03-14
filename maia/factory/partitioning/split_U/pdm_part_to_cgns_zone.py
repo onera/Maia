@@ -173,8 +173,10 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   part_zones = list()
   for i_part, (dims, data) in enumerate(zip(l_dims, l_data)):
 
+    base_dim = 2 if (dims['n_cell'] == 0 and dims['n_face'] > 0) else 3
+    cell_key = {3: 'n_cell', 2: 'n_face'}[base_dim]
     part_zone = PT.new_Zone(name  = MT.conv.add_part_suffix(PT.get_name(dist_zone), comm.Get_rank(), i_part),
-                           size = [[dims['n_vtx'],dims['n_cell'],0]],
+                           size = [[dims['n_vtx'],dims[cell_key],0]],
                            type = 'Unstructured')
 
     if options['dump_pdm_output']:
@@ -188,9 +190,10 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
 
     pdm_renumbering_data(part_zone, data)
 
+    cell_lngn_key = {3: 'np_cell_ln_to_gn', 2: 'np_face_ln_to_gn'}[base_dim]
     lngn_zone = MT.newGlobalNumbering(parent=part_zone)
     PT.new_DataArray('Vertex', data['np_vtx_ln_to_gn'], parent=lngn_zone)
-    PT.new_DataArray('Cell', data['np_cell_ln_to_gn'], parent=lngn_zone)
+    PT.new_DataArray('Cell', data[cell_lngn_key], parent=lngn_zone)
 
     part_zones.append(part_zone)
 

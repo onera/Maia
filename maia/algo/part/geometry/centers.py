@@ -55,12 +55,16 @@ def compute_face_center(zone):
   """Compute the face centers of a partitioned zone.
 
   Input zone must have cartesian coordinates recorded under a unique
-  GridCoordinates node, and a unstructured-NGon connectivity.
+  GridCoordinates node, and a unstructured connectivity.
 
   Centers are computed using a basic average over the vertices of the faces.
 
+  Note:
+    If zone is described with standard elements, centers will be computed for elements
+    explicitly defined in cgns tree.
+
   Args:
-    zone (CGNSTree): Partitionned 2D or 3D U-NGon CGNS Zone
+    zone (CGNSTree): Partitionned 2D or 3D U CGNS Zone
   Returns:
     face_center (array): Flat (interlaced) numpy array of face centers
 
@@ -73,9 +77,42 @@ def compute_face_center(zone):
   cx, cy, cz = PT.Zone.coordinates(zone)
 
   if PT.Zone.Type(zone) == "Unstructured":
-    ngon_node = PT.Zone.NGonNode(zone)
-    face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-    face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+    if PT.Zone.has_ngon_elements(zone):
+      ngon_node = PT.Zone.NGonNode(zone)
+      face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
+      face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+    else:
+      face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
     return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, cx, cy, cz)
   else:
-    raise NotImplementedError("Only U/NGon zones are managed")
+    raise NotImplementedError("Only U zones are managed")
+
+@PT.check_is_label("Zone_t")
+def compute_edge_center(zone):
+  """Compute the edge centers of a partitioned zone.
+
+  Input zone must have cartesian coordinates recorded under a unique
+  GridCoordinates node, and a unstructured standard elements connectivity.
+
+  Note:
+    If zone is described with standard elements, centers will be computed for elements
+    explicitly defined in cgns tree.
+
+  Args:
+    zone (CGNSTree): Partitionned 2D or 3D U-elts CGNS Zone
+  Returns:
+    face_center (array): Flat (interlaced) numpy array of edge centers
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #compute_edge_center@start
+        :end-before: #compute_edge_center@end
+        :dedent: 2
+  """
+  cx, cy, cz = PT.Zone.coordinates(zone)
+
+  if PT.Zone.Type(zone) == "Unstructured":
+    edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
+    return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, cx, cy, cz)
+  else:
+    raise NotImplementedError("Only U-elts zones are managed")

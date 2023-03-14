@@ -4,7 +4,7 @@ import numpy as np
 
 import maia
 import maia.pytree as PT
-from maia.factory.dcube_generator import dcube_generate
+from maia.factory.dcube_generator import dcube_generate, dcube_nodal_generate
 
 from maia.algo.part.geometry import centers
 
@@ -89,5 +89,29 @@ def test_compute_face_center_2d(sub_comm):
         0.2,0.83,0.5,  0.2,0.83,0.83,   0.2,0.5,0.83,   0.2,0.16,0.5,    0.2,0.16,0.83])
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
 
-
+@mark_mpi_test(1)
+def test_compute_face_center_elmts_3d(sub_comm):
+  tree = dcube_nodal_generate(2, 1., [0,0,0], 'HEXA_8', sub_comm)
   
+  part_tree = maia.factory.partition_dist_tree(tree, sub_comm)
+  zone = PT.get_all_Zone_t(part_tree)[0]
+
+  expected = np.array([0.5,0.5,0., 0.5,0.5,1., 0.,0.5,0.5,
+                       1.,0.5,0.5, 0.5,0.,0.5, 0.5,1.,0.5])
+  assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
+
+@pytest.mark.parametrize("elt_kind", ["QUAD_4" ,'NFACE_n'])
+@mark_mpi_test(1)
+def test_compute_edge_center_2d(elt_kind, sub_comm):
+  tree = maia.factory.generate_dist_block(3, elt_kind, sub_comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  PT.rm_nodes_from_name(zone, ":CGNS#Distribution") # Fake part_zone (from test_connectivity_utils)
+
+  if elt_kind=="QUAD_4":
+    expected = np.array([0.25,0.,0., 0.75,0.,0., 0.25,1.,0., 0.75,1.,0.,
+                         0.,0.25,0., 0.,0.75,0., 1.,0.25,0., 1.,0.75,0.])
+    assert np.allclose(centers.compute_edge_center(zone), expected, atol=1e-2)
+
+  elif elt_kind=="NFACE_n":
+    with pytest.raises(NotImplementedError):
+      centers.compute_edge_center(zone)

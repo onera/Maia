@@ -39,9 +39,9 @@ class Test_cell_vtx_connectivity:
     tree = maia.factory.generate_dist_block(3, elt_kind, sub_comm)
     zone = PT.get_all_Zone_t(tree)[0]
     as_partitioned(zone)
-    zone2d = elt_kind in ['QUAD_4']
+    dim_zone = 2 if elt_kind in ['QUAD_4'] else 3
 
-    cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone, zone2d)
+    cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone, dim_zone)
 
     elt = PT.get_node_from_label(zone, 'Elements_t')
     assert cell_vtx_idx.size == PT.Element.Size(elt) + 1

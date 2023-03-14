@@ -97,6 +97,17 @@ def test_compute_face_center():
     face_center = maia.algo.part.compute_face_center(zone)
   #compute_face_center@end
 
+def test_compute_edge_center():
+  #compute_edge_center@start
+  from mpi4py import MPI
+  import maia
+  dist_tree = maia.factory.generate_dist_block(10, "QUAD_4",  MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+
+  for zone in maia.pytree.iter_all_Zone_t(part_tree):
+    edge_center = maia.algo.part.geometry.compute_edge_center(zone)
+  #compute_edge_center@end
+
 def test_compute_wall_distance():
   #compute_wall_distance@start
   from mpi4py import MPI

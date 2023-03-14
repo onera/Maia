@@ -59,6 +59,7 @@ Geometric calculations
 
 .. autofunction:: maia.algo.part.compute_cell_center
 .. autofunction:: maia.algo.part.compute_face_center
+.. autofunction:: maia.algo.part.compute_edge_center
 .. autofunction:: maia.algo.part.compute_wall_distance
 .. autofunction:: maia.algo.part.localize_points
 .. autofunction:: maia.algo.part.find_closest_points
