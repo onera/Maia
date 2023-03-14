@@ -168,8 +168,17 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
     pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
     if pmesh_nodal is not None:
       for i_part in range(n_part):
-        for j, kind in enumerate(pdm_geometry_kinds):
-          l_data[i_part][f"{j}dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(kind, i_part)
+        if l_dims[i_part]['n_cell'] == 0 and l_dims[i_part]['n_face'] > 0:
+          # IMPORTANT in 2D, only surf / ridge should be getted, otherwise pdm will segfault. 0d section should 
+          # be corrected in PDM, and for 3D section we should slice pdm_geometry_kinds to mesh dim
+          # --> Update this when pdm (cython) is fixed
+          l_data[i_part]["0dsections"] = []
+          l_data[i_part]["1dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_RIDGE, i_part)
+          l_data[i_part]["2dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, i_part)
+          l_data[i_part]["3dsections"] = []
+        else:
+          for j, kind in enumerate(pdm_geometry_kinds):
+            l_data[i_part][f"{j}dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(kind, i_part)
 
     parts = pdm_part_to_cgns_zone(d_zone, l_dims, l_data, comm, post_options)
     all_parts.extend(parts)

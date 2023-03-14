@@ -101,9 +101,8 @@ def test_compute_edge_center():
   #compute_edge_center@start
   from mpi4py import MPI
   import maia
-  dist_tree = maia.factory.generate_dist_block(4, "QUAD_4",  MPI.COMM_WORLD)
-  maia.pytree.rm_nodes_from_name(dist_tree, ":CGNS#Distribution") # Fake partitioned tree
-  part_tree = dist_tree
+  dist_tree = maia.factory.generate_dist_block(10, "QUAD_4",  MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
 
   for zone in maia.pytree.iter_all_Zone_t(part_tree):
     edge_center = maia.algo.part.geometry.compute_edge_center(zone)
