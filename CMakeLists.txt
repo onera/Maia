@@ -186,11 +186,15 @@ write_build_env_file()
 # ----------------------------------------------------------------------
 # Copy logging.conf example to build folder
 # ----------------------------------------------------------------------
-configure_file(
-  ${PROJECT_SOURCE_DIR}/share/logging.conf.example
-  ${PROJECT_BINARY_DIR}/logging.conf
-  @ONLY
-)
+if (EXISTS "${PROJECT_BINARY_DIR}/logging.conf")
+  message("File ${PROJECT_BINARY_DIR}/logging.conf already present")
+else()
+  configure_file(
+    ${PROJECT_SOURCE_DIR}/share/logging.conf.example
+    ${PROJECT_BINARY_DIR}/logging.conf
+    @ONLY
+  )
+endif()
 
 # ------------------------------------------------------------------------------
 # Installation

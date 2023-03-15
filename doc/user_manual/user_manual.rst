@@ -46,3 +46,4 @@ This user manuel describes the main functions available in each module.
   factory
   algo
   transfer
+  logging

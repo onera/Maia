@@ -1,8 +1,7 @@
 #include <pybind11/pybind11.h>
 
 #include "std_e/logging/log.hpp"
-#include "std_e/logging/printer_common.hpp"
-#include "std_e/logging/printer_mpi.hpp"
+#include "std_e/logging/build_printer_from_strings.hpp"
 #include "std_e/base/msg_exception.hpp"
 
 namespace py = pybind11;
@@ -55,6 +54,7 @@ class python_printer : public std_e::printer {
     py::handle p;
 };
 
+
 void register_logging_module(py::module_& parent) {
 
   py::module_ m = parent.def_submodule("logging");
@@ -71,16 +71,14 @@ void register_logging_module(py::module_& parent) {
   );
 
   m.def(
-    "add_printer_to_logger",
+    "_add_printer_obj_to_logger",
     [](const std::string& logger_name, py::handle p){ std_e::add_printer_to_logger(logger_name, python_printer{p}); }
+  );
+  m.def(
+    "_add_printer_type_to_logger",
+    std_e::add_printer
   );
 
   m.def("turn_on", &std_e::turn_on);
   m.def("turn_off", &std_e::turn_off);
-
-  m.def("add_stdout_printer           ", &std_e::add_stdout_printer           );
-  m.def("add_file_printer             ", &std_e::add_file_printer             );
-  m.def("add_mpi_stdout_printer       ", &std_e::add_mpi_stdout_printer       );
-  m.def("add_mpi_rank_0_stdout_printer", &std_e::add_mpi_rank_0_stdout_printer);
-  m.def("add_mpi_file_printer         ", &std_e::add_mpi_file_printer         );
 }

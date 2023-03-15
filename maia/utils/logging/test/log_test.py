@@ -9,12 +9,12 @@ class printer_for_unit_tests:
 
   def log(self, msg):
     self.buffer += msg
-    
+
 def test_log():
   add_logger('logger_for_unit_tests')
 
   # at this point, no printer is associated to the logger
-  log('logger_for_unit_tests', 'msg 0') # does nothing 
+  log('logger_for_unit_tests', 'msg 0') # does nothing
 
   # associate a printer
   p0 = printer_for_unit_tests()
