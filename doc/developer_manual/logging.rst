@@ -10,11 +10,10 @@ Loggers
 A **logger** is a global object where an application or a library can log to.
 It can be declared with
 
-.. code-block:: python
-
-  from maia.utils.logging import add_logger
-
-  add_logger("my_logger")
+.. literalinclude:: snippets/test_logging.py
+  :start-after: #add_logger@start
+  :end-before: #add_logger@end
+  :dedent: 2
 
 or with the equivalent C++ code
 
@@ -30,11 +29,10 @@ A logger declared in Python is available in C++ and vice-versa: we do not need t
 
 It can then be referred to by its name. If we want to log a string to ``my_logger``, we will do it like so:
 
-.. code-block:: python
-
-  from maia.utils.logging import log
-
-  log('my_logger', 'my message')
+.. literalinclude:: snippets/test_logging.py
+  :start-after: #log@start
+  :end-before: #log@end
+  :dedent: 2
   
 .. code-block:: C++
 
@@ -58,10 +56,10 @@ By itself, a logger does not do anything with the messages it receives. For that
 
 For instance, we can attach a printer that will output the message to the console:
 
-.. code-block:: python
-
-  from maia.utils.logging import add_printer_to_logger
-  add_printer_to_logger('my_logger','stdout_printer')
+.. literalinclude:: snippets/test_logging.py
+  :start-after: #add_printer@start
+  :end-before: #add_printer@end
+  :dedent: 2
 
 Printers are user-oriented: it is the user of the application who decides what he wants to do with the message that each logger is receiving, by attaching none or several printers to a logger.
 
@@ -91,16 +89,10 @@ Create your own printer
 
 Any Python type can be used as a printer as long as it provides a ``log`` method that accepts a string argument.
 
-.. code-block:: python
-
-  from maia.utils.logging import add_printer_to_logger
-
-  class my_printer:
-    def log(self, msg):
-      print(msg)
-
-  add_printer_to_logger('my_logger',my_printer())
-
+.. literalinclude:: snippets/test_logging.py
+  :start-after: #create_printer@start
+  :end-before: #create_printer@end
+  :dedent: 2
 
 
 Configuration file
@@ -115,22 +107,6 @@ Loggers are associated to default printers. While they can be configured anytime
   my_app-my_theme : mpi_file_printer('my_theme.log')
 
 For developpers, a logging file ``logging.conf`` with loggers and default printers is put in the ``build/`` folder, and ``LOGGING_CONF_FILE`` is set accordingly.
-
-
-Miscellaneous
--------------
-
-The logger mechanism is implemented in C++, which mean it is available in compiled code:
-
-.. code-block:: C++
-
-  #include "std_e/logging/log.hpp"
-
-  log("my_logger", "my message");
-
-
-The C++ API is essentially the same.
-
 
 Maia specifics
 --------------
