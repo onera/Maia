@@ -239,16 +239,17 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                       vtx_ln_to_gn, vtx_coords)
 
     # Add BC information
-    zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
-    all_bc_pl = list()
-    for i_group, bc_name in enumerate(gdom_bcs):
-      bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
-      if bc_n is not None:
-        all_bc_pl.append(PT.get_value(PT.get_child_from_name(bc_n, 'PointList')))
-      else :
-        all_bc_pl.append(np.empty((1,0), np.int32))
-    group_face_idx, group_face = np_utils.concatenate_point_list(all_bc_pl)
-    pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs, group_face_idx, group_face)
+    if elt_type in ['TRI_3']:
+      zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
+      all_bc_pl = list()
+      for i_group, bc_name in enumerate(gdom_bcs):
+        bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
+        if bc_n is not None:
+          all_bc_pl.append(PT.get_value(PT.get_child_from_name(bc_n, 'PointList')))
+        else :
+          all_bc_pl.append(np.empty((1,0), np.int32))
+      group_face_idx, group_face = np_utils.concatenate_point_list(all_bc_pl, dtype=np.int32)
+      pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs, group_face_idx, group_face)
 
   # Isosurfaces compute in PDM  
   pdm_isos.compute()
