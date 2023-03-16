@@ -1,4 +1,5 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 #include "std_e/logging/log.hpp"
 #include "std_e/logging/build_printer_from_strings.hpp"
@@ -76,7 +77,13 @@ void register_logging_module(py::module_& parent) {
   );
   m.def(
     "_add_printer_type_to_logger",
-    std_e::add_printer
+    [](const std::string& logger_name, const std::string& printer_type, py::list args){
+      std_e::add_printer(
+        logger_name, 
+        printer_type, 
+        args.cast<std::vector<std::string>>()
+      );
+    }
   );
 
   m.def("turn_on", &std_e::turn_on);

@@ -5,7 +5,10 @@ def add_printer_to_logger(logger_name, p, *args):
   from cmaia.utils.logging import _add_printer_obj_to_logger
   from cmaia.utils.logging import _add_printer_type_to_logger
   if isinstance(p, str):
-    _add_printer_type_to_logger(logger_name, p, [*args])
+    l = list(args)
+    if len(args) > 0:
+      l[0] = f"'{l[0]}'"  # Todo : fix parsing in std_e to avoid adding "" here
+    _add_printer_type_to_logger(logger_name, p, l)
   else:
     _add_printer_obj_to_logger(logger_name, p)
 
