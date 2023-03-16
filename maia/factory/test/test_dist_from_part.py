@@ -349,6 +349,7 @@ def test_recover_dist_tree_elt(void_part, sub_comm):
     weights = [.5]
   zone_to_parts = {'Base/Zone' : weights}
   part_tree = maia.factory.partition_dist_tree(dist_tree_bck, sub_comm, zone_to_parts=zone_to_parts)
+  maia.transfer.dist_tree_to_part_tree_all(dist_tree_bck, part_tree, sub_comm)
 
   dist_tree = DFP.recover_dist_tree(part_tree, sub_comm)
 
@@ -361,6 +362,7 @@ def test_recover_dist_tree_elt(void_part, sub_comm):
 
   for elt in PT.get_nodes_from_label(dist_tree_bck, 'Elements_t'):
     PT.rm_node_from_path(elt, ':CGNS#Distribution/ElementConnectivity')
+  
   assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Input tree is pdm dtype
 
 @mark_mpi_test(3)

@@ -22,27 +22,27 @@ def test_convert_mixed_to_elements(sub_comm):
     
     convert_elements_to_mixed(dist_tree, sub_comm)
     
-    ref_base = PT.get_node_from_label(ref_dist_tree,'CGNSBase_t')
-    base = PT.get_node_from_label(dist_tree,'CGNSBase_t')  
+    ref_base = PT.get_child_from_label(ref_dist_tree,'CGNSBase_t')
+    base = PT.get_child_from_label(dist_tree,'CGNSBase_t')  
     assert PT.get_name(base) == PT.get_name(ref_base)
     assert np.all(PT.get_value(base) == PT.get_value(ref_base))
     
-    ref_zone = PT.get_node_from_label(ref_base, 'Zone_t')
-    zone = PT.get_node_from_label(base, 'Zone_t') 
+    ref_zone = PT.get_child_from_label(ref_base, 'Zone_t')
+    zone = PT.get_child_from_label(base, 'Zone_t') 
     assert PT.get_name(zone) == PT.get_name(ref_zone)
     assert np.all(PT.get_value(zone) == PT.get_value(ref_zone))
     
-    mixed_nodes = PT.get_nodes_from_label(zone, 'Elements_t')
+    mixed_nodes = PT.get_children_from_label(zone, 'Elements_t')
     assert len(mixed_nodes) == 1
     
     mixed_node = mixed_nodes[0]
     assert PT.get_value(mixed_node)[0] == 20
     
-    mixed_er_node = PT.get_node_from_name(mixed_node, 'ElementRange')
+    mixed_er_node = PT.get_child_from_name(mixed_node, 'ElementRange')
     assert np.all(PT.get_value(mixed_er_node) == [1,16])
     
-    mixed_eso_node = PT.get_node_from_name(mixed_node, 'ElementStartOffset')
-    mixed_ec_node = PT.get_node_from_name(mixed_node, 'ElementConnectivity')
+    mixed_eso_node = PT.get_child_from_name(mixed_node, 'ElementStartOffset')
+    mixed_ec_node = PT.get_child_from_name(mixed_node, 'ElementConnectivity')
     assert mixed_eso_node is not None
     assert mixed_ec_node is not None
     
@@ -94,8 +94,16 @@ def test_convert_mixed_to_elements(sub_comm):
     assert np.all(PT.get_value(mixed_eso_node) == expected_mixed_eso)
     assert np.all(PT.get_value(mixed_ec_node) == expected_mixed_ec)
     
-    for ref_bc in PT.get_nodes_from_label(ref_zone, 'BC_t'):
-        bc = PT.get_node_from_name(zone, PT.get_name(ref_bc))
-        ref_pointlist = PT.get_value(PT.get_node_from_name(ref_bc,'PointList'))
-        pointlist = PT.get_value(PT.get_node_from_name(bc,'PointList'))
-        assert np.all(pointlist == ref_pointlist)    
+    for ref_bc in PT.get_children_from_label(ref_zone, 'BC_t'):
+        bc = PT.get_child_from_name(zone, PT.get_name(ref_bc))
+        ref_pointlist = PT.get_value(PT.get_child_from_name(ref_bc,'PointList'))
+        pointlist = PT.get_value(PT.get_child_from_name(bc,'PointList'))
+        assert np.all(pointlist == ref_pointlist)
+
+    ref_fs = PT.get_child_from_label(ref_zone, 'FlowSolution_t')
+    fs = PT.get_child_from_label(zone, 'FlowSolution_t')
+    ref_data = PT.get_child_from_label(ref_fs, 'DataArray_t')
+    data = PT.get_child_from_label(fs, 'DataArray_t')
+    assert PT.get_name(data) == PT.get_name(ref_data)
+    assert np.all(PT.get_value(data) == PT.get_value(ref_data))
+        

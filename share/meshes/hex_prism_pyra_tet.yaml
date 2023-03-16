@@ -67,3 +67,8 @@ Base CGNSBase_t I4 [3,3]:
       Zmax BC_t "Null":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[12]]:
+    FlowSolution FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      TypeElements3D DataArray_t:
+        R8 : [17, 14, 12, 10]
+        

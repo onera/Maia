@@ -63,7 +63,6 @@ def convert_mixed_to_elements(dist_tree, comm):
         ln_to_gn_loc = {}
         nb_elem_prev = 0
         
-        
         # 1/ Create local element connectivity for each element type found in each mixed node
         #    and deduce the local number of each element type
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
@@ -82,6 +81,9 @@ def convert_mixed_to_elements(dist_tree, comm):
                 ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_ec.dtype)
                 # Retrive start idx of mixed elements having this type
                 indices = np.intersect1d(np.where(elem_ec==elem_type),elem_eso_loc, assume_unique=True)
+                # print("indices",indices)
+                # indices2 = np.where(elem_ec[elem_eso_loc]==elem_type)[0]
+                # print("indices2",indices2)
                 for n in range(nb_nodes_per_elem):
                     ec_per_type[n::nb_nodes_per_elem] = elem_ec[indices+n+1]
                 try:
@@ -89,7 +91,7 @@ def convert_mixed_to_elements(dist_tree, comm):
                 except KeyError:
                     ec_per_elem_type_loc[elem_type] = [ec_per_type]
         
-        
+        # exit()
         # 2/ Find all element types described in the mesh and the number of each
         elem_types_all = comm.allgather(elem_types)
         all_types = {} # For each type : total number of elts appearing in zone
@@ -108,45 +110,92 @@ def convert_mixed_to_elements(dist_tree, comm):
         key_types = sorted(all_types.keys(), key=MPSEU.element_dim, reverse=True)
         
         
-        # 4/ Create old to new element numbering for PointList update      
+        # 4/ Create old to new element numbering (to update PointList/PointRange)
+        #    and old to new cell numbering (to update CellCenter FlowSolution)
+        cell_dim = max([MPSEU.element_dim(k) for k in key_types])
         ln_to_gn_element_list = []
+        ln_to_gn_cell_list = []
         old_to_new_element_numbering_list = []
+        old_to_new_cell_numbering_list = []
         nb_elem_prev_element_t_nodes = 0
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
             elem_ec  = PT.get_child_from_name(element, 'ElementConnectivity')[1]
             elem_eso = PT.get_child_from_name(element, 'ElementStartOffset')[1]
             elem_distrib = MT.getDistribution(element, 'Element')[1]
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
+            nb_cell_loc = 0
+            for et in elem_types:
+                if MPSEU.element_dim(et) == cell_dim:
+                    try:
+                        nb_cell_loc += elem_types[et][elem_pos]
+                    except KeyError:
+                        pass
             old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_eso.dtype)
-            ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) \
-                             + 1 + elem_distrib[0] + nb_elem_prev_element_t_nodes
+            old_to_new_cell_numbering    = np.zeros(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype)
+            ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) + 1\
+                             + elem_distrib[0] + nb_elem_prev_element_t_nodes
+            ln_to_gn_cell    = np.arange(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype) + 1
             nb_elem_prev_element_t_nodes += elem_distrib[2]
             all_elem_previous_types = 0
+            all_cell_previous_types = 0
             
             elem_ec_type_pos = elem_ec[elem_eso[:-1]-elem_eso[0]] # Type of each element
+            all_elem_pos = {}
+            all_non_cell_pos = []
+            for elem_type in key_types:
+                all_elem_pos[elem_type] = np.where(elem_ec_type_pos==elem_type)[0]
+                if MPSEU.element_dim(elem_type) != cell_dim:
+                    all_non_cell_pos += list(all_elem_pos[elem_type])
+            all_non_cell_pos = sorted(all_non_cell_pos)
+            all_cell_pos = {}
+            for elem_type in key_types:
+                if MPSEU.element_dim(elem_type) == cell_dim:
+                    all_cell_pos[elem_type] = all_elem_pos[elem_type] - np.searchsorted(all_non_cell_pos,all_elem_pos[elem_type])
             for elem_type in key_types:
                 nb_elems_per_type = all_types[elem_type]
-                indices = np.where(elem_ec_type_pos==elem_type)[0]
-                old_to_new_element_numbering[indices] = np.arange(len(indices),dtype=elem_eso.dtype) + 1
-
+                indices_elem = all_elem_pos[elem_type]
+                old_to_new_element_numbering[indices_elem] = np.arange(len(indices_elem),dtype=elem_eso.dtype) + 1
+                is_cell = MPSEU.element_dim(elem_type) == cell_dim
+                if is_cell:
+                    indices_cell = all_cell_pos[elem_type]
+                    old_to_new_cell_numbering[indices_cell] = np.arange(len(indices_cell),dtype=elem_eso.dtype) + 1
+                    old_to_new_cell_numbering[indices_cell] += all_cell_previous_types
                 # Add total elements of others (previous) type
-                old_to_new_element_numbering[indices] += all_elem_previous_types
-                # Add number of elts on previous mixed nodes for this rank
+                old_to_new_element_numbering[indices_elem] += all_elem_previous_types
+                # Add number of elements on previous mixed nodes for this rank
+                # Add number of cells on previous mixed nodes for this rank
                 for p in range(elem_pos):
                     try:
-                        old_to_new_element_numbering[indices] += elem_types[elem_type][p]
+                        # print([rank, "elem_pos", elem_type, p])
+                        old_to_new_element_numbering[indices_elem] += elem_types[elem_type][p]
                     except KeyError:
-                        pass
-                # Add number of elts on previous procs for this mixed node
+                        continue
+                    if is_cell:
+                        for r in range(size):
+                            try:
+                                ln_to_gn_cell += elem_types_all[r][elem_type][p]
+                                old_to_new_cell_numbering[indices_cell] += elem_types_all[r][elem_type][p]
+                            except KeyError:
+                                continue
+                # Add number of element on previous procs for this mixed node
+                # Add number of cells on previous procs for this mixed node
                 for r in range(rank):
                     try:
-                        old_to_new_element_numbering[indices] += elem_types_all[r][elem_type][elem_pos]
+                        nb_elem_per_type_per_pos_per_rank = elem_types_all[r][elem_type][elem_pos]
                     except KeyError:
-                        pass
+                        continue
+                    old_to_new_element_numbering[indices_elem] += nb_elem_per_type_per_pos_per_rank
+                    if is_cell:
+                        ln_to_gn_cell += nb_elem_per_type_per_pos_per_rank
+                        old_to_new_cell_numbering[indices_cell] += nb_elem_per_type_per_pos_per_rank
                 all_elem_previous_types += all_types[elem_type]
+                if is_cell:
+                    all_cell_previous_types += all_types[elem_type]
             
             old_to_new_element_numbering_list.append(old_to_new_element_numbering)
+            old_to_new_cell_numbering_list.append(old_to_new_cell_numbering)
             ln_to_gn_element_list.append(ln_to_gn_element)
+            ln_to_gn_cell_list.append(ln_to_gn_cell)
         
         
         # 5/ Delete mixed nodes and add standard elements nodes
@@ -180,22 +229,23 @@ def convert_mixed_to_elements(dist_tree, comm):
                     ln_to_gn_list.append(ln_to_gn + offset)
             
             elem_distrib = MUPar.uniform_distribution(nb_elems_per_type,comm)
-            ptb = MTP.PartToBlock(elem_distrib,ln_to_gn_list,comm)
-            _, econn = ptb.exchange_field(part_data_ec,part_stride_ec)
+            ptb_elem = MTP.PartToBlock(elem_distrib,ln_to_gn_list,comm)
+            _, econn = ptb_elem.exchange_field(part_data_ec,part_stride_ec)
             
             beg_erange += nb_elems_per_type
             elem_n = PT.new_Elements(label.capitalize(),label,erange=erange,econn=econn,parent=zone)
             PT.maia.newDistribution({'Element' : elem_distrib}, parent=elem_n)
-        
+
+
         # 6/ Update all PointList with GridLocation != Vertex
         filter_loc = ['EdgeCenter','FaceCenter','CellCenter']
         pl_list = collect_pl_nodes(zone,filter_loc)
         
         ln_to_gn_pl_list = [maia.utils.as_pdm_gnum(PT.get_value(pl)[0]) for pl in pl_list]
-        part1_to_part2_idx_list = [np.arange(l.size+1, dtype=np.int32) for l in ln_to_gn_element_list]
+        part1_to_part2_idx_elem_list = [np.arange(l.size+1, dtype=np.int32) for l in ln_to_gn_element_list]
             
         PTP = PDM.PartToPart(comm, ln_to_gn_element_list, ln_to_gn_pl_list, \
-                             part1_to_part2_idx_list, ln_to_gn_element_list)
+                             part1_to_part2_idx_elem_list, ln_to_gn_element_list)
     
         request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
@@ -204,4 +254,34 @@ def convert_mixed_to_elements(dist_tree, comm):
     
         for pl_node, new_pl in zip(pl_list, old_to_new_pl_list):
             PT.set_value(pl_node, np.array(new_pl).reshape((1,-1), order='F'))
+
+
+        # 7/ Update all FlowSolution with GridLocation == CellCenter
+        
+        # 7a. Redistribute old_to_new_cell_numbering to be coherent with
+        #     cells distribution
+        cells_distrib = MT.getDistribution(zone, 'Cell')[1]
+        ptb_cell = MTP.PartToBlock(cells_distrib,ln_to_gn_cell_list,comm)
+
+        _, dist_old_to_new_cell_numbering = ptb_cell.exchange_field(old_to_new_cell_numbering_list)
+        
+        # 7b. Reorder FlowSolution DataArray
+        ptb_fs = MTP.PartToBlock(cells_distrib,[dist_old_to_new_cell_numbering],comm)
+
+        old_fs_data_dict = {}
+        for fs in PT.get_children_from_label(zone, 'FlowSolution_t'):
+            if PT.get_value(PT.get_child_from_name(fs,'GridLocation')) == 'CellCenter' \
+               and PT.get_child_from_name(fs,'PointList') is None:
+                fs_name = PT.get_name(fs)
+                for data in PT.get_children_from_label(fs,'DataArray_t'):
+                    data_name = fs_name+"/"+PT.get_name(data)
+                    try:
+                        old_fs_data_dict[data_name].append(PT.get_value(data))
+                    except KeyError:
+                        old_fs_data_dict[data_name] = [PT.get_value(data)]
+
+        for fs_data_name, old_fs_data in old_fs_data_dict.items():
+            _, new_fs_data = ptb_fs.exchange_field(old_fs_data)
+            data_node = PT.get_node_from_path(zone,fs_data_name)
+            PT.set_value(data_node, new_fs_data)
     

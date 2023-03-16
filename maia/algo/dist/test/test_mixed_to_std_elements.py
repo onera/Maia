@@ -220,7 +220,6 @@ def test_convert_mixed_to_elements(sub_comm):
         else:
             expected_bc_ymin = []
         
-        
     if rank == 0:
         expected_bc_ymax = [[15]]
         expected_bc_zmax = [[10]]
@@ -234,4 +233,51 @@ def test_convert_mixed_to_elements(sub_comm):
     assert np.all(pointlist_ymax == expected_bc_ymax)
     assert np.all(pointlist_zmin == expected_bc_zmin)
     assert np.all(pointlist_zmax == expected_bc_zmax)
+
+    
+    if size == 1:
+      expected_data = [10, 12, 14, 17]
+
+    elif size == 2:
+      if rank == 0:
+        expected_data = [10, 12]
+      elif rank == 1:
+        expected_data = [14, 17]
+
+    elif size == 3:
+      if rank == 0:
+        expected_data = [10, 12]
+      elif rank == 1:
+        expected_data = [14]
+      elif rank == 2:
+        expected_data = [17]
+      
+    elif size == 4:
+      if rank == 0:
+        expected_data = [10]
+      elif rank == 1:
+        expected_data = [12]
+      elif rank == 2:
+        expected_data = [14]
+      elif rank == 3:
+        expected_data = [17]
+
+    else:
+      if rank == 0:
+        expected_data = [10]
+      elif rank == 1:
+        expected_data = [12]
+      elif rank == 2:
+        expected_data = [14]
+      elif rank == 3:
+        expected_data = [17]
+      else:
+        expected_data = []
+      
+    fs = PT.get_child_from_label(zone, 'FlowSolution_t')
+    assert PT.get_name(fs) == 'FlowSolution'
+    
+    data = PT.get_child_from_label(fs, 'DataArray_t')
+    assert PT.get_name(data) == 'TypeElements3D'
+    assert np.all(PT.get_value(data) == expected_data)
     
