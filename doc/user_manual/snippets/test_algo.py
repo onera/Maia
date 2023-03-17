@@ -354,6 +354,27 @@ def test_convert_elements_to_ngon():
   maia.algo.dist.convert_elements_to_ngon(dist_tree, MPI.COMM_WORLD)
   #convert_elements_to_ngon@end
 
+def test_convert_elements_to_mixed():
+  #convert_elements_to_mixed@start
+  from mpi4py import MPI
+  import maia
+  from maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.convert_elements_to_mixed(dist_tree, MPI.COMM_WORLD)
+  #convert_elements_to_mixed@end
+
+def test_convert_mixed_to_elements():
+  #convert_mixed_to_elements@start
+  from mpi4py import MPI
+  import maia
+  from maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.convert_elements_to_mixed(dist_tree, MPI.COMM_WORLD)
+  maia.algo.dist.convert_mixed_to_elements(dist_tree, MPI.COMM_WORLD)
+  #convert_mixed_to_elements@end
+
 def test_rearrange_element_sections():
   #rearrange_element_sections@start
   from mpi4py import MPI
