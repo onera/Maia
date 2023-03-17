@@ -1,5 +1,4 @@
 #include "std_e/unit_test/doctest.hpp"
-#include "std_e/log.hpp"
 
 #include <vector>
 

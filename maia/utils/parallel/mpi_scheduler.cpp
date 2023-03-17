@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <future>
 #include <chrono>
+#include <iostream>
 #include "std_e/algorithm/distribution.hpp"
 #include "maia/utils/parallel/mpi_scheduler.hpp"
 #include "std_e/logging/log.hpp"

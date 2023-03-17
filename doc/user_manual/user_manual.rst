@@ -42,6 +42,7 @@ This user manuel describes the main functions available in each module.
   :maxdepth: 1
   :hidden:
 
+  config
   io
   factory
   algo

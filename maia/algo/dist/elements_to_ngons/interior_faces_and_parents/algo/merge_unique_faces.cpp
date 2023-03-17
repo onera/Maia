@@ -2,7 +2,7 @@
 #include "maia/algo/dist/elements_to_ngons/interior_faces_and_parents/algo/merge_unique_faces.hpp"
 
 
-#include "maia/utils/log/log.hpp"
+#include "maia/utils/logging/log.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "std_e/algorithm/rotate/rotate.hpp"
 #include "std_e/parallel/mpi/extra_types.hpp"
