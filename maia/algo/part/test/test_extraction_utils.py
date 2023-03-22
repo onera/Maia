@@ -86,7 +86,7 @@ def test_get_partial_container_stride_and_order(sub_comm):
     p2_lngn      = [np.array([1,2,3,4,5],   dtype=pdm_gnum_dtype),
                     np.array([6,7,8],       dtype=pdm_gnum_dtype)]
     p1_to_p2     = [np.array([9,10,9,10,13],dtype=pdm_gnum_dtype)]
-    p1_to_p2_idx = [np.array([0,1,2,3,4,5], dtype=pdm_gnum_dtype)]
+    p1_to_p2_idx = [np.array([0,1,2,3,4,5], dtype=np.int32)]
   else:
     pt = """
     Zone.P1.N0 Zone_t:
@@ -99,7 +99,7 @@ def test_get_partial_container_stride_and_order(sub_comm):
     p1_lngn      = [np.array([2,4,6,8],       dtype=pdm_gnum_dtype)]
     p2_lngn      = [np.array([9,10,11,12,13], dtype=pdm_gnum_dtype)]
     p1_to_p2     = [np.array([1,2,6,7],       dtype=pdm_gnum_dtype)]
-    p1_to_p2_idx = [np.array([0,1,2,3,4],     dtype=pdm_gnum_dtype)]
+    p1_to_p2_idx = [np.array([0,1,2,3,4],     dtype=np.int32)]
 
   '''
   part1 = isosurface or extract_part (only defined here by its lngn `p1_lngn` 

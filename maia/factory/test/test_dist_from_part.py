@@ -14,6 +14,7 @@ from maia.factory import generate_dist_block
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.factory import dist_from_part as DFP
+dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 @mark_mpi_test(3)
 class Test_discover_nodes_from_matching:
@@ -243,7 +244,7 @@ def test_get_joins_dist_tree(sub_comm):
       :CGNS#GlobalNumbering UserDefinedData_t:
         Vertex DataArray_t [10,20,30,40,50,60,70,80,90,100]: 
   """
-  expected_dt =  """
+  expected_dt =  f"""
   BaseI CGNSBase_t:
     ZoneA Zone_t:
       ZoneType ZoneType_t "Unstructured":
@@ -253,7 +254,7 @@ def test_get_joins_dist_tree(sub_comm):
           GridLocation GridLocation_t "Vertex":
           PointList IndexArray_t [[30,50,80]]:
           :CGNS#Distribution UserDefinedData_t:
-            Index DataArray_t [0,3,3]: 
+            Index DataArray_t {dtype} [0,3,3]: 
   """
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
   expected_base = parse_yaml_cgns.to_node(expected_dt)
@@ -379,5 +380,5 @@ def test_recover_dist_tree_s(sub_comm):
     if PT.get_child_from_name(bc, 'GridLocation') is None:
       PT.new_GridLocation('Vertex', bc)
 
-  assert PT.is_same_tree(dist_tree_bck, dist_tree)
+  assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Recover create I4 zones
 

@@ -186,9 +186,8 @@ def test_extract_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
   
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
   # -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -232,9 +231,8 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
   
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
   # -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -276,9 +274,8 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
   
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
   # -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -321,9 +318,8 @@ def test_extract_face_from_point_list_U(graph_part_tool, sub_comm, write_output)
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_face_from_point_list.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), sub_comm)
 
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
   # -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -371,9 +367,8 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_vertex_from_zsr.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')                , sub_comm)
 
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
   # -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -430,9 +425,8 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_bc_from_bc_name.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')                , sub_comm)
 
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol     )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_ep)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
   # -------------------------------------------------------------------------------------
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
