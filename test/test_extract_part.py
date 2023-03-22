@@ -21,6 +21,12 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 # ========================================================================================
 
 
+PART_TOOLS = []
+if maia.pdm_has_parmetis:
+  PART_TOOLS.append("parmetis")
+if maia.pdm_has_ptscotch:
+  PART_TOOLS.append("ptscotch")
+
 
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
@@ -283,7 +289,7 @@ def test_extract_cell_from_point_list_U(graph_part_tool, sub_comm, write_output)
 # =======================================================================================
 # ---------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
-@pytest.mark.parametrize("graph_part_tool", ["parmetis","ptscotch"])
+@pytest.mark.parametrize("graph_part_tool", PART_TOOLS)
 @mark_mpi_test([1,3])
 def test_extract_face_from_point_list_U(graph_part_tool, sub_comm, write_output):
 

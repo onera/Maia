@@ -127,20 +127,14 @@ def get_value_type(node):
   val = get_value(node, raw=True)
   if val is None:
     return 'MT'
-  if isinstance(val,str):
-    return 'C1'
-  else:
-    return val.dtype
+  return CGK.dtype_to_cgns[val.dtype]
 
 def get_value_kind(node):
   """ Return the value kind of the input CGNSNode """
-  val = get_value(node, raw=True)
-  if val is None:
-    return 'MT'
-  if isinstance(val,str):
-    return 'C1'
-  else:
-    return val.dtype.kind
+  val_type = get_value_type(node)
+  if val_type != 'MT':
+    val_type = val_type[0]
+  return val_type
 
 def set_value(node, value):
   node[1] = _convert_value(value)
