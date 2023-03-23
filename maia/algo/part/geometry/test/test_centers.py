@@ -77,6 +77,7 @@ def test_compute_face_center_3d(sub_comm):
   with pytest.raises(NotImplementedError):
     centers.compute_face_center(zone)
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @mark_mpi_test(1)
 def test_compute_face_center_2d(sub_comm):
   tree = dcube_generate(4, 1., [0,0,0], sub_comm)
