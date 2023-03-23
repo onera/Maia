@@ -104,9 +104,8 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, 'isosurf.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
 
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol      )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
@@ -145,9 +144,8 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'plane_slice.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
 
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol      )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
@@ -186,9 +184,8 @@ def test_spherical_slice_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'spherical_slice.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
   
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol      )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================

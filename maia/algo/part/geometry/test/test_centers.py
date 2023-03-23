@@ -77,6 +77,7 @@ def test_compute_face_center_3d(sub_comm):
   with pytest.raises(NotImplementedError):
     centers.compute_face_center(zone)
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @mark_mpi_test(1)
 def test_compute_face_center_2d(sub_comm):
   tree = dcube_generate(4, 1., [0,0,0], sub_comm)
@@ -89,11 +90,13 @@ def test_compute_face_center_2d(sub_comm):
         0.2,0.83,0.5,  0.2,0.83,0.83,   0.2,0.5,0.83,   0.2,0.16,0.5,    0.2,0.16,0.83])
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
 
+@pytest.mark.skipif(not maia.pdm_has_ptscotch, reason="Require PTScotch")
 @mark_mpi_test(1)
 def test_compute_face_center_elmts_3d(sub_comm):
   tree = dcube_nodal_generate(2, 1., [0,0,0], 'HEXA_8', sub_comm)
   
-  part_tree = maia.factory.partition_dist_tree(tree, sub_comm)
+  part_tree = maia.factory.partition_dist_tree(tree, sub_comm, graph_part_tool='ptscotch')
+  # Nb : metis is not robust if n_cell == 1
   zone = PT.get_all_Zone_t(part_tree)[0]
 
   expected = np.array([0.5,0.5,0., 0.5,0.5,1., 0.,0.5,0.5,

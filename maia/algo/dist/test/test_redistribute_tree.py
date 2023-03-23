@@ -346,6 +346,8 @@ def test_redistribute_zone_U(sub_comm):
       assert np.array_equal(PT.get_node_from_path(dist_tree, key)[1], value)
 
     ref_tree = Mio.read_tree(ref_file)
+    # file_to_dist_tree read with pdm dtype conversion, so do it for the reference
+    maia.io.fix_tree._enforce_pdm_dtype(ref_tree)
     PT.rm_nodes_from_name(dist_tree, ':CGNS#Distribution')
 
     assert PT.is_same_tree(ref_tree[2][1], dist_tree[2][1])

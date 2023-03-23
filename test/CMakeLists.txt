@@ -1,12 +1,6 @@
 include(${PROJECT_UTILS_CMAKE_DIR}/doctest_pytest.cmake)
 
-### doctest ###
-FetchContent_Declare(
-  doctest
-  GIT_REPOSITORY https://github.com/doctest/doctest.git
-  GIT_TAG        v2.4.9
-)
-FetchContent_MakeAvailable(doctest)
+find_or_fetch_doctest()
 
 # set(pytest_mpi_check_file ${PROJECT_ROOT}/external/pytest-mpi-check/pytest_mpi_check.py)
 # set(pytest_file_in_build ${CMAKE_CURRENT_BINARY_DIR}/../external/pytest-mpi-check/pytest_mpi_check.py)
