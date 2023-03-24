@@ -161,6 +161,7 @@ def test_split_original_joins():
 ZoneB.P1.N0 Zone_t:
   ZGC ZoneGridConnectivity_t:
     matchBA GridConnectivity_t "ZoneA":
+      GridConnectivityType GridConnectivityType_t "Abutting1to1":
       PointList IndexArray_t [[8,12,9,20,1]]:
       PointListDonor IndexArray_t [[11,21,8,25,13]]:
       Donor IndexArray_t [[0,0],[0,0],[1,0],[0,0],[1,0]]:

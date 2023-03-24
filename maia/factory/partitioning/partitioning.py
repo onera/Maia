@@ -32,7 +32,7 @@ def set_default(dist_tree, comm):
              'additional_connectivity' : [],
              'additional_ln_to_gn'     : [],
              'keep_empty_sections'     : False,
-             'dump_pdm_output'    : False }
+             'dump_pdm_output'         : False }
 
   if pdm_has_parmetis:
     default['graph_part_tool'] = 'parmetis'

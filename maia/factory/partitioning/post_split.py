@@ -51,7 +51,7 @@ def copy_additional_nodes(dist_zone, part_zone):
       PT.add_child(part_zone, node)
   #BCs
   names = ['.Solver#BC', 'BoundaryMarker']
-  types = ['FamilyName_t']
+  types = ['FamilyName_t', 'ReferenceState_t']
   for p_zbc, p_bc in PT.iter_nodes_from_predicates(part_zone, 'ZoneBC_t/BC_t', ancestors=True):
     d_bc = PT.get_node_from_path(dist_zone, PT.get_name(p_zbc)+'/'+PT.get_name(p_bc))
     if d_bc: #Tmp, since S splitting store external JNs as bnd
@@ -100,7 +100,7 @@ def split_original_joins(p_tree):
       to_remove = list()
       to_append = list()
       for gc in PT.get_children_from_label(zone_gc, 'GridConnectivity_t'):
-        if not MT.conv.is_intra_gc(gc[0]): #Skip part joins
+        if PT.GridConnectivity.is1to1(gc) and not MT.conv.is_intra_gc(gc[0]): #Skip part joins or non 1to1 jns
           pl       = PT.get_child_from_name(gc, 'PointList')[1]
           pl_d     = PT.get_child_from_name(gc, 'PointListDonor')[1]
           lngn     = PT.get_value(MT.getGlobalNumbering(gc, 'Index'))

@@ -147,7 +147,7 @@ def add_child(node, child):
   if child is None:
     return
   if get_name(child) in [get_name(n) for n in get_children(node)]:
-    raise RuntimeError('Can not add child : a node with the same already exists')
+    raise RuntimeError(f'Can not add child {child[0]} to node {node[0]}: a node with the same name already exists')
   node[2].append(child)
 
 def rm_child(node, child):
