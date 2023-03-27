@@ -7,6 +7,8 @@ from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh
 from .cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
 from .pdm_part_to_cgns_zone   import pdm_part_to_cgns_zone
 
+from maia.utils import py_utils
+
 maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
                       "face"   : PDM._PDM_MESH_ENTITY_FACE,
                       "edge"   : PDM._PDM_MESH_ENTITY_EDGE,
@@ -109,7 +111,10 @@ def _add_connectivity(multi_part, l_data, i_zone, n_part, additionnal_list_key):
   """
   Enrich dictionnary with additional query of user
   """
+  wanted_connectivities = ["cell_face", "face_cell", "face_vtx"]
   for key in additionnal_list_key:
+    py_utils.append_unique(wanted_connectivities, key)
+  for key in wanted_connectivities:
     connectivity_type = maia_to_pdm_connectivity[key]
     for i_part in range(n_part):
       dict_res = multi_part.multipart_connectivity_get(i_part, i_zone, connectivity_type)
@@ -122,7 +127,10 @@ def _add_ln_to_gn(multi_part, l_data, i_zone, n_part, additionnal_list_key):
   """
   Enrich dictionnary with additional query of user
   """
+  wanted_lngn = ["cell", "face", "vtx"]
   for key in additionnal_list_key:
+    py_utils.append_unique(wanted_lngn, key)
+  for key in wanted_lngn:
     entity_type = maia_to_pdm_entity[key]
     for i_part in range(n_part):
       dict_res = multi_part.multipart_ln_to_gn_get(i_part, i_zone, entity_type)
@@ -132,37 +140,39 @@ def _add_color(multi_part, l_data, i_zone, n_part):
   """
   """
   for i_part in range(n_part):
-    # Use both API to get thread color (needed for elsa) and avoid double get
-    for key, data in multi_part.multipart_color_get(i_part, i_zone).items():
-      if key == 'np_hyper_plane_color':
-        key = 'np_hyperplane_color'
-      l_data[i_part][key] = data
-    for key in ['edge', 'vtx']:
+    for key in ['cell', 'face', 'edge', 'vtx']:
       dict_res = multi_part.multipart_part_color_get(i_part, i_zone, maia_to_pdm_entity[key])
       l_data[i_part]["np_"+key+'_color'] = dict_res["np_entity_color"]
+    dict_res = multi_part.multipart_thread_color_get(i_part, i_zone)
+    l_data[i_part]["np_thread_color"] = dict_res["np_thread_color"]
+    dict_res = multi_part.multipart_hyper_plane_color_get(i_part, i_zone)
+    l_data[i_part]["np_hyperplane_color"] = dict_res["np_hyper_plane_color"]
 
+def _add_graph_comm(multi_part, l_data, i_zone, n_part):
+  """
+  """
+  wanted_graph = {'face' : PDM._PDM_BOUND_TYPE_FACE, 'vtx' : PDM._PDM_BOUND_TYPE_VTX}
+  for i_part in range(n_part):
+    for kind, pdm_kind in wanted_graph.items():
+      for key, val in multi_part.multipart_graph_comm_get(i_part, i_zone, pdm_kind).items():
+        l_data[i_part][key.replace('entity', kind)] = val
 
 def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_options):
   """
   """
-  concat_pdm_data = lambda i_part, i_zone : {**multi_part.multipart_val_get               (i_part, i_zone),
-                                             **multi_part.multipart_graph_comm_vtx_val_get(i_part, i_zone),
+  concat_pdm_data = lambda i_part, i_zone : {**multi_part.multipart_vtx_coord_get         (i_part, i_zone),
                                              **multi_part.multipart_ghost_information_get (i_part, i_zone)}
-
-  #part_path_nodes = I.createNode(':Ppart#ZonePaths', 'UserDefinedData_t', parent=part_base)
 
   all_parts = list()
   for i_zone, d_zone in enumerate(d_zones):
-    # > TODO : join
-    # add_paths_to_ghost_zone(d_zone, part_path_nodes)
 
     n_part = n_part_per_zone[i_zone]
     l_dims = [multi_part.multipart_dim_get(i_part, i_zone) for i_part in range(n_part)]
     l_data = [concat_pdm_data(i_part, i_zone)              for i_part in range(n_part)]
-
     _add_connectivity(multi_part, l_data, i_zone, n_part, post_options['additional_connectivity'])
     _add_ln_to_gn    (multi_part, l_data, i_zone, n_part, post_options['additional_ln_to_gn'])
     _add_color       (multi_part, l_data, i_zone, n_part)
+    _add_graph_comm  (multi_part, l_data, i_zone, n_part)
 
     #For element : additional conversion step to retrieve part elements
     pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
