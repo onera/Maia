@@ -251,7 +251,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
       group_face_idx, group_face = np_utils.concatenate_point_list(all_bc_pl, dtype=np.int32)
       pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs, group_face_idx, group_face)
 
-  # Isosurfaces compute in PDM  
+  # Isosurfaces compute in PDM
   pdm_isos.compute()
 
   # Mesh build from result
@@ -385,6 +385,7 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
   Important:
     - Input tree must be unstructured and have a ngon connectivity.
+    - Input tree must have been partitioned with ``preserve_orientation=True`` partitioning option.
     - Input field for isosurface computation must be located at vertices.
     - This function requires ParaDiGMa access.
 
