@@ -44,8 +44,8 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
       elt_shift += distrib[-1]
 
   # > Distributions
-  np_distrib_cell = par_utils.uniform_distribution(g_dims["n_cell_abs"], comm)
-  np_distrib_vtx  = par_utils.full_to_partial_distribution(vtx_data['np_vtx_distrib'], comm)
+  np_distrib_cell = par_utils.uniform_distribution(n_cell, comm)
+  np_distrib_vtx  = par_utils.uniform_distribution(n_vtx,  comm)
 
   MT.newDistribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=zone)
 
