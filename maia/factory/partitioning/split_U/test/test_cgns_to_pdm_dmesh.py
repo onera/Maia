@@ -3,6 +3,7 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
+import maia
 import maia.pytree as PT
 from   maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh as CTP
@@ -96,6 +97,14 @@ ZoneU Zone_t [[18,6,0]]:
   dmesh = CTP.cgns_dist_zone_to_pdm_dmesh(dist_zone, sub_comm)
   #No getters for dmesh so we can not check data
   assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
+
+@mark_mpi_test(2)
+def test_cgns_dist_zone_to_pdm_dmesh_poly2d(sub_comm):
+  dist_tree = maia.factory.generate_dist_block(5, "QUAD_4", sub_comm)
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
+  #Todo : update when fetch2d is working
+  # dmesh_nodal = CTP.cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, sub_comm)
+  
 
 @mark_mpi_test(3)
 def test_cgns_dist_zone_to_pdm_dmesh_nodal(sub_comm):

@@ -28,6 +28,7 @@ def _split_point_list_by_dim(pl_list, range_by_dim, comm):
         return i_dim
 
   return py_utils.bucket_split(pl_list, lambda pl: _get_dim(pl), size=4)
+
 def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
@@ -113,6 +114,42 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   PT.new_DataArray('dface_join'     , dface_join     , parent=multi_part_node)
 
   return dmesh
+
+def cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, comm):
+  distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
+  distrib_face = PT.get_value(MT.getDistribution(dist_zone, 'Cell')) #In 2d, cell == face
+  n_vtx   = distrib_vtx[2]
+  n_face  = distrib_face[2]
+  dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
+  dn_face = distrib_face[1] - distrib_face[0]
+
+  #Create DMeshNodal
+  dmesh_nodal = DistributedMeshNodal(comm, n_vtx, 0, n_face, 0, mesh_dimension=2)
+
+  if dn_vtx > 0:
+    cx, cy, cz = PT.Zone.coordinates(dist_zone)
+    dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
+  else:
+    dvtx_coord = np.empty(0, dtype='float64', order='F')
+  dmesh_nodal.set_coordinnates(dvtx_coord)
+
+  ngon_node = PT.Zone.NGonNode(dist_zone)
+  ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
+  ngon_ec   = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+
+  ngon_distri = MT.getDistribution(ngon_node, 'ElementConnectivity')[1]
+
+  dface_vtx_idx = np.add(ngon_eso, -ngon_distri[0], dtype=np.int32) #Local index is int32bits
+  dface_vtx = as_pdm_gnum(ngon_ec)
+  dmesh_nodal.set_poly2d_section(dface_vtx_idx, dface_vtx)
+
+  # keep dvtx_coord object alive for ParaDiGM
+  multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
+  PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
+  PT.new_DataArray('dface_vtx_idx', dface_vtx_idx, parent=multi_part_node)
+  PT.new_DataArray('dface_vtx', dface_vtx, parent=multi_part_node)
+
+  return dmesh_nodal
 
 def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_bc=True):
   """

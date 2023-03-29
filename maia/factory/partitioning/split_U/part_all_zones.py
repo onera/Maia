@@ -3,8 +3,7 @@ import Pypdm.Pypdm        as PDM
 
 import maia.pytree        as PT
 
-from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh
-from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh_nodal
+from . import cgns_to_pdm_dmesh
 from .pdm_part_to_cgns_zone   import pdm_part_to_cgns_zone
 
 from maia.utils import py_utils
@@ -93,16 +92,23 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
   keep_alive.append(cacheblocking_props)
 
 def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
+
+  is_ngon_3d = lambda z: PT.Zone.has_nface_elements(z) or \
+          (PT.Zone.has_ngon_elements(z) and PT.get_child_from_name(PT.Zone.NGonNode(z), 'ParentElements') is not None)
+
   for i_zone, zone in enumerate(u_zones):
     #Determine NGON or ELMT
-    elmt_types = [PT.Element.Type(elmt) for elmt in PT.iter_children_from_label(zone, 'Elements_t')]
-    is_ngon = 22 in elmt_types
-    if is_ngon:
-      dmesh    = cgns_dist_zone_to_pdm_dmesh(zone, comm)
-      keep_alive.append(dmesh)
-      multi_part.multipart_register_block(i_zone, dmesh)
+    if PT.Zone.has_ngon_elements(zone):
+      if is_ngon_3d(zone):
+        dmesh    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
+        keep_alive.append(dmesh)
+        multi_part.multipart_register_block(i_zone, dmesh)
+      else:
+        dmesh_nodal    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_poly2d(zone, comm)
+        keep_alive.append(dmesh_nodal)
+        multi_part.multipart_register_dmesh_nodal(i_zone, dmesh_nodal)
     else:
-      dmesh_nodal = cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
+      dmesh_nodal = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
       keep_alive.append(dmesh_nodal)
       multi_part.multipart_register_dmesh_nodal(i_zone, dmesh_nodal)
 
