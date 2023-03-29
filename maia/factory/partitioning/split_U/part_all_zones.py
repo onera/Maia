@@ -4,7 +4,7 @@ import Pypdm.Pypdm        as PDM
 import maia.pytree        as PT
 
 from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh
-from .cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
+from .cgns_to_pdm_dmesh       import cgns_dist_zone_to_pdm_dmesh_nodal
 from .pdm_part_to_cgns_zone   import pdm_part_to_cgns_zone
 
 from maia.utils import py_utils

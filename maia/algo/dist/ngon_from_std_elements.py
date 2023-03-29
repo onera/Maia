@@ -7,7 +7,7 @@ from maia.utils import np_utils, par_utils, layouts
 
 from maia.algo.dist   import remove_element as RME
 from maia.algo.dist   import matching_jns_tools as MJT
-from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh_nodal import cgns_dist_zone_to_pdm_dmesh_nodal
+from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh_nodal
 
 import Pypdm.Pypdm as PDM
 
