@@ -91,26 +91,22 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
         
 
     # > P2P Object
-    print(f"[maia-{comm.Get_rank()}] ptp = PDM.PartToPart()")
     ptp = PDM.PartToPart(comm,
                          part1_ln_to_gn,
                          part2_ln_to_gn,
                          part1_to_part2_idx,
                          part1_to_part2     )
-    print(f"[maia-{comm.Get_rank()}] ptp = PDM.PartToPart() -> END")
 
 
     # > FlowSolution node def in isosurf zone
     FS_iso = PT.new_FlowSolution(container_name, loc=gridLocation, parent=iso_part_zone)
     if partial_field:
-      print(f"[maia-{comm.Get_rank()}] PARTIAL_FLD :: get_partial_container_stride_and_order()")
       pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm)
 
     # > Field exchange
     for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
       fld_name = PT.get_name(fld_node)
       fld_path = f"{container_name}/{fld_name}"
-      print(f"[maia-{comm.Get_rank()}] fld_name = {fld_name}")
 
       if partial_field:
         # Get field and organize it according to the gnum1_come_from arrays order
@@ -244,7 +240,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 
     # Add BC information
     if elt_type in ['TRI_3']:
-      print(f"[maia-{comm.Get_rank()}] finding some BCs")
       zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
       all_bc_pl = list()
       for i_group, bc_name in enumerate(gdom_bcs):
@@ -254,14 +249,10 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
         else :
           all_bc_pl.append(np.empty((1,0), np.int32))
       group_face_idx, group_face = np_utils.concatenate_point_list(all_bc_pl, dtype=np.int32)
-      print(f"[maia-{comm.Get_rank()}] n_gdom_bcs           = {n_gdom_bcs}")
-      print(f"[maia-{comm.Get_rank()}] group_face_idx.shape = {group_face_idx.shape}")
-      print(f"[maia-{comm.Get_rank()}] group_face.shape     = {group_face.shape    }")
       pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs, group_face_idx, group_face)
 
   # Isosurfaces compute in PDM
   pdm_isos.compute()
-  print(f"[maia-{comm.Get_rank()}] pdm_isos.compute() -> END")
 
   # Mesh build from result
   results = pdm_isos.part_iso_surface_surface_get()
@@ -300,9 +291,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   # Bnd edges
   if elt_type in ['TRI_3']:
     # > Add element node
-    print(f"[maia-{comm.Get_rank()}] pdm_isos.isosurf_bnd_get()")
     results_edge = pdm_isos.isosurf_bnd_get()
-    print(f"[maia-{comm.Get_rank()}] pdm_isos.isosurf_bnd_get() -> END")
     n_bnd_edge         = results_edge['n_bnd_edge']
     if n_bnd_edge!=0:
       bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
@@ -349,7 +338,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [familyname_query],
       comm, get_value='leaf')
 
-  print(f"[maia-{comm.Get_rank()}] return iso_part_zone")
   return iso_part_zone
 # ---------------------------------------------------------------------------------------
 # =======================================================================================
@@ -464,7 +452,6 @@ def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
     dom_base_name, dom_zone_name = domain_path.split('/')
     iso_part_base = PT.update_child(iso_part_tree, dom_base_name, 'CGNSBase_t', [3-1,3])
     iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, comm)
-    print(f"[maia-{comm.Get_rank()}] after the return iso_part_zone")
     iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0)
     PT.add_child(iso_part_base,iso_part_zone)
 
