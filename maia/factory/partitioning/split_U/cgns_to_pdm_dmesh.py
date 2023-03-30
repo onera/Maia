@@ -9,6 +9,7 @@ from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
 from Pypdm.Pypdm import DistributedMesh, DistributedMeshNodal
+from Pypdm.Pypdm import _PDM_CONNECTIVITY_TYPE_FACE_VTX, _PDM_BOUND_TYPE_FACE, _PDM_CONNECTIVITY_TYPE_FACE_CELL
 
 def _split_point_list_by_dim(pl_list, range_by_dim, comm):
   """
@@ -74,32 +75,15 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     dface_cell    = np.empty(0, dtype=pdm_gnum_dtype)
 
   # > Prepare bnd
-  #bc_point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'])
-  #dface_bound_idx, dface_bound = np_utils.concatenate_point_list(bc_point_lists, pdm_gnum_dtype)
   dface_bound_idx = np.zeros(1, dtype=np.int32)
   dface_bound     = np.empty(0, dtype=pdm_gnum_dtype)
-  # > Find shift in NGon
-  # first_ngon_elmt, last_ngon_elmt = PT.Zone.get_range_of_ngon(dist_zone)
-  # dface_bound = dface_bound - first_ngon_elmt + 1
 
-  # > Prepare joins
-  # gc_type_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
-  # gc_point_lists = collect_distributed_pl(dist_zone, [gc_type_path])
-  # dface_join_idx, dface_join = np_utils.concatenate_point_list(gc_point_lists, pdm_gnum_dtype)
-  # joins_ids = [PT.get_child_from_name(gc, 'Ordinal')[1][0] for gc in \
-      # PT.iter_children_from_predicates(dist_zone, gc_type_path)]
-  # joins_ids = np.array(joins_ids, dtype='int32') - 1
-  joins_ids      = np.empty(0, dtype=np.int32)
-  dface_join_idx = np.zeros(1, dtype=np.int32)
-  dface_join     = np.empty(0, dtype=pdm_gnum_dtype)
+  dmesh = DistributedMesh(comm, dn_cell, dn_face, dn_edge, dn_vtx)
 
-  n_bnd  = dface_bound_idx.shape[0] - 1
-  n_join = dface_join_idx.shape[0]  - 1
-
-  dmesh = DistributedMesh(comm, dn_cell, dn_face, dn_edge, dn_vtx, n_bnd, n_join)
-  dmesh.dmesh_set(dvtx_coord, dface_vtx_idx, dface_vtx, dface_cell,
-                  dface_bound_idx, dface_bound, joins_ids,
-                  dface_join_idx, dface_join)
+  dmesh.dmesh_vtx_coord_set(dvtx_coord)
+  dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_FACE_VTX, dface_vtx_idx, dface_vtx)
+  dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_FACE_CELL, None, dface_cell)
+  dmesh.dmesh_bound_set(_PDM_BOUND_TYPE_FACE, dface_bound_idx, dface_bound)
 
   # > Create an older --> To Suppress after all
   multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
@@ -109,9 +93,6 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   PT.new_DataArray('dface_cell'     , dface_cell     , parent=multi_part_node)
   PT.new_DataArray('dface_bound_idx', dface_bound_idx, parent=multi_part_node)
   PT.new_DataArray('dface_bound'    , dface_bound    , parent=multi_part_node)
-  PT.new_DataArray('joins_ids'      , joins_ids      , parent=multi_part_node)
-  PT.new_DataArray('dface_join_idx' , dface_join_idx , parent=multi_part_node)
-  PT.new_DataArray('dface_join'     , dface_join     , parent=multi_part_node)
 
   return dmesh
 
