@@ -6,6 +6,14 @@ import maia.pytree.maia   as MT
 
 from maia.utils import layouts, np_utils
 
+import Pypdm.Pypdm as PDM
+
+def _get_part_dim(dims):
+  if dims['n_cell'] > 0:
+    return 3
+  else:
+    return 2
+
 def dump_pdm_output(p_zone, dims, data):
   """
   Write PDM output in part_tree (for debug)
@@ -23,7 +31,12 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
   """
   if grid_loc not in ['FaceCenter', 'Vertex']:
     raise NotImplementedError("Unvalid specified entity")
-  entity = 'face' if grid_loc == 'FaceCenter' else 'vtx'
+  if grid_loc == 'FaceCenter':
+    entity = 'face' if _get_part_dim(dims) == 3 else 'edge'
+    _grid_loc = f"{entity.capitalize()}Center"
+  else:
+    entity = 'vtx'
+    _grid_loc = 'Vertex'
 
   entity_part_bound_proc_idx = data['np_{0}_part_bound_proc_idx'.format(entity)]
   entity_part_bound_part_idx = data['np_{0}_part_bound_part_idx'.format(entity)]
@@ -57,7 +70,7 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
       join_n = PT.new_GridConnectivity(name       = gcname,
                                        donor_name = MT.conv.add_part_suffix(PT.get_name(d_zone), opp_rank, opp_part),
                                        type       = 'Abutting1to1',
-                                       loc        = grid_loc,
+                                       loc        = _grid_loc,
                                        parent     = zgc_n)
 
       PT.new_PointList(name='PointList'     , value=pl , parent=join_n)
@@ -87,28 +100,61 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
   """
   ngon_zone = [e for e in PT.iter_children_from_label(d_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n'] != []
   if  ngon_zone or connectivity_as == 'NGon':
-    n_face        = dims['n_face']
-    n_cell        = dims['n_cell']
-    pdm_face_cell = data['np_face_cell']
-    pe = np.empty((n_face, 2), dtype=pdm_face_cell.dtype, order='F')
-    layouts.pdm_face_cell_to_pe_cgns(pdm_face_cell, pe)
-    pe += n_face * (pe > 0)
-
+    # Use default name if none in tree
+    nedge_name = 'EdgeElements'
     ngon_name  = 'NGonElements'
     nface_name = 'NFaceElements'
     for elt in PT.iter_children_from_label(d_zone, 'Elements_t'):
+      if PT.Element.CGNSName(elt) == 'BAR_2':
+        nedge_name = PT.get_name(elt)
       if PT.Element.CGNSName(elt) == 'NGON_n':
         ngon_name = PT.get_name(elt)
       elif PT.Element.CGNSName(elt) == 'NFACE_n':
         nface_name = PT.get_name(elt)
 
-    ngon_n = PT.new_NGonElements(ngon_name, parent=p_zone,
-        erange = [1, n_face], eso = data['np_face_vtx_idx'], ec = data['np_face_vtx'], pe = pe)
-    MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
+    n_face = dims['n_face']
+    n_cell = dims['n_cell']
+    if _get_part_dim(dims) == 3:
+      ngon_er  = np.array([1, n_face], np.int32)
+      ngon_eso = data['np_face_vtx_idx']
+      ngon_ec  = data['np_face_vtx']
 
-    nface_n = PT.new_NFaceElements(nface_name, parent=p_zone,
-        erange = [n_face+1, n_face+n_cell], eso = data['np_cell_face_idx'], ec = data['np_cell_face'])
-    MT.newGlobalNumbering({'Element' : data['np_cell_ln_to_gn']}, nface_n)
+      ngon_pe = np.empty((n_face, 2), dtype=np.int32, order='F')
+      layouts.pdm_face_cell_to_pe_cgns(data['np_face_cell'], ngon_pe)
+      np_utils.shift_nonzeros(ngon_pe, n_face)
+
+      nface_er  = np.array([1, n_cell], np.int32) + n_face
+      nface_eso = data['np_cell_face_idx']
+      nface_ec  = data['np_cell_face']
+
+      ngon_n = PT.new_NGonElements(ngon_name, parent=p_zone, erange=ngon_er, eso=ngon_eso, ec=ngon_ec, pe=ngon_pe)
+      nface_n = PT.new_NFaceElements(nface_name, parent=p_zone, erange=nface_er, eso=nface_eso, ec=nface_ec)
+      MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
+      MT.newGlobalNumbering({'Element' : data['np_cell_ln_to_gn']}, nface_n)
+
+    elif _get_part_dim(dims) == 2:
+      face_edge_idx = data['np_face_edge_idx']   
+      face_edge     = data['np_face_edge']   
+      edge_vtx      = data['np_edge_vtx']   
+
+      n_edge = edge_vtx.size//2 
+      edge_vtx_idx  = 2*np.arange(n_edge+1, dtype=np.int32)
+      edge_face_idx, edge_face = PDM.connectivity_transpose(n_edge, face_edge_idx, face_edge)
+      assert edge_face_idx.size - 1 == n_edge
+      edge_er = np.array([1, n_edge], np.int32)
+      nedge_pe = np.empty((n_edge,2), np.int32, order='F')
+      layouts.strided_connectivity_to_pe(edge_face_idx, edge_face, nedge_pe)
+      np_utils.shift_nonzeros(nedge_pe, n_edge)
+
+      ngon_er = np.array([1, n_face], np.int32) + n_edge
+      ngon_eso = face_edge_idx
+      ngon_ec  = PDM.compute_face_vtx_from_face_and_edge(face_edge_idx, face_edge, edge_vtx)
+
+      nedge_n = PT.new_Elements(nedge_name, 'BAR_2', erange=edge_er, econn=edge_vtx, parent=p_zone)
+      ngon_n = PT.new_NGonElements(ngon_name, parent=p_zone, erange=ngon_er, eso=ngon_eso, ec=ngon_ec)
+      PT.new_DataArray('ParentElements', nedge_pe, parent=nedge_n)
+      MT.newGlobalNumbering({'Element' : data['np_edge_ln_to_gn']}, nedge_n)
+      MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
 
   else:
     # if vtx are ordered with:

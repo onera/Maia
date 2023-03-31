@@ -117,7 +117,7 @@ def _add_connectivity(multi_part, l_data, i_zone, n_part, additionnal_list_key):
   """
   Enrich dictionnary with additional query of user
   """
-  wanted_connectivities = ["cell_face", "face_cell", "face_vtx"]
+  wanted_connectivities = ["cell_face", "face_cell", "face_vtx", "face_edge", "edge_vtx"]
   for key in additionnal_list_key:
     py_utils.append_unique(wanted_connectivities, key)
   for key in wanted_connectivities:
@@ -133,7 +133,7 @@ def _add_ln_to_gn(multi_part, l_data, i_zone, n_part, additionnal_list_key):
   """
   Enrich dictionnary with additional query of user
   """
-  wanted_lngn = ["cell", "face", "vtx"]
+  wanted_lngn = ["cell", "face", "vtx", "edge"]
   for key in additionnal_list_key:
     py_utils.append_unique(wanted_lngn, key)
   for key in wanted_lngn:
@@ -157,7 +157,7 @@ def _add_color(multi_part, l_data, i_zone, n_part):
 def _add_graph_comm(multi_part, l_data, i_zone, n_part):
   """
   """
-  wanted_graph = {'face' : PDM._PDM_BOUND_TYPE_FACE, 'vtx' : PDM._PDM_BOUND_TYPE_VTX}
+  wanted_graph = {'face' : PDM._PDM_BOUND_TYPE_FACE, 'vtx' : PDM._PDM_BOUND_TYPE_VTX, 'edge': PDM._PDM_BOUND_TYPE_EDGE}
   for i_part in range(n_part):
     for kind, pdm_kind in wanted_graph.items():
       for key, val in multi_part.multipart_graph_comm_get(i_part, i_zone, pdm_kind).items():
@@ -181,17 +181,18 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
     _add_graph_comm  (multi_part, l_data, i_zone, n_part)
 
     #For element : additional conversion step to retrieve part elements
-    pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
-    if pmesh_nodal is not None:
-      for i_part in range(n_part):
-        zone_dim = 3  
-        if l_dims[i_part]['n_cell'] == 0 and l_dims[i_part]['n_face'] > 0:
-          zone_dim = 2
-        for j, kind in enumerate(pdm_geometry_kinds):
-          if j <= zone_dim:
-            l_data[i_part][f"{j}dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(kind, i_part)
-          else: # Section of higher dim than mesh dimenson can not be getted (assert in pdm)
-            l_data[i_part][f"{j}dsections"] = []
+    if not PT.Zone.has_ngon_elements(d_zone): # pmesh_nodal has not been computed if NGON were present
+      pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
+      if pmesh_nodal is not None:
+        for i_part in range(n_part):
+          zone_dim = 3  
+          if l_dims[i_part]['n_cell'] == 0 and l_dims[i_part]['n_face'] > 0:
+            zone_dim = 2
+          for j, kind in enumerate(pdm_geometry_kinds):
+            if j <= zone_dim:
+              l_data[i_part][f"{j}dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(kind, i_part)
+            else: # Section of higher dim than mesh dimension can not be getted (assert in pdm)
+              l_data[i_part][f"{j}dsections"] = []
 
     parts = pdm_part_to_cgns_zone(d_zone, l_dims, l_data, comm, post_options)
     all_parts.extend(parts)
