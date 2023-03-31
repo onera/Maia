@@ -67,7 +67,7 @@ enforce_pe_left_parent(
       }
 
       //Swap vertices
-      std::reverse(&face_vtx[face_vtx_idx[i_face]+1], &face_vtx[face_vtx_idx[i_face+1]]);
+      std::reverse(&face_vtx[face_vtx_idx[i_face]], &face_vtx[face_vtx_idx[i_face+1]]);
     }
   }
 }

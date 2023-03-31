@@ -32,7 +32,7 @@ def test_enforce_boundary_pe_left(sub_comm):
 
   assert PT.get_node_from_path(zone, 'NFaceElements/ElementConnectivity')[1][12] == -29
   expt_ng_ec = PT.get_node_from_path(zone_bck, 'NGonElements/ElementConnectivity')[1].copy()
-  expt_ng_ec[4*2 : 4*3] = [5, 4, 7, 8]
+  expt_ng_ec[4*2 : 4*3] = [4, 7, 8, 5]
   assert (PT.get_node_from_path(zone, 'NGonElements/ElementConnectivity')[1] == expt_ng_ec).all()
 
   #Test with no NFace
