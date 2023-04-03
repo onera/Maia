@@ -31,6 +31,9 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
   """
   if grid_loc not in ['FaceCenter', 'Vertex']:
     raise NotImplementedError("Unvalid specified entity")
+  #Element have been created before, so we can check the kind here
+  if grid_loc == 'FaceCenter' and not PT.Zone.has_ngon_elements(p_zone):
+    raise NotImplementedError("FaceCenter GC interfaces can not be used for nodal meshes")
   if grid_loc == 'FaceCenter':
     entity = 'face' if _get_part_dim(dims) == 3 else 'edge'
     _grid_loc = f"{entity.capitalize()}Center"

@@ -37,6 +37,7 @@ def test_pdm_vtx_to_cgns_grid_coordinates():
 def test_zgc_created_pdm_to_cgns(grid_loc):
   d_zone = PT.new_Zone('ZoneA', type='Unstructured')
   p_zone = PT.new_Zone('ZoneA.P0.N0', type='Unstructured')
+  PT.new_NGonElements(parent=p_zone) # Create NGon to escape NotImplementedError
   dims = {'n_cell': 1} # Just to trigger 3d
   data = {'np_face_part_bound_proc_idx' : np.array([0,0,7]),
           'np_face_part_bound_part_idx' : np.array([0,0,7]),
