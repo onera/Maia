@@ -116,8 +116,14 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
     n_cell = dims['n_cell']
     if _get_part_dim(dims) == 3:
       ngon_er  = np.array([1, n_face], np.int32)
-      ngon_eso = data['np_face_vtx_idx']
-      ngon_ec  = data['np_face_vtx']
+      if ngon_zone:
+        ngon_eso = data['np_face_vtx_idx']
+        ngon_ec  = data['np_face_vtx']
+      else: #When coming from elements, we have no face_vtx; rebuild it
+        ngon_eso = data['np_face_edge_idx']
+        ngon_ec  = PDM.compute_face_vtx_from_face_and_edge(data['np_face_edge_idx'],
+                                                           data['np_face_edge'],
+                                                           data['np_edge_vtx'])
 
       ngon_pe = np.empty((n_face, 2), dtype=np.int32, order='F')
       layouts.pdm_face_cell_to_pe_cgns(data['np_face_cell'], ngon_pe)
