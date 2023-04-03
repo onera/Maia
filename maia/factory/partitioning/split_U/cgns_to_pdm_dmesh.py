@@ -6,6 +6,7 @@ import maia.pytree.maia   as MT
 
 from maia.utils import py_utils, np_utils, layouts, as_pdm_gnum
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
+from maia.algo.dist                            import ngon_tools as NGT
 from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
 from Pypdm.Pypdm import DistributedMesh, DistributedMeshNodal
@@ -41,8 +42,14 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   ngon_node = PT.Zone.NGonNode(dist_zone)
   ngon_first = PT.Element.Range(ngon_node)[0] == 1
   dface_vtx = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1])
-  ngon_pe   = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ParentElements'     )[1])
   ngon_eso  = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1])
+
+  pe_node = PT.get_child_from_name(ngon_node, 'ParentElements')
+  if pe_node is None:
+    ghost_zone = PT.shallow_copy(dist_zone)
+    NGT.nface_to_pe(ghost_zone, comm)
+    pe_node = PT.get_child_from_name(PT.Zone.NGonNode(ghost_zone), 'ParentElements')
+  ngon_pe   = as_pdm_gnum(pe_node[1])
 
   distrib_face     = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'Element')))
   distrib_face_vtx = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'ElementConnectivity')))
