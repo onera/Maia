@@ -35,7 +35,7 @@ def test_lngn_to_distri(sub_comm):
 @mark_mpi_test(3)
 class Test__discover_wrapper:
   def test_sol_without_pl(self, sub_comm):
-    dist_zone  = PT.new_Zone('Zone')
+    dist_zone  = PT.new_Zone('Zone', type = 'Unstructured')
     part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
     if sub_comm.Get_rank() == 0:
       p_sol = PT.new_FlowSolution('NewSol1', loc='CellCenter', parent=part_zones[0])
@@ -118,24 +118,28 @@ class Test__discover_wrapper:
   def test_zsr(self, sub_comm):
     dt = """
   Zone Zone_t:
+    ZoneType ZoneType_t "Unstructured":
     InitialZSR ZoneSubRegion_t:
       GridConnectivityRegionName Descriptor_t "match":
     """
     if sub_comm.Get_rank() == 0:
       pt = """
     Zone.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       CreatedZSR.0 ZoneSubRegion_t:
         GridConnectivityRegionName Descriptor_t "gc.0":
       """
     elif sub_comm.Get_rank() == 1:
       pt = """
     Zone.P1.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       InitialZSR.0 ZoneSubRegion_t:
         GridConnectivityRegionName Descriptor_t "gc.0":
       """
     if sub_comm.Get_rank() == 2:
       pt = """
     Zone.P2.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       CreatedZSR.0 ZoneSubRegion_t:
         GridConnectivityRegionName Descriptor_t "gc.0":
       CreatedZSR.1 ZoneSubRegion_t:
@@ -155,6 +159,7 @@ class Test__discover_wrapper:
   def test_dataset(self, sub_comm):
     dt = """
   Zone Zone_t:
+    ZoneType ZoneType_t "Unstructured":
     ZBC ZoneBC_t:
       bc1 BC_t:
       bc2 BC_t:
@@ -162,6 +167,7 @@ class Test__discover_wrapper:
     if sub_comm.Get_rank() == 0:
       pt = """
     Zone.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       ZBC ZoneBC_t:
         bc1 BC_t:
           BCDS BCDataSet_t 'BCInflow':
@@ -172,16 +178,19 @@ class Test__discover_wrapper:
     elif sub_comm.Get_rank() == 1:
       pt = """
     Zone.P1.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       """
     if sub_comm.Get_rank() == 2:
       pt = """
     Zone.P2.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       ZBC ZoneBC_t:
         bc1 BC_t:
           BCDS2 BCDataSet_t 'BCWall':
             BCData BCData_t:
               newField3 DataArray_t:
     Zone.P2.N1 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       ZBC ZoneBC_t:
         bc2 BC_t:
           BCDS BCDataSet_t 'Null':

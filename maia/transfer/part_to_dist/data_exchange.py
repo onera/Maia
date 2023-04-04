@@ -28,6 +28,9 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   discover_nodes_from_matching(dist_zone, part_zones, data_path, comm)
   for nodes in PT.iter_children_from_predicates(dist_zone, pl_path, ancestors=True):
     node_path   = '/'.join([PT.get_name(node) for node in nodes])
+    if PT.get_node_from_path(nodes[-1], 'PointRange') is None and \
+       par_utils.exists_anywhere(part_zones, node_path+'/PointRange', comm):
+       IPTB.part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm)
     if PT.get_node_from_path(nodes[-1], 'PointList') is None and \
        par_utils.exists_anywhere(part_zones, node_path+'/PointList', comm):
       # > Pointlist must be computed on dist node
