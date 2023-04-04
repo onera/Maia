@@ -64,11 +64,11 @@ class Test_closest_points:
     tgt_data = CLO._closest_points(src_clouds, tgt_clouds, sub_comm, n_pts=3)
 
     if sub_comm.Get_rank() == 0:
-      expected_tgt_data = [{'closest_src_gnum' : [4,3,2], 'closest_src_distance' : [0.1075, 0.2075, 0.5075]},
-                           {'closest_src_gnum' : [4,2,8], 'closest_src_distance' : [0.8075, 1.2075, 1.3075]}]
+      expected_tgt_data = [{'closest_src_gnum' : [2,3,4], 'closest_src_distance' : [0.5075, 0.2075, 0.1075]},
+                           {'closest_src_gnum' : [2,4,8], 'closest_src_distance' : [1.2075, 0.8075, 1.3075]}]
     elif sub_comm.Get_rank() == 1:
-      expected_tgt_data = [{'closest_src_gnum' : [4,3,2, 8,7,4, 2,4,1], 
-                            'closest_src_distance' : [0.1075, 0.2075, 0.5075, 0.0475, 0.1475, 0.3475, 0.2475, 0.6475, 0.9475]}]
+      expected_tgt_data = [{'closest_src_gnum' : [2,3,4, 4,7,8, 1,2,4], 
+                            'closest_src_distance' : [0.5075, 0.2075, 0.1075, 0.3475, 0.1475, 0.0475, 0.9475, 0.2475, 0.6475]}]
 
     for i_part, expct_data in enumerate(expected_tgt_data):
       for key in expct_data:
