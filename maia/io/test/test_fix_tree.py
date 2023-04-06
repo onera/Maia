@@ -188,7 +188,7 @@ def test_ensure_PE_global_indexing():
     ngon = PT.new_Elements('NGon', 'NGON_n')
     fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,ngon]))
   with pytest.raises(RuntimeError):
-    ngon = PT.new_Elements('NGon', 'NGON_n', erange=[1,4])
+    ngon = PT.new_NGonElements(erange=[1,4], pe=np.empty((4,2), order='F'))
     tri = PT.new_Elements('Tri', 'TRI_3')
     fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,tri]))
 

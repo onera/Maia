@@ -159,11 +159,7 @@ def _partitioning(dist_tree,
       part_base = PT.get_child_from_name(part_tree, base)
       for u_part in u_parts:
         if not part_options['preserve_orientation']:
-          try:
-            PT.Zone.NGonNode(u_part)
-            CNT.enforce_boundary_pe_left(u_part)
-          except RuntimeError: #Zone is elements-defined
-            pass
+          CNT.enforce_boundary_pe_left(u_part)
         PT.add_child(part_base, u_part)
 
   post_split(dist_tree, part_tree, comm)

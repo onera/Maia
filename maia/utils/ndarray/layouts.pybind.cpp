@@ -65,6 +65,51 @@ void pdm_face_cell_to_pe_cgns(py::array_t<g_num, py::array::f_style>& face_cell,
   }
 }
 
+template<typename g_num>
+void strided_connectivity_to_pe(py::array_t<int  , py::array::f_style>& connect_idx,
+                                py::array_t<g_num, py::array::f_style>& connect,
+                                py::array_t<g_num, py::array::f_style>& pe){
+  int n_elts = connect_idx.size() - 1;
+
+  assert(pe.ndim()        == 2        );
+  assert(pe.size()        == 2*n_elts );
+
+  auto _pe          = pe         .template mutable_unchecked<2>();
+  auto _connect_idx = connect_idx.template mutable_unchecked<1>();
+  auto _connect     = connect    .template mutable_unchecked<1>();
+  assert(connect.size() == _connect_idx[n_elts]);
+
+  for (int ielt = 0; ielt < n_elts; ++ielt) {
+    int size = _connect_idx(ielt+1) - _connect_idx(ielt);
+    assert (0 < size && size <= 2);
+    if (size == 1) {
+      g_num first = _connect(_connect_idx(ielt));
+      if (first > 0) {
+        _pe(ielt,0) = first;
+        _pe(ielt,1) = 0;
+      }
+      else {
+        _pe(ielt,0) = 0;
+        _pe(ielt,1) = -1*first;
+      }
+    }
+    else {
+      g_num first  = _connect(_connect_idx(ielt));
+      g_num second = _connect(_connect_idx(ielt)+1);
+      if (first > 0) {
+        assert (second < 0);
+        _pe(ielt,0) = first;
+        _pe(ielt,1) = -1*second;
+      }
+      else {
+        assert (second > 0);
+        _pe(ielt,0) = second;
+        _pe(ielt,1) = -1*first;
+      }
+    }
+  }
+}
+
 template<typename fld_type>
 std::tuple<py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>>
 interlaced_to_tuple_coords(py::array_t<fld_type, py::array::f_style>& np_xyz){
@@ -159,6 +204,15 @@ void register_layouts_module(py::module_& parent) {
   m.def("pe_cgns_to_pdm_face_cell", &pe_cgns_to_pdm_face_cell<int64_t>,
         py::arg("pe"       ).noconvert(),
         py::arg("face_cell").noconvert());
+
+  m.def("strided_connectivity_to_pe", &strided_connectivity_to_pe<int32_t>,
+        py::arg("connect_idx").noconvert(),
+        py::arg("connect"    ).noconvert(),
+        py::arg("pe"         ).noconvert());
+  m.def("strided_connectivity_to_pe", &strided_connectivity_to_pe<int64_t>,
+        py::arg("connect_idx").noconvert(),
+        py::arg("connect"    ).noconvert(),
+        py::arg("pe"         ).noconvert());
 
   m.def("pdm_face_cell_to_pe_cgns", &pdm_face_cell_to_pe_cgns<int32_t>,
         py::arg("face_cell").noconvert(),

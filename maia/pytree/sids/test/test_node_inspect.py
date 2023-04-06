@@ -122,6 +122,13 @@ def test_has_ngon_elements():
   assert not SIDS.Zone.has_ngon_elements(zone)
   N.new_Elements('ElemB', type='NGON_n', erange=[1, 11], parent=zone)
   assert SIDS.Zone.has_ngon_elements(zone)
+
+def test_has_ngon_elements():
+  zone = N.new_Zone()
+  N.new_Elements('ElemA', type='NGON_n', erange=[1, 11], parent=zone)
+  assert not SIDS.Zone.has_nface_elements(zone)
+  N.new_Elements('ElemB', type='NFACE_n', erange=[12, 23], parent=zone)
+  assert SIDS.Zone.has_nface_elements(zone)
     
 def test_get_ordered_elements_per_dim():
   zone = N.new_Zone()

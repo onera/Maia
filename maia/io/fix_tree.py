@@ -139,6 +139,8 @@ def ensure_PE_global_indexing(dist_tree):
     if ngon_nodes == []:
       continue
     elif len(ngon_nodes) == 1:
+      if PT.get_child_from_name(ngon_nodes[0], 'ParentElements') is None: # Skip next checks to allow 2D zones with NGON & BAR
+        continue
       if len(oth_nodes) > 1 or (len(oth_nodes) == 1 and PT.Element.CGNSName(oth_nodes[0]) != 'NFACE_n'):
         raise RuntimeError(f"Zone {PT.get_name(zone)} has both NGon and Std elements nodes, which is not supported")
     else:

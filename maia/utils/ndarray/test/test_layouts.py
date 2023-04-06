@@ -33,6 +33,12 @@ def test_pe_cgns_to_pdm_face_cell(dtype):
 
   np.testing.assert_equal(dface_cell, np.array([1, 0, 1, 2, 2, 3], order='F', dtype=dtype))
 
+def test_strided_connectivity_to_pe():
+  connect_idx = np.array([0, 1, 3, 4, 6], dtype=np.int32)  
+  connect     = np.array([12,  16,-17,   -4,   -8,7], dtype=int)  
+  pe = np.empty((4,2), order='F', dtype=int)
+  layouts.strided_connectivity_to_pe(connect_idx, connect, pe)
+  assert (pe == np.array([[12,0], [16,17], [0,4], [7,8]])).all()
 
 def test_extract_from_indicesint():
   a = np.array([0, 1, 2, 3, 4], dtype='int32')

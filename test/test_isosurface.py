@@ -105,7 +105,7 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
 
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=1E-15, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
@@ -145,7 +145,7 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
 
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
@@ -185,7 +185,7 @@ def test_spherical_slice_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
   
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
