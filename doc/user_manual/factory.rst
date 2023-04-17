@@ -7,6 +7,7 @@ be obtained from an other kind of tree, or can be generated from user parameters
 Generation
 ----------
 
+.. autofunction:: maia.factory.generate_dist_points
 .. autofunction:: maia.factory.generate_dist_block
 .. autofunction:: maia.factory.generate_dist_sphere
 .. autofunction:: maia.factory.distribute_tree
