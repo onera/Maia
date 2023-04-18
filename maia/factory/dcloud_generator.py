@@ -50,12 +50,6 @@ def dpoint_cloud_cartesian_generate(n_vtx, coord_min, coord_max, comm):
     _coord_max[i] = 0.
   _n_vtx = n_vtx + (3-cloud_dim) * [1]
 
-  # Adjust coords if only one vtx is requested
-  for i in range(cloud_dim):
-    if n_vtx[i] == 1:
-      _coord_min[i] = 0.5*(coord_min[i] + coord_max[i])
-      _coord_max[i] = _coord_min[i]
-
   dpoint_cloud = PDM.dpoint_cloud_gen_cartesian(comm, *_n_vtx, *_coord_min, *_coord_max)
   dist_zone = _dcloud_to_cgns(dpoint_cloud, comm)
 
