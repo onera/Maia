@@ -1,17 +1,42 @@
+def test_generate_dist_points():
+  #generate_dist_points@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  dist_tree = maia.factory.generate_dist_points(10, 'Unstructured', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  assert PT.Zone.n_vtx(zone) == 10**3
+  #generate_dist_points@end
+
 def test_generate_dist_block():
   #generate_dist_block@start
   from mpi4py import MPI
   import maia
   import maia.pytree as PT
 
+  dist_tree = maia.factory.generate_dist_block([10,20,10], 'Structured', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  assert PT.Zone.Type(zone) == "Structured"
+
   dist_tree = maia.factory.generate_dist_block(10, 'Poly', MPI.COMM_WORLD)
-  zone = PT.getNodeFromType(dist_tree, 'Zone_t')
-  assert PT.Element.CGNSName(PT.getNodeFromType(zone, 'Elements_t')) == 'NGON_n'
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  assert PT.Element.CGNSName(PT.get_child_from_label(zone, 'Elements_t')) == 'NGON_n'
 
   dist_tree = maia.factory.generate_dist_block(10, 'TETRA_4', MPI.COMM_WORLD)
-  zone = PT.getNodeFromType(dist_tree, 'Zone_t')
-  assert PT.Element.CGNSName(PT.getNodeFromType(zone, 'Elements_t')) == 'TETRA_4'
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  assert PT.Element.CGNSName(PT.get_child_from_label(zone, 'Elements_t')) == 'TETRA_4'
   #generate_dist_block@end
+
+def test_generate_dist_sphere():
+  #generate_dist_sphere@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  dist_tree = maia.factory.generate_dist_sphere(10, 'TRI_3', MPI.COMM_WORLD)
+  assert PT.Element.CGNSName(PT.get_node_from_label(dist_tree, 'Elements_t')) == 'TRI_3'
+  #generate_dist_sphere@end
 
 def test_distribute_tree():
   #distribute_tree@start
