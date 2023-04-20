@@ -87,6 +87,41 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
       PT.new_DataArray('Index', part_lngn[i_zone], parent=distri_ud)
       i_zone += 1
 
+def create_part_pr_gnum(dist_zone, part_zones, node_path, comm):
+  """
+  Create a global numbering index for a given node containing a partitioned point range
+  """
+  from maia.algo.part import point_cloud_utils
+
+  ln_to_gn_list = list()
+  for part_zone in part_zones:
+    node = PT.get_node_from_path(part_zone, node_path)
+    if node:
+      loc = PT.Subset.GridLocation(node)
+      if loc == 'FaceCenter':
+        raise RuntimeError(f"Wrong location for node {node_path} (FaceCenter). Please use one of [IFaceCenter, JFaceCenter, KFaceCenter]")
+
+      ln_to_gn_all = MT.getGlobalNumbering(part_zone, LOC_TO_GN[loc])[1]
+
+      # Get entity local numbering as full list
+      part_pr = PT.get_child_from_name(node, 'PointRange')[1]
+      i_ar = np.arange(part_pr[0][0], part_pr[0][1]+1) #creation pointlist
+      j_ar = np.arange(part_pr[1][0], part_pr[1][1]+1).reshape(-1,1)
+      k_ar = np.arange(part_pr[2][0], part_pr[2][1]+1).reshape(-1,1,1)
+      local_num = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, loc, PT.Zone.VertexSize(part_zone)).flatten()
+
+      ln_to_gn_list.append(ln_to_gn_all[local_num-1])
+
+  index_gnum = point_cloud_utils.create_sub_numbering(ln_to_gn_list, comm)
+
+  #Add in partitioned zones
+  i_zone = 0
+  for part_zone in part_zones:
+    node = PT.get_node_from_path(part_zone, node_path)
+    if node:
+      MT.newGlobalNumbering({'Index': index_gnum[i_zone]}, parent=node)
+      i_zone += 1
+
 def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False):
   """
   Create a distributed point list for the node specified by its node_path

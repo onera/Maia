@@ -66,6 +66,39 @@ def test_create_part_pl_gnum(sub_comm):
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [5,4]).all()
     assert (PT.get_node_from_name(part_zones[1], 'Index')[1] == [4,1,3]).all()
 
+@mark_mpi_test(3)
+def test_create_part_pr_gnum(sub_comm):
+  i_rank = sub_comm.Get_rank()
+  dist_zone = PT.new_Zone('Zone')
+
+  if i_rank == 0:
+    part_zones = [PT.new_Zone(f'Zone.P{i_rank}.N0', size=[[2,1,0], [3,2,0], [3,2,0]])]
+    distri_vtx = np.array([40, 18, 22, 12, 11, 49,  4, 42, 27, 24, 37, 19,  1, 35, 7, 36, 41, 3], pdm_dtype)
+    #                                                       ^       ^              ^       ^
+    MT.newGlobalNumbering({'Vertex': distri_vtx}, part_zones[0])
+    PT.new_ZoneSubRegion("ZSR", point_range=[[1,1], [2,3], [2,3]], loc='Vertex', parent=part_zones[0])
+  elif i_rank == 1:
+    part_zones = [PT.new_Zone(f'Zone.P{i_rank}.N0', size=[[2,1,0], [3,2,0], [3,2,0]])]
+    distri_vtx = np.array([43, 31, 14, 41, 35, 18, 39,  4,  8,  7, 30, 32, 47,  6, 26, 23, 10, 46], pdm_dtype)
+    #                           ^       ^               ^       ^
+    MT.newGlobalNumbering({'Vertex': distri_vtx}, part_zones[0])
+    PT.new_ZoneSubRegion("ZSR", point_range=[[2,2], [1,2], [1,2]], loc='Vertex', parent=part_zones[0])
+  elif i_rank == 2:
+    part_zones = []
+
+  IPTB.create_part_pr_gnum(dist_zone, part_zones, "ZSR", sub_comm)
+
+  # Two gnum are shared, so index should go from 1 to 6
+  for p_zone in part_zones:
+    if PT.get_child_from_name(p_zone, "ZSR") is not None:
+      assert PT.get_node_from_path(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
+  if sub_comm.Get_rank() == 0:
+    assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [3,5,2,6]).all()
+    assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
+  if sub_comm.Get_rank() == 1:
+    assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [4,6,1,2]).all()
+    assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
+
 @mark_mpi_test(4)
 @pytest.mark.parametrize("allow_mult", [False, True])
 def test_part_pl_to_dist_pl(sub_comm, allow_mult):
