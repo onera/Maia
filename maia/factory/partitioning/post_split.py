@@ -51,7 +51,7 @@ def copy_additional_nodes(dist_zone, part_zone):
       PT.add_child(part_zone, node)
   #BCs
   names = ['.Solver#BC', 'BoundaryMarker']
-  types = ['FamilyName_t', 'ReferenceState_t']
+  types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ReferenceState_t']
   for p_zbc, p_bc in PT.iter_nodes_from_predicates(part_zone, 'ZoneBC_t/BC_t', ancestors=True):
     d_bc = PT.get_node_from_path(dist_zone, PT.get_name(p_zbc)+'/'+PT.get_name(p_bc))
     if d_bc: #Tmp, since S splitting store external JNs as bnd
