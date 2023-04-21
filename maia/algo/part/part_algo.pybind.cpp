@@ -149,6 +149,14 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("np_cy").noconvert(),
         py::arg("np_cz").noconvert());
 
+  m.def("compute_center_face_s", &compute_center_face_s,
+        py::arg("nx").noconvert(),
+        py::arg("ny").noconvert(),
+        py::arg("nz").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
+        py::arg("np_cz").noconvert());
+
   #if __cplusplus > 201703L
   m.def("gcs_only_for_ghosts"                     , gcs_only_for_ghosts                     , "For GridConnectivities, keep only in the PointList the ones that are ghosts");
   m.def("remove_ghost_info"                       , remove_ghost_info                       , "Remove ghost nodes and ghost elements of base");

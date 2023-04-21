@@ -85,7 +85,7 @@ def compute_face_center(zone):
       face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
     return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, cx, cy, cz)
   else:
-    raise NotImplementedError("Only U zones are managed")
+    return cpart_algo.compute_center_face_s(*PT.Zone.VertexSize(zone), cx, cy, cz)
 
 @PT.check_is_label("Zone_t")
 def compute_edge_center(zone):
