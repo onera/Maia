@@ -1,3 +1,5 @@
+import numpy as np
+
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
@@ -81,7 +83,7 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm):
     dist_coord = PT.get_child_from_name(d_grid_co, coord)
     PT.set_value(dist_coord, array)
 
-def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
+def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func=None):
   """
   Shared code for FlowSolution_t and DiscreteData_t
   """
@@ -118,12 +120,12 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm):
         part_data[field].append(flat_data)
 
     # Exchange
-    dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm)
+    dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm, reduce_func=reduce_func)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_sol, field)
       PT.set_value(dist_field, array)
 
-def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
+def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[], reduce_func=None):
   """
   Transfert all the data included in FlowSolution_t nodes from partitioned
   zones to the distributed zone. Data created on (one or more) partitions and not present in dist_tree
@@ -132,12 +134,12 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
   # Complete distree with partitioned fields and exchange PL if needed
   _discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
-  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm)
+  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func=reduce_func)
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_sol in PT.iter_children_from_label(dist_zone, 'FlowSolution_t'):
     PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
 
-def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
+def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], exclude=[], reduce_func=None):
   """
   Transfert all the data included in DiscreteData_t from partitioned
   zones to the distributed zone. Data created on (one or more) partitions and not present in dist_tree
@@ -146,12 +148,12 @@ def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], excl
   # Complete distree with partitioned fields and exchange PL if needed
   _discover_wrapper(dist_zone, part_zones, 'DiscreteData_t', 'DiscreteData_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
-  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm)
+  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func=reduce_func)
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_sol in PT.iter_children_from_label(dist_zone, 'DiscreteData_t'):
     PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
 
-def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
+def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], exclude=[], reduce_func=None):
   """
   Transfert all the data included in ZoneSubRegion_t nodes from the partitioned
   zones to the distributed zone.
@@ -201,7 +203,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
         lngn_list.pop(ipart)
 
     # Exchange
-    dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm)
+    dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_func=reduce_func)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_zsr, field)
       PT.set_value(dist_field, array)
@@ -210,7 +212,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
   for dist_zsr in PT.iter_children_from_label(dist_zone, 'ZoneSubRegion_t'):
     PT.rm_children_from_predicate(dist_zsr, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
 
-def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):
+def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclude=[], reduce_func=None):
   """
   Transfert all the data included in BCDataSet_t/BCData_t nodes from partitioned
   zones to the distributed zone.
@@ -254,7 +256,7 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list.pop(ipart)
 
         #Exchange
-        dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm)
+        dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_func=reduce_func)
         for field, array in dist_data.items():
           dist_field = PT.get_node_from_path(d_dataset, field)
           PT.set_value(dist_field, array)

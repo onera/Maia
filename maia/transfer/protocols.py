@@ -117,7 +117,45 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, **kwargs):
   if isinstance(part_data, dict):
     dist_data = dict()
     for name, p_field in part_data.items():
-      dist_data[name] = PTB.exchange_field(p_field)[1]
+      # dist_data[name] = PTB.exchange_field(p_field)[1]
+      dist_stride, dist_data_tmp = PTB.exchange_field(p_field)
+      if reduce_func is not None:
+        dist_data_tmp = reduce_func(dist_data_tmp, dist_stride)
+      dist_data[name] = dist_data_tmp
   else:
-    _, dist_data = PTB.exchange_field(part_data)
+    # _, dist_data = PTB.exchange_field(part_data)
+    dist_stride, dist_data = PTB.exchange_field(part_data)
+    if reduce_func is not None:
+      dist_data = reduce_func(dist_data, dist_stride)
   return dist_data
+
+def compute_indices(dDataIdx):
+  nbElem      = np.shape(dDataIdx)[0]
+  indices     = np.empty(nbElem,dtype=dDataIdx.dtype)
+  indices[0]  = 0
+  indices[1:] = np.cumsum(dDataIdx[:-1])
+  return indices
+
+def reduce_sum(dDataArr,dDataIdx):
+  indices = compute_indices(dDataIdx)
+  return np.add.reduceat(dDataArr,indices)
+
+def reduce_max(dDataArr,dDataIdx):
+  indices = compute_indices(dDataIdx)
+  return np.maximum.reduceat(dDataArr,indices)
+
+def reduce_min(dDataArr,dDataIdx):
+  indices = compute_indices(dDataIdx)
+  return np.minimum.reduceat(dDataArr,indices)
+
+def reduce_mean(dDataArr,dDataIdx):
+  indices = compute_indices(dDataIdx)
+  return np.divide(np.add.reduceat(dDataArr,indices, dtype=dDataArr.dtype),dDataIdx)
+
+def reduce_weighted_mean(dDataArr,dDataIdx,dWeightArr,dWeightIdx):
+  assert np.all(dDataIdx == dWeightIdx)
+  assert np.shape(dDataArr)[0] == np.shape(dWeightArr)[0]
+  indices = compute_indices(dDataIdx)
+  dweightedDataArr = np.multiply(dDataArr,dWeightArr, dtype=dDataArr.dtype)
+  return np.divide(np.add.reduceat(dweightedDataArr,indices, dtype=dweightedDataArr.dtype),
+                    np.add.reduceat(dWeightArr,indices, dtype=dWeightArr.dtype))
