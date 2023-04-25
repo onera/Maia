@@ -106,56 +106,62 @@ def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm):
 
   return part_stride, part_data
 
-def part_to_block(part_data, distri, ln_to_gn_list, comm, **kwargs):
+def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kwargs):
   """
   Create and exchange using a PartToBlock object.
   Allow single field or dict of fields
   """
-
-  PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
+  if reduce_func is not None:
+    PTB = PartToBlock(distri, ln_to_gn_list, comm, keep_multiple=True, **kwargs)
+  else:
+    PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
 
   if isinstance(part_data, dict):
     dist_data = dict()
     for name, p_field in part_data.items():
-      # dist_data[name] = PTB.exchange_field(p_field)[1]
-      dist_stride, dist_data_tmp = PTB.exchange_field(p_field)
+      p_stride = []
+      for p_f in p_field:
+        p_stride.append(np.ones(p_f.size,dtype=np.int32))
+      dist_stride, dist_data_tmp = PTB.exchange_field(p_field, p_stride)
       if reduce_func is not None:
         dist_data_tmp = reduce_func(dist_data_tmp, dist_stride)
       dist_data[name] = dist_data_tmp
   else:
-    # _, dist_data = PTB.exchange_field(part_data)
-    dist_stride, dist_data = PTB.exchange_field(part_data)
+    p_stride = []
+    for p_f in p_field:
+      p_stride.append(np.ones(p_f.size,dtype=np.int32))
+    dist_stride, dist_data = PTB.exchange_field(part_data, p_stride)
     if reduce_func is not None:
       dist_data = reduce_func(dist_data, dist_stride)
   return dist_data
 
-def compute_indices(dDataIdx):
-  nbElem      = np.shape(dDataIdx)[0]
-  indices     = np.empty(nbElem,dtype=dDataIdx.dtype)
+def compute_indices(dist_stride):
+  nbElem      = np.shape(dist_stride)[0]
+  indices     = np.empty(nbElem,dtype=dist_stride.dtype)
   indices[0]  = 0
-  indices[1:] = np.cumsum(dDataIdx[:-1])
+  indices[1:] = np.cumsum(dist_stride[:-1])
   return indices
 
-def reduce_sum(dDataArr,dDataIdx):
-  indices = compute_indices(dDataIdx)
-  return np.add.reduceat(dDataArr,indices)
+def reduce_sum(dist_data,dist_stride):
+  indices = compute_indices(dist_stride)
+  return np.add.reduceat(dist_data,indices)
 
-def reduce_max(dDataArr,dDataIdx):
-  indices = compute_indices(dDataIdx)
-  return np.maximum.reduceat(dDataArr,indices)
+def reduce_max(dist_data,dist_stride):
+  indices = compute_indices(dist_stride)
+  return np.maximum.reduceat(dist_data,indices)
 
-def reduce_min(dDataArr,dDataIdx):
-  indices = compute_indices(dDataIdx)
-  return np.minimum.reduceat(dDataArr,indices)
+def reduce_min(dist_data,dist_stride):
+  indices = compute_indices(dist_stride)
+  return np.minimum.reduceat(dist_data,indices)
 
-def reduce_mean(dDataArr,dDataIdx):
-  indices = compute_indices(dDataIdx)
-  return np.divide(np.add.reduceat(dDataArr,indices, dtype=dDataArr.dtype),dDataIdx)
+def reduce_mean(dist_data,dist_stride):
+  indices = compute_indices(dist_stride)
+  return np.divide(np.add.reduceat(dist_data,indices, dtype=dist_data.dtype),dist_stride)
 
-def reduce_weighted_mean(dDataArr,dDataIdx,dWeightArr,dWeightIdx):
-  assert np.all(dDataIdx == dWeightIdx)
-  assert np.shape(dDataArr)[0] == np.shape(dWeightArr)[0]
-  indices = compute_indices(dDataIdx)
-  dweightedDataArr = np.multiply(dDataArr,dWeightArr, dtype=dDataArr.dtype)
-  return np.divide(np.add.reduceat(dweightedDataArr,indices, dtype=dweightedDataArr.dtype),
-                    np.add.reduceat(dWeightArr,indices, dtype=dWeightArr.dtype))
+def reduce_weighted_mean(dist_data,dist_stride,dist_weight_data,dist_weight_stride):
+  assert np.all(dist_stride == dist_weight_stride)
+  assert np.shape(dist_data)[0] == np.shape(dist_weight_data)[0]
+  indices = compute_indices(dist_stride)
+  dist_weighted_data = np.multiply(dist_data,dist_weight_data, dtype=dist_data.dtype)
+  return np.divide(np.add.reduceat(dist_weighted_data,indices, dtype=dist_weighted_data.dtype),
+                    np.add.reduceat(dist_weight_data,indices, dtype=dist_weight_data.dtype))
