@@ -128,7 +128,7 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
       dist_data[name] = dist_data_tmp
   else:
     p_stride = []
-    for p_f in p_field:
+    for p_f in part_data:
       p_stride.append(np.ones(p_f.size,dtype=np.int32))
     dist_stride, dist_data = PTB.exchange_field(part_data, p_stride)
     if reduce_func is not None:
