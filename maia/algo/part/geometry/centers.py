@@ -55,7 +55,7 @@ def compute_face_center(zone):
   """Compute the face centers of a partitioned zone.
 
   Input zone must have cartesian coordinates recorded under a unique
-  GridCoordinates node, and a unstructured connectivity.
+  GridCoordinates node.
 
   Centers are computed using a basic average over the vertices of the faces.
 
@@ -85,7 +85,23 @@ def compute_face_center(zone):
       face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
     return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, cx, cy, cz)
   else:
-    raise NotImplementedError("Only U zones are managed")
+    zone_dim = PT.get_value(zone).shape[0]
+    assert zone_dim >= 2, "1d zones are not managed"
+    vtx_size = [1,1,1]
+    vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
+    # Create cz if zone_dim == 2 & cz is None
+    remove_z = False
+    if zone_dim == 2 and cz is None:
+      cz = np.zeros(vtx_size, dtype=float, order='F')
+      remove_z = True
+    _cx = np.atleast_3d(cx) # Auto expand arrays if zone_dim == 2
+    _cy = np.atleast_3d(cy)
+    _cz = np.atleast_3d(cz)
+    centers = cpart_algo.compute_center_face_s(*vtx_size, _cx, _cy, _cz)
+    if remove_z:
+        centers = np.delete(centers, 3*np.arange(centers.size // 3)+2)
+
+    return centers
 
 @PT.check_is_label("Zone_t")
 def compute_edge_center(zone):

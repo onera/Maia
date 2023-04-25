@@ -326,3 +326,53 @@ compute_center_cell_s(int nx, int ny, int nz,
 
   return np_center;
 }
+// --------------------------------------------------------------------
+py::array_t<double, py::array::f_style>
+compute_center_face_s(int nx, int ny, int nz,
+                      py::array_t<double, py::array::f_style>& np_cx,
+                      py::array_t<double, py::array::f_style>& np_cy,
+                      py::array_t<double, py::array::f_style>& np_cz)
+{
+
+  auto cx = np_cx.template mutable_unchecked<3>();
+  auto cy = np_cy.template mutable_unchecked<3>();
+  auto cz = np_cz.template mutable_unchecked<3>();
+
+  int n_face_tot = (nz - 1)*(nx - 1)*ny + (nz - 1)*(ny - 1)*nx + nz*(ny - 1)*(nx - 1); // A CHANGER
+
+  py::array_t<double, py::array::f_style> np_center(3*n_face_tot);
+  auto center = make_raw_view(np_center);
+
+  int idx = 0;
+  for(int k = 0; k < nz-1; ++k) {
+    for(int j = 0; j < ny-1; ++j) {
+      for(int i = 0; i < nx; ++i) {
+        center[3*idx+0] = 0.250 * (cx(i, j, k) + cx(i, j+1, k) + cx(i, j, k+1) + cx(i, j+1, k+1));
+        center[3*idx+1] = 0.250 * (cy(i, j, k) + cy(i, j+1, k) + cy(i, j, k+1) + cy(i, j+1, k+1));
+        center[3*idx+2] = 0.250 * (cz(i, j, k) + cz(i, j+1, k) + cz(i, j, k+1) + cz(i, j+1, k+1));
+        idx++;
+      }
+    }
+  };
+  for(int k = 0; k < nz-1; ++k) {
+    for(int j = 0; j < ny; ++j) {
+      for(int i = 0; i < nx-1; ++i) {
+        center[3*idx+0] = 0.250 * (cx(i, j, k) + cx(i+1, j, k) + cx(i, j, k+1) + cx(i+1, j, k+1));
+        center[3*idx+1] = 0.250 * (cy(i, j, k) + cy(i+1, j, k) + cy(i, j, k+1) + cy(i+1, j, k+1));
+        center[3*idx+2] = 0.250 * (cz(i, j, k) + cz(i+1, j, k) + cz(i, j, k+1) + cz(i+1, j, k+1));
+        idx++;
+      }
+    }
+  };
+  for(int k = 0; k < nz; ++k) {
+    for(int j = 0; j < ny-1; ++j) {
+      for(int i = 0; i < nx-1; ++i) {
+        center[3*idx+0] = 0.250 * (cx(i, j, k) + cx(i+1, j, k) + cx(i, j+1, k) + cx(i+1, j+1, k));
+        center[3*idx+1] = 0.250 * (cy(i, j, k) + cy(i+1, j, k) + cy(i, j+1, k) + cy(i+1, j+1, k));
+        center[3*idx+2] = 0.250 * (cz(i, j, k) + cz(i+1, j, k) + cz(i, j+1, k) + cz(i+1, j+1, k));
+        idx++;
+      }
+    }
+  }
+  return np_center;
+}

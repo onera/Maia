@@ -114,9 +114,12 @@ class Zone:
     if grid_coord_node is None:
       raise RuntimeError(f"Unable to find GridCoordinates_t node in {N.get_name(node)}.")
 
-    x = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateX"))
-    y = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateY"))
-    z = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateZ"))
+    x_node = W.get_child_from_name(grid_coord_node, "CoordinateX")
+    y_node = W.get_child_from_name(grid_coord_node, "CoordinateY")
+    z_node = W.get_child_from_name(grid_coord_node, "CoordinateZ")
+    x = N.get_value(x_node) if x_node else None
+    y = N.get_value(y_node) if y_node else None
+    z = N.get_value(z_node) if z_node else None
 
     return x, y, z
 
