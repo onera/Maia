@@ -14,7 +14,7 @@ default:
     - slurm
   before_script:
     - module purge
-    - source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi
+    - source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi --extra=yes
 
 stages:
   - init
