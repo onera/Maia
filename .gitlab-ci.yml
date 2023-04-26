@@ -8,13 +8,14 @@ workflow:
 variables:
   GIT_STRATEGY: none # don't do anything by default
   SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=1 --time=00:15:00" #Slurm default parameters
+  SOURCE_CMD: "/scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi --extra=yes"
 #Common to all stages
 default:
   tags: #All jobs uses jamacar-slurm executor by default (dsi test)
     - slurm
   before_script:
     - module purge
-    - source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi --extra=yes
+    - source $SOURCE_CMD
 
 stages:
   - init
@@ -79,7 +80,7 @@ job:ctest:
   after_script:
     # We have to reload modules, because after_script is excuted in a separated shell
     - module purge
-    - source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi
+    - source $SOURCE_CMD
     - cd build/test
     - coverage combine --rcfile=.coveragerc_unit_tests
     - coverage report --rcfile=.coveragerc_unit_tests
