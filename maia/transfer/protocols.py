@@ -137,25 +137,25 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
   return dist_data
 
 def reduce_sum(dist_data,dist_stride):
-  indices = np_utils.sizes_to_indices(dist_stride)
+  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.add.reduceat(dist_data,indices)
 
 def reduce_max(dist_data,dist_stride):
-  indices = np_utils.sizes_to_indices(dist_stride)
+  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.maximum.reduceat(dist_data,indices)
 
 def reduce_min(dist_data,dist_stride):
-  indices = np_utils.sizes_to_indices(dist_stride)
+  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.minimum.reduceat(dist_data,indices)
 
 def reduce_mean(dist_data,dist_stride):
-  indices = np_utils.sizes_to_indices(dist_stride)
+  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.divide(np.add.reduceat(dist_data,indices),dist_stride)
 
 # def reduce_weighted_mean(dist_data,dist_stride,dist_weight_data,dist_weight_stride):
 #   assert np.all(dist_stride == dist_weight_stride)
 #   assert np.shape(dist_data)[0] == np.shape(dist_weight_data)[0]
-#   indices = np_utils.sizes_to_indices(dist_stride)
+#   indices = np_utils.sizes_to_indices(dist_stride)[:-1]
 #   dist_weighted_data = np.multiply(dist_data,dist_weight_data, dtype=dist_data.dtype)
 #   return np.divide(np.add.reduceat(dist_weighted_data,indices, dtype=dist_weighted_data.dtype),
 #                     np.add.reduceat(dist_weight_data,indices, dtype=dist_weight_data.dtype))
