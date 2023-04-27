@@ -61,7 +61,7 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
       descri = PT.get_child_from_name(zsr, 'GridConnectivityRegionName')
       PT.update_node(descri, value=MT.conv.get_split_prefix(PT.get_value(descri)))
           
-def part_coords_to_dist_coords(dist_zone, part_zones, comm):
+def part_coords_to_dist_coords(dist_zone, part_zones, comm, reduce_func=None):
 
   distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
   lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
@@ -78,7 +78,7 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm):
       part_data[PT.get_name(coord)].append(flat_data)
 
   # Exchange
-  dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm)
+  dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm, reduce_func)
   for coord, array in dist_data.items():
     dist_coord = PT.get_child_from_name(d_grid_co, coord)
     PT.set_value(dist_coord, array)
@@ -120,7 +120,7 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func=No
         part_data[field].append(flat_data)
 
     # Exchange
-    dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm, reduce_func=reduce_func)
+    dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm, reduce_func)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_sol, field)
       PT.set_value(dist_field, array)
@@ -134,7 +134,7 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[], re
   # Complete distree with partitioned fields and exchange PL if needed
   _discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
-  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func=reduce_func)
+  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func)
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_sol in PT.iter_children_from_label(dist_zone, 'FlowSolution_t'):
     PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
@@ -148,7 +148,7 @@ def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], excl
   # Complete distree with partitioned fields and exchange PL if needed
   _discover_wrapper(dist_zone, part_zones, 'DiscreteData_t', 'DiscreteData_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
-  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func=reduce_func)
+  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func)
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_sol in PT.iter_children_from_label(dist_zone, 'DiscreteData_t'):
     PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
@@ -203,7 +203,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
         lngn_list.pop(ipart)
 
     # Exchange
-    dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_func=reduce_func)
+    dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_func)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_zsr, field)
       PT.set_value(dist_field, array)
@@ -256,7 +256,7 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list.pop(ipart)
 
         #Exchange
-        dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_func=reduce_func)
+        dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_func)
         for field, array in dist_data.items():
           dist_field = PT.get_node_from_path(d_dataset, field)
           PT.set_value(dist_field, array)

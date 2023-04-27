@@ -4,6 +4,7 @@ import Pypdm.Pypdm        as PDM
 
 import maia
 from maia.utils import par_utils
+from maia.utils import np_utils
 
 def auto_expand_distri(distri, comm):
   """ Return a full distribution from a full or partial distribution """
@@ -135,33 +136,26 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
       dist_data = reduce_func(dist_data, dist_stride)
   return dist_data
 
-def compute_indices(dist_stride):
-  nbElem      = np.shape(dist_stride)[0]
-  indices     = np.empty(nbElem,dtype=dist_stride.dtype)
-  indices[0]  = 0
-  indices[1:] = np.cumsum(dist_stride[:-1])
-  return indices
-
 def reduce_sum(dist_data,dist_stride):
-  indices = compute_indices(dist_stride)
+  indices = np_utils.sizes_to_indices(dist_stride)
   return np.add.reduceat(dist_data,indices)
 
 def reduce_max(dist_data,dist_stride):
-  indices = compute_indices(dist_stride)
+  indices = np_utils.sizes_to_indices(dist_stride)
   return np.maximum.reduceat(dist_data,indices)
 
 def reduce_min(dist_data,dist_stride):
-  indices = compute_indices(dist_stride)
+  indices = np_utils.sizes_to_indices(dist_stride)
   return np.minimum.reduceat(dist_data,indices)
 
 def reduce_mean(dist_data,dist_stride):
-  indices = compute_indices(dist_stride)
-  return np.divide(np.add.reduceat(dist_data,indices, dtype=dist_data.dtype),dist_stride)
+  indices = np_utils.sizes_to_indices(dist_stride)
+  return np.divide(np.add.reduceat(dist_data,indices),dist_stride)
 
-def reduce_weighted_mean(dist_data,dist_stride,dist_weight_data,dist_weight_stride):
-  assert np.all(dist_stride == dist_weight_stride)
-  assert np.shape(dist_data)[0] == np.shape(dist_weight_data)[0]
-  indices = compute_indices(dist_stride)
-  dist_weighted_data = np.multiply(dist_data,dist_weight_data, dtype=dist_data.dtype)
-  return np.divide(np.add.reduceat(dist_weighted_data,indices, dtype=dist_weighted_data.dtype),
-                    np.add.reduceat(dist_weight_data,indices, dtype=dist_weight_data.dtype))
+# def reduce_weighted_mean(dist_data,dist_stride,dist_weight_data,dist_weight_stride):
+#   assert np.all(dist_stride == dist_weight_stride)
+#   assert np.shape(dist_data)[0] == np.shape(dist_weight_data)[0]
+#   indices = np_utils.sizes_to_indices(dist_stride)
+#   dist_weighted_data = np.multiply(dist_data,dist_weight_data, dtype=dist_data.dtype)
+#   return np.divide(np.add.reduceat(dist_weighted_data,indices, dtype=dist_weighted_data.dtype),
+#                     np.add.reduceat(dist_weight_data,indices, dtype=dist_weight_data.dtype))
