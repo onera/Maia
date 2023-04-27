@@ -7,8 +7,8 @@ workflow:
 
 variables:
   GIT_STRATEGY: none # don't do anything by default
-  SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=1 --time=00:15:00" #Slurm default parameters
-  SOURCE_CMD: "/scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi --extra=yes"
+  SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=1 --time=00:15:00" #Slurm default parameters
+  SOURCE_CMD: "/scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi"
 #Common to all stages
 default:
   tags: #All jobs uses jamacar-slurm executor by default (dsi test)
@@ -29,7 +29,6 @@ job:init:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
   before_script: 
-    - ''
   script: # explicitly load modules one by one, so that if one fails, it will be easy to identify
     - echo "CUSTOM_CI_DIR=$PWD" >> build.env
     - git submodule update --init external/project_utils
@@ -45,7 +44,7 @@ job:init:
 job:build:
   stage: build
   variables:
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=16 --nodes=1-1 --time=00:15:00"
+    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --nodes=1-1 --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR
     - mkdir -p build && cd build
@@ -73,7 +72,7 @@ job:doc:
 job:ctest:
   stage: test
   variables:
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
+    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR/build
     - ctest -R maia
@@ -121,111 +120,129 @@ pages:
     paths:
       - public
 
-job:deploy_spiro_sonics:
+job:init_deploy:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
+  tags:
+    - shell
   variables:
     GIT_STRATEGY: clone
-    GIT_SUBMODULE_STRATEGY: none
-    SCHEDULER_PARAMETERS: "--qos=co_inter_std --ntasks=16 --nodes=1-1 --time=00:30:00"
   before_script: 
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
-    - mkdir -p build && cd build
-    - export PREFIX=/scratchm/jcoulet/aa_install_py3/maia
-             FLAGS="-DPDM_ENABLE_EXTENSION_PDMA=ON"
   script:
-    - module purge
-    - source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=$PREFIX/dbg-impi21 $FLAGS ../
-    - make -j install > dbg-impi21.log
-    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX/opt-impi21 .
-    - make -j install > opt-impi21.log
+    - rsync -a . sonics@spiro02:/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
+    - rsync -a . sonics@sator:/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
 
 job:deploy_spiro_socle5:
   stage: deploy
+  needs: ["job:init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   tags:
     - shell
-  variables:
-    GIT_STRATEGY: clone
-    GIT_SUBMODULE_STRATEGY: none
-  before_script: 
-    - git submodule update --init
-    - (cd external/paradigm && git submodule update --init)
-    - mkdir -p build && cd build
-  script:
+  before_script:
     - |
-      cat > build_socle5.sh << EOF
+      cat > build_spiro5.sh << EOF
       module purge
       module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
-      export PREFIX=/scratchm/jcoulet/aa_install_py3/maia
+      export PREFIX=/scratchm/sonics/usr/maia/dev
              FLAGS="-DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_EXTENSION_PDMA=ON"
-      cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=\$PREFIX/dbg-cfd5_21 \$FLAGS ../
-      make -j install > dbg-cfd5_21.log
-      cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/opt-cfd5_21 .
-      make -j install > opt-cfd5_21.log
+      cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=\$PREFIX/dsi-cfd5_dbg \$FLAGS ../
+      make -j install > dsi-cfd5_dbg.log
+      cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/dsi-cfd5 .
+      make -j install > dsi-cfd5.log
       EOF
-    - ssh spiro02 "cd $PWD; source /etc/profile; sh ./build_socle5.sh"
+  script:
+    - export JOB_BUILD_DIR=/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - echo "Build directory is ${JOB_BUILD_DIR}"
+    - rsync build_spiro5.sh sonics@spiro02:${JOB_BUILD_DIR}
+    - ssh sonics@spiro01 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_spiro5.sh"
 
-job:deploy_sator_sonics:
+job:deploy_spiro_sonics:
   stage: deploy
-  tags:
-    - shell
+  needs: ["job:init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  variables:
-    GIT_STRATEGY: clone
-    GIT_SUBMODULE_STRATEGY: none
-  before_script: 
-    - git submodule update --init
-    - (cd external/paradigm && git submodule update --init)
-    - mkdir -p build && cd build
-  script:
+  tags:
+    - shell
+  before_script:
     - |
-      cat > build_sator.sh << EOF
+      cat > build_spiro.sh << EOF
       module purge
-      source /tmp_user/sator/sonics/source-intel-oneapi-2021.2-sator-centos8.me --compiler gcc8.3
+      source /scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
       export https_proxy=http://proxy.onera:80
-      export CC=gcc CXX=g++ FC=gfortran
-             PARMETIS_ROOT=/tmp_user/sator/sonics/opt-centos8/gcc-8.3.0/parmetis-4.0.3-pznujngpl3jugn6yi44q364x6jkqugzl
-             METIS_ROOT=/tmp_user/sator/sonics/opt-centos8/gcc-8.3.0/metis-5.1.0-ufi2oqocw77dkv6ks36c4jangfxhda5l
-             SCOTCH_ROOT=/tmp_user/sator/sonics/opt-centos8/gcc-8.3.0/scotch-6.0.9-4wd3pamq3potrr4qv3frkb45ysrdybqn
-      cmake ../ -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/jcoulet/opt/maia \
-                -DCMAKE_CXX_STANDARD=17 \
-                -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install
+      export PREFIX=/scratchm/sonics/usr/maia/dev
+             FLAGS="-DPDM_ENABLE_EXTENSION_PDMA=ON"
+      cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=\$PREFIX/default_dbg \$FLAGS ../
+      make -j install > default_dbg.log
+      cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/default .
+      make -j install > default.log
       EOF
-    - ssh sator6 "cd $PWD; source /etc/profile; sh ./build_sator.sh"
-      
+  script:
+    - export JOB_BUILD_DIR=/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - echo "Build directory is ${JOB_BUILD_DIR}"
+    - rsync build_spiro.sh sonics@spiro02:${JOB_BUILD_DIR}
+    - ssh sonics@spiro02 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_spiro.sh"
+
 job:deploy_sator_socle5:
   stage: deploy
-  tags:
-    - shell
+  needs: ["job:init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  variables:
-    GIT_STRATEGY: clone
-    GIT_SUBMODULE_STRATEGY: none
-  before_script: 
-    - git submodule update --init
-    - (cd external/paradigm && git submodule update --init)
-    - mkdir -p build && cd build
-  script:
+  tags:
+    - shell
+  before_script:
     - |
       cat > build_sator5.sh << EOF
       module purge
       module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/jcoulet/opt/maia-cfd5_21/ \
+                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/dev/dsi-cfd5 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
                 -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install
+      make -j install > dsi-cfd5.log
       EOF
-    - ssh sator "cd $PWD; source /etc/profile; sh ./build_sator5.sh"
-      
+  script:
+    - export JOB_BUILD_DIR=/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - echo "Build directory is ${JOB_BUILD_DIR}"
+    - rsync build_sator5.sh sonics@sator:${JOB_BUILD_DIR}
+    - ssh sonics@sator "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_sator5.sh"
+
+job:deploy_sator_sonics:
+  stage: deploy
+  needs: ["job:init_deploy"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  tags:
+    - shell
+  before_script:
+    - |
+      cat > build_sator.sh << EOF
+      source /tmp_user/sator/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
+      export https_proxy=http://proxy.onera:80
+      cmake ../ -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/dev/default \
+                -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+      make -j install > default.log
+      EOF
+  script:
+    - export JOB_BUILD_DIR=/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - echo "Build directory is ${JOB_BUILD_DIR}"
+    - rsync build_sator.sh sonics@sator:${JOB_BUILD_DIR}
+    - ssh sonics@sator "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_sator.sh"
+
+job:post_deploy:
+  stage: deploy
+  needs: ["job:deploy_spiro_socle5", "job:deploy_spiro_sonics", "job:deploy_sator_socle5", "job:deploy_sator_sonics"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  tags:
+    - shell
+  before_script: 
+  script:
+    - ssh sonics@spiro02 "rm -rf /scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
+    - ssh sonics@sator   "rm -rf /tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
