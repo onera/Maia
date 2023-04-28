@@ -171,7 +171,7 @@ def test_plane_slice_gc_U(elt_type,sub_comm, write_output):
   
   # Load mesh with GCs
   from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', sub_comm)
 
   n_part = 2
   zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, n_part)

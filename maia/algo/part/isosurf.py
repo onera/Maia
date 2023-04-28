@@ -214,13 +214,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   is_gc_intra  = lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
   gc_predicate = ['ZoneGridConnectivity_t', is_gc_intra]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
-  gcs_n = PT.get_children(PT.get_node_from_label(dist_zone, 'ZoneGridConnectivity_t'))
-  # gdom_gcs   = [PT.get_name(gc_n) for gc_n in gcs_n]
-  PT.print_tree(PT.get_child_from_predicates(dist_zone, ['ZoneGridConnectivity_t']))
-  for gc_n in gcs_n:
-    print(f"key = {PT.get_name(gc_n)} ; value = {PT.get_value(gc_n)}")
+  gcs_n      = PT.get_children_from_predicates(dist_zone, ['ZoneGridConnectivity_t',is_gc])
   gdom_gcs   = {PT.get_name(gc_n): PT.get_value(gc_n) for gc_n in gcs_n}
-  print(f"gdom_gcs = {gdom_gcs}")
   n_gdom_gcs = len(gdom_gcs)
   
   # Loop over domain zones
@@ -327,7 +322,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 
       # > Create BC described by edges
       gnum     = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
-      zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
+      zonebc_n = None
       for i_group, bc_name in enumerate(gdom_bcs):
         n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
         edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
@@ -335,22 +330,20 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
         partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
 
         if partial_gnum.size!=0:
-          # bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-          bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n, family="DeBuG", type="FamilySpecified")
-
+          if zonebc_n is None : zonebc_n = PT.new_ZoneBC(parent=iso_part_zone)
+          bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
           PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
-      zonegc_n = PT.new_ZoneGridConnectivity(parent=iso_part_zone)
-      # zonegc_n = zonebc_n
+      zonegc_n = None
       for i_group, gc_name in enumerate(gdom_gcs):
         i_group+=n_gdom_bcs
         n_edge_in_gc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
         edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
                             bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
         partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
+
         if partial_gnum.size!=0:
-          # gc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonegc_n)
-          # gc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonegc_n, family="DeBuG", type="FamilySpecified")
+          if zonegc_n is None : zonegc_n = PT.new_ZoneGridConnectivity(parent=iso_part_zone)
           gc_n = PT.new_GridConnectivity(gc_name, donor_name=gdom_gcs[gc_name], point_list=edge_pl, loc="EdgeCenter", parent=zonegc_n, type="Abutting")
           PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=gc_n)
   else:
