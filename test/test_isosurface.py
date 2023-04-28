@@ -13,16 +13,10 @@ import maia.io      as Mio
 
 from maia.algo.part import isosurf as ISS
 
-# ========================================================================================
-# ----------------------------------------------------------------------------------------
 # Reference directory
 ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
-# ----------------------------------------------------------------------------------------
-# ========================================================================================
 
 
-# ========================================================================================
-# ----------------------------------------------------------------------------------------
 def generate_test_tree(n_vtx,n_part,sub_comm, build_bc_zsr=False):
 
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
@@ -68,12 +62,8 @@ def generate_test_tree(n_vtx,n_part,sub_comm, build_bc_zsr=False):
     PT.new_DataArray('face_gnum', bcs_gnum, parent=zsr_n)
 
   return part_tree
-# ----------------------------------------------------------------------------------------
-# ========================================================================================
 
 
-# ========================================================================================
-# ----------------------------------------------------------------------------------------
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("elt_type", ["QUAD_4","NGON_n"])
 @mark_mpi_test([1, 3])
@@ -107,14 +97,7 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=1E-15, type_tol=True)
 
-# ----------------------------------------------------------------------------------------
-# ========================================================================================
 
-
-
-
-# ========================================================================================
-# ----------------------------------------------------------------------------------------
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("elt_type", ["TRI_3","NGON_n"])
 @mark_mpi_test([1, 3])
@@ -147,14 +130,7 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
 
-# ----------------------------------------------------------------------------------------
-# ========================================================================================
 
-
-
-
-# ========================================================================================
-# ----------------------------------------------------------------------------------------
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("elt_type", ["TRI_3","QUAD_4"])
 @mark_mpi_test([1, 3])
@@ -187,6 +163,54 @@ def test_spherical_slice_U(elt_type,sub_comm, write_output):
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
 
-# ----------------------------------------------------------------------------------------
-# ========================================================================================
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
+@pytest.mark.parametrize("elt_type", ["TRI_3"])
+@mark_mpi_test([1, 3])
+def test_plane_slice_gc_U(elt_type,sub_comm, write_output):
+  
+  # Load mesh with GCs
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
+
+  n_part = 2
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, n_part)
+  part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
+                                         graph_part_tool='hilbert',
+                                         zone_to_parts=zone_to_parts,
+                                         preserve_orientation=True)
+  
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    Mio.dist_tree_to_file(dist_tree, os.path.join(out_dir, f'volumic_mesh.cgns'), sub_comm)
+    Mio.write_trees(part_tree, os.path.join(out_dir, f'part_tree.cgns'), sub_comm)
+
+  part_tree_iso = ISS.plane_slice(part_tree,
+                                  [0.,0.,1.,0.5],
+                                  sub_comm,
+                                  # containers_name=containers,
+                                  elt_type=elt_type)
+
+  iso_base = PT.get_node_from_label(part_tree_iso, "CGNSBase_t")
+  PT.new_Family("DeBuG", parent=iso_base)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    Mio.write_trees(part_tree_iso, os.path.join(out_dir, f'iso_part_tree.cgns'), sub_comm)
+
+  # Part to dist
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,sub_comm)
+  # iso_base = PT.get_node_from_label(dist_tree_iso, "CGNSBase_t")
+  # PT.new_Family("DeBuG", parent=iso_base)
+  
+  # Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'plane_slice_{elt_type}.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'plane_slice.cgns'), sub_comm)
+    Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
+
+  # # Recover dist tree force R4 so use type_tol=True
+  # assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, type_tol=True)

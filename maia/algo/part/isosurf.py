@@ -1,7 +1,8 @@
 from mpi4py import MPI
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
@@ -201,13 +202,27 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   else:
     _KIND_TO_SET_FUNC[iso_kind](pdm_isos, *iso_params)
 
-  # > Discover BCs over part_zones
-  dist_zone = PT.new_Zone('Zone')
+  # > Discover BCs and GCs over part_zones
+  dist_zone  = PT.new_Zone('Zone')
+  # > BCs
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", 'BC_t'], comm)
-  bcs_n     = PT.get_children_from_predicates(dist_zone, ['ZoneBC_t','BC_t'])
-  gdom_bcs  = [PT.get_name(bc_n) for bc_n in bcs_n]
-  n_gdom_bcs= len(gdom_bcs)
-
+  bcs_n      = PT.get_children_from_predicates(dist_zone, ['ZoneBC_t','BC_t'])
+  gdom_bcs   = [PT.get_name(bc_n) for bc_n in bcs_n]
+  n_gdom_bcs = len(gdom_bcs)
+  # > GCs
+  is_gc        = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+  is_gc_intra  = lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+  gc_predicate = ['ZoneGridConnectivity_t', is_gc_intra]
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
+  gcs_n = PT.get_children(PT.get_node_from_label(dist_zone, 'ZoneGridConnectivity_t'))
+  # gdom_gcs   = [PT.get_name(gc_n) for gc_n in gcs_n]
+  PT.print_tree(PT.get_child_from_predicates(dist_zone, ['ZoneGridConnectivity_t']))
+  for gc_n in gcs_n:
+    print(f"key = {PT.get_name(gc_n)} ; value = {PT.get_value(gc_n)}")
+  gdom_gcs   = {PT.get_name(gc_n): PT.get_value(gc_n) for gc_n in gcs_n}
+  print(f"gdom_gcs = {gdom_gcs}")
+  n_gdom_gcs = len(gdom_gcs)
+  
   # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
     cx, cy, cz = PT.Zone.coordinates(part_zone)
@@ -240,16 +255,24 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 
     # Add BC information
     if elt_type in ['TRI_3']:
-      zone_bc_n = PT.get_child_from_label(part_zone, "ZoneBC_t")
-      all_bc_pl = list()
-      for i_group, bc_name in enumerate(gdom_bcs):
+      all_bnd_pl = list()
+      zone_bc_n  = PT.get_child_from_label(part_zone, "ZoneBC_t")
+      for bc_name in gdom_bcs:
         bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
         if bc_n is not None:
-          all_bc_pl.append(PT.get_value(PT.get_child_from_name(bc_n, 'PointList')))
+          all_bnd_pl.append(PT.get_value(PT.get_child_from_name(bc_n, 'PointList')))
         else :
-          all_bc_pl.append(np.empty((1,0), np.int32))
-      group_face_idx, group_face = np_utils.concatenate_point_list(all_bc_pl, dtype=np.int32)
-      pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs, group_face_idx, group_face)
+          all_bnd_pl.append(np.empty((1,0), np.int32))
+
+      zone_gc_n  = PT.get_child_from_label(part_zone, "ZoneGridConnectivity_t")
+      for gc_name in gdom_gcs:
+        gc_n = PT.get_child_from_name(zone_gc_n, gc_name)
+        if gc_n is not None:
+          all_bnd_pl.append(PT.get_value(PT.get_child_from_name(gc_n, 'PointList')))
+        else :
+          all_bnd_pl.append(np.empty((1,0), np.int32))
+      group_face_idx, group_face = np_utils.concatenate_point_list(all_bnd_pl, dtype=np.int32)
+      pdm_isos.isosurf_bnd_set(i_part, n_gdom_bcs+n_gdom_gcs, group_face_idx, group_face)
 
   # Isosurfaces compute in PDM
   pdm_isos.compute()
@@ -312,8 +335,24 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
         partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
 
         if partial_gnum.size!=0:
-          bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+          # bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+          bc_n = PT.new_BC(bc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n, family="DeBuG", type="FamilySpecified")
+
           PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+
+      zonegc_n = PT.new_ZoneGridConnectivity(parent=iso_part_zone)
+      # zonegc_n = zonebc_n
+      for i_group, gc_name in enumerate(gdom_gcs):
+        i_group+=n_gdom_bcs
+        n_edge_in_gc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
+        edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
+                            bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
+        partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
+        if partial_gnum.size!=0:
+          # gc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonegc_n)
+          # gc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonegc_n, family="DeBuG", type="FamilySpecified")
+          gc_n = PT.new_GridConnectivity(gc_name, donor_name=gdom_gcs[gc_name], point_list=edge_pl, loc="EdgeCenter", parent=zonegc_n, type="Abutting")
+          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=gc_n)
   else:
     n_bnd_edge = 0
 
@@ -369,7 +408,7 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       field_values.append(PT.get_value(field_node) - iso_val)
 
     iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
-    iso_part_zone[0] = PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0)
+    PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0))
     PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
