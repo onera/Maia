@@ -31,6 +31,29 @@ def _split_point_list_by_dim(pl_list, range_by_dim, comm):
 
   return py_utils.bucket_split(pl_list, lambda pl: _get_dim(pl), size=4)
 
+def cgns_dist_zone_to_pdm_dmesh_vtx(dist_zone, comm):
+  """
+  Create a pdm_dmesh structure for distributed having only vertices
+  """
+  distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
+  dn_vtx      = distrib_vtx[1] - distrib_vtx[0]
+
+  if dn_vtx > 0:
+    cx, cy, cz = PT.Zone.coordinates(dist_zone)
+    dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
+  else:
+    dvtx_coord = np.empty(0, dtype='float64', order='F')
+
+  dmesh = DistributedMesh(comm, 0, 0, 0, dn_vtx)
+
+  dmesh.dmesh_vtx_coord_set(dvtx_coord)
+
+  # > Create an older --> To Suppress after all
+  multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
+  PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
+
+  return dmesh
+
 def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
@@ -60,10 +83,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   dn_edge = -1 #Not used
 
   if dn_vtx > 0:
-    gridc_n    = PT.get_child_from_name(dist_zone, 'GridCoordinates')
-    cx         = PT.get_child_from_name(gridc_n, 'CoordinateX')[1]
-    cy         = PT.get_child_from_name(gridc_n, 'CoordinateY')[1]
-    cz         = PT.get_child_from_name(gridc_n, 'CoordinateZ')[1]
+    cx, cy, cz = PT.Zone.coordinates(dist_zone)
     dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
   else:
     dvtx_coord = np.empty(0, dtype='float64', order='F')

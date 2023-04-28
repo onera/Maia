@@ -1,5 +1,6 @@
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
+from mpi4py import MPI
 
 import maia
 from maia.pytree.yaml   import parse_yaml_cgns, parse_cgns_yaml
@@ -160,3 +161,13 @@ class Test_split_elt_3d:
       self.check_elts(part_tree, sub_comm)
     else:
       Test_split_ngon_3d.check_elts(self, part_tree, sub_comm)
+
+@mark_mpi_test([2,3])
+def test_split_point_cloud(sub_comm):
+  dist_tree = maia.factory.generate_dist_points(13, 'Unstructured', sub_comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm)
+
+  part_zone = PT.get_all_Zone_t(part_tree)[0]
+  assert PT.Zone.n_cell(part_zone) == 0
+  assert sub_comm.allreduce(PT.Zone.n_vtx(part_zone), MPI.SUM) == 13**3
+
