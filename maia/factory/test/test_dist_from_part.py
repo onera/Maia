@@ -235,7 +235,7 @@ def test_get_joins_dist_tree(sub_comm):
     ZoneA.P0.N0 Zone_t:
       ZoneType ZoneType_t "Unstructured":
       ZGC ZoneGridConnectivity_t:
-        matchAB.0 GridConnectivity_t "ZoneB.P0.N0":
+        matchAB.0 GridConnectivity1to1_t "ZoneB.P0.N0":
           GridConnectivityDonorName Descriptor_t "matchBA.0":
           GridLocation GridLocation_t "Vertex":
           PointList IndexArray_t [[8,3,5]]:
@@ -249,7 +249,7 @@ def test_get_joins_dist_tree(sub_comm):
     ZoneA Zone_t:
       ZoneType ZoneType_t "Unstructured":
       ZGC ZoneGridConnectivity_t:
-        matchAB GridConnectivity_t "ZoneB":
+        matchAB GridConnectivity1to1_t "ZoneB":
           GridConnectivityDonorName Descriptor_t "matchBA":
           GridLocation GridLocation_t "Vertex":
           PointList IndexArray_t [[30,50,80]]:

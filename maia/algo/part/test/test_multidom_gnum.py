@@ -37,6 +37,7 @@ def test_get_mdom_gnum_vtx(unify_jns, sub_comm):
       ZGC ZoneGridConnectivity_t:
         matchAB.0 GridConnectivity_t "ZoneB.P1.N0":
           GridConnectivityDonorName Descriptor_t "matchBA.0":
+          GridConnectivityType GridConnectivityType_t "Abutting1to1":
           GridLocation GridLocation_t "Vertex":
           PointList IndexArray_t [[4,5]]: 
           PointListDonor IndexArray_t [[2,1]]: 
@@ -60,6 +61,7 @@ def test_get_mdom_gnum_vtx(unify_jns, sub_comm):
       ZGC ZoneGridConnectivity_t:
         matchBA.0 GridConnectivity_t "ZoneA.P0.N0":
           GridConnectivityDonorName Descriptor_t "matchAB.0":
+          GridConnectivityType GridConnectivityType_t "Abutting1to1":
           GridLocation GridLocation_t "Vertex":
           PointList IndexArray_t [[2,1]]: 
           PointListDonor IndexArray_t [[4,5]]: 
