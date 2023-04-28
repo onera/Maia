@@ -176,7 +176,11 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
         n_elt_per_dim[PT.Element.Dimension(elt)-1] += PT.Element.Size(elt)
 
   #Create DMeshNodal
-  mesh_dimension = 3 if n_elt_per_dim[2] > 0 else 2
+  mesh_dimension = 3
+  for n_elt_dim in n_elt_per_dim[::-1]:
+    if n_elt_dim != 0:
+      break
+    mesh_dimension -= 1
   dmesh_nodal = DistributedMeshNodal(comm, n_vtx, *n_elt_per_dim[::-1], mesh_dimension)
 
   #Vertices

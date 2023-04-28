@@ -1,13 +1,15 @@
 import pytest
 from pytest_mpi_check._decorator import mark_mpi_test
 from mpi4py import MPI
+import numpy as np
 
 import maia
 from maia.pytree.yaml   import parse_yaml_cgns, parse_cgns_yaml
 from maia.factory import generate_dist_block
 from maia.factory import partition_dist_tree
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 @mark_mpi_test(2)
 class Test_split_ngon_2d:
@@ -170,4 +172,37 @@ def test_split_point_cloud(sub_comm):
   part_zone = PT.get_all_Zone_t(part_tree)[0]
   assert PT.Zone.n_cell(part_zone) == 0
   assert sub_comm.allreduce(PT.Zone.n_vtx(part_zone), MPI.SUM) == 13**3
+
+@mark_mpi_test(2)
+def test_split_lines(sub_comm):
+
+  # We can not generate a line directly, so we do a 1D mesh and create bar
+  n_vtx = 25
+  dist_tree = maia.factory.generate_dist_points([n_vtx,1,1], 'U', sub_comm)
+  dist_base = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
+  dist_zone = PT.get_child_from_label(dist_base, 'Zone_t')
+
+  PT.set_value(dist_base, [1,3])
+  dist_zone[1][0,1] = n_vtx - 1
+
+  if sub_comm.Get_rank() == 0:
+    bar_ec = np.repeat(np.arange(n_vtx, dtype=dist_zone[1].dtype), 2)[1:-1] + 1
+    dn_bar = n_vtx-1
+  else:
+    bar_ec = np.empty(0, dtype=dist_zone[1].dtype)
+    dn_bar = 0
+
+  cell_distri = PT.get_node_from_name(dist_zone, 'Cell')[1]
+  cell_distri[1] = dn_bar
+  cell_distri[2] = n_vtx - 1
+  bar_elts = PT.new_Elements('Lines', 'BAR_2', erange=[1,n_vtx-1], econn=bar_ec, parent=dist_zone)
+  MT.newDistribution({'Element' : cell_distri.copy()}, bar_elts)
+
+  part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm, graph_part_tool='hilbert')
+
+  part_base = PT.get_all_CGNSBase_t(part_tree)[0]
+  part_zone = PT.get_all_Zone_t(part_tree)[0]
+  assert (PT.get_value(part_base) == PT.get_value(dist_base)).all()
+  assert sub_comm.allreduce(PT.Zone.n_cell(part_zone), MPI.SUM) == PT.Zone.n_cell(dist_zone)
+  assert sub_comm.allreduce(PT.Zone.n_vtx(part_zone), MPI.SUM) == PT.Zone.n_vtx(dist_zone)+1 # One is duplicated
 

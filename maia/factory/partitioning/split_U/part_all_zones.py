@@ -177,7 +177,10 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
   for i_zone, d_zone in enumerate(d_zones):
 
     n_part = n_part_per_zone[i_zone]
-    l_dims = [multi_part.multipart_dim_get(i_part, i_zone) for i_part in range(n_part)]
+    l_dims = list()
+    for i_part in range(n_part):
+      l_dims.append({f'n_{key}': multi_part.multipart_n_entity_get(i_part, i_zone, entity) \
+              for key,entity in maia_to_pdm_entity.items()})
     l_data = [concat_pdm_data(i_part, i_zone)              for i_part in range(n_part)]
     _add_connectivity(multi_part, l_data, i_zone, n_part, post_options['additional_connectivity'])
     _add_ln_to_gn    (multi_part, l_data, i_zone, n_part, post_options['additional_ln_to_gn'])
@@ -189,9 +192,7 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
       pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
       if pmesh_nodal is not None:
         for i_part in range(n_part):
-          zone_dim = 3  
-          if l_dims[i_part]['n_cell'] == 0 and l_dims[i_part]['n_face'] > 0:
-            zone_dim = 2
+          zone_dim = pmesh_nodal.dim_get()
           for j, kind in enumerate(pdm_geometry_kinds):
             if j <= zone_dim:
               l_data[i_part][f"{j}dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(kind, i_part)

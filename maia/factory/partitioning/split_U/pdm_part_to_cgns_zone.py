@@ -13,6 +13,8 @@ def _get_part_dim(dims):
     return 3
   elif dims['n_face'] > 0:
     return 2
+  elif dims['n_edge'] > 0:
+    return 1
   else:
     return 0
 
@@ -236,8 +238,8 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
       n_cell = 0
       cell_lngn = np.empty(0, dtype=vtx_lngn.dtype)
     else:
-      cell_key = {3: 'n_cell', 2: 'n_face'}[base_dim]
-      cell_lngn_key = {3: 'np_cell_ln_to_gn', 2: 'np_face_ln_to_gn'}[base_dim]
+      cell_key = {3: 'n_cell', 2: 'n_face', 1: 'n_edge'}[base_dim]
+      cell_lngn_key = {3: 'np_cell_ln_to_gn', 2: 'np_face_ln_to_gn', 1: 'np_edge_ln_to_gn'}[base_dim]
       n_cell    = dims[cell_key]
       cell_lngn = data[cell_lngn_key]
 
