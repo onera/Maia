@@ -129,9 +129,15 @@ ZoneU Zone_t [[18,6,0]]:
 @mark_mpi_test(2)
 def test_cgns_dist_zone_to_pdm_dmesh_poly2d(sub_comm):
   dist_tree = maia.factory.generate_dist_block(5, "QUAD_4", sub_comm)
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, sub_comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
-  #Todo : update when fetch2d is working
-  # dmesh_nodal = CTP.cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, sub_comm)
+
+  dmesh_nodal = CTP.cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, sub_comm)
+  dims = PDM.dmesh_nodal_get_g_dims(dmesh_nodal)
+  assert dims['n_cell_abs'] == 0
+  assert dims['n_face_abs'] == 16
+  assert dims['n_vtx_abs'] == 25
+  assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
   
 
 @mark_mpi_test(3)
