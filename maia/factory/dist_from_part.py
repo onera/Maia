@@ -230,8 +230,9 @@ def _recover_GC(dist_zone, part_zones, comm):
   for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
     val = PT.get_value(jn)
     PT.set_value(jn, MT.conv.get_part_prefix(val))
-    gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
-    PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
+    if PT.GridConnectivity.is1to1(jn):
+      gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
+      PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
   # Index exchange
   for gc_path in PT.predicates_to_paths(dist_zone, gc_predicate):
