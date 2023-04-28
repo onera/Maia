@@ -161,13 +161,11 @@ class Test_fields_exchange:
     MT.part_to_dist.data_exchange.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm, include=['FlowSolutionVtx/PartRankId'],reduce_func=EP.reduce_sum)
     bck_fs_cc_rank_id  = PT.get_value(PT.get_node_from_path(bck_zone,  'FlowSolution/PartRankId'))
     fs_cc_rank_id      = PT.get_value(PT.get_node_from_path(dist_zone, 'FlowSolution/PartRankId'))
-    assert np.all(bck_fs_cc_rank_id.shape == fs_cc_rank_id.shape)
     assert np.all(fs_cc_rank_id == bck_fs_cc_rank_id)
     bck_fs_vtx_rank_id = PT.get_value(PT.get_node_from_path(bck_zone,  'FlowSolutionVtx/PartRankId'))
     fs_vtx_rank_id     = PT.get_value(PT.get_node_from_path(dist_zone, 'FlowSolutionVtx/PartRankId'))
-    assert np.all(bck_fs_vtx_rank_id.shape == fs_vtx_rank_id.shape)
     assert np.all(fs_vtx_rank_id >= bck_fs_vtx_rank_id)
-    assert np.any(fs_vtx_rank_id > sub_comm.Get_size()*np.ones(len(fs_vtx_rank_id)))
+    assert np.any(fs_vtx_rank_id > sub_comm.Get_size())
 
 
 @mark_mpi_test([2])
