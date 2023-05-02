@@ -321,7 +321,7 @@ BaseA CGNSBase_t I4 [3, 3]:
                 228, 224, 220, 216, 212, 207, 182, 187, 191, 195, 199, 203, 132, 137, 141, 145, 149, 153, 82, 87, 91, 95,
                 99, 103, 32, 37, 41, 45, 49, 53]]
     ZoneGridConnectivity ZoneGridConnectivity_t:
-      match31 GridConnectivity_t 'blk1':
+      match31 GridConnectivity_t 'BaseA/blk1':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[5, 35, 60, 85, 110, 135, 160, 185, 210]]:
         PointListDonor IndexArray_t I4 [[31, 56, 81, 106, 131, 156, 181, 206, 231]]:
