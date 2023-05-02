@@ -448,8 +448,8 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
   Note:
     - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
       ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
-    - If ``elt_type`` is set to 'TRI_3', boundaries from volumic mesh are extracted as edges on 
-      the isosurface and FaceCenter are allowed to be exchanged.
+    - If ``elt_type`` is set to 'TRI_3', joins and boundaries from volumic mesh are extracted as edges on 
+      the isosurface and FaceCenter fields are allowed to be exchanged.
 
   Args:
     part_tree     (CGNSTree)    : Partitioned tree on which isosurf is computed. Only U-NGon
