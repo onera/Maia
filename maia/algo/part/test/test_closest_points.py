@@ -101,7 +101,7 @@ def test_closestpoint_mdom(sub_comm):
 @mark_mpi_test(3)
 def test_closest_points(sub_comm):
   dtree_src = DCG.dcube_generate(5, 1., [0.,0.,0.], sub_comm)
-  dtree_tgt = DCG.dcube_generate(4, 1., [.4,0.,0.], sub_comm)
+  dtree_tgt = DCG.dcube_generate(4, 1., [.4,-0.01,-0.01], sub_comm)
   tree_src = partition_dist_tree(dtree_src, sub_comm)
   tree_tgt = partition_dist_tree(dtree_tgt, sub_comm)
 
@@ -118,7 +118,7 @@ def test_closest_points(sub_comm):
   if sub_comm.rank == 0:
     expected_dsrc_id = np.array([3,4,4,7,8,8,15,16,16])
   elif sub_comm.rank == 1:
-    expected_dsrc_id = np.array([19,20,20,23,24,24,47,32,48])
+    expected_dsrc_id = np.array([19,20,20,23,24,24,31,32,32])
   elif sub_comm.rank == 2:
-    expected_dsrc_id = np.array([51,52,52,59,60,60,63,64,64])
+    expected_dsrc_id = np.array([51,52,52,55,56,56,63,64,64])
   assert (PT.get_node_from_name(dtree_tgt, 'SrcId')[1] == expected_dsrc_id).all()
