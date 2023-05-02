@@ -1,5 +1,3 @@
-import numpy as np
-
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 

@@ -13,7 +13,6 @@ from maia import utils    as MU
 
 from maia.transfer import protocols as EP
 
-
 def _load_dist_tree(sub_comm):
   # Load the distributed tree
   mesh_file = os.path.join(MU.test_utils.mesh_dir, 'U_ATB_45.yaml')

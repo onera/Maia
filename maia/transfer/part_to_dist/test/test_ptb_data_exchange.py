@@ -414,11 +414,11 @@ ZoneU Zone_t [[6,0,0]]:
   assert PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int64
   assert PT.get_node_from_path(dist_zone, 'NewFlowSol/field2')[1].dtype == np.float64
   assert PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1].dtype == np.float64
-  if sub_comm.Get_rank () == 0:
+  if sub_comm.Get_rank() == 0:
     assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [(0-15.-30.)]).all()
     assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field2')[1] == [(0.+1.)/2.,1,0]).all()
     assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [(0.-1.)/2.,-1,0]).all()
-  if sub_comm.Get_rank () == 1:
+  if sub_comm.Get_rank() == 1:
     assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
     assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field2')[1] == [0,1,1]).all()
     assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,-1]).all()

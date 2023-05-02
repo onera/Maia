@@ -105,90 +105,43 @@ def test_part_to_block(sub_comm):
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 
 @mark_mpi_test(2)
-def test_part_to_block_with_reduce_sum(sub_comm):
+@pytest.mark.parametrize("reduce_func", ["sum", "min", "max", "mean"])
+def test_part_to_block_with_reduce(reduce_func, sub_comm):
   part_data = dict()
   expected_dist_data = dict()
   if sub_comm.Get_rank() == 0:
     partial_distri = np.array([0, 5, 9])
     ln_to_gn_list = [np.array([2,4,6,9])]
     part_data["field"] = [np.array([2., 4., 6., 1000.])]
-    expected_dist_data["field"] = np.array([1.+1., 2., 3., 4., 5.])
+    if reduce_func == "sum":
+      expected_dist_data["field"] = np.array([1.+1., 2., 3., 4., 5.])
+    elif reduce_func == "min":
+      expected_dist_data["field"] = np.array([min(1.,1.), 2., 3., 4., 5.])
+    elif reduce_func == "max":
+      expected_dist_data["field"] = np.array([max(1.,1.), 2., 3., 4., 5.])
+    elif reduce_func == "mean":
+      expected_dist_data["field"] = np.array([(1.+1.)/2., 2., 3., 4., 5.])
   else:
     partial_distri = np.array([5, 9, 9])
     ln_to_gn_list = [np.array([9,7,5,3,1]),
                      np.array([8]),
                      np.array([1])]
     part_data["field"] = [np.array([9., 7., 5., 3., 1.]), np.array([8.]), np.array([1.])]
-    expected_dist_data["field"] = np.array([6., 7., 8., 9.+1000.])
+    if reduce_func == "sum":
+      expected_dist_data["field"] = np.array([6., 7., 8., 9.+1000.])
+    elif reduce_func == "min":
+      expected_dist_data["field"] = np.array([6., 7., 8., min(9.,1000.)])
+    elif reduce_func == "max":
+      expected_dist_data["field"] = np.array([6., 7., 8., max(9.,1000.)])
+    elif reduce_func == "mean":
+      expected_dist_data["field"] = np.array([6., 7., 8., (9.+1000.)/2.])
 
-  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, sub_comm,\
-                               reduce_func=EP.reduce_sum)
-  assert dist_data["field"].dtype == np.float64
-  assert (dist_data["field"] == expected_dist_data["field"]).all()
+  _reduce_func = {"sum" : EP.reduce_sum,
+                  "min" : EP.reduce_min, 
+                  "max" : EP.reduce_max, 
+                  "mean": EP.reduce_mean}[reduce_func]
 
-@mark_mpi_test(2)
-def test_part_to_block_with_reduce_min(sub_comm):
-  part_data = dict()
-  expected_dist_data = dict()
-  if sub_comm.Get_rank() == 0:
-    partial_distri = np.array([0, 5, 9])
-    ln_to_gn_list = [np.array([2,4,6,9])]
-    part_data["field"] = [np.array([2., 4., 6., 1000.])]
-    expected_dist_data["field"] = np.array([min(1.,1.), 2., 3., 4., 5.])
-  else:
-    partial_distri = np.array([5, 9, 9])
-    ln_to_gn_list = [np.array([9,7,5,3,1]),
-                     np.array([8]),
-                     np.array([1])]
-    part_data["field"] = [np.array([9., 7., 5., 3., 1.]), np.array([8.]), np.array([1.])]
-    expected_dist_data["field"] = np.array([6., 7., 8., min(9.,1000.)])
-
-  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, sub_comm,\
-                               reduce_func=EP.reduce_min)
-  assert dist_data["field"].dtype == np.float64
-  assert (dist_data["field"] == expected_dist_data["field"]).all()
-
-@mark_mpi_test(2)
-def test_part_to_block_with_reduce_max(sub_comm):
-  part_data = dict()
-  expected_dist_data = dict()
-  if sub_comm.Get_rank() == 0:
-    partial_distri = np.array([0, 5, 9])
-    ln_to_gn_list = [np.array([2,4,6,9])]
-    part_data["field"] = [np.array([2., 4., 6., 1000.])]
-    expected_dist_data["field"] = np.array([max(1.,1.), 2., 3., 4., 5.])
-  else:
-    partial_distri = np.array([5, 9, 9])
-    ln_to_gn_list = [np.array([9,7,5,3,1]),
-                     np.array([8]),
-                     np.array([1])]
-    part_data["field"] = [np.array([9., 7., 5., 3., 1.]), np.array([8.]), np.array([1.])]
-    expected_dist_data["field"] = np.array([6., 7., 8., max(9.,1000.)])
-
-  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, sub_comm,\
-                               reduce_func=EP.reduce_max)
-  assert dist_data["field"].dtype == np.float64
-  assert (dist_data["field"] == expected_dist_data["field"]).all()
-
-@mark_mpi_test(2)
-def test_part_to_block_with_reduce_mean(sub_comm):
-  part_data = dict()
-  expected_dist_data = dict()
-  if sub_comm.Get_rank() == 0:
-    partial_distri = np.array([0, 5, 9])
-    ln_to_gn_list = [np.array([2,4,6,9])]
-    part_data["field"] = [np.array([2., 4., 6., 1000.])]
-    expected_dist_data["field"] = np.array([(1.+1.)/2., 2., 3., 4., 5.])
-  else:
-    partial_distri = np.array([5, 9, 9])
-    ln_to_gn_list = [np.array([9,7,5,3,1]),
-                     np.array([8]),
-                     np.array([1])]
-    part_data["field"] = [np.array([9., 7., 5., 3., 1.]), np.array([8.]), np.array([1.])]
-    expected_dist_data["field"] = np.array([6., 7., 8., (9.+1000.)/2.])
-
-  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, sub_comm,\
-                               reduce_func=EP.reduce_mean)
+  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, sub_comm, reduce_func=_reduce_func)
   assert dist_data["field"].dtype == np.float64
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 
