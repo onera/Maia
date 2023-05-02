@@ -13,6 +13,11 @@ maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
                       "edge"   : PDM._PDM_MESH_ENTITY_EDGE,
                       "vtx"    : PDM._PDM_MESH_ENTITY_VERTEX}
 
+maia_to_pdm_split_tool = {'parmetis' : PDM._PDM_SPLIT_DUAL_WITH_PARMETIS,
+                          'ptscotch' : PDM._PDM_SPLIT_DUAL_WITH_PTSCOTCH,
+                          'hilbert'  : PDM._PDM_SPLIT_DUAL_WITH_HILBERT,
+                          'gnum'     : PDM._PDM_SPLIT_DUAL_WITH_IMPLICIT}
+
 maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
                             "cell_cell" : PDM._PDM_CONNECTIVITY_TYPE_CELL_CELL,
                             "cell_face" : PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE,
@@ -221,7 +226,7 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
   requested_tool = part_options['graph_part_tool']
   if min([PT.Zone.n_cell(z) for zones in bases_to_block_u.values() for z in zones]) == 0:
     requested_tool = 'hilbert'
-  pdm_part_tool = {'parmetis' : 1, 'ptscotch': 2, 'hilbert': 3}[requested_tool]
+  pdm_part_tool = maia_to_pdm_split_tool[requested_tool]
   pdm_weight_method = 2
   multi_part = PDM.MultiPart(n_zones, n_part_per_zone, 0, pdm_part_tool, pdm_weight_method, part_weight, comm)
 

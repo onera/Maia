@@ -99,7 +99,8 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
           if subkey in options[key].keys():
             options[key][subkey] = subval
   # > Check some values
-  assert options['graph_part_tool'] in ['ptscotch', 'parmetis', 'hilbert', None]
+  assert options['graph_part_tool'] in partU.maia_to_pdm_split_tool
+  # TODO we should rename this part_tool because not all methods involve a graph
   assert options['part_interface_loc'] in ['Vertex', 'FaceCenter']
   assert options['output_connectivity'] in ['Element', 'NGon']
 
