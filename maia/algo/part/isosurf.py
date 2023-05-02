@@ -211,8 +211,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   n_gdom_bcs = len(gdom_bcs)
   # > GCs
   is_gc        = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-  is_gc_intra  = lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
-  gc_predicate = ['ZoneGridConnectivity_t', is_gc_intra]
+  isnt_gc_intra= lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+  gc_predicate = ['ZoneGridConnectivity_t', isnt_gc_intra]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
   gcs_n      = PT.get_children_from_predicates(dist_zone, ['ZoneGridConnectivity_t',is_gc])
   gdom_gcs   = {PT.get_name(gc_n): PT.get_value(gc_n) for gc_n in gcs_n}
@@ -335,8 +335,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
           PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
       zonegc_n = None
-      gc_dict = dict()
-      globgc_to_locgc = dict()
+      globgc_locpls   = dict() # link between global gc and local split gcs (point list)
+      globgc_to_locgc = dict() # link between global gc and local split gcs (name corresponding to pl)
       for i_group, gc_name in enumerate(gdom_gcs):
         globgc_name = gc_name.split(".")[0]
 
@@ -346,29 +346,26 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
         edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
                             bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
 
-        if globgc_name in gc_dict:
-          gc_dict[globgc_name].append(edge_pl[0])
+        if globgc_name in globgc_locpls:
+          globgc_locpls  [globgc_name].append(edge_pl[0])
           globgc_to_locgc[globgc_name].append(gc_name)
         else:
-          gc_dict[globgc_name] = [edge_pl[0]]
+          globgc_locpls  [globgc_name] = [edge_pl[0]]
           globgc_to_locgc[globgc_name] = [gc_name]
-
 
         if edge_pl.size!=0:
           if zonegc_n is None : zonegc_n = PT.new_ZoneGridConnectivity(parent=iso_part_zone)
           iso_donor_name = PT.maia.conv.add_part_suffix(f'{gdom_gcs[gc_name].split(".P")[0]}_iso', comm.Get_rank(), 0)
           gc_n = PT.new_GridConnectivity(gc_name, donor_name=iso_donor_name, point_list=edge_pl, loc="EdgeCenter", parent=zonegc_n, type="Abutting")
 
-
+      # Create a subnumbering global to the split gcs
       if zonegc_n is not None: 
-        for globgc_name, glob_pl in gc_dict.items():
-
+        for globgc_name, glob_pl in globgc_locpls.items():
           gc_gnum = create_sub_numbering(glob_pl, comm)
           for i_gc, gc_name in enumerate(globgc_to_locgc[globgc_name]):
             gc_n = PT.get_child_from_name(zonegc_n, gc_name)
             if gc_n is not None:
               PT.maia.newGlobalNumbering({'Index' : gc_gnum[i_gc]}, parent=gc_n)
-
 
   else:
     n_bnd_edge = 0
