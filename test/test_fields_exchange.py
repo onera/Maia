@@ -11,6 +11,8 @@ from maia import transfer as MT
 from maia import algo     as MA
 from maia import utils    as MU
 
+from maia.transfer import protocols as EP
+
 def _load_dist_tree(sub_comm):
   # Load the distributed tree
   mesh_file = os.path.join(MU.test_utils.mesh_dir, 'U_ATB_45.yaml')
@@ -134,6 +136,36 @@ class Test_fields_exchange:
       assert PT.get_node_from_path(part_zone, 'FlowSolution/RankId')   is not None
       assert PT.get_node_from_path(part_zone, 'FlowSolution/CellId')   is not None
       assert PT.get_node_from_path(part_zone, 'FlowSolution/CstField') is not None
+      
+  def test_zone_level_and_partial_reduce_func(self, sub_comm):
+    dist_tree, part_tree = self.get_trees(sub_comm)
+    dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+    part_zones = PT.get_all_Zone_t(part_tree)
+    MT.dist_to_part.data_exchange.dist_sol_to_part_sol(dist_zone, part_zones, sub_comm)
+
+    # Note that if a FlowSolution or some fields are created on the partitioned zones, they will be transfered to the
+    # distributed zone as well
+    for part_zone in part_zones:
+      part_fs = PT.get_child_from_name(part_zone, 'FlowSolution')
+      PT.new_DataArray('PartRankId', sub_comm.Get_rank() * np.ones(PT.Zone.n_cell(part_zone)), parent=part_fs)
+      part_fs_new = PT.new_FlowSolution('FlowSolutionVtx', loc='Vertex', parent=part_zone)
+      PT.new_DataArray('PartRankId', sub_comm.Get_rank() * np.ones(PT.Zone.n_vtx(part_zone)), parent=part_fs_new)
+
+    MT.part_to_dist.data_exchange.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm)
+    assert PT.get_node_from_path(dist_zone, 'FlowSolution/RankId')        is not None
+    assert PT.get_node_from_path(dist_zone, 'FlowSolution/PartRankId')    is not None
+    assert PT.get_node_from_path(dist_zone, 'FlowSolutionVtx/PartRankId') is not None
+    
+    bck_zone = PT.deep_copy(dist_zone)
+    MT.part_to_dist.data_exchange.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm, include=['FlowSolutionVtx/PartRankId'],reduce_func=EP.reduce_sum)
+    bck_fs_cc_rank_id  = PT.get_value(PT.get_node_from_path(bck_zone,  'FlowSolution/PartRankId'))
+    fs_cc_rank_id      = PT.get_value(PT.get_node_from_path(dist_zone, 'FlowSolution/PartRankId'))
+    assert np.all(fs_cc_rank_id == bck_fs_cc_rank_id)
+    bck_fs_vtx_rank_id = PT.get_value(PT.get_node_from_path(bck_zone,  'FlowSolutionVtx/PartRankId'))
+    fs_vtx_rank_id     = PT.get_value(PT.get_node_from_path(dist_zone, 'FlowSolutionVtx/PartRankId'))
+    assert np.all(fs_vtx_rank_id >= bck_fs_vtx_rank_id)
+    assert np.any(fs_vtx_rank_id > sub_comm.Get_size())
+
 
 @mark_mpi_test([2])
 class Test_multiple_labels_exchange:

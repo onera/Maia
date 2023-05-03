@@ -3,7 +3,7 @@ import numpy as np
 import Pypdm.Pypdm        as PDM
 
 import maia
-from maia.utils import par_utils
+from maia.utils import par_utils, np_utils
 
 def auto_expand_distri(distri, comm):
   """ Return a full distribution from a full or partial distribution """
@@ -106,18 +106,54 @@ def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm):
 
   return part_stride, part_data
 
-def part_to_block(part_data, distri, ln_to_gn_list, comm, **kwargs):
+def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kwargs):
   """
   Create and exchange using a PartToBlock object.
   Allow single field or dict of fields
   """
-
-  PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
+  if reduce_func is not None:
+    PTB = PartToBlock(distri, ln_to_gn_list, comm, keep_multiple=True, **kwargs)
+    def _exchange_one(part_fields):
+      p_stride = [np.ones(p_f.size, dtype=np.int32) for p_f in part_fields]
+      dist_stride, dist_data = PTB.exchange_field(part_fields, p_stride)
+      dist_data = reduce_func(dist_data, dist_stride)
+      return dist_data
+  else:
+    PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
+    def _exchange_one(part_fields):
+      _, dist_data = PTB.exchange_field(part_fields)
+      return dist_data
 
   if isinstance(part_data, dict):
-    dist_data = dict()
-    for name, p_field in part_data.items():
-      dist_data[name] = PTB.exchange_field(p_field)[1]
+    dist_data = {name: _exchange_one(p_field) for name, p_field in part_data.items()}
   else:
-    _, dist_data = PTB.exchange_field(part_data)
+    dist_data = _exchange_one(part_data)  
   return dist_data
+
+def reduce_sum(dist_data,dist_stride):
+  """
+  Function that sum all data sharing the same global number
+  """
+  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
+  return np.add.reduceat(dist_data, indices)
+
+def reduce_max(dist_data,dist_stride):
+  """
+  Function that return the maximum of all data sharing the same global number
+  """
+  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
+  return np.maximum.reduceat(dist_data, indices)
+
+def reduce_min(dist_data,dist_stride):
+  """
+  Function that return the minimum of all data sharing the same global number
+  """
+  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
+  return np.minimum.reduceat(dist_data, indices)
+
+def reduce_mean(dist_data,dist_stride):
+  """
+  Function that return the mean of all data sharing the same global number
+  """
+  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
+  return np.add.reduceat(dist_data, indices) / dist_stride
