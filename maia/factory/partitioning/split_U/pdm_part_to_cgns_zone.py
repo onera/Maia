@@ -11,8 +11,12 @@ import Pypdm.Pypdm as PDM
 def _get_part_dim(dims):
   if dims['n_cell'] > 0:
     return 3
-  else:
+  elif dims['n_face'] > 0:
     return 2
+  elif dims['n_edge'] > 0:
+    return 1
+  else:
+    return 0
 
 def dump_pdm_output(p_zone, dims, data):
   """
@@ -101,8 +105,7 @@ def pdm_renumbering_data(p_zone, data):
 def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element", keep_empty_sections=False):
   """
   """
-  ngon_zone = [e for e in PT.iter_children_from_label(d_zone, 'Elements_t') if PT.Element.CGNSName(e) == 'NGON_n'] != []
-  if  ngon_zone or connectivity_as == 'NGon':
+  if PT.Zone.has_ngon_elements(d_zone) or connectivity_as == 'NGon':
     # Use default name if none in tree
     nedge_name = 'EdgeElements'
     ngon_name  = 'NGonElements'
@@ -119,7 +122,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
     n_cell = dims['n_cell']
     if _get_part_dim(dims) == 3:
       ngon_er  = np.array([1, n_face], np.int32)
-      if ngon_zone:
+      if PT.Zone.has_ngon_elements(d_zone):
         ngon_eso = data['np_face_vtx_idx']
         ngon_ec  = data['np_face_vtx']
       else: #When coming from elements, we have no face_vtx; rebuild it
@@ -228,16 +231,27 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   part_zones = list()
   for i_part, (dims, data) in enumerate(zip(l_dims, l_data)):
 
-    base_dim = 2 if (dims['n_cell'] == 0 and dims['n_face'] > 0) else 3
-    cell_key = {3: 'n_cell', 2: 'n_face'}[base_dim]
+    n_vtx = dims['n_vtx']
+    vtx_lngn  = data['np_vtx_ln_to_gn']
+    base_dim = _get_part_dim(dims)
+    if base_dim == 0:  # Point cloud
+      n_cell = 0
+      cell_lngn = np.empty(0, dtype=vtx_lngn.dtype)
+    else:
+      cell_key = {3: 'n_cell', 2: 'n_face', 1: 'n_edge'}[base_dim]
+      cell_lngn_key = {3: 'np_cell_ln_to_gn', 2: 'np_face_ln_to_gn', 1: 'np_edge_ln_to_gn'}[base_dim]
+      n_cell    = dims[cell_key]
+      cell_lngn = data[cell_lngn_key]
+
     part_zone = PT.new_Zone(name  = MT.conv.add_part_suffix(PT.get_name(dist_zone), comm.Get_rank(), i_part),
-                           size = [[dims['n_vtx'],dims[cell_key],0]],
-                           type = 'Unstructured')
+                            size = [[n_vtx, n_cell, 0]],
+                            type = 'Unstructured')
 
     if options['dump_pdm_output']:
       dump_pdm_output(part_zone, dims, data)
     pdm_vtx_to_cgns_grid_coordinates(part_zone, dims, data)
-    pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data, options['output_connectivity'],options['keep_empty_sections'])
+    if base_dim > 0:
+      pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data, options['output_connectivity'],options['keep_empty_sections'])
 
     output_loc = options['part_interface_loc']
     zgc_name = 'ZoneGridConnectivity'
@@ -245,10 +259,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
 
     pdm_renumbering_data(part_zone, data)
 
-    cell_lngn_key = {3: 'np_cell_ln_to_gn', 2: 'np_face_ln_to_gn'}[base_dim]
-    lngn_zone = MT.newGlobalNumbering(parent=part_zone)
-    PT.new_DataArray('Vertex', data['np_vtx_ln_to_gn'], parent=lngn_zone)
-    PT.new_DataArray('Cell', data[cell_lngn_key], parent=lngn_zone)
+    lngn_zone = MT.newGlobalNumbering({'Vertex' : vtx_lngn, 'Cell' : cell_lngn}, parent=part_zone)
 
     part_zones.append(part_zone)
 

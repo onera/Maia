@@ -25,6 +25,35 @@ def test_split_point_list_by_dim(sub_comm):
   splitted_bc = CTP._split_point_list_by_dim(pl_list, range_by_dim, sub_comm)
   assert splitted_bc == [[], [pl1], [pl2], []]
 
+@mark_mpi_test(2)
+def test_cgns_dist_zone_to_pdm_dmesh_vtx(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    dt = """
+ZoneU Zone_t [[12,0,0]]:
+  GridCoordinates GridCoordinates_t:
+    CoordinateX DataArray_t R8 [0., 0.5, 1.,  0. , 0.5, 1. ]:
+    CoordinateY DataArray_t R8 [0., 0.,  0.,  0.5, 0.5, 0.5]:
+    CoordinateZ DataArray_t R8 [0., 0.,  0.,  0. , 0. , 0. ]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t [0,6,12]:
+    Cell DataArray_t [0,0,0]:
+  """
+  elif sub_comm.Get_rank() == 1:
+    dt = """
+ZoneU Zone_t [[12,0,0]]:
+  GridCoordinates GridCoordinates_t:
+    CoordinateX DataArray_t R8 [0., 0.5, 1., 0., 0.5, 1.]:
+    CoordinateY DataArray_t R8 [1.,  1., 1., 0.,  0., 0.]:
+    CoordinateZ DataArray_t R8 [0.,  0., 0., 1.,  1., 1.]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t [6,12,12]:
+    Cell DataArray_t [0,0,0]:
+  """
+  dist_zone = parse_yaml_cgns.to_node(dt)
+  dmesh = CTP.cgns_dist_zone_to_pdm_dmesh_vtx(dist_zone, sub_comm)
+  #No getters for dmesh so we can not check data
+  assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
+
 @mark_mpi_test(3)
 def test_cgns_dist_zone_to_pdm_dmesh(sub_comm):
   if sub_comm.Get_rank() == 0:
@@ -92,7 +121,6 @@ ZoneU Zone_t [[18,6,0]]:
   """
 
   dist_zone = parse_yaml_cgns.to_node(dt)
-  PE = PT.get_node_from_name(dist_zone, 'ParentElements')
 
   dmesh = CTP.cgns_dist_zone_to_pdm_dmesh(dist_zone, sub_comm)
   #No getters for dmesh so we can not check data
@@ -101,9 +129,15 @@ ZoneU Zone_t [[18,6,0]]:
 @mark_mpi_test(2)
 def test_cgns_dist_zone_to_pdm_dmesh_poly2d(sub_comm):
   dist_tree = maia.factory.generate_dist_block(5, "QUAD_4", sub_comm)
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, sub_comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
-  #Todo : update when fetch2d is working
-  # dmesh_nodal = CTP.cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, sub_comm)
+
+  dmesh_nodal = CTP.cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, sub_comm)
+  dims = PDM.dmesh_nodal_get_g_dims(dmesh_nodal)
+  assert dims['n_cell_abs'] == 0
+  assert dims['n_face_abs'] == 16
+  assert dims['n_vtx_abs'] == 25
+  assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
   
 
 @mark_mpi_test(3)

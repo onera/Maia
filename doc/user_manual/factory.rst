@@ -23,10 +23,13 @@ Partitioning can be customized with the following keywords arguments:
 
 .. py:attribute:: graph_part_tool
 
-    Graph partitioning library to use to split unstructured blocks. Irrelevent for structured blocks.
+    Method used to split unstructured blocks. Irrelevent for structured blocks.
 
-    :Admissible values: ``parmetis``, ``ptscotch``, ``hilbert``. Blocks defined by nodal elements does 
-      not support hilbert method.
+    :Admissible values: 
+      - ``parmetis``,  ``ptscotch`` : graph partitioning methods,
+      - ``hilbert``  : geometric method (only for NGon connectivities),
+      - ``gnum``     : cells are dispatched according to their absolute numbering.
+
     :Default value: ``parmetis``, if installed; else ``ptscotch``, if installed; ``hilbert`` otherwise.
 
 .. py:attribute:: zone_to_parts

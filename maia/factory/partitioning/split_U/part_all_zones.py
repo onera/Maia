@@ -13,6 +13,11 @@ maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
                       "edge"   : PDM._PDM_MESH_ENTITY_EDGE,
                       "vtx"    : PDM._PDM_MESH_ENTITY_VERTEX}
 
+maia_to_pdm_split_tool = {'parmetis' : PDM._PDM_SPLIT_DUAL_WITH_PARMETIS,
+                          'ptscotch' : PDM._PDM_SPLIT_DUAL_WITH_PTSCOTCH,
+                          'hilbert'  : PDM._PDM_SPLIT_DUAL_WITH_HILBERT,
+                          'gnum'     : PDM._PDM_SPLIT_DUAL_WITH_IMPLICIT}
+
 maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
                             "cell_cell" : PDM._PDM_CONNECTIVITY_TYPE_CELL_CELL,
                             "cell_face" : PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE,
@@ -97,8 +102,12 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
           (PT.Zone.has_ngon_elements(z) and PT.get_child_from_name(PT.Zone.NGonNode(z), 'ParentElements') is not None)
 
   for i_zone, zone in enumerate(u_zones):
+    if PT.Zone.n_cell(zone) == 0: # Zone has only vertex
+      dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_vtx(zone, comm)
+      keep_alive.append(dmesh)
+      multi_part.multipart_register_block(i_zone, dmesh)
     #Determine NGON or ELMT
-    if PT.Zone.has_ngon_elements(zone):
+    elif PT.Zone.has_ngon_elements(zone):
       if is_ngon_3d(zone):
         dmesh    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
         keep_alive.append(dmesh)
@@ -173,7 +182,10 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
   for i_zone, d_zone in enumerate(d_zones):
 
     n_part = n_part_per_zone[i_zone]
-    l_dims = [multi_part.multipart_dim_get(i_part, i_zone) for i_part in range(n_part)]
+    l_dims = list()
+    for i_part in range(n_part):
+      l_dims.append({f'n_{key}': multi_part.multipart_n_entity_get(i_part, i_zone, entity) \
+              for key,entity in maia_to_pdm_entity.items()})
     l_data = [concat_pdm_data(i_part, i_zone)              for i_part in range(n_part)]
     _add_connectivity(multi_part, l_data, i_zone, n_part, post_options['additional_connectivity'])
     _add_ln_to_gn    (multi_part, l_data, i_zone, n_part, post_options['additional_ln_to_gn'])
@@ -181,13 +193,11 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
     _add_graph_comm  (multi_part, l_data, i_zone, n_part)
 
     #For element : additional conversion step to retrieve part elements
-    if not PT.Zone.has_ngon_elements(d_zone): # pmesh_nodal has not been computed if NGON were present
+    if PT.Zone.n_cell(d_zone) > 0 and not PT.Zone.has_ngon_elements(d_zone): # pmesh_nodal has not been computed if NGON were present
       pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
       if pmesh_nodal is not None:
         for i_part in range(n_part):
-          zone_dim = 3  
-          if l_dims[i_part]['n_cell'] == 0 and l_dims[i_part]['n_face'] > 0:
-            zone_dim = 2
+          zone_dim = pmesh_nodal.dim_get()
           for j, kind in enumerate(pdm_geometry_kinds):
             if j <= zone_dim:
               l_data[i_part][f"{j}dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(kind, i_part)
@@ -214,7 +224,9 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
 
   # Init multipart object
   requested_tool = part_options['graph_part_tool']
-  pdm_part_tool = {'parmetis' : 1, 'ptscotch': 2, 'hilbert': 3}[requested_tool]
+  if min([PT.Zone.n_cell(z) for zones in bases_to_block_u.values() for z in zones]) == 0:
+    requested_tool = 'hilbert'
+  pdm_part_tool = maia_to_pdm_split_tool[requested_tool]
   pdm_weight_method = 2
   multi_part = PDM.MultiPart(n_zones, n_part_per_zone, 0, pdm_part_tool, pdm_weight_method, part_weight, comm)
 

@@ -38,7 +38,7 @@ def test_set_mpart_reordering():
 def test_set_mpart_dmeshes(sub_comm):
   dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
   dt = f"""
-ZoneA Zone_t:
+ZoneA Zone_t [[1,1,0]]:
   NGonElements Elements_t [22,0]:
     ElementRange IndexRange_t [1, 1]:
     ElementConnectivity DataArray_t {dtype} []:
@@ -50,7 +50,7 @@ ZoneA Zone_t:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {dtype} [0,0,0]:
     Cell DataArray_t {dtype} [0,0,0]:
-ZoneB Zone_t:
+ZoneB Zone_t [[1,1,0]]:
   Hexa Elements_t [17,0]:
     ElementRange IndexRange_t [1,1]:
     ElementConnectivity DataArray_t {dtype} []:

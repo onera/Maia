@@ -34,18 +34,20 @@ def compute_nosplit_weights(tree, comm):
 
   zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   n_blocks   = len(zone_paths)
-  nb_cell    = np.array([SIDS.Zone.n_cell(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths])
+  nb_elts    = np.array([SIDS.Zone.n_cell(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths])
+  if min(nb_elts) == 0: # This is point cloud, without cells, so use vtx to compute balancing
+    nb_elts    = np.array([SIDS.Zone.n_vtx(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths])
 
   # Early return in simplified cases
   repart_per_zone = np.zeros((n_blocks, n_rank), dtype=int) #Full array for statistics
   if n_rank == 1:
-    repart_per_zone[:,0] = nb_cell
+    repart_per_zone[:,0] = nb_elts
   elif n_rank >= n_blocks:
-    repart_per_zone[0:n_blocks,0:n_blocks] = np.diag(nb_cell)
+    repart_per_zone[0:n_blocks,0:n_blocks] = np.diag(nb_elts)
   else:
-    subset_indices = karmarkar_karp(nb_cell, n_rank)
+    subset_indices = karmarkar_karp(nb_elts, n_rank)
     for j, rank_idx in enumerate(subset_indices):
-      repart_per_zone[rank_idx, j] = nb_cell[rank_idx]
+      repart_per_zone[rank_idx, j] = nb_elts[rank_idx]
 
   balancing_quality.compute_balance_and_splits(repart_per_zone, display=i_rank==0)
 
@@ -82,6 +84,8 @@ def npart_per_zone(tree, comm, n_part=1):
 
   zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   nb_elmt_per_zone = {zone_path : SIDS.Zone.n_cell(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths}
+  if min(nb_elmt_per_zone.values()) == 0: # This is point cloud, without cells, so use vtx to compute balancing
+    nb_elmt_per_zone = {zone_path : SIDS.Zone.n_vtx(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths}
 
   n_part_np = np.asarray(n_part, dtype=np.int32)
 
@@ -141,6 +145,8 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
 
   zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   nb_elmt_per_zone = {zone_path : SIDS.Zone.n_cell(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths}
+  if min(nb_elmt_per_zone.values()) == 0: # This is point cloud, without cells, so use vtx to compute balancing
+      nb_elmt_per_zone = {zone_path : SIDS.Zone.n_vtx(PT.get_node_from_path(tree, zone_path)) for zone_path in zone_paths}
 
   repart_per_zone = balance_with_uniform_weights(nb_elmt_per_zone, n_rank) if only_uniform \
                else balance_with_non_uniform_weights(nb_elmt_per_zone, n_rank)
