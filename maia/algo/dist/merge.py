@@ -46,8 +46,8 @@ def merge_zones_from_family(tree, family_name, comm, **kwargs):
         :end-before: #merge_zones_from_family@end
         :dedent: 2
   """
-  match_fam = lambda m: PT.get_node_from_label(m, 'FamilyName_t') is not None and \
-                        PT.get_value(PT.get_node_from_label(m, 'FamilyName_t')) == family_name
+  match_fam = lambda m: PT.get_child_from_label(m, 'FamilyName_t') is not None and \
+                        PT.get_value(PT.get_child_from_label(m, 'FamilyName_t')) == family_name
 
   is_zone_with_fam = lambda n: PT.get_label(n) == 'Zone_t' and match_fam(n)
 
