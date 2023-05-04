@@ -364,7 +364,7 @@ BaseA CGNSBase_t I4 [2, 3]:
         GridConnectivityType GridConnectivityType_t 'Abutting':
         PointList IndexArray_t:
           I4 : [[471, 473, 475, 477, 492, 484, 467, 469, 451, 453, 448, 449, 463, 465, 455, 457, 459, 461]]
-      match31 GridConnectivity_t 'BaseA/blk1_iso':
+      match31 GridConnectivity_t 'blk1_iso':
         GridLocation GridLocation_t 'EdgeCenter':
         GridConnectivityType GridConnectivityType_t 'Abutting':
         PointList IndexArray_t:
