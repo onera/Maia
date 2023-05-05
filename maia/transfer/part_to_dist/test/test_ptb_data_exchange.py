@@ -9,6 +9,7 @@ import maia.pytree.maia as MT
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from   maia.transfer import part_to_dist
 import maia.transfer.part_to_dist.data_exchange as PTB
+import maia.transfer.protocols as EP
 from   maia.pytree.yaml   import parse_yaml_cgns
 
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
@@ -35,7 +36,7 @@ def test_lngn_to_distri(sub_comm):
 @mark_mpi_test(3)
 class Test__discover_wrapper:
   def test_sol_without_pl(self, sub_comm):
-    dist_zone  = PT.new_Zone('Zone')
+    dist_zone  = PT.new_Zone('Zone', type = 'Unstructured')
     part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
     if sub_comm.Get_rank() == 0:
       p_sol = PT.new_FlowSolution('NewSol1', loc='CellCenter', parent=part_zones[0])
@@ -118,24 +119,28 @@ class Test__discover_wrapper:
   def test_zsr(self, sub_comm):
     dt = """
   Zone Zone_t:
+    ZoneType ZoneType_t "Unstructured":
     InitialZSR ZoneSubRegion_t:
       GridConnectivityRegionName Descriptor_t "match":
     """
     if sub_comm.Get_rank() == 0:
       pt = """
     Zone.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       CreatedZSR.0 ZoneSubRegion_t:
         GridConnectivityRegionName Descriptor_t "gc.0":
       """
     elif sub_comm.Get_rank() == 1:
       pt = """
     Zone.P1.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       InitialZSR.0 ZoneSubRegion_t:
         GridConnectivityRegionName Descriptor_t "gc.0":
       """
     if sub_comm.Get_rank() == 2:
       pt = """
     Zone.P2.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       CreatedZSR.0 ZoneSubRegion_t:
         GridConnectivityRegionName Descriptor_t "gc.0":
       CreatedZSR.1 ZoneSubRegion_t:
@@ -155,6 +160,7 @@ class Test__discover_wrapper:
   def test_dataset(self, sub_comm):
     dt = """
   Zone Zone_t:
+    ZoneType ZoneType_t "Unstructured":
     ZBC ZoneBC_t:
       bc1 BC_t:
       bc2 BC_t:
@@ -162,6 +168,7 @@ class Test__discover_wrapper:
     if sub_comm.Get_rank() == 0:
       pt = """
     Zone.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       ZBC ZoneBC_t:
         bc1 BC_t:
           BCDS BCDataSet_t 'BCInflow':
@@ -172,16 +179,19 @@ class Test__discover_wrapper:
     elif sub_comm.Get_rank() == 1:
       pt = """
     Zone.P1.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       """
     if sub_comm.Get_rank() == 2:
       pt = """
     Zone.P2.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       ZBC ZoneBC_t:
         bc1 BC_t:
           BCDS2 BCDataSet_t 'BCWall':
             BCData BCData_t:
               newField3 DataArray_t:
     Zone.P2.N1 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       ZBC ZoneBC_t:
         bc2 BC_t:
           BCDS BCDataSet_t 'Null':
@@ -336,6 +346,81 @@ ZoneU Zone_t [[6,0,0]]:
   if sub_comm.Get_rank () == 1:
     if not filter:
       assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
+    assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,-1]).all()
+
+@mark_mpi_test(2)
+def test_part_sol_to_dist_sol_with_reduce_func(sub_comm):
+  if sub_comm.Get_rank() == 0:
+    dt = """
+ZoneU Zone_t [[6,0,0]]:
+  FlowSolWithPL FlowSolution_t:
+    GridLocation GridLocation_t "CellCenter":
+    PointList IndexArray_t [[2]]:
+    :CGNS#Distribution UserDefinedData_t:
+      Index DataArray_t {0} [0,1,3]:
+    field1 DataArray_t [10]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t {0} [0,3,6]:
+  """.format(dtype)
+    pt = """
+  ZoneU.P0.N0 Zone_t [[3,0,0]]:
+    FlowSolWithPL FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      PointList IndexArray_t [[1,8,10]]:
+      field1 DataArray_t [0,-10,-15]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Index DataArray_t {0} [1,2,1]:
+    NewFlowSol DiscreteData_t:
+      GridLocation GridLocation_t "Vertex":
+      field2 DataArray_t R8 [0,0,0]:
+      field3 DataArray_t R8 [0,0,0]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [3,4,1]:
+    """.format(dtype)
+  elif sub_comm.Get_rank() == 1:
+    dt = """
+ZoneU Zone_t [[6,0,0]]:
+  FlowSolWithPL FlowSolution_t:
+    GridLocation GridLocation_t "CellCenter":
+    PointList IndexArray_t [[6,4]]:
+    :CGNS#Distribution UserDefinedData_t:
+      Index DataArray_t {0} [1,3,3]:
+    field1 DataArray_t [20,30]:
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t {0} [3,6,6]:
+  """.format(dtype)
+    pt = """
+  ZoneU.P1.N0 Zone_t [[3,0,0]]:
+    FlowSolWithPL FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      PointList IndexArray_t [[12,15]]:
+      field1 DataArray_t [-20,-30]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Index DataArray_t {0} [3,1]:
+    NewFlowSol DiscreteData_t:
+      GridLocation GridLocation_t "Vertex":
+      field2 DataArray_t R8 [1,1,1,1]:
+      field3 DataArray_t R8 [-1,-1,-1,-1]:
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [5,6,2,1]:
+  """.format(dtype)
+
+  dist_zone  = parse_yaml_cgns.to_node(dt)
+  part_zones = parse_yaml_cgns.to_nodes(pt)
+
+  PTB.part_sol_to_dist_sol(dist_zone, part_zones, sub_comm,reduce_func=EP.reduce_sum)
+  PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, sub_comm,reduce_func=EP.reduce_mean)
+
+  assert PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int64
+  assert PT.get_node_from_path(dist_zone, 'NewFlowSol/field2')[1].dtype == np.float64
+  assert PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1].dtype == np.float64
+  if sub_comm.Get_rank() == 0:
+    assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [(0-15.-30.)]).all()
+    assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field2')[1] == [(0.+1.)/2.,1,0]).all()
+    assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [(0.-1.)/2.,-1,0]).all()
+  if sub_comm.Get_rank() == 1:
+    assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
+    assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field2')[1] == [0,1,1]).all()
     assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,-1]).all()
 
 @mark_mpi_test(2)

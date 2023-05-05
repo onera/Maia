@@ -1,4 +1,5 @@
 import numpy as np
+from re import sub
 from Pypdm import Pypdm as PDM
 
 import maia.pytree        as PT
@@ -13,6 +14,16 @@ from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
 
+def camel_case(s):
+  return sub(r"(_|-)+", " ", s).title().replace(" ", "")
+
+def merge_all_zones_from_families(tree, comm, **kwargs):
+  """Apply merge_zones_from_family to each family of the tree"""
+  family_names = [PT.get_name(node) for node in \
+          PT.iter_nodes_from_label(tree, 'Family_t', depth=2)]
+  for family_name in family_names:
+    merge_zones_from_family(tree, family_name, comm, **kwargs)
+
 def merge_zones_from_family(tree, family_name, comm, **kwargs):
   """Merge the zones belonging to the given family into a single one.
 
@@ -25,21 +36,28 @@ def merge_zones_from_family(tree, family_name, comm, **kwargs):
     comm (MPIComm) : MPI communicator
     kwargs: any argument of :func:`merge_zones`, excepted output_path
 
+  See also:
+    Function ``merge_all_zones_from_families(tree, comm, **kwargs)`` does
+    this operation for all the ``Family_t`` nodes of the input tree.
+
   Example:
       .. literalinclude:: snippets/test_algo.py
         :start-after: #merge_zones_from_family@start
         :end-before: #merge_zones_from_family@end
         :dedent: 2
   """
-  match_fam = lambda m: PT.get_node_from_label(m, 'FamilyName_t') is not None and \
-                        PT.get_value(PT.get_node_from_label(m, 'FamilyName_t')) == family_name
+  match_fam = lambda m: PT.get_child_from_label(m, 'FamilyName_t') is not None and \
+                        PT.get_value(PT.get_child_from_label(m, 'FamilyName_t')) == family_name
 
   is_zone_with_fam = lambda n: PT.get_label(n) == 'Zone_t' and match_fam(n)
 
   zone_paths = PT.predicates_to_paths(tree, ['CGNSBase_t', is_zone_with_fam])
   if zone_paths:
     base_name = zone_paths[0].split('/')[0]
-    merge_zones(tree, zone_paths, comm, output_path=f'{base_name}/{family_name}', **kwargs)
+    zone_name = camel_case(family_name)
+    if zone_name == family_name:
+      zone_name = zone_name.lower()
+    merge_zones(tree, zone_paths, comm, output_path=f'{base_name}/{zone_name}', **kwargs)
 
 def merge_connected_zones(tree, comm, **kwargs):
   """Detect all the zones connected through 1to1 matching jns and merge them.
@@ -165,6 +183,20 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
 
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
+
+  # Transfert some nodes on the merged zone, only if they exist everywhere and have same value
+  merge_me = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+  if len(zone_paths) > 0:
+    zone = PT.get_node_from_path(masked_tree, zone_paths[0])
+    common = {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
+               for n in PT.iter_children_from_predicate(zone, merge_me)}
+    for zone_path in zone_paths[1:]:
+      zone = PT.get_node_from_path(masked_tree, zone_path)
+      # Use set intersection to eliminate nodes that does not appear on this zone
+      common = common & {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
+                         for n in PT.iter_children_from_predicate(zone, merge_me)}
+    for c in sorted(common): #Sort to garantie same insertion order across mpi ranks
+      PT.new_child(merged_zone, name=c[0], label=c[1], value=c[2])
 
   # Cleanup empty bases
   to_remove = []

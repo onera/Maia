@@ -64,11 +64,11 @@ class Test_closest_points:
     tgt_data = CLO._closest_points(src_clouds, tgt_clouds, sub_comm, n_pts=3)
 
     if sub_comm.Get_rank() == 0:
-      expected_tgt_data = [{'closest_src_gnum' : [4,3,2], 'closest_src_distance' : [0.1075, 0.2075, 0.5075]},
-                           {'closest_src_gnum' : [4,2,8], 'closest_src_distance' : [0.8075, 1.2075, 1.3075]}]
+      expected_tgt_data = [{'closest_src_gnum' : [2,3,4], 'closest_src_distance' : [0.5075, 0.2075, 0.1075]},
+                           {'closest_src_gnum' : [2,4,8], 'closest_src_distance' : [1.2075, 0.8075, 1.3075]}]
     elif sub_comm.Get_rank() == 1:
-      expected_tgt_data = [{'closest_src_gnum' : [4,3,2, 8,7,4, 2,4,1], 
-                            'closest_src_distance' : [0.1075, 0.2075, 0.5075, 0.0475, 0.1475, 0.3475, 0.2475, 0.6475, 0.9475]}]
+      expected_tgt_data = [{'closest_src_gnum' : [2,3,4, 4,7,8, 1,2,4], 
+                            'closest_src_distance' : [0.5075, 0.2075, 0.1075, 0.3475, 0.1475, 0.0475, 0.9475, 0.2475, 0.6475]}]
 
     for i_part, expct_data in enumerate(expected_tgt_data):
       for key in expct_data:
@@ -101,7 +101,7 @@ def test_closestpoint_mdom(sub_comm):
 @mark_mpi_test(3)
 def test_closest_points(sub_comm):
   dtree_src = DCG.dcube_generate(5, 1., [0.,0.,0.], sub_comm)
-  dtree_tgt = DCG.dcube_generate(4, 1., [.4,0.,0.], sub_comm)
+  dtree_tgt = DCG.dcube_generate(4, 1., [.4,-0.01,-0.01], sub_comm)
   tree_src = partition_dist_tree(dtree_src, sub_comm)
   tree_tgt = partition_dist_tree(dtree_tgt, sub_comm)
 
@@ -118,7 +118,7 @@ def test_closest_points(sub_comm):
   if sub_comm.rank == 0:
     expected_dsrc_id = np.array([3,4,4,7,8,8,15,16,16])
   elif sub_comm.rank == 1:
-    expected_dsrc_id = np.array([19,20,20,23,24,24,47,32,48])
+    expected_dsrc_id = np.array([19,20,20,23,24,24,31,32,32])
   elif sub_comm.rank == 2:
-    expected_dsrc_id = np.array([51,52,52,59,60,60,63,64,64])
+    expected_dsrc_id = np.array([51,52,52,55,56,56,63,64,64])
   assert (PT.get_node_from_name(dtree_tgt, 'SrcId')[1] == expected_dsrc_id).all()

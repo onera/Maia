@@ -103,15 +103,23 @@ class Zone:
     return W.get_child_from_predicate(zone_node, predicate) is not None
 
   @staticmethod
+  def has_nface_elements(zone_node):
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NFACE_n'
+    return W.get_child_from_predicate(zone_node, predicate) is not None
+
+  @staticmethod
   def coordinates(zone_node, name=None):
     grid_coord_node = W.get_child_from_label(zone_node, "GridCoordinates_t") if name is None \
         else W.get_child_from_name_and_label(zone_node, name, "GridCoordinates_t")
     if grid_coord_node is None:
       raise RuntimeError(f"Unable to find GridCoordinates_t node in {N.get_name(node)}.")
 
-    x = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateX"))
-    y = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateY"))
-    z = N.get_value(W.get_child_from_name(grid_coord_node, "CoordinateZ"))
+    x_node = W.get_child_from_name(grid_coord_node, "CoordinateX")
+    y_node = W.get_child_from_name(grid_coord_node, "CoordinateY")
+    z_node = W.get_child_from_name(grid_coord_node, "CoordinateZ")
+    x = N.get_value(x_node) if x_node else None
+    y = N.get_value(y_node) if y_node else None
+    z = N.get_value(z_node) if z_node else None
 
     return x, y, z
 

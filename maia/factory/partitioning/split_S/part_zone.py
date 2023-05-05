@@ -339,6 +339,7 @@ def split_original_joins_S(all_part_zones, comm):
       elif PT.get_child_from_label(jn, 'GridConnectivityType_t') is not None:
         #This is a join, but not 1to1. So we just move it with other jns
         PT.set_label(jn, 'GridConnectivity_t')
+        PT.rm_children_from_label(jn, 'GridConnectivityType_t') # Will be added after by post_split
         PT.add_child(zone_gc, jn)
         to_delete.append(jn)
     #Cleanup

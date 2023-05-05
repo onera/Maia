@@ -1,8 +1,12 @@
+import time
+from mpi4py import MPI
+
 import maia.pytree as PT
 
 from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
+from maia.utils     import logging as mlog
 
 from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
@@ -28,7 +32,7 @@ def set_default(dist_tree, comm):
              'additional_connectivity' : [],
              'additional_ln_to_gn'     : [],
              'keep_empty_sections'     : False,
-             'dump_pdm_output'    : False }
+             'dump_pdm_output'         : False }
 
   if pdm_has_parmetis:
     default['graph_part_tool'] = 'parmetis'
@@ -95,7 +99,8 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
           if subkey in options[key].keys():
             options[key][subkey] = subval
   # > Check some values
-  assert options['graph_part_tool'] in ['ptscotch', 'parmetis', 'hilbert', None]
+  assert options['graph_part_tool'] in partU.maia_to_pdm_split_tool
+  # TODO we should rename this part_tool because not all methods involve a graph
   assert options['part_interface_loc'] in ['Vertex', 'FaceCenter']
   assert options['output_connectivity'] in ['Element', 'NGon']
 
@@ -112,6 +117,10 @@ def _partitioning(dist_tree,
                   comm,
                   part_options):
 
+  n_blocks = len(PT.get_all_Zone_t(dist_tree))
+  blocks_str = "blocks" if n_blocks > 1 else "block"
+  mlog.info(f"Partitioning tree of {n_blocks} initial {blocks_str}...")
+  start = time.time()
   is_s_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Structured'
   is_u_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
 
@@ -151,13 +160,15 @@ def _partitioning(dist_tree,
       part_base = PT.get_child_from_name(part_tree, base)
       for u_part in u_parts:
         if not part_options['preserve_orientation']:
-          try:
-            PT.Zone.NGonNode(u_part)
-            CNT.enforce_boundary_pe_left(u_part)
-          except RuntimeError: #Zone is elements-defined
-            pass
+          CNT.enforce_boundary_pe_left(u_part)
         PT.add_child(part_base, u_part)
 
   post_split(dist_tree, part_tree, comm)
+  end = time.time()
+  n_cell     = sum([PT.Zone.n_cell(zone) for zone in PT.iter_all_Zone_t(part_tree)])
+  n_cell_all = comm.allreduce(n_cell, MPI.SUM)
+  mlog.info(f"Partitioning completed ({end-start:.2f} s) -- "
+            f"Nb of cells for current rank is {mlog.size_to_str(n_cell)} "
+            f"(Σ={mlog.size_to_str(n_cell_all)})")
 
   return part_tree

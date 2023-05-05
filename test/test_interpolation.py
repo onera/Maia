@@ -89,7 +89,11 @@ def test_interpolation_non_overlaping_cubes(sub_comm, strategy, write_output):
         if cell_center[3*icell] > 1 or cell_center[3*icell+1] > 1:
           expected_sol[icell] = np.nan
 
-    assert np.array_equal(expected_sol, sol, equal_nan=True)
+    if np.version.version >= '1.19.0':
+      assert np.array_equal(expected_sol, sol, equal_nan=True)
+    else:
+      assert (np.isnan(expected_sol) == np.isnan(sol)).all()
+      assert np.array_equal(expected_sol[~np.isnan(expected_sol)], sol[~np.isnan(sol)])
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee") #For refine_mesh
 @pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag") #For refine_mesh

@@ -8,6 +8,11 @@ from maia.utils   import test_utils     as TU
 
 from maia.factory import partitioning   as PPA
 
+PART_TOOLS = []
+if maia.pdm_has_parmetis:
+  PART_TOOLS.append("parmetis")
+if maia.pdm_has_ptscotch:
+  PART_TOOLS.append("ptscotch")
 
 @mark_mpi_test([3])
 def test_load_balancing(sub_comm):
@@ -101,7 +106,7 @@ def test_part_S(sub_comm, write_output):
     out_dir = TU.create_pytest_output_dir(sub_comm)
     maia.io.part_tree_to_file(part_tree, os.path.join(out_dir, 'part_tree.hdf'), sub_comm)
 
-@pytest.mark.parametrize("graph_part_tool", ["parmetis", "ptscotch"])
+@pytest.mark.parametrize("graph_part_tool", PART_TOOLS)
 @mark_mpi_test([2])
 def test_part_elements(sub_comm, graph_part_tool, write_output):
 

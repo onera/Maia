@@ -44,8 +44,8 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
       elt_shift += distrib[-1]
 
   # > Distributions
-  np_distrib_cell = par_utils.uniform_distribution(g_dims["n_cell_abs"], comm)
-  np_distrib_vtx  = par_utils.full_to_partial_distribution(vtx_data['np_vtx_distrib'], comm)
+  np_distrib_cell = par_utils.uniform_distribution(n_cell, comm)
+  np_distrib_vtx  = par_utils.uniform_distribution(n_vtx,  comm)
 
   MT.newDistribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=zone)
 
@@ -184,6 +184,55 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   return dist_tree
 
+def dcube_struct_generate(n_vtx, edge_length, origin, comm):
+  max_coords = np.asarray(origin).copy() + np.asarray(edge_length)
+
+  dist_tree = maia.factory.generate_dist_points(n_vtx, "Structured", comm, origin, max_coords)
+  dist_base = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
+  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # Update zone dims
+  zone_dims = PT.get_value(dist_zone)
+  cell_dim = zone_dims.shape[0]
+  for dim in range(cell_dim):
+    zone_dims[dim,1] = zone_dims[dim, 0] - 1
+
+  # If n_vtx == 1 in one dir, we remove this dir
+  while zone_dims[-1][1] == 0:
+    zone_dims = zone_dims[:-1,:]
+    cell_dim -= 1
+  # Update
+  dist_base[1][0] = cell_dim
+  PT.set_value(dist_zone, zone_dims)
+
+  # Update Cell distribution and add face distribution
+  distrib = {'Cell' : par_utils.uniform_distribution(PT.Zone.n_cell(dist_zone), comm)}
+  if cell_dim >= 2:
+      distrib['Face'] =  par_utils.uniform_distribution(PT.Zone.n_face(dist_zone), comm)
+  MT.newDistribution(distrib, dist_zone)
+
+  # Create BCs
+  zbc = PT.new_child(dist_zone, 'ZoneBC', 'ZoneBC_t')
+
+  for idim, dir in enumerate(['X', 'Y', 'Z']):
+    if cell_dim > idim:
+      mask = np_utils.others_mask(np.arange(cell_dim), [idim])
+
+      pr = np.ones((cell_dim, 2), dtype=zone_dims.dtype)
+      pr[mask, 1] = zone_dims[mask, 0]
+      bc = PT.new_BC(f'{dir}min', point_range=pr, parent=zbc)
+
+      pr = np.ones((cell_dim, 2), dtype=zone_dims.dtype)
+      pr[idim, :] = zone_dims[idim,0]
+      pr[mask, 1] = zone_dims[mask, 0]
+      bc = PT.new_BC(f'{dir}max', point_range=pr, parent=zbc)
+
+  for bc in PT.get_children(zbc):
+    distri = par_utils.uniform_distribution(PT.Subset.n_elem(bc), comm)
+    MT.newDistribution({'Index' : distri}, bc)
+
+  return dist_tree
+
 
 def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_length=1.):
   """Generate a distributed mesh with a cartesian topology.
@@ -192,7 +241,7 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_le
   :cgns:`Zone_t`. The kind 
   and cell dimension of the zone is controled by the cgns_elmt_name parameter: 
 
-  - ``"Structured"`` (or ``"S"``) produces a 3d structured zone (not yet implemented),
+  - ``"Structured"`` (or ``"S"``) produces a structured zone,
   - ``"Poly"`` produces an unstructured 3d zone with a NGon+PE connectivity,
   - ``"NFACE_n"`` produces an unstructured 3d zone with a NFace+NGon connectivity,
   - ``"NGON_n"``  produces an unstructured 2d zone with faces described by a NGon
@@ -224,8 +273,8 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_le
         :end-before: #generate_dist_block@end
         :dedent: 2
   """
-  if cgns_elmt_name is None or cgns_elmt_name in ["Structured", "S"]:
-    raise NotImplementedError
+  if cgns_elmt_name in ["Structured", "S"]:
+    return dcube_struct_generate(n_vtx, edge_length, origin, comm)
   elif cgns_elmt_name.upper() in ["POLY", "NFACE_N"]:
     dist_tree = dcube_generate(n_vtx, edge_length, origin, comm)
     if cgns_elmt_name.upper() == "NFACE_N":

@@ -7,7 +7,7 @@
 #include <numeric>
 #include "cpp_cgns/sids/utils.hpp"
 #include "std_e/algorithm/id_permutations.hpp"
-#include "maia/utils/log/log.hpp"
+#include "maia/utils/logging/log.hpp"
 #include "maia/__old/transform/put_boundary_first/permute.hpp"
 #include "maia/__old/transform/renumber_point_lists.hpp" // TODO move in renumber/
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"

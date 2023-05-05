@@ -59,7 +59,7 @@ def test_merge_zones_from_family():
   maia.algo.dist.merge_zones_from_family(dist_tree, 'Naca0012', MPI.COMM_WORLD)
 
   zones = PT.get_all_Zone_t(dist_tree)
-  assert len(zones) == 1 and PT.get_name(zones[0]) == 'Naca0012'
+  assert len(zones) == 1 and PT.get_name(zones[0]) == 'naca0012'
   #merge_zones_from_family@end
 
 def test_merge_connected_zones():
@@ -96,6 +96,17 @@ def test_compute_face_center():
   for zone in maia.pytree.iter_all_Zone_t(part_tree):
     face_center = maia.algo.part.compute_face_center(zone)
   #compute_face_center@end
+
+def test_compute_edge_center():
+  #compute_edge_center@start
+  from mpi4py import MPI
+  import maia
+  dist_tree = maia.factory.generate_dist_block(10, "QUAD_4",  MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+
+  for zone in maia.pytree.iter_all_Zone_t(part_tree):
+    edge_center = maia.algo.part.geometry.compute_edge_center(zone)
+  #compute_edge_center@end
 
 def test_compute_wall_distance():
   #compute_wall_distance@start
@@ -342,6 +353,27 @@ def test_convert_elements_to_ngon():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
   maia.algo.dist.convert_elements_to_ngon(dist_tree, MPI.COMM_WORLD)
   #convert_elements_to_ngon@end
+
+def test_convert_elements_to_mixed():
+  #convert_elements_to_mixed@start
+  from mpi4py import MPI
+  import maia
+  from maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.convert_elements_to_mixed(dist_tree, MPI.COMM_WORLD)
+  #convert_elements_to_mixed@end
+
+def test_convert_mixed_to_elements():
+  #convert_mixed_to_elements@start
+  from mpi4py import MPI
+  import maia
+  from maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.convert_elements_to_mixed(dist_tree, MPI.COMM_WORLD)
+  maia.algo.dist.convert_mixed_to_elements(dist_tree, MPI.COMM_WORLD)
+  #convert_mixed_to_elements@end
 
 def test_rearrange_element_sections():
   #rearrange_element_sections@start

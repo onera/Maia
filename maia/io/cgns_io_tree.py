@@ -1,5 +1,10 @@
 import os
+import time
+import mpi4py.MPI as MPI
+
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
+import maia.utils.logging as mlog
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
@@ -104,7 +109,7 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
 
   n_shifted = ensure_PE_global_indexing(dist_tree)
   if n_shifted > 0 and comm.Get_rank() == 0:
-    print(f"Warning -- Some NGon/ParentElements have been shift to be CGNS compliant")
+    mlog.warning(f"Some NGon/ParentElements have been shift to be CGNS compliant")
 
 def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
@@ -141,6 +146,8 @@ def file_to_dist_tree(filename, comm, legacy=False):
   Returns:
     CGNSTree: Distributed CGNS tree
   """
+  mlog.info(f"Distributed read of file {filename}...")
+  start = time.time()
   filename = str(filename)
   if os.path.splitext(filename)[1] == '.yaml':
     if comm.Get_rank() == 0:
@@ -155,6 +162,12 @@ def file_to_dist_tree(filename, comm, legacy=False):
     dist_tree = load_collective_size_tree(filename, comm, legacy)
     fill_size_tree(dist_tree, filename, comm, legacy)
 
+  end = time.time()
+  dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
+  all_dt_size = comm.allreduce(dt_size, MPI.SUM)
+  mlog.info(f"Read completed ({end-start:.2f} s) --"
+            f" Size of dist_tree for current rank is {mlog.bsize_to_str(dt_size)}"
+            f" (Σ={mlog.bsize_to_str(all_dt_size)})")
   return dist_tree
 
 def dist_tree_to_file(dist_tree, filename, comm, legacy=False):

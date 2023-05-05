@@ -7,7 +7,9 @@ be obtained from an other kind of tree, or can be generated from user parameters
 Generation
 ----------
 
+.. autofunction:: maia.factory.generate_dist_points
 .. autofunction:: maia.factory.generate_dist_block
+.. autofunction:: maia.factory.generate_dist_sphere
 .. autofunction:: maia.factory.distribute_tree
 
 Partitioning
@@ -21,10 +23,13 @@ Partitioning can be customized with the following keywords arguments:
 
 .. py:attribute:: graph_part_tool
 
-    Graph partitioning library to use to split unstructured blocks. Irrelevent for structured blocks.
+    Method used to split unstructured blocks. Irrelevent for structured blocks.
 
-    :Admissible values: ``parmetis``, ``ptscotch``, ``hilbert``. Blocks defined by nodal elements does 
-      not support hilbert method.
+    :Admissible values: 
+      - ``parmetis``,  ``ptscotch`` : graph partitioning methods,
+      - ``hilbert``  : geometric method (only for NGon connectivities),
+      - ``gnum``     : cells are dispatched according to their absolute numbering.
+
     :Default value: ``parmetis``, if installed; else ``ptscotch``, if installed; ``hilbert`` otherwise.
 
 .. py:attribute:: zone_to_parts
@@ -74,11 +79,12 @@ corresponds to the values in the list (expressed in fraction of the input zone).
 For a given distributed zone, the sum of all the fractions across all the processes must
 be 1.
 
-This dictionary can be created by hand; for convenience, Maia provides two functions in the
+This dictionary can be created by hand; for convenience, Maia provides three functions in the
 :mod:`maia.factory.partitioning` module to create this dictionary.
 
 .. autofunction:: maia.factory.partitioning.compute_regular_weights
 .. autofunction:: maia.factory.partitioning.compute_balanced_weights
+.. autofunction:: maia.factory.partitioning.compute_nosplit_weights
 
 Reordering options
 ^^^^^^^^^^^^^^^^^^

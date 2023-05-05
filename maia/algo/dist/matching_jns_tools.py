@@ -165,7 +165,7 @@ def copy_donor_subset(dist_tree):
 
 def store_interfaces_ids(dist_tree):
   """
-  Attribute to each 1to1 pair a unique interace id. GridConnectivityDonorName must have been added in the tree.
+  Attribute to each 1to1 pair a unique interface id. GridConnectivityDonorName must have been added in the tree.
   Store this id and the position (first or second) in disttree.
   Note : this function does not manage (for now?) location: two jns at different interface
   will have a different id

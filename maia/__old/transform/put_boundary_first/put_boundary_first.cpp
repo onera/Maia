@@ -9,7 +9,6 @@
 #include "cpp_cgns/sids/Grid_Coordinates_Elements_and_Flow_Solution.hpp"
 #include "maia/__old/transform/base_renumbering.hpp"
 #include "maia/__old/transform/renumber_point_lists.hpp"
-#include "std_e/log.hpp" // TODO
 
 
 using cgns::tree;

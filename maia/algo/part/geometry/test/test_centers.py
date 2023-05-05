@@ -4,7 +4,7 @@ import numpy as np
 
 import maia
 import maia.pytree as PT
-from maia.factory.dcube_generator import dcube_generate
+from maia.factory.dcube_generator import dcube_generate, dcube_nodal_generate
 
 from maia.algo.part.geometry import centers
 
@@ -72,11 +72,26 @@ def test_compute_face_center_3d(sub_comm):
 
   assert np.array_equal(centers.compute_face_center(zone), expected)
 
-  zone_type_n = PT.get_child_from_name(zone, "ZoneType")
-  PT.set_value(zone_type_n, "Structured")
-  with pytest.raises(NotImplementedError):
-    centers.compute_face_center(zone)
+  tree = maia.factory.generate_dist_block(3, 'Structured', sub_comm)
+  # Reput coords as partitioned tree
+  tree = maia.factory.partition_dist_tree(tree, sub_comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  expected = np.array([
+     0.  ,0.25,0.25, 0.5 ,0.25,0.25, 1.  ,0.25,0.25,
+     0.  ,0.75,0.25, 0.5 ,0.75,0.25, 1.  ,0.75,0.25, 
+     0.  ,0.25,0.75, 0.5 ,0.25,0.75, 1.  ,0.25,0.75,
+     0.  ,0.75,0.75, 0.5 ,0.75,0.75, 1.  ,0.75,0.75, # End of IFaces
+     0.25,0.  ,0.25, 0.75,0.  ,0.25, 0.25,0.5 ,0.25,
+     0.75,0.5 ,0.25, 0.25,1.  ,0.25, 0.75,1.  ,0.25, 
+     0.25,0.  ,0.75, 0.75,0.  ,0.75, 0.25,0.5 ,0.75,
+     0.75,0.5 ,0.75, 0.25,1.  ,0.75, 0.75,1.  ,0.75, # End of JFaces
+     0.25,0.25,0.  , 0.75,0.25,0.  , 0.25,0.75,0.  ,
+     0.75,0.75,0.  , 0.25,0.25,0.5 , 0.75,0.25,0.5 ,
+     0.25,0.75,0.5 , 0.75,0.75,0.5 , 0.25,0.25,1.  ,
+     0.75,0.25,1.  , 0.25,0.75,1.  , 0.75,0.75,1.  ]) # End of KFaces
+  assert np.array_equal(centers.compute_face_center(zone), expected)
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @mark_mpi_test(1)
 def test_compute_face_center_2d(sub_comm):
   tree = dcube_generate(4, 1., [0,0,0], sub_comm)
@@ -89,5 +104,56 @@ def test_compute_face_center_2d(sub_comm):
         0.2,0.83,0.5,  0.2,0.83,0.83,   0.2,0.5,0.83,   0.2,0.16,0.5,    0.2,0.16,0.83])
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
 
+def test_compute_face_center_2d_S(sub_comm):
+  # With CZ   
 
+  tree = maia.factory.generate_dist_block([3,3,1], 'Structured', sub_comm)
+  # As partitioned
+  for dir in ['X', 'Y']:
+    node = PT.get_node_from_name(tree, f'Coordinate{dir}')
+    node[1] = node[1].reshape((3,3), order='F')
+  # Change Z for test
+  node = PT.get_node_from_name(tree, 'CoordinateZ')
+  node[1] = np.array([[0,0.1,0], [0,0,0], [0,0.2,0.2]], order='F')
+  zone = PT.get_all_Zone_t(tree)[0]
+  expected = np.array([0.25,0.25,0.025  , 0.75 ,0.25,0.05,  0.25, 0.75, 0.025,   0.75, 0.75, 0.1])
+  assert np.array_equal(centers.compute_face_center(zone), expected)
+
+  # Without CZ   
+  tree = maia.factory.generate_dist_block([3,3], 'Structured', sub_comm, origin=[0., 0.])
+  # As partitioned
+  for dir in ['X', 'Y']:
+    node = PT.get_node_from_name(tree, f'Coordinate{dir}')
+    node[1] = node[1].reshape((3,3), order='F')
+  zone = PT.get_all_Zone_t(tree)[0]
+  expected = np.array([0.25,0.25,  0.75 ,0.25,  0.25, 0.75,  0.75, 0.75])
+  assert np.array_equal(centers.compute_face_center(zone), expected)
+
+@pytest.mark.skipif(not maia.pdm_has_ptscotch, reason="Require PTScotch")
+@mark_mpi_test(1)
+def test_compute_face_center_elmts_3d(sub_comm):
+  tree = dcube_nodal_generate(2, 1., [0,0,0], 'HEXA_8', sub_comm)
   
+  part_tree = maia.factory.partition_dist_tree(tree, sub_comm, graph_part_tool='ptscotch')
+  # Nb : metis is not robust if n_cell == 1
+  zone = PT.get_all_Zone_t(part_tree)[0]
+
+  expected = np.array([0.5,0.5,0., 0.5,0.5,1., 0.,0.5,0.5,
+                       1.,0.5,0.5, 0.5,0.,0.5, 0.5,1.,0.5])
+  assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
+
+@pytest.mark.parametrize("elt_kind", ["QUAD_4" ,'NFACE_n'])
+@mark_mpi_test(1)
+def test_compute_edge_center_2d(elt_kind, sub_comm):
+  tree = maia.factory.generate_dist_block(3, elt_kind, sub_comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  PT.rm_nodes_from_name(zone, ":CGNS#Distribution") # Fake part_zone (from test_connectivity_utils)
+
+  if elt_kind=="QUAD_4":
+    expected = np.array([0.25,0.,0., 0.75,0.,0., 0.25,1.,0., 0.75,1.,0.,
+                         0.,0.25,0., 0.,0.75,0., 1.,0.25,0., 1.,0.75,0.])
+    assert np.allclose(centers.compute_edge_center(zone), expected, atol=1e-2)
+
+  elif elt_kind=="NFACE_n":
+    with pytest.raises(NotImplementedError):
+      centers.compute_edge_center(zone)

@@ -23,7 +23,7 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-def generate_test_tree(n_vtx,n_part,sub_comm):
+def generate_test_tree(n_vtx,n_part,sub_comm, build_bc_zsr=False):
 
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
   
@@ -59,6 +59,13 @@ def generate_test_tree(n_vtx,n_part,sub_comm):
     PT.new_DataArray('cylinder', fld2_nc, parent=FS_NC)
     PT.new_DataArray('sphere'  , fld1_cc, parent=FS_CC)
     PT.new_DataArray('cylinder', fld2_cc, parent=FS_CC)
+
+    # BCs ZSR
+    bcs_pl = np.concatenate([PT.get_value(pl_n)[0] for pl_n in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/PointList')])
+    bcs_pl = np.flip(bcs_pl) # Reverse to be sure of the p2p_gnum_come_from (as in extract_part)
+    bcs_gnum = PT.maia.getGlobalNumbering(PT.get_child_from_name(zone, 'NGonElements'), 'Element')[1][bcs_pl-1]
+    zsr_n = PT.new_ZoneSubRegion("ZSR_BC", loc='FaceCenter', point_list=bcs_pl.reshape(1,-1), parent=zone)
+    PT.new_DataArray('face_gnum', bcs_gnum, parent=zsr_n)
 
   return part_tree
 # ----------------------------------------------------------------------------------------
@@ -97,9 +104,8 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, 'isosurf.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
 
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol      )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=1E-15, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
@@ -117,9 +123,9 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
   # Cube generation
   n_vtx  = 6
   n_part = 2
-  part_tree = generate_test_tree(n_vtx, n_part, sub_comm)
+  part_tree = generate_test_tree(n_vtx, n_part, sub_comm, build_bc_zsr=True)
 
-  containers    = ['FlowSolution_NC','FlowSolution_CC']
+  containers    = ['FlowSolution_NC','FlowSolution_CC','ZSR_BC']
   part_tree_iso = ISS.plane_slice(part_tree,
                                   [1.,1.,1.,0.2],
                                   sub_comm,
@@ -138,9 +144,8 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'plane_slice.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
 
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol      )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================
@@ -179,9 +184,8 @@ def test_spherical_slice_U(elt_type,sub_comm, write_output):
     Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'spherical_slice.cgns'), sub_comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
   
-  # Check that bases are similar (because CGNSLibraryVersion is R4)
-  assert maia.pytree.is_same_tree(PT.get_all_CGNSBase_t(ref_sol      )[0],
-                                  PT.get_all_CGNSBase_t(dist_tree_iso)[0])
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
 
 # ----------------------------------------------------------------------------------------
 # ========================================================================================

@@ -2,7 +2,7 @@
 Maia: Distributed algorithms and manipulations over CGNS meshes
 """
 
-__version__ = '0.9'
+__version__ = '1.0'
 
 import Pypdm.Pypdm as PDM
 

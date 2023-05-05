@@ -10,7 +10,7 @@
 #include "std_e/algorithm/algorithm.hpp"
 #include "std_e/parallel/algorithm/concatenate/concatenate.hpp"
 #include "std_e/future/ranges.hpp"
-#include "maia/utils/log/log.hpp"
+#include "maia/utils/logging/log.hpp"
 #include "maia/pytree/maia/maia_cgns.hpp"
 #include "cpp_cgns/sids.hpp"
 #include "maia/utils/parallel/distribution.hpp"

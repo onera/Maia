@@ -1,5 +1,5 @@
 from mpi4py import MPI
-from maia.utils.log import debug
+from maia.utils.logging import debug
 
 def test_variable_log_string():
   my_variable = 123

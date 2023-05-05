@@ -4,25 +4,33 @@ import numpy as np
 import maia.pytree as PT
 from maia.pytree.yaml  import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_dtype
+from maia.utils import logging as mlog
 
 from maia.io import fix_tree
 
-def test_check_datasize(capsys):
+class log_capture:
+  def __init__(self):
+    self.logs = ''
+  def log(self, msg):
+    self.logs += msg
+
+def test_check_datasize():
   yt = """
   Base CGNSBase_t [3,3]:
     ZoneA Zone_t I4 [[11,10,0]]:
       GridCoordinates GridCoordinates_t:
         CoordinateX DataArray_t:
   """
+  log_collector = log_capture()
+  mlog.add_printer_to_logger('maia-warnings', log_collector)
+
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   fix_tree.check_datasize(tree)
-  out, err = capsys.readouterr()
-  assert out == ''
+  assert log_collector.logs == ''
   grid_co = PT.get_node_from_name(tree, 'GridCoordinates')
   PT.new_DataArray('CoordinateY', np.arange(1000), parent=grid_co)
   fix_tree.check_datasize(tree)
-  out, err = capsys.readouterr()
-  assert out == "Warning -- Some heavy data are not distributed: ['CoordinateY']\n"
+  assert "Some heavy data are not distributed: ['CoordinateY']\n" in log_collector.logs
 
 def test_fix_zone_datatype():
   yt = """
@@ -180,7 +188,7 @@ def test_ensure_PE_global_indexing():
     ngon = PT.new_Elements('NGon', 'NGON_n')
     fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,ngon]))
   with pytest.raises(RuntimeError):
-    ngon = PT.new_Elements('NGon', 'NGON_n', erange=[1,4])
+    ngon = PT.new_NGonElements(erange=[1,4], pe=np.empty((4,2), order='F'))
     tri = PT.new_Elements('Tri', 'TRI_3')
     fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,tri]))
 

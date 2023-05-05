@@ -44,6 +44,14 @@ def get_subprocess_stdout(cmd):
   output = subprocess.run(cmd.split(), capture_output=True)
   return [s.strip() for s in output.stdout.decode().split('\n')]
 
+def check_h5ls_output(output, key, expected_value):
+  # Some hdf version include a line break in h5ls output
+  idx = output.index(key) #Will raise if not in list
+  if output[idx+2] == "Data:":    # Line break after data
+    assert output[idx+3] == expected_value
+  else: # Everything on the same line
+    assert output[idx+2].split(':')[1].strip() == expected_value
+
 class Test_AttributeRW:
   attr_rw = HCG.AttributeRW()
   assert attr_rw.buff_S33.size == 1 and attr_rw.buff_S33.dtype == 'S33'
@@ -67,10 +75,8 @@ class Test_AttributeRW:
     fid.close()
 
     out = get_subprocess_stdout(f"h5ls -gvd {tmp_hdf_file}/Base/ZoneU/ZoneTypeNew")
-    idx = out.index("Attribute: some_attribute scalar") #Will raise if not in list
-    assert out[idx+3] == '"AttrValue"'
-    idx = out.index("Attribute: flags {1}") #Will raise if not in list
-    assert out[idx+3] == '1'
+    check_h5ls_output(out, "Attribute: some_attribute scalar", '"AttrValue"')
+    check_h5ls_output(out, "Attribute: flags {1}", '1')
 
 def test_add_root_attribute(tmp_hdf_file):
   fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
@@ -81,8 +87,7 @@ def test_add_root_attribute(tmp_hdf_file):
   fid.close()
 
   out = get_subprocess_stdout(f"h5ls -gvd {tmp_hdf_file}/Base/ZoneU/FakeRoot")
-  idx = out.index("Attribute: label scalar") #Will raise if not in list
-  assert out[idx+3] == '"Root Node of HDF5 File"'
+  check_h5ls_output(out, "Attribute: label scalar", '"Root Node of HDF5 File"')
 
   cmd = ["h5ls", "-gvd", f"{tmp_hdf_file}/Base/ZoneU/FakeRoot/ hdf5version"]
   assert subprocess.run(cmd, capture_output=True).returncode == 0
@@ -132,6 +137,8 @@ def test_write_data(tmp_hdf_file):
   out = get_subprocess_stdout(f"h5ls -vd {tmp_hdf_file}/Base/ZoneU/GridCoordinates/CoordinateZ")
   idx = out.index("Type:      native double") #Will raise if not in list
   idx = out.index("Data:") #Will raise if not in list
+  if out[idx+1].startswith('('):
+    out[idx+1] = out[idx+1][4:] #Some hdf version include (0) before data : remote it
   assert out[idx+1] == '0, 0, 0, 1, 1, 1'
 
 def test_write_link(tmp_hdf_file):
@@ -141,8 +148,7 @@ def test_write_link(tmp_hdf_file):
   gid.close()
   fid.close()
   out = get_subprocess_stdout(f"h5ls -vdg {tmp_hdf_file}/Base/ZoneU/GridCoordinates/CoordinateZ")
-  idx = out.index("Attribute: type scalar") #Will raise if not in list
-  assert out[idx+3] == '"LK"'
+  check_h5ls_output(out, "Attribute: type scalar", '"LK"')
   out = get_subprocess_stdout(f"h5ls -vd {tmp_hdf_file}/Base/ZoneU/GridCoordinates/CoordinateZ")
   idx = out.index("\\ file                   Dataset {18/18}")
   idx = out.index("\\ path                   Dataset {10/10}")
@@ -190,6 +196,8 @@ def test_write_data_partial(tmp_hdf_file, combinated):
 
   out = get_subprocess_stdout(f"h5ls -vd {tmp_hdf_file}/Base/ZoneU/GridCoordinates/CoordinateZ")
   idx = out.index("Data:") #Will raise if not in list
+  if out[idx+1].startswith('('):
+    out[idx+1] = out[idx+1][4:] #Some hdf version include (0) before data : remote it
   written_array = np.array([float(x) for x in out[idx+1].split(',')])
   assert np.allclose(written_array[indexes], array)
 
@@ -238,16 +246,13 @@ def test_write_node_partial(tmp_hdf_file):
 
   # Check node
   out = get_subprocess_stdout(f"h5ls -vgd {tmp_hdf_file}/Base/ZoneU/GridCoordinates")
-  idx = out.index("Attribute: type scalar") #Will raise if not in list
-  assert out[idx+3] == '"MT"'
-  idx = out.index("Attribute: label scalar") #Will raise if not in list
-  assert out[idx+3] == '"GridCoordinates_t"'
+  check_h5ls_output(out, "Attribute: type scalar", '"MT"')
+  check_h5ls_output(out, "Attribute: label scalar", '"GridCoordinates_t"')
 
   #Check children
   for coord in ['X', 'Y']:
     out = get_subprocess_stdout(f"h5ls -vgd {tmp_hdf_file}/Base/ZoneU/GridCoordinates/Coordinate{coord}")
-    idx = out.index("Attribute: type scalar") #Will raise if not in list
-    assert out[idx+3] == '"R8"'
+    check_h5ls_output(out, "Attribute: type scalar", '"R8"')
 
     out = get_subprocess_stdout(f"h5ls -r {tmp_hdf_file}/Base/ZoneU/GridCoordinates/Coordinate{coord}")
     if coord == 'X':
