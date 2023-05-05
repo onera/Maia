@@ -174,7 +174,8 @@ def test_split_point_cloud(sub_comm):
   assert sub_comm.allreduce(PT.Zone.n_vtx(part_zone), MPI.SUM) == 13**3
 
 @mark_mpi_test(2)
-def test_split_lines(sub_comm):
+@pytest.mark.parametrize("method", ["hilbert", "ptscotch"])
+def test_split_lines(method, sub_comm):
 
   # We can not generate a line directly, so we do a 1D mesh and create bar
   n_vtx = 25
@@ -198,7 +199,7 @@ def test_split_lines(sub_comm):
   bar_elts = PT.new_Elements('Lines', 'BAR_2', erange=[1,n_vtx-1], econn=bar_ec, parent=dist_zone)
   MT.newDistribution({'Element' : cell_distri.copy()}, bar_elts)
 
-  part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm, graph_part_tool='hilbert')
+  part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm, graph_part_tool=method)
 
   part_base = PT.get_all_CGNSBase_t(part_tree)[0]
   part_zone = PT.get_all_Zone_t(part_tree)[0]
