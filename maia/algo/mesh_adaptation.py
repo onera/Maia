@@ -3,13 +3,10 @@ import mpi4py.MPI as MPI
 
 import maia
 import maia.pytree    as PT
-import maia.algo.dist as Mad
 
 from maia.algo.meshb_converter import cgns_to_meshb, meshb_to_cgns
 
 # FEFLO
-# feflo_path = "/stck/jvanhare/wkdir/spiro/bin/feflo.a"
-# feflo_path = "/home/bmaugars/tmp/priv/feflo.a"
 feflo_path = "/home/bmaugars/tmp/feflo.a"
 
 # TMP directory
@@ -58,13 +55,13 @@ def mesh_adapt( dist_tree, complexity, comm,
   os.system(f'mkdir -p {tmp_repo}')
 
   # Gathering dist_tree on proc 0
-  Mad.redistribute_tree(dist_tree, comm, policy='gather') # Modifie le dist_tree 
+  maia.algo.dist.redistribute_tree(dist_tree, comm, policy='gather') # Modifie le dist_tree 
 
   # CGNS to meshb conversion
   dicttag_to_bcinfo = list()
   families = list()
   if comm.Get_rank()==0:
-    dicttag_to_bcinfo, families = cgns_to_meshb(dist_tree, in_files, criterion)
+    tree_info, dicttag_to_bcinfo, families = cgns_to_meshb(dist_tree, in_files, criterion)
 
     if keep_mesh_back : os.system(f"cp {in_files['mesh']} {mesh_back_file}")
 
@@ -87,6 +84,6 @@ def mesh_adapt( dist_tree, complexity, comm,
   dicttag_to_bcinfo = comm.bcast(dicttag_to_bcinfo, root=0)
   families          = comm.bcast(families, root=0)
 
-  dist_tree = meshb_to_cgns(out_files, dicttag_to_bcinfo, families, comm, criterion=='isotrop')
+  dist_tree = meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm, criterion=='isotrop')
 
   return dist_tree
