@@ -1,8 +1,10 @@
+import time
 import mpi4py.MPI as MPI
 
 import maia
-import maia.pytree      as PT
-import maia.pytree.maia as MT
+import maia.pytree        as PT
+import maia.pytree.maia   as MT
+import maia.utils.logging as mlog
 
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils import np_utils, par_utils, layouts

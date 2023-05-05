@@ -1,8 +1,10 @@
 import os
+import time
 import mpi4py.MPI as MPI
 
 import maia
-import maia.pytree    as PT
+import maia.pytree        as PT
+import maia.utils.logging as mlog
 
 from maia.algo.meshb_converter import cgns_to_meshb, meshb_to_cgns
 
@@ -37,7 +39,7 @@ feflo_args    = { 'isotrop'  :  '-iso',
 }
 
 
-def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_optargs=[]):
+def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_opt=[]):
 
   ''' Return a feflo adapted mesh according to a metric and a complexity.
 
@@ -54,7 +56,7 @@ def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_optargs=[]
     complexity    (int)             : Complexity use for the mesh adaptation process.
     comm          (MPIComm)         : MPI communicator.
     metric        (str,  optional)  : Metric used to compute the mesh adaptation.
-    feflo_optargs (list, optional)  : List of feflo's optional arguments.
+    feflo_opt     (list, optional)  : List of feflo's optional arguments.
   Returns:
     adapted_tree (CGNSTree): Adapted mesh tree (distributed) 
 
@@ -92,11 +94,17 @@ def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_optargs=[]
     list_of_args = ['-in'  , in_files['mesh']     ,
                              feflo_args[metric],
                     '-c'   , str(complexity)      ,
-                    '-cmax', str(complexity)      ] + feflo_optargs
+                    '-cmax', str(complexity)      ] + feflo_opt
     feflo_call = f"{feflo_path} {' '.join(list_of_args)}"
     print(f"feflo called though command line : {feflo_call}")
 
+    mlog.info(f"Feflo mesh adaptation...")
+    start = time.time()
+    
     os.system(feflo_call)
+
+    end = time.time()
+    mlog.info(f"Feflo mesh adaptation completed ({end-start:.2f} s) --")
 
 
   # > Recover original dist_tree
