@@ -1,7 +1,4 @@
-import os
 import mpi4py.MPI as MPI
-
-import numpy as np
 
 import maia
 import maia.pytree      as PT
@@ -10,15 +7,15 @@ import maia.pytree.maia as MT
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils import np_utils, par_utils, layouts
 
+import numpy as np
+
 import Pypdm.Pypdm as PDM
 
-
-# FEFLO
-feflo_path = "/stck/jvanhare/wkdir/spiro/bin/feflo.a"
 
 
 def _add_sections_to_zone(dist_zone, section, shift_elmt, comm):
   """
+  Add distributed element node to a dist_zone.
   """
   if section == None: return shift_elmt
   i_rank = comm.Get_rank()
@@ -41,6 +38,8 @@ def _add_sections_to_zone(dist_zone, section, shift_elmt, comm):
 
 def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, families, out_files, isotrop):
   """
+  Convert a dmesh_nodal mesh to CGNS format, according to initial dist_tree informations
+  contained in ``tree_info``, ``dicttag_to_bc_info``, ``families``.
   """
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
@@ -74,6 +73,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, familie
   else:
     dist_zone = PT.new_Zone(name="Zone", size=[[g_dims["n_vtx_abs"], g_dims["n_face_abs"], 0]],
                             type='Unstructured', parent=dist_base)
+
 
   # > Grid coordinates
   vtx_data   = dmesh_nodal.dmesh_nodal_get_vtx(comm)
@@ -112,7 +112,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, familie
 
       PT.add_child(bc_n, famname)
 
-
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
 
   if face_groups is not None:
@@ -140,8 +139,8 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, familie
     PT.add_child(dist_base, family)
 
 
+  # > FlowSolution
   if not isotrop:
-    # > FlowSolution
     cons = -100*np.ones(g_dims["n_vtx_abs"] * 7, dtype=np.double)
     PDM.read_solb(bytes(out_files['fld'], 'utf-8'), g_dims["n_vtx_abs"], 7, cons)
 
@@ -164,16 +163,23 @@ def meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm, isotr
   Reading a meshb file and conversion to CGNS norm.
 
   Arguments :
-    - meshb_file        (str) : meshb file name
-    - dicttag_to_bcinfo (dict): informations coming from cgns to meshb conversion
+    - out_files         (dict): meshb file names
+    - tree_info         (dict): initial dist_tree informations (base and zone names)
+    - dicttag_to_bcinfo (dict): bc informations coming from cgns to meshb conversion
     - families          (list): list of families from the previous cgns
     - comm              (MPI) : MPI Communicator
     - isotrop           (bool): isotrop adaptation or not (read flds or not)
 
   '''
+  mlog.info(f"meshb to CGNS dist_tree conversion...")
+  start = time.time()
+  
   # meshb -> dmesh_nodal # meshb -> dmesh_nodal -> cgns
   dmesh_nodal = PDM.meshb_to_dmesh_nodal(bytes(out_files['mesh'], 'utf-8'), comm, 1, 1)
   dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, families, out_files, isotrop)
+  
+  end = time.time()
+  mlog.info(f"meshb to CGNS conversion completed ({end-start:.2f} s) --")
 
   return dist_tree
 
@@ -182,31 +188,34 @@ def meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm, isotr
 
 
 
-def cgns_to_meshb(dist_tree, files, criterion):
+def cgns_to_meshb(dist_tree, files, metric):
   '''
   Dist_tree conversion to meshb format and writing.
   Arguments :
     - dist_tree (CGNSTree) : dist_tree to convert
     - files     (dict)     : file names for meshb files
-    - files     (str)      : descriptor of the adaptation criterion
+    - metric    (str)      : descriptor of the adaptation metric
   '''
-  dicttag_to_bcinfo = {"CellCenter":dict(),
-                       "FaceCenter":dict(),
-                       "EdgeCenter":dict(),
-                       "Vertex"    :dict()}
+
+  mlog.info(f"CGNS to meshb dist_tree conversion...")
+  start = time.time()
+
+  dicttag_to_bcinfo = {"CellCenter": dict(),
+                       "FaceCenter": dict(),
+                       "EdgeCenter": dict(),
+                       "Vertex"    : dict()}
   
   base_name = PT.get_name(PT.get_child_from_label(dist_tree, 'CGNSBase_t'))
 
   for zone in PT.get_all_Zone_t(dist_tree):
     zone_name = PT.get_name(zone) # Just one zone at this time
 
-    # Coordinates
+    # > Coordinates
     cx  = PT.get_node_from_name(zone, "CoordinateX")[1]
     cy  = PT.get_node_from_name(zone, "CoordinateY")[1]
     cz  = PT.get_node_from_name(zone, "CoordinateZ")[1]
-    
 
-    # Gathering elements by dimension
+    # > Gathering elements by dimension
     sorted_elts_by_dim = PT.Zone.get_ordered_elements_per_dim(zone)
 
     elmt_by_dim = list()
@@ -224,10 +233,6 @@ def cgns_to_meshb(dist_tree, files, criterion):
         else:
           elmt_by_dim.append(np.empty(0,dtype=np.int32))
 
-    # print(f"elmt_by_dim[3] = {     elmt_by_dim[3]}")
-    # print(f"elmt_by_dim[3] = {type(elmt_by_dim[3])}")
-    # print(f"elmt_by_dim[1] = {     elmt_by_dim[1]}")
-    # print(f"elmt_by_dim[1] = {type(elmt_by_dim[1])}")
     n_vtx   = PT.Zone.n_vtx(zone)
     try:
       n_tetra = elmt_by_dim[3].shape[0]//4
@@ -239,11 +244,10 @@ def cgns_to_meshb(dist_tree, files, criterion):
     except AttributeError:
       n_edge = 0
 
-    print(f"n_vtx   = {n_vtx   }")
-    print(f"n_tetra = {n_tetra }")
-    print(f"n_tri   = {n_tri   }")
-    print(f"n_edge  = {n_edge  }")
-
+    mlog.info(f" + n_vtx   = {n_vtx   }")
+    mlog.info(f" + n_tetra = {n_tetra }")
+    mlog.info(f" + n_tri   = {n_tri   }")
+    mlog.info(f" + n_edge  = {n_edge  }")
 
     # > PointList BC to BC tag
     def bc_pl_to_bc_tag(list_of_bc, bc_tag, dicttag_to_bcinfo, offset):
@@ -288,15 +292,15 @@ def cgns_to_meshb(dist_tree, files, criterion):
                     elmt_by_dim[1],  edge_tag)
 
 
-    # Write criterion file
-    if criterion!='isotrop':
+    # Write metric file
+    if metric!='isotrop':
       fs = PT.get_node_from_name(zone, "FSolution#Vertex#EndOfRun")
 
-      if   criterion=='mach_fld':
+      if   metric=='mach_fld':
         mach = PT.get_node_from_name(fs  , "Mach")[1]
         PDM.write_solb(bytes(files["sol"], 'utf-8'), n_vtx, 1, mach)
 
-      elif criterion=='mach_hess':
+      elif metric=='mach_hess':
         mxx = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#0")[1]
         mxy = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#1")[1]
         mxz = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#2")[1]
@@ -326,7 +330,10 @@ def cgns_to_meshb(dist_tree, files, criterion):
   tree_info = {"Base":base_name, "Zone":zone_name}
   families  = PT.get_nodes_from_label(dist_tree, 'Family_t')
 
+  end = time.time()
+  mlog.info(f"CGNS to meshb conversion completed ({end-start:.2f} s) --")
   return tree_info, dicttag_to_bcinfo, families
+
 
 
 
