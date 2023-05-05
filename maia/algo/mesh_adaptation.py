@@ -88,9 +88,6 @@ def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_optargs=[]
 
     avail_opt = ["p", "mesh_back", "nordg", ]
 
-    for key, val in kwargs.items():
-      if key in avail_opt
-
     # Adapt with feflo
     list_of_args = ['-in'  , in_files['mesh']     ,
                              feflo_args[metric],
