@@ -48,7 +48,7 @@ def test_simple(output_loc, comm):                               #    __
   zmin = PT.get_node_from_name(zones[1], 'Zmin')
   PT.new_child(zmin, 'FamilyName', 'FamilyName_t', 'matchB')
 
-  connect_match.connect_match_from_family(tree, ('matchA', 'matchB'), comm, location=output_loc)
+  connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm, location=output_loc)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 10
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
@@ -114,13 +114,13 @@ def test_partial_match(comm):                                 #
   xmin = PT.get_node_from_name(zones[1], 'Xmin')
   PT.new_child(xmin, 'FamilyName', 'FamilyName_t', 'matchB')
 
-  connect_match.connect_match_from_family(tree, ('matchA', 'matchB'), comm)
+  connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 12
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
 
-  not_found_xmax = PT.get_node_from_name(zones[0], 'Xmax_X')
-  not_found_xmin = PT.get_node_from_name(zones[1], 'Xmin_X')
+  not_found_xmax = PT.get_node_from_name(zones[0], 'Xmax_unmatched')
+  not_found_xmin = PT.get_node_from_name(zones[1], 'Xmin_unmatched')
   found_xmax = PT.get_node_from_name(zones[0], 'Xmax_0')
   found_xmin = PT.get_node_from_name(zones[1], 'Xmin_0')
   if comm.Get_rank() == 0:
@@ -157,7 +157,7 @@ def test_multiple_match(comm):
     zmin = PT.get_node_from_name(zone, 'Zmin')
     PT.new_child(zmin, 'FamilyName', 'FamilyName_t', 'matchB')
 
-  connect_match.connect_match_from_family(tree, ('matchA', 'matchB'), comm)
+  connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 15
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 4
@@ -182,7 +182,7 @@ def test_periodic_simple(comm):                    #    __
   PT.new_child(xmax, 'FamilyName', 'FamilyName_t', 'matchB')
 
   periodic = {'translation' : np.array([1.0, 0, 0], np.float32)}
-  connect_match.connect_match_from_family(tree, ('matchA', 'matchB'), comm, periodic=periodic)
+  connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm, periodic=periodic)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 4
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2

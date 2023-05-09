@@ -102,21 +102,15 @@ def _point_merge(clouds, comm, rel_tol=1e-5):
 
   return pdm_point_merge.make_interface(vertex_parent_num)
 
-def _dmesh_extract_2d(dmesh, gnum, loc, comm):
-  """ Wraps DMeshExtract """
-  dmesh_extractor = PDM.DMeshExtract(2, comm)
-  dmesh_extractor.register_dmesh(dmesh)
-  dmesh_extractor.set_gnum_to_extract(PDM._PDM_MESH_ENTITY_FACE, gnum)
-
-  dmesh_extractor.compute()
-
-  dmesh_extracted = dmesh_extractor.get_dmesh()
-
-  parent = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VERTEX)
-  return dmesh_extracted, parent
-
 def _get_cloud(dmesh, gnum, comm):
-    dmesh_extracted, parent = _dmesh_extract_2d(dmesh, gnum, 'Face', comm)
+    dmesh_extractor = PDM.DMeshExtract(2, comm)
+    dmesh_extractor.register_dmesh(dmesh)
+    dmesh_extractor.set_gnum_to_extract(PDM._PDM_MESH_ENTITY_FACE, gnum)
+
+    dmesh_extractor.compute()
+
+    dmesh_extracted = dmesh_extractor.get_dmesh()
+    parent = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VERTEX)
 
     coords  = dmesh_extracted.dmesh_vtx_coord_get()
     face_vtx_idx, face_vtx = dmesh_extracted.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
@@ -195,122 +189,128 @@ def _convert_match_result_to_faces(dist_tree, clouds_path, out_vtx, comm):
     return out_face
 
 
-def connect_match_from_family(dist_tree, families, comm, periodic=None, **kwargs):
+def get_vtx_cloud_from_subset(dist_tree, subset_path, comm, dmesh_cache={}):
+  zone_path = PT.path_head(subset_path, 2)
+  try:
+    dmesh = dmesh_cache[zone_path]
+  except KeyError:
+    zone = PT.get_node_from_path(dist_tree, zone_path)
+    dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
+    dmesh_cache[zone_path] = dmesh
 
-    assert len(families) == 2
+  node = PT.get_node_from_path(dist_tree, subset_path)
+  assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
+  pl = PT.get_child_from_name(node, 'PointList')[1][0]
+  cloud = _get_cloud(dmesh, pl, comm)
+  return cloud
+
+def apply_periodicity(cloud, periodic):
+  coords = cloud[0]
+  cx = coords[0::3]
+  cy = coords[1::3]
+  cz = coords[2::3]
+  cx_p, cy_p, cz_p = np_utils.transform_cart_vectors(cx,cy,cz, **periodic)
+  coords_p = np_utils.interweave_arrays([cx_p, cy_p, cz_p])
+  return (coords_p, *cloud[1:])
+
+
+def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs):
 
     # Steps are
-    # 1.  Get input PL at faces (if they are vertex -> TODO
-    # 2.  Extract 2d face mesh
-    # (Apply periodicity)
+    # 1.  Get input PL at faces (if they are vertex -> convert it)
+    # 2.  Extract 2d face mesh. Apply periodicity if necessary
     # 3.  Get matching result at vertex
     # 4.  Convert matching result at faces
-    # 5.  Check resulting faces vs input faces
-    # 6.  Create output : non localized + match
+    # 5.  Create output for matched faces
+    # 6.  Check resulting faces vs input faces
 
+    assert len(subset_paths) == 2
 
+    clouds_path = subset_paths[0] + subset_paths[1]
     clouds = []
-    clouds_path = []
 
-    for i_zone, zone_path in enumerate(PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')):
-      zone  = PT.get_node_from_path(dist_tree, zone_path)
-      dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
-      for container in PT.get_children_from_predicate(zone, lambda n: PT.get_label(n) in ['ZoneBC_t', 'ZoneGridConnectivity_t']):
-          for ifam, family in enumerate(families):
-              predicate = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                                     and PT.predicate.belongs_to_family(n, family, True)
+    cached_dmesh = {} #Use caching to avoid translate zone->dmesh 2 times
+    for cloud_path in subset_paths[0]:
+      cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh)
+      if periodic is not None:
+        cloud = apply_periodicity(cloud, periodic)
+      clouds.append(cloud)
+    for cloud_path in subset_paths[1]:
+      cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh)
+      clouds.append(cloud)
 
-              for node in PT.get_children_from_predicate(container, predicate):
-                                                             
-                assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
-                pl = PT.get_child_from_name(node, 'PointList')[1][0]
+    PT.rm_nodes_from_name(dist_tree, ":CGNS#MultiPart") #Cleanup
 
-                cloud = _get_cloud(dmesh, pl, comm)
-                if ifam == 0 and periodic is not None:
-                  coords = cloud[0]
-                  cx = coords[0::3]
-                  cy = coords[1::3]
-                  cz = coords[2::3]
-                  cx_p, cy_p, cz_p = np_utils.transform_cart_vectors(cx,cy,cz, **periodic)
-                  coords_p = np_utils.interweave_arrays([cx_p, cy_p, cz_p])
-                  cloud = (coords_p, *cloud[1:])
-                clouds.append(cloud)
-                clouds_path.append(f"{zone_path}/{PT.get_name(container)}/{PT.get_name(node)}") 
-
-    out_vtx = _point_merge(clouds, comm)
-    out_face = _convert_match_result_to_faces(dist_tree, clouds_path, out_vtx, comm)
-
-    PT.rm_nodes_from_name(dist_tree, ":CGNS#MultiPart")
+    matching_vtx  = _point_merge(clouds, comm)
+    matching_face = _convert_match_result_to_faces(dist_tree, clouds_path, matching_vtx, comm)
 
     # Add created nodes in tree
     output_loc = kwargs.get("location", "FaceCenter")
     if output_loc == 'Vertex':
-      cloud_pair = out_vtx['np_cloud_pair']
-      gnum_cur   = out_vtx['lgnum_cur']
-      gnum_opp   = out_vtx['lgnum_opp']
+      cloud_pair = matching_vtx['np_cloud_pair']
+      gnum_cur   = matching_vtx['lgnum_cur']
+      gnum_opp   = matching_vtx['lgnum_opp']
     elif output_loc == 'FaceCenter':
-      cloud_pair = out_face['np_cloud_pair']
-      gnum_cur   = out_face['lgnum_cur']
-      gnum_opp   = out_face['lgnum_opp']
+      cloud_pair = matching_face['np_cloud_pair']
+      gnum_cur   = matching_face['lgnum_cur']
+      gnum_opp   = matching_face['lgnum_opp']
+
+    if periodic is not None:
+      perio_opp = {'translation'     : - periodic.get('translation', np.zeros(3, np.float32)),
+                   'rotation_center' :   periodic.get('rotation_center', np.zeros(3, np.float32)),
+                   'rotation_angle'  : - periodic.get('rotation_angle', np.zeros(3, np.float32))}
+    else:
+      perio_opp = None
 
     n_spawn = {path:0 for path in clouds_path}
     for i_interface in range(cloud_pair.size // 2):
 
-      first_node_path  = clouds_path[cloud_pair[2*i_interface]]
-      second_node_path = clouds_path[cloud_pair[2*i_interface+1]]
+      jn_distri = par_utils.dn_to_distribution(gnum_cur[i_interface].size, comm)
+      for j in range(2):
+        if j == 0:
+          origin_path_cur = clouds_path[cloud_pair[2*i_interface]]
+          origin_path_opp = clouds_path[cloud_pair[2*i_interface+1]]
+          _gnum_cur = gnum_cur[i_interface]
+          _gnum_opp = gnum_opp[i_interface]
+          _periodic = periodic
+        else:
+          origin_path_cur = clouds_path[cloud_pair[2*i_interface+1]]
+          origin_path_opp = clouds_path[cloud_pair[2*i_interface]]
+          _gnum_cur = gnum_opp[i_interface]
+          _gnum_opp = gnum_cur[i_interface]
+          _periodic = perio_opp
 
-      first_leaf_name = PT.path_tail(first_node_path)
-      second_leaf_name = PT.path_tail(second_node_path)
-      first_zone_path = PT.path_head(first_node_path, 2)
-      second_zone_path = PT.path_head(second_node_path, 2)
-      first_zone  = PT.get_node_from_path(dist_tree, first_zone_path)
-      second_zone = PT.get_node_from_path(dist_tree, second_zone_path)
+        leaf_name_cur = PT.path_tail(origin_path_cur)
+        leaf_name_opp = PT.path_tail(origin_path_opp)
+        zone_cur_path = PT.path_head(origin_path_cur, 2)
+        zone_opp_path = PT.path_head(origin_path_opp, 2)
+        zone_cur  = PT.get_node_from_path(dist_tree, zone_cur_path)
+        zgc = PT.update_child(zone_cur, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
 
-      first_node = PT.get_node_from_path(dist_tree, first_node_path)
-      second_node = PT.get_node_from_path(dist_tree, second_node_path)
+        jn_name_cur = f"{leaf_name_cur}_{n_spawn[origin_path_cur]}"
+        jn_name_opp = f"{leaf_name_opp}_{n_spawn[origin_path_opp]}"
 
-      first_jn_name = f"{first_leaf_name}_{n_spawn[first_node_path]}"
-      second_jn_name = f"{second_leaf_name}_{n_spawn[second_node_path]}"
+        jn = PT.new_GridConnectivity(jn_name_cur,
+                                     zone_opp_path,
+                                     'Abutting1to1',
+                                     loc=output_loc,
+                                     point_list = _gnum_cur.reshape((1,-1), order='F'),
+                                     point_list_donor = _gnum_opp.reshape((1,-1), order='F'),
+                                     parent=zgc)
+        PT.new_child(jn, "GridConnectivityDonorName", "Descriptor_t", jn_name_opp)
 
-      zgc = PT.update_child(first_zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
+        if periodic is not None:
+          PT.new_GridConnectivityProperty(_periodic, jn)
 
-      first_jn = PT.new_GridConnectivity(first_jn_name,
-                                         second_zone_path,
-                                         'Abutting1to1',
-                                         loc=output_loc,
-                                         point_list = gnum_cur[i_interface].reshape((1,-1), order='F'),
-                                         point_list_donor = gnum_opp[i_interface].reshape((1,-1), order='F'),
-                                         parent=zgc)
-      PT.new_child(first_jn, "GridConnectivityDonorName", "Descriptor_t", second_jn_name)
+        MT.newDistribution({"Index" : jn_distri.copy()}, jn)
 
-      zgc = PT.update_child(second_zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
-      secondjn = PT.new_GridConnectivity(second_jn_name,
-                                         first_zone_path,
-                                         'Abutting1to1',
-                                         loc=output_loc,
-                                         point_list = gnum_opp[i_interface].reshape((1,-1), order='F'),
-                                         point_list_donor = gnum_cur[i_interface].reshape((1,-1), order='F'),
-                                         parent=zgc)
-      PT.new_child(secondjn, "GridConnectivityDonorName", "Descriptor_t", first_jn_name)
+        to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+        origin_node = PT.get_node_from_path(dist_tree, origin_path_cur)
+        for node in PT.get_children_from_predicate(origin_node, to_copy):
+          PT.add_child(jn, node)
 
-      MT.newDistribution({"Index" : par_utils.dn_to_distribution(gnum_cur[i_interface].size, comm)}, first_jn)
-      MT.newDistribution({"Index" : par_utils.dn_to_distribution(gnum_cur[i_interface].size, comm)}, secondjn)
-
-      to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
-      for node in PT.get_children_from_predicate(first_node, to_copy):
-        PT.add_child(first_jn, node)
-      for node in PT.get_children_from_predicate(second_node, to_copy):
-        PT.add_child(secondjn, node)
-
-      if periodic is not None:
-        PT.new_GridConnectivityProperty(periodic, first_jn)
-        perio_opp = {'translation'     : - periodic.get('translation', np.zeros(3, np.float32)),
-                     'rotation_center' :   periodic.get('rotation_center', np.zeros(3, np.float32)),
-                     'rotation_angle'  : - periodic.get('rotation_angle', np.zeros(3, np.float32))}
-        PT.new_GridConnectivityProperty(perio_opp, secondjn)
-
-      n_spawn[first_node_path] += 1
-      n_spawn[second_node_path] += 1
+      n_spawn[origin_path_cur] += 1
+      n_spawn[origin_path_opp] += 1
 
 
     # Cleanup : remove input node or transform it to keep only unmatched faces
@@ -320,15 +320,35 @@ def connect_match_from_family(dist_tree, families, comm, periodic=None, **kwargs
         input_face = PT.get_node_from_path(dist_tree, f"{cloud_path}/PointList")[1][0]
         output_faces = []
         for j,s in zip(itrf_id, side):
-            output_faces.append(out_face[['lgnum_cur', 'lgnum_opp'][s]][j])
+            output_faces.append(matching_face[['lgnum_cur', 'lgnum_opp'][s]][j])
         # Search input_face that are not in output face
         unfound = dist_set_difference(input_face, output_faces, comm)
         if comm.allreduce(unfound.size, MPI.SUM) > 0:
           input_node = PT.get_node_from_path(dist_tree, cloud_path)
-          PT.set_name(input_node, f"{PT.get_name(input_node)}_X")
+          PT.set_name(input_node, f"{PT.get_name(input_node)}_unmatched")
           PT.update_child(input_node, 'GridLocation', value='FaceCenter')
           PT.update_child(input_node, 'PointList', value=unfound.reshape((-1,1), order='F'))
           MT.newDistribution({'Index':  par_utils.dn_to_distribution(unfound.size, comm)}, input_node)
         else:
           PT.rm_node_from_path(dist_tree, cloud_path)
+
+
+
+def recover_1to1_pairing_from_families(dist_tree, families, comm, periodic=None, **kwargs):
+  is_subset_container = lambda n: PT.get_label(n) in ['ZoneBC_t', 'ZoneGridConnectivity_t']
+  is_subset           = lambda n: PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t']
+
+  assert isinstance(families, (list, tuple)) and len(families) == 2
+
+  subset_path = (list(), list())
+  for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
+    zone = PT.get_node_from_path(dist_tree, zone_path)
+    for container in PT.get_children_from_predicate(zone, is_subset_container):
+      for subset in PT.get_children_from_predicate(container, is_subset):
+        path = f'{zone_path}/{PT.get_name(container)}/{PT.get_name(subset)}'
+        for i_fam, family in enumerate(families):
+          if PT.predicate.belongs_to_family(subset, family, True):
+            subset_path[i_fam].append(path)
+
+  recover_1to1_pairing(dist_tree, subset_path, comm, periodic, **kwargs)
 
