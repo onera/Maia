@@ -162,10 +162,30 @@ def test_multiple_match(comm):
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 15
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 4
 
-  assert (PT.get_node_from_predicates(zones[0], ['Zmax_0', 'PointList'])[1][0] == [[62,65,66,61]]).all()
-  assert (PT.get_node_from_predicates(zones[0], ['Zmax_1', 'PointList'])[1][0] == [[68,63,64,67]]).all()
-  assert (PT.get_node_from_predicates(zones[1], ['Zmin_0', 'PointList'])[1][0] == [[26,27,28,25]]).all()
-  assert (PT.get_node_from_predicates(zones[2], ['Zmin_0', 'PointList'])[1][0] == [[28,25,26,27]]).all()
+  assert (PT.get_node_from_predicates(zones[0], ['Zmax_0', 'PointList'])[1] == [[62,65,66,61]]).all()
+  assert (PT.get_node_from_predicates(zones[0], ['Zmax_1', 'PointList'])[1] == [[68,63,64,67]]).all()
+  assert (PT.get_node_from_predicates(zones[1], ['Zmin_0', 'PointList'])[1] == [[26,27,28,25]]).all()
+  assert (PT.get_node_from_predicates(zones[2], ['Zmin_0', 'PointList'])[1] == [[28,25,26,27]]).all()
 
 
 
+@pytest_parallel.mark.parallel(1)
+def test_periodic_simple(comm):                    #    __
+  tree = dcube_generate(3, 1., [0,0,0], comm)      #   |  | 
+                                                   #   |__|
+                                                   #
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+    
+  xmin = PT.get_node_from_name(tree, 'Xmin')
+  PT.new_child(xmin, 'FamilyName', 'FamilyName_t', 'matchA')
+  xmax = PT.get_node_from_name(tree, 'Xmax')
+  PT.new_child(xmax, 'FamilyName', 'FamilyName_t', 'matchB')
+
+  periodic = {'translation' : np.array([1.0, 0, 0], np.float32)}
+  connect_match.connect_match_from_family(tree, ('matchA', 'matchB'), comm, periodic=periodic)
+
+  assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 4
+  assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
+
+  assert (PT.get_node_from_predicates(zone, ['Xmin_0', 'PointList'])[1] == [[13,14,15,16]]).all()
+  assert (PT.get_node_from_predicates(zone, ['Xmax_0', 'PointList'])[1] == [[21,22,23,24]]).all()

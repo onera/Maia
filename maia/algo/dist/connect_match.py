@@ -183,7 +183,7 @@ def _convert_match_result_to_faces(dist_tree, clouds_path, out_vtx, comm):
 
 
     # Filter empty interfaces
-    is_empty_l = np.array([_out_face[j]['interface_dn_face'] == 0 for j in range(n_interface)])
+    is_empty_l = np.array([_out_face[j]['interface_dn_face'] == 0 for j in range(n_interface)], dtype=bool)
     is_empty = np.empty(n_interface, bool)
     comm.Allreduce(is_empty_l, is_empty, op=MPI.LAND)
 
@@ -216,7 +216,7 @@ def connect_match_from_family(dist_tree, families, comm, periodic=None, **kwargs
       zone  = PT.get_node_from_path(dist_tree, zone_path)
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
       for container in PT.get_children_from_predicate(zone, lambda n: PT.get_label(n) in ['ZoneBC_t', 'ZoneGridConnectivity_t']):
-          for family in families:
+          for ifam, family in enumerate(families):
               predicate = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t'] \
                                      and PT.predicate.belongs_to_family(n, family, True)
 
@@ -225,7 +225,16 @@ def connect_match_from_family(dist_tree, families, comm, periodic=None, **kwargs
                 assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
                 pl = PT.get_child_from_name(node, 'PointList')[1][0]
 
-                clouds.append(_get_cloud(dmesh, pl, comm))
+                cloud = _get_cloud(dmesh, pl, comm)
+                if ifam == 0 and periodic is not None:
+                  coords = cloud[0]
+                  cx = coords[0::3]
+                  cy = coords[1::3]
+                  cz = coords[2::3]
+                  cx_p, cy_p, cz_p = np_utils.transform_cart_vectors(cx,cy,cz, **periodic)
+                  coords_p = np_utils.interweave_arrays([cx_p, cy_p, cz_p])
+                  cloud = (coords_p, *cloud[1:])
+                clouds.append(cloud)
                 clouds_path.append(f"{zone_path}/{PT.get_name(container)}/{PT.get_name(node)}") 
 
     out_vtx = _point_merge(clouds, comm)
@@ -292,6 +301,13 @@ def connect_match_from_family(dist_tree, families, comm, periodic=None, **kwargs
         PT.add_child(first_jn, node)
       for node in PT.get_children_from_predicate(second_node, to_copy):
         PT.add_child(secondjn, node)
+
+      if periodic is not None:
+        PT.new_GridConnectivityProperty(periodic, first_jn)
+        perio_opp = {'translation'     : - periodic.get('translation', np.zeros(3, np.float32)),
+                     'rotation_center' :   periodic.get('rotation_center', np.zeros(3, np.float32)),
+                     'rotation_angle'  : - periodic.get('rotation_angle', np.zeros(3, np.float32))}
+        PT.new_GridConnectivityProperty(perio_opp, secondjn)
 
       n_spawn[first_node_path] += 1
       n_spawn[second_node_path] += 1
