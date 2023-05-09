@@ -327,7 +327,7 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
           input_node = PT.get_node_from_path(dist_tree, cloud_path)
           PT.set_name(input_node, f"{PT.get_name(input_node)}_unmatched")
           PT.update_child(input_node, 'GridLocation', value='FaceCenter')
-          PT.update_child(input_node, 'PointList', value=unfound.reshape((-1,1), order='F'))
+          PT.update_child(input_node, 'PointList', value=unfound.reshape((1,-1), order='F'))
           MT.newDistribution({'Index':  par_utils.dn_to_distribution(unfound.size, comm)}, input_node)
         else:
           PT.rm_node_from_path(dist_tree, cloud_path)
@@ -335,6 +335,41 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
 
 
 def recover_1to1_pairing_from_families(dist_tree, families, comm, periodic=None, **kwargs):
+  """Find the matching faces between cgns nodes belonging to the two provided families.
+
+  For each one of the two families, all the BC_t or GridConnectivity_t nodes related to the family
+  through a FamilyName/AdditionalFamilyName node will be included in the pairing process.
+
+  If the interface is periodic, the transformation from the first to the second family
+  entities must be specified using the ``periodic`` argument; a dictionnary with keys
+  ``'translation'``, ``'rotation_center'`` and/or ``'rotation_angle'`` is expected.
+  Each key maps to a 3-sized numpy array, with missing keys defaulting zero vector.
+
+  Input tree is modified inplace : relevant GridConnectivity_t with PointList and PointListDonor
+  data are created.
+  If all the original elements are successfully paired, the original nodes are removed. Otherwise,
+  unmatched faces remains in their original node which is suffixed by '_unmatched'.
+
+  This function allows the additional optional parameters:
+
+  - ``location`` (default = 'FaceCenter') -- Controls the output GridLocation of
+    the created interfaces. 'FaceCenter' or 'Vertex' are admitted.
+
+  Args:
+    dist_tree (CGNSTree): Input distributed tree. Only U-NGon connectivities are managed.
+    families (tuple of str): Name of the two families to connect.
+    comm       (MPIComm): MPI communicator
+    periodic (dic, optional): Transformation from first to second family if the interface is periodic.
+      None otherwise. Defaults to None.
+    **kwargs: Additional options
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #recover1to1@start
+        :end-before: #recover1to1@end
+        :dedent: 2
+  """
+
   is_subset_container = lambda n: PT.get_label(n) in ['ZoneBC_t', 'ZoneGridConnectivity_t']
   is_subset           = lambda n: PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t']
 

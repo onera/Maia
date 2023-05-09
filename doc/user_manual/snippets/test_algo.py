@@ -390,6 +390,32 @@ def test_rearrange_element_sections():
   assert PT.Element.Range(tris)[0] == 1
   #rearrange_element_sections@end
 
+def test_recover1to1():
+  #recover1to1@start
+  from mpi4py import MPI
+  from numpy  import array, pi
+  import maia
+  import maia.pytree as PT
+  from maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+
+  # Remove data that should be created
+  PT.rm_nodes_from_name(dist_tree, 'PointListDonor')
+  PT.rm_nodes_from_name(dist_tree, 'GridConnectivityProperty')
+
+  # Create FamilyName on interface nodes
+  PT.new_node('FamilyName', 'FamilyName_t', 'Side1', 
+          parent=PT.get_node_from_name(dist_tree, 'matchA'))
+  PT.new_node('FamilyName', 'FamilyName_t', 'Side2', 
+          parent=PT.get_node_from_name(dist_tree, 'matchB'))
+
+  maia.algo.dist.recover_1to1_pairing_from_families(dist_tree, ('Side1', 'Side2'), MPI.COMM_WORLD,
+          periodic={'rotation_angle' : array([-2*pi/45.,0.,0.])})
+
+  assert len(PT.get_nodes_from_name(dist_tree, 'PointListDonor')) == 2
+  #recover1to1@end
+
 def test_redistribute_dist_tree():
   #redistribute_dist_tree@start
   from mpi4py import MPI

@@ -4,6 +4,8 @@ Distributed algorithms for distributed trees
 
 from .conformize_jn              import conformize_jn_pair
 
+from .connect_match              import recover_1to1_pairing_from_families
+
 from .duplicate                  import duplicate_from_periodic_jns,\
                                         duplicate_from_rotation_jns_to_360
 
