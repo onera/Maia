@@ -4,7 +4,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 import Pypdm.Pypdm as PDM
 import numpy as np
-from maia.utils import np_utils, par_utils
+from maia.utils import np_utils, par_utils, as_pdm_gnum
 from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh
 
 
@@ -105,7 +105,8 @@ def _point_merge(clouds, comm, rel_tol=1e-5):
 def _get_cloud(dmesh, gnum, comm):
     dmesh_extractor = PDM.DMeshExtract(2, comm)
     dmesh_extractor.register_dmesh(dmesh)
-    dmesh_extractor.set_gnum_to_extract(PDM._PDM_MESH_ENTITY_FACE, gnum)
+    _gnum = as_pdm_gnum(gnum)
+    dmesh_extractor.set_gnum_to_extract(PDM._PDM_MESH_ENTITY_FACE, _gnum)
 
     dmesh_extractor.compute()
 
@@ -152,8 +153,9 @@ def _convert_match_result_to_faces(dist_tree, clouds_path, out_vtx, comm):
       zones_dn_vtx.append(vtx_distri[1] - vtx_distri[0])
       zones_dn_face.append(face_distri[1] - face_distri[0])
       eso = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      zones_face_vtx_idx.append(eso - eso[0])
-      zones_face_vtx    .append(PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1])
+      ec  = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+      zones_face_vtx_idx.append(np.subtract(eso, eso[0], dtype=np.int32))
+      zones_face_vtx    .append(as_pdm_gnum(ec))
 
 
     n_interface = len(out_vtx['np_cloud_pair']) // 2
