@@ -180,12 +180,12 @@ BaseA CGNSBase_t I4 [2, 3]:
         GridLocation GridLocation_t 'EdgeCenter':
         GridConnectivityType GridConnectivityType_t 'Abutting':
         PointList IndexArray_t:
-          I4 : [[472, 474, 480, 476, 468, 470, 464, 466, 456, 458, 452, 454, 460, 462, 435, 436, 441, 450]]
+          I4 : [[435, 436, 441, 450, 452, 454, 456, 458, 460, 462, 464, 466, 468, 470, 472, 474, 476, 480]]
       match13 GridConnectivity_t 'BaseA/blk3_iso':
         GridLocation GridLocation_t 'EdgeCenter':
         GridConnectivityType GridConnectivityType_t 'Abutting':
         PointList IndexArray_t:
-          I4 : [[448, 449, 475, 477, 492, 484, 471, 473, 467, 469, 459, 461, 455, 457, 451, 453, 463, 465]]
+          I4 : [[448, 449, 451, 453, 455, 457, 459, 461, 463, 465, 467, 469, 471, 473, 475, 477, 484, 492]]
   blk3_iso Zone_t I4 [[247, 432, 0]]:
     ZoneType ZoneType_t 'Unstructured':
     GridCoordinates GridCoordinates_t:
@@ -363,12 +363,12 @@ BaseA CGNSBase_t I4 [2, 3]:
         GridLocation GridLocation_t 'EdgeCenter':
         GridConnectivityType GridConnectivityType_t 'Abutting':
         PointList IndexArray_t:
-          I4 : [[471, 473, 475, 477, 492, 484, 467, 469, 451, 453, 448, 449, 463, 465, 455, 457, 459, 461]]
+          I4 : [[448, 449, 451, 453, 455, 457, 459, 461, 463, 465, 467, 469, 471, 473, 475, 477, 484, 492]]
       match31 GridConnectivity_t 'blk1_iso':
         GridLocation GridLocation_t 'EdgeCenter':
         GridConnectivityType GridConnectivityType_t 'Abutting':
         PointList IndexArray_t:
-          I4 : [[460, 462, 472, 474, 480, 476, 464, 466, 468, 470, 435, 436, 441, 450, 452, 454, 456, 458]]
+          I4 : [[435, 436, 441, 450 ,452, 454, 456, 458, 460, 462, 464, 466, 468, 470, 472, 474, 476, 480]]
 BaseB CGNSBase_t I4 [2, 3]:
   blk2_iso Zone_t I4 [[247, 432, 0]]:
     ZoneType ZoneType_t 'Unstructured':
@@ -550,9 +550,9 @@ BaseB CGNSBase_t I4 [2, 3]:
         GridLocation GridLocation_t 'EdgeCenter':
         GridConnectivityType GridConnectivityType_t 'Abutting':
         PointList IndexArray_t:
-          I4 : [[474, 476, 444, 445, 450, 452, 462, 464, 454, 456, 458, 460, 466, 468, 489, 480, 470, 472]]
+          I4 : [[444, 445, 450, 452, 454, 456, 458, 460, 462, 464, 466, 468, 470, 472, 474, 476, 480, 489]]
       match21 GridConnectivity_t 'BaseA/blk1_iso':
         GridLocation GridLocation_t 'EdgeCenter':
         GridConnectivityType GridConnectivityType_t 'Abutting':
         PointList IndexArray_t:
-          I4 : [[465, 467, 457, 459, 453, 455, 440, 441, 447, 451, 461, 463, 469, 471, 486, 477, 473, 475]]
+          I4 : [[440, 441, 447, 451, 453, 455, 457, 459, 461, 463, 465, 467, 469, 471, 473, 475, 477, 486]]
