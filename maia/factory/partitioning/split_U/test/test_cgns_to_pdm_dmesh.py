@@ -126,7 +126,7 @@ ZoneU Zone_t [[18,6,0]]:
   #No getters for dmesh so we can not check data
   assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
 
-@mark_mpi_test(2)
+@pytest_parallel.mark.parallel(2)
 def test_cgns_dist_zone_to_pdm_dmesh_poly2d(comm):
   dist_tree = maia.factory.generate_dist_block(5, "QUAD_4", comm)
   maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
@@ -140,7 +140,7 @@ def test_cgns_dist_zone_to_pdm_dmesh_poly2d(comm):
   assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
   
 
-@mark_mpi_test(3)
+@pytest_parallel.mark.parallel(3)
 def test_cgns_dist_zone_to_pdm_dmesh_nodal(comm):
   if comm.Get_rank() == 0:
     dt = f"""

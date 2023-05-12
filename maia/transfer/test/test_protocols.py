@@ -104,7 +104,7 @@ def test_part_to_block(comm):
   assert dist_data["field"].dtype == np.float64
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 
-@mark_mpi_test(2)
+@pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("reduce_func", ["sum", "min", "max", "mean"])
 def test_part_to_block_with_reduce(reduce_func, comm):
   part_data = dict()
