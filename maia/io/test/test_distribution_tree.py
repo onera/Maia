@@ -1,4 +1,4 @@
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import mpi4py.MPI as MPI
 import numpy      as np
 
@@ -9,47 +9,47 @@ from   maia.pytree.yaml    import parse_yaml_cgns
 from   maia.utils.parallel import utils as par_utils
 from   maia.io             import distribution_tree
 
-@mark_mpi_test(2)
-def test_compute_subset_distribution(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_compute_subset_distribution(comm):
   node = PT.new_BC(name='BC', point_range=[[1,3],[1,3],[3,3]])
-  distribution_tree.compute_subset_distribution(node, sub_comm, par_utils.uniform_distribution)
+  distribution_tree.compute_subset_distribution(node, comm, par_utils.uniform_distribution)
 
   distrib_ud = MT.getDistribution(node)
   assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
   distrib    = PT.get_child_from_name(distrib_ud, 'Index')
   assert PT.get_label(distrib) == 'DataArray_t'
-  assert (PT.get_value(distrib) == par_utils.uniform_distribution(3*3*1, sub_comm)).all()
+  assert (PT.get_value(distrib) == par_utils.uniform_distribution(3*3*1, comm)).all()
 
   node = PT.new_BC(name='BC')
   PT.new_PointList('PointList', None, parent=node)
   PT.new_PointList('PointList#Size', [1,9], parent=node)
-  distribution_tree.compute_subset_distribution(node, sub_comm, par_utils.uniform_distribution)
+  distribution_tree.compute_subset_distribution(node, comm, par_utils.uniform_distribution)
 
   distrib_ud = MT.getDistribution(node)
   assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
   distrib    = PT.get_child_from_name(distrib_ud, 'Index')
   assert PT.get_label(distrib) == 'DataArray_t'
-  assert (PT.get_value(distrib) == par_utils.uniform_distribution(1*9, sub_comm)).all()
+  assert (PT.get_value(distrib) == par_utils.uniform_distribution(1*9, comm)).all()
 
-@mark_mpi_test(2)
-def test_compute_elements_distribution(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_compute_elements_distribution(comm):
   zoneS = PT.new_Zone('ZoneS', type='Structured')
   zoneU = PT.new_Zone('ZoneS', type='Unstructured')
   hexa = PT.new_Elements('Hexa', 'HEXA_8', erange=[1,100],parent=zoneU)
   tri  = PT.new_Elements('Tri', 'TRI_3', erange=[101,1000],parent=zoneU)
-  distribution_tree.compute_elements_distribution(zoneS, sub_comm, par_utils.uniform_distribution)
-  distribution_tree.compute_elements_distribution(zoneU, sub_comm, par_utils.uniform_distribution)
+  distribution_tree.compute_elements_distribution(zoneS, comm, par_utils.uniform_distribution)
+  distribution_tree.compute_elements_distribution(zoneU, comm, par_utils.uniform_distribution)
   assert (PT.get_node_from_name(hexa, 'Element')[1] == \
-      par_utils.uniform_distribution(100, sub_comm)).all()
+      par_utils.uniform_distribution(100, comm)).all()
   assert (PT.get_node_from_name(tri , 'Element')[1] == \
-      par_utils.uniform_distribution(900, sub_comm)).all()
+      par_utils.uniform_distribution(900, comm)).all()
   assert PT.get_node_from_name(zoneS, 'Element') == None
 
 
 
-@mark_mpi_test(2)
+@pytest_parallel.mark.parallel(2)
 class Test_compute_zone_distribution:
-  def test_unstruct(self, sub_comm):
+  def test_unstruct(self, comm):
     yt = """
 Zone Zone_t [[27,8,0]]:  
   ZoneType ZoneType_t "Unstructured":
@@ -75,11 +75,11 @@ Zone Zone_t [[27,8,0]]:
     PointList#Size IndexArray [1,10]:
   """
     zone = parse_yaml_cgns.to_node(yt)
-    distribution_tree.compute_zone_distribution(zone, sub_comm, par_utils.uniform_distribution)
+    distribution_tree.compute_zone_distribution(zone, comm, par_utils.uniform_distribution)
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 5
     assert len(PT.get_nodes_from_name(zone, 'Element')) == 1
 
-  def test_struct(self, sub_comm):
+  def test_struct(self, comm):
     yt = """
 Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
   ZoneType ZoneType_t "Structured":
@@ -92,14 +92,14 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
   """
     zone = parse_yaml_cgns.to_node(yt)
-    distribution_tree.compute_zone_distribution(zone, sub_comm, par_utils.uniform_distribution)
+    distribution_tree.compute_zone_distribution(zone, comm, par_utils.uniform_distribution)
     assert PT.get_node_from_name(zone, 'PointList#Size') is None
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 3
     assert MT.getDistribution(zone, 'Face') is not None
 
 
-@mark_mpi_test(2)
-def test_add_distribution_info(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_add_distribution_info(comm):
   dist_tree = parse_yaml_cgns.to_cgns_tree("""
 Base CGNSBase_t [3,3]:
   ZoneU Zone_t [[27,8,0]]:
@@ -131,7 +131,7 @@ Base CGNSBase_t [3,3]:
     ZSR ZoneSubRegion_t:
       PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
 """)
-  distribution_tree.add_distribution_info(dist_tree, sub_comm)
+  distribution_tree.add_distribution_info(dist_tree, comm)
   assert len(PT.get_nodes_from_name(dist_tree, 'Index')) == 4+3
 
 def test_clean_distribution_info():

@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import Pypdm.Pypdm as PDM
@@ -155,10 +155,10 @@ ZoneU Zone_t [[16,3,0]]:
     Cell DataArray_t {dtype} [2,6,4]:
 """
 
-@mark_mpi_test(2)
-def test_create_src_to_tgt(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_create_src_to_tgt(comm):
   #Here we just check if src_to_tgt is created
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     pt = src_part_0
   else:
     pt = src_part_1
@@ -172,11 +172,11 @@ def test_create_src_to_tgt(sub_comm):
 
   src_parts_per_dom = [zones]
   tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in zones]]
-  excp_target = np.array([1,2,3,4]) if sub_comm.Get_rank() == 0 else np.array([5,6,7,8])
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm)
+  excp_target = np.array([1,2,3,4]) if comm.Get_rank() == 0 else np.array([5,6,7,8])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm)
   assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
   assert (src_to_tgt[0]['target'] == excp_target).all()
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Closest')
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Closest')
   assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
   assert (src_to_tgt[0]['target'] == excp_target).all()
 
@@ -184,12 +184,12 @@ def test_create_src_to_tgt(sub_comm):
     for tgt_zone in tgt_zones:
       cx = PT.get_node_from_name(zone, 'CoordinateX')
       cx[1] += .5
-  excp_target = np.array([2,1,3,4]) if sub_comm.Get_rank() == 0 else np.array([6,5,8,7])
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='LocationAndClosest')
+  excp_target = np.array([2,1,3,4]) if comm.Get_rank() == 0 else np.array([6,5,8,7])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='LocationAndClosest')
   assert (src_to_tgt[0]['target'] == excp_target).all()
 
-  excp_target = np.array([2,3]) if sub_comm.Get_rank() == 0 else np.array([6,8])
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, strategy='Location')
+  excp_target = np.array([2,3]) if comm.Get_rank() == 0 else np.array([6,8])
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Location')
   assert (src_to_tgt[0]['target'] == excp_target).all()
 
 def test_interpolator_reductions():
@@ -214,9 +214,9 @@ def test_interpolator_reductions():
   out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
   assert (out == np.array([1.5, 10., 30.0])).all()
 
-@mark_mpi_test(2)
-def test_interpolate_fields(sub_comm):
-  if sub_comm.Get_rank() == 0:
+@pytest_parallel.mark.parallel(2)
+def test_interpolate_fields(comm):
+  if comm.Get_rank() == 0:
     pt = src_part_0
     expected_sol = np.array([2.,2.,2.,3.,3.,3.,3.,3.,3., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
   else:
@@ -235,8 +235,8 @@ def test_interpolate_fields(sub_comm):
       cy[1] += .05
       cz[1] -= .05
 
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, sub_comm, location='Vertex')
-  interpolator = ITP.Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, 'Vertex', sub_comm)
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, location='Vertex')
+  interpolator = ITP.Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, 'Vertex', comm)
   interpolator.exchange_fields('MySolution')
 
   for tgt_zones in tgt_parts_per_dom:
@@ -245,7 +245,7 @@ def test_interpolate_fields(sub_comm):
       assert PT.Subset.GridLocation(fs) == 'Vertex'
       assert (PT.get_child_from_name(fs, 'val')[1] == expected_sol).all()
 
-@mark_mpi_test(2)
+@pytest_parallel.mark.parallel(2)
 class Test_interpolation_api():
   src_zone_0 = parse_yaml_cgns.to_node(src_part_0)
   src_zone_1 = parse_yaml_cgns.to_node(src_part_1)
@@ -263,17 +263,17 @@ class Test_interpolation_api():
                         np.array([2., 6., 3.])]
   all_zones = [src_zone_0, src_zone_1, tgt_zone_0, tgt_zone_1, tgt_zone_2]
 
-  def test_interpolate_from_parts_per_dom(self,sub_comm):
-    if sub_comm.Get_rank() == 0:
+  def test_interpolate_from_parts_per_dom(self,comm):
+    if comm.Get_rank() == 0:
       src_parts_per_dom = [[self.src_zone_0]]
       tgt_parts_per_dom = [[self.tgt_zone_0, self.tgt_zone_1]]
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in [0,1]]
-    elif sub_comm.Get_rank() == 1:
+    elif comm.Get_rank() == 1:
       src_parts_per_dom = [[self.src_zone_1]]
       tgt_parts_per_dom = [[self.tgt_zone_2]]
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in [2]]
 
-    ITP.interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, sub_comm, \
+    ITP.interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, \
         ['MySolution'], 'Vertex', strategy='Closest')
 
     for tgt_zones in tgt_parts_per_dom:
@@ -282,13 +282,13 @@ class Test_interpolation_api():
         assert PT.Subset.GridLocation(fs) == 'Vertex'
         assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
-  def test_interpolate_from_dom_part_trees(self,sub_comm):
+  def test_interpolate_from_dom_part_trees(self,comm):
     src_tree = PT.new_CGNSTree()
     src_base = PT.new_CGNSBase(parent=src_tree)
     tgt_tree = PT.new_CGNSTree()
     tgt_base = PT.new_CGNSBase(parent=tgt_tree)
 
-    if sub_comm.Get_rank() == 0:
+    if comm.Get_rank() == 0:
       self.src_zone_0[0] = 'Source.P0.N0'
       self.tgt_zone_0[0] = 'Target.P0.N0'
       self.tgt_zone_1[0] = 'Target.P0.N1'
@@ -298,12 +298,12 @@ class Test_interpolation_api():
       PT.add_child(tgt_base, self.tgt_zone_1)
       PT.add_child(tgt_base, self.tgt_zone_2)
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in [0,1,2]]
-    elif sub_comm.Get_rank() == 1:
+    elif comm.Get_rank() == 1:
       self.src_zone_1[0] = 'Source.P1.N0'
       PT.add_child(src_base, self.src_zone_1)
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in []]
 
-    ITP.interpolate_from_part_trees(src_tree, tgt_tree, sub_comm, \
+    ITP.interpolate_from_part_trees(src_tree, tgt_tree, comm, \
         ['MySolution'], 'Vertex', strategy='Closest')
 
     for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
@@ -311,36 +311,36 @@ class Test_interpolation_api():
       assert PT.Subset.GridLocation(fs) == 'Vertex'
       assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
-@mark_mpi_test(2)
+@pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("strategy", ['Closest', 'LocationAndClosest'])
-def test_interpolation_mdom(strategy, sub_comm):
+def test_interpolation_mdom(strategy, comm):
   # Source tree : 2 blocks 3**3
   dtree_src = PT.new_CGNSTree()
   dbase_src = PT.new_CGNSBase(parent=dtree_src)
-  zoneA = PT.get_node_from_label(DCG.dcube_generate(4, 1.5, [0.,0.,0.], sub_comm), 'Zone_t')
-  zoneB = PT.get_node_from_label(DCG.dcube_generate(4, 1.5, [1.5,0.,0.], sub_comm), 'Zone_t')
+  zoneA = PT.get_node_from_label(DCG.dcube_generate(4, 1.5, [0.,0.,0.], comm), 'Zone_t')
+  zoneB = PT.get_node_from_label(DCG.dcube_generate(4, 1.5, [1.5,0.,0.], comm), 'Zone_t')
   PT.set_name(zoneA, 'SRCA')
   PT.set_name(zoneB, 'SRCB')
   PT.set_children(dbase_src, [zoneA, zoneB])
   # Target tree : 2 blocks 2**3
   dtree_tgt = PT.new_CGNSTree()
   dbase_tgt = PT.new_CGNSBase(parent=dtree_tgt)
-  zoneA = PT.get_node_from_label(DCG.dcube_generate(3, 1., [0.,0.,-0.6], sub_comm), 'Zone_t')
-  zoneB = PT.get_node_from_label(DCG.dcube_generate(3, 1., [1.,0.,1.1], sub_comm), 'Zone_t')
+  zoneA = PT.get_node_from_label(DCG.dcube_generate(3, 1., [0.,0.,-0.6], comm), 'Zone_t')
+  zoneB = PT.get_node_from_label(DCG.dcube_generate(3, 1., [1.,0.,1.1], comm), 'Zone_t')
   PT.set_name(zoneA, 'TGTA')
   PT.set_name(zoneB, 'TGTB')
   PT.set_children(dbase_tgt, [zoneA, zoneB])
-  #maia.io.dist_tree_to_file(dtree_src, 'source.hdf', sub_comm)
-  #maia.io.dist_tree_to_file(dtree_tgt, 'target.hdf', sub_comm)
+  #maia.io.dist_tree_to_file(dtree_src, 'source.hdf', comm)
+  #maia.io.dist_tree_to_file(dtree_tgt, 'target.hdf', comm)
 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     z_to_p = {'Base/TGTA' : [ ], 'Base/TGTB' : [.5]}
-  if sub_comm.Get_rank() == 1:
+  if comm.Get_rank() == 1:
     z_to_p = {'Base/TGTA' : [1], 'Base/TGTB' : [.5]}
-  src_tree = maia.factory.partition_dist_tree(dtree_src, sub_comm)
-  tgt_tree = maia.factory.partition_dist_tree(dtree_tgt, sub_comm, zone_to_parts=z_to_p)
+  src_tree = maia.factory.partition_dist_tree(dtree_src, comm)
+  tgt_tree = maia.factory.partition_dist_tree(dtree_tgt, comm, zone_to_parts=z_to_p)
 
-  interpolator = ITP.create_interpolator_from_part_trees(src_tree, tgt_tree, sub_comm, \
+  interpolator = ITP.create_interpolator_from_part_trees(src_tree, tgt_tree, comm, \
       'CellCenter', strategy=strategy)
 
   # Add sol to exchange
@@ -351,11 +351,11 @@ def test_interpolation_mdom(strategy, sub_comm):
     PT.new_FlowSolution('FlowSol', loc='CellCenter', fields=fields, parent=zone)
   interpolator.exchange_fields('FlowSol')
 
-  maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tgt_tree, sub_comm)
+  maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tgt_tree, comm)
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/dom')[1] == 1).all()
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTB/FlowSol/dom')[1] == [1,2,1,2]).all()
   # Careful, expected gnum depends on how the mesh is split. Today same value for two ranks
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/gnum')[1] == [1,2,4,5]).all()
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTB/FlowSol/gnum')[1] == [21,19,24,22]).all()
-  # maia.algo.pe_to_nface(dtree_tgt, sub_comm)
-  # maia.io.dist_tree_to_file(dtree_tgt, 'dtgt_with_sol.cgns', sub_comm)
+  # maia.algo.pe_to_nface(dtree_tgt, comm)
+  # maia.io.dist_tree_to_file(dtree_tgt, 'dtgt_with_sol.cgns', comm)

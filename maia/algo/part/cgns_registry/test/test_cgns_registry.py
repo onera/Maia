@@ -1,5 +1,4 @@
-from pytest_mpi_check            import assert_mpi
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
@@ -46,13 +45,13 @@ Base0 CGNSBase_t [3,3]:
 """]
 
 
-@mark_mpi_test(1)
-def test_cgns_registry_1p(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_cgns_registry_1p(comm):
   """
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt_1p)
 
-  cgr = make_cgns_registry(tree, sub_comm)
+  cgr = make_cgns_registry(tree, comm)
 
   assert list(cgr.paths(CGL.Zone_t)) == ["/Base0/ZoneU1", "/Base0/ZoneU2"]
 
@@ -120,23 +119,24 @@ def test_cgns_registry_1p(sub_comm):
   assert CGR.get_path_from_global_id_and_type(cgr, 1, "Family_t") == "/Base0/FARFIELD"
   assert CGR.get_path_from_global_id_and_type(cgr, 2, "Family_t") == "/Base0/SYM"
 
-@mark_mpi_test(2)
-def test_cgns_registry_2p(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_cgns_registry_2p(comm):
   """
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt_2p[sub_comm.Get_rank()])
+  tree = parse_yaml_cgns.to_cgns_tree(yt_2p[comm.Get_rank()])
+  cgr = make_cgns_registry(tree, comm)
 
-  cgr = make_cgns_registry(tree, sub_comm)
-
-  assert_mpi(sub_comm, 0, list(cgr.paths(CGL.Zone_t)) == ["/Base0/ZoneU1"])
-  assert_mpi(sub_comm, 1, list(cgr.paths(CGL.Zone_t)) == ["/Base0/ZoneU2"])
+  if comm.Get_rank()==0:
+    assert list(cgr.paths(CGL.Zone_t)) == ["/Base0/ZoneU1"]
+  if comm.Get_rank()==1:
+    assert list(cgr.paths(CGL.Zone_t)) == ["/Base0/ZoneU2"]
 
   # get_global_id_from_path_and_type
-  if sub_comm.Get_rank()==0:
+  if comm.Get_rank()==0:
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1", CGL.Zone_t) == 1
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/FARFIELD", CGL.BC_t) == 1
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/WALL"    , CGL.BC_t) == 2
-  if sub_comm.Get_rank()==1:
+  if comm.Get_rank()==1:
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2", CGL.Zone_t) == 2
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2", CGL.Zone_t) == 2
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/SYM" , CGL.BC_t) == 3
@@ -149,11 +149,11 @@ def test_cgns_registry_2p(sub_comm):
   # get_global_id_from_path_and_type
   assert CGR.get_global_id_from_path_and_type(cgr, "/Base0", "CGNSBase_t") == 1
 
-  if sub_comm.Get_rank()==0:
+  if comm.Get_rank()==0:
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1", "Zone_t") == 1
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/FARFIELD", "BC_t") == 1
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU1/ZoneBC/WALL"    , "BC_t") == 2
-  if sub_comm.Get_rank()==1:
+  if comm.Get_rank()==1:
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2", "Zone_t") == 2
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/SYM" , "BC_t") == 3
     assert CGR.get_global_id_from_path_and_type(cgr, "/Base0/ZoneU2/ZoneBC/WALL", "BC_t") == 4
@@ -165,11 +165,11 @@ def test_cgns_registry_2p(sub_comm):
   # get_path_from_global_id_and_type
   assert CGR.get_path_from_global_id_and_type(cgr, 1,  CGL.CGNSBase_t) == "/Base0"
 
-  if sub_comm.Get_rank()==0:
+  if comm.Get_rank()==0:
     assert CGR.get_path_from_global_id_and_type(cgr, 1, CGL.Zone_t) == "/Base0/ZoneU1"
     assert CGR.get_path_from_global_id_and_type(cgr, 1, CGL.BC_t) == "/Base0/ZoneU1/ZoneBC/FARFIELD"
     assert CGR.get_path_from_global_id_and_type(cgr, 2, CGL.BC_t) == "/Base0/ZoneU1/ZoneBC/WALL"
-  if sub_comm.Get_rank()==1:
+  if comm.Get_rank()==1:
     assert CGR.get_path_from_global_id_and_type(cgr, 2, CGL.Zone_t) == "/Base0/ZoneU2"
     assert CGR.get_path_from_global_id_and_type(cgr, 3, CGL.BC_t) == "/Base0/ZoneU2/ZoneBC/SYM"
     assert CGR.get_path_from_global_id_and_type(cgr, 4, CGL.BC_t) == "/Base0/ZoneU2/ZoneBC/WALL"
@@ -181,11 +181,11 @@ def test_cgns_registry_2p(sub_comm):
   # get_path_from_global_id_and_type
   assert CGR.get_path_from_global_id_and_type(cgr, 1,  "CGNSBase_t") == "/Base0"
 
-  if sub_comm.Get_rank()==0:
+  if comm.Get_rank()==0:
     assert CGR.get_path_from_global_id_and_type(cgr, 1, "Zone_t") == "/Base0/ZoneU1"
     assert CGR.get_path_from_global_id_and_type(cgr, 1, "BC_t") == "/Base0/ZoneU1/ZoneBC/FARFIELD"
     assert CGR.get_path_from_global_id_and_type(cgr, 2, "BC_t") == "/Base0/ZoneU1/ZoneBC/WALL"
-  if sub_comm.Get_rank()==1:
+  if comm.Get_rank()==1:
     assert CGR.get_path_from_global_id_and_type(cgr, 2, "Zone_t") == "/Base0/ZoneU2"
     assert CGR.get_path_from_global_id_and_type(cgr, 3, "BC_t") == "/Base0/ZoneU2/ZoneBC/SYM"
     assert CGR.get_path_from_global_id_and_type(cgr, 4, "BC_t") == "/Base0/ZoneU2/ZoneBC/WALL"
@@ -194,12 +194,12 @@ def test_cgns_registry_2p(sub_comm):
   assert CGR.get_path_from_global_id_and_type(cgr, 1, "Family_t") == "/Base0/FARFIELD"
   assert CGR.get_path_from_global_id_and_type(cgr, 2, "Family_t") == "/Base0/SYM"
 
-@mark_mpi_test(1)
-def test_add_cgns_registry_information_1p(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_add_cgns_registry_information_1p(comm):
   """
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt_1p)
-  cgr = add_cgns_registry_information(tree, sub_comm)
+  cgr = add_cgns_registry_information(tree, comm)
 
   zone1_id_n = PT.get_node_from_path(tree, "Base0/ZoneU1/:CGNS#Registry")
   zone2_id_n = PT.get_node_from_path(tree, "Base0/ZoneU2/:CGNS#Registry")
@@ -207,15 +207,15 @@ def test_add_cgns_registry_information_1p(sub_comm):
   assert PT.get_value(zone1_id_n) == 1
   assert PT.get_value(zone2_id_n) == 2
 
-@mark_mpi_test(2)
-def test_add_cgns_registry_information_2p(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_add_cgns_registry_information_2p(comm):
   """
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt_2p[sub_comm.Get_rank()])
-  cgr = add_cgns_registry_information(tree, sub_comm)
+  tree = parse_yaml_cgns.to_cgns_tree(yt_2p[comm.Get_rank()])
+  cgr = add_cgns_registry_information(tree, comm)
 
-  if sub_comm.Get_rank()==0:
+  if comm.Get_rank()==0:
     assert PT.get_value(PT.get_node_from_path(tree, "Base0/ZoneU1/:CGNS#Registry")) == 1
-  if sub_comm.Get_rank()==1:
+  if comm.Get_rank()==1:
     assert PT.get_value(PT.get_node_from_path(tree, "Base0/ZoneU2/:CGNS#Registry")) == 2
 

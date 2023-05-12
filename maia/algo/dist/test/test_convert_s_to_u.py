@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import mpi4py.MPI as MPI
 import numpy as np
 
@@ -295,16 +295,16 @@ def test_gc_s_to_gc_u():
   assert (PT.get_child_from_name(gcB_u, 'PointList')[1]\
           == PT.get_child_from_name(gcA_u, 'PointListDonor')[1]).all()
 
-@mark_mpi_test(2)
-def test_zonedims_to_ngon(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_zonedims_to_ngon(comm):
   #We dont test value of faceVtx/ngon here, this is carried out by Test_compute_all_ngon_connectivity
   n_vtx_zone = np.array([3,2,4])
-  ngon = s_to_u.zonedims_to_ngon(n_vtx_zone, sub_comm)
+  ngon = s_to_u.zonedims_to_ngon(n_vtx_zone, comm)
   n_faces = PT.get_child_from_name(ngon, "ElementStartOffset")[1].shape[0] - 1
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     expected_n_faces = 15
     expected_eso     = 4*np.arange(0,15+1)
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     expected_n_faces = 14
     expected_eso     = 4*np.arange(15, 15+14+1)
   assert n_faces == expected_n_faces

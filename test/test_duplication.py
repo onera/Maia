@@ -1,5 +1,5 @@
 import pytest
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import os
 import numpy as np
 
@@ -14,11 +14,11 @@ from maia.factory  import generate_dist_block
 from maia.algo      import transform_affine
 from maia.algo.dist import duplicate as DUP
 
-@mark_mpi_test([2])
+@pytest_parallel.mark.parallel([2])
 @pytest.mark.parametrize("fields", [True, False])
-def test_translate_cube(sub_comm, fields, write_output):
+def test_translate_cube(comm, fields, write_output):
   # Generate a disttree with one zone
-  dist_tree = generate_dist_block(11, "Poly", sub_comm, origin=[0., -.5, -.5])
+  dist_tree = generate_dist_block(11, "Poly", comm, origin=[0., -.5, -.5])
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields
@@ -55,12 +55,12 @@ def test_translate_cube(sub_comm, fields, write_output):
   if write_output:
     dist_base = PT.get_all_CGNSBase_t(dist_tree)[0]
     PT.add_child(dist_base, transformed_zone)
-    out_dir = TU.create_pytest_output_dir(sub_comm)
-    dist_tree_to_file(dist_tree, os.path.join(out_dir, 'duplicated.hdf'), sub_comm)
+    out_dir = TU.create_pytest_output_dir(comm)
+    dist_tree_to_file(dist_tree, os.path.join(out_dir, 'duplicated.hdf'), comm)
 
-@mark_mpi_test([1])
-def test_duplicate_from_periodic(sub_comm, write_output):
-  dist_tree = generate_dist_block(11, "Poly", sub_comm)
+@pytest_parallel.mark.parallel([1])
+def test_duplicate_from_periodic(comm, write_output):
+  dist_tree = generate_dist_block(11, "Poly", comm)
   # Lets create a periodic join for this cube
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
   bottom = PT.get_node_from_name(dist_zone, 'Zmin')
@@ -83,7 +83,7 @@ def test_duplicate_from_periodic(sub_comm, write_output):
   opposite_jns = [first_side_jn, second_side_jn]
 
   assert len(PT.get_all_Zone_t(dist_tree)) == 1
-  DUP.duplicate_from_periodic_jns(dist_tree, ['Base/zone'], opposite_jns, 4, sub_comm)
+  DUP.duplicate_from_periodic_jns(dist_tree, ['Base/zone'], opposite_jns, 4, comm)
   assert len(PT.get_all_Zone_t(dist_tree)) == 4+1
 
   # We still have only 2 periodic jns in the tree, and their translation value is updated
@@ -92,14 +92,14 @@ def test_duplicate_from_periodic(sub_comm, write_output):
     assert np.allclose(np.abs(PT.get_value(t)), [0, 0, 5])
 
   if write_output:
-    out_dir = TU.create_pytest_output_dir(sub_comm)
-    dist_tree_to_file(dist_tree, os.path.join(out_dir, 'duplicated.hdf'), sub_comm)
+    out_dir = TU.create_pytest_output_dir(comm)
+    dist_tree_to_file(dist_tree, os.path.join(out_dir, 'duplicated.hdf'), comm)
   
 
-@mark_mpi_test([4])
-def test_duplicate_360(sub_comm, write_output):
+@pytest_parallel.mark.parallel([4])
+def test_duplicate_360(comm, write_output):
   mesh_file = os.path.join(TU.mesh_dir, 'U_ATB_45.yaml')
-  dist_tree = file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = file_to_dist_tree(mesh_file, comm)
 
   # When working with an angular section of a cylindric object, we can easily duplicate the section
   # until the original object is reconstructed
@@ -108,7 +108,7 @@ def test_duplicate_360(sub_comm, write_output):
   opposite_jns = [first_side_jn, second_side_jn]
 
   assert len(PT.get_all_Zone_t(dist_tree)) == 1
-  DUP.duplicate_from_rotation_jns_to_360(dist_tree, ['Base/bump_45'], opposite_jns, sub_comm)
+  DUP.duplicate_from_rotation_jns_to_360(dist_tree, ['Base/bump_45'], opposite_jns, comm)
   assert len(PT.get_all_Zone_t(dist_tree)) == 45
 
   # There is no more periodic joins in the tree
@@ -116,6 +116,6 @@ def test_duplicate_360(sub_comm, write_output):
     assert PT.get_node_from_label(gc, 'Periodic_t') is None
 
   if write_output:
-    out_dir = TU.create_pytest_output_dir(sub_comm)
-    dist_tree_to_file(dist_tree, os.path.join(out_dir, '360.hdf'), sub_comm)
+    out_dir = TU.create_pytest_output_dir(comm)
+    dist_tree_to_file(dist_tree, os.path.join(out_dir, '360.hdf'), comm)
 

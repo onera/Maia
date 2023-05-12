@@ -1,6 +1,6 @@
 import pytest
 import os
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -14,12 +14,12 @@ from maia.factory import dplane_generator as DPG
 Some regular meshes can be directly generated in their distributed version
 """
 
-@mark_mpi_test([1,3])
-def test_generate_dcube_ngons(sub_comm, write_output):
+@pytest_parallel.mark.parallel([1,3])
+def test_generate_dcube_ngons(comm, write_output):
   n_vtx = 20
 
   # > dcube_generate create a NGon discretisation of a cube
-  dist_tree = generate_dist_block(n_vtx, "Poly", sub_comm, origin=[0.,0.,0.], edge_length=1.)
+  dist_tree = generate_dist_block(n_vtx, "Poly", comm, origin=[0.,0.,0.], edge_length=1.)
 
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 1
@@ -36,18 +36,18 @@ def test_generate_dcube_ngons(sub_comm, write_output):
   assert MT.getDistribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
 
   if write_output:
-    out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    out_dir = maia.utils.test_utils.create_pytest_output_dir(comm)
     out_file = os.path.join(out_dir, f'dcube_ngon.hdf')
-    maia.io.write_trees(dist_tree, out_file, sub_comm)
-    maia.io.dist_tree_to_file(dist_tree, out_file, sub_comm)
+    maia.io.write_trees(dist_tree, out_file, comm)
+    maia.io.dist_tree_to_file(dist_tree, out_file, comm)
     
 @pytest.mark.parametrize("cgns_elmt_name", ["TRI_3", "QUAD_4", "TETRA_4", "PENTA_6", "HEXA_8"])
-@mark_mpi_test([2])
-def test_generate_dcube_elts(cgns_elmt_name, sub_comm, write_output):
+@pytest_parallel.mark.parallel([2])
+def test_generate_dcube_elts(cgns_elmt_name, comm, write_output):
   n_vtx = 20
 
   # > dcube_nodal_generate create an element discretisation of a cube. Several element type are supported
-  dist_tree = generate_dist_block(n_vtx, cgns_elmt_name, sub_comm, origin=[0.,0.,0.], edge_length=1.)
+  dist_tree = generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=[0.,0.,0.], edge_length=1.)
 
   # 2D or 3D meshes can be generated, depending on the type of requested element
   dim = 2 if cgns_elmt_name in ["TRI_3", "QUAD_4"] else 3
@@ -71,18 +71,18 @@ def test_generate_dcube_elts(cgns_elmt_name, sub_comm, write_output):
   assert MT.getDistribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
 
   if write_output:
-    out_dir = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
+    out_dir = maia.utils.test_utils.create_pytest_output_dir(comm)
     outfile = os.path.join(out_dir, 'dcube_elt.hdf')
-    maia.io.dist_tree_to_file(dist_tree, outfile, sub_comm)
+    maia.io.dist_tree_to_file(dist_tree, outfile, comm)
 
 @pytest.mark.parametrize("random", [False, True])
-@mark_mpi_test([3])
-def test_generate_place_ngons(random, sub_comm):
+@pytest_parallel.mark.parallel([3])
+def test_generate_place_ngons(random, comm):
   n_vtx = 20
 
   # > dplane_generate create a strange 2D discretisation with polygonal elements
   dist_tree = DPG.dplane_generate(xmin=0., xmax=1., ymin=0., ymax=1., \
-      have_random=random, init_random=random, nx=n_vtx, ny=n_vtx, comm=sub_comm)
+      have_random=random, init_random=random, nx=n_vtx, ny=n_vtx, comm=comm)
 
   assert (PT.get_value(PT.get_all_CGNSBase_t(dist_tree)[0]) == [2,2]).all()
   zones = PT.get_all_Zone_t(dist_tree)

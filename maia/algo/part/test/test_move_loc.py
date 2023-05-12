@@ -1,6 +1,6 @@
 import os
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree as PT
@@ -10,23 +10,23 @@ from   maia.utils       import test_utils as TU
 
 import maia.algo.part.move_loc as ML
 
-@mark_mpi_test([1,2])
+@pytest_parallel.mark.parallel([1,2])
 @pytest.mark.parametrize("cross_domain", [False, True])
-def test_centers_to_nodes(cross_domain, sub_comm):
+def test_centers_to_nodes(cross_domain, comm):
   yaml_path = os.path.join(TU.sample_mesh_dir, 'quarter_crown_square_8.yaml')
-  dist_tree = maia.io.file_to_dist_tree(yaml_path, sub_comm)
+  dist_tree = maia.io.file_to_dist_tree(yaml_path, comm)
   for label in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']:
     PT.rm_nodes_from_label(dist_tree, label) # Cleanup
-  part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
   # Create sol on partitions
   for part in PT.get_all_Zone_t(part_tree):
     gnum = PT.maia.getGlobalNumbering(part, 'Cell')[1]
     PT.new_FlowSolution('FSol', loc='CellCenter', fields={'gnum': gnum}, parent=part)
 
-  ML.centers_to_nodes(part_tree, sub_comm, ['FSol'], idw_power=0, cross_domain=cross_domain)
+  ML.centers_to_nodes(part_tree, comm, ['FSol'], idw_power=0, cross_domain=cross_domain)
 
-  maia.transfer.part_tree_to_dist_tree_only_labels(dist_tree, part_tree, ['FlowSolution_t'], sub_comm)
+  maia.transfer.part_tree_to_dist_tree_only_labels(dist_tree, part_tree, ['FlowSolution_t'], comm)
   dsol_vtx = PT.get_node_from_name(dist_tree, 'FSol#Vtx')
   dfield_vtx = PT.get_node_from_name(dsol_vtx, 'gnum')[1]
 

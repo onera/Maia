@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree        as PT
@@ -17,9 +17,9 @@ def as_partitioned(zone):
   for array in PT.iter_nodes_from_predicate(zone, predicate, explore='deep'):
     array[1] = array[1].astype(np.int32)
 
-@mark_mpi_test(1)
-def test_get_zone_ln_to_gn_from_loc(sub_comm):
-  tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
+@pytest_parallel.mark.parallel(1)
+def test_get_zone_ln_to_gn_from_loc(comm):
+  tree = DCG.dcube_generate(3, 1., [0.,0.,0.], comm)
   zone = PT.get_all_Zone_t(tree)[0]
   as_partitioned(zone)
   vtx_gnum = np.arange(3**3) + 1
@@ -29,9 +29,9 @@ def test_get_zone_ln_to_gn_from_loc(sub_comm):
   assert (PCU._get_zone_ln_to_gn_from_loc(zone, 'Vertex') == vtx_gnum).all()
   assert (PCU._get_zone_ln_to_gn_from_loc(zone, 'CellCenter') == cell_gnum).all()
 
-@mark_mpi_test(1)
-def test_get_point_cloud(sub_comm):
-  tree = DCG.dcube_generate(3, 1., [0.,0.,0.], sub_comm)
+@pytest_parallel.mark.parallel(1)
+def test_get_point_cloud(comm):
+  tree = DCG.dcube_generate(3, 1., [0.,0.,0.], comm)
   zone = PT.get_all_Zone_t(tree)[0]
   as_partitioned(zone)
   PT.rm_nodes_from_label(zone, 'ZoneBC_t')
@@ -84,16 +84,16 @@ def test_extract_sub_cloud():
   assert (sub_coords == [0,1,0, .5,0,0]).all()
   assert (sub_lngn == [4,9]).all()
   
-@mark_mpi_test(2)
-def test_create_sub_numbering(sub_comm):
-  if sub_comm.Get_rank() == 0:
+@pytest_parallel.mark.parallel(2)
+def test_create_sub_numbering(comm):
+  if comm.Get_rank() == 0:
     lngn_l =  [ np.array([3,9], pdm_gnum_dtype), np.array([], pdm_gnum_dtype) ]
     expected_sub_lngn_l  =  [ np.array([1,5]), np.array([]) ]
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     lngn_l =  [ np.array([7,5,6], pdm_gnum_dtype) ]
     expected_sub_lngn_l  =  [ np.array([4,2,3]) ]
 
-  sub_gnum_l = PCU.create_sub_numbering(lngn_l, sub_comm)
+  sub_gnum_l = PCU.create_sub_numbering(lngn_l, comm)
 
   for sub_gnum, expected_sub_lngn in zip(sub_gnum_l, expected_sub_lngn_l):
     assert (sub_gnum == expected_sub_lngn).all()

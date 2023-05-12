@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy      as np
 
 import maia.pytree      as PT
@@ -12,63 +12,63 @@ import maia.transfer.part_to_dist.index_exchange as IPTB
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
-@mark_mpi_test(4)
-def test_create_part_pl_gnum_unique(sub_comm):
-  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
-  if sub_comm.Get_rank() == 0:
+@pytest_parallel.mark.parallel(4)
+def test_create_part_pl_gnum_unique(comm):
+  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(comm.Get_rank()))]
+  if comm.Get_rank() == 0:
     PT.new_ZoneSubRegion("ZSR", point_list=[[2,4,6,8]], loc='Vertex', parent=part_zones[0])
-  if sub_comm.Get_rank() == 2:
+  if comm.Get_rank() == 2:
     part_zones.append(PT.new_Zone('Zone.P2.N1'))
     PT.new_ZoneSubRegion("ZSR", point_list=[[1,3]], loc='Vertex', parent=part_zones[0])
     PT.new_ZoneSubRegion("ZSR", point_list=[[2,4,6]], loc='Vertex', parent=part_zones[1])
-  if sub_comm.Get_rank() == 3:
+  if comm.Get_rank() == 3:
     part_zones = []
-  IPTB.create_part_pl_gnum_unique(part_zones, "ZSR", sub_comm)
+  IPTB.create_part_pl_gnum_unique(part_zones, "ZSR", comm)
 
   for p_zone in part_zones:
     if PT.get_child_from_name(p_zone, "ZSR") is not None:
       assert PT.get_node_from_path(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [1,2,3,4]).all()
-  if sub_comm.Get_rank() == 2:
+  if comm.Get_rank() == 2:
     assert (PT.get_node_from_name(part_zones[1], 'Index')[1] == [7,8,9]).all()
     assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
 
-@mark_mpi_test(4)
-def test_create_part_pl_gnum(sub_comm):
+@pytest_parallel.mark.parallel(4)
+def test_create_part_pl_gnum(comm):
   dist_zone = PT.new_Zone('Zone')
-  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()))]
+  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(comm.Get_rank()))]
   distri_ud0 = MT.newGlobalNumbering(parent=part_zones[0])
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     PT.new_ZoneSubRegion("ZSR", point_list=[[1,8,5,2]], loc='Vertex', parent=part_zones[0])
     PT.new_DataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     PT.new_DataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
-  elif sub_comm.Get_rank() == 2:
+  elif comm.Get_rank() == 2:
     PT.new_DataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
     part_zones.append(PT.new_Zone('Zone.P2.N1'))
     distri_ud1 = MT.newGlobalNumbering(parent=part_zones[1])
     PT.new_DataArray('Vertex', np.array([4,9,13,1,7,6], pdm_dtype), parent=distri_ud1)
     PT.new_ZoneSubRegion("ZSR", point_list=[[1,3]], loc='Vertex', parent=part_zones[0])
     PT.new_ZoneSubRegion("ZSR", point_list=[[2,4,6]], loc='Vertex', parent=part_zones[1])
-  elif sub_comm.Get_rank() == 3:
+  elif comm.Get_rank() == 3:
     part_zones = []
 
-  IPTB.create_part_pl_gnum(dist_zone, part_zones, "ZSR", sub_comm)
+  IPTB.create_part_pl_gnum(dist_zone, part_zones, "ZSR", comm)
 
   for p_zone in part_zones:
     if PT.get_child_from_name(p_zone, "ZSR") is not None:
       assert PT.get_node_from_path(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [7,2,4,6]).all()
     assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
-  if sub_comm.Get_rank() == 2:
+  if comm.Get_rank() == 2:
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [5,4]).all()
     assert (PT.get_node_from_name(part_zones[1], 'Index')[1] == [4,1,3]).all()
 
-@mark_mpi_test(3)
-def test_create_part_pr_gnum(sub_comm):
-  i_rank = sub_comm.Get_rank()
+@pytest_parallel.mark.parallel(3)
+def test_create_part_pr_gnum(comm):
+  i_rank = comm.Get_rank()
   dist_zone = PT.new_Zone('Zone')
 
   if i_rank == 0:
@@ -86,33 +86,33 @@ def test_create_part_pr_gnum(sub_comm):
   elif i_rank == 2:
     part_zones = []
 
-  IPTB.create_part_pr_gnum(dist_zone, part_zones, "ZSR", sub_comm)
+  IPTB.create_part_pr_gnum(dist_zone, part_zones, "ZSR", comm)
 
   # Two gnum are shared, so index should go from 1 to 6
   for p_zone in part_zones:
     if PT.get_child_from_name(p_zone, "ZSR") is not None:
       assert PT.get_node_from_path(p_zone, "ZSR/:CGNS#GlobalNumbering/Index") is not None 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [3,5,2,6]).all()
     assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
-  if sub_comm.Get_rank() == 1:
+  if comm.Get_rank() == 1:
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [4,6,1,2]).all()
     assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
 
-@mark_mpi_test(4)
+@pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize("allow_mult", [False, True])
-def test_part_pl_to_dist_pl(sub_comm, allow_mult):
+def test_part_pl_to_dist_pl(comm, allow_mult):
   dist_zone = PT.new_Zone('Zone', type='Unstructured')
   dist_zsr = PT.new_ZoneSubRegion("ZSR", loc='Vertex', parent=dist_zone)
-  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(sub_comm.Get_rank()), type='Unstructured')]
+  part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(comm.Get_rank()), type='Unstructured')]
   distri_ud0 = MT.newGlobalNumbering(parent=part_zones[0])
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     PT.new_DataArray('Vertex', np.array([22,18,5,13,9,11,6,4], pdm_dtype), parent=distri_ud0)
     zsr = PT.new_ZoneSubRegion("ZSR", point_list=[[1,8,5,2]], loc='Vertex', parent=part_zones[0])
     MT.newGlobalNumbering({'Index' : np.array([7,2,4,6], pdm_dtype)}, zsr)
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     PT.new_DataArray('Vertex', np.array([5,16,9,17,22], pdm_dtype), parent=distri_ud0)
-  elif sub_comm.Get_rank() == 2:
+  elif comm.Get_rank() == 2:
     PT.new_DataArray('Vertex', np.array([13,8,9,6,2], pdm_dtype), parent=distri_ud0)
     part_zones.append(PT.new_Zone('Zone.P2.N1', type='Unstructured'))
     distri_ud1 = MT.newGlobalNumbering(parent=part_zones[1])
@@ -121,30 +121,30 @@ def test_part_pl_to_dist_pl(sub_comm, allow_mult):
     MT.newGlobalNumbering({'Index' : np.array([5,4], pdm_dtype)}, zsr)
     zsr = PT.new_ZoneSubRegion("ZSR", point_list=[[2,4,6]], loc='Vertex', parent=part_zones[1])
     MT.newGlobalNumbering({'Index' : np.array([4,1,3], pdm_dtype)}, zsr)
-  elif sub_comm.Get_rank() == 3:
+  elif comm.Get_rank() == 3:
     part_zones = []
 
-  IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", sub_comm, allow_mult)
+  IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", comm, allow_mult)
 
   dist_pl     = PT.get_node_from_path(dist_zsr, 'PointList')[1]
   dist_distri = PT.get_value(MT.getDistribution(dist_zsr, 'Index'))
   assert dist_distri.dtype == pdm_gnum_dtype
 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert (dist_distri == [0,2,7]).all()
     assert (dist_pl     == [1,4]  ).all()
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     assert (dist_distri == [2,4,7]).all()
     assert (dist_pl     == [6,9]  ).all()
-  elif sub_comm.Get_rank() == 2:
+  elif comm.Get_rank() == 2:
     assert (dist_distri == [4,6,7]).all()
     assert (dist_pl     == [13,18]).all()
-  elif sub_comm.Get_rank() == 3:
+  elif comm.Get_rank() == 3:
     assert (dist_distri == [6,7,7]).all()
     assert (dist_pl     == [22]   ).all()
 
-@mark_mpi_test(1)
-def test_part_pl_to_dist_pl_S(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_part_pl_to_dist_pl_S(comm):
   dist_zone = PT.new_Zone('Zone', type='Structured', size=[[3,2,0],[3,2,0],[3,2,0]])
   dist_zsr = PT.new_ZoneSubRegion("ZSR", loc='KFaceCenter', parent=dist_zone)
   
@@ -160,14 +160,14 @@ def test_part_pl_to_dist_pl_S(sub_comm):
       Face DataArray_t [4,5,6,10,11,12, 15,16,17,18,21,22,23,24, 27,28,31,32,35,36]:
   """)
 
-  IPTB.part_pl_to_dist_pl(dist_zone, [part_zone], "ZSR", sub_comm)
+  IPTB.part_pl_to_dist_pl(dist_zone, [part_zone], "ZSR", comm)
 
   dist_pl = PT.get_node_from_name(dist_zone, 'PointList')
   assert (PT.get_value(dist_pl) == [[2,1],[2,2],[3,3]]).all()
 
-@mark_mpi_test(4)
+@pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize("allow_mult", [False, True])
-def test_part_pr_to_dist_pr(sub_comm, allow_mult):
+def test_part_pr_to_dist_pr(comm, allow_mult):
   yt = """
   Zone Zone_t [[3,2,0], [3,2,0], [5,4,0]]: #Cube 2*2*4 cells
     ZoneType ZoneType_t "Structured":
@@ -176,7 +176,7 @@ def test_part_pr_to_dist_pr(sub_comm, allow_mult):
   """
   dist_zone = parse_yaml_cgns.to_node(yt)
 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     yt = """ # Know the BC on one part
     Zone.P0.N0 Zone_t [[3,2,0], [2,1,0], [3,2,0]]:
       ZoneType ZoneType_t "Structured":
@@ -186,7 +186,7 @@ def test_part_pr_to_dist_pr(sub_comm, allow_mult):
         bc BC_t:
           PointRange IndexRange_t [[1,3], [1,2], [1,1]]:
     """
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     yt = """ # Know the zone, but has no BC
     Zone.P1.N0 Zone_t [[3,2,0], [3,2,0], [2,1,0]]:
       ZoneType ZoneType_t "Structured":
@@ -195,7 +195,7 @@ def test_part_pr_to_dist_pr(sub_comm, allow_mult):
       ZoneBC ZoneBC_t:
         otherbc BC_t:
     """
-  elif sub_comm.Get_rank() == 2:
+  elif comm.Get_rank() == 2:
     if allow_mult:
       yt = """ # Know the BC on several partitions
       Zone.P2.N0 Zone_t [[3,2,0], [2,1,0], [3,2,0]]:
@@ -225,21 +225,21 @@ def test_part_pr_to_dist_pr(sub_comm, allow_mult):
           bc BC_t:
             PointRange IndexRange_t [[1,2], [1,2], [1,1]]:
       """
-  elif sub_comm.Get_rank() == 3:
+  elif comm.Get_rank() == 3:
     yt = """ # Not concerned by this zone at all
     OtherZone.P3.N0 Zone_t [[5,4,0], [3,2,0], [3,2,0]]:
       ZoneType ZoneType_t "Structured":
     """
   part_zones = parse_yaml_cgns.to_nodes(yt)
 
-  IPTB.part_pr_to_dist_pr(dist_zone, part_zones, "ZoneBC/bc", sub_comm, allow_mult)
+  IPTB.part_pr_to_dist_pr(dist_zone, part_zones, "ZoneBC/bc", comm, allow_mult)
   assert np.array_equal(PT.get_node_from_name(dist_zone, 'PointRange')[1], [[1,3], [1,3], [1,1]])
 
 
-@mark_mpi_test(3)
-def test_part_elt_to_dist_elt(sub_comm):
-  rank = sub_comm.Get_rank()
-  size = sub_comm.Get_size()
+@pytest_parallel.mark.parallel(3)
+def test_part_elt_to_dist_elt(comm):
+  rank = comm.Get_rank()
+  size = comm.Get_size()
 
   dist_zone = PT.new_Zone('Zone')
   if rank == 0:
@@ -280,7 +280,7 @@ Zone.P2.N0 Zone_t:
 
   pT = parse_yaml_cgns.to_cgns_tree(yt)
 
-  IPTB.part_elt_to_dist_elt(dist_zone, PT.get_all_Zone_t(pT), 'Quad', sub_comm)
+  IPTB.part_elt_to_dist_elt(dist_zone, PT.get_all_Zone_t(pT), 'Quad', comm)
 
   elt = PT.get_node_from_name(dist_zone, 'Quad')
   assert (PT.Element.Range(elt) == [11,18]).all()
@@ -290,10 +290,10 @@ Zone.P2.N0 Zone_t:
   assert distri_elt.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
 
-@mark_mpi_test(3)
-def test_part_ngon_to_dist_ngon(sub_comm):
-  rank = sub_comm.Get_rank()
-  size = sub_comm.Get_size()
+@pytest_parallel.mark.parallel(3)
+def test_part_ngon_to_dist_ngon(comm):
+  rank = comm.Get_rank()
+  size = comm.Get_size()
 
   dist_zone = PT.new_Zone('Zone')
   if rank == 0:
@@ -365,13 +365,13 @@ Zone.P2.N1 Zone_t:
                             [38,40], [42,44], [39,0], [43,0], [40,0], [44,0]])
     expected_ec=[10,11,2,1,19,20,11,10,11,12,3,2,20,21,12,11,4,5,14,13,13,14,23,22,
                  5,6,15,14,14,15,24,23,7,8,17,16,16,17,26,25,8,9,18,17,17,18,27,26]
-  expected_eso = np.array([0,4,8,12,16,20,24,28,32,36,40,44,48]) + 48*sub_comm.Get_rank()
+  expected_eso = np.array([0,4,8,12,16,20,24,28,32,36,40,44,48]) + 48*comm.Get_rank()
   expected_elt_distri_full  = np.array([0, 12, 24, 36])
   expected_eltc_distri_full = np.array([0, 48, 96, 144])
 
   pT = parse_yaml_cgns.to_cgns_tree(yt)
 
-  IPTB.part_ngon_to_dist_ngon(dist_zone, PT.get_all_Zone_t(pT), 'Ngon', sub_comm)
+  IPTB.part_ngon_to_dist_ngon(dist_zone, PT.get_all_Zone_t(pT), 'Ngon', comm)
 
   ngon = PT.request_node_from_name(dist_zone, 'Ngon')
   assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
@@ -383,10 +383,10 @@ Zone.P2.N1 Zone_t:
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
   assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()
 
-@mark_mpi_test(3)
-def test_part_nface_to_dist_nface(sub_comm):
-  rank = sub_comm.Get_rank()
-  size = sub_comm.Get_size()
+@pytest_parallel.mark.parallel(3)
+def test_part_nface_to_dist_nface(comm):
+  rank = comm.Get_rank()
+  size = comm.Get_size()
 
   dist_zone = PT.new_Zone('Zone')
   if rank == 0:
@@ -447,7 +447,7 @@ Zone.P2.N1 Zone_t:
 
   pT = parse_yaml_cgns.to_cgns_tree(yt)
 
-  IPTB.part_nface_to_dist_nface(dist_zone, PT.get_all_Zone_t(pT), 'NFace', 'Ngon', sub_comm)
+  IPTB.part_nface_to_dist_nface(dist_zone, PT.get_all_Zone_t(pT), 'NFace', 'Ngon', comm)
 
   nface = PT.get_node_from_name(dist_zone, 'NFace')
   assert nface is not None

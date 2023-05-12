@@ -1,5 +1,5 @@
 import pytest
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import os
 import mpi4py.MPI as MPI
 import numpy      as np
@@ -23,13 +23,13 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 
 # ========================================================================================
 # ----------------------------------------------------------------------------------------
-def generate_test_tree(n_vtx,n_part,sub_comm, build_bc_zsr=False):
+def generate_test_tree(n_vtx,n_part,comm, build_bc_zsr=False):
 
-  dist_tree = MF.generate_dist_block(n_vtx, "Poly", sub_comm, [-2.5, -2.5, -2.5], 5.)
+  dist_tree = MF.generate_dist_block(n_vtx, "Poly", comm, [-2.5, -2.5, -2.5], 5.)
   
   # Partionning option
-  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, sub_comm, n_part)
-  part_tree     = MF.partition_dist_tree(dist_tree, sub_comm,
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, comm, n_part)
+  part_tree     = MF.partition_dist_tree(dist_tree, comm,
                                          zone_to_parts=zone_to_parts,
                                          preserve_orientation=True)
 
@@ -76,33 +76,33 @@ def generate_test_tree(n_vtx,n_part,sub_comm, build_bc_zsr=False):
 # ----------------------------------------------------------------------------------------
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("elt_type", ["QUAD_4","NGON_n"])
-@mark_mpi_test([1, 3])
-def test_isosurf_U(elt_type,sub_comm, write_output):
+@pytest_parallel.mark.parallel([1, 3])
+def test_isosurf_U(elt_type,comm, write_output):
   
   # Cube generation
   n_vtx  = 6
   n_part = 2
-  part_tree = generate_test_tree(n_vtx, n_part, sub_comm)
+  part_tree = generate_test_tree(n_vtx, n_part, comm)
 
   containers    = ['FlowSolution_NC','FlowSolution_CC']
   part_tree_iso = ISS.iso_surface(part_tree,
                                   "FlowSolution_NC/cylinder",
-                                  sub_comm,
+                                  comm,
                                   iso_val=0.,
                                   containers_name=containers,
                                   elt_type=elt_type)
   
   # Part to dist
-  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,sub_comm)
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
   
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'isosurf_{elt_type}.yaml')
-  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
   if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, 'isosurf.cgns'), sub_comm)
-    Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, 'isosurf.cgns'), comm)
+    Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), comm)
 
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=1E-15, type_tol=True)
@@ -117,32 +117,32 @@ def test_isosurf_U(elt_type,sub_comm, write_output):
 # ----------------------------------------------------------------------------------------
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("elt_type", ["TRI_3","NGON_n"])
-@mark_mpi_test([1, 3])
-def test_plane_slice_U(elt_type,sub_comm, write_output):
+@pytest_parallel.mark.parallel([1, 3])
+def test_plane_slice_U(elt_type,comm, write_output):
   
   # Cube generation
   n_vtx  = 6
   n_part = 2
-  part_tree = generate_test_tree(n_vtx, n_part, sub_comm, build_bc_zsr=True)
+  part_tree = generate_test_tree(n_vtx, n_part, comm, build_bc_zsr=True)
 
   containers    = ['FlowSolution_NC','FlowSolution_CC','ZSR_BC']
   part_tree_iso = ISS.plane_slice(part_tree,
                                   [1.,1.,1.,0.2],
-                                  sub_comm,
+                                  comm,
                                   containers_name=containers,
                                   elt_type=elt_type)
   
   # Part to dist
-  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,sub_comm)
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
   
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'plane_slice_{elt_type}.yaml')
-  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
   if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'plane_slice.cgns'), sub_comm)
-    Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'plane_slice.cgns'), comm)
+    Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), comm)
 
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
@@ -157,32 +157,32 @@ def test_plane_slice_U(elt_type,sub_comm, write_output):
 # ----------------------------------------------------------------------------------------
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("elt_type", ["TRI_3","QUAD_4"])
-@mark_mpi_test([1, 3])
-def test_spherical_slice_U(elt_type,sub_comm, write_output):
+@pytest_parallel.mark.parallel([1, 3])
+def test_spherical_slice_U(elt_type,comm, write_output):
   
   # Cube generation
   n_vtx  = 6
   n_part = 2
-  part_tree = generate_test_tree(n_vtx, n_part, sub_comm)
+  part_tree = generate_test_tree(n_vtx, n_part, comm)
 
   containers    = ['FlowSolution_NC','FlowSolution_CC']
   part_tree_iso = ISS.spherical_slice(part_tree,
                                       [0.,0.,0.,2.],
-                                      sub_comm,
+                                      comm,
                                       containers_name=containers,
                                       elt_type=elt_type)
   
   # Part to dist
-  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,sub_comm)
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
 
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'spherical_slice_{elt_type}.yaml')
-  ref_sol  = Mio.file_to_dist_tree(ref_file, sub_comm)
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
   if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(sub_comm)
-    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'spherical_slice.cgns'), sub_comm)
-    Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), sub_comm)
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'spherical_slice.cgns'), comm)
+    Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), comm)
   
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)

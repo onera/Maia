@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree        as PT
@@ -14,12 +14,12 @@ def as_int32(zone):
   for array in PT.iter_nodes_from_predicate(zone, predicate, explore='deep'):
     array[1] = array[1].astype(np.int32)
 
-@mark_mpi_test(1)
-def test_enforce_boundary_pe_left(sub_comm):
-  tree = DCG.dcube_generate(3, 1., [0., 0., 0.], sub_comm)
+@pytest_parallel.mark.parallel(1)
+def test_enforce_boundary_pe_left(comm):
+  tree = DCG.dcube_generate(3, 1., [0., 0., 0.], comm)
   zone = PT.get_all_Zone_t(tree)[0]
   as_int32(zone)
-  maia.algo.pe_to_nface(zone, sub_comm)
+  maia.algo.pe_to_nface(zone, comm)
   pe_node = PT.get_node_from_path(zone, 'NGonElements/ParentElements')
   pe_bck = pe_node[1].copy()
   zone_bck = PT.deep_copy(zone)

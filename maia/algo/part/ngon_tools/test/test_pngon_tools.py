@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import numpy as np
 
@@ -15,9 +15,9 @@ def as_partitioned(zone):
   for array in PT.iter_nodes_from_predicate(zone, predicate, explore='deep'):
     array[1] = array[1].astype(np.int32)
 
-@mark_mpi_test([1])
-def test_pe_to_nface(sub_comm):
-  tree = DCG.dcube_generate(3,1.,[0,0,0], sub_comm)
+@pytest_parallel.mark.parallel([1])
+def test_pe_to_nface(comm):
+  tree = DCG.dcube_generate(3,1.,[0,0,0], comm)
   zone = PT.get_all_Zone_t(tree)[0]
   as_partitioned(zone)
 
@@ -36,10 +36,10 @@ def test_pe_to_nface(sub_comm):
   assert PT.is_same_tree(nface, nface_exp)
   assert PT.get_node_from_name(zone, "ParentElements") is None
 
-@mark_mpi_test([1])
+@pytest_parallel.mark.parallel([1])
 @pytest.mark.parametrize("rmNFace",[False, True])
-def test_nface_to_pe(rmNFace, sub_comm):
-  tree = DCG.dcube_generate(3,1.,[0,0,0], sub_comm)
+def test_nface_to_pe(rmNFace, comm):
+  tree = DCG.dcube_generate(3,1.,[0,0,0], comm)
   zone = PT.get_all_Zone_t(tree)[0]
   as_partitioned(zone)
   pe_bck = PT.get_node_from_path(zone, 'NGonElements/ParentElements')[1]

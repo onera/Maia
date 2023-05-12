@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree        as PT
@@ -8,15 +8,15 @@ import maia.pytree.maia   as MT
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
 from maia.algo.dist   import ngon_from_std_elements as GNG
 
-@mark_mpi_test(2)
+@pytest_parallel.mark.parallel(2)
 class Test_compute_ngon_from_std_elements:
 
-  def test_3d_mesh(self, sub_comm):
+  def test_3d_mesh(self, comm):
     #Generated from G.cartTetra((0,0,0), (1./3, 1./2, 0), (3,3,2))
-    rank = sub_comm.Get_rank()
-    if sub_comm.Get_rank() == 0:
+    rank = comm.Get_rank()
+    if comm.Get_rank() == 0:
       tetra_ec = [1,2,4,10,2,5,4,14,4,10,14,13,2,10,11,14,2,4,10,14,2,6,5,14,2,12,3,6,14,15,12,6,12,14,2,11,12,2,14,6]
-    elif sub_comm.Get_rank() == 1:
+    elif comm.Get_rank() == 1:
       tetra_ec = [4,8,7,16,4,14,5,8,16,17,14,8,14,16,4,13,14,4,16,8,5,6,8,14,6,9,8,18,8,14,18,17,6,14,15,18,6,8,14,18]
     tetra_ec = np.array(tetra_ec, pdm_dtype)
 
@@ -27,7 +27,7 @@ class Test_compute_ngon_from_std_elements:
     tetra = PT.new_Elements('Tetra', 'TETRA_4', erange=[1,20], econn=tetra_ec, parent=dist_zone)
     MT.newDistribution({'Element' : np.array([10*rank,10*(rank+1),20], pdm_dtype)}, tetra)
 
-    GNG.generate_ngon_from_std_elements(dist_tree, sub_comm)
+    GNG.generate_ngon_from_std_elements(dist_tree, comm)
 
     assert PT.get_node_from_path(dist_tree, 'Base/Zone/Tetra') is None
     ngon  = PT.get_node_from_path(dist_tree, 'Base/Zone/NGonElements')
@@ -49,12 +49,12 @@ class Test_compute_ngon_from_std_elements:
       assert (PT.get_child_from_name(ngon, 'ParentElements')[1][4:8] == [[59,70], [67,0], [64,66], [73,76]]).all()
     assert (PT.get_child_from_name(nface, 'ElementStartOffset')[1] ==  np.arange(0,44,4)+40*rank).all()
 
-  def test_2d_mesh(self, sub_comm):
+  def test_2d_mesh(self, comm):
     #Generated from G.cartHexa((0,0,0), (1./3, 1./2, 0), (4,3,1))
-    rank = sub_comm.Get_rank()
-    if sub_comm.Get_rank() == 0:
+    rank = comm.Get_rank()
+    if comm.Get_rank() == 0:
       quad_ec = np.array([1,2,6,5,2,3,7,6,3,4,8,7], pdm_dtype)
-    elif sub_comm.Get_rank() == 1:
+    elif comm.Get_rank() == 1:
       quad_ec = np.array([5,6,10,9,6,7,11,10,7,8,12,11], pdm_dtype)
 
     dist_tree = PT.new_CGNSTree()
@@ -65,7 +65,7 @@ class Test_compute_ngon_from_std_elements:
     quad = PT.new_Elements('Quad', 'QUAD_4', erange=[1,6], econn=quad_ec, parent=dist_zone)
     MT.newDistribution({'Element' : np.array([3*rank,3*(rank+1),6], pdm_dtype)}, quad)
 
-    GNG.generate_ngon_from_std_elements(dist_tree, sub_comm)
+    GNG.generate_ngon_from_std_elements(dist_tree, comm)
 
     assert PT.get_node_from_path(dist_tree, 'Base/Zone/Quad') is None
     edge  = PT.get_node_from_path(dist_tree, 'Base/Zone/EdgeElements')
@@ -91,12 +91,12 @@ class Test_compute_ngon_from_std_elements:
       assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == [12,16,20,24]).all()
       assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == [5,6,10,9, 10,6,7,11, 11,7,8,12]).all()
 
-  def test_2d_mesh_with_bc(self, sub_comm):
-    rank = sub_comm.Get_rank()
-    if sub_comm.Get_rank() == 0:
+  def test_2d_mesh_with_bc(self, comm):
+    rank = comm.Get_rank()
+    if comm.Get_rank() == 0:
       quad_ec = np.array([1,2,6,5,2,3,7,6,3,4,8,7], pdm_dtype)
       bar_ec  = np.array([10,9,11,10,12,11,5,1,9,5], pdm_dtype)
-    elif sub_comm.Get_rank() == 1:
+    elif comm.Get_rank() == 1:
       quad_ec = np.array([5,6,10,9,6,7,11,10,7,8,12,11], pdm_dtype)
       bar_ec  = np.empty(0, dtype=pdm_dtype)
 
@@ -122,7 +122,7 @@ class Test_compute_ngon_from_std_elements:
     PT.new_GridLocation('EdgeCenter', bca)
     PT.new_GridLocation('EdgeCenter', bcb)
 
-    GNG.generate_ngon_from_std_elements(dist_tree, sub_comm)
+    GNG.generate_ngon_from_std_elements(dist_tree, comm)
 
     assert PT.get_node_from_path(dist_tree, 'Base/Zone/Quad') is None
     assert PT.get_node_from_path(dist_tree, 'Base/Zone/Bar') is None

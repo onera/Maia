@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree as PT
@@ -36,8 +36,8 @@ def test_remove_element():
   assert (PT.get_node_from_name(zone, 'PointList')[1] == [[20,22,23]]).all()
   assert PT.get_node_from_name(zone, 'Bar') is None
 
-@mark_mpi_test(1)
-def test_remove_ngons(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_remove_ngons(comm):
   #Generated from G.cartNGon((0,0,0), (1,1,0), (3,4,1))
   # TODO handwritten ngon (4_cubes?)
 
@@ -49,7 +49,7 @@ def test_remove_ngons(sub_comm):
   PT.new_DataArray('Element', [0, 17, 17], parent=distri)
   PT.new_DataArray('ElementConnectivity', [0, 34, 34], parent=distri)
 
-  RME.remove_ngons(ngon, [1,15], sub_comm)
+  RME.remove_ngons(ngon, [1,15], comm)
 
   expected_ec = [1,4,    3,6, 4,7, 5,8, 6,9, 7,10, 8,11, 9,12, 1,2, 2,3, 4,5, 5,6, 7,8, 8,9,      11,12]
   expected_pe = np.array([[16,0],         [17,0],  [18,0],  [18,19], [19,0], [20,0], [20,21], [21,0],
@@ -61,12 +61,12 @@ def test_remove_ngons(sub_comm):
   assert (PT.get_node_from_path(ngon, ':CGNS#Distribution/Element')[1] == [0,15,15]).all()
   assert (PT.get_node_from_path(ngon, ':CGNS#Distribution/ElementConnectivity')[1] == [0,30,30]).all()
 
-@mark_mpi_test(2)
-def test_remove_ngons_2p(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_remove_ngons_2p(comm):
 
   #Generated from G.cartNGon((0,0,0), (1,1,0), (3,4,1))
 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     ec = [1,4,2,5,3,6,4,7,5,8]
     pe = np.array([[1,0], [1,2], [2,0], [3,0], [3,4]])
     eso = np.arange(0,2*5+1,2)
@@ -78,7 +78,7 @@ def test_remove_ngons_2p(sub_comm):
     expected_ec = [1,4,    3,6,4,7,5,8]
     expected_pe = np.array([[1,0],        [2,0], [3,0], [3,4]])
     expected_eso = np.arange(0, 2*4+1, 2)
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     ec = [6,9,7,10,8,11,9,12,1,2,2,3,4,5,5,6,7,8,8,9,10,11,11,12]
     pe = np.array([[4,0], [5,0], [5,6], [6,0], [1,0], [2,0], [1,3], [2,4], [3,5], [4,6], [5,0], [6,0]])
     eso = np.arange(10, 2*17+1,2)
@@ -96,7 +96,7 @@ def test_remove_ngons_2p(sub_comm):
   PT.new_DataArray('Element', distri_e, parent=distri)
   PT.new_DataArray('ElementConnectivity', distri_ec, parent=distri)
 
-  RME.remove_ngons(ngon, to_remove, sub_comm)
+  RME.remove_ngons(ngon, to_remove, comm)
 
   assert (PT.get_node_from_name(ngon, 'ElementRange')[1] == [7, 24-2]).all()
   assert (PT.get_node_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()

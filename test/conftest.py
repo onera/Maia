@@ -3,8 +3,6 @@ import os
 import glob
 from mpi4py import MPI
 
-from pytest_mpi_check import assert_mpi
-
 import maia.io
 from maia.utils                              import test_utils as TU
 from maia.utils.py_utils                     import uniform_distribution_at
@@ -54,8 +52,6 @@ def pytest_configure(config):
   if config.getoption('gen_hdf'):
     generate_cgns_files(comm)
   comm.barrier()
-
-  pytest.assert_mpi = assert_mpi
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):

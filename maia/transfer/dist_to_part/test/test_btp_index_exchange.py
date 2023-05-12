@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import numpy as np
 
@@ -42,9 +42,9 @@ def test_collect_distributed_pl():
   collected = IBTP.collect_distributed_pl(zone, [['ZoneBC_t', 'BC_t']])
   assert np.array_equal(collected[0], [[1,7,4,10]])
 
-@mark_mpi_test(2)
-def test_dist_pl_to_part_pl(sub_comm):
-  if sub_comm.Get_rank() == 0:
+@pytest_parallel.mark.parallel(2)
+def test_dist_pl_to_part_pl(comm):
+  if comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
   ZoneType ZoneType_t "Unstructured":
@@ -86,7 +86,7 @@ ZoneU Zone_t [[6,0,0]]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [6,3,4,2]:
     """.format(dtype)
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
   ZoneType ZoneType_t "Unstructured":
@@ -132,27 +132,27 @@ ZoneU Zone_t [[6,0,0]]:
   dist_zone  = parse_yaml_cgns.to_node(dt)
   part_zones = parse_yaml_cgns.to_nodes(pt)
 
-  IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['ZoneSubRegion_t'], 'Vertex', sub_comm)
+  IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['ZoneSubRegion_t'], 'Vertex', comm)
 
   part_zsr = PT.get_child_from_name(part_zones[0], 'ZSRWithPL')
   assert part_zsr is not None
   assert PT.Subset.GridLocation(part_zsr) == 'Vertex'
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert (PT.get_child_from_name(part_zsr, 'PointList')[1] == [1,4]).all()
-  if sub_comm.Get_rank() == 1:
+  if comm.Get_rank() == 1:
     assert (PT.get_child_from_name(part_zsr, 'PointList')[1] == [3]).all()
 
-  IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t', 'ZoneBC_t/BC_t/BCDataSet_t'], 'Elements', sub_comm)
+  IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t', 'ZoneBC_t/BC_t/BCDataSet_t'], 'Elements', comm)
 
   part_sol = PT.get_child_from_name(part_zones[0], 'FlowSolWithPL')
   part_bc  = PT.get_node_from_name(part_zones[0], 'BC')
   part_ds  = PT.get_node_from_name(part_zones[0], 'BCDSWithPL')
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert part_bc is None
     assert PT.Subset.GridLocation(part_sol) == 'CellCenter'
     assert (PT.get_child_from_name(part_sol, 'PointList')[1] == [2,3,4]).all()
     assert (PT.get_value(MT.getGlobalNumbering(part_sol, 'Index')) == [1,3,2]).all()
-  if sub_comm.Get_rank() == 1:
+  if comm.Get_rank() == 1:
     assert part_sol is None
     assert PT.get_child_from_name(part_bc, 'PointList') is None #No specified in list => skipped, only child are constructed
     assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
@@ -160,7 +160,7 @@ ZoneU Zone_t [[6,0,0]]:
     assert (PT.get_value(MT.getGlobalNumbering(part_ds, 'Index')) == [1]).all()
 
   with pytest.raises(ValueError):
-    IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t'], 'FaceCenter', sub_comm)
+    IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t'], 'FaceCenter', comm)
 
 
 def test_create_part_pointlists():

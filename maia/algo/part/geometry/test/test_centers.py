@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia
@@ -8,10 +8,10 @@ from maia.factory.dcube_generator import dcube_generate, dcube_nodal_generate
 
 from maia.algo.part.geometry import centers
 
-@mark_mpi_test(1)
-def test_compute_cell_center(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_compute_cell_center(comm):
   #Test U
-  tree = dcube_generate(3, 1., [0,0,0], sub_comm)
+  tree = dcube_generate(3, 1., [0,0,0], comm)
   zoneU = PT.get_all_Zone_t(tree)[0]
   #On partitions, element are supposed to be I4
   for elt_node in PT.iter_children_from_label(zoneU, 'Elements_t'):
@@ -44,7 +44,7 @@ def test_compute_cell_center(sub_comm):
   assert (cell_center == expected_cell_center).all()
 
   #Test Elts
-  tree = maia.factory.generate_dist_block(3, 'HEXA_8', sub_comm)
+  tree = maia.factory.generate_dist_block(3, 'HEXA_8', comm)
   zoneU = PT.get_all_Zone_t(tree)[0]
   #On partitions, element are supposed to be I4
   for elt_node in PT.iter_children_from_label(zoneU, 'Elements_t'):
@@ -54,9 +54,9 @@ def test_compute_cell_center(sub_comm):
   cell_center = centers.compute_cell_center(zoneU)
   assert (cell_center == expected_cell_center).all()
 
-@mark_mpi_test(1)
-def test_compute_face_center_3d(sub_comm):
-  tree = dcube_generate(3, 1., [0,0,0], sub_comm)
+@pytest_parallel.mark.parallel(1)
+def test_compute_face_center_3d(comm):
+  tree = dcube_generate(3, 1., [0,0,0], comm)
   zone = PT.get_all_Zone_t(tree)[0]
 
   expected = np.array([
@@ -72,9 +72,9 @@ def test_compute_face_center_3d(sub_comm):
 
   assert np.array_equal(centers.compute_face_center(zone), expected)
 
-  tree = maia.factory.generate_dist_block(3, 'Structured', sub_comm)
+  tree = maia.factory.generate_dist_block(3, 'Structured', comm)
   # Reput coords as partitioned tree
-  tree = maia.factory.partition_dist_tree(tree, sub_comm)
+  tree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(tree)[0]
   expected = np.array([
      0.  ,0.25,0.25, 0.5 ,0.25,0.25, 1.  ,0.25,0.25,
@@ -92,22 +92,22 @@ def test_compute_face_center_3d(sub_comm):
   assert np.array_equal(centers.compute_face_center(zone), expected)
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@mark_mpi_test(1)
-def test_compute_face_center_2d(sub_comm):
-  tree = dcube_generate(4, 1., [0,0,0], sub_comm)
+@pytest_parallel.mark.parallel(1)
+def test_compute_face_center_2d(comm):
+  tree = dcube_generate(4, 1., [0,0,0], comm)
 
-  part_tree = maia.factory.partition_dist_tree(tree, sub_comm)
-  slice_tree = maia.algo.part.plane_slice(part_tree, [1,0,0,.2], sub_comm, elt_type='NGON_n')
+  part_tree = maia.factory.partition_dist_tree(tree, comm)
+  slice_tree = maia.algo.part.plane_slice(part_tree, [1,0,0,.2], comm, elt_type='NGON_n')
   zone = PT.get_all_Zone_t(slice_tree)[0]
 
   expected = np.array([0.2,0.16,0.16,   0.2,0.5,0.16,   0.2,0.83,0.16,   0.2,0.5 ,0.5,
         0.2,0.83,0.5,  0.2,0.83,0.83,   0.2,0.5,0.83,   0.2,0.16,0.5,    0.2,0.16,0.83])
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
 
-def test_compute_face_center_2d_S(sub_comm):
+def test_compute_face_center_2d_S(comm):
   # With CZ   
 
-  tree = maia.factory.generate_dist_block([3,3,1], 'Structured', sub_comm)
+  tree = maia.factory.generate_dist_block([3,3,1], 'Structured', comm)
   # As partitioned
   for dir in ['X', 'Y']:
     node = PT.get_node_from_name(tree, f'Coordinate{dir}')
@@ -120,7 +120,7 @@ def test_compute_face_center_2d_S(sub_comm):
   assert np.array_equal(centers.compute_face_center(zone), expected)
 
   # Without CZ   
-  tree = maia.factory.generate_dist_block([3,3], 'Structured', sub_comm, origin=[0., 0.])
+  tree = maia.factory.generate_dist_block([3,3], 'Structured', comm, origin=[0., 0.])
   # As partitioned
   for dir in ['X', 'Y']:
     node = PT.get_node_from_name(tree, f'Coordinate{dir}')
@@ -130,11 +130,11 @@ def test_compute_face_center_2d_S(sub_comm):
   assert np.array_equal(centers.compute_face_center(zone), expected)
 
 @pytest.mark.skipif(not maia.pdm_has_ptscotch, reason="Require PTScotch")
-@mark_mpi_test(1)
-def test_compute_face_center_elmts_3d(sub_comm):
-  tree = dcube_nodal_generate(2, 1., [0,0,0], 'HEXA_8', sub_comm)
+@pytest_parallel.mark.parallel(1)
+def test_compute_face_center_elmts_3d(comm):
+  tree = dcube_nodal_generate(2, 1., [0,0,0], 'HEXA_8', comm)
   
-  part_tree = maia.factory.partition_dist_tree(tree, sub_comm, graph_part_tool='ptscotch')
+  part_tree = maia.factory.partition_dist_tree(tree, comm, graph_part_tool='ptscotch')
   # Nb : metis is not robust if n_cell == 1
   zone = PT.get_all_Zone_t(part_tree)[0]
 
@@ -143,9 +143,9 @@ def test_compute_face_center_elmts_3d(sub_comm):
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
 
 @pytest.mark.parametrize("elt_kind", ["QUAD_4" ,'NFACE_n'])
-@mark_mpi_test(1)
-def test_compute_edge_center_2d(elt_kind, sub_comm):
-  tree = maia.factory.generate_dist_block(3, elt_kind, sub_comm)
+@pytest_parallel.mark.parallel(1)
+def test_compute_edge_center_2d(elt_kind, comm):
+  tree = maia.factory.generate_dist_block(3, elt_kind, comm)
   zone = PT.get_all_Zone_t(tree)[0]
   PT.rm_nodes_from_name(zone, ":CGNS#Distribution") # Fake part_zone (from test_connectivity_utils)
 
