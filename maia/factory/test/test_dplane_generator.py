@@ -1,10 +1,10 @@
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import maia.pytree as PT
 
 from maia.factory import dplane_generator
 
-@mark_mpi_test([1,3])
-def test_dplane_generate(sub_comm):
+@pytest_parallel.mark.parallel([1,3])
+def test_dplane_generate(comm):
   # Do not test value since this is a PDM function
   xmin, xmax = 0., 1.
   ymin, ymax = 0., 1.
@@ -12,7 +12,7 @@ def test_dplane_generate(sub_comm):
   have_random = 0
   init_random = 1
   dist_tree = dplane_generator.dplane_generate(xmin, xmax, ymin, ymax,\
-      have_random, init_random, nx, ny, sub_comm)
+      have_random, init_random, nx, ny, comm)
 
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 1

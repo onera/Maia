@@ -1,5 +1,5 @@
 import pytest
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import numpy as np
 import os
@@ -12,14 +12,14 @@ from maia import utils   as MU
 import maia.algo.dist as dist_algo
 import maia.algo.part as part_algo
 
-@mark_mpi_test([2])
-def test_single_block(sub_comm):
+@pytest_parallel.mark.parallel([2])
+def test_single_block(comm):
 
   # > Create dist tree
-  dist_tree    = MF.generate_dist_block(10, "Poly", sub_comm, origin=[0,0,0])
+  dist_tree    = MF.generate_dist_block(10, "Poly", comm, origin=[0,0,0])
 
   # > This algorithm works on partitioned trees
-  part_tree = MF.partition_dist_tree(dist_tree, sub_comm)
+  part_tree = MF.partition_dist_tree(dist_tree, comm)
 
   # > Partioning procduce one matching gc
   gc  = PT.get_node_from_label(part_tree, 'GridConnectivity_t')
@@ -37,7 +37,7 @@ def test_single_block(sub_comm):
   PT.new_Family('JN', parent=base)
 
   # > Connect match
-  part_algo.connect_match_from_family(part_tree, ['JN'], sub_comm,
+  part_algo.connect_match_from_family(part_tree, ['JN'], comm,
                                       match_type = ['FaceCenter'], rel_tol=1.e-5)
 
   #PLDonor are well recovered
@@ -46,17 +46,17 @@ def test_single_block(sub_comm):
     assert (PT.get_node_from_name(gc, name)[1] == PT.get_node_from_name(new_gc, name)[1]).all()
 
 
-@mark_mpi_test([1])
-def test_two_blocks(sub_comm):
+@pytest_parallel.mark.parallel([1])
+def test_two_blocks(comm):
 
   mesh_file = os.path.join(MU.test_utils.mesh_dir, 'S_twoblocks.yaml')
-  dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
+  dist_treeS = MIO.file_to_dist_tree(mesh_file, comm)
 
   # > Input is structured, so convert it to an unstructured tree
-  dist_tree = dist_algo.convert_s_to_ngon(dist_treeS, sub_comm)
+  dist_tree = dist_algo.convert_s_to_ngon(dist_treeS, comm)
 
   # > This algorithm works on partitioned trees
-  part_tree = MF.partition_dist_tree(dist_tree, sub_comm)
+  part_tree = MF.partition_dist_tree(dist_tree, comm)
 
   # > Backup GridConnectivity for verification
   large_zone = PT.get_nodes_from_name(part_tree, "Large*")[0]
@@ -89,7 +89,7 @@ def test_two_blocks(sub_comm):
 
 
   # > Extra family can be present
-  part_algo.connect_match_from_family(part_tree, ['LargeJN', 'SmallJN', 'OtherFamily'], sub_comm,
+  part_algo.connect_match_from_family(part_tree, ['LargeJN', 'SmallJN', 'OtherFamily'], comm,
                                       match_type = ['FaceCenter'], rel_tol=1.e-5)
 
   # > Check (order can differ)

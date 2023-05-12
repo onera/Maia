@@ -1,5 +1,5 @@
 import pytest
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import os
 
 import maia.pytree        as PT
@@ -13,15 +13,15 @@ from maia.algo.dist import convert_s_to_u, convert_s_to_ngon
 ref_dir = os.path.join(os.path.dirname(__file__), 'references')
 
 @pytest.mark.parametrize("subset_output_loc", ["FaceCenter", "Vertex"])
-@mark_mpi_test([1,3])
-def test_s2u(sub_comm, subset_output_loc, write_output):
+@pytest_parallel.mark.parallel([1,3])
+def test_s2u(comm, subset_output_loc, write_output):
   mesh_file = os.path.join(MU.test_utils.mesh_dir,  'S_twoblocks.yaml')
   ref_file  = os.path.join(ref_dir,     f'U_twoblocks_{subset_output_loc.lower()}_subset_s2u.yaml')
 
-  dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
+  dist_treeS = MIO.file_to_dist_tree(mesh_file, comm)
 
   subset_loc = {key: subset_output_loc for key in ['BC_t', 'GC_t']}
-  dist_treeU = convert_s_to_u(dist_treeS, 'NGON_n', sub_comm, subset_loc)
+  dist_treeU = convert_s_to_u(dist_treeS, 'NGON_n', comm, subset_loc)
 
   for zone in PT.iter_all_Zone_t(dist_treeU):
     assert PT.Zone.Type(zone) == 'Unstructured'
@@ -29,22 +29,22 @@ def test_s2u(sub_comm, subset_output_loc, write_output):
       assert PT.Subset.GridLocation(node) == subset_output_loc
 
   # Compare to reference
-  ref_tree = MIO.file_to_dist_tree(ref_file, sub_comm)
+  ref_tree = MIO.file_to_dist_tree(ref_file, comm)
   for zone in PT.iter_all_Zone_t(dist_treeU):
     ref_zone = PT.get_node_from_name(ref_tree, PT.get_name(zone), depth=2)
     for node_name in ["ZoneBC", "ZoneGridConnectivity"]:
       assert PT.is_same_tree(PT.get_child_from_name(zone, node_name), PT.get_child_from_name(ref_zone, node_name))
 
   if write_output:
-    out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
-    MIO.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
+    out_dir = MU.test_utils.create_pytest_output_dir(comm)
+    MIO.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), comm)
 
-@mark_mpi_test(2)
-def test_s2u_hybrid(sub_comm, write_output):
+@pytest_parallel.mark.parallel(2)
+def test_s2u_hybrid(comm, write_output):
   mesh_file = os.path.join(MU.test_utils.mesh_dir, 'H_elt_and_s.yaml')
-  dist_tree = MIO.file_to_dist_tree(mesh_file, sub_comm)
+  dist_tree = MIO.file_to_dist_tree(mesh_file, comm)
 
-  dist_tree_u = convert_s_to_ngon(dist_tree, sub_comm)
+  dist_tree_u = convert_s_to_ngon(dist_tree, comm)
 
   for zone in PT.iter_all_Zone_t(dist_tree_u):
     assert PT.Zone.Type(zone) == 'Unstructured'
@@ -52,14 +52,14 @@ def test_s2u_hybrid(sub_comm, write_output):
       assert PT.get_value(pl).shape[0] == 1 #All PLs should be (1,N)
 
   if write_output:
-    out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
-    MIO.dist_tree_to_file(dist_tree_u, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
+    out_dir = MU.test_utils.create_pytest_output_dir(comm)
+    MIO.dist_tree_to_file(dist_tree_u, os.path.join(out_dir, 'tree_U.hdf'), comm)
 
-@mark_mpi_test([1])
-def test_s2u_withdata(sub_comm, write_output):
+@pytest_parallel.mark.parallel([1])
+def test_s2u_withdata(comm, write_output):
   mesh_file = os.path.join(MU.test_utils.mesh_dir,  'S_twoblocks.yaml')
 
-  dist_treeS = MIO.file_to_dist_tree(mesh_file, sub_comm)
+  dist_treeS = MIO.file_to_dist_tree(mesh_file, comm)
 
   # Use only small zone for simplicity
   PT.rm_nodes_from_name(dist_treeS, 'Large')
@@ -87,9 +87,9 @@ def test_s2u_withdata(sub_comm, write_output):
     """)
   PT.rm_nodes_from_name(dist_treeS, 'Right')
   PT.add_child(PT.get_node_from_label(dist_treeS, 'ZoneBC_t'), \
-      MF.full_to_dist.distribute_pl_node(bc_right, sub_comm))
+      MF.full_to_dist.distribute_pl_node(bc_right, comm))
 
-  dist_treeU = convert_s_to_ngon(dist_treeS, sub_comm)
+  dist_treeU = convert_s_to_ngon(dist_treeS, comm)
 
   # Some checks
   bc_right_u = PT.get_node_from_name(dist_treeU, 'Right')
@@ -104,6 +104,6 @@ def test_s2u_withdata(sub_comm, write_output):
     assert (PT.get_node_from_name(bcds, 'lid')[1] == PT.get_node_from_name(bcds_s, 'lid')[1]).all()
 
   if write_output:
-    out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
-    MIO.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), sub_comm)
+    out_dir = MU.test_utils.create_pytest_output_dir(comm)
+    MIO.dist_tree_to_file(dist_treeU, os.path.join(out_dir, 'tree_U.hdf'), comm)
 

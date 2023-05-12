@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import maia.pytree        as PT
 
 from maia.factory import dcube_generator
@@ -20,10 +20,10 @@ def check_dims(tree, expected_cell_dim, expected_phy_dim):
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 2*expected_cell_dim
   assert (PT.get_node_from_name(zone, 'Face') is not None) == (expected_cell_dim >= 2) # Distribution
 
-@mark_mpi_test([1,3])
-def test_dcube_generate(sub_comm):
+@pytest_parallel.mark.parallel([1,3])
+def test_dcube_generate(comm):
   # Do not test value since this is a PDM function
-  dist_tree = dcube_generator.dcube_generate(5, 1., [0., 0., 0.], sub_comm)
+  dist_tree = dcube_generator.dcube_generate(5, 1., [0., 0., 0.], comm)
 
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 1
@@ -34,36 +34,36 @@ def test_dcube_generate(sub_comm):
   assert PT.get_node_from_path(zone, 'NGonElements/ParentElements')[1].shape[0] + 1 == \
          PT.get_node_from_path(zone, 'NGonElements/ElementStartOffset')[1].shape[0]
 
-@mark_mpi_test([2])
-def test_dcube_S_generate(sub_comm):
+@pytest_parallel.mark.parallel([2])
+def test_dcube_S_generate(comm):
 
   # Basic version
-  tree = dcube_generator.generate_dist_block([15,13,12], "S", sub_comm, origin=[0., 0.,0])
+  tree = dcube_generator.generate_dist_block([15,13,12], "S", comm, origin=[0., 0.,0])
   check_dims(tree, 3, 3)
-  tree = dcube_generator.generate_dist_block([15,13], "S", sub_comm, origin=[0., 0.])
+  tree = dcube_generator.generate_dist_block([15,13], "S", comm, origin=[0., 0.])
   check_dims(tree, 2, 2)
-  tree = dcube_generator.generate_dist_block([15,13,1], "S", sub_comm, origin=[0., 0.,0])
+  tree = dcube_generator.generate_dist_block([15,13,1], "S", comm, origin=[0., 0.,0])
   check_dims(tree, 2, 3)
-  tree = dcube_generator.generate_dist_block([15], "S", sub_comm, origin=[0.])
+  tree = dcube_generator.generate_dist_block([15], "S", comm, origin=[0.])
   check_dims(tree, 1, 1)
-  tree = dcube_generator.generate_dist_block([15,1], "S", sub_comm, origin=[0., 0.])
+  tree = dcube_generator.generate_dist_block([15,1], "S", comm, origin=[0., 0.])
   check_dims(tree, 1, 2)
-  tree = dcube_generator.generate_dist_block([15,1, 1], "S", sub_comm, origin=[0., 0.,0])
+  tree = dcube_generator.generate_dist_block([15,1, 1], "S", comm, origin=[0., 0.,0])
   check_dims(tree, 1, 3)
 
   # Shortcut version
-  tree = dcube_generator.generate_dist_block(10, "S", sub_comm, origin=[0., 0.,0]) # 3, 3
+  tree = dcube_generator.generate_dist_block(10, "S", comm, origin=[0., 0.,0]) # 3, 3
   check_dims(tree, 3, 3)
-  tree = dcube_generator.generate_dist_block(10, "S", sub_comm, origin=[0., 0.]) # 2, 2
+  tree = dcube_generator.generate_dist_block(10, "S", comm, origin=[0., 0.]) # 2, 2
   check_dims(tree, 2, 2)
-  tree = dcube_generator.generate_dist_block(10, "S", sub_comm, origin=[0.]) # 1, 1
+  tree = dcube_generator.generate_dist_block(10, "S", comm, origin=[0.]) # 1, 1
   check_dims(tree, 1, 1)
 
-@mark_mpi_test([1,3])
+@pytest_parallel.mark.parallel([1,3])
 @pytest.mark.parametrize("cgns_elmt_name", ["TRI_3", "QUAD_4", "TETRA_4", "PENTA_6", "HEXA_8"])
-def test_dcube_nodal_generate(sub_comm, cgns_elmt_name):
+def test_dcube_nodal_generate(comm, cgns_elmt_name):
   # Do not test value since this is a PDM function
-  dist_tree = dcube_generator.dcube_nodal_generate(5, 1., [0., 0., 0.], cgns_elmt_name, sub_comm)
+  dist_tree = dcube_generator.dcube_nodal_generate(5, 1., [0., 0., 0.], cgns_elmt_name, comm)
 
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 1
@@ -75,10 +75,10 @@ def test_dcube_nodal_generate(sub_comm, cgns_elmt_name):
   #For PENTA_6 we have 1 volumic and 2 surfacic
   assert len(PT.get_children_from_label(zone, 'Elements_t')) == 3 if cgns_elmt_name == 'PENTA_6' else 2
 
-@mark_mpi_test([2])
-def test_dcube_nodal_generate_ridges(sub_comm):
+@pytest_parallel.mark.parallel([2])
+def test_dcube_nodal_generate_ridges(comm):
   # Do not test value since this is a PDM function
-  dist_tree = dcube_generator.dcube_nodal_generate(5, 1., [0., 0., 0.], 'PYRA_5', sub_comm, get_ridges=True)
+  dist_tree = dcube_generator.dcube_nodal_generate(5, 1., [0., 0., 0.], 'PYRA_5', comm, get_ridges=True)
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 6

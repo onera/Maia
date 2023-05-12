@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import numpy as np
 import maia.pytree        as PT
@@ -40,9 +40,9 @@ Zone Zone_t [[10,9,0], [10,9,0], [10,9,0]]:
   with pytest.raises(AssertionError):
     PS.pl_as_idx(zone, 'ZoneBC_t/BC_t')
 
-@mark_mpi_test(2)
-def test_hybrid_jns_as_ijk(sub_comm):
-  if sub_comm.Get_rank() == 0:
+@pytest_parallel.mark.parallel(2)
+def test_hybrid_jns_as_ijk(comm):
+  if comm.Get_rank() == 0:
     pt = """
     ZoneU.P0.N0 Zone_t:
       ZoneType ZoneType_t "Unstructured":
@@ -54,7 +54,7 @@ def test_hybrid_jns_as_ijk(sub_comm):
           GridLocation GridLocation_t "FaceCenter":
           GridConnectivityDonorName Descriptor_t "GCS":
     """
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     pt = """
     ZoneS.P1.N0 Zone_t [[10,9,0], [10,9,0], [10,9,0]]:
       ZoneType ZoneType_t "Structured":
@@ -67,11 +67,11 @@ def test_hybrid_jns_as_ijk(sub_comm):
           GridConnectivityDonorName Descriptor_t "GCS":
     """
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
-  PS.hybrid_jns_as_ijk(part_tree, sub_comm)
+  PS.hybrid_jns_as_ijk(part_tree, comm)
 
   expected_pl  = np.array([[101,102,103,104]])
   expected_pld = np.array([[1,1,1,1], [1,2,3,5], [1,1,1,1]])
-  if sub_comm.Get_rank() == 1:
+  if comm.Get_rank() == 1:
     expected_pl, expected_pld = expected_pld, expected_pl
 
   assert np.array_equal(PT.get_node_from_name(part_tree, 'PointList')[1], expected_pl)
@@ -187,9 +187,9 @@ ZoneB.P1.N0 Zone_t:
   assert (PT.get_child_from_name(new_jn1, 'PointListDonor')[1] == [8,13]).all()
   assert (PT.get_node_from_name (new_jn1, 'Index')[1] == [1,6]).all()
 
-@mark_mpi_test(2)
-def test_update_gc_donor_name(sub_comm):
-  if sub_comm.Get_rank() == 0:
+@pytest_parallel.mark.parallel(2)
+def test_update_gc_donor_name(comm):
+  if comm.Get_rank() == 0:
     pt = """
     Base CGNSBase_t:
       ZoneA.P0.N0 Zone_t:
@@ -207,7 +207,7 @@ def test_update_gc_donor_name(sub_comm):
             GridConnectivityDonorName Descriptor_t "matchAB":
     """
     expected = ['matchBA.0', 'matchBA.0', 'matchAB.0']
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     pt = """
     Base CGNSBase_t:
       ZoneB.P1.N0 Zone_t:
@@ -218,6 +218,6 @@ def test_update_gc_donor_name(sub_comm):
     """
     expected = ['matchAB.1']
   p_tree = parse_yaml_cgns.to_cgns_tree(pt)
-  PS.update_gc_donor_name(p_tree, sub_comm)
+  PS.update_gc_donor_name(p_tree, comm)
 
   assert [PT.get_value(n) for n in PT.get_nodes_from_name(p_tree, 'GridConnectivityDonorName')] == expected

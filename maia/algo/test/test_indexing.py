@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 from maia.pytree.yaml   import parse_yaml_cgns

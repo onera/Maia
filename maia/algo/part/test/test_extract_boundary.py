@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree as PT
@@ -36,10 +36,10 @@ def test_extract_sub_connectivity():
   assert (sub_face_vtx     == [3,4,6,5,  2,1,5]).all()
   assert (vtx_ids          == [34,35,104,105,114,115]).all()
 
-@mark_mpi_test(1)
-def test_extract_faces_mesh(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_extract_faces_mesh(comm):
   # Test U
-  tree = dcube_generate(3, 1., [0,0,0], sub_comm)
+  tree = dcube_generate(3, 1., [0,0,0], comm)
   PT.rm_nodes_from_name(tree, ':CGNS#Distribution')
   zoneU = PT.get_all_Zone_t(tree)[0]
 
@@ -74,8 +74,8 @@ def test_extract_faces_mesh(sub_comm):
   assert (vtx_ids == [3,6,9,12,15,18,21,24,27]).all()
 
 
-@mark_mpi_test(2)
-def test_extract_surf_from_bc(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_extract_surf_from_bc(comm):
   #We dont put GlobalNumbering for BCs, since its not needed, but we should
   part_0 = f"""
   ZoneU Zone_t [[18,4,0]]:
@@ -145,19 +145,19 @@ def test_extract_surf_from_bc(sub_comm):
       Vertex DataArray_t {dtype} [19,20,21,22,23,24,25,26,27,10,11,12,13,14,15,16,17,18]:
       Cell DataArray_t {dtype} [5,6,7,8]:
   """
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     part_zones = [parse_yaml_cgns.to_node(part_0)]
     bc_pl = np.array([15,16,9,10])
     expt_face_lngn = [3,5,1,2]
     expt_vtx_lngn = [1,2,3,4,5,6,7,8,9,10]
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     part_zones = [parse_yaml_cgns.to_node(part_1)]
     bc_pl = np.array([15,16])
     expt_face_lngn = [4,6]
     expt_vtx_lngn = [11,12,13,6,7,8]
 
   bc_face_vtx, bc_face_vtx_idx, bc_face_lngn, bc_coords, bc_vtx_lngn = \
-  EXB.extract_surf_from_bc(part_zones, ['WALL'], sub_comm)
+  EXB.extract_surf_from_bc(part_zones, ['WALL'], comm)
   
 
   assert len(bc_face_vtx) == len(bc_face_vtx_idx) == len(bc_face_lngn) == len(bc_coords) == len(bc_vtx_lngn) == 1

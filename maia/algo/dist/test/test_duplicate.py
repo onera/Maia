@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 import os
 
@@ -11,8 +11,8 @@ from maia.utils       import test_utils as TU
 from maia.algo.dist   import duplicate
 
 ###############################################################################
-@mark_mpi_test([1,3])
-def test_duplicate_from_periodic_jns(sub_comm):
+@pytest_parallel.mark.parallel([1,3])
+def test_duplicate_from_periodic_jns(comm):
 
   def get_perio_values(perio_node):
     return [PT.get_value(PT.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
@@ -20,7 +20,7 @@ def test_duplicate_from_periodic_jns(sub_comm):
     return [PT.get_value(PT.get_node_from_name(zone_node, f"Coordinate{c}")) for c in ['X', 'Y', 'Z']]
 
   yaml_path = os.path.join(TU.sample_mesh_dir, 'quarter_crown_square_8.yaml')
-  dist_tree = file_to_dist_tree(yaml_path, sub_comm)
+  dist_tree = file_to_dist_tree(yaml_path, comm)
   
   match_perio_by_trans_a = 'Base/Zone/ZoneGridConnectivity/MatchTranslationA'
   match_perio_by_trans_b = 'Base/Zone/ZoneGridConnectivity/MatchTranslationB'
@@ -29,7 +29,7 @@ def test_duplicate_from_periodic_jns(sub_comm):
   zone_basename = PT.get_name(PT.get_all_Zone_t(dist_tree)[0])
   zone_paths = ['Base/' + PT.get_name(zone) for zone in PT.get_all_Zone_t(dist_tree)]
   
-  duplicate.duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, 1, sub_comm)
+  duplicate.duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, 1, comm)
   
   assert len(PT.get_all_Zone_t(dist_tree)) == 2
   
@@ -89,13 +89,13 @@ def test_duplicate_from_periodic_jns(sub_comm):
 ###############################################################################
 
 ###############################################################################
-@mark_mpi_test(2)
-def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_duplicate_zones_from_periodic_join_by_rotation_to_360(comm):
   def get_coords_values(zone_node):
     return [PT.get_value(PT.get_node_from_name(zone_node, f"Coordinate{c}")) for c in ['X', 'Y', 'Z']]
 
   yaml_path = os.path.join(TU.sample_mesh_dir, 'quarter_crown_square_8.yaml')
-  dist_tree = file_to_dist_tree(yaml_path,sub_comm)
+  dist_tree = file_to_dist_tree(yaml_path,comm)
   
   match_perio_by_rot_a = 'Base/Zone/ZoneGridConnectivity/MatchRotationA'
   match_perio_by_rot_b = 'Base/Zone/ZoneGridConnectivity/MatchRotationB'
@@ -105,7 +105,7 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(sub_comm):
   zone_paths = ['Base/' + PT.get_name(zone) for zone in PT.get_all_Zone_t(dist_tree)]
   
   duplicate.duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, 
-      jn_paths_for_dupl, sub_comm, conformize=True)
+      jn_paths_for_dupl, comm, conformize=True)
   
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 4

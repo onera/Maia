@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import maia
 import maia.pytree        as PT
@@ -14,26 +14,26 @@ from maia.utils     import par_utils
 
 # TODO replace dcube_generate by handwritten mesh (4_cubes?)
 
-@mark_mpi_test([1,3])
-def test_face_ids_to_vtx_ids(sub_comm):
-  tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
+@pytest_parallel.mark.parallel([1,3])
+def test_face_ids_to_vtx_ids(comm):
+  tree = dcube_generator.dcube_generate(3,1.,[0,0,0], comm)
   ngon = PT.get_node_from_name(tree, "NGonElements")
 
-  offset, face_vtx   = VL.face_ids_to_vtx_ids(np.array([3,6,2]), ngon, sub_comm)
+  offset, face_vtx   = VL.face_ids_to_vtx_ids(np.array([3,6,2]), ngon, comm)
   assert (offset == np.arange(0,(3+1)*4,4)).all()
   assert (face_vtx == [5,8,7,4, 11,14,15,12, 3,6,5,2]).all()
 
-  offset, face_vtx_d = VL.face_ids_to_vtx_ids(np.array([1,4,5]), ngon, sub_comm)
+  offset, face_vtx_d = VL.face_ids_to_vtx_ids(np.array([1,4,5]), ngon, comm)
   assert (offset == np.arange(0,(3+1)*4,4)).all()
   assert (face_vtx_d == [2,5,4,1, 6,9,8,5, 10,13,14,11]).all()
 
-@mark_mpi_test(2)
-def test_filter_vtx_coordinates(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_filter_vtx_coordinates(comm):
   empty = np.empty(0, int)
-  tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
+  tree = dcube_generator.dcube_generate(5,1.,[0,0,0], comm)
   vtx_coords = PT.get_node_from_label(tree, 'GridCoordinates_t')
   vtx_distri   = PT.get_value(MT.getDistribution(PT.get_all_Zone_t(tree)[0], 'Vertex'))
-  if sub_comm.Get_rank() == 1:
+  if comm.Get_rank() == 1:
     requested_vtx_ids = np.array([2,6,7,106,3,103,107,102])
     expected_vtx_coords = np.array([[0.25, 0., 0.], [0., 0.25, 0.], [0.25, 0.25, 0.], [0., 0.25, 1.],
                                     [0.5, 0., 0.], [0.5, 0., 1.], [0.25, 0.25, 1.], [0.25, 0., 1.]])
@@ -41,14 +41,14 @@ def test_filter_vtx_coordinates(sub_comm):
     requested_vtx_ids = empty
     expected_vtx_coords = np.empty((0,3), dtype=np.float64)
 
-  received_coords = VL.filter_vtx_coordinates(vtx_coords, vtx_distri, requested_vtx_ids,  sub_comm)
+  received_coords = VL.filter_vtx_coordinates(vtx_coords, vtx_distri, requested_vtx_ids,  comm)
   assert (received_coords == expected_vtx_coords).all()
 
-@mark_mpi_test(2)
-def test_get_extended_pl(sub_comm):
-  tree = dcube_generator.dcube_generate(3,1.,[0,0,0], sub_comm)
+@pytest_parallel.mark.parallel(2)
+def test_get_extended_pl(comm):
+  tree = dcube_generator.dcube_generate(3,1.,[0,0,0], comm)
   ngon = PT.get_node_from_name(tree, "NGonElements")
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     pl   = np.array([1,2,3])
     pl_d = np.array([9,10,11])
     pl_idx = np.array([0,4,8,12])
@@ -60,12 +60,12 @@ def test_get_extended_pl(sub_comm):
     pl_idx = np.array([0,4])
     pl_vtx = np.array([6,9,8,5])
     skip_f = np.array([False])
-  ext_pl, ext_pl_d = VL.get_extended_pl(pl, pl_d, pl_idx, pl_vtx, sub_comm)
+  ext_pl, ext_pl_d = VL.get_extended_pl(pl, pl_d, pl_idx, pl_vtx, comm)
   assert (ext_pl   == [1,2,3,4]).all()
   assert (ext_pl_d == [9,10,11,12]).all()
 
-  ext_pl, ext_pl_d = VL.get_extended_pl(pl, pl_d, pl_idx, pl_vtx, sub_comm, skip_f)
-  if sub_comm.Get_rank() == 0:
+  ext_pl, ext_pl_d = VL.get_extended_pl(pl, pl_d, pl_idx, pl_vtx, comm, skip_f)
+  if comm.Get_rank() == 0:
     assert len(ext_pl) == len(ext_pl_d) == 0
   else:
     assert (ext_pl   == [1,2,3,4]).all()
@@ -114,18 +114,18 @@ def test_search_by_intersection():
   assert (plv_opp == np.arange(11,20+1)).all()
   assert (face_is_treated == [True, True, True]).all()
 
-@mark_mpi_test(3)
-def test_search_with_geometry(sub_comm):
+@pytest_parallel.mark.parallel(3)
+def test_search_with_geometry(comm):
   empty = np.empty(0, int)
-  tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
+  tree = dcube_generator.dcube_generate(4,1.,[0,0,0], comm)
   zone = PT.get_all_Zone_t(tree)[0]
   grid_prop = PT.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]})
 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     pl_face_vtx_idx = np.array([0,4])
     pl_face_vtx = np.array([2,6,7,3])
     pld_face_vtx = np.array([51,55,54,50])
-  elif sub_comm.Get_rank() == 2:
+  elif comm.Get_rank() == 2:
     pl_face_vtx_idx = np.array([0,4,8])
     pl_face_vtx = np.array([11,15,16,12, 13,14,10,9])
     pld_face_vtx = np.array([64,63,59,60, 61,57,58,62])
@@ -134,22 +134,22 @@ def test_search_with_geometry(sub_comm):
     pl_face_vtx = empty
     pld_face_vtx = empty
 
-  plv, plvd = VL._search_with_geometry(zone, zone, grid_prop, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, sub_comm)
+  plv, plvd = VL._search_with_geometry(zone, zone, grid_prop, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm)
 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert (plv  == [2,3,6,7]).all()
     assert (plvd == [50,51,54,55]).all()
-  elif sub_comm.Get_rank() == 2:
+  elif comm.Get_rank() == 2:
     assert (plv  == [9,10,11,12,13,14,15,16]).all()
     assert (plvd == [57,58,59,60,61,62,63,64]).all()
   else:
     assert (plv.size == plvd.size == 0)
 
 class Test_generate_jn_vertex_list():
-  @mark_mpi_test([1,2,4])
-  def test_single_zone_topo(self, sub_comm):
+  @pytest_parallel.mark.parallel([1,2,4])
+  def test_single_zone_topo(self, comm):
     #With this configuration, we have locally (per rank) isolated faces when np=4
-    tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
+    tree = dcube_generator.dcube_generate(4,1.,[0,0,0], comm)
     zone = PT.get_all_Zone_t(tree)[0]
     PT.rm_children_from_label(zone, 'ZoneBC_t')
     #Create fake jn
@@ -157,29 +157,29 @@ class Test_generate_jn_vertex_list():
     gcA = PT.new_GridConnectivity('matchA', PT.get_name(zone), 'Abutting1to1', loc='FaceCenter', parent=zgc)
     full_pl     = np.array([1,2,3,4,5,6,7,8,9])
     full_pl_opp = np.array([28,29,30,31,32,33,34,35,36])
-    distri_pl   = par_utils.uniform_distribution(9, sub_comm)
+    distri_pl   = par_utils.uniform_distribution(9, comm)
     PT.new_PointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     PT.new_PointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     MT.newDistribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zone/ZoneGridConnectivity/matchA"
-    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
+    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
 
     expected_full_pl_vtx     = np.arange(1,16+1)
     expected_full_pl_vtx_opp = np.arange(49,64+1)
-    assert (distri_jn_vtx == par_utils.uniform_distribution(16, sub_comm)).all()
+    assert (distri_jn_vtx == par_utils.uniform_distribution(16, comm)).all()
     assert (pl_vtx     == expected_full_pl_vtx    [distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
     assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
-  @mark_mpi_test([2,4])
-  def test_multi_zone_topo(self, sub_comm):
-    tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
+  @pytest_parallel.mark.parallel([2,4])
+  def test_multi_zone_topo(self, comm):
+    tree = dcube_generator.dcube_generate(4,1.,[0,0,0], comm)
     zone = PT.get_all_Zone_t(tree)[0]
     zone[0] = 'zoneA'
     PT.rm_children_from_label(zone, 'ZoneBC_t')
 
     #Create other zone
-    tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], sub_comm)
+    tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], comm)
     zoneB = PT.get_all_Zone_t(tree2)[0]
     zoneB[0] = 'zoneB'
     PT.rm_children_from_label(zoneB, 'ZoneBC_t')
@@ -190,36 +190,36 @@ class Test_generate_jn_vertex_list():
     gcA = PT.new_GridConnectivity('matchA', 'zoneB', 'Abutting1to1', loc='FaceCenter', parent=zgc)
     full_pl     = np.array([64,65,66,67,68,69,70,71,72]) #xmax
     full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
-    distri_pl   = par_utils.uniform_distribution(9, sub_comm)
+    distri_pl   = par_utils.uniform_distribution(9, comm)
     PT.new_PointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     PT.new_PointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     MT.newDistribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
-    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
+    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
 
     expected_full_pl_vtx     = np.arange(4, 64+1, 4)
     expected_full_pl_vtx_opp = np.arange(1, 64+1, 4)
-    assert (distri_jn_vtx == par_utils.uniform_distribution(16, sub_comm)).all()
+    assert (distri_jn_vtx == par_utils.uniform_distribution(16, comm)).all()
     assert (pl_vtx     == expected_full_pl_vtx    [distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
     assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
-  @mark_mpi_test(3)
-  def test_single_zone_all(self, sub_comm):
+  @pytest_parallel.mark.parallel(3)
+  def test_single_zone_all(self, comm):
     #Faces that should be treated during phase 1,2 and 3 for each proc :
     # P0 : (2,0,1)   P1 : (0,1,0)   P2 : (0,1,1)
-    tree = dcube_generator.dcube_generate(5,1.,[0,0,0], sub_comm)
+    tree = dcube_generator.dcube_generate(5,1.,[0,0,0], comm)
     zone = PT.get_all_Zone_t(tree)[0]
     PT.rm_children_from_label(zone, 'ZoneBC_t')
     zgc = PT.new_ZoneGridConnectivity(parent=zone)
     gcA = PT.new_GridConnectivity('matchA', PT.get_name(zone), 'Abutting1to1', loc='FaceCenter', parent=zgc)
-    if sub_comm.Get_rank() == 0:
+    if comm.Get_rank() == 0:
       pl_distri = [0,3,6]
       expt_jn_distri = [0, 7, 21]
-    elif sub_comm.Get_rank() == 1:
+    elif comm.Get_rank() == 1:
       pl_distri = [3,4,6]
       expt_jn_distri = [7, 14, 21]
-    elif sub_comm.Get_rank() == 2:
+    elif comm.Get_rank() == 2:
       pl_distri = [4,6,6]
       expt_jn_distri = [14, 21, 21]
 
@@ -228,7 +228,7 @@ class Test_generate_jn_vertex_list():
     MT.newDistribution({'Index' : pl_distri}, gcA)
 
     gc_path = "Base/zone/ZoneGridConnectivity/matchA"
-    pl_vtx, pld_vtx, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
+    pl_vtx, pld_vtx, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
 
     expected_full_pl_vtx  = np.array([1,2,3,4,5,6,7,8,9,10,13,14,16,17,18,19,20,21,22,24,25])
     expected_full_pld_vtx = expected_full_pl_vtx + 100
@@ -236,15 +236,15 @@ class Test_generate_jn_vertex_list():
     assert (pl_vtx  == expected_full_pl_vtx [distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
     assert (pld_vtx == expected_full_pld_vtx[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
-  @mark_mpi_test(2)
-  def test_multi_zone_geo(self, sub_comm):
-    tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
+  @pytest_parallel.mark.parallel(2)
+  def test_multi_zone_geo(self, comm):
+    tree = dcube_generator.dcube_generate(4,1.,[0,0,0], comm)
     zone = PT.get_all_Zone_t(tree)[0]
     zone[0] = 'zoneA'
     PT.rm_children_from_label(zone, 'ZoneBC_t')
 
     #Create other zone
-    tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], sub_comm)
+    tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], comm)
     zoneB = PT.get_all_Zone_t(tree2)[0]
     zoneB[0] = 'zoneB'
     PT.rm_children_from_label(zoneB, 'ZoneBC_t')
@@ -255,33 +255,33 @@ class Test_generate_jn_vertex_list():
     gcA = PT.new_GridConnectivity('matchA', 'zoneB', 'Abutting1to1', loc='FaceCenter', parent=zgc)
     full_pl     = np.array([64,66,71]) #xmax
     full_pl_opp = np.array([37,39,44]) #xmin
-    distri_pl   = par_utils.uniform_distribution(3, sub_comm)
+    distri_pl   = par_utils.uniform_distribution(3, comm)
     PT.new_PointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     PT.new_PointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     MT.newDistribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
-    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, sub_comm)
+    pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
 
-    expected_dist = [0,6,12] if sub_comm.Get_rank() == 0 else [6,12,12]
+    expected_dist = [0,6,12] if comm.Get_rank() == 0 else [6,12,12]
     expected_full_pl_vtx     = [4,8,12,16,20,24,28,32,40,44,56,60]
     expected_full_pl_vtx_opp = [1,5,9,13,17,21,25,29,37,41,53,57]
     assert (distri_jn_vtx == expected_dist).all()
     assert (pl_vtx     == expected_full_pl_vtx    [distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
     assert (pl_vtx_opp == expected_full_pl_vtx_opp[distri_jn_vtx[0]:distri_jn_vtx[1]]).all()
 
-@mark_mpi_test(3)
+@pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("have_isolated_faces", [False, True])
-def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
+def test_generate_jns_vertex_list(comm, have_isolated_faces):
   #For this test, we reuse previous test case, but with 2 jns,
   # and do not assert on values
-  tree = dcube_generator.dcube_generate(4,1.,[0,0,0], sub_comm)
+  tree = dcube_generator.dcube_generate(4,1.,[0,0,0], comm)
   zoneA = PT.get_all_Zone_t(tree)[0]
   zoneA[0] = 'zoneA'
   PT.rm_children_from_label(zoneA, 'ZoneBC_t')
 
   #Create other zone
-  tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], sub_comm)
+  tree2 = dcube_generator.dcube_generate(4,1.,[1,0,0], comm)
   zoneB = PT.get_all_Zone_t(tree2)[0]
   zoneB[0] = 'zoneB'
   PT.rm_children_from_label(zoneB, 'ZoneBC_t')
@@ -292,7 +292,7 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   gcA = PT.new_GridConnectivity('matchA', 'zoneB', 'Abutting1to1', loc='FaceCenter', parent=zgc)
   full_pl     = np.array([64,65,66,67,68,69,70,71,72], pdm_dtype) #xmax
   full_pl_opp = np.array([37,38,39,40,41,42,43,44,45], pdm_dtype) #xmin
-  distri_pl   = par_utils.uniform_distribution(9, sub_comm)
+  distri_pl   = par_utils.uniform_distribution(9, comm)
   PT.new_PointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
   PT.new_PointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
   MT.newDistribution({'Index' : distri_pl}, gcA)
@@ -301,12 +301,12 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   gcB = PT.new_GridConnectivity('matchB', 'Base/zoneA', 'Abutting1to1', loc='FaceCenter', parent=zgc)
   full_pl     = np.array([64,65,66,67,68,69,70,71,72], pdm_dtype) #xmax
   full_pl_opp = np.array([37,38,39,40,41,42,43,44,45], pdm_dtype) #xmin
-  distri_pl   = par_utils.uniform_distribution(9, sub_comm)
+  distri_pl   = par_utils.uniform_distribution(9, comm)
   PT.new_PointList('PointListDonor', full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   PT.new_PointList('PointList'     , full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   MT.newDistribution({'Index' : distri_pl}, gcB)
 
-  VL.generate_jns_vertex_list(tree, sub_comm, have_isolated_faces=have_isolated_faces)
+  VL.generate_jns_vertex_list(tree, comm, have_isolated_faces=have_isolated_faces)
 
   assert len(PT.get_nodes_from_name(tree, "ZoneGridConnectivity")) == 2
   assert PT.get_node_from_name(tree, "matchA#Vtx") is not None
@@ -315,8 +315,8 @@ def test_generate_jns_vertex_list(sub_comm, have_isolated_faces):
   assert PT.get_label(jn_vtx) == 'GridConnectivity_t' and PT.get_value(jn_vtx) == PT.get_value(gcB)
 
 
-@mark_mpi_test(1)
-def test_perio_and_match_case(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_perio_and_match_case(comm):
   # A user reported case with a translation periodic (1 cell deepth) + a match
   # who caused troubles
   yt = """
@@ -391,9 +391,9 @@ Base CGNSBase_t I4 [3, 3]:
             Translation DataArray_t R4 [0.0, 0.0, -0.25]:
   """
   treeS = parse_yaml_cgns.to_cgns_tree(yt)
-  treeS = maia.factory.distribute_tree(treeS, sub_comm)
-  treeU = maia.algo.dist.convert_s_to_ngon(treeS, sub_comm)
-  VL.generate_jns_vertex_list(treeU, sub_comm)
+  treeS = maia.factory.distribute_tree(treeS, comm)
+  treeU = maia.algo.dist.convert_s_to_ngon(treeS, comm)
+  VL.generate_jns_vertex_list(treeU, comm)
 
   zoneA, zoneB = PT.get_all_Zone_t(treeU)
   node = PT.get_node_from_name(zoneA, 'match1#Vtx')

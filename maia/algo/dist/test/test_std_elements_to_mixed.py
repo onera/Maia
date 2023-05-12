@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 import os
 
@@ -10,17 +10,17 @@ from maia.utils       import test_utils as TU
 
 from maia.algo.dist   import convert_elements_to_mixed
 
-@mark_mpi_test([1,2,3])
-def test_convert_mixed_to_elements(sub_comm):
-    rank = sub_comm.Get_rank()
-    size = sub_comm.Get_size()
+@pytest_parallel.mark.parallel([1,2,3])
+def test_convert_mixed_to_elements(comm):
+    rank = comm.Get_rank()
+    size = comm.Get_size()
     
     yaml_path = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
-    dist_tree = file_to_dist_tree(yaml_path, sub_comm)
+    dist_tree = file_to_dist_tree(yaml_path, comm)
     
     ref_dist_tree = PT.deep_copy(dist_tree)
     
-    convert_elements_to_mixed(dist_tree, sub_comm)
+    convert_elements_to_mixed(dist_tree, comm)
     
     ref_base = PT.get_child_from_label(ref_dist_tree,'CGNSBase_t')
     base = PT.get_child_from_label(dist_tree,'CGNSBase_t')  

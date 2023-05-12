@@ -1,4 +1,4 @@
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import numpy as np
 from mpi4py import MPI
@@ -34,8 +34,8 @@ def test_set_mpart_reordering():
   mpart = PDM.MultiPart(2, np.array([1,2], dtype=np.int32), 0, 1, 1, None, MPI.COMM_SELF)
   partU.set_mpart_reordering(mpart, reorder_options, keep_alive)
 
-@mark_mpi_test(2)
-def test_set_mpart_dmeshes(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_set_mpart_dmeshes(comm):
   dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
   dt = f"""
 ZoneA Zone_t [[1,1,0]]:
@@ -64,7 +64,7 @@ ZoneB Zone_t [[1,1,0]]:
 
   keep_alive = []
 
-  mpart = PDM.MultiPart(2, np.array([1,2], dtype=np.int32), 0, 1, 1, None, sub_comm)
-  partU.set_mpart_dmeshes(mpart, dzones, sub_comm, keep_alive)
+  mpart = PDM.MultiPart(2, np.array([1,2], dtype=np.int32), 0, 1, 1, None, comm)
+  partU.set_mpart_dmeshes(mpart, dzones, comm, keep_alive)
   assert len(keep_alive) == len(dzones)
 

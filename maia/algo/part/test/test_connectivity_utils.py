@@ -1,5 +1,5 @@
 import pytest
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree as PT
@@ -17,12 +17,12 @@ def as_partitioned(zone):
     array[1] = array[1].astype(np.int32)
 
 
-@mark_mpi_test(1)
+@pytest_parallel.mark.parallel(1)
 class Test_cell_vtx_connectivity:
 
   @pytest.mark.parametrize("elt_kind", ['NFACE_n' ,'Poly'])
-  def test_ngon3d(self, elt_kind, sub_comm):
-    tree = maia.factory.generate_dist_block(3, elt_kind, sub_comm)
+  def test_ngon3d(self, elt_kind, comm):
+    tree = maia.factory.generate_dist_block(3, elt_kind, comm)
     zone = PT.get_all_Zone_t(tree)[0]
     as_partitioned(zone)
     cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone)
@@ -35,8 +35,8 @@ class Test_cell_vtx_connectivity:
     assert (cell_vtx == expected_cell_vtx).all()
 
   @pytest.mark.parametrize("elt_kind", ['TETRA_4' ,'QUAD_4'])
-  def test_elts(self, elt_kind, sub_comm):
-    tree = maia.factory.generate_dist_block(3, elt_kind, sub_comm)
+  def test_elts(self, elt_kind, comm):
+    tree = maia.factory.generate_dist_block(3, elt_kind, comm)
     zone = PT.get_all_Zone_t(tree)[0]
     as_partitioned(zone)
     dim_zone = 2 if elt_kind in ['QUAD_4'] else 3
@@ -48,7 +48,7 @@ class Test_cell_vtx_connectivity:
     assert (np.diff(cell_vtx_idx) == 4).all()
     assert (cell_vtx == PT.get_node_from_name(elt, 'ElementConnectivity')[1]).all()
 
-  def test_struct(self, sub_comm):
+  def test_struct(self, comm):
     zone = PT.new_Zone(type='Structured')
     with pytest.raises(NotImplementedError):
       CU.cell_vtx_connectivity(zone)

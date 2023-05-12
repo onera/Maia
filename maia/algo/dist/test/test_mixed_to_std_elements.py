@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 import os
 
@@ -13,10 +13,10 @@ from maia.algo.dist   import convert_elements_to_mixed
 from maia.algo.dist.mixed_to_std_elements   import convert_mixed_to_elements, \
                                                    collect_pl_nodes
 
-@mark_mpi_test([1,2,3])
-def test_collect_pl_nodes(sub_comm):
+@pytest_parallel.mark.parallel([1,2,3])
+def test_collect_pl_nodes(comm):
     yaml_path = os.path.join(TU.mesh_dir, 'cube_4.yaml')
-    dist_tree = file_to_dist_tree(yaml_path, sub_comm)
+    dist_tree = file_to_dist_tree(yaml_path, comm)
 
     zone = PT.get_node_from_label(dist_tree, 'Zone_t')
 
@@ -46,18 +46,18 @@ def test_collect_pl_nodes(sub_comm):
         assert PT.get_name(pointlist_node)  == 'PointList'
         assert PT.get_label(pointlist_node) == 'IndexArray_t'
 
-@mark_mpi_test([1,2,3])
-def test_convert_mixed_to_elements(sub_comm):
-    rank = sub_comm.Get_rank()
-    size = sub_comm.Get_size()
+@pytest_parallel.mark.parallel([1,2,3])
+def test_convert_mixed_to_elements(comm):
+    rank = comm.Get_rank()
+    size = comm.Get_size()
     
     yaml_path = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
-    dist_tree = file_to_dist_tree(yaml_path, sub_comm)
+    dist_tree = file_to_dist_tree(yaml_path, comm)
     
     # Assume this function is already tested
-    convert_elements_to_mixed(dist_tree, sub_comm)
+    convert_elements_to_mixed(dist_tree, comm)
     
-    convert_mixed_to_elements(dist_tree, sub_comm)
+    convert_mixed_to_elements(dist_tree, comm)
     
     base = PT.get_node_from_label(dist_tree,'CGNSBase_t')  
     assert PT.get_name(base) == 'Base'

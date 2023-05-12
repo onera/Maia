@@ -1,4 +1,4 @@
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import mpi4py.MPI as MPI
 import numpy as np
@@ -36,8 +36,8 @@ class Test_compare_pointlist():
     jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=np.empty((1,0), np.int32), point_list      =np.empty((1,0), np.int32))
     assert(MJT._compare_pointlist(jn1, jn2) == True)
 
-@mark_mpi_test([1,3])
-def test_add_joins_donor_name(sub_comm):
+@pytest_parallel.mark.parallel([1,3])
+def test_add_joins_donor_name(comm):
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t [[27,8,0]]:
@@ -79,17 +79,17 @@ Base1 CGNSBase_t [3,3]:
         PointListDonor IndexArray_t [[32,34]]:
 """
   full_tree = parse_yaml_cgns.to_cgns_tree(yt)
-  dist_tree = full_to_dist.distribute_tree(full_tree, sub_comm)
+  dist_tree = full_to_dist.distribute_tree(full_tree, comm)
 
-  MJT.add_joins_donor_name(dist_tree, sub_comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
 
   expected_donor_names = ['matchBA', 'matchAB', 'matchCB1', 'matchCB2', 'matchBC2', 'matchBC1']
   query = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, query)):
     assert PT.get_value(PT.get_child_from_name(jn, 'GridConnectivityDonorName')) == expected_donor_names[i]
 
-@mark_mpi_test(1)
-def test_force(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_force(comm):
   yt = """
 Base0 CGNSBase_t:
   ZoneA Zone_t:
@@ -110,9 +110,9 @@ Base0 CGNSBase_t:
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   jn_donor_path = 'Base0/ZoneA/ZGC/matchAB/GridConnectivityDonorName'
   assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
-  MJT.add_joins_donor_name(dist_tree, sub_comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
   assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
-  MJT.add_joins_donor_name(dist_tree, sub_comm, force=True)
+  MJT.add_joins_donor_name(dist_tree, comm, force=True)
   assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'matchBA'
 
 class Test_gcdonorname_utils:

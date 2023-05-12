@@ -1,4 +1,4 @@
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import maia.pytree as PT
 import numpy as np
@@ -9,9 +9,9 @@ from maia.transfer.dist_to_part import recover_jn as JBTP
 
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
-@mark_mpi_test(2)
-def test_get_pl_donor(sub_comm):
-  if sub_comm.Get_rank() == 0:
+@pytest_parallel.mark.parallel(2)
+def test_get_pl_donor(comm):
+  if comm.Get_rank() == 0:
     dt = """
 ZoneA Zone_t [[6,0,0]]:
   ZGC ZoneGridConnectivity_t:
@@ -42,7 +42,7 @@ ZoneA.P0.N0 Zone_t [[6,0,0]]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t {0} [2,3,5]:
 """.format(dtype)
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     dt = """
 ZoneA Zone_t [[6,0,0]]:
   ZGC ZoneGridConnectivity_t:
@@ -93,14 +93,14 @@ ZoneB.P1.N1 Zone_t:
   dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
 
-  JBTP.get_pl_donor(dist_tree, part_tree, sub_comm)
+  JBTP.get_pl_donor(dist_tree, part_tree, comm)
   
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/PointListDonor')[1] == [20,12,8]).all()
     assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/Donor')[1][:,0] == [1,1,1]).all()
     assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB/Donor')[1][:,1] == [0,0,0]).all()
     assert PT.get_value(PT.get_node_from_path(part_tree, 'Base/ZoneA.P0.N0/ZGC/matchAB')) == 'ZoneB'
-  if sub_comm.Get_rank() == 1:
+  if comm.Get_rank() == 1:
     assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/PointListDonor')[1] == [9,1,5]).all()
     assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/Donor')[1][:,0] == [1,1,1]).all()
     assert (PT.get_node_from_path(part_tree, 'Base/ZoneA.P1.N0/ZGC/matchAB/Donor')[1][:,1] == [0,0,1]).all()

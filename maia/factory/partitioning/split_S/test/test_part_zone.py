@@ -1,4 +1,4 @@
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 import maia.pytree as PT
 from   maia.pytree.yaml   import parse_yaml_cgns
@@ -82,14 +82,14 @@ def test_pr_to_global_num():
   splitS.pr_to_global_num(pr, np.array([10,1,100]), reverse=True)
   assert (pr == np.array([[11,11],[1,9],[1,7]])).all()
 
-@mark_mpi_test(3)
-def test_split_original_joins_S(sub_comm):
-  if sub_comm.Get_rank() == 0:
+@pytest_parallel.mark.parallel(3)
+def test_split_original_joins_S(comm):
+  if comm.Get_rank() == 0:
     pt = """
 Big.P0.N0 Zone_t:
 Small.P0.N0 Zone_t:
   """
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     pt = """
 Small.P1.N0 Zone_t:
   ZBC ZoneBC_t:
@@ -101,7 +101,7 @@ Small.P1.N0 Zone_t:
       distPRDonor IndexRange_t [[17,17],[3,9],[1,5]]:
       zone_offset DataArray_t [1,6,1]:
   """
-  elif sub_comm.Get_rank() == 2:
+  elif comm.Get_rank() == 2:
     pt = """
 Big.P2.N0 Zone_t:
   ZBC ZoneBC_t:
@@ -133,12 +133,12 @@ Small.P2.N1 Zone_t:
   """
   part_tree  = parse_yaml_cgns.to_cgns_tree(pt)
   part_zones = PT.get_all_Zone_t(part_tree)
-  splitS.split_original_joins_S(part_zones, sub_comm)
+  splitS.split_original_joins_S(part_zones, comm)
 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert PT.get_nodes_from_name(part_tree, 'match1.*') == []
     assert PT.get_nodes_from_name(part_tree, 'match2.*') == []
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     assert PT.get_nodes_from_name(part_tree, 'match1.*') == []
     assert len(PT.get_nodes_from_name(part_tree, 'match2.*')) == 1
     match2 = PT.get_node_from_name(part_tree, 'match2.0')
@@ -146,7 +146,7 @@ Small.P2.N1 Zone_t:
     assert PT.get_label(match2) == 'GridConnectivity1to1_t'
     assert (PT.get_node_from_name(match2, 'PointRange')[1] == [[4,1],[4,4],[5,1]]).all()
     assert (PT.get_node_from_name(match2, 'PointRangeDonor')[1] == [[6,6],[2,5],[1,5]]).all()
-  elif sub_comm.Get_rank() == 2:
+  elif comm.Get_rank() == 2:
     assert len(PT.get_nodes_from_name(part_tree, 'match1.*')) == 3
     assert len(PT.get_nodes_from_name(part_tree, 'match2.*')) == 2
     match1_1 = PT.get_node_from_path(part_tree, 'Base/Big.P2.N0/ZoneGridConnectivity/match1.0')

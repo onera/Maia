@@ -1,14 +1,14 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import maia.pytree        as PT
 
 from maia.factory import dsphere_generator
 
-@mark_mpi_test(3)
+@pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("elmt_name", ["TRI_3", "NGON_n"])
-def test_dsphere_surf_generate(elmt_name, sub_comm):
+def test_dsphere_surf_generate(elmt_name, comm):
   # Do not test value since this is a PDM function
-  dist_tree = dsphere_generator.generate_dist_sphere(6, elmt_name, sub_comm)
+  dist_tree = dsphere_generator.generate_dist_sphere(6, elmt_name, comm)
   assert (PT.get_all_CGNSBase_t(dist_tree)[0][1] == [2,3]).all()
 
   assert len(PT.get_all_Zone_t(dist_tree)) == 1
@@ -25,11 +25,11 @@ def test_dsphere_surf_generate(elmt_name, sub_comm):
 
   assert len(PT.get_nodes_from_label(dist_tree, 'BC_t')) == 0
 
-@mark_mpi_test(3)
+@pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("elmt_name", ["TETRA_4", "NFACE_n"])
-def test_dsphere_vol_generate(elmt_name, sub_comm):
+def test_dsphere_vol_generate(elmt_name, comm):
   # Do not test value since this is a PDM function
-  dist_tree = dsphere_generator.generate_dist_sphere(6, elmt_name, sub_comm)
+  dist_tree = dsphere_generator.generate_dist_sphere(6, elmt_name, comm)
 
   assert len(PT.get_all_Zone_t(dist_tree)) == 1
   zone = PT.get_all_Zone_t(dist_tree)[0]
@@ -50,11 +50,11 @@ def test_dsphere_vol_generate(elmt_name, sub_comm):
   bc = PT.get_node_from_name(dist_tree, 'Skin')
   assert PT.get_node_from_name(bc, 'Index')[1][2] == 720
 
-@mark_mpi_test(3)
+@pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("elmt_name", ["TETRA_4", "NFACE_n"])
-def test_dsphere_hollow_generate(elmt_name, sub_comm):
+def test_dsphere_hollow_generate(elmt_name, comm):
   # Do not test value since this is a PDM function
-  dist_tree = dsphere_generator.dsphere_hollow_nodal_generate(5, .5, 2, [0., 0., 0.], sub_comm, 4, .5)
+  dist_tree = dsphere_generator.dsphere_hollow_nodal_generate(5, .5, 2, [0., 0., 0.], comm, 4, .5)
 
   assert len(PT.get_all_Zone_t(dist_tree)) == 1
   zone = PT.get_all_Zone_t(dist_tree)[0]
