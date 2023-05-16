@@ -85,24 +85,26 @@ def dist_set_difference(ids, others, comm):
   return selected
 
 
-def _point_merge(clouds, comm, rel_tol=1e-5):
+def _point_merge(clouds, comm, rel_tol=1e-3):
   """
   Wraps PDM.PointsMerge. A cloud is a tuple (coordinates, carac_lenght, parent_gnum)
   """
   n_point_cloud = len(clouds)
   pdm_point_merge = PDM.PointsMerge(comm, len(clouds), rel_tol)
 
+  _vertex_parent_num = []
   for icloud, cloud in enumerate(clouds):
-    coords, carac_length, _ = cloud
-    pdm_point_merge.cloud_set(icloud, coords.size//3, coords, carac_length)
+    coords, carac_length, _, _ = cloud
+    dn_cloud_pts = coords.size // 3
+    pdm_point_merge.cloud_set(icloud, dn_cloud_pts, coords, carac_length)
+    distri_cloud = par_utils.dn_to_distribution(dn_cloud_pts, comm)
+    _vertex_parent_num.append(np.arange(dn_cloud_pts, dtype=distri_cloud.dtype) + 1 + distri_cloud[0])
 
   pdm_point_merge.compute()
 
-  vertex_parent_num = [cloud[2] for cloud in clouds]
+  return pdm_point_merge.make_interface(_vertex_parent_num)
 
-  return pdm_point_merge.make_interface(vertex_parent_num)
-
-def _get_cloud(dmesh, gnum, comm):
+def _get_cloud(dmesh, gnum, comm, key, extracted_meshes):
     dmesh_extractor = PDM.DMeshExtract(2, comm)
     dmesh_extractor.register_dmesh(dmesh)
     _gnum = as_pdm_gnum(gnum)
@@ -112,6 +114,7 @@ def _get_cloud(dmesh, gnum, comm):
 
     dmesh_extracted = dmesh_extractor.get_dmesh()
     parent = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VERTEX)
+    parent_face = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_FACE)
 
     coords  = dmesh_extracted.dmesh_vtx_coord_get()
     face_vtx_idx, face_vtx = dmesh_extracted.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
@@ -123,50 +126,38 @@ def _get_cloud(dmesh, gnum, comm):
                                                          face_vtx,
                                                          None,                #edge_vtx
                                                          coords)
-    return (coords, carac_length, parent)
+
+    extracted_meshes[key] = (coords, face_vtx_idx, face_vtx)
+    return (coords, carac_length, parent, parent_face)
            
 
-def _convert_match_result_to_faces(dist_tree, clouds_path, out_vtx, comm):
+def _convert_match_result_to_faces(dist_tree, clouds_path, out_vtx, comm, extracted_meshes):
 
-    clouds_to_zone = []
-    filtered_zones = []
-
-    for cloud_path in clouds_path:
-      zone_path = PT.path_head(cloud_path, 2)
-      try:
-        zone_index = filtered_zones.index(zone_path)
-      except ValueError:
-        zone_index = len(filtered_zones)
-        filtered_zones.append(zone_path)
-      clouds_to_zone.append(zone_index)
 
     # Get usefull data for zones referenced by some interface
     zones_dn_vtx  = []
     zones_dn_face = []
     zones_face_vtx_idx = []
     zones_face_vtx     = []
-    for zone_path in filtered_zones:
-      zone = PT.get_node_from_path(dist_tree, zone_path)
-      ngon_node = PT.Zone.NGonNode(zone)
-      vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
-      face_distri = MT.getDistribution(ngon_node, 'Element')[1]
-      zones_dn_vtx.append(vtx_distri[1] - vtx_distri[0])
-      zones_dn_face.append(face_distri[1] - face_distri[0])
-      eso = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      ec  = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-      zones_face_vtx_idx.append(np.subtract(eso, eso[0], dtype=np.int32))
-      zones_face_vtx    .append(as_pdm_gnum(ec))
+
+    for cloud_path in clouds_path:
+
+      coords, face_vtx_idx, face_vtx =  extracted_meshes[cloud_path]
+
+      zones_dn_vtx.append(coords.size // 3)
+      zones_dn_face.append(face_vtx_idx.size - 1)
+      zones_face_vtx_idx.append(face_vtx_idx)
+      zones_face_vtx    .append(face_vtx)
 
 
     n_interface = len(out_vtx['np_cloud_pair']) // 2
-    dom_id =  [clouds_to_zone[c] for c in out_vtx['np_cloud_pair']]
     interface_dn_vtx  = [cur.size for cur in out_vtx['lgnum_cur']]
     interface_ids_vtx = [np_utils.interweave_arrays([cur, opp]) for (cur, opp) in zip(out_vtx['lgnum_cur'], out_vtx['lgnum_opp'])]
-    interface_dom_vtx = [dom_id[i:i+2] for i in range(0, len(dom_id), 2)]
+    interface_dom_vtx = [out_vtx['np_cloud_pair'][i:i+2] for i in range(0, len(out_vtx['np_cloud_pair']), 2)]
 
 
     _out_face = PDM.interface_vertex_to_face(n_interface,
-                                             len(filtered_zones),
+                                             len(zones_dn_vtx),
                                              False,
                                              interface_dn_vtx,
                                              interface_ids_vtx,
@@ -191,7 +182,7 @@ def _convert_match_result_to_faces(dist_tree, clouds_path, out_vtx, comm):
     return out_face
 
 
-def get_vtx_cloud_from_subset(dist_tree, subset_path, comm, dmesh_cache={}):
+def get_vtx_cloud_from_subset(dist_tree, subset_path, comm, dmesh_cache={}, extracted_meshes={}):
   zone_path = PT.path_head(subset_path, 2)
   try:
     dmesh = dmesh_cache[zone_path]
@@ -203,7 +194,7 @@ def get_vtx_cloud_from_subset(dist_tree, subset_path, comm, dmesh_cache={}):
   node = PT.get_node_from_path(dist_tree, subset_path)
   assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
   pl = PT.get_child_from_name(node, 'PointList')[1][0]
-  cloud = _get_cloud(dmesh, pl, comm)
+  cloud = _get_cloud(dmesh, pl, comm, subset_path, extracted_meshes)
   return cloud
 
 def apply_periodicity(cloud, periodic):
@@ -232,20 +223,48 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
     clouds = []
 
     cached_dmesh = {} #Use caching to avoid translate zone->dmesh 2 times
+    extracted_meshes  = {}
     for cloud_path in subset_paths[0]:
-      cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh)
+      cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh, extracted_meshes)
       if periodic is not None:
         cloud = apply_periodicity(cloud, periodic)
       clouds.append(cloud)
     for cloud_path in subset_paths[1]:
-      cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh)
+      cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh, extracted_meshes)
       clouds.append(cloud)
 
     PT.rm_nodes_from_name(dist_tree, ":CGNS#MultiPart") #Cleanup
 
     matching_vtx  = _point_merge(clouds, comm)
-    matching_face = _convert_match_result_to_faces(dist_tree, clouds_path, matching_vtx, comm)
+    matching_face = _convert_match_result_to_faces(dist_tree, clouds_path, matching_vtx, comm, extracted_meshes)
 
+    # Conversion en numéro parent
+    from maia.transfer import protocols as EP
+    n_interface = len(matching_vtx['np_cloud_pair']) // 2
+    for i_itrf in range(n_interface):
+      i_cloud = matching_vtx['np_cloud_pair'][2*i_itrf]
+      parent_vtx_num = clouds[i_cloud][2]
+      parent_face_num = clouds[i_cloud][3]
+      
+      distri_vtx = par_utils.dn_to_distribution(parent_vtx_num.size, comm)
+      distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
+
+      parent_vtx_part = EP.block_to_part(parent_vtx_num, distri_vtx, [matching_vtx['lgnum_cur'][i_itrf]], comm)
+      matching_vtx['lgnum_cur'][i_itrf] = parent_vtx_part[0]
+      parent_face_part = EP.block_to_part(parent_face_num, distri_face, [matching_face['lgnum_cur'][i_itrf]], comm)
+      matching_face['lgnum_cur'][i_itrf] = parent_face_part[0]
+
+      i_cloud = matching_vtx['np_cloud_pair'][2*i_itrf+1]
+      parent_vtx_num = clouds[i_cloud][2]
+      parent_face_num = clouds[i_cloud][3]
+      distri_vtx = par_utils.dn_to_distribution(parent_vtx_num.size, comm)
+      distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
+
+      parent_vtx_part = EP.block_to_part(parent_vtx_num, distri_vtx, [matching_vtx['lgnum_opp'][i_itrf]], comm)
+      matching_vtx['lgnum_opp'][i_itrf] = parent_vtx_part[0]
+      parent_face_part = EP.block_to_part(parent_face_num, distri_face, [matching_face['lgnum_opp'][i_itrf]], comm)
+      matching_face['lgnum_opp'][i_itrf] = parent_face_part[0]
+      # Attention dépend du //
     # Add created nodes in tree
     output_loc = kwargs.get("location", "FaceCenter")
     if output_loc == 'Vertex':
