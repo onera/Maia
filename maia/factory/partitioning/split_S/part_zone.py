@@ -48,12 +48,7 @@ def collect_S_bnd_per_dir(zone):
 
         if PT.get_label(bnd) == 'BCDataSet_t':
           bcds_path = '/'.join([PT.get_name(n) for n in nodes[:-1]])
-          maia_dspath = PT.get_child_from_name(bnd,'__maia::dspath')
-          if maia_dspath is None:
-            PT.new_child(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
-          else:
-            assert PT.get_label(maia_dspath) == 'Descriptor_t'
-            assert PT.get_value(maia_dspath) == bcds_path
+          PT.update_child(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
 
         pr_val = point_range[bnd_normal_index,0]
         extr = 'min' if pr_val == 1 else 'max'

@@ -209,9 +209,9 @@ def test_split_lines(method, comm):
   assert comm.allreduce(PT.Zone.n_vtx(part_zone), MPI.SUM) == PT.Zone.n_vtx(dist_zone)+1 # One is duplicated
 
 
-@pytest_parallel.mark.parallel([2])
+@pytest_parallel.mark.parallel(2)
 def test_split_structured(comm):
-  dist_tree = maia.factory.generate_dist_block([11,11,11],'Structured',comm)
+  dist_tree = maia.factory.generate_dist_block(11, 'Structured', comm)
   
   zone_n = PT.get_node_from_path(dist_tree, 'Base/zone')
   zonebc_n = PT.get_child_from_name(zone_n, 'ZoneBC')
@@ -222,14 +222,12 @@ def test_split_structured(comm):
   pr_1 = np.copy(pr)
   pr_1[1][1] = int(pr[1][1]-1)/2 + 1
   xmin_1 = PT.new_BC('Xmin1_wo_DS',point_range=pr_1,parent=zonebc_n)
-  cgns_dist_1 = PT.new_node(':CGNS#Distribution', 'UserDefinedData_t',parent=xmin_1)
-  PT.new_node('Index', 'DataArray_t',value=par_utils.uniform_distribution(PT.Subset.n_elem(xmin_1),comm),parent=cgns_dist_1)
+  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(xmin_1),comm)}, xmin_1)
   
   pr_2 = np.copy(pr)
   pr_2[1][0] = int(pr[1][1]-1)/2 + 1
   xmin_2 = PT.new_BC('Xmin2_w_DS',point_range=pr_2,parent=zonebc_n)
-  cgns_dist_2 = PT.new_node(':CGNS#Distribution', 'UserDefinedData_t',parent=xmin_2)
-  PT.new_node('Index', 'DataArray_t',value=par_utils.uniform_distribution(PT.Subset.n_elem(xmin_2),comm),parent=cgns_dist_2)
+  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(xmin_2),comm)}, xmin_2)
   bcds = PT.new_node('BCDataSet','BCDataSet_t',value='Null',parent=xmin_2)
   PT.new_GridLocation('IFaceCenter',parent=bcds)
   pr_ds = np.copy(pr_2)
@@ -238,8 +236,9 @@ def test_split_structured(comm):
   pr_ds[2][0] = pr_2[2][0]+1
   pr_ds[2][1] = pr_2[2][1]-2
   PT.new_PointRange(value=pr_ds,parent=bcds)
-  cgns_dist_ds = PT.new_node(':CGNS#Distribution', 'UserDefinedData_t',parent=bcds)
-  index_ds = PT.new_node('Index', 'DataArray_t',value=par_utils.uniform_distribution(PT.Subset.n_elem(bcds),comm),parent=cgns_dist_ds)
+  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(bcds),comm)}, bcds)
+  index_ds = MT.getDistribution(bcds, 'Index')
+
   bcd = PT.new_node('DirichletData','BCData_t',parent=bcds)
   i_ar = np.arange(pr_ds[0,0], pr_ds[0,1]+1, dtype=np.int32)
   j_ar = np.arange(pr_ds[1,0], pr_ds[1,1]+1, dtype=np.int32).reshape(-1,1)
@@ -249,15 +248,13 @@ def test_split_structured(comm):
   PT.new_node('LNtoGN_DataSet','DataArray_t',value=num_face,parent=bcd)
   
   PT.rm_node_from_path(dist_tree, 'Base/zone/ZoneBC/Xmin')
-  
-  zone_to_parts = {'Base/zone': [0.1, 0.1, 0.1, 0.1, 0.1]}
+  zone_to_parts = maia.factory.partitioning.compute_regular_weights(dist_tree, comm, n_part=5)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts)
   
   bcds_n_l = PT.get_nodes_from_name(part_tree, 'BCDataSet')
   sum_size_bcds = 0
   for bcds_n in bcds_n_l:
-      index_n = PT.get_node_from_path(bcds_n, ':CGNS#GlobalNumbering/Index')
-      index_tab = PT.get_value(index_n)
+      index_tab = PT.get_value(MT.getGlobalNumbering(bcds_n, 'Index'))
       size_bcds = PT.Subset.n_elem(bcds_n)
       assert size_bcds == index_tab.shape[0]
       sum_size_bcds += size_bcds
