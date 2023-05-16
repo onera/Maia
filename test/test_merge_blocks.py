@@ -78,7 +78,7 @@ def test_merge_partial(comm, write_output):
   dist_tree = maia.io.file_to_dist_tree(mesh_file, comm)
 
   # Here we will merge just two zones over three
-  zones_path = ['BaseA/blk1', 'BaseA/blk3']
+  zones_path = ['BaseA/blk*']
 
   merge.merge_zones(dist_tree, zones_path, comm)
   merged_1 = PT.deep_copy(dist_tree) # Do copy for further comparaisons

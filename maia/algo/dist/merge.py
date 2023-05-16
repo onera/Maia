@@ -94,9 +94,9 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
 
   Subsets of the merged block can be reduced thanks to subset_merge parameter:
   
-  - None   => no reduction occurs : all subset of all original zones remains on merged zone, with a
+  - ``None``   : no reduction occurs : all subset of all original zones remains on merged zone, with a
     numbering suffix.
-  - 'name' => Subset having the same name on the original zones (within a same label) produces
+  - ``'name'`` : Subset having the same name on the original zones (within a same label) produces
     and unique subset on the output merged zone.
 
   Only unstructured-NGon trees are supported, and interfaces between the zones
@@ -104,7 +104,8 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
 
   Args:
     tree (CGNSTree): Input distributed tree
-    zone_paths (list of str): List of path (BaseName/ZoneName) of the zones to merge
+    zone_paths (list of str): List of path (BaseName/ZoneName) of the zones to merge.
+        Wildcard ``*`` are allowed in BaseName and/or ZoneName.
     comm       (MPIComm): MPI communicator
     output_path (str, optional): Path of the output merged block. Defaults to None.
     subset_merge (str, optional): Merging strategy for the subsets. Defaults to 'name'.
@@ -117,6 +118,11 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
         :end-before: #merge_zones@end
         :dedent: 2
   """
+  # Transform wildcard into concrete path
+  replace_super_wildcard = lambda p: '*/*' if p == '*' else p
+  zone_paths = [replace_super_wildcard(p) for p in zone_paths]
+  zone_paths = PT.concretize_paths(tree, zone_paths, ['CGNSBase_t', 'Zone_t'])
+
   assert all([sids.Zone.Type(PT.get_node_from_path(tree, path)) == 'Unstructured' for path in zone_paths])
   #Those one will be needed for jn recovering
   MJT.add_joins_donor_name(tree, comm)
