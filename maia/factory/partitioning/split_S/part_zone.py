@@ -48,7 +48,7 @@ def collect_S_bnd_per_dir(zone):
 
         if PT.get_label(bnd) == 'BCDataSet_t':
           bcds_path = '/'.join([PT.get_name(n) for n in nodes[:-1]])
-          PT.new_child(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
+          PT.update_child(bnd, '__maia::dspath', 'Descriptor_t', bcds_path)
 
         pr_val = point_range[bnd_normal_index,0]
         extr = 'min' if pr_val == 1 else 'max'
@@ -116,7 +116,8 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
     if is_old_bc:
       dirs = np.where(np.arange(range_part_bc_g.shape[0]) != normal_idx)[0]
       for dist_bc in dist_bnds:
-        range_dist_bc = np.copy(PT.get_child_from_name(dist_bc, 'PointRange')[1])
+        dist_bc_pr_n = PT.get_child_from_name(dist_bc, 'PointRange')
+        range_dist_bc = np.copy(dist_bc_pr_n[1])
         grid_loc      = PT.Subset.GridLocation(dist_bc)
 
         #Swap because some gc are allowed to be reversed and convert to cell
@@ -146,10 +147,14 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             parent = PT.get_node_from_path(p_zone, parent_path)
             part_bc = PT.new_node(PT.get_name(dist_bc), 'BCDataSet_t', parent=parent)
             PT.new_PointRange(value=sub_pr, parent=part_bc)
-            i_ar  = np.arange(range_part_bc_g[0,0], range_part_bc_g[0,1]+1, dtype=pdm_dtype)
-            j_ar  = np.arange(range_part_bc_g[1,0], range_part_bc_g[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
-            k_ar  = np.arange(range_part_bc_g[2,0], range_part_bc_g[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
-            bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, range_dist_bc[:,1]).flatten()
+            sub_pr_loc = np.copy(sub_pr)
+            sub_pr_loc[0,:] += range_part_bc_g[0,0] - range_dist_bc[0,0]
+            sub_pr_loc[1,:] += range_part_bc_g[1,0] - range_dist_bc[1,0]
+            sub_pr_loc[2,:] += range_part_bc_g[2,0] - range_dist_bc[2,0]
+            i_ar  = np.arange(sub_pr_loc[0,0], sub_pr_loc[0,1]+1, dtype=pdm_dtype)
+            j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
+            k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
+            bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
             assert bcds_lntogn.size == PT.Subset.n_elem(part_bc)
             MT.newGlobalNumbering({'Index' : bcds_lntogn}, part_bc)
           else: #GC are put with bc and treated afterward

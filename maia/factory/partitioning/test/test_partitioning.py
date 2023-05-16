@@ -7,6 +7,7 @@ import maia
 from maia.pytree.yaml   import parse_yaml_cgns, parse_cgns_yaml
 from maia.factory import generate_dist_block
 from maia.factory import partition_dist_tree
+from maia.utils import par_utils, s_numbering
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
@@ -206,4 +207,58 @@ def test_split_lines(method, comm):
   assert (PT.get_value(part_base) == PT.get_value(dist_base)).all()
   assert comm.allreduce(PT.Zone.n_cell(part_zone), MPI.SUM) == PT.Zone.n_cell(dist_zone)
   assert comm.allreduce(PT.Zone.n_vtx(part_zone), MPI.SUM) == PT.Zone.n_vtx(dist_zone)+1 # One is duplicated
+
+
+@pytest_parallel.mark.parallel(2)
+def test_split_structured(comm):
+  dist_tree = maia.factory.generate_dist_block(11, 'Structured', comm)
+  
+  zone_n = PT.get_node_from_path(dist_tree, 'Base/zone')
+  zonebc_n = PT.get_child_from_name(zone_n, 'ZoneBC')
+  
+  xmin_n = PT.get_child_from_name(zonebc_n,'Xmin')
+  pr = PT.get_value(PT.get_child_from_name(xmin_n,'PointRange'))
+  
+  pr_1 = np.copy(pr)
+  pr_1[1][1] = int(pr[1][1]-1)/2 + 1
+  xmin_1 = PT.new_BC('Xmin1_wo_DS',point_range=pr_1,parent=zonebc_n)
+  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(xmin_1),comm)}, xmin_1)
+  
+  pr_2 = np.copy(pr)
+  pr_2[1][0] = int(pr[1][1]-1)/2 + 1
+  xmin_2 = PT.new_BC('Xmin2_w_DS',point_range=pr_2,parent=zonebc_n)
+  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(xmin_2),comm)}, xmin_2)
+  bcds = PT.new_node('BCDataSet','BCDataSet_t',value='Null',parent=xmin_2)
+  PT.new_GridLocation('IFaceCenter',parent=bcds)
+  pr_ds = np.copy(pr_2)
+  pr_ds[1][0] = pr_2[1][0]+1
+  pr_ds[1][1] = pr_2[1][1]-2
+  pr_ds[2][0] = pr_2[2][0]+1
+  pr_ds[2][1] = pr_2[2][1]-2
+  PT.new_PointRange(value=pr_ds,parent=bcds)
+  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(bcds),comm)}, bcds)
+  index_ds = MT.getDistribution(bcds, 'Index')
+
+  bcd = PT.new_node('DirichletData','BCData_t',parent=bcds)
+  i_ar = np.arange(pr_ds[0,0], pr_ds[0,1]+1, dtype=np.int32)
+  j_ar = np.arange(pr_ds[1,0], pr_ds[1,1]+1, dtype=np.int32).reshape(-1,1)
+  k_ar = np.arange(pr_ds[2,0], pr_ds[2,1]+1, dtype=np.int32).reshape(-1,1,1)
+  num_face_all = s_numbering.ijk_to_faceiIndex(i_ar, j_ar, k_ar, PT.Zone.CellSize(zone_n), PT.Zone.VertexSize(zone_n)).flatten()
+  num_face = num_face_all[PT.get_value(index_ds)[0]:PT.get_value(index_ds)[1]]
+  PT.new_node('LNtoGN_DataSet','DataArray_t',value=num_face,parent=bcd)
+  
+  PT.rm_node_from_path(dist_tree, 'Base/zone/ZoneBC/Xmin')
+  zone_to_parts = maia.factory.partitioning.compute_regular_weights(dist_tree, comm, n_part=5)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts)
+  
+  bcds_n_l = PT.get_nodes_from_name(part_tree, 'BCDataSet')
+  sum_size_bcds = 0
+  for bcds_n in bcds_n_l:
+      index_tab = PT.get_value(MT.getGlobalNumbering(bcds_n, 'Index'))
+      size_bcds = PT.Subset.n_elem(bcds_n)
+      assert size_bcds == index_tab.shape[0]
+      sum_size_bcds += size_bcds
+      assert np.all(1 <= index_tab) and np.all(index_tab <= 24)
+  
+  assert comm.allreduce(sum_size_bcds, MPI.SUM) == 24
 
