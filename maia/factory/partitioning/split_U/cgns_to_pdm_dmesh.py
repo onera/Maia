@@ -6,11 +6,11 @@ import maia.pytree.maia   as MT
 
 from maia.utils import py_utils, np_utils, layouts, as_pdm_gnum
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.algo.dist                            import ngon_tools as NGT
 from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
 from Pypdm.Pypdm import DistributedMesh, DistributedMeshNodal
-from Pypdm.Pypdm import _PDM_CONNECTIVITY_TYPE_FACE_VTX, _PDM_BOUND_TYPE_FACE, _PDM_CONNECTIVITY_TYPE_FACE_CELL
+from Pypdm.Pypdm import _PDM_CONNECTIVITY_TYPE_FACE_VTX, _PDM_BOUND_TYPE_FACE, \
+                        _PDM_CONNECTIVITY_TYPE_FACE_CELL, _PDM_CONNECTIVITY_TYPE_CELL_FACE
 
 def _split_point_list_by_dim(pl_list, range_by_dim, comm):
   """
@@ -64,15 +64,17 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
   ngon_first = PT.Element.Range(ngon_node)[0] == 1
+  has_nface  = PT.Zone.has_nface_elements(dist_zone)
   dface_vtx = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1])
-  ngon_eso  = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1])
+  ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1]
 
-  pe_node = PT.get_child_from_name(ngon_node, 'ParentElements')
-  if pe_node is None:
-    ghost_zone = PT.shallow_copy(dist_zone)
-    NGT.nface_to_pe(ghost_zone, comm)
-    pe_node = PT.get_child_from_name(PT.Zone.NGonNode(ghost_zone), 'ParentElements')
-  ngon_pe   = as_pdm_gnum(pe_node[1])
+  if has_nface:
+    nface_node = PT.Zone.NFaceNode(dist_zone)
+    nface_ec  = as_pdm_gnum(PT.get_child_from_name(nface_node, 'ElementConnectivity')[1])
+    nface_eso = PT.get_child_from_name(nface_node, 'ElementStartOffset' )[1]
+    distrib_cell_face = as_pdm_gnum(PT.get_value(MT.getDistribution(nface_node, 'ElementConnectivity')))
+  else:
+    ngon_pe = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ParentElements')[1])
 
   distrib_face     = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'Element')))
   distrib_face_vtx = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'ElementConnectivity')))
@@ -82,24 +84,23 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   dn_face = distrib_face[1] - distrib_face[0]
   dn_edge = -1 #Not used
 
-  if dn_vtx > 0:
-    cx, cy, cz = PT.Zone.coordinates(dist_zone)
-    dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
-  else:
-    dvtx_coord = np.empty(0, dtype='float64', order='F')
+  cx, cy, cz = PT.Zone.coordinates(dist_zone)
+  dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
 
-  if dn_face > 0:
-    dface_cell    = np.empty(2*dn_face  , dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
-    layouts.pe_cgns_to_pdm_face_cell(ngon_pe      , dface_cell      )
-    # PDM expects a PE in local cell indexing, shift is needed
+  dface_vtx_idx = np.add(ngon_eso, -distrib_face_vtx[0], dtype=np.int32) #Local index is int32bits
+
+  if has_nface: #Use NFace to set cell_face
+    dcell_face_idx = np.add(nface_eso, -distrib_cell_face[0], dtype=np.int32) # Local index is int32bits
+    if ngon_first:
+      dcell_face = nface_ec
+    else:
+      dcell_face = nface_ec - distrib_cell[2]
+  else: #Use PE to set face_cell
+    dface_cell = np.empty(2*dn_face, dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
+    layouts.pe_cgns_to_pdm_face_cell(ngon_pe, dface_cell)
     if ngon_first:
       np_utils.shift_nonzeros(dface_cell, -distrib_face[2])
-    dface_vtx_idx = np.add(ngon_eso, -distrib_face_vtx[0], dtype=np.int32) #Local index is int32bits
     
-  else:
-    dface_vtx_idx = np.zeros(1, dtype=np.int32    )
-    dface_vtx     = np.empty(0, dtype=pdm_gnum_dtype)
-    dface_cell    = np.empty(0, dtype=pdm_gnum_dtype)
 
   # > Prepare bnd
   dface_bound_idx = np.zeros(1, dtype=np.int32)
@@ -109,17 +110,25 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
 
   dmesh.dmesh_vtx_coord_set(dvtx_coord)
   dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_FACE_VTX, dface_vtx_idx, dface_vtx)
-  dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_FACE_CELL, None, dface_cell)
   dmesh.dmesh_bound_set(_PDM_BOUND_TYPE_FACE, dface_bound_idx, dface_bound)
+
+  if has_nface:
+    dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_CELL_FACE, dcell_face_idx, dcell_face)
+  else:
+    dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_FACE_CELL, None, dface_cell)
 
   # > Create an older --> To Suppress after all
   multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
   PT.new_DataArray('dvtx_coord'     , dvtx_coord     , parent=multi_part_node)
   PT.new_DataArray('dface_vtx_idx'  , dface_vtx_idx  , parent=multi_part_node)
   PT.new_DataArray('dface_vtx'      , dface_vtx      , parent=multi_part_node)
-  PT.new_DataArray('dface_cell'     , dface_cell     , parent=multi_part_node)
   PT.new_DataArray('dface_bound_idx', dface_bound_idx, parent=multi_part_node)
   PT.new_DataArray('dface_bound'    , dface_bound    , parent=multi_part_node)
+  if has_nface:
+    PT.new_DataArray('dcell_face_idx', dcell_face_idx, parent=multi_part_node)
+    PT.new_DataArray('dcell_face'    , dcell_face    , parent=multi_part_node)
+  else:
+    PT.new_DataArray('dface_cell'    , dface_cell    , parent=multi_part_node)
 
   return dmesh
 
