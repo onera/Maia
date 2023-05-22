@@ -105,7 +105,10 @@ def get_jn_donor_path(dist_tree, jn_path):
   cur_jn = PT.get_node_from_path(dist_tree, jn_path)
   base_name, zone_name, zgc_name, jn_name = jn_path.split('/')
   opp_zone_path = PT.getZoneDonorPath(base_name, cur_jn)
-  opp_gc_name   = PT.get_value(PT.get_child_from_name(cur_jn, "GridConnectivityDonorName"))
+  gc_donor_name = PT.get_child_from_name(cur_jn, "GridConnectivityDonorName")
+  if gc_donor_name is None :
+    raise RuntimeError(f"No GridConnectivityDonorName found in GC {jn_path}")
+  opp_gc_name   = PT.get_value(gc_donor_name)
 
   opp_zone      = PT.get_node_from_path(dist_tree, opp_zone_path)
   opp_zgc       = PT.get_child_from_label(opp_zone, "ZoneGridConnectivity_t")
@@ -146,12 +149,13 @@ def get_matching_jns(dist_tree, filter_loc=None):
 
 def copy_donor_subset(dist_tree):
   """
-  Retrieve for each GridConnectivity_t node the opposite
+  Retrieve for each 1to1 GridConnectivity_t node the opposite
   pointlist in the tree. This assume that GridConnectivityDonorName were added and index distribution
   was identical for two related gc nodes
   """
   gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
-      lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
+      lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and
+                PT.GridConnectivity.is1to1(n)]
 
   for jn_path in PT.predicates_to_paths(dist_tree, gc_predicates):
     opp_jn_path = get_jn_donor_path(dist_tree, jn_path)
