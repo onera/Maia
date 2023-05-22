@@ -231,8 +231,9 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
     matching_face = _convert_match_result_to_faces(matching_vtx, clouds, comm)
 
     # Conversion en numéro parent
-    n_interface = len(matching_vtx['np_cloud_pair']) // 2
-    for i_itrf in range(n_interface):
+    n_interface_vtx  = len(matching_vtx['np_cloud_pair']) // 2
+    n_interface_face = len(matching_face['np_cloud_pair']) // 2
+    for i_itrf in range(n_interface_vtx):
       for j, side in enumerate(['lgnum_cur', 'lgnum_opp']):
         i_cloud = matching_vtx['np_cloud_pair'][2*i_itrf+j]
         parent_vtx_num = clouds[i_cloud]['parent_vtx']
@@ -242,8 +243,9 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
         distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
 
         matching_vtx[side][i_itrf]  = EP.block_to_part(parent_vtx_num,  distri_vtx,  [matching_vtx[side][i_itrf]],  comm)[0]
-        matching_face[side][i_itrf] = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
-      # Attention dépend du //
+        # We can have less face interface than vertex interface (we removed empty face interface)
+        if i_itrf < n_interface_face:
+          matching_face[side][i_itrf] = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
 
 
     # Add created nodes in tree
