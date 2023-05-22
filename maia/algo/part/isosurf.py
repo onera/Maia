@@ -348,10 +348,9 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
         partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
 
         if edge_pl.size != 0:
-          zonegc_n = PT.update_child(iso_part_zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
-          iso_donor_name = PT.maia.conv.add_part_suffix(f'{gc_val}_iso', comm.Get_rank(), 0)
-          gc_n = PT.new_GridConnectivity(gc_name+'.0', donor_name=iso_donor_name, point_list=edge_pl, loc="EdgeCenter", parent=zonegc_n, type="Abutting")
-          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=gc_n)
+          zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')
+          bc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
 
   else:
@@ -432,8 +431,8 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
   Note:
     - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
       ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
-    - If ``elt_type`` is set to 'TRI_3', joins and boundaries from volumic mesh are extracted as edges on 
-      the isosurface and FaceCenter fields are allowed to be exchanged.
+    - If ``elt_type`` is set to 'TRI_3', boundaries from volumic mesh are extracted as edges on
+      the isosurface (GridConnectivity_t nodes become BC_t nodes) and FaceCenter fields are allowed to be exchanged.
 
   Args:
     part_tree     (CGNSTree)    : Partitioned tree on which isosurf is computed. Only U-NGon
