@@ -85,7 +85,7 @@ def dist_set_difference(ids, others, comm):
   return selected
 
 
-def _point_merge(clouds, comm, rel_tol=1e-3):
+def _point_merge(clouds, comm, rel_tol=1e-2):
   """
   Wraps PDM.PointsMerge. A cloud is a tuple (coordinates, carac_lenght, parent_gnum)
   """
@@ -234,16 +234,15 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
       for j, side in enumerate(['lgnum_cur', 'lgnum_opp']):
         i_cloud = matching_vtx['np_cloud_pair'][2*i_itrf+j]
         parent_vtx_num = clouds[i_cloud]['parent_vtx']
-        parent_face_num = clouds[i_cloud]['parent_face']
-
         distri_vtx = par_utils.dn_to_distribution(parent_vtx_num.size, comm)
-        distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
-
         matching_vtx[side][i_itrf]  = EP.block_to_part(parent_vtx_num,  distri_vtx,  [matching_vtx[side][i_itrf]],  comm)[0]
-        # We can have less face interface than vertex interface (we removed empty face interface)
-        if i_itrf < n_interface_face:
-          matching_face[side][i_itrf] = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
 
+    for i_itrf in range(n_interface_face):
+      for j, side in enumerate(['lgnum_cur', 'lgnum_opp']):
+        i_cloud = matching_face['np_cloud_pair'][2*i_itrf+j]
+        parent_face_num = clouds[i_cloud]['parent_face']
+        distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
+        matching_face[side][i_itrf] = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
 
     # Add created nodes in tree
     output_loc = kwargs.get("location", "FaceCenter")
