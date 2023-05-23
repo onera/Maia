@@ -44,6 +44,20 @@ def vtx_ids_to_face_ids(vtx_ids, ngon, comm):
 
   return np_utils.safe_int_cast(face_ids, vtx_ids.dtype)
 
+def convert_subset_as_facelist(dist_tree, subsets_path, comm):
+  for subset_path in subsets_path:
+    node = PT.get_node_from_path(dist_tree, subset_path)
+    zone_path = PT.path_head(subset_path, 2)
+    if PT.Subset.GridLocation(node) == 'Vertex':
+      zone = PT.get_node_from_path(dist_tree, zone_path)
+      pl_vtx = PT.get_child_from_name(node, 'PointList')[1][0]
+      face_list = vtx_ids_to_face_ids(pl_vtx, PT.Zone.NGonNode(zone), comm)
+      PT.update_child(node, 'GridLocation', value='FaceCenter')
+      PT.update_child(node, 'PointList', value=face_list.reshape((1,-1), order='F'))
+      MT.newDistribution({'Index' : par_utils.dn_to_distribution(face_list.size, comm)}, node)
+    elif PT.Subset.GridLocation(node) != 'FaceCenter':
+        raise ValueError(f"Unsupported location for subset {subset_path}")
+
 
 def dist_set_difference(ids, others, comm):
   """ Return the list of elements that belong only to ids and not to any other
@@ -214,6 +228,8 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
 
     clouds_path = subset_paths[0] + subset_paths[1]
     clouds = []
+
+    convert_subset_as_facelist(dist_tree, clouds_path, comm)
 
     cached_dmesh = {} #Use caching to avoid translate zone->dmesh 2 times
     for cloud_path in subset_paths[0]:

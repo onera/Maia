@@ -31,8 +31,9 @@ def test_vtx_ids_to_face_ids(comm):
   assert (face_ids == expected_face_ids).all()
 
 @pytest_parallel.mark.parallel([1,3])
+@pytest.mark.parametrize("input_loc", ['Vertex', 'FaceCenter'])
 @pytest.mark.parametrize("output_loc", ['Vertex', 'FaceCenter'])
-def test_simple(output_loc, comm):                               #    __ 
+def test_simple(input_loc, output_loc, comm):                #    __ 
   n_vtx = 3                                                      #   |  |
   dcubes = [dcube_generate(n_vtx, 1., [0,0,0], comm),            #   |__|
             dcube_generate(n_vtx, 1., [0,0,1], comm)]            #   |  |
@@ -47,6 +48,15 @@ def test_simple(output_loc, comm):                               #    __
   PT.new_child(zmax, 'FamilyName', 'FamilyName_t', 'matchA')
   zmin = PT.get_node_from_name(zones[1], 'Zmin')
   PT.new_child(zmin, 'FamilyName', 'FamilyName_t', 'matchB')
+
+  if input_loc == 'Vertex':
+    vtx_distri = par_utils.uniform_distribution(n_vtx**2, comm)
+    pl_zmin_f = np.arange(n_vtx**2, dtype=pdm_dtype) + 1
+    pl_zmax_f = n_vtx**3 - np.arange(n_vtx**2, dtype=pdm_dtype)
+    for node, pl in zip([zmin, zmax], [pl_zmin_f, pl_zmax_f]):
+      PT.update_child(node, 'GridLocation', value='Vertex')
+      PT.update_child(node, 'PointList', value=pl[vtx_distri[0]:vtx_distri[1]].reshape((1,-1), order='F'))
+      MT.newDistribution({'Index' : vtx_distri}, node)
 
   connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm, location=output_loc)
 
