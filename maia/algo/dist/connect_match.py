@@ -91,18 +91,15 @@ def _point_merge(clouds, comm, rel_tol=1e-3):
   """
   pdm_point_merge = PDM.PointsMerge(comm, len(clouds), rel_tol)
 
-  vertex_parent_num = []
   for icloud, cloud in enumerate(clouds):
     coords       = cloud['coords']
     carac_length = cloud['carac_length']
-    dn_cloud_pts = coords.size // 3
+    dn_cloud_pts = carac_length.size
     pdm_point_merge.cloud_set(icloud, dn_cloud_pts, coords, carac_length)
-    distri = par_utils.dn_to_distribution(dn_cloud_pts, comm)
-    vertex_parent_num.append(np.arange(dn_cloud_pts, dtype=distri.dtype) + 1 + distri[0])
 
   pdm_point_merge.compute()
 
-  return pdm_point_merge.make_interface(vertex_parent_num)
+  return pdm_point_merge.make_interface()
 
 def _get_cloud(dmesh, gnum, comm):
     dmesh_extractor = PDM.DMeshExtract(2, comm)
