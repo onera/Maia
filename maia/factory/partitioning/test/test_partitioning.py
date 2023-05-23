@@ -109,12 +109,17 @@ class Test_split_ngon_3d:
     ngon = PT.get_node_from_name(part_tree, 'NGonElements')
 
     assert PT.get_child_from_name(ngon, 'ParentElements') is not None
-    if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(ngon, 'ElementRange')[1] == [1,64]).all()
-      assert (PT.get_child_from_name(nfac, 'ElementRange')[1] == [65,78]).all()
-    elif comm.Get_rank() == 1:
-      assert (PT.get_child_from_name(ngon, 'ElementRange')[1] == [1,57]).all()
-      assert (PT.get_child_from_name(nfac, 'ElementRange')[1] == [58,70]).all()
+    # This depends on partitioning tool version so use more portable test
+    # if comm.Get_rank() == 0:
+      # assert (PT.get_child_from_name(ngon, 'ElementRange')[1] == [1,64]).all()
+      # assert (PT.get_child_from_name(nfac, 'ElementRange')[1] == [65,78]).all()
+    # elif comm.Get_rank() == 1:
+      # assert (PT.get_child_from_name(ngon, 'ElementRange')[1] == [1,57]).all()
+      # assert (PT.get_child_from_name(nfac, 'ElementRange')[1] == [58,70]).all()
+    assert PT.get_child_from_name(ngon, 'ElementRange')[1][0] == 1
+    assert PT.get_child_from_name(nfac, 'ElementRange')[1][0] == PT.get_child_from_name(ngon, 'ElementRange')[1][1] + 1
+    assert comm.allreduce(PT.Element.Size(nfac), MPI.SUM) == 27
+    assert comm.allreduce(PT.Element.Size(ngon), MPI.SUM) == 121
 
   @pytest.mark.parametrize("connectivity", ["NGon+PE", "NFace+NGon", "NFace+NGon+PE"])
   def test_input_connec(self, connectivity, comm):
@@ -148,12 +153,17 @@ class Test_split_elt_3d:
 
     quad = PT.get_node_from_name(part_tree, 'QUAD_4.0')
     hexa = PT.get_node_from_name(part_tree, 'HEXA_8.0')
-    if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(hexa, 'ElementRange')[1] == [1,14]).all()
-      assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [15,45]).all()
-    if comm.Get_rank() == 1:
-      assert (PT.get_child_from_name(hexa, 'ElementRange')[1] == [1,13]).all()
-      assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [14,36]).all()
+    # This depends on partitioning tool version so use more portable test
+    # if comm.Get_rank() == 0:
+      # assert (PT.get_child_from_name(hexa, 'ElementRange')[1] == [1,14]).all()
+      # assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [15,45]).all()
+    # if comm.Get_rank() == 1:
+      # assert (PT.get_child_from_name(hexa, 'ElementRange')[1] == [1,13]).all()
+      # assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [14,36]).all()
+    assert PT.get_child_from_name(hexa, 'ElementRange')[1][0] == 1
+    assert PT.get_child_from_name(quad, 'ElementRange')[1][0] == PT.get_child_from_name(hexa, 'ElementRange')[1][1] + 1
+    assert comm.allreduce(PT.Element.Size(hexa), MPI.SUM) == 27
+    assert comm.allreduce(PT.Element.Size(quad), MPI.SUM) == 54
 
   @pytest.mark.parametrize("output_connectivity", ["Element", "NGon"])
   def test_output(self, output_connectivity, comm):
@@ -174,8 +184,11 @@ def test_split_point_cloud(comm):
   assert PT.Zone.n_cell(part_zone) == 0
   assert comm.allreduce(PT.Zone.n_vtx(part_zone), MPI.SUM) == 13**3
 
+PART_TOOLS = ["hilbert"]
+if maia.pdm_has_ptscotch:
+  PART_TOOLS.append("ptscotch")
 @pytest_parallel.mark.parallel(2)
-@pytest.mark.parametrize("method", ["hilbert", "ptscotch"])
+@pytest.mark.parametrize("method", PART_TOOLS)
 def test_split_lines(method, comm):
 
   # We can not generate a line directly, so we do a 1D mesh and create bar
