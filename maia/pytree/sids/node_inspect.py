@@ -77,7 +77,7 @@ class Zone:
   @staticmethod
   def getBCsFromFamily(zone_node, families):
     from maia.pytree import iter_children_from_predicates
-    bc_query = lambda n : N.get_label(n) == 'BC_t' and N.get_value(n) == 'FamilySpecified' and \
+    bc_query = lambda n : N.get_label(n) == 'BC_t' and W.get_child_from_label(n, 'FamilyName_t') is not None and \
       N.get_value(W.get_child_from_label(n, "FamilyName_t")) in families
     return iter_children_from_predicates(zone_node, ['ZoneBC_t', bc_query])
 

@@ -5,6 +5,11 @@ import maia.pytree        as PT
 
 from cmaia.part_algo import compute_face_center_and_characteristic_length, adapt_match_information
 
+def getBCsFromFamily(zone_node, families):
+  bc_query = lambda n : PT.get_label(n) == 'BC_t' and PT.get_value(n) == 'FamilySpecified' and \
+    PT.get_value(PT.get_child_from_label(n, "FamilyName_t")) in families
+  return PT.iter_children_from_predicates(zone_node, ['ZoneBC_t', bc_query])
+
 def compute_n_point_cloud(zones, family_list):
   """
   """
@@ -12,7 +17,7 @@ def compute_n_point_cloud(zones, family_list):
   for zone in zones:
     if PT.Zone.Type(zone) == 'Structured':
       raise NotImplementedError("connect_match_from_family for structured zone not allowed yet")
-    for bc in PT.Zone.getBCsFromFamily(zone, family_list):
+    for bc in getBCsFromFamily(zone, family_list):
       n_point_cloud = n_point_cloud + 1
 
   return n_point_cloud
@@ -41,7 +46,7 @@ def prepare_pdm_point_merge_unstructured(pdm_point_merge, i_point_cloud, match_t
 
   face_vtx_idx, face_vtx, _ = PT.Zone.ngon_connectivity(zone)
 
-  for bc in PT.Zone.getBCsFromFamily(zone, family_list):
+  for bc in getBCsFromFamily(zone, family_list):
 
     pl = PT.get_child_from_name(bc, 'PointList')[1]
 
@@ -152,7 +157,7 @@ def connect_match_from_family(part_tree, family_list, comm,
   i_point_cloud = 0
   for i_zone, zone in enumerate(zones):
     zgc_n = PT.update_child(zone, "ZoneGridConnectivity", "ZoneGridConnectivity_t")
-    for bc in PT.Zone.getBCsFromFamily(zone, family_list):
+    for bc in getBCsFromFamily(zone, family_list):
       section_idx = adapt_match_information(l_neighbor_idx    [i_point_cloud],
                                             l_neighbor_desc   [i_point_cloud],
                                             l_recv_entity_stri[i_point_cloud],

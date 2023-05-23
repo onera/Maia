@@ -288,7 +288,7 @@ def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point
     Distance are computed to the BCs belonging to one of the families specified in families list.
     If list is empty, we try to auto detect wall-like families.
     In both case, families are (for now) the only way to select BCs to include in wall distance computation.
-    BCs who directly specify their type as value are not considered.
+    BCs having no FamilyName_t node are not considered.
 
   Tree is modified inplace: computed distance are added in a FlowSolution container whose
   name can be specified with out_fs_name parameter.
