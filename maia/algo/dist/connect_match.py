@@ -85,7 +85,7 @@ def dist_set_difference(ids, others, comm):
   return selected
 
 
-def _point_merge(clouds, comm, rel_tol=1e-2):
+def _point_merge(clouds, comm, rel_tol):
   """
   Wraps PDM.PointsMerge. A cloud is a tuple (coordinates, carac_lenght, parent_gnum)
   """
@@ -208,6 +208,9 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
     # 7.  Check resulting faces vs input faces
 
     assert len(subset_paths) == 2
+    tol = kwargs.get("tol", 1e-2)
+    output_loc = kwargs.get("location", "FaceCenter")
+
 
     clouds_path = subset_paths[0] + subset_paths[1]
     clouds = []
@@ -224,7 +227,7 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
 
     PT.rm_nodes_from_name(dist_tree, ":CGNS#MultiPart") #Cleanup
 
-    matching_vtx  = _point_merge(clouds, comm)
+    matching_vtx  = _point_merge(clouds, comm, tol)
     matching_face = _convert_match_result_to_faces(matching_vtx, clouds, comm)
 
     # Conversion en numéro parent
@@ -245,7 +248,6 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
         matching_face[side][i_itrf] = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
 
     # Add created nodes in tree
-    output_loc = kwargs.get("location", "FaceCenter")
     if output_loc == 'Vertex':
       cloud_pair = matching_vtx['np_cloud_pair']
       gnum_cur   = matching_vtx['lgnum_cur']
@@ -353,6 +355,8 @@ def recover_1to1_pairing_from_families(dist_tree, families, comm, periodic=None,
 
   - ``location`` (default = 'FaceCenter') -- Controls the output GridLocation of
     the created interfaces. 'FaceCenter' or 'Vertex' are admitted.
+  - ``tol`` (default = 1e-2) -- Geometric tolerance used to pair two points. Note that for each vertex, this
+    tolerance is relative to the minimal distance to its neighbouring vertices.
 
   Args:
     dist_tree (CGNSTree): Input distributed tree. Only U-NGon connectivities are managed.
