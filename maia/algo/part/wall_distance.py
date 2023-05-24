@@ -9,10 +9,12 @@ import maia.pytree.maia   as MT
 from maia.utils                      import np_utils
 from maia                            import transfer as TE
 from maia.factory.dist_from_part     import discover_nodes_from_matching
+from maia.algo.dist                  import matching_jns_tools
 
 from .point_cloud_utils               import get_point_cloud
 from maia.algo.part.extract_boundary  import extract_surf_from_bc
 from maia.algo.part.geometry          import compute_cell_center
+from maia.transfer                    import utils as tr_utils
 
 
 def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']):
@@ -67,10 +69,14 @@ class WallDistance:
 
     #Shift the face and vertex lngn because PDM does not manage multiple domain. This will avoid
     # overlapping face / vtx coming from different domain but having same id
-    for face_ln_to_gn in face_ln_to_gn_z:
-      face_ln_to_gn += self._n_face_bnd_tot_idx[i_dom]
-    for vtx_ln_to_gn in vtx_ln_to_gn_z:
-      vtx_ln_to_gn += self._n_vtx_bnd_tot_idx[i_dom]
+    face_ln_to_gn_z = [face_ln_to_gn + self._n_face_bnd_tot_idx[i_dom] for face_ln_to_gn in face_ln_to_gn_z]
+    vtx_ln_to_gn_z  = [vtx_ln_to_gn + self._n_vtx_bnd_tot_idx[i_dom] for vtx_ln_to_gn in vtx_ln_to_gn_z]
+    # for face_ln_to_gn in face_ln_to_gn_z:
+    #   # face_ln_to_gn += self._n_face_bnd_tot_idx[i_dom]
+    #   face_ln_to_gn = face_ln_to_gn + self._n_face_bnd_tot_idx[i_dom]
+    # for vtx_ln_to_gn in vtx_ln_to_gn_z:
+    #   # vtx_ln_to_gn += self._n_vtx_bnd_tot_idx[i_dom]
+    #   vtx_ln_to_gn = vtx_ln_to_gn + self._n_vtx_bnd_tot_idx[i_dom]
 
     #Extended global lists
     face_vtx_bnd_l.extend(face_vtx_bnd_z)
@@ -83,17 +89,18 @@ class WallDistance:
                                               face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z, \
                                               face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
                                               vtx_bnd_l, vtx_ln_to_gn_l, i_dom, tr, rot_c, rot_a, comm):
-    vtx_bnd_perio_z = []
+    vtx_bnd_dupl_z = []
     for vtx_bnd in vtx_bnd_z:
       cx = vtx_bnd[0::3]
       cy = vtx_bnd[1::3]
       cz = vtx_bnd[2::3]
       cx, cy, cz = np_utils.transform_cart_vectors(cx, cy, cz, tr, rot_c, rot_a)
-      vtx_bnd_perio_z.append(np_utils.interweave_arrays([cx, cy, cz]))
+      vtx_bnd_dupl_z.append(np_utils.interweave_arrays([cx, cy, cz]))
     self._shift_id_and_push_in_global_list(face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
-                                           vtx_bnd_perio_z, vtx_ln_to_gn_z, \
+                                           vtx_bnd_dupl_z, vtx_ln_to_gn_z, \
                                            face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
                                            vtx_bnd_l, vtx_ln_to_gn_l, i_dom, comm)
+    return vtx_bnd_dupl_z
 
   def _setup_surf_mesh(self, parts_per_dom, families, comm):
     """
@@ -120,29 +127,43 @@ class WallDistance:
                                              face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
                                              vtx_bnd_l, vtx_ln_to_gn_l, i_dom, comm)
       
-      if self.perio:
       # if False:
+      if self.perio:
+        parts_surf_to_dupl_l = []
+        parts_surf_to_dupl_l.append([face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
+                                     vtx_bnd_z, vtx_ln_to_gn_z])
         for tr, rot_c, rot_a in self.perio:
-          print("perio +", tr, rot_c, rot_a)
-          i_dom += 1
-          self._dupl_shift_id_and_push_in_global_list(face_vtx_bnd_z, face_vtx_bnd_idx_z, \
-                                                      face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z, \
-                                                      face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
-                                                      vtx_bnd_l, vtx_ln_to_gn_l, i_dom, tr, rot_c, rot_a, comm)
-          print("perio -", -tr, rot_c, -rot_a)
-          i_dom += 1
-          self._dupl_shift_id_and_push_in_global_list(face_vtx_bnd_z, face_vtx_bnd_idx_z, \
-                                                      face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z, \
-                                                      face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
-                                                      vtx_bnd_l, vtx_ln_to_gn_l, i_dom, -tr, rot_c, -rot_a, comm)
+          parts_surf_to_dupl_next_l = []
+          for parts_surf_to_dupl in parts_surf_to_dupl_l:
+            parts_surf_to_dupl_next_l.append(parts_surf_to_dupl)
+            face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, \
+            face_ln_to_gn_to_dupl_z, vtx_bnd_to_dupl_z, \
+            vtx_ln_to_gn_to_dupl_z = parts_surf_to_dupl
+            i_dom += 1
+            vtx_bnd_dupl_z = \
+            self._dupl_shift_id_and_push_in_global_list(face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, \
+                                                        face_ln_to_gn_to_dupl_z, vtx_bnd_to_dupl_z, vtx_ln_to_gn_to_dupl_z, \
+                                                        face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
+                                                        vtx_bnd_l, vtx_ln_to_gn_l, i_dom, tr, rot_c, rot_a, comm)
+            parts_surf_to_dupl_next_l.append([face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, face_ln_to_gn_to_dupl_z, \
+                                              vtx_bnd_dupl_z, vtx_ln_to_gn_to_dupl_z])
+            i_dom += 1
+            vtx_bnd_dupl_z = \
+            self._dupl_shift_id_and_push_in_global_list(face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, \
+                                                        face_ln_to_gn_to_dupl_z, vtx_bnd_to_dupl_z, vtx_ln_to_gn_to_dupl_z, \
+                                                        face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
+                                                        vtx_bnd_l, vtx_ln_to_gn_l, i_dom, -tr, rot_c, -rot_a, comm)
+            parts_surf_to_dupl_next_l.append([face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, face_ln_to_gn_to_dupl_z, \
+                                              vtx_bnd_dupl_z, vtx_ln_to_gn_to_dupl_z])
+          parts_surf_to_dupl_l = parts_surf_to_dupl_next_l
 
-
+    print(self._n_face_bnd_tot_idx)
     n_part = len(vtx_bnd_l)
-    print("n_part =", n_part)
     for i in range(n_part):
     # Keep numpy alive
       for array in (face_vtx_bnd_l[i], face_vtx_bnd_idx_l[i], face_ln_to_gn_l[i], vtx_bnd_l[i], vtx_ln_to_gn_l[i],):
         self._keep_alive.append(array)
+      print(i, "face_ln_to_gn_l[i]", face_ln_to_gn_l[i])
 
     #Get global data (total number of faces / vertices)
     #This create the surf_mesh objects in PDM, thus it must be done before surf_mesh_part_set
@@ -152,7 +173,7 @@ class WallDistance:
     for i_part in range(n_part):
       n_face_bnd = face_vtx_bnd_idx_l[i_part].shape[0]-1
       n_vtx_bnd  = vtx_ln_to_gn_l[i_part].shape[0]
-      print("***SB", i_part, n_face_bnd, n_vtx_bnd, vtx_bnd_l[i_part][0::3])
+      # print("***SB", i_part, n_face_bnd, n_vtx_bnd, vtx_bnd_l[i_part][0::3])
       self._walldist.surf_mesh_part_set(i_part, n_face_bnd,
                                         face_vtx_bnd_idx_l[i_part],
                                         face_vtx_bnd_l[i_part],
@@ -241,6 +262,8 @@ class WallDistance:
       closest_surf_domain = np.searchsorted(n_face_bnd_tot_idx, closest_elt_gnum-1, side='right') -1
       closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
       closest_elt_gnuml = closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain]
+      if self.perio:
+        closest_surf_domain = closest_surf_domain//(3**(len(self.perio)))
       PT.new_DataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
       PT.new_DataArray("ClosestEltLocGnum", value=closest_elt_gnuml.reshape(shape,order='F'), parent=fs_node)
 
@@ -257,26 +280,41 @@ class WallDistance:
     discover_nodes_from_matching(skeleton_tree, [self.part_tree], 'CGNSBase_t/Zone_t', self.mpi_comm,
         merge_rule = lambda path: MT.conv.get_part_prefix(path))
     
-    periodic_tree = PT.new_CGNSTree()
-    discover_nodes_from_matching(periodic_tree, [self.part_tree], 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t/GridConnectivityProperty_t/Periodic_t/DataArray_t',
-        self.mpi_comm)
-    
-    
+        
     if self.method == "cloud":
-      #TODO : comment recuperer les infos distribuees ?
-      for periodic_n in PT.get_nodes_from_label(self.part_tree,'Periodic_t'):
+      is_gc_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.get_node_from_label(n, 'Periodic_t') is not None
+      gc_predicate = ['ZoneGridConnectivity_t', is_gc_perio]
+      
+      for dist_zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
+        dist_zone = PT.get_node_from_path(skeleton_tree, dist_zone_path)
+        part_zones = tr_utils.get_partitioned_zones(self.part_tree, dist_zone_path)
+        discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, self.mpi_comm,
+          child_list=['GridConnectivityProperty_t', 'GridConnectivityDonorName', 'GridConnectivityType_t'],
+          merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
+
+      #After GC discovery, cleanup donor name suffix
+      for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
+       val = PT.get_value(jn)
+       PT.set_value(jn, MT.conv.get_part_prefix(val))
+       gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
+       PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
+
+
+      if self.mpi_comm.rank == 0:    PT.print_tree(skeleton_tree, verbose=True)
+    
+      # print("jns_pair", matching_jns_tools.get_matching_jns(skeleton_tree))
+      for jns_pair in matching_jns_tools.get_matching_jns(skeleton_tree):
+        jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
+        periodic_n = PT.get_node_from_label(jn_n,"Periodic_t")
         rotation_center = PT.get_value(PT.get_node_from_name(periodic_n,'RotationCenter'))
         rotation_angle  = PT.get_value(PT.get_node_from_name(periodic_n,'RotationAngle'))
         translation     = PT.get_value(PT.get_node_from_name(periodic_n,'Translation'))
         # print(translation, rotation_center, rotation_angle)
         self.perio.append([translation, rotation_center, rotation_angle])
-      
-    #TODO : comment retirer les doublons ? utiliser les ordinaux ?
-    if self.perio:
-      self.perio.pop(1)
-      self.perio.pop(2)
-      self.perio.pop(1)
-      print(self.perio)
+      #TODO : filtrage des perio !
+      # assert len(self.perio) < 4
+    # print(self.perio)
+    # exit()
     
     # Search families if its are not given
     if not self.families:
@@ -304,10 +342,10 @@ class WallDistance:
         self._walldist = PDM.DistCellCenterSurf(self.mpi_comm, n_part_surf, n_part_vol=1)
       elif self.method == "cloud":
         n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom]
-        print('n_part_surf', n_part_surf)
-        #TODO : trouver le nombre de partition de surface en tenant compte des periodicites !
-        # self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, n_part_surf, point_clouds=n_part_per_cloud)
-        self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, 3, point_clouds=n_part_per_cloud)
+        #Update n_part_surf to take into account duplications induced by periodicities
+        if self.perio:
+          n_part_surf = 3**(len(self.perio))*n_part_surf
+        self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, n_part_surf, point_clouds=n_part_per_cloud)
 
 
       self._setup_surf_mesh(parts_per_dom, self.families, self.mpi_comm)
