@@ -5,99 +5,11 @@ import maia.pytree.maia as MT
 import Pypdm.Pypdm as PDM
 import numpy as np
 from maia.utils import np_utils, par_utils, as_pdm_gnum
+from maia.utils.parallel import algo as par_algo
 from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh
 from maia.transfer import protocols as EP
 
-def vtx_ids_to_face_ids(vtx_ids, ngon, comm):
-  """
-  From an array of vertex ids, search in the distributed NGon node
-  the id of faces constituted by these vertices.
-  Only Face having all their vertices in vtx_ids are returned
-  """
-  i_rank = comm.Get_rank()
-  from maia.transfer import protocols as EP
-  from maia.utils import as_pdm_gnum
-  dface_vtx     = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
-  dface_vtx_idx = PT.get_child_from_name(ngon, 'ElementStartOffset')[1]
-  ngon_distri   = MT.getDistribution(ngon, 'Element')[1]
-
-  # Prepare next BTP : we need a block view of the vtx ids (no duplicate, increasing order)
-  # on a distribution involving all the vtx, so we include dface_vtx as a partition
-  # We can exchange anything, since what is important is just the *number* of recv
-  # data (== number of apparitions of this vtx in vtx_ids)
-  PTB = EP.PartToBlock(None, [dface_vtx, vtx_ids], comm, keep_multiple=True)
-  distri = PTB.getDistributionCopy()
-  count,_  = PTB.exchange_field([np.empty(0, bool), np.ones(vtx_ids.size, bool)],                      #Data
-                                [np.zeros(dface_vtx.size, np.int32), np.ones(vtx_ids.size, np.int32)]) #Stride
-
-  # Fill tag array with True if vtx appears one or more in vtx_ids
-  d_vtx_tag  = np.zeros(distri[i_rank+1] - distri[i_rank], bool)
-  d_vtx_tag[count > 0] = True
-
-  # Now send this array using face_vtx as lngn (so each face will receive the flag
-  # of each one of its vertices)
-  dface_vtx_tag = EP.block_to_part(d_vtx_tag, distri, [dface_vtx], comm)
-  # Then reduce : select face if all its vertices have flag set to 1
-  dface_vtx_idx_loc = dface_vtx_idx - dface_vtx_idx[0]
-  dface_vtx_tag = np.logical_and.reduceat(dface_vtx_tag[0], dface_vtx_idx_loc[:-1])
-  face_ids = np.where(dface_vtx_tag)[0] + ngon_distri[0] + 1
-
-  return np_utils.safe_int_cast(face_ids, vtx_ids.dtype)
-
-def convert_subset_as_facelist(dist_tree, subsets_path, comm):
-  for subset_path in subsets_path:
-    node = PT.get_node_from_path(dist_tree, subset_path)
-    zone_path = PT.path_head(subset_path, 2)
-    if PT.Subset.GridLocation(node) == 'Vertex':
-      zone = PT.get_node_from_path(dist_tree, zone_path)
-      pl_vtx = PT.get_child_from_name(node, 'PointList')[1][0]
-      face_list = vtx_ids_to_face_ids(pl_vtx, PT.Zone.NGonNode(zone), comm)
-      PT.update_child(node, 'GridLocation', value='FaceCenter')
-      PT.update_child(node, 'PointList', value=face_list.reshape((1,-1), order='F'))
-      MT.newDistribution({'Index' : par_utils.dn_to_distribution(face_list.size, comm)}, node)
-    elif PT.Subset.GridLocation(node) != 'FaceCenter':
-        raise ValueError(f"Unsupported location for subset {subset_path}")
-
-
-def dist_set_difference(ids, others, comm):
-  """ Return the list of elements that belong only to ids and not to any other
-  ids = numpy array
-  others = list of numpy arrays
-  """
-  from maia.transfer import protocols as EP
-  ln_to_gn = [ids] + others
-  
-  PTB = EP.PartToBlock(None, ln_to_gn, comm, keep_multiple=True)
-
-  part_data   = [np.ones(ids.size, dtype=bool)] + [np.zeros(other.size, dtype=bool) for other in others]
-  part_stride = [np.ones(pdata.size, dtype=np.int32) for pdata in part_data]
-
-  dist_stride, dist_data = PTB.exchange_field(part_data, part_stride)
-  dist_data = np.logical_and.reduceat(dist_data, np_utils.sizes_to_indices(dist_stride)[:-1])
-
-  selected = PTB.getBlockGnumCopy()[dist_data]
-  distri_in  = par_utils.gather_and_shift(selected.size, comm, dtype=np.int32)  
-  distri_out = par_utils.uniform_distribution(distri_in[-1], comm)
-
-
-  # Si on veut se caller sur les points d'entrée
-  # tt = EP.block_to_part(dist_data, PTB.getDistributionCopy(), [ids], comm)
-  # distri = PTB.getDistributionCopy()
-  # BTP = EP.BlockToPart(distri, [ids], comm)
-  # d_stride = np.zeros(distri[comm.Get_rank()+1] - distri[comm.Get_rank()], np.int32)
-  # d_stride[PTB.getBlockGnumCopy() - distri[comm.Get_rank()] - 1] = 1
-
-  # ts, tt = BTP.exchange_field(dist_data, d_stride)
-  # print(tt)
-
-  # dist_data = EP.part_to_block(part_data, None, ln_to_gn, comm, reduce_func=reduce_prod)
-
-  # Sur chaque rank, on a une liste d'id (qui étaient sur ids ou pas) et un flag valant 1
-  # si faut les garder
-  # Il reste à supprimer et rééquilibrer
-  selected = EP.block_to_block(selected, distri_in, distri_out, comm)
-  return selected
-
+from .subset_tools import convert_subset_as_facelist
 
 def _point_merge(clouds, comm, rel_tol):
   """
@@ -229,7 +141,8 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
     clouds_path = subset_paths[0] + subset_paths[1]
     clouds = []
 
-    convert_subset_as_facelist(dist_tree, clouds_path, comm)
+    for cloud_path in clouds_path:
+      convert_subset_as_facelist(dist_tree, cloud_path, comm)
 
     cached_dmesh = {} #Use caching to avoid translate zone->dmesh 2 times
     for cloud_path in subset_paths[0]:
@@ -340,7 +253,7 @@ def recover_1to1_pairing(dist_tree, subset_paths, comm, periodic=None, **kwargs)
         for j,s in zip(itrf_id, side):
             output_faces.append(matching_face[['lgnum_cur', 'lgnum_opp'][s]][j])
         # Search input_face that are not in output face
-        unfound = dist_set_difference(input_face, output_faces, comm)
+        unfound = par_algo.dist_set_difference(input_face, output_faces, comm)
         if comm.allreduce(unfound.size, MPI.SUM) > 0:
           input_node = PT.get_node_from_path(dist_tree, cloud_path)
           PT.set_name(input_node, f"{PT.get_name(input_node)}_unmatched")
