@@ -84,6 +84,8 @@ def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_opt=[]):
 
   # > CGNS to meshb conversion
   dicttag_to_bcinfo = list()
+  families          = list()
+  tree_info         = dict()
   families = list()
   if comm.Get_rank()==0:
     tree_info, dicttag_to_bcinfo, families = cgns_to_meshb(dist_tree, in_files, metric)
@@ -114,6 +116,7 @@ def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_opt=[]):
   # > Broadcast
   dicttag_to_bcinfo = comm.bcast(dicttag_to_bcinfo, root=0)
   families          = comm.bcast(families, root=0)
+  tree_info         = comm.bcast(tree_info, root=0)
 
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm, metric=='isotrop')
 
