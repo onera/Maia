@@ -39,11 +39,15 @@ def test_set_mpart_dmeshes(comm):
   dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
   dt = f"""
 ZoneA Zone_t [[1,1,0]]:
+  GridCoordinates GridCoordinates_t:
+    CoordinateX DataArray_t R8 []:
+    CoordinateY DataArray_t R8 []:
+    CoordinateZ DataArray_t R8 []:
   NGonElements Elements_t [22,0]:
     ElementRange IndexRange_t [1, 1]:
     ElementConnectivity DataArray_t {dtype} []:
     ElementStartOffset DataArray_t {dtype} [0]:
-    ParentElements DataArray_t {dtype} []:
+    ParentElements DataArray_t {dtype} [[],[]]:
     :CGNS#Distribution UserDefinedData_t:
       Element DataArray_t {dtype} [0,0,0]:
       ElementConnectivity DataArray_t {dtype} [0,0,0]:
@@ -51,6 +55,10 @@ ZoneA Zone_t [[1,1,0]]:
     Vertex DataArray_t {dtype} [0,0,0]:
     Cell DataArray_t {dtype} [0,0,0]:
 ZoneB Zone_t [[1,1,0]]:
+  GridCoordinates GridCoordinates_t:
+    CoordinateX DataArray_t R8 []:
+    CoordinateY DataArray_t R8 []:
+    CoordinateZ DataArray_t R8 []:
   Hexa Elements_t [17,0]:
     ElementRange IndexRange_t [1,1]:
     ElementConnectivity DataArray_t {dtype} []:

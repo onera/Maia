@@ -41,6 +41,11 @@ Geometry transformations
 .. autofunction:: maia.algo.dist.merge_connected_zones
 .. autofunction:: maia.algo.dist.conformize_jn_pair
 
+Interface tools
+^^^^^^^^^^^^^^^
+
+.. autofunction:: maia.algo.dist.connect_1to1_families
+
 Data management
 ^^^^^^^^^^^^^^^
 
