@@ -44,7 +44,7 @@ Geometry transformations
 Interface tools
 ^^^^^^^^^^^^^^^
 
-.. autofunction:: maia.algo.dist.recover_1to1_pairing_from_families
+.. autofunction:: maia.algo.dist.connect_1to1_families
 
 Data management
 ^^^^^^^^^^^^^^^

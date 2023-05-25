@@ -2,10 +2,10 @@ import pytest
 import pytest_parallel
 import numpy as np
 
+import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-import maia
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
 from maia.pytree.yaml import parse_yaml_cgns
 from maia.factory.dcube_generator import dcube_generate, dcube_struct_generate
@@ -19,7 +19,7 @@ dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 @pytest_parallel.mark.parallel([1,3])
 @pytest.mark.parametrize("input_loc", ['Vertex', 'FaceCenter'])
 @pytest.mark.parametrize("output_loc", ['Vertex', 'FaceCenter'])
-def test_simple(input_loc, output_loc, comm):                #    __ 
+def test_simple(input_loc, output_loc, comm):                    #    __ 
   n_vtx = 3                                                      #   |  |
   dcubes = [dcube_generate(n_vtx, 1., [0,0,0], comm),            #   |__|
             dcube_generate(n_vtx, 1., [0,0,1], comm)]            #   |  |
@@ -44,7 +44,7 @@ def test_simple(input_loc, output_loc, comm):                #    __
       PT.update_child(node, 'PointList', value=pl[vtx_distri[0]:vtx_distri[1]].reshape((1,-1), order='F'))
       MT.newDistribution({'Index' : vtx_distri}, node)
 
-  connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm, location=output_loc)
+  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm, location=output_loc)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 10
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
@@ -114,7 +114,7 @@ def test_partial_match(comm):                                 #
   xmin = PT.get_node_from_name(zones[1], 'Xmin')
   PT.new_child(xmin, 'FamilyName', 'FamilyName_t', 'matchB')
 
-  connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm)
+  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 12
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
@@ -156,7 +156,7 @@ def test_multiple_match(comm):
     zmin = PT.get_node_from_name(zone, 'Zmin')
     PT.new_child(zmin, 'FamilyName', 'FamilyName_t', 'matchB')
 
-  connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm)
+  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 15
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 4
@@ -181,7 +181,7 @@ def test_periodic_simple(comm):                    #    __
   PT.new_child(xmax, 'FamilyName', 'FamilyName_t', 'matchB')
 
   periodic = {'translation' : np.array([1.0, 0, 0], np.float32)}
-  connect_match.recover_1to1_pairing_from_families(tree, ('matchA', 'matchB'), comm, periodic=periodic)
+  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm, periodic=periodic)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 4
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2

@@ -4,7 +4,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.transfer import protocols as EP
-from maia.utils    import np_utils, par_utils, as_pdm_gnum
+from maia.utils    import np_utils, par_utils
 
 def vtx_ids_to_face_ids(vtx_ids, ngon, comm):
   """

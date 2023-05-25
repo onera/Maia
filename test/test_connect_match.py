@@ -50,7 +50,7 @@ def test_two_blocks(comm):
 
 
   # > Extra family can be present
-  dist_algo.recover_1to1_pairing_from_families(dist_tree, ('LargeJN', 'SmallJN'), comm)
+  dist_algo.connect_1to1_families(dist_tree, ('LargeJN', 'SmallJN'), comm)
 
   # > Check (order can differ)
   new_large_jn = PT.get_node_from_label(large_zone, 'GridConnectivity_t')

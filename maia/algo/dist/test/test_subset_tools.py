@@ -2,6 +2,7 @@ import pytest
 import pytest_parallel
 import numpy as np
 
+import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -24,3 +25,16 @@ def test_vtx_ids_to_face_ids(comm):
   face_ids = subset_tools.vtx_ids_to_face_ids(vtx_ids, ngon, comm)
   assert (face_ids == expected_face_ids).all()
 
+@pytest_parallel.mark.parallel([1,2])
+def test_convert_subset_as_facelist(comm):
+  tree = maia.factory.generate_dist_block(3, 'S', comm)
+  tree = maia.algo.dist.convert_s_to_u(tree, 'NGON', comm)
+
+  subset_tools.convert_subset_as_facelist(tree, 'Base/zone/ZoneBC/Xmax', comm)
+
+  xmax = PT.get_node_from_name(tree, 'Xmax')
+  distri = MT.getDistribution(xmax, 'Index')[1]
+  pl = PT.get_child_from_name(xmax, 'PointList')[1]
+  assert PT.Subset.GridLocation(xmax) == 'FaceCenter'
+  assert pl.ndim == 2
+  assert (pl[0] == [3,6,9,12][distri[0]:distri[1]]).all()

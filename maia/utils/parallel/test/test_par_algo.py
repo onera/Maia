@@ -7,7 +7,7 @@ from maia.utils.parallel import algo as par_algo
 @pytest_parallel.mark.parallel(3)
 def test_dist_set_difference(comm):
   if comm.Get_rank() == 0:
-    ids = np.array([19,34])
+    ids = np.array([34,19])
     others = [np.array([4,9,2,11])]
     expected = np.array([12, 19])
   if comm.Get_rank() == 1:

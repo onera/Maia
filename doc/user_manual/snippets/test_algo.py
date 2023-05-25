@@ -410,7 +410,7 @@ def test_recover1to1():
   PT.new_node('FamilyName', 'FamilyName_t', 'Side2', 
           parent=PT.get_node_from_name(dist_tree, 'matchB'))
 
-  maia.algo.dist.recover_1to1_pairing_from_families(dist_tree, ('Side1', 'Side2'), MPI.COMM_WORLD,
+  maia.algo.dist.connect_1to1_families(dist_tree, ('Side1', 'Side2'), MPI.COMM_WORLD,
           periodic={'rotation_angle' : array([-2*pi/45.,0.,0.])})
 
   assert len(PT.get_nodes_from_name(dist_tree, 'PointListDonor')) == 2

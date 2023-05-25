@@ -4,7 +4,8 @@ from maia.transfer import protocols as EP
 from maia.utils    import np_utils, par_utils
 
 def dist_set_difference(ids, others, comm):
-  """ Return the list of elements that belong only to ids and not to any other
+  """ Return the list of elements that belong to ids array but are absent from
+  all the other array from others list
   ids = numpy array
   others = list of numpy arrays
   """
