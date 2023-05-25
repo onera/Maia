@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import numpy as np
+import warnings
 
 import Pypdm.Pypdm as PDM
 
@@ -32,7 +33,7 @@ class WallDistance:
   """ Implementation of wall distance. See compute_wall_distance for full documentation.
   """
 
-  def __init__(self, part_tree, mpi_comm, method="cloud", families=[], point_cloud='CellCenter', out_fs_name='WallDistance'):
+  def __init__(self, part_tree, mpi_comm, method="cloud", families=[], point_cloud='CellCenter', out_fs_name='WallDistance', perio=True):
     self.part_tree = part_tree
     self.families  = families
     self.mpi_comm  = mpi_comm
@@ -46,7 +47,8 @@ class WallDistance:
     self._n_vtx_bnd_tot_idx  = [0]
     self._n_face_bnd_tot_idx = [0]
     
-    self.perio = []
+    self.perio = perio
+    self.periodicities = []
     
   def _shift_id_and_push_in_global_list(self, face_vtx_bnd_z, face_vtx_bnd_idx_z, \
                                         face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z, \
@@ -71,12 +73,6 @@ class WallDistance:
     # overlapping face / vtx coming from different domain but having same id
     face_ln_to_gn_z = [face_ln_to_gn + self._n_face_bnd_tot_idx[i_dom] for face_ln_to_gn in face_ln_to_gn_z]
     vtx_ln_to_gn_z  = [vtx_ln_to_gn + self._n_vtx_bnd_tot_idx[i_dom] for vtx_ln_to_gn in vtx_ln_to_gn_z]
-    # for face_ln_to_gn in face_ln_to_gn_z:
-    #   # face_ln_to_gn += self._n_face_bnd_tot_idx[i_dom]
-    #   face_ln_to_gn = face_ln_to_gn + self._n_face_bnd_tot_idx[i_dom]
-    # for vtx_ln_to_gn in vtx_ln_to_gn_z:
-    #   # vtx_ln_to_gn += self._n_vtx_bnd_tot_idx[i_dom]
-    #   vtx_ln_to_gn = vtx_ln_to_gn + self._n_vtx_bnd_tot_idx[i_dom]
 
     #Extended global lists
     face_vtx_bnd_l.extend(face_vtx_bnd_z)
@@ -132,7 +128,7 @@ class WallDistance:
         parts_surf_to_dupl_l = []
         parts_surf_to_dupl_l.append([face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
                                      vtx_bnd_z, vtx_ln_to_gn_z])
-        for tr, rot_c, rot_a in self.perio:
+        for tr, rot_c, rot_a in self.periodicities:
           parts_surf_to_dupl_next_l = []
           for parts_surf_to_dupl in parts_surf_to_dupl_l:
             parts_surf_to_dupl_next_l.append(parts_surf_to_dupl)
@@ -157,13 +153,11 @@ class WallDistance:
                                               vtx_bnd_dupl_z, vtx_ln_to_gn_to_dupl_z])
           parts_surf_to_dupl_l = parts_surf_to_dupl_next_l
 
-    print(self._n_face_bnd_tot_idx)
     n_part = len(vtx_bnd_l)
     for i in range(n_part):
     # Keep numpy alive
       for array in (face_vtx_bnd_l[i], face_vtx_bnd_idx_l[i], face_ln_to_gn_l[i], vtx_bnd_l[i], vtx_ln_to_gn_l[i],):
         self._keep_alive.append(array)
-      print(i, "face_ln_to_gn_l[i]", face_ln_to_gn_l[i])
 
     #Get global data (total number of faces / vertices)
     #This create the surf_mesh objects in PDM, thus it must be done before surf_mesh_part_set
@@ -173,7 +167,6 @@ class WallDistance:
     for i_part in range(n_part):
       n_face_bnd = face_vtx_bnd_idx_l[i_part].shape[0]-1
       n_vtx_bnd  = vtx_ln_to_gn_l[i_part].shape[0]
-      # print("***SB", i_part, n_face_bnd, n_vtx_bnd, vtx_bnd_l[i_part][0::3])
       self._walldist.surf_mesh_part_set(i_part, n_face_bnd,
                                         face_vtx_bnd_idx_l[i_part],
                                         face_vtx_bnd_l[i_part],
@@ -263,7 +256,7 @@ class WallDistance:
       closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
       closest_elt_gnuml = closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain]
       if self.perio:
-        closest_surf_domain = closest_surf_domain//(3**(len(self.perio)))
+        closest_surf_domain = closest_surf_domain//(3**(len(self.periodicities)))
       PT.new_DataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
       PT.new_DataArray("ClosestEltLocGnum", value=closest_elt_gnuml.reshape(shape,order='F'), parent=fs_node)
 
@@ -299,10 +292,6 @@ class WallDistance:
        gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
        PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
-
-      if self.mpi_comm.rank == 0:    PT.print_tree(skeleton_tree, verbose=True)
-    
-      # print("jns_pair", matching_jns_tools.get_matching_jns(skeleton_tree))
       for jns_pair in matching_jns_tools.get_matching_jns(skeleton_tree):
         jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
         periodic_n = PT.get_node_from_label(jn_n,"Periodic_t")
@@ -310,11 +299,12 @@ class WallDistance:
         rotation_angle  = PT.get_value(PT.get_node_from_name(periodic_n,'RotationAngle'))
         translation     = PT.get_value(PT.get_node_from_name(periodic_n,'Translation'))
         # print(translation, rotation_center, rotation_angle)
-        self.perio.append([translation, rotation_center, rotation_angle])
+        self.periodicities.append([translation, rotation_center, rotation_angle])
       #TODO : filtrage des perio !
       # assert len(self.perio) < 4
-    # print(self.perio)
-    # exit()
+    else:
+      warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
+      self.perio = False
     
     # Search families if its are not given
     if not self.families:
@@ -342,9 +332,8 @@ class WallDistance:
         self._walldist = PDM.DistCellCenterSurf(self.mpi_comm, n_part_surf, n_part_vol=1)
       elif self.method == "cloud":
         n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom]
-        #Update n_part_surf to take into account duplications induced by periodicities
         if self.perio:
-          n_part_surf = 3**(len(self.perio))*n_part_surf
+          n_part_surf = 3**(len(self.periodicities))*n_part_surf
         self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, n_part_surf, point_clouds=n_part_per_cloud)
 
 
@@ -384,7 +373,7 @@ class WallDistance:
 
 
 # ------------------------------------------------------------------------
-def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point_cloud="CellCenter", out_fs_name="WallDistance"):
+def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point_cloud="CellCenter", out_fs_name="WallDistance", perio=True):
   """Compute wall distances and add it in tree.
 
   For each volumic point, compute the distance to the nearest face belonging to a BC of kind wall.
@@ -420,7 +409,7 @@ def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point
         :end-before: #compute_wall_distance@end
         :dedent: 2
   """
-  walldist = WallDistance(part_tree, comm, method, families, point_cloud, out_fs_name)
+  walldist = WallDistance(part_tree, comm, method, families, point_cloud, out_fs_name, perio)
   walldist.compute()
   #walldist.dump_times()
 
