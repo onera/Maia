@@ -44,7 +44,7 @@ ZoneA Zone_t [[1,1,0]]:
     CoordinateY DataArray_t R8 []:
     CoordinateZ DataArray_t R8 []:
   NGonElements Elements_t [22,0]:
-    ElementRange IndexRange_t [1, 1]:
+    ElementRange IndexRange_t {dtype} [1, 1]:
     ElementConnectivity DataArray_t {dtype} []:
     ElementStartOffset DataArray_t {dtype} [0]:
     ParentElements DataArray_t {dtype} [[],[]]:
@@ -69,6 +69,10 @@ ZoneB Zone_t [[1,1,0]]:
     Cell DataArray_t {dtype} [0,0,0]:
 """
   dzones = parse_yaml_cgns.to_nodes(dt)
+
+  # Empty array is badly shaped
+  pe = PT.get_node_from_name(dzones[0], 'ParentElements')
+  pe[1] = pe[1].reshape((-1,2), order='F')
 
   keep_alive = []
 
