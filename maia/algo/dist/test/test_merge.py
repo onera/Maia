@@ -16,11 +16,11 @@ from maia.algo.dist import merge
 
 @pytest_parallel.mark.parallel([1,3])
 @pytest.mark.parametrize("merge_bc_from_name", [True, False])   #       __
-def test_merge_zones_L(comm, merge_bc_from_name):           #      |  |
+def test_merge_zones_L(comm, merge_bc_from_name):               #      |  |
   # Setup : create 3 2*2*2 cubes and make them connected in L   #    __|__|
   n_vtx = 3                                                     #   |  |  |
-  dcubes = [dcube_generate(n_vtx, 1., [0,0,0], comm),       #   |__|__|
-            dcube_generate(n_vtx, 1., [1,0,0], comm),       # 
+  dcubes = [dcube_generate(n_vtx, 1., [0,0,0], comm),           #   |__|__|
+            dcube_generate(n_vtx, 1., [1,0,0], comm),           # 
             dcube_generate(n_vtx, 1., [1,1,0], comm)]
   zones = [PT.get_all_Zone_t(dcube)[0] for dcube in dcubes]
   tree = PT.new_CGNSTree()

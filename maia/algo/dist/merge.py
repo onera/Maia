@@ -439,9 +439,12 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
         related = PT.get_node_from_path(zone, sids.getSubregionExtent(zsr, zone))
         PT.add_child(zsr, PT.get_child_from_name(related, 'PointList'))
 
+  i_query = 0
   for query, rules in zip(all_subset_queries, all_data_queries):
     if merge_strategy != 'name' or query[0] == 'ZoneGridConnectivity_t':
       _add_zone_suffix(zones, query)
+    if merge_strategy != 'name' and i_query == 2: #For BCDataSet, we should also update BC name
+      _add_zone_suffix(zones, query[:-1])
     collected_paths = []
     #Collect
     for zone in zones:
@@ -468,6 +471,9 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
       PT.add_child(parent, merged_pl)
     if merge_strategy != 'name'or query[0] == 'ZoneGridConnectivity_t':
       _rm_zone_suffix(zones, query)
+    if merge_strategy != 'name' and i_query == 2: #For BCDataSet, we should also update BC name
+      _rm_zone_suffix(zones, query[:-1])
+    i_query += 1
 
   # Trick to avoid spectific treatment of ZoneSubRegions (remove PL on original zones)
   for zone in zones:
