@@ -6,10 +6,15 @@ import maia
 import maia.pytree        as PT
 import maia.utils.logging as mlog
 
-from maia.algo.meshb_converter import cgns_to_meshb, meshb_to_cgns
+from maia.algo.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
+
+import subprocess
+
+from pathlib import Path
+
 
 # FEFLO
-feflo_path = "/home/bmaugars/tmp/feflo.a"
+feflo_path = "feflo.a" # Must be an alias in user profile
 
 # TMP directory
 tmp_repo   = 'TMP_adapt_repo/'
@@ -33,14 +38,14 @@ out_files = {'mesh': out_file_meshb,
              'fld' : out_file_fldb }
 
 # Feflo files arguments
-feflo_args    = { 'isotrop'  :  '-iso',
+feflo_args    = { 'isotrop'  : f'-iso                -itp {in_file_fldb}',
                   'mach_fld' : f'-sol {in_file_solb} -itp {in_file_fldb}',
                   'mach_hess': f'-met {in_file_solb} -itp {in_file_fldb}'
 }
 
 
-def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_opt=[]):
-
+# def mesh_adapt( dist_tree, complexity, comm, metric='from_fld', feflo_opt=[]):
+def mesh_adapt(dist_tree, metric=[], container_name=None, comm, feflo_opt=[]):
   ''' Return a feflo adapted mesh according to a metric and a complexity.
 
   Adapted mesh is returned as an independant distributed tree.
@@ -53,57 +58,59 @@ def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_opt=[]):
   Args:
     dist_tree     (CGNSTree)        : Distributed tree on which adaptation is done. Only U-Elements
       connectivities are managed.
-    complexity    (int)             : Complexity use for the mesh adaptation process.
+    metric         (list)           : Paths to metric fields.
+    container_names(list)           : Container names that must been projected on adapted mesh (Vertex Center)
     comm          (MPIComm)         : MPI communicator.
-    metric        (str,  optional)  : Metric used to compute the mesh adaptation.
     feflo_opt     (list, optional)  : List of feflo's optional arguments.
   Returns:
     adapted_tree (CGNSTree): Adapted mesh tree (distributed) 
 
-  Metric choice is available through ``metric`` option with these keywords:
-    - ``mach_fld`` -- Feflo's feature-based metric. Metric is computed while feflo's process.
-        ``Mach`` field must be present in a "FSolution#Vertex#EndOfRun" FlowSolution_t node.
-    - ``hess_mach`` -- SoNICS's feature-based metric. Metric is already computed by SoNICS, 
-        ``extrap_on(sym_grad(extrap_on(#0-5`` fields must be present in a "FSolution#Vertex#EndOfRun"
-        FlowSolution_t node.
-    - ``iso`` -- Feflo will adapt the initial mesh into an isotrop mesh. No additional fields is required.
+  Metric choice is available through number of ``metric`` path given. Paths is used as a preffix
+    - if paths leads to 1 field  in CGNSTree -- Feflo's feature-based metric. Metric is computed while feflo's process on this field.
+    - if paths leads to 6 fields in CGNSTree -- User's feature-based metric. Metric is already computed, and will be used by feflo.
+    (Must be stored with suffix (``XX``,``XY``,``XZ``,``YY``,``YZ``,``ZZ``,))
+    - if no paths are given, feflo will adapt the initial mesh into an isotrop mesh.
 
   Note:
     - This function has a sequential behaviour (because of the file interface with feflo).
     - Feflo mesh adaptation behaviour can be controled via feflo's arguments. You can use them through the feflo_opt argument.
-    Example : ``-hgrad 2. -nordg -mesh_back mesh_back.mesh`` becomes ``["-hgrad 2.", "-nordg -mesh_back mesh_back.mesh"]``.
+    Example : ``-hgrad 2. -nordg -mesh_back mesh_back.mesh`` becomes ``["-hgrad", "2.", "-nordg", "-mesh_back", "mesh_back.mesh"]``.
 
   '''
-  assert metric in ['isotrop', 'mach_fld', 'mach_hess']
 
-  os.system(f'mkdir -p {tmp_repo}')
+  Path(tmp_repo).mkdir(exist_ok=True)
+  # Path.cwd()/Path(tmp_repo).mkdir(exist_ok=True)
+
+  metric_nodes = list()
+  for path_fld in metric:
+    metric_n = PT.get_node_from_path(dist_tree, path+"*")
+    metric_nodes.append(PT.get_value(metric_n))
+  n_metric_fld = len(metric_nodes)
+  assert n_metric_fld in [0,1,6]
+
+  # > Get tree structure and names
+  tree_info = get_tree_info(dist_tree)
 
 
   # > Gathering dist_tree on proc 0
   maia.algo.dist.redistribute_tree(dist_tree, comm, policy='gather') # Modifie le dist_tree 
 
+
   # > CGNS to meshb conversion
   dicttag_to_bcinfo = list()
-  families          = list()
-  tree_info         = dict()
-  families = list()
-  if comm.Get_rank()==0:
-    tree_info, dicttag_to_bcinfo, families = cgns_to_meshb(dist_tree, in_files, metric)
 
-    avail_opt = ["p", "mesh_back", "nordg", ]
+  if comm.Get_rank()==0:
+    dicttag_to_bcinfo = cgns_to_meshb(dist_tree, in_files, metric_nodes, container_names)
 
     # Adapt with feflo
-    list_of_args = ['-in'  , in_files['mesh']     ,
-                             feflo_args[metric],
-                    '-c'   , str(complexity)      ,
-                    '-cmax', str(complexity)      ] + feflo_opt
-    feflo_call = f"{feflo_path} {' '.join(list_of_args)}"
-    print(f"feflo called though command line : {feflo_call}")
+    feflo_call_list = ['-in'  , in_files['mesh']     ,
+                       feflo_args[metric]]
+                      + feflo_opt
 
     mlog.info(f"Feflo mesh adaptation...")
     start = time.time()
     
-    os.system(feflo_call)
+    subprocess.run(feflo_call_list)
 
     end = time.time()
     mlog.info(f"Feflo mesh adaptation completed ({end-start:.2f} s) --")
@@ -115,9 +122,8 @@ def mesh_adapt( dist_tree, complexity, comm, metric='mach_fld', feflo_opt=[]):
 
   # > Broadcast
   dicttag_to_bcinfo = comm.bcast(dicttag_to_bcinfo, root=0)
-  families          = comm.bcast(families, root=0)
-  tree_info         = comm.bcast(tree_info, root=0)
+  tree_info["dicttag_to_bcinfo"] = dicttag_to_bcinfo
 
-  adapted_dist_tree = meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm, metric=='isotrop')
+  adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
 
   return adapted_dist_tree

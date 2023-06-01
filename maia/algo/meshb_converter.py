@@ -14,6 +14,26 @@ import numpy as np
 import Pypdm.Pypdm as PDM
 
 
+def get_tree_info(dist_tree)
+  """
+  Get tree informations such as names, families and dicttag_to_bcinfo
+  """
+  # TODO : Est que tout les arbres dist ont le meme ordre pour leurs noeuds ?
+  
+  base_n    = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
+  zone_n    = PT.get_child_from_label(base_n, 'Zone_t')
+  
+  base_name = PT.get_name(base_n)
+  zone_name = PT.get_name(zone) # Just one zone at this time
+  tree_names= {"Base":base_name, "Zone":zone_name}
+
+  families  = PT.get_nodes_from_label(dist_tree, 'Family_t')
+
+  return {"tree_names": tree_names,
+          "families"  : families,
+          # "dicttag_to_bcinfo": tree_familiesinfo
+          }
+
 
 def _add_sections_to_zone(dist_zone, section, shift_elmt, comm):
   """
@@ -46,7 +66,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, familie
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
   g_dims = dmesh_nodal.dmesh_nodal_get_g_dims()
-
+  # /stck/cbenazet/workspace/MAIA/maia/maia/factory/dcube_generator.py
   sections_vol   = None
   sections_surf  = None
   sections_ridge = None
@@ -142,25 +162,25 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, familie
 
 
   # > FlowSolution
-  if not isotrop:
-    cons = -100*np.ones(g_dims["n_vtx_abs"] * 7, dtype=np.double)
-    PDM.read_solb(bytes(out_files['fld'], 'utf-8'), g_dims["n_vtx_abs"], 7, cons)
+  cons = -100*np.ones(g_dims["n_vtx_abs"] * 7, dtype=np.double)
+  PDM.read_solb(bytes(out_files['fld'], 'utf-8'), g_dims["n_vtx_abs"], 7, cons)
 
-    cons = cons.reshape((7, cons.shape[0]//7), order='F')
-    cons = cons.transpose()
+  cons = cons.reshape((7, cons.shape[0]//7), order='F')
+  cons = cons.transpose()
 
-    fs = PT.new_FlowSolution("FlowSolution#Init", loc='Vertex', parent=dist_zone)
-    PT.new_DataArray("Density"                , cons[np_distrib_vtx[0]:np_distrib_vtx[1],0], parent=fs)
-    PT.new_DataArray("MomentumX"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],1], parent=fs)
-    PT.new_DataArray("MomentumY"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],2], parent=fs)
-    PT.new_DataArray("MomentumZ"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],3], parent=fs)
-    PT.new_DataArray("EnergyStagnationDensity", cons[np_distrib_vtx[0]:np_distrib_vtx[1],4], parent=fs)
-    PT.new_DataArray("Mach"                   , cons[np_distrib_vtx[0]:np_distrib_vtx[1],5], parent=fs)
+  fs = PT.new_FlowSolution("FlowSolution#Init", loc='Vertex', parent=dist_zone)
+  # faire comme les isosurf 
+  PT.new_DataArray("Density"                , cons[np_distrib_vtx[0]:np_distrib_vtx[1],0], parent=fs)
+  PT.new_DataArray("MomentumX"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],1], parent=fs)
+  PT.new_DataArray("MomentumY"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],2], parent=fs)
+  PT.new_DataArray("MomentumZ"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],3], parent=fs)
+  PT.new_DataArray("EnergyStagnationDensity", cons[np_distrib_vtx[0]:np_distrib_vtx[1],4], parent=fs)
+  PT.new_DataArray("Mach"                   , cons[np_distrib_vtx[0]:np_distrib_vtx[1],5], parent=fs)
 
   return dist_tree
 
 
-def meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm, isotrop=True):
+def meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm):
   '''
   Reading a meshb file and conversion to CGNS norm.
 
@@ -178,7 +198,7 @@ def meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm, isotr
   
   # meshb -> dmesh_nodal # meshb -> dmesh_nodal -> cgns
   dmesh_nodal = PDM.meshb_to_dmesh_nodal(bytes(out_files['mesh'], 'utf-8'), comm, 1, 1)
-  dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, families, out_files, isotrop)
+  dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, dicttag_to_bcinfo, families, out_files)
   
   end = time.time()
   mlog.info(f"meshb to CGNS conversion completed ({end-start:.2f} s) --")
@@ -190,7 +210,7 @@ def meshb_to_cgns(out_files, tree_info, dicttag_to_bcinfo, families, comm, isotr
 
 
 
-def cgns_to_meshb(dist_tree, files, metric):
+def cgns_to_meshb(dist_tree, files, metric_nodes, container_name):
   '''
   Dist_tree conversion to meshb format and writing.
   Arguments :
@@ -202,15 +222,13 @@ def cgns_to_meshb(dist_tree, files, metric):
   mlog.info(f"CGNS to meshb dist_tree conversion...")
   start = time.time()
 
+
   dicttag_to_bcinfo = {"CellCenter": dict(),
                        "FaceCenter": dict(),
                        "EdgeCenter": dict(),
                        "Vertex"    : dict()}
   
-  base_name = PT.get_name(PT.get_child_from_label(dist_tree, 'CGNSBase_t'))
-
   for zone in PT.get_all_Zone_t(dist_tree):
-    zone_name = PT.get_name(zone) # Just one zone at this time
 
     # > Coordinates
     cx  = PT.get_node_from_name(zone, "CoordinateX")[1]
@@ -294,47 +312,44 @@ def cgns_to_meshb(dist_tree, files, metric):
                     elmt_by_dim[1],  edge_tag)
 
 
-    # Write metric file
-    if metric!='isotrop':
-      fs = PT.get_node_from_name(zone, "FSolution#Vertex#EndOfRun")
+    n_metric_fld = len(metric_nodes)
+    if n_metric_fld==6:
+      metric_nodes
+    for metric_n in metric_nodes:
 
-      if   metric=='mach_fld':
+    if n_metric_fld==1:
         mach = PT.get_node_from_name(fs  , "Mach")[1]
         PDM.write_solb(bytes(files["sol"], 'utf-8'), n_vtx, 1, mach)
 
-      elif metric=='mach_hess':
-        mxx = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#0")[1]
-        mxy = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#1")[1]
-        mxz = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#2")[1]
-        myy = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#3")[1]
-        myz = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#4")[1]
-        mzz = PT.get_node_from_name(fs, "extrap_on(sym_grad(extrap_on(#5")[1]
+    # Write metric file
 
-        met = np_utils.interweave_arrays([mxx,mxy,myy,mxz,myz,mzz])
+    if   metric=='mach_fld':
+      mach = PT.get_node_from_name(container  , "Mach")[1]
+      PDM.write_solb(bytes(files["sol"], 'utf-8'), n_vtx, 1, mach)
 
-        PDM.write_matsym_solb(bytes(files["sol"], 'utf-8'), n_vtx, met)
+    elif metric=='mach_hess':
+      get_metric_comp = lambda n, comp: PT.get_name(n)[-2:]==comp
+      mxx = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#0")[1]
+      mxy = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#1")[1]
+      mxz = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#2")[1]
+      myy = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#3")[1]
+      myz = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#4")[1]
+      mzz = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#5")[1]
 
-      # Fields to interpolate
-      density = PT.get_node_from_name(fs, "Density")[1]
-      momx    = PT.get_node_from_name(fs, "MomentumX")[1]
-      momy    = PT.get_node_from_name(fs, "MomentumY")[1]
-      momz    = PT.get_node_from_name(fs, "MomentumZ")[1]
-      roe     = PT.get_node_from_name(fs, "EnergyStagnationDensity")[1]
-      mach    = PT.get_node_from_name(fs, "Mach")[1]
-      try:
-        ronu  = PT.get_node_from_name(fs, "TurbulentSANuTildeDensity")[1]
-      except TypeError:
-        ronu  = np.zeros(density.shape[0], np.double)
-      cons    = np_utils.interweave_arrays([density, momx, momy, momz, roe, mach, ronu])
+      met = np_utils.interweave_arrays([mxx,mxy,myy,mxz,myz,mzz])
 
-      PDM.write_solb(bytes(files["fld"], 'utf-8'), n_vtx, 7, cons)
+      PDM.write_matsym_solb(bytes(files["sol"], 'utf-8'), n_vtx, met)
 
-  tree_info = {"Base":base_name, "Zone":zone_name}
-  families  = PT.get_nodes_from_label(dist_tree, 'Family_t')
+    # > Fields to interpolate
+    container    = PT.get_node_from_name(zone, container_name)
+    fields_list  = [PT.get_value(n) for n in PT.get_children_from_label(container, 'DataArray_t')]
+    fields_array = np_utils.interweave_arrays(fields_list)
+
+    PDM.write_solb(bytes(files["fld"], 'utf-8'), n_vtx, len(fields_list), fields_array)
 
   end = time.time()
   mlog.info(f"CGNS to meshb conversion completed ({end-start:.2f} s) --")
-  return tree_info, dicttag_to_bcinfo, families
+  return dicttag_to_bcinfo
 
 
 
