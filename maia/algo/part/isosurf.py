@@ -1,14 +1,17 @@
-from mpi4py import MPI
-import numpy as np
+import time
+import mpi4py.MPI as MPI
 
-import maia.pytree      as PT
-import maia.pytree.maia as MT
+import maia.pytree        as PT
+import maia.pytree.maia   as MT
+import maia.utils.logging as mlog
 
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.utils    import np_utils, layouts, py_utils
 from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
+
+import numpy as np
 
 import Pypdm.Pypdm as PDM
 
@@ -466,11 +469,19 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
   assert(elt_type in ["TRI_3","QUAD_4","NGON_n"])
 
   # Isosurface extraction
+  mlog.info(f"Isosurface generation...")
+  start = time.time()
   iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, comm)
+  end = time.time()
+  mlog.info(f"Isosurface generated ({end-start:.2f} s) --")
   
   # Interpolation
   if containers_name:
+    mlog.info(f"Volumic to isosurface exchange...")
+    start = time.time()
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
+    end = time.time()
+    mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
@@ -536,11 +547,19 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
   elt_type = options.get("elt_type", "TRI_3")
 
   # Isosurface extraction
+  mlog.info(f"Isosurface generation...")
+  start = time.time()
   iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, comm)
+  end = time.time()
+  mlog.info(f"Isosurface generated ({end-start:.2f} s) --")
 
   # Interpolation
   if containers_name:
+    mlog.info(f"Volumic to isosurface exchange...")
+    start = time.time()
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
+    end = time.time()
+    mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
@@ -577,11 +596,19 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
   elt_type = options.get("elt_type", "TRI_3")
 
   # Isosurface extraction
+  mlog.info(f"Isosurface generation...")
+  start = time.time()
   iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, comm)
+  end = time.time()
+  mlog.info(f"Isosurface generated ({end-start:.2f} s) --")
 
   # Interpolation
   if containers_name:
+    mlog.info(f"Volumic to isosurface exchange...")
+    start = time.time()
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
+    end = time.time()
+    mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
@@ -619,11 +646,19 @@ def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options)
   elt_type = options.get("elt_type", "TRI_3")
 
   # Isosurface extraction
+  mlog.info(f"Isosurface generation...")
+  start = time.time()
   iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, comm)
+  end = time.time()
+  mlog.info(f"Isosurface generated ({end-start:.2f} s) --")
 
   # Interpolation
   if containers_name:
+    mlog.info(f"Volumic to isosurface exchange...")
+    start = time.time()
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
+    end = time.time()
+    mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return iso_part_tree
 # ---------------------------------------------------------------------------------------
