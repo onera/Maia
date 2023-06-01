@@ -21,8 +21,6 @@ def _create_pe_global(flat_array, shift_value):
 def cgns_zone_to_pdm_dmesh_nodal(zone, comm, extract_dim):
   elts_per_dim = PT.Zone.get_ordered_elements_per_dim(zone)
   assert len(elts_per_dim[0]) == 0, "NODE elements are not supported in STD->NGON conversion"
-  if extract_dim == 3:
-    assert len(elts_per_dim[1]) == 0, "BAR elements are not supported in STD->NGON conversion"
   dmn = cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_vertex=False)
   dmn.generate_distribution()
   return dmn
