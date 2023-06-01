@@ -210,7 +210,10 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   n_gdom_bcs = len(gdom_bcs_path)
   # > GCs
   is_gc        = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-  isnt_gc_intra= lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+  isnt_gc_intra= lambda n: is_gc(n) and     PT.GridConnectivity.is1to1(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+  is_unmatched = lambda n: is_gc(n) and not PT.GridConnectivity.is1to1(n)
+  gc_predicate = ['ZoneGridConnectivity_t', is_unmatched]
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
   gc_predicate = ['ZoneGridConnectivity_t', isnt_gc_intra]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
@@ -262,7 +265,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
       for bnd_path in gdom_gcs_path:
         # For gc, we glue the joins that have been splitted during partitioning
         container_name, jn_name = bnd_path.split('/')
-        bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'.*'])
+        bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'*'])
         if len(bnd_n_list) > 0:
           _, jn_pl = np_utils.concatenate_point_list([PT.get_node_from_name(bnd_n, 'PointList')[1] for bnd_n in bnd_n_list], np.int32)
           all_bnd_pl.append(jn_pl.reshape((1,-1), order='F'))
@@ -281,6 +284,11 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
+  
+  # Que faire dans le cas suivant ???
+  if (n_iso_vtx==0 and n_iso_elt!=0) or (n_iso_vtx!=0 and n_iso_elt==0):
+    print(f"[{comm.Get_rank()}] WARNING n_iso_vtx={n_iso_vtx} and n_iso_elt={n_iso_elt}")
+  
   iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                               size=[[n_iso_vtx, n_iso_elt, 0]],
                               type='Unstructured')
@@ -314,8 +322,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
     # > Add element node
     results_edge = pdm_isos.isosurf_bnd_get()
     n_bnd_edge   = results_edge['n_bnd_edge']
+    bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
     if n_bnd_edge!=0:
-      bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
       bar_n = PT.new_Elements('BAR_2', type='BAR_2', 
                               erange=np.array([n_iso_elt+1, n_iso_elt+n_bnd_edge]),
                               econn=results_edge['bnd_edge_vtx'],
@@ -323,34 +331,34 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
       PT.maia.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
-      # > Create BC described by edges
-      gnum     = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
-      for i_group, bc_path in enumerate(gdom_bcs_path):
-        n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
-        edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
-                            bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
-        partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
+    # > Create BC described by edges
+    gnum = PT.maia.getGlobalNumbering(bar_n, 'Element')[1] if n_bnd_edge!=0 else np.empty(0, dtype=np.int32) # TOCHECK : pdm_gnum ??
+    for i_group, bc_path in enumerate(gdom_bcs_path):
+      n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
+      edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
+                          bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
+      partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
 
-        if partial_gnum.size != 0:
-          zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')  
-          bc_n = PT.new_BC(PT.path_tail(bc_path), point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+      if partial_gnum.size != 0:
+        zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')  
+        bc_n = PT.new_BC(PT.path_tail(bc_path), point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
-      for i_group, gc_path in enumerate(gdom_gcs_path):
-        gc_name = PT.path_tail(gc_path)
-        gc_val  = PT.get_value(PT.get_node_from_path(dist_zone, gc_path))
+    for i_group, gc_path in enumerate(gdom_gcs_path):
+      gc_name = PT.path_tail(gc_path)
+      gc_val  = PT.get_value(PT.get_node_from_path(dist_zone, gc_path))
 
-        i_group+=n_gdom_bcs
-        
-        n_edge_in_gc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
-        edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
-                            bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
-        partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
+      i_group+=n_gdom_bcs
+      
+      n_edge_in_gc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
+      edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
+                          bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
+      partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
 
-        if edge_pl.size != 0:
-          zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')
-          bc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+      if edge_pl.size != 0:
+        zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')
+        bc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
 
   else:
