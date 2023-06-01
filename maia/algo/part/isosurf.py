@@ -284,11 +284,6 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
-  
-  # Que faire dans le cas suivant ???
-  if (n_iso_vtx==0 and n_iso_elt!=0) or (n_iso_vtx!=0 and n_iso_elt==0):
-    print(f"[{comm.Get_rank()}] WARNING n_iso_vtx={n_iso_vtx} and n_iso_elt={n_iso_elt}")
-  
   iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                               size=[[n_iso_vtx, n_iso_elt, 0]],
                               type='Unstructured')
@@ -417,7 +412,8 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
 
     iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
     PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0))
-    PT.add_child(iso_part_base,iso_part_zone)
+    if PT.Zone.n_cell(iso_part_zone)!=0:
+      PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
 
@@ -501,7 +497,8 @@ def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
     iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, comm)
     PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0))
 
-    PT.add_child(iso_part_base,iso_part_zone)
+    if PT.Zone.n_cell(iso_part_zone)!=0:
+      PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
 
