@@ -167,8 +167,9 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
   # Loop over domains
   for domain_path, part_zones in part_tree_per_dom.items():
     # Get zone from isosurf (one zone by domain)
-    iso_part_zone = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}_iso")[0]
-    exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm)
+    iso_part_zones = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}_iso")
+    if len(iso_part_zones)!=0:
+      exchange_field_one_domain(part_zones, iso_part_zones[0], containers_name, comm)
 
 # =======================================================================================
 

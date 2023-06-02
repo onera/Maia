@@ -173,8 +173,9 @@ def test_plane_slice_gc_U(elt_type,comm, write_output):
   from   maia.utils.test_utils import mesh_dir
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', comm)
 
-  n_part = 2
-  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, comm, n_part)
+  if   comm.Get_rank()==0: zone_to_parts = {"BaseA/blk1":[0.2], "BaseA/blk3":[1.], "BaseB/blk2":[0.1]}
+  elif comm.Get_rank()==1: zone_to_parts = {"BaseA/blk1":[0.8], "BaseA/blk3":[]  , "BaseB/blk2":[0.2]}
+  elif comm.Get_rank()==2: zone_to_parts = {"BaseA/blk1":[]   , "BaseA/blk3":[]  , "BaseB/blk2":[0.7]}
   part_tree     = MF.partition_dist_tree(dist_tree, comm,
                                          zone_to_parts=zone_to_parts,
                                          preserve_orientation=True)
