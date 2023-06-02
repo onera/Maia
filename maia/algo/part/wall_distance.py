@@ -285,23 +285,24 @@ class WallDistance:
           child_list=['GridConnectivityProperty_t', 'GridConnectivityDonorName', 'GridConnectivityType_t'],
           merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
 
-      #After GC discovery, cleanup donor name suffix
-      for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
-       val = PT.get_value(jn)
-       PT.set_value(jn, MT.conv.get_part_prefix(val))
-       gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
-       PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
+        #After GC discovery, cleanup donor name suffix
+        for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
+          val = PT.get_value(jn)
+          PT.set_value(jn, MT.conv.get_part_prefix(val))
+          gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
+          PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
       for jns_pair in matching_jns_tools.get_matching_jns(skeleton_tree):
         jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
         periodic_n = PT.get_node_from_label(jn_n,"Periodic_t")
-        rotation_center = PT.get_value(PT.get_node_from_name(periodic_n,'RotationCenter'))
-        rotation_angle  = PT.get_value(PT.get_node_from_name(periodic_n,'RotationAngle'))
-        translation     = PT.get_value(PT.get_node_from_name(periodic_n,'Translation'))
-        # print(translation, rotation_center, rotation_angle)
-        self.periodicities.append([translation, rotation_center, rotation_angle])
+        if periodic_n is not None:
+          rotation_center = PT.get_value(PT.get_node_from_name(periodic_n,'RotationCenter'))
+          rotation_angle  = PT.get_value(PT.get_node_from_name(periodic_n,'RotationAngle'))
+          translation     = PT.get_value(PT.get_node_from_name(periodic_n,'Translation'))
+          self.periodicities.append([translation, rotation_center, rotation_angle])
       #TODO : filtrage des perio !
-      # assert len(self.perio) < 4
+      print(len(self.periodicities))
+      assert len(self.periodicities) < 4
     else:
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
       self.perio = False
