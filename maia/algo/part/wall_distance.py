@@ -18,6 +18,9 @@ from maia.algo.part.geometry          import compute_cell_center
 from maia.transfer                    import utils as tr_utils
 
 
+def is_in_list(np_array_to_check, list_np_arrays):
+  return np.any(np.all(np_array_to_check == list_np_arrays, axis=1))
+
 def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']):
   """
   Return the list of Families having a FamilyBC_t node whose value is in bcwalls list
@@ -128,7 +131,7 @@ class WallDistance:
         parts_surf_to_dupl_l = []
         parts_surf_to_dupl_l.append([face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
                                      vtx_bnd_z, vtx_ln_to_gn_z])
-        for tr, rot_c, rot_a in self.periodicities:
+        for rot_a, rot_c, tr in self.periodicities:
           parts_surf_to_dupl_next_l = []
           for parts_surf_to_dupl in parts_surf_to_dupl_l:
             parts_surf_to_dupl_next_l.append(parts_surf_to_dupl)
@@ -292,6 +295,7 @@ class WallDistance:
           gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
           PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
+      all_periodicities = []
       for jns_pair in matching_jns_tools.get_matching_jns(skeleton_tree):
         jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
         periodic_n = PT.get_node_from_label(jn_n,"Periodic_t")
@@ -299,9 +303,26 @@ class WallDistance:
           rotation_center = PT.get_value(PT.get_node_from_name(periodic_n,'RotationCenter'))
           rotation_angle  = PT.get_value(PT.get_node_from_name(periodic_n,'RotationAngle'))
           translation     = PT.get_value(PT.get_node_from_name(periodic_n,'Translation'))
-          self.periodicities.append([translation, rotation_center, rotation_angle])
-      #TODO : filtrage des perio !
-      print(len(self.periodicities))
+          all_periodicities.append([tuple(rotation_center), np.concatenate((rotation_angle,translation))])
+      #TODO: filtrage des perio ! DONE ?
+      #TODO: check if perio are ortho ?
+      #TODO: test number of unique perio by connected zones family ?
+      #TODO: improve assert if we know some no-match connectivities ?
+      if len(all_periodicities) > 0:
+        perio_dict = {}
+        for rot_c, rot_a_and_tr in all_periodicities:
+          if rot_c in perio_dict.keys():
+            cur_val_in = is_in_list(rot_a_and_tr, perio_dict[rot_c])
+            opp_val_in = is_in_list(-rot_a_and_tr, perio_dict[rot_c])
+            if (not cur_val_in) and (not opp_val_in):
+              perio_dict[rot_c].append(rot_a_and_tr)
+          else:
+            perio_dict[rot_c] = [rot_a_and_tr]
+        for key, values in perio_dict.items():
+          for value in values:
+            self.periodicities.append([np.array(key),value[0:3],value[3:6]])
+      else:
+        self.perio = False
       assert len(self.periodicities) < 4
     else:
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
