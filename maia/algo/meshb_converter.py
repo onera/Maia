@@ -40,10 +40,10 @@ def get_tree_info(dist_tree):
     entity_bcs   = PT.get_children_from_predicate(zonebc_n, is_entity_bc)
     n_tag = 0
     for bc_n in entity_bcs:
+      n_tag = n_tag +1
       bc_name = PT.get_name(bc_n)
       famname = PT.get_value(PT.get_child_from_label(bc_n, "FamilyName_t"))
       dicttag_to_bcinfo[entity_name][n_tag] = {"BC":bc_name, "Family":famname}
-      n_tag = n_tag +1
 
   return {"tree_names": tree_names,
           "families"  : families,
@@ -224,6 +224,7 @@ def meshb_to_cgns(out_files, tree_info, comm):
   end = time.time()
   mlog.info(f"meshb to CGNS conversion completed ({end-start:.2f} s) --")
 
+  print(dist_tree)
   return dist_tree
 
 
@@ -291,8 +292,8 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
       n_tag = 0
       for bc_n in list_of_bc:
         pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
-        bc_tag[pl-offset-1] = n_tag+1
         n_tag = n_tag +1
+        bc_tag[pl-offset-1] = n_tag
 
     zone_bc     = PT.get_child_from_label(zone, 'ZoneBC_t')
 
