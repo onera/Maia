@@ -14,7 +14,8 @@ from pathlib import Path
 
 
 # FEFLO
-feflo_path = "feflo.a" # Must be an alias in user profile
+feflo_path = "feflo" # TODO : Must be an alias in user profile
+feflo_path = "/home/bmaugars/tmp/feflo.a" # Must be an alias in user profile
 
 # TMP directory
 tmp_repo   = 'TMP_adapt_repo/'
@@ -38,14 +39,14 @@ out_files = {'mesh': out_file_meshb,
              'fld' : out_file_fldb }
 
 # Feflo files arguments
-feflo_args    = { 'isotrop'  : f'-iso                -itp {in_file_fldb}',
-                  'mach_fld' : f'-sol {in_file_solb} -itp {in_file_fldb}',
-                  'mach_hess': f'-met {in_file_solb} -itp {in_file_fldb}'
+feflo_args    = { 'isotrop'  : f'-iso                -itp {in_file_fldb}'.split(),
+                  'from_fld' : f'-sol {in_file_solb} -itp {in_file_fldb}'.split(),
+                  'from_hess': f'-met {in_file_solb} -itp {in_file_fldb}'.split()
 }
 
 
 # def mesh_adapt( dist_tree, complexity, comm, metric='from_fld', feflo_opt=[]):
-def mesh_adapt(dist_tree, metric=[], container_name=None, comm, feflo_opt=[]):
+def mesh_adapt(dist_tree, comm, metric=[], container_names=None, feflo_opt=[]):
   ''' Return a feflo adapted mesh according to a metric and a complexity.
 
   Adapted mesh is returned as an independant distributed tree.
@@ -58,9 +59,9 @@ def mesh_adapt(dist_tree, metric=[], container_name=None, comm, feflo_opt=[]):
   Args:
     dist_tree     (CGNSTree)        : Distributed tree on which adaptation is done. Only U-Elements
       connectivities are managed.
+    comm          (MPIComm)         : MPI communicator.
     metric         (list)           : Paths to metric fields.
     container_names(list)           : Container names that must been projected on adapted mesh (Vertex Center)
-    comm          (MPIComm)         : MPI communicator.
     feflo_opt     (list, optional)  : List of feflo's optional arguments.
   Returns:
     adapted_tree (CGNSTree): Adapted mesh tree (distributed) 
@@ -82,11 +83,15 @@ def mesh_adapt(dist_tree, metric=[], container_name=None, comm, feflo_opt=[]):
   # Path.cwd()/Path(tmp_repo).mkdir(exist_ok=True)
 
   metric_nodes = list()
-  for path_fld in metric:
-    metric_n = PT.get_node_from_path(dist_tree, path+"*")
-    metric_nodes.append(PT.get_value(metric_n))
+  for path in metric:
+    base_name, zone_name, container_name, fld_name = path.split('/')
+    metric_nodes += PT.get_nodes_from_names(dist_tree, [base_name, zone_name, container_name, fld_name+'*'])
+  print(f"len(metric_nodes) = {len(metric_nodes)}")
   n_metric_fld = len(metric_nodes)
   assert n_metric_fld in [0,1,6]
+  if   n_metric_fld==0 : metric_name = 'isotrop'
+  elif n_metric_fld==1 : metric_name = 'from_fld'
+  elif n_metric_fld==6 : metric_name = 'from_hess'
 
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree)
@@ -100,12 +105,16 @@ def mesh_adapt(dist_tree, metric=[], container_name=None, comm, feflo_opt=[]):
   dicttag_to_bcinfo = list()
 
   if comm.Get_rank()==0:
-    dicttag_to_bcinfo = cgns_to_meshb(dist_tree, in_files, metric_nodes, container_names)
+    cgns_to_meshb(dist_tree, in_files, metric_nodes, container_names)
 
     # Adapt with feflo
-    feflo_call_list = ['-in'  , in_files['mesh']     ,
-                       feflo_args[metric]]
-                      + feflo_opt
+    print(f"feflo_call_list = {['-in', in_files['mesh']]+ feflo_args[metric_name]}")
+    print(f"feflo_opt       = {feflo_opt}")
+    feflo_call_list = [feflo_path]             \
+                    + ['-in', in_files['mesh']]\
+                    + feflo_args[metric_name]  \
+                    + feflo_opt                
+    print(f"feflo_call_list = {feflo_call_list}")
 
     mlog.info(f"Feflo mesh adaptation...")
     start = time.time()
@@ -120,9 +129,13 @@ def mesh_adapt(dist_tree, metric=[], container_name=None, comm, feflo_opt=[]):
   maia.algo.dist.redistribute_tree(dist_tree, comm, policy='uniform')
 
 
-  # > Broadcast
-  dicttag_to_bcinfo = comm.bcast(dicttag_to_bcinfo, root=0)
-  tree_info["dicttag_to_bcinfo"] = dicttag_to_bcinfo
+  dicttag_to_bcinfo = tree_info["dicttag_to_bcinfo"]
+  print(f"dicttag_to_bcinfo = {dicttag_to_bcinfo}")
+  for loc, tag_to_bcinfo in dicttag_to_bcinfo.items():
+      print(f"\nLOC = {loc}")
+      for tag, bcinfo in tag_to_bcinfo.items():
+          print(f" - TAG = {tag} -> BC = {bcinfo['BC']:10} ; FAMILY = {bcinfo['Family']}")
+          # PT.print_tree(bcinfo)
 
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
 
