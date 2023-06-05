@@ -1,3 +1,4 @@
+import time
 from mpi4py import MPI
 import numpy as np
 import warnings
@@ -8,14 +9,15 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils                      import np_utils
+from maia.utils                      import logging as mlog
 from maia                            import transfer as TE
 from maia.factory.dist_from_part     import discover_nodes_from_matching
 from maia.algo.dist                  import matching_jns_tools
 
-from .point_cloud_utils               import get_point_cloud
-from maia.algo.part.extract_boundary  import extract_surf_from_bc
-from maia.algo.part.geometry          import compute_cell_center
-from maia.transfer                    import utils as tr_utils
+from .point_cloud_utils              import get_point_cloud
+from maia.algo.part.extract_boundary import extract_surf_from_bc
+from maia.algo.part.geometry         import compute_cell_center
+from maia.transfer                   import utils as tr_utils
 
 
 def is_in_list(np_array_to_check, list_np_arrays):
@@ -431,7 +433,10 @@ def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point
         :end-before: #compute_wall_distance@end
         :dedent: 2
   """
+  start = time.time()
   walldist = WallDistance(part_tree, comm, method, families, point_cloud, out_fs_name, perio)
   walldist.compute()
+  end = time.time()
   #walldist.dump_times()
+  mlog.info(f"Wall distance completed ({end-start:.2f} s)")
 
