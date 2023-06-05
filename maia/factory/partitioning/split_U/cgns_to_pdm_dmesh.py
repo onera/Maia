@@ -65,6 +65,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   ngon_node = PT.Zone.NGonNode(dist_zone)
   ngon_first = PT.Element.Range(ngon_node)[0] == 1
   has_nface  = PT.Zone.has_nface_elements(dist_zone)
+  has_pe     = PT.get_node_from_name(ngon_node, 'ParentElements') is not None
   dface_vtx = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1])
   ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1]
 
@@ -73,7 +74,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     nface_ec  = as_pdm_gnum(PT.get_child_from_name(nface_node, 'ElementConnectivity')[1])
     nface_eso = PT.get_child_from_name(nface_node, 'ElementStartOffset' )[1]
     distrib_cell_face = as_pdm_gnum(PT.get_value(MT.getDistribution(nface_node, 'ElementConnectivity')))
-  else:
+  if has_pe:
     ngon_pe = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ParentElements')[1])
 
   distrib_face     = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'Element')))
@@ -95,7 +96,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
       dcell_face = nface_ec
     else:
       dcell_face = nface_ec - distrib_cell[2]
-  else: #Use PE to set face_cell
+  if has_pe: #Use PE to set face_cell
     dface_cell = np.empty(2*dn_face, dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
     layouts.pe_cgns_to_pdm_face_cell(ngon_pe, dface_cell)
     if ngon_first:
@@ -114,7 +115,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
 
   if has_nface:
     dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_CELL_FACE, dcell_face_idx, dcell_face)
-  else:
+  if has_pe:
     dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_FACE_CELL, None, dface_cell)
 
   # > Create an older --> To Suppress after all
@@ -127,7 +128,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   if has_nface:
     PT.new_DataArray('dcell_face_idx', dcell_face_idx, parent=multi_part_node)
     PT.new_DataArray('dcell_face'    , dcell_face    , parent=multi_part_node)
-  else:
+  if has_pe:
     PT.new_DataArray('dface_cell'    , dface_cell    , parent=multi_part_node)
 
   return dmesh

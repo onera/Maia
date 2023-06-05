@@ -1,6 +1,8 @@
 import pytest
+import pytest_parallel
 import numpy as np
 
+import maia
 import maia.pytree as PT
 from maia.pytree.yaml  import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_dtype
@@ -134,9 +136,6 @@ Base0 CGNSBase_t [3,3]:
   bcds = PT.get_child_from_label(bc, 'BCDataSet_t')
   assert (PT.get_child_from_name(bcds, 'PointRange') is None)
 
-#def test_load_grid_connectivity_property():
-  #Besoin de charger depuis un fichier, comment tester ?
-
 def test_enforce_pdm_dtype():
   wrong_pdm_type = np.int64 if pdm_dtype == np.int32 else np.int32
   wrong_type = 'I8' if pdm_dtype == np.int32 else 'I4'
@@ -191,6 +190,21 @@ def test_ensure_PE_global_indexing():
     ngon = PT.new_NGonElements(erange=[1,4], pe=np.empty((4,2), order='F'))
     tri = PT.new_Elements('Tri', 'TRI_3')
     fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,tri]))
+
+@pytest_parallel.mark.parallel(1)
+def test_ensure_signed_nface_connectivity(comm):
+  tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+  maia.algo.pe_to_nface(tree, comm)
+  tree_bck = PT.deep_copy(tree)
+
+  assert fix_tree.ensure_signed_nface_connectivity(tree, comm) == 0
+  assert PT.is_same_tree(tree, tree_bck)
+
+  # Force unsigned connectivity
+  nface_ec = PT.get_node_from_path(tree, 'Base/zone/NFaceElements/ElementConnectivity')
+  nface_ec[1] = np.abs(nface_ec[1])
+  assert fix_tree.ensure_signed_nface_connectivity(tree, comm) == 1
+  assert PT.is_same_tree(tree, tree_bck)
 
 def test_rm_legacy_nodes():
   yt = f"""

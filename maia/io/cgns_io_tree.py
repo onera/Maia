@@ -8,7 +8,7 @@ import maia.utils.logging as mlog
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
-from .fix_tree                  import ensure_PE_global_indexing, _enforce_pdm_dtype
+from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity, _enforce_pdm_dtype
 
 from maia.factory     import full_to_dist
 from maia.pytree.yaml import parse_yaml_cgns
@@ -110,6 +110,9 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   n_shifted = ensure_PE_global_indexing(dist_tree)
   if n_shifted > 0 and comm.Get_rank() == 0:
     mlog.warning(f"Some NGon/ParentElements have been shift to be CGNS compliant")
+  n_shifted = ensure_signed_nface_connectivity(dist_tree, comm)
+  if n_shifted > 0 and comm.Get_rank() == 0:
+    mlog.warning(f"Some NFace/ElementConnectivity have been updated to be CGNS compliant")
 
 def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
