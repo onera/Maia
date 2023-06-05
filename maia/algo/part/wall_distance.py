@@ -307,9 +307,6 @@ class WallDistance:
           translation     = PT.get_value(PT.get_node_from_name(periodic_n,'Translation'))
           all_periodicities.append([tuple(rotation_center), np.concatenate((rotation_angle,translation))])
       #TODO: filtrage des perio ! DONE ?
-      #TODO: check if perio are ortho ?
-      #TODO: test number of unique perio by connected zones family ?
-      #TODO: improve assert if we know some no-match connectivities ?
       if len(all_periodicities) > 0:
         perio_dict = {}
         for rot_c, rot_a_and_tr in all_periodicities:
@@ -329,6 +326,22 @@ class WallDistance:
     else:
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
       self.perio = False
+    
+    #TODO: check if perio are ortho ? DONE ?
+    if self.perio and len(self.periodicities)>1:
+      sum_scalar_product = 0.
+      for p, (rot_c_cur, rot_a_cur, tr_cur) in enumerate(self.periodicities):
+        # We just have to test non already tested scalar products
+        for rot_c, rot_a, tr in self.periodicities[p+1:]:
+          sum_scalar_product += abs(np.dot(rot_a_cur, rot_a))
+          sum_scalar_product += abs(np.dot(tr_cur, tr))
+      #TODO : tol as user parameter ?
+      tol = 2.5e-16
+      if (sum_scalar_product/p) > tol:
+        raise ValueError("Periodic wall distance computation but periodicities are not orthogonal")
+    exit()
+    #TODO: test number of unique perio by connected zones family ?
+    #TODO: improve assert if we know some no-match connectivities ?
     
     # Search families if its are not given
     if not self.families:
