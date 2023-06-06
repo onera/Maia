@@ -141,14 +141,14 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
                                  part2_stride=stride)
       part1_stride, part1_data = ptp.reverse_wait(req_id)
 
-      # Placement
-      i_part = 0 # One isosurface partition
-      # Ponderation if vertex
-      if gridLocation=="Vertex" :
-        weighted_fld       = part1_data[i_part]*part1_weight[i_part]
-        part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
-
+      # > Placement
       if iso_part_zone is not None:
+        i_part = 0 # One isosurface partition
+        # Ponderation if vertex
+        if gridLocation=="Vertex" :
+          weighted_fld       = part1_data[i_part]*part1_weight[i_part]
+          part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
+
         PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)
     
     # Build PL with the last exchange stride
