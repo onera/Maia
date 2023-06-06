@@ -28,7 +28,7 @@ def copy_referenced_families(source_base, target_base):
       family_node = PT.get_child_from_predicate(source_base, fam_name)
       PT.add_child(target_base, family_node)
 
-# =======================================================================================
+
 def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
   for container_name in containers_name :
@@ -152,11 +152,7 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       partial_gnum = create_sub_numbering([part1_ln_to_gn[0][new_point_list]], comm)[0]
       PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_iso)
 
-# =======================================================================================
 
-
-
-# =======================================================================================
 def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
   """
   Exchange fields found under each container from part_tree to iso_part_tree
@@ -171,12 +167,8 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
     if len(iso_part_zones)!=0:
       exchange_field_one_domain(part_zones, iso_part_zones[0], containers_name, comm)
 
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   """
   Compute isosurface in a zone
@@ -385,13 +377,9 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
       comm, get_value='leaf')
 
   return iso_part_zone
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
 
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
 
   fs_name, field_name = iso_field_path.split('/')
@@ -422,9 +410,8 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------------------
+
 def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **options):
   """ Create an isosurface from the provided field and value on the input partitioned tree.
 
@@ -485,13 +472,9 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
     mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
 
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
 
   assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
@@ -515,13 +498,8 @@ def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
   """ Create a slice from the provided plane equation :math:`ax + by + cz - d = 0`
   on the input partitioned tree.
@@ -563,13 +541,8 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
     mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
   """ Create a spherical slice from the provided equation
   :math:`(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2`
@@ -612,13 +585,8 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
     mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options):
   """ Create a elliptical slice from the provided equation
   :math:`(x-x_0)^2/a^2 + (y-y_0)^2/b^2 + (z-z_0)^2/c^2 = R^2`
@@ -662,5 +630,3 @@ def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options)
     mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================

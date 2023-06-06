@@ -13,12 +13,8 @@ import maia.io      as Mio
 
 from maia.algo.part import extract_part as EXP
 
-# ========================================================================================
-# ----------------------------------------------------------------------------------------
-# Reference directory
+# > Reference directory
 ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
-# ----------------------------------------------------------------------------------------
-# ========================================================================================
 
 
 PART_TOOLS = []
@@ -28,8 +24,6 @@ if maia.pdm_has_ptscotch:
   PART_TOOLS.append("ptscotch")
 
 
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def plane_eq(x,y,z) :
   peq1 = [ 1., 0., 0., 0.6]
   peq2 = [-1., 0., 0., 0.6]
@@ -37,16 +31,8 @@ def plane_eq(x,y,z) :
   behind_plane2 = x*peq2[0] + y*peq2[1] + z*peq2[2] - peq2[3] < 0.
   between_planes = np.logical_and(behind_plane1, behind_plane2)
   return between_planes
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------------------
 def initialize_zsr_by_eq(zone, variables, function, location, comm):
   # In/out selection array
   in_extract_part = function(*variables)
@@ -68,13 +54,11 @@ def initialize_zsr_by_eq(zone, variables, function, location, comm):
 
   PT.new_ZoneSubRegion("ZSR_FlowSolution", point_list=extract_lnum, loc=location, parent=zone)
   return np.ascontiguousarray(extract_lnum)
-# ---------------------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------------------
 def generate_test_tree(n_vtx,n_part,location,comm):
 
-  # --- CUBE GEN AND PART ---------------------------------------------------------------
+  # > Cube generation and partitioning
   # Cube generation
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", comm, [-2.5, -2.5, -2.5], 5.)
 
@@ -83,9 +67,9 @@ def generate_test_tree(n_vtx,n_part,location,comm):
   part_tree     = MF.partition_dist_tree(dist_tree, comm,
                                          zone_to_parts=zone_to_parts,
                                          preserve_orientation=True)
-  # -------------------------------------------------------------------------------------
 
-  # --- INIT ZSR FIELDS -----------------------------------------------------------------
+
+  # > Init ZSR fields
   point_list = list()
   for zone in PT.get_all_Zone_t(part_tree):
     # Nodes coordinates
@@ -137,47 +121,33 @@ def generate_test_tree(n_vtx,n_part,location,comm):
     PT.new_DataArray("ZSR_ccz", ccz[point_list_loc[0]-elt_range[0]], parent=zsr_node)
 
     point_list.append(point_list_loc[0])
-  # ---------------------------------------------------------------------------------------
 
   return part_tree, point_list
-# ---------------------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
 
-
-
-
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert",'parmetis'])
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
 @pytest_parallel.mark.parallel([1,3])
 def test_extract_cell_from_zsr_U(graph_part_tool, comm, write_output):
 
-  # --- GENERATE TREE -------------------------------------------------------------------
+  # > Generate tree
   n_vtx  = 6
   n_part = 2
   part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
-  # ------------------------------------------------------------------------------------- 
 
-  # --- EXTRACT PART --------------------------------------------------------------------
+  # > Extract part
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", comm,
                                             # equilibrate=1,
                                             graph_part_tool=graph_part_tool,
                                             containers_name=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"]
                                             )
-  # ------------------------------------------------------------------------------------- 
 
-  # -------------------------------------------------------------------------------------
-  # Part to dist
+  # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
 
-  # Compare to reference solution
+  # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
@@ -188,26 +158,19 @@ def test_extract_cell_from_zsr_U(graph_part_tool, comm, write_output):
   
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
-  # -------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
 @pytest_parallel.mark.parallel([1,3])
 def test_extractor_cell_from_zsr_U(graph_part_tool, comm, write_output):
 
-  # --- GENERATE TREE -------------------------------------------------------------------
+  # > Generate tree
   n_vtx  = 6
   n_part = 2
   part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
-  # ------------------------------------------------------------------------------------- 
 
-  # --- EXTRACT PART --------------------------------------------------------------------
+  # > Extract part
   extractor = EXP.create_extractor_from_zsr(part_tree, "ZSR_FlowSolution", comm,
                                             # equilibrate=1,
                                             # graph_part_tool="hilbert"
@@ -216,13 +179,11 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, comm, write_output):
   # extractor.exchange_zsr_fields("ZSR_FlowSolution", comm)
   extractor.exchange_fields(["ZSR_FlowSolution"]) # Works also with the ZSR node
   part_tree_ep = extractor.get_extract_part_tree()
-  # ------------------------------------------------------------------------------------- 
 
-  # -------------------------------------------------------------------------------------
-  # Part to dist
+  # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
 
-  # Compare to reference solution
+  # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
@@ -233,39 +194,30 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, comm, write_output):
   
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
-  # -------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
 @pytest_parallel.mark.parallel([1,3])
 def test_extract_cell_from_point_list_U(graph_part_tool, comm, write_output):
 
-  # --- GENERATE TREE -------------------------------------------------------------------
+  # > Generate tree
   n_vtx  = 6
   n_part = 2
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
-  # ------------------------------------------------------------------------------------- 
 
-  # --- EXTRACT PART --------------------------------------------------------------------
+  # > Extract part
   extractor = EXP.Extractor(part_tree, [point_list], "CellCenter", comm,
                             # equilibrate=1,
                             # graph_part_tool=graph_part_tool,
                            )
   extractor.exchange_fields(['FlowSolution_NC','FlowSolution_CC'])
   part_tree_ep = extractor.get_extract_part_tree()
-  # ------------------------------------------------------------------------------------- 
 
-  # -------------------------------------------------------------------------------------
-  # Part to dist
+  # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
 
-  # Compare to reference solution
+  # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell_from_point_list.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
@@ -276,40 +228,30 @@ def test_extract_cell_from_point_list_U(graph_part_tool, comm, write_output):
   
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
-  # -------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
 @pytest.mark.parametrize("graph_part_tool", PART_TOOLS)
 @pytest_parallel.mark.parallel([1,3])
 def test_extract_face_from_point_list_U(graph_part_tool, comm, write_output):
 
-  # --- GENERATE TREE -------------------------------------------------------------------
+  # > Generate tree
   n_vtx  = 6
   n_part = 2
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'FaceCenter',comm)
-  # -------------------------------------------------------------------------------------
 
-  # --- EXTRACT PART --------------------------------------------------------------------
+  # > Extract part
   extractor = EXP.Extractor(part_tree, [point_list], "FaceCenter", comm,
                             # equilibrate=1,
                             graph_part_tool=graph_part_tool
                            )  
   extractor.exchange_fields(['FlowSolution_NC',"ZSR_FlowSolution"])
   part_tree_ep = extractor.get_extract_part_tree()
-  # -------------------------------------------------------------------------------------
 
-  # -------------------------------------------------------------------------------------
-  # Part to dist
+  # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
 
-  # Compare to reference solution
+  # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_face_from_point_list.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
@@ -320,17 +262,8 @@ def test_extract_face_from_point_list_U(graph_part_tool, comm, write_output):
 
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
-  # -------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
-# @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
 @pytest_parallel.mark.parallel([1,3])
 def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
@@ -341,7 +274,7 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'Vertex',comm)
   # -------------------------------------------------------------------------------------
 
-  # # --- EXTRACT PART --------------------------------------------------------------------
+  # # > Extract part
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", comm,
                                             # equilibrate=1,
                                             graph_part_tool=graph_part_tool,
@@ -355,10 +288,10 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
   # -------------------------------------------------------------------------------------
 
   # -------------------------------------------------------------------------------------
-  # Part to dist
+  # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
 
-  # Compare to reference solution
+  # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_vertex_from_zsr.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
@@ -369,18 +302,13 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
 
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
-  # -------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
 @pytest_parallel.mark.parallel([1,3])
 def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
 
-  # --- GENERATE TREE -------------------------------------------------------------------
+  # > Generate tree
   n_vtx  = 6
   n_part = 4
   part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
@@ -402,21 +330,18 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
       grid_loc_n   = PT.new_GridLocation('FaceCenter', parent=neuma_data_n)
       sphere       = PT.new_DataArray('sphere_bc'  , bc_cfx**2 + bc_cfy**2 + bc_cfz**2 - 1, parent=neuma_data_n)
       cylinder     = PT.new_DataArray('cylinder_bc', bc_cfx**2 + bc_cfy**2             - 1, parent=neuma_data_n)
-  # ------------------------------------------------------------------------------------- 
 
-  # --- EXTRACT PART --------------------------------------------------------------------
+  # > Extract part
   part_tree_ep = EXP.extract_part_from_bc_name( part_tree, "Xmin", comm,
                                                 graph_part_tool=graph_part_tool,
                                                 containers_name=['FlowSolution_NC'],
                                                 )
-  # ------------------------------------------------------------------------------------- 
 
-  # -------------------------------------------------------------------------------------
-  # Part to dist
+  # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
   PT.get_node_from_label(dist_tree_ep,'ZoneSubRegion_t')[3] = 'FlowSolution_t'
 
-  # Compare to reference solution
+  # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_bc_from_bc_name.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
@@ -425,8 +350,5 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_bc_from_bc_name.cgns'), comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')                , comm)
 
-  # Recover dist tree force R4 so use type_tol=True
+  # > Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
-  # -------------------------------------------------------------------------------------
-# ---------------------------------------------------------------------------------------
-# =======================================================================================

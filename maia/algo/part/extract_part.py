@@ -1,43 +1,34 @@
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
-from    mpi4py import MPI
-import  numpy as np
+import time
+import mpi4py.MPI as MPI
 
-import  maia
-import  maia.pytree   as     PT
-from    maia.factory  import dist_from_part
-from    maia.transfer import utils                as TEU
-from    maia.utils    import np_utils, layouts, py_utils
-from    .extraction_utils   import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
-from    .point_cloud_utils  import create_sub_numbering
+import maia
+import maia.pytree        as PT
+import maia.utils.logging as mlog
+from   maia.factory  import dist_from_part
+from   maia.transfer import utils                as TEU
+from   maia.utils    import np_utils, layouts, py_utils
+from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
+from   .point_cloud_utils  import create_sub_numbering
+
+import numpy as np
 
 import Pypdm.Pypdm as PDM
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 
 DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
                  2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
-
-
-# =======================================================================================
 class Extractor:
   def __init__( self,
                 part_tree, point_list, location, comm,
                 equilibrate=True,
                 graph_part_tool="hilbert"):
 
-    self.part_tree        = part_tree
-    self.exch_tool_box    = list()
-    self.comm             = comm
+    self.part_tree     = part_tree
+    self.exch_tool_box = list()
+    self.comm          = comm
 
     # Get zones by domains
     part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
@@ -84,13 +75,9 @@ class Extractor:
 
   def get_extract_part_tree(self) :
     return self.extracted_tree
-# =======================================================================================
 
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box, container_name, comm) :
 
   loc_correspondance = {'Vertex'    : 'Vertex',
@@ -152,7 +139,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   if partial_field:
     pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm)
 
-  # --- Field exchange ----------------------------------------------------------------
+  # > Field exchange
   for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
     fld_name = PT.get_name(fld_node)
     fld_path = f"{container_name}/{fld_name}"
@@ -191,18 +178,9 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
     # Update global numbering in FS
     partial_gnum = create_sub_numbering([part1_ln_to_gn[0][new_point_list]], comm)[0]
     PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_ep)
-# ---------------------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
 
-
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def extract_part_one_domain(part_zones, point_list, dim, comm,
                             equilibrate=True,
                             graph_part_tool="hilbert"):
@@ -254,7 +232,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 
   pdm_ep.compute()
 
-  # > Reconstruction du maillage de l'extract part --------------------------------------
+  # > Reconstruction du maillage de l'extract part
   n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL  )
   n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  )
   n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  )
@@ -265,7 +243,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                  2: [[n_extract_vtx, n_extract_face, 0]],
                  3: [[n_extract_vtx, n_extract_cell, 0]] }
 
-  # --- ExtractPart zone construction ---------------------------------------------------
+  # > ExtractPart zone construction
   extracted_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                                size=size_by_dim[dim],
                                type='Unstructured')
@@ -333,15 +311,9 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   exch_tool_box = {'part_to_part' : ptp, 'parent_elt' : parent_elt}
 
   return extracted_zone, exch_tool_box
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
 
-# =======================================================================================
-# --- EXTRACT PART FROM ZSR -------------------------------------------------------------
-
-# ---------------------------------------------------------------------------------------
 def extract_part_from_zsr(part_tree, zsr_name, comm, containers_name=[], **options):
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
@@ -384,18 +356,22 @@ def extract_part_from_zsr(part_tree, zsr_name, comm, containers_name=[], **optio
       :end-before:  #extract_from_zsr@end
       :dedent: 2
   """
-
-
+  mlog.info(f"Extract part...")
+  start = time.time()
   extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
+  end = time.time()
+  mlog.info(f"Extract part done ({end-start:.2f} s) --")
 
-  extractor.exchange_fields(containers_name)
+  if containers_name:
+    mlog.info(f"Data exchange from initial tree to extracted tree...")
+    start = time.time()
+    extractor.exchange_fields(containers_name)
+    end = time.time()
+    mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
   return extractor.get_extract_part_tree()
 
-# ---------------------------------------------------------------------------------------
 
-
-# ---------------------------------------------------------------------------------------
 def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
   """Same as extract_part_from_zsr, but return the extractor object."""
   # Get zones by domains
@@ -426,19 +402,9 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
 
   return Extractor(part_tree, point_list, location, comm,
                    graph_part_tool=graph_part_tool)
-# ---------------------------------------------------------------------------------------
-
-# --- END EXTRACT PART FROM ZSR ---------------------------------------------------------
-# =======================================================================================
 
 
 
-
-
-
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def extract_part_from_bc_name(part_tree, bc_name, comm,
                               transfer_dataset=True,
                               containers_name=[],
@@ -484,6 +450,3 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
     containers_name.append(bc_name)
 
   return extract_part_from_zsr(local_part_tree, bc_name, comm, containers_name, **options)
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
-
