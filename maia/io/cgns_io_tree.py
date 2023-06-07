@@ -74,7 +74,22 @@ def read_tree(filename, legacy=False):
       from ._hdf_io_h5py import read_full
     return read_full(filename)
 
+def read_links(filename, legacy=False):
+  """Detect the links embedded in a CGNS file. 
 
+  Links information are returned as described in sids-to-python. Note that
+  no data are loaded and the tree structured is not even built.
+
+  Args:
+    filename (str) : Path of the file
+  Returns:
+    list: Links description
+  """
+  if legacy:
+    raise NotImplementedError("read_links is only available with legacy=False")
+  else:
+    from ._hdf_io_h5py import read_links
+  return read_links(filename)
 
 def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """

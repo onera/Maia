@@ -15,6 +15,7 @@ Developpement version
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add a function wrapping *Feflo.a* to perform mesh adaptation
+- File management: add a method to get the links from a CGNS file
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^

@@ -74,6 +74,7 @@ sequential manner. Be aware that information added by maia such as Distribution
 or GlobalNumbering nodes will not be removed.
 
 .. autofunction:: maia.io.read_tree
+.. autofunction:: maia.io.read_links
 .. autofunction:: maia.io.write_tree
 .. autofunction:: maia.io.write_trees
 
