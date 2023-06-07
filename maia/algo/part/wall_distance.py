@@ -302,9 +302,7 @@ class WallDistance:
         jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
         periodic_n = PT.get_node_from_label(jn_n,"Periodic_t")
         if periodic_n is not None:
-          rotation_center = PT.get_value(PT.get_node_from_name(periodic_n,'RotationCenter'))
-          rotation_angle  = PT.get_value(PT.get_node_from_name(periodic_n,'RotationAngle'))
-          translation     = PT.get_value(PT.get_node_from_name(periodic_n,'Translation'))
+          rotation_center, rotation_angle, translation = [PT.get_value(PT.get_node_from_name(periodic_n,name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
           all_periodicities.append([tuple(rotation_center), np.concatenate((rotation_angle,translation))])
       #TODO: filtrage des perio ! DONE ?
       if len(all_periodicities) > 0:
@@ -339,7 +337,6 @@ class WallDistance:
       tol = 2.5e-16
       if (sum_scalar_product/p) > tol:
         raise ValueError("Periodic wall distance computation but periodicities are not orthogonal")
-    exit()
     #TODO: test number of unique perio by connected zones family ?
     #TODO: improve assert if we know some no-match connectivities ?
     
