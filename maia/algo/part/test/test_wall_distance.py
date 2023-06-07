@@ -30,9 +30,10 @@ def test_detect_wall_families():
 from maia.algo.part.test.test_interpolate import src_part_0, src_part_1
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
+@pytest.mark.parametrize("perio", [True, False])
 @pytest_parallel.mark.parallel(2)
 class Test_wallDistance:
-  def test_U(self, comm):
+  def test_U(self, perio, comm):
     if comm.Get_rank() == 0:
       part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
       expected_wd = [0.75, 0.25, 0.25, 0.75]
@@ -57,7 +58,7 @@ class Test_wallDistance:
     PT.add_child(zone, zone_bc)
 
     # Test with family specification + propagation method + default out_fs_name
-    WD.compute_wall_distance(part_tree, comm, method="propagation", families=["WALL"])
+    WD.compute_wall_distance(part_tree, comm, method="propagation", families=["WALL"], perio=perio)
 
     fs = PT.get_child_from_name(zone, 'WallDistance')
     assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
@@ -68,7 +69,7 @@ class Test_wallDistance:
 
     #Test with family detection + cloud method + custom fs name
     PT.rm_nodes_from_name(part_tree, 'WallDistance')
-    WD.compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance')
+    WD.compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance', perio=perio)
 
     fs = PT.get_child_from_name(zone, 'MyWallDistance')
     assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
