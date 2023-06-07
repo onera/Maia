@@ -132,9 +132,8 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
       # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones
       for zgc, gc in PT.iter_children_from_predicates(duplicated_zone, gc_predicate, ancestors=True):
         gc_path = f"{zone_path}/{PT.get_name(zgc)}/{PT.get_name(gc)}"
-        init_gc_path = PT.update_path_elt(gc_path, 1, lambda zn: zn.split(".D")[0])
-        if (init_gc_path not in jn_paths_a) and (init_gc_path not in jn_paths_b):
-          gc_value = PT.get_value(gc).split(".D0")[0]
+        if (gc_path not in jn_paths_a) and (gc_path not in jn_paths_b):
+          gc_value = ".D0".join(PT.get_value(gc).split(".D0")[0:-1])
           if gc_value in gc_values_to_update:
             PT.set_value(gc, f"{gc_value}.D{n+1}")
 
