@@ -463,24 +463,20 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
       :end-before: #compute_iso_surface@end
       :dedent: 2
   """
+  start = time.time()
 
   elt_type = options.get("elt_type", "TRI_3")
   assert(elt_type in ["TRI_3","QUAD_4","NGON_n"])
 
   # Isosurface extraction
-  mlog.info(f"Isosurface generation...")
-  start = time.time()
   iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, comm)
-  end = time.time()
-  mlog.info(f"Isosurface generated ({end-start:.2f} s) --")
   
   # Interpolation
   if containers_name:
-    mlog.info(f"Volumic to isosurface exchange...")
-    start = time.time()
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
-    end = time.time()
-    mlog.info(f"Exchange done ({end-start:.2f} s) --")
+  
+  end = time.time()
+  mlog.info(f"Isosurface completed ({end-start:.2f} s) --")
 
   return iso_part_tree
 
@@ -534,22 +530,19 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
       :end-before: #compute_plane_slice@end
       :dedent: 2
   """
+  start = time.time()
+
   elt_type = options.get("elt_type", "TRI_3")
 
   # Isosurface extraction
-  mlog.info(f"Isosurface generation...")
-  start = time.time()
   iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, comm)
-  end = time.time()
-  mlog.info(f"Isosurface generated ({end-start:.2f} s) --")
 
   # Interpolation
   if containers_name:
-    mlog.info(f"Volumic to isosurface exchange...")
-    start = time.time()
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
-    end = time.time()
-    mlog.info(f"Exchange done ({end-start:.2f} s) --")
+
+  end = time.time()
+  mlog.info(f"Plane slice completed ({end-start:.2f} s) --")
 
   return iso_part_tree
 
@@ -578,22 +571,19 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
       :end-before: #compute_spherical_slice@end
       :dedent: 2
   """
+  start = time.time()
+
   elt_type = options.get("elt_type", "TRI_3")
 
   # Isosurface extraction
-  mlog.info(f"Isosurface generation...")
-  start = time.time()
   iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, comm)
-  end = time.time()
-  mlog.info(f"Isosurface generated ({end-start:.2f} s) --")
 
   # Interpolation
   if containers_name:
-    mlog.info(f"Volumic to isosurface exchange...")
-    start = time.time()
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
-    end = time.time()
-    mlog.info(f"Exchange done ({end-start:.2f} s) --")
+
+  end = time.time()
+  mlog.info(f"Spherical slice completed ({end-start:.2f} s) --")
 
   return iso_part_tree
 
@@ -623,21 +613,18 @@ def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options)
       :end-before: #compute_elliptical_slice@end
       :dedent: 2
   """
+  start = time.time()
+
   elt_type = options.get("elt_type", "TRI_3")
 
   # Isosurface extraction
-  mlog.info(f"Isosurface generation...")
-  start = time.time()
   iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, comm)
-  end = time.time()
-  mlog.info(f"Isosurface generated ({end-start:.2f} s) --")
 
   # Interpolation
   if containers_name:
-    mlog.info(f"Volumic to isosurface exchange...")
-    start = time.time()
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
-    end = time.time()
-    mlog.info(f"Exchange done ({end-start:.2f} s) --")
+
+  end = time.time()
+  mlog.info(f"Elliptical slice completed ({end-start:.2f} s) --")
 
   return iso_part_tree

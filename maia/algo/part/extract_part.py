@@ -364,19 +364,14 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   BCDataSet induit psk on passe par le meem endroit
   '''
 
-
-  mlog.info(f"Extract part...")
   start = time.time()
   extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
-  end = time.time()
-  mlog.info(f"Extract part done ({end-start:.2f} s) --")
 
   if containers_name:
-    mlog.info(f"Data exchange from initial tree to extracted tree...")
-    start = time.time()
     extractor.exchange_fields(containers_name)
-    end = time.time()
-    mlog.info(f"Exchange done ({end-start:.2f} s) --")
+  end = time.time()
+
+  mlog.info(f"\"{zsr_name}\" ZoneSubRegion extraction completed ({end-start:.2f} s) --")
 
   return extractor.get_extract_part_tree()
 
