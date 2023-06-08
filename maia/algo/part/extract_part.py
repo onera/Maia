@@ -314,14 +314,14 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 
 
 
-def extract_part_from_zsr(part_tree, zsr_name, comm, containers_name=[], **options):
+def extract_part_from_zsr(part_tree, zsr_name, comm, container_names=[], **options):
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
 
   Dimension of the output mesh is set up accordingly to the GridLocation of the ZoneSubRegion.
   Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.
 
-  In addition, containers specified in ``containers_name`` list are transfered to the extracted tree.
+  In addition, containers specified in ``container_names`` list are transfered to the extracted tree.
   Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.
 
   Args:
@@ -329,7 +329,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm, containers_name=[], **optio
       connectivities are managed.
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
-    containers_name (list of str) : List of the names of the fields containers to transfer
+    container_names (list of str) : List of the names of the fields containers to transfer
                                     on the output extracted tree.
     **options: Options related to the extraction.
   Returns:
@@ -346,7 +346,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm, containers_name=[], **optio
     - Partitions must come from a single initial domain on input tree.
   
   See also:
-    :func:`create_extractor_from_zsr` takes the same parameters, excepted ``containers_name``,
+    :func:`create_extractor_from_zsr` takes the same parameters, excepted ``container_names``,
     and returns an Extractor object which can be used to exchange containers more than once through its
     ``Extractor.exchange_fields(container_name)`` method.
   
@@ -362,10 +362,10 @@ def extract_part_from_zsr(part_tree, zsr_name, comm, containers_name=[], **optio
   end = time.time()
   mlog.info(f"Extract part done ({end-start:.2f} s) --")
 
-  if containers_name:
+  if container_names:
     mlog.info(f"Data exchange from initial tree to extracted tree...")
     start = time.time()
-    extractor.exchange_fields(containers_name)
+    extractor.exchange_fields(container_names)
     end = time.time()
     mlog.info(f"Exchange done ({end-start:.2f} s) --")
 
@@ -407,7 +407,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
 
 def extract_part_from_bc_name(part_tree, bc_name, comm,
                               transfer_dataset=True,
-                              containers_name=[],
+                              container_names=[],
                               **options):
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
@@ -424,6 +424,7 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   """
 
   # Local copy of the part_tree to add ZSR 
+  l_container_names = container_names
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
@@ -447,6 +448,7 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
               PT.add_child(zsr_bc_n, PT.get_child_from_name(bc_n, name))
 
   if transfer_dataset and comm.allreduce(there_is_bcdataset, MPI.LOR):
-    containers_name.append(bc_name)
+    l_container_names = container_names + [bc_name] # not to change the initial container_names list
 
-  return extract_part_from_zsr(local_part_tree, bc_name, comm, containers_name, **options)
+
+  return extract_part_from_zsr(local_part_tree, bc_name, comm, l_container_names, **options)
