@@ -115,7 +115,17 @@ pages:
   before_script: 
     - ''
   script:
-    - cp -r build/doc/sphinx/html public
+    - mkdir public
+    - cp -r /scratchm/sonics/usr/maia/v1.0/doc/html public/1.0
+    - cp -r /scratchm/sonics/usr/maia/v1.1/doc/html public/1.1
+    - cp -r build/doc/sphinx/html public/dev
+    - |
+      cat > public/index.html << EOF
+      <head>
+        <meta http-equiv='refresh' content='0; URL=dev/index.html'>
+      </head>
+      EOF
+
   artifacts:
     paths:
       - public

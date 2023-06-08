@@ -90,3 +90,39 @@ rst_prolog = """
 import subprocess
 subprocess.run(["../scripts/maia_yaml_examples_to_hdf5", "../share/_generated"], stdout=subprocess.DEVNULL)
 
+############################
+# SETUP THE RTD LOWER-LEFT #
+############################
+# See https://github.com/maltfield/rtd-github-pages for details
+try:
+   html_context
+except NameError:
+   html_context = dict()
+html_context['display_lower_left'] = True
+
+REPO_NAME = 'mesh/maia' #Namespace in the gitlab pages server
+current_language = 'en'
+current_version = 'dev'
+ 
+# tell the theme which language to we're currently building
+html_context['current_language'] = current_language
+# tell the theme which version we're currently on ('current_version' affects
+# the lower-left rtd menu and 'version' affects the logo-area version)
+html_context['current_version'] = current_version
+if current_version == 'dev':
+  html_context['version'] = current_version
+else:
+  html_context['version'] = f'v{current_version}'
+ 
+# POPULATE LINKS TO OTHER LANGUAGES
+html_context['languages'] = list()
+for lang in []:
+   html_context['languages'].append( (lang, f'/{REPO_NAME}/{lang}/{current_version}/') )
+ 
+# POPULATE LINKS TO OTHER VERSIONS
+html_context['versions'] = list()
+for version in ['dev', '1.1', '1.0']:
+   html_context['versions'].append( (version, f'/{REPO_NAME}/{version}/') )
+
+# POPULATE LINKS TO OTHER FORMATS/DOWNLOADS
+html_context['downloads'] = list()
