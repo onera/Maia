@@ -201,7 +201,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   # Definition of the PDM object IsoSurface
   pdm_isos = PDM.IsoSurface(comm, 3, PDM_iso_type, n_part)
   pdm_isos.isosurf_elt_type_set(PDM_elt_type)
-
+  pdm_isos.isosurf_part_method_set(PDM._PDM_SPLIT_DUAL_WITH_PTSCOTCH) # Better partitioning in 2d
 
   if iso_kind=="FIELD":
     for i_part, part_zone in enumerate(part_zones):
