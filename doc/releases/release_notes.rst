@@ -9,6 +9,18 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Developpement version
+---------------------
+
+Feature improvements
+^^^^^^^^^^^^^^^^^^^^
+- file_to_dist_tree: correct unsigned NFace connectivity if possible
+
+Fixes
+^^^^^
+- merge_zones: fix unwanted merge of BCDataSet_t when merge_strategy is None
+
+
 v1.1 (May 2023)
 ---------------
 
