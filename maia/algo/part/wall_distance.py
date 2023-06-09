@@ -298,13 +298,12 @@ class WallDistance:
           PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
       all_periodicities = []
+      # No need to select perio jns because only perio are in the skeleton tree
       for jns_pair in matching_jns_tools.get_matching_jns(skeleton_tree):
         jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
         periodic_n = PT.get_node_from_label(jn_n,"Periodic_t")
-        if periodic_n is not None:
-          rotation_center, rotation_angle, translation = [PT.get_value(PT.get_node_from_name(periodic_n,name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
-          all_periodicities.append([tuple(rotation_center), np.concatenate((rotation_angle,translation))])
-      #TODO: filtrage des perio ! DONE ?
+        rotation_center, rotation_angle, translation = [PT.get_value(PT.get_node_from_name(periodic_n,name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
+        all_periodicities.append([tuple(rotation_center), np.concatenate((rotation_angle,translation))])
       if len(all_periodicities) > 0:
         perio_dict = {}
         for rot_c, rot_a_and_tr in all_periodicities:
@@ -320,26 +319,10 @@ class WallDistance:
             self.periodicities.append([np.array(key),value[0:3],value[3:6]])
       else:
         self.perio = False
-      assert len(self.periodicities) < 4
     else:
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
       self.perio = False
-    
-    #TODO: check if perio are ortho ? DONE ?
-    if self.perio and len(self.periodicities)>1:
-      sum_scalar_product = 0.
-      for p, (rot_c_cur, rot_a_cur, tr_cur) in enumerate(self.periodicities):
-        # We just have to test non already tested scalar products
-        for rot_c, rot_a, tr in self.periodicities[p+1:]:
-          sum_scalar_product += abs(np.dot(rot_a_cur, rot_a))
-          sum_scalar_product += abs(np.dot(tr_cur, tr))
-      #TODO : tol as user parameter ?
-      tol = 2.5e-16
-      if (sum_scalar_product/p) > tol:
-        raise ValueError("Periodic wall distance computation but periodicities are not orthogonal")
-    #TODO: test number of unique perio by connected zones family ?
-    #TODO: improve assert if we know some no-match connectivities ?
-    
+        
     # Search families if its are not given
     if not self.families:
       self.families = detect_wall_families(skeleton_tree)
@@ -448,5 +431,5 @@ def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point
   walldist.compute()
   end = time.time()
   #walldist.dump_times()
-  mlog.info(f"Wall distance completed ({end-start:.2f} s)")
+  mlog.info(f"Wall distance from families {families} completed ({end-start:.2f} s)")
 
