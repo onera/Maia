@@ -158,7 +158,7 @@ Base CGNSBase_t:
     pathes = MJT.get_matching_jns(self.dist_tree)
     assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
     assert pathes[1] == ('Base/ZoneA/ZGC/match1', 'Base/ZoneB/ZGC/match2')
-    pathes = MJT.get_matching_jns(self.dist_tree, 'Vertex')
+    pathes = MJT.get_matching_jns(self.dist_tree, lambda n: PT.Subset.GridLocation(n) == 'Vertex')
     assert len(pathes) == 1
     assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
 

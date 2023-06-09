@@ -124,17 +124,17 @@ def update_jn_name(dist_tree, jn_path, new_name):
   PT.set_name(cur_jn, new_name)
   PT.set_value(opp_gc_name_n, new_name)
   
-def get_matching_jns(dist_tree, filter_loc=None):
+def get_matching_jns(dist_tree, select_func=None):
   """
   Return the list of pairs of matching jns
   """
-  if filter_loc is None:
+  if select_func is None:
     gc_query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
                          and PT.GridConnectivity.is1to1(n)
   else:
     gc_query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
                          and PT.GridConnectivity.is1to1(n) \
-                         and PT.Subset.GridLocation(n) == filter_loc
+                         and select_func(n)
 
   query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]
 
