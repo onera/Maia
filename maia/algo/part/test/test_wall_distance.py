@@ -79,6 +79,59 @@ class Test_wallDistance:
     assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
 @pytest_parallel.mark.parallel(2)
+def test_walldistance_perio(comm):
+  #Case generation
+  dist_treeU = maia.factory.generate_dist_block(3, "Poly", comm, edge_length=2.)
+  coordX, coordY, coordZ = [PT.get_value(PT.get_node_from_name(dist_treeU,name)) \
+                            for name in ["CoordinateX", "CoordinateY", "CoordinateZ"]]
+  coordX += coordY
+  coordY -= coordZ
+
+  for bc in PT.get_nodes_from_label(dist_treeU, "BC_t"):
+    PT.new_Family(f"Fam_{PT.get_name(bc)}", parent=PT.get_child_from_label(dist_treeU, "CGNSBase_t"))
+    PT.new_node(name='FamilyName', label='FamilyName_t', value=f"Fam_{PT.get_name(bc)}", parent=bc)
+
+  maia.algo.dist.connect_1to1_families(dist_treeU, ('Fam_Xmin', 'Fam_Xmax'), comm,
+          periodic={'translation' : np.array([2.,0.,0.])})
+
+  maia.algo.dist.connect_1to1_families(dist_treeU, ('Fam_Zmin', 'Fam_Zmax'), comm,
+          periodic={'translation' : np.array([0.,-2.,2.])})
+
+  zone_paths1 = maia.pytree.predicates_to_paths(dist_treeU, "CGNSBase_t/Zone_t")
+  jn_paths_for_dupl1 = [['Base/zone/ZoneGridConnectivity/Xmin_0'],['Base/zone/ZoneGridConnectivity/Xmax_0']]
+  maia.algo.dist.duplicate_from_periodic_jns(dist_treeU, zone_paths1, jn_paths_for_dupl1, 1, comm)
+
+  zone_paths2 = maia.pytree.predicates_to_paths(dist_treeU, "CGNSBase_t/Zone_t")
+  jn_paths_for_dupl2 = [['Base/zone.D0/ZoneGridConnectivity/Zmin_0','Base/zone.D1/ZoneGridConnectivity/Zmin_0'],
+                        ['Base/zone.D0/ZoneGridConnectivity/Zmax_0','Base/zone.D1/ZoneGridConnectivity/Zmax_0']]
+  maia.algo.dist.duplicate_from_periodic_jns(dist_treeU, zone_paths2, jn_paths_for_dupl2, 1, comm)
+
+  part_tree = maia.factory.partition_dist_tree(dist_treeU, comm)
+
+  # Test with family specification
+  WD.compute_wall_distance(part_tree, comm, families=["Fam_Ymin"])
+
+  expected_wd     = [0.35355339, 0.35355339, 1.06066017, 1.06066017,
+                     0.35355339, 0.35355339, 1.06066017, 1.06066017]
+  if comm.rank == 0:
+    expected_gnum   = [[ 1, 4, 3, 126,  2, 3, 92, 37],
+                       [37, 6, 5,  98, 38, 5, 98,  5]]
+    expected_dom_id = [[0, 0, 0, 3, 0, 0, 2, 1],
+                       [1, 0, 0, 2, 1, 0, 2, 0]]
+  elif comm.rank == 1:
+    expected_gnum   = [[ 73, 76, 75, 38,  74, 75, 4, 109],
+                       [109, 78, 77,  6, 110, 77, 6,  77]]
+    expected_dom_id = [[2, 2, 2, 1, 2, 2, 0, 3],
+                       [3, 2, 2, 0, 3, 2, 0, 2]]
+
+  for z, zone in enumerate(PT.get_all_Zone_t(part_tree)):
+    fs = PT.get_child_from_name_and_label(zone, 'WallDistance', 'FlowSolution_t')
+    assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+    assert np.allclose(PT.get_value(PT.get_child_from_name(fs, 'TurbulentDistance')), expected_wd, rtol=1e-10)
+    assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltGnum'))  == expected_gnum[z]).all()
+    assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltDomId')) == expected_dom_id[z]).all()
+
+@pytest_parallel.mark.parallel(2)
 def test_walldistance_vtx(comm):
   if comm.Get_rank() == 0:
     part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
