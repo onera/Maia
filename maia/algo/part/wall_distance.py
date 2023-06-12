@@ -431,5 +431,5 @@ def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point
   walldist.compute()
   end = time.time()
   #walldist.dump_times()
-  mlog.info(f"Wall distance from families {families} completed ({end-start:.2f} s)")
+  mlog.info(f"Wall distance from families {walldist.families} completed ({end-start:.2f} s)")
 
