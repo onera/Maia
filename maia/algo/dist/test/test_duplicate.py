@@ -10,14 +10,15 @@ from maia.utils       import test_utils as TU
 
 from maia.algo.dist   import duplicate
 
+def get_coords_values(zone_node):
+  return [PT.get_value(PT.get_node_from_name(zone_node, f"Coordinate{c}")) for c in ['X', 'Y', 'Z']]
+
+def get_perio_values(perio_node):
+  return [PT.get_value(PT.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
+
 ###############################################################################
 @pytest_parallel.mark.parallel([1,3])
 def test_duplicate_from_periodic_jns(comm):
-
-  def get_perio_values(perio_node):
-    return [PT.get_value(PT.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
-  def get_coords_values(zone_node):
-    return [PT.get_value(PT.get_node_from_name(zone_node, f"Coordinate{c}")) for c in ['X', 'Y', 'Z']]
 
   yaml_path = os.path.join(TU.sample_mesh_dir, 'quarter_crown_square_8.yaml')
   dist_tree = file_to_dist_tree(yaml_path, comm)
@@ -91,8 +92,6 @@ def test_duplicate_from_periodic_jns(comm):
 ###############################################################################
 @pytest_parallel.mark.parallel(2)
 def test_duplicate_zones_from_periodic_join_by_rotation_to_360(comm):
-  def get_coords_values(zone_node):
-    return [PT.get_value(PT.get_node_from_name(zone_node, f"Coordinate{c}")) for c in ['X', 'Y', 'Z']]
 
   yaml_path = os.path.join(TU.sample_mesh_dir, 'quarter_crown_square_8.yaml')
   dist_tree = file_to_dist_tree(yaml_path,comm)
