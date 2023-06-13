@@ -301,8 +301,7 @@ class WallDistance:
       # No need to select perio jns because only perio are in the skeleton tree
       for jns_pair in matching_jns_tools.get_matching_jns(skeleton_tree):
         jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
-        periodic_n = PT.get_node_from_label(jn_n,"Periodic_t")
-        rotation_center, rotation_angle, translation = [PT.get_value(PT.get_node_from_name(periodic_n,name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
+        rotation_center, rotation_angle, translation = PT.GridConnectivity.get_perio_values(jn_n)
         all_periodicities.append([tuple(rotation_center), np.concatenate((rotation_angle,translation))])
       if len(all_periodicities) > 0:
         perio_dict = {}

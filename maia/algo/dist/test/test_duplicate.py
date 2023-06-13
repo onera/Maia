@@ -10,12 +10,6 @@ from maia.utils       import test_utils as TU
 
 from maia.algo.dist   import duplicate
 
-def get_coords_values(zone_node):
-  return [PT.get_value(PT.get_node_from_name(zone_node, f"Coordinate{c}")) for c in ['X', 'Y', 'Z']]
-
-def get_perio_values(perio_node):
-  return [PT.get_value(PT.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
-
 ###############################################################################
 @pytest_parallel.mark.parallel([1,3])
 def test_duplicate_from_periodic_jns(comm):
@@ -37,8 +31,8 @@ def test_duplicate_from_periodic_jns(comm):
   zone0, zone1 = PT.get_all_Zone_t(dist_tree)
   assert (PT.get_name(zone0) == zone_basename+".D0") and (PT.get_name(zone1) == zone_basename+".D1") 
 
-  coord0 = get_coords_values(zone0)
-  coord1 = get_coords_values(zone1)
+  coord0 = PT.Zone.coordinates(zone0)
+  coord1 = PT.Zone.coordinates(zone1)
   assert np.allclose(coord0[0], coord1[0]   )
   assert np.allclose(coord0[1], coord1[1]   )
   assert np.allclose(coord0[2], coord1[2]+2.)
@@ -54,12 +48,8 @@ def test_duplicate_from_periodic_jns(comm):
     if gc0_name in ["MatchRotationA","MatchRotationB"]: #Joins by rotation
       assert PT.get_value(gc0) == zone_basename+".D0"
       assert PT.get_value(gc1) == zone_basename+".D1"
-      gcp0 = PT.get_child_from_label(gc0, "GridConnectivityProperty_t")
-      gcp1 = PT.get_child_from_label(gc1, "GridConnectivityProperty_t")
-      perio0 = PT.get_child_from_label(gcp0, "Periodic_t")
-      perio1 = PT.get_child_from_label(gcp1, "Periodic_t")
-      rotation_center0, rotation_angle0, translation0 = get_perio_values(perio0)
-      rotation_center1, rotation_angle1, translation1 = get_perio_values(perio1)
+      rotation_center0, rotation_angle0, translation0 = PT.GridConnectivity.get_perio_values(gc0)
+      rotation_center1, rotation_angle1, translation1 = PT.GridConnectivity.get_perio_values(gc1)
       assert (rotation_center0 == rotation_center1).all()
       assert (rotation_angle0  == rotation_angle1).all()
       assert (translation0     == translation1).all()
@@ -67,20 +57,16 @@ def test_duplicate_from_periodic_jns(comm):
       assert PT.get_value(gc0) == zone_basename+".D1"
       assert PT.get_value(gc1) == zone_basename+".D0"
       if gc0_name == "MatchTranslationA": #Join0 => perio*2 and join1 => not perio
-        gcp0 = PT.get_child_from_label(gc0, "GridConnectivityProperty_t")
         gcp1 = PT.get_child_from_label(gc1, "GridConnectivityProperty_t")
         assert gcp1 is None
-        perio0 = PT.get_child_from_label(gcp0, "Periodic_t")
-        rotation_center0, rotation_angle0, translation0 = get_perio_values(perio0)
+        rotation_center0, rotation_angle0, translation0 = PT.GridConnectivity.get_perio_values(gc0)
         assert (rotation_center0 == np.zeros(3)).all()
         assert (rotation_angle0  == np.zeros(3)).all()
         assert (translation0     == np.array([0.0, 0.0, -2.0])*2).all()
       else: #Join0 => not perio and join1 => perio*2
         gcp0 = PT.get_child_from_label(gc0, "GridConnectivityProperty_t")
-        gcp1 = PT.get_child_from_label(gc1, "GridConnectivityProperty_t")
         assert gcp0 is None 
-        perio1 = PT.get_child_from_label(gcp1,"Periodic_t")
-        rotation_center1, rotation_angle1, translation1 = get_perio_values(perio1)
+        rotation_center1, rotation_angle1, translation1 = PT.GridConnectivity.get_perio_values(gc1)
         assert (rotation_center1 == np.zeros(3)).all()
         assert (rotation_angle1  == np.zeros(3)).all()
         assert (translation1     == np.array([0.0, 0.0, 2.0])*2).all()
@@ -110,7 +96,7 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(comm):
   assert len(zones) == 4
   assert all([zone[0] == f"{zone_basename}.D{i}" for i, zone in enumerate(zones)])
 
-  coord0, coord1, coord2, coord3 = [get_coords_values(zone) for zone in zones]
+  coord0, coord1, coord2, coord3 = [PT.Zone.coordinates(zone) for zone in zones]
   assert np.allclose(coord0[0], -coord2[0])
   assert np.allclose(coord0[1], -coord2[1])
   assert np.allclose(coord0[2],  coord2[2])
