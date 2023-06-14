@@ -52,13 +52,13 @@ def test_two_blocks(comm):
   # > Extra family can be present
   dist_algo.connect_1to1_families(dist_tree, ('LargeJN', 'SmallJN'), comm)
 
-  # > Check (order can differ)
+  # > Check
   new_large_jn = PT.get_node_from_label(large_zone, 'GridConnectivity_t')
   new_small_jn = PT.get_node_from_label(small_zone, 'GridConnectivity_t')
-  assert (np.sort(PT.get_node_from_name(new_large_jn, 'PointList')[1]) == \
-          np.sort(PT.get_node_from_name(large_jn, 'PointList')[1])).all()
-  assert (np.sort(PT.get_node_from_name(new_small_jn, 'PointList')[1]) == \
-          np.sort(PT.get_node_from_name(small_jn, 'PointList')[1])).all()
+  assert (PT.get_node_from_name(new_large_jn, 'PointList')[1] == \
+          PT.get_node_from_name(large_jn, 'PointList')[1]).all()
+  assert (PT.get_node_from_name(new_small_jn, 'PointList')[1] == \
+          PT.get_node_from_name(small_jn, 'PointList')[1]).all()
   assert (PT.get_node_from_name(new_small_jn, 'PointList')[1] == \
           PT.get_node_from_name(new_large_jn, 'PointListDonor')[1]).all()
   assert (PT.get_node_from_name(new_small_jn, 'PointListDonor')[1] == \

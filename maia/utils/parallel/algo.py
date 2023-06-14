@@ -42,3 +42,15 @@ def dist_set_difference(ids, others, comm):
   selected = EP.block_to_block(selected, distri_in, distri_out, comm)
   return selected
 
+class DistSorter:
+  """ Argsort-like algorithm for distributed arrays.
+  Class should be instanciated with an array 'key' (of int. values); then any
+  arrays send to sort will be reorder to match key sorting order
+  """
+  def __init__(self, key, comm):
+    self.ptb = EP.PartToBlock(None, [key], comm, weight=[np.ones(key.size, np.int32)])
+
+  def sort(self, array):
+    _, sorted = self.ptb.exchange_field([array])
+    return sorted
+

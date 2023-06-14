@@ -50,12 +50,8 @@ def test_simple(input_loc, output_loc, comm):                    #    __
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
 
   if output_loc == 'FaceCenter':
-    if comm.Get_size() == 1: # Results for face are parallelism dependant
-      expected_pl = np.array([[1,2,3,4]], pdm_dtype)
-      expected_pld = np.array([[9,10,11,12]], pdm_dtype)
-    if comm.Get_size() == 3:
-      expected_pl = np.array([[1,4,3,2]], pdm_dtype)
-      expected_pld = np.array([[9,12,11,10]], pdm_dtype)
+    expected_pl = np.array([[1,2,3,4]], pdm_dtype)
+    expected_pld = np.array([[9,10,11,12]], pdm_dtype)
   elif output_loc == 'Vertex':
     expected_pl = np.array([[1,2,3,4,5,6,7,8,9]], pdm_dtype)
     expected_pld = np.array([[19,20,21,22,23,24,25,26,27]], pdm_dtype)
@@ -125,14 +121,14 @@ def test_partial_match(comm):                                 #
   found_xmin = PT.get_node_from_name(zones[1], 'Xmin_0')
   if comm.Get_rank() == 0:
     assert (PT.get_child_from_name(not_found_xmax, 'PointList')[1] == [[21]]).all()
-    assert (PT.get_child_from_name(    found_xmax, 'PointList')[1] == [[23,24]]).all()
+    assert (PT.get_child_from_name(    found_xmax, 'PointList')[1] == [[23]]).all()
     assert (PT.get_child_from_name(not_found_xmin, 'PointList')[1] == [[15]]).all()
-    assert (PT.get_child_from_name(    found_xmin, 'PointList')[1] == [[13,14]]).all()
+    assert (PT.get_child_from_name(    found_xmin, 'PointList')[1] == [[13]]).all()
   elif comm.Get_rank() == 1:
     assert (PT.get_child_from_name(not_found_xmax, 'PointList')[1] == [[22]]).all()
-    assert (PT.get_child_from_name(    found_xmax, 'PointList')[1] == [[]]).all()
+    assert (PT.get_child_from_name(    found_xmax, 'PointList')[1] == [[24]]).all()
     assert (PT.get_child_from_name(not_found_xmin, 'PointList')[1] == [[16]]).all()
-    assert (PT.get_child_from_name(    found_xmin, 'PointList')[1] == [[]]).all()
+    assert (PT.get_child_from_name(    found_xmin, 'PointList')[1] == [[14]]).all()
 
 
 @pytest_parallel.mark.parallel(1)
@@ -161,9 +157,9 @@ def test_multiple_match(comm):
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 15
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 4
 
-  assert (PT.get_node_from_predicates(zones[0], ['Zmax_0', 'PointList'])[1] == [[61,62,66,65]]).all()
+  assert (PT.get_node_from_predicates(zones[0], ['Zmax_0', 'PointList'])[1] == [[61,62,65,66]]).all()
   assert (PT.get_node_from_predicates(zones[0], ['Zmax_1', 'PointList'])[1] == [[63,64,67,68]]).all()
-  assert (PT.get_node_from_predicates(zones[1], ['Zmin_0', 'PointList'])[1] == [[25,26,28,27]]).all()
+  assert (PT.get_node_from_predicates(zones[1], ['Zmin_0', 'PointList'])[1] == [[25,26,27,28]]).all()
   assert (PT.get_node_from_predicates(zones[2], ['Zmin_0', 'PointList'])[1] == [[25,26,27,28]]).all()
 
 

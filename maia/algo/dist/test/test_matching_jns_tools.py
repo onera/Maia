@@ -195,3 +195,31 @@ Base0 CGNSBase_t:
   MJT.clear_interface_ids(dist_tree)
   assert PT.get_node_from_name(dist_tree, 'DistInterfaceId')  is None
   assert PT.get_node_from_name(dist_tree, 'DistInterfaceOrd') is None
+
+@pytest_parallel.mark.parallel(1)
+def test_sort_jn_pointlist(comm):
+  yt = """
+Base CGNSBase_t:
+  ZoneA Zone_t [[3, 2, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      perio1 GridConnectivity_t 'ZoneA':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridConnectivityDonorName Descriptor_t 'perio2':
+        PointList IndexArray_t [[7,5,3]]:
+        PointListDonor IndexArray_t [[11,12,13]]:
+      perio2 GridConnectivity_t 'Base/ZoneA':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridConnectivityDonorName Descriptor_t 'perio1':
+        PointList IndexArray_t [[11,12,13]]:
+        PointListDonor IndexArray_t [[7,5,3]]:
+"""
+  full_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = full_to_dist.distribute_tree(full_tree, comm)
+
+  MJT.sort_jn_pointlist(dist_tree, comm)
+
+  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio1/PointList')[1] == [[3,5,7]]).all()
+  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio2/PointListDonor')[1] == [[3,5,7]]).all()
+  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio2/PointList')[1] == [[13,12,11]]).all()
+  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio1/PointListDonor')[1] == [[13,12,11]]).all()

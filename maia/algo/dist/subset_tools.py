@@ -6,6 +6,24 @@ import maia.pytree.maia as MT
 from maia.transfer import protocols as EP
 from maia.utils    import np_utils, par_utils
 
+from maia.utils.parallel import algo as par_algo
+
+def sort_dist_pointlist(subset, comm):
+    pl_n = PT.get_child_from_name(subset, 'PointList')
+    pld_n = PT.get_child_from_name(subset, 'PointListDonor')
+
+    sorter = par_algo.DistSorter(pl_n[1][0], comm)
+
+    dist_pl = sorter.sort(pl_n[1][0])
+    PT.update_child(subset, 'PointList', value=dist_pl.reshape((1,-1), order='F'))
+
+    if pld_n is not None:
+      dist_pld = sorter.sort(pld_n[1][0])
+      PT.update_child(subset, 'PointListDonor', value=dist_pld.reshape((1,-1), order='F'))
+
+    new_distri = par_utils.dn_to_distribution(dist_pl.size, comm)
+    MT.newDistribution({'Index' : new_distri}, subset)
+
 def vtx_ids_to_face_ids(vtx_ids, ngon, comm):
   """
   From an array of vertex ids, search in the distributed NGon node

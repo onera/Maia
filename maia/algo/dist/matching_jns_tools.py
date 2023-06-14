@@ -1,7 +1,10 @@
 import mpi4py.MPI as MPI
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
+from .subset_tools import sort_dist_pointlist
 
 def _compare_pointrange(gc1, gc2):
  """
@@ -189,4 +192,18 @@ def clear_interface_ids(dist_tree):
   for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
     PT.rm_children_from_name(gc, 'DistInterfaceId')
     PT.rm_children_from_name(gc, 'DistInterfaceOrd')
+
+def sort_jn_pointlist(dist_tree, comm):
+  for jn_pair in get_matching_jns(dist_tree):
+    gc     = PT.get_node_from_path(dist_tree, jn_pair[0])
+    gc_opp = PT.get_node_from_path(dist_tree, jn_pair[1])
+
+    # Update current
+    sort_dist_pointlist(gc, comm)
+
+    # Update donor 
+    PT.update_child(gc_opp, 'PointList', value=PT.get_value(PT.get_node_from_name(gc,'PointListDonor')))
+    PT.update_child(gc_opp, 'PointListDonor', value=PT.get_value(PT.get_node_from_name(gc,'PointList')))
+    MT.newDistribution({'Index': PT.get_value(MT.getDistribution(gc,'Index'))}, gc_opp)
+  
 

@@ -104,6 +104,12 @@ def _convert_match_result_to_faces(out_vtx, clouds, comm):
               'lgnum_cur'     : [np.absolute(_out_face[j]['np_interface_ids_face'][0::2]) for j in range(n_interface) if not is_empty[j]],
               'lgnum_opp'      :[np.absolute(_out_face[j]['np_interface_ids_face'][1::2]) for j in range(n_interface) if not is_empty[j]]}
 
+  # Result is parallelism dependant // Sort it
+  for i, (gnum, gnum_opp) in enumerate(zip(out_face['lgnum_cur'], out_face['lgnum_opp'])):
+    sorter = par_algo.DistSorter(gnum, comm)
+    out_face['lgnum_cur'][i] = sorter.sort(gnum)
+    out_face['lgnum_opp'][i] = sorter.sort(gnum_opp)
+
   return out_face
 
 
