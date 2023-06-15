@@ -55,7 +55,8 @@ class Extractor:
                                                     equilibrate=equilibrate,
                                                     graph_part_tool=graph_part_tool)
       self.exch_tool_box.append(etb)
-      PT.add_child(extracted_base, extracted_zone)
+      if PT.Zone.n_vtx(extracted_zone)!=0:
+        PT.add_child(extracted_base, extracted_zone)
     self.extracted_tree = extracted_tree
 
   def exchange_fields(self, fs_container):
@@ -65,7 +66,7 @@ class Extractor:
     # Get zone from extractpart
     extracted_zones = PT.get_all_Zone_t(self.extracted_tree)
     assert len(extracted_zones) <= 1
-    extracted_zone = extracted_zones[0]
+    extracted_zone = extracted_zones[0] if len(extracted_zones)!=0 else None
 
     for container_name in fs_container:
       # Loop over domains
@@ -116,12 +117,13 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
 
 
   # > FlowSolution node def by zone
-  if PT.get_label(mask_container) == 'FlowSolution_t':
-    FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=part_zone_ep)
-  elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
-    FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=part_zone_ep)
-  else:
-    raise TypeError
+  if part_zone_ep is not None :
+    if PT.get_label(mask_container) == 'FlowSolution_t':
+      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=part_zone_ep)
+    elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=part_zone_ep)
+    else:
+      raise TypeError
   
 
   # > Get PTP and parentElement for the good location
@@ -129,10 +131,12 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   
   # LN_TO_GN
   _gridLocation    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
-  elt_n            = part_zone_ep if gridLocation!='FaceCenter' else PT.Zone.NGonNode(part_zone_ep)
-  if elt_n is None :return
-  part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
-  part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
+  
+  if part_zone_ep is not None:
+    elt_n            = part_zone_ep if gridLocation!='FaceCenter' else PT.Zone.NGonNode(part_zone_ep)
+    if elt_n is None :return
+    part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
+    part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
 
   # Get reordering informations if point_list
   # https://stackoverflow.com/questions/8251541/numpy-for-every-element-in-one-array-find-the-index-in-another-array
@@ -166,18 +170,24 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
     part1_stride, part1_data = ptp.reverse_wait(req_id)
 
     # Interpolation and placement
-    i_part = 0
-    PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
+    if part_zone_ep is not None:
+      i_part = 0
+      PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
   
   # Build PL with the last exchange stride
   if partial_field:
-    new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
-    point_list = new_point_list + local_pl_offset(part_zone_ep, LOC_TO_DIM[gridLocation])+1
-    new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
+    if len(part1_data)!=0 and part1_data[0].size!=0:
+      new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
+      point_list = new_point_list + local_pl_offset(part_zone_ep, LOC_TO_DIM[gridLocation])+1
+      new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
+      partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]]
+    else:
+      partial_part1_lngn = []
 
     # Update global numbering in FS
-    partial_gnum = create_sub_numbering([part1_ln_to_gn[0][new_point_list]], comm)[0]
-    PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_ep)
+    partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
+    if part_zone_ep is not None and len(partial_gnum)!=0:
+      PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
 
 
 
