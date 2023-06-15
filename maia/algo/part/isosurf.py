@@ -68,9 +68,13 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
     # LN_TO_GN
     _gridLocation    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
     
+    create_fs = True
     if iso_part_zone is not None:
-      elt_n            = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
-      # if elt_n is None :print("WAAAAAAAAAAAAARNING") ; return
+      elt_n = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
+
+      create_fs = gridLocation!='FaceCenter' or \
+                ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
+
       if elt_n is not None :
         part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
         part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
@@ -114,8 +118,12 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
 
     # > FlowSolution node def in isosurf zone
-    if iso_part_zone is not None:
-      FS_iso = PT.new_FlowSolution(container_name, loc=gridLocation, parent=iso_part_zone)
+    fs_loc = gridLocation if gridLocation!="FaceCenter" else "EdgeCenter"
+    if iso_part_zone is not None and create_fs:
+      FS_iso = PT.new_FlowSolution(container_name, loc=fs_loc, parent=iso_part_zone)
+    else :
+      FS_iso = None # Beware to the loop on containers_name (FS_iso could have been initialised with previous container_name)
+
     if partial_field:
       pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm)
 
@@ -146,10 +154,9 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       part1_stride, part1_data = ptp.reverse_wait(req_id)
 
       # > Placement
-      if iso_part_zone is not None:
+      if iso_part_zone is not None and create_fs:
         i_part = 0 # One isosurface partition
         # Ponderation if vertex
-        print(f'[{comm.Get_rank()}] len(part1_data) = {len(part1_data)}')
         if gridLocation=="Vertex" :
           weighted_fld       = part1_data[i_part]*part1_weight[i_part]
           part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
@@ -161,18 +168,15 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       if len(part1_data)!=0 and part1_data[0].size!=0:
         new_point_list = np.where(part1_stride[0]==1)[0]
         point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
+        new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
+        partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]] 
       else:
-        print(f"[{comm.Get_rank()}] JAI R")
-        PT.print_tree(FS_iso)
-        point_list = np.empty(0, dtype=np.int32)
-      new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
+        partial_part1_lngn = []
 
       # Update global numbering in FS
-      partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]] if point_list.size!=0 else []
-      partial_gnum = create_sub_numbering(partial_part1_lngn, comm) #[0]
-      print(f"[{comm.Get_rank()}] partial_gnum = {partial_gnum}")
-      if iso_part_zone is not None:
-        PT.maia.newGlobalNumbering({'Index' : partial_gnum[0] if len(partial_gnum)!=0 else []}, parent=FS_iso)
+      partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
+      if iso_part_zone is not None and create_fs and len(partial_gnum)!=0:
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_iso)
 
 
 def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
