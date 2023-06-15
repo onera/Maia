@@ -94,14 +94,14 @@ def test_compute_face_center_3d(comm):
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(1)
 def test_compute_face_center_2d(comm):
-  tree = dcube_generate(4, 1., [0,0,0], comm)
+  dslice_tree = maia.factory.generate_dist_block(4, "QUAD_4", comm)
+  pslice_tree = maia.factory.partition_dist_tree(dslice_tree, comm)
+  zone = PT.get_all_Zone_t(pslice_tree)[0]
 
-  part_tree = maia.factory.partition_dist_tree(tree, comm)
-  slice_tree = maia.algo.part.plane_slice(part_tree, [1,0,0,.2], comm, elt_type='NGON_n')
-  zone = PT.get_all_Zone_t(slice_tree)[0]
+  expected = np.array([0.16, 0.16, 0.,   0.83, 0.50, 0.,   0.50, 0.83, 0.,
+                       0.16, 0.83, 0.,   0.50, 0.50, 0.,   0.50, 0.16, 0.,
+                       0.16, 0.50, 0.,   0.83, 0.16, 0.,   0.83, 0.83, 0., ])
 
-  expected = np.array([0.2,0.16,0.16,   0.2,0.5,0.16,   0.2,0.83,0.16,   0.2,0.5 ,0.5,
-        0.2,0.83,0.5,  0.2,0.83,0.83,   0.2,0.5,0.83,   0.2,0.16,0.5,    0.2,0.16,0.83])
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
 
 def test_compute_face_center_2d_S(comm):
