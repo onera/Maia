@@ -151,6 +151,8 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             sub_pr_loc[0,:] += range_part_bc_g[0,0] - range_dist_bc[0,0]
             sub_pr_loc[1,:] += range_part_bc_g[1,0] - range_dist_bc[1,0]
             sub_pr_loc[2,:] += range_part_bc_g[2,0] - range_dist_bc[2,0]
+            sub_pr_loc[normal_idx,:] = 1
+
             i_ar  = np.arange(sub_pr_loc[0,0], sub_pr_loc[0,1]+1, dtype=pdm_dtype)
             j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
             k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
