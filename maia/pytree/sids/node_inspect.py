@@ -239,14 +239,16 @@ class GridConnectivity:
     return GridConnectivity.Type(gc) == 'Abutting1to1'
 
   @staticmethod
-  def get_perio_values(gc):
-    gcp_node = W.get_child_from_label(gc, "GridConnectivityProperty_t")
-    if gcp_node is None:
-      return [None, None, None]
-    perio_node = W.get_child_from_label(gcp_node, "Periodic_t")
+  def isperiodic(gc):
+    return W.get_node_from_label(gc, 'Periodic_t', depth=[2,2]) is not None
+
+  @staticmethod
+  def periodic_values(gc):
+    """ Return periodic data if existing (RotationCenter, RotationAngle, Translation) """
+    perio_node = W.get_node_from_label(gc, "Periodic_t", depth=[2,2])
     if perio_node is None:
-      return [None, None, None]
-    return [N.get_value(W.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]]
+      return (None, None, None)
+    return tuple((N.get_value(W.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]))
 
 
 @for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", \

@@ -1,4 +1,4 @@
-# Reference wall distance solution for the U_ATB_45 case
+# Reference wall distance solution for the U_ATB_45 case with periodic support
 CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
 Base CGNSBase_t I4 [3, 3]:
   bump_45 Zone_t I4 [[792, 460, 0]]:

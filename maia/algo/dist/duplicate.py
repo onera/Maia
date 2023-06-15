@@ -86,7 +86,7 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   first_join_in_matchs_a = PT.get_node_from_path(dist_tree, jn_paths_a[0])
   
   # Get transformation information
-  rotation_center_a, rotation_angle_a, translation_a = PT.GridConnectivity.get_perio_values(first_join_in_matchs_a)
+  rotation_center_a, rotation_angle_a, translation_a = PT.GridConnectivity.periodic_values(first_join_in_matchs_a)
   
   # Store initial periodicity information of joins of the second joins list (B)
   jn_b_properties = []
@@ -218,7 +218,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
   first_join_in_matchs_a = PT.get_node_from_path(dist_tree, _jn_paths_for_dupl[0][0])
   
   # Get transformation information
-  rotation_center_a, rotation_angle_a, translation_a = PT.GridConnectivity.get_perio_values(first_join_in_matchs_a)
+  rotation_center_a, rotation_angle_a, translation_a = PT.GridConnectivity.periodic_values(first_join_in_matchs_a)
   
   if (translation_a != np.array([0.,0.,0.])).any():
     raise ValueError("The join is not periodic only by rotation !")

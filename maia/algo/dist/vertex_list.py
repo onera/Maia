@@ -230,8 +230,8 @@ def _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx, pl_face_vtx, pld_fa
                                             pld_face_vtx, comm)
 
   #Apply transformation
-  rotation_center, rotation_angle, translation = PT.GridConnectivity.get_perio_values(jn)
-  if (rotation_center is not None) and (rotation_angle is not None) and (translation is not None):
+  if PT.GridConnectivity.isperiodic(jn):
+    rotation_center, rotation_angle, translation = PT.GridConnectivity.periodic_values(jn)
     opp_received_coords = np_utils.transform_cart_matrix(opp_received_coords.T, translation, rotation_center, rotation_angle).T
 
 
@@ -324,7 +324,6 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   pld_vtx_l = []
 
   if solo_face:
-    # gc_prop = PT.get_child_from_label(jn, 'GridConnectivityProperty_t')
     _, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
 
     pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)

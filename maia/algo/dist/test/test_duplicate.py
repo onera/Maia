@@ -48,8 +48,8 @@ def test_duplicate_from_periodic_jns(comm):
     if gc0_name in ["MatchRotationA","MatchRotationB"]: #Joins by rotation
       assert PT.get_value(gc0) == zone_basename+".D0"
       assert PT.get_value(gc1) == zone_basename+".D1"
-      rotation_center0, rotation_angle0, translation0 = PT.GridConnectivity.get_perio_values(gc0)
-      rotation_center1, rotation_angle1, translation1 = PT.GridConnectivity.get_perio_values(gc1)
+      rotation_center0, rotation_angle0, translation0 = PT.GridConnectivity.periodic_values(gc0)
+      rotation_center1, rotation_angle1, translation1 = PT.GridConnectivity.periodic_values(gc1)
       assert (rotation_center0 == rotation_center1).all()
       assert (rotation_angle0  == rotation_angle1).all()
       assert (translation0     == translation1).all()
@@ -59,14 +59,14 @@ def test_duplicate_from_periodic_jns(comm):
       if gc0_name == "MatchTranslationA": #Join0 => perio*2 and join1 => not perio
         gcp1 = PT.get_child_from_label(gc1, "GridConnectivityProperty_t")
         assert gcp1 is None
-        rotation_center0, rotation_angle0, translation0 = PT.GridConnectivity.get_perio_values(gc0)
+        rotation_center0, rotation_angle0, translation0 = PT.GridConnectivity.periodic_values(gc0)
         assert (rotation_center0 == np.zeros(3)).all()
         assert (rotation_angle0  == np.zeros(3)).all()
         assert (translation0     == np.array([0.0, 0.0, -2.0])*2).all()
       else: #Join0 => not perio and join1 => perio*2
         gcp0 = PT.get_child_from_label(gc0, "GridConnectivityProperty_t")
         assert gcp0 is None 
-        rotation_center1, rotation_angle1, translation1 = PT.GridConnectivity.get_perio_values(gc1)
+        rotation_center1, rotation_angle1, translation1 = PT.GridConnectivity.periodic_values(gc1)
         assert (rotation_center1 == np.zeros(3)).all()
         assert (rotation_angle1  == np.zeros(3)).all()
         assert (translation1     == np.array([0.0, 0.0, 2.0])*2).all()

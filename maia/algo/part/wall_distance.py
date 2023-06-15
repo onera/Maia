@@ -301,7 +301,7 @@ class WallDistance:
       # No need to select perio jns because only perio are in the skeleton tree
       for jns_pair in matching_jns_tools.get_matching_jns(skeleton_tree):
         jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
-        rotation_center, rotation_angle, translation = PT.GridConnectivity.get_perio_values(jn_n)
+        rotation_center, rotation_angle, translation = PT.GridConnectivity.periodic_values(jn_n)
         all_periodicities.append([tuple(rotation_center), np.concatenate((rotation_angle,translation))])
       if len(all_periodicities) > 0:
         perio_dict = {}
@@ -430,5 +430,5 @@ def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point
   walldist.compute()
   end = time.time()
   #walldist.dump_times()
-  mlog.info(f"Wall distance from families {walldist.families} completed ({end-start:.2f} s)")
+  mlog.info(f"Wall distance from families {walldist.families} computed ({end-start:.2f} s)")
 
