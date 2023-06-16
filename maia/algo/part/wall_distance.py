@@ -62,23 +62,22 @@ class WallDistance:
     self.perio = perio
     self.periodicities = []
     
-  def _shift_id_and_push_in_global_list(self, face_vtx_bnd_z, face_vtx_bnd_idx_z, \
-                                        face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z, \
-                                        face_vtx_bnd_l, face_vtx_bnd_idx_l, \
-                                        face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l, \
-                                        i_dom, comm):
+  def _shift_id_and_push_in_global_list(self, parts_datas, all_parts_datas, i_dom):
+
+    face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z = parts_datas
+    face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l = all_parts_datas
 
     #Find the maximal vtx/face id for this initial domain
     n_face_bnd_t = 0
     for face_ln_to_gn in face_ln_to_gn_z:
       n_face_bnd_t = max(n_face_bnd_t, np.max(face_ln_to_gn, initial=0))
-    n_face_bnd_t = comm.allreduce(n_face_bnd_t, op=MPI.MAX)
+    n_face_bnd_t = self.mpi_comm.allreduce(n_face_bnd_t, op=MPI.MAX)
     self._n_face_bnd_tot_idx.append(self._n_face_bnd_tot_idx[-1] + n_face_bnd_t)
 
     n_vtx_bnd_t = 0
     for vtx_ln_to_gn in vtx_ln_to_gn_z:
       n_vtx_bnd_t = max(n_vtx_bnd_t, np.max(vtx_ln_to_gn, initial=0))
-    n_vtx_bnd_t = comm.allreduce(n_vtx_bnd_t, op=MPI.MAX)
+    n_vtx_bnd_t = self.mpi_comm.allreduce(n_vtx_bnd_t, op=MPI.MAX)
     self._n_vtx_bnd_tot_idx.append(self._n_vtx_bnd_tot_idx[-1] + n_vtx_bnd_t)
 
     #Shift the face and vertex lngn because PDM does not manage multiple domain. This will avoid
@@ -93,22 +92,22 @@ class WallDistance:
     face_ln_to_gn_l.extend(face_ln_to_gn_z)
     vtx_ln_to_gn_l.extend(vtx_ln_to_gn_z)
     
-  def _dupl_shift_id_and_push_in_global_list(self, face_vtx_bnd_z, face_vtx_bnd_idx_z, \
-                                              face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z, \
-                                              face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
-                                              vtx_bnd_l, vtx_ln_to_gn_l, i_dom, tr, rot_c, rot_a, comm):
+  def _dupl_shift_id_and_push_in_global_list(self, parts_datas, all_parts_datas, i_dom, perio):
+
+    vtx_bnd_z = parts_datas[3]
     vtx_bnd_dupl_z = []
     for vtx_bnd in vtx_bnd_z:
       cx = vtx_bnd[0::3]
       cy = vtx_bnd[1::3]
       cz = vtx_bnd[2::3]
-      cx, cy, cz = np_utils.transform_cart_vectors(cx, cy, cz, tr, rot_c, rot_a)
+      cx, cy, cz = np_utils.transform_cart_vectors(cx, cy, cz, perio[2], perio[0], perio[1]) #Perio is center, angle, trans
       vtx_bnd_dupl_z.append(np_utils.interweave_arrays([cx, cy, cz]))
-    self._shift_id_and_push_in_global_list(face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
-                                           vtx_bnd_dupl_z, vtx_ln_to_gn_z, \
-                                           face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
-                                           vtx_bnd_l, vtx_ln_to_gn_l, i_dom, comm)
-    return vtx_bnd_dupl_z
+    
+    dupl_parts_data = [l for l in parts_datas]
+    dupl_parts_data[3] = vtx_bnd_dupl_z #Udpate with duplicated coords
+
+    self._shift_id_and_push_in_global_list(dupl_parts_data, all_parts_datas, i_dom)
+    return dupl_parts_data
 
   def _setup_surf_mesh(self, parts_per_dom, families, comm):
     """
@@ -118,51 +117,38 @@ class WallDistance:
     #This will concatenate part data of all initial domains
     face_vtx_bnd_l = []
     face_vtx_bnd_idx_l = []
-    vtx_bnd_l = []
     face_ln_to_gn_l = []
+    vtx_bnd_l = []
     vtx_ln_to_gn_l = []
+
+    all_parts_datas = [face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l]
 
     i_dom = -1
     for part_zones in parts_per_dom:
       
       i_dom += 1
+      parts_datas = extract_surf_from_bc(part_zones, families, comm)
+      self._shift_id_and_push_in_global_list(parts_datas, all_parts_datas, i_dom)
       
-      face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
-        vtx_bnd_z, vtx_ln_to_gn_z = extract_surf_from_bc(part_zones, families, comm)
-
-      self._shift_id_and_push_in_global_list(face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
-                                             vtx_bnd_z, vtx_ln_to_gn_z, \
-                                             face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
-                                             vtx_bnd_l, vtx_ln_to_gn_l, i_dom, comm)
-      
-      # if False:
       if self.perio:
-        parts_surf_to_dupl_l = []
-        parts_surf_to_dupl_l.append([face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, \
-                                     vtx_bnd_z, vtx_ln_to_gn_z])
-        for rot_a, rot_c, tr in self.periodicities:
+        parts_surf_to_dupl_l = [parts_datas]
+        for perio_val in self.periodicities:
+          perio_val_wrong = (perio_val[1], perio_val[0], perio_val[2]) ## TODO PAS BON ! Erreur reproduite pour pas casser les tests
+          perio_val_opp = (perio_val[0], -perio_val[1], -perio_val[2]) #Center, angle, translation
+
           parts_surf_to_dupl_next_l = []
           for parts_surf_to_dupl in parts_surf_to_dupl_l:
             parts_surf_to_dupl_next_l.append(parts_surf_to_dupl)
-            face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, \
-            face_ln_to_gn_to_dupl_z, vtx_bnd_to_dupl_z, \
-            vtx_ln_to_gn_to_dupl_z = parts_surf_to_dupl
             i_dom += 1
-            vtx_bnd_dupl_z = \
-            self._dupl_shift_id_and_push_in_global_list(face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, \
-                                                        face_ln_to_gn_to_dupl_z, vtx_bnd_to_dupl_z, vtx_ln_to_gn_to_dupl_z, \
-                                                        face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
-                                                        vtx_bnd_l, vtx_ln_to_gn_l, i_dom, tr, rot_c, rot_a, comm)
-            parts_surf_to_dupl_next_l.append([face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, face_ln_to_gn_to_dupl_z, \
-                                              vtx_bnd_dupl_z, vtx_ln_to_gn_to_dupl_z])
+            dupl_parts_surf = self._dupl_shift_id_and_push_in_global_list(
+                    parts_surf_to_dupl, all_parts_datas, i_dom, perio_val_wrong)
+            parts_surf_to_dupl_next_l.append(dupl_parts_surf)
+
             i_dom += 1
-            vtx_bnd_dupl_z = \
-            self._dupl_shift_id_and_push_in_global_list(face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, \
-                                                        face_ln_to_gn_to_dupl_z, vtx_bnd_to_dupl_z, vtx_ln_to_gn_to_dupl_z, \
-                                                        face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, \
-                                                        vtx_bnd_l, vtx_ln_to_gn_l, i_dom, -tr, rot_c, -rot_a, comm)
-            parts_surf_to_dupl_next_l.append([face_vtx_bnd_to_dupl_z, face_vtx_bnd_idx_to_dupl_z, face_ln_to_gn_to_dupl_z, \
-                                              vtx_bnd_dupl_z, vtx_ln_to_gn_to_dupl_z])
+            dupl_parts_surf = self._dupl_shift_id_and_push_in_global_list(
+                    parts_surf_to_dupl, all_parts_datas, i_dom, perio_val_opp)
+            parts_surf_to_dupl_next_l.append(dupl_parts_surf)
+
           parts_surf_to_dupl_l = parts_surf_to_dupl_next_l
 
     n_part = len(vtx_bnd_l)
