@@ -80,7 +80,8 @@ def test_isosurf_U(elt_type,comm, write_output):
                                   comm,
                                   iso_val=0.,
                                   containers_name=containers,
-                                  elt_type=elt_type)
+                                  elt_type=elt_type,
+                                  graph_part_tool='hilbert') # Parallelism independant
   
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
@@ -113,7 +114,8 @@ def test_plane_slice_U(elt_type,comm, write_output):
                                   [1.,1.,1.,0.2],
                                   comm,
                                   containers_name=containers,
-                                  elt_type=elt_type)
+                                  elt_type=elt_type,
+                                  graph_part_tool='hilbert') # Parallelism independant
   
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
@@ -123,7 +125,7 @@ def test_plane_slice_U(elt_type,comm, write_output):
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
   if write_output:
-    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    out_dir = maia.utils.test_utils.create_pytest_output_dir(comm)
     Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'plane_slice.cgns'), comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), comm)
 
@@ -146,7 +148,8 @@ def test_spherical_slice_U(elt_type,comm, write_output):
                                       [0.,0.,0.,2.],
                                       comm,
                                       containers_name=containers,
-                                      elt_type=elt_type)
+                                      elt_type=elt_type,
+                                      graph_part_tool='hilbert') # Parallelism independant
   
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
@@ -188,7 +191,8 @@ def test_plane_slice_gc_U(elt_type,comm, write_output):
   part_tree_iso = ISS.plane_slice(part_tree,
                                   [0.,0.,1.,0.5],
                                   comm,
-                                  elt_type=elt_type)
+                                  elt_type=elt_type,
+                                  graph_part_tool='hilbert')
 
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
 
@@ -198,7 +202,7 @@ def test_plane_slice_gc_U(elt_type,comm, write_output):
 
   if write_output:
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
-    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'plane_slice.cgns'), comm)
+    Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'plane_slice_with_gc.cgns'), comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), comm)
 
   # Recover dist tree force R4 so use type_tol=True

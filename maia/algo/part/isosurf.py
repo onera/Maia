@@ -196,7 +196,7 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
 
 
 
-def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
+def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm):
   """
   Compute isosurface in a zone
   """ 
@@ -217,8 +217,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   # Definition of the PDM object IsoSurface
   pdm_isos = PDM.IsoSurface(comm, 3, PDM_iso_type, n_part)
   pdm_isos.isosurf_elt_type_set(PDM_elt_type)
-  pdm_isos.isosurf_part_method_set(PDM._PDM_SPLIT_DUAL_WITH_PTSCOTCH) # Better partitioning in 2d (but issue with CME2 during extract_part)
-  # pdm_isos.isosurf_part_method_set(PDM._PDM_SPLIT_DUAL_WITH_HILBERT) # Partitioning can be desequilibrated in 2d
+  # > HILBERT : partitioning can be desequilibrated in some 2D case (but parallelism independant)
+  pdm_isos.isosurf_part_method_set(eval(f"PDM._PDM_SPLIT_DUAL_WITH_{graph_part_tool.upper()}")) # Better partitioning in 2d (but issue with CME2 during extract_part)
 
   if iso_kind=="FIELD":
     for i_part, part_zone in enumerate(part_zones):
@@ -408,7 +408,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
 
 
 
-def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
+def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, graph_part_tool, comm):
 
   fs_name, field_name = iso_field_path.split('/')
 
@@ -430,7 +430,7 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
       field_values.append(PT.get_value(field_node) - iso_val)
 
-    iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
+    iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, graph_part_tool, comm)
     PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
     if PT.Zone.n_cell(iso_part_zone)!=0:
       PT.add_child(iso_part_base,iso_part_zone)
@@ -462,7 +462,7 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
       connectivities are managed.
     iso_field     (str)         : Path (starting at Zone_t level) of the field to use to compute isosurface.
     comm          (MPIComm)     : MPI communicator
-    iso_val       (float, optional) : Value to use to compute isosurface. Defaults to 0.
+    iso_val       (float, optional) : Value to use to compute isosurface. Default to 0.
     containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
       on the output isosurface tree.
     **options: Options related to plane extraction.
@@ -472,7 +472,9 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
   Extraction can be controled thought the optional kwargs:
 
     - ``elt_type`` (str) -- Controls the shape of elements used to describe
-      the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Defaults to ``TRI_3``.
+      the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Default to ``TRI_3``.
+    - ``graph_part_tool`` (str) -- Controls the isosurface partitioning tool. ``hilbert`` may produced
+      unbalanced partitions for some configurations. Default to ``ptscotch``.
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -482,11 +484,13 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
   """
   start = time.time()
 
-  elt_type = options.get("elt_type", "TRI_3")
-  assert(elt_type in ["TRI_3","QUAD_4","NGON_n"])
+  elt_type        = options.get("elt_type", "TRI_3")
+  graph_part_tool = options.get("graph_part_tool", "ptscotch")
+  assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
+  assert(graph_part_tool in ["ptscotch","parmetis","hilbert"])
 
   # Isosurface extraction
-  iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, comm)
+  iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, graph_part_tool, comm)
   
   # Interpolation
   if containers_name:
@@ -499,7 +503,7 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
 
 
-def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
+def _surface_from_equation(part_tree, surface_type, equation, elt_type, graph_part_tool, comm):
 
   assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
   assert(elt_type     in ["TRI_3","QUAD_4","NGON_n"])
@@ -513,7 +517,7 @@ def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
   for domain_path, part_zones in part_tree_per_dom.items():
     dom_base_name, dom_zone_name = domain_path.split('/')
     iso_part_base = PT.update_child(iso_part_tree, dom_base_name, 'CGNSBase_t', [3-1,3])
-    iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, comm)
+    iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, graph_part_tool, comm)
     PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
 
     if PT.Zone.n_cell(iso_part_zone)!=0:
@@ -549,10 +553,13 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
   """
   start = time.time()
 
-  elt_type = options.get("elt_type", "TRI_3")
+  elt_type        = options.get("elt_type", "TRI_3")
+  graph_part_tool = options.get("graph_part_tool", "ptscotch")
+  assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
+  assert(graph_part_tool in ["ptscotch","parmetis","hilbert"])
 
   # Isosurface extraction
-  iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
   if containers_name:
@@ -590,10 +597,13 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
   """
   start = time.time()
 
-  elt_type = options.get("elt_type", "TRI_3")
+  elt_type        = options.get("elt_type", "TRI_3")
+  graph_part_tool = options.get("graph_part_tool", "ptscotch")
+  assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
+  assert(graph_part_tool in ["ptscotch","parmetis","hilbert"])
 
   # Isosurface extraction
-  iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
   if containers_name:
@@ -632,10 +642,13 @@ def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options)
   """
   start = time.time()
 
-  elt_type = options.get("elt_type", "TRI_3")
+  elt_type        = options.get("elt_type", "TRI_3")
+  graph_part_tool = options.get("graph_part_tool", "ptscotch")
+  assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
+  assert(graph_part_tool in ["ptscotch","parmetis","hilbert"])
 
   # Isosurface extraction
-  iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
   if containers_name:
