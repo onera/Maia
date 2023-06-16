@@ -1,3 +1,4 @@
+import numpy as np
 import maia.pytree as PT
 
 from maia.pytree.compare import check_is_label
@@ -70,3 +71,25 @@ def find_connected_zones(tree):
       connected_zones.append(new_group)
   return [sorted(zones) for zones in connected_zones]
 
+def find_periodic_jns(tree,rtol=1e-5,atol=0):
+  """Find periodic jns path and gather it according to their periodicity values
+  Return two list (we do not return a dict because np array are unshable)
+      - periodic values
+      - list of jns path related to it
+  """
+  perio_values = list()
+  perio_jns = list()
+  is_jn_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+          and PT.GridConnectivity.isperiodic(n)
+  for jn_path in PT.predicates_to_paths(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_jn_perio]):
+    jn = PT.get_node_from_path(tree, jn_path)
+    perio = PT.GridConnectivity.periodic_values(jn)
+    for i_perio, perio_value in enumerate(perio_values):
+      if all([np.allclose(a,b,rtol,atol) for a,b in zip(perio_value, perio)]):
+        perio_jns[i_perio].append(jn_path)
+        break
+    else:
+      perio_values.append(perio)
+      perio_jns.append([jn_path])
+
+  return perio_values, perio_jns

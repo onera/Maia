@@ -12,7 +12,6 @@ from maia.utils                      import np_utils
 from maia.utils                      import logging as mlog
 from maia                            import transfer as TE
 from maia.factory.dist_from_part     import discover_nodes_from_matching
-from maia.algo.dist                  import matching_jns_tools
 
 from .point_cloud_utils              import get_point_cloud
 from maia.algo.part.extract_boundary import extract_surf_from_bc
@@ -20,8 +19,16 @@ from maia.algo.part.geometry         import compute_cell_center
 from maia.transfer                   import utils as tr_utils
 
 
-def is_in_list(np_array_to_check, list_np_arrays):
-  return np.any(np.all(np_array_to_check == list_np_arrays, axis=1))
+def _are_same_perio_abs(first, second):
+  """ Return True if the two periodic transformation are the same in absolute value"""
+  first_center, first_angle, first_trans = first
+  second_center, second_angle, second_trans = second
+  if np.allclose(first_center, second_center):
+    if np.allclose(first_angle, second_angle) and np.allclose(first_trans, second_trans):
+      return True
+    if np.allclose(first_angle, -second_angle) and np.allclose(first_trans, -second_trans):
+      return True
+  return False
 
 def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']):
   """
@@ -280,44 +287,29 @@ class WallDistance:
     
         
     if self.method == "cloud":
-      is_gc_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.get_node_from_label(n, 'Periodic_t') is not None
+      is_gc_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+              and PT.GridConnectivity.isperiodic(n)
       gc_predicate = ['ZoneGridConnectivity_t', is_gc_perio]
       
+      # Recover existing periodicities
       for dist_zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
         dist_zone = PT.get_node_from_path(skeleton_tree, dist_zone_path)
         part_zones = tr_utils.get_partitioned_zones(self.part_tree, dist_zone_path)
         discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, self.mpi_comm,
-          child_list=['GridConnectivityProperty_t', 'GridConnectivityDonorName', 'GridConnectivityType_t'],
+          child_list=['GridConnectivityProperty_t', 'GridConnectivityType_t'],
           merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
 
-        #After GC discovery, cleanup donor name suffix
-        for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
-          val = PT.get_value(jn)
-          PT.set_value(jn, MT.conv.get_part_prefix(val))
-          gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
-          PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
+      all_periodicities, _ = PT.find_periodic_jns(skeleton_tree)
+      # Filter periodicities to get only one over two jns
+      for perio_val in all_periodicities:
+        for u_perio in self.periodicities:
+          if _are_same_perio_abs(perio_val, u_perio):
+            break
+        else:
+          self.periodicities.append(perio_val)
+      if len(self.periodicities) == 0:
+        self.perio = False #Disable perio to avoid unecessary loops
 
-      all_periodicities = []
-      # No need to select perio jns because only perio are in the skeleton tree
-      for jns_pair in matching_jns_tools.get_matching_jns(skeleton_tree):
-        jn_n = PT.get_node_from_path(skeleton_tree,jns_pair[0])
-        rotation_center, rotation_angle, translation = PT.GridConnectivity.periodic_values(jn_n)
-        all_periodicities.append([tuple(rotation_center), np.concatenate((rotation_angle,translation))])
-      if len(all_periodicities) > 0:
-        perio_dict = {}
-        for rot_c, rot_a_and_tr in all_periodicities:
-          if rot_c in perio_dict.keys():
-            cur_val_in = is_in_list(rot_a_and_tr, perio_dict[rot_c])
-            opp_val_in = is_in_list(-rot_a_and_tr, perio_dict[rot_c])
-            if (not cur_val_in) and (not opp_val_in):
-              perio_dict[rot_c].append(rot_a_and_tr)
-          else:
-            perio_dict[rot_c] = [rot_a_and_tr]
-        for key, values in perio_dict.items():
-          for value in values:
-            self.periodicities.append([np.array(key),value[0:3],value[3:6]])
-      else:
-        self.perio = False
     else:
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
       self.perio = False
@@ -349,7 +341,7 @@ class WallDistance:
       elif self.method == "cloud":
         n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom]
         if self.perio:
-          n_part_surf = 3**(len(self.periodicities))*n_part_surf
+          n_part_surf = n_part_surf*3**(len(self.periodicities))
         self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, n_part_surf, point_clouds=n_part_per_cloud)
 
 
