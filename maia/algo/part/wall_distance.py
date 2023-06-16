@@ -133,7 +133,6 @@ class WallDistance:
       if self.perio:
         parts_surf_to_dupl_l = [parts_datas]
         for perio_val in self.periodicities:
-          perio_val_wrong = (perio_val[1], perio_val[0], perio_val[2]) ## TODO PAS BON ! Erreur reproduite pour pas casser les tests
           perio_val_opp = (perio_val[0], -perio_val[1], -perio_val[2]) #Center, angle, translation
 
           parts_surf_to_dupl_next_l = []
@@ -141,7 +140,7 @@ class WallDistance:
             parts_surf_to_dupl_next_l.append(parts_surf_to_dupl)
             i_dom += 1
             dupl_parts_surf = self._dupl_shift_id_and_push_in_global_list(
-                    parts_surf_to_dupl, all_parts_datas, i_dom, perio_val_wrong)
+                    parts_surf_to_dupl, all_parts_datas, i_dom, perio_val)
             parts_surf_to_dupl_next_l.append(dupl_parts_surf)
 
             i_dom += 1
