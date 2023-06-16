@@ -58,8 +58,9 @@ if maia.pdma_enabled:
 @pytest_parallel.mark.parallel([1, 3])
 def test_wall_distance_U(method, comm, write_output):
 
-  mesh_file = os.path.join(mesh_dir, 'U_ATB_45.yaml')
-  ref_file  = os.path.join(ref_dir,     'U_ATB_45_walldist.yaml')
+  mesh_file       = os.path.join(mesh_dir, 'U_ATB_45.yaml')
+  ref_file        = os.path.join(ref_dir,  'U_ATB_45_walldist.yaml')
+  ref_file_perio  = os.path.join(ref_dir,  'U_ATB_45_walldist_perio.yaml')
 
   dist_tree = maia.io.file_to_dist_tree(mesh_file, comm)
 
@@ -83,7 +84,10 @@ def test_wall_distance_U(method, comm, write_output):
     maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'result.hdf'), comm)
 
   # Compare to reference solution
-  refence_solution = maia.io.file_to_dist_tree(ref_file, comm)
+  if method == 'cloud':
+    refence_solution = maia.io.file_to_dist_tree(ref_file_perio, comm)
+  elif method == 'propagation':
+    refence_solution = maia.io.file_to_dist_tree(ref_file, comm)
   for d_base in PT.iter_all_CGNSBase_t(dist_tree):
     for d_zone in PT.iter_all_Zone_t(d_base):
       zone_path = '/'.join([PT.get_name(d_base), PT.get_name(d_zone)])

@@ -76,6 +76,23 @@ def test_GridConnectivity_Type():
   with pytest.raises(Exception):
     SIDS.GridConnectivity.Type(bc)
 
+def test_GridConnectivity_isperiodic():
+  gc = N.new_GridConnectivity()
+  assert SIDS.GridConnectivity.isperiodic(gc) == False
+  N.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]}, parent=gc)
+  assert SIDS.GridConnectivity.isperiodic(gc) == True
+
+def test_GridConnectivity_periodic_values():
+  gc = N.new_GridConnectivity()
+  assert SIDS.GridConnectivity.periodic_values(gc) == (None, None, None)
+  N.new_GridConnectivityProperty(parent=gc)
+  assert SIDS.GridConnectivity.periodic_values(gc) == (None, None, None)
+  W.rm_children_from_label(gc, 'GridConnectivityProperty_t')
+  N.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]},parent=gc)
+  assert (SIDS.GridConnectivity.periodic_values(gc)[0] == [0., 0., 0.]).all()
+  assert (SIDS.GridConnectivity.periodic_values(gc)[1] == [0., 0., 0.]).all()
+  assert (SIDS.GridConnectivity.periodic_values(gc)[2] == [0., 0., 1.]).all()
+
 def test_zone_u_size():
   #Simulate a 10*5*2 vtx zone
   zone_u = N.new_Zone('Zone', size=[[100, 36, 0]], type='Unstructured')

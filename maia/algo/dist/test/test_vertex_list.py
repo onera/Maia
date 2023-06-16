@@ -119,7 +119,8 @@ def test_search_with_geometry(comm):
   empty = np.empty(0, int)
   tree = dcube_generator.dcube_generate(4,1.,[0,0,0], comm)
   zone = PT.get_all_Zone_t(tree)[0]
-  grid_prop = PT.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]})
+  gc = PT.new_GridConnectivity()
+  PT.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]},parent=gc)
 
   if comm.Get_rank() == 0:
     pl_face_vtx_idx = np.array([0,4])
@@ -134,7 +135,7 @@ def test_search_with_geometry(comm):
     pl_face_vtx = empty
     pld_face_vtx = empty
 
-  plv, plvd = VL._search_with_geometry(zone, zone, grid_prop, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm)
+  plv, plvd = VL._search_with_geometry(zone, zone, gc, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm)
 
   if comm.Get_rank() == 0:
     assert (plv  == [2,3,6,7]).all()
