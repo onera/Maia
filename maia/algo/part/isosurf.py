@@ -5,6 +5,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 
+from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.utils    import np_utils, layouts, py_utils
@@ -350,7 +351,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
     # > Create BC described by edges
-    gnum = PT.maia.getGlobalNumbering(bar_n, 'Element')[1] if n_bnd_edge!=0 else np.empty(0, dtype=np.int32) # TOCHECK : pdm_gnum ??
+    gnum = PT.maia.getGlobalNumbering(bar_n, 'Element')[1] if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
     for i_group, bc_path in enumerate(gdom_bcs_path):
       n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
       edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
