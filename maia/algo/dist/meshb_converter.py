@@ -201,15 +201,15 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   # > FlowSolution
   field_names = tree_info['field_names']
   n_itp_flds  = len(field_names)
-  cons = -100*np.ones(g_dims["n_vtx_abs"] * n_itp_flds, dtype=np.double)
-  PDM.read_solb(bytes(out_files['fld'], 'utf-8'), g_dims["n_vtx_abs"], n_itp_flds, cons)
+  if n_itp_flds!=0:
+    cons = -100*np.ones(g_dims["n_vtx_abs"] * n_itp_flds, dtype=np.double)
+    PDM.read_solb(bytes(out_files['fld'], 'utf-8'), g_dims["n_vtx_abs"], n_itp_flds, cons)
+    cons = cons.reshape((n_itp_flds, cons.shape[0]//n_itp_flds), order='F')
+    cons = cons.transpose()
 
-  cons = cons.reshape((n_itp_flds, cons.shape[0]//n_itp_flds), order='F')
-  cons = cons.transpose()
-
-  fs = PT.new_FlowSolution("FlowSolution#Init", loc='Vertex', parent=dist_zone)
-  for i_fld, fld_name in enumerate(field_names):
-    PT.new_DataArray(fld_name, cons[np_distrib_vtx[0]:np_distrib_vtx[1],i_fld], parent=fs)
+    fs = PT.new_FlowSolution("FlowSolution#Init", loc='Vertex', parent=dist_zone)
+    for i_fld, fld_name in enumerate(field_names):
+      PT.new_DataArray(fld_name, cons[np_distrib_vtx[0]:np_distrib_vtx[1],i_fld], parent=fs)
 
   return dist_tree
 
@@ -251,7 +251,6 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
 
   mlog.info(f"CGNS to meshb dist_tree conversion...")
   start = time.time()
-
 
 
   for zone in PT.get_all_Zone_t(dist_tree):

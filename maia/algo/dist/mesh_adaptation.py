@@ -97,7 +97,7 @@ def unpack_metric(dist_tree, metric_paths):
 
 
 
-def mesh_adapt(dist_tree, comm, metric=None, container_names=None, feflo_opt=[]):
+def mesh_adapt(dist_tree, comm, metric=None, container_names=[], feflo_opt=[]):
   ''' Return a feflo adapted mesh according to a metric and a complexity.
 
   Adapted mesh is returned as an independant distributed tree.
