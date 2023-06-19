@@ -116,7 +116,7 @@ def test_compute_wall_distance():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
 
-  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"])
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD)
   assert maia.pytree.get_node_from_name(part_tree, "WallDistance") is not None
   #compute_wall_distance@end
 
@@ -127,7 +127,7 @@ def test_compute_iso_surface():
   from   maia.utils.test_utils import mesh_dir
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   part_tree_iso = maia.algo.part.iso_surface(part_tree, "WallDistance/TurbulentDistance", iso_val=0.25,\
       containers_name=['WallDistance'], comm=MPI.COMM_WORLD)
@@ -179,7 +179,7 @@ def test_extract_from_zsr():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
 
-  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   # Create a ZoneSubRegion on procs for extracting odd cells
   for part_zone in PT.get_all_Zone_t(part_tree):
@@ -203,7 +203,7 @@ def test_extract_from_bc_name():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
   
-  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   extracted_bc = maia.algo.part.extract_part_from_bc_name(part_tree, \
                  'wall', MPI.COMM_WORLD, containers_name=["WallDistance"])

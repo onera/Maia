@@ -51,8 +51,7 @@ def test_workflow(convert_yaml):
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
   
   # Now we can call some partitioned algorithms
-  maia.algo.part.compute_wall_distance(part_tree, comm, 
-      families=['WALL'], point_cloud='Vertex')
+  maia.algo.part.compute_wall_distance(part_tree, comm, point_cloud='Vertex')
   extract_tree = maia.algo.part.extract_part_from_bc_name(part_tree, "wall", comm)
   slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0], comm,
         containers_name=['WallDistance'])

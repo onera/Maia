@@ -57,7 +57,7 @@ class Test_wallDistance:
       """)
     PT.add_child(zone, zone_bc)
 
-    # Test with family specification + propagation method + default out_fs_name
+    # Test with propagation method + default out_fs_name
     WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
 
     fs = PT.get_child_from_name(zone, 'WallDistance')
@@ -67,7 +67,7 @@ class Test_wallDistance:
     assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
     assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
-    #Test with family detection + cloud method + custom fs name
+    #Test with cloud method + custom fs name
     PT.rm_nodes_from_name(part_tree, 'WallDistance')
     WD.compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance', perio=perio)
 
