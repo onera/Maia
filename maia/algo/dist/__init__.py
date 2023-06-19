@@ -17,7 +17,7 @@ from .merge                      import merge_all_zones_from_families,\
                                         merge_zones,\
                                         merge_zones_from_family
 
-from .mesh_adaptation            import mesh_adapt
+from .mesh_adaptation            import mesh_adaptation
 
 from .mixed_to_std_elements      import convert_mixed_to_elements
 
