@@ -369,11 +369,6 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
       :dedent: 2
   """
 
-  '''
-  TODO : sortir les champs du ZSR dans un FLowSol (attention a l'ordre de la PL)
-  BCDataSet induit psk on passe par le meem endroit
-  '''
-
   start = time.time()
   extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
