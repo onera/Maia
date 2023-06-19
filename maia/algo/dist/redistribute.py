@@ -198,7 +198,7 @@ def redistribute_zone(zone, distribution, comm):
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_tree(dist_tree, comm, policy='uniform'):
+def redistribute_tree(dist_tree, policy, comm):
   """ Redistribute the data of the input tree according to the choosen distribution policy.
 
   Supported policies are:
@@ -213,8 +213,8 @@ def redistribute_tree(dist_tree, comm, policy='uniform'):
 
   Args:
     dist_tree (CGNSTree) : Distributed tree
-    comm      (MPIComm)  : MPI communicator
     policy    (str)      : distribution policy (see above)
+    comm      (MPIComm)  : MPI communicator
 
   Example:
     .. literalinclude:: snippets/test_algo.py

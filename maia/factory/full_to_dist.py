@@ -242,7 +242,7 @@ def distribute_tree(tree, comm, owner=None):
 
   if owner is not None:
     dist_tree = _broadcast_full_to_dist(tree, comm, owner)
-    redistribute.redistribute_tree(dist_tree, comm)
+    redistribute.redistribute_tree(dist_tree, 'uniform', comm)
     return dist_tree
   else:
     return _distribute_tree(tree, comm)
