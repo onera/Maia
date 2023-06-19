@@ -6,7 +6,7 @@ import maia
 import maia.pytree        as PT
 import maia.utils.logging as mlog
 
-from maia.algo.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
+from maia.algo.dist.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
 
 import numpy as np 
 
@@ -49,13 +49,12 @@ feflo_args    = { 'isotrop'  : f'-iso                -itp {in_file_fldb}'.split(
 
 def unpack_metric(dist_tree, metric_paths):
   """
-  Unpacks the `metric` arguement from `mesh_adapt` function.
+  Unpacks the `metric` argument from `mesh_adapt` function.
   Assert no invalid path or argument is given and that paths leads to one or six fields.
   """
 
+  # > Get metrics nodes described by path
   if metric_paths is not None:
-
-    # > Get metrics nodes described by path
     if isinstance(metric_paths, str):
       base_name, zone_name, container_name, fld_name = metric_paths.split('/')
       tmp_metric_nodes = PT.get_nodes_from_names(dist_tree, [base_name, zone_name, container_name, fld_name+'*'])
@@ -89,7 +88,10 @@ def unpack_metric(dist_tree, metric_paths):
   else:
     metric_nodes = list()
 
-  print(f"TODO : pk get_nodes_from_names et get_node_from_path ont pas le meme comportement ?")
+  print(f"TODO : \n \
+     - pk get_nodes_from_names et get_node_from_path ont pas le meme comportement ?\n\
+     - get_nodes_from_names bien utilisée ?\n\
+     ")
 
   return metric_nodes
 
@@ -130,25 +132,29 @@ def mesh_adapt(dist_tree, comm, metric=None, container_names=None, feflo_opt=[])
 
   '''
 
+
+  '''
+  TODO:
+    - beware of I4 DataArray_t in containers
+    - interpolation avec MAIA
+  '''
+
+
   Path(tmp_repo).mkdir(exist_ok=True)
   # Path.cwd()/Path(tmp_repo).mkdir(exist_ok=True)
 
   # > Get metric nodes
   metric_nodes = unpack_metric(dist_tree, metric)
   metric_names = PT.get_names(metric_nodes)
-  print(f"metric_names = {metric_names}")
 
   n_metric_path = len(metric_nodes)
-  if   n_metric_path==0: metric_name = 'isotrop'
-  elif n_metric_path==1: metric_name = 'from_fld'
-  elif n_metric_path==6: metric_name = 'from_hess'
+  if   n_metric_path==0: metric_type = 'isotrop'
+  elif n_metric_path==1: metric_type = 'from_fld'
+  elif n_metric_path==6: metric_type = 'from_hess'
 
-  # > Rearange to fit feflo's hess order
-  if n_metric_path==0 : metric_names = sorted(metric_names)
-  
-  sys.exit()
+
   # > Get tree structure and names
-  tree_info = get_tree_info(dist_tree)
+  tree_info = get_tree_info(dist_tree, container_names)
 
 
   # > Gathering dist_tree on proc 0
@@ -162,13 +168,10 @@ def mesh_adapt(dist_tree, comm, metric=None, container_names=None, feflo_opt=[])
     cgns_to_meshb(dist_tree, in_files, metric_nodes, container_names)
 
     # Adapt with feflo
-    print(f"feflo_call_list = {['-in', in_files['mesh']]+ feflo_args[metric_name]}")
-    print(f"feflo_opt       = {feflo_opt}")
     feflo_call_list = [feflo_path]             \
                     + ['-in', in_files['mesh']]\
-                    + feflo_args[metric_name]  \
+                    + feflo_args[metric_type]  \
                     + feflo_opt                
-    print(f"feflo_call_list = {feflo_call_list}")
 
     mlog.info(f"Feflo mesh adaptation...")
     start = time.time()
@@ -183,15 +186,8 @@ def mesh_adapt(dist_tree, comm, metric=None, container_names=None, feflo_opt=[])
   maia.algo.dist.redistribute_tree(dist_tree, comm, policy='uniform')
 
 
-  dicttag_to_bcinfo = tree_info["dicttag_to_bcinfo"]
-  print(f"dicttag_to_bcinfo = {dicttag_to_bcinfo}")
-  for loc, tag_to_bcinfo in dicttag_to_bcinfo.items():
-      print(f"\nLOC = {loc}")
-      for tag, bcinfo in tag_to_bcinfo.items():
-          print(f" - TAG = {tag} -> BC = {bcinfo['BC']:10} ; FAMILY = {bcinfo['Family']}")
-          # PT.print_tree(bcinfo)
-
+  # > Get adapted dist_tree
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
-  PT.print_tree(adapted_dist_tree, "dist_tree_adapted_func.tree")
+
 
   return adapted_dist_tree

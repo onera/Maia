@@ -14,22 +14,25 @@ import numpy as np
 import Pypdm.Pypdm as PDM
 
 
-def get_tree_info(dist_tree):
+def get_tree_info(dist_tree, container_names):
   """
-  Get tree informations such as names, families and dicttag_to_bcinfo
+  Get tree informations such as names, families, dicttag_to_bcinfo
+  and interpolated containers.
   """
-  # TODO : Est que tout les arbres dist ont le meme ordre pour leurs noeuds ?
   
+  # > Get names
   base_n    = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
   zone_n    = PT.get_child_from_label(base_n, 'Zone_t')
-  
   base_name = PT.get_name(base_n)
   zone_name = PT.get_name(zone_n) # Just one zone at this time
   tree_names= {"Base":base_name, "Zone":zone_name}
 
+
+  # > Get families
   families  = PT.get_nodes_from_label(dist_tree, 'Family_t')
 
 
+  # > Get BCs infos
   dicttag_to_bcinfo = {"FaceCenter": dict(),
                        "EdgeCenter": dict()}
 
@@ -45,9 +48,18 @@ def get_tree_info(dist_tree):
       famname = PT.get_value(PT.get_child_from_label(bc_n, "FamilyName_t"))
       dicttag_to_bcinfo[entity_name][n_tag] = {"BC":bc_name, "Family":famname}
 
-  return {"tree_names": tree_names,
-          "families"  : families,
-          "dicttag_to_bcinfo": dicttag_to_bcinfo
+
+  # > Container field names
+  field_names = list()
+  for container_name in container_names:
+    container = PT.get_node_from_name(zone_n, container_name)
+    for n in PT.get_children_from_label(container, 'DataArray_t'):
+      field_names.append(PT.get_name(n))
+
+  return {"tree_names"       : tree_names,
+          "families"         : families,
+          "dicttag_to_bcinfo": dicttag_to_bcinfo,
+          "field_names"      : field_names
           }
 
 
@@ -87,9 +99,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   tree_names        = tree_info['tree_names']
   families          = tree_info['families']
   dicttag_to_bcinfo = tree_info['dicttag_to_bcinfo']
-  print(f"tree_names = {tree_names}")
-  print(f"families   = {families  }")
-  print(f"dicttag_to_bcinfo   = {dicttag_to_bcinfo  }")
 
 
   g_dims = dmesh_nodal.dmesh_nodal_get_g_dims()
@@ -123,7 +132,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
     dist_zone = PT.new_Zone(name=tree_names["Zone"], size=[[g_dims["n_vtx_abs"], g_dims["n_face_abs"], 0]],
                             type='Unstructured', parent=dist_base)
 
-  PT.print_tree(dist_tree)
 
   # > Grid coordinates
   vtx_data   = dmesh_nodal.dmesh_nodal_get_vtx(comm)
@@ -132,20 +140,16 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   PT.new_DataArray('CoordinateX', cx, parent=grid_coord)
   PT.new_DataArray('CoordinateY', cy, parent=grid_coord)
   PT.new_DataArray('CoordinateZ', cz, parent=grid_coord)
-  PT.print_tree(dist_tree)
   # > Section implicitement range donc on maintiens un compteur
   shift_elmt        = 1
   shift_elmt_vol    = _add_sections_to_zone(dist_zone, sections_vol   , shift_elmt      , comm)
   shift_elmt_surf   = _add_sections_to_zone(dist_zone, sections_surf  , shift_elmt_vol  , comm)
   shift_elmt_ridge  = _add_sections_to_zone(dist_zone, sections_ridge , shift_elmt_surf , comm)
   shift_elmt_corner = _add_sections_to_zone(dist_zone, sections_corner, shift_elmt_ridge, comm)
-  PT.print_tree(dist_tree)
 
 
   # > BCs
   def groups_to_bcs(elt_groups, zone_bc, location, shift_bc, comm):
-    print(f"location = {location}")
-    print(f"  - dicttag_to_bcinfo[location] = {dicttag_to_bcinfo[location]}")
     elt_group_idx = elt_groups['dgroup_elmt_idx']
     elt_group     = elt_groups['dgroup_elmt'] + shift_bc
     distri = np.empty(n_rank, dtype=elt_group.dtype)
@@ -156,38 +160,30 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
       famname = dicttag_to_bcinfo[location][i_group+1]["Family"]
       
       bc_n = PT.new_BC(bc_name, type='FamilySpecified', loc=location, parent=zone_bc)
-      PT.print_tree(zone_bc)
       start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
       dn_elt_bnd = end - start
       PT.new_PointList(value=elt_group[start:end].reshape(1,dn_elt_bnd), parent=bc_n)
-      PT.print_tree(zone_bc)
 
       bc_distrib = par_utils.gather_and_shift(dn_elt_bnd, comm, pdm_gnum_dtype)
       distrib    = bc_distrib[[i_rank, i_rank+1, n_rank]]
       MT.newDistribution({'Index' : distrib}, parent=bc_n)
-      PT.print_tree(zone_bc)
 
       PT.new_node("FamilyName", label="FamilyName_t", value=famname, parent=bc_n)
       # PT.add_child(bc_n, famname)
-      PT.print_tree(zone_bc)
 
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
-  PT.print_tree(dist_tree)
 
   if face_groups is not None:
     shift_bc = shift_elmt_vol - 1 if sections_vol is not None else shift_elmt_surf - 1
     groups_to_bcs(face_groups, zone_bc, "FaceCenter", shift_bc, comm)
-  PT.print_tree(dist_tree)
 
   if edge_groups is not None:
     shift_bc = shift_elmt_surf - 1 if sections_surf is not None else shift_elmt_ridge - 1
     groups_to_bcs(edge_groups, zone_bc, "EdgeCenter", shift_bc, comm)
-  PT.print_tree(dist_tree)
 
   if vtx_groups is not None:
     shift_bc = shift_elmt_ridge - 1 if sections_ridge is not None else shift_elmt_corner - 1
     groups_to_bcs(vtx_groups, zone_bc, "Vertex", shift_bc, comm)
-  PT.print_tree(dist_tree)
 
 
   # > Distributions
@@ -200,25 +196,20 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
   for family in families:
     PT.add_child(dist_base, family)
-  PT.print_tree(dist_tree)
 
 
   # > FlowSolution
-  cons = -100*np.ones(g_dims["n_vtx_abs"] * 7, dtype=np.double)
-  PDM.read_solb(bytes(out_files['fld'], 'utf-8'), g_dims["n_vtx_abs"], 7, cons)
+  field_names = tree_info['field_names']
+  n_itp_flds  = len(field_names)
+  cons = -100*np.ones(g_dims["n_vtx_abs"] * n_itp_flds, dtype=np.double)
+  PDM.read_solb(bytes(out_files['fld'], 'utf-8'), g_dims["n_vtx_abs"], n_itp_flds, cons)
 
-  cons = cons.reshape((7, cons.shape[0]//7), order='F')
+  cons = cons.reshape((n_itp_flds, cons.shape[0]//n_itp_flds), order='F')
   cons = cons.transpose()
 
   fs = PT.new_FlowSolution("FlowSolution#Init", loc='Vertex', parent=dist_zone)
-  # faire comme les isosurf 
-  PT.new_DataArray("Density"                , cons[np_distrib_vtx[0]:np_distrib_vtx[1],0], parent=fs)
-  PT.new_DataArray("MomentumX"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],1], parent=fs)
-  PT.new_DataArray("MomentumY"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],2], parent=fs)
-  PT.new_DataArray("MomentumZ"              , cons[np_distrib_vtx[0]:np_distrib_vtx[1],3], parent=fs)
-  PT.new_DataArray("EnergyStagnationDensity", cons[np_distrib_vtx[0]:np_distrib_vtx[1],4], parent=fs)
-  PT.new_DataArray("Mach"                   , cons[np_distrib_vtx[0]:np_distrib_vtx[1],5], parent=fs)
-  PT.print_tree(dist_tree)
+  for i_fld, fld_name in enumerate(field_names):
+    PT.new_DataArray(fld_name, cons[np_distrib_vtx[0]:np_distrib_vtx[1],i_fld], parent=fs)
 
   return dist_tree
 
@@ -249,7 +240,7 @@ def meshb_to_cgns(out_files, tree_info, comm):
 
 
 
-def cgns_to_meshb(dist_tree, files, metric_fld, container_names):
+def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
   '''
   Dist_tree conversion to meshb format and writing.
   Arguments :
@@ -262,7 +253,7 @@ def cgns_to_meshb(dist_tree, files, metric_fld, container_names):
   start = time.time()
 
 
-  
+
   for zone in PT.get_all_Zone_t(dist_tree):
 
     # > Coordinates
@@ -348,15 +339,12 @@ def cgns_to_meshb(dist_tree, files, metric_fld, container_names):
       metric_fld = PT.get_value(metric_nodes[0])
       PDM.write_solb(bytes(files["sol"], 'utf-8'), n_vtx, 1, metric_fld)
     elif n_metric_fld==6:
-      # TODO : reorganize arrays 
-      metric_nodes = metric_nodes
-      get_metric_comp = lambda n, comp: PT.get_name(n)[-2:]==comp
-      mxx = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#0")[1]
-      mxy = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#1")[1]
-      mxz = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#2")[1]
-      myy = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#3")[1]
-      myz = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#4")[1]
-      mzz = PT.get_node_from_name(container, "extrap_on(sym_grad(extrap_on(#5")[1]
+      mxx = PT.get_value(metric_nodes[0])
+      mxy = PT.get_value(metric_nodes[1])
+      mxz = PT.get_value(metric_nodes[2])
+      myy = PT.get_value(metric_nodes[3])
+      myz = PT.get_value(metric_nodes[4])
+      mzz = PT.get_value(metric_nodes[5])
       met = np_utils.interweave_arrays([mxx,mxy,myy,mxz,myz,mzz])
       PDM.write_matsym_solb(bytes(files["sol"], 'utf-8'), n_vtx, met)
 
@@ -364,9 +352,8 @@ def cgns_to_meshb(dist_tree, files, metric_fld, container_names):
     # > Fields to interpolate
     fields_list = list()
     for container_name in container_names:
-      container    = PT.get_node_from_name(zone, container_names)
+      container    = PT.get_node_from_name(zone, container_name)
       fields_list += [PT.get_value(n) for n in PT.get_children_from_label(container, 'DataArray_t')]
-    print(f"len(fields_list) = {len(fields_list)}")
     if len(fields_list)>0:
       fields_array = np_utils.interweave_arrays(fields_list)
       PDM.write_solb(bytes(files["fld"], 'utf-8'), n_vtx, len(fields_list), fields_array)
