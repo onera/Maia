@@ -165,7 +165,7 @@ def mesh_adaptation(dist_tree, comm, metric=None, container_names=[], feflo_opti
     feflo_call_list = ["feflo.a"]             \
                     + ['-in', in_files['mesh']]\
                     + feflo_args[metric_type]  \
-                    + feflo_opt                
+                    + feflo_options                
 
     mlog.info(f"Feflo mesh adaptation...")
     start = time.time()
