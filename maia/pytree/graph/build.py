@@ -5,12 +5,12 @@ class _build_tree_visitor:
   def __init__(self, node_constructor, pre):
     self.node_constructor = node_constructor
     self.sub_tree_stack = [[]]
-    self.pre = pre
+    self._pre = pre
 
   def pre(self, node):
     self.sub_tree_stack.append([]) # add a level
-    if self.pre is not None:
-      return self.pre(node)
+    if self._pre is not None:
+      return self._pre(node)
 
   def post(self, from_node):
     to_children = self.sub_tree_stack[-1] # get children from stack
@@ -25,7 +25,7 @@ class _build_tree_visitor:
     return self.sub_tree_stack[0][0]
 
 
-def depth_first_build(g, node_constructor, pre):
+def depth_first_build(g, node_constructor, pre=None):
   """
     Depth first traversal of graph `g` in order to create another graph `g_out`
 
@@ -38,9 +38,9 @@ def depth_first_build(g, node_constructor, pre):
         `to_children` is a list of the previous sub-graphs of `g_out`
         `to_node` is the new graph node that is to be created. It should have the same type as the elements of `to_children`
 
-    pre: tells the algorithm what to do on each node traversed (step.in, step,
+    pre: tells the algorithm what to do on each node traversed (step.into, step.over, step.out)
         More precisely, `pre` is a function of argument `node` and returning a `graph.algo.step` value
   """
-  v = _build_tree_visitor(node_constructor, pre=None)
+  v = _build_tree_visitor(node_constructor, pre)
   algo.depth_first_search(g, v)
   return v.retrieve_composition_term()

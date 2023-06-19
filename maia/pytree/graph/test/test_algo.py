@@ -1,6 +1,6 @@
 from maia.pytree.graph.algo import step, depth_first_search
 
-from maia.pytree.graph.io_graph import node_value, set_node_value, rooted_tree_example
+from maia.pytree.graph.io_graph import rooted_tree_example, VALUE
 
 
 class visitor_for_testing_depth_first_scan:
@@ -8,13 +8,13 @@ class visitor_for_testing_depth_first_scan:
     self.s = ''
 
   def pre(self, x):
-    self.s += '[pre ] ' + str(node_value(x)) + '\n'
+    self.s += '[pre ] ' + str(x[VALUE]) + '\n'
   def post(self, x):
-    self.s += '[post] ' + str(node_value(x)) + '\n'
+    self.s += '[post] ' + str(x[VALUE]) + '\n'
   def up(self, below, above):
-    self.s += '[up  ] ' + str(node_value(below)) + ' -> ' + str(node_value(above)) + '\n'
+    self.s += '[up  ] ' + str(below[VALUE]) + ' -> ' + str(above[VALUE]) + '\n'
   def down(self, above, below):
-    self.s += '[down] ' + str(node_value(above)) + ' -> ' + str(node_value(below)) + '\n'
+    self.s += '[down] ' + str(above[VALUE]) + ' -> ' + str(below[VALUE]) + '\n'
 
   def accumulation_string(self):
     return self.s
@@ -84,7 +84,7 @@ def test_depth_first_scan():
 class visitor_for_testing_depth_first_find(visitor_for_testing_depth_first_scan):
   def pre(self, x) -> bool:
     visitor_for_testing_depth_first_scan.pre(self,x)
-    if node_value(x) == 3:
+    if x[VALUE] == 3:
       return step.out
     else:
       return step.into
@@ -129,13 +129,13 @@ def test_depth_first_find():
     '[post] 1\n'
 
   assert v.accumulation_string() == expected_s
-  assert node_value(found) == 3
+  assert found[VALUE] == 3
 
 
 class visitor_for_testing_depth_first_prune(visitor_for_testing_depth_first_scan):
   def pre(self, x) -> bool:
     visitor_for_testing_depth_first_scan.pre(self,x)
-    if node_value(x) == 2:
+    if x[VALUE] == 2:
       return step.over
     else:
       return step.into
@@ -193,8 +193,8 @@ def test_depth_first_prune():
 class visitor_for_testing_dfs(visitor_for_testing_depth_first_scan):
   def pre(self,x):
     visitor_for_testing_depth_first_scan.pre(self,x)
-    if node_value(x) == 8: return step.out
-    if node_value(x) == 2: return step.over
+    if x[VALUE] == 8: return step.out
+    if x[VALUE] == 2: return step.over
     else: return step.into
 
 def test_depth_first_search():
@@ -229,20 +229,20 @@ def test_depth_first_search():
     '[post] 1\n'
 
   assert v.accumulation_string() == expected_s
-  assert node_value(found) == 8
+  assert found[VALUE] == 8
 
 
 class modifying_visitor_for_testing_dfs(visitor_for_testing_depth_first_scan):
   def pre(self, x):
-    if node_value(x) == 8: s = step.out
-    elif node_value(x) == 2: s = step.over
+    if x[VALUE] == 8: s = step.out
+    elif x[VALUE] == 2: s = step.over
     else: s = step.into
 
-    set_node_value(x, node_value(x)+100)
+    x[VALUE] = x[VALUE]+100
     return s
 
   def post(self, x):
-    set_node_value(x, node_value(x)+10000)
+    x[VALUE] = x[VALUE]+10000
 
 def test_depth_first_search_inplace_modif():
   #   Reminder:

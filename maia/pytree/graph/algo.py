@@ -46,26 +46,13 @@ class step(Enum):
   out = 2
 
 
-def make_visitor(v):
-  """ The `depth_first_search` algorithm expects a visitor with `pre`, `post`, `down` and `up`
-
-  If the user does not provide `post`, `down` or `up`, then add them on-the-fly to do nothing
-  """
-  def do_nothing(*args): pass
-
-  if not getattr(v, 'post', None):
-    v.post = do_nothing
-  if not getattr(v, 'down', None):
-    v.down = do_nothing
-  if not getattr(v, 'up', None):
-    v.up = do_nothing
-  return v
-
-
 class graph_traversal_stack:
   """ Main data structure that is used to capture and update the position we are in during a graph traversal
   """
   def __init__(self, g):
+    is_ok, msg  = dfs_interface_report(g)
+    assert is_ok, msg
+
     self._g = g
     self._iterators = []
     self._nodes     = []
@@ -121,10 +108,10 @@ def unwind(S, f):
   f.post(S.nodes())
 
 
-def depth_first_search_stack(S, f):
+def _depth_first_search_stack(S, f):
   """ Depth-first graph traversal
 
-  This is the low-level algorithm that is called by `depth_first_search`
+  This is the low-level algorithm
   """
   while not S.is_done():
     if not S.level_is_done():
@@ -152,6 +139,20 @@ def depth_first_search_stack(S, f):
         S.advance_node_range()
 
   return None
+
+
+class complete_visitor:
+  """ The `depth_first_search_stack` algorithm expects a visitor with `pre`, `post`, `down` and `up`
+
+  If the user does not provide `post`, `down` or `up`, then add them on-the-fly to do nothing
+  """
+
+  def __init__(self, v):
+    def _do_nothing(*args): pass
+
+    # take v.pre, v.post, v.down and v.up if they exist, otherwise, create them to do nothing
+    for f_name in ['pre','post','down','up']:
+      setattr(self, f_name, getattr(v, f_name, _do_nothing))
 
 
 class close_ancestor_visitor:
@@ -189,12 +190,21 @@ class close_ancestor_visitor:
   # For `down` and `up`, we don't have enough examples to really make the correct decision for the interface
   # Here we take:
   #   the current node (i.e. ancestors[-1]) for the `below` arguement
-  #   the parent node (i.e. ancestors[-2]) for the `above` arguement
+  #   the parent node (i.e. ancestoanimationrs[-2]) for the `above` arguement
   # Which at least seems natural for depth==1
   def down(self, ancestors):
     return self.f.down( ancestors[-2], ancestors[-1] )
   def up(self, ancestors):
     return self.f.up  ( ancestors[-1], ancestors[-2] )
+
+
+def depth_first_search_stack(S, f, depth='node'):
+  f = complete_visitor(f)
+  if depth != 'all':
+    if depth == 'node'  : depth = 1
+    if depth == 'parent': depth = 2
+    f = close_ancestor_visitor(f,depth)
+  return _depth_first_search_stack(S, f)
 
 
 def depth_first_search(g, f, depth='node'):
@@ -223,9 +233,4 @@ def depth_first_search(g, f, depth='node'):
   assert is_ok, msg
 
   S = graph_traversal_stack(g)
-  v = make_visitor(f)
-  if depth != 'all':
-    if depth == 'node'  : depth = 1
-    if depth == 'parent': depth = 2
-    v = close_ancestor_visitor(v,depth)
-  return depth_first_search_stack(S, v)
+  return depth_first_search_stack(S, f, depth)
