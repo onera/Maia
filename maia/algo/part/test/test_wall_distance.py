@@ -58,7 +58,7 @@ class Test_wallDistance:
     PT.add_child(zone, zone_bc)
 
     # Test with family specification + propagation method + default out_fs_name
-    WD.compute_wall_distance(part_tree, comm, method="propagation", families=["WALL"], perio=perio)
+    WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
 
     fs = PT.get_child_from_name(zone, 'WallDistance')
     assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
@@ -87,7 +87,8 @@ def test_walldistance_perio(comm):
   coordY -= coordZ
 
   for bc in PT.get_nodes_from_label(dist_treeU, "BC_t"):
-    PT.new_Family(f"Fam_{PT.get_name(bc)}", parent=PT.get_child_from_label(dist_treeU, "CGNSBase_t"))
+    family_bc = "BCWall" if PT.get_name(bc) == 'Ymin' else None
+    PT.new_Family(f"Fam_{PT.get_name(bc)}", family_bc=family_bc, parent=PT.get_child_from_label(dist_treeU, "CGNSBase_t"))
     PT.new_node(name='FamilyName', label='FamilyName_t', value=f"Fam_{PT.get_name(bc)}", parent=bc)
 
   maia.algo.dist.connect_1to1_families(dist_treeU, ('Fam_Xmin', 'Fam_Xmax'), comm,
@@ -108,7 +109,7 @@ def test_walldistance_perio(comm):
   part_tree = maia.factory.partition_dist_tree(dist_treeU, comm)
 
   # Test with family specification
-  WD.compute_wall_distance(part_tree, comm, families=["Fam_Ymin"])
+  WD.compute_wall_distance(part_tree, comm)
 
   expected_wd     = [0.35355339, 0.35355339, 1.06066017, 1.06066017,
                      0.35355339, 0.35355339, 1.06066017, 1.06066017]

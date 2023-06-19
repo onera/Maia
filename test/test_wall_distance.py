@@ -19,20 +19,11 @@ def test_wall_distance_S(method, comm, write_output):
 
   dist_tree = maia.io.file_to_dist_tree(mesh_file, comm)
 
-  # Families are not present in the tree, we need to add it
-  base = PT.get_all_CGNSBase_t(dist_tree)[0]
-  fam = PT.new_Family('WALL', family_bc='Null', parent=base)
-  for bc in PT.iter_nodes_from_label(dist_tree, 'BC_t'):
-    if PT.get_value(bc) == 'BCWall':
-      PT.set_value(bc, 'FamilySpecified')
-      PT.new_child(bc, 'FamilyName', 'FamilyName_t', 'WALL')
-
   # Partitioning
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, graph_part_tool='ptscotch')
 
-  # Wall distance computation
-  families = ['WALL']
-  maia.algo.part.compute_wall_distance(part_tree, comm, method=method, families=families)
+  # Wall distance computation (BC already have wall type in the CGNS file)
+  maia.algo.part.compute_wall_distance(part_tree, comm, method=method)
 
   # Save file and compare
   maia.transfer.part_tree_to_dist_tree_all(dist_tree, part_tree, comm)

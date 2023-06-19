@@ -89,11 +89,10 @@ def extract_faces_mesh(zone, face_ids):
   return ex_cx, ex_cy, ex_cz, ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
 
-def extract_surf_from_bc(part_zones, families, comm):
+def extract_surf_from_bc(part_zones, bc_predicate, comm):
   """
   From a list of partitioned zones (coming from the same initial domain), get the list
-  of faces belonging to a family whose name is in families list and extract the surfacic
-  mesh.
+  of faces belonging to any bc satisfiyng bc_predicate and extract the surfacic mesh.
   In addition, compute a new global numbering (over the procs and the part_zones) of the extracted
   faces and vertex (starting a 1 without gap)
 
@@ -107,7 +106,7 @@ def extract_surf_from_bc(part_zones, families, comm):
   parent_vtx_lngn_l  = []
   for zone in part_zones:
 
-    bc_nodes = PT.Zone.getBCsFromFamily(zone, families)
+    bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: PT.get_label(n) == 'BC_t' and bc_predicate(n)])
     if PT.Zone.Type(zone) == 'Unstructured':
       bc_face_ids = [PT.get_child_from_name(bc_node, 'PointList')[1][0] for bc_node in bc_nodes]
     else:

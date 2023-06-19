@@ -18,6 +18,7 @@ from maia.algo.part.extract_boundary import extract_surf_from_bc
 from maia.algo.part.geometry         import compute_cell_center
 from maia.transfer                   import utils as tr_utils
 
+BC_WALLS = ['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']
 
 def _are_same_perio_abs(first, second):
   """ Return True if the two periodic transformation are the same in absolute value"""
@@ -30,7 +31,7 @@ def _are_same_perio_abs(first, second):
       return True
   return False
 
-def detect_wall_families(tree, bcwalls=['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']):
+def detect_wall_families(tree, bcwalls=BC_WALLS):
   """
   Return the list of Families having a FamilyBC_t node whose value is in bcwalls list
   """
@@ -45,9 +46,9 @@ class WallDistance:
   """ Implementation of wall distance. See compute_wall_distance for full documentation.
   """
 
-  def __init__(self, part_tree, mpi_comm, method="cloud", families=[], point_cloud='CellCenter', out_fs_name='WallDistance', perio=True):
+  def __init__(self, part_tree, bc_predicate, mpi_comm, method="cloud", point_cloud='CellCenter', out_fs_name='WallDistance', perio=True):
     self.part_tree = part_tree
-    self.families  = families
+    self.bc_predicate = bc_predicate
     self.mpi_comm  = mpi_comm
     assert method in ["cloud", "propagation"]
     self.method    = method
@@ -109,11 +110,10 @@ class WallDistance:
     self._shift_id_and_push_in_global_list(dupl_parts_data, all_parts_datas, i_dom)
     return dupl_parts_data
 
-  def _setup_surf_mesh(self, parts_per_dom, families, comm):
+  def _setup_surf_mesh(self, parts_per_dom, comm):
     """
     Setup the surfacic mesh for wall distance computing
     """
-
     #This will concatenate part data of all initial domains
     face_vtx_bnd_l = []
     face_vtx_bnd_idx_l = []
@@ -127,7 +127,7 @@ class WallDistance:
     for part_zones in parts_per_dom:
       
       i_dom += 1
-      parts_datas = extract_surf_from_bc(part_zones, families, comm)
+      parts_datas = extract_surf_from_bc(part_zones, self.bc_predicate, comm)
       self._shift_id_and_push_in_global_list(parts_datas, all_parts_datas, i_dom)
       
       if self.perio:
@@ -264,11 +264,16 @@ class WallDistance:
     Prepare, compute and get wall distance
     """
 
-    #Get a skeleton tree including only Base, Zones and Families
+    #Get a skeleton tree including only Base, Zones
     skeleton_tree = PT.new_CGNSTree()
-    discover_nodes_from_matching(skeleton_tree, [self.part_tree], 'CGNSBase_t', self.mpi_comm, child_list=['Family_t'])
     discover_nodes_from_matching(skeleton_tree, [self.part_tree], 'CGNSBase_t/Zone_t', self.mpi_comm,
         merge_rule = lambda path: MT.conv.get_part_prefix(path))
+
+    # Group partitions by original dist domain
+    parts_per_dom = list()
+    for zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
+      parts_per_dom.append(TE.utils.get_partitioned_zones(self.part_tree, zone_path))
+    assert len(parts_per_dom) >= 1
     
         
     if self.method == "cloud":
@@ -299,67 +304,47 @@ class WallDistance:
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
       self.perio = False
         
-    # Search families if its are not given
-    if not self.families:
-      self.families = detect_wall_families(skeleton_tree)
+    # Create walldist structure
+    # Multidomain is not managed for n_part_surf, n_part_surf is the total of partitions
+    n_part_surf = sum([len(part_zones) for part_zones in parts_per_dom])
+    if self.method == "propagation":
+      if len(parts_per_dom) > 1:
+        raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
+      self._walldist = PDM.DistCellCenterSurf(self.mpi_comm, n_part_surf, n_part_vol=1)
+    elif self.method == "cloud":
+      n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom]
+      if self.perio:
+        n_part_surf = n_part_surf*3**(len(self.periodicities))
+      self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, n_part_surf, point_clouds=n_part_per_cloud)
 
-    skeleton_families = [PT.get_name(f) for f in PT.iter_nodes_from_label(skeleton_tree, "Family_t")]
-    found_families = any([fn in self.families for fn in skeleton_families])
+    self._setup_surf_mesh(parts_per_dom, self.mpi_comm)
+    if self._n_face_bnd_tot_idx[-1] == 0:
+      return -1 # No surface found
 
-    if found_families:
-
-      # Group partitions by original dist domain
-      parts_per_dom = list()
-      for dbase, dzone in PT.iter_children_from_predicates(skeleton_tree, 'CGNSBase_t/Zone_t', ancestors=True):
-        dzone_path = PT.get_name(dbase) + '/' + PT.get_name(dzone)
-        parts_per_dom.append(TE.utils.get_partitioned_zones(self.part_tree, dzone_path))
-
-      assert len(parts_per_dom) >= 1
-
-      # Create walldist structure
-      # Multidomain is not managed for n_part_surf, n_part_surf is the total of partitions
-      n_part_surf = sum([len(part_zones) for part_zones in parts_per_dom])
-      if self.method == "propagation":
-        if len(parts_per_dom) > 1:
-          raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
-        self._walldist = PDM.DistCellCenterSurf(self.mpi_comm, n_part_surf, n_part_vol=1)
-      elif self.method == "cloud":
-        n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom]
-        if self.perio:
-          n_part_surf = n_part_surf*3**(len(self.periodicities))
-        self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, n_part_surf, point_clouds=n_part_per_cloud)
-
-
-      self._setup_surf_mesh(parts_per_dom, self.families, self.mpi_comm)
-
-      # Prepare mesh depending on method
-      if self.method == "cloud":
-        for i_domain, part_zones in enumerate(parts_per_dom):
-          for i_part, part_zone in enumerate(part_zones):
-            points, points_lngn = get_point_cloud(part_zone, self.point_cloud)
-            self._keep_alive.extend([points, points_lngn])
-            self._walldist.cloud_set(i_domain, i_part, points_lngn.shape[0], points, points_lngn)
-
-      elif self.method == "propagation":
-        for i_domain, part_zones in enumerate(parts_per_dom):
-          self._walldist.n_part_vol = len(part_zones)
-          if len(part_zones) > 0 and PT.Zone.Type(part_zones[0]) != 'Unstructured':
-            raise NotImplementedError("Wall_distance computation with method 'propagation' does not support structured blocks")
-          self._setup_vol_mesh(i_domain, part_zones, self.mpi_comm)
-
-      #Compute
-      self._walldist.compute()
-
-      # Get results -- OK because name of method is the same for 2 PDM objects
+    # Prepare mesh depending on method
+    if self.method == "cloud":
       for i_domain, part_zones in enumerate(parts_per_dom):
-        self._get(i_domain, part_zones)
+        for i_part, part_zone in enumerate(part_zones):
+          points, points_lngn = get_point_cloud(part_zone, self.point_cloud)
+          self._keep_alive.extend([points, points_lngn])
+          self._walldist.cloud_set(i_domain, i_part, points_lngn.shape[0], points, points_lngn)
 
-    else:
-      raise ValueError(f"Unable to find BC family(ies) : {self.families} in {skeleton_families}.")
+    elif self.method == "propagation":
+      for i_domain, part_zones in enumerate(parts_per_dom):
+        self._walldist.n_part_vol = len(part_zones)
+        if len(part_zones) > 0 and PT.Zone.Type(part_zones[0]) != 'Unstructured':
+          raise NotImplementedError("Wall_distance computation with method 'propagation' does not support structured blocks")
+        self._setup_vol_mesh(i_domain, part_zones, self.mpi_comm)
+
+    #Compute
+    self._walldist.compute()
+
+    # Get results -- OK because name of method is the same for 2 PDM objects
+    for i_domain, part_zones in enumerate(parts_per_dom):
+      self._get(i_domain, part_zones)
 
     # Free unnecessary numpy
     del self._keep_alive
-
 
   def dump_times(self):
     self._walldist.dump_times()
@@ -403,9 +388,19 @@ def compute_wall_distance(part_tree, comm, *, method="cloud", families=[], point
         :dedent: 2
   """
   start = time.time()
-  walldist = WallDistance(part_tree, comm, method, families, point_cloud, out_fs_name, perio)
-  walldist.compute()
+  
+  # Retrieve Wall Families (warning -- if we have a Family_t appearing under two bases 
+  # with the same name, it can be wrongly selected)
+  wall_bc_families = detect_wall_families(part_tree)
+  is_wall_bc = lambda n : PT.get_value(n) in BC_WALLS or \
+             (PT.get_child_from_label(n, 'FamilyName_t') is not None and \
+             PT.get_value(PT.get_child_from_label(n, 'FamilyName_t')) in wall_bc_families)
+
+  walldist = WallDistance(part_tree, is_wall_bc, comm, method, point_cloud, out_fs_name, perio)
+  out = walldist.compute()
   end = time.time()
-  #walldist.dump_times()
-  mlog.info(f"Wall distance from families {walldist.families} computed ({end-start:.2f} s)")
+  if out == -1:
+    mlog.error(f"Wall distance computing failed because no wall-like BC_t have been found in tree")
+  else:
+    mlog.info(f"Wall distance computed ({end-start:.2f} s)")
 
