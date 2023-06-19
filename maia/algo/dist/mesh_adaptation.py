@@ -15,10 +15,6 @@ import subprocess
 from pathlib import Path
 
 
-# FEFLO
-feflo_path = "feflo" # TODO : Must be an alias in user profile
-feflo_path = "/home/bmaugars/tmp/feflo.a" # Must be an alias in user profile
-
 # TMP directory
 tmp_repo   = 'TMP_adapt_repo/'
 
@@ -97,52 +93,49 @@ def unpack_metric(dist_tree, metric_paths):
 
 
 
-def mesh_adapt(dist_tree, comm, metric=None, container_names=[], feflo_opt=[]):
-  ''' Return a feflo adapted mesh according to a metric and a complexity.
+def mesh_adaptation(dist_tree, comm, metric=None, container_names=[], feflo_options=[]):
+  ''' Return a feflo adapted mesh according to a metric and options.
 
   Adapted mesh is returned as an independant distributed tree.
 
   Important:
     - Input tree must be unstructured and have a element connectivity.
-    - Fields in the "FSolution#Vertex#EndOfRun" node will be used by adaptation process, 
-    so it must be in ``dist_tree``.
 
   Args:
-    dist_tree     (CGNSTree)        : Distributed tree on which adaptation is done. Only U-Elements
+    dist_tree      (CGNSTree)    : Distributed tree on which adaptation is done. Only U-Elements
       connectivities are managed.
-    comm          (MPIComm)         : MPI communicator.
-    metric         (list)           : Paths to metric fields.
-    container_names(list)           : Container names that must been projected on adapted mesh (Vertex Center)
-    feflo_opt     (list, optional)  : List of feflo's optional arguments.
+    comm           (MPIComm)     : MPI communicator.
+    metric         (str or list) : Path(s) to metric fields.
+    container_names(list)        : Container names that must been projected on adapted mesh (Vertex Center).
+    feflo_options (list)        : List of feflo's optional arguments.
   Returns:
-    adapted_tree (CGNSTree): Adapted mesh tree (distributed) 
+    adapted_tree (CGNSTree): Adapted mesh tree (distribute).
 
-  Metric choice is available through number of ``metric`` path given. Paths is used as a preffix
-    - if paths leads to 1 field  in CGNSTree -- Feflo's feature-based metric. Metric is computed while feflo's process on this field.
-    - if paths leads to 6 fields in CGNSTree -- User's feature-based metric. Metric is already computed, and will be used by feflo.
-    (Must be stored with suffix (``XX``,``XY``,``XZ``,``YY``,``YZ``,``ZZ``,))
+  Metric choice is available through type of ``metric`` argument.
+  If it's str :
+    - if path leads to 1 field  in CGNSTree -- Feflo's feature-based metric.
+      Metric is computed with this field while feflo's process.
+    - if path leads to 6 fields in CGNSTree -- User's  feature-based metric.
+      Metric is already computed, and will be used by feflo (must be stored 
+      with suffix (``XX``,``XY``,``XZ``,``YY``,``YZ``,``ZZ``), order fixed by maia).
+  If it's list -- User's feature-based metric -- Metric is already computed,
+  and will be used by feflo with order described by user in the list.
     - if no paths are given, feflo will adapt the initial mesh into an isotrop mesh.
 
-  Each BC must be FamilySpecified
 
   Note:
-    - This function has a sequential behaviour (because of the file interface with feflo).
-    - Feflo mesh adaptation behaviour can be controled via feflo's arguments. You can use them through the feflo_opt argument.
+    - Each BC from dist_tree must be FamilySpecified.
+    - This function interface is parallel, but because feflo is sequential, dist_tree is reduced
+    to one proc to perform mesh adaptation. Beware about memory issues !
+    - Feflo mesh adaptation behaviour can be controled via feflo's arguments. You can use them through the feflo_options argument.
     Example : ``-hgrad 2. -nordg -mesh_back mesh_back.mesh`` becomes ``["-hgrad", "2.", "-nordg", "-mesh_back", "mesh_back.mesh"]``.
+    - Note that feflo's metric order is ``XX``,``XY``,``YY``,``XZ``,``YZ``,``ZZ``,
+    so beware about list order while passing a `metric` list argument.
+    - Feflo's binary must be in user's profile (Example : `export PATH='path_to_feflo_dir':$PATH)
 
   '''
-
-
-  '''
-  TODO:
-    - beware of I4 DataArray_t in containers
-    - interpolation avec MAIA
-    - interpolate FlowSol(CellCenter)
-  '''
-
 
   Path(tmp_repo).mkdir(exist_ok=True)
-  # Path.cwd()/Path(tmp_repo).mkdir(exist_ok=True)
 
   # > Get metric nodes
   metric_nodes = unpack_metric(dist_tree, metric)
@@ -169,7 +162,7 @@ def mesh_adapt(dist_tree, comm, metric=None, container_names=[], feflo_opt=[]):
     cgns_to_meshb(dist_tree, in_files, metric_nodes, container_names)
 
     # Adapt with feflo
-    feflo_call_list = [feflo_path]             \
+    feflo_call_list = ["feflo.a"]             \
                     + ['-in', in_files['mesh']]\
                     + feflo_args[metric_type]  \
                     + feflo_opt                
@@ -177,7 +170,7 @@ def mesh_adapt(dist_tree, comm, metric=None, container_names=[], feflo_opt=[]):
     mlog.info(f"Feflo mesh adaptation...")
     start = time.time()
     
-    subprocess.run(feflo_call_list)
+    subprocess.run(feflo_call_list, shell=True)
 
     end = time.time()
     mlog.info(f"Feflo mesh adaptation completed ({end-start:.2f} s) --")

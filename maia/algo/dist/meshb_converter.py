@@ -68,7 +68,7 @@ def get_tree_info(dist_tree, container_names):
 def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   """
   Convert a dmesh_nodal mesh to CGNS format, according to initial dist_tree informations
-  contained in ``tree_info``, ``dicttag_to_bc_info``, ``families``.
+  contained in ``tree_info``.
   """
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
@@ -154,7 +154,7 @@ def meshb_to_cgns(out_files, tree_info, comm):
 
   Arguments :
     - out_files         (dict): meshb file names
-    - tree_info         (dict): initial dist_tree informations (nodes names, families, bc_infos)
+    - tree_info         (dict): initial dist_tree informations (nodes names, families, bc_infos, interpolated field names)
     - comm              (MPI) : MPI Communicator
   '''
   mlog.info(f"meshb to CGNS dist_tree conversion...")
@@ -178,9 +178,10 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
   '''
   Dist_tree conversion to meshb format and writing.
   Arguments :
-    - dist_tree (CGNSTree) : dist_tree to convert
-    - files     (dict)     : file names for meshb files
-    - metric    (str)      : descriptor of the adaptation metric
+    - dist_tree       (CGNSTree) : dist_tree to convert
+    - files           (dict)     : file names for meshb files
+    - metric_nodes    (str)      : CGNS metric nodes
+    - container_names (str)      : container_names to be interpolated
   '''
 
   mlog.info(f"CGNS to meshb dist_tree conversion...")
