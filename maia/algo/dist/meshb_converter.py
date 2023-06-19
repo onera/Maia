@@ -70,9 +70,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   Convert a dmesh_nodal mesh to CGNS format, according to initial dist_tree informations
   contained in ``tree_info``.
   """
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
-
 
   # > Get tree infos
   tree_names        = tree_info['tree_names']
