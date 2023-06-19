@@ -19,7 +19,7 @@ def io_graph_data_example():
   return [
     [ 4, [2]    , []     ], #0
     [ 7, [2]    , []     ], #1
-    [ 2, [8]    , [0,1,3]], #2 
+    [ 2, [8]    , [0,1,3]], #2
     [ 9, [4,8,2], []     ], #3
     [ 8, [7]    , [3]    ], #4  The node at position '4' has value '8'.
                             #   Its parents are at positions [7], that is, it has only one parent, its value is '3'
@@ -30,14 +30,10 @@ def io_graph_data_example():
     [ 1, []     , [2,7,3]], #8
   ]
 
-def node_value(n):
-  return n[0]
-def set_node_value(n, val):
-  n[0] = val
-def inward_nodes(n):
-  return n[1]
-def outward_nodes(n):
-  return n[2]
+
+VALUE = 0
+INWARD = 1
+OUTWARD = 2
 
 class adjacency_iterator:
   def __init__(self, g, adj_idcs):
@@ -68,7 +64,7 @@ class io_graph_tree_adaptor:
 
 # Interface to satisfy dfs_interface_report {
   def children(self, n):
-    return adjacency_iterator(self.g, outward_nodes(n))
+    return adjacency_iterator(self.g, n[OUTWARD])
   def roots(self):
     return adjacency_iterator(self.g, [self.root_idx])
 # Interface to satisfy dfs_interface_report }
@@ -77,3 +73,41 @@ class io_graph_tree_adaptor:
 def rooted_tree_example():
   g = io_graph_data_example()
   return io_graph_tree_adaptor(g,8) # note: 8 is the index of node '1'
+
+
+# dfs build {
+## building a io_tree (which is just an io_graph that is a tree) from depth-first search
+class io_tree_ctor:
+  def __init__(self):
+    self.i = 0
+
+  def __call__(self, from_io_node, to_sub_io_graphs):
+    node_outwards = []
+    cat_sub_io_graphs = []
+    for to_sub_io_graph in to_sub_io_graphs:
+      # now we know the index of the parent
+      direct_child = to_sub_io_graph[-1]
+      direct_child[INWARD] = [self.i]
+
+      # we need to offset outward indices due to previous sub-graphs already in the adjacency list
+      offset = len(cat_sub_io_graphs)
+      for adj in to_sub_io_graph:
+        for i in range(len(adj[OUTWARD])):
+          adj[OUTWARD][i] += offset
+
+      # append the sub-graph to list
+      cat_sub_io_graphs += to_sub_io_graph
+
+      # keep track of the index of this direct child for the current node
+      direct_child_index = len(cat_sub_io_graphs)-1
+      node_outwards.append(direct_child_index)
+
+    to_node = [from_io_node[VALUE], [], node_outwards]
+    self.i += 1
+    return cat_sub_io_graphs + [to_node]
+
+
+def depth_first_build_io_tree(g):
+  from maia.pytree.graph.build import depth_first_build
+  return depth_first_build(g, io_tree_ctor())
+# dfs build }
