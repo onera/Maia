@@ -137,6 +137,7 @@ def mesh_adapt(dist_tree, comm, metric=None, container_names=[], feflo_opt=[]):
   TODO:
     - beware of I4 DataArray_t in containers
     - interpolation avec MAIA
+    - interpolate FlowSol(CellCenter)
   '''
 
 

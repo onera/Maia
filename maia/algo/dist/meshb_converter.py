@@ -6,8 +6,9 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 
-from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.utils import np_utils, par_utils, layouts
+from maia                         import npy_pdm_gnum_dtype as pdm_gnum_dtype
+from maia.utils                   import np_utils, par_utils, layouts
+from maia.factory.dcube_generator import _dmesh_nodal_to_cgns_zone
 
 import numpy as np
 
@@ -50,40 +51,18 @@ def get_tree_info(dist_tree, container_names):
 
 
   # > Container field names
-  field_names = list()
+  field_names = dict()
   for container_name in container_names:
+    field_names[container_name] = list()
     container = PT.get_node_from_name(zone_n, container_name)
     for n in PT.get_children_from_label(container, 'DataArray_t'):
-      field_names.append(PT.get_name(n))
+      field_names[container_name].append(PT.get_name(n))
 
   return {"tree_names"       : tree_names,
           "families"         : families,
           "dicttag_to_bcinfo": dicttag_to_bcinfo,
           "field_names"      : field_names
           }
-
-
-def _add_sections_to_zone(dist_zone, section, shift_elmt, comm):
-  """
-  Add distributed element node to a dist_zone.
-  """
-  if section == None: return shift_elmt
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
-
-  for i_section, section in enumerate(section["sections"]):
-    cgns_elmt_type = MT.pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
-
-    elmt = PT.new_Elements(f"{cgns_elmt_type}.{i_section}", cgns_elmt_type,
-                           erange = [shift_elmt, shift_elmt + section["np_distrib"][n_rank]-1], parent=dist_zone)
-    PT.new_DataArray('ElementConnectivity', section["np_connec"], parent=elmt)
-
-    shift_elmt += section["np_distrib"][n_rank]
-
-    distrib   = section["np_distrib"][[i_rank, i_rank+1, n_rank]]
-    MT.newDistribution({'Element' : distrib}, parent=elmt)
-
-  return shift_elmt
 
 
 def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
@@ -101,59 +80,24 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   dicttag_to_bcinfo = tree_info['dicttag_to_bcinfo']
 
 
-  g_dims = dmesh_nodal.dmesh_nodal_get_g_dims()
-  # /stck/cbenazet/workspace/MAIA/maia/maia/factory/dcube_generator.py
-  sections_vol   = None
-  sections_surf  = None
-  sections_ridge = None
-
-  edge_groups    = None
-  face_groups    = None
-
-  if g_dims["n_cell_abs"] > 0:
-    sections_vol  = dmesh_nodal.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_VOLUMIC, comm)
-  sections_surf   = dmesh_nodal.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, comm)
-  sections_ridge  = dmesh_nodal.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_RIDGE   , comm)
-  sections_corner = dmesh_nodal.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_CORNER  , comm)
-  vtx_groups      = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_CORNER)
-  edge_groups     = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
-  face_groups     = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_SURFACIC)
-
-
   # > Generate dist_tree
-  dim = 3 if g_dims["n_cell_abs"]>0 else 2
+  g_dims    = dmesh_nodal.dmesh_nodal_get_g_dims()
+  cell_dim  = 3 if g_dims["n_cell_abs"]>0 else 2
   dist_tree = PT.new_CGNSTree()
-  dist_base = PT.new_CGNSBase(name=tree_names["Base"], cell_dim=dim, phy_dim=3, parent=dist_tree)
-
-  if g_dims["n_cell_abs"] > 0:
-    dist_zone = PT.new_Zone(name=tree_names["Zone"], size=[[g_dims["n_vtx_abs"], g_dims["n_cell_abs"], 0]],
-                            type='Unstructured', parent=dist_base)
-  else:
-    dist_zone = PT.new_Zone(name=tree_names["Zone"], size=[[g_dims["n_vtx_abs"], g_dims["n_face_abs"], 0]],
-                            type='Unstructured', parent=dist_base)
-
-
-  # > Grid coordinates
-  vtx_data   = dmesh_nodal.dmesh_nodal_get_vtx(comm)
-  cx, cy, cz = layouts.interlaced_to_tuple_coords(vtx_data['np_vtx'])  
-  grid_coord = PT.new_GridCoordinates(parent=dist_zone)
-  PT.new_DataArray('CoordinateX', cx, parent=grid_coord)
-  PT.new_DataArray('CoordinateY', cy, parent=grid_coord)
-  PT.new_DataArray('CoordinateZ', cz, parent=grid_coord)
-  # > Section implicitement range donc on maintiens un compteur
-  shift_elmt        = 1
-  shift_elmt_vol    = _add_sections_to_zone(dist_zone, sections_vol   , shift_elmt      , comm)
-  shift_elmt_surf   = _add_sections_to_zone(dist_zone, sections_surf  , shift_elmt_vol  , comm)
-  shift_elmt_ridge  = _add_sections_to_zone(dist_zone, sections_ridge , shift_elmt_surf , comm)
-  shift_elmt_corner = _add_sections_to_zone(dist_zone, sections_corner, shift_elmt_ridge, comm)
+  dist_base = PT.new_CGNSBase(name=tree_names["Base"], cell_dim=cell_dim, phy_dim=3, parent=dist_tree)
+  dist_zone = _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm)
+  PT.add_child(dist_base, dist_zone)
 
 
   # > BCs
+  vtx_groups  = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_CORNER)
+  edge_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
+  face_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_SURFACIC)
+
   def groups_to_bcs(elt_groups, zone_bc, location, shift_bc, comm):
     elt_group_idx = elt_groups['dgroup_elmt_idx']
     elt_group     = elt_groups['dgroup_elmt'] + shift_bc
-    distri = np.empty(n_rank, dtype=elt_group.dtype)
-    n_elt_group = elt_group_idx.shape[0] - 1
+    n_elt_group   = elt_group_idx.shape[0] - 1
 
     for i_group in range(n_elt_group):
       bc_name = dicttag_to_bcinfo[location][i_group+1]["BC"]
@@ -165,51 +109,41 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
       PT.new_PointList(value=elt_group[start:end].reshape(1,dn_elt_bnd), parent=bc_n)
 
       bc_distrib = par_utils.gather_and_shift(dn_elt_bnd, comm, pdm_gnum_dtype)
-      distrib    = bc_distrib[[i_rank, i_rank+1, n_rank]]
-      MT.newDistribution({'Index' : distrib}, parent=bc_n)
+      MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_elt_bnd, comm)}, parent=bc_n)
 
       PT.new_node("FamilyName", label="FamilyName_t", value=famname, parent=bc_n)
-      # PT.add_child(bc_n, famname)
 
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
+  range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
 
-  if face_groups is not None:
-    shift_bc = shift_elmt_vol - 1 if sections_vol is not None else shift_elmt_surf - 1
-    groups_to_bcs(face_groups, zone_bc, "FaceCenter", shift_bc, comm)
-
-  if edge_groups is not None:
-    shift_bc = shift_elmt_surf - 1 if sections_surf is not None else shift_elmt_ridge - 1
-    groups_to_bcs(edge_groups, zone_bc, "EdgeCenter", shift_bc, comm)
-
-  if vtx_groups is not None:
-    shift_bc = shift_elmt_ridge - 1 if sections_ridge is not None else shift_elmt_corner - 1
-    groups_to_bcs(vtx_groups, zone_bc, "Vertex", shift_bc, comm)
+  if face_groups is not None: groups_to_bcs(face_groups, zone_bc, "FaceCenter", range_per_dim[3][1], comm)
+  if edge_groups is not None: groups_to_bcs(edge_groups, zone_bc, "EdgeCenter", range_per_dim[2][1], comm)
+  if vtx_groups  is not None: groups_to_bcs(vtx_groups,  zone_bc, "Vertex",     range_per_dim[1][1], comm)
 
 
-  # > Distributions
-  np_distrib_cell = par_utils.uniform_distribution(g_dims["n_cell_abs"], comm)
-
-  distri_vtx     = vtx_data['np_vtx_distrib']
-  np_distrib_vtx = distri_vtx[[i_rank, i_rank+1, n_rank]]
-
-  MT.newDistribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=dist_zone)
-
+  # > Add families
   for family in families:
     PT.add_child(dist_base, family)
 
 
-  # > FlowSolution
+  # > Add FlowSolution
+  n_vtx = PT.Zone.n_vtx(dist_zone)
+  np_distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, "Vertex"))
+
   field_names = tree_info['field_names']
-  n_itp_flds  = len(field_names)
+  n_itp_flds  = np.sum([len(fld_names) for fld_names in field_names.values()])
   if n_itp_flds!=0:
-    cons = -100*np.ones(g_dims["n_vtx_abs"] * n_itp_flds, dtype=np.double)
-    PDM.read_solb(bytes(out_files['fld'], 'utf-8'), g_dims["n_vtx_abs"], n_itp_flds, cons)
+    cons = -100*np.ones(n_vtx * n_itp_flds, dtype=np.double)
+    PDM.read_solb(bytes(out_files['fld'], 'utf-8'), n_vtx, n_itp_flds, cons)
     cons = cons.reshape((n_itp_flds, cons.shape[0]//n_itp_flds), order='F')
     cons = cons.transpose()
 
-    fs = PT.new_FlowSolution("FlowSolution#Init", loc='Vertex', parent=dist_zone)
-    for i_fld, fld_name in enumerate(field_names):
-      PT.new_DataArray(fld_name, cons[np_distrib_vtx[0]:np_distrib_vtx[1],i_fld], parent=fs)
+    i_fld = 0
+    for container_name, fld_names in field_names.items():
+      fs = PT.new_FlowSolution(container_name, loc='Vertex', parent=dist_zone)
+      for fld_name in fld_names:
+        PT.new_DataArray(fld_name, cons[np_distrib_vtx[0]:np_distrib_vtx[1],i_fld], parent=fs)
+        i_fld += 1
 
   return dist_tree
 
@@ -252,6 +186,8 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
   mlog.info(f"CGNS to meshb dist_tree conversion...")
   start = time.time()
 
+  # > Monodomain only for now
+  assert len(PT.get_all_Zone_t(dist_tree))==1
 
   for zone in PT.get_all_Zone_t(dist_tree):
 
