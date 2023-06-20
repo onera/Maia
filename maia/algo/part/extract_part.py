@@ -376,9 +376,21 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
     extractor.exchange_fields(containers_name)
   end = time.time()
 
-  mlog.info(f"\"{zsr_name}\" ZoneSubRegion extraction completed ({end-start:.2f} s) --")
+  extracted_tree = extractor.get_extract_part_tree()
 
-  return extractor.get_extract_part_tree()
+  # Print some light stats
+  elts_kind = ['vtx', 'edges', 'faces', 'cells'][extractor.dim]
+  if extractor.dim == 0:
+    n_cell = sum([PT.Zone.n_vtx(zone) for zone in PT.iter_all_Zone_t(extracted_tree)])
+  else:
+    n_cell = sum([PT.Zone.n_cell(zone) for zone in PT.iter_all_Zone_t(extracted_tree)])
+  n_cell_all = comm.allreduce(n_cell, MPI.SUM)
+  mlog.info(f"Extraction from ZoneSubRegion \"{zsr_name}\" completed ({end-start:.2f} s) -- "
+            f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
+            f"(Σ={mlog.size_to_str(n_cell_all)})")
+
+
+  return extracted_tree
 
 
 def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):

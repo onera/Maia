@@ -1,5 +1,6 @@
 import time
 import mpi4py.MPI as MPI
+import numpy as np
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -11,8 +12,6 @@ from maia.factory  import dist_from_part
 from maia.utils    import np_utils, layouts, py_utils
 from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
-
-import numpy as np
 
 import Pypdm.Pypdm as PDM
 
@@ -462,19 +461,20 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
       connectivities are managed.
     iso_field     (str)         : Path (starting at Zone_t level) of the field to use to compute isosurface.
     comm          (MPIComm)     : MPI communicator
-    iso_val       (float, optional) : Value to use to compute isosurface. Default to 0.
+    iso_val       (float, optional) : Value to use to compute isosurface. Defaults to 0.
     containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
       on the output isosurface tree.
     **options: Options related to plane extraction.
   Returns:
     isosurf_tree (CGNSTree): Surfacic tree (partitioned)
 
-  Extraction can be controled thought the optional kwargs:
+  Isosurface can be controled thought the optional kwargs:
 
     - ``elt_type`` (str) -- Controls the shape of elements used to describe
-      the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Default to ``TRI_3``.
-    - ``graph_part_tool`` (str) -- Controls the isosurface partitioning tool. ``hilbert`` may produced
-      unbalanced partitions for some configurations. Default to ``ptscotch``.
+      the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Defaults to ``TRI_3``.
+    - ``graph_part_tool`` (str) -- Controls the isosurface partitioning tool.
+      Admissible values are ``hilbert, parmetis, ptscotch``.
+      ``hilbert`` may produce unbalanced partitions for some configurations. Defaults to ``ptscotch``.
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -497,7 +497,7 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
   
   end = time.time()
-  mlog.info(f"Isosurface completed ({end-start:.2f} s) --")
+  mlog.info(f"Isosurface completed ({end-start:.2f} s)")
 
   return iso_part_tree
 
@@ -566,7 +566,7 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
   end = time.time()
-  mlog.info(f"Plane slice completed ({end-start:.2f} s) --")
+  mlog.info(f"Plane slice completed ({end-start:.2f} s)")
 
   return iso_part_tree
 
@@ -610,7 +610,7 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
   end = time.time()
-  mlog.info(f"Spherical slice completed ({end-start:.2f} s) --")
+  mlog.info(f"Spherical slice completed ({end-start:.2f} s)")
 
   return iso_part_tree
 
@@ -655,6 +655,6 @@ def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options)
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
   end = time.time()
-  mlog.info(f"Elliptical slice completed ({end-start:.2f} s) --")
+  mlog.info(f"Elliptical slice completed ({end-start:.2f} s)")
 
   return iso_part_tree

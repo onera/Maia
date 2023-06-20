@@ -16,18 +16,22 @@ def add_printer_to_logger(logger_name, p, *args):
 def size_to_str(size):
   units = ["", "K", "M", "G", "T", "P", "E", "Z", "Y"]
   i = 0
+  if size < 1000: #Corner case with no decimal
+    return "{0}".format(size)
   while(size > 1000.):
       size /= 1000.
       i += 1
-  return "{0:.1f} {1}".format(size, units[i])
+  return "{0:.1f}{1}".format(size, units[i])
 
 def bsize_to_str(size):
-  units = ["B", "kiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
+  units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
   i = 0
+  if size < 1000: #Corner case with no decimal
+    return "{0}B".format(size)
   while(size > 1024.):
     size /= 1024.
     i += 1
-  return f"{size:.1f} {units[i]}"
+  return f"{size:.1f}{units[i]}"
 
 def info(msg):
   log("maia", msg)
