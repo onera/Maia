@@ -79,6 +79,40 @@ class Test_wallDistance:
     assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
 @pytest_parallel.mark.parallel(2)
+def test_projection_to(comm):
+  if comm.Get_rank() == 0:
+    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
+    expected_wd = [0.75, 0.25, 0.25, 0.75]
+    expected_gnum = [1, 1, 2, 2]
+  elif comm.Get_rank() == 1:
+    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
+    expected_wd = [0.75, 0.25, 0.75, 0.25]
+    expected_gnum = [3, 3, 4, 4]
+  base = PT.get_all_CGNSBase_t(part_tree)[0]
+  base_family = PT.new_Family('WALL', family_bc='BCWall', parent=base)
+  zone = PT.get_all_Zone_t(part_tree)[0]
+  zone[0] += f'.P{comm.Get_rank()}.N0'
+
+  # Add BC
+  zone_bc = parse_yaml_cgns.to_node("""
+    ZoneBC ZoneBC_t:
+      BC BC_t "FamilySpecified":
+        PointList IndexArray_t [[13,14]]:
+        GridLocation GridLocation_t "FaceCenter":
+        FamilyName FamilyName_t "WALL":
+    """)
+  PT.add_child(zone, zone_bc)
+
+  WD.compute_projection_to(part_tree, lambda n: PT.get_label(n) == 'BC_t', comm)
+  PT.print_tree(part_tree)
+
+  fs = PT.get_child_from_name(zone, 'SurfDistance')
+  assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+  assert (PT.get_child_from_name(fs, 'Distance')[1] == expected_wd).all()
+  assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
+
+
+@pytest_parallel.mark.parallel(2)
 def test_walldistance_perio(comm):
   #Case generation
   dist_treeU = maia.factory.generate_dist_block(3, "Poly", comm, edge_length=2.)

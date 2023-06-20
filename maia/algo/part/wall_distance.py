@@ -235,7 +235,7 @@ class WallDistance:
 
       # Wall distance
       wall_dist = np.sqrt(fields['ClosestEltDistance'])
-      PT.new_DataArray('TurbulentDistance', value=wall_dist.reshape(shape,order='F'), parent=fs_node)
+      PT.new_DataArray('Distance', value=wall_dist.reshape(shape,order='F'), parent=fs_node)
 
       # Closest projected element
       closest_elt_proj = np.copy(fields['ClosestEltProjected'])
@@ -351,6 +351,18 @@ class WallDistance:
 
 
 # ------------------------------------------------------------------------
+def compute_projection_to(part_tree, bc_predicate, comm, point_cloud='CellCenter', out_fs_name='SurfDistance', **options):
+
+  start = time.time()
+  
+  walldist = WallDistance(part_tree, bc_predicate, comm, point_cloud=point_cloud, out_fs_name=out_fs_name, **options)
+  out = walldist.compute()
+  end = time.time()
+  if out == -1:
+    mlog.error(f"Projection computing failed because no BC_t matches the given predicate")
+  else:
+    mlog.info(f"Projection computed ({end-start:.2f} s)")
+
 def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name='WallDistance', **options):
   """Compute wall distances and add it in tree.
 
@@ -410,4 +422,7 @@ def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name
     mlog.error(f"Wall distance computing failed because no wall-like BC_t have been found in tree")
   else:
     mlog.info(f"Wall distance computed ({end-start:.2f} s)")
+    for zone in PT.iter_all_Zone_t(part_tree): #Rename Distance -> TurbulentDistance
+      node = PT.get_node_from_path(zone, out_fs_name+"/Distance")
+      PT.set_name(node, 'TurbulentDistance')
 
