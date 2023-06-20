@@ -17,7 +17,7 @@ def dfs_interface_report(g):
   for attr in expected_attrs:
     if not getattr(g, attr, None):
       is_ok = False
-      report += f'Attribute {attr} is missing'
+      report += f'Attribute {attr} is missing\n'
 
   # check `roots` and `children` returns iterators
   if is_ok:
@@ -26,7 +26,7 @@ def dfs_interface_report(g):
     for attr in expected_attrs:
       if not getattr(roots_iter, attr, None):
         is_ok = False
-        report += f'Iterator attribute {attr} is missing'
+        report += f'Iterator attribute {attr} is missing\n'
 
   # prefix report if not empty
   if not is_ok:
@@ -162,11 +162,12 @@ class close_ancestor_visitor:
   However, most ot the times, the visitor only cares about 
   the current node (or just the first few ancestors) as input
   
-  This adaptor class turns such a visitor into a visitor acceptable by `depth_first_search_stack`
+  This adaptor class turns such a visitor into a visitor acceptable by `_depth_first_search_stack`
   and delegates all calls with the list of ancestors to calls with only the first `depth` ancestors
     depth = 1: only the current node
     depth = 2: the current node + its parent
     ...
+
   """
   def __init__(self, visitor, depth):
     self.f = visitor
@@ -187,15 +188,12 @@ class close_ancestor_visitor:
   def post(self, ancestors):
     return self.f.post( *self._ancestors_list(ancestors) )
 
-  # For `down` and `up`, we don't have enough examples to really make the correct decision for the interface
-  # Here we take:
-  #   the current node (i.e. ancestors[-1]) for the `below` arguement
-  #   the parent node (i.e. ancestoanimationrs[-2]) for the `above` arguement
-  # Which at least seems natural for depth==1
+  # Note that if we wanted to be more general,
+  # we could have a second `depth` parameter for `down` and `up`
   def down(self, ancestors):
-    return self.f.down( ancestors[-2], ancestors[-1] )
+    return self.f.down( ancestors[-2], ancestors[-1])
   def up(self, ancestors):
-    return self.f.up  ( ancestors[-1], ancestors[-2] )
+    return self.f.up  ( ancestors[-1], ancestors[-2])
 
 
 def depth_first_search_stack(S, f, depth='node'):

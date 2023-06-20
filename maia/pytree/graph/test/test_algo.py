@@ -1,6 +1,6 @@
 from maia.pytree.graph.algo import step, depth_first_search
 
-from maia.pytree.graph.io_graph import rooted_tree_example, VALUE
+from maia.pytree.graph.f_graph import rooted_f_graph_example, VALUE
 
 
 class visitor_for_testing_depth_first_scan:
@@ -19,18 +19,19 @@ class visitor_for_testing_depth_first_scan:
   def accumulation_string(self):
     return self.s
 
+
 def test_depth_first_scan():
   #   Reminder:
-  #         1               lvl 3
+  #         1
   #      /  |  \
-  #     |   |    3          lvl 2
+  #     |   |    3
   #     |   | /  |  \
-  #     2\_ | 8  |   \      lvl 1
+  #     2\_ | 8  |   \
   #   /  \ \| |  |    \
   #   |  |  \ |  |    \
-  #  4    7  \9  10   11    lvl 0
+  #  4    7  \9  10   11
 
-  g = rooted_tree_example()
+  g = rooted_f_graph_example()
   v = visitor_for_testing_depth_first_scan()
   depth_first_search(g,v)
 
@@ -52,6 +53,10 @@ def test_depth_first_scan():
     '[up  ] 9 -> 2\n' \
     '[post] 2\n' \
     '[up  ] 2 -> 1\n' \
+    '[down] 1 -> 9\n' \
+    '[pre ] 9\n' \
+    '[post] 9\n' \
+    '[up  ] 9 -> 1\n' \
     '[down] 1 -> 3\n' \
     '[pre ] 3\n' \
     '[down] 3 -> 8\n' \
@@ -72,11 +77,7 @@ def test_depth_first_scan():
     '[up  ] 11 -> 3\n' \
     '[post] 3\n' \
     '[up  ] 3 -> 1\n' \
-    '[down] 1 -> 9\n' \
-    '[pre ] 9\n' \
-    '[post] 9\n' \
-    '[up  ] 9 -> 1\n' \
-    '[post] 1\n'
+    '[post] 1\n' \
 
   assert v.accumulation_string() == expected_s
 
@@ -100,7 +101,7 @@ def test_depth_first_find():
   #   |  |  \ |  |    \
   #  4    7  \9  10   11    lvl 0
 
-  g = rooted_tree_example()
+  g = rooted_f_graph_example()
   v = visitor_for_testing_depth_first_find()
   found = depth_first_search(g,v)
 
@@ -122,6 +123,10 @@ def test_depth_first_find():
     '[up  ] 9 -> 2\n' \
     '[post] 2\n' \
     '[up  ] 2 -> 1\n' \
+    '[down] 1 -> 9\n' \
+    '[pre ] 9\n' \
+    '[post] 9\n' \
+    '[up  ] 9 -> 1\n' \
     '[down] 1 -> 3\n' \
     '[pre ] 3\n' \
     '[post] 3\n' \
@@ -151,7 +156,7 @@ def test_depth_first_prune():
   #   |  |  \ |  |    \
   #  4    7  \9  10   11    lvl 0
 
-  g = rooted_tree_example()
+  g = rooted_f_graph_example()
   v = visitor_for_testing_depth_first_prune()
   depth_first_search(g,v)
 
@@ -161,6 +166,10 @@ def test_depth_first_prune():
     '[pre ] 2\n' \
     '[post] 2\n' \
     '[up  ] 2 -> 1\n' \
+    '[down] 1 -> 9\n' \
+    '[pre ] 9\n' \
+    '[post] 9\n' \
+    '[up  ] 9 -> 1\n' \
     '[down] 1 -> 3\n' \
     '[pre ] 3\n' \
     '[down] 3 -> 8\n' \
@@ -181,10 +190,6 @@ def test_depth_first_prune():
     '[up  ] 11 -> 3\n' \
     '[post] 3\n' \
     '[up  ] 3 -> 1\n' \
-    '[down] 1 -> 9\n' \
-    '[pre ] 9\n' \
-    '[post] 9\n' \
-    '[up  ] 9 -> 1\n' \
     '[post] 1\n'
 
   assert v.accumulation_string() == expected_s
@@ -208,7 +213,7 @@ def test_depth_first_search():
   #   |  |  \ |  |    \
   #  4    7  \9  10   11    lvl 0
   #
-  g = rooted_tree_example()
+  g = rooted_f_graph_example()
   v = visitor_for_testing_dfs()
   found = depth_first_search(g,v)
 
@@ -218,6 +223,10 @@ def test_depth_first_search():
     '[pre ] 2\n' \
     '[post] 2\n' \
     '[up  ] 2 -> 1\n' \
+    '[down] 1 -> 9\n' \
+    '[pre ] 9\n' \
+    '[post] 9\n' \
+    '[up  ] 9 -> 1\n' \
     '[down] 1 -> 3\n' \
     '[pre ] 3\n' \
     '[down] 3 -> 8\n' \
@@ -234,15 +243,15 @@ def test_depth_first_search():
 
 class modifying_visitor_for_testing_dfs(visitor_for_testing_depth_first_scan):
   def pre(self, x):
-    if x[VALUE] == 8: s = step.out
-    elif x[VALUE] == 2: s = step.over
-    else: s = step.into
+    if   x[VALUE] == 10: s = step.out
+    elif x[VALUE] == 2 : s = step.over
+    else               : s = step.into
 
-    x[VALUE] = x[VALUE]+100
+    x[VALUE] += 100
     return s
 
   def post(self, x):
-    x[VALUE] = x[VALUE]+10000
+    x[VALUE] += 10000
 
 def test_depth_first_search_inplace_modif():
   #   Reminder:
@@ -255,8 +264,8 @@ def test_depth_first_search_inplace_modif():
   #   |  |  \ |  |    \
   #  4    7  \9  10   11    lvl 0
 
-  g = rooted_tree_example()
+  g = rooted_f_graph_example()
   v = modifying_visitor_for_testing_dfs()
   depth_first_search(g,v)
 
-  assert g.nodes() == [4,7,10102,9,10108,10,11,10103,10101]
+  assert g.nodes() == [4,7,10102,20209,10108,10110,11,10103,10101]
