@@ -67,7 +67,7 @@ class node_with_edge:
     return self.adj[VALUE]
 
 
-class adjacency_iterator:
+class _adjacency_iterator:
   def __init__(self, g, adj_idcs, edge_values):
     self.g = g
     self.adj_idcs = adj_idcs
@@ -100,9 +100,9 @@ class tree_adaptor:
 # Interface to satisfy dfs_interface_report {
   def children(self, nwe):
     n = nwe.adj
-    return adjacency_iterator(self.g, n[FORWARD], n[EDGE_VALUES])
+    return _adjacency_iterator(self.g, n[FORWARD], n[EDGE_VALUES])
   def roots(self):
-    return adjacency_iterator(self.g, [self.root_idx], [None])
+    return _adjacency_iterator(self.g, [self.root_idx], [None])
 # Interface to satisfy dfs_interface_report }
 
 

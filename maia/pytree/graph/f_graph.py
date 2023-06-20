@@ -42,7 +42,7 @@ def f_graph_example():
 VALUE = 0
 FORWARD = 1
 
-class adjacency_iterator:
+class _adjacency_iterator:
   def __init__(self, g, adj_idcs):
     self.g = g
     self.adj_idcs = adj_idcs
@@ -71,9 +71,9 @@ class tree_adaptor:
 
 # Interface to satisfy dfs_interface_report {
   def children(self, n):
-    return adjacency_iterator(self.g, n[FORWARD])
+    return _adjacency_iterator(self.g, n[FORWARD])
   def roots(self):
-    return adjacency_iterator(self.g, [self.root_idx])
+    return _adjacency_iterator(self.g, [self.root_idx])
 # Interface to satisfy dfs_interface_report }
 
 

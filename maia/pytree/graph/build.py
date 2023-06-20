@@ -3,26 +3,26 @@ from maia.pytree.graph import algo
 
 class _build_tree_visitor:
   def __init__(self, node_constructor, pre):
-    self.node_constructor = node_constructor
-    self.sub_tree_stack = [[]]
+    self._node_constructor = node_constructor
+    self._sub_tree_stack = [[]]
     self._pre = pre
 
   def pre(self, node):
-    self.sub_tree_stack.append([]) # add a level
+    self._sub_tree_stack.append([]) # add a level
     if self._pre is not None:
       return self._pre(node)
 
   def post(self, from_node):
-    to_children = self.sub_tree_stack[-1] # get children from stack
-    to_node = self.node_constructor(from_node, to_children)
+    to_children = self._sub_tree_stack[-1] # get children from stack
+    to_node = self._node_constructor(from_node, to_children)
 
-    self.sub_tree_stack.pop(-1) # we are done with the children
-    self.sub_tree_stack[-1].append(to_node) # one level up, we can now deposit the sub_tree that we just built
+    self._sub_tree_stack.pop(-1) # we are done with the children
+    self._sub_tree_stack[-1].append(to_node) # one level up, we can now deposit the sub_tree that we just built
 
   def retrieve_composition_term(self): # supposed to be called at the end
-    assert len(self.sub_tree_stack)==1 # there should be only one level left since we finished the search
-    assert len(self.sub_tree_stack[0])==1 # and there should be only one node: the tree that was built during the search
-    return self.sub_tree_stack[0][0]
+    assert len(self._sub_tree_stack)==1 # there should be only one level left since we finished the search
+    assert len(self._sub_tree_stack[0])==1 # and there should be only one node: the tree that was built during the search
+    return self._sub_tree_stack[0][0]
 
 
 def depth_first_build(g, node_constructor, pre=None):
