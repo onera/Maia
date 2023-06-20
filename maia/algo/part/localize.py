@@ -169,7 +169,7 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
   src_parts_per_dom = list(_src_parts_per_dom.values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
-  located_data = _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm)
+  located_data = _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, **options)
 
   dom_list = '\n'.join(_src_parts_per_dom.keys())
   for i_dom, tgt_parts in enumerate(tgt_parts_per_dom):

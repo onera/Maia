@@ -22,8 +22,8 @@ def test_redistribute_tree_U(policy, comm, write_output):
 
   if not (comm.Get_size() == 2 and policy =="gather.2"):
     # Gather and uniform
-    redistribute_tree(dist_tree  , comm, policy=policy)
-    redistribute_tree(dist_tree, comm, policy='uniform')
+    redistribute_tree(dist_tree, policy,    comm)
+    redistribute_tree(dist_tree, 'uniform', comm)
 
     if write_output:
       out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)

@@ -137,7 +137,7 @@ def apply_periodicity(cloud, periodic):
   cloud['coords'] = coords_p
 
 
-def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **kwargs):
+def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **options):
 
   # Steps are
   # 1.  Get input PL at faces (if they are vertex -> convert it)
@@ -149,8 +149,8 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **kwar
   # 7.  Check resulting faces vs input faces
 
   assert len(subset_paths) == 2
-  tol = kwargs.get("tol", 1e-2)
-  output_loc = kwargs.get("location", "FaceCenter")
+  tol = options.get("tol", 1e-2)
+  output_loc = options.get("location", "FaceCenter")
 
 
   clouds_path = subset_paths[0] + subset_paths[1]
@@ -279,7 +279,7 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **kwar
       PT.rm_node_from_path(dist_tree, cloud_path)
 
 
-def connect_1to1_families(dist_tree, families, comm, periodic=None, **kwargs):
+def connect_1to1_families(dist_tree, families, comm, periodic=None, **options):
   """Find the matching faces between cgns nodes belonging to the two provided families.
 
   For each one of the two families, all the BC_t or GridConnectivity_t nodes related to the family
@@ -309,7 +309,7 @@ def connect_1to1_families(dist_tree, families, comm, periodic=None, **kwargs):
     comm           (MPIComm): MPI communicator
     periodic (dic, optional): Transformation from first to second family if the interface is periodic.
                               None otherwise. Defaults to None.
-    **kwargs: Additional options
+    **options: Additional options
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -333,5 +333,5 @@ def connect_1to1_families(dist_tree, families, comm, periodic=None, **kwargs):
           if PT.predicate.belongs_to_family(subset, family, True):
             subset_path[i_fam].append(path)
 
-  connect_1to1_from_paths(dist_tree, subset_path, comm, periodic, **kwargs)
+  connect_1to1_from_paths(dist_tree, subset_path, comm, periodic, **options)
 
