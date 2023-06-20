@@ -107,6 +107,11 @@ def unwind(S, f):
 
   f.post(S.nodes())
 
+def advance_stack(S, f):
+  if not S.level_is_done():
+    S.push_level()
+    if not S.level_is_done():
+      f.down(S.nodes())
 
 def _depth_first_search_stack(S, f):
   """ Depth-first graph traversal
@@ -117,9 +122,7 @@ def _depth_first_search_stack(S, f):
     if not S.level_is_done():
       next_step = f.pre(S.nodes())
       if next_step == step.out: # stop
-        matching_node = S.current_node()
-        unwind(S, f)
-        return matching_node
+        return False
       if next_step == step.over: # prune
         S.push_level()
         S.advance_node_range_to_last()
@@ -138,11 +141,10 @@ def _depth_first_search_stack(S, f):
       else:
         S.advance_node_range()
 
-  return None
-
+  return True
 
 class complete_visitor:
-  """ The `depth_first_search_stack` algorithm expects a visitor with `pre`, `post`, `down` and `up`
+  """ The `_depth_first_search_stack` algorithm expects a visitor with `pre`, `post`, `down` and `up`
 
   If the user does not provide `post`, `down` or `up`, then add them on-the-fly to do nothing
   """
@@ -156,7 +158,7 @@ class complete_visitor:
 
 
 class close_ancestor_visitor:
-  """ The `depth_first_search_stack` algorithm calls its visitor by passing it 
+  """ The `_depth_first_search_stack` algorithm calls its visitor by passing it 
   the complete list of ancestors of the current node
 
   However, most ot the times, the visitor only cares about 
@@ -196,12 +198,16 @@ class close_ancestor_visitor:
     return self.f.up  ( ancestors[-1], ancestors[-2])
 
 
-def depth_first_search_stack(S, f, depth='node'):
+def adapt_visitor(f, depth='node'):
   f = complete_visitor(f)
   if depth != 'all':
     if depth == 'node'  : depth = 1
     if depth == 'parent': depth = 2
     f = close_ancestor_visitor(f,depth)
+  return f
+
+
+def depth_first_search_stack(S, f, depth='node'):
   return _depth_first_search_stack(S, f)
 
 
@@ -227,8 +233,13 @@ def depth_first_search(g, f, depth='node'):
   - `down` takes the parent then the child as its arguments
   - `up` takes the child then the parent as its arguments
   """
-  is_ok, msg  = dfs_interface_report(g)
-  assert is_ok, msg
+  f = adapt_visitor(f, depth)
 
   S = graph_traversal_stack(g)
-  return depth_first_search_stack(S, f, depth)
+
+  done = _depth_first_search_stack(S, f)
+
+  if not done:
+    matching_node = S.current_node()
+    unwind(S, f)
+    return matching_node

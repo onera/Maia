@@ -1,6 +1,8 @@
-from maia.pytree.graph.algo import step, depth_first_search
+from maia.pytree.graph.algo import step, depth_first_search # most common algo
+from maia.pytree.graph.algo import graph_traversal_stack, depth_first_search_stack, adapt_visitor, advance_stack # if the search needs to be restarted
 
 from maia.pytree.graph.f_graph import rooted_f_graph_example, VALUE
+import pytest
 
 
 class visitor_for_testing_depth_first_scan:
@@ -269,3 +271,59 @@ def test_depth_first_search_inplace_modif():
   depth_first_search(g,v)
 
   assert g.nodes() == [4,7,10102,20209,10108,10110,11,10103,10101]
+
+
+class visitor_for_testing_restarting_find:
+  def __init__(self):
+    self.found = []
+    self.s = ''
+
+  def pre(self, x):
+    self.s += '[pre ] ' + str(x[VALUE]) + '\n'
+    if x[VALUE] % 2 == 0:
+      self.found.append(x[VALUE])
+      return step.out
+
+  def post(self, x):
+    self.s += '[post] ' + str(x[VALUE]) + '\n'
+  def up(self, below, above):
+    self.s += '[up  ] ' + str(below[VALUE]) + ' -> ' + str(above[VALUE]) + '\n'
+  def down(self, above, below):
+    self.s += '[down] ' + str(above[VALUE]) + ' -> ' + str(below[VALUE]) + '\n'
+
+@pytest.mark.parametrize('exit_early', [True,False])
+def test_depth_first_search_stack(exit_early):
+  # Here we do a depth-first search by directly using the stack
+  # While this is less convenient than the regular algorithm that operates direcly on the graph
+  # It makes it possible to restart the algorithm at the point it was stopped
+
+  # An example use case would be to find a value, then stop the algorithm if we are happy with it
+  # or restart it otherwise
+  v = visitor_for_testing_restarting_find()
+
+  g = rooted_f_graph_example()
+
+  S = graph_traversal_stack(g)
+  f = adapt_visitor(v)
+
+  while not S.is_done():
+    depth_first_search_stack(S, f)
+
+    # we want to exit if we found enough values
+    if exit_early and len(v.found) >= 2:
+      break
+    else:
+      pass # we do this to check we will stop when we reach the end of the graph
+
+    advance_stack(S, f)
+
+  if exit_early:
+    assert v.found == [2,4]
+    assert v.s == \
+      '[pre ] 1\n' \
+      '[down] 1 -> 2\n' \
+      '[pre ] 2\n' \
+      '[down] 2 -> 4\n' \
+      '[pre ] 4\n'
+  else:
+    assert v.found == [2,4,8,10]
