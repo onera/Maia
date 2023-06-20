@@ -15,6 +15,7 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - file_to_dist_tree: correct unsigned NFace connectivity if possible
+- wall_distance: add an option to take into account periodic connectivities 
 
 🐞 Fixes
 ^^^^^^^^
@@ -24,6 +25,7 @@ Developpement version
 🚧 API change
 ^^^^^^^^^^^^^
 - redistribute_tree: remove default value for policy
+- wall_distance: remove families parameter
 
 v1.1 (May 2023)
 ---------------

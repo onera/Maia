@@ -156,8 +156,10 @@ def test_extract_surf_from_bc(comm):
     expt_face_lngn = [4,6]
     expt_vtx_lngn = [11,12,13,6,7,8]
 
+  bc_predicate = lambda n: PT.get_value(PT.get_child_from_name(n, 'FamilyName')) == 'WALL'
+
   bc_face_vtx, bc_face_vtx_idx, bc_face_lngn, bc_coords, bc_vtx_lngn = \
-  EXB.extract_surf_from_bc(part_zones, ['WALL'], comm)
+  EXB.extract_surf_from_bc(part_zones, bc_predicate, comm)
   
 
   assert len(bc_face_vtx) == len(bc_face_vtx_idx) == len(bc_face_lngn) == len(bc_coords) == len(bc_vtx_lngn) == 1

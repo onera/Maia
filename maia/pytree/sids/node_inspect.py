@@ -73,14 +73,6 @@ class Zone:
     zone_type_node = W.get_child_from_label(zone_node, "ZoneType_t")
     return N.get_value(zone_type_node)
 
-  #Todo : this one should go elsewhere
-  @staticmethod
-  def getBCsFromFamily(zone_node, families):
-    from maia.pytree import iter_children_from_predicates
-    bc_query = lambda n : N.get_label(n) == 'BC_t' and W.get_child_from_label(n, 'FamilyName_t') is not None and \
-      N.get_value(W.get_child_from_label(n, "FamilyName_t")) in families
-    return iter_children_from_predicates(zone_node, ['ZoneBC_t', bc_query])
-
   @staticmethod
   def n_vtx(zone_node):
     return np.prod(Zone.VertexSize(zone_node))

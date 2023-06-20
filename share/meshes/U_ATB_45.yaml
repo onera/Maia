@@ -1149,7 +1149,7 @@ Base CGNSBase_t I4 [3, 3]:
               2580, 2586, 2592, 2598, 2604, 2610, 2616, 2622, 2628, 2634, 2640, 2646, 2652, 2658, 2664, 2670, 2676, 2682,
               2688, 2694, 2700, 2706, 2712, 2718, 2724, 2730, 2736, 2742, 2748, 2754, 2760]
   WALL Family_t:
-    FamilyBC FamilyBC_t 'UserDefined':
+    FamilyBC FamilyBC_t 'BCWall':
   TOP Family_t:
     FamilyBC FamilyBC_t 'UserDefined':
   AMONT Family_t:
