@@ -21,6 +21,7 @@ Developpement version
 ^^^^^^^^
 - merge_zones: fix unwanted merge of BCDataSet_t when merge_strategy is None
 - partitioning: fix global numbering of S BCDataSet + fix GC-related ZGC 
+- isosurface: fix poor performances + better management of corner cases
 
 🚧 API change
 ^^^^^^^^^^^^^

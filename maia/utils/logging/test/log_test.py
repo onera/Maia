@@ -54,5 +54,7 @@ def test_log():
 
 
 def test_size_display():
-    assert  size_to_str(4280938) == "4.3 M"
-    assert bsize_to_str(4280938) == "4.1 MiB"
+    assert  size_to_str(42) == "42"
+    assert bsize_to_str(42) == "42B"
+    assert  size_to_str(4280938) == "4.3M"
+    assert bsize_to_str(4280938) == "4.1MiB"

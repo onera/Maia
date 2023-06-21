@@ -1,9 +1,12 @@
-from mpi4py import MPI
+import time
+import mpi4py.MPI as MPI
 import numpy as np
 
-import maia.pytree      as PT
-import maia.pytree.maia as MT
+import maia.pytree        as PT
+import maia.pytree.maia   as MT
+import maia.utils.logging as mlog
 
+from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.utils    import np_utils, layouts, py_utils
@@ -25,7 +28,7 @@ def copy_referenced_families(source_base, target_base):
       family_node = PT.get_child_from_predicate(source_base, fam_name)
       PT.add_child(target_base, family_node)
 
-# =======================================================================================
+
 def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
   for container_name in containers_name :
@@ -64,24 +67,40 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
     # > Part1 (ISOSURF) objects definition
     # LN_TO_GN
     _gridLocation    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
-    elt_n            = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
-    if elt_n is None :return
-    part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
-    part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
     
-    # Link between part1 and part2
-    part1_maia_iso_zone = PT.get_child_from_name(iso_part_zone, "maia#surface_data")
-    if gridLocation=='Vertex' :
-      part1_weight        = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" )[1]]
-      part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   )[1]]
-      part1_to_part2_idx  = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    )[1]]
-    if gridLocation=='FaceCenter' :
-      part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges")[1]]
-      part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]
-    if gridLocation=='CellCenter' :
-      part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum")[1]]
-      part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]
-    
+    create_fs = True
+    if iso_part_zone is not None:
+      elt_n = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
+
+      create_fs = gridLocation!='FaceCenter' or \
+                ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
+
+      if elt_n is not None :
+        part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
+        part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
+      else :
+        part1_elt_gnum_n = None
+        part1_ln_to_gn   = []
+
+      # > Link between part1 and part2
+      part1_maia_iso_zone = PT.get_child_from_name(iso_part_zone, "maia#surface_data")
+      if gridLocation=='Vertex' :
+        part1_weight        = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" )[1]]
+        part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   )[1]]
+        part1_to_part2_idx  = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    )[1]]
+      if gridLocation=='FaceCenter' :
+        # Output should be edge located so check if iso surface locally has edge
+        part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges")[1]] if elt_n is not None else []
+        part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]     if elt_n is not None else []
+      if gridLocation=='CellCenter' :
+        part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum")[1]]
+        part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]
+
+    if iso_part_zone is None:
+      part1_ln_to_gn     = []
+      part1_to_part2     = []
+      part1_to_part2_idx = []
+
 
     # > Part2 (VOLUME) objects definition
     part2_ln_to_gn      = list()
@@ -100,7 +119,12 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
 
 
     # > FlowSolution node def in isosurf zone
-    FS_iso = PT.new_FlowSolution(container_name, loc=gridLocation, parent=iso_part_zone)
+    fs_loc = gridLocation if gridLocation!="FaceCenter" else "EdgeCenter"
+    if iso_part_zone is not None and create_fs:
+      FS_iso = PT.new_FlowSolution(container_name, loc=fs_loc, parent=iso_part_zone)
+    else :
+      FS_iso = None # Beware to the loop on containers_name (FS_iso could have been initialised with previous container_name)
+
     if partial_field:
       pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm)
 
@@ -130,30 +154,31 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
                                  part2_stride=stride)
       part1_stride, part1_data = ptp.reverse_wait(req_id)
 
-      # Placement
-      i_part = 0 # One isosurface partition
-      # Ponderation if vertex
-      if gridLocation=="Vertex" :
-        weighted_fld       = part1_data[i_part]*part1_weight[i_part]
-        part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
-
-      PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)    
+      # > Placement
+      if iso_part_zone is not None and create_fs:
+        i_part = 0 # One isosurface partition
+        # Ponderation if vertex
+        if gridLocation=="Vertex" :
+          weighted_fld       = part1_data[i_part]*part1_weight[i_part]
+          part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
+        PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)
     
     # Build PL with the last exchange stride
     if partial_field:
-      new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
-      point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
-      new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
+      if len(part1_data)!=0 and part1_data[0].size!=0:
+        new_point_list = np.where(part1_stride[0]==1)[0]
+        point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
+        new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
+        partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]] 
+      else:
+        partial_part1_lngn = []
 
       # Update global numbering in FS
-      partial_gnum = create_sub_numbering([part1_ln_to_gn[0][new_point_list]], comm)[0]
-      PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=FS_iso)
-
-# =======================================================================================
-
+      partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
+      if iso_part_zone is not None and create_fs and len(partial_gnum)!=0:
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_iso)
 
 
-# =======================================================================================
 def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
   """
   Exchange fields found under each container from part_tree to iso_part_tree
@@ -164,16 +189,13 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
   # Loop over domains
   for domain_path, part_zones in part_tree_per_dom.items():
     # Get zone from isosurf (one zone by domain)
-    iso_part_zone = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}_iso")[0]
+    iso_part_zones = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}")
+    iso_part_zone  = iso_part_zones[0] if len(iso_part_zones)!=0 else None
     exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm)
 
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
-def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
+def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm):
   """
   Compute isosurface in a zone
   """ 
@@ -194,7 +216,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   # Definition of the PDM object IsoSurface
   pdm_isos = PDM.IsoSurface(comm, 3, PDM_iso_type, n_part)
   pdm_isos.isosurf_elt_type_set(PDM_elt_type)
-
+  # > HILBERT : partitioning can be desequilibrated in some 2D case (but parallelism independant)
+  pdm_isos.isosurf_part_method_set(eval(f"PDM._PDM_SPLIT_DUAL_WITH_{graph_part_tool.upper()}"))
 
   if iso_kind=="FIELD":
     for i_part, part_zone in enumerate(part_zones):
@@ -210,7 +233,10 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
   n_gdom_bcs = len(gdom_bcs_path)
   # > GCs
   is_gc        = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-  isnt_gc_intra= lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+  isnt_gc_intra= lambda n: is_gc(n) and     PT.GridConnectivity.is1to1(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+  is_unmatched = lambda n: is_gc(n) and not PT.GridConnectivity.is1to1(n)
+  gc_predicate = ['ZoneGridConnectivity_t', is_unmatched]
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
   gc_predicate = ['ZoneGridConnectivity_t', isnt_gc_intra]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
@@ -262,7 +288,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
       for bnd_path in gdom_gcs_path:
         # For gc, we glue the joins that have been splitted during partitioning
         container_name, jn_name = bnd_path.split('/')
-        bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'.*'])
+        bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'*'])
         if len(bnd_n_list) > 0:
           _, jn_pl = np_utils.concatenate_point_list([PT.get_node_from_name(bnd_n, 'PointList')[1] for bnd_n in bnd_n_list], np.int32)
           all_bnd_pl.append(jn_pl.reshape((1,-1), order='F'))
@@ -314,8 +340,8 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
     # > Add element node
     results_edge = pdm_isos.isosurf_bnd_get()
     n_bnd_edge   = results_edge['n_bnd_edge']
+    bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
     if n_bnd_edge!=0:
-      bnd_edge_group_idx = results_edge['bnd_edge_group_idx']
       bar_n = PT.new_Elements('BAR_2', type='BAR_2', 
                               erange=np.array([n_iso_elt+1, n_iso_elt+n_bnd_edge]),
                               econn=results_edge['bnd_edge_vtx'],
@@ -323,34 +349,34 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
       PT.maia.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
-      # > Create BC described by edges
-      gnum     = PT.maia.getGlobalNumbering(bar_n, 'Element')[1]
-      for i_group, bc_path in enumerate(gdom_bcs_path):
-        n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
-        edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
-                            bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
-        partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
+    # > Create BC described by edges
+    gnum = PT.maia.getGlobalNumbering(bar_n, 'Element')[1] if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
+    for i_group, bc_path in enumerate(gdom_bcs_path):
+      n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
+      edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
+                          bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
+      partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
 
-        if partial_gnum.size != 0:
-          zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')  
-          bc_n = PT.new_BC(PT.path_tail(bc_path), point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+      if partial_gnum.size != 0:
+        zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')  
+        bc_n = PT.new_BC(PT.path_tail(bc_path), point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
-      for i_group, gc_path in enumerate(gdom_gcs_path):
-        gc_name = PT.path_tail(gc_path)
-        gc_val  = PT.get_value(PT.get_node_from_path(dist_zone, gc_path))
+    for i_group, gc_path in enumerate(gdom_gcs_path):
+      gc_name = PT.path_tail(gc_path)
+      gc_val  = PT.get_value(PT.get_node_from_path(dist_zone, gc_path))
 
-        i_group+=n_gdom_bcs
-        
-        n_edge_in_gc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
-        edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
-                            bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
-        partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
+      i_group+=n_gdom_bcs
+      
+      n_edge_in_gc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
+      edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
+                          bnd_edge_group_idx[i_group+1], dtype=np.int32).reshape((1,-1), order='F')+n_iso_elt+1
+      partial_gnum = create_sub_numbering([gnum[edge_pl[0]-n_iso_elt-1]], comm)[0]
 
-        if edge_pl.size != 0:
-          zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')
-          bc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-          PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+      if edge_pl.size != 0:
+        zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')
+        bc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
 
   else:
@@ -378,14 +404,10 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, comm):
       comm, get_value='leaf')
 
   return iso_part_zone
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
 
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
-def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
+def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, graph_part_tool, comm):
 
   fs_name, field_name = iso_field_path.split('/')
 
@@ -407,16 +429,16 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, comm):
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
       field_values.append(PT.get_value(field_node) - iso_val)
 
-    iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, comm)
-    PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0))
-    PT.add_child(iso_part_base,iso_part_zone)
+    iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, graph_part_tool, comm)
+    PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
+    if PT.Zone.n_cell(iso_part_zone)!=0:
+      PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------------------
+
 def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **options):
   """ Create an isosurface from the provided field and value on the input partitioned tree.
 
@@ -446,10 +468,13 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
   Returns:
     isosurf_tree (CGNSTree): Surfacic tree (partitioned)
 
-  Extraction can be controled thought the optional kwargs:
+  Isosurface can be controled thought the optional kwargs:
 
     - ``elt_type`` (str) -- Controls the shape of elements used to describe
       the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Defaults to ``TRI_3``.
+    - ``graph_part_tool`` (str) -- Controls the isosurface partitioning tool.
+      Admissible values are ``hilbert, parmetis, ptscotch``.
+      ``hilbert`` may produce unbalanced partitions for some configurations. Defaults to ``ptscotch``.
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -457,26 +482,28 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
       :end-before: #compute_iso_surface@end
       :dedent: 2
   """
+  start = time.time()
 
-  elt_type = options.get("elt_type", "TRI_3")
-  assert(elt_type in ["TRI_3","QUAD_4","NGON_n"])
+  elt_type        = options.get("elt_type", "TRI_3")
+  graph_part_tool = options.get("graph_part_tool", "ptscotch")
+  assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
+  assert(graph_part_tool in ["ptscotch","parmetis","hilbert"])
 
   # Isosurface extraction
-  iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, comm)
+  iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, graph_part_tool, comm)
   
   # Interpolation
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
+  
+  end = time.time()
+  mlog.info(f"Isosurface completed ({end-start:.2f} s)")
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
 
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
-def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
+def _surface_from_equation(part_tree, surface_type, equation, elt_type, graph_part_tool, comm):
 
   assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
   assert(elt_type     in ["TRI_3","QUAD_4","NGON_n"])
@@ -490,21 +517,17 @@ def _surface_from_equation(part_tree, surface_type, equation, elt_type, comm):
   for domain_path, part_zones in part_tree_per_dom.items():
     dom_base_name, dom_zone_name = domain_path.split('/')
     iso_part_base = PT.update_child(iso_part_tree, dom_base_name, 'CGNSBase_t', [3-1,3])
-    iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, comm)
-    PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}_iso', comm.Get_rank(), 0))
+    iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, graph_part_tool, comm)
+    PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
 
-    PT.add_child(iso_part_base,iso_part_zone)
+    if PT.Zone.n_cell(iso_part_zone)!=0:
+      PT.add_child(iso_part_base,iso_part_zone)
 
   copy_referenced_families(PT.get_all_CGNSBase_t(part_tree)[0], iso_part_base)
 
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
   """ Create a slice from the provided plane equation :math:`ax + by + cz - d = 0`
   on the input partitioned tree.
@@ -528,23 +551,26 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
       :end-before: #compute_plane_slice@end
       :dedent: 2
   """
-  elt_type = options.get("elt_type", "TRI_3")
+  start = time.time()
+
+  elt_type        = options.get("elt_type", "TRI_3")
+  graph_part_tool = options.get("graph_part_tool", "ptscotch")
+  assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
+  assert(graph_part_tool in ["ptscotch","parmetis","hilbert"])
 
   # Isosurface extraction
-  iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
+  end = time.time()
+  mlog.info(f"Plane slice completed ({end-start:.2f} s)")
+
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
   """ Create a spherical slice from the provided equation
   :math:`(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2`
@@ -569,23 +595,26 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
       :end-before: #compute_spherical_slice@end
       :dedent: 2
   """
-  elt_type = options.get("elt_type", "TRI_3")
+  start = time.time()
+
+  elt_type        = options.get("elt_type", "TRI_3")
+  graph_part_tool = options.get("graph_part_tool", "ptscotch")
+  assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
+  assert(graph_part_tool in ["ptscotch","parmetis","hilbert"])
 
   # Isosurface extraction
-  iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
+  end = time.time()
+  mlog.info(f"Spherical slice completed ({end-start:.2f} s)")
+
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
 
 
-
-# =======================================================================================
-# ---------------------------------------------------------------------------------------
 def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options):
   """ Create a elliptical slice from the provided equation
   :math:`(x-x_0)^2/a^2 + (y-y_0)^2/b^2 + (z-z_0)^2/c^2 = R^2`
@@ -611,15 +640,21 @@ def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options)
       :end-before: #compute_elliptical_slice@end
       :dedent: 2
   """
-  elt_type = options.get("elt_type", "TRI_3")
+  start = time.time()
+
+  elt_type        = options.get("elt_type", "TRI_3")
+  graph_part_tool = options.get("graph_part_tool", "ptscotch")
+  assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
+  assert(graph_part_tool in ["ptscotch","parmetis","hilbert"])
 
   # Isosurface extraction
-  iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, comm)
+  iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
+  end = time.time()
+  mlog.info(f"Elliptical slice completed ({end-start:.2f} s)")
+
   return iso_part_tree
-# ---------------------------------------------------------------------------------------
-# =======================================================================================
