@@ -89,6 +89,7 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
         part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   )[1]]
         part1_to_part2_idx  = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    )[1]]
       if gridLocation=='FaceCenter' :
+        # Output should be edge located so check if iso surface locally has edge
         part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges")[1]] if elt_n is not None else []
         part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]     if elt_n is not None else []
       if gridLocation=='CellCenter' :
@@ -160,8 +161,7 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
         if gridLocation=="Vertex" :
           weighted_fld       = part1_data[i_part]*part1_weight[i_part]
           part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
-
-        PT.new_DataArray(fld_name, part1_data[i_part] if len(part1_data)!=0 else np.empty(0, dtype=np.float64), parent=FS_iso) # sure about the type ???
+        PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)
     
     # Build PL with the last exchange stride
     if partial_field:
