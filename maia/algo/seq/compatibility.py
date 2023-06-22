@@ -5,7 +5,21 @@ import numpy as np
 import maia
 import maia.pytree as PT
 
-from maia.utils import require_cpp20
+from maia.utils import np_utils
+
+def indexed_to_interlaced_connectivity(node):
+  offset = PT.get_child_from_name(node, 'ElementStartOffset')
+  connec = PT.get_child_from_name(node, 'ElementConnectivity')
+
+  connec[1] = np_utils.indexed_to_interlaced(offset[1], connec[1])
+  PT.rm_child(node, offset)
+
+def interlaced_to_indexed_connectivity(node):
+  connec = PT.get_child_from_name(node, 'ElementConnectivity')
+  idx, array = np_utils.interlaced_to_indexed(connec[1])
+
+  PT.new_DataArray('ElementStartOffset', value=idx, parent=node)
+  connec[1] = array
 
 def enforce_ngon_pe_local(t):
   """
@@ -25,7 +39,6 @@ def enforce_ngon_pe_local(t):
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')
     pe[1] = maia.algo.indexing.get_ngon_pe_local(ngon_node)
 
-@require_cpp20
 def poly_new_to_old(tree, full_onera_compatibility=True):
   """
   Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.
@@ -61,11 +74,10 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
       nface_connec += -ngon_range[0]+1
 
     # 4. indexed to interleaved
-    ctree_algo.indexed_to_interleaved_connectivity(ngon)
-    ctree_algo.indexed_to_interleaved_connectivity(nface)
+    indexed_to_interlaced_connectivity(ngon)
+    indexed_to_interlaced_connectivity(nface)
 
 
-@require_cpp20
 def poly_old_to_new(tree):
   """
   Transform a tree with polyhedral unstructured connectivity with old CGNS 3.x conventions to new CGNS 4.x conventions.
@@ -88,7 +100,7 @@ def poly_old_to_new(tree):
     nface_range  = PT.get_value(PT.get_child_from_name(nface, "ElementRange"))
 
     # 1. interleaved to indexed
-    ctree_algo.interleaved_to_indexed_connectivity(ngon)
+    interlaced_to_indexed_connectivity(ngon)
 
     # 2. shift ParentElements if necessary
     pe_node = PT.get_child_from_name(ngon,"ParentElements")
@@ -108,7 +120,7 @@ def poly_old_to_new(tree):
     n_cell = nface_range[1] - nface_range[0]
     if np.min(nface_connec)<0 or n_cell==1: # NFace is signed (if only one cell, it is signed despite being positive)
       # 3.1. interleaved to indexed
-      ctree_algo.interleaved_to_indexed_connectivity(nface)
+      interlaced_to_indexed_connectivity(nface)
       nface_connec = PT.get_value(PT.get_child_from_name(nface, "ElementConnectivity"))
 
       # 3.2. shift
