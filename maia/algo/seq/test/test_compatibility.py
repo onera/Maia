@@ -75,6 +75,13 @@ def test_poly_new_to_old_only_interleave(poly_tree_new):
                           [20,0],[19,0],[20,0],[21,0],[22,0],[21,22],[19,21],[19,20],[20,22]])).all()
   assert (nface_ec == np.array([ 6, 11,5,16,9,1,17,    6, -17,7,18,10,2,12,    5, 6,3,-16,13,15,    5, 8,4,-18,-15,14])).all()
 
+def test_poly_new_to_old_2d():
+  tree = maia.factory.generate_dist_block(3, "TRI_3", MPI.COMM_SELF)
+  maia.algo.dist.convert_elements_to_ngon(tree, MPI.COMM_SELF)
+  maia.algo.seq.poly_new_to_old(tree)
+  ngon = PT.get_node_from_name(tree, "NGonElements")
+  ngon_ec = PT.get_value(PT.get_child_from_name(ngon,"ElementConnectivity"))
+  assert (ngon_ec == np.array([3, 1,2,4, 3, 4,2,5, 3, 5,2,3, 3, 5,3,6, 3, 4,5,7, 3, 7,5,8, 3, 8,5,6, 3, 8,6,9])).all()
 
 @pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_poly_old_to_new(poly_tree_new):

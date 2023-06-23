@@ -52,30 +52,37 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
   cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 3.1)
   for z in PT.get_all_Zone_t(tree):
-    if PT.Zone.Type(z) != 'Unstructured':
+    if PT.Zone.Type(z) != 'Unstructured' or not PT.Zone.has_ngon_elements(z):
       continue
+
+    has_nface = PT.Zone.has_nface_elements(z)
+
     ngon  = maia.pytree.Zone.NGonNode (z)
-    nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = PT.get_value(PT.get_child_from_name(ngon , "ElementRange"       ))
-    nface_range  = PT.get_value(PT.get_child_from_name(nface, "ElementRange"       ))
-    nface_connec = PT.get_value(PT.get_child_from_name(nface, "ElementConnectivity"))
+    if has_nface:
+      nface = maia.pytree.Zone.NFaceNode(z)
+      nface_range  = PT.get_value(PT.get_child_from_name(nface, "ElementRange"       ))
+      nface_connec = PT.get_value(PT.get_child_from_name(nface, "ElementConnectivity"))
 
     if full_onera_compatibility:
       # 1. shift ParentElements to 1
       pe_node = PT.get_child_from_name(ngon,"ParentElements")
       if pe_node:
-        pe = PT.get_value(pe_node)
-        pe += (-nface_range[0]+1)*(pe>0)
+        # pe = PT.get_value(pe_node)
+        # pe += (-nface_range[0]+1)*(pe>0)
+        pe_node[1] = maia.algo.indexing.get_ngon_pe_local(ngon)
 
-      # 2. do not use a signed NFace connectivity
-      np.absolute(nface_connec,out=nface_connec)
+      if has_nface:
+        # 2. do not use a signed NFace connectivity
+        np.absolute(nface_connec,out=nface_connec)
 
-      # 3. shift NFace connectivity to 1
-      nface_connec += -ngon_range[0]+1
+        # 3. shift NFace connectivity to 1
+        nface_connec += -ngon_range[0]+1
 
     # 4. indexed to interleaved
     indexed_to_interlaced_connectivity(ngon)
-    indexed_to_interlaced_connectivity(nface)
+    if has_nface:
+      indexed_to_interlaced_connectivity(nface)
 
 
 def poly_old_to_new(tree):
