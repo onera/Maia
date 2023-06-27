@@ -4,39 +4,67 @@ import maia.pytree        as PT
 
 import maia.utils.logging as mlog
 from maia.factory.dist_from_part import discover_nodes_from_matching
+from maia.factory.partitioning import compute_nosplit_weights
 
 from .cgns_io_tree import write_tree
 
-def _read_part_zone(zone_name, comm):
-  return PT.maia.conv.get_part_suffix(zone_name)[0] == comm.Get_rank()
-
-def _warn_if_wrong_comm_size(tree, filename, comm):
-  max_proc = max([PT.maia.conv.get_part_suffix(PT.get_name(n))[0] for n in PT.iter_all_Zone_t(tree)]) + 1
+def _read_part_from_name(tree, filename, comm):
+  zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
+  max_proc = max([PT.maia.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
   if max_proc != comm.Get_size():
-    mlog.warning(f"Reading with {comm.Get_size()} procs file {filename} written for {max_proc} procs")
+    mlog.error(f"Reading with {comm.Get_size()} procs file {filename} written for {max_proc} procs")
+  return [path for path in zones_path if PT.maia.conv.get_part_suffix(path)[0] == comm.Get_rank()]
 
-def read_part_tree(filename, comm, legacy=False):
+def _read_part_from_size(tree, filename, comm):
+  zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
+  max_proc = max([PT.maia.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
+  mlog.warning(f"Ignoring procs affectation when reading file {filename} written for {max_proc} procs")
+  return [path for path in compute_nosplit_weights(tree, comm)]
+
+
+def read_part_tree(filename, comm, redispatch=False, legacy=False):
   """Read the partitioned zones from a hdf container and affect it
   to the ranks.
   
-  The CGNS zones must follow maia's conventions and the size of the
-  MPI communicator must be consistant with the proc number
-  provided in partitioned zone names.
+  If ``redispatch == False``, the CGNS zones are affected to the
+  rank indicated in their name. 
+  The size of the MPI communicator must thus be equal to the highest id
+  appearing in partitioned zone names.
+
+  If ``redispatch == True``, the CGNS zones are dispatched over the
+  available processes. Consequently, the rank id in the partitions's name
+  will be different from the actual rank, wich can cause troubles.
 
   Args:
     filename (str) : Path of the file
     comm     (MPIComm) : MPI communicator
+    redispatch (bool) : Controls the affectation of the partitions to the available ranks (see above).
+      Defaults to False.
+  Returns:
+    CGNSTree: Partitioned CGNS tree
 
   """
 
+  # Skeleton
   if legacy:
     import Converter.Filter as Filter
     tree = Filter.convertFile2SkeletonTree(filename, maxDepth=2)
-    _warn_if_wrong_comm_size(tree, filename, comm)
+  else:
+    from maia.io.cgns_io_tree import load_collective_size_tree
+    from h5py import h5f
+    from .hdf._hdf_cgns import open_from_path, _load_node_partial
+    tree = load_collective_size_tree(filename, comm)
 
+  if redispatch:
+    zones_to_read = _read_part_from_size(tree, filename, comm)
+  else:
+    zones_to_read = _read_part_from_name(tree, filename, comm)
+
+  # Data
+  if legacy:
     to_read = list() #Read owned zones and metadata at Base level
     for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
-      if _read_part_zone(zone_path, comm):
+      if zone_path in zones_to_read:
         to_read.append(zone_path)
     PT.rm_nodes_from_label(tree, 'Zone_t')
     for other_path in PT.predicates_to_paths(tree, 'CGNSBase_t/*'):
@@ -48,18 +76,11 @@ def read_part_tree(filename, comm, legacy=False):
     for path, node in zip(to_read, nodes):
       base = PT.get_node_from_path(tree, PT.path_head(path))
       PT.add_child(base, node)
-
   else:
-    from maia.io.cgns_io_tree import load_collective_size_tree
-    from h5py import h5f
-    from .hdf._hdf_cgns import open_from_path, _load_node_partial
-
-    tree = load_collective_size_tree(filename, comm)
-    _warn_if_wrong_comm_size(tree, filename, comm)
-
     # Remove zones not going to this rank
     for base in PT.get_children_from_label(tree, 'CGNSBase_t'):
-      PT.rm_children_from_predicate(base, lambda n: PT.get_label(n) == 'Zone_t' and not _read_part_zone(PT.get_name(n), comm))
+      _zones_to_read = [PT.path_tail(zpath) for zpath in zones_to_read if PT.path_head(zpath) == PT.get_name(base)]
+      PT.rm_children_from_predicate(base, lambda n: PT.get_label(n) == 'Zone_t' and PT.get_name(n) not in _zones_to_read)
 
     # Now load full data of affected zones
     fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)

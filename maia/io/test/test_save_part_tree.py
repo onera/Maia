@@ -54,14 +54,17 @@ def test_read_part_tree(single_file, comm):
     assert PT.get_name(zones[0]) == f'zone.P{comm.Get_rank()}.N0'
     # Data should have been loaded
     assert PT.get_node_from_name(zones[0], 'CoordinateX')[1].size > 0
-    
+
 @pytest_parallel.mark.parallel(2)
-def test_read_part_tree_wrong_size(comm):
+@pytest.mark.parametrize('redispatch', [False, True])
+def test_read_part_tree_redispatch(redispatch, comm):
 
   # To get logs in printer.msg  
-  printer = LogCapture()
+  err_printer = LogCapture()
+  war_printer = LogCapture()
   from maia.utils.logging import add_printer_to_logger
-  add_printer_to_logger('maia-warnings', printer)
+  add_printer_to_logger('maia-errors', err_printer)
+  add_printer_to_logger('maia-warnings', war_printer)
 
   dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
   tree  = maia.factory.partition_dist_tree(dtree, comm)
@@ -70,6 +73,10 @@ def test_read_part_tree_wrong_size(comm):
     SPT.save_part_tree(tree, str(filename), comm)
     comm.barrier()
     if comm.Get_rank() == 0:
-      tree = SPT.read_part_tree(str(filename), MPI.COMM_SELF)
-      assert len(PT.get_all_Zone_t(tree)) == 1
-      assert 'written for 2 procs' in printer.msg
+      tree = SPT.read_part_tree(str(filename), MPI.COMM_SELF, redispatch=redispatch)
+      if redispatch:
+        assert len(PT.get_all_Zone_t(tree)) == 2
+        assert 'written for 2 procs' in war_printer.msg
+      else:
+        assert len(PT.get_all_Zone_t(tree)) == 1
+        assert 'written for 2 procs' in err_printer.msg
