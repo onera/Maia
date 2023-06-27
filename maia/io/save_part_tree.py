@@ -2,12 +2,18 @@ import os
 import maia
 import maia.pytree        as PT
 
+import maia.utils.logging as mlog
 from maia.factory.dist_from_part import discover_nodes_from_matching
 
 from .cgns_io_tree import write_tree
 
 def _read_part_zone(zone_name, comm):
   return PT.maia.conv.get_part_suffix(zone_name)[0] == comm.Get_rank()
+
+def _warn_if_wrong_comm_size(tree, filename, comm):
+  max_proc = max([PT.maia.conv.get_part_suffix(PT.get_name(n))[0] for n in PT.iter_all_Zone_t(tree)]) + 1
+  if max_proc != comm.Get_size():
+    mlog.warning(f"Reading with {comm.Get_size()} procs file {filename} written for {max_proc} procs")
 
 def read_part_tree(filename, comm, legacy=False):
   """Read the partitioned zones from a hdf container and affect it
@@ -26,6 +32,7 @@ def read_part_tree(filename, comm, legacy=False):
   if legacy:
     import Converter.Filter as Filter
     tree = Filter.convertFile2SkeletonTree(filename, maxDepth=2)
+    _warn_if_wrong_comm_size(tree, filename, comm)
 
     to_read = list() #Read owned zones and metadata at Base level
     for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
@@ -48,6 +55,8 @@ def read_part_tree(filename, comm, legacy=False):
     from .hdf._hdf_cgns import open_from_path, _load_node_partial
 
     tree = load_collective_size_tree(filename, comm)
+    _warn_if_wrong_comm_size(tree, filename, comm)
+
     # Remove zones not going to this rank
     for base in PT.get_children_from_label(tree, 'CGNSBase_t'):
       PT.rm_children_from_predicate(base, lambda n: PT.get_label(n) == 'Zone_t' and not _read_part_zone(PT.get_name(n), comm))

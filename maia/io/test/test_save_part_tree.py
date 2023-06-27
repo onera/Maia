@@ -14,6 +14,13 @@ from   maia.utils.parallel import utils as par_utils
 
 from maia.io import save_part_tree as SPT
 
+class LogCapture:
+  def __init__(self):
+    self.msg = ''
+  def log(self, msg):
+    self.msg = self.msg + msg
+
+
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize('single_file', [False, True])
 def test_write_part_tree(single_file, comm):
@@ -48,3 +55,21 @@ def test_read_part_tree(single_file, comm):
     # Data should have been loaded
     assert PT.get_node_from_name(zones[0], 'CoordinateX')[1].size > 0
     
+@pytest_parallel.mark.parallel(2)
+def test_read_part_tree_wrong_size(comm):
+
+  # To get logs in printer.msg  
+  printer = LogCapture()
+  from maia.utils.logging import add_printer_to_logger
+  add_printer_to_logger('maia-warnings', printer)
+
+  dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
+  tree  = maia.factory.partition_dist_tree(dtree, comm)
+  with TU.collective_tmp_dir(comm) as tmpdir:
+    filename = Path(tmpdir) / 'out.hdf'
+    SPT.save_part_tree(tree, str(filename), comm)
+    comm.barrier()
+    if comm.Get_rank() == 0:
+      tree = SPT.read_part_tree(str(filename), MPI.COMM_SELF)
+      assert len(PT.get_all_Zone_t(tree)) == 1
+      assert 'written for 2 procs' in printer.msg
