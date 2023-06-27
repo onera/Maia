@@ -22,6 +22,8 @@ def load_data(names, labels):
       return False
     if names[-2] in [':elsA#Hybrid']: # Do not load legacy nodes
       return False
+    if names[-2] in [':CGNS#GlobalNumbering']:
+      return False
     if labels[-2] == 'BCData_t' and labels[-3] == 'BCDataSet_t': # Load FamilyBCDataSet, but not BCDataSet
       return False
   return True
