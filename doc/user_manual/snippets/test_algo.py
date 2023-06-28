@@ -425,3 +425,11 @@ def test_redistribute_dist_tree():
   dist_tree_gathered = maia.algo.dist.redistribute_tree(dist_tree_ini, \
       'gather.0', MPI.COMM_WORLD)
   #redistribute_dist_tree@end
+
+def test_adapt_with_feflo():
+  #adapt_with_feflo@start
+  from mpi4py import MPI
+  import maia
+
+  print("Inserer un exemple ici :)")
+  #adapt_with_feflo@end
