@@ -1,3 +1,8 @@
+import pytest
+import shutil
+
+feflo_exists = shutil.which('feflo.a') is not None
+
 def test_convert_s_to_u():
   #convert_s_to_u@start
   from mpi4py import MPI
@@ -426,10 +431,29 @@ def test_redistribute_dist_tree():
       'gather.0', MPI.COMM_WORLD)
   #redistribute_dist_tree@end
 
+@pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
 def test_adapt_with_feflo():
   #adapt_with_feflo@start
-  from mpi4py import MPI
+  import mpi4py.MPI as MPI
   import maia
+  import maia.pytree as PT
 
-  print("Inserer un exemple ici :)")
+  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', MPI.COMM_WORLD)
+  base_n = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
+  zone_n = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # > Add metric
+  cx, cy, cz = PT.Zone.coordinates(PT.get_node_from_label(dist_tree, "Zone_t"))
+  metric_fld = (cx-0.5)**5+(cy-0.5)**5 - 1
+  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields={"metric":metric_fld}, parent=zone_n)
+  # > Add family
+  PT.new_Family("BCs", parent=PT.get_node_from_label(dist_tree, "CGNSBase_t"))
+  for bc_n in PT.get_nodes_from_label(base_n, "BC_t"):
+    PT.new_node(name="FamilyName", value="BCs", label="FamilyName_t", parent=bc_n)
+
+  # > Adapt mesh according to scalar metric
+  adapted_dist_tree = maia.algo.dist.adapt_mesh_with_feflo(dist_tree,
+                                                           "FlowSolution/metric", MPI.COMM_WORLD,
+                                                           container_names=["FlowSolution"],
+                                                           feflo_opts="-c 100 -cmax 100 -p 4")
   #adapt_with_feflo@end

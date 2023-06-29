@@ -66,6 +66,8 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   contained in ``tree_info``.
   """
 
+  print(f"TODO : be sure that if feflo add egde, that they are not interlaced with those provided in entry")
+
   # > Get tree infos
   base_name, zone_name = tree_info['tree_names'].split('/')
   families          = tree_info['families']
@@ -93,18 +95,19 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
     n_elt_group   = elt_group_idx.shape[0] - 1
 
     for i_group in range(n_elt_group):
-      bc_name = dicttag_to_bcinfo[location][i_group+1]["BC"]
-      famname = dicttag_to_bcinfo[location][i_group+1]["Family"]
-      
-      bc_n = PT.new_BC(bc_name, type='FamilySpecified', loc=location, parent=zone_bc)
-      start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
-      dn_elt_bnd = end - start
-      PT.new_PointList(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
+      if dicttag_to_bcinfo[location]:
+        bc_name = dicttag_to_bcinfo[location][i_group+1]["BC"]
+        famname = dicttag_to_bcinfo[location][i_group+1]["Family"]
 
-      bc_distrib = par_utils.gather_and_shift(dn_elt_bnd, comm, pdm_gnum_dtype)
-      MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_elt_bnd, comm)}, parent=bc_n)
+        bc_n = PT.new_BC(bc_name, type='FamilySpecified', loc=location, parent=zone_bc)
+        start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
+        dn_elt_bnd = end - start
+        PT.new_PointList(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
 
-      PT.new_node("FamilyName", label="FamilyName_t", value=famname, parent=bc_n)
+        bc_distrib = par_utils.gather_and_shift(dn_elt_bnd, comm, pdm_gnum_dtype)
+        MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_elt_bnd, comm)}, parent=bc_n)
+
+        PT.new_node("FamilyName", label="FamilyName_t", value=famname, parent=bc_n)
 
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
   range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
