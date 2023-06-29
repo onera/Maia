@@ -17,20 +17,12 @@ import Pypdm.Pypdm as PDM
 
 def get_tree_info(dist_tree, container_names):
   """
-  Get tree informations such as names, families, dicttag_to_bcinfo
-  and interpolated containers.
+  Get tree informations such as dicttag_to_bcinfo and interpolated containers.
   """
   
-  # > Get names
-  zones_path = PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
-  assert len(zones_path) == 1
-
-  tree_names= zones_path[0]
-  zone_n = PT.get_node_from_path(dist_tree, zones_path[0])
-
-  # > Get families
-  families  = PT.get_nodes_from_label(dist_tree, 'Family_t')
-
+  zones = PT.get_all_Zone_t(dist_tree)
+  assert len(zones) == 1
+  zone_n = zones[0]
 
   # > Get BCs infos
   dicttag_to_bcinfo = dict()
@@ -53,11 +45,8 @@ def get_tree_info(dist_tree, container_names):
     assert PT.Subset.GridLocation(container) == 'Vertex'
     field_names[container_name] = [PT.get_name(n) for n in PT.iter_children_from_label(container, 'DataArray_t')]
 
-  return {"tree_names"       : tree_names,
-          "families"         : families,
-          "dicttag_to_bcinfo": dicttag_to_bcinfo,
-          "field_names"      : field_names
-          }
+  return {"dicttag_to_bcinfo": dicttag_to_bcinfo,
+          "field_names"      : field_names}
 
 
 def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
@@ -69,8 +58,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   print(f"TODO : be sure that if feflo add egde, that they are not interlaced with those provided in entry")
 
   # > Get tree infos
-  base_name, zone_name = tree_info['tree_names'].split('/')
-  families          = tree_info['families']
   dicttag_to_bcinfo = tree_info['dicttag_to_bcinfo']
 
 
@@ -78,9 +65,8 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   g_dims    = dmesh_nodal.dmesh_nodal_get_g_dims()
   cell_dim  = 3 if g_dims["n_cell_abs"]>0 else 2
   dist_tree = PT.new_CGNSTree()
-  dist_base = PT.new_CGNSBase(base_name, cell_dim=cell_dim, phy_dim=3, parent=dist_tree)
+  dist_base = PT.new_CGNSBase(cell_dim=cell_dim, phy_dim=3, parent=dist_tree)
   dist_zone = _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm)
-  PT.set_name(dist_zone, zone_name)
   PT.add_child(dist_base, dist_zone)
 
 
@@ -119,10 +105,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   if vtx_groups  is not None:
     groups_to_bcs(vtx_groups,  zone_bc, "Vertex",     range_per_dim[1][1], comm)
 
-  # > Add families
-  for family in families:
-    PT.add_child(dist_base, family)
-
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
   distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, "Vertex"))
@@ -151,7 +133,7 @@ def meshb_to_cgns(out_files, tree_info, comm):
 
   Arguments :
     - out_files         (dict): meshb file names
-    - tree_info         (dict): initial dist_tree informations (nodes names, families, bc_infos, interpolated field names)
+    - tree_info         (dict): initial dist_tree informations (bc_infos, interpolated field names)
     - comm              (MPI) : MPI Communicator
   '''
   mlog.info(f"Distributed read of meshb file...")

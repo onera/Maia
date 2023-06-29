@@ -155,6 +155,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], feflo_opt
 
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree, container_names)
+  input_base = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
+  input_zone = PT.get_child_from_label(input_base, 'Zone_t')
 
 
   # > Gathering dist_tree on proc 0
@@ -186,6 +188,12 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], feflo_opt
 
   # > Get adapted dist_tree
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
+  adapted_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
+  adapted_zone = PT.get_child_from_label(adapted_base, 'Zone_t')
+  PT.set_name(adapted_base, PT.get_name(input_base))
+  PT.set_name(adapted_zone, PT.get_name(input_zone))
+  for family in PT.get_children_from_label(input_base, 'Family_t'):
+    PT.add_child(adapted_base, family)
 
 
   return adapted_dist_tree

@@ -26,9 +26,7 @@ def test_get_tree_info():
     
   tree_info = meshb_converter.get_tree_info(dist_tree, ['FlowSolution'])
 
-  assert len(tree_info) == 4
-  assert tree_info['tree_names'] == 'Base/zone'
-  assert tree_info['families'] == []
+  assert len(tree_info) == 2
   assert tree_info['field_names'] == {'FlowSolution' : ['Zeros', 'Range']}
   assert tree_info['dicttag_to_bcinfo'] == {
           'EdgeCenter' : {},
@@ -106,9 +104,7 @@ def test_meshb_to_cgns(comm):
     
     meshb_converter.cgns_to_meshb(dist_tree, files, [], ['FlowSolution'])
 
-  tree_info = {'tree_names' : 'BaseName/zone_name',
-               'families'   : [],
-               'dicttag_to_bcinfo': {
+  tree_info = {'dicttag_to_bcinfo': {
                    'EdgeCenter' : {},
                    'FaceCenter' : {
                        1: {'BC' : 'bc1', 'Family' : 'famA'},
@@ -127,7 +123,7 @@ def test_meshb_to_cgns(comm):
   comm.barrier()
   dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, comm)
 
-  zone = PT.get_node_from_path(dist_tree, tree_info['tree_names'])
+  zone = PT.get_all_Zone_t(dist_tree)[0]
   assert PT.Zone.n_vtx(zone) == 1331 and PT.Zone.n_cell(zone) == 5000
 
   vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
