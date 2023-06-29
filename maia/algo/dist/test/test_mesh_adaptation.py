@@ -1,12 +1,11 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
 
 import maia
 import maia.pytree as PT
-from maia.algo.mesh_adaptation import unpack_metric
 from maia.pytree.yaml          import parse_yaml_cgns
 
-# @mark_mpi_test(1)
+from maia.algo.dist.mesh_adaptation import unpack_metric
+
 def test_unpack_metric():
   yz = """
   CGNSLibraryVersion CGNSLibraryVersion_t 4.2:

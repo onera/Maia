@@ -152,7 +152,7 @@ def mesh_adaptation(dist_tree, comm, metric=None, container_names=[], feflo_opti
 
 
   # > Gathering dist_tree on proc 0
-  maia.algo.dist.redistribute_tree(dist_tree, comm, policy='gather') # Modifie le dist_tree 
+  maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree 
 
 
   # > CGNS to meshb conversion
@@ -177,7 +177,7 @@ def mesh_adaptation(dist_tree, comm, metric=None, container_names=[], feflo_opti
 
 
   # > Recover original dist_tree
-  maia.algo.dist.redistribute_tree(dist_tree, comm, policy='uniform')
+  maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
 
 
   # > Get adapted dist_tree
