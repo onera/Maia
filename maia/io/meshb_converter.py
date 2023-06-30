@@ -50,10 +50,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   contained in ``tree_info``.
   """
 
-  print(f"TODO : be sure that if feflo add egde, that they are not interlaced with those provided in entry")
-
-
-
   # > Generate dist_tree
   g_dims    = dmesh_nodal.dmesh_nodal_get_g_dims()
   cell_dim  = 3 if g_dims["n_cell_abs"]>0 else 2
@@ -74,9 +70,18 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
     elt_group     = elt_groups['dgroup_elmt'] + shift_bc
     n_elt_group   = elt_group_idx.shape[0] - 1
 
+    n_bc_init = len(bc_names[location]) if location in bc_names else 0
+    n_new_bc  = n_elt_group - n_bc_init
+    assert n_new_bc in [0,1], "Unknow tags in meshb file"
+
     for i_group in range(n_elt_group):
       if bc_names[location]:
-        bc_name = bc_names[location][i_group]
+        if i_group < n_new_bc:
+          # name_bc   = {"Vertex":"vtx", "EdgeCenter":"edge", "FaceCenter":"face"}
+          # bc_name = f"new_{name_bc[location]}_bc_{i_group+1}"
+          continue # For now, skip BC detected in meshb but not provided in BC names
+        else:
+          bc_name = bc_names[location][i_group-n_new_bc]
 
         bc_n = PT.new_BC(bc_name, type='Null', loc=location, parent=zone_bc)
         start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
