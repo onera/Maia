@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Developpement version
 ---------------------
 
+💡 New Features
+^^^^^^^^^^^^^^^
+- Algo module: add a function wrapping *Feflo.a* to perform mesh adaptation
+
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - file_to_dist_tree: correct unsigned NFace connectivity if possible

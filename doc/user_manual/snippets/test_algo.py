@@ -1,3 +1,8 @@
+import pytest
+import shutil
+
+feflo_exists = shutil.which('feflo.a') is not None
+
 def test_convert_s_to_u():
   #convert_s_to_u@start
   from mpi4py import MPI
@@ -425,3 +430,28 @@ def test_redistribute_dist_tree():
   dist_tree_gathered = maia.algo.dist.redistribute_tree(dist_tree_ini, \
       'gather.0', MPI.COMM_WORLD)
   #redistribute_dist_tree@end
+
+@pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
+def test_adapt_with_feflo():
+  #adapt_with_feflo@start
+  import mpi4py.MPI as MPI
+  import maia
+  import maia.pytree as PT
+
+  from maia.algo.dist import adapt_mesh_with_feflo
+
+  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # > Create a metric field
+  cx, cy, cz = PT.Zone.coordinates(zone)
+  fields= {'metric' : (cx-0.5)**5+(cy-0.5)**5 - 1}
+  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
+
+  # > Adapt mesh according to scalar metric
+  adpt_dist_tree = adapt_mesh_with_feflo(dist_tree,
+                                         "FlowSolution/metric",
+                                         MPI.COMM_WORLD,
+                                         container_names=["FlowSolution"],
+                                         feflo_opts="-c 100 -cmax 100 -p 4")
+  #adapt_with_feflo@end
