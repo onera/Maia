@@ -17,7 +17,7 @@ import Pypdm.Pypdm as PDM
 
 def get_tree_info(dist_tree, container_names):
   """
-  Get tree informations such as dicttag_to_bcinfo and interpolated containers.
+  Get tree informations such as bc_names and interpolated containers.
   """
   
   zones = PT.get_all_Zone_t(dist_tree)
@@ -25,17 +25,12 @@ def get_tree_info(dist_tree, container_names):
   zone_n = zones[0]
 
   # > Get BCs infos
-  dicttag_to_bcinfo = dict()
+  bc_names = dict()
 
   for entity_name in ["EdgeCenter", "FaceCenter"]:
-    bc_info_entity = dict()
     is_entity_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==entity_name
     entity_bcs   = PT.get_children_from_predicates(zone_n, ['ZoneBC_t', is_entity_bc])
-    for n_tag, bc_n in enumerate(entity_bcs):
-      bc_info_entity[n_tag+1] = {"BC": PT.get_name(bc_n), 
-                                 "Family": PT.get_value(PT.get_child_from_label(bc_n, "FamilyName_t"))}
-
-    dicttag_to_bcinfo[entity_name] = bc_info_entity
+    bc_names[entity_name] = [PT.get_name(bc_n) for bc_n in entity_bcs]
 
 
   # > Container field names
@@ -45,8 +40,8 @@ def get_tree_info(dist_tree, container_names):
     assert PT.Subset.GridLocation(container) == 'Vertex'
     field_names[container_name] = [PT.get_name(n) for n in PT.iter_children_from_label(container, 'DataArray_t')]
 
-  return {"dicttag_to_bcinfo": dicttag_to_bcinfo,
-          "field_names"      : field_names}
+  return {"bc_names"    : bc_names,
+          "field_names" : field_names}
 
 
 def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
@@ -57,8 +52,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
   print(f"TODO : be sure that if feflo add egde, that they are not interlaced with those provided in entry")
 
-  # > Get tree infos
-  dicttag_to_bcinfo = tree_info['dicttag_to_bcinfo']
 
 
   # > Generate dist_tree
@@ -75,17 +68,17 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   edge_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
   face_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_SURFACIC)
 
+  bc_names = tree_info['bc_names']
   def groups_to_bcs(elt_groups, zone_bc, location, shift_bc, comm):
     elt_group_idx = elt_groups['dgroup_elmt_idx']
     elt_group     = elt_groups['dgroup_elmt'] + shift_bc
     n_elt_group   = elt_group_idx.shape[0] - 1
 
     for i_group in range(n_elt_group):
-      if dicttag_to_bcinfo[location]:
-        bc_name = dicttag_to_bcinfo[location][i_group+1]["BC"]
-        famname = dicttag_to_bcinfo[location][i_group+1]["Family"]
+      if bc_names[location]:
+        bc_name = bc_names[location][i_group]
 
-        bc_n = PT.new_BC(bc_name, type='FamilySpecified', loc=location, parent=zone_bc)
+        bc_n = PT.new_BC(bc_name, type='Null', loc=location, parent=zone_bc)
         start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
         dn_elt_bnd = end - start
         PT.new_PointList(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
@@ -93,7 +86,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         bc_distrib = par_utils.gather_and_shift(dn_elt_bnd, comm, pdm_gnum_dtype)
         MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_elt_bnd, comm)}, parent=bc_n)
 
-        PT.new_node("FamilyName", label="FamilyName_t", value=famname, parent=bc_n)
 
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
   range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)

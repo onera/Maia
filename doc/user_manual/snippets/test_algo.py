@@ -438,22 +438,20 @@ def test_adapt_with_feflo():
   import maia
   import maia.pytree as PT
 
-  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', MPI.COMM_WORLD)
-  base_n = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
-  zone_n = PT.get_node_from_label(dist_tree, 'Zone_t')
+  from maia.algo.dist import adapt_mesh_with_feflo
 
-  # > Add metric
-  cx, cy, cz = PT.Zone.coordinates(PT.get_node_from_label(dist_tree, "Zone_t"))
-  metric_fld = (cx-0.5)**5+(cy-0.5)**5 - 1
-  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields={"metric":metric_fld}, parent=zone_n)
-  # > Add family
-  PT.new_Family("BCs", parent=PT.get_node_from_label(dist_tree, "CGNSBase_t"))
-  for bc_n in PT.get_nodes_from_label(base_n, "BC_t"):
-    PT.new_node(name="FamilyName", value="BCs", label="FamilyName_t", parent=bc_n)
+  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # > Create a metric field
+  cx, cy, cz = PT.Zone.coordinates(zone)
+  fields= {'metric' : (cx-0.5)**5+(cy-0.5)**5 - 1}
+  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
 
   # > Adapt mesh according to scalar metric
-  adapted_dist_tree = maia.algo.dist.adapt_mesh_with_feflo(dist_tree,
-                                                           "FlowSolution/metric", MPI.COMM_WORLD,
-                                                           container_names=["FlowSolution"],
-                                                           feflo_opts="-c 100 -cmax 100 -p 4")
+  adpt_dist_tree = adapt_mesh_with_feflo(dist_tree,
+                                         "FlowSolution/metric",
+                                         MPI.COMM_WORLD,
+                                         container_names=["FlowSolution"],
+                                         feflo_opts="-c 100 -cmax 100 -p 4")
   #adapt_with_feflo@end

@@ -188,12 +188,25 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], feflo_opt
 
   # > Get adapted dist_tree
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
+
+  # > Set names and copy base data
   adapted_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
   adapted_zone = PT.get_child_from_label(adapted_base, 'Zone_t')
   PT.set_name(adapted_base, PT.get_name(input_base))
   PT.set_name(adapted_zone, PT.get_name(input_zone))
-  for family in PT.get_children_from_label(input_base, 'Family_t'):
-    PT.add_child(adapted_base, family)
+
+  to_copy = lambda n: PT.get_label(n) in ['Family_t']
+  for node in PT.get_nodes_from_predicate(input_base, to_copy):
+    PT.add_child(adapted_base, node)
+
+  # > Copy BC data
+  to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+  for bc_path in PT.predicates_to_paths(adapted_zone, 'ZoneBC_t/BC_t'):
+    adapted_bc = PT.get_node_from_path(adapted_zone, bc_path)
+    input_bc   = PT.get_node_from_path(input_zone, bc_path)
+    PT.set_value(adapted_bc, PT.get_value(input_bc))
+    for node in PT.get_nodes_from_predicate(input_bc, to_copy):
+      PT.add_child(adapted_bc, node)
 
 
   return adapted_dist_tree

@@ -28,16 +28,9 @@ def test_get_tree_info():
 
   assert len(tree_info) == 2
   assert tree_info['field_names'] == {'FlowSolution' : ['Zeros', 'Range']}
-  assert tree_info['dicttag_to_bcinfo'] == {
-          'EdgeCenter' : {},
-          'FaceCenter' : {
-              1: {'BC' : 'Zmin', 'Family' : 'fam1'},
-              2: {'BC' : 'Zmax', 'Family' : 'fam2'},
-              3: {'BC' : 'Xmin', 'Family' : 'fam3'},
-              4: {'BC' : 'Xmax', 'Family' : 'fam4'},
-              5: {'BC' : 'Ymin', 'Family' : 'fam5'},
-              6: {'BC' : 'Ymax', 'Family' : 'fam6'},
-              }
+  assert tree_info['bc_names'] == {
+          'EdgeCenter' : [],
+          'FaceCenter' :['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
           }
 
 def test_cgns_to_meshb(tmp_path):
@@ -104,21 +97,13 @@ def test_meshb_to_cgns(comm):
     
     meshb_converter.cgns_to_meshb(dist_tree, files, [], ['FlowSolution'])
 
-  tree_info = {'dicttag_to_bcinfo': {
-                   'EdgeCenter' : {},
-                   'FaceCenter' : {
-                       1: {'BC' : 'bc1', 'Family' : 'famA'},
-                       2: {'BC' : 'bc2', 'Family' : 'famB'},
-                       3: {'BC' : 'bc3', 'Family' : 'famB'},
-                       4: {'BC' : 'bc4', 'Family' : 'famC'},
-                       5: {'BC' : 'bc5', 'Family' : 'famC'},
-                       6: {'BC' : 'bc6', 'Family' : 'famA'},
-                       },
+  tree_info = {
+               'bc_names': { 
+                   'EdgeCenter' : [],
+                   'FaceCenter' : ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6']
                    },
-               'field_names' : {
-                 'FlowSolution' : ['Zeros', 'Range']
-                 },
-               }
+               'field_names' : { 'FlowSolution' : ['Zeros', 'Range'] },
+              }
 
   comm.barrier()
   dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, comm)
@@ -133,4 +118,3 @@ def test_meshb_to_cgns(comm):
   # TODO BCs are poorly distributed
   bc = PT.get_node_from_name(zone, 'bc3')
   assert PT.maia.getDistribution(bc, 'Index')[1][2] == 200
-  assert PT.get_value(PT.get_child_from_name(bc, 'FamilyName')) == 'famB'
