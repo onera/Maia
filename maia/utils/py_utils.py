@@ -110,6 +110,29 @@ def uniform_distribution_at(n_elt, i, n_interval):
 
   return inf,sup
 
+def unique_idx(seq):
+  """ Indirect unique of a sequence : return an array of size len(seq)
+  storing an unique id for each element occuring in sequence
+  """
+
+  size = len(seq)
+  if size == 0:
+    return []
+
+  idx = sorted(range(size), key=seq.__getitem__)
+  out = [-1] * size
+
+  id = 0
+  last = seq[idx[0]]
+  for i in idx:
+    if seq[i] != last:
+      last = seq[i]
+      id += 1
+    out[i] = id
+  return out
+
+  
+
 def str_to_bools(size, key):
   """
   Convert a keyword into a list of booleens of the given size

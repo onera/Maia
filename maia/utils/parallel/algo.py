@@ -1,7 +1,11 @@
+import pickle
+import hashlib
 import numpy as np
 
 from maia.transfer import protocols as EP
-from maia.utils    import np_utils, par_utils
+from maia.utils    import np_utils, par_utils, py_utils
+
+import Pypdm.Pypdm as PDM
 
 def dist_set_difference(ids, others, comm):
   """ Return the list of elements that belong to ids array but are absent from
@@ -43,107 +47,80 @@ def dist_set_difference(ids, others, comm):
   return selected
 
 
-import pickle
-import hashlib
-def compute_gnum(objects, comm):
+def compute_gnum(objects, comm, serialize=pickle.dumps):
   """ Attribute to each object of objects list a global id.
   Globals ids span from 1 to "number of unique objects across the procs"
   If a object appears several times in objects lists, it will receive
   the same global id.
   """
+  n_rank = comm.Get_size()
+  key_mod = 2**30
 
-  byte_objects = [pickle.dumps(obj) for obj in objects]
-  #byte_objects = [obj.encode() for obj in objects] # Easier debug
+  # Serialize and compute hash of each object
+  byte_objects = [serialize(obj) for obj in objects]
 
-  hash_key = [int(hashlib.sha1(b).hexdigest(), 16) % 2048 for b in byte_objects]
+  #hash_key = [int(hashlib.sha1(b).hexdigest(), 16) % key_mod for b in byte_objects]
+  iterable = (int(hashlib.sha1(b).hexdigest(), 16) % key_mod for b in byte_objects)
+  hash_key = np.fromiter(iterable, dtype=PDM.npy_pdm_gnum_dtype)
 
-  # TODO : get distribution w/ PTB     #PDM_distrib_weight
-  PTB = EP.PartToBlock(None, [np.array(hash_key)+1], comm, weight=[np.ones(len(hash_key))])
-  distri = PTB.getDistributionCopy()
-  if comm.Get_rank() == 0:
-    print("Distribution", distri)
-
-  dest = np.searchsorted(distri, hash_key, side='right') -1
-  print(comm.rank, "Dest", dest)
+  # Compute distribution, then search managing proc of each object
+  # Also prepare the order to be used to sort send buffer according to rank ordering
+  distri = PDM.compute_weighted_distribution([hash_key+1], [np.ones(len(hash_key))], comm)
+  dest = np.searchsorted(distri, hash_key, side='right') - 1
+  sort_idx = np.argsort(dest)
 
   # Exchange number of object to be managed by each proc
-  send_n_items = np.zeros(comm.Get_size(), np.int32) #Number of objects to send to each rank
+  send_n_items = np.zeros(n_rank, np.int32) #Number of objects to send to each rank
+  recv_n_items = np.empty(n_rank, np.int32) #Number of object to recv from each rank
   np.add.at(send_n_items, dest, 1)
-  dest_count_idx = np_utils.sizes_to_indices(send_n_items)
 
-  recv_n_items = np.empty(comm.Get_size(), np.int32)
   comm.Alltoall(send_n_items, recv_n_items)
 
-  print("Hash rank", comm.rank, hash_key, "dest are", dest)
-  send_n_items_idx = np_utils.sizes_to_indices(send_n_items)
-  recv_n_items_idx = np_utils.sizes_to_indices(recv_n_items)
+  send_items_idx = np_utils.sizes_to_indices(send_n_items)
+  recv_items_idx = np_utils.sizes_to_indices(recv_n_items)
 
-  sort_idx = np.argsort(dest, kind='stable')
+  # Exchange size of each object to be managed by the dest. rank
+  send_n_bytes = np.array([len(byte_objects[i]) for i in sort_idx], np.int32) #Ordered for all_to_all
+  recv_n_bytes = np.empty(sum(recv_n_items), np.int32)
 
-  # Prepare send buffer, orderer from dest rank
+  comm.Alltoallv((send_n_bytes, send_n_items), (recv_n_bytes, recv_n_items))
+
+  # Temporary for all to all sizes : number of bytes going to each process
+  #_sum_send_n_bytes = np.add.reduceat(send_n_bytes, send_items_idx[:-1]) # Fail if a rank should have 0 values
+  #_sum_recv_n_bytes = np.add.reduceat(recv_n_bytes, recv_items_idx[:-1])
+  _sum_send_n_bytes = [sum(send_n_bytes[send_items_idx[i]:send_items_idx[i+1]]) for i in range(n_rank)]
+  _sum_recv_n_bytes = [sum(recv_n_bytes[recv_items_idx[i]:recv_items_idx[i+1]]) for i in range(n_rank)]
+
+  # Now send bytes buffer to the dest rank
   send_buff = b''.join([byte_objects[i] for i in sort_idx])
+  recv_buff = bytearray(sum(_sum_recv_n_bytes))
+  comm.Alltoallv((send_buff, _sum_send_n_bytes), (recv_buff, _sum_recv_n_bytes))
 
-  send_byte_lens     = [len(byte_objects[i]) for i in sort_idx]
+  # Compute hash of received objects and compute index locally for the zipped sequence (hash, key)
+  #   Hash are needed to ensure parallelism independant results.
+  #   Key are needed to break ties between same hashes.
+  # Since operators < and == are implemented for (int, bytes) tuples we can use the sorting function
 
-  # Exchange size of objects to be managed by each proc
-  recv_byte_lens = np.empty(sum(recv_n_items), np.int32)
-  comm.Alltoallv((np.array(send_byte_lens, np.int32), send_n_items), (recv_byte_lens, recv_n_items))
+  #Slice recv buffer using recv_byte lens
+  recv_bytes_idx = np_utils.sizes_to_indices(recv_n_bytes)
+  recv_bytes = [recv_buff[recv_bytes_idx[i]:recv_bytes_idx[i+1]] for i in range(recv_n_bytes.size)]
+  recv_keys = [int(hashlib.sha1(b).hexdigest(), 16) % key_mod for b in recv_bytes]
 
-  print("rank" , comm.rank, "will send sizes", send_byte_lens, "with nb / rank", send_n_items)
+  dist_gnum = py_utils.unique_idx(list(zip(recv_keys, recv_bytes)))
+  dist_gnum = np.array(dist_gnum, np.int32)
 
-  #_sum_send_byte_lens = np.add.reduceat(send_byte_lens, send_n_items_idx[:-1])
-  #_sum_recv_byte_lens = np.add.reduceat(recv_byte_lens, recv_n_items_idx[:-1])
-  _sum_send_byte_lens = [sum(send_byte_lens[send_n_items_idx[i]:send_n_items_idx[i+1]]) for i in range(comm.Get_size())]
-  _sum_recv_byte_lens = [sum(recv_byte_lens[recv_n_items_idx[i]:recv_n_items_idx[i+1]]) for i in range(comm.Get_size())]
+  # Once we have local gnum, we need to shift it with a scan to have global gnum
+  n_gnum = np.max(dist_gnum, initial=-1) + 1 # If dist_gnum is empty, we want 0 for n_gnum
+  offset = par_utils.gather_and_shift(n_gnum, comm)[comm.Get_rank()]
+  dist_gnum += offset
 
-  # Exchange buffer
-  recv_buff = bytearray(sum(_sum_recv_byte_lens))
-  comm.Alltoallv((send_buff, _sum_send_byte_lens), (recv_buff, _sum_recv_byte_lens))
+  # Send back gnum to original rank, by switching send_n_items and recv_n_items
+  # Then we need to "unsort" the received gnum which is sorted as the send buffer
+  sorted_gnum = np.empty(len(byte_objects), np.int32)
+  comm.Alltoallv((dist_gnum, recv_n_items), (sorted_gnum, send_n_items))
+  gnum = sorted_gnum[np.argsort(sort_idx)]
 
-  #Slice recv buffer using byte lens
-  recv_byte_lens_idx = np_utils.sizes_to_indices(recv_byte_lens)
-  recv_bytes = [recv_buff[recv_byte_lens_idx[i]:recv_byte_lens_idx[i+1]] for i in range(recv_byte_lens_idx.size-1)]
-  recv_keys = [int(hashlib.sha1(b).hexdigest(), 16) % 2048 for b in recv_bytes]
-
-  #print(comm.rank, recv_bytes)
-
-  _indices = unique_idx_sort_keys(recv_keys, [bytes(ba) for ba in recv_bytes]) #Todo : change underlying algo to avoid conversion
-
-  offset = par_utils.gather_and_shift(max(_indices)+1, comm)
-  indices = [i+offset[comm.Get_rank()] for i in _indices]
-  #print(comm.rank, 'Sorted indices', _indices, '-->', indices)
-
-  # print(comm.rank, 'Bytes', recv_bytes, '--> gnum', indices)
-
-  # Send back indices to original rank, 
-  # Data arrive in proc order so same order than buffsend ; because we sorted buffsend we must 
-  # put back in input order
-  # comm.Alltoallv((t1, counts), (recv, (rcounts, rdispl)))
-  orig_indices = np.empty(len(byte_objects), np.int32)
-  comm.Alltoallv((np.array(indices, np.int32), recv_n_items), (orig_indices, send_n_items))
-  #print(comm.rank, "Back to initial indices", orig_indices)
-
-  ordered_gnum = orig_indices[np.argsort(sort_idx)]
-  return ordered_gnum
-
-def unique_idx_sort_keys(keys, seq):
-  if len(seq) == 0:
-    return []
-
-
-  zipped = list(zip(keys, seq))
-  idx = sorted(range(len(keys)), key=zipped.__getitem__)
-
-  out = [-1 for i in range(len(seq))]
-  id = 0
-  last = zipped[idx[0]]
-  for i in idx:
-    if zipped[i] != last:
-      last = zipped[i]
-      id += 1
-    out[i] = id
-  return out
-  
+  return gnum
 
 class DistSorter:
   """ Argsort-like algorithm for distributed arrays.
