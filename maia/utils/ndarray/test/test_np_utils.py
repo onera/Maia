@@ -52,7 +52,7 @@ def test_shift_nonzeros():
 
 def test_interlaced_indexed():
   array = np.array([3, 11,12,13, 4, 9,8,7,6,  3, 77,88,99])
-  idx, data = np_utils.interlaced_to_indexed(array)
+  idx, data = np_utils.interlaced_to_indexed(3, array)
   assert (idx == [0,3,7,10]).all()
   assert (data == [11,12,13, 9,8,7,6, 77,88,99]).all()
   assert data.dtype == array.dtype

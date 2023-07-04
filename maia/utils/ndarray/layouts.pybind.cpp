@@ -119,48 +119,41 @@ indexed_to_interleaved_connectivity(py::array_t<T, py::array::f_style>& np_idx,
   auto idx  = make_raw_view(np_idx);
   auto data = make_raw_view(np_data);
 
-  auto np_interlaced = py::array_t<T, py::array::f_style>(np_idx.size()-1+np_data.size());
-  auto interlaced    = make_raw_view(np_interlaced);
+  auto np_interleaved = py::array_t<T, py::array::f_style>(np_idx.size()-1+np_data.size());
+  auto interleaved    = make_raw_view(np_interleaved);
 
   int idx_write(0);
   for (int i = 0; i < np_idx.size()-1; ++i) {
-    interlaced[idx_write++] = idx[i+1] - idx[i];
+    interleaved[idx_write++] = idx[i+1] - idx[i];
     for (int j=idx[i]; j < idx[i+1]; ++j) {
-      interlaced[idx_write++] = data[j];
+      interleaved[idx_write++] = data[j];
     }
   }
-  return np_interlaced;
+  return np_interleaved;
 }
 
 template<typename T>
 std::tuple<py::array_t<T, py::array::f_style>, py::array_t<T, py::array::f_style>>
-interleaved_to_indexed_connectivity(py::array_t<T, py::array::f_style>& np_interlaced)
+interleaved_to_indexed_connectivity(int n_elem, py::array_t<T, py::array::f_style>& np_interleaved)
 {
-  auto interlaced = make_raw_view(np_interlaced);
-
-  int n_elem(0);
-  int i(0);
-  while (i < np_interlaced.size()) {
-    n_elem++;
-    i += interlaced[i] + 1;
-  }
+  auto interleaved = make_raw_view(np_interleaved);
 
   py::array_t<T, py::array::f_style> np_offset(n_elem+1);
-  py::array_t<T, py::array::f_style> np_values(np_interlaced.size() - n_elem);
+  py::array_t<T, py::array::f_style> np_values(np_interleaved.size() - n_elem);
 
   auto offset = make_raw_view(np_offset);
   auto values = make_raw_view(np_values);
 
   offset[0] = 0;
-  n_elem = 0;
-  i = 0;
-  while (i < np_interlaced.size()) {
-    offset[n_elem+1] = offset[n_elem] + interlaced[i];
-    for (int j = 0; j < offset[n_elem+1] - offset[n_elem]; ++j) {
-      values[offset[n_elem] + j] = interlaced[i+1+j];
+  int i_elem = 0;
+  int i = 0;
+  while (i < np_interleaved.size()) {
+    offset[i_elem+1] = offset[i_elem] + interleaved[i];
+    for (int j = 0; j < offset[i_elem+1] - offset[i_elem]; ++j) {
+      values[offset[i_elem] + j] = interleaved[i+1+j];
     }
-    i += interlaced[i] + 1;
-    n_elem++;
+    i += interleaved[i] + 1;
+    i_elem++;
   }
   return std::make_tuple(np_offset, np_values);
 }
@@ -260,8 +253,10 @@ void register_layouts_module(py::module_& parent) {
         py::arg("indices").noconvert(),
         py::arg("array"  ).noconvert());
   m.def("interleaved_to_indexed_connectivity", &interleaved_to_indexed_connectivity<int32_t>, 
+        py::arg("n_elem"  ).noconvert(),
         py::arg("array"  ).noconvert());
   m.def("interleaved_to_indexed_connectivity", &interleaved_to_indexed_connectivity<int64_t>, 
+        py::arg("n_elem"  ).noconvert(),
         py::arg("array"  ).noconvert());
 
   m.def("pe_cgns_to_pdm_face_cell", &pe_cgns_to_pdm_face_cell<int32_t>,

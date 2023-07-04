@@ -7,7 +7,7 @@ import maia.pytree as PT
 
 from maia.utils import np_utils
 
-def indexed_to_interlaced_connectivity(node):
+def indexed_to_interleaved_connectivity(node):
   offset = PT.get_child_from_name(node, 'ElementStartOffset')
   connec = PT.get_child_from_name(node, 'ElementConnectivity')
 
@@ -15,8 +15,9 @@ def indexed_to_interlaced_connectivity(node):
   PT.rm_child(node, offset)
 
 def interlaced_to_indexed_connectivity(node):
+  n_elem = PT.Element.Size(node)
   connec = PT.get_child_from_name(node, 'ElementConnectivity')
-  idx, array = np_utils.interlaced_to_indexed(connec[1])
+  idx, array = np_utils.interlaced_to_indexed(n_elem, connec[1])
 
   PT.new_DataArray('ElementStartOffset', value=idx, parent=node)
   connec[1] = array
@@ -80,9 +81,9 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
         nface_connec += -ngon_range[0]+1
 
     # 4. indexed to interleaved
-    indexed_to_interlaced_connectivity(ngon)
+    indexed_to_interleaved_connectivity(ngon)
     if has_nface:
-      indexed_to_interlaced_connectivity(nface)
+      indexed_to_interleaved_connectivity(nface)
 
 
 def poly_old_to_new(tree):
