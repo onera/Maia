@@ -50,6 +50,15 @@ def test_shift_nonzeros():
   np_utils.shift_nonzeros(array, -10)
   assert (array == [[2,0], [1,2], [0,3], [0,0]]).all()
 
+def test_interlaced_indexed():
+  array = np.array([3, 11,12,13, 4, 9,8,7,6,  3, 77,88,99])
+  idx, data = np_utils.interlaced_to_indexed(3, array)
+  assert (idx == [0,3,7,10]).all()
+  assert (data == [11,12,13, 9,8,7,6, 77,88,99]).all()
+  assert data.dtype == array.dtype
+  array2 = np_utils.indexed_to_interlaced(idx, data)
+  assert np.array_equal(array, array2)
+
 def test_shift_absvalue():
   array = np.array([2,9,1,-1,3,-8,0])
   id_bck = id(array)

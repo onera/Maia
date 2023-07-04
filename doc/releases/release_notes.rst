@@ -20,6 +20,7 @@ Developpement version
 ^^^^^^^^^^^^^^^^^^^^^^^
 - file_to_dist_tree: correct unsigned NFace connectivity if possible
 - wall_distance: add an option to take into account periodic connectivities 
+- poly_old_to_new / poly_new_to_old : support 2D meshes
 
 🐞 Fixes
 ^^^^^^^^

@@ -31,6 +31,14 @@ def compress(t):
   val = t[idx[:-1]]
   return idx, val
 
+def indexed_to_interlaced(idx, array):
+  """ Create an interlaced array from two offset + data arrays (eg. cgns 3 from cgns 4)"""
+  return layouts.indexed_to_interleaved_connectivity(idx, array)
+
+def interlaced_to_indexed(n_elem, array):
+  """ Create two offset + data arrays from an interlaced array (eg. cgns 4 from cgns 3)"""
+  return layouts.interleaved_to_indexed_connectivity(n_elem, array)
+
 def concatenate_np_arrays(arrays, dtype=None):
   """
   Merge all the (1d) arrays in arrays list

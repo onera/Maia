@@ -5,7 +5,22 @@ import numpy as np
 import maia
 import maia.pytree as PT
 
-from maia.utils import require_cpp20
+from maia.utils import np_utils
+
+def indexed_to_interleaved_connectivity(node):
+  offset = PT.get_child_from_name(node, 'ElementStartOffset')
+  connec = PT.get_child_from_name(node, 'ElementConnectivity')
+
+  connec[1] = np_utils.indexed_to_interlaced(offset[1], connec[1])
+  PT.rm_child(node, offset)
+
+def interlaced_to_indexed_connectivity(node):
+  n_elem = PT.Element.Size(node)
+  connec = PT.get_child_from_name(node, 'ElementConnectivity')
+  idx, array = np_utils.interlaced_to_indexed(n_elem, connec[1])
+
+  PT.new_DataArray('ElementStartOffset', value=idx, parent=node)
+  connec[1] = array
 
 def enforce_ngon_pe_local(t):
   """
@@ -25,7 +40,6 @@ def enforce_ngon_pe_local(t):
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')
     pe[1] = maia.algo.indexing.get_ngon_pe_local(ngon_node)
 
-@require_cpp20
 def poly_new_to_old(tree, full_onera_compatibility=True):
   """
   Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.
@@ -39,33 +53,39 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
   cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 3.1)
   for z in PT.get_all_Zone_t(tree):
-    if PT.Zone.Type(z) != 'Unstructured':
+    if PT.Zone.Type(z) != 'Unstructured' or not PT.Zone.has_ngon_elements(z):
       continue
+
+    has_nface = PT.Zone.has_nface_elements(z)
+
     ngon  = maia.pytree.Zone.NGonNode (z)
-    nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = PT.get_value(PT.get_child_from_name(ngon , "ElementRange"       ))
-    nface_range  = PT.get_value(PT.get_child_from_name(nface, "ElementRange"       ))
-    nface_connec = PT.get_value(PT.get_child_from_name(nface, "ElementConnectivity"))
+    if has_nface:
+      nface = maia.pytree.Zone.NFaceNode(z)
+      nface_range  = PT.get_value(PT.get_child_from_name(nface, "ElementRange"       ))
+      nface_connec = PT.get_value(PT.get_child_from_name(nface, "ElementConnectivity"))
 
     if full_onera_compatibility:
       # 1. shift ParentElements to 1
       pe_node = PT.get_child_from_name(ngon,"ParentElements")
       if pe_node:
-        pe = PT.get_value(pe_node)
-        pe += (-nface_range[0]+1)*(pe>0)
+        # pe = PT.get_value(pe_node)
+        # pe += (-nface_range[0]+1)*(pe>0)
+        pe_node[1] = maia.algo.indexing.get_ngon_pe_local(ngon)
 
-      # 2. do not use a signed NFace connectivity
-      np.absolute(nface_connec,out=nface_connec)
+      if has_nface:
+        # 2. do not use a signed NFace connectivity
+        np.absolute(nface_connec,out=nface_connec)
 
-      # 3. shift NFace connectivity to 1
-      nface_connec += -ngon_range[0]+1
+        # 3. shift NFace connectivity to 1
+        nface_connec += -ngon_range[0]+1
 
     # 4. indexed to interleaved
-    ctree_algo.indexed_to_interleaved_connectivity(ngon)
-    ctree_algo.indexed_to_interleaved_connectivity(nface)
+    indexed_to_interleaved_connectivity(ngon)
+    if has_nface:
+      indexed_to_interleaved_connectivity(nface)
 
 
-@require_cpp20
 def poly_old_to_new(tree):
   """
   Transform a tree with polyhedral unstructured connectivity with old CGNS 3.x conventions to new CGNS 4.x conventions.
@@ -80,19 +100,24 @@ def poly_old_to_new(tree):
   cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 4.2)
   for z in PT.get_all_Zone_t(tree):
-    if PT.Zone.Type(z) != 'Unstructured':
+    if PT.Zone.Type(z) != 'Unstructured' or not PT.Zone.has_ngon_elements(z):
       continue
+
+    has_nface = PT.Zone.has_nface_elements(z)
     ngon  = maia.pytree.Zone.NGonNode (z)
-    nface = maia.pytree.Zone.NFaceNode(z)
     ngon_range   = PT.get_value(PT.get_child_from_name(ngon , "ElementRange"))
-    nface_range  = PT.get_value(PT.get_child_from_name(nface, "ElementRange"))
+    if has_nface:
+      nface = maia.pytree.Zone.NFaceNode(z)
+      nface_range  = PT.get_value(PT.get_child_from_name(nface, "ElementRange"))
 
     # 1. interleaved to indexed
-    ctree_algo.interleaved_to_indexed_connectivity(ngon)
+    interlaced_to_indexed_connectivity(ngon)
 
     # 2. shift ParentElements if necessary
     pe_node = PT.get_child_from_name(ngon,"ParentElements")
     if pe_node:
+      if not has_nface: #Induce NFace range for PE reconstruction
+        nface_range  = [ngon_range[1]+1, ngon_range[1]+PT.Zone.n_cell(z)]
       pe = PT.get_value(pe_node)
       pe_no_0 = pe[pe>0]
       min_pe = np.min(pe_no_0)
@@ -104,28 +129,29 @@ def poly_old_to_new(tree):
           pe += (+nface_range[0]-1)*(pe>0)
 
     # 3. NFace
-    nface_connec = PT.get_value(PT.get_child_from_name(nface, "ElementConnectivity"))
-    n_cell = nface_range[1] - nface_range[0]
-    if np.min(nface_connec)<0 or n_cell==1: # NFace is signed (if only one cell, it is signed despite being positive)
-      # 3.1. interleaved to indexed
-      ctree_algo.interleaved_to_indexed_connectivity(nface)
+    if has_nface:
       nface_connec = PT.get_value(PT.get_child_from_name(nface, "ElementConnectivity"))
-
-      # 3.2. shift
-      sign_nf = np.sign(nface_connec)
-      abs_nf = np.absolute(nface_connec)
-      min_nf = np.min(abs_nf)
-      max_nf = np.max(abs_nf)
-      if not (min_nf==ngon_range[0] and max_nf==ngon_range[1]):
-        if min_nf!=1:
-          raise RuntimeError("NFace ElementConnectivity values are not SIDS-compliant, and they do not start at 1")
-        else:
-          abs_nf += +ngon_range[0]-1
-          nface_connec[:] = abs_nf * sign_nf
-    else: # NFace is not signed: need to recompute it
-      PT.rm_child(z,nface)
-      if not pe_node:
-        raise RuntimeError("NFace is not signed: this is not compliant. However, a ParentElements is needed to recompute a correct NFace")
-      if ngon_range[0] != 1:
-        raise NotImplementedError("NFace is not signed: this is not compliant. It needs to be recomputed, but not implemented in case NGon is not first")
-      maia.algo.pe_to_nface(z)
+      n_cell = nface_range[1] - nface_range[0]
+      if np.min(nface_connec)<0 or n_cell==1: # NFace is signed (if only one cell, it is signed despite being positive)
+        # 3.1. interleaved to indexed
+        interlaced_to_indexed_connectivity(nface)
+        nface_connec = PT.get_value(PT.get_child_from_name(nface, "ElementConnectivity"))
+   
+        # 3.2. shift
+        sign_nf = np.sign(nface_connec)
+        abs_nf = np.absolute(nface_connec)
+        min_nf = np.min(abs_nf)
+        max_nf = np.max(abs_nf)
+        if not (min_nf==ngon_range[0] and max_nf==ngon_range[1]):
+          if min_nf!=1:
+            raise RuntimeError("NFace ElementConnectivity values are not SIDS-compliant, and they do not start at 1")
+          else:
+            abs_nf += +ngon_range[0]-1
+            nface_connec[:] = abs_nf * sign_nf
+      else: # NFace is not signed: need to recompute it
+        PT.rm_child(z,nface)
+        if not pe_node:
+          raise RuntimeError("NFace is not signed: this is not compliant. However, a ParentElements is needed to recompute a correct NFace")
+        if ngon_range[0] != 1:
+          raise NotImplementedError("NFace is not signed: this is not compliant. It needs to be recomputed, but not implemented in case NGon is not first")
+        maia.algo.pe_to_nface(z)
