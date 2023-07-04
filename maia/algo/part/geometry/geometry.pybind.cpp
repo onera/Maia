@@ -8,8 +8,6 @@
 
 namespace py = pybind11;
 
-
-
 // --------------------------------------------------------------------
 py::array_t<double, py::array::f_style>
 compute_center_cell_u(int n_cell,
@@ -189,4 +187,56 @@ compute_center_face_s(int nx, int ny, int nz,
     }
   }
   return np_center;
+}
+
+// --------------------------------------------------------------------
+py::array_t<double, py::array::f_style>
+compute_face_normal_u(py::array_t<int   , py::array::f_style>& np_face_vtx_idx,
+                      py::array_t<double, py::array::f_style>& np_cx,
+                      py::array_t<double, py::array::f_style>& np_cy,
+                      py::array_t<double, py::array::f_style>& np_cz)
+{
+  // Compute face normal ponderated by face area, assuming that coords cx,cy,cz are
+  // the coordinates of face vertices (with repetitions)
+  // Eg if we have tri face [3,2,4,  5,4,6] np_cx is [X_3, X_2, X_4,  X5,X4,X6]
+
+  auto cx              = make_raw_view(np_cx);
+  auto cy              = make_raw_view(np_cy);
+  auto cz              = make_raw_view(np_cz);
+  auto face_vtx_idx    = make_raw_view(np_face_vtx_idx);
+
+  int n_face = np_face_vtx_idx.shape()[0] - 1;
+
+  py::array_t<double, py::array::f_style> np_face_normal(3*n_face);
+  auto face_normal = make_raw_view(np_face_normal);
+
+  for (int i = 0; i < n_face; ++i) {
+    int start = face_vtx_idx[i];
+    int end   = face_vtx_idx[i+1];
+    int n_vtx = end - start;
+
+    double mean_center_x = std::accumulate(&cx[start], &cx[end], 0) / n_vtx;
+    double mean_center_y = std::accumulate(&cy[start], &cy[end], 0) / n_vtx;
+    double mean_center_z = std::accumulate(&cz[start], &cz[end], 0) / n_vtx;
+
+    double face_normal_x = 0;
+    double face_normal_y = 0;
+    double face_normal_z = 0;
+    // Compute cross product (uy*vz - uz*vy, uz*vx - ux*vz, ux*vy - uy*vx)
+    // between OVI, OVI+1 where O is the mean center, and VI / VI+1 are the vertices
+    for (int j = start; j < end-1; ++j) {
+      face_normal_x += ((cy[j] - mean_center_y)*(cz[j+1]-mean_center_z) - (cz[j] - mean_center_z)*(cy[j+1]-mean_center_y));
+      face_normal_y += ((cz[j] - mean_center_z)*(cx[j+1]-mean_center_x) - (cx[j] - mean_center_x)*(cz[j+1]-mean_center_z));
+      face_normal_z += ((cx[j] - mean_center_x)*(cy[j+1]-mean_center_y) - (cy[j] - mean_center_y)*(cx[j+1]-mean_center_x));
+    }
+    face_normal_x += ((cy[end-1] - mean_center_y)*(cz[start]-mean_center_z) - (cz[end-1] - mean_center_z)*(cy[start]-mean_center_y));
+    face_normal_y += ((cz[end-1] - mean_center_z)*(cx[start]-mean_center_x) - (cx[end-1] - mean_center_x)*(cz[start]-mean_center_z));
+    face_normal_z += ((cx[end-1] - mean_center_x)*(cy[start]-mean_center_y) - (cy[end-1] - mean_center_y)*(cx[start]-mean_center_x));
+
+    face_normal[3*i+0] = 0.5*face_normal_x;
+    face_normal[3*i+1] = 0.5*face_normal_y;
+    face_normal[3*i+2] = 0.5*face_normal_z;
+  }
+
+  return np_face_normal;
 }
