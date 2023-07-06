@@ -19,6 +19,11 @@ def create_combined_dataspace(data_shape, distrib):
   slab_list  = compute_slabs(data_shape, distrib[0:2])
   dn_da    = distrib[1] - distrib[0]
   DSFILEDA = []
+  if len(slab_list) == 0:
+    if dim == 3:
+      DSFILEDA.extend([[0,0,0], [1,1,1], [0,0,0], [1,1,1]])
+    else:
+      DSFILEDA.extend([[0,0], [1,1], [0,0], [1,1]])
   for slab in slab_list:
     iS,iE, jS,jE, kS,kE = [item for bounds in slab for item in bounds]
     if dim == 3:

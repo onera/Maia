@@ -38,7 +38,7 @@ def test_create_3D_combined_dataspace():
   assert hdf_dataspace.create_combined_dataspace([2,5,10], [0,10,100]) == \
       [[0], [1], [10], [1], [[0, 0, 0], [1, 1, 1], [2, 5, 1], [1, 1, 1]], [2, 5, 10], [0]]
   assert hdf_dataspace.create_combined_dataspace([2,5,10], [50,50,100]) == \
-      [[0], [1], [0], [1], [], [2, 5, 10], [0]]
+      [[0], [1], [0], [1], [[0,0,0], [1,1,1], [0,0,0], [1,1,1]], [2, 5, 10], [0]]
 
 def test_create_2D_combined_dataspace():
   assert hdf_dataspace.create_combined_dataspace([10,2], [0,10,20]) == \
@@ -46,7 +46,7 @@ def test_create_2D_combined_dataspace():
   assert hdf_dataspace.create_combined_dataspace([2,5], [0,3,10]) == \
       [[0], [1], [3], [1], [[0, 0], [1, 1], [2, 1], [1, 1], [0, 1], [1, 1], [1, 1], [1, 1]], [2, 5], [0]]
   assert hdf_dataspace.create_combined_dataspace([2,5], [5,5,10]) == \
-      [[0], [1], [0], [1], [], [2, 5], [0]]
+      [[0], [1], [0], [1], [[0,0], [1,1], [0,0], [1,1]], [2, 5], [0]]
 
 def test_create_data_array_filter():
   assert hdf_dataspace.create_data_array_filter([0,10,100]) == \
