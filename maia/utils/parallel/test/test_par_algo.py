@@ -49,10 +49,10 @@ def test_compute_gnum_s(comm):
           [],
           ['Watermelon', 'Banana'],
           ['Melon', 'Peach', 'Tomato']]
-  expected_gnum = [[4,0,3,0],
+  expected_gnum = [[5,1,4,1],
                    [],
-                   [1,0],
-                   [5,3,2]]
+                   [2,1],
+                   [6,4,3]]
 
   if comm.Get_size() == 4:
     rank_keys = keys[comm.Get_rank()]
@@ -68,9 +68,9 @@ def test_compute_gnum_o(comm):
   # Test with various objects
   if comm.Get_rank() == 0:
     keys = [test_compute_gnum_s, 'Banana', np.array([1,2,3], np.int32)]
-    expected_gnum = [4,0,1]
+    expected_gnum = [5,1,2]
   elif comm.Get_rank() == 1:
     keys = [None, False, test_compute_gnum_s, 'Banana']
-    expected_gnum = [3,2,4,0]
+    expected_gnum = [4,3,5,1]
 
   assert (par_algo.compute_gnum(keys, comm) == expected_gnum).all()

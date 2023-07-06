@@ -112,7 +112,7 @@ def compute_gnum(objects, comm, serialize=pickle.dumps):
   # Once we have local gnum, we need to shift it with a scan to have global gnum
   n_gnum = np.max(dist_gnum, initial=-1) + 1 # If dist_gnum is empty, we want 0 for n_gnum
   offset = par_utils.gather_and_shift(n_gnum, comm)[comm.Get_rank()]
-  dist_gnum += offset
+  dist_gnum += offset + 1
 
   # Send back gnum to original rank, by switching send_n_items and recv_n_items
   # Then we need to "unsort" the received gnum which is sorted as the send buffer
