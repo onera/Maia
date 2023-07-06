@@ -33,6 +33,10 @@ Developpement version
 - redistribute_tree: remove default value for policy
 - wall_distance: remove families parameter
 
+🔧 Advanced users / devs
+^^^^^^^^^^^^^^^^^^^^^^^^
+- Add a method to give a global id to any object in parallel
+
 v1.1 (May 2023)
 ---------------
 
