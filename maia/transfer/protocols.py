@@ -56,6 +56,18 @@ def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=Fals
   return PDM.PartToBlock(comm, _ln_to_gn_list, pWeight=pWeight, partN=len(_ln_to_gn_list),
                          t_distrib=0, t_post=t_post, userDistribution=_full_distri)
 
+def PartToPart(gnum1, gnum2, comm):
+  """
+  Create a PDM PartToPart object, with auto gnum conversion and "id-to-id"
+  indirection
+  """
+  _part1_lngn  = [maia.utils.as_pdm_gnum(gnum) for gnum in gnum1]
+  _part2_lngn  = [maia.utils.as_pdm_gnum(gnum) for gnum in gnum2]
+
+  _part1_to_part2_idx = [np.arange(gnum.size+1, dtype=np.int32) for gnum in gnum1]
+
+  return PDM.PartToPart(comm, _part1_lngn, _part2_lngn, _part1_to_part2_idx, _part1_lngn)
+
 
 def block_to_block(data_in, distri_in, distri_out, comm):
   """
@@ -129,6 +141,40 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
   else:
     dist_data = _exchange_one(part_data)  
   return dist_data
+
+def part_to_part(send_data, gnum1, gnum2, comm):
+  """
+  Create and exchange using a PartToPart object with basic "id-to-id" indirection.
+  Allow single field or dict of fields
+  """
+  _, recv_data = part_to_part_strided(1, send_data, gnum1, gnum2, comm)
+  return recv_data
+
+def part_to_part_strided(send_stride, send_data, gnum1, gnum2, comm):
+  """
+  Create and exchange using a PartToPart object with basic "id-to-id" indirection.
+  Allow single field or dict of fields
+  """
+  PTP = PartToPart(gnum1, gnum2, comm)
+
+  if isinstance(send_data, dict):
+    recv_stride = None
+    recv_data = dict()
+    for name, field in send_data.items():
+      request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                          PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+                          field,
+                          send_stride)
+      recv_stride, recv_field = PTP.wait(request)
+      recv_data[name] = recv_field
+  else:
+    request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                        PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+                        send_data,
+                        send_stride)
+    recv_stride, recv_data = PTP.wait(request)
+  return recv_stride, recv_data
+
 
 def reduce_sum(dist_data,dist_stride):
   """

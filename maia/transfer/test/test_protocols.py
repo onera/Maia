@@ -145,3 +145,39 @@ def test_part_to_block_with_reduce(reduce_func, comm):
   assert dist_data["field"].dtype == np.float64
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 
+@pytest_parallel.mark.parallel(2)
+def test_part_to_part(comm):
+
+  #Test wo. stride
+  if comm.Get_rank() == 0:
+    gnum1 = [np.array([1,3,5]), np.array([11])]
+    gnum2 = [np.array([9])]
+  elif comm.Get_rank() == 1:
+    gnum1 = [np.array([7,9])]
+    gnum2 = [np.array([7,5,5,1,11])]
+
+  send = [10.0 * t for t in gnum1]
+
+  recv = EP.part_to_part(send, gnum1, gnum2, comm)
+  for r,g in zip(recv, gnum2):
+    assert (r == 10.0*g).all()
+
+  #Test with stride
+  if comm.Get_rank() == 0:
+    gnum1 = [np.array([1,3,5]), np.array([11])]
+    stride = [np.array([1,1,2], np.int32), np.array([1], np.int32)]
+    send = [np.array([10,30,50,51.]), np.array([110.])]
+    gnum2 = [np.array([9])]
+  elif comm.Get_rank() == 1:
+    gnum1 = [np.array([7,9])]
+    stride = [np.array([2,1], np.int32)]
+    send = [np.array([70., 71, 90.])]
+    gnum2 = [np.array([7,5,5,1,11])]
+
+  recv_stride, recv = EP.part_to_part_strided(stride, send, gnum1, gnum2, comm)
+  if comm.Get_rank() == 0:
+    assert (recv_stride[0] == [1]).all()
+    assert (recv[0] == [90.]).all()
+  elif comm.Get_rank() == 1:
+    assert (recv_stride[0] == [2,2,2,1,1]).all()
+    assert (recv[0] == [70.,71,50,51,50,51,10,110]).all()

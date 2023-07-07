@@ -12,6 +12,7 @@ from maia.factory   import dist_from_part     as DFP
 
 from maia.algo                  import dist             as MAD
 
+from maia.transfer              import protocols as EP
 from maia.transfer.part_to_dist import data_exchange    as  PTB
 from maia.transfer.dist_to_part import index_exchange   as IBTP
 
@@ -123,13 +124,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
         vtx_ggnum_parts.append(vtx_gnum[pl-1] + vtx_mdom_offset) #Domain gnum on part side
 
   # Create PTP : indirection part1topart2 is just the identity
-  PTP = PDM.PartToPart(comm, vtx_ggnum_graph, vtx_ggnum_parts, \
-                       [np.arange(vtx_ggnum_graph[0].size+1, dtype=np.int32)], vtx_ggnum_graph)
-
-  request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                      PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
-                      [vtx_group_id])
-  _, vtx_group_id_recv = PTP.wait(request)
+  vtx_group_id_recv = EP.part_to_part([vtx_group_id], vtx_ggnum_graph, vtx_ggnum_parts, comm)
 
   # 4. Use the recv data to update the shifted_lngn
 
