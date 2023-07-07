@@ -32,51 +32,50 @@ from maia.algo.part.test.test_interpolate import src_part_0, src_part_1
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("perio", [True, False])
 @pytest_parallel.mark.parallel(2)
-class Test_wallDistance:
-  def test_U(self, perio, comm):
-    if comm.Get_rank() == 0:
-      part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
-      expected_wd = [0.75, 0.25, 0.25, 0.75]
-      expected_gnum = [1, 1, 2, 2]
-    elif comm.Get_rank() == 1:
-      part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
-      expected_wd = [0.75, 0.25, 0.75, 0.25]
-      expected_gnum = [3, 3, 4, 4]
-    base = PT.get_all_CGNSBase_t(part_tree)[0]
-    base_family = PT.new_Family('WALL', family_bc='BCWall', parent=base)
-    zone = PT.get_all_Zone_t(part_tree)[0]
-    zone[0] += f'.P{comm.Get_rank()}.N0'
+def test_wall_distance_U(perio, comm):
+  if comm.Get_rank() == 0:
+    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
+    expected_wd = [0.75, 0.25, 0.25, 0.75]
+    expected_gnum = [1, 1, 2, 2]
+  elif comm.Get_rank() == 1:
+    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
+    expected_wd = [0.75, 0.25, 0.75, 0.25]
+    expected_gnum = [3, 3, 4, 4]
+  base = PT.get_all_CGNSBase_t(part_tree)[0]
+  base_family = PT.new_Family('WALL', family_bc='BCWall', parent=base)
+  zone = PT.get_all_Zone_t(part_tree)[0]
+  zone[0] += f'.P{comm.Get_rank()}.N0'
 
-    # Add BC
-    zone_bc = parse_yaml_cgns.to_node("""
-      ZoneBC ZoneBC_t:
-        BC BC_t "FamilySpecified":
-          PointList IndexArray_t [[13,14]]:
-          GridLocation GridLocation_t "FaceCenter":
-          FamilyName FamilyName_t "WALL":
-      """)
-    PT.add_child(zone, zone_bc)
+  # Add BC
+  zone_bc = parse_yaml_cgns.to_node("""
+    ZoneBC ZoneBC_t:
+      BC BC_t "FamilySpecified":
+        PointList IndexArray_t [[13,14]]:
+        GridLocation GridLocation_t "FaceCenter":
+        FamilyName FamilyName_t "WALL":
+    """)
+  PT.add_child(zone, zone_bc)
 
-    # Test with propagation method + default out_fs_name
-    WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
+  # Test with propagation method + default out_fs_name
+  WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
 
-    fs = PT.get_child_from_name(zone, 'WallDistance')
-    assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
-    for array in PT.iter_children_from_label(fs, 'DataArray_t'):
-      assert array[1].shape == (4,)
-    assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
-    assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
+  fs = PT.get_child_from_name(zone, 'WallDistance')
+  assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+  for array in PT.iter_children_from_label(fs, 'DataArray_t'):
+    assert array[1].shape == (4,)
+  assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
+  assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
-    #Test with cloud method + custom fs name
-    PT.rm_nodes_from_name(part_tree, 'WallDistance')
-    WD.compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance', perio=perio)
+  #Test with cloud method + custom fs name
+  PT.rm_nodes_from_name(part_tree, 'WallDistance')
+  WD.compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance', perio=perio)
 
-    fs = PT.get_child_from_name(zone, 'MyWallDistance')
-    assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
-    for array in PT.iter_children_from_label(fs, 'DataArray_t'):
-      assert array[1].shape == (4,)
-    assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
-    assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
+  fs = PT.get_child_from_name(zone, 'MyWallDistance')
+  assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+  for array in PT.iter_children_from_label(fs, 'DataArray_t'):
+    assert array[1].shape == (4,)
+  assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
+  assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_projection_to(comm):
@@ -111,6 +110,30 @@ def test_projection_to(comm):
   assert (PT.get_child_from_name(fs, 'Distance')[1] == expected_wd).all()
   assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
+@pytest_parallel.mark.parallel(2)
+def test_walldistance_elts(comm):
+  tree = maia.factory.generate_dist_block(3, 'TETRA_4', comm)
+  # Set some BC wall
+  for name in ['Xmin', 'Ymin', 'Zmin']:
+    bc = PT.get_node_from_name(tree, 'Xmin')
+    PT.set_value(bc, 'BCWall')
+
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  WD.compute_wall_distance(ptree, comm)
+  maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
+  
+  if comm.Get_rank() == 0:
+    expected_wd = [0.125,0.625,0.75, 0.375,0.875,0.875,0.875,0.75, 0.875,0.375,0.625,0.375,
+                   0.875,0.375,0.25, 0.875,0.75, 0.625,0.625,0.875]
+    expected_gnum = [1, 5, 3, 5, 6, 4, 5, 5, 3, 3, 3, 1, 1, 1, 1, 2, 1, 1, 1, 7]
+  elif comm.Get_rank() == 1:
+    expected_wd = [0.125,0.25, 0.125,0.375,0.875,0.125,0.625,0.625,0.375,0.25, 0.625,0.375,
+                   0.25, 0.125,0.125,0.625,0.125,0.375,0.125,0.75]
+    expected_gnum = [2, 7, 8, 7, 8, 7, 7, 7, 7, 5, 5, 3, 3, 3, 4, 3, 6, 5, 5, 7]
+
+  assert (PT.get_node_from_name(ptree, 'TurbulentDistance')[1] == expected_wd).all()
+  assert (PT.get_node_from_name(ptree, 'ClosestEltGnum')[1] == expected_gnum).all()
+    
 
 @pytest_parallel.mark.parallel(2)
 def test_walldistance_perio(comm):
