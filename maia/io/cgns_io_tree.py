@@ -196,9 +196,16 @@ def dist_tree_to_file(dist_tree, filename, comm, legacy=False):
     filename (str) : Path of the file
     comm     (MPIComm) : MPI communicator
   """
+  dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
+  all_dt_size = comm.allreduce(dt_size, MPI.SUM)
+  mlog.info(f"Distributed write of a {mlog.bsize_to_str(dt_size)} dist_tree"
+            f" (Σ={mlog.bsize_to_str(all_dt_size)})...")
+  start = time.time()
   filename = str(filename)
   hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
+  end = time.time()
+  mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 
 def write_trees(tree, filename, comm, legacy=False):
   """Sequential write to CGNS files.
