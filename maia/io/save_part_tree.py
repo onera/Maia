@@ -1,12 +1,42 @@
 import os
 import maia
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
 
 import maia.utils.logging as mlog
 from maia.factory.dist_from_part import discover_nodes_from_matching
 from maia.factory.partitioning import compute_nosplit_weights
 
 from .cgns_io_tree import write_tree
+
+def enforce_maia_naming(part_tree, comm):
+  """Rename the zones and joins of a partitionned tree such that maia
+  convention are respected
+  """
+  old_to_new = {}
+  count = {}
+  for zone_path in PT.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
+    prefix = MT.conv.get_part_prefix(zone_path)
+    if not prefix in count:
+      count[prefix] = 0
+    part_id = count[prefix]
+    count[prefix] += 1
+    old_to_new[zone_path] = MT.conv.add_part_suffix(prefix, comm.Get_rank(), part_id)
+
+  MT.rename_zones(part_tree, old_to_new, comm)
+
+  # Update JNs name for internal joins
+  is_intra_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+                 and MT.conv.is_intra_gc(PT.get_name(n))
+  gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_intra_gc]
+  for _, zone, _, gc in PT.get_children_from_predicates(part_tree, gc_predicates, ancestors=True):
+    cur_proc, cur_part = MT.conv.get_part_suffix(PT.get_name(zone))
+    opp_proc, opp_part = MT.conv.get_part_suffix(PT.get_value(gc))
+    PT.set_name(gc, MT.conv.name_intra_gc(cur_proc, cur_part, opp_proc, opp_part))
+    donor_name = PT.get_node_from_name(gc, 'GridConnectivityDonorName')
+    if donor_name is not None:
+      PT.set_value(donor_name, MT.conv.name_intra_gc(opp_proc, opp_part, cur_proc, cur_part))
+
 
 def _read_part_from_name(tree, filename, comm):
   zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
@@ -32,8 +62,7 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
   appearing in partitioned zone names.
 
   If ``redispatch == True``, the CGNS zones are dispatched over the
-  available processes. Consequently, the rank id in the partitions's name
-  will be different from the actual rank, wich can cause troubles.
+  available processes, and renamed to follow maia's conventions.
 
   Args:
     filename (str) : Path of the file
@@ -96,6 +125,9 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
   # Remove empty bases
   PT.rm_children_from_predicate(tree, lambda n: PT.get_label(n) == 'CGNSBase_t' \
           and len(PT.get_children_from_label(n, 'Zone_t')) == 0)
+
+  if redispatch:
+    enforce_maia_naming(tree, comm)
 
   return tree
 

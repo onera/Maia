@@ -76,6 +76,7 @@ def test_read_part_tree_redispatch(redispatch, comm):
       tree = SPT.read_part_tree(str(filename), MPI.COMM_SELF, redispatch=redispatch)
       if redispatch:
         assert len(PT.get_all_Zone_t(tree)) == 2
+        assert PT.get_name(PT.get_all_Zone_t(tree)[1]) == 'zone.P0.N1'
         assert 'written for 2 procs' in war_printer.msg
       else:
         assert len(PT.get_all_Zone_t(tree)) == 1
