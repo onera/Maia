@@ -58,8 +58,8 @@ def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=Fals
 
 def PartToPart(gnum1, gnum2, comm):
   """
-  Create a PDM PartToPart object, with auto gnum conversion and "id-to-id"
-  indirection
+  Create a simplified PDM PartToPart object, where the gnum of the two partitioned views
+  refer to the same entities in global numbering.
   """
   _part1_lngn  = [maia.utils.as_pdm_gnum(gnum) for gnum in gnum1]
   _part2_lngn  = [maia.utils.as_pdm_gnum(gnum) for gnum in gnum2]
@@ -161,8 +161,8 @@ def part_to_part_strided(send_stride, send_data, gnum1, gnum2, comm):
     recv_stride = None
     recv_data = dict()
     for name, field in send_data.items():
-      request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                          PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+      request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P, # Point to point communication strategy
+                          PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2, # data follows gnum1 layout
                           field,
                           send_stride)
       recv_stride, recv_field = PTP.wait(request)

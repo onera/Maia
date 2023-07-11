@@ -53,7 +53,7 @@ def _read_part_from_size(tree, filename, comm):
 
 
 def read_part_tree(filename, comm, redispatch=False, legacy=False):
-  """Read the partitioned zones from a hdf container and affect it
+  """Read the partitioned zones from a hdf container and affect them
   to the ranks.
   
   If ``redispatch == False``, the CGNS zones are affected to the

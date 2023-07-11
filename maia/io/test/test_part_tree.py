@@ -12,7 +12,7 @@ import maia.utils.test_utils as TU
 from   maia.pytree.yaml    import parse_yaml_cgns
 from   maia.utils.parallel import utils as par_utils
 
-from maia.io import save_part_tree as SPT
+from maia.io import part_tree as PIO
 
 class LogCapture:
   def __init__(self):
@@ -30,11 +30,22 @@ def test_write_part_tree(mpi_tmpdir, single_file, comm):
   expected_n_files = 1 + comm.Get_size() * int(not single_file)
 
   filename = Path(mpi_tmpdir) / 'out.hdf'
-  SPT.save_part_tree(tree, str(filename), comm, single_file)
+  PIO.save_part_tree(tree, str(filename), comm, single_file)
   comm.barrier()
   assert filename.exists()
   assert len(list(Path(mpi_tmpdir).glob('*'))) == expected_n_files
-    
+
+  if comm.Get_rank() == 0:
+    tree = maia.io.read_tree(str(filename))
+    ref = parse_yaml_cgns.to_node("""
+    Xmax BC_t "Null":
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[19,20,21,22,23,24]]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Index DataArray_t [2,3,4,5,6,7]:
+    """)
+    assert PT.is_same_tree(PT.get_node_from_path(tree, 'Base/zone.P1.N0/ZoneBC/Xmax'), ref)
+
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize('single_file', [False, True])
 def test_read_part_tree(mpi_tmpdir, single_file, comm):
@@ -43,17 +54,24 @@ def test_read_part_tree(mpi_tmpdir, single_file, comm):
   dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
   tree  = maia.factory.partition_dist_tree(dtree, comm)
   filename = Path(mpi_tmpdir) / 'out.hdf'
-  SPT.save_part_tree(tree, str(filename), comm, single_file)
+  PIO.save_part_tree(tree, str(filename), comm, single_file)
   comm.barrier()
 
   # Actual test
-  tree = SPT.read_part_tree(str(filename), comm)
+  tree = PIO.read_part_tree(str(filename), comm)
   zones = PT.get_all_Zone_t(tree)
 
   # Check: data should have been loaded
   assert len(zones) == 1
   assert PT.get_name(zones[0]) == f'zone.P{comm.Get_rank()}.N0'
   assert PT.get_node_from_name(zones[0], 'CoordinateX')[1].size > 0
+  if comm.Get_rank() == 0:
+    expected = np.array([0,1,2,3,0,1,2,3,1,2,0,1,2,3,0,1,2,3,0,1,2,0,1,0,1,0,1,0,1,0,1]) / 3.
+    assert (PT.get_node_from_name(zones[0], 'CoordinateX')[1] == expected).all()
+  elif comm.Get_rank() == 3:
+    expected = np.array([1,2,1,2,0,1,2,0,1,2,3,1,2,3,2,3,0,1,2,0,1,2,3,1,2,3,2,3.]) / 3.
+    assert (PT.get_node_from_name(zones[0], 'CoordinateX')[1] == expected).all()
+
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize('redispatch', [False, True])
@@ -70,10 +88,10 @@ def test_read_part_tree_redispatch(mpi_tmpdir, redispatch, comm):
   tree  = maia.factory.partition_dist_tree(dtree, comm)
 
   filename = Path(mpi_tmpdir) / 'out.hdf'
-  SPT.save_part_tree(tree, str(filename), comm)
+  PIO.save_part_tree(tree, str(filename), comm)
   comm.barrier()
   if comm.Get_rank() == 0:
-    tree = SPT.read_part_tree(str(filename), MPI.COMM_SELF, redispatch=redispatch)
+    tree = PIO.read_part_tree(str(filename), MPI.COMM_SELF, redispatch=redispatch)
     if redispatch:
       assert len(PT.get_all_Zone_t(tree)) == 2
       assert PT.get_name(PT.get_all_Zone_t(tree)[1]) == 'zone.P0.N1'

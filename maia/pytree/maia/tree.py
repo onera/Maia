@@ -13,7 +13,7 @@ def _encode(strings):
   stride = np.array([len(bs) for bs in bstrings], np.int32)
 
   stride_idx = np_utils.sizes_to_indices(stride)
-  buff = np.empty(stride_idx[-1], np.int8)
+  buff = np.empty(stride_idx[-1], np.int8) # np.int8 because bytes characters are 1-byte long
   for i, bs in enumerate(bstrings):
     for j in range(len(bs)):
       buff[stride_idx[i]+j] = bs[j]
@@ -30,10 +30,10 @@ def rename_zones(part_tree, old_to_new_path, comm):
   """ Rename the zones in a partitioned context.
 
   This mainly consists in sending the new names to the other ranks in
-  ordre to have them renaming their GridConnectivity_t nodes
+  order to have them renaming their GridConnectivity_t nodes
 
   New names must be a list of size nb. zones in the parttree, giving the
-  new path of each zone (note that base name is not allowed to change)
+  new path of each zone (note that the base name is not allowed to change)
   """
 
   zones_path_ini = list(old_to_new_path.keys())

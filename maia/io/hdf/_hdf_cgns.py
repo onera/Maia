@@ -270,7 +270,9 @@ def _load_links(gid, links, ancestors_stack):
   ancestors_stack.append(name)
 
   if b_kind == b'LK':
-    link = ['.'] #Directory is usually hardcoded ...
+    #Target directory ; the CGNS norm is unclear about how a link should start, 
+    # but other libraries are also doing that
+    link = ['.']
     for ds_name in [b' file', b' path']: #Target file, then target path
       hdf_dataset = h5d.open(gid, ds_name)
       shape = hdf_dataset.shape[::-1]
@@ -282,7 +284,7 @@ def _load_links(gid, links, ancestors_stack):
     link.append('/'.join(ancestors_stack)) #Current path
 
     links.append(link)
-    ancestors_stack.pop() #Stop exploring the node (do not follow links)
+    ancestors_stack.pop() #Stop exploring the node (don't explore links recursively)
     return
 
   # Define the function that will be applied to the child of the current hdf node

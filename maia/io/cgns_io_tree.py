@@ -78,7 +78,7 @@ def read_links(filename, legacy=False):
   """Detect the links embedded in a CGNS file. 
 
   Links information are returned as described in sids-to-python. Note that
-  no data are loaded and the tree structured is not even built.
+  no data are loaded and the tree structure is not even built.
 
   Args:
     filename (str) : Path of the file

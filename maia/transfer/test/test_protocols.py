@@ -148,7 +148,7 @@ def test_part_to_block_with_reduce(reduce_func, comm):
 @pytest_parallel.mark.parallel(2)
 def test_part_to_part(comm):
 
-  #Test wo. stride
+  #Test w/o stride
   if comm.Get_rank() == 0:
     gnum1 = [np.array([1,3,5]), np.array([11])]
     gnum2 = [np.array([9])]
