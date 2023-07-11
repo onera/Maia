@@ -23,41 +23,41 @@ class LogCapture:
 
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize('single_file', [False, True])
-def test_write_part_tree(single_file, comm):
+def test_write_part_tree(mpi_tmpdir, single_file, comm):
   dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
   tree  = maia.factory.partition_dist_tree(dtree, comm)
 
   expected_n_files = 1 + comm.Get_size() * int(not single_file)
 
-  with TU.collective_tmp_dir(comm) as tmpdir:
-    filename = Path(tmpdir) / 'out.hdf'
-    SPT.save_part_tree(tree, str(filename), comm, single_file)
-    comm.barrier()
-    assert filename.exists()
-    assert len(list(Path(tmpdir).glob('*'))) == expected_n_files
+  filename = Path(mpi_tmpdir) / 'out.hdf'
+  SPT.save_part_tree(tree, str(filename), comm, single_file)
+  comm.barrier()
+  assert filename.exists()
+  assert len(list(Path(mpi_tmpdir).glob('*'))) == expected_n_files
     
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize('single_file', [False, True])
-def test_read_part_tree(single_file, comm):
+def test_read_part_tree(mpi_tmpdir, single_file, comm):
 
   # Prepare test (produce part_tree_file)
   dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
   tree  = maia.factory.partition_dist_tree(dtree, comm)
+  filename = Path(mpi_tmpdir) / 'out.hdf'
+  SPT.save_part_tree(tree, str(filename), comm, single_file)
+  comm.barrier()
 
-  with TU.collective_tmp_dir(comm) as tmpdir:
-    filename = Path(tmpdir) / 'out.hdf'
-    SPT.save_part_tree(tree, str(filename), comm, single_file)
-    comm.barrier()
-    tree = SPT.read_part_tree(str(filename), comm)
-    zones = PT.get_all_Zone_t(tree)
-    assert len(zones) == 1
-    assert PT.get_name(zones[0]) == f'zone.P{comm.Get_rank()}.N0'
-    # Data should have been loaded
-    assert PT.get_node_from_name(zones[0], 'CoordinateX')[1].size > 0
+  # Actual test
+  tree = SPT.read_part_tree(str(filename), comm)
+  zones = PT.get_all_Zone_t(tree)
+
+  # Check: data should have been loaded
+  assert len(zones) == 1
+  assert PT.get_name(zones[0]) == f'zone.P{comm.Get_rank()}.N0'
+  assert PT.get_node_from_name(zones[0], 'CoordinateX')[1].size > 0
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize('redispatch', [False, True])
-def test_read_part_tree_redispatch(redispatch, comm):
+def test_read_part_tree_redispatch(mpi_tmpdir, redispatch, comm):
 
   # To get logs in printer.msg  
   err_printer = LogCapture()
@@ -68,16 +68,16 @@ def test_read_part_tree_redispatch(redispatch, comm):
 
   dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
   tree  = maia.factory.partition_dist_tree(dtree, comm)
-  with TU.collective_tmp_dir(comm) as tmpdir:
-    filename = Path(tmpdir) / 'out.hdf'
-    SPT.save_part_tree(tree, str(filename), comm)
-    comm.barrier()
-    if comm.Get_rank() == 0:
-      tree = SPT.read_part_tree(str(filename), MPI.COMM_SELF, redispatch=redispatch)
-      if redispatch:
-        assert len(PT.get_all_Zone_t(tree)) == 2
-        assert PT.get_name(PT.get_all_Zone_t(tree)[1]) == 'zone.P0.N1'
-        assert 'written for 2 procs' in war_printer.msg
-      else:
-        assert len(PT.get_all_Zone_t(tree)) == 1
-        assert 'written for 2 procs' in err_printer.msg
+
+  filename = Path(mpi_tmpdir) / 'out.hdf'
+  SPT.save_part_tree(tree, str(filename), comm)
+  comm.barrier()
+  if comm.Get_rank() == 0:
+    tree = SPT.read_part_tree(str(filename), MPI.COMM_SELF, redispatch=redispatch)
+    if redispatch:
+      assert len(PT.get_all_Zone_t(tree)) == 2
+      assert PT.get_name(PT.get_all_Zone_t(tree)[1]) == 'zone.P0.N1'
+      assert 'written for 2 procs' in war_printer.msg
+    else:
+      assert len(PT.get_all_Zone_t(tree)) == 1
+      assert 'written for 2 procs' in err_printer.msg
