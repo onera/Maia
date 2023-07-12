@@ -84,6 +84,10 @@ class graph_traversal_stack:
   def advance_node_range_to_last(self):
     self._nodes[-1] = None
 
+  def push_done_level(self):
+    self._iterators.append(None)
+    self._nodes.append(None)
+
   def level_is_done(self) -> bool:
     return self._nodes[-1] is None
   def is_at_root_level(self) -> bool:
@@ -124,8 +128,7 @@ def _depth_first_search_stack(S, f):
       if next_step == step.out: # stop
         return False
       if next_step == step.over: # prune
-        S.push_level()
-        S.advance_node_range_to_last()
+        S.push_done_level()
       if next_step is None or next_step == step.into: # go down
         S.push_level()
         if not S.level_is_done():
@@ -158,12 +161,12 @@ class complete_visitor:
 
 
 class close_ancestor_visitor:
-  """ The `_depth_first_search_stack` algorithm calls its visitor by passing it 
+  """ The `_depth_first_search_stack` algorithm calls its visitor by passing it
   the complete list of ancestors of the current node
 
-  However, most ot the times, the visitor only cares about 
+  However, most ot the times, the visitor only cares about
   the current node (or just the first few ancestors) as input
-  
+
   This adaptor class turns such a visitor into a visitor acceptable by `_depth_first_search_stack`
   and delegates all calls with the list of ancestors to calls with only the first `depth` ancestors
     depth = 1: only the current node
@@ -214,7 +217,7 @@ def depth_first_search_stack(S, f, depth='node'):
 def depth_first_search(g, f, depth='node'):
   """
   Depth-first graph traversal
-    
+
   Args:
     g: Graph object that should conform to the depth-first search interface. See :func:`dfs_interface_report` for full documentation.
     f : A visitor object that has a `pre` method, and optionally `post`, `up` and `down` methods

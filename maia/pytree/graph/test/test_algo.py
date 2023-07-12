@@ -85,7 +85,7 @@ def test_depth_first_scan():
 
 
 class visitor_for_testing_depth_first_find(visitor_for_testing_depth_first_scan):
-  def pre(self, x) -> bool:
+  def pre(self, x):
     visitor_for_testing_depth_first_scan.pre(self,x)
     if x[VALUE] == 3:
       return step.out
@@ -140,7 +140,7 @@ def test_depth_first_find():
 
 
 class visitor_for_testing_depth_first_prune(visitor_for_testing_depth_first_scan):
-  def pre(self, x) -> bool:
+  def pre(self, x):
     visitor_for_testing_depth_first_scan.pre(self,x)
     if x[VALUE] == 2:
       return step.over
@@ -327,3 +327,22 @@ def test_depth_first_search_stack(exit_early):
       '[pre ] 4\n'
   else:
     assert v.found == [2,4,8,10]
+
+
+
+
+def test_step_over_does_not_ask_for_children():
+  class visitor_step_over:
+    def pre(self, x):
+      return step.over
+
+  class graph_example():
+    def children(self, n):
+      raise RuntimeError()
+    def roots(self):
+      return iter([0])
+
+  g = graph_example()
+  v = visitor_step_over()
+
+  depth_first_search(g,v) # check that no exception raised
