@@ -30,7 +30,7 @@ def test_fb_graph_tree_adaptor_is_depth_first_searchable():
   assert dfs_interface_report(t) == (True,'')
 
 
-class visitor_for_testing_depth_first_scan:
+class visitor_to_test_depth_first_scan:
   def __init__(self):
     self.s = ''
   def pre(self, x):
@@ -50,7 +50,7 @@ def test_depth_first_scan():
   #  4    7  \9  10   11
 
   g = rooted_fb_graph_example()
-  v = visitor_for_testing_depth_first_scan()
+  v = visitor_to_test_depth_first_scan()
   depth_first_search(g,v)
 
   expected_s = \

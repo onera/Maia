@@ -7,7 +7,7 @@
     - a list of backward nodes, i.e. indices of nodes which point to the adjacency
 
   Notes:
-    - Backward nodes do not bring new information, the complete struture of the graph is already encoded in forward nodes
+    - Backward nodes do not bring new information, the complete structure of the graph is already encoded in forward nodes
         They are supposed to be used in algorithm that need to go backward.
         If you don't need to go backward, just use a f_graph (forward(-only) graph)
         Forward and backward nodes are supposed to be coherent,
@@ -16,8 +16,6 @@
         but it has limited interest if the graph is undirected,
           In this case, for each node, forward nodes == backward nodes
 """
-
-from .f_graph import tree_adaptor
 
 def fb_graph_example():
   #         1               lvl 3
@@ -42,48 +40,16 @@ def fb_graph_example():
     [ 1 , [2,3,7] , []      ], #8
   ]
 
-VALUE = 0
-FORWARD = 1
+
+# We can import from `f_graph` because the position of VALUE and FORWARD are the same on a `f_graph` and an `fb_graph`
+# From a depth-first search point-of-view, `f_graph` and `fb_graph` are the same
+from .f_graph import VALUE, FORWARD, tree_adaptor
 BACKWARD = 2
-
-class _adjacency_iterator:
-  def __init__(self, g, adj_idcs):
-    self.g = g
-    self.adj_idcs = adj_idcs
-
-  def __iter__(self):
-    self.idx = 0
-    return self
-
-  def __next__(self):
-    if self.idx < len(self.adj_idcs):
-      x = self.adj_idcs[self.idx]
-      self.idx += 1
-      return self.g[x]
-    else:
-      raise StopIteration()
-
-class io_graph_tree_adaptor:
-  """
-    An fb_graph is adapted to a tree by going through its outward nodes
-  """
-  def __init__(self, g, root_idx):
-    self.g = g
-    self.root_idx = root_idx
-  def nodes(self):
-    return [n for n,_,_ in self.g]
-
-# Interface to satisfy dfs_interface_report {
-  def children(self, n):
-    return _adjacency_iterator(self.g, n[FORWARD])
-  def roots(self):
-    return _adjacency_iterator(self.g, [self.root_idx])
-# Interface to satisfy dfs_interface_report }
 
 
 def rooted_fb_graph_example():
   g = fb_graph_example()
-  return io_graph_tree_adaptor(g,8) # note: 8 is the index of node '1'
+  return tree_adaptor(g,8) # note: 8 is the index of node '1'
 
 
 # dfs build {

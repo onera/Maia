@@ -1,6 +1,6 @@
 """
   'f' means 'forward'
-  An 'f_graph' is a graph stored by an adjacency list
+  An 'f_graph' is a graph stored by an adjacency list.
   Each adjacency is a pair of:
     - a node value
     - a list of forward nodes, i.e. indices of nodes pointed to by the adjacency
@@ -43,25 +43,31 @@ VALUE = 0
 FORWARD = 1
 
 class _adjacency_iterator:
+  """
+    Used to iterate over the children of a node of a `f_graph`
+  """
   def __init__(self, g, adj_idcs):
+    """ 
+      created by storing the `f_graph` `g` and a list of children of a node within `f`
+    """
     self.g = g
     self.adj_idcs = adj_idcs
 
   def __iter__(self):
-    self.idx = 0
+    self.idx = 0 # position of the current child in `self.adj_idcs`
     return self
 
   def __next__(self):
     if self.idx < len(self.adj_idcs):
-      node_idx = self.adj_idcs[self.idx]
-      self.idx += 1
-      return self.g[node_idx]
+      node_idx = self.adj_idcs[self.idx] # the index of the current child
+      self.idx += 1 # the next position of the child in `self.adj_idcs` should be incremented
+      return self.g[node_idx] # we return the value of the current child
     else:
       raise StopIteration()
 
 class tree_adaptor:
   """
-    An f_graph is adapted to a tree by going through its forward nodes
+    An f_graph is adapted to a tree by going through its forward nodes.
   """
   def __init__(self, g, root_idx):
     self.g = g

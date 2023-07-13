@@ -1,11 +1,11 @@
 from maia.pytree.graph.algo import step, depth_first_search # most common algo
-from maia.pytree.graph.algo import graph_traversal_stack, depth_first_search_stack, adapt_visitor, advance_stack # if the search needs to be restarted
+from maia.pytree.graph.algo import graph_traversal_stack, depth_first_search_stack, adapt_visitor, advance_stack, unwind # if the search needs to be restarted
 
 from maia.pytree.graph.f_graph import rooted_f_graph_example, VALUE
 import pytest
 
 
-class visitor_for_testing_depth_first_scan:
+class visitor_to_test_depth_first_scan:
   def __init__(self):
     self.s = ''
 
@@ -34,7 +34,7 @@ def test_depth_first_scan():
   #  4    7  \9  10   11
 
   g = rooted_f_graph_example()
-  v = visitor_for_testing_depth_first_scan()
+  v = visitor_to_test_depth_first_scan()
   depth_first_search(g,v)
 
   expected_s = \
@@ -84,9 +84,9 @@ def test_depth_first_scan():
   assert v.accumulation_string() == expected_s
 
 
-class visitor_for_testing_depth_first_find(visitor_for_testing_depth_first_scan):
+class visitor_to_test_depth_first_find(visitor_to_test_depth_first_scan):
   def pre(self, x):
-    visitor_for_testing_depth_first_scan.pre(self,x)
+    visitor_to_test_depth_first_scan.pre(self,x)
     if x[VALUE] == 3:
       return step.out
     else:
@@ -104,7 +104,7 @@ def test_depth_first_find():
   #  4    7  \9  10   11    lvl 0
 
   g = rooted_f_graph_example()
-  v = visitor_for_testing_depth_first_find()
+  v = visitor_to_test_depth_first_find()
   found = depth_first_search(g,v)
 
   expected_s = \
@@ -139,9 +139,9 @@ def test_depth_first_find():
   assert found[VALUE] == 3
 
 
-class visitor_for_testing_depth_first_prune(visitor_for_testing_depth_first_scan):
+class visitor_to_test_depth_first_prune(visitor_to_test_depth_first_scan):
   def pre(self, x):
-    visitor_for_testing_depth_first_scan.pre(self,x)
+    visitor_to_test_depth_first_scan.pre(self,x)
     if x[VALUE] == 2:
       return step.over
     else:
@@ -159,7 +159,7 @@ def test_depth_first_prune():
   #  4    7  \9  10   11    lvl 0
 
   g = rooted_f_graph_example()
-  v = visitor_for_testing_depth_first_prune()
+  v = visitor_to_test_depth_first_prune()
   depth_first_search(g,v)
 
   expected_s = \
@@ -197,9 +197,9 @@ def test_depth_first_prune():
   assert v.accumulation_string() == expected_s
 
 
-class visitor_for_testing_dfs(visitor_for_testing_depth_first_scan):
+class visitor_to_test_dfs(visitor_to_test_depth_first_scan):
   def pre(self,x):
-    visitor_for_testing_depth_first_scan.pre(self,x)
+    visitor_to_test_depth_first_scan.pre(self,x)
     if x[VALUE] == 8: return step.out
     if x[VALUE] == 2: return step.over
     else: return step.into
@@ -216,7 +216,7 @@ def test_depth_first_search():
   #  4    7  \9  10   11    lvl 0
   #
   g = rooted_f_graph_example()
-  v = visitor_for_testing_dfs()
+  v = visitor_to_test_dfs()
   found = depth_first_search(g,v)
 
   expected_s = \
@@ -243,7 +243,7 @@ def test_depth_first_search():
   assert found[VALUE] == 8
 
 
-class modifying_visitor_for_testing_dfs(visitor_for_testing_depth_first_scan):
+class modifying_visitor_to_test_dfs(visitor_to_test_depth_first_scan):
   def pre(self, x):
     if   x[VALUE] == 10: s = step.out
     elif x[VALUE] == 2 : s = step.over
@@ -267,13 +267,14 @@ def test_depth_first_search_inplace_modif():
   #  4    7  \9  10   11    lvl 0
 
   g = rooted_f_graph_example()
-  v = modifying_visitor_for_testing_dfs()
-  depth_first_search(g,v)
+  v = modifying_visitor_to_test_dfs()
+  found = depth_first_search(g,v)
 
   assert g.nodes() == [4,7,10102,20209,10108,10110,11,10103,10101]
+  assert found[VALUE] == 10110
 
 
-class visitor_for_testing_restarting_find:
+class visitor_to_test_restarting_find:
   def __init__(self):
     self.found = []
     self.s = ''
@@ -297,9 +298,9 @@ def test_depth_first_search_stack(exit_early):
   # While this is less convenient than the regular algorithm that operates direcly on the graph
   # It makes it possible to restart the algorithm at the point it was stopped
 
-  # An example use case would be to find a value, then stop the algorithm if we are happy with it
+  # An example use case is to find a value, then stop the algorithm if we are happy with it
   # or restart it otherwise
-  v = visitor_for_testing_restarting_find()
+  v = visitor_to_test_restarting_find()
 
   g = rooted_f_graph_example()
 
@@ -328,7 +329,20 @@ def test_depth_first_search_stack(exit_early):
   else:
     assert v.found == [2,4,8,10]
 
-
+  # Test unwind
+  if exit_early:
+    unwind(S,f)
+    assert v.s == \
+      '[pre ] 1\n' \
+      '[down] 1 -> 2\n' \
+      '[pre ] 2\n' \
+      '[down] 2 -> 4\n' \
+      '[pre ] 4\n' \
+      '[post] 4\n' \
+      '[up  ] 4 -> 2\n' \
+      '[post] 2\n' \
+      '[up  ] 2 -> 1\n' \
+      '[post] 1\n'
 
 
 def test_step_over_does_not_ask_for_children():

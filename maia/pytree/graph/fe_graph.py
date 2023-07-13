@@ -34,8 +34,8 @@ def fe_graph_example():
   #       / | \    |   G/ | \
   #      /  |  \   |   /  |  \
   #    B/  C|  D\  |  8   |   \I
-  #    /    |    \ | /    |    \
-  #   /     |     \|/H    |     \
+  #    /    |    \ | /    |H   \
+  #   /     |     \|/J    |     \
   #  /      |      |      |      \
   # 4       7      9      10     11
   return [
@@ -89,7 +89,7 @@ class _adjacency_iterator:
 
 class tree_adaptor:
   """
-    An f_graph is adapted to a tree by going through its forward nodes
+    An fe_graph is adapted to a tree by going through its forward nodes
   """
   def __init__(self, g, root_idx):
     self.g = g

@@ -2,6 +2,17 @@ from maia.pytree.graph import algo
 
 
 class _build_tree_visitor:
+  """ Visitor used by `depth_first_build`.
+
+  In order to build a tree `t1` from another `t0`, 
+    when constructing a node of `t1`, we need to have its children already constructed,
+    which means that the construction is done in a post-order fashion.
+
+  The idea it to keep a stack of partial sub-trees of `t1`:
+    - when the node is leaf, we can construct the sub-tree with no child,
+    - when not a leaf, when traversing the node post-order, we now have the children in the stack:
+        we can pop them from the stack and give them to the node's constructor.
+  """
   def __init__(self, node_constructor, pre):
     self._node_constructor = node_constructor
     self._sub_tree_stack = [[]]
@@ -27,7 +38,7 @@ class _build_tree_visitor:
 
 def depth_first_build(g, node_constructor, pre=None):
   """
-    Depth first traversal of graph `g` in order to create another graph `g_out`
+    Depth first traversal of graph `g` in order to create another graph `g_out`.
 
   Args:
     g: Graph object that should conform to the depth-first search interface. See :func:`dfs_interface_report` for full documentation.
@@ -36,10 +47,10 @@ def depth_first_build(g, node_constructor, pre=None):
         More precisely, `node_constructor` is a function with two arguments `from_node` and `to_children` and returning `to_node`
         `from_node` is the current node that the depth-first algorithm is traversing
         `to_children` is a list of the previous sub-graphs of `g_out`
-        `to_node` is the new graph node that is to be created. It should have the same type as the elements of `to_children`
+        `to_node` is the new graph node that is to be created.
 
     pre: tells the algorithm what to do on each node traversed (step.into, step.over, step.out)
-        More precisely, `pre` is a function of argument `node` and returning a `graph.algo.step` value
+        More precisely, `pre` is a function of argument `node` and returning a `graph.algo.step` value.
   """
   v = _build_tree_visitor(node_constructor, pre)
   algo.depth_first_search(g, v)

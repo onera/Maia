@@ -2,12 +2,12 @@ from enum import Enum
 
 
 def dfs_interface_report(g):
-  """ Tells if `g` conforms to the depth-first search interface, and if not, why
+  """ Tells if `g` conforms to the depth-first search interface, and if not, why.
 
   To be conforming, `g` has to have:
     - a `roots(self)` method that returns the roots of the graph.
     - a `children(self, n)` method that returns the children of node `n` in the graph.
-  Both methods should return object that are iterators over nodes of the graph
+  Both methods should return object that are iterators over nodes of the graph.
   """
   report = ''
   is_ok = True
@@ -47,9 +47,10 @@ class step(Enum):
 
 
 class graph_traversal_stack:
-  """ Main data structure that is used to capture and update the position we are in during a graph traversal
+  """ Main data structure that is used to capture and update the position we are at during a graph traversal.
   """
   def __init__(self, g):
+    """ Initialize the ancestor stacks with the roots """
     is_ok, msg  = dfs_interface_report(g)
     assert is_ok, msg
 
@@ -60,6 +61,7 @@ class graph_traversal_stack:
     self._push_level(self._g.roots())
 
   def push_level(self):
+    """ Add children of current node to the stack """
     n = self._nodes[-1]
     self._push_level(self._g.children(n))
 
@@ -77,14 +79,19 @@ class graph_traversal_stack:
     self._nodes    .pop(-1)
 
   def advance_node_range(self):
+    """ Increment the current node of the stack to be the next sibling """
     try:
       self._nodes[-1] = next(self._iterators[-1])
     except StopIteration:
       self._nodes[-1] = None
   def advance_node_range_to_last(self):
+    """ Increment the current node of the stack to be the one-past-the-last sibling """
     self._nodes[-1] = None
 
   def push_done_level(self):
+    """ Add a new level of children and place the current node to one-past-the-last child """
+    # Logically equivalent to `self.push_level(); advance_node_range_to_last`,
+    # but no need to ask the graph for a potentially non-existent child iterator that will not be used anyways
     self._iterators.append(None)
     self._nodes.append(None)
 
@@ -112,6 +119,8 @@ def unwind(S, f):
   f.post(S.nodes())
 
 def advance_stack(S, f):
+  """ Go to the next node in depth-first order
+  """
   if not S.level_is_done():
     S.push_level()
     if not S.level_is_done():
@@ -147,9 +156,9 @@ def _depth_first_search_stack(S, f):
   return True
 
 class complete_visitor:
-  """ The `_depth_first_search_stack` algorithm expects a visitor with `pre`, `post`, `down` and `up`
+  """ The `_depth_first_search_stack` algorithm expects a visitor with `pre`, `post`, `down` and `up`.
 
-  If the user does not provide `post`, `down` or `up`, then add them on-the-fly to do nothing
+  If the user does not provide `post`, `down` or `up`, then add them on-the-fly to do nothing.
   """
 
   def __init__(self, v):
@@ -162,13 +171,13 @@ class complete_visitor:
 
 class close_ancestor_visitor:
   """ The `_depth_first_search_stack` algorithm calls its visitor by passing it
-  the complete list of ancestors of the current node
+  the complete list of ancestors of the current node.
 
   However, most ot the times, the visitor only cares about
-  the current node (or just the first few ancestors) as input
+  the current node (or just the first few ancestors) as input.
 
   This adaptor class turns such a visitor into a visitor acceptable by `_depth_first_search_stack`
-  and delegates all calls with the list of ancestors to calls with only the first `depth` ancestors
+  and delegates all calls with the list of ancestors to calls with only the first `depth` ancestors:
     depth = 1: only the current node
     depth = 2: the current node + its parent
     ...
@@ -220,21 +229,19 @@ def depth_first_search(g, f, depth='node'):
 
   Args:
     g: Graph object that should conform to the depth-first search interface. See :func:`dfs_interface_report` for full documentation.
-    f : A visitor object that has a `pre` method, and optionally `post`, `up` and `down` methods
+    f : A visitor object that has a `pre` method, and optionally `post`, `up` and `down` methods.
     depth ('node','parent','all' or integer): Control the arguments that are passed to the visitor methods.
       - If `depth==1` or `depth='node', passes the current node as the only argument to `pre` and `post`
       - If `depth==2` or `depth='parent', passes the parent and the current nodes as the two arguments to `pre` and `post`
       - ...
       - If `depth=='all', passes the list of all the ancestors as the only argument to `pre` and `post`
 
-  - if `only_nodes` is `True` then `pre` will be given the current node of the graph as argument
-    else it will be given all the ancestors up to the current node as arguments
-  - `pre` is called on a node as it is found for the first time
+  - `pre` is called on a node when it is traversed for the first time (going from parents to children).
   - `pre` can return a `step` to tell the algorithm to step over the node or to stop. By default will continue the search. See :class:`step` for more info.
-  - `post` works as `pre` but is called once all the children of the node have been visited
-  - `up` and `down` are called once the algorithm is moving from a parent to it child or inversely.
-  - `down` takes the parent then the child as its arguments
-  - `up` takes the child then the parent as its arguments
+  - `post` works as `pre` but is called once all the children of the node have been visited.
+  - `up` and `down` are called once the algorithm is moving from a parent to its child or inversely.
+  - `down` takes the parent then the child as its arguments.
+  - `up` takes the child then the parent as its arguments.
   """
   f = adapt_visitor(f, depth)
 
