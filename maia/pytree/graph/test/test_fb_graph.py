@@ -1,5 +1,6 @@
 from maia.pytree.graph.algo import dfs_interface_report, depth_first_search
-from maia.pytree.graph.fb_graph import rooted_fb_graph_example, VALUE, depth_first_build_fb_tree
+from maia.pytree.graph.fb_graph import fb_graph_example, rooted_fb_graph_example, VALUE, BACKWARD, backward_tree_adaptor, depth_first_build_fb_tree
+from maia.pytree.algo_utils import find
 
 
 def test_fb_graph():
@@ -109,3 +110,62 @@ def test_depth_first_build_fb_tree():
   # 4   7   9     9  10   11
 
   assert fb_tree == expected_fb_tree
+
+
+
+
+def get_path(g, node_idx):
+  path = ''
+  current_node_idx = node_idx
+  while current_node_idx is not None:
+    path = str(g[current_node_idx][VALUE]) + '/' + path
+    parents = g[current_node_idx][BACKWARD]
+    if len(parents) >= 1:
+      current_node_idx = parents[0]
+    else:
+      current_node_idx = None
+  return '/'+path
+
+
+def test_get_path():
+  g = fb_graph_example()
+  node_4_idx = find(g, lambda node: node[VALUE] == 4)
+  assert get_path(g, node_4_idx) == '/1/2/4/'
+
+  node_1_idx = find(g, lambda node: node[VALUE] == 1)
+  assert get_path(g, node_1_idx) == '/1/'
+
+  node_9_idx = find(g, lambda node: node[VALUE] == 9)
+  assert get_path(g, node_9_idx) == '/1/3/8/9/'
+
+
+
+
+class _get_path_visitor:
+  def __init__(self):
+    self.paths = []
+
+  def pre(self, ancestors):
+    current_node = ancestors[-1]
+    parents_of_current = current_node[BACKWARD]
+    is_leaf = len(parents_of_current) == 0
+    if is_leaf:
+      self.paths.append('/'+'/'.join([str(a[VALUE]) for a in ancestors[::-1]])+'/')
+
+def get_paths(g, node_idx):
+  inversed_g = backward_tree_adaptor(g,node_idx)
+  v = _get_path_visitor()
+  depth_first_search(inversed_g, v, depth='all')
+  return v.paths
+
+def test_get_paths():
+  g = fb_graph_example()
+  node_4_idx = find(g, lambda node: node[VALUE] == 4)
+  assert get_paths(g, node_4_idx) == ['/1/2/4/']
+
+  node_1_idx = find(g, lambda node: node[VALUE] == 1)
+  assert get_paths(g, node_1_idx) == ['/1/']
+
+  node_9_idx = find(g, lambda node: node[VALUE] == 9)
+  assert get_paths(g, node_9_idx) == ['/1/3/8/9/', '/1/9/', '/1/2/9/']
+

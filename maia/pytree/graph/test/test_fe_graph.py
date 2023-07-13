@@ -86,15 +86,17 @@ def test_depth_first_scan():
     '[up  ] F\n' \
     '[post] 1\n'
 
-  # 1. test with regular depth first search
+  # 1. Test with regular depth first search
   v = visitor_to_test_depth_first_scan()
   depth_first_search(g,v)
   assert v.accumulation_string() == expected_s
 
 
-  # 2. Test with more a natural visitor for graph with node and edge values
+  # 2. Test with a simpler visitor which:
+  #       - takes the node value in the `.pre` and `.post` functions,
+  #       - takes the edge value in the `.down` and `.up` functions.
   # Note: While we could put this directly in the library instead of in a test,
-  #       we lack a real world use case to see if this is actually the interface we want
+  #       we lack a real world use case to see if this is actually the interface we want.
 
   # 2.1. Client code: the visitor that the user creates uses familiar `node` and `edge` concepts
   class visitor_to_test_depth_first_scan_alt:

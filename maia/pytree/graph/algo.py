@@ -71,8 +71,8 @@ class graph_traversal_stack:
       first_sibling = next(sibling_iter)
     except StopIteration:
       first_sibling = None
-    self._iterators += [sibling_iter]
-    self._nodes     += [first_sibling]
+    self._iterators.append(sibling_iter)
+    self._nodes    .append(first_sibling)
 
   def pop_level(self):
     self._iterators.pop(-1)

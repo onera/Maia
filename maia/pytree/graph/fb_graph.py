@@ -43,8 +43,15 @@ def fb_graph_example():
 
 # We can import from `f_graph` because the position of VALUE and FORWARD are the same on a `f_graph` and an `fb_graph`
 # From a depth-first search point-of-view, `f_graph` and `fb_graph` are the same
-from .f_graph import VALUE, FORWARD, tree_adaptor
+from .f_graph import VALUE, FORWARD, tree_adaptor, _adjacency_iterator
 BACKWARD = 2
+
+class backward_tree_adaptor(tree_adaptor):
+  """
+    An fb_graph is adapted to a tree by defining its children through its backward nodes.
+  """
+  def children(self, n):
+    return _adjacency_iterator(self.g, n[BACKWARD])
 
 
 def rooted_fb_graph_example():

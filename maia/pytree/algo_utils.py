@@ -1,3 +1,16 @@
+def find(seq, pred):
+  i = 0
+  while i<len(seq):
+    if pred(seq[i]):
+      return i
+    i += 1
+  return i
+
+def find_not(seq, pred):
+  def not_pred(x): return not pred(x)
+  return find(seq, not_pred)
+
+
 def partition_copy(xs, pred):
   xs_true, xs_false = [], []
   for x in xs:
