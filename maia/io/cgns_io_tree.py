@@ -74,7 +74,22 @@ def read_tree(filename, legacy=False):
       from ._hdf_io_h5py import read_full
     return read_full(filename)
 
+def read_links(filename, legacy=False):
+  """Detect the links embedded in a CGNS file. 
 
+  Links information are returned as described in sids-to-python. Note that
+  no data are loaded and the tree structure is not even built.
+
+  Args:
+    filename (str) : Path of the file
+  Returns:
+    list: Links description
+  """
+  if legacy:
+    raise NotImplementedError("read_links is only available with legacy=False")
+  else:
+    from ._hdf_io_h5py import read_links
+  return read_links(filename)
 
 def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
@@ -181,9 +196,16 @@ def dist_tree_to_file(dist_tree, filename, comm, legacy=False):
     filename (str) : Path of the file
     comm     (MPIComm) : MPI communicator
   """
+  dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
+  all_dt_size = comm.allreduce(dt_size, MPI.SUM)
+  mlog.info(f"Distributed write of a {mlog.bsize_to_str(dt_size)} dist_tree"
+            f" (Σ={mlog.bsize_to_str(all_dt_size)})...")
+  start = time.time()
   filename = str(filename)
   hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
+  end = time.time()
+  mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 
 def write_trees(tree, filename, comm, legacy=False):
   """Sequential write to CGNS files.

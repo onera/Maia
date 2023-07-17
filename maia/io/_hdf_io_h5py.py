@@ -6,7 +6,7 @@ import maia.pytree as PT
 from .hdf._hdf_cgns import open_from_path,\
                            load_tree_partial, write_tree_partial,\
                            load_data_partial, write_data_partial,\
-                           write_link
+                           load_tree_links, write_link
 from .fix_tree      import fix_point_ranges, rm_legacy_nodes,\
                            add_missing_pr_in_bcdataset, check_datasize
 
@@ -21,6 +21,8 @@ def load_data(names, labels):
         'ZoneSubRegion_t', 'Elements_t']:
       return False
     if names[-2] in [':elsA#Hybrid']: # Do not load legacy nodes
+      return False
+    if names[-2] in [':CGNS#GlobalNumbering']:
       return False
     if labels[-2] == 'BCData_t' and labels[-3] == 'BCDataSet_t': # Load FamilyBCDataSet, but not BCDataSet
       return False
@@ -71,6 +73,9 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
 
 def read_full(filename):
   return load_tree_partial(filename, lambda X,Y: True)
+
+def read_links(filename):
+  return load_tree_links(filename)
 
 def write_full(filename, dist_tree, links=[]):
   write_tree_partial(dist_tree, filename, lambda X,Y: True)
