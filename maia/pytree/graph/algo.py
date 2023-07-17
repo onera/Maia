@@ -97,6 +97,10 @@ class graph_traversal_stack:
   def advance_node_range_to_last(self):
     self._nodes[-1] = None
 
+  def push_done_level(self):
+    self._iterators.append(None)
+    self._nodes.append(None)
+
   def level_is_done(self) -> bool:
     return self._nodes[-1] is None
   def is_at_root_level(self) -> bool:
@@ -134,8 +138,7 @@ def depth_first_search_stack(S, f):
         unwind(S, f)
         return matching_node
       if next_step == step.over: # prune
-        S.push_level()
-        S.advance_node_range_to_last()
+        S.push_done_level()
       if next_step is None or next_step == step.into: # go down
         S.push_level()
         if not S.level_is_done():

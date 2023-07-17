@@ -2,6 +2,8 @@ import numpy as np
 import h5py
 from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t, h5o
 
+from maia.pytree.graph import algo
+
 C33_t = h5t.C_S1.copy()
 C33_t.set_size(33)
 C3_t = h5t.C_S1.copy()
@@ -59,6 +61,18 @@ class AttributeRW:
     space = h5s.create_simple((1,))
     attr_id = h5a.create(gid, b'flags', h5t.NATIVE_INT32, space)
     attr_id.write(self.buff_flag1)
+
+class HDF5GraphAdaptor:
+  """ A class exposing the 'graph interface' for hdf files in order
+  to use graph iterators """
+  def __init__(self, root_id):
+    self.root_id = root_id
+  def roots(self):
+    return iter([self.root_id])
+  def children(self, node_id):
+    return (h5g.open(node_id, child_name) for child_name in node_id \
+            if h5o.get_info(node_id, child_name).type == h5o.TYPE_GROUP)
+
 
 def knows_crt_order(gid):
   """ Return True if links have been added with CRT_ORDER_INDEXED prop """
@@ -260,41 +274,6 @@ def _load_node_partial(gid, parent, load_if, ancestors_stack):
   ancestors_stack[0].pop()
   ancestors_stack[1].pop()
 
-def _load_links(gid, links, ancestors_stack):
-  """ Internal recursive implementation for load_tree_partial.  """
-
-  attr_reader = AttributeRW()
-  name  = attr_reader.read_str_33(gid, b'name')
-  b_kind = attr_reader.read_bytes_3(gid, b'type')
-
-  ancestors_stack.append(name)
-
-  if b_kind == b'LK':
-    #Target directory ; the CGNS norm is unclear about how a link should start, 
-    # but other libraries are also doing that
-    link = ['.']
-    for ds_name in [b' file', b' path']: #Target file, then target path
-      hdf_dataset = h5d.open(gid, ds_name)
-      shape = hdf_dataset.shape[::-1]
-      array = np.empty(shape, hdf_dataset.dtype, order='F')
-      array_view = array.T
-      hdf_dataset.read(h5s.ALL, h5s.ALL, array_view)
-      array.dtype = 'S1'
-      link.append(array.tobytes().decode().rstrip('\x00'))
-    link.append('/'.join(ancestors_stack)) #Current path
-
-    links.append(link)
-    ancestors_stack.pop() #Stop exploring the node (don't explore links recursively)
-    return
-
-  # Define the function that will be applied to the child of the current hdf node
-  # thought iterate : we just start next recursion level if child is not a dataset
-  iter_func = lambda n : _load_links(h5g.open(gid, n), links, ancestors_stack) \
-      if h5o.get_info(gid, n).type == h5o.TYPE_GROUP else None
-
-  idx_type = h5.INDEX_CRT_ORDER if knows_crt_order(gid) else h5.INDEX_NAME
-  gid.links.iterate(iter_func, idx_type=idx_type)
-  ancestors_stack.pop()
 
 def _write_node_partial(gid, node, write_if, ancestors_stack):
   """ Internal recursive implementation for write_tree_partial.  """
@@ -351,19 +330,44 @@ def load_tree_partial(filename, load_predicate):
   fid.close()
   return tree
 
+
 def load_tree_links(filename):
-  links = list()
+  """ Collect and return the links present in a CGNS File """
+
+  class LinkVisitor:
+    """ Graph visitor used to collect link information """
+    def __init__(self):
+      self.attr_reader = AttributeRW()
+      self.links = []
+    def pre(self, node_ids):
+
+      gid = node_ids[-1]
+      b_kind = self.attr_reader.read_bytes_3(gid, b'type')
+
+      if b_kind == b'LK':
+        #Target directory ; the CGNS norm is unclear about how a link should start, 
+        # but other libraries are also doing that
+        link = ['.']
+        for ds_name in [b' file', b' path']: #Target file, then target path
+          hdf_dataset = h5d.open(gid, ds_name)
+          shape = hdf_dataset.shape[::-1]
+          array = np.empty(shape, hdf_dataset.dtype, order='F')
+          array_view = array.T
+          hdf_dataset.read(h5s.ALL, h5s.ALL, array_view)
+          array.dtype = 'S1'
+          link.append(array.tobytes().decode().rstrip('\x00'))
+        path = '/'.join([self.attr_reader.read_str_33(id, b'name') for id in node_ids[1:]])
+        link.append(path) #Current path
+        self.links.append(link)
+        return algo.step.over
 
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
   rootid = h5g.open(fid, b'/')
 
-  iter_func = lambda n : _load_links(h5g.open(rootid, n), links, []) \
-      if h5o.get_info(rootid, n).type == h5o.TYPE_GROUP else None
-  idx_type = h5.INDEX_CRT_ORDER if knows_crt_order(rootid) else h5.INDEX_NAME
-  rootid.links.iterate(iter_func, idx_type=idx_type)
-
+  visitor = LinkVisitor()
+  algo.depth_first_search(HDF5GraphAdaptor(rootid), visitor, depth='all')
   fid.close()
-  return links
+  return visitor.links
 
 def write_tree_partial(tree, filename, write_predicate):
   """
