@@ -32,9 +32,13 @@ class _build_tree_visitor:
 
   def retrieve_composition_term(self): # supposed to be called at the end
     assert len(self._sub_tree_stack)==1 # there should be only one level left since we finished the search
-    assert len(self._sub_tree_stack[0])==1 # and there should be only one node: the tree that was built during the search
-    return self._sub_tree_stack[0][0]
+    return self._sub_tree_stack[0]
 
+
+def depth_first_build_trees(g, node_constructor, pre=None):
+  v = _build_tree_visitor(node_constructor, pre)
+  algo.depth_first_search(g, v)
+  return v.retrieve_composition_term()
 
 def depth_first_build(g, node_constructor, pre=None):
   """
@@ -52,6 +56,6 @@ def depth_first_build(g, node_constructor, pre=None):
     pre: tells the algorithm what to do on each node traversed (step.into, step.over, step.out)
         More precisely, `pre` is a function of argument `node` and returning a `graph.algo.step` value.
   """
-  v = _build_tree_visitor(node_constructor, pre)
-  algo.depth_first_search(g, v)
-  return v.retrieve_composition_term()
+  ts = depth_first_build_trees(g, node_constructor, pre)
+  assert len(ts) == 1 # precondition: len(g.roots()) == 1
+  return ts
