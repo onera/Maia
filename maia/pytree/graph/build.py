@@ -58,4 +58,4 @@ def depth_first_build(g, node_constructor, pre=None):
   """
   ts = depth_first_build_trees(g, node_constructor, pre)
   assert len(ts) == 1 # precondition: len(g.roots()) == 1
-  return ts
+  return ts[0]

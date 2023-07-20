@@ -11,6 +11,19 @@ def find_not(seq, pred):
   return find(seq, not_pred)
 
 
+def mismatch(seq, seq_begin):
+  i = 0
+  for x, x_begin in zip(seq, seq_begin):
+    if x_begin != x:
+      return i
+    i += 1
+  return i
+
+def begins_with(seq, seq_begin):
+  if len(seq) < len(seq_begin):
+    return False
+  return mismatch(seq, seq_begin) == len(seq_begin)
+
 def partition_copy(xs, pred):
   xs_true, xs_false = [], []
   for x in xs:
