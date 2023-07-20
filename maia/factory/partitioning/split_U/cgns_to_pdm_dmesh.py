@@ -220,7 +220,9 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
     range_by_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
     # print("range_by_dim --> ", range_by_dim)
 
-    bc_point_lists = collect_distributed_pl(dist_zone, [['ZoneBC_t', 'BC_t']])
+    # Skip Vertex-located BCs, because they are not in Element numbering
+    elts_loc = ['EdgeCenter', 'FaceCenter', 'CellCenter']
+    bc_point_lists = collect_distributed_pl(dist_zone, [['ZoneBC_t', 'BC_t']], filter_loc=elts_loc)
     # Find out in which dim the boundary refers
     bc_point_lists_by_dim = _split_point_list_by_dim(bc_point_lists, range_by_dim, comm)
 

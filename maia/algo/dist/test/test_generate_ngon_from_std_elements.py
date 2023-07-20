@@ -114,13 +114,18 @@ class Test_compute_ngon_from_std_elements:
       MT.newDistribution({'Index' : [0,2,3]}, bca)
       bcb       = PT.new_BC('bcB', point_list = [[10]], parent=dist_zbc)
       MT.newDistribution({'Index' : [0,1,2]}, bcb)
+      bcc       = PT.new_BC('bcC', point_range = [[1,5]], parent=dist_zbc)
+      MT.newDistribution({'Index' : [0,3,5]}, bcb)
     elif rank == 1:
       bca       = PT.new_BC('bcA', point_range = [[7,9]], parent=dist_zbc)
       MT.newDistribution({'Index' : [2,3,3]}, bca)
       bcb       = PT.new_BC('bcB', point_list = [[11]], parent=dist_zbc)
       MT.newDistribution({'Index' : [1,2,2]}, bcb)
+      bcc       = PT.new_BC('bcC', point_range = [[1,5]], parent=dist_zbc)
+      MT.newDistribution({'Index' : [3,5,5]}, bcb)
     PT.new_GridLocation('EdgeCenter', bca)
     PT.new_GridLocation('EdgeCenter', bcb)
+    PT.new_GridLocation('Vertex', bcc)
 
     GNG.generate_ngon_from_std_elements(dist_tree, comm)
 
@@ -139,4 +144,6 @@ class Test_compute_ngon_from_std_elements:
     elif rank == 1:
       assert (PT.get_child_from_name(bca, 'PointList')[1] == [17]).all()
       assert (PT.get_child_from_name(bcb, 'PointList')[1] == [10]).all()
+    assert PT.Subset.GridLocation(bcc) == 'Vertex' #Vertex bc should not have changed
+    assert (PT.get_child_from_name(bcc, 'PointRange')[1] == [[1,5]]).all()
 

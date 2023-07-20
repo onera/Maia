@@ -30,6 +30,7 @@ Developpement version
 - partitioning: fix global numbering of S BCDataSet + fix GC-related ZGC 
 - isosurface: fix poor performances + better management of corner cases
 - distributed io: fix read/write of S meshes for data smaller than comm size
+- elements to ngon conversion: manage vertex located BCs
 
 🚧 API change
 ^^^^^^^^^^^^^
