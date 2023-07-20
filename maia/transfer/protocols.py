@@ -5,6 +5,8 @@ import Pypdm.Pypdm        as PDM
 import maia
 from maia.utils import par_utils, np_utils
 
+from . import _protocols
+
 def auto_expand_distri(distri, comm):
   """ Return a full distribution from a full or partial distribution """
   if distri.size == 3 and comm.Get_size() != 2:
@@ -26,7 +28,10 @@ def BlockToBlock(distri_in, distri_out, comm):
   full_distri_out = auto_expand_distri(distri_out, comm)
   _full_distri_in  = maia.utils.as_pdm_gnum(full_distri_in)
   _full_distri_out = maia.utils.as_pdm_gnum(full_distri_out)
-  return PDM.BlockToBlock(_full_distri_in, _full_distri_out, comm)
+  if np.array_equal(_full_distri_in, _full_distri_out):
+    return _protocols.SerialBlockToBlock(_full_distri_in, _full_distri_out)
+  else:
+    return _protocols.BlockToBlock(_full_distri_in, _full_distri_out, comm)
 
 def BlockToPart(distri, ln_to_gn_list, comm):
   """
