@@ -47,7 +47,6 @@ def build_paths_by_label_zone(paths_by_label, zone, zone_path):
 def build_paths_by_label_family(paths_by_label, parent, parent_path):
   """
   """
-  print(f"parent = {PT.get_name(parent), PT.get_label(parent)}, parent_path = {parent_path}")
   for family in PT.iter_children_from_label(parent, CGL.Family_t):
     if family != parent:
       family_path = f"{parent_path}/{PT.get_name(family)}"
