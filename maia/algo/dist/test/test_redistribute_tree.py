@@ -64,6 +64,32 @@ def test_redistribute_pl_node_U(comm):
 
 # ---------------------------------------------------------------------------------------
 @pytest_parallel.mark.parallel([3])
+def test_redistribute_pl_node_S(comm):
+  
+  distri_in_full = np.array([0, 5, 5, 5])
+  distri_in = par_utils.full_to_partial_distribution(distri_in_full, comm)
+  if comm.Get_rank() == 0:
+    pl = np.array([[1,2,3,4,5], [10,20,30,40,50], [100,200,300,400,500]], np.int32)
+  else:
+    pl = np.ones((3, 0), np.int32)
+
+  bc = PT.new_BC('BC', point_list=pl)
+  MT.newDistribution({'Index': distri_in}, bc)
+  
+  RDT.redistribute_pl_node(bc, par_utils.uniform_distribution, comm)
+
+  distri_out_expt = par_utils.full_to_partial_distribution(np.array([0, 2, 4, 5]), comm)
+  assert (MT.getDistribution(bc, 'Index')[1] == distri_out_expt).all()
+  if comm.Get_rank() == 0:
+    assert (PT.get_child_from_name(bc, 'PointList')[1] == [[1,2], [10,20], [100,200]]).all()
+  elif comm.Get_rank() == 1:
+    assert (PT.get_child_from_name(bc, 'PointList')[1] == [[3,4], [30,40], [300,400]]).all()
+  elif comm.Get_rank() == 2:
+    assert (PT.get_child_from_name(bc, 'PointList')[1] == [[5], [50], [500]]).all()
+# ---------------------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------------------
+@pytest_parallel.mark.parallel([3])
 def test_redistribute_data_node_U(comm):
   if comm.Get_rank() == 0:
     yt_fs = f"""

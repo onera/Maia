@@ -26,7 +26,7 @@ def redistribute_pl_node(node, distribution, comm):
     idx_dimension = array_n[1].shape[0]
     new_pl = np.empty((idx_dimension, new_size), order='F', dtype=array_n[1].dtype)
     for ip in range(idx_dimension):
-      new_pl[ip,:] = MTP.block_to_block(array_n[1][ip], node_distrib, new_distrib, comm)
+      new_pl[ip,:] = MTP.block_to_block(np.ascontiguousarray(array_n[1][ip]), node_distrib, new_distrib, comm)
     array_n[1] = new_pl
 
   #Data Arrays
