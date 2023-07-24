@@ -153,7 +153,7 @@ class _get_path_visitor:
       self.paths.append('/'+'/'.join([str(a[VALUE]) for a in ancestors[::-1]])+'/')
 
 def get_paths(g, node_idx):
-  inversed_g = backward_tree_adaptor(g,node_idx)
+  inversed_g = backward_tree_adaptor(g,[node_idx])
   v = _get_path_visitor()
   depth_first_search(inversed_g, v, depth='all')
   return v.paths

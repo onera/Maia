@@ -1,7 +1,7 @@
-from maia.pytree.graph.build import depth_first_build
+from maia.pytree.graph.build import depth_first_build_trees, depth_first_build
 from maia.pytree.graph.algo import step
 
-from maia.pytree.graph.f_graph import VALUE, rooted_f_graph_example
+from maia.pytree.graph.f_graph import VALUE, rooted_f_graph_example, multiply_rooted_f_graph_example
 
 
 def indent(s):
@@ -73,3 +73,30 @@ def test_depth_first_build():
     )
 
   assert s == expected_s
+
+
+def test_depth_first_build_trees():
+  #   Reminder:
+  #    root  root
+  #     |     |
+  #     v     v
+  #
+  #     2\_   8
+  #   /  \ \  |
+  #   |  |  \ |
+  #  4    7  \9
+  g = multiply_rooted_f_graph_example()
+
+  def indented_tree_ctor(node, sub_strings):
+    return str(node[VALUE]) + '\n' + ''.join([indent(s) for s in sub_strings])
+  s = depth_first_build_trees(g, indented_tree_ctor)
+
+  assert s == [('2\n'
+                '  4\n'
+                '  7\n'
+                '  9\n'
+               ),
+               ('8\n'
+                '  9\n'
+               )
+              ]
