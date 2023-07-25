@@ -78,7 +78,10 @@ def read_links(filename):
   return load_tree_links(filename)
 
 def write_full(filename, dist_tree, links=[]):
-  write_tree_partial(dist_tree, filename, lambda X,Y: True)
+  _dist_tree = PT.shallow_copy(dist_tree)
+  for link in links: # Links override data, so delete data
+    PT.rm_node_from_path(_dist_tree, link[3])
+  write_tree_partial(_dist_tree, filename, lambda X,Y: True)
 
   # Add links if any
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
