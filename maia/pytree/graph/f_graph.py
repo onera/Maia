@@ -69,9 +69,9 @@ class tree_adaptor:
   """
     An f_graph is adapted to a tree by going through its forward nodes.
   """
-  def __init__(self, g, root_idx):
+  def __init__(self, g, root_indices):
     self.g = g
-    self.root_idx = root_idx
+    self.root_indices = root_indices
   def nodes(self):
     return [adj[VALUE] for adj in self.g]
 
@@ -79,10 +79,14 @@ class tree_adaptor:
   def children(self, n):
     return _adjacency_iterator(self.g, n[FORWARD])
   def roots(self):
-    return _adjacency_iterator(self.g, [self.root_idx])
+    return _adjacency_iterator(self.g, self.root_indices)
 # Interface to satisfy dfs_interface_report }
 
 
 def rooted_f_graph_example():
   g = f_graph_example()
-  return tree_adaptor(g,8) # note: 8 is the index of node '1'
+  return tree_adaptor(g,[8]) # note: 8 is the index of node '1'
+
+def multiply_rooted_f_graph_example():
+  g = f_graph_example()
+  return tree_adaptor(g,[2,4]) # note: 2 and 4 are the indices of nodes '2' and '8'

@@ -56,7 +56,7 @@ class backward_tree_adaptor(tree_adaptor):
 
 def rooted_fb_graph_example():
   g = fb_graph_example()
-  return tree_adaptor(g,8) # note: 8 is the index of node '1'
+  return tree_adaptor(g,[8]) # note: 8 is the index of node '1'
 
 
 # dfs build {
