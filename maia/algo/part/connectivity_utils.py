@@ -42,19 +42,16 @@ def cell_vtx_connectivity(zone, dim=3):
       ordered_elts = PT.Zone.get_ordered_elements_per_dim(zone)
       connectivities = [PT.get_child_from_name(e, 'ElementConnectivity')[1] for e in ordered_elts[dim]]
       n_elts = sum([PT.Element.Size(e) for e in ordered_elts[dim]])
-      _, cell_vtx = np_utils.concatenate_np_arrays(connectivities)
+      _, cell_vtx = np_utils.concatenate_np_arrays(connectivities, dtype=np.int32)
       cell_vtx_idx = np.empty(n_elts+1, np.int32)
+      cell_vtx_idx[0] = 0
 
-      cur = 0
+      cur = 1
       for i, elt in enumerate(ordered_elts[dim]):
-        if i == 0:
-          cell_vtx_idx[0:PT.Element.Size(elt)+1] = \
-            PT.Element.NVtx(elt) * np.arange(PT.Element.Size(elt)+1, dtype=np.int32)
-        else:
-          cell_vtx_idx[cur:cur+PT.Element.Size(elt)] = \
-            PT.Element.NVtx(elt) * np.arange(1, PT.Element.Size(elt)+1, dtype=np.int32) + cell_vtx_idx[cur-1]
-        cur += PT.Element.Size(elt) + (i==0) #One more for first elt
-      assert cur == n_elts+1
+        cell_vtx_idx[cur:cur+PT.Element.Size(elt)] = \
+          PT.Element.NVtx(elt) * np.arange(1, PT.Element.Size(elt)+1, dtype=np.int32) + cell_vtx_idx[cur-1]
+        cur += PT.Element.Size(elt)
+      assert cur == n_elts +1
 
   return cell_vtx_idx, cell_vtx
 
