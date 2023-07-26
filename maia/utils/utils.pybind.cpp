@@ -1,6 +1,7 @@
 #include "maia/utils/utils.pybind.hpp"
 
 #include "maia/utils/ndarray/subset_sum.pybind.hpp"
+#include "maia/utils/ndarray/distri_weight.pybind.hpp"
 #include "maia/utils/ndarray/layouts.pybind.hpp"
 #include "maia/utils/numbering/numbering.pybind.hpp"
 #include "maia/utils/logging/logging.pybind.hpp"
@@ -18,4 +19,5 @@ void register_utils_module(py::module_& parent) {
   register_logging_module(m);
 
   m.def("search_subset_match", &search_subset_match);
+  m.def("compute_weighted_distribution", &compute_weighted_distribution);
 }
