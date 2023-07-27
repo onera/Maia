@@ -30,7 +30,8 @@ def compute_face_normal(zone, comm):
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
       face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      _face_vtx_idx = face_vtx_idx - face_vtx_idx[0]
+      _face_vtx_idx = np.empty(face_vtx_idx.size, np.int32)
+      np.subtract(face_vtx_idx, face_vtx_idx[0], out=_face_vtx_idx)
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
       part_data = EP.block_to_part(dist_coords, vtx_distri, [face_vtx], comm)
       coords = [part_data[f'Coordinate{key}'][0] for key in ['X', 'Y', 'Z']]
