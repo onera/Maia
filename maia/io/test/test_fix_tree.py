@@ -74,6 +74,29 @@ Base0 CGNSBase_t [3,3]:
   assert (PT.get_child_from_name(gcB, 'PointRange')[1]      == [[ 7, 1], [9,9], [5,1]]).all()
   assert (PT.get_child_from_name(gcB, 'PointRangeDonor')[1] == [[17,17], [3,9], [1,5]]).all()
 
+def test_ensure_symmetric_gc1to1():
+  yt = """
+Base0 CGNSBase_t [3,3]:
+  ZoneA Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      matchAB GridConnectivity1to1_t "ZoneB":
+        PointRange IndexRange_t [[17,17],[3,9],[1,5]]:
+        PointRangeDonor IndexRange_t [[7,1],[9,9],[1,5]]:
+  ZoneB Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      matchBA GridConnectivity1to1_t "Base0/ZoneA":
+        PointRange IndexRange_t [[1,7],[9,9],[1,5]]:
+        PointRangeDonor IndexRange_t [[17,17],[9,3],[1,5]]:
+"""
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  fix_tree.ensure_symmetric_gc1to1(tree)
+  gcA = PT.get_node_from_name(tree, 'matchAB')
+  gcB = PT.get_node_from_name(tree, 'matchBA')
+  assert (PT.get_child_from_name(gcA, 'PointRange')[1]      == [[17,17], [3,9], [1,5]]).all()
+  assert (PT.get_child_from_name(gcA, 'PointRangeDonor')[1] == [[ 7, 1], [9,9], [1,5]]).all()
+  assert (PT.get_child_from_name(gcB, 'PointRange')[1]      == [[ 7, 1], [9,9], [1,5]]).all()
+  assert (PT.get_child_from_name(gcB, 'PointRangeDonor')[1] == [[17,17], [3,9], [1,5]]).all()
+
 def test_add_missing_pr_in_dataset():
   yt = """
 Base0 CGNSBase_t [3,3]:
