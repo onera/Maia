@@ -9,7 +9,8 @@ from .subset_tools import sort_dist_pointlist
 def _compare_pointrange(gc1, gc2):
  """
  Compare a couple of grid_connectivity nodes and return True
- if the PointList and PointListDonor are symmetrically equals
+ if the PointList and PointListDonor are equals, even
+ if the symmetry is not respected
  """
  gc1_pr  = PT.get_child_from_name(gc1, 'PointRange')[1]
  gc1_prd = PT.get_child_from_name(gc1, 'PointRangeDonor')[1]
@@ -17,7 +18,8 @@ def _compare_pointrange(gc1, gc2):
  gc2_prd = PT.get_child_from_name(gc2, 'PointRangeDonor')[1]
  if gc1_pr.shape != gc2_prd.shape or gc2_pr.shape != gc1_prd.shape:
    return False
- return (np.all(gc1_pr == gc2_prd) and np.all(gc2_pr == gc1_prd))
+
+ return (np.sort(gc1_pr) == np.sort(gc2_prd)).all() and (np.sort(gc2_pr) == np.sort(gc1_prd)).all()
 
 def _compare_pointlist(gc1, gc2):
   """  
