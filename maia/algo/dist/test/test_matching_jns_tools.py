@@ -20,6 +20,9 @@ class Test_compare_pointrange():
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,7],[1,5]], point_range      =[[1,5],[9,9],[1,5]])
     assert(MJT._compare_pointrange(jn1, jn2) == False)
+    jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9]],       point_range_donor=[[7,1],[9,9]])
+    jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[7,1],[9,9],[5,1]])
+    assert(MJT._compare_pointrange(jn1, jn2) == False)
   def test_empty(self): # We have no idea of why this one is working, so we let it too see if its break one day
     jn1 = PT.new_GridConnectivity1to1(point_range      =np.empty((3,2), np.int32), point_range_donor=np.empty((3,2), np.int32))
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=np.empty((3,2), np.int32), point_range      =np.empty((3,2), np.int32))

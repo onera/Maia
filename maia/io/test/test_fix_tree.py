@@ -94,8 +94,8 @@ Base0 CGNSBase_t [3,3]:
   gcB = PT.get_node_from_name(tree, 'matchBA')
   assert (PT.get_child_from_name(gcA, 'PointRange')[1]      == [[17,17], [3,9], [1,5]]).all()
   assert (PT.get_child_from_name(gcA, 'PointRangeDonor')[1] == [[ 7, 1], [9,9], [1,5]]).all()
-  assert (PT.get_child_from_name(gcB, 'PointRange')[1]      == [[ 7, 1], [9,9], [1,5]]).all()
-  assert (PT.get_child_from_name(gcB, 'PointRangeDonor')[1] == [[17,17], [3,9], [1,5]]).all()
+  assert (PT.get_child_from_name(gcB, 'PointRange')[1]      == PT.get_child_from_name(gcA, 'PointRangeDonor')[1]).all()
+  assert (PT.get_child_from_name(gcB, 'PointRangeDonor')[1] == PT.get_child_from_name(gcA, 'PointRange')[1]).all()
 
 def test_add_missing_pr_in_dataset():
   yt = """
