@@ -31,7 +31,8 @@ class BlockToBlock:
       # Constant stride
       if isinstance(stride_in, int):
         data_out = np.empty(stride_in * self.dn_out, data_in.dtype)
-        self.comm.Alltoallv((data_in, stride_in * self.send_counts), (data_out, stride_in * self.recv_counts))
+        dtype = data_in.dtype.char #Really strange, without that mpi4py can fail if dtype is float64
+        self.comm.Alltoallv((data_in, stride_in * self.send_counts, dtype), (data_out, stride_in * self.recv_counts, dtype))
         return data_out
 
       # Variable stride
@@ -53,7 +54,8 @@ class BlockToBlock:
           idx_recv += self.recv_counts[i]
 
         data_out = np.empty(recv_counts.sum(), data_in.dtype)
-        self.comm.Alltoallv((data_in, send_counts), (data_out, recv_counts))
+        dtype = data_in.dtype.char #Really strange, without that mpi4py can fail if dtype is float64
+        self.comm.Alltoallv((data_in, send_counts, dtype), (data_out, recv_counts, dtype))
 
         return stride_out, data_out
 
