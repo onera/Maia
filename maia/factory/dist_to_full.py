@@ -2,7 +2,7 @@ import maia.pytree as PT
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
 
-def reshape_S_arrays(tree):
+def _reshape_S_arrays(tree):
   """ Some structured arrays (under FlowSolution_t, GridCoordinates_t) have been
   flattened in distributed tree. This function regive them a 2D/3D shape
   """
@@ -40,7 +40,7 @@ def undistribute_tree(dist_tree, comm, target=0):
 
   redistribute.redistribute_tree(full_tree, f'gather.{target}', comm)
   if comm.Get_rank() == target:
-    reshape_S_arrays(full_tree)
+    _reshape_S_arrays(full_tree)
     distribution_tree.clean_distribution_info(full_tree)
   else:
     full_tree = None
