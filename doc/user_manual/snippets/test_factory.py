@@ -52,6 +52,21 @@ def test_distribute_tree():
   dist_tree = maia.factory.distribute_tree(tree, comm, owner=0)
   #distribute_tree@end
 
+def test_undistribute_tree():
+  #undistribute_tree@start
+  from   mpi4py import MPI
+  import maia
+  comm = MPI.COMM_WORLD
+
+  dist_tree = maia.factory.generate_dist_sphere(10, 'TRI_3', comm)
+  full_tree = maia.factory.undistribute_tree(dist_tree, comm, target=0)
+
+  if comm.Get_rank() == 0:
+    assert maia.pytree.get_node_from_name(full_tree, ":CGNS#Distribution") is None
+  else:
+    assert full_tree is None
+  #undistribute_tree@end
+
 def test_partition_dist_tree():
   #partition_dist_tree@start
   from mpi4py import MPI
