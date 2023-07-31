@@ -31,7 +31,10 @@ class BlockToBlock:
       # Constant stride
       if isinstance(stride_in, int):
         data_out = np.empty(stride_in * self.dn_out, data_in.dtype)
-        dtype = data_in.dtype.char #Really strange, without that mpi4py can fail if dtype is float64
+        dtype = data_in.dtype.char
+        #Really strange, without explicit datatype mpi4py can fail if dtype is float64
+        #File "mpi4py/MPI/msgbuffer.pxi", line 145, in mpi4py.MPI.message_basic
+        #KeyError: '<d'
         self.comm.Alltoallv((data_in, stride_in * self.send_counts, dtype), (data_out, stride_in * self.recv_counts, dtype))
         return data_out
 
