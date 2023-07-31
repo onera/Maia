@@ -392,7 +392,7 @@ Base CGNSBase_t I4 [3, 3]:
             Translation DataArray_t R4 [0.0, 0.0, -0.25]:
   """
   treeS = parse_yaml_cgns.to_cgns_tree(yt)
-  treeS = maia.factory.distribute_tree(treeS, comm)
+  treeS = maia.factory.full_to_dist_tree(treeS, comm)
   treeU = maia.algo.dist.convert_s_to_ngon(treeS, comm)
   VL.generate_jns_vertex_list(treeU, comm)
 

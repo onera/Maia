@@ -120,9 +120,9 @@ Recovering from partitions
 Managing full trees
 -------------------
 
-Almost no function in maia supports full (not distributed) CGNS trees, but they
-can be useful for compatibility with sequential libraries.
+Almost no function in maia supports :ref:`full (not distributed) CGNS trees<tree_defs>`,
+but they can be useful for compatibility with sequential libraries.
 
-.. autofunction:: maia.factory.distribute_tree
-.. autofunction:: maia.factory.undistribute_tree
+.. autofunction:: maia.factory.full_to_dist_tree
+.. autofunction:: maia.factory.dist_to_full_tree
 

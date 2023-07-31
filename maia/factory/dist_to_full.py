@@ -16,7 +16,7 @@ def _reshape_S_arrays(tree):
         for array in PT.get_nodes_from_label(container, 'DataArray_t'):
           array[1] = array[1].reshape(wanted_shape, order='F')
 
-def undistribute_tree(dist_tree, comm, target=0):
+def dist_to_full_tree(dist_tree, comm, target=0):
   """ Generate a standard (full) CGNS Tree from a distributed tree.
 
   The output tree can be used with sequential tools, but is no more compatible with
@@ -31,8 +31,8 @@ def undistribute_tree(dist_tree, comm, target=0):
 
   Example:
       .. literalinclude:: snippets/test_factory.py
-        :start-after: #undistribute_tree@start
-        :end-before: #undistribute_tree@end
+        :start-after: #dist_to_full_tree@start
+        :end-before: #dist_to_full_tree@end
         :dedent: 2
   """
 

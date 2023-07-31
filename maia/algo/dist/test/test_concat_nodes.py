@@ -86,7 +86,7 @@ def test_concatenate_jns(comm, mode):
         PointListDonor IndexArray_t [[5]]:
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  dist_tree = F2D.distribute_tree(tree, comm)
+  dist_tree = F2D.full_to_dist_tree(tree, comm)
   zones = PT.get_all_Zone_t(dist_tree)
 
   if mode in ['intrazone', 'intraperio']:

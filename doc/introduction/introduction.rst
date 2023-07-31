@@ -158,6 +158,8 @@ can then be transfered to the corresponding distributed vertex, before writting 
 Maia CGNS trees
 ---------------
 
+.. _tree_defs:
+
 Overview
 ^^^^^^^^
 

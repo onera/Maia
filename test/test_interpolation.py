@@ -115,8 +115,8 @@ def test_interpolation_refined(comm, n_part_tgt, write_output):
     refined_tree = refine_mesh(tree)
   else:
     tree, refined_tree = None, None
-  dist_tree_src = MF.distribute_tree(tree, comm, owner=0)
-  dist_tree_tgt = MF.distribute_tree(refined_tree, comm, owner=0)
+  dist_tree_src = MF.full_to_dist_tree(tree, comm, owner=0)
+  dist_tree_tgt = MF.full_to_dist_tree(refined_tree, comm, owner=0)
 
   zone = PT.get_all_Zone_t(dist_tree_src)[0]
   sol = PT.deep_copy(PT.get_node_from_name(zone, 'FlowSolution#Centers'))

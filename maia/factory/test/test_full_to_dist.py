@@ -97,7 +97,7 @@ def test_distribute_element(comm):
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("owner", [None, 0, 1])
-def test_distribute_tree(owner, comm):
+def test_full_to_dist_tree(owner, comm):
   yt = """
   Zone Zone_t [[18, 4, 0]]:
     ZoneType ZoneType_t "Unstructured":
@@ -130,7 +130,7 @@ def test_distribute_tree(owner, comm):
       BCRegionName Descriptor_t "bc":
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  dist_tree = full_to_dist.distribute_tree(tree, comm, owner=owner)
+  dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=owner)
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
   if comm.Get_rank() == 0:

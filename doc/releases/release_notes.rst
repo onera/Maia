@@ -15,7 +15,7 @@ Developpement version
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``adapt_mesh_with_feflo``, wrapping *Feflo.a* to perform mesh adaptation
-- Factory module : add ``undistribute_tree`` to gather a distributed tree into a standard tree
+- Factory module : add ``dist_to_full_tree`` to gather a distributed tree into a standard tree
 - File management: add ``read_links`` function to get the links from a CGNS file
 - File management: add ``file_to_part_tree`` function to read maia partitioned trees
 
@@ -37,6 +37,7 @@ Developpement version
 ^^^^^^^^^^^^^
 - redistribute_tree: remove default value for policy
 - wall_distance: remove families parameter
+- ``distribute_tree`` renamed into ``full_to_dist_tree``
 
 🔧 Advanced users / devs
 ^^^^^^^^^^^^^^^^^^^^^^^^

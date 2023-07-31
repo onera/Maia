@@ -174,7 +174,7 @@ def file_to_dist_tree(filename, comm, legacy=False):
         _enforce_pdm_dtype(tree)  
     else:
       tree = None
-    dist_tree = full_to_dist.distribute_tree(tree, comm, owner=0) 
+    dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=0)
 
   else:
     dist_tree = load_collective_size_tree(filename, comm, legacy)

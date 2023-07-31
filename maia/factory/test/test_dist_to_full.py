@@ -27,9 +27,9 @@ def test_reshape_S_arrays():
           [ [[1,10], [4,13], [7,16]], [[2,11],[5,14],[8,17]], [[3,12],[6,15], [9,18]] ]).all()
 
 @pytest_parallel.mark.parallel(2)
-def test_undistribute_tree_U(comm):
+def test_dist_to_full_tree_U(comm):
   dist_tree = maia.factory.generate_dist_block(3, 'HEXA_8', comm)
-  full_tree = dist_to_full.undistribute_tree(dist_tree, comm, target=1)
+  full_tree = dist_to_full.dist_to_full_tree(dist_tree, comm, target=1)
 
   if comm.Get_rank() == 0:
     assert full_tree is None
@@ -40,9 +40,9 @@ def test_undistribute_tree_U(comm):
     assert PT.is_same_tree(tree, full_tree)
 
 @pytest_parallel.mark.parallel(2)
-def test_undistribute_tree_S(comm):
+def test_dist_to_full_tree_S(comm):
   dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
-  full_tree = dist_to_full.undistribute_tree(dist_tree, comm, target=1)
+  full_tree = dist_to_full.dist_to_full_tree(dist_tree, comm, target=1)
   if comm.Get_rank() == 0:
     assert full_tree is None
   else:

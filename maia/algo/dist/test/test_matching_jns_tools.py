@@ -85,7 +85,7 @@ Base1 CGNSBase_t [3,3]:
         PointListDonor IndexArray_t [[32,34]]:
 """
   full_tree = parse_yaml_cgns.to_cgns_tree(yt)
-  dist_tree = full_to_dist.distribute_tree(full_tree, comm)
+  dist_tree = full_to_dist.full_to_dist_tree(full_tree, comm)
 
   MJT.add_joins_donor_name(dist_tree, comm)
 
@@ -221,7 +221,7 @@ Base CGNSBase_t:
         PointListDonor IndexArray_t [[7,5,3]]:
 """
   full_tree = parse_yaml_cgns.to_cgns_tree(yt)
-  dist_tree = full_to_dist.distribute_tree(full_tree, comm)
+  dist_tree = full_to_dist.full_to_dist_tree(full_tree, comm)
 
   MJT.sort_jn_pointlist(dist_tree, comm)
 
