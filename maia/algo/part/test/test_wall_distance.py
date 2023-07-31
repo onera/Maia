@@ -123,16 +123,17 @@ def test_walldistance_elts(comm):
   maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
   
   if comm.Get_rank() == 0:
-    expected_wd = [0.125,0.625,0.75, 0.375,0.875,0.875,0.875,0.75, 0.875,0.375,0.625,0.375,
-                   0.875,0.375,0.25, 0.875,0.75, 0.625,0.625,0.875]
-    expected_gnum = [1, 5, 3, 5, 6, 4, 5, 5, 3, 3, 3, 1, 1, 1, 1, 2, 1, 1, 1, 7]
+    expected_wd = [0.125,0.375,0.125,0.375,0.25 ,0.875,0.875,0.625,0.625,0.75,0.375,0.375,
+                   0.125,0.125,0.25 ,0.625,0.875,0.625,0.875,0.75]
+    expected_gnum = [1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 3, 3, 3, 4, 3, 3, 4, 3, 3, 3]
   elif comm.Get_rank() == 1:
-    expected_wd = [0.125,0.25, 0.125,0.375,0.875,0.125,0.625,0.625,0.375,0.25, 0.625,0.375,
-                   0.25, 0.125,0.125,0.625,0.125,0.375,0.125,0.75]
-    expected_gnum = [2, 7, 8, 7, 8, 7, 7, 7, 7, 5, 5, 3, 3, 3, 4, 3, 6, 5, 5, 7]
+    expected_wd = [0.375,0.375,0.125,0.125,0.25, 0.625,0.875,0.625,0.875,0.75,0.125,0.375,
+                   0.125,0.375,0.25, 0.875,0.875,0.625,0.625,0.75]
+    expected_gnum = [5, 5, 5, 6, 5, 5, 6, 5, 5, 5, 7, 7, 8, 7, 7, 7, 8, 7, 7, 7]
 
-  assert (PT.get_node_from_name(ptree, 'TurbulentDistance')[1] == expected_wd).all()
-  assert (PT.get_node_from_name(ptree, 'ClosestEltGnum')[1] == expected_gnum).all()
+
+  assert (PT.get_node_from_name(tree, 'TurbulentDistance')[1] == expected_wd).all()
+  assert (PT.get_node_from_name(tree, 'ClosestEltGnum')[1] == expected_gnum).all()
     
 
 @pytest_parallel.mark.parallel(2)

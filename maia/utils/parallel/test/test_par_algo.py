@@ -1,9 +1,15 @@
 import pytest_parallel
 
+import sys
 import numpy as np
+import mpi4py.MPI as MPI
 
 from maia.utils import py_utils
 from maia.utils.parallel import algo as par_algo
+
+def py_version():
+    version_info = sys.version_info
+    return (version_info.major, version_info.minor, version_info.micro)
 
 @pytest_parallel.mark.parallel(3)
 def test_dist_set_difference(comm):
@@ -61,16 +67,35 @@ def test_compute_gnum_s(comm):
     rank_keys = py_utils.to_flat_list(keys)
     rank_gnum = py_utils.to_flat_list(expected_gnum)
 
-  assert (par_algo.compute_gnum(rank_keys, comm) == rank_gnum).all()
+  computed_gnum = par_algo.compute_gnum(rank_keys, comm)
+
+  if py_version()[:2] == (3,9): # Gnum seems to be version dependant (pickles / hashlib)
+    assert (computed_gnum == rank_gnum).all()
+
+  assert len(computed_gnum) == len(rank_keys)
+  assert comm.allreduce(min(computed_gnum) if rank_keys else 1000, MPI.MIN) == 1
+  assert comm.allreduce(max(computed_gnum) if rank_keys else    0, MPI.MAX) == 6
 
 @pytest_parallel.mark.parallel(2)
 def test_compute_gnum_o(comm):
   # Test with various objects
   if comm.Get_rank() == 0:
     keys = [test_compute_gnum_s, 'Banana', np.array([1,2,3], np.int32)]
-    expected_gnum = [5,1,2]
+    expected_gnum = [5,1,2] #3,5,2
   elif comm.Get_rank() == 1:
     keys = [None, False, test_compute_gnum_s, 'Banana']
-    expected_gnum = [4,3,5,1]
+    expected_gnum = [4,3,5,1] #[4,1,3,5]
 
-  assert (par_algo.compute_gnum(keys, comm) == expected_gnum).all()
+  computed_gnum = par_algo.compute_gnum(keys, comm)
+
+  if py_version()[:2] == (3,9): # Gnum seems to be version dependant (pickles / hashlib)
+    assert (computed_gnum == expected_gnum).all()
+
+  assert len(computed_gnum) == len(keys)
+  assert comm.allreduce(min(computed_gnum), MPI.MIN) == 1
+  assert comm.allreduce(max(computed_gnum), MPI.MAX) == 5
+
+  gathered = comm.gather(computed_gnum, root=0)
+  if comm.Get_rank() == 0:
+    assert gathered[0][0] == gathered[1][2]
+    assert gathered[0][1] == gathered[1][3]
