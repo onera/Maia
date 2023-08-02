@@ -103,7 +103,9 @@ The following algorithms applies on maia distributed or partitioned trees
 Sequential algorithms
 ---------------------
 
-The following algorithms applies on regular pytrees.
+The following algorithms applies on regular (full) pytrees. Note that
+these compatibility functions are also wrapped in the ``maia_poly_old_to_new``
+and ``maia_poly_new_to_old`` scripts, see :ref:`Quick start<quick_start_req>` section.
 
 .. autofunction:: maia.algo.seq.poly_new_to_old
 .. autofunction:: maia.algo.seq.poly_old_to_new

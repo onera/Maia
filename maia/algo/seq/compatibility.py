@@ -31,6 +31,12 @@ def enforce_ngon_pe_local(t):
   Args:
     t (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
 
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #enforce_ngon_pe_local@start
+        :end-before: #enforce_ngon_pe_local@end
+        :dedent: 2
+
   """
   for zone in zones_iterator(t):
     try:
@@ -49,6 +55,12 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
   Args:
     tree (CGNSTree): Tree described with new CGNS convention.
     full_onera_compatibility (bool): if ``True``, shift NFace and ParentElements ids to begin at 1, irrespective of the NGon and NFace ElementRanges, and make the NFace connectivity unsigned
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #poly_new_to_old@start
+        :end-before: #poly_new_to_old@end
+        :dedent: 2
   """
   cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 3.1)
@@ -96,6 +108,12 @@ def poly_old_to_new(tree):
 
   Args:
     tree (CGNSTree): Tree described with old CGNS convention.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #poly_old_to_new@start
+        :end-before: #poly_old_to_new@end
+        :dedent: 2
   """
   cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 4.2)

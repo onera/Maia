@@ -53,6 +53,8 @@ If you prefer to build your own version of Maia, see :ref:`installation` section
 Supported meshes
 ----------------
 
+.. _quick_start_req:
+
 Maia supports CGNS meshes from version 4.2, meaning that polyhedral connectivities (NGON_n, NFACE_n
 and MIXED nodes) must have the ``ElementStartOffset`` node.
 

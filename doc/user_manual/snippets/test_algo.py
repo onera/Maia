@@ -339,6 +339,46 @@ def test_nface_to_pe():
   assert maia.pytree.get_node_from_name(tree, 'ParentElements') is not None
   #nface_to_pe@end
 
+def test_poly_new_to_old():
+  #poly_new_to_old@start
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+
+  tree = maia.io.read_tree(mesh_dir/'U_ATB_45.yaml')
+  assert maia.pytree.get_node_from_name(tree, 'ElementStartOffset') is not None
+
+  maia.algo.seq.poly_new_to_old(tree)
+  assert maia.pytree.get_node_from_name(tree, 'ElementStartOffset') is None
+  #poly_new_to_old@end
+
+def test_poly_old_to_new():
+  #poly_old_to_new@start
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+
+  tree = maia.io.read_tree(mesh_dir/'U_ATB_45.yaml')
+  maia.algo.seq.poly_new_to_old(tree)
+  assert maia.pytree.get_node_from_name(tree, 'ElementStartOffset') is None
+
+  maia.algo.seq.poly_old_to_new(tree)
+  assert maia.pytree.get_node_from_name(tree, 'ElementStartOffset') is not None
+  #poly_old_to_new@end
+
+def test_enforce_ngon_pe_local():
+  #enforce_ngon_pe_local@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  tree = maia.factory.generate_dist_block(11, 'Poly', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+  n_cell = PT.Zone.n_cell(zone)
+
+  assert PT.get_node_from_name(zone, 'ParentElements')[1].max() > n_cell
+  maia.algo.seq.enforce_ngon_pe_local(tree)
+  assert PT.get_node_from_name(zone, 'ParentElements')[1].max() <= n_cell
+  #enforce_ngon_pe_local@end
+
 def test_elements_to_ngons():
   #elements_to_ngons@start
   from mpi4py import MPI
