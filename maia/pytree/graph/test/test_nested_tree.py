@@ -104,17 +104,17 @@ def test_forward_backward_nested_tree_mutate_children():
   assert len(A.sub_nodes) == 2
   assert A.sub_nodes[0].node_value == 'J'; assert A.sub_nodes[0].parent is A;
   assert A.sub_nodes[1].node_value == 'K'; assert A.sub_nodes[1].parent is A;
-  
+
 
 def test_forward_backward_nested_tree_ref_counting():
   import gc
   B = ForwardBackwardTree('B')
   A = ForwardBackwardTree('A', [B])
- 
+
   gc.collect() # should not do anything fancy
   assert B.parent is A
- 
+
   A = 'unrelated string' # `A` is now bound to a new value: the old `A` tree is unreachable
   gc.collect() # since the old `A` is unreachable, it should be collected
- 
+
   assert B.parent is None # since the old `A` has been collected, `B` no longer has a parent
