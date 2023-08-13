@@ -26,18 +26,19 @@ SYMBOLIC_ROOT = _SymbolicRoot()
 ##   that are inherited by `Tree` and `ForwardBackwardTree`.
 class _TreeToStrMixin:
   @staticmethod
-  def _to_string_impl(tree, indent_sz):
+  def _to_string_impl(tree, indent_sz, rec):
     s = ' '*indent_sz + str(tree.node_value) + '\n'
     for sub in tree.sub_nodes:
-      s += Tree._to_string_impl(sub, indent_sz+INDENT_SIZE)
+      if rec < 20:
+        s += Tree._to_string_impl(sub, indent_sz+INDENT_SIZE, rec+1)
     return s
 
   @staticmethod
   def _to_string(tree):
     if tree.node_value == SYMBOLIC_ROOT:
-      return ''.join([Tree._to_string_impl(sub, 0) for sub in tree.sub_nodes])
+      return ''.join([Tree._to_string_impl(sub, 0, 0) for sub in tree.sub_nodes])
     else:
-      return Tree._to_string_impl(tree, 0)
+      return Tree._to_string_impl(tree, 0, 0)
 
   def __str__(self):
     return Tree._to_string(self)
@@ -56,7 +57,11 @@ class Tree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
         - a `node_value` attribute,
         - a `sub_nodes` attribute that is a sequence of `Tree`s.
   """
-  def __init__(self, node_value, sub_nodes = []):
+  def __init__(self, node_value, sub_nodes = None):
+    # Can't write `sub_nodes = []` directly because of mutable default arguments
+    if sub_nodes is None: 
+      sub_nodes = []
+
     # Precondition: all sub_nodes should be `Tree`s
     for c in sub_nodes:
       assert isinstance(c, Tree)
@@ -128,8 +133,13 @@ class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
     - either get the `sub_nodes` trees
     - or the `parent` tree
   """
-  def __init__(self, node_value, sub_nodes = [], parent=None):
+  def __init__(self, node_value, sub_nodes = None, parent=None):
+    # Can't write `sub_nodes = []` directly because of mutable default arguments
+    if sub_nodes is None: 
+      sub_nodes = []
+
     # Precondition: all `sub_nodes` and `parent` should be `ForwardBackwardTree`s
+
     for c in sub_nodes:
       assert isinstance(c, ForwardBackwardTree)
     if parent is not None:
