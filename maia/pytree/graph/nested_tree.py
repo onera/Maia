@@ -124,6 +124,10 @@ class _ForwardBackwardTreeList:
     for x in other:
       x.parent = self._parent
     return self
+  def insert(self, i, x):
+    assert isinstance(x, ForwardBackwardTree)
+    x.parent = self._parent
+    self._list.insert(i, x)
   # Methods to mutate elements to the list }
 
 
