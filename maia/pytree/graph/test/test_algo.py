@@ -351,9 +351,11 @@ def test_step_over_does_not_ask_for_children():
       return step.over
 
   class graph_example():
-    def children(self, n):
+    from maia.pytree.graph.utils import list_iterator_type
+
+    def child_iterator(self, n) -> list_iterator_type:
       raise RuntimeError()
-    def roots(self):
+    def root_iterator(self) -> list_iterator_type:
       return iter([0])
 
   g = graph_example()

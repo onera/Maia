@@ -76,9 +76,9 @@ class tree_adaptor:
     return [adj[VALUE] for adj in self.g]
 
 # Interface to satisfy dfs_interface_report {
-  def children(self, n):
+  def child_iterator(self, n) -> _adjacency_iterator:
     return _adjacency_iterator(self.g, n[FORWARD])
-  def roots(self):
+  def root_iterator(self) -> _adjacency_iterator:
     return _adjacency_iterator(self.g, self.root_indices)
 # Interface to satisfy dfs_interface_report }
 

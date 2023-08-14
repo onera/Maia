@@ -15,11 +15,11 @@ def test_fb_graph():
   #  4    7  \9  10   11
   g = rooted_fb_graph_example()
 
-  roots = list(g.roots())
+  roots = list(g.root_iterator())
   assert len(roots) == 1
   assert roots[0][VALUE] == 1
 
-  cs = list(g.children(roots[0]))
+  cs = list(g.child_iterator(roots[0]))
   assert len(cs) == 3
   assert cs[0][VALUE] == 2
   assert cs[1][VALUE] == 9
@@ -141,7 +141,7 @@ def test_get_path():
 
 
 
-class _get_path_visitor:
+class _path_builder_visitor:
   def __init__(self):
     self.paths = []
 
@@ -154,7 +154,7 @@ class _get_path_visitor:
 
 def get_paths(g, node_idx):
   inversed_g = backward_tree_adaptor(g,[node_idx])
-  v = _get_path_visitor()
+  v = _path_builder_visitor()
   depth_first_search(inversed_g, v, depth='all')
   return v.paths
 

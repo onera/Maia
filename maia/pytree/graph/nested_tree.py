@@ -1,4 +1,5 @@
 import weakref
+from maia.pytree.graph.utils import list_iterator_type
 
 INDENT_SIZE = 4
 
@@ -44,9 +45,9 @@ class _TreeToStrMixin:
     return Tree._to_string(self)
 
 class _TreeDepthFirstSearchInterfaceMixing: # depth_first_search interface
-  def children(self, tree):
+  def child_iterator(self, tree) -> list_iterator_type:
     return iter(tree.sub_nodes)
-  def roots(self):
+  def root_iterator(self) -> list_iterator_type:
     return iter([self])
 # Mixins }
 

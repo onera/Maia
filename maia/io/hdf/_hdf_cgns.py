@@ -3,6 +3,7 @@ import h5py
 from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t, h5o
 
 from maia.pytree.graph import algo
+from maia.pytree.graph.utils import list_iterator
 
 C33_t = h5t.C_S1.copy()
 C33_t.set_size(33)
@@ -67,9 +68,9 @@ class HDF5GraphAdaptor:
   to use graph iterators """
   def __init__(self, root_id):
     self.root_id = root_id
-  def roots(self):
+  def root_iterator(self) -> list_iterator:
     return iter([self.root_id])
-  def children(self, node_id):
+  def child_iterator(self, node_id) -> list_iterator:
     return (h5g.open(node_id, child_name) for child_name in node_id \
             if h5o.get_info(node_id, child_name).type == h5o.TYPE_GROUP)
 
