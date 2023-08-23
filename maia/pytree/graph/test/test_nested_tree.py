@@ -23,8 +23,8 @@ def test_nested_tree_conforms_to_dfs_interface():
   class visitor:
     def __init__(self):
       self.s = ''
-    def pre(self, node):
-      self.s += str(node.node_value)
+    def pre(self, tree):
+      self.s += str(tree.node)
 
   v = visitor()
   depth_first_search(t, v)
@@ -58,8 +58,8 @@ def test_forward_backward_nested_tree_base():
          ForwardBackwardTree('E'),
        ])
 
-  B = A.sub_nodes[0]
-  C = B.sub_nodes[0]
+  B = A.children[0]
+  C = B.children[0]
 
   assert A.parent is None
   assert B.parent is A
@@ -79,31 +79,31 @@ def test_forward_backward_nested_tree_mutate_children():
          ForwardBackwardTree('E'),
        ])
 
-  A.sub_nodes.append(ForwardBackwardTree('F'))
+  A.children.append(ForwardBackwardTree('F'))
 
-  F = A.sub_nodes[-1]
-  assert F.node_value == 'F'
+  F = A.children[-1]
+  assert F.node == 'F'
   assert F.parent is A
 
-  B = A.sub_nodes[0]
-  A.sub_nodes[0] = ForwardBackwardTree('G')
-  assert A.sub_nodes[0].node_value == 'G'
-  assert A.sub_nodes[0].parent is A
+  B = A.children[0]
+  A.children[0] = ForwardBackwardTree('G')
+  assert A.children[0].node == 'G'
+  assert A.children[0].parent is A
   assert B.parent is None # B has been orphaned
   assert str(B) == 'B\n    C\n    D\n' # but B can still be accessed
 
-  A.sub_nodes += [ForwardBackwardTree('H'), ForwardBackwardTree('I')]
-  assert len(A.sub_nodes) == 5
-  assert A.sub_nodes[0].node_value == 'G'; assert A.sub_nodes[0].parent is A;
-  assert A.sub_nodes[1].node_value == 'E'; assert A.sub_nodes[1].parent is A;
-  assert A.sub_nodes[2].node_value == 'F'; assert A.sub_nodes[2].parent is A;
-  assert A.sub_nodes[3].node_value == 'H'; assert A.sub_nodes[3].parent is A;
-  assert A.sub_nodes[4].node_value == 'I'; assert A.sub_nodes[4].parent is A;
+  A.children += [ForwardBackwardTree('H'), ForwardBackwardTree('I')]
+  assert len(A.children) == 5
+  assert A.children[0].node == 'G'; assert A.children[0].parent is A;
+  assert A.children[1].node == 'E'; assert A.children[1].parent is A;
+  assert A.children[2].node == 'F'; assert A.children[2].parent is A;
+  assert A.children[3].node == 'H'; assert A.children[3].parent is A;
+  assert A.children[4].node == 'I'; assert A.children[4].parent is A;
 
-  A.sub_nodes = [ForwardBackwardTree('J'), ForwardBackwardTree('K')]
-  assert len(A.sub_nodes) == 2
-  assert A.sub_nodes[0].node_value == 'J'; assert A.sub_nodes[0].parent is A;
-  assert A.sub_nodes[1].node_value == 'K'; assert A.sub_nodes[1].parent is A;
+  A.children = [ForwardBackwardTree('J'), ForwardBackwardTree('K')]
+  assert len(A.children) == 2
+  assert A.children[0].node == 'J'; assert A.children[0].parent is A;
+  assert A.children[1].node == 'K'; assert A.children[1].parent is A;
 
 
 def test_forward_backward_nested_tree_ref_counting():
