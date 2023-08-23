@@ -1,4 +1,4 @@
-from maia.pytree.graph.algo import step, depth_first_search # most common algo
+from maia.pytree.graph.algo import step, depth_first_search
 from maia.pytree.graph.algo import graph_traversal_stack, depth_first_search_stack, adapt_visitor, advance_stack, unwind # if the search needs to be restarted
 
 from maia.pytree.graph.f_graph import rooted_f_graph_example, VALUE

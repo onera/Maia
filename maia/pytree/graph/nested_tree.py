@@ -27,22 +27,21 @@ SYMBOLIC_ROOT = _SymbolicRoot()
 ##   that are inherited by `Tree` and `ForwardBackwardTree`.
 class _TreeToStrMixin:
   @staticmethod
-  def _to_string_impl(tree, indent_sz, rec):
+  def _to_string_impl(tree, indent_sz):
     s = ' '*indent_sz + str(tree.node_value) + '\n'
     for sub in tree.sub_nodes:
-      if rec < 20:
-        s += Tree._to_string_impl(sub, indent_sz+INDENT_SIZE, rec+1)
+        s += _TreeToStrMixin._to_string_impl(sub, indent_sz+INDENT_SIZE)
     return s
 
   @staticmethod
   def _to_string(tree):
     if tree.node_value == SYMBOLIC_ROOT:
-      return ''.join([Tree._to_string_impl(sub, 0, 0) for sub in tree.sub_nodes])
+      return ''.join([_TreeToStrMixin._to_string_impl(sub, 0) for sub in tree.sub_nodes])
     else:
-      return Tree._to_string_impl(tree, 0, 0)
+      return _TreeToStrMixin._to_string_impl(tree, 0)
 
   def __str__(self):
-    return Tree._to_string(self)
+    return _TreeToStrMixin._to_string(self)
 
 class _TreeDepthFirstSearchInterfaceMixing: # depth_first_search interface
   def child_iterator(self, tree) -> list_iterator_type:

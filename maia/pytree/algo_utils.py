@@ -1,6 +1,12 @@
 import operator
 
-def find(seq, pred):
+def find(seq, pred_or_value):
+  if callable(pred_or_value):
+    pred = pred_or_value
+  else:
+    value = pred_or_value
+    pred = lambda x: x == value
+
   i = 0
   while i<len(seq):
     if pred(seq[i]):
