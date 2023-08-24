@@ -9,6 +9,7 @@ from   maia.transfer import utils                as TEU
 from   maia.utils    import np_utils, layouts, py_utils
 from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from   .point_cloud_utils  import create_sub_numbering
+from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import numpy as np
 
@@ -195,6 +196,8 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                             equilibrate=True,
                             graph_part_tool="hilbert"):
   """
+  Prepare PDM extract_part object and perform the extraction of one domain.
+  
   TODO : AJOUTER LE CHOIX PARTIONNEMENT
   """
   n_part_in  = len(part_zones)
@@ -207,6 +210,18 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                            eval(f"PDM._PDM_SPLIT_DUAL_WITH_{graph_part_tool.upper()}"),
                            True,
                            comm)
+
+  # > Discover BCs
+  dist_zone = PT.new_Zone('Zone')
+  gdom_bcs_path_per_dim = {"CellCenter":None, "FaceCenter":None, "EdgeCenter":None, "Vertex":None}
+  for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim.keys()):
+    if LOC_TO_DIM[dim_name]<=dim:
+      is_dim_bc = lambda n: PT.get_label(n)=="BC_t" and\
+                            PT.Subset.GridLocation(n)==dim_name
+      dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=['GridLocation'])
+      gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
+      n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
+      pdm_ep.part_n_group_set(bc_type+1, n_gdom_bcs)
 
   # Loop over domain zone : preparing extract part
   for i_part, part_zone in enumerate(part_zones):
@@ -239,6 +254,20 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                     vtx_ln_to_gn , vtx_coords)
 
     pdm_ep.selected_lnum_set(i_part, point_list[i_part] - local_pl_offset(part_zone, dim) - 1)
+
+
+    # Add BCs info
+    bc_type = 1
+    for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
+      if LOC_TO_DIM[dim_name]<=dim:
+        for i_bc, bc_path in enumerate(gdom_bcs_path):
+          bc_n  = PT.get_node_from_path(part_zone, bc_path)
+          bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
+                    if bc_n is not None else np.empty(0, np.int32)
+          bc_gn = PT.get_value(PT.get_node_from_path( bc_n, ':CGNS#GlobalNumbering/Index')) \
+                    if bc_n is not None else np.empty(0, pdm_gnum_dtype)
+          pdm_ep.part_group_set(i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, LOC_TO_DIM[dim_name]) -1 , bc_gn)
+      bc_type +=1
 
   pdm_ep.compute()
 
@@ -300,6 +329,20 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 
     maia.algo.nface_to_pe(extracted_zone, comm)
 
+  # - Get BCs
+  zonebc_n = PT.new_ZoneBC(parent=extracted_zone)
+  bc_type = 1
+  for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
+    if LOC_TO_DIM[dim_name]<=dim:
+      for i_bc, bc_path in enumerate(gdom_bcs_path):
+        bc_info = pdm_ep.extract_part_group_get(0, i_bc, bc_type)
+        bc_pl = bc_info['group_entity'] +1
+        bc_gn = bc_info['group_entity_ln_to_gn']
+        if bc_pl.size != 0:
+          bc_name = bc_path.split('/')[-1]
+          bc_n = PT.new_BC(bc_name, point_list=bc_pl.reshape((1,-1), order='F'), loc=dim_name, parent=zonebc_n)
+          PT.maia.newGlobalNumbering({'Index':bc_gn}, parent=bc_n)
+    bc_type +=1 
 
   # - Get PTP by vertex and cell
   ptp = dict()
