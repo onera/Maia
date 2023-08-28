@@ -21,7 +21,6 @@ DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                  2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
-
 def set_transfer_dataset(bc_n, zsr_bc_n):
   there_is_dataset = False
   assert PT.get_child_from_predicates(bc_n, 'BCDataSet_t/IndexArray_t') is None,\
@@ -533,8 +532,7 @@ def extract_part_from_family(part_tree, family_name, comm,
                              containers_name=[],
                              **options):
   """Extract the submesh defined by the provided family name from the input volumic
-  partitioned tree. Nodes related to family must be all of ``BC_t`` type or 
-  all of ``ZoneSubRegion_t`` type.
+  partitioned tree.
 
   Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`
   (``zsr_name`` becomes ``bc_name``). Optional ``transfer_dataset`` argument allows to 

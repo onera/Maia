@@ -366,9 +366,9 @@ def test_extract_bcs_from_family_U(graph_part_tool, comm, write_output):
   part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
 
   for zone in PT.get_all_Zone_t(part_tree):
-    initialize_bc(zone, 'Xmin') # ; initialize_bc(zone, 'Xmax')
-    initialize_bc(zone, 'Ymin') # ; initialize_bc(zone, 'Ymax')
-    initialize_bc(zone, 'Zmin') # ; initialize_bc(zone, 'Zmax')
+    initialize_bc(zone, 'Xmin')
+    initialize_bc(zone, 'Ymin')
+    initialize_bc(zone, 'Zmin')
 
     for bc_n in PT.get_nodes_from_label(zone, 'BC_t'):
       PT.new_node('FamilyName', label='FamilyName_t', value='ALL_BCS', parent=bc_n)
@@ -451,11 +451,6 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
     PT.set_name(zsr_n , "ZSR_y")
     PT.new_node('FamilyName', label='FamilyName_t', value='ZSRs', parent=zsr_n)
 
-    initialize_bc(zone, 'Xmin') # ; initialize_bc(zone, 'Xmax')
-    initialize_bc(zone, 'Ymin') # ; initialize_bc(zone, 'Ymax')
-    initialize_bc(zone, 'Zmin') # ; initialize_bc(zone, 'Zmax')
-
-
   # > Extract part
   part_tree_ep = EXP.extract_part_from_family( part_tree, "ZSRs", comm,
                                                 graph_part_tool=graph_part_tool,
@@ -494,8 +489,3 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
 
   # > Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
-
-
-if __name__=='__main__':
-  comm = MPI.COMM_WORLD
-  test_extract_bcs_from_family_U('hilbert', comm, True)
