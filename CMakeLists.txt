@@ -70,7 +70,7 @@ include(${PROJECT_UTILS_CMAKE_DIR}/additional_build_types.cmake)
 # ------------------------------------------------------------------------------
 ## System dependencies ###
 project_find_package(Python 3 REQUIRED COMPONENTS Interpreter Development NumPy)
-project_find_package(MPI REQUIRED)
+project_find_package(MPI REQUIRED COMPONENTS CXX)
 project_find_package(Mpi4Py REQUIRED)
 
 ## Dependencies built from source ##
