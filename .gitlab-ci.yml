@@ -145,6 +145,7 @@ job:init_deploy:
   script:
     - rsync -a . sonics@spiro02:/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a . sonics@sator:/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
+    - rsync -a --delete . sonics@spiro02:/stck/sonics/tmp/maia-ci-dev #This one is for LD8
 
 job:deploy_spiro_socle5:
   stage: deploy
