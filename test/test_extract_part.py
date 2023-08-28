@@ -464,13 +464,11 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
 
   # # > For paraview visu
   # part_zone_ep = PT.get_node_from_label(part_tree_ep,'Zone_t')
-  # PT.print_tree(part_zone_ep)
   # fld1 = np.zeros(PT.Zone.n_cell(part_zone_ep), dtype=np.float64)
   # fld2 = np.zeros(PT.Zone.n_cell(part_zone_ep), dtype=np.float64)
   # fld3 = np.zeros(PT.Zone.n_cell(part_zone_ep), dtype=np.float64)
   # for zsr_name in ['ZSR_x']:
   #   zsr_n = PT.get_child_from_name(part_zone_ep, zsr_name)
-  #   PT.print_tree(zsr_n, verbose=True)
   #   if zsr_n is not None:
   #     pl = PT.get_value(PT.get_child_from_name(zsr_n, 'PointList'))[0]-1-194
   #     fld1[pl] = PT.get_value(PT.get_child_from_name(zsr_n, 'ZSR_ccx'))
