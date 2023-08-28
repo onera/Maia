@@ -69,9 +69,15 @@ include(${PROJECT_UTILS_CMAKE_DIR}/additional_build_types.cmake)
 # Dependencies
 # ------------------------------------------------------------------------------
 ## System dependencies ###
-project_find_package(Python 3 REQUIRED COMPONENTS Interpreter Development NumPy)
-project_find_package(MPI REQUIRED COMPONENTS CXX)
-project_find_package(Mpi4Py REQUIRED)
+if (NOT TARGET Python::Python OR NOT TARGET Python::NumPy)
+  project_find_package(Python REQUIRED COMPONENTS Development NumPy)
+endif()
+if (NOT TARGET MPI::MPI_CXX)
+  project_find_package(MPI REQUIRED COMPONENTS CXX)
+endif()
+if (NOT TARGET Mpi4Py::Mpi4Py)
+  project_find_package(Mpi4Py REQUIRED)
+endif()
 
 ## Dependencies built from source ##
 include(${PROJECT_UTILS_CMAKE_DIR}/find_or_fetch.cmake)
