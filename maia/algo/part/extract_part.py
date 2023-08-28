@@ -38,6 +38,7 @@ class Extractor:
     assert len(part_tree_per_dom) == 1
 
     # ExtractPart dimension
+    print(f"2 location = {location}")
     self.dim    = LOC_TO_DIM[location]
     assert self.dim in [0,2,3], "[MAIA] Error : dimensions 0 and 1 not yet implemented"
     #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
@@ -96,6 +97,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexArray_t']
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
   mask_container = PT.get_child_from_name(mask_zone, container_name)
+  PT.print_tree(mask_zone)
   if mask_container is None:
     raise ValueError("[maia-extract_part] asked container for exchange is not in tree")
 
@@ -139,7 +141,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
     if elt_n is None :return
     part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
     part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
-
+    print(f"container = {container_name}")
   # Get reordering informations if point_list
   # https://stackoverflow.com/questions/8251541/numpy-for-every-element-in-one-array-find-the-index-in-another-array
   if partial_field:
@@ -148,6 +150,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   # > Field exchange
   for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
     fld_name = PT.get_name(fld_node)
+    print(f"  - fld_name = {fld_name}")
     fld_path = f"{container_name}/{fld_name}"
     
     if partial_field:
@@ -528,7 +531,8 @@ def extract_part_from_family(part_tree, family_name, comm,
                              containers_name=[],
                              **options):
   """Extract the submesh defined by the provided family name from the input volumic
-  partitioned tree.
+  partitioned tree. Nodes related to family must be all of ``BC_t`` type or 
+  all of ``ZoneSubRegion_t`` type.
 
   Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`
   (``zsr_name`` becomes ``bc_name``). Optional ``transfer_dataset`` argument allows to 
@@ -541,59 +545,98 @@ def extract_part_from_family(part_tree, family_name, comm,
       :dedent: 2
   """
 
-  def fam_to_bclist(bc_predicate, zone):
-    bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: PT.get_label(n) == 'BC_t' and bc_predicate(n)])
-    return [PT.get_name(bc) for bc in bc_nodes]
-
   # Local copy of the part_tree to add ZSR 
   l_containers_name = copy.deepcopy(containers_name)
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # > Discover BCs
-  fam_bcs = list()
+  in_fam  = lambda n : PT.predicate.belongs_to_family(n, family_name)
+  def fam_to_node_paths(zone, family_name):
+    zsr_paths = PT.predicates_to_paths(zone, [lambda n: PT.get_label(n)=='ZoneSubRegion_t'and PT.predicate.belongs_to_family(n, family_name)])
+    bc_paths  = PT.predicates_to_paths(zone, ['ZoneBC_t', lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, family_name)])
+    return zsr_paths, bc_paths
+
+  fam_node_paths = list()
+  fam_bc_paths   = list()
   for domain, part_zones in part_tree_per_dom.items():
     dist_zone = PT.new_Zone('Zone')
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', 'BC_t'], comm, child_list=['FamilyName'])
+    # dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['FamilyName_t'],    comm, get_value='leaf')
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t','BC_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneSubRegion_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
+    PT.print_tree(dist_zone)
+    dom_zsr_paths, dom_bc_paths = fam_to_node_paths(dist_zone, family_name)
+    fam_node_paths+= dom_zsr_paths + dom_bc_paths
+    fam_bc_paths  += dom_bc_paths
 
-    in_fam  = lambda n : PT.predicate.belongs_to_family(n, family_name)
-    fam_bcs+= fam_to_bclist(in_fam, dist_zone)
+    gl_nodes = PT.get_nodes_from_label(dist_zone, 'GridLocation_t')
+    location = np.unique([PT.get_value(n) for n in gl_nodes])
+    if location.size not in [0, 1]:
+      raise ValueError(f"Specified family refers to nodes with different GridLocation value : {location}.")
+
+  print(f"[{comm.rank}] fam_node_paths = {fam_node_paths}")
+  print(f"[{comm.rank}] fam_bc_paths = {fam_bc_paths}")
 
   # Adding ZSR to tree
-  there_is_bcdataset = dict((bc_name, False) for bc_name in fam_bcs)
+  there_is_bcdataset = dict((path, False) for path in fam_node_paths)
   for domain, part_zones in part_tree_per_dom.items():
     for part_zone in part_zones:
 
-      in_fam   = lambda n : PT.predicate.belongs_to_family(n, family_name)
-      fam_bcs  = fam_to_bclist(in_fam, part_zone)
-      bc_nodes = [PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') for bc_name in fam_bcs]
-      location = np.unique([PT.Subset.GridLocation(bc_n) for bc_n in bc_nodes])
-      assert location.size in [0, 1] # assert GridLocation is coherent in family related nodes
 
       if transfer_dataset:
-        for bc_n in bc_nodes:
-          bc_name  = PT.get_name(bc_n)
-          zsr_bc_n = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
-          assert PT.get_child_from_predicates(bc_n, 'BCDataSet_t/IndexArray_t') is None,\
-                 'BCDataSet_t with PointList aren\'t managed'
-          ds_arrays = PT.get_children_from_predicates(bc_n, 'BCDataSet_t/BCData_t/DataArray_t')
-          for ds_array in ds_arrays:
-            PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_value(ds_array), parent=zsr_bc_n)
-          if len(ds_arrays) != 0:
-            there_is_bcdataset[bc_name] = True
-            # PL and Location is needed for data exchange, but this should be done in ZSR func
-            for name in ['PointList', 'GridLocation']:
-              PT.add_child(zsr_bc_n, PT.get_child_from_name(bc_n, name))
+        for bc_path in fam_bc_paths:
+          bc_n = PT.get_node_from_path(part_zone, bc_path)
+          try   : print(bc_n[0])
+          except: print(bc_n)
+          if bc_n is not None:
+            bc_name  = PT.get_name(bc_n)
+            zsr_bc_n = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
+            assert PT.get_child_from_predicates(bc_n, 'BCDataSet_t/IndexArray_t') is None,\
+                   'BCDataSet_t with PointList aren\'t managed'
+            ds_arrays = PT.get_children_from_predicates(bc_n, 'BCDataSet_t/BCData_t/DataArray_t')
+            for ds_array in ds_arrays:
+              PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_value(ds_array), parent=zsr_bc_n)
+            if len(ds_arrays) != 0:
+              there_is_bcdataset[bc_path] = True
+              # PL and Location is needed for data exchange, but this should be done in ZSR func
+              for name in ['PointList', 'GridLocation']:
+                PT.add_child(zsr_bc_n, PT.get_child_from_name(bc_n, name))
 
-      fam_pl = [PT.get_value(PT.get_child_from_name(bc_n, 'PointList')) for bc_n in bc_nodes]
+
+      fam_pl = list()
+      for path in fam_node_paths:
+        node = PT.get_node_from_path(part_zone, path)
+
+        if node is not None:
+          if PT.get_label(node)=="ZoneSubRegion_t":
+            related_path = PT.getSubregionExtent(node, part_zone)
+            node = PT.get_node_from_path(part_zone, related_path)
+          pl_n = PT.get_child_from_name(node, 'PointList')
+          fam_pl.append(PT.get_value(pl_n))
+
       fam_pl = np.concatenate(fam_pl, axis=1) if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
+      fam_pl = np.unique(fam_pl, axis=1)
+
+      # related_path  = [PT.getSubregionExtent(PT.get_node_from_path(part_zone, path), part_zone) if "ZoneSubRegion_t" in path else path for path in fam_node_paths]
+      # fam_nodes = 
+      # print(f"[{comm.rank}] related_path = {related_path}")
+      # # related_nodes = [PT.get_node_from_path(part_zone, PT.getSubregionExtent(node, part_zone)) if PT.get_label(node)=="ZoneSubRegion_t" else node for node in fam_nodes]
+      # # related_nodes = [PT.get_node_from_path(part_zone, path) for path in related_nodes]
+      # # print(f"[{comm.rank}] related_node = {[PT.get_name(node) for node in related_nodes]}")
+      # fam_pl = [PT.get_value(PT.get_child_from_name(node, 'PointList')) for node in related_nodes]
+      # fam_pl = np.concatenate(fam_pl, axis=1) if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
+      # fam_pl = np.unique(fam_pl, axis=1)
+      # # print(f"[{comm.rank}] fam_pl = {fam_pl}")
 
       if fam_pl.size!=0:
-        zsr_bc_n = PT.new_ZoneSubRegion(name=family_name, point_list=fam_pl, loc=location[0], parent=part_zone)
+        zsr_n = PT.new_ZoneSubRegion(name=family_name, point_list=fam_pl, loc=location[0], parent=part_zone)
+        PT.print_tree(zsr_n)
 
   # Synchronize container names
-  for bc_name, there_is in there_is_bcdataset.items():
+  for path, there_is in there_is_bcdataset.items():
+    print(f'[{comm.rank}] {path}: {there_is}')
     if transfer_dataset and comm.allreduce(there_is, MPI.LOR):
+      bc_name = path.split('/')[-1]
       if bc_name not in l_containers_name:
         l_containers_name.append(bc_name) # not to change the initial containers_name list
 

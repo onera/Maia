@@ -138,3 +138,29 @@ def test_bc_name_api(comm):
 
   n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])
   assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 9
+
+
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("dim_zsr", ["FaceCenter", "CellCenter"])
+def test_from_fam_api(dim_zsr, comm):
+  dist_tree = maia.factory.generate_dist_block(4, "Poly", comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+  part_zone = PT.get_node_from_label(part_tree, 'Zone_t')
+  bc_n = PT.get_node_from_name(part_zone, 'Xmin')
+  PT.new_node('FamilyName', label='FamilyName_t', value='EXTRACT', parent=bc_n)
+  
+  if dim_zsr=="FaceCenter":
+    if PT.get_node_from_name(part_zone, 'Xmax') is not None:
+      zsr_n = PT.new_ZoneSubRegion("ZSR", bc_name='Xmax', family='EXTRACT', parent=part_zone)
+    extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
+    n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])
+    assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 18
+  
+  elif dim_zsr=="CellCenter":
+    zsr_n = PT.new_ZoneSubRegion("ZSR", loc=dim_zsr,
+      point_list=np.array([[1]], dtype=np.int32), family='EXTRACT', parent=part_zone)
+    with pytest.raises(ValueError):
+      extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
+
+  
