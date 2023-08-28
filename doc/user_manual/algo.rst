@@ -80,6 +80,7 @@ Mesh extractions
 .. autofunction:: maia.algo.part.spherical_slice
 .. autofunction:: maia.algo.part.extract_part_from_zsr
 .. autofunction:: maia.algo.part.extract_part_from_bc_name
+.. autofunction:: maia.algo.part.extract_part_from_family
 
 Interpolations
 ^^^^^^^^^^^^^^
