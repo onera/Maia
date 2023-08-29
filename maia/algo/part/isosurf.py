@@ -259,7 +259,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_par
     face_vtx_idx  = PT.get_child_from_name(ngon, "ElementStartOffset" )[1]
     face_vtx      = PT.get_child_from_name(ngon, "ElementConnectivity")[1]
 
-    vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
+    vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
 
     n_cell = cell_ln_to_gn.shape[0]
     n_face = face_ln_to_gn.shape[0]

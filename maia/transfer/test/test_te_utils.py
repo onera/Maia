@@ -133,25 +133,24 @@ def test_get_entities_numbering():
 
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn, 'Face' : expected_face_lngn}
   gnum_node = MT.newGlobalNumbering(gnum_arrays, zoneS)
-  vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneS, as_pdm=False)
-  assert vtx_lngn.dtype == np.int64
+  vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneS)
   assert (cell_lngn == expected_cell_lngn).all()
   assert (face_lngn == expected_face_lngn).all()
+  assert edge_lngn is None
 
   zoneU = PT.new_Zone(type='Unstructured')
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn}
   gnum_node = MT.newGlobalNumbering(gnum_arrays, zoneU)
 
-  with pytest.raises(RuntimeError):
-    vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
+  vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
+  assert face_lngn is None
 
   ngon = PT.new_Elements(type='NGON_n', parent=zoneU)
   gnum_node = MT.newGlobalNumbering({'Element' : expected_face_lngn}, ngon)
-  vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
-  assert vtx_lngn.dtype == npy_pdm_gnum_dtype
+  vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
   assert (vtx_lngn == expected_vtx_lngn).all()
   assert (face_lngn == expected_face_lngn).all()
 
   ngon = PT.new_Elements('ElementsTwo', type='NGON_n', parent=zoneU)
   with pytest.raises(RuntimeError):
-    vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
+    vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)

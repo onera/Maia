@@ -259,7 +259,14 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
 
     pdm_renumbering_data(part_zone, data)
 
-    lngn_zone = MT.newGlobalNumbering({'Vertex' : vtx_lngn, 'Cell' : cell_lngn}, parent=part_zone)
+    requested_lngn = [key.lower() for key in options['additional_ln_to_gn']]
+    numberings = {'Vertex' : vtx_lngn}
+    if base_dim >= 2 and 'edge' in requested_lngn and data['np_edge_ln_to_gn'] is not None:
+      numberings['Edge'] = data['np_edge_ln_to_gn']
+    if base_dim == 3 and 'face' in requested_lngn and data['np_face_ln_to_gn'] is not None:
+      numberings['Face'] = data['np_face_ln_to_gn']
+    numberings['Cell'] = cell_lngn
+    MT.newGlobalNumbering(numberings, parent=part_zone)
 
     part_zones.append(part_zone)
 

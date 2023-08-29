@@ -144,7 +144,7 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
       face_ln_to_gn_zone = np.concatenate([PT.maia.getGlobalNumbering(elt, "Sections")[1] \
               for elt in PT.Zone.get_ordered_elements_per_dim(zone)[2]])
     else:
-      _, face_ln_to_gn_zone, _ = te_utils.get_entities_numbering(zone) # !! Only S or NGON
+      _, _, face_ln_to_gn_zone, _ = te_utils.get_entities_numbering(zone) # !! Only S or NGON
 
     parent_face_lngn_l.append(face_ln_to_gn_zone[bc_face_ids-1])
     parent_vtx_lngn_l .append(vtx_ln_to_gn_zone[bc_vtx_ids-1]  )

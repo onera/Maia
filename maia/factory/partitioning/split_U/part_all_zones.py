@@ -143,8 +143,6 @@ def _add_ln_to_gn(multi_part, l_data, i_zone, n_part, additionnal_list_key):
   Enrich dictionnary with additional query of user
   """
   wanted_lngn = ["cell", "face", "vtx", "edge"]
-  for key in additionnal_list_key:
-    py_utils.append_unique(wanted_lngn, key)
   for key in wanted_lngn:
     entity_type = maia_to_pdm_entity[key]
     for i_part in range(n_part):
