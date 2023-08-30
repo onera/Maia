@@ -14,6 +14,12 @@ from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
 
+def _append_or_create(d, key, val):
+  try:
+    d[key].append(val)
+  except KeyError:
+    d[key] = [val]
+
 def camel_case(s):
   return sub(r"(_|-)+", " ", s).title().replace(" ", "")
 
@@ -380,10 +386,7 @@ def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
       #For global data, we should have only one parent
       for node, data in PT.get_children_from_predicates(zone, query + ['DataArray_t'], ancestors=True):
         dic_path = PT.get_name(node) + '/' + PT.get_name(data)
-        try:
-          to_merge[dic_path].append(data[1])
-        except KeyError:
-          to_merge[dic_path] = [ data[1] ]
+        _append_or_create(to_merge, dic_path, data[1])
     
   merged = {key : mbm.merge_field(datas) for key, datas in to_merge.items()}
 
@@ -534,12 +537,11 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
         data_n = nodes[-1]
         data = data_n[1]
         if data_n[1].ndim > 1:
-          assert data_n[1].ndim == 2 and data_n[1].shape[0] == 1
-          data = data_n[1][0]
-        try:
-          part_data[path].append(data)
-        except KeyError:
-          part_data[path] = [data]
+          assert data_n[1].ndim == 2 and PT.get_label(data_n) == 'IndexArray_t'
+          for dim in range(data_n[1].shape[0]): #Manage U (1,N) or S (3,N) PL
+            _append_or_create(part_data, f'{path}_{dim}', np.ascontiguousarray(data_n[1][dim]))
+        else:
+          _append_or_create(part_data, path, data)
       #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
       dist_data = EP.part_to_block(part_data, distri_ptb, [pl], comm)
 
@@ -549,10 +551,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
       has_data.append(True)
       strides.append(stride)
       for data_path, data in dist_data.items():
-        try:
-          all_datas[data_path].append(data)
-        except KeyError:
-          all_datas[data_path] = [data]
+        _append_or_create(all_datas, data_path, data)
 
     else:
       has_data.append(False)
@@ -573,10 +572,10 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   # Otherwise, it must just be transported to new zone
   if PT.get_node_from_name(ref_node, '__maia_jn_update__') is not None:
     opp_dom = PT.get_node_from_name(ref_node, '__maia_jn_update__')[1][0]
-    pld_data = all_datas.pop('PointListDonor')
+    pld_data = all_datas.pop('PointListDonor_0') #Since we merge U zones we should have only 1D-PL
     block_datas   = [as_pdm_gnum(pld) for pld in pld_data]
     block_domains = [opp_dom*np.ones(pld.size, np.int32) for pld in pld_data]
-    merged_data['PointListDonor'] = mbm.merge_and_update(mbm, block_datas, strides, block_domains)[1]
+    merged_data['PointListDonor_0'] = mbm.merge_and_update(mbm, block_datas, strides, block_domains)[1]
 
   merged_data.update({path : mbm.merge_field(datas, strides)[1] for path, datas in all_datas.items()})
 
@@ -596,7 +595,13 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
       sub_ref = PT.get_child_from_name(sub_ref, PT.get_name(node))
       merged_parent = PT.update_child(merged_parent, PT.get_name(sub_ref), PT.get_label(sub_ref), PT.get_value(sub_ref))
     if PT.get_label(nodes[-1]) == 'IndexArray_t':
-      PT.new_PointList(PT.get_name(nodes[-1]), merged_data[path].reshape((1,-1), order='F'), merged_parent)
+      # Recombine (1,N) or (3,N) array
+      keys = [f'{path}_{idim}' for idim in range(3)]
+      to_combine = [merged_data[key] for key in keys if key in merged_data]
+      combined = np.empty((len(to_combine), to_combine[0].size), to_combine[0].dtype, order='F')
+      for i, array in enumerate(to_combine):
+        combined[i,:] = array
+      PT.new_PointList(PT.get_name(nodes[-1]), combined, merged_parent)
     else:
       PT.new_DataArray(PT.get_name(nodes[-1]), merged_data[path], parent=merged_parent)
 

@@ -28,10 +28,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     for childs in PT.iter_children_from_predicates(master, data_query, ancestors=True):
       path =  '/'.join([PT.get_name(n) for n in childs])
       data_to_merge = [PT.get_node_from_path(node, path)[1] for node in nodes]
-      if childs[-1][1].ndim == 1:
-        data_merged = np_utils.concatenate_np_arrays(data_to_merge)[1]
-      else:
-        data_merged = np_utils.concatenate_point_list(data_to_merge)[1].reshape(1, -1, order='F')
+      _, data_merged = np_utils.concatenate_np_arrays(data_to_merge)
 
       #Recreate structure (still using master infos) and add merged array
       parent = node
@@ -45,7 +42,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     for child in PT.iter_children_from_predicates(master, child_query):
       PT.add_child(node, child)
 
-  newsize = PT.get_node_from_name(node, 'PointList')[1].size
+  newsize = PT.get_node_from_name(node, 'PointList')[1].shape[1]
   idx_distri = PT.get_value(MT.getDistribution(master, 'Index'))
   distri = np_utils.safe_int_cast(par_utils.gather_and_shift(newsize, comm), idx_distri.dtype)
   MT.newDistribution({'Index' : distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]}, node)
@@ -68,6 +65,8 @@ def concatenate_jns(tree, comm):
     for zgc, jn in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', match_jns], ancestors=True):
       donor_path = PT.getZoneDonorPath(PT.get_name(base), jn)
       location = PT.Subset.GridLocation(jn)
+      if location.endswith('FaceCenter'):
+        location = 'FaceCenter' # Map I,J,K FaceCenter to FaceCenter
       perio_node = PT.get_child_from_label(jn, 'GridConnectivityProperty_t')
       is_periodic = perio_node is not None
       cur_jn_path = '/'.join([PT.get_name(node) for node in [base, zone, zgc, jn]])

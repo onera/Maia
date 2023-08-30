@@ -41,24 +41,22 @@ def interlaced_to_indexed(n_elem, array):
 
 def concatenate_np_arrays(arrays, dtype=None):
   """
-  Merge all the (1d) arrays in arrays list
-  into a flat 1d array and an index array.
+  Merge the input array such that output array is F ordered and
+  have CGNS coherent shape ( (N,) or (IndexDimension, N) ).
+  Also return an idx array to indicate how the array has been concatenated
+
+  If list is empty, a flat array (0,) of type dtype is returned.
   """
-  assert ([a.ndim for a in arrays] == np.ones(len(arrays))).all()
-  sizes = [a.size for a in arrays]
-
-  merged_idx = sizes_to_indices(sizes, dtype=np.int32)
-
-  if dtype is None:
-    if arrays == []:
+  if arrays == []:
+    if dtype is None:
       raise ValueError("Can not concatenate empty list of arrays if dtype is not provided")
-    dtype = arrays[0].dtype
+    return np.zeros(1, np.int32), np.empty(0, dtype)
 
-  merged_array = np.empty(sum(sizes), dtype=dtype)
-  for i, a in enumerate(arrays):
-    merged_array[merged_idx[i]:merged_idx[i+1]] = a
-
-  return merged_idx, merged_array
+  merged_idx = sizes_to_indices([array.shape[-1] for array in arrays], dtype=np.int32)
+  stacked = np.hstack(arrays)
+  if dtype is not None:
+    stacked = safe_int_cast(stacked, dtype)
+  return merged_idx, stacked
 
 def concatenate_point_list(point_lists, dtype=None):
   """

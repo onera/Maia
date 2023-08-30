@@ -290,8 +290,7 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_par
         container_name, jn_name = bnd_path.split('/')
         bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'*'])
         if len(bnd_n_list) > 0:
-          _, jn_pl = np_utils.concatenate_point_list([PT.get_node_from_name(bnd_n, 'PointList')[1] for bnd_n in bnd_n_list], np.int32)
-          all_bnd_pl.append(jn_pl.reshape((1,-1), order='F'))
+          all_bnd_pl.append(np_utils.concatenate_np_arrays([PT.get_node_from_name(bnd_n, 'PointList')[1] for bnd_n in bnd_n_list])[1])
         else:
           all_bnd_pl.append(np.empty((1,0), np.int32))
 
