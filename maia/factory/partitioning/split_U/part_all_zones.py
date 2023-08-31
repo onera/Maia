@@ -122,13 +122,11 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
       multi_part.multipart_register_dmesh_nodal(i_zone, dmesh_nodal)
 
 
-def _add_connectivity(multi_part, l_data, i_zone, n_part, additionnal_list_key):
+def _add_connectivity(multi_part, l_data, i_zone, n_part):
   """
   Enrich dictionnary with additional query of user
   """
   wanted_connectivities = ["cell_face", "face_cell", "face_vtx", "face_edge", "edge_vtx"]
-  for key in additionnal_list_key:
-    py_utils.append_unique(wanted_connectivities, key)
   for key in wanted_connectivities:
     connectivity_type = maia_to_pdm_connectivity[key]
     for i_part in range(n_part):
@@ -138,7 +136,7 @@ def _add_connectivity(multi_part, l_data, i_zone, n_part, additionnal_list_key):
         l_data[i_part]["np_"+key+'_idx'] = dict_res["np_entity1_entity2_idx"]
 
 
-def _add_ln_to_gn(multi_part, l_data, i_zone, n_part, additionnal_list_key):
+def _add_ln_to_gn(multi_part, l_data, i_zone, n_part):
   """
   Enrich dictionnary with additional query of user
   """
@@ -185,8 +183,8 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
       l_dims.append({f'n_{key}': multi_part.multipart_n_entity_get(i_part, i_zone, entity) \
               for key,entity in maia_to_pdm_entity.items()})
     l_data = [concat_pdm_data(i_part, i_zone)              for i_part in range(n_part)]
-    _add_connectivity(multi_part, l_data, i_zone, n_part, post_options['additional_connectivity'])
-    _add_ln_to_gn    (multi_part, l_data, i_zone, n_part, post_options['additional_ln_to_gn'])
+    _add_connectivity(multi_part, l_data, i_zone, n_part)
+    _add_ln_to_gn    (multi_part, l_data, i_zone, n_part)
     _add_color       (multi_part, l_data, i_zone, n_part)
     _add_graph_comm  (multi_part, l_data, i_zone, n_part)
 
@@ -237,7 +235,7 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
   multi_part.multipart_run_ppart()
 
   post_options = {k:part_options[k] for k in ['part_interface_loc', 'dump_pdm_output', 'output_connectivity',
-                                              'additional_connectivity', 'additional_ln_to_gn',
+                                              'save_all_connectivities', 'additional_ln_to_gn',
                                               'keep_empty_sections']}
   u_parts = collect_mpart_partitions(multi_part, u_zones, n_part_per_zone, comm, post_options)
 
