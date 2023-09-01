@@ -30,7 +30,7 @@ class _TreeToStrMixin:
   def _to_string_impl(tree, indent_sz):
     s = ' '*indent_sz + str(tree.node) + '\n'
     for sub in tree.children:
-        s += _TreeToStrMixin._to_string_impl(sub, indent_sz+INDENT_SIZE)
+      s += _TreeToStrMixin._to_string_impl(sub, indent_sz+INDENT_SIZE)
     return s
 
   @staticmethod
