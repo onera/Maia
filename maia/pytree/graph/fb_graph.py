@@ -50,7 +50,7 @@ class backward_tree_adaptor(tree_adaptor):
   """
     An fb_graph is adapted to a tree by defining its children through its backward nodes.
   """
-  def children(self, n):
+  def child_iterator(self, n) -> _adjacency_iterator:
     return _adjacency_iterator(self.g, n[BACKWARD])
 
 

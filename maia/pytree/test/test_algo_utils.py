@@ -1,6 +1,10 @@
 from maia.pytree.algo_utils import find, find_not, mismatch, begins_with, partition_copy, set_intersection_difference
 
 def test_find():
+  assert find([7,7,8,7,9], 7) == 0
+  assert find([8,7,9], 7) == 1
+  assert find([8,9], 7) == 2
+
   def is_7(x): return x==7
   assert find([7,7,8,7,9], is_7) == 0
   assert find([8,7,9], is_7) == 1

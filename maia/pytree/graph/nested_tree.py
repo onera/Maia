@@ -1,4 +1,5 @@
 import weakref
+from maia.pytree.graph.utils import list_iterator_type
 
 INDENT_SIZE = 4
 
@@ -27,25 +28,25 @@ SYMBOLIC_ROOT = _SymbolicRoot()
 class _TreeToStrMixin:
   @staticmethod
   def _to_string_impl(tree, indent_sz):
-    s = ' '*indent_sz + str(tree.node_value) + '\n'
-    for sub in tree.sub_nodes:
-      s += Tree._to_string_impl(sub, indent_sz+INDENT_SIZE)
+    s = ' '*indent_sz + str(tree.node) + '\n'
+    for sub in tree.children:
+      s += _TreeToStrMixin._to_string_impl(sub, indent_sz+INDENT_SIZE)
     return s
 
   @staticmethod
   def _to_string(tree):
-    if tree.node_value == SYMBOLIC_ROOT:
-      return ''.join([Tree._to_string_impl(sub, 0) for sub in tree.sub_nodes])
+    if tree.node == SYMBOLIC_ROOT:
+      return ''.join([_TreeToStrMixin._to_string_impl(sub, 0) for sub in tree.children])
     else:
-      return Tree._to_string_impl(tree, 0)
+      return _TreeToStrMixin._to_string_impl(tree, 0)
 
   def __str__(self):
-    return Tree._to_string(self)
+    return _TreeToStrMixin._to_string(self)
 
 class _TreeDepthFirstSearchInterfaceMixing: # depth_first_search interface
-  def children(self, tree):
-    return iter(tree.sub_nodes)
-  def roots(self):
+  def child_iterator(self, tree) -> list_iterator_type:
+    return iter(tree.children)
+  def root_iterator(self) -> list_iterator_type:
     return iter([self])
 # Mixins }
 
@@ -53,30 +54,34 @@ class _TreeDepthFirstSearchInterfaceMixing: # depth_first_search interface
 class Tree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
   """ Nested tree structure
       A nested tree is a recursive structure: it has
-        - a `node_value` attribute,
-        - a `sub_nodes` attribute that is a sequence of `Tree`s.
+        - a `node` attribute,
+        - a `children` attribute that is a sequence of `Tree`s.
   """
-  def __init__(self, node_value, sub_nodes = []):
-    # Precondition: all sub_nodes should be `Tree`s
-    for c in sub_nodes:
+  def __init__(self, node, children = None):
+    # Can't write `children = []` directly because of mutable default arguments
+    if children is None: 
+      children = []
+
+    # Precondition: all children should be `Tree`s
+    for c in children:
       assert isinstance(c, Tree)
 
-    self.node_value = node_value
-    self.sub_nodes  = sub_nodes
+    self.node = node
+    self.children  = children
 
 class _ForwardBackwardTreeList:
   """
   List-like class to be used by `ForwardBackwardTree`
   Use case:
     Suppose that we have a `t` object of type `ForwardBackwardTree`,
-    and we ask for its children: `cs = t.sub_nodes`.
+    and we ask for its children: `cs = t.children`.
     Now, if we change the first child: `cs[0] = ForwardBackwardTree(my_new_leaf)`
     Then we would like `cs[0].parent is t`
 
     For that to append, we need `cs.__setitem__(0, sub_tree)` to set the parent.
     And for that to work, `cs` can't be a regular Python `list`:
       we need to override `__setitem__` (and other methods),
-      hence we make `t.sub_nodes` return a `_ForwardBackwardTreeList`
+      hence we make `t.children` return a `_ForwardBackwardTreeList`
       and adapt the methods to set the parent
   """
   def __init__(self, l, parent):
@@ -119,25 +124,34 @@ class _ForwardBackwardTreeList:
     for x in other:
       x.parent = self._parent
     return self
+  def insert(self, i, x):
+    assert isinstance(x, ForwardBackwardTree)
+    x.parent = self._parent
+    self._list.insert(i, x)
   # Methods to mutate elements to the list }
 
 
 class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
   """
   `ForwardBackwardTree` means that we can go both directions within the tree:
-    - either get the `sub_nodes` trees
+    - either get the `children` trees
     - or the `parent` tree
   """
-  def __init__(self, node_value, sub_nodes = [], parent=None):
-    # Precondition: all `sub_nodes` and `parent` should be `ForwardBackwardTree`s
-    for c in sub_nodes:
+  def __init__(self, node, children = None, parent=None):
+    # Can't write `children = []` directly because of mutable default arguments
+    if children is None: 
+      children = []
+
+    # Precondition: all `children` and `parent` should be `ForwardBackwardTree`s
+
+    for c in children:
       assert isinstance(c, ForwardBackwardTree)
     if parent is not None:
       assert isinstance(parent, ForwardBackwardTree)
 
-    self.node_value = node_value
+    self.node = node
 
-    self._sub_nodes = sub_nodes
+    self._sub_nodes = children
     for sub_node in self._sub_nodes:
       sub_node.parent = self
 
@@ -158,11 +172,11 @@ class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
       self._parent_weakref = weakref.ref(p)
 
   @property
-  def sub_nodes(self):
+  def children(self):
     return _ForwardBackwardTreeList(self._sub_nodes, self)
 
-  @sub_nodes.setter
-  def sub_nodes(self, cs):
+  @children.setter
+  def children(self, cs):
     if isinstance(cs, _ForwardBackwardTreeList):
       self._sub_nodes = cs._list
     else:

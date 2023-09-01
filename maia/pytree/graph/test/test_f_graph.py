@@ -14,11 +14,11 @@ def test_f_graph():
   #  4    7  \9  10   11
   g = rooted_fb_graph_example()
 
-  roots = list(g.roots())
+  roots = list(g.root_iterator())
   assert len(roots) == 1
   assert roots[0][VALUE] == 1
 
-  cs = list(g.children(roots[0]))
+  cs = list(g.child_iterator(roots[0]))
   assert len(cs) == 3
   assert cs[0][VALUE] == 2
   assert cs[1][VALUE] == 9

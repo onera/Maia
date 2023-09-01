@@ -1,39 +1,5 @@
 from enum import Enum
-
-
-def dfs_interface_report(g):
-  """ Tells if `g` conforms to the depth-first search interface, and if not, why.
-
-  To be conforming, `g` has to have:
-    - a `roots(self)` method that returns the roots of the graph.
-    - a `children(self, n)` method that returns the children of node `n` in the graph.
-  Both methods should return object that are iterators over nodes of the graph.
-  """
-  report = ''
-  is_ok = True
-
-  # check has `roots` and `children`
-  expected_attrs = ['roots', 'children']
-  for attr in expected_attrs:
-    if not getattr(g, attr, None):
-      is_ok = False
-      report += f'Attribute {attr} is missing\n'
-
-  # check `roots` and `children` returns iterators
-  if is_ok:
-    roots_iter = g.roots()
-    expected_attrs = ['__iter__', '__next__']
-    for attr in expected_attrs:
-      if not getattr(roots_iter, attr, None):
-        is_ok = False
-        report += f'Iterator attribute {attr} is missing\n'
-
-  # prefix report if not empty
-  if not is_ok:
-    report = f'dfs_interface_report of type {type(g)}:\n'  + report
-
-  return is_ok, report
-
+from maia.pytree.graph.algo_interface import dfs_interface_report
 
 class step(Enum):
   """ Information on what to do when a node is visited by a tree traversal algorithm:
@@ -58,12 +24,12 @@ class graph_traversal_stack:
     self._iterators = []
     self._nodes     = []
 
-    self._push_level(self._g.roots())
+    self._push_level(self._g.root_iterator())
 
   def push_level(self):
     """ Add children of current node to the stack """
     n = self._nodes[-1]
-    self._push_level(self._g.children(n))
+    self._push_level(self._g.child_iterator(n))
 
   def _push_level(self, siblings):
     sibling_iter = iter(siblings)

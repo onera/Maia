@@ -57,5 +57,5 @@ def depth_first_build(g, node_constructor, pre=None):
         More precisely, `pre` is a function of argument `node` and returning a `graph.algo.step` value.
   """
   ts = depth_first_build_trees(g, node_constructor, pre)
-  assert len(ts) == 1 # precondition: len(g.roots()) == 1
+  assert len(ts) == 1 # precondition: len(g.root_iterator()) == 1
   return ts[0]

@@ -2,15 +2,16 @@ import maia.pytree as PT
 from maia.pytree.graph import algo
 from maia.pytree.graph.algo import step
 from maia.pytree.algo_utils import set_intersection_difference
+from maia.pytree.graph.utils import list_iterator_type
 
 
 class pytree_adaptor:
   def __init__(self, t):
     self.t = t
 
-  def children(self, n):
+  def child_iterator(self, n) -> list_iterator_type:
     return iter(PT.get_children(n))
-  def roots(self):
+  def root_iterator(self) -> list_iterator_type:
     return iter([self.t])
 
 
@@ -54,11 +55,11 @@ class pytree_zip_adaptor:
   def __init__(self, ts):
     self.ts = ts
 
-  def children(self, ns):
+  def child_iterator(self, ns) -> list_iterator_type:
     sorted_ns = [_get_sorted_children(n) for n in ns]
     cs = _zip_lists(sorted_ns)
     return iter(cs)
-  def roots(self):
+  def root_iterator(self) -> list_iterator_type:
     return iter([self.ts])
 
 def zip_depth_first_search(t, v, depth='node'):
