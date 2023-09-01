@@ -5,6 +5,7 @@ import numpy as np
 import os
 import maia.pytree as PT
 
+import maia
 from maia import io      as MIO
 from maia import utils   as MU
 
@@ -63,3 +64,27 @@ def test_two_blocks(comm):
           PT.get_node_from_name(new_large_jn, 'PointListDonor')[1]).all()
   assert (PT.get_node_from_name(new_small_jn, 'PointListDonor')[1] == \
           PT.get_node_from_name(new_large_jn, 'PointList')[1]).all()
+
+@pytest_parallel.mark.parallel([3])
+def test_perio_elements(comm):
+  tree = maia.factory.generate_dist_block(11, 'TETRA_4', comm) #Nb : use odd number to have conform faces
+  maia.io.dist_tree_to_file(tree, 'out.cgns', comm)
+
+  xmin = PT.get_node_from_name(tree, 'Xmin')
+  PT.new_child(xmin, 'FamilyName', 'FamilyName_t', 'matchA')
+  xmax = PT.get_node_from_name(tree, 'Xmax')
+  PT.new_child(xmax, 'FamilyName', 'FamilyName_t', 'matchB')
+
+  periodic = {'translation' : np.array([1.0, 0, 0], np.float32)}
+  dist_algo.connect_1to1_families(tree, ('matchA', 'matchB'), comm, periodic=periodic)
+
+  # Use rank 0 to perform geometric test
+  dist_algo.redistribute_tree(tree, 'gather', comm)
+  if comm.Get_rank() == 0:
+    zone = PT.get_all_Zone_t(tree)[0]
+    face_center = maia.algo.part.compute_face_center(zone)
+    xmin = PT.get_node_from_predicates(zone, ['Xmin_0', 'PointList'])[1] - PT.Zone.n_cell(zone) - 1
+    xmax = PT.get_node_from_predicates(zone, ['Xmax_0', 'PointList'])[1] - PT.Zone.n_cell(zone) - 1
+    assert np.allclose(face_center[3*xmin+0], face_center[3*xmax+0]-1)
+    assert np.allclose(face_center[3*xmin+1], face_center[3*xmax+1])
+    assert np.allclose(face_center[3*xmin+2], face_center[3*xmax+2])

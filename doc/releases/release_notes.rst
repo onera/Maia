@@ -9,6 +9,17 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Developpement version
+---------------------
+
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- connect_1to1_families: manage Elements meshes
+
+🐞 Fixes
+^^^^^^^^
+- merge_zones: manage S/U GridConnectivity_t when merging U zones
+
 v1.2 (July 2023)
 ----------------
 

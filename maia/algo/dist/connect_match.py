@@ -28,12 +28,13 @@ def _shift_face_num(cgns_ids, zone, reverse=False):
   else:
     return cgns_ids - offset
 
-def nodal_sections_to_face_vtx(sections, comm):
+def _nodal_sections_to_face_vtx(sections, rank):
+  """ Rebuild a Ngon like connectivity (face_vtx) from sections coming from PDM """
   elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=PT.maia.pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
 
   face_n_vtx_list = [elem_n_vtx(section['pdm_type']) for section in sections]
   
-  elem_dn_list = [section['np_distrib'][comm.rank+1] -  section['np_distrib'][comm.rank] for section in sections]
+  elem_dn_list = [section['np_distrib'][rank+1] - section['np_distrib'][rank] for section in sections]
 
   face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_dn_list), dtype=np.int32)
   _, face_vtx = np_utils.concatenate_np_arrays([section['np_connec'] for section in sections])
@@ -82,7 +83,7 @@ def _get_cloud(dmesh, gnum, comm):
     coords = dmesh_extracted.dmesh_nodal_get_vtx(comm)['np_vtx']
     # Rebuild face_vtx from sections
     sections = dmesh_extracted.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, comm)['sections']
-    face_vtx_idx, face_vtx = nodal_sections_to_face_vtx(sections, comm)
+    face_vtx_idx, face_vtx = _nodal_sections_to_face_vtx(sections, comm.Get_rank())
 
   parent_vtx  = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VERTEX)
   parent_face = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_FACE)
