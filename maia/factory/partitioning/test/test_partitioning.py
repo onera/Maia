@@ -264,6 +264,16 @@ def test_split_structured(comm):
   zone_to_parts = maia.factory.partitioning.compute_regular_weights(dist_tree, comm, n_part=5)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts)
   
+  zone = PT.get_node_from_label(part_tree, 'Zone_t') #Check only on first zone
+  dist_cell_size = MT.getGlobalNumbering(zone, 'CellSize')
+  dist_cell_range = MT.getGlobalNumbering(zone, 'CellRange')
+  if comm.Get_rank() == 0:
+    expected_range = np.array([[1,4], [1,5], [1,5]], order='F')
+  elif comm.Get_rank() == 1:
+    expected_range = np.array([[5,7], [1,7], [6,10]], order='F')
+  assert PT.get_label(dist_cell_size) == 'DataArray_t' and (PT.get_value(dist_cell_size) == [10,10,10]).all()
+  assert PT.get_label(dist_cell_range) == 'IndexRange_t' and (PT.get_value(dist_cell_range) == expected_range).all()
+
   bcds_n_l = PT.get_nodes_from_name(part_tree, 'BCDataSet')
   sum_size_bcds = 0
   for bcds_n in bcds_n_l:

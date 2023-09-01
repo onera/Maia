@@ -24,7 +24,7 @@ def _get_part_data(part_zone):
   face_vtx_idx  = PT.get_child_from_name(ngon,  "ElementStartOffset")[1]
   face_vtx      = PT.get_child_from_name(ngon,  "ElementConnectivity")[1]
 
-  vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
+  vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 
   return [cell_face_idx, cell_face, cell_ln_to_gn, \
       face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]

@@ -29,7 +29,7 @@ def set_default(dist_tree, comm):
              'part_interface_loc'      : 'Vertex',
              'output_connectivity'     : 'Element',
              'preserve_orientation'    : False,
-             'additional_connectivity' : [],
+             'save_all_connectivities' : False,
              'additional_ln_to_gn'     : [],
              'keep_empty_sections'     : False,
              'dump_pdm_output'         : False }

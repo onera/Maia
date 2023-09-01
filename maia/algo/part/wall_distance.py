@@ -188,7 +188,7 @@ class WallDistance:
       cell_face_idx = PT.get_value(PT.get_child_from_name(nface, 'ElementStartOffset'))
       cell_face     = PT.get_value(PT.get_child_from_name(nface, 'ElementConnectivity'))
 
-      vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TE.utils.get_entities_numbering(part_zone)
+      vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = TE.utils.get_entities_numbering(part_zone)
 
       n_vtx  = vtx_ln_to_gn .shape[0]
       n_cell = cell_ln_to_gn.shape[0]

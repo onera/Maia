@@ -66,24 +66,29 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
   return np_elt_ln_to_gn
 
 @PT.check_is_label('Zone_t')
-def get_entities_numbering(part_zone, as_pdm=True):
+def get_entities_numbering(part_zone):
   """
-  Shortcut to return vertex, face and cell global numbering of a partitioned
-  (structured or unstructured/ngon) zone.
-  If as_pdm is True, force output to have PDM_gnum_t data type
+  Shortcut to return vertex, edge, face and cell global numbering of a partitioned
+  (structured or unstructured) zone. Arrays can be None if numbering does not exists.
   """
-  vtx_ln_to_gn   = PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex'))
-  cell_ln_to_gn  = PT.get_value(MT.getGlobalNumbering(part_zone, 'Cell'))
-  if PT.Zone.Type(part_zone) == "Structured":
-    face_ln_to_gn = PT.get_value(MT.getGlobalNumbering(part_zone, 'Face'))
-  else:
+  vtx_ln_to_gn  = PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex'))
+  edge_ln_to_gn = None
+  face_ln_to_gn = None
+  cell_ln_to_gn = PT.get_value(MT.getGlobalNumbering(part_zone, 'Cell'))
+
+  edge_ln_to_gn_n = MT.getGlobalNumbering(part_zone, 'Edge')
+  if edge_ln_to_gn_n is not None:
+    edge_ln_to_gn = PT.get_value(edge_ln_to_gn_n)
+
+  face_ln_to_gn_n = MT.getGlobalNumbering(part_zone, 'Face')
+  if face_ln_to_gn_n is not None:
+    face_ln_to_gn = PT.get_value(face_ln_to_gn_n)
+  elif PT.Zone.has_ngon_elements(part_zone):
+    # Face can be recovered from ngon global numbering
     ngon = PT.Zone.NGonNode(part_zone)
     face_ln_to_gn = PT.get_value(MT.getGlobalNumbering(ngon, 'Element'))
-  if as_pdm:
-    vtx_ln_to_gn  = vtx_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
-    face_ln_to_gn = face_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
-    cell_ln_to_gn = cell_ln_to_gn.astype(pdm_gnum_dtype, casting='same_kind', copy=False)
-  return vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
+
+  return vtx_ln_to_gn, edge_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
 
 def create_mask_tree(root, labels, include, exclude):
   """

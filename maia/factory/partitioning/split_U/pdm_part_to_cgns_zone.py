@@ -102,6 +102,19 @@ def pdm_renumbering_data(p_zone, data):
   if len(PT.get_children(color_data)) > 0:
     PT.add_child(p_zone, color_data)
 
+def save_additional_connectivities(p_zone, data):
+  connec_data = PT.new_node('maia#Connectivities', 'UserDefinedData_t')
+  if 'np_cell_face_idx' in data:
+    PT.new_DataArray('cell_face_idx', data['np_cell_face_idx'], parent=connec_data)
+    PT.new_DataArray('cell_face', data['np_cell_face'], parent=connec_data)
+  if 'np_face_edge_idx' in data:
+    PT.new_DataArray('face_edge_idx', data['np_face_edge_idx'], parent=connec_data)
+    PT.new_DataArray('face_edge', data['np_face_edge'], parent=connec_data)
+  if 'np_edge_vtx' in data:
+    PT.new_DataArray('edge_vtx', data['np_edge_vtx'], parent=connec_data)
+  if len(PT.get_children(connec_data)) > 0:
+    PT.add_child(p_zone, connec_data)
+
 def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element", keep_empty_sections=False):
   """
   """
@@ -258,8 +271,17 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     zgc_created_pdm_to_cgns(part_zone, dist_zone, dims, data, output_loc, zgc_name)
 
     pdm_renumbering_data(part_zone, data)
+    if options['save_all_connectivities']:
+      save_additional_connectivities(part_zone, data)
 
-    lngn_zone = MT.newGlobalNumbering({'Vertex' : vtx_lngn, 'Cell' : cell_lngn}, parent=part_zone)
+    requested_lngn = [key.lower() for key in options['additional_ln_to_gn']]
+    numberings = {'Vertex' : vtx_lngn}
+    if base_dim >= 2 and 'edge' in requested_lngn and data['np_edge_ln_to_gn'] is not None:
+      numberings['Edge'] = data['np_edge_ln_to_gn']
+    if base_dim == 3 and 'face' in requested_lngn and data['np_face_ln_to_gn'] is not None:
+      numberings['Face'] = data['np_face_ln_to_gn']
+    numberings['Cell'] = cell_lngn
+    MT.newGlobalNumbering(numberings, parent=part_zone)
 
     part_zones.append(part_zone)
 

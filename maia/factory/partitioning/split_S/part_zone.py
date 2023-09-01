@@ -414,16 +414,22 @@ def part_s_zone(d_zone, d_zone_weights, comm):
   my_parts = all_parts[my_start:my_end]
 
   part_zones = []
+  idx_dim = PT.get_value(d_zone).shape[0]
   for i_part, part in enumerate(my_parts):
     #Get dim and setup zone
     cell_bounds = np.asarray(part, dtype=np.int32) + 1 #Semi open, but start at 1
     n_cells = np.diff(cell_bounds)
     pzone_name = MT.conv.add_part_suffix(PT.get_name(d_zone), i_rank, i_part)
-    pzone_dims = np.hstack([n_cells+1, n_cells, np.zeros((3,1), dtype=np.int32)])
+    pzone_dims = np.hstack([n_cells+1, n_cells, np.zeros((idx_dim,1), dtype=np.int32)])
     part_zone  = PT.new_Zone(pzone_name, size=pzone_dims, type='Structured')
 
     vtx_lntogn, face_lntogn, cell_lntogn = create_zone_gnums(cell_bounds, PT.Zone.CellSize(d_zone))
-    MT.newGlobalNumbering({'Vertex' : vtx_lntogn, 'Face' : face_lntogn, 'Cell' : cell_lntogn}, parent=part_zone)
+    gn_node = MT.newGlobalNumbering({'Vertex' : vtx_lntogn, 'Face' : face_lntogn, 'Cell' : cell_lntogn},
+                                    parent=part_zone)
+    _cell_bounds = np.copy(cell_bounds, order='F')
+    _cell_bounds[:,1] -= 1
+    PT.new_node("CellRange", "IndexRange_t", _cell_bounds, parent=gn_node)
+    PT.new_DataArray("CellSize", PT.Zone.CellSize(d_zone), parent=gn_node)
 
     create_bcs(d_zone, part_zone, cell_bounds[:,0])
 

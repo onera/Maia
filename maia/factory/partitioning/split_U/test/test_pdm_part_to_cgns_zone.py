@@ -177,7 +177,7 @@ def test_pdm_part_to_cgns_zone():
            'np_thread_color' : None, 'np_hyperplane_color' : None,
            }]
 
-  options = {'part_interface_loc' : 'Vertex', 'dump_pdm_output' : False, 'output_connectivity':'Element', 'keep_empty_sections':False}
+  options = {'part_interface_loc' : 'Vertex', 'dump_pdm_output' : False, 'output_connectivity':'Element', 'keep_empty_sections':False, 'additional_ln_to_gn':[], 'save_all_connectivities' : False}
   part_zones = PTC.pdm_part_to_cgns_zone(d_zone, l_dims, l_data, MPI.COMM_SELF, options)
 
   assert len(part_zones) == len(l_dims)
