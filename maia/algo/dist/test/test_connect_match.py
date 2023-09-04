@@ -2,6 +2,8 @@ import pytest
 import pytest_parallel
 import numpy as np
 
+import Pypdm.Pypdm as PDM
+
 import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -15,6 +17,42 @@ from maia.utils import par_utils
 from maia.algo.dist import connect_match
 from maia.algo.dist import redistribute
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
+
+
+def test_shift_face_num():
+  zone = parse_yaml_cgns.to_node(f"""
+  Zone Zone_t:
+    NGON Elements_t [22,0]:
+      ElementRange IndexRange_t [1, 25]:
+  """)
+  # NGON first
+  assert (connect_match._shift_face_num([4,6,10], zone) == [4,6,10]).all()
+  # NFace first
+  er = PT.get_node_from_name(zone, 'ElementRange')[1]
+  er[0] = 11
+  assert (connect_match._shift_face_num([20,15], zone) == [10,5]).all()
+  assert (connect_match._shift_face_num([10,5], zone, True) == [20,15]).all()
+
+  # Elements
+  zone = parse_yaml_cgns.to_node(f"""
+  Zone Zone_t:
+    Tetra Elements_t [10,0]:
+      ElementRange IndexRange_t [1, 20]:
+    Tri1 Elements_t [5,0]:
+      ElementRange IndexRange_t [21, 30]:
+    Tri2 Elements_t [5,0]:
+      ElementRange IndexRange_t [31, 40]:
+  """)
+  assert (connect_match._shift_face_num([38,22,40], zone) == [18,2,20]).all()
+
+def test_nodal_sections_to_face_vtx():
+  sections = [
+     {'pdm_type': PDM._PDM_MESH_NODAL_QUAD4, 'np_distrib': np.array([0, 2, 6]), 'np_connec': np.array([1,2,5,4, 2,3,6,5])},
+     {'pdm_type': PDM._PDM_MESH_NODAL_TRIA3, 'np_distrib': np.array([0, 3, 6]), 'np_connec': np.array([6,2,4, 7,6,2, 6,5,3])}
+     ]
+  face_vtx_idx, face_vtx = connect_match._nodal_sections_to_face_vtx(sections, 0)
+  assert (face_vtx_idx == [0,4,8, 11, 14, 17]).all()
+  assert (face_vtx == [1,2,5,4, 2,3,6,5, 6,2,4, 7,6,2, 6,5,3]).all()
 
 @pytest_parallel.mark.parallel([1,3])
 @pytest.mark.parametrize("input_loc", ['Vertex', 'FaceCenter'])
@@ -164,11 +202,13 @@ def test_multiple_match(comm):
 
 
 
+@pytest.mark.parametrize("mesh_kind", ['Poly', 'HEXA_8'])
 @pytest_parallel.mark.parallel(1)
-def test_periodic_simple(comm):                    #    __
-  tree = dcube_generate(3, 1., [0,0,0], comm)      #   |  | 
+def test_periodic_simple(mesh_kind, comm):         #    __
+                                                   #   |  | 
                                                    #   |__|
                                                    #
+  tree = maia.factory.generate_dist_block(3, mesh_kind, comm)  
   zone = PT.get_node_from_label(tree, 'Zone_t')
     
   xmin = PT.get_node_from_name(tree, 'Xmin')
@@ -182,5 +222,10 @@ def test_periodic_simple(comm):                    #    __
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 4
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
 
-  assert (PT.get_node_from_predicates(zone, ['Xmin_0', 'PointList'])[1] == [[13,14,15,16]]).all()
-  assert (PT.get_node_from_predicates(zone, ['Xmax_0', 'PointList'])[1] == [[21,22,23,24]]).all()
+  if mesh_kind == 'Poly':
+    assert (PT.get_node_from_predicates(zone, ['Xmin_0', 'PointList'])[1] == [[13,14,15,16]]).all()
+    assert (PT.get_node_from_predicates(zone, ['Xmax_0', 'PointList'])[1] == [[21,22,23,24]]).all()
+  elif mesh_kind == 'HEXA_8':
+    assert (PT.get_node_from_predicates(zone, ['Xmin_0', 'PointList'])[1] == [[17,18,19,20]]).all()
+    assert (PT.get_node_from_predicates(zone, ['Xmax_0', 'PointList'])[1] == [[21,22,23,24]]).all()
+

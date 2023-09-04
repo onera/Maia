@@ -11,6 +11,35 @@ from maia.transfer import protocols as EP
 
 from .subset_tools import convert_subset_as_facelist
 
+def _shift_face_num(cgns_ids, zone, reverse=False):
+  """ Shift CGNS face numbering to start at 1 """
+  if PT.Zone.has_ngon_elements(zone):
+    offset = PT.Element.Range(PT.Zone.NGonNode(zone))[0] - 1
+  else:
+    ordering = PT.Zone.elt_ordering_by_dim(zone)
+    if ordering == 1: #Increasing elements : substract starting point of 2D
+      offset = PT.Zone.get_elt_range_per_dim(zone)[2][0] - 1
+    elif ordering == -1: #Decreasing elements : substract number of 3D
+      offset = PT.Zone.get_elt_range_per_dim(zone)[3][1]
+    else:
+      raise RuntimeError("Unable to extract unordered faces")
+  if reverse:
+    return cgns_ids + offset
+  else:
+    return cgns_ids - offset
+
+def _nodal_sections_to_face_vtx(sections, rank):
+  """ Rebuild a Ngon like connectivity (face_vtx) from sections coming from PDM """
+  elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=PT.maia.pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
+
+  face_n_vtx_list = [elem_n_vtx(section['pdm_type']) for section in sections]
+  
+  elem_dn_list = [section['np_distrib'][rank+1] - section['np_distrib'][rank] for section in sections]
+
+  face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_dn_list), dtype=np.int32)
+  _, face_vtx = np_utils.concatenate_np_arrays([section['np_connec'] for section in sections])
+  return face_vtx_idx, face_vtx
+
 def _point_merge(clouds, comm, rel_tol):
   """
   Wraps PDM.PointsMerge. A cloud is a tuple (coordinates, carac_lenght, parent_gnum)
@@ -35,18 +64,30 @@ def _get_cloud(dmesh, gnum, comm):
   of extracted mesh + link with parent volumic mesh
   """
   dmesh_extractor = PDM.DMeshExtract(2, comm)
-  dmesh_extractor.register_dmesh(dmesh)
+  if isinstance(dmesh, PDM.DistributedMesh):
+    dmesh_extractor.register_dmesh(dmesh)
+  elif isinstance(dmesh, PDM.DistributedMeshNodal):
+    dmesh_extractor.register_dmesh_nodal(dmesh)
+
   _gnum = as_pdm_gnum(gnum)
   dmesh_extractor.set_gnum_to_extract(PDM._PDM_MESH_ENTITY_FACE, _gnum)
 
   dmesh_extractor.compute()
 
-  dmesh_extracted = dmesh_extractor.get_dmesh()
+  if isinstance(dmesh, PDM.DistributedMesh):
+    dmesh_extracted = dmesh_extractor.get_dmesh()
+    coords  = dmesh_extracted.dmesh_vtx_coord_get()
+    face_vtx_idx, face_vtx = dmesh_extracted.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
+  elif isinstance(dmesh, PDM.DistributedMeshNodal):
+    dmesh_extracted = dmesh_extractor.get_dmesh_nodal()
+    coords = dmesh_extracted.dmesh_nodal_get_vtx(comm)['np_vtx']
+    # Rebuild face_vtx from sections
+    sections = dmesh_extracted.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, comm)['sections']
+    face_vtx_idx, face_vtx = _nodal_sections_to_face_vtx(sections, comm.Get_rank())
+
   parent_vtx  = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VERTEX)
   parent_face = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_FACE)
 
-  coords  = dmesh_extracted.dmesh_vtx_coord_get()
-  face_vtx_idx, face_vtx = dmesh_extracted.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
   carac_length = PDM.compute_vtx_characteristic_length(comm,
                                                        face_vtx_idx.size-1, #dn_face
                                                        0,                   #dn_edge
@@ -120,17 +161,23 @@ def get_vtx_cloud_from_subset(dist_tree, subset_path, comm, dmesh_cache={}):
   Node path must refer to nodes having a FaceCenter PointList 
   """
   zone_path = PT.path_head(subset_path, 2)
+  zone = PT.get_node_from_path(dist_tree, zone_path)
   try:
     dmesh = dmesh_cache[zone_path]
   except KeyError:
-    zone = PT.get_node_from_path(dist_tree, zone_path)
-    dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
+    if PT.Zone.has_ngon_elements(zone):
+      dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
+    else:
+      dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
+      dmesh.generate_distribution()
     dmesh_cache[zone_path] = dmesh
 
   node = PT.get_node_from_path(dist_tree, subset_path)
   assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
   pl = PT.get_child_from_name(node, 'PointList')[1][0]
-  cloud = _get_cloud(dmesh, pl, comm)
+  _pl = _shift_face_num(pl, zone)
+
+  cloud = _get_cloud(dmesh, _pl, comm)
   return cloud
 
 def apply_periodicity(cloud, periodic):
@@ -163,7 +210,7 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
   clouds = []
 
   for cloud_path in clouds_path:
-    convert_subset_as_facelist(dist_tree, cloud_path, comm)
+    convert_subset_as_facelist(dist_tree, cloud_path, comm) # Only ngon
 
   cached_dmesh = {} #Use caching to avoid translate zone->dmesh 2 times
   for cloud_path in subset_paths[0]:
@@ -194,8 +241,11 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
     for j, side in enumerate(['lgnum_cur', 'lgnum_opp']):
       i_cloud = matching_face['np_cloud_pair'][2*i_itrf+j]
       parent_face_num = clouds[i_cloud]['parent_face']
+      parent_zone = PT.get_node_from_path(dist_tree, PT.path_head(clouds_path[i_cloud], 2))
       distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
-      matching_face[side][i_itrf] = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
+      gnum_2d = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
+      # At this point face are in gnum but local to 2d dimension : shift back
+      matching_face[side][i_itrf] = _shift_face_num(gnum_2d, parent_zone, reverse=True)
 
   # Add created nodes in tree
   if output_loc == 'Vertex':
@@ -310,7 +360,7 @@ def connect_1to1_families(dist_tree, families, comm, periodic=None, **options):
     tolerance is relative to the minimal distance to its neighbouring vertices.
 
   Args:
-    dist_tree  (CGNSTree)   : Input distributed tree. Only U-NGon connectivities are managed.
+    dist_tree  (CGNSTree)   : Input distributed tree. Only U connectivities are managed.
     families  (tuple of str): Name of the two families to connect.
     comm           (MPIComm): MPI communicator
     periodic (dic, optional): Transformation from first to second family if the interface is periodic.

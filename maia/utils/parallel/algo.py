@@ -5,8 +5,6 @@ import numpy as np
 from maia.transfer import protocols as EP
 from maia.utils    import np_utils, par_utils, py_utils
 
-from cmaia.utils import compute_weighted_distribution
-
 import Pypdm.Pypdm as PDM
 
 def dist_set_difference(ids, others, comm):
@@ -67,7 +65,7 @@ def compute_gnum(objects, comm, serialize=pickle.dumps):
 
   # Compute distribution, then search managing proc of each object
   # Also prepare the order to be used to sort send buffer according to rank ordering
-  distri = compute_weighted_distribution([hash_key+1], [np.ones(len(hash_key))], comm)
+  distri = PDM.compute_weighted_distribution([hash_key+1], [np.ones(len(hash_key))], comm)
   dest = np.searchsorted(distri, hash_key, side='right') - 1
   sort_idx = np.argsort(dest)
 
