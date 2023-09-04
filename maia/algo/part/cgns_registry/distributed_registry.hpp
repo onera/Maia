@@ -58,12 +58,10 @@ class distributed_registry { // TODO RENAME partitionned_registry
 
     auto
     find_entity_from_id(PDM_g_num_t id) const -> const T& {
-      std::cout << __PRETTY_FUNCTION__ << " ----> " << id << std::endl;
       return find_associate(id_table,id);
     }
     auto
     find_id_from_entity(const T& e) const -> PDM_g_num_t {
-      // std::cout << __PRETTY_FUNCTION__ << std::endl;
       return find_associate(id_table,e);
     }
   private:

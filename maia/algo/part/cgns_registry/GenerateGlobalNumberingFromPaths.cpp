@@ -1,6 +1,7 @@
 #include "maia/algo/part/cgns_registry/GenerateGlobalNumberingFromPaths.hpp"
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 #include <numeric>
 #include <cassert>
@@ -36,8 +37,8 @@ std::vector<PDM_g_num_t> generate_global_id(      int                           
   // -------------------------------------------------------------------
   // 2 - Give an local number for each element in block_paths
   std::vector<PDM_g_num_t> global_name_num(n_block);
-  int next_name_id =  0;
-  int n_loc_name_id =  0;
+  PDM_g_num_t next_name_id =  0;
+  PDM_g_num_t n_loc_name_id =  0;
   std::string lastName;
   for(int i = 0; i < n_block; ++i){
     if(block_paths[order_name[i]] == lastName){

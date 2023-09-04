@@ -50,14 +50,14 @@ class cgns_registry {
 };
 
 // ===========================================================================
-int get_global_id_from_path(const label_registry& reg, std::string path);
+PDM_g_num_t get_global_id_from_path(const label_registry& reg, std::string path);
 std::string get_path_from_global_id(const label_registry& reg, PDM_g_num_t g_id);
 
 // ===========================================================================
-int get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, CGNS::Label label);
+PDM_g_num_t get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, CGNS::Label label);
 std::string get_path_from_global_id_and_type(const cgns_registry& cgns_reg, PDM_g_num_t g_id, CGNS::Label label);
 
-int get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, std::string cgns_label_str);
+PDM_g_num_t get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, std::string cgns_label_str);
 std::string get_path_from_global_id_and_type(const cgns_registry& cgns_reg, PDM_g_num_t g_id, std::string cgns_label_str);
 
 // ===========================================================================

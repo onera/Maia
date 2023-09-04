@@ -51,33 +51,27 @@ std::string to_string(const cgns_registry& cgns_reg)
 }
 
 // ===========================================================================
-int get_global_id_from_path(const label_registry& reg, std::string path) {
+PDM_g_num_t get_global_id_from_path(const label_registry& reg, std::string path) {
   return reg.find_id_from_entity(path);
 }
 std::string get_path_from_global_id(const label_registry& reg, PDM_g_num_t g_id) {
-  // std::cout << "g_id = " << g_id << "ooooooo -----------------> " <<  reg.entities()[g_id] << std::endl;
-  // std::cout << "get_path_from_global_id  --> " << g_id << "  " << reg.find_entity_from_id(static_cast<PDM_g_num_t>(g_id)) << std::endl;
-  // std::cout << to_string(reg) << std::endl;
   return reg.find_entity_from_id(g_id);
 }
 
 // ===========================================================================
-int get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, CGNS::Label label){
-  int g_id = get_global_id_from_path(cgns_reg.at(label),path);
-  return g_id; //
+PDM_g_num_t get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, CGNS::Label label){
+  return get_global_id_from_path(cgns_reg.at(label),path);
 }
 
 // ===========================================================================
 std::string get_path_from_global_id_and_type(const cgns_registry& cgns_reg, PDM_g_num_t g_id, CGNS::Label label){
-  // std::cout << "get_path_from_global_id_and_type  --> " << g_id << "  " << get_path_from_global_id(cgns_reg.at(label),static_cast<int>(g_id)) << std::endl;
   return get_path_from_global_id(cgns_reg.at(label), g_id);
 }
 
 // ===========================================================================
-int get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, std::string cgns_label_str){
+PDM_g_num_t get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, std::string cgns_label_str){
   auto label = std_e::to_enum<CGNS::Label>(cgns_label_str);
-  int g_id = get_global_id_from_path_and_type(cgns_reg,path,label);
-  return g_id;
+  return get_global_id_from_path_and_type(cgns_reg,path,label);
 }
 
 // ===========================================================================
