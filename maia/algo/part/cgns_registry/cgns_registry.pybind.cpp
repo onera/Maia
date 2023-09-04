@@ -10,6 +10,8 @@ cgns_registry make_cgns_registry(const cgns_paths_by_label& paths, py::object mp
   return cgns_registry(paths, maia::mpi4py_comm_to_comm(mpi4py_obj));
 }
 
+PYBIND11_MAKE_OPAQUE(PDM_g_num_t);
+
 void register_cgns_registry_module(py::module_& parent) {
 
   py::module_ m = parent.def_submodule("cgns_registry");
@@ -20,7 +22,7 @@ void register_cgns_registry_module(py::module_& parent) {
     .def(py::init<>());
 
   py::bind_vector<std::vector<std::string>>(m, "cgns_paths"); // Neccesary to return into python pybind11 : ticket 2641
-  py::bind_vector<std::vector<int        >>(m, "global_ids");
+  py::bind_vector<std::vector<PDM_g_num_t>>(m, "global_ids");
 
   py::class_<cgns_registry> (m, "cgns_registry")
     .def(py::init<>(&make_cgns_registry))
@@ -32,6 +34,13 @@ void register_cgns_registry_module(py::module_& parent) {
       return to_string(x);
     });
 
+  // m.def("c_un_test", &c_un_test, py::arg().noconvert(), py::return_value_policy::automatic_reference);
+  // m.def("c_un_test", &c_un_test, py::arg().noconvert(), py::return_value_policy::automatic_reference);
+  // m.def("c_un_test", PYBIND11_OVERRIDE(, py::arg().noconvert(), py::return_value_policy::automatic_reference);
+  // m.def("c_un_test", py::overload_cast<long>((long)&c_un_test));
+  // m.def("c_un_test", static_cast<long (*)(long)>(&c_un_test));
+  // m.def("c_un_test2", [](int a) -> long {return static_cast<long>(a);});
+
   m.def("add_path",
         py::overload_cast<cgns_paths_by_label&, const std::string&, const std::string&>(add_path),
         "Some doc here");
@@ -41,7 +50,7 @@ void register_cgns_registry_module(py::module_& parent) {
         "Some doc here");
 
   m.def("get_path_from_global_id_and_type",
-        py::overload_cast<const cgns_registry&, int, CGNS::Label>(get_path_from_global_id_and_type),
+        py::overload_cast<const cgns_registry&, PDM_g_num_t, CGNS::Label>(get_path_from_global_id_and_type),
         "Some doc here");
 
   m.def("get_global_id_from_path_and_type",
@@ -49,6 +58,6 @@ void register_cgns_registry_module(py::module_& parent) {
         "Some doc here");
 
   m.def("get_path_from_global_id_and_type",
-        py::overload_cast<const cgns_registry&, int, std::string>(get_path_from_global_id_and_type),
+        py::overload_cast<const cgns_registry&, PDM_g_num_t, std::string>(get_path_from_global_id_and_type),
         "Some doc here");
 }

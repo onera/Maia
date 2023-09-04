@@ -16,13 +16,13 @@
 //
 
 // ===========================================================================
-std::vector<int> generate_global_id(     int                       n_loc_id,
-                                  const std::vector<std::string>& block_paths,
-                                  const std::vector<int>&         send_n,
-                                  const std_e::interval_vector<int>&  send_idx,
-                                  const std::vector<int>&         recv_n,
-                                  const std_e::interval_vector<int>&  recv_idx,
-                                        MPI_Comm                  comm)
+std::vector<PDM_g_num_t> generate_global_id(      int                           n_loc_id,
+                                            const std::vector<std::string>&     block_paths,
+                                            const std::vector<int>&             send_n,
+                                            const std_e::interval_vector<int>&  send_idx,
+                                            const std::vector<int>&             recv_n,
+                                            const std_e::interval_vector<int>&  recv_idx,
+                                                  MPI_Comm                      comm)
 {
   // -------------------------------------------------------------------
   // 1 - Identify an order without touching the original ordering ---> Preserve send/recv
@@ -35,7 +35,7 @@ std::vector<int> generate_global_id(     int                       n_loc_id,
 
   // -------------------------------------------------------------------
   // 2 - Give an local number for each element in block_paths
-  std::vector<int> global_name_num(n_block);
+  std::vector<PDM_g_num_t> global_name_num(n_block);
   int next_name_id =  0;
   int n_loc_name_id =  0;
   std::string lastName;
@@ -52,8 +52,9 @@ std::vector<int> generate_global_id(     int                       n_loc_id,
 
   // -------------------------------------------------------------------
   // 3 - Setup global numbering by simply shift
-  int shift_g;
-  int ierr = MPI_Scan(&n_loc_name_id, &shift_g, 1, MPI_INT, MPI_SUM, comm);
+  PDM_g_num_t shift_g;
+  PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
+  int ierr = PDM_MPI_Scan(&n_loc_name_id, &shift_g, 1, PDM__PDM_MPI_G_NUM, PDM_MPI_SUM, pdm_comm);
   assert(ierr == 0);
   shift_g -= n_loc_name_id;
 
@@ -63,9 +64,9 @@ std::vector<int> generate_global_id(     int                       n_loc_id,
 
   // -------------------------------------------------------------------
   // 4 - Back to original distribution
-  std::vector<int> part_global_id(n_loc_id);
-  MPI_Alltoallv(global_name_num.data(), recv_n.data(), recv_idx.data(), MPI_INT,
-                part_global_id.data() , send_n.data(), send_idx.data(), MPI_INT, comm);
+  std::vector<PDM_g_num_t> part_global_id(n_loc_id);
+  PDM_MPI_Alltoallv(global_name_num.data(), (int *) recv_n.data(), (int *) recv_idx.data(), PDM__PDM_MPI_G_NUM,
+                    part_global_id.data() , (int *) send_n.data(), (int *) send_idx.data(), PDM__PDM_MPI_G_NUM, pdm_comm);
 
   //std_e::offset(part_global_id,-1);
   return part_global_id;
@@ -73,82 +74,8 @@ std::vector<int> generate_global_id(     int                       n_loc_id,
 
 // ===========================================================================
 // On cherche a creer une numerotation absolue plutot...
-// std::vector<int> generateGlobalNumberingFromPaths2(std::vector<std::string>& part_path,
-//                                                    MPI_Comm                  comm)
-// {
-//   int n_rank;
-//   MPI_Comm_size(comm, &n_rank);
-
-//   PDM_MPI_Comm pdm_comm = PDM_MPI_mpi_2_pdm_mpi_comm(&comm);
-
-//   int n_part = 1;
-//   PDM_bool_t equilibrate = PDM_FALSE;
-
-//   int gnum_fhv_id = PDM_gnum_from_hash_values_create(n_part,
-//                                                      equilibrate,
-//                                                      sizeof(unsigned char),
-//                                                      PDM_operator_compare_string,
-//                                                      PDM_operator_equal_string,
-//                                                      pdm_comm);
-
-//   int n_loc_path = part_path.size();
-//   std::vector<int>    part_stri(n_loc_path);
-//   std::vector<size_t> part_hkey(n_loc_path);
-//   std::vector<char>   part_data;
-
-//   log_general(logging_level::info, "generateGlobalNumberingFromPaths2::\n \n ");
-//   for(int i = 0; i < n_loc_path; ++i){
-//     part_stri[i] = static_cast<int>(part_path[i].size());
-//     part_hkey[i] = std::hash<std::string>{}(part_path[i]);
-//     // std::cout << "part_path --> " << part_path[i] << std::endl;
-//     // std::cout << "part_stri --> " << part_stri[i] << std::endl;
-//     log_general(logging_level::info, "{0} -> {1}\n", i, part_path[i]);
-
-//     for(int i_data = 0; i_data < part_stri[i]; ++i_data){
-//       part_data.push_back(part_path[i][i_data]);
-//     }
-
-//   }
-
-//   int i_part = 0;
-//   PDM_gnum_set_hash_values(gnum_fhv_id,
-//                            i_part,
-//                            n_loc_path,
-//                            part_hkey.data(),
-//                            part_stri.data(),
-//           (unsigned char*) part_data.data());
-
-//   PDM_gnum_from_hv_compute(gnum_fhv_id); /* Passage de part --> block */
-
-//   std::vector<int> ln_to_gn(n_loc_path);
-
-//   PDM_g_num_t** part_ln_to_gn = (PDM_g_num_t **) malloc(n_part * sizeof(PDM_g_num_t *));
-//   for(int i_part = 0; i_part < n_part; ++i_part){
-//     part_ln_to_gn[i_part] = PDM_gnum_from_hv_get(gnum_fhv_id, i_part);
-//     // PDM_log_trace_array_long(part_ln_to_gn[i_part], n_elmts[i_part], "ln_to_gn::");
-
-//     // No other way to made copy for now
-//     for(int ielt = 0; ielt < n_loc_path; ++ielt){
-//       ln_to_gn[ielt] = part_ln_to_gn[i_part][ielt];
-//     }
-//   }
-
-//   free(part_ln_to_gn);
-
-//   PDM_gnum_from_hv_free(gnum_fhv_id, 0); // 0 -> Free internal
-
-//   // Pour l'instant int32
-//   assert(sizeof(PDM_g_num_t) == sizeof(int));
-
-//   return ln_to_gn;
-
-// }
-
-
-// ===========================================================================
-// On cherche a creer une numerotation absolue plutot...
-std::vector<int> generate_global_numbering(/* TODO const */ std::vector<std::string>& part_paths,
-                                           MPI_Comm                  comm)
+std::vector<PDM_g_num_t> generate_global_numbering(/* TODO const */ std::vector<std::string>& part_paths,
+                                                   MPI_Comm                  comm)
 {
   int n_rank = std_e::n_rank(comm);
 
@@ -217,7 +144,7 @@ std::vector<int> generate_global_numbering(/* TODO const */ std::vector<std::str
 
   // -------------------------------------------------------------------
   // 5 - Exchange
-  MPI_Alltoall(send_n   .data(), 1, MPI_INT, recv_n   .data(), 1, MPI_INT, comm);
+  MPI_Alltoall(send_n    .data(), 1, MPI_INT, recv_n    .data(), 1, MPI_INT, comm);
   MPI_Alltoall(send_str_n.data(), 1, MPI_INT, recv_str_n.data(), 1, MPI_INT, comm);
 
   // -------------------------------------------------------------------
@@ -230,15 +157,15 @@ std::vector<int> generate_global_numbering(/* TODO const */ std::vector<std::str
 
   // -------------------------------------------------------------------
   // 6 - Compute all index (need for MPI and algorithm)
-  std_e::interval_vector<int> send_idx     = std_e::indices_from_strides(send_n   );
-  std_e::interval_vector<int> recv_idx     = std_e::indices_from_strides(recv_n   );
+  std_e::interval_vector<int> send_idx     = std_e::indices_from_strides(send_n    );
+  std_e::interval_vector<int> recv_idx     = std_e::indices_from_strides(recv_n    );
   std_e::interval_vector<int> send_str_idx = std_e::indices_from_strides(send_str_n);
   std_e::interval_vector<int> recv_str_idx = std_e::indices_from_strides(recv_str_n);
 
   // -------------------------------------------------------------------
   // 7 - Allocation of buffer
-  std::vector<int>  send_buffer   (send_idx   .back());
-  std::vector<int>  recv_buffer   (recv_idx   .back());
+  std::vector<int>  send_buffer    (send_idx    .back());
+  std::vector<int>  recv_buffer    (recv_idx    .back());
   std::vector<char> send_str_buffer(send_str_idx.back());
   std::vector<char> recv_str_buffer(recv_str_idx.back());
 
@@ -246,13 +173,13 @@ std::vector<int> generate_global_numbering(/* TODO const */ std::vector<std::str
   // 8 - Fill buffer send // TODO serialize?
   std::vector<int> send_count   (n_rank);
   std::vector<int> send_str_count(n_rank);
-  std::fill(begin(send_count   ), end(send_count   ), 0);
+  std::fill(begin(send_count    ), end(send_count    ), 0);
   std::fill(begin(send_str_count), end(send_str_count), 0);
   for(int i = 0; i < n_loc_id; ++i){
     int i_rank_to_send = search_rank(part_paths_code[i], distrib_key);
-    int stringSize  = part_paths[i].size();
-    send_buffer[send_idx[i_rank_to_send]+send_count[i_rank_to_send]++] = stringSize;
-    for(int j = 0; j < stringSize; ++j){
+    int string_size  = part_paths[i].size();
+    send_buffer[send_idx[i_rank_to_send]+send_count[i_rank_to_send]++] = string_size;
+    for(int j = 0; j < string_size; ++j){
       send_str_buffer[send_str_idx[i_rank_to_send]+send_str_count[i_rank_to_send]++] = part_paths[i][j];
     }
   }
@@ -270,7 +197,7 @@ std::vector<int> generate_global_numbering(/* TODO const */ std::vector<std::str
   std::vector<std::string> block_paths(n_string_to_recv);
   int idxG = 0;
   for(int i = 0; i < n_rank; ++i){
-    int beg_recv    = recv_idx[i];
+    int beg_recv     = recv_idx    [i];
     int beg_recv_str = recv_str_idx[i];
     // e_log << " Recv from " << i << " at " << beg_recv << std::endl;
     // for(int idx_data = 0; idx_data < recv_n[i]; idx_data++){

@@ -5,28 +5,26 @@
 #include "std_e/parallel/mpi.hpp"
 #include "maia/utils/parallel/distribution.hpp"
 #include "maia/algo/part/cgns_registry/GenerateGlobalNumberingFromPaths.hpp"
-
+#include <iostream>
 // TODO unit tests
 // TODO replace int by PDM_g_id_t ?
 
 template<class T> auto // TODO RENAME
-create_sorted_id_table(std::vector<T> entities, MPI_Comm comm) -> std_e::table<int,T> {
-  std::vector<int> integer_ids = generate_global_numbering(entities,comm);
-  std_e::table<int,T> id_table(std::move(integer_ids),std::move(entities));
+create_sorted_id_table(std::vector<T> entities, MPI_Comm comm) -> std_e::table<PDM_g_num_t,T> {
+  std::vector<PDM_g_num_t> integer_ids = generate_global_numbering(entities,comm);
+  std_e::table<PDM_g_num_t,T> id_table(std::move(integer_ids),std::move(entities));
   std_e::sort(id_table);
   return id_table;
 }
 
 inline auto
-generate_distribution(const std::vector<int>& sorted_local_ids, MPI_Comm comm) -> distribution_vector<int> {
+generate_distribution(const std::vector<PDM_g_num_t>& sorted_local_ids, MPI_Comm comm) -> distribution_vector<PDM_g_num_t> {
   // precondition: Union(sorted_local_ids) over comm == [0,global_nb_elts)
-  int local_max_id = 0;
+  PDM_g_num_t local_max_id = 0;
   if (sorted_local_ids.size() > 0) {
     local_max_id = sorted_local_ids.back();
   }
-
-  int global_nb_elts = std_e::max_global(local_max_id,comm);
-
+  PDM_g_num_t global_nb_elts = std_e::max_global(local_max_id,comm);
   return uniform_distribution(std_e::n_rank(comm),global_nb_elts+1);
 }
 
@@ -59,14 +57,16 @@ class distributed_registry { // TODO RENAME partitionned_registry
     }
 
     auto
-    find_entity_from_id(int id) const -> const T& {
+    find_entity_from_id(PDM_g_num_t id) const -> const T& {
+      std::cout << __PRETTY_FUNCTION__ << " ----> " << id << std::endl;
       return find_associate(id_table,id);
     }
     auto
-    find_id_from_entity(const T& e) const -> int {
+    find_id_from_entity(const T& e) const -> PDM_g_num_t {
+      // std::cout << __PRETTY_FUNCTION__ << std::endl;
       return find_associate(id_table,e);
     }
   private:
-    std_e::table<int,T> id_table;
-    distribution_vector<int> distrib;
+    std_e::table<PDM_g_num_t,T> id_table;
+    distribution_vector<PDM_g_num_t> distrib;
 };

@@ -27,6 +27,20 @@ cgns_paths_by_label generate_case_1_1_proc(){
   return cgns_paths;
 }
 
+
+// ---------------------------------------------------------------------------------
+inline
+cgns_paths_by_label generate_case_2_1_proc(){
+  cgns_paths_by_label cgns_paths;
+
+  add_path(cgns_paths, "/Base0/ZoneU1/ZoneBC/FARFIELD", CGNS::Label::BC_t);
+  add_path(cgns_paths, "/Base0/ZoneU1/ZoneBC/WALL"    , CGNS::Label::BC_t);
+  add_path(cgns_paths, "/Base0/ZoneU2/ZoneBC/SYM"     , CGNS::Label::BC_t);
+  add_path(cgns_paths, "/Base0/ZoneU2/ZoneBC/WALL"    , CGNS::Label::BC_t);
+
+  return cgns_paths;
+}
+
 // ---------------------------------------------------------------------------------
 inline
 cgns_paths_by_label generate_case_1_2_proc(MPI_Comm& comm){
@@ -70,6 +84,34 @@ MPI_TEST_CASE("[cgns_registry] Generate global numbering [1 proc]",1) {
   CHECK(g_id_join2 == 2);
 
 }
+
+// ---------------------------------------------------------------------------------
+MPI_TEST_CASE("[cgns_registry] Generate global numbering [1 proc] test ",1) {
+  cgns_paths_by_label conf_2 = generate_case_2_1_proc();
+
+  cgns_registry cgns_reg1 = cgns_registry(conf_2, test_comm);
+
+  std::cout << to_string(cgns_reg1) << std::endl;
+
+  std::string b1_path  = get_path_from_global_id_and_type(cgns_reg1, 1, CGNS::Label::BC_t);
+  std::string b2_path  = get_path_from_global_id_and_type(cgns_reg1, 2, CGNS::Label::BC_t);
+  std::string b3_path  = get_path_from_global_id_and_type(cgns_reg1, 3, CGNS::Label::BC_t);
+  std::string b4_path  = get_path_from_global_id_and_type(cgns_reg1, 4, CGNS::Label::BC_t);
+
+  // CHECK(b1_path == "/Base0/ZoneU1/ZoneBC/FARFIELD");
+  // CHECK(b2_path == "/Base0/ZoneU1/ZoneBC/WALL"    );
+  // CHECK(b3_path == "/Base0/ZoneU2/ZoneBC/SYM"     );
+  // CHECK(b4_path == "/Base0/ZoneU2/ZoneBC/WALL"    );
+
+  std::cout << "b1_path = " << b1_path << std::endl;
+  std::cout << "b2_path = " << b2_path << std::endl;
+  std::cout << "b3_path = " << b3_path << std::endl;
+  std::cout << "b4_path = " << b4_path << std::endl;
+
+}
+
+
+
 
 
 // ---------------------------------------------------------------------------------
