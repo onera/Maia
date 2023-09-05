@@ -77,8 +77,8 @@ def create_sub_numbering(lngn_l, comm):
   gen_gnum = PDM.GlobalNumbering(3, n_part, 0, 0., comm)
 
   for i_part, lngn in enumerate(lngn_l):
-    gen_gnum.gnum_set_from_parent(i_part, lngn.size, lngn)
+    gen_gnum.set_from_parent(i_part, lngn)
 
-  gen_gnum.gnum_compute()
+  gen_gnum.compute()
 
-  return [gen_gnum.gnum_get(i_part)["gnum"] for i_part in range(n_part)]
+  return [gen_gnum.get(i_part) for i_part in range(n_part)]

@@ -47,7 +47,7 @@ class Test_closest_points:
     elif comm.Get_rank() == 1:
       expected_tgt_data = [{'closest_src_gnum' : [4,8,2], 'closest_src_distance' : [0.1075, 0.0475, 0.2475]}]
       expected_src_data = [{'tgt_in_src_idx' : [0,0,0], 'tgt_in_src' : [], 'tgt_in_src_dist2' : []},
-                           {'tgt_in_src_idx' : [0,1,4], 'tgt_in_src' : [5,2,4,1], 'tgt_in_src_dist2' : [0.2475, 0.1075, 0.8075, 0.1075]}]
+                           {'tgt_in_src_idx' : [0,1,4], 'tgt_in_src' : [5,1,2,4], 'tgt_in_src_dist2' : [0.2475, 0.1075, 0.1075, 0.8075]}]
 
     for i_part, expct_data in enumerate(expected_tgt_data):
       for key in expct_data:
