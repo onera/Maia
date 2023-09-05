@@ -153,12 +153,16 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             sub_pr_loc = np.copy(sub_pr)
             sub_pr_loc[0,:] += range_part_bc_g[0,0] - range_dist_bc[0,0]
             sub_pr_loc[1,:] += range_part_bc_g[1,0] - range_dist_bc[1,0]
-            sub_pr_loc[2,:] += range_part_bc_g[2,0] - range_dist_bc[2,0]
+            if idx_dim >= 3:
+              sub_pr_loc[2,:] += range_part_bc_g[2,0] - range_dist_bc[2,0]
             sub_pr_loc[normal_idx,:] = 1
 
             i_ar  = np.arange(sub_pr_loc[0,0], sub_pr_loc[0,1]+1, dtype=pdm_dtype)
             j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
-            k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
+            if idx_dim == 3:
+              k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
+            else:
+              k_ar  = np.ones(1, dtype=pdm_dtype).reshape(-1,1,1)
             bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
             assert bcds_lntogn.size == PT.Subset.n_elem(part_bc)
             MT.newGlobalNumbering({'Index' : bcds_lntogn}, part_bc)
@@ -289,6 +293,7 @@ def split_original_joins_S(all_part_zones, comm):
         dist_pr = PT.get_child_from_name(jn, 'distPR')[1]
         dist_prd = PT.get_child_from_name(jn, 'distPRDonor')[1]
         transform  = PT.get_child_from_name(jn, 'Transform')[1]
+        idx_dim = transform.size
         T_matrix = compute_transform_matrix(transform)
         assert PT.Subset.GridLocation(jn) == 'Vertex'
 
@@ -298,13 +303,13 @@ def split_original_joins_S(all_part_zones, comm):
         pr_to_global_num(pr, p_zone_offset)
 
         #Jn dans la num globale de la dist_zone opposée
-        pr_in_opp_abs = np.empty((3,2), dtype=pr.dtype)
+        pr_in_opp_abs = np.empty((idx_dim,2), dtype=pr.dtype)
         pr_in_opp_abs[:,0] = apply_transform_matrix(pr[:,0], dist_pr[:,0], dist_prd[:,0], T_matrix)
         pr_in_opp_abs[:,1] = apply_transform_matrix(pr[:,1], dist_pr[:,0], dist_prd[:,0], T_matrix)
 
         #Jn dans la zone opposée et en cellules
         normal_idx = guess_bnd_normal_index(pr_in_opp_abs, 'Vertex')
-        dirs       = np.where(np.arange(3) != normal_idx)[0]
+        dirs       = np.where(np.arange(idx_dim) != normal_idx)[0]
         bnd_is_max = pr_in_opp_abs[normal_idx,0] != 1 #Sommets
         dir_to_swap     = (pr_in_opp_abs[:,1] < pr_in_opp_abs[:,0])
         pr_in_opp_abs[dir_to_swap, 0], pr_in_opp_abs[dir_to_swap, 1] = \
@@ -324,7 +329,7 @@ def split_original_joins_S(all_part_zones, comm):
           pr_to_cell_location(pr_opp_abs, normal_idx, 'Vertex', bnd_is_max)
           inter = intersect_pr(pr_in_opp_abs[dirs,:], pr_opp_abs[dirs,:])
           if inter is not None:
-            sub_prd = np.empty((3,2), dtype=np.int32)
+            sub_prd = np.empty((idx_dim,2), dtype=np.int32)
             sub_prd[dirs,:] = inter
             sub_prd[normal_idx,:] = pr_in_opp_abs[normal_idx,:]
             # Go back to vertex and invert swap
@@ -332,7 +337,7 @@ def split_original_joins_S(all_part_zones, comm):
             sub_prd[dir_to_swap, 0], sub_prd[dir_to_swap, 1] = \
                     sub_prd[dir_to_swap, 1], sub_prd[dir_to_swap, 0]
             # Go back to dist_zone
-            sub_pr = np.empty((3,2), dtype=pr.dtype)
+            sub_pr = np.empty((idx_dim,2), dtype=pr.dtype)
             sub_pr[:,0] = apply_transform_matrix(sub_prd[:,0], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
             sub_pr[:,1] = apply_transform_matrix(sub_prd[:,1], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
             # Go back to local numbering
