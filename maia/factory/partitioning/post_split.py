@@ -230,7 +230,8 @@ def post_partitioning(dist_tree, part_tree, comm):
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Elements', comm)
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Vertex'  , comm)
     if PT.Zone.Type(dist_zone) == 'Structured':
-      IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'SFace', comm)
+      if PT.Zone.CellSize(dist_zone).size == 3:
+        IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'SFace', comm)
     for part_zone in part_zones:
       copy_additional_nodes(dist_zone, part_zone)
 
