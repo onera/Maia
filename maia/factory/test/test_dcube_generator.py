@@ -18,7 +18,7 @@ def check_dims(tree, expected_cell_dim, expected_phy_dim):
   assert (PT.get_node_from_name(zone, 'Ymin') is not None) == (expected_cell_dim >= 2)
 
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 2*expected_cell_dim
-  assert (PT.get_node_from_name(zone, 'Face') is not None) == (expected_cell_dim >= 2) # Distribution
+  assert (PT.get_node_from_name(zone, 'Face') is not None) == (expected_cell_dim >= 3) # Distribution
 
 @pytest_parallel.mark.parallel([1,3])
 def test_dcube_generate(comm):

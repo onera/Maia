@@ -147,7 +147,7 @@ def compute_transform_matrix(transform):
   (https://cgns.github.io/CGNS_docs_current/sids/cnct.html)
   """
   transform_np = np.asarray(transform)
-  del_matrix = is_same_axis(transform_np, np.array([[1],[2],[3]]))
+  del_matrix = is_same_axis(transform_np, np.array([[k+1] for k in range(transform_np.size)]))
   return np.sign(transform_np) * del_matrix
 ###############################################################################
 
