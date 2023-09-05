@@ -29,6 +29,15 @@ def test_new_Family():
   """)
   assert is_same_tree(expected, fam)
 
+def test_new_FamilyName():
+  fam_name = presets.new_FamilyName('WALL')
+  assert N.get_name(fam_name) == 'FamilyName' and N.get_value(fam_name) == 'WALL'
+def test_new_FamilyBC():
+  fam_name = presets.new_FamilyBC('BCSymmetryPlane')
+  assert N.get_name(fam_name) == 'FamilyBC' and N.get_value(fam_name) == 'BCSymmetryPlane'
+  with pytest.raises(AssertionError):
+    fam_name = presets.new_FamilyBC('BCSymmetryPlaaaaane')
+
 def test_new_Zone():
   zone = presets.new_Zone('SomeZone', type='Unstructured', family='Family', size=[[11, 10, 0]])
   expected = parse_yaml_cgns.to_node("""

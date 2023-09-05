@@ -14,20 +14,26 @@ def new_CGNSBase(name='Base', *, cell_dim=3, phy_dim=3, parent=None):
 def new_Family(name='Family', *, family_bc=None, parent=None):
   family = new_node(name, 'Family_t', None, [], parent=parent)
   if family_bc is not None:
-    allowed_bc = """Null UserDefined BCAxisymmetricWedge BCDegenerateLine BCDegeneratePoint BCDirichlet BCExtrapolate
-    BCFarfield BCGeneral BCInflow BCInflowSubsonic BCInflowSupersonic BCNeumann BCOutflow BCOutflowSubsonic 
-    BCOutflowSupersonic BCSymmetryPlane BCSymmetryPolar BCTunnelInflow BCTunnelOutflow BCWall BCWallInviscid
-    BCWallViscous BCWallViscousHeatFlux BCWallViscousIsothermal FamilySpecified""".split()
-    assert family_bc in allowed_bc
-    new_node('FamilyBC', 'FamilyBC_t', family_bc, [], parent=family)
+    new_FamilyBC(family_bc, family)
   return family
+
+def new_FamilyName(family_name, parent=None):
+  return new_node('FamilyName', 'FamilyName_t', family_name, [], parent)
+
+def new_FamilyBC(family_bc, parent=None):
+  allowed_bc = """Null UserDefined BCAxisymmetricWedge BCDegenerateLine BCDegeneratePoint BCDirichlet BCExtrapolate
+  BCFarfield BCGeneral BCInflow BCInflowSubsonic BCInflowSupersonic BCNeumann BCOutflow BCOutflowSubsonic 
+  BCOutflowSupersonic BCSymmetryPlane BCSymmetryPolar BCTunnelInflow BCTunnelOutflow BCWall BCWallInviscid
+  BCWallViscous BCWallViscousHeatFlux BCWallViscousIsothermal FamilySpecified""".split()
+  assert family_bc in allowed_bc
+  return new_node('FamilyBC', 'FamilyBC_t', family_bc, [], parent)
 
 def new_Zone(name='Zone', *, type='Null', size=None, family=None, parent=None):
   assert type in ['Null', 'UserDefined', 'Structured', 'Unstructured']
   zone = new_node(name, 'Zone_t', size, [], parent)
   zone_type = new_node('ZoneType', 'ZoneType_t', type, [], zone)
   if family:
-    family = new_node('FamilyName', 'FamilyName_t', family, [], zone)
+    new_FamilyName(family, zone)
   return zone
 
 def new_Elements(name='Elements', type='Null', *, erange=None, econn=None, parent=None):
@@ -74,7 +80,7 @@ def new_BC(name='BC', type='Null', *, point_range=None, point_list=None, loc=Non
   if loc is not None:
     new_GridLocation(loc, bc)
   if family is not None:
-    new_node('FamilyName', 'FamilyName_t', family, [], bc)
+    new_FamilyName(family, bc)
   if point_range is not None:
     assert point_list is None
     new_PointRange('PointRange', point_range, bc)
@@ -177,7 +183,7 @@ def new_ZoneSubRegion(name='ZoneSubRegion', *, loc=None, point_range=None, point
   if loc is not None:
     new_GridLocation(loc, zsr)
   if family is not None:
-    new_node('FamilyName', 'FamilyName_t', family, [], zsr)
+    new_FamilyName(family, zsr)
   if point_range is not None:
     assert point_list is None and bc_name is None and gc_name is None
     new_PointRange('PointRange', point_range, zsr)
