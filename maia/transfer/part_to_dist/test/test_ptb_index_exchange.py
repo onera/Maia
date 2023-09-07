@@ -69,7 +69,7 @@ def test_create_part_pl_gnum(comm):
 @pytest_parallel.mark.parallel(3)
 def test_create_part_pr_gnum(comm):
   i_rank = comm.Get_rank()
-  dist_zone = PT.new_Zone('Zone')
+  dist_zone = PT.new_Zone('Zone', type="Structured", size=[[3,2,0], [3,2,0], [3,2,0]])
 
   if i_rank == 0:
     part_zones = [PT.new_Zone(f'Zone.P{i_rank}.N0', size=[[2,1,0], [3,2,0], [3,2,0]])]
