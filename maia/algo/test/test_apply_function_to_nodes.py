@@ -13,8 +13,10 @@ def test_apply_to_zones():
   yt = """
   BaseA CGNSBase_t:
     zoneI Zone_t I4 [[8,5,0]]:
+      ZoneType ZoneType_t "Unstructured":
   BaseB CGNSBase_t:
     zoneII Zone_t I4 [[27,40,0]]:
+      ZoneType ZoneType_t "Unstructured":
       ZoneBC ZoneBC_t:
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)

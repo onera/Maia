@@ -13,6 +13,7 @@ dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 dt0 = """
 ZoneU Zone_t [[6,0,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CX DataArray_t [1,2,3]:
     CY DataArray_t [2,2,2]:
@@ -74,6 +75,7 @@ ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
 
 dt1 = """
 ZoneU Zone_t [[6,0,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CX DataArray_t [4,5,6]:
     CY DataArray_t [1,1,1]:
@@ -140,6 +142,7 @@ def test_dist_coords_to_part_coords_U(comm):
     dt = dt0
     pt = """
   ZoneU.P0.N0 Zone_t [[2,0,0]]:
+    ZoneType ZoneType_t "Unstructured":
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [1,6]:
     """.format(dtype)
@@ -147,9 +150,11 @@ def test_dist_coords_to_part_coords_U(comm):
     dt = dt1
     pt = """
   ZoneU.P1.N0 Zone_t [[2,0,0]]:
+    ZoneType ZoneType_t "Unstructured":
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [5,2]:
   ZoneU.P1.N1 Zone_t [[2,0,0]]:
+    ZoneType ZoneType_t "Unstructured":
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [3,4]:
   """.format(dtype)
@@ -176,6 +181,7 @@ def test_dist_coords_to_part_coords_S(comm):
     dt = dt0
     pt = """
   ZoneS.P0.N0 Zone_t [[2,0,0],[1,0,0],[1,0,0]]:
+    ZoneType ZoneType_t "Structured":
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [1,2]:
     """.format(dtype)
@@ -183,6 +189,7 @@ def test_dist_coords_to_part_coords_S(comm):
     dt = dt1
     pt = """
   ZoneS.P1.N0 Zone_t [[2,0,0],[2,0,0],[1,0,0]]:
+    ZoneType ZoneType_t "Structured":
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [5,6,3,4]:
   """.format(dtype)
@@ -212,6 +219,7 @@ def test_dist_sol_to_part_sol_allvtx(comm, include):
     dt = dt0
     pt = """
   ZoneU.P0.N0 Zone_t [[2,0,0]]:
+    ZoneType ZoneType_t "Unstructured":
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [1,6]:
     """.format(dtype)
@@ -219,9 +227,11 @@ def test_dist_sol_to_part_sol_allvtx(comm, include):
     dt = dt1
     pt = """
   ZoneU.P1.N0 Zone_t [[2,0,0]]:
+    ZoneType ZoneType_t "Unstructured":
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [5,2]:
   ZoneU.P1.N1 Zone_t [[2,0,0]]:
+    ZoneType ZoneType_t "Unstructured":
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [3,4]:
   """.format(dtype)

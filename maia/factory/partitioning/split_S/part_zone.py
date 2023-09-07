@@ -186,7 +186,7 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
   """
   # 1. Collect : for each partition, select the boundary corresponding to new (internal)
   # joins. We store the PR the boundary in (cell) global numbering
-  idx_dim = PT.Zone.CellSize(d_zone).size
+  idx_dim = PT.Zone.IndexDimension(d_zone)
   jn_list = [ [] for i in range(len(p_zones))]
   for geo_bnd in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]:
     normal_idx = dir_to_idx[geo_bnd[0]]
@@ -383,21 +383,27 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
 
   # Vertex
   i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+1, dtype=dtype)
-  j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+1, dtype=dtype).reshape(-1,1)
-  if idx_dim == 3:
-    k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+1, dtype=dtype).reshape(-1,1,1)
+  if idx_dim == 1:
+    vtx_lntogn = i_ar
   else:
-    k_ar  = np.ones(1, dtype=dtype).reshape(-1,1,1)
-  vtx_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_vtx_per_dir).flatten()
+    j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+1, dtype=dtype).reshape(-1,1)
+    if idx_dim == 3:
+      k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+1, dtype=dtype).reshape(-1,1,1)
+    else:
+      k_ar  = np.ones(1, dtype=dtype).reshape(-1,1,1)
+    vtx_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_vtx_per_dir).flatten()
 
   # Cell
   i_ar  = np.arange(cell_window[0,0], cell_window[0,1], dtype=dtype)
-  j_ar  = np.arange(cell_window[1,0], cell_window[1,1], dtype=dtype).reshape(-1,1)
-  if idx_dim == 3:
-    k_ar  = np.arange(cell_window[2,0], cell_window[2,1], dtype=dtype).reshape(-1,1,1)
+  if idx_dim == 1:
+    cell_lntogn = i_ar
   else:
-    k_ar  = np.ones(1, dtype=dtype).reshape(-1,1,1)
-  cell_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_cell_per_dir).flatten()
+    j_ar  = np.arange(cell_window[1,0], cell_window[1,1], dtype=dtype).reshape(-1,1)
+    if idx_dim == 3:
+      k_ar  = np.arange(cell_window[2,0], cell_window[2,1], dtype=dtype).reshape(-1,1,1)
+    else:
+      k_ar  = np.ones(1, dtype=dtype).reshape(-1,1,1)
+    cell_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_cell_per_dir).flatten()
 
   # Faces
   if idx_dim == 3:
@@ -429,15 +435,19 @@ def part_s_zone(d_zone, d_zone_weights, comm):
   my_weights = np.asarray(d_zone_weights, dtype=np.float64)
   all_weights = np.empty(n_part_each_proc.sum(), dtype=np.float64)
   comm.Allgatherv(my_weights, [all_weights, n_part_each_proc])
+  idx_dim = PT.Zone.IndexDimension(d_zone)
+  dist_cell_size = PT.Zone.CellSize(d_zone)
 
-  all_parts = SCT.split_S_block(PT.Zone.CellSize(d_zone), len(all_weights), all_weights)
+  if dist_cell_size.size > 1:
+    all_parts = SCT.split_S_block(dist_cell_size, len(all_weights), all_weights)
+  else:
+    all_parts = SCT.split_S_line(dist_cell_size, all_weights)
 
   my_start = n_part_each_proc[:i_rank].sum()
   my_end   = my_start + n_part_this_zone
   my_parts = all_parts[my_start:my_end]
 
   part_zones = []
-  idx_dim = PT.get_value(d_zone).shape[0]
   for i_part, part in enumerate(my_parts):
     #Get dim and setup zone
     cell_bounds = np.asarray(part, dtype=np.int32) + 1 #Semi open, but start at 1

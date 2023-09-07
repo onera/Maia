@@ -294,3 +294,18 @@ def test_split_structured_2d(comm):
   assert (PT.Zone.CellSize(part_zone) == [5,5]).all()
   assert MT.getGlobalNumbering(part_zone, 'Cell') is not None
   assert MT.getGlobalNumbering(part_zone, 'Face') is None
+
+
+@pytest_parallel.mark.parallel(2)
+def test_split_structured_1d(comm):
+  dist_tree = maia.factory.generate_dist_block([10,1,1], 'S', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  part_zone = PT.get_all_Zone_t(part_tree)[0]
+  if comm.Get_rank() == 0:
+    assert PT.Zone.CellSize(part_zone) == [5]
+    assert (MT.getGlobalNumbering(part_zone, 'Cell')[1] == [1,2,3,4,5]).all()
+  elif comm.Get_rank() == 1:
+    assert PT.Zone.CellSize(part_zone) == [4]
+    assert (MT.getGlobalNumbering(part_zone, 'Cell')[1] == [6,7,8,9]).all()
+  assert MT.getGlobalNumbering(part_zone, 'Face') is None
+  assert len(PT.get_nodes_from_label(part_zone, 'GridConnectivity1to1_t'))

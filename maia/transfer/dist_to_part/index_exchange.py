@@ -31,7 +31,7 @@ def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
             point_lists.append(idx.reshape((1,-1), order='F'))
           else:
             point_lists.append(pl_raw)
-        elif pr_n is not None and PT.get_value(pr_n).shape[0] == 1:
+        elif pr_n is not None and PT.Zone.Type(dist_zone) == 'Unstructured':
           pr = PT.get_value(pr_n)
           distrib = PT.get_value(MT.getDistribution(node, 'Index'))
           point_lists.append(np_utils.single_dim_pr_to_pl(pr, distrib))
@@ -50,7 +50,7 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
         #Exclude nodes with no pl
-        if pl_n or (pr_n and PT.get_value(pr_n).shape[0] == 1):
+        if pl_n or (pr_n and PT.Zone.Type(p_zone) == 'Unstructured'):
           beg_pl = p_groups['npZSRGroupIdx'][i_pl]
           end_pl = p_groups['npZSRGroupIdx'][i_pl+1]
           if beg_pl != end_pl:

@@ -39,6 +39,7 @@ def test_set_mpart_dmeshes(comm):
   dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
   dt = f"""
 ZoneA Zone_t [[1,1,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t R8 []:
     CoordinateY DataArray_t R8 []:
@@ -55,6 +56,7 @@ ZoneA Zone_t [[1,1,0]]:
     Vertex DataArray_t {dtype} [0,0,0]:
     Cell DataArray_t {dtype} [0,0,0]:
 ZoneB Zone_t [[1,1,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t R8 []:
     CoordinateY DataArray_t R8 []:

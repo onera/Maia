@@ -268,12 +268,14 @@ def test_recover_dist_block_size(comm):
   if comm.Get_rank() == 0:
     pt = """
     Zone.P0.N0 Zone_t [[2,1,0], [3,2,0], [4,3,0]]: #Middle
+      ZoneType ZoneType_t "Structured":
       ZoneGridConnectivity ZoneGridConnectivity_t:
         JN.P0.N0.LT.P0.N1 GridConnectivity1to1_t "Zone.P0.N1":
           PointRange IndexRange_t [[1,1], [1,3], [1,4]]:
         JN.P0.N0.LT.P1.N0 GridConnectivity1to1_t "Zone.P1.N0":
           PointRange IndexRange_t [[2,2], [1,3], [1,4]]:
     Zone.P0.N1 Zone_t [[2,1,0], [3,2,0], [4,3,0]]: #Left
+      ZoneType ZoneType_t "Structured":
       ZoneGridConnectivity ZoneGridConnectivity_t:
         JN.P0.N1.LT.P0.N0 GridConnectivity1to1_t "Zone.P0.N0":
           PointRange IndexRange_t [[2,2], [1,3], [1,4]]:
@@ -281,6 +283,7 @@ def test_recover_dist_block_size(comm):
   elif comm.Get_rank() == 1:
     pt = """
     Zone.P1.N0 Zone_t [[2,1,0], [3,2,0], [4,3,0]]: #Right
+      ZoneType ZoneType_t "Structured":
       ZoneGridConnectivity ZoneGridConnectivity_t:
         JN.P1.N0.LT.P0.N0 GridConnectivity1to1_t "Zone.P0.N0":
           PointRange IndexRange_t [[1,1], [1,3], [1,4]]:

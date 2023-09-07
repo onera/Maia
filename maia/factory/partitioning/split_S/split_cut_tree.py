@@ -124,3 +124,21 @@ def split_S_block(dims, n_parts, weights = None, max_it = 720):
     part_permutation = np.argsort(permutation_idx)
     return [parts[k] for k in part_permutation]
 
+
+def split_S_line(dim, weights):
+  """Simplified version of split_S_block where 
+  we divided a single scalar according to provided weights"""
+  n_cell = np.floor(weights*dim).astype(int)
+  remainder = dim - n_cell.sum()
+  assert 0 <= remainder
+  it = itertools.cycle(range(n_cell.size))
+  while remainder > 0:
+    n_cell[next(it)] += 1
+    remainder -= 1
+  all_parts = []
+  last = 0
+  for nc in n_cell:
+    all_parts.append([[last, last+nc]])
+    last += nc
+
+  return all_parts
