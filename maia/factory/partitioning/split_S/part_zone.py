@@ -152,18 +152,22 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             PT.new_PointRange(value=sub_pr, parent=part_bc)
             sub_pr_loc = np.copy(sub_pr)
             sub_pr_loc[0,:] += range_part_bc_g[0,0] - range_dist_bc[0,0]
-            sub_pr_loc[1,:] += range_part_bc_g[1,0] - range_dist_bc[1,0]
+            if idx_dim >= 2:
+              sub_pr_loc[1,:] += range_part_bc_g[1,0] - range_dist_bc[1,0]
             if idx_dim >= 3:
               sub_pr_loc[2,:] += range_part_bc_g[2,0] - range_dist_bc[2,0]
             sub_pr_loc[normal_idx,:] = 1
 
             i_ar  = np.arange(sub_pr_loc[0,0], sub_pr_loc[0,1]+1, dtype=pdm_dtype)
-            j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
-            if idx_dim == 3:
-              k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
+            if idx_dim == 1:
+              bcds_lntogn = i_ar
             else:
-              k_ar  = np.ones(1, dtype=pdm_dtype).reshape(-1,1,1)
-            bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
+              j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
+              if idx_dim == 3:
+                k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
+              else:
+                k_ar  = np.ones(1, dtype=pdm_dtype).reshape(-1,1,1)
+              bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
             assert bcds_lntogn.size == PT.Subset.n_elem(part_bc)
             MT.newGlobalNumbering({'Index' : bcds_lntogn}, part_bc)
           else: #GC are put with bc and treated afterward
