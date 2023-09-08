@@ -561,7 +561,7 @@ def extract_part_from_family(part_tree, family_name, comm,
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # > Discover family related nodes
-  in_fam  = lambda n : PT.predicate.belongs_to_family(n, family_name)
+  in_fam = lambda n : PT.predicate.belongs_to_family(n, family_name)
   def fam_to_node_paths(zone, family_name):
     node_paths = PT.predicates_to_paths(zone, [lambda n: PT.get_label(n)=='ZoneSubRegion_t'  and in_fam])
     node_paths+= PT.predicates_to_paths(zone, ['ZoneBC_t', in_fam])
@@ -571,7 +571,19 @@ def extract_part_from_family(part_tree, family_name, comm,
   for domain, part_zones in part_tree_per_dom.items():
     dist_zone = PT.new_Zone('Zone')
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t',           in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneSubRegion_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneSubRegion_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t', 'Descriptor_t'])
+    zsr_has_regionname = lambda n: PT.get_label(n)=="ZoneSubRegion_t" and\
+                                  (PT.get_child_from_name(n, 'BCRegionName')               is not None or\
+                                   PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None)
+    region_node_names = list()
+    is_regionname = lambda n: PT.get_name(n) in ['BCRegionName', 'GridConnectivityRegionName']
+    for zsr_with_regionname_n in PT.get_children_from_predicate(dist_zone, zsr_has_regionname):
+      region_node = PT.get_child_from_predicate(zsr_with_regionname_n, is_regionname)
+      region_node_names.append(PT.get_value(region_node))
+    bc_gc_in_fam = lambda n: PT.get_name(n) in region_node_names
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t',               bc_gc_in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneGridConnectivity_t', bc_gc_in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
+
     fam_node_paths+= fam_to_node_paths(dist_zone, family_name)
 
     gl_nodes = PT.get_nodes_from_label(dist_zone, 'GridLocation_t')
