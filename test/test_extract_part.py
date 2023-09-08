@@ -157,8 +157,9 @@ def test_extract_cell_from_zsr_U(graph_part_tool, comm, write_output):
   # > Extract part
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", comm,
                                             # equilibrate=1,
+                                            transfer_dataset=False,
                                             graph_part_tool=graph_part_tool,
-                                            containers_name=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"]
+                                            containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_FlowSolution']
                                             )
 
   # > Part to dist
@@ -293,9 +294,9 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
 
   # # > Extract part
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", comm,
-                                            # equilibrate=1,
+                                            transfer_dataset=True,
                                             graph_part_tool=graph_part_tool,
-                                            containers_name=['FlowSolution_NC',"ZSR_FlowSolution"]
+                                            containers_name=['FlowSolution_NC']
                                             )
   # Sortie VTK for visualisation
   # part_zones = PT.get_all_Zone_t(part_tree_ep)
@@ -377,10 +378,11 @@ def test_extract_bcs_from_family_U(graph_part_tool, comm, write_output):
   PT.new_Family('ALL_BCS', parent=part_base)
 
   # > Extract part
-  part_tree_ep = EXP.extract_part_from_family( part_tree, "ALL_BCS", comm,
-                                                graph_part_tool=graph_part_tool,
-                                                containers_name=['FlowSolution_NC'],
-                                                )
+  part_tree_ep = EXP.extract_part_from_family(part_tree, "ALL_BCS", comm,
+                                              transfer_dataset=True,
+                                              graph_part_tool=graph_part_tool,
+                                              containers_name=['FlowSolution_NC'],
+                                              )
 
   # # > For paraview visu
   # part_zone_ep = PT.get_node_from_label(part_tree_ep,'Zone_t')
@@ -452,10 +454,11 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
     PT.new_node('FamilyName', label='FamilyName_t', value='ZSRs', parent=zsr_n)
 
   # > Extract part
-  part_tree_ep = EXP.extract_part_from_family( part_tree, "ZSRs", comm,
-                                                graph_part_tool=graph_part_tool,
-                                                containers_name=['FlowSolution_NC','ZSR_x'],
-                                                )
+  part_tree_ep = EXP.extract_part_from_family(part_tree, "ZSRs", comm,
+                                              transfer_dataset=False,
+                                              graph_part_tool=graph_part_tool,
+                                              containers_name=['FlowSolution_NC','ZSR_x'],
+                                              )
 
   # # > For paraview visu
   # part_zone_ep = PT.get_node_from_label(part_tree_ep,'Zone_t')

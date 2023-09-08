@@ -111,6 +111,8 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
   mask_container = PT.get_child_from_name(mask_zone, container_name)
   if mask_container is None:
     raise ValueError("[maia-extract_part] asked container for exchange is not in tree")
+  if PT.get_child_from_label(mask_container, 'DataArray_t') is None:
+    return
 
   # > Manage BC and GC ZSR
   ref_zsr_node    = mask_container
@@ -384,7 +386,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
 
 
 def extract_part_from_zsr(part_tree, zsr_name, comm,
-                          # transfer_fields=True
+                          transfer_dataset=True,
                           containers_name=[], **options):
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
@@ -400,6 +402,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
       connectivities are managed.
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
+    transfer_dataset(bool)        : data arrays from ZSR will be transfered to the extracted mesh (default to ``True``)
     containers_name (list of str) : List of the names of the fields containers to transfer
                                     on the output extracted tree.
     **options: Options related to the extraction.
@@ -431,8 +434,11 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   start = time.time()
   extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
-  if containers_name:
-    extractor.exchange_fields(containers_name)
+  l_containers_name = [name for name in containers_name]
+  if transfer_dataset and zsr_name not in l_containers_name:
+    l_containers_name += [zsr_name]
+  if l_containers_name:
+    extractor.exchange_fields(l_containers_name)
   end = time.time()
 
   extracted_tree = extractor.get_extract_part_tree()
@@ -522,7 +528,10 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
     l_containers_name.append(bc_name) # not to change the initial containers_name list
 
 
-  return extract_part_from_zsr(local_part_tree, bc_name, comm, l_containers_name, **options)
+  return extract_part_from_zsr(local_part_tree, bc_name, comm,
+                               transfer_dataset=False,
+                               containers_name=l_containers_name,
+                             **options)
 
 
 
@@ -536,7 +545,8 @@ def extract_part_from_family(part_tree, family_name, comm,
 
   Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`
   (``zsr_name`` becomes ``bc_name``). Optional ``transfer_dataset`` argument allows to 
-  transfer BCDataSet from family related BC to the extracted mesh (default to ``True``). 
+  transfer BCDataSet from family related BCs or DataArray from family related ZSRs 
+  to the extracted mesh (default to ``True``). 
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -589,9 +599,11 @@ def extract_part_from_family(part_tree, family_name, comm,
                 PT.add_child(part_zone, zsr_bc_n)
 
           if PT.get_label(fam_node)=="ZoneSubRegion_t":
+            if transfer_dataset:
+              if PT.get_child_from_label(fam_node, 'DataArray_t') is not None:
+                there_is_bcdataset[path] = True
             related_path = PT.getSubregionExtent(fam_node, part_zone)
             fam_node = PT.get_node_from_path(part_zone, related_path)
-
           pl_n = PT.get_child_from_name(fam_node, 'PointList')
           fam_pl.append(PT.get_value(pl_n))
 
@@ -601,10 +613,13 @@ def extract_part_from_family(part_tree, family_name, comm,
         zsr_n = PT.new_ZoneSubRegion(name=family_name, point_list=fam_pl, loc=location[0], parent=part_zone)
 
   # Synchronize container names
-  for bc_path, there_is in there_is_bcdataset.items():
+  for node_path, there_is in there_is_bcdataset.items():
     if transfer_dataset and comm.allreduce(there_is, MPI.LOR):
-      bc_name = bc_path.split('/')[-1]
-      if bc_name not in l_containers_name:
-        l_containers_name.append(bc_name) # not to change the initial containers_name list
+      node_name = node_path.split('/')[-1]
+      if node_name not in l_containers_name:
+        l_containers_name.append(node_name) # not to change the initial containers_name list
 
-  return extract_part_from_zsr(local_part_tree, family_name, comm, l_containers_name, **options)
+  return extract_part_from_zsr(local_part_tree, family_name, comm, 
+                               transfer_dataset=False,
+                               containers_name=l_containers_name,
+                             **options)
