@@ -394,7 +394,8 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   Dimension of the output mesh is set up accordingly to the GridLocation of the ZoneSubRegion.
   Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.
 
-  In addition, containers specified in ``containers_name`` list are transfered to the extracted tree.
+  Fields found under the ZSR node are transfered to the extracted mesh if ``transfer_dataset`` is set to True.
+  In addition, additional containers specified in ``containers_name`` list are transfered to the extracted tree.
   Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.
 
   Args:
@@ -402,7 +403,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
       connectivities are managed.
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
-    transfer_dataset(bool)        : data arrays from ZSR will be transfered to the extracted mesh (default to ``True``)
+    transfer_dataset(bool)        : Transfer (or not) fields stored in ZSR to the extracted mesh (default to ``True``)
     containers_name (list of str) : List of the names of the fields containers to transfer
                                     on the output extracted tree.
     **options: Options related to the extraction.
@@ -498,8 +499,8 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
 
-  Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`
-  (``zsr_name`` becomes ``bc_name``). Optional ``transfer_dataset`` argument allows to 
+  Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`:
+  ``zsr_name`` becomes ``bc_name`` and optional ``transfer_dataset`` argument allows to 
   transfer BCDataSet from BC to the extracted mesh (default to ``True``).
 
   Example:
@@ -540,13 +541,12 @@ def extract_part_from_family(part_tree, family_name, comm,
                              containers_name=[],
                              **options):
   """Extract the submesh defined by the provided family name from the input volumic
-  partitioned tree. Family related nodes can be either BC_t or ZoneSubRegion_t, but their
-  GridLocation must have same value. Family related nodes will be merged on the resulting tree.
+  partitioned tree. 
+  
+  Family related nodes can be labelled either as BC_t or ZoneSubRegion_t, but their
+  GridLocation must have the same value. They generate a merged output on the resulting extracted tree.
 
-  Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`
-  (``zsr_name`` becomes ``bc_name``). Optional ``transfer_dataset`` argument allows to 
-  transfer BCDataSet from family related BCs or DataArray from family related ZSRs 
-  to the extracted mesh (default to ``True``). 
+  Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`.
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -561,36 +561,35 @@ def extract_part_from_family(part_tree, family_name, comm,
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # > Discover family related nodes
-  in_fam = lambda n : PT.predicate.belongs_to_family(n, family_name)
-  def fam_to_node_paths(zone, family_name):
-    node_paths = PT.predicates_to_paths(zone, [lambda n: PT.get_label(n)=='ZoneSubRegion_t'  and in_fam])
-    node_paths+= PT.predicates_to_paths(zone, ['ZoneBC_t', in_fam])
-    return node_paths
+  in_fam = lambda n : PT.predicate.belongs_to_family(n, family_name, True)
+  is_regionname = lambda n: PT.get_name(n) in ['BCRegionName', 'GridConnectivityRegionName']
+  bc_gc_in_fam = lambda n: PT.get_name(n) in region_node_names
+  zsr_has_regionname = lambda n: PT.get_label(n)=="ZoneSubRegion_t" and \
+                                (PT.get_child_from_name(n, 'BCRegionName')               is not None or \
+                                 PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None)
+  fam_to_node_paths = lambda zone, family_name: PT.predicates_to_paths(zone, [lambda n: PT.get_label(n)=='ZoneSubRegion_t' and in_fam]) + \
+                                                PT.predicates_to_paths(zone, ['ZoneBC_t', in_fam])
+
 
   fam_node_paths = list()
   for domain, part_zones in part_tree_per_dom.items():
     dist_zone = PT.new_Zone('Zone')
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t',           in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneSubRegion_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t', 'Descriptor_t'])
-    zsr_has_regionname = lambda n: PT.get_label(n)=="ZoneSubRegion_t" and\
-                                  (PT.get_child_from_name(n, 'BCRegionName')               is not None or\
-                                   PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None)
     region_node_names = list()
-    is_regionname = lambda n: PT.get_name(n) in ['BCRegionName', 'GridConnectivityRegionName']
     for zsr_with_regionname_n in PT.get_children_from_predicate(dist_zone, zsr_has_regionname):
       region_node = PT.get_child_from_predicate(zsr_with_regionname_n, is_regionname)
       region_node_names.append(PT.get_value(region_node))
-    bc_gc_in_fam = lambda n: PT.get_name(n) in region_node_names
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t',               bc_gc_in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneGridConnectivity_t', bc_gc_in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
+    child_list = ['AdditionalFamilyName_t', 'FamilyName_t', 'GridLocation_t']
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', lambda n: in_fam(n) or bc_gc_in_fam(n)], comm, get_value='leaf', child_list=child_list)
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneGridConnectivity_t', bc_gc_in_fam], comm, get_value='leaf', child_list=child_list)
 
-    fam_node_paths+= fam_to_node_paths(dist_zone, family_name)
+    fam_node_paths.extend(fam_to_node_paths(dist_zone, family_name))
 
     gl_nodes = PT.get_nodes_from_label(dist_zone, 'GridLocation_t')
-    location = np.unique([PT.get_value(n) for n in gl_nodes])
-    if location.size not in [0, 1]:
+    location = [PT.get_value(n) for n in gl_nodes]
+    if len(set(location)) > 1:
       # Not checking subregion extents, possible ?
-      raise ValueError(f"Specified family refers to nodes with different GridLocation value : {location}.")
+      raise ValueError(f"Specified family refers to nodes with different GridLocation value : {set(location)}.")
      
   # Adding ZSR to tree
   there_is_bcdataset = dict((path, False) for path in fam_node_paths)
