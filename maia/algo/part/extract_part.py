@@ -1,9 +1,9 @@
-import copy
 import time
 import mpi4py.MPI as MPI
 
 import maia
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 from   maia.factory  import dist_from_part
 from   maia.transfer import utils                as TEU
@@ -51,7 +51,7 @@ class Extractor:
     assert len(part_tree_per_dom) == 1
 
     # ExtractPart dimension
-    self.dim    = LOC_TO_DIM[location]
+    self.dim = LOC_TO_DIM[location]
     assert self.dim in [0,2,3], "[MAIA] Error : dimensions 0 and 1 not yet implemented"
     #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
     cell_dim = 3 if location == 'Vertex' else self.dim 
@@ -231,7 +231,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   # > Discover BCs
   dist_zone = PT.new_Zone('Zone')
   gdom_bcs_path_per_dim = {"CellCenter":None, "FaceCenter":None, "EdgeCenter":None, "Vertex":None}
-  for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim.keys()):
+  for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim):
     if LOC_TO_DIM[dim_name]<=dim:
       is_dim_bc = lambda n: PT.get_label(n)=="BC_t" and\
                             PT.Subset.GridLocation(n)==dim_name
@@ -281,8 +281,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
           bc_n  = PT.get_node_from_path(part_zone, bc_path)
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
                     if bc_n is not None else np.empty(0, np.int32)
-          bc_gn = PT.get_value(PT.get_node_from_path( bc_n, ':CGNS#GlobalNumbering/Index')) \
-                    if bc_n is not None else np.empty(0, pdm_gnum_dtype)
+          bc_gn = PT.get_value(MT.getGlobalNumbering(bc_n, 'Index')) if bc_n is not None else np.empty(0, pdm_gnum_dtype)
           pdm_ep.part_group_set(i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, LOC_TO_DIM[dim_name]) -1 , bc_gn)
       bc_type +=1
 
@@ -505,7 +504,7 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   """
 
   # Local copy of the part_tree to add ZSR 
-  l_containers_name = copy.deepcopy(containers_name)
+  l_containers_name = [name for name in containers_name]
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
@@ -532,7 +531,8 @@ def extract_part_from_family(part_tree, family_name, comm,
                              containers_name=[],
                              **options):
   """Extract the submesh defined by the provided family name from the input volumic
-  partitioned tree.
+  partitioned tree. Family related nodes can be either BC_t or ZoneSubRegion_t, but their
+  GridLocation must have same value. Family related nodes will be merged on the resulting tree.
 
   Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`
   (``zsr_name`` becomes ``bc_name``). Optional ``transfer_dataset`` argument allows to 
@@ -546,7 +546,7 @@ def extract_part_from_family(part_tree, family_name, comm,
   """
 
   # Local copy of the part_tree to add ZSR 
-  l_containers_name = copy.deepcopy(containers_name)
+  l_containers_name = [name for name in containers_name]
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
@@ -554,14 +554,13 @@ def extract_part_from_family(part_tree, family_name, comm,
   in_fam  = lambda n : PT.predicate.belongs_to_family(n, family_name)
   def fam_to_node_paths(zone, family_name):
     node_paths = PT.predicates_to_paths(zone, [lambda n: PT.get_label(n)=='ZoneSubRegion_t'  and in_fam])
-    node_paths+= PT.predicates_to_paths(zone, ['ZoneBC_t', lambda n: PT.get_label(n)=='BC_t' and in_fam])
+    node_paths+= PT.predicates_to_paths(zone, ['ZoneBC_t', in_fam])
     return node_paths
 
   fam_node_paths = list()
   for domain, part_zones in part_tree_per_dom.items():
     dist_zone = PT.new_Zone('Zone')
-    # dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['FamilyName_t'],    comm, get_value='leaf')
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t','BC_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t',           in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneSubRegion_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t'])
     fam_node_paths+= fam_to_node_paths(dist_zone, family_name)
 

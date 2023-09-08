@@ -217,7 +217,7 @@ def test_extract_from_bc_name():
   #extract_from_bc_name@end
 
 def test_extract_from_family():
-  #extract_from_bc_name@start
+  #extract_from_family@start
   from   mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
@@ -231,7 +231,7 @@ def test_extract_from_family():
                  'WALL', MPI.COMM_WORLD, containers_name=["WallDistance"])
 
   assert maia.pytree.get_node_from_name(extracted_bc, "WallDistance") is not None
-  #extract_from_bc_name@end
+  #extract_from_family@end
 
 def test_compute_elliptical_slice():
   #compute_elliptical_slice@start
