@@ -32,8 +32,25 @@ def plane_eq(x,y,z) :
   between_planes = np.logical_and(behind_plane1, behind_plane2)
   return between_planes
 
+def initialize_bc(zone, bc_name):
+  face_center = maia.algo.part.geometry.compute_face_center(zone)
+  cfx = face_center[0::3]
+  cfy = face_center[1::3]
+  cfz = face_center[2::3]
 
-def initialize_zsr_by_eq(zone, variables, function, location, comm):
+  bc_n = PT.get_node_from_name(zone, bc_name)
+  if bc_n is not None:
+    bc_pl  = PT.get_node_from_name(bc_n, 'PointList')[1][0]
+    bc_cfx = cfx[bc_pl-1]
+    bc_cfy = cfy[bc_pl-1]
+    bc_cfz = cfz[bc_pl-1]
+    bc_dataset_n = PT.new_node(name='BCDataSet'  , label='BCDataSet_t', value='UserDefined', parent=bc_n)
+    neuma_data_n = PT.new_node(name='NeumannData', label='BCData_t'   , value=None         , parent=bc_dataset_n)
+    grid_loc_n   = PT.new_GridLocation('FaceCenter', parent=neuma_data_n)
+    sphere       = PT.new_DataArray('sphere_bc'  , bc_cfx**2 + bc_cfy**2 + bc_cfz**2 - 1, parent=neuma_data_n)
+    cylinder     = PT.new_DataArray('cylinder_bc', bc_cfx**2 + bc_cfy**2             - 1, parent=neuma_data_n)
+
+def initialize_zsr_by_eq(zone, variables, function, location):
   # In/out selection array
   in_extract_part = function(*variables)
   
@@ -112,7 +129,7 @@ def generate_test_tree(n_vtx,n_part,location,comm):
       elt_range     = [1]
     else:
       sys.exit()
-    point_list_loc = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location,comm)
+    point_list_loc = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location)
     
     # Put fld in ZSR
     zsr_node = PT.get_node_from_name(zone,'ZSR_FlowSolution')
@@ -140,8 +157,9 @@ def test_extract_cell_from_zsr_U(graph_part_tool, comm, write_output):
   # > Extract part
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", comm,
                                             # equilibrate=1,
+                                            transfer_dataset=False,
                                             graph_part_tool=graph_part_tool,
-                                            containers_name=['FlowSolution_NC','FlowSolution_CC',"ZSR_FlowSolution"]
+                                            containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_FlowSolution']
                                             )
 
   # > Part to dist
@@ -276,9 +294,9 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
 
   # # > Extract part
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", comm,
-                                            # equilibrate=1,
+                                            transfer_dataset=True,
                                             graph_part_tool=graph_part_tool,
-                                            containers_name=['FlowSolution_NC',"ZSR_FlowSolution"]
+                                            containers_name=['FlowSolution_NC']
                                             )
   # Sortie VTK for visualisation
   # part_zones = PT.get_all_Zone_t(part_tree_ep)
@@ -314,23 +332,8 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
   part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
 
   for zone in PT.get_all_Zone_t(part_tree):
-    face_center = maia.algo.part.geometry.compute_face_center(zone)
-    cfx = face_center[0::3]
-    cfy = face_center[1::3]
-    cfz = face_center[2::3]
-
-    bc_n = PT.get_node_from_name(zone, 'Xmin')
-    if bc_n is not None:
-      bc_pl  = PT.get_node_from_name(bc_n, 'PointList')[1][0]
-      bc_cfx = cfx[bc_pl-1]
-      bc_cfy = cfy[bc_pl-1]
-      bc_cfz = cfz[bc_pl-1]
-      bc_dataset_n = PT.new_node(name='BCDataSet'  , label='BCDataSet_t', value='UserDefined', parent=bc_n)
-      neuma_data_n = PT.new_node(name='NeumannData', label='BCData_t'   , value=None         , parent=bc_dataset_n)
-      grid_loc_n   = PT.new_GridLocation('FaceCenter', parent=neuma_data_n)
-      sphere       = PT.new_DataArray('sphere_bc'  , bc_cfx**2 + bc_cfy**2 + bc_cfz**2 - 1, parent=neuma_data_n)
-      cylinder     = PT.new_DataArray('cylinder_bc', bc_cfx**2 + bc_cfy**2             - 1, parent=neuma_data_n)
-
+    initialize_bc(zone, 'Xmin')
+    
   # > Extract part
   part_tree_ep = EXP.extract_part_from_bc_name( part_tree, "Xmin", comm,
                                                 graph_part_tool=graph_part_tool,
@@ -349,6 +352,143 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_bc_from_bc_name.cgns'), comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')                , comm)
+
+  # > Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+
+
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@pytest_parallel.mark.parallel([1,3])
+def test_extract_bcs_from_family_U(graph_part_tool, comm, write_output):
+
+  # > Generate tree
+  n_vtx  = 6
+  n_part = 4
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
+
+  for zone in PT.get_all_Zone_t(part_tree):
+    initialize_bc(zone, 'Xmin')
+    initialize_bc(zone, 'Ymin')
+    initialize_bc(zone, 'Zmin')
+
+    for bc_n in PT.get_nodes_from_label(zone, 'BC_t'):
+      PT.new_node('FamilyName', label='FamilyName_t', value='ALL_BCS', parent=bc_n)
+
+  part_base = PT.get_child_from_label(part_tree, 'CGNSBase_t')
+  PT.new_Family('ALL_BCS', parent=part_base)
+
+  # > Extract part
+  part_tree_ep = EXP.extract_part_from_family(part_tree, "ALL_BCS", comm,
+                                              transfer_dataset=True,
+                                              graph_part_tool=graph_part_tool,
+                                              containers_name=['FlowSolution_NC'],
+                                              )
+
+  # # > For paraview visu
+  # part_zone_ep = PT.get_node_from_label(part_tree_ep,'Zone_t')
+  # fld1 = np.zeros(PT.Zone.n_cell(part_zone_ep), dtype=np.float64)
+  # fld2 = np.zeros(PT.Zone.n_cell(part_zone_ep), dtype=np.float64)
+  # for zsr_name in ['Xmin','Ymin','Zmin']:
+  #   zsr_n = PT.get_child_from_name(part_zone_ep, zsr_name)
+  #   if zsr_n is not None:
+  #     pl = PT.get_value(PT.get_child_from_name(zsr_n, 'PointList'))[0]-1
+  #     fld1[pl] = PT.get_value(PT.get_child_from_name(zsr_n, 'sphere_bc'))
+  #     fld2[pl] = PT.get_value(PT.get_child_from_name(zsr_n, 'cylinder_bc'))
+  # fsfc = PT.new_FlowSolution('FlowSolBCs', loc='CellCenter',
+  #                             fields={'spere_bc'   : fld1,
+  #                                     'cylinder_bc': fld2},
+  #                             parent=part_zone_ep)
+
+  # > Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+
+  # > Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_bcs_from_family.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_bcs_from_family.cgns'), comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')               , comm)
+
+  # > Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+
+
+
+
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@pytest_parallel.mark.parallel([1,3])
+def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
+
+  def plane_eq(x,y,z) :
+    peq1 = [0.,  1., 0., 0.6]
+    peq2 = [0., -1., 0., 0.6]
+    behind_plane1 = x*peq1[0] + y*peq1[1] + z*peq1[2] - peq1[3] < 0.
+    behind_plane2 = x*peq2[0] + y*peq2[1] + z*peq2[2] - peq2[3] < 0.
+    between_planes = np.logical_and(behind_plane1, behind_plane2)
+    return between_planes
+
+  # > Generate tree
+  n_vtx  = 6
+  n_part = 4
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
+
+  part_base = PT.get_child_from_label(part_tree, 'CGNSBase_t')
+  PT.new_Family('ZSRs', parent=part_base)
+
+  for zone in PT.get_all_Zone_t(part_tree):
+    # Rename zsr in tree
+    zsr_n = PT.get_node_from_name(zone, "ZSR_FlowSolution")
+    PT.set_name(zsr_n , "ZSR_x")
+    PT.new_node('FamilyName', label='FamilyName_t', value='ZSRs', parent=zsr_n)
+
+    # Create second zsr in tree
+    cell_center = maia.algo.part.geometry.compute_cell_center(zone)
+    ccx = cell_center[0::3]
+    ccy = cell_center[1::3]
+    ccz = cell_center[2::3]
+    initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, "CellCenter")
+    zsr_n = PT.get_node_from_name(zone, "ZSR_FlowSolution")
+    PT.set_name(zsr_n , "ZSR_y")
+    PT.new_node('FamilyName', label='FamilyName_t', value='ZSRs', parent=zsr_n)
+
+  # > Extract part
+  part_tree_ep = EXP.extract_part_from_family(part_tree, "ZSRs", comm,
+                                              transfer_dataset=False,
+                                              graph_part_tool=graph_part_tool,
+                                              containers_name=['FlowSolution_NC','ZSR_x'],
+                                              )
+
+  # # > For paraview visu
+  # part_zone_ep = PT.get_node_from_label(part_tree_ep,'Zone_t')
+  # fld1 = np.zeros(PT.Zone.n_cell(part_zone_ep), dtype=np.float64)
+  # fld2 = np.zeros(PT.Zone.n_cell(part_zone_ep), dtype=np.float64)
+  # fld3 = np.zeros(PT.Zone.n_cell(part_zone_ep), dtype=np.float64)
+  # for zsr_name in ['ZSR_x']:
+  #   zsr_n = PT.get_child_from_name(part_zone_ep, zsr_name)
+  #   if zsr_n is not None:
+  #     pl = PT.get_value(PT.get_child_from_name(zsr_n, 'PointList'))[0]-1-194
+  #     fld1[pl] = PT.get_value(PT.get_child_from_name(zsr_n, 'ZSR_ccx'))
+  #     fld2[pl] = PT.get_value(PT.get_child_from_name(zsr_n, 'ZSR_ccy'))
+  #     fld3[pl] = PT.get_value(PT.get_child_from_name(zsr_n, 'ZSR_ccz'))
+  # fsfc = PT.new_FlowSolution('FlowSolBCs', loc='CellCenter',
+  #                             fields={'ZSR_ccx': fld1,
+  #                                     'ZSR_ccy': fld2,
+  #                                     'ZSR_ccz': fld3},
+  #                             parent=part_zone_ep)
+
+  # > Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+
+  # > Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_zsr_from_family.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_zsr_from_family.cgns'), comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')               , comm)
 
   # > Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)

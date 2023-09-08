@@ -161,8 +161,9 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
         if gridLocation=="Vertex" :
           weighted_fld       = part1_data[i_part]*part1_weight[i_part]
           part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
-        PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)
-    
+        if part1_data[i_part].size!=0:
+          PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)
+
     # Build PL with the last exchange stride
     if partial_field:
       if len(part1_data)!=0 and part1_data[0].size!=0:
@@ -177,6 +178,10 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
       if iso_part_zone is not None and create_fs and len(partial_gnum)!=0:
         PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_iso)
+
+    # Remove node if is empty
+    if FS_iso is not None and len(PT.get_children_from_label(FS_iso, 'DataArray_t'))==0:
+      PT.rm_child(iso_part_zone, FS_iso)
 
 
 def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :

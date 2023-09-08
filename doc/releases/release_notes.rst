@@ -12,13 +12,22 @@ This page contains information about what has changed in each new version of **M
 Developpement version
 ---------------------
 
+💡 New Features
+^^^^^^^^^^^^^^^
+- Algo module: add ``extract_part_from_zsr`` API to extract a submesh from FamilyName nodes
+
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - connect_1to1_families: manage Elements meshes
+- extract_part_from_xxx: transfer BCs on extracted meshes
 
 🐞 Fixes
 ^^^^^^^^
 - merge_zones: manage S/U GridConnectivity_t when merging U zones
+
+🚧 API change
+^^^^^^^^^^^^^
+- extract_part_from_zsr: add ``transfert_dataset`` argument for easier transfer of current ZSR fields
 
 v1.2 (July 2023)
 ----------------

@@ -10,6 +10,7 @@ from .extract_boundary       import extract_faces_mesh,\
                                     extract_surf_from_bc
 
 from .extract_part           import extract_part_from_bc_name,\
+                                    extract_part_from_family,\
                                     extract_part_from_zsr
 
 from .geometry               import compute_cell_center,\
