@@ -134,7 +134,8 @@ def _recover_dist_block_size(part_zones, comm):
 
   # Choose any starting point
   first = next(iter(zones_to_size_g))
-  d_zone_dims = np.zeros((3,3), np.int32, order='F')
+  idx_dim = zones_to_size_g[first].size
+  d_zone_dims = np.zeros((idx_dim,3), np.int32, order='F')
   d_zone_dims[:,1] += zones_to_size_g[first] #Cell size
   for axis in range(3):
     for oper in [operator.ne, operator.eq]: #Go front (vtx != 1), then back (vtx == 1)
@@ -295,9 +296,10 @@ def recover_dist_tree(part_tree, comm):
       d_zone_dims = np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32)
     elif PT.Zone.Type(dist_zone) == "Structured":
       d_zone_dims = _recover_dist_block_size(part_zones, comm)
-      face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
-      face_distri = PTB._lngn_to_distri(face_lngn_list, comm)
-      MT.newDistribution({'Face' : face_distri}, parent=dist_zone)
+      if d_zone_dims.shape[0] == 3:
+        face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
+        face_distri = PTB._lngn_to_distri(face_lngn_list, comm)
+        MT.newDistribution({'Face' : face_distri}, parent=dist_zone)
     PT.set_value(dist_zone, d_zone_dims)
 
     # > Create vertex distribution and exchange vertex coordinates

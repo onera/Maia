@@ -264,7 +264,8 @@ def test_get_joins_dist_tree(comm):
   assert PT.is_same_tree(PT.get_all_CGNSBase_t(dist_tree_jn)[0], expected_base)
 
 @pytest_parallel.mark.parallel(2)
-def test_recover_dist_block_size(comm):
+@pytest.mark.parametrize("idx_dim", [3, 2])
+def test_recover_dist_block_size(idx_dim, comm):
   if comm.Get_rank() == 0:
     pt = """
     Zone.P0.N0 Zone_t [[2,1,0], [3,2,0], [4,3,0]]: #Middle
@@ -289,9 +290,17 @@ def test_recover_dist_block_size(comm):
           PointRange IndexRange_t [[1,1], [1,3], [1,4]]:
     """
   part_zones = parse_yaml_cgns.to_nodes(pt)
-  dist_size = DFP._recover_dist_block_size(part_zones, comm)
+  expected = np.array([[4,3,0],[3,2,0],[4,3,0]])
 
-  assert np.array_equal(dist_size, [[4,3,0],[3,2,0],[4,3,0]])
+  if idx_dim == 2:
+    for zone in part_zones:
+      zone[1] = zone[1][0:2,:]
+      for pr in PT.get_nodes_from_label(zone, 'IndexRange_t'):
+        pr[1] = pr[1][0:2,:]
+    expected = expected[0:2,:]
+
+  dist_size = DFP._recover_dist_block_size(part_zones, comm)
+  assert np.array_equal(dist_size, expected)
 
 @pytest_parallel.mark.parallel(3)
 def test_recover_dist_tree_ngon(comm):
