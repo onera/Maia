@@ -20,9 +20,9 @@ def test_ZoneType():
 
 def test_IndexDimension():
   assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneU', type='Unstructured', size=[[11,10,0]])) == 1
-  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneU', type='Structured', size=[[10,9,0],[5,4,0],[2,1,0]])) == 3
-  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneU', type='Structured', size=[[10,9,0],[5,4,0]])) == 2
-  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneU', type='Structured', size=[[10,9,0]])) == 1
+  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneS', type='Structured', size=[[10,9,0],[5,4,0],[2,1,0]])) == 3
+  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneS', type='Structured', size=[[10,9,0],[5,4,0]])) == 2
+  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneS', type='Structured', size=[[10,9,0]])) == 1
 
 def test_NGonNode():
   zone = N.new_Zone('Zone', size=[[100, 36, 0]], type='Unstructured')
