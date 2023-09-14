@@ -9,21 +9,24 @@ from . import elements_utils as EU
 from . import utils
 from .utils import for_all_methods
 
-def _list_or_only_elt(l):
-  return l[0] if len(l) == 1 else l
-
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Zone_t"))
 class Zone:
+
+  @staticmethod
+  def IndexDimension(zone_node):
+    z_sizes = N.get_value(zone_node)
+    return (z_sizes[:,0]).size
+
   @staticmethod
   def VertexSize(zone_node):
-    z_sizes = N.get_value(zone_node)
-    return _list_or_only_elt(z_sizes[:,0])
+    sizes = N.get_value(zone_node)[:,0]
+    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
 
   @staticmethod
   def CellSize(zone_node):
-    z_sizes = N.get_value(zone_node)
-    return _list_or_only_elt(z_sizes[:,1])
+    sizes = N.get_value(zone_node)[:,1]
+    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
 
   @staticmethod
   def FaceSize(zone_node):
@@ -46,10 +49,10 @@ class Zone:
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
       er = W.get_child_from_name(ngon_node, 'ElementRange')[1]
-      n_face = [er[1] - er[0] + 1]
+      n_face = er[1] - er[0] + 1
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {N.get_name(zone_node)}")
-    return _list_or_only_elt(n_face)
+    return n_face
 
   @staticmethod
   def NGonNode(zone_node):
@@ -65,8 +68,8 @@ class Zone:
 
   @staticmethod
   def VertexBoundarySize(zone_node):
-    z_sizes = N.get_value(zone_node)
-    return _list_or_only_elt(z_sizes[:,2])
+    sizes = N.get_value(zone_node)[:,2]
+    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
 
   @staticmethod
   def Type(zone_node):

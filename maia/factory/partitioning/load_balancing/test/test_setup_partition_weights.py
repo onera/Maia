@@ -11,8 +11,11 @@ class Test_npart_per_zone_3p:
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneU1 Zone_t [[1331,1000,0]]:
+    ZoneType ZoneType_t "Unstructured":
   ZoneU2 Zone_t [[216,125,0]]:
+    ZoneType ZoneType_t "Unstructured":
   ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
+    ZoneType ZoneType_t "Structured":
 """
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   def test_one_part(self, comm):
@@ -36,8 +39,11 @@ class Test_balance_multizone_tree_2p:
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneU1 Zone_t [[1331,1000,0]]:
+    ZoneType ZoneType_t "Unstructured":
   ZoneU2 Zone_t [[216,125,0]]:
+    ZoneType ZoneType_t "Unstructured":
   ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
+    ZoneType ZoneType_t "Structured":
 """
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
 
@@ -69,8 +75,11 @@ def test_compute_nosplit_weights(comm):
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneU1 Zone_t [[1331,1000,0]]:
+    ZoneType ZoneType_t "Unstructured":
   ZoneU2 Zone_t [[216,125,0]]:
+    ZoneType ZoneType_t "Unstructured":
   ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
+    ZoneType ZoneType_t "Structured":
 """
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   zone_to_weights = setup_partition_weights.compute_nosplit_weights(dist_tree, comm)

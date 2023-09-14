@@ -55,6 +55,8 @@ def collect_S_bnd_per_dir(zone):
 
         base_bound[idx_to_dir[bnd_normal_index] + extr].append(bnd)
 
+  # Remove extra dims
+  base_bound = {key:val for key, val in base_bound.items() if val != []}
   return base_bound
 
 def intersect_pr(prA, prB):
@@ -114,7 +116,8 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
     #Check if part boundary is internal or comes from an old BC or GC
     is_old_bc = range_part_bc_g[normal_idx,extr] == zone_cell_range(d_zone)[normal_idx,extr]
     if is_old_bc:
-      dirs = np.where(np.arange(range_part_bc_g.shape[0]) != normal_idx)[0]
+      idx_dim = range_part_bc_g.shape[0]
+      dirs = np.where(np.arange(idx_dim) != normal_idx)[0]
       for dist_bc in dist_bnds:
         dist_bc_pr_n = PT.get_child_from_name(dist_bc, 'PointRange')
         range_dist_bc = np.copy(dist_bc_pr_n[1])
@@ -128,7 +131,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
 
         inter = intersect_pr(range_part_bc_g[dirs,:], range_dist_bc[dirs,:])
         if inter is not None:
-          sub_pr = np.empty((3,2), dtype=np.int32)
+          sub_pr = np.empty((idx_dim,2), dtype=np.int32)
           sub_pr[dirs,:] = inter
           sub_pr[normal_idx,:] = range_part_bc_g[normal_idx,:]
 
@@ -149,14 +152,22 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             PT.new_PointRange(value=sub_pr, parent=part_bc)
             sub_pr_loc = np.copy(sub_pr)
             sub_pr_loc[0,:] += range_part_bc_g[0,0] - range_dist_bc[0,0]
-            sub_pr_loc[1,:] += range_part_bc_g[1,0] - range_dist_bc[1,0]
-            sub_pr_loc[2,:] += range_part_bc_g[2,0] - range_dist_bc[2,0]
+            if idx_dim >= 2:
+              sub_pr_loc[1,:] += range_part_bc_g[1,0] - range_dist_bc[1,0]
+            if idx_dim >= 3:
+              sub_pr_loc[2,:] += range_part_bc_g[2,0] - range_dist_bc[2,0]
             sub_pr_loc[normal_idx,:] = 1
 
             i_ar  = np.arange(sub_pr_loc[0,0], sub_pr_loc[0,1]+1, dtype=pdm_dtype)
-            j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
-            k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
-            bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
+            if idx_dim == 1:
+              bcds_lntogn = i_ar
+            else:
+              j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
+              if idx_dim == 3:
+                k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
+              else:
+                k_ar  = np.ones(1, dtype=pdm_dtype).reshape(-1,1,1)
+              bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
             assert bcds_lntogn.size == PT.Subset.n_elem(part_bc)
             MT.newGlobalNumbering({'Index' : bcds_lntogn}, part_bc)
           else: #GC are put with bc and treated afterward
@@ -171,16 +182,21 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             PT.new_child(part_bc, 'distPR', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRange')[1])
             PT.new_child(part_bc, 'distPRDonor', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRangeDonor')[1])
             PT.new_DataArray('zone_offset', p_zone_offset, parent=part_bc)
+  if len(PT.get_children(zbc)) == 0:
+    PT.rm_child(p_zone, zbc)
 
 def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
   """
   """
   # 1. Collect : for each partition, select the boundary corresponding to new (internal)
   # joins. We store the PR the boundary in (cell) global numbering
+  idx_dim = PT.Zone.IndexDimension(d_zone)
   jn_list = [ [] for i in range(len(p_zones))]
   for geo_bnd in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]:
     normal_idx = dir_to_idx[geo_bnd[0]]
     extr       = min_max_as_int(geo_bnd) #0 if min, 1 if max
+    if normal_idx > idx_dim-1:
+      continue
     for i_part, (p_zone, p_zone_offset) in enumerate(zip(p_zones, p_zones_offset)):
       range_part_bc_g = zone_cell_range(p_zone)
       range_part_bc_g[normal_idx, 1-extr] = range_part_bc_g[normal_idx, extr]
@@ -202,7 +218,7 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
       normal_idx = dir_to_idx[PT.get_name(jn)[0]]
       extr       = min_max_as_int(PT.get_name(jn)[1:])
       shift = 1 - 2*extr #1 si min, -1 si max
-      dirs  = np.where(np.arange(3) != normal_idx)[0]
+      dirs  = np.where(np.arange(idx_dim) != normal_idx)[0]
       my_pr = PT.get_value(jn)
 
       # Check opposite joins
@@ -218,7 +234,7 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
             if is_admissible:
               inter = intersect_pr(my_pr[dirs,:], opp_pr[dirs,:])
               if inter is not None:
-                sub_pr = np.empty((3,2), dtype=np.int32)
+                sub_pr = np.empty((idx_dim,2), dtype=np.int32)
                 sub_pr[dirs,:] = inter
                 sub_pr[normal_idx,:] = my_pr[normal_idx,:]
 
@@ -234,7 +250,8 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
                 #Effective creation of GC in part zone
                 gc_name  = MT.conv.name_intra_gc(comm.Get_rank(), i_part, j_proc, j_part)
                 opp_zone = MT.conv.add_part_suffix(PT.get_name(d_zone), j_proc, j_part)
-                part_gc = PT.new_GridConnectivity1to1(gc_name, opp_zone, transform=[1,2,3], parent=zgc)
+                transform = np.arange(1, idx_dim+1, dtype=np.int32)
+                part_gc = PT.new_GridConnectivity1to1(gc_name, opp_zone, transform=transform, parent=zgc)
                 PT.new_PointRange('PointRange',      sub_pr,   parent=part_gc)
                 PT.new_PointRange('PointRangeDonor', sub_pr_d, parent=part_gc)
 
@@ -280,6 +297,7 @@ def split_original_joins_S(all_part_zones, comm):
         dist_pr = PT.get_child_from_name(jn, 'distPR')[1]
         dist_prd = PT.get_child_from_name(jn, 'distPRDonor')[1]
         transform  = PT.get_child_from_name(jn, 'Transform')[1]
+        idx_dim = transform.size
         T_matrix = compute_transform_matrix(transform)
         assert PT.Subset.GridLocation(jn) == 'Vertex'
 
@@ -289,13 +307,13 @@ def split_original_joins_S(all_part_zones, comm):
         pr_to_global_num(pr, p_zone_offset)
 
         #Jn dans la num globale de la dist_zone opposée
-        pr_in_opp_abs = np.empty((3,2), dtype=pr.dtype)
+        pr_in_opp_abs = np.empty((idx_dim,2), dtype=pr.dtype)
         pr_in_opp_abs[:,0] = apply_transform_matrix(pr[:,0], dist_pr[:,0], dist_prd[:,0], T_matrix)
         pr_in_opp_abs[:,1] = apply_transform_matrix(pr[:,1], dist_pr[:,0], dist_prd[:,0], T_matrix)
 
         #Jn dans la zone opposée et en cellules
         normal_idx = guess_bnd_normal_index(pr_in_opp_abs, 'Vertex')
-        dirs       = np.where(np.arange(3) != normal_idx)[0]
+        dirs       = np.where(np.arange(idx_dim) != normal_idx)[0]
         bnd_is_max = pr_in_opp_abs[normal_idx,0] != 1 #Sommets
         dir_to_swap     = (pr_in_opp_abs[:,1] < pr_in_opp_abs[:,0])
         pr_in_opp_abs[dir_to_swap, 0], pr_in_opp_abs[dir_to_swap, 1] = \
@@ -315,7 +333,7 @@ def split_original_joins_S(all_part_zones, comm):
           pr_to_cell_location(pr_opp_abs, normal_idx, 'Vertex', bnd_is_max)
           inter = intersect_pr(pr_in_opp_abs[dirs,:], pr_opp_abs[dirs,:])
           if inter is not None:
-            sub_prd = np.empty((3,2), dtype=np.int32)
+            sub_prd = np.empty((idx_dim,2), dtype=np.int32)
             sub_prd[dirs,:] = inter
             sub_prd[normal_idx,:] = pr_in_opp_abs[normal_idx,:]
             # Go back to vertex and invert swap
@@ -323,7 +341,7 @@ def split_original_joins_S(all_part_zones, comm):
             sub_prd[dir_to_swap, 0], sub_prd[dir_to_swap, 1] = \
                     sub_prd[dir_to_swap, 1], sub_prd[dir_to_swap, 0]
             # Go back to dist_zone
-            sub_pr = np.empty((3,2), dtype=pr.dtype)
+            sub_pr = np.empty((idx_dim,2), dtype=pr.dtype)
             sub_pr[:,0] = apply_transform_matrix(sub_prd[:,0], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
             sub_pr[:,1] = apply_transform_matrix(sub_prd[:,1], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
             # Go back to local numbering
@@ -362,35 +380,50 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
   of the original dist_zone in each direction)
   """
 
+  idx_dim = dist_zone_cell_size.size
   dist_cell_per_dir = dist_zone_cell_size
-  dist_vtx_per_dir  = dist_zone_cell_size + 1
-  dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
-
   part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
-  part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
+  dist_vtx_per_dir  = dist_zone_cell_size + 1
 
   # Vertex
   i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+1, dtype=dtype)
-  j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+1, dtype=dtype).reshape(-1,1)
-  k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+1, dtype=dtype).reshape(-1,1,1)
-  vtx_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_vtx_per_dir).flatten()
+  if idx_dim == 1:
+    vtx_lntogn = i_ar
+  else:
+    j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+1, dtype=dtype).reshape(-1,1)
+    if idx_dim == 3:
+      k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+1, dtype=dtype).reshape(-1,1,1)
+    else:
+      k_ar  = np.ones(1, dtype=dtype).reshape(-1,1,1)
+    vtx_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_vtx_per_dir).flatten()
 
   # Cell
   i_ar  = np.arange(cell_window[0,0], cell_window[0,1], dtype=dtype)
-  j_ar  = np.arange(cell_window[1,0], cell_window[1,1], dtype=dtype).reshape(-1,1)
-  k_ar  = np.arange(cell_window[2,0], cell_window[2,1], dtype=dtype).reshape(-1,1,1)
-  cell_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_cell_per_dir).flatten()
+  if idx_dim == 1:
+    cell_lntogn = i_ar
+  else:
+    j_ar  = np.arange(cell_window[1,0], cell_window[1,1], dtype=dtype).reshape(-1,1)
+    if idx_dim == 3:
+      k_ar  = np.arange(cell_window[2,0], cell_window[2,1], dtype=dtype).reshape(-1,1,1)
+    else:
+      k_ar  = np.ones(1, dtype=dtype).reshape(-1,1,1)
+    cell_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_cell_per_dir).flatten()
 
   # Faces
-  shifted_nface_p = np_utils.sizes_to_indices(part_face_per_dir)
-  ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
-  face_lntogn = np.empty(shifted_nface_p[-1], dtype=dtype)
-  for idir in range(3):
-    i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+(idir==0), dtype=dtype)
-    j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+(idir==1), dtype=dtype).reshape(-1,1)
-    k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+(idir==2), dtype=dtype).reshape(-1,1,1)
-    face_lntogn[shifted_nface_p[idir]:shifted_nface_p[idir+1]] = ijk_to_faceIndex[idir](i_ar, j_ar, k_ar, \
-        dist_cell_per_dir, dist_vtx_per_dir).flatten()
+  if idx_dim == 3:
+    dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
+    part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
+    shifted_nface_p = np_utils.sizes_to_indices(part_face_per_dir)
+    ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
+    face_lntogn = np.empty(shifted_nface_p[-1], dtype=dtype)
+    for idir in range(3):
+      i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+(idir==0), dtype=dtype)
+      j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+(idir==1), dtype=dtype).reshape(-1,1)
+      k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+(idir==2), dtype=dtype).reshape(-1,1,1)
+      face_lntogn[shifted_nface_p[idir]:shifted_nface_p[idir+1]] = ijk_to_faceIndex[idir](i_ar, j_ar, k_ar, \
+          dist_cell_per_dir, dist_vtx_per_dir).flatten()
+  else:
+    face_lntogn = None
 
   return vtx_lntogn, face_lntogn, cell_lntogn
 
@@ -406,15 +439,19 @@ def part_s_zone(d_zone, d_zone_weights, comm):
   my_weights = np.asarray(d_zone_weights, dtype=np.float64)
   all_weights = np.empty(n_part_each_proc.sum(), dtype=np.float64)
   comm.Allgatherv(my_weights, [all_weights, n_part_each_proc])
+  idx_dim = PT.Zone.IndexDimension(d_zone)
+  dist_cell_size = PT.Zone.CellSize(d_zone)
 
-  all_parts = SCT.split_S_block(PT.Zone.CellSize(d_zone), len(all_weights), all_weights)
+  if dist_cell_size.size > 1:
+    all_parts = SCT.split_S_block(dist_cell_size, len(all_weights), all_weights)
+  else:
+    all_parts = SCT.split_S_line(dist_cell_size, all_weights)
 
   my_start = n_part_each_proc[:i_rank].sum()
   my_end   = my_start + n_part_this_zone
   my_parts = all_parts[my_start:my_end]
 
   part_zones = []
-  idx_dim = PT.get_value(d_zone).shape[0]
   for i_part, part in enumerate(my_parts):
     #Get dim and setup zone
     cell_bounds = np.asarray(part, dtype=np.int32) + 1 #Semi open, but start at 1
@@ -423,9 +460,10 @@ def part_s_zone(d_zone, d_zone_weights, comm):
     pzone_dims = np.hstack([n_cells+1, n_cells, np.zeros((idx_dim,1), dtype=np.int32)])
     part_zone  = PT.new_Zone(pzone_name, size=pzone_dims, type='Structured')
 
-    vtx_lntogn, face_lntogn, cell_lntogn = create_zone_gnums(cell_bounds, PT.Zone.CellSize(d_zone))
-    gn_node = MT.newGlobalNumbering({'Vertex' : vtx_lntogn, 'Face' : face_lntogn, 'Cell' : cell_lntogn},
-                                    parent=part_zone)
+    entities = ['Vertex', 'Face', 'Cell']
+    entities_gnum = create_zone_gnums(cell_bounds, PT.Zone.CellSize(d_zone))
+    entities_gnum_dict = {key:val for key,val in zip(entities, entities_gnum) if val is not None}
+    gn_node = MT.newGlobalNumbering(entities_gnum_dict, parent=part_zone)
     _cell_bounds = np.copy(cell_bounds, order='F')
     _cell_bounds[:,1] -= 1
     PT.new_node("CellRange", "IndexRange_t", _cell_bounds, parent=gn_node)

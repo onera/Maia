@@ -21,8 +21,7 @@ def test_collect_distributed_pl():
                  np.array([[10,20,30,40,50,60]], np.int32),
                  np.array([[100]]              , np.int32),
                  np.empty((1,0)                , np.int32)]
-  point_ranges = [np.array([[3,3],[1,3],[1,3]] , np.int32), #This one should be ignored
-                  np.array([[35,55]]           , np.int32)]
+  point_ranges = [np.array([[35,55]]           , np.int32)]
   for i, pl in enumerate(point_lists):
     PT.new_BC('bc'+str(i+1), point_list=pl, parent=zoneBC)
   for i, pr in enumerate(point_ranges):

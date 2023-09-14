@@ -1,3 +1,5 @@
+import pytest
+import numpy as np
 from   maia.factory.partitioning.split_S import split_cut_tree     as SCT
 
 def test_part_volume():
@@ -125,3 +127,11 @@ class Test_part_block_from_dims():
         for part,w in zip(parts,weights)]
 
     assert max(error1) <= max(error2)
+
+def test_split_S_line():
+  assert SCT.split_S_line(570, np.array([1])) == [[[0,570]]]
+  assert SCT.split_S_line(100, np.array([.3, .6, .1])) == [[[0,30]], [[30, 90]], [[90, 100]]]
+  assert SCT.split_S_line(1000, np.array([.38, .6])) == [[[0,390]], [[390, 1000]]]
+
+  with pytest.raises(AssertionError):
+    SCT.split_S_line(10, np.array([.8, .8]))

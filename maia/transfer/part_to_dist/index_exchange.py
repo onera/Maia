@@ -94,6 +94,7 @@ def create_part_pr_gnum(dist_zone, part_zones, node_path, comm):
   from maia.algo.part import point_cloud_utils
 
   ln_to_gn_list = list()
+  idx_dim = PT.Zone.IndexDimension(dist_zone)
   for part_zone in part_zones:
     node = PT.get_node_from_path(part_zone, node_path)
     if node:
@@ -106,9 +107,15 @@ def create_part_pr_gnum(dist_zone, part_zones, node_path, comm):
       # Get entity local numbering as full list
       part_pr = PT.get_child_from_name(node, 'PointRange')[1]
       i_ar = np.arange(part_pr[0][0], part_pr[0][1]+1) #creation pointlist
-      j_ar = np.arange(part_pr[1][0], part_pr[1][1]+1).reshape(-1,1)
-      k_ar = np.arange(part_pr[2][0], part_pr[2][1]+1).reshape(-1,1,1)
-      local_num = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, loc, PT.Zone.VertexSize(part_zone)).flatten()
+      if idx_dim == 1:
+        local_num = i_ar
+      else:
+        j_ar = np.arange(part_pr[1][0], part_pr[1][1]+1).reshape(-1,1)
+        if idx_dim == 3:
+          k_ar = np.arange(part_pr[2][0], part_pr[2][1]+1).reshape(-1,1,1)
+        else:
+          k_ar  = np.ones(1, dtype=i_ar.dtype).reshape(-1,1,1)
+        local_num = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, loc, PT.Zone.VertexSize(part_zone)).flatten()
 
       ln_to_gn_list.append(ln_to_gn_all[local_num-1])
 

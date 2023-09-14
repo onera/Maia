@@ -54,6 +54,9 @@ def test_intersect_pr():
       == np.array([[7,11],[1,5]])).all()
   assert (splitS.intersect_pr(np.array([[1,5],[1,3]]), np.array([[1,4],[3,6]])) \
       == np.array([[1,4],[3,3]])).all()
+  assert (splitS.intersect_pr(np.array([[1,2]]), np.array([[1,4]])) == np.array([[1,2]])).all()
+  assert  splitS.intersect_pr(np.array([[1,2]]), np.array([[5,8]])) is None
+  assert (splitS.intersect_pr(np.array([[1,2]]), np.array([[2,4]])) == np.array([[2,2]])).all()
 
 def test_zone_cell_range():
   zone = PT.new_Zone(type='Structured', size=[[101,100,0],[101,100,0],[41,40,0]])

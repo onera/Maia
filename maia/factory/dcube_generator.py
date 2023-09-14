@@ -207,7 +207,7 @@ def dcube_struct_generate(n_vtx, edge_length, origin, comm):
 
   # Update Cell distribution and add face distribution
   distrib = {'Cell' : par_utils.uniform_distribution(PT.Zone.n_cell(dist_zone), comm)}
-  if cell_dim >= 2:
+  if cell_dim == 3:
       distrib['Face'] =  par_utils.uniform_distribution(PT.Zone.n_face(dist_zone), comm)
   MT.newDistribution(distrib, dist_zone)
 

@@ -20,6 +20,7 @@ Developpement version
 ^^^^^^^^^^^^^^^^^^^^^^^
 - connect_1to1_families: manage Elements meshes
 - extract_part_from_xxx: transfer BCs on extracted meshes
+- partitioning: enable split of 2D/1D structured meshes
 
 🐞 Fixes
 ^^^^^^^^

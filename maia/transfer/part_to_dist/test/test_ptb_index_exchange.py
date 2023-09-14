@@ -69,7 +69,7 @@ def test_create_part_pl_gnum(comm):
 @pytest_parallel.mark.parallel(3)
 def test_create_part_pr_gnum(comm):
   i_rank = comm.Get_rank()
-  dist_zone = PT.new_Zone('Zone')
+  dist_zone = PT.new_Zone('Zone', type="Structured", size=[[3,2,0], [3,2,0], [3,2,0]])
 
   if i_rank == 0:
     part_zones = [PT.new_Zone(f'Zone.P{i_rank}.N0', size=[[2,1,0], [3,2,0], [3,2,0]])]
@@ -98,6 +98,29 @@ def test_create_part_pr_gnum(comm):
   if comm.Get_rank() == 1:
     assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [4,6,1,2]).all()
     assert PT.get_node_from_name(part_zones[0], 'Index')[1].dtype == pdm_gnum_dtype
+
+@pytest_parallel.mark.parallel(1)
+@pytest.mark.parametrize("idx_dim", [1, 2])
+def test_create_part_pr_gnum_lowdim(idx_dim, comm):
+
+  dist_zone = PT.new_Zone('Zone', type="Structured", size=[[3,2,0], [3,2,0]])
+  if idx_dim == 1:
+    dist_zone = PT.new_Zone('Zone', type="Structured", size=[[3,2,0]])
+
+  part_zones = [PT.new_Zone(f'Zone.P0.N{i}', size=[[2,1,0], [3,2,0]]) for i in range(2)]
+  MT.newGlobalNumbering({'Vertex': np.array([1,2,4,5,7,8], pdm_dtype)}, part_zones[0])
+  MT.newGlobalNumbering({'Vertex': np.array([2,3,5,6,8,9], pdm_dtype)}, part_zones[1])
+  for p_zone in part_zones:
+    if idx_dim == 2:
+      PT.new_ZoneSubRegion("ZSR", point_range=[[1,2], [1,1]], loc='Vertex', parent=p_zone)
+    elif idx_dim == 1:
+      PT.new_ZoneSubRegion("ZSR", point_range=[[1,2]], loc='Vertex', parent=p_zone)
+
+  IPTB.create_part_pr_gnum(dist_zone, part_zones, "ZSR", comm)
+
+  for p_zone in part_zones:
+    assert (PT.get_node_from_name(part_zones[0], 'Index')[1] == [1,2]).all()
+    assert (PT.get_node_from_name(part_zones[1], 'Index')[1] == [2,3]).all()
 
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize("allow_mult", [False, True])
