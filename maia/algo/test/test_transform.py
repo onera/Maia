@@ -77,6 +77,29 @@ def test_transform_affine(comm):
   check_scal_field(dist_zone_ini, dist_zone, "scalar")
 
 @pytest_parallel.mark.parallel(1)
+def test_transform_affine_2d(comm):
+
+  dist_tree = maia.factory.generate_dist_block(4, 'S', comm, origin=[.0, .0])
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
+
+  # Initialise some fields
+  cell_distri = MT.getDistribution(dist_zone, 'Cell')[1]
+  n_cell_loc =  cell_distri[1] - cell_distri[0]
+  fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
+  PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)
+  PT.new_DataArray('fieldX', np.random.random(n_cell_loc), parent=fs)
+  PT.new_DataArray('fieldY', np.random.random(n_cell_loc), parent=fs)
+
+  dist_zone_ini = PT.deep_copy(dist_zone)
+  transform.transform_affine(dist_zone, rotation_center=np.zeros(2), translation=np.zeros(2), rotation_angle=np.pi, apply_to_fields=True)
+  assert np.allclose(PT.get_node_from_name(dist_zone_ini, 'scalar')[1],
+                     PT.get_node_from_name(dist_zone,     'scalar')[1])
+  assert np.allclose(   PT.get_node_from_name(dist_zone_ini, 'fieldX')[1],
+                     -1*PT.get_node_from_name(dist_zone,     'fieldX')[1])
+  assert np.allclose(   PT.get_node_from_name(dist_zone_ini, 'fieldY')[1],
+                     -1*PT.get_node_from_name(dist_zone,     'fieldY')[1])
+
+@pytest_parallel.mark.parallel(1)
 def test_scale_mesh(comm):
   dist_tree = maia.factory.generate_dist_block(4, 'Poly', comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]

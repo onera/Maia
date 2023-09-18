@@ -293,7 +293,8 @@ class Test_transform_simple():
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-15)
   # --------------------------------------------------------------------------- #  
-  def test_rotation_with_rotation_center(self):
+  @pytest.mark.parametrize("phy_dim", [3,2])
+  def test_rotation_with_rotation_center(self, phy_dim):
     #                 Before rotation                               After rotation
     #                                                                                                
     #                                                                    B' D
@@ -305,17 +306,23 @@ class Test_transform_simple():
     #              +        A+---------+B                      D'+---------+---------+B               
     #          (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)                (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)
     #     
-    rotation_center = [1.,0.,0.      ]
-    rotation_angle  = [0.,0.,np.pi/2.]
-    translation     = [0.,0.,0.      ]
+    rotation_center = [1.,0.,0.      ][:phy_dim]
+    rotation_angle  = [0.,0.,np.pi/2.][:phy_dim]
+    translation     = [0.,0.,0.      ][:phy_dim]
     expected_vx     = [1.,1.,0.,0.]
     expected_vy     = [0.,1.,1.,0.]
     expected_vz     = [0.,0.,0.,0.]
-    expected_vectors = np.array([expected_vx,expected_vy,expected_vz], order='F')
 
-    modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
-    (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
-    check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-15)
+    if phy_dim == 3:
+      modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
+      (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
+      check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-15)
+    elif phy_dim == 2:
+      modified_vectors = np_utils.transform_cart_matrix_2d(self.vectors[:phy_dim], translation, rotation_center, np.pi/2)
+      (mod_vx, mod_vy) = np_utils.transform_cart_vectors_2d(self.vx, self.vy, translation, rotation_center, np.pi/2)
+      assert np.allclose(expected_vx, mod_vx, rtol=0., atol=5e-15)
+      assert np.allclose(expected_vy, mod_vy, rtol=0., atol=5e-15)
+      assert np.allclose(np.array([expected_vx, expected_vy], order='F'), modified_vectors, rtol=0., atol=5e-15)
   # --------------------------------------------------------------------------- #  
   def test_translation(self):
     #              Before translation                                  After translation

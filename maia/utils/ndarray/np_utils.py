@@ -215,6 +215,26 @@ def transform_cart_vectors(vx, vy, vz, translation=np.zeros(3), rotation_center=
   modified_components = transform_cart_matrix(vectors, translation, rotation_center, rotation_angle)
   return (modified_components[0], modified_components[1], modified_components[2])
 
+def transform_cart_matrix_2d(vectors, translation=np.zeros(2), rotation_center=np.zeros(2), rotation_angle=0.):
+  """
+  Apply the defined cartesian transformation on concatenated components of vectors described by :
+  [vx1 vx2 ... vxN]
+  [vy1 vy2 ... vyN]
+  and return the modified components of the vectors in the same format
+  """
+  theta = rotation_angle
+  rotation_mat = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+  _rotation_center = np.array(rotation_center).reshape((-1,1))
+  _translation = np.array(translation).reshape((-1,1))
+  rotated_vectors = (np.dot(rotation_mat, vectors-_rotation_center)+_rotation_center) + _translation
+  return (rotated_vectors.astype(vectors.dtype,copy=False))
+
+
+def transform_cart_vectors_2d(vx, vy, translation=np.zeros(2), rotation_center=np.zeros(2), rotation_angle=0.):
+  vectors = np.array([vx,vy], order='F')
+  modified_components = transform_cart_matrix_2d(vectors, translation, rotation_center, rotation_angle)
+  return (modified_components[0], modified_components[1])
+
 
 def safe_int_cast(array, dtype):
   """ Util function to perfom I4 <--> I8 conversions with bounds test """

@@ -18,6 +18,8 @@ def transform_affine(t,
      \\tilde v = R \\cdot (v - c) + c + t
 
   where c, t are the rotation center and translation vector and R is the rotation matrix.
+  Note that when the physical dimension of the mesh is set to 2, rotation_angle must
+  be a scalar float.
 
   Input tree is modified inplace.
 
@@ -41,9 +43,14 @@ def transform_affine(t,
     # Transform coords
     for grid_co in PT.iter_children_from_label(zone, "GridCoordinates_t"):
       coords_n = [PT.get_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
+      phy_dim = 2 if coords_n[2] is None else 3
+      coords_n = coords_n[:phy_dim]
       coords = [PT.get_value(n) for n in coords_n]
     
-      tr_coords = np_utils.transform_cart_vectors(*coords, translation, rotation_center, rotation_angle)
+      if phy_dim == 3:
+        tr_coords = np_utils.transform_cart_vectors(*coords, translation, rotation_center, rotation_angle)
+      else:
+        tr_coords = np_utils.transform_cart_vectors_2d(*coords, translation, rotation_center, rotation_angle)
       for coord_n, tr_coord in zip(coords_n, tr_coords):
         PT.set_value(coord_n, tr_coord)
 
@@ -56,13 +63,16 @@ def transform_affine(t,
         fields_nodes += PT.get_children_from_label(bc, "BCDataSet_t")
       for fields_node in fields_nodes:
         data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
-        cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names)
+        cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names, phy_dim)
         for basename in cartesian_vectors_basenames:
-          vectors_n = [PT.get_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z']]
+          vectors_n = [PT.get_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z'][:phy_dim]]
           vectors = [PT.get_value(n) for n in vectors_n]
           # Assume that vectors are position independant
           # Be careful, if coordinates vector needs to be transform, the translation is not applied !
-          tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
+          if phy_dim == 3:
+            tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
+          else:
+            tr_vectors = np_utils.transform_cart_vectors_2d(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
           for vector_n, tr_vector in zip(vectors_n, tr_vectors):
             PT.set_value(vector_n, tr_vector)
 
