@@ -2,6 +2,8 @@ import sys
 import numpy as np
 import warnings
 
+from maia.pytree.typing import *
+
 if sys.version_info.major == 3 and sys.version_info.major < 8:
   from collections.abc import Iterable  # < py38
 else:
@@ -102,11 +104,11 @@ def _np_to_string(array):
     return [_np_to_string(array[:,:,i]) for i in range(array.shape[2])]
   raise ValueError(f"Incorrect dimension for bytes array: {array.ndim}")
 
-def get_name(node):
+def get_name(node:CGNSTree) -> str:
   """ Return the name of the input CGNSNode """
   return node[0]
 
-def set_name(node, name):
+def set_name(node:CGNSTree, name:str):
   if check.is_valid_name(name, check_len=False):
     if not check.is_valid_name(name, check_len=True):
       warnings.warn("Setting a CGNS node name with a string longer than 32 char", RuntimeWarning, stacklevel=2)
@@ -114,7 +116,7 @@ def set_name(node, name):
   else:
     raise ValueError("Unvalid name for node")
 
-def get_value(node, raw=False):
+def get_value(node:CGNSTree, raw:bool=False) -> Union[None, np.ndarray, str, List[str]]:
   """ Return the value of the input CGNSNode """
   raw_val = node[1]
   if not raw and isinstance(raw_val, np.ndarray) and raw_val.dtype.kind == 'S':
@@ -122,35 +124,35 @@ def get_value(node, raw=False):
   else:
     return raw_val
 
-def get_value_type(node):
+def get_value_type(node:CGNSTree) -> str:
   """ Return the value type of the input CGNSNode """
   val = get_value(node, raw=True)
   if val is None:
     return 'MT'
   return CGK.dtype_to_cgns[val.dtype]
 
-def get_value_kind(node):
+def get_value_kind(node:CGNSTree) -> str:
   """ Return the value kind of the input CGNSNode """
   val_type = get_value_type(node)
   if val_type != 'MT':
     val_type = val_type[0]
   return val_type
 
-def set_value(node, value):
+def set_value(node:CGNSTree, value:Any):
   node[1] = _convert_value(value)
 
-def get_children(node):
+def get_children(node:CGNSTree) -> List[CGNSTree]:
   """ Return the list of children of the input CGNSNode """
   return node[2]
 
-def add_child(node, child):
+def add_child(node:CGNSTree, child:CGNSTree):
   if child is None:
     return
   if get_name(child) in [get_name(n) for n in get_children(node)]:
     raise RuntimeError(f'Can not add child {child[0]} to node {node[0]}: a node with the same name already exists')
   node[2].append(child)
 
-def rm_child(node, child):
+def rm_child(node:CGNSTree, child:CGNSTree):
   if child is None:
     return
   sub_nodes = get_children(node)
@@ -161,7 +163,7 @@ def rm_child(node, child):
     raise RuntimeError('Can not remove child : not found in node')
   sub_nodes.pop(i)
 
-def set_children(node, children):
+def set_children(node:CGNSTree, children:List[CGNSTree]):
   children_bck = get_children(node)
   node[2] = []
   try:
@@ -171,11 +173,11 @@ def set_children(node, children):
     node[2] = children_bck
     raise e 
 
-def get_label(node):
+def get_label(node:CGNSTree) -> str:
   """ Return the label of the input CGNSNode """
   return node[3]
 
-def set_label(node, label):
+def set_label(node:CGNSTree, label:str):
   if check.is_valid_label(label, only_sids=False):
     if not check.is_valid_label(label, only_sids=True):
       warnings.warn("Setting a CGNS node label with a non sids label", RuntimeWarning, stacklevel=2)
@@ -183,6 +185,6 @@ def set_label(node, label):
   else:
     raise ValueError("Unvalid label for node")
 
-def get_names(nodes):
+def get_names(nodes:List[CGNSTree]) -> List[str]:
   """ Return a list of name from a list of nodes """
   return [get_name(node) for node in nodes]

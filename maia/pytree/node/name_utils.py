@@ -1,6 +1,7 @@
+from maia.pytree.typing import *
 import maia.pytree as PT
 
-def shorten_names(t, quiet=False, labels_to_shorten=None):
+def shorten_names(t:CGNSTree, quiet:bool=False, labels_to_shorten:Optional[List[str]]=None):
   old_name = PT.get_name(t)
   can_shorten_label = labels_to_shorten is None or (PT.get_label(t) in labels_to_shorten)
   if can_shorten_label and len(old_name)>32:
@@ -20,10 +21,10 @@ def shorten_names(t, quiet=False, labels_to_shorten=None):
   for x in PT.get_children(t):
     shorten_names(x,quiet,labels_to_shorten)
 
-def shorten_field_names(t, quiet=False):
+def shorten_field_names(t:CGNSTree, quiet:bool=False):
   shorten_names(t,quiet,labels_to_shorten=["DataArray_t"])
 
-def rename_zone(t, name, new_name):
+def rename_zone(t:CGNSTree, name:str, new_name:str):
   """
   Rename a zone and its occurences in GCs
   """
