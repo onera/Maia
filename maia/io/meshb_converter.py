@@ -214,9 +214,18 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
       edge_bcs   = PT.get_children_from_predicate(zone_bc, is_edge_bc)
       n_edge_tag = bc_pl_to_bc_tag(edge_bcs, edge_tag, n_tetra+n_tri)
 
-    if (n_tri > 0 and (tri_tag < 0).any()) or (n_edge > 0 and (edge_tag < 0).any()):
-      raise ValueError("Some Face or Edge elements do not belong to any BC")
-   
+    is_3d = n_tetra!=0
+    is_2d = n_tri  !=0
+    if is_3d: 
+      if (n_tri > 0 and (tri_tag < 0).any()) or (n_edge > 0 and (edge_tag < 0).any()):
+        raise ValueError("Some Face or Edge elements do not belong to any BC")
+    elif is_2d:
+      tri_tag = np.ones(n_tri, dtype=np.int32)
+      if (n_edge > 0 and (edge_tag < 0).any()):
+        raise ValueError("Some Face or Edge elements do not belong to any BC")
+    else:
+      raise ValueError("No tetrahedron or triangle Elements_t node could be found")
+
 
     # > Write meshb
     xyz       = np_utils.interweave_arrays([cx,cy,cz])

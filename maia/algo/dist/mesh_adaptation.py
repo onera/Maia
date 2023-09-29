@@ -34,9 +34,9 @@ out_files = {'mesh': out_file_meshb,
              'fld' : out_file_fldb }
 
 # Feflo files arguments
-feflo_args    = { 'isotrop'  : f"-iso                -itp {in_file_fldb}".split(),
-                  'from_fld' : f"-sol {in_file_solb} -itp {in_file_fldb}".split(),
-                  'from_hess': f"-met {in_file_solb} -itp {in_file_fldb}".split()
+feflo_args    = { 'isotrop'  : f"-iso               ".split(),
+                  'from_fld' : f"-sol {in_file_solb}".split(),
+                  'from_hess': f"-met {in_file_solb}".split()
 }
 
 
@@ -170,8 +170,9 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], feflo_opt
     cgns_to_meshb(dist_tree, in_files, metric_nodes, container_names)
 
     # Adapt with feflo
-    feflo_command = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_opts.split()        
-    feflo_command = ' '.join(feflo_command) # Split + join to remove useless spaces
+    feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(container_names)!=0 else []
+    feflo_command  = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()        
+    feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
 
     mlog.info(f"Start mesh adaptation using Feflo...")
     start = time.time()
