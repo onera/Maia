@@ -220,7 +220,13 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
       if (n_tri > 0 and (tri_tag < 0).any()) or (n_edge > 0 and (edge_tag < 0).any()):
         raise ValueError("Some Face or Edge elements do not belong to any BC")
     elif is_2d:
-      tri_tag = np.ones(n_tri, dtype=np.int32)
+      tri_tag = np.zeros(n_tri, dtype=np.int32)
+      is_face_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "FaceCenter"
+      face_bcs   = PT.get_children_from_predicate(zone_bc, is_face_bc)
+      n_face_tag = bc_pl_to_bc_tag(face_bcs, tri_tag, n_tetra)
+      tri_tag +=1
+      print(f'n_edge   = {n_edge}')
+      print(f'edge_tag = {edge_tag}')
       if (n_edge > 0 and (edge_tag < 0).any()):
         raise ValueError("Some Face or Edge elements do not belong to any BC")
     else:

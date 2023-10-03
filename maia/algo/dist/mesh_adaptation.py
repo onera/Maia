@@ -1,4 +1,4 @@
-import time
+import copy, time
 import mpi4py.MPI as MPI
 
 import maia
@@ -7,7 +7,10 @@ import maia.pytree        as PT
 import maia.utils.logging as mlog
 from   maia.utils         import np_utils
 from maia.io.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
-
+from .adaptation_utils import elmt_pl_to_vtx_pl,\
+                              tag_elmt_owning_vtx,\
+                              add_periodic_elmt,\
+                              add_constraint_bcs
 
 import numpy as np
 
@@ -244,196 +247,64 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
 
 
   # > First adaptation: one periodic side
-  PT.print_tree(dist_tree)
-
+  pdist_tree = copy.deepcopy(dist_tree)
   dist_zone = PT.get_nodes_from_label(dist_tree, 'Zone_t')
   assert len(dist_zone)==1
   dist_zone = dist_zone[0]
+  PT.Zone.get_ordered_elements_per_dim(dist_zone)
 
-  gc_nodes = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
-  assert len(gc_nodes)==2
+  # > Get GCs involved in periodicity and transform them into vtx pointlist
+  gc_nodes = PT.get_nodes_from_label(pdist_tree, 'GridConnectivity_t')
   gc_names = [PT.get_name(n) for n in gc_nodes]
+  assert len(gc_nodes)==2
   gc_n  = gc_nodes[0]
+  assert PT.Subset.GridLocation(gc_n)=='EdgeCenter' # 2d for now
+  translation = PT.get_value(PT.get_node_from_name(gc_n, 'Translation'))
   print(f'GC used: {PT.get_name(gc_n)}')
   gc_pl  = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))[0]
   gc_pld = PT.get_value(PT.get_child_from_name(gc_n, 'PointListDonor'))[0]
-  assert PT.Subset.GridLocation(gc_n)=='EdgeCenter' # 2d
-  is_bar_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                         PT.Element.CGNSName(n)=='BAR_2'
-  bar_nodes = PT.get_nodes_from_predicate(dist_tree, is_bar_elt)
-  print(len(bar_nodes))
-  bar_con   = [PT.get_value(PT.get_child_from_name(bar_n, 'ElementConnectivity')) for bar_n in bar_nodes]
-  print(f'bar_con = {[len(bar_c) for bar_c in bar_con]}')
-  bar_con   = np_utils.concatenate_np_arrays(bar_con)[1]
-  print(f'bar_con = {bar_con}')
-  gc_pl  = gc_pl  - local_pl_offset(dist_zone, LOC_TO_DIM['EdgeCenter']) -1
-  gc_pld = gc_pld - local_pl_offset(dist_zone, LOC_TO_DIM['EdgeCenter']) -1
-  con_gc_pl  = np_utils.interweave_arrays([2*gc_pl , 2*gc_pl +1])
-  con_gc_pld = np_utils.interweave_arrays([2*gc_pld, 2*gc_pld+1])
-
-  gc_vtx_pl  = bar_con[con_gc_pl ]
-  gc_vtx_pld = bar_con[con_gc_pld]
-  gc_vtx_pl  = np.unique(gc_vtx_pl )
-  gc_vtx_pld = np.unique(gc_vtx_pld)
-  print(f'gc_vtx_pl  = {gc_vtx_pl }')
-  print(f'gc_vtx_pld = {gc_vtx_pld}')
-  # bc_vtx = 
+  gc_vtx_pl  = elmt_pl_to_vtx_pl(dist_zone, gc_pl )
+  gc_vtx_pld = elmt_pl_to_vtx_pl(dist_zone, gc_pld)
 
   # > Which cells are connected to donor_vtx ?
-  n_vtx = PT.Zone.n_vtx(dist_zone)
   n_tri = PT.Zone.n_cell(dist_zone)
-  print(f'n_tri = {n_tri}')
   is_tri_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                          PT.Element.CGNSName(n)=='TRI_3'
-  tri_nodes = PT.get_nodes_from_predicate(dist_tree, is_tri_elt)
-  tri_con   = [PT.get_value(PT.get_child_from_name(tri_n, 'ElementConnectivity')) for tri_n in tri_nodes]
-  tri_con   = np_utils.concatenate_np_arrays(tri_con)[1]
-  print(f'tri_con = {tri_con}')
+  tri_nodes = PT.get_nodes_from_predicate(dist_zone, is_tri_elt)
+  tri_conn  = [PT.get_value(PT.get_child_from_name(tri_n, 'ElementConnectivity')) for tri_n in tri_nodes]
+  tri_conn  = np_utils.concatenate_np_arrays(tri_conn)[1]
+  gc_tri_pl = tag_elmt_owning_vtx(n_tri, tri_conn, gc_vtx_pld)
   
-  tag_vtx   = np.isin(tri_con, gc_vtx_pld) # True where vtx is 
-  tag_tri   = np.logical_or.reduceat(tag_vtx, np.arange(0,n_tri*3,3)) # True when has vtx 
-  gc_tri_pl = np.where(tag_tri)[0] # Which cells has vtx
-  print(f'gc_tri_pl = {gc_tri_pl}')
-
-  n_tri_period = gc_tri_pl.size
-  print(f'n_tri_period = {n_tri_period}')
-  ptri_con = -np.ones(n_tri_period*3, dtype=np.int32)
-  ptri_con[0::3] = tri_con[3*gc_tri_pl+0]
-  ptri_con[1::3] = tri_con[3*gc_tri_pl+1]
-  ptri_con[2::3] = tri_con[3*gc_tri_pl+2]
-  print(f'ptri_con   = {ptri_con}')
-  tag_pvtx  = np.isin(ptri_con, gc_vtx_pld) # True where vtx is 
-  print(f'tag_pvtx = {tag_pvtx}')
-  print(f'not tag_pvtx = {np.invert(tag_pvtx)}')
-  gc_pvtx_pl1 = np.where(          tag_pvtx )[0] # Which vtx is in gc
-  gc_pvtx_pl2 = np.where(np.invert(tag_pvtx))[0] # Which vtx is not in gc
-  plast_vtx = np.unique(ptri_con[gc_pvtx_pl2])
-  print(f'gc_vtx_pld = {gc_vtx_pld}')
-  print(f'gc_pvtx_pl1   = {gc_pvtx_pl1}')
-  print(f'gc_pvtx_pl2   = {gc_pvtx_pl2}')
-  print(f'\n\nplast_vtx = {plast_vtx}')
-  n_plast_vtx = plast_vtx.size
-  vtx_transfo = {k:v   for k, v in zip(gc_vtx_pld, gc_vtx_pl)}
-  new_num_vtx = {k:v+1 for k, v in zip(plast_vtx, np.arange(n_vtx, n_vtx+n_plast_vtx))}
-  print(f'n_plast_vtx = {n_plast_vtx}')
-  print(f'ptri_con = {ptri_con}')
-
-  print(f'vtx_transfo = {vtx_transfo}')
-  print(f'new_num_vtx = {new_num_vtx}')
-  print(f'ptri_con[gc_pvtx_pl1] = {ptri_con[gc_pvtx_pl1]}')
-  ptri_con[gc_pvtx_pl1] = [vtx_transfo[i_vtx] for i_vtx in ptri_con[gc_pvtx_pl1]]
-  ptri_con[gc_pvtx_pl2] = [new_num_vtx[i_vtx] for i_vtx in ptri_con[gc_pvtx_pl2]]
-  print(f'ptri_con = {ptri_con}')
-
-  cx_n = PT.get_node_from_name(dist_zone, 'CoordinateX')
-  cy_n = PT.get_node_from_name(dist_zone, 'CoordinateY')
-  cz_n = PT.get_node_from_name(dist_zone, 'CoordinateZ')
-  cx, cy, cz = PT.Zone.coordinates(dist_zone)
-  pcx = -np.ones(n_plast_vtx, dtype=np.float64)
-  pcy = -np.ones(n_plast_vtx, dtype=np.float64)
-  pcz = -np.ones(n_plast_vtx, dtype=np.float64)
-  pcx = cx[plast_vtx-1] -1.
-  pcy = cy[plast_vtx-1]
-  pcz = cz[plast_vtx-1]
-  PT.set_value(cx_n, np.concatenate([cx, pcx]))
-  PT.set_value(cy_n, np.concatenate([cy, pcy]))
-  PT.set_value(cz_n, np.concatenate([cz, pcz]))
-  PT.print_tree(cx_n, verbose=True)
-  PT.print_tree(cy_n, verbose=True)
-  PT.print_tree(cz_n, verbose=True)
-
-  tri_n = PT.get_node_from_name(dist_tree, 'TRI_3.0')
-  PT.print_tree(tri_n)
-  print(f'tri_con  = {tri_con}')
-  print(f'ptri_con = {ptri_con}')
-  tri_con = np.concatenate([tri_con, ptri_con])
-  tri_con_n = PT.get_child_from_name(tri_n, 'ElementConnectivity')
-  PT.set_value(tri_con_n, tri_con)
-  elt_range_n = PT.get_child_from_name(tri_n, 'ElementRange')
-  elt_range = PT.get_value(elt_range_n)
-  n_tri_new = elt_range[1]+n_tri_period
-  elt_range[1] = n_tri_new
-  PT.set_value(elt_range_n, elt_range)
-
-  PT.set_value(dist_zone, [[n_vtx+n_plast_vtx, elt_range[1], 0]])
 
 
-  tri_n = PT.get_node_from_name(dist_tree, 'TRI_3.0')
-  tri_elt_range_n = PT.get_child_from_name(tri_n, 'ElementRange')
-  tri_elt_range = PT.get_value(tri_elt_range_n)
-
-  bar_n = PT.get_node_from_name(dist_tree, 'BAR_2.0')
-  bar_elt_range_n = PT.get_child_from_name(bar_n, 'ElementRange')
-  bar_elt_range = PT.get_value(bar_elt_range_n)
-  bar_offset = tri_elt_range[1]-bar_elt_range[0]+1
-  bar_elt_range[0] = bar_elt_range[0]+bar_offset
-  bar_elt_range[1] = bar_elt_range[1]+bar_offset
-  PT.set_value(bar_elt_range_n, bar_elt_range)
-  # bar_elt_conn_n = PT.get_child_from_name(bar_n, 'ElementConnectivity')
-  # bar_elt_conn   = PT.get_value(bar_elt_conn_n)
-  # bar_elt_conn   = bar_elt_conn+bar_offset
-  # PT.set_value(bar_elt_conn_n, bar_elt_conn)
-
-  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and\
-                         PT.Subset.GridLocation(n)=='EdgeCenter'
-  for edge_bc_n in PT.get_nodes_from_predicate(dist_tree, is_edge_bc):
-    pl_n = PT.get_child_from_name(edge_bc_n, 'PointList')
-    pl = PT.get_value(pl_n)
-    PT.set_value(pl_n, pl+bar_offset)
-
-  zone_bc_n = PT.get_node_from_label(dist_tree, 'ZoneBC_t')
+  # > Create connectivity of periodic elements
+  pdist_zone = PT.get_node_from_label(pdist_tree, 'Zone_t')
+  
+  zone_bc_n = PT.get_node_from_label(pdist_zone, 'ZoneBC_t')
+  PT.new_BC(name='vol_constraint',
+            type='BCWall',
+            point_list=(gc_tri_pl+1).reshape((1,-1), order='F'),
+            loc='FaceCenter',
+            family='CONSTRAINT',
+            parent=zone_bc_n)
   for gc_n in gc_nodes:
     gc_name = PT.get_name(gc_n)
     gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
     PT.new_BC(name=gc_name,
               type='BCWall',
-              point_list=gc_pl+bar_offset,
+              point_list=gc_pl,
               loc='EdgeCenter',
-              family='BCS',
+              family='CONSTRAINT',
               parent=zone_bc_n)
+  
+  n_vtx_toadd, new_num_vtx = add_periodic_elmt(pdist_zone, gc_tri_pl, gc_vtx_pl, gc_vtx_pld, translation)
+
+  # Create new BAR_2 elmts and associated BCs to constrain mesh adaptation
+  add_constraint_bcs(pdist_zone, new_num_vtx)
 
 
-  # > Ajout des nouvelles BCs
-  pbar_conn = -np.ones((n_plast_vtx-1)*2, dtype=np.int32)
-  pbar_conn[0::2] = np.array(list(new_num_vtx.values()), dtype=np.int32)[0:-1]
-  pbar_conn[1::2] = np.array(list(new_num_vtx.values()), dtype=np.int32)[1:]
-  print(f'\n\n pbar_conn = {pbar_conn}')
-  bar_n = PT.get_node_from_name(dist_tree, 'BAR_2.0')
-  bar_elt_range_n = PT.get_child_from_name(bar_n, 'ElementRange')
-  bar_elt_range   = PT.get_value(bar_elt_range_n)
-  n_bar = bar_elt_range[1]-bar_elt_range[0]+1
-  bar_elt_range[1]= bar_elt_range[1]+(n_plast_vtx-1)
-  PT.set_value(bar_elt_range_n, bar_elt_range)
-  bar_elt_conn_n = PT.get_child_from_name(bar_n, 'ElementConnectivity')
-  bar_elt_conn   = PT.get_value(bar_elt_conn_n)
-  bar_elt_conn   = np.concatenate([bar_elt_conn, pbar_conn])
-  PT.set_value(bar_elt_conn_n, bar_elt_conn)
-
-  pbar_conn = -np.ones((n_plast_vtx-1)*2, dtype=np.int32)
-  pbar_conn[0::2] = np.array(list(new_num_vtx.keys()), dtype=np.int32)[0:-1]
-  pbar_conn[1::2] = np.array(list(new_num_vtx.keys()), dtype=np.int32)[1:]
-  print(f'\n\n pbar_conn = {pbar_conn}')
-  bar_n = PT.get_node_from_name(dist_tree, 'BAR_2.0')
-  bar_elt_range_n = PT.get_child_from_name(bar_n, 'ElementRange')
-  bar_elt_range   = PT.get_value(bar_elt_range_n)
-  bar_elt_range[1]= bar_elt_range[1]+(n_plast_vtx-1)
-  PT.set_value(bar_elt_range_n, bar_elt_range)
-  bar_elt_conn_n = PT.get_child_from_name(bar_n, 'ElementConnectivity')
-  bar_elt_conn   = PT.get_value(bar_elt_conn_n)
-  bar_elt_conn   = np.concatenate([bar_elt_conn, pbar_conn])
-  PT.set_value(bar_elt_conn_n, bar_elt_conn)
-
-  PT.print_tree(bar_n)
-  PT.new_BC(name='fixed',
-              type='BCWall',
-              point_list=np.arange(bar_elt_range[0]+n_bar, bar_elt_range[0]+n_bar+(n_plast_vtx-1)*2, dtype=np.int32).reshape((1,-1), order='F'),
-              loc='EdgeCenter',
-              family='BCS',
-              parent=zone_bc_n)
-
-
-  PT.rm_nodes_from_name(dist_tree, 'ZoneGridConnectivity')
-  maia.io.write_tree(dist_tree, 'OUTPUT/square_extended.cgns')
+  PT.rm_nodes_from_name(pdist_tree, 'ZoneGridConnectivity')
+  maia.io.write_tree(pdist_tree, 'OUTPUT/square_extended.cgns')
 
   '''
   ROUTINE
