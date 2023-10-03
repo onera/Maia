@@ -25,6 +25,7 @@ Developpement version
 🐞 Fixes
 ^^^^^^^^
 - merge_zones: manage S/U GridConnectivity_t when merging U zones
+- add_joins_donor_name: prevent a crash when some GCs already have their DonorName
 
 🚧 API change
 ^^^^^^^^^^^^^

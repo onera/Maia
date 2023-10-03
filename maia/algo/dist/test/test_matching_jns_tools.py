@@ -121,6 +121,36 @@ Base0 CGNSBase_t:
   MJT.add_joins_donor_name(dist_tree, comm, force=True)
   assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'matchBA'
 
+@pytest_parallel.mark.parallel(1)
+def test_some_computed(comm):
+  yt = """
+Base0 CGNSBase_t:
+  ZoneA Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      matchAB.0 GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        PointList IndexArray_t [1,4,7,10]:
+        PointListDonor IndexArray_t [13,16,7,10]:
+        GridConnectivityDonorName Descriptor_t "matchBA.0":
+      matchAB.1 GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        PointList IndexArray_t [7,10]:
+        PointListDonor IndexArray_t [7,10]:
+  ZoneB Zone_t:
+    ZGC ZoneGridConnectivity_t:
+      matchBA.0 GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        PointList IndexArray_t [13,16,7,10]:
+        PointListDonor IndexArray_t [1,4,7,10]:
+        GridConnectivityDonorName Descriptor_t "matchAB.0":
+      matchBA.1 GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        PointList IndexArray_t [7,10]:
+        PointListDonor IndexArray_t [7,10]:
+"""
+  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  MJT.add_joins_donor_name(dist_tree, comm)
+
 class Test_gcdonorname_utils:
   dt = """
 Base CGNSBase_t:

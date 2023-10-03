@@ -344,7 +344,7 @@ def connect_1to1_families(dist_tree, families, comm, periodic=None, **options):
 
   If the interface is periodic, the transformation from the first to the second family
   entities must be specified using the ``periodic`` argument; a dictionnary with keys
-  ``'translation'``, ``'rotation_center'`` and/or ``'rotation_angle'`` is expected.
+  ``'translation'``, ``'rotation_center'`` and/or ``'rotation_angle'`` (in radians) is expected.
   Each key maps to a 3-sized numpy array, with missing keys defaulting zero vector.
 
   Input tree is modified inplace : relevant GridConnectivity_t with PointList and PointListDonor
