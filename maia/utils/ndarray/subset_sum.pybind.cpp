@@ -14,6 +14,10 @@ bool isSubsetSum(const int set[], const int n, const int sum)
   // The value of subset[i][j] will be true if there is a subset of set[0..i-1] with sum equal to j
   int sizeX = n+1;
   int sizeY = sum+1;
+  int max_alloc = 100000000; // Exit if arrays is bigger than that
+  if (sizeY > (max_alloc / sizeX)) {
+    return false;
+  }
   bool* subset = new bool[sizeX*sizeY]; // subset[n + 1][sum + 1];
   // Access using Subset[i][j] = subset[i*sizeY+j]
 

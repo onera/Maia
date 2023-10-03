@@ -47,7 +47,7 @@ for base_function in [WAPI.get_node_from_predicates, WAPI.iter_nodes_from_predic
 base_functions = [partial(WAPI.get_nodes_from_predicate, explore='deep'),
                   partial(WAPI.iter_nodes_from_predicate, explore='deep')]
 easypredicates = dict()
-easylabels = ['CGNSBase_t', 'Zone_t', 'BC_t', 'Family_t']
+easylabels = ['BC_t', 'Family_t']
 for label in easylabels:
   easypredicates['Label'+ label] = (partial(match_str_label, label=label), tuple())
 
@@ -68,16 +68,17 @@ for rm_function in [rm_nodes_from_predicate, rm_children_from_predicate, keep_ch
   generated = generate_functions(rm_function, maxdepth=0, child=False)
   _update_module_attributes(generated)
 
-def get_node_from_path(root, path, ancestors=False):
+def get_node_from_path(root, path):
   if path == '':
-    return [root] if ancestors else root
-  nodes = WAPI.get_nodes_from_predicates(root, path, depth=[1,1], ancestors=ancestors)
-  if len(nodes) == 0 and ancestors:
-    return []
-  if len(nodes) == 1:
-    return nodes[0]
-  elif len(nodes) > 1:
-    raise RuntimeError(f"Multiple nodes founds for path {path}")
+    return root
+  names = path.split('/')
+  node = root
+  for i, name in enumerate(names):
+    try:
+      node = next((c for c in node[2] if c[0] == name))
+    except StopIteration:
+      return
+  return node
 
 def rm_node_from_path(root, path):
   from maia.pytree.path_utils import path_head, path_tail
@@ -86,6 +87,25 @@ def rm_node_from_path(root, path):
   else:
     parent = get_node_from_path(root, path_head(path))
     rm_nodes_from_name(parent, path_tail(path))
+
+def get_all_Zone_t(root):
+  return list(iter_all_Zone_t(root))
+
+def iter_all_Zone_t(root):
+  import maia.pytree as PT
+  root_label = PT.get_label(root)
+  if root_label == 'CGNSBase_t':
+    yield from PT.iter_children_from_label(root, 'Zone_t')
+  elif root_label == 'CGNSTree_t':
+    for base in PT.iter_children_from_label(root, 'CGNSBase_t'):
+      yield from PT.iter_children_from_label(base, 'Zone_t')
+
+def get_all_CGNSBase_t(root):
+  return list(iter_all_CGNSBase_t(root))
+def iter_all_CGNSBase_t(root):
+  import maia.pytree as PT
+  if PT.get_label(root) == 'CGNSTree_t':
+    yield from PT.iter_children_from_label(root, 'CGNSBase_t')
 
 def get_all_subsets(root,filter_loc=None):
   """

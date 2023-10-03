@@ -12,23 +12,22 @@ feflo_exists = shutil.which('feflo.a') is not None
 
 def test_unpack_metric():
   yz = """
-  CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
-    Base CGNSBase_t [3, 3]:
-      Zone Zone_t [[3,1,0]]:
-        ZoneType ZoneType_t "Unstructured":
-        FlowSol FlowSolution_t:
-          Mach     DataArray_t R8 [1., 1., 1.]:
-          TensorXX DataArray_t R8 [1., 1., 1.]:
-          TensorZZ DataArray_t R8 [1., 1., 1.]:
-          TensorXY DataArray_t R8 [1., 1., 1.]:
-          TensorYY DataArray_t R8 [1., 1., 1.]:
-          TensorXZ DataArray_t R8 [1., 1., 1.]:
-          TensorYZ DataArray_t R8 [1., 1., 1.]:
-          WrongA   DataArray_t R8 [1., 1., 1.]:
-          WrongB   DataArray_t R8 [1., 1., 1.]:
-          WrongC   DataArray_t R8 [1., 1., 1.]:
+  Base CGNSBase_t [3, 3]:
+    Zone Zone_t [[3,1,0]]:
+      ZoneType ZoneType_t "Unstructured":
+      FlowSol FlowSolution_t:
+        Mach     DataArray_t R8 [1., 1., 1.]:
+        TensorXX DataArray_t R8 [1., 1., 1.]:
+        TensorZZ DataArray_t R8 [1., 1., 1.]:
+        TensorXY DataArray_t R8 [1., 1., 1.]:
+        TensorYY DataArray_t R8 [1., 1., 1.]:
+        TensorXZ DataArray_t R8 [1., 1., 1.]:
+        TensorYZ DataArray_t R8 [1., 1., 1.]:
+        WrongA   DataArray_t R8 [1., 1., 1.]:
+        WrongB   DataArray_t R8 [1., 1., 1.]:
+        WrongC   DataArray_t R8 [1., 1., 1.]:
   """
-  tree = parse_yaml_cgns.to_node(yz)
+  tree = parse_yaml_cgns.to_cgns_tree(yz)
 
   # > Wrong because leads to unexistant field
   with pytest.raises(ValueError):

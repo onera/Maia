@@ -118,11 +118,6 @@ def test_get_node_from_path():
   assert PT.get_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3') is None
   assert PT.get_node_from_path(tree, '') == tree
-  #With ancestors
-  nodes = PT.get_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3', ancestors=True)
-  assert [PT.get_label(n) for n in nodes] == ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
-  assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3', ancestors=True) == []
-  assert PT.get_node_from_path(tree, '', ancestors=True) == [tree]
 
 
 def test_rm_node_from_path():
