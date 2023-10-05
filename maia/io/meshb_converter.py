@@ -64,7 +64,12 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   edge_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
   face_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_SURFACIC)
 
+  vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
+  vtx_tag = vtx_data['np_vtx_tag']
+
+
   bc_names = tree_info['bc_names']
+  print(f'bc_names = {bc_names}')
   def groups_to_bcs(elt_groups, zone_bc, location, shift_bc, comm):
     elt_group_idx = elt_groups['dgroup_elmt_idx']
     elt_group     = elt_groups['dgroup_elmt'] + shift_bc
@@ -72,17 +77,19 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
     n_bc_init = len(bc_names[location]) if location in bc_names else 0
     n_new_bc  = n_elt_group - n_bc_init
+    print(f'n_bc_init = {n_bc_init}, n_elt_group = {n_elt_group} --> n_new_bc = {n_new_bc}')
     assert n_new_bc in [0,1], "Unknow tags in meshb file"
 
     for i_group in range(n_elt_group):
       if bc_names[location]:
         if i_group < n_new_bc:
           # name_bc   = {"Vertex":"vtx", "EdgeCenter":"edge", "FaceCenter":"face"}
-          # bc_name = f"new_{name_bc[location]}_bc_{i_group+1}"
+          # bc_name = f"feflo_{name_bc[location]}_bc_{i_group}"
           continue # For now, skip BC detected in meshb but not provided in BC names
         else:
           bc_name = bc_names[location][i_group-n_new_bc]
 
+        print(f'bc_name = {bc_name} -> {location}')
         bc_n = PT.new_BC(bc_name, type='Null', loc=location, parent=zone_bc)
         start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
         dn_elt_bnd = end - start
@@ -197,12 +204,19 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
     def bc_pl_to_bc_tag(list_of_bc, bc_tag, offset):
       for n_tag, bc_n in enumerate(list_of_bc):
         pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
+        print(f'{PT.get_name(bc_n)} -> {pl-offset-1} -> {n_tag}')
         bc_tag[pl-offset-1] = n_tag + 1
+
+    def bc_pl_to_bc_tag_vtx(list_of_bc, bc_tag, offset):
+      for n_tag, bc_n in enumerate(list_of_bc):
+        pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
+        bc_tag[pl-offset-1] = pl
 
     zone_bc = PT.get_child_from_label(zone, 'ZoneBC_t')
 
-    tri_tag    = -np.ones(n_tri, dtype=np.int32)
-    edge_tag   = -np.ones(n_edge, dtype=np.int32)
+    tri_tag  = -np.ones(n_tri , dtype=np.int32)
+    edge_tag = -np.ones(n_edge, dtype=np.int32)
+    vtx_tag  = np.zeros(n_vtx , dtype=np.int32)
     if zone_bc is not None:
       # > Face BC_t
       is_face_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "FaceCenter"
@@ -214,19 +228,20 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
       edge_bcs   = PT.get_children_from_predicate(zone_bc, is_edge_bc)
       n_edge_tag = bc_pl_to_bc_tag(edge_bcs, edge_tag, n_tetra+n_tri)
 
+      # > Edge BC_t
+      is_vtx_bc  = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "Vertex"
+      vtx_bcs   = PT.get_children_from_predicate(zone_bc, is_vtx_bc)
+      n_vtx_tag = bc_pl_to_bc_tag_vtx(vtx_bcs, vtx_tag, 0)
+
     is_3d = n_tetra!=0
     is_2d = n_tri  !=0
     if is_3d: 
       if (n_tri > 0 and (tri_tag < 0).any()) or (n_edge > 0 and (edge_tag < 0).any()):
         raise ValueError("Some Face or Edge elements do not belong to any BC")
     elif is_2d:
-      tri_tag = np.zeros(n_tri, dtype=np.int32)
-      is_face_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "FaceCenter"
-      face_bcs   = PT.get_children_from_predicate(zone_bc, is_face_bc)
-      n_face_tag = bc_pl_to_bc_tag(face_bcs, tri_tag, n_tetra)
-      tri_tag +=1
+      print(f'tri_tag = {tri_tag}')
       print(f'n_edge   = {n_edge}')
-      print(f'edge_tag = {edge_tag}')
+      print(f'edge_tag = {edge_tag} ({edge_tag.size})')
       if (n_edge > 0 and (edge_tag < 0).any()):
         raise ValueError("Some Face or Edge elements do not belong to any BC")
     else:
@@ -235,7 +250,6 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
 
     # > Write meshb
     xyz       = np_utils.interweave_arrays([cx,cy,cz])
-    vtx_tag   = np.zeros(n_vtx, dtype=np.int32)
     tetra_tag = np.zeros(n_tetra, dtype=np.int32)
 
     PDM.write_meshb(bytes(files["mesh"]),
