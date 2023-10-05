@@ -2,6 +2,8 @@ import fnmatch
 from functools import partial
 import numpy as np
 
+from maia.pytree.typing import *
+
 import maia.pytree.cgns_keywords as CGK
 from   maia.pytree      import node as N
 from   maia.pytree.node import check
@@ -11,34 +13,34 @@ __VALUE__    = 1
 __CHILDREN__ = 2
 __LABEL__    = 3
 
-def match_name(n, name: str):
+def match_name(n:CGNSTree, name: str) -> bool:
   return fnmatch.fnmatch(n[__NAME__], name)
 
-def match_value(n, value):
+def match_value(n:CGNSTree, value) -> bool:
   return np.array_equal(n[__VALUE__], value)
 
-def match_str_label(n, label):
+def match_str_label(n:CGNSTree, label:str) -> bool:
   return n[__LABEL__] == label
 
-def match_cgk_label(n, label):
+def match_cgk_label(n:CGNSTree, label) -> bool:
   return n[__LABEL__] == label.name
 
-def match_label(n, label):
+def match_label(n:CGNSTree, label):
   return match_cgk_label(n, label) if isinstance(label, CGK.Label) else match_str_label(n, label)
 
-def match_name_value(n, name: str, value):
+def match_name_value(n:CGNSTree, name: str, value):
   return match_name(n, name) and match_value(n, value)
 
-def match_name_label(n, name: str, label):
+def match_name_label(n:CGNSTree, name: str, label:str):
   return match_name(n, name) and match_label(n, label)
 
-def match_value_label(n, value, label):
+def match_value_label(n:CGNSTree, value, label:str):
   return match_value(n, value) and match_label(n, label)
 
-def match_name_value_label(n, name: str, value, label):
+def match_name_value_label(n:CGNSTree, name: str, value:str, label):
   return match_name(n, name) and match_value(n, value) and match_label(n, label)
 
-def belongs_to_family(n, target_family, allow_additional=False):
+def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
   """
   Return True if the node n has a FamilyName_t child whose value is target_family.
   If allow_additional is True, also return True if node n has a AdditionalFamilyName_t child

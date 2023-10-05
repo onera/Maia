@@ -22,14 +22,14 @@ cgns_to_pdm = {
         }
 pdm_to_cgns = {val : key for key, val in cgns_to_pdm.items()}
 
-def element_pdm_type(n):
+def element_pdm_type(n:int)->int:
   assert n < len(elements_properties)
   return cgns_to_pdm[elements_properties[n][0]]
 
-def cgns_elt_name_to_pdm_element_type(name):
+def cgns_elt_name_to_pdm_element_type(name:str)->int:
     return cgns_to_pdm[name]
 
-def pdm_elt_name_to_cgns_element_type(pdm_id):
+def pdm_elt_name_to_cgns_element_type(pdm_id:str)->int:
     return pdm_to_cgns[pdm_id]
 
 

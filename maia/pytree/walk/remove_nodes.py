@@ -1,11 +1,5 @@
-from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
+from maia.pytree.typing import *
 import numpy as np
-
-# Declare a type alias for type hint checkers
-# For Python>=3.9 it is possible to set the MaxLen
-# from typing import Annotated
-# TreeNode = Annotated[List[Union[str, Optional[numpy.ndarray], List['TreeNode']]], MaxLen(4)]
-TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 # Keys to access TreeNode values
 __NAME__     = 0
@@ -13,7 +7,7 @@ __VALUE__    = 1
 __CHILDREN__ = 2
 __LABEL__    = 3
 
-def rm_children_from_predicate(root: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
+def rm_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool]):
   """
   Remove the children of root node satisfying Predicate function
   """
@@ -24,14 +18,14 @@ def rm_children_from_predicate(root: TreeNode, predicate: Callable[[TreeNode], b
   for ichild in reversed(results):
     del root[__CHILDREN__][ichild]
 
-def keep_children_from_predicate(root: TreeNode, predicate: Callable[[TreeNode], bool]) -> NoReturn:
+def keep_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool]):
   """
   Remove all the children of root node expect the ones satisfying Predicate function
   """
   rm_children_from_predicate(root, lambda n: not predicate(n))
 
 
-def rm_nodes_from_predicate(root, predicate, **kwargs):
+def rm_nodes_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool], **kwargs):
   """
   Starting from root node, remove all the nodes matching Predicate function
   Removal can be limited to a given depth

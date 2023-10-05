@@ -1,10 +1,12 @@
 import numpy as np
 import maia.pytree as PT
 
+from maia.pytree.typing import *
+
 from maia.pytree.compare import check_is_label
 from . import utils
 
-def getZoneDonorPath(current_base, gc):
+def getZoneDonorPath(current_base:str, gc:CGNSTree) -> str:
   """
   Returns the Base/Zone path of the opposite zone of a gc node (add the Base/
   part if not present, using current_base name
@@ -15,7 +17,7 @@ def getZoneDonorPath(current_base, gc):
 
 @check_is_label('ZoneSubRegion_t', 0)
 @check_is_label('Zone_t', 1)
-def getSubregionExtent(sub_region_node, zone):
+def getSubregionExtent(sub_region_node:CGNSTree, zone:CGNSTree) -> str:
   """
   Return the path of the node (starting from zone node) related to sub_region_node
   node (BC, GC or itself)
@@ -36,7 +38,7 @@ def getSubregionExtent(sub_region_node, zone):
   raise ValueError("ZoneSubRegion {0} has no valid extent".format(PT.get_name(sub_region_node)))
 
 
-def find_connected_zones(tree):
+def find_connected_zones(tree:CGNSTree) -> List[CGNSTree]:
   """
   Return a list of groups of zones (ie their path from root tree) connected through
   non periodic match grid connectivities (GridConnectivity_t & GridConnectivity1to1_t
@@ -71,7 +73,7 @@ def find_connected_zones(tree):
       connected_zones.append(new_group)
   return [sorted(zones) for zones in connected_zones]
 
-def find_periodic_jns(tree,rtol=1e-5,atol=0):
+def find_periodic_jns(tree: CGNSTree, rtol=1e-5, atol=0.) -> Tuple[List[List[np.ndarray]], List[List[str]]]:
   """Find periodic jns path and gather it according to their periodicity values
   Return two list (we do not return a dict because np array are unshable)
       - periodic values
