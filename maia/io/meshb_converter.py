@@ -69,7 +69,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
 
   bc_names = tree_info['bc_names']
-  print(f'bc_names = {bc_names}')
   def groups_to_bcs(elt_groups, zone_bc, location, shift_bc, comm):
     elt_group_idx = elt_groups['dgroup_elmt_idx']
     elt_group     = elt_groups['dgroup_elmt'] + shift_bc
@@ -77,7 +76,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
     n_bc_init = len(bc_names[location]) if location in bc_names else 0
     n_new_bc  = n_elt_group - n_bc_init
-    print(f'n_bc_init = {n_bc_init}, n_elt_group = {n_elt_group} --> n_new_bc = {n_new_bc}')
     assert n_new_bc in [0,1], "Unknow tags in meshb file"
 
     for i_group in range(n_elt_group):
@@ -89,7 +87,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         else:
           bc_name = bc_names[location][i_group-n_new_bc]
 
-        print(f'bc_name = {bc_name} -> {location}')
         bc_n = PT.new_BC(bc_name, type='Null', loc=location, parent=zone_bc)
         start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
         dn_elt_bnd = end - start
@@ -204,7 +201,6 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
     def bc_pl_to_bc_tag(list_of_bc, bc_tag, offset):
       for n_tag, bc_n in enumerate(list_of_bc):
         pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
-        print(f'{PT.get_name(bc_n)} -> {pl-offset-1} -> {n_tag}')
         bc_tag[pl-offset-1] = n_tag + 1
 
     def bc_pl_to_bc_tag_vtx(list_of_bc, bc_tag, offset):
@@ -239,9 +235,6 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
       if (n_tri > 0 and (tri_tag < 0).any()) or (n_edge > 0 and (edge_tag < 0).any()):
         raise ValueError("Some Face or Edge elements do not belong to any BC")
     elif is_2d:
-      print(f'tri_tag = {tri_tag}')
-      print(f'n_edge   = {n_edge}')
-      print(f'edge_tag = {edge_tag} ({edge_tag.size})')
       if (n_edge > 0 and (edge_tag < 0).any()):
         raise ValueError("Some Face or Edge elements do not belong to any BC")
     else:

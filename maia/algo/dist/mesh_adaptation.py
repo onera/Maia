@@ -254,6 +254,8 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
 
 
   # > First adaptation: one periodic side
+  mlog.info(f"\n\n[Periodic adaptation] #1: Duplicating periodic patch...")
+
   pdist_tree = copy.deepcopy(dist_tree)
   dist_zone = PT.get_nodes_from_label(dist_tree, 'Zone_t')
   assert len(dist_zone)==1
@@ -267,7 +269,6 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   gc_n  = gc_nodes[0]
   assert PT.Subset.GridLocation(gc_n)=='EdgeCenter' # 2d for now
   translation = PT.get_value(PT.get_node_from_name(gc_n, 'Translation'))
-  print(f'GC used: {PT.get_name(gc_n)}')
   gc_pl  = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))[0]
   gc_pld = PT.get_value(PT.get_child_from_name(gc_n, 'PointListDonor'))[0]
   gc_vtx_pl  = elmt_pl_to_vtx_pl(dist_zone, gc_pl , 'BAR_2')
@@ -335,11 +336,12 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
     toujours n'avoir qu'un noeud element/dim (l'imposer dans la doc + assert ?)
     inclure rm_invalid elements dans update_elt_numbering
     faut reporter les BCs periodisée !!
+    se passer de la vision point_list au profit des tags ??
   '''
 
+  mlog.info(f"\n\n[Periodic adaptation] #2: First adaptation constraining periodic patches boundaries...")
 
   if comm.Get_rank()==0:
-    PT.print_tree(pdist_tree)
     cgns_to_meshb(pdist_tree, in_files, metric_nodes, container_names)
 
     # Adapt with feflo
@@ -357,8 +359,8 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
 
 
   # > Get adapted dist_tree
+
   padapted_dist_tree = meshb_to_cgns(out_files, ptree_info, comm)
-  PT.print_tree(padapted_dist_tree)
   # > Set names and copy base data
   padapted_base = PT.get_child_from_label(padapted_dist_tree, 'CGNSBase_t')
   padapted_zone = PT.get_child_from_label(padapted_base, 'Zone_t')
@@ -379,14 +381,14 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
       for node in PT.get_nodes_from_predicate(input_bc, to_copy):
         PT.add_child(padapted_bc, node)
 
-  print(f'\n\n\n > ADAPTATED TREE')
-  PT.print_tree(padapted_dist_tree)
-
   maia.io.write_tree(padapted_dist_tree, 'OUTPUT/first_adaptation.cgns')
 
 
 
 
+
+
+  mlog.info(f"\n\n[Periodic adaptation] #3: Removing initial periodic patch...")
 
   adapted_dist_tree = copy.deepcopy(padapted_dist_tree)
   adapted_dist_zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
@@ -402,32 +404,25 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   bc_to_rm_pl = PT.get_value(PT.get_child_from_name(bc_to_rm, 'PointList'))[0]
   bc_to_rm_vtx_pl  = elmt_pl_to_vtx_pl(adapted_dist_zone, bc_to_rm_pl, 'TRI_3')
   n_elt_to_rm = bc_to_rm_pl.size
-  print(f'n_elt_to_rm = {n_elt_to_rm}')
 
   bc_to_keep = PT.get_child_from_name(zone_bc_n, 'fixed')
   bc_to_keep_pl = PT.get_value(PT.get_child_from_name(bc_to_keep, 'PointList'))[0]
   bc_to_keep_vtx_pl = elmt_pl_to_vtx_pl(adapted_dist_zone, bc_to_keep_pl, 'BAR_2')
   n_vtx_to_keep = bc_to_keep_vtx_pl.size
-  print(f'n_vtx_to_keep = {n_vtx_to_keep}')
 
 
   tag_vtx = np.isin(bc_to_rm_vtx_pl, bc_to_keep_vtx_pl) # True where vtx is 
   preserved_vtx_id = bc_to_rm_vtx_pl[tag_vtx][0]
   bc_to_rm_vtx_pl = bc_to_rm_vtx_pl[np.invert(tag_vtx)]
   n_vtx_to_rm = bc_to_rm_vtx_pl.size
-  print(f'n_vtx_to_rm = {n_vtx_to_rm}')
-  print(f'bc_to_rm_vtx_pl = {bc_to_rm_vtx_pl}')
 
 
   # Compute new vtx numbering
 
   vtx_tag_n = PT.get_node_from_name(adapted_dist_zone, 'vtx_tag')
   vtx_tag   = PT.get_value(vtx_tag_n)
-  print(f'vtx_tag = {vtx_tag}')
   vtx_tag = np.delete(vtx_tag, bc_to_rm_vtx_pl-1)
   PT.set_value(vtx_tag_n, vtx_tag)
-  print(f'vtx_tag = {vtx_tag} ({vtx_tag.size})')
-  print(f'new_num_vtx = {new_num_vtx}')
 
   bc_fixed_n = PT.get_node_from_name_and_label(adapted_dist_zone, 'fixed', 'BC_t')
   bc_fixed_pl = PT.get_value(PT.get_child_from_name(bc_fixed_n, 'PointList'))[0]
@@ -436,24 +431,11 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   bc_fixedp_n = PT.get_node_from_name_and_label(adapted_dist_zone, 'fixedp', 'BC_t')
   bc_fixedp_pl = PT.get_value(PT.get_child_from_name(bc_fixedp_n, 'PointList'))[0]
   bc_fixedp_vtx_pl = elmt_pl_to_vtx_pl(adapted_dist_zone, bc_fixedp_pl, 'BAR_2')
-  print(f'bc_fixed_vtx_pl = {bc_fixed_vtx_pl}')
-  print(f'bc_fixedp_vtx_pl = {bc_fixedp_vtx_pl}')
 
   ids = bc_to_rm_vtx_pl
   targets = -np.ones(bc_to_rm_vtx_pl.size, dtype=np.int32)
   vtx_distri_ini = np.array([0,n_vtx,n_vtx], dtype=np.int32) # TODO pdm_gnum
   old_to_new_vtx = merge_distributed_ids(vtx_distri_ini, ids, targets, comm, True)
-  print(f'old_to_new_vtx = {old_to_new_vtx}')
-
-  # ids = np_utils.concatenate_np_arrays([bc_to_rm_vtx_pl, bc_fixedp_vtx_pl])[1]
-  # # targets_rm_vtx = -np.ones(bc_to_rm_vtx_pl.size, dtype=np.int32)
-  # targets_rm_vtx = np.full(bc_to_rm_vtx_pl.size, preserved_vtx_id, dtype=np.int32)
-  # targets_fixedp = bc_fixed_vtx_pl
-  # targets = np_utils.concatenate_np_arrays([targets_rm_vtx, targets_fixedp])[1]
-  # print(f'targets = {targets}')
-  # vtx_distri_ini = np.array([0,n_vtx,n_vtx], dtype=np.int32) # TODO pdm_gnum
-  # old_to_new_vtx = merge_distributed_ids(vtx_distri_ini, ids, targets, comm, False)
-  # print(f'old_to_new_vtx = {old_to_new_vtx}')
 
 
   # > CHANGING TOPOLOGY !!!!!!
@@ -464,17 +446,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   apply_offset_to_elt(adapted_dist_zone, tri_offset, 'BAR_2')
   update_elt_vtx_numbering(adapted_dist_zone, vtx_distri_ini, old_to_new_vtx, 'BAR_2', comm)
   invalid_elt_pl = find_invalid_elts(adapted_dist_zone, 'BAR_2')
-  PT.print_tree(PT.get_node_from_name(adapted_dist_zone, 'BAR_2.0'))
   n_bar = remove_elts_from_pl(adapted_dist_zone, invalid_elt_pl, 'BAR_2', comm)
-  print(f'n_bar = {n_bar}')
-  PT.print_tree(PT.get_node_from_name(adapted_dist_zone, 'BAR_2.0'))
-  # bc_names = ['Xmax']
-  # # bc_names = ['Xmax', 'feflo_edge_bc_0']
-  # bc_nodes = [PT.get_node_from_name(adapted_dist_zone, bc_name) for bc_name in bc_names]
-  # bc_pls   = [PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] for bc_n in bc_nodes]
-  # bar_to_rm_pl = np_utils.concatenate_np_arrays(bc_pls)[1]
-  # n_bar = remove_elts_from_pl(adapted_dist_zone, bar_to_rm_pl, 'BAR_2', comm)
-  # PT.print_tree(PT.get_node_from_name(adapted_dist_zone, 'BAR_2.0'))
 
   cx_n = PT.get_node_from_name(adapted_dist_zone, 'CoordinateX')
   cy_n = PT.get_node_from_name(adapted_dist_zone, 'CoordinateY')
