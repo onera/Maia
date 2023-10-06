@@ -345,18 +345,18 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   mlog.info(f"\n\n[Periodic adaptation] #2: First adaptation constraining periodic patches boundaries...")
 
   if comm.Get_rank()==0:
-    contraint_tags = cgns_to_meshb(pdist_tree, in_files, metric_nodes, container_names, ['fixed', 'fixedp'])
+    constraint_tags = cgns_to_meshb(pdist_tree, in_files, metric_nodes, container_names, ['fixed', 'fixedp'])
     
-    print(f'constraint_tag = {contraint_tags}')
-    print(f'constraint_tag = {contraint_tags}')
+    print(f'constraint_tag = {constraint_tags}')
+    print(f'constraint_tag = {constraint_tags}')
 
     # Adapt with feflo
     feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(container_names)!=0 else []
     feflo_command  = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()
-    if len(contraint_tags['FaceCenter'])!=0:
-      feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(contraint_tags['FaceCenter'])]#[str(tag) for tag in contraint_tags['FaceCenter']]
-    if len(contraint_tags['EdgeCenter'])!=0:
-      feflo_command  = feflo_command + ['-adap-line-ids'] + [','.join(contraint_tags['EdgeCenter'])]#[str(tag) for tag in contraint_tags['EdgeCenter']]
+    if len(constraint_tags['FaceCenter'])!=0:
+      feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(constraint_tags['FaceCenter'])]#[str(tag) for tag in constraint_tags['FaceCenter']]
+    if len(constraint_tags['EdgeCenter'])!=0:
+      feflo_command  = feflo_command + ['-adap-line-ids'] + [','.join(constraint_tags['EdgeCenter'])]#[str(tag) for tag in constraint_tags['EdgeCenter']]
 
     feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
     print(feflo_command)
@@ -392,7 +392,13 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
       for node in PT.get_nodes_from_predicate(input_bc, to_copy):
         PT.add_child(padapted_bc, node)
 
+
+  vtx_data_n = PT.get_node_from_name(padapted_dist_tree, 'vtx_tag')
+  PT.print_tree(vtx_data_n)
+  metric_n = PT.get_node_from_name(padapted_dist_tree, 'Metric')
+  PT.add_child(metric_n, PT.new_DataArray('vtx_tag_cp', value=PT.get_value(vtx_data_n)))
   maia.io.write_tree(padapted_dist_tree, 'OUTPUT/first_adaptation.cgns')
+  PT.rm_nodes_from_name(padapted_dist_tree, 'vtx_tag_cp')
 
 
 
@@ -467,10 +473,31 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   PT.set_value(cy_n, np.delete(cy, bc_to_rm_vtx_pl-1))
   PT.set_value(cz_n, np.delete(cz, bc_to_rm_vtx_pl-1))
 
+
+  # > Update flow_sol
+  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
+                        PT.Subset.GridLocation(n)=='Vertex'
+  for fs_n in PT.get_children_from_predicate(adapted_dist_zone, is_vtx_fs):
+    print(f'FlowSolution: \"{PT.get_name(fs_n)}\"')
+    for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
+      if PT.get_name(da_n)!='vtx_tag':
+        da = PT.get_value(da_n)
+        print(f'   DataArray: \"{PT.get_name(da_n)}\": {da.size}')
+        da = np.delete(da, bc_to_rm_vtx_pl-1)
+        PT.set_value(da_n, da)
+
   PT.set_value(adapted_dist_zone, [[n_vtx-n_vtx_to_rm, n_tri, 0]])
   # PT.set_value(adapted_dist_zone, [[n_vtx, elt_range[1], 0]])
 
+  vtx_data_n = PT.get_node_from_name(adapted_dist_tree, 'vtx_tag')
+  PT.print_tree(vtx_data_n)
+  metric_n = PT.get_node_from_name(adapted_dist_tree, 'Metric')
+  PT.add_child(metric_n, PT.new_DataArray('vtx_tag_cp', value=PT.get_value(vtx_data_n)))
+  # PT.set_name(PT.get_child_from_name(metric_n,'vtx_tag'), 'vtx_tag_cp')
+  
   maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh_wo_old_periodic_patch.cgns')
+  
+  PT.rm_nodes_from_name(adapted_dist_tree, 'vtx_tag_cp')
 
 
 
@@ -482,14 +509,21 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   adapted_dist_zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
 
   deplace_periodic_patch(adapted_dist_zone, 'vol_periodic', 'Xmin', translation, ['Yminp', 'Ymaxp'], comm)
+  vtx_data_n = PT.get_node_from_name(adapted_dist_tree, 'vtx_tag')
+  metric_n = PT.get_node_from_name(adapted_dist_tree, 'Metric')
+  PT.add_child(metric_n, PT.new_DataArray('vtx_tag_cp', value=PT.get_value(vtx_data_n)))
+
   maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh_deplaced.cgns')
+  PT.rm_nodes_from_name(adapted_dist_tree, 'vtx_tag_cp')
 
 
   vtx_tag = PT.get_value(PT.get_node_from_name(adapted_dist_zone, 'vtx_tag'))
   merge_periodic_bc(adapted_dist_zone, ['fixed', 'fixedp'], vtx_tag, new_num_vtx, comm)
 
-  maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh.cgns')
 
+
+  maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh.cgns')
+  # sys.exit()
 
 
 
@@ -499,17 +533,20 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   is_face_bc = lambda n: PT.get_label(n)=='BC_t' and\
                          PT.Subset.GridLocation(n)=='FaceCenter'
   PT.rm_nodes_from_predicate(adapted_dist_tree, is_face_bc)
-  PT.print_tree(adapted_dist_tree)
 
+  metric_nodes = unpack_metric(adapted_dist_tree, metric)
   adapted_dist_tree_info = get_tree_info(adapted_dist_tree, container_names)
 
   if comm.Get_rank()==0:
     constraint_tags = cgns_to_meshb(adapted_dist_tree, in_files, metric_nodes, container_names, ['Xmin', 'Xmax'])
-
+    print(f'constraint_tags = {constraint_tags}')
     # Adapt with feflo
     feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(container_names)!=0 else []
     feflo_command  = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()
-    feflo_command  = feflo_command + "-adap-line-ids 1,2,4,5".split() # + "-adap-surf-ids 1,2" #
+    if len(constraint_tags['FaceCenter'])!=0:
+      feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(constraint_tags['FaceCenter'])]#[str(tag) for tag in constraint_tags['FaceCenter']]
+    if len(constraint_tags['EdgeCenter'])!=0:
+      feflo_command  = feflo_command + ['-adap-line-ids'] + [','.join(constraint_tags['EdgeCenter'])]#[str(tag) for tag in constraint_tags['EdgeCenter']]
 
     feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
 

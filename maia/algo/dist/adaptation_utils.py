@@ -152,6 +152,7 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_transfo, 
   elt_range[1] = elt_range[1]+n_elt_to_add
   PT.set_value(elt_range_n, elt_range)
 
+
   # > Updating offset others elements
   bar_n = PT.get_node_from_name(zone, 'BAR_2.0')
   bar_elt_range_n = PT.get_child_from_name(bar_n, 'ElementRange')
@@ -182,6 +183,19 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_transfo, 
   PT.set_value(cx_n, np.concatenate([cx, pcx]))
   PT.set_value(cy_n, np.concatenate([cy, pcy]))
   PT.set_value(cz_n, np.concatenate([cz, pcz]))
+
+
+  # > Update flow_sol
+  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
+                        PT.Subset.GridLocation(n)=='Vertex'
+  for fs_n in PT.get_children_from_predicate(zone, is_vtx_fs):
+    print(f'FlowSolution: \"{PT.get_name(fs_n)}\"')
+    for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
+      if PT.get_name(da_n)!='vtx_tag':
+        da = PT.get_value(da_n)
+        print(f'   DataArray: \"{PT.get_name(da_n)}\": {da.size} {vtx_pl_toadd.size}')
+        da_to_add = da[vtx_pl_toadd-1]
+        PT.set_value(da_n, np.concatenate([da, da_to_add]))
 
   # > Updating zone dimensions
   PT.set_value(zone, [[n_vtx+n_vtx_toadd, elt_range[1], 0]])
@@ -376,24 +390,41 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm):
   pbc2_vtx_pl  = elmt_pl_to_vtx_pl(zone, pbc2_pl, 'BAR_2')
   print(f'pbc2_vtx_pl = {pbc2_vtx_pl} -> {vtx_tag[pbc2_vtx_pl-1]}')
 
-  old_vtx_num = np.array(list(old_to_new_vtx_num.keys())  , dtype=np.int32)+1
-  new_vtx_num = np.array(list(old_to_new_vtx_num.values()), dtype=np.int32)+1
+  old_vtx_num = np.flip(np.array(list(old_to_new_vtx_num.keys())  , dtype=np.int32)+1) # flip to debug, can be remove
+  new_vtx_num = np.flip(np.array(list(old_to_new_vtx_num.values()), dtype=np.int32)+1)
+  print(f'\n')
   print(f'old_vtx_num = {old_vtx_num}')
   print(f'new_vtx_num = {new_vtx_num}')
 
-  sort_new_vtx_num = np.argsort(new_vtx_num)
-  idx_new = np.searchsorted(new_vtx_num, vtx_tag[pbc2_vtx_pl-1], sorter=sort_new_vtx_num)
-  print(f'idx_new = {idx_new}')
-  tab = vtx_tag[pbc1_vtx_pl-1]
-  print(f'tab = {tab}')
-  sort_tab = np.argsort(tab)
-  idx_pl1 = np.searchsorted(tab, old_vtx_num[idx_new], sorter=sort_tab)
-  print(f'idx_pl1 = {idx_pl1[sort_tab]}')
 
+  pl1_tag = vtx_tag[pbc1_vtx_pl-1]
+  sort_old = np.argsort(old_vtx_num)
+  print(f'\n')
+
+  print(f'searching = {pl1_tag}')
+  print(f'   -> in  = {old_vtx_num}')
+  print(f'sort_tab = {sort_old}')
+  print(f'\n')
+  idx_pl1_tag_in_old = np.searchsorted(old_vtx_num, pl1_tag, sorter=sort_old)
+  print(f'idx_old_in_pl1_tag = {sort_old[idx_pl1_tag_in_old]}')
+  print(f'old_vtx_num[sort_tab] = {old_vtx_num[sort_old[idx_pl1_tag_in_old]]}')
+
+
+  pl2_tag = vtx_tag[pbc2_vtx_pl-1]
+  sort_pl2_tag = np.argsort(pl2_tag)
+  print(f'\n')
+  print(f'searching = {new_vtx_num}')
+  print(f'   -> in  = {pl2_tag}')
+  print(f'sort_tab = {sort_pl2_tag}')
+  idx_new_in_pl2_tag = np.searchsorted(pl2_tag, new_vtx_num, sorter=sort_pl2_tag)
+  print(f'idx_old_in_pl2_tag = {sort_old[idx_pl1_tag_in_old]}')
+  print(f'pl2_tag[sort_tab] = {pl2_tag[sort_pl2_tag[idx_new_in_pl2_tag]]}')
+
+  print(f'\n')
+  print(f'pbc2_vtx_pl = {pbc2_vtx_pl[sort_pl2_tag[idx_new_in_pl2_tag[sort_old[idx_pl1_tag_in_old]]]]}')
   print(f'pbc1_vtx_pl = {pbc1_vtx_pl}')
-  print(f'pbc2_vtx_pl = {pbc2_vtx_pl[idx_pl1[sort_tab]]}')
 
-  sources = pbc2_vtx_pl[idx_pl1[sort_tab]]
+  sources = pbc2_vtx_pl[sort_pl2_tag[idx_new_in_pl2_tag[sort_old[idx_pl1_tag_in_old]]]]
   targets = pbc1_vtx_pl
   vtx_distri_ini = np.array([0,n_vtx,n_vtx], dtype=np.int32) # TODO pdm_gnum
   old_to_new_vtx = merge_distributed_ids(vtx_distri_ini, sources, targets, comm, False)
@@ -422,6 +453,20 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm):
   PT.set_value(cx_n, np.delete(cx, pbc2_vtx_pl-1))
   PT.set_value(cy_n, np.delete(cy, pbc2_vtx_pl-1))
   PT.set_value(cz_n, np.delete(cz, pbc2_vtx_pl-1))
+
+
+  # > Update flow_sol
+  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
+                        PT.Subset.GridLocation(n)=='Vertex'
+  for fs_n in PT.get_children_from_predicate(zone, is_vtx_fs):
+    print(f'FlowSolution: \"{PT.get_name(fs_n)}\"')
+    for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
+      if PT.get_name(da_n)!='vtx_tag':
+        da = PT.get_value(da_n)
+        print(f'   DataArray: \"{PT.get_name(da_n)}\": {da.size}')
+        da = np.delete(da, pbc2_vtx_pl-1)
+        PT.set_value(da_n, da)
+
 
   n_tri = PT.Zone.n_cell(zone)
   PT.set_value(zone, [[n_vtx-n_vtx_to_rm, n_tri, 0]])
@@ -557,6 +602,24 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_transfo, bc_to_up
     PT.print_tree(twin_bc_n)
 
     PT.rm_child(zone_bc_n, bc_n)
+
+
+
+
+  # > Update flow_sol
+  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
+                        PT.Subset.GridLocation(n)=='Vertex'
+  for fs_n in PT.get_children_from_predicate(zone, is_vtx_fs):
+    print(f'FlowSolution: \"{PT.get_name(fs_n)}\"')
+    for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
+      # if PT.get_name(da_n)!='vtx_tag':
+      da = PT.get_value(da_n)
+      print(f'   DataArray: \"{PT.get_name(da_n)}\": {da.size}')
+      da_to_add = da[pl_vtx_duplicate-1]
+      PT.set_value(da_n, np.concatenate([da, da_to_add]))
+
+
+
   PT.set_value(ec_n, ec)
 
 
