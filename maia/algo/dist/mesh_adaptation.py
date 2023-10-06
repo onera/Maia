@@ -14,7 +14,9 @@ from .adaptation_utils import elmt_pl_to_vtx_pl,\
                               update_elt_vtx_numbering,\
                               remove_elts_from_pl,\
                               apply_offset_to_elt,\
-                              find_invalid_elts
+                              find_invalid_elts,\
+                              merge_periodic_bc,\
+                              deplace_periodic_patch
 
 from maia.algo.dist.merge_ids import merge_distributed_ids
 from maia.transfer import protocols as EP
@@ -281,7 +283,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   tri_nodes = PT.get_nodes_from_predicate(dist_zone, is_tri_elt)
   tri_conn  = [PT.get_value(PT.get_child_from_name(tri_n, 'ElementConnectivity')) for tri_n in tri_nodes]
   tri_conn  = np_utils.concatenate_np_arrays(tri_conn)[1]
-  gc_tri_pl = tag_elmt_owning_vtx(n_tri, tri_conn, gc_vtx_pld)
+  gc_tri_pl = tag_elmt_owning_vtx(dist_zone, gc_vtx_pld, 'TRI_3', elt_full=False)
   
 
 
@@ -337,18 +339,27 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
     inclure rm_invalid elements dans update_elt_numbering
     faut reporter les BCs periodisée !!
     se passer de la vision point_list au profit des tags ??
+    debug le cas ou ca fonctionne pas si on adapte toute la surface
   '''
 
   mlog.info(f"\n\n[Periodic adaptation] #2: First adaptation constraining periodic patches boundaries...")
 
   if comm.Get_rank()==0:
-    cgns_to_meshb(pdist_tree, in_files, metric_nodes, container_names)
+    contraint_tags = cgns_to_meshb(pdist_tree, in_files, metric_nodes, container_names, ['fixed', 'fixedp'])
+    
+    print(f'constraint_tag = {contraint_tags}')
+    print(f'constraint_tag = {contraint_tags}')
 
     # Adapt with feflo
     feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(container_names)!=0 else []
-    feflo_command  = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()        
-    feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
+    feflo_command  = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()
+    if len(contraint_tags['FaceCenter'])!=0:
+      feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(contraint_tags['FaceCenter'])]#[str(tag) for tag in contraint_tags['FaceCenter']]
+    if len(contraint_tags['EdgeCenter'])!=0:
+      feflo_command  = feflo_command + ['-adap-line-ids'] + [','.join(contraint_tags['EdgeCenter'])]#[str(tag) for tag in contraint_tags['EdgeCenter']]
 
+    feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
+    print(feflo_command)
     mlog.info(f"Start mesh adaptation using Feflo...")
     start = time.time()
     
@@ -459,43 +470,47 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   PT.set_value(adapted_dist_zone, [[n_vtx-n_vtx_to_rm, n_tri, 0]])
   # PT.set_value(adapted_dist_zone, [[n_vtx, elt_range[1], 0]])
 
-
-  bc_toadd = PT.get_node_from_name_and_label(adapted_dist_zone, 'Xmin', 'BC_t')
-
-
-  # PT.rm_nodes_from_name(adapted_dist_zone, 'ZoneBC')
-  # PT.rm_nodes_from_name(adapted_dist_zone, 'Xmax')
-  # PT.rm_nodes_from_name(adapted_dist_zone, 'BAR_2.0')
-
   maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh_wo_old_periodic_patch.cgns')
 
 
+
+
+
+
+  mlog.info(f"\n\n[Periodic adaptation] #4: Retrieving initial domain by translating periodic patch...")
   # > Retrieve initial domain by translating periodic patch
-  patch_to_move = PT.get_child_from_name(zone_bc_n, 'vol_periodic')
-  patch_to_move_pl = PT.get_value(PT.get_child_from_name(bc_to_rm, 'PointList'))[0]
+  adapted_dist_zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
+
+  deplace_periodic_patch(adapted_dist_zone, 'vol_periodic', 'Xmin', translation, ['Yminp', 'Ymaxp'], comm)
+  maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh_deplaced.cgns')
 
 
+  vtx_tag = PT.get_value(PT.get_node_from_name(adapted_dist_zone, 'vtx_tag'))
+  merge_periodic_bc(adapted_dist_zone, ['fixed', 'fixedp'], vtx_tag, new_num_vtx, comm)
 
-  sys.exit()
-
-
-
-
-
-
+  maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh.cgns')
 
 
 
 
 
+  mlog.info(f"\n\n[Periodic adaptation] #5: Perform last adaptation constraining periodicities...")
 
+  is_face_bc = lambda n: PT.get_label(n)=='BC_t' and\
+                         PT.Subset.GridLocation(n)=='FaceCenter'
+  PT.rm_nodes_from_predicate(adapted_dist_tree, is_face_bc)
+  PT.print_tree(adapted_dist_tree)
+
+  adapted_dist_tree_info = get_tree_info(adapted_dist_tree, container_names)
 
   if comm.Get_rank()==0:
-    cgns_to_meshb(dist_tree, in_files, metric_nodes, container_names)
+    constraint_tags = cgns_to_meshb(adapted_dist_tree, in_files, metric_nodes, container_names, ['Xmin', 'Xmax'])
 
     # Adapt with feflo
     feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(container_names)!=0 else []
-    feflo_command  = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()        
+    feflo_command  = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()
+    feflo_command  = feflo_command + "-adap-line-ids 1,2,4,5".split() # + "-adap-surf-ids 1,2" #
+
     feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
 
     mlog.info(f"Start mesh adaptation using Feflo...")
@@ -512,7 +527,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
 
 
   # > Get adapted dist_tree
-  adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
+  adapted_dist_tree = meshb_to_cgns(out_files, adapted_dist_tree_info, comm)
 
   # > Set names and copy base data
   adapted_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
@@ -529,9 +544,10 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   for bc_path in PT.predicates_to_paths(adapted_zone, 'ZoneBC_t/BC_t'):
     adapted_bc = PT.get_node_from_path(adapted_zone, bc_path)
     input_bc   = PT.get_node_from_path(input_zone, bc_path)
-    PT.set_value(adapted_bc, PT.get_value(input_bc))
-    for node in PT.get_nodes_from_predicate(input_bc, to_copy):
-      PT.add_child(adapted_bc, node)
+    if input_bc is not None:
+      PT.set_value(adapted_bc, PT.get_value(input_bc))
+      for node in PT.get_nodes_from_predicate(input_bc, to_copy):
+        PT.add_child(adapted_bc, node)
 
 
   return adapted_dist_tree

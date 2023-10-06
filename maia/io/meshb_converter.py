@@ -76,14 +76,15 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
     n_bc_init = len(bc_names[location]) if location in bc_names else 0
     n_new_bc  = n_elt_group - n_bc_init
-    assert n_new_bc in [0,1], "Unknow tags in meshb file"
+    print(f'[{location}] n_bc = {n_bc_init} -> {n_new_bc}')
+    # assert n_new_bc in [0,1], f"Unknow tags in meshb file ({location})"
 
     for i_group in range(n_elt_group):
       if bc_names[location]:
         if i_group < n_new_bc:
-          # name_bc   = {"Vertex":"vtx", "EdgeCenter":"edge", "FaceCenter":"face"}
-          # bc_name = f"feflo_{name_bc[location]}_bc_{i_group}"
-          continue # For now, skip BC detected in meshb but not provided in BC names
+          name_bc   = {"Vertex":"vtx", "EdgeCenter":"edge", "FaceCenter":"face"}
+          bc_name = f"feflo_{name_bc[location]}_bc_{i_group}"
+          # continue # For now, skip BC detected in meshb but not provided in BC names
         else:
           bc_name = bc_names[location][i_group-n_new_bc]
 
@@ -124,6 +125,9 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         data = all_fields[i_fld::n_itp_flds][distrib_vtx[0]:distrib_vtx[1]] 
         PT.new_DataArray(fld_name, data, parent=fs) 
         i_fld += 1
+  
+  # > Add FlowSolution for vtx tag
+  fs_vtx_tag = PT.new_FlowSolution('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
 
   return dist_tree
 
@@ -158,7 +162,7 @@ def meshb_to_cgns(out_files, tree_info, comm):
 
 
 
-def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
+def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
   '''
   Dist_tree conversion to meshb format and writing.
   Arguments :
@@ -197,11 +201,21 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
     n_edge  = elmt_by_dim[1].size // 2
     n_vtx   = PT.Zone.n_vtx(zone)
 
+    constraint_tags = {'FaceCenter':[],
+                       'EdgeCenter':[]}
+
     # > PointList BC to BC tag
     def bc_pl_to_bc_tag(list_of_bc, bc_tag, offset):
       for n_tag, bc_n in enumerate(list_of_bc):
         pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
         bc_tag[pl-offset-1] = n_tag + 1
+        bc_name = PT.get_name(bc_n)
+        bc_loc  = PT.Subset.GridLocation(bc_n)
+        print(f'{PT.get_name(bc_n)} --> {n_tag + 1}')
+        if constraints is not None and\
+           PT.get_name(bc_n) not in constraints:
+          constraint_tags[bc_loc].append(str(n_tag + 1))
+
 
     def bc_pl_to_bc_tag_vtx(list_of_bc, bc_tag, offset):
       for n_tag, bc_n in enumerate(list_of_bc):
@@ -210,7 +224,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
 
     zone_bc = PT.get_child_from_label(zone, 'ZoneBC_t')
 
-    tri_tag  = -np.ones(n_tri , dtype=np.int32)
+    tri_tag  = np.ones(n_tri , dtype=np.int32)
     edge_tag = -np.ones(n_edge, dtype=np.int32)
     vtx_tag  = np.zeros(n_vtx , dtype=np.int32)
     if zone_bc is not None:
@@ -282,5 +296,6 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
   end = time.time()
   mlog.info(f"Write of meshb file completed ({end-start:.2f} s)")
 
+  return constraint_tags
 
 
