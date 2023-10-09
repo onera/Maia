@@ -7,16 +7,8 @@ import maia.pytree        as PT
 import maia.utils.logging as mlog
 from   maia.utils         import np_utils
 from maia.io.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
-from .adaptation_utils import elmt_pl_to_vtx_pl,\
-                              tag_elmt_owning_vtx,\
-                              add_periodic_elmt,\
-                              add_constraint_bcs,\
-                              update_elt_vtx_numbering,\
-                              remove_elts_from_pl,\
-                              apply_offset_to_elt,\
-                              find_invalid_elts,\
-                              merge_periodic_bc,\
-                              deplace_periodic_patch
+from maia.algo.dist.adaptation_utils import duplicate_periodic_patch,\
+                                            retrieve_initial_domain
 
 from maia.algo.dist.merge_ids import merge_distributed_ids
 from maia.transfer import protocols as EP
@@ -100,7 +92,7 @@ def unpack_metric(dist_tree, metric_paths):
 
 
 
-def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], feflo_opts=""):
+def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constraint=None, feflo_opts=""):
   """Run a mesh adaptation step using *Feflo.a* software.
 
   Important:
@@ -230,8 +222,27 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], feflo_opt
 
 
 
-def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], feflo_opts=""):
-
+def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_name, comm, container_names=[], feflo_opts=""):
+  '''
+    ROUTINE
+      etendre la partition
+        transférer les flowsol
+      figer la surface creee (tout a gauche) et la correspodant (tout a droite -1 rangée)
+      reporter les modifs
+        transférer les flowsol
+      adapter le bloc final en figeant les BCs
+    TODO
+      travailler sur une copie du dist_tree
+      accepter maillage avec plusieurs noeuds elements de meme dim
+      figer certaines parties du volume
+      toujours n'avoir qu'un noeud element/dim (l'imposer dans la doc + assert ?)
+      inclure rm_invalid elements dans update_elt_numbering
+      faut reporter les BCs periodisée !!
+      se passer de la vision point_list au profit des tags ??
+      debug le cas ou ca fonctionne pas si on adapte toute la surface
+      gerer les rotations
+      mutualiser avec `adapt_mesh_with_feflo`
+  '''
   tmp_repo.mkdir(exist_ok=True)
 
   # > Get metric nodes
@@ -258,96 +269,22 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
   # > First adaptation: one periodic side
   mlog.info(f"\n\n[Periodic adaptation] #1: Duplicating periodic patch...")
 
-  pdist_tree = copy.deepcopy(dist_tree)
-  dist_zone = PT.get_nodes_from_label(dist_tree, 'Zone_t')
-  assert len(dist_zone)==1
-  dist_zone = dist_zone[0]
-  PT.Zone.get_ordered_elements_per_dim(dist_zone)
-
-  # > Get GCs involved in periodicity and transform them into vtx pointlist
-  gc_nodes = PT.get_nodes_from_label(pdist_tree, 'GridConnectivity_t')
-  gc_names = [PT.get_name(n) for n in gc_nodes]
-  assert len(gc_nodes)==2
-  gc_n  = gc_nodes[0]
-  assert PT.Subset.GridLocation(gc_n)=='EdgeCenter' # 2d for now
-  translation = PT.get_value(PT.get_node_from_name(gc_n, 'Translation'))
-  gc_pl  = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))[0]
-  gc_pld = PT.get_value(PT.get_child_from_name(gc_n, 'PointListDonor'))[0]
-  gc_vtx_pl  = elmt_pl_to_vtx_pl(dist_zone, gc_pl , 'BAR_2')
-  gc_vtx_pld = elmt_pl_to_vtx_pl(dist_zone, gc_pld, 'BAR_2')
-
-  # > Which cells are connected to donor_vtx ?
-  n_tri = PT.Zone.n_cell(dist_zone)
-  is_tri_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                         PT.Element.CGNSName(n)=='TRI_3'
-  tri_nodes = PT.get_nodes_from_predicate(dist_zone, is_tri_elt)
-  tri_conn  = [PT.get_value(PT.get_child_from_name(tri_n, 'ElementConnectivity')) for tri_n in tri_nodes]
-  tri_conn  = np_utils.concatenate_np_arrays(tri_conn)[1]
-  gc_tri_pl = tag_elmt_owning_vtx(dist_zone, gc_vtx_pld, 'TRI_3', elt_full=False)
-  
-
-
-  # > Create connectivity of periodic elements
-  pdist_zone = PT.get_node_from_label(pdist_tree, 'Zone_t')
-  
-  zone_bc_n = PT.get_node_from_label(pdist_zone, 'ZoneBC_t')
-  pl_vol  = np.arange(1, n_tri+1, dtype=np.int32)
-  pl_vol  = np.delete(pl_vol, gc_tri_pl-1).reshape((1,-1), order='F')
-  pl_volp = np.arange(n_tri, n_tri+gc_tri_pl.size+1, dtype=np.int32)
-  pl_volp = pl_volp.reshape((1,-1), order='F')
-  pl_volc = (gc_tri_pl).reshape((1,-1), order='F')
-  PT.new_BC(name='vol',            type='BCWall', point_list=pl_vol , loc='FaceCenter', family='BCS', parent=zone_bc_n)
-  PT.new_BC(name='vol_periodic',   type='BCWall', point_list=pl_volp, loc='FaceCenter', family='BCS', parent=zone_bc_n)
-  PT.new_BC(name='vol_constraint', type='BCWall', point_list=pl_volc, loc='FaceCenter', family='BCS', parent=zone_bc_n)
-
-  for gc_n in gc_nodes:
-    gc_name = PT.get_name(gc_n)
-    gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
-    PT.new_BC(name=gc_name,
-              type='BCWall',
-              point_list=gc_pl,
-              loc='EdgeCenter',
-              family='BCS',
-              parent=zone_bc_n)
-  
-  n_vtx_toadd, new_num_vtx = add_periodic_elmt(pdist_zone, gc_tri_pl, gc_vtx_pl, gc_vtx_pld, translation, comm)
-  
-
-  # Create new BAR_2 elmts and associated BCs to constrain mesh adaptation
-  add_constraint_bcs(pdist_zone, new_num_vtx)
-
-
-  PT.rm_nodes_from_name(pdist_tree, 'ZoneGridConnectivity')
+  pdist_tree, periodic_values, new_num_vtx = duplicate_periodic_patch(dist_tree, gc_name, comm)
   maia.io.write_tree(pdist_tree, 'OUTPUT/square_extended.cgns')
+
+  # adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constraint=None, feflo_opts="")
+
 
   ptree_info = get_tree_info(pdist_tree, container_names)
 
   # sys.exit()
-  '''
-  ROUTINE
-    etendre la partition
-      transférer les flowsol
-    figer la surface creee (tout a gauche) et la correspodant (tout a droite -1 rangée)
-    reporter les modifs
-      transférer les flowsol
-    adapter le bloc final en figeant les BCs
-  TODO
-    travailler sur une copie du dist_tree
-    accepter maillage avec plusieurs noeuds elements de meme dim
-    figer certaines parties du volume
-    toujours n'avoir qu'un noeud element/dim (l'imposer dans la doc + assert ?)
-    inclure rm_invalid elements dans update_elt_numbering
-    faut reporter les BCs periodisée !!
-    se passer de la vision point_list au profit des tags ??
-    debug le cas ou ca fonctionne pas si on adapte toute la surface
-  '''
+  
 
   mlog.info(f"\n\n[Periodic adaptation] #2: First adaptation constraining periodic patches boundaries...")
 
   if comm.Get_rank()==0:
     constraint_tags = cgns_to_meshb(pdist_tree, in_files, metric_nodes, container_names, ['fixed', 'fixedp'])
     
-    print(f'constraint_tag = {constraint_tags}')
     print(f'constraint_tag = {constraint_tags}')
 
     # Adapt with feflo
@@ -359,7 +296,6 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
       feflo_command  = feflo_command + ['-adap-line-ids'] + [','.join(constraint_tags['EdgeCenter'])]#[str(tag) for tag in constraint_tags['EdgeCenter']]
 
     feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
-    print(feflo_command)
     mlog.info(f"Start mesh adaptation using Feflo...")
     start = time.time()
     
@@ -370,7 +306,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
 
 
   # > Get adapted dist_tree
-
+  pdist_zone = PT.get_node_from_label(pdist_tree, 'Zone_t')
   padapted_dist_tree = meshb_to_cgns(out_files, ptree_info, comm)
   # > Set names and copy base data
   padapted_base = PT.get_child_from_label(padapted_dist_tree, 'CGNSBase_t')
@@ -393,142 +329,19 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], 
         PT.add_child(padapted_bc, node)
 
 
-  vtx_data_n = PT.get_node_from_name(padapted_dist_tree, 'vtx_tag')
-  PT.print_tree(vtx_data_n)
-  metric_n = PT.get_node_from_name(padapted_dist_tree, 'Metric')
-  PT.add_child(metric_n, PT.new_DataArray('vtx_tag_cp', value=PT.get_value(vtx_data_n)))
   maia.io.write_tree(padapted_dist_tree, 'OUTPUT/first_adaptation.cgns')
-  PT.rm_nodes_from_name(padapted_dist_tree, 'vtx_tag_cp')
 
 
 
 
 
 
-  mlog.info(f"\n\n[Periodic adaptation] #3: Removing initial periodic patch...")
-
-  adapted_dist_tree = copy.deepcopy(padapted_dist_tree)
-  adapted_dist_zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
-
-  n_vtx = PT.Zone.n_vtx(adapted_dist_zone)
-  n_elt = PT.Zone.n_cell(adapted_dist_zone)
-
-  zone_bc_n = PT.get_child_from_label(adapted_dist_zone, 'ZoneBC_t')
-
-
-  # > Removing old periodic patch
-  bc_to_rm = PT.get_child_from_name(zone_bc_n, 'vol_constraint')
-  bc_to_rm_pl = PT.get_value(PT.get_child_from_name(bc_to_rm, 'PointList'))[0]
-  bc_to_rm_vtx_pl  = elmt_pl_to_vtx_pl(adapted_dist_zone, bc_to_rm_pl, 'TRI_3')
-  n_elt_to_rm = bc_to_rm_pl.size
-
-  bc_to_keep = PT.get_child_from_name(zone_bc_n, 'fixed')
-  bc_to_keep_pl = PT.get_value(PT.get_child_from_name(bc_to_keep, 'PointList'))[0]
-  bc_to_keep_vtx_pl = elmt_pl_to_vtx_pl(adapted_dist_zone, bc_to_keep_pl, 'BAR_2')
-  n_vtx_to_keep = bc_to_keep_vtx_pl.size
-
-
-  tag_vtx = np.isin(bc_to_rm_vtx_pl, bc_to_keep_vtx_pl) # True where vtx is 
-  preserved_vtx_id = bc_to_rm_vtx_pl[tag_vtx][0]
-  bc_to_rm_vtx_pl = bc_to_rm_vtx_pl[np.invert(tag_vtx)]
-  n_vtx_to_rm = bc_to_rm_vtx_pl.size
-
-
-  # Compute new vtx numbering
-
-  vtx_tag_n = PT.get_node_from_name(adapted_dist_zone, 'vtx_tag')
-  vtx_tag   = PT.get_value(vtx_tag_n)
-  vtx_tag = np.delete(vtx_tag, bc_to_rm_vtx_pl-1)
-  PT.set_value(vtx_tag_n, vtx_tag)
-
-  bc_fixed_n = PT.get_node_from_name_and_label(adapted_dist_zone, 'fixed', 'BC_t')
-  bc_fixed_pl = PT.get_value(PT.get_child_from_name(bc_fixed_n, 'PointList'))[0]
-  bc_fixed_vtx_pl = elmt_pl_to_vtx_pl(adapted_dist_zone, bc_fixed_pl, 'BAR_2')
-
-  bc_fixedp_n = PT.get_node_from_name_and_label(adapted_dist_zone, 'fixedp', 'BC_t')
-  bc_fixedp_pl = PT.get_value(PT.get_child_from_name(bc_fixedp_n, 'PointList'))[0]
-  bc_fixedp_vtx_pl = elmt_pl_to_vtx_pl(adapted_dist_zone, bc_fixedp_pl, 'BAR_2')
-
-  ids = bc_to_rm_vtx_pl
-  targets = -np.ones(bc_to_rm_vtx_pl.size, dtype=np.int32)
-  vtx_distri_ini = np.array([0,n_vtx,n_vtx], dtype=np.int32) # TODO pdm_gnum
-  old_to_new_vtx = merge_distributed_ids(vtx_distri_ini, ids, targets, comm, True)
-
-
-  # > CHANGING TOPOLOGY !!!!!!
-  update_elt_vtx_numbering(adapted_dist_zone, vtx_distri_ini, old_to_new_vtx, 'TRI_3', comm)
-  n_tri = remove_elts_from_pl(adapted_dist_zone, bc_to_rm_pl, 'TRI_3', comm)
-  
-  tri_offset = bc_to_rm_pl.size
-  apply_offset_to_elt(adapted_dist_zone, tri_offset, 'BAR_2')
-  update_elt_vtx_numbering(adapted_dist_zone, vtx_distri_ini, old_to_new_vtx, 'BAR_2', comm)
-  invalid_elt_pl = find_invalid_elts(adapted_dist_zone, 'BAR_2')
-  n_bar = remove_elts_from_pl(adapted_dist_zone, invalid_elt_pl, 'BAR_2', comm)
-
-  cx_n = PT.get_node_from_name(adapted_dist_zone, 'CoordinateX')
-  cy_n = PT.get_node_from_name(adapted_dist_zone, 'CoordinateY')
-  cz_n = PT.get_node_from_name(adapted_dist_zone, 'CoordinateZ')
-  cx, cy, cz = PT.Zone.coordinates(adapted_dist_zone)
-  PT.set_value(cx_n, np.delete(cx, bc_to_rm_vtx_pl-1))
-  PT.set_value(cy_n, np.delete(cy, bc_to_rm_vtx_pl-1))
-  PT.set_value(cz_n, np.delete(cz, bc_to_rm_vtx_pl-1))
-
-
-  # > Update flow_sol
-  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
-                        PT.Subset.GridLocation(n)=='Vertex'
-  for fs_n in PT.get_children_from_predicate(adapted_dist_zone, is_vtx_fs):
-    print(f'FlowSolution: \"{PT.get_name(fs_n)}\"')
-    for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
-      if PT.get_name(da_n)!='vtx_tag':
-        da = PT.get_value(da_n)
-        print(f'   DataArray: \"{PT.get_name(da_n)}\": {da.size}')
-        da = np.delete(da, bc_to_rm_vtx_pl-1)
-        PT.set_value(da_n, da)
-
-  PT.set_value(adapted_dist_zone, [[n_vtx-n_vtx_to_rm, n_tri, 0]])
-  # PT.set_value(adapted_dist_zone, [[n_vtx, elt_range[1], 0]])
-
-  vtx_data_n = PT.get_node_from_name(adapted_dist_tree, 'vtx_tag')
-  PT.print_tree(vtx_data_n)
-  metric_n = PT.get_node_from_name(adapted_dist_tree, 'Metric')
-  PT.add_child(metric_n, PT.new_DataArray('vtx_tag_cp', value=PT.get_value(vtx_data_n)))
-  # PT.set_name(PT.get_child_from_name(metric_n,'vtx_tag'), 'vtx_tag_cp')
-  
-  maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh_wo_old_periodic_patch.cgns')
-  
-  PT.rm_nodes_from_name(adapted_dist_tree, 'vtx_tag_cp')
+  mlog.info(f"\n\n[Periodic adaptation] #3: Removing initial domain...")
+  adapted_dist_tree = retrieve_initial_domain(padapted_dist_tree, periodic_values, new_num_vtx, comm)
 
 
 
-
-
-
-  mlog.info(f"\n\n[Periodic adaptation] #4: Retrieving initial domain by translating periodic patch...")
-  # > Retrieve initial domain by translating periodic patch
-  adapted_dist_zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
-
-  deplace_periodic_patch(adapted_dist_zone, 'vol_periodic', 'Xmin', translation, ['Yminp', 'Ymaxp'], comm)
-  vtx_data_n = PT.get_node_from_name(adapted_dist_tree, 'vtx_tag')
-  metric_n = PT.get_node_from_name(adapted_dist_tree, 'Metric')
-  PT.add_child(metric_n, PT.new_DataArray('vtx_tag_cp', value=PT.get_value(vtx_data_n)))
-
-  maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh_deplaced.cgns')
-  PT.rm_nodes_from_name(adapted_dist_tree, 'vtx_tag_cp')
-
-
-  vtx_tag = PT.get_value(PT.get_node_from_name(adapted_dist_zone, 'vtx_tag'))
-  merge_periodic_bc(adapted_dist_zone, ['fixed', 'fixedp'], vtx_tag, new_num_vtx, comm)
-
-
-
-  maia.io.write_tree(adapted_dist_tree, 'OUTPUT/new_mesh.cgns')
-  # sys.exit()
-
-
-
-
-  mlog.info(f"\n\n[Periodic adaptation] #5: Perform last adaptation constraining periodicities...")
+  mlog.info(f"\n\n[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
 
   is_face_bc = lambda n: PT.get_label(n)=='BC_t' and\
                          PT.Subset.GridLocation(n)=='FaceCenter'

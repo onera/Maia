@@ -1,3 +1,6 @@
+import copy
+
+import maia
 import maia.pytree        as PT
 from   maia.algo.part.extraction_utils   import local_pl_offset, LOC_TO_DIM
 from   maia.utils         import np_utils
@@ -116,37 +119,52 @@ def add_bc_on_periodic_patch(zone, elt_pl, old_vtx_num, new_vtx_num, cgns_name, 
   PT.set_value(er_n, er)
 
 
-def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_transfo, comm):
-  elt_n = PT.get_node_from_name(zone, 'TRI_3.0')
-  elt_conn_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  elt_conn    = PT.get_value(elt_conn_n)
-  elt_size = 3 # TRI_3 for now
+def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_values, cgns_name, comm):
+  
+  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
+                           PT.Element.CGNSName(n)==cgns_name
+  elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
+
+  size_elt = PT.Element.NVtx(elt_n)
+  offset = local_pl_offset(zone, LOC_TO_DIM[CGNS_TO_LOC[cgns_name]])
 
   n_elt_to_add = gc_elt_pl.size
 
-  pelt_conn = -np.ones(n_elt_to_add*elt_size, dtype=np.int32)
-  for isize in range(elt_size):
-    pelt_conn[isize::elt_size] = elt_conn[elt_size*(gc_elt_pl-1)+isize]
+  # > Get elts connectivity
+  ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')
+  ec     = PT.get_value(ec_n)
+  pl     = gc_elt_pl - offset -1
+  ec_pl  = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
+  ec_elt = ec[ec_pl]
 
-  # > Find vtx that are not tagged in GC
-  tag_pvtx     = np.isin(pelt_conn, gc_vtx_pld) # True where vtx is 
-  gc_pvtx_pl1  = np.where(          tag_pvtx )[0] # Which vtx is in gc
-  gc_pvtx_pl2  = np.where(np.invert(tag_pvtx))[0] # Which vtx is not in gc
-  vtx_pl_toadd = np.unique(pelt_conn[gc_pvtx_pl2])
+  # > Find vtx that are tagged in GC or not
+  tag_pvtx      = np.isin(ec_elt, gc_vtx_pld) # True where vtx is 
+  gc_pvtx_pl1   = np.where(          tag_pvtx )[0] # Which vtx is in gc
+  gc_pvtx_pl2   = np.where(np.invert(tag_pvtx))[0] # Which vtx is not in gc
+  vtx_pl_to_add = np.unique(ec_elt[gc_pvtx_pl2])
 
   # > Updating vtx numbering for periodic added elements
   n_vtx       = PT.Zone.n_vtx(zone)
-  n_vtx_toadd = vtx_pl_toadd.size
-  vtx_transfo = {k:v   for k, v in zip(gc_vtx_pld, gc_vtx_pl)}
-  new_num_vtx = {k:v+1 for k, v in zip(vtx_pl_toadd, np.arange(n_vtx, n_vtx+n_vtx_toadd))}
-  pelt_conn[gc_pvtx_pl1] = [vtx_transfo[i_vtx] for i_vtx in pelt_conn[gc_pvtx_pl1]]
-  pelt_conn[gc_pvtx_pl2] = [new_num_vtx[i_vtx] for i_vtx in pelt_conn[gc_pvtx_pl2]]
+  n_vtx_toadd = vtx_pl_to_add.size
+  vtx_transfo = [gc_vtx_pld, gc_vtx_pl]
 
-  elt_n = PT.get_node_from_name(zone, 'TRI_3.0')
-  elt_conn_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  elt_conn    = PT.get_value(elt_conn_n)
-  elt_conn    = np.concatenate([elt_conn, pelt_conn])
-  PT.set_value(elt_conn_n, elt_conn)
+  sort_vtx_transfo = np.argsort(vtx_transfo[0])
+  idx_vtx_transfo = np.searchsorted(vtx_transfo[0], ec_elt[gc_pvtx_pl1], sorter=sort_vtx_transfo)
+
+
+
+  # sys.exit()
+  new_num_vtx = [vtx_pl_to_add, np.arange(n_vtx, n_vtx+n_vtx_toadd)+1]
+  sort_new_num_vtx = np.argsort(new_num_vtx[0])
+  idx_new_num_vtx = np.searchsorted(new_num_vtx[0], ec_elt[gc_pvtx_pl2], sorter=sort_new_num_vtx)
+  
+  # > Update connectivity with new vtx
+  ec_elt[gc_pvtx_pl1] = vtx_transfo[1][sort_vtx_transfo[idx_vtx_transfo]]
+  ec_elt[gc_pvtx_pl2] = new_num_vtx[1][sort_new_num_vtx[idx_new_num_vtx]]
+
+  # > Update element node
+  ec    = np.concatenate([ec, ec_elt])
+  PT.set_value(ec_n, ec)
   elt_range_n  = PT.get_child_from_name(elt_n, 'ElementRange')
   elt_range    = PT.get_value(elt_range_n)
   elt_range[1] = elt_range[1]+n_elt_to_add
@@ -177,9 +195,9 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_transfo, 
   pcx = -np.ones(n_vtx_toadd, dtype=np.float64)
   pcy = -np.ones(n_vtx_toadd, dtype=np.float64)
   pcz = -np.ones(n_vtx_toadd, dtype=np.float64)
-  pcx = cx[vtx_pl_toadd-1] - periodic_transfo[0]
-  pcy = cy[vtx_pl_toadd-1] - periodic_transfo[1]
-  pcz = cz[vtx_pl_toadd-1] - periodic_transfo[2]
+  pcx = cx[vtx_pl_to_add-1] - periodic_values[2][0] # Only translation for now TODO
+  pcy = cy[vtx_pl_to_add-1] - periodic_values[2][1] # Only translation for now TODO
+  pcz = cz[vtx_pl_to_add-1] - periodic_values[2][2] # Only translation for now TODO
   PT.set_value(cx_n, np.concatenate([cx, pcx]))
   PT.set_value(cy_n, np.concatenate([cy, pcy]))
   PT.set_value(cz_n, np.concatenate([cz, pcz]))
@@ -193,8 +211,8 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_transfo, 
     for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
       if PT.get_name(da_n)!='vtx_tag':
         da = PT.get_value(da_n)
-        print(f'   DataArray: \"{PT.get_name(da_n)}\": {da.size} {vtx_pl_toadd.size}')
-        da_to_add = da[vtx_pl_toadd-1]
+        print(f'   DataArray: \"{PT.get_name(da_n)}\": {da.size} {vtx_pl_to_add.size}')
+        da_to_add = da[vtx_pl_to_add-1]
         PT.set_value(da_n, np.concatenate([da, da_to_add]))
 
   # > Updating zone dimensions
@@ -202,35 +220,34 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_transfo, 
  
 
 
-  old_vtx_num = np_utils.concatenate_np_arrays([np.array(list(vtx_transfo.keys  ()),dtype=np.int32),
-                                                np.array(list(new_num_vtx.keys  ()),dtype=np.int32)])[1]
-  new_vtx_num = np_utils.concatenate_np_arrays([np.array(list(vtx_transfo.values()),dtype=np.int32),
-                                                np.array(list(new_num_vtx.values()),dtype=np.int32)])[1]
+  old_vtx_num = np_utils.concatenate_np_arrays([vtx_transfo[0], new_num_vtx[0]])[1]
+  new_vtx_num = np_utils.concatenate_np_arrays([vtx_transfo[1], new_num_vtx[1]])[1]
   add_bc_on_periodic_patch(zone, gc_elt_pl, old_vtx_num, new_vtx_num, 'BAR_2', comm)
 
   return n_vtx_toadd, new_num_vtx
 
 
 def add_constraint_bcs(zone, new_num_vtx):
-  n_vtx_toadd = len(new_num_vtx)
+  n_vtx_toadd = new_num_vtx[0].size
 
   bar_n = PT.get_node_from_name(zone, 'BAR_2.0')
   bar_elt_range_n = PT.get_child_from_name(bar_n, 'ElementRange')
   bar_elt_range   = PT.get_value(bar_elt_range_n)
-  bar_elt_conn_n = PT.get_child_from_name(bar_n, 'ElementConnectivity')
-  bar_elt_conn   = PT.get_value(bar_elt_conn_n)
+  bar_ec_n = PT.get_child_from_name(bar_n, 'ElementConnectivity')
+  bar_ec   = PT.get_value(bar_ec_n)
 
   n_bar = bar_elt_range[1]-bar_elt_range[0]+1
 
-  for bar_to_add in [new_num_vtx.keys(), new_num_vtx.values()]:
+  for bar_to_add in new_num_vtx:
     pbar_conn = -np.ones((n_vtx_toadd-1)*2, dtype=np.int32)
-    pbar_conn[0::2] = np.array(list(bar_to_add), dtype=np.int32)[0:-1]
-    pbar_conn[1::2] = np.array(list(bar_to_add), dtype=np.int32)[1:]
+    # TODO: use interweave_array
+    pbar_conn[0::2] = bar_to_add[0:-1]
+    pbar_conn[1::2] = bar_to_add[1:]
     bar_elt_range[1]= bar_elt_range[1]+(n_vtx_toadd-1)
-    bar_elt_conn    = np.concatenate([bar_elt_conn, pbar_conn])
+    bar_ec    = np.concatenate([bar_ec, pbar_conn])
 
   PT.set_value(bar_elt_range_n, bar_elt_range)
-  PT.set_value(bar_elt_conn_n, bar_elt_conn)
+  PT.set_value(bar_ec_n, bar_ec)
 
   zone_bc_n = PT.get_node_from_label(zone, 'ZoneBC_t')
   PT.new_BC(name='fixed',
@@ -246,7 +263,7 @@ def add_constraint_bcs(zone, new_num_vtx):
               family='BCS',
               parent=zone_bc_n)
 
-  pl_fixed = np.array(list(new_num_vtx.keys()), dtype=np.int32).reshape((1,-1), order='F')
+  pl_fixed = new_num_vtx[0].reshape((1,-1), order='F')
   # pl_fixedp = np.arange(1, n_vtx_toadd+1, dtype=np.int32).reshape((1,-1), order='F') # not CGNS coherent, but tricks for periodic adaptation
   PT.new_BC(name='vtx_fixed',
             type='BCWall',
@@ -254,7 +271,7 @@ def add_constraint_bcs(zone, new_num_vtx):
             loc='Vertex',
             family='BCS',
             parent=zone_bc_n)
-  pl_fixedp = np.array(list(new_num_vtx.values()), dtype=np.int32).reshape((1,-1), order='F')
+  pl_fixedp = new_num_vtx[1].reshape((1,-1), order='F')
   # pl_fixedp = np.arange(1, n_vtx_toadd+1, dtype=np.int32).reshape((1,-1), order='F') # not CGNS coherent, but tricks for periodic adaptation
   PT.new_BC(name='vtx_fixedp',
             type='BCWall',
@@ -291,15 +308,15 @@ def remove_elts_from_pl(zone, pl, cgns_name, comm):
   n_elt_to_rm = pl.size
   
   elt_dim  = PT.Element.Dimension(elt_n)
-  elt_size = PT.Element.NVtx(elt_n)
+  size_elt = PT.Element.NVtx(elt_n)
 
   # > Update connectivity
   er[1] = er[1]-n_elt_to_rm
   last_elt = er[1]
   offset = local_pl_offset(zone, LOC_TO_DIM[CGNS_TO_LOC[cgns_name]])
-  pl_c  = -np.ones(n_elt_to_rm*elt_size, dtype=np.int32)
-  for i_size in range(elt_size):
-    pl_c[i_size::elt_size] = elt_size*(pl-offset-1)+i_size
+  pl_c  = -np.ones(n_elt_to_rm*size_elt, dtype=np.int32)
+  for i_size in range(size_elt):
+    pl_c[i_size::size_elt] = size_elt*(pl-offset-1)+i_size
   ec = np.delete(ec, pl_c)
 
   PT.set_value(ec_n, ec)
@@ -343,7 +360,7 @@ def apply_offset_to_elt(zone, offset, cgns_name):
   PT.set_value(er_n, er)
 
   elt_dim  = PT.Element.Dimension(elt_n)
-  elt_size = PT.Element.NVtx(elt_n)
+  size_elt = PT.Element.NVtx(elt_n)
 
   # > Update BC PointList with offset
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
@@ -378,51 +395,27 @@ def find_invalid_elts(zone, cgns_name):
 def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm):
   n_vtx = PT.Zone.n_vtx(zone)
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  print(f'old_to_new_vtx_num = {old_to_new_vtx_num}')
 
   pbc1_n = PT.get_child_from_name(zone_bc_n, bc_names[0])
   pbc1_pl = PT.get_value(PT.get_child_from_name(pbc1_n, 'PointList'))[0]
   pbc1_vtx_pl  = elmt_pl_to_vtx_pl(zone, pbc1_pl, 'BAR_2')
-  print(f'pbc1_vtx_pl = {pbc1_vtx_pl} -> {vtx_tag[pbc1_vtx_pl-1]}')
 
   pbc2_n = PT.get_child_from_name(zone_bc_n, bc_names[1])
   pbc2_pl = PT.get_value(PT.get_child_from_name(pbc2_n, 'PointList'))[0]
   pbc2_vtx_pl  = elmt_pl_to_vtx_pl(zone, pbc2_pl, 'BAR_2')
-  print(f'pbc2_vtx_pl = {pbc2_vtx_pl} -> {vtx_tag[pbc2_vtx_pl-1]}')
 
-  old_vtx_num = np.flip(np.array(list(old_to_new_vtx_num.keys())  , dtype=np.int32)+1) # flip to debug, can be remove
-  new_vtx_num = np.flip(np.array(list(old_to_new_vtx_num.values()), dtype=np.int32)+1)
-  print(f'\n')
-  print(f'old_vtx_num = {old_vtx_num}')
-  print(f'new_vtx_num = {new_vtx_num}')
+  old_vtx_num = np.flip(old_to_new_vtx_num[0]+1) # flip to debug, can be remove
+  new_vtx_num = np.flip(old_to_new_vtx_num[1]+1)
 
 
   pl1_tag = vtx_tag[pbc1_vtx_pl-1]
   sort_old = np.argsort(old_vtx_num)
-  print(f'\n')
-
-  print(f'searching = {pl1_tag}')
-  print(f'   -> in  = {old_vtx_num}')
-  print(f'sort_tab = {sort_old}')
-  print(f'\n')
   idx_pl1_tag_in_old = np.searchsorted(old_vtx_num, pl1_tag, sorter=sort_old)
-  print(f'idx_old_in_pl1_tag = {sort_old[idx_pl1_tag_in_old]}')
-  print(f'old_vtx_num[sort_tab] = {old_vtx_num[sort_old[idx_pl1_tag_in_old]]}')
 
 
   pl2_tag = vtx_tag[pbc2_vtx_pl-1]
   sort_pl2_tag = np.argsort(pl2_tag)
-  print(f'\n')
-  print(f'searching = {new_vtx_num}')
-  print(f'   -> in  = {pl2_tag}')
-  print(f'sort_tab = {sort_pl2_tag}')
   idx_new_in_pl2_tag = np.searchsorted(pl2_tag, new_vtx_num, sorter=sort_pl2_tag)
-  print(f'idx_old_in_pl2_tag = {sort_old[idx_pl1_tag_in_old]}')
-  print(f'pl2_tag[sort_tab] = {pl2_tag[sort_pl2_tag[idx_new_in_pl2_tag]]}')
-
-  print(f'\n')
-  print(f'pbc2_vtx_pl = {pbc2_vtx_pl[sort_pl2_tag[idx_new_in_pl2_tag[sort_old[idx_pl1_tag_in_old]]]]}')
-  print(f'pbc1_vtx_pl = {pbc1_vtx_pl}')
 
   sources = pbc2_vtx_pl[sort_pl2_tag[idx_new_in_pl2_tag[sort_old[idx_pl1_tag_in_old]]]]
   targets = pbc1_vtx_pl
@@ -431,17 +424,10 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm):
 
 
   bar_to_rm_pl = tag_elmt_owning_vtx(zone, pbc2_vtx_pl, 'BAR_2', elt_full=True)
-  print(f'bar_to_rm_pl = {bar_to_rm_pl.size}')
-  print('Removing BAR_2 elements pl1')
-  print(f'pbc1_pl = {pbc1_pl}')
   remove_elts_from_pl(zone, pbc1_pl, 'BAR_2', comm)
-  print('Removing BAR_2 elements pl2')
-  print(f'pbc2_pl = {pbc2_pl}')
   pbc2_n = PT.get_child_from_name(zone_bc_n, bc_names[1])
   pbc2_pl = PT.get_value(PT.get_child_from_name(pbc2_n, 'PointList'))[0]
-  print(f'pbc2_pl = {pbc2_pl}')
   remove_elts_from_pl(zone, pbc2_pl, 'BAR_2', comm)
-  print('Updating vtx numbering')
   update_elt_vtx_numbering(zone, vtx_distri_ini, old_to_new_vtx, 'TRI_3', comm)
   update_elt_vtx_numbering(zone, vtx_distri_ini, old_to_new_vtx, 'BAR_2', comm)
 
@@ -476,16 +462,14 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm):
 
 
 
-def deplace_periodic_patch(zone, patch_name, gc_name, periodic_transfo, bc_to_update, comm):
+def deplace_periodic_patch(zone, patch_name, gc_name, periodic_values, bc_to_update, comm):
 
   # > Get_infos
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
 
   patch_n       = PT.get_child_from_name(zone_bc_n, patch_name)
   patch_pl      = PT.get_value(PT.get_child_from_name(patch_n, 'PointList'))[0]
-  print(f'n_patch_tri = {patch_pl.size}')
   patch_vtx_pl  = elmt_pl_to_vtx_pl(zone, patch_pl, 'TRI_3')
-  print(f'n_patch_vtx = {patch_vtx_pl.size}')
 
   gc_n      = PT.get_child_from_name(zone_bc_n, gc_name)
   gc_pl     = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))[0]
@@ -510,24 +494,16 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_transfo, bc_to_up
   tri_gc_pl = tag_elmt_owning_vtx(zone, gc_vtx_pl, 'TRI_3', elt_full=False)
   select_tri = np.isin(tri_gc_pl, patch_pl)
   pl = tri_gc_pl[select_tri]-1
-  print(f'tri_pl = {pl}')
   n_tri_gc = pl.size
-  print(f'n_tri_gc = {n_tri_gc}')
   conn_pl = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
   conn_cp = ec[conn_pl]
   mask    = np.isin(conn_cp, pl_vtx_duplicate)
 
   conn_pl = conn_pl[mask]
   conn_cp = conn_cp[mask]
-  print(f'conn_pl.size = {conn_pl.size}')
 
-  print(f'pl_vtx_duplicate = {pl_vtx_duplicate}')
-  print(f'isin = {np.isin(pl_vtx_duplicate, conn_cp)}')
-  print(f'isin = {np.isin(conn_cp, pl_vtx_duplicate)}')
   new_conn = np.searchsorted(pl_vtx_duplicate, conn_cp) #pl_vtx_duplicate already sorted by unique
   new_conn = new_conn+n_vtx+1
-  print(f'comm_cp  = {conn_cp}')
-  print(f'new_conn = {new_conn}')
   ec[conn_pl] = new_conn
   PT.set_value(ec_n, ec)
 
@@ -541,24 +517,18 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_transfo, bc_to_up
 
 
   # > Deplace vtx that are not on GC
-  print(f'tri_to_move = {pl+1}')
-  print()
   patch_vtx_pl  = elmt_pl_to_vtx_pl(zone, patch_pl, 'TRI_3') #Connectivity has changed
-  print(f'patch_vtx_pl = {patch_vtx_pl.size}')
   selected_vtx   = np.isin(patch_vtx_pl, gc_vtx_pl, invert=True)
-  print(f'selected_vtx = {selected_vtx}')
   vtx_to_move_pl = patch_vtx_pl[selected_vtx]
 
-  print(f'n_vtx_to_move = {vtx_to_move_pl.size}')
-  print(f'vtx_to_move_pl = {vtx_to_move_pl}')
 
   cx_n = PT.get_node_from_name(zone, 'CoordinateX')
   cy_n = PT.get_node_from_name(zone, 'CoordinateY')
   cz_n = PT.get_node_from_name(zone, 'CoordinateZ')
   cx, cy, cz = PT.Zone.coordinates(zone)
-  cx[vtx_to_move_pl-1] = cx[vtx_to_move_pl-1] + periodic_transfo[0]
-  cy[vtx_to_move_pl-1] = cy[vtx_to_move_pl-1] + periodic_transfo[1]
-  cz[vtx_to_move_pl-1] = cz[vtx_to_move_pl-1] + periodic_transfo[2]
+  cx[vtx_to_move_pl-1] = cx[vtx_to_move_pl-1] + periodic_values[2][0] # Only translation managed for now TODO
+  cy[vtx_to_move_pl-1] = cy[vtx_to_move_pl-1] + periodic_values[2][1] # Only translation managed for now TODO
+  cz[vtx_to_move_pl-1] = cz[vtx_to_move_pl-1] + periodic_values[2][2] # Only translation managed for now TODO
   PT.set_value(cx_n, cx)
   PT.set_value(cy_n, cy)
   PT.set_value(cz_n, cz)
@@ -578,7 +548,6 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_transfo, bc_to_up
   for bc_name in bc_to_update:
     bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
     bc_name = PT.get_name(bc_n)
-    print(f'[updating bar ec] BC \"{bc_name}\"')
     bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
     bc_pl = bc_pl - offset -1
     ec_pl = np_utils.interweave_arrays([size_elt*bc_pl+i_size for i_size in range(size_elt)])
@@ -589,17 +558,13 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_transfo, bc_to_up
     
     new_ec = np.searchsorted(pl_vtx_duplicate, ec_bc)
     new_ec = new_ec+n_vtx+1
-    print(f'   ec_bc = {ec_bc} -> {new_conn}')
     ec[ec_pl] = new_ec
 
     twin_bc_n    = PT.get_child_from_name(zone_bc_n, bc_name[:-1])
     twin_bc_pl_n = PT.get_child_from_name(twin_bc_n, 'PointList')
     twin_bc_pl = PT.get_value(twin_bc_pl_n)[0]
     bc_pl      = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0]
-    print(f'pls = {bc_pl} {bc_pl}')
-    PT.print_tree(twin_bc_n)
     PT.set_value(twin_bc_pl_n, np.concatenate([twin_bc_pl, bc_pl]).reshape((1,-1), order='F'))
-    PT.print_tree(twin_bc_n)
 
     PT.rm_child(zone_bc_n, bc_n)
 
@@ -647,9 +612,6 @@ def duplicate_elts(zone, elt_pl, cgns_name, comm):
 
   new_conn = np.searchsorted(pl_vtx_duplicate, ec_duplicate) #pl_vtx_duplicate already sorted by unique
   new_conn = new_conn +n_vtx+1
-  print(f'pl_vtx_duplicate = {pl_vtx_duplicate}')
-  print(f'ec_duplicate = {ec_duplicate}')
-  print(f'new_vtx_num = {new_conn}')
 
   cx_n = PT.get_node_from_name(zone, 'CoordinateX')
   cy_n = PT.get_node_from_name(zone, 'CoordinateY')
@@ -676,7 +638,6 @@ def duplicate_elts(zone, elt_pl, cgns_name, comm):
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
   
   new_bc_pl = np.arange(er[1]-n_elt_to_add+1, er[1]+1, dtype=np.int32)
-  print(f'new_bc_pl = {new_bc_pl}')
   PT.new_BC('Xmax',
             type='BCWall',
             point_list=new_bc_pl.reshape((1,-1), order='F'),
@@ -687,3 +648,160 @@ def duplicate_elts(zone, elt_pl, cgns_name, comm):
 
 
   return n_vtx_duplicate, n_elt_to_add, pl_vtx_duplicate
+
+
+
+def duplicate_periodic_patch(dist_tree, gc_name, comm):
+
+  # > Duplicate tree
+  pdist_tree = copy.deepcopy(dist_tree)
+
+  zones = PT.get_nodes_from_label(pdist_tree, 'Zone_t')
+  assert len(zones)==1
+  zone = zones[0]
+  n_tri_old = PT.Zone.n_cell(zone)
+
+  # > Get GCs info
+  zone_gc_n = PT.get_child_from_label(zone, 'ZoneGridConnectivity_t')
+  gc_n = PT.get_child_from_name(zone_gc_n, gc_name)
+  assert PT.Subset.GridLocation(gc_n)=='EdgeCenter' # 2d for now
+  periodic_values = PT.GridConnectivity.periodic_values(gc_n)
+
+  gc_pl  = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))[0]
+  gc_pld = PT.get_value(PT.get_child_from_name(gc_n, 'PointListDonor'))[0]
+  gc_vtx_pl  = elmt_pl_to_vtx_pl(zone, gc_pl , 'BAR_2')
+  gc_vtx_pld = elmt_pl_to_vtx_pl(zone, gc_pld, 'BAR_2')
+  
+
+
+
+  # > Add GCs as BCs
+  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  for gc_n in PT.get_nodes_from_label(zone_gc_n, 'GridConnectivity_t'):
+    gc_name = PT.get_name(gc_n)
+    gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
+    PT.new_BC(name=gc_name,
+              type='BCWall',
+              point_list=gc_pl,
+              loc='EdgeCenter',
+              family='BCS',
+              parent=zone_bc_n)
+
+
+  # > Add periodic elts connected to GC
+  gc_elt_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TRI_3', elt_full=False)
+  n_vtx_toadd, new_num_vtx = add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_values, 'TRI_3', comm)
+
+
+  # > Add volumic BCs so that we can delete patches after TODO: better way ?
+  pl_vol  = np.arange(1, n_tri_old+1, dtype=np.int32)
+  pl_vol  = np.delete(pl_vol, gc_elt_pl-1).reshape((1,-1), order='F')
+  pl_volp = np.arange(n_tri_old, n_tri_old+gc_elt_pl.size+1, dtype=np.int32)
+  pl_volp = pl_volp.reshape((1,-1), order='F')
+  pl_volc = (gc_elt_pl).reshape((1,-1), order='F')
+  PT.new_BC(name='vol',            type='BCWall', point_list=pl_vol , loc='FaceCenter', family='BCS', parent=zone_bc_n)
+  PT.new_BC(name='vol_periodic',   type='BCWall', point_list=pl_volp, loc='FaceCenter', family='BCS', parent=zone_bc_n)
+  PT.new_BC(name='vol_constraint', type='BCWall', point_list=pl_volc, loc='FaceCenter', family='BCS', parent=zone_bc_n)
+
+
+  # > Create new BAR_2 elmts and associated BCs to constrain mesh adaptation
+  add_constraint_bcs(zone, new_num_vtx)
+
+  PT.rm_nodes_from_name(pdist_tree, 'ZoneGridConnectivity')
+  
+
+  return pdist_tree, periodic_values, new_num_vtx
+
+
+def retrieve_initial_domain(pdist_tree, periodic_values, new_num_vtx, comm):
+
+  dist_tree = copy.deepcopy(pdist_tree)
+  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  n_vtx = PT.Zone.n_vtx(dist_zone)
+
+  zone_bc_n = PT.get_child_from_label(dist_zone, 'ZoneBC_t')
+
+
+  # > Removing old periodic patch
+  bc_to_rm = PT.get_child_from_name(zone_bc_n, 'vol_constraint')
+  bc_to_rm_pl = PT.get_value(PT.get_child_from_name(bc_to_rm, 'PointList'))[0]
+  bc_to_rm_vtx_pl  = elmt_pl_to_vtx_pl(dist_zone, bc_to_rm_pl, 'TRI_3')
+  n_elt_to_rm = bc_to_rm_pl.size
+
+  bc_to_keep = PT.get_child_from_name(zone_bc_n, 'fixed')
+  bc_to_keep_pl = PT.get_value(PT.get_child_from_name(bc_to_keep, 'PointList'))[0]
+  bc_to_keep_vtx_pl = elmt_pl_to_vtx_pl(dist_zone, bc_to_keep_pl, 'BAR_2')
+  n_vtx_to_keep = bc_to_keep_vtx_pl.size
+
+
+  tag_vtx = np.isin(bc_to_rm_vtx_pl, bc_to_keep_vtx_pl) # True where vtx is 
+  preserved_vtx_id = bc_to_rm_vtx_pl[tag_vtx][0]
+  bc_to_rm_vtx_pl = bc_to_rm_vtx_pl[np.invert(tag_vtx)]
+  n_vtx_to_rm = bc_to_rm_vtx_pl.size
+
+
+  # > Compute new vtx numbering
+  vtx_tag_n = PT.get_node_from_name(dist_zone, 'vtx_tag')
+  vtx_tag   = PT.get_value(vtx_tag_n)
+  vtx_tag = np.delete(vtx_tag, bc_to_rm_vtx_pl-1)
+  PT.set_value(vtx_tag_n, vtx_tag)
+
+  bc_fixed_n = PT.get_node_from_name_and_label(dist_zone, 'fixed', 'BC_t')
+  bc_fixed_pl = PT.get_value(PT.get_child_from_name(bc_fixed_n, 'PointList'))[0]
+  bc_fixed_vtx_pl = elmt_pl_to_vtx_pl(dist_zone, bc_fixed_pl, 'BAR_2')
+
+  bc_fixedp_n = PT.get_node_from_name_and_label(dist_zone, 'fixedp', 'BC_t')
+  bc_fixedp_pl = PT.get_value(PT.get_child_from_name(bc_fixedp_n, 'PointList'))[0]
+  bc_fixedp_vtx_pl = elmt_pl_to_vtx_pl(dist_zone, bc_fixedp_pl, 'BAR_2')
+
+  ids = bc_to_rm_vtx_pl
+  targets = -np.ones(bc_to_rm_vtx_pl.size, dtype=np.int32)
+  vtx_distri_ini = np.array([0,n_vtx,n_vtx], dtype=np.int32) # TODO pdm_gnum
+  old_to_new_vtx = merge_distributed_ids(vtx_distri_ini, ids, targets, comm, True)
+
+  update_elt_vtx_numbering(dist_zone, vtx_distri_ini, old_to_new_vtx, 'TRI_3', comm)
+  n_tri = remove_elts_from_pl(dist_zone, bc_to_rm_pl, 'TRI_3', comm)
+  
+  tri_offset = bc_to_rm_pl.size
+  apply_offset_to_elt(dist_zone, tri_offset, 'BAR_2')
+  update_elt_vtx_numbering(dist_zone, vtx_distri_ini, old_to_new_vtx, 'BAR_2', comm)
+  invalid_elt_pl = find_invalid_elts(dist_zone, 'BAR_2')
+  n_bar = remove_elts_from_pl(dist_zone, invalid_elt_pl, 'BAR_2', comm)
+
+  cx_n = PT.get_node_from_name(dist_zone, 'CoordinateX')
+  cy_n = PT.get_node_from_name(dist_zone, 'CoordinateY')
+  cz_n = PT.get_node_from_name(dist_zone, 'CoordinateZ')
+  cx, cy, cz = PT.Zone.coordinates(dist_zone)
+  PT.set_value(cx_n, np.delete(cx, bc_to_rm_vtx_pl-1))
+  PT.set_value(cy_n, np.delete(cy, bc_to_rm_vtx_pl-1))
+  PT.set_value(cz_n, np.delete(cz, bc_to_rm_vtx_pl-1))
+
+
+  # > Update flow_sol
+  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
+                        PT.Subset.GridLocation(n)=='Vertex'
+  for fs_n in PT.get_children_from_predicate(dist_zone, is_vtx_fs):
+    print(f'FlowSolution: \"{PT.get_name(fs_n)}\"')
+    for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
+      if PT.get_name(da_n)!='vtx_tag':
+        da = PT.get_value(da_n)
+        print(f'   DataArray: \"{PT.get_name(da_n)}\": {da.size}')
+        da = np.delete(da, bc_to_rm_vtx_pl-1)
+        PT.set_value(da_n, da)
+
+  PT.set_value(dist_zone, [[n_vtx-n_vtx_to_rm, n_tri, 0]])
+
+  maia.io.write_tree(dist_tree, 'OUTPUT/new_mesh_wo_old_periodic_patch.cgns')
+
+
+  # > Deplace periodic patch to retrieve initial domain
+  deplace_periodic_patch(dist_zone, 'vol_periodic', 'Xmin', periodic_values, ['Yminp', 'Ymaxp'], comm)
+
+  maia.io.write_tree(dist_tree, 'OUTPUT/new_mesh_deplaced.cgns')
+
+  merge_periodic_bc(dist_zone, ['fixed', 'fixedp'], vtx_tag, new_num_vtx, comm)
+  maia.io.write_tree(dist_tree, 'OUTPUT/new_mesh.cgns')
+
+
+  return dist_tree  
