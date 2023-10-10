@@ -99,6 +99,26 @@ def test_transform_affine_2d(comm):
   assert np.allclose(   PT.get_node_from_name(dist_zone_ini, 'fieldY')[1],
                      -1*PT.get_node_from_name(dist_zone,     'fieldY')[1])
 
+@pytest_parallel.mark.parallel(2)
+def test_transform_affine_s_part(comm):
+  dist_tree = maia.factory.generate_dist_block(4, 'S', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  part_tree_bck = PT.deep_copy(part_tree)
+  transform.transform_affine(part_tree, translation=[5,1,2])
+  assert (PT.get_node_from_name(part_tree, 'CoordinateX')[1] == 5+PT.get_node_from_name(part_tree_bck, 'CoordinateX')[1]).all()
+  assert (PT.get_node_from_name(part_tree, 'CoordinateZ')[1] == 2+PT.get_node_from_name(part_tree_bck, 'CoordinateZ')[1]).all()
+
+  dist_tree = maia.factory.generate_dist_block([4,4], 'S', comm, origin=[0,0])
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  part_zone = PT.get_node_from_label(part_tree, 'Zone_t')
+  fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=part_zone)
+  PT.new_DataArray('fieldX', np.random.random(PT.Zone.n_cell(part_zone)), parent=fs)
+  PT.new_DataArray('fieldY', np.random.random(PT.Zone.n_cell(part_zone)), parent=fs)
+  part_tree_bck = PT.deep_copy(part_tree)
+  transform.transform_affine(part_tree, rotation_center=np.zeros(2), translation=np.zeros(2), rotation_angle=0.5*np.pi, apply_to_fields=True)
+  assert np.allclose(PT.get_node_from_name(part_tree, 'fieldX')[1], -PT.get_node_from_name(part_tree_bck, 'fieldY')[1])
+  assert np.allclose(PT.get_node_from_name(part_tree, 'fieldY')[1],  PT.get_node_from_name(part_tree_bck, 'fieldX')[1])
+
 @pytest_parallel.mark.parallel(1)
 def test_scale_mesh(comm):
   dist_tree = maia.factory.generate_dist_block(4, 'Poly', comm)

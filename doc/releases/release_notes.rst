@@ -26,6 +26,7 @@ Developpement version
 🐞 Fixes
 ^^^^^^^^
 - merge_zones: manage S/U GridConnectivity_t when merging U zones
+- transform_affine : manage partitioned S zones and 2D meshes
 
 🚧 API change
 ^^^^^^^^^^^^^
