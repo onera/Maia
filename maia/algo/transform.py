@@ -65,3 +65,35 @@ def transform_affine(t,
           tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
           for vector_n, tr_vector in zip(vectors_n, tr_vectors):
             PT.set_value(vector_n, tr_vector)
+
+
+def scale_mesh(t, s=1.):
+  """Rescale the GridCoordinates of the input mesh.
+
+  Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
+  Transformation is defined by
+
+  .. math::
+     \\tilde v = S \\cdot v
+
+  where S is the scaling matrix.
+  Input tree is modified inplace.
+
+  Args:
+    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
+    s (float or array of float): Scaling factor in each physical dimension. Scalars automatically
+      extend to uniform array.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: scale_mesh@start
+        :end-before: #scale_mesh@end
+        :dedent: 2
+  """
+  scaling = 3 * [s] if isinstance(s, (int, float)) else s 
+  for zone in zones_iterator(t):
+    for grid_co in PT.get_children_from_label(zone, 'GridCoordinates_t'):
+      for idir, dir in enumerate(['X', 'Y', 'Z']):
+        node = PT.get_child_from_name(grid_co, f'Coordinate{dir}')
+        if node is not None:
+          node[1] *= scaling[idir]

@@ -5,6 +5,7 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
 from maia.pytree.yaml  import parse_yaml_cgns
 from maia.factory.dcube_generator import dcube_generate
 
@@ -75,3 +76,21 @@ def test_transform_affine(comm):
   check_vect_field(dist_zone_ini, dist_zone, "field")
   check_scal_field(dist_zone_ini, dist_zone, "scalar")
 
+@pytest_parallel.mark.parallel(1)
+def test_scale_mesh(comm):
+  dist_tree = maia.factory.generate_dist_block(4, 'Poly', comm)
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
+
+  cx_bck = PT.get_node_from_name(dist_zone, 'CoordinateX')[1].copy()
+  cy_bck = PT.get_node_from_name(dist_zone, 'CoordinateY')[1].copy()
+  cz_bck = PT.get_node_from_name(dist_zone, 'CoordinateZ')[1].copy()
+
+  transform.scale_mesh(dist_tree, [1.0, 2.0, 0.5])
+  assert (PT.get_node_from_name(dist_tree, 'CoordinateX')[1] == cx_bck).all()
+  assert (PT.get_node_from_name(dist_tree, 'CoordinateY')[1] == 2*cy_bck).all()
+  assert (PT.get_node_from_name(dist_tree, 'CoordinateZ')[1] == 0.5*cz_bck).all()
+
+  dist_tree = maia.factory.generate_dist_block([4,4], 'S', comm, origin=np.zeros(2))
+  transform.scale_mesh(dist_tree, 5)
+  assert PT.get_node_from_name(dist_tree, 'CoordinateX')[1].max() == 5
+  assert PT.get_node_from_name(dist_tree, 'CoordinateY')[1].max() == 5
