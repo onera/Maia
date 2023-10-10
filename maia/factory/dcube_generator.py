@@ -156,7 +156,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   # > BCs
   if cell_dim == 2:
-    bc_names = ['Zmin', 'Zmax', 'Ymin', 'Ymax']
+    bc_names = ['Ymin', 'Ymax', 'Xmin', 'Xmax']
     bc_loc = 'EdgeCenter'
     groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
   else:

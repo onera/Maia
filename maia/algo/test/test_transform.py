@@ -11,6 +11,14 @@ from maia.factory.dcube_generator import dcube_generate
 
 from maia.algo import transform
 
+from maia.utils import logging as mlog
+
+class log_capture:
+  def __init__(self):
+    self.logs = ''
+  def log(self, msg):
+    self.logs += msg
+
 def test_transformation_zone_void():
   yz = """
        Zone Zone_t I4 [[18,4,0]]:
@@ -106,6 +114,7 @@ def test_transform_affine_s_part(comm):
   part_tree_bck = PT.deep_copy(part_tree)
   transform.transform_affine(part_tree, translation=[5,1,2])
   assert (PT.get_node_from_name(part_tree, 'CoordinateX')[1] == 5+PT.get_node_from_name(part_tree_bck, 'CoordinateX')[1]).all()
+  assert (PT.get_node_from_name(part_tree, 'CoordinateY')[1] == 1+PT.get_node_from_name(part_tree_bck, 'CoordinateY')[1]).all()
   assert (PT.get_node_from_name(part_tree, 'CoordinateZ')[1] == 2+PT.get_node_from_name(part_tree_bck, 'CoordinateZ')[1]).all()
 
   dist_tree = maia.factory.generate_dist_block([4,4], 'S', comm, origin=[0,0])
@@ -121,6 +130,10 @@ def test_transform_affine_s_part(comm):
 
 @pytest_parallel.mark.parallel(1)
 def test_scale_mesh(comm):
+  # To check if warning displays
+  log_collector = log_capture()
+  mlog.add_printer_to_logger('maia-warnings', log_collector)
+
   dist_tree = maia.factory.generate_dist_block(4, 'Poly', comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
@@ -133,7 +146,14 @@ def test_scale_mesh(comm):
   assert (PT.get_node_from_name(dist_tree, 'CoordinateY')[1] == 2*cy_bck).all()
   assert (PT.get_node_from_name(dist_tree, 'CoordinateZ')[1] == 0.5*cz_bck).all()
 
+  assert log_collector.logs == ''
+
   dist_tree = maia.factory.generate_dist_block([4,4], 'S', comm, origin=np.zeros(2))
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  PT.new_FlowSolution(loc='CellCenter', fields={'Field': np.ones(PT.Zone.n_cell(zone))}, parent=zone)
+  dist_tree_bck = PT.deep_copy(dist_tree)
   transform.scale_mesh(dist_tree, 5)
-  assert PT.get_node_from_name(dist_tree, 'CoordinateX')[1].max() == 5
-  assert PT.get_node_from_name(dist_tree, 'CoordinateY')[1].max() == 5
+  assert np.allclose(PT.get_node_from_name(dist_tree, 'CoordinateX')[1], 5*PT.get_node_from_name(dist_tree_bck, 'CoordinateX')[1])
+  assert np.allclose(PT.get_node_from_name(dist_tree, 'CoordinateY')[1], 5*PT.get_node_from_name(dist_tree_bck, 'CoordinateY')[1])
+
+  assert "Scaling mesh does not affect fields, and some are present in tree." in log_collector.logs

@@ -45,8 +45,10 @@ def find_cartesian_vector_names(names, phy_dim=3):
   """
   Function to find basename of cartesian vectors
   In the SIDS (https://cgns.github.io/CGNS_docs_current/sids/dataname.html), a cartesian
-  vector 'Vector' is describe by its 3 components 'VectorX', 'VectorY', 'VectorZ'
+  vector 'Vector' is describe by its 2 (resp. 3) components 'VectorX', 'VectorY', (resp. 'VectorZ')
+  depending on the physical dimension of the mesh.
   > names : list of potential vectors components
+  > phy_dim : physical dimension of the mesh.
   """
   to_index = {'X' : 0, 'Y' : 1}
   if phy_dim == 3:

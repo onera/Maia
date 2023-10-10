@@ -4,6 +4,8 @@ import maia.pytree as PT
 from maia.utils import py_utils, np_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
 
+from maia.utils import logging as mlog
+
 def transform_affine(t,
                      rotation_center = np.zeros(3),
                      rotation_angle  = np.zeros(3),
@@ -17,7 +19,7 @@ def transform_affine(t,
   .. math::
      \\tilde v = R \\cdot (v - c) + c + t
 
-  where c, t are the rotation center and translation vector and R is the rotation matrix.
+  where c, t are the rotation center and translation vectors and R is the rotation matrix.
   Note that when the physical dimension of the mesh is set to 2, rotation_angle must
   be a scalar float.
 
@@ -101,9 +103,18 @@ def scale_mesh(t, s=1.):
         :dedent: 2
   """
   scaling = 3 * [s] if isinstance(s, (int, float)) else s 
+  fields_found = False
+  is_container = lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']
   for zone in zones_iterator(t):
     for grid_co in PT.get_children_from_label(zone, 'GridCoordinates_t'):
       for idir, dir in enumerate(['X', 'Y', 'Z']):
         node = PT.get_child_from_name(grid_co, f'Coordinate{dir}')
         if node is not None:
           node[1] *= scaling[idir]
+
+    if PT.get_child_from_predicate(zone, is_container) is not None or \
+       PT.get_child_from_predicates(zone, 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t') is not None:
+      fields_found = True
+  
+  if fields_found:
+    mlog.warning(f"Scaling mesh does not affect fields, and some are present in tree. Update their value if needed.")

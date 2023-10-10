@@ -88,7 +88,7 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   # Get transformation information
   rotation_center_a, rotation_angle_a, translation_a = PT.GridConnectivity.periodic_values(first_join_in_matchs_a)
   if rotation_angle_a.size == 2:
-    rotation_angle_a = rotation_angle_a[0]
+    rotation_angle_a = rotation_angle_a[0] if rotation_angle_a[0] != 0 else rotation_angle_a[1] # We dont know if angle is stored in array[0] or array[1]
   
   # Store initial periodicity information of joins of the second joins list (B)
   jn_b_properties = []
@@ -221,10 +221,8 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
   
   # Get transformation information
   rotation_center_a, rotation_angle_a, translation_a = PT.GridConnectivity.periodic_values(first_join_in_matchs_a)
-  if rotation_angle_a.size == 2:
-    rotation_angle_a = rotation_angle_a[0]
   
-  if (translation_a != np.array([0.,0.,0.])).any():
+  if (translation_a != 0).any():
     raise ValueError("The join is not periodic only by rotation !")
 
   # Find the number of duplication needed
@@ -234,6 +232,9 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
     rotation_angle_a[index] = np.sign(rotation_angle_a[index]) * 2*np.pi/sectors_number
   else:
     raise ValueError("Zone/Join not define a section of a row")
+
+  if rotation_angle_a.size == 2:
+    rotation_angle_a = rotation_angle_a[0] if rotation_angle_a[0] != 0. else rotation_angle_a[1]
 
   # Duplicate 'sectors_number - 1' times the list of zones 'zones'
   duplicate_from_periodic_jns(dist_tree, zone_paths, _jn_paths_for_dupl, sectors_number-1, 

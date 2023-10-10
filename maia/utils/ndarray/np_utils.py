@@ -214,7 +214,7 @@ def transform_cart_vectors(vx, vy, vz, translation=np.zeros(3), rotation_center=
   assert vx.shape == vy.shape == vz.shape
   if vx.ndim == 1:
     vectors = np.array([vx,vy,vz], order='F')
-  else:
+  else: #Manage structured blocks
     vectors = np.array([vx.flatten('F'), vy.flatten('F'), vz.flatten('F')], order='F')
   
   modified_components = transform_cart_matrix(vectors, translation, rotation_center, rotation_angle)
@@ -228,7 +228,7 @@ def transform_cart_vectors(vx, vy, vz, translation=np.zeros(3), rotation_center=
 
 def transform_cart_matrix_2d(vectors, translation=np.zeros(2), rotation_center=np.zeros(2), rotation_angle=0.):
   """
-  Apply the defined cartesian transformation on concatenated components of vectors described by :
+  Apply the defined cartesian transformation on 2D concatenated components of vectors described by :
   [vx1 vx2 ... vxN]
   [vy1 vy2 ... vyN]
   and return the modified components of the vectors in the same format
@@ -245,7 +245,7 @@ def transform_cart_vectors_2d(vx, vy, translation=np.zeros(2), rotation_center=n
   assert vx.shape == vy.shape
   if vx.ndim == 1:
     vectors = np.array([vx,vy], order='F')
-  else:
+  else: #Manage structured blocks
     vectors = np.array([vx.flatten('F'), vy.flatten('F')], order='F')
   modified_components = transform_cart_matrix_2d(vectors, translation, rotation_center, rotation_angle)
   if vx.ndim == 1:
