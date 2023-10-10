@@ -31,9 +31,9 @@ def test_scale_mesh():
   import maia
   dist_tree = maia.factory.generate_dist_block(10, 'Poly', MPI.COMM_WORLD)
 
-  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateX')[1] <= 1.
+  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateX')[1].max() <= 1.
   maia.algo.scale_mesh(dist_tree, [3.0, 2.0, 1.0])
-  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateX')[1] <= 3.
+  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateX')[1].max() <= 3.
   #scale_mesh@end
 
 def test_generate_jns_vertex_list():
