@@ -25,6 +25,17 @@ def test_transform_affine():
   maia.algo.transform_affine(zone, translation=[3,0,0])
   #transform_affine@end
 
+def test_scale_mesh():
+  #scale_mesh@start
+  from mpi4py import MPI
+  import maia
+  dist_tree = maia.factory.generate_dist_block(10, 'Poly', MPI.COMM_WORLD)
+
+  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateX')[1].max() <= 1.
+  maia.algo.scale_mesh(dist_tree, [3.0, 2.0, 1.0])
+  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateX')[1].max() <= 3.
+  #scale_mesh@end
+
 def test_generate_jns_vertex_list():
   #generate_jns_vertex_list@start
   from mpi4py import MPI

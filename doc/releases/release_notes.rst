@@ -15,6 +15,7 @@ Developpement version
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``extract_part_from_zsr`` API to extract a submesh from FamilyName nodes
+- Algo module: add ``scale_mesh`` to scale the coordinates of a cartesian mesh
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,6 +27,7 @@ Developpement version
 ^^^^^^^^
 - merge_zones: manage S/U GridConnectivity_t when merging U zones
 - add_joins_donor_name: prevent a crash when some GCs already have their DonorName
+- transform_affine : manage partitioned S zones and 2D meshes
 
 🚧 API change
 ^^^^^^^^^^^^^
