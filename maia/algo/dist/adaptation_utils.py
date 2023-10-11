@@ -512,8 +512,6 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_values, bc_to_upd
   tree = PT.new_CGNSTree()
   base = PT.new_CGNSBase(parent=tree)
   PT.add_child(base, zone)
-  import maia
-  maia.io.write_tree(tree, 'OUTPUT/test.cgns')
 
 
   # > Deplace vtx that are not on GC
@@ -653,10 +651,7 @@ def duplicate_elts(zone, elt_pl, cgns_name, comm):
 
 def duplicate_periodic_patch(dist_tree, gc_name, comm):
 
-  # > Duplicate tree
-  pdist_tree = copy.deepcopy(dist_tree)
-
-  zones = PT.get_nodes_from_label(pdist_tree, 'Zone_t')
+  zones = PT.get_nodes_from_label(dist_tree, 'Zone_t')
   assert len(zones)==1
   zone = zones[0]
   n_tri_old = PT.Zone.n_cell(zone)
@@ -707,15 +702,14 @@ def duplicate_periodic_patch(dist_tree, gc_name, comm):
   # > Create new BAR_2 elmts and associated BCs to constrain mesh adaptation
   add_constraint_bcs(zone, new_num_vtx)
 
-  PT.rm_nodes_from_name(pdist_tree, 'ZoneGridConnectivity')
+  PT.rm_nodes_from_name(dist_tree, 'ZoneGridConnectivity')
   
 
-  return pdist_tree, periodic_values, new_num_vtx
+  return periodic_values, new_num_vtx
 
 
-def retrieve_initial_domain(pdist_tree, periodic_values, new_num_vtx, comm):
+def retrieve_initial_domain(dist_tree, periodic_values, new_num_vtx, comm):
 
-  dist_tree = copy.deepcopy(pdist_tree)
   dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
 
   n_vtx = PT.Zone.n_vtx(dist_zone)
@@ -792,16 +786,9 @@ def retrieve_initial_domain(pdist_tree, periodic_values, new_num_vtx, comm):
 
   PT.set_value(dist_zone, [[n_vtx-n_vtx_to_rm, n_tri, 0]])
 
-  maia.io.write_tree(dist_tree, 'OUTPUT/new_mesh_wo_old_periodic_patch.cgns')
 
 
   # > Deplace periodic patch to retrieve initial domain
   deplace_periodic_patch(dist_zone, 'vol_periodic', 'Xmin', periodic_values, ['Yminp', 'Ymaxp'], comm)
-
-  maia.io.write_tree(dist_tree, 'OUTPUT/new_mesh_deplaced.cgns')
-
   merge_periodic_bc(dist_zone, ['fixed', 'fixedp'], vtx_tag, new_num_vtx, comm)
-  maia.io.write_tree(dist_tree, 'OUTPUT/new_mesh.cgns')
 
-
-  return dist_tree  
