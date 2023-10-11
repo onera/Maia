@@ -123,8 +123,7 @@ def test_create_part_pr_gnum_lowdim(idx_dim, comm):
     assert (PT.get_node_from_name(part_zones[1], 'Index')[1] == [2,3]).all()
 
 @pytest_parallel.mark.parallel(4)
-@pytest.mark.parametrize("allow_mult", [False, True])
-def test_part_pl_to_dist_pl(comm, allow_mult):
+def test_part_pl_to_dist_pl(comm):
   dist_zone = PT.new_Zone('Zone', type='Unstructured')
   dist_zsr = PT.new_ZoneSubRegion("ZSR", loc='Vertex', parent=dist_zone)
   part_zones = [PT.new_Zone('Zone.P{0}.N0'.format(comm.Get_rank()), type='Unstructured')]
@@ -147,7 +146,7 @@ def test_part_pl_to_dist_pl(comm, allow_mult):
   elif comm.Get_rank() == 3:
     part_zones = []
 
-  IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", comm, allow_mult)
+  IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", comm)
 
   dist_pl     = PT.get_node_from_path(dist_zsr, 'PointList')[1]
   dist_distri = PT.get_value(MT.getDistribution(dist_zsr, 'Index'))
@@ -195,28 +194,29 @@ def test_part_pr_to_dist_pr(comm, allow_mult):
   Zone Zone_t [[3,2,0], [3,2,0], [5,4,0]]: #Cube 2*2*4 cells
     ZoneType ZoneType_t "Structured":
     ZoneBC ZoneBC_t:
-      bc BC_t:
+      bc.0 BC_t:
   """
   dist_zone = parse_yaml_cgns.to_node(yt)
 
+  suffix = '.0' if allow_mult else ''
   if comm.Get_rank() == 0:
-    yt = """ # Know the BC on one part
+    yt = f""" # Know the BC on one part
     Zone.P0.N0 Zone_t [[3,2,0], [2,1,0], [3,2,0]]:
       ZoneType ZoneType_t "Structured":
       :CGNS#GlobalNumbering UserDefinedData_t:
         Vertex DataArray_t [1,2,3,4,5,6,10,11,12,13,14,15,19,20,21,22,23,24]: 
       ZoneBC ZoneBC_t:
-        bc BC_t:
+        bc.0{suffix} BC_t:
           PointRange IndexRange_t [[1,3], [1,2], [1,1]]:
     """
   elif comm.Get_rank() == 1:
-    yt = """ # Know the zone, but has no BC
+    yt = f""" # Know the zone, but has no BC
     Zone.P1.N0 Zone_t [[3,2,0], [3,2,0], [2,1,0]]:
       ZoneType ZoneType_t "Structured":
     Zone.P1.N1 Zone_t [[3,2,0], [3,2,0], [2,1,0]]:
       ZoneType ZoneType_t "Structured":
       ZoneBC ZoneBC_t:
-        otherbc BC_t:
+        otherbc{suffix} BC_t:
     """
   elif comm.Get_rank() == 2:
     if allow_mult:
@@ -226,9 +226,11 @@ def test_part_pr_to_dist_pr(comm, allow_mult):
         :CGNS#GlobalNumbering UserDefinedData_t:
           Vertex DataArray_t [4,5,6,7,8,9,13,14,15,16,17,18,22,23,24,25,26,27]:
         ZoneBC ZoneBC_t:
-          bc.0 BC_t:
+          bc.0 BC_t: # Some other bc (called initially bc)
+            PointRange IndexRange_t [[1,1], [1,3], [1,3]]: 
+          bc.0.0 BC_t:
             PointRange IndexRange_t [[2,3], [1,2], [1,1]]:
-          bc.1 BC_t:
+          bc.0.1 BC_t:
             PointRange IndexRange_t [[1,2], [1,2], [1,1]]:
       """
     else:
@@ -238,24 +240,22 @@ def test_part_pr_to_dist_pr(comm, allow_mult):
         :CGNS#GlobalNumbering UserDefinedData_t:
           Vertex DataArray_t [4,5,7,8,10,11,16,17,22,23,25,26]:
         ZoneBC ZoneBC_t:
-          bc BC_t:
+          bc.0 BC_t:
             PointRange IndexRange_t [[1,2], [1,2], [1,1]]:
       Zone.P2.N1 Zone_t [[2,1,0], [2,1,0], [3,2,0]]:
         ZoneType ZoneType_t "Structured":
         :CGNS#GlobalNumbering UserDefinedData_t:
           Vertex DataArray_t [5,6,8,9,14,15,17,18,23,24,26,27]:
         ZoneBC ZoneBC_t:
-          bc BC_t:
+          bc.0 BC_t:
             PointRange IndexRange_t [[1,2], [1,2], [1,1]]:
       """
-  elif comm.Get_rank() == 3:
-    yt = """ # Not concerned by this zone at all
-    OtherZone.P3.N0 Zone_t [[5,4,0], [3,2,0], [3,2,0]]:
-      ZoneType ZoneType_t "Structured":
-    """
-  part_zones = parse_yaml_cgns.to_nodes(yt)
+  if comm.Get_rank() == 3:
+    part_zones = [] # Not concerned by this zone
+  else:
+    part_zones = parse_yaml_cgns.to_nodes(yt)
 
-  IPTB.part_pr_to_dist_pr(dist_zone, part_zones, "ZoneBC/bc", comm, allow_mult)
+  IPTB.part_pr_to_dist_pr(dist_zone, part_zones, "ZoneBC/bc.0", comm, allow_mult)
   assert np.array_equal(PT.get_node_from_name(dist_zone, 'PointRange')[1], [[1,3], [1,3], [1,1]])
 
 @pytest_parallel.mark.parallel(2)

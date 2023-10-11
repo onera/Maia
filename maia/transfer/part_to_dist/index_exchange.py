@@ -142,12 +142,17 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   dist_node = PT.get_node_from_path(dist_zone, node_path)
 
   if allow_mult:
+    name_predicate = lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == leaf
+  else:
+    name_predicate = lambda n: PT.get_name(n) == leaf
+   
+  if allow_mult:
     ln_to_gn_list = []
     for part_zone in part_zones:
       ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
       if ancestor_n is not None:
         ln_to_gn_list.extend([PT.get_value(MT.getGlobalNumbering(node, 'Index')) \
-            for node in PT.get_children_from_name(ancestor_n, leaf+'*')])
+            for node in PT.get_children_from_predicate(ancestor_n, name_predicate)])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
     ln_to_gn_list = [PT.get_node_from_path(part_zone, gn_path)[1] for part_zone in part_zones \
@@ -162,8 +167,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   for part_zone in part_zones:
     ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
     if ancestor_n:
-      name = leaf + '*' if allow_mult else leaf
-      for node in PT.iter_children_from_name(ancestor_n, name):
+      for node in PT.iter_children_from_predicate(ancestor_n, name_predicate):
         part_pl = PT.get_child_from_name(node, 'PointList')[1]
         loc = PT.Subset.GridLocation(node)
         if PT.Zone.Type(part_zone) == 'Unstructured':
@@ -226,7 +230,11 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   idx_dim = PT.Zone.IndexDimension(dist_zone)
   ancestor_n, leaf_n = PT.path_head(node_path), PT.path_tail(node_path)
 
-  name = leaf_n + '*' if allow_mult else leaf_n
+  if allow_mult:
+    name_predicate = lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == leaf_n
+  else:
+    name_predicate = lambda n: PT.get_name(n) == leaf_n
+
   dist_node = PT.get_node_from_path(dist_zone, node_path)
   dist_vtx_size = PT.Zone.VertexSize(dist_zone)
 
@@ -237,7 +245,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
     part_vtx_size = PT.Zone.VertexSize(part_zone)
 
     ancestor_node = PT.get_node_from_path(part_zone, ancestor_n)
-    part_nodes = PT.get_nodes_from_name(ancestor_node, name) if ancestor_node is not None else []
+    part_nodes = PT.get_children_from_predicate(ancestor_node, name_predicate) if ancestor_node is not None else []
     
     for part_node in part_nodes:
       pr = PT.get_node_from_name(part_node, 'PointRange')[1].copy()
