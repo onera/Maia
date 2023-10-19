@@ -145,7 +145,9 @@ def meshb_to_cgns(out_files, tree_info, comm):
   start = time.time()
   
   # meshb -> dmesh_nodal -> cgns
-  dmesh_nodal = PDM.meshb_to_dmesh_nodal(bytes(out_files['mesh'], 'utf-8'), comm, 1, 1)
+  file_name = bytes(out_files["mesh"], 'utf-8') if isinstance(out_files["mesh"], str)\
+         else bytes(out_files["mesh"])
+  dmesh_nodal = PDM.meshb_to_dmesh_nodal(file_name, comm, 1, 1)
   dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files)
   
   end = time.time()
@@ -258,8 +260,9 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
     # > Write meshb
     xyz       = np_utils.interweave_arrays([cx,cy,cz])
     tetra_tag = np.zeros(n_tetra, dtype=np.int32)
-
-    PDM.write_meshb(bytes(files["mesh"], 'utf-8'),
+    file_name = bytes(files["mesh"], 'utf-8') if isinstance(files["mesh"], str)\
+           else bytes(files["mesh"])
+    PDM.write_meshb(file_name,
                     n_vtx, n_tetra, n_tri, n_edge,
                     xyz,              vtx_tag,
                     elmt_by_dim[3], tetra_tag,

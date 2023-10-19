@@ -28,6 +28,7 @@ tmp_repo   = Path('TMP_adapt_repo')
 in_file_meshb = tmp_repo / 'mesh.mesh'
 in_file_solb  = tmp_repo / 'metric.sol'
 in_file_fldb  = tmp_repo / 'field.sol'
+# in_files = {'mesh': 'TMP_adapt_repo/mesh.mesh',
 in_files = {'mesh': in_file_meshb,
             'sol' : in_file_solb ,
             'fld' : in_file_fldb }
@@ -222,16 +223,18 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     adapted_bc = PT.get_node_from_path(adapted_zone, bc_path)
     input_bc   = PT.get_node_from_path(input_zone, bc_path)
     print(f'bc_name = {PT.get_name(adapted_bc)}')
-    PT.set_value(adapted_bc, PT.get_value(input_bc))
-    for node in PT.get_nodes_from_predicate(input_bc, to_copy):
-      PT.add_child(adapted_bc, node)
+    if input_bc is not None:
+      print(f'  ---> DOING')
+      PT.set_value(adapted_bc, PT.get_value(input_bc))
+      for node in PT.get_nodes_from_predicate(input_bc, to_copy):
+        PT.add_child(adapted_bc, node)
 
 
   return adapted_dist_tree
 
 
 
-def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_name, comm, container_names=[], feflo_opts=""):
+def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, container_names=[], feflo_opts="", **options):
   '''
     ROUTINE
     TODO
@@ -282,9 +285,6 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_name, comm, container_n
   pdist_tree = full_to_dist.full_to_dist_tree(pdist_tree, comm)
 
   # PT.print_tree(pdist_tree)
-  # PT.rm_nodes_from_name(pdist_tree, 'BAR_2.0')
-  # PT.rm_nodes_from_name(pdist_tree, 'TRI_3.0')
-  # PT.rm_nodes_from_name(pdist_tree, 'ridge*')
   is_cell_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='CellCenter'
   is_face_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='FaceCenter'
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
@@ -294,20 +294,46 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_name, comm, container_n
   # PT.rm_nodes_from_predicate(pdist_tree, is_face_bc)
   # PT.rm_nodes_from_predicate(pdist_tree, is_edge_bc)
   PT.rm_nodes_from_predicate(pdist_tree, is_vtx_bc)
-  for bc_n in PT.get_nodes_from_predicate(pdist_tree, is_edge_bc):
-    PT.set_value(PT.get_child_from_name(bc_n, 'GridLocation'), 'FaceCenter')
+  
+  # PT.rm_nodes_from_name(pdist_tree, 'BAR_2.0')
+  # PT.rm_nodes_from_name(pdist_tree, 'TRI_3.0')
+  # PT.rm_nodes_from_name(pdist_tree, 'ridge*')
+  
+  # bc_names = list()
+  # zone_bc_n = PT.get_node_from_label(pdist_tree, 'ZoneBC_t')
+  # for bc_n in PT.get_nodes_from_predicate(zone_bc_n, is_edge_bc):
+  #   bc_names.append(PT.get_name(bc_n))
+  #   PT.set_value(PT.get_child_from_name(bc_n, 'GridLocation'), 'FaceCenter')
 
   maia.io.dist_tree_to_file(pdist_tree, 'OUTPUT/extended_domain.cgns', comm)
-  sys.exit()
+  # sys.exit()
+
+  # for bc_name in bc_names:
+  #   bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
+  #   PT.set_value(PT.get_child_from_name(bc_n, 'GridLocation'), 'EdgeCenter')
 
 
   mlog.info(f"\n\n[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   padapted_dist_tree = adapt_mesh_with_feflo( pdist_tree, metric, comm,
                                               container_names=container_names,
-                                              constraints=['fixed', 'fixedp'],
+                                              constraints=['tri_3_periodic', 'tri_3_constraint'],
                                               feflo_opts=feflo_opts)
+  padapted_dist_base = PT.get_child_from_label(padapted_dist_tree, 'CGNSBase_t')
+  PT.new_Family('BCS', parent=padapted_dist_base)
+
+  bc_names = list()
+  zone_bc_n = PT.get_node_from_label(padapted_dist_tree, 'ZoneBC_t')
+  for bc_n in PT.get_nodes_from_predicate(zone_bc_n, is_edge_bc):
+    bc_names.append(PT.get_name(bc_n))
+    PT.set_value(PT.get_child_from_name(bc_n, 'GridLocation'), 'FaceCenter')
 
   maia.io.dist_tree_to_file(padapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
+
+  for bc_name in bc_names:
+    bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
+    PT.set_value(PT.get_child_from_name(bc_n, 'GridLocation'), 'EdgeCenter')
+
+  sys.exit()
 
 
   mlog.info(f"\n\n[Periodic adaptation] #3: Removing initial domain...")
