@@ -12,18 +12,23 @@ from maia.algo.dist.merge_ids import merge_distributed_ids
 
 import numpy as np
 
-CGNS_TO_LOC = {'BAR_2':'EdgeCenter',
-               'TRI_3':'FaceCenter'}
+CGNS_TO_LOC = {'BAR_2'  :'EdgeCenter',
+               'TRI_3'  :'FaceCenter',
+               'TETRA_4':'CellCenter'}
+# LOC_TO_CGNS = {'EdgeCenter':'BAR_2',
+#                'FaceCenter':'TRI_3',
+#                'CellCenter':'TETRA_4'}
 
 def elmt_pl_to_vtx_pl(zone, pl, cgns_name):
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
   elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
   ec  = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
+  elt_offset = PT.Element.Range(elt_n)[0]
 
   n_elt = PT.Element.Size(elt_n)
   size_elt = PT.Element.NVtx(elt_n)
-  pl = pl - local_pl_offset(zone, LOC_TO_DIM[CGNS_TO_LOC[cgns_name]]) -1
+  pl = pl - elt_offset
   conn_pl = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
   vtx_pl = np.unique(ec[conn_pl])
 
@@ -39,7 +44,7 @@ def tag_elmt_owning_vtx(zone, pl, cgns_name, elt_full=False):
   n_elt = PT.Element.Size(elt_n)
   size_elt = PT.Element.NVtx(elt_n)
 
-  tag_vtx   = np.isin(ec, pl) # True where vtx is 
+  tag_vtx = np.isin(ec, pl) # True where vtx is
   if elt_full:
     tag_tri = np.logical_and.reduceat(tag_vtx, np.arange(0,n_elt*size_elt,size_elt)) # True when has vtx 
   else:
@@ -49,49 +54,63 @@ def tag_elmt_owning_vtx(zone, pl, cgns_name, elt_full=False):
   return gc_tri_pl
 
 
-def add_bc_on_periodic_patch(zone, elt_pl, old_vtx_num, new_vtx_num, cgns_name, comm):
-  elt_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_pl, 'TRI_3')
+def report_bcs_on_periodic_patch(zone, elt_n, elt_vtx_pl, old_vtx_num, new_vtx_num, comm):
 
   # > Find elts having vtx in periodic patch vtx
-  offset = local_pl_offset(zone, LOC_TO_DIM[CGNS_TO_LOC[cgns_name]])
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)==cgns_name
-  elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
+  # offset = local_pl_offset(zone, LOC_TO_DIM[CGNS_TO_LOC[cgns_name]])
+  # is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
+  #                          PT.Element.CGNSName(n)==cgns_name
+  # elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
   n_elt = PT.Element.Size(elt_n)
   size_elt = PT.Element.NVtx(elt_n)
+  
+  elt_dim = PT.Element.Dimension(elt_n)
+  elt_cgnsname = PT.Element.CGNSName(elt_n)
+  elt_offset = PT.Element.Range(elt_n)[0]
+
+  print(f'elt_cgnsname = {elt_cgnsname}')
+  print(f'  -> elt_dim = {elt_dim}')
 
   ec_n    = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec      = PT.get_value(ec_n)
   tag_elt = np.isin(ec, elt_vtx_pl)
   tag_elt = np.logical_and.reduceat(tag_elt, np.arange(0,n_elt*size_elt,size_elt)) # True when has vtx 
   ppatch_elts_pl  = np.where(tag_elt)[0]+1
+  print(f'  -> n_elt_to_add = {ppatch_elts_pl.size}')
 
+  check_if_elt_included(ppatch_elts_pl)  
+
+
+  sys.exit()
   is_asked_bc = lambda n: PT.get_label(n)=='BC_t' and\
-                          PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
+                          PT.Subset.GridLocation(n)==CGNS_TO_LOC[elt_cgnsname]
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
   n_new_elt = 0
   new_bcs = dict()
   for bc_n in PT.get_nodes_from_predicate(zone_bc_n, is_asked_bc):
     bc_name = PT.get_name(bc_n)
     bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
-    tag  = np.isin(bc_pl-offset, ppatch_elts_pl)
+    tag  = np.isin(bc_pl-elt_offset, ppatch_elts_pl)
     new_bc_pl = bc_pl[tag]
     if new_bc_pl.size!=0:
+      print(f'    -> bc to add {bc_name}: new_bc_pl.size = {new_bc_pl.size}')
       n_new_elt += new_bc_pl.size
       new_bcs[bc_name+'p'] = new_bc_pl
       PT.new_BC(bc_name+'p',
-                type='BCWall',
+                type='FamilySpecified',
                 point_list=new_bc_pl.reshape((1,-1), order='F'),
-                loc=CGNS_TO_LOC[cgns_name],
-                family='BCS',
+                loc=CGNS_TO_LOC[elt_cgnsname],
+                family='PERIODIC',
                 parent=zone_bc_n)
 
   # > Building new elt connectivity
   new_elt_pl = np_utils.concatenate_np_arrays(new_bcs.values())[1]
   new_ec = -np.ones(n_new_elt*size_elt, dtype=np.int32)
   for isize in range(size_elt):
-    new_ec[isize::size_elt] = ec[size_elt*(new_elt_pl-offset-1)+isize]
+    new_ec[isize::size_elt] = ec[size_elt*(new_elt_pl-elt_offset-1)+isize]
 
+  # print(f'old_vtx_num = {old_vtx_num}')
+  # print(f'new_vtx_num = {new_vtx_num}')
   n_vtx = PT.Zone.n_vtx(zone)
   old_to_new_vtx_num = -np.ones(n_vtx, dtype=np.int32)
   old_to_new_vtx_num[old_vtx_num-1] = new_vtx_num
@@ -99,12 +118,12 @@ def add_bc_on_periodic_patch(zone, elt_pl, old_vtx_num, new_vtx_num, cgns_name, 
 
   new_elt_num = np.arange(n_elt, n_elt+n_new_elt, dtype=np.int32)
   old_to_new_elt_num = -np.ones(n_elt, dtype=np.int32)
-  old_to_new_elt_num[new_elt_pl-offset-1] = new_elt_num
+  old_to_new_elt_num[new_elt_pl-elt_offset-1] = new_elt_num
   for bc_name in new_bcs.keys():
     bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
     pl_n = PT.get_child_from_name(bc_n, 'PointList')
     pl = PT.get_value(pl_n)[0]
-    new_pl = old_to_new_elt_num[pl-offset-1]+offset+1
+    new_pl = old_to_new_elt_num[pl-elt_offset-1]+elt_offset+1
     PT.set_value(pl_n, new_pl.reshape((1,-1), order='F'))
 
   # > Update connectivity
@@ -119,23 +138,48 @@ def add_bc_on_periodic_patch(zone, elt_pl, old_vtx_num, new_vtx_num, cgns_name, 
   PT.set_value(er_n, er)
 
 
-def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_values, cgns_name, comm):
-  
+def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, new_vtx_num, periodic_values, cgns_name, comm):
+  '''
+
+  '''
+  print(f'gc_elt_pl = {gc_elt_pl}')
+
+  # > Get element infos
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
   elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
-
+  dim_elt = PT.Element.Dimension(elt_n)
   size_elt = PT.Element.NVtx(elt_n)
-  offset = local_pl_offset(zone, LOC_TO_DIM[CGNS_TO_LOC[cgns_name]])
+  elt_offset = PT.Element.Range(elt_n)[0]
+  n_elt = PT.Element.Size(elt_n)
+  print(f"   - elt_name={PT.get_name(elt_n)}")
+  print(f'   - LOC_TO_DIM[CGNS_TO_LOC[cgns_name]] = {LOC_TO_DIM[CGNS_TO_LOC[cgns_name]]}')
+  print(f"   - elt_offset={elt_offset}")
 
-  n_elt_to_add = gc_elt_pl.size
 
   # > Get elts connectivity
   ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec     = PT.get_value(ec_n)
-  pl     = gc_elt_pl - offset -1
+  pl     = gc_elt_pl -1
   ec_pl  = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
   ec_elt = ec[ec_pl]
+
+
+  # Filter elt with all vtx in donor gc
+  n_elt_to_add = gc_elt_pl.size
+  tag_elt = np.isin(ec_elt, gc_vtx_pld)
+  tag_elt = np.logical_and.reduceat(tag_elt, np.arange(0,n_elt_to_add*size_elt,size_elt)) # True when has vtx 
+  # print(f'tag_elt = {tag_elt}')
+  # print(f'   - n_elt_to_add = {n_elt_to_add}')
+  gc_elt_pl = gc_elt_pl[np.invert(tag_elt)]
+  # print(f'gc_elt_pl = {gc_elt_pl}')
+  n_elt_to_add = gc_elt_pl.size
+  new_elt_pl = np.arange(n_elt, n_elt+n_elt_to_add, dtype=np.int32)
+  pl     = gc_elt_pl -1
+  ec_pl  = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
+  # print(f'gc_elt_pl = {gc_elt_pl}')
+  ec_elt = ec[ec_pl]
+  
 
   # > Find vtx that are tagged in GC or not
   tag_pvtx      = np.isin(ec_elt, gc_vtx_pld) # True where vtx is 
@@ -145,48 +189,61 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_values, c
 
   # > Updating vtx numbering for periodic added elements
   n_vtx       = PT.Zone.n_vtx(zone)
+
+  vtx_match = [gc_vtx_pld, gc_vtx_pl]
+  sort_vtx_match = np.argsort(vtx_match[0])
+  idx_vtx_match = np.searchsorted(vtx_match[0], ec_elt[gc_pvtx_pl1], sorter=sort_vtx_match)
+
+
+  tag_vtx_to_add = np.isin(vtx_pl_to_add, new_vtx_num[0], invert=True)
+  print(f'new_vtx_num[0] = {new_vtx_num[0]}')
+  print(f'vtx_pl_to_add  = {vtx_pl_to_add}')
+  print(f'tag_vtx_to_add = {tag_vtx_to_add}')
+  vtx_pl_to_add = vtx_pl_to_add[tag_vtx_to_add]
+  print(f'vtx_pl_to_add  = {vtx_pl_to_add}')
   n_vtx_toadd = vtx_pl_to_add.size
-  vtx_transfo = [gc_vtx_pld, gc_vtx_pl]
-
-  sort_vtx_transfo = np.argsort(vtx_transfo[0])
-  idx_vtx_transfo = np.searchsorted(vtx_transfo[0], ec_elt[gc_pvtx_pl1], sorter=sort_vtx_transfo)
-
-
-
-  # sys.exit()
-  new_num_vtx = [vtx_pl_to_add, np.arange(n_vtx, n_vtx+n_vtx_toadd)+1]
-  sort_new_num_vtx = np.argsort(new_num_vtx[0])
-  idx_new_num_vtx = np.searchsorted(new_num_vtx[0], ec_elt[gc_pvtx_pl2], sorter=sort_new_num_vtx)
+  print(f'   - n_vtx_toadd = {n_vtx_toadd}')
+  if vtx_pl_to_add.size!=0:
+    new_vtx_num[0] = np.concatenate([new_vtx_num[0], vtx_pl_to_add])
+    new_vtx_num[1] = np.concatenate([new_vtx_num[1], np.arange(n_vtx, n_vtx+n_vtx_toadd)+1])
+  sort_new_vtx_num = np.argsort(new_vtx_num[0])
+  idx_new_vtx_num = np.searchsorted(new_vtx_num[0], ec_elt[gc_pvtx_pl2], sorter=sort_new_vtx_num)
   
   # > Update connectivity with new vtx
-  ec_elt[gc_pvtx_pl1] = vtx_transfo[1][sort_vtx_transfo[idx_vtx_transfo]]
-  ec_elt[gc_pvtx_pl2] = new_num_vtx[1][sort_new_num_vtx[idx_new_num_vtx]]
+  ec_elt[gc_pvtx_pl1] = vtx_match[1][sort_vtx_match[idx_vtx_match]]
+  ec_elt[gc_pvtx_pl2] = new_vtx_num[1][sort_new_vtx_num[idx_new_vtx_num]]
 
   # > Update element node
-  ec    = np.concatenate([ec, ec_elt])
+  ec = np.concatenate([ec, ec_elt])
   PT.set_value(ec_n, ec)
   elt_range_n  = PT.get_child_from_name(elt_n, 'ElementRange')
   elt_range    = PT.get_value(elt_range_n)
   elt_range[1] = elt_range[1]+n_elt_to_add
   PT.set_value(elt_range_n, elt_range)
 
+  
 
   # > Updating offset others elements
-  bar_n = PT.get_node_from_name(zone, 'BAR_2.0')
-  bar_elt_range_n = PT.get_child_from_name(bar_n, 'ElementRange')
-  bar_elt_range = PT.get_value(bar_elt_range_n)
-  bar_offset = elt_range[1]-bar_elt_range[0]+1
-  bar_elt_range[0] = bar_elt_range[0]+bar_offset
-  bar_elt_range[1] = bar_elt_range[1]+bar_offset
-  PT.set_value(bar_elt_range_n, bar_elt_range)
+  elts_per_dim = PT.Zone.get_ordered_elements_per_dim(zone)
+  for dim in range(dim_elt-1,0,-1):
+    assert len(elts_per_dim[dim])
+    infdim_elt_n = elts_per_dim[dim][0]
+    infdim_elt_range_n = PT.get_child_from_name(infdim_elt_n, 'ElementRange')
+    infdim_elt_range = PT.get_value(infdim_elt_range_n)
+    infdim_elt_offset = elt_range[1]-infdim_elt_range[0]+1
+    infdim_elt_range[0] = infdim_elt_range[0]+infdim_elt_offset
+    infdim_elt_range[1] = infdim_elt_range[1]+infdim_elt_offset
+    PT.set_value(infdim_elt_range_n, infdim_elt_range)
 
-  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and\
-                         PT.Subset.GridLocation(n)=='EdgeCenter'
-  for edge_bc_n in PT.get_nodes_from_predicate(zone, is_edge_bc):
-    pl_n = PT.get_child_from_name(edge_bc_n, 'PointList')
-    pl = PT.get_value(pl_n)
-    PT.set_value(pl_n, pl+bar_offset)
-  
+    infdim_elt_name = PT.Element.CGNSName(infdim_elt_n)
+    is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and\
+                PT.Subset.GridLocation(n)==CGNS_TO_LOC[infdim_elt_name]
+    for elt_bc_n in PT.get_nodes_from_predicate(zone, is_elt_bc):
+      pl_n = PT.get_child_from_name(elt_bc_n, 'PointList')
+      pl = PT.get_value(pl_n)
+      PT.set_value(pl_n, pl+infdim_elt_offset)
+
+
   # > Updating coordinates with duplicated vtx
   cx_n = PT.get_node_from_name(zone, 'CoordinateX')
   cy_n = PT.get_node_from_name(zone, 'CoordinateY')
@@ -216,15 +273,68 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_values, c
         PT.set_value(da_n, np.concatenate([da, da_to_add]))
 
   # > Updating zone dimensions
-  PT.set_value(zone, [[n_vtx+n_vtx_toadd, elt_range[1], 0]])
- 
+  if PT.Zone.n_cell(zone)==n_elt:
+    PT.set_value(zone, [[n_vtx+n_vtx_toadd, elt_range[1], 0]])
+  else:
+    PT.set_value(zone, [[n_vtx+n_vtx_toadd, PT.Zone.n_cell(zone), 0]])
 
+  # # > Building old to new vtx num
+  # old_vtx_num = np_utils.concatenate_np_arrays([vtx_match[0], new_vtx_num[0]])[1]
+  # new_vtx_num = np_utils.concatenate_np_arrays([vtx_match[1], new_vtx_num[1]])[1]
+  
 
-  old_vtx_num = np_utils.concatenate_np_arrays([vtx_transfo[0], new_num_vtx[0]])[1]
-  new_vtx_num = np_utils.concatenate_np_arrays([vtx_transfo[1], new_num_vtx[1]])[1]
-  add_bc_on_periodic_patch(zone, gc_elt_pl, old_vtx_num, new_vtx_num, 'BAR_2', comm)
+  # > Report BCs from initial domain on periodic one
+  old_elt_num = gc_elt_pl
+  sort_old_elt_num = np.argsort(old_elt_num)
+  new_elt_num = np.arange(n_elt, n_elt+n_elt_to_add, dtype=np.int32)
 
-  return n_vtx_toadd, new_num_vtx
+  # print(f'old_elt_num = {old_elt_num}')
+  # print(f'new_elt_num = {new_elt_num}')
+
+  is_asked_bc = lambda n: PT.get_label(n)=='BC_t' and\
+                          PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
+  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  n_new_elt = 0
+  new_bcs = dict()
+  for bc_n in PT.get_nodes_from_predicate(zone_bc_n, is_asked_bc):
+    bc_name = PT.get_name(bc_n)
+    bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
+    # print(f'    -> bc_pl {bc_pl-elt_offset}')
+    # print(f'    -> gc_elt_pl {gc_elt_pl-1}')
+    tag = np.isin(bc_pl-elt_offset, gc_elt_pl-1)
+    new_bc_pl = bc_pl[tag]
+    if new_bc_pl.size!=0:
+      n_new_elt += new_bc_pl.size
+      pl_idx = np.searchsorted(gc_elt_pl-1, new_bc_pl-elt_offset, sorter=sort_old_elt_num)
+      # print(f'    -> bc to add {bc_name}: new_bc_pl.size = {new_bc_pl.size}')
+      # print(f'       -> bc_pl     {bc_pl+elt_offset}')
+      # print(f'       -> gc_elt_pl {gc_elt_pl}')
+      # print(f'       -> new_bc_pl {new_bc_pl-elt_offset}')
+      # print(f'       -> pl_idx    {pl_idx}')
+      new_bc_pl = new_elt_num[sort_old_elt_num[pl_idx]]+elt_offset
+      # print(f'       -> new_bc_pl {new_bc_pl}')
+
+      new_bcs[bc_name+'p'] = new_bc_pl
+      PT.new_BC(bc_name+'p',
+                type='FamilySpecified',
+                point_list=new_bc_pl.reshape((1,-1), order='F'),
+                loc=CGNS_TO_LOC[cgns_name],
+                family='PERIODIC',
+                parent=zone_bc_n)
+
+  # # We assume that elements are ordered by dim in CGNS (true for sonics)
+  # # TODO : generalize ?
+  # elt_vtx_pl = elmt_pl_to_vtx_pl(zone, gc_elt_pl, cgns_name)
+  # print(f'elt_vtx_pl = {elt_vtx_pl}')
+  # elts_per_dim = PT.Zone.get_ordered_elements_per_dim(zone)
+  # elt_n = elts_per_dim[3][0]
+  # for dim in range(dim_elt-1,0,-1):
+  #   assert len(elts_per_dim[dim])
+  #   infdim_elt_n = elts_per_dim[dim][0]
+  #   report_bcs_on_periodic_patch(zone,  infdim_elt_n, elt_vtx_pl, old_vtx_num, new_vtx_num, comm)
+  
+
+  return n_vtx_toadd, new_vtx_num, new_elt_pl
 
 
 def add_constraint_bcs(zone, new_num_vtx):
@@ -251,13 +361,13 @@ def add_constraint_bcs(zone, new_num_vtx):
 
   zone_bc_n = PT.get_node_from_label(zone, 'ZoneBC_t')
   PT.new_BC(name='fixed',
-              type='BCWall',
+              type='FamilySpecified',
               point_list=np.arange(bar_elt_range[0]+n_bar, bar_elt_range[0]+n_bar+(n_vtx_toadd-1), dtype=np.int32).reshape((1,-1), order='F'),
               loc='EdgeCenter',
               family='BCS',
               parent=zone_bc_n)
   PT.new_BC(name='fixedp',
-              type='BCWall',
+              type='FamilySpecified',
               point_list=np.arange(bar_elt_range[0]+n_bar+(n_vtx_toadd-1), bar_elt_range[0]+n_bar+(n_vtx_toadd-1)*2, dtype=np.int32).reshape((1,-1), order='F'),
               loc='EdgeCenter',
               family='BCS',
@@ -266,7 +376,7 @@ def add_constraint_bcs(zone, new_num_vtx):
   pl_fixed = new_num_vtx[0].reshape((1,-1), order='F')
   # pl_fixedp = np.arange(1, n_vtx_toadd+1, dtype=np.int32).reshape((1,-1), order='F') # not CGNS coherent, but tricks for periodic adaptation
   PT.new_BC(name='vtx_fixed',
-            type='BCWall',
+            type='FamilySpecified',
             point_list=pl_fixed,
             loc='Vertex',
             family='BCS',
@@ -274,7 +384,7 @@ def add_constraint_bcs(zone, new_num_vtx):
   pl_fixedp = new_num_vtx[1].reshape((1,-1), order='F')
   # pl_fixedp = np.arange(1, n_vtx_toadd+1, dtype=np.int32).reshape((1,-1), order='F') # not CGNS coherent, but tricks for periodic adaptation
   PT.new_BC(name='vtx_fixedp',
-            type='BCWall',
+            type='FamilySpecified',
             point_list=pl_fixedp,
             loc='Vertex',
             family='BCS',
@@ -651,7 +761,10 @@ def duplicate_elts(zone, elt_pl, cgns_name, comm):
 
 def duplicate_periodic_patch(dist_tree, gc_name, comm):
 
-  zones = PT.get_nodes_from_label(dist_tree, 'Zone_t')
+  dist_base = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
+  is_3d = PT.get_value(dist_base)[0]==3
+
+  zones = PT.get_nodes_from_label(dist_base, 'Zone_t')
   assert len(zones)==1
   zone = zones[0]
   n_tri_old = PT.Zone.n_cell(zone)
@@ -659,53 +772,83 @@ def duplicate_periodic_patch(dist_tree, gc_name, comm):
   # > Get GCs info
   zone_gc_n = PT.get_child_from_label(zone, 'ZoneGridConnectivity_t')
   gc_n = PT.get_child_from_name(zone_gc_n, gc_name)
-  assert PT.Subset.GridLocation(gc_n)=='EdgeCenter' # 2d for now
+  gc_vtx_n = PT.get_child_from_name(zone_gc_n, gc_name+'_0')
+  gc_loc = PT.Subset.GridLocation(gc_n)
   periodic_values = PT.GridConnectivity.periodic_values(gc_n)
 
   gc_pl  = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))[0]
   gc_pld = PT.get_value(PT.get_child_from_name(gc_n, 'PointListDonor'))[0]
-  gc_vtx_pl  = elmt_pl_to_vtx_pl(zone, gc_pl , 'BAR_2')
-  gc_vtx_pld = elmt_pl_to_vtx_pl(zone, gc_pld, 'BAR_2')
-  
-
-
+  gc_vtx_pl  = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointList'))[0]
+  gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
   # > Add GCs as BCs
+  PT.new_Family('PERIODIC', parent=dist_base)
+  PT.new_Family('GCS', parent=dist_base)
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
   for gc_n in PT.get_nodes_from_label(zone_gc_n, 'GridConnectivity_t'):
-    gc_name = PT.get_name(gc_n)
-    gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
-    PT.new_BC(name=gc_name,
-              type='BCWall',
-              point_list=gc_pl,
-              loc='EdgeCenter',
-              family='BCS',
+    bc_name = PT.get_name(gc_n)
+    bc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
+    bc_loc  = PT.Subset.GridLocation(gc_n)
+    PT.new_BC(name=bc_name,
+              type='FamilySpecified',
+              point_list=bc_pl,
+              loc=bc_loc,
+              family='GCS',
               parent=zone_bc_n)
 
 
   # > Add periodic elts connected to GC
-  gc_elt_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TRI_3', elt_full=False)
-  n_vtx_toadd, new_num_vtx = add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_values, 'TRI_3', comm)
+  PT.print_tree(zone)
+  # duplicate_vtx_pl = np.empty(0, dtype=np.int32)
+  # new_num_vtx      = [np.empty(0, dtype=np.int32), np.empty(0, dtype=np.int32)]
 
 
-  # > Add volumic BCs so that we can delete patches after TODO: better way ?
-  pl_vol  = np.arange(1, n_tri_old+1, dtype=np.int32)
-  pl_vol  = np.delete(pl_vol, gc_elt_pl-1).reshape((1,-1), order='F')
-  pl_volp = np.arange(n_tri_old, n_tri_old+gc_elt_pl.size+1, dtype=np.int32)
-  pl_volp = pl_volp.reshape((1,-1), order='F')
-  pl_volc = (gc_elt_pl).reshape((1,-1), order='F')
-  PT.new_BC(name='vol',            type='BCWall', point_list=pl_vol , loc='FaceCenter', family='BCS', parent=zone_bc_n)
-  PT.new_BC(name='vol_periodic',   type='BCWall', point_list=pl_volp, loc='FaceCenter', family='BCS', parent=zone_bc_n)
-  PT.new_BC(name='vol_constraint', type='BCWall', point_list=pl_volc, loc='FaceCenter', family='BCS', parent=zone_bc_n)
+  # > Duplicate periodic cells:
+  # if is_3d:
+  #   gc_elt_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', elt_full=False)
+  #   n_vtx_to_add, new_num_vtx, new_elt_pl = add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_values, 'TETRA_4', comm)
+  # else:
+  #   gc_elt_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TRI_3', elt_full=False)
+  #   n_vtx_to_add, new_num_vtx, new_elt_pl = add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, periodic_values, 'TRI_3', comm)
 
 
-  # > Create new BAR_2 elmts and associated BCs to constrain mesh adaptation
-  add_constraint_bcs(zone, new_num_vtx)
+  new_vtx_num = [np.empty(0, dtype=np.int32), np.empty(0, dtype=np.int32)]
+  for elt_name, loc in {'TETRA_4':'CellCenter', 'TRI_3':'FaceCenter', 'BAR_2':'EdgeCenter'}.items():
+  # for elt_name, loc in {'TETRA_4':'CellCenter', 'TRI_3':'FaceCenter'}.items():
+    print(f'elt_name = {elt_name} -> {gc_vtx_pld.size}')
+    gc_elt_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, elt_name, elt_full=False)
+    n_vtx_to_add, new_vtx_num, new_elt_pl = add_periodic_elmt(zone, gc_elt_pl,
+                                                              gc_vtx_pl, gc_vtx_pld,
+                                                              new_vtx_num,
+                                                              periodic_values,
+                                                              elt_name,
+                                                              comm)
+    PT.print_tree(PT.get_node_from_name(zone, 'GridCoordinates'))
+
+
+  # #   # PT.print_tree(zone)
+  #   # > Add volumic BCs so that we can delete patches after TODO: better way ?
+  #   # > For now, FaceCenter BCS are wrong
+  #   if elt_name=='TETRA_4':
+  #     pl_vol  = np.arange(1, n_tri_old+1, dtype=np.int32)
+  #     pl_vol  = np.delete(pl_vol, gc_elt_pl-1).reshape((1,-1), order='F')
+  #     pl_volp = np.arange(n_tri_old, n_tri_old+gc_elt_pl.size+1, dtype=np.int32)
+  #     pl_volp = pl_volp.reshape((1,-1), order='F')
+  #     pl_volc = (gc_elt_pl).reshape((1,-1), order='F')
+  #     PT.new_BC(name=f'{elt_name.lower()}',            type='BCWall', point_list=pl_vol , loc=loc, family='PERIODIC', parent=zone_bc_n)
+  #     PT.new_BC(name=f'{elt_name.lower()}_periodic',   type='BCWall', point_list=pl_volp, loc=loc, family='PERIODIC', parent=zone_bc_n)
+  #     PT.new_BC(name=f'{elt_name.lower()}_constraint', type='BCWall', point_list=pl_volc, loc=loc, family='PERIODIC', parent=zone_bc_n)
+
+  #     # > Search undefined faces
+
+
+  # # > Create new BAR_2 elmts and associated BCs to constrain mesh adaptation
+  # add_constraint_bcs(zone, new_num_vtx)
 
   PT.rm_nodes_from_name(dist_tree, 'ZoneGridConnectivity')
   
 
-  return periodic_values, new_num_vtx
+  return periodic_values, new_vtx_num
 
 
 def retrieve_initial_domain(dist_tree, periodic_values, new_num_vtx, comm):

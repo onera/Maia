@@ -250,14 +250,55 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_name, comm, container_n
 
   mlog.info(f"\n\n[Periodic adaptation] Step #1: Duplicating periodic patch...")
   pdist_tree = copy.deepcopy(dist_tree)
+
+
+  # > Get matching vtx
+  dist_base = PT.get_child_from_label(pdist_tree, 'CGNSBase_t')
+  zone_bc_n = PT.get_node_from_label(pdist_tree, 'ZoneBC_t')
+  # PT.new_Family('GC_TO_CONVERT1', parent=dist_base)
+
+  for i_gc, gc_path in enumerate(gc_paths):
+    gc_n    = PT.get_node_from_path(pdist_tree, gc_path)
+    gc_name = PT.get_name(gc_n)
+    gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
+    gc_loc  = PT.Subset.GridLocation(gc_n)
+    gc_distrib_n = PT.maia.getDistribution(gc_n)
+    bc_n = PT.new_BC(name=gc_name,
+                     type='FamilySpecified',
+                     point_list=gc_pl,
+                     loc=gc_loc,
+                     family=f'GC_TO_CONVERT_{i_gc}',
+                     parent=zone_bc_n)
+    PT.add_child(bc_n, gc_distrib_n)
+
+  maia.algo.dist.connect_1to1_families(pdist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='Vertex')
+
+
   maia.algo.dist.redistribute_tree(pdist_tree, 'gather.0', comm) # Modifie le dist_tree 
   PT.rm_nodes_from_name(pdist_tree, ':CGNS#Distribution')
   
+  gc_name = gc_paths[0].split('/')[-1]
   periodic_values, new_num_vtx = duplicate_periodic_patch(pdist_tree, gc_name, comm)
   pdist_tree = full_to_dist.full_to_dist_tree(pdist_tree, comm)
 
-  PT.print_tree(pdist_tree)
+  # PT.print_tree(pdist_tree)
+  # PT.rm_nodes_from_name(pdist_tree, 'BAR_2.0')
+  # PT.rm_nodes_from_name(pdist_tree, 'TRI_3.0')
+  # PT.rm_nodes_from_name(pdist_tree, 'ridge*')
+  is_cell_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='CellCenter'
+  is_face_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='FaceCenter'
+  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
+  is_vtx_bc  = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='Vertex'
+
+  # PT.rm_nodes_from_predicate(dist_tree, is_cell_bc)
+  # PT.rm_nodes_from_predicate(pdist_tree, is_face_bc)
+  # PT.rm_nodes_from_predicate(pdist_tree, is_edge_bc)
+  PT.rm_nodes_from_predicate(pdist_tree, is_vtx_bc)
+  for bc_n in PT.get_nodes_from_predicate(pdist_tree, is_edge_bc):
+    PT.set_value(PT.get_child_from_name(bc_n, 'GridLocation'), 'FaceCenter')
+
   maia.io.dist_tree_to_file(pdist_tree, 'OUTPUT/extended_domain.cgns', comm)
+  sys.exit()
 
 
   mlog.info(f"\n\n[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
