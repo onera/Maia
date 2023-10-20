@@ -5,6 +5,7 @@ import heapq
 
 from cmaia.utils import search_subset_match
 from maia.factory.partitioning.load_balancing import single_zone_balancing
+from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 def balance_with_uniform_weights(n_elem_per_zone, n_rank):
     """
@@ -276,7 +277,7 @@ def balance_with_non_uniform_weights(n_elem_per_zone, n_rank,
     for k in range(nb_of_search):
       match_idx = True #To enter the loop
       while match_idx:
-        searching_list = np.fromiter(n_elem_zone_abs.values(), dtype=np.int32)
+        searching_list = np.fromiter(n_elem_zone_abs.values(), dtype=pdm_gnum_dtype)
         match_idx = search_subset_match(searching_list, mean_per_rank-k, 2**20)
         if match_idx:
           z_names = [list(n_elem_zone_abs.keys())[idx] for idx in match_idx]
