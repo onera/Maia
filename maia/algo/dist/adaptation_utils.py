@@ -966,23 +966,24 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   elt_offset = PT.Element.Range(elt_n)[0]
 
   n_elt_to_add = elt_pl.size
-  print(f'n_elt_to_add = {n_elt_to_add}')
-  print(f'elt_pl = {elt_pl}')
+  # print(f'n_elt_to_add = {n_elt_to_add}')
+  # print(f'elt_pl = {elt_pl}')
   # > Get elts connectivity
   ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec     = PT.get_value(ec_n)
   pl     = elt_pl -1
   ec_pl  = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
   ec_elt = ec[ec_pl]
+  # print(f'tgt_elt_ec = {ec_elt.reshape(n_elt_to_add,size_elt)}')
 
   
   tag_elt = np.isin(ec_elt, vtx_pl, invert=True)
-  print(f'tag_elt = {tag_elt}')
+  # print(f'tag_elt = {tag_elt}')
   tag_elt_with_face = np.add.reduceat(tag_elt.astype(np.int32), np.arange(0,n_elt_to_add*size_elt,size_elt)) # True when has vtx 
-  print(f'tag_elt_with_face = {tag_elt_with_face}')
-  elt_pl = elt_pl[np.where(tag_elt_with_face==3)[0]]
+  # print(f'tag_elt_with_face = {tag_elt_with_face}')
+  elt_pl = elt_pl[np.where(tag_elt_with_face==size_elt-1)[0]]
   n_elt_to_add = elt_pl.size
-  print(f'PL_cell_with_face_to_add = {elt_pl}')
+  # print(f'PL_cell_with_face_to_add = {elt_pl}')
 
   # > Get elts connectivity
   ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')
@@ -991,13 +992,33 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   print(f'n_cell_with_face_to_add = {elt_pl.size}')
   ec_pl  = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
   tgt_elt_ec = ec[ec_pl]
-  tag_elt = np.isin(tgt_elt_ec, vtx_pl, invert=True)
-  tgt_elt_ec = tgt_elt_ec[tag_elt]
-  # print(f'tgt_elt_ec = {tgt_elt_ec.reshape(8,3)}')
 
-  # tgt_elt_ec = ec_elt[tag_elt]
-  # print(f'n_vtx_removed = {ec_elt.size-tgt_elt_ec.size}')
-  # sys.exit()
+  
+
+  conf0 = np.array([0, 1, 2], dtype=np.int32)
+  # conf1 = np.array([0, 1, 3], dtype=np.int32)
+  conf2 = np.array([0, 2, 3], dtype=np.int32)
+  # conf3 = np.array([1, 2, 3], dtype=np.int32)
+  
+  conf0t = np.array([0, 2, 1], dtype=np.int32)
+  # conf1t = np.array([0, 1, 3], dtype=np.int32)
+  conf2t = np.array([0, 2, 1], dtype=np.int32)
+  # conf3t = np.array([1, 2, 3], dtype=np.int32)
+
+  tag_elt = np.isin(tgt_elt_ec, vtx_pl, invert=True)
+  tag_elt_rshp = tag_elt.reshape(n_elt_to_add,size_elt)
+  tag_eltm1 = np.where(tag_elt_rshp)
+  tag_eltm1_rshp = tag_eltm1[1].reshape(n_elt_to_add,size_elt-1)
+
+  tgt_elt_ec = tgt_elt_ec[tag_elt].reshape(n_elt_to_add,size_elt-1)
+  for conf, conft in zip([conf0,conf2], [conf0t,conf2t]):
+    tag_conf = np.where((tag_eltm1_rshp==conf).all(1))[0]
+    tgt_elt_ec_cp = tgt_elt_ec[tag_conf]
+    tgt_elt_ec_cp = tgt_elt_ec_cp[:,conft]
+    tgt_elt_ec[tag_conf] = tgt_elt_ec_cp
+  tgt_elt_ec = tgt_elt_ec.reshape(n_elt_to_add*(size_elt-1))
+
+
   # > Get element infos
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==tgt_elt_name
