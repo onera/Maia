@@ -917,11 +917,7 @@ def duplicate_periodic_patch(dist_tree, gc_name, comm):
             loc='Vertex',
             family='PERIODIC',
             parent=zone_bc_n)
-  n_vtx = PT.Zone.n_vtx(zone)
-  vtx_tag = np.zeros(n_vtx, dtype=np.float64)
-  vtx_tag[pl_periodic-1] = pl_periodic
-  vtx_tag[pl_constraint-1] = pl_constraint
-  PT.new_DataArray('vtx_tag', value=vtx_tag, parent=PT.get_child_from_name(zone, 'Metric'))
+
   return periodic_values, new_vtx_num, periodized_bcs, matching_bcs
 
 
