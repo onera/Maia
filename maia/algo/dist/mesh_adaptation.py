@@ -281,10 +281,11 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   PT.rm_nodes_from_name(pdist_tree, ':CGNS#Distribution')
   
   gc_name = gc_paths[0].split('/')[-1]
-  periodic_values, new_vtx_num = duplicate_periodic_patch(pdist_tree, gc_name, comm)
+  periodic_values, new_vtx_num, bcs_to_update, bcs_to_retrieve = \
+    duplicate_periodic_patch(pdist_tree, gc_name, comm)
   pdist_tree = full_to_dist.full_to_dist_tree(pdist_tree, comm)
 
-  print(f'new_vtx_num = {new_vtx_num}')
+  # print(f'new_vtx_num = {new_vtx_num}')
 
   # PT.print_tree(pdist_tree)
   is_cell_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='CellCenter'
@@ -361,23 +362,22 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
   # print(f'n_vtx = {PT.Zone.n_vtx(PT.get_node_from_label(adapted_dist_tree, "Zone_t"))}')
 
-  retrieve_initial_domain(adapted_dist_tree, gc_name, periodic_values, new_vtx_num, comm)
-  PT.rm_nodes_from_name(adapted_dist_tree, 'vol')
-  PT.rm_nodes_from_name(adapted_dist_tree, 'vol_periodic')
-  PT.rm_nodes_from_name(adapted_dist_tree, 'vol_constraint')
-  # print(f'n_vtx = {PT.Zone.n_vtx(PT.get_node_from_label(adapted_dist_tree, "Zone_t"))}')
+  retrieve_initial_domain(adapted_dist_tree, gc_name, periodic_values, new_vtx_num,\
+                          bcs_to_update, bcs_to_retrieve, comm)
   adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm)
 
-  bar_n = PT.get_node_from_name(adapted_dist_tree, 'BAR_2.0')
-  # PT.print_tree(bar_n)
-  # print(f'n_bar = {PT.Element.Size(bar_n)}')
-  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and\
-                         PT.Subset.GridLocation(n)=="EdgeCenter"
-  n_pl = 0
-  for bc_n in PT.get_nodes_from_predicate(adapted_dist_tree, is_edge_bc):
-    n_pl += PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0].size
-    # print(f'n_pl = {n_pl}')
+  bc_names = list()
+  zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
+  for bc_n in PT.get_nodes_from_predicate(zone_bc_n, is_edge_bc):
+    bc_names.append(PT.get_name(bc_n))
+    PT.set_value(PT.get_child_from_name(bc_n, 'GridLocation'), 'FaceCenter')
+
   maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
+  
+  for bc_name in bc_names:
+    bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
+    PT.set_value(PT.get_child_from_name(bc_n, 'GridLocation'), 'EdgeCenter')
+
   sys.exit()
 
 

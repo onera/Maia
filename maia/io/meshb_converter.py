@@ -89,7 +89,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         else:
           bc_name = bc_names[location][i_group-n_new_bc]
 
-        bc_n = PT.new_BC(bc_name, type='Null', loc=location, parent=zone_bc)
+        bc_n = PT.new_BC(bc_name, type='FamilySpecified', loc=location, parent=zone_bc)
         start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
         dn_elt_bnd = end - start
         PT.new_PointList(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
