@@ -601,7 +601,7 @@ def duplicate_elts(zone, bcs_to_duplicate, comm):
                 point_list=new_bc_pl.reshape((1,-1), order='F'),
                 loc=CGNS_TO_LOC[elt_name],
                 parent=zone_bc_n)
-      if bc_fam_n is not None
+      if bc_fam_n is not None:
         PT.add_child(new_bc_n, bc_fam_n)
 
       update_infdim_elts(zone, dim_elt, n_elt_to_add)
