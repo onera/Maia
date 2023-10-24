@@ -321,6 +321,39 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
                                               constraints=[gc1_name, gc2_name],
                                               feflo_opts=feflo_opts)
   
+
+  # > Delete added infos
+  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'PERIODIC', 'Family_t')
+  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'BCS',      'Family_t')
+  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'GCS',      'Family_t')
+  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'maia_topo','FlowSolution_t')
+  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'tetra_4_periodic','BC_t')
+
+
+  # > Retrieve periodicities
+  fadapted_dist_base = PT.get_child_from_label(fadapted_dist_tree, 'CGNSBase_t')
+  PT.new_Family('BC_TO_CONVERT_1', parent=fadapted_dist_base)
+  PT.new_Family('BC_TO_CONVERT_2', parent=fadapted_dist_base)
+  bc1_name = gc_paths[0].split('/')[-1]#+'_0'
+  bc2_name = gc_paths[1].split('/')[-1]#+'_0'
+  bc1_n = PT.get_node_from_name(fadapted_dist_tree, bc1_name, 'BC_t')
+  bc2_n = PT.get_node_from_name(fadapted_dist_tree, bc2_name, 'BC_t')
+  PT.rm_children_from_label(bc1_n, 'FamilyName_t')
+  PT.rm_children_from_label(bc2_n, 'FamilyName_t')
+  PT.new_node('FamilyName', label='FamilyName_t', value='BC_TO_CONVERT_1', parent=bc1_n)
+  PT.new_node('FamilyName', label='FamilyName_t', value='BC_TO_CONVERT_2', parent=bc2_n)
+  maia.algo.dist.connect_1to1_families(fadapted_dist_tree, ('BC_TO_CONVERT_1', 'BC_TO_CONVERT_2'), comm, periodic=periodic)
+
+  PT.print_tree(fadapted_dist_tree)
+  gc1_name = gc_paths[0].split('/')[-1]+'_0'
+  gc2_name = gc_paths[1].split('/')[-1]+'_0'
+  gc1_n = PT.get_node_from_name(fadapted_dist_tree, gc1_name, 'GridConnectivity_t')
+  gc2_n = PT.get_node_from_name(fadapted_dist_tree, gc2_name, 'GridConnectivity_t')
+  PT.set_name(gc1_n, gc_paths[0].split('/')[-1])
+  PT.set_name(gc2_n, gc_paths[1].split('/')[-1])
+  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'BC_TO_CONVERT_1', 'Family_t')
+  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'BC_TO_CONVERT_2', 'Family_t')
+
   maia.io.dist_tree_to_file(fadapted_dist_tree, 'OUTPUT/adapted.cgns', comm)
 
   return fadapted_dist_tree

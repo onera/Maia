@@ -755,6 +755,15 @@ def duplicate_elts(zone, bcs_to_duplicate, comm):
       new_conn = np.searchsorted(pl_vtx_duplicate, ec_duplicate) #pl_vtx_duplicate already sorted by unique
       new_conn = new_conn +n_vtx+1
 
+      # if elt_name=='TRI_3':
+      #   # print(f'new_conn = {new_conn}')
+      #   new_conn = new_conn.reshape(n_elt_to_add,size_elt)
+      #   rotation = np.array([0,2,1], dtype=np.int32)
+      #   new_conn = new_conn[:,rotation]
+      #   new_conn = new_conn.reshape(n_elt_to_add*size_elt)
+      #   # print(f'new_conn = {new_conn}')
+      #   # sys.exit()
+
       cx_n = PT.get_node_from_name(zone, 'CoordinateX')
       cy_n = PT.get_node_from_name(zone, 'CoordinateY')
       cz_n = PT.get_node_from_name(zone, 'CoordinateZ')
@@ -851,6 +860,10 @@ def duplicate_periodic_patch(dist_tree, gc_name, comm):
   # for elt_name, loc in {'TETRA_4':'CellCenter'}.items():
     print(f'elt_name = {elt_name} -> {gc_vtx_pld.size}')
     gc_elt_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, elt_name, elt_full=False)
+    # print(f'  --> n_elt_tagged = {gc_elt_pl.size}')
+    # if elt_name=='TRI_3':
+    #   gc_elt_pl = tag_elmt_owning_vtx(zone, np.concatenate([gc_vtx_pld, new_vtx_num[0]]), elt_name, elt_full=True)
+    # print(f'  --> n_elt_tagged = {gc_elt_pl.size}')
     n_vtx_to_add, new_vtx_num, new_elt_pl, periodized_bcs[elt_name] =\
       add_periodic_elmt(zone, gc_elt_pl,
                         gc_vtx_pl, gc_vtx_pld,
@@ -946,6 +959,7 @@ def retrieve_initial_domain(dist_tree, gc_name, periodic_values, new_vtx_num,
   bc_to_rm_vtx_pl = elmt_pl_to_vtx_pl(dist_zone, bc_to_rm_pl, cell_elt_name)
   print(f'n_vtx_to_rm = {bc_to_rm_vtx_pl.size}')
   n_elt_to_rm     = bc_to_rm_pl.size
+  print(f'n_elt_to_rm = {n_elt_to_rm}')
 
   bc_to_keep_n      = PT.get_child_from_name(zone_bc_n, f'{face_elt_name.lower()}_constraint')
   bc_to_keep_loc    = PT.Subset.GridLocation(bc_to_keep_n)
@@ -964,16 +978,13 @@ def retrieve_initial_domain(dist_tree, gc_name, periodic_values, new_vtx_num,
   # > Compute new vtx numbering
   vtx_tag_n = PT.get_node_from_name(dist_zone, 'vtx_tag')
   vtx_tag   = PT.get_value(vtx_tag_n)
-  print(f'vtx_tag = {vtx_tag}')
   vtx_tag = np.delete(vtx_tag, bc_to_rm_vtx_pl-1)
   PT.set_value(vtx_tag_n, vtx_tag)
 
-  print(f'bc_to_rm_vtx_pl = {bc_to_rm_vtx_pl}')
   ids = bc_to_rm_vtx_pl
   targets = -np.ones(bc_to_rm_vtx_pl.size, dtype=np.int32)
   vtx_distri_ini = np.array([0,n_vtx,n_vtx], dtype=np.int32) # TODO pdm_gnum
   old_to_new_vtx = merge_distributed_ids(vtx_distri_ini, ids, targets, comm, True)
-  print(f'old_to_new_vtx = {old_to_new_vtx}')
 
   cx_n = PT.get_node_from_name(dist_zone, 'CoordinateX')
   cy_n = PT.get_node_from_name(dist_zone, 'CoordinateY')
