@@ -26,12 +26,10 @@ def get_tree_info(dist_tree, container_names):
 
   # > Get BCs infos
   bc_names = dict()
-
   for entity_name in ["EdgeCenter", "FaceCenter", "CellCenter"]:
     is_entity_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==entity_name
     entity_bcs   = PT.get_children_from_predicates(zone_n, ['ZoneBC_t', is_entity_bc])
     bc_names[entity_name] = [PT.get_name(bc_n) for bc_n in entity_bcs]
-
 
   # > Container field names
   field_names = dict()
@@ -77,8 +75,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
     n_bc_init = len(bc_names[location]) if location in bc_names else 0
     n_new_bc  = n_elt_group - n_bc_init
-    # print(f'[{location}] n_bc = {n_bc_init} -> {n_new_bc}')
-    # assert n_new_bc in [0,1], f"Unknow tags in meshb file ({location})"
+    assert n_new_bc in [0,1], f"Unknow tags in meshb file ({location})"
 
     for i_group in range(n_elt_group):
       if bc_names[location]:
@@ -89,7 +86,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         else:
           bc_name = bc_names[location][i_group-n_new_bc]
 
-        bc_n = PT.new_BC(bc_name, type='FamilySpecified', loc=location, parent=zone_bc)
+        bc_n = PT.new_BC(bc_name, type='Null', loc=location, parent=zone_bc)
         start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
         dn_elt_bnd = end - start
         PT.new_PointList(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
@@ -101,8 +98,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
   range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
 
-  # print(f'cell_groups = {cell_groups}')
-  # print(f'range_per_dim = {range_per_dim}')
   if cell_groups is not None:
     groups_to_bcs(cell_groups, zone_bc, "CellCenter",                   0, comm)
   if face_groups is not None:
@@ -112,8 +107,6 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   if vtx_groups  is not None:
     groups_to_bcs(vtx_groups,  zone_bc, "Vertex",     range_per_dim[1][1], comm)
 
-  # PT.print_tree(zone_bc)
-  # sys.exit()
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
   distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, "Vertex"))
@@ -221,11 +214,9 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
         bc_tag[pl-offset-1] = n_tag + 1
         bc_name = PT.get_name(bc_n)
         bc_loc  = PT.Subset.GridLocation(bc_n)
-        # print(f'{PT.get_name(bc_n)} --> {n_tag + 1}')
         if constraints is not None and\
            PT.get_name(bc_n) not in constraints:
           constraint_tags[bc_loc].append(str(n_tag + 1))
-
 
     def bc_pl_to_bc_tag_vtx(list_of_bc, bc_tag, offset):
       for n_tag, bc_n in enumerate(list_of_bc):
@@ -234,10 +225,10 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
 
     zone_bc = PT.get_child_from_label(zone, 'ZoneBC_t')
 
-    tetra_tag = np.zeros(n_tetra , dtype=np.int32)
-    tri_tag   =  np.ones(n_tri , dtype=np.int32)
-    edge_tag  = -np.ones(n_edge, dtype=np.int32)
-    vtx_tag   = np.zeros(n_vtx , dtype=np.int32)
+    tetra_tag =  np.zeros(n_tetra , dtype=np.int32)
+    tri_tag   = -np.ones (n_tri , dtype=np.int32)
+    edge_tag  = -np.ones (n_edge, dtype=np.int32)
+    vtx_tag   =  np.zeros(n_vtx , dtype=np.int32)
     if zone_bc is not None:
       # > Cell BC_t
       is_cell_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "CellCenter"
@@ -283,8 +274,6 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
                     elmt_by_dim[2],   tri_tag,
                     elmt_by_dim[1],  edge_tag)
 
-
-
     n_metric_fld = len(metric_nodes)
     if n_metric_fld==1:
       metric_fld = PT.get_value(metric_nodes[0])
@@ -312,7 +301,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
 
   end = time.time()
   mlog.info(f"Write of meshb file completed ({end-start:.2f} s)")
-  # sys.exit()
+
   return constraint_tags
 
 

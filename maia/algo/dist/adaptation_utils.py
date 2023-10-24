@@ -533,10 +533,6 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_values,
       PT.set_value(da_n, np.concatenate([da, da_to_add]))
 
 
-
-  # PT.set_value(ec_n, ec)
-
-
 def duplicate_elts(zone, bcs_to_duplicate, comm):
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
 
@@ -559,12 +555,13 @@ def duplicate_elts(zone, bcs_to_duplicate, comm):
     for bc_name, new_bc_name in elt_bcs.items():
       bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
       bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0]
+      bc_type = PT.get_value(bc_n)
+      bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
       n_elt_to_add = bc_pl.size
 
       pl = bc_pl - offset_elt
       conn_pl = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
       ec_duplicate = ec[conn_pl]
-
 
       # > Update connectivity with new vtx numbering
       n_vtx = PT.Zone.n_vtx(zone)
@@ -590,7 +587,6 @@ def duplicate_elts(zone, bcs_to_duplicate, comm):
       PT.set_value(cy_n, cy)
       PT.set_value(cz_n, cz)
 
-
       ec = np.concatenate([ec, new_conn])
       PT.set_value(ec_n, ec)
       er_n = PT.get_child_from_name(elt_n, 'ElementRange')
@@ -599,16 +595,16 @@ def duplicate_elts(zone, bcs_to_duplicate, comm):
       PT.set_value(er_n, er)
 
       new_bc_pl = np.arange(er[1]-n_elt_to_add+1, er[1]+1, dtype=np.int32)
-  
-      PT.new_BC(new_bc_name,
-                type='FamilySpecified',
+
+      new_bc_n = PT.new_BC(new_bc_name,
+                type=bc_type,
                 point_list=new_bc_pl.reshape((1,-1), order='F'),
                 loc=CGNS_TO_LOC[elt_name],
-                family='BCS',
                 parent=zone_bc_n)
-  
-      update_infdim_elts(zone, dim_elt, n_elt_to_add)
+      if bc_fam_n is not None
+        PT.add_child(new_bc_n, bc_fam_n)
 
+      update_infdim_elts(zone, dim_elt, n_elt_to_add)
 
   n_vtx_duplicate = pl_vtx_duplicate.size
   return n_vtx_duplicate, pl_vtx_duplicate

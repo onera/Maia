@@ -29,7 +29,6 @@ tmp_repo   = Path('TMP_adapt_repo')
 in_file_meshb = tmp_repo / 'mesh.mesh'
 in_file_solb  = tmp_repo / 'metric.sol'
 in_file_fldb  = tmp_repo / 'field.sol'
-# in_files = {'mesh': 'TMP_adapt_repo/mesh.mesh',
 in_files = {'mesh': in_file_meshb,
             'sol' : in_file_solb ,
             'fld' : in_file_fldb }
@@ -215,16 +214,13 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
   to_copy = lambda n: PT.get_label(n) in ['Family_t']
   for node in PT.get_nodes_from_predicate(input_base, to_copy):
     PT.add_child(adapted_base, node)
-  bc_n = PT.get_node_from_name(adapted_dist_tree, 'feflo_edge_bc_0')
-  PT.new_node('FamilyName', label='FamilyName_t', value='BCS', parent=bc_n)
+
   # > Copy BC data
   to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
   for bc_path in PT.predicates_to_paths(adapted_zone, 'ZoneBC_t/BC_t'):
     adapted_bc = PT.get_node_from_path(adapted_zone, bc_path)
     input_bc   = PT.get_node_from_path(input_zone, bc_path)
-    # print(f'bc_name = {PT.get_name(adapted_bc)}')
     if input_bc is not None:
-      # print(f'  ---> DOING')
       PT.set_value(adapted_bc, PT.get_value(input_bc))
       for node in PT.get_nodes_from_predicate(input_bc, to_copy):
         PT.add_child(adapted_bc, node)
@@ -321,7 +317,6 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
 
   # > Delete added infos
   PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'PERIODIC', 'Family_t')
-  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'BCS',      'Family_t')
   PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'GCS',      'Family_t')
   PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'maia_topo','FlowSolution_t')
   PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'tetra_4_periodic','BC_t')
@@ -329,8 +324,6 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
 
   # > Retrieve periodicities
   fadapted_dist_base = PT.get_child_from_label(fadapted_dist_tree, 'CGNSBase_t')
-  PT.new_Family('BC_TO_CONVERT_1', parent=fadapted_dist_base)
-  PT.new_Family('BC_TO_CONVERT_2', parent=fadapted_dist_base)
   bc1_name = gc_paths[0].split('/')[-1]#+'_0'
   bc2_name = gc_paths[1].split('/')[-1]#+'_0'
   bc1_n = PT.get_node_from_name(fadapted_dist_tree, bc1_name, 'BC_t')
@@ -347,8 +340,6 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   gc2_n = PT.get_node_from_name(fadapted_dist_tree, gc2_name, 'GridConnectivity_t')
   PT.set_name(gc1_n, gc_paths[0].split('/')[-1])
   PT.set_name(gc2_n, gc_paths[1].split('/')[-1])
-  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'BC_TO_CONVERT_1', 'Family_t')
-  PT.rm_nodes_from_name_and_label(fadapted_dist_tree, 'BC_TO_CONVERT_2', 'Family_t')
 
   # > Remove feflo bcs
   zone = PT.get_node_from_label(fadapted_dist_tree, 'Zone_t')
