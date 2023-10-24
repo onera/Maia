@@ -217,7 +217,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     PT.add_child(adapted_base, node)
   bc_n = PT.get_node_from_name(adapted_dist_tree, 'feflo_edge_bc_0')
   PT.new_node('FamilyName', label='FamilyName_t', value='BCS', parent=bc_n)
-  maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/adapted1.cgns', comm)
   # > Copy BC data
   to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
   for bc_path in PT.predicates_to_paths(adapted_zone, 'ZoneBC_t/BC_t'):
@@ -286,8 +285,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
     duplicate_periodic_patch(pdist_tree, gc_name, comm)
   pdist_tree = full_to_dist.full_to_dist_tree(pdist_tree, comm)
 
-
-  maia.io.dist_tree_to_file(pdist_tree, 'OUTPUT/extended_domain.cgns', comm)
+  # maia.io.dist_tree_to_file(pdist_tree, 'OUTPUT/extended_domain.cgns', comm)
 
 
   mlog.info(f"\n\n[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
@@ -296,65 +294,21 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
                                               constraints=['tri_3_periodic', 'tri_3_constraint'],
                                               feflo_opts=feflo_opts)
   padapted_dist_base = PT.get_child_from_label(padapted_dist_tree, 'CGNSBase_t')
-  PT.new_Family('BCS', parent=padapted_dist_base)
 
-
-  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
-  zone_bc_n = PT.get_node_from_label(padapted_dist_tree, 'ZoneBC_t')
-  bc_names = list()
-  for bc_n in PT.get_nodes_from_predicate(zone_bc_n, is_edge_bc):
-    gl_n = PT.get_child_from_name(bc_n, 'GridLocation')
-    PT.set_value(gl_n, 'FaceCenter')
-    bc_names.append(PT.get_name(bc_n))
-  zone = PT.get_node_from_label(padapted_dist_tree, 'Zone_t')
-  n_cell = PT.Zone.n_cell(zone)
-  fld = np.zeros(n_cell, dtype=np.float64)
-  bc_volp_n = PT.get_node_from_name(zone, 'tetra_4_periodic')
-  bc_volp_pl = PT.get_value(PT.get_child_from_name(bc_volp_n, 'PointList'))[0]-1
-
-  bc_volc_n = PT.get_node_from_name(zone, 'tetra_4_constraint')
-  bc_volc_pl = PT.get_value(PT.get_child_from_name(bc_volc_n, 'PointList'))[0]-1
-
-  fld[bc_volp_pl] = 1.
-  fld[bc_volc_pl] = 2.
-  PT.new_FlowSolution('FSolution', loc='CellCenter', fields={'tag_cell':fld}, parent=zone)
-
-
-  maia.io.dist_tree_to_file(padapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
-
-  for bc_name in bc_names:
-    bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
-    gl_n = PT.get_child_from_name(bc_n, 'GridLocation')
-    PT.set_value(gl_n, 'EdgeCenter')
-
+  # maia.io.dist_tree_to_file(padapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
 
 
   mlog.info(f"\n\n[Periodic adaptation] #3: Removing initial domain...")
   adapted_dist_tree = copy.deepcopy(padapted_dist_tree)
   maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
   PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
-  # print(f'n_vtx = {PT.Zone.n_vtx(PT.get_node_from_label(adapted_dist_tree, "Zone_t"))}')
 
   retrieve_initial_domain(adapted_dist_tree, gc_name, periodic_values, new_vtx_num,\
                           bcs_to_update, bcs_to_retrieve, comm)
   adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm)
 
-  
-  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
-  zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
-  bc_names = list()
-  for bc_n in PT.get_nodes_from_predicate(zone_bc_n, is_edge_bc):
-    gl_n = PT.get_child_from_name(bc_n, 'GridLocation')
-    PT.set_value(gl_n, 'FaceCenter')
-    bc_names.append(PT.get_name(bc_n))
+  # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
 
-  maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
-  
-  for bc_name in bc_names:
-    bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
-    gl_n = PT.get_child_from_name(bc_n, 'GridLocation')
-    PT.set_value(gl_n, 'EdgeCenter')
-  
 
   mlog.info(f"\n\n[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
   gc1_name = gc_paths[0].split('/')[-1]
@@ -387,7 +341,6 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   PT.new_node('FamilyName', label='FamilyName_t', value='BC_TO_CONVERT_2', parent=bc2_n)
   maia.algo.dist.connect_1to1_families(fadapted_dist_tree, ('BC_TO_CONVERT_1', 'BC_TO_CONVERT_2'), comm, periodic=periodic)
 
-  PT.print_tree(fadapted_dist_tree)
   gc1_name = gc_paths[0].split('/')[-1]+'_0'
   gc2_name = gc_paths[1].split('/')[-1]+'_0'
   gc1_n = PT.get_node_from_name(fadapted_dist_tree, gc1_name, 'GridConnectivity_t')
@@ -400,7 +353,5 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   # > Remove feflo bcs
   zone = PT.get_node_from_label(fadapted_dist_tree, 'Zone_t')
   rm_feflo_added_elt(zone, comm)
-
-  maia.io.dist_tree_to_file(fadapted_dist_tree, 'OUTPUT/adapted.cgns', comm)
 
   return fadapted_dist_tree
