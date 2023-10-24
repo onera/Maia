@@ -85,7 +85,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         if i_group < n_new_bc:
           name_bc   = {"Vertex":"vtx", "EdgeCenter":"edge", "FaceCenter":"face", "CellCenter":"cell"}
           bc_name = f"feflo_{name_bc[location]}_bc_{i_group}"
-          continue # For now, skip BC detected in meshb but not provided in BC names
+          # continue # For now, skip BC detected in meshb but not provided in BC names
         else:
           bc_name = bc_names[location][i_group-n_new_bc]
 
