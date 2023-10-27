@@ -206,5 +206,3 @@ def tensor_field_comparison(tol, comm):
         path = path[:-1]
       return path
   return impl()
-
-
