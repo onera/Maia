@@ -1,14 +1,12 @@
 import copy
 
 import maia
-import maia.pytree        as PT
-from   maia.algo.part.extraction_utils   import local_pl_offset, LOC_TO_DIM
-from   maia.utils         import np_utils
+import maia.pytree as PT
+from   maia.utils  import np_utils
 
 from maia.transfer import protocols as EP
 
 from maia.algo.dist.merge_ids import merge_distributed_ids
-
 
 import numpy as np
 
@@ -19,15 +17,16 @@ LOC_TO_CGNS = {'EdgeCenter':'BAR_2',
                'FaceCenter':'TRI_3',
                'CellCenter':'TETRA_4'}
 
+
 def elmt_pl_to_vtx_pl(zone, pl, cgns_name):
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
-  elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
-  ec  = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
+  elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
+  n_elt      = PT.Element.Size(elt_n)
+  size_elt   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
 
-  n_elt = PT.Element.Size(elt_n)
-  size_elt = PT.Element.NVtx(elt_n)
+  ec         = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
   pl = pl - elt_offset
   conn_pl = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
   vtx_pl = np.unique(ec[conn_pl])
@@ -38,18 +37,17 @@ def elmt_pl_to_vtx_pl(zone, pl, cgns_name):
 def tag_elmt_owning_vtx(zone, pl, cgns_name, elt_full=False):
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
-  elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
-  ec  = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
-
-  n_elt = PT.Element.Size(elt_n)
+  elt_n    = PT.get_node_from_predicate(zone, is_asked_elt)
+  n_elt    = PT.Element.Size(elt_n)
   size_elt = PT.Element.NVtx(elt_n)
 
+  ec  = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
   tag_vtx = np.isin(ec, pl) # True where vtx is
   if elt_full:
     tag_tri = np.logical_and.reduceat(tag_vtx, np.arange(0,n_elt*size_elt,size_elt)) # True when has vtx 
   else:
     tag_tri = np.logical_or .reduceat(tag_vtx, np.arange(0,n_elt*size_elt,size_elt)) # True when has vtx 
-  gc_tri_pl = np.where(tag_tri)[0]+1 # Which cells has vtx
+  gc_tri_pl = np.where(tag_tri)[0]+1 # Which cells has vtx, TODO: add elt_offset to be a real pl
 
   return gc_tri_pl
 
@@ -61,11 +59,11 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, new_vtx_num, perio
   # > Get element infos
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
-  elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
-  dim_elt = PT.Element.Dimension(elt_n)
-  size_elt = PT.Element.NVtx(elt_n)
+  elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
+  n_elt      = PT.Element.Size(elt_n)
+  dim_elt    = PT.Element.Dimension(elt_n)
+  size_elt   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
-  n_elt = PT.Element.Size(elt_n)
 
   # > Get elts connectivity
   ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')
@@ -158,10 +156,6 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, new_vtx_num, perio
   else:
     PT.set_value(zone, [[n_vtx+n_vtx_toadd, PT.Zone.n_cell(zone), 0]])
 
-  # # > Building old to new vtx num
-  # old_vtx_num = np_utils.concatenate_np_arrays([vtx_match[0], new_vtx_num[0]])[1]
-  # new_vtx_num = np_utils.concatenate_np_arrays([vtx_match[1], new_vtx_num[1]])[1]
-  
 
   # > Report BCs from initial domain on periodic one
   old_elt_num = gc_elt_pl
@@ -229,7 +223,6 @@ def detect_match_bcs(zone, match_elt_pl, gc_vtx_pl, gc_vtx_pld, cgns_name, comm)
   vtx_gc_match      = [gc_vtx_pld, gc_vtx_pl]
   sort_vtx_gc_match = np.argsort(vtx_gc_match[0])
 
-  # bc_to_match = dict()
   is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and\
                           PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
   for bc_n in PT.get_nodes_from_predicate(zone_bc_n, is_elt_bc):
@@ -331,7 +324,6 @@ def remove_elts_from_pl(zone, pl, cgns_name, comm):
 
   update_infdim_elts(zone, elt_dim, -n_elt_to_rm)
 
-
   return n_elt-n_elt_to_rm
 
 
@@ -349,7 +341,6 @@ def find_invalid_elts(zone, cgns_name):
   tag_elt  = np.isin(ec,-1)
   tag_elt  = np.logical_or.reduceat(tag_elt, np.arange(0,n_elt*size_elt,size_elt)) # True when has vtx 
   invalid_elts_pl  = np.where(tag_elt)[0]
-
 
   return invalid_elts_pl+offset
 
@@ -518,9 +509,6 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_values,
         PT.set_value(twin_bc_pl_n, np.concatenate([twin_bc_pl, bc_pl]).reshape((1,-1), order='F'))
 
         PT.rm_child(zone_bc_n, bc_n)
-
-
-  # sys.exit()
 
   # > Update flow_sol
   is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
@@ -799,7 +787,6 @@ def retrieve_initial_domain(dist_tree, gc_name, periodic_values, new_vtx_num,
   
   PT.set_value(dist_zone, [[n_vtx-n_vtx_to_rm, n_cell, 0]])
   
-  
 
   bc_names = list()
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
@@ -872,7 +859,6 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   ec_pl  = np_utils.interweave_arrays([size_elt*pl+i_size for i_size in range(size_elt)])
   tgt_elt_ec = ec[ec_pl]
 
-  
 
   conf0 = np.array([0, 1, 2], dtype=np.int32)
   # conf1 = np.array([0, 1, 3], dtype=np.int32)
