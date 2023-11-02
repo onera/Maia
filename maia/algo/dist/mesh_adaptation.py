@@ -229,26 +229,23 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
 
 
-def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, container_names=[], feflo_opts="", **options):
+def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, comm, container_names=[], feflo_opts="", **options):
   '''
     ROUTINE
     TODO
-      travailler sur une copie du dist_tree
       accepter maillage avec plusieurs noeuds elements de meme dim
         toujours n'avoir qu'un noeud element/dim (l'imposer dans la doc + assert ?)
-      figer certaines parties du volume
-      inclure rm_invalid elements dans update_elt_numbering
-      se passer de la vision point_list au profit des tags ??
       gerer les rotations
-      mutualiser avec `adapt_mesh_with_feflo`
-
+      accepter plusieurs GCs en entrée
       passer le tmp_repo en arguement
+      retrouver le meme ordonancement des bcs pour le maillage back !!!
   '''
 
 
   mlog.info(f"\n\n[Periodic adaptation] Step #1: Duplicating periodic patch...")
   start = time.time()
-  adapted_dist_tree = copy.deepcopy(dist_tree)
+  adapted_dist_tree = copy.deepcopy(dist_tree) # TODO: shallow_copy sufficient ?
+
 
 
   # > Get matching vtx
@@ -256,35 +253,45 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
   # PT.new_Family('GC_TO_CONVERT1', parent=dist_base)
 
-  for i_gc, gc_path in enumerate(gc_paths):
-    gc_n    = PT.get_node_from_path(adapted_dist_tree, gc_path)
-    gc_name = PT.get_name(gc_n)
-    gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
-    gc_loc  = PT.Subset.GridLocation(gc_n)
-    gc_distrib_n = PT.maia.getDistribution(gc_n)
-    bc_n = PT.new_BC(name=gc_name,
-                     type='FamilySpecified',
-                     point_list=gc_pl,
-                     loc=gc_loc,
-                     family=f'GC_TO_CONVERT_{i_gc}',
-                     parent=zone_bc_n)
-    PT.add_child(bc_n, gc_distrib_n)
+  # > Commented because entry gcs should Vertex for now
+  #   TODO: manage FaceCenter GCs
+  gc_families = (list(), list())
+  for i_side, side_gc_paths in gc_paths:
+    for i_gc, gc_path in enumerate(side_gc_paths):
+      gc_n    = PT.get_node_from_path(adapted_dist_tree, gc_path)
+      gc_name = PT.get_name(gc_n)
+      gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
+      gc_loc  = PT.Subset.GridLocation(gc_n)
+      gc_distrib_n = PT.maia.getDistribution(gc_n)
+      fam_name = f'GC_TO_CONVERT_{i_side}'
+      gc_families[i_side].append(fam_name)
+      bc_n = PT.new_BC(name=gc_name,
+                       type='FamilySpecified',
+                       point_list=gc_pl,
+                       loc=gc_loc,
+                       family=fam_name,
+                       parent=zone_bc_n)
+      PT.add_child(bc_n, gc_distrib_n)
 
-  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='Vertex')
+  periodic = {'translation' : np.array([2*0.0575000010431, 0, 0], np.float32)}
+  # maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='Vertex')
+  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='FaceCenter')
 
 
   maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
   PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
   
-  gc_name = gc_paths[0].split('/')[-1]
-  periodic_values, new_vtx_num, bcs_to_update, bcs_to_retrieve = \
-    duplicate_periodic_patch(adapted_dist_tree, gc_name, comm)
+  for gc_path in gc_paths[0]:
+    gc_name = gc_path.split('/')[-1]
+    print(f'gc_name = {gc_name}')
+    periodic_values, new_vtx_num, bcs_to_update, bcs_to_retrieve = \
+      duplicate_periodic_patch(adapted_dist_tree, gc_name, comm)
   adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm)
 
-  # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
+  maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
   end = time.time()
   mlog.info(f"[Periodic adaptation] Step #1 completed: ({end-start:.2f} s)")
-
+  sys.exit()
 
   mlog.info(f"\n\n[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   adapted_dist_tree = adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
