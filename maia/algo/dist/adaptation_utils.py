@@ -968,7 +968,7 @@ def update_infdim_elts(zone, dim_elt, offset):
   # > Updating offset others elements
   elts_per_dim = PT.Zone.get_ordered_elements_per_dim(zone)
   for dim in range(dim_elt-1,0,-1):
-    assert len(elts_per_dim[dim])
+    assert len(elts_per_dim[dim]) in [0,1]
     infdim_elt_n = elts_per_dim[dim][0]
 
     infdim_elt_range_n = PT.get_child_from_name(infdim_elt_n, 'ElementRange')

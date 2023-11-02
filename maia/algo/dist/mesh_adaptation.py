@@ -255,12 +255,14 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   dist_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
   zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
   # PT.new_Family('GC_TO_CONVERT1', parent=dist_base)
-
+  PT.print_tree(adapted_dist_tree)
   for i_gc, gc_path in enumerate(gc_paths):
+    print(f'gc_path = {gc_path}')
     gc_n    = PT.get_node_from_path(adapted_dist_tree, gc_path)
     gc_name = PT.get_name(gc_n)
     gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
     gc_loc  = PT.Subset.GridLocation(gc_n)
+    assert gc_loc=='FaceCenter', ''
     gc_distrib_n = PT.maia.getDistribution(gc_n)
     bc_n = PT.new_BC(name=gc_name,
                      type='FamilySpecified',
@@ -270,7 +272,8 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
                      parent=zone_bc_n)
     PT.add_child(bc_n, gc_distrib_n)
 
-  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='Vertex')
+  # maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='Vertex')
+  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='FaceCenter')
 
 
   maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
@@ -281,10 +284,10 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
     duplicate_periodic_patch(adapted_dist_tree, gc_name, comm)
   adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm)
 
-  # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
+  maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
   end = time.time()
   mlog.info(f"[Periodic adaptation] Step #1 completed: ({end-start:.2f} s)")
-
+  sys.exit()
 
   mlog.info(f"\n\n[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   adapted_dist_tree = adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
