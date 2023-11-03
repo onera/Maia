@@ -254,40 +254,34 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   # > Get matching vtx
   dist_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
   zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
-  # PT.new_Family('GC_TO_CONVERT1', parent=dist_base)
-  PT.print_tree(adapted_dist_tree)
   for i_gc, gc_path in enumerate(gc_paths):
-    print(f'gc_path = {gc_path}')
     gc_n    = PT.get_node_from_path(adapted_dist_tree, gc_path)
     gc_name = PT.get_name(gc_n)
     gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
     gc_loc  = PT.Subset.GridLocation(gc_n)
     assert gc_loc=='FaceCenter', ''
-    gc_distrib_n = PT.maia.getDistribution(gc_n)
+    gc_distrib = PT.get_value(PT.maia.getDistribution(gc_n, 'Index'))
     bc_n = PT.new_BC(name=gc_name,
                      type='FamilySpecified',
                      point_list=gc_pl,
                      loc=gc_loc,
-                     family=f'GC_TO_CONVERT_{i_gc}',
                      parent=zone_bc_n)
-    PT.add_child(bc_n, gc_distrib_n)
-
-  # maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='Vertex')
-  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('GC_TO_CONVERT_0', 'GC_TO_CONVERT_1'), comm, periodic=periodic, location='FaceCenter')
+    PT.maia.newDistribution({'Index':gc_distrib}, parent=bc_n)
 
 
   maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
   PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
   
-  gc_name = gc_paths[0].split('/')[-1]
-  periodic_values, new_vtx_num, bcs_to_update, bcs_to_retrieve = \
-    duplicate_periodic_patch(adapted_dist_tree, gc_name, comm)
-  adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm)
+  if comm.rank==0:
+    gc_name = gc_paths[0].split('/')[-1]
+    periodic_values, new_vtx_num, bcs_to_update, bcs_to_retrieve = \
+      duplicate_periodic_patch(adapted_dist_tree, gc_name)
+  adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
-  maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
+  # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
   end = time.time()
   mlog.info(f"[Periodic adaptation] Step #1 completed: ({end-start:.2f} s)")
-  sys.exit()
+
 
   mlog.info(f"\n\n[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   adapted_dist_tree = adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
@@ -304,10 +298,12 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
   PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
 
-  retrieve_initial_domain(adapted_dist_tree, gc_name, periodic_values, new_vtx_num,\
-                          bcs_to_update, bcs_to_retrieve, comm)
-  adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm)
+  if comm.rank==0:
+    retrieve_initial_domain(adapted_dist_tree, gc_name, periodic_values, new_vtx_num,\
+                            bcs_to_update, bcs_to_retrieve)
+  adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
+  PT.print_tree(adapted_dist_tree, f'adapted_dist_tree_{comm.rank}.tree')
   # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
   end = time.time()
   mlog.info(f"[Periodic adaptation] Step #3 completed: ({end-start:.2f} s)")
@@ -328,27 +324,42 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
   PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'tetra_4_periodic','BC_t')
 
-  fadapted_dist_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
-  bc1_name = gc_paths[0].split('/')[-1]#+'_0'
-  bc2_name = gc_paths[1].split('/')[-1]#+'_0'
-  bc1_n = PT.get_node_from_name(adapted_dist_tree, bc1_name, 'BC_t')
-  bc2_n = PT.get_node_from_name(adapted_dist_tree, bc2_name, 'BC_t')
-  PT.rm_children_from_label(bc1_n, 'FamilyName_t')
-  PT.rm_children_from_label(bc2_n, 'FamilyName_t')
-  PT.new_node('FamilyName', label='FamilyName_t', value='BC_TO_CONVERT_1', parent=bc1_n)
-  PT.new_node('FamilyName', label='FamilyName_t', value='BC_TO_CONVERT_2', parent=bc2_n)
-  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('BC_TO_CONVERT_1', 'BC_TO_CONVERT_2'), comm, periodic=periodic)
+  zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
+  bc_nodes = list()
+  for i_gc, gc_path in enumerate(gc_paths):
+    bc_name = gc_path.split('/')[-1]#+'_0'
+    bc_n = PT.get_node_from_name(adapted_dist_tree, bc_name, 'BC_t')
+    PT.rm_children_from_label(bc_n, 'FamilyName_t')
+    PT.new_node('FamilyName', label='FamilyName_t', value=f'BC_TO_CONVERT_{i_gc}', parent=bc_n)
+    bc_nodes.append(bc_n)
 
-  gc1_name = gc_paths[0].split('/')[-1]+'_0'
-  gc2_name = gc_paths[1].split('/')[-1]+'_0'
-  gc1_n = PT.get_node_from_name(adapted_dist_tree, gc1_name, 'GridConnectivity_t')
-  gc2_n = PT.get_node_from_name(adapted_dist_tree, gc2_name, 'GridConnectivity_t')
-  PT.set_name(gc1_n, gc_paths[0].split('/')[-1])
-  PT.set_name(gc2_n, gc_paths[1].split('/')[-1])
+  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('BC_TO_CONVERT_0', 'BC_TO_CONVERT_1'), comm, periodic=periodic)
 
-  # > Remove feflo bcs
-  zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
-  rm_feflo_added_elt(zone, comm)
+  for i_gc, gc_path in enumerate(gc_paths):
+    gc_name = gc_path.split('/')[-1]+'_0'
+    gc_n = PT.get_node_from_name(adapted_dist_tree, gc_name, 'GridConnectivity_t')
+    gcd_name_n = PT.get_child_from_name(gc_n, 'GridConnectivityDonorName')
+    PT.set_value(gcd_name_n, PT.get_value(gcd_name_n)[:-2])
+    PT.rm_children_from_label(gc_n, 'FamilyName_t')
+    PT.set_name(gc_n, gc_path.split('/')[-1])
+
+  for bc_n in bc_nodes:
+    PT.add_child(zone_bc_n, bc_n)
+
+  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('BC_TO_CONVERT_0', 'BC_TO_CONVERT_1'), comm, periodic=periodic, location='Vertex')
+
+  for i_gc, gc_path in enumerate(gc_paths):
+    gc_name = gc_path.split('/')[-1]+'_0'
+    gc_n = PT.get_node_from_name(adapted_dist_tree, gc_name, 'GridConnectivity_t')
+    PT.rm_children_from_label(gc_n, 'FamilyName_t')
+
+
+  maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
+  PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
+  if comm.rank==0:
+    zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
+    rm_feflo_added_elt(zone)
+  adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
 
   return adapted_dist_tree
