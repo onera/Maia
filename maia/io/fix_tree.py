@@ -3,9 +3,11 @@ import numpy              as     np
 
 import maia.pytree        as PT
 
+import maia
 from maia.utils            import np_utils, as_pdm_gnum, logging
 from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
                                   gc_is_reference, guess_bnd_normal_index
+from maia.algo.dist import matching_jns_tools as MJT
 
 def check_datasize(tree):
   """
@@ -73,6 +75,40 @@ def fix_point_ranges(size_tree):
           apply_transform_matrix(point_range[:,1], point_range[:,0], point_range_d[:,0], T)).all()
   if permuted:
     logging.warning(f"Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
+
+def ensure_symmetric_gc1to1(tree):
+  """
+  Force structured GC1to1 to have symmetric PointRange/PointRangeDonor
+  This is done because some maia functions (as partitionning) require this condition,
+  but we should correct theses to not rely anymore on this assumption (TODO).
+
+  """
+  some_switched = False
+  
+  # To be less expansive (in jn matching process) we work on a shallow copy having only 1to1 GC_t
+  _tree = PT.shallow_copy(tree)
+  PT.rm_nodes_from_label(_tree, 'GridConnectivity_t')
+
+  MJT.add_joins_donor_name(_tree, MPI.COMM_SELF)
+  matching_jns = MJT.get_matching_jns(_tree)
+  for jn_path, jn_path_opp in matching_jns:
+    jn = PT.get_node_from_path(tree, jn_path)
+    jn_opp = PT.get_node_from_path(tree, jn_path_opp)
+
+    if PT.get_label(jn) == PT.get_label(jn_opp) == 'GridConnectivity1to1_t':
+      gc1_pr  = PT.get_child_from_name(jn, 'PointRange')
+      gc1_prd = PT.get_child_from_name(jn, 'PointRangeDonor')
+      gc2_pr  = PT.get_child_from_name(jn_opp, 'PointRange')
+      gc2_prd = PT.get_child_from_name(jn_opp, 'PointRangeDonor')
+
+      if not (np.array_equal(PT.get_value(gc1_pr), PT.get_value(gc2_prd)) and
+              np.array_equal(PT.get_value(gc2_pr), PT.get_value(gc1_prd))):
+        PT.set_value(gc2_pr, PT.get_value(gc1_prd))
+        PT.set_value(gc2_prd, PT.get_value(gc1_pr))
+        some_switched = True
+
+  if some_switched:
+    logging.warning(f"Some GridConnectivity1to1_t PointRange have been swapped to enforce symmetry with donor")
 
 def add_missing_pr_in_bcdataset(tree):
   """
@@ -156,6 +192,23 @@ def ensure_PE_global_indexing(dist_tree):
         n_shifted += 1
 
   return n_shifted
+
+def ensure_signed_nface_connectivity(dist_tree, comm):
+  """
+  Check if negative indices appears in NFace connectivity; it should be the case.
+  If not, remove the NFace node and recreate it from NGon/ParentElements
+  """
+  n_fixed = 0
+  for zone in PT.get_all_Zone_t(dist_tree):
+    if PT.Zone.has_nface_elements(zone):
+      nface = PT.Zone.NFaceNode(zone)
+      nface_ec = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+      is_signed = nface_ec.size == 0 or np.any(nface_ec < 0)
+      if PT.Element.Size(nface) > 1 and not comm.allreduce(is_signed, MPI.LAND):
+        PT.rm_child(zone, nface)
+        maia.algo.pe_to_nface(zone, comm)
+        n_fixed += 1
+  return n_fixed
 
 def rm_legacy_nodes(tree):
   eh_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/:elsA#Hybrid')

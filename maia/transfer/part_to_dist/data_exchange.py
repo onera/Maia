@@ -88,7 +88,7 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func=No
   for mask_sol in PT.get_children(mask_tree):
     d_sol = PT.get_child_from_name(dist_zone, PT.get_name(mask_sol)) #True container
 
-    if not par_utils.exists_everywhere(part_zones, PT.get_name(d_sol), comm):
+    if not par_utils.exists_anywhere(part_zones, PT.get_name(d_sol), comm):
       continue #Skip FS that remains on dist_tree but are not present on part tree
 
     location = PT.Subset.GridLocation(d_sol)
@@ -107,18 +107,24 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func=No
         lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
 
     #Discover data
-    _exists_everywhere = lambda name : par_utils.exists_everywhere(part_zones, f'{PT.get_name(d_sol)}/{name}', comm)
-    fields = [PT.get_name(n) for n in PT.get_children(mask_sol) if _exists_everywhere(PT.get_name(n))]
+    def can_be_transfered(n):
+      exists = lambda zone : PT.get_node_from_path(zone, f'{PT.get_name(d_sol)}/{PT.get_name(n)}') is not None or \
+                             PT.get_node_from_path(zone, f'{PT.get_name(d_sol)}'                 ) is     None
+      return par_utils.all_true(part_zones, exists, comm)
+    fields = [PT.get_name(n) for n in PT.get_children(mask_sol) if can_be_transfered(n)]
+
     part_data = {field : [] for field in fields}
 
     for part_zone in part_zones:
       p_sol = PT.get_child_from_name(part_zone, PT.get_name(d_sol))
       for field in fields:
-        flat_data = PT.get_child_from_name(p_sol, field)[1].ravel(order='A') #Reshape structured arrays for PDM exchange
-        part_data[field].append(flat_data)
+        if p_sol is not None:
+          flat_data = PT.get_child_from_name(p_sol, field)[1].ravel(order='A') #Reshape structured arrays for PDM exchange
+          part_data[field].append(flat_data)
 
     # Exchange
-    dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm, reduce_func)
+    _lntogn_list = [lntogn for lntogn in lntogn_list if lntogn.size > 0]
+    dist_data = EP.part_to_block(part_data, distribution, _lntogn_list, comm, reduce_func)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_sol, field)
       PT.set_value(dist_field, array)

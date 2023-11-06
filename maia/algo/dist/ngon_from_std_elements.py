@@ -21,8 +21,6 @@ def _create_pe_global(flat_array, shift_value):
 def cgns_zone_to_pdm_dmesh_nodal(zone, comm, extract_dim):
   elts_per_dim = PT.Zone.get_ordered_elements_per_dim(zone)
   assert len(elts_per_dim[0]) == 0, "NODE elements are not supported in STD->NGON conversion"
-  if extract_dim == 3:
-    assert len(elts_per_dim[1]) == 0, "BAR elements are not supported in STD->NGON conversion"
   dmn = cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_vertex=False)
   dmn.generate_distribution()
   return dmn
@@ -35,15 +33,25 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   #Manage BCs : shift PL values to reach refer bnd elements
   if extract_dim == 2:
     group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_EDGE)
+    keep_location = 'EdgeCenter'
+    skip_location = ['FaceCenter', 'CellCenter']
   elif extract_dim == 3:
     group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_FACE)
+    keep_location = 'FaceCenter'
+    skip_location = ['EdgeCenter', 'CellCenter']
+  converted_bc   = lambda n : PT.get_label(n) == 'BC_t' and PT.Subset.GridLocation(n) == keep_location
+  unconverted_bc = lambda n : PT.get_label(n) == 'BC_t' and PT.Subset.GridLocation(n) in skip_location
   if pdm_group is not None:
     group = np.copy(pdm_group)
-    for i_bc, bc in enumerate(PT.iter_children_from_predicates(zone, 'ZoneBC_t/BC_t')):
+    for i_bc, bc in enumerate(PT.iter_children_from_predicates(zone, ['ZoneBC_t', converted_bc])):
       PT.rm_nodes_from_name(bc, 'PointRange')
       PT.rm_nodes_from_name(bc, 'PointList')
       start, end = group_idx[i_bc], group_idx[i_bc+1]
       PT.new_PointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
+
+  # Remove unconverted BCs
+  for zbc in PT.get_nodes_from_label(zone, 'ZoneBC_t'):
+    PT.rm_nodes_from_predicate(zbc, unconverted_bc)
 
   # Remove std elements
   PT.rm_children_from_label(zone, 'Elements_t')

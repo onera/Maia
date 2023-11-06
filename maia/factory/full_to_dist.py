@@ -218,7 +218,7 @@ def _broadcast_full_to_dist(tree, comm, owner):
 
   return dist_tree
 
-def distribute_tree(tree, comm, owner=None):
+def full_to_dist_tree(tree, comm, owner=None):
   """ Generate a distributed tree from a standard (full) CGNS Tree.
 
   Input tree can be defined on a single process (using ``owner = rank_id``),
@@ -235,14 +235,14 @@ def distribute_tree(tree, comm, owner=None):
 
   Example:
       .. literalinclude:: snippets/test_factory.py
-        :start-after: #distribute_tree@start
-        :end-before: #distribute_tree@end
+        :start-after: #full_to_dist_tree@start
+        :end-before: #full_to_dist_tree@end
         :dedent: 2
   """
 
   if owner is not None:
     dist_tree = _broadcast_full_to_dist(tree, comm, owner)
-    redistribute.redistribute_tree(dist_tree, comm)
+    redistribute.redistribute_tree(dist_tree, 'uniform', comm)
     return dist_tree
   else:
     return _distribute_tree(tree, comm)

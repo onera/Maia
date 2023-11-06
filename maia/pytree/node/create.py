@@ -1,9 +1,10 @@
+from maia.pytree.typing import *
 from maia.pytree import walk
 from .           import access as NA
 
 UNSET = Ellipsis
 
-def new_node(name='Node', label='UserDefined_t', value=None, children=[], parent=None):
+def new_node(name:str='Node', label:str='UserDefined_t', value:Any=None, children:List[CGNSTree]=[], parent:CGNSTree=None) -> CGNSTree:
   """ Create a new node """
   node = ['Node', None, [], 'UserDefined_t']
   # Use update method to enable checks through the set_ functions
@@ -12,7 +13,7 @@ def new_node(name='Node', label='UserDefined_t', value=None, children=[], parent
     NA.add_child(parent, node)
   return node
 
-def update_node(node, name=UNSET, label=UNSET, value=UNSET, children=UNSET):
+def update_node(node:CGNSTree, name:str=UNSET, label:str=UNSET, value:Any=UNSET, children:List[CGNSTree]=UNSET):
   if name is not UNSET:
     NA.set_name(node, name)
   if label is not UNSET:
@@ -26,24 +27,24 @@ def update_node(node, name=UNSET, label=UNSET, value=UNSET, children=UNSET):
   # walk.rm_children_from_name(parent, name)
   # return new_node(name, label, value, children, parent)
 
-def new_child(parent, name, label='UserDefined_t', value=None, children=[]):
+def new_child(parent:CGNSTree, name:str, label:str='UserDefined_t', value:Any=None, children:List[CGNSTree]=[]) -> CGNSTree:
   return new_node(name, label, value, children, parent)
 
-def update_child(parent, name, label=UNSET, value=UNSET, children=UNSET):
+def update_child(parent:CGNSTree, name:str, label:str=UNSET, value:Any=UNSET, children:List[CGNSTree]=UNSET) -> CGNSTree:
   node = walk.get_child_from_name(parent, name)
   if node is None:
     node = new_node(name, parent=parent)
   update_node(node, ..., label, value, children)
   return node
 
-def shallow_copy(t):
+def shallow_copy(t:CGNSTree) -> CGNSTree:
   out = [NA.get_name(t), NA.get_value(t, raw=True), [], NA.get_label(t)]
   for child in NA.get_children(t):
     out[2].append(shallow_copy(child))
   return out
 
-def deep_copy(t):
-  out = [NA.get_name(t), None, [], NA.get_label(t)]
+def deep_copy(t:CGNSTree) -> CGNSTree:
+  out = new_node(NA.get_name(t), NA.get_label(t))
   _val = NA.get_value(t, raw=True)
   if _val is not None:
     out[1] = _val.copy(order='K')

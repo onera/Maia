@@ -1,6 +1,8 @@
 import sys
 import numpy       as np
+from typing import TextIO
 
+from maia.pytree.typing import *
 import maia.pytree.cgns_keywords as CGK
 import maia.pytree.walk as W
 
@@ -133,8 +135,13 @@ def print_node(node, depth, is_last_child, line_prefix, plabel, cst_props, out_l
     out_lines.append(f"{line_prefix}╵╴╴╴ ({n_sons} {sons_w} masked)\n")
 
 
-def print_tree(tree, out=sys.stdout, *, 
-        verbose=False, max_depth=1000, colors=True, print_if=lambda n: True):
+def print_tree(tree:CGNSTree, 
+               out:TextIO =sys.stdout,
+               *, 
+               verbose:bool=False,
+               max_depth:int=1000,
+               colors:bool=True,
+               print_if:Callable[[CGNSTree], bool]=lambda n: True):
   """ Print the arborescence of a CGNSTree.
 
   Args:

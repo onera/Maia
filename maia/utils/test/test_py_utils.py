@@ -102,3 +102,9 @@ def test_str_to_bools():
   with pytest.raises(ValueError):
     py_utils.str_to_bools(4, 'wrong')
 
+def test_unique_idx():
+  assert py_utils.unique_idx([]) == []
+  assert py_utils.unique_idx([5,3,8,9,3,8]) == [1,0,2,3,0,2]
+  assert py_utils.unique_idx(['tutu', 'titi', 'tutu', 'tata']) == [2,1,2,0]
+  assert py_utils.unique_idx([('a', 12), ('a', 4), ('b', 1), ('a', 4)]) == [1,0,2,0]
+

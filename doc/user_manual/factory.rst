@@ -7,10 +7,11 @@ be obtained from an other kind of tree, or can be generated from user parameters
 Generation
 ----------
 
+Generation functions create a distributed tree from some parameters.
+
 .. autofunction:: maia.factory.generate_dist_points
 .. autofunction:: maia.factory.generate_dist_block
 .. autofunction:: maia.factory.generate_dist_sphere
-.. autofunction:: maia.factory.distribute_tree
 
 Partitioning
 ------------
@@ -112,6 +113,16 @@ control the renumbering of mesh entities in the partitions.
 +--------------------+-----------------------------------+-------------------------------------+----------------------------+
 
 Recovering from partitions
---------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: maia.factory.recover_dist_tree
+
+Managing full trees
+-------------------
+
+Almost no function in maia supports :ref:`full (not distributed) CGNS trees<tree_defs>`,
+but they can be useful for compatibility with sequential libraries.
+
+.. autofunction:: maia.factory.full_to_dist_tree
+.. autofunction:: maia.factory.dist_to_full_tree
+

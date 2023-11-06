@@ -9,21 +9,24 @@ from . import elements_utils as EU
 from . import utils
 from .utils import for_all_methods
 
-def _list_or_only_elt(l):
-  return l[0] if len(l) == 1 else l
-
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Zone_t"))
 class Zone:
+
+  @staticmethod
+  def IndexDimension(zone_node):
+    z_sizes = N.get_value(zone_node)
+    return (z_sizes[:,0]).size
+
   @staticmethod
   def VertexSize(zone_node):
-    z_sizes = N.get_value(zone_node)
-    return _list_or_only_elt(z_sizes[:,0])
+    sizes = N.get_value(zone_node)[:,0]
+    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
 
   @staticmethod
   def CellSize(zone_node):
-    z_sizes = N.get_value(zone_node)
-    return _list_or_only_elt(z_sizes[:,1])
+    sizes = N.get_value(zone_node)[:,1]
+    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
 
   @staticmethod
   def FaceSize(zone_node):
@@ -46,10 +49,10 @@ class Zone:
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
       er = W.get_child_from_name(ngon_node, 'ElementRange')[1]
-      n_face = [er[1] - er[0] + 1]
+      n_face = er[1] - er[0] + 1
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {N.get_name(zone_node)}")
-    return _list_or_only_elt(n_face)
+    return n_face
 
   @staticmethod
   def NGonNode(zone_node):
@@ -65,21 +68,13 @@ class Zone:
 
   @staticmethod
   def VertexBoundarySize(zone_node):
-    z_sizes = N.get_value(zone_node)
-    return _list_or_only_elt(z_sizes[:,2])
+    sizes = N.get_value(zone_node)[:,2]
+    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
 
   @staticmethod
   def Type(zone_node):
     zone_type_node = W.get_child_from_label(zone_node, "ZoneType_t")
     return N.get_value(zone_type_node)
-
-  #Todo : this one should go elsewhere
-  @staticmethod
-  def getBCsFromFamily(zone_node, families):
-    from maia.pytree import iter_children_from_predicates
-    bc_query = lambda n : N.get_label(n) == 'BC_t' and N.get_value(n) == 'FamilySpecified' and \
-      N.get_value(W.get_child_from_label(n, "FamilyName_t")) in families
-    return iter_children_from_predicates(zone_node, ['ZoneBC_t', bc_query])
 
   @staticmethod
   def n_vtx(zone_node):
@@ -237,6 +232,19 @@ class GridConnectivity:
   @staticmethod
   def is1to1(gc):
     return GridConnectivity.Type(gc) == 'Abutting1to1'
+
+  @staticmethod
+  def isperiodic(gc):
+    return W.get_node_from_label(gc, 'Periodic_t', depth=[2,2]) is not None
+
+  @staticmethod
+  def periodic_values(gc):
+    """ Return periodic data if existing (RotationCenter, RotationAngle, Translation) """
+    perio_node = W.get_node_from_label(gc, "Periodic_t", depth=[2,2])
+    if perio_node is None:
+      return (None, None, None)
+    return tuple((N.get_value(W.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]))
+
 
 @for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", \
         "BC_t", "BCDataSet_t", "GridConnectivity_t", "GridConnectivity1to1_t"]))

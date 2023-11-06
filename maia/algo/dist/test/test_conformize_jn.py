@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree as PT
@@ -11,10 +11,10 @@ from maia.factory     import dcube_generator  as DCG
 
 from maia.algo.dist  import conformize_jn as CJN
 
-@mark_mpi_test(2)
+@pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("from_loc", ["Vertex", "FaceCenter"])
-def test_conformize_jn_pair(sub_comm, from_loc):
-  dist_tree = DCG.dcube_generate(5, 1., [0., 0., 0.], sub_comm)
+def test_conformize_jn_pair(comm, from_loc):
+  dist_tree = DCG.dcube_generate(5, 1., [0., 0., 0.], comm)
   isize = 'I8' if maia.npy_pdm_gnum_dtype == np.int64 else 'I4'
   # Add a fake join
   if from_loc == "Vertex":
@@ -37,15 +37,15 @@ def test_conformize_jn_pair(sub_comm, from_loc):
     PointList IndexArray_t {isize} {pld}:
     PointListDonor IndexArray_t {isize} {pl}:
   """
-  gcs = [F2D.distribute_pl_node(gc, sub_comm) for gc in parse_yaml_cgns.to_nodes(yt)]
+  gcs = [F2D.distribute_pl_node(gc, comm) for gc in parse_yaml_cgns.to_nodes(yt)]
   zone = PT.get_all_Zone_t(dist_tree)[0]
   PT.new_child(zone, "ZGC", "ZoneGridConnectivity_t", children=gcs)
 
-  CJN.conformize_jn_pair(dist_tree, ['Base/zone/ZGC/matchA', 'Base/zone/ZGC/matchB'], sub_comm)
+  CJN.conformize_jn_pair(dist_tree, ['Base/zone/ZGC/matchA', 'Base/zone/ZGC/matchB'], comm)
 
-  if sub_comm.rank == 0:
+  if comm.rank == 0:
     start, end = 0, 5
-  elif sub_comm.rank == 1:
+  elif comm.rank == 1:
     start, end = 125-5, 125
 
   assert (PT.get_node_from_name(zone, "CoordinateX")[1][start:end] == 0.5).all()

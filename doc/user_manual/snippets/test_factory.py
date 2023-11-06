@@ -38,8 +38,8 @@ def test_generate_dist_sphere():
   assert PT.Element.CGNSName(PT.get_node_from_label(dist_tree, 'Elements_t')) == 'TRI_3'
   #generate_dist_sphere@end
 
-def test_distribute_tree():
-  #distribute_tree@start
+def test_full_to_dist_tree():
+  #full_to_dist_tree@start
   from   mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
@@ -49,8 +49,23 @@ def test_distribute_tree():
     tree = maia.io.read_tree(mesh_dir/'S_twoblocks.yaml', comm)
   else:
     tree = None
-  dist_tree = maia.factory.distribute_tree(tree, comm, owner=0)
-  #distribute_tree@end
+  dist_tree = maia.factory.full_to_dist_tree(tree, comm, owner=0)
+  #full_to_dist_tree@end
+
+def test_dist_to_full_tree():
+  #dist_to_full_tree@start
+  from   mpi4py import MPI
+  import maia
+  comm = MPI.COMM_WORLD
+
+  dist_tree = maia.factory.generate_dist_sphere(10, 'TRI_3', comm)
+  full_tree = maia.factory.dist_to_full_tree(dist_tree, comm, target=0)
+
+  if comm.Get_rank() == 0:
+    assert maia.pytree.get_node_from_name(full_tree, ":CGNS#Distribution") is None
+  else:
+    assert full_tree is None
+  #dist_to_full_tree@end
 
 def test_partition_dist_tree():
   #partition_dist_tree@start

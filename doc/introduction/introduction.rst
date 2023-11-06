@@ -158,6 +158,8 @@ can then be transfered to the corresponding distributed vertex, before writting 
 Maia CGNS trees
 ---------------
 
+.. _tree_defs:
+
 Overview
 ^^^^^^^^
 
@@ -185,7 +187,7 @@ Let us use the following tree as an example:
 
 .. image:: ./images/trees/tree_seq.png
 
-This tree is a **global tree**. It may appear like that on a HDF5/CGNS file, or if loaded entirely on one process as a Python/CGNS tree.
+This tree is a **full tree**. It may appear like that on a HDF5/CGNS file, or if loaded entirely on one process as a Python/CGNS tree.
 
 .. _dist_tree:
 
@@ -244,7 +246,7 @@ Partitioned trees
 
 A :def:`part tree` is a partial CGNS tree, i.e. a tree for which each zone is only stored by one process. Each zone is fully stored by its process.
 
-If we take the global tree from before and partition it, we may get the following tree:
+If we take the full tree from before and partition it, we may get the following tree:
 
 .. image:: ./images/trees/part_tree.png
 
@@ -292,7 +294,7 @@ A CGNS tree is said to be a :def:`Maia tree` if it has the following properties:
 
 Notice that this is property is required by **some** functions of Maia, not all of them!
 
-A **Maia tree** may be a **global tree**, a **distributed tree** or a **partitioned tree**.
+A **Maia tree** may be a **full tree**, a **distributed tree** or a **partitioned tree**.
 
 .. rubric:: Footnotes
 

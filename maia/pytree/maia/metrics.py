@@ -27,12 +27,7 @@ def dtree_nbytes(tree):
       self.glob_size = 0
       self.dist_size = 0
 
-    def pre(self, ns):
-      node = ns[-1]
-      if len(ns) >= 2:
-        parent = ns[-2]
-      else:
-        parent = None
+    def pre(self, parent, node):
       self.meta_size += sys.getsizeof(node) + sys.getsizeof(node[0]) + sys.getsizeof(node[2]) + sys.getsizeof(node[3])
       if node[1] is not None:
         if _is_distributed(node, parent):
@@ -41,7 +36,7 @@ def dtree_nbytes(tree):
           self.glob_size += node[1].nbytes
 
   v = size_recorder()
-  PT.algo.graph.depth_first_search(tree, v, only_nodes=False)
+  PT.graph.cgns.depth_first_search(tree, v, depth='parent')
 
   return (v.meta_size, v.glob_size, v.dist_size)
 

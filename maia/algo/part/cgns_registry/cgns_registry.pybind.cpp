@@ -20,7 +20,7 @@ void register_cgns_registry_module(py::module_& parent) {
     .def(py::init<>());
 
   py::bind_vector<std::vector<std::string>>(m, "cgns_paths"); // Neccesary to return into python pybind11 : ticket 2641
-  py::bind_vector<std::vector<int        >>(m, "global_ids");
+  py::bind_vector<std::vector<PDM_g_num_t>>(m, "global_ids");
 
   py::class_<cgns_registry> (m, "cgns_registry")
     .def(py::init<>(&make_cgns_registry))
@@ -41,14 +41,23 @@ void register_cgns_registry_module(py::module_& parent) {
         "Some doc here");
 
   m.def("get_path_from_global_id_and_type",
-        py::overload_cast<const cgns_registry&, int, CGNS::Label>(get_path_from_global_id_and_type),
+        py::overload_cast<const cgns_registry&, PDM_g_num_t, CGNS::Label>(get_path_from_global_id_and_type),
         "Some doc here");
+
+  m.def("get_path_from_global_id_and_type", [](const cgns_registry& cgns_reg, int g_id, CGNS::Label label) {
+    return get_path_from_global_id_and_type(cgns_reg, static_cast<PDM_g_num_t>(g_id), label);
+  });
 
   m.def("get_global_id_from_path_and_type",
         py::overload_cast<const cgns_registry&, std::string, std::string>(get_global_id_from_path_and_type),
         "Some doc here");
 
   m.def("get_path_from_global_id_and_type",
-        py::overload_cast<const cgns_registry&, int, std::string>(get_path_from_global_id_and_type),
+        py::overload_cast<const cgns_registry&, PDM_g_num_t, std::string>(get_path_from_global_id_and_type),
         "Some doc here");
+
+  m.def("get_path_from_global_id_and_type", [](const cgns_registry& cgns_reg, int g_id, std::string cgns_label_str) {
+    return get_path_from_global_id_and_type(cgns_reg, static_cast<PDM_g_num_t>(g_id), cgns_label_str);
+  });
+
 }

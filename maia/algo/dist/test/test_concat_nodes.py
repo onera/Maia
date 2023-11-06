@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree        as PT
@@ -12,8 +12,8 @@ from maia.factory        import full_to_dist as F2D
 
 from maia.algo.dist import concat_nodes as GN
 
-@mark_mpi_test([1,2])
-def test_concatenate_subset_nodes(sub_comm):
+@pytest_parallel.mark.parallel([1,2])
+def test_concatenate_subset_nodes(comm):
   yt = """
   BCa BC_t "BCFarfield":
     GridLocation GridLocation_t "FaceCenter":
@@ -29,21 +29,21 @@ def test_concatenate_subset_nodes(sub_comm):
         Data DataArray_t [1., 2., 3., 4., 5., 6., 7., 8.]:
   """
   subset_nodes_f = parse_yaml_cgns.to_nodes(yt)
-  subset_nodes = [F2D.distribute_pl_node(node, sub_comm) for node in subset_nodes_f]
+  subset_nodes = [F2D.distribute_pl_node(node, comm) for node in subset_nodes_f]
 
-  expected_distri = par_utils.uniform_distribution(4+8, sub_comm)
-  if sub_comm.Get_size() == 1:
+  expected_distri = par_utils.uniform_distribution(4+8, comm)
+  if comm.Get_size() == 1:
     expected_pl = [[1,2,3,4, 10,20,30,40,50,60,70,80]]
     expected_data = [10,20,30,40, 1.,2.,3.,4.,5.,6.,7.,8]
-  elif sub_comm.Get_size() == 2:
-    if sub_comm.Get_rank() == 0:
+  elif comm.Get_size() == 2:
+    if comm.Get_rank() == 0:
       expected_pl = [[1,2, 10,20,30,40]]
       expected_data = [10,20, 1.,2.,3.,4]
-    elif sub_comm.Get_rank() == 1:
+    elif comm.Get_rank() == 1:
       expected_pl = [[3,4, 50,60,70,80]]
       expected_data = [30,40, 5.,6.,7.,8]
 
-  node = GN.concatenate_subset_nodes(subset_nodes, sub_comm, output_name='BothBC', \
+  node = GN.concatenate_subset_nodes(subset_nodes, comm, output_name='BothBC', \
       additional_data_queries = ['BCDataSet/BCData/Data'])
   assert PT.get_name(node) == 'BothBC'
   assert PT.get_value(node) == 'BCFarfield'
@@ -54,9 +54,9 @@ def test_concatenate_subset_nodes(sub_comm):
   assert PT.get_label(PT.get_node_from_path(node, 'BCDataSet/BCData')) == 'BCData_t'
   assert (PT.get_node_from_name(node, 'Data')[1] == expected_data).all()
 
-@mark_mpi_test([1])
+@pytest_parallel.mark.parallel([1])
 @pytest.mark.parametrize("mode", ['', 'intrazone', 'periodic', 'intraperio'])
-def test_concatenate_jns(sub_comm, mode):
+def test_concatenate_jns(comm, mode):
   yt = """
   ZoneA Zone_t [[11, 10, 0]]:
     ZoneType ZoneType_t "Unstructured":
@@ -86,7 +86,7 @@ def test_concatenate_jns(sub_comm, mode):
         PointListDonor IndexArray_t [[5]]:
   """
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  dist_tree = F2D.distribute_tree(tree, sub_comm)
+  dist_tree = F2D.full_to_dist_tree(tree, comm)
   zones = PT.get_all_Zone_t(dist_tree)
 
   if mode in ['intrazone', 'intraperio']:
@@ -104,7 +104,7 @@ def test_concatenate_jns(sub_comm, mode):
     for gc in PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')[2:]:
       PT.new_GridConnectivityProperty({'rotation_angle': [-45.,0.,0.]}, parent=gc)
 
-  GN.concatenate_jns(dist_tree, sub_comm)
+  GN.concatenate_jns(dist_tree, comm)
 
   gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
   opp_names = [PT.get_value(PT.get_child_from_name(gc, "GridConnectivityDonorName")) for gc in gcs]

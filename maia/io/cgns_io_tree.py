@@ -8,7 +8,7 @@ import maia.utils.logging as mlog
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
-from .fix_tree                  import ensure_PE_global_indexing, _enforce_pdm_dtype
+from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity, _enforce_pdm_dtype
 
 from maia.factory     import full_to_dist
 from maia.pytree.yaml import parse_yaml_cgns
@@ -74,7 +74,22 @@ def read_tree(filename, legacy=False):
       from ._hdf_io_h5py import read_full
     return read_full(filename)
 
+def read_links(filename, legacy=False):
+  """Detect the links embedded in a CGNS file. 
 
+  Links information are returned as described in sids-to-python. Note that
+  no data are loaded and the tree structure is not even built.
+
+  Args:
+    filename (str) : Path of the file
+  Returns:
+    list: Links description
+  """
+  if legacy:
+    raise NotImplementedError("read_links is only available with legacy=False")
+  else:
+    from ._hdf_io_h5py import read_links
+  return read_links(filename)
 
 def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
@@ -110,6 +125,9 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   n_shifted = ensure_PE_global_indexing(dist_tree)
   if n_shifted > 0 and comm.Get_rank() == 0:
     mlog.warning(f"Some NGon/ParentElements have been shift to be CGNS compliant")
+  n_shifted = ensure_signed_nface_connectivity(dist_tree, comm)
+  if n_shifted > 0 and comm.Get_rank() == 0:
+    mlog.warning(f"Some NFace/ElementConnectivity have been updated to be CGNS compliant")
 
 def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   """
@@ -156,7 +174,7 @@ def file_to_dist_tree(filename, comm, legacy=False):
         _enforce_pdm_dtype(tree)  
     else:
       tree = None
-    dist_tree = full_to_dist.distribute_tree(tree, comm, owner=0) 
+    dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=0)
 
   else:
     dist_tree = load_collective_size_tree(filename, comm, legacy)
@@ -178,9 +196,16 @@ def dist_tree_to_file(dist_tree, filename, comm, legacy=False):
     filename (str) : Path of the file
     comm     (MPIComm) : MPI communicator
   """
+  dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
+  all_dt_size = comm.allreduce(dt_size, MPI.SUM)
+  mlog.info(f"Distributed write of a {mlog.bsize_to_str(dt_size)} dist_tree"
+            f" (Σ={mlog.bsize_to_str(all_dt_size)})...")
+  start = time.time()
   filename = str(filename)
   hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
+  end = time.time()
+  mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 
 def write_trees(tree, filename, comm, legacy=False):
   """Sequential write to CGNS files.

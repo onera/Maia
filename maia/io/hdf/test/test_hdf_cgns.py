@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import numpy as np
 import shutil
@@ -158,6 +158,21 @@ def test_write_link(tmp_hdf_file):
       break
   else:
     assert False
+
+def test_read_links(tmp_hdf_file):
+  assert HCG.load_tree_links(tmp_hdf_file) == []
+  fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
+  gid = HCG.open_from_path(fid, 'Base/ZoneU/GridCoordinates')
+  HCG.write_link(gid, 'CoordinateZ', 'this/hdf/file.hdf', 'this/node')
+  gid.close()
+  gid = HCG.open_from_path(fid, 'Base/ZoneS/GridCoordinates')
+  HCG.write_link(gid, 'CoordinateZ', 'this/hdf/file.hdf', 'this/other_node')
+  gid.close()
+  fid.close()
+  links = HCG.load_tree_links(tmp_hdf_file)
+  assert links[0] == ['.', 'this/hdf/file.hdf', 'this/node', 'Base/ZoneU/GridCoordinates/CoordinateZ']
+  assert links[1] == ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/ZoneS/GridCoordinates/CoordinateZ']
+
 
 def test_load_data_partial(ref_hdf_file):
   fid = h5f.open(bytes(ref_hdf_file, 'utf-8'), h5f.ACC_RDONLY)

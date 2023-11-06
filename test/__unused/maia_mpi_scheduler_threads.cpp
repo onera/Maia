@@ -116,13 +116,13 @@ void recv_tests() {
   }
 }
 
-void exec_test(int i_test, MPI_Comm&& sub_comm) {
+void exec_test(int i_test, MPI_Comm&& comm) {
   tests[i_test]();
-  MPI_Barrier(sub_comm); // TODO2
-  if (std_e::rank(sub_comm)==0) { // rank 0 of sub_comm responsible for reporting test ended
+  MPI_Barrier(comm); // TODO2
+  if (std_e::rank(comm)==0) { // rank 0 of comm responsible for reporting test ended
     MPI_Send(&i_test, 1, MPI_INT, /*to rank*/0, test_done_tag, MPI_COMM_WORLD);
   }
-  MPI_Comm_free(&sub_comm);
+  MPI_Comm_free(&comm);
 }
 void launch_tests() {
   std::thread exec_thread;
@@ -141,18 +141,18 @@ void launch_tests() {
       int rank_active_in_test;
       MPI_Recv(&rank_active_in_test, 1, MPI_INT, /*from rank*/0, ranks_test_to_exec_tag, MPI_COMM_WORLD, &status);
 
-      // create sub_comm and launch test
-      MPI_Comm sub_comm;
+      // create comm and launch test
+      MPI_Comm comm;
       int color = MPI_UNDEFINED;
       if (rank_active_in_test) {
         color = 0;
       }
       int comm_world_rank = std_e::rank(MPI_COMM_WORLD);
-      MPI_Comm_split(MPI_COMM_WORLD, color, comm_world_rank, &sub_comm);
+      MPI_Comm_split(MPI_COMM_WORLD, color, comm_world_rank, &comm);
 
-      if (sub_comm != MPI_COMM_NULL) {
+      if (comm != MPI_COMM_NULL) {
         if (exec_thread.joinable()) { exec_thread.join(); } // make sure previous test finish (useful?)
-        exec_thread = std::thread(exec_test,i_test,std::move(sub_comm));
+        exec_thread = std::thread(exec_test,i_test,std::move(comm));
       }
     }
   }

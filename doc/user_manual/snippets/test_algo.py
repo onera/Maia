@@ -1,3 +1,8 @@
+import pytest
+import shutil
+
+feflo_exists = shutil.which('feflo.a') is not None
+
 def test_convert_s_to_u():
   #convert_s_to_u@start
   from mpi4py import MPI
@@ -116,7 +121,7 @@ def test_compute_wall_distance():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
 
-  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"])
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD)
   assert maia.pytree.get_node_from_name(part_tree, "WallDistance") is not None
   #compute_wall_distance@end
 
@@ -127,7 +132,7 @@ def test_compute_iso_surface():
   from   maia.utils.test_utils import mesh_dir
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   part_tree_iso = maia.algo.part.iso_surface(part_tree, "WallDistance/TurbulentDistance", iso_val=0.25,\
       containers_name=['WallDistance'], comm=MPI.COMM_WORLD)
@@ -179,7 +184,7 @@ def test_extract_from_zsr():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
 
-  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   # Create a ZoneSubRegion on procs for extracting odd cells
   for part_zone in PT.get_all_Zone_t(part_tree):
@@ -203,13 +208,30 @@ def test_extract_from_bc_name():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
   
-  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, families=["WALL"], point_cloud='Vertex')
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   extracted_bc = maia.algo.part.extract_part_from_bc_name(part_tree, \
                  'wall', MPI.COMM_WORLD, containers_name=["WallDistance"])
 
   assert maia.pytree.get_node_from_name(extracted_bc, "WallDistance") is not None
   #extract_from_bc_name@end
+
+def test_extract_from_family():
+  #extract_from_family@start
+  from   mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  
+  maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
+
+  extracted_bc = maia.algo.part.extract_part_from_family(part_tree, \
+                 'WALL', MPI.COMM_WORLD, containers_name=["WallDistance"])
+
+  assert maia.pytree.get_node_from_name(extracted_bc, "WallDistance") is not None
+  #extract_from_family@end
 
 def test_compute_elliptical_slice():
   #compute_elliptical_slice@start
@@ -334,6 +356,46 @@ def test_nface_to_pe():
   assert maia.pytree.get_node_from_name(tree, 'ParentElements') is not None
   #nface_to_pe@end
 
+def test_poly_new_to_old():
+  #poly_new_to_old@start
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+
+  tree = maia.io.read_tree(mesh_dir/'U_ATB_45.yaml')
+  assert maia.pytree.get_node_from_name(tree, 'ElementStartOffset') is not None
+
+  maia.algo.seq.poly_new_to_old(tree)
+  assert maia.pytree.get_node_from_name(tree, 'ElementStartOffset') is None
+  #poly_new_to_old@end
+
+def test_poly_old_to_new():
+  #poly_old_to_new@start
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+
+  tree = maia.io.read_tree(mesh_dir/'U_ATB_45.yaml')
+  maia.algo.seq.poly_new_to_old(tree)
+  assert maia.pytree.get_node_from_name(tree, 'ElementStartOffset') is None
+
+  maia.algo.seq.poly_old_to_new(tree)
+  assert maia.pytree.get_node_from_name(tree, 'ElementStartOffset') is not None
+  #poly_old_to_new@end
+
+def test_enforce_ngon_pe_local():
+  #enforce_ngon_pe_local@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  tree = maia.factory.generate_dist_block(11, 'Poly', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+  n_cell = PT.Zone.n_cell(zone)
+
+  assert PT.get_node_from_name(zone, 'ParentElements')[1].max() > n_cell
+  maia.algo.seq.enforce_ngon_pe_local(tree)
+  assert PT.get_node_from_name(zone, 'ParentElements')[1].max() <= n_cell
+  #enforce_ngon_pe_local@end
+
 def test_elements_to_ngons():
   #elements_to_ngons@start
   from mpi4py import MPI
@@ -390,6 +452,32 @@ def test_rearrange_element_sections():
   assert PT.Element.Range(tris)[0] == 1
   #rearrange_element_sections@end
 
+def test_recover1to1():
+  #recover1to1@start
+  from mpi4py import MPI
+  from numpy  import array, pi
+  import maia
+  import maia.pytree as PT
+  from maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+
+  # Remove data that should be created
+  PT.rm_nodes_from_name(dist_tree, 'PointListDonor')
+  PT.rm_nodes_from_name(dist_tree, 'GridConnectivityProperty')
+
+  # Create FamilyName on interface nodes
+  PT.new_node('FamilyName', 'FamilyName_t', 'Side1', 
+          parent=PT.get_node_from_name(dist_tree, 'matchA'))
+  PT.new_node('FamilyName', 'FamilyName_t', 'Side2', 
+          parent=PT.get_node_from_name(dist_tree, 'matchB'))
+
+  maia.algo.dist.connect_1to1_families(dist_tree, ('Side1', 'Side2'), MPI.COMM_WORLD,
+          periodic={'rotation_angle' : array([-2*pi/45.,0.,0.])})
+
+  assert len(PT.get_nodes_from_name(dist_tree, 'PointListDonor')) == 2
+  #recover1to1@end
+
 def test_redistribute_dist_tree():
   #redistribute_dist_tree@start
   from mpi4py import MPI
@@ -397,5 +485,30 @@ def test_redistribute_dist_tree():
 
   dist_tree_ini = maia.factory.generate_dist_block(21, 'Poly', MPI.COMM_WORLD)
   dist_tree_gathered = maia.algo.dist.redistribute_tree(dist_tree_ini, \
-      MPI.COMM_WORLD, policy='gather.0')
+      'gather.0', MPI.COMM_WORLD)
   #redistribute_dist_tree@end
+
+@pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
+def test_adapt_with_feflo():
+  #adapt_with_feflo@start
+  import mpi4py.MPI as MPI
+  import maia
+  import maia.pytree as PT
+
+  from maia.algo.dist import adapt_mesh_with_feflo
+
+  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # > Create a metric field
+  cx, cy, cz = PT.Zone.coordinates(zone)
+  fields= {'metric' : (cx-0.5)**5+(cy-0.5)**5 - 1}
+  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
+
+  # > Adapt mesh according to scalar metric
+  adpt_dist_tree = adapt_mesh_with_feflo(dist_tree,
+                                         "FlowSolution/metric",
+                                         MPI.COMM_WORLD,
+                                         container_names=["FlowSolution"],
+                                         feflo_opts="-c 100 -cmax 100 -p 4")
+  #adapt_with_feflo@end

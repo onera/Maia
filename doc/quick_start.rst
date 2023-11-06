@@ -8,7 +8,9 @@ Quick start
 Environnements
 --------------
 
-We provide ready-to-go environments including Maia and its dependencies on the following clusters:
+Maia is now distributed in elsA releases (since v5.2.01) !
+
+If you want to try the latest features, we provide ready-to-go environments including Maia and its dependencies on the following clusters:
 
 **Spiro-EL8**
 
@@ -17,43 +19,41 @@ and python version 3.9.
 
 .. code-block:: sh
 
-  module purge
-  source /scratchm/sonics/dist/spiro_el8.sh --compiler=gcc@12 --mpi=impi
+  source /scratchm/sonics/dist/source.sh --env maia
+  module load maia/dev-default
 
-  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-impi21
-  export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
-  export PYTHONPATH=$MAIA_HOME/lib/python3.9/site-packages:$PYTHONPATH
-
-If you want to use maia in elsA framework, the next installation is compatible with
-elsA spiro-el8_mpi production :
+If you want to use Maia within the standard Spiro environment, the next installation is compatible with
+the socle socle-cfd/5.0-intel2120-impi:
 
 .. code-block:: sh
 
-  module purge
-  source /stck/elsa/Public/v5.1.03/Dist/bin/spiro-el8_mpi/source.me
+  module use --append /scratchm/sonics/usr/modules/
+  module load maia/dev-dsi-cfd5
 
-  export MAIA_HOME=/scratchm/jcoulet/aa_install_py3/maia/opt-cfd5_21/
-  export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
-  export PYTHONPATH=$MAIA_HOME/lib/python3.7/site-packages:$PYTHONPATH
+Note that this is the environment used by elsA for its production spiro-el8_mpi.
 
 **Sator**
 
-Sator's version is compiled with intel mpi library and support of large integers.
+Similarly, Maia installation are available in both the self maintained and standard socle
+on Sator cluster. Sator's version is compiled with support of large integers.
 
 .. code-block:: sh
 
-  module purge
-  source /tmp_user/sator/sonics/source-intel-oneapi-2021.2-sator-centos8.me --compiler gcc8.3
+  # Versions based on self compiled tools
+  source /tmp_user/sator/sonics/dist/source.sh --env maia
+  module load maia/dev-default
 
-  export MAIA_HOME=/tmp_user/sator/jcoulet/opt/maia
-  export LD_LIBRARY_PATH=$MAIA_HOME/lib:$LD_LIBRARY_PATH
-  export PYTHONPATH=$MAIA_HOME/lib/python3.8/site-packages:$PYTHONPATH
+  # Versions based on socle-cfd compilers and tools
+  module use --append /tmp_user/sator/sonics/usr/modules/
+  module load maia/dev-dsi-cfd5
 
 
 If you prefer to build your own version of Maia, see :ref:`installation` section.
 
 Supported meshes
 ----------------
+
+.. _quick_start_req:
 
 Maia supports CGNS meshes from version 4.2, meaning that polyhedral connectivities (NGON_n, NFACE_n
 and MIXED nodes) must have the ``ElementStartOffset`` node.

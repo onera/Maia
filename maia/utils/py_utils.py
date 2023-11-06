@@ -110,6 +110,29 @@ def uniform_distribution_at(n_elt, i, n_interval):
 
   return inf,sup
 
+def unique_idx(seq):
+  """ Indirect unique of a sequence : return an array of size len(seq)
+  storing an unique id for each element occuring in sequence
+  """
+
+  size = len(seq)
+  if size == 0:
+    return []
+
+  idx = sorted(range(size), key=seq.__getitem__)
+  out = [-1] * size
+
+  id = 0
+  last = seq[idx[0]]
+  for i in idx:
+    if seq[i] != last:
+      last = seq[i]
+      id += 1
+    out[i] = id
+  return out
+
+  
+
 def str_to_bools(size, key):
   """
   Convert a keyword into a list of booleens of the given size
@@ -124,37 +147,3 @@ def str_to_bools(size, key):
     return [False]*(size-1) + [True]
   else:
     raise ValueError(f"key must be one of {{'none', 'all', 'ancestors' or 'leaf'}}")
-
-
-def set_intersection_difference(x, y, comp):
-  """
-    Returns 4 lists `(inter_x, diff_x, inter_y, diff_y)`:
-      - `inter_x`, are `diff_x` are subsets of elements in `x`
-      - `inter_y`, are `diff_y` are subsets of elements in `y`
-    `inter_x` and `inter_y` contain elements both present in `x` and `y` according the `comp`
-    `diff_x` and `diff_y` contain elements not present in both `x` and `y` according the `comp`
-
-    `x` and `y` must be sorted according to `comp`
-    The returned lists will be sorted
-  """
-  i = 0
-  j = 0
-  inter_x = []
-  inter_y = []
-  diff_x  = []
-  diff_y  = []
-  while i<len(x) and j<len(y):
-    if comp(x[i],y[j]):
-      diff_x.append( x[i] )
-      i += 1
-    elif comp(y[j],x[i]):
-      diff_y.append( y[j] )
-      j += 1
-    else: # x[i]==y[j]:
-      inter_x.append( x[i] )
-      inter_y.append( y[j] )
-      i += 1
-      j += 1
-  diff_x += x[i:]
-  diff_y += y[j:]
-  return inter_x, diff_x, inter_y, diff_y

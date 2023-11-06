@@ -1,4 +1,4 @@
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 import mpi4py.MPI as MPI
 import numpy as np
@@ -13,11 +13,17 @@ class Test_compare_pointrange():
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[7,1],[9,9],[5,1]])
     assert(MJT._compare_pointrange(jn1, jn2) == True)
-  def test_ko(self):
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[1,7],[9,9],[1,5]])
+    assert(MJT._compare_pointrange(jn1, jn2) == True)
+  def test_ko(self):
+    jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
+    jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,7],[1,5]], point_range      =[[1,5],[9,9],[1,5]])
     assert(MJT._compare_pointrange(jn1, jn2) == False)
-  def test_empty(self):
+    jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9]],       point_range_donor=[[7,1],[9,9]])
+    jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[7,1],[9,9],[5,1]])
+    assert(MJT._compare_pointrange(jn1, jn2) == False)
+  def test_empty(self): # We have no idea of why this one is working, so we let it too see if its break one day
     jn1 = PT.new_GridConnectivity1to1(point_range      =np.empty((3,2), np.int32), point_range_donor=np.empty((3,2), np.int32))
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=np.empty((3,2), np.int32), point_range      =np.empty((3,2), np.int32))
     assert(MJT._compare_pointrange(jn1, jn2) == True)
@@ -36,8 +42,8 @@ class Test_compare_pointlist():
     jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=np.empty((1,0), np.int32), point_list      =np.empty((1,0), np.int32))
     assert(MJT._compare_pointlist(jn1, jn2) == True)
 
-@mark_mpi_test([1,3])
-def test_add_joins_donor_name(sub_comm):
+@pytest_parallel.mark.parallel([1,3])
+def test_add_joins_donor_name(comm):
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t [[27,8,0]]:
@@ -79,17 +85,17 @@ Base1 CGNSBase_t [3,3]:
         PointListDonor IndexArray_t [[32,34]]:
 """
   full_tree = parse_yaml_cgns.to_cgns_tree(yt)
-  dist_tree = full_to_dist.distribute_tree(full_tree, sub_comm)
+  dist_tree = full_to_dist.full_to_dist_tree(full_tree, comm)
 
-  MJT.add_joins_donor_name(dist_tree, sub_comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
 
   expected_donor_names = ['matchBA', 'matchAB', 'matchCB1', 'matchCB2', 'matchBC2', 'matchBC1']
   query = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, query)):
     assert PT.get_value(PT.get_child_from_name(jn, 'GridConnectivityDonorName')) == expected_donor_names[i]
 
-@mark_mpi_test(1)
-def test_force(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_force(comm):
   yt = """
 Base0 CGNSBase_t:
   ZoneA Zone_t:
@@ -110,9 +116,9 @@ Base0 CGNSBase_t:
   dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
   jn_donor_path = 'Base0/ZoneA/ZGC/matchAB/GridConnectivityDonorName'
   assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
-  MJT.add_joins_donor_name(dist_tree, sub_comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
   assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
-  MJT.add_joins_donor_name(dist_tree, sub_comm, force=True)
+  MJT.add_joins_donor_name(dist_tree, comm, force=True)
   assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'matchBA'
 
 class Test_gcdonorname_utils:
@@ -158,7 +164,7 @@ Base CGNSBase_t:
     pathes = MJT.get_matching_jns(self.dist_tree)
     assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
     assert pathes[1] == ('Base/ZoneA/ZGC/match1', 'Base/ZoneB/ZGC/match2')
-    pathes = MJT.get_matching_jns(self.dist_tree, 'Vertex')
+    pathes = MJT.get_matching_jns(self.dist_tree, lambda n: PT.Subset.GridLocation(n) == 'Vertex')
     assert len(pathes) == 1
     assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
 
@@ -195,3 +201,31 @@ Base0 CGNSBase_t:
   MJT.clear_interface_ids(dist_tree)
   assert PT.get_node_from_name(dist_tree, 'DistInterfaceId')  is None
   assert PT.get_node_from_name(dist_tree, 'DistInterfaceOrd') is None
+
+@pytest_parallel.mark.parallel(1)
+def test_sort_jn_pointlist(comm):
+  yt = """
+Base CGNSBase_t:
+  ZoneA Zone_t [[3, 2, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      perio1 GridConnectivity_t 'ZoneA':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridConnectivityDonorName Descriptor_t 'perio2':
+        PointList IndexArray_t [[7,5,3]]:
+        PointListDonor IndexArray_t [[11,12,13]]:
+      perio2 GridConnectivity_t 'Base/ZoneA':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridConnectivityDonorName Descriptor_t 'perio1':
+        PointList IndexArray_t [[11,12,13]]:
+        PointListDonor IndexArray_t [[7,5,3]]:
+"""
+  full_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = full_to_dist.full_to_dist_tree(full_tree, comm)
+
+  MJT.sort_jn_pointlist(dist_tree, comm)
+
+  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio1/PointList')[1] == [[3,5,7]]).all()
+  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio2/PointListDonor')[1] == [[3,5,7]]).all()
+  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio2/PointList')[1] == [[13,12,11]]).all()
+  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio1/PointListDonor')[1] == [[13,12,11]]).all()

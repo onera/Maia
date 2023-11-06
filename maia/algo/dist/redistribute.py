@@ -26,7 +26,7 @@ def redistribute_pl_node(node, distribution, comm):
     idx_dimension = array_n[1].shape[0]
     new_pl = np.empty((idx_dimension, new_size), order='F', dtype=array_n[1].dtype)
     for ip in range(idx_dimension):
-      new_pl[ip,:] = MTP.block_to_block(array_n[1][ip], node_distrib, new_distrib, comm)
+      new_pl[ip,:] = MTP.block_to_block(np.ascontiguousarray(array_n[1][ip]), node_distrib, new_distrib, comm)
     array_n[1] = new_pl
 
   #Data Arrays
@@ -198,7 +198,7 @@ def redistribute_zone(zone, distribution, comm):
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_tree(dist_tree, comm, policy='uniform'):
+def redistribute_tree(dist_tree, policy, comm):
   """ Redistribute the data of the input tree according to the choosen distribution policy.
 
   Supported policies are:
@@ -213,8 +213,8 @@ def redistribute_tree(dist_tree, comm, policy='uniform'):
 
   Args:
     dist_tree (CGNSTree) : Distributed tree
-    comm      (MPIComm)  : MPI communicator
     policy    (str)      : distribution policy (see above)
+    comm      (MPIComm)  : MPI communicator
 
   Example:
     .. literalinclude:: snippets/test_algo.py

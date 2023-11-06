@@ -8,7 +8,7 @@ from functools import wraps
 import numpy as np
 
 import maia.pytree as PT
-from maia.pytree.algo.graph import step, zip_depth_first_search
+from maia.pytree.graph.cgns import step, zip_depth_first_search
 from maia.pytree.compare_arrays import equal_array_comparison
 
 TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
@@ -236,7 +236,7 @@ def diff_tree(t1, t2, strict_value_type = True, comp = equal_array_comparison())
     `maia.pytree.compare_arrays.tensor_field_comparison(tol, comm)`: compare tensor fields with a relative tolerance
   """
   v = diff_tree_visitor(strict_value_type, comp)
-  zip_depth_first_search([t1,t2], v, only_nodes=False)
+  zip_depth_first_search([t1,t2], v, depth='all')
   return v.is_ok, v.err_report, v.warn_report
 
 # --------------------------------------------------------------------------

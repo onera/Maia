@@ -4,6 +4,8 @@ Distributed algorithms for distributed trees
 
 from .conformize_jn              import conformize_jn_pair
 
+from .connect_match              import connect_1to1_families
+
 from .duplicate                  import duplicate_from_periodic_jns,\
                                         duplicate_from_rotation_jns_to_360
 
@@ -17,7 +19,8 @@ from .merge                      import merge_all_zones_from_families,\
                                         merge_zones,\
                                         merge_zones_from_family
 
-from .mesh_adaptation            import mesh_adaptation
+from .mesh_adaptation            import adapt_mesh_with_feflo,\
+                                        periodic_adapt_mesh_with_feflo
 
 from .mixed_to_std_elements      import convert_mixed_to_elements
 

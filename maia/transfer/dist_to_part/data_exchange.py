@@ -4,6 +4,8 @@ from maia.utils    import par_utils
 from maia.transfer import utils     as te_utils,\
                           protocols as EP
 
+from maia.transfer.part_to_dist import index_exchange as IPTB
+
 def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   """
   Transfert all the data included in GridCoordinates_t nodes from a distributed
@@ -110,6 +112,10 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
           distribution = te_utils.get_cgns_distribution(d_bc, 'Index')
+          if not par_utils.exists_anywhere(part_zones, bc_path+'/:CGNS#GlobalNumbering/Index', comm):
+            # For structured zones, gnum are not created during partitioning so add it now
+            assert PT.Zone.Type(dist_zone) == "Structured"
+            IPTB.create_part_pr_gnum(dist_zone, part_zones, bc_path, comm)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         #Get data
         data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])

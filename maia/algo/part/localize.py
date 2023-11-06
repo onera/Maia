@@ -24,7 +24,7 @@ def _get_part_data(part_zone):
   face_vtx_idx  = PT.get_child_from_name(ngon,  "ElementStartOffset")[1]
   face_vtx      = PT.get_child_from_name(ngon,  "ElementConnectivity")[1]
 
-  vtx_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
+  vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 
   return [cell_face_idx, cell_face, cell_ln_to_gn, \
       face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]
@@ -169,7 +169,7 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
   src_parts_per_dom = list(_src_parts_per_dom.values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
-  located_data = _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm)
+  located_data = _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, **options)
 
   dom_list = '\n'.join(_src_parts_per_dom.keys())
   for i_dom, tgt_parts in enumerate(tgt_parts_per_dom):

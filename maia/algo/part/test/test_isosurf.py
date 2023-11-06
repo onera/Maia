@@ -1,5 +1,5 @@
 import pytest
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia
@@ -37,10 +37,10 @@ def test_copy_referenced_families():
   assert PT.get_child_from_name(target_base, 'Tata') is None
 
 
-@mark_mpi_test(2)
+@pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("from_api", [False, True])
-def test_exchange_field_one_domain(from_api, sub_comm):
-  if sub_comm.Get_rank() == 0:
+def test_exchange_field_one_domain(from_api, comm):
+  if comm.Get_rank() == 0:
     yt_vol = f"""
     VolZone.P0.N0 Zone_t:
       NGonElements Elements_t [22,0]:
@@ -66,7 +66,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
         Vertex DataArray_t {dtype} [6,4,2,5,3,1]:
     """
     yt_surf = f"""
-    VolZone_iso.P0.N0 Zone_t:
+    VolZone.P0.N0 Zone_t:
       BAR_2 Elements_t [3,0]:
         ElementRange IndexRange_t [1,3]:
         :CGNS#GlobalNumbering UserDefinedData_t:
@@ -83,7 +83,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
     """
   else:
     yt_surf = f"""
-    VolZone_iso.P1.N0 Zone_t:
+    VolZone.P1.N0 Zone_t:
       BAR_2 Elements_t [3,0]:
         ElementRange IndexRange_t [1,3]:
         :CGNS#GlobalNumbering UserDefinedData_t:
@@ -116,7 +116,7 @@ def test_exchange_field_one_domain(from_api, sub_comm):
         Vertex DataArray_t {dtype} [7,8]:
     """
 
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     expected_A = np.array([40.])
     expected_B = np.array([400.])
     expected_C = np.array([60., 50.])
@@ -130,13 +130,13 @@ def test_exchange_field_one_domain(from_api, sub_comm):
   if from_api:
     iso_tree  = parse_yaml_cgns.to_cgns_tree(yt_surf)
     vol_tree  = parse_yaml_cgns.to_cgns_tree(yt_vol)
-    ISO._exchange_field(vol_tree, iso_tree, ["FSolCell", "FSolVtx", "FSolBC"], sub_comm)
+    ISO._exchange_field(vol_tree, iso_tree, ["FSolCell", "FSolVtx", "FSolBC"], comm)
     iso_zone = PT.get_all_Zone_t(iso_tree)[0]
   else:
     iso_zone  = parse_yaml_cgns.to_node(yt_surf)
     vol_zones = parse_yaml_cgns.to_nodes(yt_vol)
-    ISO.exchange_field_one_domain(vol_zones, iso_zone, ["FSolCell", "FSolVtx", "FSolBC"], sub_comm)
-  
+    ISO.exchange_field_one_domain(vol_zones, iso_zone, ["FSolCell", "FSolVtx", "FSolBC"], comm)
+
   assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolCell")) == "CellCenter"
   assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolVtx")) == "Vertex"
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolCell/fieldA")[1], expected_A)
@@ -146,13 +146,13 @@ def test_exchange_field_one_domain(from_api, sub_comm):
   
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@mark_mpi_test(2)
-def test_isosurf_one_domain(sub_comm):
-  dist_tree = maia.factory.generate_dist_block(3, "Poly", sub_comm)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, sub_comm)
+@pytest_parallel.mark.parallel(2)
+def test_isosurf_one_domain(comm):
+  dist_tree = maia.factory.generate_dist_block(3, "Poly", comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
   part_zones = PT.get_all_Zone_t(part_tree)
-  iso_zone = ISO.iso_surface_one_domain(part_zones, "PLANE", [1,0,0,0.25], "TRI_3", sub_comm)
+  iso_zone = ISO.iso_surface_one_domain(part_zones, "PLANE", [1,0,0,0.25], "TRI_3", "hilbert", comm)
 
   assert PT.Zone.n_cell(iso_zone) == 16 and PT.Zone.n_vtx(iso_zone) == 15
   assert (PT.get_node_from_name(iso_zone, 'CoordinateX')[1] == 0.25).all()

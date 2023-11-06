@@ -56,13 +56,14 @@ The example below illustrate how to filter the written or loaded nodes:
   :end-before: #file_to_dist_tree_filter@end
   :dedent: 2
 
-Writing partitioned trees
---------------------------
+Partitioned IO
+--------------
 
-In some cases, it may be useful to write a partitioned tree (keeping the
-partitioned zones separated). This can be achieved using the following function:
+In some cases, it may be useful to write or read a partitioned tree (keeping the
+partitioned zones separated). This can be achieved using the following functions:
 
 .. autofunction:: maia.io.part_tree_to_file
+.. autofunction:: maia.io.file_to_part_tree
 
 .. _user_man_raw_io:
 
@@ -74,6 +75,7 @@ sequential manner. Be aware that information added by maia such as Distribution
 or GlobalNumbering nodes will not be removed.
 
 .. autofunction:: maia.io.read_tree
+.. autofunction:: maia.io.read_links
 .. autofunction:: maia.io.write_tree
 .. autofunction:: maia.io.write_trees
 

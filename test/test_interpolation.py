@@ -1,5 +1,5 @@
 import pytest
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 import os
 
@@ -31,17 +31,17 @@ def refine_mesh(tree, factor=1):
   MA.seq.poly_old_to_new(refined_tree)
   return refined_tree
 
-@mark_mpi_test([1])
+@pytest_parallel.mark.parallel([1])
 @pytest.mark.parametrize("strategy", ["LocationAndClosest", "Location"])
-def test_interpolation_non_overlaping_cubes(sub_comm, strategy, write_output):
+def test_interpolation_non_overlaping_cubes(comm, strategy, write_output):
   n_vtx_src       = 11
   origin_src      = [0., 0., 0.]
   n_vtx_tgt       = 11
   origin_tgt      = [0.84, 0.51, 0.02] #Chose wisely to avoid ties in mesh location
 
   # Generate meshes
-  dist_tree_src    = MF.generate_dist_block(n_vtx_src, "Poly", sub_comm, origin_src)
-  dist_tree_target = MF.generate_dist_block(n_vtx_tgt, "Poly", sub_comm, origin_tgt)
+  dist_tree_src    = MF.generate_dist_block(n_vtx_src, "Poly", comm, origin_src)
+  dist_tree_target = MF.generate_dist_block(n_vtx_tgt, "Poly", comm, origin_tgt)
 
   # Remove some useless nodes
   PT.rm_nodes_from_label(dist_tree_src, 'ZoneBC_t')
@@ -54,24 +54,24 @@ def test_interpolation_non_overlaping_cubes(sub_comm, strategy, write_output):
   PT.new_DataArray("Density", np.arange(distri[0], distri[1], dtype=float)+1, parent=d_fs)
 
   # Create partition on the meshes. Source and destination can have a different partitionning !
-  dzone_to_weighted_parts_src    = MF.partitioning.compute_regular_weights(dist_tree_src   , sub_comm, 2)
-  dzone_to_weighted_parts_target = MF.partitioning.compute_regular_weights(dist_tree_target, sub_comm, 1)
-  part_tree_src    = MF.partition_dist_tree(dist_tree_src   , sub_comm, zone_to_parts=dzone_to_weighted_parts_src   )
-  part_tree_target = MF.partition_dist_tree(dist_tree_target, sub_comm, zone_to_parts=dzone_to_weighted_parts_target)
+  dzone_to_weighted_parts_src    = MF.partitioning.compute_regular_weights(dist_tree_src   , comm, 2)
+  dzone_to_weighted_parts_target = MF.partitioning.compute_regular_weights(dist_tree_target, comm, 1)
+  part_tree_src    = MF.partition_dist_tree(dist_tree_src   , comm, zone_to_parts=dzone_to_weighted_parts_src   )
+  part_tree_target = MF.partition_dist_tree(dist_tree_target, comm, zone_to_parts=dzone_to_weighted_parts_target)
 
   # Transfert source flow sol on partitions
-  MT.dist_tree_to_part_tree_all(dist_tree_src, part_tree_src, sub_comm)
+  MT.dist_tree_to_part_tree_all(dist_tree_src, part_tree_src, comm)
 
   # Interpolation
   # With Location strategy, non located point will have a NaN sol. With LocationAndClosest,
   # a ClosestPoint algorithm is applied to the non located points
-  MA.part.interpolate_from_part_trees(part_tree_src, part_tree_target, sub_comm,\
+  MA.part.interpolate_from_part_trees(part_tree_src, part_tree_target, comm,\
       containers_name=['FlowSolution#Init'], location='CellCenter', strategy=strategy) 
 
   if write_output:
-    out_dir = MU.test_utils.create_pytest_output_dir(sub_comm)
-    MIO.write_trees(part_tree_src   , os.path.join(out_dir, 'part_tree_src.hdf'), sub_comm)
-    MIO.write_trees(part_tree_target, os.path.join(out_dir, 'part_tree_target.hdf'), sub_comm)
+    out_dir = MU.test_utils.create_pytest_output_dir(comm)
+    MIO.write_trees(part_tree_src   , os.path.join(out_dir, 'part_tree_src.hdf'), comm)
+    MIO.write_trees(part_tree_target, os.path.join(out_dir, 'part_tree_target.hdf'), comm)
 
   # > Check results
   for tgt_part in PT.get_all_Zone_t(part_tree_target):
@@ -97,13 +97,13 @@ def test_interpolation_non_overlaping_cubes(sub_comm, strategy, write_output):
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee") #For refine_mesh
 @pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag") #For refine_mesh
-@mark_mpi_test([2])
+@pytest_parallel.mark.parallel([2])
 @pytest.mark.parametrize("n_part_tgt", [1,3,7])
-def test_interpolation_refined(sub_comm, n_part_tgt, write_output):
+def test_interpolation_refined(comm, n_part_tgt, write_output):
   mesh_file = os.path.join(MU.test_utils.mesh_dir, 'U_ATB_45.yaml')
 
   # Load mesh and create a refined version with proc 0
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     with open(mesh_file, 'r') as f:
       tree = PT.yaml.parse_yaml_cgns.to_cgns_tree(f)
     # Simplify tree
@@ -115,8 +115,8 @@ def test_interpolation_refined(sub_comm, n_part_tgt, write_output):
     refined_tree = refine_mesh(tree)
   else:
     tree, refined_tree = None, None
-  dist_tree_src = MF.distribute_tree(tree, sub_comm, owner=0)
-  dist_tree_tgt = MF.distribute_tree(refined_tree, sub_comm, owner=0)
+  dist_tree_src = MF.full_to_dist_tree(tree, comm, owner=0)
+  dist_tree_tgt = MF.full_to_dist_tree(refined_tree, comm, owner=0)
 
   zone = PT.get_all_Zone_t(dist_tree_src)[0]
   sol = PT.deep_copy(PT.get_node_from_name(zone, 'FlowSolution#Centers'))
@@ -124,17 +124,17 @@ def test_interpolation_refined(sub_comm, n_part_tgt, write_output):
   PT.add_child(zone, sol)
 
   # Create partition on the meshes
-  dzone_to_weighted_parts_target = MF.partitioning.compute_regular_weights(dist_tree_tgt, sub_comm, n_part_tgt)
-  part_tree_src = MF.partition_dist_tree(dist_tree_src, sub_comm)
-  part_tree_tgt = MF.partition_dist_tree(dist_tree_tgt, sub_comm, zone_to_parts=dzone_to_weighted_parts_target)
+  dzone_to_weighted_parts_target = MF.partitioning.compute_regular_weights(dist_tree_tgt, comm, n_part_tgt)
+  part_tree_src = MF.partition_dist_tree(dist_tree_src, comm)
+  part_tree_tgt = MF.partition_dist_tree(dist_tree_tgt, comm, zone_to_parts=dzone_to_weighted_parts_target)
 
   # Transfert source flow sol on partitions
-  MT.dist_tree_to_part_tree_all(dist_tree_src, part_tree_src, sub_comm)
-  MT.dist_tree_to_part_tree_all(dist_tree_tgt, part_tree_tgt, sub_comm)
+  MT.dist_tree_to_part_tree_all(dist_tree_src, part_tree_src, comm)
+  MT.dist_tree_to_part_tree_all(dist_tree_tgt, part_tree_tgt, comm)
 
   # Here we use the Interpolator API, who could allow us to redo an interpolation later
   interpolator = MA.part.create_interpolator_from_part_trees(part_tree_src, part_tree_tgt,\
-      sub_comm, location='CellCenter', strategy='Location')
+      comm, location='CellCenter', strategy='Location')
   interpolator.exchange_fields('FlowSolution#Init')
 
   # > Check results

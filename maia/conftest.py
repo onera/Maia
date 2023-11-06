@@ -2,8 +2,6 @@ import pytest
 import os
 from mpi4py import MPI
 
-from pytest_mpi_check import assert_mpi
-
 
 # https://stackoverflow.com/questions/59577426/how-to-rename-the-title-of-the-html-report-generated-by-pytest-html-plug-in
 @pytest.hookimpl(tryfirst=True)
@@ -22,7 +20,6 @@ def pytest_configure(config):
     config.option.htmlpath = 'reports/' + "report_unit_test.html"
     config.option.xmlpath  = 'reports/' + "report_unit_test.xml"
 
-  pytest.assert_mpi = assert_mpi
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):

@@ -134,7 +134,8 @@ def _recover_dist_block_size(part_zones, comm):
 
   # Choose any starting point
   first = next(iter(zones_to_size_g))
-  d_zone_dims = np.zeros((3,3), np.int32, order='F')
+  idx_dim = zones_to_size_g[first].size
+  d_zone_dims = np.zeros((idx_dim,3), np.int32, order='F')
   d_zone_dims[:,1] += zones_to_size_g[first] #Cell size
   for axis in range(3):
     for oper in [operator.ne, operator.eq]: #Go front (vtx != 1), then back (vtx == 1)
@@ -230,8 +231,9 @@ def _recover_GC(dist_zone, part_zones, comm):
   for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
     val = PT.get_value(jn)
     PT.set_value(jn, MT.conv.get_part_prefix(val))
-    gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
-    PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
+    if PT.GridConnectivity.is1to1(jn):
+      gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
+      PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
 
   # Index exchange
   for gc_path in PT.predicates_to_paths(dist_zone, gc_predicate):
@@ -294,9 +296,10 @@ def recover_dist_tree(part_tree, comm):
       d_zone_dims = np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32)
     elif PT.Zone.Type(dist_zone) == "Structured":
       d_zone_dims = _recover_dist_block_size(part_zones, comm)
-      face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
-      face_distri = PTB._lngn_to_distri(face_lngn_list, comm)
-      MT.newDistribution({'Face' : face_distri}, parent=dist_zone)
+      if d_zone_dims.shape[0] == 3:
+        face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
+        face_distri = PTB._lngn_to_distri(face_lngn_list, comm)
+        MT.newDistribution({'Face' : face_distri}, parent=dist_zone)
     PT.set_value(dist_zone, d_zone_dims)
 
     # > Create vertex distribution and exchange vertex coordinates

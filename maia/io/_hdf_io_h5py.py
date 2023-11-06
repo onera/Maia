@@ -6,8 +6,8 @@ import maia.pytree as PT
 from .hdf._hdf_cgns import open_from_path,\
                            load_tree_partial, write_tree_partial,\
                            load_data_partial, write_data_partial,\
-                           write_link
-from .fix_tree      import fix_point_ranges, rm_legacy_nodes,\
+                           load_tree_links, write_link
+from .fix_tree      import fix_point_ranges, ensure_symmetric_gc1to1, rm_legacy_nodes,\
                            add_missing_pr_in_bcdataset, check_datasize
 
 def load_data(names, labels):
@@ -22,6 +22,8 @@ def load_data(names, labels):
       return False
     if names[-2] in [':elsA#Hybrid']: # Do not load legacy nodes
       return False
+    if names[-2] in [':CGNS#GlobalNumbering']:
+      return False
     if labels[-2] == 'BCData_t' and labels[-3] == 'BCDataSet_t': # Load FamilyBCDataSet, but not BCDataSet
       return False
   return True
@@ -33,6 +35,9 @@ def load_collective_size_tree(filename, comm):
     rm_legacy_nodes(size_tree)
     check_datasize(size_tree)
     fix_point_ranges(size_tree)
+    pred_1to1 = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity1to1_t'
+    if PT.get_node_from_predicates(size_tree, pred_1to1) is not None:
+      ensure_symmetric_gc1to1(size_tree)
     add_missing_pr_in_bcdataset(size_tree)
   else:
     size_tree = None
@@ -72,8 +77,14 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
 def read_full(filename):
   return load_tree_partial(filename, lambda X,Y: True)
 
+def read_links(filename):
+  return load_tree_links(filename)
+
 def write_full(filename, dist_tree, links=[]):
-  write_tree_partial(dist_tree, filename, lambda X,Y: True)
+  _dist_tree = PT.shallow_copy(dist_tree)
+  for link in links: # Links override data, so delete data
+    PT.rm_node_from_path(_dist_tree, link[3])
+  write_tree_partial(_dist_tree, filename, lambda X,Y: True)
 
   # Add links if any
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)

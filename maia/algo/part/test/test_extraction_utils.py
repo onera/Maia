@@ -1,5 +1,5 @@
 import pytest
-from   pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia
@@ -64,9 +64,9 @@ def test_local_pl_offset():
   assert EU.local_pl_offset(zone, 2) == 0
 
 
-@mark_mpi_test(2)
-def test_get_partial_container_stride_and_order(sub_comm):
-  if sub_comm.Get_rank()==0:
+@pytest_parallel.mark.parallel(2)
+def test_get_partial_container_stride_and_order(comm):
+  if comm.Get_rank()==0:
     pt = """
     Zone.P0.N0 Zone_t:
       NGonElements Elements_t I4 [22,0]:
@@ -157,16 +157,16 @@ def test_get_partial_container_stride_and_order(sub_comm):
   part_zones = PT.get_all_Zone_t(part_tree)
 
   # > P2P Object
-  ptp = PDM.PartToPart(sub_comm, p1_lngn, p2_lngn, p1_to_p2_idx, p1_to_p2)
+  ptp = PDM.PartToPart(comm, p1_lngn, p2_lngn, p1_to_p2_idx, p1_to_p2)
 
   # Container 
-  pl_gnum1, stride = EU.get_partial_container_stride_and_order(part_zones, 'FSol_A', 'Vertex', ptp, sub_comm)
-  if sub_comm.Get_rank()==0:
+  pl_gnum1, stride = EU.get_partial_container_stride_and_order(part_zones, 'FSol_A', 'Vertex', ptp, comm)
+  if comm.Get_rank()==0:
     assert np.array_equal(pl_gnum1[0], np.array([2,0], dtype=pdm_gnum_dtype))
     assert np.array_equal(pl_gnum1[1], np.array([   ], dtype=pdm_gnum_dtype))
     assert np.array_equal(  stride[0], np.array([1,1], dtype=pdm_gnum_dtype))
     assert np.array_equal(  stride[1], np.array([0,0], dtype=pdm_gnum_dtype))
-  if sub_comm.Get_rank()==1:
+  if comm.Get_rank()==1:
     assert np.array_equal(pl_gnum1[0], np.array([1,1],       dtype=pdm_gnum_dtype))
     assert np.array_equal(  stride[0], np.array([0,0,1,1,0], dtype=pdm_gnum_dtype))
   

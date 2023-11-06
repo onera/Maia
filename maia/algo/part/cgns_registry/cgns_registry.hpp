@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include "pdm.h"
 
 #include "maia/pytree/cgns_keywords/cgns_keywords.hpp"
 #include "maia/algo/part/cgns_registry/distributed_registry.hpp"
@@ -37,11 +38,11 @@ class cgns_registry {
       return registries_by_label[label].entities();
     }
 
-    const std::vector<int>& global_ids(int label) const {
+    const std::vector<PDM_g_num_t>& global_ids(int label) const {
       return registries_by_label[label].ids();
     }
 
-    const distribution_vector<int>& distribution(int label) const {
+    const distribution_vector<PDM_g_num_t>& distribution(int label) const {
       return registries_by_label[label].distribution();
     }
   private:
@@ -49,15 +50,15 @@ class cgns_registry {
 };
 
 // ===========================================================================
-int get_global_id_from_path(const label_registry& reg, std::string path);
-std::string get_path_from_global_id(const label_registry& reg, int g_id);
+PDM_g_num_t get_global_id_from_path(const label_registry& reg, std::string path);
+std::string get_path_from_global_id(const label_registry& reg, PDM_g_num_t g_id);
 
 // ===========================================================================
-int get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, CGNS::Label label);
-std::string get_path_from_global_id_and_type(const cgns_registry& cgns_reg, int g_id, CGNS::Label label);
+PDM_g_num_t get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, CGNS::Label label);
+std::string get_path_from_global_id_and_type(const cgns_registry& cgns_reg, PDM_g_num_t g_id, CGNS::Label label);
 
-int get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, std::string cgns_label_str);
-std::string get_path_from_global_id_and_type(const cgns_registry& cgns_reg, int g_id, std::string cgns_label_str);
+PDM_g_num_t get_global_id_from_path_and_type(const cgns_registry& cgns_reg, std::string path, std::string cgns_label_str);
+std::string get_path_from_global_id_and_type(const cgns_registry& cgns_reg, PDM_g_num_t g_id, std::string cgns_label_str);
 
 // ===========================================================================
 std::string to_string(const cgns_registry& cgns_reg);

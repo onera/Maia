@@ -117,21 +117,6 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("np_cell_face_idx").noconvert(),
         py::arg("np_cell_face").noconvert());
 
-  m.def("adapt_match_information", &adapt_match_information,
-        py::arg("np_neighbor_idx"    ).noconvert(),
-        py::arg("np_neighbor_desc"   ).noconvert(),
-        py::arg("np_recv_entity_stri").noconvert(),
-        py::arg("np_point_list"      ).noconvert(),
-        py::arg("np_point_list_donor").noconvert());
-
-  m.def("compute_face_center_and_characteristic_length", &compute_face_center_and_characteristic_length,
-        py::arg("np_point_list").noconvert(),
-        py::arg("np_cx").noconvert(),
-        py::arg("np_cy").noconvert(),
-        py::arg("np_cz").noconvert(),
-        py::arg("np_face_vtx").noconvert(),
-        py::arg("np_face_vtx_idx").noconvert());
-
   m.def("compute_center_cell_u", &compute_center_cell_u,
         py::arg("n_cell").noconvert(),
         py::arg("np_cx").noconvert(),
@@ -153,6 +138,12 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("nx").noconvert(),
         py::arg("ny").noconvert(),
         py::arg("nz").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
+        py::arg("np_cz").noconvert());
+
+  m.def("compute_face_normal_u", &compute_face_normal_u,
+        py::arg("np_face_vtx_idx").noconvert(),
         py::arg("np_cx").noconvert(),
         py::arg("np_cy").noconvert(),
         py::arg("np_cz").noconvert());

@@ -7,7 +7,7 @@ import maia.pytree.maia as MT
 from maia import npy_pdm_gnum_dtype
 from maia.pytree.yaml import parse_yaml_cgns
 from maia.transfer import utils
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 
 def test_get_partitioned_zones():
   dt = """
@@ -49,8 +49,8 @@ Zone Zone_t:
   assert (zone_distri == [1,2,4]).all()
   assert (bc_distri   == [1,4,4]).all()
 
-@mark_mpi_test(2)
-def test_create_all_elt_distribution(sub_comm):
+@pytest_parallel.mark.parallel(2)
+def test_create_all_elt_distribution(comm):
   yt = """
   Hexa Elements_t:
     ElementRange IndexRange_t [61,80]:
@@ -60,11 +60,11 @@ def test_create_all_elt_distribution(sub_comm):
     ElementRange IndexRange_t [81,100]:
 """
   dist_elts = parse_yaml_cgns.to_nodes(yt)
-  distri = utils.create_all_elt_distribution(dist_elts, sub_comm)
+  distri = utils.create_all_elt_distribution(dist_elts, comm)
   assert distri.dtype == npy_pdm_gnum_dtype
-  if sub_comm.Get_rank() == 0:
+  if comm.Get_rank() == 0:
     assert (distri == [0,50,100]).all()
-  elif sub_comm.Get_rank() == 1:
+  elif comm.Get_rank() == 1:
     assert (distri == [50,100,100]).all()
 
 def test_collect_cgns_g_numering():
@@ -133,25 +133,24 @@ def test_get_entities_numbering():
 
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn, 'Face' : expected_face_lngn}
   gnum_node = MT.newGlobalNumbering(gnum_arrays, zoneS)
-  vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneS, as_pdm=False)
-  assert vtx_lngn.dtype == np.int64
+  vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneS)
   assert (cell_lngn == expected_cell_lngn).all()
   assert (face_lngn == expected_face_lngn).all()
+  assert edge_lngn is None
 
   zoneU = PT.new_Zone(type='Unstructured')
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn}
   gnum_node = MT.newGlobalNumbering(gnum_arrays, zoneU)
 
-  with pytest.raises(RuntimeError):
-    vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
+  vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
+  assert face_lngn is None
 
   ngon = PT.new_Elements(type='NGON_n', parent=zoneU)
   gnum_node = MT.newGlobalNumbering({'Element' : expected_face_lngn}, ngon)
-  vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
-  assert vtx_lngn.dtype == npy_pdm_gnum_dtype
+  vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
   assert (vtx_lngn == expected_vtx_lngn).all()
   assert (face_lngn == expected_face_lngn).all()
 
   ngon = PT.new_Elements('ElementsTwo', type='NGON_n', parent=zoneU)
   with pytest.raises(RuntimeError):
-    vtx_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
+    vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)

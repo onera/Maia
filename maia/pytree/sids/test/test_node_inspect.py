@@ -6,11 +6,6 @@ from maia.pytree      import walk as W
 
 from maia.pytree.sids import node_inspect as SIDS
 
-def test_list_or_only_elt():
-  assert SIDS._list_or_only_elt([42]) == 42
-  input = [1,2,3, "nous irons au bois"]
-  assert SIDS._list_or_only_elt(input) is input
-
 def test_ZoneType():
   #With numpy arrays
   zone_u = N.new_Zone('ZoneU', type='Unstructured')
@@ -22,6 +17,12 @@ def test_ZoneType():
   W.get_child_from_label(zone_s, 'ZoneType_t')[1] = 'Structured'
   assert SIDS.Zone.Type(zone_u) == 'Unstructured'
   assert SIDS.Zone.Type(zone_s) == 'Structured'
+
+def test_IndexDimension():
+  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneU', type='Unstructured', size=[[11,10,0]])) == 1
+  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneS', type='Structured', size=[[10,9,0],[5,4,0],[2,1,0]])) == 3
+  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneS', type='Structured', size=[[10,9,0],[5,4,0]])) == 2
+  assert SIDS.Zone.IndexDimension(N.new_Zone('ZoneS', type='Structured', size=[[10,9,0]])) == 1
 
 def test_NGonNode():
   zone = N.new_Zone('Zone', size=[[100, 36, 0]], type='Unstructured')
@@ -75,6 +76,23 @@ def test_GridConnectivity_Type():
   bc = N.new_BC("bc")
   with pytest.raises(Exception):
     SIDS.GridConnectivity.Type(bc)
+
+def test_GridConnectivity_isperiodic():
+  gc = N.new_GridConnectivity()
+  assert SIDS.GridConnectivity.isperiodic(gc) == False
+  N.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]}, parent=gc)
+  assert SIDS.GridConnectivity.isperiodic(gc) == True
+
+def test_GridConnectivity_periodic_values():
+  gc = N.new_GridConnectivity()
+  assert SIDS.GridConnectivity.periodic_values(gc) == (None, None, None)
+  N.new_GridConnectivityProperty(parent=gc)
+  assert SIDS.GridConnectivity.periodic_values(gc) == (None, None, None)
+  W.rm_children_from_label(gc, 'GridConnectivityProperty_t')
+  N.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]},parent=gc)
+  assert (SIDS.GridConnectivity.periodic_values(gc)[0] == [0., 0., 0.]).all()
+  assert (SIDS.GridConnectivity.periodic_values(gc)[1] == [0., 0., 0.]).all()
+  assert (SIDS.GridConnectivity.periodic_values(gc)[2] == [0., 0., 1.]).all()
 
 def test_zone_u_size():
   #Simulate a 10*5*2 vtx zone

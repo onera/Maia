@@ -81,7 +81,8 @@ def compute_zone_distribution(zone, comm, distri_func):
   zone_distri = {'Vertex' : distri_func(PT.Zone.n_vtx(zone), comm),
                  'Cell'   : distri_func(PT.Zone.n_cell(zone), comm)}
   if PT.Zone.Type(zone) == 'Structured':
-    zone_distri['Face']  = distri_func(PT.Zone.n_face(zone), comm)
+    if PT.Zone.CellSize(zone).size == 3:
+      zone_distri['Face']  = distri_func(PT.Zone.n_face(zone), comm)
 
   MT.newDistribution(zone_distri, parent=zone)
 

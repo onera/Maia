@@ -1,5 +1,13 @@
 import pytest
 
+know_cassiopee = True
+try:
+  import Transform.PyTree as CTransform
+  import Converter.PyTree as CConverter
+  import Post.PyTree      as CPost
+except ImportError:
+  know_cassiopee = False
+
 @pytest.fixture
 def convert_yaml():
   from mpi4py import MPI
@@ -23,7 +31,6 @@ def test_basic_algo(convert_yaml):
   #basic_algo@end
 
 def test_workflow(convert_yaml):
-  # TODO replace ZSR creation by BC extraction when available
   #workflow@start
   from   mpi4py.MPI import COMM_WORLD as comm
   import maia.pytree as PT
@@ -43,15 +50,9 @@ def test_workflow(convert_yaml):
   # Split the mesh to have a partitioned tree
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
   
-  # Create a ZSR as well
-  for part_zone in PT.get_all_Zone_t(part_tree):
-    if PT.get_node_from_name_and_label(part_zone, 'wall', 'BC_t') is not None:
-      PT.new_ZoneSubRegion(name='ZSRWall', bc_name='wall', parent=part_zone)
-
   # Now we can call some partitioned algorithms
-  maia.algo.part.compute_wall_distance(part_tree, comm, 
-      families=['WALL'], point_cloud='Vertex')
-  extract_tree = maia.algo.part.extract_part_from_zsr(part_tree, "ZSRWall", comm)
+  maia.algo.part.compute_wall_distance(part_tree, comm, point_cloud='Vertex')
+  extract_tree = maia.algo.part.extract_part_from_bc_name(part_tree, "wall", comm)
   slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0], comm,
         containers_name=['WallDistance'])
 
@@ -66,6 +67,7 @@ def test_workflow(convert_yaml):
   #workflow@end
   # maia.io.dist_tree_to_file(dist_tree, 'out.cgns', comm) # Write volumic to generate figure
 
+@pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee") #For refine_mesh
 def test_pycgns():
   #pycgns@start
   from   mpi4py.MPI import COMM_WORLD as comm

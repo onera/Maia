@@ -94,6 +94,7 @@ def create_part_pr_gnum(dist_zone, part_zones, node_path, comm):
   from maia.algo.part import point_cloud_utils
 
   ln_to_gn_list = list()
+  idx_dim = PT.Zone.IndexDimension(dist_zone)
   for part_zone in part_zones:
     node = PT.get_node_from_path(part_zone, node_path)
     if node:
@@ -106,9 +107,15 @@ def create_part_pr_gnum(dist_zone, part_zones, node_path, comm):
       # Get entity local numbering as full list
       part_pr = PT.get_child_from_name(node, 'PointRange')[1]
       i_ar = np.arange(part_pr[0][0], part_pr[0][1]+1) #creation pointlist
-      j_ar = np.arange(part_pr[1][0], part_pr[1][1]+1).reshape(-1,1)
-      k_ar = np.arange(part_pr[2][0], part_pr[2][1]+1).reshape(-1,1,1)
-      local_num = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, loc, PT.Zone.VertexSize(part_zone)).flatten()
+      if idx_dim == 1:
+        local_num = i_ar
+      else:
+        j_ar = np.arange(part_pr[1][0], part_pr[1][1]+1).reshape(-1,1)
+        if idx_dim == 3:
+          k_ar = np.arange(part_pr[2][0], part_pr[2][1]+1).reshape(-1,1,1)
+        else:
+          k_ar  = np.ones(1, dtype=i_ar.dtype).reshape(-1,1,1)
+        local_num = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, loc, PT.Zone.VertexSize(part_zone)).flatten()
 
       ln_to_gn_list.append(ln_to_gn_all[local_num-1])
 
@@ -190,6 +197,8 @@ def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size)
   global triplet in the distributed block """
   pcell_size = pvtx_size - 1
   dcell_size = dvtx_size - 1
+  idx_dim = ptriplet.size
+  ptriplet = ptriplet.tolist() + [1] if idx_dim == 2 else ptriplet #Manage 2D
   if loc == 'Vertex':
     gnum = ln_to_gn[s_numbering.ijk_to_index(*ptriplet, pvtx_size)-1]
     dtriplet = s_numbering.index_to_ijk(gnum, dvtx_size)
@@ -205,7 +214,7 @@ def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size)
   elif loc == 'KFaceCenter':
     gnum = ln_to_gn[s_numbering.ijk_to_facekIndex(*ptriplet, pcell_size, pvtx_size)-1]
     dtriplet = s_numbering.facekIndex_to_ijk(gnum, dcell_size, dvtx_size)
-  return dtriplet
+  return dtriplet[:idx_dim] # Manage 2D
 
 def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False):
   """
@@ -214,6 +223,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   If allow_mult is True, leaf node of node_path is expanded search all partitioned leaf*. This can
   be usefull eg to merge splitted joins (match.0, match.1, ...)
   """
+  idx_dim = PT.Zone.IndexDimension(dist_zone)
   ancestor_n, leaf_n = PT.path_head(node_path), PT.path_tail(node_path)
 
   name = leaf_n + '*' if allow_mult else leaf_n
@@ -222,7 +232,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
   proc_bottom = list()
   proc_top = list()
-  proc_permuted = np.zeros(3, bool)
+  proc_permuted = np.zeros(idx_dim, bool)
   for part_zone in part_zones:
     part_vtx_size = PT.Zone.VertexSize(part_zone)
 
@@ -249,12 +259,12 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   all_top = [item for sublist in all_top for item in sublist]
 
   # Select max and min corners to create PR
-  dist_pr = np.empty((3,2), dtype=dist_vtx_size.dtype, order='F')
+  dist_pr = np.empty((idx_dim,2), dtype=dist_vtx_size.dtype, order='F')
   dist_pr[:,0] = min(all_bottom)
   dist_pr[:,1] = max(all_top)
 
   # Restore permuted dir
-  glob_permuted = np.empty(3, dtype=bool)
+  glob_permuted = np.empty(idx_dim, dtype=bool)
   comm.Allreduce(proc_permuted, glob_permuted, op=MPI.LOR)
   dist_pr[glob_permuted, 0], dist_pr[glob_permuted, 1] = \
       dist_pr[glob_permuted, 1], dist_pr[glob_permuted, 0]

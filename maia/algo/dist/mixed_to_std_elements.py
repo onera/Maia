@@ -11,8 +11,6 @@ from maia.utils.ndarray import np_utils
 
 import maia.pytree.sids.elements_utils    as MPSEU
 
-import Pypdm.Pypdm as PDM
-
 def collect_pl_nodes(root, filter_loc=None):
   """
   Search and collect all the pointList nodes found in subsets found
@@ -237,16 +235,9 @@ def convert_mixed_to_elements(dist_tree, comm):
         pl_list = collect_pl_nodes(zone,filter_loc)
         
         ln_to_gn_pl_list = [maia.utils.as_pdm_gnum(PT.get_value(pl)[0]) for pl in pl_list]
-        part1_to_part2_idx_elem_list = [np.arange(l.size+1, dtype=np.int32) for l in ln_to_gn_element_list]
             
-        PTP = PDM.PartToPart(comm, ln_to_gn_element_list, ln_to_gn_pl_list, \
-                             part1_to_part2_idx_elem_list, ln_to_gn_element_list)
-    
-        request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                            PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
-                            old_to_new_element_numbering_list)
-        _, old_to_new_pl_list = PTP.wait(request)
-    
+        old_to_new_pl_list = MTP.part_to_part(old_to_new_element_numbering_list, ln_to_gn_element_list, ln_to_gn_pl_list, comm)
+
         for pl_node, new_pl in zip(pl_list, old_to_new_pl_list):
             PT.set_value(pl_node, np.array(new_pl).reshape((1,-1), order='F'))
 

@@ -199,7 +199,7 @@ def _search_by_intersection(pl_face_vtx_idx, pl_face_vtx, pld_face_vtx):
 
   return pl_vtx_local, pl_vtx_local_opp, face_is_treated
 
-def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm):
+def _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx, pl_face_vtx, pld_face_vtx, comm):
   """
   Take two face_vtx arrays describing one or more matching faces (face link is given
   by pl_face_vtx_idx array), and try to construct the matching
@@ -229,14 +229,9 @@ def _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx, pl_face_vtx, p
                                             PT.get_value(MT.getDistribution(zone_d, 'Vertex')),
                                             pld_face_vtx, comm)
 
-  # TODO extract in apply_periodic_transformation
   #Apply transformation
-  if gc_prop is not None:
-    gc_periodic = PT.get_child_from_label(gc_prop, 'Periodic_t')
-    translation     = PT.get_child_from_name(gc_periodic, 'Translation')[1]
-    rotation_center = PT.get_child_from_name(gc_periodic, 'RotationCenter')[1]
-    rotation_angle  = PT.get_child_from_name(gc_periodic, 'RotationAngle')[1]
-    
+  if PT.GridConnectivity.isperiodic(jn):
+    rotation_center, rotation_angle, translation = PT.GridConnectivity.periodic_values(jn)
     opp_received_coords = np_utils.transform_cart_matrix(opp_received_coords.T, translation, rotation_center, rotation_angle).T
 
 
@@ -329,14 +324,13 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   pld_vtx_l = []
 
   if solo_face:
-    gc_prop = PT.get_child_from_label(jn, 'GridConnectivityProperty_t')
     _, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
 
     pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
     pl_face_vtx_idx_e, pl_face_vtx_e  = np_utils.jagged_extract(pl_face_vtx_idx, pl_face_vtx,  isolated_face_loc)
     pl_face_vtx_idx_e, pld_face_vtx_e = np_utils.jagged_extract(pl_face_vtx_idx, pld_face_vtx, isolated_face_loc)
     pl_vtx_local, pl_vtx_local_opp = \
-        _search_with_geometry(zone, zone_d, gc_prop, pl_face_vtx_idx_e, pl_face_vtx_e, pld_face_vtx_e, comm)
+        _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx_e, pl_face_vtx_e, pld_face_vtx_e, comm)
     pl_vtx_l.append(pl_vtx_local)
     pld_vtx_l.append(pl_vtx_local_opp)
 
@@ -493,7 +487,7 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
   #Build join ids to identify opposite joins
   MJT.add_joins_donor_name(dist_tree, comm)
 
-  match_jns = MJT.get_matching_jns(dist_tree, 'FaceCenter')
+  match_jns = MJT.get_matching_jns(dist_tree, lambda n: PT.Subset.GridLocation(n) == 'FaceCenter')
   interface_pathes_cur = [pair[0] for pair in match_jns]
   interface_pathes_opp = [pair[1] for pair in match_jns]
 

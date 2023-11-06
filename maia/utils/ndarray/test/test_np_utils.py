@@ -50,6 +50,15 @@ def test_shift_nonzeros():
   np_utils.shift_nonzeros(array, -10)
   assert (array == [[2,0], [1,2], [0,3], [0,0]]).all()
 
+def test_interlaced_indexed():
+  array = np.array([3, 11,12,13, 4, 9,8,7,6,  3, 77,88,99])
+  idx, data = np_utils.interlaced_to_indexed(3, array)
+  assert (idx == [0,3,7,10]).all()
+  assert (data == [11,12,13, 9,8,7,6, 77,88,99]).all()
+  assert data.dtype == array.dtype
+  array2 = np_utils.indexed_to_interlaced(idx, data)
+  assert np.array_equal(array, array2)
+
 def test_shift_absvalue():
   array = np.array([2,9,1,-1,3,-8,0])
   id_bck = id(array)
@@ -158,6 +167,20 @@ def test_concatenate_np_arrays():
   array_idx, array = np_utils.concatenate_np_arrays([av])
   assert (array_idx == [0,0]).all()
   assert (array == []).all()
+
+  a1 = np.array([[2, 4, 6, 8]], order='F')
+  a2 = np.array([[10, 20, 30, 40, 50, 60]], order='F')
+  array_idx, array = np_utils.concatenate_np_arrays([a1,a2])
+  assert array.shape == (1,10) and array.data.f_contiguous
+  assert (array_idx == [0,4,10]).all()
+  assert (array == [[2,4,6,8,10,20,30,40,50,60]]).all()
+
+  a1 = np.array([[1,1,1,1], [10, 20, 30, 40], [2,2,2,2]], order='F')
+  a2 = np.array([[1,1,1,1, 1], [50, 60, 70, 80, 90], [3,4,5,6,7]], order='F')
+  array_idx, array = np_utils.concatenate_np_arrays([a1,a2])
+  assert array.shape == (3,9) and array.data.f_contiguous
+  assert (array_idx == [0,4,9]).all()
+  assert (array == [[1,1,1,1,1,1,1,1,1], [10,20,30,40,50,60,70,80,90], [2,2,2,2,3,4,5,6,7]]).all()
 
 def test_concatenate_point_list():
   pl1 = np.array([[2, 4, 6, 8]])

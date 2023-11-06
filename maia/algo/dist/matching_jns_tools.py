@@ -1,12 +1,16 @@
 import mpi4py.MPI as MPI
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
+from .subset_tools import sort_dist_pointlist
 
 def _compare_pointrange(gc1, gc2):
  """
  Compare a couple of grid_connectivity nodes and return True
- if the PointList and PointListDonor are symmetrically equals
+ if the PointList and PointListDonor are equals, even
+ if the symmetry is not respected
  """
  gc1_pr  = PT.get_child_from_name(gc1, 'PointRange')[1]
  gc1_prd = PT.get_child_from_name(gc1, 'PointRangeDonor')[1]
@@ -14,7 +18,8 @@ def _compare_pointrange(gc1, gc2):
  gc2_prd = PT.get_child_from_name(gc2, 'PointRangeDonor')[1]
  if gc1_pr.shape != gc2_prd.shape or gc2_pr.shape != gc1_prd.shape:
    return False
- return (np.all(gc1_pr == gc2_prd) and np.all(gc2_pr == gc1_prd))
+
+ return (np.sort(gc1_pr) == np.sort(gc2_prd)).all() and (np.sort(gc2_pr) == np.sort(gc1_prd)).all()
 
 def _compare_pointlist(gc1, gc2):
   """  
@@ -88,7 +93,8 @@ def add_joins_donor_name(dist_tree, comm, force=False):
 
   #gc_paths -> chemin des zones
   local_match_table = _create_local_match_table(gc_list, gc_paths)
-
+  print(f'gc_paths = {gc_paths}')
+  print(f'local_match_table = {local_match_table}')
   global_match_table = np.empty(local_match_table.shape, dtype=bool)
   comm.Allreduce(local_match_table, global_match_table, op=MPI.LAND)
   #print('  check_candidates\n', global_match_table)
@@ -105,7 +111,10 @@ def get_jn_donor_path(dist_tree, jn_path):
   cur_jn = PT.get_node_from_path(dist_tree, jn_path)
   base_name, zone_name, zgc_name, jn_name = jn_path.split('/')
   opp_zone_path = PT.getZoneDonorPath(base_name, cur_jn)
-  opp_gc_name   = PT.get_value(PT.get_child_from_name(cur_jn, "GridConnectivityDonorName"))
+  gc_donor_name = PT.get_child_from_name(cur_jn, "GridConnectivityDonorName")
+  if gc_donor_name is None :
+    raise RuntimeError(f"No GridConnectivityDonorName found in GC {jn_path}")
+  opp_gc_name   = PT.get_value(gc_donor_name)
 
   opp_zone      = PT.get_node_from_path(dist_tree, opp_zone_path)
   opp_zgc       = PT.get_child_from_label(opp_zone, "ZoneGridConnectivity_t")
@@ -121,17 +130,17 @@ def update_jn_name(dist_tree, jn_path, new_name):
   PT.set_name(cur_jn, new_name)
   PT.set_value(opp_gc_name_n, new_name)
   
-def get_matching_jns(dist_tree, filter_loc=None):
+def get_matching_jns(dist_tree, select_func=None):
   """
   Return the list of pairs of matching jns
   """
-  if filter_loc is None:
+  if select_func is None:
     gc_query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
                          and PT.GridConnectivity.is1to1(n)
   else:
     gc_query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
                          and PT.GridConnectivity.is1to1(n) \
-                         and PT.Subset.GridLocation(n) == filter_loc
+                         and select_func(n)
 
   query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]
 
@@ -146,12 +155,13 @@ def get_matching_jns(dist_tree, filter_loc=None):
 
 def copy_donor_subset(dist_tree):
   """
-  Retrieve for each GridConnectivity_t node the opposite
+  Retrieve for each 1to1 GridConnectivity_t node the opposite
   pointlist in the tree. This assume that GridConnectivityDonorName were added and index distribution
   was identical for two related gc nodes
   """
   gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
-      lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
+      lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and
+                PT.GridConnectivity.is1to1(n)]
 
   for jn_path in PT.predicates_to_paths(dist_tree, gc_predicates):
     opp_jn_path = get_jn_donor_path(dist_tree, jn_path)
@@ -185,4 +195,18 @@ def clear_interface_ids(dist_tree):
   for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
     PT.rm_children_from_name(gc, 'DistInterfaceId')
     PT.rm_children_from_name(gc, 'DistInterfaceOrd')
+
+def sort_jn_pointlist(dist_tree, comm):
+  for jn_pair in get_matching_jns(dist_tree):
+    gc     = PT.get_node_from_path(dist_tree, jn_pair[0])
+    gc_opp = PT.get_node_from_path(dist_tree, jn_pair[1])
+
+    # Update current
+    sort_dist_pointlist(gc, comm)
+
+    # Update donor 
+    PT.update_child(gc_opp, 'PointList', value=PT.get_value(PT.get_node_from_name(gc,'PointListDonor')))
+    PT.update_child(gc_opp, 'PointListDonor', value=PT.get_value(PT.get_node_from_name(gc,'PointList')))
+    MT.newDistribution({'Index': PT.get_value(MT.getDistribution(gc,'Index'))}, gc_opp)
+  
 

@@ -75,6 +75,13 @@ def test_poly_new_to_old_only_interleave(poly_tree_new):
                           [20,0],[19,0],[20,0],[21,0],[22,0],[21,22],[19,21],[19,20],[20,22]])).all()
   assert (nface_ec == np.array([ 6, 11,5,16,9,1,17,    6, -17,7,18,10,2,12,    5, 6,3,-16,13,15,    5, 8,4,-18,-15,14])).all()
 
+def test_poly_new_to_old_2d():
+  tree = maia.factory.generate_dist_block(3, "TRI_3", MPI.COMM_SELF)
+  maia.algo.dist.convert_elements_to_ngon(tree, MPI.COMM_SELF)
+  maia.algo.seq.poly_new_to_old(tree)
+  ngon = PT.get_node_from_name(tree, "NGonElements")
+  ngon_ec = PT.get_value(PT.get_child_from_name(ngon,"ElementConnectivity"))
+  assert (ngon_ec == np.array([3, 1,2,4, 3, 4,2,5, 3, 5,2,3, 3, 5,3,6, 3, 4,5,7, 3, 7,5,8, 3, 8,5,6, 3, 8,6,9])).all()
 
 @pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
 def test_poly_old_to_new(poly_tree_new):
@@ -126,6 +133,26 @@ def test_poly_old_to_new_only_index(poly_tree_new):
                           [20,0],[19,0],[20,0],[21,0],[22,0],[21,22],[19,21],[19,20],[20,22]])).all()
   assert (nface_eso == np.array([0,6,12,17,22])).all()
   assert (nface_ec  == np.array([11,5,16,9,1,17,    -17,7,18,10,2,12,    6,3,-16,13,15,    8,4,-18,-15,14])).all()
+
+@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")
+def test_poly_old_to_new_no_nface(poly_tree_new):
+  t = poly_tree_new
+  maia.algo.seq.poly_new_to_old(t) # Note: we are not testing that!
+  maia.pytree.rm_nodes_from_name(t,"NFACE_n")
+
+  maia.algo.seq.poly_old_to_new(t)
+  ngon = PT.get_node_from_name(t,"NGON_n")
+  ngon_eso = PT.get_value(PT.get_child_from_name(ngon,"ElementStartOffset"))
+  ngon_ec = PT.get_value(PT.get_child_from_name(ngon,"ElementConnectivity"))
+  ngon_pe = PT.get_value(PT.get_child_from_name(ngon,"ParentElements"))
+  assert (ngon_eso == np.array([0,4,8,12,16,20,24,28,32,36,40,44,48,51,54,57,61,65,69])).all()
+  assert (ngon_ec == np.array([ 1,6, 9,4,    6 ,11,14, 9,    3, 5,10, 8,     8,10,15,13,
+                                1,2, 7,6,    2 , 3, 8, 7,    6, 7,12,11,     7, 8,13,12,
+                                4,9,10,5,    9 ,14,15,10,    1, 4, 5, 2,    11,12,15,14,
+                                2,5,3   ,    12,13,15   ,    7, 8,10,
+                                2,5,10,7,    6 , 7,10, 9,    7,10,15,12] )).all()
+  assert (ngon_pe == np.array([[19,0],[20,0],[21,0],[22,0],[19,0],[21, 0],[20, 0],[22, 0],[19, 0],
+                               [20,0],[19,0],[20,0],[21,0],[22,0],[21,22],[19,21],[19,20],[20,22]])).all()
 
 
 @pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag")

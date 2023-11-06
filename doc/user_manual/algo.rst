@@ -40,7 +40,12 @@ Geometry transformations
 .. autofunction:: maia.algo.dist.merge_zones_from_family
 .. autofunction:: maia.algo.dist.merge_connected_zones
 .. autofunction:: maia.algo.dist.conformize_jn_pair
-.. autofunction:: maia.algo.dist.mesh_adaptation
+.. autofunction:: maia.algo.dist.adapt_mesh_with_feflo
+
+Interface tools
+^^^^^^^^^^^^^^^
+
+.. autofunction:: maia.algo.dist.connect_1to1_families
 
 Data management
 ^^^^^^^^^^^^^^^
@@ -75,6 +80,7 @@ Mesh extractions
 .. autofunction:: maia.algo.part.spherical_slice
 .. autofunction:: maia.algo.part.extract_part_from_zsr
 .. autofunction:: maia.algo.part.extract_part_from_bc_name
+.. autofunction:: maia.algo.part.extract_part_from_family
 
 Interpolations
 ^^^^^^^^^^^^^^
@@ -98,7 +104,9 @@ The following algorithms applies on maia distributed or partitioned trees
 Sequential algorithms
 ---------------------
 
-The following algorithms applies on regular pytrees.
+The following algorithms applies on regular (full) pytrees. Note that
+these compatibility functions are also wrapped in the ``maia_poly_old_to_new``
+and ``maia_poly_new_to_old`` scripts, see :ref:`Quick start<quick_start_req>` section.
 
 .. autofunction:: maia.algo.seq.poly_new_to_old
 .. autofunction:: maia.algo.seq.poly_old_to_new

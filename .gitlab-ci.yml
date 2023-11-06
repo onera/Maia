@@ -118,6 +118,7 @@ pages:
     - mkdir public
     - cp -r /scratchm/sonics/usr/maia/v1.0/doc/html public/1.0
     - cp -r /scratchm/sonics/usr/maia/v1.1/doc/html public/1.1
+    - cp -r /scratchm/sonics/usr/maia/v1.2/doc/html public/1.2
     - cp -r build/doc/sphinx/html public/dev
     - |
       cat > public/index.html << EOF
@@ -144,6 +145,7 @@ job:init_deploy:
   script:
     - rsync -a . sonics@spiro02:/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a . sonics@sator:/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
+    - rsync -a --delete . sonics@spiro02:/stck/sonics/tmp/maia-ci-dev #This one is for LD8
 
 job:deploy_spiro_socle5:
   stage: deploy
@@ -158,11 +160,15 @@ job:deploy_spiro_socle5:
       module purge
       module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
-      export PREFIX=/scratchm/sonics/usr/maia/dev
-             FLAGS="-DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_EXTENSION_PDMA=ON"
-      cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=\$PREFIX/dsi-cfd5_dbg \$FLAGS ../
+
+      cmake ../ -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd5_dbg \
+                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
+                -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd5_dbg.log
-      cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/dsi-cfd5 .
+
+      cmake . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd5
       make -j install > dsi-cfd5.log
       EOF
   script:
@@ -213,6 +219,7 @@ job:deploy_sator_socle5:
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/dev/dsi-cfd5 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
                 -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd5.log
       EOF

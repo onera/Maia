@@ -1,5 +1,5 @@
 import pytest
-from pytest_mpi_check._decorator import mark_mpi_test
+import pytest_parallel
 import numpy as np
 
 import maia.pytree        as PT
@@ -42,8 +42,8 @@ def test_transformation_zone_void():
   transform.transform_affine(zone)
   assert PT.is_same_tree(zone_bck, zone) 
 
-@mark_mpi_test(1)
-def test_transform_affine(sub_comm):
+@pytest_parallel.mark.parallel(1)
+def test_transform_affine(comm):
 
   def check_vect_field(old_node, new_node, field_name):
     old_data = [PT.get_node_from_name(old_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
@@ -56,7 +56,7 @@ def test_transform_affine(sub_comm):
     new_data = PT.get_node_from_name(new_node, field_name)[1]
     assert (old_data == new_data).all()
 
-  dist_tree = dcube_generate(4, 1., [0., -.5, -.5], sub_comm)
+  dist_tree = dcube_generate(4, 1., [0., -.5, -.5], comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields

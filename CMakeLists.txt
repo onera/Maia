@@ -51,14 +51,6 @@ if(NOT CMAKE_CXX_STANDARD IN_LIST SUPPORTED_CXX_STANDARDS)
   message(FATAL_ERROR "Supported CXX standards are: ${SUPPORTED_CXX_STANDARDS}.")
 endif()
 
-#TODO : those lines should be removed when std_e / cpp_cgns uses CMAKE_CXX_STANDARD
-if (${CMAKE_CXX_STANDARD} EQUAL 20)
-  set(std_e_ENABLE_CPP20 ON CACHE BOOL "${PROJECT_NAME} uses C++20, so force C++20 for std_e" FORCE)
-  set(cpp_cgns_ENABLE_CPP20 ON CACHE BOOL "${PROJECT_NAME} uses C++20, so force C++20 for cpp_cgns" FORCE)
-elseif (${CMAKE_CXX_STANDARD} EQUAL 17)
-  set(std_e_ENABLE_CPP20 OFF CACHE BOOL "${PROJECT_NAME} uses C++17, so force C++17 for std_e" FORCE)
-  set(cpp_cgns_ENABLE_CPP20 OFF CACHE BOOL "${PROJECT_NAME} uses C++17, so force C++17 for cpp_cgns" FORCE)
-endif()
 set(CMAKE_CXX_EXTENSIONS        OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON )
 ### fPIC
@@ -77,9 +69,15 @@ include(${PROJECT_UTILS_CMAKE_DIR}/additional_build_types.cmake)
 # Dependencies
 # ------------------------------------------------------------------------------
 ## System dependencies ###
-project_find_package(Python 3 REQUIRED COMPONENTS Interpreter Development NumPy)
-project_find_package(MPI REQUIRED)
-project_find_package(Mpi4Py REQUIRED)
+if (NOT TARGET Python::Python OR NOT TARGET Python::NumPy)
+  project_find_package(Python REQUIRED COMPONENTS Development NumPy)
+endif()
+if (NOT TARGET MPI::MPI_CXX)
+  project_find_package(MPI REQUIRED COMPONENTS CXX)
+endif()
+if (NOT TARGET Mpi4Py::Mpi4Py)
+  project_find_package(Mpi4Py REQUIRED)
+endif()
 
 ## Dependencies built from source ##
 include(${PROJECT_UTILS_CMAKE_DIR}/find_or_fetch.cmake)
