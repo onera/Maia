@@ -78,7 +78,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
     assert n_new_bc in [0,1], f"Unknow tags in meshb file ({location})"
 
     for i_group in range(n_elt_group):
-      if bc_names[location]:
+      if bc_names[location] or edge_groups is not None:
         if i_group < n_new_bc:
           name_bc   = {"Vertex":"vtx", "EdgeCenter":"edge", "FaceCenter":"face", "CellCenter":"cell"}
           bc_name = f"feflo_{name_bc[location]}_bc_{i_group}"
