@@ -246,7 +246,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   '''
 
 
-  mlog.info(f"\n\n[Periodic adaptation] Step #1: Duplicating periodic patch...")
+  mlog.info(f"[Periodic adaptation] Step #1: Duplicating periodic patch...")
   start = time.time()
   adapted_dist_tree = copy.deepcopy(dist_tree)
 
@@ -283,7 +283,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   mlog.info(f"[Periodic adaptation] Step #1 completed: ({end-start:.2f} s)")
 
 
-  mlog.info(f"\n\n[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
+  mlog.info(f"[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   adapted_dist_tree = adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                               container_names=container_names,
                                               constraints=['tri_3_periodic', 'tri_3_constraint'],
@@ -293,7 +293,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
   # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
 
 
-  mlog.info(f"\n\n[Periodic adaptation] #3: Removing initial domain...")
+  mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
   start = time.time()
   maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
   PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
@@ -303,13 +303,12 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, periodic, comm, 
                             bcs_to_update, bcs_to_retrieve)
   adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
-  PT.print_tree(adapted_dist_tree, f'adapted_dist_tree_{comm.rank}.tree')
   # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
   end = time.time()
   mlog.info(f"[Periodic adaptation] Step #3 completed: ({end-start:.2f} s)")
 
 
-  mlog.info(f"\n\n[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
+  mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
   gc1_name = gc_paths[0].split('/')[-1]
   gc2_name = gc_paths[1].split('/')[-1]
   adapted_dist_tree = adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
