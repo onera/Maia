@@ -124,12 +124,14 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
     ngon_name  = 'NGonElements'
     nface_name = 'NFaceElements'
     for elt in PT.iter_children_from_label(d_zone, 'Elements_t'):
-      if PT.Element.CGNSName(elt) == 'BAR_2':
-        nedge_name = PT.get_name(elt)
-      if PT.Element.CGNSName(elt) == 'NGON_n':
-        ngon_name = PT.get_name(elt)
-      elif PT.Element.CGNSName(elt) == 'NFACE_n':
-        nface_name = PT.get_name(elt)
+      if PT.Zone.has_ngon_elements(d_zone):
+        # Input element zone + ouput ngon zone --> don't reuse elt names
+        if PT.Element.CGNSName(elt) == 'BAR_2':
+          nedge_name = PT.get_name(elt)
+        if PT.Element.CGNSName(elt) == 'NGON_n':
+          ngon_name = PT.get_name(elt)
+        elif PT.Element.CGNSName(elt) == 'NFACE_n':
+          nface_name = PT.get_name(elt)
 
     n_face = dims['n_face']
     n_cell = dims['n_cell']
@@ -163,7 +165,6 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
       edge_vtx      = data['np_edge_vtx']   
 
       n_edge = edge_vtx.size//2 
-      edge_vtx_idx  = 2*np.arange(n_edge+1, dtype=np.int32)
       edge_face_idx, edge_face = PDM.connectivity_transpose(n_edge, face_edge_idx, face_edge)
       assert edge_face_idx.size - 1 == n_edge
       edge_er = np.array([1, n_edge], np.int32)
@@ -181,7 +182,9 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
       MT.newGlobalNumbering({'Element' : data['np_edge_ln_to_gn']}, nedge_n)
       MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
 
-  else:
+  # Keep element sections + NGON section in case input elt / output ngon, since sections will be needed
+  # for PL exchange
+  if not PT.Zone.has_ngon_elements(d_zone):
     # if vtx are ordered with:
     #   1. unique first
     #   2. then non-unique but owned
@@ -222,9 +225,11 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
             'Sections' : section['np_numabs']
             }
         #Original position in the numbering of all elements of the dim: for example, for faces, this is
-        # the gnum in the description of all the faces (and not only faces describred in sections
+        # the gnum in the description of all the faces (and not only faces described in sections)
         if section['np_parent_entity_g_num'] is not None:
           numberings['ImplicitEntity'] = section['np_parent_entity_g_num']
+        else:
+          numberings['ImplicitEntity'] = section['np_numabs']
         # Corresponding face in the array of all faces described by a section,
         # after face renumbering
         # Local number of entity in the reordered cells of the partition
@@ -234,8 +239,11 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
 
         MT.newGlobalNumbering(numberings, elt_n)
 
+        if connectivity_as == 'NGon': # Prevent clash with NGON/NFace elements with fake label
+          elt_n[3] = 'FakeElements_t'
+
       n_elt_cum   += n_i_elt
-      n_elt_cum_d += PT.Element.Size(elt_section_nodes[i_section])
+      n_elt_cum_d += PT.Element.Size(elt)
 
 def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
   """

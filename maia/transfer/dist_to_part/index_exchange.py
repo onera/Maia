@@ -94,6 +94,16 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
     elts = PT.get_children_from_label(dist_zone, 'Elements_t')
     distri_partial = te_utils.create_all_elt_distribution(elts, comm)
     ln_to_gn_list = [te_utils.create_all_elt_g_numbering(p_zone, elts) for p_zone in part_zones]
+    # Use this if we have indirection from PDM
+    #ln_to_gn_parent_list = [te_utils.create_all_elt_g_numbering(p_zone, elts, 'ParentElement2') for p_zone in part_zones]
+    # Otherwise
+    ln_to_gn_parent_list = [] #Usefull if NGON output from elt input
+    for p_zone in part_zones:
+      if PT.get_child_from_label(p_zone, 'FakeElements_t') is not None:
+        sorted_dist_elts = sorted(elts, key = lambda item : PT.Element.Range(item)[0])
+        p_elts = [PT.get_node_from_name(p_zone, PT.get_name(elt)) for elt in sorted_dist_elts]
+        sections_parent_gnum = [MT.getGlobalNumbering(elt, 'ImplicitEntity')[1] for elt in p_elts if elt]
+        ln_to_gn_parent_list.append(np_utils.concatenate_np_arrays(sections_parent_gnum)[1])
 
   pdm_distri = par_utils.partial_to_full_distribution(distri_partial, comm)
 
@@ -107,7 +117,36 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
   list_group_part = PDM.part_distgroup_to_partgroup(comm, pdm_distri, d_pl_idx.shape[0]-1, d_pl_idx, d_pl,
       len(ln_to_gn_list), [len(lngn) for lngn in ln_to_gn_list], ln_to_gn_list)
 
+  # Post treatement if we have dist elt but part ngon : convert elt PL to ngon
+  if entity == 'Elements':
+    input_dim = max([PT.Element.Dimension(elt) for elt in elts]) if len(elts) > 0 else 0
+    pl_loc = []
+    for query in query_list:
+      for node in PT.iter_children_from_predicates(dist_zone, query):
+        if PT.Subset.GridLocation(node) in filter_loc:
+          pl_loc.append(PT.Subset.GridLocation(node))
+    for i_part, p_zone in enumerate(part_zones):
+      if PT.get_node_from_label(p_zone, 'FakeElements_t') is None: #Do nothing if output is Elts
+        continue
+
+      id_in_section_num = list_group_part[i_part]['npZSRGroup']
+      entity_gnum = ln_to_gn_parent_list[i_part][id_in_section_num-1] #Gnum de l'element
+
+      _group_idx = list_group_part[i_part]['npZSRGroupIdx']
+      _group     = list_group_part[i_part]['npZSRGroup']
+      for i_pl in range(_group_idx.size-1):
+        loc = pl_loc[i_pl]
+        if loc == 'EdgeCenter':
+          elt_name = 'EdgeElements'
+        elif loc == 'FaceCenter':
+          elt_name = 'NGonElements'
+        elif loc == 'CellCenter':
+          elt_name = 'NFaceElements' if input_dim == 3 else 'NGonElements'
+        elt = PT.get_child_from_name_and_label(p_zone, elt_name, 'Elements_t')
+        elt_gnum = MT.get_global_numbering(elt, 'Element')[1]
+        for i,k in enumerate(_group[_group_idx[i_pl]:_group_idx[i_pl+1]]):
+          gnum = ln_to_gn_parent_list[i_part][k-1]
+          id_in_section_num[_group_idx[i_pl]+i] = np.where(elt_gnum==gnum)[0][0]+1
   for i_part, p_zone in enumerate(part_zones):
     create_part_pointlists(dist_zone, p_zone, list_group_part[i_part], type_paths, filter_loc)
-
 

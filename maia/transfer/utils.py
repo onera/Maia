@@ -45,7 +45,7 @@ def collect_cgns_g_numbering(part_nodes, name, prefix=''):
   return [np.empty(0, pdm_gnum_dtype) if prefixed(part_node) is None else \
       PT.get_value(MT.getGlobalNumbering(prefixed(part_node), name)).astype(pdm_gnum_dtype) for part_node in part_nodes]
 
-def create_all_elt_g_numbering(p_zone, dist_elts):
+def create_all_elt_g_numbering(p_zone, dist_elts, gnum_name='Element'):
   """
   Create for the partitioned zone p_zone the global numbering array
   that would correspond to all the Elements_t of the mesh.
@@ -55,12 +55,12 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
   elt_sections_dn   = [PT.Element.Size(elt) for elt in sorted_dist_elts]
   elt_sections_idx  = np_utils.sizes_to_indices(elt_sections_dn, dtype=np.int32)
   p_elts = [PT.get_node_from_name(p_zone, PT.get_name(elt)) for elt in sorted_dist_elts]
-  elt_sections_pn = [PT.Element.Size(elt) if elt else 0 for elt in p_elts]
+  elt_sections_pn = [MT.getGlobalNumbering(elt, gnum_name)[1].size if elt else 0 for elt in p_elts]
   offset = 0
   np_elt_ln_to_gn = np.empty(sum(elt_sections_pn), dtype=pdm_gnum_dtype)
   for i_elt, p_elt in enumerate(p_elts):
     if p_elt:
-      local_ln_gn = PT.get_value(MT.getGlobalNumbering(p_elt, 'Element'))
+      local_ln_gn = PT.get_value(MT.getGlobalNumbering(p_elt, gnum_name))
       np_elt_ln_to_gn[offset:offset+elt_sections_pn[i_elt]] = local_ln_gn + elt_sections_idx[i_elt]
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn

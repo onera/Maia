@@ -228,6 +228,8 @@ def post_partitioning(dist_tree, part_tree, comm):
     pl_paths = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneSubRegion_t', 
         'FlowSolution_t', 'ZoneGridConnectivity_t/GridConnectivity_t']
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Elements', comm)
+    for p_zone in part_zones:
+      PT.rm_children_from_label(p_zone, 'FakeElements_t')
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Vertex'  , comm)
     if PT.Zone.Type(dist_zone) == 'Structured':
       if PT.Zone.CellSize(dist_zone).size == 3:
