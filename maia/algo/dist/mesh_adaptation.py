@@ -247,12 +247,12 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, comm, container_
   adapted_dist_tree = copy.deepcopy(dist_tree) # TODO: shallow_copy sufficient ?
 
 
-
-  # > Get matching vtx
+  # > Store FaceCenter GCs as BCs for feflo tags
   dist_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
   zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
-  for i_side, side_gc_paths in gc_paths:
-    for i_gc, gc_path in enumerate(gc_paths):
+  periodic_values = (list(), list())
+  for i_side, side_gc_paths in enumerate(gc_paths):
+    for i_gc, gc_path in enumerate(side_gc_paths):
       gc_n    = PT.get_node_from_path(adapted_dist_tree, gc_path)
       gc_name = PT.get_name(gc_n)
       gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
@@ -265,16 +265,16 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, comm, container_
                        loc=gc_loc,
                        parent=zone_bc_n)
       PT.maia.newDistribution({'Index':gc_distrib}, parent=bc_n)
-
+      periodic_values[i_side].append(PT.GridConnectivity.periodic_values(gc_n))
 
   maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
   PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
 
   if comm.rank==0:
-    gc_name = gc_paths[0].split('/')[-1]
-    periodic_values, new_vtx_num, bcs_to_update, bcs_to_retrieve = \
-      duplicate_periodic_patch(adapted_dist_tree, gc_name)
+    new_vtx_num, bcs_to_constrain, bcs_to_update, bcs_to_retrieve = \
+      duplicate_periodic_patch(adapted_dist_tree, gc_paths[0])
   adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
+  bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
 
   maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
   end = time.time()
@@ -284,7 +284,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, comm, container_
   mlog.info(f"[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   adapted_dist_tree = adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                               container_names=container_names,
-                                              constraints=['tri_3_periodic', 'tri_3_constraint'],
+                                              constraints=bcs_to_constrain,
                                               feflo_opts=feflo_opts)
   padapted_dist_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
 
