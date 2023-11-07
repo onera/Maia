@@ -228,8 +228,6 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
         # the gnum in the description of all the faces (and not only faces described in sections)
         if section['np_parent_entity_g_num'] is not None:
           numberings['ImplicitEntity'] = section['np_parent_entity_g_num']
-        else:
-          numberings['ImplicitEntity'] = section['np_numabs']
         # Corresponding face in the array of all faces described by a section,
         # after face renumbering
         # Local number of entity in the reordered cells of the partition
