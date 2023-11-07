@@ -16,6 +16,7 @@ Developpement version
 ^^^^^^^^^^^^^^^
 - Algo module: add ``extract_part_from_zsr`` API to extract a submesh from FamilyName nodes
 - Algo module: add ``scale_mesh`` to scale the coordinates of a cartesian mesh
+- Algo module: add ``nodes_to_centers`` to interpolate FlowSolution_t from Vertex to CellCenter
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
