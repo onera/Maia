@@ -760,6 +760,7 @@ def duplicate_periodic_patch(dist_tree, gc_name):
               family='PERIODIC',
               parent=zone_bc_n)
 
+  return new_vtx_nums, to_constrain_bcs, periodized_bcs, matching_bcs
 
 
 def retrieve_initial_domain(dist_tree, gc_name, periodic_values, new_vtx_num,
