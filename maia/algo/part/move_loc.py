@@ -91,6 +91,60 @@ class CenterToNode:
       for field_name, field_values in node_fields.items():
         PT.new_DataArray(field_name, field_values[i_part][vtx_cell_idx[:-1]], parent=fs)
 
+class NodeToCenter:
+  def __init__(self, tree, comm, idw_power=1):
+
+    self.parts        = []
+    self.weights      = []
+    self.weightssum   = []
+    self.cell_vtx     = []
+    self.cell_vtx_idx = []
+
+    for base in PT.get_all_CGNSBase_t(tree):
+      dim = PT.get_value(base)[0]
+      for p_zone in PT.get_all_Zone_t(base):
+        cx,cy,cz = PT.Zone.coordinates(p_zone)
+        cell_vtx_idx, cell_vtx = connectivity_utils.cell_vtx_connectivity(p_zone, dim)
+        cell_vtx_n = np.diff(cell_vtx_idx)
+
+        # Use direct api since cell_vtx is already computed
+        cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, cx,cy,cz)
+
+        diff_x = cx[cell_vtx-1] - np.repeat(cell_center[0::3], cell_vtx_n)
+        diff_y = cy[cell_vtx-1] - np.repeat(cell_center[1::3], cell_vtx_n)
+        diff_z = cz[cell_vtx-1] - np.repeat(cell_center[2::3], cell_vtx_n)
+        norm = (diff_x**2 + diff_y**2 + diff_z**2)**(0.5*idw_power)
+        weights = 1./norm
+
+        self.parts.append(p_zone)
+        self.weights.append(weights)
+        self.weightssum.append(np.add.reduceat(weights, cell_vtx_idx[:-1]))
+        self.cell_vtx.append(cell_vtx)
+        self.cell_vtx_idx.append(cell_vtx_idx)
+          
+
+  def move_fields(self, container_name):
+
+    for i_part, part in enumerate(self.parts):
+      cell_vtx_idx = self.cell_vtx_idx[i_part]
+      cell_vtx     = self.cell_vtx  [i_part]
+      weights      = self.weights   [i_part]
+      weightssum   = self.weightssum[i_part]
+
+      container = PT.get_node_from_path(part, container_name)
+      assert PT.Subset.GridLocation(container) == 'Vertex'
+
+      PT.rm_children_from_name(part, f'{container_name}#Cell')
+      fs_out = PT.new_FlowSolution(f'{container_name}#Cell', loc='CellCenter', parent=part)
+
+      for array in PT.iter_children_from_label(container, 'DataArray_t'):
+        data_in = PT.get_value(array)
+        data_out = np.add.reduceat(data_in[cell_vtx-1] * weights, cell_vtx_idx[:-1])
+        data_out /= weightssum
+        PT.new_DataArray(PT.get_name(array), data_out, parent=fs_out)
+
+
+
 
 def centers_to_nodes(tree, comm, containers_name=[], **options):
   """ Create Vertex located FlowSolution_t from CellCenter located FlowSolution_t.
@@ -128,3 +182,36 @@ def centers_to_nodes(tree, comm, containers_name=[], **options):
 
   for container_name in containers_name:
     C2N.move_fields(container_name)
+
+def nodes_to_centers(tree, comm, containers_name=[], **options):
+  """ Create CellCenter located FlowSolution_t from Vertex located FlowSolution_t.
+
+  Interpolation is based on Inverse Distance Weighting 
+  `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
+  each vertex contributes to the cell value with a weight computed from the distance
+  between the cell isobarycenter and the vertice. The method can be tuned with
+  the following kwargs:
+
+  - ``idw_power`` (float, default = 1) -- Power to which the cell-vertex distance is elevated.
+
+  Args:
+    tree      (CGNSTree): Partionned tree. Only unstructured connectivities are managed.
+    comm       (MPIComm): MPI communicator
+    containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
+    **options: Options related to interpolation, see above.
+
+  See also:
+    A :class:`NodeToCenter` object can be instanciated with the same parameters, excluding ``containers_name``,
+    and then be used to move containers more than once with its
+    ``move_fields(container_name)`` method.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #nodes_to_centers@start
+        :end-before: #nodes_to_centers@end
+        :dedent: 2
+  """
+  N2C = NodeToCenter(tree, comm, **options)
+
+  for container_name in containers_name:
+    N2C.move_fields(container_name)

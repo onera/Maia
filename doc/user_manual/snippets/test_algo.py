@@ -346,6 +346,29 @@ def test_centers_to_nodes():
     assert PT.Subset.GridLocation(vtx_sol) == 'Vertex'
   #centers_to_nodes@end
 
+def test_nodes_to_centers():
+  #nodes_to_centers@start
+  import mpi4py
+  import maia
+  import maia.pytree as PT
+  comm = mpi4py.MPI.COMM_WORLD
+
+  dist_tree = maia.factory.generate_dist_sphere(3, 'TETRA_4', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+  # Init a FlowSolution located at Nodes
+  for part in PT.get_all_Zone_t(part_tree):
+    cx, cy, cz = PT.Zone.coordinates(part)
+    fields = {'cX': cx, 'cY': cy, 'cZ': cz}
+    PT.new_FlowSolution('FSol', loc='Vertex', fields=fields, parent=part)
+
+  maia.algo.part.nodes_to_centers(part_tree, comm, ['FSol'])
+
+  for part in PT.get_all_Zone_t(part_tree):
+    cell_sol = PT.get_node_from_name(part, 'FSol#Cell')
+    assert PT.Subset.GridLocation(cell_sol) == 'CellCenter'
+  #nodes_to_centers@end
+
 def test_pe_to_nface():
   #pe_to_nface@start
   from mpi4py import MPI
