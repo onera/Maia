@@ -403,8 +403,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
 
-    return adapted_dist_tree
-
   else:
     adapted_dist_tree = adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts)
   
