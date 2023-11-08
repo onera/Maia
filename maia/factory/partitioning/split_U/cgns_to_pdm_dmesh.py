@@ -149,7 +149,7 @@ def cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, comm):
     dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
   else:
     dvtx_coord = np.empty(0, dtype='float64', order='F')
-  dmesh_nodal.set_coordinates(dvtx_coord)
+  dmesh_nodal.set_coordinnates(dvtx_coord)
 
   ngon_node = PT.Zone.NGonNode(dist_zone)
   ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
@@ -200,7 +200,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
       dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
     else:
       dvtx_coord = np.empty(0, dtype='float64', order='F')
-    dmesh_nodal.set_coordinates(dvtx_coord)
+    dmesh_nodal.set_coordinnates(dvtx_coord)
 
     # keep dvtx_coord object alive for ParaDiGM
     multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
