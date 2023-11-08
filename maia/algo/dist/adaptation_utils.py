@@ -207,7 +207,6 @@ def add_periodic_elmt(zone, gc_elt_pl, gc_vtx_pl, gc_vtx_pld, new_vtx_num, perio
         new_bc_pl = np.concatenate([bc_pl, new_bc_pl]).reshape((1,-1), order='F')
         PT.set_value(bc_pl_n, new_bc_pl)
 
-  print(f'unwanted_bcs = {unwanted_bcs}')
   for bc_name in unwanted_bcs:
     if cgns_name!='TETRA_4':
       bc_n    = PT.get_child_from_name(zone_bc_n, bc_name)
@@ -403,8 +402,8 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num):
   # old_to_new_vtx = merge_distributed_ids(vtx_distri_ini, sources, targets, comm, False)
 
   old_to_new_vtx = np.arange(1, n_vtx+1, dtype=np.int32)
-  old_to_new_vtx[sources-1] = -1
-  old_to_new_vtx[np.where(old_to_new_vtx!=-1)[0]] = np.arange(1, n_vtx-sources.size+1)
+  old_to_new_vtx[sources-1] = -1000
+  old_to_new_vtx[np.where(old_to_new_vtx!=-1000)[0]] = np.arange(1, n_vtx-sources.size+1)
   old_to_new_vtx[sources-1] = old_to_new_vtx[targets-1]
   
   remove_elts_from_pl(zone, pbc1_pl, LOC_TO_CGNS[pbc2_loc])
@@ -528,7 +527,7 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_values,
         mask  = np.isin(ec_bc, pl_vtx_duplicate)
         ec_pl = ec_pl[mask]
         ec_bc = ec_bc[mask]
-        
+
         new_ec = np.searchsorted(pl_vtx_duplicate, ec_bc)
         new_ec = new_ec+n_vtx+1
         ec[ec_pl] = new_ec
@@ -670,17 +669,10 @@ def duplicate_periodic_patch(dist_tree, gc_paths):
   # new_vtx_num = [np.empty(0, dtype=np.int32), np.empty(0, dtype=np.int32)]
   new_vtx_nums   = [[np.empty(0, dtype=np.int32), np.empty(0, dtype=np.int32)] for i in range(n_periodicity)]
   for elt_name, loc in {'TETRA_4':'CellCenter', 'TRI_3':'FaceCenter', 'BAR_2':'EdgeCenter'}.items():
-    print(f'\n\nELT_NAME = {elt_name}')
-    # for i_per in range(n_periodicity):
-    #   print(f'  - old_vtx_num[perio{i_per}] = {new_vtx_nums[i_per][0]}')
-    #   print(f'  - new_vtx_num[perio{i_per}] = {new_vtx_nums[i_per][1]}')
 
     i_per = 0
     gc_elt_pls = [tag_elmt_owning_vtx(zone, gc_vtx_pld, elt_name, elt_full=False) for gc_vtx_pld in gc_vtx_plds]
     for periodic_value, gc_vtx_pl, gc_vtx_pld, gc_elt_pl in zip(periodic_values, gc_vtx_pls, gc_vtx_plds, gc_elt_pls):
-    # for periodic_value, gc_vtx_pl, gc_vtx_pld in zip(periodic_values, gc_vtx_pls, gc_vtx_plds):
-    #   gc_elt_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, elt_name, elt_full=False)
-      print(f'  - gc_elt_pl.size = {gc_elt_pl.size}')
       n_vtx_to_add, new_vtx_nums[i_per], new_elt_pl, periodized_bcs[i_per][elt_name] =\
         add_periodic_elmt(zone, gc_elt_pl,
                           gc_vtx_pl, gc_vtx_pld,
@@ -690,7 +682,6 @@ def duplicate_periodic_patch(dist_tree, gc_paths):
                           elt_name, i_per)
       match_elt_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, elt_name, elt_full=True)
       matching_bcs[i_per][elt_name] = detect_match_bcs(zone, match_elt_pl, gc_vtx_pl, gc_vtx_pld, elt_name)
-      print(f'  - matching_bcs = {matching_bcs[i_per][elt_name]}')
       
       # > Add volumic BCs so that we can delete patches after TODO: better way ?
       if elt_name=='TETRA_4':
@@ -712,9 +703,7 @@ def duplicate_periodic_patch(dist_tree, gc_paths):
 
         # > Search undefined faces
         new_tri_pl = add_undefined_faces(zone, new_elt_pl, elt_name, gc_vtx_pl, 'TRI_3')
-        print(f'new_tri_pl = {new_tri_pl}')
-        # new_tri_pl = add_existent_bc(zone, new_tri_pl, new_vtx_num, 'TRI_3')
-        new_tri_pl = add_existent_bc(zone, new_tri_pl, new_vtx_nums[i_per], 'TRI_3') #usefull loul
+        new_tri_pl = add_existent_bc(zone, new_tri_pl, new_vtx_nums[i_per], 'TRI_3', i_per) #usefull loul
         bc_name = f'tri_3_periodic_{i_per}'
         PT.new_BC(name=bc_name, 
                   type='FamilySpecified',
@@ -734,16 +723,8 @@ def duplicate_periodic_patch(dist_tree, gc_paths):
                   parent=zone_bc_n)
         to_constrain_bcs.append(bc_name)
       
-        # sys.exit()
       i_per += 1
 
-      # print(f'n_elt_per_dim = {(dim, er[1]-er[0]+1) for dim,er in enumerate(PT.Zone.get_elt_range_per_dim(zone))}')
-      for dim,er in enumerate(PT.Zone.get_elt_range_per_dim(zone)):
-        print(f'n_elt_per_dim = {dim} {er[1]-er[0]+1}') 
-
-    #   maia.io.write_tree(dist_tree, f'OUTPUT/extended_domain_{elt_name}_per{i_periodicity}.cgns')
-
-    # maia.io.write_tree(dist_tree, f'OUTPUT/extended_domain_{elt_name}.cgns')
 
   for i_per in range(n_periodicity):
     pl_constraint = new_vtx_nums[i_per][0].reshape((1,-1), order='F')
@@ -783,10 +764,7 @@ def retrieve_initial_domain(dist_tree, gc_paths, periodic_values, new_vtx_num,
 
   # > Removing old periodic patch
   for i_per in range(len(gc_paths)):
-    cx, cy, cz = PT.Zone.coordinates(dist_zone)
-    print(f'[i_per={i_per}] ZONE  beg = {PT.get_value(dist_zone)}')
-    print(f'[i_per={i_per}] COORD beg = {cx.size} {cy.size} {cz.size}')
-    maia.io.write_tree(dist_tree, f'OUTPUT/bef_any_change_{i_per}.cgns')
+    # maia.io.write_tree(dist_tree, f'OUTPUT/bef_any_change_{i_per}.cgns')
     n_vtx = PT.Zone.n_vtx(dist_zone)
 
     cell_bc_name     = f'{cell_elt_name.lower()}_constraint_{i_per}'
@@ -852,6 +830,8 @@ def retrieve_initial_domain(dist_tree, gc_paths, periodic_values, new_vtx_num,
     deplace_periodic_patch(dist_zone, f'{cell_elt_name.lower()}_periodic_{i_per}',
                            gc_name, periodic_values[i_per],
                            bcs_to_update[i_per], bcs_to_retrieve[i_per])
+
+    # maia.io.write_tree(dist_tree, f'OUTPUT/deplaced_{i_per}.cgns')
 
     vtx_tag_n = PT.get_node_from_name(dist_zone, 'vtx_tag')
     vtx_tag   = PT.get_value(vtx_tag_n)
@@ -945,7 +925,7 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   return new_tgt_elt_pl
 
 
-def add_existent_bc(zone, elt_pl, new_vtx_num, elt_name):
+def add_existent_bc(zone, elt_pl, new_vtx_num, elt_name, i_per):
 
   n_new_elt = elt_pl.size
 
@@ -987,7 +967,7 @@ def add_existent_bc(zone, elt_pl, new_vtx_num, elt_name):
     tag_elt = np.logical_and.reduceat(tag_vtx_in_new_elt, np.arange(0,n_new_elt*size_elt,size_elt)) # True when has vtx 
     if tag_elt.any():
       new_bc_pl = elt_pl[tag_elt]
-      PT.new_BC(name=bc_name+'p',
+      PT.new_BC(name=bc_name+f'_p{i_per}',
                 type='FamilySpecified',
                 point_list=new_bc_pl.reshape((1,-1), order='F'),
                 loc='FaceCenter',

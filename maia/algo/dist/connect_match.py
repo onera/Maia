@@ -292,7 +292,6 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
       jn_name_cur = f"{leaf_name_cur}_{n_spawn[origin_path_cur]}"
       jn_name_opp = f"{leaf_name_opp}_{n_spawn[origin_path_opp]}"
 
-      PT.print_tree(zgc)
       jn = PT.new_GridConnectivity(jn_name_cur,
                                    zone_opp_path,
                                    'Abutting1to1',

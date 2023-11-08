@@ -93,8 +93,7 @@ def add_joins_donor_name(dist_tree, comm, force=False):
 
   #gc_paths -> chemin des zones
   local_match_table = _create_local_match_table(gc_list, gc_paths)
-  print(f'gc_paths = {gc_paths}')
-  print(f'local_match_table = {local_match_table}')
+
   global_match_table = np.empty(local_match_table.shape, dtype=bool)
   comm.Allreduce(local_match_table, global_match_table, op=MPI.LAND)
   #print('  check_candidates\n', global_match_table)
