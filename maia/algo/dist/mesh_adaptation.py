@@ -276,10 +276,10 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, comm, container_
   adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
   bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
 
-  maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
+  # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
   end = time.time()
   mlog.info(f"[Periodic adaptation] Step #1 completed: ({end-start:.2f} s)")
-  sys.exit()
+
 
   mlog.info(f"[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   adapted_dist_tree = adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
@@ -297,7 +297,7 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, comm, container_
   PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
 
   if comm.rank==0:
-    retrieve_initial_domain(adapted_dist_tree, gc_name, periodic_values, new_vtx_num,\
+    retrieve_initial_domain(adapted_dist_tree, gc_paths[0], periodic_values[0], new_vtx_num,\
                             bcs_to_update, bcs_to_retrieve)
   adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
@@ -307,11 +307,13 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, comm, container_
 
 
   mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
-  gc1_name = gc_paths[0].split('/')[-1]
-  gc2_name = gc_paths[1].split('/')[-1]
+  gc_constraints = list()
+  for i_side, side_gc_paths in enumerate(gc_paths):
+    for i_gc, gc_path in enumerate(side_gc_paths):
+      gc_constraints.append(gc_path.split('/')[-1])
   adapted_dist_tree = adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                               container_names=container_names,
-                                              constraints=[gc1_name, gc2_name],
+                                              constraints=gc_constraints,
                                               feflo_opts=feflo_opts)
   
 
@@ -319,36 +321,45 @@ def periodic_adapt_mesh_with_feflo(dist_tree, metric, gc_paths, comm, container_
   PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'PERIODIC', 'Family_t')
   PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'GCS',      'Family_t')
   PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
-  PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'tetra_4_periodic','BC_t')
+  PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'tetra_4_periodic*','BC_t')
 
   zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
   bc_nodes = list()
-  for i_gc, gc_path in enumerate(gc_paths):
-    bc_name = gc_path.split('/')[-1]#+'_0'
-    bc_n = PT.get_node_from_name(adapted_dist_tree, bc_name, 'BC_t')
-    PT.rm_children_from_label(bc_n, 'FamilyName_t')
-    PT.new_node('FamilyName', label='FamilyName_t', value=f'BC_TO_CONVERT_{i_gc}', parent=bc_n)
-    bc_nodes.append(bc_n)
+  n_interface = len(gc_paths[0])
+  for i_side, side_gc_paths in enumerate(gc_paths):
+    for i_gc, gc_path in enumerate(side_gc_paths):
+      bc_name = gc_path.split('/')[-1]
+      bc_n = PT.get_node_from_name(adapted_dist_tree, bc_name, 'BC_t')
+      PT.rm_children_from_label(bc_n, 'FamilyName_t')
+      PT.new_node('FamilyName', label='FamilyName_t', value=f'BC_TO_CONVERT_{i_gc}_{i_side}', parent=bc_n)
+      bc_nodes.append(bc_n)
 
-  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('BC_TO_CONVERT_0', 'BC_TO_CONVERT_1'), comm, periodic=periodic)
+  periodic_names = ["rotation_center", "rotation_angle", "translation"]
+  for i_interface in range(n_interface):
+    periodic_value = {pname:pvalue for pname, pvalue in zip(periodic_names, periodic_values[0][i_interface])}
+    maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_interface}_0', f'BC_TO_CONVERT_{i_interface}_1'), comm, periodic=periodic_value)
 
-  for i_gc, gc_path in enumerate(gc_paths):
-    gc_name = gc_path.split('/')[-1]+'_0'
-    gc_n = PT.get_node_from_name(adapted_dist_tree, gc_name, 'GridConnectivity_t')
-    gcd_name_n = PT.get_child_from_name(gc_n, 'GridConnectivityDonorName')
-    PT.set_value(gcd_name_n, PT.get_value(gcd_name_n)[:-2])
-    PT.rm_children_from_label(gc_n, 'FamilyName_t')
-    PT.set_name(gc_n, gc_path.split('/')[-1])
+  for i_side, side_gc_paths in enumerate(gc_paths):
+    for i_gc, gc_path in enumerate(side_gc_paths):
+      gc_name = gc_path.split('/')[-1]+'_0'
+      gc_n = PT.get_node_from_name(adapted_dist_tree, gc_name, 'GridConnectivity_t')
+      gcd_name_n = PT.get_child_from_name(gc_n, 'GridConnectivityDonorName')
+      PT.set_value(gcd_name_n, PT.get_value(gcd_name_n)[:-2])
+      PT.rm_children_from_label(gc_n, 'FamilyName_t')
+      PT.set_name(gc_n, gc_path.split('/')[-1])
 
   for bc_n in bc_nodes:
     PT.add_child(zone_bc_n, bc_n)
 
-  maia.algo.dist.connect_1to1_families(adapted_dist_tree, ('BC_TO_CONVERT_0', 'BC_TO_CONVERT_1'), comm, periodic=periodic, location='Vertex')
+  for i_interface in range(n_interface):
+    periodic_value = {pname:pvalue for pname, pvalue in zip(periodic_names, periodic_values[0][i_interface])}
+    maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_interface}_0', f'BC_TO_CONVERT_{i_interface}_1'), comm, periodic=periodic_value, location='Vertex')
 
-  for i_gc, gc_path in enumerate(gc_paths):
-    gc_name = gc_path.split('/')[-1]+'_0'
-    gc_n = PT.get_node_from_name(adapted_dist_tree, gc_name, 'GridConnectivity_t')
-    PT.rm_children_from_label(gc_n, 'FamilyName_t')
+  for i_side, side_gc_paths in enumerate(gc_paths):
+    for i_gc, gc_path in enumerate(side_gc_paths):
+      gc_name = gc_path.split('/')[-1]+'_0'
+      gc_n = PT.get_node_from_name(adapted_dist_tree, gc_name, 'GridConnectivity_t')
+      PT.rm_children_from_label(gc_n, 'FamilyName_t')
 
 
   maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
