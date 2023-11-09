@@ -287,7 +287,27 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
         :dedent: 2
   """
 
+
+
   if periodic:
+    '''
+    1ere extension de domaine:
+      - tag des cellules qui ont un vtx dans la gc
+      - création de la surface de contrainte:
+        - connectivité des cellules tagguées sans les vertex de la gc
+        - toutes les éléments qui ne sont pas dans la connectivité des BCs
+      - duplication des éléments de la surface contrainte
+      - déplacement des vertex du patch
+      - merge des surfaces de la GC
+
+    2eme extension de domaine:
+      - get bc cellules (issu du mesh adapté)
+      - duplication des éléments de la gc
+      - déplacement des vertex du patch
+      - merge des surfaces de contrainte
+
+      
+    '''
     start = time.time()
     adapted_dist_tree = copy.deepcopy(dist_tree) # TODO: shallow_copy sufficient ?
 
@@ -304,7 +324,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     bcs_to_constrain = list()
     if comm.rank==0:
       new_vtx_num, bcs_to_constrain, bcs_to_update, bcs_to_retrieve = \
-        duplicate_periodic_patch(adapted_dist_tree, gc_paths[0])
+        duplicate_periodic_patch(adapted_dist_tree, gc_paths, periodic_values)
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
     bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
 
