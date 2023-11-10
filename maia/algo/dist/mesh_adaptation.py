@@ -349,7 +349,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
 
     if comm.rank==0:
-      retrieve_initial_domain(adapted_dist_tree, gc_paths[0], periodic_values[0], new_vtx_num,\
+      retrieve_initial_domain(adapted_dist_tree, gc_paths, periodic_values, new_vtx_num,\
                               bcs_to_update, bcs_to_retrieve)
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
