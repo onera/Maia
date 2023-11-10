@@ -8,6 +8,12 @@ import maia.pytree.maia   as MT
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
 from maia.algo.dist   import ngon_from_std_elements as GNG
 
+def test_raise_if_possible_overflow():
+  GNG.raise_if_possible_overflow(2000000000,1) #OK
+  GNG.raise_if_possible_overflow(8000000000,4) #OK
+  with pytest.raises(OverflowError):
+    GNG.raise_if_possible_overflow(8000000000,2) #Overflow
+
 @pytest_parallel.mark.parallel(2)
 class Test_compute_ngon_from_std_elements:
 
