@@ -94,10 +94,8 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
     elts = PT.get_children_from_label(dist_zone, 'Elements_t')
     distri_partial = te_utils.create_all_elt_distribution(elts, comm)
     ln_to_gn_list = [te_utils.create_all_elt_g_numbering(p_zone, elts) for p_zone in part_zones]
-    # Use this if we have indirection from PDM
-    #ln_to_gn_parent_list = [te_utils.create_all_elt_g_numbering(p_zone, elts, 'ParentElement2') for p_zone in part_zones]
-    # Otherwise
-    elt_to_entity_list = [] #Usefull if NGON output from elt input
+    # Get elt_to_entity indirection from PDM, which is needed if we have a NGON/NFace output
+    elt_to_entity_list = []
     for p_zone in part_zones:
       if PT.get_child_from_label(p_zone, 'FakeElements_t') is not None:
         sorted_dist_elts = sorted(elts, key = lambda item : PT.Element.Range(item)[0])
