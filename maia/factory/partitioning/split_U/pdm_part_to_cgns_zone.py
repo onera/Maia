@@ -227,13 +227,11 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
         #Original position in the numbering of all elements of the dim: for example, for faces, this is
         # the gnum in the description of all the faces (and not only faces described in sections)
         if section['np_parent_entity_g_num'] is not None:
-          numberings['ImplicitEntity'] = section['np_parent_entity_g_num']
+          numberings['Entity'] = section['np_parent_entity_g_num']
         # Corresponding face in the array of all faces described by a section,
         # after face renumbering
-        # Local number of entity in the reordered cells of the partition
-        # (for faces, note that only face explicitly described are renumbered)
         lnum_node = PT.new_node(':CGNS#LocalNumbering', 'UserDefinedData_t', parent=elt_n)
-        PT.new_DataArray('ExplicitEntity', section['np_parent_num'], parent=lnum_node)
+        PT.new_DataArray('Entity', section['np_parent_num'], parent=lnum_node)
 
         MT.newGlobalNumbering(numberings, elt_n)
 

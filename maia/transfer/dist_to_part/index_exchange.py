@@ -100,7 +100,7 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
       if PT.get_child_from_label(p_zone, 'FakeElements_t') is not None:
         sorted_dist_elts = sorted(elts, key = lambda item : PT.Element.Range(item)[0])
         p_elts = [PT.get_node_from_name(p_zone, PT.get_name(elt)) for elt in sorted_dist_elts]
-        sections_parent_gnum = [PT.get_node_from_path(elt, ':CGNS#LocalNumbering/ExplicitEntity')[1] for elt in p_elts if elt]
+        sections_parent_gnum = [PT.get_node_from_path(elt, ':CGNS#LocalNumbering/Entity')[1] for elt in p_elts if elt]
         elt_to_entity_list.append(np_utils.concatenate_np_arrays(sections_parent_gnum)[1])
 
   pdm_distri = par_utils.partial_to_full_distribution(distri_partial, comm)
