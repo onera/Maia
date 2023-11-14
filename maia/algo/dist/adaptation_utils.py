@@ -8,6 +8,8 @@ from maia.transfer import protocols as EP
 
 from maia.algo.dist.merge_ids import merge_distributed_ids
 
+import cmaia.dist_algo as cdist_algo
+
 import numpy as np
 
 CGNS_TO_LOC = {'BAR_2'  :'EdgeCenter',
@@ -486,6 +488,7 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, keep_original
 
   return old_to_new_vtx
 
+
 def update_vtx_bnds(zone, old_to_new_vtx):
 
   # queries = [['ZoneBC_t', is_vtx_bc], ['ZoneGridConnectivity_t', is_vtx_gc]]
@@ -719,14 +722,14 @@ def is_elt_included(zone, src_pl, src_name, tgt_pl, tgt_name):
   is_src_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                          PT.Element.CGNSName(n)==src_name
   src_elt_n = PT.get_node_from_predicate(zone, is_src_elt)
-  n_src_elt = PT.Element.Size(src_elt_n)
   size_src_elt   = PT.Element.NVtx(src_elt_n)
   src_elt_offset = PT.Element.Range(src_elt_n)[0]
   src_ec_n       = PT.get_child_from_name(src_elt_n, 'ElementConnectivity')
   src_ec         = PT.get_value(src_ec_n)
   idx        = src_pl - src_elt_offset
   src_ec_pl  = np_utils.interweave_arrays([size_src_elt*idx+i_size for i_size in range(size_src_elt)])
-  src_ec_elt = src_ec[src_ec_pl].reshape((-1,size_src_elt))
+  src_ec_elt = src_ec[src_ec_pl]
+  n_src_elt  = src_pl.size
 
   # > Get target ec
   is_tgt_elt = lambda n: PT.get_label(n)=='Elements_t' and\
@@ -739,17 +742,13 @@ def is_elt_included(zone, src_pl, src_name, tgt_pl, tgt_name):
   tgt_ec         = PT.get_value(tgt_ec_n)
   idx        = tgt_pl - tgt_elt_offset
   tgt_ec_pl  = np_utils.interweave_arrays([size_tgt_elt*idx+i_size for i_size in range(size_tgt_elt)])
-  tgt_ec_elt = tgt_ec[tgt_ec_pl].reshape((-1,size_tgt_elt))
+  tgt_ec_elt = tgt_ec[tgt_ec_pl]
+  n_tgt_elt  = tgt_pl.size
 
-  mask = np.full(src_pl.size, False, dtype=bool)
-  for i_elt, src_vtx in enumerate(src_ec_elt):
-    for tgt_vtx in tgt_ec_elt:
-      tag_vtx = np.isin(src_vtx, tgt_vtx)
-      if np.logical_and.reduce(tag_vtx):
-        mask[i_elt] = True
-        break
-
-  return src_pl[mask]
+  mask = np.zeros(src_pl.size, dtype=np.int32)
+  cdist_algo.find_tri_in_tetras(n_src_elt, n_tgt_elt, src_ec_elt, tgt_ec_elt, mask)
+  
+  return src_pl[mask.astype(bool)]
 
 
 def duplicate_periodic_patch(tree, gc_paths, periodic_values):
