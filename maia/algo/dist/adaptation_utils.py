@@ -1016,18 +1016,14 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
 
 
   # > Find duplicate faces
-  print('[is_elt_included] TODO: improve performance')
-  mask = np.full(elt_ids.size, True, dtype=bool)
-  tgt_elt_ec_cp = tgt_elt_ec.reshape((-1,size_tgt_elt))
-  for i_elt, elt_vtx in enumerate(tgt_elt_ec_cp):
-    for i_elt2, elt_vtx2 in enumerate(tgt_elt_ec_cp):
-      tag_vtx = np.isin(elt_vtx, elt_vtx2)
-      if np.logical_and.reduce(tag_vtx) and i_elt!=i_elt2:
-        mask[i_elt] = False
-        break
-  n_elt_to_add = np.where(mask)[0].size
-  tgt_elt_ec_cp = tgt_elt_ec_cp[mask]
-  tgt_elt_ec = tgt_elt_ec_cp.reshape((n_elt_to_add*size_tgt_elt))
+  mask = np.full(n_elt_to_add, 1, dtype=np.int32)
+  cdist_algo.find_duplicate_elt(n_elt_to_add, size_tgt_elt, tgt_elt_ec, mask)
+  elt_ids = np.where(mask==1)[0]
+  n_elt_to_add = elt_ids.size
+  ec_pl  = np_utils.interweave_arrays([size_tgt_elt*elt_ids+i_size for i_size in range(size_tgt_elt)])
+  tgt_elt_ec = tgt_elt_ec[ec_pl]
+
+
   # Update target element
   tgt_ec_n   = PT.get_child_from_name(tgt_elt_n, 'ElementConnectivity')
   tgt_ec     = PT.get_value(tgt_ec_n)
