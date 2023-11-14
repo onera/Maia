@@ -94,6 +94,14 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
     elts = PT.get_children_from_label(dist_zone, 'Elements_t')
     distri_partial = te_utils.create_all_elt_distribution(elts, comm)
     ln_to_gn_list = [te_utils.create_all_elt_g_numbering(p_zone, elts) for p_zone in part_zones]
+    # Get elt_to_entity indirection from PDM, which is needed if we have a NGON/NFace output
+    elt_to_entity_list = []
+    for p_zone in part_zones:
+      if PT.get_child_from_label(p_zone, 'FakeElements_t') is not None:
+        sorted_dist_elts = sorted(elts, key = lambda item : PT.Element.Range(item)[0])
+        p_elts = [PT.get_node_from_name(p_zone, PT.get_name(elt)) for elt in sorted_dist_elts]
+        sections_parent_gnum = [PT.get_node_from_path(elt, ':CGNS#LocalNumbering/Entity')[1] for elt in p_elts if elt]
+        elt_to_entity_list.append(np_utils.concatenate_np_arrays(sections_parent_gnum)[1])
 
   pdm_distri = par_utils.partial_to_full_distribution(distri_partial, comm)
 
@@ -107,7 +115,12 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
   list_group_part = PDM.part_distgroup_to_partgroup(comm, pdm_distri, d_pl_idx.shape[0]-1, d_pl_idx, d_pl,
       len(ln_to_gn_list), [len(lngn) for lngn in ln_to_gn_list], ln_to_gn_list)
 
+  # Post treatement if we have dist elt but part ngon : convert elt PL to ngon
+  if entity == 'Elements' and len(elt_to_entity_list) > 0:
+    for _group_part, _elt_to_entity in zip(list_group_part, elt_to_entity_list):
+      id_in_section_num = _group_part['npZSRGroup']
+      id_in_poly_num    = _elt_to_entity[id_in_section_num-1] + 1
+      _group_part['npZSRGroup'] = id_in_poly_num
   for i_part, p_zone in enumerate(part_zones):
     create_part_pointlists(dist_zone, p_zone, list_group_part[i_part], type_paths, filter_loc)
-
 

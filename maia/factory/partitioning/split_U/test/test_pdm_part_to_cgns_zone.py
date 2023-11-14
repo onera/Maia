@@ -132,8 +132,8 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   assert (PT.get_node_from_path(quad_n, 'ElementRange')[1] == [5,10]).all()
   assert (PT.get_value(MT.getGlobalNumbering(quad_n, 'Element')) == data['2dsections'][0]['np_numabs']).all()
   assert (PT.get_value(MT.getGlobalNumbering(quad_n, 'Sections')) == data['2dsections'][0]['np_numabs']).all()
-  assert (PT.get_value(MT.getGlobalNumbering(quad_n, 'ImplicitEntity')) == data['2dsections'][0]['np_parent_entity_g_num']).all()
-  assert (PT.get_value(PT.get_node_from_path(quad_n, ':CGNS#LocalNumbering/ExplicitEntity')) == \
+  assert (PT.get_value(MT.getGlobalNumbering(quad_n, 'Entity')) == data['2dsections'][0]['np_parent_entity_g_num']).all()
+  assert (PT.get_value(PT.get_node_from_path(quad_n, ':CGNS#LocalNumbering/Entity')) == \
       data['2dsections'][0]['np_parent_num']).all()
 
   hexa_n = PT.get_node_from_path(p_zone, 'Hexa')
@@ -142,7 +142,7 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   assert (PT.get_node_from_path(hexa_n, 'ElementRange')[1] == [11,11]).all()
   assert (PT.get_value(MT.getGlobalNumbering(hexa_n, 'Element')) == data['3dsections'][0]['np_numabs']).all()
   assert (PT.get_value(MT.getGlobalNumbering(hexa_n, 'Sections')) == data['3dsections'][0]['np_numabs']).all()
-  assert (PT.get_value(PT.get_node_from_path(hexa_n, ':CGNS#LocalNumbering/ExplicitEntity')) == \
+  assert (PT.get_value(PT.get_node_from_path(hexa_n, ':CGNS#LocalNumbering/Entity')) == \
       data['3dsections'][0]['np_parent_num']).all()
 
 def test_pdm_part_to_cgns_zone():
