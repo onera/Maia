@@ -153,6 +153,26 @@ def _convert_match_result_to_faces(out_vtx, clouds, comm):
 
   return out_face
 
+def _clean_degenerated_vtx_interface(out_vtx, out_face):
+  """
+  Remove vertex interface if the corresponding face interface is empty. This
+  also prevent jns of same side to be connected.
+  """
+  vtx_pair = out_vtx['np_cloud_pair']
+  face_pair = out_face['np_cloud_pair']
+  # Retrieve interface having no faces (interface come in same order)
+  idx = 0
+  is_empty = np.ones(vtx_pair.size//2, bool)
+  for view in np.split(face_pair, face_pair.size // 2):
+      while not (vtx_pair[2*idx:2*(idx+1)] == view).all():
+          idx += 1
+      is_empty[idx] = False
+
+  # Filter
+  out_vtx['np_cloud_pair'] = out_vtx['np_cloud_pair'][~np.repeat(is_empty, 2)]
+  out_vtx['lgnum_cur'] = [data for b, data in zip(is_empty, out_vtx['lgnum_cur']) if not b]
+  out_vtx['lgnum_opp'] = [data for b, data in zip(is_empty, out_vtx['lgnum_opp']) if not b]
+
 
 def get_vtx_cloud_from_subset(dist_tree, subset_path, comm, dmesh_cache={}):
   """
@@ -226,6 +246,7 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
 
   matching_vtx  = _point_merge(clouds, comm, tol)
   matching_face = _convert_match_result_to_faces(matching_vtx, clouds, comm)
+  _clean_degenerated_vtx_interface(matching_vtx, matching_face)
 
   # Conversion en numéro parent
   n_interface_vtx  = len(matching_vtx['np_cloud_pair']) // 2
