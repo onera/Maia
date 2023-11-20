@@ -12,6 +12,31 @@ from maia.pytree.compare import CGNSNodeFromPredicateNotFoundError
 # API for NodeWalker
 # ---------------------------------------------------------------------------- #
 def get_node_from_predicate(root:CGNSTree, predicate, **kwargs) -> Optional[CGNSTree]:
+  """ Return the first node in input tree matching the given predicate, or None
+
+  The search can be fine-tuned with the following kwargs:
+
+  - ``depth`` (int or pair of int): limit the search between the depths *minD* and 
+    *maxD*, 0 beeing the input node itself and None meaning unlimited.
+    If a single int is provided, it is assigned to *maxD*.
+    Defaults to ``(0,None)``.
+  - ``search`` (str): use a Depth-First-Search (``'dfs'``) or
+    Breath-First-Search (``'bfs'``) algorithm. Defaults to ``'dfs'``.
+  
+  Args:
+    root (CGNSTree): Tree is which the search is performed
+    predicate (callable): condition to select node, which must
+      have the following signature: ``f(n:CGNSTree) -> bool``
+    **kwargs: Additional options (see above)
+  Returns:
+    CGNSTree or None: Node found
+
+  Note:
+    This function admits the following shorcuts: 
+
+    - :func:`get_node_from_name|label|value|name_and_label` (embedded predicate)
+    - :func:`get_child_from_name|label|value|name_and_label` (embedded predicate + depth=[1,1])
+  """
   _predicate = auto_predicate(predicate)
   walker = NodeWalker(root, _predicate, **kwargs)
   return walker()
@@ -30,21 +55,28 @@ def request_node_from_predicate(root:CGNSTree, predicate, *args, **kwargs) -> CG
 # API for NodesWalker
 # ---------------------------------------------------------------------------- #
 def get_nodes_from_predicate(root:CGNSTree, predicate, **kwargs) -> List[CGNSTree]:
-  """
-  Alias to NodesWalker with caching=True. A list of found node(s) is created.
+  """ Return the list of all nodes in input tree matching the given predicate
+
+  The search can be fine-tuned with the following kwargs:
+
+  - ``depth`` (int or pair of int): see :func:`get_node_from_predicate`
+  - ``search`` (str): see :func:`get_node_from_predicate`
+  - ``explore`` (str): Explore the whole tree (``'deep'``) or stop exploring the current branch
+    once predicate is satisfied (``'shallow'``). Defaults to ``'shallow'``.
 
   Args:
-      root (TreeNode): CGNS node root searching
-      predicate (Callable[[TreeNode], bool]): condition to select node
-      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
-      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
-      depth (int, optional): stop exploring after the limited depth
-      sort (Callable[TreeNode], optional): parsing children sort
-      caching (bool, optional): Force
-
+      root (CGNSTree): Tree is which the search is performed
+      predicate (callable): condition to select node, which must
+        have the following signature: ``f(n:CGNSTree) -> bool``
+      **kwargs: Additional options (see above)
   Returns:
-      List[TreeNode]: Description
+    list of CGNSTree: Nodes found
 
+  Note:
+    This function admits the following shorcuts: 
+
+    - :func:`get_nodes_from_name|label|value|name_and_label` (embedded predicate)
+    - :func:`get_children_from_name|label|value|name_and_label` (embedded predicate + depth=[1,1])
   """
   _predicate = auto_predicate(predicate)
   caching = kwargs.get('caching')
@@ -56,21 +88,13 @@ def get_nodes_from_predicate(root:CGNSTree, predicate, **kwargs) -> List[CGNSTre
   return walker()
 
 def iter_nodes_from_predicate(root:CGNSTree, predicate, **kwargs) -> Iterator[CGNSTree]:
-  """
-  Alias to NodesWalker with caching=False. Iterator is generated each time parsing is done.
+  """ Iterator version of :func:`get_nodes_from_predicate`
 
-  Args:
-      root (TreeNode): CGNS node root searching
-      predicate (Callable[[TreeNode], bool]): condition to select node
-      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
-      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
-      depth (int, optional): stop exploring after the limited depth
-      sort (Callable[TreeNode], optional): parsing children sort
-      caching (bool, optional): Force
+  Note:
+    This function admits the following shorcuts: 
 
-  Returns:
-      TYPE: TreeNode generator/iterator
-
+    - :func:`iter_nodes_from_name|label|value|name_and_label` (embedded predicate)
+    - :func:`iter_children_from_name|label|value|name_and_label` (embedded predicate + depth=[1,1])
   """
   _predicate = auto_predicate(predicate)
   caching = kwargs.get('caching')
@@ -86,20 +110,26 @@ def iter_nodes_from_predicate(root:CGNSTree, predicate, **kwargs) -> Iterator[CG
 # ---------------------------------------------------------------------------- #
 
 def get_node_from_predicates(root:CGNSTree, predicates, **kwargs) -> Optional[CGNSTree]:
-  """
-  Alias to NodeWalkers.
+  """ Return the first node in input tree matching the chain of predicates, or None
+
+  The search can be fine-tuned with the following kwargs:
+
+  - ``depth`` (int or pair of int): see :func:`get_node_from_predicate`
+  - ``search`` (str): see :func:`get_node_from_predicate`
 
   Args:
-      root (TreeNode): CGNS node root searching
-      predicate (Callable[[TreeNode], bool]): condition to select node
-      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
-      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
-      depth (int, optional): stop exploring after the limited depth
-      sort (Callable[TreeNode], optional): parsing children sort
-
+      root (CGNSTree): Tree is which the search is performed
+      predicates (list of callable): conditions to select next node, each one
+        having the following signature: ``f(n:CGNSTree) -> bool``
+      **kwargs: Additional options (see above)
   Returns:
-      TYPE: TreeNode
+    CGNSTree or None: Node found
 
+  Note:
+    This function admits the following shorcuts: 
+
+    - :func:`get_node_from_names|labels|values|name_and_labels` (embedded predicate)
+    - :func:`get_child_from_names|labels|values|name_and_labels` (embedded predicate + depth=[1,1])
   """
   _predicates = auto_predicates(predicates)
   walker = NodeWalkers(root, _predicates, **kwargs)
@@ -110,21 +140,13 @@ def get_node_from_predicates(root:CGNSTree, predicates, **kwargs) -> Optional[CG
 # API for NodesWalkers
 # ---------------------------------------------------------------------------- #
 def iter_nodes_from_predicates(root:CGNSTree, predicates, **kwargs) -> Iterator[CGNSTree]:
-  """
-  Alias to NodesWalkers with caching=False. Iterator is generated each time parsing is done.
+  """ Iterator version of :func:`get_nodes_from_predicates`
 
-  Args:
-      root (TreeNode): CGNS node root searching
-      predicate (Callable[[TreeNode], bool]): condition to select node
-      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
-      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
-      depth (int, optional): stop exploring after the limited depth
-      sort (Callable[TreeNode], optional): parsing children sort
-      caching (bool, optional): Force
+  Note:
+    This function admits the following shorcuts: 
 
-  Returns:
-      TYPE: TreeNode generator/iterator
-
+    - :func:`iter_nodes_from_names|labels|values|name_and_labels` (embedded predicate)
+    - :func:`iter_children_from_names|labels|values|name_and_labels` (embedded predicate + depth=[1,1])
   """
   _predicates = auto_predicates(predicates)
 
@@ -137,21 +159,30 @@ def iter_nodes_from_predicates(root:CGNSTree, predicates, **kwargs) -> Iterator[
   return walker()
 
 def get_nodes_from_predicates(root:CGNSTree, predicates, **kwargs) -> List[CGNSTree]:
-  """
-  Alias to NodesWalkers with caching=True. A list of found node(s) is created.
+  """ Return the list of all nodes in input tree matching the chain of predicates
+
+  The search can be fine-tuned with the following kwargs:
+
+  - ``depth`` (int or pair of int): see :func:`get_node_from_predicate`
+  - ``search`` (str): see :func:`get_node_from_predicate`
+  - ``explore`` (str): see :func:`get_nodes_from_predicate`
+  - ``ancestors`` (bool): If ``False`` (default), keep only the terminal nodes.
+    If ``True``, keep the intermediate nodes and return
+    a list of tuples of nodes instead of a list of nodes.
 
   Args:
-      root (TreeNode): CGNS node root searching
-      predicate (Callable[[TreeNode], bool]): condition to select node
-      search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
-      explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
-      depth (int, optional): stop exploring after the limited depth
-      sort (Callable[TreeNode], optional): parsing children sort
-      caching (bool, optional): Force
-
+      root (CGNSTree): Tree is which the search is performed
+      predicates (list of callable): conditions to select next node, each one
+        having the following signature: ``f(n:CGNSTree) -> bool``
+      **kwargs: Additional options (see above)
   Returns:
-      TYPE: TreeNode generator/iterator
+    list of CGNSTree: Nodes found
 
+  Note:
+    This function admits the following shorcuts: 
+
+    - :func:`get_nodes_from_names|labels|values|name_and_labels` (embedded predicate)
+    - :func:`get_children_from_names|labels|values|name_and_labels` (embedded predicate + depth=[1,1])
   """
   _predicates = auto_predicates(predicates)
 

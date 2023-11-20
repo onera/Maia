@@ -5,7 +5,26 @@ from .           import access as NA
 UNSET = Ellipsis
 
 def new_node(name:str='Node', label:str='UserDefined_t', value:Any=None, children:List[CGNSTree]=[], parent:CGNSTree=None) -> CGNSTree:
-  """ Create a new node """
+  """ Create a new CGNS node
+
+  If ``parent`` is not None, this node is appended as a child to the parent node.
+   
+  Args:
+    name (str): Name of the created node -- see :func:`set_name`
+    label (str): Label of the created node -- see :func:`set_label`
+    value (Any): Value of the created node -- see :func:`set_value`
+    children (List[CGNSTree]): Value of the created node -- see :func:`set_children`
+    parent (CGNSTree or None): Other node, where created node should be attached
+  Returns:
+    CGNSTree: Created node
+  Example:
+    >>> zone = PT.new_node('Zone', label='Zone_t') # Basic node creation
+    >>> PT.new_node('ZoneType', 'ZoneType_t', "Unstructured", 
+    ...             parent=zone) # Create and attach to a parent
+    >>> PT.print_tree(zone)
+    Zone Zone_t 
+    └───ZoneType ZoneType_t "Unstructured"
+  """
   node = ['Node', None, [], 'UserDefined_t']
   # Use update method to enable checks through the set_ functions
   update_node(node, name, label, value, children)
@@ -14,6 +33,24 @@ def new_node(name:str='Node', label:str='UserDefined_t', value:Any=None, childre
   return node
 
 def update_node(node:CGNSTree, name:str=UNSET, label:str=UNSET, value:Any=UNSET, children:List[CGNSTree]=UNSET):
+  """
+  update_node(node, name=UNSET, label=UNSET, value=UNSET, children=UNSET)
+
+  Update some attribute of a CGNSNode
+   
+  Parameters which are provided to the function trigger the update of their
+  corresponding attribute.
+
+  Args:
+    node (CGNSTree): Input node
+    others : See :func:`set_name`, :func:`set_label`, :func:`set_value`, :func:`set_children`
+
+  Example:
+    >>> node = PT.new_node('Zone')
+    >>> PT.update_node(node, label='Zone_t', value=[[11,10,0]])
+    >>> node
+    ['Zone', array([[11,10,0]], dtype=int32), [], 'Zone_t']
+  """
   if name is not UNSET:
     NA.set_name(node, name)
   if label is not UNSET:
