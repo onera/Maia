@@ -294,8 +294,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     1ere extension de domaine:
       - tag des cellules qui ont un vtx dans la gc
       - création de la surface de contrainte:
-        - connectivité des cellules tagguées sans les vertex de la gc
-        - toutes les éléments qui ne sont pas dans la connectivité des BCs
+        - création des faces à partir de la connectivité des cellules tagguées sans les vertex de la gc
+        - suppression des faces qui sont déjà définies dans les BCs, ou les possibles doublons de face créées par 2 cellules
       - duplication des éléments de la surface contrainte
       - déplacement des vertex du patch
       - merge des surfaces de la GC
@@ -305,19 +305,22 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
       - duplication des éléments de la gc
       - déplacement des vertex du patch
       - merge des surfaces de contrainte
+      - retrouver les ridges (et corners) disparus à l'étape 1
 
 
     Issues:
        - would ngon be faster ?
-       - fix coarse ls89 with face on blade
        - how to back mesh ?
        - retrieve ridges that has been deleted during domain extension
+       - gérer la périodisation des champs (rotation)
+          - [x] vector
+          - [ ] tensor
+          - [?] some variables (angle in torus case)
 
     TODO:
        - manage n_range of cells
        - improve perfos: face in cells detection (with ngon ?)
        - ne plus avoir besoin des GCs FaceCenter
-       - gérer la périodisation des champs (rotation)
     '''
     start = time.time()
     adapted_dist_tree = copy.deepcopy(dist_tree) # TODO: shallow_copy sufficient ?

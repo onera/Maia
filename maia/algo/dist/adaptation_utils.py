@@ -2,7 +2,7 @@ import copy
 
 import maia
 import maia.pytree as PT
-from   maia.utils  import np_utils
+from   maia.utils  import np_utils, py_utils
 
 from maia.transfer import protocols as EP
 
@@ -49,14 +49,32 @@ def apply_periodicity_to_vtx(zone, vtx_pl, periodic):
   PT.set_value(cz_n, cz)
 
 
-def duplicate_flowsol_elts(zone, ids, loc):
+def duplicate_flowsol_elts(zone, ids, loc, periodic):
   is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==loc
   for fs_n in PT.get_children_from_predicate(zone, is_vtx_fs):
+    treated_arrays = list()
+
+    # > Transform vector arrays : Get from maia.algo.transform.py
+    data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fs_n, "DataArray_t")]
+    cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names)
+    for basename in cartesian_vectors_basenames:
+      vectors_n = [PT.get_node_from_name_and_label(fs_n, f"{basename}{c}", 'DataArray_t') for c in ['X', 'Y', 'Z']]
+      [treated_arrays.append(PT.get_name(node)) for node in vectors_n]
+      vectors = [PT.get_value(n)[ids] for n in vectors_n]
+      # Assume that vectors are position independant
+      # Be careful, if coordinates vector needs to be transform, the translation is not applied !
+      tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=periodic['rotation_center'], rotation_angle=periodic['rotation_angle'])
+      for vector_n, tr_vector in zip(vectors_n, tr_vectors):
+        vector = PT.get_value(vector_n)
+        PT.set_value(vector_n, np.concatenate([vector,tr_vector]))
+    
+    # > Transform other arrays
     for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
-      da = PT.get_value(da_n)
-      da_to_add = da[ids]
-      PT.set_value(da_n, np.concatenate([da, da_to_add]))
+      if PT.get_name(da_n) not in treated_arrays:
+        da = PT.get_value(da_n)
+        da_to_add = da[ids]
+        PT.set_value(da_n, np.concatenate([da, da_to_add]))
 
 
 def remove_flowsol_elts(zone, ids, loc):
@@ -637,7 +655,7 @@ def deplace_periodic_patch(zone, patch_name, gc_name, periodic_values,
       PT.set_value(da_n, np.concatenate([da, da_to_add]))
 
 
-def duplicate_elts(zone, elt_pl, elt_name, as_bc=None, elts_to_update=dict()):
+def duplicate_elts(zone, elt_pl, elt_name, as_bc=None, elts_to_update=dict(), periodic=None):
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                              PT.Element.CGNSName(n)==elt_name
   elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
@@ -659,7 +677,7 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc=None, elts_to_update=dict()):
   old_to_new_vtx[new_vtx_num[0]-1] = new_vtx_num[1]
   sort_vtx_num = np.argsort(new_vtx_num[0])
   
-  duplicate_flowsol_elts(zone, elt_vtx_pl-1, 'Vertex')
+  duplicate_flowsol_elts(zone, elt_vtx_pl-1, 'Vertex', periodic)
 
   # > Add duplicated elements
   n_elt_to_add = elt_pl.size
@@ -807,7 +825,7 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
   
     face_bc_name = f'tri_3_periodic_{i_per}'
-    new_vtx_num = duplicate_elts(zone, face_pl, 'TRI_3', as_bc=f'tri_3_periodic_{i_per}', elts_to_update=elts_to_update)
+    new_vtx_num = duplicate_elts(zone, face_pl, 'TRI_3', as_bc=f'tri_3_periodic_{i_per}', elts_to_update=elts_to_update, periodic=periodic_values[1][i_per])
     to_constrain_bcs.append(face_bc_name)
 
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
@@ -882,7 +900,7 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num,
     to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', elt_full=True)
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
-    _ = duplicate_elts(zone, face_pl, 'TRI_3', as_bc=to_retrieve_gc_name, elts_to_update=elts_to_update)
+    _ = duplicate_elts(zone, face_pl, 'TRI_3', as_bc=to_retrieve_gc_name, elts_to_update=elts_to_update, periodic=periodic_values[0][i_per])
     # maia.io.write_tree(tree, f'OUTPUT/adapted_and_duplicated_{i_per}.cgns')
 
     # > Deplace periodic patch to retrieve initial domain
