@@ -38,14 +38,12 @@ def remove_vtx(zone, vtx_pl):
   PT.set_value(zone, zone_dim)
 
 
-def apply_periodicity_to_vtx(zone, vtx_pl, periodic_values):
+def apply_periodicity_to_vtx(zone, vtx_pl, periodic):
   cx_n = PT.get_node_from_name(zone, 'CoordinateX')
   cy_n = PT.get_node_from_name(zone, 'CoordinateY')
   cz_n = PT.get_node_from_name(zone, 'CoordinateZ')
   cx, cy, cz = PT.Zone.coordinates(zone)
-  cx[vtx_pl-1] = cx[vtx_pl-1] - periodic_values[2][0] # Only translation managed for now TODO
-  cy[vtx_pl-1] = cy[vtx_pl-1] - periodic_values[2][1] # Only translation managed for now TODO
-  cz[vtx_pl-1] = cz[vtx_pl-1] - periodic_values[2][2] # Only translation managed for now TODO
+  cx[vtx_pl-1], cy[vtx_pl-1], cz[vtx_pl-1] = np_utils.transform_cart_vectors(cx[vtx_pl-1],cy[vtx_pl-1],cz[vtx_pl-1], **periodic)
   PT.set_value(cx_n, cx)
   PT.set_value(cy_n, cy)
   PT.set_value(cz_n, cz)
@@ -796,7 +794,11 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
               family='PERIODIC',
               parent=zone_bc_n)
     to_constrain_bcs.append(face_bc_name)
-    maia.io.write_tree(tree, f'OUTPUT/with_surfaces_{i_per}.cgns')
+    # maia.io.write_tree(tree, f'OUTPUT/with_surfaces_{i_per}.cgns')
+
+    # > Removing lines defined on join because they surely has their periodic on the other side
+    bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', elt_full=True)
+    remove_elts_from_pl(zone, bar_to_rm_pl, 'BAR_2')
 
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_pl
@@ -813,11 +815,11 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
     face_bc_name = f'tri_3_periodic_{i_per}'
     new_vtx_num = duplicate_elts(zone, face_pl, 'TRI_3', as_bc=f'tri_3_periodic_{i_per}', elts_to_update=elts_to_update)
     to_constrain_bcs.append(face_bc_name)
-    maia.io.write_tree(tree, f'OUTPUT/with_double_surfaces_{i_per}.cgns')
 
+    # maia.io.write_tree(tree, f'OUTPUT/with_double_surfaces_{i_per}.cgns')
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[0][i_per])
-    maia.io.write_tree(tree, f'OUTPUT/deplaced_{i_per}.cgns')
+    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1][i_per])
+    # maia.io.write_tree(tree, f'OUTPUT/deplaced_{i_per}.cgns')
 
     n_vtx = PT.Zone.n_vtx(zone)
     bc_name1 = gc_paths[0][i_per].split('/')[-1]
@@ -848,10 +850,6 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
               loc='Vertex',
               family='PERIODIC',
               parent=zone_bc_n)
-
-
-    
-    maia.io.write_tree(tree, f'OUTPUT/merged_{i_per}.cgns')
 
   return new_vtx_nums, to_constrain_bcs, periodized_bcs, matching_bcs
 
@@ -894,7 +892,7 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num,
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
     _ = duplicate_elts(zone, face_pl, 'TRI_3', as_bc=to_retrieve_gc_name, elts_to_update=elts_to_update)
-    maia.io.write_tree(tree, f'OUTPUT/adapted_and_duplicated_{i_per}.cgns')
+    # maia.io.write_tree(tree, f'OUTPUT/adapted_and_duplicated_{i_per}.cgns')
 
     # > Deplace periodic patch to retrieve initial domain
     # > vtx_pl is updated because has changed with surface duplication
@@ -902,8 +900,8 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num,
     bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1][i_per])
-    maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
+    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[0][i_per])
+    # maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
 
     # > Merge two constraint surfaces
     vtx_tag_n = PT.get_node_from_name(zone, 'vtx_tag')
@@ -957,12 +955,12 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
     vtx_bc_pls.append(np.unique(ec_bc))
 
 
-
   # > Find cells with 3 vertices not in GC
   tag_elt = np.isin(ec_elt, vtx_pl, invert=True)
   tag_elt = np.add.reduceat(tag_elt.astype(np.int32), np.arange(0,n_elt_to_add*size_elt,size_elt)) # True when has vtx 
   elt_pl = elt_pl[np.where(tag_elt==size_elt-1)[0]]
   n_elt_to_add = elt_pl.size
+
 
   # > Get elts connectivity
   ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')

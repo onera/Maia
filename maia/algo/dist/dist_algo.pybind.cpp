@@ -9,6 +9,7 @@
 #include "maia/algo/dist/fsdm_distribution/fsdm_distribution.hpp"
 #include "maia/__old/transform/put_boundary_first/put_boundary_first.hpp"
 #include "maia/algo/dist/split_boundary_subzones_according_to_bcs/split_boundary_subzones_according_to_bcs.hpp"
+#include "maia/algo/dist/adaptation_utils.hpp"
 
 namespace py = pybind11;
 
@@ -60,20 +61,72 @@ void register_dist_algo_module(py::module_& parent) {
 
 namespace py = pybind11;
 
+void find_tri_in_tetras(            int                       n_tri,
+                                    int                       n_tetra,
+                        py::array_t<int, py::array::f_style>& np_tri_vtx,
+                        py::array_t<int, py::array::f_style>& np_tetra_vtx,
+                        py::array_t<int, py::array::f_style>& np_tri_mask) {
+  /*
+    Go through all triangles verifying that they are described by at least on cell.
+    n_tri*n_cell complexity, could be improve using ngon description and hash table.
+    Args : 
+      - n_tri        [in] : triangle number
+      - n_tetra      [in] : tetrahedra number
+      - np_tri_vtx   [in] : triangle connectivity
+      - np_tetra_vtx [in] : tetrahedra connectivity
+      - np_tri_mask  [out]: which triangle are not duplicated
+  */
+
+  auto tri_vtx   = make_raw_view(np_tri_vtx);
+  auto tetra_vtx = make_raw_view(np_tetra_vtx);
+  auto tri_mask  = make_raw_view(np_tri_mask);
+
+  int size_tri   = 3;
+  int size_tetra = 4;
+  
+  int n_vtx_in_tet = 0;
+  int is_in_tetra  = 0;
+
+  for (int i_elt1=0; i_elt1<n_tri; i_elt1++) {
+    for (int i_elt2=0; i_elt2<n_tetra; i_elt2++) {
+      is_in_tetra = 0;
+      n_vtx_in_tet = 0;
+      for (int i_vtx1=i_elt1*size_tri; i_vtx1<(i_elt1+1)*size_tri; i_vtx1++) {
+
+        for (int i_vtx2=i_elt2*size_tetra; i_vtx2<(i_elt2+1)*size_tetra; i_vtx2++) {
+          if (tri_vtx[i_vtx1]==tetra_vtx[i_vtx2]) {
+            n_vtx_in_tet ++;
+            break;
+          }
+        }
+        // Vtx from element 1 is not in element 2
+        if (n_vtx_in_tet==3) {
+          is_in_tetra = 1;
+          break;
+        }
+      }
+      if (is_in_tetra==1) {
+        tri_mask[i_elt1] = 1;
+      }      
+    }
+  }
+}
+
+
 void find_duplicate_elt(          int                       n_elt,
                                   int                       elt_size,
                       py::array_t<int, py::array::f_style>& np_elt_vtx,
-                      py::array_t<int, py::array::f_style>& np_elt_pl) {
+                      py::array_t<int, py::array::f_style>& np_elt_mask) {
   /*
     Go through all elements verifying that has not already be defined.
     Args : 
-      - n_elt      : element number
-      - elt_size   : vertex number in one element
-      - np_elt_vtx : element connectivity
-      - np_elt_pl  : which element are not duplicated
+      - n_elt       [in] : element number
+      - elt_size    [in] : vertex number in one element
+      - np_elt_vtx  [in] : element connectivity
+      - np_elt_mask [out]: which element are not duplicated
   */
-  auto elt_vtx = make_raw_view(np_elt_vtx);
-  auto elt_pl  = make_raw_view(np_elt_pl);
+  auto elt_vtx  = make_raw_view(np_elt_vtx);
+  auto elt_mask = make_raw_view(np_elt_mask);
 
 
   // > Build keys array
@@ -120,7 +173,7 @@ void find_duplicate_elt(          int                       n_elt,
         i_elt1 = order[i1];
         for (int i2=conflict_idx[i_conflict]; i2<conflict_idx[i_conflict+1]; i2++) {
           i_elt2 = order[i2];
-          if ((i_elt1!=i_elt2)&&(elt_pl[i_elt2]!=-1) ) {
+          if ((i_elt1!=i_elt2)&&(elt_mask[i_elt2]!=-1) ) {
             is_duplicate = 1;
             for (int i_vtx1=i_elt1*elt_size; i_vtx1<(i_elt1+1)*elt_size; i_vtx1++) {
               is_in = 0;
@@ -139,8 +192,8 @@ void find_duplicate_elt(          int                       n_elt,
               }
             }
             if (is_duplicate==1) {
-              elt_pl[i_elt1] = -1;
-              elt_pl[i_elt2] = -1;
+              elt_mask[i_elt1] = 0;
+              elt_mask[i_elt2] = 0;
             }      
           }
         }
@@ -153,6 +206,7 @@ void find_duplicate_elt(          int                       n_elt,
 void register_dist_algo_module(py::module_& parent) {
 
   py::module_ m = parent.def_submodule("dist_algo");
+  m.def("find_tri_in_tetras", find_tri_in_tetras, "Find triangles defined in one tetrahedra at least");
   m.def("find_duplicate_elt", find_duplicate_elt, "Find elements that are duplicated");
   
 }

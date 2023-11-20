@@ -245,6 +245,15 @@ class GridConnectivity:
       return (None, None, None)
     return tuple((N.get_value(W.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]))
 
+  @staticmethod
+  def periodic_dict(gc):
+    """ Return periodic data if existing ('rotation_center':RotationCenter, 'rotation_angle':RotationAngle, 'translation':Translation) """
+    perio_node = W.get_node_from_label(gc, "Periodic_t", depth=[2,2])
+    if perio_node is None:
+      return (None, None, None)
+    return {key_name:N.get_value(W.get_child_from_name(perio_node, name)) for key_name, name in zip(["rotation_center", "rotation_angle", "translation"],
+                                                                                                         ["RotationCenter" , "RotationAngle" , "Translation"])}
+
 
 @for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", \
         "BC_t", "BCDataSet_t", "GridConnectivity_t", "GridConnectivity1to1_t"]))
