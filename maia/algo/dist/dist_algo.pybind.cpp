@@ -75,6 +75,8 @@ void find_tri_in_tetras(            int                       n_tri,
       - np_tri_vtx   [in] : triangle connectivity
       - np_tetra_vtx [in] : tetrahedra connectivity
       - np_tri_mask  [out]: which triangle are not duplicated
+
+    TODO: n_tri*n_tetra algo, improve with ngon reconstruction then hash table
   */
 
   auto tri_vtx   = make_raw_view(np_tri_vtx);

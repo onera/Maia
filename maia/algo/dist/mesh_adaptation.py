@@ -306,7 +306,18 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
       - déplacement des vertex du patch
       - merge des surfaces de contrainte
 
-      
+
+    Issues:
+       - would ngon be faster ?
+       - fix coarse ls89 with face on blade
+       - how to back mesh ?
+       - retrieve ridges that has been deleted during domain extension
+
+    TODO:
+       - manage n_range of cells
+       - improve perfos: face in cells detection (with ngon ?)
+       - ne plus avoir besoin des GCs FaceCenter
+       - gérer la périodisation des champs (rotation)
     '''
     start = time.time()
     adapted_dist_tree = copy.deepcopy(dist_tree) # TODO: shallow_copy sufficient ?
