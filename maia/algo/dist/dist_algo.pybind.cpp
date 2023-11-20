@@ -130,7 +130,6 @@ void find_duplicate_elt(          int                       n_elt,
   auto elt_vtx  = make_raw_view(np_elt_vtx);
   auto elt_mask = make_raw_view(np_elt_mask);
 
-
   // > Build keys array
   int *elt_key = (int *) malloc(n_elt*sizeof(int));
   for (int i_elt=0; i_elt<n_elt; i_elt++) {
@@ -140,12 +139,10 @@ void find_duplicate_elt(          int                       n_elt,
     }
   }
 
-
   // > Sort array
   int *order = (int *)  malloc(n_elt*sizeof(int));
   std::iota(order, order+n_elt, 0);
   std::sort(order, order+n_elt, [&](int i, int j) {return elt_key[i] < elt_key[j];});
-
 
   // > Create conflict idx
   int n_elem_in_conflict = 0;
@@ -160,7 +157,6 @@ void find_duplicate_elt(          int                       n_elt,
   }
   n_conflict++;
   conflict_idx[n_conflict] = n_elt;
-
 
   // > Resolve conflict
   int i_elt1 = 0;

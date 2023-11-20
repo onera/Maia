@@ -713,9 +713,6 @@ def is_elt_included(zone, src_pl, src_name, tgt_pl, tgt_name):
   Search which source element is a part of target elements.
   TODO: n_src*n_tgt algo, search better way to do it (NGon approach ?)
   '''
-  print('[is_elt_included] TODO: improve performance')
-
-
   # > Get source ec
   is_src_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                          PT.Element.CGNSName(n)==src_name
@@ -773,7 +770,6 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
     gc_vtx_pl  = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointList'     ))[0]
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
-    print(f'>> I_PER = {i_per}')
     cell_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', elt_full=False)
     face_pl = add_undefined_faces(zone, cell_pl, 'TETRA_4', gc_vtx_pld, 'TRI_3')
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
@@ -794,7 +790,6 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
               family='PERIODIC',
               parent=zone_bc_n)
     to_constrain_bcs.append(face_bc_name)
-    # maia.io.write_tree(tree, f'OUTPUT/with_surfaces_{i_per}.cgns')
 
     # > Removing lines defined on join because they surely has their periodic on the other side
     bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', elt_full=True)
@@ -804,7 +799,6 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
     to_update_cell_pl = cell_pl
     to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', elt_full=True)
     to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', elt_full=True)
-    print(f'to_update_line_pl = ({to_update_line_pl.size}) {to_update_line_pl}')
 
     # > Ambiguous faces that contains all vtx but are not included in patch cells can be removed by searching
     # > faces that contains all vtx froms cells that are not in patch
@@ -816,10 +810,8 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
     new_vtx_num = duplicate_elts(zone, face_pl, 'TRI_3', as_bc=f'tri_3_periodic_{i_per}', elts_to_update=elts_to_update)
     to_constrain_bcs.append(face_bc_name)
 
-    # maia.io.write_tree(tree, f'OUTPUT/with_double_surfaces_{i_per}.cgns')
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
     apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1][i_per])
-    # maia.io.write_tree(tree, f'OUTPUT/deplaced_{i_per}.cgns')
 
     n_vtx = PT.Zone.n_vtx(zone)
     bc_name1 = gc_paths[0][i_per].split('/')[-1]
@@ -871,7 +863,6 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num,
 
   # > Removing old periodic patch
   for i_per in range(n_periodicity-1, -1, -1):
-    print(f'>> I_PER = {i_per}')
   
     # > Duplicate GC surface and update element connectivities in the patch
     # > Here we can take all elements in periodic patch because its good from previous step
@@ -1003,7 +994,6 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
     elt_mask[elt_ids] = False
   elt_ids = np.where(elt_mask)[0]
   n_elt_to_add = elt_ids.size  
-  print(f'n_elt_to_add = {n_elt_to_add}')
   
   # > Get elts connectivity
   ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')

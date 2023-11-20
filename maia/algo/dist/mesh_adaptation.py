@@ -338,9 +338,9 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
         duplicate_periodic_patch(adapted_dist_tree, gc_paths, periodic_values)
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
     bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
-    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
 
     end = time.time()
+    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
     mlog.info(f"[Periodic adaptation] Step #1 completed: ({end-start:.2f} s)")
 
 
@@ -351,21 +351,19 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
                                                 feflo_opts)
     padapted_dist_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
 
-    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
-
-
     mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
-    start = time.time()
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
     PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
+    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
+    start = time.time()
 
     if comm.rank==0:
       retrieve_initial_domain(adapted_dist_tree, gc_paths, periodic_values, new_vtx_num,\
                               bcs_to_update, bcs_to_retrieve)
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
-    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
     end = time.time()
+    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
     mlog.info(f"[Periodic adaptation] Step #3 completed: ({end-start:.2f} s)")
     # sys.exit()
 
