@@ -196,8 +196,8 @@ def get_gc_path_pairs(tree):
       treated_gcs.append(gc_donor_path)
 
       donor_gc_n = PT.get_node_from_path(tree, gc_donor_path)
-      periodic_values[0].append(PT.GridConnectivity.periodic_values(gc_n))
-      periodic_values[1].append(PT.GridConnectivity.periodic_values(donor_gc_n))
+      periodic_values[0].append(PT.GridConnectivity.periodic_dict(gc_n))
+      periodic_values[1].append(PT.GridConnectivity.periodic_dict(donor_gc_n))
 
   return gc_paths, periodic_values
 
@@ -287,7 +287,38 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
         :dedent: 2
   """
 
+
+
   if periodic:
+    '''
+    1ere extension de domaine:
+      - tag des cellules qui ont un vtx dans la gc
+      - création de la surface de contrainte:
+        - connectivité des cellules tagguées sans les vertex de la gc
+        - toutes les éléments qui ne sont pas dans la connectivité des BCs
+      - duplication des éléments de la surface contrainte
+      - déplacement des vertex du patch
+      - merge des surfaces de la GC
+
+    2eme extension de domaine:
+      - get bc cellules (issu du mesh adapté)
+      - duplication des éléments de la gc
+      - déplacement des vertex du patch
+      - merge des surfaces de contrainte
+
+
+    Issues:
+       - would ngon be faster ?
+       - fix coarse ls89 with face on blade
+       - how to back mesh ?
+       - retrieve ridges that has been deleted during domain extension
+
+    TODO:
+       - manage n_range of cells
+       - improve perfos: face in cells detection (with ngon ?)
+       - ne plus avoir besoin des GCs FaceCenter
+       - gérer la périodisation des champs (rotation)
+    '''
     start = time.time()
     adapted_dist_tree = copy.deepcopy(dist_tree) # TODO: shallow_copy sufficient ?
 
@@ -304,12 +335,12 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     bcs_to_constrain = list()
     if comm.rank==0:
       new_vtx_num, bcs_to_constrain, bcs_to_update, bcs_to_retrieve = \
-        duplicate_periodic_patch(adapted_dist_tree, gc_paths[0])
+        duplicate_periodic_patch(adapted_dist_tree, gc_paths, periodic_values)
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
     bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
 
-    maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
     end = time.time()
+    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
     mlog.info(f"[Periodic adaptation] Step #1 completed: ({end-start:.2f} s)")
 
 
@@ -320,21 +351,19 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
                                                 feflo_opts)
     padapted_dist_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
 
-    maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
-
-
     mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
-    start = time.time()
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
     PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
+    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
+    start = time.time()
 
     if comm.rank==0:
-      retrieve_initial_domain(adapted_dist_tree, gc_paths[0], periodic_values[0], new_vtx_num,\
+      retrieve_initial_domain(adapted_dist_tree, gc_paths, periodic_values, new_vtx_num,\
                               bcs_to_update, bcs_to_retrieve)
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
-    maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
     end = time.time()
+    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
     mlog.info(f"[Periodic adaptation] Step #3 completed: ({end-start:.2f} s)")
     # sys.exit()
 
@@ -369,8 +398,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
     periodic_names = ["rotation_center", "rotation_angle", "translation"]
     for i_interface in range(n_interface):
-      periodic_value = {pname:pvalue for pname, pvalue in zip(periodic_names, periodic_values[0][i_interface])}
-      maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_interface}_0', f'BC_TO_CONVERT_{i_interface}_1'), comm, periodic=periodic_value)
+      maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_interface}_0', f'BC_TO_CONVERT_{i_interface}_1'), comm, periodic=periodic_values[0][i_interface])
 
     for i_side, side_gc_paths in enumerate(gc_paths):
       for i_gc, gc_path in enumerate(side_gc_paths):
@@ -385,8 +413,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
       PT.add_child(zone_bc_n, bc_n)
 
     for i_interface in range(n_interface):
-      periodic_value = {pname:pvalue for pname, pvalue in zip(periodic_names, periodic_values[0][i_interface])}
-      maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_interface}_0', f'BC_TO_CONVERT_{i_interface}_1'), comm, periodic=periodic_value, location='Vertex')
+      maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_interface}_0', f'BC_TO_CONVERT_{i_interface}_1'), comm, periodic=periodic_values[0][i_interface], location='Vertex')
 
     for i_side, side_gc_paths in enumerate(gc_paths):
       for i_gc, gc_path in enumerate(side_gc_paths):
