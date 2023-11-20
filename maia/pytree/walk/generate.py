@@ -15,6 +15,8 @@ from .remove_nodes import rm_children_from_predicate
 from .remove_nodes import keep_children_from_predicate
 from .remove_nodes import rm_nodes_from_predicate
 
+from maia.pytree.compare import CGNSNodeFromPredicateNotFoundError
+
 def _update_module_attributes(new_functions):
   for name, func in new_functions.items():
     setattr(module_object, name, func)
@@ -81,6 +83,14 @@ def get_node_from_path(root:CGNSTree, path:str) -> Optional[CGNSTree]:
     except StopIteration:
       return
   return node
+
+def request_node_from_path(root:CGNSTree, path:str, default:CGNSTree=None) -> CGNSTree:
+  node = get_node_from_path(root, path)
+  if node is not None:
+    return node
+  if default:
+    return default
+  raise CGNSNodeFromPredicateNotFoundError(root, path)
 
 def rm_node_from_path(root:CGNSTree, path:str):
   from maia.pytree.path_utils import path_head, path_tail

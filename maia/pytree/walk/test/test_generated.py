@@ -119,6 +119,15 @@ def test_get_node_from_path():
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3') is None
   assert PT.get_node_from_path(tree, '') == tree
 
+def test_request_node_from_path():
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  assert PT.request_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
+  default = PT.new_node("Default", value="Null")
+  assert PT.request_node_from_path(tree, 'Base/Zone/ZGCB/gc3', default=default) == default
+  assert PT.request_node_from_path(tree, '') == tree
+  with pytest.raises(Exception):
+   PT.request_node_from_path(tree, 'Base/Zone/ZGCB/gc3')
+
 
 def test_rm_node_from_path():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
