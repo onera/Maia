@@ -937,21 +937,21 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   # > Get BCs of tgt dimension to get their vtx ids 
   is_tgt_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==CGNS_TO_LOC[tgt_elt_name]
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  vtx_bc_pls = list()
+  n_bc_elt = 0
+  bc_ecs = list()
   for bc_n in PT.get_children_from_predicate(zone_bc_n, is_tgt_elt_bc):
     bc_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0] 
     ids   = bc_pl - tgt_elt_offset
     bc_ec_pl  = np_utils.interweave_arrays([size_tgt_elt*ids+i_size for i_size in range(size_tgt_elt)])
     ec_bc = tgt_ec[bc_ec_pl]
-    vtx_bc_pls.append(np.unique(ec_bc))
-
+    n_bc_elt += ids.size
+    bc_ecs.append(ec_bc)
 
   # > Find cells with 3 vertices not in GC
   tag_elt = np.isin(ec_elt, vtx_pl, invert=True)
   tag_elt = np.add.reduceat(tag_elt.astype(np.int32), np.arange(0,n_elt_to_add*size_elt,size_elt)) # True when has vtx 
   elt_pl = elt_pl[np.where(tag_elt==size_elt-1)[0]]
   n_elt_to_add = elt_pl.size
-
 
   # > Get elts connectivity
   ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')
@@ -985,29 +985,14 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   tgt_elt_ec = tgt_elt_ec.reshape(n_elt_to_add*(size_elt-1))
 
 
-  # > Find faces not already defined in BCs
-  elt_mask = np.full(n_elt_to_add, True, dtype=bool)
-  for vtx_bc_pl in vtx_bc_pls:
-    tag_elt = np.isin(tgt_elt_ec, vtx_bc_pl)
-    tag_elt = np.add.reduceat(tag_elt.astype(np.int32), np.arange(0,n_elt_to_add*size_tgt_elt,size_tgt_elt)) # True when has vtx 
-    elt_ids = np.where(tag_elt==3)[0]
-    elt_mask[elt_ids] = False
-  elt_ids = np.where(elt_mask)[0]
-  n_elt_to_add = elt_ids.size  
-  
-  # > Get elts connectivity
-  ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  ec     = PT.get_value(ec_n)
-  ec_pl  = np_utils.interweave_arrays([size_tgt_elt*elt_ids+i_size for i_size in range(size_tgt_elt)])
-  tgt_elt_ec = tgt_elt_ec[ec_pl]
-
-
-  # > Find duplicate faces
-  mask = np.full(n_elt_to_add, 1, dtype=np.int32)
-  cdist_algo.find_duplicate_elt(n_elt_to_add, size_tgt_elt, tgt_elt_ec, mask)
-  elt_ids = np.where(mask==1)[0]
+  # > Find faces not already defined in BCs or duplicated
+  bc_ec    = np.concatenate(bc_ecs)
+  tmp_mask = np.full(n_elt_to_add+n_bc_elt, 1, dtype=np.int32)
+  tmp_ec   = np.concatenate([tgt_elt_ec, bc_ec])
+  cdist_algo.find_duplicate_elt(n_elt_to_add+n_bc_elt, size_tgt_elt, tmp_ec, tmp_mask)
+  elt_ids = np.where(tmp_mask[0:n_elt_to_add]==1)[0] # Get only tri which are not in BCs
   n_elt_to_add = elt_ids.size
-  ec_pl  = np_utils.interweave_arrays([size_tgt_elt*elt_ids+i_size for i_size in range(size_tgt_elt)])
+  ec_pl = np_utils.interweave_arrays([size_tgt_elt*elt_ids+i_size for i_size in range(size_tgt_elt)])
   tgt_elt_ec = tgt_elt_ec[ec_pl]
 
 

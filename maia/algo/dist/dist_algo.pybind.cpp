@@ -171,7 +171,7 @@ void find_duplicate_elt(          int                       n_elt,
         i_elt1 = order[i1];
         for (int i2=conflict_idx[i_conflict]; i2<conflict_idx[i_conflict+1]; i2++) {
           i_elt2 = order[i2];
-          if ((i_elt1!=i_elt2)&&(elt_mask[i_elt2]!=-1) ) {
+          if ((i_elt1!=i_elt2)&&(elt_mask[i_elt2]!=0) ) {
             is_duplicate = 1;
             for (int i_vtx1=i_elt1*elt_size; i_vtx1<(i_elt1+1)*elt_size; i_vtx1++) {
               is_in = 0;
