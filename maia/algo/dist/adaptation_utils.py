@@ -762,7 +762,7 @@ def duplicate_periodic_patch(tree, gc_paths, periodic_values):
   matching_bcs   = [dict() for i_per in range(n_periodicity)]
   for i_per in range(n_periodicity):
 
-    gc_vtx_n = PT.get_node_from_path(tree, gc_paths[0][i_per]+'_0')
+    gc_vtx_n = PT.get_node_from_path(tree, gc_paths[0][i_per])
     gc_vtx_pl  = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointList'     ))[0]
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
@@ -1103,3 +1103,40 @@ def rm_feflo_added_elt(zone):
       bc_loc = PT.Subset.GridLocation(bc_n)
       bc_pl  = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0]
       remove_elts_from_pl(zone, bc_pl, LOC_TO_CGNS[bc_loc])
+
+
+def convert_vtx_gcs_as_face_bcs(tree, gc_paths):
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+
+  zone_bc_n = PT.get_node_from_label(tree, 'ZoneBC_t')
+
+  # > Get TRI_3 element infos
+  is_tri_elt = lambda n: PT.get_label(n)=='Elements_t' and\
+                           PT.Element.CGNSName(n)=='TRI_3'
+  elt_n      = PT.get_node_from_predicate(zone, is_tri_elt)
+  n_elt      = PT.Element.Size(elt_n)
+  size_elt   = PT.Element.NVtx(elt_n)
+  elt_offset = PT.Element.Range(elt_n)[0]
+  ec_n       = PT.get_child_from_name(elt_n, 'ElementConnectivity')
+  ec         = PT.get_value(ec_n)
+
+  for i_side, side_gc_paths in enumerate(gc_paths):
+    for i_gc, gc_path in enumerate(side_gc_paths):
+      # > Get GCs infos
+      gc_n    = PT.get_node_from_path(tree, gc_path)
+      gc_name = PT.get_name(gc_n)
+      gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
+      gc_loc  = PT.Subset.GridLocation(gc_n)
+      assert gc_loc=='Vertex', ''
+
+      # > Search faces described by gc vtx
+      tag_elt = np.isin(ec, gc_pl)
+      tag_elt = np.logical_and.reduceat(tag_elt, np.arange(0,n_elt*size_elt,size_elt))
+      bc_pl   = np.where(tag_elt)[0]+elt_offset
+
+      bc_n = PT.new_BC(name=gc_name,
+                       type='FamilySpecified',
+                       point_list=bc_pl.reshape((1,-1), order='F'),
+                       loc='FaceCenter',
+                       family='GCS',
+                       parent=zone_bc_n)
