@@ -593,6 +593,54 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc=None, elts_to_update=dict(), pe
               family='PERIODIC',
               parent=zone_bc_n)
 
+  # > Duplicate twin BCs
+  new_ec = list()
+  twin_elt_bc_pl = dict()
+  twin_elt_bc_pl['BAR_2'] = list()
+  for elt_name, duplicate_bcs in elt_duplicate_bcs.items():
+    # > Get element infos
+    is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
+                             PT.Element.CGNSName(n)==elt_name
+    elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
+    n_elt      = PT.Element.Size(elt_n)
+    elt_size   = PT.Element.NVtx(elt_n)
+    elt_offset = PT.Element.Range(elt_n)[0]
+
+    ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
+    ec    = PT.get_value(ec_n)
+
+    n_new_elt = 0
+    for matching_bcs in duplicate_bcs:
+      bc_n = PT.get_child_from_name(zone_bc_n, matching_bcs[0])
+      bc_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
+      twin_elt_bc_pl['BAR_2'].append(bc_pl)
+
+      ids = bc_pl - elt_offset
+      ec_pl = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
+      bc_ec = ec[ec_pl]
+      new_bc_ec = np.take(old_to_new_vtx, bc_ec-1)
+      new_ec.append(new_bc_ec)
+
+      new_bc_pl = np.arange(n_elt+n_new_elt, n_elt+n_new_elt+bc_pl.size) + elt_offset
+      new_bc_n = PT.new_BC(name=matching_bcs[1],
+                           type='FamilySpecified',
+                           point_list=new_bc_pl.reshape((1,-1), order='F'),
+                           loc=CGNS_TO_LOC[elt_name],
+                           parent=zone_bc_n)
+      bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
+      if bc_fam_n is not None:
+        PT.new_node('FamilyName', value=PT.get_value(bc_fam_n), label='FamilyName_t', parent=new_bc_n)
+      n_new_elt += bc_pl.size
+
+    # > Update elt node
+    ec = np.concatenate([ec]+new_ec)
+    PT.set_value(ec_n, ec)
+    er_n  = PT.get_child_from_name(elt_n, 'ElementRange')
+    er    = PT.get_value(er_n)
+    er[1]+= n_new_elt
+    PT.set_value(er_n, er)
+
+
   # > Update vtx numbering of elements in patch to separate patch
   cell_pl = elts_to_update['TETRA_4']
   face_pl = elts_to_update['TRI_3']
@@ -600,7 +648,10 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc=None, elts_to_update=dict(), pe
 
   # > Exclude constraint surf or both will move
   tag_face = np.isin(face_pl, elt_pl, invert=True)
-  face_pl = face_pl[tag_face]
+  face_pl  = face_pl[tag_face]
+  bc_line_pl = np.concatenate(twin_elt_bc_pl['BAR_2']) if len(twin_elt_bc_pl['BAR_2'])!=0 else np.empty(0, dtype=np.int32)
+  tag_line = np.isin(line_pl, bc_line_pl, invert=True)
+  line_pl  = line_pl[tag_line]
 
   update_elt_vtx_numbering(zone, old_to_new_vtx, 'TETRA_4', elt_pl=cell_pl)
   update_elt_vtx_numbering(zone, old_to_new_vtx, 'TRI_3'  , elt_pl=face_pl)
