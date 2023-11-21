@@ -82,3 +82,18 @@ def test_compute_face_center2d(comm):
     assert (face_center == np.array([1.,1,0, 2,2,0, 4,1,0, 5,2,0]) / 6.).all()
   if comm.Get_rank() == 1:
     assert (face_center == np.array([1.,4,0, 2,5,0, 4,4,0, 5,5,0]) / 6.).all()
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("elt_kind", ["NFACE_n", "Poly"])
+def test_compute_cell_center(elt_kind, comm):
+  tree = maia.factory.generate_dist_block(3, elt_kind, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  
+  cell_center = geometry.compute_cell_center(zone, comm)
+  
+  if comm.Get_rank() == 0:
+    expt_cell_center = np.array([0.25,0.25,0.25, 0.75,0.25,0.25, 0.25,0.75,0.25, 0.75,0.75,0.25])
+  if comm.Get_rank() == 1:
+    expt_cell_center = np.array([0.25,0.25,0.75, 0.75,0.25,0.75, 0.25,0.75,0.75, 0.75,0.75,0.75])
+
+  assert np.array_equal(expt_cell_center, cell_center)
