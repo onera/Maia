@@ -712,6 +712,7 @@ def find_matching_bcs(zone, src_pl, tgt_pl, src_tgt_vtx, cgns_name):
       mask = np.isin(bc_pl, elt_pl, assume_unique=True) # See if other np.isin can have assumer_unique
       if np.logical_and.reduce(mask):
         bc_nodes[i_side].append(bc_n)
+
   # > Get element infos
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
@@ -739,6 +740,7 @@ def find_matching_bcs(zone, src_pl, tgt_pl, src_tgt_vtx, cgns_name):
       mask = np.isin(as_tgt_ec, tgt_ec)
       if np.logical_and.reduce(mask):
         matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
+
   return matching_bcs
 
 
