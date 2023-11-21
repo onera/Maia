@@ -311,6 +311,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     Issues:
        - would ngon be faster ?
        - how to back mesh ?
+          - beware of BC ordering that have been changed
        - retrieve ridges that has been deleted during domain extension
        - gérer la périodisation des champs (rotation)
           - [x] vector
