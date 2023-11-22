@@ -737,8 +737,6 @@ def deplace_periodic_patch(tree, gc_paths, periodic_values):
               parent=zone_bc_n)
     to_constrain_bcs.append(face_bc_name)
 
-    maia.io.write_tree(tree, 'OUTPUT/internal_surface.cgns')
-
     # > Removing lines defined on join because they surely has their periodic on the other side
     # > Find BCs on GCs that will be deleted because they have their periodic twin
     # > For now only fully described BCs will be treated
@@ -767,8 +765,6 @@ def deplace_periodic_patch(tree, gc_paths, periodic_values):
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
     apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1][i_per])
     apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[1][i_per])
-
-    maia.io.write_tree(tree, 'OUTPUT/deplaced.cgns')
 
     n_vtx = PT.Zone.n_vtx(zone)
     bc_name1 = gc_paths[0][i_per].split('/')[-1]
@@ -843,7 +839,6 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num, bcs_to
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
     _ = duplicate_elts(zone, face_pl, 'TRI_3', to_retrieve_gc_name, elts_to_update, elt_duplicate_bcs=bcs_to_retrieve[i_per])
-    # maia.io.write_tree(tree, f'OUTPUT/adapted_and_duplicated_{i_per}.cgns')
 
     # > Deplace periodic patch to retrieve initial domain
     # > vtx_pl is updated because has changed with surface duplication
@@ -853,7 +848,6 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num, bcs_to
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
     apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[0][i_per])
     apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[0][i_per])
-    # maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
 
     # > Merge two constraint surfaces
     vtx_tag_n = PT.get_node_from_name(zone, 'vtx_tag')
