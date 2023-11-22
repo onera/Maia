@@ -21,7 +21,7 @@ class Zone:
     Return the IndexDimension of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int : IndexDimension (1,2 or 3)
     Example:
@@ -38,7 +38,7 @@ class Zone:
     Return the number of vertices per direction of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int or ndarray of int : number of vertices in each direction 
       for structured zones, total number of vertices for unstructured zones
@@ -56,7 +56,7 @@ class Zone:
     Return the number of cells per direction of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int or ndarray of int : number of cells in each direction 
       for structured zones, total number of cells for unstructured zones
@@ -74,7 +74,7 @@ class Zone:
     Return the number of faces per direction of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int or list of int : number of faces in each direction 
       for structured zones, total number of faces for unstructured zones
@@ -113,7 +113,7 @@ class Zone:
     """Return the Element_t node of kind ``NGON_n`` of a Zone_t node
     
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       CGNSTree : NGon node
     Raises:
@@ -128,7 +128,7 @@ class Zone:
     """Return the Element_t node of kind ``NFACE_n`` of a Zone_t node
     
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       CGNSTree : NFace node
     Raises:
@@ -144,7 +144,7 @@ class Zone:
     Return the number of boundary vertices per direction of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int or ndarray of int : number of boundary vtx in each direction 
       for structured zones, total number of boundary vtx for unstructured zones
@@ -162,7 +162,7 @@ class Zone:
     Return the kind of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       str : One of 'Structured', 'Unstructured', 'UserDefined' or 'Null'
     Example:
@@ -179,7 +179,7 @@ class Zone:
     Return the total number of vertices of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int : number of vertices
     Example:
@@ -195,7 +195,7 @@ class Zone:
     Return the total number of cells of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int : number of cells
     Example:
@@ -211,7 +211,7 @@ class Zone:
     Return the total number of faces of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int : number of faces
     Example:
@@ -229,7 +229,7 @@ class Zone:
     Return the total number of boundary vertices of a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int : number of boundary vertices
     Example:
@@ -244,7 +244,7 @@ class Zone:
     """ Return True if some Element_t node of kind ``NGON_n`` exists in the Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       bool
     Example:
@@ -261,7 +261,7 @@ class Zone:
     """ Return True if some Element_t node of kind ``NFACE_n`` exists in the Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       bool
     Example:
@@ -279,7 +279,7 @@ class Zone:
     Only cartesian coordinates are supported.
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
       name (str, optional): Name of the GridCoordinates node from which coordinates are taken.
         If not specified, first container found is used.
     Returns:
@@ -316,11 +316,11 @@ class Zone:
     return face_vtx_idx, face_vtx, ngon_pe
 
   @staticmethod
-  def get_ordered_elements(zone:CGNSTree) -> List[CGNSTree]:
+  def get_ordered_elements(zone_node:CGNSTree) -> List[CGNSTree]:
     """ Return the Elements under a Zone_t node, sorted according to their ElementRange
     
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       list of CGNSTree : Elements_t nodes
     Example:
@@ -330,17 +330,17 @@ class Zone:
       >>> [PT.get_name(node) for node in PT.Zone.get_ordered_elements(zone)]
       ['TETRA', 'TRI']
     """
-    return sorted(W.get_children_from_label(zone, 'Elements_t'),
+    return sorted(W.get_children_from_label(zone_node, 'Elements_t'),
                   key = lambda item : Element.Range(item)[0])
 
   @staticmethod
-  def get_ordered_elements_per_dim(zone:CGNSTree) -> List[List[CGNSTree]]:
+  def get_ordered_elements_per_dim(zone_node:CGNSTree) -> List[List[CGNSTree]]:
     """Return the Elements under a Zone_t node, gathered according to their dimension
 
     Within each dimension, Elements are sorted according to their ElementRange
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       list of 4 list of CGNSTree : Elements_t nodes
     Example:
@@ -352,14 +352,14 @@ class Zone:
       [0,0,2,1]
     """
     # TODO : how to prevent special case of range of elemt mixed in dim ?
-    return utils.bucket_split(Zone.get_ordered_elements(zone), lambda e: Element.Dimension(e), size=4)
+    return utils.bucket_split(Zone.get_ordered_elements(zone_node), lambda e: Element.Dimension(e), size=4)
 
   @staticmethod
-  def get_elt_range_per_dim(zone:CGNSTree) -> List[List[int]]:
+  def get_elt_range_per_dim(zone_node:CGNSTree) -> List[List[int]]:
     """ Return the min & max element number of each dimension found in a Zone_t node
 
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       list of 4 pairs : min and max element id for each dimension
     Raises:
@@ -372,7 +372,7 @@ class Zone:
       >>> PT.Zone.get_elt_range_per_dim(zone)
       [[0, 0], [31, 40], [11, 30], [1, 10]]
     """
-    sorted_elts_by_dim = Zone.get_ordered_elements_per_dim(zone)
+    sorted_elts_by_dim = Zone.get_ordered_elements_per_dim(zone_node)
 
     range_by_dim = [[0,0], [0,0], [0,0], [0,0]]
     for i_dim, elt_dim in enumerate(sorted_elts_by_dim):
@@ -389,11 +389,11 @@ class Zone:
     return range_by_dim
 
   @staticmethod
-  def elt_ordering_by_dim(zone:CGNSTree):
+  def elt_ordering_by_dim(zone_node:CGNSTree):
     """Return a flag indicating if elements belonging to a Zone_t node are sorted
     
     Args:
-      node (CGNSTree): Input Zone_t node
+      zone_node (CGNSTree): Input Zone_t node
     Returns:
       int : Flag indicating how elements are sorted:
       
@@ -408,7 +408,7 @@ class Zone:
       -1
     """
     status = 0
-    sect_start = [r[0] for r in Zone.get_elt_range_per_dim(zone) if r[0] > 0]
+    sect_start = [r[0] for r in Zone.get_elt_range_per_dim(zone_node) if r[0] > 0]
     if len(sect_start) >= 2:
       if sect_start[0] < sect_start[-1]:
         status = 1
@@ -428,7 +428,7 @@ class Element:
     """ Return the type of an Element_t node
 
     Args:
-      node (CGNSTree): Input Element_t node
+      elt_node (CGNSTree): Input Element_t node
     Returns:
       int : CGNS code corresponding to this element kind
     Example:
@@ -443,7 +443,7 @@ class Element:
     """ Return the generic name of an Element_t node
 
     Args:
-      node (CGNSTree): Input Element_t node
+      elt_node (CGNSTree): Input Element_t node
     Returns:
       str : CGNS name corresponding to this element kind
     Example:
@@ -458,7 +458,7 @@ class Element:
     """ Return the dimension of an Element_t node
 
     Args:
-      node (CGNSTree): Input Element_t node
+      elt_node (CGNSTree): Input Element_t node
     Returns:
       int : Dimension of this element kind (0, 1, 2 or 3)
     Example:
@@ -473,7 +473,7 @@ class Element:
     """ Return the number of vertices of an Element_t node
 
     Args:
-      node (CGNSTree): Input Element_t node
+      elt_node (CGNSTree): Input Element_t node
     Returns:
       int : Number of vertices for this element kind
     Example:
@@ -488,7 +488,7 @@ class Element:
     """ Return the value of the ElementRange of an Element_t node
 
     Args:
-      node (CGNSTree): Input Element_t node
+      elt_node (CGNSTree): Input Element_t node
     Returns:
       ndarray : ElementRange of the node
     Example:
@@ -503,7 +503,7 @@ class Element:
     """ Return the size (number of elements) of an Element_t node
 
     Args:
-      node (CGNSTree): Input Element_t node
+      elt_node (CGNSTree): Input Element_t node
     Returns:
       int : Number of elements described by the node
     Example:
@@ -520,11 +520,11 @@ class Element:
 class GridConnectivity:
 
   @staticmethod
-  def Type(gc:CGNSTree) -> str:
+  def Type(gc_node:CGNSTree) -> str:
     """ Return the type of a GridConnectivity node
 
     Args:
-      node (CGNSTree): Input GridConnectivity node
+      gc_node (CGNSTree): Input GridConnectivity node
     Returns:
       str : One of 'Null', 'UserDefined', 'Overset', 'Abutting' or 'Abutting1to1'
     Example:
@@ -532,18 +532,18 @@ class GridConnectivity:
       >>> PT.GridConnectivity.Type(gc)
       'Abutting1to1'
     """
-    if N.get_label(gc) == 'GridConnectivity1to1_t':
+    if N.get_label(gc_node) == 'GridConnectivity1to1_t':
       return 'Abutting1to1'
-    elif N.get_label(gc) == 'GridConnectivity_t':
-      gc_type_n = W.get_child_from_name(gc, 'GridConnectivityType')
+    elif N.get_label(gc_node) == 'GridConnectivity_t':
+      gc_type_n = W.get_child_from_name(gc_node, 'GridConnectivityType')
       return N.get_value(gc_type_n) if gc_type_n is not None else 'Overset'
 
   @staticmethod
-  def is1to1(gc:CGNSTree) -> bool:
+  def is1to1(gc_node:CGNSTree) -> bool:
     """ Return True if the GridConnectivity node is of type 'Abutting1to1'
 
     Args:
-      node (CGNSTree): Input GridConnectivity node
+      gc_node (CGNSTree): Input GridConnectivity node
     Returns:
       bool
     Example:
@@ -551,14 +551,14 @@ class GridConnectivity:
       >>> PT.GridConnectivity.is1to1(gc)
       False
     """
-    return GridConnectivity.Type(gc) == 'Abutting1to1'
+    return GridConnectivity.Type(gc_node) == 'Abutting1to1'
 
   @staticmethod
-  def isperiodic(gc:CGNSTree) -> bool:
+  def isperiodic(gc_node:CGNSTree) -> bool:
     """ Return True if the GridConnectivity node is periodic
 
     Args:
-      node (CGNSTree): Input GridConnectivity node
+      gc_node (CGNSTree): Input GridConnectivity node
     Returns:
       bool
     Example:
@@ -566,14 +566,14 @@ class GridConnectivity:
       >>> PT.GridConnectivity.isperiodic(gc)
       False
     """
-    return W.get_node_from_label(gc, 'Periodic_t', depth=[2,2]) is not None
+    return W.get_node_from_label(gc_node, 'Periodic_t', depth=[2,2]) is not None
 
   @staticmethod
-  def periodic_values(gc:CGNSTree) -> Union[List[None], List[np.ndarray]]:
+  def periodic_values(gc_node:CGNSTree) -> Union[List[None], List[np.ndarray]]:
     """ Return the periodic transformation of a GridConnectivity node
 
     Args:
-      node (CGNSTree): Input GridConnectivity node
+      gc_node (CGNSTree): Input GridConnectivity node
     Returns:
       Triplet of ndarray or None : values of RotationCenter, RotationAngle and Translation
     Example:
@@ -584,7 +584,7 @@ class GridConnectivity:
        array([0,0,0],dtype=float32),
        array([1,0,0],dtype=float32))
     """
-    perio_node = W.get_node_from_label(gc, "Periodic_t", depth=[2,2])
+    perio_node = W.get_node_from_label(gc_node, "Periodic_t", depth=[2,2])
     if perio_node is None:
       return (None, None, None)
     return tuple((N.get_value(W.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]))
@@ -598,11 +598,11 @@ class Subset:
   """
   
   @staticmethod
-  def getPatch(subset:CGNSTree) -> CGNSTree:
+  def getPatch(subset_node:CGNSTree) -> CGNSTree:
     """ Return the PointList or PointRange node defining the Subset node
 
     Args:
-      node (CGNSTree): Input Subset node
+      subset_node (CGNSTree): Input Subset node
     Returns:
       CGNSTree : PointList or PointRange node
     Example:
@@ -610,17 +610,17 @@ class Subset:
       >>> PT.Subset.getPatch(bc)
       ['PointList', array([[1, 2, 3, 4]], dtype=int32), [], 'IndexArray_t']
     """
-    pl = W.get_child_from_name(subset, 'PointList')
-    pr = W.get_child_from_name(subset, 'PointRange')
+    pl = W.get_child_from_name(subset_node, 'PointList')
+    pr = W.get_child_from_name(subset_node, 'PointRange')
     assert (pl is None) ^ (pr is None)
     return pl if pl is not None else pr
 
   @staticmethod
-  def n_elem(subset:CGNSTree) -> int:
+  def n_elem(subset_node:CGNSTree) -> int:
     """ Return the number of mesh elements included in a Subset node
 
     Args:
-      node (CGNSTree): Input Subset node
+      subset_node (CGNSTree): Input Subset node
     Returns:
       int : Number of elements
     Example:
@@ -631,15 +631,15 @@ class Subset:
       >>> PT.Subset.n_elem(bc)
       4
     """
-    patch = Subset.getPatch(subset)
+    patch = Subset.getPatch(subset_node)
     return PointList.n_elem(patch) if N.get_label(patch) == 'IndexArray_t' else PointRange.n_elem(patch)
 
   @staticmethod
-  def GridLocation(subset:CGNSTree) -> str:
+  def GridLocation(subset_node:CGNSTree) -> str:
     """ Return the GridLocation value of a Subset node
 
     Args:
-      node (CGNSTree): Input Subset node
+      subset_node (CGNSTree): Input Subset node
     Returns:
       str : One of 'Null', 'UserDefined', 'Vertex', 'CellCenter', 'FaceCenter',
       'IFaceCenter', 'JFaceCenter', 'KFaceCenter', or 'EdgeCenter'
@@ -648,7 +648,7 @@ class Subset:
       >>> PT.Subset.GridLocation(bc)
       'FaceCenter'
     """
-    grid_loc_n = W.get_child_from_label(subset, 'GridLocation_t')
+    grid_loc_n = W.get_child_from_label(subset_node, 'GridLocation_t')
     return N.get_value(grid_loc_n) if grid_loc_n else 'Vertex'
 
 # --------------------------------------------------------------------------
