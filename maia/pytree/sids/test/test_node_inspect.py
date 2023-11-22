@@ -118,13 +118,6 @@ def test_zone_s_size():
   assert SIDS.Zone.n_cell(zone_s) == 9*4*1
   assert SIDS.Zone.n_vtx_bnd(zone_s) == 0
 
-def test_get_range_of_ngon():
-  zone = N.new_Zone()
-  N.new_Elements('ElemA', 'NGON_n',  erange=[11, 53], parent=zone)
-  N.new_Elements('ElemB', 'NFACE_n', erange=[1, 10], parent=zone)
-  N.new_Elements('ElemC', 'HEXA_8',  erange=[54,60], parent=zone)
-  assert (SIDS.Zone.get_range_of_ngon(zone) == [11,53]).all()
-
 def test_get_ordered_elements():
   zone = N.new_Zone()
   N.new_Elements('ElemA', erange=[11, 53], parent=zone)
