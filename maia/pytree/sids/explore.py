@@ -4,94 +4,33 @@ import maia.pytree as PT
 from maia.pytree.typing import *
 
 from maia.pytree.compare import check_is_label
-from . import utils
+
+import warnings
 
 def getZoneDonorPath(current_base:str, gc:CGNSTree) -> str:
-  """
-  Returns the Base/Zone path of the opposite zone of a gc node (add the Base/
-  part if not present, using current_base name
-  """
-  opp_zone = PT.get_value(gc)
-  return opp_zone if '/' in opp_zone else current_base + '/' + opp_zone
+  """ DEPRECATED : see ``PT.GridConnectivity.ZoneDonorPath`` """
+  warnings.warn("This function is deprecated in favor of PT.GridConnectivity.ZoneDonorPath",
+          DeprecationWarning, stacklevel=2)
+  return PT.GridConnectivity.ZoneDonorPath(gc, current_base)
 
 
 @check_is_label('ZoneSubRegion_t', 0)
 @check_is_label('Zone_t', 1)
 def getSubregionExtent(sub_region_node:CGNSTree, zone:CGNSTree) -> str:
-  """
-  Return the path of the node (starting from zone node) related to sub_region_node
-  node (BC, GC or itself)
-  """
-  if PT.get_child_from_name(sub_region_node, "BCRegionName") is not None:
-    for zbc, bc in PT.iter_children_from_predicates(zone, "ZoneBC_t/BC_t", ancestors=True):
-      if PT.get_name(bc) == PT.get_value(PT.get_child_from_name(sub_region_node, "BCRegionName")):
-        return PT.get_name(zbc) + '/' + PT.get_name(bc)
-  elif PT.get_child_from_name(sub_region_node, "GridConnectivityRegionName") is not None:
-    gc_pathes = ["ZoneGridConnectivity_t/GridConnectivity_t", "ZoneGridConnectivity_t/GridConnectivity1to1_t"]
-    for gc_path in gc_pathes:
-      for zgc, gc in PT.iter_children_from_predicates(zone, gc_path, ancestors=True):
-        if PT.get_name(gc) == PT.get_value(PT.get_child_from_name(sub_region_node, "GridConnectivityRegionName")):
-          return PT.get_name(zgc) + '/' + PT.get_name(gc)
-  else:
-    return PT.get_name(sub_region_node)
-
-  raise ValueError("ZoneSubRegion {0} has no valid extent".format(PT.get_name(sub_region_node)))
+  """ DEPRECATED : see ``PT.Subset.ZSRExtent`` """
+  warnings.warn("This function is deprecated in favor of PT.Subset.ZSRExtent",
+          DeprecationWarning, stacklevel=2)
+  return PT.Subset.ZSRExtent(sub_region_node, zone)
 
 
 def find_connected_zones(tree:CGNSTree) -> List[CGNSTree]:
-  """
-  Return a list of groups of zones (ie their path from root tree) connected through
-  non periodic match grid connectivities (GridConnectivity_t & GridConnectivity1to1_t
-  without Periodic_t node).
-  """
-  connected_zones = []
-  matching_gcs_u = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n)
-  matching_gcs_s = lambda n : PT.get_label(n) == 'GridConnectivity1to1_t'
-  matching_gcs = lambda n : (matching_gcs_u(n) or matching_gcs_s(n)) \
-                          and PT.get_child_from_label(n, 'GridConnectivityProperty_t') is None
-  
-  for base, zone in PT.iter_children_from_predicates(tree, 'CGNSBase_t/Zone_t', ancestors=True):
-    zone_path = PT.get_name(base) + '/' + PT.get_name(zone)
-    group     = [zone_path]
-    for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', matching_gcs]):
-      opp_zone_path = getZoneDonorPath(PT.get_name(base), gc)
-      utils.append_unique(group, opp_zone_path)
-    connected_zones.append(group)
-
-  for base, zone in PT.iter_children_from_predicates(tree, 'CGNSBase_t/Zone_t', ancestors=True):
-    zone_path     = PT.get_name(base) + '/' + PT.get_name(zone)
-    groups_to_merge = []
-    for i, group in enumerate(connected_zones):
-      if zone_path in group:
-        groups_to_merge.append(i)
-    if groups_to_merge != []:
-      new_group = []
-      for i in groups_to_merge[::-1]: #Reverse loop to pop without changing idx
-        zones_paths = connected_zones.pop(i)
-        for z_p in zones_paths:
-          utils.append_unique(new_group, z_p)
-      connected_zones.append(new_group)
-  return [sorted(zones) for zones in connected_zones]
+  """ DEPRECATED : see ``PT.Tree.find_connected_zones`` """
+  warnings.warn("This function is deprecated in favor of PT.Tree.find_connected_zones",
+          DeprecationWarning, stacklevel=2)
+  return PT.Tree.find_connected_zones(tree)
 
 def find_periodic_jns(tree: CGNSTree, rtol=1e-5, atol=0.) -> Tuple[List[List[np.ndarray]], List[List[str]]]:
-  """Find periodic jns path and gather it according to their periodicity values
-  Return two list (we do not return a dict because np array are unshable)
-      - periodic values
-      - list of jns path related to it
-  """
-  perio_values = list()
-  perio_jns = list()
-  is_jn_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-          and PT.GridConnectivity.isperiodic(n)
-  for jn_path in PT.predicates_to_paths(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_jn_perio]):
-    jn = PT.get_node_from_path(tree, jn_path)
-    perio = PT.GridConnectivity.periodic_values(jn)
-    for i_perio, perio_value in enumerate(perio_values):
-      if all([np.allclose(a,b,rtol,atol) for a,b in zip(perio_value, perio)]):
-        perio_jns[i_perio].append(jn_path)
-        break
-    else:
-      perio_values.append(perio)
-      perio_jns.append([jn_path])
-
-  return perio_values, perio_jns
+  """ DEPRECATED : see ``PT.Tree.find_periodic_jns`` """
+  warnings.warn("This function is deprecated in favor of PT.Tree.find_periodic_jns",
+          DeprecationWarning, stacklevel=2)
+  return PT.Tree.find_periodic_jns(tree, rtol, atol)

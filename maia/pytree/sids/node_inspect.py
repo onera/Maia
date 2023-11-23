@@ -11,6 +11,101 @@ from . import utils
 from .utils import for_all_methods
 
 # --------------------------------------------------------------------------
+@for_all_methods(check_is_label("CGNSTree_t"))
+class Tree:
+  """The following functions applies to the top level CGNSTree_t"""
+
+  @staticmethod
+  def find_connected_zones(tree:CGNSTree) -> List[List[str]]:
+    """ Gather the zones of the tree into groups connected by 1to1 connectivities
+
+    Only non periodic joins are considered. Output paths start at tree level
+    (Basename/Zonename).
+
+    Args:
+      tree (CGNSTree): Input CGNSTree_t node
+    Returns:
+      List[List[str]]: grouped paths of zones
+    Example:
+      >>> tree = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
+      ... Base CGNSBase_t:
+      ...   Zone1 Zone_t:
+      ...     ZoneGridConnectivity ZoneGridConnectivity_t:
+      ...       match GridConnectivity1to1_t "Zone3":
+      ...   Zone2 Zone_t:
+      ...   Zone3 Zone_t:
+      ...     ZoneGridConnectivity ZoneGridConnectivity_t:
+      ...       match GridConnectivity1to1_t "Zone1":
+      ... ''')
+      >>> PT.Tree.find_connected_zones(tree)
+      [['Base/Zone2'], ['Base/Zone1', 'Base/Zone3']]
+
+    """
+    import maia.pytree as PT
+    connected_zones = []
+    matching_gcs_u = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n)
+    matching_gcs_s = lambda n : PT.get_label(n) == 'GridConnectivity1to1_t'
+    matching_gcs = lambda n : (matching_gcs_u(n) or matching_gcs_s(n)) \
+                            and PT.get_child_from_label(n, 'GridConnectivityProperty_t') is None
+    
+    for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
+      group     = [zone_path]
+      zone = PT.get_node_from_path(tree, zone_path)
+      for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', matching_gcs]):
+        opp_zone_path = GridConnectivity.ZoneDonorPath(gc, PT.path_head(zone_path))
+        utils.append_unique(group, opp_zone_path)
+      connected_zones.append(group)
+
+    for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
+      groups_to_merge = []
+      for i, group in enumerate(connected_zones):
+        if zone_path in group:
+          groups_to_merge.append(i)
+      if groups_to_merge != []:
+        new_group = []
+        for i in groups_to_merge[::-1]: #Reverse loop to pop without changing idx
+          zones_paths = connected_zones.pop(i)
+          for z_p in zones_paths:
+            utils.append_unique(new_group, z_p)
+        connected_zones.append(new_group)
+    return [sorted(zones) for zones in connected_zones]
+
+  @staticmethod
+  def find_periodic_jns(tree: CGNSTree, rtol=1e-5, atol=0.) -> Tuple[List[List[np.ndarray]], List[List[str]]]:
+    """ Gather the periodic joins of the tree according to their periodicity values
+
+    Returned paths starts at tree level.
+
+    Args:
+      tree (CGNSTree): Input CGNSTree_t node
+      rtol (float, optional): relative tolerance for periodicity comparaison
+      atol (float, optional): absolute tolerance for periodicity comparaison
+    Returns:
+       Pair of lists: at each indice,
+
+      - first list contains the periodic arrays for the group of joins
+      - second list contains the paths of joins related to this value
+    """
+    import maia.pytree as PT
+    perio_values = list()
+    perio_jns = list()
+    is_jn_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+            and PT.GridConnectivity.isperiodic(n)
+    for jn_path in PT.predicates_to_paths(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_jn_perio]):
+      jn = PT.get_node_from_path(tree, jn_path)
+      perio = PT.GridConnectivity.periodic_values(jn)
+      for i_perio, perio_value in enumerate(perio_values):
+        if all([np.allclose(a,b,rtol,atol) for a,b in zip(perio_value, perio)]):
+          perio_jns[i_perio].append(jn_path)
+          break
+      else:
+        perio_values.append(perio)
+        perio_jns.append([jn_path])
+
+    return perio_values, perio_jns
+
+
+# --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Zone_t"))
 class Zone:
   """The following functions applies to any Zone_t node"""
@@ -82,6 +177,7 @@ class Zone:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
       >>> PT.Zone.FaceSize(zone)
       [55, 60]
+
     Warning:
       Unstructured zones are supported only if they have a NGon connectivity
     """
@@ -218,6 +314,7 @@ class Zone:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
       >>> PT.Zone.n_face(zone)
       115
+
     Warning:
       Unstructured zones are supported only if they have a NGon connectivity
     """
@@ -291,7 +388,7 @@ class Zone:
       ...                                'CoordinateY' : [.5, .5, .5]},
       ...                        parent=zone)
       >>> PT.Zone.coordinates(zone)
-      (array([0,0.5,1], dtype=float32), array([0.5,0.5,0.5], dtype=float32), None)
+      (array([0.,0.5,1.], dtype=float32), array([0.5,0.5,0.5], dtype=float32), None)
     """
     grid_coord_node = W.get_child_from_label(zone_node, "GridCoordinates_t") if name is None \
         else W.get_child_from_name_and_label(zone_node, name, "GridCoordinates_t")
@@ -349,7 +446,7 @@ class Zone:
       >>> PT.new_Elements('TRI',  'TRI_3',  erange=[11,30], parent=zone)
       >>> PT.new_Elements('QUAD', 'QUAD_4', erange=[31,40], parent=zone)
       >>> [len(elts) for elts in PT.Zone.get_ordered_elements_per_dim(zone)]
-      [0,0,2,1]
+      [0, 0, 2, 1]
     """
     # TODO : how to prevent special case of range of elemt mixed in dim ?
     return utils.bucket_split(Zone.get_ordered_elements(zone_node), lambda e: Element.Dimension(e), size=4)
@@ -580,14 +677,31 @@ class GridConnectivity:
       >>> gc = PT.new_GridConnectivity('GC')
       >>> PT.new_GridConnectivityProperty({'translation' : [1., 0, 0]}, parent=gc)
       >>> PT.GridConnectivity.periodic_values(gc)
-      (array([0,0,0],dtype=float32),
-       array([0,0,0],dtype=float32),
-       array([1,0,0],dtype=float32))
+      (array([0., 0., 0.], dtype=float32),
+       array([0., 0., 0.], dtype=float32),
+       array([1., 0., 0.], dtype=float32))
     """
     perio_node = W.get_node_from_label(gc_node, "Periodic_t", depth=[2,2])
     if perio_node is None:
       return (None, None, None)
     return tuple((N.get_value(W.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]))
+
+  @staticmethod
+  def ZoneDonorPath(gc_node:CGNSTree, cur_base_name:str) -> str:
+    """ Return the path of the opposite zone of a GridConnectivity node
+
+    Args:
+      gc_node (CGNSTree): Input GridConnectivity node
+      cur_base_name (str): Name of the parent base of this node
+    Returns:
+      str : Path (Basename/Zonename) of the opposite zone
+    Example:
+      >>> gc = PT.new_GridConnectivity('GC', donor_name='OtherBase/OppZone')
+      >>> PT.GridConnectivity.ZoneDonorPath(gc, 'Base')
+      'OtherBase/OppZone'
+    """
+    opp = N.get_value(gc_node)
+    return opp if '/' in opp else cur_base_name + '/' + opp
 
 
 @for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", \
@@ -650,6 +764,45 @@ class Subset:
     """
     grid_loc_n = W.get_child_from_label(subset_node, 'GridLocation_t')
     return N.get_value(grid_loc_n) if grid_loc_n else 'Vertex'
+
+  @staticmethod
+  def ZSRExtent(zsr_node:CGNSTree, zone_node:CGNSTree) -> str:
+    """
+    Return the path of the node to which the ZoneSubRegion node maps
+
+    Path start from zone_node and can point to a BC, a GC or the ZSR itself.
+    This function only make sense for ZoneSubRegion_t nodes.
+
+    Args:
+      zsr_node (CGNSTree): Input ZoneSubRegion_t node
+      zone_node (CGNSTree): Parent Zone_t node
+    Returns:
+      str : path of zone defining the ZSR extent
+    Example:
+      >>> zone = PT.new_Zone('Zone')
+      >>> bc   = PT.new_BC('RelevantBC', parent=PT.new_ZoneBC(parent=zone))
+      >>> zsr  = PT.new_ZoneSubRegion('ZSR', bc_name='RelevantBC')
+      >>> PT.Subset.ZSRExtent(zsr, zone)
+      'ZoneBC/RelevantBC'
+    """
+    import maia.pytree as PT
+    bc_region_name = W.get_child_from_name(zsr_node, "BCRegionName")
+    gc_region_name = W.get_child_from_name(zsr_node, "GridConnectivityRegionName")
+    if bc_region_name is not None:
+      is_bc = lambda n: N.get_label(n) == "BC_t" and \
+                        N.get_name(n) == N.get_value(bc_region_name)
+      paths = PT.predicates_to_paths(zone_node, ['ZoneBC_t', is_bc])
+    elif gc_region_name is not None:
+      is_gc = lambda n: N.get_label(n) in ["GridConnectivity1to1_t", "GridConnectivity_t"] and \
+                        N.get_name(n) == N.get_value(gc_region_name)
+      paths = PT.predicates_to_paths(zone_node, ['ZoneGridConnectivity_t', is_gc])
+    else:
+      paths = [N.get_name(zsr_node)]
+
+    try:
+      return utils.expects_one(paths)
+    except RuntimeError:
+      raise ValueError("ZoneSubRegion {0} has no valid extent".format(N.get_name(zsr_node)))
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("IndexRange_t"))
