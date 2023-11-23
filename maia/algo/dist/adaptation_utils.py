@@ -651,7 +651,7 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   return new_tgt_elt_pl
 
 
-def convert_vtx_gcs_as_face_bcs(tree, gc_paths):
+def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values):
   '''
   Convert Vertex GCs as FaceCenter BCs for feflo.
   '''
@@ -668,8 +668,8 @@ def convert_vtx_gcs_as_face_bcs(tree, gc_paths):
   ec_n       = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec         = PT.get_value(ec_n)
 
-  for i_side, side_gc_paths in enumerate(gc_paths):
-    for i_gc, gc_path in enumerate(side_gc_paths):
+  for jn_pairs in jn_pairs_and_values.keys():
+    for gc_path in jn_pairs:
       # > Get GCs infos
       gc_n    = PT.get_node_from_path(tree, gc_path)
       gc_name = PT.get_name(gc_n)
@@ -690,7 +690,7 @@ def convert_vtx_gcs_as_face_bcs(tree, gc_paths):
                        parent=zone_bc_n)
 
 
-def deplace_periodic_patch(tree, gc_paths, periodic_values):
+def deplace_periodic_patch(tree, jn_pairs_and_values):
   '''
   Use `gc_paths` and their associated `periodic_values` to deplace a range of cell touching a GC next to the twin GC (for each pair of GCs),
   using GCs pl and pls to merge the two domains.
@@ -706,13 +706,14 @@ def deplace_periodic_patch(tree, gc_paths, periodic_values):
   PT.new_Family('PERIODIC', parent=base)
   PT.new_Family('GCS', parent=base)
 
-  n_periodicity = len(gc_paths[0])
+  n_periodicity = len(jn_pairs_and_values.keys())
   new_vtx_nums = list()
   to_constrain_bcs = list()
   matching_bcs   = [dict() for i_per in range(n_periodicity)]
-  for i_per in range(n_periodicity):
+  i_per = 0
+  for gc_paths, periodic_values in jn_pairs_and_values.items():
 
-    gc_vtx_n = PT.get_node_from_path(tree, gc_paths[0][i_per])
+    gc_vtx_n = PT.get_node_from_path(tree, gc_paths[0])
     gc_vtx_pl  = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointList'     ))[0]
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
@@ -765,14 +766,14 @@ def deplace_periodic_patch(tree, gc_paths, periodic_values):
     to_constrain_bcs.append(face_bc_name)
 
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1][i_per])
-    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[1][i_per])
+    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1])
+    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[1])
 
     maia.io.write_tree(tree, 'OUTPUT/deplaced.cgns')
 
     n_vtx = PT.Zone.n_vtx(zone)
-    bc_name1 = gc_paths[0][i_per].split('/')[-1]
-    bc_name2 = gc_paths[1][i_per].split('/')[-1]
+    bc_name1 = gc_paths[0].split('/')[-1]
+    bc_name2 = gc_paths[1].split('/')[-1]
     vtx_match_num = [gc_vtx_pl, gc_vtx_pld]
     vtx_tag = np.arange(1, n_vtx+1, dtype=np.int32)
     old_to_new_vtx = merge_periodic_bc(zone, (bc_name1, bc_name2), vtx_tag, vtx_match_num, keep_original=True)
@@ -799,17 +800,18 @@ def deplace_periodic_patch(tree, gc_paths, periodic_values):
               loc='Vertex',
               family='PERIODIC',
               parent=zone_bc_n)
+    i_per +=1
 
   return new_vtx_nums, to_constrain_bcs, matching_bcs
 
 
-def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num, bcs_to_retrieve):
+def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve):
   '''
   Use `gc_paths` and their associated `periodic_values` to deplace the adapted range of cells that have been adapted to its initial position,
   using `new_vtx_num` match info to merge the two domains.
   Twin BCs defined in GCs that have been deleted while using `deplace_periodic_patch` can be retrieved thanks to `bcs_to_retrieve`.
   '''
-  n_periodicity = len(gc_paths[0])
+  n_periodicity = len(jn_pairs_and_values.keys())
 
   base = PT.get_child_from_label(tree, 'CGNSBase_t')
   is_3d = PT.get_value(base)[0]==3
@@ -822,7 +824,8 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num, bcs_to
   edge_elt_name = 'BAR_2'   if is_3d else  None
 
   # > Removing old periodic patch
-  for i_per in range(n_periodicity-1, -1, -1):
+  i_per = n_periodicity-1
+  for gc_paths, periodic_values in reversed(jn_pairs_and_values.items()): # reversed for future multiperiodic
   
     # > Duplicate GC surface and update element connectivities in the patch
     # > Here we can take all elements in periodic patch because its good from previous step
@@ -831,8 +834,8 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num, bcs_to
     cell_bc_pl = PT.get_value(PT.Subset.getPatch(cell_bc_n))[0]
     vtx_pl = elmt_pl_to_vtx_pl(zone, cell_bc_pl, 'TETRA_4')
 
-    still_here_gc_name  = gc_paths[0][i_per].split('/')[-1]
-    to_retrieve_gc_name = gc_paths[1][i_per].split('/')[-1]
+    still_here_gc_name  = gc_paths[0].split('/')[-1]
+    to_retrieve_gc_name = gc_paths[1].split('/')[-1]
     bc_n = PT.get_child_from_name(zone_bc_n, still_here_gc_name)
     face_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
 
@@ -851,8 +854,8 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num, bcs_to
     bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[0][i_per])
-    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[0][i_per])
+    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[0])
+    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[0])
     # maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
 
     # > Merge two constraint surfaces
@@ -862,6 +865,7 @@ def retrieve_initial_domain(tree, gc_paths, periodic_values, new_vtx_num, bcs_to
                       [f'{face_elt_name.lower()}_constraint_{i_per}', f'{face_elt_name.lower()}_periodic_{i_per}'],
                       vtx_tag,
                       new_vtx_num[i_per])
+    i_per -=1
 
   rm_feflo_added_elt(zone)
 
