@@ -275,14 +275,16 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     # > Get periodic infos
     add_joins_donor_name(dist_tree, comm) # Add missing joins donor names
     jn_pairs_and_values = get_periodic_matching_jns(adapted_dist_tree)
+    
+    convert_vtx_gcs_as_face_bcs(adapted_dist_tree, jn_pairs_and_values, comm)
+
     mlog.info(f"[Periodic adaptation] Step #1: Duplicating periodic patch...")
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
 
     bcs_to_constrain = list()
     if comm.rank==0:
-      convert_vtx_gcs_as_face_bcs(adapted_dist_tree, jn_pairs_and_values)
       new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, jn_pairs_and_values)
+    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
     bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
 
@@ -303,10 +305,10 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
     start = time.time()
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
 
     if comm.rank==0:
       retrieve_initial_domain(adapted_dist_tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve)
+    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
     end = time.time()

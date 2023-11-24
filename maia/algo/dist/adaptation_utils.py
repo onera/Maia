@@ -109,19 +109,10 @@ def tag_elmt_owning_vtx(zone, vtx_pl, cgns_name, elt_full=False):
   '''
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
-  elt_n    = PT.get_node_from_predicate(zone, is_asked_elt)
+  elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
+  elt_offset = PT.Element.Range(elt_n)[0]
   if elt_n is not None:
-    n_elt      = PT.Element.Size(elt_n)
-    elt_size   = PT.Element.NVtx(elt_n)
-    elt_offset = PT.Element.Range(elt_n)[0]
-
-    ec  = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
-    tag_vtx = np.isin(ec, vtx_pl) # True where vtx is
-    if elt_full:
-      tag_elt = np.logical_and.reduceat(tag_vtx, np.arange(0,n_elt*elt_size,elt_size)) # True when has vtx 
-    else:
-      tag_elt = np.logical_or .reduceat(tag_vtx, np.arange(0,n_elt*elt_size,elt_size)) # True when has vtx 
-    gc_elt_pl = np.where(tag_elt)[0]+elt_offset # Which cells has vtx, TODO: add elt_offset to be a real pl
+    gc_elt_pl = vtx_ids_to_face_ids(vtx_pl, elt_n, MPI.COMM_SELF, elt_full)+elt_offset-1
   else:
     gc_elt_pl = np.empty(0, dtype=np.int32)
   return gc_elt_pl
@@ -651,7 +642,7 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   return new_tgt_elt_pl
 
 
-def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values):
+def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
   '''
   Convert Vertex GCs as FaceCenter BCs for feflo.
   '''
@@ -673,21 +664,23 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values):
       # > Get GCs infos
       gc_n    = PT.get_node_from_path(tree, gc_path)
       gc_name = PT.get_name(gc_n)
-      gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))
+      gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))[0]
       gc_loc  = PT.Subset.GridLocation(gc_n)
       assert gc_loc=='Vertex', ''
 
       # > Search faces described by gc vtx
       tag_elt = np.isin(ec, gc_pl)
       tag_elt = np.logical_and.reduceat(tag_elt, np.arange(0,n_elt*elt_size,elt_size))
-      bc_pl   = np.where(tag_elt)[0]+elt_offset
+      bc_pl   = maia.algo.dist.subset_tools.vtx_ids_to_face_ids(gc_pl, elt_n, comm, True)+elt_offset-1
 
-      bc_n = PT.new_BC(name=gc_name,
-                       type='FamilySpecified',
-                       point_list=bc_pl.reshape((1,-1), order='F'),
-                       loc='FaceCenter',
-                       family='GCS',
-                       parent=zone_bc_n)
+      if bc_pl.size!=0:
+        bc_n = PT.new_BC(name=gc_name,
+                         type='FamilySpecified',
+                         point_list=bc_pl.reshape((1,-1), order='F'),
+                         loc='FaceCenter',
+                         family='GCS',
+                         parent=zone_bc_n)
+        PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(bc_pl.size, comm)}, bc_n)
 
 
 def deplace_periodic_patch(tree, jn_pairs_and_values):
