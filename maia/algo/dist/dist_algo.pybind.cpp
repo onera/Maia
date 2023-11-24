@@ -115,6 +115,116 @@ void find_tri_in_tetras(            int                       n_tri,
 }
 
 
+void find_duplicate_elt2(          int                       n_elt,
+                                   int                       elt_size,
+                       py::array_t<int, py::array::f_style>& np_elt_vtx,
+                       py::array_t<int, py::array::f_style>& np_elt_mask) {
+  /*
+    Go through all elements verifying that has not already be defined.
+    Args : 
+      - n_elt       [in] : element number
+      - elt_size    [in] : vertex number in one element
+      - np_elt_vtx  [in] : element connectivity
+      - np_elt_mask [out]: which element are not duplicated
+
+    TODO:
+     - delete elt_size arguement (to be retrieve in place)
+     - demander a Berenger si il a ca en stock
+     - Beware of gnum
+     - Renvoyer la liste PL
+  */
+  using int_t = int;
+  auto elt_vtx  = make_raw_view(np_elt_vtx);
+  auto elt_mask = make_raw_view(np_elt_mask);
+
+  // > Local copy of elt_vtx
+  std::vector<int_t> elt_vtx_lex(elt_vtx, elt_vtx+n_elt*elt_size); 
+
+  // > Sort vtx in each element 
+  for (int i_elt=0; i_elt<n_elt; ++i_elt) {
+    std::sort(elt_vtx_lex.data()+i_elt*elt_size, elt_vtx_lex.data()+(i_elt+1)*elt_size);
+  }
+
+  // printf("Sort vtx in each element :\n");
+  // for (int i_vtx=0; i_vtx<n_elt*elt_size; ++i_vtx) {
+  //   if (i_vtx%elt_size==0) {
+  //     printf("  ");
+  //   }
+  //   printf("%d ", elt_vtx_lex[i_vtx]);
+  // }
+  // printf("\n\n");
+
+  // > Lambda function to compare two elements
+  // > Nothin in [&] because elt_vtx_lex and elt_size needed, and when 2 norm say to put nothing
+  // auto elt_comp = [&elt_vtx_lex](int i, int j) {
+  auto elt_comp = [&](int i, int j) { 
+    auto elt_i_beg = elt_vtx_lex.data()+i*elt_size;
+    auto elt_j_beg = elt_vtx_lex.data()+j*elt_size;
+    auto elt_i_end = elt_i_beg + elt_size;
+    auto elt_j_end = elt_j_beg + elt_size;
+    return std::lexicographical_compare(elt_i_beg, elt_i_end, elt_j_beg, elt_j_end);
+  };
+
+  std::vector<int_t> order(n_elt); 
+  std::iota(order.begin(), order.end(), 0);
+  std::sort(order.begin(), order.end(), elt_comp);
+
+  // printf("Order :\n");
+  // for (int i_elt=0; i_elt<n_elt; ++i_elt) {
+  //   printf("%d ", order[i_elt]);
+  // }
+  // printf("\n\n");
+
+  // printf("Sort elements :\n");
+  // for (int i_elt=0; i_elt<n_elt; ++i_elt) {
+  //   printf("  ");
+  //   for (int i_vtx=0; i_vtx<elt_size; ++i_vtx) {
+  //     printf("%d ", elt_vtx_lex[(order[i_elt])*elt_size+i_vtx]);
+  //   }
+  // }
+  // printf("\n\n");
+
+  // > Lambda function equal elements
+  // auto is_same_elt = [&elt_vtx_lex](int i, int j) {
+  auto is_same_elt = [&](int i, int j) { // Nothin in & because 
+    auto elt_i_beg = elt_vtx_lex.data()+i*elt_size;
+    auto elt_j_beg = elt_vtx_lex.data()+j*elt_size;
+    auto elt_i_end = elt_i_beg + elt_size;
+    auto elt_j_end = elt_j_beg + elt_size;
+    return std::equal(elt_i_beg, elt_i_end, elt_j_beg, elt_j_end);
+  };
+
+  int compteur=1;
+  int idx_previous = 0;
+  for (int i_elt=1; i_elt<n_elt; ++i_elt) {
+    // printf("Compare %d with %d\n", idx_previous, i_elt);
+    if (is_same_elt(order[idx_previous], order[i_elt])) {
+      compteur++;
+      // printf("  --> same : compteur = %d\n", compteur);
+      if ((i_elt==n_elt-1)&&(compteur!=1)) {
+        // printf("    --> Change from %d to %d\n", idx_previous, i_elt);
+        for (int i_elt2=idx_previous; i_elt2<i_elt+1; ++i_elt2) {
+          // printf("i_elt2 = %d -> order[i_elt2] = %d\n", i_elt2, order[i_elt2]);
+          elt_mask[order[i_elt2]] = 0;
+        }
+      }
+    }
+    else {
+      // printf("  --> different : compteur = %d\n", compteur);
+      if (compteur!=1) {
+        // printf("    --> Change from %d to %d\n", idx_previous, i_elt-1);
+        for (int i_elt2=idx_previous; i_elt2<i_elt; ++i_elt2) {
+          // printf("i_elt2 = %d -> order[i_elt2] = %d\n", i_elt2, order[i_elt2]);
+          elt_mask[order[i_elt2]] = 0;
+        }
+      }
+      idx_previous = i_elt;
+      compteur = 1;
+    }
+  }
+}
+
+
 void find_duplicate_elt(          int                       n_elt,
                                   int                       elt_size,
                       py::array_t<int, py::array::f_style>& np_elt_vtx,
