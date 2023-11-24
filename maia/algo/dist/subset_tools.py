@@ -56,7 +56,6 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
 
   return np_utils.safe_int_cast(face_ids, vtx_ids.dtype)
 
-
 def convert_subset_as_facelist(dist_tree, subset_path, comm):
   node = PT.get_node_from_path(dist_tree, subset_path)
   zone_path = PT.path_head(subset_path, 2)

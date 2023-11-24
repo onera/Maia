@@ -1,6 +1,9 @@
+import mpi4py.MPI as MPI
+
 import maia
 import maia.pytree as PT
-from   maia.utils  import np_utils, py_utils
+from   maia.utils  import np_utils, py_utils, par_utils
+from maia.algo.dist.subset_tools import vtx_ids_to_face_ids
 
 import cmaia.dist_algo as cdist_algo
 
@@ -559,7 +562,7 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
 
   # > Get elts connectivity
   idx    = elt_pl - elt_offset
-  ec_pl  = np_utils.interweave_arrays([elt_size*idx+i_size for i_size in range(elt_size)])
+  ec_pl  = np_utils.interweave_arrays([elt_size*idx+i_size for i_size in range(elt_size)]) # np_utils.multi_arange(idx*elt_size, (idx+1)*elt_size) seems not to be as quick
   ec_elt = ec[ec_pl]
 
   # > Get BCs of tgt dimension to get their vtx ids 

@@ -129,7 +129,7 @@ def multi_arange(starts, stops):
   assert len(starts)==len(stops)
   stops = np.asarray(stops)
   l = stops - starts # Lengths of each range.
-  return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
+  return np.repeat(stops - l.cumsum(dtype=starts.dtype), l) + np.arange(l.sum(), dtype=starts.dtype)
 
 def arange_with_jumps(multi_interval,jumps):
   """

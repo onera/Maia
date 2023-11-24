@@ -164,12 +164,13 @@ def get_periodic_matching_jns(dist_tree):
   jn_pairs = get_matching_jns(dist_tree, lambda n: PT.GridConnectivity.isperiodic(n))
 
   periodic_matching_jns = dict()
-  for jn_pair in jn_pairs:
+  for first,second in jn_pairs:
     for pvalue, pjoin in zip(pvalues, pjoins):
-      if jn_pair[0] in pjoin: jnl_value = {name:value for name, value in zip(periodic_names, pvalue)}
-      if jn_pair[1] in pjoin: jnr_value = {name:value for name, value in zip(periodic_names, pvalue)}
-    jn_values = (jnl_value, jnr_value)
-    periodic_matching_jns[jn_pair] = jn_values
+      if first in pjoin: 
+        first_value = dict(zip(periodic_names, pvalue))
+      if second in pjoin: 
+        second_value = dict(zip(periodic_names, pvalue))
+    periodic_matching_jns[(first,second)] = (first_value, second_value)
 
   return periodic_matching_jns
 
