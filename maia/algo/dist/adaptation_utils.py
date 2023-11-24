@@ -642,7 +642,7 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   bc_ec    = np.concatenate(bc_ecs)
   tmp_mask = np.full(n_elt_to_add+n_bc_elt, 1, dtype=np.int32)
   tmp_ec   = np.concatenate([tgt_elt_ec, bc_ec])
-  cdist_algo.find_duplicate_elt(n_elt_to_add+n_bc_elt, size_tgt_elt, tmp_ec, tmp_mask)
+  cdist_algo.find_duplicate_elt3(n_elt_to_add+n_bc_elt, size_tgt_elt, tmp_ec, tmp_mask)
   elt_ids = np.where(tmp_mask[0:n_elt_to_add]==1)[0] # Get only tri which are not in BCs
   n_elt_to_add = elt_ids.size
   ec_pl = np_utils.interweave_arrays([size_tgt_elt*elt_ids+i_size for i_size in range(size_tgt_elt)])
