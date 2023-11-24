@@ -105,6 +105,9 @@ def get_name(node:CGNSTree) -> str:
     node (CGNSTree): Input node
   Returns:
     str: Name of the node
+  Example:
+    >>> PT.get_name(PT.new_node(name='MyNodeName', label='Zone_t'))
+    'MyNodeName'
   """
   return node[0]
 def set_name(node:CGNSTree, name:str):
@@ -118,6 +121,9 @@ def set_name(node:CGNSTree, name:str):
     RuntimeWarning: If name is longer than 32 characters
   Raises:
     ValueError: If name is not valid
+  Example:
+    >>> node = PT.new_node('Node')
+    >>> PT.set_name(node, 'UpdatedNodeName')
   """
   if check.is_valid_name(name, check_len=False):
     if not check.is_valid_name(name, check_len=True):
@@ -137,6 +143,9 @@ def get_value(node:CGNSTree, raw:bool=False) -> Union[None, np.ndarray, str, Lis
     raw  (bool): If ``True``, always return the numpy array
   Returns:
     CGNSValue: Value of the node
+  Example:
+    >>> PT.get_value(PT.new_node('MyNode', value=3.14))
+    array([3.14], dtype=float32)
   """
   raw_val = node[1]
   if not raw and isinstance(raw_val, np.ndarray) and raw_val.dtype.kind == 'S':
@@ -154,6 +163,9 @@ def get_value_type(node:CGNSTree) -> str:
     node (CGNSTree): Input node
   Returns:
     str: Value type of the node
+  Example:
+    >>> PT.get_value_type(PT.new_node('MyNode', value=None))
+    'MT'
   """
   val = get_value(node, raw=True)
   if val is None:
@@ -171,6 +183,9 @@ def get_value_kind(node:CGNSTree) -> str:
     node (CGNSTree): Input node
   Returns:
     str: Value kind of the node
+  Example:
+    >>> PT.get_value_kind(PT.new_node('MyNode', value=3.14))
+    'R'
   """
   val_type = get_value_type(node)
   if val_type != 'MT':
@@ -195,6 +210,9 @@ def set_value(node:CGNSTree, value:Any):
   Args:
     node (CGNSTree): Input node
     value (Any): Value to be set
+  Example:
+    >>> node = PT.new_node('Node')
+    >>> PT.set_value(node, [3,2,1])
   """
   node[1] = _convert_value(value)
 
@@ -205,6 +223,9 @@ def get_children(node:CGNSTree) -> List[CGNSTree]:
     node (CGNSTree): Input node
   Returns:
     List[CGNSTree]: Children of the node
+  Example:
+    >>> len(PT.get_children(PT.new_node('MyNode')))
+    0
   """
   return node[2]
 
@@ -218,6 +239,9 @@ def add_child(node:CGNSTree, child:CGNSTree):
 
   Raises:
     RuntimeError: If a node with same name than ``child`` already exists
+  Example:
+    >>> node = PT.new_node('Zone', 'Zone_t')
+    >>> PT.add_child(node, PT.new_node('ZoneType', 'ZoneType_t', 'Structured'))
   """
   if child is None:
     return
@@ -246,6 +270,12 @@ def set_children(node:CGNSTree, children:List[CGNSTree]):
   Args:
     node (CGNSTree): Input node
     children (List[CGNSTree]): Children to be set
+  Example:
+    >>> node = PT.new_node('Zone', 'Zone_t')
+    >>> PT.add_child(node, PT.new_node('ZoneType', 'ZoneType_t', 'Structured'))
+    >>> PT.set_children(node, []) # Replace the children with the given list
+    >>> len(PT.get_children(node))
+    0
   """
   children_bck = get_children(node)
   node[2] = []
@@ -263,6 +293,9 @@ def get_label(node:CGNSTree) -> str:
     node (CGNSTree): Input node
   Returns:
     str: Label of the node
+  Example:
+    >>> PT.get_label(PT.new_node('Zone', label='Zone_t'))
+    'Zone_t'
   """
   return node[3]
 
@@ -278,6 +311,9 @@ def set_label(node:CGNSTree, label:str):
     RuntimeWarning: If label does not belong to SIDS label list
   Raises:
     ValueError: If label is not valid
+  Example:
+    >>> node = PT.new_node('BCNode')
+    >>> PT.set_label(node, 'BC_t')
   """
   if check.is_valid_label(label, only_sids=False):
     if not check.is_valid_label(label, only_sids=True):

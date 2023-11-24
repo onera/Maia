@@ -65,9 +65,45 @@ def update_node(node:CGNSTree, name:str=UNSET, label:str=UNSET, value:Any=UNSET,
   # return new_node(name, label, value, children, parent)
 
 def new_child(parent:CGNSTree, name:str, label:str='UserDefined_t', value:Any=None, children:List[CGNSTree]=[]) -> CGNSTree:
+  """ Create a new CGNS node as a child of an other node
+
+  This is an alternative form of :func:`new_node`, with mandatory ``parent`` argument.
+
+  Args:
+    all: See :func:`new_node`
+  Returns:
+    CGNSTree: Created node
+  Example:
+    >>> zone = PT.new_node('Zone', label='Zone_t') # Basic node creation
+    >>> PT.new_child(zone, 'ZoneType', 'ZoneType_t', "Unstructured")
+    >>> PT.print_tree(zone)
+    Zone Zone_t 
+    └───ZoneType ZoneType_t "Unstructured"
+  """
   return new_node(name, label, value, children, parent)
 
 def update_child(parent:CGNSTree, name:str, label:str=UNSET, value:Any=UNSET, children:List[CGNSTree]=UNSET) -> CGNSTree:
+  """
+  update_child(parent, name, label=UNSET, value=UNSET, children=UNSET)
+
+  Create a child, or update its attributes
+  
+  This is an alternative form of :func:`new_child`, but this function allow the parent node
+  to already have a child of the given name: in this case, its attributes are updated.
+  Otherwise, the child is created with the default values of :func:`new_child`
+
+  Args:
+    all: See :func:`new_child`
+  Returns:
+    CGNSTree: Created node
+  Example:
+    >>> zone = PT.new_node('Zone', label='Zone_t') # Basic node creation
+    >>> PT.update_child(zone, 'ZoneType', 'ZoneType_t') # Child is created
+    >>> PT.update_child(zone, 'ZoneType', value="Unstructured") # Child is updated
+    >>> PT.print_tree(zone)
+    Zone Zone_t 
+    └───ZoneType ZoneType_t "Unstructured"
+  """
   node = walk.get_child_from_name(parent, name)
   if node is None:
     node = new_node(name, parent=parent)
