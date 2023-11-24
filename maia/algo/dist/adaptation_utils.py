@@ -212,6 +212,13 @@ def remove_elts_from_pl(zone, elt_pl, cgns_name):
   er[1] = er[1]-n_elt_to_rm
   PT.set_value(er_n, er)
 
+  # > Update distribution
+  elt_distrib_n  = PT.maia.getDistribution(elt_n, distri_name='Element')
+  elt_distrib    = PT.get_value(elt_distrib_n)
+  elt_distrib[1]-= n_elt_to_rm
+  elt_distrib[2]-= n_elt_to_rm
+  PT.set_value(elt_distrib_n, elt_distrib)
+
   # > Update BC PointList
   old_to_new_elt = np.arange(1, n_elt+1, dtype=np.int32)
   old_to_new_elt[elt_pl-elt_offset] = -1
@@ -407,6 +414,13 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, elt_duplicate_
   PT.set_value(er_n, er)
   PT.set_value(ec_n, np.concatenate([ec, elt_ec]))
 
+  # > Update distribution
+  elt_distrib_n  = PT.maia.getDistribution(elt_n, distri_name='Element')
+  elt_distrib    = PT.get_value(elt_distrib_n)
+  elt_distrib[1]+= n_elt_to_add
+  elt_distrib[2]+= n_elt_to_add
+  PT.set_value(elt_distrib_n, elt_distrib)
+
   update_infdim_elts(zone, elt_dim, n_elt_to_add)
 
   # > Create associated BC if asked
@@ -467,6 +481,12 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, elt_duplicate_
     er[1]+= n_new_elt
     PT.set_value(er_n, er)
 
+    # > Update distribution
+    elt_distrib_n  = PT.maia.getDistribution(elt_n, distri_name='Element')
+    elt_distrib    = PT.get_value(elt_distrib_n)
+    elt_distrib[1]+= n_new_elt
+    elt_distrib[2]+= n_new_elt
+    PT.set_value(elt_distrib_n, elt_distrib)
 
   # > Update vtx numbering of elements in patch to separate patch
   cell_pl = elts_to_update['TETRA_4']
@@ -640,6 +660,13 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   tgt_er[1] = tgt_er[1]+n_elt_to_add
   PT.set_value(tgt_er_n, tgt_er)
 
+  # > Update distribution
+  tgt_elt_distrib_n  = PT.maia.getDistribution(tgt_elt_n, distri_name='Element')
+  tgt_elt_distrib    = PT.get_value(tgt_elt_distrib_n)
+  tgt_elt_distrib[1]+= n_elt_to_add
+  tgt_elt_distrib[2]+= n_elt_to_add
+  PT.set_value(tgt_elt_distrib_n, tgt_elt_distrib)
+
   update_infdim_elts(zone, dim_tgt_elt, n_elt_to_add)
 
   return new_tgt_elt_pl
@@ -656,11 +683,7 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
   is_tri_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)=='TRI_3'
   elt_n      = PT.get_node_from_predicate(zone, is_tri_elt)
-  n_elt      = PT.Element.Size(elt_n)
-  elt_size   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
-  ec_n       = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  ec         = PT.get_value(ec_n)
 
   for jn_pairs in jn_pairs_and_values.keys():
     for gc_path in jn_pairs:
@@ -672,18 +695,14 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
       assert gc_loc=='Vertex', ''
 
       # > Search faces described by gc vtx
-      tag_elt = np.isin(ec, gc_pl)
-      tag_elt = np.logical_and.reduceat(tag_elt, np.arange(0,n_elt*elt_size,elt_size))
       bc_pl   = maia.algo.dist.subset_tools.vtx_ids_to_face_ids(gc_pl, elt_n, comm, True)+elt_offset-1
-
-      if bc_pl.size!=0:
-        bc_n = PT.new_BC(name=gc_name,
-                         type='FamilySpecified',
-                         point_list=bc_pl.reshape((1,-1), order='F'),
-                         loc='FaceCenter',
-                         family='GCS',
-                         parent=zone_bc_n)
-        PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(bc_pl.size, comm)}, bc_n)
+      bc_n = PT.new_BC(name=gc_name,
+                       type='FamilySpecified',
+                       point_list=bc_pl.reshape((1,-1), order='F'),
+                       loc='FaceCenter',
+                       family='GCS',
+                       parent=zone_bc_n)
+      PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(bc_pl.size, comm)}, bc_n)
 
 
 def deplace_periodic_patch(tree, jn_pairs_and_values):
@@ -734,7 +753,7 @@ def deplace_periodic_patch(tree, jn_pairs_and_values):
               parent=zone_bc_n)
     to_constrain_bcs.append(face_bc_name)
 
-    maia.io.write_tree(tree, 'OUTPUT/internal_surface.cgns')
+    # maia.io.write_tree(tree, f'OUTPUT/internal_surface_{i_per}.cgns')
 
     # > Removing lines defined on join because they surely has their periodic on the other side
     # > Find BCs on GCs that will be deleted because they have their periodic twin
@@ -765,7 +784,7 @@ def deplace_periodic_patch(tree, jn_pairs_and_values):
     apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1])
     apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[1])
 
-    maia.io.write_tree(tree, 'OUTPUT/deplaced.cgns')
+    # maia.io.write_tree(tree, f'OUTPUT/deplaced_{i_per}.cgns')
 
     n_vtx = PT.Zone.n_vtx(zone)
     bc_name1 = gc_paths[0].split('/')[-1]

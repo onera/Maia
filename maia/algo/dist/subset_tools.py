@@ -31,19 +31,16 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
   Only Face having all their vertices in vtx_ids are returned
   """
   i_rank = comm.Get_rank()
-  delt_vtx = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
+  elt_distri = MT.getDistribution(elt_n, 'Element')[1]
+  delt_vtx   = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
   if PT.Element.CGNSName(elt_n)=='NGON_n':
     delt_vtx_idx = PT.get_child_from_name(elt_n, 'ElementStartOffset')[1]
   else:
     n_elt        = PT.Element.Size(elt_n)
     elt_size     = PT.Element.NVtx(elt_n)
-    delt_vtx_idx = np.arange(0,(n_elt+1)*elt_size,elt_size, dtype=np.int32)
-  elt_distri   = MT.getDistribution(elt_n, 'Element')[1]
+    delt_vtx_idx = np.arange(elt_distri[0]*elt_size,(elt_distri[1]+1)*elt_size,elt_size, dtype=np.int32)
 
-  # Prepare next PTP : constructing PTP object, the graph between vtx indices and elt connectivity
-  # on a distribution involving all the vtx, so we include delt_vtx as a partition
-  # We can exchange anything, since what is important is just the *number* of recv
-  # data (== number of apparitions of this vtx in vtx_ids)
+  # > Building PTP object, the graph between vtx indices and elt connectivity is what we need
   PTP = EP.PartToPart([vtx_ids], [delt_vtx], comm)
   delt_vtx_tag = np.zeros(delt_vtx.size, dtype=bool)
   delt_vtx_tag[PTP.get_referenced_lnum2()[0]-1] = True
@@ -62,7 +59,7 @@ def convert_subset_as_facelist(dist_tree, subset_path, comm):
   if PT.Subset.GridLocation(node) == 'Vertex':
     zone = PT.get_node_from_path(dist_tree, zone_path)
     pl_vtx = PT.get_child_from_name(node, 'PointList')[1][0]
-    face_list = vtx_ids_to_face_ids(pl_vtx, PT.Zone.NGonNode(zone), comm)
+    face_list = vtx_ids_to_face_ids(pl_vtx, PT.Zone.NGonNode(zone), comm, True)
     PT.update_child(node, 'GridLocation', value='FaceCenter')
     PT.update_child(node, 'PointList', value=face_list.reshape((1,-1), order='F'))
     MT.newDistribution({'Index' : par_utils.dn_to_distribution(face_list.size, comm)}, node)
