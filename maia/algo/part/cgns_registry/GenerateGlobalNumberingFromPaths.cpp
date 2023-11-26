@@ -4,12 +4,14 @@
 #include <string>
 #include <numeric>
 #include <cassert>
+#include <iostream>
 #include "maia/utils/parallel/distribution.hpp"
 #include "std_e/interval/interval_sequence.hpp"
 #include "std_e/parallel/mpi.hpp"
-//#include "logging/logging.hpp"
+// #include "logging/logging.hpp"
 #include "std_e/utils/vector.hpp"
 #include "std_e/algorithm/algorithm.hpp"
+#include "std_e/logging/log.hpp"
 // #include "pdm_sort.h"
 // #include "pdm_gnum_from_hash_values.h"
 // ------------------------------------------------------------------
@@ -30,8 +32,16 @@ std::vector<PDM_g_num_t> generate_global_id(      int                           
   std::vector<int> order_name(n_block);
   std::iota(begin(order_name), end(order_name), 0);
   std::sort(begin(order_name), end(order_name), [&](const int& i1, const int& i2){
-    return block_paths[i1] < block_paths[i2];
+    if(std::hash<std::string>{}(block_paths[i1]) == std::hash<std::string>{}(block_paths[i2])){
+      return block_paths[i1] < block_paths[i2];
+    } else {
+      return std::hash<std::string>{}(block_paths[i1]) < std::hash<std::string>{}(block_paths[i2]);
+    }
   });
+
+  // if(n_block > 0) {
+  //   printf("n_block = %i \n", n_block);
+  // }
 
   // -------------------------------------------------------------------
   // 2 - Give an local number for each element in block_paths
@@ -62,6 +72,13 @@ std::vector<PDM_g_num_t> generate_global_id(      int                           
     global_name_num[i] += shift_g;
   }
 
+  // Panic verbose
+  // for(int i = 0; i < n_block; ++i) {
+  //   std::string s;
+  //   s += block_paths[i] + " --> " + std::to_string(global_name_num[i]) + " - order= " + std::to_string(order_name[i]) + " \n";
+  //   std_e::log("sonics", s);
+  // }
+
   // -------------------------------------------------------------------
   // 4 - Back to original distribution
   std::vector<PDM_g_num_t> part_global_id(n_loc_id);
@@ -80,16 +97,8 @@ std::vector<PDM_g_num_t> generate_global_numbering(/* TODO const */ std::vector<
   int n_rank = std_e::n_rank(comm);
 
   // -------------------------------------------------------------------
-  // Sort local array // TODO DEL (not used)
   std_e::sort_unique(part_paths);
-  // int n_loc_path = part_paths.size();
-  //log_general(logging_level::info, "generateGlobalNumberingFromPaths:: {0}\n", n_loc_path);
-  //for(int i = 0; i < n_loc_path; ++i){
-  //  log_general(logging_level::info, "{0} -> {1}\n", i, part_paths[i]);
-  //}
-
   int n_loc_id = part_paths.size();
-  // if (n_loc_id==0) return {}; // TODO Bruno: this should deadlock ?!! (but if not here, some unit tests segfault)
 
   // -------------------------------------------------------------------
   // 1 - Generate keys from path
@@ -99,6 +108,12 @@ std::vector<PDM_g_num_t> generate_global_numbering(/* TODO const */ std::vector<
   // - equal paths have equal hashes, so they will end up in the same mpi rank, so generating a unique global id is then local to the rank
   //    we don't mind that different paths may have the same hash: they will be distributed on the same slot, but then they are treated separatly
   std::vector<size_t> part_paths_code = std_e::hash_vector(part_paths);
+
+  // for(int i = 0; i < part_paths_code.size(); ++i) {
+  //   std::string s;
+  //   s += "part_paths = " + part_paths[i] + " --> " + std::to_string(part_paths_code[i]) + " \n";
+  //   std_e::log("sonics", s);
+  // }
 
   // -------------------------------------------------------------------
   // 2 - Generate distribution
@@ -216,5 +231,18 @@ std::vector<PDM_g_num_t> generate_global_numbering(/* TODO const */ std::vector<
 
   // -------------------------------------------------------------------
   // 11 - Order
-  return generate_global_id(n_loc_id, block_paths, send_n, send_idx, recv_n, recv_idx, comm);
+  std::vector<PDM_g_num_t> recv_global_id = generate_global_id(n_loc_id, block_paths, send_n, send_idx, recv_n, recv_idx, comm);
+
+  // Revert buffer
+  std::vector<PDM_g_num_t> part_global_id(n_loc_id);
+  std::fill(begin(send_n    ), end(send_n    ), 0);
+  for(int i = 0; i < n_loc_id; ++i){
+    int i_rank = search_rank(part_paths_code[i], distrib_key);
+    assert(i_rank >= 0);
+
+    int idx_read = send_idx[i_rank] + send_n[i_rank]++;
+    part_global_id[i] = recv_global_id[idx_read];
+  }
+
+  return part_global_id;
 }
