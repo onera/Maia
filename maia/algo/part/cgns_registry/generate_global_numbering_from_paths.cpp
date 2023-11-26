@@ -1,4 +1,4 @@
-#include "maia/algo/part/cgns_registry/GenerateGlobalNumberingFromPaths.hpp"
+#include "maia/algo/part/cgns_registry/generate_global_numbering_from_paths.hpp"
 
 #include <algorithm>
 #include <string>
