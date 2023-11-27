@@ -12,13 +12,6 @@ cgns_registry::cgns_registry(const cgns_paths_by_label& paths_by_label, MPI_Comm
   }
 }
 
-
-template<typename T> void debug(T& t) {
-  std::cout << __PRETTY_FUNCTION__ << std::endl;
-  std::cout << sizeof(long int) << std::endl;
-  std::cout << sizeof(PDM_g_num_t) << std::endl;
-}
-
 // ===========================================================================
 std::string to_string(const label_registry& reg) {
   std::string s;

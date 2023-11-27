@@ -78,7 +78,7 @@ def build_paths_by_label(tree):
   paths_by_label = CGR.cgns_paths_by_label();
 
   for base in PT.get_all_CGNSBase_t(tree):
-    base_path = "/"+PT.get_name(base)
+    base_path = PT.get_name(base)
     CGR.add_path(paths_by_label, base_path, u'CGNSBase_t')
 
     setup_child_from_type(paths_by_label, base, base_path, 'FlowEquationSet_t')
@@ -111,8 +111,7 @@ def add_cgns_registry_information(tree, comm):
     paths      = cgr.paths(itype)
     global_ids = cgr.global_ids(itype)
     for i in range(len(paths)):
-      # print(paths[i], global_ids[i])
-      node    = PT.get_node_from_path(tree, paths[i][1:])
+      node    = PT.get_node_from_path(tree, paths[i])
       cgns_registry_n = PT.get_node_from_name_and_label(node, ":CGNS#Registry", 'UserDefined_t')
       # Looks strange
       if cgns_registry_n:

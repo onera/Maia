@@ -4,7 +4,7 @@
 #include "std_e/data_structure/table.hpp"
 #include "std_e/parallel/mpi.hpp"
 #include "maia/utils/parallel/distribution.hpp"
-#include "maia/algo/part/cgns_registry/GenerateGlobalNumberingFromPaths.hpp"
+#include "maia/algo/part/cgns_registry/generate_global_numbering_from_paths.hpp"
 
 // TODO unit tests
 // TODO replace int by PDM_g_id_t ?
