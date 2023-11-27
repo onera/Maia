@@ -31,6 +31,7 @@ Documentation summary
   introduction/introduction
   user_manual/user_manual
   developer_manual/developer_manual
+  maia_pytree/pytree_module
 
 .. toctree::
   :hidden:
