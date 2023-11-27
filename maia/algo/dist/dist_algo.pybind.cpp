@@ -405,8 +405,9 @@ void find_duplicate_elt(          int                       n_elt,
   // > Resolve conflict
   int i_elt1 = 0;
   int i_elt2 = 0;
-  int is_in = 0;
-  int is_duplicate = 0;
+  int li_vtx = 0;
+  int n_similar_vtx = 0;
+  int *similar_vtx = (int *) malloc(elt_size*sizeof(int)); // Array to tag vtx already taggued as similar in elt2
   int n_elt_in_conflict = 0;
   for (int i_conflict=0; i_conflict<n_conflict; i_conflict++) {
     n_elt_in_conflict = conflict_idx[i_conflict+1]-conflict_idx[i_conflict];
@@ -415,25 +416,26 @@ void find_duplicate_elt(          int                       n_elt,
         i_elt1 = order[i1];
         for (int i2=i1+1; i2<conflict_idx[i_conflict+1]; i2++) {
           i_elt2 = order[i2];
-          if (elt_mask[i_elt2]!=0) {
-            is_duplicate = 1;
-            for (int i_vtx1=i_elt1*elt_size; i_vtx1<(i_elt1+1)*elt_size; i_vtx1++) {
-              is_in = 0;
 
+          n_similar_vtx = 0;
+          for (int i_vtx=0; i_vtx<elt_size; i_vtx++) {
+            similar_vtx[i_vtx] = 0;
+          }
+
+          if (elt_mask[i_elt2]!=0) {
+            for (int i_vtx1=i_elt1*elt_size; i_vtx1<(i_elt1+1)*elt_size; i_vtx1++) {
+
+              li_vtx = 0;
               for (int i_vtx2=i_elt2*elt_size; i_vtx2<(i_elt2+1)*elt_size; i_vtx2++) {
-                if (elt_vtx[i_vtx1]==elt_vtx[i_vtx2]) {
-                  is_in = 1;
+                if ((similar_vtx[li_vtx]==0)&&(elt_vtx[i_vtx1]==elt_vtx[i_vtx2])) {
+                  n_similar_vtx ++;
+                  similar_vtx[li_vtx] = 1;
                   break;
                 }
-              }
-
-              // Vtx from element 1 is not in element 2
-              if (is_in==0) {
-                is_duplicate = 0;
-                break;
+                li_vtx ++;
               }
             }
-            if (is_duplicate==1) {
+            if (n_similar_vtx==elt_size) {
               elt_mask[i_elt1] = 0;
               elt_mask[i_elt2] = 0;
             }      
