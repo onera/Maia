@@ -41,20 +41,20 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   n_part_src = len(src_parts)
   n_part_tgt = len(tgt_clouds)
   # > Create and setup global data
-  mesh_loc = PDM.MeshLocation(mesh_nature=1, n_point_cloud=1, comm=comm, enable_reverse=True) #PDM crash if reverse=False
-  mesh_loc.mesh_global_data_set(n_part_src)  # For now only one domain is supported
+  mesh_loc = PDM.MeshLocation(n_point_cloud=1, comm=comm)
+  mesh_loc.mesh_n_part_set(n_part_src)  # For now only one domain is supported
   mesh_loc.n_part_cloud_set(0, n_part_tgt)   # For now only one domain is supported
 
   # > Register source
   for i_part, part_data in enumerate(src_parts):
     cell_face_idx, cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, \
       vtx_coords, vtx_ln_to_gn = part_data
-    mesh_loc.part_set(i_part, cell_ln_to_gn.size, cell_face_idx, cell_face, cell_ln_to_gn,
-                              face_ln_to_gn.size, face_vtx_idx, face_vtx, face_ln_to_gn,
-                              vtx_ln_to_gn.size, vtx_coords, vtx_ln_to_gn)
+    mesh_loc.part_set(i_part, cell_face_idx, cell_face, cell_ln_to_gn,
+                              face_vtx_idx, face_vtx, face_ln_to_gn,
+                              vtx_coords, vtx_ln_to_gn)
   # > Setup target
   for i_part, (coords, lngn) in enumerate(tgt_clouds):
-    mesh_loc.cloud_set(0, i_part, lngn.shape[0], coords, lngn)
+    mesh_loc.cloud_set(0, i_part, coords, lngn)
 
   mesh_loc.tolerance_set(loc_tolerance)
   mesh_loc.compute()
@@ -73,7 +73,7 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
 
   #This is result from the source perspective (api : ((i_part, i_pt_cloud))
   if reverse:
-    all_located_inv = [mesh_loc.points_in_elt_get(i_src_part, 0) for i_src_part in range(n_part_src)]
+    all_located_inv = [mesh_loc.points_in_elt_get(0, i_src_part) for i_src_part in range(n_part_src)]
     return all_target_data, all_located_inv
   else:
     return all_target_data
