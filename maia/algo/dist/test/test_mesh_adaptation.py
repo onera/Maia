@@ -113,39 +113,20 @@ def test_periodic_adapt_with_feflo(comm):
 
   # > Build periodicities
   zone_bc_n = PT.get_node_from_label(dist_tree, 'ZoneBC_t')
-  bc_nodes = list()
   for bc_name in ['Xmin', 'Xmax']:
     bc_n  = PT.get_child_from_name(zone_bc_n, bc_name)
     PT.new_node('FamilyName', label='FamilyName_t', value=bc_name.upper(), parent=bc_n)
-    # fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
-    # PT.set_value(fam_n, bc_name.upper())
-    bc_nodes.append(bc_n)
-
   periodic = {'translation' : np.array([1.0, 0, 0], np.float32)}
-  maia.algo.dist.connect_1to1_families(dist_tree, ('XMIN', 'XMAX'), comm, periodic=periodic)
-
-  zone_gc_n = PT.get_node_from_label(dist_tree, 'ZoneGridConnectivity_t')
-  PT.rm_nodes_from_name(zone_gc_n, 'FamilyName')
-  for bc_n in bc_nodes:
-    PT.add_child(zone_bc_n, bc_n)
-    PT.set_name(bc_n, PT.get_name(bc_n)+'_0')
-
   maia.algo.dist.connect_1to1_families(dist_tree, ('XMIN', 'XMAX'), comm, periodic=periodic, location='Vertex')
-  
-  # maia.io.dist_tree_to_file(dist_tree, 'in.cgns', comm)
+  assert len(PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t'))!=0
 
   # > Periodic adaptation
-  gc_paths = ('Base/zone/ZoneGridConnectivity/Xmin_0',
-              'Base/zone/ZoneGridConnectivity/Xmax_0')
-  adpt_dist_tree = maia.algo.dist.periodic_adapt_mesh_with_feflo(dist_tree,
-                                                                 'Metric/metric',
-                                                                 gc_paths,
-                                                                 periodic,
-                                                                 comm,
-                                                                 container_names=['Metric'],
-                                                                 feflo_opts=f"-c 10 -cmax 10 -p 4")
-  
-  # maia.io.dist_tree_to_file(dist_tree, 'out.cgns', comm)
+  adpt_dist_tree = maia.algo.dist.adapt_mesh_with_feflo(dist_tree,
+                                                        'Metric/metric',
+                                                        comm,
+                                                        container_names=['Metric'],
+                                                        periodic=True,
+                                                        feflo_opts=f"-c 10 -cmax 10 -p 4")
   
   adpt_zone = PT.get_all_Zone_t(adpt_dist_tree)[0]
   for bc_name in ['Ymin','Ymax','Zmin','Zmax']:
@@ -154,5 +135,3 @@ def test_periodic_adapt_with_feflo(comm):
   assert PT.Zone.n_vtx(adpt_zone) != PT.Zone.n_vtx(dist_zone)
   adpt_gc = PT.get_node_from_name(adpt_zone, 'Xmin_0')
   assert PT.get_value(PT.get_child_from_name(adpt_gc, 'GridConnectivityDonorName')) == 'Xmax_0'
-  adpt_gc = PT.get_node_from_name(adpt_zone, 'Xmin_0_0')
-  assert PT.get_value(PT.get_child_from_name(adpt_gc, 'GridConnectivityDonorName')) == 'Xmax_0_0'

@@ -359,14 +359,14 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
         PT.set_name(gc_n, gc_path.split('/')[-1])
 
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
     if comm.rank==0:
       zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
       rm_feflo_added_elt(zone)
+    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
 
   else:
-    adapted_dist_tree = adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts)
-  
+    adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts)
+
   return adapted_dist_tree

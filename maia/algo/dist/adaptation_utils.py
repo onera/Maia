@@ -113,7 +113,6 @@ def tag_elmt_owning_vtx(zone, vtx_pl, cgns_name, elt_full=False):
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
   elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
-  elt_offset = PT.Element.Range(elt_n)[0]
   if elt_n is not None:
     gc_elt_pl = vtx_ids_to_face_ids(vtx_pl, elt_n, MPI.COMM_SELF, elt_full)+elt_offset-1
   else:
@@ -166,20 +165,21 @@ def update_elt_vtx_numbering(zone, old_to_new_vtx, cgns_name, elt_pl=None):
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
   elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
-  ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  ec    = PT.get_value(ec_n)
+  if elt_n is not None:
+    ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
+    ec    = PT.get_value(ec_n)
 
-  if elt_pl is None:
-    ec = np.take(old_to_new_vtx, ec-1)
-  else:
-    elt_size   = PT.Element.NVtx(elt_n)
-    elt_offset = PT.Element.Range(elt_n)[0]
-    
-    ids   = elt_pl - elt_offset
-    ec_pl = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-    ec[ec_pl] = np.take(old_to_new_vtx, ec[ec_pl]-1)
+    if elt_pl is None:
+      ec = np.take(old_to_new_vtx, ec-1)
+    else:
+      elt_size   = PT.Element.NVtx(elt_n)
+      elt_offset = PT.Element.Range(elt_n)[0]
+      
+      ids   = elt_pl - elt_offset
+      ec_pl = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
+      ec[ec_pl] = np.take(old_to_new_vtx, ec[ec_pl]-1)
 
-  PT.set_value(ec_n, ec)
+    PT.set_value(ec_n, ec)
 
 
 def remove_elts_from_pl(zone, elt_pl, cgns_name):
@@ -191,59 +191,60 @@ def remove_elts_from_pl(zone, elt_pl, cgns_name):
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
   elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
-  n_elt      = PT.Element.Size(elt_n)
-  elt_dim    = PT.Element.Dimension(elt_n)
-  elt_size   = PT.Element.NVtx(elt_n)
-  elt_offset = PT.Element.Range(elt_n)[0]
+  if elt_n is not None:
+    n_elt      = PT.Element.Size(elt_n)
+    elt_dim    = PT.Element.Dimension(elt_n)
+    elt_size   = PT.Element.NVtx(elt_n)
+    elt_offset = PT.Element.Range(elt_n)[0]
 
-  ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  ec   = PT.get_value(ec_n)
-  er_n = PT.get_child_from_name(elt_n, 'ElementRange')
-  er   = PT.get_value(er_n)
+    ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
+    ec   = PT.get_value(ec_n)
+    er_n = PT.get_child_from_name(elt_n, 'ElementRange')
+    er   = PT.get_value(er_n)
 
-  # > Updating element range and connectivity
-  n_elt_to_rm = elt_pl.size
-  pl_c  = -np.ones(n_elt_to_rm*elt_size, dtype=np.int32)
-  for i_size in range(elt_size):
-    pl_c[i_size::elt_size] = elt_size*(elt_pl-elt_offset)+i_size
-  ec = np.delete(ec, pl_c)
-  PT.set_value(ec_n, ec)
+    # > Updating element range and connectivity
+    n_elt_to_rm = elt_pl.size
+    pl_c  = -np.ones(n_elt_to_rm*elt_size, dtype=np.int32)
+    for i_size in range(elt_size):
+      pl_c[i_size::elt_size] = elt_size*(elt_pl-elt_offset)+i_size
+    ec = np.delete(ec, pl_c)
+    PT.set_value(ec_n, ec)
 
-  er[1] = er[1]-n_elt_to_rm
-  PT.set_value(er_n, er)
+    er[1] = er[1]-n_elt_to_rm
+    PT.set_value(er_n, er)
 
-  # > Update distribution
-  elt_distrib_n  = PT.maia.getDistribution(elt_n, distri_name='Element')
-  elt_distrib    = PT.get_value(elt_distrib_n)
-  elt_distrib[1]-= n_elt_to_rm
-  elt_distrib[2]-= n_elt_to_rm
-  PT.set_value(elt_distrib_n, elt_distrib)
+    # > Update distribution
+    elt_distrib_n  = PT.maia.getDistribution(elt_n, distri_name='Element')
+    elt_distrib    = PT.get_value(elt_distrib_n)
+    elt_distrib[1]-= n_elt_to_rm
+    elt_distrib[2]-= n_elt_to_rm
+    PT.set_value(elt_distrib_n, elt_distrib)
 
-  # > Update BC PointList
-  old_to_new_elt = np.arange(1, n_elt+1, dtype=np.int32)
-  old_to_new_elt[elt_pl-elt_offset] = -1
-  old_to_new_elt[np.where(old_to_new_elt!=-1)[0]] = np.arange(1, n_elt-elt_pl.size+1)
+    # > Update BC PointList
+    old_to_new_elt = np.arange(1, n_elt+1, dtype=np.int32)
+    old_to_new_elt[elt_pl-elt_offset] = -1
+    old_to_new_elt[np.where(old_to_new_elt!=-1)[0]] = np.arange(1, n_elt-elt_pl.size+1)
 
-  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and\
-                        PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
-  for bc_n in PT.get_children_from_predicate(zone_bc_n, is_elt_bc):
-    bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
-    bc_pl   = PT.get_value(bc_pl_n)[0]
+    zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+    is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and\
+                          PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
+    for bc_n in PT.get_children_from_predicate(zone_bc_n, is_elt_bc):
+      bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
+      bc_pl   = PT.get_value(bc_pl_n)[0]
 
-    not_in_pl = np.isin(bc_pl, elt_pl, invert=True)
-    new_bc_pl = old_to_new_elt[bc_pl[not_in_pl]-elt_offset]
-    tag_invalid_elt = np.isin(new_bc_pl,-1, invert=True)
-    new_bc_pl = new_bc_pl[tag_invalid_elt]
-    new_bc_pl = new_bc_pl+elt_offset-1
+      not_in_pl = np.isin(bc_pl, elt_pl, invert=True)
+      new_bc_pl = old_to_new_elt[bc_pl[not_in_pl]-elt_offset]
+      tag_invalid_elt = np.isin(new_bc_pl,-1, invert=True)
+      new_bc_pl = new_bc_pl[tag_invalid_elt]
+      new_bc_pl = new_bc_pl+elt_offset-1
 
-    if new_bc_pl.size==0:
-      PT.rm_child(zone_bc_n, bc_n)
-    else:
-      PT.set_value(bc_pl_n, new_bc_pl.reshape((1,-1), order='F'))
+      if new_bc_pl.size==0:
+        PT.rm_child(zone_bc_n, bc_n)
+      else:
+        PT.set_value(bc_pl_n, new_bc_pl.reshape((1,-1), order='F'))
 
-  # > Update element nodes with inferior dimension
-  update_infdim_elts(zone, elt_dim, -n_elt_to_rm)
+    # > Update element nodes with inferior dimension
+    update_infdim_elts(zone, elt_dim, -n_elt_to_rm)
 
 
 def update_infdim_elts(zone, elt_dim, offset):
@@ -525,33 +526,34 @@ def find_matching_bcs(zone, src_pl, tgt_pl, src_tgt_vtx, cgns_name):
         bc_nodes[i_side].append(bc_n)
 
   # > Get element infos
+  matching_bcs = list()
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
   elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
-  elt_offset = PT.Element.Range(elt_n)[0]
-  elt_size = PT.Element.NVtx(elt_n)
+  if elt_n is not None:
+    elt_offset = PT.Element.Range(elt_n)[0]
+    elt_size = PT.Element.NVtx(elt_n)
 
-  ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  ec   = PT.get_value(ec_n)
-  
-  old_to_new_vtx = np.arange(1, n_vtx+1, dtype=np.int32)
-  old_to_new_vtx[src_tgt_vtx[0]-1] = src_tgt_vtx[1] # Normally, elements has no vtx in common
-  
-  # > Go through BCs described by join vertices and find pairs
-  matching_bcs = list()
-  for src_bc_n in bc_nodes[0]:
-    src_bc_pl = PT.get_value(PT.Subset.getPatch(src_bc_n))[0]
-    pl = src_bc_pl - elt_offset
-    ec_pl = np_utils.interweave_arrays([elt_size*pl+i_size for i_size in range(elt_size)])
-    as_tgt_ec = np.take(old_to_new_vtx, ec[ec_pl]-1)
-    for tgt_bc_n in bc_nodes[1]:
-      tgt_bc_pl = PT.get_value(PT.Subset.getPatch(tgt_bc_n))[0]
-      pl = tgt_bc_pl - elt_offset
+    ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
+    ec   = PT.get_value(ec_n)
+    
+    old_to_new_vtx = np.arange(1, n_vtx+1, dtype=np.int32)
+    old_to_new_vtx[src_tgt_vtx[0]-1] = src_tgt_vtx[1] # Normally, elements has no vtx in common
+    
+    # > Go through BCs described by join vertices and find pairs
+    for src_bc_n in bc_nodes[0]:
+      src_bc_pl = PT.get_value(PT.Subset.getPatch(src_bc_n))[0]
+      pl = src_bc_pl - elt_offset
       ec_pl = np_utils.interweave_arrays([elt_size*pl+i_size for i_size in range(elt_size)])
-      tgt_ec = np.take(old_to_new_vtx, ec[ec_pl]-1)
-      mask = np.isin(as_tgt_ec, tgt_ec)
-      if np.logical_and.reduce(mask):
-        matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
+      as_tgt_ec = np.take(old_to_new_vtx, ec[ec_pl]-1)
+      for tgt_bc_n in bc_nodes[1]:
+        tgt_bc_pl = PT.get_value(PT.Subset.getPatch(tgt_bc_n))[0]
+        pl = tgt_bc_pl - elt_offset
+        ec_pl = np_utils.interweave_arrays([elt_size*pl+i_size for i_size in range(elt_size)])
+        tgt_ec = np.take(old_to_new_vtx, ec[ec_pl]-1)
+        mask = np.isin(as_tgt_ec, tgt_ec)
+        if np.logical_and.reduce(mask):
+          matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
 
   return matching_bcs
 
