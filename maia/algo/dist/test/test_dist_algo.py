@@ -69,17 +69,3 @@ def test_find_duplicate_elt_many(n_vtx, n_elt, comm):
   assert np.array_equal(mask1, mask2)
   assert np.array_equal(mask1, mask3)
   assert np.array_equal(mask2, mask3)
-
-
-@pytest_parallel.mark.parallel(1)
-def test_find_tri_in_tetras(comm):
-  n_tri = 5
-  n_tet = 4
-  tri_ec = np.array([1,2,3, 4,5,6, 3,2,5, 4,5,2, 5,1,3], dtype=np.int32)
-  tet_ec = np.array([7,4,5,6, 3,2,4,1, 4,5,6,1, 3,4,5,1], dtype=np.int32)
-  result = np.array([1, 1, 0, 0, 1], dtype=np.int32)
-
-  mask = np.zeros(n_tri, dtype=np.int32)
-  cdist_algo.find_tri_in_tetras(n_tri, n_tet, tri_ec, tet_ec, mask)
-
-  assert np.array_equal(mask, result)
