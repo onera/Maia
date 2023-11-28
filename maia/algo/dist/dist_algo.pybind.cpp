@@ -9,7 +9,6 @@
 #include "maia/algo/dist/fsdm_distribution/fsdm_distribution.hpp"
 #include "maia/__old/transform/put_boundary_first/put_boundary_first.hpp"
 #include "maia/algo/dist/split_boundary_subzones_according_to_bcs/split_boundary_subzones_according_to_bcs.hpp"
-#include "maia/algo/dist/adaptation_utils.hpp"
 
 namespace py = pybind11;
 
