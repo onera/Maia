@@ -152,10 +152,14 @@ def is_elt_included(zone, src_pl, src_name, tgt_pl, tgt_name):
   tgt_ec_elt = tgt_ec[tgt_ec_pl]
   n_tgt_elt  = tgt_pl.size
 
-  mask = np.zeros(src_pl.size, dtype=np.int32)
-  cdist_algo.find_tri_in_tetras(n_src_elt, n_tgt_elt, src_ec_elt, tgt_ec_elt, mask)
   
-  return src_pl[mask.astype(bool)]
+  tgt_face_vtx_idx, tgt_face_vtx = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, tgt_ec_elt)
+  tmp_ec = np.concatenate([src_ec_elt, tgt_face_vtx])
+  mask = np.ones(n_src_elt+tgt_face_vtx_idx.size-1, dtype=np.int32)
+  cdist_algo.find_duplicate_elt(n_src_elt+tgt_face_vtx_idx.size-1, size_src_elt, tmp_ec, mask)
+  mask = np.invert(mask[0:n_src_elt].astype(bool))
+
+  return src_pl[mask]
 
 
 def update_elt_vtx_numbering(zone, old_to_new_vtx, cgns_name, elt_pl=None):
@@ -772,8 +776,7 @@ def deplace_periodic_patch(tree, jn_pairs_and_values):
     to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', elt_full=True)
     to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', elt_full=True)
 
-    # > Ambiguous faces that contains all vtx but are not included in patch cells can be removed by searching
-    # > faces that contains all vtx froms cells that are not in patch
+    # > Ambiguous faces that contains all vtx but are not included in patch cells can be removed
     to_update_face_pl = is_elt_included(zone, to_update_face_pl, 'TRI_3', cell_pl, 'TETRA_4')
 
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
