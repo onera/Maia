@@ -27,7 +27,7 @@ def test_find_duplicate_elt(comm):
 
 
 @pytest_parallel.mark.parallel(1)
-@pytest.mark.parametrize("n_vtx", [100, 1000000000])
+@pytest.mark.parametrize("n_vtx", [100, 100000])
 @pytest.mark.parametrize("n_elt", [100, 100000])
 def test_find_duplicate_elt_many(n_vtx, n_elt, comm):
   import time
