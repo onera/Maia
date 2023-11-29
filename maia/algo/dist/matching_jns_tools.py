@@ -81,17 +81,16 @@ def add_joins_donor_name(dist_tree, comm, force=False):
     for gc in PT.iter_children_from_predicates(dist_tree, query):
       PT.rm_children_from_name(gc, 'GridConnectivityDonorName')
 
-  need_compute = False
-  for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True):
-    gc_list.append(nodes[-1])
-    gc_paths.append('/'.join([PT.get_name(node) for node in nodes[:2]]))
-    if PT.get_child_from_name(nodes[-1], 'GridConnectivityDonorName') is None:
-      need_compute = True
-  
-  if not need_compute:
+  for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True): #get_node_from_path is slower, dont use it
+    gc_node = nodes[-1]
+    if PT.get_child_from_name(gc_node, 'GridConnectivityDonorName') is None:
+      # Skip nodes that already have their DonorName
+      gc_list.append(gc_node)
+      gc_paths.append('/'.join([PT.get_name(node) for node in nodes[:2]]))
+
+  if len(gc_list) == 0:
     return
 
-  #gc_paths -> chemin des zones
   local_match_table = _create_local_match_table(gc_list, gc_paths)
 
   global_match_table = np.empty(local_match_table.shape, dtype=bool)

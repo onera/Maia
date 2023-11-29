@@ -1,5 +1,5 @@
 import numpy as np
-
+from maia.pytree.typing import *
 import maia.pytree.node as N
 import maia.pytree.cgns_keywords as CGK
 
@@ -57,7 +57,7 @@ def generate_line(node, lines, ident=0, line_max=120):
     generate_line(child, lines, ident+2, line_max)
 
 
-def to_yaml(t, write_root=False, max_line_size=120):
+def to_yaml(t:CGNSTree, write_root=False, max_line_size=120) -> List[str]:
   """
   Convert a complete CGNSTree to a yaml string. If write root is True,
   top level node is also converted

@@ -7,7 +7,6 @@ import maia.pytree.maia   as MT
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, s_numbering
 from .                               import split_cut_tree as SCT
-from maia.transfer.dist_to_part import data_exchange  as BTP
 from maia.algo.dist.s_to_u import guess_bnd_normal_index, \
                                        compute_transform_matrix, \
                                        apply_transform_matrix, \
@@ -212,6 +211,7 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
 
   # 3. Process
   for i_part, p_zone in enumerate(p_zones):
+    grank = MT.conv.get_part_suffix(PT.get_name(p_zone))[0] #Rank id in global communicator
     zgc = PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', parent=p_zone)
     for jn in jn_list[i_part]:
       # Get data for the current join
@@ -248,7 +248,7 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
                 pr_to_cell_location(sub_pr_d, normal_idx, 'Vertex', 1-extr, reverse=True)
 
                 #Effective creation of GC in part zone
-                gc_name  = MT.conv.name_intra_gc(comm.Get_rank(), i_part, j_proc, j_part)
+                gc_name  = MT.conv.name_intra_gc(grank, i_part, j_proc, j_part)
                 opp_zone = MT.conv.add_part_suffix(PT.get_name(d_zone), j_proc, j_part)
                 transform = np.arange(1, idx_dim+1, dtype=np.int32)
                 part_gc = PT.new_GridConnectivity1to1(gc_name, opp_zone, transform=transform, parent=zgc)
@@ -427,7 +427,7 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
 
   return vtx_lntogn, face_lntogn, cell_lntogn
 
-def part_s_zone(d_zone, d_zone_weights, comm):
+def part_s_zone(d_zone, d_zone_weights, comm, g_rank):
 
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
@@ -456,7 +456,8 @@ def part_s_zone(d_zone, d_zone_weights, comm):
     #Get dim and setup zone
     cell_bounds = np.asarray(part, dtype=np.int32) + 1 #Semi open, but start at 1
     n_cells = np.diff(cell_bounds)
-    pzone_name = MT.conv.add_part_suffix(PT.get_name(d_zone), i_rank, i_part)
+    # Use the rank id in the global communicator (g_rank) to name the partitioned zone
+    pzone_name = MT.conv.add_part_suffix(PT.get_name(d_zone), g_rank, i_part)
     pzone_dims = np.hstack([n_cells+1, n_cells, np.zeros((idx_dim,1), dtype=np.int32)])
     part_zone  = PT.new_Zone(pzone_name, size=pzone_dims, type='Structured')
 
@@ -472,8 +473,6 @@ def part_s_zone(d_zone, d_zone_weights, comm):
     create_bcs(d_zone, part_zone, cell_bounds[:,0])
 
     part_zones.append(part_zone)
-
-  BTP.dist_coords_to_part_coords(d_zone, part_zones, comm)
 
   parts_offset = [np.asarray(part, dtype=np.int32)[:,0] + 1 for part in my_parts]
   create_internal_gcs(d_zone, part_zones, parts_offset, comm)

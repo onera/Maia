@@ -1,3 +1,5 @@
+from maia.pytree.typing import *
+
 from .node_walker   import NodeWalker
 from .nodes_walker  import NodesWalker
 from .node_walkers  import NodeWalkers
@@ -9,12 +11,12 @@ from maia.pytree.compare import CGNSNodeFromPredicateNotFoundError
 # ---------------------------------------------------------------------------- #
 # API for NodeWalker
 # ---------------------------------------------------------------------------- #
-def get_node_from_predicate(root, predicate, **kwargs):
+def get_node_from_predicate(root:CGNSTree, predicate, **kwargs) -> Optional[CGNSTree]:
   _predicate = auto_predicate(predicate)
   walker = NodeWalker(root, _predicate, **kwargs)
   return walker()
 
-def request_node_from_predicate(root, predicate, *args, **kwargs):
+def request_node_from_predicate(root:CGNSTree, predicate, *args, **kwargs) -> CGNSTree:
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
   default = kwargs.pop('default', None)
   node = get_node_from_predicate(root, predicate, *args, **kwargs)
@@ -27,7 +29,7 @@ def request_node_from_predicate(root, predicate, *args, **kwargs):
 # ---------------------------------------------------------------------------- #
 # API for NodesWalker
 # ---------------------------------------------------------------------------- #
-def get_nodes_from_predicate(root, predicate, **kwargs):
+def get_nodes_from_predicate(root:CGNSTree, predicate, **kwargs) -> List[CGNSTree]:
   """
   Alias to NodesWalker with caching=True. A list of found node(s) is created.
 
@@ -53,7 +55,7 @@ def get_nodes_from_predicate(root, predicate, **kwargs):
   walker = NodesWalker(root, _predicate, **kwargs)
   return walker()
 
-def iter_nodes_from_predicate(root, predicate, **kwargs):
+def iter_nodes_from_predicate(root:CGNSTree, predicate, **kwargs) -> Iterator[CGNSTree]:
   """
   Alias to NodesWalker with caching=False. Iterator is generated each time parsing is done.
 
@@ -83,7 +85,7 @@ def iter_nodes_from_predicate(root, predicate, **kwargs):
 # API for NodeWalkers
 # ---------------------------------------------------------------------------- #
 
-def get_node_from_predicates(root, predicates, **kwargs):
+def get_node_from_predicates(root:CGNSTree, predicates, **kwargs) -> Optional[CGNSTree]:
   """
   Alias to NodeWalkers.
 
@@ -107,7 +109,7 @@ def get_node_from_predicates(root, predicates, **kwargs):
 # ---------------------------------------------------------------------------- #
 # API for NodesWalkers
 # ---------------------------------------------------------------------------- #
-def iter_nodes_from_predicates(root, predicates, **kwargs):
+def iter_nodes_from_predicates(root:CGNSTree, predicates, **kwargs) -> Iterator[CGNSTree]:
   """
   Alias to NodesWalkers with caching=False. Iterator is generated each time parsing is done.
 
@@ -134,7 +136,7 @@ def iter_nodes_from_predicates(root, predicates, **kwargs):
   walker = NodesWalkers(root, _predicates, **kwargs)
   return walker()
 
-def get_nodes_from_predicates(root, predicates, **kwargs):
+def get_nodes_from_predicates(root:CGNSTree, predicates, **kwargs) -> List[CGNSTree]:
   """
   Alias to NodesWalkers with caching=True. A list of found node(s) is created.
 

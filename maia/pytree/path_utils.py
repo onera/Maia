@@ -1,3 +1,5 @@
+from maia.pytree.typing import *
+
 from . import predicate
 from . import walkers_api as WAPI
 
@@ -8,21 +10,21 @@ __CHILDREN__ = 2
 __LABEL__    = 3
 
 
-def path_head(path, i=-1):
+def path_head(path:str, i:int=-1) -> str:
   """
   Return the start of a path until elt i (excluded)
   """
   splited = path.split('/')
   return '/'.join(splited[0:i])
 
-def path_tail(path, i=-1):
+def path_tail(path:str, i:int=-1) -> str:
   """
   Return the end of a path from elt i (included)
   """
   splited = path.split('/')
   return '/'.join(splited[i:])
 
-def update_path_elt(path, i, func):
+def update_path_elt(path:str, i:int, func:Callable[[str],str]) -> str:
   """
   Replace the ith element of the input path using the function func
   func take one argument, which is the original value of the ith element
@@ -31,7 +33,7 @@ def update_path_elt(path, i, func):
   splited[i] = func(splited[i])
   return '/'.join(splited)
 
-def predicates_to_paths(root, predicates):
+def predicates_to_paths(root:CGNSTree, predicates) -> List[str]:
   """
   An utility function searching descendants matching predicates,
   and returning the path of these nodes (instead of the nodes themselves)
@@ -41,7 +43,7 @@ def predicates_to_paths(root, predicates):
     paths.append('/'.join([n[__NAME__] for n in nodes]))
   return paths
 
-def concretize_paths(root, wanted_path_list, labels):
+def concretize_paths(root:CGNSTree, wanted_path_list:List[str], labels:List[str]) -> List[str]:
   """
   """
   all_paths = []
@@ -55,7 +57,7 @@ def concretize_paths(root, wanted_path_list, labels):
 
   return sorted(list(set(all_paths))) #Unique + sort
 
-def paths_to_tree(paths, root_name='CGNSTree'):
+def paths_to_tree(paths:List[str], root_name='CGNSTree') -> CGNSTree:
   """
   Convert a list of paths to a CGNSTreeLike
   """

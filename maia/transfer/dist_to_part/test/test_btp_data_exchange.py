@@ -137,7 +137,8 @@ ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
 
 
 @pytest_parallel.mark.parallel(2)
-def test_dist_coords_to_part_coords_U(comm):
+@pytest.mark.parametrize("from_mblock", [False, True])
+def test_dist_coords_to_part_coords_U(from_mblock, comm):
   if comm.Get_rank() == 0:
     dt = dt0
     pt = """
@@ -164,7 +165,11 @@ def test_dist_coords_to_part_coords_U(comm):
 
   dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
   part_zones = PT.get_all_Zone_t(part_tree)
-  BTP.dist_coords_to_part_coords(dist_zone, part_zones, comm)
+
+  if from_mblock:
+    BTP.dist_coords_to_part_coords_m([dist_zone], [part_zones], comm)
+  else:
+    BTP.dist_coords_to_part_coords(dist_zone, part_zones, comm)
 
   if comm.Get_rank() == 0:
     assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()

@@ -3,15 +3,14 @@ if sys.version_info.major == 3 and sys.version_info.major < 8:
   from collections.abc import Iterable  # < py38
 else:
   from typing import Iterable
-from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
 from functools import wraps
 import numpy as np
+
+from maia.pytree.typing import *
 
 import maia.pytree as PT
 from maia.pytree.graph.cgns import step, zip_depth_first_search
 from maia.pytree.compare_arrays import equal_array_comparison
-
-TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 
 class CGNSNodeFromPredicateNotFoundError(Exception):
@@ -81,20 +80,20 @@ def check_in_labels(labels, n=0):
   return _check_in_labels
 
 # --------------------------------------------------------------------------
-def is_same_name(n0: TreeNode, n1: TreeNode):
+def is_same_name(n0: CGNSTree, n1: CGNSTree) -> bool:
   return PT.get_name(n0) == PT.get_name(n1)
 
-def is_same_label(n0: TreeNode, n1: TreeNode):
+def is_same_label(n0: CGNSTree, n1: CGNSTree) -> bool:
   return PT.get_label(n0) == PT.get_label(n1)
 
-def is_same_value_type(n0: TreeNode, n1: TreeNode, strict=True):
+def is_same_value_type(n0: CGNSTree, n1: CGNSTree, strict=True) -> bool:
   if strict:
     return PT.get_value_type(n0) == PT.get_value_type(n1)
   else:
     return PT.get_value_kind(n0) == PT.get_value_kind(n1)
 
 
-def is_same_value(n0: TreeNode, n1: TreeNode, abs_tol=0, type_tol=False):
+def is_same_value(n0: CGNSTree, n1: CGNSTree, abs_tol:float=0., type_tol=False) -> bool:
   """ Compare the values of two single nodes. Node are considered equal if
   they have
   - same data type (if type_tol is True, only kind of types are considered equal eg.
@@ -111,7 +110,7 @@ def is_same_value(n0: TreeNode, n1: TreeNode, abs_tol=0, type_tol=False):
   else:
     return np.array_equal(n0[1], n1[1])
 
-def is_same_node(node1, node2, abs_tol=0, type_tol=False):
+def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
   Compare two single nodes (no recursion). Node are considered equal if
   they have same name, same label, same value.
@@ -133,7 +132,7 @@ class same_tree_visitor:
     else:
       return step.into
 
-def is_same_tree(t1, t2, abs_tol=0, type_tol=False):
+def is_same_tree(t1:CGNSTree, t2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
   Recursive comparison of two nodes. Nodes are considered equal if the pass is_same_node test
   and if the have the same childrens. Children are allowed to appear in a different order.
@@ -220,7 +219,10 @@ class diff_tree_visitor:
     self.warn_report += warn_report
     return next_step
 
-def diff_tree(t1, t2, strict_value_type = True, comp = equal_array_comparison()):
+DiffReport = Tuple[bool,str,str]
+CompFunction = Callable[[List[Tuple[CGNSTree,CGNSTree]]], DiffReport]
+
+def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunction = equal_array_comparison()) -> DiffReport:
   """
   Report the differences between two trees.
 

@@ -1,6 +1,6 @@
 import sys
+from maia.pytree.typing import *
 import maia.pytree as PT
-
 
 def _is_distributed(node, parent):
   if node[3] == 'IndexArray_t':
@@ -13,7 +13,7 @@ def _is_distributed(node, parent):
   if node[0] in ['PointList', 'PointListDonor']:
     return True
 
-def dtree_nbytes(tree):
+def dtree_nbytes(tree:CGNSTree) -> Tuple[int,int,int]:
   """Compute the approximate size (in bytes) of a distributed tree.
 
   Size is returned as a 3-tuple providing

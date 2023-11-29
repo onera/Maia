@@ -15,6 +15,7 @@ def test_printer():
   #add_printer@start
   from maia.utils.logging import add_printer_to_logger
   add_printer_to_logger('my_logger','stdout_printer')
+  add_printer_to_logger('my_logger','file_printer("my_file.log")')
   #add_printer@end
 
   #create_printer@start

@@ -58,6 +58,8 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   This function calls paradigm to generate a distributed mesh of a cube, and
   return a CGNS PyTree
   """
+  if not isinstance(n_vtx, int):
+    raise NotImplementedError("Poly/NFACE_n generation does not supports variable number of vertices")
   dcube = PDM.DCubeGenerator(n_vtx, edge_length, *origin, comm)
 
   dcube_dims = dcube.dcube_dim_get()
@@ -156,7 +158,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   # > BCs
   if cell_dim == 2:
-    bc_names = ['Zmin', 'Zmax', 'Ymin', 'Ymax']
+    bc_names = ['Ymin', 'Ymax', 'Xmin', 'Xmax']
     bc_loc = 'EdgeCenter'
     groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
   else:

@@ -1,5 +1,6 @@
 import numpy as np
 
+from maia.pytree.typing import *
 import maia.pytree      as PT
 
 from maia.transfer import protocols as EP
@@ -25,8 +26,7 @@ def _decode(stride, buff):
   return [bytes(buff[stride_idx[i]:stride_idx[i+1]]).decode() for i in range(stride.size)]
 
 
-
-def rename_zones(part_tree, old_to_new_path, comm):
+def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
   """ Rename the zones in a partitioned context.
 
   This mainly consists in sending the new names to the other ranks in

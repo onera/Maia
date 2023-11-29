@@ -15,16 +15,22 @@ Developpement version
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``extract_part_from_zsr`` API to extract a submesh from FamilyName nodes
+- Algo module: add ``scale_mesh`` to scale the coordinates of a cartesian mesh
+- Algo module: add ``nodes_to_centers`` to interpolate FlowSolution_t from Vertex to CellCenter
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - connect_1to1_families: manage Elements meshes
 - extract_part_from_xxx: transfer BCs on extracted meshes
 - partitioning: enable split of 2D/1D structured meshes
+- interpolation: allow input fields to be Vertex located in some cases
 
 🐞 Fixes
 ^^^^^^^^
 - merge_zones: manage S/U GridConnectivity_t when merging U zones
+- add_joins_donor_name: prevent a crash when some GCs already have their DonorName
+- transform_affine : manage partitioned S zones and 2D meshes
+- transfer module : prevent a bug occurring when subset nodes have a dot in their name
 
 🚧 API change
 ^^^^^^^^^^^^^

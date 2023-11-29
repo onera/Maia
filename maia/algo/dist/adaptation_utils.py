@@ -866,7 +866,6 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
     _ = duplicate_elts(zone, face_pl, 'TRI_3', to_retrieve_gc_name, elts_to_update, elt_duplicate_bcs=bcs_to_retrieve[i_per])
-    # maia.io.write_tree(tree, f'OUTPUT/adapted_and_duplicated_{i_per}.cgns')
 
     # > Deplace periodic patch to retrieve initial domain
     # > vtx_pl is updated because has changed with surface duplication

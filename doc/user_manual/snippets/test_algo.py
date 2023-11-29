@@ -25,6 +25,17 @@ def test_transform_affine():
   maia.algo.transform_affine(zone, translation=[3,0,0])
   #transform_affine@end
 
+def test_scale_mesh():
+  #scale_mesh@start
+  from mpi4py import MPI
+  import maia
+  dist_tree = maia.factory.generate_dist_block(10, 'Poly', MPI.COMM_WORLD)
+
+  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateX')[1].max() <= 1.
+  maia.algo.scale_mesh(dist_tree, [3.0, 2.0, 1.0])
+  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateX')[1].max() <= 3.
+  #scale_mesh@end
+
 def test_generate_jns_vertex_list():
   #generate_jns_vertex_list@start
   from mpi4py import MPI
@@ -334,6 +345,29 @@ def test_centers_to_nodes():
     vtx_sol = PT.get_node_from_name(part, 'FSol#Vtx')
     assert PT.Subset.GridLocation(vtx_sol) == 'Vertex'
   #centers_to_nodes@end
+
+def test_nodes_to_centers():
+  #nodes_to_centers@start
+  import mpi4py
+  import maia
+  import maia.pytree as PT
+  comm = mpi4py.MPI.COMM_WORLD
+
+  dist_tree = maia.factory.generate_dist_sphere(3, 'TETRA_4', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+  # Init a FlowSolution located at Nodes
+  for part in PT.get_all_Zone_t(part_tree):
+    cx, cy, cz = PT.Zone.coordinates(part)
+    fields = {'cX': cx, 'cY': cy, 'cZ': cz}
+    PT.new_FlowSolution('FSol', loc='Vertex', fields=fields, parent=part)
+
+  maia.algo.part.nodes_to_centers(part_tree, comm, ['FSol'])
+
+  for part in PT.get_all_Zone_t(part_tree):
+    cell_sol = PT.get_node_from_name(part, 'FSol#Cell')
+    assert PT.Subset.GridLocation(cell_sol) == 'CellCenter'
+  #nodes_to_centers@end
 
 def test_pe_to_nface():
   #pe_to_nface@start

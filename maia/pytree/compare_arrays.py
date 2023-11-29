@@ -148,13 +148,14 @@ def _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref):
 
   return relative_norm_comparison(tol, comm, n_dim=len(suffixes))(x_cat, ref_cat)
 
-def relative_norm_comparison_rank_1(tol, comm, tensor_name, x, ref):
-  suffixes = ['X','Y','Z']
-  return _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref)
 
+suffixes_rank_1 = ['X','Y','Z']
+suffixes_rank_2 = ['XX','XY','XZ','YX','YY','YZ','ZX','ZY','ZZ']
+
+def relative_norm_comparison_rank_1(tol, comm, tensor_name, x, ref):
+  return _relative_norm_comparison(tol, comm, tensor_name, suffixes_rank_1, x, ref)
 def relative_norm_comparison_rank_2(tol, comm, tensor_name, x, ref):
-  suffixes = ['XX','XY','XZ','YX','YY','YZ','ZX','ZY','ZZ']
-  return _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref)
+  return _relative_norm_comparison(tol, comm, tensor_name, suffixes_rank_2, x, ref)
 
 
 def tensor_field_comparison(tol, comm):
@@ -178,15 +179,19 @@ def tensor_field_comparison(tol, comm):
       ref = PT.get_value(node_ref,raw=True)
       if x is not None and not isinstance(x,str) and PT.get_label(node_x) == 'DataArray_t' and x.dtype.kind == 'f':
         parent_x,parent_ref = nodes_stack[-2]
-        if name_x[-2:-1] == 'XX':
-          tensor_name = name_x[:-2]
-          return relative_norm_comparison_rank_2(tol, comm, tensor_name, parent_x, parent_ref)
-        elif name_x[-1] == 'X' and name_x[-2] != 'Y' and name_x[-2] != 'Z':
-          tensor_name = name_x[:-1]
-          return relative_norm_comparison_rank_1(tol, comm, tensor_name, parent_x, parent_ref)
-        elif name_x[-1] == 'Y' or  name_x[-1] == 'Z':
-          return True, '', '' # Tested within 'X' or 'XX'
-        else:
+        if name_x[-2:] in suffixes_rank_2:
+          if name_x[-2:] == 'XX':
+            tensor_name = name_x[:-2]
+            return relative_norm_comparison_rank_2(tol, comm, tensor_name, parent_x, parent_ref)
+          else:
+            return True, '', '' # Tested within 'XX'
+        if name_x[-1] in suffixes_rank_1:
+          if name_x[-1] == 'X':
+            tensor_name = name_x[:-1]
+            return relative_norm_comparison_rank_1(tol, comm, tensor_name, parent_x, parent_ref)
+          else:
+            return True, '', '' # Tested within 'X'
+        else: # scalar
           return relative_norm_comparison(tol, comm)(x, ref)
       else:
         return equal_array_comparison(comm)(nodes_stack)

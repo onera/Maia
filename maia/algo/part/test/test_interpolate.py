@@ -235,8 +235,8 @@ def test_interpolate_fields(comm):
       cy[1] += .05
       cz[1] -= .05
 
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, location='Vertex')
-  interpolator = ITP.Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, 'Vertex', comm)
+  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, 'CellCenter', 'Vertex')
+  interpolator = ITP.Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, 'CellCenter', 'Vertex', comm)
   interpolator.exchange_fields('MySolution')
 
   for tgt_zones in tgt_parts_per_dom:
@@ -341,7 +341,7 @@ def test_interpolation_mdom(strategy, comm):
   tgt_tree = maia.factory.partition_dist_tree(dtree_tgt, comm, zone_to_parts=z_to_p)
 
   interpolator = ITP.create_interpolator_from_part_trees(src_tree, tgt_tree, comm, \
-      'CellCenter', strategy=strategy)
+      'CellCenter', 'CellCenter', strategy=strategy)
 
   # Add sol to exchange
   for zone in PT.get_all_Zone_t(src_tree):
@@ -359,3 +359,25 @@ def test_interpolation_mdom(strategy, comm):
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTB/FlowSol/gnum')[1] == [21,19,24,22]).all()
   # maia.algo.pe_to_nface(dtree_tgt, comm)
   # maia.io.dist_tree_to_file(dtree_tgt, 'dtgt_with_sol.cgns', comm)
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("out_loc", ['Vertex', 'CellCenter'])
+def test_interpolation_vertex_src(comm, out_loc):
+  src_tree = maia.factory.generate_dist_block(11, 'S', comm)
+  tgt_tree = maia.factory.generate_dist_block(5, 'S', comm)
+
+  psrc_tree = maia.factory.partition_dist_tree(src_tree, comm)
+  ptgt_tree = maia.factory.partition_dist_tree(tgt_tree, comm)
+
+  for zone in PT.iter_all_Zone_t(psrc_tree):
+    cx,cy,cz = PT.Zone.coordinates(zone)
+
+  PT.new_FlowSolution('FS', loc='Vertex', fields={'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
+
+  maia.algo.part.interpolate_from_part_trees(psrc_tree, ptgt_tree, comm, ['FS'], out_loc)
+
+  tgt_fs = PT.get_node_from_name(ptgt_tree, 'FS')
+  assert tgt_fs is not None and PT.Subset.GridLocation(tgt_fs) == out_loc
+
+  with pytest.raises(NotImplementedError):
+    maia.algo.part.interpolate_from_part_trees(psrc_tree, ptgt_tree, comm, ['FS'], out_loc, strategy='Location')

@@ -17,11 +17,11 @@ from .import closest_points as CLO
 
 class Interpolator:
   """ Low level class to perform interpolations """
-  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, output_loc, comm):
+  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, input_loc, output_loc, comm):
     self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
     self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
 
-    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, 'CellCenter', comm)
+    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, input_loc, comm)
     all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
 
     _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, output_loc, comm)
@@ -38,6 +38,7 @@ class Interpolator:
     self.referenced_nums = self.PTP.get_referenced_lnum2()
     self.sending_gnums = self.PTP.get_gnum1_come_from()
     self.output_loc = output_loc
+    self.input_loc = input_loc
 
     # Send distances to targets partitions (if available)
     try:
@@ -74,7 +75,7 @@ class Interpolator:
   def exchange_fields(self, container_name, reduce_func=_reduce_single_val):
     """
     For all fields found under container_name node,
-    - Perform a part to part exchanged
+    - Perform a part to part exchange
     - Reduce the received data using reduce_func (because tgt elements can receive multiple data)
     - Fill the target sol with a default value + the reduced value
     """
@@ -83,7 +84,7 @@ class Interpolator:
     fields_per_part = list()
     for src_part in self.src_parts:
       container = PT.get_node_from_path(src_part, container_name)
-      assert PT.Subset.GridLocation(container) == 'CellCenter' #Only cell center sol supported for now
+      assert PT.Subset.GridLocation(container) == self.input_loc
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
     fields_per_part.append(fields_name)
     assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
@@ -122,7 +123,8 @@ class Interpolator:
 def create_src_to_tgt(src_parts_per_dom,
                       tgt_parts_per_dom,
                       comm,
-                      location = 'CellCenter',
+                      src_loc = 'CellCenter',
+                      tgt_loc = 'CellCenter',
                       strategy = 'Closest',
                       loc_tolerance = 1E-6,
                       n_closest_pt = 1):
@@ -135,8 +137,10 @@ def create_src_to_tgt(src_parts_per_dom,
 
   #Phase 1 -- localisation
   if strategy != 'Closest':
+    if src_loc != 'CellCenter':
+      raise NotImplementedError("For vertex-located fields, only 'Closest' strategy is implemented")
     location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
-        location, comm, True, loc_tolerance)
+        tgt_loc, comm, True, loc_tolerance)
 
     # output is nested by domain so we need to flatten it
     all_unlocated = [data['unlocated_ids'] for domain in location_out for data in domain]
@@ -151,11 +155,11 @@ def create_src_to_tgt(src_parts_per_dom,
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
 
     # > Setup source for closest point (with shift to manage multidomain)
-    _, src_clouds = PCU.get_shifted_point_clouds(src_parts_per_dom, 'CellCenter', comm)
+    _, src_clouds = PCU.get_shifted_point_clouds(src_parts_per_dom, src_loc, comm)
     src_clouds = py_utils.to_flat_list(src_clouds)
 
     # > Setup target for closest point (with shift to manage multidomain)
-    _, tgt_clouds = PCU.get_shifted_point_clouds(tgt_parts_per_dom, location, comm)
+    _, tgt_clouds = PCU.get_shifted_point_clouds(tgt_parts_per_dom, tgt_loc, comm)
     tgt_clouds = py_utils.to_flat_list(tgt_clouds)
 
     # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
@@ -197,15 +201,26 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
   """
   Low level interface for interpolation
   Input are a list of partitioned zones for each src domain, and a list of partitioned zone for each tgt
-  domain. Lists mush be cohérent across procs, ie we must have an empty entry if a proc does not know a domain.
+  domain. Lists mush be coherent across procs, ie we must have an empty entry if a proc does not know a domain.
 
   containers_name is the list of FlowSolution containers to be interpolated
-  location is the output location (CellCenter or Vertex); input location must be CellCenter
+  location is the output location (CellCenter or Vertex); input location can be Vertex only if 
+  strategy is 'Closest', otherwise it must be CellCenter
   **options are passed to interpolator creationg function, see create_src_to_tgt
   """
-  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
+  # Guess location of input fields
+  if len(containers_name) == 0:
+    return
+  try:
+    first_part = next(part for dom in src_parts_per_dom for part in dom)
+    input_loc = PT.Subset.GridLocation(PT.get_child_from_name(first_part, containers_name[0]))
+  except StopIteration:
+    input_loc = ''
+  input_loc = comm.allreduce(input_loc, op=MPI.MAX)
 
-  interpolator = Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, location, comm)
+  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, input_loc, location, **options)
+
+  interpolator = Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, input_loc, location, comm)
   for container_name in containers_name:
     interpolator.exchange_fields(container_name)
 
@@ -227,13 +242,13 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
 
   Important:
-    - Source fields must be located at CellCenter.
-    - Source tree must be unstructured and have a ngon connectivity.
+    If ``strategy`` is not 'Closest', source tree must have an unstructured-NGON
+    connectivity and CellCenter located fields.
 
   See also:
-    :func:`create_interpolator_from_part_trees` takes the same parameters, excepted ``containers_name``,
-    and returns an Interpolator object which can be used to exchange containers more than once through its
-    ``Interpolator.exchange_fields(container_name)`` method.
+    :func:`create_interpolator_from_part_trees` takes the same parameters (excepted ``containers_name``,
+    which must be replaced by ``src_location``), and returns an Interpolator object which can be used
+    to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
 
   Args:
     src_tree (CGNSTree): Source tree, partitionned. Only U-NGon connectivities are managed.
@@ -255,7 +270,7 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 
 
-def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, location, **options):
+def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, src_location, location, **options):
   """Same as interpolate_from_part_trees, but return the interpolator object instead
   of doing interpolations. Interpolator can be called multiple time to exchange
   fields without recomputing the src_to_tgt indirection (geometry must remain the same).
@@ -263,7 +278,7 @@ def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, location, **op
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
-  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, location, **options)
-  return Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, location, comm)
+  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, location, **options)
+  return Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, src_location, location, comm)
 
 

@@ -3,6 +3,7 @@ import pytest_parallel
 import numpy as np
 import os
 
+import maia
 import maia.pytree as PT
 
 from maia.io          import file_to_dist_tree
@@ -147,3 +148,47 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(comm):
       pass
     else:
       assert False
+
+
+@pytest_parallel.mark.parallel(1)
+def test_duplicate_2d(comm):
+
+  # Prepare 2D periodic case
+  dist_tree = maia.factory.generate_dist_block([5,2,1], 'TRI_3', comm, origin=[.5, -0.5])
+  maia.algo.scale_mesh(dist_tree, [4,1])
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  cx = PT.get_node_from_name(zone, 'CoordinateX')
+  cy = PT.get_node_from_name(zone, 'CoordinateY')
+  cy[1] = np.sign(cy[1]) * cx[1]
+
+  ymin = PT.get_node_from_name(zone, 'Ymin')
+  ymax = PT.get_node_from_name(zone, 'Ymax')
+  PT.rm_nodes_from_name(zone, 'Ym*')
+
+  zgc = PT.new_ZoneGridConnectivity(parent=zone)
+  gc = PT.new_GridConnectivity('Bottom', zone[0], 'Abutting1to1', loc='EdgeCenter', \
+                               point_list       = PT.get_child_from_name(ymin, 'PointList')[1],
+                               point_list_donor = PT.get_child_from_name(ymax, 'PointList')[1],
+                               parent=zgc)
+  PT.add_child(gc, PT.get_child_from_name(ymin, ':CGNS#Distribution'))
+  PT.new_GridConnectivityProperty(periodic={'rotation_angle' : [np.pi/2, 0], 'rotation_center' : [0,0], 'translation' : [0,0]},
+                                  parent=gc)
+
+  gc = PT.new_GridConnectivity('Top', zone[0], 'Abutting1to1', loc='EdgeCenter', \
+                               point_list       = PT.get_child_from_name(ymax, 'PointList')[1],
+                               point_list_donor = PT.get_child_from_name(ymin, 'PointList')[1],
+                               parent=zgc)
+  PT.new_GridConnectivityProperty(periodic={'rotation_angle' : [-np.pi/2, 0], 'rotation_center' : [0,0], 'translation' : [0,0]},
+                                  parent=gc)
+  PT.add_child(gc, PT.get_child_from_name(ymax, ':CGNS#Distribution'))
+              
+
+
+  # Run test
+  match_perio_by_rot_a = 'Base/zone/ZoneGridConnectivity/Bottom'
+  match_perio_by_rot_b = 'Base/zone/ZoneGridConnectivity/Top'
+  jn_paths_for_dupl = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
+
+  duplicate.duplicate_from_rotation_jns_to_360(dist_tree, ['Base/zone'], jn_paths_for_dupl, comm)
+
+  assert len(PT.get_nodes_from_label(dist_tree, 'Zone_t')) == 4

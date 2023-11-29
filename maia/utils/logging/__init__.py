@@ -1,16 +1,13 @@
 from cmaia.utils.logging import *
 
 
-def add_printer_to_logger(logger_name, p, *args):
+def add_printer_to_logger(logger_name, printer):
   from cmaia.utils.logging import _add_printer_obj_to_logger
   from cmaia.utils.logging import _add_printer_type_to_logger
-  if isinstance(p, str):
-    l = list(args)
-    if len(args) > 0:
-      l[0] = f"'{l[0]}'"  # Todo : fix parsing in std_e to avoid adding "" here
-    _add_printer_type_to_logger(logger_name, p, l)
+  if isinstance(printer, str):
+    _add_printer_type_to_logger(logger_name, printer)
   else:
-    _add_printer_obj_to_logger(logger_name, p)
+    _add_printer_obj_to_logger(logger_name, printer)
 
 
 def size_to_str(size):
@@ -28,7 +25,7 @@ def bsize_to_str(size):
   i = 0
   if size < 1000: #Corner case with no decimal
     return "{0}B".format(size)
-  while(size > 1024.):
+  while (size > 1024.):
     size /= 1024.
     i += 1
   return f"{size:.1f}{units[i]}"
