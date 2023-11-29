@@ -67,7 +67,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
       PT.rm_nodes_from_name(bc, 'PointRange')
       PT.rm_nodes_from_name(bc, 'PointList')
       start, end = group_idx[i_bc], group_idx[i_bc+1]
-      PT.new_PointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
+      PT.new_IndexArray(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
   # Remove unconverted BCs
   for zbc in PT.get_nodes_from_label(zone, 'ZoneBC_t'):

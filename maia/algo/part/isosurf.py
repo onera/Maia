@@ -169,7 +169,7 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       if len(part1_data)!=0 and part1_data[0].size!=0:
         new_point_list = np.where(part1_stride[0]==1)[0]
         point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
-        new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
+        new_pl_node = PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
         partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]] 
       else:
         partial_part1_lngn = []

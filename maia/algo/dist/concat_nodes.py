@@ -63,7 +63,7 @@ def concatenate_jns(tree, comm):
     perio_refs   = {'Vertex' : list(), 'FaceCenter' : list(), 'CellCenter' : list()}
     #Do a get here because tree is modified
     for zgc, jn in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', match_jns], ancestors=True):
-      donor_path = PT.getZoneDonorPath(PT.get_name(base), jn)
+      donor_path = PT.GridConnectivity.ZoneDonorPath(jn, PT.get_name(base))
       location = PT.Subset.GridLocation(jn)
       if location.endswith('FaceCenter'):
         location = 'FaceCenter' # Map I,J,K FaceCenter to FaceCenter

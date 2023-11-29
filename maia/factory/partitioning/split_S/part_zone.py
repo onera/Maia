@@ -148,7 +148,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             #BC should have been created before so its ok
             parent = PT.get_node_from_path(p_zone, parent_path)
             part_bc = PT.new_node(PT.get_name(dist_bc), 'BCDataSet_t', parent=parent)
-            PT.new_PointRange(value=sub_pr, parent=part_bc)
+            PT.new_IndexRange(value=sub_pr, parent=part_bc)
             sub_pr_loc = np.copy(sub_pr)
             sub_pr_loc[0,:] += range_part_bc_g[0,0] - range_dist_bc[0,0]
             if idx_dim >= 2:
@@ -180,7 +180,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             PT.add_child(part_bc, PT.get_child_from_name(dist_bc, 'GridConnectivityDonorName'))
             PT.new_child(part_bc, 'distPR', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRange')[1])
             PT.new_child(part_bc, 'distPRDonor', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRangeDonor')[1])
-            PT.new_DataArray('zone_offset', p_zone_offset, parent=part_bc)
+            PT.new_child(part_bc, 'zone_offset', 'DataArray_t', p_zone_offset)
   if len(PT.get_children(zbc)) == 0:
     PT.rm_child(p_zone, zbc)
 
@@ -203,7 +203,7 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
       #Check if part boundary is internal or comes from an old BC or GC
       is_old_bc = range_part_bc_g[normal_idx,extr] == zone_cell_range(d_zone)[normal_idx,extr]
       if not is_old_bc:
-        jn_list[i_part].append(PT.new_PointRange(geo_bnd, range_part_bc_g))
+        jn_list[i_part].append(PT.new_IndexRange(geo_bnd, range_part_bc_g))
 
   # 2. Exchange. We will need to compare to other parts joins
   all_offset_list = comm.allgather(p_zones_offset)
@@ -252,8 +252,8 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
                 opp_zone = MT.conv.add_part_suffix(PT.get_name(d_zone), j_proc, j_part)
                 transform = np.arange(1, idx_dim+1, dtype=np.int32)
                 part_gc = PT.new_GridConnectivity1to1(gc_name, opp_zone, transform=transform, parent=zgc)
-                PT.new_PointRange('PointRange',      sub_pr,   parent=part_gc)
-                PT.new_PointRange('PointRangeDonor', sub_pr_d, parent=part_gc)
+                PT.new_IndexRange('PointRange',      sub_pr,   parent=part_gc)
+                PT.new_IndexRange('PointRangeDonor', sub_pr_d, parent=part_gc)
 
 def split_original_joins_S(all_part_zones, comm):
   """
@@ -267,7 +267,7 @@ def split_original_joins_S(all_part_zones, comm):
     for jn in PT.iter_children_from_predicates(part, 'ZoneBC_t/BC_t'):
       if PT.get_child_from_name(jn, 'GridConnectivityDonorName') is not None:
         p_zone_offset = PT.get_child_from_name(jn, 'zone_offset')[1]
-        pr_n = PT.new_PointRange(part[0], np.copy(PT.get_child_from_name(jn, 'PointRange')[1]))
+        pr_n = PT.new_IndexRange(part[0], np.copy(PT.get_child_from_name(jn, 'PointRange')[1]))
         key = dzone_name + '/' + jn[0] #TODO : Be carefull if multibase ; this key may clash
         # Pr dans la num globale de la zone
         pr_to_global_num(pr_n[1], p_zone_offset)
@@ -356,8 +356,8 @@ def split_original_joins_S(all_part_zones, comm):
             opp_base = opp_path.split('/')[0] + '/' if '/' in opp_path else ''
             opp_zone = PT.get_name(opposed_join)
             part_gc = PT.new_GridConnectivity1to1(gc_name, opp_base + opp_zone, transform=transform, parent=zone_gc)
-            PT.new_PointRange('PointRange',      sub_pr,  parent=part_gc)
-            PT.new_PointRange('PointRangeDonor', sub_prd, parent=part_gc)
+            PT.new_IndexRange('PointRange',      sub_pr,  parent=part_gc)
+            PT.new_IndexRange('PointRangeDonor', sub_prd, parent=part_gc)
             PT.add_child(part_gc, PT.get_child_from_label(jn, 'GridConnectivityProperty_t'))
             PT.add_child(part_gc, PT.get_child_from_name(jn, 'GridConnectivityDonorName'))
             i_sub_jn += 1

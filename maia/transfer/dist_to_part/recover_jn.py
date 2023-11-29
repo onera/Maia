@@ -132,8 +132,8 @@ def get_pl_donor(dist_tree, part_tree, comm):
       r_idx += n_candidates
 
     assert w_idx == new_size
-    PT.new_DataArray('PointListDonor', opp_pl.reshape((1,-1), order='F'), parent=gc)
-    PT.new_DataArray('Donor', opp_rank, parent=gc)
+    PT.new_node('PointListDonor', 'DataArray_t', opp_pl.reshape((1,-1), order='F'), parent=gc)
+    PT.new_node('Donor', 'DataArray_t', opp_rank, parent=gc)
     PT.set_value(pl_node, pl.reshape((1,-1), order='F'))
     PT.set_value(lngn_node, lngn)
     i_join += 1

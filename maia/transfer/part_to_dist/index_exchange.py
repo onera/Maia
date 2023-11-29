@@ -187,7 +187,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   for key in keys: #This factorize U and S PL shapes
     _, dist_pl_key = PTB.exchange_field(part_pl_list[key])
     dist_pl.append(dist_pl_key)
-  pl = PT.new_PointList(value=dist_pl, parent=dist_node)
+  pl = PT.new_IndexArray(value=dist_pl, parent=dist_node)
   assert pl[1].ndim == 2 and pl[1].shape[0] == idx_dim
 
   # Add distribution in dist_node
@@ -281,7 +281,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   pr_size = (np.abs(dist_pr[:,1] - dist_pr[:,0]) + 1).prod()
   distri = par_utils.uniform_distribution(pr_size, comm)
 
-  PT.new_PointRange(value=dist_pr, parent=dist_node)
+  PT.new_IndexRange(value=dist_pr, parent=dist_node)
   MT.newDistribution({'Index' : distri}, parent=dist_node)
 
 def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):

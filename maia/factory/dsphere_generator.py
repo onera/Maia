@@ -37,7 +37,7 @@ def dsphere_vol_nodal_generate(n_vtx, radius, origin, comm):
     PT.new_GridLocation('FaceCenter', parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
-    PT.new_PointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
+    PT.new_IndexArray(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
     MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
 
   return dist_tree
@@ -88,7 +88,7 @@ def dsphere_hollow_nodal_generate(n_vtx, radius_int, radius_ext, origin, comm, n
     PT.new_GridLocation('FaceCenter', parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
-    PT.new_PointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
+    PT.new_IndexArray(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
     MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
 
   return dist_tree

@@ -269,7 +269,7 @@ def test_split_structured(comm):
   pr_ds[1][1] = pr_2[1][1]-2
   pr_ds[2][0] = pr_2[2][0]+1
   pr_ds[2][1] = pr_2[2][1]-2
-  PT.new_PointRange(value=pr_ds,parent=bcds)
+  PT.new_IndexRange(value=pr_ds,parent=bcds)
   MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(bcds),comm)}, bcds)
   index_ds = MT.getDistribution(bcds, 'Index')
 

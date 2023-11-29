@@ -80,8 +80,8 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
                                        loc        = _grid_loc,
                                        parent     = zgc_n)
 
-      PT.new_PointList(name='PointList'     , value=pl , parent=join_n)
-      PT.new_PointList(name='PointListDonor', value=pld, parent=join_n)
+      PT.new_IndexArray(name='PointList'     , value=pl , parent=join_n)
+      PT.new_IndexArray(name='PointListDonor', value=pld, parent=join_n)
 
 
 def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):

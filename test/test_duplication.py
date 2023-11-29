@@ -70,8 +70,8 @@ def test_duplicate_from_periodic(comm, write_output):
     PT.set_label(bc, 'GridConnectivity_t')
     PT.set_value(bc, PT.get_name(dist_zone))
     PT.new_GridConnectivityType('Abutting1to1', bc)
-  PT.new_PointList('PointListDonor', PT.get_node_from_name(top, 'PointList')[1].copy(), parent=bottom) #OK in sequential
-  PT.new_PointList('PointListDonor', PT.get_node_from_name(bottom, 'PointList')[1].copy(), parent=top) #OK in sequential
+  PT.new_IndexArray('PointListDonor', PT.get_node_from_name(top, 'PointList')[1].copy(), parent=bottom) #OK in sequential
+  PT.new_IndexArray('PointListDonor', PT.get_node_from_name(bottom, 'PointList')[1].copy(), parent=top) #OK in sequential
   PT.new_GridConnectivityProperty(periodic={'translation': [0.,0.,1]},  parent=bottom)
   PT.new_GridConnectivityProperty(periodic={'translation': [0.,0.,-1]}, parent=top)
   PT.new_child(dist_zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[bottom, top])

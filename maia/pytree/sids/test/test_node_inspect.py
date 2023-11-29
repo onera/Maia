@@ -275,35 +275,35 @@ def test_elt_ordering_by_dim():
   assert SIDS.Zone.elt_ordering_by_dim(zone) == 1
 
 def test_PointRange():
-  pr = N.new_PointRange('StandardPR', [1,3, 3,5, 1,3])
+  pr = N.new_IndexRange('StandardPR', [1,3, 3,5, 1,3])
   assert (SIDS.PointRange.SizePerIndex(pr) == [3,3,3]).all()
   assert (SIDS.PointRange.n_elem(pr) == 3*3*3)
 
-  pr = N.new_PointRange('GCLikePR', [7,1, 9,9, 5,1])
+  pr = N.new_IndexRange('GCLikePR', [7,1, 9,9, 5,1])
   assert (SIDS.PointRange.SizePerIndex(pr) == [7,1,5]).all()
   assert (SIDS.PointRange.n_elem(pr) == 7*1*5)
 
-  pr = N.new_PointRange('ULike', [[1,15]]) # PR must be 2d
+  pr = N.new_IndexRange('ULike', [[1,15]]) # PR must be 2d
   assert (SIDS.PointRange.SizePerIndex(pr) == [15]).all()
   assert (SIDS.PointRange.n_elem(pr) == 15)
 
 def test_PointList():
-  pl = N.new_PointList('StandartPL', [[1,6,12]])
+  pl = N.new_IndexArray('StandartPL', [[1,6,12]])
   assert SIDS.PointList.n_elem(pl) == 3
 
-  pl = N.new_PointList('SLike', [[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
+  pl = N.new_IndexArray('SLike', [[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
   assert SIDS.PointList.n_elem(pl) == 5
 
 def test_Subset():
   sol = N.new_FlowSolution(loc='Vertex')
-  pl = N.new_PointList('PointList', [[1,6,12]], parent=sol)
+  pl = N.new_IndexArray('PointList', [[1,6,12]], parent=sol)
 
   assert SIDS.Subset.GridLocation(sol) == 'Vertex'
   assert SIDS.Subset.getPatch(sol) is pl
   assert SIDS.Subset.n_elem(sol) == SIDS.PointList.n_elem(pl)
 
   with pytest.raises(AssertionError):
-    pr = N.new_PointRange('PointRange', [[1,15]], parent=sol)
+    pr = N.new_IndexRange('PointRange', [[1,15]], parent=sol)
     patch = SIDS.Subset.getPatch(sol)
 
 

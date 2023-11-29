@@ -293,7 +293,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
 
   base_name, zone_name = jn_path.split('/')[0:2]
   zone   = PT.get_node_from_path(dist_tree, base_name + '/' + zone_name)
-  zone_d = PT.get_node_from_path(dist_tree, PT.getZoneDonorPath(base_name, jn))
+  zone_d = PT.get_node_from_path(dist_tree, PT.GridConnectivity.ZoneDonorPath(jn, base_name))
 
   ngon_node   = PT.Zone.NGonNode(zone)
   vtx_distri  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
@@ -417,7 +417,7 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
     interface_dn_face.append(pl.size)
     interface_ids_face.append(as_pdm_gnum(np_utils.interweave_arrays([pl,pld])))
     cur_zone_path = '/'.join(interface_path.split('/')[:2])
-    opp_zone_path = PT.getZoneDonorPath(cur_zone_path.split('/')[0], gc)
+    opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, cur_zone_path.split('/')[0])
     interface_dom_face.append((zone_to_id[cur_zone_path], zone_to_id[opp_zone_path]))
 
   #Call function
@@ -541,8 +541,8 @@ def generate_jns_vertex_list(dist_tree, comm, have_isolated_faces=False):
         pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx
       jn_vtx = PT.new_GridConnectivity(PT.get_name(gc)+'#Vtx', PT.get_value(gc), \
           loc='Vertex', type='Abutting1to1', parent=zgc)
-      PT.new_PointList('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
-      PT.new_PointList('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
+      PT.new_IndexArray('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
+      PT.new_IndexArray('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
       MT.newDistribution({'Index' : distri_jn}, jn_vtx)
 
       PT.add_child(jn_vtx, PT.get_child_from_label(gc, 'GridConnectivityProperty_t'))

@@ -576,9 +576,9 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGN
 
   allowed_parent = "\
     BCData_t BaseIterativeData_t ChemicalKineticsModel_t ConvergenceHistory_t DiscreteData_t Elements_t \
-    EMConductivityModel_t EMElectricFieldModel_t EMMagneticFieldModel_t FlowSolution_t GasModel_t RigidGridMotion_t \
-    ThermalConductivityModel_t ThermalRelaxationModel_t TurbulenceClosure_t TurbulenceModel_t UserDefinedData_t \
-    ViscosityModel_t ZoneIterativeData_t ZoneSubRegion_t".split()
+    EMConductivityModel_t EMElectricFieldModel_t EMMagneticFieldModel_t FlowSolution_t GasModel_t GridCoordinates_t \
+    Periodic_t RigidGridMotion_t ThermalConductivityModel_t ThermalRelaxationModel_t TurbulenceClosure_t \
+    TurbulenceModel_t UserDefinedData_t ViscosityModel_t ZoneIterativeData_t ZoneSubRegion_t".split()
 
   _value = NA._convert_value(value)
   if dtype is not None:

@@ -122,7 +122,7 @@ def split_original_joins(p_tree):
             # Sort both pl and pld according to min joinId to ensure that
             # order is the same
             cur_path = p_base[0] + '/' + d_zone_name + '/' + gc[0]
-            opp_path = PT.getZoneDonorPath(p_base[0], gc) + '/' + PT.get_value(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
+            opp_path = PT.GridConnectivity.ZoneDonorPath(gc, p_base[0]) + '/' + PT.get_value(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
 
             ref_pl = sub_pl if cur_path < opp_path else sub_pl_d
             sort_idx = np.argsort(ref_pl[0])
@@ -130,8 +130,8 @@ def split_original_joins(p_tree):
             sub_pl_d[0]   = sub_pl_d[0][sort_idx]
             sub_lngn      = sub_lngn[sort_idx]
 
-            PT.new_PointList(name='PointList'     , value=sub_pl      , parent=join_n)
-            PT.new_PointList(name='PointListDonor', value=sub_pl_d    , parent=join_n)
+            PT.new_IndexArray(name='PointList'     , value=sub_pl      , parent=join_n)
+            PT.new_IndexArray(name='PointListDonor', value=sub_pl_d    , parent=join_n)
             MT.newGlobalNumbering({'Index' : sub_lngn}, join_n)
             #Copy decorative nodes
             skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', 'GridConnectivityType']
@@ -157,7 +157,7 @@ def update_gc_donor_name(part_tree, comm):
   for p_base, p_zone in PT.iter_children_from_predicates(part_tree, 'CGNSBase_t/Zone_t', ancestors=True):
     for gc in PT.iter_children_from_predicates(p_zone, ['ZoneGridConnectivity_t', is_initial_gc]):
       cur_zone_path = PT.get_name(p_base) + '/' + PT.get_name(p_zone)
-      opp_zone_path = PT.getZoneDonorPath(PT.get_name(p_base), gc)
+      opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, PT.get_name(p_base))
       opp_rank = MT.conv.get_part_suffix(opp_zone_path)[0]
       send_l[opp_rank].append((PT.get_name(gc), cur_zone_path, opp_zone_path))
 
@@ -166,7 +166,7 @@ def update_gc_donor_name(part_tree, comm):
   for p_base, p_zone in PT.iter_children_from_predicates(part_tree, 'CGNSBase_t/Zone_t', ancestors=True):
     for gc in PT.iter_children_from_predicates(p_zone, ['ZoneGridConnectivity_t', is_1to1_gc]):
       cur_zone_path = PT.get_name(p_base) + '/' + PT.get_name(p_zone)
-      opp_zone_path = PT.getZoneDonorPath(PT.get_name(p_base), gc)
+      opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, PT.get_name(p_base))
       if MT.conv.is_intra_gc(PT.get_name(gc)):
         opp_name = MT.conv.name_intra_gc(*MT.conv.get_part_suffix(opp_zone_path),
                                          *MT.conv.get_part_suffix(cur_zone_path))
@@ -200,7 +200,7 @@ def hybrid_jns_as_ijk(part_tree, comm):
     basename = PT.path_head(zone_u_path, 1)
     zone_u = PT.get_node_from_path(part_tree, zone_u_path)
     for gc in PT.get_children_from_predicates(zone_u, gc_predicate):
-      opp_zone_path = PT.getZoneDonorPath(basename, gc)
+      opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, basename)
       opp_rank = MT.conv.get_part_suffix(opp_zone_path)[0]
       opp_jn_name = PT.get_value(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
       try:

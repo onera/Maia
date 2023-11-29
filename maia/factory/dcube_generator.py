@@ -105,7 +105,7 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
     PT.new_GridLocation('FaceCenter', parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
-    PT.new_PointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
+    PT.new_IndexArray(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
 
     distrib  = par_utils.dn_to_distribution(dn_face_bnd, comm)
     MT.newDistribution({'Index' : distrib}, parent=bc_n)
@@ -181,7 +181,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
     PT.new_GridLocation(bc_loc, parent=bc_n)
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
-    PT.new_PointList(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
+    PT.new_IndexArray(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
     MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
 
   return dist_tree
