@@ -38,3 +38,31 @@ def test_centers_to_nodes(cross_domain, comm):
   expected_dfield = expected_dfield_f[distri_vtx[0]:distri_vtx[1]]
 
   assert (dfield_vtx == expected_dfield).all()
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("from_api", [False, True])
+def test_nodes_to_centers(from_api, comm):
+  dist_tree = maia.factory.generate_dist_block([6,4,2], 'HEXA_8', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+  # Create sol on partitions
+  for part in PT.get_all_Zone_t(part_tree):
+    gnum = PT.maia.getGlobalNumbering(part, 'Vertex')[1]
+    PT.new_FlowSolution('FSol', loc='Vertex', fields={'gnum': gnum}, parent=part)
+
+  if from_api:
+    ML.nodes_to_centers(part_tree, comm, ["FSol"])
+  else:
+    node_to_center = ML.NodeToCenter(part_tree, comm)
+    node_to_center.move_fields("FSol")
+
+  maia.transfer.part_tree_to_dist_tree_only_labels(dist_tree, part_tree, ['FlowSolution_t'], comm)
+  dsol_cell   = PT.get_node_from_name(dist_tree, 'FSol#Cell')
+  dfield_cell = PT.get_node_from_name(dsol_cell, 'gnum')[1]
+
+  elt = PT.get_node_from_predicate(dist_tree, lambda n : PT.get_label(n) == 'Elements_t' \
+                                                     and PT.Element.CGNSName(n)=='HEXA_8')
+  ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
+  expected_dfield = np.add.reduceat(ec, 8*np.arange(0,ec.size//8)) / 8.
+
+  assert np.allclose(dfield_cell, expected_dfield)

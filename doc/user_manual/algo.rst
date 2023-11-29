@@ -87,6 +87,7 @@ Interpolations
 
 .. autofunction:: maia.algo.part.interpolate_from_part_trees
 .. autofunction:: maia.algo.part.centers_to_nodes
+.. autofunction:: maia.algo.part.nodes_to_centers
 
 .. _user_man_gen_algo:
 
@@ -97,6 +98,7 @@ Generic algorithms
 The following algorithms applies on maia distributed or partitioned trees
 
 .. autofunction:: maia.algo.transform_affine
+.. autofunction:: maia.algo.scale_mesh
 .. autofunction:: maia.algo.pe_to_nface
 .. autofunction:: maia.algo.nface_to_pe
 

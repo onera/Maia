@@ -50,10 +50,11 @@ def test_loop_from():
 
 
 def test_find_cartesian_vector_names():
-  names = ["Tata","TotoY","TotoZ","Titi","totoX"]
+  names = ["Tata","TotoY","TotoZ","Titi","totoX","TataY","TataX"]
   assert py_utils.find_cartesian_vector_names(names) == []
   names.append("TotoX")
   assert py_utils.find_cartesian_vector_names(names) == ["Toto"]
+  assert sorted(py_utils.find_cartesian_vector_names(names,2)) == ["Tata", "Toto"]
 
 def test_get_ordered_subset():
   L = [2,8,10,3,3]

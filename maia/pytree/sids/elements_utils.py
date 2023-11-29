@@ -59,17 +59,17 @@ elements_properties = [
     ("HEXA_125"              ,    3,  125,   12,    6,  "HEXA"),
     ]
 
-def element_name(n):
+def element_name(n:int) -> str:
   assert n < len(elements_properties)
   return elements_properties[n][0]
 
-def cgns_name_to_id(name):
+def cgns_name_to_id(name:str) -> int:
   return [EP[0] for EP in elements_properties].index(name)
 
-def element_dim(n):
+def element_dim(n:int) -> int:
   assert n < len(elements_properties)
   return elements_properties[n][1]
 
-def element_number_of_nodes(n):
+def element_number_of_nodes(n:int) -> int:
   assert n < len(elements_properties)
   return elements_properties[n][2]

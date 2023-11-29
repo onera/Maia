@@ -3,17 +3,22 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#include "pdm.h"
 
 namespace py = pybind11;
 
-bool isSubsetSum(const int set[], const int n, const int sum)
+bool isSubsetSum(const PDM_g_num_t set[], const PDM_g_num_t n, const PDM_g_num_t sum)
 {
   /*
    * Checks if a solution to the subset sum problem exists
   */
   // The value of subset[i][j] will be true if there is a subset of set[0..i-1] with sum equal to j
-  int sizeX = n+1;
-  int sizeY = sum+1;
+  PDM_g_num_t sizeX = n+1;
+  PDM_g_num_t sizeY = sum+1;
+  int max_alloc = 100000000; // Exit if arrays is bigger than that
+  if (sizeY > (max_alloc / sizeX)) {
+    return false;
+  }
   bool* subset = new bool[sizeX*sizeY]; // subset[n + 1][sum + 1];
   // Access using Subset[i][j] = subset[i*sizeY+j]
 
@@ -41,7 +46,7 @@ bool isSubsetSum(const int set[], const int n, const int sum)
   return out;
 }
 
-auto subset_sum_positions(int* first, int* last, int target, int max_it) -> std::pair<bool,std::vector<int*>> {
+auto subset_sum_positions(PDM_g_num_t* first, PDM_g_num_t* last, PDM_g_num_t target, PDM_g_num_t max_it) -> std::pair<bool,std::vector<PDM_g_num_t*>> {
   /*
    * Return a solution to the subset sum problem.
   */
@@ -53,9 +58,9 @@ auto subset_sum_positions(int* first, int* last, int target, int max_it) -> std:
   if (target==0) return {true,{}};
   if (std::accumulate(first, last, 0) < target) return {false, {}};
 
-  std::vector<int*> candidates = {};
-  int s = 0;
-  int it = 0;
+  std::vector<PDM_g_num_t*> candidates = {};
+  PDM_g_num_t s = 0;
+  PDM_g_num_t it = 0;
   while (first != last && it < max_it) { // loop until done
 
     // loop until the end and try to add elements to the candidates
@@ -89,7 +94,7 @@ auto subset_sum_positions(int* first, int* last, int target, int max_it) -> std:
   return {false,{}};
 }
 
-auto search_subset_match(py::array_t<int> sorted_np, int target, int max_it) -> py::list {
+auto search_subset_match(py::array_t<PDM_g_num_t> sorted_np, int target, int max_it) -> py::list {
   /*
    * Bind the subset sum problem for a numpy int array : return (if existing)
    * a list of indices such that array[indices].sum == target.
@@ -100,19 +105,19 @@ auto search_subset_match(py::array_t<int> sorted_np, int target, int max_it) -> 
     return py::cast(std::vector<int>{});
 
   int N = sorted_np.size();
-  const int *np_data = sorted_np.data(0);
+  const PDM_g_num_t *np_data = sorted_np.data(0);
 
   if (!std::is_sorted(np_data, np_data+N)) {
     return py::cast(std::vector<int>{}); // We shoud raise here, list is not sorted
   }
 
   // First index >= target
-  auto upper = std::upper_bound(np_data, np_data+N, target);
+  auto upper = std::upper_bound(np_data, np_data+N, static_cast<PDM_g_num_t>(target));
 
   //Array is sorted, we can juste search beetween begin and upper
   std::vector<int> indices;
   if (isSubsetSum(np_data, upper - np_data, target)) {
-    auto result = subset_sum_positions((int *) np_data, (int *) upper, target, max_it);
+    auto result = subset_sum_positions((PDM_g_num_t *) np_data, (PDM_g_num_t *) upper, target, max_it);
     for (auto x: result.second)
       indices.push_back(x - np_data); //Get indices
   }

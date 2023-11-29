@@ -312,7 +312,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
 
   dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
-  dface_vtx     = [PT.get_node_from_path(ng, 'ElementConnectivity')[1] for ng in [ngon_node, ngon_node_d]]
+  dface_vtx     = [as_pdm_gnum(PT.get_node_from_path(ng, 'ElementConnectivity')[1]) for ng in [ngon_node, ngon_node_d]]
 
   isolated_face_loc = get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm)
   not_isolated_face_loc = np.arange(pl.size)[np_utils.others_mask(pl, isolated_face_loc)]
@@ -403,7 +403,7 @@ def _generate_jns_vertex_list(dist_tree, interface_pathes, comm):
 
     eso = PT.get_child_from_name(ngon, 'ElementStartOffset')[1]
     dface_vtx_idx.append(shifted_eso(ngon))
-    dface_vtx.append(PT.get_child_from_name(ngon, 'ElementConnectivity')[1])
+    dface_vtx.append(as_pdm_gnum(PT.get_child_from_name(ngon, 'ElementConnectivity')[1]))
 
   # Collect interface data
   interface_dn_face = []

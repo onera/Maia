@@ -32,7 +32,7 @@ def refine_mesh(tree, factor=1):
   return refined_tree
 
 @pytest_parallel.mark.parallel([1])
-@pytest.mark.parametrize("strategy", ["LocationAndClosest", "Location"])
+@pytest.mark.parametrize("strategy", ["Closest", "Location"])
 def test_interpolation_non_overlaping_cubes(comm, strategy, write_output):
   n_vtx_src       = 11
   origin_src      = [0., 0., 0.]
@@ -96,7 +96,6 @@ def test_interpolation_non_overlaping_cubes(comm, strategy, write_output):
       assert np.array_equal(expected_sol[~np.isnan(expected_sol)], sol[~np.isnan(sol)])
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee") #For refine_mesh
-@pytest.mark.skipif(not cmaia.cpp20_enabled, reason="Require ENABLE_CPP20 compilation flag") #For refine_mesh
 @pytest_parallel.mark.parallel([2])
 @pytest.mark.parametrize("n_part_tgt", [1,3,7])
 def test_interpolation_refined(comm, n_part_tgt, write_output):
@@ -134,7 +133,7 @@ def test_interpolation_refined(comm, n_part_tgt, write_output):
 
   # Here we use the Interpolator API, who could allow us to redo an interpolation later
   interpolator = MA.part.create_interpolator_from_part_trees(part_tree_src, part_tree_tgt,\
-      comm, location='CellCenter', strategy='Location')
+      comm, src_location='CellCenter', location='CellCenter', strategy='Location')
   interpolator.exchange_fields('FlowSolution#Init')
 
   # > Check results

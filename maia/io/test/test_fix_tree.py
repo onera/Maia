@@ -186,33 +186,42 @@ def test_enforce_pdm_dtype():
   assert PT.get_node_from_name(tree, 'ElementRange')[1].dtype == pdm_dtype
 
 def test_ensure_PE_global_indexing():
+
+  def create_tree(elts):
+    tree = PT.new_CGNSTree()
+    base = PT.new_CGNSBase(parent=tree)
+    zone = PT.new_Zone(type='Unstructured', parent=base)
+    for elt in elts:
+      PT.add_child(zone, elt)
+    return tree
+
   ngon = PT.new_Elements('WrongNGon', 'NGON_n', erange=[1,4])
   pe   = PT.new_DataArray('ParentElements', [[1,2],[3,0],[1,0],[2,4]], parent=ngon)
-  fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon]))
+  fix_tree.ensure_PE_global_indexing(create_tree([ngon]))
   assert (pe[1] == [[5,6],[7,0],[5,0],[6,8]]).all()
 
   ngon = PT.new_Elements('GoodNGon', 'NGON_n', erange=[1,4])
   pe   = PT.new_DataArray('ParentElements', [[5,6],[7,0],[5,0],[6,8]], parent=ngon)
-  fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon]))
+  fix_tree.ensure_PE_global_indexing(create_tree([ngon]))
   assert (pe[1] == [[5,6],[7,0],[5,0],[6,8]]).all()
 
   nface = PT.new_Elements('FirstNace', 'NFACE_n', erange=[1,2])
   ngon = PT.new_Elements('SecondNGon', 'NGON_n', erange=[3,6])
   pe   = PT.new_DataArray('ParentElements', [[1,0],[1,0],[1,2],[2,0]], parent=ngon)
-  fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon]))
+  fix_tree.ensure_PE_global_indexing(create_tree([ngon]))
   assert (pe[1] == [[1,0],[1,0],[1,2],[2,0]]).all()
 
   ngon = PT.new_Elements('EmptyNGon', 'NGON_n', erange=[1,4])
   pe   = PT.new_DataArray('ParentElements', np.empty((0,2), order='F'), parent=ngon)
-  fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon]))
+  fix_tree.ensure_PE_global_indexing(create_tree([ngon]))
 
   with pytest.raises(RuntimeError):
     ngon = PT.new_Elements('NGon', 'NGON_n')
-    fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,ngon]))
+    fix_tree.ensure_PE_global_indexing(create_tree([ngon, ngon]))
   with pytest.raises(RuntimeError):
     ngon = PT.new_NGonElements(erange=[1,4], pe=np.empty((4,2), order='F'))
     tri = PT.new_Elements('Tri', 'TRI_3')
-    fix_tree.ensure_PE_global_indexing(PT.new_node('Zone', 'Zone_t', children=[ngon,tri]))
+    fix_tree.ensure_PE_global_indexing(create_tree([ngon, tri]))
 
 @pytest_parallel.mark.parallel(1)
 def test_ensure_signed_nface_connectivity(comm):

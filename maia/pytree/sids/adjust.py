@@ -1,7 +1,9 @@
+from maia.pytree.typing import *
+
 import maia.pytree as PT
 from . import explore
 
-def enforceDonorAsPath(tree):
+def enforceDonorAsPath(tree:CGNSTree):
   """ Force the GCs to indicate their opposite zone under the form BaseName/ZoneName """
   predicates = ['Zone_t', 'ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
   for base in PT.iter_all_CGNSBase_t(tree):

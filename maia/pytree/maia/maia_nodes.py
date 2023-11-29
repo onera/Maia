@@ -1,7 +1,9 @@
+from maia.pytree.typing import *
+
 from maia.pytree import walk as W
 from maia.pytree import node as N
 
-def getDistribution(node, distri_name=None):
+def getDistribution(node:CGNSTree, distri_name:str=None) -> Optional[CGNSTree]:
   """
   Starting from node, return the CGNS#Distribution node if distri_name is None
   or the value of the requested distribution if distri_name is not None
@@ -9,7 +11,7 @@ def getDistribution(node, distri_name=None):
   return W.get_node_from_path(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
       else W.get_child_from_name(node, ':CGNS#Distribution')
 
-def getGlobalNumbering(node, lngn_name=None):
+def getGlobalNumbering(node:CGNSTree, lngn_name:str=None) -> Optional[CGNSTree]:
   """
   Starting from node, return the CGNS#GlobalNumbering node if lngn_name is None
   or the value of the requested globalnumbering if lngn_name is not None
@@ -18,7 +20,7 @@ def getGlobalNumbering(node, lngn_name=None):
       else W.get_child_from_name(node, ':CGNS#GlobalNumbering')
 
 # --------------------------------------------------------------------------
-def newDistribution(distributions = dict(), parent=None):
+def newDistribution(distributions:Dict[str, np.ndarray] = dict(), parent:CGNSTree=None) -> CGNSTree:
   """
   Create and return a CGNSNode to be used to store distribution data
   Attach it to parent node if not None
@@ -33,7 +35,7 @@ def newDistribution(distributions = dict(), parent=None):
     N.update_child(distri_node, name, 'DataArray_t', value)
   return distri_node
 
-def newGlobalNumbering(glob_numberings = dict(), parent=None):
+def newGlobalNumbering(glob_numberings:Dict[str, np.ndarray] = dict(), parent:CGNSTree=None) -> CGNSTree:
   """
   Create and return a CGNSNode to be used to store distribution data
   Attach it to parent node if not None

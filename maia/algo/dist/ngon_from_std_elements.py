@@ -3,6 +3,7 @@ import numpy              as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
 from maia.utils import np_utils, par_utils, layouts
 
 from maia.algo.dist   import remove_element as RME
@@ -11,12 +12,31 @@ from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh import cgns_dist_zone_t
 
 import Pypdm.Pypdm as PDM
 
+def raise_if_possible_overflow(n_elt, n_rank):
+  max_int = 2**31 - 1
+  if n_elt > n_rank * max_int:
+    req = n_elt // max_int + 1
+    msg = f"Size of data seems to be too large regarding the number of MPI ranks. "\
+          f"Please try with at least {req} processes."
+    raise OverflowError(msg)
+
 def _create_pe_global(flat_array, shift_value):
   pe = np.empty((flat_array.size//2, 2), dtype=flat_array.dtype, order='F')
   layouts.pdm_face_cell_to_pe_cgns(flat_array, pe)
   np_utils.shift_nonzeros(pe, shift_value)
   return pe
 
+def predict_face_vtx_size(zone, dim):
+  n_vtx_mult = {'BAR_2' : 2, 'TRI_3': 3, 'QUAD_4': 4, 
+                'TETRA_4': 12, 'PYRA_5': 16, 'PENTA_6': 18, 'HEXA_8': 24}
+  face_vtx_size = 0
+  elt_predicate = lambda n : PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n) >= dim - 1 
+  for elt in PT.iter_children_from_predicate(zone, elt_predicate):
+    try:
+      face_vtx_size += PT.Element.Size(elt) * n_vtx_mult[PT.Element.CGNSName(elt)]
+    except KeyError:
+      pass
+  return face_vtx_size
 
 def cgns_zone_to_pdm_dmesh_nodal(zone, comm, extract_dim):
   elts_per_dim = PT.Zone.get_ordered_elements_per_dim(zone)
@@ -156,6 +176,10 @@ def generate_ngon_from_std_elements(dist_tree, comm):
   for base in PT.iter_all_CGNSBase_t(dist_tree):
     extract_dim = PT.get_value(base)[0]
     zones_u = [zone for zone in PT.iter_all_Zone_t(base) if PT.Zone.Type(zone) == "Unstructured"]
+
+    for zone in zones_u: #Raise if overflow is probable
+      face_vtx_size = predict_face_vtx_size(zone, extract_dim)
+      raise_if_possible_overflow(face_vtx_size*np.dtype(maia.npy_pdm_gnum_dtype).itemsize, comm.Get_size())
 
     dmn_to_dm = PDM.DMeshNodalToDMesh(len(zones_u), comm)
     for i_zone, zone in enumerate(zones_u):

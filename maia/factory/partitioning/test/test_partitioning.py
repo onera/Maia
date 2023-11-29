@@ -28,12 +28,18 @@ class Test_split_ngon_2d:
 
     assert PT.get_child_from_name(edge, 'ParentElements') is not None
     assert PT.get_child_from_name(ngon, 'ParentElements') is None
+  def check_bcs(self, part_tree, comm):
+    bc_ymin = PT.get_node_from_name(part_tree, 'Ymin')
+    bc_ymax = PT.get_node_from_name(part_tree, 'Ymax')
+    bc_xmax = PT.get_node_from_name(part_tree, 'Xmax')
     if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(edge, 'ElementRange')[1] == [1,15]).all()
-      assert (PT.get_child_from_name(ngon, 'ElementRange')[1] == [16,20]).all()
+      assert (PT.get_child_from_name(bc_ymin, 'PointList')[1] == [[1,2,4]]).all()
+      assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[8]]).all()
+      assert bc_ymax is None
     elif comm.Get_rank() == 1:
-      assert (PT.get_child_from_name(edge, 'ElementRange')[1] == [1,13]).all()
-      assert (PT.get_child_from_name(ngon, 'ElementRange')[1] == [14,17]).all()
+      assert (PT.get_child_from_name(bc_ymax, 'PointList')[1] == [[10,12,13]]).all()
+      assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[4,11]]).all()
+      assert bc_ymin is None
 
   @pytest.mark.parametrize("no_pe", [False, True])
   def test_input_pe(self, no_pe, comm):
@@ -43,6 +49,7 @@ class Test_split_ngon_2d:
 
     part_tree = partition_dist_tree(dist_tree, comm)
     self.check_elts(part_tree, comm)
+    self.check_bcs(part_tree, comm)
 
   @pytest.mark.parametrize("output_jn_loc", ["Vertex", "FaceCenter"])
   def test_output_loc(self, output_jn_loc, comm):
@@ -50,6 +57,7 @@ class Test_split_ngon_2d:
     part_tree = partition_dist_tree(dist_tree, comm, part_interface_loc=output_jn_loc)
 
     self.check_elts(part_tree, comm)
+    self.check_bcs(part_tree, comm)
     expected_loc = {"Vertex" : "Vertex", "FaceCenter" : "EdgeCenter"}
     for gc in PT.iter_nodes_from_label(part_tree, 'GridConnectivity_t'):
       assert PT.Subset.GridLocation(gc) == expected_loc[output_jn_loc]
@@ -71,6 +79,18 @@ class Test_split_elt_2d:
     if comm.Get_rank() == 1:
       assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [1,4]).all()
       assert (PT.get_child_from_name(bar, 'ElementRange')[1] == [5,10]).all()
+  def check_bcs(self, part_tree, comm):
+    bc_ymin = PT.get_node_from_name(part_tree, 'Ymin')
+    bc_ymax = PT.get_node_from_name(part_tree, 'Ymax')
+    bc_xmax = PT.get_node_from_name(part_tree, 'Xmax')
+    if comm.Get_rank() == 0:
+      assert (PT.get_child_from_name(bc_ymin, 'PointList')[1] == [[6,7,8]]).all()
+      assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[11]]).all()
+      assert bc_ymax is None
+    elif comm.Get_rank() == 1:
+      assert (PT.get_child_from_name(bc_ymax, 'PointList')[1] == [[5,6,7]]).all()
+      assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[9,10]]).all()
+      assert bc_ymin is None
 
   @pytest.mark.parametrize("output_jn_loc", ["Vertex", "FaceCenter"])
   def test_output_loc(self, output_jn_loc, comm):
@@ -84,18 +104,19 @@ class Test_split_elt_2d:
       for gc in PT.iter_nodes_from_label(part_tree, 'GridConnectivity_t'):
         assert PT.Subset.GridLocation(gc) == "Vertex"
 
-  def test_output_elts(self, comm):
+  @pytest.mark.parametrize("output_connectivity", ["Element", "NGon"])
+  def test_output_elts(self, output_connectivity, comm):
     dist_tree = self.get_distree(comm)
-    part_tree = partition_dist_tree(dist_tree, comm, output_connectivity="NGon")
+    part_tree = partition_dist_tree(dist_tree, comm, output_connectivity=output_connectivity)
 
-    bar  = PT.get_node_from_name(part_tree, 'BAR_2.0')
-    ngon = PT.get_node_from_name(part_tree, 'NGonElements')
-    assert PT.get_node_from_name(part_tree, 'QUAD_4*') is None
-    assert PT.get_node_from_name(part_tree, 'NFaceElements') is None
-
-    # Rename to use previous check fct
-    bar[0] = 'EdgeElements'
-    Test_split_ngon_2d.check_elts(self, part_tree, comm)
+    if output_connectivity == 'Element':
+      self.check_elts(part_tree, comm)
+      self.check_bcs(part_tree, comm)
+    if output_connectivity == 'NGon':
+      assert PT.get_node_from_name(part_tree, 'QUAD_4*') is None
+      assert PT.get_node_from_name(part_tree, 'NFaceElements') is None
+      Test_split_ngon_2d.check_elts(self, part_tree, comm)
+      Test_split_ngon_2d.check_bcs(self, part_tree, comm)
     
 @pytest_parallel.mark.parallel(2)
 class Test_split_ngon_3d:

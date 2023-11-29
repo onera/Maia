@@ -170,7 +170,8 @@ def test_partial_match(comm):                                 #
 
 
 @pytest_parallel.mark.parallel(1)
-def test_multiple_match(comm):                                      
+@pytest.mark.parametrize("out_loc", ['Vertex', 'FaceCenter'])
+def test_multiple_match(out_loc, comm):                                      
   # Can not generate ngon with n_vtx != cst so convert it from S -_-
   dcubes = [dcube_struct_generate([5,3,3], [2.,1,1], [0,0,0], comm),  #    __ __
             dcube_struct_generate(3, 1, [0,0,1], comm),               #   |  |  |
@@ -190,15 +191,21 @@ def test_multiple_match(comm):
     zmin = PT.get_node_from_name(zone, 'Zmin')
     PT.new_child(zmin, 'FamilyName', 'FamilyName_t', 'matchB')
 
-  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm)
+  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm, location=out_loc)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 15
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 4
 
-  assert (PT.get_node_from_predicates(zones[0], ['Zmax_0', 'PointList'])[1] == [[61,62,65,66]]).all()
-  assert (PT.get_node_from_predicates(zones[0], ['Zmax_1', 'PointList'])[1] == [[63,64,67,68]]).all()
-  assert (PT.get_node_from_predicates(zones[1], ['Zmin_0', 'PointList'])[1] == [[25,26,27,28]]).all()
-  assert (PT.get_node_from_predicates(zones[2], ['Zmin_0', 'PointList'])[1] == [[25,26,27,28]]).all()
+  if out_loc == 'FaceCenter':
+    assert (PT.get_node_from_predicates(zones[0], ['Zmax_0', 'PointList'])[1] == [[61,62,65,66]]).all()
+    assert (PT.get_node_from_predicates(zones[0], ['Zmax_1', 'PointList'])[1] == [[63,64,67,68]]).all()
+    assert (PT.get_node_from_predicates(zones[1], ['Zmin_0', 'PointList'])[1] == [[25,26,27,28]]).all()
+    assert (PT.get_node_from_predicates(zones[2], ['Zmin_0', 'PointList'])[1] == [[25,26,27,28]]).all()
+  elif out_loc == 'Vertex':
+    assert (PT.get_node_from_predicates(zones[0], ['Zmax_0', 'PointList'])[1] == [[31,32,33,36,37,38,41,42,43]]).all()
+    assert (PT.get_node_from_predicates(zones[0], ['Zmax_1', 'PointList'])[1] == [[33,34,35,38,39,40,43,44,45]]).all()
+    assert (PT.get_node_from_predicates(zones[1], ['Zmin_0', 'PointList'])[1] == [[1,2,3,4,5,6,7,8,9]]).all()
+    assert (PT.get_node_from_predicates(zones[2], ['Zmin_0', 'PointList'])[1] == [[1,2,3,4,5,6,7,8,9]]).all()
 
 
 

@@ -6,6 +6,8 @@ from maia.transfer import utils     as te_utils,\
 
 from maia.transfer.part_to_dist import index_exchange as IPTB
 
+import Pypdm.Pypdm as PDM
+
 def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   """
   Transfert all the data included in GridCoordinates_t nodes from a distributed
@@ -31,6 +33,46 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       shaped_data = data[ipart].reshape(PT.Zone.VertexSize(part_zone), order='F')
       PT.new_DataArray(data_name, shaped_data, parent=part_gc)
 
+def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
+  """
+  Same as dist_coords_to_part_coords, but with the multiblock version (only one collective call)
+  """
+  block_distris = []
+  part_lngn = []
+  vtx_offset = 0
+
+  dist_data = dict()
+  for dist_zone, part_zones in zip(dist_zones, part_zones_per_dom):
+
+    dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
+    for grid_co in PT.iter_children_from_label(dist_gc, 'DataArray_t'):
+      try:
+        dist_data[PT.get_name(grid_co)].append(grid_co[1])
+      except KeyError:
+        dist_data[PT.get_name(grid_co)] = [grid_co[1]]
+
+    vtx_distrib = MT.getDistribution(dist_zone, 'Vertex')[1]
+    block_distris.append(par_utils.partial_to_full_distribution(vtx_distrib, comm))
+
+    # Collect and shift LNToGN
+    for part_zone in part_zones:
+      part_lngn.append(MT.getGlobalNumbering(part_zone, 'Vertex')[1] + vtx_offset)
+
+    vtx_offset += PT.Zone.n_vtx(dist_zone)
+
+  part_data = dict()
+  MBTP = PDM.MultiBlockToPart(block_distris, part_lngn, comm)
+  for key, d_data in dist_data.items():
+    part_data[key] = MBTP.exchange_field(d_data)[1]
+  
+  i_part = 0
+  for part_zones in part_zones_per_dom: 
+    for part_zone in part_zones:
+      part_gc = PT.new_node('GridCoordinates', 'GridCoordinates_t', parent=part_zone)
+      for data_name, data in part_data.items():
+        shaped_data = data[i_part].reshape(PT.Zone.VertexSize(part_zone), order='F')
+        PT.new_DataArray(data_name, shaped_data, parent=part_gc)
+      i_part += 1
 
 
 def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):

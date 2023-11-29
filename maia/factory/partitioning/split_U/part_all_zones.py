@@ -79,24 +79,15 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
                                     dtype='int32', order='c')
   elif "HPC" in reorder_options['cell_renum_method']:
     pdm_part_tool     = part_tool_dic[reorder_options['graph_part_tool']]
-    cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],
-                                    0, # is_asynchrone
-                                    1,
-                                    reorder_options['n_face_per_pack'],
-                                    pdm_part_tool,
-                                    1], # n_depth
-                                    dtype='int32', order='c')
-    # cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],  # n_cell_per_cache_wanted
-    #                                 0,                                    # is_asynchrone
-    #                                 1,                                    # is_vectorisation
-    #                                 reorder_options['n_face_per_pack'],   # n_vect_face
-    #                                 pdm_part_tool,                        # split_method
-    #                                 1,                                    # n_depth
-    #                                 1,                                    # is_gauss_seidel
-    #                                 1,                                    # is_gauss_seidel_cell_face
-    #                                 1,                                    # enforce_rank_in_subdomain
-    #                                 1],
-    #                                   dtype='int32', order='c')
+    cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],  # n_cell_per_cache_wanted
+                                    0,                                    # is_asynchrone
+                                    1,                                    # is_vectorisation
+                                    reorder_options['n_face_per_pack'],   # n_vect_face
+                                    pdm_part_tool,                        # split_method
+                                    1,                                    # n_depth
+                                    1,                                    # is_gauss_seidel
+                                    1,                                    # is_gauss_seidel_cell_face
+                                    1], dtype=np.int32)                   # enforce_rank_in_subdomain
   else:
     cacheblocking_props = None
   multipart.multipart_set_reordering(-1,

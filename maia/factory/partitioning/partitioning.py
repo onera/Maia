@@ -8,6 +8,8 @@ from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
 from maia.utils     import logging as mlog
 
+from maia.transfer.dist_to_part import data_exchange  as BTP
+
 from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
@@ -124,14 +126,11 @@ def _partitioning(dist_tree,
   is_s_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Structured'
   is_u_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
 
-  u_zones = PT.get_nodes_from_predicate(dist_tree, is_u_zone, depth=2)
-  s_zones = PT.get_nodes_from_predicate(dist_tree, is_s_zone, depth=2)
-
-
   MJT.add_joins_donor_name(dist_tree, comm)
 
-
   part_tree = PT.new_CGNSTree()
+  dist_zones_S = []
+  part_zones_S = []
   for dist_base in PT.iter_all_CGNSBase_t(dist_tree):
 
     part_base = PT.new_node(PT.get_name(dist_base), 'CGNSBase_t', PT.get_value(dist_base), parent=part_tree)
@@ -140,13 +139,28 @@ def _partitioning(dist_tree,
       if PT.get_label(node) != "Zone_t":
         PT.add_child(part_base, node)
 
-    #Split S zones
+    #Split S zones : we create a subcom for each zone, to avoid serialization of part_zone
+    sub_comms = []
     for zone in PT.iter_children_from_predicate(dist_base, is_s_zone):
       zone_path = PT.get_name(dist_base) + '/' + PT.get_name(zone)
       weights = dzone_to_weighted_parts.get(zone_path, [])
-      s_parts = partS.part_s_zone(zone, weights, comm)
-      for part in s_parts:
-        PT.add_child(part_base, part)
+      sub_comms.append(comm.Split(len(weights)>0))
+
+    for zone, sub_comm in zip(PT.iter_children_from_predicate(dist_base, is_s_zone), sub_comms):
+      zone_path = PT.get_name(dist_base) + '/' + PT.get_name(zone)
+      weights = dzone_to_weighted_parts.get(zone_path, [])
+      if len(weights) > 0:
+        s_parts = partS.part_s_zone(zone, weights, sub_comm, comm.Get_rank())
+        for part in s_parts:
+          PT.add_child(part_base, part)
+      else:
+        s_parts = []
+      part_zones_S.append(s_parts)
+      dist_zones_S.append(zone)
+
+  # Transfert coords for S zones, all at once to avoid multiple block_to_parts
+  BTP.dist_coords_to_part_coords_m(dist_zones_S, part_zones_S, comm)
+
 
   all_s_parts = PT.get_all_Zone_t(part_tree) #At this point we only have S parts
   partS.split_original_joins_S(all_s_parts, comm)
@@ -154,7 +168,8 @@ def _partitioning(dist_tree,
   #Split U zones (all at once)
   base_to_blocks_u = {PT.get_name(base) : [zone for zone in PT.get_all_Zone_t(base) if is_u_zone(zone)] \
       for base in PT.get_all_CGNSBase_t(dist_tree)}
-  if len(u_zones) > 0:
+  has_u_zones = any([values != [] for values in base_to_blocks_u.values()])
+  if has_u_zones:
     base_to_parts_u = partU.part_U_zones(base_to_blocks_u, dzone_to_weighted_parts, comm, part_options)
     for base, u_parts in base_to_parts_u.items():
       part_base = PT.get_child_from_name(part_tree, base)

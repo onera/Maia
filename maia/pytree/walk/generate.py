@@ -1,6 +1,8 @@
 import sys
 from   functools import partial
 
+from maia.pytree.typing import *
+
 from .generate_utils import generate_functions, camel_to_snake
 from .predicate import match_name
 from .predicate import match_str_label
@@ -12,6 +14,8 @@ from .             import walkers_api as WAPI
 from .remove_nodes import rm_children_from_predicate
 from .remove_nodes import keep_children_from_predicate
 from .remove_nodes import rm_nodes_from_predicate
+
+from maia.pytree.compare import CGNSNodeFromPredicateNotFoundError
 
 def _update_module_attributes(new_functions):
   for name, func in new_functions.items():
@@ -47,7 +51,7 @@ for base_function in [WAPI.get_node_from_predicates, WAPI.iter_nodes_from_predic
 base_functions = [partial(WAPI.get_nodes_from_predicate, explore='deep'),
                   partial(WAPI.iter_nodes_from_predicate, explore='deep')]
 easypredicates = dict()
-easylabels = ['CGNSBase_t', 'Zone_t', 'BC_t', 'Family_t']
+easylabels = ['BC_t', 'Family_t']
 for label in easylabels:
   easypredicates['Label'+ label] = (partial(match_str_label, label=label), tuple())
 
@@ -68,18 +72,27 @@ for rm_function in [rm_nodes_from_predicate, rm_children_from_predicate, keep_ch
   generated = generate_functions(rm_function, maxdepth=0, child=False)
   _update_module_attributes(generated)
 
-def get_node_from_path(root, path, ancestors=False):
+def get_node_from_path(root:CGNSTree, path:str) -> Optional[CGNSTree]:
   if path == '':
-    return [root] if ancestors else root
-  nodes = WAPI.get_nodes_from_predicates(root, path, depth=[1,1], ancestors=ancestors)
-  if len(nodes) == 0 and ancestors:
-    return []
-  if len(nodes) == 1:
-    return nodes[0]
-  elif len(nodes) > 1:
-    raise RuntimeError(f"Multiple nodes founds for path {path}")
+    return root
+  names = path.split('/')
+  node = root
+  for i, name in enumerate(names):
+    try:
+      node = next((c for c in node[2] if c[0] == name))
+    except StopIteration:
+      return
+  return node
 
-def rm_node_from_path(root, path):
+def request_node_from_path(root:CGNSTree, path:str, default:CGNSTree=None) -> CGNSTree:
+  node = get_node_from_path(root, path)
+  if node is not None:
+    return node
+  if default:
+    return default
+  raise CGNSNodeFromPredicateNotFoundError(root, path)
+
+def rm_node_from_path(root:CGNSTree, path:str):
   from maia.pytree.path_utils import path_head, path_tail
   if not '/' in path:
     rm_children_from_name(root, path)
@@ -87,7 +100,27 @@ def rm_node_from_path(root, path):
     parent = get_node_from_path(root, path_head(path))
     rm_nodes_from_name(parent, path_tail(path))
 
-def get_all_subsets(root,filter_loc=None):
+def get_all_Zone_t(root:CGNSTree) -> List[CGNSTree]:
+  return list(iter_all_Zone_t(root))
+
+def iter_all_Zone_t(root:CGNSTree) -> Iterator[CGNSTree]:
+  import maia.pytree as PT
+  root_label = PT.get_label(root)
+  if root_label == 'CGNSBase_t':
+    yield from PT.iter_children_from_label(root, 'Zone_t')
+  elif root_label == 'CGNSTree_t':
+    for base in PT.iter_children_from_label(root, 'CGNSBase_t'):
+      yield from PT.iter_children_from_label(base, 'Zone_t')
+
+def get_all_CGNSBase_t(root:CGNSTree) -> List[CGNSTree]:
+  return list(iter_all_CGNSBase_t(root))
+
+def iter_all_CGNSBase_t(root:CGNSTree) -> Iterator[CGNSTree]:
+  import maia.pytree as PT
+  if PT.get_label(root) == 'CGNSTree_t':
+    yield from PT.iter_children_from_label(root, 'CGNSBase_t')
+
+def get_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> List[CGNSTree]:
   """
   Search and collect all the subsets nodes found under root and the root
   itself if it is a subset
@@ -96,7 +129,7 @@ def get_all_subsets(root,filter_loc=None):
   """
   return list(iter_all_subsets(root,filter_loc))
 
-def iter_all_subsets(root,filter_loc=None):
+def iter_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> Iterator[CGNSTree]:
   """
   Search and iter on all the subsets nodes found under root
   If filter_loc list is not None, select only the subsets nodes of given
