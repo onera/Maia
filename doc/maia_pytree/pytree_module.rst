@@ -23,7 +23,7 @@ This module tries to achieve the following goals:
 By avoiding compiled code and minimizing external dependencies,
 ``maia.pytree`` should work on every machine.
 
-.. TODO Image d'une installlation facile avec PIP
+.. image:: ./images/pip.png
 
 .. rubric:: Committed to CGNS standard
 
@@ -36,21 +36,24 @@ In addition, it exploits the
 <https://cgns.github.io/CGNS_docs_current/sids/index.html>`_
 to propose relevant actions on specific nodes.
 
-.. TODO Image d'un warning maia quand on fait des trucs illégaux
+..  RuntimeWarning: Attaching node BC (BC_t) under a Zone_t parent is not SIDS compliant. Admissible parent labels are ['ZoneBC_t'].
+
+.. image:: ./images/sids_warning.png
+
 
 .. rubric:: Modern python
 
 We hope that type hints, detailled docstrings and adhesion to PEP8 guidelines 
 will make your user experience of ``maia.pytree`` as pleasant as possible.
 
-.. TODO Screen vscode (git si facile à faire)
+.. image:: ./images/vscode_hints.png
 
 .. rubric:: Code quality
 
 Thoroughly tested functionalities, continuous integration setup and automatically
 tested documentation make ``maia.pytree`` as reliable as possible.
 
-.. TODO Screen pipeline gitlab avec coverage (ou badges gitlab)
+.. image:: ./images/badges.svg
 
 .. note:: This module is still under construction. We are trying our best to fulfill the above goals.
   Contributions and feedbacks are welcomed on
@@ -71,8 +74,8 @@ functions are accessible from the module namespace, shortened as ``PT``:
 Code snippets appearing in this
 documentation follow the doctest formatting:
 
->>> print(PT.__name__)   # Command prompted
-'maia.pytree'            # Expected output
+>>> PT.__name__   # Command prompted
+'maia.pytree'     # Expected output
 
 
 The features are regrouped in the following sections:
