@@ -1,7 +1,7 @@
 .. _pt_inspect:
 
-Node inspect
-============
+Node inspection
+===============
 
 To avoid redoing several times the most commun operations, ``maia.pytree`` provide
 several functions extracting usefull data from a specific kind of CGNSNode.

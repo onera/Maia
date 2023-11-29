@@ -84,8 +84,10 @@ The features are regrouped in the following sections:
 
 - :ref:`Basic node editing <pt_node_edit>` : how to edit the information of a
   given CGNSNode
-- :ref:`Node inspect <pt_inspect>` : how to get label-specific information from
+- :ref:`Node inspection <pt_inspect>` : how to get label-specific information from
   a CGNSNode
+- :ref:`Node creation presets <pt_presets>` : how to create label-specific CGNSNodes with 
+  suitable options
 - :ref:`Node searching <pt_node_search>` : how to search specific
   nodes in a CGNSTree from various criteria
 
@@ -99,3 +101,4 @@ The features are regrouped in the following sections:
   basic
   search
   inspect
+  presets
