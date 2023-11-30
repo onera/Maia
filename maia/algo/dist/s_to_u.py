@@ -238,7 +238,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
   bc_u = PT.new_node(PT.get_name(bc_s), PT.get_label(bc_s), PT.get_value(bc_s))
   PT.new_GridLocation(output_loc, parent=bc_u)
-  PT.new_PointList(value=point_list, parent=bc_u)
+  PT.new_IndexArray(value=point_list, parent=bc_u)
 
   # Manage datasets -- Data is already distributed, we just have to retrive the PointList
   # of the corresponding elements following same procedure than BCs
@@ -263,7 +263,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     if not (is_related and ds_output_loc == output_loc): #Otherwise, point list has already been computed
       ds_pl = compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, ds_output_loc, bnd_axis)
       PT.update_child(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
-      PT.new_PointList(value=ds_pl, parent=bcds)
+      PT.new_IndexArray(value=ds_pl, parent=bcds)
       MT.newDistribution({'Index' : ds_distri}, parent=bcds)
     PT.rm_children_from_name(bcds, 'PointRange')
     PT.add_child(bc_u, bcds)
@@ -366,8 +366,8 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
     point_list, point_list_opp = point_list_opp_loc, point_list_loc
 
   gc_u = PT.new_GridConnectivity(PT.get_name(gc_s), PT.get_value(gc_s), type='Abutting1to1', loc=output_loc)
-  PT.new_PointList('PointList'     , point_list,     parent=gc_u)
-  PT.new_PointList('PointListDonor', point_list_opp, parent=gc_u)
+  PT.new_IndexArray('PointList'     , point_list,     parent=gc_u)
+  PT.new_IndexArray('PointListDonor', point_list_opp, parent=gc_u)
   MT.newDistribution({'Index' : np.array([*gc_range, gc_size.prod()], pdm_gnum_dtype)}, parent=gc_u)
   #Copy these nodes to gc_u
   allowed_types = ['GridConnectivityProperty_t']
@@ -525,7 +525,7 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
           # Hybrid joins should be here : we just have to translate the PL ijk into face index
           is_abutt1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
-            opp_zone_path = PT.getZoneDonorPath(PT.get_name(base_s), gc_s)
+            opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base_s))
             opp_zone = PT.get_node_from_path(disttree_s, opp_zone_path)
             if PT.Zone.Type(opp_zone) != 'Unstructured':
               continue
@@ -541,7 +541,7 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
             # Now update PointListDonor of the opposite (already U) join
             for opp_jn in PT.get_nodes_from_predicates(opp_zone, 'GridConnectivity_t'):
               opp_base_name = PT.path_head(opp_zone_path,1)
-              if PT.getZoneDonorPath(opp_base_name, opp_jn) == zone_path:
+              if PT.GridConnectivity.ZoneDonorPath(opp_jn, opp_base_name) == zone_path:
                 pld_n = PT.get_child_from_name(opp_jn, 'PointListDonor')
                 if pld_n is not None and np.array_equal(pld_n[1], pl):
                    PT.update_child(opp_jn, 'PointListDonor', value=pl_idx)

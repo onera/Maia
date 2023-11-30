@@ -42,6 +42,7 @@ def test_convert_value():
   node = ['FakeNode', converted, [], 'FakeNode_t']
   assert NA.get_value(node) == ["Spaaaaaam", "eggs"]
   assert NA._convert_value([]).shape == (0,)
+  assert NA._convert_value([]).dtype == np.int32
   assert NA._convert_value([[]]).shape == (1,0,)
   converted = NA._convert_value([13, 14, 15])
   assert (converted == np.array([13, 14, 15])).all() and converted.dtype==np.int32

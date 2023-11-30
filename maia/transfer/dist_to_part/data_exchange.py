@@ -188,7 +188,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
   for mask_zsr in PT.get_children(mask_tree):
     d_zsr = PT.get_child_from_name(dist_zone, PT.get_name(mask_zsr)) #True ZSR
     # Search matching region
-    matching_region_path = PT.getSubregionExtent(d_zsr, dist_zone)
+    matching_region_path = PT.Subset.ZSRExtent(d_zsr, dist_zone)
     matching_region = PT.get_node_from_path(dist_zone, matching_region_path)
     assert matching_region is not None
 

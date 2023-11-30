@@ -136,7 +136,7 @@ def add_missing_pr_in_bcdataset(tree):
       bcds_point_range             = bc_point_range.copy(order='F')
       bcds_point_range[:,1]       -= 1
       bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]
-      new_pr = PT.new_PointRange(value=bcds_point_range, parent=bcds)
+      new_pr = PT.new_IndexRange(value=bcds_point_range, parent=bcds)
       pr_added = True
       # logging.warning(f"Warning -- PointRange has been added on BCDataSet {zone[0]}/{bc[0]}/{bcds[0]}"
              # " since data shape was no consistent with BC PointRange")

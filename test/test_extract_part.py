@@ -46,7 +46,6 @@ def initialize_bc(zone, bc_name):
     bc_cfz = cfz[bc_pl-1]
     bc_dataset_n = PT.new_node(name='BCDataSet'  , label='BCDataSet_t', value='UserDefined', parent=bc_n)
     neuma_data_n = PT.new_node(name='NeumannData', label='BCData_t'   , value=None         , parent=bc_dataset_n)
-    grid_loc_n   = PT.new_GridLocation('FaceCenter', parent=neuma_data_n)
     sphere       = PT.new_DataArray('sphere_bc'  , bc_cfx**2 + bc_cfy**2 + bc_cfz**2 - 1, parent=neuma_data_n)
     cylinder     = PT.new_DataArray('cylinder_bc', bc_cfx**2 + bc_cfy**2             - 1, parent=neuma_data_n)
 

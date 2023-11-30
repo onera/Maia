@@ -142,7 +142,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   bcds_list = PT.getChildrenFromPredicates(zone, ['ZoneBC_t', 'BC_t', is_bcds])
   zsr_list  = PT.getChildrenFromPredicate(zone, is_zsr)
   jn_list   = PT.getChildrenFromPredicates(zone, ['ZoneGridConnectivity_t', is_jn])
-  i_jn_list = [jn for jn in jn_list if PT.getZoneDonorPath(base_name, jn) == base_name + '/'+ PT.get_name(zone)]
+  i_jn_list = [jn for jn in jn_list if PT.GridConnectivity.ZoneDonorPath(jn, base_name) == base_name + '/'+ PT.get_name(zone)]
 
   #Loop in same order using to get apply pl using generic func
   all_nodes_and_queries = [
@@ -156,8 +156,8 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 
   #Trick to add a PL to each subregion to be able to use same algo
   for zsr in zsr_list:
-    if PT.getSubregionExtent(zsr, zone) != PT.get_name(zsr):
-      PT.add_child(zsr, PT.get_node_from_path(zone, PT.getSubregionExtent(zsr, zone) + '/PointList'))
+    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
+      PT.add_child(zsr, PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr, zone) + '/PointList'))
 
   #Get new index for every PL at once
   all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0] for fs in all_nodes]
@@ -179,7 +179,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 
   #Cleanup after trick
   for zsr in zsr_list:
-    if PT.getSubregionExtent(zsr, zone) != PT.get_name(zsr):
+    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
       PT.rm_children_from_name(zsr, 'PointList')
 
 
@@ -309,7 +309,7 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
       assert PT.get_child_from_label(o_gc, 'DataArray_t') is None, \
           "Can not reorder a GridConnectivity PointList to which data is related"
       for zsr in PT.iter_children_from_label(o_zone, 'ZoneSubRegion_t'):
-        assert PT.getSubregionExtent(zsr, o_zone) != PT.get_name(o_zgc) + '/' + PT.get_name(o_gc), \
+        assert PT.Subset.ZSRExtent(zsr, o_zone) != PT.get_name(o_zgc) + '/' + PT.get_name(o_gc), \
             "Can not reorder a GridConnectivity PointList to which data is related"
     except KeyError:
       pass

@@ -289,7 +289,7 @@ class WallDistance:
           child_list=['GridConnectivityProperty_t', 'GridConnectivityType_t'],
           merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
 
-      all_periodicities, _ = PT.find_periodic_jns(skeleton_tree)
+      all_periodicities, _ = PT.Tree.find_periodic_jns(skeleton_tree)
       # Filter periodicities to get only one over two jns
       for perio_val in all_periodicities:
         for u_perio in self.periodicities:
@@ -300,7 +300,7 @@ class WallDistance:
       if len(self.periodicities) == 0:
         self.perio = False #Disable perio to avoid unecessary loops
 
-    else:
+    elif self.perio: #Propagation + perio : not managed
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
       self.perio = False
         

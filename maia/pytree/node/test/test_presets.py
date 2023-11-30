@@ -9,6 +9,14 @@ from maia.pytree import walk as W
 
 from maia.pytree.node import presets
 
+def test_check_parent_label():
+  base = presets.new_CGNSBase()
+  tree = presets.new_CGNSTree()
+  presets._check_parent_label(base, tree, ['CGNSTree_t'])
+  presets._check_parent_label(base, None, [])
+  with pytest.warns(RuntimeWarning):
+    presets._check_parent_label(base, tree, ['BC_t'])
+
 def test_new_CGNSTree():
   tree = presets.new_CGNSTree(version=3.1)
   expected = parse_yaml_cgns.to_node("""
@@ -177,18 +185,18 @@ def test_new_GC1to1():
   assert is_same_tree(expected, gc)
   assert is_same_tree(expected, gc)
 
-def test_new_PointList():
-  node = presets.new_PointList('MyPointList', [1,2,3])
+def test_new_IndexArray():
+  node = presets.new_IndexArray('MyPointList', [1,2,3])
   assert N.get_name(node)  == 'MyPointList'
   assert N.get_label(node) == 'IndexArray_t'
   assert np.array_equal(N.get_value(node), [1,2,3])
 
-def test_new_PointRange():
-  node = presets.new_PointRange('MyPointRange', [[1,10], [1,10], [1,1]])
+def test_new_IndexRange():
+  node = presets.new_IndexRange('MyPointRange', [[1,10], [1,10], [1,1]])
   assert N.get_name(node)  == 'MyPointRange'
   assert N.get_label(node) == 'IndexRange_t'
   assert N.get_value(node).shape == (3,2)
-  node2 = presets.new_PointRange('MyPointRange', [1,10, 1,10, 1,1])
+  node2 = presets.new_IndexRange('MyPointRange', [1,10, 1,10, 1,1])
   assert is_same_tree(node, node2)
 
 def test_new_GridLocation():

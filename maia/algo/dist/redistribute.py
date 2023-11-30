@@ -176,7 +176,7 @@ def redistribute_zone(zone, distribution, comm):
   zone_subregions = PT.get_children_from_label(zone, 'ZoneSubRegion_t')
   for zone_subregion in zone_subregions:
     # Trick if related to an other node -> add pl
-    matching_region_path = PT.getSubregionExtent(zone_subregion, zone)
+    matching_region_path = PT.Subset.ZSRExtent(zone_subregion, zone)
     if matching_region_path != PT.get_name(zone_subregion):
       distri_node = PT.get_node_from_path(zone, matching_region_path + '/:CGNS#Distribution')
       PT.add_child(zone_subregion, PT.deep_copy(distri_node))

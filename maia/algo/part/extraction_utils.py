@@ -38,7 +38,7 @@ def get_relative_pl(container, part_zone):
   if PT.get_label(container)=="FlowSolution_t":
     relative_n = container
   else:
-    relative_n = PT.get_node_from_path(part_zone, PT.getSubregionExtent(container, part_zone))
+    relative_n = PT.get_node_from_path(part_zone, PT.Subset.ZSRExtent(container, part_zone))
   return PT.get_child_from_name(relative_n, "PointList")
 
 def get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm):

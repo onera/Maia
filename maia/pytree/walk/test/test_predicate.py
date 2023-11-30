@@ -20,6 +20,7 @@ def test_matches():
   assert P.match_str_label(nface, 'Elements_t')
   assert P.match_cgk_label(nface, CGL.Elements_t)
   assert P.match_label(nface, 'Elements_t')
+  assert P.match_label(nface, 'Elemen*')
   assert P.match_label(nface, CGL.Elements_t)
 
   assert P.match_name_value(nface, 'NFace', np.array([23,0]))

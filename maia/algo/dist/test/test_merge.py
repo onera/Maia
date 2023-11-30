@@ -51,14 +51,14 @@ def test_merge_zones_L(comm, merge_bc_from_name):               #      |  |
       for name in [':CGNS#Distribution', 'GridLocation', 'PointList']:
         PT.add_child(gc, PT.get_child_from_name(bc, name))
       ref_bc = PT.get_node_from_name(tree, f'{jn_opp[izone][j]}')
-      PT.new_PointList('PointListDonor', PT.get_child_from_name(ref_bc, 'PointList')[1].copy(), parent=gc)
+      PT.new_IndexArray('PointListDonor', PT.get_child_from_name(ref_bc, 'PointList')[1].copy(), parent=gc)
 
   #Setup some data
   for i_zone, zone in enumerate(zones):
     sol = PT.new_FlowSolution('FlowSolution', loc='Vertex', parent=zone)
     PT.new_DataArray('DomId', (i_zone+1)*np.ones(n_vtx**3, int), parent=sol)
     pl_sol_full = PT.new_FlowSolution('PartialSol', loc='CellCenter')
-    PT.new_PointList('PointList', value=np.array([[8]], pdm_dtype), parent=pl_sol_full)
+    PT.new_IndexArray('PointList', value=np.array([[8]], pdm_dtype), parent=pl_sol_full)
     PT.new_DataArray('SpecificSol', np.array([3.14]), parent=pl_sol_full)
     PT.add_child(zone, F2D.distribute_pl_node(pl_sol_full, comm))
 
@@ -124,7 +124,7 @@ def test_merge_zones_I(comm, merge_only_two):
       for name in [':CGNS#Distribution', 'GridLocation', 'PointList']:
         PT.add_child(gc, PT.get_child_from_name(bc, name))
       ref_bc = PT.get_node_from_name(tree, f'{jn_opp[izone][j]}')
-      PT.new_PointList('PointListDonor', PT.get_child_from_name(ref_bc, 'PointList')[1].copy(), parent=gc)
+      PT.new_IndexArray('PointListDonor', PT.get_child_from_name(ref_bc, 'PointList')[1].copy(), parent=gc)
   # Add periodic between first and last
   jn_cur = ['Xmin', 'Xmax'] #To copy to create jn
   jn_opp = ['Xmax', 'Xmin'] #To copy to create pld
@@ -136,7 +136,7 @@ def test_merge_zones_I(comm, merge_only_two):
     for name in [':CGNS#Distribution', 'GridLocation', 'PointList']:
       PT.add_child(gc, PT.get_child_from_name(bc, name))
     ref_bc = PT.get_node_from_name(tree, f'{jn_opp[izone]}')
-    PT.new_PointList('PointListDonor', PT.get_child_from_name(ref_bc, 'PointList')[1].copy(), parent=gc)
+    PT.new_IndexArray('PointListDonor', PT.get_child_from_name(ref_bc, 'PointList')[1].copy(), parent=gc)
     sign = 1 if izone == 0 else -1
     PT.new_GridConnectivityProperty(periodic={'translation' : [sign*3., 0, 0]}, parent=gc)
   for izone, zone in zip(range(2), [zones[0], zones[-1]]):

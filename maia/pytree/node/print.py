@@ -142,15 +142,68 @@ def print_tree(tree:CGNSTree,
                max_depth:int=1000,
                colors:bool=True,
                print_if:Callable[[CGNSTree], bool]=lambda n: True):
-  """ Print the arborescence of a CGNSTree.
+  """
+  print_tree(tree, out=sys.stdout, **kwargs)
+
+  Display the arborescence of a CGNSTree
+
+  By default, display will be done in the standard output. It is possible to print
+  in a file by setting out to either a string or a python file object:
+
+  ::
+
+    PT.print_tree(tree)                # Print tree in stdout
+    PT.print_tree(tree, 'tree.txt')    # Print tree in a tree.txt file
+    with open('out.txt', 'w') as f:
+        PT.print_tree(tree, f)         # Print tree in f
+
+  In addition, the following kwargs can be used to parametrize the output:
+
+  - ``colors`` (bool) -- If False, disable the colors in rendered text. Default to ``True``
+    for stdout or stderr output, and ``False`` for file output.
+  - ``verbose`` (bool) -- If True, data arrays are displayed (using numpy display settings).
+    Otherwise, small arrays are printed, and large arrays only show their size.
+    Defaults to ``False``.
+  - ``max_depth`` (int) -- Stop printing once max_depth is reached. By default, displays all nodes.
+  - ``print_if`` (callable) -- If set, it must be a function with the signature : ``f(n:CGNSTree) -> bool``.
+    The branches not leading to a node that evaluates to ``True`` are removed from displayed tree.
+
+
+
 
   Args:
-    tree      (CGNSTree) : CGNSTree or node to be printed
-    out       ()         : Where to print
-    verbose   (bool)     : If True, dataset are printed
-    max_depth (int)      : Stop printing once max_depth is reached
-    colors    (bool)     : If False, discard colors in output
-    print_if (callable)  : Nodes are printed only if print_if returns True on one of their children
+    tree      (CGNSTree) : Node to be printed
+    out       (TextIO)   : Where to print
+  Examples:
+    >>> tree = PT.yaml.parse_yaml_cgns.to_node('''
+    ... Base CGNSBase_t [3,3]:
+    ...   Wall Family_t:
+    ...   MyZone Zone_t I4 [[16,6,0]]:
+    ...     GridCoordinates GridCoordinates_t:
+    ...       CoordinateX DataArray_t [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]:
+    ... ''')
+    >>> PT.print_tree(tree)
+    Base CGNSBase_t I4 [3 3]
+    ├───Wall Family_t 
+    └───MyZone Zone_t I4 [[16  6  0]]
+        └───GridCoordinates GridCoordinates_t 
+            └───CoordinateX DataArray_t I4 (16,)
+    >>> PT.print_tree(tree, max_depth=1)
+    Base CGNSBase_t I4 [3 3]
+    ├───Wall Family_t 
+    └───MyZone Zone_t I4 [[16  6  0]]
+        ╵╴╴╴ (1 child masked)
+    
+    On the next example, notice that the branches not leading to 'CoordinateX' are
+    not printed; and, because of verbose option, all the coordinate array is displayed.
+
+    >>> PT.print_tree(tree, verbose=True, 
+    ...               print_if=lambda n : PT.get_name(n) == 'CoordinateX')
+    Base CGNSBase_t I4 [3 3]
+    └───MyZone Zone_t I4 [[16  6  0]]
+        └───GridCoordinates GridCoordinates_t 
+            └───CoordinateX DataArray_t I4 (16,)
+                [0 1 2 3 0 1 2 3 0 1 2 3 0 1 2 3]
   """
 
   # TODO : Keeping 1 level of children with print_if is complicated, 
