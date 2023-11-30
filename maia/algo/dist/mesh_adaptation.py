@@ -102,10 +102,6 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
   input_zone = PT.get_child_from_label(input_base, 'Zone_t')
 
 
-  # > Gathering dist_tree on proc 0
-  maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
-
-
   # > CGNS to meshb conversion
   dicttag_to_bcinfo = list()
 
@@ -128,10 +124,6 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
 
     end = time.time()
     mlog.info(f"Feflo mesh adaptation completed ({end-start:.2f} s)")
-
-
-  # > Recover original dist_tree
-  maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
 
 
   # > Get adapted dist_tree
@@ -282,8 +274,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     bcs_to_constrain = list()
     if comm.rank==0:
       new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, jn_pairs_and_values)
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
-    adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
     bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
 
     end = time.time()
@@ -292,7 +282,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
 
     mlog.info(f"[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
-    # TODO: passer redistribute ici pour cas classique
     adapted_dist_tree = _adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                                 container_names,
                                                 bcs_to_constrain,
@@ -307,8 +296,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
     if comm.rank==0:
       retrieve_initial_domain(adapted_dist_tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve)
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
-    adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
     end = time.time()
     # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
@@ -366,7 +353,13 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
 
   else:
+    # > Gathering dist_tree on proc 0
+    maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
+
     adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts)
     PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
+
+    # > Recover original dist_tree
+    maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
 
   return adapted_dist_tree
