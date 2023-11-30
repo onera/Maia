@@ -86,7 +86,7 @@ def update_child(parent:CGNSTree, name:str, label:str=UNSET, value:Any=UNSET, ch
   """
   update_child(parent, name, label=UNSET, value=UNSET, children=UNSET)
 
-  Create a child, or update its attributes
+  Create a child or update its attributes
   
   This is an alternative form of :func:`new_child`, but this function allow the parent node
   to already have a child of the given name: in this case, its attributes are updated.

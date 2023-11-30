@@ -8,10 +8,10 @@ Although any tree could be creating using exclusivelly :func:`~maia.pytree.new_n
 
 In addition of reducing the amount of code to write, it also:
 
-- Hide the node structure details : if you want to create an *Unstructured* zone,
+- hides the node structure details : if you want to create an *Unstructured* zone,
   just tell to new_Zone function: you don't need to know that this information
   should be stored in a ZoneType node of label ZoneType_t node under the zone;
-- Perform checks to prevent you to create non SIDS compliant nodes.
+- performs checks to prevent you to create non CGNS/SIDS-compliant nodes.
 
 
 Generalities
@@ -38,7 +38,7 @@ FS FlowSolution_t
 ├───Density DataArray_t R8 [1.   1.   1.05]
 └───Temperature DataArray_t R4 [293. 293. 296.]
 
-Notice that values which are not ndarray instance are converted following
+Notice that values which are not numpy array instance are converted following
 :func:`~maia.pytree.set_value` rules.
 
 .. rubric:: Parent label check
@@ -46,7 +46,12 @@ Notice that values which are not ndarray instance are converted following
 All the :func:`new_...` functions (appart from :func:`new_CGNSTree`) take an optionnal
 ``parent`` argument, which can be used to add the created node
 to the parent children list. In this case, a warning will be issued if the hierarchic
-relation is not SIDS compliant.
+relation is not CGNS/SIDS-compliant.
+
+>>> zone = PT.new_Zone()
+>>> bc = PT.new_BC(parent=zone)
+RuntimeWarning: Attaching node BC (BC_t) under a Zone_t parent
+is not SIDS compliant. Admissible parent labels are ['ZoneBC_t'].
 
 
 .. rubric:: Return value

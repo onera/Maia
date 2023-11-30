@@ -24,7 +24,7 @@ nodes have in fact a hierarchic structure, which is why we rather employ the wor
 
 The organisation of this structure (for example: what are the allowed labels
 under each node, or what are the allowed values for each label)
-is defined by the `SIDS
+is defined by the `CGNS/SIDS description
 <https://cgns.github.io/CGNS_docs_current/sids/index.html>`_
 and will not be described here.
 
@@ -34,7 +34,7 @@ defines how to describe a node structure in python.
 ``maia.pytree`` conforms to this mapping which, in short, states that:
 
 - node names and labels are simple ``str`` objects
-- node values can be either ``None``, or a numpy f-contiguous array
+- node values can be either ``None``, or a numpy F-contiguous array
 - nodes are defined by a list following the pattern ``[name, value, children_list, label]``
 
 Node edition
@@ -42,7 +42,7 @@ Node edition
 
 Accessing to the different attributes of a node with the ``[]`` operator
 is possible but error-prone. Consequently, we advice the user to use
-the available get and set functions:
+the available getters and setters:
 
 .. autosummary::
   ~maia.pytree.get_name
@@ -70,22 +70,21 @@ Here is few examples using theses functions:
   >>> PT.set_children(pnode, [node])
   >>> len(PT.get_children(pnode))
   1
-  >>> PT.update_node(node, name="MyNodeUpdated")
+  >>> PT.update_node(node, name="MyUpdatedNode")
   >>> [PT.get_name(n) for n in PT.get_children(pnode)]
-  ['MyNodeUpdated']
+  ['MyUpdatedNode']
 
 Similarly, although trees can be displayed with the :func:`print` function,
 it is preferable to use :func:`~maia.pytree.print_tree` for a better rendering:
 
   >>> print(pnode)
-  >>> print(pnode)
-  ['ParentNode', array([3.14]), [['MyNodeUpdated', array([1, 2, 3], dtype=int32), [], 'UserDefinedData_t']], 'UserDefinedData_t']
+  ['ParentNode', array([3.14]), [['MyUpdatedNode', array([1, 2, 3], dtype=int32), [], 'UserDefinedData_t']], 'UserDefinedData_t']
   >>> PT.print_tree(pnode)
   ParentNode UserDefinedData_t R8 [3.14]
-  └───MyNodeUpdated UserDefinedData_t I4 [1 2 3]
+  └───MyUpdatedNode UserDefinedData_t I4 [1 2 3]
 
 .. seealso:: In practice, it is common to use :ref:`searches <pt_node_search>`
-  to navigate in tree hierarchie, and :ref:`inspection <pt_inspect>` to get
+  to navigate in tree hierarchie and :ref:`inspection <pt_inspect>` to get
   relevant data.
 
 Node creation
@@ -103,13 +102,13 @@ The previous snippet can thus be rewritted in more compact form:
 
   >>> pnode = PT.new_node("ParentNode", "UserDefinedData_t", 3.14)
   >>> node = PT.new_child(pnode, "MyNode", "UserDefinedData_t", [1,2,3])
-  >>> PT.update_node(node, name="MyNodeUpdated")
+  >>> PT.update_node(node, name="MyUpdatedNode")
   >>> PT.print_tree(pnode)
   ParentNode UserDefinedData_t R8 [3.14]
-  └───MyNodeUpdated UserDefinedData_t I4 [1 2 3]
+  └───MyUpdatedNode UserDefinedData_t I4 [1 2 3]
 
 .. seealso:: In practice, it is common to use :ref:`presets <pt_presets>` for a quicker
-  and SIDS-compliant creation of nodes with a specific label.
+  and CGNS/SIDS-compliant creation of nodes with a specific label.
 
 API reference
 -------------

@@ -13,7 +13,7 @@ from .utils import for_all_methods
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("CGNSTree_t"))
 class Tree:
-  """The following functions applies to the top level CGNSTree_t"""
+  """The following functions apply to the top level CGNSTree_t"""
 
   @staticmethod
   def find_connected_zones(tree:CGNSTree) -> List[List[str]]:
@@ -108,7 +108,7 @@ class Tree:
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Zone_t"))
 class Zone:
-  """The following functions applies to any Zone_t node"""
+  """The following functions apply to any Zone_t node"""
 
   @staticmethod
   def IndexDimension(zone_node:CGNSTree) -> int:
@@ -518,7 +518,7 @@ class Zone:
 @for_all_methods(check_is_label("Elements_t"))
 class Element:
 
-  """The following functions applies to any Element_t node"""
+  """The following functions apply to any Element_t node"""
 
   @staticmethod
   def Type(elt_node:CGNSTree) -> int:

@@ -6,10 +6,10 @@ Node inspection
 To avoid redoing several times the most commun operations, ``maia.pytree`` provide
 several functions extracting usefull data from a specific kind of CGNSNode.
 
-All these functions are SIDS aware, meaning that they are garanteed to succeed
+All these functions are CGNS/SIDS aware, meaning that they are garanteed to succeed
 only if the input tree is respecting the standard.
 
-They are also read only, input tree will not be modified by any
+They are also read only; i.e. input tree will not be modified by any
 of these calls.
 
 Overview
@@ -17,7 +17,7 @@ Overview
 
 Here is a summary of the available functions, depending of the input node:
 
-**Tree** *These functions applies to CGNSTree_t node*
+**Tree** *These functions apply to CGNSTree_t node*
 
 .. autosummary::
   :nosignatures:
@@ -25,7 +25,7 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Tree.find_connected_zones
   ~maia.pytree.Tree.find_periodic_jns
 
-**Zone** *These functions applies to Zone_t node*
+**Zone** *These functions apply to Zone_t node*
 
 .. autosummary::
   :nosignatures:
@@ -50,7 +50,7 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Zone.get_elt_range_per_dim
   ~maia.pytree.Zone.elt_ordering_by_dim
   
-**Element** *These functions applies to Element_t node*
+**Element** *These functions apply to Element_t node*
 
 .. autosummary::
   :nosignatures:
@@ -62,7 +62,7 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Element.Size
   ~maia.pytree.Element.Type
 
-**GridConnectivity** *These functions applies to GridConnectivity_t and GridConnectivity1to1_t nodes*
+**GridConnectivity** *These functions apply to GridConnectivity_t and GridConnectivity1to1_t nodes*
 
 .. autosummary::
   :nosignatures:
@@ -73,7 +73,7 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.GridConnectivity.ZoneDonorPath
   ~maia.pytree.GridConnectivity.periodic_values
 
-**Subset** *These functions applies to nodes having a PointList or a PointRange*
+**Subset** *These functions apply to nodes having a PointList or a PointRange*
 
 .. autosummary::
   :nosignatures:
@@ -88,8 +88,8 @@ Here is a summary of the available functions, depending of the input node:
   This is an implementation detail to put functions into namespaces : they should
   be used as usual, with their name prefixed by the label name:
 
-  >>> PT.Zone.Type(zone_node) # Applies on a Zone_t node
-  >>> PT.GridConnectivity.Type(gc_node) #Applies on a GC_t or GC1to1_t node
+  >>> PT.Zone.Type(zone_node) # Apply on a Zone_t node
+  >>> PT.GridConnectivity.Type(gc_node) #Apply on a GC_t or GC1to1_t node
 
 Methods detail
 --------------

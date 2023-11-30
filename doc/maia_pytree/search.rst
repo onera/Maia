@@ -75,7 +75,7 @@ Here is an example of these functions:
 # Return node BCDataSet
 
 .. seealso:: There is also a :func:`get_..._from_name_and_label` form, which takes two str
-  as condition : first one is for the name, second one for the label.
+  as condition: first one is for the name, second one for the label.
 
   >>> PT.get_node_from_name_and_label(node, '*', '*Location_t')
   # Return node GridLocation of BC1
@@ -83,9 +83,9 @@ Here is an example of these functions:
 Number of results
 ^^^^^^^^^^^^^^^^^
 
-The second customizable thing is the ``s`` after :func:`node`, which can be used to
+The second customizable thing is the ``s`` after ``node``, which can be used to
 decide if the search will return the first node matching the
-predicate, or all the nodes matching the predicate :
+predicate, or all the nodes matching the predicate:
 
 +--------------------------------+--------------------------------------+
 | Function                       | Return                               |
@@ -162,7 +162,7 @@ Fine tuning searches
 Here is a selection of the most usefull *kwargs* accepted by the functions.
 See API reference for the full list.
 
-- ``depth`` (integer): *Applies to all the functions*
+- ``depth`` (integer): *Apply to all the functions*
 
   Restrict the search to the nth level of children, where level 0 is the input node itself.
   If unset, search is not restricted.
@@ -178,7 +178,7 @@ See API reference for the full list.
   >>> PT.get_nodes_from_label(node, 'GridLocation_t', depth=2)
   # Return the 2 GridLocation nodes under the BC nodes
 
-- ``explore`` ('shallow' or 'deep'): *Applies to get_nodes_from_... functions* 
+- ``explore`` ('shallow' or 'deep'): *Apply to get_nodes_from_... functions* 
 
   If explore == 'shallow', the children of a node matching the predicate
   are not tested. If explore='deep', all the nodes are tested.
@@ -189,7 +189,7 @@ See API reference for the full list.
   >>> PT.get_nodes_from_label(node, 'BC*_t', explore='deep')
   # Return nodes BC1, BCDataSet and BC2
 
-- ``ancestors`` (bool): *Advanced -- Applies to get_..._from_predicates functions* 
+- ``ancestors`` (bool): *Advanced -- Apply to get_..._from_predicates functions* 
 
   If ``True``, return tuple of nodes instead of the terminal node. Tuple is of size 
   ``len(conditions)`` and contains all the intermediate results. Default is ``False``.
@@ -246,7 +246,7 @@ Here is an overview of the available searching functions:
   |                     | :func:`get_child_from_name_and_labels`  | :func:`get_children_from_name_and_labels`| :func:`iter_children_from_name_and_labels`|
   +---------------------+-----------------------------------------+------------------------------------------+-------------------------------------------+
 
-The following functions does not directly derive from the previous one,
+The following functions do not directly derive from the previous one,
 but allow additional usefull searches:
 
 .. autosummary::
