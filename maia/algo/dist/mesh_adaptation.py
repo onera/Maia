@@ -235,39 +235,37 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
       - Mesh is full TRI_3 and TETRA_4
       - GridConnectivities have no common vertices
 
+
     1ere extension de domaine:
-      - tag des cellules qui ont un vtx dans la gc
-      - création de la surface de contrainte:
+      1/ tag des cellules qui ont un vtx dans la gc
+      2/ création de la surface de contrainte:
         - création des faces à partir de la connectivité des cellules tagguées sans les vertex de la gc
         - suppression des faces qui sont déjà définies dans les BCs, ou les possibles doublons de face créées par 2 cellules
-      - duplication des éléments de la surface contrainte
-      - déplacement des vertex du patch
-      - merge des surfaces de la GC
+      3/ duplication des éléments de la surface contrainte
+      4/ déplacement des vertex du patch
+      5/ merge des surfaces de la GC
 
     2eme extension de domaine:
-      - get bc cellules (issu du mesh adapté)
-      - duplication des éléments de la gc
-      - déplacement des vertex du patch
-      - merge des surfaces de contrainte
-      - retrouver les ridges (et corners) disparus à l'étape 1
+      1/ get bc cellules (issu du mesh adapté)
+      2/ duplication des éléments de la gc
+      3/ déplacement des vertex du patch
+      4/ merge des surfaces de contrainte
+      5/ retrouver les ridges (et corners) disparus à l'étape 1
 
 
     Issues:
-       - would ngon be faster ?
-       - how to back mesh ?
-          - beware of BC ordering that have been changed
-       - retrieve ridges that has been deleted during domain extension
-       - gérer la périodisation des champs (rotation)
-          - [x] vector
-          - [ ] tensor -> useful for metric
-          - [?] some variables (angle in torus case)
-       - cas du cone -> arete sur l'axe bien gérée ?
+      - would ngon be faster ?
+      - gérer la périodisation des champs (rotation)
+         - [x] vector
+         - [ ] tensor -> useful for metric
+         - [?] some variables (angle in torus case)
+      - cas du cone -> arete sur l'axe bien gérée ?
 
     TODO:
-       - manage n_range of cells
-       - improve perfos: face in cells detection (with ngon ?)
-       - ne plus avoir besoin des GCs FaceCenter
-       - tout refaire pour le 2d ?
+      - manage back mesh
+         [!] beware of BC ordering that have been changed
+      - manage n_range of cells
+      - tout adapter pour le 2d ?
     '''
     start = time.time()
     adapted_dist_tree = copy.deepcopy(dist_tree) # TODO: shallow_copy sufficient ?
@@ -294,6 +292,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
 
     mlog.info(f"[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
+    # TODO: passer redistribute ici pour cas classique
     adapted_dist_tree = _adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                                 container_names,
                                                 bcs_to_constrain,
@@ -368,5 +367,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
   else:
     adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts)
+    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
 
   return adapted_dist_tree
