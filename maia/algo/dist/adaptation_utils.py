@@ -2,8 +2,9 @@ import mpi4py.MPI as MPI
 
 import maia
 import maia.pytree as PT
+import maia.transfer.protocols as EP
 from   maia.utils  import np_utils, py_utils, par_utils
-from maia.algo.dist.subset_tools import vtx_ids_to_face_ids
+from   maia.algo.dist.subset_tools import vtx_ids_to_face_ids
 
 import cmaia.dist_algo as cdist_algo
 
@@ -19,77 +20,171 @@ LOC_TO_CGNS = {'EdgeCenter':'BAR_2',
                'CellCenter':'TETRA_4'}
 
 
-def duplicate_vtx(zone, vtx_pl):
+def duplicate_vtx(zone, vtx_pl, comm):
+  '''
+  Duplicate vtx tagged in `vtx_pl` from a distributed zone.
+  '''
+  distri_n = PT.maia.getDistribution(zone, 'Vertex')
+  distri   = PT.get_value(distri_n)
+  
   coord_nodes = [PT.get_node_from_name(zone, name) for name in ['CoordinateX','CoordinateY','CoordinateZ']]
   for coord_n, coord in zip(coord_nodes, PT.Zone.coordinates(zone)):
-    PT.set_value(coord_n, np.concatenate([coord, coord[vtx_pl-1]]))
+    new_coord = EP.block_to_part(coord, distri, [vtx_pl], comm)
+    PT.set_value(coord_n, np.concatenate([coord, new_coord[0]]))
+
+  # > Update vtx distribution
+  coord = PT.Zone.coordinates(zone)[0]
+  new_distri = par_utils.dn_to_distribution(coord.size, comm)
+  PT.set_value(distri_n, new_distri)
+
+  # > Update zone information
   zone_dim = PT.get_value(zone)
-  zone_dim[0][0] += vtx_pl.size
+  zone_dim[0][0] = new_distri[2]
   PT.set_value(zone, zone_dim)
 
 
-def remove_vtx(zone, vtx_pl):
+def remove_vtx(zone, vtx_pl, comm):
+  '''
+  Remove vtx tagged in `vtx_pl` from a distributed zone.
+  '''
+  distri_n = PT.maia.getDistribution(zone, 'Vertex')
+  distri   = PT.get_value(distri_n)
+  
+  all_vtx = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
+  PTP = EP.PartToPart([vtx_pl], [all_vtx], comm)
+  vtx_mask = np.ones(all_vtx.size, dtype=bool)
+  vtx_mask[PTP.get_referenced_lnum2()[0]-1] = False
+  
   coord_nodes = [PT.get_node_from_name(zone, name) for name in ['CoordinateX','CoordinateY','CoordinateZ']]
   for coord_n, coord in zip(coord_nodes, PT.Zone.coordinates(zone)):
-    PT.set_value(coord_n, np.delete(coord, vtx_pl-1))
+    PT.set_value(coord_n, coord[vtx_mask])
+
+  # > Update vtx distribution
+  coord = PT.Zone.coordinates(zone)[0]
+  new_distri = par_utils.dn_to_distribution(coord.size, comm)
+  PT.set_value(distri_n, new_distri)
+
+  # > Update zone information
   zone_dim = PT.get_value(zone)
-  zone_dim[0][0] -= vtx_pl.size
+  zone_dim[0][0] = new_distri[2]
   PT.set_value(zone, zone_dim)
 
 
-def apply_periodicity_to_vtx(zone, vtx_pl, periodic):
+def apply_periodicity_to_vtx(zone, vtx_pl, periodic, comm):
   '''
   TODO: merger des choses avec `transform_affine`
   '''
+  distri_n = PT.maia.getDistribution(zone, 'Vertex')
+  distri   = PT.get_value(distri_n)
+  
+  all_vtx = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
+  PTP = EP.PartToPart([vtx_pl], [all_vtx], comm)
+  vtx_mask = np.zeros(all_vtx.size, dtype=bool)
+  vtx_mask[PTP.get_referenced_lnum2()[0]-1] = True
+
   cx_n = PT.get_node_from_name(zone, 'CoordinateX')
   cy_n = PT.get_node_from_name(zone, 'CoordinateY')
   cz_n = PT.get_node_from_name(zone, 'CoordinateZ')
   cx, cy, cz = PT.Zone.coordinates(zone)
-  cx[vtx_pl-1], cy[vtx_pl-1], cz[vtx_pl-1] = np_utils.transform_cart_vectors(cx[vtx_pl-1],cy[vtx_pl-1],cz[vtx_pl-1], **periodic)
+  cx[vtx_mask], cy[vtx_mask], cz[vtx_mask] = np_utils.transform_cart_vectors(cx[vtx_mask],cy[vtx_mask],cz[vtx_mask], **periodic)
   PT.set_value(cx_n, cx)
   PT.set_value(cy_n, cy)
   PT.set_value(cz_n, cz)
 
 
-def duplicate_flowsol_elts(zone, ids, location):
-  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
+def get_subset_distribution(zone, node):
+  location = PT.Subset.GridLocation(node)
+  distri_n = None
+  if   location=='Vertex' and PT.get_child_from_name(node, 'PointList') is None:
+    distri_n = PT.maia.getDistribution(zone, 'Vertex')
+  elif location=='CellCenter' and PT.get_child_from_name(node, 'PointList') is None:
+    distri_n = PT.maia.getDistribution(zone, 'Cell')
+  else:
+    distri_n = PT.maia.getDistribution(node, 'Index')
+  return distri_n
+
+
+def duplicate_flowsol_elts(zone, ids, location, comm):
+  '''
+  Duplicate flowsol values tagged in `ids` from a distributed zone.
+  '''
+  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
-  for fs_n in PT.get_children_from_predicate(zone, is_vtx_fs):
+  for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
+    distri_n = get_subset_distribution(zone, fs_n)
+    if distri_n is None:
+      raise RuntimeError('duplicate_flowsol_elts: unable to find related \":CGNS#Distribution\" node.')
+    distri   = PT.get_value(distri_n)
+
     for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
       da = PT.get_value(da_n)
-      da_to_add = da[ids]
-      PT.set_value(da_n, np.concatenate([da, da_to_add]))
+      new_da = EP.block_to_part(da, distri, [ids+1], comm)
+      PT.set_value(da_n, np.concatenate([da, new_da[0]]))
+      # size_fld = da.size
+
+  # > Update vtx distribution
+  if PT.get_name(distri_n)=='Index':
+    new_distri = par_utils.dn_to_distribution(da.size, comm)
+    PT.set_value(distri_n, new_distri)
 
 
-def remove_flowsol_elts(zone, ids, loc):
-  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
-                        PT.Subset.GridLocation(n)==loc
-  for fs_n in PT.get_children_from_predicate(zone, is_vtx_fs):
+def remove_flowsol_elts(zone, ids, location, comm):
+  '''
+  Remove flowsol values tagged in `ids` from a distributed zone.
+  '''
+  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
+                        PT.Subset.GridLocation(n)==location
+  for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
+    distri_n = get_subset_distribution(zone, fs_n)
+    if distri_n is None:
+      raise RuntimeError('duplicate_flowsol_elts: unable to find related \":CGNS#Distribution\" node.')
+    distri   = PT.get_value(distri_n)
+    
+    all_elt = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
+    PTP = EP.PartToPart([ids+1], [all_elt], comm)
+    elt_mask = np.ones(all_elt.size, dtype=bool)
+    elt_mask[PTP.get_referenced_lnum2()[0]-1] = False
+
     for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
       da = PT.get_value(da_n)
-      da = np.delete(da, ids)
-      PT.set_value(da_n, da)
+      PT.set_value(da_n, da[elt_mask])
+
+  # > Update vtx distribution
+  if PT.get_name(distri_n)=='Index':
+    new_distri = par_utils.dn_to_distribution(da.size, comm)
+    PT.set_value(distri_n, new_distri)
 
 
-def apply_periodicity_to_flowsol(zone, ids, location, periodic):
+def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
   '''
   Apply periodicity to ids of vector fields in zone.
   '''
-  is_vtx_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
+  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
-  for fs_n in PT.get_children_from_predicate(zone, is_vtx_fs):
+  for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
+    
+    distri_n = get_subset_distribution(zone, fs_n)
+    if distri_n is None:
+      raise RuntimeError('duplicate_flowsol_elts: unable to find related \":CGNS#Distribution\" node.')
+    distri   = PT.get_value(distri_n)
+    
+    all_elt = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
+    PTP = EP.PartToPart([ids+1], [all_elt], comm)
+    elt_mask = np.ones(all_elt.size, dtype=bool)
+    elt_mask[PTP.get_referenced_lnum2()[0]-1] = False
+    
     # > Transform vector arrays : Get from maia.algo.transform.py
     data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fs_n, "DataArray_t")]
     cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names)
     for basename in cartesian_vectors_basenames:
       vectors_n = [PT.get_node_from_name_and_label(fs_n, f"{basename}{c}", 'DataArray_t') for c in ['X', 'Y', 'Z']]
-      vectors = [PT.get_value(n)[ids] for n in vectors_n]
+      vectors = [PT.get_value(n)[elt_mask] for n in vectors_n]
       # Assume that vectors are position independant
       # Be careful, if coordinates vector needs to be transform, the translation is not applied !
       tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=periodic['rotation_center'], rotation_angle=periodic['rotation_angle'])
       for vector_n, tr_vector in zip(vectors_n, tr_vectors):
         vector = PT.get_value(vector_n)
-        vector[ids] = tr_vector
+        vector[elt_mask] = tr_vector
         PT.set_value(vector_n, vector)
     
 
