@@ -7,6 +7,8 @@ import maia.utils.logging as mlog
 
 from maia.factory import full_to_dist
 from maia.io.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
+from maia.algo.dist.matching_jns_tools import add_joins_donor_name,\
+                                              get_periodic_matching_jns
 from maia.algo.dist.adaptation_utils import convert_vtx_gcs_as_face_bcs,\
                                             deplace_periodic_patch,\
                                             retrieve_initial_domain,\
@@ -84,41 +86,6 @@ def unpack_metric(dist_tree, metric_paths):
   return metric_nodes
 
 
-def get_gc_path_pairs(tree):
-  # > Check type of GCs in tree (maybe not necessary)
-  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t']
-  for gc_n in PT.get_nodes_from_predicate(tree, is_gc):
-    assert PT.GridConnectivity.is1to1(gc_n) and PT.GridConnectivity.isperiodic(gc_n),\
-           'Tree with not periodic or 1o1 joins are not managed.'
-  
-  # > Get paths of GC pairs
-  is_periodic_1to1 = lambda n: PT.get_label(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t'] and\
-                               PT.GridConnectivity.is1to1(n) and\
-                               PT.GridConnectivity.isperiodic(n)and\
-                               PT.Subset.GridLocation(n)=='Vertex'
-  query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", is_periodic_1to1]
-  per_1to1_gc_paths = PT.predicates_to_paths(tree, query)
-  treated_gcs = list()
-  gc_paths = (list(),list())
-  periodic_values = (list(),list())
-  for gc_path in per_1to1_gc_paths:
-    if gc_path not in treated_gcs:
-      gc_n = PT.get_node_from_path(tree, gc_path)
-      gc_donor_name_n = PT.get_child_from_name(gc_n, 'GridConnectivityDonorName')
-      assert gc_donor_name_n is not None, 'Joins must have GridConnectivityDonorName node.'
-      gc_donor_name = PT.get_value(gc_donor_name_n)
-      gc_donor_path = '/'.join(gc_path.split('/')[:-1]+[gc_donor_name])
-      gc_paths[0].append(gc_path)
-      gc_paths[1].append(gc_donor_path)
-      treated_gcs.append(gc_donor_path)
-
-      donor_gc_n = PT.get_node_from_path(tree, gc_donor_path)
-      periodic_values[0].append(PT.GridConnectivity.periodic_dict(gc_n))
-      periodic_values[1].append(PT.GridConnectivity.periodic_dict(donor_gc_n))
-
-  return gc_paths, periodic_values
-
-
 def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts):
   tmp_repo.mkdir(exist_ok=True)
 
@@ -133,10 +100,6 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
   tree_info = get_tree_info(dist_tree, container_names)
   input_base = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
   input_zone = PT.get_child_from_label(input_base, 'Zone_t')
-
-
-  # > Gathering dist_tree on proc 0
-  maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
 
 
   # > CGNS to meshb conversion
@@ -161,10 +124,6 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
 
     end = time.time()
     mlog.info(f"Feflo mesh adaptation completed ({end-start:.2f} s)")
-
-
-  # > Recover original dist_tree
-  maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
 
 
   # > Get adapted dist_tree
@@ -268,55 +227,53 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
       - Mesh is full TRI_3 and TETRA_4
       - GridConnectivities have no common vertices
 
+
     1ere extension de domaine:
-      - tag des cellules qui ont un vtx dans la gc
-      - création de la surface de contrainte:
+      1/ tag des cellules qui ont un vtx dans la gc
+      2/ création de la surface de contrainte:
         - création des faces à partir de la connectivité des cellules tagguées sans les vertex de la gc
         - suppression des faces qui sont déjà définies dans les BCs, ou les possibles doublons de face créées par 2 cellules
-      - duplication des éléments de la surface contrainte
-      - déplacement des vertex du patch
-      - merge des surfaces de la GC
+      3/ duplication des éléments de la surface contrainte
+      4/ déplacement des vertex du patch
+      5/ merge des surfaces de la GC
 
     2eme extension de domaine:
-      - get bc cellules (issu du mesh adapté)
-      - duplication des éléments de la gc
-      - déplacement des vertex du patch
-      - merge des surfaces de contrainte
-      - retrouver les ridges (et corners) disparus à l'étape 1
+      1/ get bc cellules (issu du mesh adapté)
+      2/ duplication des éléments de la gc
+      3/ déplacement des vertex du patch
+      4/ merge des surfaces de contrainte
+      5/ retrouver les ridges (et corners) disparus à l'étape 1
 
 
     Issues:
-       - would ngon be faster ?
-       - how to back mesh ?
-          - beware of BC ordering that have been changed
-       - retrieve ridges that has been deleted during domain extension
-       - gérer la périodisation des champs (rotation)
-          - [x] vector
-          - [ ] tensor -> useful for metric
-          - [?] some variables (angle in torus case)
-       - cas du cone -> arete sur l'axe bien gérée ?
+      - would ngon be faster ?
+      - gérer la périodisation des champs (rotation)
+         - [x] vector
+         - [ ] tensor -> useful for metric
+         - [?] some variables (angle in torus case)
+      - cas du cone -> arete sur l'axe bien gérée ?
 
     TODO:
-       - manage n_range of cells
-       - improve perfos: face in cells detection (with ngon ?)
-       - ne plus avoir besoin des GCs FaceCenter
-       - tout refaire pour le 2d ?
+      - manage back mesh
+         [!] beware of BC ordering that have been changed
+      - manage n_range of cells
+      - tout adapter pour le 2d ?
     '''
     start = time.time()
     adapted_dist_tree = copy.deepcopy(dist_tree) # TODO: shallow_copy sufficient ?
 
     # > Get periodic infos
-    gc_paths, periodic_values = get_gc_path_pairs(adapted_dist_tree)
+    add_joins_donor_name(dist_tree, comm) # Add missing joins donor names
+    jn_pairs_and_values = get_periodic_matching_jns(adapted_dist_tree)
+    
+    convert_vtx_gcs_as_face_bcs(adapted_dist_tree, jn_pairs_and_values, comm)
 
     mlog.info(f"[Periodic adaptation] Step #1: Duplicating periodic patch...")
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
 
     bcs_to_constrain = list()
     if comm.rank==0:
-      convert_vtx_gcs_as_face_bcs(adapted_dist_tree, gc_paths)
-      new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, gc_paths, periodic_values)
-    adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
+      new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, jn_pairs_and_values)
     bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
 
     end = time.time()
@@ -336,11 +293,9 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
     start = time.time()
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
 
     if comm.rank==0:
-      retrieve_initial_domain(adapted_dist_tree, gc_paths, periodic_values, new_vtx_num, bcs_to_retrieve)
-    adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
+      retrieve_initial_domain(adapted_dist_tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve)
 
     end = time.time()
     # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
@@ -350,8 +305,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
     mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
     gc_constraints = list()
-    for i_side, side_gc_paths in enumerate(gc_paths):
-      for i_gc, gc_path in enumerate(side_gc_paths):
+    for jn_pairs in jn_pairs_and_values.keys():
+      for gc_path in jn_pairs:
         gc_constraints.append(gc_path.split('/')[-1])
     adapted_dist_tree = _adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                                 container_names,
@@ -365,23 +320,23 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
     PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'tetra_4_periodic*','BC_t')
 
-    n_interface = len(gc_paths[0])
+    n_interface = len(jn_pairs_and_values.keys())
 
     # > Set family name in BCs for connect_match
     zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
-    for i_side, side_gc_paths in enumerate(gc_paths):
-      for i_gc, gc_path in enumerate(side_gc_paths):
+    for i_jn, jn_pairs in enumerate(jn_pairs_and_values.keys()):
+      for i_gc, gc_path in enumerate(jn_pairs):
         bc_name = gc_path.split('/')[-1]
         bc_n = PT.get_node_from_name(adapted_dist_tree, bc_name, 'BC_t')
         PT.rm_children_from_label(bc_n, 'FamilyName_t')
-        PT.new_node('FamilyName', label='FamilyName_t', value=f'BC_TO_CONVERT_{i_gc}_{i_side}', parent=bc_n)
+        PT.new_node('FamilyName', label='FamilyName_t', value=f'BC_TO_CONVERT_{i_jn}_{i_gc}', parent=bc_n)
 
-    for i_interface in range(n_interface):
-      maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_interface}_0', f'BC_TO_CONVERT_{i_interface}_1'), comm, periodic=periodic_values[0][i_interface], location='Vertex')
+    for i_jn, jn_values in enumerate(jn_pairs_and_values.values()):
+      maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_jn}_0', f'BC_TO_CONVERT_{i_jn}_1'), comm, periodic=jn_values[0], location='Vertex')
 
     # > Remove '_0' in the created GCs names
-    for i_side, side_gc_paths in enumerate(gc_paths):
-      for i_gc, gc_path in enumerate(side_gc_paths):
+    for jn_pairs in jn_pairs_and_values.keys():
+      for gc_path in jn_pairs:
         gc_name = gc_path.split('/')[-1]+'_0'
         gc_n = PT.get_node_from_name(adapted_dist_tree, gc_name, 'GridConnectivity_t')
         gcd_name_n = PT.get_child_from_name(gc_n, 'GridConnectivityDonorName')
@@ -390,14 +345,21 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
         PT.set_name(gc_n, gc_path.split('/')[-1])
 
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
     if comm.rank==0:
       zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
       rm_feflo_added_elt(zone)
+    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
 
   else:
-    adapted_dist_tree = adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts)
-  
+    # > Gathering dist_tree on proc 0
+    maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
+
+    adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts)
+    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
+
+    # > Recover original dist_tree
+    maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
+
   return adapted_dist_tree

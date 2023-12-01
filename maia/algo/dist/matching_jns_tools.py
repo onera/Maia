@@ -151,6 +151,28 @@ def get_matching_jns(dist_tree, select_func=None):
       jn_pairs.append(pair)
   return jn_pairs
 
+def get_periodic_matching_jns(dist_tree):
+  '''
+  Return the list of pairs of matching jns and their associated periodic values.
+  TODO: add select_func ?
+  '''
+  periodic_names = ["rotation_center", "rotation_angle", "translation"]
+
+  # > Build periodicities
+  pvalues, pjoins = PT.sids.explore.find_periodic_jns(dist_tree)
+  jn_pairs = get_matching_jns(dist_tree, lambda n: PT.GridConnectivity.isperiodic(n))
+
+  periodic_matching_jns = dict()
+  for first,second in jn_pairs:
+    for pvalue, pjoin in zip(pvalues, pjoins):
+      if first in pjoin: 
+        first_value = dict(zip(periodic_names, pvalue))
+      if second in pjoin: 
+        second_value = dict(zip(periodic_names, pvalue))
+    periodic_matching_jns[(first,second)] = (first_value, second_value)
+
+  return periodic_matching_jns
+
 def copy_donor_subset(dist_tree):
   """
   Retrieve for each 1to1 GridConnectivity_t node the opposite
@@ -206,5 +228,3 @@ def sort_jn_pointlist(dist_tree, comm):
     PT.update_child(gc_opp, 'PointList', value=PT.get_value(PT.get_node_from_name(gc,'PointListDonor')))
     PT.update_child(gc_opp, 'PointListDonor', value=PT.get_value(PT.get_node_from_name(gc,'PointList')))
     MT.newDistribution({'Index': PT.get_value(MT.getDistribution(gc,'Index'))}, gc_opp)
-  
-

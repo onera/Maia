@@ -198,6 +198,20 @@ Base CGNSBase_t:
     assert len(pathes) == 1
     assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
 
+  def test_get_periodic_matching_jns(self):
+    dist_tree = PT.deep_copy(self.dist_tree)
+    rot1 = {'rotation_angle' : [ 10., 0., 0.]}
+    rot2 = {'rotation_angle' : [-10., 0., 0.]}
+    PT.new_GridConnectivityProperty(rot1, parent=PT.get_node_from_name(dist_tree, 'perio1'))
+    PT.new_GridConnectivityProperty(rot2, parent=PT.get_node_from_name(dist_tree, 'perio2'))
+    jns_pairs_and_values = MJT.get_periodic_matching_jns(dist_tree)
+    ref_values = ({'rotation_center' : np.array([0., 0., 0.], dtype=np.float32), 'rotation_angle' : np.array([ 10., 0., 0.], dtype=np.float32), 'translation' : np.array([0., 0., 0.], dtype=np.float32)}, 
+                  {'rotation_center' : np.array([0., 0., 0.], dtype=np.float32), 'rotation_angle' : np.array([-10., 0., 0.], dtype=np.float32), 'translation' : np.array([0., 0., 0.], dtype=np.float32)})
+    assert list(jns_pairs_and_values.keys())[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
+    for value, ref_value in zip(list(jns_pairs_and_values.values())[0], ref_values):
+      for key, value in value.items():
+        assert np.array_equal(value, ref_value[key])
+
   def test_match_jn_from_ordinals(self):
     dist_tree = PT.deep_copy(self.dist_tree)
     MJT.copy_donor_subset(dist_tree)
