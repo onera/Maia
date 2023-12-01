@@ -794,6 +794,12 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
   elt_n      = PT.get_node_from_predicate(zone, is_tri_elt)
   elt_offset = PT.Element.Range(elt_n)[0]
 
+  # > Use BC PLs to detect BC elts that will be duplicated (cf issue JMarty)
+  is_face_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='FaceCenter'
+  face_bc_pls = [PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] 
+                    for bc_n in PT.get_nodes_from_predicate(zone, is_face_bc)]
+  face_bc_pls = np.concatenate(face_bc_pls)
+      
   for jn_pairs in jn_pairs_and_values.keys():
     for gc_path in jn_pairs:
       # > Get GCs infos
@@ -805,6 +811,9 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
 
       # > Search faces described by gc vtx
       bc_pl   = maia.algo.dist.subset_tools.vtx_ids_to_face_ids(gc_pl, elt_n, comm, True)+elt_offset-1
+      mask = np.isin(bc_pl, face_bc_pls, invert=True)
+      bc_pl = bc_pl[mask]
+
       bc_n = PT.new_BC(name=gc_name,
                        type='FamilySpecified',
                        point_list=bc_pl.reshape((1,-1), order='F'),
