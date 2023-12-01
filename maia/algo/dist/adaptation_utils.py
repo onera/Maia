@@ -23,6 +23,8 @@ LOC_TO_CGNS = {'EdgeCenter':'BAR_2',
 def duplicate_vtx(zone, vtx_pl, comm):
   '''
   Duplicate vtx tagged in `vtx_pl` from a distributed zone.
+    - Vertex distribution must be updated outside.
+    - What about zone_dim ?
   '''
   distri_n = PT.maia.getDistribution(zone, 'Vertex')
   distri   = PT.get_value(distri_n)
@@ -32,41 +34,33 @@ def duplicate_vtx(zone, vtx_pl, comm):
     new_coord = EP.block_to_part(coord, distri, [vtx_pl], comm)
     PT.set_value(coord_n, np.concatenate([coord, new_coord[0]]))
 
-  # > Update vtx distribution
-  coord = PT.Zone.coordinates(zone)[0]
-  new_distri = par_utils.dn_to_distribution(coord.size, comm)
-  PT.set_value(distri_n, new_distri)
-
   # > Update zone information
+  n_added_vtx = comm.allreduce(vtx_pl.size, op=MPI.SUM)
   zone_dim = PT.get_value(zone)
-  zone_dim[0][0] = new_distri[2]
+  zone_dim[0][0] += n_added_vtx
   PT.set_value(zone, zone_dim)
 
 
 def remove_vtx(zone, vtx_pl, comm):
   '''
   Remove vtx tagged in `vtx_pl` from a distributed zone.
+    - Vertex distribution must be updated outside.
+    - What about zone_dim ?
   '''
   distri_n = PT.maia.getDistribution(zone, 'Vertex')
   distri   = PT.get_value(distri_n)
   
-  all_vtx = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
-  PTP = EP.PartToPart([vtx_pl], [all_vtx], comm)
-  vtx_mask = np.ones(all_vtx.size, dtype=bool)
-  vtx_mask[PTP.get_referenced_lnum2()[0]-1] = False
+  ptb = EP.PartToBlock(distri, [vtx_pl], comm)
+  ids = ptb.getBlockGnumCopy()-distri[0]-1
   
   coord_nodes = [PT.get_node_from_name(zone, name) for name in ['CoordinateX','CoordinateY','CoordinateZ']]
   for coord_n, coord in zip(coord_nodes, PT.Zone.coordinates(zone)):
-    PT.set_value(coord_n, coord[vtx_mask])
-
-  # > Update vtx distribution
-  coord = PT.Zone.coordinates(zone)[0]
-  new_distri = par_utils.dn_to_distribution(coord.size, comm)
-  PT.set_value(distri_n, new_distri)
+    PT.set_value(coord_n, np.delete(coord, ids))
 
   # > Update zone information
+  n_rmvd_vtx = comm.allreduce(vtx_pl.size, op=MPI.SUM)
   zone_dim = PT.get_value(zone)
-  zone_dim[0][0] = new_distri[2]
+  zone_dim[0][0] -= n_rmvd_vtx
   PT.set_value(zone, zone_dim)
 
 
@@ -106,7 +100,7 @@ def get_subset_distribution(zone, node):
 
 def duplicate_flowsol_elts(zone, ids, location, comm):
   '''
-  Duplicate flowsol values tagged in `ids` from a distributed zone.
+  Duplicate flowsol values tagged in `ids` from a distributed zone. FlowSol distribution must be updated outside.
   '''
   is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
@@ -120,17 +114,11 @@ def duplicate_flowsol_elts(zone, ids, location, comm):
       da = PT.get_value(da_n)
       new_da = EP.block_to_part(da, distri, [ids+1], comm)
       PT.set_value(da_n, np.concatenate([da, new_da[0]]))
-      # size_fld = da.size
-
-  # > Update vtx distribution
-  if PT.get_name(distri_n)=='Index':
-    new_distri = par_utils.dn_to_distribution(da.size, comm)
-    PT.set_value(distri_n, new_distri)
 
 
 def remove_flowsol_elts(zone, ids, location, comm):
   '''
-  Remove flowsol values tagged in `ids` from a distributed zone.
+  Remove flowsol values tagged in `ids` from a distributed zone. FlowSol distribution must be updated outside.
   '''
   is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
@@ -140,19 +128,12 @@ def remove_flowsol_elts(zone, ids, location, comm):
       raise RuntimeError('duplicate_flowsol_elts: unable to find related \":CGNS#Distribution\" node.')
     distri   = PT.get_value(distri_n)
     
-    all_elt = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
-    PTP = EP.PartToPart([ids+1], [all_elt], comm)
-    elt_mask = np.ones(all_elt.size, dtype=bool)
-    elt_mask[PTP.get_referenced_lnum2()[0]-1] = False
+    ptb = EP.PartToBlock(distri, [ids+1], comm)
+    ids = ptb.getBlockGnumCopy()-distri[0]-1
 
     for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
       da = PT.get_value(da_n)
-      PT.set_value(da_n, da[elt_mask])
-
-  # > Update vtx distribution
-  if PT.get_name(distri_n)=='Index':
-    new_distri = par_utils.dn_to_distribution(da.size, comm)
-    PT.set_value(distri_n, new_distri)
+      PT.set_value(da_n, np.delete(da,ids))
 
 
 def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
@@ -429,14 +410,21 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, keep_original
   update_elt_vtx_numbering(zone, old_to_new_vtx, 'BAR_2')
 
   n_vtx_to_rm = pbc2_vtx_pl.size
-  remove_vtx(zone, pbc2_vtx_pl)
+  remove_vtx(zone, pbc2_vtx_pl, MPI.COMM_SELF)
 
   # > Update Vertex BCs and GCs
   update_vtx_bnds(zone, old_to_new_vtx)
 
   # > Update flow_sol
-  remove_flowsol_elts(zone, pbc2_vtx_pl-1, 'Vertex')
-
+  remove_flowsol_elts(zone, pbc2_vtx_pl-1, 'Vertex', MPI.COMM_SELF)
+  
+  # > Update distribution
+  vtx_distrib_n  = PT.maia.getDistribution(zone, distri_name='Vertex')
+  vtx_distrib    = PT.get_value(vtx_distrib_n)
+  vtx_distrib[1]-= n_vtx_to_rm
+  vtx_distrib[2]-= n_vtx_to_rm
+  PT.set_value(vtx_distrib_n, vtx_distrib)
+  
   return old_to_new_vtx
 
 
@@ -498,7 +486,7 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, elt_duplicate_
   n_vtx = PT.Zone.n_vtx(zone)
   elt_vtx_pl   = elmt_pl_to_vtx_pl(zone, elt_pl, elt_name)
   n_vtx_to_add = elt_vtx_pl.size
-  duplicate_vtx(zone, elt_vtx_pl)
+  duplicate_vtx(zone, elt_vtx_pl, MPI.COMM_SELF)
 
 
   new_vtx_pl  = np.arange(n_vtx, n_vtx+n_vtx_to_add)+1
@@ -507,7 +495,14 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, elt_duplicate_
   old_to_new_vtx[new_vtx_num[0]-1] = new_vtx_num[1]
   sort_vtx_num = np.argsort(new_vtx_num[0])
   
-  duplicate_flowsol_elts(zone, elt_vtx_pl-1, 'Vertex')
+  duplicate_flowsol_elts(zone, elt_vtx_pl-1, 'Vertex', MPI.COMM_SELF)
+  
+  # > Update distribution
+  vtx_distrib_n  = PT.maia.getDistribution(zone, distri_name='Vertex')
+  vtx_distrib    = PT.get_value(vtx_distrib_n)
+  vtx_distrib[1]+= n_vtx_to_add
+  vtx_distrib[2]+= n_vtx_to_add
+  PT.set_value(vtx_distrib_n, vtx_distrib)
 
   # > Add duplicated elements
   n_elt_to_add = elt_pl.size
@@ -899,8 +894,8 @@ def deplace_periodic_patch(tree, jn_pairs_and_values):
 
     # > 4/ Apply periodic transformation to vtx and flowsol
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1])
-    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[1])
+    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1], MPI.COMM_SELF)
+    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[1], MPI.COMM_SELF)
 
     # maia.io.write_tree(tree, f'OUTPUT/deplaced_{i_per}.cgns')
 
@@ -989,8 +984,8 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[0])
-    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[0])
+    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[0], MPI.COMM_SELF)
+    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[0], MPI.COMM_SELF)
     # maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
 
     # > 4-5/ Merge two constraint surfaces
