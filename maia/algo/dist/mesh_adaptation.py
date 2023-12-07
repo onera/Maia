@@ -98,6 +98,7 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
 
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree, container_names)
+  tree_info = comm.bcast(tree_info, root=0)
   input_base = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
   input_zone = PT.get_child_from_label(input_base, 'Zone_t')
 
