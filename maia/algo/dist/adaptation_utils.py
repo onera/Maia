@@ -798,7 +798,7 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
   is_face_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='FaceCenter'
   face_bc_pls = [PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] 
                     for bc_n in PT.get_nodes_from_predicate(zone, is_face_bc)]
-  face_bc_pls = np.concatenate(face_bc_pls)
+  face_bc_pls = np.concatenate(face_bc_pls)-elt_offset+1
       
   for jn_pairs in jn_pairs_and_values.keys():
     for gc_path in jn_pairs:
@@ -810,17 +810,20 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
       assert gc_loc=='Vertex', ''
 
       # > Search faces described by gc vtx
-      bc_pl   = maia.algo.dist.subset_tools.vtx_ids_to_face_ids(gc_pl, elt_n, comm, True)+elt_offset-1
-      mask = np.isin(bc_pl, face_bc_pls, invert=True)
-      bc_pl = bc_pl[mask]
+      bc_pl = maia.algo.dist.subset_tools.vtx_ids_to_face_ids(gc_pl, elt_n, comm, True)
+      PTP   = EP.PartToPart([face_bc_pls], [bc_pl], comm)
+      mask  = np.ones(bc_pl.size, dtype=bool)
+      mask[PTP.get_referenced_lnum2()[0]-1] = False
+      bc_pl = bc_pl[mask]+elt_offset-1
 
-      bc_n = PT.new_BC(name=gc_name,
-                       type='FamilySpecified',
-                       point_list=bc_pl.reshape((1,-1), order='F'),
-                       loc='FaceCenter',
-                       family='GCS',
-                       parent=zone_bc_n)
-      PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(bc_pl.size, comm)}, bc_n)
+      if comm.allreduce(bc_pl.size, op=MPI.SUM)!=0:
+        bc_n = PT.new_BC(name=gc_name,
+                         type='FamilySpecified',
+                         point_list=bc_pl.reshape((1,-1), order='F'),
+                         loc='FaceCenter',
+                         family='GCS',
+                         parent=zone_bc_n)
+        PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(bc_pl.size, comm)}, bc_n)
 
 
 def deplace_periodic_patch(tree, jn_pairs_and_values):
