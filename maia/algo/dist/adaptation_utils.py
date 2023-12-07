@@ -985,6 +985,7 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     to_update_cell_pl = cell_bc_pl
     to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', elt_full=True)
     to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', elt_full=True)
+    to_update_face_pl = is_elt_included(zone, to_update_face_pl, 'TRI_3', cell_bc_pl, 'TETRA_4')
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
     # > 2/ Duplicate GC surface and update element connectivities in the patch
