@@ -175,9 +175,6 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
               min_opp = extract_pr_min_per_pzone_all[PT.get_value(gc_n)]
           except KeyError:
               min_opp = None
-    extract_zones.append(extract_zone)
-
-
           
           new_gc_pr = gc_pr
           new_gc_pr[0,:] -= min_cur[0]
