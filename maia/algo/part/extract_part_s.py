@@ -5,7 +5,9 @@ import maia.pytree as PT
 from   maia.algo.part.extraction_utils import LOC_TO_DIM
 from   maia.factory  import dist_from_part
 from   maia.utils import s_numbering
-
+from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
+from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
+                                    gc_is_reference, guess_bnd_normal_index
 import numpy as np
 
 comm = MPI.COMM_WORLD
@@ -65,14 +67,26 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
   extract_zones = list()
   lvtx_gn = list()
   lcell_gn = list()
+  extract_pr_min_per_pzone_l = dict()
+
+  for i_part, part_zone in enumerate(part_zones):
+    pr = point_range[i_part]
+    if pr.size!=0:
+      extract_pr_min_per_pzone_l[PT.get_name(part_zone)] = np.array([min(pr[0,0],pr[0,1]) - 1,
+                                                                     min(pr[1,0],pr[1,1]) - 1,
+                                                                     min(pr[2,0],pr[2,1]) - 1])
+  extract_pr_min_per_pzone_l = comm.allgather(extract_pr_min_per_pzone_l)
+  extract_pr_min_per_pzone_all = {k: v for d in extract_pr_min_per_pzone_l for k, v in d.items()}
   for i_part, part_zone in enumerate(part_zones):
     # PT.print_tree(part_zone)
-    zone_dim = PT.get_value(part_zone)
+    zone_name = PT.get_name(part_zone)
+    zone_dim  = PT.get_value(part_zone)
     pr = point_range[i_part]
-
-    extract_zone = PT.new_Zone(PT.get_name(part_zone), type='Structured', size=np.zeros((3,3), dtype=np.int32))
+    extract_zone = PT.new_Zone(zone_name, type='Structured', size=np.zeros((3,3), dtype=np.int32))
     
     if pr.size==0:
+      lcell_gn.append(np.empty(0, dtype=pdm_gnum_dtype))
+      lvtx_gn.append(np.empty(0, dtype=pdm_gnum_dtype))
       extract_zones.append(extract_zone)
       continue
 
@@ -141,24 +155,58 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
     lvtx_gn.append(gn_vtx[locnum_vtx - 1])
     
 
+    # > Get joins without post-treating PRs
+    for zgc_n in PT.get_children_from_label(part_zone, 'ZoneGridConnectivity_t'):
+      extract_zgc = PT.new_ZoneGridConnectivity(PT.get_name(zgc_n), parent=extract_zone)
+      for gc_n in PT.get_children_from_predicate(zgc_n, lambda n: PT.maia.conv.is_intra_gc(PT.get_name(n))):
+        gc_pr = PT.get_value(PT.get_child_from_name(gc_n,"PointRange"))
+        intersection = maia.factory.partitioning.split_S.part_zone.intersect_pr(gc_pr, pr)
+        if intersection is not None:
+          pr_of_gc  = PT.get_value(PT.get_child_from_name(gc_n, 'PointRange'))
+          prd_of_gc = PT.get_value(PT.get_child_from_name(gc_n, 'PointRangeDonor'))
+          transform = PT.get_value(PT.get_node_from_predicates(gc_n, 'Transform'))
+          T = compute_transform_matrix(transform)
+          apply_t1 = apply_transform_matrix(intersection[:,0], pr_of_gc[:,0], prd_of_gc[:,0], T)
+          apply_t2 = apply_transform_matrix(intersection[:,1], pr_of_gc[:,0], prd_of_gc[:,0], T)
+          new_gc_prd = [[apply_t1[dim], apply_t2[dim]] for dim in range(3)]
+          # > Update joins PRs
+          min_cur = extract_pr_min_per_pzone_all[zone_name]
+          try:
+              min_opp = extract_pr_min_per_pzone_all[PT.get_value(gc_n)]
+          except KeyError:
+              min_opp = None
     extract_zones.append(extract_zone)
 
 
+          
+          new_gc_pr = gc_pr
+          new_gc_pr[0,:] -= min_cur[0]
+          new_gc_pr[1,:] -= min_cur[1]
+          new_gc_pr[2,:] -= min_cur[2]
+
+          if min_opp is not None:
+            new_gc_pr[0,:] -= min_opp[0]
+            new_gc_pr[1,:] -= min_opp[1]
+            new_gc_pr[2,:] -= min_opp[2]
+          new_gc_pr  = np.delete(new_gc_pr , extract_dir, 0)
+          new_gc_prd = np.delete(new_gc_prd, transform[extract_dir]-1, 0)
+
+          gc_name = PT.get_name(gc_n)
+          gc_donorname = PT.get_value(gc_n)
+          extract_gc_n = PT.new_GridConnectivity1to1(gc_name, donor_name=gc_donorname, point_range=new_gc_pr, point_range_donor=new_gc_prd, parent=extract_zgc)
+    extract_zones.append(extract_zone)
+  # > Create GlobalNumbering
   partial_gnum_vtx  = maia.algo.part.point_cloud_utils.create_sub_numbering(lvtx_gn, comm)
   partial_gnum_cell = maia.algo.part.point_cloud_utils.create_sub_numbering(lcell_gn, comm)
   
   print(f'[{comm.rank}] len partial_gnum_vtx [i_part] = {len(partial_gnum_vtx)}')
   if len(partial_gnum_vtx)!=0:
     for i_part, extract_zone in enumerate(extract_zones):
-
-      print(f'[{comm.rank}] partial_gnum_vtx [i_part] = {partial_gnum_vtx [i_part]}')
-
       PT.maia.newGlobalNumbering({'Vertex' : partial_gnum_vtx [i_part],
                                   'Cell'   : partial_gnum_cell[i_part]},
                                  parent=extract_zone)
-      PT.print_tree(extract_zone)
-    else:
-      assert len(partial_gnum_cell)!=0
+  else:
+    assert len(partial_gnum_cell)!=0
 
   return extract_zones
 
