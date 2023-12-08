@@ -1,11 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 from pathlib import Path
 
+import maia
 from maia.utils.yaml import parse_yaml_cgns,parse_cgns_yaml
 from maia.utils      import script_utils
-from maia.io         import cgns_io_tree as IOT
 import os
 
 parser = argparse.ArgumentParser(description='Convert between YAML/CGNS and HDF5/CGNS')
@@ -21,10 +21,10 @@ if extension==".yaml": # yaml to hdf5
     t = parse_yaml_cgns.to_cgns_tree(yt)
 
     output_file = script_utils.determine_output_file_path(args.input, args.output, ".cgns")
-    IOT.write_tree(t,str(output_file))
+    maia.io.write_tree(t,str(output_file))
 
 elif extension==".cgns" or extension==".hdf": # hdf5 to yaml
-  t = IOT.read_tree(str(args.input))
+  t = maia.io.read_tree(str(args.input))
   yt = parse_cgns_yaml.to_yaml(t)
   yt = '\n'.join(yt)
   output_file = script_utils.determine_output_file_path(args.input, args.output, ".yaml")
