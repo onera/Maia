@@ -163,3 +163,24 @@ def test_poly_old_to_new_no_pe(poly_tree_new):
 
   with pytest.raises(RuntimeError):
     maia.algo.seq.poly_old_to_new(t)
+
+def test_mixed_new_to_old():
+  mesh_file = os.path.join(TU.sample_mesh_dir, 'mixed_with_bc.yaml')
+  tree = maia.io.read_tree(mesh_file)
+
+  ec_bck = PT.get_node_from_name(tree, 'ElementConnectivity')[1].copy()
+  maia.algo.seq.poly_new_to_old(tree)
+  assert np.array_equal(ec_bck, PT.get_node_from_name(tree, 'ElementConnectivity')[1])
+  assert PT.get_node_from_name(tree, 'ElementStartOffset') is None
+
+def test_mixed_old_to_new():
+  mesh_file = os.path.join(TU.sample_mesh_dir, 'mixed_with_bc.yaml')
+  tree_bck = maia.io.read_tree(mesh_file)
+
+  # Setup test (tested in mixed_new_to_old)
+  tree = PT.deep_copy(tree_bck)
+  maia.algo.seq.poly_new_to_old(tree)
+
+  maia.algo.seq.poly_old_to_new(tree)
+  assert PT.is_same_tree(tree, tree_bck)
+
