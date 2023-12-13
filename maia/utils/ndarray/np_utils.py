@@ -126,10 +126,11 @@ def multi_arange(starts, stops):
   but much faster. Don't remplace it !
 
   """
+  dtype = starts.dtype if isinstance(starts, np.ndarray) else int
   assert len(starts)==len(stops)
   stops = np.asarray(stops)
   l = stops - starts # Lengths of each range.
-  return np.repeat(stops - l.cumsum(), l) + np.arange(l.sum())
+  return np.repeat(stops - l.cumsum(dtype=dtype), l) + np.arange(l.sum(), dtype=dtype)
 
 def arange_with_jumps(multi_interval,jumps):
   """
