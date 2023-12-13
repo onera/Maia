@@ -1,3 +1,4 @@
+import time
 import mpi4py.MPI as MPI
 
 import maia
@@ -5,12 +6,19 @@ import maia.pytree as PT
 from   maia.algo.part.extraction_utils import LOC_TO_DIM
 from   maia.factory  import dist_from_part
 from   maia.utils import s_numbering
+import maia.utils.logging as mlog
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
                                     gc_is_reference, guess_bnd_normal_index
+from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 import numpy as np
 
 comm = MPI.COMM_WORLD
+
+DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
+               # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
+                 2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
+                 3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
 '''
 QUESTIONS:
@@ -37,7 +45,6 @@ class Extractor:
       for domain_prs in point_range:
         for part_pr in domain_prs:
           if part_pr.size!=0:
-            print(f'[{comm.rank}] part_pr = {part_pr}')
             size_per_dim = np.diff(part_pr)[:,0]
             idx = np.where(size_per_dim!=0)[0]
             cell_dim = idx.size
@@ -47,22 +54,111 @@ class Extractor:
 
     
     # ExtractPart CGNSTree
-    extracted_tree = PT.new_CGNSTree()
-    extracted_base = PT.new_CGNSBase('Base', cell_dim=cell_dim, phy_dim=3, parent=extracted_tree)
+    extract_tree = PT.new_CGNSTree()
+    extract_base = PT.new_CGNSBase('Base', cell_dim=cell_dim, phy_dim=3, parent=extract_tree)
 
     for i_domain, part_zones in enumerate(part_tree_per_dom):
-      extracted_zones = extract_part_one_domain(part_zones, point_range[i_domain], self.dim, comm,
+      extract_zones = extract_part_one_domain(part_zones, point_range[i_domain], self.dim, comm,
                                                     equilibrate=False)
       for zone in extracted_zones:
         if PT.Zone.n_vtx(zone)!=0:
           PT.add_child(extracted_base, zone)
     
-    self.extracted_tree = extracted_tree
+    self.extract_tree = extract_tree
   
+  def exchange_fields(self, fs_container):
+    # Get zones by domains (only one domain for now)
+    part_tree_per_dom = dist_from_part.get_parts_per_blocks(self.part_tree, self.comm).values()
+
+    # Get zone from extractpart
+    extract_zones = PT.get_all_Zone_t(self.extract_tree)
+
+    for container_name in fs_container:
+      for i_domain, part_zones in enumerate(part_tree_per_dom):
+        exchange_field_one_domain(self.part_tree, extract_zones, self.dim, \
+            container_name, self.comm)
+
   def get_extract_part_tree(self):
-    return self.extracted_tree
+    return self.extract_tree
 
 
+def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, container_name, comm) :
+
+  loc_correspondance = {'Vertex'    : 'Vertex',
+                        'FaceCenter': 'Cell',
+                        'CellCenter': 'Cell'}
+
+  # > Retrieve fields name + GridLocation + PointList if container
+  #   is not know by every partition
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
+  assert len(part_tree_per_dom) == 1
+  part_zones=list(part_tree_per_dom)[0]
+  
+  mask_zone = ['MaskedZone', None, [], 'Zone_t']
+  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
+      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
+  
+  fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexArray_t']
+  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
+  mask_container = PT.get_child_from_name(mask_zone, container_name)
+  if mask_container is None:
+    raise ValueError("[maia-extract_part] asked container for exchange is not in tree")
+  if PT.get_child_from_label(mask_container, 'DataArray_t') is None:
+    return
+
+  # > Manage BC and GC ZSR
+  ref_zsr_node    = mask_container
+  bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
+  gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
+  assert not (bc_descriptor_n and gc_descriptor_n)
+  if bc_descriptor_n is not None:
+    bc_name      = PT.get_value(bc_descriptor_n)
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
+    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
+  elif gc_descriptor_n is not None:
+    gc_name      = PT.get_value(gc_descriptor_n)
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
+    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
+  
+  grid_location = PT.Subset.GridLocation(ref_zsr_node)
+  partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
+  assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
+
+
+  parent_lnum_path = {'Vertex'    :':maia#exchutils/parent_lnum_vtx',
+                      'FaceCenter':':maia#exchutils/parent_lnum_cell'}
+
+  for extract_zone in extract_zones:
+    
+    zone_name = PT.get_name(extract_zone)
+    part_zone = PT.get_node_from_name_and_label(part_tree, zone_name, 'Zone_t')
+
+    if PT.get_label(mask_container) == 'FlowSolution_t':
+      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+    elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+    else:
+      raise TypeError
+    if   grid_location=='Vertex':
+      zone_elt_size = PT.Zone.VertexSize(extract_zone)
+    elif grid_location=='FaceCenter':
+      zone_elt_size = PT.Zone.FaceSize(extract_zone)
+    elif grid_location=='CellCenter':
+      zone_elt_size = PT.Zone.CellSize(extract_zone)
+    
+    part2_pl = PT.get_value(PT.get_node_from_path(extract_zone, parent_lnum_path[grid_location]))
+
+    for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
+      fld_name = PT.get_name(fld_node)
+      fld_path = f"{container_name}/{fld_name}"
+
+      fld_data = PT.get_value(PT.get_node_from_path(part_zone,fld_path))
+      extract_fld_data = fld_data.flatten(order='F')[part2_pl-1]
+
+      PT.new_DataArray(fld_name, extract_fld_data.reshape(zone_elt_size, order='F'), parent=FS_ep)
+
+    if PT.Zone.n_vtx(extract_zone)==0:
+      continue
 def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=False):
   extract_zones = list()
   lvtx_gn = list()
@@ -85,8 +181,8 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
     extract_zone = PT.new_Zone(zone_name, type='Structured', size=np.zeros((3,3), dtype=np.int32))
     
     if pr.size==0:
-      lcell_gn.append(np.empty(0, dtype=pdm_gnum_dtype))
       lvtx_gn.append(np.empty(0, dtype=pdm_gnum_dtype))
+      lcell_gn.append(np.empty(0, dtype=pdm_gnum_dtype))
       extract_zones.append(extract_zone)
       continue
 
@@ -155,6 +251,10 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
     lvtx_gn.append(gn_vtx[locnum_vtx - 1])
     
 
+    exchutils_n = PT.new_node(':maia#exchutils', label='UserDefinedData_t', parent=extract_zone)
+    PT.new_DataArray('parent_lnum_vtx', value=locnum_vtx, parent=exchutils_n)
+    PT.new_DataArray('parent_lnum_cell', value=locnum_face, parent=exchutils_n)
+
     # > Get joins without post-treating PRs
     for zgc_n in PT.get_children_from_label(part_zone, 'ZoneGridConnectivity_t'):
       extract_zgc = PT.new_ZoneGridConnectivity(PT.get_name(zgc_n), parent=extract_zone)
@@ -196,7 +296,6 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
   partial_gnum_vtx  = maia.algo.part.point_cloud_utils.create_sub_numbering(lvtx_gn, comm)
   partial_gnum_cell = maia.algo.part.point_cloud_utils.create_sub_numbering(lcell_gn, comm)
   
-  print(f'[{comm.rank}] len partial_gnum_vtx [i_part] = {len(partial_gnum_vtx)}')
   if len(partial_gnum_vtx)!=0:
     for i_part, extract_zone in enumerate(extract_zones):
       PT.maia.newGlobalNumbering({'Vertex' : partial_gnum_vtx [i_part],
@@ -205,15 +304,18 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
   else:
     assert len(partial_gnum_cell)!=0
 
+  # return extract_zones, exch_tool_box
   return extract_zones
 
 
-def extract_part_s_from_bc_name(part_tree, bc_name, comm):
-  
+def extract_part_s_from_bc_name(part_tree, bc_name, comm,
+                                transfer_dataset=True,
+                                containers_name=[],
+                                **options):
   # > Define extracted tree
-  extracted_tree = PT.new_CGNSTree()
+  extract_tree = PT.new_CGNSTree()
   base_name = PT.get_name(PT.get_node_from_label(part_tree, 'CGNSBase_t'))
-  extracted_base = PT.new_CGNSBase(base_name, cell_dim = 2, phy_dim = 3, parent = extracted_tree) #faire un truc general pour cellDim et phy_Dim
+  extract_base = PT.new_CGNSBase(base_name, cell_dim = 2, phy_dim = 3, parent = extract_tree) #faire un truc general pour cellDim et phy_Dim
     
 
   local_part_tree   = PT.shallow_copy(part_tree)
@@ -236,9 +338,29 @@ def extract_part_s_from_bc_name(part_tree, bc_name, comm):
   # Get location if proc has no zsr
   location = comm.allreduce(location, op=MPI.MAX)
   
+  start = time.time()
 
   extractor = Extractor(part_tree, point_range, location, comm)
 
-  extracted_tree = extractor.get_extract_part_tree()
+  l_containers_name = [name for name in containers_name]
+  if l_containers_name:
+    extractor.exchange_fields(l_containers_name)
+  end = time.time()
+  
+  # Print some light stats
+  elts_kind = ['vtx', 'edges', 'faces', 'cells'][extractor.dim]
+  if extractor.dim == 0:
+    n_cell = sum([PT.Zone.n_vtx(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
+  else:
+    n_cell = sum([PT.Zone.n_cell(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
+  n_cell_all = comm.allreduce(n_cell, MPI.SUM)
+  
+  mlog.info(f"Extraction from BC \"{bc_name}\" completed ({end-start:.2f} s) -- "
+            f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
+            f"(Σ={mlog.size_to_str(n_cell_all)})")
 
-  return extracted_tree
+  extract_tree = extractor.get_extract_part_tree()
+
+
+
+  return extract_tree

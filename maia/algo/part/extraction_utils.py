@@ -3,7 +3,10 @@ from   maia.utils    import np_utils
 
 import numpy as np
 
-LOC_TO_DIM   = {'Vertex':0, 'EdgeCenter':1, 'FaceCenter':2, 'CellCenter':3}
+LOC_TO_DIM   = {'Vertex':0,
+                'EdgeCenter':1,
+                'FaceCenter':2, 'IFaceCenter':2, 'JFaceCenter':2, 'KFaceCenter':2,
+                'CellCenter':3}
 
 def local_pl_offset(part_zone, dim):
   """
