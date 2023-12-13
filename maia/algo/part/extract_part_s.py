@@ -60,9 +60,9 @@ class Extractor:
     for i_domain, part_zones in enumerate(part_tree_per_dom):
       extract_zones = extract_part_one_domain(part_zones, point_range[i_domain], self.dim, comm,
                                                     equilibrate=False)
-      for zone in extracted_zones:
+      for zone in extract_zones:
         if PT.Zone.n_vtx(zone)!=0:
-          PT.add_child(extracted_base, zone)
+          PT.add_child(extract_base, zone)
     
     self.extract_tree = extract_tree
   
@@ -193,6 +193,10 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
     print(f'size_per_dim = {size_per_dim}')
     print(f'mask = {mask}')
     print(f'idx = {idx}')
+
+    if dim==2:
+      pr[mask,1]+=1
+      size_per_dim+=1
     print(f'size_per_dim[mask]+1 = {size_per_dim[mask]+1}')
 
     # n_dim_pop = 0
