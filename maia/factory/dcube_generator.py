@@ -184,7 +184,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   return dist_tree
 
-def dcube_struct_generate(n_vtx, edge_length, origin, comm):
+def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'):
   max_coords = np.asarray(origin).copy() + np.asarray(edge_length)
 
   dist_tree = maia.factory.generate_dist_points(n_vtx, "Structured", comm, origin, max_coords)
@@ -214,18 +214,21 @@ def dcube_struct_generate(n_vtx, edge_length, origin, comm):
   # Create BCs
   zbc = PT.new_child(dist_zone, 'ZoneBC', 'ZoneBC_t')
 
+  xyz_to_faceloc = {'X':'IFaceCenter', 'Y':'JFaceCenter', 'Z':'KFaceCenter'}
+  offset = 1 if bc_location=='FaceCenter' else 0
   for idim, dir in enumerate(['X', 'Y', 'Z']):
     if cell_dim > idim:
+      location = bc_location if bc_location=='Vertex' else xyz_to_faceloc[dir]
       mask = np_utils.others_mask(np.arange(cell_dim), [idim])
 
       pr = np.ones((cell_dim, 2), dtype=zone_dims.dtype)
-      pr[mask, 1] = zone_dims[mask, 0]
-      bc = PT.new_BC(f'{dir}min', point_range=pr, parent=zbc)
+      pr[mask, 1] = zone_dims[mask, 0]-offset
+      bc = PT.new_BC(f'{dir}min', point_range=pr, loc=location, parent=zbc)
 
       pr = np.ones((cell_dim, 2), dtype=zone_dims.dtype)
       pr[idim, :] = zone_dims[idim,0]
-      pr[mask, 1] = zone_dims[mask, 0]
-      bc = PT.new_BC(f'{dir}max', point_range=pr, parent=zbc)
+      pr[mask, 1] = zone_dims[mask, 0]-offset
+      bc = PT.new_BC(f'{dir}max', point_range=pr, loc=location, parent=zbc)
 
   for bc in PT.get_children(zbc):
     distri = par_utils.uniform_distribution(PT.Subset.n_elem(bc), comm)
