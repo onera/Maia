@@ -25,6 +25,7 @@ Developpement version
 - partitioning: enable split of 2D/1D structured meshes
 - interpolation: allow input fields to be Vertex located in some cases
 - poly_old_to_new / poly_new_to_old : manage *mixed* elements
+- convert_elements_to_ngon : manage *mixed* elements
 
 🐞 Fixes
 ^^^^^^^^

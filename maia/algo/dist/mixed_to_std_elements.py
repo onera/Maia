@@ -58,8 +58,6 @@ def convert_mixed_to_elements(dist_tree, comm):
     for zone in PT.get_all_Zone_t(dist_tree):
         elem_types = {} # For each element type: dict id of mixed node -> number of elts
         ec_per_elem_type_loc = {}
-        ln_to_gn_loc = {}
-        nb_elem_prev = 0
         
         # 1/ Create local element connectivity for each element type found in each mixed node
         #    and deduce the local number of each element type

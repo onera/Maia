@@ -5,6 +5,7 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
 from maia.algo.dist   import ngon_from_std_elements as GNG
 
@@ -152,4 +153,15 @@ class Test_compute_ngon_from_std_elements:
       assert (PT.get_child_from_name(bcb, 'PointList')[1] == [10]).all()
     assert PT.Subset.GridLocation(bcc) == 'Vertex' #Vertex bc should not have changed
     assert (PT.get_child_from_name(bcc, 'PointRange')[1] == [[1,5]]).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_from_mixed(comm):
+  tree_elt = maia.factory.generate_dist_block(3, 'TETRA_4', comm)
+  tree_mix = PT.deep_copy(tree_elt)
+  maia.algo.dist.convert_elements_to_mixed(tree_mix, comm)
+
+  GNG.convert_elements_to_ngon(tree_elt, comm)
+  GNG.convert_elements_to_ngon(tree_mix, comm)
+
+  assert PT.is_same_tree(tree_elt, tree_mix)
 
