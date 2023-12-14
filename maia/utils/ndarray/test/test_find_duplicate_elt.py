@@ -3,7 +3,7 @@ import pytest
 import pytest_parallel
 import numpy as np
 
-import cmaia.dist_algo as cdist_algo
+from cmaia.utils import find_duplicate_elt, find_duplicate_elt2, find_duplicate_elt3
 
 @pytest_parallel.mark.parallel(1)
 def test_find_duplicate_elt(comm):
@@ -14,15 +14,15 @@ def test_find_duplicate_elt(comm):
   result = np.array([    0,     0,     1,     0,      1,     0,     1,     1], dtype=np.int32)
 
   mask = np.ones(n_elt, dtype=np.int32)
-  cdist_algo.find_duplicate_elt(n_elt, size_elt, elt_ec, mask)
+  find_duplicate_elt(n_elt, size_elt, elt_ec, mask)
   assert np.array_equal(mask, result)
 
   mask = np.ones(n_elt, dtype=np.int32)
-  cdist_algo.find_duplicate_elt2(n_elt, size_elt, elt_ec, mask)
+  find_duplicate_elt2(n_elt, size_elt, elt_ec, mask)
   assert np.array_equal(mask, result)
 
   mask = np.ones(n_elt, dtype=np.int32)
-  cdist_algo.find_duplicate_elt3(n_elt, size_elt, elt_ec, mask)
+  find_duplicate_elt3(n_elt, size_elt, elt_ec, mask)
   assert np.array_equal(mask, result)
 
 
@@ -46,19 +46,19 @@ def test_find_duplicate_elt_many(n_vtx, n_elt, comm):
 
   start = time.time()
   mask1 = np.ones(n_elt, dtype=np.int32)
-  cdist_algo.find_duplicate_elt(n_elt, elt_size, elt_ec, mask1)
+  find_duplicate_elt(n_elt, elt_size, elt_ec, mask1)
   end   = time.time()
   print(f'TIME v1 = {end-start}')
 
   start = time.time()
   mask2 = np.ones(n_elt, dtype=np.int32)
-  cdist_algo.find_duplicate_elt2(n_elt, elt_size, elt_ec, mask2)
+  find_duplicate_elt2(n_elt, elt_size, elt_ec, mask2)
   end   = time.time()
   print(f'TIME v2 = {end-start}')
 
   start = time.time()
   mask3 = np.ones(n_elt, dtype=np.int32)
-  cdist_algo.find_duplicate_elt3(n_elt, elt_size, elt_ec, mask3)
+  find_duplicate_elt3(n_elt, elt_size, elt_ec, mask3)
   end   = time.time()
   print(f'TIME v3 = {end-start}')
 

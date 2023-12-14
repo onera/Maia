@@ -1,5 +1,4 @@
 #include "maia/algo/dist/dist_algo.pybind.hpp"
-#include "maia/algo/dist/find_duplicate_elt.pybind.hpp"
 #if __cplusplus > 201703L
 #include "cpp_cgns/interop/pycgns_converter.hpp"
 #include "maia/utils/parallel/mpi4py.hpp"
@@ -52,19 +51,13 @@ void register_dist_algo_module(py::module_& parent) {
   m.def("put_boundary_first"                      , put_boundary_first                      , "ngon sorted with boundary faces first");
   m.def("split_boundary_subzones_according_to_bcs", split_boundary_subzones_according_to_bcs, "Split a ZoneSubRegion node with a PointRange spaning all boundary faces into multiple ZoneSubRegion with a BCRegionName");
   
-  m.def("find_duplicate_elt", find_duplicate_elt , "Find elements that are duplicated (hash table and solve conflict)");
-  m.def("find_duplicate_elt2", find_duplicate_elt2, "Find elements that are duplicated (sorting algorithm)");
-  m.def("find_duplicate_elt3", find_duplicate_elt3, "Find elements that are duplicated (hash table and solve conflict with sort algorithm)");
-  
 }
 #else //C++==17
 
+namespace py = pybind11;
 void register_dist_algo_module(py::module_& parent) {
 
   py::module_ m = parent.def_submodule("dist_algo");
-  m.def("find_duplicate_elt", find_duplicate_elt , "Find elements that are duplicated (hash table and solve conflict)");
-  m.def("find_duplicate_elt2", find_duplicate_elt2, "Find elements that are duplicated (sorting algorithm)");
-  m.def("find_duplicate_elt3", find_duplicate_elt3, "Find elements that are duplicated (hash table and solve conflict with sort algorithm)");
   
 }
 #endif //C++>17

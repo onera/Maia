@@ -1,4 +1,4 @@
-#include "maia/algo/dist/find_duplicate_elt.pybind.hpp"
+#include "maia/utils/ndarray/find_duplicate_elt.pybind.hpp"
 
 void find_duplicate_elt (          int                       n_elt,
                                   int                       elt_size,

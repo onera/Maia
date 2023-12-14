@@ -1,6 +1,7 @@
 #include "maia/utils/utils.pybind.hpp"
 
 #include "maia/utils/ndarray/subset_sum.pybind.hpp"
+#include "maia/utils/ndarray/find_duplicate_elt.pybind.hpp"
 #include "maia/utils/ndarray/layouts.pybind.hpp"
 #include "maia/utils/numbering/numbering.pybind.hpp"
 #include "maia/utils/logging/logging.pybind.hpp"
@@ -18,4 +19,11 @@ void register_utils_module(py::module_& parent) {
   register_logging_module(m);
 
   m.def("search_subset_match", &search_subset_match);
+
+  m.def("find_duplicate_elt", &find_duplicate_elt , 
+        "Find elements that are duplicated (hash table and solve conflict)");
+  m.def("find_duplicate_elt2", &find_duplicate_elt2, 
+        "Find elements that are duplicated (sorting algorithm)");
+  m.def("find_duplicate_elt3", &find_duplicate_elt3, 
+        "Find elements that are duplicated (hash table and solve conflict with sort algorithm)");
 }
