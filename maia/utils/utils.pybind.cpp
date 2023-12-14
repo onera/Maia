@@ -22,8 +22,6 @@ void register_utils_module(py::module_& parent) {
 
   m.def("find_duplicate_elt", &find_duplicate_elt , 
         "Find elements that are duplicated (hash table and solve conflict)");
-  m.def("find_duplicate_elt2", &find_duplicate_elt2, 
-        "Find elements that are duplicated (sorting algorithm)");
   m.def("find_duplicate_elt3", &find_duplicate_elt3, 
         "Find elements that are duplicated (hash table and solve conflict with sort algorithm)");
 }

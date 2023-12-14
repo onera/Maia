@@ -3,7 +3,7 @@ import pytest
 import pytest_parallel
 import numpy as np
 
-from cmaia.utils import find_duplicate_elt, find_duplicate_elt2, find_duplicate_elt3
+from cmaia.utils import find_duplicate_elt, find_duplicate_elt3
 
 @pytest_parallel.mark.parallel(1)
 def test_find_duplicate_elt(comm):
@@ -15,10 +15,6 @@ def test_find_duplicate_elt(comm):
 
   mask = np.ones(n_elt, dtype=np.int32)
   find_duplicate_elt(n_elt, size_elt, elt_ec, mask)
-  assert np.array_equal(mask, result)
-
-  mask = np.ones(n_elt, dtype=np.int32)
-  find_duplicate_elt2(n_elt, size_elt, elt_ec, mask)
   assert np.array_equal(mask, result)
 
   mask = np.ones(n_elt, dtype=np.int32)
@@ -51,12 +47,6 @@ def test_find_duplicate_elt_many(n_vtx, n_elt, comm):
   print(f'TIME v1 = {end-start}')
 
   start = time.time()
-  mask2 = np.ones(n_elt, dtype=np.int32)
-  find_duplicate_elt2(n_elt, elt_size, elt_ec, mask2)
-  end   = time.time()
-  print(f'TIME v2 = {end-start}')
-
-  start = time.time()
   mask3 = np.ones(n_elt, dtype=np.int32)
   find_duplicate_elt3(n_elt, elt_size, elt_ec, mask3)
   end   = time.time()
@@ -66,6 +56,4 @@ def test_find_duplicate_elt_many(n_vtx, n_elt, comm):
   # print(f'np.where(mask1!=mask2) = ({where_diff.size}) {where_diff}')
   # print(f'mask1[where_diff] = {mask1[where_diff]}')
   # print(f'mask2[where_diff] = {mask2[where_diff]}')
-  assert np.array_equal(mask1, mask2)
   assert np.array_equal(mask1, mask3)
-  assert np.array_equal(mask2, mask3)

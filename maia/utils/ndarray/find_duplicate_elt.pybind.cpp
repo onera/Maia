@@ -1,9 +1,12 @@
 #include "maia/utils/ndarray/find_duplicate_elt.pybind.hpp"
 
-void find_duplicate_elt (          int                       n_elt,
-                                  int                       elt_size,
-                      py::array_t<int, py::array::f_style>& np_elt_vtx,
-                      py::array_t<int, py::array::f_style>& np_elt_mask) {
+namespace py = pybind11;
+
+void find_duplicate_elt(int                                   n_elt,
+                        int                                   elt_size,
+                        py::array_t<int, py::array::f_style>& np_elt_vtx,
+                        py::array_t<int, py::array::f_style>& np_elt_mask) 
+{
   /*
     Go through all elements verifying that has not already be defined.
     Args : 
@@ -21,7 +24,7 @@ void find_duplicate_elt (          int                       n_elt,
   auto elt_mask = make_raw_view(np_elt_mask);
 
   // > Build keys array
-  int *elt_key = (int *) malloc(n_elt*sizeof(int));
+  int *elt_key = new int[n_elt];
   for (int i_elt=0; i_elt<n_elt; i_elt++) {
     elt_key[i_elt] = 0;
     for (int i_vtx=i_elt*elt_size; i_vtx<(i_elt+1)*elt_size; i_vtx++) {
@@ -30,14 +33,14 @@ void find_duplicate_elt (          int                       n_elt,
   }
 
   // > Sort array
-  int *order = (int *)  malloc(n_elt*sizeof(int));
+  int *order = new int[n_elt];
   std::iota(order, order+n_elt, 0);
   std::sort(order, order+n_elt, [&](int i, int j) {return elt_key[i] < elt_key[j];});
 
   // > Create conflict idx
   int n_elem_in_conflict = 0;
   int n_conflict = 0;
-  int *conflict_idx = (int *)  malloc(n_elt*sizeof(int));
+  int *conflict_idx = new int[n_elt];
   conflict_idx[0] = 0;
   for (int i_elt=0; i_elt<n_elt-1; i_elt++) {
     if (elt_key[order[i_elt]]!=elt_key[order[i_elt+1]]) {
@@ -47,13 +50,14 @@ void find_duplicate_elt (          int                       n_elt,
   }
   n_conflict++;
   conflict_idx[n_conflict] = n_elt;
+  delete[] elt_key;
 
   // > Resolve conflict
   int i_elt1 = 0;
   int i_elt2 = 0;
   int li_vtx = 0;
   int n_similar_vtx = 0;
-  int *similar_vtx = (int *) malloc(elt_size*sizeof(int)); // Array to tag vtx already taggued as similar in elt2
+  int *similar_vtx = new int[elt_size]; // Array to tag vtx already taggued as similar in elt2
   int n_elt_in_conflict = 0;
   for (int i_conflict=0; i_conflict<n_conflict; i_conflict++) {
     n_elt_in_conflict = conflict_idx[i_conflict+1]-conflict_idx[i_conflict];
@@ -90,98 +94,17 @@ void find_duplicate_elt (          int                       n_elt,
       }
     }
   }
+  delete[] order;
+  delete[] similar_vtx;
+  delete[] conflict_idx;
 }
 
 
-void find_duplicate_elt2(          int                       n_elt,
-                                   int                       elt_size,
-                       py::array_t<int, py::array::f_style>& np_elt_vtx,
-                       py::array_t<int, py::array::f_style>& np_elt_mask) {
-  /*
-    Go through all elements verifying that has not already be defined.
-    Args : 
-      - n_elt       [in] : element number
-      - elt_size    [in] : vertex number in one element
-      - np_elt_vtx  [in] : element connectivity
-      - np_elt_mask [out]: which element are not duplicated
-
-    TODO:
-     - delete elt_size arguement (to be retrieve in place)
-     - Beware of gnum
-     - Renvoyer la liste PL
-  */
-  using int_t = int;
-  auto elt_vtx  = make_raw_view(np_elt_vtx);
-  auto elt_mask = make_raw_view(np_elt_mask);
-
-  // > Local copy of elt_vtx
-  std::vector<int_t> elt_vtx_lex(elt_vtx, elt_vtx+n_elt*elt_size); 
-
-  // {std_e::time_logger tlog0("maia", "sort elt sorted by vtx");
-  // > Sort vtx in each element 
-  for (int i_elt=0; i_elt<n_elt; ++i_elt) {
-    std::sort(elt_vtx_lex.data()+i_elt*elt_size, elt_vtx_lex.data()+(i_elt+1)*elt_size);
-  }
-  // }
-
-  // > Lambda function to compare two elements
-  // > Nothing in [&] because elt_vtx_lex and elt_size needed, and when 2 norm say to put nothing
-  // auto elt_comp = [&elt_vtx_lex](int i, int j) {
-  auto elt_comp = [&](int i, int j) { 
-    auto elt_i_beg = elt_vtx_lex.data()+i*elt_size;
-    auto elt_j_beg = elt_vtx_lex.data()+j*elt_size;
-    auto elt_i_end = elt_i_beg + elt_size;
-    auto elt_j_end = elt_j_beg + elt_size;
-    return std::lexicographical_compare(elt_i_beg, elt_i_end, elt_j_beg, elt_j_end);
-    // return *elt_i_beg<*elt_j_beg;
-  };
-
-  std::vector<int_t> order(n_elt); 
-  // {std_e::time_logger tlog0("maia", "sort order");
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(), elt_comp);
-  // }
-
-  // > Lambda function equal elements
-  // auto is_same_elt = [&elt_vtx_lex](int i, int j) {
-  auto is_same_elt = [&](int i, int j) { // Nothin in & because 
-    auto elt_i_beg = elt_vtx_lex.data()+i*elt_size;
-    auto elt_j_beg = elt_vtx_lex.data()+j*elt_size;
-    auto elt_i_end = elt_i_beg + elt_size;
-    auto elt_j_end = elt_j_beg + elt_size;
-    return std::equal(elt_i_beg, elt_i_end, elt_j_beg, elt_j_end);
-  };
-
-  // {std_e::time_logger tlog0("maia", "find unique");
-  int compteur=1;
-  int idx_previous = 0;
-  for (int i_elt=1; i_elt<n_elt; ++i_elt) {
-    if (is_same_elt(order[idx_previous], order[i_elt])) {
-      compteur++;
-      if ((i_elt==n_elt-1)&&(compteur!=1)) {
-        for (int i_elt2=idx_previous; i_elt2<i_elt+1; ++i_elt2) {
-          elt_mask[order[i_elt2]] = 0;
-        }
-      }
-    }
-    else {
-      if (compteur!=1) {
-        for (int i_elt2=idx_previous; i_elt2<i_elt; ++i_elt2) {
-          elt_mask[order[i_elt2]] = 0;
-        }
-      }
-      idx_previous = i_elt;
-      compteur = 1;
-    }
-  }
-  // }
-}
-
-
-void find_duplicate_elt3(         int                       n_elt,
-                                  int                       elt_size,
-                      py::array_t<int, py::array::f_style>& np_elt_vtx,
-                      py::array_t<int, py::array::f_style>& np_elt_mask) {
+void find_duplicate_elt3(int                                   n_elt,
+                         int                                   elt_size,
+                         py::array_t<int, py::array::f_style>& np_elt_vtx,
+                         py::array_t<int, py::array::f_style>& np_elt_mask)
+{
   /*
     Go through all elements verifying that has not already be defined.
     Args : 
@@ -200,7 +123,7 @@ void find_duplicate_elt3(         int                       n_elt,
   auto elt_mask = make_raw_view(np_elt_mask);
 
   // > Build keys array
-  int *elt_key = (int *) malloc(n_elt*sizeof(int));
+  int *elt_key = new int[n_elt];
   for (int i_elt=0; i_elt<n_elt; i_elt++) {
     elt_key[i_elt] = 0;
     for (int i_vtx=i_elt*elt_size; i_vtx<(i_elt+1)*elt_size; i_vtx++) {
@@ -209,14 +132,14 @@ void find_duplicate_elt3(         int                       n_elt,
   }
 
   // > Sort array
-  int *order = (int *)  malloc(n_elt*sizeof(int));
+  int *order = new int[n_elt];
   std::iota(order, order+n_elt, 0);
   std::sort(order, order+n_elt, [&](int i, int j) {return elt_key[i] < elt_key[j];});
 
   // > Create conflict idx
   int n_elem_in_conflict = 0;
   int n_conflict = 0;
-  int *conflict_idx = (int *)  malloc(n_elt*sizeof(int));
+  int *conflict_idx = new int[n_elt];
   conflict_idx[0] = 0;
   for (int i_elt=0; i_elt<n_elt-1; i_elt++) {
     if (elt_key[order[i_elt]]!=elt_key[order[i_elt+1]]) {
@@ -226,6 +149,8 @@ void find_duplicate_elt3(         int                       n_elt,
   }
   n_conflict++;
   conflict_idx[n_conflict] = n_elt;
+
+  delete[] elt_key;
 
   // > Resolve conflict
   int n_elt_in_conflict = 0;
@@ -297,4 +222,6 @@ void find_duplicate_elt3(         int                       n_elt,
       }
     }
   }
+  delete[] order;
+  delete[] conflict_idx;
 }
