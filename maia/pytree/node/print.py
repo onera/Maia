@@ -134,6 +134,35 @@ def print_node(node, depth, is_last_child, line_prefix, plabel, cst_props, out_l
     sons_w = "child" if n_sons == 1 else "children"
     out_lines.append(f"{line_prefix}╵╴╴╴ ({n_sons} {sons_w} masked)\n")
 
+def to_string(tree:CGNSTree, 
+              *, 
+              verbose:bool=False,
+              max_depth:int=1000,
+              colors:bool=False,
+              print_if:Callable[[CGNSTree], bool]=lambda n: True):
+  # TODO : Keeping 1 level of children with print_if is complicated, 
+  # maybe update if later using graph iterators
+  masked_tree = shallow_copy(tree)
+  for node in W.iter_nodes_from_predicate(masked_tree, lambda n: True, explore='deep'):
+    node[1] = (node[1], print_if(node))
+  # Remove nodes having a False value and no child
+  n_nodes_prev = _n_nodes(masked_tree)
+  n_nodes      = -1 # Init loop
+  while (n_nodes != n_nodes_prev):
+    W.rm_nodes_from_predicate(masked_tree, lambda n: len(NA.get_children(n)) == 0 and not n[1][1])
+    n_nodes_prev = n_nodes
+    n_nodes      = _n_nodes(masked_tree)
+  for node in W.iter_nodes_from_predicate(masked_tree, lambda n: True, explore='deep'):
+    node[1] = node[1][0]
+   
+
+  print_traits = {'max_depth' : max_depth,
+                  'colors'    : colors,
+                  'verbose'   : verbose}
+
+  out_lines = []
+  print_node(masked_tree, 0, False, "", "", print_traits, out_lines)
+  return out_lines
 
 def print_tree(tree:CGNSTree, 
                out:TextIO =sys.stdout,
@@ -174,6 +203,12 @@ def print_tree(tree:CGNSTree,
   Args:
     tree      (CGNSTree) : Node to be printed
     out       (TextIO)   : Where to print
+
+  See also:
+    To display a tree in custom output, use function :func:`to_string`
+    which takes the same parameters, except ``out``, and return the string
+    representation of the tree.
+
   Examples:
     >>> tree = PT.yaml.parse_yaml_cgns.to_node('''
     ... Base CGNSBase_t [3,3]:
@@ -206,30 +241,11 @@ def print_tree(tree:CGNSTree,
                 [0 1 2 3 0 1 2 3 0 1 2 3 0 1 2 3]
   """
 
-  # TODO : Keeping 1 level of children with print_if is complicated, 
-  # maybe update if later using graph iterators
-  masked_tree = shallow_copy(tree)
-  for node in W.iter_nodes_from_predicate(masked_tree, lambda n: True, explore='deep'):
-    node[1] = (node[1], print_if(node))
-  # Remove nodes having a False value and no child
-  n_nodes_prev = _n_nodes(masked_tree)
-  n_nodes      = -1 # Init loop
-  while (n_nodes != n_nodes_prev):
-    W.rm_nodes_from_predicate(masked_tree, lambda n: len(NA.get_children(n)) == 0 and not n[1][1])
-    n_nodes_prev = n_nodes
-    n_nodes      = _n_nodes(masked_tree)
-  for node in W.iter_nodes_from_predicate(masked_tree, lambda n: True, explore='deep'):
-    node[1] = node[1][0]
-   
   if out not in [sys.stdout, sys.stderr]:
     colors = False
 
-  print_traits = {'max_depth' : max_depth,
-                  'colors'    : colors,
-                  'verbose'   : verbose}
-
-  out_lines = []
-  print_node(masked_tree, 0, False, "", "", print_traits, out_lines)
+  out_lines = to_string(tree, verbose=verbose, max_depth=max_depth, 
+                        colors=colors, print_if=print_if)
   
   if isinstance(out, str):
     with open(out, 'w') as f: # Auto open file if filename is provided
