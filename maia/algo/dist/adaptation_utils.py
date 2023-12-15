@@ -6,8 +6,6 @@ import maia.transfer.protocols as EP
 from   maia.utils  import np_utils, py_utils, par_utils
 from   maia.algo.dist.subset_tools import vtx_ids_to_face_ids
 
-import cmaia.dist_algo as cdist_algo
-
 import numpy as np
 
 import Pypdm.Pypdm as PDM
@@ -237,9 +235,8 @@ def is_elt_included(zone, src_pl, src_name, tgt_pl, tgt_name):
   
   tgt_face_vtx_idx, tgt_face_vtx = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, tgt_ec_elt)
   tmp_ec = np.concatenate([src_ec_elt, tgt_face_vtx])
-  mask = np.ones(n_src_elt+tgt_face_vtx_idx.size-1, dtype=np.int32)
-  cdist_algo.find_duplicate_elt(n_src_elt+tgt_face_vtx_idx.size-1, size_src_elt, tmp_ec, mask)
-  mask = np.invert(mask[0:n_src_elt].astype(bool))
+  mask = np_utils.is_unique_strided(tmp_ec, size_src_elt, method='hash')
+  mask = ~mask[0:n_src_elt]
 
   return src_pl[mask]
 
@@ -749,10 +746,9 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
 
   # > Find faces not already defined in BCs or duplicated
   bc_ec    = np.concatenate(bc_ecs)
-  tmp_mask = np.full(n_elt_to_add+n_bc_elt, 1, dtype=np.int32)
   tmp_ec   = np.concatenate([tgt_elt_ec, bc_ec])
-  cdist_algo.find_duplicate_elt3(n_elt_to_add+n_bc_elt, size_tgt_elt, tmp_ec, tmp_mask)
-  elt_ids = np.where(tmp_mask[0:n_elt_to_add]==1)[0] # Get only tri which are not in BCs
+  tmp_mask = np_utils.is_unique_strided(tmp_ec, size_tgt_elt, method='sort')
+  elt_ids = np.where(tmp_mask[0:n_elt_to_add]==True)[0] # Get only tri which are not in BCs
   n_elt_to_add = elt_ids.size
   ec_pl = np_utils.interweave_arrays([size_tgt_elt*elt_ids+i_size for i_size in range(size_tgt_elt)])
   tgt_elt_ec = tgt_elt_ec[ec_pl]

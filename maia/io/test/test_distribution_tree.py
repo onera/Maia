@@ -21,8 +21,8 @@ def test_compute_subset_distribution(comm):
   assert (PT.get_value(distrib) == par_utils.uniform_distribution(3*3*1, comm)).all()
 
   node = PT.new_BC(name='BC')
-  PT.new_PointList('PointList', None, parent=node)
-  PT.new_PointList('PointList#Size', [1,9], parent=node)
+  PT.new_IndexArray('PointList', None, parent=node)
+  PT.new_IndexArray('PointList#Size', [1,9], parent=node)
   distribution_tree.compute_subset_distribution(node, comm, par_utils.uniform_distribution)
 
   distrib_ud = MT.getDistribution(node)

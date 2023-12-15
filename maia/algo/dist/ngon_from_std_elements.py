@@ -67,7 +67,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
       PT.rm_nodes_from_name(bc, 'PointRange')
       PT.rm_nodes_from_name(bc, 'PointList')
       start, end = group_idx[i_bc], group_idx[i_bc+1]
-      PT.new_PointList(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
+      PT.new_IndexArray(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
   # Remove unconverted BCs
   for zbc in PT.get_nodes_from_label(zone, 'ZoneBC_t'):
@@ -215,7 +215,8 @@ def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
 
   Requirement : the ``Element_t`` nodes appearing in the distributed zones
   must be ordered according to their dimension (either increasing or 
-  decreasing). 
+  decreasing). Tree made of *Mixed* elements are supported
+  (:func:`convert_mixed_to_elements` is called under the hood).
 
   Args:
     dist_tree  (CGNSTree): Tree with connectivity described by standard elements
@@ -235,6 +236,12 @@ def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
         :end-before: #convert_elements_to_ngon@end
         :dedent: 2
   """
+  # If tree has MIXED elements, first convert Mixed -> Elts
+  is_mixed = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'MIXED'
+  has_mixed = PT.get_node_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', is_mixed]) is not None
+  if has_mixed:
+    maia.algo.dist.convert_mixed_to_elements(dist_tree, comm)
+
   if stable_sort: 
     from .elements_to_ngons import elements_to_ngons
     elements_to_ngons(dist_tree, comm)

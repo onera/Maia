@@ -64,7 +64,7 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
               pl_value = s_numbering.index_to_ijk_from_loc(pl_raw, loc, PT.Zone.VertexSize(dist_zone))
             else:
               pl_value = pl_raw.reshape((1,-1), order='F')
-            PT.new_PointList('PointList', pl_value, parent=p_node)
+            PT.new_IndexArray('PointList', pl_value, parent=p_node)
             lntogn_ud = MT.newGlobalNumbering(parent=p_node)
             PT.new_DataArray('Index', p_groups['npZSRGroupLNToGN'][beg_pl:end_pl], parent=lntogn_ud)
 

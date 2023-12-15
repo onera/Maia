@@ -158,6 +158,33 @@ interleaved_to_indexed_connectivity(int n_elem, py::array_t<T, py::array::f_styl
   return std::make_tuple(np_offset, np_values);
 }
 
+template<typename T>
+void 
+create_mixed_elts_eso(py::array_t<T, py::array::f_style>& np_connec, py::array_t<T, py::array::f_style>& np_eso)
+{
+  int n_cell = np_eso.size() - 1;
+
+  static int n_vtx_per_type[] = {
+    -1, -1, 1, 2, 3, 3, 6, 4, 8, 9,
+    4, 10, 5, 14, 6, 15, 18, 8, 20, 27,
+    -1, 13, -1, -1, 4, 9, 10, 12, 16, 16,
+    20, 21, 29, 30, 24, 38, 40, 32, 56, 64, 
+    5, 12, 15, 16, 25, 22, 34, 35, 29, 50, 
+    55, 33, 66, 75, 44, 98, 125
+  };
+
+  auto connec = make_raw_view(np_connec);
+  auto eso    = make_raw_view(np_eso);
+
+  eso[0] = 0;
+  int pos = 0;
+  for (int i = 0; i < n_cell; ++i) {
+    int nv = n_vtx_per_type[connec[eso[i]]];
+    pos += (nv + 1);
+    eso[i+1] = pos;
+  }
+}
+
 template<typename fld_type>
 std::tuple<py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>>
 interlaced_to_tuple_coords(py::array_t<fld_type, py::array::f_style>& np_xyz){
@@ -258,6 +285,12 @@ void register_layouts_module(py::module_& parent) {
   m.def("interleaved_to_indexed_connectivity", &interleaved_to_indexed_connectivity<int64_t>, 
         py::arg("n_elem"  ).noconvert(),
         py::arg("array"  ).noconvert());
+  m.def("create_mixed_elts_eso", &create_mixed_elts_eso<int32_t>, 
+        py::arg("connectivity").noconvert(),
+        py::arg("eso").noconvert());
+  m.def("create_mixed_elts_eso", &create_mixed_elts_eso<int64_t>, 
+        py::arg("connectivity").noconvert(),
+        py::arg("eso").noconvert());
 
   m.def("pe_cgns_to_pdm_face_cell", &pe_cgns_to_pdm_face_cell<int32_t>,
         py::arg("pe"       ).noconvert(),

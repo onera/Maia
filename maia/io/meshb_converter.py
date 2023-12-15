@@ -89,7 +89,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         bc_n = PT.new_BC(bc_name, type='Null', loc=location, parent=zone_bc)
         start, end = elt_group_idx[i_group], elt_group_idx[i_group+1]
         dn_elt_bnd = end - start
-        PT.new_PointList(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
+        PT.new_IndexArray(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
 
         bc_distrib = par_utils.gather_and_shift(dn_elt_bnd, comm, pdm_gnum_dtype)
         MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_elt_bnd, comm)}, parent=bc_n)

@@ -9,5 +9,5 @@ def enforceDonorAsPath(tree:CGNSTree):
   for base in PT.iter_all_CGNSBase_t(tree):
     base_n = PT.get_name(base)
     for gc in PT.iter_children_from_predicates(base, predicates):
-      PT.set_value(gc, explore.getZoneDonorPath(base_n, gc))
+      PT.set_value(gc, PT.GridConnectivity.ZoneDonorPath(gc, base_n))
 

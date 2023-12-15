@@ -1,6 +1,7 @@
 #include "maia/utils/utils.pybind.hpp"
 
 #include "maia/utils/ndarray/subset_sum.pybind.hpp"
+#include "maia/utils/ndarray/find_unique.pybind.hpp"
 #include "maia/utils/ndarray/layouts.pybind.hpp"
 #include "maia/utils/numbering/numbering.pybind.hpp"
 #include "maia/utils/logging/logging.pybind.hpp"
@@ -18,4 +19,9 @@ void register_utils_module(py::module_& parent) {
   register_logging_module(m);
 
   m.def("search_subset_match", &search_subset_match);
+
+  m.def("is_unique_cst_stride_hash", &is_unique_cst_stride_hash , 
+        "Find elements that are duplicated (hash table and solve conflict)");
+  m.def("is_unique_cst_stride_sort", &is_unique_cst_stride_sort, 
+        "Find elements that are duplicated (hash table and solve conflict with sort algorithm)");
 }

@@ -67,7 +67,7 @@ def dplane_generate(xmin, xmax, ymin, ymax,
     PT.new_GridLocation('FaceCenter', parent=bc_n)
     start, end = edge_group_idx[i_bc], edge_group_idx[i_bc+1]
     dn_edge_bnd = end - start
-    PT.new_PointList(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
+    PT.new_IndexArray(value=edge_group[start:end].reshape(1,dn_edge_bnd), parent=bc_n)
 
     bc_distrib = par_utils.gather_and_shift(dn_edge_bnd, comm, edge_group.dtype)
     distrib   = np.array([bc_distrib[i_rank], bc_distrib[i_rank+1], bc_distrib[n_rank]])

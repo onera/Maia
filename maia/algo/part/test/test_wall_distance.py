@@ -57,7 +57,11 @@ def test_wall_distance_U(perio, comm):
   PT.add_child(zone, zone_bc)
 
   # Test with propagation method + default out_fs_name
-  WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
+  if perio:
+    with pytest.warns(RuntimeWarning):
+      WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
+  else:
+    WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
 
   fs = PT.get_child_from_name(zone, 'WallDistance')
   assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'

@@ -197,7 +197,7 @@ def exchange_field_one_domain(part_zones, part_zone_ep, mesh_dim, exch_tool_box,
     if len(part1_data)!=0 and part1_data[0].size!=0:
       new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
       point_list = new_point_list + local_pl_offset(part_zone_ep, LOC_TO_DIM[gridLocation])+1
-      new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
+      new_pl_node = PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
       partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]]
     else:
       partial_part1_lngn = []
@@ -476,7 +476,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
       zsr_node     = PT.get_node_from_path(part_zone, zsr_path)
       if zsr_node is not None:
         #Follow BC or GC link
-        related_node = PT.getSubregionExtent(zsr_node, part_zone)
+        related_node = PT.Subset.ZSRExtent(zsr_node, part_zone)
         zsr_node     = PT.get_node_from_path(part_zone, related_node)
         point_list_domain.append(PT.get_child_from_name(zsr_node, "PointList")[1][0])
         location = PT.Subset.GridLocation(zsr_node)
@@ -613,7 +613,7 @@ def extract_part_from_family(part_tree, family_name, comm,
             if transfer_dataset:
               if PT.get_child_from_label(fam_node, 'DataArray_t') is not None:
                 there_is_bcdataset[path] = True
-            related_path = PT.getSubregionExtent(fam_node, part_zone)
+            related_path = PT.Subset.ZSRExtent(fam_node, part_zone)
             fam_node = PT.get_node_from_path(part_zone, related_path)
           pl_n = PT.get_child_from_name(fam_node, 'PointList')
           fam_pl.append(PT.get_value(pl_n))

@@ -27,9 +27,13 @@ author = 'ONERA'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.graphviz","sphinx.ext.autodoc", "sphinx.ext.napoleon"]
+extensions = ["sphinx.ext.graphviz",
+              "sphinx.ext.autodoc", 
+              "sphinx.ext.autosummary",
+              "sphinx.ext.napoleon"]
 
 add_module_names = False #Shorten function names
+autodoc_typehints = 'none' #Hide typehints in doc
 
 # -- Napoleon extension settings
 napoleon_use_rtype = False  # Don't add a line for return type
@@ -84,6 +88,8 @@ rst_prolog = """
 .. role:: mono
 
 .. role:: def
+
+.. role:: titlelike
 """
 
 # Generate cgns example files, some will be downloadable

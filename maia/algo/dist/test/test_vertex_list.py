@@ -159,8 +159,8 @@ class Test_generate_jn_vertex_list():
     full_pl     = np.array([1,2,3,4,5,6,7,8,9])
     full_pl_opp = np.array([28,29,30,31,32,33,34,35,36])
     distri_pl   = par_utils.uniform_distribution(9, comm)
-    PT.new_PointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
-    PT.new_PointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    PT.new_IndexArray('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    PT.new_IndexArray('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     MT.newDistribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zone/ZoneGridConnectivity/matchA"
@@ -192,8 +192,8 @@ class Test_generate_jn_vertex_list():
     full_pl     = np.array([64,65,66,67,68,69,70,71,72]) #xmax
     full_pl_opp = np.array([37,38,39,40,41,42,43,44,45]) #xmin
     distri_pl   = par_utils.uniform_distribution(9, comm)
-    PT.new_PointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
-    PT.new_PointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    PT.new_IndexArray('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    PT.new_IndexArray('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     MT.newDistribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
@@ -224,8 +224,8 @@ class Test_generate_jn_vertex_list():
       pl_distri = [4,6,6]
       expt_jn_distri = [14, 21, 21]
 
-    PT.new_PointList('PointList'     , (np.array([1,2,4,11,13,16])   [pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
-    PT.new_PointList('PointListDonor', (np.array([65,66,68,75,77,80])[pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
+    PT.new_IndexArray('PointList'     , (np.array([1,2,4,11,13,16])   [pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
+    PT.new_IndexArray('PointListDonor', (np.array([65,66,68,75,77,80])[pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
     MT.newDistribution({'Index' : pl_distri}, gcA)
 
     gc_path = "Base/zone/ZoneGridConnectivity/matchA"
@@ -257,8 +257,8 @@ class Test_generate_jn_vertex_list():
     full_pl     = np.array([64,66,71]) #xmax
     full_pl_opp = np.array([37,39,44]) #xmin
     distri_pl   = par_utils.uniform_distribution(3, comm)
-    PT.new_PointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
-    PT.new_PointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    PT.new_IndexArray('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+    PT.new_IndexArray('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     MT.newDistribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
@@ -294,8 +294,8 @@ def test_generate_jns_vertex_list(comm, have_isolated_faces):
   full_pl     = np.array([64,65,66,67,68,69,70,71,72], pdm_dtype) #xmax
   full_pl_opp = np.array([37,38,39,40,41,42,43,44,45], pdm_dtype) #xmin
   distri_pl   = par_utils.uniform_distribution(9, comm)
-  PT.new_PointList('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
-  PT.new_PointList('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+  PT.new_IndexArray('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
+  PT.new_IndexArray('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
   MT.newDistribution({'Index' : distri_pl}, gcA)
 
   zgc = PT.new_ZoneGridConnectivity(parent=zoneB)
@@ -303,8 +303,8 @@ def test_generate_jns_vertex_list(comm, have_isolated_faces):
   full_pl     = np.array([64,65,66,67,68,69,70,71,72], pdm_dtype) #xmax
   full_pl_opp = np.array([37,38,39,40,41,42,43,44,45], pdm_dtype) #xmin
   distri_pl   = par_utils.uniform_distribution(9, comm)
-  PT.new_PointList('PointListDonor', full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
-  PT.new_PointList('PointList'     , full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
+  PT.new_IndexArray('PointListDonor', full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
+  PT.new_IndexArray('PointList'     , full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   MT.newDistribution({'Index' : distri_pl}, gcB)
 
   VL.generate_jns_vertex_list(tree, comm, have_isolated_faces=have_isolated_faces)

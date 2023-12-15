@@ -1,4 +1,6 @@
 import numpy as np
+
+import cmaia.utils as cutils
 from cmaia.utils import layouts
 
 def interweave_arrays(array_list):
@@ -126,14 +128,11 @@ def multi_arange(starts, stops):
   but much faster. Don't remplace it !
 
   """
-  if isinstance(starts, np.ndarray):
-    out_type = starts.dtype
-  else:
-    out_type = int
+  dtype = starts.dtype if isinstance(starts, np.ndarray) else int
   assert len(starts)==len(stops)
   stops = np.asarray(stops)
   l = stops - starts # Lengths of each range.
-  return np.repeat(stops - l.cumsum(dtype=out_type), l) + np.arange(l.sum(), dtype=out_type)
+  return np.repeat(stops - l.cumsum(dtype=dtype), l) + np.arange(l.sum(), dtype=dtype)
 
 def arange_with_jumps(multi_interval,jumps):
   """
@@ -175,6 +174,20 @@ def others_mask(array, ids):
   mask = np.ones(array.size, dtype=bool)
   mask[ids] = False
   return mask
+
+def is_unique_strided(array, stride, method='hash'):
+  """
+  For a cst strided array (eg. a connectivity), return a bool array indicating
+  for each element if it appears only once (w/ considering ordering)
+  """
+  assert isinstance(stride, int), "Only constant stride is supported"
+  n_elt = array.size // stride
+  if method == 'hash':
+    return cutils.is_unique_cst_stride_hash(n_elt, stride, array)
+  elif method =='sort':
+    return cutils.is_unique_cst_stride_sort(n_elt, stride, array)
+  else:
+    raise ValueError(f"Method must be one of ['hash', 'sort']")
 
 def any_in_range(array, start, end, strict=False):
   """

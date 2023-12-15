@@ -73,11 +73,34 @@ for rm_function in [rm_nodes_from_predicate, rm_children_from_predicate, keep_ch
   _update_module_attributes(generated)
 
 def get_node_from_path(root:CGNSTree, path:str) -> Optional[CGNSTree]:
+  """ Return the node in input tree matching given path, or None
+
+  A path is a str containing a full list of names, separated by ``'/'``, leading
+  to the node to select. Root name should not be included in path.
+  Wildcards are not accepted in path.
+
+  Args:
+      root (CGNSTree): Tree is which the search is performed
+      path (str): path of the node to select
+  Returns:
+    CGNSTree or None: Node found
+  Example:
+    >>> zone = PT.yaml.parse_yaml_cgns.to_node('''
+    ... Zone Zone_t:
+    ...   ZoneBC ZoneBC_t:
+    ...     BC BC_t "Null":
+    ...       GridLocation GridLocation_t "Vertex":
+    ... ''')
+    >>> PT.get_node_from_path(zone, 'ZoneBC/BC/GridLocation')
+    # Return node GridLocation
+    >>> PT.get_node_from_path(zone, 'ZoneBC/BC/PointRange')
+    # Return None
+  """
   if path == '':
     return root
   names = path.split('/')
   node = root
-  for i, name in enumerate(names):
+  for name in names:
     try:
       node = next((c for c in node[2] if c[0] == name))
     except StopIteration:
@@ -101,6 +124,28 @@ def rm_node_from_path(root:CGNSTree, path:str):
     rm_nodes_from_name(parent, path_tail(path))
 
 def get_all_Zone_t(root:CGNSTree) -> List[CGNSTree]:
+  """ Return the list of all the Zone_t nodes found in input tree
+
+  This function is SIDS aware, and will only search nodes in relevant places.
+
+  Args:
+      root (CGNSTree): Tree is which the search is performed
+  Returns:
+    list of CGNSTree: Nodes found
+  See also:
+    This function has the iterator counterpart :func:`iter_all_Zone_t`
+
+  Example:
+    >>> tree = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
+    ... BaseA CGNSBase_t:
+    ...   Zone1 Zone_t:
+    ...   Zone2 Zone_t:
+    ... BaseB CGNSBase_t:
+    ...   Zone3 Zone_t:
+    ... ''')
+    >>> [PT.get_name(n) for n in PT.iter_all_Zone_t(tree)]
+    ['Zone1', 'Zone2', 'Zone3']
+  """
   return list(iter_all_Zone_t(root))
 
 def iter_all_Zone_t(root:CGNSTree) -> Iterator[CGNSTree]:
@@ -113,6 +158,27 @@ def iter_all_Zone_t(root:CGNSTree) -> Iterator[CGNSTree]:
       yield from PT.iter_children_from_label(base, 'Zone_t')
 
 def get_all_CGNSBase_t(root:CGNSTree) -> List[CGNSTree]:
+  """ Return the list of all the CGNSBase_t nodes found in input tree
+
+  This function is SIDS aware, and will only search nodes in relevant places.
+
+  Args:
+      root (CGNSTree): Tree is which the search is performed
+  Returns:
+    list of CGNSTree: Nodes found
+  See also:
+    This function has the iterator counterpart :func:`iter_all_CGNSBase_t`
+  Example:
+    >>> tree = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
+    ... BaseA CGNSBase_t:
+    ...   Zone1 Zone_t:
+    ...   Zone2 Zone_t:
+    ... BaseB CGNSBase_t:
+    ...   Zone3 Zone_t:
+    ... ''')
+    >>> [PT.get_name(n) for n in PT.get_all_CGNSBase_t(tree)]
+    ['BaseA', 'BaseB']
+  """
   return list(iter_all_CGNSBase_t(root))
 
 def iter_all_CGNSBase_t(root:CGNSTree) -> Iterator[CGNSTree]:

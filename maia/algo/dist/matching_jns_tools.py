@@ -45,10 +45,10 @@ def _create_local_match_table(gc_list, gc_paths):
   for igc, gc in enumerate(gc_list):
     current_path = gc_paths[igc]
     current_base = current_path.split('/')[0]
-    opp_path = PT.getZoneDonorPath(current_base, gc)
+    opp_path = PT.GridConnectivity.ZoneDonorPath(gc, current_base)
     #print('current', gc[0], gc_paths[igc], 'opp', opp_path)
     candidates = [i for i,path in enumerate(gc_paths) if
-        (path==opp_path and PT.getZoneDonorPath(path.split('/')[0], gc_list[i]) == current_path)]
+        (path==opp_path and PT.GridConnectivity.ZoneDonorPath(gc_list[i], path.split('/')[0]) == current_path)]
     #print('  candidates', candidates)
     gc_has_pl = PT.get_child_from_name(gc, 'PointList') is not None
     for j in candidates:
@@ -108,7 +108,7 @@ def get_jn_donor_path(dist_tree, jn_path):
   """
   cur_jn = PT.get_node_from_path(dist_tree, jn_path)
   base_name, zone_name, zgc_name, jn_name = jn_path.split('/')
-  opp_zone_path = PT.getZoneDonorPath(base_name, cur_jn)
+  opp_zone_path = PT.GridConnectivity.ZoneDonorPath(cur_jn, base_name)
   gc_donor_name = PT.get_child_from_name(cur_jn, "GridConnectivityDonorName")
   if gc_donor_name is None :
     raise RuntimeError(f"No GridConnectivityDonorName found in GC {jn_path}")
@@ -204,8 +204,8 @@ def store_interfaces_ids(dist_tree):
   for i, matching_pair in enumerate(matching_pairs):
     for j,jn_path in enumerate(matching_pair):
       jn = PT.get_node_from_path(dist_tree, jn_path)
-      PT.new_DataArray("DistInterfaceId",  i+1, parent=jn)
-      PT.new_DataArray("DistInterfaceOrd", j,   parent=jn)
+      PT.new_node("DistInterfaceId",  "DataArray_t", i+1, parent=jn)
+      PT.new_node("DistInterfaceOrd", "DataArray_t", j,   parent=jn)
 
 def clear_interface_ids(dist_tree):
   """

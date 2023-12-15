@@ -20,7 +20,7 @@ def match_value(n:CGNSTree, value) -> bool:
   return np.array_equal(n[__VALUE__], value)
 
 def match_str_label(n:CGNSTree, label:str) -> bool:
-  return n[__LABEL__] == label
+  return fnmatch.fnmatch(n[__LABEL__], label)
 
 def match_cgk_label(n:CGNSTree, label) -> bool:
   return n[__LABEL__] == label.name
