@@ -1,4 +1,4 @@
-#include "maia/utils/ndarray/find_duplicate_elt.pybind.hpp"
+#include "maia/utils/ndarray/find_unique.pybind.hpp"
 namespace py = pybind11;
 
 py::array_t<bool>

@@ -229,6 +229,16 @@ def test_all_in_range():
   assert not np_utils.all_in_range([18,4,2,17,16,3], 15, 20, strict=False)
   assert not np_utils.all_in_range([3,4,1,6,12,3], 3, 20, strict=True)
 
+def test_is_unique_strided():
+  size_elt = 3
+  elt_ec = np.array([4,5,6, 3,1,2, 4,5,1, 5,4,6, 10,2,3, 1,2,3, 2,1,2, 5,1,1], dtype=np.int32)
+  result = np.array([    0,     0,     1,     0,      1,     0,     1,     1], dtype=bool)
+
+  mask = np_utils.is_unique_strided(elt_ec, size_elt, method='hash')
+  assert np.array_equal(mask, result)
+
+  mask = np_utils.is_unique_strided(elt_ec, size_elt, method='sort')
+  assert np.array_equal(mask, result)
 
 def check_transform(expected_x, expected_y, expected_z, computed_matrix, computed_x, computed_y, computed_z, atol):
   # Check matrix

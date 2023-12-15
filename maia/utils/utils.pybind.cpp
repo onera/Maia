@@ -1,7 +1,7 @@
 #include "maia/utils/utils.pybind.hpp"
 
 #include "maia/utils/ndarray/subset_sum.pybind.hpp"
-#include "maia/utils/ndarray/find_duplicate_elt.pybind.hpp"
+#include "maia/utils/ndarray/find_unique.pybind.hpp"
 #include "maia/utils/ndarray/layouts.pybind.hpp"
 #include "maia/utils/numbering/numbering.pybind.hpp"
 #include "maia/utils/logging/logging.pybind.hpp"
