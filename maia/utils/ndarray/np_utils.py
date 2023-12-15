@@ -1,4 +1,6 @@
 import numpy as np
+
+import cmaia.utils as cutils
 from cmaia.utils import layouts
 
 def interweave_arrays(array_list):
@@ -172,6 +174,20 @@ def others_mask(array, ids):
   mask = np.ones(array.size, dtype=bool)
   mask[ids] = False
   return mask
+
+def is_unique_strided(array, stride, method='hash'):
+  """
+  For a cst strided array (eg. a connectivity), return a bool array indicating
+  for each element if it appears only once (w/ considering ordering)
+  """
+  assert isinstance(stride, int), "Only constant stride is supported"
+  n_elt = array.size // stride
+  if method == 'hash':
+    return cutils.is_unique_cst_stride_hash(n_elt, stride, array)
+  elif method =='sort':
+    return cutils.is_unique_cst_stride_sort(n_elt, stride, array)
+  else:
+    raise ValueError(f"Method must be one of ['hash', 'sort']")
 
 def any_in_range(array, start, end, strict=False):
   """

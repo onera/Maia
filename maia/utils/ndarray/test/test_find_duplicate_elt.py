@@ -1,31 +1,25 @@
 
 import pytest
-import pytest_parallel
 import numpy as np
 
-from cmaia.utils import find_duplicate_elt, find_duplicate_elt3
+from maia.utils import np_utils
 
-@pytest_parallel.mark.parallel(1)
-def test_find_duplicate_elt(comm):
-  n_elt = 8
+def test_find_duplicate_elt():
   size_elt = 3
-
   elt_ec = np.array([4,5,6, 3,1,2, 4,5,1, 5,4,6, 10,2,3, 1,2,3, 2,1,2, 5,1,1], dtype=np.int32)
-  result = np.array([    0,     0,     1,     0,      1,     0,     1,     1], dtype=np.int32)
+  result = np.array([    0,     0,     1,     0,      1,     0,     1,     1], dtype=bool)
 
-  mask = np.ones(n_elt, dtype=np.int32)
-  find_duplicate_elt(n_elt, size_elt, elt_ec, mask)
+  mask = np_utils.is_unique_strided(elt_ec, size_elt, method='hash')
   assert np.array_equal(mask, result)
 
-  mask = np.ones(n_elt, dtype=np.int32)
-  find_duplicate_elt3(n_elt, size_elt, elt_ec, mask)
+  mask = np_utils.is_unique_strided(elt_ec, size_elt, method='sort')
   assert np.array_equal(mask, result)
 
 
-@pytest_parallel.mark.parallel(1)
+
 @pytest.mark.parametrize("n_vtx", [100, 100000])
 @pytest.mark.parametrize("n_elt", [100, 100000])
-def test_find_duplicate_elt_many(n_vtx, n_elt, comm):
+def test_find_duplicate_elt_many(n_vtx, n_elt):
   import time
 
   print(f'\nn_vtx = {n_vtx}')
@@ -41,14 +35,12 @@ def test_find_duplicate_elt_many(n_vtx, n_elt, comm):
   print(f'n_conflict = {conflict.size}')
 
   start = time.time()
-  mask1 = np.ones(n_elt, dtype=np.int32)
-  find_duplicate_elt(n_elt, elt_size, elt_ec, mask1)
+  mask1 = np_utils.is_unique_strided(elt_ec, elt_size, method='hash')
   end   = time.time()
   print(f'TIME v1 = {end-start}')
 
   start = time.time()
-  mask3 = np.ones(n_elt, dtype=np.int32)
-  find_duplicate_elt3(n_elt, elt_size, elt_ec, mask3)
+  mask3 = np_utils.is_unique_strided(elt_ec, elt_size, method='sort')
   end   = time.time()
   print(f'TIME v3 = {end-start}')
 

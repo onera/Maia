@@ -1,13 +1,12 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
-#include "maia/utils/pybind_utils.hpp"
 
-void find_duplicate_elt (int                                               n_elt,
-                         int                                               elt_size,
-                         pybind11::array_t<int, pybind11::array::f_style>& np_elt_vtx,
-                         pybind11::array_t<int, pybind11::array::f_style>& np_elt_mask);
+pybind11::array_t<bool>
+is_unique_cst_stride_hash(int                     n_elt,
+                          int                     stride,
+                          pybind11::array_t<int>& np_array);
 
-void find_duplicate_elt3(int                                               n_elt,
-                         int                                               elt_size,
-                         pybind11::array_t<int, pybind11::array::f_style>& np_elt_vtx,
-                         pybind11::array_t<int, pybind11::array::f_style>& np_elt_mask);
+pybind11::array_t<bool>
+is_unique_cst_stride_sort(int                     n_elt,
+                          int                     stride,
+                          pybind11::array_t<int>& np_array);

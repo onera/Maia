@@ -20,8 +20,8 @@ void register_utils_module(py::module_& parent) {
 
   m.def("search_subset_match", &search_subset_match);
 
-  m.def("find_duplicate_elt", &find_duplicate_elt , 
+  m.def("is_unique_cst_stride_hash", &is_unique_cst_stride_hash , 
         "Find elements that are duplicated (hash table and solve conflict)");
-  m.def("find_duplicate_elt3", &find_duplicate_elt3, 
+  m.def("is_unique_cst_stride_sort", &is_unique_cst_stride_sort, 
         "Find elements that are duplicated (hash table and solve conflict with sort algorithm)");
 }

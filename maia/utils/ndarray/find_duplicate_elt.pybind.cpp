@@ -1,34 +1,35 @@
 #include "maia/utils/ndarray/find_duplicate_elt.pybind.hpp"
-
 namespace py = pybind11;
 
-void find_duplicate_elt(int                                   n_elt,
-                        int                                   elt_size,
-                        py::array_t<int, py::array::f_style>& np_elt_vtx,
-                        py::array_t<int, py::array::f_style>& np_elt_mask) 
+py::array_t<bool>
+is_unique_cst_stride_hash(int               n_elt,
+                          int               stride,
+                          py::array_t<int>& np_array)
 {
   /*
-    Go through all elements verifying that has not already be defined.
     Args : 
-      - n_elt       [in] : element number
-      - elt_size    [in] : vertex number in one element
-      - np_elt_vtx  [in] : element connectivity
-      - np_elt_mask [out]: which element are not duplicated
+      - n_elt       : Number of elements
+      - stride      : Value of the stride, ie number of values per elements (cst)
+      - np_array    : Data array (size = n_elt*stride)
+    Returns:
+      - np_elt_mask : Flag indicating if elts are unique (true) or not (false)
 
     TODO:
-     - delete elt_size arguement (to be retrieve in place)
-     - Beware of gnum
-     - Renvoyer la liste PL
+     - Type generalization
   */
-  auto elt_vtx  = make_raw_view(np_elt_vtx);
-  auto elt_mask = make_raw_view(np_elt_mask);
+
+  auto np_elt_mask =  py::array_t<bool>(n_elt); // To be returned
+
+  auto elt_mask = np_elt_mask.mutable_unchecked<1>();
+  auto array    = np_array.unchecked<1>();
 
   // > Build keys array
   int *elt_key = new int[n_elt];
   for (int i_elt=0; i_elt<n_elt; i_elt++) {
     elt_key[i_elt] = 0;
-    for (int i_vtx=i_elt*elt_size; i_vtx<(i_elt+1)*elt_size; i_vtx++) {
-      elt_key[i_elt] = elt_key[i_elt] + elt_vtx[i_vtx];
+    elt_mask(i_elt) = true;
+    for (int j=i_elt*stride; j<(i_elt+1)*stride; ++j) {
+      elt_key[i_elt] = elt_key[i_elt] + array(j);
     }
   }
 
@@ -55,79 +56,66 @@ void find_duplicate_elt(int                                   n_elt,
   // > Resolve conflict
   int i_elt1 = 0;
   int i_elt2 = 0;
-  int li_vtx = 0;
-  int n_similar_vtx = 0;
-  int *similar_vtx = new int[elt_size]; // Array to tag vtx already taggued as similar in elt2
-  int n_elt_in_conflict = 0;
+  int li = 0;
+  int n_similar = 0;
+  std::vector<int8_t> similar(stride); // Array to values already taggued as similar in elt2
   for (int i_conflict=0; i_conflict<n_conflict; i_conflict++) {
-    n_elt_in_conflict = conflict_idx[i_conflict+1]-conflict_idx[i_conflict];
-    if (n_elt_in_conflict>1) {
-      for (int i1=conflict_idx[i_conflict]; i1<conflict_idx[i_conflict+1]; i1++) {
-        i_elt1 = order[i1];
-        for (int i2=i1+1; i2<conflict_idx[i_conflict+1]; i2++) {
-          i_elt2 = order[i2];
+    for (int i1=conflict_idx[i_conflict]; i1<conflict_idx[i_conflict+1]; i1++) {
+      i_elt1 = order[i1];
+      for (int i2=i1+1; i2<conflict_idx[i_conflict+1]; i2++) {
+        i_elt2 = order[i2];
 
-          n_similar_vtx = 0;
-          for (int i_vtx=0; i_vtx<elt_size; i_vtx++) {
-            similar_vtx[i_vtx] = 0;
-          }
+        n_similar = 0;
+        std::fill(similar.begin(), similar.end(), 0);
 
-          if (elt_mask[i_elt2]!=0) {
-            for (int i_vtx1=i_elt1*elt_size; i_vtx1<(i_elt1+1)*elt_size; i_vtx1++) {
+        if (elt_mask(i_elt2)) {
+          for (int j1 = i_elt1*stride; j1 < (i_elt1+1)*stride; ++j1) {
 
-              li_vtx = 0;
-              for (int i_vtx2=i_elt2*elt_size; i_vtx2<(i_elt2+1)*elt_size; i_vtx2++) {
-                if ((similar_vtx[li_vtx]==0)&&(elt_vtx[i_vtx1]==elt_vtx[i_vtx2])) {
-                  n_similar_vtx ++;
-                  similar_vtx[li_vtx] = 1;
-                  break;
-                }
-                li_vtx ++;
+            li = 0;
+            for (int j2 = i_elt2*stride; j2 < (i_elt2+1)*stride; ++j2) {
+              if (!(similar[li]) && (array(j1) == array(j2))) {
+                n_similar++;
+                similar[li] = 1;
+                break;
               }
+              li++;
             }
-            if (n_similar_vtx==elt_size) {
-              elt_mask[i_elt1] = 0;
-              elt_mask[i_elt2] = 0;
-            }      
           }
+          if (n_similar==stride) {
+            elt_mask(i_elt1) = false;
+            elt_mask(i_elt2) = false;
+          }      
         }
       }
     }
   }
   delete[] order;
-  delete[] similar_vtx;
   delete[] conflict_idx;
+  return np_elt_mask;
 }
 
 
-void find_duplicate_elt3(int                                   n_elt,
-                         int                                   elt_size,
-                         py::array_t<int, py::array::f_style>& np_elt_vtx,
-                         py::array_t<int, py::array::f_style>& np_elt_mask)
+py::array_t<bool>
+is_unique_cst_stride_sort(int               n_elt,
+                          int               stride,
+                          py::array_t<int>& np_array)
 {
-  /*
-    Go through all elements verifying that has not already be defined.
-    Args : 
-      - n_elt       [in] : element number
-      - elt_size    [in] : vertex number in one element
-      - np_elt_vtx  [in] : element connectivity
-      - np_elt_mask [out]: which element are not duplicated
-
-    TODO:
-     - delete elt_size arguement (to be retrieve in place)
-     - Beware of gnum
-     - Renvoyer la liste PL
+  /**
+   * See is_unique_cst_stride_hash
   */
   using int_t = int;
-  auto elt_vtx  = make_raw_view(np_elt_vtx);
-  auto elt_mask = make_raw_view(np_elt_mask);
+  auto np_elt_mask =  py::array_t<bool>(n_elt); // To be returned
+
+  auto array    = np_array.unchecked<1>();
+  auto elt_mask = np_elt_mask.mutable_unchecked<1>();
 
   // > Build keys array
   int *elt_key = new int[n_elt];
   for (int i_elt=0; i_elt<n_elt; i_elt++) {
     elt_key[i_elt] = 0;
-    for (int i_vtx=i_elt*elt_size; i_vtx<(i_elt+1)*elt_size; i_vtx++) {
-      elt_key[i_elt] = elt_key[i_elt] + elt_vtx[i_vtx];
+    elt_mask(i_elt) = true;
+    for (int j = i_elt*stride; j < (i_elt+1)*stride; ++j) {
+      elt_key[i_elt] = elt_key[i_elt] + array(j);
     }
   }
 
@@ -157,29 +145,28 @@ void find_duplicate_elt3(int                                   n_elt,
   for (int i_conflict=0; i_conflict<n_conflict; i_conflict++) {
     n_elt_in_conflict = conflict_idx[i_conflict+1]-conflict_idx[i_conflict];
     if (n_elt_in_conflict>1) {
-      // > Local copy of elt_vtx
+      // > Local copy of array
       auto j=0;
-      std::vector<int_t> elt_vtx_lex(n_elt_in_conflict*elt_size);
+      std::vector<int_t> elt_val_lex(n_elt_in_conflict*stride);
       for (int i=conflict_idx[i_conflict]; i<conflict_idx[i_conflict+1]; i++) {
         auto i_elt = order[i];
-        for (int i_vtx=i_elt*elt_size; i_vtx<(i_elt+1)*elt_size; i_vtx++) {
-          elt_vtx_lex[j] = elt_vtx[i_vtx];
-          j++;
+        for (int i_val = i_elt*stride; i_val < (i_elt+1)*stride; ++i_val) {
+          elt_val_lex[j++] = array(i_val);
         }
       }
 
       // > Sort vtx in each element of conflict
       for (int i_elt=0; i_elt<n_elt_in_conflict; ++i_elt) {
-        std::sort(elt_vtx_lex.data()+i_elt*elt_size, elt_vtx_lex.data()+(i_elt+1)*elt_size);
+        std::sort(elt_val_lex.data()+i_elt*stride, elt_val_lex.data()+(i_elt+1)*stride);
       }
 
       // > Lambda function to compare two elements
-      // > Nothing in [&] because elt_vtx_lex and elt_size needed, and when 2 norm say to put nothing
+      // > Nothing in [&] because elt_val_lex and stride needed, and when 2 norm say to put nothing
       auto elt_comp = [&](int i, int j) { 
-        auto elt_i_beg = elt_vtx_lex.data()+i*elt_size;
-        auto elt_j_beg = elt_vtx_lex.data()+j*elt_size;
-        auto elt_i_end = elt_i_beg + elt_size;
-        auto elt_j_end = elt_j_beg + elt_size;
+        auto elt_i_beg = elt_val_lex.data()+i*stride;
+        auto elt_j_beg = elt_val_lex.data()+j*stride;
+        auto elt_i_end = elt_i_beg + stride;
+        auto elt_j_end = elt_j_beg + stride;
         return std::lexicographical_compare(elt_i_beg, elt_i_end, elt_j_beg, elt_j_end);
       };
 
@@ -188,12 +175,11 @@ void find_duplicate_elt3(int                                   n_elt,
       std::sort(lorder.begin(), lorder.end(), elt_comp);
       
       // > Lambda function equal elements
-      // auto is_same_elt = [&elt_vtx_lex](int i, int j) {
-      auto is_same_elt = [&](int i, int j) { // Nothin in & because 
-        auto elt_i_beg = elt_vtx_lex.data()+i*elt_size;
-        auto elt_j_beg = elt_vtx_lex.data()+j*elt_size;
-        auto elt_i_end = elt_i_beg + elt_size;
-        auto elt_j_end = elt_j_beg + elt_size;
+      auto is_same_elt = [&](int i, int j) { 
+        auto elt_i_beg = elt_val_lex.data()+i*stride;
+        auto elt_j_beg = elt_val_lex.data()+j*stride;
+        auto elt_i_end = elt_i_beg + stride;
+        auto elt_j_end = elt_j_beg + stride;
         return std::equal(elt_i_beg, elt_i_end, elt_j_beg, elt_j_end);
       };
 
@@ -205,7 +191,7 @@ void find_duplicate_elt3(int                                   n_elt,
           if ((i_elt==n_elt_in_conflict-1)&&(compteur!=1)) {
             for (int i_elt2=idx_previous; i_elt2<i_elt+1; ++i_elt2) {
               auto id = order[conflict_idx[i_conflict]+lorder[i_elt2]];
-              elt_mask[id] = 0;
+              elt_mask(id) = false;
             }
           }
         }
@@ -213,7 +199,7 @@ void find_duplicate_elt3(int                                   n_elt,
           if (compteur!=1) {
             for (int i_elt2=idx_previous; i_elt2<i_elt; ++i_elt2) {
               auto id = order[conflict_idx[i_conflict]+lorder[i_elt2]];
-              elt_mask[id] = 0;
+              elt_mask(id) = false;
             }
           }
           idx_previous = i_elt;
@@ -224,4 +210,5 @@ void find_duplicate_elt3(int                                   n_elt,
   }
   delete[] order;
   delete[] conflict_idx;
+  return np_elt_mask;
 }
