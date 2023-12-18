@@ -111,12 +111,13 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
   parent_face_lngn_l = []
   parent_vtx_lngn_l  = []
   for zone in part_zones:
-
-    bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: PT.get_label(n) == 'BC_t' and bc_predicate(n)])
+    is_relevant_bc = lambda n: PT.get_label(n) == 'BC_t' and bc_predicate(n)
     if PT.Zone.Type(zone) == 'Unstructured':
+      bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: is_relevant_bc(n) and PT.Subset.GridLocation(n) == 'FaceCenter'])
       bc_face_ids = [PT.get_child_from_name(bc_node, 'PointList')[1][0] for bc_node in bc_nodes]
     else:
       n_vtx_z = PT.Zone.VertexSize(zone)
+      bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', is_relevant_bc])
       bc_face_ids = [_pr_to_face_pl(n_vtx_z, PT.get_child_from_name(bc_node, 'PointRange')[1], PT.Subset.GridLocation(bc_node))[0] \
           for bc_node in bc_nodes]
 
