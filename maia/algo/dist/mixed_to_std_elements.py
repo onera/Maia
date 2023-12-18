@@ -213,7 +213,7 @@ def convert_mixed_to_elements(dist_tree, comm):
                     for r,elem_types_rank in enumerate(elem_types_all):
                         if elem_type in elem_types_rank:
                             # Add number of elts on previous mixed nodes for all ranks
-                            offset += sum([nb for pos, nb in elem_types_rank[elem_type].items() if elem_pos < pos])
+                            offset += sum([nb for other_pos, nb in elem_types_rank[elem_type].items() if other_pos < pos])
                             # Add number of elts on this mixed node, but only for previous ranks
                             if r < rank and pos in elem_types_rank[elem_type]:
                                 offset += elem_types_rank[elem_type][pos]

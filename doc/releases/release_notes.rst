@@ -33,6 +33,7 @@ Developpement version
 - add_joins_donor_name: prevent a crash when some GCs already have their DonorName
 - transform_affine : manage partitioned S zones and 2D meshes
 - transfer module : prevent a bug occurring when subset nodes have a dot in their name
+- convert_mixed_to_elements: prevent a bug occurring when multiple MIXED nodes are used
 
 🚧 API change
 ^^^^^^^^^^^^^
