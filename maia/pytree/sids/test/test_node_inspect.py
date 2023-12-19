@@ -173,9 +173,9 @@ def test_GridConnectivity_periodic_values():
   assert SIDS.GridConnectivity.periodic_values(gc) == (None, None, None)
   W.rm_children_from_label(gc, 'GridConnectivityProperty_t')
   N.new_GridConnectivityProperty(periodic={'translation' : [0., 0., 1.]},parent=gc)
-  assert (SIDS.GridConnectivity.periodic_values(gc)[0] == [0., 0., 0.]).all()
-  assert (SIDS.GridConnectivity.periodic_values(gc)[1] == [0., 0., 0.]).all()
-  assert (SIDS.GridConnectivity.periodic_values(gc)[2] == [0., 0., 1.]).all()
+  assert (SIDS.GridConnectivity.periodic_values(gc).RotationCenter == [0., 0., 0.]).all()
+  assert (SIDS.GridConnectivity.periodic_values(gc).RotationAngle == [0., 0., 0.]).all()
+  assert (SIDS.GridConnectivity.periodic_values(gc).Translation == [0., 0., 1.]).all()
 
 def test_zone_u_size():
   #Simulate a 10*5*2 vtx zone
