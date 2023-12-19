@@ -10,6 +10,20 @@ from . import elements_utils as EU
 from . import utils
 from .utils import for_all_methods
 
+# Custom NamedTuple list
+class PeriodicValues(NamedTuple):
+  RotationCenter:ArrayLike
+  RotationAngle:ArrayLike
+  Translation:ArrayLike
+  def asdict(self, snake_case=False):
+    if snake_case:
+      return  {'rotation_center' : self.RotationCenter,
+              'rotation_angle' : self.RotationAngle,
+               'translation' : self.Translation}
+    else:
+      return self._asdict()
+
+
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("CGNSTree_t"))
 class Tree:
@@ -71,7 +85,7 @@ class Tree:
     return [sorted(zones) for zones in connected_zones]
 
   @staticmethod
-  def find_periodic_jns(tree: CGNSTree, rtol=1e-5, atol=0.) -> Tuple[List[List[np.ndarray]], List[List[str]]]:
+  def find_periodic_jns(tree: CGNSTree, rtol=1e-5, atol=0.) -> Tuple[List[PeriodicValues], List[List[str]]]:
     """ Gather the periodic joins of the tree according to their periodicity values
 
     Returned paths starts at tree level.
@@ -666,25 +680,25 @@ class GridConnectivity:
     return W.get_node_from_label(gc_node, 'Periodic_t', depth=[2,2]) is not None
 
   @staticmethod
-  def periodic_values(gc_node:CGNSTree) -> Union[List[None], List[np.ndarray]]:
+  def periodic_values(gc_node:CGNSTree) -> PeriodicValues:
     """ Return the periodic transformation of a GridConnectivity node
 
     Args:
       gc_node (CGNSTree): Input GridConnectivity node
     Returns:
-      Triplet of ndarray or None : values of RotationCenter, RotationAngle and Translation
+      Triplet of ndarray or None : values of RotationCenter, RotationAngle and Translation, stored
+      in a named tuple
     Example:
       >>> gc = PT.new_GridConnectivity('GC')
       >>> PT.new_GridConnectivityProperty({'translation' : [1., 0, 0]}, parent=gc)
       >>> PT.GridConnectivity.periodic_values(gc)
-      (array([0., 0., 0.], dtype=float32),
-       array([0., 0., 0.], dtype=float32),
-       array([1., 0., 0.], dtype=float32))
+      PeriodicValues(RotationCenter=array([0., 0., 0.], dtype=float32), 
+                     RotationAngle=array([0., 0., 0.], dtype=float32),
+                     Translation=array([1., 0., 0.], dtype=float32))
     """
     perio_node = W.get_node_from_label(gc_node, "Periodic_t", depth=[2,2])
-    if perio_node is None:
-      return (None, None, None)
-    return tuple((N.get_value(W.get_child_from_name(perio_node, name)) for name in ["RotationCenter", "RotationAngle", "Translation"]))
+    return PeriodicValues._make([W.get_child_from_name(perio_node, key)[1] if perio_node else None
+                                 for key in PeriodicValues._fields])
 
   @staticmethod
   def ZoneDonorPath(gc_node:CGNSTree, cur_base_name:str) -> str:

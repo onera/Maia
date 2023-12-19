@@ -231,8 +231,11 @@ def _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx, pl_face_vtx, pld_fa
 
   #Apply transformation
   if PT.GridConnectivity.isperiodic(jn):
-    rotation_center, rotation_angle, translation = PT.GridConnectivity.periodic_values(jn)
-    opp_received_coords = np_utils.transform_cart_matrix(opp_received_coords.T, translation, rotation_center, rotation_angle).T
+    perio_vals = PT.GridConnectivity.periodic_values(jn)
+    opp_received_coords = np_utils.transform_cart_matrix(opp_received_coords.T, 
+                                                         perio_vals.Translation, 
+                                                         perio_vals.RotationCenter, 
+                                                         perio_vals.RotationAngle).T
 
 
 

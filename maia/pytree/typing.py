@@ -1,4 +1,4 @@
-from typing import Tuple, List, Dict, Optional, Any, Callable, Union, Iterator
+from typing import Tuple, List, Dict, Optional, Any, Callable, Union, Iterator, NamedTuple
 import numpy as np
 
 try: #Require numpy >= 1.20
