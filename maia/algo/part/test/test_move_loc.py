@@ -66,3 +66,15 @@ def test_nodes_to_centers(from_api, comm):
   expected_dfield = np.add.reduceat(ec, 8*np.arange(0,ec.size//8)) / 8.
 
   assert np.allclose(dfield_cell, expected_dfield)
+
+def test_node2center(comm) : 
+    dist_tree = maia.factory.generate_dist_block(4, 'S', comm)
+    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+    
+    for zone in PT.get_all_Zone_t(part_tree) : 
+        cx = PT.get_node_from_name(zone, 'CoordinateX')[1]
+        cy = PT.get_node_from_name(zone, 'CoordinateY')[1]
+        cz = PT.get_node_from_name(zone, 'CoordinateZ')[1]
+        PT.new_FlowSolution('FlowSolution', loc='Vertex', fields={'cX': cx, 'cY': cy, 'cZ': cz}, parent=zone)
+
+        maia.algo.part.nodes_to_centers(part_tree, comm, ["FlowSolution"])

@@ -104,6 +104,10 @@ class NodeToCenter:
       dim = PT.get_value(base)[0]
       for p_zone in PT.get_all_Zone_t(base):
         cx,cy,cz = PT.Zone.coordinates(p_zone)
+        if PT.Zone.Type(p_zone)=='Structured' : 
+           cx = cx.flatten()
+           cy = cy.flatten()
+           cz = cz.flatten() 
         cell_vtx_idx, cell_vtx = connectivity_utils.cell_vtx_connectivity(p_zone, dim)
         cell_vtx_n = np.diff(cell_vtx_idx)
 
@@ -138,9 +142,14 @@ class NodeToCenter:
       fs_out = PT.new_FlowSolution(f'{container_name}#Cell', loc='CellCenter', parent=part)
 
       for array in PT.iter_children_from_label(container, 'DataArray_t'):
-        data_in = PT.get_value(array)
+        data_in = PT.get_value(array) 
+        shape = data_in.shape
+        if len(shape) != 1 :
+           data_in=data_in.flatten(order='F')
         data_out = np.add.reduceat(data_in[cell_vtx-1] * weights, cell_vtx_idx[:-1])
         data_out /= weightssum
+        if len(shape) != 1 :
+           data_out=data_out.reshape(np.array(shape)-1, order='F')
         PT.new_DataArray(PT.get_name(array), data_out, parent=fs_out)
 
 
