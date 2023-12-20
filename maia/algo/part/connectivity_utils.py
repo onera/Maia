@@ -4,8 +4,62 @@ import maia.pytree as PT
 
 from maia.utils                import np_utils
 from maia.algo.part.ngon_tools import pe_to_nface
+from maia.utils import s_numbering
 
 import Pypdm.Pypdm as PDM
+
+def cell_vtx_connect_2D(zone_S) :
+
+    assert PT.Zone.Type(zone_S)=='Structured'
+
+    n_cells = PT.Zone.n_cell(zone_S)
+    n_vertexes = PT.Zone.VertexSize(zone_S)
+    cell_vtx_indx = np.arange(0, n_cells+1, dtype= np.int32)*4
+    cell_vtx = np.zeros(4*n_cells, np.int32) # np.zeros(cell_vtx_indx[-1])
+    print(cell_vtx)
+    i = np.arange(1, n_vertexes[0])
+    j = np.arange(1, n_vertexes[1]).reshape(-1,1)
+    cell_i_j   = s_numbering.ijk_to_index(i, j, 1, n_vertexes).flatten()
+    cell_i1_j  = s_numbering.ijk_to_index(i+1, j, 1, n_vertexes).flatten()
+    cell_i_j1  = s_numbering.ijk_to_index(i, j+1, 1, n_vertexes).flatten()
+    cell_i1_j1 = s_numbering.ijk_to_index(i+1, j+1, 1, n_vertexes).flatten()
+    cell_vtx[0::4] = cell_i_j
+    cell_vtx[1::4] = cell_i1_j
+    cell_vtx[2::4] = cell_i_j1
+    cell_vtx[3::4] = cell_i1_j1
+
+    return cell_vtx_indx, cell_vtx
+
+def cell_vtx_connect_3D(zone_S) :
+
+    assert PT.Zone.Type(zone_S)=='Structured'
+
+    n_cells = PT.Zone.n_cell(zone_S)
+    n_vertexes = PT.Zone.VertexSize(zone_S)
+    cell_vtx_indx = np.arange(0, n_cells+1, dtype= np.int32)*8
+    cell_vtx = np.zeros(8*n_cells, np.int32) # np.zeros(cell_vtx_indx[-1])
+    i = np.arange(1, n_vertexes[0])
+    j = np.arange(1, n_vertexes[1]).reshape(-1,1)
+    k = np.arange(1, n_vertexes[2]).reshape(-1,1,1)
+    cell_i_j_k    = s_numbering.ijk_to_index(i, j, k, n_vertexes).flatten()
+    cell_i1_j_k   = s_numbering.ijk_to_index(i+1, j, k, n_vertexes).flatten()
+    cell_i_j1_k   = s_numbering.ijk_to_index(i, j+1, k, n_vertexes).flatten()
+    cell_i1_j1_k  = s_numbering.ijk_to_index(i+1, j+1, k, n_vertexes).flatten()
+    cell_i_j_k1   = s_numbering.ijk_to_index(i, j, k+1, n_vertexes).flatten()
+    cell_i1_j_k1  = s_numbering.ijk_to_index(i+1, j, k+1, n_vertexes).flatten()
+    cell_i_j1_k1  = s_numbering.ijk_to_index(i, j+1, k+1, n_vertexes).flatten()
+    cell_i1_j1_k1 = s_numbering.ijk_to_index(i+1, j+1, k+1, n_vertexes).flatten()
+    cell_vtx[0::8] = cell_i_j_k
+    cell_vtx[1::8] = cell_i1_j_k
+    cell_vtx[2::8] = cell_i_j1_k
+    cell_vtx[3::8] = cell_i1_j1_k
+    cell_vtx[4::8] = cell_i_j_k1
+    cell_vtx[5::8] = cell_i1_j_k1
+    cell_vtx[6::8] = cell_i_j1_k1
+    cell_vtx[7::8] = cell_i1_j1_k1
+
+    return cell_vtx_indx, cell_vtx
+
 
 def cell_vtx_connectivity(zone, dim=3):
   """
@@ -14,7 +68,12 @@ def cell_vtx_connectivity(zone, dim=3):
   assert dim in [1,2,3]
   
   if PT.Zone.Type(zone) == 'Structured':
-    raise NotImplementedError("Structured zones are not supported")
+    if dim == 2:
+      cell_vtx_idx, cell_vtx = cell_vtx_connect_2D(zone)
+    elif dim == 3:
+      cell_vtx_idx, cell_vtx = cell_vtx_connect_3D(zone)
+    else:
+      raise NotImplementedError("Unsupported dimension")
   else:
     if PT.Zone.has_ngon_elements(zone):
       if dim==1:
@@ -54,4 +113,6 @@ def cell_vtx_connectivity(zone, dim=3):
       assert cur == n_elts +1
 
   return cell_vtx_idx, cell_vtx
+
+
 
