@@ -293,7 +293,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL  )
   n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE  )
   n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE  )
-  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VERTEX)
+  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VTX)
   
   size_by_dim = {0: [[n_extract_vtx, 0             , 0]], # not yet implemented
                  1:   None                              , # not yet implemented
@@ -305,7 +305,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
                                size=size_by_dim[dim],
                                type='Unstructured')
 
-  ep_vtx_ln_to_gn  = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
+  ep_vtx_ln_to_gn  = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VTX)
   PT.maia.newGlobalNumbering({"Vertex" : ep_vtx_ln_to_gn}, parent=extracted_zone)
 
   # > Grid coordinates
@@ -365,7 +365,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
   # - Get PTP by vertex and cell
   ptp = dict()
   if equilibrate:
-    ptp['Vertex']       = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_VERTEX)
+    ptp['Vertex']       = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_VTX)
     if dim >= 2: # NGON
       ptp['FaceCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_FACE)
     if dim == 3: # NFACE
@@ -373,7 +373,7 @@ def extract_part_one_domain(part_zones, point_list, dim, comm,
     
   # - Get parent elt
   parent_elt = dict()
-  parent_elt['Vertex']       = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VERTEX)
+  parent_elt['Vertex']       = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VTX)
   if dim >= 2: # NGON
     parent_elt['FaceCenter'] = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_FACE)
   if dim == 3: # NFACE

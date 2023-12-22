@@ -85,7 +85,7 @@ def _get_cloud(dmesh, gnum, comm):
     sections = dmesh_extracted.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, comm)['sections']
     face_vtx_idx, face_vtx = _nodal_sections_to_face_vtx(sections, comm.Get_rank())
 
-  parent_vtx  = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VERTEX)
+  parent_vtx  = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VTX)
   parent_face = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_FACE)
 
   carac_length = PDM.compute_vtx_characteristic_length(comm,
