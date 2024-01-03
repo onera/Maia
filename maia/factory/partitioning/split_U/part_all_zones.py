@@ -11,7 +11,7 @@ from maia.utils import py_utils
 maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
                       "face"   : PDM._PDM_MESH_ENTITY_FACE,
                       "edge"   : PDM._PDM_MESH_ENTITY_EDGE,
-                      "vtx"    : PDM._PDM_MESH_ENTITY_VERTEX}
+                      "vtx"    : PDM._PDM_MESH_ENTITY_VTX}
 
 maia_to_pdm_split_tool = {'parmetis' : PDM._PDM_SPLIT_DUAL_WITH_PARMETIS,
                           'ptscotch' : PDM._PDM_SPLIT_DUAL_WITH_PTSCOTCH,
@@ -90,12 +90,12 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
                                     1], dtype=np.int32)                   # enforce_rank_in_subdomain
   else:
     cacheblocking_props = None
-  multipart.multipart_set_reordering(-1,
-                                      renum_cell_method.encode('utf-8'),
-                                      renum_face_method.encode('utf-8'),
-                                      cacheblocking_props)
-  multipart.multipart_set_reordering_vtx(-1,
-                                         renum_vtx_method.encode('utf-8'))
+  multipart.reordering_set(-1,
+                           renum_cell_method.encode('utf-8'),
+                           cacheblocking_props,
+                           renum_face_method.encode('utf-8'))
+  multipart.reordering_vtx_set(-1,
+                               renum_vtx_method.encode('utf-8'))
   keep_alive.append(cacheblocking_props)
 
 def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
@@ -107,21 +107,21 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
     if PT.Zone.n_cell(zone) == 0: # Zone has only vertex
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_vtx(zone, comm)
       keep_alive.append(dmesh)
-      multi_part.multipart_register_block(i_zone, dmesh)
+      multi_part.dmesh_set(i_zone, dmesh)
     #Determine NGON or ELMT
     elif PT.Zone.has_ngon_elements(zone):
       if is_ngon_3d(zone):
         dmesh    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
         keep_alive.append(dmesh)
-        multi_part.multipart_register_block(i_zone, dmesh)
+        multi_part.dmesh_set(i_zone, dmesh)
       else:
         dmesh_nodal    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_poly2d(zone, comm)
         keep_alive.append(dmesh_nodal)
-        multi_part.multipart_register_dmesh_nodal(i_zone, dmesh_nodal)
+        multi_part.dmesh_nodal_set(i_zone, dmesh_nodal)
     else:
       dmesh_nodal = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
       keep_alive.append(dmesh_nodal)
-      multi_part.multipart_register_dmesh_nodal(i_zone, dmesh_nodal)
+      multi_part.dmesh_nodal_set(i_zone, dmesh_nodal)
 
 
 def _add_connectivity(multi_part, l_data, i_zone, n_part):
@@ -132,10 +132,10 @@ def _add_connectivity(multi_part, l_data, i_zone, n_part):
   for key in wanted_connectivities:
     connectivity_type = maia_to_pdm_connectivity[key]
     for i_part in range(n_part):
-      dict_res = multi_part.multipart_connectivity_get(i_part, i_zone, connectivity_type)
-      l_data[i_part]["np_"+key] = dict_res["np_entity1_entity2"]
-      if(dict_res["np_entity1_entity2_idx"] is not None):
-        l_data[i_part]["np_"+key+'_idx'] = dict_res["np_entity1_entity2_idx"]
+      np_entity1_entity2_idx, np_entity1_entity2 = multi_part.connectivity_get(i_zone, i_part, connectivity_type)
+      l_data[i_part]["np_"+key] = np_entity1_entity2
+      if(np_entity1_entity2_idx is not None):
+        l_data[i_part]["np_"+key+'_idx'] = np_entity1_entity2_idx
 
 
 def _add_ln_to_gn(multi_part, l_data, i_zone, n_part):
@@ -146,35 +146,31 @@ def _add_ln_to_gn(multi_part, l_data, i_zone, n_part):
   for key in wanted_lngn:
     entity_type = maia_to_pdm_entity[key]
     for i_part in range(n_part):
-      dict_res = multi_part.multipart_ln_to_gn_get(i_part, i_zone, entity_type)
-      l_data[i_part]["np_"+key+'_ln_to_gn'] = dict_res["np_entity_ln_to_gn"]
+      l_data[i_part]["np_"+key+'_ln_to_gn'] = multi_part.ln_to_gn_get(i_zone, i_part, entity_type)
 
 def _add_color(multi_part, l_data, i_zone, n_part):
   """
   """
   for i_part in range(n_part):
     for key in ['cell', 'face', 'edge', 'vtx']:
-      dict_res = multi_part.multipart_part_color_get(i_part, i_zone, maia_to_pdm_entity[key])
-      l_data[i_part]["np_"+key+'_color'] = dict_res["np_entity_color"]
-    dict_res = multi_part.multipart_thread_color_get(i_part, i_zone)
-    l_data[i_part]["np_thread_color"] = dict_res["np_thread_color"]
-    dict_res = multi_part.multipart_hyper_plane_color_get(i_part, i_zone)
-    l_data[i_part]["np_hyperplane_color"] = dict_res["np_hyper_plane_color"]
+      l_data[i_part]["np_"+key+'_color'] = multi_part.color_get(i_zone, i_part, maia_to_pdm_entity[key])
+    l_data[i_part]["np_thread_color"] = multi_part.thread_color_get(i_zone, i_part)
+    l_data[i_part]["np_hyperplane_color"] = multi_part.hyper_plane_color_get(i_zone, i_part)
 
 def _add_graph_comm(multi_part, l_data, i_zone, n_part):
   """
   """
-  wanted_graph = {'face' : PDM._PDM_BOUND_TYPE_FACE, 'vtx' : PDM._PDM_BOUND_TYPE_VTX, 'edge': PDM._PDM_BOUND_TYPE_EDGE}
+  wanted_graph = {'face' : PDM._PDM_MESH_ENTITY_FACE, 'vtx' : PDM._PDM_MESH_ENTITY_VTX, 'edge': PDM._PDM_MESH_ENTITY_EDGE}
   for i_part in range(n_part):
     for kind, pdm_kind in wanted_graph.items():
-      for key, val in multi_part.multipart_graph_comm_get(i_part, i_zone, pdm_kind).items():
+      for key, val in multi_part.graph_comm_get(i_zone, i_part, pdm_kind).items():
         l_data[i_part][key.replace('entity', kind)] = val
 
 def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_options):
   """
   """
-  concat_pdm_data = lambda i_part, i_zone : {**multi_part.multipart_vtx_coord_get         (i_part, i_zone),
-                                             **multi_part.multipart_ghost_information_get (i_part, i_zone)}
+  concat_pdm_data = lambda i_zone, i_part : {"np_vtx_coord"             : multi_part.vtx_coord_get         (i_zone, i_part),
+                                             "np_vtx_ghost_information" : multi_part.ghost_information_get (i_zone, i_part)}
 
   all_parts = list()
   for i_zone, d_zone in enumerate(d_zones):
@@ -182,9 +178,9 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
     n_part = n_part_per_zone[i_zone]
     l_dims = list()
     for i_part in range(n_part):
-      l_dims.append({f'n_{key}': multi_part.multipart_n_entity_get(i_part, i_zone, entity) \
+      l_dims.append({f'n_{key}': multi_part.n_entity_get(i_zone, i_part, entity) \
               for key,entity in maia_to_pdm_entity.items()})
-    l_data = [concat_pdm_data(i_part, i_zone)              for i_part in range(n_part)]
+    l_data = [concat_pdm_data(i_zone, i_part)              for i_part in range(n_part)]
     _add_connectivity(multi_part, l_data, i_zone, n_part)
     _add_ln_to_gn    (multi_part, l_data, i_zone, n_part)
     _add_color       (multi_part, l_data, i_zone, n_part)
@@ -192,13 +188,13 @@ def collect_mpart_partitions(multi_part, d_zones, n_part_per_zone, comm, post_op
 
     #For element : additional conversion step to retrieve part elements
     if PT.Zone.n_cell(d_zone) > 0 and not PT.Zone.has_ngon_elements(d_zone): # pmesh_nodal has not been computed if NGON were present
-      pmesh_nodal = multi_part.multipart_part_mesh_nodal_get(i_zone)
+      pmesh_nodal = multi_part.part_mesh_nodal_get(i_zone)
       if pmesh_nodal is not None:
         for i_part in range(n_part):
           zone_dim = pmesh_nodal.dim_get()
           for j, kind in enumerate(pdm_geometry_kinds):
             if j <= zone_dim:
-              l_data[i_part][f"{j}dsections"] = pmesh_nodal.part_mesh_nodal_get_sections(kind, i_part)
+              l_data[i_part][f"{j}dsections"] = pmesh_nodal.get_sections(kind, i_part)
             else: # Section of higher dim than mesh dimension can not be getted (assert in pdm)
               l_data[i_part][f"{j}dsections"] = []
 
@@ -234,7 +230,7 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
   set_mpart_reordering(multi_part, part_options['reordering'], keep_alive)
 
   #Run and return parts
-  multi_part.multipart_run_ppart()
+  multi_part.compute()
 
   post_options = {k:part_options[k] for k in ['part_interface_loc', 'dump_pdm_output', 'output_connectivity',
                                               'save_all_connectivities', 'additional_ln_to_gn',

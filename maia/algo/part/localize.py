@@ -56,7 +56,7 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   for i_part, (coords, lngn) in enumerate(tgt_clouds):
     mesh_loc.cloud_set(0, i_part, coords, lngn)
 
-  mesh_loc.tolerance_set(loc_tolerance)
+  mesh_loc.tolerance = loc_tolerance
   mesh_loc.compute()
 
   # This is located and unlocated indices
