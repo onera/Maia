@@ -550,6 +550,9 @@ def new_GridLocation(loc:str, parent:CGNSTree=None):
   _check_parent_label(node, parent, allowed_parents)
   return node
 
+def new_BaseIterativeData(name='BaseIterativeData', parent=None):
+  return new_node(name, 'BaseIterativeData_t', parent=parent)
+
 def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGNSTree=None):
   """ Create a DataArray_t node
 

@@ -40,8 +40,13 @@ def _render_value(value, line_prefix, verbose):
           out = ''.join(['\n' + line_prefix + f'{s}' for s in splitted])
         else: # Long string, non verbose mode
           out = f'{str_value[:20]}[...]{str_value[-5:]}'
-    elif value.ndim == 2:
-      str_value = [s.replace('\n', '\\n') for s in str_value]  
+    else:
+      if value.ndim >= 3:
+        for k in range(value.ndim-2):
+          str_value = [elt for item in str_value for elt in item]
+      if value.ndim <1:
+        raise RuntimeError("_render_value : invalid value dimension")
+      str_value = [s.replace('\n', '\\n') for s in str_value]
       if sum([len(s) for s in str_value]) < 20: # Short strings
         out = '['
         for word in str_value:
