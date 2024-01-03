@@ -79,10 +79,10 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
     import Converter.Filter as Filter
     tree = Filter.convertFile2SkeletonTree(filename, maxDepth=2)
   else:
-    from maia.io.cgns_io_tree import load_collective_size_tree
+    from maia.io.cgns_io_tree import load_size_tree
     from h5py import h5f
     from .hdf._hdf_cgns import open_from_path, _load_node_partial
-    tree = load_collective_size_tree(filename, comm)
+    tree = load_size_tree(filename, comm)
 
   if redispatch:
     zones_to_read = _read_part_from_size(tree, filename, comm)

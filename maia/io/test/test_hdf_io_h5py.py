@@ -30,7 +30,7 @@ def test_load_data():
   assert IOH.load_data(names.split('/'), labels.split('/')) == True
 
 @pytest_parallel.mark.parallel(3)
-def test_load_collective_size_tree(comm):
+def test_load_size_tree(comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
   yt = """
   Base CGNSBase_t [2,2]:
@@ -49,7 +49,7 @@ def test_load_collective_size_tree(comm):
         CoordinateY DataArray_t:
         CoordinateY#Size DataArray_t I8 [2,2]:
   """
-  sizetree = IOH.load_collective_size_tree(filename, comm)
+  sizetree = IOH.load_size_tree(filename, comm)
   assert PT.is_same_tree(sizetree, parse_yaml_cgns.to_cgns_tree(yt))
 
 def test_load_partial():

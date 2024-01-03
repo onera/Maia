@@ -77,7 +77,7 @@ def add_sizes_to_tree(size_tree, size_data):
       add_sizes_to_zone_tree(zone, zone_path, size_data)
 
 
-def load_collective_size_tree(filename, comm):
+def load_size_tree(filename, comm):
   """
     Load on all ranks a "size tree"
     a size tree is a partial tree that contains only the data needed to distribute the tree:

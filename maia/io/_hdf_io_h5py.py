@@ -28,7 +28,7 @@ def load_data(names, labels):
       return False
   return True
 
-def load_collective_size_tree(filename, comm):
+def load_size_tree(filename, comm):
 
   if comm.Get_rank() == 0:
     size_tree = load_tree_partial(filename, load_data)
