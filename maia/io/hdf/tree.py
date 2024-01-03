@@ -43,6 +43,6 @@ def create_tree_hdf_filter(dist_tree, mode='read'):
   """
   hdf_filter = dict()
   for base, zone in PT.iter_nodes_from_predicates(dist_tree, 'CGNSBase_t/Zone_t', ancestors=True):
-    zone_path = "/"+PT.get_name(base)+"/"+PT.get_name(zone)
+    zone_path = PT.get_name(base)+"/"+PT.get_name(zone)
     create_zone_filter(zone, zone_path, hdf_filter, mode)
   return hdf_filter

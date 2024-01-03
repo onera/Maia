@@ -47,6 +47,7 @@ def add_sizes_to_zone_tree(zone, zone_path, size_data):
         PT.new_IndexArray('PointList#Size', value=size_data[pl_path][2], parent=gc)
       if PT.get_child_from_name(gc, 'PointListDonor') is not None:
         pld_path = gc_path+"/PointListDonor"
+        PT.new_IndexArray('PointListDonor#Size', value=size_data[pl_path][2], parent=gc)
         assert size_data[pld_path][2] == size_data[pl_path][2]
 
   for zone_subregion in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
@@ -114,6 +115,7 @@ def load_size_tree(filename, comm):
   return size_tree
 
 def load_partial(filename, dist_tree, hdf_filter, comm):
+  hdf_filter = {f'/{key}' : data for key, data in hdf_filter.items()}
   partial_dict_load = C.convertFile2PartialPyTreeFromPath(filename, hdf_filter, comm)
 
   for path, data in partial_dict_load.items():
@@ -151,6 +153,7 @@ def load_grid_connectivity_property(filename, tree):
 
 
 def write_partial(filename, dist_tree, hdf_filter, comm):
+  hdf_filter = {f'/{key}' : data for key, data in hdf_filter.items()}
   C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter, ParallelHDF=True)
 
 def read_full(filename):
