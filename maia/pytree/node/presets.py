@@ -550,8 +550,34 @@ def new_GridLocation(loc:str, parent:CGNSTree=None):
   _check_parent_label(node, parent, allowed_parents)
   return node
 
-def new_BaseIterativeData(name='BaseIterativeData', parent=None):
-  return new_node(name, 'BaseIterativeData_t', parent=parent)
+def new_BaseIterativeData(name:str='BaseIterativeData', *, time_values:ArrayLike=None, iter_values:ArrayLike=None, parent:CGNSTree=None):
+  """ Create a BaseIterativeData_t node
+
+  Link to corresponding SIDS section:
+  `BaseIterativeData_t <https://cgns.github.io/CGNS_docs_current/sids/timedep.html#IterativeData>`_
+
+  Args:
+    name (str): Name of the created node
+    time_values (ArrayLike) : if provided, create a TimeValues child array
+    iter_values (ArrayLike) : if provided, create an IterationValues child array
+    parent (CGNSTree): Node to which created node should be attached
+  Example:
+    >>> node = PT.new_BaseIterativeData(time_values=[0.0, 0.5, 1.0])
+    >>> PT.print_tree(node)
+    BaseIterativeData BaseIterativeData_t I4 [3]
+    └───TimeValues DataArray_t R4 [0.  0.5 1. ]
+  """
+  node = new_node(name, 'BaseIterativeData_t', parent=parent)
+  n_steps = 0
+  if time_values is not None:
+    tv = new_DataArray("TimeValues", time_values, parent=node)
+    n_steps = tv[1].size
+  if iter_values is not None:
+    tv = new_DataArray("IterationValues", iter_values, parent=node)
+    n_steps = tv[1].size
+  NA.set_value(node, n_steps)
+  _check_parent_label(node, parent, ['CGNSBase_t'])
+  return node
 
 def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGNSTree=None):
   """ Create a DataArray_t node
