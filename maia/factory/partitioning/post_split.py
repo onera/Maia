@@ -67,7 +67,7 @@ def copy_additional_nodes(dist_zone, part_zone):
   """
   #Zone data
   names = ['.Solver#Param']
-  types = ['FamilyName_t', 'AdditionalFamilyName_t']
+  types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ZoneIterativeData_t']
   for node in PT.get_children(dist_zone):
     if PT.get_name(node) in names or PT.get_label(node) in types:
       PT.add_child(part_zone, node)

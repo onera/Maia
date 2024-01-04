@@ -93,6 +93,8 @@ Zone Zone_t:
       GridConnectivityProperty GridConnectivityProperty_t:
         Periodic Periodic_t:
           Translation DataArray_t [1,1,1]:
+  ZoneIterativeData ZoneIterativeData_t:
+    FlowSolutionPointers DataArray_y ["FS#1", "FS#2", "FS#3"]:
 """
   pt = """
 Zone.P2.N3 Zone_t:
@@ -112,6 +114,8 @@ Zone.P2.N3 Zone_t:
   assert PT.get_value(PT.get_node_from_name(dist_zone, 'GridConnectivityDonorName')) == PT.get_value(PT.get_node_from_name(part_zone, 'GridConnectivityDonorName'))
   assert (PT.get_value(PT.get_node_from_name(dist_zone, 'Translation')) == \
           PT.get_value(PT.get_node_from_name(part_zone, 'Translation'))).all()
+  assert PT.get_value(PT.get_node_from_name(dist_zone, 'FlowSolutionPointers')) == \
+         PT.get_value(PT.get_node_from_name(part_zone, 'FlowSolutionPointers'))
 
 def test_update_zone_pointers():
   part_tree = parse_yaml_cgns.to_cgns_tree("""
