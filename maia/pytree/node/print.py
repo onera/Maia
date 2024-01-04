@@ -40,13 +40,8 @@ def _render_value(value, line_prefix, verbose):
           out = ''.join(['\n' + line_prefix + f'{s}' for s in splitted])
         else: # Long string, non verbose mode
           out = f'{str_value[:20]}[...]{str_value[-5:]}'
-    else:
-      if value.ndim >= 3:
-        for k in range(value.ndim-2):
-          str_value = [elt for item in str_value for elt in item]
-      if value.ndim <1:
-        raise RuntimeError("_render_value : invalid value dimension")
-      str_value = [s.replace('\n', '\\n') for s in str_value]
+    elif value.ndim == 2:
+      str_value = [s.replace('\n', '\\n') for s in str_value]  
       if sum([len(s) for s in str_value]) < 20: # Short strings
         out = '['
         for word in str_value:
@@ -75,6 +70,33 @@ def _render_value(value, line_prefix, verbose):
             _last = f'"{last}"' if len(last) < 10 else f'"{last[:10]}[...]{last[-3:]}"'
             out += " ... " + _last
           out += ']'
+    elif value.ndim == 3:
+      str_tot_len = sum([len(elt) for item in str_value for elt in item])
+      if str_tot_len < 20: #Short strings
+        out = '['
+        for sublist in str_value:
+          _out = '['
+          for word in sublist:
+            _out += f'"{word}" '
+          _out = _out[:-1] + ']' if len(sublist) > 0 else '[]'
+          out += _out + ' '
+        out = out[:-1] + ']'
+      else:
+        if verbose: # Long strings, verbose mode
+          out = '['
+          while str_value:
+            sublist = str_value.pop(0)
+            line = '['
+            for word in sublist:
+              line += f'"{word}" '
+            line = line[:-1] + ']'
+            out += f'\n{line_prefix}{line}'
+          out += ']'
+        else: # Long strings, non verbose mode
+          out = '[['
+          if len(str_value) > 0 and len(str_value[0]) > 0:
+            out += f'"{str_value[0][0]}" ...]'
+            out += ' ...]]'
 
   else: #Data arrays
     cg_dtype = CGK.dtype_to_cgns[value.dtype]
