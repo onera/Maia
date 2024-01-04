@@ -52,6 +52,8 @@ def test_convert_value():
   assert np.allclose(converted, np.array([13.3, 14.2, 15.3])) and converted.dtype==np.float32
   converted = NA._convert_value([['Spam', 'eggs'], ["Bacon"]])
   assert isinstance(converted, np.ndarray) and converted.dtype=='S1' and converted.shape == (32,2,2)
+  converted = NA._convert_value([['Bacon'], ['Spam', 'eggs', 'Bacon']])
+  assert isinstance(converted, np.ndarray) and converted.dtype=='S1' and converted.shape == (32,3,2)
 
 yt = """
 MyNode UserDefinedData_t I4 [0]:
