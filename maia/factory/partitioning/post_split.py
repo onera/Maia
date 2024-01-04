@@ -40,6 +40,28 @@ def pl_as_ijk(zone, subset_predicate):
       pl_ijk = s_numbering.index_to_ijk_from_loc(pl_node[1][0], loc, PT.Zone.VertexSize(zone))
       PT.set_value(pl_node, pl_ijk)
 
+def update_zone_pointers(part_tree):
+  """ Update ZonePointers values in BaseIterativeData, if any """
+  for base in PT.iter_all_CGNSBase_t(part_tree):
+    for base_it_data in PT.get_children_from_label(base, 'BaseIterativeData_t'):
+      zone_pointers_n = PT.get_child_from_name(base_it_data, 'ZonePointers')
+      if zone_pointers_n is not None:
+        zone_pointers_all = PT.get_value(zone_pointers_n)
+        for i, zone_points_inst in enumerate(zone_pointers_all): # Given instant
+          pznames = []
+          for zname in zone_points_inst: # Given zone, for this instant
+            pzones = PT.get_children_from_predicate(base, lambda n : PT.get_label(n) == 'Zone_t' and \
+                                                                     MT.conv.get_part_prefix(n[0]) == zname)
+            pznames.extend([PT.get_name(z) for z in pzones])
+          zone_pointers_all[i] = pznames
+        number_of_zones = [len(k) for k in zone_pointers_all]
+        if max(number_of_zones) == 0:
+          # If we have only empty lists, set_value does not understand that it is strings -> enforce it
+          zone_pointers_all = np.empty( (32,0,len(number_of_zones)), dtype='c', order='F')
+          zone_pointers_all[:,:,:] = ' '
+        PT.set_value(zone_pointers_n, zone_pointers_all)
+        PT.update_child(base_it_data, 'NumberOfZones', 'DataArray_t', number_of_zones)
+
 def copy_additional_nodes(dist_zone, part_zone):
   """
   """
@@ -252,3 +274,5 @@ def post_partitioning(dist_tree, part_tree, comm):
 
   # Go back to ijk for PointList
   hybrid_jns_as_ijk(part_tree, comm)
+
+  update_zone_pointers(part_tree)

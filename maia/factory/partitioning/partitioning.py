@@ -137,7 +137,7 @@ def _partitioning(dist_tree,
     #Add top level nodes
     for node in PT.get_children(dist_base):
       if PT.get_label(node) != "Zone_t":
-        PT.add_child(part_base, node)
+        PT.add_child(part_base, PT.deep_copy(node))
 
     #Split S zones : we create a subcom for each zone, to avoid serialization of part_zone
     sub_comms = []
