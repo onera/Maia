@@ -67,14 +67,20 @@ def test_nodes_to_centers(from_api, comm):
 
   assert np.allclose(dfield_cell, expected_dfield)
 
-def test_node2center(comm) : 
+def test_nodes_to_centers_S(comm) : 
     dist_tree = maia.factory.generate_dist_block(4, 'S', comm)
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
     
-    for zone in PT.get_all_Zone_t(part_tree) : 
-        cx = PT.get_node_from_name(zone, 'CoordinateX')[1]
-        cy = PT.get_node_from_name(zone, 'CoordinateY')[1]
-        cz = PT.get_node_from_name(zone, 'CoordinateZ')[1]
-        PT.new_FlowSolution('FlowSolution', loc='Vertex', fields={'cX': cx, 'cY': cy, 'cZ': cz}, parent=zone)
+    zone = PT.get_all_Zone_t(part_tree)[0] 
+    cx = PT.get_node_from_name(zone, 'CoordinateX')[1]
+    cy = PT.get_node_from_name(zone, 'CoordinateY')[1]
+    cz = PT.get_node_from_name(zone, 'CoordinateZ')[1]
+    PT.new_FlowSolution('FlowSolution', loc='Vertex', fields={'cX': cx, 'cY': cy, 'cZ': cz}, parent=zone)
+    expected = maia.algo.part.compute_cell_center(zone)
 
-        maia.algo.part.nodes_to_centers(part_tree, comm, ["FlowSolution"])
+    ML.nodes_to_centers(part_tree, comm, ["FlowSolution"])
+    sol_cell = PT.get_node_from_name(part_tree, 'FlowSolution#Cell')
+    for i, dir in enumerate(['X', 'Y', 'Z']):
+      field = PT.get_node_from_name(sol_cell, f'c{dir}')[1]
+      assert field.shape == (3,3,3) and field.dtype == float
+      assert np.allclose(field.flatten(order='F'), expected[i::3])

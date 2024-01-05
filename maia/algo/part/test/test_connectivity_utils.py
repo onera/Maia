@@ -50,33 +50,23 @@ class Test_cell_vtx_connectivity:
 
   def test_cell_vtx_s_2d(self, comm):
     dist_tree = maia.factory.generate_dist_block([3,3,1], 'S', comm)
-
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-    for zone in PT.get_all_Zone_t(part_tree) : 
-        cell_vtx_index, cell_vtx = CU.cell_vtx_connect_2D(zone)
-        assert np.array_equal(cell_vtx, [1,2,4,5, 2,3,5,6, 4,5,7,8, 5,6,8,9])
-        assert np.array_equal(cell_vtx_index, [0,4,8,12,16])
-        assert cell_vtx.dtype == cell_vtx_index.dtype == np.int32
+    zone = PT.get_all_Zone_t(part_tree)[0] 
+
+    cell_vtx_index, cell_vtx = CU.cell_vtx_connect_2D(zone)
+    assert np.array_equal(cell_vtx, [1,2,4,5, 2,3,5,6, 4,5,7,8, 5,6,8,9])
+    assert np.array_equal(cell_vtx_index, [0,4,8,12,16])
+    assert cell_vtx.dtype == cell_vtx_index.dtype == np.int32
 
   def test_cell_vtx_s_3d(self, comm):
     dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
-
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-    for zone in PT.get_all_Zone_t(part_tree) : 
-        cell_vtx_index, cell_vtx = CU.cell_vtx_connect_3D(zone)
-        assert np.array_equal(cell_vtx, [1,2,4,5, 10,11,13,14,  2,3,5,6,  11,12,14,15,  4,5,7,8,  13,14,16,17,
-                                        5,6,8,9,  14,15,17,18,  10,11,13,14,  19,20,22,23,  11,12,14,15, 
-                                        20,21,23,24,  13,14,16,17,  22,23,25,26, 14,15,17,18,  23,24,26,27])
-        assert np.array_equal(cell_vtx_index,[0,8,16,24,32,40,48,56,64])
-        assert cell_vtx.dtype == cell_vtx_index.dtype == np.int32
+    zone = PT.get_all_Zone_t(part_tree)[0]
 
-  def test_cell_vtx_connectivity(self, comm): 
-    dist_tree = maia.factory.generate_dist_block(100, 'NFACE_n', comm)
+    cell_vtx_index, cell_vtx = CU.cell_vtx_connect_3D(zone)
+    assert np.array_equal(cell_vtx, [1,2,4,5, 10,11,13,14,  2,3,5,6,  11,12,14,15,  4,5,7,8,  13,14,16,17,
+                                     5,6,8,9,  14,15,17,18,  10,11,13,14,  19,20,22,23,  11,12,14,15, 
+                                     20,21,23,24,  13,14,16,17,  22,23,25,26, 14,15,17,18,  23,24,26,27])
+    assert np.array_equal(cell_vtx_index,[0,8,16,24,32,40,48,56,64])
+    assert cell_vtx.dtype == cell_vtx_index.dtype == np.int32
 
-    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-    PT.print_tree(part_tree)
-    for zone in PT.get_all_Zone_t(part_tree) : 
-        cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone, 3)
-
-
-    
