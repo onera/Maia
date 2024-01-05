@@ -524,7 +524,7 @@ def test_extract_s_bc_name_U(comm, write_output):
 
   # > Cube generation
   n_vtx  = 6
-  n_part = 1
+  n_part = 2
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'Vertex','Structured',comm)
   
   # > Initialize BCDataSet
@@ -542,6 +542,13 @@ def test_extract_s_bc_name_U(comm, write_output):
                                                 transfer_dataset=True,
                                                 # containers_name=['FlowSolution_NC']
                                                 )
+  # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
   if write_output:
-    Mio.dist_tree_to_file(dist_tree_ep, 'extract_vertex_from_zsr.cgns', comm)
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_s_ymax.cgns'), comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')       , comm)
+
+  dist_zone_ep = PT.get_node_from_label(dist_tree_ep, 'Zone_t')
+  assert PT.Zone.n_vtx( dist_zone_ep)==36
+  assert PT.Zone.n_cell(dist_zone_ep)==25

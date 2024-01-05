@@ -110,6 +110,12 @@ def build_intersection_numbering(part_tree, extract_zones, container_name, grid_
                       'IFaceCenter':'parent_lnum_cell',
                       'JFaceCenter':'parent_lnum_cell',
                       'KFaceCenter':'parent_lnum_cell'}
+  LOC_TO_GNUM = {'Vertex'     :'Vertex',
+                 'IFaceCenter':'Face',
+                 'JFaceCenter':'Face',
+                 'KFaceCenter':'Face',
+                 'CellCenter' :'Cell',
+                }
 
   part1_pr       = list()
   part1_in_part2 = list()
@@ -147,7 +153,8 @@ def build_intersection_numbering(part_tree, extract_zones, container_name, grid_
     part1_pr.append(np.array([[min(part1_ijk[0]),max(part1_ijk[0])],
                                 [min(part1_ijk[1]),max(part1_ijk[1])]]))
 
-    partial_gnum.append(part2_pl[pl1-1].astype(pdm_gnum_dtype))
+    part2_elt_gnum = PT.maia.getGlobalNumbering(part_zone, LOC_TO_GNUM[grid_location])[1]
+    partial_gnum.append(part2_elt_gnum[part2_pl[lnum2]])
 
   part1_gnum1 = create_sub_numbering(partial_gnum, comm)
 
