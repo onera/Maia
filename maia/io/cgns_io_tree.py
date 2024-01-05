@@ -13,12 +13,12 @@ from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_
 from maia.factory     import full_to_dist
 from maia.pytree.yaml import parse_yaml_cgns
 
-def load_collective_size_tree(filename, comm, legacy=False):
+def load_size_tree(filename, comm, legacy=False):
   if legacy:
-    from ._hdf_io_cass import load_collective_size_tree
+    from ._hdf_io_cass import load_size_tree
   else:
-    from ._hdf_io_h5py import load_collective_size_tree
-  return load_collective_size_tree(filename, comm)
+    from ._hdf_io_h5py import load_size_tree
+  return load_size_tree(filename, comm)
 
 def load_partial(filename, dist_tree, hdf_filter, comm, legacy):
   if legacy:
@@ -177,7 +177,7 @@ def file_to_dist_tree(filename, comm, legacy=False):
     dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=0)
 
   else:
-    dist_tree = load_collective_size_tree(filename, comm, legacy)
+    dist_tree = load_size_tree(filename, comm, legacy)
     fill_size_tree(dist_tree, filename, comm, legacy)
 
   end = time.time()

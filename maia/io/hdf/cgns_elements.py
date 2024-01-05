@@ -65,9 +65,11 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
     hdf_filter[eso_path] = DSMMRYESO + DSFILEESO + DSGLOBESO + DSFORMESO
 
   ec = PT.get_child_from_name(elmt, 'ElementConnectivity')
-  if(ec):
-    if(eso_path is None):
-      raise RuntimeError("In order to load ElementConnectivity, the ElementStartOffset is mandatory")
+  if ec:
+    if eso_path is None:
+      raise RuntimeError(f"Missing ElementStartOffset array for elements {PT.get_name(elmt)}"
+                         f" (kind={PT.Element.CGNSName(elmt)}). Please convert your input file"
+                         f" to CGNS4 standard using maia_poly_old_to_new.")
     ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
     hdf_filter[ec_path] = partial(load_element_connectivity_from_eso, elmt, zone_path)
 

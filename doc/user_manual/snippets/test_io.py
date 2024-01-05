@@ -26,8 +26,8 @@ def test_file_to_dist_tree_filter():
   maia.io.dist_tree_to_file(dist_tree, "tree.cgns", MPI.COMM_WORLD)
 
   # Read
-  from maia.io.cgns_io_tree import load_collective_size_tree, fill_size_tree
-  dist_tree = load_collective_size_tree("tree.cgns", MPI.COMM_WORLD)
+  from maia.io.cgns_io_tree import load_size_tree, fill_size_tree
+  dist_tree = load_size_tree("tree.cgns", MPI.COMM_WORLD)
   #For now dist_tree only contains sizes : let's filter it
   maia.pytree.rm_nodes_from_name(dist_tree, 'CoordinateY') #This is a DataArray
   maia.pytree.rm_nodes_from_name(dist_tree, 'Ym*') #This is some BC nodes

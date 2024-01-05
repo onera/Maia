@@ -30,7 +30,7 @@ def test_load_data():
   assert IOH.load_data(names.split('/'), labels.split('/')) == True
 
 @pytest_parallel.mark.parallel(3)
-def test_load_collective_size_tree(comm):
+def test_load_size_tree(comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
   yt = """
   Base CGNSBase_t [2,2]:
@@ -49,7 +49,7 @@ def test_load_collective_size_tree(comm):
         CoordinateY DataArray_t:
         CoordinateY#Size DataArray_t I8 [2,2]:
   """
-  sizetree = IOH.load_collective_size_tree(filename, comm)
+  sizetree = IOH.load_size_tree(filename, comm)
   assert PT.is_same_tree(sizetree, parse_yaml_cgns.to_cgns_tree(yt))
 
 def test_load_partial():
@@ -64,7 +64,7 @@ def test_load_partial():
   """
   # Nb : Low level load/write are tested in other file
   tree = parse_yaml_cgns.to_cgns_tree(yt)
-  hdf_filter = {'/Base/ZoneU/GridCoordinates/CoordinateX' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]]}
+  hdf_filter = {'Base/ZoneU/GridCoordinates/CoordinateX' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]]}
   IOH.load_partial(filename, tree, hdf_filter)
   assert np.allclose(PT.get_node_from_name(tree, 'CoordinateX')[1], [5., 6.])
 
@@ -79,8 +79,8 @@ def test_write_partial(comm, tmp_path):
           CoordinateX DataArray_t R8 [1,2,3,4]:
           CoordinateY DataArray_t R8 [-1,-2,-3,-4]:
     """
-    hdf_filter = {'/Base/ZoneU/GridCoordinates/CoordinateX' : [[0], [1], [4], [1], [0], [1], [4], [1], [6], [1]],
-                  '/Base/ZoneU/GridCoordinates/CoordinateY' : [[0], [1], [4], [1], [0], [1], [4], [1], [6], [1]]}
+    hdf_filter = {'Base/ZoneU/GridCoordinates/CoordinateX' : [[0], [1], [4], [1], [0], [1], [4], [1], [6], [1]],
+                  'Base/ZoneU/GridCoordinates/CoordinateY' : [[0], [1], [4], [1], [0], [1], [4], [1], [6], [1]]}
   else:
     yt = """
     Base CGNSBase_t [2,2]:
@@ -90,8 +90,8 @@ def test_write_partial(comm, tmp_path):
           CoordinateX DataArray_t R8 [5,6]:
           CoordinateY DataArray_t R8 [-5,-6]:
     """
-    hdf_filter = {'/Base/ZoneU/GridCoordinates/CoordinateX' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]],
-                  '/Base/ZoneU/GridCoordinates/CoordinateY' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]]}
+    hdf_filter = {'Base/ZoneU/GridCoordinates/CoordinateX' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]],
+                  'Base/ZoneU/GridCoordinates/CoordinateY' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]]}
   # Nb : Low level load/write are tested in other file
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   with TU.collective_tmp_dir(comm) as tmpdir:

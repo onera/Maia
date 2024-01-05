@@ -91,4 +91,4 @@ BaseA CGNSBase_t:
                     '/BaseA/Zone/ZSR/PointList' : (1, 'I4', (1,34)),
                    }
   LC.add_sizes_to_tree(tree, size_data_tree)
-  assert len(PT.get_nodes_from_name(tree, '*#Size')) == 5
+  assert len(PT.get_nodes_from_name(tree, '*#Size')) == 6

@@ -28,7 +28,7 @@ def load_data(names, labels):
       return False
   return True
 
-def load_collective_size_tree(filename, comm):
+def load_size_tree(filename, comm):
 
   if comm.Get_rank() == 0:
     size_tree = load_tree_partial(filename, load_data)
@@ -51,8 +51,8 @@ def load_partial(filename, dist_tree, hdf_filter):
 
   for path, filter in hdf_filter.items():
     if isinstance(filter, (list, tuple)):
-      node = PT.get_node_from_path(dist_tree, path[1:]) #! Path has '/'
-      gid = open_from_path(fid, path[1:])
+      node = PT.get_node_from_path(dist_tree, path) 
+      gid = open_from_path(fid, path)
       node[1] = load_data_partial(gid, filter)
 
 def write_partial(filename, dist_tree, hdf_filter, comm):
@@ -67,8 +67,8 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR, fapl)
 
   for path, filter in hdf_filter.items():
-    array = PT.get_node_from_path(dist_tree, path[1:])[1] #! Path has '/'
-    gid = open_from_path(fid, path[1:])
+    array = PT.get_node_from_path(dist_tree, path)[1]
+    gid = open_from_path(fid, path)
     write_data_partial(gid, array, filter)
     gid.close()
   
