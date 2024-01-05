@@ -701,14 +701,6 @@ class GridConnectivity:
                                  for key in PeriodicValues._fields])
 
   @staticmethod
-  def periodic_dict(gc):
-    """ Return periodic data if existing ('rotation_center':RotationCenter, 'rotation_angle':RotationAngle, 'translation':Translation) """
-    perio_node = W.get_node_from_label(gc, "Periodic_t", depth=[2,2])
-    if perio_node is None:
-      return (None, None, None)
-    return {key_name:N.get_value(W.get_child_from_name(perio_node, name)) for key_name, name in zip(["rotation_center", "rotation_angle", "translation"],
-                                                                                                         ["RotationCenter" , "RotationAngle" , "Translation"])}
-  @staticmethod
   def ZoneDonorPath(gc_node:CGNSTree, cur_base_name:str) -> str:
     """ Return the path of the opposite zone of a GridConnectivity node
 
@@ -724,6 +716,7 @@ class GridConnectivity:
     """
     opp = N.get_value(gc_node)
     return opp if '/' in opp else cur_base_name + '/' + opp
+
 
 @for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", \
         "BC_t", "BCDataSet_t", "GridConnectivity_t", "GridConnectivity1to1_t"]))
