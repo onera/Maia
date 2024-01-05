@@ -777,7 +777,7 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   return new_tgt_elt_pl
 
 
-def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
+def convert_vtx_gcs_as_face_bcs(tree, jn_pairs, comm):
   '''
   Convert Vertex GCs as FaceCenter BCs for feflo.
   '''
@@ -796,8 +796,8 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
                     for bc_n in PT.get_nodes_from_predicate(zone, is_face_bc)]
   face_bc_pls = np.concatenate(face_bc_pls)-elt_offset+1
       
-  for jn_pairs in jn_pairs_and_values.keys():
-    for gc_path in jn_pairs:
+  for jn_pair in jn_pairs:
+    for gc_path in jn_pair:
       # > Get GCs infos
       gc_n    = PT.get_node_from_path(tree, gc_path)
       gc_name = PT.get_name(gc_n)
@@ -822,7 +822,7 @@ def convert_vtx_gcs_as_face_bcs(tree, jn_pairs_and_values, comm):
         PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(bc_pl.size, comm)}, bc_n)
 
 
-def deplace_periodic_patch(tree, jn_pairs_and_values):
+def deplace_periodic_patch(tree, jn_pairs):
   '''
   Use gc_paths and their associated periodic_values in `jn_pairs_and_values` to deplace a range of cell touching
   a GC next to its twin GC (for each pair of GCs), using GCs pl and pld to merge the two domains.
@@ -838,12 +838,12 @@ def deplace_periodic_patch(tree, jn_pairs_and_values):
   PT.new_Family('PERIODIC', parent=base)
   PT.new_Family('GCS', parent=base)
 
-  n_periodicity = len(jn_pairs_and_values.keys())
+  n_periodicity = len(jn_pairs)
   new_vtx_nums = list()
   to_constrain_bcs = list()
   matching_bcs   = [dict() for i_per in range(n_periodicity)]
   i_per = 0
-  for gc_paths, periodic_values in jn_pairs_and_values.items():
+  for gc_paths in jn_pairs:
 
     gc_vtx_n = PT.get_node_from_path(tree, gc_paths[0])
     gc_vtx_pl  = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointList'     ))[0]
@@ -902,8 +902,10 @@ def deplace_periodic_patch(tree, jn_pairs_and_values):
 
     # > 4/ Apply periodic transformation to vtx and flowsol
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[1], MPI.COMM_SELF)
-    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[1], MPI.COMM_SELF)
+    perio_val = PT.GridConnectivity.periodic_values(PT.get_node_from_path(tree, gc_paths[1]))
+    periodic = perio_val.asdict(snake_case=True)
+    apply_periodicity_to_vtx(zone, vtx_pl, periodic, MPI.COMM_SELF)
+    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic, MPI.COMM_SELF)
 
     # maia.io.write_tree(tree, f'OUTPUT/deplaced_{i_per}.cgns')
 
@@ -993,8 +995,9 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic_values[0], MPI.COMM_SELF)
-    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic_values[0], MPI.COMM_SELF)
+    periodic = periodic_values[0].asdict(True)
+    apply_periodicity_to_vtx(zone, vtx_pl, periodic, MPI.COMM_SELF)
+    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic, MPI.COMM_SELF)
     # maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
 
     # > 4-5/ Merge two constraint surfaces
