@@ -39,6 +39,7 @@ def _cell_vtx_connectivity(zone, comm):
       cell_distri   = MT.get_distribution(zone, 'Cell')[1]
       _cell_distri  = par_utils.partial_to_full_distribution(cell_distri, comm)
       _cell_face_idx, cell_face = PDM_dfacecell_to_dcellface(comm, _face_distri, _cell_distri, local_pe)
+      _cell_face_idx = np_utils.safe_int_cast(_cell_face_idx, np.int32)
 
     cell_vtx_idx, cell_vtx = PDM.dconnectivity_combine(comm, 
                                                       as_pdm_gnum(_cell_distri),

@@ -47,14 +47,14 @@ class Test_split_ngon_2d:
     if no_pe:
       PT.rm_nodes_from_name(dist_tree, 'ParentElements')
 
-    part_tree = partition_dist_tree(dist_tree, comm)
+    part_tree = partition_dist_tree(dist_tree, comm, graph_part_tool='hilbert')
     self.check_elts(part_tree, comm)
     self.check_bcs(part_tree, comm)
 
   @pytest.mark.parametrize("output_jn_loc", ["Vertex", "FaceCenter"])
   def test_output_loc(self, output_jn_loc, comm):
     dist_tree = self.get_distree(comm)
-    part_tree = partition_dist_tree(dist_tree, comm, part_interface_loc=output_jn_loc)
+    part_tree = partition_dist_tree(dist_tree, comm, graph_part_tool='hilbert', part_interface_loc=output_jn_loc)
 
     self.check_elts(part_tree, comm)
     self.check_bcs(part_tree, comm)
@@ -107,7 +107,7 @@ class Test_split_elt_2d:
   @pytest.mark.parametrize("output_connectivity", ["Element", "NGon"])
   def test_output_elts(self, output_connectivity, comm):
     dist_tree = self.get_distree(comm)
-    part_tree = partition_dist_tree(dist_tree, comm, output_connectivity=output_connectivity)
+    part_tree = partition_dist_tree(dist_tree, comm, graph_part_tool='hilbert', output_connectivity=output_connectivity)
 
     if output_connectivity == 'Element':
       self.check_elts(part_tree, comm)

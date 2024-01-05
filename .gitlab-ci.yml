@@ -103,6 +103,42 @@ job:doc_snippets:
     - source source.sh; unset PYTEST_PLUGINS
     - python3 -m pytest ../doc
 
+job:portability_gnum:
+  stage: test
+  variables:
+    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --nodes=1-1 --time=00:15:00"
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  script:
+    - cd $CUSTOM_CI_DIR
+    - mkdir -p build_int64 && cd build_int64
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - make -j
+    - source source.sh
+    - mpirun -np 4 python3 -m pytest ../maia/
+
+job:portability_cfd5:
+  stage: test
+  variables:
+    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --nodes=1-1 --time=00:15:00"
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  before_script: 
+    - module purge
+    - module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
+  script:
+    - cd $CUSTOM_CI_DIR
+    - mkdir -p build_cfd5 && cd build_cfd5
+    - cmake ../ -DCMAKE_BUILD_TYPE=Debug 
+                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 
+                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2'
+                -DPDM_ENABLE_EXTENSION_PDMA=ON
+    - make -j
+    - source $ELSASPIRO/.env_elsA
+    - source source.sh
+    - mpirun -np 4 python3 -m pytest ../maia/
+
+
 # Deploy the documentation sphinx documentation to the site and pages, only if branch is dev
 pages:
   stage: deploy
