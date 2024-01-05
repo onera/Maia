@@ -20,8 +20,8 @@ def cell_vtx_connect_2D(zone_S) :
     j = np.arange(1, vertex_size[1]).reshape(-1,1)
     cell_vtx[0::4] = s_numbering.ijk_to_index(i,   j,   1, vertex_size).flatten()
     cell_vtx[1::4] = s_numbering.ijk_to_index(i+1, j,   1, vertex_size).flatten()
-    cell_vtx[2::4] = s_numbering.ijk_to_index(i,   j+1, 1, vertex_size).flatten()
-    cell_vtx[3::4] = s_numbering.ijk_to_index(i+1, j+1, 1, vertex_size).flatten()
+    cell_vtx[2::4] = s_numbering.ijk_to_index(i+1, j+1, 1, vertex_size).flatten()
+    cell_vtx[3::4] = s_numbering.ijk_to_index(i,   j+1, 1, vertex_size).flatten()
 
     return cell_vtx_idx, cell_vtx
 
@@ -38,12 +38,12 @@ def cell_vtx_connect_3D(zone_S) :
     k = np.arange(1, vertex_size[2]).reshape(-1,1,1)
     cell_vtx[0::8] = s_numbering.ijk_to_index(i,   j,   k,   vertex_size).flatten()
     cell_vtx[1::8] = s_numbering.ijk_to_index(i+1, j,   k,   vertex_size).flatten()
-    cell_vtx[2::8] = s_numbering.ijk_to_index(i,   j+1, k,   vertex_size).flatten()
-    cell_vtx[3::8] = s_numbering.ijk_to_index(i+1, j+1, k,   vertex_size).flatten()
+    cell_vtx[2::8] = s_numbering.ijk_to_index(i+1, j+1, k,   vertex_size).flatten()
+    cell_vtx[3::8] = s_numbering.ijk_to_index(i,   j+1, k,   vertex_size).flatten()
     cell_vtx[4::8] = s_numbering.ijk_to_index(i,   j,   k+1, vertex_size).flatten()
     cell_vtx[5::8] = s_numbering.ijk_to_index(i+1, j,   k+1, vertex_size).flatten()
-    cell_vtx[6::8] = s_numbering.ijk_to_index(i,   j+1, k+1, vertex_size).flatten()
-    cell_vtx[7::8] = s_numbering.ijk_to_index(i+1, j+1, k+1, vertex_size).flatten()
+    cell_vtx[6::8] = s_numbering.ijk_to_index(i+1, j+1, k+1, vertex_size).flatten()
+    cell_vtx[7::8] = s_numbering.ijk_to_index(i,   j+1, k+1, vertex_size).flatten()
 
     return cell_vtx_idx, cell_vtx
 

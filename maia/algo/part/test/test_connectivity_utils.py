@@ -54,7 +54,7 @@ class Test_cell_vtx_connectivity:
     zone = PT.get_all_Zone_t(part_tree)[0] 
 
     cell_vtx_index, cell_vtx = CU.cell_vtx_connect_2D(zone)
-    assert np.array_equal(cell_vtx, [1,2,4,5, 2,3,5,6, 4,5,7,8, 5,6,8,9])
+    assert np.array_equal(cell_vtx, [1,2,5,4, 2,3,6,5, 4,5,8,7, 5,6,9,8])
     assert np.array_equal(cell_vtx_index, [0,4,8,12,16])
     assert cell_vtx.dtype == cell_vtx_index.dtype == np.int32
 
@@ -64,9 +64,9 @@ class Test_cell_vtx_connectivity:
     zone = PT.get_all_Zone_t(part_tree)[0]
 
     cell_vtx_index, cell_vtx = CU.cell_vtx_connect_3D(zone)
-    assert np.array_equal(cell_vtx, [1,2,4,5, 10,11,13,14,  2,3,5,6,  11,12,14,15,  4,5,7,8,  13,14,16,17,
-                                     5,6,8,9,  14,15,17,18,  10,11,13,14,  19,20,22,23,  11,12,14,15, 
-                                     20,21,23,24,  13,14,16,17,  22,23,25,26, 14,15,17,18,  23,24,26,27])
+    assert np.array_equal(cell_vtx, [1,2,5,4,10,11,14,13,     2,3,6,5,11,12,15,14,      4,5,8,7,13,14,17,16,
+                                     5,6,9,8,14,15,18,17,     10,11,14,13,19,20,23,22,  11,12,15,14,20,21,24,23,
+                                     13,14,17,16,22,23,26,25, 14,15,18,17,23,24,27,26])
     assert np.array_equal(cell_vtx_index,[0,8,16,24,32,40,48,56,64])
     assert cell_vtx.dtype == cell_vtx_index.dtype == np.int32
 
