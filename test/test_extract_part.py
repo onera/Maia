@@ -542,3 +542,6 @@ def test_extract_s_bc_name_U(comm, write_output):
                                                 transfer_dataset=True,
                                                 # containers_name=['FlowSolution_NC']
                                                 )
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  if write_output:
+    Mio.dist_tree_to_file(dist_tree_ep, 'extract_vertex_from_zsr.cgns', comm)

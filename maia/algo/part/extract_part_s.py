@@ -10,7 +10,7 @@ import maia.utils.logging as mlog
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
                                     gc_is_reference, guess_bnd_normal_index
-from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
+from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, build_intersection_numbering
 import numpy as np
 
 comm = MPI.COMM_WORLD
@@ -86,7 +86,7 @@ class Extractor:
     # Get zones by domains (only one domain for now)
     part_tree_per_dom = dist_from_part.get_parts_per_blocks(self.part_tree, self.comm).values()
 
-    # Get zone from extractpart
+    # Get zone from extractpart -> Assume unique domain
     extract_zones = PT.get_all_Zone_t(self.extract_tree)
 
     for container_name in fs_container:
@@ -135,18 +135,20 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
     gc_name      = PT.get_value(gc_descriptor_n)
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointRange', 'GridLocation_t'])
     ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
-  
+
   grid_location = PT.Subset.GridLocation(ref_zsr_node)
   partial_field = PT.get_child_from_name(ref_zsr_node, 'PointRange') is not None
   assert grid_location in ['Vertex', 'IFaceCenter', 'JFaceCenter', 'KFaceCenter', 'CellCenter']
-
 
   parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
                       'IFaceCenter':'parent_lnum_cell',
                       'JFaceCenter':'parent_lnum_cell',
                       'KFaceCenter':'parent_lnum_cell'}
 
-  for extract_zone in extract_zones:
+  if partial_field:
+    part1_pr, part1_gnum1, part1_in_part2 = build_intersection_numbering(part_tree, extract_zones, container_name, grid_location, etb, comm)
+
+  for i_zone, extract_zone in enumerate(extract_zones):
     
     zone_name = PT.get_name(extract_zone)
     part_zone = PT.get_node_from_name_and_label(part_tree, zone_name, 'Zone_t')
@@ -158,38 +160,10 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
     else:
       raise TypeError
 
-    parent_part1_pl = etb[zone_name][parent_lnum_path[grid_location]]
-    
-    # Build partial pl
+    # Add partial numbering to node
     if partial_field:
-      subset_n = PT.get_child_from_name(part_zone,container_name)
-      pr = PT.get_value(PT.Subset.getPatch(subset_n))
-      i_ar = np.arange(min(pr[0]), max(pr[0])+1)
-      j_ar = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
-      k_ar = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
-      part2_pl = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, grid_location, PT.Zone.VertexSize(part_zone)).flatten()
-
-      lnum2 = np.searchsorted(part2_pl, parent_part1_pl) # Assume sorted
-      mask  = parent_part1_pl==part2_pl[lnum2]
-      lnum2 = lnum2[mask]
-      pl1   = np.isin(parent_part1_pl, part2_pl, assume_unique=True) # Assume unique because pr
-      pl1   = np.where(pl1)[0]+1
-
-      if pl1.size==0:
-        PT.rm_child(extract_zone, FS_ep)
-        continue # Pass if no recovering
-
-      vtx_size = PT.Zone.VertexSize(extract_zone)
-      if vtx_size.size==2:
-        vtx_size = np.concatenate([vtx_size,np.array([1], dtype=vtx_size.dtype)])
-      part1_ijk = s_numbering.index_to_ijk_from_loc(pl1, 'CellCenter', vtx_size)
-      part1_pr  = np.array([[min(part1_ijk[0]),max(part1_ijk[0])],
-                            [min(part1_ijk[1]),max(part1_ijk[1])]])
-      pr_n = PT.new_PointRange(value=part1_pr, parent=FS_ep)
-
-      partial_gnum = maia.algo.part.point_cloud_utils.create_sub_numbering([part2_pl[pl1-1].astype(pdm_gnum_dtype)], comm)
-      if len(partial_gnum)!=0:
-        PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
+      pr_n = PT.new_PointRange(value=part1_pr[i_zone], parent=FS_ep)
+      gn_n = PT.maia.newGlobalNumbering({'Index' : part1_gnum1[i_zone]}, parent=FS_ep)
 
     for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
       fld_name = PT.get_name(fld_node)
@@ -198,12 +172,15 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
       fld_data = PT.get_value(PT.get_node_from_path(part_zone,fld_path))
 
       if partial_field:
-        extract_fld_data = fld_data.flatten(order='F')[lnum2]
-        extract_fld_data = extract_fld_data.reshape(np.diff(part1_pr)[:,0]+1, order='F')
+        extract_fld_data = fld_data.flatten(order='F')[part1_in_part2[i_zone]]
+        if PT.get_label(FS_ep)=='FlowSolution_t':
+          extract_fld_data = extract_fld_data.reshape(np.diff(part1_pr[i_zone])[:,0]+1, order='F')
       else:
+        parent_part1_pl = etb[zone_name][parent_lnum_path[grid_location]]
         extract_fld_data = fld_data.flatten(order='F')[parent_part1_pl-1]
-        zone_elt_dim = PT.Zone.VertexSize(extract_zone) if grid_location=='Vertex' else PT.Zone.CellSize(extract_zone)
-        extract_fld_data = extract_fld_data.reshape(zone_elt_dim, order='F')
+        if PT.get_label(FS_ep)=='FlowSolution_t':
+          zone_elt_dim = PT.Zone.VertexSize(extract_zone) if grid_location=='Vertex' else PT.Zone.CellSize(extract_zone)
+          extract_fld_data = extract_fld_data.reshape(zone_elt_dim, order='F')
 
       PT.new_DataArray(fld_name, extract_fld_data, parent=FS_ep)
 
