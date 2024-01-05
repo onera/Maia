@@ -23,7 +23,7 @@ DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
 
 def set_transfer_dataset(bc_n, zsr_bc_n):
   there_is_dataset = False
-  assert PT.get_child_from_predicates(bc_n, 'BCDataSet_t/IndexArray_t') is None,\
+  assert PT.get_child_from_predicates(bc_n, 'BCDataSet_t/IndexRange_t') is None,\
                  'BCDataSet_t with PointList aren\'t managed'
   ds_arrays = PT.get_children_from_predicates(bc_n, 'BCDataSet_t/BCData_t/DataArray_t')
   for ds_array in ds_arrays:
@@ -473,7 +473,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
   for domain, part_zones in part_tree_per_dom.items():
     point_list_domain = list()
     for part_zone in part_zones:
-      zsr_node     = PT.get_node_from_path(part_zone, zsr_path)
+      zsr_node = PT.get_node_from_path(part_zone, zsr_path)
       if zsr_node is not None:
         #Follow BC or GC link
         related_node = PT.getSubregionExtent(zsr_node, part_zone)

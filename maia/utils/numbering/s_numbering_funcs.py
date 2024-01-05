@@ -37,7 +37,6 @@ def index_to_ijk_from_loc(idx, loc, n_vtx):
   elif loc == 'IFaceCenter':
     return faceiIndex_to_ijk(idx, n_cell, n_vtx)
   elif loc == 'JFaceCenter':
-    return ijk_to_facejIndex(i,j,k,n_cell,n_vtx)
     return facejIndex_to_ijk(idx, n_cell, n_vtx)
   elif loc == 'KFaceCenter':
     return facekIndex_to_ijk(idx, n_cell, n_vtx)
