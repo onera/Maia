@@ -2,6 +2,7 @@ import maia.pytree as PT
 
 import maia.transfer as TE
 from . import data_exchange
+from maia.factory.dist_from_part import _recover_base_iterative_data
 
 __all__ = ['part_zones_to_dist_zone_only',
            'part_zones_to_dist_zone_all',
@@ -58,27 +59,13 @@ def part_tree_to_dist_tree_only_labels(dist_tree, part_tree, labels, comm):
   include_dict = {label : ['*'] for label in labels}
   for d_base, d_zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     p_zones = TE.utils.get_partitioned_zones(part_tree, PT.get_name(d_base) + '/' + PT.get_name(d_zone))
-
-    # on recupere les donnes instationnaires s'il y en a -> Warning : not valid for varying number of zones per time step
-    # 1. ZoneIterativeData
-    zitd = PT.get_node_from_label(p_zones[0],"ZoneIterativeData_t")
-    if zitd is not None:
-      PT.add_child(d_zone,zitd)
-    # 2. BaseIterativeData
-    print("part_tree_to_dist_tree_only_labels : d_base =",PT.get_name(d_base))
-    p_base = PT.get_node_from_label(part_tree,"CGNSBase_t")
-    bitd = PT.get_node_from_label(p_base,"BaseIterativeData_t")
-    if bitd is not None:
-      PT.rm_children_from_name(bitd,"NumberOfZones")
-      PT.rm_children_from_name(bitd,"ZonePointers")
-      PT.add_child(d_base,bitd)
-
     part_zones_to_dist_zone_only(d_zone, p_zones, comm, include_dict)
 
 def part_tree_to_dist_tree_all(dist_tree, part_tree, comm):
   """ Transfer all the data fields from a partitioned tree
   to the corresponding distributed tree.
   """
+  _recover_base_iterative_data(dist_tree, part_tree, comm)
   part_tree_to_dist_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths

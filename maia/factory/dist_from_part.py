@@ -253,7 +253,7 @@ def _recover_base_iterative_data(dist_tree, part_tree, comm):
   for dist_base in PT.get_all_CGNSBase_t(dist_tree):
     part_base = PT.get_child_from_name(part_tree, PT.get_name(dist_base))
     p_it_data = PT.get_child_from_label(part_base, 'BaseIterativeData_t')
-    if p_it_data is not None:
+    if p_it_data is not None and PT.get_child_from_label(dist_base, 'BaseIterativeData_t') is None:
       d_it_data = PT.deep_copy(p_it_data)
       p_z_pointers = PT.get_child_from_name(p_it_data, 'ZonePointers')
       if p_z_pointers is not None:
