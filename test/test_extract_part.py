@@ -12,6 +12,7 @@ import maia.factory as MF
 import maia.io      as Mio
 
 from maia.algo.part import extract_part as EXP
+from maia.utils     import s_numbering
 
 # > Reference directory
 ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
@@ -33,6 +34,8 @@ def plane_eq(x,y,z) :
   return between_planes
 
 def initialize_bc(zone, bc_name):
+  is_struct = PT.Zone.Type(zone)=='Structured'
+  
   face_center = maia.algo.part.geometry.compute_face_center(zone)
   cfx = face_center[0::3]
   cfy = face_center[1::3]
@@ -40,15 +43,25 @@ def initialize_bc(zone, bc_name):
 
   bc_n = PT.get_node_from_name(zone, bc_name)
   if bc_n is not None:
-    bc_pl  = PT.get_node_from_name(bc_n, 'PointList')[1][0]
+    bc_patch = PT.Subset.getPatch(bc_n)
+    if is_struct:
+      pr = PT.get_value(bc_patch)
+      i_ar = np.arange(min(pr[0]), max(pr[0])+1)
+      j_ar = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
+      k_ar = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
+      bc_pl = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, PT.Subset.GridLocation(bc_n), PT.Zone.VertexSize(zone)).flatten()
+    else:
+      bc_pl = PT.get_value(bc_patch)[0]
+
     bc_cfx = cfx[bc_pl-1]
     bc_cfy = cfy[bc_pl-1]
     bc_cfz = cfz[bc_pl-1]
     bc_dataset_n = PT.new_node(name='BCDataSet'  , label='BCDataSet_t', value='UserDefined', parent=bc_n)
-    neuma_data_n = PT.new_node(name='NeumannData', label='BCData_t'   , value=None         , parent=bc_dataset_n)
-    grid_loc_n   = PT.new_GridLocation('FaceCenter', parent=neuma_data_n)
-    sphere       = PT.new_DataArray('sphere_bc'  , bc_cfx**2 + bc_cfy**2 + bc_cfz**2 - 1, parent=neuma_data_n)
-    cylinder     = PT.new_DataArray('cylinder_bc', bc_cfx**2 + bc_cfy**2             - 1, parent=neuma_data_n)
+    neuma_data_n = PT.new_node(name='DirichletData', label='BCData_t'   , value=None         , parent=bc_dataset_n)
+    sphere_field = bc_cfx**2 + bc_cfy**2 + bc_cfz**2 - 1
+    cylind_field = bc_cfx**2 + bc_cfy**2             - 1
+    sphere       = PT.new_DataArray('sphere_bc'  , sphere_field, parent=neuma_data_n)
+    cylinder     = PT.new_DataArray('cylinder_bc', cylind_field, parent=neuma_data_n)
 
 def initialize_zsr_by_eq(zone, variables, function, location):
   # In/out selection array
@@ -73,11 +86,15 @@ def initialize_zsr_by_eq(zone, variables, function, location):
   return np.ascontiguousarray(extract_lnum)
 
 
-def generate_test_tree(n_vtx,n_part,location,comm):
+def generate_test_tree(n_vtx,n_part,location,cgns_name,comm):
+  is_struct = cgns_name=='Structured'
 
   # > Cube generation and partitioning
   # Cube generation
-  dist_tree = MF.generate_dist_block(n_vtx, "Poly", comm, [-2.5, -2.5, -2.5], 5.)
+  if is_struct:
+    dist_tree = maia.factory.dcube_generator.dcube_struct_generate(n_vtx, 5., [-2.5, -2.5, -2.5], comm, bc_location='FaceCenter')
+  else:
+    dist_tree = MF.generate_dist_block(n_vtx, cgns_name, comm, [-2.5, -2.5, -2.5], 5.)
 
   # Partionning option
   zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, comm, n_part)
@@ -105,6 +122,13 @@ def generate_test_tree(n_vtx,n_part,location,comm):
     cylind_fld_nc =  cx**2 +  cy**2          - 1
     sphere_fld_cc = ccx**2 + ccy**2 + ccz**2 - 1
     cylind_fld_cc = ccx**2 + ccy**2          - 1
+    if is_struct:
+      zone_vtx_dim  = PT.Zone.VertexSize(zone)
+      sphere_fld_nc = sphere_fld_nc.reshape(zone_vtx_dim, order='F')
+      cylind_fld_nc = cylind_fld_nc.reshape(zone_vtx_dim, order='F')
+      zone_cell_dim = PT.Zone.CellSize(zone)
+      sphere_fld_cc = sphere_fld_cc.reshape(zone_cell_dim, order='F')
+      cylind_fld_cc = cylind_fld_cc.reshape(zone_cell_dim, order='F')
 
     # Placement FlowSolution
     FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
@@ -129,15 +153,19 @@ def generate_test_tree(n_vtx,n_part,location,comm):
       elt_range     = [1]
     else:
       sys.exit()
-    point_list_loc = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location)
-    
-    # Put fld in ZSR
-    zsr_node = PT.get_node_from_name(zone,'ZSR_FlowSolution')
-    PT.new_DataArray("ZSR_ccx", ccx[point_list_loc[0]-elt_range[0]], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccy", ccy[point_list_loc[0]-elt_range[0]], parent=zsr_node)
-    PT.new_DataArray("ZSR_ccz", ccz[point_list_loc[0]-elt_range[0]], parent=zsr_node)
 
-    point_list.append(point_list_loc[0])
+    if is_struct:
+      point_list = None
+    else:
+      point_list_loc = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location)
+      
+      # Put fld in ZSR
+      zsr_node = PT.get_node_from_name(zone,'ZSR_FlowSolution')
+      PT.new_DataArray("ZSR_ccx", ccx[point_list_loc[0]-elt_range[0]], parent=zsr_node)
+      PT.new_DataArray("ZSR_ccy", ccy[point_list_loc[0]-elt_range[0]], parent=zsr_node)
+      PT.new_DataArray("ZSR_ccz", ccz[point_list_loc[0]-elt_range[0]], parent=zsr_node)
+
+      point_list.append(point_list_loc[0])
 
   return part_tree, point_list
 
@@ -152,7 +180,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, comm, write_output):
   # > Generate tree
   n_vtx  = 6
   n_part = 2
-  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter','Poly',comm)
 
   # > Extract part
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", comm,
@@ -186,7 +214,7 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, comm, write_output):
   # > Generate tree
   n_vtx  = 6
   n_part = 2
-  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter','Poly',comm)
 
   # > Extract part
   extractor = EXP.create_extractor_from_zsr(part_tree, "ZSR_FlowSolution", comm,
@@ -222,7 +250,7 @@ def test_extract_cell_from_point_list_U(graph_part_tool, comm, write_output):
   # > Generate tree
   n_vtx  = 6
   n_part = 2
-  part_tree, point_list = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,'CellCenter','Poly',comm)
 
   # > Extract part
   extractor = EXP.Extractor(part_tree, [point_list], "CellCenter", comm,
@@ -256,7 +284,7 @@ def test_extract_face_from_point_list_U(graph_part_tool, comm, write_output):
   # > Generate tree
   n_vtx  = 6
   n_part = 2
-  part_tree, point_list = generate_test_tree(n_vtx,n_part,'FaceCenter',comm)
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,'FaceCenter','Poly',comm)
 
   # > Extract part
   extractor = EXP.Extractor(part_tree, [point_list], "FaceCenter", comm,
@@ -286,13 +314,12 @@ def test_extract_face_from_point_list_U(graph_part_tool, comm, write_output):
 @pytest_parallel.mark.parallel([1,3])
 def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
 
-  # --- GENERATE TREE -------------------------------------------------------------------
+  # > Cube generation
   n_vtx  = 6
   n_part = 2
-  part_tree, point_list = generate_test_tree(n_vtx,n_part,'Vertex',comm)
-  # -------------------------------------------------------------------------------------
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,'Vertex','Poly',comm)
 
-  # # > Extract part
+  # > Extract part
   part_tree_ep = EXP.extract_part_from_zsr( part_tree, "ZSR_FlowSolution", comm,
                                             transfer_dataset=True,
                                             graph_part_tool=graph_part_tool,
@@ -303,9 +330,7 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
   # for i_zone, part_zone in enumerate(part_zones):
   #   write_part_zone_vtx(i_zone,part_zone,comm)
   # Mio.write_trees(part_tree_ep,'OUT_TEST_VERTEX/part_tree_extract.cgns',comm)
-  # -------------------------------------------------------------------------------------
 
-  # -------------------------------------------------------------------------------------
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
 
@@ -329,7 +354,7 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
   # > Generate tree
   n_vtx  = 6
   n_part = 4
-  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter','Poly',comm)
 
   for zone in PT.get_all_Zone_t(part_tree):
     initialize_bc(zone, 'Xmin')
@@ -364,7 +389,7 @@ def test_extract_bcs_from_family_U(graph_part_tool, comm, write_output):
   # > Generate tree
   n_vtx  = 6
   n_part = 4
-  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter','Poly',comm)
 
   for zone in PT.get_all_Zone_t(part_tree):
     initialize_bc(zone, 'Xmin')
@@ -432,7 +457,7 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
   # > Generate tree
   n_vtx  = 6
   n_part = 4
-  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter',comm)
+  part_tree, _ = generate_test_tree(n_vtx,n_part,'CellCenter','Poly',comm)
 
   part_base = PT.get_child_from_label(part_tree, 'CGNSBase_t')
   PT.new_Family('ZSRs', parent=part_base)
@@ -492,3 +517,28 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
 
   # > Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+
+
+@pytest_parallel.mark.parallel([1,3])
+def test_extract_s_bc_name_U(comm, write_output):
+
+  # > Cube generation
+  n_vtx  = 6
+  n_part = 1
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,'Vertex','Structured',comm)
+  
+  # > Initialize BCDataSet
+  for zone in PT.get_all_Zone_t(part_tree):
+    initialize_bc(zone, 'Ymax')
+    for bc_n in PT.get_nodes_from_label(zone, 'BC_t'):
+      PT.set_value(bc_n, 'FamilySpecified')
+      PT.new_node('FamilyName', label='FamilyName_t', value='ALL_BCS', parent=bc_n)
+
+  part_base = PT.get_child_from_label(part_tree, 'CGNSBase_t')
+  PT.new_Family('ALL_BCS', parent=part_base)
+
+  # > Extract part
+  part_tree_ep = maia.algo.part.extract_part_s.extract_part_s_from_bc_name( part_tree, "Ymax", comm,
+                                                transfer_dataset=True,
+                                                # containers_name=['FlowSolution_NC']
+                                                )

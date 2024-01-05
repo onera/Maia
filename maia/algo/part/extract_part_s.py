@@ -1,4 +1,4 @@
-import time
+import copy, time
 import mpi4py.MPI as MPI
 
 import maia
@@ -17,7 +17,9 @@ comm = MPI.COMM_WORLD
 
 DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
-                 2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
+                 2: {'Vertex'     :'Vertex',
+                     'EdgeCenter' :'EdgeCenter',
+                     'FaceCenter' :'CellCenter', 'IFaceCenter':'CellCenter', 'JFaceCenter':'CellCenter', 'KFaceCenter':'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
 '''
