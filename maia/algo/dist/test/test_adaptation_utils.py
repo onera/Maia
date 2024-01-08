@@ -7,6 +7,8 @@ import maia.pytree as PT
 import maia.algo.dist.adaptation_utils as adapt_utils
 from maia.pytree.yaml          import parse_yaml_cgns
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+
 import numpy as np
 
 def gen_dist_zone(comm):
@@ -142,6 +144,47 @@ def test_apply_periodicity_to_flowsol(comm):
     assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([1.,0.,5.,0.,9.]))
   elif comm.rank==1:
     assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([2.,0.,0.,0.]))
+
+
+@pytest_parallel.mark.parallel(2)
+def test_elmt_pl_to_vtx_pl(comm):
+  zone = PT.new_Zone(type='Unstructured')
+  if comm.Get_rank() == 0:
+    econn = [1,2,5,4, 2,3,6,5]
+    distri = np.array([0, 2, 4], pdm_dtype)
+    elt_pl = np.array([1,3]) # Requested elts
+  elif comm.Get_rank() == 1:
+    econn = [4,5,8,7, 5,6,9,8]
+    distri = np.array([2, 4, 4], pdm_dtype)
+    elt_pl = np.array([], pdm_dtype) # Requested elts
+  elt = PT.new_Elements(type='QUAD_4', erange=[1,4], econn=econn, parent=zone)
+  PT.maia.newDistribution({'Element' : distri}, elt)
+
+  vtx_pl = adapt_utils.elmt_pl_to_vtx_pl(zone, elt_pl, 'QUAD_4', comm)
+  if comm.Get_rank() == 0:
+    assert (vtx_pl == [1,2,4,5,7,8]).all()
+  elif comm.Get_rank() == 1:
+    assert vtx_pl.size == 0
+
+@pytest_parallel.mark.parallel(2)
+def test_tag_elmt_owning_vtx(comm):
+  zone = PT.new_Zone(type='Unstructured')
+  if comm.Get_rank() == 0:
+    econn = [1,2,5,4, 2,3,6,5]
+    distri = np.array([0, 2, 4], pdm_dtype)
+    vtx_pl = np.array([1,4,5]) #Requested vtx
+  elif comm.Get_rank() == 1:
+    econn = [4,5,8,7, 5,6,9,8]
+    distri = np.array([2, 4, 4], pdm_dtype)
+    vtx_pl = np.array([2]) #Requested vtx
+  elt = PT.new_Elements(type='QUAD_4', erange=[1,4], econn=econn, parent=zone)
+  PT.maia.newDistribution({'Element' : distri}, elt)
+
+  elt_pl = adapt_utils.tag_elmt_owning_vtx(zone, vtx_pl, 'QUAD_4', comm, elt_full=True)
+  assert (np.concatenate(comm.allgather(elt_pl)) == [1]).all()
+  elt_pl = adapt_utils.tag_elmt_owning_vtx(zone, vtx_pl, 'QUAD_4', comm, elt_full=False)
+  assert (np.concatenate(comm.allgather(elt_pl)) == [1,2,3,4]).all()
+
 
 @pytest_parallel.mark.parallel(2)
 def test_convert_vtx_gcs_as_face_bcs(comm):

@@ -143,34 +143,41 @@ def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
         vector[elt_mask] = tr_vector
     
 
-def elmt_pl_to_vtx_pl(zone, elt_pl, cgns_name):
+def elmt_pl_to_vtx_pl(zone, elt_pl, cgns_name, comm):
   '''
   Return point_list of vertices describing elements tagged in `elt_pl`.
+
+  TODO : c'est anormal de demander un nom cgns (ex. TRI_3) et de ne récupérer 1
+  seul élément. Soit il faut récupérer tous les éléments TRI_3, soit il faut 
+  donner en entrée un nom de noeud spécifique et ne récupérer que ce noeud.
+  Idem pr function d'en dessous
   '''
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
   elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
   elt_size   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
+  distri     = PT.maia.getDistribution(elt_n, 'Element')[1]
 
   ec  = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
-  ids = elt_pl - elt_offset
-  conn_pl = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-  vtx_pl = np.unique(ec[conn_pl])
+  ids = elt_pl - elt_offset + 1
+  
+  _, all_vtx = EP.block_to_part_strided(elt_size, ec, distri, [ids], comm)
+  return np.unique(all_vtx)
 
-  return vtx_pl
 
-
-def tag_elmt_owning_vtx(zone, vtx_pl, cgns_name, elt_full=False):
+def tag_elmt_owning_vtx(zone, vtx_pl, cgns_name, comm, elt_full=False):
   '''
   Return the the point_list of elements that owns one or all of their vertices in the vertex point_list.
+  Important : elt_pl is returned as a distributed array, w/o any assumption on the holding
+  rank : vertices given by a rank can spawn an elt_idx on a other rank.
   '''
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==cgns_name
   elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
   if elt_n is not None:
     elt_offset = PT.Element.Range(elt_n)[0]
-    gc_elt_pl  = vtx_ids_to_face_ids(vtx_pl, elt_n, MPI.COMM_SELF, elt_full)+elt_offset-1
+    gc_elt_pl  = vtx_ids_to_face_ids(vtx_pl, elt_n, comm, elt_full)+elt_offset-1
   else:
     gc_elt_pl = np.empty(0, dtype=np.int32)
   return gc_elt_pl
@@ -347,12 +354,12 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, keep_original
   pbc1_n      = PT.get_child_from_name(zone_bc_n, bc_names[0])
   pbc1_loc    = PT.Subset.GridLocation(pbc1_n)
   pbc1_pl     = PT.get_value(PT.get_child_from_name(pbc1_n, 'PointList'))[0]
-  pbc1_vtx_pl = elmt_pl_to_vtx_pl(zone, pbc1_pl, LOC_TO_CGNS[pbc1_loc])
+  pbc1_vtx_pl = elmt_pl_to_vtx_pl(zone, pbc1_pl, LOC_TO_CGNS[pbc1_loc], MPI.COMM_SELF)
 
   pbc2_n      = PT.get_child_from_name(zone_bc_n, bc_names[1])
   pbc2_loc    = PT.Subset.GridLocation(pbc2_n)
   pbc2_pl     = PT.get_value(PT.get_child_from_name(pbc2_n, 'PointList'))[0]
-  pbc2_vtx_pl = elmt_pl_to_vtx_pl(zone, pbc2_pl, LOC_TO_CGNS[pbc2_loc])
+  pbc2_vtx_pl = elmt_pl_to_vtx_pl(zone, pbc2_pl, LOC_TO_CGNS[pbc2_loc], MPI.COMM_SELF)
 
   old_vtx_num = old_to_new_vtx_num[0]
   new_vtx_num = old_to_new_vtx_num[1]
@@ -457,7 +464,7 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, elt_duplicate_
 
   # > Add duplicated vertex
   n_vtx = PT.Zone.n_vtx(zone)
-  elt_vtx_pl   = elmt_pl_to_vtx_pl(zone, elt_pl, elt_name)
+  elt_vtx_pl   = elmt_pl_to_vtx_pl(zone, elt_pl, elt_name, MPI.COMM_SELF)
   n_vtx_to_add = elt_vtx_pl.size
   duplicate_vtx(zone, elt_vtx_pl, MPI.COMM_SELF)
 
@@ -826,9 +833,9 @@ def deplace_periodic_patch(tree, jn_pairs):
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
     # > 1/ Defining the internal surface, that will be constrained in mesh adaptation
-    cell_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', elt_full=False)
+    cell_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', MPI.COMM_SELF, elt_full=False)
     face_pl = add_undefined_faces(zone, cell_pl, 'TETRA_4', gc_vtx_pld, 'TRI_3', )
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF)
 
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
     cell_bc_name = f'tetra_4_periodic_{i_per}'
@@ -853,8 +860,8 @@ def deplace_periodic_patch(tree, jn_pairs):
     # > Find BCs on GCs that will be deleted because they have their periodic twin
     # > For now only fully described BCs will be treated
     matching_bcs[i_per] = dict()
-    bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', elt_full=True)
-    bar_twins_pl = tag_elmt_owning_vtx(zone, gc_vtx_pl,  'BAR_2', elt_full=True)
+    bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', MPI.COMM_SELF, elt_full=True)
+    bar_twins_pl = tag_elmt_owning_vtx(zone, gc_vtx_pl,  'BAR_2', MPI.COMM_SELF, elt_full=True)
     matching_bcs[i_per]['BAR_2'] = find_matching_bcs(zone, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], 'BAR_2')
     remove_elts_from_pl(zone, bar_to_rm_pl, 'BAR_2')
 
@@ -863,8 +870,8 @@ def deplace_periodic_patch(tree, jn_pairs):
     #      of elmts touching this surface
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_pl
-    to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', elt_full=True)
-    to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', elt_full=True)
+    to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', MPI.COMM_SELF, elt_full=True)
+    to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', MPI.COMM_SELF, elt_full=True)
 
     # > Ambiguous faces that contains all vtx but are not included in patch cells can be removed
     to_update_face_pl = is_elt_included(zone, to_update_face_pl, 'TRI_3', cell_pl, 'TETRA_4')
@@ -877,7 +884,7 @@ def deplace_periodic_patch(tree, jn_pairs):
 
 
     # > 4/ Apply periodic transformation to vtx and flowsol
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF)
     perio_val = PT.GridConnectivity.periodic_values(PT.get_node_from_path(tree, gc_paths[1]))
     periodic = perio_val.asdict(snake_case=True)
     apply_periodicity_to_vtx(zone, vtx_pl, periodic, MPI.COMM_SELF)
@@ -948,7 +955,7 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     cell_bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_bc_pl = PT.get_value(PT.Subset.getPatch(cell_bc_n))[0]
-    vtx_pl = elmt_pl_to_vtx_pl(zone, cell_bc_pl, 'TETRA_4')
+    vtx_pl = elmt_pl_to_vtx_pl(zone, cell_bc_pl, 'TETRA_4', MPI.COMM_SELF)
 
     still_here_gc_name  = gc_paths[0].split('/')[-1]
     to_retrieve_gc_name = gc_paths[1].split('/')[-1]
@@ -957,8 +964,8 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
 
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_bc_pl
-    to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', elt_full=True)
-    to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', elt_full=True)
+    to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', MPI.COMM_SELF, elt_full=True)
+    to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', MPI.COMM_SELF, elt_full=True)
     to_update_face_pl = is_elt_included(zone, to_update_face_pl, 'TRI_3', cell_bc_pl, 'TETRA_4')
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
@@ -970,7 +977,7 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4')
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF)
     periodic = periodic_values[0].asdict(True)
     apply_periodicity_to_vtx(zone, vtx_pl, periodic, MPI.COMM_SELF)
     apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic, MPI.COMM_SELF)
