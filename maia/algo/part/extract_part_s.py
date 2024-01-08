@@ -5,11 +5,11 @@ import maia
 import maia.pytree as PT
 from   maia.algo.part.extraction_utils import LOC_TO_DIM
 from   maia.factory  import dist_from_part
-from   maia.utils import s_numbering
+from   maia.utils import np_utils, s_numbering
 import maia.utils.logging as mlog
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
-                                    gc_is_reference, guess_bnd_normal_index
+                                    gc_is_reference, guess_bnd_normal_index, n_face_per_dir
 from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, build_intersection_numbering
 import numpy as np
 
@@ -75,11 +75,75 @@ class Extractor:
     for i_domain, part_zones in enumerate(part_tree_per_dom):
       extract_zones, etb = extract_part_one_domain(part_zones, point_range[i_domain], self.dim, comm,
                                                     equilibrate=False)
+
+      # > Retrive missing gnum
+      '''
+      Retrieve CellSize, CellRange and Face
+      recover_dist_block_size -> CellSize
+      CellSize + Cell --ijk_to_index--> CellRange
+      CellSize + CellRange + Cell --create_zone_gnums--> Face
+      '''
+      if self.dim==3:
+        from maia.factory.dist_from_part import _recover_dist_block_size
+        cell_size = _recover_dist_block_size(extract_zones, comm)
+
+        for zone in extract_zones:
+          if PT.Zone.n_cell(zone)!=0:
+            cell_gnum  = PT.maia.getGlobalNumbering(zone, 'Cell')[1]
+            cell_ijk   = s_numbering.index_to_ijk(cell_gnum, cell_size[:,1])
+            cell_range = np.array([[min(cell_ijk[0]),max(cell_ijk[0])],
+                                   [min(cell_ijk[1]),max(cell_ijk[1])],
+                                   [min(cell_ijk[2]),max(cell_ijk[2])]])
+            dist_cell_per_dir = cell_size[:,1]
+            part_cell_per_dir = cell_range[:,1] - cell_range[:,0]
+            dist_vtx_per_dir = dist_cell_per_dir+1
+            dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
+            part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
+            shifted_nface_p = np_utils.sizes_to_indices(part_face_per_dir)
+            ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
+            face_lntogn = np.empty(shifted_nface_p[-1], dtype=pdm_gnum_dtype)
+            for idir in range(3):
+              i_ar  = np.arange(cell_range[0,0], cell_range[0,1]+(idir==0), dtype=pdm_gnum_dtype)
+              j_ar  = np.arange(cell_range[1,0], cell_range[1,1]+(idir==1), dtype=pdm_gnum_dtype).reshape(-1,1)
+              k_ar  = np.arange(cell_range[2,0], cell_range[2,1]+(idir==2), dtype=pdm_gnum_dtype).reshape(-1,1,1)
+              face_lntogn[shifted_nface_p[idir]:shifted_nface_p[idir+1]] = ijk_to_faceIndex[idir](i_ar, j_ar, k_ar, \
+                  dist_cell_per_dir, dist_vtx_per_dir).flatten()
+            
+            gn_node = PT.maia.getGlobalNumbering(zone)
+            PT.new_node("CellRange", "IndexRange_t", cell_range, parent=gn_node)
+            PT.new_DataArray("CellSize", cell_size[:,1], parent=gn_node)
+            PT.new_DataArray("Face", face_lntogn, parent=gn_node)
+
       self.exch_tool_box.update(etb)
       for zone in extract_zones:
         if PT.Zone.n_vtx(zone)!=0:
           PT.add_child(extract_base, zone)
-    
+
+      # > Clean orphan GC
+      all_zone_name_l = PT.get_names(PT.get_children_from_label(extract_base, 'Zone_t'))
+      # for zone_n in extract_zones:
+      #   for zgc_n in PT.get_children_from_label(zone_n, 'ZoneGridConnectivity_t'):
+      #     for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'):
+      #       all_gc_name_l.append(PT.get_name(gc_n))
+      all_zone_name_l = comm.allgather(all_zone_name_l)
+      all_zone_name = list(np.concatenate(all_zone_name_l))
+      print(f'all_zone_name = {all_zone_name}')
+      # all_gc_name_all = {k: v for d in extract_pr_min_per_pzone_l for k, v in d.items()}
+
+
+      for zone_n in PT.get_children_from_label(extract_base, 'Zone_t'):
+        for zgc_n in PT.get_children_from_label(zone_n, 'ZoneGridConnectivity_t'):
+          for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'):
+            # matching_zone_name = PT.get_value(gc_n)
+            # if PT.get_child_from_name_and_label(extract_base, matching_zone_name, 'Zone_t') is None:
+            matching_zone_name = PT.get_value(gc_n)
+            # print(f'{matching_zone_name} {matching_zone_name not in all_gc_name} ')
+            if matching_zone_name not in all_zone_name:
+              print(f'removing {matching_zone_name}')
+              PT.rm_child(zgc_n, gc_n)
+          if len(PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'))==0:
+            PT.rm_child(zone_n, zgc_n)
+        # PT.print_tree(zone_n)
     self.extract_tree = extract_tree
   
   def exchange_fields(self, fs_container):
@@ -153,6 +217,8 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
     zone_name = PT.get_name(extract_zone)
     part_zone = PT.get_node_from_name_and_label(part_tree, zone_name, 'Zone_t')
 
+    if partial_field and part1_gnum1[i_zone].size==0:
+      continue # Pass if no recovering
     if PT.get_label(mask_container) == 'FlowSolution_t':
       FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
@@ -214,16 +280,18 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
       extract_zones.append(extract_zone)
       continue
 
+    n_dim_pop = 0
     size_per_dim = np.diff(pr)[:,0]
-    mask = np.isin(size_per_dim, 0, invert=True)
-    idx = np.where(not(mask).all())[0]
-
-    if dim==2:
+    mask = np.ones(3, dtype=bool)
+    if dim<3:
+      idx = np.where(size_per_dim==0)[0]
+      mask[idx] = False
+      n_dim_pop = idx.size
+    if dim>0:
       pr[mask,1]+=1
       size_per_dim+=1
 
     # n_dim_pop = 0
-    n_dim_pop = idx.size
     extract_zone_dim = np.zeros((3-n_dim_pop,3), dtype=np.int32)
     extract_zone_dim[:,0] = size_per_dim[mask]+1 # size_per_dim[mask]+1
     extract_zone_dim[:,1] = size_per_dim[mask]   # size_per_dim[mask]
@@ -243,24 +311,30 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
                            parent=extract_zone)
 
     # > Set GlobalNumbering
+    vtx_per_dir  = zone_dim[:,0]
+    cell_per_dir = zone_dim[:,1]
+
     gn = PT.get_child_from_name(part_zone, ':CGNS#GlobalNumbering')
     gn_vtx  = PT.get_value(PT.get_node_from_name(gn, 'Vertex'))
     gn_face = PT.get_value(PT.get_node_from_name(gn, 'Face'))
+    gn_cell = PT.get_value(PT.get_node_from_name(gn, 'Cell'))
 
-    DIM_TO_LOC = {0:'Vertex', 1:'EdgeCenter', 2:'FaceCenter', 3:'CellCenter'}
-    ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
-    
-    extract_dir = maia.algo.dist.s_to_u.guess_bnd_normal_index(pr, DIM_TO_LOC[dim])
+    i_ar_cell = np.arange(min(pr[0]), max(pr[0]))
+    j_ar_cell = np.arange(min(pr[1]), max(pr[1])).reshape(-1,1)
+    k_ar_cell = np.arange(min(pr[2]), max(pr[2])).reshape(-1,1,1)
 
-    i_ar_cell = np.arange(min(pr[0]), max(pr[0]))                 if min(pr[0])!=max(pr[0]) else np.array([max(pr[0])], dtype=np.int32)
-    j_ar_cell = np.arange(min(pr[1]), max(pr[1])).reshape(-1,1)   if min(pr[1])!=max(pr[1]) else np.array([max(pr[1])], dtype=np.int32)
-    k_ar_cell = np.arange(min(pr[2]), max(pr[2])).reshape(-1,1,1) if min(pr[2])!=max(pr[2]) else np.array([max(pr[2])], dtype=np.int32)
+    if dim<3:
+      DIM_TO_LOC = {0:'Vertex', 1:'EdgeCenter', 2:'FaceCenter', 3:'CellCenter'}
+      ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
+      
+      extract_dir = maia.algo.dist.s_to_u.guess_bnd_normal_index(pr, DIM_TO_LOC[dim])
 
-    vtx_per_dir  = zone_dim[:,0]
-    cell_per_dir = zone_dim[:,1]
-    locnum_face = ijk_to_faceIndex[extract_dir](i_ar_cell, j_ar_cell, k_ar_cell, \
-                          cell_per_dir, vtx_per_dir).flatten()
-    lcell_gn.append(gn_face[locnum_face -1])
+      locnum_cell = ijk_to_faceIndex[extract_dir](i_ar_cell, j_ar_cell, k_ar_cell, \
+                            cell_per_dir, vtx_per_dir).flatten()
+      lcell_gn.append(gn_face[locnum_cell-1])
+    else:
+      locnum_cell = s_numbering.ijk_to_index(i_ar_cell, j_ar_cell, k_ar_cell, cell_per_dir).flatten()
+      lcell_gn.append(gn_cell[locnum_cell-1])
 
     i_ar_vtx = np.arange(min(pr[0]), max(pr[0])+1)
     j_ar_vtx = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
@@ -269,7 +343,7 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
     lvtx_gn.append(gn_vtx[locnum_vtx - 1])
 
     etb[zone_name] = {'parent_lnum_vtx' :locnum_vtx,
-                      'parent_lnum_cell':locnum_face}
+                      'parent_lnum_cell':locnum_cell}
 
     # > Get joins without post-treating PRs
     for zgc_n in PT.get_children_from_label(part_zone, 'ZoneGridConnectivity_t'):
@@ -305,9 +379,9 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
             new_gc_pr[0,:] -= min_opp[0]
             new_gc_pr[1,:] -= min_opp[1]
             new_gc_pr[2,:] -= min_opp[2]
-          
-          new_gc_pr  = np.delete(new_gc_pr , extract_dir, 0)
-          new_gc_prd = np.delete(new_gc_prd, transform[extract_dir]-1, 0)
+          if dim<3:
+            new_gc_pr  = np.delete(new_gc_pr , extract_dir, 0)
+            new_gc_prd = np.delete(new_gc_prd, transform[extract_dir]-1, 0)
 
           gc_name = PT.get_name(gc_n)
           gc_donorname = PT.get_value(gc_n)

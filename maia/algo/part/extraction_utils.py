@@ -142,7 +142,8 @@ def build_intersection_numbering(part_tree, extract_zones, container_name, grid_
     pl1   = np.where(pl1)[0]+1
 
     if pl1.size==0:
-      PT.rm_child(extract_zone, FS_ep)
+      part1_pr.append(np.empty(0, dtype=np.int32))
+      partial_gnum.append(np.empty(0, dtype=np.int32))
       continue # Pass if no recovering
 
     vtx_size = PT.Zone.VertexSize(extract_zone)
