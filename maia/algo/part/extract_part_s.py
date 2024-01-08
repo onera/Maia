@@ -5,6 +5,7 @@ import maia
 import maia.pytree as PT
 from   maia.algo.part.extraction_utils import LOC_TO_DIM
 from   maia.factory  import dist_from_part
+from   maia.factory.partitioning.split_S.part_zone import compute_face_gnum
 from   maia.utils import np_utils, s_numbering
 import maia.utils.logging as mlog
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -98,19 +99,7 @@ class Extractor:
             cell_window[:,1] +=1
 
             dist_cell_per_dir = cell_size[:,1]
-            part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
-            dist_vtx_per_dir = dist_cell_per_dir+1
-            dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
-            part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
-            shifted_nface_p = np_utils.sizes_to_indices(part_face_per_dir)
-            ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
-            face_lntogn = np.empty(shifted_nface_p[-1], dtype=pdm_gnum_dtype)
-            for idir in range(3):
-              i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+(idir==0), dtype=pdm_gnum_dtype)
-              j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+(idir==1), dtype=pdm_gnum_dtype).reshape(-1,1)
-              k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+(idir==2), dtype=pdm_gnum_dtype).reshape(-1,1,1)
-              face_lntogn[shifted_nface_p[idir]:shifted_nface_p[idir+1]] = ijk_to_faceIndex[idir](i_ar, j_ar, k_ar, \
-                  dist_cell_per_dir, dist_vtx_per_dir).flatten()
+            face_lntogn = compute_face_gnum(dist_cell_per_dir, cell_window)
             
             gn_node = PT.maia.getGlobalNumbering(zone)
             PT.new_node("CellRange", "IndexRange_t", cell_range, parent=gn_node)
