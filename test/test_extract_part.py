@@ -64,26 +64,38 @@ def initialize_bc(zone, bc_name):
     cylinder     = PT.new_DataArray('cylinder_bc', cylind_field, parent=neuma_data_n)
 
 def initialize_zsr_by_eq(zone, variables, function, location):
+  is_struct = PT.Zone.Type(zone)=='Structured'
+  
   # In/out selection array
   in_extract_part = function(*variables)
   
-  # Beware of elt numerotation for PointList
-  loc_elt_range  = {'Vertex'    : None,
-                    'FaceCenter':'NGonElements/ElementRange',
-                    'CellCenter':'NFaceElements/ElementRange'}
-  if location=='Vertex': starting_range = 1
-  else                 : starting_range = PT.get_node_from_path(zone,loc_elt_range[location])[1][0]
-  
-  # Get loc zsr
-  extract_lnum = np.where(in_extract_part)[0]
-  extract_lnum = extract_lnum.astype(np.int32)
-  extract_lnum = np.flip(extract_lnum) # to be sure that desorganized PL is not a problem
-  extract_lnum = extract_lnum + starting_range
+  if is_struct:
+    extract_lnum = np.where(in_extract_part)[0]+1
+    if extract_lnum.size!=0:
+      ijk = s_numbering.index_to_ijk_from_loc(extract_lnum, location, PT.Zone.VertexSize(zone))
+      pr = np.array([[min(ijk[0]),max(ijk[0])],
+                     [min(ijk[1]),max(ijk[1])],
+                     [min(ijk[2]),max(ijk[2])]])
+      PT.new_ZoneSubRegion("ZSR_FlowSolution", point_range=pr, loc=location, parent=zone)
+    return extract_lnum
+  else:
+    # Beware of elt numerotation for PointList
+    loc_elt_range  = {'Vertex'    : None,
+                      'FaceCenter':'NGonElements/ElementRange',
+                      'CellCenter':'NFaceElements/ElementRange'}
+    if location=='Vertex': starting_range = 1
+    else                 : starting_range = PT.get_node_from_path(zone,loc_elt_range[location])[1][0]
+    
+    # Get loc zsr
+    extract_lnum = np.where(in_extract_part)[0]
+    extract_lnum = extract_lnum.astype(np.int32)
+    extract_lnum = np.flip(extract_lnum) # to be sure that desorganized PL is not a problem
+    extract_lnum = extract_lnum + starting_range
 
-  extract_lnum = extract_lnum.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
+    extract_lnum = extract_lnum.reshape((1,-1), order='F') # Ordering in shape (1,N) because of CGNS standard
 
-  PT.new_ZoneSubRegion("ZSR_FlowSolution", point_list=extract_lnum, loc=location, parent=zone)
-  return np.ascontiguousarray(extract_lnum)
+    PT.new_ZoneSubRegion("ZSR_FlowSolution", point_list=extract_lnum, loc=location, parent=zone)
+    return np.ascontiguousarray(extract_lnum)
 
 
 def generate_test_tree(n_vtx,n_part,location,cgns_name,comm):
@@ -138,27 +150,29 @@ def generate_test_tree(n_vtx,n_part,location,cgns_name,comm):
     PT.new_DataArray('sphere'  , sphere_fld_cc, parent=FS_CC)
     PT.new_DataArray('cylinder', cylind_fld_cc, parent=FS_CC)
 
-    if   location=="CellCenter":
-      path_elt_rge  = 'NFaceElements/ElementRange'
-      elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
-    elif location=="FaceCenter":
-      path_elt_rge  = 'NGonElements/ElementRange'
-      elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
-      face_center   = maia. algo.part.geometry.compute_face_center(zone)
-      ccx = face_center[0::3]
-      ccy = face_center[1::3]
-      ccz = face_center[2::3]
-    elif location=="Vertex":
-      ccx, ccy, ccz = cx, cy, cz
-      elt_range     = [1]
-    else:
-      sys.exit()
 
     if is_struct:
-      point_list = None
+      elt_range      = [1]
+      point_list_loc = [initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location)]
     else:
+      if   location=="CellCenter":
+        path_elt_rge  = 'NFaceElements/ElementRange'
+        elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
+      elif location=="FaceCenter":
+        path_elt_rge  = 'NGonElements/ElementRange'
+        elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
+        face_center   = maia. algo.part.geometry.compute_face_center(zone)
+        ccx = face_center[0::3]
+        ccy = face_center[1::3]
+        ccz = face_center[2::3]
+      elif location=="Vertex":
+        ccx, ccy, ccz = cx, cy, cz
+        elt_range     = [1]
+      else:
+        sys.exit()
+
       point_list_loc = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location)
-      
+    if point_list_loc[0].size!=0:
       # Put fld in ZSR
       zsr_node = PT.get_node_from_name(zone,'ZSR_FlowSolution')
       PT.new_DataArray("ZSR_ccx", ccx[point_list_loc[0]-elt_range[0]], parent=zsr_node)
@@ -520,7 +534,7 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
 
 
 @pytest_parallel.mark.parallel([1,3])
-def test_extract_s_bc_name_U(comm, write_output):
+def test_extract_from_bc_name_S(comm, write_output):
 
   # > Cube generation
   n_vtx  = 6
@@ -540,7 +554,7 @@ def test_extract_s_bc_name_U(comm, write_output):
   # > Extract part
   part_tree_ep = maia.algo.part.extract_part_s.extract_part_s_from_bc_name( part_tree, "Ymax", comm,
                                                 transfer_dataset=True,
-                                                # containers_name=['FlowSolution_NC']
+                                                containers_name=['FlowSolution_NC']
                                                 )
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
@@ -551,4 +565,26 @@ def test_extract_s_bc_name_U(comm, write_output):
 
   dist_zone_ep = PT.get_node_from_label(dist_tree_ep, 'Zone_t')
   assert PT.Zone.n_vtx( dist_zone_ep)==36
+  assert PT.Zone.n_cell(dist_zone_ep)==25
+
+
+@pytest_parallel.mark.parallel([1,3])
+def test_extract_cell_from_zsr_S(comm, write_output):
+
+  # > Cube generation
+  n_vtx  = 6
+  n_part = 2
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,'CellCenter','Structured',comm)
+
+
+  # > Extract part
+  part_tree_ep = maia.algo.part.extract_part_s.extract_part_s_from_zsr( part_tree, "ZSR_FlowSolution", comm,
+                                                                        transfer_dataset=False,
+                                                                        # containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_FlowSolution'],
+                                                                      )
+
+  # > Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_zone_ep = PT.get_node_from_label(dist_tree_ep, 'Zone_t')
+  assert PT.Zone.n_vtx( dist_zone_ep)==72
   assert PT.Zone.n_cell(dist_zone_ep)==25
