@@ -152,6 +152,10 @@ def generate_test_tree(n_vtx,n_part,location,cgns_name,comm):
 
 
     if is_struct:
+      if location=="Vertex":
+        ccx, ccy, ccz = cx.reshape(PT.Zone.n_vtx(zone), order='F'),\
+                        cy.reshape(PT.Zone.n_vtx(zone), order='F'),\
+                        cz.reshape(PT.Zone.n_vtx(zone), order='F')
       elt_range      = [1]
       point_list_loc = [initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location)]
     else:
@@ -591,6 +595,62 @@ def test_extract_cell_from_zsr_S(comm, write_output):
   if write_output:
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
     Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell_from_zsr_S.cgns'), comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')       , comm)
+
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+
+
+@pytest.mark.parametrize("zsr_loc", ["Vertex", "CellCenter"])
+@pytest_parallel.mark.parallel([1,3])
+def test_extractor_cell_from_zsr_S(zsr_loc, comm, write_output):
+
+  def plane_eq(x,y,z) :
+    peq1 = [0.,  1., 0., 0.6]
+    peq2 = [0., -1., 0., 0.6]
+    behind_plane1 = x*peq1[0] + y*peq1[1] + z*peq1[2] - peq1[3] < 0.
+    behind_plane2 = x*peq2[0] + y*peq2[1] + z*peq2[2] - peq2[3] < 0.
+    between_planes = np.logical_and(behind_plane1, behind_plane2)
+    return between_planes
+
+  # > Cube generation
+  n_vtx  = 6
+  n_part = 2
+  part_tree, point_list = generate_test_tree(n_vtx,n_part,zsr_loc,'Structured',comm)
+
+  for zone in PT.get_all_Zone_t(part_tree):
+    # Rename zsr in tree
+    zsr_n = PT.get_node_from_name(zone, "ZSR_FlowSolution")
+    if zsr_n is not None:
+      PT.set_name(zsr_n , "ZSR_x")
+
+    # Create second zsr in tree
+    cell_center = maia.algo.part.geometry.compute_cell_center(zone)
+    ccx = cell_center[0::3]
+    ccy = cell_center[1::3]
+    ccz = cell_center[2::3]
+    initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, "CellCenter")
+    zsr_n = PT.get_node_from_name(zone, "ZSR_FlowSolution")
+    if zsr_n is not None:
+      PT.set_name(zsr_n , "ZSR_y")
+
+  # > Extract part
+  part_tree_ep = maia.algo.part.extract_part_s.extract_part_s_from_zsr( part_tree, "ZSR_y", comm,
+                                                                        transfer_dataset=False,
+                                                                        containers_name=['ZSR_x'],
+                                                                      )
+
+  # > Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+
+  # > Compare to reference solution
+  file_name = f'extractor_cell_from_zsr_vtx_S' if zsr_loc=='Vertex' else f'extractor_cell_from_zsr_cell_S'
+  ref_file = os.path.join(ref_dir, f'{file_name}.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, f'{file_name}.cgns'), comm)
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')       , comm)
 
   # Recover dist tree force R4 so use type_tol=True

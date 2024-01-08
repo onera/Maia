@@ -213,7 +213,7 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
                       'CellCenter' :'parent_lnum_cell'}
 
   if partial_field:
-    part1_pr, part1_gnum1, part1_in_part2 = build_intersection_numbering(part_tree, extract_zones, container_name, grid_location, etb, comm)
+    part1_pr, part1_gnum1, part1_in_part2 = build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_name, grid_location, etb, comm)
 
   for i_zone, extract_zone in enumerate(extract_zones):
     

@@ -105,7 +105,14 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
     
   return pl_gnum1, stride
 
-def build_intersection_numbering(part_tree, extract_zones, container_name, grid_location, etb, comm):
+def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_name, grid_location, etb, comm):
+  
+  DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
+                 # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
+                   2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
+                   3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
+
+
   parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
                       'IFaceCenter':'parent_lnum_cell',
                       'JFaceCenter':'parent_lnum_cell',
@@ -129,35 +136,39 @@ def build_intersection_numbering(part_tree, extract_zones, container_name, grid_
     parent_part1_pl = etb[zone_name][parent_lnum_path[grid_location]]
 
     subset_n = PT.get_child_from_name(part_zone,container_name)
-    pr = PT.get_value(PT.Subset.getPatch(subset_n))
-    i_ar = np.arange(min(pr[0]), max(pr[0])+1)
-    j_ar = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
-    k_ar = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
-    part2_pl = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, grid_location, PT.Zone.VertexSize(part_zone)).flatten()
+    if subset_n is not None:
+      pr = PT.get_value(PT.Subset.getPatch(subset_n))
+      i_ar = np.arange(min(pr[0]), max(pr[0])+1)
+      j_ar = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
+      k_ar = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
+      part2_pl = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, grid_location, PT.Zone.VertexSize(part_zone)).flatten()
 
-    lnum2 = np.searchsorted(part2_pl, parent_part1_pl) # Assume sorted
-    mask  = parent_part1_pl==part2_pl[lnum2]
-    lnum2 = lnum2[mask]
-    part1_in_part2.append(lnum2)
-    pl1   = np.isin(parent_part1_pl, part2_pl, assume_unique=True) # Assume unique because pr
-    pl1   = np.where(pl1)[0]+1
+      lnum2 = np.searchsorted(part2_pl, parent_part1_pl) # Assume sorted
+      mask  = parent_part1_pl==np.take(part2_pl,lnum2,mode='clip')
+      lnum2 = lnum2[mask]
+      part1_in_part2.append(lnum2)
+      pl1   = np.isin(parent_part1_pl, part2_pl, assume_unique=True) # Assume unique because pr
+      pl1   = np.where(pl1)[0]+1
 
-    if pl1.size==0:
+      if pl1.size==0:
+        part1_pr.append(np.empty(0, dtype=np.int32))
+        partial_gnum.append(np.empty(0, dtype=np.int32))
+        continue # Pass if no recovering
+      vtx_size = PT.Zone.VertexSize(extract_zone)
+      if vtx_size.size==2:
+        vtx_size = np.concatenate([vtx_size,np.array([1], dtype=vtx_size.dtype)])
+      part1_ijk = s_numbering.index_to_ijk_from_loc(pl1, DIMM_TO_DIMF[mesh_dim][grid_location], vtx_size)
+      part1_pr.append(np.array([[min(part1_ijk[0]),max(part1_ijk[0])],
+                                [min(part1_ijk[1]),max(part1_ijk[1])],
+                                [min(part1_ijk[2]),max(part1_ijk[2])]]))
+
+      part2_elt_gnum = PT.maia.getGlobalNumbering(part_zone, LOC_TO_GNUM[grid_location])[1]
+      
+      partial_gnum.append(part2_elt_gnum[part2_pl[lnum2]-1])
+    else:
+      part1_in_part2.append(np.empty(0, dtype=np.int32))
       part1_pr.append(np.empty(0, dtype=np.int32))
       partial_gnum.append(np.empty(0, dtype=np.int32))
-      continue # Pass if no recovering
-
-    vtx_size = PT.Zone.VertexSize(extract_zone)
-    if vtx_size.size==2:
-      vtx_size = np.concatenate([vtx_size,np.array([1], dtype=vtx_size.dtype)])
-    # part1_loc = grid_location if grid_location=='IFaceCenter' else 'IFaceCenter'
-    part1_ijk = s_numbering.index_to_ijk_from_loc(pl1, 'CellCenter', vtx_size)
-    part1_pr.append(np.array([[min(part1_ijk[0]),max(part1_ijk[0])],
-                              [min(part1_ijk[1]),max(part1_ijk[1])],
-                              [min(part1_ijk[2]),max(part1_ijk[2])]]))
-
-    part2_elt_gnum = PT.maia.getGlobalNumbering(part_zone, LOC_TO_GNUM[grid_location])[1]
-    partial_gnum.append(part2_elt_gnum[part2_pl[lnum2]-1])
 
   part1_gnum1 = create_sub_numbering(partial_gnum, comm)
 
