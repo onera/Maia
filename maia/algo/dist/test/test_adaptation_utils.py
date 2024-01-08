@@ -138,13 +138,10 @@ def test_apply_periodicity_to_flowsol(comm):
 
   periodic = {'rotation_center':np.array([0.,0.,0.]), 'rotation_angle':np.array([0.,0.,np.pi/2.])}
   adapt_utils.apply_periodicity_to_flowsol(zone_n, vtx_pl-1, 'Vertex', periodic, comm)
-  periodic = {'rotation_center':np.array([0.,0.,0.]), 'rotation_angle':np.array([0.,0.,-np.pi/2.])}
-  adapt_utils.apply_periodicity_to_flowsol(zone_n, vtx_pl-1, 'Vertex', periodic, comm)
-
   if comm.rank==0:
-    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([1.,3.,5.,7.,9.]))
+    assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([1.,0.,5.,0.,9.]))
   elif comm.rank==1:
-    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([2.,4.,6.,8.]))
+    assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([2.,0.,0.,0.]))
 
 @pytest_parallel.mark.parallel(2)
 def test_convert_vtx_gcs_as_face_bcs(comm):

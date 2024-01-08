@@ -126,8 +126,8 @@ def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
     
     all_elt = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
     PTP = EP.PartToPart([ids+1], [all_elt], comm)
-    elt_mask = np.ones(all_elt.size, dtype=bool)
-    elt_mask[PTP.get_referenced_lnum2()[0]-1] = False
+    elt_mask = np.zeros(all_elt.size, dtype=bool)
+    elt_mask[PTP.get_referenced_lnum2()[0]-1] = True
     
     # > Transform vector arrays : Get from maia.algo.transform.py
     data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fs_n, "DataArray_t")]
