@@ -28,7 +28,9 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
   """
   From an array of vertex ids, search in the distributed NGon node
   the id of faces constituted by these vertices.
-  Only Face having all their vertices in vtx_ids are returned
+  If elt_full is True, only faces having all their vertices in vtx_ids
+  are returned.
+  Otherwise, faces having at least one vertex in vtx_ids are returned.
   """
   i_rank = comm.Get_rank()
   elt_distri = MT.getDistribution(elt_n, 'Element')[1]
@@ -36,7 +38,6 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
   if PT.Element.CGNSName(elt_n)=='NGON_n':
     delt_vtx_idx = PT.get_child_from_name(elt_n, 'ElementStartOffset')[1]
   else:
-    n_elt        = PT.Element.Size(elt_n)
     elt_size     = PT.Element.NVtx(elt_n)
     delt_vtx_idx = np.arange(elt_distri[0]*elt_size,(elt_distri[1]+1)*elt_size,elt_size, dtype=np.int32)
 

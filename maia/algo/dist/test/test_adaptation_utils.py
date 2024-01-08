@@ -83,13 +83,13 @@ def test_apply_periodicity_to_vtx(comm):
   elif comm.rank==1:
     vtx_pl = np.array(np.array([2,4,8]), dtype=np.int32)
 
-  periodic = {'translation':np.array([1.,0.,0.])}
+  periodic = {'translation':np.array([10.,0.,0.])}
   adapt_utils.apply_periodicity_to_vtx(zone_n, vtx_pl, periodic, comm)
 
   if comm.rank==0:
-    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([1.,4.,5.,8.,9.]))
+    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([1.,13.,5.,17.,9.]))
   elif comm.rank==1:
-    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([2.,5.,7.,9.]))
+    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([2.,14.,16.,18.]))
 
 @pytest_parallel.mark.parallel(2)
 def test_duplicate_flowsol_elts(comm):

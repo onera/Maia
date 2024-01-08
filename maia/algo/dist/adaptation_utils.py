@@ -23,20 +23,22 @@ def duplicate_vtx(zone, vtx_pl, comm):
   Duplicate vtx tagged in `vtx_pl` from a distributed zone.
     - Vertex distribution must be updated outside.
     - What about zone_dim ?
+  Note : if an id appear twice in vtx_pl, it will be duplicated twice
   '''
   distri_n = PT.maia.getDistribution(zone, 'Vertex')
   distri   = PT.get_value(distri_n)
   
-  coord_nodes = [PT.get_node_from_name(zone, name) for name in ['CoordinateX','CoordinateY','CoordinateZ']]
-  for coord_n, coord in zip(coord_nodes, PT.Zone.coordinates(zone)):
-    new_coord = EP.block_to_part(coord, distri, [vtx_pl], comm)
-    PT.set_value(coord_n, np.concatenate([coord, new_coord[0]]))
+  coords_keys = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
+  coord_nodes = {key: PT.get_node_from_name(zone, key) for key in coords_keys}
+  coords = {key: PT.get_value(node) for key, node in coord_nodes.items()}
+  new_coords = EP.block_to_part(coords, distri, [vtx_pl], comm)
+  for key in coords_keys:
+    PT.set_value(coord_nodes[key], np.concatenate([coords[key], new_coords[key][0]]))
 
   # > Update zone information
   n_added_vtx = comm.allreduce(vtx_pl.size, op=MPI.SUM)
   zone_dim = PT.get_value(zone)
   zone_dim[0][0] += n_added_vtx
-  PT.set_value(zone, zone_dim)
 
 
 def remove_vtx(zone, vtx_pl, comm):
@@ -59,29 +61,22 @@ def remove_vtx(zone, vtx_pl, comm):
   n_rmvd_vtx = comm.allreduce(vtx_pl.size, op=MPI.SUM)
   zone_dim = PT.get_value(zone)
   zone_dim[0][0] -= n_rmvd_vtx
-  PT.set_value(zone, zone_dim)
 
 
 def apply_periodicity_to_vtx(zone, vtx_pl, periodic, comm):
   '''
-  TODO: merger des choses avec `transform_affine`
+  Apply a periodic transformation, but only to the vertices
+  whose id appears in vtx_pl
   '''
-  distri_n = PT.maia.getDistribution(zone, 'Vertex')
-  distri   = PT.get_value(distri_n)
+  distri = PT.maia.getDistribution(zone, 'Vertex')[1]
   
   all_vtx = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
   PTP = EP.PartToPart([vtx_pl], [all_vtx], comm)
   vtx_mask = np.zeros(all_vtx.size, dtype=bool)
   vtx_mask[PTP.get_referenced_lnum2()[0]-1] = True
 
-  cx_n = PT.get_node_from_name(zone, 'CoordinateX')
-  cy_n = PT.get_node_from_name(zone, 'CoordinateY')
-  cz_n = PT.get_node_from_name(zone, 'CoordinateZ')
   cx, cy, cz = PT.Zone.coordinates(zone)
   cx[vtx_mask], cy[vtx_mask], cz[vtx_mask] = np_utils.transform_cart_vectors(cx[vtx_mask],cy[vtx_mask],cz[vtx_mask], **periodic)
-  PT.set_value(cx_n, cx)
-  PT.set_value(cy_n, cy)
-  PT.set_value(cz_n, cz)
 
 
 def get_subset_distribution(zone, node):
@@ -108,10 +103,12 @@ def duplicate_flowsol_elts(zone, ids, location, comm):
       raise RuntimeError('duplicate_flowsol_elts: unable to find related \":CGNS#Distribution\" node.')
     distri   = PT.get_value(distri_n)
 
-    for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
-      da = PT.get_value(da_n)
-      new_da = EP.block_to_part(da, distri, [ids+1], comm)
-      PT.set_value(da_n, np.concatenate([da, new_da[0]]))
+    arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
+    arrays = {PT.get_name(array_n) : PT.get_value(array_n) for array_n in arrays_n}
+    new_arrays = EP.block_to_part(arrays, distri, [ids+1], comm)
+    for array_n in arrays_n:
+      key = PT.get_name(array_n)
+      PT.set_value(array_n, np.concatenate([arrays[key], new_arrays[key][0]]))
 
 
 def remove_flowsol_elts(zone, ids, location, comm):
@@ -137,6 +134,7 @@ def remove_flowsol_elts(zone, ids, location, comm):
 def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
   '''
   Apply periodicity to ids of vector fields in zone.
+  TODO : merge with apply_periodicity_to_vtx : c'est un transform affine avec mask
   '''
   is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
@@ -164,7 +162,6 @@ def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
       for vector_n, tr_vector in zip(vectors_n, tr_vectors):
         vector = PT.get_value(vector_n)
         vector[elt_mask] = tr_vector
-        PT.set_value(vector_n, vector)
     
 
 def elmt_pl_to_vtx_pl(zone, elt_pl, cgns_name):

@@ -33,6 +33,7 @@ def test_vtx_ids_to_face_ids_elmt(comm):
   if comm.Get_rank() == 0:
     vtx_ids = np.array([2,4,1,5 , 13,16,22,25], pdm_dtype)
     expected_face_ids = np.array([1, 2, 12], pdm_dtype)
+    # NB : more than 2 faces expected because we combine vtx_ids from both ranks
   elif comm.Get_rank() == 1:
     vtx_ids = np.array([3,6,15,12, 17,26,27,18], pdm_dtype)
     expected_face_ids = np.array([13,22,24], pdm_dtype)
