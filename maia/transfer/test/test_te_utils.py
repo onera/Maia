@@ -62,28 +62,26 @@ def test_get_subset_distribution():
       GridLocation GridLocation_t "FaceCenter":
       PointList IndexArray_t [[1]]:
       :CGNS#Distribution UserDefinedData_t:
-        Index DataArray_t I4 [1]:
+        Index DataArray_t I4 [2]:
     FlowSolCell FlowSolution_t:
       GridLocation GridLocation_t "CellCenter":
     PartialFlowSolVtx FlowSolution_t:
       GridLocation GridLocation_t "Vertex":
       PointList IndexArray_t [[1]]:
       :CGNS#Distribution UserDefinedData_t:
-        Index DataArray_t I4 [1]:
+        Index DataArray_t I4 [4]:
     WrongFlowSolCell FlowSolution_t:
       GridLocation GridLocation_t "CellCenter":
       PointList IndexArray_t [[1]]:
   """)
   node_names     = ['FlowSolVtx','PartialFlowSolFace','FlowSolCell','PartialFlowSolVtx']
-  expected_names = ['Vertex'    ,'Index',             'Cell',       'Index']
-  for node_name, expected_name in zip(node_names, expected_names):
+  expected_vals  = [[1]    ,      [2],                 [1],          [4]]
+  for node_name, expected_val in zip(node_names, expected_vals):
     node = PT.get_node_from_name(zone, node_name)
-    distri_n = utils.get_subset_distribution(zone, node)
-    if distri_n is not None:
-      assert PT.get_name(distri_n)==expected_name
+    assert (utils.get_subset_distribution(zone, node) == expected_val).all()
   with pytest.raises(RuntimeError):
     node = PT.get_node_from_name(zone, 'WrongFlowSolCell')
-    distri_n = utils.get_subset_distribution(zone, node)
+    utils.get_subset_distribution(zone, node)
 
 
 @pytest_parallel.mark.parallel(2)

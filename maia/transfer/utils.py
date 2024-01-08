@@ -41,7 +41,7 @@ def get_subset_distribution(zone, node):
 
   if distri_n is None:
     raise RuntimeError(f"Unable to find distribution data for subset node {PT.get_name(node)}")
-  return distri_n
+  return PT.get_value(distri_n)
 
 def create_all_elt_distribution(dist_elts, comm):
   """

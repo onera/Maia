@@ -86,8 +86,7 @@ def duplicate_flowsol_elts(zone, ids, location, comm):
   is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
   for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
-    distri_n = te_utils.get_subset_distribution(zone, fs_n)
-    distri   = PT.get_value(distri_n)
+    distri = te_utils.get_subset_distribution(zone, fs_n)
 
     arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
     arrays = {PT.get_name(array_n) : PT.get_value(array_n) for array_n in arrays_n}
@@ -104,8 +103,7 @@ def remove_flowsol_elts(zone, ids, location, comm):
   is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
   for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
-    distri_n = te_utils.get_subset_distribution(zone, fs_n)
-    distri   = PT.get_value(distri_n)
+    distri = te_utils.get_subset_distribution(zone, fs_n)
     
     ptb = EP.PartToBlock(distri, [ids+1], comm)
     ids = ptb.getBlockGnumCopy()-distri[0]-1
@@ -124,8 +122,7 @@ def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
                         PT.Subset.GridLocation(n)==location
   for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
     
-    distri_n = te_utils.get_subset_distribution(zone, fs_n)
-    distri   = PT.get_value(distri_n)
+    distri = te_utils.get_subset_distribution(zone, fs_n)
     
     all_elt = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
     PTP = EP.PartToPart([ids+1], [all_elt], comm)
