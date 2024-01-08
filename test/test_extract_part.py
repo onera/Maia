@@ -576,15 +576,22 @@ def test_extract_cell_from_zsr_S(comm, write_output):
   n_part = 2
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'CellCenter','Structured',comm)
 
-
   # > Extract part
   part_tree_ep = maia.algo.part.extract_part_s.extract_part_s_from_zsr( part_tree, "ZSR_FlowSolution", comm,
-                                                                        transfer_dataset=False,
-                                                                        # containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_FlowSolution'],
+                                                                        containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_FlowSolution'],
                                                                       )
 
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
-  dist_zone_ep = PT.get_node_from_label(dist_tree_ep, 'Zone_t')
-  assert PT.Zone.n_vtx( dist_zone_ep)==72
-  assert PT.Zone.n_cell(dist_zone_ep)==25
+
+  # > Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr_S.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
+
+  if write_output:
+    out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
+    Mio.dist_tree_to_file(dist_tree_ep, os.path.join(out_dir, 'extract_cell_from_zsr_S.cgns'), comm)
+    Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')       , comm)
+
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)

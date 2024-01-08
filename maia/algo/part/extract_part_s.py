@@ -94,8 +94,10 @@ class Extractor:
             cell_range = np.array([[min(cell_ijk[0]),max(cell_ijk[0])],
                                    [min(cell_ijk[1]),max(cell_ijk[1])],
                                    [min(cell_ijk[2]),max(cell_ijk[2])]])
+            cell_window = cell_range
+            cell_window[:,1] +=1
             dist_cell_per_dir = cell_size[:,1]
-            part_cell_per_dir = cell_range[:,1] - cell_range[:,0]
+            part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
             dist_vtx_per_dir = dist_cell_per_dir+1
             dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
             part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
@@ -103,9 +105,9 @@ class Extractor:
             ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
             face_lntogn = np.empty(shifted_nface_p[-1], dtype=pdm_gnum_dtype)
             for idir in range(3):
-              i_ar  = np.arange(cell_range[0,0], cell_range[0,1]+(idir==0), dtype=pdm_gnum_dtype)
-              j_ar  = np.arange(cell_range[1,0], cell_range[1,1]+(idir==1), dtype=pdm_gnum_dtype).reshape(-1,1)
-              k_ar  = np.arange(cell_range[2,0], cell_range[2,1]+(idir==2), dtype=pdm_gnum_dtype).reshape(-1,1,1)
+              i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+(idir==0), dtype=pdm_gnum_dtype)
+              j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+(idir==1), dtype=pdm_gnum_dtype).reshape(-1,1)
+              k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+(idir==2), dtype=pdm_gnum_dtype).reshape(-1,1,1)
               face_lntogn[shifted_nface_p[idir]:shifted_nface_p[idir+1]] = ijk_to_faceIndex[idir](i_ar, j_ar, k_ar, \
                   dist_cell_per_dir, dist_vtx_per_dir).flatten()
             
@@ -207,7 +209,8 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
   parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
                       'IFaceCenter':'parent_lnum_cell',
                       'JFaceCenter':'parent_lnum_cell',
-                      'KFaceCenter':'parent_lnum_cell'}
+                      'KFaceCenter':'parent_lnum_cell',
+                      'CellCenter' :'parent_lnum_cell'}
 
   if partial_field:
     part1_pr, part1_gnum1, part1_in_part2 = build_intersection_numbering(part_tree, extract_zones, container_name, grid_location, etb, comm)
