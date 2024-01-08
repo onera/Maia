@@ -3,6 +3,7 @@ import mpi4py.MPI as MPI
 import maia
 import maia.pytree as PT
 import maia.transfer.protocols as EP
+import maia.transfer.utils as te_utils
 from   maia.utils  import np_utils, py_utils, par_utils
 from   maia.algo.dist.subset_tools import vtx_ids_to_face_ids
 
@@ -78,19 +79,6 @@ def apply_periodicity_to_vtx(zone, vtx_pl, periodic, comm):
   cx, cy, cz = PT.Zone.coordinates(zone)
   cx[vtx_mask], cy[vtx_mask], cz[vtx_mask] = np_utils.transform_cart_vectors(cx[vtx_mask],cy[vtx_mask],cz[vtx_mask], **periodic)
 
-
-def get_subset_distribution(zone, node):
-  location = PT.Subset.GridLocation(node)
-  distri_n = None
-  if   location=='Vertex' and PT.get_child_from_name(node, 'PointList') is None:
-    distri_n = PT.maia.getDistribution(zone, 'Vertex')
-  elif location=='CellCenter' and PT.get_child_from_name(node, 'PointList') is None:
-    distri_n = PT.maia.getDistribution(zone, 'Cell')
-  else:
-    distri_n = PT.maia.getDistribution(node, 'Index')
-  return distri_n
-
-
 def duplicate_flowsol_elts(zone, ids, location, comm):
   '''
   Duplicate flowsol values tagged in `ids` from a distributed zone. FlowSol distribution must be updated outside.
@@ -98,9 +86,7 @@ def duplicate_flowsol_elts(zone, ids, location, comm):
   is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
   for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
-    distri_n = get_subset_distribution(zone, fs_n)
-    if distri_n is None:
-      raise RuntimeError('duplicate_flowsol_elts: unable to find related \":CGNS#Distribution\" node.')
+    distri_n = te_utils.get_subset_distribution(zone, fs_n)
     distri   = PT.get_value(distri_n)
 
     arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
@@ -118,9 +104,7 @@ def remove_flowsol_elts(zone, ids, location, comm):
   is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
                         PT.Subset.GridLocation(n)==location
   for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
-    distri_n = get_subset_distribution(zone, fs_n)
-    if distri_n is None:
-      raise RuntimeError('duplicate_flowsol_elts: unable to find related \":CGNS#Distribution\" node.')
+    distri_n = te_utils.get_subset_distribution(zone, fs_n)
     distri   = PT.get_value(distri_n)
     
     ptb = EP.PartToBlock(distri, [ids+1], comm)
@@ -140,9 +124,7 @@ def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
                         PT.Subset.GridLocation(n)==location
   for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
     
-    distri_n = get_subset_distribution(zone, fs_n)
-    if distri_n is None:
-      raise RuntimeError('duplicate_flowsol_elts: unable to find related \":CGNS#Distribution\" node.')
+    distri_n = te_utils.get_subset_distribution(zone, fs_n)
     distri   = PT.get_value(distri_n)
     
     all_elt = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)

@@ -146,43 +146,6 @@ def test_apply_periodicity_to_flowsol(comm):
   elif comm.rank==1:
     assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([2.,4.,6.,8.]))
 
-def test_get_subset_distribution():
-  yz = """
-  Zone Zone_t [[1,1,0]]:
-    ZoneType ZoneType_t "Unstructured":
-    :CGNS#Distribution UserDefinedData_t:
-      Vertex DataArray_t I4 [1]:
-      Cell DataArray_t I4 [1]:
-    FlowSolVtx FlowSolution_t:
-      GridLocation GridLocation_t "Vertex":
-    PartialFlowSolFace FlowSolution_t:
-      GridLocation GridLocation_t "FaceCenter":
-      PointList IndexArray_t [[1]]:
-      :CGNS#Distribution UserDefinedData_t:
-        Index DataArray_t I4 [1]:
-    FlowSolCell FlowSolution_t:
-      GridLocation GridLocation_t "CellCenter":
-    PartialFlowSolVtx FlowSolution_t:
-      GridLocation GridLocation_t "Vertex":
-      PointList IndexArray_t [[1]]:
-      :CGNS#Distribution UserDefinedData_t:
-        Index DataArray_t I4 [1]:
-    WrongFlowSolCell FlowSolution_t:
-      GridLocation GridLocation_t "CellCenter":
-      PointList IndexArray_t [[1]]:
-  """
-  tree = parse_yaml_cgns.to_cgns_tree(yz)
-  zone = PT.get_node_from_name(tree, 'Zone')
-  node_names     = ['FlowSolVtx','PartialFlowSolFace','FlowSolCell','PartialFlowSolVtx','WrongFlowSolCell']
-  expected_names = ['Vertex'    ,'Index',             'Cell',       'Index']
-  for node_name, expected_name in zip(node_names, expected_names):
-    node = PT.get_node_from_name(zone, node_name)
-    distri_n = adapt_utils.get_subset_distribution(zone, node)
-    if distri_n is not None:
-      assert PT.get_name(distri_n)==expected_name
-    else:
-      assert PT.get_name(node)=='WrongFlowSolCell'
-
 @pytest_parallel.mark.parallel(2)
 def test_convert_vtx_gcs_as_face_bcs(comm):
   if comm.rank==0:

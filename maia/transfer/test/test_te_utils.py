@@ -49,6 +49,43 @@ Zone Zone_t:
   assert (zone_distri == [1,2,4]).all()
   assert (bc_distri   == [1,4,4]).all()
 
+def test_get_subset_distribution():
+  zone = parse_yaml_cgns.to_node("""
+  Zone Zone_t [[1,1,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    :CGNS#Distribution UserDefinedData_t:
+      Vertex DataArray_t I4 [1]:
+      Cell DataArray_t I4 [1]:
+    FlowSolVtx FlowSolution_t:
+      GridLocation GridLocation_t "Vertex":
+    PartialFlowSolFace FlowSolution_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[1]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t I4 [1]:
+    FlowSolCell FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+    PartialFlowSolVtx FlowSolution_t:
+      GridLocation GridLocation_t "Vertex":
+      PointList IndexArray_t [[1]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t I4 [1]:
+    WrongFlowSolCell FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      PointList IndexArray_t [[1]]:
+  """)
+  node_names     = ['FlowSolVtx','PartialFlowSolFace','FlowSolCell','PartialFlowSolVtx']
+  expected_names = ['Vertex'    ,'Index',             'Cell',       'Index']
+  for node_name, expected_name in zip(node_names, expected_names):
+    node = PT.get_node_from_name(zone, node_name)
+    distri_n = utils.get_subset_distribution(zone, node)
+    if distri_n is not None:
+      assert PT.get_name(distri_n)==expected_name
+  with pytest.raises(RuntimeError):
+    node = PT.get_node_from_name(zone, 'WrongFlowSolCell')
+    distri_n = utils.get_subset_distribution(zone, node)
+
+
 @pytest_parallel.mark.parallel(2)
 def test_create_all_elt_distribution(comm):
   yt = """
