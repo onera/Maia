@@ -154,6 +154,7 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
         part1_pr.append(np.empty(0, dtype=np.int32))
         partial_gnum.append(np.empty(0, dtype=np.int32))
         continue # Pass if no recovering
+
       vtx_size = PT.Zone.VertexSize(extract_zone)
       if vtx_size.size==2:
         vtx_size = np.concatenate([vtx_size,np.array([1], dtype=vtx_size.dtype)])

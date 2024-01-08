@@ -96,6 +96,7 @@ class Extractor:
                                    [min(cell_ijk[2]),max(cell_ijk[2])]])
             cell_window = cell_range
             cell_window[:,1] +=1
+
             dist_cell_per_dir = cell_size[:,1]
             part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
             dist_vtx_per_dir = dist_cell_per_dir+1
@@ -123,29 +124,17 @@ class Extractor:
 
       # > Clean orphan GC
       all_zone_name_l = PT.get_names(PT.get_children_from_label(extract_base, 'Zone_t'))
-      # for zone_n in extract_zones:
-      #   for zgc_n in PT.get_children_from_label(zone_n, 'ZoneGridConnectivity_t'):
-      #     for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'):
-      #       all_gc_name_l.append(PT.get_name(gc_n))
       all_zone_name_l = comm.allgather(all_zone_name_l)
       all_zone_name = list(np.concatenate(all_zone_name_l))
-      print(f'all_zone_name = {all_zone_name}')
-      # all_gc_name_all = {k: v for d in extract_pr_min_per_pzone_l for k, v in d.items()}
-
 
       for zone_n in PT.get_children_from_label(extract_base, 'Zone_t'):
         for zgc_n in PT.get_children_from_label(zone_n, 'ZoneGridConnectivity_t'):
           for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'):
-            # matching_zone_name = PT.get_value(gc_n)
-            # if PT.get_child_from_name_and_label(extract_base, matching_zone_name, 'Zone_t') is None:
             matching_zone_name = PT.get_value(gc_n)
-            # print(f'{matching_zone_name} {matching_zone_name not in all_gc_name} ')
             if matching_zone_name not in all_zone_name:
-              print(f'removing {matching_zone_name}')
               PT.rm_child(zgc_n, gc_n)
           if len(PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'))==0:
             PT.rm_child(zone_n, zgc_n)
-        # PT.print_tree(zone_n)
     self.extract_tree = extract_tree
   
   def exchange_fields(self, fs_container):
@@ -222,6 +211,7 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
 
     if partial_field and part1_gnum1[i_zone].size==0:
       continue # Pass if no recovering
+
     if PT.get_label(mask_container) == 'FlowSolution_t':
       FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
@@ -404,7 +394,6 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
   else:
     assert len(partial_gnum_cell)!=0
 
-  # return extract_zones, exch_tool_box
   return extract_zones,etb
 
 
