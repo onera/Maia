@@ -229,3 +229,13 @@ def rm_legacy_nodes(tree):
       arrays_removed = arrays_removed or len(PT.get_children(fs)) < n_child_bck
   if arrays_removed:
     logging.warning(f"Some empty arrays under FlowSolution_t nodes have been skipped when reading file")
+
+def corr_index_range_names(tree):
+  corr = False
+  for zone in PT.get_all_Zone_t(tree):
+    for bc in PT.get_nodes_from_label(zone, 'BC_t'):
+      for er_n in PT.get_children_from_name_and_label(bc, 'ElementRange', 'IndexRange_t'):
+        PT.set_name(er_n, 'PointRange')
+        corr = True
+  if corr:
+    logging.warning(f"Some IndexRange_t nodes under BC_t nodes have been renamed ('ElementRange' becomes 'PointRange').")

@@ -261,3 +261,21 @@ def test_rm_legacy_nodes():
   assert PT.get_node_from_name(tree, 'GoodArray') is not None
   assert PT.get_node_from_name(tree, 'WrongArray') is None
 
+def test_corr_index_range_names():
+  yt = """
+Base0 CGNSBase_t [3,3]:
+  ZoneA Zone_t:
+    ZBC ZoneBC_t:
+      BCA BC_t:
+        ElementRange IndexRange_t:
+      BCB BC_t:
+        WrongName IndexRange_t:
+"""
+  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  fix_tree.corr_index_range_names(size_tree)
+  bcA = PT.get_node_from_name(size_tree, 'BCA')
+  bcB = PT.get_node_from_name(size_tree, 'BCB')
+  irA = PT.get_node_from_label(bcA, 'IndexRange_t')
+  irB = PT.get_node_from_label(bcB, 'IndexRange_t')
+  assert PT.get_name(irA) == 'PointRange'
+  assert PT.get_name(irB) == 'WrongName'
