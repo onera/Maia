@@ -1,6 +1,7 @@
 import maia.pytree as PT
 from   maia.utils  import np_utils, s_numbering
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
+from   maia.factory  import dist_from_part
 from   .point_cloud_utils  import create_sub_numbering
 
 import numpy as np
@@ -14,6 +15,37 @@ DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
                  2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
+
+def discover_containers(part_zones, container_name, patch_name, patch_type, comm):
+  mask_zone = ['MaskedZone', None, [], 'Zone_t']
+  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
+      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
+  
+  fields_query = lambda n: PT.get_label(n) in ['DataArray_t', patch_type]
+  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
+  mask_container = PT.get_child_from_name(mask_zone, container_name)
+  if mask_container is None:
+    raise ValueError("[maia-extract_part] asked container for exchange is not in tree")
+  if PT.get_child_from_label(mask_container, 'DataArray_t') is None:
+    return None, '', False
+
+  # > Manage BC and GC ZSR
+  ref_zsr_node    = mask_container
+  bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
+  gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
+  assert not (bc_descriptor_n and gc_descriptor_n)
+  if bc_descriptor_n is not None:
+    bc_name      = PT.get_value(bc_descriptor_n)
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=[patch_name, 'GridLocation_t'])
+    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
+  elif gc_descriptor_n is not None:
+    gc_name      = PT.get_value(gc_descriptor_n)
+    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=[patch_name, 'GridLocation_t'])
+    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
+  
+  grid_location = PT.Subset.GridLocation(ref_zsr_node)
+  partial_field = PT.get_child_from_name(ref_zsr_node, patch_name) is not None
+  return mask_container, grid_location, partial_field
 
 def local_pl_offset(part_zone, dim):
   """

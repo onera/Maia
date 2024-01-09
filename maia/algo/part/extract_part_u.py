@@ -7,7 +7,8 @@ import maia.pytree.maia   as MT
 from   maia.factory  import dist_from_part
 from   maia.transfer import utils                as TEU
 from   maia.utils    import np_utils, layouts
-from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, DIMM_TO_DIMF, get_partial_container_stride_and_order
+from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, DIMM_TO_DIMF,\
+                                  get_partial_container_stride_and_order, discover_containers
 from   .point_cloud_utils  import create_sub_numbering
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
@@ -18,69 +19,40 @@ import Pypdm.Pypdm as PDM
 
 def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box, container_name, comm) :
 
-  loc_correspondance = {'Vertex'    : 'Vertex',
-                        'FaceCenter': 'Cell',
-                        'CellCenter': 'Cell'}
-
   # > Retrieve fields name + GridLocation + PointList if container
   #   is not know by every partition
-  mask_zone = ['MaskedZone', None, [], 'Zone_t']
-  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
-      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
-  
-  fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexArray_t']
-  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
-  mask_container = PT.get_child_from_name(mask_zone, container_name)
+  mask_container, grid_location, partial_field = discover_containers(part_zones, container_name, 'PointList', 'IndexArray_t', comm)
   if mask_container is None:
-    raise ValueError("[maia-extract_part] asked container for exchange is not in tree")
-  if PT.get_child_from_label(mask_container, 'DataArray_t') is None:
     return
-
-  # > Manage BC and GC ZSR
-  ref_zsr_node    = mask_container
-  bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
-  gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
-  assert not (bc_descriptor_n and gc_descriptor_n)
-  if bc_descriptor_n is not None:
-    bc_name      = PT.get_value(bc_descriptor_n)
-    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
-    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
-  elif gc_descriptor_n is not None:
-    gc_name      = PT.get_value(gc_descriptor_n)
-    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
-    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
-  
-  gridLocation = PT.Subset.GridLocation(ref_zsr_node)
-  partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
-  assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
+  assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
 
 
   # > FlowSolution node def by zone
   if extract_zone is not None :
     if PT.get_label(mask_container) == 'FlowSolution_t':
-      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=extract_zone)
+      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
-      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][gridLocation], parent=extract_zone)
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
     else:
       raise TypeError
   
 
   # > Get PTP and parentElement for the good location
-  ptp        = exch_tool_box['part_to_part'][gridLocation]
+  ptp        = exch_tool_box['part_to_part'][grid_location]
   
   # LN_TO_GN
-  _gridLocation    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
+  _grid_location    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
   
   if extract_zone is not None:
-    elt_n            = extract_zone if gridLocation!='FaceCenter' else PT.Zone.NGonNode(extract_zone)
+    elt_n            = extract_zone if grid_location!='FaceCenter' else PT.Zone.NGonNode(extract_zone)
     if elt_n is None :return
-    part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
+    part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _grid_location[grid_location])
     part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
 
   # Get reordering informations if point_list
   # https://stackoverflow.com/questions/8251541/numpy-for-every-element-in-one-array-find-the-index-in-another-array
   if partial_field:
-    pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm)
+    pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, grid_location, ptp, comm)
 
   # > Field exchange
   for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
@@ -118,7 +90,7 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
   if partial_field:
     if len(part1_data)!=0 and part1_data[0].size!=0:
       new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
-      point_list = new_point_list + local_pl_offset(extract_zone, LOC_TO_DIM[gridLocation])+1
+      point_list = new_point_list + local_pl_offset(extract_zone, LOC_TO_DIM[grid_location])+1
       new_pl_node = PT.new_PointList(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
       partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]]
     else:

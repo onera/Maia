@@ -7,59 +7,30 @@ from   maia.factory  import dist_from_part
 from   maia.factory.partitioning.split_S.part_zone import compute_face_gnum
 from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix, guess_bnd_normal_index
 from   maia.utils import s_numbering
-from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, DIMM_TO_DIMF, build_intersection_numbering
+from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, DIMM_TO_DIMF, build_intersection_numbering, discover_containers
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import numpy as np
 
 
+parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
+                    'IFaceCenter':'parent_lnum_cell',
+                    'JFaceCenter':'parent_lnum_cell',
+                    'KFaceCenter':'parent_lnum_cell',
+                    'CellCenter' :'parent_lnum_cell'}
+
 def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container_name, comm) :
 
-  loc_correspondance = {'Vertex'    : 'Vertex',
-                        'FaceCenter': 'Cell',
-                        'CellCenter': 'Cell'}
-
-  # > Retrieve fields name + GridLocation + PointList if container
-  #   is not know by every partition
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
   assert len(part_tree_per_dom) == 1
   part_zones=list(part_tree_per_dom)[0]
-  
-  mask_zone = ['MaskedZone', None, [], 'Zone_t']
-  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
-      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
-  
-  fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexRange_t']
-  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
-  mask_container = PT.get_child_from_name(mask_zone, container_name)
+
+  # > Retrieve fields name + GridLocation + PointList if container
+  #   is not know by every partition
+  mask_container, grid_location, partial_field = discover_containers(part_zones, container_name, 'PointRange', 'IndexRange_t', comm)
   if mask_container is None:
-    raise ValueError("[maia-extract_part] asked container for exchange is not in tree")
-  if PT.get_child_from_label(mask_container, 'DataArray_t') is None:
     return
-
-  # > Manage BC and GC ZSR
-  ref_zsr_node    = mask_container
-  bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
-  gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
-  assert not (bc_descriptor_n and gc_descriptor_n)
-  if bc_descriptor_n is not None:
-    bc_name      = PT.get_value(bc_descriptor_n)
-    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointRange', 'GridLocation_t'])
-    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
-  elif gc_descriptor_n is not None:
-    gc_name      = PT.get_value(gc_descriptor_n)
-    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointRange', 'GridLocation_t'])
-    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
-
-  grid_location = PT.Subset.GridLocation(ref_zsr_node)
-  partial_field = PT.get_child_from_name(ref_zsr_node, 'PointRange') is not None
   assert grid_location in ['Vertex', 'IFaceCenter', 'JFaceCenter', 'KFaceCenter', 'CellCenter']
-
-  parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
-                      'IFaceCenter':'parent_lnum_cell',
-                      'JFaceCenter':'parent_lnum_cell',
-                      'KFaceCenter':'parent_lnum_cell',
-                      'CellCenter' :'parent_lnum_cell'}
 
   if partial_field:
     part1_pr, part1_gnum1, part1_in_part2 = build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_name, grid_location, etb, comm)
