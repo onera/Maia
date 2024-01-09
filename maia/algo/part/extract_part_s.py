@@ -115,7 +115,6 @@ def exchange_field_s(part_tree, extract_tree, mesh_dim, etb, container_names, co
 
 
 def extract_part_one_domain_s(part_zones, point_range, dim, comm, equilibrate=False):
-
   extract_zones = list()
   lvtx_gn = list()
   lcell_gn = list()
@@ -136,6 +135,7 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm, equilibrate=Fa
     zone_name = PT.get_name(part_zone)
     zone_dim  = PT.get_value(part_zone)
     pr = copy.deepcopy(point_range[i_part])
+
     extract_zone = PT.new_Zone(zone_name, type='Structured', size=np.zeros((3,3), dtype=np.int32))
     
     if pr.size==0:
@@ -190,7 +190,7 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm, equilibrate=Fa
     if dim<3:
       DIM_TO_LOC = {0:'Vertex', 1:'EdgeCenter', 2:'FaceCenter', 3:'CellCenter'}
       ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
-      
+
       extract_dir = maia.algo.dist.s_to_u.guess_bnd_normal_index(pr, DIM_TO_LOC[dim])
 
       locnum_cell = ijk_to_faceIndex[extract_dir](i_ar_cell, j_ar_cell, k_ar_cell, \
@@ -256,9 +256,8 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm, equilibrate=Fa
   # > Create GlobalNumbering
   partial_gnum_vtx  = maia.algo.part.point_cloud_utils.create_sub_numbering(lvtx_gn, comm)
   partial_gnum_cell = maia.algo.part.point_cloud_utils.create_sub_numbering(lcell_gn, comm)
-  from maia.factory.dist_from_part import _recover_dist_block_size
-  cell_size = _recover_dist_block_size(extract_zones, comm)
-
+  if  dim==3:
+    cell_size = dist_from_part._recover_dist_block_size(extract_zones, comm)
 
   if len(partial_gnum_vtx)!=0:
     for i_part, extract_zone in enumerate(extract_zones):
@@ -283,7 +282,7 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm, equilibrate=Fa
         PT.new_DataArray("CellSize", cell_size[:,1], parent=gn_node)
         PT.new_DataArray("Face", face_lntogn, parent=gn_node)
   else:
-    assert len(partial_gnum_cell)!=0
+    assert len(partial_gnum_cell)==0
 
   return extract_zones,etb
 

@@ -61,7 +61,7 @@ class Extractor:
     assert self.dim in [0,2,3], "[MAIA] Error : dimensions 1 not yet implemented"
     #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
     if location == 'Vertex':
-      if is_struct:
+      if self.is_struct:
         cell_dim = -1
         for domain_prs in patch:
           for part_pr in domain_prs:
@@ -138,7 +138,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.
 
   Args:
-    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. Only U-NGon
+    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. U-NGon or S meshes only.
       connectivities are managed.
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
@@ -222,7 +222,7 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
       else: # ZSR does not exists on this partition
         patch_domain.append(np.empty((1,0), np.int32))
     patch.append(patch_domain)
-  
+
   # Get location if proc has no zsr
   location = comm.allreduce(location, op=MPI.MAX)
 
@@ -280,12 +280,15 @@ def extract_part_from_family(part_tree, family_name, comm,
                              containers_name=[],
                              **options):
   """Extract the submesh defined by the provided family name from the input volumic
-  partitioned tree. 
+  partitioned tree.
   
   Family related nodes can be labelled either as BC_t or ZoneSubRegion_t, but their
   GridLocation must have the same value. They generate a merged output on the resulting extracted tree.
 
   Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`.
+
+  Warning:
+    Only U-NGon meshes are managed in this function.
 
   Example:
     .. literalinclude:: snippets/test_algo.py
