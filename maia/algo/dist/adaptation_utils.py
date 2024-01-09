@@ -168,7 +168,7 @@ def elmt_pl_to_vtx_pl(zone, elt_pl, cgns_name, comm):
 
 def tag_elmt_owning_vtx(zone, vtx_pl, cgns_name, comm, elt_full=False):
   '''
-  Return the the point_list of elements that owns one or all of their vertices in the vertex point_list.
+  Return the point_list of elements that owns one or all of their vertices in the vertex point_list.
   Important : elt_pl is returned as a distributed array, w/o any assumption on the holding
   rank : vertices given by a rank can spawn an elt_idx on a other rank.
   '''
@@ -253,12 +253,14 @@ def remove_elts_from_pl(zone, elt_pl, cgns_name):
   '''
   Remove elements tagged in `elt_pl` by updating its ElementConnectivity and ElementRange nodes,
   as well as ElementRange nodes of elements with inferior dimension (assuming that element nodes are organized with decreasing dimension order).
-  TODO: parallel
+  TODO: parallel + merge with remove_flow_sol_elts
+  TODO: même remarque pour le cgns_name vs node name
   '''
   # > Get element information
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)==cgns_name
-  elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
+  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and  PT.Element.CGNSName(n)==cgns_name
+  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
+
+  elt_n      = PT.get_child_from_predicate(zone, is_asked_elt)
   if elt_n is not None:
     n_elt      = PT.Element.Size(elt_n)
     elt_dim    = PT.Element.Dimension(elt_n)
@@ -294,8 +296,6 @@ def remove_elts_from_pl(zone, elt_pl, cgns_name):
     old_to_new_elt[np.where(old_to_new_elt!=-1)[0]] = np.arange(1, n_elt-elt_pl.size+1)
 
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-    is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and\
-                          PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
     for bc_n in PT.get_children_from_predicate(zone_bc_n, is_elt_bc):
       bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
       bc_pl   = PT.get_value(bc_pl_n)[0]
@@ -599,47 +599,42 @@ def find_matching_bcs(zone, src_pl, tgt_pl, src_tgt_vtx, cgns_name):
   '''
   Find pairs of twin BCs (lineic in general) using a matching vtx table.
   '''
-  n_vtx = PT.Zone.n_vtx(zone)
+  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
+  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)==cgns_name
 
   # > Find BCs described by pls
   bc_nodes = [list(),list()]
-  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and\
-                        PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
-  for bc_n in PT.get_nodes_from_predicate(zone, is_elt_bc):
-    bc_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
+  for bc_n in PT.get_nodes_from_predicate(zone, is_elt_bc, depth=2):
+    bc_pl = PT.get_child_from_name(bc_n, 'PointList')[1][0]
     for i_side, elt_pl in enumerate([src_pl, tgt_pl]):
-      mask = np.isin(bc_pl, elt_pl, assume_unique=True) # See if other np.isin can have assumer_unique
-      if np.logical_and.reduce(mask):
+      if np.isin(bc_pl, elt_pl, assume_unique=True).all():
         bc_nodes[i_side].append(bc_n)
 
   # > Get element infos
   matching_bcs = list()
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)==cgns_name
-  elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
+  elt_n = PT.get_child_from_predicate(zone, is_asked_elt)
   if elt_n is not None:
     elt_offset = PT.Element.Range(elt_n)[0]
     elt_size = PT.Element.NVtx(elt_n)
-
-    ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-    ec   = PT.get_value(ec_n)
+    elt_ec = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
     
-    old_to_new_vtx = np.arange(1, n_vtx+1, dtype=np.int32)
+    old_to_new_vtx = np.arange(PT.Zone.n_vtx(zone)) + 1
     old_to_new_vtx[src_tgt_vtx[0]-1] = src_tgt_vtx[1] # Normally, elements has no vtx in common
     
     # > Go through BCs described by join vertices and find pairs
-    for src_bc_n in bc_nodes[0]:
-      src_bc_pl = PT.get_value(PT.Subset.getPatch(src_bc_n))[0]
-      pl = src_bc_pl - elt_offset
-      ec_pl = np_utils.interweave_arrays([elt_size*pl+i_size for i_size in range(elt_size)])
-      as_tgt_ec = np.take(old_to_new_vtx, ec[ec_pl]-1)
-      for tgt_bc_n in bc_nodes[1]:
-        tgt_bc_pl = PT.get_value(PT.Subset.getPatch(tgt_bc_n))[0]
-        pl = tgt_bc_pl - elt_offset
-        ec_pl = np_utils.interweave_arrays([elt_size*pl+i_size for i_size in range(elt_size)])
-        tgt_ec = np.take(old_to_new_vtx, ec[ec_pl]-1)
-        mask = np.isin(as_tgt_ec, tgt_ec)
-        if np.logical_and.reduce(mask):
+    # > Precompute vtx in shared numering only once
+    bc_vtx = [list(),list()]
+    for i_side, _bc_nodes in enumerate(bc_nodes):
+      for src_bc_n in _bc_nodes:
+        bc_pl = PT.get_child_from_name(src_bc_n, 'PointList')[1][0]
+        ec_idx = np_utils.interweave_arrays([elt_size*(bc_pl-elt_offset)+i_size for i_size in range(elt_size)])
+        bc_vtx = elt_ec[ec_idx] # List of vertices belonging to bc
+        bc_vtx_renum = old_to_new_vtx[bc_vtx-1] # Numbering of these vertices in shared numerotation
+        bc_vtx[i_side].append(bc_vtx_renum)
+    # > Perfom comparaisons
+    for src_bc_n, src_bc_vtx in zip(bc_nodes[0], bc_vtx[0]):
+      for tgt_bc_n, tgt_bc_vtx in zip(bc_nodes[1], bc_vtx[1]):
+        if np.isin(src_bc_vtx, tgt_bc_vtx).all():
           matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
 
   return matching_bcs
@@ -649,6 +644,7 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   '''
   Add faces (TRI_3) in mesh which are face from cells that are not touching the join here described by vtx point_list.
   Check that created face are not already descibed in BCs, or described by two cells (it is an internal face in this case).
+  TODO : parallelize this function. Clearer doc
   '''
   # > Get element infos
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
@@ -811,7 +807,7 @@ def deplace_periodic_patch(tree, jn_pairs):
   '''
   base = PT.get_child_from_label(tree, 'CGNSBase_t')
 
-  zones = PT.get_nodes_from_label(base, 'Zone_t')
+  zones = PT.get_all_Zone_t(base)
   assert len(zones)==1
   zone = zones[0]
 
@@ -822,18 +818,17 @@ def deplace_periodic_patch(tree, jn_pairs):
   n_periodicity = len(jn_pairs)
   new_vtx_nums = list()
   to_constrain_bcs = list()
-  matching_bcs   = [dict() for i_per in range(n_periodicity)]
-  i_per = 0
-  for gc_paths in jn_pairs:
+  matching_bcs   = [dict() for _ in range(n_periodicity)]
+  for i_per, gc_paths in enumerate(jn_pairs):
 
     gc_vtx_n = PT.get_node_from_path(tree, gc_paths[0])
     gc_vtx_pl  = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointList'     ))[0]
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
     # > 1/ Defining the internal surface, that will be constrained in mesh adaptation
-    cell_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', MPI.COMM_SELF, elt_full=False)
-    face_pl = add_undefined_faces(zone, cell_pl, 'TETRA_4', gc_vtx_pld, 'TRI_3', )
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF)
+    cell_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', MPI.COMM_SELF, elt_full=False) # Tetra made of at least one gc opp vtx
+    face_pl = add_undefined_faces(zone, cell_pl, 'TETRA_4', gc_vtx_pld, 'TRI_3') # ?
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF) # Vertices ids of tetra belonging to cell_pl
 
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
     cell_bc_name = f'tetra_4_periodic_{i_per}'
@@ -858,8 +853,8 @@ def deplace_periodic_patch(tree, jn_pairs):
     # > Find BCs on GCs that will be deleted because they have their periodic twin
     # > For now only fully described BCs will be treated
     matching_bcs[i_per] = dict()
-    bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', MPI.COMM_SELF, elt_full=True)
-    bar_twins_pl = tag_elmt_owning_vtx(zone, gc_vtx_pl,  'BAR_2', MPI.COMM_SELF, elt_full=True)
+    bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', MPI.COMM_SELF, elt_full=True) #Bar made of two gc opp vtx
+    bar_twins_pl = tag_elmt_owning_vtx(zone, gc_vtx_pl,  'BAR_2', MPI.COMM_SELF, elt_full=True) #Bar made of two gc vtx
     matching_bcs[i_per]['BAR_2'] = find_matching_bcs(zone, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], 'BAR_2')
     remove_elts_from_pl(zone, bar_to_rm_pl, 'BAR_2')
 
@@ -893,8 +888,8 @@ def deplace_periodic_patch(tree, jn_pairs):
 
     # > 5/ Merge two GCs that are now overlaping
     n_vtx = PT.Zone.n_vtx(zone)
-    bc_name1 = gc_paths[0].split('/')[-1]
-    bc_name2 = gc_paths[1].split('/')[-1]
+    bc_name1 = PT.path_tail(gc_paths[0])
+    bc_name2 = PT.path_tail(gc_paths[1])
     vtx_match_num = [gc_vtx_pl, gc_vtx_pld]
     vtx_tag = np.arange(1, n_vtx+1, dtype=np.int32)
     old_to_new_vtx = merge_periodic_bc(zone, (bc_name1, bc_name2), vtx_tag, vtx_match_num, keep_original=True)
@@ -921,7 +916,6 @@ def deplace_periodic_patch(tree, jn_pairs):
               loc='Vertex',
               family='PERIODIC',
               parent=zone_bc_n)
-    i_per +=1
 
   return new_vtx_nums, to_constrain_bcs, matching_bcs
 

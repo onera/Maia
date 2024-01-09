@@ -268,10 +268,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     perio_jns_pairs = get_matching_jns(adapted_dist_tree, lambda n : PT.GridConnectivity.isperiodic(n))
     jn_pairs_and_values = dict()
     for pair in perio_jns_pairs:
-      first  = PT.get_node_from_path(adapted_dist_tree, pair[0])
-      second = PT.get_node_from_path(adapted_dist_tree, pair[1])
-      jn_pairs_and_values[pair] = (PT.GridConnectivity.periodic_values(first),
-                                   PT.GridConnectivity.periodic_values(second))
+      gc_nodes = (PT.get_node_from_path(adapted_dist_tree, gc_path) for gc_path in pair)
+      jn_pairs_and_values[pair] = [PT.GridConnectivity.periodic_values(gc) for gc in gc_nodes]
     
     convert_vtx_gcs_as_face_bcs(adapted_dist_tree, comm)
 
@@ -298,6 +296,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
     start = time.time()
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
+    #TODO il me semble que l'arbre est déjà gather0
 
     if comm.rank==0:
       retrieve_initial_domain(adapted_dist_tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve)
@@ -308,10 +307,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
 
     mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
-    gc_constraints = list()
-    for jn_pair in perio_jns_pairs:
-      for gc_path in jn_pair:
-        gc_constraints.append(gc_path.split('/')[-1])
+    gc_constraints = [PT.path_tail(gc_path) for pair in perio_jns_pairs for gc_path in pair]
     adapted_dist_tree = _adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                                 container_names,
                                                 gc_constraints,
@@ -319,21 +315,18 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     
 
     # > Retrieve periodicities + cleaning file
-    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'PERIODIC', 'Family_t')
-    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'GCS',      'Family_t')
-    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
-    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'tetra_4_periodic*','BC_t')
-
-    n_interface = len(perio_jns_pairs)
+    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'PERIODIC', 'Family_t', depth=2)
+    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'GCS',      'Family_t', depth=2)
+    for zone in PT.get_all_Zone_t(adapted_dist_tree):
+      PT.rm_children_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
+      PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'tetra_4_periodic*','BC_t', depth=2)
 
     # > Set family name in BCs for connect_match
-    zone_bc_n = PT.get_node_from_label(adapted_dist_tree, 'ZoneBC_t')
     for i_jn, jn_pair in enumerate(perio_jns_pairs):
       for i_gc, gc_path in enumerate(jn_pair):
-        bc_name = gc_path.split('/')[-1]
-        bc_n = PT.get_node_from_name(adapted_dist_tree, bc_name, 'BC_t')
-        PT.rm_children_from_label(bc_n, 'FamilyName_t')
-        PT.new_node('FamilyName', label='FamilyName_t', value=f'BC_TO_CONVERT_{i_jn}_{i_gc}', parent=bc_n)
+        bc_path = PT.update_path_elt(gc_path, 2, lambda n: 'ZoneBC') # gc has been stored as a BC
+        bc_n = PT.get_node_from_path(adapted_dist_tree, bc_path)
+        PT.update_child(bc_n, 'FamilyName', 'FamilyName_t', f'BC_TO_CONVERT_{i_jn}_{i_gc}')
 
     for i_jn, jn_values in enumerate(jn_pairs_and_values.values()):
       maia.algo.dist.connect_1to1_families(adapted_dist_tree, (f'BC_TO_CONVERT_{i_jn}_0', f'BC_TO_CONVERT_{i_jn}_1'), comm, periodic=jn_values[0].asdict(True), location='Vertex')
@@ -341,18 +334,18 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     # > Remove '_0' in the created GCs names
     for jn_pair in perio_jns_pairs:
       for gc_path in jn_pair:
-        gc_name = gc_path.split('/')[-1]+'_0'
-        gc_n = PT.get_node_from_name(adapted_dist_tree, gc_name, 'GridConnectivity_t')
+        gc_n = PT.get_node_from_path(adapted_dist_tree, gc_path+'_0')
+        PT.set_name(gc_n, PT.path_tail(gc_path))
         gcd_name_n = PT.get_child_from_name(gc_n, 'GridConnectivityDonorName')
         PT.set_value(gcd_name_n, PT.get_value(gcd_name_n)[:-2])
         PT.rm_children_from_label(gc_n, 'FamilyName_t')
-        PT.set_name(gc_n, gc_path.split('/')[-1])
 
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
     if comm.rank==0:
       zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
       rm_feflo_added_elt(zone)
     PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
+    # TODO : pourquoi pas un redistribute avec uniform ?
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
 
 

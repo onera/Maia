@@ -71,6 +71,7 @@ job:ctest:
     SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR/build
+    - export PATH=$FEFLOPATH:$PATH
     - ctest -R maia
   after_script:
     # We have to reload modules, because after_script is excuted in a separated shell
