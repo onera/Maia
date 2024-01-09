@@ -8,6 +8,7 @@ from   maia.factory       import dist_from_part
 from   maia.utils         import np_utils
 from   .extract_part_s    import exchange_field_s, extract_part_one_domain_s
 from   .extract_part_u    import exchange_field_u, extract_part_one_domain_u
+from   .extraction_utils  import LOC_TO_DIM
 
 import numpy as np
 
