@@ -760,33 +760,31 @@ def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
   return new_tgt_elt_pl
 
 
-def convert_vtx_gcs_as_face_bcs(tree, jn_pairs, comm):
+def convert_vtx_gcs_as_face_bcs(tree, comm):
   '''
-  Convert Vertex GCs as FaceCenter BCs for feflo.
+  Convert 1to1, periodic, vertex GCs as FaceCenter BCs for feflo.
+  Note : if a face is also present in a BC, then ???
   '''
-  zone = PT.get_node_from_label(tree, 'Zone_t')
-  zone_bc_n = PT.get_node_from_label(tree, 'ZoneBC_t')
-
-  # > Get TRI_3 element infos
-  is_tri_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)=='TRI_3'
-  elt_n      = PT.get_node_from_predicate(zone, is_tri_elt)
-  elt_offset = PT.Element.Range(elt_n)[0]
-
-  # > Use BC PLs to detect BC elts that will be duplicated (cf issue JMarty)
+  is_tri_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3'
   is_face_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='FaceCenter'
-  face_bc_pls = [PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] 
-                    for bc_n in PT.get_nodes_from_predicate(zone, is_face_bc)]
-  face_bc_pls = np.concatenate(face_bc_pls)-elt_offset+1
-      
-  for jn_pair in jn_pairs:
-    for gc_path in jn_pair:
-      # > Get GCs infos
-      gc_n    = PT.get_node_from_path(tree, gc_path)
+  is_per_gc  = lambda n: PT.get_label(n)=='GridConnectivity_t' and PT.GridConnectivity.is1to1(n) and PT.GridConnectivity.isperiodic(n)
+
+  for zone in PT.get_all_Zone_t(tree):
+    # > Get TRI_3 element infos
+    elt_n      = PT.get_child_from_predicate(zone, is_tri_elt)
+    elt_offset = PT.Element.Range(elt_n)[0]
+
+    # > Use BC PLs to detect BC elts that will be duplicated (cf issue JMarty)
+    face_bc_pls = [PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] 
+                      for bc_n in PT.get_nodes_from_predicate(zone, is_face_bc, depth=2)]
+    face_bc_pls = np.concatenate(face_bc_pls)-elt_offset+1
+        
+    zone_bc_n = PT.get_node_from_label(zone, 'ZoneBC_t')
+    for gc_n in PT.iter_nodes_from_predicate(zone, is_per_gc, depth=2):
       gc_name = PT.get_name(gc_n)
       gc_pl   = PT.get_value(PT.get_child_from_name(gc_n, 'PointList'))[0]
       gc_loc  = PT.Subset.GridLocation(gc_n)
-      assert gc_loc=='Vertex', ''
+      assert gc_loc=='Vertex'
 
       # > Search faces described by gc vtx
       bc_pl = maia.algo.dist.subset_tools.vtx_ids_to_face_ids(gc_pl, elt_n, comm, True)

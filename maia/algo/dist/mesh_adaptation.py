@@ -273,7 +273,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
       jn_pairs_and_values[pair] = (PT.GridConnectivity.periodic_values(first),
                                    PT.GridConnectivity.periodic_values(second))
     
-    convert_vtx_gcs_as_face_bcs(adapted_dist_tree, perio_jns_pairs, comm)
+    convert_vtx_gcs_as_face_bcs(adapted_dist_tree, comm)
 
     mlog.info(f"[Periodic adaptation] Step #1: Duplicating periodic patch...")
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
@@ -293,8 +293,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
                                                 container_names,
                                                 bcs_to_constrain,
                                                 feflo_opts)
-    padapted_dist_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
-    # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/first_adaptation.cgns', comm)
 
 
     mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
@@ -307,7 +305,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     end = time.time()
     # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
     mlog.info(f"[Periodic adaptation] Step #3 completed: ({end-start:.2f} s)")
-    # sys.exit()
 
 
     mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")

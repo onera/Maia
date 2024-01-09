@@ -188,28 +188,30 @@ def test_tag_elmt_owning_vtx(comm):
 
 @pytest_parallel.mark.parallel(2)
 def test_convert_vtx_gcs_as_face_bcs(comm):
-  if comm.rank==0:
-    zone_n = PT.new_Zone('zone', type='Unstructured', size=[[9,3,0]])
-    elt_n  = PT.new_Elements('TRI_3', type='TRI_3', erange=np.array([1,3], dtype=np.int32), econn=np.array([1,2,3, 4,5,6], dtype=np.int32), parent=zone_n)
-    PT.maia.newDistribution({'Element':[0,2,3]}, parent=elt_n)
-    zone_bc_n = PT.new_ZoneBC(parent=zone_n)
-    bc_n = PT.new_BC('bc0', point_list=np.array([[3]], dtype=np.int32), loc='FaceCenter', parent=zone_bc_n)
-    PT.maia.newDistribution({'Index':[0,1,2]}, parent=bc_n)
-    zone_gc_n = PT.new_ZoneGridConnectivity(parent=zone_n)
-    gc_n = PT.new_GridConnectivity('gc0', point_list=np.array([[5,7,9]], dtype=np.int32), loc='Vertex', parent=zone_gc_n)
-    gc_n = PT.new_GridConnectivity('gc1', point_list=np.array([[1]], dtype=np.int32), loc='Vertex', parent=zone_gc_n)
-  elif comm.rank==1:
-    zone_n = PT.new_Zone('zone', type='Unstructured', size=[[9,3,0]])
-    elt_n  = PT.new_Elements('TRI_3', type='TRI_3', erange=np.array([1,3], dtype=np.int32), econn=np.array([7,8,9], dtype=np.int32), parent=zone_n)
-    PT.maia.newDistribution({'Element':[2,3,3]}, parent=elt_n)
-    zone_bc_n = PT.new_ZoneBC(parent=zone_n)
-    bc_n = PT.new_BC('bc0', point_list=np.array([[2]], dtype=np.int32), loc='FaceCenter', parent=zone_bc_n)
-    PT.maia.newDistribution({'Index':[1,2,2]}, parent=bc_n)
-    zone_gc_n = PT.new_ZoneGridConnectivity(parent=zone_n)
-    gc_n = PT.new_GridConnectivity('gc0', point_list=np.array([[4,6,8]], dtype=np.int32), loc='Vertex', parent=zone_gc_n)
-    gc_n = PT.new_GridConnectivity('gc1', point_list=np.array([[2,3]], dtype=np.int32), loc='Vertex', parent=zone_gc_n)
 
-  adapt_utils.convert_vtx_gcs_as_face_bcs(zone_n, {('ZoneGridConnectivity/gc0', 'ZoneGridConnectivity/gc1'):None}, comm)
+  rank = comm.Get_rank()
+  econn     = np.array([1,2,3, 4,5,6], dtype=np.int32)  if rank==0 else np.array([7,8,9], dtype=np.int32)
+  e_distri  = [0,2,3]                                   if rank==0 else [2,3,3]
+  bc_pl     = np.array([[3]], dtype=np.int32)           if rank==0 else np.array([[2]], dtype=np.int32)
+  bc_distri = [0,1,2]                                   if rank==0 else [1,2,2]
+  gc0_pl    = np.array([[5,7,9]], dtype=np.int32)       if rank==0 else np.array([[4,6,8]], dtype=np.int32)
+  gc1_pl    = np.array([[1]], dtype=np.int32)           if rank==0 else np.array([[2,3]], dtype=np.int32)
+
+  tree = PT.new_CGNSTree()
+  base = PT.new_CGNSBase(parent=tree)
+  zone_n = PT.new_Zone('zone', type='Unstructured', size=[[9,3,0]], parent=base)
+  elt_n  = PT.new_Elements('TRI_3', type='TRI_3', erange=np.array([1,3], dtype=np.int32), econn=econn, parent=zone_n)
+  PT.maia.newDistribution({'Element':e_distri}, parent=elt_n)
+  zone_bc_n = PT.new_ZoneBC(parent=zone_n)
+  bc_n = PT.new_BC('bc0', point_list=bc_pl, loc='FaceCenter', parent=zone_bc_n)
+  PT.maia.newDistribution({'Index':bc_distri}, parent=bc_n)
+  zone_gc_n = PT.new_ZoneGridConnectivity(parent=zone_n)
+  gc_n = PT.new_GridConnectivity('gc0', type='Abutting1to1', point_list=gc0_pl, loc='Vertex', parent=zone_gc_n)
+  PT.new_GridConnectivityProperty(periodic={'translation': [1.0,0]}, parent=gc_n)
+  gc_n = PT.new_GridConnectivity('gc1', type='Abutting1to1', point_list=gc1_pl, loc='Vertex', parent=zone_gc_n)
+  PT.new_GridConnectivityProperty(periodic={'translation': [-1.0,0]}, parent=gc_n)
+
+  adapt_utils.convert_vtx_gcs_as_face_bcs(tree, comm)
 
   # > All GCs are converted, empty GCs shouldn't be transformed
   gc0 = PT.get_node_from_name_and_label(zone_n, 'gc0', 'BC_t')
@@ -220,7 +222,3 @@ def test_convert_vtx_gcs_as_face_bcs(comm):
     assert np.array_equal(PT.get_child_from_name(gc1, 'PointList')[1], np.array([[1]], dtype=np.int32))
   if comm.rank==1:
     assert np.array_equal(PT.get_child_from_name(gc1, 'PointList')[1], np.array([[]], dtype=np.int32))
-
-# @pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
-# @pytest_parallel.mark.parallel(2)
-# def test_adapt_with_feflo(comm):
