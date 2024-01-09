@@ -296,7 +296,6 @@ def recover_dist_tree(part_tree, comm):
       d_zone_dims = np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32)
     elif PT.Zone.Type(dist_zone) == "Structured":
       d_zone_dims = _recover_dist_block_size(part_zones, comm)
-      print(f'd_zone_dims = {d_zone_dims}')
       if d_zone_dims.shape[0] == 3:
         face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
         face_distri = PTB._lngn_to_distri(face_lngn_list, comm)

@@ -183,7 +183,7 @@ def generate_test_tree(n_vtx,n_part,location,cgns_name,comm):
       PT.new_DataArray("ZSR_ccy", ccy[point_list_loc[0]-elt_range[0]], parent=zsr_node)
       PT.new_DataArray("ZSR_ccz", ccz[point_list_loc[0]-elt_range[0]], parent=zsr_node)
 
-      point_list.append(point_list_loc[0])
+      point_list.append(point_list_loc)
 
   return part_tree, point_list
 
@@ -556,10 +556,10 @@ def test_extract_from_bc_name_S(comm, write_output):
   PT.new_Family('ALL_BCS', parent=part_base)
 
   # > Extract part
-  part_tree_ep = maia.algo.part.extract_part_s.extract_part_s_from_bc_name( part_tree, "Ymax", comm,
-                                                transfer_dataset=True,
-                                                containers_name=['FlowSolution_NC']
-                                                )
+  part_tree_ep = EXP.extract_part_from_bc_name(part_tree, "Ymax", comm,
+                                               transfer_dataset=True,
+                                               containers_name=['FlowSolution_NC']
+                                               )
 
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
@@ -587,9 +587,9 @@ def test_extract_cell_from_zsr_S(comm, write_output):
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'CellCenter','Structured',comm)
 
   # > Extract part
-  part_tree_ep = maia.algo.part.extract_part_s.extract_part_s_from_zsr( part_tree, "ZSR_FlowSolution", comm,
-                                                                        containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_FlowSolution'],
-                                                                      )
+  part_tree_ep = EXP.extract_part_from_zsr(part_tree, "ZSR_FlowSolution", comm,
+                                           containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_FlowSolution'],
+                                           )
 
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
@@ -641,10 +641,10 @@ def test_extractor_cell_from_zsr_S(zsr_loc, comm, write_output):
       PT.set_name(zsr_n , "ZSR_y")
 
   # > Extract part
-  part_tree_ep = maia.algo.part.extract_part_s.extract_part_s_from_zsr( part_tree, "ZSR_y", comm,
-                                                                        transfer_dataset=False,
-                                                                        containers_name=['ZSR_x'],
-                                                                      )
+  part_tree_ep = EXP.extract_part_from_zsr(part_tree, "ZSR_y", comm,
+                                           transfer_dataset=False,
+                                           containers_name=['ZSR_x'],
+                                           )
 
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)

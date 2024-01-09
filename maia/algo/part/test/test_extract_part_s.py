@@ -21,7 +21,7 @@ def sample_part_tree(comm, bc_loc):
 def test_extract_part_simple(bc_loc, bc_name, comm):
   part_tree = sample_part_tree(comm, bc_loc)
 
-  extract_part_tree = maia.algo.part.extract_part_s.extract_part_s_from_bc_name(part_tree, bc_name, comm)
+  extract_part_tree = EP.extract_part_from_bc_name(part_tree, bc_name, comm)
   extract_dist_tree = maia.factory.recover_dist_tree(extract_part_tree, comm)
   extract_dist_zone = PT.get_all_Zone_t(extract_dist_tree)[0]
   assert PT.Zone.n_vtx( extract_dist_zone)==100
@@ -49,7 +49,7 @@ def test_exch_field(bc_loc, bc_name, comm):
       point_range_domain.append(bc_pr)
     point_range.append(point_range_domain)
 
-  extractor = maia.algo.part.extract_part_s.Extractor(part_tree, point_range, bc_loc, comm)
+  extractor = EP.Extractor(part_tree, point_range, bc_loc, comm)
   extractor.exchange_fields(['FlowSol#Vtx'])
   extract_part_tree = extractor.get_extract_part_tree()
 

@@ -18,13 +18,14 @@ def sample_part_tree(comm):
 def test_extract_part_simple(dim, comm):
   part_tree = sample_part_tree(comm)
 
-  pl = np.array([1,2], np.int32)
+  pl = np.array([[1,2]], np.int32)
   if dim == 3: 
     pl += PT.Zone.n_face(PT.get_all_Zone_t(part_tree)[0])
 
-  ex_zone, ptp_data = EP.extract_part_one_domain(PT.get_all_Zone_t(part_tree), \
+  ex_zone, ptp_data = EP.extract_part_one_domain_u(PT.get_all_Zone_t(part_tree), \
       [pl], dim, comm)
-
+  assert len(ex_zone)==1
+  ex_zone = ex_zone[0]
   if dim == 0:
     assert PT.Zone.n_vtx(ex_zone) == 2
     assert PT.Zone.n_cell(ex_zone) == 0
@@ -48,7 +49,7 @@ def test_extract_part_obj(comm):
   if comm.Get_rank() == 0:
     pl = []
   else:
-    pl = [np.array([1,2], np.int32), np.array([1,2], np.int32)]
+    pl = [np.array([[1,2]], np.int32), np.array([[1,2]], np.int32)]
 
   extractor = EP.Extractor(part_tree, [pl], "FaceCenter", comm)
   extracted_tree = extractor.get_extract_part_tree()
@@ -71,7 +72,7 @@ def test_exch_field(partial, comm):
     else:
       PT.new_FlowSolution('FlowSol', loc="Vertex", fields={'gnum': gnum}, parent=zone)
 
-  extractor = EP.Extractor(part_tree, [[np.array([1,2,3], np.int32)]], "Vertex", comm)
+  extractor = EP.Extractor(part_tree, [[np.array([[1,2,3]], np.int32)]], "Vertex", comm)
   extractor.exchange_fields(['FlowSol'])
   extr_tree = extractor.get_extract_part_tree()
 
@@ -81,11 +82,11 @@ def test_exch_field(partial, comm):
     assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
     pl = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
     data = PT.get_node_from_name(extr_sol, 'gnum')[1]
-    assert np.array_equal(extractor.exch_tool_box[0]['parent_elt']['Vertex'][pl-1], data)
+    assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex'][pl-1], data)
   else:
     assert PT.get_label(extr_sol) == 'FlowSolution_t'
     assert np.array_equal(PT.get_node_from_name(extr_sol, 'gnum')[1],
-                          extractor.exch_tool_box[0]['parent_elt']['Vertex'])
+                          extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex'])
 
 @pytest_parallel.mark.parallel(2)
 def test_exch_field_from_bc_zsr(comm):
@@ -100,7 +101,7 @@ def test_exch_field_from_bc_zsr(comm):
       bc_gnum = gnum[bc_pl[0]-1]
       PT.new_ZoneSubRegion('ZSR_Xmin', bc_name="Xmin", fields={'gnum': bc_gnum}, parent=zone)
 
-  extractor = EP.Extractor(part_tree, [bc_pl], "FaceCenter", comm)
+  extractor = EP.Extractor(part_tree, [[bc_pl]], "FaceCenter", comm)
   extractor.exchange_fields(['ZSR_Xmin'])
   extr_tree = extractor.get_extract_part_tree()
 
@@ -109,7 +110,7 @@ def test_exch_field_from_bc_zsr(comm):
   assert PT.Subset.GridLocation(extr_sol) == 'CellCenter'
   pl    = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
   data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
-  assert np.array_equal(extractor.exch_tool_box[0]['parent_elt']['FaceCenter'][pl-1], data)
+  assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][pl-1], data)
 
 
 @pytest_parallel.mark.parallel(3)
@@ -121,8 +122,7 @@ def test_zsr_api(comm):
     for zone in PT.get_all_Zone_t(part_tree):
       n_face = PT.Zone.n_face(zone)
       pl = np.array([1,2], dtype=np.int32).reshape((1,-1)) + n_face
-      PT.new_ZoneSubRegion('ToExtract', loc='CellCenter', point_list=pl, parent=zone)
-
+      zsr_n = PT.new_ZoneSubRegion('ToExtract', loc='CellCenter', point_list=pl, parent=zone)
   extracted_tree = EP.extract_part_from_zsr(part_tree, 'ToExtract', comm)
 
   n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])

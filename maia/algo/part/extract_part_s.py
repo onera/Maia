@@ -3,143 +3,14 @@ import mpi4py.MPI as MPI
 
 import maia
 import maia.pytree as PT
-from   maia.algo.part.extraction_utils import LOC_TO_DIM
 from   maia.factory  import dist_from_part
 from   maia.factory.partitioning.split_S.part_zone import compute_face_gnum
-from   maia.utils import np_utils, s_numbering
-import maia.utils.logging as mlog
+from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix, guess_bnd_normal_index
+from   maia.utils import s_numbering
+from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, DIMM_TO_DIMF, build_intersection_numbering
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
-                                    gc_is_reference, guess_bnd_normal_index, n_face_per_dir
-from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, build_intersection_numbering
+
 import numpy as np
-
-comm = MPI.COMM_WORLD
-
-DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
-               # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
-                 2: {'Vertex'     :'Vertex',
-                     'EdgeCenter' :'EdgeCenter',
-                     'FaceCenter' :'CellCenter', 'IFaceCenter':'CellCenter', 'JFaceCenter':'CellCenter', 'KFaceCenter':'CellCenter'},
-                 3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
-
-'''
-QUESTIONS:
-  - les PR peuvent etre inversées ?
-'''
-def set_transfer_dataset(bc_n, zsr_bc_n):
-  there_is_dataset = False
-  assert PT.get_child_from_predicates(bc_n, 'BCDataSet_t/IndexArray_t') is None,\
-                 'BCDataSet_t with PointList aren\'t managed'
-  ds_arrays = PT.get_children_from_predicates(bc_n, 'BCDataSet_t/BCData_t/DataArray_t')
-  for ds_array in ds_arrays:
-    PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_value(ds_array), parent=zsr_bc_n)
-  if len(ds_arrays) != 0:
-    there_is_dataset = True
-    # PL and Location is needed for data exchange, but this should be done in ZSR func
-    for name in ['PointRange', 'GridLocation']:
-      PT.add_child(zsr_bc_n, PT.get_child_from_name(bc_n, name))
-  return there_is_dataset
-
-class Extractor:
-  def __init__(self,
-               part_tree, point_range, location, comm, 
-               equilibrate=False):
-    self.part_tree     = part_tree
-    self.exch_tool_box = dict()
-    self.comm          = comm
-
-    # Get zones by domains
-    part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
-    # Check : monodomain
-    assert len(part_tree_per_dom) == 1
-
-    self.dim = LOC_TO_DIM[location]
-    assert self.dim in [0,2,3], "[MAIA] Error : dimensions 1 not yet implemented"
-    if location == 'Vertex':
-      cell_dim = -1
-      for domain_prs in point_range:
-        for part_pr in domain_prs:
-          if part_pr.size!=0:
-            size_per_dim = np.diff(part_pr)[:,0]
-            idx = np.where(size_per_dim!=0)[0]
-            cell_dim = idx.size
-      cell_dim = comm.allreduce(cell_dim, op=MPI.MAX)
-    else:
-      cell_dim = self.dim 
-
-    
-    # ExtractPart CGNSTree
-    extract_tree = PT.new_CGNSTree()
-    extract_base = PT.new_CGNSBase('Base', cell_dim=cell_dim, phy_dim=3, parent=extract_tree)
-
-    for i_domain, part_zones in enumerate(part_tree_per_dom):
-      extract_zones, etb = extract_part_one_domain(part_zones, point_range[i_domain], self.dim, comm,
-                                                    equilibrate=False)
-
-      # > Retrive missing gnum
-      '''
-      Retrieve CellSize, CellRange and Face
-      recover_dist_block_size -> CellSize
-      CellSize + Cell --ijk_to_index--> CellRange
-      CellSize + CellRange + Cell --create_zone_gnums--> Face
-      '''
-      if self.dim==3:
-        from maia.factory.dist_from_part import _recover_dist_block_size
-        cell_size = _recover_dist_block_size(extract_zones, comm)
-
-        for zone in extract_zones:
-          if PT.Zone.n_cell(zone)!=0:
-            cell_gnum  = PT.maia.getGlobalNumbering(zone, 'Cell')[1]
-            cell_ijk   = s_numbering.index_to_ijk(cell_gnum, cell_size[:,1])
-            cell_range = np.array([[min(cell_ijk[0]),max(cell_ijk[0])],
-                                   [min(cell_ijk[1]),max(cell_ijk[1])],
-                                   [min(cell_ijk[2]),max(cell_ijk[2])]])
-            cell_window = cell_range
-            cell_window[:,1] +=1
-
-            dist_cell_per_dir = cell_size[:,1]
-            face_lntogn = compute_face_gnum(dist_cell_per_dir, cell_window)
-            
-            gn_node = PT.maia.getGlobalNumbering(zone)
-            PT.new_node("CellRange", "IndexRange_t", cell_range, parent=gn_node)
-            PT.new_DataArray("CellSize", cell_size[:,1], parent=gn_node)
-            PT.new_DataArray("Face", face_lntogn, parent=gn_node)
-
-      self.exch_tool_box.update(etb)
-      for zone in extract_zones:
-        if PT.Zone.n_vtx(zone)!=0:
-          PT.add_child(extract_base, zone)
-
-      # > Clean orphan GC
-      all_zone_name_l = PT.get_names(PT.get_children_from_label(extract_base, 'Zone_t'))
-      all_zone_name_l = comm.allgather(all_zone_name_l)
-      all_zone_name = list(np.concatenate(all_zone_name_l))
-
-      for zone_n in PT.get_children_from_label(extract_base, 'Zone_t'):
-        for zgc_n in PT.get_children_from_label(zone_n, 'ZoneGridConnectivity_t'):
-          for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'):
-            matching_zone_name = PT.get_value(gc_n)
-            if matching_zone_name not in all_zone_name:
-              PT.rm_child(zgc_n, gc_n)
-          if len(PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'))==0:
-            PT.rm_child(zone_n, zgc_n)
-    self.extract_tree = extract_tree
-  
-  def exchange_fields(self, fs_container):
-    # Get zones by domains (only one domain for now)
-    part_tree_per_dom = dist_from_part.get_parts_per_blocks(self.part_tree, self.comm).values()
-
-    # Get zone from extractpart -> Assume unique domain
-    extract_zones = PT.get_all_Zone_t(self.extract_tree)
-
-    for container_name in fs_container:
-      for i_domain, part_zones in enumerate(part_tree_per_dom):
-        exchange_field_one_domain(self.part_tree, extract_zones, self.dim, self.exch_tool_box,\
-            container_name, self.comm)
-
-  def get_extract_part_tree(self):
-    return self.extract_tree
 
 
 def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container_name, comm) :
@@ -233,7 +104,18 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
       PT.new_DataArray(fld_name, extract_fld_data, parent=FS_ep)
 
 
-def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=False):
+def exchange_field_s(part_tree, extract_tree, mesh_dim, etb, container_names, comm) :
+  # Get zones by domains (only one domain for now)
+  extract_part_tree_per_dom = dist_from_part.get_parts_per_blocks(extract_tree, comm)
+  for container_name in container_names:
+    for i_domain, dom_ep_part_zones in enumerate(extract_part_tree_per_dom.items()):
+      dom_path        = dom_ep_part_zones[0]
+      extracted_zones = dom_ep_part_zones[1]
+      exchange_field_one_domain(part_tree, extracted_zones, mesh_dim, etb[dom_path], container_name, comm)
+
+
+def extract_part_one_domain_s(part_zones, point_range, dim, comm, equilibrate=False):
+
   extract_zones = list()
   lvtx_gn = list()
   lcell_gn = list()
@@ -374,156 +256,34 @@ def extract_part_one_domain(part_zones, point_range, dim, comm, equilibrate=Fals
   # > Create GlobalNumbering
   partial_gnum_vtx  = maia.algo.part.point_cloud_utils.create_sub_numbering(lvtx_gn, comm)
   partial_gnum_cell = maia.algo.part.point_cloud_utils.create_sub_numbering(lcell_gn, comm)
-  
+  from maia.factory.dist_from_part import _recover_dist_block_size
+  cell_size = _recover_dist_block_size(extract_zones, comm)
+
+
   if len(partial_gnum_vtx)!=0:
     for i_part, extract_zone in enumerate(extract_zones):
       PT.maia.newGlobalNumbering({'Vertex' : partial_gnum_vtx [i_part],
                                   'Cell'   : partial_gnum_cell[i_part]},
                                  parent=extract_zone)
+      
+      # > Retrive missing gnum if 3d
+      if  dim==3 and PT.Zone.n_cell(extract_zone)!=0:
+        cell_ijk   = s_numbering.index_to_ijk(partial_gnum_cell[i_part], cell_size[:,1])
+        cell_range = np.array([[min(cell_ijk[0]),max(cell_ijk[0])],
+                               [min(cell_ijk[1]),max(cell_ijk[1])],
+                               [min(cell_ijk[2]),max(cell_ijk[2])]])
+        cell_window = cell_range
+        cell_window[:,1] +=1
+
+        dist_cell_per_dir = cell_size[:,1]
+        face_lntogn = compute_face_gnum(dist_cell_per_dir, cell_window)
+        
+        gn_node = PT.maia.getGlobalNumbering(extract_zone)
+        PT.new_node("CellRange", "IndexRange_t", cell_range, parent=gn_node)
+        PT.new_DataArray("CellSize", cell_size[:,1], parent=gn_node)
+        PT.new_DataArray("Face", face_lntogn, parent=gn_node)
   else:
     assert len(partial_gnum_cell)!=0
 
   return extract_zones,etb
 
-
-def extract_part_s_from_zsr(part_tree, zsr_name, comm,
-                          transfer_dataset=True,
-                          containers_name=[], **options):
-  """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
-  partitioned tree.
-
-  Dimension of the output mesh is set up accordingly to the GridLocation of the ZoneSubRegion.
-  Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.
-
-  Fields found under the ZSR node are transfered to the extracted mesh if ``transfer_dataset`` is set to True.
-  In addition, additional containers specified in ``containers_name`` list are transfered to the extracted tree.
-  Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.
-
-  Args:
-    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. Only U-NGon
-      connectivities are managed.
-    zsr_name        (str)         : Name of the ZoneSubRegion_t node
-    comm            (MPIComm)     : MPI communicator
-    transfer_dataset(bool)        : Transfer (or not) fields stored in ZSR to the extracted mesh (default to ``True``)
-    containers_name (list of str) : List of the names of the fields containers to transfer
-                                    on the output extracted tree.
-    **options: Options related to the extraction.
-  Returns:
-    extracted_tree (CGNSTree)  : Extracted submesh (partitioned)
-
-  Extraction can be controled by the optional kwargs:
-
-    - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones.
-      Admissible values are ``hilbert, parmetis, ptscotch``. Note that
-      vertex-located extractions require hilbert partitioning. Defaults to ``hilbert``.
-  
-  Important:
-    - Input tree must be unstructured and have a ngon connectivity.
-    - Partitions must come from a single initial domain on input tree.
-  
-  See also:
-    :func:`create_extractor_from_zsr` takes the same parameters, excepted ``containers_name``,
-    and returns an Extractor object which can be used to exchange containers more than once through its
-    ``Extractor.exchange_fields(container_name)`` method.
-  
-  Example:
-    .. literalinclude:: snippets/test_algo.py
-      :start-after: #extract_from_zsr@start
-      :end-before:  #extract_from_zsr@end
-      :dedent: 2
-  """
-
-  start = time.time()
-  extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
-
-  l_containers_name = [name for name in containers_name]
-  if transfer_dataset and zsr_name not in l_containers_name:
-    l_containers_name += [zsr_name]
-  if l_containers_name:
-    extractor.exchange_fields(l_containers_name)
-  end = time.time()
-
-  extracted_tree = extractor.get_extract_part_tree()
-
-  # Print some light stats
-  elts_kind = ['vtx', 'edges', 'faces', 'cells'][extractor.dim]
-  if extractor.dim == 0:
-    n_cell = sum([PT.Zone.n_vtx(zone) for zone in PT.iter_all_Zone_t(extracted_tree)])
-  else:
-    n_cell = sum([PT.Zone.n_cell(zone) for zone in PT.iter_all_Zone_t(extracted_tree)])
-  n_cell_all = comm.allreduce(n_cell, MPI.SUM)
-  mlog.info(f"Extraction from ZoneSubRegion \"{zsr_name}\" completed ({end-start:.2f} s) -- "
-            f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
-            f"(Σ={mlog.size_to_str(n_cell_all)})")
-
-  return extracted_tree
-
-
-def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
-  """Same as extract_part_from_zsr, but return the extractor object."""
-  # Get zones by domains
-
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
-
-  # Get range for each partitioned zone and group it by domain
-  point_range = list()
-  location = ''
-  for domain, part_zones in part_tree_per_dom.items():
-    point_range_domain = list()
-    for part_zone in part_zones:
-      zsr_node = PT.get_node_from_path(part_zone, zsr_path)
-      if zsr_node is not None:
-        related_node = PT.getSubregionExtent(zsr_node, part_zone)
-        zsr_node     = PT.get_node_from_path(part_zone, related_node)
-        point_range_domain.append(PT.get_child_from_name(zsr_node, "PointRange")[1])
-        location = PT.Subset.GridLocation(zsr_node)
-      else:
-        point_range_domain.append(np.empty(0, np.int32))
-    point_range.append(point_range_domain)
-
-  # Get location if proc has no zsr
-  location = comm.allreduce(location, op=MPI.MAX)
-
-  return Extractor(part_tree, point_range, location, comm)
-
-
-def extract_part_s_from_bc_name(part_tree, bc_name, comm,
-                                transfer_dataset=True,
-                                containers_name=[],
-                                **options):
-  """Extract the submesh defined by the provided BC name from the input volumic
-  partitioned tree.
-
-  Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`:
-  ``zsr_name`` becomes ``bc_name`` and optional ``transfer_dataset`` argument allows to 
-  transfer BCDataSet from BC to the extracted mesh (default to ``True``).
-
-  Example:
-    .. literalinclude:: snippets/test_algo.py
-      :start-after: #extract_from_bc_name@start
-      :end-before:  #extract_from_bc_name@end
-      :dedent: 2
-  """
-
-  # > Define extracted tree
-  l_containers_name = [name for name in containers_name]
-  local_part_tree   = PT.shallow_copy(part_tree)
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
-  
-  # Adding ZSR to tree
-  there_is_bcdataset = False
-  for domain, part_zones in part_tree_per_dom.items():
-    for part_zone in part_zones:
-      bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') 
-      if bc_n is not None:
-        zsr_bc_n  = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
-        if transfer_dataset:
-          there_is_bcdataset = set_transfer_dataset(bc_n, zsr_bc_n)
-
-  if transfer_dataset and comm.allreduce(there_is_bcdataset, MPI.LOR):
-    l_containers_name.append(bc_name) # not to change the initial containers_name list
-
-  return extract_part_s_from_zsr(local_part_tree, bc_name, comm,
-                                 transfer_dataset=False,
-                                 containers_name=l_containers_name,
-                               **options)

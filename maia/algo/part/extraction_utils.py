@@ -10,6 +10,11 @@ LOC_TO_DIM   = {'Vertex':0,
                 'FaceCenter':2, 'IFaceCenter':2, 'JFaceCenter':2, 'KFaceCenter':2,
                 'CellCenter':3}
 
+DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
+               # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
+                 2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
+                 3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
+
 def local_pl_offset(part_zone, dim):
   """
   Return the shift related to the element of the dimension to apply to a point_list so it starts to 1.
@@ -106,12 +111,6 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
   return pl_gnum1, stride
 
 def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_name, grid_location, etb, comm):
-  
-  DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
-                 # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
-                   2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
-                   3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
-
 
   parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
                       'IFaceCenter':'parent_lnum_cell',

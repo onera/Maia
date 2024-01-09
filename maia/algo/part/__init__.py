@@ -12,7 +12,6 @@ from .extract_boundary       import extract_faces_mesh,\
 from .extract_part           import extract_part_from_bc_name,\
                                     extract_part_from_family,\
                                     extract_part_from_zsr
-from .extract_part_s         import extract_part_s_from_bc_name
 
 from .geometry               import compute_cell_center,\
                                     compute_edge_center,\
