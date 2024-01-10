@@ -85,7 +85,7 @@ def exchange_field_s(part_tree, extract_tree, mesh_dim, etb, container_names, co
       exchange_field_one_domain(part_tree, extracted_zones, mesh_dim, etb[dom_path], container_name, comm)
 
 
-def extract_part_one_domain_s(part_zones, point_range, dim, comm, equilibrate=False):
+def extract_part_one_domain_s(part_zones, point_range, dim, comm):
   extract_zones = list()
   lvtx_gn = list()
   lcell_gn = list()

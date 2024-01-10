@@ -123,13 +123,15 @@ def exchange_field_u(part_tree, extract_part_tree, mesh_dim, exch_tool_box, cont
 
 
 def extract_part_one_domain_u(part_zones, point_list, dim, comm,
-                            equilibrate=True,
+                            # equilibrate=True,
                             graph_part_tool="hilbert"):
   """
   Prepare PDM extract_part object and perform the extraction of one domain.
   
   TODO : AJOUTER LE CHOIX PARTIONNEMENT
   """
+  equilibrate=True
+  
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
   

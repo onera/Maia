@@ -39,7 +39,7 @@ def set_transfer_dataset(bc_n, zsr_bc_n, zone_type):
 class Extractor:
   def __init__( self,
                 part_tree, patch, location, comm,
-                equilibrate=True,
+                # equilibrate=True,
                 graph_part_tool="hilbert"):
 
     self.part_tree     = part_tree
@@ -55,10 +55,10 @@ class Extractor:
     zone_type = PT.get_node_from_name(part_tree, 'ZoneType')
     is_struct = PT.get_value(zone_type)=='Structured' if zone_type is not None else False
     self.is_struct = comm.allreduce(is_struct)
-    if self.is_struct and equilibrate:
-      raise NotImplementedError('Structured Extractor with equilibrate=True option is not yet implemented.')
-    if not self.is_struct and not equilibrate:
-      raise NotImplementedError('Unstructured Extractor with equilibrate=False option is not yet implemented.')
+    # if self.is_struct and equilibrate:
+    #   raise NotImplementedError('Structured Extractor with equilibrate=True option is not yet implemented.')
+    # if not self.is_struct and not equilibrate:
+    #   raise NotImplementedError('Unstructured Extractor with equilibrate=False option is not yet implemented.')
 
     # ExtractPart dimension
     self.dim = LOC_TO_DIM[location]
@@ -91,11 +91,10 @@ class Extractor:
       dom_path   = dom_part_zones[0]
       part_zones = dom_part_zones[1]
       if self.is_struct:
-        extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.dim, comm,
-                                                      equilibrate=equilibrate)
+        extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.dim, comm)
       else:
         extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.dim, comm,
-                                                      equilibrate=equilibrate,
+                                                      # equilibrate=equilibrate,
                                                       graph_part_tool=graph_part_tool)
       self.exch_tool_box[dom_path] = etb
       for extract_zone in extract_zones:
