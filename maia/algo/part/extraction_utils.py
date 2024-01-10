@@ -25,7 +25,7 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
   mask_container = PT.get_child_from_name(mask_zone, container_name)
   if mask_container is None:
-    raise ValueError("[maia-extract_part] asked container for exchange is not in tree")
+    raise ValueError(f"[maia-extract_part] asked container \"{container_name}\" for exchange is not in tree")
   if PT.get_child_from_label(mask_container, 'DataArray_t') is None:
     return None, '', False
 

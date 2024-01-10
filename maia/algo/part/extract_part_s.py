@@ -25,7 +25,7 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
   assert len(part_tree_per_dom) == 1
   part_zones=list(part_tree_per_dom)[0]
 
-  # > Retrieve fields name + GridLocation + PointList if container
+  # > Retrieve fields name + GridLocation + PointRange if container
   #   is not know by every partition
   mask_container, grid_location, partial_field = discover_containers(part_zones, container_name, 'PointRange', 'IndexRange_t', comm)
   if mask_container is None:
