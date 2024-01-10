@@ -28,6 +28,7 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
     raise ValueError(f"[maia-extract_part] asked container \"{container_name}\" for exchange is not in tree")
   if PT.get_child_from_label(mask_container, 'DataArray_t') is None:
     return None, '', False
+  patch_node     = PT.get_child_from_name(mask_container, patch_name)
 
   # > Manage BC and GC ZSR
   ref_zsr_node    = mask_container
@@ -38,11 +39,18 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
     bc_name      = PT.get_value(bc_descriptor_n)
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=[patch_name, 'GridLocation_t'])
     ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
+    patch_node   = PT.get_child_from_predicates(ref_zsr_node, f'{patch_name}')
+    assert patch_node is not None, 'Asked patch unfound for subregion extent.'
   elif gc_descriptor_n is not None:
     gc_name      = PT.get_value(gc_descriptor_n)
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=[patch_name, 'GridLocation_t'])
-    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
+    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name}')
+    patch_node   = PT.get_child_from_predicates(ref_zsr_node, f'{patch_name}')
+    assert patch_node is not None, 'Asked patch unfound for subregion extent.'
   
+  if PT.get_label(mask_container)=='ZoneSubRegion_t' and patch_node is None:
+    raise ValueError('Asked patch unfound for ZSR container extent.')
+
   grid_location = PT.Subset.GridLocation(ref_zsr_node)
   partial_field = PT.get_child_from_name(ref_zsr_node, patch_name) is not None
   return mask_container, grid_location, partial_field
