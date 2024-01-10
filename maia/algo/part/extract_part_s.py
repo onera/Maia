@@ -85,7 +85,7 @@ def exchange_field_s(part_tree, extract_tree, mesh_dim, etb, container_names, co
       exchange_field_one_domain(part_tree, extracted_zones, mesh_dim, etb[dom_path], container_name, comm)
 
 
-def extract_part_one_domain_s(part_zones, point_range, dim, comm):
+def extract_part_one_domain_s(part_zones, point_range, location, comm):
   extract_zones = list()
   lvtx_gn = list()
   lcell_gn = list()
@@ -102,6 +102,8 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm):
 
   etb = dict()
 
+  dim = LOC_TO_DIM[location]
+
   for i_part, part_zone in enumerate(part_zones):
     zone_name = PT.get_name(part_zone)
     zone_dim  = PT.get_value(part_zone)
@@ -115,14 +117,26 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm):
       extract_zones.append(extract_zone)
       continue
 
-    n_dim_pop = 0
     size_per_dim = np.diff(pr)[:,0]
     mask = np.ones(3, dtype=bool)
-    if dim<3:
+    if location=='Vertex':
       idx = np.where(size_per_dim==0)[0]
       mask[idx] = False
       n_dim_pop = idx.size
-    if dim>0:
+      if n_dim_pop in [2,3]:
+        raise NotImplementedError(f'Asked extraction is 0D or 1D (n_dim_pop={n_dim_pop})')
+      extract_dir = idx[0]
+    elif location=='FaceCenter':
+      extract_dir = maia.algo.dist.s_to_u.guess_bnd_normal_index(pr, 'FaceCenter')
+      mask[extract_dir] = False
+      n_dim_pop = 1
+    elif location in ['IFaceCenter','JFaceCenter','KFaceCenter']:
+      extract_dir = {'I':0, 'J':1, 'K':2}[location[0]]
+      mask[extract_dir] = False
+      n_dim_pop = 1
+    else:
+      n_dim_pop = 0
+    if location!='Vertex':
       pr[mask,1]+=1
       size_per_dim+=1
 
@@ -158,11 +172,8 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm):
     j_ar_cell = np.arange(min(pr[1]), max(pr[1])).reshape(-1,1)
     k_ar_cell = np.arange(min(pr[2]), max(pr[2])).reshape(-1,1,1)
 
-    if dim<3:
-      DIM_TO_LOC = {0:'Vertex', 1:'EdgeCenter', 2:'FaceCenter', 3:'CellCenter'}
+    if n_dim_pop==1:
       ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
-
-      extract_dir = maia.algo.dist.s_to_u.guess_bnd_normal_index(pr, DIM_TO_LOC[dim])
 
       locnum_cell = ijk_to_faceIndex[extract_dir](i_ar_cell, j_ar_cell, k_ar_cell, \
                             cell_per_dir, vtx_per_dir).flatten()
@@ -227,7 +238,7 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm):
   # > Create GlobalNumbering
   partial_gnum_vtx  = maia.algo.part.point_cloud_utils.create_sub_numbering(lvtx_gn, comm)
   partial_gnum_cell = maia.algo.part.point_cloud_utils.create_sub_numbering(lcell_gn, comm)
-  if  dim==3:
+  if dim==3:
     cell_size = dist_from_part._recover_dist_block_size(extract_zones, comm)
 
   if len(partial_gnum_vtx)!=0:
@@ -237,7 +248,7 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm):
                                  parent=extract_zone)
       
       # > Retrive missing gnum if 3d
-      if  dim==3 and PT.Zone.n_cell(extract_zone)!=0:
+      if dim==3 and PT.Zone.n_cell(extract_zone)!=0:
         cell_ijk   = s_numbering.index_to_ijk(partial_gnum_cell[i_part], cell_size[:,1])
         cell_range = np.array([[min(cell_ijk[0]),max(cell_ijk[0])],
                                [min(cell_ijk[1]),max(cell_ijk[1])],

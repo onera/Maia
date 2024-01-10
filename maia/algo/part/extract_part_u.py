@@ -122,7 +122,7 @@ def exchange_field_u(part_tree, extract_part_tree, mesh_dim, exch_tool_box, cont
           container_name, comm)
 
 
-def extract_part_one_domain_u(part_zones, point_list, dim, comm,
+def extract_part_one_domain_u(part_zones, point_list, location, comm,
                             # equilibrate=True,
                             graph_part_tool="hilbert"):
   """
@@ -132,6 +132,8 @@ def extract_part_one_domain_u(part_zones, point_list, dim, comm,
   """
   equilibrate=True
   
+  dim = LOC_TO_DIM[location]
+
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
   

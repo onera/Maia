@@ -18,25 +18,25 @@ def sample_part_tree(cgns_name, comm, bc_loc='Vertex'):
   return part_tree
 
 @pytest_parallel.mark.parallel(2)
-@pytest.mark.parametrize("dim", [0,2,3])
-def test_extract_part_simple_u(dim, comm):
+@pytest.mark.parametrize("location", ['Vertex','FaceCenter','CellCenter'])
+def test_extract_part_simple_u(location, comm):
   part_tree = sample_part_tree('Poly', comm)
 
   pl = np.array([[1,2]], np.int32)
-  if dim == 3: 
+  if location=='CellCenter': 
     pl += PT.Zone.n_face(PT.get_all_Zone_t(part_tree)[0])
 
   ex_zone, ptp_data = EP.extract_part_one_domain_u(PT.get_all_Zone_t(part_tree), \
-      [pl], dim, comm)
+      [pl], location, comm)
   assert len(ex_zone)==1
   ex_zone = ex_zone[0]
-  if dim == 0:
+  if location=='Vertex':
     assert PT.Zone.n_vtx(ex_zone) == 2
     assert PT.Zone.n_cell(ex_zone) == 0
-  elif dim == 2:
+  elif location=='FaceCenter':
     assert PT.Zone.n_vtx(ex_zone) == 6
     assert PT.Zone.n_cell(ex_zone) == 2
-  elif dim == 3:
+  elif location=='CellCenter':
     assert PT.Zone.n_vtx(ex_zone) == 12
     assert PT.Zone.n_cell(ex_zone) == 2
     assert ptp_data['part_to_part']["CellCenter"] is not None
@@ -45,14 +45,13 @@ def test_extract_part_simple_u(dim, comm):
 
 @pytest_parallel.mark.parallel([2])
 @pytest.mark.parametrize("bc_loc" , ['Vertex','FaceCenter'])
-@pytest.mark.parametrize("bc_name", ['Xmin','Xmax','Zmin','Zmax'])
-def test_extract_part_simple_s(bc_loc, bc_name, comm):
+def test_extract_part_simple_s(bc_loc, comm):
   part_tree = sample_part_tree('Structured', comm, bc_loc)
 
-  dim = 0 if bc_loc=='Vertex' else 2
+  location = 'Vertex' if bc_loc=='Vertex' else 'KFaceCenter'
   pr = PT.get_value(PT.get_child_from_predicates(part_tree, f'CGNSBase_t/Zone_t/ZoneBC_t/Zmax/PointRange'))
   ex_zones, etb_zones = EP.extract_part_one_domain_s(PT.get_all_Zone_t(part_tree), \
-      [pr], dim, comm)
+      [pr], location, comm)
 
   assert PT.Zone.n_vtx(ex_zones[0]) == 15
   assert PT.Zone.n_cell(ex_zones[0]) == 8

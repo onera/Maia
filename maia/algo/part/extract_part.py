@@ -61,6 +61,7 @@ class Extractor:
     #   raise NotImplementedError('Unstructured Extractor with equilibrate=False option is not yet implemented.')
 
     # ExtractPart dimension
+    self.location = location
     self.dim = LOC_TO_DIM[location]
     assert self.dim in [0,2,3], "[MAIA] Error : dimensions 1 not yet implemented"
     #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
@@ -91,9 +92,9 @@ class Extractor:
       dom_path   = dom_part_zones[0]
       part_zones = dom_part_zones[1]
       if self.is_struct:
-        extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.dim, comm)
+        extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.location, comm)
       else:
-        extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.dim, comm,
+        extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.location, comm,
                                                       # equilibrate=equilibrate,
                                                       graph_part_tool=graph_part_tool)
       self.exch_tool_box[dom_path] = etb
