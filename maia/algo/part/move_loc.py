@@ -24,11 +24,12 @@ class CenterToNode:
     vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, cross_domain)
 
     gnum_list   = []
-    for i_dom, parts in enumerate(parts_per_dom.values()):
-      for i_part, zone in enumerate(parts):
+    for i_dom, zone_path in enumerate(parts_per_dom):
+      dim = PT.get_value(PT.get_child_from_name(tree, PT.path_head(zone_path)))[0]
+      for i_part, zone in enumerate(parts_per_dom[zone_path]):
 
           n_vtx = PT.Zone.n_vtx(zone)
-          cell_vtx_idx, cell_vtx = connectivity_utils.cell_vtx_connectivity(zone)
+          cell_vtx_idx, cell_vtx = connectivity_utils.cell_vtx_connectivity(zone, dim)
           vtx_cell_idx, vtx_cell = PDM.connectivity_transpose(int(n_vtx), cell_vtx_idx, cell_vtx)
           
           # Compute the distance between vertices and cellcenters
