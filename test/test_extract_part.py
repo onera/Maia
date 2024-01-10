@@ -538,7 +538,8 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
 
 
 @pytest_parallel.mark.parallel([1,3])
-def test_extract_from_bc_name_S(comm, write_output):
+@pytest.mark.parametrize("partial_bc", [True, False])
+def test_extract_from_bc_name_S(partial_bc, comm, write_output):
 
   # > Cube generation
   n_vtx  = 6
@@ -547,7 +548,20 @@ def test_extract_from_bc_name_S(comm, write_output):
 
   # > Initialize BCDataSet
   for zone in PT.get_all_Zone_t(part_tree):
-    initialize_bc(zone, 'Ymax')
+    if partial_bc:
+      zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+      imax_per_zone = [{'zone.P0.N0':3, 'zone.P0.N1':2},
+                       {},
+                       {'zone.P1.N0':3, 'zone.P2.N1':2}][comm.size-1]
+      if PT.get_child_from_name(zone_bc_n, 'Ymax'):
+        PT.rm_children_from_name(zone_bc_n, 'Ymax')
+        imax = imax_per_zone[PT.get_name(zone)]
+        jmax = PT.Zone.VertexSize(zone)[1]
+        PT.new_BC('Ymax1', type='FamilySpecified', point_range=np.array([[1,imax],[jmax,jmax],[1,3]],dtype=np.int32), loc='JFaceCenter', parent=zone_bc_n)
+        PT.new_BC('Ymax' , type='FamilySpecified', point_range=np.array([[1,imax],[jmax,jmax],[4,5]],dtype=np.int32), loc='JFaceCenter', parent=zone_bc_n)
+    else:
+      initialize_bc(zone, 'Ymax')
+
     for bc_n in PT.get_nodes_from_label(zone, 'BC_t'):
       PT.set_value(bc_n, 'FamilySpecified')
       PT.new_node('FamilyName', label='FamilyName_t', value='ALL_BCS', parent=bc_n)
@@ -574,8 +588,12 @@ def test_extract_from_bc_name_S(comm, write_output):
     # Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')       , comm)
 
   dist_zone_ep = PT.get_node_from_label(dist_tree_ep, 'Zone_t')
-  assert PT.Zone.n_vtx( dist_zone_ep)==36
-  assert PT.Zone.n_cell(dist_zone_ep)==25
+  if partial_bc:
+    assert PT.Zone.n_vtx( dist_zone_ep)==18
+    assert PT.Zone.n_cell(dist_zone_ep)==10
+  else:
+    assert PT.Zone.n_vtx( dist_zone_ep)==36
+    assert PT.Zone.n_cell(dist_zone_ep)==25
 
 
 @pytest_parallel.mark.parallel([1,3])

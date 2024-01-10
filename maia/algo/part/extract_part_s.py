@@ -105,7 +105,7 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm):
   for i_part, part_zone in enumerate(part_zones):
     zone_name = PT.get_name(part_zone)
     zone_dim  = PT.get_value(part_zone)
-    pr = copy.deepcopy(point_range[i_part])
+    pr = np.copy(point_range[i_part])
 
     extract_zone = PT.new_Zone(zone_name, type='Structured', size=np.zeros((3,3), dtype=np.int32))
     
@@ -196,7 +196,7 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm):
           T = compute_transform_matrix(transform)
           apply_t1 = apply_transform_matrix(intersection[:,0], pr_of_gc[:,0], prd_of_gc[:,0], T)
           apply_t2 = apply_transform_matrix(intersection[:,1], pr_of_gc[:,0], prd_of_gc[:,0], T)
-          new_gc_prd = [[apply_t1[dim], apply_t2[dim]] for dim in range(3)]
+          new_gc_prd = np.array([[apply_t1[dim], apply_t2[dim]] for dim in range(3)], dtype=np.int32)
           
           # > Update joins PRs
           min_cur = extract_pr_min_per_pzone_all[zone_name]
@@ -205,15 +205,15 @@ def extract_part_one_domain_s(part_zones, point_range, dim, comm):
           except KeyError:
               min_opp = None
           
-          new_gc_pr = gc_pr
+          new_gc_pr = np.copy(intersection)
           new_gc_pr[0,:] -= min_cur[0]
           new_gc_pr[1,:] -= min_cur[1]
           new_gc_pr[2,:] -= min_cur[2]
 
           if min_opp is not None:
-            new_gc_pr[0,:] -= min_opp[0]
-            new_gc_pr[1,:] -= min_opp[1]
-            new_gc_pr[2,:] -= min_opp[2]
+            new_gc_prd[0,:] -= min_opp[0]
+            new_gc_prd[1,:] -= min_opp[1]
+            new_gc_prd[2,:] -= min_opp[2]
           if dim<3:
             new_gc_pr  = np.delete(new_gc_pr , extract_dir, 0)
             new_gc_prd = np.delete(new_gc_prd, transform[extract_dir]-1, 0)
