@@ -46,15 +46,19 @@ class Extractor:
     self.exch_tool_box = dict()
     self.comm          = comm
 
-    # > Check if U or S (working because monodomain)
-    zone_type = PT.get_node_from_name(part_tree, 'ZoneType')
-    is_struct = PT.get_value(zone_type)=='Structured' if zone_type is not None else False
-    self.is_struct = comm.allreduce(is_struct)
-
     # Get zones by domains
     part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
     # Check : monodomain
     assert len(part_tree_per_dom.values()) == 1
+
+    # > Check if U or S (working because monodomain)
+    zone_type = PT.get_node_from_name(part_tree, 'ZoneType')
+    is_struct = PT.get_value(zone_type)=='Structured' if zone_type is not None else False
+    self.is_struct = comm.allreduce(is_struct)
+    if self.is_struct and equilibrate:
+      raise NotImplementedError('Structured Extractor with equilibrate=True option is not yet implemented.')
+    if not self.is_struct and not equilibrate:
+      raise NotImplementedError('Unstructured Extractor with equilibrate=False option is not yet implemented.')
 
     # ExtractPart dimension
     self.dim = LOC_TO_DIM[location]
