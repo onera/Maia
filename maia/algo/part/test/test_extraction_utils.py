@@ -13,6 +13,66 @@ dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
 import Pypdm.Pypdm as PDM
 
+@pytest_parallel.mark.parallel(2)
+def test_discover_containers(comm):
+  part_zone = [parse_yaml_cgns.to_node(
+    """
+    VolZone.P0.N0 Zone_t:
+      FS1 FlowSolution_t:
+        GridLocation GridLocation_t "Vertex":
+        Field        DataArray_t  [9,3,2]:
+      ZSR1 ZoneSubRegion_t:
+        BCRegionName Descriptor_t "BC":
+        Field        DataArray_t  [9,3,2]:
+      ZoneBC ZoneBC_t:
+        BC BC_t:
+          GridLocation GridLocation_t "FaceCenter":
+          PointList    IndexArray_t   [[9,3,2]]:
+      ZoneGC ZoneGridConnectivity_t:
+        GC GridConnectivity_t:
+          GridLocation GridLocation_t "FaceCenter":
+          PointList    IndexArray_t   [[4,3,7]]:
+    """),parse_yaml_cgns.to_node(
+    """
+    VolZone.P1.N0 Zone_t:
+      FS2 FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+      ZSR2 ZoneSubRegion_t:
+        GridConnectivityRegionName Descriptor_t "GC":
+        Field        DataArray_t  [9,3,2]:
+      ZSR3 ZoneSubRegion_t:
+        GridLocation GridLocation_t "CellCenter" :
+        PointRange   IndexRange_t   [[4,4],[1,1],[8,8]]:
+        Field        DataArray_t    [9,3,2]:
+      ZoneGC ZoneGridConnectivity_t:
+        GC GridConnectivity_t:
+          GridLocation GridLocation_t "FaceCenter":
+          PointList    IndexArray_t   [[4,3,7]]:
+    """)][comm.Get_rank()]
+  mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'FS1', 'PointList', 'IndexArray_t', comm)
+  assert loc=='Vertex' and not partial_fld
+
+  mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'FS2', 'PointList', 'IndexArray_t', comm)
+  assert mask_container is None and loc=='' and not partial_fld
+  
+  mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'ZSR1', 'PointList', 'IndexArray_t', comm)
+  assert loc=='FaceCenter' and partial_fld
+  
+  mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'ZSR2', 'PointList', 'IndexArray_t', comm)
+  assert loc=='FaceCenter' and partial_fld
+  
+  with pytest.raises(AssertionError):
+    mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'ZSR2', 'PointRange', 'IndexRange_t', comm)
+
+  with pytest.raises(ValueError):
+    mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'ZSR3', 'PointList', 'IndexArray_t', comm)
+  
+  mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'ZSR3', 'PointRange', 'IndexRange_t', comm)
+  assert loc=='CellCenter' and partial_fld
+  
+  with pytest.raises(ValueError):
+    mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'ZSR4', 'PointList', 'IndexArray_t', comm)
+
 def test_get_relative_pl():
   part_zone = parse_yaml_cgns.to_node(
   """

@@ -372,6 +372,24 @@ def split_original_joins_S(all_part_zones, comm):
     for node in to_delete:
       PT.rm_child(zbc, node)
 
+def compute_face_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
+  dist_cell_per_dir = dist_zone_cell_size
+  dist_vtx_per_dir  = dist_zone_cell_size + 1
+  part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
+
+  dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
+  part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
+  shifted_nface_p = np_utils.sizes_to_indices(part_face_per_dir)
+  ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
+  face_lntogn = np.empty(shifted_nface_p[-1], dtype=dtype)
+  for idir in range(3):
+    i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+(idir==0), dtype=dtype)
+    j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+(idir==1), dtype=dtype).reshape(-1,1)
+    k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+(idir==2), dtype=dtype).reshape(-1,1,1)
+    face_lntogn[shifted_nface_p[idir]:shifted_nface_p[idir+1]] = ijk_to_faceIndex[idir](i_ar, j_ar, k_ar, \
+        dist_cell_per_dir, dist_vtx_per_dir).flatten()
+  return face_lntogn
+
 def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
   """
   Create the vertex, face and cell global numbering for a partitioned zone
@@ -411,17 +429,8 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
 
   # Faces
   if idx_dim == 3:
-    dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
-    part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
-    shifted_nface_p = np_utils.sizes_to_indices(part_face_per_dir)
-    ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
-    face_lntogn = np.empty(shifted_nface_p[-1], dtype=dtype)
-    for idir in range(3):
-      i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+(idir==0), dtype=dtype)
-      j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+(idir==1), dtype=dtype).reshape(-1,1)
-      k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+(idir==2), dtype=dtype).reshape(-1,1,1)
-      face_lntogn[shifted_nface_p[idir]:shifted_nface_p[idir+1]] = ijk_to_faceIndex[idir](i_ar, j_ar, k_ar, \
-          dist_cell_per_dir, dist_vtx_per_dir).flatten()
+    face_lntogn = compute_face_gnum(dist_zone_cell_size, cell_window, dtype=dtype)
+
   else:
     face_lntogn = None
 

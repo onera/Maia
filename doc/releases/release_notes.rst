@@ -21,7 +21,7 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - connect_1to1_families: manage Elements meshes
-- extract_part_from_xxx: transfer BCs on extracted meshes
+- extract_part_from_xxx: transfer BCs on extracted meshes and manage structured meshes
 - partitioning: enable split of 2D/1D structured meshes
 - interpolation: allow input fields to be Vertex located in some cases
 - poly_old_to_new / poly_new_to_old : manage *mixed* elements
