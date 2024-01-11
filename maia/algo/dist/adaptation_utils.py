@@ -628,8 +628,8 @@ def find_matching_bcs(zone, src_pl, tgt_pl, src_tgt_vtx, cgns_name):
       for src_bc_n in _bc_nodes:
         bc_pl = PT.get_child_from_name(src_bc_n, 'PointList')[1][0]
         ec_idx = np_utils.interweave_arrays([elt_size*(bc_pl-elt_offset)+i_size for i_size in range(elt_size)])
-        bc_vtx = elt_ec[ec_idx] # List of vertices belonging to bc
-        bc_vtx_renum = old_to_new_vtx[bc_vtx-1] # Numbering of these vertices in shared numerotation
+        this_bc_vtx = elt_ec[ec_idx] # List of vertices belonging to bc
+        bc_vtx_renum = old_to_new_vtx[this_bc_vtx-1] # Numbering of these vertices in shared numerotation
         bc_vtx[i_side].append(bc_vtx_renum)
     # > Perfom comparaisons
     for src_bc_n, src_bc_vtx in zip(bc_nodes[0], bc_vtx[0]):

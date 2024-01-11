@@ -318,8 +318,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'PERIODIC', 'Family_t', depth=2)
     PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'GCS',      'Family_t', depth=2)
     for zone in PT.get_all_Zone_t(adapted_dist_tree):
-      PT.rm_children_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
-      PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'tetra_4_periodic*','BC_t', depth=2)
+      PT.rm_children_from_name_and_label(zone, 'maia_topo','FlowSolution_t')
+      PT.rm_nodes_from_name_and_label(zone, 'tetra_4_periodic*','BC_t', depth=2)
 
     # > Set family name in BCs for connect_match
     for i_jn, jn_pair in enumerate(perio_jns_pairs):
