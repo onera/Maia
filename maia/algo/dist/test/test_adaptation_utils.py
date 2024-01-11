@@ -77,23 +77,6 @@ def test_remove_vtx(comm):
     assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([2.]))
 
 @pytest_parallel.mark.parallel(2)
-def test_apply_periodicity_to_vtx(comm):
-  zone_n = gen_dist_zone(comm)
-
-  if comm.rank==0:
-    vtx_pl = np.array(np.array([7,9]), dtype=np.int32)
-  elif comm.rank==1:
-    vtx_pl = np.array(np.array([2,4,8]), dtype=np.int32)
-
-  periodic = {'translation':np.array([10.,0.,0.])}
-  adapt_utils.apply_periodicity_to_vtx(zone_n, vtx_pl, periodic, comm)
-
-  if comm.rank==0:
-    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([1.,13.,5.,17.,9.]))
-  elif comm.rank==1:
-    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([2.,14.,16.,18.]))
-
-@pytest_parallel.mark.parallel(2)
 def test_duplicate_flowsol_elts(comm):
   zone_n = gen_dist_zone(comm)
 
@@ -128,23 +111,6 @@ def test_remove_flowsol_elts(comm):
   elif comm.rank==1:
     # assert np.array_equal(PT.get_value(PT.maia.getDistribution(zone_n, 'Vertex')), np.array([5,9,9], dtype=np.int32)) # Vertex distrib must be the same
     assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([2.]))
-
-@pytest_parallel.mark.parallel(2)
-def test_apply_periodicity_to_flowsol(comm):
-  zone_n = gen_dist_zone(comm)
-
-  if comm.rank==0:
-    vtx_pl = np.array(np.array([7,9]), dtype=np.int32)
-  elif comm.rank==1:
-    vtx_pl = np.array(np.array([2,4,8]), dtype=np.int32)
-
-  periodic = {'rotation_center':np.array([0.,0.,0.]), 'rotation_angle':np.array([0.,0.,np.pi/2.])}
-  adapt_utils.apply_periodicity_to_flowsol(zone_n, vtx_pl-1, 'Vertex', periodic, comm)
-  if comm.rank==0:
-    assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([1.,0.,5.,0.,9.]))
-  elif comm.rank==1:
-    assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([2.,0.,0.,0.]))
-
 
 @pytest_parallel.mark.parallel(2)
 def test_elmt_pl_to_vtx_pl(comm):

@@ -6,6 +6,7 @@ import maia.transfer.protocols as EP
 import maia.transfer.utils as te_utils
 from   maia.utils  import np_utils, py_utils, par_utils
 from   maia.algo.dist.subset_tools import vtx_ids_to_face_ids
+from maia.algo.dist import transform as dist_transform
 
 import numpy as np
 
@@ -63,22 +64,6 @@ def remove_vtx(zone, vtx_pl, comm):
   zone_dim = PT.get_value(zone)
   zone_dim[0][0] -= n_rmvd_vtx
 
-
-def apply_periodicity_to_vtx(zone, vtx_pl, periodic, comm):
-  '''
-  Apply a periodic transformation, but only to the vertices
-  whose id appears in vtx_pl
-  '''
-  distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-  
-  all_vtx = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
-  PTP = EP.PartToPart([vtx_pl], [all_vtx], comm)
-  vtx_mask = np.zeros(all_vtx.size, dtype=bool)
-  vtx_mask[PTP.get_referenced_lnum2()[0]-1] = True
-
-  cx, cy, cz = PT.Zone.coordinates(zone)
-  cx[vtx_mask], cy[vtx_mask], cz[vtx_mask] = np_utils.transform_cart_vectors(cx[vtx_mask],cy[vtx_mask],cz[vtx_mask], **periodic)
-
 def duplicate_flowsol_elts(zone, ids, location, comm):
   '''
   Duplicate flowsol values tagged in `ids` from a distributed zone. FlowSol distribution must be updated outside.
@@ -112,36 +97,6 @@ def remove_flowsol_elts(zone, ids, location, comm):
       da = PT.get_value(da_n)
       PT.set_value(da_n, np.delete(da,ids))
 
-
-def apply_periodicity_to_flowsol(zone, ids, location, periodic, comm):
-  '''
-  Apply periodicity to ids of vector fields in zone.
-  TODO : merge with apply_periodicity_to_vtx : c'est un transform affine avec mask
-  '''
-  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
-                        PT.Subset.GridLocation(n)==location
-  for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
-    
-    distri = te_utils.get_subset_distribution(zone, fs_n)
-    
-    all_elt = np.arange(distri[0]+1, distri[1]+1, dtype=np.int32)
-    PTP = EP.PartToPart([ids+1], [all_elt], comm)
-    elt_mask = np.zeros(all_elt.size, dtype=bool)
-    elt_mask[PTP.get_referenced_lnum2()[0]-1] = True
-    
-    # > Transform vector arrays : Get from maia.algo.transform.py
-    data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fs_n, "DataArray_t")]
-    cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names)
-    for basename in cartesian_vectors_basenames:
-      vectors_n = [PT.get_node_from_name_and_label(fs_n, f"{basename}{c}", 'DataArray_t') for c in ['X', 'Y', 'Z']]
-      vectors = [PT.get_value(n)[elt_mask] for n in vectors_n]
-      # Assume that vectors are position independant
-      # Be careful, if coordinates vector needs to be transform, the translation is not applied !
-      tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=periodic['rotation_center'], rotation_angle=periodic['rotation_angle'])
-      for vector_n, tr_vector in zip(vectors_n, tr_vectors):
-        vector = PT.get_value(vector_n)
-        vector[elt_mask] = tr_vector
-    
 
 def elmt_pl_to_vtx_pl(zone, elt_pl, cgns_name, comm):
   '''
@@ -880,8 +835,8 @@ def deplace_periodic_patch(tree, jn_pairs):
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF)
     perio_val = PT.GridConnectivity.periodic_values(PT.get_node_from_path(tree, gc_paths[1]))
     periodic = perio_val.asdict(snake_case=True)
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic, MPI.COMM_SELF)
-    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic, MPI.COMM_SELF)
+
+    dist_transform.transform_affine_zone(zone, vtx_pl, MPI.COMM_SELF, **periodic, apply_to_fields=True)
 
     # maia.io.write_tree(tree, f'OUTPUT/deplaced_{i_per}.cgns')
 
@@ -971,8 +926,7 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     cell_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
     vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF)
     periodic = periodic_values[0].asdict(True)
-    apply_periodicity_to_vtx(zone, vtx_pl, periodic, MPI.COMM_SELF)
-    apply_periodicity_to_flowsol(zone, vtx_pl-1, 'Vertex', periodic, MPI.COMM_SELF)
+    dist_transform.transform_affine_zone(zone, vtx_pl, MPI.COMM_SELF, **periodic, apply_to_fields=True)
     # maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
 
     # > 4-5/ Merge two constraint surfaces
