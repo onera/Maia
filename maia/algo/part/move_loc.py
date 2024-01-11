@@ -33,6 +33,10 @@ class CenterToNode:
           
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
+          shape = PT.Zone.CellSize(zone)
+          cx = cx.flatten()
+          cy = cy.flatten()
+          cz = cz.flatten()
           # Use direct api since cell_vtx is already computed
           cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, cx,cy,cz)
 
@@ -75,7 +79,8 @@ class CenterToNode:
     cell_fields = {}
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      cell_fields[field_name] = [PT.get_node_from_path(part, field_path)[1][vtx_cell-1].astype(float, copy=False) \
+      coords = PT.get_node_from_path(part, field_path)[1].flatten()
+      cell_fields[field_name] = [coords[vtx_cell-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
 
     # Do all reductions
@@ -89,7 +94,7 @@ class CenterToNode:
       fs = PT.new_FlowSolution(f'{container_name}#Vtx', loc='Vertex', parent=part)
       vtx_cell_idx = self.vtx_cell_idx[i_part]
       for field_name, field_values in node_fields.items():
-        PT.new_DataArray(field_name, field_values[i_part][vtx_cell_idx[:-1]], parent=fs)
+        PT.new_DataArray(field_name, field_values[i_part][vtx_cell_idx[:-1]].reshape(PT.Zone.VertexSize(part), order='C'), parent=fs)
 
 class NodeToCenter:
   def __init__(self, tree, comm, idw_power=1):

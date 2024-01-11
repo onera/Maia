@@ -10,6 +10,10 @@ def _mean_coords_from_connectivity(vtx_id_idx, vtx_id, cx, cy, cz):
 
   vtx_id_n = np.diff(vtx_id_idx)
 
+  cx = cx.flatten()
+  cy = cy.flatten()
+  cz = cz.flatten()
+
   mean_x = np.add.reduceat(cx[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
   mean_y = np.add.reduceat(cy[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
   mean_z = np.add.reduceat(cz[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
