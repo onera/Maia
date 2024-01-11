@@ -302,12 +302,73 @@ def test_recover_dist_block_size(idx_dim, comm):
   dist_size = DFP._recover_dist_block_size(part_zones, comm)
   assert np.array_equal(dist_size, expected)
 
+@pytest_parallel.mark.parallel(2)
+def test_recover_base_iterative_data(comm):
+  if comm.Get_rank() == 0:
+    part_tree = parse_yaml_cgns.to_cgns_tree("""
+    StaticBase CGNSBase_t:
+    SimpleBase CGNSBase_t:
+      BaseIterativeData BaseIterativeData_t [3]:
+        TimeValues DataArray_t [0., 0.5, 1.]:
+    Base CGNSBase_t:
+      BaseIterativeData BaseIterativeData_t [2]:
+        TimeValues DataArray_t [0., 1.]:
+        ZonePointers DataArray_t [["Zone.P0.N0", "Zone.P0.N1"], ["Zone.P0.N0", "Zone.P0.N1"]]:
+        NumberOfZones DataArray_t [2,2]:
+    DynamicBase CGNSBase_t:
+      BaseIterativeData BaseIterativeData_t [2]:
+        TimeValues DataArray_t [0., 1.]:
+        ZonePointers DataArray_t [["ZoneA.P0.N0"], ["ZoneA.P0.N0"]]:
+        NumberOfZones DataArray_t [1,1]:
+    """)
+  elif comm.Get_rank() == 1:
+    part_tree = parse_yaml_cgns.to_cgns_tree("""
+    StaticBase CGNSBase_t:
+    SimpleBase CGNSBase_t:
+      BaseIterativeData BaseIterativeData_t [3]:
+        TimeValues DataArray_t [0., 0.5, 1.]:
+    Base CGNSBase_t:
+      BaseIterativeData BaseIterativeData_t [2]:
+        TimeValues DataArray_t [0., 1.]:
+        ZonePointers DataArray_t [["Zone.P1.N0"], ["Zone.P1.N0"]]:
+        NumberOfZones DataArray_t [1,1]:
+    DynamicBase CGNSBase_t:
+      BaseIterativeData BaseIterativeData_t [2]:
+        TimeValues DataArray_t [0., 1.]:
+        ZonePointers DataArray_t [[], ["ZoneB.P1.N0"]]:
+        NumberOfZones DataArray_t [0,1]:
+    """)
+  dist_tree = parse_yaml_cgns.to_cgns_tree("""
+  StaticBase CGNSBase_t:
+  Base CGNSBase_t:
+  SimpleBase CGNSBase_t:
+  DynamicBase CGNSBase_t:
+  """)
+  expected_tree = parse_yaml_cgns.to_cgns_tree("""
+  StaticBase CGNSBase_t:
+  Base CGNSBase_t:
+    BaseIterativeData BaseIterativeData_t [2]:
+      TimeValues DataArray_t [0., 1.]:
+      ZonePointers DataArray_t [["Zone"], ["Zone"]]:
+      NumberOfZones DataArray_t [1,1]:
+  SimpleBase CGNSBase_t:
+    BaseIterativeData BaseIterativeData_t [3]:
+      TimeValues DataArray_t [0., 0.5, 1.]:
+  DynamicBase CGNSBase_t:
+    BaseIterativeData BaseIterativeData_t [2]:
+      TimeValues DataArray_t [0., 1.]:
+      ZonePointers DataArray_t [["ZoneA"], ["ZoneA", "ZoneB"]]:
+      NumberOfZones DataArray_t [1,2]:
+  """)
+  DFP._recover_base_iterative_data(dist_tree, part_tree, comm)
+  assert PT.is_same_tree(dist_tree, expected_tree)
+
 @pytest_parallel.mark.parallel(3)
 def test_recover_dist_tree_ngon(comm):
   # Value test is already performed in subfunction tests
   part_tree = PT.new_CGNSTree()
+  part_base = PT.new_CGNSBase(parent=part_tree)
   if comm.Get_rank() < 2:
-    part_base = PT.new_CGNSBase(parent=part_tree)
     distri_ud = MT.newGlobalNumbering()
     if comm.Get_rank() == 0:
       # part_zone = G.cartNGon((0,0,0), (.5,.5,.5), (3,3,3))

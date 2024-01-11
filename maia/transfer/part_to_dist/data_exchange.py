@@ -139,9 +139,12 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[], re
   _discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
   _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func)
-  #Cleanup : if field is None, data has been added by wrapper and must be removed
+  # Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_sol in PT.iter_children_from_label(dist_zone, 'FlowSolution_t'):
     PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
+  # Update ZoneIterativeData/FlowSolutionPointers
+  discover_nodes_from_matching(dist_zone, part_zones, "ZoneIterativeData_t", comm,
+                               child_list=['FlowSolutionPointers'])
 
 def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], exclude=[], reduce_func=None):
   """

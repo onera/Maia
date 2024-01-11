@@ -93,6 +93,8 @@ Zone Zone_t:
       GridConnectivityProperty GridConnectivityProperty_t:
         Periodic Periodic_t:
           Translation DataArray_t [1,1,1]:
+  ZoneIterativeData ZoneIterativeData_t:
+    FlowSolutionPointers DataArray_y ["FS#1", "FS#2", "FS#3"]:
 """
   pt = """
 Zone.P2.N3 Zone_t:
@@ -112,6 +114,40 @@ Zone.P2.N3 Zone_t:
   assert PT.get_value(PT.get_node_from_name(dist_zone, 'GridConnectivityDonorName')) == PT.get_value(PT.get_node_from_name(part_zone, 'GridConnectivityDonorName'))
   assert (PT.get_value(PT.get_node_from_name(dist_zone, 'Translation')) == \
           PT.get_value(PT.get_node_from_name(part_zone, 'Translation'))).all()
+  assert PT.get_value(PT.get_node_from_name(dist_zone, 'FlowSolutionPointers')) == \
+         PT.get_value(PT.get_node_from_name(part_zone, 'FlowSolutionPointers'))
+
+def test_update_zone_pointers():
+  part_tree = parse_yaml_cgns.to_cgns_tree("""
+  ZoneA.P0.N0 Zone_t:
+  ZoneA.P1.N0 Zone_t:
+  BaseIterativeData BaseIterativeData_t [2]:
+    TimeValues DataArray_t [0., 1.]:
+    ZonePointers DataArray_t [["ZoneA"], ["ZoneA", "ZoneB"]]:
+    NumberOfZones DataArray_t [1,2]:
+  """)
+  PS.update_zone_pointers(part_tree)
+  assert (PT.get_value(PT.get_node_from_name(part_tree, 'NumberOfZones')) == [2,2]).all()
+  assert PT.get_value(PT.get_node_from_name(part_tree, 'ZonePointers'))[0] == ["ZoneA.P0.N0", "ZoneA.P1.N0"]
+  assert PT.get_value(PT.get_node_from_name(part_tree, 'ZonePointers'))[1] == ["ZoneA.P0.N0", "ZoneA.P1.N0"]
+
+  part_tree = parse_yaml_cgns.to_cgns_tree("""
+  ZoneC.P0.N0 Zone_t:
+  BaseIterativeData BaseIterativeData_t [2]:
+    TimeValues DataArray_t [0., 1.]:
+    ZonePointers DataArray_t [["ZoneA"], ["ZoneA", "ZoneB"]]:
+    NumberOfZones DataArray_t [1,2]:
+  """)
+  PS.update_zone_pointers(part_tree)
+  assert PT.get_value(PT.get_node_from_name(part_tree, 'ZonePointers')) == [[], []]
+
+  part_tree = parse_yaml_cgns.to_cgns_tree("""
+  ZoneA.P0.N0 Zone_t:
+  BaseIterativeData BaseIterativeData_t [2]:
+    TimeValues DataArray_t [0., 1.]:
+  """)
+  PS.update_zone_pointers(part_tree)
+  assert PT.get_node_from_name(part_tree, 'ZonePointers') is None
 
 def test_generate_related_zsr():
   dt = """

@@ -2,6 +2,7 @@ import maia.pytree as PT
 
 import maia.transfer as TE
 from . import data_exchange
+from maia.factory.dist_from_part import _recover_base_iterative_data
 
 __all__ = ['part_zones_to_dist_zone_only',
            'part_zones_to_dist_zone_all',
@@ -64,6 +65,7 @@ def part_tree_to_dist_tree_all(dist_tree, part_tree, comm):
   """ Transfer all the data fields from a partitioned tree
   to the corresponding distributed tree.
   """
+  _recover_base_iterative_data(dist_tree, part_tree, comm)
   part_tree_to_dist_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths

@@ -248,6 +248,25 @@ def _recover_GC(dist_zone, part_zones, comm):
       elif par_utils.exists_everywhere(part_gcs, 'PointList', comm):
         IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
 
+def _recover_base_iterative_data(dist_tree, part_tree, comm):
+  # > Add BaseIterativeData by hand, because we need to manage the names
+  for dist_base in PT.get_all_CGNSBase_t(dist_tree):
+    part_base = PT.get_child_from_name(part_tree, PT.get_name(dist_base))
+    p_it_data = PT.get_child_from_label(part_base, 'BaseIterativeData_t')
+    if p_it_data is not None and PT.get_child_from_label(dist_base, 'BaseIterativeData_t') is None:
+      d_it_data = PT.deep_copy(p_it_data)
+      p_z_pointers = PT.get_child_from_name(p_it_data, 'ZonePointers')
+      if p_z_pointers is not None:
+        part_zp = comm.allgather(PT.get_value(p_z_pointers))
+        dist_zp = []
+        for i in range(len(part_zp[0])):
+          znames = [part_zp[ip][i] for ip in range(comm.Get_size())]
+          znames = [MT.conv.get_part_prefix(elt) for item in znames for elt in item if elt != ''] # Remove suffix + flatten
+          dist_zp.append( sorted(set(znames)) )
+        PT.update_child(d_it_data, 'ZonePointers', 'DataArray_t', value=dist_zp)
+        PT.update_child(d_it_data, 'NumberOfZones', 'DataArray_t', value=[len(k) for k in dist_zp])
+      PT.add_child(dist_base, d_it_data)
+
 def recover_dist_tree(part_tree, comm):
   """ Regenerate a distributed tree from a partitioned tree.
   
@@ -280,10 +299,15 @@ def recover_dist_tree(part_tree, comm):
                                child_list = ['ZoneType_t', 'FamilyName_t', 'AdditionalFamilyName_t'],
                                merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
 
+  _recover_base_iterative_data(dist_tree, part_tree, comm)
+
   for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     dist_zone = PT.get_node_from_path(dist_tree, dist_zone_path)
 
     part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
+
+    discover_nodes_from_matching(dist_zone, part_zones, "ZoneIterativeData_t/*", 
+                                 comm, get_value="all")
 
     # Create zone distributions
     vtx_lngn_list  = tr_utils.collect_cgns_g_numbering(part_zones, 'Vertex')

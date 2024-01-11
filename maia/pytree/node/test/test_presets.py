@@ -29,6 +29,12 @@ def test_new_CGNSBase():
   base = presets.new_CGNSBase(phy_dim=2)
   assert np.array_equal(N.get_value(base), [3,2])
 
+def test_new_BaseIterativeData():
+  bi = presets.new_BaseIterativeData(time_values=[0., 0.5, 1])
+  assert N.get_label(bi) == 'BaseIterativeData_t'
+  assert bi[1].size == 1 and bi[1][0] == 3
+  assert (W.get_child_from_name(bi, 'TimeValues')[1] == [0, 0.5, 1]).all()
+
 def test_new_Family():
   fam = presets.new_Family('WALL', family_bc='BCWall')
   expected = parse_yaml_cgns.to_node("""

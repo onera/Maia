@@ -70,7 +70,7 @@ def _convert_value(value):
             v[0:s,c] = i[0:s]
           result = v
         else:
-          v = np.empty( (size,len(value[0]),len(value) ), dtype='c', order='F')
+          v = np.empty( (size,max([len(v) for v in value]),len(value)), dtype='c', order='F')
           v[:,:,:] = ' '
           for c in range(len(value)):
             for d in range(len(value[c])):
