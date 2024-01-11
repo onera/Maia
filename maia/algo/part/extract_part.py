@@ -142,8 +142,8 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.
 
   Args:
-    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. U-NGon or S meshes only.
-      connectivities are managed.
+    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. U-Elts
+      connectivities are *not* managed.
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
     transfer_dataset(bool)        : Transfer (or not) fields stored in ZSR to the extracted mesh (default to ``True``)
@@ -160,7 +160,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
       vertex-located extractions require hilbert partitioning. Defaults to ``hilbert``.
   
   Important:
-    - Input tree must be unstructured and have a ngon connectivity.
+    - Input tree must have a U-NGon or Structured connectivity
     - Partitions must come from a single initial domain on input tree.
   
   See also:
