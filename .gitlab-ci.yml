@@ -48,7 +48,7 @@ job:build:
   script:
     - cd $CUSTOM_CI_DIR
     - mkdir -p build && cd build
-    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j
 
 # This build documentation after main build, only if branch is dev or for MR events
@@ -132,7 +132,7 @@ job:portability_cfd5:
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug 
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 
                 -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2'
-                -DPDM_ENABLE_EXTENSION_PDMA=ON
+                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
     - make -j
     - source $ELSASPIRO/.env_elsA
     - source source.sh
@@ -197,7 +197,7 @@ job:deploy_spiro_socle5:
                 -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd5_dbg \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
                 -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
-                -DPDM_ENABLE_EXTENSION_PDMA=ON
+                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd5_dbg.log
 
       cmake . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd5
@@ -223,7 +223,7 @@ job:deploy_spiro_sonics:
       source /scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
       export https_proxy=http://proxy.onera:80
       export PREFIX=/scratchm/sonics/usr/maia/dev
-             FLAGS="-DPDM_ENABLE_EXTENSION_PDMA=ON"
+             FLAGS="-DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON"
       cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=\$PREFIX/default_dbg \$FLAGS ../
       make -j install > default_dbg.log
       cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/default .
