@@ -5,6 +5,7 @@ import maia.pytree as PT
 import maia.transfer.protocols as EP
 import maia.transfer.utils as te_utils
 from   maia.utils  import np_utils, py_utils, par_utils
+from   maia.algo.dist import transform as dist_transform
 from   maia.algo.dist.subset_tools import vtx_ids_to_face_ids
 from   maia.algo.dist.merge_ids import merge_distributed_ids
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -214,11 +215,6 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   Remove elements tagged in `elt_pl` by updating its ElementConnectivity and ElementRange nodes,
   as well as ElementRange nodes of elements with inferior dimension (assuming that element nodes are organized with decreasing dimension order).
   TODO: parallel + merge with remove_flow_sol_elts
-  TODO: même remarque pour le cgns_name vs node name
-  TODO: manage pointlist defined over 2 elements
-  TODO: manage zone not ordered by dim
-  TODO: manage zone with multiple elt nodes by dim
-  TODO: warning/error if PL tag element not in elt_n ?
   TODO: update cell distribution
   '''
 
@@ -233,6 +229,8 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   ec   = PT.get_value(ec_n)
   er_n = PT.get_child_from_name(elt_n, 'ElementRange')
   er   = PT.get_value(er_n)
+
+  assert er[0]<=np.min(elt_pl) and np.max(elt_pl)<=er[1]
 
   # > Updating element range and connectivity
   elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
@@ -253,7 +251,7 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   PT.set_value(er_n, er)
 
   # > Update BC PointList
-  targets = np.ones(elt_pl.size, dtype=pdm_gnum_dtype)
+  targets = np.ones(elt_pl.size, dtype=np.int32)
   elt_distri_ini = PT.maia.getDistribution(elt_n, distri_name='Element')[1]
   old_to_new_elt = maia.algo.dist.merge_ids.merge_distributed_ids(elt_distri_ini, elt_pl-elt_offset+1, targets, comm, True)
 
