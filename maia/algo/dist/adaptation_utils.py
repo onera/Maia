@@ -56,42 +56,39 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
   PT.get_value(zone)[0][0] += comm.allreduce(vtx_pl.size, op=MPI.SUM)
   PT.set_value(distri_n, par_utils.dn_to_distribution(dn_vtx + vtx_pl.size, comm))
 
-def remove_vtx(zone, vtx_pl, comm):
-  '''
-  Remove vtx tagged in `vtx_pl` from a distributed zone.
-    - Vertex distribution must be updated outside.
-    - What about zone_dim ?
-  '''
+def remove_specified_vtx(zone, vtx_pl, comm):
+  """
+  Remove vtx specified in `vtx_pl` from a distributed zone. Vertex base FlowSolution_t
+  are removed as well.
+  Size of zone and Vertex distribution are updated
+  
+  Note : id can appear twice in vtx_pl, it will be removed only once
+  """
   distri_n = PT.maia.getDistribution(zone, 'Vertex')
   distri   = PT.get_value(distri_n)
+  dn_vtx   = distri[1] - distri[0] # Initial number of vertices
   
+  # Get ids to remove
   ptb = EP.PartToBlock(distri, [vtx_pl], comm)
   ids = ptb.getBlockGnumCopy()-distri[0]-1
-  
-  coord_nodes = [PT.get_node_from_name(zone, name) for name in ['CoordinateX','CoordinateY','CoordinateZ']]
-  for coord_n, coord in zip(coord_nodes, PT.Zone.coordinates(zone)):
-    PT.set_value(coord_n, np.delete(coord, ids))
 
-  # > Update zone information
-  n_rmvd_vtx = comm.allreduce(vtx_pl.size, op=MPI.SUM)
-  zone_dim = PT.get_value(zone)
-  zone_dim[0][0] -= n_rmvd_vtx
+  # Update GridCoordinates
+  for grid_co_n in PT.get_children_from_predicate(zone, 'GridCoordinates_t'):
+    for da_n in PT.get_children_from_label(grid_co_n, 'DataArray_t'):
+      old_val = PT.get_value(da_n)
+      PT.set_value(da_n, np.delete(old_val, ids))
 
-def remove_flowsol_elts(zone, ids, location, comm):
-  '''
-  Remove flowsol values tagged in `ids` from a distributed zone. FlowSol distribution must be updated outside.
-  '''
-  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
-                        PT.Subset.GridLocation(n)==location
+  # Update FlowSolution
+  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and PT.Subset.GridLocation(n)=='Vertex'
   for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
-    distri = te_utils.get_subset_distribution(zone, fs_n)
-    
-    ptb = EP.PartToBlock(distri, [ids+1], comm)
-    ids = ptb.getBlockGnumCopy()-distri[0]-1
-
+    assert PT.get_child_from_name(fs_n, 'PointList') is None, "Partial FS are not supported"
     for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
-      da = PT.get_value(da_n)
-      PT.set_value(da_n, np.delete(da,ids))
+      old_val = PT.get_value(da_n)
+      PT.set_value(da_n, np.delete(old_val, ids))
+
+  # Update distribution and zone size
+  PT.get_value(zone)[0][0] -= comm.allreduce(ids.size, op=MPI.SUM)
+  PT.set_value(distri_n, par_utils.dn_to_distribution(dn_vtx - ids.size, comm))
 
 
 def elmt_pl_to_vtx_pl(zone, elt_pl, cgns_name, comm):
@@ -340,21 +337,12 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, keep_original
   update_elt_vtx_numbering(zone, old_to_new_vtx, 'TRI_3')
   update_elt_vtx_numbering(zone, old_to_new_vtx, 'BAR_2')
 
-  n_vtx_to_rm = pbc2_vtx_pl.size
-  remove_vtx(zone, pbc2_vtx_pl, MPI.COMM_SELF)
+  # > Remove coordinates and FS + udpate zone dim
+  remove_specified_vtx(zone, pbc2_vtx_pl, MPI.COMM_SELF)
 
   # > Update Vertex BCs and GCs
   update_vtx_bnds(zone, old_to_new_vtx)
 
-  # > Update flow_sol
-  remove_flowsol_elts(zone, pbc2_vtx_pl-1, 'Vertex', MPI.COMM_SELF)
-  
-  # > Update distribution
-  vtx_distrib_n  = PT.maia.getDistribution(zone, distri_name='Vertex')
-  vtx_distrib    = PT.get_value(vtx_distrib_n)
-  vtx_distrib[1]-= n_vtx_to_rm
-  vtx_distrib[2]-= n_vtx_to_rm
-  PT.set_value(vtx_distrib_n, vtx_distrib)
   
   return old_to_new_vtx
 
