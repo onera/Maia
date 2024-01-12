@@ -295,7 +295,7 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
 
   # > Update zone cell distribution
   rm_distrib = par_utils.dn_to_distribution(n_elt_to_rm_l, comm)
-  if elt_dim==PT.Zone.Dimension(zone):
+  if elt_dim==PT.Zone.CellDimension(zone):
     dn_cell_n = PT.maia.getDistribution(zone, 'Cell')
     dn_cell_n[1] -= rm_distrib
 

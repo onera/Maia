@@ -528,32 +528,36 @@ class Zone:
     return status
 
   @staticmethod
-  def Dimension(zone_node:CGNSTree) -> int:
-    """ Return dimension of a Zone_t node
+  def CellDimension(zone_node:CGNSTree) -> int:
+    """ Return the CellDimension of a Zone_t node
+
+    CellDimension is the dimensionality of the cell in the mesh, and should be equal
+    to the first element of related CGNSBase_t value.
 
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      integer : dimension
+      int : CellDimension (1,2 or 3)
     Raises:
       ValueError: if zone has no elements
-      NotImplementedError: if zone is Structured
     Example:
       >>> zone = PT.new_Zone(type='Unstructured')
       >>> PT.new_Elements('PYRA', 'PYRA_5', erange=[1,10],  parent=zone)
-      >>> PT.new_Elements('TRI',  'TRI_3',  erange=[11,30], parent=zone)
-      >>> PT.new_Elements('BAR',  'BAR_2',  erange=[31,40], parent=zone)
-      >>> PT.Zone.Dimension(zone)
-      3
+      >>> PT.Zone.CellDimension(zone)
+      2
     """
     if Zone.Type(zone_node)=="Structured":
-      raise NotImplementedError('PT.Zone.Dimension() is not implemented for structured zones.')
+      dimension = Zone.IndexDimension(zone_node)
+    elif Zone.has_nface_elements(zone_node):
+      dimension = 3
+    elif Zone.has_ngon_elements(zone_node):
+      dimension = 2 if W.get_child_from_name(Zone.NGonNode(zone_node), 'ParentElements') is None else 3
     else:
-      elt_dim = [Element.Dimension(n) for n in W.get_children_from_label(zone_node, 'Elements_t')]
-      dimension = max(elt_dim) if len(elt_dim)!=0 else -1
+      elt_dim = [Element.Dimension(n) for n in W.get_children_from_label(zone_node, 'Elements_t') if Element.CGNSName(n) != 'MIXED']
+      if len(elt_dim)==0:
+        raise ValueError(f'Can not infer dimension of zone {N.get_name(zone_node)}, which has no elements')
+      dimension = max(elt_dim)
 
-      if dimension==-1:
-        raise ValueError('Zone seems not to have elements.')
       
     return dimension
 
