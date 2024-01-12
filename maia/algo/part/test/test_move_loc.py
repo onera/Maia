@@ -91,30 +91,22 @@ def test_centers_to_node_S(comm) :
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
     
     zone = PT.get_all_Zone_t(part_tree)[0] 
-    cx, cy, cz = PT.Zone.coordinates(zone)
-    expected_center = maia.algo.part.compute_cell_center(zone)
-    cx = expected_center[0::3].reshape(PT.Zone.CellSize(zone), order='F')
-    cy = expected_center[1::3].reshape(PT.Zone.CellSize(zone), order='F')
-    cz = expected_center[2::3].reshape(PT.Zone.CellSize(zone), order='F')
-    PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'cX': cx, 'cY': cy, 'cZ': cz}, parent=zone)
+    cell_center = maia.algo.part.compute_cell_center(zone)
+    ccx = cell_center[0::3].reshape(PT.Zone.CellSize(zone), order='F')
+    ccy = cell_center[1::3].reshape(PT.Zone.CellSize(zone), order='F')
+    ccz = cell_center[2::3].reshape(PT.Zone.CellSize(zone), order='F')
+    PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'cX': ccx, 'cY': ccy, 'cZ': ccz}, parent=zone)
 
     ML.centers_to_nodes(part_tree, comm, ["FlowSolution"])
+
+    expected_vtx = [[0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5,
+                      0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75],
+                    [0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 0.25, 0.25, 0.25, 0.5, 0.5,
+                      0.5, 0.75, 0.75, 0.75, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75],
+                    [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.5, 0.5,
+                      0.5, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75]]
     sol_cell = PT.get_node_from_name(part_tree, 'FlowSolution#Vtx')
     for i, dir in enumerate(['X', 'Y', 'Z']):
       field = PT.get_node_from_name(sol_cell, f'c{dir}')[1]
-      expected_vtx = [[0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5,
-                       0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75],
-                      [0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 0.25, 0.25, 0.25, 0.5, 0.5,
-                       0.5, 0.75, 0.75, 0.75, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75],
-                      [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.5, 0.5,
-                       0.5, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75]]
       assert field.shape == (3,3,3) and field.dtype == float
       assert np.allclose(field.flatten(order='F'), expected_vtx[i])
-
-
-import mpi4py.MPI as MPI
-comm = MPI.COMM_WORLD
-if __name__ == '__main__':
-  # test_nodes_to_centers_S(comm)
-  test_centers_to_node_S(comm)
-  

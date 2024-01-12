@@ -33,10 +33,10 @@ class CenterToNode:
           
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
-          shape = PT.Zone.CellSize(zone)
-          cx = cx.flatten()
-          cy = cy.flatten()
-          cz = cz.flatten()
+          if PT.Zone.Type(zone)=='Structured' : 
+            cx = cx.flatten()
+            cy = cy.flatten()
+            cz = cz.flatten()
           # Use direct api since cell_vtx is already computed
           cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, cx,cy,cz)
 
@@ -77,10 +77,10 @@ class CenterToNode:
 
     #Collect src sol
     cell_fields = {}
+    asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      coords = PT.get_node_from_path(part, field_path)[1].flatten()
-      cell_fields[field_name] = [coords[vtx_cell-1].astype(float, copy=False) \
+      cell_fields[field_name] = [asflat(PT.get_node_from_path(part, field_path)[1], part)[vtx_cell-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
 
     # Do all reductions
@@ -90,11 +90,16 @@ class CenterToNode:
 
     # Add node fields in tree
     for i_part, part in enumerate(self.parts):
+      vtx_shape = PT.Zone.VertexSize(part)
+      is_struct = PT.Zone.Type(part) == 'Structured'
       PT.rm_children_from_name(part, f'{container_name}#Vtx')
       fs = PT.new_FlowSolution(f'{container_name}#Vtx', loc='Vertex', parent=part)
       vtx_cell_idx = self.vtx_cell_idx[i_part]
       for field_name, field_values in node_fields.items():
-        PT.new_DataArray(field_name, field_values[i_part][vtx_cell_idx[:-1]].reshape(PT.Zone.VertexSize(part), order='C'), parent=fs)
+        data_out = field_values[i_part][vtx_cell_idx[:-1]]
+        if is_struct:
+          data_out = data_out.reshape(vtx_shape, order='F')
+        PT.new_DataArray(field_name, data_out, parent=fs)
 
 class NodeToCenter:
   def __init__(self, tree, comm, idw_power=1):

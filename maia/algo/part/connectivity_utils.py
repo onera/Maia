@@ -51,9 +51,7 @@ def cell_vtx_connectivity_ngon(zone, dim):
   if dim==2:
     return ngon_eso, ngon_ec
 
-  try:
-    nface_node = PT.Zone.NFaceNode(zone)
-  except RuntimeError:
+  if not PT.Zone.has_nface_elements(zone):
     pe_to_nface(zone)
 
   nface_node = PT.Zone.NFaceNode(zone)
