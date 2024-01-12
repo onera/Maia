@@ -214,8 +214,7 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   '''
   Remove elements tagged in `elt_pl` by updating its ElementConnectivity and ElementRange nodes,
   as well as ElementRange nodes of elements with inferior dimension (assuming that element nodes are organized with decreasing dimension order).
-  TODO: parallel + merge with remove_flow_sol_elts
-  TODO: update cell distribution
+  TODO: merge with remove_flow_sol_elts
   '''
 
   # > Get element information
@@ -294,7 +293,11 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   # > Update element nodes with inferior dimension
   apply_offset_to_elts(zone, -n_elt_to_rm, old_er[1])
 
-  print('TODO: update zone Cell distri')
+  # > Update zone cell distribution
+  rm_distrib = par_utils.dn_to_distribution(n_elt_to_rm_l, comm)
+  if elt_dim==PT.Zone.Dimension(zone):
+    dn_cell_n = PT.maia.getDistribution(zone, 'Cell')
+    dn_cell_n[1] -= rm_distrib
 
 
 def apply_offset_to_elts(zone, offset, min_range):

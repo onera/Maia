@@ -238,6 +238,9 @@ def test_remove_elts_from_pl(elt_name, comm):
   assert PT.get_child_from_name(elt_n,'ElementConnectivity')[1].size==n_elt*4
   assert elt_distrib[2]==n_tet[elt_name]
 
+  cell_distri = par_utils.dn_to_distribution(n_elt, comm)
+  assert np.array_equal(PT.maia.getDistribution(dist_zone, 'Cell')[1], cell_distri)
+
   is_tri_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3'
   is_tri_bc  = lambda n: PT.get_label(n)=='BC_t'       and PT.Subset.GridLocation(n)=='FaceCenter'
   elt_n  = PT.get_child_from_predicate(dist_zone, is_tri_elt)
@@ -275,6 +278,7 @@ def test_remove_elts_from_pl(elt_name, comm):
 
 @pytest_parallel.mark.parallel(2)
 def test_remove_elts_from_pl_conflict_bc(comm):
+  cell_dn = ['[0,1,1]'      ,'[1,1,1]'   ][comm.Get_rank()]
   tri1_ec = ['[1,2,3,3,2,1]','[4,5,6]'   ][comm.Get_rank()]
   tri2_ec = ['[7,8,9,9,8,7]','[10,11,12]'][comm.Get_rank()]
   tri_dn  = ['[0,2,3]'      ,'[2,3,3]'   ][comm.Get_rank()]
@@ -283,16 +287,21 @@ def test_remove_elts_from_pl_conflict_bc(comm):
 
   yt = f"""
     Zone Zone_t:
+      ZoneType ZoneType_t 'Unstructured':
+      :CGNS#Distribution UserDefinedData_t:
+        Cell DataArray_t {cell_dn}:
       TRI_1 Elements_t I4 [5, 0]:
         ElementRange IndexRange_t I4 [1, 3]:
-        ElementConnectivity DataArray_t I4  {tri1_ec}:
+        ElementConnectivity DataArray_t I4 {tri1_ec}:
         :CGNS#Distribution UserDefinedData_t:
           Element DataArray_t {tri_dn}:
       TRI_2 Elements_t I4 [5, 0]:
         ElementRange IndexRange_t I4 [4, 6]:
-        ElementConnectivity DataArray_t I4  {tri2_ec}:
+        ElementConnectivity DataArray_t I4 {tri2_ec}:
         :CGNS#Distribution UserDefinedData_t:
           Element DataArray_t {tri_dn}:
+      TETRA Elements_t I4 [10, 0]:
+        ElementRange IndexRange_t I4 [7, 7]:
       ZoneBC ZoneBC_t:
         BC BC_t 'Null':
           GridLocation GridLocation_t 'FaceCenter':
@@ -323,6 +332,9 @@ def test_remove_elts_from_pl_conflict_bc(comm):
   bc_n = PT.get_node_from_label(dist_zone, 'BC_t')
   assert np.array_equal(PT.Subset.getPatch(bc_n)[1], expected_bc_pl)
   assert np.array_equal(PT.maia.getDistribution(bc_n, 'Index')[1], expected_bc_dn)
+
+  expected_cell_dn = np.array([[0,1,1],[1,1,1]][comm.rank])
+  assert np.array_equal(PT.maia.getDistribution(dist_zone, 'Cell')[1], expected_cell_dn)
 
 
 def test_apply_offset_to_elts():
