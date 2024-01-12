@@ -34,6 +34,10 @@ class CenterToNode:
           
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
+          if PT.Zone.Type(zone)=='Structured' : 
+            cx = cx.flatten()
+            cy = cy.flatten()
+            cz = cz.flatten()
           # Use direct api since cell_vtx is already computed
           cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, cx,cy,cz)
 
@@ -74,9 +78,10 @@ class CenterToNode:
 
     #Collect src sol
     cell_fields = {}
+    asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      cell_fields[field_name] = [PT.get_node_from_path(part, field_path)[1][vtx_cell-1].astype(float, copy=False) \
+      cell_fields[field_name] = [asflat(PT.get_node_from_path(part, field_path)[1], part)[vtx_cell-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
 
     # Do all reductions
@@ -86,11 +91,16 @@ class CenterToNode:
 
     # Add node fields in tree
     for i_part, part in enumerate(self.parts):
+      vtx_shape = PT.Zone.VertexSize(part)
+      is_struct = PT.Zone.Type(part) == 'Structured'
       PT.rm_children_from_name(part, f'{container_name}#Vtx')
       fs = PT.new_FlowSolution(f'{container_name}#Vtx', loc='Vertex', parent=part)
       vtx_cell_idx = self.vtx_cell_idx[i_part]
       for field_name, field_values in node_fields.items():
-        PT.new_DataArray(field_name, field_values[i_part][vtx_cell_idx[:-1]], parent=fs)
+        data_out = field_values[i_part][vtx_cell_idx[:-1]]
+        if is_struct:
+          data_out = data_out.reshape(vtx_shape, order='F')
+        PT.new_DataArray(field_name, data_out, parent=fs)
 
 class NodeToCenter:
   def __init__(self, tree, comm, idw_power=1):
@@ -105,6 +115,10 @@ class NodeToCenter:
       dim = PT.get_value(base)[0]
       for p_zone in PT.get_all_Zone_t(base):
         cx,cy,cz = PT.Zone.coordinates(p_zone)
+        if PT.Zone.Type(p_zone)=='Structured' : 
+           cx = cx.flatten()
+           cy = cy.flatten()
+           cz = cz.flatten() 
         cell_vtx_idx, cell_vtx = connectivity_utils.cell_vtx_connectivity(p_zone, dim)
         cell_vtx_n = np.diff(cell_vtx_idx)
 
@@ -139,9 +153,14 @@ class NodeToCenter:
       fs_out = PT.new_FlowSolution(f'{container_name}#Cell', loc='CellCenter', parent=part)
 
       for array in PT.iter_children_from_label(container, 'DataArray_t'):
-        data_in = PT.get_value(array)
+        data_in = PT.get_value(array) 
+        shape = data_in.shape
+        if len(shape) != 1 :
+           data_in=data_in.flatten(order='F')
         data_out = np.add.reduceat(data_in[cell_vtx-1] * weights, cell_vtx_idx[:-1])
         data_out /= weightssum
+        if len(shape) != 1 :
+           data_out=data_out.reshape(np.array(shape)-1, order='F')
         PT.new_DataArray(PT.get_name(array), data_out, parent=fs_out)
 
 
@@ -163,7 +182,7 @@ def centers_to_nodes(tree, comm, containers_name=[], **options):
     apply to internal partitioning interfaces, which are always crossed.
 
   Args:
-    tree      (CGNSTree): Partionned tree. Only unstructured connectivities are managed.
+    tree      (CGNSTree): Partionned tree
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
     **options: Options related to interpolation, see above.
@@ -196,7 +215,7 @@ def nodes_to_centers(tree, comm, containers_name=[], **options):
   - ``idw_power`` (float, default = 1) -- Power to which the cell-vertex distance is elevated.
 
   Args:
-    tree      (CGNSTree): Partionned tree. Only unstructured connectivities are managed.
+    tree      (CGNSTree): Partionned tree
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
     **options: Options related to interpolation, see above.

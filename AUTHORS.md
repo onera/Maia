@@ -12,4 +12,5 @@ Clément Benazet <clement dot benazet at onera dot fr>, ONERA
 Sébastien Bourasseau <sebastien dot bourasseau at onera dot fr>, ONERA
 Bertrand Michel <bertrand dot michel at onera dot fr>, ONERA
 Mickael Philit <mickael dot philit at safrangroup dot com>, SAFRAN
-Constance Timmermans <constance dot timmermans at onera dot fr>, ONERA
+Constance Timmermans, ONERA
+Hedi El Amami, ONERA
