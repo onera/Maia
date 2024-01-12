@@ -37,7 +37,7 @@ def gen_dist_zone(comm):
   return zone_n
 
 @pytest_parallel.mark.parallel(2)
-def test_duplicate_vtx(comm):
+def test_duplicate_specified_vtx(comm):
   zone_n = gen_dist_zone(comm)
 
   if comm.rank==0:
@@ -45,16 +45,19 @@ def test_duplicate_vtx(comm):
   elif comm.rank==1:
     vtx_pl = np.array(np.array([2,4,8]), dtype=np.int32)
 
-  adapt_utils.duplicate_vtx(zone_n, vtx_pl, comm)
+  adapt_utils.duplicate_specified_vtx(zone_n, vtx_pl, comm)
 
-  if comm.rank==0:
-    assert PT.Zone.n_vtx(zone_n)==14
-    # assert np.array_equal(PT.get_value(PT.maia.getDistribution(zone_n, 'Vertex')),    np.array([0,7,14], dtype=np.int32))
+  if comm.Get_rank()==0:
     assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([1.,3.,5.,7.,9., 4.,8.]))
-  elif comm.rank==1:
-    assert PT.Zone.n_vtx(zone_n)==14
-    # assert np.array_equal(PT.get_value(PT.maia.getDistribution(zone_n, 'Vertex')),    np.array([7,14,14], dtype=np.int32))
+    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([1.,3.,5.,7.,9., 4.,8.]))
+  elif comm.Get_rank()==1:
     assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([2.,4.,6.,8., 3.,7.,6.]))
+    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([2.,4.,6.,8., 3.,7.,6.]))
+
+  new_distri = PT.maia.getDistribution(zone_n, 'Vertex')[1]
+  assert PT.Zone.n_vtx(zone_n)==14
+  assert (maia.utils.par_utils.partial_to_full_distribution(new_distri, comm) == [0,7,14]).all()
+
 
 @pytest_parallel.mark.parallel(2)
 def test_remove_vtx(comm):
@@ -76,23 +79,6 @@ def test_remove_vtx(comm):
     # assert np.array_equal(PT.get_value(PT.maia.getDistribution(zone_n, 'Vertex')),    np.array([3,4,4], dtype=np.int32))
     assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), np.array([2.]))
 
-@pytest_parallel.mark.parallel(2)
-def test_duplicate_flowsol_elts(comm):
-  zone_n = gen_dist_zone(comm)
-
-  if comm.rank==0:
-    vtx_pl = np.array(np.array([7,9]), dtype=np.int32)
-  elif comm.rank==1:
-    vtx_pl = np.array(np.array([2,4,8]), dtype=np.int32)
-
-  adapt_utils.duplicate_flowsol_elts(zone_n, vtx_pl-1, 'Vertex', comm)
-
-  if comm.rank==0:
-    # assert np.array_equal(PT.get_value(PT.maia.getDistribution(zone_n, 'Vertex')), np.array([0,5,9], dtype=np.int32)) # Vertex distrib must be the same
-    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([1.,3.,5.,7.,9., 4.,8.]))
-  elif comm.rank==1:
-    # assert np.array_equal(PT.get_value(PT.maia.getDistribution(zone_n, 'Vertex')), np.array([5,9,9], dtype=np.int32)) # Vertex distrib must be the same
-    assert np.array_equal(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), np.array([2.,4.,6.,8., 3.,7.,6.]))
 
 @pytest_parallel.mark.parallel(2)
 def test_remove_flowsol_elts(comm):

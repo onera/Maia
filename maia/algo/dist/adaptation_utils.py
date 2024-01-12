@@ -19,17 +19,20 @@ LOC_TO_CGNS = {'EdgeCenter':'BAR_2',
                'FaceCenter':'TRI_3',
                'CellCenter':'TETRA_4'}
 
-
-def duplicate_vtx(zone, vtx_pl, comm):
-  '''
-  Duplicate vtx tagged in `vtx_pl` from a distributed zone.
-    - Vertex distribution must be updated outside.
-    - What about zone_dim ?
-  Note : if an id appear twice in vtx_pl, it will be duplicated twice
-  '''
+def duplicate_specified_vtx(zone, vtx_pl, comm):
+  """
+  Duplicate vtx specified in `vtx_pl` from a distributed zone. Vertex base FlowSolution_t
+  are duplicated as well.
+  Size of zone and Vertex distribution are updated
+  
+  Note : if an id appear twice in vtx_pl, it will be duplicated twice. This is because
+  data are added to the rank requesting the vertices in vtx_pl
+  """
   distri_n = PT.maia.getDistribution(zone, 'Vertex')
   distri   = PT.get_value(distri_n)
+  dn_vtx   = distri[1] - distri[0] # Initial number of vertices
   
+  # Update GridCoordinates
   coords_keys = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
   coord_nodes = {key: PT.get_node_from_name(zone, key) for key in coords_keys}
   coords = {key: PT.get_value(node) for key, node in coord_nodes.items()}
@@ -37,11 +40,21 @@ def duplicate_vtx(zone, vtx_pl, comm):
   for key in coords_keys:
     PT.set_value(coord_nodes[key], np.concatenate([coords[key], new_coords[key][0]]))
 
-  # > Update zone information
-  n_added_vtx = comm.allreduce(vtx_pl.size, op=MPI.SUM)
-  zone_dim = PT.get_value(zone)
-  zone_dim[0][0] += n_added_vtx
+  # Update FlowSolution
+  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and PT.Subset.GridLocation(n)=='Vertex'
+  for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
+    assert PT.get_child_from_name(fs_n, 'PointList') is None, "Partial FS are not supported"
 
+    arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
+    arrays = {PT.get_name(array_n) : PT.get_value(array_n) for array_n in arrays_n}
+    new_arrays = EP.block_to_part(arrays, distri, [vtx_pl], comm)
+    for array_n in arrays_n:
+      key = PT.get_name(array_n)
+      PT.set_value(array_n, np.concatenate([arrays[key], new_arrays[key][0]]))
+
+  # Update distribution and zone size
+  PT.get_value(zone)[0][0] += comm.allreduce(vtx_pl.size, op=MPI.SUM)
+  PT.set_value(distri_n, par_utils.dn_to_distribution(dn_vtx + vtx_pl.size, comm))
 
 def remove_vtx(zone, vtx_pl, comm):
   '''
@@ -63,23 +76,6 @@ def remove_vtx(zone, vtx_pl, comm):
   n_rmvd_vtx = comm.allreduce(vtx_pl.size, op=MPI.SUM)
   zone_dim = PT.get_value(zone)
   zone_dim[0][0] -= n_rmvd_vtx
-
-def duplicate_flowsol_elts(zone, ids, location, comm):
-  '''
-  Duplicate flowsol values tagged in `ids` from a distributed zone. FlowSol distribution must be updated outside.
-  '''
-  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and\
-                        PT.Subset.GridLocation(n)==location
-  for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
-    distri = te_utils.get_subset_distribution(zone, fs_n)
-
-    arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
-    arrays = {PT.get_name(array_n) : PT.get_value(array_n) for array_n in arrays_n}
-    new_arrays = EP.block_to_part(arrays, distri, [ids+1], comm)
-    for array_n in arrays_n:
-      key = PT.get_name(array_n)
-      PT.set_value(array_n, np.concatenate([arrays[key], new_arrays[key][0]]))
-
 
 def remove_flowsol_elts(zone, ids, location, comm):
   '''
@@ -421,7 +417,6 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, elt_duplicate_
   n_vtx = PT.Zone.n_vtx(zone)
   elt_vtx_pl   = elmt_pl_to_vtx_pl(zone, elt_pl, elt_name, MPI.COMM_SELF)
   n_vtx_to_add = elt_vtx_pl.size
-  duplicate_vtx(zone, elt_vtx_pl, MPI.COMM_SELF)
 
 
   new_vtx_pl  = np.arange(n_vtx, n_vtx+n_vtx_to_add)+1
@@ -430,14 +425,7 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, elt_duplicate_
   old_to_new_vtx[new_vtx_num[0]-1] = new_vtx_num[1]
   sort_vtx_num = np.argsort(new_vtx_num[0])
   
-  duplicate_flowsol_elts(zone, elt_vtx_pl-1, 'Vertex', MPI.COMM_SELF)
-  
-  # > Update distribution
-  vtx_distrib_n  = PT.maia.getDistribution(zone, distri_name='Vertex')
-  vtx_distrib    = PT.get_value(vtx_distrib_n)
-  vtx_distrib[1]+= n_vtx_to_add
-  vtx_distrib[2]+= n_vtx_to_add
-  PT.set_value(vtx_distrib_n, vtx_distrib)
+  duplicate_specified_vtx(zone, elt_vtx_pl, MPI.COMM_SELF)
 
   # > Add duplicated elements
   n_elt_to_add = elt_pl.size
