@@ -527,6 +527,36 @@ class Zone:
         status = -1
     return status
 
+  @staticmethod
+  def Dimension(zone_node:CGNSTree) -> int:
+    """ Return dimension of a Zone_t node
+
+    Args:
+      zone_node (CGNSTree): Input Zone_t node
+    Returns:
+      integer : dimension
+    Raises:
+      ValueError: if zone has no elements
+      NotImplementedError: if zone is Structured
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured')
+      >>> PT.new_Elements('PYRA', 'PYRA_5', erange=[1,10],  parent=zone)
+      >>> PT.new_Elements('TRI',  'TRI_3',  erange=[11,30], parent=zone)
+      >>> PT.new_Elements('BAR',  'BAR_2',  erange=[31,40], parent=zone)
+      >>> PT.Zone.Dimension(zone)
+      3
+    """
+    if Zone.Type(zone_node)=="Structured":
+      raise NotImplementedError('PT.Zone.Dimension() is not implemented for structured zones.')
+    else:
+      elt_dim = [Element.Dimension(n) for n in W.get_children_from_label(zone_node, 'Elements_t')]
+      dimension = max(elt_dim) if len(elt_dim)!=0 else -1
+
+      if dimension==-1:
+        raise ValueError('Zone seems not to have elements.')
+      
+    return dimension
+
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Elements_t"))
