@@ -7,7 +7,7 @@ import maia.transfer.utils as te_utils
 from   maia.utils  import np_utils, py_utils, par_utils
 from   maia.algo.dist import transform as dist_transform
 from   maia.algo.dist.subset_tools import vtx_ids_to_face_ids
-from   maia.algo.dist.merge_ids import merge_distributed_ids
+from   maia.algo.dist.remove_element import remove_elts_from_pl
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import numpy as np
@@ -208,96 +208,6 @@ def update_elt_vtx_numbering(zone, old_to_new_vtx, cgns_name, elt_pl=None):
       ec[ec_pl] = np.take(old_to_new_vtx, ec[ec_pl]-1)
 
     PT.set_value(ec_n, ec)
-
-
-def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
-  '''
-  Remove elements tagged in `elt_pl` by updating its ElementConnectivity and ElementRange nodes,
-  as well as ElementRange nodes of elements with inferior dimension (assuming that element nodes are organized with decreasing dimension order).
-  TODO: merge with remove_flow_sol_elts
-  '''
-
-  # > Get element information
-  elt_dim    = PT.Element.Dimension(elt_n)
-  elt_size   = PT.Element.NVtx(elt_n)
-  elt_offset = PT.Element.Range(elt_n)[0]
-  elt_name   = PT.Element.CGNSName(elt_n)
-  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==DIM_TO_LOC[elt_dim]
-
-  ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  ec   = PT.get_value(ec_n)
-  er_n = PT.get_child_from_name(elt_n, 'ElementRange')
-  er   = PT.get_value(er_n)
-
-  assert er[0]<=np.min(elt_pl) and np.max(elt_pl)<=er[1]
-
-  # > Updating element range and connectivity
-  elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
-  ids = elt_pl-elt_offset
-  ptb = EP.PartToBlock(elt_distri, [ids+1], comm)
-  ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
-  
-  n_elt_to_rm_l = ids.size
-  n_elt_to_rm = comm.allreduce(n_elt_to_rm_l, MPI.SUM)
-
-  pl_c  = -np.ones(n_elt_to_rm_l*elt_size, dtype=np.int32)
-  for i_size in range(elt_size):
-    pl_c[i_size::elt_size] = elt_size*ids+i_size
-  ec = np.delete(ec, pl_c)
-  old_er = np.copy(er)
-  er[1] = er[1]-n_elt_to_rm
-  PT.set_value(ec_n, ec)
-  PT.set_value(er_n, er)
-
-  # > Update BC PointList
-  targets = np.ones(elt_pl.size, dtype=np.int32)
-  elt_distri_ini = PT.maia.getDistribution(elt_n, distri_name='Element')[1]
-  old_to_new_elt = maia.algo.dist.merge_ids.merge_distributed_ids(elt_distri_ini, elt_pl-elt_offset+1, targets, comm, True)
-
-  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  for bc_n in PT.get_children_from_predicate(zone_bc_n, is_elt_bc):
-    bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
-    bc_pl   = PT.get_value(bc_pl_n)[0]
-    mask_in_elt = np.logical_and(old_er[0]<=bc_pl, bc_pl<=old_er[1])
-
-    # > Update numbering of PointList defined over other element nodes
-    new_bc_pl  = bc_pl
-    bc_elt_ids = new_bc_pl[mask_in_elt]-elt_offset+1
-    new_gn = EP.block_to_part(old_to_new_elt, elt_distri_ini, [bc_elt_ids], comm)
-    new_gn = new_gn[0]
-    new_gn[new_gn>0] += elt_offset-1
-    if mask_in_elt.any():
-      new_bc_pl[mask_in_elt] = new_gn
-    new_bc_pl = new_bc_pl[new_bc_pl>0]
-
-    # > Update BC distribution
-    bc_distrib_n = PT.maia.getDistribution(bc_n, distri_name='Index')
-    new_bc_distrib = par_utils.dn_to_distribution(new_bc_pl.size, comm)
-    PT.set_value(bc_distrib_n, new_bc_distrib)
-
-    if new_bc_distrib[2]==0:
-      PT.rm_child(zone_bc_n, bc_n)
-    else:
-      PT.set_value(bc_pl_n, new_bc_pl.reshape((1,-1), order='F'))
-
-  # > Update element distribution
-  elt_distrib_n = PT.maia.getDistribution(elt_n, distri_name='Element')
-  elt_distrib   = PT.get_value(elt_distrib_n)
-  n_elt = elt_distrib[1]-elt_distrib[0]
-  new_elt_distrib = par_utils.dn_to_distribution(n_elt-n_elt_to_rm_l, comm)
-  if new_elt_distrib[2]==0:
-    PT.rm_child(zone, elt_n)
-  else:
-    PT.set_value(elt_distrib_n, new_elt_distrib)
-
-  # > Update element nodes with inferior dimension
-  apply_offset_to_elts(zone, -n_elt_to_rm, old_er[1])
-
-  # > Update zone cell distribution
-  rm_distrib = par_utils.dn_to_distribution(n_elt_to_rm_l, comm)
-  if elt_dim==PT.Zone.CellDimension(zone):
-    dn_cell_n = PT.maia.getDistribution(zone, 'Cell')
-    dn_cell_n[1] -= rm_distrib
 
 
 def apply_offset_to_elts(zone, offset, min_range):
