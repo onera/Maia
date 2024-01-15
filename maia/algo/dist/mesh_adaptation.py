@@ -278,7 +278,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
     bcs_to_constrain = list()
     if comm.rank==0:
-      new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, perio_jns_pairs)
+      new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, perio_jns_pairs, MPI.COMM_SELF)
     bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
 
     end = time.time()
@@ -299,7 +299,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     #TODO il me semble que l'arbre est déjà gather0
 
     if comm.rank==0:
-      retrieve_initial_domain(adapted_dist_tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve)
+      retrieve_initial_domain(adapted_dist_tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve, MPI.COMM_SELF)
 
     end = time.time()
     # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
@@ -343,7 +343,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
     if comm.rank==0:
       zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
-      rm_feflo_added_elt(zone)
+      rm_feflo_added_elt(zone, MPI.COMM_SELF)
     PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
     # TODO : pourquoi pas un redistribute avec uniform ?
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)

@@ -274,6 +274,28 @@ def test_elt_ordering_by_dim():
   N.new_Elements('ElemC', type='TRI_3',  erange=[1,7],  parent=zone)
   assert SIDS.Zone.elt_ordering_by_dim(zone) == 1
 
+def test_zone_dim():
+  zone = N.new_Zone()
+  with pytest.raises(ValueError):
+    SIDS.Zone.CellDimension(zone)
+  N.new_Elements('Elem0', type='NODE' ,  erange=[ 1,10],  parent=zone)
+  assert SIDS.Zone.CellDimension(zone) == 0
+  N.new_Elements('Elem1', type='BAR_2',  erange=[31,40],  parent=zone)
+  assert SIDS.Zone.CellDimension(zone) == 1
+  N.new_Elements('Elem2', type='TRI_3',  erange=[11,20],  parent=zone)
+  assert SIDS.Zone.CellDimension(zone) == 2
+  N.new_Elements('Elem3', type='HEXA_8', erange=[21,30], parent=zone)
+  assert SIDS.Zone.CellDimension(zone) == 3
+
+  zone = N.new_Zone(type='Structured', size=[[11,10,0], [11,10,0]])
+  assert SIDS.Zone.CellDimension(zone) == 2
+
+  zone = N.new_Zone(type='Unstructured')
+  ng = N.new_NGonElements('NGonElements', parent=zone)
+  assert SIDS.Zone.CellDimension(zone) == 2
+  N.new_DataArray('ParentElements', None, parent=ng)
+  assert SIDS.Zone.CellDimension(zone) == 3
+
 def test_PointRange():
   pr = N.new_IndexRange('StandardPR', [1,3, 3,5, 1,3])
   assert (SIDS.PointRange.SizePerIndex(pr) == [3,3,3]).all()

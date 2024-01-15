@@ -5,7 +5,8 @@ import shutil
 import maia
 import maia.pytree as PT
 import maia.algo.dist.adaptation_utils as adapt_utils
-from maia.pytree.yaml          import parse_yaml_cgns
+from   maia.pytree.yaml import parse_yaml_cgns
+from   maia.utils import par_utils
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
@@ -154,3 +155,55 @@ def test_convert_vtx_gcs_as_face_bcs(comm):
     assert np.array_equal(PT.get_child_from_name(gc1, 'PointList')[1], np.array([[1]], dtype=np.int32))
   if comm.rank==1:
     assert np.array_equal(PT.get_child_from_name(gc1, 'PointList')[1], np.array([[]], dtype=np.int32))
+
+
+def test_apply_offset_to_elts():
+  yt = f"""
+    Zone Zone_t:
+      BAR Elements_t I4 [3, 0]:
+        ElementRange IndexRange_t I4 [23, 30]:
+      TRI_1 Elements_t I4 [5, 0]:
+        ElementRange IndexRange_t I4 [1, 5]:
+      TETRA Elements_t I4 [10, 0]:
+        ElementRange IndexRange_t I4 [6, 8]:
+      TRI_2 Elements_t I4 [5, 0]:
+        ElementRange IndexRange_t I4 [11, 22]:
+      TRI_3 Elements_t I4 [5, 0]:
+        ElementRange IndexRange_t I4 [31, 31]:
+      ZoneBC ZoneBC_t:
+        BC1 BC_t 'Null':
+          GridLocation GridLocation_t 'CellCenter':
+          PointList IndexArray_t I4 [[6,7,8]]:
+        BC2 BC_t 'Null':
+          GridLocation GridLocation_t 'FaceCenter':
+          PointList IndexArray_t I4 [[1,2,11,22]]:
+        BC3 BC_t 'Null':
+          GridLocation GridLocation_t 'FaceCenter':
+          PointList IndexArray_t I4 [[1,3,5]]:
+        BC4 BC_t 'Null':
+          GridLocation GridLocation_t 'FaceCenter':
+          PointList IndexArray_t I4 [[23, 24, 25]]:
+    """
+  zone = parse_yaml_cgns.to_node(yt)
+  elt_n = PT.get_child_from_name(zone, 'TETRA')
+  min_range = PT.Element.Range(elt_n)[1]
+  maia.algo.dist.adaptation_utils.apply_offset_to_elts(zone, -2, min_range)
+
+  expected_elt_er = { 'TRI_1': np.array([1,5]),
+                      'TETRA': np.array([6,8]),
+                      'TRI_2': np.array([9,20]),
+                      'BAR'  : np.array([21,28]),
+                      'TRI_3': np.array([29,29]),
+                      }
+  for elt_name, elt_er in expected_elt_er.items():
+    elt_n = PT.get_child_from_name(zone, elt_name)
+    assert np.array_equal(PT.Element.Range(elt_n), elt_er)
+
+  expected_bc_pl = {'BC1': np.array([[6,7,8]]),
+                    'BC2': np.array([[1,2,9,20]]),
+                    'BC3': np.array([[1,3,5]]),
+                    'BC4': np.array([[21,22,23]]),
+                     }
+  for bc_name, bc_pl in expected_bc_pl.items():
+    bc_n = PT.get_node_from_name_and_label(zone, bc_name, 'BC_t')
+    assert np.array_equal(PT.Subset.getPatch(bc_n)[1], bc_pl)
