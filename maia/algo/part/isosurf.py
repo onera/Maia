@@ -470,7 +470,7 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
       on the output isosurface tree.
     **options: Options related to plane extraction.
   Returns:
-    isosurf_tree (CGNSTree): Surfacic tree (partitioned)
+    CGNSTree: Surfacic tree (partitioned)
 
   Isosurface can be controled thought the optional kwargs:
 
@@ -547,7 +547,7 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:
-    slice_tree (CGNSTree): Surfacic tree (partitioned)
+    CGNSTree: Surfacic tree (partitioned)
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -591,7 +591,7 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:
-    slice_tree (CGNSTree): Surfacic tree (partitioned)
+    CGNSTree: Surfacic tree (partitioned)
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -636,7 +636,7 @@ def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options)
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:
-    slice_tree (CGNSTree): Surfacic tree (partitioned)
+    CGNSTree: Surfacic tree (partitioned)
 
   Example:
     .. literalinclude:: snippets/test_algo.py

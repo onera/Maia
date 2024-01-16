@@ -151,7 +151,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
                                     on the output extracted tree.
     **options: Options related to the extraction.
   Returns:
-    extract_tree (CGNSTree)  : Extracted submesh (partitioned)
+    CGNSTree: Extracted submesh (partitioned)
 
   Extraction can be controled by the optional kwargs:
 

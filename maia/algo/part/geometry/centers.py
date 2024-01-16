@@ -27,7 +27,7 @@ def compute_cell_center(zone):
   Args:
     zone (CGNSTree): Partitionned CGNS Zone
   Returns:
-    cell_center (array): Flat (interlaced) numpy array of cell centers
+    array: Flat (interlaced) numpy array of cell centers
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -66,7 +66,7 @@ def compute_face_center(zone):
   Args:
     zone (CGNSTree): Partitionned 2D or 3D U CGNS Zone
   Returns:
-    face_center (array): Flat (interlaced) numpy array of face centers
+    array: Flat (interlaced) numpy array of face centers
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -117,7 +117,7 @@ def compute_edge_center(zone):
   Args:
     zone (CGNSTree): Partitionned 2D or 3D U-elts CGNS Zone
   Returns:
-    face_center (array): Flat (interlaced) numpy array of edge centers
+    array: Flat (interlaced) numpy array of edge centers
 
   Example:
       .. literalinclude:: snippets/test_algo.py
