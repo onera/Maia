@@ -136,46 +136,63 @@ def tag_elmt_owning_vtx(zone, vtx_pl, cgns_name, comm, elt_full=False):
     gc_elt_pl = np.empty(0, dtype=np.int32)
   return gc_elt_pl
 
+def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
+  """
+  For the given TRI and TETRA elements node, search the TRI faces shared
+  by the TETRA elements. In addition, TRI and TETRA can be filtered
+  with tri_pl and tetra_pl, which are distributed - cgnslike list of indices.
+  """
+  # TRI elts
+  #   Get ec
+  src_distri    = PT.maia.getDistribution(tri_elt, 'Element')[1]
+  size_src_elt  = PT.Element.NVtx(tri_elt)
+  src_ec        = PT.get_child_from_name(tri_elt, 'ElementConnectivity')[1]
+  #   Get list of TRI faces to select from other ranks
+  ptb = EP.PartToBlock(src_distri, [tri_pl - PT.Element.Range(tri_elt)[0] + 1], comm)
+  src_dist_gnum= ptb.getBlockGnumCopy() + PT.Element.Range(tri_elt)[0] - 1
+  src_dist_ids = ptb.getBlockGnumCopy() - src_distri[0] - 1
+  #   Extract connectivity
+  src_ec_idx  = np_utils.interweave_arrays([size_src_elt*src_dist_ids+i_size for i_size in range(size_src_elt)])
+  src_ec_elt = src_ec[src_ec_idx]
 
-def is_elt_included(zone, src_pl, src_name, tgt_pl, tgt_name):
-  '''
-  Search which source element is a part of target elements.
-  TODO: parallel ?
-  '''
-  # > Get source ec
-  is_src_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                         PT.Element.CGNSName(n)==src_name
-  src_elt_n = PT.get_node_from_predicate(zone, is_src_elt)
-  size_src_elt   = PT.Element.NVtx(src_elt_n)
-  src_elt_offset = PT.Element.Range(src_elt_n)[0]
-  src_ec_n       = PT.get_child_from_name(src_elt_n, 'ElementConnectivity')
-  src_ec         = PT.get_value(src_ec_n)
-  idx        = src_pl - src_elt_offset
-  src_ec_pl  = np_utils.interweave_arrays([size_src_elt*idx+i_size for i_size in range(size_src_elt)])
-  src_ec_elt = src_ec[src_ec_pl]
-  n_src_elt  = src_pl.size
-
-  # > Get target ec
-  is_tgt_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                         PT.Element.CGNSName(n)==tgt_name
-  tgt_elt_n = PT.get_node_from_predicate(zone, is_tgt_elt)
-  n_tgt_elt = PT.Element.Size(tgt_elt_n)
-  size_tgt_elt   = PT.Element.NVtx(tgt_elt_n)
-  tgt_elt_offset = PT.Element.Range(tgt_elt_n)[0]
-  tgt_ec_n       = PT.get_child_from_name(tgt_elt_n, 'ElementConnectivity')
-  tgt_ec         = PT.get_value(tgt_ec_n)
-  idx        = tgt_pl - tgt_elt_offset
-  tgt_ec_pl  = np_utils.interweave_arrays([size_tgt_elt*idx+i_size for i_size in range(size_tgt_elt)])
-  tgt_ec_elt = tgt_ec[tgt_ec_pl]
-  n_tgt_elt  = tgt_pl.size
-
+  # TETRA elts
+  #   Get ec
+  tgt_distri   = PT.maia.getDistribution(tetra_elt, 'Element')[1]
+  size_tgt_elt = PT.Element.NVtx(tetra_elt)
+  tgt_ec       = PT.get_child_from_name(tetra_elt, 'ElementConnectivity')[1]
+  #   Get list of TETRA elts to select from other ranks
+  ptb = EP.PartToBlock(tgt_distri, [tetra_pl - PT.Element.Range(tetra_elt)[0] + 1], comm)
+  tgt_dist_ids = ptb.getBlockGnumCopy() - tgt_distri[0] - 1
+  #   Extract connectivity
+  tgt_ec_idx  = np_utils.interweave_arrays([size_tgt_elt*tgt_dist_ids+i_size for i_size in range(size_tgt_elt)])
+  tgt_ec_elt = tgt_ec[tgt_ec_idx]
   
-  tgt_face_vtx_idx, tgt_face_vtx = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, tgt_ec_elt)
-  tmp_ec = np.concatenate([src_ec_elt, tgt_face_vtx])
-  mask = np_utils.is_unique_strided(tmp_ec, size_src_elt, method='hash')
-  mask = ~mask[0:n_src_elt]
 
-  return src_pl[mask]
+  # Tri are already decomposed
+  src_face_vtx_idx, src_face_vtx = 3*np.arange(src_dist_ids.size+1, dtype=np.int32), src_ec_elt
+  # Do tetra decomposition, locally
+  tgt_face_vtx_idx, tgt_face_vtx = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, tgt_ec_elt)
+
+  # Now we we will reuse seq algorithm is_unique_strided to find
+  # shared faces. Since they can be on different processes, we need to gather it
+  # (according to their sum of vtx) before.
+  # A fully distributded version of is_unique_strided would be better ...
+  tri_key   = np.add.reduceat(src_face_vtx, src_face_vtx_idx[:-1])
+  tetra_key = np.add.reduceat(tgt_face_vtx, tgt_face_vtx_idx[:-1])
+
+  weights = [np.ones(t.size, float) for t in [tri_key, tetra_key]]
+  ptb = EP.PartToBlock(None, [tri_key, tetra_key], comm, weight=weights, keep_multiple=True)
+  cst_stride = [np.ones(t.size-1, np.int32) for t in [src_face_vtx_idx, tgt_face_vtx_idx]]
+
+  # Origin is not mandatory for TETRA because we just want the TRI ids at the end
+  _, origin = ptb.exchange_field([src_dist_gnum, np.zeros(tetra_key.size, src_dist_gnum.dtype)], part_stride=cst_stride)
+  _, tmp_ec = ptb.exchange_field([src_face_vtx, tgt_face_vtx], part_stride=[3*s for s in cst_stride])
+  mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
+
+  mask[origin == 0] = True # We dont want to get tetra faces
+  out = origin[~mask]
+
+  return out
 
 
 def update_elt_vtx_numbering(zone, old_to_new_vtx, cgns_name, elt_pl=None):
@@ -696,6 +713,13 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
   PT.new_Family('PERIODIC', parent=base)
   PT.new_Family('GCS', parent=base)
 
+  elts = PT.get_nodes_from_label(zone, 'Elements_t')
+  tri_elts   = [elt for elt in elts if PT.Element.CGNSName(elt)=='TRI_3']
+  tetra_elts = [elt for elt in elts if PT.Element.CGNSName(elt)=='TETRA_4']
+  assert len(tri_elts) == len(tetra_elts) == 1, f"Multiple elts nodes are not managed"
+  tri_elt   = tri_elts[0]
+  tetra_elt = tetra_elts[0]
+
   n_periodicity = len(jn_pairs)
   new_vtx_nums = list()
   to_constrain_bcs = list()
@@ -707,9 +731,9 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
     # > 1/ Defining the internal surface, that will be constrained in mesh adaptation
-    cell_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', MPI.COMM_SELF, elt_full=False) # Tetra made of at least one gc opp vtx
+    cell_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', comm, elt_full=False) # Tetra made of at least one gc opp vtx
     face_pl = add_undefined_faces(zone, cell_pl, 'TETRA_4', gc_vtx_pld, 'TRI_3') # ?
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF) # Vertices ids of tetra belonging to cell_pl
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', comm) # Vertices ids of tetra belonging to cell_pl
 
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
     cell_bc_name = f'tetra_4_periodic_{i_per}'
@@ -739,8 +763,8 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     # > Find BCs on GCs that will be deleted because they have their periodic twin
     # > For now only fully described BCs will be treated
     matching_bcs[i_per] = dict()
-    bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', MPI.COMM_SELF, elt_full=True) #Bar made of two gc opp vtx
-    bar_twins_pl = tag_elmt_owning_vtx(zone, gc_vtx_pl,  'BAR_2', MPI.COMM_SELF, elt_full=True) #Bar made of two gc vtx
+    bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', comm, elt_full=True) #Bar made of two gc opp vtx
+    bar_twins_pl = tag_elmt_owning_vtx(zone, gc_vtx_pl,  'BAR_2', comm, elt_full=True) #Bar made of two gc vtx
     matching_bcs[i_per]['BAR_2'] = find_matching_bcs(zone, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], 'BAR_2')
     bar_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2')
     if bar_n is not None:
@@ -751,11 +775,11 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     #      of elmts touching this surface
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_pl
-    to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', MPI.COMM_SELF, elt_full=True)
-    to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', MPI.COMM_SELF, elt_full=True)
+    to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', comm, elt_full=True)
+    to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', comm, elt_full=True)
 
     # > Ambiguous faces that contains all vtx but are not included in patch cells can be removed
-    to_update_face_pl = is_elt_included(zone, to_update_face_pl, 'TRI_3', cell_pl, 'TETRA_4')
+    to_update_face_pl = find_shared_faces(tri_elt, to_update_face_pl, tetra_elt, cell_pl, comm)
 
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
   
@@ -765,11 +789,11 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
 
 
     # > 4/ Apply periodic transformation to vtx and flowsol
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF)
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', comm)
     perio_val = PT.GridConnectivity.periodic_values(PT.get_node_from_path(tree, gc_paths[1]))
     periodic = perio_val.asdict(snake_case=True)
 
-    dist_transform.transform_affine_zone(zone, vtx_pl, MPI.COMM_SELF, **periodic, apply_to_fields=True)
+    dist_transform.transform_affine_zone(zone, vtx_pl, comm, **periodic, apply_to_fields=True)
 
     # maia.io.write_tree(tree, f'OUTPUT/deplaced_{i_per}.cgns')
 
@@ -822,6 +846,13 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
   zone = PT.get_child_from_label(base, 'Zone_t')
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
 
+  elts = PT.get_nodes_from_label(zone, 'Elements_t')
+  tri_elts   = [elt for elt in elts if PT.Element.CGNSName(elt)=='TRI_3']
+  tetra_elts = [elt for elt in elts if PT.Element.CGNSName(elt)=='TETRA_4']
+  assert len(tri_elts) == len(tetra_elts) == 1, f"Multiple elts nodes are not managed"
+  tri_elt   = tri_elts[0]
+  tetra_elt = tetra_elts[0]
+
   cell_elt_name = 'TETRA_4' if is_3d else 'TRI_3'
   face_elt_name = 'TRI_3'   if is_3d else 'BAR_2'
   edge_elt_name = 'BAR_2'   if is_3d else  None
@@ -831,7 +862,7 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
   for gc_paths, periodic_values in reversed(jn_pairs_and_values.items()): # reversed for future multiperiodic
   
     # > 1/ Get elts and vtx for BCs out of feflo
-    #      TODO: some TRI_3 should be avoided with is_elt_included again
+    #      TODO: some TRI_3 should be avoided with find_shared_faces again
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     cell_bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_bc_pl = PT.get_value(PT.Subset.getPatch(cell_bc_n))[0]
@@ -846,7 +877,7 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     to_update_cell_pl = cell_bc_pl
     to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', MPI.COMM_SELF, elt_full=True)
     to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', MPI.COMM_SELF, elt_full=True)
-    to_update_face_pl = is_elt_included(zone, to_update_face_pl, 'TRI_3', cell_bc_pl, 'TETRA_4')
+    to_update_face_pl = find_shared_faces(tri_elt, to_update_face_pl, tetra_elt, cell_bc_pl, comm)
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
     # > 2/ Duplicate GC surface and update element connectivities in the patch

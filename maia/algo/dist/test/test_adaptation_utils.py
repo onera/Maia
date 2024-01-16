@@ -207,3 +207,31 @@ def test_apply_offset_to_elts():
   for bc_name, bc_pl in expected_bc_pl.items():
     bc_n = PT.get_node_from_name_and_label(zone, bc_name, 'BC_t')
     assert np.array_equal(PT.Subset.getPatch(bc_n)[1], bc_pl)
+
+
+@pytest_parallel.mark.parallel(2)
+def test_is_elt_included(comm):
+  tree = maia.factory.generate_dist_block(3, 'TETRA_4', comm)
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+
+  # This is the selected TRI (57,58,59,60)   : 1 10 4    13 4 10    7 4 16    13 16 4
+  # This is the selected TETRA (2,3)         : 11 10 14 2    13 14 10 4
+  # Decomposed faces of TRI are :  11 10 14   11 14 2   11 10 2  10 14 2
+  #                                13 14 10   13 14 4   13 10 4  14 10 4
+  # Only face TRI 58 appreas in tetra faces             ^ Here
+  
+  if comm.Get_rank() == 0:
+    tri_pl = np.array([57,58])
+    tetra_pl = np.array([2])
+  else:
+    tri_pl = np.array([59, 60])
+    tetra_pl = np.array([3])
+
+  tri_elt   = PT.get_node_from_predicate(zone, lambda n : PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
+  tetra_elt = PT.get_node_from_predicate(zone, lambda n : PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
+  out = adapt_utils.find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm)
+
+  if comm.Get_rank() == 0:
+    assert (out == [58]).all()
+  else:
+    assert (out == []).all()
