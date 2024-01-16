@@ -17,7 +17,7 @@ def test_centers_to_node(jn_loc, comm, write_output):
   dist_tree = maia.io.file_to_dist_tree(mesh_file, comm)
 
   # This feature is U only
-  dist_tree = maia.algo.dist.convert_s_to_u(dist_tree, 'NGON_n', comm, subset_loc={'GC_t':jn_loc})
+  maia.algo.dist.convert_s_to_u(dist_tree, 'NGON_n', comm, subset_loc={'GC_t':jn_loc})
 
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 

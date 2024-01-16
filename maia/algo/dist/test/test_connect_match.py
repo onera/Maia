@@ -182,7 +182,7 @@ def test_multiple_match(out_loc, comm):
   for i_zone,zone in enumerate(zones):
     zone[0] = f"zone{i_zone+1}"
     PT.add_child(base, zone)
-  tree = maia.algo.dist.convert_s_to_ngon(tree, comm)
+  maia.algo.dist.convert_s_to_ngon(tree, comm)
 
   zones = PT.get_all_Zone_t(tree)
   zmax = PT.get_node_from_name(zones[0], 'Zmax')

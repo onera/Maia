@@ -8,10 +8,10 @@ def test_convert_s_to_u():
   from mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
-  dist_tree_s = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', MPI.COMM_WORLD)
 
-  dist_tree_u = maia.algo.dist.convert_s_to_u(dist_tree_s, 'NGON_n', MPI.COMM_WORLD)
-  for zone in maia.pytree.get_all_Zone_t(dist_tree_u):
+  maia.algo.dist.convert_s_to_u(dist_tree, 'NGON_n', MPI.COMM_WORLD)
+  for zone in maia.pytree.get_all_Zone_t(dist_tree):
     assert maia.pytree.Zone.Type(zone) == "Unstructured"
   #convert_s_to_u@end
 

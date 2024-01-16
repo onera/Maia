@@ -15,10 +15,10 @@ import maia.algo.dist as dist_algo
 def test_two_blocks(comm):
 
   mesh_file = os.path.join(MU.test_utils.mesh_dir, 'S_twoblocks.yaml')
-  dist_treeS = MIO.file_to_dist_tree(mesh_file, comm)
+  dist_tree = MIO.file_to_dist_tree(mesh_file, comm)
 
   # > Input is structured, so convert it to an unstructured tree
-  dist_tree = dist_algo.convert_s_to_ngon(dist_treeS, comm)
+  dist_algo.convert_s_to_ngon(dist_tree, comm)
 
   # > Backup GridConnectivity for verification
   large_zone = PT.get_nodes_from_name(dist_tree, "Large*")[0]

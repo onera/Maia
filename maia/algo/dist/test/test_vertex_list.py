@@ -391,12 +391,12 @@ Base CGNSBase_t I4 [3, 3]:
             RotationCenter DataArray_t R4 [0.0, 0.0, 0.0]:
             Translation DataArray_t R4 [0.0, 0.0, -0.25]:
   """
-  treeS = parse_yaml_cgns.to_cgns_tree(yt)
-  treeS = maia.factory.full_to_dist_tree(treeS, comm)
-  treeU = maia.algo.dist.convert_s_to_ngon(treeS, comm)
-  VL.generate_jns_vertex_list(treeU, comm)
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = maia.factory.full_to_dist_tree(tree, comm)
+  maia.algo.dist.convert_s_to_ngon(tree, comm)
+  VL.generate_jns_vertex_list(tree, comm)
 
-  zoneA, zoneB = PT.get_all_Zone_t(treeU)
+  zoneA, zoneB = PT.get_all_Zone_t(tree)
   node = PT.get_node_from_name(zoneA, 'match1#Vtx')
   assert np.array_equal(PT.get_node_from_name(node, 'PointList'     )[1], [[3,6,9,12,15,18]])
   assert np.array_equal(PT.get_node_from_name(node, 'PointListDonor')[1], [[1,4,7,13,16,19]])

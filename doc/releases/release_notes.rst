@@ -38,6 +38,7 @@ Developpement version
 🚧 API change
 ^^^^^^^^^^^^^
 - extract_part_from_zsr: add ``transfert_dataset`` argument for easier transfer of current ZSR fields
+- convert_s_to_u: operate inplace (input tree is modified). Will return None in next release.
 
 v1.2 (July 2023)
 ----------------

@@ -1,4 +1,4 @@
-#coding:utf-8
+import os
 import numpy              as np
 
 import maia.pytree        as PT
@@ -6,6 +6,7 @@ import maia.pytree.maia   as MT
 
 from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering
+from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
 
 def get_output_loc(request_dict, s_node):
@@ -422,24 +423,19 @@ def zonedims_to_ngon(n_vtx_zone, comm):
 ###############################################################################
 
 ###############################################################################
-def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
+def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
   """Performs the destructuration of the input ``dist_tree``.
 
-  This function copies the ``GridCoordinate_t`` and (full) ``FlowSolution_t`` nodes,
-  generate a NGon based connectivity and create a PointList for the following
-  subset nodes: 
+  Tree is modified in place: a NGON_n or HEXA_8 (not yet implemented)
+  connectivity is generated, and the following subset nodes are converted:
   BC_t, BCDataSet_t and GridConnectivity1to1_t.
-  In addition, a PointListDonor node is generated for GridConnectivity_t nodes.
-  
-  Metadata nodes ("FamilyName_t", "ReferenceState_t", ...) at zone and base level
-  are also reported on the unstructured tree.
 
   Note: 
     Exists also as :func:`convert_s_to_ngon()` with connectivity set to 
     NGON_n and subset_loc set to FaceCenter.
 
   Args:
-    disttree_s (CGNSTree): Structured tree
+    dist_tree (CGNSTree): Structured tree
     connectivity (str): Type of elements used to describe the connectivity.
       Admissible values are ``"NGON_n"`` and ``"HEXA"`` (not yet implemented).
     comm       (MPIComm) : MPI communicator
@@ -447,8 +443,6 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
         Expected output GridLocation for the following subset nodes: BC_t, GC_t.
         For each label, output location can be a single location value, a list
         of locations or None to preserve the input value. Defaults to None.
-  Returns:
-    CGNSTree: Unstructured disttree
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -458,59 +452,62 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
   """
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
-  disttree_u = PT.new_CGNSTree()
 
-  for base_s in PT.iter_all_CGNSBase_t(disttree_s):
-    base_u = PT.new_node(PT.get_name(base_s), 'CGNSBase_t', PT.get_value(base_s), parent=disttree_u)
-    for zone_s in PT.iter_all_Zone_t(base_s):
-      if PT.Zone.Type(zone_s) == 'Unstructured': #Zone is already U
-        PT.add_child(base_u, zone_s)
+  if not os.environ.get('MAIA_SILENT_API_WARNINGS') and i_rank == 0:
+    mlog.warning("API change -- convert_s_to_u and convert_s_to_ngon functions now operate inplace, "
+                 "and will return None in v1.4 release. "
+                 "Export MAIA_SILENT_API_WARNINGS=1 to remove this warning.")
 
-      elif PT.Zone.Type(zone_s) == 'Structured': #Zone is S -> convert it
-        zone_dims_s = PT.get_value(zone_s)
+  zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.get_node_from_path(dist_tree, path))
+                              for path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')}
+
+  PT.update_child(dist_tree, 'CGNSLibraryVersion', 'CGNSLibraryVersion_t', 4.2)
+  for base in PT.iter_all_CGNSBase_t(dist_tree):
+    for zone in PT.iter_all_Zone_t(base):
+      if PT.Zone.Type(zone) == 'Unstructured': #Zone is already U
+        continue
+
+      elif PT.Zone.Type(zone) == 'Structured': #Zone is S -> convert it
+        zone_dims_s = PT.get_value(zone)
         zone_dims_u = np.prod(zone_dims_s, axis=0, dtype=zone_dims_s.dtype).reshape(1,-1)
-        n_vtx  = zone_dims_s[:,0]
+        n_vtx  = PT.Zone.VertexSize(zone)
       
-        zone_u = PT.new_Zone(PT.get_name(zone_s), type='Unstructured', size=zone_dims_u, parent=base_u)
+        PT.update_child(zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
+        PT.set_value(zone, zone_dims_u)
 
-        grid_coord_s = PT.get_child_from_label(zone_s, "GridCoordinates_t")
-        grid_coord_u = PT.new_GridCoordinates(parent=zone_u)
-        for data in PT.iter_children_from_label(grid_coord_s, "DataArray_t"):
-          PT.add_child(grid_coord_u, data)
+        for flow_solution_s in PT.iter_children_from_label(zone, "FlowSolution_t"):
+          patch = PT.get_child_from_predicate(flow_solution_s, lambda n: PT.get_name(n) in ['PointRange', 'PointList'])
+          assert patch is None, f"Partial FlowSolution_t are not supported"
 
-        for flow_solution_s in PT.iter_children_from_label(zone_s, "FlowSolution_t"):
-          flow_solution_u = PT.new_FlowSolution(PT.get_name(flow_solution_s), parent=zone_u,
-              loc = PT.Subset.GridLocation(flow_solution_s))
-          for data in PT.iter_children_from_label(flow_solution_s, "DataArray_t"):
-            PT.add_child(flow_solution_u, data)
-
-        PT.add_child(zone_u, zonedims_to_ngon(n_vtx, comm))
+        PT.add_child(zone, zonedims_to_ngon(n_vtx, comm))
 
         loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'CellCenter': '#Cell'}
-        zonebc_s = PT.get_child_from_label(zone_s, "ZoneBC_t")
+        zonebc_s = PT.get_child_from_label(zone, "ZoneBC_t")
         if zonebc_s is not None:
-          zonebc_u = PT.new_ZoneBC(zone_u)
+          bc_u_list = list()
           for bc_s in PT.iter_children_from_label(zonebc_s, "BC_t"):
             out_loc_l = get_output_loc(subset_loc, bc_s)
             for out_loc in out_loc_l:
               suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
               bc_u = bc_s_to_bc_u(bc_s, n_vtx, out_loc, i_rank, n_rank)
               PT.set_name(bc_u, PT.get_name(bc_u) + suffix)
-              PT.add_child(zonebc_u, bc_u)
+              bc_u_list.append(bc_u)
+          # Replace bcs S -> bcs U
+          PT.rm_children_from_label(zonebc_s, 'BC_t')
+          PT.get_children(zonebc_s).extend(bc_u_list)
 
-        zone_path = '/'.join([PT.get_name(base_s), PT.get_name(zone_s)])
-        for zonegc_s in PT.iter_children_from_label(zone_s, "ZoneGridConnectivity_t"):
-          zonegc_u = PT.new_ZoneGridConnectivity(PT.get_name(zonegc_s), parent=zone_u)
+        zone_path = '/'.join([PT.get_name(base), PT.get_name(zone)])
+        for zonegc_s in PT.iter_children_from_label(zone, "ZoneGridConnectivity_t"):
+          gc_u_list = list()
           for gc_s in PT.iter_children_from_label(zonegc_s, "GridConnectivity1to1_t"):
-            opp_name = PT.get_value(gc_s)
             out_loc_l = get_output_loc(subset_loc, gc_s)
-            zone_opp_path = zone_opp_name if '/' in opp_name else PT.get_name(base_s)+'/'+opp_name
-            n_vtx_opp = PT.get_value(PT.get_node_from_path(disttree_s, zone_opp_path))[:,0]
+            opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base))
+            n_vtx_opp = zone_path_to_vertex_size[opp_zone_path]
             for out_loc in out_loc_l:
               suffix = loc_to_name[out_loc] if len(out_loc_l) > 1 else ''
               gc_u = gc_s_to_gc_u(gc_s, zone_path, n_vtx, n_vtx_opp, out_loc, i_rank, n_rank)
               PT.set_name(gc_u, PT.get_name(gc_u) + suffix)
-              PT.add_child(zonegc_u, gc_u)
+              gc_u_list.append(gc_u)
           #Manage not 1to1 gcs as BCs
           is_abutt = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting'
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt):
@@ -520,24 +517,22 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
               gc_u = bc_s_to_bc_u(gc_s, n_vtx, out_loc, i_rank, n_rank)
               PT.set_name(gc_u, PT.get_name(gc_u) + suffix)
               PT.new_GridConnectivityType('Abutting', gc_u)
-              PT.add_child(zonegc_u, gc_u)
+              gc_u_list.append(gc_u)
 
           # Hybrid joins should be here : we just have to translate the PL ijk into face index
           is_abutt1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
-            opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base_s))
-            opp_zone = PT.get_node_from_path(disttree_s, opp_zone_path)
+            opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base))
+            opp_zone = PT.get_node_from_path(dist_tree, opp_zone_path)
             if PT.Zone.Type(opp_zone) != 'Unstructured':
               continue
             loc = PT.Subset.GridLocation(gc_s)
             pl = PT.get_child_from_name(gc_s, 'PointList')[1]
-            pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, PT.Zone.VertexSize(zone_s))
+            pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, zone_path_to_vertex_size[zone_path])
             pl_idx = pl_idx.reshape((1,-1), order='F')
-            gc_u = PT.deep_copy(gc_s)
             if 'FaceCenter' in loc: #IFace, JFace or KFaceCenter -> FaceCenter
-              PT.update_child(gc_u, 'GridLocation', value='FaceCenter')
-            PT.update_child(gc_u, 'PointList', value=pl_idx)
-            PT.add_child(zonegc_u, gc_u)
+              PT.update_child(gc_s, 'GridLocation', value='FaceCenter')
+            PT.update_child(gc_s, 'PointList', value=pl_idx)
             # Now update PointListDonor of the opposite (already U) join
             for opp_jn in PT.get_nodes_from_predicates(opp_zone, 'GridConnectivity_t'):
               opp_base_name = PT.path_head(opp_zone_path,1)
@@ -548,26 +543,17 @@ def convert_s_to_u(disttree_s, connectivity, comm, subset_loc=dict()):
                    break
             else:
               raise RuntimeError(f"Opposite join of {PT.get_name(gc_s)} (zone {zone_path}) has not been found")
+          
+          # Replace jns S -> jns U
+          PT.rm_children_from_predicate(zonegc_s, is_abutt)
+          PT.rm_children_from_label(zonegc_s, "GridConnectivity1to1_t")
+          PT.get_children(zonegc_s).extend(gc_u_list)
 
-        # Copy distribution of all Cell/Vtx, which is unchanged
-        distri = PT.deep_copy(MT.getDistribution(zone_s))
+        # Face distribution does not exist on U meshes
+        distri = MT.getDistribution(zone)
         PT.rm_children_from_name(distri, 'Face')
-        PT.add_child(zone_u, distri)
 
-        # Top level nodes
-        top_level_types = ["FamilyName_t", "AdditionalFamilyName_t", "Descriptor_t", \
-            "FlowEquationSet_t", "ReferenceState_t", "ConvergenceHistory_t"]
-        for top_level_type in top_level_types:
-          for node in PT.iter_children_from_label(zone_s, top_level_type):
-            PT.add_child(zone_u, node)
-
-    # Top level nodes
-    top_level_types = ["FlowEquationSet_t", "ReferenceState_t", "Family_t"]
-    for top_level_type in top_level_types:
-      for node in PT.iter_children_from_label(base_s, top_level_type):
-        PT.add_child(base_u, node)
-
-  return disttree_u
+  return dist_tree
 ###############################################################################
 def convert_s_to_ngon(disttree_s, comm):
   """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
@@ -578,7 +564,8 @@ def convert_s_to_ngon(disttree_s, comm):
 
 def convert_s_to_poly(disttree_s, comm):
   """Same as convert_s_to_ngon, but also creates the NFace connectivity"""
+  from maia.algo import pe_to_nface
   disttree_u = convert_s_to_ngon(disttree_s, comm)
   for z in PT.iter_all_Zone_t(disttree_u):
-    NGT.pe_to_nface(z,comm)
+    pe_to_nface(z,comm)
   return disttree_u
