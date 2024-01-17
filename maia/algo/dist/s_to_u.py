@@ -9,6 +9,8 @@ from maia.utils           import py_utils, s_numbering
 from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
 
+from maia.algo.dist.matching_jns_tools import gc_is_reference
+
 def get_output_loc(request_dict, s_node):
   """Retrieve output location from the node if not provided in argument"""
   label_to_key = {'BC_t' : 'BC_t', 'GridConnectivity1to1_t' : 'GC_t', 'GridConnectivity_t': 'GC_t'}
@@ -20,37 +22,6 @@ def get_output_loc(request_dict, s_node):
   if isinstance(out_loc, str):
     out_loc = [out_loc]
   return out_loc
-
-def gc_is_reference(gc_s, zone_path, zone_path_opp):
-  """
-  Check if a structured 1to1 GC is the reference of its pair or not
-  """
-  if zone_path < zone_path_opp:
-    return True
-  elif zone_path > zone_path_opp:
-    return False
-  else: #Same zone path
-    pr  = PT.get_child_from_name(gc_s, "PointRange")[1]
-    prd = PT.get_child_from_name(gc_s, "PointRangeDonor")[1]
-    bnd_axis   = PT.Subset.normal_axis(gc_s)
-    bnd_axis_d = PT.Subset.normal_axis(PT.new_GridConnectivity1to1(point_range=prd))
-    if bnd_axis < bnd_axis_d:
-      return True
-    elif bnd_axis > bnd_axis_d:
-      return False
-    else: #Same boundary axis
-      bnd_axis_val = np.abs(pr[bnd_axis,0])
-      bnd_axis_val_d = np.abs(prd[bnd_axis_d,0])
-      if bnd_axis_val < bnd_axis_val_d:
-        return True
-      elif bnd_axis_val > bnd_axis_val_d:
-        return False
-      else: #Same position in boundary axis
-        if np.sum(pr) < np.sum(prd):
-          return True
-        elif np.sum(pr) > np.sum(prd):
-          return False
-  raise ValueError("Unable to determine if node is reference")
 
 ###############################################################################
 def n_face_per_dir(n_vtx, n_edge):
@@ -272,9 +243,6 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   """
   assert PT.Subset.GridLocation(gc_s) == 'Vertex'
 
-  zone_path_opp = PT.get_value(gc_s)
-  if not '/' in zone_path_opp:
-    zone_path_opp = zone_path.split('/')[0] + '/' + zone_path_opp
   transform = PT.get_value(PT.get_child_from_name(gc_s, 'Transform'))
   T = compute_transform_matrix(transform)
 
@@ -283,7 +251,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
 
   # One of the two connected zones is choosen to compute the slabs/sub_pointrange and to impose
   # it to the opposed zone.
-  if gc_is_reference(gc_s, zone_path, zone_path_opp):
+  if gc_is_reference(gc_s, zone_path):
     point_range_loc, point_range_opp_loc = point_range, point_range_opp
     n_vtx_loc, n_vtx_opp_loc = n_vtx_zone, n_vtx_zone_opp
   else:
@@ -345,7 +313,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   point_list_loc     = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, output_loc, bnd_axis)
   point_list_opp_loc = compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, output_loc, bnd_axis_opp, order)
 
-  if gc_is_reference(gc_s, zone_path, zone_path_opp):
+  if gc_is_reference(gc_s, zone_path):
     point_list, point_list_opp = point_list_loc, point_list_opp_loc
   else:
     point_list, point_list_opp = point_list_opp_loc, point_list_loc

@@ -10,19 +10,6 @@ from maia.pytree.yaml import parse_yaml_cgns
 
 from maia.algo.dist  import s_to_u
 
-
-def test_gc_is_reference():
-  pr  = np.array([[1,1], [1,10], [1,10]], order='F')
-  prd = np.array([[20,10], [1,10], [5,5]], order='F')
-  gc = PT.new_GridConnectivity1to1(point_range=pr, point_range_donor=prd)
-  assert s_to_u.gc_is_reference(gc, 'Base/ZoneA', 'Base/ZoneB') == True
-  assert s_to_u.gc_is_reference(gc, 'Base/ZoneB', 'Base/ZoneA') == False
-  assert s_to_u.gc_is_reference(gc, 'Base/ZoneA', 'Aase/ZoneA') == False
-  assert s_to_u.gc_is_reference(gc, 'Base/ZoneA', 'Base/ZoneA') == True
-  with pytest.raises(ValueError):
-    gc = PT.new_GridConnectivity1to1(point_range=pr, point_range_donor=pr)
-    s_to_u.gc_is_reference(gc, 'Base/ZoneA', 'Base/ZoneA')
-  
 ###############################################################################
 def test_n_face_per_dir():
   nVtx = np.array([7,9,5])

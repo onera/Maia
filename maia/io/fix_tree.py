@@ -5,8 +5,7 @@ import maia.pytree        as PT
 
 import maia
 from maia.utils            import np_utils, as_pdm_gnum, logging
-from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
-                                  gc_is_reference
+from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix
 from maia.algo.dist import matching_jns_tools as MJT
 
 def check_datasize(tree):
@@ -43,9 +42,6 @@ def fix_point_ranges(size_tree):
     base_name = PT.get_name(base)
     zone_name = PT.get_name(zone)
     gc_path     = base_name + '/' + zone_name
-    gc_opp_path = PT.get_value(gc)
-    if not '/' in gc_opp_path:
-      gc_opp_path = base_name + '/' + gc_opp_path
     # WARNING: for hybrid case structured zone could have PointList, PointListDonor.
     if PT.get_child_from_label(gc, 'IndexRange_t') is not None:
       transform     = PT.get_value(PT.get_child_from_name(gc, 'Transform'))
@@ -59,7 +55,7 @@ def fix_point_ranges(size_tree):
 
       if dir_to_swap.any():
         permuted = True
-        if gc_is_reference(gc, gc_path, gc_opp_path):
+        if MJT.gc_is_reference(gc, gc_path):
 
           opp_dir_to_swap = np.empty_like(dir_to_swap)
           opp_dir_to_swap[donor_dir] = dir_to_swap
