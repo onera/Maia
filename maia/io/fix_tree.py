@@ -5,7 +5,6 @@ import maia.pytree        as PT
 
 import maia
 from maia.utils            import np_utils, as_pdm_gnum, logging
-from maia.algo.dist.s_to_u import apply_transform_matrix
 from maia.algo.dist import matching_jns_tools as MJT
 
 def check_datasize(tree):
@@ -45,7 +44,6 @@ def fix_point_ranges(size_tree):
     # WARNING: for hybrid case structured zone could have PointList, PointListDonor.
     if PT.get_child_from_label(gc, 'IndexRange_t') is not None:
       transform     = PT.GridConnectivity.Transform(gc)
-      transform_M   = PT.GridConnectivity.Transform(gc, True)
       point_range   = PT.get_value(PT.get_child_from_name(gc, 'PointRange'))
       point_range_d = PT.get_value(PT.get_child_from_name(gc, 'PointRangeDonor'))
 
@@ -67,8 +65,7 @@ def fix_point_ranges(size_tree):
           point_range[dir_to_swap, 0], point_range[dir_to_swap, 1] = \
               point_range[dir_to_swap, 1], point_range[dir_to_swap, 0]
 
-      assert (point_range_d[:,1] == \
-          apply_transform_matrix(point_range[:,1], point_range[:,0], point_range_d[:,0], transform_M)).all()
+      assert (point_range_d[:,1] == PT.utils.gc_transform_point(gc, point_range[:,1])).all()
   if permuted:
     logging.warning(f"Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
 

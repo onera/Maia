@@ -6,8 +6,7 @@ import maia.pytree.maia   as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, s_numbering
-from .                               import split_cut_tree as SCT
-from maia.algo.dist.s_to_u import      apply_transform_matrix
+from .          import split_cut_tree as SCT
 
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
 dir_to_idx = {'x':0, 'y':1, 'z':2}
@@ -304,9 +303,7 @@ def split_original_joins_S(all_part_zones, comm):
         pr_to_global_num(pr, p_zone_offset)
 
         #Jn dans la num globale de la dist_zone opposée
-        pr_in_opp_abs = np.empty((idx_dim,2), dtype=pr.dtype)
-        pr_in_opp_abs[:,0] = apply_transform_matrix(pr[:,0], dist_pr[:,0], dist_prd[:,0], T_matrix)
-        pr_in_opp_abs[:,1] = apply_transform_matrix(pr[:,1], dist_pr[:,0], dist_prd[:,0], T_matrix)
+        pr_in_opp_abs = PT.utils._gc_transform_window(pr, dist_pr[:,0], dist_prd[:,0], T_matrix)
 
         #Jn dans la zone opposée et en cellules
         normal_idx = PT.Subset.normal_axis(PT.new_BC(point_range=pr_in_opp_abs))# Fake subset to enter PT function
@@ -338,9 +335,7 @@ def split_original_joins_S(all_part_zones, comm):
             sub_prd[dir_to_swap, 0], sub_prd[dir_to_swap, 1] = \
                     sub_prd[dir_to_swap, 1], sub_prd[dir_to_swap, 0]
             # Go back to dist_zone
-            sub_pr = np.empty((idx_dim,2), dtype=pr.dtype)
-            sub_pr[:,0] = apply_transform_matrix(sub_prd[:,0], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
-            sub_pr[:,1] = apply_transform_matrix(sub_prd[:,1], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
+            sub_pr = PT.utils._gc_transform_window(sub_prd, dist_prd[:,0], dist_pr[:,0], T_matrix.T)
             # Go back to local numbering
             pr_to_global_num(sub_pr, p_zone_offset, reverse=True)
             p_zone_offset_opp = all_offset_zones[PT.get_name(opposed_join)]

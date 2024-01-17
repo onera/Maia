@@ -124,19 +124,6 @@ class Test_compute_pointList_from_pointRanges():
 ###############################################################################
 
 ###############################################################################
-class Test_cgns_transform_funcs():
-  # ------------------------------------------------------------------------- #
-  def test_apply_transform_matrix(self):
-    t_matrix = np.array([[0,-1,0], [-1,0,0], [0,0,-1]])
-    start_1 = np.array([17,3,1])
-    start_2 = np.array([7,9,5])
-    assert (s_to_u.apply_transform_matrix(start_1, start_1, start_2, t_matrix)\
-           == start_2).all() #Start
-    assert (s_to_u.apply_transform_matrix(np.array([17,6,3]), start_1, start_2, t_matrix)\
-           == [4,9,3]).all() #Middle
-    assert (s_to_u.apply_transform_matrix(np.array([17,9,5]), start_1, start_2, t_matrix)\
-           == [1,9,1]).all() #End
-###############################################################################
 
 def test_normal_index_shift():
   nVtx = np.array([17,9,7])
