@@ -8,8 +8,7 @@ from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, s_numbering
 from .                               import split_cut_tree as SCT
 from maia.algo.dist.s_to_u import      compute_transform_matrix, \
-                                       apply_transform_matrix, \
-                                       n_face_per_dir
+                                       apply_transform_matrix
 
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
 dir_to_idx = {'x':0, 'y':1, 'z':2}
@@ -375,8 +374,9 @@ def compute_face_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
   dist_vtx_per_dir  = dist_zone_cell_size + 1
   part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
 
-  dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
-  part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
+  part_face_per_dir = np.array([(part_cell_per_dir[0]+1)*part_cell_per_dir[1]*part_cell_per_dir[2],
+                                (part_cell_per_dir[1]+1)*part_cell_per_dir[0]*part_cell_per_dir[2],
+                                (part_cell_per_dir[2]+1)*part_cell_per_dir[0]*part_cell_per_dir[1]])
   shifted_nface_p = np_utils.sizes_to_indices(part_face_per_dir)
   ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
   face_lntogn = np.empty(shifted_nface_p[-1], dtype=dtype)

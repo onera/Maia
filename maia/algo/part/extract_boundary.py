@@ -69,9 +69,8 @@ def extract_faces_mesh(zone, face_ids):
   elif PT.Zone.Type(zone) == 'Structured':
     # For S zone, create a NGon connectivity
     n_vtx_zone = PT.Zone.VertexSize(zone)
-    nf_i, nf_j, nf_k = S2U.n_face_per_dir(n_vtx_zone, n_vtx_zone-1)
+    nf_i, nf_j, nf_k = PT.Zone.FaceSize(zone)
     n_face_tot = nf_i + nf_j + nf_k
-    face_distri = [0, n_face_tot]
 
     bounds = np.array([0, nf_i, nf_i + nf_j, nf_i + nf_j + nf_k], np.int32)
 
