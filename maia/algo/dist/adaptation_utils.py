@@ -539,6 +539,34 @@ def find_matching_bcs(zone, src_pl, tgt_pl, src_tgt_vtx, cgns_name):
 
 
 def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
+def is_unique_strided(array, stride, comm):
+  """
+  For a distributed cst strided array (eg. a connectivity), return a local bool array indicating
+  for each element if it appears only once (w/ considering ordering)
+  """
+  n_elt = array.size//stride
+  strided_array = array.reshape(n_elt, stride)
+  strided_array = np.sort(strided_array, axis=1)
+  gnum = par_algo.compute_gnum(strided_array, comm)
+  
+  unique_gnum, idx, count = np.unique(gnum, return_index=True, return_counts=True)
+  max_gnum = comm.allreduce(np.max(unique_gnum), op=MPI.MAX)
+  distri = par_utils.uniform_distribution(max_gnum, comm)
+
+  dist_data = EP.part_to_block([count], distri, [unique_gnum], comm, reduce_func=EP.reduce_sum)
+  is_unique = np.zeros(distri[1]-distri[0], dtype=bool)
+  is_unique[dist_data==1] = True
+  part_data = EP.block_to_part(is_unique, distri, [unique_gnum], comm)
+  n_unique_l = np.where(part_data[0])[0].size
+  n_unique = comm.allreduce(n_unique_l, op=MPI.SUM)
+  
+  mask = np.zeros(n_elt, dtype=bool)
+  ids = idx[part_data[0]]
+  mask[ids] = True
+
+  return mask
+
+
   '''
   Add faces (TRI_3) in mesh which are face from cells that are not touching the join here described by vtx point_list.
   Check that created face are not already descibed in BCs, or described by two cells (it is an internal face in this case).
