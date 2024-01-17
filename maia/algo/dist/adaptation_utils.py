@@ -250,12 +250,14 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   pbc1_n      = PT.get_child_from_name(zone_bc_n, bc_names[0])
   pbc1_loc    = PT.Subset.GridLocation(pbc1_n)
   pbc1_pl     = PT.get_value(PT.get_child_from_name(pbc1_n, 'PointList'))[0]
-  pbc1_vtx_pl = elmt_pl_to_vtx_pl(zone, pbc1_pl, LOC_TO_CGNS[pbc1_loc], MPI.COMM_SELF)
+  elt_n       = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)==LOC_TO_CGNS[pbc1_loc])
+  pbc1_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, pbc1_pl, MPI.COMM_SELF)
 
   pbc2_n      = PT.get_child_from_name(zone_bc_n, bc_names[1])
   pbc2_loc    = PT.Subset.GridLocation(pbc2_n)
   pbc2_pl     = PT.get_value(PT.get_child_from_name(pbc2_n, 'PointList'))[0]
-  pbc2_vtx_pl = elmt_pl_to_vtx_pl(zone, pbc2_pl, LOC_TO_CGNS[pbc2_loc], MPI.COMM_SELF)
+  elt_n       = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)==LOC_TO_CGNS[pbc2_loc])
+  pbc2_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, pbc2_pl, MPI.COMM_SELF)
 
   old_vtx_num = old_to_new_vtx_num[0]
   new_vtx_num = old_to_new_vtx_num[1]
@@ -333,7 +335,7 @@ def update_vtx_bnds(zone, old_to_new_vtx):
       PT.set_value(gc_pld_n, gc_pld.reshape((1,-1), order='F'))
 
 
-def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, comm, elt_duplicate_bcs=dict()):
+def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplicate_bcs=dict()):
   '''
   Duplicate elements tagged in `elt_pl` by updating its ElementConnectivity and ElementRange nodes,
   as well as ElementRange nodes of elements with inferior dimension (assuming that element nodes are organized with decreasing dimension order).
@@ -343,9 +345,6 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, comm, elt_dupl
   TODO: parallel ?
   '''
   # > Get element informations
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                             PT.Element.CGNSName(n)==elt_name
-  elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
   n_elt      = PT.Element.Size(elt_n)
   elt_size   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
@@ -354,7 +353,7 @@ def duplicate_elts(zone, elt_pl, elt_name, as_bc, elts_to_update, comm, elt_dupl
 
   # > Add duplicated vertex
   n_vtx = PT.Zone.n_vtx(zone)
-  elt_vtx_pl   = elmt_pl_to_vtx_pl(zone, elt_pl, elt_name, MPI.COMM_SELF)
+  elt_vtx_pl   = elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, MPI.COMM_SELF)
   n_vtx_to_add = elt_vtx_pl.size
 
 
@@ -662,15 +661,18 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
   to_constrain_bcs = list()
   matching_bcs   = [dict() for _ in range(n_periodicity)]
   for i_per, gc_paths in enumerate(jn_pairs):
+    tet_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
+    tri_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
+    bar_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2')
 
     gc_vtx_n = PT.get_node_from_path(tree, gc_paths[0])
     gc_vtx_pl  = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointList'     ))[0]
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
     # > 1/ Defining the internal surface, that will be constrained in mesh adaptation
-    cell_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'TETRA_4', comm, elt_full=False) # Tetra made of at least one gc opp vtx
-    face_pl = add_undefined_faces(zone, cell_pl, 'TETRA_4', gc_vtx_pld, 'TRI_3') # ?
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', comm) # Vertices ids of tetra belonging to cell_pl
+    cell_pl = tag_elmt_owning_vtx(zone, tet_n, gc_vtx_pld, comm, elt_full=False) # Tetra made of at least one gc opp vtx
+    face_pl = add_undefined_faces(zone, tet_n, cell_pl, tri_n, comm) # ?
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, tet_n, cell_pl, comm) # Vertices ids of tetra belonging to cell_pl
 
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
     cell_bc_name = f'tetra_4_periodic_{i_per}'
@@ -700,8 +702,8 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     # > Find BCs on GCs that will be deleted because they have their periodic twin
     # > For now only fully described BCs will be treated
     matching_bcs[i_per] = dict()
-    bar_to_rm_pl = tag_elmt_owning_vtx(zone, gc_vtx_pld, 'BAR_2', comm, elt_full=True) #Bar made of two gc opp vtx
-    bar_twins_pl = tag_elmt_owning_vtx(zone, gc_vtx_pl,  'BAR_2', comm, elt_full=True) #Bar made of two gc vtx
+    bar_to_rm_pl = tag_elmt_owning_vtx(zone, bar_n, gc_vtx_pld, comm, elt_full=True) #Bar made of two gc opp vtx
+    bar_twins_pl = tag_elmt_owning_vtx(zone, bar_n, gc_vtx_pl , comm, elt_full=True) #Bar made of two gc vtx
     matching_bcs[i_per]['BAR_2'] = find_matching_bcs(zone, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], 'BAR_2')
     bar_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2')
     if bar_n is not None:
@@ -712,8 +714,8 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     #      of elmts touching this surface
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_pl
-    to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', comm, elt_full=True)
-    to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', comm, elt_full=True)
+    to_update_face_pl = tag_elmt_owning_vtx(zone, tri_n, vtx_pl, comm, elt_full=True)
+    to_update_line_pl = tag_elmt_owning_vtx(zone, bar_n, vtx_pl, comm, elt_full=True)
 
     # > Ambiguous faces that contains all vtx but are not included in patch cells can be removed
     to_update_face_pl = find_shared_faces(tri_elt, to_update_face_pl, tetra_elt, cell_pl, comm)
@@ -721,12 +723,12 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
   
     face_bc_name = f'tri_3_periodic_{i_per}'
-    new_vtx_num = duplicate_elts(zone, face_pl, 'TRI_3', f'tri_3_periodic_{i_per}', elts_to_update, comm)
+    new_vtx_num = duplicate_elts(zone, tri_n, face_pl, f'tri_3_periodic_{i_per}', elts_to_update, comm)
     to_constrain_bcs.append(face_bc_name)
 
 
     # > 4/ Apply periodic transformation to vtx and flowsol
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', comm)
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, tet_n, cell_pl, comm)
     perio_val = PT.GridConnectivity.periodic_values(PT.get_node_from_path(tree, gc_paths[1]))
     periodic = perio_val.asdict(snake_case=True)
 
@@ -798,12 +800,16 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
   i_per = n_periodicity-1
   for gc_paths, periodic_values in reversed(jn_pairs_and_values.items()): # reversed for future multiperiodic
   
+    tet_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
+    tri_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
+    bar_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2')
+
     # > 1/ Get elts and vtx for BCs out of feflo
     #      TODO: some TRI_3 should be avoided with find_shared_faces again
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     cell_bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_bc_pl = PT.get_value(PT.Subset.getPatch(cell_bc_n))[0]
-    vtx_pl = elmt_pl_to_vtx_pl(zone, cell_bc_pl, 'TETRA_4', MPI.COMM_SELF)
+    vtx_pl = elmt_pl_to_vtx_pl(zone, tet_n, cell_bc_pl, MPI.COMM_SELF)
 
     still_here_gc_name  = gc_paths[0].split('/')[-1]
     to_retrieve_gc_name = gc_paths[1].split('/')[-1]
@@ -812,20 +818,20 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
 
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_bc_pl
-    to_update_face_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'TRI_3', MPI.COMM_SELF, elt_full=True)
-    to_update_line_pl = tag_elmt_owning_vtx(zone, vtx_pl, 'BAR_2', MPI.COMM_SELF, elt_full=True)
+    to_update_face_pl = tag_elmt_owning_vtx(zone, tri_n, vtx_pl, MPI.COMM_SELF, elt_full=True)
+    to_update_line_pl = tag_elmt_owning_vtx(zone, bar_n, vtx_pl, MPI.COMM_SELF, elt_full=True)
     to_update_face_pl = find_shared_faces(tri_elt, to_update_face_pl, tetra_elt, cell_bc_pl, comm)
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
     # > 2/ Duplicate GC surface and update element connectivities in the patch
-    duplicate_elts(zone, face_pl, 'TRI_3', to_retrieve_gc_name, elts_to_update, comm, elt_duplicate_bcs=bcs_to_retrieve[i_per])
+    duplicate_elts(zone, tri_n, face_pl, to_retrieve_gc_name, elts_to_update, comm, elt_duplicate_bcs=bcs_to_retrieve[i_per])
 
     # > 3/ Deplace periodic patch to retrieve initial domain
     #      (vtx_pl is updated because has changed with surface duplication)
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, cell_pl, 'TETRA_4', MPI.COMM_SELF)
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, tet_n, cell_pl, MPI.COMM_SELF)
     periodic = periodic_values[0].asdict(True)
     dist_transform.transform_affine_zone(zone, vtx_pl, MPI.COMM_SELF, **periodic, apply_to_fields=True)
     # maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
