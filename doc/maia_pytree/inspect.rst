@@ -68,6 +68,7 @@ Here is a summary of the available functions, depending of the input node:
   :nosignatures:
 
   ~maia.pytree.GridConnectivity.Type
+  ~maia.pytree.GridConnectivity.Transform
   ~maia.pytree.GridConnectivity.is1to1
   ~maia.pytree.GridConnectivity.isperiodic
   ~maia.pytree.GridConnectivity.ZoneDonorPath

@@ -160,6 +160,14 @@ def test_GridConnectivity_Type():
   with pytest.raises(Exception):
     SIDS.GridConnectivity.Type(bc)
 
+def test_GridConnectivity_Transform():
+  gc = N.new_GridConnectivity1to1(transform=[-2,3,1])
+  assert (SIDS.GridConnectivity.Transform(gc) == [-2,3,1]).all()
+  assert (SIDS.GridConnectivity.Transform(gc, True) == [[0,0,1], [-1,0,0], [0,1,0]]).all()
+  gc = N.new_GridConnectivity1to1()
+  assert (SIDS.GridConnectivity.Transform(gc) == [1,2,3]).all()
+  assert (SIDS.GridConnectivity.Transform(gc, True) == [[1,0,0], [0,1,0], [0,0,1]]).all()
+
 def test_GridConnectivity_isperiodic():
   gc = N.new_GridConnectivity()
   assert SIDS.GridConnectivity.isperiodic(gc) == False

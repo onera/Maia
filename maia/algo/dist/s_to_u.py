@@ -102,26 +102,6 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_
 ###############################################################################
 
 ###############################################################################
-def is_same_axis(x,y):
-  """
-  This function is the implementation of the 'del' function defined in the SIDS
-  of CGNS (https://cgns.github.io/CGNS_docs_current/sids/cnct.html) as :
-  del(x−y) ≡ +1 if |x| = |y|
-  """
-  return (np.abs(x) == np.abs(y)).astype(int)
-###############################################################################
-
-###############################################################################
-def compute_transform_matrix(transform):
-  """
-  This function compute the matrix to convert current indices to opposite indices
-  The definition of this matrix is given in the SIDS of CGNS 
-  (https://cgns.github.io/CGNS_docs_current/sids/cnct.html)
-  """
-  transform_np = np.asarray(transform)
-  del_matrix = is_same_axis(transform_np, np.array([[k+1] for k in range(transform_np.size)]))
-  return np.sign(transform_np) * del_matrix
-###############################################################################
 
 ###############################################################################
 def apply_transform_matrix(index_1, start_1, start_2, T):
@@ -243,8 +223,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   """
   assert PT.Subset.GridLocation(gc_s) == 'Vertex'
 
-  transform = PT.get_value(PT.get_child_from_name(gc_s, 'Transform'))
-  T = compute_transform_matrix(transform)
+  T = PT.GridConnectivity.Transform(gc_s, True)
 
   point_range     = PT.get_value(PT.get_child_from_name(gc_s, 'PointRange'))
   point_range_opp = PT.get_value(PT.get_child_from_name(gc_s, 'PointRangeDonor'))

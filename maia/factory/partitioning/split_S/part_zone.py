@@ -7,8 +7,7 @@ import maia.pytree.maia   as MT
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, s_numbering
 from .                               import split_cut_tree as SCT
-from maia.algo.dist.s_to_u import      compute_transform_matrix, \
-                                       apply_transform_matrix
+from maia.algo.dist.s_to_u import      apply_transform_matrix
 
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
 dir_to_idx = {'x':0, 'y':1, 'z':2}
@@ -289,13 +288,14 @@ def split_original_joins_S(all_part_zones, comm):
   for part in all_part_zones:
     zone_gc = PT.update_child(part, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
     to_delete = []
-    for jn in PT.iter_children_from_predicates(part, 'ZoneBC_t/BC_t'):
+    for jn in PT.get_children_from_predicates(part, 'ZoneBC_t/BC_t'):
       if PT.get_child_from_name(jn, 'GridConnectivityDonorName') is not None:
         dist_pr = PT.get_child_from_name(jn, 'distPR')[1]
         dist_prd = PT.get_child_from_name(jn, 'distPRDonor')[1]
-        transform  = PT.get_child_from_name(jn, 'Transform')[1]
+        PT.set_label(jn, 'GridConnectivity1to1_t')
+        transform  = PT.GridConnectivity.Transform(jn)
+        T_matrix = PT.GridConnectivity.Transform(jn, True)
         idx_dim = transform.size
-        T_matrix = compute_transform_matrix(transform)
         assert PT.Subset.GridLocation(jn) == 'Vertex'
 
         #Jn dans la num globale de la dist_zone

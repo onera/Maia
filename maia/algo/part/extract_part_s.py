@@ -2,7 +2,7 @@ import maia
 import maia.pytree as PT
 from   maia.factory  import dist_from_part
 from   maia.factory.partitioning.split_S.part_zone import compute_face_gnum
-from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix
+from   maia.algo.dist.s_to_u import apply_transform_matrix
 from   maia.utils import s_numbering
 from   .extraction_utils   import LOC_TO_DIM, DIMM_TO_DIMF, build_intersection_numbering, discover_containers
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -196,8 +196,8 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
           prd_of_gc = PT.get_value(PT.get_child_from_name(gc_n, 'PointRangeDonor'))
           
 
-          transform = PT.get_value(PT.get_node_from_predicates(gc_n, 'Transform'))
-          T = compute_transform_matrix(transform)
+          transform = PT.GridConnectivity.Transform(gc_n)
+          T = PT.GridConnectivity.Transform(gc_n, True)
           apply_t1 = apply_transform_matrix(intersection[:,0], pr_of_gc[:,0], prd_of_gc[:,0], T)
           apply_t2 = apply_transform_matrix(intersection[:,1], pr_of_gc[:,0], prd_of_gc[:,0], T)
           new_gc_prd = np.array([[apply_t1[dim], apply_t2[dim]] for dim in range(3)], dtype=np.int32)

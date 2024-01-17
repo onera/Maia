@@ -126,24 +126,6 @@ class Test_compute_pointList_from_pointRanges():
 ###############################################################################
 class Test_cgns_transform_funcs():
   # ------------------------------------------------------------------------- #
-  def test_isSameAxis(self):
-    assert s_to_u.is_same_axis( 1, 2) == 0
-    assert s_to_u.is_same_axis( 1, 1) == 1
-    assert s_to_u.is_same_axis(-2, 2) == 1
-    assert s_to_u.is_same_axis( 1,-1) == 1
-  # ------------------------------------------------------------------------- #
-  def test_compute_transformMatrix(self):
-    transform = [1,2,3]
-    expected_matrix = np.eye(3, dtype=np.int32)
-    assert (s_to_u.compute_transform_matrix(transform) == expected_matrix).all()
-
-    transform = [-2,3,1]
-    expected_matrix = np.zeros((3,3),dtype=np.int32,order='F')
-    expected_matrix[0][2] =  1
-    expected_matrix[1][0] = -1
-    expected_matrix[2][1] =  1
-    assert (s_to_u.compute_transform_matrix(transform) == expected_matrix).all()
-  # ------------------------------------------------------------------------- #
   def test_apply_transform_matrix(self):
     t_matrix = np.array([[0,-1,0], [-1,0,0], [0,0,-1]])
     start_1 = np.array([17,3,1])

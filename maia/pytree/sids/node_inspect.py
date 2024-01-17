@@ -650,6 +650,32 @@ class GridConnectivity:
       return N.get_value(gc_type_n) if gc_type_n is not None else 'Overset'
 
   @staticmethod
+  def Transform(gc_node:CGNSTree, as_matrix=False) -> np.ndarray:
+    """ Return the Transform specification of a GridConnectivity1to1 node.
+
+    Args:
+      gc_node (CGNSTree): Input GridConnectivity1to1 node
+      as_matrix (bool): If True, return the transform matrix. Otherwise, return
+        the transform vector.
+    Returns:
+      ndarray: Transform specification
+    Example:
+      >>> gc = PT.new_GridConnectivity1to1(transform=[-2,3,1])
+      >>> PT.GridConnectivity.Transform(gc, True)
+      array([[ 0,  0,  1],
+             [-1,  0,  0],
+             [ 0,  1,  0]])
+    """
+    transform_node = W.get_child_from_name(gc_node, 'Transform')
+    transform = transform_node[1] if transform_node is not None else np.array([1,2,3], np.int32)
+    if as_matrix:
+      del_f = lambda x,y : (np.abs(x) == np.abs(y)).astype(int) # del(x−y) ≡ +1 if |x| = |y|
+      del_matrix = del_f(transform, np.array([[k+1] for k in range(transform.size)]))
+      return np.sign(transform) * del_matrix
+    else:
+      return transform
+
+  @staticmethod
   def is1to1(gc_node:CGNSTree) -> bool:
     """ Return True if the GridConnectivity node is of type 'Abutting1to1'
 
