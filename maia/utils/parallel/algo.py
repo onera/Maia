@@ -137,16 +137,25 @@ class DistSorter:
     return sorted
 
 
-def is_unique_strided(array, stride, comm):
+def is_unique_strided_serialized(array, stride, comm):
   """
   For a distributed cst strided array (eg. a connectivity), return a local bool array indicating
-  for each element if it appears only once (w/ considering ordering)
+  for each element if it appears only once (w/ considering ordering).
+  Note: this function is slow because of serialization in `compute_gnum(...)`, should be better
+  with PDM.from_nuplet_parent, but bugged for now. See after maia v1.3 deployment.
   """
   n_elt = array.size//stride
   
   strided_array = array.reshape(n_elt, stride)
   strided_array = np.sort(strided_array, axis=1)
   gnum = compute_gnum(strided_array, comm)
+  
+  # gen_gnum = PDM.GlobalNumbering(3, 1, 1, 0., comm)
+  # gnum = gen_gnum.set_parents_nuplet(stride)
+  # gnum = gen_gnum.set_from_parent(0, array.astype(PDM.npy_pdm_gnum_dtype))
+  # gen_gnum.compute()
+  # gnum = gen_gnum.get(0)
+
   unique_gnum, idx, count = np.unique(gnum, return_index=True, return_counts=True)
   max_gnum = comm.allreduce(np.max(unique_gnum), op=MPI.MAX)
   distri = par_utils.uniform_distribution(max_gnum, comm)
@@ -160,4 +169,31 @@ def is_unique_strided(array, stride, comm):
   ids  = idx[part_data[0]]
   mask[ids] = True
 
+  return mask
+
+
+def is_unique_strided(array, stride, comm):
+  """
+  For a distributed cst strided array (eg. a connectivity), return a local bool array indicating
+  for each element if it appears only once (w/ considering ordering).
+  """
+  n_elt = array.size//stride
+  distri = par_utils.dn_to_distribution(n_elt, comm)
+  src_dist_gnum = np.arange(distri[0], distri[1], dtype=PDM.npy_pdm_gnum_dtype)+1
+  
+  array_idx = stride*np.arange(n_elt+1, dtype=np.int32)
+  array_key = np.add.reduceat(array, array_idx[:-1])
+
+  weights = np.ones(n_elt, float)
+  ptb = EP.PartToBlock(None, [array_key], comm, weight=[weights], keep_multiple=True)
+  cst_stride = np.ones(n_elt, np.int32)
+
+  # Origin is not mandatory for TETRA because we just want the TRI ids at the end
+  _, origin = ptb.exchange_field([src_dist_gnum], part_stride=[  cst_stride])
+  _, tmp_ec = ptb.exchange_field([array]        , part_stride=[3*cst_stride])
+  part_mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
+
+  # Retrieve mask on initial distribution
+  mask = EP.part_to_block([part_mask], distri, [origin], comm)
+  
   return mask

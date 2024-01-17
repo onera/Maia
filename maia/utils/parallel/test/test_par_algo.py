@@ -102,6 +102,21 @@ def test_compute_gnum_o(comm):
 
 
 @pytest_parallel.mark.parallel([1,2,3])
+def test_is_unique_strided_serialized(comm):
+  n_elt  = 6
+  stride = 3
+  array  = np.array([1,2,3, 4,5,6, 7,8,9, 3,1,2, 2,1,7, 7,6,8])
+  unique = np.array([False,  True,  True, False,  True,  True])
+  
+  distri = par_utils.uniform_distribution(n_elt, comm)
+  array  = array [distri[0]*stride:distri[1]*stride]
+  expected = unique[distri[0]       :distri[1]       ]
+
+  unique = par_algo.is_unique_strided_serialized(array, stride, comm)
+  assert np.array_equal(unique,expected)
+
+
+@pytest_parallel.mark.parallel([1,2,3])
 def test_is_unique_strided(comm):
   n_elt  = 6
   stride = 3
@@ -110,7 +125,34 @@ def test_is_unique_strided(comm):
   
   distri = par_utils.uniform_distribution(n_elt, comm)
   array  = array [distri[0]*stride:distri[1]*stride]
-  unique = unique[distri[0]       :distri[1]       ]
+  expected = unique[distri[0]       :distri[1]       ]
 
   unique = par_algo.is_unique_strided(array, stride, comm)
-  assert np.array_equal(unique,unique)
+  assert np.array_equal(unique ,expected)
+
+
+def test_is_unique_strided_perfo(comm):
+  import time
+  n_vtx  = 10000000
+  n_elt  = 10000000
+  stride = 3
+  array  = np.random.randint(1, n_vtx, size=n_elt*stride, dtype=int)
+  
+  distri = par_utils.uniform_distribution(n_elt, comm)
+  array  = array [distri[0]*stride:distri[1]*stride]
+
+  comm.barrier()
+  start   = time.time()
+  unique1 = par_algo.is_unique_strided_serialized(array, stride, comm)
+  end     = time.time()
+  print(f"[{comm.rank}] TIME is_unique_strided  = {end-start}")
+  comm.barrier()
+
+  comm.barrier()
+  start   = time.time()
+  unique2 = par_algo.is_unique_strided(array, stride, comm)
+  end     = time.time()
+  print(f"[{comm.rank}] TIME is_unique_strided2 = {end-start}")
+  comm.barrier()
+
+  assert np.array_equal(unique1,unique2)
