@@ -54,3 +54,93 @@ class Test_transform_bnd_pr_size():
     assert (pr_utils.transform_bnd_pr_size(cell_range, 'CellCenter', 'FaceCenter') == [16,1,1]).all()
     with pytest.raises(ValueError):
       pr_utils.transform_bnd_pr_size(cell_range, 'CellCenter', 'Vertex')
+
+class Test_compute_pointList_from_pointRanges():
+  class Test_face():
+    nVtx       = np.array([3, 3, 3], np.int32)
+    loc        = "FaceCenter"
+    # --------------------------------------------------------------------------- #
+    def test_emptyRange(self):
+      pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,"I"+self.loc)
+      assert (pointList.shape == (1,0))
+      assert (pointList == np.empty((1,0), dtype=np.int32)).all()
+    # --------------------------------------------------------------------------- #
+    #FaceRange BC (Idir) : [[3,3], [1,2], [1,2]]
+    def test_simple_range(self):
+      sub_ranges = [np.array([[3,3],[1,2],[1,2]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"I"+self.loc)
+      assert (pointList == [[3,6,9,12]]).all()
+    # --------------------------------------------------------------------------- #
+    def test_reversed_range(self):
+      sub_ranges = [np.array([[3,3],[2,1],[1,2]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"I"+self.loc)
+      assert (pointList == [[6,3,12,9]]).all()
+      sub_ranges = [np.array([[3,3],[2,1],[2,1]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"I"+self.loc)
+      assert (pointList == [[12,9,6,3]]).all()
+    # --------------------------------------------------------------------------- #
+    def test_multiple_range(self):
+      sub_ranges = [np.array([[3,3],[1,2],[1,1]]),
+                    np.array([[3,3],[1,1],[2,2]]),
+                    np.array([[3,3],[2,2],[2,2]])]
+      pointList = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"I"+self.loc)
+      assert (pointList == [[3,6,9,12]]).all()
+    # --------------------------------------------------------------------------- #
+    #FaceRange BC (Jdir) : [[2,2], [1,1], [1,2]]
+    def test_partial_bc(self):
+      sub_ranges = [np.array([[2,2],[1,1],[1,2]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"J"+self.loc)
+      assert (pointList == [[14,20]]).all()
+    # --------------------------------------------------------------------------- #
+    def test_partial_bc_multiple_range(self):
+      sub_ranges = [np.array([[2,2],[1,1],[1,1]]),
+                    np.array([[2,2],[1,1],[2,2]])]
+      pointList = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"J"+self.loc)
+      assert (pointList == [[14,20]]).all()
+
+  class Test_vertex():
+    nVtx       = np.array([3, 3, 3], np.int64)
+    loc        = "Vertex"
+    # --------------------------------------------------------------------------- #
+    #VtxRange BC (IDir)= [[3,3], [1,3], [1,3]]
+    def test_simple_range(self):
+      sub_ranges = [np.array([[3,3],[1,3],[1,3]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc)
+      assert (pointList == [[3,6,9,12,15,18,21,24,27]]).all()
+    # --------------------------------------------------------------------------- #
+    def test_multi_range(self):
+      sub_ranges = [np.array([[3,3],[1,2],[1,1]]),
+                    np.array([[3,3],[3,3],[1,1]]),
+                    np.array([[3,3],[1,1],[2,2]]),
+                    np.array([[3,3],[2,3],[2,2]]),
+                    np.array([[3,3],[1,2],[3,3]]),
+                    np.array([[3,3],[3,3],[3,3]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc)
+      assert (pointList == [[3,6,9,12,15,18,21,24,27]]).all()
+    # --------------------------------------------------------------------------- #
+    #VtxRange BC (KDir)= [[2,3], [1,2], [1,1]]
+    def test_simple_partial(self):
+      sub_ranges = [np.array([[2,3],[1,2],[1,1]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc)
+      assert (pointList == [[2,3,5,6]]).all()
+
+  class Test_cell():
+    nVtx       = np.array([3, 3, 3])
+    loc        = "CellCenter"
+    # --------------------------------------------------------------------------- #
+    def test_emptyRange(self):
+      pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,self.loc)
+      assert (pointList.shape == (1,0))
+      assert (pointList == np.empty((1,0), dtype=np.int32)).all()
+    # --------------------------------------------------------------------------- #
+    #CellRange BC (IDir)= [[2,2], [1,2], [1,2]]
+    def test_simple_range(self):
+      sub_ranges = [np.array([[2,2],[1,2],[1,2]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc)
+      assert (pointList == [[2,4,6,8]]).all()
+    # --------------------------------------------------------------------------- #
+    def test_multiple_range(self):
+      sub_ranges = [np.array([[2,2],[2,2],[1,1]]), #Assume we dont have first
+                    np.array([[2,2],[1,2],[2,2]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc)
+      assert (pointList == [[4,6,8]]).all()

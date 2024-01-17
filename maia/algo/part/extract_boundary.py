@@ -4,7 +4,6 @@ import maia.pytree        as PT
 
 from maia.utils     import np_utils, s_numbering, pr_utils
 from maia.transfer  import utils as te_utils
-from maia.algo.dist import s_to_u as S2U
 
 from .point_cloud_utils import create_sub_numbering
 
@@ -26,7 +25,7 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   slab[:,1] = bc_size + pr[:,0] - 1
   slab[bnd_axis,:] += pr_utils.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
 
-  return S2U.compute_pointList_from_pointRanges([slab], n_vtx_zone, 'FaceCenter', bnd_axis)
+  return pr_utils.compute_pointList_from_pointRanges([slab], n_vtx_zone,  ['I', 'J', 'K'][bnd_axis]+'FaceCenter')
 
 def _extract_sub_connectivity(array_idx, array, sub_elts):
   """

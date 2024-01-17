@@ -4,6 +4,7 @@ from cmaia       import cpp20_enabled
 from cmaia.utils import layouts
 
 from .numbering import s_numbering_funcs as s_numbering
+from .numbering import pr_utils
 
 from .          import py_utils
 from .parallel  import utils    as par_utils

@@ -23,6 +23,9 @@ def get_output_loc(request_dict, s_node):
     out_loc = [out_loc]
   return out_loc
 
+def _s_location(loc, bnd_axis):
+  return loc if loc != 'FaceCenter' else ['I', 'J', 'K'][bnd_axis] + 'FaceCenter'
+
 ###############################################################################
 def n_face_per_dir(n_vtx, n_edge):
   """
@@ -32,58 +35,6 @@ def n_face_per_dir(n_vtx, n_edge):
   return np.array([n_vtx[0]*n_edge[1]*n_edge[2],
                    n_vtx[1]*n_edge[0]*n_edge[2],
                    n_vtx[2]*n_edge[0]*n_edge[1]])
-###############################################################################
-
-###############################################################################
-def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_index=None, order='F'):
-  """
-  Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must
-  describe entity of kind output_loc, which can take the values 'FaceCenter', 'Vertex' or 'CellCenter'
-  and represent the output gridlocation of the pointlist array.
-  Note that the pointRange intervals can be reverted (start > end) as it occurs in GC nodes.
-  This function also require the normal_index parameter, (admissibles values : 0,1,2) which is mandatory
-  to retrieve the indexing function when output_loc == 'FaceCenter'.
-  """
-
-  n_cell_S = [nv - 1 for nv in n_vtx_S]
-
-  # The lambda func ijk_to_func redirect to the good indexing function depending
-  # on the output grid location
-  if output_loc == 'FaceCenter':
-    ijk_to_face_index = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
-    ijk_to_func = lambda i,j,k : ijk_to_face_index[normal_index](i, j, k, n_cell_S, n_vtx_S)
-  elif output_loc == 'Vertex':
-    ijk_to_func = lambda i,j,k : s_numbering.ijk_to_index(i, j, k, n_vtx_S)
-  elif output_loc == 'CellCenter':
-    ijk_to_func = lambda i,j,k : s_numbering.ijk_to_index(i, j, k, n_cell_S)
-  else:
-    raise ValueError("Wrong output location : '{}'".format(output_loc))
-
-  # The lambda func ijk_to_vect_func is a wrapping to ijk_to_func (and so to the good indexing func)
-  # but with args expressed as numpy arrays : this allow vectorial call of indexing function as if we did an
-  # imbricated loop
-  if order == 'F':
-    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
-  elif order == 'C':
-    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx.reshape(-1,1,1), j_idx.reshape(-1,1), k_idx)
-
-  sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
-  point_list = np.empty((1, sum(sub_range_sizes)), order='F', dtype=n_vtx_S.dtype)
-  counter = 0
-
-  for ipr, pr in enumerate(sub_pr_list):
-    inc = 2*(pr[:,0] <= pr[:,1]) - 1 #In each direction, 1 if pr[l,0] <= pr[l,1] else - 1
-
-    # Here we build for each direction a looping array range(start, end+1) if pr is increasing
-    # or range(start, end-1, -1) if pr is decreasing
-    np_idx_arrays = []
-    for l in range(pr.shape[0]):
-      np_idx_arrays.append(np.arange(pr[l,0], pr[l,1] + inc[l], inc[l]))
-
-    point_list[0][counter:counter+sub_range_sizes[ipr]] = ijk_to_vect_func(*np_idx_arrays).flatten()
-    counter += sub_range_sizes[ipr]
-
-  return point_list
 ###############################################################################
 
 
@@ -113,7 +64,8 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     sub_pr[:,1] += point_range[:,0] - 1
     sub_pr[bnd_axis,:] += shift
 
-  point_list = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, output_loc, bnd_axis)
+  _loc = _s_location(output_loc, bnd_axis)
+  point_list = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, _loc)
 
   bc_u = PT.new_node(PT.get_name(bc_s), PT.get_label(bc_s), PT.get_value(bc_s))
   PT.new_GridLocation(output_loc, parent=bc_u)
@@ -140,7 +92,8 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     ds_output_loc = 'FaceCenter' if ds_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'] else ds_loc
 
     if not (is_related and ds_output_loc == output_loc): #Otherwise, point list has already been computed
-      ds_pl = compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, ds_output_loc, bnd_axis)
+      _loc = _s_location(ds_output_loc, bnd_axis)
+      ds_pl = pr_utils.compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, _loc)
       PT.update_child(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
       PT.new_IndexArray(value=ds_pl, parent=bcds)
       MT.newDistribution({'Index' : ds_distri}, parent=bcds)
@@ -230,8 +183,9 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   loc_transform_2d = np.abs(np.delete(loc_transform, bnd_axis))
   order = 'C' if loc_transform_2d[0] > loc_transform_2d[1] else 'F'
 
-  point_list_loc     = compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, output_loc, bnd_axis)
-  point_list_opp_loc = compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, output_loc, bnd_axis_opp, order)
+  _loc, _loc_opp = _s_location(output_loc, bnd_axis), _s_location(output_loc, bnd_axis_opp)
+  point_list_loc     = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, _loc)
+  point_list_opp_loc = pr_utils.compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, _loc_opp, order)
 
   if gc_is_reference(gc_s, zone_path):
     point_list, point_list_opp = point_list_loc, point_list_opp_loc
