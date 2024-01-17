@@ -2,7 +2,7 @@ import numpy   as np
 
 import maia.pytree        as PT
 
-from maia.utils     import np_utils, s_numbering
+from maia.utils     import np_utils, s_numbering, pr_utils
 from maia.transfer  import utils as te_utils
 from maia.algo.dist import s_to_u as S2U
 
@@ -19,12 +19,12 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   bnd_axis = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=input_loc))
 
   # It is safer to reuse slabs to manage all cases (eg input location or reversed pr)
-  bc_size = S2U.transform_bnd_pr_size(pr, input_loc, "FaceCenter")
+  bc_size = pr_utils.transform_bnd_pr_size(pr, input_loc, "FaceCenter")
 
   slab = np.empty((3,2), order='F', dtype=np.int32)
   slab[:,0] = pr[:,0]
   slab[:,1] = bc_size + pr[:,0] - 1
-  slab[bnd_axis,:] += S2U.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
+  slab[bnd_axis,:] += pr_utils.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
 
   return S2U.compute_pointList_from_pointRanges([slab], n_vtx_zone, 'FaceCenter', bnd_axis)
 

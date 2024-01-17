@@ -5,7 +5,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
-from maia.utils           import py_utils, s_numbering
+from maia.utils           import py_utils, s_numbering, pr_utils
 from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
 
@@ -32,21 +32,6 @@ def n_face_per_dir(n_vtx, n_edge):
   return np.array([n_vtx[0]*n_edge[1]*n_edge[2],
                    n_vtx[1]*n_edge[0]*n_edge[2],
                    n_vtx[2]*n_edge[0]*n_edge[1]])
-###############################################################################
-
-###############################################################################
-def vtx_slab_to_n_faces(vtx_slab, n_vtx):
-  """
-  Compute the number of faces to create for a zone by a proc with distributed info
-  from a vertex slab
-  """
-  np_vtx_slab = np.asarray(vtx_slab)
-  # Compute number of vertices and number of edges in each dir (exclude last
-  # edge if slab is the end of the block
-  n_vertices = np_vtx_slab[:,1] - np_vtx_slab[:,0]
-  n_edges    = n_vertices - (np_vtx_slab[:,1] == n_vtx)
-
-  return n_face_per_dir(n_vertices, n_edges)
 ###############################################################################
 
 ###############################################################################
@@ -101,37 +86,7 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, output_loc, normal_
   return point_list
 ###############################################################################
 
-###############################################################################
-def normal_index_shift(point_range, n_vtx, bnd_axis, input_loc, output_loc):
-  """
-  Return the value that should be added to pr[normal_index,:] to account for cell <-> face|vtx transformation :
-    +1 if we move from cell to face|vtx and if it was the last plane of cells
-    -1 if we move from face|vtx to cell and if it was the last plane of face|vtx
-     0 in other cases
-  """
-  in_loc_is_cell  = (input_loc == 'CellCenter')
-  out_loc_is_cell = (output_loc == 'CellCenter')
-  normal_index_is_last = point_range[bnd_axis,0] == (n_vtx[bnd_axis] - int(in_loc_is_cell))
-  correction_sign = -int(out_loc_is_cell and not in_loc_is_cell) \
-                    +int(not out_loc_is_cell and in_loc_is_cell)
-  return int(normal_index_is_last) * correction_sign
-###############################################################################
 
-###############################################################################
-def transform_bnd_pr_size(point_range, input_loc, output_loc):
-  """
-  Predict a point_range defined at an input_location if it were defined at an output_location
-  """
-  size = np.abs(point_range[:,1] - point_range[:,0]) + 1
-
-  if input_loc == 'Vertex' and 'Center' in output_loc:
-    size -= (size != 1)
-  elif 'Center' in input_loc and output_loc == 'Vertex':
-    bnd_axis = PT.Subset.normal_axis(PT.new_BC(point_range=point_range, loc=input_loc))
-    mask = np.arange(point_range.shape[0]) == bnd_axis
-    size += (~mask)
-  return size
-###############################################################################
 
 ###############################################################################
 def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
@@ -146,11 +101,11 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
   bnd_axis = PT.Subset.normal_axis(bc_s)
   #Compute slabs from attended location (better load balance)
-  bc_size = transform_bnd_pr_size(point_range, input_loc, output_loc)
+  bc_size = pr_utils.transform_bnd_pr_size(point_range, input_loc, output_loc)
   bc_range = py_utils.uniform_distribution_at(bc_size.prod(), i_rank, n_rank)
   bc_slabs = HFR2S.compute_slabs(bc_size, bc_range)
 
-  shift = normal_index_shift(point_range, n_vtx_zone, bnd_axis, input_loc, output_loc)
+  shift = pr_utils.normal_index_shift(point_range, n_vtx_zone, bnd_axis, input_loc, output_loc)
   #Prepare sub pointRanges from slabs
   sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
   for sub_pr in sub_pr_list:
@@ -240,7 +195,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   bnd_axis = PT.Subset.normal_axis(PT.new_GridConnectivity1to1(point_range=point_range_loc))
   bnd_axis_opp = PT.Subset.normal_axis(PT.new_GridConnectivity1to1(point_range=point_range_opp_loc))
   #Compute slabs from attended location (better load balance)
-  gc_size = transform_bnd_pr_size(point_range_loc, "Vertex", output_loc)
+  gc_size = pr_utils.transform_bnd_pr_size(point_range_loc, "Vertex", output_loc)
   gc_range = py_utils.uniform_distribution_at(gc_size.prod(), i_rank, n_rank)
   gc_slabs = HFR2S.compute_slabs(gc_size, gc_range)
 
@@ -257,8 +212,8 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
     sub_pr_opp_list.append(sub_pr_opp)
 
   #If output location is vertex, sub_point_range are ready. Otherwise, some corrections are required
-  shift = normal_index_shift(point_range_loc, n_vtx_loc, bnd_axis, "Vertex", output_loc)
-  shift_opp = normal_index_shift(point_range_opp_loc, n_vtx_opp_loc, bnd_axis_opp, "Vertex", output_loc)
+  shift = pr_utils.normal_index_shift(point_range_loc, n_vtx_loc, bnd_axis, "Vertex", output_loc)
+  shift_opp = pr_utils.normal_index_shift(point_range_opp_loc, n_vtx_opp_loc, bnd_axis_opp, "Vertex", output_loc)
   for i_pr in range(len(sub_pr_list)):
     sub_pr_list[i_pr][bnd_axis,:] += shift
     sub_pr_opp_list[i_pr][bnd_axis_opp,:] += shift_opp
