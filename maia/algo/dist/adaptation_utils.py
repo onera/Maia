@@ -528,7 +528,6 @@ def find_matching_bcs(zone, src_pl, tgt_pl, src_tgt_vtx, cgns_name):
   return matching_bcs
 
 
-def add_undefined_faces(zone, elt_pl, elt_name, vtx_pl, tgt_elt_name):
 def is_unique_strided(array, stride, comm):
   """
   For a distributed cst strided array (eg. a connectivity), return a local bool array indicating
@@ -557,98 +556,48 @@ def is_unique_strided(array, stride, comm):
   return mask
 
 
+def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
   '''
-  Add faces (TRI_3) in mesh which are face from cells that are not touching the join here described by vtx point_list.
-  Check that created face are not already descibed in BCs, or described by two cells (it is an internal face in this case).
-  TODO : parallelize this function. Clearer doc
+  Decompose `elt_pl` tetra faces (which are triangles), adding those that are not already 
+  defined in zone and not defined by two tetras.
   '''
   # > Get element infos
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)==elt_name
-  elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
   elt_size   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
   ec_n       = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec         = PT.get_value(ec_n)
-  n_elt_to_add = elt_pl.size
+  elt_name   = PT.Element.CGNSName(elt_n)
+  elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
+  assert elt_name=='TETRA_4'
 
-  is_tgt_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)==tgt_elt_name
-  tgt_elt_n      = PT.get_node_from_predicate(zone, is_tgt_elt)
-  dim_tgt_elt    = PT.Element.Dimension(tgt_elt_n)
-  size_tgt_elt   = PT.Element.NVtx(tgt_elt_n)
-  tgt_elt_offset = PT.Element.Range(tgt_elt_n)[0]
+  tgt_elt_size   = PT.Element.NVtx(tgt_elt_n)
   tgt_ec_n       = PT.get_child_from_name(tgt_elt_n, 'ElementConnectivity')
   tgt_ec         = PT.get_value(tgt_ec_n)
+  tgt_elt_name   = PT.Element.CGNSName(tgt_elt_n)
+  assert tgt_elt_name=='TRI_3'
 
-  # > Get elts connectivity
-  idx    = elt_pl - elt_offset
-  ec_pl  = np_utils.interweave_arrays([elt_size*idx+i_size for i_size in range(elt_size)]) # np_utils.multi_arange(idx*elt_size, (idx+1)*elt_size) seems not to be as quick
+  # > Get TETRA_4 elt_pl connectivity
+  elt_pl_shft = elt_pl - elt_offset +1
+  ptb = EP.PartToBlock(elt_distri, [elt_pl_shft], comm)
+  ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
+  ec_pl  = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)]) # np_utils.multi_arange(idx*elt_size, (idx+1)*elt_size) seems not to be as quick
   ec_elt = ec[ec_pl]
 
-  # > Get BCs of tgt dimension to get their vtx ids 
-  is_tgt_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==CGNS_TO_LOC[tgt_elt_name]
-  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  n_bc_elt = 0
-  bc_ecs = list()
-  for bc_n in PT.get_children_from_predicate(zone_bc_n, is_tgt_elt_bc):
-    bc_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0] 
-    ids   = bc_pl - tgt_elt_offset
-    bc_ec_pl  = np_utils.interweave_arrays([size_tgt_elt*ids+i_size for i_size in range(size_tgt_elt)])
-    ec_bc = tgt_ec[bc_ec_pl]
-    n_bc_elt += ids.size
-    bc_ecs.append(ec_bc)
+  # > Decompose tetra faces 
+  tgt_face_vtx_idx, tgt_elt_ec = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, ec_elt)
+  n_elt_to_add = tgt_face_vtx_idx.size-1
 
+  # > Find faces not already defined in TRI_3 connectivity or duplicated
+  tmp_ec  = np.concatenate([tgt_elt_ec, tgt_ec])
+  l_mask  = is_unique_strided(tmp_ec, tgt_elt_size, comm)
+  elt_ids = np.where(l_mask[0:n_elt_to_add])[0]
 
-  # > Find cells with 3 vertices not in GC
-  tag_elt = np.isin(ec_elt, vtx_pl, invert=True)
-  tag_elt = np.add.reduceat(tag_elt.astype(np.int32), np.arange(0,n_elt_to_add*elt_size,elt_size)) # True when has vtx 
-  elt_pl = elt_pl[np.where(tag_elt==elt_size-1)[0]]
-  n_elt_to_add = elt_pl.size
-
-  # > Get elts connectivity
-  ec_n   = PT.get_child_from_name(elt_n, 'ElementConnectivity')
-  ec     = PT.get_value(ec_n)
-  pl     = elt_pl -1
-  ec_pl  = np_utils.interweave_arrays([elt_size*pl+i_size for i_size in range(elt_size)])
-  tgt_elt_ec = ec[ec_pl]
-
-
-  # > Face reconstruction configurations from tetrahedras
-  conf0 = np.array([0, 1, 2], dtype=np.int32)
-  # conf1 = np.array([0, 1, 3], dtype=np.int32)
-  conf2 = np.array([0, 2, 3], dtype=np.int32)
-  # conf3 = np.array([1, 2, 3], dtype=np.int32)
-  
-  conf0t = np.array([0, 2, 1], dtype=np.int32)
-  # conf1t = np.array([0, 1, 3], dtype=np.int32)
-  conf2t = np.array([0, 2, 1], dtype=np.int32)
-  # conf3t = np.array([1, 2, 3], dtype=np.int32)
-
-  tag_elt = np.isin(tgt_elt_ec, vtx_pl, invert=True)
-  tag_elt_rshp = tag_elt.reshape(n_elt_to_add,elt_size)
-  tag_eltm1 = np.where(tag_elt_rshp)
-  tag_eltm1_rshp = tag_eltm1[1].reshape(n_elt_to_add,elt_size-1)
-
-  tgt_elt_ec = tgt_elt_ec[tag_elt].reshape(n_elt_to_add,elt_size-1)
-  for conf, conft in zip([conf0,conf2], [conf0t,conf2t]):
-    tag_conf = np.where((tag_eltm1_rshp==conf).all(1))[0]
-    tgt_elt_ec_cp = tgt_elt_ec[tag_conf]
-    tgt_elt_ec_cp = tgt_elt_ec_cp[:,conft]
-    tgt_elt_ec[tag_conf] = tgt_elt_ec_cp
-  tgt_elt_ec = tgt_elt_ec.reshape(n_elt_to_add*(elt_size-1))
-
-
-  # > Find faces not already defined in BCs or duplicated
-  bc_ec    = np.concatenate(bc_ecs)
-  tmp_ec   = np.concatenate([tgt_elt_ec, bc_ec])
-  tmp_mask = np_utils.is_unique_strided(tmp_ec, size_tgt_elt, method='sort')
-  elt_ids = np.where(tmp_mask[0:n_elt_to_add]==True)[0] # Get only tri which are not in BCs
   n_elt_to_add = elt_ids.size
-  ec_pl = np_utils.interweave_arrays([size_tgt_elt*elt_ids+i_size for i_size in range(size_tgt_elt)])
+  ec_pl = np_utils.interweave_arrays([tgt_elt_size*elt_ids+i_size for i_size in range(tgt_elt_size)])
   tgt_elt_ec = tgt_elt_ec[ec_pl]
 
-
+  new_elt_distrib   = par_utils.dn_to_distribution(n_elt_to_add, comm)
+  
   # Update target element
   tgt_ec_n   = PT.get_child_from_name(tgt_elt_n, 'ElementConnectivity')
   tgt_ec     = PT.get_value(tgt_ec_n)
@@ -657,17 +606,15 @@ def is_unique_strided(array, stride, comm):
   tgt_er_n  = PT.get_child_from_name(tgt_elt_n, 'ElementRange')
   tgt_er    = PT.get_value(tgt_er_n)
   new_tgt_elt_pl = np.arange(tgt_er[1], tgt_er[1]+n_elt_to_add)+elt_offset
-  tgt_er[1] = tgt_er[1]+n_elt_to_add
+  tgt_er[1] = tgt_er[1]+new_elt_distrib[2]
   PT.set_value(tgt_er_n, tgt_er)
 
   # > Update distribution
-  tgt_elt_distrib_n  = PT.maia.getDistribution(tgt_elt_n, distri_name='Element')
-  tgt_elt_distrib    = PT.get_value(tgt_elt_distrib_n)
-  tgt_elt_distrib[1]+= n_elt_to_add
-  tgt_elt_distrib[2]+= n_elt_to_add
+  tgt_elt_distrib_n = PT.maia.getDistribution(tgt_elt_n, distri_name='Element')
+  tgt_elt_distrib   = PT.get_value(tgt_elt_distrib_n) + new_elt_distrib
   PT.set_value(tgt_elt_distrib_n, tgt_elt_distrib)
 
-  apply_offset_to_elts(zone, n_elt_to_add, tgt_er[1]-n_elt_to_add)
+  apply_offset_to_elts(zone, new_elt_distrib[2], tgt_er[1]-new_elt_distrib[2])
 
   return new_tgt_elt_pl
 

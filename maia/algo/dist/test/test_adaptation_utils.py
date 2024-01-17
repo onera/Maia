@@ -243,6 +243,29 @@ def test_is_elt_included(comm):
     assert (out == []).all()
 
 @pytest_parallel.mark.parallel([1,2,3])
+def test_add_undefined_faces(comm):
+  dist_tree = maia.factory.dcube_generator.dcube_nodal_generate(3, 1., [0.,0.,0.], 'TETRA_4', comm, get_ridges=True)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  tet_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
+  tri_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
+
+  zmax_n  = PT.get_node_from_path(zone, 'ZoneBC/Zmax')
+  zmax_pl = PT.Subset.getPatch(zmax_n)[1][0]
+  vtx_pl  = adapt_utils.elmt_pl_to_vtx_pl(zone, tri_n, zmax_pl, comm)
+  cell_pl = adapt_utils.tag_elmt_owning_vtx(zone, tet_n, vtx_pl, comm, elt_full=False)
+
+  adapt_utils.add_undefined_faces(zone, tet_n, cell_pl, tri_n, comm)
+  
+  assert PT.Zone.n_vtx(zone)==27
+  assert PT.Zone.n_cell(zone)==40
+  assert np.array_equal(PT.Element.Range(tet_n),np.array([ 1,40], dtype=np.int32))
+  assert PT.maia.getDistribution(tet_n, 'Element')[1][2]==40
+  assert np.array_equal(PT.Element.Range(tri_n),np.array([41,96], dtype=np.int32))
+  assert PT.maia.getDistribution(tri_n, 'Element')[1][2]==56
+
+
+@pytest_parallel.mark.parallel([1,2,3])
 def test_is_unique_strided(comm):
   n_elt  = 6
   stride = 3
