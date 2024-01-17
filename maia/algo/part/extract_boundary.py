@@ -16,7 +16,7 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   k faces in increasing i,j,k for each group)
   """
 
-  bnd_axis = S2U.guess_bnd_normal_index(pr, input_loc)
+  bnd_axis = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=input_loc))
 
   # It is safer to reuse slabs to manage all cases (eg input location or reversed pr)
   bc_size = S2U.transform_bnd_pr_size(pr, input_loc, "FaceCenter")

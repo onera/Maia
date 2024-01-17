@@ -780,6 +780,38 @@ class Subset:
     return N.get_value(grid_loc_n) if grid_loc_n else 'Vertex'
 
   @staticmethod
+  def normal_axis(subset_node:CGNSTree) -> int:
+    """ Return the normal direction of a structured subset.
+
+    This function is only relevant for subsets defining a 2d structured region
+    (having a PointRange node).
+
+    Args:
+      subset_node (CGNSTree): Input Subset node
+    Returns:
+      int : Normal axis of the subset (0,1 or 2)
+    Raises:
+      ValueError: if normal axis can not be determined
+    Example:
+      >>> bc = PT.new_BC(point_range=[[1,10], [5,5], [1,100]], loc='Vertex')
+      >>> PT.Subset.normal_axis(bc)
+      1
+    """
+    loc = Subset.GridLocation(subset_node)
+    if loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
+      return {'I':0, 'J':1, 'K':2}[loc[0]]
+    else:
+      pr_node = W.get_child_from_name(subset_node, 'PointRange')
+      if pr_node is not None:
+        cst_axis = (pr_node[1][:,0] == pr_node[1][:,1])
+        if cst_axis.sum() == 1: #Ambiguity can be resolved
+          return np.nonzero(cst_axis)[0][0]
+        else:
+          raise ValueError("Ambiguous input location")
+      else:
+        raise ValueError("Subset does not seems to have a structured PointRange")
+
+  @staticmethod
   def ZSRExtent(zsr_node:CGNSTree, zone_node:CGNSTree) -> str:
     """
     Return the path of the node to which the ZoneSubRegion node maps

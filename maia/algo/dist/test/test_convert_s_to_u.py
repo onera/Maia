@@ -169,18 +169,6 @@ class Test_cgns_transform_funcs():
            == [1,9,1]).all() #End
 ###############################################################################
 
-def test_guess_bnd_normal_index():
-  #Unambiguous
-  assert s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [1,7]]),'Vertex') == 1
-  assert s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [1,7]]),'CellCenter') == 1
-  assert s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [1,7]]),'JFaceCenter') == 1
-  #Ambiguous
-  assert s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [7,7]]),'JFaceCenter') == 1
-  assert s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [7,7]]),'KFaceCenter') == 2
-  with pytest.raises(ValueError):
-    s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [7,7]]),'FaceCenter')
-    s_to_u.guess_bnd_normal_index(np.array([[1,17], [9,9], [7,7]]),'CellCenter')
-
 def test_normal_index_shift():
   nVtx = np.array([17,9,7])
   vtx_range_last   = np.array([[1,17], [9,9], [1,7]])

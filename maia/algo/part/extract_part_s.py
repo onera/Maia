@@ -123,12 +123,8 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
       if n_dim_pop in [2,3]:
         raise NotImplementedError(f'Asked extraction is 0D or 1D (n_dim_pop={n_dim_pop})')
       extract_dir = idx[0]
-    elif location=='FaceCenter':
-      extract_dir = maia.algo.dist.s_to_u.guess_bnd_normal_index(pr, 'FaceCenter')
-      mask[extract_dir] = False
-      n_dim_pop = 1
-    elif location in ['IFaceCenter','JFaceCenter','KFaceCenter']:
-      extract_dir = {'I':0, 'J':1, 'K':2}[location[0]]
+    elif 'FaceCenter' in location:
+      extract_dir = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=location))
       mask[extract_dir] = False
       n_dim_pop = 1
     else:

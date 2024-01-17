@@ -82,6 +82,7 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Subset.GridLocation
   ~maia.pytree.Subset.ZSRExtent
   ~maia.pytree.Subset.n_elem
+  ~maia.pytree.Subset.normal_axis
 
 
 .. note:: Functions are displayed below as static methods, gathered into classes.

@@ -7,8 +7,7 @@ import maia.pytree.maia   as MT
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, s_numbering
 from .                               import split_cut_tree as SCT
-from maia.algo.dist.s_to_u import guess_bnd_normal_index, \
-                                       compute_transform_matrix, \
+from maia.algo.dist.s_to_u import      compute_transform_matrix, \
                                        apply_transform_matrix, \
                                        n_face_per_dir
 
@@ -39,11 +38,10 @@ def collect_S_bnd_per_dir(zone):
   for bnd_query in bnd_queries:
     for nodes in PT.iter_children_from_predicates(zone, bnd_query, ancestors=True):
       bnd = nodes[-1]
-      grid_loc    = PT.Subset.GridLocation(bnd)
       point_range_n = PT.get_node_from_name(bnd, 'PointRange')
       if point_range_n is not None: #Skip BC/GC defined by a PointList -- they will be updated after
         point_range = point_range_n[1]
-        bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
+        bnd_normal_index = PT.Subset.normal_axis(bnd)
 
         if PT.get_label(bnd) == 'BCDataSet_t':
           bcds_path = '/'.join([PT.get_name(n) for n in nodes[:-1]])
@@ -312,7 +310,7 @@ def split_original_joins_S(all_part_zones, comm):
         pr_in_opp_abs[:,1] = apply_transform_matrix(pr[:,1], dist_pr[:,0], dist_prd[:,0], T_matrix)
 
         #Jn dans la zone opposée et en cellules
-        normal_idx = guess_bnd_normal_index(pr_in_opp_abs, 'Vertex')
+        normal_idx = PT.Subset.normal_axis(PT.new_BC(point_range=pr_in_opp_abs))# Fake subset to enter PT function
         dirs       = np.where(np.arange(idx_dim) != normal_idx)[0]
         bnd_is_max = pr_in_opp_abs[normal_idx,0] != 1 #Sommets
         dir_to_swap     = (pr_in_opp_abs[:,1] < pr_in_opp_abs[:,0])

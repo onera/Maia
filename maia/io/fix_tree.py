@@ -6,7 +6,7 @@ import maia.pytree        as PT
 import maia
 from maia.utils            import np_utils, as_pdm_gnum, logging
 from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
-                                  gc_is_reference, guess_bnd_normal_index
+                                  gc_is_reference
 from maia.algo.dist import matching_jns_tools as MJT
 
 def check_datasize(tree):
@@ -132,7 +132,7 @@ def add_missing_pr_in_bcdataset(tree):
       bcds_grid_location = PT.Subset.GridLocation(bcds)
       if not (bcds_grid_location.endswith('FaceCenter') and bc_grid_location == 'Vertex'):
         continue
-      face_dir   = guess_bnd_normal_index(bc_point_range,  bc_grid_location)
+      face_dir   = PT.Subset.normal_axis(bc)
       bcds_point_range             = bc_point_range.copy(order='F')
       bcds_point_range[:,1]       -= 1
       bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]

@@ -32,8 +32,8 @@ def gc_is_reference(gc_s, zone_path, zone_path_opp):
   else: #Same zone path
     pr  = PT.get_child_from_name(gc_s, "PointRange")[1]
     prd = PT.get_child_from_name(gc_s, "PointRangeDonor")[1]
-    bnd_axis   = guess_bnd_normal_index(pr,  "Vertex")
-    bnd_axis_d = guess_bnd_normal_index(prd, "Vertex")
+    bnd_axis   = PT.Subset.normal_axis(gc_s)
+    bnd_axis_d = PT.Subset.normal_axis(PT.new_GridConnectivity1to1(point_range=prd))
     if bnd_axis < bnd_axis_d:
       return True
     elif bnd_axis > bnd_axis_d:
@@ -163,22 +163,6 @@ def apply_transform_matrix(index_1, start_1, start_2, T):
 ###############################################################################
 
 ###############################################################################
-def guess_bnd_normal_index(point_range, grid_location):
-  """
-  From a point_range array and a grid_location value, try to predict the plane
-  on which the boundary was created. Return the axis on which the boundary
-  is constant (0:=x, 1:=y, 2:=z) eg return 1 if boundary belongs to x,y plane.
-  """
-  if grid_location in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
-    normal_index = {'I':0, 'J':1, 'K':2}[grid_location[0]]
-  elif sum(point_range[:,0] == point_range[:,1]) == 1: #Ambiguity can be resolved
-    normal_index = np.nonzero(point_range[:,0] == point_range[:,1])[0][0]
-  else:
-    raise ValueError("Ambiguous input location")
-  return normal_index
-###############################################################################
-
-###############################################################################
 def normal_index_shift(point_range, n_vtx, bnd_axis, input_loc, output_loc):
   """
   Return the value that should be added to pr[normal_index,:] to account for cell <-> face|vtx transformation :
@@ -204,7 +188,7 @@ def transform_bnd_pr_size(point_range, input_loc, output_loc):
   if input_loc == 'Vertex' and 'Center' in output_loc:
     size -= (size != 1)
   elif 'Center' in input_loc and output_loc == 'Vertex':
-    bnd_axis = guess_bnd_normal_index(point_range, input_loc)
+    bnd_axis = PT.Subset.normal_axis(PT.new_BC(point_range=point_range, loc=input_loc))
     mask = np.arange(point_range.shape[0]) == bnd_axis
     size += (~mask)
   return size
@@ -221,7 +205,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   input_loc = PT.Subset.GridLocation(bc_s)
   point_range = PT.get_value(PT.get_child_from_name(bc_s, 'PointRange'))
 
-  bnd_axis = guess_bnd_normal_index(point_range, input_loc)
+  bnd_axis = PT.Subset.normal_axis(bc_s)
   #Compute slabs from attended location (better load balance)
   bc_size = transform_bnd_pr_size(point_range, input_loc, output_loc)
   bc_range = py_utils.uniform_distribution_at(bc_size.prod(), i_rank, n_rank)
@@ -318,8 +302,8 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   point_range_opp_loc[opp_dir_to_swap,0], point_range_opp_loc[opp_dir_to_swap,1] \
       = point_range_opp_loc[opp_dir_to_swap,1], point_range_opp_loc[opp_dir_to_swap,0]
 
-  bnd_axis = guess_bnd_normal_index(point_range_loc, "Vertex")
-  bnd_axis_opp = guess_bnd_normal_index(point_range_opp_loc, "Vertex")
+  bnd_axis = PT.Subset.normal_axis(PT.new_GridConnectivity1to1(point_range=point_range_loc))
+  bnd_axis_opp = PT.Subset.normal_axis(PT.new_GridConnectivity1to1(point_range=point_range_opp_loc))
   #Compute slabs from attended location (better load balance)
   gc_size = transform_bnd_pr_size(point_range_loc, "Vertex", output_loc)
   gc_range = py_utils.uniform_distribution_at(gc_size.prod(), i_rank, n_rank)

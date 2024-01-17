@@ -306,6 +306,18 @@ def test_Subset():
     pr = N.new_IndexRange('PointRange', [[1,15]], parent=sol)
     patch = SIDS.Subset.getPatch(sol)
 
+def test_subset_normal_index():
+  new_subset = lambda pr, loc : N.new_BC(point_range=pr, loc=loc)
+  #Unambiguous
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'Vertex')) == 1
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'CellCenter')) == 1
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'JFaceCenter')) == 1
+  #Ambiguous
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]], 'JFaceCenter')) == 1
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]], 'KFaceCenter')) == 2
+  with pytest.raises(ValueError):
+    SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]],'FaceCenter'))
+    SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]],'CellCenter'))
 
 def test_getZoneDonorPath():
   jn1 = N.new_node('match', 'GridConnectivity1to1_t', value='BaseXX/ZoneYY')
