@@ -5,6 +5,7 @@ import maia.pytree as PT
 import maia.transfer.protocols as EP
 import maia.transfer.utils as te_utils
 from   maia.utils  import np_utils, py_utils, par_utils
+from   maia.utils.parallel import algo as par_algo
 from   maia.algo.dist import transform as dist_transform
 from   maia.algo.dist.subset_tools import vtx_ids_to_face_ids
 from   maia.algo.dist.remove_element import remove_elts_from_pl
@@ -97,18 +98,10 @@ def remove_specified_vtx(zone, vtx_pl, comm):
   PT.set_value(distri_n, par_utils.dn_to_distribution(dn_vtx - ids.size, comm))
 
 
-def elmt_pl_to_vtx_pl(zone, elt_pl, cgns_name, comm):
+def elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, comm):
   '''
   Return point_list of vertices describing elements tagged in `elt_pl`.
-
-  TODO : c'est anormal de demander un nom cgns (ex. TRI_3) et de ne récupérer 1
-  seul élément. Soit il faut récupérer tous les éléments TRI_3, soit il faut 
-  donner en entrée un nom de noeud spécifique et ne récupérer que ce noeud.
-  Idem pr function d'en dessous
   '''
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)==cgns_name
-  elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
   elt_size   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
   distri     = PT.maia.getDistribution(elt_n, 'Element')[1]
@@ -120,15 +113,12 @@ def elmt_pl_to_vtx_pl(zone, elt_pl, cgns_name, comm):
   return np.unique(all_vtx)
 
 
-def tag_elmt_owning_vtx(zone, vtx_pl, cgns_name, comm, elt_full=False):
+def tag_elmt_owning_vtx(zone, elt_n, vtx_pl, comm, elt_full=False):
   '''
   Return the point_list of elements that owns one or all of their vertices in the vertex point_list.
   Important : elt_pl is returned as a distributed array, w/o any assumption on the holding
   rank : vertices given by a rank can spawn an elt_idx on a other rank.
   '''
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)==cgns_name
-  elt_n      = PT.get_node_from_predicate(zone, is_asked_elt)
   if elt_n is not None:
     elt_offset = PT.Element.Range(elt_n)[0]
     gc_elt_pl  = vtx_ids_to_face_ids(vtx_pl, elt_n, comm, elt_full)+elt_offset-1

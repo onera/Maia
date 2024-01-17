@@ -93,7 +93,10 @@ def test_elmt_pl_to_vtx_pl(comm):
   elt = PT.new_Elements(type='QUAD_4', erange=[1,4], econn=econn, parent=zone)
   PT.maia.newDistribution({'Element' : distri}, elt)
 
-  vtx_pl = adapt_utils.elmt_pl_to_vtx_pl(zone, elt_pl, 'QUAD_4', comm)
+  quad_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and\
+                                                       PT.Element.CGNSName(n)=='QUAD_4')
+
+  vtx_pl = adapt_utils.elmt_pl_to_vtx_pl(zone, quad_n, elt_pl, comm)
   if comm.Get_rank() == 0:
     assert (vtx_pl == [1,2,4,5,7,8]).all()
   elif comm.Get_rank() == 1:
@@ -112,10 +115,13 @@ def test_tag_elmt_owning_vtx(comm):
     vtx_pl = np.array([2]) #Requested vtx
   elt = PT.new_Elements(type='QUAD_4', erange=[1,4], econn=econn, parent=zone)
   PT.maia.newDistribution({'Element' : distri}, elt)
+  
+  quad_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and\
+                                                       PT.Element.CGNSName(n)=='QUAD_4')
 
-  elt_pl = adapt_utils.tag_elmt_owning_vtx(zone, vtx_pl, 'QUAD_4', comm, elt_full=True)
+  elt_pl = adapt_utils.tag_elmt_owning_vtx(zone, quad_n, vtx_pl, comm, elt_full=True)
   assert (np.concatenate(comm.allgather(elt_pl)) == [1]).all()
-  elt_pl = adapt_utils.tag_elmt_owning_vtx(zone, vtx_pl, 'QUAD_4', comm, elt_full=False)
+  elt_pl = adapt_utils.tag_elmt_owning_vtx(zone, quad_n, vtx_pl, comm, elt_full=False)
   assert (np.concatenate(comm.allgather(elt_pl)) == [1,2,3,4]).all()
 
 
