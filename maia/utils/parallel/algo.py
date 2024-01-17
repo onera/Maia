@@ -7,6 +7,8 @@ from maia.utils    import np_utils, par_utils, py_utils
 
 import Pypdm.Pypdm as PDM
 
+from mpi4py import MPI
+
 def dist_set_difference(ids, others, comm):
   """ Return the list of elements that belong to ids array but are absent from
   all the other array from others list
@@ -134,3 +136,28 @@ class DistSorter:
     _, sorted = self.ptb.exchange_field([array])
     return sorted
 
+
+def is_unique_strided(array, stride, comm):
+  """
+  For a distributed cst strided array (eg. a connectivity), return a local bool array indicating
+  for each element if it appears only once (w/ considering ordering)
+  """
+  n_elt = array.size//stride
+  
+  strided_array = array.reshape(n_elt, stride)
+  strided_array = np.sort(strided_array, axis=1)
+  gnum = compute_gnum(strided_array, comm)
+  unique_gnum, idx, count = np.unique(gnum, return_index=True, return_counts=True)
+  max_gnum = comm.allreduce(np.max(unique_gnum), op=MPI.MAX)
+  distri = par_utils.uniform_distribution(max_gnum, comm)
+
+  dist_data = EP.part_to_block([count], distri, [unique_gnum], comm, reduce_func=EP.reduce_sum)
+  is_unique = np.zeros(distri[1]-distri[0], dtype=bool)
+  is_unique[dist_data==1] = True
+  part_data = EP.block_to_part(is_unique, distri, [unique_gnum], comm)
+  
+  mask = np.zeros(n_elt, dtype=bool)
+  ids  = idx[part_data[0]]
+  mask[ids] = True
+
+  return mask

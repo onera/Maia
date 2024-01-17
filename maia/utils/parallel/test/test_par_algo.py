@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import mpi4py.MPI as MPI
 
-from maia.utils import py_utils
+from maia.utils import par_utils, py_utils
 from maia.utils.parallel import algo as par_algo
 
 def py_version():
@@ -99,3 +99,18 @@ def test_compute_gnum_o(comm):
   if comm.Get_rank() == 0:
     assert gathered[0][0] == gathered[1][2]
     assert gathered[0][1] == gathered[1][3]
+
+
+@pytest_parallel.mark.parallel([1,2,3])
+def test_is_unique_strided(comm):
+  n_elt  = 6
+  stride = 3
+  array  = np.array([1,2,3, 4,5,6, 7,8,9, 3,1,2, 2,1,7, 7,6,8])
+  unique = np.array([False,  True,  True, False,  True,  True])
+  
+  distri = par_utils.uniform_distribution(n_elt, comm)
+  array  = array [distri[0]*stride:distri[1]*stride]
+  unique = unique[distri[0]       :distri[1]       ]
+
+  unique = par_algo.is_unique_strided(array, stride, comm)
+  assert np.array_equal(unique,unique)
