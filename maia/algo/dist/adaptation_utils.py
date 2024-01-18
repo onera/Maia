@@ -336,7 +336,7 @@ def update_vtx_bnds(zone, old_to_new_vtx):
       PT.set_value(gc_pld_n, gc_pld.reshape((1,-1), order='F'))
 
 
-def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplicate_bcs=dict()):
+def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplicate_bcs=[]):
   '''
   Duplicate elements tagged in `elt_pl` by updating its ElementConnectivity and ElementRange nodes,
   as well as ElementRange nodes of elements with inferior dimension (assuming that element nodes are organized with decreasing dimension order).
@@ -408,13 +408,14 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
 
   # > Duplicate twin BCs
   new_ec = list()
-  twin_elt_bc_pl = dict()
-  twin_elt_bc_pl['BAR_2'] = list()
-  for elt_name, duplicate_bcs in elt_duplicate_bcs.items():
-    # > Get element infos
-    is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                             PT.Element.CGNSName(n)==elt_name
-    elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
+  twin_elt_bc_pl = list()
+
+  # > Get element infos
+  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
+                            PT.Element.CGNSName(n)=='BAR_2'
+  elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
+  if elt_duplicate_bcs != []:
+    assert elt_n is not None
     n_elt      = PT.Element.Size(elt_n)
     elt_size   = PT.Element.NVtx(elt_n)
     elt_offset = PT.Element.Range(elt_n)[0]
@@ -424,10 +425,10 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
     ec    = PT.get_value(ec_n)
 
     n_new_elt = 0
-    for matching_bcs in duplicate_bcs:
+    for matching_bcs in elt_duplicate_bcs:
       bc_n = PT.get_child_from_name(zone_bc_n, matching_bcs[0])
       bc_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
-      twin_elt_bc_pl['BAR_2'].append(bc_pl)
+      twin_elt_bc_pl.append(bc_pl)
 
       ids = bc_pl - elt_offset
       ec_pl = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
@@ -472,7 +473,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   # > Exclude constraint surf or both will move
   tag_face = np.isin(face_pl, elt_pl, invert=True)
   face_pl  = face_pl[tag_face]
-  bc_line_pl = np.concatenate(twin_elt_bc_pl['BAR_2']) if len(twin_elt_bc_pl['BAR_2'])!=0 else np.empty(0, dtype=np.int32)
+  bc_line_pl = np.concatenate(twin_elt_bc_pl) if len(twin_elt_bc_pl)!=0 else np.empty(0, dtype=np.int32)
   tag_line = np.isin(line_pl, bc_line_pl, invert=True)
   line_pl  = line_pl[tag_line]
 
@@ -679,10 +680,9 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
   tri_elt   = tri_elts[0]
   tetra_elt = tetra_elts[0]
 
-  n_periodicity = len(jn_pairs)
   new_vtx_nums = list()
   to_constrain_bcs = list()
-  matching_bcs   = [dict() for _ in range(n_periodicity)]
+  matching_bcs   = list()
   for i_per, gc_paths in enumerate(jn_pairs):
     tet_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
     tri_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
@@ -724,14 +724,14 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     # > 2/ Removing lines defined on join because they surely has their periodic on the other side
     # > Find BCs on GCs that will be deleted because they have their periodic twin
     # > For now only fully described BCs will be treated
-    matching_bcs[i_per] = dict()
     if bar_n is not None:
-      bar_to_rm_pl = tag_elmt_owning_vtx(zone, bar_n, gc_vtx_pld, comm, elt_full=True) #Bar made of two gc opp vtx
-      bar_twins_pl = tag_elmt_owning_vtx(zone, bar_n, gc_vtx_pl , comm, elt_full=True) #Bar made of two gc vtx
-      matching_bcs[i_per]['BAR_2'] = find_matching_bcs(zone, bar_n, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], comm)
+      bar_to_rm_pl  = tag_elmt_owning_vtx(zone, bar_n, gc_vtx_pld, comm, elt_full=True) #Bar made of two gc opp vtx
+      bar_twins_pl  = tag_elmt_owning_vtx(zone, bar_n, gc_vtx_pl , comm, elt_full=True) #Bar made of two gc vtx
+      _matching_bcs =find_matching_bcs(zone, bar_n, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], comm)
       remove_elts_from_pl(zone, bar_n, bar_to_rm_pl, comm)
     else:
-      matching_bcs[i_per]['BAR_2'] = []
+      _matching_bcs = list()
+    matching_bcs.append(_matching_bcs)
 
 
     # > 3/ Duplicate elts and vtx defined on internal created surface, and updating vtx numbering
