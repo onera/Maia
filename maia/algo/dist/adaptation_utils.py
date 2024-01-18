@@ -186,27 +186,30 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
   return out
 
 
-def update_elt_vtx_numbering(zone, old_to_new_vtx, cgns_name, elt_pl=None):
+def update_elt_vtx_numbering(zone, elt_n, old_to_new_vtx, comm, elt_pl=None):
   '''
   Update element connectivity (partialy if `elt_pl` provided) according to the new vertices numbering described in `old_to_new_vtx`.
   TODO: parallel
   '''
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
-                           PT.Element.CGNSName(n)==cgns_name
-  elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
   if elt_n is not None:
     ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
     ec    = PT.get_value(ec_n)
 
     if elt_pl is None:
-      ec = np.take(old_to_new_vtx, ec-1)
+      vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+      ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec], comm)[0]
     else:
       elt_size   = PT.Element.NVtx(elt_n)
       elt_offset = PT.Element.Range(elt_n)[0]
-      
-      ids   = elt_pl - elt_offset
-      ec_pl = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-      ec[ec_pl] = np.take(old_to_new_vtx, ec[ec_pl]-1)
+      elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
+      vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+
+      elt_pl_shft = elt_pl - elt_offset +1
+      ptb = EP.PartToBlock(elt_distri, [elt_pl_shft], comm)
+      ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
+      ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
+      new_num_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec[ec_ids]], comm)[0]
+      ec[ec_ids] = new_num_ec
 
     PT.set_value(ec_n, ec)
 
@@ -252,13 +255,13 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   pbc1_loc    = PT.Subset.GridLocation(pbc1_n)
   pbc1_pl     = PT.get_value(PT.get_child_from_name(pbc1_n, 'PointList'))[0]
   elt_n       = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)==LOC_TO_CGNS[pbc1_loc])
-  pbc1_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, pbc1_pl, MPI.COMM_SELF)
+  pbc1_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, pbc1_pl, comm)
 
   pbc2_n      = PT.get_child_from_name(zone_bc_n, bc_names[1])
   pbc2_loc    = PT.Subset.GridLocation(pbc2_n)
   pbc2_pl     = PT.get_value(PT.get_child_from_name(pbc2_n, 'PointList'))[0]
   elt_n       = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)==LOC_TO_CGNS[pbc2_loc])
-  pbc2_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, pbc2_pl, MPI.COMM_SELF)
+  pbc2_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, pbc2_pl, comm)
 
   old_vtx_num = old_to_new_vtx_num[0]
   new_vtx_num = old_to_new_vtx_num[1]
@@ -287,12 +290,17 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   pbc2_n = PT.get_child_from_name(zone_bc_n, bc_names[1])
   pbc2_pl = PT.get_value(PT.get_child_from_name(pbc2_n, 'PointList'))[0]
   remove_elts_from_pl(zone, elt_n, pbc2_pl, comm)
-  update_elt_vtx_numbering(zone, old_to_new_vtx, 'TETRA_4')
-  update_elt_vtx_numbering(zone, old_to_new_vtx, 'TRI_3')
-  update_elt_vtx_numbering(zone, old_to_new_vtx, 'BAR_2')
+
+  tet_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
+  tri_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
+  bar_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2')
+
+  update_elt_vtx_numbering(zone, tet_n, old_to_new_vtx, comm)
+  update_elt_vtx_numbering(zone, tri_n, old_to_new_vtx, comm)
+  update_elt_vtx_numbering(zone, bar_n, old_to_new_vtx, comm)
 
   # > Remove coordinates and FS + udpate zone dim
-  remove_specified_vtx(zone, pbc2_vtx_pl, MPI.COMM_SELF)
+  remove_specified_vtx(zone, pbc2_vtx_pl, comm)
 
   # > Update Vertex BCs and GCs
   update_vtx_bnds(zone, old_to_new_vtx)
@@ -354,7 +362,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
 
   # > Add duplicated vertex
   n_vtx = PT.Zone.n_vtx(zone)
-  elt_vtx_pl   = elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, MPI.COMM_SELF)
+  elt_vtx_pl   = elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, comm)
   n_vtx_to_add = elt_vtx_pl.size
 
 
@@ -364,7 +372,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   old_to_new_vtx[new_vtx_num[0]-1] = new_vtx_num[1]
   sort_vtx_num = np.argsort(new_vtx_num[0])
   
-  duplicate_specified_vtx(zone, elt_vtx_pl, MPI.COMM_SELF)
+  duplicate_specified_vtx(zone, elt_vtx_pl, comm)
 
   # > Add duplicated elements
   n_elt_to_add = elt_pl.size
@@ -476,9 +484,13 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   tag_line = np.isin(line_pl, bc_line_pl, invert=True)
   line_pl  = line_pl[tag_line]
 
-  update_elt_vtx_numbering(zone, old_to_new_vtx, 'TETRA_4', elt_pl=cell_pl)
-  update_elt_vtx_numbering(zone, old_to_new_vtx, 'TRI_3'  , elt_pl=face_pl)
-  update_elt_vtx_numbering(zone, old_to_new_vtx, 'BAR_2'  , elt_pl=line_pl)
+  tet_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
+  tri_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
+  bar_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2')
+
+  update_elt_vtx_numbering(zone, tet_n, old_to_new_vtx, comm, elt_pl=cell_pl)
+  update_elt_vtx_numbering(zone, tri_n, old_to_new_vtx, comm, elt_pl=face_pl)
+  update_elt_vtx_numbering(zone, bar_n, old_to_new_vtx, comm, elt_pl=line_pl)
 
   return new_vtx_num
 
@@ -777,19 +789,24 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
 
     # > Set Vertex BC to preserve join infos
     pl_constraint = new_vtx_num[0].reshape((1,-1), order='F')
-    PT.new_BC(name=f'vtx_constraint_{i_per}',
-              type='FamilySpecified',
-              point_list=pl_constraint,
-              loc='Vertex',
-              family='PERIODIC',
-              parent=zone_bc_n)
+    new_bc_distrib = par_utils.dn_to_distribution(pl_constraint.size, comm)
+    bc_n = PT.new_BC(name=f'vtx_constraint_{i_per}',
+                     type='FamilySpecified',
+                     point_list=pl_constraint,
+                     loc='Vertex',
+                     family='PERIODIC',
+                     parent=zone_bc_n)
+    PT.maia.newDistribution({'Index':new_bc_distrib}, parent=bc_n)
+
     pl_periodic = new_vtx_num[1].reshape((1,-1), order='F')
-    PT.new_BC(name=f'vtx_periodic_{i_per}',
-              type='FamilySpecified',
-              point_list=pl_periodic,
-              loc='Vertex',
-              family='PERIODIC',
-              parent=zone_bc_n)
+    new_bc_distrib = par_utils.dn_to_distribution(pl_periodic.size, comm)
+    bc_n = PT.new_BC(name=f'vtx_periodic_{i_per}',
+                     type='FamilySpecified',
+                     point_list=pl_periodic,
+                     loc='Vertex',
+                     family='PERIODIC',
+                     parent=zone_bc_n)
+    PT.maia.newDistribution({'Index':new_bc_distrib}, parent=bc_n)
 
   return new_vtx_nums, to_constrain_bcs, matching_bcs
 
@@ -832,7 +849,7 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     cell_bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_bc_pl = PT.get_value(PT.Subset.getPatch(cell_bc_n))[0]
-    vtx_pl = elmt_pl_to_vtx_pl(zone, tet_n, cell_bc_pl, MPI.COMM_SELF)
+    vtx_pl = elmt_pl_to_vtx_pl(zone, tet_n, cell_bc_pl, comm)
 
     still_here_gc_name  = gc_paths[0].split('/')[-1]
     to_retrieve_gc_name = gc_paths[1].split('/')[-1]
@@ -841,8 +858,8 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
 
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_bc_pl
-    to_update_face_pl = tag_elmt_owning_vtx(zone, tri_n, vtx_pl, MPI.COMM_SELF, elt_full=True)
-    to_update_line_pl = tag_elmt_owning_vtx(zone, bar_n, vtx_pl, MPI.COMM_SELF, elt_full=True)
+    to_update_face_pl = tag_elmt_owning_vtx(zone, tri_n, vtx_pl, comm, elt_full=True)
+    to_update_line_pl = tag_elmt_owning_vtx(zone, bar_n, vtx_pl, comm, elt_full=True)
     to_update_face_pl = find_shared_faces(tri_elt, to_update_face_pl, tetra_elt, cell_bc_pl, comm)
     elts_to_update = {'TETRA_4': to_update_cell_pl, 'TRI_3':to_update_face_pl, 'BAR_2':to_update_line_pl}
 
@@ -854,9 +871,9 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     bc_n = PT.get_child_from_name(zone_bc_n, cell_bc_name)
     cell_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
-    vtx_pl  = elmt_pl_to_vtx_pl(zone, tet_n, cell_pl, MPI.COMM_SELF)
+    vtx_pl  = elmt_pl_to_vtx_pl(zone, tet_n, cell_pl, comm)
     periodic = periodic_values[0].asdict(True)
-    dist_transform.transform_affine_zone(zone, vtx_pl, MPI.COMM_SELF, **periodic, apply_to_fields=True)
+    dist_transform.transform_affine_zone(zone, vtx_pl, comm, **periodic, apply_to_fields=True)
     # maia.io.write_tree(tree, f'OUTPUT/adapted_and_deplaced_{i_per}.cgns')
 
     # > 4-5/ Merge two constraint surfaces

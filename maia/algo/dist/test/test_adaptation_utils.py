@@ -298,3 +298,36 @@ def test_find_matching_bcs(comm):
                                                [gc1_vtx,gc2_vtx],
                                                comm)
   assert matching_bcs==[['BC2','BC1']]
+
+
+@pytest.mark.parametrize('partial',[False, True])
+@pytest_parallel.mark.parallel([1,2,3])
+def test_update_elt_vtx_numbering(partial, comm):
+  distri_bar = par_utils.uniform_distribution(9, comm)
+  distri_vtx = par_utils.uniform_distribution(12, comm)
+  distri_num = par_utils.uniform_distribution(12, comm)
+  
+  bar_ec  = np.array([5,6, 7,8, 9,10, 1,2, 9,10, 2,4, 4,3, 8,10, 11,12])[distri_bar[0]*2:distri_bar[1]*2]
+  
+  zone_n = PT.new_Zone('zone', type='Unstructured', size=[[12,3,0]])
+  bar_n  = PT.new_Elements('BAR_2', type='BAR_2', erange=np.array([1,6], dtype=np.int32), econn=bar_ec, parent=zone_n)
+  PT.maia.newDistribution({'Vertex' :distri_vtx}, parent=zone_n)
+  PT.maia.newDistribution({'Element':distri_bar}, parent=bar_n)
+
+  old_to_new = np.array([1,6,3,5,5,6,7,8,9,8,9,12])[distri_num[0]:distri_num[1]]
+  
+  if partial:
+    distri_pl = par_utils.uniform_distribution(4, comm)
+    bar_pl    = np.array([4,1,7,9])[distri_pl[0]:distri_pl[1]]
+  else:
+    bar_pl    = None
+
+  adapt_utils.update_elt_vtx_numbering(zone_n, bar_n, old_to_new, comm, bar_pl)
+  bar_ec = PT.get_value(PT.get_child_from_name(bar_n, 'ElementConnectivity'))
+  
+  if partial:
+    expected_ec = np.array([5,6, 7,8, 9,10, 1,6, 9,10, 2,4, 5,3, 8,10, 9,12])[distri_bar[0]*2:distri_bar[1]*2]
+  else:
+    expected_ec = np.array([5,6, 7,8, 9,8, 1,6, 9,8, 6,5, 5,3, 8,8, 9,12])[distri_bar[0]*2:distri_bar[1]*2]
+
+  assert np.array_equal(bar_ec, expected_ec)
