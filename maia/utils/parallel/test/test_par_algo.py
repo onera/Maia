@@ -129,30 +129,3 @@ def test_is_unique_strided(comm):
 
   unique = par_algo.is_unique_strided(array, stride, comm)
   assert np.array_equal(unique ,expected)
-
-
-def test_is_unique_strided_perfo(comm):
-  import time
-  n_vtx  = 10000000
-  n_elt  = 10000000
-  stride = 3
-  array  = np.random.randint(1, n_vtx, size=n_elt*stride, dtype=int)
-  
-  distri = par_utils.uniform_distribution(n_elt, comm)
-  array  = array [distri[0]*stride:distri[1]*stride]
-
-  comm.barrier()
-  start   = time.time()
-  unique1 = par_algo.is_unique_strided_serialized(array, stride, comm)
-  end     = time.time()
-  print(f"[{comm.rank}] TIME is_unique_strided  = {end-start}")
-  comm.barrier()
-
-  comm.barrier()
-  start   = time.time()
-  unique2 = par_algo.is_unique_strided(array, stride, comm)
-  end     = time.time()
-  print(f"[{comm.rank}] TIME is_unique_strided2 = {end-start}")
-  comm.barrier()
-
-  assert np.array_equal(unique1,unique2)
