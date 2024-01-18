@@ -7,8 +7,9 @@ import maia.transfer.utils as te_utils
 from   maia.utils  import np_utils, py_utils, par_utils
 from   maia.utils.parallel import algo as par_algo
 from   maia.algo.dist import transform as dist_transform
-from   maia.algo.dist.subset_tools import vtx_ids_to_face_ids
+from   maia.algo.dist.merge_ids      import merge_distributed_ids
 from   maia.algo.dist.remove_element import remove_elts_from_pl
+from   maia.algo.dist.subset_tools   import vtx_ids_to_face_ids
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import numpy as np
@@ -482,46 +483,68 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   return new_vtx_num
 
     
-def find_matching_bcs(zone, src_pl, tgt_pl, src_tgt_vtx, cgns_name):
+def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   '''
   Find pairs of twin BCs (lineic in general) using a matching vtx table.
   '''
-  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==CGNS_TO_LOC[cgns_name]
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)==cgns_name
+  elt_dim = PT.Element.Dimension(elt_n)
+  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==DIM_TO_LOC[elt_dim]
 
-  # > Find BCs described by pls
+  # > Find BCs described by element pls
   bc_nodes = [list(),list()]
   for bc_n in PT.get_nodes_from_predicate(zone, is_elt_bc, depth=2):
     bc_pl = PT.get_child_from_name(bc_n, 'PointList')[1][0]
     for i_side, elt_pl in enumerate([src_pl, tgt_pl]):
-      if np.isin(bc_pl, elt_pl, assume_unique=True).all():
+      PTP   = EP.PartToPart([elt_pl], [bc_pl], comm)
+      mask  = np.zeros(bc_pl.size, dtype=bool)
+      mask[PTP.get_referenced_lnum2()[0]-1] = True
+      in_elt_l = np.logical_and.reduce(mask) if mask.size!=0 else False
+      in_elt   = comm.allreduce(in_elt_l, MPI.MAX)
+      if in_elt:
         bc_nodes[i_side].append(bc_n)
 
   # > Get element infos
   matching_bcs = list()
-  elt_n = PT.get_child_from_predicate(zone, is_asked_elt)
   if elt_n is not None:
     elt_offset = PT.Element.Range(elt_n)[0]
-    elt_size = PT.Element.NVtx(elt_n)
-    elt_ec = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
+    elt_size   = PT.Element.NVtx(elt_n)
+    elt_ec     = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
+    elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
     
-    old_to_new_vtx = np.arange(PT.Zone.n_vtx(zone)) + 1
-    old_to_new_vtx[src_tgt_vtx[0]-1] = src_tgt_vtx[1] # Normally, elements has no vtx in common
-    
-    # > Go through BCs described by join vertices and find pairs
-    # > Precompute vtx in shared numering only once
+    # > Compute new vtx numbering merging vtx from `src_tgt_vtx`
+    #   Maybe there will be an issue in axisym because of vtx in both GCs
+    vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+    old_to_new_vtx = merge_distributed_ids(vtx_distri, src_tgt_vtx[0], src_tgt_vtx[1], comm, False)
+
+    # > Precompute vtx in shared numbering
     bc_vtx = [list(),list()]
     for i_side, _bc_nodes in enumerate(bc_nodes):
       for src_bc_n in _bc_nodes:
         bc_pl = PT.get_child_from_name(src_bc_n, 'PointList')[1][0]
-        ec_idx = np_utils.interweave_arrays([elt_size*(bc_pl-elt_offset)+i_size for i_size in range(elt_size)])
+        
+        # > Get BC connectivity
+        ptb = EP.PartToBlock(elt_distri, [bc_pl-elt_offset+1], comm)
+        ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
+        ec_idx = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
         this_bc_vtx = elt_ec[ec_idx] # List of vertices belonging to bc
-        bc_vtx_renum = old_to_new_vtx[this_bc_vtx-1] # Numbering of these vertices in shared numerotation
-        bc_vtx[i_side].append(bc_vtx_renum)
+
+        # > Set BC connectivity in vtx shared numbering
+        vtx_ptb = EP.PartToBlock(vtx_distri, [this_bc_vtx], comm)
+        vtx_ids = vtx_ptb.getBlockGnumCopy()-vtx_distri[0]
+        bc_vtx_renum = EP.block_to_part(old_to_new_vtx, vtx_distri, [vtx_ids], comm) # Numbering of these vertices in shared numerotation
+        
+        bc_vtx[i_side].append(bc_vtx_renum[0])
+
     # > Perfom comparaisons
     for src_bc_n, src_bc_vtx in zip(bc_nodes[0], bc_vtx[0]):
       for tgt_bc_n, tgt_bc_vtx in zip(bc_nodes[1], bc_vtx[1]):
-        if np.isin(src_bc_vtx, tgt_bc_vtx).all():
+        PTP = EP.PartToPart([src_bc_vtx], [tgt_bc_vtx], comm)
+        tgt_vtx_tag = np.zeros(tgt_bc_vtx.size, dtype=bool)
+        tgt_vtx_tag[PTP.get_referenced_lnum2()[0]-1] = True
+
+        match_l = np.logical_and.reduce(tgt_vtx_tag) if tgt_vtx_tag.size!=0 else False
+        match   = comm.allreduce(match_l, MPI.MAX)
+        if match:
           matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
 
   return matching_bcs
@@ -704,7 +727,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     matching_bcs[i_per] = dict()
     bar_to_rm_pl = tag_elmt_owning_vtx(zone, bar_n, gc_vtx_pld, comm, elt_full=True) #Bar made of two gc opp vtx
     bar_twins_pl = tag_elmt_owning_vtx(zone, bar_n, gc_vtx_pl , comm, elt_full=True) #Bar made of two gc vtx
-    matching_bcs[i_per]['BAR_2'] = find_matching_bcs(zone, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], 'BAR_2')
+    matching_bcs[i_per]['BAR_2'] = find_matching_bcs(zone, bar_n, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], comm)
     bar_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2')
     if bar_n is not None:
       remove_elts_from_pl(zone, bar_n, bar_to_rm_pl, comm)
