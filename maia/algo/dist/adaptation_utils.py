@@ -186,7 +186,7 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
   return out
 
 
-def update_elt_vtx_numbering(zone, elt_n, old_vtx_distri, old_to_new_vtx, comm, elt_pl=None):
+def update_elt_vtx_numbering(zone, elt_n, old_to_new_vtx, comm, elt_pl=None):
   '''
   Update element connectivity (partialy if `elt_pl` provided) according to the new vertices numbering described in `old_to_new_vtx`.
   TODO: parallel
@@ -196,17 +196,19 @@ def update_elt_vtx_numbering(zone, elt_n, old_vtx_distri, old_to_new_vtx, comm, 
     ec    = PT.get_value(ec_n)
 
     if elt_pl is None:
-      ec = EP.block_to_part(old_to_new_vtx, old_vtx_distri, [ec], comm)[0]
+      vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+      ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec], comm)[0]
     else:
       elt_size   = PT.Element.NVtx(elt_n)
       elt_offset = PT.Element.Range(elt_n)[0]
       elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
+      vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
 
       elt_pl_shft = elt_pl - elt_offset +1
       ptb = EP.PartToBlock(elt_distri, [elt_pl_shft], comm)
       ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
       ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-      new_num_ec = EP.block_to_part(old_to_new_vtx, old_vtx_distri, [ec[ec_ids]], comm)[0]
+      new_num_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec[ec_ids]], comm)[0]
       ec[ec_ids] = new_num_ec
 
     PT.set_value(ec_n, ec)
@@ -357,13 +359,14 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   n_vtx_to_add = elt_vtx_pl.size
 
 
-  old_vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
   duplicate_specified_vtx(zone, elt_vtx_pl, comm)
   
   new_vtx_distri = par_utils.dn_to_distribution(n_vtx_to_add, comm)
   new_vtx_pl     = np.arange(n_vtx+new_vtx_distri[0],n_vtx+new_vtx_distri[1], dtype=np.int32)+1
+  vtx_distri     = PT.maia.getDistribution(zone, 'Vertex')[1]
   new_vtx_num = [elt_vtx_pl,new_vtx_pl]
-  old_to_new_vtx = np.arange(old_vtx_distri[0],old_vtx_distri[1], dtype=np.int32)+1
+
+  old_to_new_vtx = np.arange(vtx_distri[0],vtx_distri[1], dtype=np.int32)+1
   old_to_new_vtx[new_vtx_num[0]-1] = new_vtx_num[1]
 
   # > Add duplicated elements
@@ -384,7 +387,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   ptb = EP.PartToBlock(elt_distri, [elt_pl_shft], comm)
   ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
   ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-  duplicated_ec = EP.block_to_part(old_to_new_vtx, old_vtx_distri, [ec[ec_ids]], comm)[0]
+  duplicated_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec[ec_ids]], comm)[0]
   ec = np.concatenate([ec, duplicated_ec])
   PT.set_value(ec_n, ec)
 
@@ -479,8 +482,8 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   line_pl = elts_to_update['BAR_2']+n_elt_to_add # Attention au décalage de la PL 
 
   # > Exclude constraint surf or both will move
-  tag_face = par_algo.gnum_isin(face_pl, elt_pl, comm) 
-  face_pl  = face_pl[tag_face]
+  tag_face = par_algo.gnum_isin(face_pl, elt_pl, comm)
+  face_pl  = face_pl[~tag_face]
   bc_line_pl = np.concatenate(twin_elt_bc_pl['BAR_2']) if len(twin_elt_bc_pl['BAR_2'])!=0 else np.empty(0, dtype=np.int32)
   tag_line = par_algo.gnum_isin(line_pl, bc_line_pl, comm) 
   line_pl  = line_pl[tag_line]
@@ -489,9 +492,9 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   tri_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
   bar_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2')
 
-  update_elt_vtx_numbering(zone, tet_n, old_vtx_distri, old_to_new_vtx, comm, elt_pl=cell_pl)
-  update_elt_vtx_numbering(zone, tri_n, old_vtx_distri, old_to_new_vtx, comm, elt_pl=face_pl)
-  update_elt_vtx_numbering(zone, bar_n, old_vtx_distri, old_to_new_vtx, comm, elt_pl=line_pl)
+  update_elt_vtx_numbering(zone, tet_n, old_to_new_vtx, comm, elt_pl=cell_pl)
+  update_elt_vtx_numbering(zone, tri_n, old_to_new_vtx, comm, elt_pl=face_pl)
+  update_elt_vtx_numbering(zone, bar_n, old_to_new_vtx, comm, elt_pl=line_pl)
 
   return new_vtx_num
 
