@@ -6,6 +6,7 @@ import maia.pytree.maia   as MT
 
 from maia                      import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils                import np_utils, par_utils, layouts
+from maia.utils                import logging as mlog
 from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
 
@@ -104,7 +105,7 @@ def extract_surf_tree_from_queries(dist_tree, queries, comm):
       surf_zone = extract_surf_zone_from_queries(zone, queries, comm)
       PT.add_child(surf_base, surf_zone)
     else:
-      print(f"Warning : skip structured zone {PT.get_name(zone)} in extract_surf_tree")
+      mlog.warning(f"skip structured zone {PT.get_name(zone)} in extract_surf_tree")
 
   return surf_tree
 

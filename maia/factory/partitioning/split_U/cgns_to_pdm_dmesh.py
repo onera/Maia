@@ -218,7 +218,6 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   # Boundaries
   if needs_bc:
     range_by_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
-    # print("range_by_dim --> ", range_by_dim)
 
     # Skip Vertex-located BCs, because they are not in Element numbering
     elts_loc = ['EdgeCenter', 'FaceCenter', 'CellCenter']

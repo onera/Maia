@@ -63,7 +63,6 @@ def balance_with_uniform_weights(n_elem_per_zone, n_rank):
       # *******************************************
       # > Compute n_rank affected to the current Zone
       n_rank_zone = i_elem//mean_per_rank
-      # print("n_rank_zone = {}".format(n_rank_zone))
       # LOG.debug(' '*8 + " ~> n_rank_zone : {0} ".format(n_rank_zone))
       # *******************************************
 
@@ -155,12 +154,10 @@ def balance_with_uniform_weights(n_elem_per_zone, n_rank):
       # *******************************************
       min_loaded_proc = np.argmin(n_elem_mpi_tmp)
       min_load        = n_elem_mpi_tmp[min_loaded_proc]
-      #print "min_load = ", min_load, " et min_loaded_proc = ", min_loaded_proc
       # *******************************************
 
       # *******************************************
       cur_zone_to_add, cur_zone_to_add_n_elem = next(iter(d_remain_zones.items()))
-      #print cur_zone_to_add, cur_zone_to_add_n_elem
       # *******************************************
 
       # *******************************************

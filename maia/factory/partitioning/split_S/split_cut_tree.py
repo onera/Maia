@@ -118,7 +118,6 @@ def split_S_block(dims, n_parts, weights = None, max_it = 720):
         permutation_idx = [p[0] for p in permutation]
       if (n_tries >= max_it):
         break
-    #print('Selected the best repartition after', n_tries, 'tries')
     w_tree = apply_weights_to_cut_tree(cut_tree, best_weights)
     parts  = bct_to_partitions_bounds(cut_tree, dims, w_tree)
     part_permutation = np.argsort(permutation_idx)

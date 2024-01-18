@@ -36,7 +36,6 @@ def dist_set_difference(ids, others, comm):
   # d_stride[PTB.getBlockGnumCopy() - distri[comm.Get_rank()] - 1] = 1
 
   # ts, tt = BTP.exchange_field(dist_data, d_stride)
-  # print(tt)
 
   # dist_data = EP.part_to_block(part_data, None, ln_to_gn, comm, reduce_func=reduce_prod)
 

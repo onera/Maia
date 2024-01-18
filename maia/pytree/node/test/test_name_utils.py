@@ -37,7 +37,6 @@ class Test_shorten_names:
         MyShortName DataArray_t:
       """
       expected_node = parse_yaml_cgns.to_node(expected_yt)
-      print(self.node)
       assert self.node == expected_node
 
 def test_rename_zone():

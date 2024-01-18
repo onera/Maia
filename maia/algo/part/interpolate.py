@@ -7,6 +7,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils                  import py_utils, np_utils
+from maia.utils                  import logging as mlog
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
@@ -147,8 +148,8 @@ def create_src_to_tgt(src_parts_per_dom,
     all_located_inv = py_utils.to_flat_list(location_out_inv)
     n_unlocated = sum([t.size for t in all_unlocated])
     n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.SUM)
-    if(comm.Get_rank() == 0):
-      print(" n_tot_unlocated = ", n_tot_unlocated )
+    if comm.Get_rank() == 0:
+      mlog.stat(f"[interpolation] Number of unlocated points for Location method is {n_tot_unlocated}")
 
 
   all_closest_inv = list()

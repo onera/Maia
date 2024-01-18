@@ -88,9 +88,9 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
         assert isinstance(val, dict)
         for subkey, subval in val.items():
           if not subkey in options[key].keys():
-            print('Warning -- Unvalid subkey {0}/{1} in partitioning'.format(key,subkey))
+            mlog.error(f'Partitioning sub keyword "{key}/{subkey}" does not exists and will be ignored')
     else:
-      print('Warning -- Unvalid key {0} in partitioning'.format(key))
+      mlog.error(f'Partitioning keyword "{key}" does not exists and will be ignored')
   # > Erase default setting with user settings
   for key, val in kwargs.items():
     if key in options.keys():

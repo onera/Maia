@@ -46,10 +46,8 @@ def _create_local_match_table(gc_list, gc_paths):
     current_path = gc_paths[igc]
     current_base = current_path.split('/')[0]
     opp_path = PT.GridConnectivity.ZoneDonorPath(gc, current_base)
-    #print('current', gc[0], gc_paths[igc], 'opp', opp_path)
     candidates = [i for i,path in enumerate(gc_paths) if
         (path==opp_path and PT.GridConnectivity.ZoneDonorPath(gc_list[i], path.split('/')[0]) == current_path)]
-    #print('  candidates', candidates)
     gc_has_pl = PT.get_child_from_name(gc, 'PointList') is not None
     for j in candidates:
       candidate_has_pl = PT.get_child_from_name(gc_list[j], 'PointList') is not None
@@ -57,7 +55,6 @@ def _create_local_match_table(gc_list, gc_paths):
         local_match_table[igc][j] = _compare_pointlist(gc, gc_list[j])
       elif not gc_has_pl and not candidate_has_pl:
         local_match_table[igc][j] = _compare_pointrange(gc, gc_list[j])
-  #print('  check_candidates', local_match_table)
   return local_match_table
 
 def add_joins_donor_name(dist_tree, comm, force=False):
@@ -95,7 +92,6 @@ def add_joins_donor_name(dist_tree, comm, force=False):
 
   global_match_table = np.empty(local_match_table.shape, dtype=bool)
   comm.Allreduce(local_match_table, global_match_table, op=MPI.LAND)
-  #print('  check_candidates\n', global_match_table)
   assert(np.all(np.sum(global_match_table, axis=0) == 1))
 
   opp_join_id = np.where(global_match_table)[1]
@@ -110,7 +106,7 @@ def get_jn_donor_path(dist_tree, jn_path):
   base_name, zone_name, zgc_name, jn_name = jn_path.split('/')
   opp_zone_path = PT.GridConnectivity.ZoneDonorPath(cur_jn, base_name)
   gc_donor_name = PT.get_child_from_name(cur_jn, "GridConnectivityDonorName")
-  if gc_donor_name is None :
+  if gc_donor_name is None:
     raise RuntimeError(f"No GridConnectivityDonorName found in GC {jn_path}")
   opp_gc_name   = PT.get_value(gc_donor_name)
 
