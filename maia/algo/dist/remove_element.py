@@ -154,10 +154,8 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   n_elt_to_rm = rm_distrib[2]
 
   # > Updating element range, connectivity and distribution
-  pl_c  = -np.ones(n_elt_to_rm_l*elt_size, dtype=np.int32)
-  for i_size in range(elt_size):
-    pl_c[i_size::elt_size] = elt_size*ids_to_remove+i_size
-  ec = np.delete(ec, pl_c)
+  ec_ids = np_utils.interweave_arrays([elt_size*ids_to_remove+i_size for i_size in range(elt_size)])
+  ec = np.delete(ec, ec_ids)
   PT.set_value(ec_n, ec)
   er[1] -= n_elt_to_rm
 
