@@ -1,3 +1,4 @@
+import numpy as np
 import time
 from mpi4py import MPI
 
@@ -6,6 +7,7 @@ import maia.pytree as PT
 from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
+from maia.utils     import par_utils
 from maia.utils     import logging as mlog
 
 from maia.transfer.dist_to_part import data_exchange  as BTP
@@ -14,7 +16,7 @@ from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
 from .post_split import post_partitioning as post_split
-
+from .load_balancing import balancing_quality
 
 def set_default(dist_tree, comm):
 
@@ -112,7 +114,24 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
     zone_to_parts = SPW.balance_multizone_tree(dist_tree, comm)
   assert isinstance(zone_to_parts, dict)
   # > Call main function
-  return _partitioning(dist_tree, zone_to_parts, comm, options)
+  part_tree = _partitioning(dist_tree, zone_to_parts, comm, options)
+  
+  # Compute statistics
+  if not par_utils.any_true(zone_to_parts.values(), lambda e: len(e)>1, comm):
+    # Rebuild array 
+    zone_paths = PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
+    n_cell_per_block = np.zeros(len(zone_paths), np.int32)
+    for part_zone_path in PT.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
+      part_zone = PT.get_node_from_path(part_tree, part_zone_path)
+      idx = zone_paths.index(PT.maia.conv.get_part_prefix(part_zone_path))
+      n_cell = PT.Zone.n_cell(part_zone) # If zone is a point cloud, use n_vtx
+      n_cell_per_block[idx] = n_cell if n_cell > 0 else PT.Zone.n_vtx(part_zone)
+    if comm.Get_rank() == 0:
+      mlog.stat("[partition_dist_tree] After partitioning, repartition statistics are:")
+
+    balancing_quality.compute_balance_and_splits(n_cell_per_block, comm, comm.Get_rank()==0)
+
+  return part_tree
 
 def _partitioning(dist_tree,
                   dzone_to_weighted_parts,

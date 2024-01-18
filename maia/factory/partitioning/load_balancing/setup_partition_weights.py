@@ -6,7 +6,6 @@ import maia.pytree.sids   as SIDS
 
 from .single_zone_balancing import homogeneous_repart
 from .multi_zone_balancing  import balance_with_uniform_weights, balance_with_non_uniform_weights, karmarkar_karp
-from .                      import balancing_quality
 
 def compute_nosplit_weights(tree, comm):
   """Compute a zone_to_parts repartition without splitting the blocks.
@@ -48,8 +47,6 @@ def compute_nosplit_weights(tree, comm):
     subset_indices = karmarkar_karp(nb_elts, n_rank)
     for j, rank_idx in enumerate(subset_indices):
       repart_per_zone[rank_idx, j] = nb_elts[rank_idx]
-
-  balancing_quality.compute_balance_and_splits(repart_per_zone, display=i_rank==0)
 
   zone_to_weights = {zone_path: [1.] for j, zone_path in enumerate(zone_paths) \
           if repart_per_zone[j][i_rank] > 0}
@@ -151,10 +148,6 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
   repart_per_zone = balance_with_uniform_weights(nb_elmt_per_zone, n_rank) if only_uniform \
                else balance_with_non_uniform_weights(nb_elmt_per_zone, n_rank)
 
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-  repart_per_zone_array = np.array([repart for repart in repart_per_zone.values()])
-  balancing_quality.compute_balance_and_splits(repart_per_zone_array, display=i_rank==0)
-  # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
   # > Verbose
