@@ -473,6 +473,8 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
                      parent=zone_bc_n)
     PT.maia.newDistribution({'Index':add_elt_distri}, parent=bc_n)
 
+  n_tri_added_tot = add_elt_distri[2]
+
   # > Duplicate twin BCs
   new_ec = list()
   twin_elt_bc_pl = dict()
@@ -481,60 +483,80 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
     # > Get element infos
     is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                              PT.Element.CGNSName(n)==elt_name
-    elt_n = PT.get_node_from_predicate(zone, is_asked_elt)
-    n_elt      = PT.Element.Size(elt_n)
-    elt_size   = PT.Element.NVtx(elt_n)
-    elt_offset = PT.Element.Range(elt_n)[0]
-    elt_dim    = PT.Element.Dimension(elt_n)
+    elt_n        = PT.get_node_from_predicate(zone, is_asked_elt)
+    n_elt        = PT.Element.Size(elt_n)
+    elt_size     = PT.Element.NVtx(elt_n)
+    elt_offset   = PT.Element.Range(elt_n)[0]
+    elt_dim      = PT.Element.Dimension(elt_n)
+    elt_distri_n = PT.maia.getDistribution(elt_n, distri_name='Element')
+    elt_distri   = PT.get_value(elt_distri_n)
 
     ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
     ec    = PT.get_value(ec_n)
 
     n_new_elt = 0
+    add_elt_distri = np.array([0,0,0], dtype=pdm_gnum_dtype)
+    new_elt_distri = elt_distri
     for matching_bcs in duplicate_bcs:
       bc_n = PT.get_child_from_name(zone_bc_n, matching_bcs[0])
       bc_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
       twin_elt_bc_pl['BAR_2'].append(bc_pl)
 
-      ids = bc_pl - elt_offset
-      ec_pl = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-      bc_ec = ec[ec_pl]
-      new_bc_ec = np.take(old_to_new_vtx, bc_ec-1)
+      bc_pl_shft = bc_pl - elt_offset +1
+      ptb = EP.PartToBlock(new_elt_distri, [bc_pl_shft], comm)
+      ids = ptb.getBlockGnumCopy()-new_elt_distri[0]-1
+      n_elt_to_add_l = ids.size
+      ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
+      new_bc_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec[ec_ids]], comm)[0]
       new_ec.append(new_bc_ec)
 
-      new_bc_pl = np.arange(n_elt+n_new_elt, n_elt+n_new_elt+bc_pl.size) + elt_offset
+      # > Compute element distribution
+      add_elt_distri_l = par_utils.dn_to_distribution(n_elt_to_add_l, comm)
+      add_elt_distri  += add_elt_distri_l
+      new_elt_distri   = new_elt_distri+add_elt_distri_l
+
+      new_bc_pl = np.arange(n_elt+add_elt_distri_l[0],
+                            n_elt+add_elt_distri_l[1], dtype=np.int32) + elt_offset
       new_bc_distrib = par_utils.dn_to_distribution(new_bc_pl.size, comm)
       new_bc_n = PT.new_BC(name=matching_bcs[1],
                            type='FamilySpecified',
                            point_list=new_bc_pl.reshape((1,-1), order='F'),
                            loc=DIM_TO_LOC[elt_dim],
                            parent=zone_bc_n)
-      PT.maia.newDistribution({'Index':new_bc_distrib}, parent=new_bc_n)
+      PT.maia.newDistribution({'Index':add_elt_distri_l}, parent=new_bc_n)
 
       bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
       if bc_fam_n is not None:
         PT.new_FamilyName(PT.get_value(bc_fam_n), parent=new_bc_n)
       n_new_elt += bc_pl.size
 
-    # > Update elt node
-    ec = np.concatenate([ec]+new_ec)
-    PT.set_value(ec_n, ec)
-    er_n  = PT.get_child_from_name(elt_n, 'ElementRange')
-    er    = PT.get_value(er_n)
-    er[1]+= n_new_elt
+    # > Update ElementConnectivity, by adding new elements at the end of distribution
+    new_ec = np.concatenate([ec]+new_ec)
+
+    n_elt = elt_distri[2]
+    old_gnum = np.arange(          elt_distri[0],          elt_distri[1], dtype=np.int32)+1
+    new_gnum = np.arange(n_elt+add_elt_distri[0],n_elt+add_elt_distri[1], dtype=np.int32)+1
+    elt_gnum = np.concatenate([old_gnum, new_gnum])
+
+    cst_stride = np.full(elt_gnum.size, elt_size, np.int32)
+    ptb = EP.PartToBlock(new_elt_distri, [elt_gnum], comm)
+    _, new_ec = ptb.exchange_field([new_ec], part_stride=[cst_stride])
+
+    PT.set_value(ec_n, new_ec)
+
+    # > Update ElementRange
+    er_n = PT.get_child_from_name(elt_n, 'ElementRange')
+    er   = PT.get_value(er_n)
+    er[1] += add_elt_distri[2]
     PT.set_value(er_n, er)
 
     # > Update distribution
-    elt_distrib_n  = PT.maia.getDistribution(elt_n, distri_name='Element')
-    elt_distrib    = PT.get_value(elt_distrib_n)
-    elt_distrib[1]+= n_new_elt
-    elt_distrib[2]+= n_new_elt
-    PT.set_value(elt_distrib_n, elt_distrib)
+    PT.set_value(elt_distri_n, new_elt_distri)
 
   # > Update vtx numbering of elements in patch to separate patch
   cell_pl = elts_to_update['TETRA_4']
   face_pl = elts_to_update['TRI_3']
-  line_pl = elts_to_update['BAR_2']+add_elt_distri[2] # Attention au décalage de la PL 
+  line_pl = elts_to_update['BAR_2']+n_tri_added_tot # Attention au décalage de la PL 
 
   # > Exclude constraint surf or both will move
   tag_face = par_algo.gnum_isin(face_pl, elt_pl, comm)
@@ -798,7 +820,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     PT.maia.newDistribution({'Index':new_bc_distrib}, parent=bc_n)
     to_constrain_bcs.append(face_bc_name)
 
-    # maia.io.write_tree(tree, f'OUTPUT/internal_surface_{i_per}.cgns')
+    # maia.io.dist_tree_to_file(tree, f'OUTPUT/internal_surface_{i_per}.cgns', comm)
 
     # > 2/ Removing lines defined on join because they surely has their periodic on the other side
     # > Find BCs on GCs that will be deleted because they have their periodic twin
