@@ -623,18 +623,41 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
 
   tgt_er_n  = PT.get_child_from_name(tgt_elt_n, 'ElementRange')
   tgt_er    = PT.get_value(tgt_er_n)
-  new_tgt_elt_pl = np.arange(tgt_er[1], tgt_er[1]+n_elt_to_add)+elt_offset
+  tgt_old_er= np.copy(tgt_er)
   tgt_er[1] = tgt_er[1]+new_elt_distrib[2]
   PT.set_value(tgt_er_n, tgt_er)
 
   # > Update distribution
   tgt_elt_distrib_n = PT.maia.getDistribution(tgt_elt_n, distri_name='Element')
+  tgt_elt_distrib_old= PT.get_value(tgt_elt_distrib_n)
   tgt_elt_distrib   = PT.get_value(tgt_elt_distrib_n) + new_elt_distrib
   PT.set_value(tgt_elt_distrib_n, tgt_elt_distrib)
 
   apply_offset_to_elts(zone, new_elt_distrib[2], tgt_er[1]-new_elt_distrib[2])
 
-  return new_tgt_elt_pl
+  # > Computing offset of element induced by added elements
+  old_to_new_elt = np.arange(tgt_elt_distrib_old[0],tgt_elt_distrib_old[1], dtype=np.int32)+1
+  old_to_new_elt+= new_elt_distrib[0]
+
+  # > Update BC_t PointList, because some elements have been insered
+  #   Beware: after apply_offset_to_elts because if not BCs can be update twice
+  is_tgt_bc = lambda n: PT.get_label(n)=='BC_t' and\
+                        PT.Subset.GridLocation(n)==DIM_TO_LOC[tgt_elt_dim]
+  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  for bc_n in PT.get_children_from_predicate(zone_bc_n, is_tgt_bc):
+    bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
+    bc_pl   = PT.get_value(bc_pl_n)[0]
+    mask_in_elt = (tgt_old_er[0] <= bc_pl ) & (bc_pl<=tgt_old_er[1])
+    bc_elt_ids = bc_pl[mask_in_elt]-tgt_elt_offset+1
+    new_gn = EP.block_to_part(old_to_new_elt, tgt_elt_distrib_old, [bc_elt_ids], comm)[0]
+    bc_pl[mask_in_elt] = new_gn+tgt_elt_offset-1
+    PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
+
+  # > Computing point_list of created elements
+  new_tgt_elt_pl = np.arange(tgt_elt_distrib_old[1]+new_elt_distrib[0],
+                             tgt_elt_distrib_old[1]+new_elt_distrib[1])+elt_offset
+  
+  return new_tgt_elt_pl+tgt_elt_offset-1
 
 
 def convert_vtx_gcs_as_face_bcs(tree, comm):
