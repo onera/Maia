@@ -83,24 +83,27 @@ def test_remove_specified_vtx(comm):
 def test_elmt_pl_to_vtx_pl(comm):
   zone = PT.new_Zone(type='Unstructured')
   if comm.Get_rank() == 0:
-    econn = [1,2,5,4, 2,3,6,5]
-    distri = np.array([0, 2, 4], pdm_dtype)
-    elt_pl = np.array([1,3]) # Requested elts
+    vtx_distri = np.array([0, 5, 9], pdm_dtype)
+    econn      = [1,2,5,4, 2,3,6,5]
+    distri     = np.array([0, 2, 4], pdm_dtype)
+    elt_pl     = np.array([1,3]) # Requested elts
   elif comm.Get_rank() == 1:
-    econn = [4,5,8,7, 5,6,9,8]
-    distri = np.array([2, 4, 4], pdm_dtype)
-    elt_pl = np.array([], pdm_dtype) # Requested elts
+    vtx_distri = np.array([5, 9, 9], pdm_dtype)
+    econn      = [4,5,8,7, 5,6,9,8]
+    distri     = np.array([2, 4, 4], pdm_dtype)
+    elt_pl     = np.array([], pdm_dtype) # Requested elts
   elt = PT.new_Elements(type='QUAD_4', erange=[1,4], econn=econn, parent=zone)
-  PT.maia.newDistribution({'Element' : distri}, elt)
+  PT.maia.newDistribution({'Element':     distri}, elt)
+  PT.maia.newDistribution({'Vertex' : vtx_distri}, zone)
 
   quad_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and\
                                                        PT.Element.CGNSName(n)=='QUAD_4')
 
   vtx_pl = adapt_utils.elmt_pl_to_vtx_pl(zone, quad_n, elt_pl, comm)
   if comm.Get_rank() == 0:
-    assert (vtx_pl == [1,2,4,5,7,8]).all()
+    assert (vtx_pl == [1,2,4,5]).all()
   elif comm.Get_rank() == 1:
-    assert vtx_pl.size == 0
+    assert (vtx_pl == [7,8]).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_tag_elmt_owning_vtx(comm):

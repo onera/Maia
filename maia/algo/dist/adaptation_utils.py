@@ -101,17 +101,24 @@ def remove_specified_vtx(zone, vtx_pl, comm):
 
 def elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, comm):
   '''
-  Return point_list of vertices describing elements tagged in `elt_pl`.
+  Return distributed gnum of vertices describing elements tagged in `elt_pl`.
   '''
+  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+
   elt_size   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
-  distri     = PT.maia.getDistribution(elt_n, 'Element')[1]
+  elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
 
-  ec  = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
-  ids = elt_pl - elt_offset + 1
-  
-  _, all_vtx = EP.block_to_part_strided(elt_size, ec, distri, [ids], comm)
-  return np.unique(all_vtx)
+  # > Get partitionned connectivity of elt_pl
+  elt_ec   = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
+  ids      = elt_pl - elt_offset +1
+  _, pl_ec = EP.block_to_part_strided(elt_size, elt_ec, elt_distri, [ids], comm)
+
+  # > Get distributed vertices gnum referenced in pl_ec 
+  ptb    = EP.PartToBlock(vtx_distri, pl_ec, comm)
+  vtx_pl = ptb.getBlockGnumCopy()
+
+  return vtx_pl
 
 
 def tag_elmt_owning_vtx(zone, elt_n, vtx_pl, comm, elt_full=False):
