@@ -39,7 +39,8 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
   distri_n = PT.maia.getDistribution(zone, 'Vertex')
   distri   = PT.get_value(distri_n)
   dn_vtx   = distri[1] - distri[0] # Initial number of vertices
-  
+  n_vtx    = distri[2]
+
   # Update GridCoordinates
   coords_keys = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
   coord_nodes = {key: PT.get_node_from_name(zone, key) for key in coords_keys}
@@ -583,7 +584,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
 
         # > Set BC connectivity in vtx shared numbering
         vtx_ptb = EP.PartToBlock(vtx_distri, [this_bc_vtx], comm)
-        vtx_ids = vtx_ptb.getBlockGnumCopy()-vtx_distri[0]
+        vtx_ids = vtx_ptb.getBlockGnumCopy()
         bc_vtx_renum = EP.block_to_part(old_to_new_vtx, vtx_distri, [vtx_ids], comm) # Numbering of these vertices in shared numerotation
         
         bc_vtx[i_side].append(bc_vtx_renum[0])
@@ -621,6 +622,8 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
   tgt_ec         = PT.get_value(tgt_ec_n)
   tgt_elt_dim    = PT.Element.Dimension(tgt_elt_n)
   tgt_elt_name   = PT.Element.CGNSName(tgt_elt_n)
+  tgt_elt_distri_n = PT.maia.getDistribution(tgt_elt_n, distri_name='Element')
+  tgt_elt_distri   = PT.get_value(tgt_elt_distri_n)
   assert tgt_elt_name=='TRI_3'
 
   # > Get TETRA_4 elt_pl connectivity
@@ -643,50 +646,36 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
   ec_pl = np_utils.interweave_arrays([tgt_elt_size*elt_ids+i_size for i_size in range(tgt_elt_size)])
   tgt_elt_ec = tgt_elt_ec[ec_pl]
 
-  new_elt_distrib   = par_utils.dn_to_distribution(n_elt_to_add, comm)
-  
-  # Update target element
+  # > Update distribution
+  add_elt_distri = par_utils.dn_to_distribution(n_elt_to_add, comm)
+  new_elt_distri = tgt_elt_distri+add_elt_distri
+  PT.set_value(tgt_elt_distri_n, new_elt_distri)
+
+  # > Update target element
   tgt_ec_n   = PT.get_child_from_name(tgt_elt_n, 'ElementConnectivity')
   tgt_ec     = PT.get_value(tgt_ec_n)
-  PT.set_value(tgt_ec_n, np.concatenate([tgt_ec, tgt_elt_ec]))
+  tgt_new_ec = np.concatenate([tgt_ec, tgt_elt_ec])
+
+  # > Replace added elements at the end of distribution
+  tgt_n_elt = tgt_elt_distri[2]
+  old_gnum = np.arange(          tgt_elt_distri[0],          tgt_elt_distri[1], dtype=np.int32)+1
+  new_gnum = np.arange(tgt_n_elt+add_elt_distri[0],tgt_n_elt+add_elt_distri[1], dtype=np.int32)+1
+  elt_gnum = np.concatenate([old_gnum, new_gnum])
+
+  cst_stride = np.full(elt_gnum.size, tgt_elt_size, np.int32)
+  ptb = EP.PartToBlock(new_elt_distri, [elt_gnum], comm)
+  _, tgt_new_ec = ptb.exchange_field([tgt_new_ec], part_stride=[cst_stride])
+  PT.set_value(tgt_ec_n, tgt_new_ec)
 
   tgt_er_n  = PT.get_child_from_name(tgt_elt_n, 'ElementRange')
   tgt_er    = PT.get_value(tgt_er_n)
   tgt_old_er= np.copy(tgt_er)
-  tgt_er[1] = tgt_er[1]+new_elt_distrib[2]
+  tgt_er[1] = tgt_er[1]+add_elt_distri[2]
   PT.set_value(tgt_er_n, tgt_er)
 
-  # > Update distribution
-  tgt_elt_distrib_n = PT.maia.getDistribution(tgt_elt_n, distri_name='Element')
-  tgt_elt_distrib_old= PT.get_value(tgt_elt_distrib_n)
-  tgt_elt_distrib   = PT.get_value(tgt_elt_distrib_n) + new_elt_distrib
-  PT.set_value(tgt_elt_distrib_n, tgt_elt_distrib)
-
-  apply_offset_to_elts(zone, new_elt_distrib[2], tgt_er[1]-new_elt_distrib[2])
-
-  # > Computing offset of element induced by added elements
-  old_to_new_elt = np.arange(tgt_elt_distrib_old[0],tgt_elt_distrib_old[1], dtype=np.int32)+1
-  old_to_new_elt+= new_elt_distrib[0]
-
-  # > Update BC_t PointList, because some elements have been insered
-  #   Beware: after apply_offset_to_elts because if not BCs can be update twice
-  is_tgt_bc = lambda n: PT.get_label(n)=='BC_t' and\
-                        PT.Subset.GridLocation(n)==DIM_TO_LOC[tgt_elt_dim]
-  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  for bc_n in PT.get_children_from_predicate(zone_bc_n, is_tgt_bc):
-    bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
-    bc_pl   = PT.get_value(bc_pl_n)[0]
-    mask_in_elt = (tgt_old_er[0] <= bc_pl ) & (bc_pl<=tgt_old_er[1])
-    bc_elt_ids = bc_pl[mask_in_elt]-tgt_elt_offset+1
-    new_gn = EP.block_to_part(old_to_new_elt, tgt_elt_distrib_old, [bc_elt_ids], comm)[0]
-    bc_pl[mask_in_elt] = new_gn+tgt_elt_offset-1
-    PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
-
-  # > Computing point_list of created elements
-  new_tgt_elt_pl = np.arange(tgt_elt_distrib_old[1]+new_elt_distrib[0],
-                             tgt_elt_distrib_old[1]+new_elt_distrib[1])+elt_offset
+  apply_offset_to_elts(zone, add_elt_distri[2], tgt_er[1]-add_elt_distri[2])
   
-  return new_tgt_elt_pl+tgt_elt_offset-1
+  return new_gnum+tgt_elt_offset-1
 
 
 def convert_vtx_gcs_as_face_bcs(tree, comm):
