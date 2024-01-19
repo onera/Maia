@@ -589,8 +589,10 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
   assert elt_name=='TETRA_4'
 
   tgt_elt_size   = PT.Element.NVtx(tgt_elt_n)
+  tgt_elt_offset = PT.Element.Range(tgt_elt_n)[0]
   tgt_ec_n       = PT.get_child_from_name(tgt_elt_n, 'ElementConnectivity')
   tgt_ec         = PT.get_value(tgt_ec_n)
+  tgt_elt_dim    = PT.Element.Dimension(tgt_elt_n)
   tgt_elt_name   = PT.Element.CGNSName(tgt_elt_n)
   assert tgt_elt_name=='TRI_3'
 
@@ -688,7 +690,7 @@ def convert_vtx_gcs_as_face_bcs(tree, comm):
 
       # > Search faces described by gc vtx
       bc_pl = maia.algo.dist.subset_tools.vtx_ids_to_face_ids(gc_pl, elt_n, comm, True)
-      mask  = par_algo.gnum_isin(bc_pl, face_bc_pls, comm)
+      mask  = ~par_algo.gnum_isin(bc_pl, face_bc_pls, comm)
 
       bc_pl = bc_pl[mask]+elt_offset-1
 
