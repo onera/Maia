@@ -256,6 +256,8 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   '''
   n_vtx = PT.Zone.n_vtx(zone)
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  vtx_distri_n = PT.maia.getDistribution(zone, 'Vertex')
+  vtx_distri   = PT.maia.getDistribution(zone, 'Vertex')[1]
 
   # TODO: directement choper les GCs
   pbc1_n      = PT.get_child_from_name(zone_bc_n, bc_names[0])
@@ -273,21 +275,27 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   old_vtx_num = old_to_new_vtx_num[0]
   new_vtx_num = old_to_new_vtx_num[1]
 
+  ptb = EP.PartToBlock(vtx_distri, [pbc1_vtx_pl], comm)
+  pbc1_vtx_pl = ptb.getBlockGnumCopy()-vtx_distri[0]
   pl1_tag = vtx_tag[pbc1_vtx_pl-1]
-  sort_old = np.argsort(old_vtx_num)
-  idx_pl1_tag_in_old = np.searchsorted(old_vtx_num, pl1_tag, sorter=sort_old)
 
+  ptb = EP.PartToBlock(vtx_distri, [pbc2_vtx_pl], comm)
+  pbc2_vtx_pl = ptb.getBlockGnumCopy()-vtx_distri[0]
   pl2_tag = vtx_tag[pbc2_vtx_pl-1]
-  sort_pl2_tag = np.argsort(pl2_tag)
-  idx_new_in_pl2_tag = np.searchsorted(pl2_tag, new_vtx_num, sorter=sort_pl2_tag)
+  ptp = EP.PartToPart([pl1_tag], [old_vtx_num], comm)
+  request1 = ptp.iexch( PDM._PDM_MPI_COMM_KIND_P2P,
+                        PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2, 
+                        [pbc1_vtx_pl+vtx_distri[0]])
+  _, gnum1_vtx = ptp.wait(request1)
+  gnum1_vtx = gnum1_vtx[0]
+  _part1_to_part2_idx = [np.arange(old_vtx_num.size+1, dtype=np.int32)]
+  ptp = PDM.PartToPart(comm, [old_vtx_num], [pl2_tag], _part1_to_part2_idx, [new_vtx_num])
+  request1 = ptp.iexch(    PDM._PDM_MPI_COMM_KIND_P2P,
+                          PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2, 
+                          [gnum1_vtx])
+  _, part_data = ptp.wait(request1)
 
-  sources = pbc2_vtx_pl[sort_pl2_tag[idx_new_in_pl2_tag[sort_old[idx_pl1_tag_in_old]]]]
-  targets = pbc1_vtx_pl
-
-  old_to_new_vtx = np.arange(1, n_vtx+1, dtype=np.int32)
-  old_to_new_vtx[sources-1] = -1
-  old_to_new_vtx[np.where(old_to_new_vtx!=-1)[0]] = np.arange(1, n_vtx-sources.size+1)
-  old_to_new_vtx[sources-1] = old_to_new_vtx[targets-1]
+  old_to_new_vtx = merge_distributed_ids(vtx_distri, pbc2_vtx_pl, part_data[0], comm, False)
   
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and\
                            PT.Element.CGNSName(n)==LOC_TO_CGNS[pbc2_loc]
