@@ -6,11 +6,7 @@ import maia.pytree.maia   as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, s_numbering
-from .                               import split_cut_tree as SCT
-from maia.algo.dist.s_to_u import guess_bnd_normal_index, \
-                                       compute_transform_matrix, \
-                                       apply_transform_matrix, \
-                                       n_face_per_dir
+from .          import split_cut_tree as SCT
 
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
 dir_to_idx = {'x':0, 'y':1, 'z':2}
@@ -39,11 +35,10 @@ def collect_S_bnd_per_dir(zone):
   for bnd_query in bnd_queries:
     for nodes in PT.iter_children_from_predicates(zone, bnd_query, ancestors=True):
       bnd = nodes[-1]
-      grid_loc    = PT.Subset.GridLocation(bnd)
       point_range_n = PT.get_node_from_name(bnd, 'PointRange')
       if point_range_n is not None: #Skip BC/GC defined by a PointList -- they will be updated after
         point_range = point_range_n[1]
-        bnd_normal_index = guess_bnd_normal_index(point_range, grid_loc)
+        bnd_normal_index = PT.Subset.normal_axis(bnd)
 
         if PT.get_label(bnd) == 'BCDataSet_t':
           bcds_path = '/'.join([PT.get_name(n) for n in nodes[:-1]])
@@ -292,13 +287,14 @@ def split_original_joins_S(all_part_zones, comm):
   for part in all_part_zones:
     zone_gc = PT.update_child(part, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
     to_delete = []
-    for jn in PT.iter_children_from_predicates(part, 'ZoneBC_t/BC_t'):
+    for jn in PT.get_children_from_predicates(part, 'ZoneBC_t/BC_t'):
       if PT.get_child_from_name(jn, 'GridConnectivityDonorName') is not None:
         dist_pr = PT.get_child_from_name(jn, 'distPR')[1]
         dist_prd = PT.get_child_from_name(jn, 'distPRDonor')[1]
-        transform  = PT.get_child_from_name(jn, 'Transform')[1]
+        PT.set_label(jn, 'GridConnectivity1to1_t')
+        transform  = PT.GridConnectivity.Transform(jn)
+        T_matrix = PT.GridConnectivity.Transform(jn, True)
         idx_dim = transform.size
-        T_matrix = compute_transform_matrix(transform)
         assert PT.Subset.GridLocation(jn) == 'Vertex'
 
         #Jn dans la num globale de la dist_zone
@@ -307,12 +303,10 @@ def split_original_joins_S(all_part_zones, comm):
         pr_to_global_num(pr, p_zone_offset)
 
         #Jn dans la num globale de la dist_zone opposée
-        pr_in_opp_abs = np.empty((idx_dim,2), dtype=pr.dtype)
-        pr_in_opp_abs[:,0] = apply_transform_matrix(pr[:,0], dist_pr[:,0], dist_prd[:,0], T_matrix)
-        pr_in_opp_abs[:,1] = apply_transform_matrix(pr[:,1], dist_pr[:,0], dist_prd[:,0], T_matrix)
+        pr_in_opp_abs = PT.utils._gc_transform_window(pr, dist_pr[:,0], dist_prd[:,0], T_matrix)
 
         #Jn dans la zone opposée et en cellules
-        normal_idx = guess_bnd_normal_index(pr_in_opp_abs, 'Vertex')
+        normal_idx = PT.Subset.normal_axis(PT.new_BC(point_range=pr_in_opp_abs))# Fake subset to enter PT function
         dirs       = np.where(np.arange(idx_dim) != normal_idx)[0]
         bnd_is_max = pr_in_opp_abs[normal_idx,0] != 1 #Sommets
         dir_to_swap     = (pr_in_opp_abs[:,1] < pr_in_opp_abs[:,0])
@@ -341,9 +335,7 @@ def split_original_joins_S(all_part_zones, comm):
             sub_prd[dir_to_swap, 0], sub_prd[dir_to_swap, 1] = \
                     sub_prd[dir_to_swap, 1], sub_prd[dir_to_swap, 0]
             # Go back to dist_zone
-            sub_pr = np.empty((idx_dim,2), dtype=pr.dtype)
-            sub_pr[:,0] = apply_transform_matrix(sub_prd[:,0], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
-            sub_pr[:,1] = apply_transform_matrix(sub_prd[:,1], dist_prd[:,0], dist_pr[:,0], T_matrix.T)
+            sub_pr = PT.utils._gc_transform_window(sub_prd, dist_prd[:,0], dist_pr[:,0], T_matrix.T)
             # Go back to local numbering
             pr_to_global_num(sub_pr, p_zone_offset, reverse=True)
             p_zone_offset_opp = all_offset_zones[PT.get_name(opposed_join)]
@@ -377,8 +369,9 @@ def compute_face_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
   dist_vtx_per_dir  = dist_zone_cell_size + 1
   part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
 
-  dist_face_per_dir = n_face_per_dir(dist_vtx_per_dir, dist_cell_per_dir)
-  part_face_per_dir = n_face_per_dir(part_cell_per_dir+1, part_cell_per_dir)
+  part_face_per_dir = np.array([(part_cell_per_dir[0]+1)*part_cell_per_dir[1]*part_cell_per_dir[2],
+                                (part_cell_per_dir[1]+1)*part_cell_per_dir[0]*part_cell_per_dir[2],
+                                (part_cell_per_dir[2]+1)*part_cell_per_dir[0]*part_cell_per_dir[1]])
   shifted_nface_p = np_utils.sizes_to_indices(part_face_per_dir)
   ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
   face_lntogn = np.empty(shifted_nface_p[-1], dtype=dtype)

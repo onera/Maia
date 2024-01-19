@@ -5,8 +5,6 @@ import maia.pytree        as PT
 
 import maia
 from maia.utils            import np_utils, as_pdm_gnum, logging
-from maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix,\
-                                  gc_is_reference, guess_bnd_normal_index
 from maia.algo.dist import matching_jns_tools as MJT
 
 def check_datasize(tree):
@@ -43,12 +41,9 @@ def fix_point_ranges(size_tree):
     base_name = PT.get_name(base)
     zone_name = PT.get_name(zone)
     gc_path     = base_name + '/' + zone_name
-    gc_opp_path = PT.get_value(gc)
-    if not '/' in gc_opp_path:
-      gc_opp_path = base_name + '/' + gc_opp_path
     # WARNING: for hybrid case structured zone could have PointList, PointListDonor.
     if PT.get_child_from_label(gc, 'IndexRange_t') is not None:
-      transform     = PT.get_value(PT.get_child_from_name(gc, 'Transform'))
+      transform     = PT.GridConnectivity.Transform(gc)
       point_range   = PT.get_value(PT.get_child_from_name(gc, 'PointRange'))
       point_range_d = PT.get_value(PT.get_child_from_name(gc, 'PointRangeDonor'))
 
@@ -59,7 +54,7 @@ def fix_point_ranges(size_tree):
 
       if dir_to_swap.any():
         permuted = True
-        if gc_is_reference(gc, gc_path, gc_opp_path):
+        if MJT.gc_is_reference(gc, gc_path):
 
           opp_dir_to_swap = np.empty_like(dir_to_swap)
           opp_dir_to_swap[donor_dir] = dir_to_swap
@@ -70,9 +65,7 @@ def fix_point_ranges(size_tree):
           point_range[dir_to_swap, 0], point_range[dir_to_swap, 1] = \
               point_range[dir_to_swap, 1], point_range[dir_to_swap, 0]
 
-      T = compute_transform_matrix(transform)
-      assert (point_range_d[:,1] == \
-          apply_transform_matrix(point_range[:,1], point_range[:,0], point_range_d[:,0], T)).all()
+      assert (point_range_d[:,1] == PT.utils.gc_transform_point(gc, point_range[:,1])).all()
   if permuted:
     logging.warning(f"Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
 
@@ -132,7 +125,7 @@ def add_missing_pr_in_bcdataset(tree):
       bcds_grid_location = PT.Subset.GridLocation(bcds)
       if not (bcds_grid_location.endswith('FaceCenter') and bc_grid_location == 'Vertex'):
         continue
-      face_dir   = guess_bnd_normal_index(bc_point_range,  bc_grid_location)
+      face_dir   = PT.Subset.normal_axis(bc)
       bcds_point_range             = bc_point_range.copy(order='F')
       bcds_point_range[:,1]       -= 1
       bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]

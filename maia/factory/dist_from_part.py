@@ -7,7 +7,6 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.algo.dist             import matching_jns_tools as MJT
-from maia.algo.dist.s_to_u      import guess_bnd_normal_index
 from maia.transfer              import utils              as tr_utils
 from maia.transfer.part_to_dist import data_exchange      as PTB
 from maia.transfer.part_to_dist import index_exchange     as IPTB
@@ -122,7 +121,9 @@ def _recover_dist_block_size(part_zones, comm):
     zones_to_size[zone_name] = PT.Zone.CellSize(part_zone)
     zones_to_join[zone_name] = []
     for intra_jn in PT.iter_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', intra1to1]):
-      zones_to_join[zone_name].append((PT.Subset.getPatch(intra_jn)[1], PT.get_value(intra_jn)))
+      light_jn = PT.new_GridConnectivity1to1(donor_name=PT.get_value(intra_jn),
+                                             point_range=PT.Subset.getPatch(intra_jn)[1])
+      zones_to_join[zone_name].append(light_jn)
 
   # Gather and flatten dicts
   zones_to_size_g = {}
@@ -144,9 +145,10 @@ def _recover_dist_block_size(part_zones, comm):
       current = first
       while keep_going:
         # Iterate jns and select one to continue in same axis/direction
-        for (pr,opposite) in zones_to_join_g[current]:
-          if guess_bnd_normal_index(pr, 'Vertex') == axis and oper(pr[axis,0], 1):
-            current = opposite
+        for jn in zones_to_join_g[current]:
+          pr = PT.get_child_from_name(jn, 'PointRange')[1]
+          if PT.Subset.normal_axis(jn) == axis and oper(pr[axis,0], 1):
+            current = PT.get_value(jn)
             d_zone_dims[axis,1] += zones_to_size_g[current][axis]
             break
         else: #If loop did not break -> we reached the end of block

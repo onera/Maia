@@ -160,6 +160,14 @@ def test_GridConnectivity_Type():
   with pytest.raises(Exception):
     SIDS.GridConnectivity.Type(bc)
 
+def test_GridConnectivity_Transform():
+  gc = N.new_GridConnectivity1to1(transform=[-2,3,1])
+  assert (SIDS.GridConnectivity.Transform(gc) == [-2,3,1]).all()
+  assert (SIDS.GridConnectivity.Transform(gc, True) == [[0,0,1], [-1,0,0], [0,1,0]]).all()
+  gc = N.new_GridConnectivity1to1()
+  assert (SIDS.GridConnectivity.Transform(gc) == [1,2,3]).all()
+  assert (SIDS.GridConnectivity.Transform(gc, True) == [[1,0,0], [0,1,0], [0,0,1]]).all()
+
 def test_GridConnectivity_isperiodic():
   gc = N.new_GridConnectivity()
   assert SIDS.GridConnectivity.isperiodic(gc) == False
@@ -306,6 +314,18 @@ def test_Subset():
     pr = N.new_IndexRange('PointRange', [[1,15]], parent=sol)
     patch = SIDS.Subset.getPatch(sol)
 
+def test_subset_normal_index():
+  new_subset = lambda pr, loc : N.new_BC(point_range=pr, loc=loc)
+  #Unambiguous
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'Vertex')) == 1
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'CellCenter')) == 1
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'JFaceCenter')) == 1
+  #Ambiguous
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]], 'JFaceCenter')) == 1
+  assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]], 'KFaceCenter')) == 2
+  with pytest.raises(ValueError):
+    SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]],'FaceCenter'))
+    SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]],'CellCenter'))
 
 def test_getZoneDonorPath():
   jn1 = N.new_node('match', 'GridConnectivity1to1_t', value='BaseXX/ZoneYY')

@@ -1,3 +1,4 @@
+import pytest
 import pytest_parallel
 
 import mpi4py.MPI as MPI
@@ -7,6 +8,21 @@ import maia.pytree as PT
 from maia.pytree.yaml import parse_yaml_cgns
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.factory import full_to_dist
+
+def test_gc_is_reference():
+  pr  = np.array([[1,1], [1,10], [1,10]], order='F')
+  prd = np.array([[20,10], [1,10], [5,5]], order='F')
+  gc = PT.new_GridConnectivity1to1(donor_name='Base/ZoneB', point_range=pr, point_range_donor=prd)
+  assert MJT.gc_is_reference(gc, 'Base/ZoneA') == True
+  gc = PT.new_GridConnectivity1to1(donor_name='Base/ZoneA', point_range=pr, point_range_donor=prd)
+  assert MJT.gc_is_reference(gc, 'Base/ZoneB') == False
+  gc = PT.new_GridConnectivity1to1(donor_name='Aase/ZoneA', point_range=pr, point_range_donor=prd)
+  assert MJT.gc_is_reference(gc, 'Base/ZoneA') == False
+  gc = PT.new_GridConnectivity1to1(donor_name='Base/ZoneA', point_range=pr, point_range_donor=prd)
+  assert MJT.gc_is_reference(gc, 'Base/ZoneA') == True
+  with pytest.raises(ValueError):
+    gc = PT.new_GridConnectivity1to1(donor_name='Base/ZoneA', point_range=pr, point_range_donor=pr)
+    MJT.gc_is_reference(gc, 'Base/ZoneA')
 
 class Test_compare_pointrange():
   def test_ok(self):

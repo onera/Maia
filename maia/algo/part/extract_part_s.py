@@ -2,7 +2,6 @@ import maia
 import maia.pytree as PT
 from   maia.factory  import dist_from_part
 from   maia.factory.partitioning.split_S.part_zone import compute_face_gnum
-from   maia.algo.dist.s_to_u import compute_transform_matrix, apply_transform_matrix
 from   maia.utils import s_numbering
 from   .extraction_utils   import LOC_TO_DIM, DIMM_TO_DIMF, build_intersection_numbering, discover_containers
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -123,12 +122,8 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
       if n_dim_pop in [2,3]:
         raise NotImplementedError(f'Asked extraction is 0D or 1D (n_dim_pop={n_dim_pop})')
       extract_dir = idx[0]
-    elif location=='FaceCenter':
-      extract_dir = maia.algo.dist.s_to_u.guess_bnd_normal_index(pr, 'FaceCenter')
-      mask[extract_dir] = False
-      n_dim_pop = 1
-    elif location in ['IFaceCenter','JFaceCenter','KFaceCenter']:
-      extract_dir = {'I':0, 'J':1, 'K':2}[location[0]]
+    elif 'FaceCenter' in location:
+      extract_dir = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=location))
       mask[extract_dir] = False
       n_dim_pop = 1
     else:
@@ -196,15 +191,8 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
         intersection = maia.factory.partitioning.split_S.part_zone.intersect_pr(gc_pr, pr)
         if intersection is not None:
 
-          pr_of_gc  = PT.get_value(PT.get_child_from_name(gc_n, 'PointRange'))
-          prd_of_gc = PT.get_value(PT.get_child_from_name(gc_n, 'PointRangeDonor'))
-          
-
-          transform = PT.get_value(PT.get_node_from_predicates(gc_n, 'Transform'))
-          T = compute_transform_matrix(transform)
-          apply_t1 = apply_transform_matrix(intersection[:,0], pr_of_gc[:,0], prd_of_gc[:,0], T)
-          apply_t2 = apply_transform_matrix(intersection[:,1], pr_of_gc[:,0], prd_of_gc[:,0], T)
-          new_gc_prd = np.array([[apply_t1[dim], apply_t2[dim]] for dim in range(3)], dtype=np.int32)
+          transform = PT.GridConnectivity.Transform(gc_n)
+          new_gc_prd = PT.utils.gc_transform_window(gc_n, intersection)
           
           # > Update joins PRs
           min_cur = extract_pr_min_per_pzone_all[zone_name]

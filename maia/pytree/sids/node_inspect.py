@@ -650,6 +650,32 @@ class GridConnectivity:
       return N.get_value(gc_type_n) if gc_type_n is not None else 'Overset'
 
   @staticmethod
+  def Transform(gc_node:CGNSTree, as_matrix=False) -> np.ndarray:
+    """ Return the Transform specification of a GridConnectivity1to1 node.
+
+    Args:
+      gc_node (CGNSTree): Input GridConnectivity1to1 node
+      as_matrix (bool): If True, return the transform matrix. Otherwise, return
+        the transform vector.
+    Returns:
+      ndarray: Transform specification
+    Example:
+      >>> gc = PT.new_GridConnectivity1to1(transform=[-2,3,1])
+      >>> PT.GridConnectivity.Transform(gc, True)
+      array([[ 0,  0,  1],
+             [-1,  0,  0],
+             [ 0,  1,  0]])
+    """
+    transform_node = W.get_child_from_name(gc_node, 'Transform')
+    transform = transform_node[1] if transform_node is not None else np.array([1,2,3], np.int32)
+    if as_matrix:
+      del_f = lambda x,y : (np.abs(x) == np.abs(y)).astype(int) # del(x−y) ≡ +1 if |x| = |y|
+      del_matrix = del_f(transform, np.array([[k+1] for k in range(transform.size)]))
+      return np.sign(transform) * del_matrix
+    else:
+      return transform
+
+  @staticmethod
   def is1to1(gc_node:CGNSTree) -> bool:
     """ Return True if the GridConnectivity node is of type 'Abutting1to1'
 
@@ -778,6 +804,38 @@ class Subset:
     """
     grid_loc_n = W.get_child_from_label(subset_node, 'GridLocation_t')
     return N.get_value(grid_loc_n) if grid_loc_n else 'Vertex'
+
+  @staticmethod
+  def normal_axis(subset_node:CGNSTree) -> int:
+    """ Return the normal direction of a structured subset.
+
+    This function is only relevant for subsets defining a 2d structured region
+    (having a PointRange node).
+
+    Args:
+      subset_node (CGNSTree): Input Subset node
+    Returns:
+      int : Normal axis of the subset (0,1 or 2)
+    Raises:
+      ValueError: if normal axis can not be determined
+    Example:
+      >>> bc = PT.new_BC(point_range=[[1,10], [5,5], [1,100]], loc='Vertex')
+      >>> PT.Subset.normal_axis(bc)
+      1
+    """
+    loc = Subset.GridLocation(subset_node)
+    if loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
+      return {'I':0, 'J':1, 'K':2}[loc[0]]
+    else:
+      pr_node = W.get_child_from_name(subset_node, 'PointRange')
+      if pr_node is not None:
+        cst_axis = (pr_node[1][:,0] == pr_node[1][:,1])
+        if cst_axis.sum() == 1: #Ambiguity can be resolved
+          return np.nonzero(cst_axis)[0][0]
+        else:
+          raise ValueError("Ambiguous input location")
+      else:
+        raise ValueError("Subset does not seems to have a structured PointRange")
 
   @staticmethod
   def ZSRExtent(zsr_node:CGNSTree, zone_node:CGNSTree) -> str:

@@ -6,6 +6,40 @@ import maia.pytree.maia as MT
 
 from .subset_tools import sort_dist_pointlist
 
+def gc_is_reference(gc_s, zone_path):
+  """
+  Check if a structured 1to1 GC is the reference of its pair or not
+  The opposite GC is not needed to do that (paths and pointrange are
+  compared)
+  """
+  zone_path_opp = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.path_head(zone_path))
+  if zone_path < zone_path_opp:
+    return True
+  elif zone_path > zone_path_opp:
+    return False
+  else: #Same zone path
+    pr  = PT.get_child_from_name(gc_s, "PointRange")[1]
+    prd = PT.get_child_from_name(gc_s, "PointRangeDonor")[1]
+    bnd_axis   = PT.Subset.normal_axis(gc_s)
+    bnd_axis_d = PT.Subset.normal_axis(PT.new_GridConnectivity1to1(point_range=prd))
+    if bnd_axis < bnd_axis_d:
+      return True
+    elif bnd_axis > bnd_axis_d:
+      return False
+    else: #Same boundary axis
+      bnd_axis_val = np.abs(pr[bnd_axis,0])
+      bnd_axis_val_d = np.abs(prd[bnd_axis_d,0])
+      if bnd_axis_val < bnd_axis_val_d:
+        return True
+      elif bnd_axis_val > bnd_axis_val_d:
+        return False
+      else: #Same position in boundary axis
+        if np.sum(pr) < np.sum(prd):
+          return True
+        elif np.sum(pr) > np.sum(prd):
+          return False
+  raise ValueError("Unable to determine if node is reference")
+
 def _compare_pointrange(gc1, gc2):
  """
  Compare a couple of grid_connectivity nodes and return True

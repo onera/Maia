@@ -2,9 +2,8 @@ import numpy   as np
 
 import maia.pytree        as PT
 
-from maia.utils     import np_utils, s_numbering
+from maia.utils     import np_utils, s_numbering, pr_utils
 from maia.transfer  import utils as te_utils
-from maia.algo.dist import s_to_u as S2U
 
 from .point_cloud_utils import create_sub_numbering
 
@@ -16,17 +15,17 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   k faces in increasing i,j,k for each group)
   """
 
-  bnd_axis = S2U.guess_bnd_normal_index(pr, input_loc)
+  bnd_axis = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=input_loc))
 
   # It is safer to reuse slabs to manage all cases (eg input location or reversed pr)
-  bc_size = S2U.transform_bnd_pr_size(pr, input_loc, "FaceCenter")
+  bc_size = pr_utils.transform_bnd_pr_size(pr, input_loc, "FaceCenter")
 
   slab = np.empty((3,2), order='F', dtype=np.int32)
   slab[:,0] = pr[:,0]
   slab[:,1] = bc_size + pr[:,0] - 1
-  slab[bnd_axis,:] += S2U.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
+  slab[bnd_axis,:] += pr_utils.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
 
-  return S2U.compute_pointList_from_pointRanges([slab], n_vtx_zone, 'FaceCenter', bnd_axis)
+  return pr_utils.compute_pointList_from_pointRanges([slab], n_vtx_zone,  ['I', 'J', 'K'][bnd_axis]+'FaceCenter')
 
 def _extract_sub_connectivity(array_idx, array, sub_elts):
   """
@@ -69,9 +68,8 @@ def extract_faces_mesh(zone, face_ids):
   elif PT.Zone.Type(zone) == 'Structured':
     # For S zone, create a NGon connectivity
     n_vtx_zone = PT.Zone.VertexSize(zone)
-    nf_i, nf_j, nf_k = S2U.n_face_per_dir(n_vtx_zone, n_vtx_zone-1)
+    nf_i, nf_j, nf_k = PT.Zone.FaceSize(zone)
     n_face_tot = nf_i + nf_j + nf_k
-    face_distri = [0, n_face_tot]
 
     bounds = np.array([0, nf_i, nf_i + nf_j, nf_i + nf_j + nf_k], np.int32)
 
