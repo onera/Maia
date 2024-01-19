@@ -62,7 +62,34 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
 
   # Update distribution and zone size
   PT.get_value(zone)[0][0] += comm.allreduce(vtx_pl.size, op=MPI.SUM)
-  PT.set_value(distri_n, par_utils.dn_to_distribution(dn_vtx + vtx_pl.size, comm))
+  add_distri = par_utils.dn_to_distribution(vtx_pl.size, comm)
+  new_distri = distri+add_distri
+  PT.set_value(distri_n, new_distri)
+
+  # > Replace added vertices at the end of array
+  old_gnum = np.arange(          distri[0],          distri[1], dtype=np.int32)+1
+  new_gnum = np.arange(n_vtx+add_distri[0],n_vtx+add_distri[1], dtype=np.int32)+1
+  vtx_gnum = np.concatenate([old_gnum, new_gnum])
+
+  # Update GridCoordinates
+  coords_keys = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
+  coord_nodes = {key: PT.get_node_from_name(zone, key) for key in coords_keys}
+  coords = {key: [PT.get_value(node)] for key, node in coord_nodes.items()}
+  new_coords = EP.part_to_block(coords, new_distri, [vtx_gnum], comm)
+  for key in coords_keys:
+    PT.set_value(coord_nodes[key], new_coords[key])
+
+  # Update FlowSolution
+  is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and PT.Subset.GridLocation(n)=='Vertex'
+  for fs_n in PT.get_children_from_predicate(zone, is_loc_fs):
+    assert PT.get_child_from_name(fs_n, 'PointList') is None, "Partial FS are not supported"
+
+    arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
+    arrays = {PT.get_name(array_n) : [PT.get_value(array_n)] for array_n in arrays_n}
+    new_arrays = EP.part_to_block(arrays, new_distri, [vtx_gnum], comm)
+    for array_n in arrays_n:
+      key = PT.get_name(array_n)
+      PT.set_value(array_n, new_arrays[key])
 
 def remove_specified_vtx(zone, vtx_pl, comm):
   """

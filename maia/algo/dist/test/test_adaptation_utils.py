@@ -43,10 +43,10 @@ def test_duplicate_specified_vtx(comm):
 
   if comm.rank==0:
     vtx_pl = np.array(np.array([7,9]), dtype=np.int32)
-    expected_cx = np.array([1., 3., 5., 7., 9., 4., 8.])
+    expected_cx = np.array([1., 3., 5., 7., 9., 2., 4.])
   elif comm.rank==1:
     vtx_pl = np.array(np.array([2,4,8]), dtype=np.int32)
-    expected_cx = np.array([2., 4., 6., 8., 3., 7., 6.])
+    expected_cx = np.array([6., 8., 4., 8., 3., 7., 6.])
 
   adapt_utils.duplicate_specified_vtx(zone_n, vtx_pl, comm)
 
