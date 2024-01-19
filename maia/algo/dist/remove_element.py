@@ -138,8 +138,8 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   er_n = PT.get_child_from_name(elt_n, 'ElementRange')
   er   = PT.get_value(er_n)
   old_er = np.copy(er)
-
-  assert er[0]<=np.min(elt_pl) and np.max(elt_pl)<=er[1]
+  if elt_pl.size != 0:
+    assert er[0]<=np.min(elt_pl) and np.max(elt_pl)<=er[1]
 
   elt_distrib_n = PT.maia.getDistribution(elt_n, distri_name='Element')
   elt_distri = elt_distrib_n[1]

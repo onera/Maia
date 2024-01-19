@@ -274,12 +274,9 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     convert_vtx_gcs_as_face_bcs(adapted_dist_tree, comm)
 
     mlog.info(f"[Periodic adaptation] Step #1: Duplicating periodic patch...")
-    maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
 
     bcs_to_constrain = list()
-    if comm.rank==0:
-      new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, perio_jns_pairs, MPI.COMM_SELF)
-    bcs_to_constrain = comm.bcast(bcs_to_constrain, root=0)
+    new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, perio_jns_pairs, comm)
 
     end = time.time()
     # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/extended_domain.cgns', comm)
@@ -287,6 +284,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
 
     mlog.info(f"[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
+    maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
     adapted_dist_tree = _adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                                 container_names,
                                                 bcs_to_constrain,
@@ -295,11 +293,9 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
     mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
     start = time.time()
-    maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
     #TODO il me semble que l'arbre est déjà gather0
 
-    if comm.rank==0:
-      retrieve_initial_domain(adapted_dist_tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve, MPI.COMM_SELF)
+    retrieve_initial_domain(adapted_dist_tree, jn_pairs_and_values, new_vtx_num, bcs_to_retrieve, comm)
 
     end = time.time()
     # maia.io.dist_tree_to_file(adapted_dist_tree, 'OUTPUT/initial_domain.cgns', comm)
@@ -308,6 +304,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
     mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
     gc_constraints = [PT.path_tail(gc_path) for pair in perio_jns_pairs for gc_path in pair]
+    maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
     adapted_dist_tree = _adapt_mesh_with_feflo( adapted_dist_tree, metric, comm,
                                                 container_names,
                                                 gc_constraints,
@@ -343,7 +340,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
     if comm.rank==0:
       zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
-      rm_feflo_added_elt(zone, MPI.COMM_SELF)
+      rm_feflo_added_elt(zone, comm)
     PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
     # TODO : pourquoi pas un redistribute avec uniform ?
     adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
