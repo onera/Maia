@@ -368,9 +368,9 @@ def extract_part_from_family(part_tree, family_name, comm,
           fam_pl.append(PT.get_value(pl_n))
 
       fam_pl = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
-      fam_pl = np.unique(fam_pl, axis=1)
       if fam_pl.size!=0:
-        zsr_n = PT.new_ZoneSubRegion(name=family_name, point_list=fam_pl, loc=location[0], parent=part_zone)
+        fam_pl = np.unique(fam_pl, axis=1) # If pl.size == 0, this line fails with numpy 1.17
+        PT.new_ZoneSubRegion(name=family_name, point_list=fam_pl, loc=location[0], parent=part_zone)
 
   # Synchronize container names
   for node_path, there_is in there_is_bcdataset.items():
