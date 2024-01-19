@@ -226,7 +226,6 @@ def apply_offset_to_elts(zone, offset, min_range):
   Go through all elements with ElementRange>min_range, applying offset to their ElementRange.
   '''
   # > Add offset to elements with ElementRange>min_range
-  treated_bcs = list()
   elt_nodes = PT.Zone.get_ordered_elements(zone)
   for elt_n in elt_nodes:
     if PT.Element.Range(elt_n)[0]>min_range:
@@ -241,12 +240,10 @@ def apply_offset_to_elts(zone, offset, min_range):
   # > Treating all BCs outside of elts because if not elt of dim of BC,
   #   it wont be treated.
   for bc_n in PT.get_nodes_from_predicates(zone, 'ZoneBC_t/BC_t'):
-    if PT.get_name(bc_n) not in treated_bcs:
-      pl_n = PT.get_child_from_name(bc_n, 'PointList')
-      pl   = PT.get_value(pl_n)
-      pl[min_range<pl] += offset
-      PT.set_value(pl_n, pl)
-      treated_bcs.append(PT.get_name(bc_n))
+    pl_n = PT.get_child_from_name(bc_n, 'PointList')
+    pl   = PT.get_value(pl_n)
+    pl[min_range<pl] += offset
+    PT.set_value(pl_n, pl)
 
 def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_original=False):
   '''
