@@ -138,8 +138,8 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   er_n = PT.get_child_from_name(elt_n, 'ElementRange')
   er   = PT.get_value(er_n)
   old_er = np.copy(er)
-
-  assert er[0]<=np.min(elt_pl) and np.max(elt_pl)<=er[1]
+  if elt_pl.size != 0:
+    assert er[0]<=np.min(elt_pl) and np.max(elt_pl)<=er[1]
 
   elt_distrib_n = PT.maia.getDistribution(elt_n, distri_name='Element')
   elt_distri = elt_distrib_n[1]
@@ -154,10 +154,8 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   n_elt_to_rm = rm_distrib[2]
 
   # > Updating element range, connectivity and distribution
-  pl_c  = -np.ones(n_elt_to_rm_l*elt_size, dtype=np.int32)
-  for i_size in range(elt_size):
-    pl_c[i_size::elt_size] = elt_size*ids_to_remove+i_size
-  ec = np.delete(ec, pl_c)
+  ec_ids = np_utils.interweave_arrays([elt_size*ids_to_remove+i_size for i_size in range(elt_size)])
+  ec = np.delete(ec, ec_ids)
   PT.set_value(ec_n, ec)
   er[1] -= n_elt_to_rm
 

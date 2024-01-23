@@ -42,9 +42,7 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
     delt_vtx_idx = np.arange(elt_distri[0]*elt_size,(elt_distri[1]+1)*elt_size,elt_size, dtype=np.int32)
 
   # > Building PTP object, the graph between vtx indices and elt connectivity is what we need
-  PTP = EP.PartToPart([vtx_ids], [delt_vtx], comm)
-  delt_vtx_tag = np.zeros(delt_vtx.size, dtype=bool)
-  delt_vtx_tag[PTP.get_referenced_lnum2()[0]-1] = True
+  delt_vtx_tag = par_algo.gnum_isin(delt_vtx, vtx_ids, comm)
 
   # Then reduce : select face if all its vertices have flag set to 1
   ufunc = np.logical_and if elt_full==True else np.logical_or
