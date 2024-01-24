@@ -100,14 +100,14 @@ def test_adapt_with_feflo(comm):
 def test_periodic_adapt_with_feflo(comm):
 
   # > Create simple mesh
-  dist_tree = maia.factory.dcube_generator.dcube_nodal_generate(3, 1., np.array([0.,0.,0.], dtype=np.float64), 'TETRA_4', comm, get_ridges=False)
+  dist_tree = maia.factory.generate_dist_block(3, 'TETRA_4', comm)
   PT.rm_nodes_from_name(dist_tree, 'NODE*')
 
   # > Define metric
   dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
-  n_vtx = PT.Zone.n_vtx(dist_zone)
-  cx, cy, cz = PT.Zone.coordinates(dist_zone)
-  fld_metric = np.ones(n_vtx, dtype=np.float64)
+  vtx_distri = PT.maia.getDistribution(dist_zone, 'Vertex')[1]
+  dn_vtx = vtx_distri[1] - vtx_distri[0]
+  fld_metric = np.ones(dn_vtx, dtype=float)
   PT.new_FlowSolution('Metric', loc='Vertex', fields={'metric':fld_metric}, parent=dist_zone)
 
   # > Build periodicities

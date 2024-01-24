@@ -275,7 +275,6 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
     mlog.info(f"[Periodic adaptation] Step #1: Duplicating periodic patch...")
 
-    bcs_to_constrain = list()
     new_vtx_num, bcs_to_constrain, bcs_to_retrieve = deplace_periodic_patch(adapted_dist_tree, perio_jns_pairs, comm)
 
     end = time.time()
@@ -337,13 +336,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
         PT.set_value(gcd_name_n, PT.get_value(gcd_name_n)[:-2])
         PT.rm_children_from_label(gc_n, 'FamilyName_t')
 
-    maia.algo.dist.redistribute_tree(adapted_dist_tree, 'gather.0', comm) # Modifie le dist_tree 
-    if comm.rank==0:
-      zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
-      rm_feflo_added_elt(zone, comm)
-    PT.rm_nodes_from_name(adapted_dist_tree, ':CGNS#Distribution')
-    # TODO : pourquoi pas un redistribute avec uniform ?
-    adapted_dist_tree = full_to_dist.full_to_dist_tree(adapted_dist_tree, comm, owner=0)
+    zone = PT.get_node_from_label(adapted_dist_tree, 'Zone_t')
+    rm_feflo_added_elt(zone, comm)
 
 
   else:

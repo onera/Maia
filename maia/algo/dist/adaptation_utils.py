@@ -581,10 +581,21 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   '''
   Find pairs of twin BCs (lineic in general) using a matching vtx table.
   '''
+  # Steps:
+  #  1. Create a old->new table for vtx, using gc information
+  #  2. Pre filter BCs : keep the one appearing 100% in src_pl or tgt_pl.
+  #  3. For these bcs : find vertices ids in BAR, and requested vtx new id with old->new
+  #  4. Then, compare all arrays to find src / tgt matches
+
   matching_bcs = list()
 
   elt_dim = PT.Element.Dimension(elt_n)
   is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==DIM_TO_LOC[elt_dim]
+
+  # > Compute new vtx numbering merging vtx from `src_tgt_vtx`
+  #   Maybe there will be an issue in axisym because of vtx in both GCs
+  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+  old_to_new_vtx = merge_distributed_ids(vtx_distri, src_tgt_vtx[0], src_tgt_vtx[1], comm, False)
 
   # > Find BCs described by element pls
   bc_nodes = [list(),list()]
@@ -592,9 +603,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
     bc_pl = PT.get_child_from_name(bc_n, 'PointList')[1][0]
     for i_side, elt_pl in enumerate([src_pl, tgt_pl]):
       mask = par_algo.gnum_isin(bc_pl, elt_pl, comm)
-      in_elt_l = np.logical_and.reduce(mask) if mask.size!=0 else False
-      in_elt   = comm.allreduce(in_elt_l, MPI.MAX)
-      if in_elt:
+      if par_utils.all_true([mask], lambda t:t.all(), comm):
         bc_nodes[i_side].append(bc_n)
 
   # > Get element infos
@@ -603,11 +612,6 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   elt_ec     = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
   elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
   
-  # > Compute new vtx numbering merging vtx from `src_tgt_vtx`
-  #   Maybe there will be an issue in axisym because of vtx in both GCs
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-  old_to_new_vtx = merge_distributed_ids(vtx_distri, src_tgt_vtx[0], src_tgt_vtx[1], comm, False)
-
   # > Precompute vtx in shared numbering
   bc_vtx = [list(),list()]
   for i_side, _bc_nodes in enumerate(bc_nodes):
@@ -631,10 +635,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   for src_bc_n, src_bc_vtx in zip(bc_nodes[0], bc_vtx[0]):
     for tgt_bc_n, tgt_bc_vtx in zip(bc_nodes[1], bc_vtx[1]):
       tgt_vtx_tag = par_algo.gnum_isin(tgt_bc_vtx, src_bc_vtx, comm)
-
-      match_l = np.logical_and.reduce(tgt_vtx_tag) if tgt_vtx_tag.size!=0 else False
-      match   = comm.allreduce(match_l, MPI.MAX)
-      if match:
+      if par_utils.all_true([tgt_vtx_tag], lambda t:t.all(), comm):
         matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
 
   return matching_bcs
@@ -870,9 +871,6 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     vtx_tag = np.arange(vtx_distri[0], vtx_distri[1], dtype=np.int32)+1
     old_to_new_vtx = merge_periodic_bc(zone, (bc_name1, bc_name2), vtx_tag, vtx_match_num, comm, keep_original=True)
     
-    maia.io.dist_tree_to_file(tree, f'OUTPUT/merged_{i_per}.cgns', comm)
-    # sys.exit()
-
     fake_vtx_distri = par_utils.dn_to_distribution(old_to_new_vtx.size, comm)
     for i_previous_per in range(0, i_per):
       new_vtx_nums[i_previous_per][0] = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_nums[i_previous_per][0]], comm)[0]

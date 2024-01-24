@@ -268,33 +268,34 @@ def test_add_undefined_faces(comm):
   assert PT.maia.getDistribution(tri_n, 'Element')[1][2]==56
 
 
-@pytest_parallel.mark.parallel([1,2,3])
+@pytest_parallel.mark.parallel([1,3])
 def test_find_matching_bcs(comm):
-  distri_bar = par_utils.uniform_distribution(8, comm)
-  distri_bc  = par_utils.uniform_distribution(3, comm)
-  distri_vtx = par_utils.uniform_distribution(6, comm)
+
+  def distributed(array):
+    distri = par_utils.uniform_distribution(array.size, comm)
+    return array[distri[0]:distri[1]]
+
+  distri_bar = par_utils.uniform_distribution(10, comm)
   
-  bar_ec  = np.array([1,2, 2,4, 4,3, 5,6, 7,8, 9,10, 8,10, 11,12])[distri_bar[0]*2:distri_bar[1]*2]
-  bc1_pl  = np.array([4,2,3])[distri_bc[0]:distri_bc[1]]
-  bc2_pl  = np.array([7,6,8])[distri_bc[0]:distri_bc[1]]
-  bc3_pl  = np.array([1,4])[distri_bc[0]:distri_bc[1]]
-  gc1_vtx = np.array([1, 2,3, 4, 5, 6], dtype=np.int32)[distri_vtx[0]:distri_vtx[1]]
-  gc2_vtx = np.array([8, 9,8,10,11,12], dtype=np.int32)[distri_vtx[0]:distri_vtx[1]]
+  bar_ec  = np.array([1,2, 2,3, 4,1, 7,4,  3,6, 6,9, 101,102, 102,103, 104,101, 107,104])[distri_bar[0]*2:distri_bar[1]*2]
+  bc1_pl  = distributed(np.array([1,2,4]))
+  bc2_pl  = distributed(np.array([8,7,10]))
+  bc3_pl  = distributed(np.array([1,4]))  # Does not fully match with 8,7,10
+  bc3_pl  = distributed(np.array([5,6])) # Does not match at all
+  gc1_vtx = distributed(np.array([1,2,3,4,5,6,7,8,9], np.int32))
+  gc2_vtx = distributed(np.array([101,102,103,104,105,106,107,108,109], np.int32))
   
-  zone_n = PT.new_Zone('zone', type='Unstructured', size=[[12,3,0]])
-  bar_n  = PT.new_Elements('BAR_2', type='BAR_2', erange=np.array([1,6], dtype=np.int32), econn=bar_ec, parent=zone_n)
-  zone_bc_n = PT.new_ZoneBC(parent=zone_n)
-  bc1_n = PT.new_BC('BC1', point_list=bc1_pl.reshape((1,-1),order='F'), loc='EdgeCenter', parent=zone_bc_n)
-  bc2_n = PT.new_BC('BC2', point_list=bc2_pl.reshape((1,-1),order='F'), loc='EdgeCenter', parent=zone_bc_n)
-  bc3_n = PT.new_BC('BC3', point_list=bc3_pl.reshape((1,-1),order='F'), loc='EdgeCenter', parent=zone_bc_n)
-  PT.maia.newDistribution({'Vertex':par_utils.uniform_distribution(12, comm)}, parent=zone_n)
+  zone_n = PT.new_Zone('zone', type='Unstructured', size=[[120,3,0]])
+  PT.maia.newDistribution({'Vertex':par_utils.uniform_distribution(120, comm)}, parent=zone_n)
+  bar_n  = PT.new_Elements('BAR_2', type='BAR_2', erange=[1,10], econn=bar_ec, parent=zone_n)
   PT.maia.newDistribution({'Element':distri_bar}, parent=bar_n)
-  PT.maia.newDistribution({'Index':distri_bc}, parent=bc1_n)
-  PT.maia.newDistribution({'Index':distri_bc}, parent=bc2_n)
-  PT.maia.newDistribution({'Index':distri_bc}, parent=bc3_n)
+  zbc_n = PT.new_ZoneBC(parent=zone_n)
+  PT.new_BC('BC1', point_list=bc1_pl.reshape((1,-1),order='F'), loc='EdgeCenter', parent=zbc_n)
+  PT.new_BC('BC2', point_list=bc2_pl.reshape((1,-1),order='F'), loc='EdgeCenter', parent=zbc_n)
+  PT.new_BC('BC3', point_list=bc3_pl.reshape((1,-1),order='F'), loc='EdgeCenter', parent=zbc_n)
     
-  src_pl = adapt_utils.tag_elmt_owning_vtx(zone_n, bar_n, gc1_vtx, comm, elt_full=True)
-  tgt_pl = adapt_utils.tag_elmt_owning_vtx(zone_n, bar_n, gc2_vtx, comm, elt_full=True)
+  src_pl = distributed(np.array([1,2,3,4]))
+  tgt_pl = distributed(np.array([7,8,9,10]))
 
   matching_bcs = adapt_utils.find_matching_bcs(zone_n, bar_n,
                                                src_pl, tgt_pl,
