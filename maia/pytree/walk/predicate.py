@@ -17,7 +17,7 @@ def match_name(n:CGNSTree, name: str) -> bool:
   return fnmatch.fnmatch(n[__NAME__], name)
 
 def match_value(n:CGNSTree, value) -> bool:
-  return np.array_equal(n[__VALUE__], value)
+  return np.array_equal(n[__VALUE__], N.access._convert_value(value))
 
 def match_str_label(n:CGNSTree, label:str) -> bool:
   return fnmatch.fnmatch(n[__LABEL__], label)

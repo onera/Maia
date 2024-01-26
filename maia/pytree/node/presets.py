@@ -83,7 +83,7 @@ def new_FamilyName(family_name:str, as_additional='', parent:CGNSTree=None):
     >>> node = PT.new_FamilyName('MyFamily')
     >>> PT.print_tree(node)
     FamilyName FamilyName_t "MyFamily"
-    >>> node = PT.new_FamilyName('MyFamily')
+    >>> node = PT.new_FamilyName('MyFamily', as_additional='AddFamName')
     >>> PT.print_tree(node)
     AddFamName AdditionalFamilyName_t "MyFamily"
   """

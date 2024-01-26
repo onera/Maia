@@ -36,6 +36,9 @@ def test_matches():
   assert P.match_name_value_label(nface, 'NFace', np.array([23,0]), 'Elements_t')
   assert P.match_name_value_label(nface, 'NFace', np.array([23,0]), CGL.Elements_t)
 
+  node = ['FamilyName', np.array([b'F', b'A', b'M', b'I', b'L', b'Y']), [], 'FamilyName_t']
+  assert P.match_value(node, 'FAMILY')
+
 def test_belongs_to_family():
   yt = """
 ZoneBC ZoneBC_t:
