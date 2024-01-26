@@ -157,3 +157,79 @@ def test_scale_mesh(comm):
   assert np.allclose(PT.get_node_from_name(dist_tree, 'CoordinateY')[1], 5*PT.get_node_from_name(dist_tree_bck, 'CoordinateY')[1])
 
   assert "Scaling mesh does not affect fields, and some are present in tree." in log_collector.logs
+
+@pytest.mark.parametrize("revolution_axis", [(1, 0, 0), [0, 1, 0], (1, 0, 3), [1, 2, 3]])
+def test_transform_matrix(revolution_axis):
+   
+  # Create the transform matrix and the reverse transform matrix 
+  transform_matrix = maia.algo.transform.create_transform_matrix(revolution_axis=revolution_axis)
+  transform_matrix_inv = np.linalg.inv(transform_matrix)
+  id = np.dot(transform_matrix, transform_matrix_inv)
+  
+  # Transform the current revolution axis into a unit revolution axis in the new basis
+  new_revolution_axis = np.dot(transform_matrix, revolution_axis)
+  norm_new_revolution_axis = np.linalg.norm(new_revolution_axis)
+  unit_revolution_axis = new_revolution_axis / norm_new_revolution_axis
+
+  # Transform the unit revolution axis in the new basis into the former revolution axis in the former basis 
+  reverse_unit_revolution_axis = np.dot(transform_matrix_inv, unit_revolution_axis)
+  reverse_revolution_axis = reverse_unit_revolution_axis * norm_new_revolution_axis
+
+  assert np.allclose(revolution_axis, reverse_revolution_axis)
+  assert np.allclose(id, np.eye(3))
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("revolution_axis", [(1, 0, 0), [0, 1, 0], (1, 0, 3), [1, 2, 3]])
+@pytest.mark.parametrize("zonetype", ['S', 'Poly'])
+class Test_cart_to_cyl:
+  def test_change_basis(self, zonetype, revolution_axis, comm):
+    
+    dist_tree = maia.factory.generate_dist_block(4, zonetype, comm)
+    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+    for zone in PT.get_all_Zone_t(part_tree):
+      # Recover the intial cartesian coordinates
+      init_cx, init_cy, init_cz = PT.Zone.coordinates(zone)
+
+      # Create the transform matrix and the reverse transform matrix 
+      transform_matrix = maia.algo.transform.create_transform_matrix(revolution_axis=revolution_axis)
+      transform_matrix_inv = np.linalg.inv(transform_matrix)
+
+      # Compute the new coordinates in the new basis
+      maia.algo.transform.change_basis(part_tree, transform_matrix, name_in='GridCoordinates', name_out='GridCoordinatesTransform')
+      
+      # Compute the former coordinates in ther former basis
+      maia.algo.transform.change_basis(part_tree, transform_matrix_inv, name_in='GridCoordinatesTransform', name_out='GridCoordinatesReverse')
+
+      # Recover coordinates computed from the double basis change
+      reverse_cx, reverse_cy, reverse_cz = PT.Zone.coordinates(zone, name='GridCoordinatesReverse')
+
+      assert np.allclose(init_cx, reverse_cx)
+      assert np.allclose(init_cy, reverse_cy)
+      assert np.allclose(init_cz, reverse_cz)
+
+  def test_cylinder_to_cartesian(self, zonetype, revolution_axis, comm): 
+
+    dist_tree = maia.factory.generate_dist_block(4, zonetype, comm)
+    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+    for zone in  PT.get_all_Zone_t(part_tree):
+      # Recover the inital cartesian cooridnates
+      init_cx, init_cy, init_cz = PT.Zone.coordinates(zone)
+      
+      # Compute the cylinder coordinates from the cartesian cooridnates
+      maia.algo.transform.cartesian_to_cylinder(part_tree, revolution_axis=revolution_axis)
+
+      # Remove the inital and the new cartesian coordinates
+      PT.rm_nodes_from_name(part_tree, 'GridCoordinates')
+      PT.rm_nodes_from_name(part_tree, 'GridCoordinatesTransform')
+
+      # Compute the cartesian coordinates from the cylinder coordinates
+      maia.algo.transform.cylinder_to_cartesian(part_tree, revolution_axis=revolution_axis)
+
+      # Recover the cartesian coordinates computed from the double change coordinates
+      cx, cy, cz = PT.Zone.coordinates(zone, name='GridCoordinates')
+
+      assert np.allclose(init_cx, cx)
+      assert np.allclose(init_cy, cy)
+      assert np.allclose(init_cz, cz)
