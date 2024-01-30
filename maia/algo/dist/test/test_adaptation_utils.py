@@ -122,9 +122,9 @@ def test_tag_elmt_owning_vtx(comm):
   quad_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and\
                                                        PT.Element.CGNSName(n)=='QUAD_4')
 
-  elt_pl = adapt_utils.tag_elmt_owning_vtx(zone, quad_n, vtx_pl, comm, elt_full=True)
+  elt_pl = adapt_utils.tag_elmt_owning_vtx(quad_n, vtx_pl, comm, elt_full=True)
   assert (np.concatenate(comm.allgather(elt_pl)) == [1]).all()
-  elt_pl = adapt_utils.tag_elmt_owning_vtx(zone, quad_n, vtx_pl, comm, elt_full=False)
+  elt_pl = adapt_utils.tag_elmt_owning_vtx(quad_n, vtx_pl, comm, elt_full=False)
   assert (np.concatenate(comm.allgather(elt_pl)) == [1,2,3,4]).all()
 
 
@@ -256,7 +256,7 @@ def test_add_undefined_faces(comm):
   zmax_n  = PT.get_node_from_path(zone, 'ZoneBC/Zmax')
   zmax_pl = PT.Subset.getPatch(zmax_n)[1][0]
   vtx_pl  = adapt_utils.elmt_pl_to_vtx_pl(zone, tri_n, zmax_pl, comm)
-  cell_pl = adapt_utils.tag_elmt_owning_vtx(zone, tet_n, vtx_pl, comm, elt_full=False)
+  cell_pl = adapt_utils.tag_elmt_owning_vtx(tet_n, vtx_pl, comm, elt_full=False)
 
   adapt_utils.add_undefined_faces(zone, tet_n, cell_pl, tri_n, comm)
   
