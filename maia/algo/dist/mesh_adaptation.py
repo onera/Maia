@@ -295,8 +295,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
 
   **Periodic mesh adaptation**
 
-  Periodic mesh adaptation is available by activating the ``periodic`` argument. Informations from GridConnectivity_t nodes 
-  in dist_tree will be used to perform mesh adaptation. Only periodic 1to1 GridConnectivities are managed.
+  Periodic mesh adaptation is available by activating the ``periodic`` argument. Information from 
+  periodic 1to1 GridConnectivity_t nodes in dist_tree will be used to perform mesh adaptation.
 
   Args:
     dist_tree      (CGNSTree)    : Distributed tree to be adapted. Only U-Elements
