@@ -4,7 +4,7 @@ import maia
 import maia.pytree as PT
 import maia.transfer.protocols as EP
 import maia.transfer.utils as te_utils
-from   maia.utils  import np_utils, py_utils, par_utils
+from   maia.utils  import np_utils, py_utils, par_utils, as_pdm_gnum
 from   maia.utils.parallel import algo as par_algo
 from   maia.algo.dist import transform as dist_transform
 from   maia.algo.dist.merge_ids      import merge_distributed_ids
@@ -68,8 +68,8 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
   PT.set_value(distri_n, new_distri)
 
   # > Replace added vertices at the end of array
-  old_gnum = np.arange(          distri[0],          distri[1], dtype=np.int32)+1
-  new_gnum = np.arange(n_vtx+add_distri[0],n_vtx+add_distri[1], dtype=np.int32)+1
+  old_gnum = np.arange(          distri[0],          distri[1])+1
+  new_gnum = np.arange(n_vtx+add_distri[0],n_vtx+add_distri[1])+1
   vtx_gnum = np.concatenate([old_gnum, new_gnum])
 
   # Update GridCoordinates
@@ -159,7 +159,7 @@ def tag_elmt_owning_vtx(zone, elt_n, vtx_pl, comm, elt_full=False):
     elt_offset = PT.Element.Range(elt_n)[0]
     gc_elt_pl  = vtx_ids_to_face_ids(vtx_pl, elt_n, comm, elt_full)+elt_offset-1
   else:
-    gc_elt_pl = np.empty(0, dtype=np.int32)
+    gc_elt_pl = np.empty(0, dtype=vtx_pl.dtype)
   return gc_elt_pl
 
 def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
@@ -197,7 +197,7 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
   # Tri are already decomposed
   src_face_vtx_idx, src_face_vtx = 3*np.arange(src_dist_ids.size+1, dtype=np.int32), src_ec_elt
   # Do tetra decomposition, locally
-  tgt_face_vtx_idx, tgt_face_vtx = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, tgt_ec_elt)
+  tgt_face_vtx_idx, tgt_face_vtx = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, as_pdm_gnum(tgt_ec_elt))
 
   # Now we we will reuse seq algorithm is_unique_strided to find
   # shared faces. Since they can be on different processes, we need to gather it
@@ -278,9 +278,7 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   First BC can be kept using `keep_original` argument.
   TODO: sortir le double searchsorted, que deplace_periodic_patch soit moins cher, transformer merge_zone U_elmt?
   '''
-  n_vtx = PT.Zone.n_vtx(zone)
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  vtx_distri_n = PT.maia.getDistribution(zone, 'Vertex')
   vtx_distri   = PT.maia.getDistribution(zone, 'Vertex')[1]
 
   # TODO: directement choper les GCs
@@ -316,8 +314,8 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   _, gnum1_vtx = ptp.wait(request1)
   gnum1_vtx = gnum1_vtx[0]
 
-  _part1_to_part2_idx = [np.arange(old_vtx_num.size+1, dtype=np.int32)]
-  ptp = PDM.PartToPart(comm, [old_vtx_num], [pl2_tag], _part1_to_part2_idx, [new_vtx_num])
+  _part1_to_part2_idx = np.arange(old_vtx_num.size+1, dtype=np.int32)
+  ptp = PDM.PartToPart(comm, [as_pdm_gnum(old_vtx_num)], [as_pdm_gnum(pl2_tag)], [_part1_to_part2_idx], [as_pdm_gnum(new_vtx_num)])
   request1 = ptp.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                        PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2, 
                        [gnum1_vtx])
@@ -404,7 +402,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   duplicate_specified_vtx(zone, elt_vtx_pl, comm)
   
   new_vtx_distri = par_utils.dn_to_distribution(n_vtx_to_add, comm)
-  new_vtx_pl     = np.arange(n_vtx+new_vtx_distri[0],n_vtx+new_vtx_distri[1], dtype=np.int32)+1
+  new_vtx_pl     = np.arange(n_vtx+new_vtx_distri[0],n_vtx+new_vtx_distri[1], dtype=elt_vtx_pl.dtype)+1
   vtx_distri     = PT.maia.getDistribution(zone, 'Vertex')[1]
   new_vtx_num    = [elt_vtx_pl,new_vtx_pl]
 
@@ -412,7 +410,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   ptb = EP.PartToBlock(vtx_distri, [elt_vtx_pl], comm)
   elt_vtx_ids = ptb.getBlockGnumCopy()-vtx_distri[0]-1
 
-  old_to_new_vtx = np.arange(vtx_distri[0],vtx_distri[1], dtype=np.int32)+1
+  old_to_new_vtx = np.arange(vtx_distri[0],vtx_distri[1], dtype=vtx_distri.dtype)+1
   old_to_new_vtx[elt_vtx_ids] = new_vtx_pl
   
   # > Add duplicated elements
@@ -442,8 +440,8 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
 
   # > Update ElementConnectivity, by adding new elements at the end of distribution
   n_elt = elt_distri[2]
-  old_gnum = np.arange(          elt_distri[0],          elt_distri[1], dtype=np.int32)+1
-  new_gnum = np.arange(n_elt+add_elt_distri[0],n_elt+add_elt_distri[1], dtype=np.int32)+1
+  old_gnum = np.arange(          elt_distri[0],          elt_distri[1])+1
+  new_gnum = np.arange(n_elt+add_elt_distri[0],n_elt+add_elt_distri[1])+1
   elt_gnum = np.concatenate([old_gnum, new_gnum])
 
   cst_stride = np.full(elt_gnum.size, elt_size, np.int32)
@@ -464,7 +462,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   if as_bc is not None:
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
     new_elt_pl = np.arange(n_elt+add_elt_distri[0],
-                           n_elt+add_elt_distri[1], dtype=np.int32) + elt_offset
+                           n_elt+add_elt_distri[1], dtype=elt_distri.dtype) + elt_offset
     bc_n = PT.new_BC(name=as_bc, 
                      type='FamilySpecified',
                      point_list=new_elt_pl.reshape((1,-1), order='F'),
@@ -517,8 +515,8 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
       new_elt_distri   = new_elt_distri+add_elt_distri_l
 
       new_bc_pl = np.arange(n_elt+add_elt_distri_l[0],
-                            n_elt+add_elt_distri_l[1], dtype=np.int32) + elt_offset
-      new_bc_distrib = par_utils.dn_to_distribution(new_bc_pl.size, comm)
+                            n_elt+add_elt_distri_l[1], dtype=bc_pl.dtype) + elt_offset
+      
       new_bc_n = PT.new_BC(name=matching_bcs[1],
                            type='FamilySpecified',
                            point_list=new_bc_pl.reshape((1,-1), order='F'),
@@ -535,8 +533,8 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
     new_ec = np.concatenate([ec]+new_ec)
 
     n_elt = elt_distri[2]
-    old_gnum = np.arange(          elt_distri[0],          elt_distri[1], dtype=np.int32)+1
-    new_gnum = np.arange(n_elt+add_elt_distri[0],n_elt+add_elt_distri[1], dtype=np.int32)+1
+    old_gnum = np.arange(          elt_distri[0],          elt_distri[1])+1
+    new_gnum = np.arange(n_elt+add_elt_distri[0],n_elt+add_elt_distri[1])+1
     elt_gnum = np.concatenate([old_gnum, new_gnum])
 
     cst_stride = np.full(elt_gnum.size, elt_size, np.int32)
@@ -562,7 +560,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   # > Exclude constraint surf or both will move
   tag_face = par_algo.gnum_isin(face_pl, elt_pl, comm)
   face_pl  = face_pl[~tag_face]
-  bc_line_pl = np.concatenate(twin_elt_bc_pl) if len(twin_elt_bc_pl)!=0 else np.empty(0, dtype=np.int32)
+  bc_line_pl = np.concatenate(twin_elt_bc_pl) if len(twin_elt_bc_pl)!=0 else np.empty(0, dtype=int)
   tag_line = par_algo.gnum_isin(line_pl, bc_line_pl, comm) 
   line_pl  = line_pl[~tag_line]
 
@@ -673,7 +671,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
   ec_elt = ec[ec_pl]
 
   # > Decompose tetra faces 
-  tgt_face_vtx_idx, tgt_elt_ec = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, ec_elt)
+  tgt_face_vtx_idx, tgt_elt_ec = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, as_pdm_gnum(ec_elt))
   n_elt_to_add = tgt_face_vtx_idx.size-1
 
   # > Find faces not already defined in TRI_3 connectivity or duplicated
@@ -697,8 +695,8 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
 
   # > Replace added elements at the end of distribution
   tgt_n_elt = tgt_elt_distri[2]
-  old_gnum = np.arange(          tgt_elt_distri[0],          tgt_elt_distri[1], dtype=np.int32)+1
-  new_gnum = np.arange(tgt_n_elt+add_elt_distri[0],tgt_n_elt+add_elt_distri[1], dtype=np.int32)+1
+  old_gnum = np.arange(          tgt_elt_distri[0],          tgt_elt_distri[1])+1
+  new_gnum = np.arange(tgt_n_elt+add_elt_distri[0],tgt_n_elt+add_elt_distri[1])+1
   elt_gnum = np.concatenate([old_gnum, new_gnum])
 
   cst_stride = np.full(elt_gnum.size, tgt_elt_size, np.int32)
@@ -868,7 +866,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     bc_name2 = PT.path_tail(gc_paths[1])
     vtx_match_num = [gc_vtx_pl, gc_vtx_pld]
     vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-    vtx_tag = np.arange(vtx_distri[0], vtx_distri[1], dtype=np.int32)+1
+    vtx_tag = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype)+1
     old_to_new_vtx = merge_periodic_bc(zone, (bc_name1, bc_name2), vtx_tag, vtx_match_num, comm, keep_original=True)
     
     fake_vtx_distri = par_utils.dn_to_distribution(old_to_new_vtx.size, comm)
