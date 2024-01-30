@@ -127,7 +127,7 @@ for lang in []:
  
 # POPULATE LINKS TO OTHER VERSIONS
 html_context['versions'] = list()
-for version in ['dev', '1.2', '1.1', '1.0']:
+for version in ['dev', '1.3', '1.2', '1.1', '1.0']:
    html_context['versions'].append( (version, f'/{REPO_NAME}/{version}/') )
 
 # POPULATE LINKS TO OTHER FORMATS/DOWNLOADS

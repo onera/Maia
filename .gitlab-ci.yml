@@ -152,6 +152,7 @@ pages:
     - cp -r /scratchm/sonics/usr/maia/v1.0/doc/html public/1.0
     - cp -r /scratchm/sonics/usr/maia/v1.1/doc/html public/1.1
     - cp -r /scratchm/sonics/usr/maia/v1.2/doc/html public/1.2
+    - cp -r /scratchm/sonics/usr/maia/v1.3/doc/html public/1.3
     - cp -r $CUSTOM_CI_DIR/build/doc/sphinx/html public/dev
     - |
       cat > public/index.html << EOF
