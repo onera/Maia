@@ -4,6 +4,9 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
+from maia.transfer import protocols as EP
+
+from .merge_ids import remove_distributed_ids
 
 def remove_element(zone, element):
   """
@@ -108,3 +111,99 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
 
   #Update ElementRange and size data (global)
   er_n[1][1] -= n_rmvd_total
+
+def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
+  """
+  For a given Elements_t node, remove the entity spectified
+  in the distributed array `elt_pl`.
+  Elt_pl follows cgns convention, must be included in ElementRange
+  bounds of the given element node.
+  The Elements node it self is updated, as well as the following data:
+  - Zone dimension & distribution
+  - BCs
+
+  Note: Zone must have decreasing element ordering
+  """
+  DIM_TO_LOC = ['Vertex', 'EdgeCenter', 'FaceCenter', 'CellCenter']
+
+  # > Get element information
+  elt_dim    = PT.Element.Dimension(elt_n)
+  elt_size   = PT.Element.NVtx(elt_n)
+  elt_offset = PT.Element.Range(elt_n)[0]
+
+  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==DIM_TO_LOC[elt_dim]
+
+  ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
+  ec   = PT.get_value(ec_n)
+  er_n = PT.get_child_from_name(elt_n, 'ElementRange')
+  er   = PT.get_value(er_n)
+  old_er = np.copy(er)
+  if elt_pl.size != 0:
+    assert er[0]<=np.min(elt_pl) and np.max(elt_pl)<=er[1]
+
+  elt_distrib_n = PT.maia.getDistribution(elt_n, distri_name='Element')
+  elt_distri = elt_distrib_n[1]
+
+  # > Get old_to_new indirection, -1 means that elt must be removed
+  elt_pl_shifted = elt_pl - elt_offset + 1 # Elt_pl, but starting at 1 (remove cgns offset)
+  old_to_new_elt = remove_distributed_ids(elt_distri, elt_pl_shifted, comm)
+  ids_to_remove = np.where(old_to_new_elt==-1)[0]
+
+  n_elt_to_rm_l = ids_to_remove.size
+  rm_distrib = par_utils.dn_to_distribution(n_elt_to_rm_l, comm)
+  n_elt_to_rm = rm_distrib[2]
+
+  # > Updating element range, connectivity and distribution
+  ec_ids = np_utils.interweave_arrays([elt_size*ids_to_remove+i_size for i_size in range(elt_size)])
+  ec = np.delete(ec, ec_ids)
+  PT.set_value(ec_n, ec)
+  er[1] -= n_elt_to_rm
+
+  n_elt = elt_distri[1]-elt_distri[0]
+  new_elt_distrib = par_utils.dn_to_distribution(n_elt-n_elt_to_rm_l, comm)
+  if new_elt_distrib[2]==0:
+    PT.rm_child(zone, elt_n)
+  else:
+    PT.set_value(elt_distrib_n, new_elt_distrib)
+
+
+  # > Update BC PointList related to removed element node
+  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  for bc_n in PT.get_children_from_predicate(zone_bc_n, is_elt_bc):
+    bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
+    bc_pl   = PT.get_value(bc_pl_n)[0]
+    mask_in_elt = (old_er[0] <= bc_pl ) & (bc_pl<=old_er[1])
+
+    # > Update numbering of PointList defined over other element nodes
+    new_bc_pl  = bc_pl
+    bc_elt_ids = new_bc_pl[mask_in_elt]-elt_offset+1
+    new_gn = EP.block_to_part(old_to_new_elt, elt_distri, [bc_elt_ids], comm)[0]
+    new_gn[new_gn>0] += elt_offset-1
+    if mask_in_elt.any():
+      new_bc_pl[mask_in_elt] = new_gn
+    new_bc_pl = new_bc_pl[new_bc_pl>0]
+
+    new_bc_distrib = par_utils.dn_to_distribution(new_bc_pl.size, comm)
+
+    # > Update BC
+    if new_bc_distrib[2]==0:
+      PT.rm_child(zone_bc_n, bc_n)
+    else:
+      PT.set_value(bc_pl_n, new_bc_pl.reshape((1,-1), order='F'))
+      PT.maia.newDistribution({'Index' : new_bc_distrib}, bc_n)
+
+  # > Update zone size and distribution
+  if elt_dim==PT.Zone.CellDimension(zone):
+    zone[1][:,1] -= n_elt_to_rm
+    distri_cell = PT.maia.getDistribution(zone, 'Cell')[1]
+    distri_cell -= rm_distrib
+
+  # > Shift other Element Range, if the have higher ids
+  for elt_n in PT.get_nodes_from_predicate(zone, 'Elements_t'):
+    elt_range = PT.Element.Range(elt_n)
+    if elt_range[0] > old_er[1]:
+      elt_range -= n_elt_to_rm
+  # > Shift PointList related to elements with higher ids
+  for bc_n in PT.get_nodes_from_predicates(zone, 'ZoneBC_t/BC_t'):
+    pl = PT.get_child_from_name(bc_n, 'PointList')[1]
+    pl[old_er[1]<pl] -= n_elt_to_rm

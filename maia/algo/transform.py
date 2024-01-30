@@ -6,6 +6,67 @@ from maia.algo.apply_function_to_nodes import zones_iterator
 
 from maia.utils import logging as mlog
 
+def transform_affine_zone(zone,
+                          vtx_mask,
+                          rotation_center,
+                          rotation_angle,
+                          translation,
+                          apply_to_fields):
+  """
+  Implementation of transform affine (see associated documentation) for
+  a given zone.
+  
+  In addition, this function takes a bool array of shaped as coords array and
+  apply the periodicity only to the vertices evaluating to True.
+  """
+  # Transform coords
+  for grid_co in PT.iter_children_from_label(zone, "GridCoordinates_t"):
+    coords_n = [PT.get_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
+    phy_dim = 2 if coords_n[2] is None else 3
+    coords_n = coords_n[:phy_dim]
+    coords = [PT.get_value(n)[vtx_mask] for n in coords_n]
+  
+    if phy_dim == 3:
+      tr_coords = np_utils.transform_cart_vectors(*coords, translation, rotation_center, rotation_angle)
+    else:
+      tr_coords = np_utils.transform_cart_vectors_2d(*coords, translation, rotation_center, rotation_angle)
+    for coord_n, tr_coord in zip(coords_n, tr_coords):
+      coord_n[1][vtx_mask] = tr_coord
+
+  # Transform fields
+  if apply_to_fields:
+    fields_nodes  = PT.get_children_from_label(zone, "FlowSolution_t")
+    fields_nodes += PT.get_children_from_label(zone, "DiscreteData_t")
+    fields_nodes += PT.get_children_from_label(zone, "ZoneSubRegion_t")
+    for bc in PT.iter_children_from_predicates(zone, "ZoneBC_t/BC_t"):
+      fields_nodes += PT.get_children_from_label(bc, "BCDataSet_t")
+    for fields_node in fields_nodes:
+      is_full_vtx = PT.Subset.GridLocation(fields_node) == 'Vertex' and \
+                    PT.get_label(fields_node) in ['FlowSolution_t', 'DiscreteData_t'] and \
+                    PT.get_child_from_name(fields_node, 'PointList') is None and \
+                    PT.get_child_from_name(fields_node, 'PointRange') is None
+      data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
+      cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names, phy_dim)
+      for basename in cartesian_vectors_basenames:
+        vectors_n = [PT.get_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z'][:phy_dim]]
+        if is_full_vtx:
+          vectors = [PT.get_value(n)[vtx_mask] for n in vectors_n]
+        else:
+          vectors = [PT.get_value(n) for n in vectors_n]
+        # Assume that vectors are position independant
+        # Be careful, if coordinates vector needs to be transform, the translation is not applied !
+        if phy_dim == 3:
+          tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
+        else:
+          tr_vectors = np_utils.transform_cart_vectors_2d(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
+        for vector_n, tr_vector in zip(vectors_n, tr_vectors):
+          if is_full_vtx:
+            vector_n[1][vtx_mask] = tr_vector
+          else:
+            vector_n[1] = tr_vector
+
+
+
 def transform_affine(t,
                      rotation_center = np.zeros(3),
                      rotation_angle  = np.zeros(3),
@@ -42,42 +103,10 @@ def transform_affine(t,
         :dedent: 2
   """
   for zone in zones_iterator(t):
-    # Transform coords
-    for grid_co in PT.iter_children_from_label(zone, "GridCoordinates_t"):
-      coords_n = [PT.get_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
-      phy_dim = 2 if coords_n[2] is None else 3
-      coords_n = coords_n[:phy_dim]
-      coords = [PT.get_value(n) for n in coords_n]
-    
-      if phy_dim == 3:
-        tr_coords = np_utils.transform_cart_vectors(*coords, translation, rotation_center, rotation_angle)
-      else:
-        tr_coords = np_utils.transform_cart_vectors_2d(*coords, translation, rotation_center, rotation_angle)
-      for coord_n, tr_coord in zip(coords_n, tr_coords):
-        PT.set_value(coord_n, tr_coord)
-
-    # Transform fields
-    if apply_to_fields:
-      fields_nodes  = PT.get_children_from_label(zone, "FlowSolution_t")
-      fields_nodes += PT.get_children_from_label(zone, "DiscreteData_t")
-      fields_nodes += PT.get_children_from_label(zone, "ZoneSubRegion_t")
-      for bc in PT.iter_children_from_predicates(zone, "ZoneBC_t/BC_t"):
-        fields_nodes += PT.get_children_from_label(bc, "BCDataSet_t")
-      for fields_node in fields_nodes:
-        data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
-        cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names, phy_dim)
-        for basename in cartesian_vectors_basenames:
-          vectors_n = [PT.get_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z'][:phy_dim]]
-          vectors = [PT.get_value(n) for n in vectors_n]
-          # Assume that vectors are position independant
-          # Be careful, if coordinates vector needs to be transform, the translation is not applied !
-          if phy_dim == 3:
-            tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
-          else:
-            tr_vectors = np_utils.transform_cart_vectors_2d(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
-          for vector_n, tr_vector in zip(vectors_n, tr_vectors):
-            PT.set_value(vector_n, tr_vector)
-
+    any_coord = PT.get_node_from_predicates(zone, 'GridCoordinates_t/DataArray_t')
+    # Don't use PT.Zone.VertexSize because it won't work on dist_tree
+    vtx_mask = np.ones(PT.get_value(any_coord).shape, bool)
+    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields)
 
 def scale_mesh(t, s=1.):
   """Rescale the GridCoordinates of the input mesh.

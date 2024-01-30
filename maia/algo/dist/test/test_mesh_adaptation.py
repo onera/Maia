@@ -8,6 +8,8 @@ from maia.pytree.yaml          import parse_yaml_cgns
 
 from maia.algo.dist import mesh_adaptation as MA
 
+import numpy as np
+
 feflo_exists = shutil.which('feflo.a') is not None
 
 def test_unpack_metric():
@@ -93,3 +95,42 @@ def test_adapt_with_feflo(comm):
   assert PT.get_value(PT.get_child_from_name(adpt_bc, 'FamilyName')) == 'SomeFamily'
   assert PT.get_node_from_name_and_label(adpt_dist_tree, 'SomeFamily', 'Family_t') is not None
 
+@pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
+@pytest_parallel.mark.parallel(2)
+def test_periodic_adapt_with_feflo(comm):
+
+  # > Create simple mesh
+  dist_tree = maia.factory.generate_dist_block(3, 'TETRA_4', comm)
+  PT.rm_nodes_from_name(dist_tree, 'NODE*')
+
+  # > Define metric
+  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  vtx_distri = PT.maia.getDistribution(dist_zone, 'Vertex')[1]
+  dn_vtx = vtx_distri[1] - vtx_distri[0]
+  fld_metric = np.ones(dn_vtx, dtype=float)
+  PT.new_FlowSolution('Metric', loc='Vertex', fields={'metric':fld_metric}, parent=dist_zone)
+
+  # > Build periodicities
+  zone_bc_n = PT.get_node_from_label(dist_tree, 'ZoneBC_t')
+  for bc_name in ['Xmin', 'Xmax']:
+    bc_n  = PT.get_child_from_name(zone_bc_n, bc_name)
+    PT.new_node('FamilyName', label='FamilyName_t', value=bc_name.upper(), parent=bc_n)
+  periodic = {'translation' : np.array([1.0, 0, 0], np.float32)}
+  maia.algo.dist.connect_1to1_families(dist_tree, ('XMIN', 'XMAX'), comm, periodic=periodic, location='Vertex')
+  assert len(PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t'))!=0
+
+  # > Periodic adaptation
+  adpt_dist_tree = maia.algo.dist.adapt_mesh_with_feflo(dist_tree,
+                                                        'Metric/metric',
+                                                        comm,
+                                                        container_names=['Metric'],
+                                                        periodic=True,
+                                                        feflo_opts=f"-c 10 -cmax 10 -p 4")
+  
+  adpt_zone = PT.get_all_Zone_t(adpt_dist_tree)[0]
+  for bc_name in ['Ymin','Ymax','Zmin','Zmax']:
+    assert PT.get_node_from_name(adpt_zone, bc_name) is not None
+  assert PT.get_name(adpt_zone) == 'zone'
+  assert PT.Zone.n_vtx(adpt_zone) != PT.Zone.n_vtx(dist_zone)
+  adpt_gc = PT.get_node_from_name(adpt_zone, 'Xmin_0')
+  assert PT.get_value(PT.get_child_from_name(adpt_gc, 'GridConnectivityDonorName')) == 'Xmax_0'

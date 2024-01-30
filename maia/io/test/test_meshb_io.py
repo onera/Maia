@@ -29,8 +29,9 @@ def test_get_tree_info():
   assert len(tree_info) == 2
   assert tree_info['field_names'] == {'FlowSolution' : ['Zeros', 'Range']}
   assert tree_info['bc_names'] == {
-          'EdgeCenter' : [],
-          'FaceCenter' :['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
+          'EdgeCenter': [],
+          'FaceCenter': ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax'],
+          'CellCenter': [],
           }
 
 def test_cgns_to_meshb(tmp_path):
@@ -49,7 +50,7 @@ def test_cgns_to_meshb(tmp_path):
            'sol' : tmp_path / 'metric.sol',
            'fld' : tmp_path / 'field.sol'}
 
-  meshb_converter.cgns_to_meshb(dist_tree, files, [PT.get_node_from_name(zone, 'Ones')], ['FlowSolution'])
+  meshb_converter.cgns_to_meshb(dist_tree, files, [PT.get_node_from_name(zone, 'Ones')], ['FlowSolution'], constraints=None)
 
   # Check .mesh
   with open(files['mesh']) as f:
@@ -95,12 +96,13 @@ def test_meshb_to_cgns(comm):
     fields = {"Zeros": np.zeros(n_vtx), "Range": np.arange(n_vtx, dtype=float)}
     PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
     
-    meshb_converter.cgns_to_meshb(dist_tree, files, [], ['FlowSolution'])
+    meshb_converter.cgns_to_meshb(dist_tree, files, [], ['FlowSolution'], constraints=None)
 
   tree_info = {
                'bc_names': { 
                    'EdgeCenter' : [],
-                   'FaceCenter' : ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6']
+                   'FaceCenter' : ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6'],
+                   'CellCenter' : [],
                    },
                'field_names' : { 'FlowSolution' : ['Zeros', 'Range'] },
               }

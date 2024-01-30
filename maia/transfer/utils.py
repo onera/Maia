@@ -26,6 +26,23 @@ def get_cgns_distribution(dist_node, name):
   """
   return PT.get_value(MT.getDistribution(dist_node, name))
 
+def get_subset_distribution(zone, node):
+  """ Return the distribution node to which a Subset is related, 
+  ie an Index distribution array or a Cell/Vertex distribution array"""
+  location = PT.Subset.GridLocation(node)
+  distri_n = None
+  if PT.get_node_from_name(node, 'PointList') is not None:
+    distri_n = PT.maia.getDistribution(node, 'Index')
+  else:
+    if location == 'Vertex':
+      distri_n = PT.maia.getDistribution(zone, 'Vertex')
+    elif location == 'CellCenter':
+      distri_n = PT.maia.getDistribution(zone, 'Cell')
+
+  if distri_n is None:
+    raise RuntimeError(f"Unable to find distribution data for subset node {PT.get_name(node)}")
+  return PT.get_value(distri_n)
+
 def create_all_elt_distribution(dist_elts, comm):
   """
   Create the :CGNS#Distribution-like distribution array we would

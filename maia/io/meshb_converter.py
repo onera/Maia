@@ -26,12 +26,10 @@ def get_tree_info(dist_tree, container_names):
 
   # > Get BCs infos
   bc_names = dict()
-
-  for entity_name in ["EdgeCenter", "FaceCenter"]:
+  for entity_name in ["EdgeCenter", "FaceCenter", "CellCenter"]:
     is_entity_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==entity_name
     entity_bcs   = PT.get_children_from_predicates(zone_n, ['ZoneBC_t', is_entity_bc])
     bc_names[entity_name] = [PT.get_name(bc_n) for bc_n in entity_bcs]
-
 
   # > Container field names
   field_names = dict()
@@ -63,6 +61,11 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   vtx_groups  = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_CORNER)
   edge_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_RIDGE)
   face_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_SURFACIC)
+  cell_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_VOLUMIC)
+
+  vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
+  vtx_tag = vtx_data['np_vtx_tag']
+
 
   bc_names = tree_info['bc_names']
   def groups_to_bcs(elt_groups, zone_bc, location, shift_bc, comm):
@@ -72,14 +75,14 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
     n_bc_init = len(bc_names[location]) if location in bc_names else 0
     n_new_bc  = n_elt_group - n_bc_init
-    assert n_new_bc in [0,1], "Unknow tags in meshb file"
+    assert n_new_bc in [0,1], f"Unknow tags in meshb file ({location})"
 
     for i_group in range(n_elt_group):
-      if bc_names[location]:
+      if bc_names[location] or edge_groups is not None:
         if i_group < n_new_bc:
-          # name_bc   = {"Vertex":"vtx", "EdgeCenter":"edge", "FaceCenter":"face"}
-          # bc_name = f"new_{name_bc[location]}_bc_{i_group+1}"
-          continue # For now, skip BC detected in meshb but not provided in BC names
+          name_bc   = {"Vertex":"vtx", "EdgeCenter":"edge", "FaceCenter":"face", "CellCenter":"cell"}
+          bc_name = f"feflo_{name_bc[location]}_bc_{i_group}"
+          # continue # For now, skip BC detected in meshb but not provided in BC names
         else:
           bc_name = bc_names[location][i_group-n_new_bc]
 
@@ -95,6 +98,8 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
   range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
 
+  if cell_groups is not None:
+    groups_to_bcs(cell_groups, zone_bc, "CellCenter",                   0, comm)
   if face_groups is not None:
     groups_to_bcs(face_groups, zone_bc, "FaceCenter", range_per_dim[3][1], comm)
   if edge_groups is not None:
@@ -120,6 +125,9 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         data = all_fields[i_fld::n_itp_flds][distrib_vtx[0]:distrib_vtx[1]] 
         PT.new_DataArray(fld_name, data, parent=fs) 
         i_fld += 1
+  
+  # > Add FlowSolution for vtx tag
+  fs_vtx_tag = PT.new_FlowSolution('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
 
   return dist_tree
 
@@ -137,7 +145,9 @@ def meshb_to_cgns(out_files, tree_info, comm):
   start = time.time()
   
   # meshb -> dmesh_nodal -> cgns
-  dmesh_nodal = PDM.meshb_to_dmesh_nodal(bytes(out_files['mesh']), comm, 1, 1)
+  file_name = bytes(out_files["mesh"], 'utf-8') if isinstance(out_files["mesh"], str)\
+         else bytes(out_files["mesh"])
+  dmesh_nodal = PDM.meshb_to_dmesh_nodal(file_name, comm, 1, 1)
   dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files)
   
   end = time.time()
@@ -154,7 +164,7 @@ def meshb_to_cgns(out_files, tree_info, comm):
 
 
 
-def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
+def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
   '''
   Dist_tree conversion to meshb format and writing.
   Arguments :
@@ -193,17 +203,38 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
     n_edge  = elmt_by_dim[1].size // 2
     n_vtx   = PT.Zone.n_vtx(zone)
 
+    constraint_tags = {'CellCenter':[],
+                       'FaceCenter':[],
+                       'EdgeCenter':[]}
+
     # > PointList BC to BC tag
     def bc_pl_to_bc_tag(list_of_bc, bc_tag, offset):
       for n_tag, bc_n in enumerate(list_of_bc):
         pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
         bc_tag[pl-offset-1] = n_tag + 1
+        bc_name = PT.get_name(bc_n)
+        bc_loc  = PT.Subset.GridLocation(bc_n)
+        if constraints is not None and\
+           PT.get_name(bc_n) not in constraints:
+          constraint_tags[bc_loc].append(str(n_tag + 1))
+
+    def bc_pl_to_bc_tag_vtx(list_of_bc, bc_tag, offset):
+      for n_tag, bc_n in enumerate(list_of_bc):
+        pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
+        bc_tag[pl-offset-1] = pl
 
     zone_bc = PT.get_child_from_label(zone, 'ZoneBC_t')
 
-    tri_tag    = -np.ones(n_tri, dtype=np.int32)
-    edge_tag   = -np.ones(n_edge, dtype=np.int32)
+    tetra_tag =  np.zeros(n_tetra , dtype=np.int32)
+    tri_tag   = -np.ones (n_tri , dtype=np.int32)
+    edge_tag  = -np.ones (n_edge, dtype=np.int32)
+    vtx_tag   =  np.zeros(n_vtx , dtype=np.int32)
     if zone_bc is not None:
+      # > Cell BC_t
+      is_cell_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "CellCenter"
+      cell_bcs   = PT.get_children_from_predicate(zone_bc, is_cell_bc)
+      n_cell_tag = bc_pl_to_bc_tag(cell_bcs, tetra_tag, 0)
+
       # > Face BC_t
       is_face_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "FaceCenter"
       face_bcs   = PT.get_children_from_predicate(zone_bc, is_face_bc)
@@ -214,23 +245,34 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
       edge_bcs   = PT.get_children_from_predicate(zone_bc, is_edge_bc)
       n_edge_tag = bc_pl_to_bc_tag(edge_bcs, edge_tag, n_tetra+n_tri)
 
-    if (n_tri > 0 and (tri_tag < 0).any()) or (n_edge > 0 and (edge_tag < 0).any()):
-      raise ValueError("Some Face or Edge elements do not belong to any BC")
-   
+      # > Edge BC_t
+      is_vtx_bc  = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "Vertex"
+      vtx_bcs   = PT.get_children_from_predicate(zone_bc, is_vtx_bc)
+      n_vtx_tag = bc_pl_to_bc_tag_vtx(vtx_bcs, vtx_tag, 0)
+
+    is_3d = n_tetra!=0
+    is_2d = n_tri  !=0
+    if is_3d: 
+      if (n_tri > 0 and (tri_tag < 0).any()) or (n_edge > 0 and (edge_tag < 0).any()):
+        raise ValueError("Some Face or Edge elements do not belong to any BC")
+    elif is_2d:
+      if (n_edge > 0 and (edge_tag < 0).any()):
+        raise ValueError("Some Face or Edge elements do not belong to any BC")
+    else:
+      raise ValueError("No tetrahedron or triangle Elements_t node could be found")
+
 
     # > Write meshb
     xyz       = np_utils.interweave_arrays([cx,cy,cz])
-    vtx_tag   = np.zeros(n_vtx, dtype=np.int32)
-    tetra_tag = np.zeros(n_tetra, dtype=np.int32)
-
-    PDM.write_meshb(bytes(files["mesh"]),
+    # tetra_tag = np.zeros(n_tetra, dtype=np.int32)
+    file_name = bytes(files["mesh"], 'utf-8') if isinstance(files["mesh"], str)\
+           else bytes(files["mesh"])
+    PDM.write_meshb(file_name,
                     n_vtx, n_tetra, n_tri, n_edge,
                     xyz,              vtx_tag,
                     elmt_by_dim[3], tetra_tag,
                     elmt_by_dim[2],   tri_tag,
                     elmt_by_dim[1],  edge_tag)
-
-
 
     n_metric_fld = len(metric_nodes)
     if n_metric_fld==1:
@@ -260,5 +302,6 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names):
   end = time.time()
   mlog.info(f"Write of meshb file completed ({end-start:.2f} s)")
 
+  return constraint_tags
 
 

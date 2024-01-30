@@ -38,6 +38,7 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Zone.VertexBoundarySize
   ~maia.pytree.Zone.NGonNode
   ~maia.pytree.Zone.NFaceNode
+  ~maia.pytree.Zone.CellDimension
   ~maia.pytree.Zone.n_cell
   ~maia.pytree.Zone.n_face
   ~maia.pytree.Zone.n_vtx

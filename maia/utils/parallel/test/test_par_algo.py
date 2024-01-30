@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import mpi4py.MPI as MPI
 
-from maia.utils import py_utils
+from maia.utils import par_utils, py_utils
 from maia.utils.parallel import algo as par_algo
 
 def py_version():
@@ -99,3 +99,66 @@ def test_compute_gnum_o(comm):
   if comm.Get_rank() == 0:
     assert gathered[0][0] == gathered[1][2]
     assert gathered[0][1] == gathered[1][3]
+
+
+@pytest_parallel.mark.parallel([1,2,3])
+def test_is_unique_strided_serialized(comm):
+  n_elt  = 6
+  stride = 3
+  array  = np.array([1,2,3, 4,5,6, 7,8,9, 3,1,2, 2,1,7, 7,6,8])
+  unique = np.array([False,  True,  True, False,  True,  True])
+  
+  distri = par_utils.uniform_distribution(n_elt, comm)
+  array  = array [distri[0]*stride:distri[1]*stride]
+  expected = unique[distri[0]       :distri[1]       ]
+
+  unique = par_algo.is_unique_strided_serialized(array, stride, comm)
+  assert np.array_equal(unique,expected)
+
+
+@pytest_parallel.mark.parallel([1,2,3])
+def test_is_unique_strided(comm):
+  n_elt  = 6
+  stride = 3
+  array  = np.array([1,2,3, 4,5,6, 7,8,9, 3,1,2, 2,1,7, 7,6,8])
+  unique = np.array([False,  True,  True, False,  True,  True])
+  
+  distri = par_utils.uniform_distribution(n_elt, comm)
+  array  = array [distri[0]*stride:distri[1]*stride]
+  expected = unique[distri[0]       :distri[1]       ]
+
+  unique = par_algo.is_unique_strided(array, stride, comm)
+  assert np.array_equal(unique ,expected)
+
+
+@pytest_parallel.mark.parallel([1,2,3])
+def test_gnum_isin(comm):
+  srcs  = [[3,4,5,6],
+           [3,4,5,6],
+           [3,4,5,6],
+           [3,4,5,6],
+           []]
+  tgts  = [[ 2, 4,6,8,9],
+           [10,11,8,9  ],
+           [ 6, 5,3,4  ],
+           [],
+           [ 2, 4,6,8,9]]
+  isins = [[False,True ,False,True ],
+           [False,False,False,False],
+           [True ,True ,True ,True ],
+           [False,False,False,False],
+           []]
+          
+  for src, tgt, isin in zip(srcs, tgts, isins):
+    src  = np.array(src,  dtype=np.int32)
+    tgt  = np.array(tgt,  dtype=np.int32)
+    isin = np.array(isin, dtype=bool)
+
+    src_distri = par_utils.uniform_distribution(src.size, comm)
+    tgt_distri = par_utils.uniform_distribution(tgt.size, comm)
+    src  = src [src_distri[0]:src_distri[1]]
+    tgt  = tgt [tgt_distri[0]:tgt_distri[1]]
+    expected = isin[src_distri[0]:src_distri[1]]
+
+    isin = par_algo.gnum_isin(src, tgt, comm)
+    assert np.array_equal(isin,expected)
