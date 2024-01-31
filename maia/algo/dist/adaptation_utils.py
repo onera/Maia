@@ -479,17 +479,17 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
     ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
     ec    = PT.get_value(ec_n)
 
-    n_new_elt = 0
     add_elt_distri = np.zeros(3, dtype=elt_distri.dtype)
     new_elt_distri = elt_distri
+    new_gnum = list()
     for matching_bcs in elt_duplicate_bcs:
       bc_n = PT.get_child_from_name(zone_bc_n, matching_bcs[0])
       bc_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
       twin_elt_bc_pl.append(bc_pl)
 
       bc_pl_shft = bc_pl - elt_offset +1
-      ptb = EP.PartToBlock(new_elt_distri, [bc_pl_shft], comm)
-      ids = ptb.getBlockGnumCopy()-new_elt_distri[0]-1
+      ptb = EP.PartToBlock(elt_distri, [bc_pl_shft], comm)
+      ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
       n_elt_to_add_l = ids.size
       ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
       new_bc_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec[ec_ids]], comm)[0]
@@ -497,12 +497,15 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
 
       # > Compute element distribution
       add_elt_distri_l = par_utils.dn_to_distribution(n_elt_to_add_l, comm)
-      add_elt_distri  += add_elt_distri_l
+      add_elt_distri   = add_elt_distri+add_elt_distri_l
       new_elt_distri   = new_elt_distri+add_elt_distri_l
 
       new_bc_pl = np.arange(n_elt+add_elt_distri_l[0],
-                            n_elt+add_elt_distri_l[1], dtype=bc_pl.dtype) + elt_offset
-      
+                            n_elt+add_elt_distri_l[1], dtype=bc_pl.dtype)
+      new_gnum_l= new_bc_pl              + add_elt_distri[2] - add_elt_distri_l[2]+1
+      new_bc_pl = new_bc_pl + elt_offset + add_elt_distri[2] - add_elt_distri_l[2]
+
+      new_gnum.append(new_gnum_l)
       new_bc_n = PT.new_BC(name=matching_bcs[1],
                            type='FamilySpecified',
                            point_list=new_bc_pl.reshape((1,-1), order='F'),
@@ -513,14 +516,12 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
       bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
       if bc_fam_n is not None:
         PT.new_FamilyName(PT.get_value(bc_fam_n), parent=new_bc_n)
-      n_new_elt += bc_pl.size
 
     # > Update ElementConnectivity, by adding new elements at the end of distribution
     new_ec = np.concatenate([ec]+new_ec)
 
-    n_elt = elt_distri[2]
-    old_gnum = np.arange(          elt_distri[0],          elt_distri[1])+1
-    new_gnum = np.arange(n_elt+add_elt_distri[0],n_elt+add_elt_distri[1])+1
+    old_gnum = np.arange(elt_distri[0],elt_distri[1])+1
+    new_gnum = np.concatenate(new_gnum)
     elt_gnum = np.concatenate([old_gnum, new_gnum])
 
     cst_stride = np.full(elt_gnum.size, elt_size, np.int32)
@@ -910,7 +911,7 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
   # > Removing old periodic patch
   i_per = n_periodicity-1
   for gc_paths, periodic_values in reversed(list(jn_pairs_and_values.items())): # reversed for future multiperiodic (use list() for py 3.7 support)
-  
+
     # > 1/ Get elts and vtx for BCs out of feflo
     #      TODO: some TRI_3 should be avoided with find_shared_faces again
     cell_bc_name = f'tetra_4_periodic_{i_per}'
