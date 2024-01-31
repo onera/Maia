@@ -204,9 +204,12 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
   all_offset_list = comm.allgather(p_zones_offset)
   all_jn_list     = comm.allgather(jn_list)
 
+  grank_l = MT.conv.get_part_suffix(PT.get_name(p_zone))[0] #Rank id in global communicator.
+  # Normaly procs have at least one partition
+  grank = comm.allgather(grank_l) # Global rank id of all local ranks, needed for GC naming
+    
   # 3. Process
   for i_part, p_zone in enumerate(p_zones):
-    grank = MT.conv.get_part_suffix(PT.get_name(p_zone))[0] #Rank id in global communicator
     zgc = PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', parent=p_zone)
     for jn in jn_list[i_part]:
       # Get data for the current join
@@ -243,8 +246,8 @@ def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
                 pr_to_cell_location(sub_pr_d, normal_idx, 'Vertex', 1-extr, reverse=True)
 
                 #Effective creation of GC in part zone
-                gc_name  = MT.conv.name_intra_gc(grank, i_part, j_proc, j_part)
-                opp_zone = MT.conv.add_part_suffix(PT.get_name(d_zone), j_proc, j_part)
+                gc_name  = MT.conv.name_intra_gc(grank[comm.Get_rank()], i_part, grank[j_proc], j_part)
+                opp_zone = MT.conv.add_part_suffix(PT.get_name(d_zone), grank[j_proc], j_part)
                 transform = np.arange(1, idx_dim+1, dtype=np.int32)
                 part_gc = PT.new_GridConnectivity1to1(gc_name, opp_zone, transform=transform, parent=zgc)
                 PT.new_IndexRange('PointRange',      sub_pr,   parent=part_gc)
