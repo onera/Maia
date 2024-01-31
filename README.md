@@ -37,3 +37,7 @@ Issues can be reported directly on [the Issues section](https://gitlab.onera.net
 
 ## License ##
 `Maia` is available under the MPL-2.0 license (https://mozilla.org/MPL/2.0/).
+
+<p align="center">
+  <img src="./doc/_static/logo_maia.svg" alt="logo-maia" width=25%>
+</p>

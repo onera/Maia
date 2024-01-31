@@ -281,7 +281,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
 
   if not os.environ.get('MAIA_SILENT_API_WARNINGS') and i_rank == 0:
     mlog.warning("API change -- convert_s_to_u and convert_s_to_ngon functions now operate inplace, "
-                 "and will return None in v1.4 release. "
+                 "and will return None in next release. "
                  "Export MAIA_SILENT_API_WARNINGS=1 to remove this warning.")
 
   zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.get_node_from_path(dist_tree, path))

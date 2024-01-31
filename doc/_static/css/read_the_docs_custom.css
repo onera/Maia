@@ -29,6 +29,10 @@ div.indexpage p {
   font-family: 'Courier New', monospace;
 }
 
+.center {
+  text-align: center;
+}
+
 /*To have title font, without toc entry -- TODO implement it as directive ? */
 .titlelike {
   margin-top: 0;

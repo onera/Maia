@@ -4,10 +4,6 @@ Welcome to Maia!
 
 **Maia** is a C++ and Python library for parallel algorithms over CGNS trees: distributed IO, partitioning, data management and various kind of transformations (generation of faces, destructuration, extractions, ...).
 
-Maia is an open source software developed at `ONERA <https://www.onera.fr>`_.
-Associated source repository and issue tracking are hosted on `Gitlab <https://gitlab.onera.net/numerics/mesh/maia>`_.
-
-!!!!
 
 Documentation summary
 ---------------------
@@ -20,6 +16,18 @@ Documentation summary
 
 :ref:`Developer Manual <dev_manual>` (under construction) provides more details on some algorithms and can be consulted if you want to contribute to Maia.
 
+:ref:`The pytree module <pytree_module>` describes how to manipulate python CGNS trees. There is no parallel functionalities is this module, which may become an independent project one day.
+
+!!!!
+
+.. image:: ./_static/logo_maia.svg
+  :width: 40%
+  :align: center
+
+.. rst-class:: center
+
+Maia is an open source software developed at `ONERA <https://www.onera.fr>`_.
+Associated source repository and issue tracking are hosted on `Gitlab <https://gitlab.onera.net/numerics/mesh/maia>`_.
 
 .. toctree::
   :hidden:
