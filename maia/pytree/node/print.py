@@ -237,7 +237,7 @@ def print_tree(tree:CGNSTree,
     representation of the tree.
 
   Examples:
-    >>> tree = PT.yaml.parse_yaml_cgns.to_node('''
+    >>> tree = PT.yaml.to_node('''
     ... Base CGNSBase_t [3,3]:
     ...   Wall Family_t:
     ...   MyZone Zone_t I4 [[16,6,0]]:

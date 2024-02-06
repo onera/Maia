@@ -61,6 +61,28 @@ def parse_yaml_dict(yaml_dict):
   return t
 
 def to_nodes(yaml_stream) -> CGNSTree:
+  """ Convert a yaml stream into a list of python CGNSTree.
+
+  This function is similar to :func:`to_node`, but allows
+  to declare several root nodes at the yaml top level, which
+  are parsed independently.
+
+  Args:
+    yaml_stream (str or filename): Yaml description of the nodes
+  Returns:
+    list of CGNSTree : python representation of each root node
+  Example:
+    >>> nodes = PT.yaml.to_nodes('''
+    BC1 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[1,2,3]]:
+    BC2 BC_t:
+      GridLocation GridLocation_t "Vertex":
+      PointList IndexArray_t [[1,2,3]]:
+    ''')
+    >>> len(nodes)
+    2
+  """
   if yaml_stream=="":
     return []
   else:
@@ -69,6 +91,26 @@ def to_nodes(yaml_stream) -> CGNSTree:
     return parse_yaml_dict(yaml_dict)
 
 def to_node(yaml_stream) -> CGNSTree:
+  """ Convert a yaml stream into a python CGNSTree.
+
+  Tree is parsed recursively, but must start from a single
+  root node.
+
+  Args:
+    yaml_stream (str or filename): Yaml description of the node
+  Returns:
+    CGNSTree : python representation of the node
+  Example:
+    >>> node = PT.yaml.to_node('''
+    BC BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[1,2,3]]:
+    ''')
+    >>> PT.print_tree(node)
+    BC BC_t 
+    ├───GridLocation GridLocation_t "FaceCenter"
+    └───PointList IndexArray_t I4 [[1 2 3]]
+  """
   if yaml_stream=="":
     return None
   else:
@@ -77,6 +119,30 @@ def to_node(yaml_stream) -> CGNSTree:
     return nodes[0]
 
 def to_cgns_tree(yaml_stream) -> CGNSTree:
+  """ Convert a yaml stream into a top level python CGNSTree.
+
+  This function is similar to :func:`to_node` or :func:`to_nodes`,
+  but it also automatically create the top level (``CGNSTree_t``, 
+  ``CGNSBase_t`` and ``CGNSLibraryVersion_t``) nodes if necessary.
+
+  This function should not be called on nodes lower than ``Zone_t``.
+
+  Args:
+    yaml_stream (str or filename): Yaml description of the tree
+  Returns:
+    CGNSTree : python representation of the tree
+  Example:
+    >>> tree = PT.yaml.to_cgns_tree('''
+    Zone Zone_t:
+      ZoneType ZoneType_t "Structured":
+    ''')
+    >>> PT.print_tree(tree)
+    CGNSTree CGNSTree_t 
+    ├───Base CGNSBase_t I4 [3 3]
+    │   └───Zone Zone_t 
+    │       └───ZoneType ZoneType_t "Structured"
+    └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
+  """
   t = N.new_node('CGNSTree', 'CGNSTree_t')
   childs = to_nodes(yaml_stream)
   if len(childs) > 0 and N.get_label(childs[0]) == 'Zone_t':

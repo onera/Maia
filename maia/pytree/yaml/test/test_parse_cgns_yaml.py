@@ -38,7 +38,7 @@ def test_to_yaml():
   sol = PT.new_FlowSolution('FlowSolution', loc='CellCenter')
   array = PT.new_DataArray('Data', np.array([1,2,3,4], dtype=np.int64), parent=sol)
 
-  lines = parse_cgns_yaml.to_yaml(sol)
+  lines = parse_cgns_yaml.to_yaml(sol, write_root=False)
   assert lines[0] == "GridLocation GridLocation_t 'CellCenter':"
   lines = parse_cgns_yaml.to_yaml(sol, write_root=True)
   assert lines[0] == "FlowSolution FlowSolution_t:"

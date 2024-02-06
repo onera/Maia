@@ -85,7 +85,7 @@ def get_node_from_path(root:CGNSTree, path:str) -> Optional[CGNSTree]:
   Returns:
     CGNSTree or None: Node found
   Example:
-    >>> zone = PT.yaml.parse_yaml_cgns.to_node('''
+    >>> zone = PT.yaml.to_node('''
     ... Zone Zone_t:
     ...   ZoneBC ZoneBC_t:
     ...     BC BC_t "Null":
@@ -136,7 +136,7 @@ def get_all_Zone_t(root:CGNSTree) -> List[CGNSTree]:
     This function has the iterator counterpart :func:`iter_all_Zone_t`
 
   Example:
-    >>> tree = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
+    >>> tree = PT.yaml.to_cgns_tree('''
     ... BaseA CGNSBase_t:
     ...   Zone1 Zone_t:
     ...   Zone2 Zone_t:
@@ -169,7 +169,7 @@ def get_all_CGNSBase_t(root:CGNSTree) -> List[CGNSTree]:
   See also:
     This function has the iterator counterpart :func:`iter_all_CGNSBase_t`
   Example:
-    >>> tree = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
+    >>> tree = PT.yaml.to_cgns_tree('''
     ... BaseA CGNSBase_t:
     ...   Zone1 Zone_t:
     ...   Zone2 Zone_t:
