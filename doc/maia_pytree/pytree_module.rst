@@ -90,6 +90,7 @@ The features are regrouped in the following sections:
   suitable options
 - :ref:`Node searching <pt_node_search>` : how to search specific
   nodes in a CGNSTree from various criteria
+- :ref:`Yaml parsing <pt_yaml_parsing>` : how to use a Yaml format to read or write CGNSTrees
 
 
 .. Include files
@@ -102,3 +103,4 @@ The features are regrouped in the following sections:
   search
   inspect
   presets
+  yaml
