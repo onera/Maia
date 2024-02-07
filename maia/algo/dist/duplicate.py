@@ -201,6 +201,17 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
         coordinates (see :func:`conformize_jn_pair`). Defaults to False.
     apply_to_fields (bool, optional): See :func:`maia.algo.transform_affine`. Defaults to False.
 
+  See also:
+    Instead of recovering the circular mesh, it is also possible to perfom a custom number 
+    of duplications with the function :func:`duplicate_from_periodic_jns`. This function takes
+    the additional (integer) argument ``dupl_nb`` before ``comm``, and also work with translation
+    periodicities.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #duplicate_from_rotation_to_360@start
+        :end-before: #duplicate_from_rotation_to_360@end
+        :dedent: 2
   """
   
   if conformize:

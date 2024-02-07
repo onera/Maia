@@ -48,6 +48,21 @@ def test_generate_jns_vertex_list():
   assert len(maia.pytree.get_nodes_from_name(dist_tree, 'match*#Vtx')) == 2
   #generate_jns_vertex_list@end
 
+def test_duplicate_from_rotation_jns_to_360():
+  #duplicate_from_rotation_to_360@start
+  from mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  left_jns  = ['Base/bump_45/ZoneGridConnectivity/matchA']
+  right_jns = ['Base/bump_45/ZoneGridConnectivity/matchB']
+  maia.algo.dist.duplicate_from_rotation_jns_to_360(dist_tree,
+                                                    ['Base/bump_45'],
+                                                    (left_jns, right_jns),
+                                                    MPI.COMM_WORLD)
+  assert len(maia.pytree.get_all_Zone_t(dist_tree)) == 45
+  #duplicate_from_rotation_to_360@end
+
 def test_merge_zones():
   #merge_zones@start
   from mpi4py import MPI
@@ -439,6 +454,19 @@ def test_elements_to_ngons():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
   maia.algo.dist.convert_elements_to_ngon(dist_tree, MPI.COMM_WORLD, stable_sort=True)
   #elements_to_ngons@end
+
+def test_ngons_to_elements():
+  #ngons_to_elements@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', MPI.COMM_WORLD)
+  maia.algo.dist.ngons_to_elements(dist_tree, MPI.COMM_WORLD)
+
+  elts = PT.get_nodes_from_label(dist_tree, 'Elements_t')
+  assert [PT.Element.CGNSName(e) for e in elts] == ['QUAD_4', 'HEXA_8']
+  #ngons_to_elements@end
 
 def test_convert_elements_to_ngon():
   #convert_elements_to_ngon@start
