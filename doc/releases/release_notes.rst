@@ -9,6 +9,13 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Developpement version
+---------------------
+
+🐞 Fixes
+^^^^^^^^
+- io: Fix read of unstructured BCDataSet having a PointList
+
 v1.3 (January 2024)
 -------------------
 

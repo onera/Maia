@@ -49,7 +49,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
 
         # At read time, BCDataSet can be badly shaped (1,N) or (N1,N2) instead of (M,)
         # We use the #Size node to reshape it
-        size_node = PT.get_child_from_name(bcds,'*#Size',depth=2)
+        size_node = PT.get_child_from_predicates(bcds, ['BCData_t', '*#Size'])
         data_shape = PT.get_value(size_node) if size_node else None
         data_space_array = create_data_array_filter(distrib_data, data_shape)
 
