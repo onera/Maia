@@ -250,6 +250,26 @@ def check_transform(expected_x, expected_y, expected_z, computed_matrix, compute
   assert np.allclose(expected_y, computed_y, rtol=0., atol=atol)
   assert np.allclose(expected_z, computed_z, rtol=0., atol=atol)
 
+@pytest.mark.parametrize("revolution_axis", [(1, 0, 0), [0, 1, 0], (1, 0, 3), [1, 2, 3]])
+def test_transform_matrix(revolution_axis):
+   
+  # Create the transform matrix and the reverse transform matrix 
+  transform_matrix = np_utils.create_transform_matrix(revolution_axis=revolution_axis)
+  transform_matrix_inv = np.linalg.inv(transform_matrix)
+  id = np.dot(transform_matrix, transform_matrix_inv)
+  
+  # Transform the current revolution axis into a unit revolution axis in the new basis
+  new_revolution_axis = np.dot(transform_matrix, revolution_axis)
+  norm_new_revolution_axis = np.linalg.norm(new_revolution_axis)
+  unit_revolution_axis = new_revolution_axis / norm_new_revolution_axis
+
+  # Transform the unit revolution axis in the new basis into the former revolution axis in the former basis 
+  reverse_unit_revolution_axis = np.dot(transform_matrix_inv, unit_revolution_axis)
+  reverse_revolution_axis = reverse_unit_revolution_axis * norm_new_revolution_axis
+
+  assert np.allclose(revolution_axis, reverse_revolution_axis)
+  assert np.allclose(id, np.eye(3))
+
 @pytest_parallel.mark.parallel([1, 2])
 class Test_apply_cart_to_vectors:
   revolution_axis = (1, 1, 1)
