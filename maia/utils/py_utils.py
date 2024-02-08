@@ -62,13 +62,30 @@ def find_vector_names(names, axis):
   suffix_names = [set() for i in to_index]
 
   for name in names:
+    if len(name) < 2: continue
+    is_lower = name[0].islower()
+    if is_lower:
+      name = name[0].upper() + name[1:]
     split_name = re.findall('[A-Z][^A-Z]*', name)
+    if len(split_name) > 1: 
+      basename = str(''.join(split_name[0:-1]))
+      if is_lower:
+        basename = basename[0].lower() + basename[1:]
     try:
-      suffix_names[to_index[split_name[-1]]].add(''.join(split_name[0:-1]))
+      suffix_names[to_index[split_name[-1]]].add(basename)
     except KeyError:
       pass
   common = suffix_names[0].intersection(*suffix_names[1:])
   return sorted(common)
+
+def find_cartesian_vector_names(names, phy_dim=3):
+  return find_vector_names(names, ['X', 'Y', 'Z'][:phy_dim])
+
+def find_cylindric_vector_names(names, phy_dim=3):
+  return find_vector_names(names, ['R', 'Theta', 'Z'][:phy_dim])
+
+def find_spherical_vector_names(names, phy_dim=3):
+  return find_vector_names(names, ['R', 'Theta', 'Phi'][:phy_dim])
 
 def get_ordered_subset(subset, L):
   """
