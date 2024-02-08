@@ -1,5 +1,4 @@
 import pytest
-import pytest_parallel
 import shutil
 
 feflo_exists = shutil.which('feflo.a') is not None
