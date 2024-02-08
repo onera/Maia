@@ -41,26 +41,32 @@ def loop_from(L, i):
   yield from L[i:]
   yield from L[:i]
 
-def find_cartesian_vector_names(names, phy_dim=3):
+def find_vector_names(names, axis):
   """
-  Function to find basename of cartesian vectors
+  Function to find basename of any coordinates system
   In the SIDS (https://cgns.github.io/CGNS_docs_current/sids/dataname.html), a cartesian
   vector 'Vector' is describe by its 2 (resp. 3) components 'VectorX', 'VectorY', (resp. 'VectorZ')
-  depending on the physical dimension of the mesh.
+  depending on the physical dimension of the mesh. 
   > names : list of potential vectors components
-  > phy_dim : physical dimension of the mesh.
+  > axis : Coordinates system of the mesh.
   """
-  to_index = {'X' : 0, 'Y' : 1}
-  if phy_dim == 3:
-    to_index['Z'] = 2
+
+  import re
+
+  assert len(axis) > 1
+
+  to_index = {axis[0] : 0, axis[1] : 1}
+  if len(axis) == 3:
+    to_index[axis[2]] = 2
+  
   suffix_names = [set() for i in to_index]
+
   for name in names:
-    last = name[-1]
+    split_name = re.findall('[A-Z][^A-Z]*', name)
     try:
-      suffix_names[to_index[last]].add(name[0:-1])
+      suffix_names[to_index[split_name[-1]]].add(''.join(split_name[0:-1]))
     except KeyError:
       pass
-
   common = suffix_names[0].intersection(*suffix_names[1:])
   return sorted(common)
 
