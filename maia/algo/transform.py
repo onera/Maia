@@ -461,3 +461,67 @@ def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields
             PT.update_node(vectors_n[0], fields_name[0], value=transform_fields[0])
             PT.update_node(vectors_n[1], fields_name[1], value=transform_fields[1])
             PT.update_node(vectors_n[2], fields_name[2], value=transform_fields[2])
+
+def cartesian_to_cylindric(t, revolution_axis=(0, 0 ,1), gc_name='GridCoordinates', apply_to_fields=True):
+
+  """Compute cylindric coordinates from any revolution axis.
+
+  Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
+
+  Args:
+    t (Tree) : Recover GridCoordinates from the zones in the tree.
+               Tree can be a distributed or partitioned tree.
+    revolution_axis (tuple, list, array) : Constant axis.
+                                           By default it set on z-axis.  
+    gc_name (str) : Name of the coordinates to transform into cylindric coordinates and containing the transformation matrix
+                    By default it searches the GridCoordinates node
+    apply_to_fields (bool) : Apply the transformation to fields
+                             By default it set on True                                              
+  """
+
+  if isinstance(revolution_axis, (tuple, list)):
+     revolution_axis = np.array(revolution_axis)
+
+  if len(np.where(revolution_axis==0)[0]) == 2:
+    revolution_axis_unit = revolution_axis / np.linalg.norm(revolution_axis)
+    cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=revolution_axis_unit, gc_name=gc_name, apply_to_fields=apply_to_fields)
+  else:
+    transform_matrix = np_utils.create_transform_matrix(revolution_axis)
+    change_basis(t, transform_matrix=transform_matrix, gc_name=gc_name, apply_to_fields=apply_to_fields)
+    new_revolution_axis = np.dot(transform_matrix, revolution_axis)
+    new_revolution_axis_unit = new_revolution_axis / np.linalg.norm(new_revolution_axis)
+    cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=new_revolution_axis_unit, gc_name=gc_name, apply_to_fields=apply_to_fields)
+
+def cylindric_to_cartesian(t, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', apply_to_fields=True):
+
+  """Compute cartesian coordinates from any revolution axis.
+
+  Input zone(s) in the tree can be either structured or unstructured, but must have cylindric coordinates.
+
+  Args:
+    t (Tree) : Recover GridCoordinates from the zones in the tree.
+               Tree can be a distributed or partitioned tree.
+    revolution_axis (tuple, list, array) : Constant axis
+                                           By default it set on z-axis.
+    gc_name (str) : Name of the coordinates to transform into cartesian coordinates and containing the transformation matrix
+                    By default it searches the GridCoordinates node
+    apply_to_fields (bool) : Apply the transformation to fields   
+                             By default it set on True             
+  """
+  
+  if isinstance(revolution_axis, (tuple, list)):
+     revolution_axis = np.array(revolution_axis)
+
+  if len(np.where(revolution_axis==0)[0]) == 2:
+    revolution_axis_unit = revolution_axis / np.linalg.norm(revolution_axis)
+    cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=revolution_axis_unit, gc_name=gc_name)
+  else:
+    transform_matrix_n = PT.get_node_from_predicates(t, f'CGNSBase_t/Zone_t/{gc_name}/CoordinateTransform')
+    if transform_matrix_n is None:
+      return
+    transform_matrix = PT.get_value(transform_matrix_n)
+    new_revolution_axis = np.dot(transform_matrix, revolution_axis)
+    new_revolution_axis_unit = new_revolution_axis / np.linalg.norm(new_revolution_axis)
+    transform_matrix = np.linalg.inv(transform_matrix)
+    cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=new_revolution_axis_unit,gc_name=gc_name)
+    change_basis(t, None, gc_name=gc_name, apply_to_fields=apply_to_fields)
