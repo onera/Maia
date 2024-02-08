@@ -1,4 +1,5 @@
 import pytest
+import pytest_parallel
 import numpy as np
 
 from maia.utils.ndarray import np_utils
@@ -248,6 +249,73 @@ def check_transform(expected_x, expected_y, expected_z, computed_matrix, compute
   assert np.allclose(expected_x, computed_x, rtol=0., atol=atol)
   assert np.allclose(expected_y, computed_y, rtol=0., atol=atol)
   assert np.allclose(expected_z, computed_z, rtol=0., atol=atol)
+
+@pytest_parallel.mark.parallel([1, 2])
+class Test_apply_cart_to_vectors:
+  revolution_axis = (1, 1, 1)
+  def test_apply_cart_to_vectors_S(self, comm):
+      import maia
+      import maia.pytree as PT
+      import numpy as np
+      
+      dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
+      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+      for zone in PT.get_all_Zone_t(part_tree):
+        cx, cy, cz = PT.Zone.coordinates(zone)
+        
+        transform_matrix = np_utils.create_transform_matrix(revolution_axis=self.revolution_axis)
+        new_cx, new_cy, new_cz = np_utils.apply_cart_vectors(cx, cy, cz, transform_matrix)
+
+        if comm.size == 1:
+          new_cx_ref = [0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0.5, 1., 1.5, 1., 1.5, 2., 1.5, 2., 2.5, 1., 1.5, 2., 1.5, 2., 2.5, 2., 2.5, 3.]
+          new_cy_ref = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
+          new_cz_ref = [0., -0.5, -1., -0.5, -1., -1.5, -1., -1.5, -2., 1., 0.5, 0., 0.5, 0., -0.5, 0., -0.5, -1., 2., 1.5, 1., 1.5, 1., 0.5, 1., 0.5, 0.]
+        elif comm.size == 2:
+          if comm.rank == 0:
+            new_cx_ref = [0., 0.5, 0.5, 1., 1., 1.5, 0.5, 1., 1., 1.5, 1.5, 2., 1., 1.5, 1.5, 2., 2., 2.5]
+            new_cy_ref = [0., -0.5, 0.5, 0., 1., 0.5, 0., -0.5, 0.5, 0., 1., 0.5, 0., -0.5, 0.5, 0., 1., 0.5]
+            new_cz_ref = [0., -0.5, -0.5, -1., -1., -1.5, 1., 0.5, 0.5, 0., 0., -0.5, 2., 1.5, 1.5, 1., 1., 0.5]
+          elif comm.rank == 1:
+            new_cx_ref = [0.5, 1., 1., 1.5, 1.5, 2., 1., 1.5, 1.5, 2., 2., 2.5, 1.5, 2., 2., 2.5, 2.5, 3.]
+            new_cy_ref = [-0.5, -1., 0., -0.5, 0.5, 0., -0.5, -1., 0., -0.5, 0.5, 0., -0.5, -1., 0., -0.5, 0.5, 0.]
+            new_cz_ref = [-0.5, -1., -1., -1.5, -1.5, -2., 0.5, 0., 0., -0.5, -0.5, -1., 1.5, 1., 1., 0.5, 0.5, 0.]
+        
+        assert np.allclose(new_cx_ref, new_cx.flatten('F'))
+        assert np.allclose(new_cy_ref, new_cy.flatten('F'))
+        assert np.allclose(new_cz_ref, new_cz.flatten('F'))
+      
+  def test_apply_cart_to_vectors_U(self, comm):
+      import maia
+      import maia.pytree as PT
+      import numpy as np
+      
+      dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
+      for zone in PT.get_all_Zone_t(part_tree):
+        cx, cy, cz = PT.Zone.coordinates(zone)
+        
+        transform_matrix = np_utils.create_transform_matrix(revolution_axis=self.revolution_axis)
+        new_cx, new_cy, new_cz = np_utils.apply_cart_vectors(cx, cy, cz, transform_matrix)
+
+        if comm.size == 1:
+          new_cx_ref = [0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0.5, 1., 1.5, 1., 1.5, 2., 1.5, 2., 2.5, 1., 1.5, 2., 1.5, 2., 2.5, 2., 2.5, 3.]
+          new_cy_ref = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
+          new_cz_ref = [0., -0.5, -1., -0.5, -1., -1.5, -1., -1.5, -2., 1., 0.5, 0., 0.5, 0., -0.5, 0., -0.5, -1., 2., 1.5, 1., 1.5, 1., 0.5, 1., 0.5, 0.]
+        elif comm.size == 2:
+          if comm.rank == 0:
+            new_cx_ref = [0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0.5, 1., 1.5, 1., 1.5, 2., 1.5, 2., 2.5]
+            new_cy_ref = [0. , -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
+            new_cz_ref = [0., -0.5, -1., -0.5, -1., -1.5, -1., -1.5, -2., 1., 0.5, 0., 0.5, 0., -0.5, 0., -0.5, -1.]
+          elif comm.rank == 1:
+            new_cx_ref = [0.5, 1., 1.5, 1., 1.5, 2., 1.5, 2., 2.5, 1., 1.5, 2., 1.5, 2., 2.5, 2., 2.5, 3.]
+            new_cy_ref = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
+            new_cz_ref = [1., 0.5, 0., 0.5, 0., -0.5, 0., -0.5, -1., 2., 1.5, 1., 1.5, 1., 0.5, 1., 0.5, 0.]
+        
+        assert np.allclose(new_cx_ref, new_cx.flatten('F'))
+        assert np.allclose(new_cy_ref, new_cy.flatten('F'))
+        assert np.allclose(new_cz_ref, new_cz.flatten('F'))
 
 class Test_transform_simple():
     #    
