@@ -121,7 +121,7 @@ job:portability_gnum:
 job:portability_cfd5:
   stage: test
   variables:
-    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --nodes=1-1 --time=00:15:00"
+    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --exclusive --nodes=1-1 --time=00:15:00"
   rules:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   before_script: 
