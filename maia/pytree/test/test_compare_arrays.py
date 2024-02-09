@@ -144,3 +144,38 @@ def test_equal_array_report(comm):
   else:
     assert is_same == False
     assert report == ''
+
+@pytest_parallel.mark.parallel(1)
+def test_equal_array_report_for_str(comm):
+  ref = "A pretty long string"
+  x   = "A pretty long string"
+  y   = "A pretty looong string"
+  is_same, report, _ = equal_array_report(x, ref, comm)
+  assert is_same == True
+  assert report == ''
+
+  is_same, report, _ = equal_array_report(y, ref, comm)
+  assert is_same == False
+  assert report == 'A pretty looong string <> A pretty long string'
+
+@pytest_parallel.mark.parallel(2)
+def test_equal_array_report_for_str(comm):
+  if comm.Get_rank() == 0:
+    ref = "A pretty "
+    x   = "A pretty "
+    y   = "A pretty "
+  else:
+    ref = "long string"
+    x   = "long string"
+    y   = "looong string"
+  is_same, report, _ = equal_array_report(x, ref, comm)
+  assert is_same == True
+  assert report == ''
+
+  is_same, report, _ = equal_array_report(y, ref, comm)
+  if comm.Get_rank() == 0:
+    assert is_same == False
+    assert report == 'A pretty looong string <> A pretty long string'
+  else:
+    assert is_same == False
+    assert report == ''

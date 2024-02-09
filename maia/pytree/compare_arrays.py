@@ -10,13 +10,20 @@ def equal_array_report(x, ref, comm):
     return True, '', ''
   else:
     sz_tot = comm.allreduce(len(x), MPI.SUM)
-    if sz_tot < 10:
+
+    if sz_tot < 10 or type(x)==str or type(ref)==str: # Precondition: string-like to `str` conversions are supposed to be done by the caller
       xs   = comm.gather(x  , root=0)
       refs = comm.gather(ref, root=0)
 
       if comm.Get_rank() == 0:
-        x_tot   = np.concatenate(xs)
-        ref_tot = np.concatenate(refs)
+        if type(x)==str:
+          x_tot = ''.join(xs)
+        else:
+          x_tot   = np.concatenate(xs)
+        if type(ref)==str:
+          ref_tot = ''.join(refs)
+        else:
+          ref_tot = np.concatenate(refs)
 
         return False, str(x_tot) + ' <> ' + str(ref_tot), ''
       else:
