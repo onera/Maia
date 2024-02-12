@@ -66,3 +66,20 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   old_to_new[ids_local] = marker * part_data2['OldToNew'][0]
 
   return old_to_new
+
+def replace_distributed_ids(distri, ids, targets, comm):
+  """
+  Assign specified ids from global numbering to targets numbering.
+  Return an old_id_to_new_id indirection of size dn_elts
+  with targets values at ids positions.
+  """
+  PTB = EP.PartToBlock(distri, [ids], comm)
+  dist_ids = PTB.getBlockGnumCopy()
+  dn_elts = distri[1] - distri[0]
+
+  _, dtargets = PTB.exchange_field([targets], part_stride=1)
+  
+  old_to_new = np.arange(dn_elts) + distri[0] +1
+  old_to_new[dist_ids-distri[0]-1] = dtargets
+  
+  return old_to_new
