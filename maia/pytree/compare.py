@@ -41,19 +41,6 @@ class CGNSLabelNotEqualError(Exception):
     def __str__(self):
         return f"Expected a CGNS node with label '{self.label}', '[n:{PT.get_name(self.node)}, ..., l:{PT.get_label(self.node)}]' found here."
 
-class NotImplementedForElementError(NotImplementedError):
-    """
-    Attributes:
-        zone_node (List): CGNS Zone_t node
-        element_node (List): CGNS Elements_t node
-    """
-    def __init__(self, zone_node: List, element_node: List):
-        self.zone_node    = zone_node
-        self.element_node = element_node
-        super().__init__()
-
-    def __str__(self):
-        return f"Unstructured CGNS Zone_t named '{PT.get_name(self.zone_node)}' with CGNS Elements_t named '{SIDS.ElementCGNSName(self.element_node)}' is not yet implemented."
 
 # --------------------------------------------------------------------------
 def check_is_label(label, n=0):
@@ -112,9 +99,24 @@ def is_same_value(n0: CGNSTree, n1: CGNSTree, abs_tol:float=0., type_tol=False) 
 
 def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
-  Compare two single nodes (no recursion). Node are considered equal if
-  they have same name, same label, same value.
-  Note that no check is performed on children
+  Compare two nodes
+
+  Nodes are considered equal if they have the same name, label and value.
+  Note that no check is performed on their children.
+
+  Args:
+    t1 (CGNSTree): first tree
+    t2 (CGNSTree): second tree
+    abs_tol (float) : absolute tolerance used for value comparison, passed to ``np.allclose`` function
+    type_tol (bool): if True, allow comparaison of compatible but different types (I4/I8 or R4/R8).
+      Otherwise, nodes are considered to differ.
+  Returns:
+    bool : True if nodes are identical
+  Example:
+    >>> zone1 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROTOR')
+    >>> zone2 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='STATOR')
+    >>> PT.is_same_node(zone1, zone2)
+    True
   """
   return is_same_name(node1, node2) and is_same_label(node1, node2) and is_same_value(node1, node2, abs_tol, type_tol)
 
@@ -134,8 +136,20 @@ class same_tree_visitor:
 
 def is_same_tree(t1:CGNSTree, t2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
-  Recursive comparison of two nodes. Nodes are considered equal if the pass is_same_node test
-  and if the have the same childrens. Children are allowed to appear in a different order.
+  Compare recursively two trees
+
+  Trees are considered equal if they recursively have the same children (order does not matters),
+  in the sense of :func:`is_same_node`.
+
+  See :func:`is_same_node` for arguments description.
+
+  Returns:
+    bool : True if trees are identical
+  Example:
+    >>> zone1 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROTOR')
+    >>> zone2 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='STATOR')
+    >>> PT.is_same_tree(zone1, zone2)
+    False
   """
   v = same_tree_visitor(abs_tol, type_tol)
   zip_depth_first_search([t1,t2], v)
