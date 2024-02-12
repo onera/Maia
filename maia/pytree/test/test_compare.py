@@ -7,8 +7,6 @@ import maia.pytree as PT
 from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.pytree import compare as CP
-from maia.pytree.compare_arrays import field_comparison, tensor_field_comparison
-from mpi4py import MPI
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -136,79 +134,4 @@ def test_diff_tree():
   PT.new_node('Index_vii', 'IndexArray_t', value=[0], parent=gc5_t2)
   PT.new_node('Index_vii', 'IndexArray_t', value=[1], parent=gc5_t3)
   assert CP.diff_tree(t2, t3)[1] == '/CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii -- Values differ: [0] <> [1]\n'
-
-
-def test_diff_tree_field_comp():
-  t_ref = """
-FlowSolution FlowSolution_t []:
-  CoordinateX DataArray_t [0.,0.]:
-  CoordinateY DataArray_t [1.,1.]:
-  CoordinateZ DataArray_t [2.,2.]:
-  MomentumX DataArray_t [1.,1.,1.,1.]:
-  MomentumY DataArray_t [2.,2.,2.,2.]:
-  MomentumZ DataArray_t [3.,3.,3.,3.]:
-  StressXX DataArray_t [1.,1.]:
-  StressXY DataArray_t [0.,0.]:
-  StressXZ DataArray_t [0.,0.]:
-  StressYX DataArray_t [0.,0.]:
-  StressYY DataArray_t [0.,0.]:
-  StressYZ DataArray_t [0.,0.]:
-  StressZX DataArray_t [0.,0.]:
-  StressZY DataArray_t [0.,0.]:
-  StressZZ DataArray_t [0.,0.]:
-  VelocityGradientXX DataArray_t [0.,0.]:
-  VelocityGradientXY DataArray_t [0.,0.]:
-  VelocityGradientXZ DataArray_t [0.,0.]:
-  VelocityGradientYX DataArray_t [0.,0.]:
-  VelocityGradientYY DataArray_t [0.,0.]:
-  VelocityGradientYZ DataArray_t [0.,0.]:
-  VelocityGradientZX DataArray_t [1.,1.]:
-  VelocityGradientZY DataArray_t [0.,0.]:
-  VelocityGradientZZ DataArray_t [0.,0.]:
-"""
-  t = """
-FlowSolution FlowSolution_t []:
-  CoordinateX DataArray_t [1.e-15,0.]: # DIFF HERE
-  CoordinateY DataArray_t [1.,1.]:
-  CoordinateZ DataArray_t [2.,2.]:
-  MomentumX DataArray_t [0.,1.,1.,1.]: # DIFF HERE
-  MomentumY DataArray_t [2.,2.,2.,2.]:
-  MomentumZ DataArray_t [3.,3.,3.,3.]:
-  StressXX DataArray_t [1.,1.]:
-  StressXY DataArray_t [0.,1.e-20]: # DIFF HERE
-  StressXZ DataArray_t [0.,0.]:
-  StressYX DataArray_t [0.,0.]:
-  StressYY DataArray_t [0.,0.]:
-  StressYZ DataArray_t [0.,0.]:
-  StressZX DataArray_t [0.,0.]:
-  StressZY DataArray_t [0.,0.]:
-  StressZZ DataArray_t [0.,0.]:
-  VelocityGradientXX DataArray_t [0.,0.]:
-  VelocityGradientXY DataArray_t [0.,0.]:
-  VelocityGradientXZ DataArray_t [0.,0.]:
-  VelocityGradientYX DataArray_t [0.,0.]:
-  VelocityGradientYY DataArray_t [0.,0.]:
-  VelocityGradientYZ DataArray_t [0.,0.]:
-  VelocityGradientZX DataArray_t [0.,1.]: # DIFF HERE
-  VelocityGradientZY DataArray_t [0.,0.]:
-  VelocityGradientZZ DataArray_t [0.,0.]:
-"""
-  t_ref = parse_yaml_cgns.to_node(t_ref)
-  t     = parse_yaml_cgns.to_node(t)
-
-  # Compare scalar fields
-  is_ok, err_report, warn_report = CP.diff_tree(t, t_ref, comp = field_comparison(1.e-12, MPI.COMM_SELF))
-  assert not is_ok
-  assert err_report == '/FlowSolution/CoordinateX -- Values differ: RMS mean diff: 7.071e-16, RMS ref mean: 0.000e+00, rel error: inf\n' \
-                       '/FlowSolution/MomentumX -- Values differ: RMS mean diff: 5.000e-01, RMS ref mean: 1.000e+00, rel error: 5.000e-01\n' \
-                       '/FlowSolution/StressXY -- Values differ: RMS mean diff: 7.071e-21, RMS ref mean: 0.000e+00, rel error: inf\n' \
-                       '/FlowSolution/VelocityGradientZX -- Values differ: RMS mean diff: 7.071e-01, RMS ref mean: 1.000e+00, rel error: 7.071e-01\n'
-
-  # Compare tensor fields
-  # Now 'Coordinate' is compared as a tensor, so the difference on component X is not significant compared to the overall field
-  # Now 'Stress' is compared as a tensor, so the difference on component XY is not significant compared to the overall field
-  is_ok, err_report, warn_report = CP.diff_tree(t, t_ref, comp = tensor_field_comparison(1.e-12, MPI.COMM_SELF))
-  assert not is_ok
-  assert err_report == '/FlowSolution/Momentum -- Values differ: RMS mean diff: 5.000e-01, RMS ref mean: 3.742e+00, rel error: 1.336e-01\n' \
-                       '/FlowSolution/VelocityGradient -- Values differ: RMS mean diff: 7.071e-01, RMS ref mean: 1.000e+00, rel error: 7.071e-01\n'
 

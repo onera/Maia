@@ -1,7 +1,13 @@
-import numpy as np
 from mpi4py import MPI
+import numpy as np
 import maia.pytree as PT
 
+def sq_norm(x):
+  return np.inner(x,x)
+
+def norm(x, comm):
+  res = comm.allreduce(sq_norm(x), MPI.SUM)
+  return np.sqrt(res)
 
 def equal_array_report(x, ref, comm):
   equal_arrays = np.array_equal(x, ref)
@@ -10,13 +16,20 @@ def equal_array_report(x, ref, comm):
     return True, '', ''
   else:
     sz_tot = comm.allreduce(len(x), MPI.SUM)
-    if sz_tot < 10:
+
+    if sz_tot < 10 or type(x)==str or type(ref)==str: # Precondition: string-like to `str` conversions are supposed to be done by the caller
       xs   = comm.gather(x  , root=0)
       refs = comm.gather(ref, root=0)
 
       if comm.Get_rank() == 0:
-        x_tot   = np.concatenate(xs)
-        ref_tot = np.concatenate(refs)
+        if type(x)==str:
+          x_tot = ''.join(xs)
+        else:
+          x_tot   = np.concatenate(xs)
+        if type(ref)==str:
+          ref_tot = ''.join(refs)
+        else:
+          ref_tot = np.concatenate(refs)
 
         return False, str(x_tot) + ' <> ' + str(ref_tot), ''
       else:
@@ -39,13 +52,6 @@ def equal_array_comparison(comm = MPI.COMM_SELF):
     return equal_array_report(x, ref, comm)
   return impl
 
-
-def sq_norm(x):
-  return np.inner(x,x)
-
-def norm(x, comm):
-  res = comm.allreduce(sq_norm(x), MPI.SUM)
-  return np.sqrt(res)
 
 def _close_in_relative_norm(x, ref, tol, comm):
   x   = np.array(x)

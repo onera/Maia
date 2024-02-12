@@ -10,7 +10,6 @@ from maia.pytree.typing import *
 
 import maia.pytree as PT
 from maia.pytree.graph.cgns import step, zip_depth_first_search
-from maia.pytree.compare_arrays import equal_array_comparison
 
 
 class CGNSNodeFromPredicateNotFoundError(Exception):
@@ -67,6 +66,8 @@ def check_in_labels(labels, n=0):
   return _check_in_labels
 
 # --------------------------------------------------------------------------
+# BASIC COMPARISON
+
 def is_same_name(n0: CGNSTree, n1: CGNSTree) -> bool:
   return PT.get_name(n0) == PT.get_name(n1)
 
@@ -155,6 +156,67 @@ def is_same_tree(t1:CGNSTree, t2:CGNSTree, abs_tol:float=0, type_tol=False) -> b
   zip_depth_first_search([t1,t2], v)
   return v.is_same
 
+# --------------------------------------------------------------------------
+# DIFF TREE
+
+def _report_diff(x, ref, is_equal):
+  if is_equal.all():
+    return True, '', ''
+  elif x.size < 10:
+    return False, str(x) + ' <> ' + str(ref), ''
+  else:
+    n_not_eq = x.size - np.count_nonzero(is_equal)
+    return False, f'{n_not_eq} values are different', ''
+
+class EqualArray:
+  """
+  A callable object generating a report for diff_tree, using an exact point-to-point
+  comparison.
+
+  Example:
+    >>> sol1 = PT.new_FlowSolution(fields={'Density' : [1., 1.002, 1.]})
+    >>> sol2 = PT.new_FlowSolution(fields={'Density' : [1., 1.001, 1.]})
+    >>> comp = PT.compare.EqualArray()
+    >>> PT.diff_tree(sol1, sol2, comp=comp)
+    (False,
+    '/FlowSolution/Density -- Values differ: [1.    1.002 1.   ] <> [1.    1.001 1.   ]\\n',
+    '')
+  """
+  def __call__(self, nodes_stack):
+    node_x,node_ref = nodes_stack[-1]
+    x   = PT.get_value(node_x, raw=True)
+    ref = PT.get_value(node_ref, raw=True)
+    eq = np.equal(x, ref)
+    return _report_diff(x, ref, eq)
+
+class CloseArray:
+  """
+  A callable object generating a report for diff_tree, using a point-to-point with
+  tolerance comparison
+  (see `np.isclose
+  <https://numpy.org/doc/stable/reference/generated/numpy.isclose.html#numpy.isclose>`_
+  documentation).
+
+  Args:
+    rtol (float) : relative tolerance
+    atol (float) : absolute tolerance
+  Example:
+    >>> sol1 = PT.new_FlowSolution(fields={'Density' : [1., 1.002, 1.]})
+    >>> sol2 = PT.new_FlowSolution(fields={'Density' : [1., 1.001, 1.]})
+    >>> comp = PT.compare.CloseArray(rtol=0, atol=1E-2)
+    >>> PT.diff_tree(sol1, sol2, comp=comp)
+    (True, '', '')
+  """
+  def __init__(self, rtol=1e-05, atol=1e-08):
+    self.rtol = rtol
+    self.atol = atol
+  def __call__(self, nodes_stack):
+    node_x,node_ref = nodes_stack[-1]
+    x   = PT.get_value(node_x, raw=True)
+    ref = PT.get_value(node_ref, raw=True)
+    close = np.isclose(x, ref, self.atol, self.rtol)
+    return _report_diff(x, ref, close)
+
 
 def value_comparison_report(nodes_stack, comp):
   """ Compare the values of two single nodes. Node are considered equal if
@@ -236,21 +298,45 @@ class diff_tree_visitor:
 DiffReport = Tuple[bool,str,str]
 CompFunction = Callable[[List[Tuple[CGNSTree,CGNSTree]]], DiffReport]
 
-def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunction = equal_array_comparison()) -> DiffReport:
-  """
-  Report the differences between two trees.
+def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunction = None) -> DiffReport:
+  """ Report the differences between two trees
+
+  This function is similar to :func:`is_same_tree`, but returns a full report of differences between
+  the two input trees. In addition, it is possible to provide a custom comparison function 
+  for numerical arrays or to choose one in the following list:
+
+  - :class:`maia.pytree.compare.EqualArray`: compare exactly. Two arrays are equal if all their
+    elements one-to-one are equal. This is the default comparison method.
+  - :class:`maia.pytree.compare.CloseArray`: compare exactly. Two arrays are equal if all their
+    elements are close, up to a given tolerance.
+
 
   Args:
     t1 (CGNSTree): first tree
     t2 (CGNSTree): second tree
-    strict_value_type (Bool): Behavior when the nodes have compatible but different types (I4/I8 or R4/R8)
-    comp: comparison function to check the value of nodes. Particularly useful to compare floating point fields
+    strict_value_type (bool): if True, allow comparaison of compatible but different types (I4/I8 or R4/R8).
+      Otherwise, nodes are considered to differ.
+    comp: comparison function to check the value of nodes (see above)
+  Returns:
+    (bool, str, str) : Difference report. First value indicates if trees are identical, second and
+    third store the differences between trees, encoded as strings (respectivly errors and warnings).
   
-  Possible comparison funtions :
-    `maia.pytree.compare_arrays.equal_array_comparison()`: compare exactly
-    `maia.pytree.compare_arrays.field_comparison(tol, comm)`: compare scalar fields with a relative tolerance
-    `maia.pytree.compare_arrays.tensor_field_comparison(tol, comm)`: compare tensor fields with a relative tolerance
+  Example:
+    >>> zone1 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROTOR')
+    >>> zone2 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='STATOR')
+    >>> PT.diff_tree(zone1, zone2)
+    (False, '< /Zone/FamilyName\\n', '')
   """
+
+  """
+  TODO : this functions has been hidden in docstring, because they should be in maia
+  and not in maia.pytree (beause of comm).
+
+  `maia.pytree.compare_arrays.field_comparison(tol, comm)`: compare scalar fields with a relative tolerance
+  `maia.pytree.compare_arrays.tensor_field_comparison(tol, comm)`: compare tensor fields with a relative tolerance
+  """
+  if comp is None:
+    comp = EqualArray()
   v = diff_tree_visitor(strict_value_type, comp)
   zip_depth_first_search([t1,t2], v, depth='all')
   return v.is_ok, v.err_report, v.warn_report
