@@ -7,6 +7,20 @@ from maia.pytree.graph.cgns import step, zip_depth_first_search
 
 __all__ = ['is_same_node', 'is_same_tree', 'diff_tree']
 
+class DiffReport(NamedTuple):
+  """ Stores the output of :func:`diff_tree`
+  
+  Parameters:
+    status (bool): ``True`` if trees are identical
+    errors (str): differences between the two trees
+    warnings (str) : minor differences between the two trees
+  """
+  status:bool
+  errors:str
+  warnings:str
+
+CompFunction = Callable[[List[Tuple[CGNSTree,CGNSTree]]], DiffReport]
+
 # --------------------------------------------------------------------------
 # BASIC COMPARISON
 
@@ -129,9 +143,11 @@ class EqualArray:
     >>> sol2 = PT.new_FlowSolution(fields={'Density' : [1., 1.001, 1.]})
     >>> comp = PT.compare.EqualArray()
     >>> PT.diff_tree(sol1, sol2, comp=comp)
-    (False,
-    '/FlowSolution/Density -- Values differ: [1.    1.002 1.   ] <> [1.    1.001 1.   ]\\n',
-    '')
+    DiffReport(
+      status=False,
+      errors='/FlowSolution/Density -- Values differ: [1.    1.002 1.   ] <> [1.    1.001 1.   ]\\n',
+      warnings=''
+      )
   """
   def __call__(self, nodes_stack):
     node_x,node_ref = nodes_stack[-1]
@@ -156,7 +172,7 @@ class CloseArray:
     >>> sol2 = PT.new_FlowSolution(fields={'Density' : [1., 1.001, 1.]})
     >>> comp = PT.compare.CloseArray(rtol=0, atol=1E-2)
     >>> PT.diff_tree(sol1, sol2, comp=comp)
-    (True, '', '')
+    DiffReport(status=True, errors='', warnings='')
   """
   def __init__(self, rtol=1e-05, atol=1e-08):
     self.rtol = rtol
@@ -206,15 +222,15 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
   else:
     next_step = step.into # since everything it the same up to now, continue comparing children
 
+    name = PT.get_name(n0)
+    vkind = PT.get_value_type(n0)
     if not is_same_label(n0,n1):
       err_report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
     elif not is_same_value_type(n0, n1, strict_value_type):
       err_report = path + PT.get_name(n0) + ' -- Value types differ: ' + str(PT.get_value_type(n0)) + ' <> ' + str(PT.get_value_type(n1)) + '\n'
-    elif not is_same_value_shape(n0, n1):
+    elif not is_same_value_shape(n0, n1) and vkind != 'C1': #Filter str, because we do a full print for it
       err_report = path + PT.get_name(n0) + ' -- Value shape differ: ' + str(n0[1].shape) + ' <> ' + str(n1[1].shape) + '\n'
     else:
-      name = PT.get_name(n0)
-      vkind = PT.get_value_type(n0) # Both nodes have comparable value kind
       if vkind == 'MT':
         is_ok, err_report, warn_report = True, '', ''
       elif vkind == 'C1': # STR
@@ -246,9 +262,6 @@ class diff_tree_visitor:
     self.warn_report += warn_report
     return next_step
 
-DiffReport = Tuple[bool,str,str]
-CompFunction = Callable[[List[Tuple[CGNSTree,CGNSTree]]], DiffReport]
-
 def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunction = None) -> DiffReport:
   """ Report the differences between two trees
 
@@ -256,11 +269,10 @@ def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunct
   the two input trees. In addition, it is possible to provide a custom comparison function 
   for numerical arrays or to choose one in the following list:
 
-  - :class:`maia.pytree.compare.EqualArray`: compare exactly. Two arrays are equal if all their
-    elements one-to-one are equal. This is the default comparison method.
-  - :class:`maia.pytree.compare.CloseArray`: compare exactly. Two arrays are equal if all their
-    elements are close, up to a given tolerance.
-
+  - :class:`maia.pytree.compare.EqualArray`: two arrays are equal if all their
+    elements are one-to-one exactly equal. This is the default comparison method.
+  - :class:`maia.pytree.compare.CloseArray`: two arrays are equal if all their
+    elements are one-to-one close up to a given tolerance.
 
   Args:
     t1 (CGNSTree): first tree
@@ -269,14 +281,14 @@ def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunct
       Otherwise, nodes are considered to differ.
     comp: comparison function to check the value of nodes (see above)
   Returns:
-    (bool, str, str) : Difference report. First value indicates if trees are identical, second and
+    (:class:`~maia.pytree.compare.DiffReport`) : Difference report. First value indicates if trees are identical, second and
     third store the differences between trees, encoded as strings (respectivly errors and warnings).
   
   Example:
     >>> zone1 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROW1')
     >>> zone2 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROW2')
     >>> PT.diff_tree(zone1, zone2)
-    (False, '/Zone/FamilyName -- Values differ: ROW1 <> ROW2\n', '')
+    DiffReport(status=False, errors='/Zone/FamilyName -- Values differ: ROW1 <> ROW2\\n', warnings='')
   """
 
   """
@@ -290,4 +302,4 @@ def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunct
     comp = EqualArray()
   v = diff_tree_visitor(strict_value_type, comp)
   zip_depth_first_search([t1,t2], v, depth='all')
-  return v.is_ok, v.err_report, v.warn_report
+  return DiffReport(v.is_ok, v.err_report, v.warn_report)
