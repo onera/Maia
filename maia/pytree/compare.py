@@ -149,8 +149,8 @@ class EqualArray:
       warnings=''
       )
   """
-  def __call__(self, nodes_stack):
-    node_x,node_ref = nodes_stack[-1]
+  def __call__(self, nodes_1, nodes_2):
+    node_x, node_ref = nodes_1[-1], nodes_2[-1]
     x   = PT.get_value(node_x, raw=True)
     ref = PT.get_value(node_ref, raw=True)
     eq = np.equal(x, ref)
@@ -177,16 +177,16 @@ class CloseArray:
   def __init__(self, rtol=1e-05, atol=1e-08):
     self.rtol = rtol
     self.atol = atol
-  def __call__(self, nodes_stack):
-    node_x,node_ref = nodes_stack[-1]
+  def __call__(self, nodes_1, nodes_2):
+    node_x,node_ref = nodes_1[-1], nodes_2[-1]
     x   = PT.get_value(node_x, raw=True)
     ref = PT.get_value(node_ref, raw=True)
     close = np.isclose(x, ref, self.atol, self.rtol)
     return _report_diff(x, ref, close)
 
 
-def str_comp(nodes_stack):
-  node_x,node_ref = nodes_stack[-1]
+def str_comp(nodes_1, nodes_2):
+  node_x,node_ref = nodes_1[-1], nodes_2[-1]
   x   = PT.get_value(node_x, raw=True)
   ref = PT.get_value(node_ref, raw=True)
   if np.array_equal(x,ref):
@@ -202,6 +202,14 @@ def _zip_path(ns):
     assert name0 == name1
     path += name0 + '/'
   return path
+
+def _unzip_pairs(pairs):
+  first = []
+  second = []
+  for pair in pairs:
+    first.append(pair[0])
+    second.append(pair[1])
+  return first, second
 
 def diff_nodes(nodes_stack, strict_value_type, value_comp):
   n0,n1 = nodes_stack[-1]
@@ -224,6 +232,7 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
 
     name = PT.get_name(n0)
     vkind = PT.get_value_type(n0)
+    stack_1, stack_2 = _unzip_pairs(nodes_stack)
     if not is_same_label(n0,n1):
       err_report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
     elif not is_same_value_type(n0, n1, strict_value_type):
@@ -234,9 +243,9 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
       if vkind == 'MT':
         is_ok, err_report, warn_report = True, '', ''
       elif vkind == 'C1': # STR
-        is_ok, err_report, warn_report = str_comp(nodes_stack)
+        is_ok, err_report, warn_report = str_comp(stack_1, stack_2)
       else: #Numerics -> call value_comp
-        is_ok, err_report, warn_report = value_comp(nodes_stack)
+        is_ok, err_report, warn_report = value_comp(stack_1, stack_2)
         if hasattr(value_comp,'modify_name'):
           name = value_comp.modify_name(name)
       if err_report != '':

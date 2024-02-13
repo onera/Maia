@@ -66,16 +66,20 @@ def test_report_diff():
   is_equal[::2] = False
   assert CP._report_diff(x, x, is_equal) == (False, '10 values are different', '')
 
+def test_unzip_pairs():
+  first, second = CP._unzip_pairs([['a', 1], ['b', 2], ['c', None]])
+  assert first == ['a', 'b', 'c']
+  assert second == [1,2,None]
+
 def test_str_comp():
   node_1 = PT.new_node('Des', 'Descriptor_t', 'VAL')
   node_2 = PT.new_node('Des', 'Descriptor_t', 'VALUE')
-  node_stack = [(node_1, node_2)]
-  assert CP.str_comp(node_stack) == (False, 'VAL <> VALUE', '')
+  assert CP.str_comp([node_1], [node_2]) == (False, 'VAL <> VALUE', '')
   PT.set_value(node_1, ["Array", "of", "str"])
   PT.set_value(node_2, ["Array", "of", "str"])
-  assert CP.str_comp(node_stack) == (True, '', '')
+  assert CP.str_comp([node_1], [node_2]) == (True, '', '')
   PT.set_value(node_2, ["array", "of", "strs"])
-  assert CP.str_comp(node_stack) == (False, "['Array', 'of', 'str'] <> ['array', 'of', 'strs']", '')
+  assert CP.str_comp([node_1], [node_2]) == (False, "['Array', 'of', 'str'] <> ['array', 'of', 'strs']", '')
 
 def test_is_same_tree():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:

@@ -40,8 +40,8 @@ def equal_array_report(x, ref, comm):
 class EqualArray:
   def __init__(self, comm=MPI.COMM_SELF):
     self.comm = comm
-  def __call__(self, nodes_stack):
-    node_x,node_ref = nodes_stack[-1]
+  def __call__(self, stack1, stack2):
+    node_x,node_ref = stack1[-1], stack2[-1]
     x   = PT.get_value(node_x)
     ref = PT.get_value(node_ref)
     return equal_array_report(x, ref, self.comm)
@@ -131,14 +131,14 @@ class FieldComparison(EqualArray):
   def __init__(self, tol, comm):
     EqualArray.__init__(self, comm)
     self.tol = tol
-  def __call__(self, nodes_stack):
-    node_x,node_ref = nodes_stack[-1]
+  def __call__(self, stack1, stack2):
+    node_x,node_ref = stack1[-1], stack2[-1]
     x   = PT.get_value(node_x,raw=True)
     ref = PT.get_value(node_ref,raw=True)
     if x.dtype.kind == 'f':
       return relative_norm_comparison(self.tol, self.comm)(x, ref)
     else:
-      return EqualArray.__call__(self, nodes_stack)
+      return EqualArray.__call__(self, stack1, stack2)
 
 
 def _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref):
@@ -185,13 +185,13 @@ class TensorFieldComparison(EqualArray):
     EqualArray.__init__(self, comm)
     self.tol = tol
 
-  def __call__(self, nodes_stack):
-    node_x,node_ref = nodes_stack[-1]
+  def __call__(self, stack1, stack2):
+    node_x,node_ref = stack1[-1], stack2[-1]
     name_x = PT.get_name(node_x)
     x   = PT.get_value(node_x,raw=True)
     ref = PT.get_value(node_ref,raw=True)
     if PT.get_label(node_x) == 'DataArray_t' and x.dtype.kind == 'f':
-      parent_x,parent_ref = nodes_stack[-2]
+      parent_x,parent_ref = stack1[-2], stack2[-2]
       if name_x[-2:] in suffixes_rank_2:
         if name_x[-2:] == 'XX':
           tensor_name = name_x[:-2]
@@ -207,4 +207,4 @@ class TensorFieldComparison(EqualArray):
       else: # scalar
         return relative_norm_comparison(self.tol, self.comm)(x, ref)
     else:
-      return EqualArray.__call__(self, nodes_stack)
+      return EqualArray.__call__(self, stack1, stack2)
