@@ -6,7 +6,7 @@ from .node_walkers  import NodeWalkers
 from .nodes_walkers import NodesWalkers
 from .predicate     import auto_predicate, auto_predicates
 
-from maia.pytree.compare import CGNSNodeFromPredicateNotFoundError
+from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
 
 # ---------------------------------------------------------------------------- #
 # API for NodeWalker

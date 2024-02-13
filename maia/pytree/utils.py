@@ -1,6 +1,22 @@
+import sys
+if sys.version_info.major == 3 and sys.version_info.major < 8:
+  from collections.abc import Iterable  # < py38
+else:
+  from typing import Iterable
+
 import numpy as np
 
 import maia.pytree as PT
+
+# https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
+def flatten_cgns(items):
+  from maia.pytree.node.check import is_valid_node
+  """Yield items from any nested iterable; see Reference."""
+  for x in items:
+    if isinstance(x, Iterable) and not isinstance(x, (str, bytes)) and not is_valid_node(x):
+      yield from flatten_cgns(x)
+    else:
+      yield x
 
 def _gc_transform_point(index_1, start_1, start_2, tr):
     return np.matmul(tr, (index_1 - start_1)) + start_2

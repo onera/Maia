@@ -15,7 +15,7 @@ from .remove_nodes import rm_children_from_predicate
 from .remove_nodes import keep_children_from_predicate
 from .remove_nodes import rm_nodes_from_predicate
 
-from maia.pytree.compare import CGNSNodeFromPredicateNotFoundError
+from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
 
 def _update_module_attributes(new_functions):
   for name, func in new_functions.items():

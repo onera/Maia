@@ -1,9 +1,3 @@
-import sys
-if sys.version_info.major == 3 and sys.version_info.major < 8:
-  from collections.abc import Iterable  # < py38
-else:
-  from typing import Iterable
-from functools import wraps
 import numpy as np
 
 from maia.pytree.typing import *
@@ -11,59 +5,7 @@ from maia.pytree.typing import *
 import maia.pytree as PT
 from maia.pytree.graph.cgns import step, zip_depth_first_search
 
-
-class CGNSNodeFromPredicateNotFoundError(Exception):
-    """
-    Attributes:
-        node (List): CGNS node
-        name (str): Name of the CGNS Name
-    """
-    def __init__(self, node: List, predicate):
-        self.node = node
-        self.predicate = predicate
-        super().__init__()
-
-    def __str__(self):
-        return f"Unable to find the predicate '{self.predicate}' from the CGNS node '[n:{PT.get_name(self.node)}, ..., l:{PT.get_label(self.node)}]"
-
-class CGNSLabelNotEqualError(Exception):
-    """
-    Attributes:
-        node (List): CGNS node
-        label (str): Name of the CGNS Label
-    """
-    def __init__(self, node: List, label: str):
-        self.node  = node
-        self.label = label
-        super().__init__()
-
-    def __str__(self):
-        return f"Expected a CGNS node with label '{self.label}', '[n:{PT.get_name(self.node)}, ..., l:{PT.get_label(self.node)}]' found here."
-
-
-# --------------------------------------------------------------------------
-def check_is_label(label, n=0):
-  def _check_is_label(f):
-    @wraps(f)
-    def wrapped_method(*args, **kwargs):
-      node = args[n]
-      if PT.get_label(node) != label:
-        raise CGNSLabelNotEqualError(node, label)
-      return f(*args, **kwargs)
-    return wrapped_method
-  return _check_is_label
-
-# --------------------------------------------------------------------------
-def check_in_labels(labels, n=0):
-  def _check_in_labels(f):
-    @wraps(f)
-    def wrapped_method(*args, **kwargs):
-      node = args[n]
-      if PT.get_label(node) not in labels:
-        raise CGNSLabelNotEqualError(node, labels)
-      return f(*args, **kwargs)
-    return wrapped_method
-  return _check_in_labels
+__all__ = ['is_same_node', 'is_same_tree', 'diff_tree']
 
 # --------------------------------------------------------------------------
 # BASIC COMPARISON
@@ -331,10 +273,10 @@ def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunct
     third store the differences between trees, encoded as strings (respectivly errors and warnings).
   
   Example:
-    >>> zone1 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROTOR')
-    >>> zone2 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='STATOR')
+    >>> zone1 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROW1')
+    >>> zone2 = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROW2')
     >>> PT.diff_tree(zone1, zone2)
-    (False, '< /Zone/FamilyName\\n', '')
+    (False, '/Zone/FamilyName -- Values differ: ROW1 <> ROW2\n', '')
   """
 
   """
@@ -349,14 +291,3 @@ def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunct
   v = diff_tree_visitor(strict_value_type, comp)
   zip_depth_first_search([t1,t2], v, depth='all')
   return v.is_ok, v.err_report, v.warn_report
-
-# --------------------------------------------------------------------------
-# https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
-def flatten_cgns(items):
-  from maia.pytree.node.check import is_valid_node
-  """Yield items from any nested iterable; see Reference."""
-  for x in items:
-    if isinstance(x, Iterable) and not isinstance(x, (str, bytes)) and not is_valid_node(x):
-      yield from flatten_cgns(x)
-    else:
-      yield x

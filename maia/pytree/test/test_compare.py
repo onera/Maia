@@ -11,36 +11,6 @@ from maia.pytree import compare as CP
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-def test_check_is_label():
-  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
-
-  @CP.check_is_label('Zone_t')
-  def apply_zone(node):
-    pass
-
-  for zone in PT.get_all_Zone_t(tree):
-    apply_zone(zone)
-
-  with pytest.raises(CP.CGNSLabelNotEqualError):
-    for zone in PT.get_all_CGNSBase_t(tree):
-      apply_zone(zone)
-
-def test_check_in_labels():
-  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
-
-  @CP.check_in_labels(['Zone_t', 'CGNSBase_t'])
-  def foo(node):
-    pass
-
-  for zone in PT.get_all_Zone_t(tree):
-    foo(zone)
-  for zone in PT.get_all_CGNSBase_t(tree):
-    foo(zone)
-  with pytest.raises(CP.CGNSLabelNotEqualError):
-    foo(tree)
-
 def test_is_same_value_type():
   node1 = PT.new_node('Data', 'DataArray_t', value=None)
   node2 = PT.new_node('Data', 'DataArray_t', value=None)

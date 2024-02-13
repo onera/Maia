@@ -3,7 +3,7 @@ import maia.pytree as PT
 
 from maia.pytree.typing import *
 
-from maia.pytree.compare import check_is_label
+from maia.pytree.meta import check_is_label
 
 import warnings
 

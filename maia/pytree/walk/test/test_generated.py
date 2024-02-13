@@ -1,13 +1,13 @@
 import pytest
 import numpy as np
 import fnmatch
-import os
 
 from itertools import chain
 
 from maia.pytree.cgns_keywords import Label as CGL
 
 import maia.pytree as PT
+from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
 
 from maia.pytree.yaml   import parse_yaml_cgns
 
@@ -80,7 +80,7 @@ def test_generated_walkers():
   assert PT.get_nodes_from_name_and_label(tree, "Index_iii", "IndexArray_t") == \
          PT.get_nodes_from_predicate(tree, lambda n: PT.get_label(n) == "IndexArray_t" and PT.get_name(n) == "Index_iii")
 
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
     PT.request_node_from_name(tree, "Zzz")
 
   assert PT.get_child_from_name(tree, "ZoneI") is None

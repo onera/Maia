@@ -3,6 +3,8 @@ import pytest
 import maia.pytree as PT
 from maia.pytree.yaml   import parse_yaml_cgns
 
+from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
+
 yt = """
 Zone Zone_t:
   ZoneBC ZoneBC_t:
@@ -28,7 +30,7 @@ def test_request_node_from_predicate():
 
   assert PT.request_node_from_predicate(tree, 'bc2') is not None
   assert PT.requestNodeFromPredicate(tree, 'bc2') == PT.request_node_from_predicate(tree, 'bc2')
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
     PT.request_node_from_predicate(tree, 'bc8')
   assert PT.request_node_from_predicate(tree, 'bc8', default=tree)[0] == "Zone"
 
