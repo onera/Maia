@@ -290,7 +290,6 @@ class Test_unit:
       dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
       part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
-
       for zone in PT.get_all_Zone_t(part_tree):
         # Recover the intial cartesian coordinates
         coords = PT.Zone.coordinates(zone)
@@ -444,10 +443,10 @@ class Test_unit:
           transform.cartesian_to_cylindric_from_unit_revolution_axis(part_tree, revolution_axis=(0, 0, 0))
 
 #%%%
+@pytest.mark.parametrize('revolution_axis', [(1, 1, 0), [2, 2, 0]])
 @pytest_parallel.mark.parallel([1, 2]) 
 class Test_cart_to_cyl:
-  revolution_axis = [1, 1, 0] 
-  def test_cartesian_to_cylindric_S(self, comm):
+  def test_cartesian_to_cylindric_S(self, revolution_axis, comm):
 
     import maia
     import maia.pytree as PT
@@ -474,27 +473,34 @@ class Test_cart_to_cyl:
     part_tree_cart_ref = copy.deepcopy(part_tree)
 
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindric(part_tree, revolution_axis=self.revolution_axis, gc_name='GridCoordinatesBis')
+    transform.cartesian_to_cylindric(part_tree, revolution_axis=revolution_axis, gc_name='GridCoordinatesBis')
     assert PT.is_same_tree(part_tree_cart_ref, part_tree)
-    transform.cartesian_to_cylindric(part_tree, revolution_axis=self.revolution_axis)  
+    transform.cartesian_to_cylindric(part_tree, revolution_axis=revolution_axis)  
      
     if comm.size == 1:
-      radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 1., 1.11803399, 1.41421356, 1.11803399, 1., 1.11803399, 1.41421356, 
-                    1.11803399, 1., 2., 2.06155281, 2.23606798, 2.06155281, 2., 2.06155281, 2.23606798, 2.06155281, 2.]
-      theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.03444394, 2.35619449, 1.10714872, 1.57079633, 2.03444394, 0.78539816, 
-                    1.10714872, 1.57079633, 1.57079633, 1.81577499, 2.03444394, 1.32581766, 1.57079633, 1.81577499, 1.10714872, 1.32581766, 1.57079633]
-      z_ref      = [0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2.]
+      radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254,
+                    1.22474487, 0.8660254, 0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
+      theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 2.52611294, 
+                    0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633, 1.57079633, 1.91063324, 
+                    2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
+      z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
+                    0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 
+                    0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
     elif comm.size == 2:
       if comm.rank ==0 :
-        radius_ref = [0., 0.5, 0.5, 0., 1., 0.5, 1., 1.11803399, 1.11803399, 1., 1.41421356, 1.11803399, 2., 2.06155281, 2.06155281, 2., 2.23606798, 2.06155281]
-        theta_ref  = [0., 3.14159265, 0., 0., 0., 0., 1.57079633, 2.03444394, 1.10714872, 1.57079633, 0.78539816, 
-                      1.10714872, 1.57079633, 1.81577499, 1.32581766, 1.57079633, 1.10714872, 1.32581766]
-        z_ref      = [0., 0.5, 0.5, 1., 1., 1.5, 0., 0.5, 0.5, 1., 1., 1.5, 0., 0.5, 0.5, 1., 1., 1.5]
+        radius_ref = [0., 0.5, 0.5, 0. , 1., 0.5, 0.70710678, 0.8660254, 0.8660254, 0.70710678,
+                      1.22474487, 0.8660254, 1.41421356, 1.5, 1.5, 1.41421356, 1.73205081, 1.5]
+        theta_ref  = [0., 3.14159265, 0., 0., 0., 0., 1.57079633, 2.18627604, 0.95531662, 1.57079633, 0.61547971,
+                      0.95531662, 1.57079633, 1.91063324, 1.23095942, 1.57079633, 0.95531662, 1.23095942]
+        z_ref      = [0., 0.35355339, 0.35355339, 0.70710678, 0.70710678, 1.06066017, 0., 0.35355339, 0.35355339, 
+                      0.70710678, 0.70710678, 1.06066017, 0., 0.35355339, 0.35355339, 0.70710678, 0.70710678, 1.06066017]
       elif comm.rank == 1:
-        radius_ref = [0.5, 1., 0., 0.5, 0.5, 0., 1.11803399, 1.41421356, 1., 1.11803399, 1.11803399, 1., 2.06155281, 2.23606798, 2., 2.06155281, 2.06155281, 2.]
-        theta_ref  = [3.14159265, 3.14159265, 0., 3.14159265, 0., 0., 2.03444394, 2.35619449, 1.57079633, 2.03444394,
-                      1.10714872, 1.57079633, 1.81577499, 2.03444394, 1.57079633, 1.81577499, 1.32581766, 1.57079633]
-        z_ref      = [0.5, 1., 1., 1.5, 1.5, 2., 0.5, 1., 1., 1.5, 1.5, 2., 0.5, 1., 1., 1.5, 1.5, 2.]
+        radius_ref = [0.5, 1., 0., 0.5, 0.5, 0., 0.8660254, 1.22474487, 0.70710678, 0.8660254, 
+                      0.8660254, 0.70710678, 1.5, 1.73205081, 1.41421356, 1.5, 1.5, 1.41421356]
+        theta_ref  = [3.14159265, 3.14159265, 0., 3.14159265, 0., 0., 2.18627604, 2.52611294, 1.57079633, 2.18627604,
+                      0.95531662, 1.57079633, 1.91063324, 2.18627604, 1.57079633, 1.91063324, 1.23095942, 1.57079633]
+        z_ref      = [0.35355339, 0.70710678, 0.70710678, 1.06066017, 1.06066017, 1.41421356, 0.35355339, 0.70710678, 0.70710678, 
+                      1.06066017, 1.06066017, 1.41421356, 0.35355339, 0.70710678, 0.70710678, 1.06066017, 1.06066017, 1.41421356]
 
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
@@ -521,11 +527,11 @@ class Test_cart_to_cyl:
       assert np.allclose(z_ref, fs_coords[0].flatten('F'))
       assert np.allclose(z_ref, zsr_coords[0].flatten('F'))
       assert np.allclose(z_ref, dd_coords[0].flatten('F'))
-
+  
       with pytest.raises(AssertionError):
         transform.cartesian_to_cylindric(part_tree, revolution_axis=(0, 0, 0))
 
-  def test_cartesian_to_cylindric_U(self, comm):
+  def test_cartesian_to_cylindric_U(self,revolution_axis, comm):
 
       import maia
       import maia.pytree as PT
@@ -534,7 +540,7 @@ class Test_cart_to_cyl:
       
       dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
       part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-      
+
       for zone in PT.get_all_Zone_t(part_tree):
         # Recover the intial cartesian coordinates
         coords = PT.Zone.coordinates(zone)
@@ -552,28 +558,33 @@ class Test_cart_to_cyl:
       part_tree_cart_ref = copy.deepcopy(part_tree)
 
       # Transform cartesian coordinates and fields into cylindric from any revolution axis
-      transform.cartesian_to_cylindric(part_tree, revolution_axis=self.revolution_axis, gc_name='GridCoordinatesBis')
+      transform.cartesian_to_cylindric(part_tree, revolution_axis=revolution_axis, gc_name='GridCoordinatesBis')
       assert PT.is_same_tree(part_tree_cart_ref, part_tree)
-      transform.cartesian_to_cylindric(part_tree, revolution_axis=self.revolution_axis)
+      transform.cartesian_to_cylindric(part_tree, revolution_axis=revolution_axis)
 
       if comm.size == 1:
-        radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 1., 1.11803399, 1.41421356, 1.11803399, 1., 1.11803399, 1.41421356, 
-                      1.11803399, 1., 2., 2.06155281, 2.23606798, 2.06155281, 2., 2.06155281, 2.23606798, 2.06155281, 2.]
-        theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.03444394, 2.35619449, 1.10714872, 1.57079633, 2.03444394, 0.78539816,
-                      1.10714872, 1.57079633, 1.57079633, 1.81577499, 2.03444394, 1.32581766, 1.57079633, 1.81577499, 1.10714872, 1.32581766, 1.57079633]
-        z_ref      = [0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2.]
+        radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 
+                      0.8660254 , 0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
+        theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 
+                      0.95531662, 1.57079633, 1.57079633, 1.91063324, 2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
+        z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 0.35355339,
+                      0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 0.35355339,
+                      0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
       elif comm.size == 2:
         if comm.rank == 0 :
-          radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 1., 1.11803399, 1.41421356, 1.11803399, 1., 1.11803399, 1.41421356, 1.11803399, 1.]
-          theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.03444394, 
-                        2.35619449, 1.10714872, 1.57079633, 2.03444394, 0.78539816, 1.10714872, 1.57079633]
-          z_ref      = [0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2.]
+          radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 
+                        0.8660254, 0.70710678, 0.8660254, 1.22474487, 0.8660254 , 0.70710678]
+          theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 
+                        2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633]
+          z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
+                        0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
         elif comm.rank == 1:
-          radius_ref = [1., 1.11803399, 1.41421356, 1.11803399, 1., 1.11803399, 1.41421356, 1.11803399, 1., 2., 
-                        2.06155281, 2.23606798, 2.06155281, 2., 2.06155281, 2.23606798, 2.06155281, 2.]
-          theta_ref  = [1.57079633, 2.03444394, 2.35619449, 1.10714872, 1.57079633, 2.03444394, 0.78539816, 1.10714872, 1.57079633,
-                        1.57079633, 1.81577499, 2.03444394, 1.32581766, 1.57079633, 1.81577499, 1.10714872, 1.32581766, 1.57079633]
-          z_ref      = [0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2., 0., 0.5, 1., 0.5, 1., 1.5, 1., 1.5, 2.]
+          radius_ref = [0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 0.8660254,
+                        0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
+          theta_ref  = [1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633, 
+                        1.57079633, 1.91063324, 2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
+          z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
+                        0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
         
       for zone in PT.get_all_Zone_t(part_tree):
         # Recover coordinates and fields in the new basis
@@ -717,7 +728,6 @@ class Test_transform:
       transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=self.revolution_axis, name='FlowSolution', basename='FS')
       transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=self.revolution_axis, name='ZoneSubRegion', basename='ZSR')
       transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=self.revolution_axis, name='DiscreteData', basename='DD')
-
 
       # Recover coordinates and fields in the new basis
       gc_n = PT.get_nodes_from_predicates(zone, 'GridCoordinates/DataArray_t')
