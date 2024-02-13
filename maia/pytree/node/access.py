@@ -230,8 +230,7 @@ def get_children(node:CGNSTree) -> List[CGNSTree]:
   return node[2]
 
 def add_child(node:CGNSTree, child:CGNSTree):
-  """
-  Append a child node to the children list of a CGNSNode
+  """ Append a child node to the children list of a CGNSNode
 
   Args:
     node (CGNSTree): Input node
@@ -250,6 +249,21 @@ def add_child(node:CGNSTree, child:CGNSTree):
   node[2].append(child)
 
 def rm_child(node:CGNSTree, child:CGNSTree):
+  """ Remove the node ``child`` to the children list of node ``node``
+
+  Args:
+    node (CGNSTree): Input node
+    child (CGNSTree): Child node to remove
+  Raises:
+    RuntimeError: If ``child`` does not exists in ``node`` children list
+  Example:
+    >>> node = PT.new_node('Zone', 'Zone_t')
+    >>> child = PT.new_node('ZoneType', 'ZoneType_t', 'Structured')
+    >>> PT.add_child(node, child)
+    >>> PT.rm_child(node, child)
+    >>> PT.get_children(node)
+    []
+  """
   if child is None:
     return
   sub_nodes = get_children(node)

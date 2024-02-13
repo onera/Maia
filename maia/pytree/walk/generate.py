@@ -115,13 +115,46 @@ def request_node_from_path(root:CGNSTree, path:str, default:CGNSTree=None) -> CG
     return default
   raise CGNSNodeFromPredicateNotFoundError(root, path)
 
-def rm_node_from_path(root:CGNSTree, path:str):
+def pop_node_from_path(root:CGNSTree, path:str) -> CGNSTree:
   from maia.pytree.path_utils import path_head, path_tail
   if not '/' in path:
-    rm_children_from_name(root, path)
+    parent = root
+    name = path
   else:
     parent = get_node_from_path(root, path_head(path))
-    rm_nodes_from_name(parent, path_tail(path))
+    name = path_tail(path)
+
+  node = None
+  if parent is not None:
+    for i, child in enumerate(parent[2]):
+      if child[0] == name:
+        node = parent[2].pop(i)
+        break
+  return node
+
+def rm_node_from_path(root:CGNSTree, path:str):
+  """ Remove the node in input tree matching the given path
+
+  A path is a str containing a full list of names, separated by ``'/'``, leading
+  to the node to remove. Root name should not be included in path.
+  Wildcards are not accepted in path.
+
+  Args:
+    root (CGNSTree): Tree is which the search is performed
+    path (str): path of the node to remove
+  Example:
+    >>> zone = PT.new_Zone('Zone')
+    >>> PT.new_FlowSolution('FS', fields={'Density' : [1.], 'Temperature' : [273.]}, parent=zone)
+    >>> PT.rm_node_from_path(zone, 'FS/Density')
+    >>> PT.print_tree(zone)
+    Zone Zone_t 
+    ├───ZoneType ZoneType_t "Null"
+    └───FS FlowSolution_t 
+        └───Temperature DataArray_t R4 [273.]
+  See also:
+    Also exists as :func:`pop_node_from_path`, which removes the node and returns it.
+  """
+  pop_node_from_path(root, path)
 
 def get_all_Zone_t(root:CGNSTree) -> List[CGNSTree]:
   """ Return the list of all the Zone_t nodes found in input tree

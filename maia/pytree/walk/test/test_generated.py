@@ -129,6 +129,16 @@ def test_request_node_from_path():
    PT.request_node_from_path(tree, 'Base/Zone/ZGCB/gc3')
 
 
+def test_pop_node_from_path():
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  zgc = PT.get_node_from_name(tree, 'ZGCA')
+  zgc_bck = PT.deep_copy(zgc)
+  node = PT.pop_node_from_path(zgc, 'gc1/NonExistingNode')
+  assert node is None and PT.is_same_tree(zgc, zgc_bck)
+  node = PT.pop_node_from_path(zgc, 'gc1/Index_i')
+  assert node[0] == 'Index_i'
+  assert PT.get_node_from_name(tree, 'Index_i') is None
+
 def test_rm_node_from_path():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
   zgc = PT.get_node_from_name(tree, 'ZGCA')

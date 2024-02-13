@@ -14,6 +14,35 @@ Tree construction
 .. autofunction:: maia.pytree.shallow_copy
 .. autofunction:: maia.pytree.deep_copy
 
+Tree editing
+------------
+
+Removing nodes
+^^^^^^^^^^^^^^
+
+Functions removing nodes reuses the concept of predicate described in the
+:ref:`pt_node_search` page, which we advise users to read in first place.
+
+However, there is much less variability and options when using remove functions:
+there is no equivalent of chaining searches (no ``predicates`` version), and
+the only additional parameter is the depth until which nodes are inspected for suppression.
+In addition, only the variant removing all the matches is provided,
+leading to the following generic function:
+
+.. autofunction:: maia.pytree.rm_nodes_from_predicate
+
+For convenience, we also provide the :func:`~maia.pytree.keep_children_from_predicate`
+form which remove the children nodes that *do not* match the predicate.
+Note that unlike :func:`~maia.pytree.rm_nodes_from_predicate`, this function is limited
+to the first level of children.
+
+.. autofunction:: maia.pytree.keep_children_from_predicate
+
+When the node to remove is known, it is also possible to directly remove
+it from its path:
+
+.. autofunction:: maia.pytree.rm_node_from_path
+
 Tree comparisons
 ----------------
 
