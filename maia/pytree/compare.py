@@ -80,6 +80,13 @@ def is_same_value_type(n0: CGNSTree, n1: CGNSTree, strict=True) -> bool:
   else:
     return PT.get_value_kind(n0) == PT.get_value_kind(n1)
 
+def is_same_value_shape(n0: CGNSTree, n1: CGNSTree) -> bool:
+  val0 = PT.get_value(n0, raw=True)
+  val1 = PT.get_value(n1, raw=True)
+  shape0 = val0.shape if val0 is not None else None
+  shape1 = val1.shape if val1 is not None else None
+  return shape0 == shape1
+
 
 def is_same_value(n0: CGNSTree, n1: CGNSTree, abs_tol:float=0., type_tol=False) -> bool:
   """ Compare the values of two single nodes. Node are considered equal if
@@ -93,6 +100,8 @@ def is_same_value(n0: CGNSTree, n1: CGNSTree, abs_tol:float=0., type_tol=False) 
     return False
   if n0[1] is None:
     return True
+  elif not is_same_value_shape(n0, n1):
+    return False
   elif n0[1].dtype.kind == 'f':
     return np.allclose(n0[1], n1[1], rtol=0, atol=abs_tol)
   else:
@@ -218,22 +227,14 @@ class CloseArray:
     return _report_diff(x, ref, close)
 
 
-def value_comparison_report(nodes_stack, comp):
-  """ Compare the values of two single nodes. Node are considered equal if
-  they have
-  - same data type (if type_tol is True, only kind of types are considered equal e.g.
-    I4 & I8 have not same type, but have same type kind
-  - same array len
-  - same value for each element, up to the absolute tolerance abs_tol when array kind is floats
-  """
-  n0,n1 = nodes_stack[-1]
-  v0 = PT.get_value(n0, raw=True)
-  v1 = PT.get_value(n1, raw=True)
-  if v0 is None and v1 is None:
+def str_comp(nodes_stack):
+  node_x,node_ref = nodes_stack[-1]
+  x   = PT.get_value(node_x, raw=True)
+  ref = PT.get_value(node_ref, raw=True)
+  if np.array_equal(x,ref):
     return True, '', ''
   else:
-    assert v0 is not None and v1 is not None
-    return comp(nodes_stack)
+    return False, f'{PT.get_value(node_x)} <> {PT.get_value(node_ref)}', ''
 
 def _zip_path(ns):
   path = '/'
@@ -267,11 +268,19 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
       err_report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
     elif not is_same_value_type(n0, n1, strict_value_type):
       err_report = path + PT.get_name(n0) + ' -- Value types differ: ' + str(PT.get_value_type(n0)) + ' <> ' + str(PT.get_value_type(n1)) + '\n'
+    elif not is_same_value_shape(n0, n1):
+      err_report = path + PT.get_name(n0) + ' -- Value shape differ: ' + str(n0[1].shape) + ' <> ' + str(n1[1].shape) + '\n'
     else:
-      is_ok, err_report, warn_report = value_comparison_report(nodes_stack, value_comp)
       name = PT.get_name(n0)
-      if hasattr(value_comp,'modify_name'):
-        name = value_comp.modify_name(name)
+      vkind = PT.get_value_type(n0) # Both nodes have comparable value kind
+      if vkind == 'MT':
+        is_ok, err_report, warn_report = True, '', ''
+      elif vkind == 'C1': # STR
+        is_ok, err_report, warn_report = str_comp(nodes_stack)
+      else: #Numerics -> call value_comp
+        is_ok, err_report, warn_report = value_comp(nodes_stack)
+        if hasattr(value_comp,'modify_name'):
+          name = value_comp.modify_name(name)
       if err_report != '':
         err_report = path + name + ' -- Values differ: ' + err_report + '\n'
       if warn_report != '':

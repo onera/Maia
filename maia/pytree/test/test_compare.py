@@ -51,6 +51,18 @@ def test_is_same_value_type():
   assert CP.is_same_value_type(node1, node2, strict=False)
   assert not CP.is_same_value_type(node1, node2, strict=True)
 
+def test_is_same_value_shape():
+  node1 = PT.new_node('Data', 'DataArray_t', value=[1,2,3])
+  node2 = PT.new_node('Data', 'DataArray_t', value=[4,5,6])
+  assert CP.is_same_value_shape(node1, node2)
+  node1 = PT.new_node('Data', 'DataArray_t', value=[1,2,3])
+  node2 = PT.new_node('Data', 'DataArray_t', value=[4,5,6,7])
+  assert not CP.is_same_value_shape(node1, node2)
+  node1 = PT.new_node('Data', 'DataArray_t', value=[1,2,3])
+  node2 = PT.new_node('Data', 'DataArray_t', value=[[4,5,6]])
+  assert not CP.is_same_value_shape(node1, node2)
+
+
 def test_is_same_value():
   node1 = PT.new_node('Data', 'DataArray_t', value=np.array([1,2,3]))
   node2 = PT.new_node('Data', 'DataArray_t', value=np.array([1,2,3]))
@@ -70,6 +82,30 @@ def test_is_same_node():
   assert not CP.is_same_node(node1, node2)
   node2[0] = 'gc3'
   assert CP.is_same_node(node1, node2) #Children are not compared
+
+def test_report_diff():
+  x = np.array([1., 2., 3])
+  ref = np.array([1., 2., 3.])
+  is_equal = np.ones(3, bool)
+  assert CP._report_diff(x, ref, is_equal) == (True, '', '')
+  x[2] = 4.
+  is_equal[2] = False
+  assert CP._report_diff(x, ref, is_equal) == (False, '[1. 2. 4.] <> [1. 2. 3.]', '')
+  x = np.ones(20) # Values does not matter for this test
+  is_equal = np.ones(20, bool)
+  is_equal[::2] = False
+  assert CP._report_diff(x, x, is_equal) == (False, '10 values are different', '')
+
+def test_str_comp():
+  node_1 = PT.new_node('Des', 'Descriptor_t', 'VAL')
+  node_2 = PT.new_node('Des', 'Descriptor_t', 'VALUE')
+  node_stack = [(node_1, node_2)]
+  assert CP.str_comp(node_stack) == (False, 'VAL <> VALUE', '')
+  PT.set_value(node_1, ["Array", "of", "str"])
+  PT.set_value(node_2, ["Array", "of", "str"])
+  assert CP.str_comp(node_stack) == (True, '', '')
+  PT.set_value(node_2, ["array", "of", "strs"])
+  assert CP.str_comp(node_stack) == (False, "['Array', 'of', 'str'] <> ['array', 'of', 'strs']", '')
 
 def test_is_same_tree():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:

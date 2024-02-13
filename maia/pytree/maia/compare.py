@@ -17,20 +17,13 @@ def equal_array_report(x, ref, comm):
   else:
     sz_tot = comm.allreduce(len(x), MPI.SUM)
 
-    if sz_tot < 10 or type(x)==str or type(ref)==str: # Precondition: string-like to `str` conversions are supposed to be done by the caller
+    if sz_tot < 10:
       xs   = comm.gather(x  , root=0)
       refs = comm.gather(ref, root=0)
 
       if comm.Get_rank() == 0:
-        if type(x)==str:
-          x_tot = ''.join(xs)
-        else:
-          x_tot   = np.concatenate(xs)
-        if type(ref)==str:
-          ref_tot = ''.join(refs)
-        else:
-          ref_tot = np.concatenate(refs)
-
+        x_tot   = np.concatenate(xs)
+        ref_tot = np.concatenate(refs)
         return False, str(x_tot) + ' <> ' + str(ref_tot), ''
       else:
         return False, '', ''
@@ -44,13 +37,14 @@ def equal_array_report(x, ref, comm):
       else:
         return False, '', ''
 
-def equal_array_comparison(comm = MPI.COMM_SELF):
-  def impl(nodes_stack):
+class EqualArray:
+  def __init__(self, comm=MPI.COMM_SELF):
+    self.comm = comm
+  def __call__(self, nodes_stack):
     node_x,node_ref = nodes_stack[-1]
     x   = PT.get_value(node_x)
     ref = PT.get_value(node_ref)
-    return equal_array_report(x, ref, comm)
-  return impl
+    return equal_array_report(x, ref, self.comm)
 
 
 def _close_in_relative_norm(x, ref, tol, comm):
@@ -127,22 +121,24 @@ def relative_norm_comparison(tol, comm, n_dim=1):
   return impl
 
 
-def field_comparison(tol, comm):
+class FieldComparison(EqualArray):
   """ Creates a function to compare scalar fields with a relative tolerance
 
   Args:
     tol (Float): tolerance
     comm (MPIComm): MPI communicator on which to call the collective comparison
   """
-  def impl(nodes_stack):
+  def __init__(self, tol, comm):
+    EqualArray.__init__(self, comm)
+    self.tol = tol
+  def __call__(self, nodes_stack):
     node_x,node_ref = nodes_stack[-1]
     x   = PT.get_value(node_x,raw=True)
     ref = PT.get_value(node_ref,raw=True)
-    if x is not None and not isinstance(x,str) and x.dtype.kind == 'f':
-      return relative_norm_comparison(tol, comm)(x, ref)
+    if x.dtype.kind == 'f':
+      return relative_norm_comparison(self.tol, self.comm)(x, ref)
     else:
-      return equal_array_comparison(comm)(nodes_stack)
-  return impl
+      return EqualArray.__call__(self, nodes_stack)
 
 
 def _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref):
@@ -164,7 +160,7 @@ def relative_norm_comparison_rank_2(tol, comm, tensor_name, x, ref):
   return _relative_norm_comparison(tol, comm, tensor_name, suffixes_rank_2, x, ref)
 
 
-def tensor_field_comparison(tol, comm):
+class TensorFieldComparison(EqualArray):
   """ Creates a function to compare tensor fields with a relative tolerance
 
   To identify tensors, the functions looks at the name of the current field.
@@ -175,40 +171,40 @@ def tensor_field_comparison(tol, comm):
     tol (Float): tolerance
     comm (MPIComm): MPI communicator on which to call the collective comparison
   """
-  class impl:
-    @staticmethod
-    def __call__(nodes_stack):
-      node_x,node_ref = nodes_stack[-1]
-      name_x = PT.get_name(node_x)
+  @staticmethod
+  def modify_name(path): # Ugly hack around CGNS being retarded
+    suffixes = ['X','Y','Z']
+    if path[-1] in suffixes:
+      path = path[:-1]
+    # remove a second time in case of a tensor
+    if path[-1] in suffixes:
+      path = path[:-1]
+    return path
 
-      x   = PT.get_value(node_x,raw=True)
-      ref = PT.get_value(node_ref,raw=True)
-      if x is not None and not isinstance(x,str) and PT.get_label(node_x) == 'DataArray_t' and x.dtype.kind == 'f':
-        parent_x,parent_ref = nodes_stack[-2]
-        if name_x[-2:] in suffixes_rank_2:
-          if name_x[-2:] == 'XX':
-            tensor_name = name_x[:-2]
-            return relative_norm_comparison_rank_2(tol, comm, tensor_name, parent_x, parent_ref)
-          else:
-            return True, '', '' # Tested within 'XX'
-        if name_x[-1] in suffixes_rank_1:
-          if name_x[-1] == 'X':
-            tensor_name = name_x[:-1]
-            return relative_norm_comparison_rank_1(tol, comm, tensor_name, parent_x, parent_ref)
-          else:
-            return True, '', '' # Tested within 'X'
-        else: # scalar
-          return relative_norm_comparison(tol, comm)(x, ref)
-      else:
-        return equal_array_comparison(comm)(nodes_stack)
+  def __init__(self, tol, comm):
+    EqualArray.__init__(self, comm)
+    self.tol = tol
 
-    @staticmethod
-    def modify_name(path): # Ugly hack around CGNS being retarded
-      suffixes = ['X','Y','Z']
-      if path[-1] in suffixes:
-        path = path[:-1]
-      # remove a second time in case of a tensor
-      if path[-1] in suffixes:
-        path = path[:-1]
-      return path
-  return impl()
+  def __call__(self, nodes_stack):
+    node_x,node_ref = nodes_stack[-1]
+    name_x = PT.get_name(node_x)
+    x   = PT.get_value(node_x,raw=True)
+    ref = PT.get_value(node_ref,raw=True)
+    if PT.get_label(node_x) == 'DataArray_t' and x.dtype.kind == 'f':
+      parent_x,parent_ref = nodes_stack[-2]
+      if name_x[-2:] in suffixes_rank_2:
+        if name_x[-2:] == 'XX':
+          tensor_name = name_x[:-2]
+          return relative_norm_comparison_rank_2(self.tol, self.comm, tensor_name, parent_x, parent_ref)
+        else:
+          return True, '', '' # Tested within 'XX'
+      if name_x[-1] in suffixes_rank_1:
+        if name_x[-1] == 'X':
+          tensor_name = name_x[:-1]
+          return relative_norm_comparison_rank_1(self.tol, self.comm, tensor_name, parent_x, parent_ref)
+        else:
+          return True, '', '' # Tested within 'X'
+      else: # scalar
+        return relative_norm_comparison(self.tol, self.comm)(x, ref)
+    else:
+      return EqualArray.__call__(self, nodes_stack)
