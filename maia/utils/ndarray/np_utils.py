@@ -248,6 +248,8 @@ def create_transform_matrix(revolution_axis=(0, 0, 1)):
   if isinstance(revolution_axis, (tuple, list)):
     revolution_axis = np.array(revolution_axis, order='F')
 
+  revolution_axis = revolution_axis / np.linalg.norm(revolution_axis)
+
   if revolution_axis[0] != 0:
     revolution_axis_bis = np.array([-revolution_axis[1]/revolution_axis[0], 1, 0], order='F')   
   elif revolution_axis[1] != 0:
