@@ -82,15 +82,12 @@ The features are regrouped in the following sections:
 
 .. Do table by hand to add comments
 
-- :ref:`Basic node editing <pt_node_edit>` : how to edit the information of a
-  given CGNSNode
-- :ref:`Node inspection <pt_inspect>` : how to get label-specific information from
-  a CGNSNode
-- :ref:`Node creation presets <pt_presets>` : how to create label-specific CGNSNodes with 
-  suitable options
-- :ref:`Node searching <pt_node_search>` : how to search specific
-  nodes in a CGNSTree from various criteria
-- :ref:`Yaml parsing <pt_yaml_parsing>` : how to use a Yaml format to read or write CGNSTrees
+- :ref:`pt_node_edit` : how to edit the information of a given CGNSNode
+- :ref:`pt_inspect` : how to get label-specific information from a CGNSNode
+- :ref:`pt_presets` : how to create label-specific CGNSNodes with suitable options
+- :ref:`pt_node_search` : how to search specific nodes in a CGNSTree from various criteria
+- :ref:`pt_operations` : how to perfom various operations implying one or more CGNSTrees
+- :ref:`pt_yaml_parsing` : how to use a Yaml format to read or write CGNSTrees
 
 
 .. Include files
@@ -100,7 +97,8 @@ The features are regrouped in the following sections:
   :hidden:
 
   basic
-  search
   inspect
   presets
+  search
+  operations
   yaml
