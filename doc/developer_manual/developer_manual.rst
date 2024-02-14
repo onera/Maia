@@ -10,4 +10,5 @@ Developer Manual
   logging
   maia_dev/conventions
   maia_dev/development_workflow
+  packaging/spack
   algo_description

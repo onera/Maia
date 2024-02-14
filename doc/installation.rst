@@ -3,171 +3,108 @@
 Installation
 ############
 
-Prefered installation procedure
-===============================
-
-Maia depends on quite a few libraries of different kinds, be it system libraries like MPI, third-party libraries like HDF5, ONERA libraries like ParaDiGM and Cassiopée, git submodules (std_e...), or Python modules (mpi4py, ruamel). The prefered way of installing Maia in a coherent environment is by using the `Spack package manager <https://spack.readthedocs.io/>`_. A Spack recipe for Maia can be found on the `ONERA Spack repository <https://gitlab.onera.net/informatics/infra/onera_spack_repo>`_.
-
-Installation through Spack
---------------------------
-
-1. Source a Spack repository on your machine.
-2. If you don't have a Spack repository ready, you can download one with :code:`git clone https://github.com/spack/spack.git`. On ONERA machines, it is advised to use the `Spacky <https://gitlab.onera.net/informatics/infra/spacky>`_ helper.
-3. Download the **ONERA Spack repository** with :code:`git clone https://gitlab.onera.net/informatics/infra/onera_spack_repo.git`
-4. Tell Spack that package recipes are in :code:`onera_spack_repo` by adding the following lines to :code:`$SPACK_ROOT/etc/repos.yaml`:
-
-.. code-block:: yaml
-
-  repos:
-  - path/to/onera_spack_repo
-
-(note that **spacky** does steps 3. and 4. for you)
-
-5. You should be able to see the package options of Maia with :code:`spack info maia`
-6. To install Maia: :code:`spack install maia`
-
-
-Development workflow
---------------------
-
-For development, it is advised to use Spack to have Maia dependencies, but then follow a typical CMake workflow with :code:`cmake/make`.
-
-
-Dependencies
-^^^^^^^^^^^^
-
-To get access to Maia dependencies in your development environment, you can:
-
-* Install a Spack version of Maia, source it in your development environment to get all the dependencies, then override with your own compiled version of Maia
-* Do the same, but use a Spack environment containing Maia instead of just the Maia package
-* Source a Spack environment where Maia has been removed from the environment view. This can be done by adding the following lines to the :code:`spack.yaml` environement file:
-
-.. code-block:: yaml
-
-  view:
-    default:
-      exclude: ['maia']
-
-This last option is cleaner because you are sure that you are not using another version of Maia (but it means you need to create or have access to such an environment view)
-
-Source the build folder
-^^^^^^^^^^^^^^^^^^^^^^^
-
-You can develop without the need to install Maia. However, in addition to sourcing your dependencies in your development environment, you also need to source the build artifacts by:
-
-.. code-block:: bash
-
-  cd $MAIA_BUILD_FOLDER
-  source source.sh
-
-The :code:`source.sh` file is created by CMake and will source all Maia artifacts (dynamic libraries, python modules...)
-
-
-Development workflow with submodules
-------------------------------------
-
-It is often practical to develop Maia with some of its dependencies, namely:
-
-* project_utils
-* std_e
-* cpp_cgns
-* paradigm
-* pytest_parallel
-
-For that, you need to use git submodules. Maia submodules are located at :code:`$MAIA_FOLDER/external`. To populate them, use :code:`git submodule update --init`. Once done, CMake will use these versions of the dependencies. If you don't populate the submodules, CMake will try to use the ones of your environment (for instance, the one installed by Spack).
-
-We advise that you use some additional submodule configuration utilities provided in `this file <https://github.com/BerengerBerthoul/project_utils/blob/master/git/submodule_utils.sh>`_. In particular, you should use:
-
-.. code-block:: bash
-
-  cd $MAIA_FOLDER
-  git submodule update --init
-  git_config_submodules
-
-The detailed meaning of `git_config_submodules` and the git submodule developper workflow of Maia is presented `here <https://github.com/BerengerBerthoul/project_utils/blob/master/doc/Git_workflow.md>`_.
-
-If you are using Maia submodules, you can filter them out from your Spack environment view like so:
-
-.. code-block:: yaml
-
-  view:
-    default:
-      exclude: ['maia','std-e','cpp-cgns','paradigm','pytest_parallel']
-
-Manual installation procedure
-=============================
-
 Dependencies
 ------------
 
 **Maia** depends on:
 
-* python3
-* MPI
-* hdf5
+* :code:`Python` >= 3.7
+* :code:`MPI`
 
-* Cassiopée
+* :code:`mpi4py` (python package)
+* :code:`h5py` with :code:`MPI` (python package)
 
-* pytest >6 (python package)
-* ruamel (python package)
-* mpi4py (python package)
+* :code:`ParMetis` (optional, for partitionning)
+* :code:`PtScotch` (optional, for partitionning)
 
 The build process requires:
 
-* Cmake >= 3.14
-* GCC >= 8 (Clang and Intel should work but no CI)
+* :code:`Cmake` >= 3.14
+* :code:`GCC` >= 8 (:code:`clang` and Intel :code:`icpx` should work but are not tested by CI)
+* :code:`PyBind11` >= 2.8.1
+* :code:`Cython` 0.29 (needed by ParaDiGM, :ref:`see below <pdm_install>`)
+
+.. note:: For convenience, CMake will automatically download PyBind11 from GitHub if it does not find it in your environment.
+
+.. warning:: The :code:`h5py` package must use the **MPI version of HDF5**, and both :code:`h5py` and :code:`mpi4py` must use the **same MPI** library. Make sure to use a coherent environment with parallel versions of the libraries!
+
+.. warning:: :code:`Cython` >= 3 is **not supported** for now. You have to use the legacy branch.
 
 
-Other dependencies
-^^^^^^^^^^^^^^^^^^
+Build from source with CMake
+----------------------------
 
-During the build process, several other libraries will be downloaded:
+First, get the sources of Maia with Git, and retrieve the sources of its submodules (they will be downloaded from GitHub):
 
-* pybind11
-* range-v3
-* doctest
+.. code:: bash
 
-* ParaDiGM
-* project_utils
-* std_e
-* cpp_cgns
-
-This process should be transparent.
+  git clone git@gitlab.onera.net:numerics/mesh/maia.git
+  cd maia
+  git submodule update --init
 
 
-Optional dependencies
-^^^^^^^^^^^^^^^^^^^^^
+If you have access to the restricted ParaDiGMA algorithms, you may want to use Maia with them. For that :
+
+.. code:: bash
+
+  (cd external/paradigm && git submodule update --init)
+
+.. code:: bash
+
+  mkdir build && cd build
+  cmake .. -DCMAKE_INSTALL_PREFIX=<your/installation/path>
+  make -j
+  make install
+
+
+Here are some useful CMake flags:
+
+* If you want to use 32-bit integers global indexing, use :code:`PDM_ENABLE_LONG_G_NUM=OFF`.
+* If you want to use ParaDiGMA features, use :code:`PDM_ENABLE_EXTENSION_PDMA=ON`.
+* If your compiler is not C++20-compliant (most notably GCC 8), use :code:`CMAKE_CXX_STANDARD=17`. Some functionnalities will be missing.
+
+.. _pdm_install:
+
+* If you want to use an installation of ParaDiGM already present in your environment, use :code:`maia_BUILD_EMBEDDED_PDM=OFF`. For that, you need the versions of ParaDiGM and Maia to be compatible:
+
++-------+----------+
+| Maia  | ParaDiGM |
++=======+==========+
+| v1.3  | v2.4.1   |
++-------+----------+
+| v1.2  | v2.3.3   |
++-------+----------+
+| v1.1  | v2.3.0   |
++-------+----------+
+| v1.0  | v2.2.0   |
++-------+----------+
+
+If you want to use a development version of Maia, then you can't use :code:`maia_BUILD_EMBEDDED_PDM=OFF`.
+
+
+Documentation and tests
+-----------------------
+
+.. rubric:: Tests
+
+Running Maia tests requires:
+
+* :code:`doctest` (C++ library)
+* :code:`pytest` > 6 (python package)
+* :code:`ruamel` (python package for YAML parsing)
+
+If :code:`doctest` is not found on the environment, it will be downloaded from GitHub by CMake. This should be transparent.
+
+Tests are built by default. You can turn them off with :code:`maia_ENABLE_TESTS=OFF`.
+
+
+.. rubric:: Documentation
 
 The documentation build requires:
 
-* Doxygen >= 1.8.19
-* Breathe >= 4.15 (python package)
-* Sphinx >= 3.00 (python package)
+* :code:`Sphinx` >= 3.00 (python package)
+* :code:`` >= 3.00 (python package)
 
-Build and install
------------------
+Configure CMake with :code:`maia_ENABLE_DOCUMENTATION=ON` to enable the documentation. Then generate it with :code:`make maia_sphinx`.
 
-1. Install the required dependencies. They must be in your environment (:code:`PATH`, :code:`LD_LIBRARY_PATH`, :code:`PYTHONPATH`).
-
- For pytest, you may need these lines :
-
-.. code:: bash
-
-  pip3 install --user pytest
-  pip3 install --user pytest-mpi
-  pip3 install --user pytest-html
-  pip3 install --user pytest_check
-  pip3 install --user ruamel.yaml
-
-2. Then you need to populate your :code:`external` folder. You can do it with :code:`git submodule update --init`
-
-3. Then use CMake to build maia, e.g.
-
-.. code:: bash
-
-  SRC_DIR=<path to source repo>
-  BUILD_DIR=<path to tmp build dir>
-  INSTALL_DIR=<path to where you want to install Maia>
-  cmake -S $SRC_DIR -B$BUILD_DIR -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR
-  cd $BUILD_DIR && make -j && make install
 
