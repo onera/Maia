@@ -658,6 +658,48 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
   tgt_face_vtx_idx, tgt_elt_ec = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, as_pdm_gnum(ec_elt))
   n_elt_to_add = tgt_face_vtx_idx.size-1
 
+  # > Detect BCs from the otherside
+  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  for bc_name in bc_names:
+    bc_n  = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
+    bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
+    bc_pl_n = PT.Subset.getPatch(bc_n)
+    bc_pl = PT.get_value(bc_pl_n)[0]
+
+    bc_pl_shft = bc_pl - tgt_elt_offset +1
+    ptb = EP.PartToBlock(tgt_elt_distri, [bc_pl_shft], comm)
+    ids = ptb.getBlockGnumCopy()-tgt_elt_distri[0]-1
+    bc_ec_ids  = np_utils.interweave_arrays([tgt_elt_size*ids+i_size for i_size in range(tgt_elt_size)])
+    bc_ec = tgt_ec[bc_ec_ids]
+    n_bc_elt = ids.size
+    
+    tmp_ec  = np.concatenate([bc_ec, tgt_elt_ec])
+    l_mask  = par_algo.is_unique_strided(tmp_ec, tgt_elt_size, comm)
+    free_adapt_elt_ids = ids[ l_mask[0:n_bc_elt]]
+    constraint_elt_ids = ids[~l_mask[0:n_bc_elt]]
+    free_adapt_elt_pl  = free_adapt_elt_ids + tgt_elt_offset + tgt_elt_distri[0]
+    constraint_elt_pl  = constraint_elt_ids + tgt_elt_offset + tgt_elt_distri[0]
+    # > Update BC
+    PT.rm_child(zone_bc_n, bc_n)
+    bc_n = PT.new_BC(name=bc_name,
+                     type='FamilySpecified',
+                     point_list=free_adapt_elt_pl.reshape((1,-1), order='F'),
+                     loc='FaceCenter',
+                     parent=zone_bc_n)
+    if bc_fam_n is not None:
+      PT.add_child(bc_n, bc_fam_n)
+    bc_distri_l = par_utils.dn_to_distribution(free_adapt_elt_pl.size, comm)
+    PT.maia.newDistribution({'Index':bc_distri_l}, parent=bc_n)
+
+    bc_n = PT.new_BC(name=bc_name+'_constraint',
+                     type='FamilySpecified',
+                     point_list=constraint_elt_pl.reshape((1,-1), order='F'),
+                     loc='FaceCenter',
+                     family='GCS',
+                     parent=zone_bc_n)
+    bc_distri_l = par_utils.dn_to_distribution(constraint_elt_pl.size, comm)
+    PT.maia.newDistribution({'Index':bc_distri_l}, parent=bc_n)
+
   # > Find faces not already defined in TRI_3 connectivity or duplicated
   tmp_ec  = np.concatenate([tgt_elt_ec, tgt_ec])
   l_mask  = par_algo.is_unique_strided(tmp_ec, tgt_elt_size, comm)
