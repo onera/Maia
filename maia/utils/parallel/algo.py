@@ -198,13 +198,18 @@ def is_unique_strided(array, stride, comm):
   return mask
 
 
-def gnum_isin(src, tgt, comm):
+def gnum_isin(src, tgt, comm, invert=False):
   """
   For a distributed src array of gnum, return a distributed bool array indicating
   for each element if it appears in a distributed tgt gnum array.
   """
   PTP   = EP.PartToPart([tgt], [src], comm)
-  isin  = np.zeros(src.size, dtype=bool)
-  isin[PTP.get_referenced_lnum2()[0]-1] = True
+  
+  if invert:
+    isin  = np.ones(src.size, dtype=bool)
+    isin[PTP.get_referenced_lnum2()[0]-1] = False
+  else:
+    isin  = np.zeros(src.size, dtype=bool)
+    isin[PTP.get_referenced_lnum2()[0]-1] = True
 
   return isin
