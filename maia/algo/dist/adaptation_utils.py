@@ -802,8 +802,8 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
   bar_elts   = [elt for elt in elts if PT.Element.CGNSName(elt)=='BAR_2']
   assert len(tri_elts) == len(tetra_elts) == 1, f"Multiple elts nodes are not managed"
   assert len(bar_elts) <= 1, f"Multiple elts nodes are not managed"
-  tri_elt   = tri_elts[0]
   tetra_elt = tetra_elts[0]
+  tri_elt   = tri_elts[0]
   bar_elt   = bar_elts[0] if len(bar_elts) > 0 else None
 
   new_vtx_nums = list()
@@ -816,8 +816,11 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
     # > 1/ Defining the internal surface, that will be constrained in mesh adaptation
-    cell_pl = tag_elmt_owning_vtx(tetra_elt, gc_vtx_pld, comm, elt_full=False) # Tetra made of at least one gc opp vtx
-    face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, comm) # ?
+    bc_name1= gc_paths[0].split('/')[-1]
+    bc_name2= gc_paths[1].split('/')[-1]
+    mask    = par_algo.gnum_isin(gc_vtx_pld, gc_vtx_pl, comm, invert=True)
+    cell_pl = tag_elmt_owning_vtx(tetra_elt, gc_vtx_pld[mask], comm, elt_full=False) # Tetra made of at least one gc opp vtx
+    face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, [bc_name1], comm) # ?
     vtx_pl  = elmt_pl_to_vtx_pl(zone, tetra_elt, cell_pl, comm) # Vertices ids of tetra belonging to cell_pl
 
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
