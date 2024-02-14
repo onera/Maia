@@ -52,7 +52,7 @@ class Test__discover_wrapper:
 
     PTB._discover_wrapper(dist_zone, part_zones, 'FlowSolution_t', 'FlowSolution_t/DataArray_t', comm)
 
-    assert PT.get_names(PT.get_children_from_label(dist_zone, 'FlowSolution_t')) == ['NewSol1', 'NewSol3', 'NewSol2']
+    assert [PT.get_name(n) for n in PT.get_children_from_label(dist_zone, 'FlowSolution_t')] == ['NewSol1', 'NewSol3', 'NewSol2']
     assert [PT.Subset.GridLocation(sol) for sol in PT.get_children_from_label(dist_zone, 'FlowSolution_t')] \
         == ['CellCenter', 'Vertex', 'Vertex']
     assert PT.get_node_from_path(dist_zone, 'NewSol2/NewField4') is not None

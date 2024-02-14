@@ -68,6 +68,7 @@ Base CGNSBase_t I4 [3,3]:
       Data DataArray_t:
         I4 : [5, 6]
 """
+get_names = lambda nodes : [PT.get_name(node) for node in nodes]
 
 def test_generated_walkers():          
   tree = parse_yaml_cgns.to_cgns_tree(yt)
@@ -108,9 +109,9 @@ def test_generated_remove():
 def test_get_all_label():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  assert PT.get_names(PT.get_all_CGNSBase_t(tree)) == ['Base']
-  assert PT.get_names(PT.get_all_Zone_t(tree)) == ['ZoneI']
-  assert PT.get_names(PT.iter_all_BC_t(tree)) == []### A MODIFIER
+  assert get_names(PT.get_all_CGNSBase_t(tree)) == ['Base']
+  assert get_names(PT.get_all_Zone_t(tree)) == ['ZoneI']
+  assert get_names(PT.iter_all_BC_t(tree)) == []### A MODIFIER
 
 
 def test_get_node_from_path():

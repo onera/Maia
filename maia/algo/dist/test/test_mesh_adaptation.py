@@ -33,21 +33,21 @@ def test_unpack_metric():
 
   # > Wrong because leads to unexistant field
   with pytest.raises(ValueError):
-    metrics_names = PT.get_names(MA.unpack_metric(tree, "FlowSol/toto"))
+    MA.unpack_metric(tree, "FlowSol/toto")
 
   # > Wrong because leads to 3 fields
   with pytest.raises(ValueError):
-    metrics_names = PT.get_names(MA.unpack_metric(tree, "FlowSol/Wrong"))
+    MA.unpack_metric(tree, "FlowSol/Wrong")
 
   # > Path to unique field
-  metrics_names = PT.get_names(MA.unpack_metric(tree, "FlowSol/Mach"))
+  metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, "FlowSol/Mach")]
   assert metrics_names==["Mach"]
   
   # > Isotrop metric
   assert MA.unpack_metric(tree, None) == []
 
   # > Path to multiple fields
-  metrics_names = PT.get_names(MA.unpack_metric(tree, "FlowSol/Tensor"))
+  metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, "FlowSol/Tensor")]
   assert metrics_names==[ "TensorXX","TensorXY","TensorXZ",
                           "TensorYY","TensorYZ","TensorZZ" ]
 
@@ -55,7 +55,7 @@ def test_unpack_metric():
   metric = ["FlowSol/TensorXX", "FlowSol/TensorZZ",
             "FlowSol/TensorXZ", "FlowSol/TensorXY",
             "FlowSol/TensorYZ", "FlowSol/TensorYY"]
-  metrics_names = PT.get_names(MA.unpack_metric(tree, metric))
+  metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, metric)]
   assert metrics_names==[ "TensorXX","TensorZZ","TensorXZ",
                           "TensorXY","TensorYZ","TensorYY" ]
 

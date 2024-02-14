@@ -13,7 +13,7 @@ import maia.pytree.cgns_keywords as CGK
 
 from . import check
 
-CGNS_STR_SIZE = 32
+_CGNS_STR_SIZE = 32
 
 def _flatten(items):
   """Yield items from any nested iterable; see https://is.gd/gE6gjc """
@@ -60,8 +60,8 @@ def _convert_value(value):
         result = np.array(value, dtype=dtype, order='F')
       elif isinstance(first_value, str):                       # C1
         # WARNING: string numpy is limited to rank=2
-        assert max([len(v) for v in _flatten(value)]) <= CGNS_STR_SIZE
-        size = CGNS_STR_SIZE
+        assert max([len(v) for v in _flatten(value)]) <= _CGNS_STR_SIZE
+        size = _CGNS_STR_SIZE
         if isinstance(value[0], str):
           v = np.empty( (size,len(value) ), dtype='c', order='F')
           for c, i in enumerate(value):
@@ -335,7 +335,3 @@ def set_label(node:CGNSTree, label:str):
     node[3] = label
   else:
     raise ValueError("Unvalid label for node")
-
-def get_names(nodes:List[CGNSTree]) -> List[str]:
-  """ Return a list of name from a list of nodes """
-  return [get_name(node) for node in nodes]

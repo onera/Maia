@@ -104,7 +104,7 @@ class Extractor:
 
       # > Clean orphan GC
       if self.is_struct:
-        all_zone_name_l = PT.get_names(PT.get_children_from_label(extract_base, 'Zone_t'))
+        all_zone_name_l = [PT.get_name(n) for n in PT.iter_all_Zone_t(extract_base)]
         all_zone_name_l = comm.allgather(all_zone_name_l)
         all_zone_name = list(np.concatenate(all_zone_name_l))
 
