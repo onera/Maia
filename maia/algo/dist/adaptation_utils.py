@@ -581,7 +581,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   # > Compute new vtx numbering merging vtx from `src_tgt_vtx`
   #   Maybe there will be an issue in axisym because of vtx in both GCs
   vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-  old_to_new_vtx = merge_distributed_ids(vtx_distri, src_tgt_vtx[0], src_tgt_vtx[1], comm, False)
+  old_to_new_vtx = replace_distributed_ids(vtx_distri, src_tgt_vtx[0], src_tgt_vtx[1], comm)
 
   # > Find BCs described by element pls
   bc_nodes = [list(),list()]
