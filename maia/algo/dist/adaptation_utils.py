@@ -866,7 +866,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_pl
     to_update_face_pl = tag_elmt_owning_vtx(tri_elt, vtx_pl, comm, elt_full=True)
-    to_update_line_pl = tag_elmt_owning_vtx(bar_elt, vtx_pl, comm, elt_full=True)
+    to_update_line_pl = tag_elmt_owning_vtx(bar_elt, vtx_pl[par_algo.gnum_isin(vtx_pl, gc_vtx_pl, comm, invert=True)], comm, elt_full=True)
 
     # > Ambiguous faces that contains all vtx but are not included in patch cells can be removed
     to_update_face_pl = find_shared_faces(tri_elt, to_update_face_pl, tetra_elt, cell_pl, comm)
