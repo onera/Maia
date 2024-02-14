@@ -556,6 +556,9 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   update_elt_vtx_numbering(zone, tet_n, old_to_new_vtx, comm, elt_pl=cell_pl)
   update_elt_vtx_numbering(zone, tri_n, old_to_new_vtx, comm, elt_pl=face_pl)
   update_elt_vtx_numbering(zone, bar_n, old_to_new_vtx, comm, elt_pl=line_pl)
+  
+  # > Update Vertex BCs and GCs
+  update_vtx_bnds(zone, old_to_new_vtx, comm)
 
   return new_vtx_num
 
@@ -888,6 +891,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     # > 5/ Merge two GCs that are now overlaping
     bc_name1 = PT.path_tail(gc_paths[0])
     bc_name2 = PT.path_tail(gc_paths[1])
+    gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
     vtx_match_num = [gc_vtx_pl, gc_vtx_pld]
     vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
     vtx_tag = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype)+1
