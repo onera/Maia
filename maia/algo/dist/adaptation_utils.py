@@ -853,8 +853,9 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     if bar_elt is not None:
       bar_to_rm_pl  = tag_elmt_owning_vtx(bar_elt, gc_vtx_pld, comm, elt_full=True) #Bar made of two gc opp vtx
       bar_twins_pl  = tag_elmt_owning_vtx(bar_elt, gc_vtx_pl , comm, elt_full=True) #Bar made of two gc vtx
-      _matching_bcs =find_matching_bcs(zone, bar_elt, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], comm)
-      remove_elts_from_pl(zone, bar_elt, bar_to_rm_pl, comm)
+      mask          = par_algo.gnum_isin(bar_to_rm_pl, bar_twins_pl, comm, invert=True)
+      _matching_bcs = find_matching_bcs(zone, bar_elt, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], comm)
+      remove_elts_from_pl(zone, bar_elt, bar_to_rm_pl[mask], comm)
     else:
       _matching_bcs = list()
     matching_bcs.append(_matching_bcs)
