@@ -6,7 +6,7 @@ import maia.transfer.protocols as EP
 from   maia.utils  import np_utils, par_utils, as_pdm_gnum
 from   maia.utils.parallel import algo as par_algo
 from   maia.algo.dist import transform as dist_transform
-from   maia.algo.dist.merge_ids      import merge_distributed_ids
+from   maia.algo.dist.merge_ids      import merge_distributed_ids, replace_distributed_ids
 from   maia.algo.dist.remove_element import remove_elts_from_pl
 from   maia.algo.dist.subset_tools   import vtx_ids_to_face_ids
 
@@ -620,14 +620,261 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   # > Perfom comparaisons
   for src_bc_n, src_bc_vtx in zip(bc_nodes[0], bc_vtx[0]):
     for tgt_bc_n, tgt_bc_vtx in zip(bc_nodes[1], bc_vtx[1]):
-      tgt_vtx_tag = par_algo.gnum_isin(tgt_bc_vtx, src_bc_vtx, comm)
-      if par_utils.all_true([tgt_vtx_tag], lambda t:t.all(), comm):
-        matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
+      if PT.get_name(src_bc_n)!=PT.get_name(tgt_bc_n):
+        tgt_vtx_tag = par_algo.gnum_isin(tgt_bc_vtx, src_bc_vtx, comm)
+        if par_utils.all_true([tgt_vtx_tag], lambda t:t.all(), comm):
+          matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
 
   return matching_bcs
 
+def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
+  '''
+  Find matching elements that have to be constrained too on the other side of the join
+  '''
+  '''
 
-def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
+  zone_bc_n = PT.get_node_from_label(zone, 'ZoneBC_t')
+
+  # > Get elt informations
+  elt_size    = PT.Element.NVtx(elt_n)
+  elt_offset  = PT.Element.Range(elt_n)[0]
+  dn_vtx      = PT.maia.getDistribution(zone ,'Vertex')[1]
+  dn_face     = PT.maia.getDistribution(elt_n,'Element')[1]
+  elt_vtx_idx = np.arange(0,dn_face[1]-dn_face[0]+1, dtype=np.int32)*elt_size
+  elt_vtx     = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
+  zones_dn_vtx       = [dn_vtx [1]-dn_vtx [0]]
+  zones_dn_face      = [dn_face[1]-dn_face[0]]
+  zones_face_vtx_idx = [elt_vtx_idx]
+  zones_face_vtx     = [elt_vtx]
+
+  # > Get vertices in constrained BC
+  bc_n = PT.get_child_from_name_and_label(zone_bc_n, bc_names[0]+'_constraint', 'BC_t')
+  bc_pl_n = PT.Subset.getPatch(bc_n)
+  bc_pl = PT.get_value(bc_pl_n)[0]
+  bc_pl_shft = bc_pl - elt_offset+1
+  print(f'[{comm.rank}] bc_pl_shft = {bc_pl_shft}')
+
+  bc_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, bc_pl, comm)
+
+  # > Get matching vertices in twin BC
+  mask = par_algo.gnum_isin(old_new_vtx_num[0], bc_vtx_pl, comm)
+  old_vtx_num = old_new_vtx_num[0][mask]
+  new_vtx_num = old_new_vtx_num[1][mask]
+  print(f'[{comm.rank}] old_vtx_num = {old_vtx_num}')
+  print(f'[{comm.rank}] new_vtx_num = {new_vtx_num}')
+  n_vtx_in_interf = old_vtx_num.size
+
+  # > Set matching vertices informations
+  dom_vtx = np.array([0, 0], dtype=np.int32)
+
+  # PT.print_tree(zone)
+
+  n_interface = 1
+  interface_dn_vtx  = [n_vtx_in_interf]
+  interface_ids_vtx = [np_utils.interweave_arrays([old_vtx_num, new_vtx_num])]
+  interface_dom_vtx = [dom_vtx]
+  # print(f'[{comm.rank}] n_interface,        = {n_interface}')
+  # print(f'[{comm.rank}] 1,                  = {1}')
+  # print(f'[{comm.rank}] False,              = {False}')
+  # print(f'[{comm.rank}] interface_dn_vtx,   = {interface_dn_vtx}')
+  # print(f'[{comm.rank}] interface_ids_vtx,  = {interface_ids_vtx[0].shape}')
+  # print(f'[{comm.rank}] interface_dom_vtx,  = {interface_dom_vtx}')
+  # print(f'[{comm.rank}] zones_dn_vtx,       = {zones_dn_vtx}')
+  # print(f'[{comm.rank}] zones_dn_face,      = {zones_dn_face}')
+  # print(f'[{comm.rank}] zones_face_vtx_idx, = {zones_face_vtx_idx[0].shape}')
+  # print(f'[{comm.rank}] zones_face_vtx,     = {zones_face_vtx[0].reshape(())}')
+  if zones_dn_face[0]==588:
+    for i in range(588):
+      print(f'{zones_face_vtx[0][i*3+0]} {zones_face_vtx[0][i*3+1]} {zones_face_vtx[0][i*3+2]}')
+
+    print(f'[{comm.rank}] zones_face_vtx = {zones_face_vtx[0].reshape((588,3))}')
+
+  _out_face = PDM.interface_vertex_to_face(n_interface,
+                                           1,
+                                           False,
+                                           interface_dn_vtx,
+                                           interface_ids_vtx,
+                                           interface_dom_vtx,
+                                           zones_dn_vtx,
+                                           zones_dn_face,
+                                           zones_face_vtx_idx,
+                                           zones_face_vtx,
+                                           comm)
+  print(f'[{comm.rank}] _out_face = {_out_face}')
+  constraint_pl = np.array(_out_face[0]['np_interface_ids_face'][1::2])
+  print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
+
+
+  # > Update free BC
+  bc_n = PT.get_child_from_name_and_label(zone_bc_n, bc_names[1], 'BC_t')
+  bc_pl_n = PT.Subset.getPatch(bc_n)
+  bc_pl = PT.get_value(bc_pl_n)[0]
+  bc_pl_shft = bc_pl-elt_offset+1
+  mask = par_algo.gnum_isin(bc_pl_shft, constraint_pl, comm, invert=True)
+  bc_pl = bc_pl_shft[mask]+elt_offset-1
+  print(f'[{comm.rank}] new_bc_pl = {bc_pl_shft[mask]}')
+  PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
+
+  # > Create constraint BC
+  new_bc_pl = constraint_pl+elt_offset-1
+  bc_n = PT.new_BC(name=bc_names[1]+'_constraint',
+                   type='FamilySpecified',
+                   point_list=new_bc_pl.reshape((1,-1), order='F'),
+                   loc='FaceCenter',
+                   family='GCS',
+                   parent=zone_bc_n)
+  PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(constraint_pl.size, comm)}, bc_n)
+  '''
+
+  zone_bc_n = PT.get_node_from_label(zone, 'ZoneBC_t')
+
+  zones_dn_vtx       = list()
+  zones_dn_face      = list()
+  zones_face_vtx_idx = list()
+  zones_face_vtx     = list()
+  zones_face_gn      = list()
+
+  # > Get elt informations
+  elt_size    = PT.Element.NVtx(elt_n)
+  elt_offset  = PT.Element.Range(elt_n)[0]
+  elt_vtx     = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
+  elt_distri  = PT.maia.getDistribution(elt_n, 'Element')[1]
+  
+  dn_vtx      = PT.maia.getDistribution(zone ,'Vertex')[1]
+  dn_face     = PT.maia.getDistribution(elt_n,'Element')[1]
+
+  # for bc_name in [bc_names[0]+'_constraint',bc_names[1]]:
+  for bc_name in [bc_names[1],bc_names[0]+'_constraint']: # ordre important pour bc_vtx_pl en dehors de la boucle
+    bc_n    = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
+    bc_pl_n = PT.Subset.getPatch(bc_n)
+    bc_pl   = PT.get_value(bc_pl_n)[0]
+
+    bc_pl_shft = bc_pl - elt_offset +1
+    ptb = EP.PartToBlock(elt_distri, [bc_pl_shft], comm)
+    ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
+    ec_pl  = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
+    bc_elt_vtx = elt_vtx[ec_pl]
+    print(f'{bc_name} pl = {bc_pl_shft.shape} {bc_pl_shft}')
+
+    bc_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, bc_pl, comm)
+  
+    n_vtx  = bc_vtx_pl.size
+    n_face = bc_pl    .size
+    elt_vtx_idx = np.arange(0,n_face+1, dtype=np.int32)*elt_size
+    assert elt_vtx_idx.size==n_face+1
+    print(f'bc_elt_vtx.shape = {bc_elt_vtx.shape}')
+    zones_dn_vtx      .append(dn_vtx [1]-dn_vtx [0])
+    # zones_dn_vtx      .append(n_vtx)
+    # zones_dn_face     .append(dn_face[1]-dn_face[0])
+    zones_dn_face     .append(n_face)
+    zones_face_vtx_idx.append(elt_vtx_idx)
+    zones_face_vtx    .append(bc_elt_vtx)
+    zones_face_gn     .append(ids+elt_distri[0]+1)
+
+
+  # > Get matching vertices in twin BC
+  mask = par_algo.gnum_isin(old_new_vtx_num[0], bc_vtx_pl, comm)
+  old_vtx_num = old_new_vtx_num[0][mask]
+  new_vtx_num = old_new_vtx_num[1][mask]
+  print(f'[{comm.rank}] old_vtx_num = {old_vtx_num}')
+  print(f'[{comm.rank}] new_vtx_num = {new_vtx_num}')
+  n_vtx_in_interf = old_vtx_num.size
+
+  # > Set matching vertices informations
+  # dom_vtx = np.array([0, 1], dtype=np.int32)
+  dom_vtx = np.array([0,1], dtype=np.int32)
+
+  # PT.print_tree(zone)
+
+  n_interface = 1
+  interface_dn_vtx  = [n_vtx_in_interf]
+  # interface_ids_vtx = [np_utils.interweave_arrays([old_vtx_num, new_vtx_num])]
+  interface_ids_vtx = [np_utils.interweave_arrays([new_vtx_num, old_vtx_num])]
+  interface_dom_vtx = [dom_vtx]
+  print(f'[{comm.rank}] n_interface,        = {n_interface}')
+  print(f'[{comm.rank}] 1,                  = {2}')
+  print(f'[{comm.rank}] False,              = {False}')
+  print(f'[{comm.rank}] interface_dn_vtx,   = {interface_dn_vtx}')
+  print(f'[{comm.rank}] interface_ids_vtx,  = {interface_ids_vtx}')
+  print(f'[{comm.rank}] interface_dom_vtx,  = {interface_dom_vtx}')
+  print(f'[{comm.rank}] zones_dn_vtx,       = {zones_dn_vtx}')
+  print(f'[{comm.rank}] zones_dn_face,      = {zones_dn_face}')
+  print(f'[{comm.rank}] zones_face_vtx_idx, = {zones_face_vtx_idx}')
+  print(f'[{comm.rank}] zones_face_vtx,     = {zones_face_vtx}')
+
+  _out_face = PDM.interface_vertex_to_face(n_interface,
+                                           2,
+                                           False,
+                                           interface_dn_vtx,
+                                           interface_ids_vtx,
+                                           interface_dom_vtx,
+                                           zones_dn_vtx,
+                                           zones_dn_face,
+                                           zones_face_vtx_idx,
+                                           zones_face_vtx,
+                                           comm)
+  print(f'[{comm.rank}] _out_face = {_out_face}')
+  constraint_pl = np.array(_out_face[0]['np_interface_ids_face'][0::2])
+  print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
+  constraint_pl = zones_face_gn[0][constraint_pl-1]
+  print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
+
+  # > Update free BC
+  bc_n = PT.get_child_from_name_and_label(zone_bc_n, bc_names[1], 'BC_t')
+  bc_pl_n = PT.Subset.getPatch(bc_n)
+  bc_pl = PT.get_value(bc_pl_n)[0]
+  bc_pl_shft = bc_pl-elt_offset+1
+  mask = par_algo.gnum_isin(bc_pl_shft, constraint_pl, comm, invert=True)
+  bc_pl = bc_pl_shft[mask]+elt_offset-1
+  print(f'[{comm.rank}] new_bc_pl = {bc_pl_shft[mask]}')
+  PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
+
+  # > Create constraint BC
+  new_bc_pl = constraint_pl+elt_offset-1
+  bc_n = PT.new_BC(name=bc_names[1]+'_constraint',
+                   type='FamilySpecified',
+                   point_list=new_bc_pl.reshape((1,-1), order='F'),
+                   loc='FaceCenter',
+                   family='GCS',
+                   parent=zone_bc_n)
+  PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(constraint_pl.size, comm)}, bc_n)
+
+def concatenate_bcs(zone, src_bc_names, tgt_bc_name):
+
+  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  bc_pl  = list()
+  bc_loc = list()
+  bc_fam = list()
+  bc_distri = np.array([0,0,0])
+  for bc_name in src_bc_names:
+    bc_n = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
+    bc_pl.append(PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0])
+    bc_gl = PT.Subset.GridLocation(bc_n)
+    if bc_gl not in bc_loc:
+      bc_loc.append(bc_gl)
+    bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
+    if bc_fam_n is not None and PT.get_value(bc_fam_n) not in bc_fam:
+      bc_fam.append(PT.get_value(bc_fam_n))
+    bc_distri += PT.maia.getDistribution(bc_n, 'Index')[1]
+
+    PT.rm_child(zone_bc_n, bc_n)
+
+  if len(bc_loc)>1:
+    raise ValueError(f'BCs that must be merged don\'t have same GridLocation value ({bc_loc})')
+  if len(bc_fam)==0:
+    raise ValueError(f'BCs that must be merged don\'t have FamilyName_t') # TODO: delete it
+  if len(bc_fam)>1:
+    print(f'WARNING: BCs that must be merged don\'t share same FamilyName value, {bc_fam[0]} will be used')
+
+  bc_n = PT.new_BC(name=tgt_bc_name,
+                   type='FamilySpecified',
+                   point_list=np.concatenate(bc_pl).reshape((1,-1), order='F'),
+                   loc='FaceCenter',
+                   family=bc_fam[0],
+                   parent=zone_bc_n)
+  PT.maia.newDistribution({'Index':as_pdm_gnum(bc_distri)}, parent=bc_n)
+
+def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, bc_names, comm):
   '''
   Decompose `elt_pl` tetra faces (which are triangles), adding those that are not already 
   defined in zone and not defined by two tetras.
@@ -825,7 +1072,12 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     cell_pl = tag_elmt_owning_vtx(tetra_elt, gc_vtx_pld[mask], comm, elt_full=False) # Tetra made of at least one gc opp vtx
     face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, [bc_name1], comm) # ?
     vtx_pl  = elmt_pl_to_vtx_pl(zone, tetra_elt, cell_pl, comm) # Vertices ids of tetra belonging to cell_pl
-
+    
+    if PT.get_node_from_name_and_label(zone, bc_name1+'_constraint', 'BC_t') is not None:
+      constraint_other_side_join(zone, tri_elt, [bc_name1,bc_name2], [gc_vtx_pl,gc_vtx_pld], comm)
+      to_constrain_bcs.append(bc_name1+'_constraint')
+      to_constrain_bcs.append(bc_name2+'_constraint')
+    
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     new_bc_distrib = par_utils.dn_to_distribution(cell_pl.size, comm)
@@ -1001,6 +1253,10 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
                       [f'{face_elt_name.lower()}_constraint_{i_per}', f'{face_elt_name.lower()}_periodic_{i_per}'],
                       vtx_tag,
                       new_vtx_num[i_per], comm)
+
+    concatenate_bcs(zone, [to_retrieve_gc_name,to_retrieve_gc_name+'_constraint'], to_retrieve_gc_name)
+    concatenate_bcs(zone, [ still_here_gc_name, still_here_gc_name+'_constraint'],  still_here_gc_name)
+    
     i_per -=1
 
   rm_feflo_added_elt(zone, comm)
