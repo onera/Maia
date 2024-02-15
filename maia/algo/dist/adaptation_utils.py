@@ -663,7 +663,6 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
     ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
     ec_pl  = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
     bc_elt_vtx = elt_vtx[ec_pl]
-    print(f'{bc_name} pl = {bc_pl_shft.shape} {bc_pl_shft}')
 
     bc_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, bc_pl, comm)
   
@@ -685,8 +684,6 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   mask = par_algo.gnum_isin(old_new_vtx_num[0], bc_vtx_pl, comm)
   old_vtx_num = old_new_vtx_num[0][mask]
   new_vtx_num = old_new_vtx_num[1][mask]
-  print(f'[{comm.rank}] old_vtx_num = {old_vtx_num}')
-  print(f'[{comm.rank}] new_vtx_num = {new_vtx_num}')
   n_vtx_in_interf = old_vtx_num.size
 
   # > Set matching vertices informations
@@ -700,16 +697,6 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   # interface_ids_vtx = [np_utils.interweave_arrays([old_vtx_num, new_vtx_num])]
   interface_ids_vtx = [np_utils.interweave_arrays([new_vtx_num, old_vtx_num])]
   interface_dom_vtx = [dom_vtx]
-  print(f'[{comm.rank}] n_interface,        = {n_interface}')
-  print(f'[{comm.rank}] 1,                  = {2}')
-  print(f'[{comm.rank}] False,              = {False}')
-  print(f'[{comm.rank}] interface_dn_vtx,   = {interface_dn_vtx}')
-  print(f'[{comm.rank}] interface_ids_vtx,  = {interface_ids_vtx}')
-  print(f'[{comm.rank}] interface_dom_vtx,  = {interface_dom_vtx}')
-  print(f'[{comm.rank}] zones_dn_vtx,       = {zones_dn_vtx}')
-  print(f'[{comm.rank}] zones_dn_face,      = {zones_dn_face}')
-  print(f'[{comm.rank}] zones_face_vtx_idx, = {zones_face_vtx_idx}')
-  print(f'[{comm.rank}] zones_face_vtx,     = {zones_face_vtx}')
 
   _out_face = PDM.interface_vertex_to_face(n_interface,
                                            2,
@@ -722,11 +709,8 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
                                            zones_face_vtx_idx,
                                            zones_face_vtx,
                                            comm)
-  print(f'[{comm.rank}] _out_face = {_out_face}')
   constraint_pl = np.absolute(_out_face[0]['np_interface_ids_face'][0::2])
-  print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
   constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], [constraint_pl], comm)[0]
-  print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
 
   # > Update free BC
   bc_n = PT.get_child_from_name_and_label(zone_bc_n, bc_names[1], 'BC_t')
@@ -735,7 +719,6 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   bc_pl_shft = bc_pl-elt_offset+1
   mask = par_algo.gnum_isin(bc_pl_shft, constraint_pl, comm, invert=True)
   bc_pl = bc_pl_shft[mask]+elt_offset-1
-  print(f'[{comm.rank}] new_bc_pl = {bc_pl_shft[mask]}')
   PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
 
   # > Create constraint BC
