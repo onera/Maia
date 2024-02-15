@@ -296,6 +296,10 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   pbc2_vtx_pl  = ptb.getBlockGnumCopy()
   pbc2_vtx_ids = pbc2_vtx_pl-vtx_distri[0]
   pl2_tag = vtx_tag[pbc2_vtx_ids-1]
+  
+  mask = par_algo.gnum_isin(old_vtx_num, pl1_tag, comm)
+  old_vtx_num = old_vtx_num[mask]
+  new_vtx_num = new_vtx_num[mask]
 
   ptp = EP.PartToPart([pl1_tag], [old_vtx_num], comm)
   request1 = ptp.iexch( PDM._PDM_MPI_COMM_KIND_P2P,
