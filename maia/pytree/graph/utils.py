@@ -1,4 +1,9 @@
-from typing_extensions import TypeAlias
+try: 
+  from typing import TypeAlias
+except ImportError: # TypeAlias only in Python > 3.10
+  from typing import Any
+  TypeAlias = Any
+
 from _collections_abc import list_iterator
 
 # Since `_collections_abc.list_iterator` is private,

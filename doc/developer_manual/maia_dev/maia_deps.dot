@@ -1,0 +1,15 @@
+digraph G {
+
+
+  maia     -> project_utils;
+  cpp_cgns -> project_utils;
+  std_e    -> project_utils;
+  
+  maia -> std_e;
+  maia -> cpp_cgns;
+  
+  cpp_cgns -> std_e;
+  
+  maia -> paradigm;
+  paradigm -> paradigma [style="dashed"];
+}
