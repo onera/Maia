@@ -19,7 +19,7 @@ Dependencies
 
 The build process requires:
 
-* :code:`Cmake` >= 3.14
+* :code:`CMake` >= 3.14
 * :code:`GCC` >= 8 (:code:`clang` and Intel :code:`icpx` should work but are not tested by CI)
 * :code:`PyBind11` >= 2.8.1
 * :code:`Cython` 0.29 (needed by ParaDiGM, :ref:`see below <pdm_install>`)
@@ -43,11 +43,13 @@ First, get the sources of Maia with Git, and retrieve the sources of its submodu
   git submodule update --init
 
 
-If you have access to the restricted ParaDiGMA algorithms, you may want to use Maia with them. For that :
+If you have access to the restricted ParaDiGMA algorithms, you may want to use Maia with them. For that:
 
 .. code:: bash
 
   (cd external/paradigm && git submodule update --init)
+
+Then you can configure and build using CMake:
 
 .. code:: bash
 
@@ -65,21 +67,22 @@ Here are some useful CMake flags:
 
 .. _pdm_install:
 
-* If you want to use an installation of ParaDiGM already present in your environment, use :code:`maia_BUILD_EMBEDDED_PDM=OFF`. For that, you need the versions of ParaDiGM and Maia to be compatible:
+* If you want to use an installation of ParaDiGM already present in your environment, use :code:`maia_BUILD_EMBEDDED_PDM=OFF`.
+  For that, you need the versions of ParaDiGM and Maia to be compatible:
 
-+-------+----------+
-| Maia  | ParaDiGM |
-+=======+==========+
-| v1.3  | v2.4.1   |
-+-------+----------+
-| v1.2  | v2.3.3   |
-+-------+----------+
-| v1.1  | v2.3.0   |
-+-------+----------+
-| v1.0  | v2.2.0   |
-+-------+----------+
+  +-------+----------+
+  | Maia  | ParaDiGM |
+  +=======+==========+
+  | v1.3  | v2.4.1   |
+  +-------+----------+
+  | v1.2  | v2.3.3   |
+  +-------+----------+
+  | v1.1  | v2.3.0   |
+  +-------+----------+
+  | v1.0  | v2.2.0   |
+  +-------+----------+
 
-If you want to use a development version of Maia, then you can't use :code:`maia_BUILD_EMBEDDED_PDM=OFF`.
+  If you are using a development version of Maia, then you can't use :code:`maia_BUILD_EMBEDDED_PDM=OFF`.
 
 
 Documentation and tests
@@ -103,7 +106,6 @@ Tests are built by default. You can turn them off with :code:`maia_ENABLE_TESTS=
 The documentation build requires:
 
 * :code:`Sphinx` >= 3.00 (python package)
-* :code:`` >= 3.00 (python package)
 
 Configure CMake with :code:`maia_ENABLE_DOCUMENTATION=ON` to enable the documentation. Then generate it with :code:`make maia_sphinx`.
 
