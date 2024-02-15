@@ -783,7 +783,7 @@ def concatenate_bcs(zone, src_bc_names, tgt_bc_name):
                    parent=zone_bc_n)
   PT.maia.newDistribution({'Index':as_pdm_gnum(bc_distri)}, parent=bc_n)
 
-def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, bc_names, comm):
+def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   '''
   Decompose `elt_pl` tetra faces (which are triangles), adding those that are not already 
   defined in zone and not defined by two tetras.
@@ -979,7 +979,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     bc_name2= gc_paths[1].split('/')[-1]
     mask    = par_algo.gnum_isin(gc_vtx_pld, gc_vtx_pl, comm, invert=True)
     cell_pl = tag_elmt_owning_vtx(tetra_elt, gc_vtx_pld[mask], comm, elt_full=False) # Tetra made of at least one gc opp vtx
-    face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, [bc_name1], comm) # ?
+    face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, comm, bc_names=[bc_name1])
     vtx_pl  = elmt_pl_to_vtx_pl(zone, tetra_elt, cell_pl, comm) # Vertices ids of tetra belonging to cell_pl
     
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
