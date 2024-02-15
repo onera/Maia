@@ -638,6 +638,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   zones_face_vtx_idx = list()
   zones_face_vtx     = list()
   zones_face_gn      = list()
+  zones_face_distri  = list()
 
   # > Get elt informations
   elt_size    = PT.Element.NVtx(elt_n)
@@ -648,8 +649,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   dn_vtx      = PT.maia.getDistribution(zone ,'Vertex')[1]
   dn_face     = PT.maia.getDistribution(elt_n,'Element')[1]
 
-  # for bc_name in [bc_names[0]+'_constraint',bc_names[1]]:
-  for bc_name in [bc_names[1],bc_names[0]+'_constraint']: # ordre important pour bc_vtx_pl en dehors de la boucle
+  for bc_name in [bc_names[1],bc_names[0]+'_c']: # ordre important pour bc_vtx_pl en dehors de la boucle
     bc_n    = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
     bc_pl_n = PT.Subset.getPatch(bc_n)
     bc_pl   = PT.get_value(bc_pl_n)[0]
@@ -663,18 +663,18 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
 
     bc_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, bc_pl, comm)
   
-    n_vtx  = bc_vtx_pl.size
-    n_face = bc_pl    .size
+    n_face = ids    .size
     elt_vtx_idx = np.arange(0,n_face+1, dtype=np.int32)*elt_size
     assert elt_vtx_idx.size==n_face+1
-    print(f'bc_elt_vtx.shape = {bc_elt_vtx.shape}')
-    zones_dn_vtx      .append(dn_vtx [1]-dn_vtx [0])
+    assert bc_elt_vtx.size==elt_vtx_idx[-1]
+    zones_dn_vtx      .append(dn_vtx[1]-dn_vtx[0])
     # zones_dn_vtx      .append(n_vtx)
     # zones_dn_face     .append(dn_face[1]-dn_face[0])
     zones_dn_face     .append(n_face)
     zones_face_vtx_idx.append(elt_vtx_idx)
     zones_face_vtx    .append(bc_elt_vtx)
     zones_face_gn     .append(ids+elt_distri[0]+1)
+    zones_face_distri .append(par_utils.dn_to_distribution(ids.size, comm))
 
 
   # > Get matching vertices in twin BC
@@ -721,7 +721,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   print(f'[{comm.rank}] _out_face = {_out_face}')
   constraint_pl = np.array(_out_face[0]['np_interface_ids_face'][0::2])
   print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
-  constraint_pl = zones_face_gn[0][constraint_pl-1]
+  constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], [constraint_pl], comm)[0]
   print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
 
   # > Update free BC
@@ -736,7 +736,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
 
   # > Create constraint BC
   new_bc_pl = constraint_pl+elt_offset-1
-  bc_n = PT.new_BC(name=bc_names[1]+'_constraint',
+  bc_n = PT.new_BC(name=bc_names[1]+'_c',
                    type='FamilySpecified',
                    point_list=new_bc_pl.reshape((1,-1), order='F'),
                    loc='FaceCenter',
@@ -846,7 +846,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, bc_names, comm):
     bc_distri_l = par_utils.dn_to_distribution(free_adapt_elt_pl.size, comm)
     PT.maia.newDistribution({'Index':bc_distri_l}, parent=bc_n)
 
-    bc_n = PT.new_BC(name=bc_name+'_constraint',
+    bc_n = PT.new_BC(name=bc_name+'_c',
                      type='FamilySpecified',
                      point_list=constraint_elt_pl.reshape((1,-1), order='F'),
                      loc='FaceCenter',
@@ -978,11 +978,6 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, [bc_name1], comm) # ?
     vtx_pl  = elmt_pl_to_vtx_pl(zone, tetra_elt, cell_pl, comm) # Vertices ids of tetra belonging to cell_pl
     
-    if PT.get_node_from_name_and_label(zone, bc_name1+'_constraint', 'BC_t') is not None:
-      constraint_other_side_join(zone, tri_elt, [bc_name1,bc_name2], [gc_vtx_pl,gc_vtx_pld], comm)
-      to_constrain_bcs.append(bc_name1+'_constraint')
-      to_constrain_bcs.append(bc_name2+'_constraint')
-    
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     new_bc_distrib = par_utils.dn_to_distribution(cell_pl.size, comm)
@@ -1006,6 +1001,11 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     to_constrain_bcs.append(face_bc_name)
 
     # maia.io.dist_tree_to_file(tree, f'OUTPUT/internal_surface_{i_per}.cgns', comm)
+    
+    if PT.get_node_from_name_and_label(zone, bc_name1+'_c', 'BC_t') is not None:
+      constraint_other_side_join(zone, tri_elt, [bc_name1,bc_name2], [gc_vtx_pl,gc_vtx_pld], comm)
+      to_constrain_bcs.append(bc_name1+'_c')
+      to_constrain_bcs.append(bc_name2+'_c')
 
     # > 2/ Removing lines defined on join because they surely has their periodic on the other side
     # > Find BCs on GCs that will be deleted because they have their periodic twin
@@ -1159,8 +1159,9 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
                       vtx_tag,
                       new_vtx_num[i_per], comm)
 
-    concatenate_bcs(zone, [to_retrieve_gc_name,to_retrieve_gc_name+'_constraint'], to_retrieve_gc_name)
-    concatenate_bcs(zone, [ still_here_gc_name, still_here_gc_name+'_constraint'],  still_here_gc_name)
+    if PT.get_node_from_name_and_label(zone, to_retrieve_gc_name+'_c', 'BC_t') is not None:
+      concatenate_bcs(zone, [to_retrieve_gc_name,to_retrieve_gc_name+'_c'], to_retrieve_gc_name)
+      concatenate_bcs(zone, [ still_here_gc_name, still_here_gc_name+'_c'],  still_here_gc_name)
     
     i_per -=1
 
