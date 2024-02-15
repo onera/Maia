@@ -719,7 +719,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
                                            zones_face_vtx,
                                            comm)
   print(f'[{comm.rank}] _out_face = {_out_face}')
-  constraint_pl = np.array(_out_face[0]['np_interface_ids_face'][0::2])
+  constraint_pl = np.absolute(_out_face[0]['np_interface_ids_face'][0::2])
   print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
   constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], [constraint_pl], comm)[0]
   print(f'[{comm.rank}] constraint_pl = {constraint_pl}')
