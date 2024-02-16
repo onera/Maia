@@ -22,7 +22,26 @@ class PeriodicValues(NamedTuple):
                'translation' : self.Translation}
     else:
       return self._asdict()
+    
+class CartesianCoordinates(NamedTuple):
+  CoordinateX:ArrayLike
+  CoordinateY:ArrayLike
+  CoordinateZ:ArrayLike
 
+class CylindricalCoordinates(NamedTuple):
+  CoordinateR:ArrayLike
+  CoordinateTheta:ArrayLike
+  CoordinateZ:ArrayLike
+
+class SphericalCoordinates(NamedTuple):
+  CoordinateXi:ArrayLike
+  CoordinateEta:ArrayLike
+  CoordinateZeta:ArrayLike
+
+class AuxiliaryCoordinates(NamedTuple):
+  CoordinateXi:ArrayLike
+  CoordinateEta:ArrayLike
+  CoordinateZeta:ArrayLike
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("CGNSTree_t"))
@@ -387,7 +406,7 @@ class Zone:
   def coordinates(zone_node:CGNSTree, name:str=None) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
     """ Return the coordinate arrays of the Zone_t node
 
-    Only cartesian coordinates are supported.
+    Cartseian cartesian, auxiliary, cylindrical, spherical coordinates are supported.
 
     Args:
       zone_node (CGNSTree): Input Zone_t node
@@ -408,15 +427,30 @@ class Zone:
         else W.get_child_from_name_and_label(zone_node, name, "GridCoordinates_t")
     if grid_coord_node is None:
       raise RuntimeError(f"Unable to find GridCoordinates_t node in {N.get_name(zone_node)}.")
-
+    
     x_node = W.get_child_from_name(grid_coord_node, "CoordinateX")
-    y_node = W.get_child_from_name(grid_coord_node, "CoordinateY")
-    z_node = W.get_child_from_name(grid_coord_node, "CoordinateZ")
-    x = N.get_value(x_node) if x_node else None
-    y = N.get_value(y_node) if y_node else None
-    z = N.get_value(z_node) if z_node else None
+    xi_node = W.get_child_from_name(grid_coord_node, "CoordinateXi")
+    phi_node = W.get_child_from_name(grid_coord_node, "CoordinatePhi")
+    
+    if x_node is not None:
+      y_node = W.get_child_from_name(grid_coord_node, "CoordinateY")
+      z_node = W.get_child_from_name(grid_coord_node, "CoordinateZ")
+      gc_coords = CartesianCoordinates(N.get_value(x_node), N.get_value(y_node), N.get_value(z_node))
+    elif xi_node is not None:
+      eta_node = W.get_child_from_name(grid_coord_node, "CoordinateEta")
+      zeta_node = W.get_child_from_name(grid_coord_node, "CoordinateZeta")
+      gc_coords = AuxiliaryCoordinates(N.get_value(xi_node), N.get_value(eta_node), N.get_value(zeta_node))
+    elif phi_node is not None:
+      r_node = W.get_child_from_name(grid_coord_node, "CoordinateR")
+      theta_node = W.get_child_from_name(grid_coord_node, "CoordinateTheta")
+      gc_coords = SphericalCoordinates(N.get_value(r_node), N.get_value(theta_node), N.get_value(phi_node))
+    else:
+      r_node = W.get_child_from_name(grid_coord_node, "CoordinateR")
+      theta_node = W.get_child_from_name(grid_coord_node, "CoordinateTheta")
+      z_node = W.get_child_from_name(grid_coord_node, "CoordinateZ")
+      gc_coords = CylindricalCoordinates(N.get_value(r_node), N.get_value(theta_node), N.get_value(z_node))
 
-    return x, y, z
+    return gc_coords
 
   @staticmethod
   def ngon_connectivity(zone_node:CGNSTree) -> List[np.ndarray]:
