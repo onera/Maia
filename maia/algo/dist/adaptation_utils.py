@@ -6,7 +6,7 @@ import maia.transfer.protocols as EP
 from   maia.utils  import np_utils, par_utils, as_pdm_gnum
 from   maia.utils.parallel import algo as par_algo
 from   maia.algo.dist import transform as dist_transform
-from   maia.algo.dist.merge_ids      import merge_distributed_ids, replace_distributed_ids
+from   maia.algo.dist.merge_ids      import merge_distributed_ids
 from   maia.algo.dist.remove_element import remove_elts_from_pl
 from   maia.algo.dist.subset_tools   import vtx_ids_to_face_ids
 
@@ -582,10 +582,18 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   elt_dim = PT.Element.Dimension(elt_n)
   is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==DIM_TO_LOC[elt_dim]
 
-  # > Compute new vtx numbering merging vtx from `src_tgt_vtx`
-  #   Maybe there will be an issue in axisym because of vtx in both GCs
+  # > Compute new vtx numbering merging vtx from `src_tgt_vtx` (merge_distributed_ids may not work because vtx can be in src and tgt)
+  #   TODO: use DIndexer to compute this old_to_new
   vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-  old_to_new_vtx = replace_distributed_ids(vtx_distri, src_tgt_vtx[0], src_tgt_vtx[1], comm)
+  PTB = EP.PartToBlock(vtx_distri, [src_tgt_vtx[0]], comm)
+  dist_ids = PTB.getBlockGnumCopy()
+  dn_elts  = vtx_distri[1] - vtx_distri[0]
+
+  _, dtargets = PTB.exchange_field([src_tgt_vtx[1]], part_stride=1)
+  
+  old_to_new_vtx = np.arange(dn_elts) + vtx_distri[0] +1
+  old_to_new_vtx[dist_ids-vtx_distri[0]-1] = dtargets
+
 
   # > Find BCs described by element pls
   bc_nodes = [list(),list()]
