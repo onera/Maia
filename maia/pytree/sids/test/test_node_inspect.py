@@ -90,6 +90,18 @@ def test_find_periodic_jns():
 
 def test_coordinates():
     
+    zone_cart_2D = parse_yaml_cgns.to_node('''
+    Zone Zone_t:
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 [3,4,5]:
+        CoordinateY DataArray_t R8 [6,7,0]:
+    ''')
+    cx, cy, cz = SIDS.Zone.coordinates(zone_cart_2D)
+
+    assert np.allclose(cx, [3,4,5])
+    assert np.allclose(cy, [6,7,0])
+    assert cz == None
+
     zone_cart = parse_yaml_cgns.to_node('''
     Zone Zone_t:
       GridCoordinates GridCoordinates_t:
