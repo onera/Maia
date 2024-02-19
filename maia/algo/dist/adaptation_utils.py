@@ -732,8 +732,13 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(constraint_pl.size, comm)}, bc_n)
 
 def concatenate_bcs(zone, src_bc_names, tgt_bc_name):
-
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  wanted_bc = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) is in src_bc_names
+  bc_nodes  = PT.get_children_from_predicate(zone_bc_n, wanted_bc)
+  bc_n = maia.algo.dist.concat_nodes.concatenate_subset_nodes(bc_nodes, comm, output_name=tgt_bc_name,
+    additional_data_queries=['PointList'], additional_child_queries=['GridLocation_t','FamilyName_t'], master=None):
+  PT.add_child(zone_bc_n, bc_n)
+  '''
   bc_pl  = list()
   bc_loc = list()
   bc_fam = list()
@@ -765,6 +770,7 @@ def concatenate_bcs(zone, src_bc_names, tgt_bc_name):
                    family=bc_fam[0],
                    parent=zone_bc_n)
   PT.maia.newDistribution({'Index':as_pdm_gnum(bc_distri)}, parent=bc_n)
+  '''
 
 def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   '''
@@ -958,8 +964,8 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
     # > 1/ Defining the internal surface, that will be constrained in mesh adaptation
-    bc_name1= gc_paths[0].split('/')[-1]
-    bc_name2= gc_paths[1].split('/')[-1]
+    bc_name1= PT.path_tail(gc_paths[0])
+    bc_name2= PT.path_tail(gc_paths[1])
     mask    = par_algo.gnum_isin(gc_vtx_pld, gc_vtx_pl, comm, invert=True)
     cell_pl = tag_elmt_owning_vtx(tetra_elt, gc_vtx_pld[mask], comm, elt_full=False) # Tetra made of at least one gc opp vtx
     face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, comm, bc_names=[bc_name1])
@@ -1113,8 +1119,8 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     cell_bc_pl = PT.get_value(PT.Subset.getPatch(cell_bc_n))[0]
     vtx_pl = elmt_pl_to_vtx_pl(zone, tetra_elt, cell_bc_pl, comm)
 
-    still_here_gc_name  = gc_paths[0].split('/')[-1]
-    to_retrieve_gc_name = gc_paths[1].split('/')[-1]
+    still_here_gc_name  = PT.path_tail(gc_paths[0])
+    to_retrieve_gc_name = PT.path_tail(gc_paths[1])
     bc_n = PT.get_child_from_name(zone_bc_n, still_here_gc_name)
     face_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
 

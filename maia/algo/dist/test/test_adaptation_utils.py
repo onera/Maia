@@ -335,3 +335,9 @@ def test_update_elt_vtx_numbering(partial, comm):
     expected_ec = np.array([5,6, 7,8, 9,8, 1,6, 9,8, 6,5, 5,3, 8,8, 9,12])[distri_bar[0]*2:distri_bar[1]*2]
 
   assert np.array_equal(bar_ec, expected_ec)
+
+
+@pytest_parallel.mark.parallel([1,2,3])
+def test_constraint_other_side_join(comm):
+  assert False
+  assert 1==0
