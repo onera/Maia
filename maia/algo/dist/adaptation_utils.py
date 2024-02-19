@@ -682,7 +682,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
     zones_dn_vtx      .append(dn_vtx[1]-dn_vtx[0])
     zones_dn_face     .append(n_face)
     zones_face_vtx_idx.append(elt_vtx_idx)
-    zones_face_vtx    .append(bc_elt_vtx)
+    zones_face_vtx    .append(as_pdm_gnum(bc_elt_vtx))
     zones_face_gn     .append(ids+elt_distri[0]+1)
     zones_face_distri .append(par_utils.dn_to_distribution(ids.size, comm))
 
@@ -698,7 +698,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
 
   n_interface = 1
   interface_dn_vtx  = [n_vtx_in_interf]
-  interface_ids_vtx = [np_utils.interweave_arrays([new_vtx_num, old_vtx_num])]
+  interface_ids_vtx = [as_pdm_gnum(np_utils.interweave_arrays([new_vtx_num, old_vtx_num]))]
   interface_dom_vtx = [dom_vtx]
 
   _out_face = PDM.interface_vertex_to_face(n_interface,
