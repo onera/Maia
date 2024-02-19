@@ -34,9 +34,9 @@ class CylindricalCoordinates(NamedTuple):
   CoordinateZ:ArrayLike
 
 class SphericalCoordinates(NamedTuple):
-  CoordinateXi:ArrayLike
-  CoordinateEta:ArrayLike
-  CoordinateZeta:ArrayLike
+  CoordinateR:ArrayLike
+  CoordinateTheta:ArrayLike
+  CoordinatePhi:ArrayLike
 
 class AuxiliaryCoordinates(NamedTuple):
   CoordinateXi:ArrayLike
@@ -435,11 +435,11 @@ class Zone:
     if x_node is not None:
       y_node = W.get_child_from_name(grid_coord_node, "CoordinateY")
       z_node = W.get_child_from_name(grid_coord_node, "CoordinateZ")
-      gc_coords = CartesianCoordinates(N.get_value(x_node), N.get_value(y_node), N.get_value(z_node))
+      gc_coords = CartesianCoordinates(N.get_value(x_node), N.get_value(y_node), N.get_value(z_node) if z_node else None)
     elif xi_node is not None:
       eta_node = W.get_child_from_name(grid_coord_node, "CoordinateEta")
       zeta_node = W.get_child_from_name(grid_coord_node, "CoordinateZeta")
-      gc_coords = AuxiliaryCoordinates(N.get_value(xi_node), N.get_value(eta_node), N.get_value(zeta_node))
+      gc_coords = AuxiliaryCoordinates(N.get_value(xi_node), N.get_value(eta_node), N.get_value(zeta_node) if zeta_node else None)
     elif phi_node is not None:
       r_node = W.get_child_from_name(grid_coord_node, "CoordinateR")
       theta_node = W.get_child_from_name(grid_coord_node, "CoordinateTheta")
@@ -448,8 +448,8 @@ class Zone:
       r_node = W.get_child_from_name(grid_coord_node, "CoordinateR")
       theta_node = W.get_child_from_name(grid_coord_node, "CoordinateTheta")
       z_node = W.get_child_from_name(grid_coord_node, "CoordinateZ")
-      gc_coords = CylindricalCoordinates(N.get_value(r_node), N.get_value(theta_node), N.get_value(z_node))
-
+      gc_coords = CylindricalCoordinates(N.get_value(r_node), N.get_value(theta_node), N.get_value(z_node) if z_node else None)
+    
     return gc_coords
 
   @staticmethod
