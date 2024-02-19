@@ -633,7 +633,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
 
 def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   '''
-  Find matching elements that have to be constrained too on the other side of the join
+  Find matching elements that have to be constrained too on the other side of the join.
   '''
   zone_bc_n = PT.get_node_from_label(zone, 'ZoneBC_t')
 
@@ -653,7 +653,8 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   dn_vtx      = PT.maia.getDistribution(zone ,'Vertex')[1]
   dn_face     = PT.maia.getDistribution(elt_n,'Element')[1]
 
-  for bc_name in [bc_names[1],bc_names[0]+'_c']: # ordre important pour bc_vtx_pl en dehors de la boucle
+  # > Fake extract bc to have 2 domain in PDM.interface_vertex_to_face(...)
+  for bc_name in [bc_names[1],bc_names[0]]: # ordre important pour bc_vtx_pl en dehors de la boucle
     bc_n    = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
     bc_pl_n = PT.Subset.getPatch(bc_n)
     bc_pl   = PT.get_value(bc_pl_n)[0]
@@ -671,8 +672,6 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
     assert elt_vtx_idx.size==n_face+1
     assert bc_elt_vtx.size==elt_vtx_idx[-1]
     zones_dn_vtx      .append(dn_vtx[1]-dn_vtx[0])
-    # zones_dn_vtx      .append(n_vtx)
-    # zones_dn_face     .append(dn_face[1]-dn_face[0])
     zones_dn_face     .append(n_face)
     zones_face_vtx_idx.append(elt_vtx_idx)
     zones_face_vtx    .append(bc_elt_vtx)
@@ -687,14 +686,10 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   n_vtx_in_interf = old_vtx_num.size
 
   # > Set matching vertices informations
-  # dom_vtx = np.array([0, 1], dtype=np.int32)
   dom_vtx = np.array([0,1], dtype=np.int32)
-
-  # PT.print_tree(zone)
 
   n_interface = 1
   interface_dn_vtx  = [n_vtx_in_interf]
-  # interface_ids_vtx = [np_utils.interweave_arrays([old_vtx_num, new_vtx_num])]
   interface_ids_vtx = [np_utils.interweave_arrays([new_vtx_num, old_vtx_num])]
   interface_dom_vtx = [dom_vtx]
 
@@ -713,12 +708,12 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], [constraint_pl], comm)[0]
 
   # > Update free BC
-  bc_n = PT.get_child_from_name_and_label(zone_bc_n, bc_names[1], 'BC_t')
-  bc_pl_n = PT.Subset.getPatch(bc_n)
-  bc_pl = PT.get_value(bc_pl_n)[0]
-  bc_pl_shft = bc_pl-elt_offset+1
-  mask = par_algo.gnum_isin(bc_pl_shft, constraint_pl, comm, invert=True)
-  bc_pl = bc_pl_shft[mask]+elt_offset-1
+  bc_n        = PT.get_child_from_name_and_label(zone_bc_n, bc_names[1], 'BC_t')
+  bc_pl_n     = PT.Subset.getPatch(bc_n)
+  bc_pl       = PT.get_value(bc_pl_n)[0]
+  bc_pl_shft  = bc_pl-elt_offset+1
+  mask        = par_algo.gnum_isin(bc_pl_shft, constraint_pl, comm, invert=True)
+  bc_pl       = bc_pl_shft[mask]+elt_offset-1
   PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
 
   # > Create constraint BC
@@ -956,7 +951,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     # maia.io.dist_tree_to_file(tree, f'OUTPUT/internal_surface_{i_per}.cgns', comm)
     
     if PT.get_node_from_name_and_label(zone, bc_name1+'_c', 'BC_t') is not None:
-      constraint_other_side_join(zone, tri_elt, [bc_name1,bc_name2], [gc_vtx_pl,gc_vtx_pld], comm)
+      constraint_other_side_join(zone, tri_elt, [bc_name1+'_c',bc_name2], [gc_vtx_pl,gc_vtx_pld], comm)
       to_constrain_bcs.append(bc_name1+'_c')
       to_constrain_bcs.append(bc_name2+'_c')
 
