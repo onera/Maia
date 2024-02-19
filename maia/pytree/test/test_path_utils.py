@@ -32,6 +32,14 @@ def test_predicates_to_paths():
   assert paths == ['Base/ZoneI/ZGCA/gc2', 'Base/ZoneI/ZGCB/gc3', 'Base/ZoneI/ZGCB/gc4']
   assert PU.predicates_to_paths(tree, 'Nope/*') == []
 
+def test_predicates_to_path():
+  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
+    tree = parse_yaml_cgns.to_cgns_tree(yt)
+
+  path = PU.predicates_to_path(tree, ["Base", "Zone_t", "ZGC*", lambda n: int(n[0][-1]) >= 2 and int(n[0][-1]) <= 4])
+  assert path == 'Base/ZoneI/ZGCA/gc2'
+  assert PU.predicates_to_path(tree, 'Nope/*') is None
+
 def test_concretize_paths():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
     tree = parse_yaml_cgns.to_cgns_tree(yt)

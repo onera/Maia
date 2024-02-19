@@ -43,6 +43,17 @@ def predicates_to_paths(root:CGNSTree, predicates) -> List[str]:
     paths.append('/'.join([n[__NAME__] for n in nodes]))
   return paths
 
+def predicates_to_path(root:CGNSTree, predicates) -> Optional[str]:
+  """
+  An utility function searching descendants matching predicates,
+  and returning the path of the first matching nodes (instead of the node itself)
+  """
+  nodes = WAPI.get_node_from_predicates(root, predicates, depth=[1,1], ancestors=True)
+  if None in nodes:
+    return None
+  else:
+    return '/'.join([n[__NAME__] for n in nodes])
+
 def concretize_paths(root:CGNSTree, wanted_path_list:List[str], labels:List[str]) -> List[str]:
   """
   """

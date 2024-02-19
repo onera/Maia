@@ -116,6 +116,8 @@ def get_node_from_predicates(root:CGNSTree, predicates, **kwargs) -> Optional[CG
 
   - ``depth`` (int or pair of int): see :func:`get_node_from_predicate`
   - ``search`` (str): see :func:`get_node_from_predicate`
+  - ``ancestors`` (bool): If ``False`` (default), keep only the terminal node.
+    If ``True``, keep the intermediate nodes and return a tuple of nodes instead of a single node.
 
   Args:
       root (CGNSTree): Tree is which the search is performed

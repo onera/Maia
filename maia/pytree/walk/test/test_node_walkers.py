@@ -65,3 +65,16 @@ FamilyBC FamilyBC_t:
     {'predicate': lambda n: PD.match_name(n, 'Density'), 'depth':1},
   ]
   assert PT.NodeWalkers(node, patterns)()[0] == 'Density'
+
+  # With ancestors (specific options for each predicate)
+  nodes = PT.NodeWalkers(node, patterns, ancestors=True)()
+  assert [n[0] for n in nodes] == ['RefStateFamilyBCDataSet', 'Density']
+
+  # With ancestors (shared options for all predicates)
+  predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_label(n) == "DataArray_t"]
+  # None is found
+  assert PT.NodeWalkers(node, predicates, depth=1, ancestors=True)() == (None, None)
+  # First is found, but not second
+  predicates = [lambda n : PT.get_label(n) == "FamilyBCDataSet_t", lambda n : PT.get_name(n) == "Pressure"]
+  nodes = PT.NodeWalkers(node, predicates, depth=1, ancestors=True)()
+  assert PT.get_name(nodes[0]) == 'FamilyBCDataSet' and nodes[1] is None # Second node not found

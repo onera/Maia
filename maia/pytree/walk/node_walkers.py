@@ -27,6 +27,19 @@ def get_node_from_predicates__(parent, predicates, **kwargs):
   elif len(predicates) == 1:
     return NodeWalker(parent, predicates[0], **kwargs)()
 
+def get_node_from_predicates_for_each_with_parents__(parent, predicates, for_each):
+  # Different kwargs + ancestors
+  res = ()
+  for predicate, kwargs in zip(predicates, for_each):
+    next = NodeWalker(parent, predicate, **kwargs)() if parent else None
+    res = (*res, next)
+    parent = next
+  return res
+
+def get_node_from_predicates_with_parents__(parent, predicates, **kwargs):
+  # Same kwargs + ancestors
+  for_each_kw = [kwargs for _ in predicates]
+  return get_node_from_predicates_for_each_with_parents__(parent, predicates, for_each_kw)
 
 # --------------------------------------------------------------------------
 #
@@ -39,6 +52,7 @@ class NodeWalkers:
     self.root       = root
     self.predicates = predicates
     self.kwargs     = kwargs
+    self.ancestors  = kwargs.pop('ancestors', False)
 
   @property
   def root(self):
@@ -62,8 +76,14 @@ class NodeWalkers:
       self._predicates.append(predicates)
 
   @property
-  def parser(self):
-    return self._parser
+  def ancestors(self):
+    return self._ancestors
+  @ancestors.setter
+  def ancestors(self, value):
+    if isinstance(value, bool):
+      self._ancestors = value
+    else:
+      raise TypeError("ancestors must be a boolean.")
 
   def _deconv_kwargs(self):
     predicates = []; for_each = []
@@ -82,6 +102,8 @@ class NodeWalkers:
   def __call__(self):
     if any([isinstance(kwargs, dict) for kwargs in self.predicates]):
       predicates, for_each = self._deconv_kwargs()
-      return get_node_from_predicates_for_each__(self.root, predicates, for_each)
+      search = get_node_from_predicates_for_each_with_parents__ if self.ancestors else get_node_from_predicates_for_each__
+      return search(self.root, predicates, for_each)
     else:
-      return get_node_from_predicates__(self.root, self.predicates, **self.kwargs)
+      search = get_node_from_predicates_with_parents__ if self.ancestors else get_node_from_predicates__
+      return search(self.root, self.predicates, **self.kwargs)
