@@ -16,6 +16,10 @@ Developpement version
 ^^^^^^^^
 - io: Fix read of unstructured BCDataSet having a PointList
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- adapt_mesh_with_feflo: manage axisymmetric meshes when ``perio=True``
+
 v1.3 (January 2024)
 -------------------
 

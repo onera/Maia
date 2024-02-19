@@ -296,6 +296,10 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   pbc2_vtx_pl  = ptb.getBlockGnumCopy()
   pbc2_vtx_ids = pbc2_vtx_pl-vtx_distri[0]
   pl2_tag = vtx_tag[pbc2_vtx_ids-1]
+  
+  mask = par_algo.gnum_isin(old_vtx_num, pl1_tag, comm)
+  old_vtx_num = old_vtx_num[mask]
+  new_vtx_num = new_vtx_num[mask]
 
   ptp = EP.PartToPart([pl1_tag], [old_vtx_num], comm)
   request1 = ptp.iexch( PDM._PDM_MPI_COMM_KIND_P2P,
@@ -556,6 +560,9 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   update_elt_vtx_numbering(zone, tet_n, old_to_new_vtx, comm, elt_pl=cell_pl)
   update_elt_vtx_numbering(zone, tri_n, old_to_new_vtx, comm, elt_pl=face_pl)
   update_elt_vtx_numbering(zone, bar_n, old_to_new_vtx, comm, elt_pl=line_pl)
+  
+  # > Update Vertex BCs and GCs
+  update_vtx_bnds(zone, old_to_new_vtx, comm)
 
   return new_vtx_num
 
@@ -575,10 +582,18 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   elt_dim = PT.Element.Dimension(elt_n)
   is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==DIM_TO_LOC[elt_dim]
 
-  # > Compute new vtx numbering merging vtx from `src_tgt_vtx`
-  #   Maybe there will be an issue in axisym because of vtx in both GCs
+  # > Compute new vtx numbering merging vtx from `src_tgt_vtx` (merge_distributed_ids may not work because vtx can be in src and tgt)
+  #   TODO: use DIndexer to compute this old_to_new
   vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-  old_to_new_vtx = merge_distributed_ids(vtx_distri, src_tgt_vtx[0], src_tgt_vtx[1], comm, False)
+  PTB = EP.PartToBlock(vtx_distri, [src_tgt_vtx[0]], comm)
+  dist_ids = PTB.getBlockGnumCopy()
+  dn_elts  = vtx_distri[1] - vtx_distri[0]
+
+  _, dtargets = PTB.exchange_field([src_tgt_vtx[1]], part_stride=1)
+  
+  old_to_new_vtx = np.arange(dn_elts) + vtx_distri[0] +1
+  old_to_new_vtx[dist_ids-vtx_distri[0]-1] = dtargets
+
 
   # > Find BCs described by element pls
   bc_nodes = [list(),list()]
@@ -617,14 +632,110 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   # > Perfom comparaisons
   for src_bc_n, src_bc_vtx in zip(bc_nodes[0], bc_vtx[0]):
     for tgt_bc_n, tgt_bc_vtx in zip(bc_nodes[1], bc_vtx[1]):
-      tgt_vtx_tag = par_algo.gnum_isin(tgt_bc_vtx, src_bc_vtx, comm)
-      if par_utils.all_true([tgt_vtx_tag], lambda t:t.all(), comm):
-        matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
+      if PT.get_name(src_bc_n)!=PT.get_name(tgt_bc_n):
+        tgt_vtx_tag = par_algo.gnum_isin(tgt_bc_vtx, src_bc_vtx, comm)
+        if par_utils.all_true([tgt_vtx_tag], lambda t:t.all(), comm):
+          matching_bcs.append([PT.get_name(tgt_bc_n), PT.get_name(src_bc_n)])
 
   return matching_bcs
 
+def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
+  '''
+  Find matching elements that have to be constrained too on the other side of the join.
+  '''
+  zone_bc_n = PT.get_node_from_label(zone, 'ZoneBC_t')
 
-def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
+  zones_dn_vtx       = list()
+  zones_dn_face      = list()
+  zones_face_vtx_idx = list()
+  zones_face_vtx     = list()
+  zones_face_gn      = list()
+  zones_face_distri  = list()
+
+  # > Get elt informations
+  elt_size    = PT.Element.NVtx(elt_n)
+  elt_offset  = PT.Element.Range(elt_n)[0]
+  elt_vtx     = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
+  elt_distri  = PT.maia.getDistribution(elt_n, 'Element')[1]
+  
+  dn_vtx      = PT.maia.getDistribution(zone ,'Vertex')[1]
+  dn_face     = PT.maia.getDistribution(elt_n,'Element')[1]
+
+  # > Fake extract bc to have 2 domain in PDM.interface_vertex_to_face(...)
+  for bc_name in [bc_names[1],bc_names[0]]: # ordre important pour bc_vtx_pl en dehors de la boucle
+    bc_n    = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
+    bc_pl_n = PT.Subset.getPatch(bc_n)
+    bc_pl   = PT.get_value(bc_pl_n)[0]
+
+    bc_pl_shft = bc_pl - elt_offset +1
+    ptb = EP.PartToBlock(elt_distri, [bc_pl_shft], comm)
+    ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
+    ec_pl  = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
+    bc_elt_vtx = elt_vtx[ec_pl]
+
+    bc_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, bc_pl, comm)
+  
+    n_face = ids    .size
+    elt_vtx_idx = np.arange(0,n_face+1, dtype=np.int32)*elt_size
+    assert elt_vtx_idx.size==n_face+1
+    assert bc_elt_vtx.size==elt_vtx_idx[-1]
+    zones_dn_vtx      .append(dn_vtx[1]-dn_vtx[0])
+    zones_dn_face     .append(n_face)
+    zones_face_vtx_idx.append(elt_vtx_idx)
+    zones_face_vtx    .append(as_pdm_gnum(bc_elt_vtx))
+    zones_face_gn     .append(ids+elt_distri[0]+1)
+    zones_face_distri .append(par_utils.dn_to_distribution(ids.size, comm))
+
+
+  # > Get matching vertices in twin BC
+  mask = par_algo.gnum_isin(old_new_vtx_num[0], bc_vtx_pl, comm)
+  old_vtx_num = old_new_vtx_num[0][mask]
+  new_vtx_num = old_new_vtx_num[1][mask]
+  n_vtx_in_interf = old_vtx_num.size
+
+  # > Set matching vertices informations
+  dom_vtx = np.array([0,1], dtype=np.int32)
+
+  n_interface = 1
+  interface_dn_vtx  = [n_vtx_in_interf]
+  interface_ids_vtx = [as_pdm_gnum(np_utils.interweave_arrays([new_vtx_num, old_vtx_num]))]
+  interface_dom_vtx = [dom_vtx]
+
+  _out_face = PDM.interface_vertex_to_face(n_interface,
+                                           2,
+                                           False,
+                                           interface_dn_vtx,
+                                           interface_ids_vtx,
+                                           interface_dom_vtx,
+                                           zones_dn_vtx,
+                                           zones_dn_face,
+                                           zones_face_vtx_idx,
+                                           zones_face_vtx,
+                                           comm)
+  constraint_pl = np.absolute(_out_face[0]['np_interface_ids_face'][0::2])
+  constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], [constraint_pl], comm)[0]
+
+  # > Update free BC
+  bc_n        = PT.get_child_from_name_and_label(zone_bc_n, bc_names[1], 'BC_t')
+  bc_pl_n     = PT.Subset.getPatch(bc_n)
+  bc_pl       = PT.get_value(bc_pl_n)[0]
+  bc_pl_shft  = bc_pl-elt_offset+1
+  mask        = par_algo.gnum_isin(bc_pl_shft, constraint_pl, comm, invert=True)
+  bc_pl       = bc_pl_shft[mask]+elt_offset-1
+  PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
+
+  # > Create constraint BC
+  new_bc_pl = constraint_pl+elt_offset-1
+  bc_n = PT.new_BC(name=bc_names[1]+'_c',
+                   type='FamilySpecified',
+                   point_list=new_bc_pl.reshape((1,-1), order='F'),
+                   loc='FaceCenter',
+                   family='GCS',
+                   parent=zone_bc_n)
+  PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(constraint_pl.size, comm)}, bc_n)
+
+
+def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   '''
   Decompose `elt_pl` tetra faces (which are triangles), adding those that are not already 
   defined in zone and not defined by two tetras.
@@ -657,6 +768,48 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm):
   # > Decompose tetra faces 
   tgt_face_vtx_idx, tgt_elt_ec = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, as_pdm_gnum(ec_elt))
   n_elt_to_add = tgt_face_vtx_idx.size-1
+
+  # > Detect BCs from the otherside
+  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  for bc_name in bc_names:
+    bc_n  = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
+    bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
+    bc_pl_n = PT.Subset.getPatch(bc_n)
+    bc_pl = PT.get_value(bc_pl_n)[0]
+
+    bc_pl_shft = bc_pl - tgt_elt_offset +1
+    ptb = EP.PartToBlock(tgt_elt_distri, [bc_pl_shft], comm)
+    ids = ptb.getBlockGnumCopy()-tgt_elt_distri[0]-1
+    bc_ec_ids  = np_utils.interweave_arrays([tgt_elt_size*ids+i_size for i_size in range(tgt_elt_size)])
+    bc_ec = tgt_ec[bc_ec_ids]
+    n_bc_elt = ids.size
+    
+    tmp_ec  = np.concatenate([bc_ec, tgt_elt_ec])
+    l_mask  = par_algo.is_unique_strided(tmp_ec, tgt_elt_size, comm)
+    free_adapt_elt_ids = ids[ l_mask[0:n_bc_elt]]
+    constraint_elt_ids = ids[~l_mask[0:n_bc_elt]]
+    free_adapt_elt_pl  = free_adapt_elt_ids + tgt_elt_offset + tgt_elt_distri[0]
+    constraint_elt_pl  = constraint_elt_ids + tgt_elt_offset + tgt_elt_distri[0]
+    # > Update BC
+    PT.rm_child(zone_bc_n, bc_n)
+    bc_n = PT.new_BC(name=bc_name,
+                     type='FamilySpecified',
+                     point_list=free_adapt_elt_pl.reshape((1,-1), order='F'),
+                     loc='FaceCenter',
+                     parent=zone_bc_n)
+    if bc_fam_n is not None:
+      PT.add_child(bc_n, bc_fam_n)
+    bc_distri_l = par_utils.dn_to_distribution(free_adapt_elt_pl.size, comm)
+    PT.maia.newDistribution({'Index':bc_distri_l}, parent=bc_n)
+
+    bc_n = PT.new_BC(name=bc_name+'_c',
+                     type='FamilySpecified',
+                     point_list=constraint_elt_pl.reshape((1,-1), order='F'),
+                     loc='FaceCenter',
+                     family='GCS',
+                     parent=zone_bc_n)
+    bc_distri_l = par_utils.dn_to_distribution(constraint_elt_pl.size, comm)
+    PT.maia.newDistribution({'Index':bc_distri_l}, parent=bc_n)
 
   # > Find faces not already defined in TRI_3 connectivity or duplicated
   tmp_ec  = np.concatenate([tgt_elt_ec, tgt_ec])
@@ -760,8 +913,8 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
   bar_elts   = [elt for elt in elts if PT.Element.CGNSName(elt)=='BAR_2']
   assert len(tri_elts) == len(tetra_elts) == 1, f"Multiple elts nodes are not managed"
   assert len(bar_elts) <= 1, f"Multiple elts nodes are not managed"
-  tri_elt   = tri_elts[0]
   tetra_elt = tetra_elts[0]
+  tri_elt   = tri_elts[0]
   bar_elt   = bar_elts[0] if len(bar_elts) > 0 else None
 
   new_vtx_nums = list()
@@ -774,10 +927,13 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
     # > 1/ Defining the internal surface, that will be constrained in mesh adaptation
-    cell_pl = tag_elmt_owning_vtx(tetra_elt, gc_vtx_pld, comm, elt_full=False) # Tetra made of at least one gc opp vtx
-    face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, comm) # ?
+    bc_name1= PT.path_tail(gc_paths[0])
+    bc_name2= PT.path_tail(gc_paths[1])
+    mask    = par_algo.gnum_isin(gc_vtx_pld, gc_vtx_pl, comm, invert=True)
+    cell_pl = tag_elmt_owning_vtx(tetra_elt, gc_vtx_pld[mask], comm, elt_full=False) # Tetra made of at least one gc opp vtx
+    face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, comm, bc_names=[bc_name1])
     vtx_pl  = elmt_pl_to_vtx_pl(zone, tetra_elt, cell_pl, comm) # Vertices ids of tetra belonging to cell_pl
-
+    
     zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
     cell_bc_name = f'tetra_4_periodic_{i_per}'
     new_bc_distrib = par_utils.dn_to_distribution(cell_pl.size, comm)
@@ -801,6 +957,11 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     to_constrain_bcs.append(face_bc_name)
 
     # maia.io.dist_tree_to_file(tree, f'OUTPUT/internal_surface_{i_per}.cgns', comm)
+    
+    if PT.get_node_from_name_and_label(zone, bc_name1+'_c', 'BC_t') is not None:
+      constraint_other_side_join(zone, tri_elt, [bc_name1+'_c',bc_name2], [gc_vtx_pl,gc_vtx_pld], comm)
+      to_constrain_bcs.append(bc_name1+'_c')
+      to_constrain_bcs.append(bc_name2+'_c')
 
     # > 2/ Removing lines defined on join because they surely has their periodic on the other side
     # > Find BCs on GCs that will be deleted because they have their periodic twin
@@ -808,8 +969,9 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     if bar_elt is not None:
       bar_to_rm_pl  = tag_elmt_owning_vtx(bar_elt, gc_vtx_pld, comm, elt_full=True) #Bar made of two gc opp vtx
       bar_twins_pl  = tag_elmt_owning_vtx(bar_elt, gc_vtx_pl , comm, elt_full=True) #Bar made of two gc vtx
-      _matching_bcs =find_matching_bcs(zone, bar_elt, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], comm)
-      remove_elts_from_pl(zone, bar_elt, bar_to_rm_pl, comm)
+      mask          = par_algo.gnum_isin(bar_to_rm_pl, bar_twins_pl, comm, invert=True)
+      _matching_bcs = find_matching_bcs(zone, bar_elt, bar_to_rm_pl, bar_twins_pl, [gc_vtx_pld, gc_vtx_pl], comm)
+      remove_elts_from_pl(zone, bar_elt, bar_to_rm_pl[mask], comm)
     else:
       _matching_bcs = list()
     matching_bcs.append(_matching_bcs)
@@ -820,7 +982,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     # > Defining which element related to created surface must be updated
     to_update_cell_pl = cell_pl
     to_update_face_pl = tag_elmt_owning_vtx(tri_elt, vtx_pl, comm, elt_full=True)
-    to_update_line_pl = tag_elmt_owning_vtx(bar_elt, vtx_pl, comm, elt_full=True)
+    to_update_line_pl = tag_elmt_owning_vtx(bar_elt, vtx_pl[par_algo.gnum_isin(vtx_pl, gc_vtx_pl, comm, invert=True)], comm, elt_full=True)
 
     # > Ambiguous faces that contains all vtx but are not included in patch cells can be removed
     to_update_face_pl = find_shared_faces(tri_elt, to_update_face_pl, tetra_elt, cell_pl, comm)
@@ -842,6 +1004,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     # > 5/ Merge two GCs that are now overlaping
     bc_name1 = PT.path_tail(gc_paths[0])
     bc_name2 = PT.path_tail(gc_paths[1])
+    gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
     vtx_match_num = [gc_vtx_pl, gc_vtx_pld]
     vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
     vtx_tag = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype)+1
@@ -919,8 +1082,8 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     cell_bc_pl = PT.get_value(PT.Subset.getPatch(cell_bc_n))[0]
     vtx_pl = elmt_pl_to_vtx_pl(zone, tetra_elt, cell_bc_pl, comm)
 
-    still_here_gc_name  = gc_paths[0].split('/')[-1]
-    to_retrieve_gc_name = gc_paths[1].split('/')[-1]
+    still_here_gc_name  = PT.path_tail(gc_paths[0])
+    to_retrieve_gc_name = PT.path_tail(gc_paths[1])
     bc_n = PT.get_child_from_name(zone_bc_n, still_here_gc_name)
     face_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
 
@@ -951,6 +1114,22 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
                       [f'{face_elt_name.lower()}_constraint_{i_per}', f'{face_elt_name.lower()}_periodic_{i_per}'],
                       vtx_tag,
                       new_vtx_num[i_per], comm)
+
+    # > Merge BCs that have been separated in deplace_periodic_patch > constraint_other_side_join
+    if PT.get_node_from_name_and_label(zone, to_retrieve_gc_name+'_c', 'BC_t') is not None:
+      src_bc_names = [[to_retrieve_gc_name,to_retrieve_gc_name+'_c'],\
+                      [ still_here_gc_name, still_here_gc_name+'_c']]
+      zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+      for bc_names in src_bc_names:
+        wanted_bc = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) in bc_names
+        bc_nodes  = PT.get_children_from_predicate(zone_bc_n, wanted_bc)
+        bc_n = maia.algo.dist.concat_nodes.concatenate_subset_nodes(bc_nodes, comm,
+                                                                    output_name=bc_names[0],
+                                                                    additional_child_queries=['FamilyName_t'],
+                                                                    master=None)
+        PT.rm_children_from_predicate(zone_bc_n, wanted_bc)
+        PT.add_child(zone_bc_n, bc_n)
+
     i_per -=1
 
   rm_feflo_added_elt(zone, comm)

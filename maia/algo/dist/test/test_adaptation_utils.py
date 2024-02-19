@@ -335,3 +335,78 @@ def test_update_elt_vtx_numbering(partial, comm):
     expected_ec = np.array([5,6, 7,8, 9,8, 1,6, 9,8, 6,5, 5,3, 8,8, 9,12])[distri_bar[0]*2:distri_bar[1]*2]
 
   assert np.array_equal(bar_ec, expected_ec)
+
+
+@pytest_parallel.mark.parallel([2])
+def test_constraint_other_side_join(comm):
+  '''
+     1          4        9         11          5        7
+      +---------+-------+            +---------+-------+
+      |  (3)  ⋰ ⋱       |            |  (2)  ⋰ ⋱       |
+      |    ⋰  ⋰   ⋱ (7) |            |    ⋰  ⋰   ⋱ (4) |
+   14 + ⋰    ⋰      ⋱   |          6 + ⋰    ⋰      ⋱   |
+      |     ⋰         ⋱ |            |     ⋰         ⋱ |
+      |(1) ⋰ (10)     ⋰ + 12         |(9) ⋰  (8)     ⋰ + 8
+      |   ⋰      ⋰      |            |   ⋰      ⋰      |
+      | ⋰  ⋰      (6)   |            | ⋰  ⋰      (5)   |
+    2 +-----------------+ 10      13 +-----------------+ 3
+  
+  '''
+  yt = [f"""
+      Zone Zone_t:
+        :CGNS#Distribution UserDefinedData_t:
+          Vertex DataArray_t [0, 7, 14]:
+        TRI Elements_t I4 [5, 0]:
+          ElementRange IndexRange_t I4 [1, 10]:
+          ElementConnectivity DataArray_t I4 [14,4,2, 6,11,5, 14,1,4, 5,7,8, 13,8,3]:
+          :CGNS#Distribution UserDefinedData_t:
+            Element DataArray_t [0, 5, 10]:
+        ZoneBC ZoneBC_t:
+          BC1_c BC_t 'Null':
+            GridLocation GridLocation_t 'FaceCenter':
+            PointList IndexArray_t I4 [[1,10]]:
+          BC1 BC_t 'Null':
+            GridLocation GridLocation_t 'FaceCenter':
+            PointList IndexArray_t I4 [[3,7]]:
+          BC2 BC_t 'Null':
+            GridLocation GridLocation_t 'FaceCenter':
+            PointList IndexArray_t I4 [[9,2,5]]:
+      """,f"""
+      Zone Zone_t:
+        :CGNS#Distribution UserDefinedData_t:
+          Vertex DataArray_t [6, 14, 14]:
+        TRI Elements_t I4 [5, 0]:
+          ElementRange IndexRange_t I4 [1, 10]:
+          ElementConnectivity DataArray_t I4 [2,12,10, 4,9,12, 13,5,8, 6,5,13, 2,4,12]:
+          :CGNS#Distribution UserDefinedData_t:
+            Element DataArray_t [5, 10, 10]:
+        ZoneBC ZoneBC_t:
+          BC1_c BC_t 'Null':
+            GridLocation GridLocation_t 'FaceCenter':
+            PointList IndexArray_t I4 [[]]:
+          BC1 BC_t 'Null':
+            GridLocation GridLocation_t 'FaceCenter':
+            PointList IndexArray_t I4 [[6]]:
+          BC2 BC_t 'Null':
+            GridLocation GridLocation_t 'FaceCenter':
+            PointList IndexArray_t I4 [[8,4]]:
+      """][comm.rank]
+  old_new_vtx_num = [[np.array([ 1,4,9,14],dtype=pdm_dtype),
+                      np.array([11,5,7, 6],dtype=pdm_dtype)],
+                     [np.array([12, 2,10],dtype=pdm_dtype),
+                      np.array([ 8,13, 3],dtype=pdm_dtype)]
+                     ][comm.rank]
+
+  zone     = parse_yaml_cgns.to_node(yt)
+  elt_n    = PT.get_child_from_name_and_label(zone, 'TRI', 'Elements_t')
+  bc_names = ['BC1_c','BC2']
+  adapt_utils.constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm)
+
+  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+  new_bc_n  = PT.get_child_from_name_and_label(zone_bc_n, 'BC2_c', 'BC_t')
+  assert new_bc_n is not None
+  bc_pl = PT.Subset.getPatch(new_bc_n)[1]
+  if comm.rank==0:
+    assert bc_pl.size==0
+  else:
+    assert np.array_equal(np.array([[9,8]],dtype=pdm_dtype), bc_pl)

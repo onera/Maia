@@ -134,3 +134,36 @@ def test_periodic_adapt_with_feflo(comm):
   assert PT.Zone.n_vtx(adpt_zone) != PT.Zone.n_vtx(dist_zone)
   adpt_gc = PT.get_node_from_name(adpt_zone, 'Xmin_0')
   assert PT.get_value(PT.get_child_from_name(adpt_gc, 'GridConnectivityDonorName')) == 'Xmax_0'
+
+@pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
+@pytest_parallel.mark.parallel(4)
+def test_periodic_adapt_with_feflo(comm):
+
+  # > Read axisym mesh
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', comm)
+
+  # > Define metric
+  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  cx, cy, cz = PT.Zone.coordinates(dist_zone)
+  h_min = 0.01 ; h_max = 1.
+  r = np.sqrt(cy**2+cz**2)
+  fld_metric = h_min + (h_max - h_min) * 0.5 * (10. + np.cos(1.*(r)))
+  fld_metric[np.logical_and(0.3<r,r<0.4)] *= 10.
+  PT.new_FlowSolution('Metric', loc='Vertex', fields={'metric':fld_metric}, parent=dist_zone)
+
+  # > Periodic adaptation
+  adpt_dist_tree = maia.algo.dist.adapt_mesh_with_feflo(dist_tree,
+                                                        'Metric/metric',
+                                                        comm,
+                                                        container_names=['Metric'],
+                                                        periodic=True,
+                                                        feflo_opts=f"-c 10 -cmax 10 -p 4")
+  
+  adpt_zone = PT.get_all_Zone_t(adpt_dist_tree)[0]
+  for bc_name in ['in','out','top']+[f'ridge.{i}' for i in range(9)]:
+    assert PT.get_node_from_name(adpt_zone, bc_name) is not None
+  assert PT.get_name(adpt_zone) == 'zone'
+  assert PT.Zone.n_vtx(adpt_zone) != PT.Zone.n_vtx(dist_zone)
+  adpt_gc = PT.get_node_from_name(adpt_zone, 'per0_0')
+  assert PT.get_value(PT.get_child_from_name(adpt_gc, 'GridConnectivityDonorName')) == 'per1_0'
