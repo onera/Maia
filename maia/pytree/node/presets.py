@@ -609,10 +609,11 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGN
     Periodic_t ReferenceState_t RigidGridMotion_t ThermalConductivityModel_t ThermalRelaxationModel_t TurbulenceClosure_t \
     TurbulenceModel_t UserDefinedData_t ViscosityModel_t ZoneIterativeData_t ZoneSubRegion_t".split()
 
-  _value = NA._convert_value(value)
   if dtype is not None:
     _dtype = cgns_to_dtype[dtype]
-    _value = _value.astype(_dtype)
+    _value = np.asarray(value, dtype=_dtype)
+  else:
+    _value = NA._convert_value(value)
   node = new_node(name, 'DataArray_t', _value, [], parent)
   _check_parent_label(node, parent, allowed_parent)
   return node
