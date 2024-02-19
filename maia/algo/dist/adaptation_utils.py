@@ -731,46 +731,6 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
                    parent=zone_bc_n)
   PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(constraint_pl.size, comm)}, bc_n)
 
-def concatenate_bcs(zone, src_bc_names, tgt_bc_name):
-  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  wanted_bc = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) is in src_bc_names
-  bc_nodes  = PT.get_children_from_predicate(zone_bc_n, wanted_bc)
-  bc_n = maia.algo.dist.concat_nodes.concatenate_subset_nodes(bc_nodes, comm, output_name=tgt_bc_name,
-    additional_data_queries=['PointList'], additional_child_queries=['GridLocation_t','FamilyName_t'], master=None):
-  PT.add_child(zone_bc_n, bc_n)
-  '''
-  bc_pl  = list()
-  bc_loc = list()
-  bc_fam = list()
-  bc_distri = np.array([0,0,0])
-  for bc_name in src_bc_names:
-    bc_n = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
-    bc_pl.append(PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0])
-    bc_gl = PT.Subset.GridLocation(bc_n)
-    if bc_gl not in bc_loc:
-      bc_loc.append(bc_gl)
-    bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
-    if bc_fam_n is not None and PT.get_value(bc_fam_n) not in bc_fam:
-      bc_fam.append(PT.get_value(bc_fam_n))
-    bc_distri += PT.maia.getDistribution(bc_n, 'Index')[1]
-
-    PT.rm_child(zone_bc_n, bc_n)
-
-  if len(bc_loc)>1:
-    raise ValueError(f'BCs that must be merged don\'t have same GridLocation value ({bc_loc})')
-  if len(bc_fam)==0:
-    raise ValueError(f'BCs that must be merged don\'t have FamilyName_t') # TODO: delete it
-  if len(bc_fam)>1:
-    print(f'WARNING: BCs that must be merged don\'t share same FamilyName value, {bc_fam[0]} will be used')
-
-  bc_n = PT.new_BC(name=tgt_bc_name,
-                   type='FamilySpecified',
-                   point_list=np.concatenate(bc_pl).reshape((1,-1), order='F'),
-                   loc='FaceCenter',
-                   family=bc_fam[0],
-                   parent=zone_bc_n)
-  PT.maia.newDistribution({'Index':as_pdm_gnum(bc_distri)}, parent=bc_n)
-  '''
 
 def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   '''
@@ -1152,10 +1112,21 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
                       vtx_tag,
                       new_vtx_num[i_per], comm)
 
+    # > Merge BCs that have been separated in deplace_periodic_patch > constraint_other_side_join
     if PT.get_node_from_name_and_label(zone, to_retrieve_gc_name+'_c', 'BC_t') is not None:
-      concatenate_bcs(zone, [to_retrieve_gc_name,to_retrieve_gc_name+'_c'], to_retrieve_gc_name)
-      concatenate_bcs(zone, [ still_here_gc_name, still_here_gc_name+'_c'],  still_here_gc_name)
-    
+      src_bc_names = [[to_retrieve_gc_name,to_retrieve_gc_name+'_c'],\
+                      [ still_here_gc_name, still_here_gc_name+'_c']]
+      zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
+      for bc_names in src_bc_names:
+        wanted_bc = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) in bc_names
+        bc_nodes  = PT.get_children_from_predicate(zone_bc_n, wanted_bc)
+        bc_n = maia.algo.dist.concat_nodes.concatenate_subset_nodes(bc_nodes, comm,
+                                                                    output_name=bc_names[0],
+                                                                    additional_child_queries=['FamilyName_t'],
+                                                                    master=None)
+        PT.rm_children_from_predicate(zone_bc_n, wanted_bc)
+        PT.add_child(zone_bc_n, bc_n)
+
     i_per -=1
 
   rm_feflo_added_elt(zone, comm)
