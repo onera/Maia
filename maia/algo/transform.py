@@ -6,6 +6,11 @@ from maia.algo.apply_function_to_nodes import zones_iterator
 
 from maia.utils import logging as mlog
 
+def _to_xyz(r, theta, z):
+  return r*np.cos(theta), r*np.sin(theta), z
+def _to_rthetaz(x, y, z):
+  return np.sqrt(x**2+y**2), np.arctan2(y, x), z
+
 def transform_affine_zone(zone,
                           vtx_mask,
                           rotation_center,
@@ -148,11 +153,13 @@ def scale_mesh(t, s=1.):
   if fields_found:
     mlog.warning(f"Scaling mesh does not affect fields, and some are present in tree. Update their value if needed.")
 
-def _transform_cartesian_to_cylindric_unit(zone, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', name='GridCoordinates', basename='Coordinate'):
 
-  """Compute cylindric coordinates from a unit revolution axis and update the node coordinates in the new coordinate system.
+
+def cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', apply_to_fields=True):
+  """Compute cylindric coordinates from a unit revolution axis.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
+
   Transformation is defined by
 
   .. math::
@@ -161,161 +168,6 @@ def _transform_cartesian_to_cylindric_unit(zone, revolution_axis=(0, 0, 1), gc_n
      \\ z = z
 
   where x, y are coordinates on (x,y) plan.
-
-  Args:
-    zone (Tree) : Recover GridCoordinates from the zones in the tree
-                  Zone can be a distributed or partitioned tree.
-    revolution_axis (tuple, list, array) : Constant axis
-                                           By default it set on z-axis.
-    gc_name (str) : Name of the GridCoordinates to transform in cylindric coordinates and containing the transformation matrix
-                    By default it searches GridCoordinates node
-    name (str) : Name of the node containing cartesian vectors to transform into cylindric coordinate
-                 By default it set searches the GridCoordinates node
-    basename (str) : Vector name without suffix of coordinate system
-    apply_to_fields (bool) : Apply the transformation to fields 
-                             By default it set on True
-  """
-
-  if PT.get_node_from_name(zone, gc_name) is None:
-      return
-  
-  if isinstance(revolution_axis, (tuple, list)):
-    revolution_axis = np.array(revolution_axis)
-
-  assert (np.array_equal(revolution_axis, np.array([1, 0, 0]))) or (np.array_equal(revolution_axis, np.array([0, 1, 0]))) or (np.array_equal(revolution_axis, np.array([0, 0, 1])))
-
-  transform_matrix_n = PT.get_node_from_predicates(zone, f'{gc_name}/CoordinateTransform')
-  transform_node = PT.get_node_from_name(zone, f'{name}')
-
-  if transform_matrix_n is not None:
-    coords_suffix = ['Xi', 'Eta', 'Zeta']
-  else:
-    coords_suffix = ['X', 'Y', 'Z']
-  
-  coords_n = [PT.get_child_from_name(transform_node, f'{basename}{suffix}') for suffix in coords_suffix]
-  coords   = [PT.get_value(node) for node in coords_n]
-
-  if np.array_equal(revolution_axis, np.array([1, 0, 0])):
-    c1 = coords[1]
-    c2 = coords[2]
-    c3 = coords[0]
-    c1_n = coords_n[1]
-    c2_n = coords_n[2]
-    c3_n = coords_n[0]
-
-  elif np.array_equal(revolution_axis, np.array([0, 1, 0])):  
-    c1 = coords[0]
-    c2 = coords[2]
-    c3 = coords[1]
-    c1_n = coords_n[0]
-    c2_n = coords_n[2]
-    c3_n = coords_n[1]
-
-  elif np.array_equal(revolution_axis, np.array([0, 0, 1])):
-    c1 = coords[0]
-    c2 = coords[1]
-    c3 = coords[2]
-    c1_n = coords_n[0]
-    c2_n = coords_n[1]
-    c3_n = coords_n[2]
-
-  radius = np.sqrt(c1**2+c2**2)
-  theta  = np.arctan2(c2, c1)
-
-  PT.update_node(c1_n, f'{basename}R', value=radius)
-  PT.update_node(c2_n, f'{basename}Theta', value=theta)
-  PT.update_node(c3_n, f'{basename}Z', value=c3)
-
-  ct_n = PT.get_node_from_predicates(zone, f'{gc_name}/CoordinateTransform')
-  if ct_n is None:
-    gc_n = PT.get_node_from_name(zone, f'{gc_name}')
-    PT.add_child(gc_n, ct_n)
-  
-  return coords_suffix
-
-def _transform_cylindric_to_cartesian_unit(zone, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', name='GridCoordinates', basename='Coordinate'):
-
-  """Compute cylindric coordinates from a unit revolution axis.
-
-  Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
-  Transformation is defined by
-
-  .. math::
-     \\ x = r*cos(theta)
-     \\ y = r*sin(theta)
-     \\ z = z
-
-  where r, theta are respectively the radius and the angle.
-
-  Args:
-    zone (Tree) : Recover GridCoordinates from the zones in the tree
-                  Zone can be a distributed or partitioned tree.
-    revolution_axis (tuple, list, array) : Constant axis
-                                           By default it set on z-axis.
-    gc_name (str) : Name of the GridCoordinates to transform in cartesian coordinates and containing the transformation matrix
-                    By default it searches the GridCoordinates node
-    name (str) : Name of the node containing cartesian vectors to transform into cylindric coordinate
-                 By default it searches GridCoordinates node
-    basename (str) : Vector name without suffix of coordinate system
-    apply_to_fields (bool) : Apply the transformation to fields 
-                             By default it set on True
-  """
-
-  if PT.get_node_from_name(zone, gc_name) is None:
-      return
-
-  if isinstance(revolution_axis, (tuple, list)):
-    revolution_axis = np.array(revolution_axis)
-  
-  assert (np.array_equal(revolution_axis, np.array([1, 0, 0]))) or (np.array_equal(revolution_axis, np.array([0, 1, 0]))) or (np.array_equal(revolution_axis, np.array([0, 0, 1])))
-
-  transform_node = PT.get_node_from_name(zone, f'{name}')
-
-  coords_n = [PT.get_child_from_name(transform_node, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
-  coords   = [PT.get_value(node) for node in coords_n]
-
-  cyl_1 = coords[0]*np.cos(coords[1])
-  cyl_2 = coords[0]*np.sin(coords[1])
-
-  if np.array_equal(revolution_axis, np.array([1, 0, 0])):
-    c1 = coords[2]
-    c2 = cyl_1
-    c3 = cyl_2
-    c1_n = coords_n[2]
-    c2_n = coords_n[0]
-    c3_n = coords_n[1]
-        
-  elif np.array_equal(revolution_axis, np.array([0, 1, 0])):
-    c1 = cyl_1
-    c2 = coords[2]
-    c3 = cyl_2
-    c1_n = coords_n[0]
-    c2_n = coords_n[2]
-    c3_n = coords_n[1]
-
-  elif np.array_equal(revolution_axis, np.array([0, 0, 1])):
-    c1 = cyl_1
-    c2 = cyl_2
-    c3 = coords[2]
-    c1_n = coords_n[0]
-    c2_n = coords_n[1]
-    c3_n = coords_n[2]
-
-  transform_matrix_n = PT.get_node_from_predicates(zone, f'{gc_name}/CoordinateTransform')
-  if transform_matrix_n is not None:
-    coords_suffix = ['Xi', 'Eta', 'Zeta']
-  else : 
-    coords_suffix = ['X', 'Y', 'Z']
-
-  PT.update_node(c1_n, f'{basename}{coords_suffix[0]}', value=c1)
-  PT.update_node(c2_n, f'{basename}{coords_suffix[1]}', value=c2)
-  PT.update_node(c3_n, f'{basename}{coords_suffix[2]}', value=c3)
-        
-def cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', apply_to_fields=True):
-
-  """Compute cylindric coordinates from a unit revolution axis.
-
-  Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
 
   Args:
     t (Tree) : Recover GridCoordinates from the zones in the tree
@@ -327,31 +179,56 @@ def cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1
     apply_to_fields (bool) : Apply the transformation to fields 
                              By default it set on True
   """
-  assert (np.array_equal(revolution_axis, np.array([1, 0, 0]))) or (np.array_equal(revolution_axis, np.array([0, 1, 0]))) or (np.array_equal(revolution_axis, np.array([0, 0, 1])))
 
-  if isinstance(revolution_axis, (tuple, list)):
-    revolution_axis = np.array(revolution_axis)
+  revolution_axis = np.asarray(revolution_axis)
+  if np.array_equal(revolution_axis, [1, 0, 0]):
+    idx_order = [1,2,0]
+  elif np.array_equal(revolution_axis, [0, 1, 0]):  
+    idx_order = [0,2,1]
+  elif np.array_equal(revolution_axis, [0, 0, 1]):
+    idx_order = [0,1,2]
+  else:
+    raise AssertionError("Revolution axis is not unitary")
+  cyl_suffix = ['R', 'Theta', 'Z']
 
   for zone in PT.get_all_Zone_t(t):
 
     if PT.get_node_from_name(zone, gc_name) is None:
       continue
 
-    coords_suffix = _transform_cartesian_to_cylindric_unit(zone, revolution_axis, gc_name=gc_name)
+    transform_matrix_n = PT.get_child_from_predicates(zone, f'{gc_name}/CoordinateTransform')
+    coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
 
+    predicates = [gc_name] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
-      for predicate in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']:
-        for fields_node in PT.get_children_from_predicates(zone, predicate):
-          datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
-          cartesian_vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
-          for basename in cartesian_vectors_basenames:
-            _transform_cartesian_to_cylindric_unit(zone, revolution_axis, gc_name=gc_name, name=fields_node[0], basename=basename)
+      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']
+
+    for predicate in predicates:
+      for container in PT.get_children_from_predicates(zone, predicate):
+        datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
+        vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
+        for basename in vectors_basenames:
+          
+          fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
+          ordered_fields = [fields_n[i] for i in idx_order]
+
+          cyl_values = _to_rthetaz(*[PT.get_value(n) for n in ordered_fields])
+          for i, val in enumerate(cyl_values):
+            PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
      
 def cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', apply_to_fields=True):
-
   """Compute the cartesian coordinates from a unit revolution axis.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindric coordinates.
+
+  Transformation is defined by
+
+  .. math::
+     \\ x = r*cos(theta)
+     \\ y = r*sin(theta)
+     \\ z = z
+
+  where r, theta are respectively the radius and the angle.
 
   Args:
     t (Tree) : Recover GridCoordinates from the zones in the tree
@@ -363,26 +240,41 @@ def cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1
     apply_to_fields (bool) : Apply the transformation to fields
                              By default it set on True               
   """
-
-  assert (np.array_equal(revolution_axis, np.array([1, 0, 0]))) or (np.array_equal(revolution_axis, np.array([0, 1, 0]))) or (np.array_equal(revolution_axis, np.array([0, 0, 1])))
+  revolution_axis = np.asarray(revolution_axis)
+  if np.array_equal(revolution_axis,[1, 0, 0]):
+    idx_order = [2,0,1]
+  elif np.array_equal(revolution_axis, [0, 1, 0]):
+    idx_order = [0,2,1]
+  elif np.array_equal(revolution_axis, [0, 0, 1]):
+    idx_order = [0,1,2]
+  else:
+    raise AssertionError("Revolution axis is not unitary")
 
   for zone in PT.get_all_Zone_t(t):
 
     if PT.get_node_from_name(zone, gc_name) is None:
       continue
 
-    _transform_cylindric_to_cartesian_unit(zone, revolution_axis, gc_name=gc_name)
+    transform_matrix_n = PT.get_child_from_predicates(zone, f'{gc_name}/CoordinateTransform')
+    coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
 
+    predicates = [gc_name] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
-      for predicate in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']:
-        for fields_node in PT.get_children_from_predicates(zone, predicate):
-          datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
-          cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
-          for basename in cylindric_vectors_basenames:
-            _transform_cylindric_to_cartesian_unit(zone, revolution_axis, gc_name=gc_name, name=fields_node[0], basename=basename) 
+      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']
+
+    for predicate in predicates:
+      for container in PT.get_children_from_predicates(zone, predicate):
+        datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
+        cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
+        for basename in cylindric_vectors_basenames:
+
+          fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
+          cart_values = _to_xyz(*[PT.get_value(n) for n in fields_n])
+
+          for i, idx in enumerate(idx_order):
+            PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])
 
 def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields=True):
-
   """Compute the coorindates in the new basis.
 
   Input is transform matrix from the former basis to the new basis.
@@ -410,60 +302,43 @@ def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields
 
   for zone in PT.get_all_Zone_t(t): 
 
-    if PT.get_node_from_name(zone, gc_name) is None:
+    gc_n = PT.get_child_from_name(zone, gc_name)
+    if gc_n is None:
       continue
 
-    coord_transform_n = PT.get_node_from_predicates(zone, f'{gc_name}/CoordinateTransform')
+    coord_transform_n = PT.get_child_from_name(gc_n, 'CoordinateTransform')
     is_aux = coord_transform_n is not None
-    gc_n = PT.get_node_from_name(zone, f'{gc_name}')
-
     reverse = transform_matrix is None
 
     if reverse:
       transform_matrix = PT.get_value(coord_transform_n)
       transform_matrix = np.linalg.inv(transform_matrix)
 
-    coords_suffix = ['Xi', 'Eta', 'Zeta'] if is_aux else ['X', 'Y', 'Z']
-
-    coords_n = [PT.get_child_from_name(gc_n, f'Coordinate{suffix}') for suffix in coords_suffix]
-    coords = [PT.get_value(node) for node in coords_n]
-
-    co_1, co_2, co_3 = np_utils.matmul_cart_vectors(*coords, transform_matrix)
+    in_suffix = ['Xi', 'Eta', 'Zeta'] if is_aux else ['X', 'Y', 'Z']
+    out_suffix = ['X', 'Y', 'Z'] if reverse else ['Xi', 'Eta', 'Zeta']
 
     if reverse:
-      coords_name = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
       PT.rm_nodes_from_name(zone, 'CoordinateTransform')
     else:
-      coords_name = ['CoordinateXi', 'CoordinateEta', 'CoordinateZeta']
       new_transform_matrix = transform_matrix if coord_transform_n is None else np.dot(transform_matrix, coord_transform_n[1])
       PT.update_child(gc_n, 'CoordinateTransform', 'DataArray_t', new_transform_matrix)
     
-    PT.update_node(coords_n[0], coords_name[0], value=co_1)
-    PT.update_node(coords_n[1], coords_name[1], value=co_2)
-    PT.update_node(coords_n[2], coords_name[2], value=co_3)
-
+    predicates = [gc_name] # Always treat coordinates
     if apply_to_fields:
-      for predicate in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']:
-        for fields_node in PT.get_children_from_predicates(zone, predicate):
-          datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
-          cartesian_vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
-          for basename in cartesian_vectors_basenames:
-            vectors_n = [PT.get_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in coords_suffix]
-            vectors = [PT.get_value(n) for n in vectors_n]
+      predicates.extend(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t'])
 
-            transform_fields = np_utils.matmul_cart_vectors(vectors[0], vectors[1], vectors[2], transform_matrix)
+    for predicate in predicates:
+      for fields_node in PT.get_children_from_predicates(zone, predicate):
+        datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
+        vectors_basenames = py_utils.find_vector_names(datanames, in_suffix)
+        for basename in vectors_basenames:
+          vectors_n = [PT.get_node_from_name(fields_node, f"{basename}{c}")  for c in in_suffix]
+          tr_fields = np_utils.matmul_cart_vectors(*[PT.get_value(n) for n in vectors_n], transform_matrix)
+          for node, s, new_val in zip(vectors_n, out_suffix, tr_fields):
+            PT.update_node(node, f'{basename}{s}', value=new_val)
+    
 
-            if reverse:
-              fields_name = [f'{basename}X', f'{basename}Y', f'{basename}Z']
-            else:
-              fields_name = [f'{basename}Xi', f'{basename}Eta', f'{basename}Zeta']
-
-            PT.update_node(vectors_n[0], fields_name[0], value=transform_fields[0])
-            PT.update_node(vectors_n[1], fields_name[1], value=transform_fields[1])
-            PT.update_node(vectors_n[2], fields_name[2], value=transform_fields[2])
-
-def cartesian_to_cylindric(t, revolution_axis=(0, 0 ,1), gc_name='GridCoordinates', apply_to_fields=True):
-
+def cartesian_to_cylindric(t, revolution_axis, gc_name='GridCoordinates', apply_to_fields=True):
   """Compute cylindric coordinates from any revolution axis.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
@@ -479,21 +354,17 @@ def cartesian_to_cylindric(t, revolution_axis=(0, 0 ,1), gc_name='GridCoordinate
                              By default it set on True                                              
   """
 
-  if isinstance(revolution_axis, (tuple, list)):
-     revolution_axis = np.array(revolution_axis)
+  revolution_axis = np.asarray(revolution_axis)
 
-  if len(np.where(revolution_axis==0)[0]) == 2:
-    revolution_axis_unit = revolution_axis / np.linalg.norm(revolution_axis)
-    cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=revolution_axis_unit, gc_name=gc_name, apply_to_fields=apply_to_fields)
-  else:
+  if np.count_nonzero(revolution_axis) != 1:
     transform_matrix = np_utils.create_transform_matrix(revolution_axis)
-    change_basis(t, transform_matrix=transform_matrix, gc_name=gc_name, apply_to_fields=apply_to_fields)
-    new_revolution_axis = np.dot(transform_matrix, revolution_axis)
-    new_revolution_axis_unit = new_revolution_axis / np.linalg.norm(new_revolution_axis)
-    cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=new_revolution_axis_unit, gc_name=gc_name, apply_to_fields=apply_to_fields)
+    change_basis(t, transform_matrix, gc_name, apply_to_fields)
+    revolution_axis = np.dot(transform_matrix, revolution_axis)
+ 
+  revolution_axis_unit = revolution_axis / np.linalg.norm(revolution_axis)
+  cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis_unit, gc_name, apply_to_fields)
 
-def cylindric_to_cartesian(t, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', apply_to_fields=True):
-
+def cylindric_to_cartesian(t, revolution_axis, gc_name='GridCoordinates', apply_to_fields=True):
   """Compute cartesian coordinates from any revolution axis.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindric coordinates.
@@ -509,19 +380,18 @@ def cylindric_to_cartesian(t, revolution_axis=(0, 0, 1), gc_name='GridCoordinate
                              By default it set on True             
   """
   
-  if isinstance(revolution_axis, (tuple, list)):
-     revolution_axis = np.array(revolution_axis)
+  revolution_axis = np.asarray(revolution_axis)
+  need_change_basis = np.count_nonzero(revolution_axis) != 1
 
-  if len(np.where(revolution_axis==0)[0]) == 2:
-    revolution_axis_unit = revolution_axis / np.linalg.norm(revolution_axis)
-    cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=revolution_axis_unit, gc_name=gc_name)
-  else:
-    transform_matrix_n = PT.get_node_from_predicates(t, f'CGNSBase_t/Zone_t/{gc_name}/CoordinateTransform')
-    if transform_matrix_n is None:
+  if need_change_basis:
+    transform_matrix_n = PT.get_child_from_predicates(t, f'CGNSBase_t/Zone_t/{gc_name}/CoordinateTransform')
+    if transform_matrix_n is None: # ???
       return
     transform_matrix = PT.get_value(transform_matrix_n)
-    new_revolution_axis = np.dot(transform_matrix, revolution_axis)
-    new_revolution_axis_unit = new_revolution_axis / np.linalg.norm(new_revolution_axis)
-    transform_matrix = np.linalg.inv(transform_matrix)
-    cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=new_revolution_axis_unit,gc_name=gc_name)
-    change_basis(t, None, gc_name=gc_name, apply_to_fields=apply_to_fields)
+    revolution_axis = np.dot(transform_matrix, revolution_axis)
+
+  revolution_axis_unit = revolution_axis / np.linalg.norm(revolution_axis)
+  cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis_unit, gc_name)
+
+  if need_change_basis:
+    change_basis(t, None, gc_name, apply_to_fields)

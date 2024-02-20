@@ -161,74 +161,48 @@ def test_scale_mesh(comm):
 
 @pytest.mark.parametrize('revolution_axis', [(0, 1, 1), [1, 2, 3], (0, 0, 1), [0, 1, 0]])
 @pytest.mark.parametrize('zonetype', ['S', 'Poly'])       
-class Test:    
+class Test_change_basis_simple:
   def test_change_basis(self, zonetype, revolution_axis, comm):
 
-      import maia
-      import maia.pytree as PT
-      import copy
-      
       dist_tree = maia.factory.generate_dist_block(4, zonetype, comm)
       part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
       for zone in PT.get_all_Zone_t(part_tree):
         # Recover the intial cartesian coordinates
         coords = PT.Zone.coordinates(zone)
-        children = copy.deepcopy(PT.get_children_from_predicates(zone, 'GridCoordinates_t/DataArray_t'))
-        PT.set_name(children[0], 'DDX')
-        PT.set_name(children[1], 'DDY')
-        PT.set_name(children[2], 'DDZ')
 
-        PT.new_FlowSolution('FlowSolution', fields={'FSX' : coords[0], 'FSY' : coords[1], 'FSZ' : coords[2]}, parent=zone)
-        PT.new_ZoneSubRegion('ZoneSubRegion', fields={'ZSRX' : coords[0], 'ZSRY' : coords[1], 'ZSRZ' : coords[2]}, parent=zone)
-        PT.new_node('DiscreteData', 'DiscreteData_t', children=children, parent=zone)
+        PT.new_FlowSolution('FlowSolution', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+        PT.new_ZoneSubRegion('ZoneSubRegion', fields={f'ZSR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
 
       # Create the transform matrix and the reverse transform matrix 
       transform_matrix = np_utils.create_transform_matrix(revolution_axis=revolution_axis)
       
-      part_tree_cart_ref = copy.deepcopy(part_tree)
+      part_tree_cart_ref = PT.deep_copy(part_tree)
         
       # Compute the new coordinates in the new basis
       transform.change_basis(part_tree, transform_matrix, gc_name='GridCoordinatesBis', apply_to_fields=True)
-
       assert PT.is_same_tree(part_tree_cart_ref, part_tree)
 
-      # Compute the new coordinates in the new basis
       transform.change_basis(part_tree, transform_matrix, gc_name='GridCoordinates', apply_to_fields=True)
-
-      # Compute the new coordinates in the new basis
       transform.change_basis(part_tree, transform_matrix, gc_name='GridCoordinates', apply_to_fields=True)
 
       # Compute the former coordinates in ther former basis
       transform.change_basis(part_tree, None, gc_name='GridCoordinates', apply_to_fields=True)
-
       assert PT.is_same_tree(part_tree_cart_ref, part_tree, abs_tol=1e-10)
 
-  def test_cylindric_to_cartesian(self, zonetype, revolution_axis, comm):
+  def test_cyl_cart(self, zonetype, revolution_axis, comm):
 
-    import maia
-    import maia.pytree as PT
-    import numpy as np
-    import copy
-    
     dist_tree = maia.factory.generate_dist_block(3, zonetype, comm)
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
-      children = copy.deepcopy(PT.get_children_from_predicates(zone, 'GridCoordinates_t/DataArray_t'))
-      PT.set_name(children[0], 'DDX')
-      PT.set_name(children[1], 'DDY')
-      PT.set_name(children[2], 'DDZ')
 
       # Create fields in zone
-      PT.new_FlowSolution('FlowSolution', fields={'FSX' : coords[0], 'FSY' : coords[1], 'FSZ' : coords[2]}, parent=zone)
-      PT.new_ZoneSubRegion('ZoneSubRegion', fields={'ZSRX' : coords[0], 'ZSRY' : coords[1], 'ZSRZ' : coords[2]}, parent=zone)
-      PT.new_node('DiscreteData', 'DiscreteData_t', children=children, parent=zone)
-
-    # Copy of the cartesian part tree
-    part_tree_cart_ref = copy.deepcopy(part_tree)
+      PT.new_FlowSolution('FlowSolution', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'DDR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      PT.set_label(dd, 'DiscreteData_t')
 
     if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
       cart2cyl = transform.cartesian_to_cylindric_from_unit_revolution_axis
@@ -238,522 +212,128 @@ class Test:
       cyl2cart = transform.cylindric_to_cartesian
 
     # Transform cartesian coordinates and fields into cylindric around a unit revolution axis
-    cart2cyl(part_tree, revolution_axis=revolution_axis, gc_name='GridCoordinatesBis')
-    assert PT.is_same_tree(part_tree_cart_ref, part_tree)
     cart2cyl(part_tree, revolution_axis=revolution_axis)
-
-    # Copy of the cylindric part tree
-    part_tree_cyl_ref = copy.deepcopy(part_tree)
-
     # Transform cylindric coordinates and fields into cartesian around a unit revolution axis
-    cyl2cart(part_tree, revolution_axis=revolution_axis, gc_name='GridCoordinatesBis')
-    assert PT.is_same_tree(part_tree_cyl_ref, part_tree)
     cyl2cart(part_tree, revolution_axis=revolution_axis)
     
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
-      gc_n = PT.get_nodes_from_predicates(zone, 'GridCoordinates/DataArray_t')
-      gc_coords = [PT.get_value(n) for n in gc_n]
-      fs_n  = PT.get_nodes_from_predicates(zone, 'FlowSolution/DataArray_t')
-      fs_coords = [PT.get_value(n) for n in fs_n]
-      zsr_n  = PT.get_nodes_from_predicates(zone, 'ZoneSubRegion/DataArray_t')
-      zsr_coords = [PT.get_value(n) for n in zsr_n]
-      dd_n  = PT.get_nodes_from_predicates(zone, 'DiscreteData/DataArray_t')
-      dd_coords = [PT.get_value(n) for n in dd_n]
+      for container_name in ['GridCoordinates', 'FlowSolution', 'DiscreteData']:
+        container = PT.get_child_from_name(zone, container_name)
+        val_x, val_y, val_z = [PT.get_node_from_name(container, f'*{d}')[1] for d in ['X', 'Y', 'Z']]
+        assert np.allclose(coords[0], val_x)
+        assert np.allclose(coords[1], val_y)
+        assert np.allclose(coords[2], val_z)
 
-      assert np.allclose(coords[0], gc_coords[0])
-      assert np.allclose(coords[0], fs_coords[0])
-      assert np.allclose(coords[0], zsr_coords[0])
-      assert np.allclose(coords[0], dd_coords[0])
 
-      assert np.allclose(coords[1], gc_coords[1])
-      assert np.allclose(coords[1], fs_coords[1])
-      assert np.allclose(coords[1], zsr_coords[1])
-      assert np.allclose(coords[1], dd_coords[1])
-
-      assert np.allclose(coords[2], gc_coords[2])
-      assert np.allclose(coords[2], fs_coords[2])
-      assert np.allclose(coords[2], zsr_coords[2])
-      assert np.allclose(coords[2], dd_coords[2])
-
-#%%%
-@pytest_parallel.mark.parallel([1, 2])          
-class Test_unit:
-  revolution_axis = (1, 0, 0)
-  def test_cartesian_to_cylindric_unit_S(self, comm):
-
-      import maia
-      import maia.pytree as PT
-      import numpy as np
-      import copy
-      
-      dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover the intial cartesian coordinates
-        coords = PT.Zone.coordinates(zone)
-        children = copy.deepcopy(PT.get_children_from_predicates(zone, 'GridCoordinates_t/DataArray_t'))
-        PT.set_name(children[0], 'DDX')
-        PT.set_name(children[1], 'DDY')
-        PT.set_name(children[2], 'DDZ')
-
-        # Create fields in zone
-        PT.new_FlowSolution('FlowSolution', fields={'FSX' : coords[0], 'FSY' : coords[1], 'FSZ' : coords[2]}, parent=zone)
-        PT.new_ZoneSubRegion('ZoneSubRegion', fields={'ZSRX' : coords[0], 'ZSRY' : coords[1], 'ZSRZ' : coords[2]}, parent=zone)
-        PT.new_node('DiscreteData', 'DiscreteData_t', children=children, parent=zone)
-
-      # Copy of the cartesian part tree
-      part_tree_cart_ref = copy.deepcopy(part_tree)
-
-      # Transform cartesian coordinates and fields into cylindric from any revolution axis
-      transform.cartesian_to_cylindric_from_unit_revolution_axis(part_tree, revolution_axis=self.revolution_axis, gc_name='GridCoordinatesBis')
-
-      assert PT.is_same_tree(part_tree_cart_ref, part_tree)
-
-      transform.cartesian_to_cylindric_from_unit_revolution_axis(part_tree, revolution_axis=self.revolution_axis) 
-
-      if comm.size == 1:
-        radius_ref = [0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1., 0.5, 0.5, 0.5, 0.70710678, 0.70710678, 0.70710678, 1.11803399, 1.11803399, 
-                      1.11803399, 1., 1., 1., 1.11803399, 1.11803399, 1.11803399, 1.41421356, 1.41421356, 1.41421356]
-        theta_ref  = [0., 0., 0., 0., 0., 0., 0., 0., 0., 1.57079633, 1.57079633, 1.57079633, 0.78539816, 0.78539816, 0.78539816, 0.46364761, 0.46364761, 
-                      0.46364761, 1.57079633, 1.57079633, 1.57079633, 1.10714872, 1.10714872, 1.10714872, 0.78539816, 0.78539816, 0.78539816]
-        z_ref      = [0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1.]
-      elif comm.size == 2:
-        if comm.rank == 0: 
-          radius_ref = [0., 0., 0.5, 0.5, 1., 1., 0.5, 0.5, 0.70710678, 0.70710678, 1.11803399, 
-                        1.11803399, 1., 1., 1.11803399, 1.11803399, 1.41421356, 1.41421356]
-          theta_ref  = [0., 0., 0., 0., 0., 0., 1.57079633, 1.57079633, 0.78539816, 0.78539816, 0.46364761, 
-                        0.46364761, 1.57079633, 1.57079633, 1.10714872, 1.10714872, 0.78539816, 0.78539816]
-          z_ref      = [0., 0.5, 0., 0.5, 0., 0.5, 0., 0.5, 0., 0.5, 0., 0.5, 0., 0.5, 0., 0.5, 0., 0.5]
-        elif comm.rank == 1:
-          radius_ref = [0., 0., 0.5, 0.5, 1., 1., 0.5, 0.5, 0.70710678, 0.70710678, 1.11803399, 
-                        1.11803399, 1., 1., 1.11803399, 1.11803399, 1.41421356, 1.41421356]
-          theta_ref  = [0., 0., 0., 0., 0., 0., 1.57079633, 1.57079633, 0.78539816, 0.78539816, 0.46364761, 0.46364761,
-                        1.57079633, 1.57079633, 1.10714872, 1.10714872, 0.78539816, 0.78539816]
-          z_ref      = [0.5, 1., 0.5, 1., 0.5, 1., 0.5, 1., 0.5, 1., 0.5, 1., 0.5, 1., 0.5, 1., 0.5, 1.]
-
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover coordinates and fields in the new basis
-        gc_n = PT.get_nodes_from_predicates(zone, 'GridCoordinates/DataArray_t')
-        gc_coords = [PT.get_value(n) for n in gc_n]
-        fs_n  = PT.get_nodes_from_predicates(zone, 'FlowSolution/DataArray_t')
-        fs_coords = [PT.get_value(n) for n in fs_n]
-        zsr_n  = PT.get_nodes_from_predicates(zone, 'ZoneSubRegion/DataArray_t')
-        zsr_coords = [PT.get_value(n) for n in zsr_n]
-        dd_n  = PT.get_nodes_from_predicates(zone, 'DiscreteData/DataArray_t')
-        dd_coords = [PT.get_value(n) for n in dd_n]
-
-        assert np.allclose(radius_ref, gc_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, fs_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, zsr_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, dd_coords[1].flatten('F'))
-
-        assert np.allclose(theta_ref, gc_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, fs_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, zsr_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, dd_coords[2].flatten('F'))
-
-        assert np.allclose(z_ref, gc_coords[0].flatten('F'))
-        assert np.allclose(z_ref, fs_coords[0].flatten('F'))
-        assert np.allclose(z_ref, zsr_coords[0].flatten('F'))
-        assert np.allclose(z_ref, dd_coords[0].flatten('F'))
-
-        with pytest.raises(AssertionError):
-          transform.cartesian_to_cylindric_from_unit_revolution_axis(part_tree, revolution_axis=(0, 0, 0)) 
-
-  def test_cartesian_to_cylindric_unit_U(self, comm):
-
-      import maia
-      import maia.pytree as PT
-      import numpy as np
-      import copy
-      
-      dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-
-      revolution_axis = (1, 0, 0)
-
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover the intial cartesian coordinates
-        coords = PT.Zone.coordinates(zone)
-        children = copy.deepcopy(PT.get_children_from_predicates(zone, 'GridCoordinates_t/DataArray_t'))
-        PT.set_name(children[0], 'DDX')
-        PT.set_name(children[1], 'DDY')
-        PT.set_name(children[2], 'DDZ')
-
-        # Create fields in zone
-        PT.new_FlowSolution('FlowSolution', fields={'FSX' : coords[0], 'FSY' : coords[1], 'FSZ' : coords[2]}, parent=zone)
-        PT.new_ZoneSubRegion('ZoneSubRegion', fields={'ZSRX' : coords[0], 'ZSRY' : coords[1], 'ZSRZ' : coords[2]}, parent=zone)
-        PT.new_node('DiscreteData', 'DiscreteData_t', children=children, parent=zone)
-
-      # Copy of the cartesian part tree
-      part_tree_cart_ref = copy.deepcopy(part_tree)
-
-      # Transform cartesian coordinates and fields into cylindric from any revolution axis
-      transform.cartesian_to_cylindric_from_unit_revolution_axis(part_tree, revolution_axis=revolution_axis, gc_name='GridCoordinatesBis')
-      assert PT.is_same_tree(part_tree_cart_ref, part_tree)
-      transform.cartesian_to_cylindric_from_unit_revolution_axis(part_tree, revolution_axis=revolution_axis)   
-
-      if comm.size == 1:
-        radius_ref = [0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1., 0.5, 0.5, 0.5, 0.70710678, 0.70710678, 0.70710678, 1.11803399, 1.11803399,
-                      1.11803399, 1., 1., 1., 1.11803399, 1.11803399, 1.11803399, 1.41421356, 1.41421356, 1.41421356]
-        theta_ref  = [0., 0., 0., 0., 0., 0., 0., 0., 0., 1.57079633, 1.57079633, 1.57079633, 0.78539816, 0.78539816, 0.78539816, 0.46364761, 0.46364761,
-                      0.46364761, 1.57079633, 1.57079633, 1.57079633, 1.10714872, 1.10714872, 1.10714872, 0.78539816, 0.78539816, 0.78539816]
-        z_ref      = [0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1.]
-      elif comm.size == 2:
-        if comm.rank == 0: 
-          radius_ref = [0., 0., 0., 0.5, 0.5, 0.5, 1., 1., 1., 0.5, 0.5, 0.5, 0.70710678, 0.70710678, 0.70710678, 1.11803399, 1.11803399, 1.11803399]
-          theta_ref  = [0., 0., 0., 0., 0., 0., 0., 0., 0., 1.57079633, 1.57079633, 1.57079633, 0.78539816, 0.78539816, 0.78539816, 0.46364761, 0.46364761, 0.46364761]
-          z_ref      = [0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1.]
-        elif comm.rank == 1:
-          radius_ref = [0.5, 0.5, 0.5, 0.70710678, 0.70710678, 0.70710678, 1.11803399, 1.11803399, 1.11803399, 
-                        1., 1., 1., 1.11803399, 1.11803399, 1.11803399, 1.41421356, 1.41421356, 1.41421356]
-          theta_ref  = [1.57079633, 1.57079633, 1.57079633, 0.78539816, 0.78539816, 0.78539816, 0.46364761, 0.46364761, 0.46364761, 
-                        1.57079633, 1.57079633, 1.57079633, 1.10714872, 1.10714872, 1.10714872, 0.78539816, 0.78539816, 0.78539816]
-          z_ref      = [0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1., 0., 0.5, 1.]
-
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover coordinates and fields in the new basis
-        gc_n = PT.get_nodes_from_predicates(zone, 'GridCoordinates/DataArray_t')
-        gc_coords = [PT.get_value(n) for n in gc_n]
-        fs_n  = PT.get_nodes_from_predicates(zone, 'FlowSolution/DataArray_t')
-        fs_coords = [PT.get_value(n) for n in fs_n]
-        zsr_n  = PT.get_nodes_from_predicates(zone, 'ZoneSubRegion/DataArray_t')
-        zsr_coords = [PT.get_value(n) for n in zsr_n]
-        dd_n  = PT.get_nodes_from_predicates(zone, 'DiscreteData/DataArray_t')
-        dd_coords = [PT.get_value(n) for n in dd_n]
-
-        assert np.allclose(radius_ref, gc_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, fs_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, zsr_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, dd_coords[1].flatten('F'))
-
-        assert np.allclose(theta_ref, gc_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, fs_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, zsr_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, dd_coords[2].flatten('F'))
-
-        assert np.allclose(z_ref, gc_coords[0].flatten('F'))
-        assert np.allclose(z_ref, fs_coords[0].flatten('F'))
-        assert np.allclose(z_ref, zsr_coords[0].flatten('F'))
-        assert np.allclose(z_ref, dd_coords[0].flatten('F'))
-
-        with pytest.raises(AssertionError):
-          transform.cartesian_to_cylindric_from_unit_revolution_axis(part_tree, revolution_axis=(0, 0, 0))
-
-#%%%
 @pytest.mark.parametrize('revolution_axis', [(1, 1, 0), [2, 2, 0]])
 @pytest_parallel.mark.parallel([1, 2]) 
 class Test_cart_to_cyl:
-  def test_cartesian_to_cylindric_S(self, revolution_axis, comm):
+  def test_S(self, revolution_axis, comm):
 
-    import maia
-    import maia.pytree as PT
-    import numpy as np
-    import copy
-    
-    dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
-    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+    dist_tree = maia.factory.generate_dist_block([3,2,2], 'S', comm)
+    weights = maia.factory.partitioning.compute_regular_weights(dist_tree, comm)
+    part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=weights)
 
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
-      children = copy.deepcopy(PT.get_children_from_predicates(zone, 'GridCoordinates_t/DataArray_t'))
-      PT.set_name(children[0], 'DDX')
-      PT.set_name(children[1], 'DDY')
-      PT.set_name(children[2], 'DDZ')
       
       # Create fields in zone 
-      PT.new_FlowSolution('FlowSolution', fields={'FSX' : coords[0], 'FSY' : coords[1], 'FSZ' : coords[2]}, parent=zone)
-      PT.new_ZoneSubRegion('ZoneSubRegion', fields={'ZSRX' : coords[0], 'ZSRY' : coords[1], 'ZSRZ' : coords[2]}, parent=zone)
-      PT.new_node('DiscreteData', 'DiscreteData_t', children=children, parent=zone)
+      PT.new_FlowSolution('FlowSolution', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'DDR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      PT.set_label(dd, 'DiscreteData_t')
 
     # Copy of the cartesian part tree
-    part_tree_cart_ref = copy.deepcopy(part_tree)
+    part_tree_cart_ref = PT.deep_copy(part_tree)
 
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindric(part_tree, revolution_axis=revolution_axis, gc_name='GridCoordinatesBis')
+    transform.cartesian_to_cylindric(part_tree, revolution_axis, gc_name='GridCoordinatesBis') #GCNames does not exists
     assert PT.is_same_tree(part_tree_cart_ref, part_tree)
-    transform.cartesian_to_cylindric(part_tree, revolution_axis=revolution_axis)  
+    transform.cartesian_to_cylindric(part_tree, revolution_axis)  
      
     if comm.size == 1:
-      radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254,
-                    1.22474487, 0.8660254, 0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
-      theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 2.52611294, 
-                    0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633, 1.57079633, 1.91063324, 
-                    2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
-      z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
-                    0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 
-                    0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
+      radius_ref = np.array([[[0. , 1.41421356], [1. ,  1.73205081]], [[0.5, 1.5       ], [0.5,  1.5       ]], [[1. , 1.73205081], [0. ,  1.41421356]]])
+      theta_ref = np.array([[[0., 1.57079633], [0., 0.95531662]], [[3.14159265, 1.91063324], [0., 1.23095942]], [[3.14159265, 2.18627604], [0., 1.57079633]]])
+      z_ref = np.array([[[0., 0.], [0.70710678, 0.70710678]], [[0.35355339, 0.35355339], [1.06066017, 1.06066017]], [[0.70710678, 0.70710678], [1.41421356, 1.41421356]]])
     elif comm.size == 2:
       if comm.rank ==0 :
-        radius_ref = [0., 0.5, 0.5, 0. , 1., 0.5, 0.70710678, 0.8660254, 0.8660254, 0.70710678,
-                      1.22474487, 0.8660254, 1.41421356, 1.5, 1.5, 1.41421356, 1.73205081, 1.5]
-        theta_ref  = [0., 3.14159265, 0., 0., 0., 0., 1.57079633, 2.18627604, 0.95531662, 1.57079633, 0.61547971,
-                      0.95531662, 1.57079633, 1.91063324, 1.23095942, 1.57079633, 0.95531662, 1.23095942]
-        z_ref      = [0., 0.35355339, 0.35355339, 0.70710678, 0.70710678, 1.06066017, 0., 0.35355339, 0.35355339, 
-                      0.70710678, 0.70710678, 1.06066017, 0., 0.35355339, 0.35355339, 0.70710678, 0.70710678, 1.06066017]
+        radius_ref = np.array([[[0., 1.41421356], [1.        , 1.73205081]], [[0.5       , 1.5       ], [0.5       , 1.5       ]]])
+        theta_ref  = np.array([[[0., 1.57079633], [0.        , 0.95531662]], [[3.14159265, 1.91063324], [0.        , 1.23095942]]])
+        z_ref      = np.array([[[0., 0.        ], [0.70710678, 0.70710678]], [[0.35355339, 0.35355339], [1.06066017, 1.06066017]]])
       elif comm.rank == 1:
-        radius_ref = [0.5, 1., 0., 0.5, 0.5, 0., 0.8660254, 1.22474487, 0.70710678, 0.8660254, 
-                      0.8660254, 0.70710678, 1.5, 1.73205081, 1.41421356, 1.5, 1.5, 1.41421356]
-        theta_ref  = [3.14159265, 3.14159265, 0., 3.14159265, 0., 0., 2.18627604, 2.52611294, 1.57079633, 2.18627604,
-                      0.95531662, 1.57079633, 1.91063324, 2.18627604, 1.57079633, 1.91063324, 1.23095942, 1.57079633]
-        z_ref      = [0.35355339, 0.70710678, 0.70710678, 1.06066017, 1.06066017, 1.41421356, 0.35355339, 0.70710678, 0.70710678, 
-                      1.06066017, 1.06066017, 1.41421356, 0.35355339, 0.70710678, 0.70710678, 1.06066017, 1.06066017, 1.41421356]
+        radius_ref = np.array([[[0.5       , 1.5       ], [0.5       , 1.5       ]], [[1.        , 1.73205081], [0.        , 1.41421356]]])
+        theta_ref  = np.array([[[3.14159265, 1.91063324], [0.        , 1.23095942]], [[3.14159265, 2.18627604], [0.        , 1.57079633]]])
+        z_ref      = np.array([[[0.35355339, 0.35355339], [1.06066017, 1.06066017]], [[0.70710678, 0.70710678], [1.41421356, 1.41421356]]])
 
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
-      gc_n = PT.get_nodes_from_predicates(zone, 'GridCoordinates/DataArray_t')
-      gc_coords = [PT.get_value(n) for n in gc_n]
-      fs_n  = PT.get_nodes_from_predicates(zone, 'FlowSolution/DataArray_t')
-      fs_coords = [PT.get_value(n) for n in fs_n]
-      zsr_n  = PT.get_nodes_from_predicates(zone, 'ZoneSubRegion/DataArray_t')
-      zsr_coords = [PT.get_value(n) for n in zsr_n]
-      dd_n  = PT.get_nodes_from_predicates(zone, 'DiscreteData/DataArray_t')
-      dd_coords = [PT.get_value(n) for n in dd_n]
+      for container_name in ['GridCoordinates', 'FlowSolution', 'DiscreteData']:
+        container = PT.get_child_from_name(zone, container_name)
+        val_r, val_theta, val_z = [PT.get_node_from_name(container, f'*{d}')[1] for d in ['R', 'Theta', 'Z']]
 
-      assert np.allclose(radius_ref, gc_coords[1].flatten('F'))
-      assert np.allclose(radius_ref, fs_coords[1].flatten('F'))
-      assert np.allclose(radius_ref, zsr_coords[1].flatten('F'))
-      assert np.allclose(radius_ref, dd_coords[1].flatten('F'))
+        assert np.allclose(radius_ref, val_r)
+        assert np.allclose(theta_ref, val_theta)
+        assert np.allclose(z_ref, val_z)
 
-      assert np.allclose(theta_ref, gc_coords[2].flatten('F'))
-      assert np.allclose(theta_ref, fs_coords[2].flatten('F'))
-      assert np.allclose(theta_ref, zsr_coords[2].flatten('F'))
-      assert np.allclose(theta_ref, dd_coords[2].flatten('F'))
+  def test_U(self,revolution_axis, comm):
 
-      assert np.allclose(z_ref, gc_coords[0].flatten('F'))
-      assert np.allclose(z_ref, fs_coords[0].flatten('F'))
-      assert np.allclose(z_ref, zsr_coords[0].flatten('F'))
-      assert np.allclose(z_ref, dd_coords[0].flatten('F'))
-  
-      with pytest.raises(AssertionError):
-        transform.cartesian_to_cylindric(part_tree, revolution_axis=(0, 0, 0))
-
-  def test_cartesian_to_cylindric_U(self,revolution_axis, comm):
-
-      import maia
-      import maia.pytree as PT
-      import numpy as np
-      import copy
-      
-      dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover the intial cartesian coordinates
-        coords = PT.Zone.coordinates(zone)
-        children = copy.deepcopy(PT.get_children_from_predicates(zone, 'GridCoordinates_t/DataArray_t'))
-        PT.set_name(children[0], 'DDX')
-        PT.set_name(children[1], 'DDY')
-        PT.set_name(children[2], 'DDZ')
-        
-        # Create fields in zone 
-        PT.new_FlowSolution('FlowSolution', fields={'FSX' : coords[0], 'FSY' : coords[1], 'FSZ' : coords[2]}, parent=zone)
-        PT.new_ZoneSubRegion('ZoneSubRegion', fields={'ZSRX' : coords[0], 'ZSRY' : coords[1], 'ZSRZ' : coords[2]}, parent=zone)
-        PT.new_node('DiscreteData', 'DiscreteData_t', children=children, parent=zone)
-      
-      # Copy of the cartesian part tree
-      part_tree_cart_ref = copy.deepcopy(part_tree)
-
-      # Transform cartesian coordinates and fields into cylindric from any revolution axis
-      transform.cartesian_to_cylindric(part_tree, revolution_axis=revolution_axis, gc_name='GridCoordinatesBis')
-      assert PT.is_same_tree(part_tree_cart_ref, part_tree)
-      transform.cartesian_to_cylindric(part_tree, revolution_axis=revolution_axis)
-
-      if comm.size == 1:
-        radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 
-                      0.8660254 , 0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
-        theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 
-                      0.95531662, 1.57079633, 1.57079633, 1.91063324, 2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
-        z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 0.35355339,
-                      0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 0.35355339,
-                      0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
-      elif comm.size == 2:
-        if comm.rank == 0 :
-          radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 
-                        0.8660254, 0.70710678, 0.8660254, 1.22474487, 0.8660254 , 0.70710678]
-          theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 
-                        2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633]
-          z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
-                        0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
-        elif comm.rank == 1:
-          radius_ref = [0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 0.8660254,
-                        0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
-          theta_ref  = [1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633, 
-                        1.57079633, 1.91063324, 2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
-          z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
-                        0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
-        
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover coordinates and fields in the new basis
-        gc_n = PT.get_nodes_from_predicates(zone, 'GridCoordinates/DataArray_t')
-        gc_coords = [PT.get_value(n) for n in gc_n]
-        fs_n  = PT.get_nodes_from_predicates(zone, 'FlowSolution/DataArray_t')
-        fs_coords = [PT.get_value(n) for n in fs_n]
-        zsr_n  = PT.get_nodes_from_predicates(zone, 'ZoneSubRegion/DataArray_t')
-        zsr_coords = [PT.get_value(n) for n in zsr_n]
-        dd_n  = PT.get_nodes_from_predicates(zone, 'DiscreteData/DataArray_t')
-        dd_coords = [PT.get_value(n) for n in dd_n]
-
-        assert np.allclose(radius_ref, gc_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, fs_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, zsr_coords[1].flatten('F'))
-        assert np.allclose(radius_ref, dd_coords[1].flatten('F'))
-
-        assert np.allclose(theta_ref, gc_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, fs_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, zsr_coords[2].flatten('F'))
-        assert np.allclose(theta_ref, dd_coords[2].flatten('F'))
-
-        assert np.allclose(z_ref, gc_coords[0].flatten('F'))
-        assert np.allclose(z_ref, fs_coords[0].flatten('F'))
-        assert np.allclose(z_ref, zsr_coords[0].flatten('F'))
-        assert np.allclose(z_ref, dd_coords[0].flatten('F'))
-        
-        with pytest.raises(AssertionError):
-          transform.cartesian_to_cylindric(part_tree, revolution_axis=(0, 0, 0))
-
-@pytest.mark.parametrize('zonetype', ['S', 'Poly'])
-class Test_transform:
-  revolution_axis = (0, 0, 1)
-
-  def test_transform_cartesian_to_cylindric_unit(self, zonetype, comm):
-
-    import maia
-    import maia.pytree as PT
-    import numpy as np
-    import copy
-      
-    dist_tree = maia.factory.generate_dist_block(3, zonetype, comm)
+    dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
-      zone_ref = copy.deepcopy(zone)
       coords = PT.Zone.coordinates(zone)
-      children = copy.deepcopy(PT.get_children_from_predicates(zone, 'GridCoordinates_t/DataArray_t'))
-      PT.set_name(children[0], 'DDX')
-      PT.set_name(children[1], 'DDY')
-      PT.set_name(children[2], 'DDZ')
-        
-      # Create fields in zone 
-      PT.new_FlowSolution('FlowSolution', fields={'FSX' : coords[0], 'FSY' : coords[1], 'FSZ' : coords[2]}, parent=zone)
-      PT.new_ZoneSubRegion('ZoneSubRegion', fields={'ZSRX' : coords[0], 'ZSRY' : coords[1], 'ZSRZ' : coords[2]}, parent=zone)
-      PT.new_node('DiscreteData', 'DiscreteData_t', children=children, parent=zone)
-
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis, gc_name='GridCoordinatesBis')
-
-      PT.is_same_node(zone_ref, zone)
-
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis)
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis, name='FlowSolution', basename='FS')
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis, name='ZoneSubRegion', basename='ZSR')
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis, name='DiscreteData', basename='DD')
-
-      if comm.size == 1:
-        radius_ref = [0., 0.5, 1., 0.5, 0.70710678, 1.11803399, 1., 1.11803399, 1.41421356, 0., 0.5, 1., 0.5, 0.70710678, 1.11803399, 
-                      1., 1.11803399, 1.41421356, 0., 0.5, 1., 0.5, 0.70710678, 1.11803399, 1., 1.11803399, 1.41421356]
-        theta_ref  = [0., 0., 0., 1.57079633, 0.78539816, 0.46364761, 1.57079633, 1.10714872, 0.78539816, 0., 0., 0., 1.57079633, 0.78539816, 0.46364761, 
-                      1.57079633, 1.10714872, 0.78539816, 0., 0., 0., 1.57079633, 0.78539816, 0.46364761, 1.57079633, 1.10714872, 0.78539816]
-        z_ref      = [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1., 1., 1., 1., 1., 1., 1., 1., 1.]
-
-      # Recover coordinates and fields in the new basis
-      gc_n = PT.get_nodes_from_predicates(zone, 'GridCoordinates/DataArray_t')
-      gc_coords = [PT.get_value(n) for n in gc_n]
-      fs_n  = PT.get_nodes_from_predicates(zone, 'FlowSolution/DataArray_t')
-      fs_coords = [PT.get_value(n) for n in fs_n]
-      zsr_n  = PT.get_nodes_from_predicates(zone, 'ZoneSubRegion/DataArray_t')
-      zsr_coords = [PT.get_value(n) for n in zsr_n]
-      dd_n  = PT.get_nodes_from_predicates(zone, 'DiscreteData/DataArray_t')
-      dd_coords = [PT.get_value(n) for n in dd_n]
-
-      assert np.allclose(radius_ref, gc_coords[0].flatten('F'))
-      assert np.allclose(radius_ref, fs_coords[0].flatten('F'))
-      assert np.allclose(radius_ref, zsr_coords[0].flatten('F'))
-      assert np.allclose(radius_ref, dd_coords[0].flatten('F'))
-
-      assert np.allclose(theta_ref, gc_coords[1].flatten('F'))
-      assert np.allclose(theta_ref, fs_coords[1].flatten('F'))
-      assert np.allclose(theta_ref, zsr_coords[1].flatten('F'))
-      assert np.allclose(theta_ref, dd_coords[1].flatten('F'))
-
-      assert np.allclose(z_ref, gc_coords[2].flatten('F'))
-      assert np.allclose(z_ref, fs_coords[2].flatten('F'))
-      assert np.allclose(z_ref, zsr_coords[2].flatten('F'))
-      assert np.allclose(z_ref, dd_coords[2].flatten('F'))
-
-      with pytest.raises(AssertionError):
-        transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=(1, 2, 3))
-
-  def test_transform_cylindric_to_cartesian_unit(self, zonetype, comm):
-
-    import maia
-    import maia.pytree as PT
-    import numpy as np
-    import copy
       
-    dist_tree = maia.factory.generate_dist_block(3, zonetype, comm)
-    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-
-    for zone in PT.get_all_Zone_t(part_tree):
-      # Recover the intial cartesian coordinates
-      zone_ref = copy.deepcopy(zone)
-      coords = PT.Zone.coordinates(zone)
-      children = copy.deepcopy(PT.get_children_from_predicates(zone, 'GridCoordinates_t/DataArray_t'))
-      PT.set_name(children[0], 'DDX')
-      PT.set_name(children[1], 'DDY')
-      PT.set_name(children[2], 'DDZ')
-        
       # Create fields in zone 
-      PT.new_FlowSolution('FlowSolution', fields={'FSX' : coords[0], 'FSY' : coords[1], 'FSZ' : coords[2]}, parent=zone)
-      PT.new_ZoneSubRegion('ZoneSubRegion', fields={'ZSRX' : coords[0], 'ZSRY' : coords[1], 'ZSRZ' : coords[2]}, parent=zone)
-      PT.new_node('DiscreteData', 'DiscreteData_t', children=children, parent=zone)
+      PT.new_FlowSolution('FlowSolution', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      PT.new_ZoneSubRegion('ZoneSubRegion', fields={f'ZSR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+    
+    # Copy of the cartesian part tree
+    part_tree_cart_ref = PT.deep_copy(part_tree)
 
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis, gc_name='GridCoordinatesBis')
+    # Transform cartesian coordinates and fields into cylindric from any revolution axis
+    transform.cartesian_to_cylindric(part_tree, revolution_axis, gc_name='GridCoordinatesBis')
+    assert PT.is_same_tree(part_tree_cart_ref, part_tree)
+    transform.cartesian_to_cylindric(part_tree, revolution_axis)
 
-      PT.is_same_node(zone_ref, zone)
-
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis)
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis, name='FlowSolution', basename='FS')
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis, name='ZoneSubRegion', basename='ZSR')
-      transform._transform_cartesian_to_cylindric_unit(zone, revolution_axis=self.revolution_axis, name='DiscreteData', basename='DD')
-
-      transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=self.revolution_axis, gc_name='GridCoordinatesBis')
-
-      PT.is_same_node(zone_ref, zone)
-
-      transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=self.revolution_axis)
-      transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=self.revolution_axis, name='FlowSolution', basename='FS')
-      transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=self.revolution_axis, name='ZoneSubRegion', basename='ZSR')
-      transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=self.revolution_axis, name='DiscreteData', basename='DD')
-
+    if comm.size == 1:
+      radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 
+                    0.8660254 , 0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
+      theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 
+                    0.95531662, 1.57079633, 1.57079633, 1.91063324, 2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
+      z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 0.35355339,
+                    0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 0.35355339,
+                    0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
+    elif comm.size == 2:
+      if comm.rank == 0 :
+        radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 
+                      0.8660254, 0.70710678, 0.8660254, 1.22474487, 0.8660254 , 0.70710678]
+        theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 
+                      2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633]
+        z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
+                      0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
+      elif comm.rank == 1:
+        radius_ref = [0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 0.8660254,
+                      0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
+        theta_ref  = [1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633, 
+                      1.57079633, 1.91063324, 2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
+        z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
+                      0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
+      
+    for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
-      gc_n = PT.get_nodes_from_predicates(zone, 'GridCoordinates/DataArray_t')
-      gc_coords = [PT.get_value(n) for n in gc_n]
-      fs_n  = PT.get_nodes_from_predicates(zone, 'FlowSolution/DataArray_t')
-      fs_coords = [PT.get_value(n) for n in fs_n]
-      zsr_n  = PT.get_nodes_from_predicates(zone, 'ZoneSubRegion/DataArray_t')
-      zsr_coords = [PT.get_value(n) for n in zsr_n]
-      dd_n  = PT.get_nodes_from_predicates(zone, 'DiscreteData/DataArray_t')
-      dd_coords = [PT.get_value(n) for n in dd_n]
+      for container_name in ['GridCoordinates', 'FlowSolution', 'ZoneSubRegion']:
+        container = PT.get_child_from_name(zone, container_name)
+        val_r, val_theta, val_z = [PT.get_node_from_name(container, f'*{d}')[1] for d in ['R', 'Theta', 'Z']]
 
-      assert np.allclose(coords[0], gc_coords[0])
-      assert np.allclose(coords[0], fs_coords[0])
-      assert np.allclose(coords[0], zsr_coords[0])
-      assert np.allclose(coords[0], dd_coords[0])
+        assert np.allclose(radius_ref, val_r)
+        assert np.allclose(theta_ref, val_theta)
+        assert np.allclose(z_ref, val_z)
+      
+  def test_wrong_axis(self, revolution_axis, comm):
+    dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+    with pytest.raises(AssertionError):
+      transform.cartesian_to_cylindric(dist_tree, revolution_axis=(0, 0, 0))
 
-      assert np.allclose(coords[1], gc_coords[1])
-      assert np.allclose(coords[1], fs_coords[1])
-      assert np.allclose(coords[1], zsr_coords[1])
-      assert np.allclose(coords[1], dd_coords[1])
-
-      assert np.allclose(coords[2], gc_coords[2])
-      assert np.allclose(coords[2], fs_coords[2])
-      assert np.allclose(coords[2], zsr_coords[2])
-      assert np.allclose(coords[2], dd_coords[2])
-
-      with pytest.raises(AssertionError):
-        transform._transform_cylindric_to_cartesian_unit(zone, revolution_axis=(1, 2, 3))
 
