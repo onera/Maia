@@ -187,6 +187,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   for key in keys: #This factorize U and S PL shapes
     _, dist_pl_key = PTB.exchange_field(part_pl_list[key])
     dist_pl.append(dist_pl_key)
+  dist_pl = np.asarray(dist_pl, order='F')
   pl = PT.new_IndexArray(value=dist_pl, parent=dist_node)
   assert pl[1].ndim == 2 and pl[1].shape[0] == idx_dim
 
