@@ -428,7 +428,7 @@ def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields
     coords_n = [PT.get_child_from_name(gc_n, f'Coordinate{suffix}') for suffix in coords_suffix]
     coords = [PT.get_value(node) for node in coords_n]
 
-    co_1, co_2, co_3 = np_utils.apply_cart_vectors(*coords, transform_matrix)
+    co_1, co_2, co_3 = np_utils.matmul_cart_vectors(*coords, transform_matrix)
 
     if reverse:
       coords_name = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
@@ -451,7 +451,7 @@ def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields
             vectors_n = [PT.get_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in coords_suffix]
             vectors = [PT.get_value(n) for n in vectors_n]
 
-            transform_fields = np_utils.apply_cart_vectors(vectors[0], vectors[1], vectors[2], transform_matrix)
+            transform_fields = np_utils.matmul_cart_vectors(vectors[0], vectors[1], vectors[2], transform_matrix)
 
             if reverse:
               fields_name = [f'{basename}X', f'{basename}Y', f'{basename}Z']

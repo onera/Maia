@@ -1,3 +1,4 @@
+import re
 from itertools import permutations
 
 def to_nested_list(l, counts):
@@ -50,10 +51,8 @@ def find_vector_names(names, axis):
   > names : list of potential vectors components
   > axis : Coordinates system of the mesh.
   """
-
-  import re
-
   assert len(axis) > 1
+  names = [name for name in names if len(name) > 1] #Exclude crazy cases
 
   to_index = {axis[0] : 0, axis[1] : 1}
   if len(axis) == 3:
@@ -62,13 +61,12 @@ def find_vector_names(names, axis):
   suffix_names = [set() for i in to_index]
 
   for name in names:
-    if len(name) < 2: continue
     is_lower = name[0].islower()
     if is_lower:
       name = name[0].upper() + name[1:]
     split_name = re.findall('[A-Z][^A-Z]*', name)
     if len(split_name) > 1: 
-      basename = str(''.join(split_name[0:-1]))
+      basename = ''.join(split_name[0:-1])
       if is_lower:
         basename = basename[0].lower() + basename[1:]
     try:

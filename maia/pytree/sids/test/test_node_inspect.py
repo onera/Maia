@@ -109,11 +109,11 @@ def test_coordinates():
         CoordinateY DataArray_t R8 [0,0,0]:
         CoordinateZ DataArray_t R8 [.5, .5, .5]:
     ''')
-    cx, cy, cz = SIDS.Zone.coordinates(zone_cart)
+    nodes = SIDS.Zone.coordinates(zone_cart)
 
-    assert np.allclose(cx, [1,2,3])
-    assert np.allclose(cy, [0,0,0])
-    assert np.allclose(cz, [0.5,0.5,0.5])
+    assert np.allclose(nodes.CoordinateX, [1,2,3])
+    assert np.allclose(nodes.CoordinateY, [0,0,0])
+    assert np.allclose(nodes.CoordinateZ, [0.5,0.5,0.5])
 
     zone_aux = parse_yaml_cgns.to_node('''
     Zone Zone_t:
@@ -148,11 +148,12 @@ def test_coordinates():
         CoordinateTheta DataArray_t R8 [0.,1.57,3.14]:
         CoordinatePhi DataArray_t R8 [.3, .7, .5]:
     ''')
-    cr, ctheta, cphi = SIDS.Zone.coordinates(zone_sph)
+    nodes = SIDS.Zone.coordinates(zone_sph)
+    assert isinstance(nodes, SIDS.SphericalCoordinates)
 
-    assert np.allclose(cr, [1.5,1.3,1.7])
-    assert np.allclose(ctheta, [0.,1.57,3.14])
-    assert np.allclose(cphi, [0.3,0.7,0.5])
+    assert np.allclose(nodes[0], [1.5,1.3,1.7])
+    assert np.allclose(nodes[1], [0.,1.57,3.14])
+    assert np.allclose(nodes[2], [0.3,0.7,0.5])
 
 def test_ZoneType():
   #With numpy arrays

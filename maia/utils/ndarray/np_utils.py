@@ -207,7 +207,7 @@ def all_in_range(array, start, end, strict=False):
   return ((start <  np_array) & (np_array <  end)).all() if strict\
     else ((start <= np_array) & (np_array <= end)).all()
 
-def apply_cart_vectors(vx, vy, vz, transform_matrix):
+def matmul_cart_vectors(vx, vy, vz, transform_matrix):
   """
   Apply the transformation matrix on another matrix composed with components of vectors and return each of the modified components of the vectors
   """
@@ -218,17 +218,16 @@ def apply_cart_vectors(vx, vy, vz, transform_matrix):
   else:
     vectors = np.array([vx.flatten('F'), vy.flatten('F'), vz.flatten('F')], order='F')
 
-  transform_vectors_1, transform_vectors_2, transform_vectors_3 = np.dot(transform_matrix, vectors)
+  res_1, res_2, res_3 = np.dot(transform_matrix, vectors)
   
   if vx.ndim != 1 :
-    transform_vectors_1 = transform_vectors_1.reshape(vx.shape, order='F')
-    transform_vectors_2 = transform_vectors_2.reshape(vy.shape, order='F')
-    transform_vectors_3 = transform_vectors_3.reshape(vz.shape, order='F')
+    res_1 = res_1.reshape(vx.shape, order='F')
+    res_2 = res_2.reshape(vy.shape, order='F')
+    res_3 = res_3.reshape(vz.shape, order='F')
    
-  return transform_vectors_1, transform_vectors_2, transform_vectors_3
+  return res_1, res_2, res_3
 
 def create_transform_matrix(revolution_axis=(0, 0, 1)):  
-  
   """Create a transform matrix from any axis revolution and return the transformation matrix from the former basis toward the new basis.
 
   Input is any revolution axis but must have cartesian coordinates.
@@ -245,17 +244,15 @@ def create_transform_matrix(revolution_axis=(0, 0, 1)):
   """
   assert not (np.array_equal(np.array(revolution_axis), np.zeros(3)))
 
-  if isinstance(revolution_axis, (tuple, list)):
-    revolution_axis = np.array(revolution_axis, order='F')
-
+  revolution_axis = np.asarray(revolution_axis)
   revolution_axis = revolution_axis / np.linalg.norm(revolution_axis)
 
   if revolution_axis[0] != 0:
-    revolution_axis_bis = np.array([-revolution_axis[1]/revolution_axis[0], 1, 0], order='F')   
+    revolution_axis_bis = np.array([-revolution_axis[1]/revolution_axis[0], 1, 0])
   elif revolution_axis[1] != 0:
-    revolution_axis_bis = np.array([0, -revolution_axis[2]/revolution_axis[1], 1], order='F') 
+    revolution_axis_bis = np.array([0, -revolution_axis[2]/revolution_axis[1], 1])
   elif revolution_axis[2] != 0:
-    revolution_axis_bis = np.array([1, 0, -revolution_axis[1]/revolution_axis[2]], order='F')
+    revolution_axis_bis = np.array([1, 0, -revolution_axis[1]/revolution_axis[2]])
   
   revolution_axis_ter = np.cross(revolution_axis, revolution_axis_bis)
 

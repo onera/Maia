@@ -1,5 +1,4 @@
 import pytest
-import pytest_parallel
 import numpy as np
 
 from maia.utils.ndarray import np_utils
@@ -257,6 +256,7 @@ def test_transform_matrix(revolution_axis):
   transform_matrix = np_utils.create_transform_matrix(revolution_axis=revolution_axis)
   transform_matrix_inv = np.linalg.inv(transform_matrix)
   id = np.dot(transform_matrix, transform_matrix_inv)
+  assert np.allclose(id, np.eye(3))
   
   # Transform the current revolution axis into a unit revolution axis in the new basis
   new_revolution_axis = np.dot(transform_matrix, revolution_axis)
@@ -268,90 +268,45 @@ def test_transform_matrix(revolution_axis):
   reverse_revolution_axis = reverse_unit_revolution_axis * norm_new_revolution_axis
 
   assert np.allclose(revolution_axis, reverse_revolution_axis)
-  assert np.allclose(id, np.eye(3))
 
-@pytest_parallel.mark.parallel([1, 2])
 class Test_apply_cart_to_vectors:
   revolution_axis = (1, 1, 1)
-  def test_apply_cart_to_vectors_S(self, comm):
-      import maia
-      import maia.pytree as PT
-      import numpy as np
-      
-      dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  transform_matrix = np_utils.create_transform_matrix(revolution_axis)
+  def test_S(self):
 
-      for zone in PT.get_all_Zone_t(part_tree):
-        cx, cy, cz = PT.Zone.coordinates(zone)
-        
-        transform_matrix = np_utils.create_transform_matrix(revolution_axis=self.revolution_axis)
-        new_cx, new_cy, new_cz = np_utils.apply_cart_vectors(cx, cy, cz, transform_matrix)
+    x = np.array([[[0.5, 0.5, 0.5], [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]], [[1.,  1.,  1. ], [1.,  1.,  1. ], [1.,  1.,  1. ]]], order='F')
+    y = np.array([[[0.,  0.,  0. ], [0.5, 0.5, 0.5], [1.,  1.,  1. ]], [[0.,  0.,  0. ], [0.5, 0.5, 0.5], [1.,  1.,  1. ]]], order='F')
+    z = np.array([[[0.,  0.5, 1. ], [0.,  0.5, 1. ], [0.,  0.5, 1. ]], [[0.,  0.5, 1. ], [0.,  0.5, 1. ], [0.,  0.5, 1. ]]], order='F')
 
-        if comm.size == 1:
-          new_cx_ref = [0., 0.28867513, 0.57735027, 0.28867513, 0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.28867513, 
-                        0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 0.57735027, 
-                        0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 1.15470054,1.44337567, 1.73205081]
-          new_cy_ref = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
-          new_cz_ref = [0., -0.28867513, -0.57735027, -0.28867513, -0.57735027, -0.8660254, -0.57735027, -0.8660254, -1.15470054,
-                        0.57735027, 0.28867513, 0., 0.28867513, 0., -0.28867513, 0., -0.28867513, -0.57735027, 1.15470054, 
-                        0.8660254, 0.57735027, 0.8660254, 0.57735027, 0.28867513, 0.57735027, 0.28867513, 0.]
-        elif comm.size == 2:
-          if comm.rank == 0:
-            new_cx_ref = [0., 0.28867513, 0.28867513, 0.57735027, 0.57735027, 0.8660254 , 0.28867513, 0.57735027, 0.57735027, 0.8660254,
-                          0.8660254, 1.15470054, 0.57735027, 0.8660254, 0.8660254, 1.15470054, 1.15470054, 1.44337567]
-            new_cy_ref = [0., -0.5, 0.5, 0., 1., 0.5, 0., -0.5, 0.5, 0., 1., 0.5, 0., -0.5, 0.5, 0., 1., 0.5]
-            new_cz_ref = [0., -0.28867513, -0.28867513, -0.57735027, -0.57735027, -0.8660254, 0.57735027, 0.28867513, 0.28867513, 0.,
-                          0., -0.28867513, 1.15470054, 0.8660254, 0.8660254, 0.57735027,  0.57735027,  0.28867513]
-          elif comm.rank == 1:
-            new_cx_ref = [0.28867513, 0.57735027, 0.57735027, 0.8660254, 0.8660254, 1.15470054, 0.57735027, 0.8660254, 0.8660254, 1.15470054,
-                          1.15470054, 1.44337567, 0.8660254, 1.15470054, 1.15470054, 1.44337567, 1.44337567, 1.73205081]
-            new_cy_ref = [-0.5, -1., 0., -0.5, 0.5, 0., -0.5, -1., 0., -0.5, 0.5, 0., -0.5, -1., 0., -0.5, 0.5, 0.]
-            new_cz_ref = [-0.28867513, -0.57735027, -0.57735027, -0.8660254, -0.8660254, -1.15470054, 0.28867513, 0., 0., -0.28867513,
-                          -0.28867513, -0.57735027, 0.8660254, 0.57735027, 0.57735027, 0.28867513, 0.28867513, 0.]
+    new_x, new_y, new_z = np_utils.matmul_cart_vectors(x, y, z, self.transform_matrix)
+
+    expected_x = np.array([[[0.28867513, 0.57735027, 0.8660254], [0.57735027, 0.8660254,  1.15470054], [0.8660254,  1.15470054, 1.44337567]],
+                           [[0.57735027, 0.8660254,  1.15470054], [0.8660254,  1.15470054, 1.44337567], [1.15470054, 1.44337567, 1.73205081]]])
+    expected_y = np.array([[[-0.5, -0.5, -0.5], [ 0.,   0.,   0. ], [0.5,  0.5,  0.5]], [[-1.,  -1.,  -1. ], [-0.5, -0.5, -0.5], [ 0.,   0.,   0. ]]])
+    expected_z = np.array([[[-0.28867513,  0.28867513,  0.8660254 ], [-0.57735027,  0.,          0.57735027], [-0.8660254,  -0.28867513,  0.28867513]],
+                           [[-0.57735027,  0.,          0.57735027], [-0.8660254,  -0.28867513,  0.28867513], [-1.15470054, -0.57735027,  0.        ]]])
         
-        assert np.allclose(new_cx_ref, new_cx.flatten('F'))
-        assert np.allclose(new_cy_ref, new_cy.flatten('F'))
-        assert np.allclose(new_cz_ref, new_cz.flatten('F'))
+    assert np.allclose(expected_x, new_x)
+    assert np.allclose(expected_y, new_y)
+    assert np.allclose(expected_z, new_z)
   
-  def test_apply_cart_to_vectors_U(self, comm):
-      import maia
-      import maia.pytree as PT
-      import numpy as np
+  def test_U(self):
+
+      x = np.array([0. , 0.5, 1. , 0. , 0.5, 1. , 0. , 0.5, 1. , 0.,  0.5, 1.,  0. , 0.5, 1. , 0.,  0.5, 1. ])
+      y = np.array([0. , 0. , 0. , 0.5, 0.5, 0.5, 1. , 1. , 1. , 0.,  0. , 0.,  0.5, 0.5, 0.5, 1.,  1. , 1. ])
+      z = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.,  1. , 1.,  1. , 1. , 1. , 1.,  1. , 1. ])
+
+      new_x, new_y, new_z = np_utils.matmul_cart_vectors(x, y, z, self.transform_matrix)
+
+      expected_x = [0.28867513, 0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 0.57735027,
+                    0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 1.15470054, 1.44337567, 1.73205081]
+      expected_y = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
+      expected_z = [0.57735027, 0.28867513, 0., 0.28867513, 0., -0.28867513, 0., -0.28867513, -0.57735027, 1.15470054,
+                    0.8660254, 0.57735027, 0.8660254, 0.57735027, 0.28867513, 0.57735027, 0.28867513, 0.]
       
-      dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-
-      for zone in PT.get_all_Zone_t(part_tree):
-        cx, cy, cz = PT.Zone.coordinates(zone)
-        
-        transform_matrix = np_utils.create_transform_matrix(revolution_axis=self.revolution_axis)
-        new_cx, new_cy, new_cz = np_utils.apply_cart_vectors(cx, cy, cz, transform_matrix)
-
-        if comm.size == 1:
-          new_cx_ref = [0., 0.28867513, 0.57735027, 0.28867513, 0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.28867513,
-                        0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 0.57735027, 
-                        0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 1.15470054, 1.44337567, 1.73205081]
-          new_cy_ref = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
-          new_cz_ref = [0., -0.28867513, -0.57735027, -0.28867513, -0.57735027, -0.8660254, -0.57735027, -0.8660254, -1.15470054,
-                        0.57735027, 0.28867513, 0., 0.28867513, 0., -0.28867513, 0., -0.28867513, -0.57735027, 1.15470054, 
-                        0.8660254, 0.57735027, 0.8660254, 0.57735027, 0.28867513, 0.57735027, 0.28867513, 0.]
-        elif comm.size == 2:
-          if comm.rank == 0:
-            new_cx_ref = [0., 0.28867513, 0.57735027, 0.28867513, 0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.28867513,
-                          0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.8660254 , 1.15470054, 1.44337567]
-            new_cy_ref = [0. , -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
-            new_cz_ref = [0., -0.28867513, -0.57735027, -0.28867513, -0.57735027, -0.8660254, -0.57735027, -0.8660254, -1.15470054, 
-                          0.57735027, 0.28867513, 0., 0.28867513, 0., -0.28867513, 0., -0.28867513, -0.57735027]
-          elif comm.rank == 1:
-            new_cx_ref = [0.28867513, 0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 0.57735027,
-                          0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 1.15470054, 1.44337567, 1.73205081]
-            new_cy_ref = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
-            new_cz_ref = [0.57735027, 0.28867513, 0., 0.28867513, 0., -0.28867513, 0., -0.28867513, -0.57735027, 1.15470054,
-                          0.8660254, 0.57735027, 0.8660254, 0.57735027, 0.28867513, 0.57735027, 0.28867513, 0.]
-        
-        assert np.allclose(new_cx_ref, new_cx.flatten('F'))
-        assert np.allclose(new_cy_ref, new_cy.flatten('F'))
-        assert np.allclose(new_cz_ref, new_cz.flatten('F'))
+      assert np.allclose(expected_x, new_x)
+      assert np.allclose(expected_y, new_y)
+      assert np.allclose(expected_z, new_z)
 class Test_transform_simple():
     #    
     #                    (1.,1.,0.)(2.,1.,0.)
