@@ -740,3 +740,20 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
   for field_name, field_val in fields.items():
     new_DataArray(field_name, field_val, parent=zsr)
   return zsr
+
+def new_UserDefinedData(name='UserDefined', value=None, parent=None):
+  return new_node(name, 'UserDefinedData_t', value, parent)
+
+def new_ViscosityModel(value='SutherlandLaw', parent=None):
+  assert value in ['Null', 'UserDefined', 'Constant', 'PowerLaw', 'SutherlandLaw']
+  return new_node('ViscosityModel', 'ViscosityModel_t', value, parent)
+
+def new_Descriptor(name='Descriptor', value='', parent=None):
+  return new_node(name, 'Descriptor_t', value, parent)
+
+def new_FlowEquationSet(parent=None):
+  return new_node('FlowEquationSet', 'FlowEquationSet_t', parent)
+
+def new_GasModel(value='Ideal', parent=None):
+  assert value in ['Null', 'UserDefined', 'Ideal', 'VanderWaals', 'CaloricallyPerfect', 'ThermallyPerfect', 'ConstantDensity', 'RedlichKwong']
+  return new_node('GasModel', 'GasModel_t', value, parent)
