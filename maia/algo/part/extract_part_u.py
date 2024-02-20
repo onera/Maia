@@ -58,13 +58,14 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
   for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
     fld_name = PT.get_name(fld_node)
     fld_path = f"{container_name}/{fld_name}"
+    fld_dtype = PT.get_value(fld_node).dtype
     
     if partial_field:
       # Get field and organize it according to the gnum1_come_from arrays order
       fld_data = list()
       for i_part, part_zone in enumerate(part_zones) :
         fld_n = PT.get_node_from_path(part_zone,fld_path)
-        fld_data_tmp = PT.get_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
+        fld_data_tmp = PT.get_value(fld_n) if fld_n is not None else np.empty(0, dtype=fld_dtype)
         fld_data.append(fld_data_tmp[pl_gnum1[i_part]])
       p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
     

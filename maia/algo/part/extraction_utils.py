@@ -53,6 +53,40 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
 
   grid_location = PT.Subset.GridLocation(ref_zsr_node)
   partial_field = PT.get_child_from_name(ref_zsr_node, patch_name) is not None
+
+  # list all FS and ZSR paths
+  paths = PT.predicates_to_paths(mask_zone, 'FlowSolution_t/DataArray_t')
+  paths += PT.predicates_to_paths(mask_zone, 'ZoneSubRegion_t/DataArray_t',)
+  # dtypes: gives the information path -> dtype
+  dtypes = dict()
+  # for each path in each zone:
+  #   - if node is None -> do nothing 
+  #   - else, store its dtype and do not look into other zones
+  #     ==> we suppose that all Zone/<path> nodes have the same dtype
+  for ipath, path in enumerate(paths):
+    for pzone in part_zones:
+      fs_data_node = PT.get_node_from_path(pzone, path)
+      if fs_data_node is None:
+        continue
+      dtype = PT.get_value(fs_data_node).dtype
+      dtypes[path] = dtype
+      break
+  # gather all dtypes
+  all_dtypes = comm.allgather(dtypes)
+  # uniquify dtypes by updating successively, values will be either
+  #   -> created (if previous value was None)
+  #   -> written on top of each other, which is OK since all ranks
+  #      should have same dtype
+
+  for loc_dtype in all_dtypes:
+    dtypes.update(loc_dtype)
+  assert (len(dtypes) == len(paths))
+  for full_path, dtype in dtypes.items():
+    data_ar_name = PT.path_tail(full_path)
+    PT.set_value(PT.get_child_from_name_and_label(mask_container,
+                                                  data_ar_name,
+                                                  'DataArray_t'), np.empty(0, dtype))
+        
   return mask_container, grid_location, partial_field
 
 def local_pl_offset(part_zone, dim):
