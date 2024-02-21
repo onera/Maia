@@ -84,12 +84,19 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
       PT.new_IndexArray(name='PointListDonor', value=pld, parent=join_n)
 
 
-def pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data):
+def pdm_vtx_to_cgns_grid_coordinates(d_zone, p_zone, dims, data):
   """
   """
+  d_zone_gc = PT.get_node_from_label(d_zone, 'GridCoordinates_t')
+  d_gc_transform = PT.get_child_from_name(d_zone_gc, 'CoordinateTransform') 
+  is_coords = lambda n: [PT.get_node_from_label(child, 'DataArray_t') for child in PT.get_children(n) if PT.get_name(child) != "CoordinateTransform"]
+  d_gc_names = [PT.get_name(gc_node) for gc_node in is_coords(d_zone_gc)]
   coords = data['np_vtx_coord']
-  fields = {'CoordinateX' : coords[0::3], 'CoordinateY' : coords[1::3], 'CoordinateZ' : coords[2::3]}
+  fields = dict()
+  for i ,d_gc_name in enumerate(d_gc_names):
+    fields[d_gc_name] = coords[i::3]
   grid_c = PT.new_GridCoordinates(fields=fields, parent=p_zone)
+  PT.add_child(grid_c, d_gc_transform)
 
 def pdm_renumbering_data(p_zone, data):
   color_data = PT.new_node('maia#Renumbering', 'UserDefinedData_t')
@@ -266,7 +273,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
 
     if options['dump_pdm_output']:
       dump_pdm_output(part_zone, dims, data)
-    pdm_vtx_to_cgns_grid_coordinates(part_zone, dims, data)
+    pdm_vtx_to_cgns_grid_coordinates(dist_zone, part_zone, dims, data)
     if base_dim > 0:
       pdm_elmt_to_cgns_elmt(part_zone, dist_zone, dims, data, options['output_connectivity'],options['keep_empty_sections'])
 

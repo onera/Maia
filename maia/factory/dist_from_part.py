@@ -329,9 +329,14 @@ def recover_dist_tree(part_tree, comm):
     PT.set_value(dist_zone, d_zone_dims)
 
     # > Create vertex distribution and exchange vertex coordinates
+    p_grid_co = PT.get_node_from_label(part_tree, 'GridCoordinates_t')
+    p_gc_transform = PT.get_node_from_name(p_grid_co, 'CoordinateTransform')
+    is_coords = lambda n: [PT.get_node_from_label(child, 'DataArray_t') for child in PT.get_children(n) if PT.get_name(child) != "CoordinateTransform"]
+    p_grid_co_names = [PT.get_name(gc_node) for gc_node in is_coords(p_grid_co)]
     d_grid_co = PT.new_GridCoordinates('GridCoordinates', parent=dist_zone)
-    for coord in ['CoordinateX', 'CoordinateY', 'CoordinateZ']:
+    for coord in p_grid_co_names:
       PT.new_DataArray(coord, value=None, parent=d_grid_co)
+    PT.add_child(d_grid_co, p_gc_transform)
     PTB.part_coords_to_dist_coords(dist_zone, part_zones, comm)
 
     # > Create elements
