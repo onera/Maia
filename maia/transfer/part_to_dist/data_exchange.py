@@ -65,13 +65,15 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm, reduce_func=None):
   lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
 
   d_grid_co = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
+  is_coords = lambda n: [PT.get_node_from_label(child, 'DataArray_t') for child in PT.get_children(n) if PT.get_name(child) != "CoordinateTransform"]
   part_data = dict()
-  for coord in PT.iter_children_from_label(d_grid_co, 'DataArray_t'):
+  for coord in is_coords(d_grid_co):
     part_data[PT.get_name(coord)] = list()
 
   for part_zone in part_zones:
     p_grid_co = PT.get_child_from_name(part_zone, PT.get_name(d_grid_co))
-    for coord in PT.iter_children_from_label(p_grid_co, 'DataArray_t'):
+    is_coords = lambda n: [PT.get_node_from_label(child, 'DataArray_t') for child in PT.get_children(n) if PT.get_name(child) != "CoordinateTransform"]
+    for coord in is_coords(p_grid_co):
       flat_data = coord[1].ravel(order='A') #Reshape structured arrays for PDM exchange
       part_data[PT.get_name(coord)].append(flat_data)
 
