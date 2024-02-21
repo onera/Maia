@@ -94,7 +94,7 @@ rst_prolog = """
 
 # Generate cgns example files, some will be downloadable
 import subprocess
-subprocess.run(["../scripts/maia_yaml_examples_to_hdf5", "../share/_generated"], stdout=subprocess.DEVNULL)
+subprocess.run(["../bin/maia_yaml_examples_to_hdf5", "../share/_generated"], stdout=subprocess.DEVNULL)
 
 ############################
 # SETUP THE RTD LOWER-LEFT #
