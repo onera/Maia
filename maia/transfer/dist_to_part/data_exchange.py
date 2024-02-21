@@ -43,9 +43,11 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
 
   dist_data = dict()
   for dist_zone, part_zones in zip(dist_zones, part_zones_per_dom):
-
     dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
-    for grid_co in PT.iter_children_from_label(dist_gc, 'DataArray_t'):
+    dist_gc_transform = PT.get_node_from_name(dist_gc, "CoordinateTransform")
+    is_coords = lambda n: [PT.get_node_from_label(child, 'DataArray_t') for child in PT.get_children(n) if PT.get_name(child) != "CoordinateTransform"]
+    dist_gc_names = [PT.get_name(node) for node in is_coords(dist_gc)] 
+    for grid_co in is_coords(dist_gc):
       try:
         dist_data[PT.get_name(grid_co)].append(grid_co[1])
       except KeyError:
@@ -57,6 +59,10 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
     # Collect and shift LNToGN
     for part_zone in part_zones:
       part_lngn.append(MT.getGlobalNumbering(part_zone, 'Vertex')[1] + vtx_offset)
+      part_gc = PT.new_GridCoordinates('GridCoordinates', parent=part_zone)
+      for dist_gc_name in dist_gc_names:
+        PT.new_DataArray(dist_gc_name, None, parent=part_gc)
+      PT.add_child(part_gc, dist_gc_transform)
 
     vtx_offset += PT.Zone.n_vtx(dist_zone)
 
@@ -64,14 +70,15 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
   MBTP = PDM.MultiBlockToPart(block_distris, part_lngn, comm)
   for key, d_data in dist_data.items():
     part_data[key] = MBTP.exchange_field(d_data)[1]
-  
+    
   i_part = 0
   for part_zones in part_zones_per_dom: 
     for part_zone in part_zones:
-      part_gc = PT.new_node('GridCoordinates', 'GridCoordinates_t', parent=part_zone)
+      part_gc = PT.get_node_from_label(part_zone, "GridCoordinates_t")
       for data_name, data in part_data.items():
+        part_gc_node = PT.get_node_from_name(part_gc, f'{data_name}')
         shaped_data = data[i_part].reshape(PT.Zone.VertexSize(part_zone), order='F')
-        PT.new_DataArray(data_name, shaped_data, parent=part_gc)
+        PT.update_node(part_gc_node, data_name, value=shaped_data)
       i_part += 1
 
 
