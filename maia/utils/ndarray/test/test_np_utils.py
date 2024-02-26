@@ -249,6 +249,64 @@ def check_transform(expected_x, expected_y, expected_z, computed_matrix, compute
   assert np.allclose(expected_y, computed_y, rtol=0., atol=atol)
   assert np.allclose(expected_z, computed_z, rtol=0., atol=atol)
 
+@pytest.mark.parametrize("revolution_axis", [(1, 0, 0), [0, 1, 0], (1, 0, 3), [1, 2, 3]])
+def test_transform_matrix(revolution_axis):
+   
+  # Create the transform matrix and the reverse transform matrix 
+  transform_matrix = np_utils.create_transform_matrix(revolution_axis=revolution_axis)
+  transform_matrix_inv = np.linalg.inv(transform_matrix)
+  id = np.dot(transform_matrix, transform_matrix_inv)
+  assert np.allclose(id, np.eye(3))
+  
+  # Transform the current revolution axis into a unit revolution axis in the new basis
+  new_revolution_axis = np.dot(transform_matrix, revolution_axis)
+  norm_new_revolution_axis = np.linalg.norm(new_revolution_axis)
+  unit_revolution_axis = new_revolution_axis / norm_new_revolution_axis
+
+  # Transform the unit revolution axis in the new basis into the former revolution axis in the former basis 
+  reverse_unit_revolution_axis = np.dot(transform_matrix_inv, unit_revolution_axis)
+  reverse_revolution_axis = reverse_unit_revolution_axis * norm_new_revolution_axis
+
+  assert np.allclose(revolution_axis, reverse_revolution_axis)
+
+class Test_apply_cart_to_vectors:
+  revolution_axis = (1, 1, 1)
+  transform_matrix = np_utils.create_transform_matrix(revolution_axis)
+  def test_S(self):
+
+    x = np.array([[[0.5, 0.5, 0.5], [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]], [[1.,  1.,  1. ], [1.,  1.,  1. ], [1.,  1.,  1. ]]], order='F')
+    y = np.array([[[0.,  0.,  0. ], [0.5, 0.5, 0.5], [1.,  1.,  1. ]], [[0.,  0.,  0. ], [0.5, 0.5, 0.5], [1.,  1.,  1. ]]], order='F')
+    z = np.array([[[0.,  0.5, 1. ], [0.,  0.5, 1. ], [0.,  0.5, 1. ]], [[0.,  0.5, 1. ], [0.,  0.5, 1. ], [0.,  0.5, 1. ]]], order='F')
+
+    new_x, new_y, new_z = np_utils.matmul_cart_vectors(x, y, z, self.transform_matrix)
+
+    expected_x = np.array([[[0.28867513, 0.57735027, 0.8660254], [0.57735027, 0.8660254,  1.15470054], [0.8660254,  1.15470054, 1.44337567]],
+                           [[0.57735027, 0.8660254,  1.15470054], [0.8660254,  1.15470054, 1.44337567], [1.15470054, 1.44337567, 1.73205081]]])
+    expected_y = np.array([[[-0.5, -0.5, -0.5], [ 0.,   0.,   0. ], [0.5,  0.5,  0.5]], [[-1.,  -1.,  -1. ], [-0.5, -0.5, -0.5], [ 0.,   0.,   0. ]]])
+    expected_z = np.array([[[-0.28867513,  0.28867513,  0.8660254 ], [-0.57735027,  0.,          0.57735027], [-0.8660254,  -0.28867513,  0.28867513]],
+                           [[-0.57735027,  0.,          0.57735027], [-0.8660254,  -0.28867513,  0.28867513], [-1.15470054, -0.57735027,  0.        ]]])
+        
+    assert np.allclose(expected_x, new_x)
+    assert np.allclose(expected_y, new_y)
+    assert np.allclose(expected_z, new_z)
+  
+  def test_U(self):
+
+      x = np.array([0. , 0.5, 1. , 0. , 0.5, 1. , 0. , 0.5, 1. , 0.,  0.5, 1.,  0. , 0.5, 1. , 0.,  0.5, 1. ])
+      y = np.array([0. , 0. , 0. , 0.5, 0.5, 0.5, 1. , 1. , 1. , 0.,  0. , 0.,  0.5, 0.5, 0.5, 1.,  1. , 1. ])
+      z = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.,  1. , 1.,  1. , 1. , 1. , 1.,  1. , 1. ])
+
+      new_x, new_y, new_z = np_utils.matmul_cart_vectors(x, y, z, self.transform_matrix)
+
+      expected_x = [0.28867513, 0.57735027, 0.8660254, 0.57735027, 0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 0.57735027,
+                    0.8660254, 1.15470054, 0.8660254, 1.15470054, 1.44337567, 1.15470054, 1.44337567, 1.73205081]
+      expected_y = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
+      expected_z = [0.57735027, 0.28867513, 0., 0.28867513, 0., -0.28867513, 0., -0.28867513, -0.57735027, 1.15470054,
+                    0.8660254, 0.57735027, 0.8660254, 0.57735027, 0.28867513, 0.57735027, 0.28867513, 0.]
+      
+      assert np.allclose(expected_x, new_x)
+      assert np.allclose(expected_y, new_y)
+      assert np.allclose(expected_z, new_z)
 class Test_transform_simple():
     #    
     #                    (1.,1.,0.)(2.,1.,0.)

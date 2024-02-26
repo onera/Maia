@@ -12,13 +12,17 @@ This page contains information about what has changed in each new version of **M
 Developpement version
 ---------------------
 
-🐞 Fixes
-^^^^^^^^
-- io: Fix read of unstructured BCDataSet having a PointList
+💡 New Features
+^^^^^^^^^^^^^^^
+- Algo module: add ``cartesian_to_cylindrical``/``cylindrical_to_cartesian`` to change axis system
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - adapt_mesh_with_feflo: manage axisymmetric meshes when ``perio=True``
+
+🐞 Fixes
+^^^^^^^^
+- io: Fix read of unstructured BCDataSet having a PointList
 
 v1.3 (January 2024)
 -------------------

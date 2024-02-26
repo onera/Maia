@@ -574,3 +574,51 @@ def test_adapt_with_feflo():
                                          container_names=["FlowSolution"],
                                          feflo_opts="-c 100 -cmax 100 -p 4")
   #adapt_with_feflo@end
+
+
+def test_change_basis():
+  #change_basis@start
+  import mpi4py.MPI as MPI
+  import numpy      as np
+  import maia
+
+  dist_tree = maia.factory.generate_dist_block(5, 'S', MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+
+  maia.algo.transform.auxiliary_coords_system(part_tree, np.array([[0,1,0],[-1,0,0],[0,0,-1]]))
+
+  assert maia.pytree.get_node_from_name(part_tree, 'CoordinateZeta') is not None
+  #change_basis@end
+
+def test_cartesian_to_cylindrical():
+  #cartesian_to_cylindrical@start
+  import mpi4py.MPI as MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  maia.algo.cartesian_to_cylindrical(dist_tree, axis=(1,0,0))
+
+  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateR') is not None
+  #cartesian_to_cylindrical@end
+  
+def test_cylindrical_to_cartesian():
+  #cylindrical_to_cartesian@start
+  import mpi4py.MPI as MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  maia.algo.cartesian_to_cylindrical(dist_tree, axis=(1,0,0))
+
+  # Create a vector field on cylindrical mesh
+  for zone in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
+    cr, ctheta, cz = PT.Zone.coordinates(zone)
+    fields= {'VelocityR': cr**2, 'VelocityTheta': ctheta, 'VelocityZ': 0*cz}
+    PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
+
+  maia.algo.cylindrical_to_cartesian(dist_tree, (1,0,0), True)
+
+  assert PT.get_node_from_name(dist_tree, 'VelocityX') is not None
+  #cylindrical_to_cartesian@end
