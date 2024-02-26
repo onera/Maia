@@ -201,16 +201,16 @@ class Test_change_basis_simple:
       PT.set_label(dd, 'DiscreteData_t')
 
     if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
-      cart2cyl = transform.cartesian_to_cylindric_from_unit_revolution_axis
-      cyl2cart = transform.cylindric_to_cartesian_from_unit_revolution_axis
+      cart2cyl = transform.cartesian_to_cylindrical_from_unit_revolution_axis
+      cyl2cart = transform.cylindrical_to_cartesian_from_unit_revolution_axis
     else: 
-      cart2cyl = transform.cartesian_to_cylindric
-      cyl2cart = transform.cylindric_to_cartesian
+      cart2cyl = transform.cartesian_to_cylindrical
+      cyl2cart = transform.cylindrical_to_cartesian
 
     # Transform cartesian coordinates and fields into cylindric around a unit revolution axis
-    cart2cyl(part_tree, revolution_axis=revolution_axis)
+    cart2cyl(part_tree, revolution_axis, True)
     # Transform cylindric coordinates and fields into cartesian around a unit revolution axis
-    cyl2cart(part_tree, revolution_axis=revolution_axis)
+    cyl2cart(part_tree, revolution_axis, True)
     
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
@@ -241,7 +241,7 @@ class Test_cart_to_cyl:
       PT.set_label(dd, 'DiscreteData_t')
 
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindric(part_tree, revolution_axis)  
+    transform.cartesian_to_cylindrical(part_tree, revolution_axis, True)  
      
     if comm.size == 1:
       radius_ref = np.array([[[0. , 1.41421356], [1. ,  1.73205081]], [[0.5, 1.5       ], [0.5,  1.5       ]], [[1. , 1.73205081], [0. ,  1.41421356]]])
@@ -281,7 +281,7 @@ class Test_cart_to_cyl:
       PT.new_ZoneSubRegion('ZoneSubRegion', fields={f'ZSR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
     
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindric(part_tree, revolution_axis)
+    transform.cartesian_to_cylindrical(part_tree, revolution_axis, True)
 
     if comm.size == 1:
       radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 
@@ -320,6 +320,6 @@ class Test_cart_to_cyl:
   def test_wrong_axis(self, revolution_axis, comm):
     dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
     with pytest.raises(AssertionError):
-      transform.cartesian_to_cylindric(dist_tree, revolution_axis=(0, 0, 0))
+      transform.cartesian_to_cylindrical(dist_tree, (0, 0, 0))
 
 

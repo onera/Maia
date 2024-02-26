@@ -577,64 +577,48 @@ def test_adapt_with_feflo():
 
 
 def test_change_basis():
+  #change_basis@start
   import mpi4py.MPI as MPI
+  import numpy      as np
   import maia
-  import maia.pytree as PT
-  import maia.utils.ndarray.np_utils as np_utils
 
-  # Create a structured mesh 
   dist_tree = maia.factory.generate_dist_block(5, 'S', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
 
-  # Create a vector field modify by change basis function
-  cx, cy, cz = PT.Zone.coordinates(zone)
-  fields= {'cX': cx, 'cY': cy, 'cZ': cz}
-  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
+  maia.algo.transform.change_basis(part_tree, np.array([[0,1,0],[-1,0,0],[0,0,-1]]))
 
-  # Create a transformation matrix
-  transformation_matrix = np_utils.create_transform_matrix((1,1,0))
-  # Change the coordinates from the former basis to the new basis
-  maia.algo.transform.change_basis(part_tree, transformation_matrix)
+  assert maia.pytree.get_node_from_name(part_tree, 'CoordinateZeta') is not None
+  #change_basis@end
 
-def test_cartesian_to_cylindric():
+def test_cartesian_to_cylindrical():
+  #cartesian_to_cylindrical@start
   import mpi4py.MPI as MPI
   import maia
-  import maia.pytree as PT
+  from   maia.utils.test_utils import mesh_dir
 
-  # Create a structured mesh 
-  dist_tree = maia.factory.generate_dist_block(5, 'S', MPI.COMM_WORLD)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  zone = PT.get_node_from_label(part_tree, 'Zone_t')
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  maia.algo.cartesian_to_cylindrical(dist_tree, axis=(1,0,0))
 
-  # Create a vector field modify cartesian_to_cylindric function
-  cx, cy, cz = PT.Zone.coordinates(zone)
-  fields= {'cX': cx, 'cY': cy, 'cZ': cz}
-  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
+  assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateR') is not None
+  #cartesian_to_cylindrical@end
   
-  # Change the cartesian coordinates into the cylindric coordinates
-  maia.algo.transform.cartesian_to_cylindric(part_tree)
-
-  
-def test_cylindric_to_cartesian():
+def test_cylindrical_to_cartesian():
+  #cylindrical_to_cartesian@start
   import mpi4py.MPI as MPI
   import maia
   import maia.pytree as PT
+  from   maia.utils.test_utils import mesh_dir
 
-  # Create a structured mesh 
-  dist_tree = maia.factory.generate_dist_block(5, 'S', MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  maia.algo.cartesian_to_cylindrical(dist_tree, axis=(1,0,0))
 
-  # Change the cartesian coordinates into the cylindric coordinates
-  maia.algo.transform.cartesian_to_cylindric(dist_tree)
+  # Create a vector field on cylindrical mesh
+  for zone in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
+    cr, ctheta, cz = PT.Zone.coordinates(zone)
+    fields= {'VelocityR': cr**2, 'VelocityTheta': ctheta, 'VelocityZ': 0*cz}
+    PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
 
-  # Split the structured mesh
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  maia.algo.cylindrical_to_cartesian(dist_tree, (1,0,0), True)
 
-  # Create a vector field modify cylindric_to_cartesian function
-  cr, ctheta, cz = PT.Zone.coordinates(zone)
-  fields= {'cR': cr, 'cTheta': ctheta, 'cZ': cz}
-  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
-
-  # Change the cylindric coordinates into the cartesian coordinates
-  maia.algo.transform.cylindric_to_cartesian(part_tree)
+  assert PT.get_node_from_name(dist_tree, 'VelocityX') is not None
+  #cylindrical_to_cartesian@end
