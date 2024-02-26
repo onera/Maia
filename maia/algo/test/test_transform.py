@@ -162,7 +162,7 @@ def test_scale_mesh(comm):
 @pytest.mark.parametrize('revolution_axis', [(0, 1, 1), [1, 2, 3], (0, 0, 1), [0, 1, 0]])
 @pytest.mark.parametrize('zonetype', ['S', 'Poly'])       
 class Test_change_basis_simple:
-  def test_change_basis(self, zonetype, revolution_axis, comm):
+  def test_auxiliary_coords(self, zonetype, revolution_axis, comm):
 
       dist_tree = maia.factory.generate_dist_block(4, zonetype, comm)
       part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
@@ -179,11 +179,11 @@ class Test_change_basis_simple:
       
       part_tree_cart_ref = PT.deep_copy(part_tree)
         
-      transform.change_basis(part_tree, transform_matrix, apply_to_fields=True)
-      transform.change_basis(part_tree, transform_matrix, apply_to_fields=True)
+      transform.auxiliary_coords_system(part_tree, transform_matrix, apply_to_fields=True)
+      transform.auxiliary_coords_system(part_tree, transform_matrix, apply_to_fields=True)
 
       # Compute the former coordinates in ther former basis
-      transform.change_basis(part_tree, None, apply_to_fields=True)
+      transform.auxiliary_coords_system(part_tree, None, apply_to_fields=True)
       assert PT.is_same_tree(part_tree_cart_ref, part_tree, abs_tol=1e-10)
 
   def test_cyl_cart(self, zonetype, revolution_axis, comm):

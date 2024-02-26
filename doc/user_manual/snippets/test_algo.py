@@ -585,7 +585,7 @@ def test_change_basis():
   dist_tree = maia.factory.generate_dist_block(5, 'S', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
 
-  maia.algo.transform.change_basis(part_tree, np.array([[0,1,0],[-1,0,0],[0,0,-1]]))
+  maia.algo.transform.auxiliary_coords_system(part_tree, np.array([[0,1,0],[-1,0,0],[0,0,-1]]))
 
   assert maia.pytree.get_node_from_name(part_tree, 'CoordinateZeta') is not None
   #change_basis@end

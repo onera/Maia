@@ -245,7 +245,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply
           for i, idx in enumerate(idx_order):
             PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])
 
-def change_basis(t, transition_matrix, apply_to_fields=False):
+def auxiliary_coords_system(t, transition_matrix, apply_to_fields=False):
   """Convert the input tree from or to an auxiliary coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, and can have cartesian or 
@@ -335,7 +335,7 @@ def cartesian_to_cylindrical(t, axis, apply_to_fields=False):
 
   if np.count_nonzero(axis) != 1:
     transform_matrix = np_utils.create_transform_matrix(axis)
-    change_basis(t, transform_matrix, apply_to_fields)
+    auxiliary_coords_system(t, transform_matrix, apply_to_fields)
     axis = np.dot(transform_matrix, axis)
  
   revolution_axis_unit = axis / np.linalg.norm(axis)
@@ -377,4 +377,4 @@ def cylindrical_to_cartesian(t, axis, apply_to_fields=False):
   cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis_unit, apply_to_fields)
 
   if need_change_basis:
-    change_basis(t, None, apply_to_fields)
+    auxiliary_coords_system(t, None, apply_to_fields)
