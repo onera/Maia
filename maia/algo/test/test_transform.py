@@ -179,15 +179,11 @@ class Test_change_basis_simple:
       
       part_tree_cart_ref = PT.deep_copy(part_tree)
         
-      # Compute the new coordinates in the new basis
-      transform.change_basis(part_tree, transform_matrix, gc_name='GridCoordinatesBis', apply_to_fields=True)
-      assert PT.is_same_tree(part_tree_cart_ref, part_tree)
-
-      transform.change_basis(part_tree, transform_matrix, gc_name='GridCoordinates', apply_to_fields=True)
-      transform.change_basis(part_tree, transform_matrix, gc_name='GridCoordinates', apply_to_fields=True)
+      transform.change_basis(part_tree, transform_matrix, apply_to_fields=True)
+      transform.change_basis(part_tree, transform_matrix, apply_to_fields=True)
 
       # Compute the former coordinates in ther former basis
-      transform.change_basis(part_tree, None, gc_name='GridCoordinates', apply_to_fields=True)
+      transform.change_basis(part_tree, None, apply_to_fields=True)
       assert PT.is_same_tree(part_tree_cart_ref, part_tree, abs_tol=1e-10)
 
   def test_cyl_cart(self, zonetype, revolution_axis, comm):
@@ -244,12 +240,7 @@ class Test_cart_to_cyl:
       dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'DDR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       PT.set_label(dd, 'DiscreteData_t')
 
-    # Copy of the cartesian part tree
-    part_tree_cart_ref = PT.deep_copy(part_tree)
-
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindric(part_tree, revolution_axis, gc_name='GridCoordinatesBis') #GCNames does not exists
-    assert PT.is_same_tree(part_tree_cart_ref, part_tree)
     transform.cartesian_to_cylindric(part_tree, revolution_axis)  
      
     if comm.size == 1:
@@ -289,12 +280,7 @@ class Test_cart_to_cyl:
       PT.new_FlowSolution('FlowSolution', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       PT.new_ZoneSubRegion('ZoneSubRegion', fields={f'ZSR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
     
-    # Copy of the cartesian part tree
-    part_tree_cart_ref = PT.deep_copy(part_tree)
-
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindric(part_tree, revolution_axis, gc_name='GridCoordinatesBis')
-    assert PT.is_same_tree(part_tree_cart_ref, part_tree)
     transform.cartesian_to_cylindric(part_tree, revolution_axis)
 
     if comm.size == 1:

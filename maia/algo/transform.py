@@ -155,7 +155,7 @@ def scale_mesh(t, s=1.):
 
 
 
-def cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', apply_to_fields=True):
+def cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1), apply_to_fields=True):
   """Compute cylindric coordinates from a unit revolution axis.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
@@ -174,8 +174,6 @@ def cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1
                Tree can be a distributed or partitioned tree.
     revolution_axis (tuple, list, array) : Constant axis
                                            By default it set on z-axis.
-    gc_name (str) : Name of the GridCoordinates to transform into cylindric coordinates and containing the transformation matrix
-                    By default it searches the GridCoordinates node
     apply_to_fields (bool) : Apply the transformation to fields 
                              By default it set on True
   """
@@ -193,13 +191,10 @@ def cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1
 
   for zone in PT.get_all_Zone_t(t):
 
-    if PT.get_node_from_name(zone, gc_name) is None:
-      continue
-
-    transform_matrix_n = PT.get_child_from_predicates(zone, f'{gc_name}/CoordinateTransform')
+    transform_matrix_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')
     coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
 
-    predicates = [gc_name] # Always treat coordinates, + fields if apply_to_fields
+    predicates = ['GridCoordinates_t'] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
       predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']
 
@@ -216,7 +211,7 @@ def cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1
           for i, val in enumerate(cyl_values):
             PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
      
-def cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1), gc_name='GridCoordinates', apply_to_fields=True):
+def cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1), apply_to_fields=True):
   """Compute the cartesian coordinates from a unit revolution axis.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindric coordinates.
@@ -235,8 +230,6 @@ def cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1
                Tree can be a distributed or partitioned tree.
     revolution_axis (tuple, list, array) : Constant axis
                                            By default it set on z-axis.
-    gc_name (str) : Name of the GridCoordinates to transform into cartesian coordinates and containing the transformation matrix
-                    By default it searches the GridCoordinates node
     apply_to_fields (bool) : Apply the transformation to fields
                              By default it set on True               
   """
@@ -252,13 +245,10 @@ def cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1
 
   for zone in PT.get_all_Zone_t(t):
 
-    if PT.get_node_from_name(zone, gc_name) is None:
-      continue
-
-    transform_matrix_n = PT.get_child_from_predicates(zone, f'{gc_name}/CoordinateTransform')
+    transform_matrix_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')
     coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
 
-    predicates = [gc_name] # Always treat coordinates, + fields if apply_to_fields
+    predicates = ['GridCoordinates_t'] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
       predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']
 
@@ -274,7 +264,7 @@ def cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis=(0, 0, 1
           for i, idx in enumerate(idx_order):
             PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])
 
-def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields=True):
+def change_basis(t, transform_matrix, apply_to_fields=True):
   """Compute the coorindates in the new basis.
 
   Input is transform matrix from the former basis to the new basis.
@@ -294,19 +284,14 @@ def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields
                Tree can be a distributed or partioned tree
     transformation_matrix (array) : Transformation matrix from the former basis to the new basis
                                     By default it set on identity matrix.
-    gc_name (str) : Name of the coordinates to convert in the new basis and containing the transformation matrix
-                    By default it searches the GridCoordinates node
     apply_to fields (bool) : Apply the transformation to fields
                              By default it set on True
   """
 
-  for zone in PT.get_all_Zone_t(t): 
+  for zone in zones_iterator(t): 
 
-    gc_n = PT.get_child_from_name(zone, gc_name)
-    if gc_n is None:
-      continue
-
-    coord_transform_n = PT.get_child_from_name(gc_n, 'CoordinateTransform')
+    # Assert that CoordinateTransform is the same for all GridCoordinates_t nodes
+    coord_transform_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')
     is_aux = coord_transform_n is not None
     reverse = transform_matrix is None
 
@@ -318,12 +303,13 @@ def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields
     out_suffix = ['X', 'Y', 'Z'] if reverse else ['Xi', 'Eta', 'Zeta']
 
     if reverse:
-      PT.rm_nodes_from_name(zone, 'CoordinateTransform')
+      PT.rm_nodes_from_name(zone, 'CoordinateTransform', depth=2)
     else:
       new_transform_matrix = transform_matrix if coord_transform_n is None else np.dot(transform_matrix, coord_transform_n[1])
-      PT.update_child(gc_n, 'CoordinateTransform', 'DataArray_t', new_transform_matrix)
+      for gc_n in PT.get_children_from_predicate(zone, 'GridCoordinates_t'):
+        PT.update_child(gc_n, 'CoordinateTransform', 'DataArray_t', new_transform_matrix)
     
-    predicates = [gc_name] # Always treat coordinates
+    predicates = ['GridCoordinates_t'] # Always treat coordinates
     if apply_to_fields:
       predicates.extend(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t'])
 
@@ -338,7 +324,7 @@ def change_basis(t, transform_matrix, gc_name='GridCoordinates', apply_to_fields
             PT.update_node(node, f'{basename}{s}', value=new_val)
     
 
-def cartesian_to_cylindric(t, revolution_axis, gc_name='GridCoordinates', apply_to_fields=True):
+def cartesian_to_cylindric(t, revolution_axis, apply_to_fields=True):
   """Compute cylindric coordinates from any revolution axis.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
@@ -348,8 +334,6 @@ def cartesian_to_cylindric(t, revolution_axis, gc_name='GridCoordinates', apply_
                Tree can be a distributed or partitioned tree.
     revolution_axis (tuple, list, array) : Constant axis.
                                            By default it set on z-axis.  
-    gc_name (str) : Name of the coordinates to transform into cylindric coordinates and containing the transformation matrix
-                    By default it searches the GridCoordinates node
     apply_to_fields (bool) : Apply the transformation to fields
                              By default it set on True                                              
   """
@@ -358,13 +342,13 @@ def cartesian_to_cylindric(t, revolution_axis, gc_name='GridCoordinates', apply_
 
   if np.count_nonzero(revolution_axis) != 1:
     transform_matrix = np_utils.create_transform_matrix(revolution_axis)
-    change_basis(t, transform_matrix, gc_name, apply_to_fields)
+    change_basis(t, transform_matrix, apply_to_fields)
     revolution_axis = np.dot(transform_matrix, revolution_axis)
  
   revolution_axis_unit = revolution_axis / np.linalg.norm(revolution_axis)
-  cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis_unit, gc_name, apply_to_fields)
+  cartesian_to_cylindric_from_unit_revolution_axis(t, revolution_axis_unit, apply_to_fields)
 
-def cylindric_to_cartesian(t, revolution_axis, gc_name='GridCoordinates', apply_to_fields=True):
+def cylindric_to_cartesian(t, revolution_axis, apply_to_fields=True):
   """Compute cartesian coordinates from any revolution axis.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindric coordinates.
@@ -374,8 +358,6 @@ def cylindric_to_cartesian(t, revolution_axis, gc_name='GridCoordinates', apply_
                Tree can be a distributed or partitioned tree.
     revolution_axis (tuple, list, array) : Constant axis
                                            By default it set on z-axis.
-    gc_name (str) : Name of the coordinates to transform into cartesian coordinates and containing the transformation matrix
-                    By default it searches the GridCoordinates node
     apply_to_fields (bool) : Apply the transformation to fields   
                              By default it set on True             
   """
@@ -384,14 +366,14 @@ def cylindric_to_cartesian(t, revolution_axis, gc_name='GridCoordinates', apply_
   need_change_basis = np.count_nonzero(revolution_axis) != 1
 
   if need_change_basis:
-    transform_matrix_n = PT.get_child_from_predicates(t, f'CGNSBase_t/Zone_t/{gc_name}/CoordinateTransform')
+    transform_matrix_n = PT.get_child_from_predicates(t, 'CGNSBase_t/Zone_t/GridCoordinates_t/CoordinateTransform')
     if transform_matrix_n is None: # ???
       return
     transform_matrix = PT.get_value(transform_matrix_n)
     revolution_axis = np.dot(transform_matrix, revolution_axis)
 
   revolution_axis_unit = revolution_axis / np.linalg.norm(revolution_axis)
-  cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis_unit, gc_name)
+  cylindric_to_cartesian_from_unit_revolution_axis(t, revolution_axis_unit)
 
   if need_change_basis:
-    change_basis(t, None, gc_name, apply_to_fields)
+    change_basis(t, None, apply_to_fields)
