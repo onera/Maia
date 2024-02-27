@@ -23,7 +23,7 @@ CGNSTree CGNSTree_t
 │   │   └───BCWall FamilyBC_t 
 │   └───MyZone Zone_t I4 [16  6  0]
 │       └───GridCoordinates GridCoordinates_t 
-│           ├───Descriptor Descriptor_t "A very long descrip[...]data"
+│           ├───Descriptor Descriptor_t "A very lo[...]data"
 │           └───CoordinateX DataArray_t I4 (16,)
 └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
 """
@@ -71,9 +71,24 @@ CGNSTree CGNSTree_t
 └───MyBase CGNSBase_t I4 [3 3]
     └───MyZone Zone_t I4 [16  6  0]
         └───GridCoordinates GridCoordinates_t 
-            └───Descriptor Descriptor_t "A very long descrip[...]data"
+            └───Descriptor Descriptor_t "A very lo[...]data"
 """
     # We have to reput sys.stdout otherwise pytest does not capture output
     print_tree(self.tree, sys.stdout, colors=False, print_if = lambda n: n[3] == 'Descriptor_t')
+    out, err = capsys.readouterr()
+    assert out == expected_print_str
+
+  def test_string_that_is_long_but_not_a_lot(self, capsys):
+    y_desc = 'Descriptor Descriptor_t "My description node":' # 19 chars, but length is 20 in CGNS (to account for the ending \0)
+    desc = parse_yaml_cgns.to_cgns_tree(y_desc)
+
+    expected_print_str = """\
+CGNSTree CGNSTree_t 
+├───Descriptor Descriptor_t "My descri[...]node"
+└───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
+"""
+
+    # We have to reput sys.stdout otherwise pytest does not capture output
+    print_tree(desc, sys.stdout, colors=False)
     out, err = capsys.readouterr()
     assert out == expected_print_str
