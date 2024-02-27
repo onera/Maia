@@ -19,10 +19,10 @@ def rm_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], b
 
 def keep_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool]):
   """
-  Remove all the children of root node expect the ones matching the given predicate
+  Remove all the children of root node expect the ones matching the given predicate.
 
   Args:
-      root (CGNSTree): Tree is which nodes are removed
+      root (CGNSTree): Tree in which nodes are removed
       predicate (callable): condition to keep nodes, which must
         have the following signature: ``f(n:CGNSTree) -> bool``
   Example:
@@ -52,7 +52,7 @@ def keep_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree],
 
 
 def rm_nodes_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool], **kwargs):
-  """ Remove all the nodes in the input tree matching the given predicate
+  """ Remove all the nodes in the input tree matching the given predicate.
 
   The search can be fine-tuned with the following kwargs:
 
@@ -60,7 +60,7 @@ def rm_nodes_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool
     ``None`` meaning unlimited). Defaults to ``None``.
 
   Args:
-      root (CGNSTree): Tree is which nodes are removed
+      root (CGNSTree): Tree in which nodes are removed
       predicate (callable): condition to remove nodes, which must
         have the following signature: ``f(n:CGNSTree) -> bool``
       **kwargs: Additional options (see above)

@@ -230,7 +230,7 @@ def get_children(node:CGNSTree) -> List[CGNSTree]:
   return node[2]
 
 def add_child(node:CGNSTree, child:CGNSTree):
-  """ Append a child node to the children list of a CGNSNode
+  """ Append a child node to the children list of a CGNSNode.
 
   Args:
     node (CGNSTree): Input node
@@ -249,7 +249,7 @@ def add_child(node:CGNSTree, child:CGNSTree):
   node[2].append(child)
 
 def rm_child(node:CGNSTree, child:CGNSTree):
-  """ Remove the node ``child`` to the children list of node ``node``
+  """ Remove the node ``child`` to the children list of node ``node``.
 
   Args:
     node (CGNSTree): Input node

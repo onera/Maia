@@ -6,10 +6,11 @@ Yaml parsing
 ``maia.pytree`` does not come with any tool to read or write CGNS databases
 from ADF or HDF files.
 This choice has been made in order to maintain a light and portable library,
-assuming that users will rely on an external software (such as ``maia``) to
+assuming that users will rely on an external software (such as
+`maia <https://numerics.gitlab-pages.onera.net/mesh/maia>`_) to
 perfom IO operations.
 
-Nevertheless, for developement and debug purpose, we provide a converter mapping
+Nevertheless, for development and debug purpose, we provide a converter mapping
 CGNS trees to YAML files.
 This is especially useful to prepare sample trees for unit testing in convenient 
 and visual way.
@@ -37,22 +38,22 @@ example file:
 
 The following rules must be observed to have a valid description of a CGNSTree:
 
-**Comments**: short line comment can be used thanks to the ``#`` character *(l7)*.
+**Comments**: short line comment can be used thanks to the ``#`` character *(line 7)*.
 
-**Hierarchic structure**: indentation is used to indicate that a node is the child of another node *(l3)*.  
+**Hierarchic structure**: indentation is used to indicate that a node is the child of another node *(line 3)*.  
 
 **Node definition**: a node is defined by the pattern ``{name} {label} {value_kind} {value}:``.
 Note the importance of the ``:``, which acts as a end-of-line marker.
-The value, as well as its kind value_kind, are optional *(l2, l4)*.
+The value, as well as its kind value_kind, are optional *(line 2, line 4)*.
 
-**Values**: if a ``value`` is provided, it can be a string or a sequence of numbers *(l3, l1)*.
-Nested sequences can be used to describe dimensional arrays *(l2)*. ``value`` can be ommited
-if the node has no value *(l4)*.
+**Values**: if a ``value`` is provided, it can be a string or a sequence of numbers *(line 3, line 1)*.
+Nested sequences can be used to describe dimensional arrays *(line 2)*. ``value`` can be ommited
+if the node has no value *(line 4)*.
 
 **Values kind** : if ``value_kind`` is not provided, values are converted using
-:func:`~maia.pytree.set_value` rules *(l2)*.
+:func:`~maia.pytree.set_value` rules *(line 2)*.
 Otherwise, ``value_kind`` should be one of the CGNS value identifiers (eg. ``I4``, ``R8``, etc.) and will
-be used to enforce the requested kind *(l5)*. ``value_kind`` can not exists if ``value`` is not provided.
+be used to enforce the requested kind *(line 5)*. ``value_kind`` can not exist if ``value`` is not provided.
 
 **Long node definition**: alternatively, nodes can be defined by the pattern shown on lines 9-11: this
 is especially useful when values are long arrays. When this pattern is used, ``value_kind`` is mandatory.

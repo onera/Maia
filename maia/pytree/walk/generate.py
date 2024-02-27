@@ -133,14 +133,14 @@ def pop_node_from_path(root:CGNSTree, path:str) -> CGNSTree:
   return node
 
 def rm_node_from_path(root:CGNSTree, path:str):
-  """ Remove the node in input tree matching the given path
+  """ Remove the node in input tree matching the given path.
 
   A path is a str containing a full list of names, separated by ``'/'``, leading
   to the node to remove. Root name should not be included in path.
   Wildcards are not accepted in path.
 
   Args:
-    root (CGNSTree): Tree is which the search is performed
+    root (CGNSTree): Tree in which the search is performed
     path (str): path of the node to remove
   Example:
     >>> zone = PT.new_Zone('Zone')

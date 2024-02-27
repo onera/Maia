@@ -65,7 +65,7 @@ def is_same_value(n0: CGNSTree, n1: CGNSTree, abs_tol:float=0., type_tol=False) 
 
 def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
-  Compare two nodes
+  Compare two nodes.
 
   Nodes are considered equal if they have the same name, label and value.
   Note that no check is performed on their children.
@@ -73,7 +73,7 @@ def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False
   Args:
     t1 (CGNSTree): first tree
     t2 (CGNSTree): second tree
-    abs_tol (float) : absolute tolerance used for value comparison, passed to ``np.allclose`` function
+    abs_tol (float) : absolute tolerance used for value comparison, performed by ``np.allclose`` function
     type_tol (bool): if True, allow comparaison of compatible but different types (I4/I8 or R4/R8).
       Otherwise, nodes are considered to differ.
   Returns:
@@ -102,7 +102,7 @@ class same_tree_visitor:
 
 def is_same_tree(t1:CGNSTree, t2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
-  Compare recursively two trees
+  Compare recursively two trees.
 
   Trees are considered equal if they recursively have the same children (order does not matters),
   in the sense of :func:`is_same_node`.
@@ -135,7 +135,7 @@ def _report_diff(x, ref, is_equal):
 
 class EqualArray:
   """
-  A callable object generating a report for diff_tree, using an exact point-to-point
+  A callable object generating a report for :func:`diff_tree`, using an exact point-to-point
   comparison.
 
   Example:
@@ -158,7 +158,7 @@ class EqualArray:
 
 class CloseArray:
   """
-  A callable object generating a report for diff_tree, using a point-to-point with
+  A callable object generating a report for :func:`diff_tree`, using a point-to-point with
   tolerance comparison
   (see `np.isclose
   <https://numpy.org/doc/stable/reference/generated/numpy.isclose.html#numpy.isclose>`_
@@ -272,7 +272,7 @@ class diff_tree_visitor:
     return next_step
 
 def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunction = None) -> DiffReport:
-  """ Report the differences between two trees
+  """ Report the differences between two trees.
 
   This function is similar to :func:`is_same_tree`, but returns a full report of differences between
   the two input trees. In addition, it is possible to provide a custom comparison function 

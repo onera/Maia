@@ -3,9 +3,9 @@
 Tree operations
 ===============
 
-This page describe some ``maia.pytree`` features acting on whole CGNSTrees, such as
-copying, displaying of comparaing trees.
-These features are less SIDS-aware than the one listed
+This page describes some ``maia.pytree`` features that operate on whole CGNSTrees, such as
+copying, displaying of comparing trees.
+These features are less CGNS SIDS-aware than the one listed
 in :ref:`pt_inspect` or :ref:`pt_presets` pages.
 
 Tree construction
@@ -32,7 +32,7 @@ leading to the following generic function:
 .. autofunction:: maia.pytree.rm_nodes_from_predicate
 
 For convenience, we also provide the :func:`~maia.pytree.keep_children_from_predicate`
-form which remove the children nodes that *do not* match the predicate.
+from which remove the children nodes that *do not* match the predicate.
 Note that unlike :func:`~maia.pytree.rm_nodes_from_predicate`, this function is limited
 to the first level of children.
 
@@ -142,7 +142,7 @@ Printing the errors report with ``>>> print(report.errors)`` gives
 
 Following ``diff`` convention, symbols ``<`` (resp. ``>``) are used to mark nodes
 existing only in first (resp. second) tree.
-Nodes existing in both trees, but with different label or values are shown using
+Nodes existing in both trees, but with different labels or values are shown using
 the following pattern : ``{path} -- {diff_kind}: {details}``.
 If the ``<>`` symbol is used to display details,
 the value to its left (resp. right) corresponds to the first (resp. second) input node.
