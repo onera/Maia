@@ -53,7 +53,14 @@ def find_vector_names(names, axis):
   """
   assert len(axis) > 1
   names = [name for name in names if len(name) > 1] #Exclude crazy cases
-
+  if len(axis) == 3:
+    tensors = [axis[0]+axis[0], axis[0]+axis[1], axis[0]+axis[2],
+               axis[1]+axis[0], axis[1]+axis[1], axis[1]+axis[2],
+               axis[2]+axis[0], axis[2]+axis[1], axis[2]+axis[2]]
+  else: 
+    tensors = [axis[0]+axis[0], axis[0]+axis[1], 
+               axis[1]+axis[0], axis[1]+axis[1]]   
+    
   to_index = {axis[0] : 0, axis[1] : 1}
   if len(axis) == 3:
     to_index[axis[2]] = 2
@@ -65,25 +72,35 @@ def find_vector_names(names, axis):
     if is_lower:
       name = name[0].upper() + name[1:]
     split_name = re.findall('[A-Z][^A-Z]*', name)
+    if ''.join(split_name[-2:]) in tensors:
+      Warning("Tensors are not included")
+      continue
     if len(split_name) > 1: 
       basename = ''.join(split_name[0:-1])
       if is_lower:
         basename = basename[0].lower() + basename[1:]
     try:
-      suffix_names[to_index[split_name[-1]]].add(basename)
+        suffix_names[to_index[split_name[-1]]].add(basename)
     except KeyError:
       pass
-  common = suffix_names[0].intersection(*suffix_names[1:])
-  return sorted(common)
+  vectors = suffix_names[0].intersection(*suffix_names[1:])
+  return sorted(vectors)
+
 
 def find_cartesian_vector_names(names, phy_dim=3):
   return find_vector_names(names, ['X', 'Y', 'Z'][:phy_dim])
+
+def find_auxiliary_vector_names(names, phy_dim=3):
+  return find_vector_names(names, ['Xi', 'Eta', 'Zeta'][:phy_dim])
 
 def find_cylindric_vector_names(names, phy_dim=3):
   return find_vector_names(names, ['R', 'Theta', 'Z'][:phy_dim])
 
 def find_spherical_vector_names(names, phy_dim=3):
   return find_vector_names(names, ['R', 'Theta', 'Phi'][:phy_dim])
+
+# names = ['ARR', 'ARTheta', 'ARZ', 'AThetaR', 'AThetaTheta', 'AThetaZ', 'AZR', 'AZTheta', 'AZZ']
+# basename = find_cylindric_vector_names(names)
 
 def get_ordered_subset(subset, L):
   """
