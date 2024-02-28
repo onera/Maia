@@ -89,72 +89,34 @@ def test_find_periodic_jns():
   assert perio_paths[0] == ['BaseA/Zone1/ZGC/matchA', 'BaseA/Zone2/ZGC/matchA']
   assert perio_paths[1] == ['BaseA/Zone1/ZGC/matchB', 'BaseA/Zone2/ZGC/matchB', 'BaseB/Zone3/ZGC/matchB', 'BaseB/Zone4/ZGC/matchB']
 
-def test_coordinates():
-    
-    zone_cart_2D = parse_yaml_cgns.to_node('''
-    Zone Zone_t:
-      GridCoordinates GridCoordinates_t:
-        CoordinateX DataArray_t R8 [3,4,5]:
-        CoordinateY DataArray_t R8 [6,7,0]:
-    ''')
-    cx, cy, cz = SIDS.Zone.coordinates(zone_cart_2D)
-
-    assert np.allclose(cx, [3,4,5])
-    assert np.allclose(cy, [6,7,0])
-    assert cz == None
-
+def test_coordinates_2D():
     zone_cart = parse_yaml_cgns.to_node('''
     Zone Zone_t:
       GridCoordinates GridCoordinates_t:
-        CoordinateX DataArray_t R8 [1,2,3]:
-        CoordinateY DataArray_t R8 [0,0,0]:
-        CoordinateZ DataArray_t R8 [.5, .5, .5]:
+        CoordinateR DataArray_t R8 [3,4,5]:
+        CoordinateTheta DataArray_t R8 [6,7,8]:
     ''')
-    nodes = SIDS.Zone.coordinates(zone_cart)
+    c1, c2, c3 = SIDS.Zone.coordinates(zone_cart)
 
-    assert np.allclose(nodes.CoordinateX, [1,2,3])
-    assert np.allclose(nodes.CoordinateY, [0,0,0])
-    assert np.allclose(nodes.CoordinateZ, [0.5,0.5,0.5])
+    assert np.allclose(c1, [3,4,5])
+    assert np.allclose(c2, [6,7,8])
+    assert c3 == None
 
-    zone_aux = parse_yaml_cgns.to_node('''
+@pytest.mark.parametrize('coords_name', [['CoordinateX', 'CoordinateY', 'CoordinateZ'], ['CoordinateXi', 'CoordinateEta', 'CoordinateZeta'], ['CoordinateR', 'CoordinateTheta', 'CoordinateZ'], ['CoordinateR', 'CoordinateTheta', 'CoordinatePhi']])
+def test_coordinates_3D(coords_name):
+    
+    zone = parse_yaml_cgns.to_node(f'''
     Zone Zone_t:
       GridCoordinates GridCoordinates_t:
-        CoordinateXi DataArray_t R8 [-1,2,-3]:
-        CoordinateEta DataArray_t R8 [0,1,0]:
-        CoordinateZeta DataArray_t R8 [.25, .5, .75]:
+        {coords_name[0]} DataArray_t R8 [1,2,3]:
+        {coords_name[1]} DataArray_t R8 [0,0,0]:
+        {coords_name[2]} DataArray_t R8 [.5, .5, .5]:
     ''')
-    cxi, ceta, czeta = SIDS.Zone.coordinates(zone_aux)
+    c1 , c2, c3 = SIDS.Zone.coordinates(zone)
 
-    assert np.allclose(cxi, [-1,2,-3])
-    assert np.allclose(ceta, [0,1,0])
-    assert np.allclose(czeta, [0.25,0.5,0.75])
-
-    zone_cyl = parse_yaml_cgns.to_node('''
-    Zone Zone_t:
-      GridCoordinates GridCoordinates_t:
-        CoordinateR DataArray_t R8 [1.,1.,1.]:
-        CoordinateTheta DataArray_t R8 [3.14,1.57,0.]:
-        CoordinateZ DataArray_t R8 [.1, .2, .3]:
-    ''')
-    cr, ctheta, cz = SIDS.Zone.coordinates(zone_cyl)
-
-    assert np.allclose(cr, [1,1,1])
-    assert np.allclose(ctheta, [3.14,1.57,0.])
-    assert np.allclose(cz, [0.1,0.2,0.3])
-
-    zone_sph = parse_yaml_cgns.to_node('''
-    Zone Zone_t:
-      GridCoordinates GridCoordinates_t:
-        CoordinateR DataArray_t R8 [1.5,1.3,1.7]:
-        CoordinateTheta DataArray_t R8 [0.,1.57,3.14]:
-        CoordinatePhi DataArray_t R8 [.3, .7, .5]:
-    ''')
-    nodes = SIDS.Zone.coordinates(zone_sph)
-    assert isinstance(nodes, SIDS.SphericalCoordinates)
-
-    assert np.allclose(nodes[0], [1.5,1.3,1.7])
-    assert np.allclose(nodes[1], [0.,1.57,3.14])
-    assert np.allclose(nodes[2], [0.3,0.7,0.5])
+    assert np.allclose(c1, [1,2,3])
+    assert np.allclose(c2, [0,0,0])
+    assert np.allclose(c3, [0.5,0.5,0.5])
 
 def test_ZoneType():
   #With numpy arrays
