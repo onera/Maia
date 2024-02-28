@@ -186,7 +186,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, apply
 
     predicates = ['GridCoordinates_t'] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
-      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']
+      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
 
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
@@ -231,7 +231,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply
 
     predicates = ['GridCoordinates_t'] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
-      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']
+      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
 
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
@@ -296,7 +296,7 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=False):
     
     predicates = ['GridCoordinates_t'] # Always treat coordinates
     if apply_to_fields:
-      predicates.extend(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t'])
+      predicates.extend(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t'])
 
     for predicate in predicates:
       for fields_node in PT.get_children_from_predicates(zone, predicate):
