@@ -15,8 +15,8 @@ dt0 = """
 ZoneU Zone_t [[6,0,0]]:
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
-    CX DataArray_t [1,2,3]:
-    CY DataArray_t [2,2,2]:
+    CoordinateX DataArray_t [1,2,3]:
+    CoordinateY DataArray_t [2,2,2]:
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -67,8 +67,8 @@ ZoneU Zone_t [[6,0,0]]:
     Vertex DataArray_t {0} [0,3,6]:
 ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
   GridCoordinates GridCoordinates_t:
-    CX DataArray_t [1,2,3]:
-    CY DataArray_t [2,2,2]:
+    CoordinateX DataArray_t [1,2,3]:
+    CoordinateY DataArray_t [2,2,2]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [0,3,6]:
 """.format(dtype)
@@ -77,8 +77,8 @@ dt1 = """
 ZoneU Zone_t [[6,0,0]]:
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
-    CX DataArray_t [4,5,6]:
-    CY DataArray_t [1,1,1]:
+    CoordinateX DataArray_t [4,5,6]:
+    CoordinateY DataArray_t [1,1,1]:
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -129,8 +129,8 @@ ZoneU Zone_t [[6,0,0]]:
     Vertex DataArray_t {0} [3,6,6]:
 ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
   GridCoordinates GridCoordinates_t:
-    CX DataArray_t [4,5,6]:
-    CY DataArray_t [1,1,1]:
+    CoordinateX DataArray_t [4,5,6]:
+    CoordinateY DataArray_t [1,1,1]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [3,6,6]:
 """.format(dtype)
@@ -172,13 +172,13 @@ def test_dist_coords_to_part_coords_U(from_mblock, comm):
     BTP.dist_coords_to_part_coords(dist_zone, part_zones, comm)
 
   if comm.Get_rank() == 0:
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == [2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateX')[1] == [1,6]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateY')[1] == [2,1]).all()
   elif comm.Get_rank() == 1:
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [5,2]).all()
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == [1,2]).all()
-    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CX')[1] == [3,4]).all()
-    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateX')[1] == [5,2]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateY')[1] == [1,2]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CoordinateX')[1] == [3,4]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CoordinateY')[1] == [2,1]).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_dist_coords_to_part_coords_S(comm):
@@ -207,14 +207,14 @@ def test_dist_coords_to_part_coords_S(comm):
   BTP.dist_coords_to_part_coords(dist_zone, part_zones, comm)
 
   if comm.Get_rank() == 0:
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == \
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateX')[1] == \
         np.array([1,2]).reshape((2,1,1), order='F')).all()
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == \
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateY')[1] == \
         np.array([2,2]).reshape((2,1,1), order='F')).all()
   elif comm.Get_rank() == 1:
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == \
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateX')[1] == \
         np.array([5,6,3,4]).reshape((2,2,1),order='F')).all()
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == \
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateY')[1] == \
         np.array([1,1,2,1]).reshape((2,2,1),order='F')).all()
 
 @pytest_parallel.mark.parallel(2)

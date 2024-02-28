@@ -218,16 +218,16 @@ ZoneU Zone_t [[6,0,0]]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [0,3,6]:
   GridCoordinates GridCoordinates_t:
-    CX DataArray_t:
-    CY DataArray_t:
+    CoordinateX DataArray_t:
+    CoordinateY DataArray_t:
   """.format(dtype)
     pt = """
   ZoneU.P0.N0 Zone_t [[3,0,0]]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [1,6]:
     GridCoordinates GridCoordinates_t:
-      CX DataArray_t [1,6]:
-      CY DataArray_t [2,1]:
+      CoordinateX DataArray_t [1,6]:
+      CoordinateY DataArray_t [2,1]:
     """.format(dtype)
   elif comm.Get_rank() == 1:
     dt = """
@@ -235,22 +235,22 @@ ZoneU Zone_t [[6,0,0]]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [3,6,6]:
   GridCoordinates GridCoordinates_t:
-    CX DataArray_t:
-    CY DataArray_t:
+    CoordinateX DataArray_t:
+    CoordinateY DataArray_t:
   """.format(dtype)
     pt = """
   ZoneU.P1.N0 Zone_t [[2,0,0]]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [5,2]:
     GridCoordinates GridCoordinates_t:
-      CX DataArray_t [5,2]:
-      CY DataArray_t [1,2]:
+      CoordinateX DataArray_t [5,2]:
+      CoordinateY DataArray_t [1,2]:
   ZoneU.P1.N1 Zone_t [[2,0,0]]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [3,4]:
     GridCoordinates GridCoordinates_t:
-      CX DataArray_t [3,4]:
-      CY DataArray_t [2,1]:
+      CoordinateX DataArray_t [3,4]:
+      CoordinateY DataArray_t [2,1]:
   """.format(dtype)
 
   dist_zone  = parse_yaml_cgns.to_node(dt)
@@ -259,13 +259,13 @@ ZoneU Zone_t [[6,0,0]]:
   PTB.part_coords_to_dist_coords(dist_zone, part_zones, comm)
 
   if comm.Get_rank() == 0:
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [1,6]).all()
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == [2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateX')[1] == [1,6]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateY')[1] == [2,1]).all()
   elif comm.Get_rank() == 1:
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CX')[1] == [5,2]).all()
-    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CY')[1] == [1,2]).all()
-    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CX')[1] == [3,4]).all()
-    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CY')[1] == [2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateX')[1] == [5,2]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateY')[1] == [1,2]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CoordinateX')[1] == [3,4]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'GridCoordinates/CoordinateY')[1] == [2,1]).all()
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("filter", [False, True])
