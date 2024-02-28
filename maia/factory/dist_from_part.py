@@ -335,10 +335,8 @@ def recover_dist_tree(part_tree, comm):
     tag_names = -1
     tag_transform = -1 
     for part_zone in part_zones:
-      p_grid_co = PT.get_node_from_label(part_zone, 'GridCoordinates_t')
-      is_coords = lambda n: [PT.get_node_from_label(child, 'DataArray_t') for child in PT.get_children(n) if PT.get_name(child) != "CoordinateTransform"]
-      p_grid_co_names = [PT.get_name(gc_node) for gc_node in is_coords(p_grid_co)]
-      p_gc_transform_n = PT.get_node_from_name(p_grid_co, 'CoordinateTransform')
+      p_grid_co_names = PT.Zone.coordinates(part_zone)._fields
+      p_gc_transform_n = PT.get_node_from_predicates(part_zone, 'GridCoordinates_t/CoordinateTransform')
       if p_grid_co_names: tag_names = comm.rank
       if p_gc_transform_n: tag_transform = comm.rank
   
@@ -350,7 +348,7 @@ def recover_dist_tree(part_tree, comm):
 
     for coord in p_grid_co_names:
       PT.new_DataArray(coord, value=None, parent=d_grid_co)
-    if tag_transform != -1: PT.add_child(d_grid_co, p_gc_transform)
+    if tag_transform != -1: PT.add_child(d_grid_co, p_gc_transform_n)
     PTB.part_coords_to_dist_coords(dist_zone, part_zones, comm)
 
     # > Create elements
