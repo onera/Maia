@@ -57,10 +57,23 @@ def generate_line(node, lines, ident=0, line_max=120):
     generate_line(child, lines, ident+2, line_max)
 
 
-def to_yaml(t:CGNSTree, write_root=False, max_line_size=120) -> List[str]:
-  """
-  Convert a complete CGNSTree to a yaml string. If write root is True,
-  top level node is also converted
+def to_yaml(t:CGNSTree, max_line_size=120, write_root=True) -> List[str]:
+  """ Convert a python CGNSTree to a yaml string.
+
+  Args:
+    t (CGNSTree): input python CGNSTree
+    max_line_size (int) : Maximum line lenght using when rendering arrays. Defaults to 120.
+    write_root (bool): if ``False``, top_level node is ignored
+  Returns:
+    list of str : yaml representation of the tree
+  Example:
+    >>> node = PT.new_Zone(type='Unstructured', size=[[9,4,0]], family='ROW')
+    >>> lines = PT.yaml.to_yaml(node)
+    >>> for l in lines:
+    ...    print(l)
+    Zone Zone_t I4 [[9, 4, 0]]:
+      ZoneType ZoneType_t 'Unstructured':
+      FamilyName FamilyName_t 'ROW':
   """
   lines = []
   if write_root:

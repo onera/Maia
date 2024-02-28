@@ -111,12 +111,46 @@ def update_child(parent:CGNSTree, name:str, label:str=UNSET, value:Any=UNSET, ch
   return node
 
 def shallow_copy(t:CGNSTree) -> CGNSTree:
+  """ Create a shallow copy of the input tree.
+
+  Values of the nodes are not copied, but only known
+  as a shared referenced by the output tree.
+  Other data, such as names, labels and tree structure
+  are truly copied.
+   
+  Args:
+    t (CGNSTree): Input tree
+  Returns:
+    CGNSTree: Copied tree
+  Example:
+    >>> zone = PT.new_Zone(type='Unstructured', size=[[9,4,0]])
+    >>> zone_dupl = PT.shallow_copy(zone)
+    >>> zone_dupl[1] *= 2
+    >>> PT.get_value(zone)
+    array([[18, 8, 0]], dtype=int32)
+  """
   out = [NA.get_name(t), NA.get_value(t, raw=True), [], NA.get_label(t)]
   for child in NA.get_children(t):
     out[2].append(shallow_copy(child))
   return out
 
 def deep_copy(t:CGNSTree) -> CGNSTree:
+  """ Create a deep copy of the input tree.
+
+  Values of the nodes are copied, an both tree
+  consequently do not share any reference.
+   
+  Args:
+    t (CGNSTree): Input tree
+  Returns:
+    CGNSTree: Copied tree
+  Example:
+    >>> zone = PT.new_Zone(type='Unstructured', size=[[9,4,0]])
+    >>> zone_dupl = PT.deep_copy(zone)
+    >>> zone_dupl[1] *= 2
+    >>> PT.get_value(zone)
+    array([[9, 4, 0]], dtype=int32)
+  """
   out = new_node(NA.get_name(t), NA.get_label(t))
   _val = NA.get_value(t, raw=True)
   if _val is not None:

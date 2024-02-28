@@ -219,14 +219,15 @@ def test_get_parts_per_blocks(comm):
     """
   part_tree = parse_yaml_cgns.to_cgns_tree(pt)
   part_per_blocks = DFP.get_parts_per_blocks(part_tree, comm)
+  get_names = lambda nodes : [PT.get_name(n) for n in nodes]
   if comm.Get_rank() == 0:
-    assert PT.get_names(part_per_blocks['BaseI/ZoneA']) == ['ZoneA.P0.N0', 'ZoneA.P0.N1']
-    assert PT.get_names(part_per_blocks['BaseI/ZoneB']) == ['ZoneB.P0.N0']
-    assert PT.get_names(part_per_blocks['BaseII/ZoneA']) == []
+    assert get_names(part_per_blocks['BaseI/ZoneA']) == ['ZoneA.P0.N0', 'ZoneA.P0.N1']
+    assert get_names(part_per_blocks['BaseI/ZoneB']) == ['ZoneB.P0.N0']
+    assert get_names(part_per_blocks['BaseII/ZoneA']) == []
   elif comm.Get_rank() == 1:
-    assert PT.get_names(part_per_blocks['BaseI/ZoneA']) == ['ZoneA.P1.N0']
-    assert PT.get_names(part_per_blocks['BaseI/ZoneB']) == []
-    assert PT.get_names(part_per_blocks['BaseII/ZoneA']) == ['ZoneA.P1.N0']
+    assert get_names(part_per_blocks['BaseI/ZoneA']) == ['ZoneA.P1.N0']
+    assert get_names(part_per_blocks['BaseI/ZoneB']) == []
+    assert get_names(part_per_blocks['BaseII/ZoneA']) == ['ZoneA.P1.N0']
 
 @pytest_parallel.mark.parallel(1)
 def test_get_joins_dist_tree(comm):

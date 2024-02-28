@@ -2,13 +2,12 @@ import numpy as np
 import itertools
 
 from maia.pytree.typing import *
+from maia.pytree.meta   import check_is_label, check_in_labels, for_all_methods
 
-from maia.pytree.compare import check_is_label, check_in_labels
 from maia.pytree         import node as N
 from maia.pytree         import walk as W
 from . import elements_utils as EU
 from . import utils
-from .utils import for_all_methods
 
 # Custom NamedTuple list
 class PeriodicValues(NamedTuple):

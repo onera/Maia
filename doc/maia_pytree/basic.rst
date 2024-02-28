@@ -51,6 +51,7 @@ the available getters and setters:
   ~maia.pytree.set_label
   ~maia.pytree.get_children
   ~maia.pytree.add_child
+  ~maia.pytree.rm_child
   ~maia.pytree.set_children
   ~maia.pytree.get_value
   ~maia.pytree.set_value
@@ -125,6 +126,7 @@ API reference
 .. autofunction:: maia.pytree.set_value
 .. autofunction:: maia.pytree.set_children
 .. autofunction:: maia.pytree.add_child
+.. autofunction:: maia.pytree.rm_child
 
 .. autofunction:: maia.pytree.update_node
 

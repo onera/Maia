@@ -25,7 +25,7 @@ if extension==".yaml": # yaml to hdf5
 
 elif extension==".cgns" or extension==".hdf": # hdf5 to yaml
   t = maia.io.read_tree(str(args.input))
-  yt = parse_cgns_yaml.to_yaml(t)
+  yt = parse_cgns_yaml.to_yaml(t, write_root=False)
   yt = '\n'.join(yt)
   output_file = script_utils.determine_output_file_path(args.input, args.output, ".yaml")
   with open(output_file, mode='w') as f:

@@ -13,7 +13,7 @@ import maia.pytree.cgns_keywords as CGK
 
 from . import check
 
-CGNS_STR_SIZE = 32
+_CGNS_STR_SIZE = 32
 
 def _flatten(items):
   """Yield items from any nested iterable; see https://is.gd/gE6gjc """
@@ -60,8 +60,8 @@ def _convert_value(value):
         result = np.array(value, dtype=dtype, order='F')
       elif isinstance(first_value, str):                       # C1
         # WARNING: string numpy is limited to rank=2
-        assert max([len(v) for v in _flatten(value)]) <= CGNS_STR_SIZE
-        size = CGNS_STR_SIZE
+        assert max([len(v) for v in _flatten(value)]) <= _CGNS_STR_SIZE
+        size = _CGNS_STR_SIZE
         if isinstance(value[0], str):
           v = np.empty( (size,len(value) ), dtype='c', order='F')
           for c, i in enumerate(value):
@@ -230,8 +230,7 @@ def get_children(node:CGNSTree) -> List[CGNSTree]:
   return node[2]
 
 def add_child(node:CGNSTree, child:CGNSTree):
-  """
-  Append a child node to the children list of a CGNSNode
+  """ Append a child node to the children list of a CGNSNode.
 
   Args:
     node (CGNSTree): Input node
@@ -250,6 +249,21 @@ def add_child(node:CGNSTree, child:CGNSTree):
   node[2].append(child)
 
 def rm_child(node:CGNSTree, child:CGNSTree):
+  """ Remove the node ``child`` to the children list of node ``node``.
+
+  Args:
+    node (CGNSTree): Input node
+    child (CGNSTree): Child node to remove
+  Raises:
+    RuntimeError: If ``child`` does not exists in ``node`` children list
+  Example:
+    >>> node = PT.new_node('Zone', 'Zone_t')
+    >>> child = PT.new_node('ZoneType', 'ZoneType_t', 'Structured')
+    >>> PT.add_child(node, child)
+    >>> PT.rm_child(node, child)
+    >>> PT.get_children(node)
+    []
+  """
   if child is None:
     return
   sub_nodes = get_children(node)
@@ -321,7 +335,3 @@ def set_label(node:CGNSTree, label:str):
     node[3] = label
   else:
     raise ValueError("Unvalid label for node")
-
-def get_names(nodes:List[CGNSTree]) -> List[str]:
-  """ Return a list of name from a list of nodes """
-  return [get_name(node) for node in nodes]

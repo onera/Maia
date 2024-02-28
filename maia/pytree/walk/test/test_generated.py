@@ -1,13 +1,13 @@
 import pytest
 import numpy as np
 import fnmatch
-import os
 
 from itertools import chain
 
 from maia.pytree.cgns_keywords import Label as CGL
 
 import maia.pytree as PT
+from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
 
 from maia.pytree.yaml   import parse_yaml_cgns
 
@@ -68,6 +68,7 @@ Base CGNSBase_t I4 [3,3]:
       Data DataArray_t:
         I4 : [5, 6]
 """
+get_names = lambda nodes : [PT.get_name(node) for node in nodes]
 
 def test_generated_walkers():          
   tree = parse_yaml_cgns.to_cgns_tree(yt)
@@ -80,7 +81,7 @@ def test_generated_walkers():
   assert PT.get_nodes_from_name_and_label(tree, "Index_iii", "IndexArray_t") == \
          PT.get_nodes_from_predicate(tree, lambda n: PT.get_label(n) == "IndexArray_t" and PT.get_name(n) == "Index_iii")
 
-  with pytest.raises(PT.CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
     PT.request_node_from_name(tree, "Zzz")
 
   assert PT.get_child_from_name(tree, "ZoneI") is None
@@ -108,9 +109,9 @@ def test_generated_remove():
 def test_get_all_label():
   tree = parse_yaml_cgns.to_cgns_tree(yt)
 
-  assert PT.get_names(PT.get_all_CGNSBase_t(tree)) == ['Base']
-  assert PT.get_names(PT.get_all_Zone_t(tree)) == ['ZoneI']
-  assert PT.get_names(PT.iter_all_BC_t(tree)) == []### A MODIFIER
+  assert get_names(PT.get_all_CGNSBase_t(tree)) == ['Base']
+  assert get_names(PT.get_all_Zone_t(tree)) == ['ZoneI']
+  assert get_names(PT.iter_all_BC_t(tree)) == []### A MODIFIER
 
 
 def test_get_node_from_path():
@@ -128,6 +129,16 @@ def test_request_node_from_path():
   with pytest.raises(Exception):
    PT.request_node_from_path(tree, 'Base/Zone/ZGCB/gc3')
 
+
+def test_pop_node_from_path():
+  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  zgc = PT.get_node_from_name(tree, 'ZGCA')
+  zgc_bck = PT.deep_copy(zgc)
+  node = PT.pop_node_from_path(zgc, 'gc1/NonExistingNode')
+  assert node is None and PT.is_same_tree(zgc, zgc_bck)
+  node = PT.pop_node_from_path(zgc, 'gc1/Index_i')
+  assert node[0] == 'Index_i'
+  assert PT.get_node_from_name(tree, 'Index_i') is None
 
 def test_rm_node_from_path():
   tree = parse_yaml_cgns.to_cgns_tree(yt)

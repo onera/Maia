@@ -15,7 +15,7 @@ Zone Zone_t [[27],[8],[0]]:
   zone = parse_yaml_cgns.to_node(yt)
   elmt_gen = cgns_elements.gen_elemts(zone)
   assert hasattr(elmt_gen, '__next__')
-  assert PT.get_names(elmt_gen) == ['NGon', 'Hexa']
+  assert [PT.get_name(n) for n in elmt_gen] == ['NGon', 'Hexa']
 
 def test_create_zone_std_elements_filter():
   yt = """

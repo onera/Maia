@@ -213,7 +213,7 @@ def rm_legacy_nodes(tree):
   arrays_removed = False
   for zone in PT.iter_all_Zone_t(tree):
     for fs in PT.iter_nodes_from_label(zone, 'FlowSolution_t'):
-      all_arrays  = PT.get_names(PT.get_children_from_label(fs, 'DataArray_t'))
+      all_arrays  = [PT.get_name(n) for n in PT.get_children_from_label(fs, 'DataArray_t')]
       size_arrays = [name for name in all_arrays if name.endswith('#Size')]
       has_no_size = lambda n: not PT.get_name(n).endswith('#Size') and f'{PT.get_name(n)}#Size' not in size_arrays
 

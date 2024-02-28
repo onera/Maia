@@ -44,3 +44,14 @@ def test_rm_nodes_from_predicate():
   PT.rm_nodes_from_predicate(tree, lambda n: PT.match_label(n, "FamilyName_t"), depth=3)
   assert len(PT.getNodesFromLabel(tree, "FamilyName_t")) == 2
 
+
+def test_rm_nodes_from_predicate_lvl():
+  tree = parse_yaml_cgns.to_node(yt)
+  PT.rm_nodes_from_label(tree, "FamilyName_t", depth=1)
+  assert len(PT.get_nodes_from_label(tree, 'FamilyName_t')) == 3
+  PT.rm_nodes_from_label(tree, "FamilyName_t", depth=2)
+  assert len(PT.get_nodes_from_label(tree, 'FamilyName_t')) == 2
+  PT.rm_nodes_from_label(tree, "FamilyName_t", depth=3)
+  assert len(PT.get_nodes_from_label(tree, 'FamilyName_t')) == 2
+  PT.rm_nodes_from_label(tree, "FamilyName_t", depth=4)
+  assert len(PT.get_nodes_from_label(tree, 'FamilyName_t')) == 0

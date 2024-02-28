@@ -7,7 +7,7 @@ import numpy as np
 
 import maia
 from maia.pytree import compare as CP
-from maia.pytree.compare_arrays import field_comparison, tensor_field_comparison
+from maia.pytree.maia.compare import FieldComparison, TensorFieldComparison
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -23,9 +23,9 @@ dist_tree_0 = maia.io.file_to_dist_tree(args.file0, comm)
 dist_tree_1 = maia.io.file_to_dist_tree(args.file1, comm)
 
 if args.tensor:
-  comparison = tensor_field_comparison
+  comparison = TensorFieldComparison
 else:
-  comparison = field_comparison
+  comparison = FieldComparison
 is_ok, error_report, warning_report = CP.diff_tree(dist_tree_0, dist_tree_1, comp = comparison(np.float64(args.tol), comm))
 print('=========== Differences ===========\n'+error_report)
 if len(warning_report) > 0:

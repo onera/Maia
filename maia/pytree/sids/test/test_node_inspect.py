@@ -5,6 +5,7 @@ from maia.pytree      import node as N
 from maia.pytree      import walk as W
 
 from maia.pytree.sids import node_inspect as SIDS
+from maia.pytree.meta import CGNSLabelNotEqualError
 
 from maia.pytree.yaml   import parse_yaml_cgns
 
@@ -454,5 +455,5 @@ Zone Zone_t:
 
   with pytest.raises(ValueError):
     SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'OrphelanZSR'), zone)
-  with pytest.raises(PT.CGNSLabelNotEqualError):
+  with pytest.raises(CGNSLabelNotEqualError):
     SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'WrongZSR'), zone)

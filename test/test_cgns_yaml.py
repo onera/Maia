@@ -56,7 +56,7 @@ def test_cgns_yaml_conversion(filename):
   tree = parse_yaml_cgns.to_cgns_tree(input_yaml)
 
   #Convert the CGNS tree to a yaml lines
-  yaml = parse_cgns_yaml.to_yaml(tree)
+  yaml = parse_cgns_yaml.to_yaml(tree, write_root=False)
   yaml = '\n'.join(yaml) #yaml is now a huge string
 
   for input_line, new_line in zip(input_yaml_lines, yaml.split('\n')):

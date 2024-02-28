@@ -82,5 +82,5 @@ def test_dcube_nodal_generate_ridges(comm):
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 6
-  assert PT.get_names(PT.get_children_from_label(zone, 'Elements_t')) == \
+  assert [PT.get_name(n) for n in PT.get_children_from_label(zone, 'Elements_t')] == \
                    ['PYRA_5.0', 'TRI_3.0', 'QUAD_4.1', 'BAR_2.0', 'NODE.0']

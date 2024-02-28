@@ -123,12 +123,3 @@ def test_rm_child():
 
   NA.rm_child(node, None) #Does nothing
   assert len(NA.get_children(node)) == 1
-
-def test_get_names():
-  yt = """
-  MyNode UserDefinedData_t I4 [0]:
-  SomeOtherNode DataArray_t:
-  """
-  nodes = parse_yaml_cgns.to_nodes(yt)
-  assert NA.get_names(nodes) == ['MyNode', 'SomeOtherNode']
-
