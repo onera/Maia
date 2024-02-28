@@ -146,7 +146,12 @@ def to_cgns_tree(yaml_stream) -> CGNSTree:
   t = N.new_node('CGNSTree', 'CGNSTree_t')
   childs = to_nodes(yaml_stream)
   if len(childs) > 0 and N.get_label(childs[0]) == 'Zone_t':
-    b = N.new_CGNSBase(parent=t)
+    dim = 3
+    gc_n = W.get_child_from_label(childs[0], 'GridCoordinates_t')
+    if gc_n:
+      coords_n = W.get_children_from_label(gc_n, 'DataArray_t')
+      dim = len(coords_n)
+    b = N.new_CGNSBase(cell_dim=dim, phy_dim=dim, parent=t)
     N.set_children(b, childs)
   else:
     N.set_children(t, childs)

@@ -65,3 +65,32 @@ CoordinateX DataArray_t:
   assert single_node[2] == node[2]
   assert single_node[3] == node[3]
 
+
+def test_base_dim():
+  yt_2D = """
+ZoneU Zone_t [[6,0,0]]:
+  GridCoordinates GridCoordinates_t:
+    CoordinateX DataArray_t:
+    CoordinateY DataArray_t:
+  """
+  t = parse_yaml_cgns.to_cgns_tree(yt_2D)
+  b = PT.get_child_from_label(t,"CGNSBase_t")
+  assert (PT.get_value(b) == [2,2]).all()
+  
+  yt_3D = """
+ZoneU Zone_t [[6,0,0]]:
+  GridCoordinates GridCoordinates_t:
+    CoordinateR DataArray_t:
+    CoordinateTheta DataArray_t:
+    CoordinateZ DataArray_t:
+  """
+  t = parse_yaml_cgns.to_cgns_tree(yt_3D)
+  b = PT.get_child_from_label(t,"CGNSBase_t")
+  assert (PT.get_value(b) == [3,3]).all()
+  
+  yt = """
+ZoneU Zone_t [[6,0,0]]:
+  """
+  t = parse_yaml_cgns.to_cgns_tree(yt)
+  b = PT.get_child_from_label(t,"CGNSBase_t")
+  assert (PT.get_value(b) == [3,3]).all()
