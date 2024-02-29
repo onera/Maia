@@ -612,6 +612,7 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGN
   if dtype is not None:
     _dtype = cgns_to_dtype[dtype]
     _value = np.asarray(value, dtype=_dtype)
+    _value = np.atleast_1d(_value)
   else:
     _value = NA._convert_value(value)
   node = new_node(name, 'DataArray_t', _value, [], parent)
