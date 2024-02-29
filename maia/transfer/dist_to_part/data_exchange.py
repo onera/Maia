@@ -21,9 +21,8 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
   for grid_co in PT.iter_children_from_label(dist_gc, 'DataArray_t'):
     dist_data[PT.get_name(grid_co)] = grid_co[1] #Prevent np->scalar conversion
+  vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex') 
 
-
-  vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   part_data = EP.block_to_part(dist_data, distribution_vtx, vtx_lntogn_list, comm)
 
   for ipart, part_zone in enumerate(part_zones):
@@ -43,15 +42,14 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
 
   dist_data = dict()
   for dist_zone, part_zones in zip(dist_zones, part_zones_per_dom):
-    dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
-    dist_gc_transform = PT.get_node_from_name(dist_gc, "CoordinateTransform")
-    is_coords = lambda n: [PT.get_node_from_label(child, 'DataArray_t') for child in PT.get_children(n) if PT.get_name(child) != "CoordinateTransform"]
-    dist_gc_names = [PT.get_name(node) for node in is_coords(dist_gc)] 
-    for grid_co in is_coords(dist_gc):
-      try:
-        dist_data[PT.get_name(grid_co)].append(grid_co[1])
-      except KeyError:
-        dist_data[PT.get_name(grid_co)] = [grid_co[1]]
+    dist_gc_transform = PT.get_node_from_predicates(dist_zone, "GridCoordinates_t/CoordinateTransform")    
+
+    for dist_gc_name, dist_gc_node in PT.Zone.coordinates(dist_zone)._asdict().items():
+      if dist_gc_node is not None:
+        try:
+          dist_data[dist_gc_name].append(dist_gc_node)
+        except KeyError:
+          dist_data[dist_gc_name] = [dist_gc_node]
 
     vtx_distrib = MT.getDistribution(dist_zone, 'Vertex')[1]
     block_distris.append(par_utils.partial_to_full_distribution(vtx_distrib, comm))
@@ -60,7 +58,7 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
     for part_zone in part_zones:
       part_lngn.append(MT.getGlobalNumbering(part_zone, 'Vertex')[1] + vtx_offset)
       part_gc = PT.new_GridCoordinates('GridCoordinates', parent=part_zone)
-      for dist_gc_name in dist_gc_names:
+      for dist_gc_name in dist_data.keys():
         PT.new_DataArray(dist_gc_name, None, parent=part_gc)
       PT.add_child(part_gc, dist_gc_transform)
 
