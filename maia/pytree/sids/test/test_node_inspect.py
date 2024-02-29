@@ -102,15 +102,15 @@ def test_coordinates_2D():
     assert np.allclose(c2, [6,7,8])
     assert c3 == None
 
-@pytest.mark.parametrize('coords_name', [['CoordinateX', 'CoordinateY', 'CoordinateZ'], ['CoordinateXi', 'CoordinateEta', 'CoordinateZeta'], ['CoordinateR', 'CoordinateTheta', 'CoordinateZ'], ['CoordinateR', 'CoordinateTheta', 'CoordinatePhi']])
-def test_coordinates_3D(coords_name):
+@pytest.mark.parametrize('axis', [['X', 'Y', 'Z'], ['Xi', 'Eta', 'Zeta'], ['R', 'Theta', 'Z'], ['R', 'Theta', 'Phi']])
+def test_coordinates_3D(axis):
     
     zone = parse_yaml_cgns.to_node(f'''
     Zone Zone_t:
       GridCoordinates GridCoordinates_t:
-        {coords_name[0]} DataArray_t R8 [1,2,3]:
-        {coords_name[1]} DataArray_t R8 [0,0,0]:
-        {coords_name[2]} DataArray_t R8 [.5, .5, .5]:
+        Coordinate{axis[0]} DataArray_t R8 [1,2,3]:
+        Coordinate{axis[1]} DataArray_t R8 [0,0,0]:
+        Coordinate{axis[2]} DataArray_t R8 [.5, .5, .5]:
     ''')
     c1 , c2, c3 = SIDS.Zone.coordinates(zone)
 
