@@ -55,7 +55,9 @@ def test_find_cartesian_vector_names():
   names.append("TotoX")
   assert py_utils.find_cartesian_vector_names(names) == ["Toto"]
   assert sorted(py_utils.find_cartesian_vector_names(names,2)) == ["Tata", "Toto"]
-  names = ["AXX", "AXY", "AXZ", "AYX", "AYY", "AYZ", "AZX", "AZY", "AZZ"]
+  names = ["AXY", "AXZ", "AYX", "AYY", "AYZ", "AZX", "AZZ"]
+  assert py_utils.find_cartesian_vector_names(names) == ["AY"]
+  names.append("AXX")
   assert py_utils.find_cartesian_vector_names(names) == []
 
 def test_get_ordered_subset():
