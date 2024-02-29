@@ -3,18 +3,16 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
-#include "maia/utils/pybind_utils.hpp"
-
 namespace py = pybind11;
 
 // --------------------------------------------------------------------
 template<typename T>
 inline
-std::tuple<py::array_t<T, py::array::f_style>, py::array_t<T, py::array::f_style>>
+std::tuple<py::array_t<T>, py::array_t<T>>
 local_pe_to_local_cellface(py::array_t<T, py::array::f_style>& np_pe)
 {
   int n_face = np_pe.shape()[0];
-  auto pe = make_raw_view(np_pe);
+  auto pe = np_pe.data();
 
   // Find number of cells == max of PE
   int n_cell = std::accumulate(pe, pe+2*n_face, T(0), [](auto x, auto y){ return std::max(x,y); });
@@ -31,8 +29,8 @@ local_pe_to_local_cellface(py::array_t<T, py::array::f_style>& np_pe)
   std::partial_sum(counts.begin()+1, counts.end(), eso.begin()+1);
 
   //Allocate ec
-  py::array_t<T, py::array::f_style> np_ec(eso[n_cell]);
-  auto ec = make_raw_view(np_ec);
+  py::array_t<T> np_ec(eso[n_cell]);
+  auto ec = np_ec.mutable_data();
 
 
   // Now fill
@@ -55,8 +53,8 @@ local_pe_to_local_cellface(py::array_t<T, py::array::f_style>& np_pe)
 // --------------------------------------------------------------------
 inline
 py::array_t<int, py::array::f_style>
-local_cellface_to_local_pe(py::array_t<int, py::array::f_style>& np_cellface_idx,
-                           py::array_t<int, py::array::f_style>& np_cellface)
+local_cellface_to_local_pe(py::array_t<int>& np_cellface_idx,
+                           py::array_t<int>& np_cellface)
 {
   int n_cell = np_cellface_idx.size() - 1;
   auto cellface_idx = np_cellface_idx.unchecked<1>();
@@ -70,7 +68,7 @@ local_cellface_to_local_pe(py::array_t<int, py::array::f_style>& np_cellface_idx
 
   // Declare and init PE
   py::array_t<int, py::array::f_style> np_pe({n_face,2});
-  auto pe = make_raw_view(np_pe);
+  auto pe = np_pe.mutable_data();
   for (int i=0; i < 2*n_face; i++) {
     pe[i] = 0;
   }

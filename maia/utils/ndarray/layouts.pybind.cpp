@@ -2,24 +2,22 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
-#include "maia/utils/pybind_utils.hpp"
-
 namespace py = pybind11;
 
 template<typename T>
-py::array_t<T, py::array::f_style>
-extract_from_indices(py::array_t<T, py::array::f_style>& np_array, 
-                     py::array_t<int, py::array::f_style>& np_indices,
+py::array_t<T>
+extract_from_indices(py::array_t<T>& np_array, 
+                     py::array_t<int>& np_indices,
                      int stride, int shift){
 
   int size         = np_indices.size();
   int extract_size = size * stride;
 
-  auto indices = make_raw_view(np_indices);
-  auto array   = make_raw_view(np_array);
+  auto indices = np_indices.data();
+  auto array   = np_array.data();
 
-  auto np_extract_array = py::array_t<T, py::array::f_style>(extract_size);
-  auto extract_array   = make_raw_view(np_extract_array);
+  auto np_extract_array = py::array_t<T>(extract_size);
+  auto extract_array    = np_extract_array.mutable_data();
 
   for(int i = 0; i < size; ++i) {
     int idx = indices[i]-shift;
@@ -31,7 +29,7 @@ extract_from_indices(py::array_t<T, py::array::f_style>& np_array,
 }
 template<typename g_num>
 void pe_cgns_to_pdm_face_cell(py::array_t<g_num, py::array::f_style>& pe,
-                              py::array_t<g_num, py::array::f_style>& face_cell){
+                              py::array_t<g_num                    >& face_cell){
   assert(pe.ndim()        == 2        );
   assert(face_cell.ndim() == 1        );
   assert(face_cell.size() == pe.size());
@@ -48,7 +46,7 @@ void pe_cgns_to_pdm_face_cell(py::array_t<g_num, py::array::f_style>& pe,
 }
 
 template<typename g_num>
-void pdm_face_cell_to_pe_cgns(py::array_t<g_num, py::array::f_style>& face_cell,
+void pdm_face_cell_to_pe_cgns(py::array_t<g_num                    >& face_cell,
                               py::array_t<g_num, py::array::f_style>& pe){
   assert(pe.ndim()        == 2        );
   assert(face_cell.ndim() == 1        );
@@ -66,8 +64,8 @@ void pdm_face_cell_to_pe_cgns(py::array_t<g_num, py::array::f_style>& face_cell,
 }
 
 template<typename g_num>
-void strided_connectivity_to_pe(py::array_t<int  , py::array::f_style>& connect_idx,
-                                py::array_t<g_num, py::array::f_style>& connect,
+void strided_connectivity_to_pe(py::array_t<int>&   connect_idx,
+                                py::array_t<g_num>& connect,
                                 py::array_t<g_num, py::array::f_style>& pe){
   int n_elts = connect_idx.size() - 1;
 
@@ -111,16 +109,15 @@ void strided_connectivity_to_pe(py::array_t<int  , py::array::f_style>& connect_
 }
 
 template<typename T>
-py::array_t<T, py::array::f_style>
-indexed_to_interleaved_connectivity(py::array_t<T, py::array::f_style>& np_idx,
-            py::array_t<T,   py::array::f_style>& np_data) {
+py::array_t<T>
+indexed_to_interleaved_connectivity(py::array_t<T>& np_idx, py::array_t<T>& np_data) {
 
 
-  auto idx  = make_raw_view(np_idx);
-  auto data = make_raw_view(np_data);
+  auto idx  = np_idx.data();
+  auto data = np_data.data();
 
-  auto np_interleaved = py::array_t<T, py::array::f_style>(np_idx.size()-1+np_data.size());
-  auto interleaved    = make_raw_view(np_interleaved);
+  auto np_interleaved = py::array_t<T>(np_idx.size()-1+np_data.size());
+  auto interleaved    = np_interleaved.mutable_data();
 
   int idx_write(0);
   for (int i = 0; i < np_idx.size()-1; ++i) {
@@ -133,16 +130,16 @@ indexed_to_interleaved_connectivity(py::array_t<T, py::array::f_style>& np_idx,
 }
 
 template<typename T>
-std::tuple<py::array_t<T, py::array::f_style>, py::array_t<T, py::array::f_style>>
-interleaved_to_indexed_connectivity(int n_elem, py::array_t<T, py::array::f_style>& np_interleaved)
+std::tuple<py::array_t<T>, py::array_t<T>>
+interleaved_to_indexed_connectivity(int n_elem, py::array_t<T>& np_interleaved)
 {
-  auto interleaved = make_raw_view(np_interleaved);
+  auto interleaved = np_interleaved.data();
 
-  py::array_t<T, py::array::f_style> np_offset(n_elem+1);
-  py::array_t<T, py::array::f_style> np_values(np_interleaved.size() - n_elem);
+  py::array_t<T> np_offset(n_elem+1);
+  py::array_t<T> np_values(np_interleaved.size() - n_elem);
 
-  auto offset = make_raw_view(np_offset);
-  auto values = make_raw_view(np_values);
+  auto offset = np_offset.mutable_data();
+  auto values = np_values.mutable_data();
 
   offset[0] = 0;
   int i_elem = 0;
@@ -159,8 +156,7 @@ interleaved_to_indexed_connectivity(int n_elem, py::array_t<T, py::array::f_styl
 }
 
 template<typename T>
-void 
-create_mixed_elts_eso(py::array_t<T, py::array::f_style>& np_connec, py::array_t<T, py::array::f_style>& np_eso)
+void create_mixed_elts_eso(py::array_t<T>& np_connec, py::array_t<T>& np_eso)
 {
   int n_cell = np_eso.size() - 1;
 
@@ -173,8 +169,8 @@ create_mixed_elts_eso(py::array_t<T, py::array::f_style>& np_connec, py::array_t
     55, 33, 66, 75, 44, 98, 125
   };
 
-  auto connec = make_raw_view(np_connec);
-  auto eso    = make_raw_view(np_eso);
+  auto connec = np_connec.data();
+  auto eso    = np_eso.mutable_data();
 
   eso[0] = 0;
   int pos = 0;
@@ -186,18 +182,18 @@ create_mixed_elts_eso(py::array_t<T, py::array::f_style>& np_connec, py::array_t
 }
 
 template<typename fld_type>
-std::tuple<py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>, py::array_t<fld_type, py::array::f_style>>
-interlaced_to_tuple_coords(py::array_t<fld_type, py::array::f_style>& np_xyz){
+std::tuple<py::array_t<fld_type>, py::array_t<fld_type>, py::array_t<fld_type>>
+interlaced_to_tuple_coords(py::array_t<fld_type>& np_xyz){
 
   int size = np_xyz.size()/3;
-  py::array_t<fld_type, py::array::f_style> np_coord_x(size);
-  py::array_t<fld_type, py::array::f_style> np_coord_y(size);
-  py::array_t<fld_type, py::array::f_style> np_coord_z(size);
+  py::array_t<fld_type> np_coord_x(size);
+  py::array_t<fld_type> np_coord_y(size);
+  py::array_t<fld_type> np_coord_z(size);
 
-  auto coord_xyz = make_raw_view(np_xyz);
-  auto coord_x   = make_raw_view(np_coord_x);
-  auto coord_y   = make_raw_view(np_coord_y);
-  auto coord_z   = make_raw_view(np_coord_z);
+  auto coord_xyz = np_xyz.data();
+  auto coord_x   = np_coord_x.mutable_data();
+  auto coord_y   = np_coord_y.mutable_data();
+  auto coord_z   = np_coord_z.mutable_data();
 
   for(int i = 0; i < size; ++i) {
     int offset = 3*i;
@@ -210,18 +206,18 @@ interlaced_to_tuple_coords(py::array_t<fld_type, py::array::f_style>& np_xyz){
 }
 
 template<typename T>
-std::tuple<py::array_t<int, py::array::f_style>, py::array_t<T, py::array::f_style>>
-jagged_merge(py::array_t<int, py::array::f_style>& np_idx1,
-             py::array_t<T, py::array::f_style>&   np_array1,
-             py::array_t<int, py::array::f_style>& np_idx2,
-             py::array_t<T, py::array::f_style>&   np_array2) {
+std::tuple<py::array_t<int>, py::array_t<T>>
+jagged_merge(py::array_t<int>& np_idx1,
+             py::array_t<T>&   np_array1,
+             py::array_t<int>& np_idx2,
+             py::array_t<T>&   np_array2) {
 
   assert(np_idx1.size() == np_idx2.size());
 
   int r_n_elt = np_idx1.size() - 1;
   int r_size  = np_array1.size() + np_array2.size();
-  py::array_t<int, py::array::f_style> np_idx(r_n_elt + 1);
-  py::array_t<T,   py::array::f_style> np_array(r_size);
+  py::array_t<int> np_idx(r_n_elt + 1);
+  py::array_t<T> np_array(r_size);
 
   auto idx1   = np_idx1.unchecked<1>();
   auto array1 = np_array1.template unchecked<1>();

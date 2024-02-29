@@ -9,7 +9,6 @@
 #include "maia/algo/part/ngon_tools/ngon_tools.pybind.hpp"
 #include "maia/algo/part/cgns_registry/cgns_registry.pybind.hpp"
 #include "maia/algo/part/part_algo.pybind.hpp"
-#include "maia/utils/pybind_utils.hpp"
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -19,22 +18,22 @@ namespace py = pybind11;
 
 void
 enforce_pe_left_parent(
-    py::array_t<int32_t, py::array::f_style>& np_face_vtx_idx,
-    py::array_t<int32_t, py::array::f_style>& np_face_vtx,
+    py::array_t<int32_t>& np_face_vtx_idx,
+    py::array_t<int32_t>& np_face_vtx,
     py::array_t<int32_t, py::array::f_style>& np_pe,
-    std::optional<py::array_t<int32_t, py::array::f_style>> &np_cell_face_idx,
-    std::optional<py::array_t<int32_t, py::array::f_style>> &np_cell_face
+    std::optional<py::array_t<int32_t>> &np_cell_face_idx,
+    std::optional<py::array_t<int32_t>> &np_cell_face
 )
 {
   int n_face = np_pe.size()/2;
   auto pe_ptr        = np_pe.template mutable_unchecked<2>();
-  auto face_vtx_idx  = make_raw_view(np_face_vtx_idx);
-  auto face_vtx      = make_raw_view(np_face_vtx);
+  auto face_vtx_idx  = np_face_vtx_idx.data();
+  auto face_vtx      = np_face_vtx.mutable_data();
   int *cell_face_idx = nullptr;
   int *cell_face     = nullptr;
   if (np_cell_face_idx.has_value()) { //Take value if not None
-    cell_face_idx = make_raw_view(np_cell_face_idx.value());
-    cell_face     = make_raw_view(np_cell_face.value());
+    cell_face_idx = np_cell_face_idx.value().mutable_data();
+    cell_face     = np_cell_face.value().mutable_data();
   }
 
   int f_shift(0); // To go back to local cell numbering if ngons are before nface

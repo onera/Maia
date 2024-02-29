@@ -4,38 +4,31 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "std_e/algorithm/permutation.hpp"
-#include "maia/utils/pybind_utils.hpp"
 
 namespace py = pybind11;
 
 // --------------------------------------------------------------------
-py::array_t<double, py::array::f_style>
+py::array_t<double>
 compute_center_cell_u(int n_cell,
-                      py::array_t<double, py::array::f_style>& np_cx,
-                      py::array_t<double, py::array::f_style>& np_cy,
-                      py::array_t<double, py::array::f_style>& np_cz,
-                      py::array_t<int,    py::array::f_style>& np_face_vtx,
-                      py::array_t<int,    py::array::f_style>& np_face_vtx_idx,
-                      py::array_t<int,    py::array::f_style>& np_parent_elements)
+                      py::array_t<double>& np_cx,
+                      py::array_t<double>& np_cy,
+                      py::array_t<double>& np_cz,
+                      py::array_t<int>& np_face_vtx,
+                      py::array_t<int>& np_face_vtx_idx,
+                      py::array_t<int, py::array::f_style>& np_parent_elements)
 {
-  int n_face = np_parent_elements.shape()[0];
-  // int n_vtx = np_cx.size();
-  // std::cout << "compute_center_cell_u: n_cell = " << n_cell << std::endl;
-  // std::cout << "compute_center_cell_u: n_face = " << n_face << std::endl;
-  // std::cout << "compute_center_cell_u: np_face_vtx.size() = " << np_face_vtx.size() << std::endl;
-  // std::cout << "compute_center_cell_u: np_face_vtx_idx.size() = " << np_face_vtx_idx.size() << std::endl;
-  // std::cout << "compute_center_cell_u: n_vtx = " << n_vtx << std::endl;
-  py::array_t<double, py::array::f_style> np_center_cell(3*n_cell);
-  std::vector<int> countc(n_cell, 0);
-  // std::cout << "compute_center_cell_u: countc.size() = " << countc.size() << std::endl;
+  auto cx              = np_cx.data();
+  auto cy              = np_cy.data();
+  auto cz              = np_cz.data();
+  auto face_vtx        = np_face_vtx.data();
+  auto face_vtx_idx    = np_face_vtx_idx.data();
+  auto parent_elements = np_parent_elements.unchecked<2>();
 
-  auto cx              = make_raw_view(np_cx);
-  auto cy              = make_raw_view(np_cy);
-  auto cz              = make_raw_view(np_cz);
-  auto face_vtx        = make_raw_view(np_face_vtx);
-  auto face_vtx_idx    = make_raw_view(np_face_vtx_idx);
-  auto parent_elements = make_raw_view(np_parent_elements);
-  auto center_cell     = make_raw_view(np_center_cell);
+  py::array_t<double> np_center_cell(3*n_cell);
+  auto center_cell     = np_center_cell.mutable_data();
+
+  int n_face = np_parent_elements.shape()[0];
+  std::vector<int> countc(n_cell, 0);
 
   // Init volume to ZERO
   // ---------------
@@ -50,14 +43,14 @@ compute_center_cell_u(int n_cell,
   // ---------------
   int f_shift(0); // To go back to local cell numbering if ngons are before nface
   if (n_face > 0) {
-    if (std::max(parent_elements[0], parent_elements[0+n_face]) > n_face ) {
+    if (std::max(parent_elements(0,0), parent_elements(0,1)) > n_face ) {
       f_shift = n_face;
     }
   }
   for (int iface = 0; iface < n_face; ++iface) {
     // -> Face -> Cell connectivity
-    int il = parent_elements[iface       ]-1-(f_shift*(parent_elements[iface] > 0));
-    int ir = parent_elements[iface+n_face]-1-(f_shift*(parent_elements[iface+n_face] > 0));
+    int il = parent_elements(iface,0)-1-(f_shift*(parent_elements(iface,0) > 0));
+    int ir = parent_elements(iface,1)-1-(f_shift*(parent_elements(iface,1) > 0));
     // std::cout << "compute_center_cell_u: iface = " << iface << std::endl;
     // std::cout << "compute_center_cell_u: il = " << il << ", ir = " << ir << std::endl;
     assert(((il >= -1) && (il < n_cell)));
@@ -107,19 +100,19 @@ compute_center_cell_u(int n_cell,
 }
 
 // --------------------------------------------------------------------
-py::array_t<double, py::array::f_style>
+py::array_t<double>
 compute_center_cell_s(int nx, int ny, int nz,
                       py::array_t<double, py::array::f_style>& np_cx,
                       py::array_t<double, py::array::f_style>& np_cy,
                       py::array_t<double, py::array::f_style>& np_cz)
 {
 
-  auto cx = np_cx.template mutable_unchecked<3>();
-  auto cy = np_cy.template mutable_unchecked<3>();
-  auto cz = np_cz.template mutable_unchecked<3>();
+  auto cx = np_cx.mutable_unchecked<3>();
+  auto cy = np_cy.mutable_unchecked<3>();
+  auto cz = np_cz.mutable_unchecked<3>();
 
   py::array_t<double, py::array::f_style> np_center(3*nx*ny*nz);
-  auto center = make_raw_view(np_center);
+  auto center = np_center.mutable_data();
 
   int idx = 0;
   for(int k = 0; k < nz; ++k) {
@@ -146,14 +139,14 @@ compute_center_face_s(int nx, int ny, int nz,
                       py::array_t<double, py::array::f_style>& np_cz)
 {
 
-  auto cx = np_cx.template mutable_unchecked<3>();
-  auto cy = np_cy.template mutable_unchecked<3>();
-  auto cz = np_cz.template mutable_unchecked<3>();
+  auto cx = np_cx.mutable_unchecked<3>();
+  auto cy = np_cy.mutable_unchecked<3>();
+  auto cz = np_cz.mutable_unchecked<3>();
 
   int n_face_tot = (nz - 1)*(nx - 1)*ny + (nz - 1)*(ny - 1)*nx + nz*(ny - 1)*(nx - 1); // A CHANGER
 
   py::array_t<double, py::array::f_style> np_center(3*n_face_tot);
-  auto center = make_raw_view(np_center);
+  auto center = np_center.mutable_data();
 
   int idx = 0;
   for(int k = 0; k < nz-1; ++k) {
@@ -190,25 +183,25 @@ compute_center_face_s(int nx, int ny, int nz,
 }
 
 // --------------------------------------------------------------------
-py::array_t<double, py::array::f_style>
-compute_face_normal_u(py::array_t<int   , py::array::f_style>& np_face_vtx_idx,
-                      py::array_t<double, py::array::f_style>& np_cx,
-                      py::array_t<double, py::array::f_style>& np_cy,
-                      py::array_t<double, py::array::f_style>& np_cz)
+py::array_t<double>
+compute_face_normal_u(py::array_t<int   >& np_face_vtx_idx,
+                      py::array_t<double>& np_cx,
+                      py::array_t<double>& np_cy,
+                      py::array_t<double>& np_cz)
 {
   // Compute face normal ponderated by face area, assuming that coords cx,cy,cz are
   // the coordinates of face vertices (with repetitions)
   // Eg if we have tri face [3,2,4,  5,4,6] np_cx is [X_3, X_2, X_4,  X5,X4,X6]
 
-  auto cx              = make_raw_view(np_cx);
-  auto cy              = make_raw_view(np_cy);
-  auto cz              = make_raw_view(np_cz);
-  auto face_vtx_idx    = make_raw_view(np_face_vtx_idx);
+  auto cx              = np_cx.data();
+  auto cy              = np_cy.data();
+  auto cz              = np_cz.data();
+  auto face_vtx_idx    = np_face_vtx_idx.data();
 
   int n_face = np_face_vtx_idx.shape()[0] - 1;
 
   py::array_t<double, py::array::f_style> np_face_normal(3*n_face);
-  auto face_normal = make_raw_view(np_face_normal);
+  auto face_normal = np_face_normal.mutable_data();
 
   for (int i = 0; i < n_face; ++i) {
     int start = face_vtx_idx[i];
