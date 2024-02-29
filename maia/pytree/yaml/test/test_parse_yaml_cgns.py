@@ -96,6 +96,7 @@ ZoneU Zone_t:
     CoordinateR DataArray_t:
     CoordinateTheta DataArray_t:
     CoordinateZ DataArray_t:
+    CoordinateTransform DataArray_t:
   Ngon Elements_t [22,0]:
   """
   t = parse_yaml_cgns.to_cgns_tree(yt_2D_curv_U_ngon)

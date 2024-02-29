@@ -150,7 +150,7 @@ def to_cgns_tree(yaml_stream) -> CGNSTree:
     phy_dim = 3
     gc_n = W.get_child_from_label(childs[0], 'GridCoordinates_t')
     if gc_n:
-      coords_n = W.get_children_from_label(gc_n, 'DataArray_t')
+      coords_n = W.get_children_from_predicate(gc_n, lambda n: N.get_label(n) == 'DataArray_t' and N.get_name(n) != 'CoordinateTransform')
       phy_dim = len(coords_n)
     try:
       cell_dim = S.Zone.CellDimension(childs[0])
