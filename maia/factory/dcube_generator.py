@@ -137,7 +137,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   if isinstance(n_vtx, int):
     n_vtx = [n_vtx, n_vtx, n_vtx]
-  assert isinstance(n_vtx, list) and len(n_vtx) == 3
+  assert len(n_vtx) == 3
 
   dcube = PDM.DCubeNodalGenerator(*n_vtx, edge_length, *origin, t_elmt, 1, comm)
   dcube.set_ordering("PDM_HO_ORDERING_CGNS".encode('utf-8'))
