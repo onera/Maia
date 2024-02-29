@@ -89,8 +89,7 @@ def pdm_vtx_to_cgns_grid_coordinates(d_zone, p_zone, dims, data):
   """
   d_zone_gc = PT.get_node_from_label(d_zone, 'GridCoordinates_t')
   d_gc_transform = PT.get_child_from_name(d_zone_gc, 'CoordinateTransform') 
-  is_coords = lambda n: [PT.get_node_from_label(child, 'DataArray_t') for child in PT.get_children(n) if PT.get_name(child) != "CoordinateTransform"]
-  d_gc_names = [PT.get_name(gc_node) for gc_node in is_coords(d_zone_gc)]
+  d_gc_names = PT.Zone.coordinates(d_zone)._fields
   coords = data['np_vtx_coord']
   fields = dict()
   for i ,d_gc_name in enumerate(d_gc_names):

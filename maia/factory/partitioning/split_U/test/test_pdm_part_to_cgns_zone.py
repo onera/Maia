@@ -24,13 +24,13 @@ def test_dump_pdm_output():
 def test_pdm_vtx_to_cgns_grid_coordinates(fields):
   p_zone = PT.new_Zone('Zone.P0.N0', type='Unstructured')
   d_zone = PT.new_Zone('Zone.P0.N0', type='Unstructured')
-  PT.new_GridCoordinates(fields=fields,parent=d_zone)
+  PT.new_GridCoordinates(fields=fields, parent=d_zone)
   dims = {'n_vtx' : 3}
   data = {'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float64)}
 
   PTC.pdm_vtx_to_cgns_grid_coordinates(d_zone, p_zone, dims, data)
-  grid_co = PT.get_node_from_path(p_zone, 'GridCoordinates')
-  grid_co_names = [PT.get_name(gc_n) for gc_n in PT.get_children(grid_co) if PT.get_name(gc_n) != 'CoordinateTransform']
+  grid_co = PT.get_node_from_predicate(p_zone, 'GridCoordinates_t')
+  grid_co_names = PT.Zone.coordinates(p_zone)._fields
 
   for co in grid_co_names:
     assert PT.get_child_from_name(grid_co, co)[1].dtype == np.float64
@@ -193,3 +193,6 @@ def test_pdm_part_to_cgns_zone(fields):
     assert PT.get_name(part_zone) == PT.get_name(d_zone) + '.P0.N{0}'.format(ipart)
     assert (PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex')) == l_data[ipart]['np_vtx_ln_to_gn']).all()
     assert (PT.get_value(MT.getGlobalNumbering(part_zone, 'Cell')) == l_data[ipart]['np_cell_ln_to_gn']).all()
+
+
+test_pdm_vtx_to_cgns_grid_coordinates(fields={'CoordinateR':None, 'CoordinateTheta':None, 'CoordinateZ':None, 'CoordinateTransform':None})
