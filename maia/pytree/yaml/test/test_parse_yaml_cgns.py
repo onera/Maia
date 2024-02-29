@@ -77,14 +77,64 @@ ZoneU Zone_t [[6,0,0]]:
   b = PT.get_child_from_label(t,"CGNSBase_t")
   assert (PT.get_value(b) == [2,2]).all()
   
-  yt_3D = """
+  yt_2D_curv_S = """
+ZoneS Zone_t [[6,5,0],[2,1,0]]:
+  ZoneType ZoneType_t "Structured":
+  GridCoordinates GridCoordinates_t:
+    CoordinateXi DataArray_t:
+    CoordinateEta DataArray_t:
+    CoordinateZeta DataArray_t:
+  """
+  t = parse_yaml_cgns.to_cgns_tree(yt_2D_curv_S)
+  b = PT.get_child_from_label(t,"CGNSBase_t")
+  assert (PT.get_value(b) == [2,3]).all()
+  
+  yt_2D_curv_U_ngon = """
+ZoneU Zone_t:
+  ZoneType ZoneType_t "Unstructured":
+  GridCoordinates GridCoordinates_t:
+    CoordinateR DataArray_t:
+    CoordinateTheta DataArray_t:
+    CoordinateZ DataArray_t:
+  Ngon Elements_t [22,0]:
+  """
+  t = parse_yaml_cgns.to_cgns_tree(yt_2D_curv_U_ngon)
+  b = PT.get_child_from_label(t,"CGNSBase_t")
+  assert (PT.get_value(b) == [2,3]).all()
+  
+  yt_2D_curv_U_elem = """
+ZoneU Zone_t:
+  ZoneType ZoneType_t "Unstructured":
+  GridCoordinates GridCoordinates_t:
+    CoordinateR DataArray_t:
+    CoordinateTheta DataArray_t:
+    CoordinateZ DataArray_t:
+  Quad Elements_t [7,0]:
+  """
+  t = parse_yaml_cgns.to_cgns_tree(yt_2D_curv_U_elem)
+  b = PT.get_child_from_label(t,"CGNSBase_t")
+  assert (PT.get_value(b) == [2,3]).all()
+  
+  yt_3D_S = """
+ZoneS Zone_t [[6,5,0],[2,1,0],[2,1,0]]:
+  ZoneType ZoneType_t "Structured":
+  GridCoordinates GridCoordinates_t:
+    CoordinateXi DataArray_t:
+    CoordinateEta DataArray_t:
+    CoordinateZeta DataArray_t:
+  """
+  t = parse_yaml_cgns.to_cgns_tree(yt_3D_S)
+  b = PT.get_child_from_label(t,"CGNSBase_t")
+  assert (PT.get_value(b) == [3,3]).all()
+  
+  yt_3D_U = """
 ZoneU Zone_t [[6,0,0]]:
   GridCoordinates GridCoordinates_t:
     CoordinateR DataArray_t:
     CoordinateTheta DataArray_t:
     CoordinateZ DataArray_t:
   """
-  t = parse_yaml_cgns.to_cgns_tree(yt_3D)
+  t = parse_yaml_cgns.to_cgns_tree(yt_3D_U)
   b = PT.get_child_from_label(t,"CGNSBase_t")
   assert (PT.get_value(b) == [3,3]).all()
   

@@ -5,6 +5,7 @@ from ruamel.yaml import YAML
 from maia.pytree.typing import *
 import maia.pytree.node as N
 import maia.pytree.walk as W
+import maia.pytree.sids as S
 
 import maia.pytree.cgns_keywords as CGK
 
@@ -146,12 +147,17 @@ def to_cgns_tree(yaml_stream) -> CGNSTree:
   t = N.new_node('CGNSTree', 'CGNSTree_t')
   childs = to_nodes(yaml_stream)
   if len(childs) > 0 and N.get_label(childs[0]) == 'Zone_t':
-    dim = 3
+    phy_dim = 3
     gc_n = W.get_child_from_label(childs[0], 'GridCoordinates_t')
     if gc_n:
       coords_n = W.get_children_from_label(gc_n, 'DataArray_t')
-      dim = len(coords_n)
-    b = N.new_CGNSBase(cell_dim=dim, phy_dim=dim, parent=t)
+      phy_dim = len(coords_n)
+    try:
+      cell_dim = S.Zone.CellDimension(childs[0])
+    except:
+      cell_dim = 3
+    cell_dim = min(cell_dim, phy_dim)
+    b = N.new_CGNSBase(cell_dim=cell_dim, phy_dim=phy_dim, parent=t)
     N.set_children(b, childs)
   else:
     N.set_children(t, childs)
