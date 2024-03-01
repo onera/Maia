@@ -1,5 +1,4 @@
-import re
-from itertools import permutations
+from itertools import permutations, product
 
 def to_nested_list(l, counts):
   """ Transform a flat list to a list of lists"""
@@ -42,49 +41,50 @@ def loop_from(L, i):
   yield from L[i:]
   yield from L[:i]
 
-def find_vector_names(names, axis):
-  """
-  Function to find basename of any coordinates system
-  In the SIDS (https://cgns.github.io/CGNS_docs_current/sids/dataname.html), a cartesian
-  vector 'Vector' is describe by its 2 (resp. 3) components 'VectorX', 'VectorY', (resp. 'VectorZ')
-  depending on the physical dimension of the mesh. 
-  > names : list of potential vectors components
-  > axis : Coordinates system of the mesh.
-  """
-  assert len(axis) > 1
-  names = [name for name in names if len(name) > 1] #Exclude crazy cases
-  tensors = [axis[0]+axis[0], axis[1]+axis[1]]
-  to_index = {axis[0] : 0, axis[1] : 1}
-  if len(axis) == 3:
-    tensors.append(axis[2]+axis[2])
-    to_index[axis[2]] = 2
-  # tensors = sorted(tensors)
+def find_tensor_names(names, axis):
+  """ Return the name of the fields appearing to be a tensor """
+  assert len(axis) >= 1
+  names = [name for name in names if len(name) > 2] #Exclude crazy cases
 
-  basenames = [set() for i in to_index]
-
-  suffix_names = []
+  # For tensor, we will search only diagonal components
+  to_index = {f'{a}{a}':i for i,a in enumerate(axis)} 
+  suffix_names = [set() for _ in to_index]
 
   for name in names:
-    is_lower = name[0].islower()
-    if is_lower:
-      name = name[0].upper() + name[1:]
-    split_name = re.findall('[A-Z][^A-Z]*', name)
-    suffix_names.append(''.join(split_name[-2:]))
-    if len(split_name) > 1: 
-      basename = ''.join(split_name[0:-1])
-      if is_lower:
-        basename = basename[0].lower() + basename[1:]
-    try:
-        basenames[to_index[split_name[-1]]].add(basename)
-    except KeyError:
-      pass
-  is_tensors = sorted(list(set(suffix_names) & set(tensors)))
-  if is_tensors != tensors :
-    vectors = basenames[0].intersection(*basenames[1:])
-  else:
-    vectors = []
-    Warning('Tensors are not included')
-  return sorted(vectors)
+    for suffix, index in to_index.items():
+      if name.endswith(suffix):
+        base_name = name[:-len(suffix)]
+        suffix_names[index].add(base_name)
+        break
+
+  common = suffix_names[0].intersection(*suffix_names[1:])
+  return sorted(common)
+
+def find_vector_names(names, axis):
+  """ Return the name of the fields appearing to be a vector """
+  assert len(axis) >= 1
+
+  # Exclude tensors
+  tens_suffixes = [''.join(p) for p in product(axis, repeat=2)]
+  tensor_comps = []
+  for tensor_name in find_tensor_names(names, axis):
+    tensor_comps.extend([tensor_name + s for s in tens_suffixes])
+  names = [name for name in names if name not in tensor_comps]
+  # Exclude single char names
+  names = [name for name in names if len(name) > 1]
+
+  to_index = {a:i for i,a in enumerate(axis)}
+  suffix_names = [set() for _ in to_index]
+
+  for name in names:
+    for suffix, index in to_index.items():
+      if name.endswith(suffix):
+        base_name = name[:-len(suffix)]
+        suffix_names[index].add(base_name)
+        break
+
+  common = suffix_names[0].intersection(*suffix_names[1:])
+  return sorted(common)
 
 def find_cartesian_vector_names(names, phy_dim=3):
   return find_vector_names(names, ['X', 'Y', 'Z'][:phy_dim])
@@ -97,22 +97,6 @@ def find_cylindric_vector_names(names, phy_dim=3):
 
 def find_spherical_vector_names(names, phy_dim=3):
   return find_vector_names(names, ['R', 'Theta', 'Phi'][:phy_dim])
-
-names = ['ZSRR', 'ZSRTheta', 'ZSRZ','TotoR', 'TotoTheta', 'TotoZ', 'tat']
-basename_vectors = find_cylindric_vector_names(names)
-assert basename_vectors == ['Toto', 'ZSR']
-# names = ['ZSRRR', 'ZSRRTheta', 'ZSRRZ', 'ZSRThetaR', 'ZSRThetaTheta', 'ZSRThetaZ', 'ZSRZR', 'ZSRZTheta', 'ZSRZZ']
-# basename_tensors = find_cylindric_vector_names(names)
-# assert basename_tensors == []
-# names = ['ZSRRR', 'ZSRRTheta', 'ZSRRZ', 'ZSRThetaR', 'ZSRZR', 'ZSRZTheta', 'ZSRZZ']
-# basename_tensors = find_cylindric_vector_names(names)
-# assert basename_tensors == ['ZSRR', 'ZSRZ']
-# names = ['ZSRRR', 'ZSRRTheta', 'ZSRRPhi', 'ZSRThetaR', 'ZSRThetaTheta', 'ZSRThetaPhi', 'ZSRPhiR', 'ZSRPhiTheta', 'ZSRPhiPhi']
-# basename_tensors = find_spherical_vector_names(names)
-# assert basename_tensors == []
-# names = ['ZSRR', 'ZSRTheta', 'ZSRZ']
-# basename_tensors = find_cylindric_vector_names(names)
-# assert basename_tensors == ['ZSR']
 
 def get_ordered_subset(subset, L):
   """
