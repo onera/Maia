@@ -5,6 +5,7 @@ from maia.pytree.cgns_keywords import cgns_to_dtype
 
 from maia.pytree.node import access as NA
 from maia.pytree.node import new_node
+from maia.pytree.node.check import is_valid_one_dimensional_string
 
 
 def _check_parent_label(node, parent, allowed_list):
@@ -733,17 +734,17 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
     new_IndexArray('PointList', point_list, zsr)
   if bc_name is not None:
     assert point_list is None and point_range is None and gc_name is None
-    new_node('BCRegionName', 'Descriptor_t', bc_name, parent=zsr)
+    new_Descriptor('BCRegionName', bc_name, parent=zsr)
   if gc_name is not None:
     assert point_list is None and point_range is None and bc_name is None
-    new_node('GridConnectivityRegionName', 'Descriptor_t', gc_name, parent=zsr)
+    new_Descriptor('GridConnectivityRegionName', gc_name, parent=zsr)
   for field_name, field_val in fields.items():
     new_DataArray(field_name, field_val, parent=zsr)
   return zsr
 
 def new_UserDefinedData(name:str = 'UserDefined',
-                        *,
                         value:ArrayLike = None,
+                        *,
                         parent:CGNSTree = None):
   """ Create a UserDefinedData_t node
 
@@ -767,10 +768,10 @@ def new_ViscosityModel(value='SutherlandLaw',
   """ Create a ViscosityModel_t node
 
   Link to corresponding SIDS section:
-  `UserDefinedData_t <https://cgns.github.io/CGNS_docs_current/sids/floweqn.html#ViscosityModel>`_
+  `UserDefinedData_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#UserDefinedData>`_
 
   Args:
-    value (ArrayLike): String value of the viscosity model node
+    value (str): String value of the viscosity model node
     parent (CGNSTree): Parent node to which the new node should be attached
   Example:
     >>> node = PT.new_ViscosityModel()
@@ -798,6 +799,7 @@ def new_Descriptor(name='Descriptor',
     >>> PT.print_tree(node)
     Descriptor Descriptor_t "My descri[...]node"
   """
+  assert is_valid_one_dimensional_string(value)
   return new_node(name, label='Descriptor_t', value=value, parent=parent)
 
 def new_FlowEquationSet(parent=None):
@@ -824,7 +826,7 @@ def new_GasModel(value='Ideal',
   `GasModel_t <https://cgns.github.io/CGNS_docs_current/sids/floweqn.html#GasModel>`_
 
   Args:
-    value (ArrayLike): String value of the gas model node
+    value (str): String value of the gas model node
     parent (CGNSTree): Parent node to which the new node should be attached
   Example:
     >>> node = PT.new_GasModel()

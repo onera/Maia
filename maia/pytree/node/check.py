@@ -48,3 +48,5 @@ def is_valid_node(node) -> bool:
            is_valid_children(N.get_children(node)) and is_valid_label(N.get_label(node))
   return False
 
+def is_valid_one_dimensional_string(x):
+  return isinstance(x, str) or (isinstance(x, np.ndarray) and x.ndim==1 and  x.dtype.kind == 'S')
