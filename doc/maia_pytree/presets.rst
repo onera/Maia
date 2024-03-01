@@ -112,6 +112,18 @@ Overview
   ~maia.pytree.node.presets.new_DataArray
   ~maia.pytree.node.presets.new_IndexArray
   ~maia.pytree.node.presets.new_IndexRange
+
+
+*Functions creating miscellaneous sub nodes*
+
+.. autosummary::
+  :nosignatures:
+
+  ~maia.pytree.node.presets.new_UserDefinedData
+  ~maia.pytree.node.presets.new_ViscosityModel
+  ~maia.pytree.node.presets.new_Descriptor
+  ~maia.pytree.node.presets.new_FlowEquationSet
+  ~maia.pytree.node.presets.new_GasModel
   
 
 API reference
