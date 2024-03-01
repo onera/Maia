@@ -87,12 +87,12 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
 def pdm_vtx_to_cgns_grid_coordinates(d_zone, p_zone, dims, data):
   """
   """
-  d_zone_gc = PT.get_node_from_label(d_zone, 'GridCoordinates_t')
+  d_zone_gc = PT.get_child_from_label(d_zone, 'GridCoordinates_t')
   d_gc_transform = PT.get_child_from_name(d_zone_gc, 'CoordinateTransform') 
   d_gc_names = PT.Zone.coordinates(d_zone)._fields
   coords = data['np_vtx_coord']
   fields = dict()
-  for i ,d_gc_name in enumerate(d_gc_names):
+  for i, d_gc_name in enumerate(d_gc_names):
     fields[d_gc_name] = coords[i::3]
   grid_c = PT.new_GridCoordinates(fields=fields, parent=p_zone)
   PT.add_child(grid_c, d_gc_transform)

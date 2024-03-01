@@ -329,26 +329,20 @@ def recover_dist_tree(part_tree, comm):
     PT.set_value(dist_zone, d_zone_dims)
 
     # > Create vertex distribution and exchange vertex coordinates
-    d_grid_co = PT.new_GridCoordinates('GridCoordinates', parent=dist_zone)
-    p_grid_co_names = []
-    p_gc_transform = []
-    tag_names = -1
-    tag_transform = -1 
-    for part_zone in part_zones:
-      p_grid_co_names = PT.Zone.coordinates(part_zone)._fields
-      p_gc_transform_n = PT.get_node_from_predicates(part_zone, 'GridCoordinates_t/CoordinateTransform')
-      if p_grid_co_names: tag_names = comm.rank
-      if p_gc_transform_n: tag_transform = comm.rank
+    coords_name , transform_n = (None, None)
+    owner = -1
+    if len(part_zones) > 0:
+      coords_name = PT.Zone.coordinates(part_zones[0])._fields
+      transform_n = PT.get_node_from_predicates(part_zones[0], 'GridCoordinates_t/CoordinateTransform')
+      owner = comm.Get_rank()
   
-    tag_names = comm.allreduce(tag_names, MPI.MAX)
-    p_grid_co_names = comm.bcast(p_grid_co_names, tag_names)
+    root = comm.allreduce(owner, MPI.MAX) # Find a rank knowing partitioned data for this zone
+    coords_name, transform_n = comm.bcast((coords_name, transform_n), root)
 
-    tag_transform = comm.allreduce(tag_transform, MPI.MAX)
-    if tag_transform != -1: p_gc_transform = comm.bcast(p_gc_transform, tag_names)
-
-    for coord in p_grid_co_names:
+    d_grid_co = PT.new_GridCoordinates('GridCoordinates', parent=dist_zone)
+    for coord in coords_name:
       PT.new_DataArray(coord, value=None, parent=d_grid_co)
-    if tag_transform != -1: PT.add_child(d_grid_co, p_gc_transform_n)
+    PT.add_child(d_grid_co, transform_n)
     PTB.part_coords_to_dist_coords(dist_zone, part_zones, comm)
 
     # > Create elements

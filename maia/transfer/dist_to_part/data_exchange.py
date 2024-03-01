@@ -19,10 +19,10 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   #Get data
   dist_data = dict()
   dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
-  for grid_co in PT.iter_children_from_label(dist_gc, 'DataArray_t'):
+  for grid_co in PT.iter_children_from_predicate(dist_gc, lambda n: PT.get_label(n) == 'DataArray_t' and PT.get_name(n) != 'CoordinateTransform'):
     dist_data[PT.get_name(grid_co)] = grid_co[1] #Prevent np->scalar conversion
-  vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex') 
 
+  vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   part_data = EP.block_to_part(dist_data, distribution_vtx, vtx_lntogn_list, comm)
 
   for ipart, part_zone in enumerate(part_zones):
@@ -31,6 +31,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       #F is mandatory to keep shared reference. Normally no copy is done
       shaped_data = data[ipart].reshape(PT.Zone.VertexSize(part_zone), order='F')
       PT.new_DataArray(data_name, shaped_data, parent=part_gc)
+    PT.add_child(part_gc, PT.get_child_from_name(dist_gc, 'CoordinateTransform'))
 
 def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
   """
@@ -72,11 +73,11 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
   i_part = 0
   for part_zones in part_zones_per_dom: 
     for part_zone in part_zones:
-      part_gc = PT.get_node_from_label(part_zone, "GridCoordinates_t")
+      part_gc = PT.get_child_from_label(part_zone, "GridCoordinates_t")
       for data_name, data in part_data.items():
-        part_gc_node = PT.get_node_from_name(part_gc, f'{data_name}')
+        part_gc_node = PT.get_child_from_name(part_gc, data_name)
         shaped_data = data[i_part].reshape(PT.Zone.VertexSize(part_zone), order='F')
-        PT.update_node(part_gc_node, data_name, value=shaped_data)
+        PT.update_node(part_gc_node, value=shaped_data)
       i_part += 1
 
 

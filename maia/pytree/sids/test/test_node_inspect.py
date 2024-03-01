@@ -96,7 +96,9 @@ def test_coordinates_2D():
         CoordinateR DataArray_t R8 [3,4,5]:
         CoordinateTheta DataArray_t R8 [6,7,8]:
     ''')
-    c1, c2, c3 = SIDS.Zone.coordinates(zone_cart)
+    coords = SIDS.Zone.coordinates(zone_cart)
+    assert isinstance(coords, SIDS.CylindricalCoordinates)
+    c1, c2, c3 = coords
 
     assert np.allclose(c1, [3,4,5])
     assert np.allclose(c2, [6,7,8])
