@@ -49,12 +49,29 @@ def test_loop_from():
   assert list(py_utils.loop_from(L, 3)) == ["mango", "apple", "banana", "orange"]
 
 
+def test_find_tensor_names():
+  assert py_utils.find_tensor_names(['Toto', 'TATA'], ['X', 'Y']) == []
+  assert py_utils.find_tensor_names(['TotoX', 'TotoY'], ['X', 'Y']) == []
+  assert py_utils.find_tensor_names(['TotoXX', 'TotoYY', 'TataX'], ['X', 'Y']) == ['Toto']
+  assert py_utils.find_tensor_names(['TotoXX', 'TotoYY', 'TataXY', 'TataXX'], ['X', 'Y']) == ['Toto']
+  assert py_utils.find_tensor_names(['TotoXX', 'TotoYY', 'TAXXTAXX', 'TAXXTAYY'], ['X', 'Y']) == ['TAXXTA', 'Toto']
+  assert py_utils.find_tensor_names(['TotoXX', 'TotoYY', 'TAXXTA', 'TAYYTA'], ['X', 'Y']) == ['Toto']
+
 def test_find_cartesian_vector_names():
   names = ["Tata","TotoY","TotoZ","Titi","totoX","TataY","TataX"]
   assert py_utils.find_cartesian_vector_names(names) == []
   names.append("TotoX")
   assert py_utils.find_cartesian_vector_names(names) == ["Toto"]
-  assert sorted(py_utils.find_cartesian_vector_names(names,2)) == ["Tata", "Toto"]
+  assert py_utils.find_cartesian_vector_names(names,2) == ["Tata", "Toto"]
+  names = ["AXZ", "AYX", "AYY", "AYZ", "AZX", "AZZ"]
+  assert py_utils.find_cartesian_vector_names(names) == ["AY"]
+  names.append("AXX") # Now its a tensor
+  assert py_utils.find_cartesian_vector_names(names) == []
+
+  names = ['ZSRR', 'ZSRTheta', 'ZSRZ','TotoR', 'TotoTheta', 'TotoZ', 'Scal']
+  basename_vectors = py_utils.find_cylindric_vector_names(names)
+  assert basename_vectors == ['Toto', 'ZSR']
+
 
 def test_get_ordered_subset():
   L = [2,8,10,3,3]

@@ -66,14 +66,16 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm, reduce_func=None):
 
   d_grid_co = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
   part_data = dict()
-  for coord in PT.iter_children_from_label(d_grid_co, 'DataArray_t'):
-    part_data[PT.get_name(coord)] = list()
-
+  for d_co_name in PT.Zone.coordinates(dist_zone)._fields:
+    part_data[d_co_name] = list()
+  
   for part_zone in part_zones:
-    p_grid_co = PT.get_child_from_name(part_zone, PT.get_name(d_grid_co))
-    for coord in PT.iter_children_from_label(p_grid_co, 'DataArray_t'):
-      flat_data = coord[1].ravel(order='A') #Reshape structured arrays for PDM exchange
-      part_data[PT.get_name(coord)].append(flat_data)
+    for p_co_name, coord in PT.Zone.coordinates(part_zone)._asdict().items():
+      if coord is not None:
+        flat_data = coord.ravel(order='A') #Reshape structured arrays for PDM exchange
+        part_data[p_co_name].append(flat_data)
+      else:
+        part_data.pop(p_co_name, None) # Remove key from dict
 
   # Exchange
   dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm, reduce_func)

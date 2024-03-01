@@ -197,8 +197,9 @@ class Test_change_basis_simple:
 
       # Create fields in zone
       PT.new_FlowSolution('FlowSolution', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
-      dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'DDR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'DD{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       PT.set_label(dd, 'DiscreteData_t')
+
 
     if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
       cart2cyl = transform.cartesian_to_cylindrical_from_unit_revolution_axis
@@ -221,7 +222,6 @@ class Test_change_basis_simple:
         assert np.allclose(coords[1], val_y)
         assert np.allclose(coords[2], val_z)
 
-
 @pytest.mark.parametrize('revolution_axis', [(1, 1, 0), [2, 2, 0]])
 @pytest_parallel.mark.parallel([1, 2]) 
 class Test_cart_to_cyl:
@@ -237,7 +237,7 @@ class Test_cart_to_cyl:
       
       # Create fields in zone 
       PT.new_FlowSolution('FlowSolution', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
-      dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'DDR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'DD{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       PT.set_label(dd, 'DiscreteData_t')
 
     # Transform cartesian coordinates and fields into cylindric from any revolution axis

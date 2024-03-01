@@ -329,9 +329,20 @@ def recover_dist_tree(part_tree, comm):
     PT.set_value(dist_zone, d_zone_dims)
 
     # > Create vertex distribution and exchange vertex coordinates
+    coords_name , transform_n = (None, None)
+    owner = -1
+    if len(part_zones) > 0:
+      coords_name = PT.Zone.coordinates(part_zones[0])._fields
+      transform_n = PT.get_node_from_predicates(part_zones[0], 'GridCoordinates_t/CoordinateTransform')
+      owner = comm.Get_rank()
+  
+    root = comm.allreduce(owner, MPI.MAX) # Find a rank knowing partitioned data for this zone
+    coords_name, transform_n = comm.bcast((coords_name, transform_n), root)
+
     d_grid_co = PT.new_GridCoordinates('GridCoordinates', parent=dist_zone)
-    for coord in ['CoordinateX', 'CoordinateY', 'CoordinateZ']:
+    for coord in coords_name:
       PT.new_DataArray(coord, value=None, parent=d_grid_co)
+    PT.add_child(d_grid_co, transform_n)
     PTB.part_coords_to_dist_coords(dist_zone, part_zones, comm)
 
     # > Create elements

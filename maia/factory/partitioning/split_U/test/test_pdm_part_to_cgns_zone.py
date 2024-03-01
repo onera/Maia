@@ -20,18 +20,23 @@ def test_dump_pdm_output():
   assert (PT.get_child_from_name(dump_node, 'np_vtx_coord')[1] == data['np_vtx_coord']).all()
   assert PT.get_child_from_name(dump_node, 'not_numpy') is None
 
-def test_pdm_vtx_to_cgns_grid_coordinates():
+@pytest.mark.parametrize("fields", [['CoordinateX', 'CoordinateY', 'CoordinateZ'], 
+                                    ['CoordinateR', 'CoordinateTheta', 'CoordinateZ', 'CoordinateTransform']])
+def test_pdm_vtx_to_cgns_grid_coordinates(fields):
+  d_zone = PT.new_Zone('Zone', type='Unstructured')
   p_zone = PT.new_Zone('Zone.P0.N0', type='Unstructured')
+  PT.new_GridCoordinates(fields={f: None for f in fields}, parent=d_zone)
   dims = {'n_vtx' : 3}
   data = {'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float64)}
 
-  PTC.pdm_vtx_to_cgns_grid_coordinates(p_zone, dims, data)
-  grid_co = PT.get_node_from_path(p_zone, 'GridCoordinates')
-  for co in ['CoordinateX', 'CoordinateY', 'CoordinateZ']:
-    assert PT.get_child_from_name(grid_co, co)[1].dtype == np.float64
-  assert (PT.get_child_from_name(grid_co, 'CoordinateX')[1] == [1,4,7]).all()
-  assert (PT.get_child_from_name(grid_co, 'CoordinateY')[1] == [2,5,8]).all()
-  assert (PT.get_child_from_name(grid_co, 'CoordinateZ')[1] == [3,6,9]).all()
+  PTC.pdm_vtx_to_cgns_grid_coordinates(d_zone, p_zone, dims, data)
+  grid_co = PT.get_child_from_predicate(p_zone, 'GridCoordinates_t')
+
+  for co in PT.Zone.coordinates(p_zone):
+    assert co[1].dtype == np.float64
+  assert (PT.get_child_from_name(grid_co, fields[0])[1] == [1,4,7]).all()
+  assert (PT.get_child_from_name(grid_co, fields[1])[1] == [2,5,8]).all()
+  assert (PT.get_child_from_name(grid_co, fields[2])[1] == [3,6,9]).all()
 
 @pytest.mark.parametrize("grid_loc",['FaceCenter', 'Vertex'])
 def test_zgc_created_pdm_to_cgns(grid_loc):
@@ -144,10 +149,13 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   assert (PT.get_value(MT.getGlobalNumbering(hexa_n, 'Sections')) == data['3dsections'][0]['np_numabs']).all()
   assert (PT.get_value(PT.get_node_from_path(hexa_n, ':CGNS#LocalNumbering/Entity')) == \
       data['3dsections'][0]['np_parent_num']).all()
-
-def test_pdm_part_to_cgns_zone():
+  
+@pytest.mark.parametrize("fields", [['CoordinateX', 'CoordinateY', 'CoordinateZ'],
+                                    ['CoordinateR', 'CoordinateTheta', 'CoordinateZ', 'CoordinateTransform']])
+def test_pdm_part_to_cgns_zone(fields):
   # Result of subfunction is not tested here
   d_zone = PT.new_Zone('Zone', type='Unstructured')
+  PT.new_GridCoordinates(fields={f: None for f in fields}, parent=d_zone)
   PT.new_Elements('Quad', 'QUAD_4', erange=[2,7], parent=d_zone)
   PT.new_Elements('Hexa', 'HEXA_8', erange=[1,1], parent=d_zone)
   l_dims = [{'n_section' :2, 'n_cell' : 1, 'n_vtx': 3, 'n_elt' : [6,1]}]

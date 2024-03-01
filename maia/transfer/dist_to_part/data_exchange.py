@@ -19,9 +19,8 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
   #Get data
   dist_data = dict()
   dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
-  for grid_co in PT.iter_children_from_label(dist_gc, 'DataArray_t'):
+  for grid_co in PT.iter_children_from_predicate(dist_gc, lambda n: PT.get_label(n) == 'DataArray_t' and PT.get_name(n) != 'CoordinateTransform'):
     dist_data[PT.get_name(grid_co)] = grid_co[1] #Prevent np->scalar conversion
-
 
   vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   part_data = EP.block_to_part(dist_data, distribution_vtx, vtx_lntogn_list, comm)
@@ -32,6 +31,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       #F is mandatory to keep shared reference. Normally no copy is done
       shaped_data = data[ipart].reshape(PT.Zone.VertexSize(part_zone), order='F')
       PT.new_DataArray(data_name, shaped_data, parent=part_gc)
+    PT.add_child(part_gc, PT.get_child_from_name(dist_gc, 'CoordinateTransform'))
 
 def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
   """
@@ -43,13 +43,14 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
 
   dist_data = dict()
   for dist_zone, part_zones in zip(dist_zones, part_zones_per_dom):
+    dist_gc_transform = PT.get_node_from_predicates(dist_zone, "GridCoordinates_t/CoordinateTransform")    
 
-    dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
-    for grid_co in PT.iter_children_from_label(dist_gc, 'DataArray_t'):
-      try:
-        dist_data[PT.get_name(grid_co)].append(grid_co[1])
-      except KeyError:
-        dist_data[PT.get_name(grid_co)] = [grid_co[1]]
+    for dist_gc_name, dist_gc_node in PT.Zone.coordinates(dist_zone)._asdict().items():
+      if dist_gc_node is not None:
+        try:
+          dist_data[dist_gc_name].append(dist_gc_node)
+        except KeyError:
+          dist_data[dist_gc_name] = [dist_gc_node]
 
     vtx_distrib = MT.getDistribution(dist_zone, 'Vertex')[1]
     block_distris.append(par_utils.partial_to_full_distribution(vtx_distrib, comm))
@@ -57,6 +58,10 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
     # Collect and shift LNToGN
     for part_zone in part_zones:
       part_lngn.append(MT.getGlobalNumbering(part_zone, 'Vertex')[1] + vtx_offset)
+      part_gc = PT.new_GridCoordinates('GridCoordinates', parent=part_zone)
+      for dist_gc_name in dist_data.keys():
+        PT.new_DataArray(dist_gc_name, None, parent=part_gc)
+      PT.add_child(part_gc, dist_gc_transform)
 
     vtx_offset += PT.Zone.n_vtx(dist_zone)
 
@@ -64,14 +69,15 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
   MBTP = PDM.MultiBlockToPart(block_distris, part_lngn, comm)
   for key, d_data in dist_data.items():
     part_data[key] = MBTP.exchange_field(d_data)[1]
-  
+    
   i_part = 0
   for part_zones in part_zones_per_dom: 
     for part_zone in part_zones:
-      part_gc = PT.new_node('GridCoordinates', 'GridCoordinates_t', parent=part_zone)
+      part_gc = PT.get_child_from_label(part_zone, "GridCoordinates_t")
       for data_name, data in part_data.items():
+        part_gc_node = PT.get_child_from_name(part_gc, data_name)
         shaped_data = data[i_part].reshape(PT.Zone.VertexSize(part_zone), order='F')
-        PT.new_DataArray(data_name, shaped_data, parent=part_gc)
+        PT.update_node(part_gc_node, value=shaped_data)
       i_part += 1
 
 
