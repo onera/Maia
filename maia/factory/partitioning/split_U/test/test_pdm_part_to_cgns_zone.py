@@ -41,6 +41,7 @@ def test_pdm_vtx_to_cgns_grid_coordinates(fields):
 @pytest.mark.parametrize("grid_loc",['FaceCenter', 'Vertex'])
 def test_zgc_created_pdm_to_cgns(grid_loc):
   d_zone = PT.new_Zone('ZoneA', type='Unstructured')
+  PT.new_NFaceElements(parent=d_zone) # Dist zone must have a NFaceElement to impose dimension to 3d
   p_zone = PT.new_Zone('ZoneA.P0.N0', type='Unstructured')
   PT.new_NGonElements(parent=p_zone) # Create NGon to escape NotImplementedError
   dims = {'n_cell': 1} # Just to trigger 3d
@@ -66,7 +67,8 @@ def test_zgc_created_pdm_to_cgns(grid_loc):
 
 def test_pdm_elmt_to_cgns_elmt_ngon():
   d_zone = PT.new_Zone('Zone', type='Unstructured')
-  PT.new_NGonElements('NGonElements', parent=d_zone) #Dist zone must have a Ngon Node to determine NGon/Element output
+  PT.new_NFaceElements(parent=d_zone) # Dist zone must have a NFaceElement to impose dimension to 3d
+  PT.new_NGonElements('NGonElements', parent=d_zone) # Dist zone must have a Ngon Node to determine NGon/Element output
   p_zone = PT.new_Zone('Zone.P0.N0', type='Unstructured')
   dims = {'n_section' :0, 'n_face' : 6, 'n_cell':1}
   data = {'np_face_cell'     : np.array([1,0,1,0,1,0,1,0,1,0,1,0], dtype=np.int32),
