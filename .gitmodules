@@ -7,8 +7,8 @@
 [submodule "external/project_utils"]
 	path = external/project_utils
 	url = https://github.com/onera/project_utils.git
-[submodule "external/pytest-mpi-check"]
-	path = external/pytest-mpi-check
+[submodule "external/pytest_parallel"]
+	path = external/pytest_parallel
 	url = https://github.com/onera/pytest_parallel.git
 [submodule "external/paradigm"]
 	path = external/paradigm

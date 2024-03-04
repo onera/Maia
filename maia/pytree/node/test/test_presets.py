@@ -264,3 +264,37 @@ def test_new_ZoneSubRegion():
 
   with pytest.raises(AssertionError):
     zsr = presets.new_ZoneSubRegion(point_list=[[1,4,6]], bc_name="SomeBC")
+
+def test_new_UserDefinedData():
+  udd = presets.new_UserDefinedData('MyUserDefData', value=[0,1,2])
+  expected = parse_yaml_cgns.to_node("MyUserDefData UserDefinedData_t I4 [0,1,2]:")
+  assert is_same_tree(expected, udd)
+
+def test_new_ViscosityModel():
+  vm = presets.new_ViscosityModel('PowerLaw')
+  expected = parse_yaml_cgns.to_node("ViscosityModel ViscosityModel_t 'PowerLaw':")
+  assert is_same_tree(expected, vm)
+
+  with pytest.raises(AssertionError):
+    vm = presets.new_ViscosityModel('UnknownViscosityModel')
+
+def test_new_Descriptor():
+  desc = presets.new_Descriptor('MyDescriptor',value='My description node')
+  expected = parse_yaml_cgns.to_node("MyDescriptor Descriptor_t 'My description node':")
+  assert is_same_tree(expected, desc)
+
+  with pytest.raises(AssertionError):
+    desc = presets.new_Descriptor('MyDescriptor',value=[0,1,2])
+
+def test_new_FlowEquationSet():
+  fes = presets.new_FlowEquationSet()
+  expected = parse_yaml_cgns.to_node("FlowEquationSet FlowEquationSet_t:")
+  assert is_same_tree(expected, fes)
+
+def test_new_GasModel():
+  gm = presets.new_GasModel('VanderWaals')
+  expected = parse_yaml_cgns.to_node("GasModel GasModel_t 'VanderWaals':")
+  assert is_same_tree(expected, gm)
+
+  with pytest.raises(AssertionError):
+    gm = presets.new_GasModel('UnknownGasModel')

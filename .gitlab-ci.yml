@@ -34,7 +34,7 @@ job:init:
     - git submodule update --init external/project_utils
     - git submodule update --init external/cpp_cgns
     - git submodule update --init external/std_e
-    - git submodule update --init external/pytest-mpi-check
+    - git submodule update --init external/pytest_parallel
     - git submodule update --init external/paradigm
     - (cd external/paradigm && git submodule update --init extensions/paradigma)
   artifacts:

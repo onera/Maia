@@ -5,6 +5,7 @@ from maia.pytree.cgns_keywords import cgns_to_dtype
 
 from maia.pytree.node import access as NA
 from maia.pytree.node import new_node
+from maia.pytree.node.check import is_valid_one_dimensional_string
 
 
 def _check_parent_label(node, parent, allowed_list):
@@ -23,7 +24,7 @@ def new_CGNSTree(*, version:float=4.2):
   Example:
     >>> node = PT.new_CGNSTree()
     >>> PT.print_tree(node)
-    CGNSTree CGNSTree_t 
+    CGNSTree CGNSTree_t
     └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
   """
   version = new_node('CGNSLibraryVersion', 'CGNSLibraryVersion_t', value=version)
@@ -54,7 +55,7 @@ def new_Family(name:str='Family', *, family_bc:str=None, parent:CGNSTree=None):
 
   Link to corresponding SIDS section:
   `Family_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#Family>`_
-  
+
   Args:
     name (str): Name of the created family
     family_bc (str):  If specified, create a FamilyBC taking this value under the Family node
@@ -62,7 +63,7 @@ def new_Family(name:str='Family', *, family_bc:str=None, parent:CGNSTree=None):
   Example:
     >>> node = PT.new_Family('WALL', family_bc='BCWall')
     >>> PT.print_tree(node)
-    WALL Family_t 
+    WALL Family_t
     └───FamilyBC FamilyBC_t "BCWall"
   """
   family = new_node(name, 'Family_t', None, [], parent=parent)
@@ -98,7 +99,7 @@ def new_FamilyName(family_name:str, as_additional='', parent:CGNSTree=None):
 
 def new_FamilyBC(family_bc:str, parent:CGNSTree=None):
   allowed_bc = """Null UserDefined BCAxisymmetricWedge BCDegenerateLine BCDegeneratePoint BCDirichlet BCExtrapolate
-  BCFarfield BCGeneral BCInflow BCInflowSubsonic BCInflowSupersonic BCNeumann BCOutflow BCOutflowSubsonic 
+  BCFarfield BCGeneral BCInflow BCInflowSubsonic BCInflowSupersonic BCNeumann BCOutflow BCOutflowSubsonic
   BCOutflowSupersonic BCSymmetryPlane BCSymmetryPolar BCTunnelInflow BCTunnelOutflow BCWall BCWallInviscid
   BCWallViscous BCWallViscousHeatFlux BCWallViscousIsothermal FamilySpecified""".split()
   assert family_bc in allowed_bc
@@ -108,7 +109,7 @@ def new_Zone(name:str='Zone', *, type:str='Null', size:ArrayLike=None, family:st
   """ Create a Zone_t node
 
   Note that the size array will not be reshaped and must consequently match the expected layout
-  
+
     [[n_vtx, n_cell, n_bnd_vtx] for each IndexDimension]
 
   for example, [[11,10,0]] for an unstructured zone or [[11,10,0], [6,5,0]] for a 2D structured zone.
@@ -123,7 +124,7 @@ def new_Zone(name:str='Zone', *, type:str='Null', size:ArrayLike=None, family:st
     family (str) : If specified, create a FamilyName refering to this family
     parent (CGNSTree): Node to which created Zone should be attached
   Example:
-    >>> node = PT.new_Zone('Zone', type='Unstructured', 
+    >>> node = PT.new_Zone('Zone', type='Unstructured',
     ...                    size=[[11,10,0]], family='Rotor')
     >>> PT.print_tree(node)
     Zone Zone_t I4 [[11 10  0]]
@@ -141,7 +142,7 @@ def new_Zone(name:str='Zone', *, type:str='Null', size:ArrayLike=None, family:st
 def new_Elements(name:str='Elements', type:str='Null', *, erange:ArrayLike=None, econn:ArrayLike=None, parent:CGNSTree=None):
   """ Create an Element_t node
 
-  This function is designed to create standard elements. 
+  This function is designed to create standard elements.
   See :func:`new_NGonElements` or :func:`new_NFaceElements` to create polygonal
   elements.
 
@@ -289,11 +290,11 @@ def new_BC(name:str = 'BC',
     └───PointList IndexArray_t I4 [[ 1  5 10 15]]
   """
   allowed_bc = """Null UserDefined BCAxisymmetricWedge BCDegenerateLine BCDegeneratePoint BCDirichlet BCExtrapolate
-  BCFarfield BCGeneral BCInflow BCInflowSubsonic BCInflowSupersonic BCNeumann BCOutflow BCOutflowSubsonic 
+  BCFarfield BCGeneral BCInflow BCInflowSubsonic BCInflowSupersonic BCNeumann BCOutflow BCOutflowSubsonic
   BCOutflowSupersonic BCSymmetryPlane BCSymmetryPolar BCTunnelInflow BCTunnelOutflow BCWall BCWallInviscid
   BCWallViscous BCWallViscousHeatFlux BCWallViscousIsothermal FamilySpecified""".split()
   assert type in allowed_bc
-  
+
   bc = new_node(name, 'BC_t', type, [], parent)
   _check_parent_label(bc, parent, ['ZoneBC_t'])
   if loc is not None:
@@ -323,11 +324,11 @@ def new_GridConnectivity(name:str = 'GC',
                          donor_name:str = None,
                          type:str = 'Null',
                          *,
-                         loc:str = None, 
-                         point_range:ArrayLike = None, 
-                         point_range_donor:ArrayLike = None, 
-                         point_list:ArrayLike = None, 
-                         point_list_donor:ArrayLike = None, 
+                         loc:str = None,
+                         point_range:ArrayLike = None,
+                         point_range_donor:ArrayLike = None,
+                         point_list:ArrayLike = None,
+                         point_list_donor:ArrayLike = None,
                          parent:CGNSTree = None):
   """ Create a GridConnectivity_t node
 
@@ -400,7 +401,7 @@ def new_GridConnectivityProperty(periodic:Dict[str,ArrayLike]={}, parent:CGNSTre
   this can be done with the ``periodic`` parameter which maps the keys
   'rotation_angle', 'rotation_center' and 'translation' to the corresponding arrays.
 
-  Missing keys defaults to ``np.zeros(3)``, users should be careful if 
+  Missing keys defaults to ``np.zeros(3)``, users should be careful if
   when the physical dimension of the mesh if lower than 3.
 
   Link to corresponding SIDS section:
@@ -413,8 +414,8 @@ def new_GridConnectivityProperty(periodic:Dict[str,ArrayLike]={}, parent:CGNSTre
     >>> perio = {"translation" : [1.0, 0.0, 0.0]}
     >>> node = PT.new_GridConnectivityProperty(perio)
     >>> PT.print_tree(node)
-    GridConnectivityProperty GridConnectivityProperty_t 
-    └───Periodic Periodic_t 
+    GridConnectivityProperty GridConnectivityProperty_t
+    └───Periodic Periodic_t
         ├───RotationAngle DataArray_t R4 [0. 0. 0.]
         ├───RotationCenter DataArray_t R4 [0. 0. 0.]
         └───Translation DataArray_t R4 [1. 0. 0.]
@@ -428,7 +429,7 @@ def new_GridConnectivityProperty(periodic:Dict[str,ArrayLike]={}, parent:CGNSTre
 def new_GridConnectivity1to1(name:str = 'GC',
                             donor_name:str = None,
                             *,
-                            point_range:ArrayLike = None, 
+                            point_range:ArrayLike = None,
                             point_range_donor:ArrayLike = None,
                             transform:ArrayLike = None,
                             parent:CGNSTree = None):
@@ -582,8 +583,8 @@ def new_BaseIterativeData(name:str='BaseIterativeData', *, time_values:ArrayLike
 def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGNSTree=None):
   """ Create a DataArray_t node
 
-  The datatype of the DataArray can be enforced with the ``dtype`` parameter, which 
-  must be a str value (eg ``I4``, ``R8``). If not provided, default conversion of 
+  The datatype of the DataArray can be enforced with the ``dtype`` parameter, which
+  must be a str value (eg ``I4``, ``R8``). If not provided, default conversion of
   :func:`~maia.pytree.set_value` applies.
 
   Link to corresponding SIDS section:
@@ -634,7 +635,7 @@ def new_GridCoordinates(name:str='GridCoordinates', *, fields:Dict[str,ArrayLike
     >>> coords={'CoordinateX' : [1.,2.,3.], 'CoordinateY' : [1.,1.,1.]}
     >>> node = PT.new_GridCoordinates(fields=coords)
     >>> PT.print_tree(node)
-    GridCoordinates GridCoordinates_t 
+    GridCoordinates GridCoordinates_t
     ├───CoordinateX DataArray_t R4 [1. 2. 3.]
     └───CoordinateY DataArray_t R4 [1. 1. 1.]
   """
@@ -663,7 +664,7 @@ def new_FlowSolution(name:str = 'FlowSolution',
     >>> node = PT.new_FlowSolution('FS', loc='CellCenter',
     ...                            fields={'Density' : np.ones(125)})
     >>> PT.print_tree(node)
-    FS FlowSolution_t 
+    FS FlowSolution_t
     ├───GridLocation GridLocation_t "CellCenter"
     └───Density DataArray_t R8 (125,)
   """
@@ -687,7 +688,7 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
                       parent:CGNSTree = None):
   """ Create a ZoneSubRegion_t node
 
-  The patch defining the ZoneSubRegion must be provided using one of ``point_range``, 
+  The patch defining the ZoneSubRegion must be provided using one of ``point_range``,
   ``point_list``, ``bc_name`` or ``gc_name`` parameter : they can no be used simultaneously.
   Setting a GridLocation with ``loc`` parameter makes sens only if a patch is explicitly defined
   with ``point_range`` or ``point_list``.
@@ -709,13 +710,13 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
     >>> node = PT.new_ZoneSubRegion('Extraction', bc_name = 'Bottom',
     ...                             fields={'Density' : np.ones(125)})
     >>> PT.print_tree(node)
-    Extraction ZoneSubRegion_t 
+    Extraction ZoneSubRegion_t
     ├───BCRegionName Descriptor_t "Bottom"
     └───Density DataArray_t R8 (125,)
     >>> node = PT.new_ZoneSubRegion('Probe', loc='CellCenter',
     ...                             point_list=[[104]])
     >>> PT.print_tree(node)
-    Probe1 ZoneSubRegion_t 
+    Probe1 ZoneSubRegion_t
     ├───GridLocation GridLocation_t "CellCenter"
     └───PointList IndexArray_t I4 [[104]]
   """
@@ -733,10 +734,104 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
     new_IndexArray('PointList', point_list, zsr)
   if bc_name is not None:
     assert point_list is None and point_range is None and gc_name is None
-    new_node('BCRegionName', 'Descriptor_t', bc_name, parent=zsr)
+    new_Descriptor('BCRegionName', bc_name, parent=zsr)
   if gc_name is not None:
     assert point_list is None and point_range is None and bc_name is None
-    new_node('GridConnectivityRegionName', 'Descriptor_t', gc_name, parent=zsr)
+    new_Descriptor('GridConnectivityRegionName', gc_name, parent=zsr)
   for field_name, field_val in fields.items():
     new_DataArray(field_name, field_val, parent=zsr)
   return zsr
+
+def new_UserDefinedData(name:str = 'UserDefined',
+                        value:ArrayLike = None,
+                        *,
+                        parent:CGNSTree = None):
+  """ Create a UserDefinedData_t node
+
+  Link to corresponding SIDS section:
+  `UserDefinedData_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#UserDefinedData>`_
+
+  Args:
+    name (str): Name of the created user-defined data node
+    value (ArrayLike): Value of the new node
+    parent (CGNSTree): Parent node to which the new node should be attached
+  Example:
+    >>> node = PT.new_UserDefinedData('MyUserDefData', value=np.ones(200))
+    >>> PT.print_tree(node)
+    UserDefined UserDefinedData_t R8 (200,)
+  """
+  return new_node(name, label='UserDefinedData_t', value=value, parent=parent)
+
+def new_ViscosityModel(value='SutherlandLaw',
+                       *,
+                       parent=None):
+  """ Create a ViscosityModel_t node
+
+  Link to corresponding SIDS section:
+  `UserDefinedData_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#UserDefinedData>`_
+
+  Args:
+    value (str): String value of the viscosity model node
+    parent (CGNSTree): Parent node to which the new node should be attached
+  Example:
+    >>> node = PT.new_ViscosityModel()
+    >>> PT.print_tree(node)
+    ViscosityModel ViscosityModel_t "SutherlandLaw"
+  """
+  assert value in ['Null', 'UserDefined', 'Constant', 'PowerLaw', 'SutherlandLaw']
+  return new_node('ViscosityModel', label='ViscosityModel_t', value=value, parent=parent)
+
+def new_Descriptor(name='Descriptor',
+                   value='',
+                   *,
+                   parent=None):
+  """ Create a Descriptor_t node
+
+  Link to corresponding SIDS section:
+  `Descriptor_t <https://cgns.github.io/CGNS_docs_current/sids/build.html#Descriptor>`_
+
+  Args:
+    name (str): Name of the created descriptor node
+    value (ArrayLike): Value of the new descriptor
+    parent (CGNSTree): Parent node to which the new node should be attached
+  Example:
+    >>> node = PT.new_Descriptor(value="My description node")
+    >>> PT.print_tree(node)
+    Descriptor Descriptor_t "My descri[...]node"
+  """
+  assert is_valid_one_dimensional_string(value)
+  return new_node(name, label='Descriptor_t', value=value, parent=parent)
+
+def new_FlowEquationSet(parent=None):
+  """ Create a FlowEquationSet_t node
+
+  Link to corresponding SIDS section:
+  `FlowEquationSet_t <https://cgns.github.io/CGNS_docs_current/sids/floweqn.html#FlowEquationSet>`_
+
+  Args:
+    parent (CGNSTree): Parent node to which the new node should be attached
+  Example:
+    >>> node = PT.new_FlowEquationSet()
+    >>> PT.print_tree(node)
+    FlowEquationSet FlowEquationSet_t
+  """
+  return new_node('FlowEquationSet', label='FlowEquationSet_t', parent=parent)
+
+def new_GasModel(value='Ideal',
+                 *,
+                 parent=None):
+  """ Create a GasModel_t node
+
+  Link to corresponding SIDS section:
+  `GasModel_t <https://cgns.github.io/CGNS_docs_current/sids/floweqn.html#GasModel>`_
+
+  Args:
+    value (str): String value of the gas model node
+    parent (CGNSTree): Parent node to which the new node should be attached
+  Example:
+    >>> node = PT.new_GasModel()
+    >>> PT.print_tree(node)
+    GasModel GasModel_t "Ideal"
+  """
+  assert value in ['Null', 'UserDefined', 'Ideal', 'VanderWaals', 'CaloricallyPerfect', 'ThermallyPerfect', 'ConstantDensity', 'RedlichKwong']
+  return new_node('GasModel', label='GasModel_t', value=value, parent=parent)

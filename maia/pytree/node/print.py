@@ -39,7 +39,7 @@ def _render_value(value, line_prefix, verbose):
           splitted = [str_value[i:i+70] for i in range(0, len(str_value), 70)]
           out = ''.join(['\n' + line_prefix + f'{s}' for s in splitted])
         else: # Long string, non verbose mode
-          out = f'{str_value[:20]}[...]{str_value[-5:]}'
+          out = f'{str_value[:10]}[...]{str_value[-5:]}'
     elif value.ndim == 2:
       str_value = [s.replace('\n', '\\n') for s in str_value]  
       if sum([len(s) for s in str_value]) < 20: # Short strings

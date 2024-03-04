@@ -206,17 +206,6 @@ if(${PROJECT_NAME}_ENABLE_DOCUMENTATION)
   build_sphinx_documentation()
 endif()
 
-
-# ------------------------------------------------------------------------------
-# Install scripts
-# ------------------------------------------------------------------------------
-install(DIRECTORY   ${CMAKE_CURRENT_SOURCE_DIR}/scripts/
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-        FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
-                         GROUP_READ             GROUP_EXECUTE
-                         WORLD_READ             WORLD_EXECUTE)
-
-
 # ------------------------------------------------------------------------------
 # Summary
 # ------------------------------------------------------------------------------
