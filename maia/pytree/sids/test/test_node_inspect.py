@@ -319,11 +319,19 @@ def test_zone_dim():
     SIDS.Zone.CellDimension(zone)
   N.new_Elements('Elem0', type='NODE' ,  erange=[ 1,10],  parent=zone)
   assert SIDS.Zone.CellDimension(zone) == 0
-  N.new_Elements('Elem1', type='BAR_2',  erange=[31,40],  parent=zone)
+  elem1 = N.new_Elements('Elem1', type='BAR_2',  erange=[31,40],  parent=zone)
   assert SIDS.Zone.CellDimension(zone) == 1
-  N.new_Elements('Elem2', type='TRI_3',  erange=[11,20],  parent=zone)
+  N.new_DataArray('ParentElements', value=[], parent=elem1)
   assert SIDS.Zone.CellDimension(zone) == 2
-  N.new_Elements('Elem3', type='HEXA_8', erange=[21,30], parent=zone)
+  W.rm_children_from_label(elem1, 'DataArray_t')
+  elem2 = N.new_Elements('Elem2', type='TRI_3',  erange=[11,20],  parent=zone)
+  assert SIDS.Zone.CellDimension(zone) == 2
+  N.new_DataArray('ParentElements', value=[], parent=elem2)
+  assert SIDS.Zone.CellDimension(zone) == 3
+  W.rm_children_from_label(elem2, 'DataArray_t')
+  elem3 = N.new_Elements('Elem3', type='HEXA_8', erange=[21,30], parent=zone)
+  assert SIDS.Zone.CellDimension(zone) == 3
+  N.new_DataArray('ParentElements', value=[], parent=elem3)
   assert SIDS.Zone.CellDimension(zone) == 3
 
   zone = N.new_Zone(type='Structured', size=[[11,10,0], [11,10,0]])
