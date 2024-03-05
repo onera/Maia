@@ -160,10 +160,10 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
     LOG.warning(f"Proc {i_rank} was not affected to any zone")
   for izone, zone_path in enumerate(repart_per_zone.keys()):
     zone_pc = np.around(100*proc_elmts[izone]/nb_elmt_per_zone[zone_path])
-    try:
-      proc_pc = np.around(100*proc_elmts[izone]/sum(proc_elmts))
-    except ZeroDivisionError:
+    if sum(proc_elmts) == 0:
       proc_pc = 0.
+    else:
+      proc_pc = np.around(100*proc_elmts[izone]/sum(proc_elmts))
     LOG.info(' '*4 + "{0:>12.12} {1:9d} : {2:9d} {3:>5} {4:>6}  {5:>6}  {6:>6}".format(
       zone_path, nb_elmt_per_zone[zone_path], proc_elmts[izone], n_part[izone], tn_part[izone], zone_pc, proc_pc))
   LOG.info('')

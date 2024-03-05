@@ -324,7 +324,16 @@ def balance_with_non_uniform_weights(n_elem_per_zone, n_rank,
         fully_open_procs_idx  = np.extract(is_fully_open[not_full_procs_idx], not_full_procs_idx)
         fully_open_procs_data = proc_load[fully_open_procs_idx]
         # > Recherche du proc le moins chargé, et du proc le plus chargé parmis ceux < 80%
-        min_loaded_proc = not_full_procs_idx[np.argmin(not_full_procs_data)]
+        if len(not_full_procs_data) == 0:
+          quasi_full_procs_idx  = np.where(proc_load == mean_per_rank-1)[0]
+          partial_proc_load = proc_load[quasi_full_procs_idx]
+          assert len(quasi_full_procs_idx) >= n_elem
+          partial_proc_load[0:n_elem] += 1
+          proc_load[quasi_full_procs_idx] = partial_proc_load
+          repart_per_zone[z_name] = list(proc_load)
+          break
+        else:
+          min_loaded_proc = not_full_procs_idx[np.argmin(not_full_procs_data)]
         if fully_open_procs_idx.size > 0:
           max_loaded_proc       = fully_open_procs_idx[np.argmax(fully_open_procs_data)]
           available_size_on_max = mean_per_rank - proc_load[max_loaded_proc]
