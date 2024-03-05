@@ -22,7 +22,8 @@ Developpement version
 
 🐞 Fixes
 ^^^^^^^^
-- io: Fix read of unstructured BCDataSet having a PointList
+- io: fix read of unstructured BCDataSet having a PointList
+- extract_part: ensure dtype correctness of transfered arrays
 
 v1.3 (January 2024)
 -------------------

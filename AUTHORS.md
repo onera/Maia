@@ -1,16 +1,17 @@
 Main authors
 ------------
 
-Bérenger Berthoul <berenger dot berthoul at onera dot fr>, ONERA
-Julien Coulet <julien dot coulet at onera dot fr>, ONERA
-Bruno Maugars <bruno dot maugars at onera dot fr>, ONERA
+Bérenger Berthoul <berenger.berthoul@onera.fr>, ONERA
+Julien Coulet <julien.coulet@onera.fr>, ONERA
+Bruno Maugars <bruno.maugars@onera.fr>, ONERA
+Clément Benazet <clement.benazet@onera.fr>, ONERA
 
 
 Contributors
 -----------
-Clément Benazet <clement dot benazet at onera dot fr>, ONERA
-Sébastien Bourasseau <sebastien dot bourasseau at onera dot fr>, ONERA
-Bertrand Michel <bertrand dot michel at onera dot fr>, ONERA
-Mickael Philit <mickael dot philit at safrangroup dot com>, SAFRAN
-Constance Timmermans, ONERA
-Hedi El Amami, ONERA
+Sébastien Bourasseau
+Bertrand Michel
+Mickael Philit
+Guillaume Begou
+Constance Timmermans
+Hedi El Amami

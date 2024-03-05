@@ -170,24 +170,30 @@ def test_exch_field(cgns_name, partial, comm):
       gnum = extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex']
     assert np.array_equal(data,gnum)
 
+@pytest.mark.parametrize("bc_name" , ['Xmin', 'Zmax'])
 @pytest_parallel.mark.parallel(2)
-def test_exch_field_from_bc_zsr(comm):
+def test_exch_field_from_bc_zsr(bc_name, comm):
   part_tree = sample_part_tree('Poly', comm)
 
   # Add field
   for zone in PT.get_all_Zone_t(part_tree):
     gnum = PT.maia.getGlobalNumbering(PT.get_node_from_name(zone, 'NGonElements'), 'Element')[1]
-    bc_n = PT.get_child_from_predicates(zone, 'ZoneBC_t/Xmin')
+    bc_n = PT.get_child_from_predicates(zone, f'ZoneBC_t/{bc_name}')
     if bc_n is not None:
       bc_pl   = PT.get_value(PT.get_node_from_name(bc_n, "PointList"))
       bc_gnum = gnum[bc_pl[0]-1]
-      PT.new_ZoneSubRegion('ZSR_Xmin', bc_name="Xmin", fields={'gnum': bc_gnum}, parent=zone)
+      PT.new_ZoneSubRegion(f'ZSR_{bc_name}',
+                           bc_name=bc_name,
+                           fields={'gnum': bc_gnum,
+                                   'gnum_d': bc_gnum.astype(np.float64),}, parent=zone)
+    else:
+      bc_pl   = np.empty((1,0), dtype=np.int32, order='F')
 
   extractor = EP.Extractor(part_tree, [[bc_pl]], "FaceCenter", comm)
-  extractor.exchange_fields(['ZSR_Xmin'])
+  extractor.exchange_fields([f'ZSR_{bc_name}'])
   extr_tree = extractor.get_extract_part_tree()
 
-  extr_sol = PT.get_node_from_name(extr_tree, 'ZSR_Xmin')
+  extr_sol = PT.get_node_from_name(extr_tree, f'ZSR_{bc_name}')
   assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
   assert PT.Subset.GridLocation(extr_sol) == 'CellCenter'
   pl    = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
@@ -279,3 +285,4 @@ def test_from_fam_zsr_api(valid, comm):
   else:
     with pytest.raises(ValueError):
       extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
+
