@@ -63,7 +63,7 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
   #   - if node is None -> do nothing 
   #   - else, store its dtype and do not look into other zones
   #     ==> we suppose that all Zone/<path> nodes have the same dtype
-  for ipath, path in enumerate(paths):
+  for path in paths:
     for pzone in part_zones:
       fs_data_node = PT.get_node_from_path(pzone, path)
       if fs_data_node is None:
@@ -82,10 +82,8 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
     dtypes.update(loc_dtype)
   assert (len(dtypes) == len(paths))
   for full_path, dtype in dtypes.items():
-    data_ar_name = PT.path_tail(full_path)
-    PT.set_value(PT.get_child_from_name_and_label(mask_container,
-                                                  data_ar_name,
-                                                  'DataArray_t'), np.empty(0, dtype))
+    PT.set_value(PT.get_node_from_path(mask_container, full_path),
+                                       np.empty(0, dtype))
         
   return mask_container, grid_location, partial_field
 

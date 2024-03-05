@@ -173,7 +173,6 @@ def test_exch_field(cgns_name, partial, comm):
 @pytest.mark.parametrize("bc_name" , ['Xmin', 'Zmax'])
 @pytest_parallel.mark.parallel(2)
 def test_exch_field_from_bc_zsr(bc_name, comm):
-  from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
   part_tree = sample_part_tree('Poly', comm)
 
   # Add field
@@ -188,7 +187,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
                            fields={'gnum': bc_gnum,
                                    'gnum_d': bc_gnum.astype(np.float64),}, parent=zone)
     else:
-      bc_pl   = np.empty((1,0), dtype=pdm_gnum_dtype)
+      bc_pl   = np.empty((1,0), dtype=np.int32, order='F')
 
   extractor = EP.Extractor(part_tree, [[bc_pl]], "FaceCenter", comm)
   extractor.exchange_fields([f'ZSR_{bc_name}'])
