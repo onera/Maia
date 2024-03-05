@@ -75,6 +75,7 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
   """
 
   # Skeleton
+  filename = str(filename)
   if legacy:
     import Converter.Filter as Filter
     tree = Filter.convertFile2SkeletonTree(filename, maxDepth=2)
@@ -153,6 +154,7 @@ def save_part_tree(part_tree, filename, comm, single_file=False, legacy=False):
         :dedent: 2
   """
   rank = comm.Get_rank()
+  filename = str(filename)
   base_name, extension = os.path.splitext(filename)
   subfilename = base_name + f'_sub_{rank}' + extension
 

@@ -49,6 +49,7 @@ def write_tree(tree, filename, links=[], legacy=False):
         :end-before: #write_tree@end
         :dedent: 2
   """
+  filename = str(filename)
   if legacy:
     from ._hdf_io_cass import write_full
   else:
@@ -63,6 +64,7 @@ def read_tree(filename, legacy=False):
   Returns:
     CGNSTree: Full (not distributed) CGNS tree
   """
+  filename = str(filename)
   if os.path.splitext(filename)[1] == '.yaml':
     with open(filename, 'r') as f:
       tree = parse_yaml_cgns.to_cgns_tree(f)
@@ -85,6 +87,7 @@ def read_links(filename, legacy=False):
   Returns:
     list: Links description
   """
+  filename = str(filename)
   if legacy:
     raise NotImplementedError("read_links is only available with legacy=False")
   else:
@@ -146,6 +149,7 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   write_partial(filename, saving_dist_tree, hdf_filter_with_dim, comm, legacy)
 
 def fill_size_tree(tree, filename, comm, legacy=False):
+  filename = str(filename)
   add_distribution_info(tree, comm)
   hdf_filter = create_tree_hdf_filter(tree)
   # Coords#Size appears in dict -> remove it
@@ -225,6 +229,7 @@ def write_trees(tree, filename, comm, legacy=False):
         :dedent: 2
   """
   # Give to each process a filename
+  filename = str(filename)
   base_name, extension = os.path.splitext(filename)
   base_name += f"_{comm.Get_rank()}"
   _filename = base_name + extension
