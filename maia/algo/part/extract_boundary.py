@@ -7,6 +7,8 @@ from maia.transfer  import utils as te_utils
 
 from .point_cloud_utils import create_sub_numbering
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+
 def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   """
   Transform a (partitioned) PointRange pr of any location input_loc into a PointList
@@ -63,7 +65,7 @@ def extract_faces_mesh(zone, face_ids):
       sections_2d = PT.Zone.get_ordered_elements_per_dim(zone)[2]
       elem_size_list = [PT.Element.Size(elt) for elt in sections_2d]
       face_n_vtx_list = [PT.Element.NVtx(elt) for elt in sections_2d]
-      _, face_vtx = np_utils.concatenate_np_arrays([PT.get_node_from_name(elt, 'ElementConnectivity')[1] for elt in sections_2d])
+      _, face_vtx = np_utils.concatenate_np_arrays([PT.get_node_from_name(elt, 'ElementConnectivity')[1] for elt in sections_2d], dtype=np.int32)
       face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_size_list), dtype=np.int32)
   elif PT.Zone.Type(zone) == 'Structured':
     # For S zone, create a NGon connectivity
@@ -140,8 +142,9 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
     vtx_ln_to_gn_zone = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
 
     if PT.Zone.Type(zone) == 'Unstructured' and not PT.Zone.has_ngon_elements(zone):
+      elt_2d_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[2]
       face_ln_to_gn_zone = np.concatenate([PT.maia.getGlobalNumbering(elt, "Sections")[1] \
-              for elt in PT.Zone.get_ordered_elements_per_dim(zone)[2]])
+              for elt in elt_2d_nodes]) if len(elt_2d_nodes) else np.empty(0, dtype=pdm_dtype)
     else:
       _, _, face_ln_to_gn_zone, _ = te_utils.get_entities_numbering(zone) # !! Only S or NGON
 

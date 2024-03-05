@@ -305,7 +305,7 @@ def test_elt_ordering_by_dim():
   zone = N.new_Zone()
   N.new_Elements('ElemA', type='HEXA_8', erange=[11, 53], parent=zone)
   N.new_Elements('ElemB', type='HEXA_8', erange=[1, 10],  parent=zone)
-  assert SIDS.Zone.elt_ordering_by_dim(zone) == 0
+  assert SIDS.Zone.elt_ordering_by_dim(zone) == 1
 
   zone = N.new_Zone()
   N.new_Elements('ElemA', type='HEXA_8', erange=[18, 60], parent=zone)

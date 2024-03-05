@@ -534,6 +534,9 @@ class Zone:
       - 1 if elements of lower dimension have lower ElementRange
       - \- 1 if elements of lower dimension have higher ElementRange
       - 0 if elements are not sorted
+
+    If all the elements belonging to the zone have the same dimension, this function returns 1.
+
     Example:
       >>> zone = PT.new_Zone(type='Unstructured')
       >>> PT.new_Elements('TETRA', 'TETRA_4', erange=[1,10], parent=zone)
@@ -548,6 +551,8 @@ class Zone:
         status = 1
       elif sect_start[0] > sect_start[-1]:
         status = -1
+    else:
+      status = 1
     return status
 
   @staticmethod
