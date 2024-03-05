@@ -24,6 +24,23 @@ from maia.utils import par_utils
 
 import itertools
 
+
+
+
+
+def distribute_unique_vtx_ids_from_face_ids(pl_faces, ngon_n, comm):
+  # Get the nodes ids of all faces in pl_faces
+  __, nodes_pl = maia.algo.dist.vertex_list.face_ids_to_vtx_ids(pl_faces, ngon_n, comm)
+  # Make unique
+  PTB = EP.PartToBlock(None, [nodes_pl], comm, weight=True, keep_multiple=False)
+  nodes_pl = PTB.getBlockGnumCopy()
+  # Because result could be badly distributed, redistribute it
+  distrib_nodes_pl_init   = par_utils.gather_and_shift(len(nodes_pl), comm, pdm_gnum_dtype)
+  distrib_nodes_pl_wanted = par_utils.uniform_distribution(distrib_nodes_pl_init[-1], comm)
+  return EP.block_to_block(nodes_pl, distrib_nodes_pl_init, distrib_nodes_pl_wanted, comm)
+
+
+
 # ------------------------------------------------------------------------------------------
 # Inspirer de _new_update_ngon(ngon_n, ref_faces, face_to_remove, vtx_distri_ini, old_to_new_vtx, comm)
 # Gerer EC et ESO differemment car suppression de noeuds pas uniquement remplacement !
