@@ -82,7 +82,7 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
     dtypes.update(loc_dtype)
   assert (len(dtypes) == len(paths))
   for full_path, dtype in dtypes.items():
-    PT.set_value(PT.get_node_from_path(mask_container, full_path),
+    PT.set_value(PT.get_node_from_path(mask_zone, full_path),
                                        np.empty(0, dtype))
         
   return mask_container, grid_location, partial_field
