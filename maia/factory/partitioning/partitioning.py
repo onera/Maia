@@ -115,9 +115,10 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
   assert isinstance(zone_to_parts, dict)
   # > Call main function
   n_cell_tot = np.sum([PT.Zone.n_cell(z) for z in PT.get_all_Zone_t(dist_tree)])
-  max_cell_dim = np.max([1 if PT.get_node_from_label(z, 'Elements_t') else 0 for z in PT.get_all_Zone_t(dist_tree)])
-  if (n_cell_tot < comm.size) and (options['graph_part_tool'] != 'hilbert') and (max_cell_dim > 0):
+  is_point_cloud = PT.get_node_from_labels(dist_tree, 'CGNSBase_t/Zone_t/Elements_t') is None
+  if (n_cell_tot < comm.Get_size()) and (options['graph_part_tool'] != 'hilbert') and not is_point_cloud:
 	  raise ValueError("Only 'hilbert' as 'graph_part_tool' is allowed if n_procs > n_cells")
+
   part_tree = _partitioning(dist_tree, zone_to_parts, comm, options)
   
   # Compute statistics

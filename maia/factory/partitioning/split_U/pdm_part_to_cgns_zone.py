@@ -5,20 +5,10 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import layouts, np_utils
+from maia.utils import logging  as mlog
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import Pypdm.Pypdm as PDM
-
-def _get_part_dim(dims):
-  if dims['n_cell'] > 0:
-    return 3
-  elif dims['n_face'] > 0:
-    return 2
-  elif dims['n_edge'] > 0:
-    return 1
-  else:
-    return 0
-
 
 def dump_pdm_output(p_zone, dims, data):
   """
@@ -164,10 +154,8 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
 
       ngon_n = PT.new_NGonElements(ngon_name, parent=p_zone, erange=ngon_er, eso=ngon_eso, ec=ngon_ec, pe=ngon_pe)
       nface_n = PT.new_NFaceElements(nface_name, parent=p_zone, erange=nface_er, eso=nface_eso, ec=nface_ec)
-      gnum_ngon_elem = np.empty(0, dtype=pdm_gnum_dtype) if data['np_face_ln_to_gn'] is None else data['np_face_ln_to_gn']
-      gnum_nface_elem = np.empty(0, dtype=pdm_gnum_dtype) if data['np_cell_ln_to_gn'] is None else data['np_cell_ln_to_gn']
-      MT.newGlobalNumbering({'Element' : gnum_ngon_elem}, ngon_n)
-      MT.newGlobalNumbering({'Element' : gnum_nface_elem}, nface_n)
+      MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
+      MT.newGlobalNumbering({'Element' : data['np_cell_ln_to_gn']}, nface_n)
 
     elif PT.Zone.CellDimension(d_zone) == 2:
       face_edge_idx = data['np_face_edge_idx']   
@@ -189,10 +177,8 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
       nedge_n = PT.new_Elements(nedge_name, 'BAR_2', erange=edge_er, econn=edge_vtx, parent=p_zone)
       ngon_n = PT.new_NGonElements(ngon_name, parent=p_zone, erange=ngon_er, eso=ngon_eso, ec=ngon_ec)
       PT.new_DataArray('ParentElements', nedge_pe, parent=nedge_n)
-      gnum_nedge_elem = np.empty(0, dtype=pdm_gnum_dtype) if data['np_edge_ln_to_gn'] is None else data['np_edge_ln_to_gn']
-      gnum_ngon_elem = np.empty(0, dtype=pdm_gnum_dtype) if data['np_face_ln_to_gn'] is None else data['np_face_ln_to_gn']
-      MT.newGlobalNumbering({'Element' : gnum_nedge_elem}, nedge_n)
-      MT.newGlobalNumbering({'Element' : gnum_ngon_elem}, ngon_n)
+      MT.newGlobalNumbering({'Element' : data['np_edge_ln_to_gn']}, nedge_n)
+      MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
 
   # Keep element sections + NGON section in case input elt / output ngon, since sections will be needed
   # for PL exchange
@@ -275,9 +261,13 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
       n_cell    = dims[cell_key]
       cell_lngn = data[cell_lngn_key]
 
-    part_zone = PT.new_Zone(name  = MT.conv.add_part_suffix(PT.get_name(dist_zone), comm.Get_rank(), i_part),
-                            size = [[n_vtx, n_cell, 0]],
-                            type = 'Unstructured')
+    pname = MT.conv.add_part_suffix(PT.get_name(dist_zone), comm.Get_rank(), i_part)
+    # Zone has no entities // skip it
+    if n_vtx == 0:
+      mlog.warning(f"Partition {pname} was empty and consequently not added to part_tree")
+      continue 
+
+    part_zone = PT.new_Zone(name=pname, size=[[n_vtx, n_cell, 0]], type='Unstructured')
 
     if options['dump_pdm_output']:
       dump_pdm_output(part_zone, dims, data)
@@ -294,12 +284,12 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
       save_additional_connectivities(part_zone, data)
 
     requested_lngn = [key.lower() for key in options['additional_ln_to_gn']]
-    numberings = {'Vertex' : np.empty(0, dtype=pdm_gnum_dtype) if vtx_lngn is None else vtx_lngn}
+    numberings = {'Vertex' : vtx_lngn}
     if base_dim >= 2 and 'edge' in requested_lngn and data['np_edge_ln_to_gn'] is not None:
       numberings['Edge'] = data['np_edge_ln_to_gn']
     if base_dim == 3 and 'face' in requested_lngn and data['np_face_ln_to_gn'] is not None:
       numberings['Face'] = data['np_face_ln_to_gn']
-    numberings['Cell'] = np.empty(0, dtype=pdm_gnum_dtype) if cell_lngn is None else cell_lngn
+    numberings['Cell'] = cell_lngn
     MT.newGlobalNumbering(numberings, parent=part_zone)
 
     part_zones.append(part_zone)
