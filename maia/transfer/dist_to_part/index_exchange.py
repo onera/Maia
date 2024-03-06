@@ -57,16 +57,24 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
             ancestor = p_zone
             for parent in ancestors:
               ancestor = PT.update_child(ancestor, PT.get_name(parent), PT.get_label(parent), PT.get_value(parent))
-            p_node = PT.new_child(ancestor, PT.get_name(node), PT.get_label(node), PT.get_value(node))
-            PT.new_GridLocation(PT.Subset.GridLocation(node), parent=p_node)
+            p_node = PT.update_child(ancestor, PT.get_name(node), PT.get_label(node), PT.get_value(node))
+            PT.update_child(p_node, 'GridLocation', 'GridLocation_t', value=PT.Subset.GridLocation(node))
             pl_raw = p_groups['npZSRGroup'][beg_pl:end_pl]
             if PT.Zone.Type(p_zone) == 'Structured':
               pl_value = s_numbering.index_to_ijk_from_loc(pl_raw, loc, PT.Zone.VertexSize(dist_zone))
             else:
               pl_value = pl_raw.reshape((1,-1), order='F')
-            PT.new_IndexArray('PointList', pl_value, parent=p_node)
-            lntogn_ud = MT.newGlobalNumbering(parent=p_node)
-            PT.new_DataArray('Index', p_groups['npZSRGroupLNToGN'][beg_pl:end_pl], parent=lntogn_ud)
+            PT.update_child(p_node, 'PointList', 'IndexArray_t', pl_value)
+            MT.newGlobalNumbering({'Index': p_groups['npZSRGroupLNToGN'][beg_pl:end_pl]}, p_node)
+            # A corner case specific to BCDataSet : we can have a partitioned BCDS/PointList even if BC/PointList
+            # was empty. In this case, we must create here an PointList (empty) and GridLoc for the parent BC
+            if PT.get_label(p_node) == 'BCDataSet_t' and PT.get_child_from_name(ancestor, 'PointList') is None:
+              d_ancestor = PT.get_node_from_path(dist_zone, '/'.join([PT.get_name(n) for n in ancestors]))
+              d_ancestor_loc = PT.Subset.GridLocation(d_ancestor)
+              d_ancestor_pl = PT.get_child_from_name(d_ancestor, 'PointList')[1]
+              PT.new_IndexArray('PointList', np.empty((d_ancestor_pl.shape[0],0), np.int32, order='F'), parent=ancestor)
+              PT.new_GridLocation(d_ancestor_loc, ancestor)
+              MT.newGlobalNumbering({'Index' : np.empty(0, pdm_gnum_dtype)}, parent=ancestor)
 
           i_pl += 1
 

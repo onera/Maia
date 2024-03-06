@@ -153,7 +153,7 @@ ZoneU Zone_t [[6,0,0]]:
     assert (PT.get_value(MT.getGlobalNumbering(part_sol, 'Index')) == [1,3,2]).all()
   if comm.Get_rank() == 1:
     assert part_sol is None
-    assert PT.get_child_from_name(part_bc, 'PointList') is None #No specified in list => skipped, only child are constructed
+    assert PT.get_child_from_name(part_bc, 'PointList')[1].size == 0 #No specified in list => skipped, only child are constructed
     assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
     assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [1]).all()
     assert (PT.get_value(MT.getGlobalNumbering(part_ds, 'Index')) == [1]).all()
@@ -199,7 +199,7 @@ ZoneU.P1.N0 Zone_t [[3,0,0]]:
   part_bc  = PT.get_node_from_name(part_zone, 'BC')
   assert PT.get_value(part_bc) == "BCFarfield"
   part_ds  = PT.get_node_from_name(part_zone, 'BCDSWithPL')
-  assert PT.get_child_from_name(part_bc, 'PointList') is None
+  assert PT.get_child_from_name(part_bc, 'PointList')[1].size == 0
   assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
   assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [42]).all()
   assert (PT.get_value(MT.getGlobalNumbering(part_ds, 'Index')) == [9]).all()
