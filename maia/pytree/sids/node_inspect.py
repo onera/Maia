@@ -581,7 +581,14 @@ class Zone:
     elif Zone.has_ngon_elements(zone_node):
       dimension = 2 if W.get_child_from_name(Zone.NGonNode(zone_node), 'ParentElements') is None else 3
     else:
-      elt_dim = [Element.Dimension(n) for n in W.get_children_from_label(zone_node, 'Elements_t') if Element.CGNSName(n) != 'MIXED']
+      elt_type = [Element.CGNSName(n) for n in W.get_children_from_label(zone_node, 'Elements_t')]
+      if 'MIXED' in elt_type:
+        raise ValueError(f'Can not infer dimension of zone {N.get_name(zone_node)}, which has "MIXED" elements')
+      elt_dim = []
+      for elem_n in W.get_children_from_label(zone_node, 'Elements_t'):
+        dim = Element.Dimension(elem_n)
+        if (dim == 2 or Element.CGNSName(elem_n).startswith('BAR')) and (W.get_child_from_name(elem_n, 'ParentElements') is not None): dim += 1 
+        elt_dim.append(dim)
       if len(elt_dim)==0:
         raise ValueError(f'Can not infer dimension of zone {N.get_name(zone_node)}, which has no elements')
       dimension = max(elt_dim)

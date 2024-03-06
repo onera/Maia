@@ -5,18 +5,10 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import layouts, np_utils
+from maia.utils import logging  as mlog
+from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import Pypdm.Pypdm as PDM
-
-def _get_part_dim(dims):
-  if dims['n_cell'] > 0:
-    return 3
-  elif dims['n_face'] > 0:
-    return 2
-  elif dims['n_edge'] > 0:
-    return 1
-  else:
-    return 0
 
 def dump_pdm_output(p_zone, dims, data):
   """
@@ -39,7 +31,7 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
   if grid_loc == 'FaceCenter' and not PT.Zone.has_ngon_elements(p_zone):
     raise NotImplementedError("FaceCenter GC interfaces can not be used for nodal meshes")
   if grid_loc == 'FaceCenter':
-    entity = 'face' if _get_part_dim(dims) == 3 else 'edge'
+    entity = 'face' if PT.Zone.CellDimension(d_zone) == 3 else 'edge'
     _grid_loc = f"{entity.capitalize()}Center"
   else:
     entity = 'vtx'
@@ -141,7 +133,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
 
     n_face = dims['n_face']
     n_cell = dims['n_cell']
-    if _get_part_dim(dims) == 3:
+    if PT.Zone.CellDimension(d_zone) == 3:
       ngon_er  = np.array([1, n_face], np.int32)
       if PT.Zone.has_ngon_elements(d_zone):
         ngon_eso = data['np_face_vtx_idx']
@@ -165,7 +157,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
       MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
       MT.newGlobalNumbering({'Element' : data['np_cell_ln_to_gn']}, nface_n)
 
-    elif _get_part_dim(dims) == 2:
+    elif PT.Zone.CellDimension(d_zone) == 2:
       face_edge_idx = data['np_face_edge_idx']   
       face_edge     = data['np_face_edge']   
       edge_vtx      = data['np_edge_vtx']   
@@ -256,7 +248,10 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
 
     n_vtx = dims['n_vtx']
     vtx_lngn  = data['np_vtx_ln_to_gn']
-    base_dim = _get_part_dim(dims)
+    if PT.get_child_from_label(dist_zone, 'Elements_t') is None:
+      base_dim = 0
+    else:
+      base_dim = PT.Zone.CellDimension(dist_zone)
     if base_dim == 0:  # Point cloud
       n_cell = 0
       cell_lngn = np.empty(0, dtype=vtx_lngn.dtype)
@@ -266,9 +261,13 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
       n_cell    = dims[cell_key]
       cell_lngn = data[cell_lngn_key]
 
-    part_zone = PT.new_Zone(name  = MT.conv.add_part_suffix(PT.get_name(dist_zone), comm.Get_rank(), i_part),
-                            size = [[n_vtx, n_cell, 0]],
-                            type = 'Unstructured')
+    pname = MT.conv.add_part_suffix(PT.get_name(dist_zone), comm.Get_rank(), i_part)
+    # Zone has no entities // skip it
+    if n_vtx == 0:
+      mlog.warning(f"Partition {pname} was empty and consequently not added to part_tree")
+      continue 
+
+    part_zone = PT.new_Zone(name=pname, size=[[n_vtx, n_cell, 0]], type='Unstructured')
 
     if options['dump_pdm_output']:
       dump_pdm_output(part_zone, dims, data)
