@@ -21,7 +21,7 @@ import Pypdm.Pypdm as PDM
 
 
 
-@pytest_parallel.mark.parallel(1)
+@pytest_parallel.mark.parallel([1,2])
 def test_merge_degen_bc(comm):
   #----------------------------
   # Parameters
@@ -51,17 +51,23 @@ def test_merge_degen_bc(comm):
   theta_z = 0.
   
   zone_n = PT.get_node_from_label(dist_tree, 'Zone_t')
+  vtx_distri = PT.get_value(PT.maia.getDistribution(zone_n, 'Vertex'))
   
   coords_n = PT.get_node_from_label(dist_tree, 'GridCoordinates_t')
   coord_x_n, coord_y_n, coord_z_n = [PT.get_node_from_name(coords_n, f"Coordinate{suffix}") for suffix in ['X', 'Y', 'Z']]
   coord_x,   coord_y,   coord_z   = [PT.get_value(coord) for coord in [coord_x_n, coord_y_n, coord_z_n]]
-
-  for i in range(nx-1):
-    beg = (i+1)*nx*ny
-    end = (i+2)*nx*ny
-    # print(i+1, coord_y[beg:end], coord_z[beg:end])
+  
+  multiple, remainder = np.divmod(vtx_distri, nx*ny)
+  assert remainder[2] == 0
+  
+  start = max(multiple[0], 1) # max because the first plane does not move
+  stop  = multiple[1] if remainder[1] == 0 else multiple[1] + 1
+  
+  for i in np.arange(start,stop):
+    beg = max(i*nx*ny, vtx_distri[0]) - vtx_distri[0]
+    end = min((i+1)*nx*ny, vtx_distri[1]) - vtx_distri[0]
     coord_z[beg:end] = 0.
-    coord_x[beg:end], coord_y[beg:end], coord_z[beg:end] = maia.utils.ndarray.np_utils.transform_cart_vectors(coord_x[beg:end], coord_y[beg:end], coord_z[beg:end], rotation_angle = np.array([(i+1)*theta_x,theta_y,theta_z]))
+    coord_x[beg:end], coord_y[beg:end], coord_z[beg:end] = maia.utils.ndarray.np_utils.transform_cart_vectors(coord_x[beg:end], coord_y[beg:end], coord_z[beg:end], rotation_angle = np.array([i*theta_x,theta_y,theta_z]))
   
   #----------------------------
   # Add families
@@ -75,12 +81,21 @@ def test_merge_degen_bc(comm):
   
   #----------------------------
   # Convert to ngon
-  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
-  # maia.io.dist_tree_to_file(dist_tree, f'/stck/sbouras/dev/dev-Fun/DegeneratedLine/eighth_cylinder_5x5x5_ready_CI.cgns', comm)
+  # When convert_elements_to_ngon will be parallel independant, this part
+  # could be reduce to
+  # maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+  maia.algo.dist.redistribute_tree(dist_tree, 'gather', comm)
+  group = comm.Get_group()
+  newGroup = group.Incl([0])
+  sub_comm  = comm.Create(newGroup)
+  if comm.rank == 0:
+    maia.algo.dist.convert_elements_to_ngon(dist_tree, sub_comm)
+    full_tree = maia.factory.dist_to_full_tree(dist_tree, sub_comm, target=0)
+  else:
+    full_tree = None
+  dist_tree = maia.factory.full_to_dist_tree(full_tree, comm, owner=0)
+  maia.io.dist_tree_to_file(dist_tree, f'/stck/sbouras/dev/dev-Fun/DegeneratedLine/eighth_cylinder_5x5x5_ready_CI_{comm.size}p.cgns', comm)
   
-  ####
-  # TODO: change code to be // independant to generate test case
-  ####
   #-------------
   # Begin of the test
 
