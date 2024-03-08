@@ -25,10 +25,15 @@ def compute_balance_and_splits_seq(repart_per_zone, display=False):
   ideal_load       = ceil(exact_ideal_load)
 
   imbalance       = proc_load - ideal_load
+  rms             = np.linalg.norm(imbalance) / n_rank
   worse_imbalance = np.max(imbalance)
 
-  rms   = np.linalg.norm(imbalance) / n_rank
-  rmscp = np.linalg.norm(imbalance/ideal_load) / n_rank
+  if ideal_load == 0:
+    rmscp = 0.
+    worse_imbalancep = 0
+  else:
+    rmscp = np.linalg.norm(imbalance/ideal_load) / n_rank
+    worse_imbalancep = 100.*worse_imbalance/ideal_load
 
   if display:
     mlog.stat("  ---> Mean   size : {0}".format(ideal_load))
@@ -36,7 +41,7 @@ def compute_balance_and_splits_seq(repart_per_zone, display=False):
     mlog.stat("  ---> rMaxi  size : {0}".format(max_load))
     mlog.stat("  ---> rms         : {0}".format(rms))
     mlog.stat("  ---> rmscp       : {0}".format(rmscp))
-    mlog.stat("  ---> worse delta : {0} ({1:.2f}%)".format(worse_imbalance, 100.*worse_imbalance/ideal_load))
+    mlog.stat("  ---> worse delta : {0} ({1:.2f}%)".format(worse_imbalance, worse_imbalancep))
     mlog.stat("  ---> n_cuts      : {0}".format(n_cuts))
 
   return ideal_load, min_load, max_load, rms, rmscp, n_cuts, min_part_size, max_part_size
@@ -66,10 +71,15 @@ def compute_balance_and_splits(repart_per_zone, comm, display=False):
   ideal_load       = ceil(exact_ideal_load)
 
   imbalance       = proc_load - ideal_load
+  rms   = np.linalg.norm(imbalance) / n_rank
   worse_imbalance = np.max(imbalance)
 
-  rms   = np.linalg.norm(imbalance) / n_rank
-  rmscp = np.linalg.norm(imbalance/ideal_load) / n_rank
+  if ideal_load == 0:
+    rmscp = 0.
+    worse_imbalancep = 0
+  else:
+    rmscp = np.linalg.norm(imbalance/ideal_load) / n_rank
+    worse_imbalancep = 100.*worse_imbalance/ideal_load
 
   if display:
     mlog.stat("  ---> Mean   size : {0}".format(ideal_load))
@@ -77,7 +87,7 @@ def compute_balance_and_splits(repart_per_zone, comm, display=False):
     mlog.stat("  ---> rMaxi  size : {0}".format(max_load))
     mlog.stat("  ---> rms         : {0}".format(rms))
     mlog.stat("  ---> rmscp       : {0}".format(rmscp))
-    mlog.stat("  ---> worse delta : {0} ({1:.2f}%)".format(worse_imbalance, 100.*worse_imbalance/ideal_load))
+    mlog.stat("  ---> worse delta : {0} ({1:.2f}%)".format(worse_imbalance, worse_imbalancep))
     mlog.stat("  ---> n_cuts      : {0}".format(n_cuts))
 
   return ideal_load, min_load, max_load, rms, rmscp, n_cuts, min_part_size, max_part_size
