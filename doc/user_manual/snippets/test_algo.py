@@ -545,9 +545,8 @@ def test_redistribute_dist_tree():
   from mpi4py import MPI
   import maia
 
-  dist_tree_ini = maia.factory.generate_dist_block(21, 'Poly', MPI.COMM_WORLD)
-  dist_tree_gathered = maia.algo.dist.redistribute_tree(dist_tree_ini, \
-      'gather.0', MPI.COMM_WORLD)
+  dist_tree = maia.factory.generate_dist_block(21, 'Poly', MPI.COMM_WORLD)
+  maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', MPI.COMM_WORLD)
   #redistribute_dist_tree@end
 
 @pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
