@@ -155,5 +155,5 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
   bc_face_lngn_l = create_sub_numbering(parent_face_lngn_l, comm)
   bc_vtx_lngn_l  = create_sub_numbering(parent_vtx_lngn_l, comm)
 
-  return bc_face_vtx_l, bc_face_vtx_idx_l, bc_face_lngn_l, bc_coords_l, bc_vtx_lngn_l
+  return bc_face_vtx_l, bc_face_vtx_idx_l, bc_face_lngn_l, parent_face_lngn_l, bc_coords_l, bc_vtx_lngn_l
 
