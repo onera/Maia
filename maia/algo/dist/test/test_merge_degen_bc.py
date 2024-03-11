@@ -94,40 +94,19 @@ def test_merge_degen_bc(comm):
   else:
     full_tree = None
   dist_tree = maia.factory.full_to_dist_tree(full_tree, comm, owner=0)
-  maia.io.dist_tree_to_file(dist_tree, f'/stck/sbouras/dev/dev-Fun/DegeneratedLine/eighth_cylinder_5x5x5_ready_CI_{comm.size}p.cgns', comm)
+  # maia.io.dist_tree_to_file(dist_tree, f'/stck/sbouras/dev/dev-Fun/DegeneratedLine/eighth_cylinder_5x5x5_ready_CI_{comm.size}p.cgns', comm)
   
   #-------------
   # Begin of the test
 
-  zone_names_to_remove = []
+  # Some functions need a NFace node
   for zone_n in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
     if not PT.Zone.has_nface_elements(zone_n):
       maia.algo.pe_to_nface(zone_n, comm)
-    for bc in PT.get_nodes_from_label(zone_n, 'BC_t'):
-      fam_n = PT.get_node_from_label(bc, 'FamilyName_t')
-      if fam_n is None:
-        if bc[0].startswith("BCDegene"):
-          # print(zone_n[0], "DegeneratedLine found :", bc[0])
-          zone_names_to_remove.append(PT.get_name(zone_n))
-        elif bc[0].startswith("BCSymmetry"):
-          # print(zone_n[0], "SymmetryPlane found :", bc[0])
-          pass
-      else:
-        fam = PT.get_value(fam_n)
-        if (fam == 'AXIS') or (fam == 'DGL'):
-          # print(zone_n[0], "AXIS found :", bc[0])
-          zone_names_to_remove.append(PT.get_name(zone_n))
-        elif fam == 'SIDE1':
-          # print(zone_n[0], "SIDE1 found :", bc[0])
-          pass
-        elif bc[0] == "Ymin":
-          # print(zone_n[0], "DegeneratedLine found :", bc[0])
-          zone_names_to_remove.append(PT.get_name(zone_n))
   
   new_dist_tree = copy.deepcopy(dist_tree)
   new_base_n = PT.get_node_from_label(new_dist_tree, 'CGNSBase_t')
-  for zone_name in zone_names_to_remove:
-    PT.rm_node_from_path(new_base_n, zone_name)
+  PT.rm_nodes_from_label(new_base_n, 'Zone_t')
   
   for zone_n in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
     
@@ -155,6 +134,7 @@ def test_merge_degen_bc(comm):
         elif bc[0] == "Zmax":
           intersect_degen_bc_n = bc
     if degen_bc_n is None:
+      PT.add_child(new_base_n, zone_n)
       continue
     if intersect_degen_bc_n is None: #Search in GC the first perio
       for gc in PT.get_nodes_from_predicates(zone_n, ['ZoneGridConnectivity','GridConnectivity_t']):
@@ -323,5 +303,9 @@ def test_merge_degen_bc(comm):
   PT.rm_nodes_from_label(new_dist_tree,'ZoneSubRegion_t')
   PT.rm_nodes_from_name(new_dist_tree, 'BCDegene*')
   
-  maia.io.dist_tree_to_file(new_dist_tree, f'/stck/sbouras/dev/dev-Fun/DegeneratedLine/eighth_cylinder_5x5x5_ready_ngon_without_degenline_{comm.size}p_CI.cgns', comm)
+  maia.algo.dist.redistribute_tree(new_dist_tree, 'uniform', comm)
+  ref_dist_tree = maia.io.file_to_dist_tree(f'/stck/sbouras/dev/dev-Fun/DegeneratedLine/eighth_cylinder_5x5x5_ready_ngon_without_degenline_REF.cgns', comm)
+  assert maia.pytree.is_same_tree(ref_dist_tree, new_dist_tree)
 
+
+  # maia.io.dist_tree_to_file(new_dist_tree, f'/stck/sbouras/dev/dev-Fun/DegeneratedLine/eighth_cylinder_5x5x5_ready_ngon_without_degenline_{comm.size}p_CI.cgns', comm)
