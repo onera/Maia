@@ -405,20 +405,23 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   # Extract kept nodes of degenerated faces from volumic mesh
   pzone_n = PT.get_node_from_label(part_tree_ngon, 'Zone_t')  
   extractor_degen_line = maia.algo.part.extract_part.create_extractor_from_zsr(part_tree_ngon, '__maia_degen_nodes_kept', comm)
-  degen_line_tree = extractor_degen_line.get_extract_part_tree()
+  part_tree_degen_line = extractor_degen_line.get_extract_part_tree()
+  pzone_degen_line_n = PT.get_node_from_label(part_tree_degen_line, 'Zone_t')
   dom_name = PT.get_name(PT.get_node_from_label(shallow_dist_tree, 'Zone_t'))
   dom_path = f'{PT.get_name(PT.get_all_CGNSBase_t(part_tree_ngon)[0])}/{dom_name}'
   parent_vtx = extractor_degen_line.exch_tool_box[dom_path]['parent_elt']['Vertex']
   
   # Find closest kept node for each nodes of volumic mesh
-  maia.algo.part.find_closest_points(degen_line_tree, part_tree_ngon, 'Vertex', comm)
+  maia.algo.part.find_closest_points(part_tree_degen_line, part_tree_ngon, 'Vertex', comm)
   # Verification que les noeuds donnes sont a une distance inferieure a une tolerance ?
   
+  # Find old to new global numbering for nodes of degenerated faces
+  #> get link between each nodes of volume mesh and kept nodes (in the extract numbering)
   try:
     src_id = PT.get_value(PT.get_node_from_name(part_tree_ngon, 'SrcId'))
   except TypeError:
     src_id = np.empty(0, dtype=pdm_gnum_dtype)
-  
+  #> get nodes of degenerated faces in partitionned zone
   if pzone_n is None:
     p_nodes_from_degen_faces = np.zeros((0), dtype=np.int32)
   else:
@@ -427,90 +430,97 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
       p_nodes_from_degen_faces = np.zeros((0), dtype=np.int32)
     else:
       p_nodes_from_degen_faces = PT.get_value(PT.get_node_from_name(pzsr2_n, 'PointList'))[0]
-  
-  pdgenline_n = PT.get_node_from_label(degen_line_tree, 'Zone_t')
-  
+  #> get global numbering of each nodes of volume mesh
   if pzone_n is None:
     part1_gnum_vtx = np.empty(0, dtype=pdm_gnum_dtype)
   else:
     part1_gnum_vtx = PT.get_value(MT.getGlobalNumbering(pzone_n, 'Vertex'))
-  if pdgenline_n is None:
+  #> get global numbering of each kept nodes
+  if pzone_degen_line_n is None:
     part2_gnum_vtx = np.empty(0, dtype=pdm_gnum_dtype)
   else:
-    part2_gnum_vtx = PT.get_value(MT.getGlobalNumbering(pdgenline_n, 'Vertex'))
-  
+    part2_gnum_vtx = PT.get_value(MT.getGlobalNumbering(pzone_degen_line_n, 'Vertex'))
+  #> compute old to new global numbering for each nodes of volumic mesh
   ptp = PDM.PartToPart(comm, [part1_gnum_vtx], [part2_gnum_vtx], [np.arange(len(src_id)+1,dtype=src_id.dtype)], [src_id])
   request1 = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P, PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2, [parent_vtx])
   _, part_data = ptp.reverse_wait(request1)
+  #> keep only old to new global numbering for nodes of degenerated faces
   old_to_new_degen_bc_nodes = part_data[0][p_nodes_from_degen_faces-1]
-  
+  #> store this information in ZSR to transfer it from part to dist
   pzsr_n = PT.new_ZoneSubRegion(name='__maia_degen_nodes_new', point_list=[p_nodes_from_degen_faces], loc='Vertex', parent=pzone_n)
   PT.new_DataArray("OldToNew", old_to_new_degen_bc_nodes, parent=pzsr_n)
-  
   if pzone_n is None:
     local_gnum = np.empty(0, dtype=pdm_gnum_dtype)
   else:
     local_gnum = PT.get_value(MT.getGlobalNumbering(pzone_n, 'Vertex'))[p_nodes_from_degen_faces-1]
   zsr_gnum = PCU.create_sub_numbering([local_gnum], comm)[0]
   PT.maia.newGlobalNumbering({'Index' : zsr_gnum}, parent=pzsr_n)
-  
+  #> transfer
   maia.transfer.part_tree_to_dist_tree_only_labels(shallow_dist_tree, part_tree_ngon, ['ZoneSubRegion_t'], comm)
- 
+  
+  # Get information in dist
+  #> from zone and ngon nodes
   shallow_zone_n  = PT.get_node_from_label(shallow_dist_tree, 'Zone_t')
-  
-  degen_bc_n = PT.get_node_from_name(shallow_zone_n, '__maia_degen_faces')
-  pl_degen_bc = PT.get_value(PT.get_node_from_name(degen_bc_n, 'PointList'))[0]
-  
-  ngon_n  = PT.Zone.NGonNode(shallow_zone_n)
-  
+  shallow_ngon_n  = PT.Zone.NGonNode(shallow_zone_n)
+  #> from degenerated faces
+  degen_faces_n = PT.get_node_from_name(shallow_zone_n, '__maia_degen_faces')
+  pl_degen_faces = PT.get_value(PT.get_node_from_name(degen_faces_n, 'PointList'))[0]
+  #> from nodes of degenerated faces
   zsr_n = PT.get_node_from_name(shallow_zone_n, '__maia_degen_nodes_new')
-  old_to_new_degen_bc_vtx = PT.get_value(PT.get_node_from_name(zsr_n, 'OldToNew'))
-  distrib_old_to_new_degen_bc_vtx = PT.get_value(PT.maia.getDistribution(zsr_n, 'Index')).copy()
-  # print(old_to_new_degen_bc_vtx)
+  old_to_new_all_vtx_from_degen_faces = PT.get_value(PT.get_node_from_name(zsr_n, 'OldToNew'))
+  distrib_old_to_new_all_vtx_from_degen_faces = PT.get_value(PT.maia.getDistribution(zsr_n, 'Index')).copy()
   
-  ref_vtx         = np.unique(old_to_new_degen_bc_vtx)
+  # Identify nodes to remove
+  ref_vtx         = np.unique(old_to_new_all_vtx_from_degen_faces)
   in_or_not = maia.utils.parallel.algo.gnum_isin(nodes_from_degen_faces,ref_vtx, comm)
   index_to_remove = np.where(in_or_not == True)
   vtx_to_remove   = np.delete(nodes_from_degen_faces, index_to_remove)
   
-  face_to_remove = pl_degen_bc
+  # Identify faces to remove
+  face_to_remove = pl_degen_faces
   n_rmvd_face    = comm.allreduce(len(face_to_remove), op=MPI.SUM)
   
+  # Need dto copy face distribution before it changes in ngon update !!!
+  face_distri_ini = PT.get_value(PT.maia.getDistribution(shallow_ngon_n, 'Element')).copy()
+  
+  # Update ngon node
+  #> define old to new global numbering for nodes of degenerated faces to remove
   vtx_distri_ini  = PT.get_value(PT.maia.getDistribution(shallow_zone_n, 'Vertex'))
-  face_distri_ini = PT.get_value(PT.maia.getDistribution(ngon_n, 'Element')).copy()
+  old_to_new_vtx_to_rm_from_degen_faces = np.delete(old_to_new_all_vtx_from_degen_faces, index_to_remove)
+  old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, old_to_new_vtx_to_rm_from_degen_faces, comm)
+  #> update ngon node
+  _new_update_ngon(shallow_ngon_n, face_to_remove, vtx_distri_ini, old_to_new_vtx, comm)
   
-  old_to_new_degen_bc_vtx_remove = np.delete(old_to_new_degen_bc_vtx, index_to_remove)
-  old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, old_to_new_degen_bc_vtx_remove, comm)
-  
-  _new_update_ngon(ngon_n, face_to_remove, vtx_distri_ini, old_to_new_vtx, comm)
-  
-  # Because some faces are removed we trick the distribution by creating a new
+  # Update nface node
+  # Trick : because some faces are removed, in the distribution, we create a new
   # face with number nb_faces + 1
+  #> change face distribution
   nb_faces = face_distri_ini[2]
   face_distri_ext = copy.deepcopy(face_distri_ini)
   if face_distri_ext[1] == nb_faces:
     face_distri_ext[1] += 1
   face_distri_ext[2] += 1
-  
+  #> define old to new global numbering for degenerated faces to remove
   old_to_new_face_to_remove = (nb_faces+1)*np.ones(len(face_to_remove), dtype=np.int32)
   old_to_new_face = merge_distributed_ids(face_distri_ext, face_to_remove, old_to_new_face_to_remove, comm)
-  
+  #> update nface node
   nface_n = PT.Zone.NFaceNode(shallow_zone_n)
   if nface_n:
-    # TO DO : mettre a jour la fonction maia.algo.dist._update_nface ci-dessous :
     _new_update_nface(nface_n, face_distri_ext, old_to_new_face, n_rmvd_face, comm)
   
-  # maia.algo.dist.merge_jn._update_vtx_data(shallow_zone_n, vtx_to_remove, comm)
+  # Update all data stored at 'Vertex' except in subsets
   _new_update_vtx_data(shallow_zone_n, vtx_to_remove, comm)
   
   base_name = PT.get_name(PT.get_node_from_label(shallow_dist_tree, "CGNSBase_t"))
   
+  # Update all data stored at 'Vertex' in subsets
   _new_update_cgns_subsets(shallow_zone_n, 'Vertex', vtx_distri_ini, old_to_new_vtx, base_name, comm)
   
-  #Shift all CellCenter PL by the number of removed faces
-  if PT.Element.Range(ngon_n)[0] == 1:
+  # Shift all CellCenter PL by the number of removed faces
+  if PT.Element.Range(shallow_ngon_n)[0] == 1:
     _new_shift_cgns_subsets(shallow_zone_n, 'CellCenter', -n_rmvd_face)
   
+  # Update all data stored at 'FaceCenter' in subsets
   old_to_new_face_unsg = np.abs(old_to_new_face)
   _new_update_cgns_subsets(shallow_zone_n, 'FaceCenter', face_distri_ext, old_to_new_face_unsg, base_name, comm)
   
@@ -525,3 +535,4 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   
   # Add zone to base
   PT.add_child(new_base_n, shallow_zone_n)
+
