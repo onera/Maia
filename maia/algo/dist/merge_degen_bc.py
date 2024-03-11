@@ -313,8 +313,8 @@ def _new_update_cgns_subsets(zone, location, entity_distri, old_to_new_face, bas
 
   #Trick to add a PL to each subregion to be able to use same algo
   for zsr in zsr_list:
-    if PT.getSubregionExtent(zsr, zone) != PT.get_name(zsr):
-      PT.add_child(zsr, PT.get_node_from_path(zone, PT.getSubregionExtent(zsr, zone) + '/PointList'))
+    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
+      PT.add_child(zsr, PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr, zone) + '/PointList'))
 
   #Get new index for every PL at once
   all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0] for fs in all_nodes]
@@ -336,7 +336,7 @@ def _new_update_cgns_subsets(zone, location, entity_distri, old_to_new_face, bas
 
   #Cleanup after trick
   for zsr in zsr_list:
-    if PT.getSubregionExtent(zsr, zone) != PT.get_name(zsr):
+    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
       PT.rm_children_from_name(zsr, 'PointList')
 
 
