@@ -10,13 +10,14 @@ import maia.pytree.maia   as MT
 
 from maia.utils                      import np_utils
 from maia.utils                      import logging as mlog
-from maia                            import transfer as TE
+from maia.transfer                   import protocols as EP
+from maia.transfer                   import utils as tr_utils
 from maia.factory.dist_from_part     import discover_nodes_from_matching
 
-from .point_cloud_utils              import get_point_cloud
 from maia.algo.part.extract_boundary import extract_surf_from_bc
 from maia.algo.part.geometry         import compute_cell_center
-from maia.transfer                   import utils as tr_utils
+
+from .point_cloud_utils              import get_point_cloud
 
 BC_WALLS = ['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']
 
@@ -59,11 +60,12 @@ class WallDistance:
     self._keep_alive = []
     self._n_vtx_bnd_tot_idx  = [0]
     self._n_face_bnd_tot_idx = [0]
+    self._n_face_orig_bnd_tot_idx = [0] # Exclude periodized patchs
     
     self.perio = perio
     self.periodicities = []
     
-  def _shift_id_and_push_in_global_list(self, parts_datas, all_parts_datas, i_dom):
+  def _shift_id_and_push_in_global_list(self, parts_datas, all_parts_datas, i_dom, perio_ghost):
 
     face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z = parts_datas
     face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l = all_parts_datas
@@ -74,6 +76,8 @@ class WallDistance:
       n_face_bnd_t = max(n_face_bnd_t, np.max(face_ln_to_gn, initial=0))
     n_face_bnd_t = self.mpi_comm.allreduce(n_face_bnd_t, op=MPI.MAX)
     self._n_face_bnd_tot_idx.append(self._n_face_bnd_tot_idx[-1] + n_face_bnd_t)
+    if not perio_ghost:
+      self._n_face_orig_bnd_tot_idx.append(self._n_face_orig_bnd_tot_idx[-1] + n_face_bnd_t)
 
     n_vtx_bnd_t = 0
     for vtx_ln_to_gn in vtx_ln_to_gn_z:
@@ -107,7 +111,7 @@ class WallDistance:
     dupl_parts_data = [l for l in parts_datas]
     dupl_parts_data[3] = vtx_bnd_dupl_z #Udpate with duplicated coords
 
-    self._shift_id_and_push_in_global_list(dupl_parts_data, all_parts_datas, i_dom)
+    self._shift_id_and_push_in_global_list(dupl_parts_data, all_parts_datas, i_dom, True)
     return dupl_parts_data
 
   def _setup_surf_mesh(self, parts_per_dom, comm):
@@ -121,14 +125,25 @@ class WallDistance:
     vtx_bnd_l = []
     vtx_ln_to_gn_l = []
 
+    # These will be used at the end to recover the ClosestEltGnum in volumic mesh numbering  
+    # We save this only for "real" domains (not for periodic ghost) because the link
+    # surface_gnum->parent_gnum does not change
+    self.face_parent_gnum_l = []
+    self.face_ln_to_gn_l = []
+
     all_parts_datas = [face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l]
 
     i_dom = -1
     for part_zones in parts_per_dom:
       
       i_dom += 1
-      parts_datas = extract_surf_from_bc(part_zones, self.bc_predicate, comm)
-      self._shift_id_and_push_in_global_list(parts_datas, all_parts_datas, i_dom)
+      parts_datas = [data for data in extract_surf_from_bc(part_zones, self.bc_predicate, comm)]
+      face_parent_gnum = parts_datas.pop(3)
+
+      self.face_parent_gnum_l.extend(face_parent_gnum) # -> Volumic gnum for each partition of the surface
+      self.face_ln_to_gn_l.extend([t + self._n_face_orig_bnd_tot_idx[-1] for t in parts_datas[2]]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
+
+      self._shift_id_and_push_in_global_list(parts_datas, all_parts_datas, i_dom, False)
       
       if self.perio:
         parts_surf_to_dupl_l = [parts_datas]
@@ -188,7 +203,7 @@ class WallDistance:
       cell_face_idx = PT.get_value(PT.get_child_from_name(nface, 'ElementStartOffset'))
       cell_face     = PT.get_value(PT.get_child_from_name(nface, 'ElementConnectivity'))
 
-      vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = TE.utils.get_entities_numbering(part_zone)
+      vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = tr_utils.get_entities_numbering(part_zone)
 
       n_vtx  = vtx_ln_to_gn .shape[0]
       n_cell = cell_ln_to_gn.shape[0]
@@ -245,9 +260,8 @@ class WallDistance:
 
       # Closest gnum element (face)
       closest_elt_gnum = np.copy(fields['ClosestEltGnum'])
-      PT.new_DataArray('ClosestEltGnum', closest_elt_gnum.reshape(shape,order='F'), parent=fs_node)
 
-      # Find domain to which the face belongs (mainly for debug)
+      # Find domain to which the face belongs
       n_face_bnd_tot_idx = np.array(self._n_face_bnd_tot_idx, dtype=closest_elt_gnum.dtype)
       closest_surf_domain = np.searchsorted(n_face_bnd_tot_idx, closest_elt_gnum-1, side='right') -1
       closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
@@ -255,7 +269,11 @@ class WallDistance:
       if self.perio:
         closest_surf_domain = closest_surf_domain//(3**(len(self.periodicities)))
       PT.new_DataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
-      PT.new_DataArray("ClosestEltLocGnum", value=closest_elt_gnuml.reshape(shape,order='F'), parent=fs_node)
+
+      # Reput closest face gnum in shifted numbering, but ignoring periodic patches
+      n_face_bnd_orig_tot_idx = np.array(self._n_face_orig_bnd_tot_idx)
+      closest_elt_gnum = closest_elt_gnuml + n_face_bnd_orig_tot_idx[closest_surf_domain]
+      self.closest_elt_gnum.append(closest_elt_gnum)
 
 
 
@@ -272,7 +290,7 @@ class WallDistance:
     # Group partitions by original dist domain
     parts_per_dom = list()
     for zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
-      parts_per_dom.append(TE.utils.get_partitioned_zones(self.part_tree, zone_path))
+      parts_per_dom.append(tr_utils.get_partitioned_zones(self.part_tree, zone_path))
     assert len(parts_per_dom) >= 1
     
         
@@ -340,8 +358,19 @@ class WallDistance:
     self._walldist.compute()
 
     # Get results -- OK because name of method is the same for 2 PDM objects
+    self.closest_elt_gnum = list() # To collect gnum (in surface) result
     for i_domain, part_zones in enumerate(parts_per_dom):
       self._get(i_domain, part_zones)
+
+    # PartToPart to put back the ClosestEltGnum in volumic numbering (construct it only once)
+    closest_parent_face = EP.part_to_part(self.face_parent_gnum_l, self.face_ln_to_gn_l, self.closest_elt_gnum, self.mpi_comm)
+    i_part = 0
+    for part_zones in parts_per_dom:
+      for part_zone in part_zones:
+        fs_node = PT.get_child_from_name(part_zone, self.out_fs_n)
+        shape = PT.get_child_from_name(fs_node, 'Distance')[1].shape
+        PT.new_DataArray("ClosestEltGnum", value=closest_parent_face[i_part].reshape(shape, order='F'), parent=fs_node)
+        i_part += 1
 
     # Free unnecessary numpy
     del self._keep_alive

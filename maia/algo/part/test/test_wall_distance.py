@@ -36,11 +36,11 @@ def test_wall_distance_U(perio, comm):
   if comm.Get_rank() == 0:
     part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
     expected_wd = [0.75, 0.25, 0.25, 0.75]
-    expected_gnum = [1, 1, 2, 2]
+    expected_gnum = [21, 21, 22, 22]
   elif comm.Get_rank() == 1:
     part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
     expected_wd = [0.75, 0.25, 0.75, 0.25]
-    expected_gnum = [3, 3, 4, 4]
+    expected_gnum = [23, 23, 24, 24]
   base = PT.get_all_CGNSBase_t(part_tree)[0]
   base_family = PT.new_Family('WALL', family_bc='BCWall', parent=base)
   zone = PT.get_all_Zone_t(part_tree)[0]
@@ -86,11 +86,11 @@ def test_projection_to(comm):
   if comm.Get_rank() == 0:
     part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
     expected_wd = [0.75, 0.25, 0.25, 0.75]
-    expected_gnum = [1, 1, 2, 2]
+    expected_gnum = [21, 21, 22, 22]
   elif comm.Get_rank() == 1:
     part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
     expected_wd = [0.75, 0.25, 0.75, 0.25]
-    expected_gnum = [3, 3, 4, 4]
+    expected_gnum = [23, 23, 24, 24]
   base = PT.get_all_CGNSBase_t(part_tree)[0]
   base_family = PT.new_Family('WALL', family_bc='BCWall', parent=base)
   zone = PT.get_all_Zone_t(part_tree)[0]
@@ -118,9 +118,8 @@ def test_projection_to(comm):
 def test_walldistance_elts(comm):
   tree = maia.factory.generate_dist_block(3, 'TETRA_4', comm)
   # Set some BC wall
-  for name in ['Xmin', 'Ymin', 'Zmin']:
-    bc = PT.get_node_from_name(tree, 'Xmin')
-    PT.set_value(bc, 'BCWall')
+  bc = PT.get_node_from_name(tree, 'Xmin')
+  PT.set_value(bc, 'BCWall')
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
   WD.compute_wall_distance(ptree, comm)
@@ -129,11 +128,11 @@ def test_walldistance_elts(comm):
   if comm.Get_rank() == 0:
     expected_wd = [0.125,0.375,0.125,0.375,0.25 ,0.875,0.875,0.625,0.625,0.75,0.375,0.375,
                    0.125,0.125,0.25 ,0.625,0.875,0.625,0.875,0.75]
-    expected_gnum = [1, 1, 2, 1, 1, 1, 2, 1, 1, 1, 3, 3, 3, 4, 3, 3, 4, 3, 3, 3]
+    expected_gnum = [17, 17, 18, 17, 17, 17, 18, 17, 17, 17, 19, 19, 19, 20, 19, 19, 20, 19, 19, 19]
   elif comm.Get_rank() == 1:
     expected_wd = [0.375,0.375,0.125,0.125,0.25, 0.625,0.875,0.625,0.875,0.75,0.125,0.375,
                    0.125,0.375,0.25, 0.875,0.875,0.625,0.625,0.75]
-    expected_gnum = [5, 5, 5, 6, 5, 5, 6, 5, 5, 5, 7, 7, 8, 7, 7, 7, 8, 7, 7, 7]
+    expected_gnum = [21, 21, 21, 22, 21, 21, 22, 21, 21, 21, 23, 23, 24, 23, 23, 23, 24, 23, 23, 23]
 
 
   assert (PT.get_node_from_name(tree, 'TurbulentDistance')[1] == expected_wd).all()
@@ -176,13 +175,13 @@ def test_walldistance_perio(comm):
   expected_wd     = [0.35355339, 0.35355339, 1.06066017, 1.06066017,
                      0.35355339, 0.35355339, 1.06066017, 1.06066017]
   if comm.rank == 0:
-    expected_gnum   = [[ 1, 4, 3, 126,  2, 3, 92, 37],
-                       [37, 6, 5,  98, 38, 5, 98,  5]]
+    expected_gnum   = [[25, 28, 27, 26, 26, 27, 28, 25],
+                       [25, 26, 25, 26, 26, 25, 26, 25]]
     expected_dom_id = [[0, 0, 0, 3, 0, 0, 2, 1],
                        [1, 0, 0, 2, 1, 0, 2, 0]]
   elif comm.rank == 1:
-    expected_gnum   = [[ 73, 76, 75, 38,  74, 75, 4, 109],
-                       [109, 78, 77,  6, 110, 77, 6,  77]]
+    expected_gnum   = [[25, 28, 27, 26, 26, 27, 28, 25],
+                       [25, 26, 25, 26, 26, 25, 26, 25]]
     expected_dom_id = [[2, 2, 2, 1, 2, 2, 0, 3],
                        [3, 2, 2, 0, 3, 2, 0, 2]]
 
@@ -198,11 +197,11 @@ def test_walldistance_vtx(comm):
   if comm.Get_rank() == 0:
     part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
     expected_wd = [1, 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0 ]
-    expected_gnum = [1,1,1,1,1,1,2,2,2,1,1,1,1,1,1,2,2,2]
+    expected_gnum = [21,21,21,21,21,21,22,22,22,21,21,21,21,21,21,22,22,22]
   elif comm.Get_rank() == 1:
     part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
     expected_wd = [1, 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0 ]
-    expected_gnum = [3,3,3,3,3,3,4,4,4,1,1,1,1,1,1,2,2,2]
+    expected_gnum = [23,23,23,23,23,23,24,24,24,21,21,21,21,21,21,22,22,22]
   base = PT.get_all_CGNSBase_t(part_tree)[0]
   base_family = PT.new_Family('WALL', family_bc='BCWall', parent=base)
   zone = PT.get_all_Zone_t(part_tree)[0]

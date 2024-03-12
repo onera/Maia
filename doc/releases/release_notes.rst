@@ -19,10 +19,10 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - adapt_mesh_with_feflo: manage axisymmetric meshes when ``perio=True``
+- compute_wall_distance: use volumic face global numbering in ClosestEltGnum result
 
 🐞 Fixes
 ^^^^^^^^
-- io: fix read of unstructured BCDataSet having a PointList
 - extract_part: ensure dtype correctness of transfered arrays
 
 v1.3 (January 2024)
@@ -51,6 +51,7 @@ v1.3 (January 2024)
 - transform_affine : manage partitioned S zones and 2D meshes
 - transfer module : prevent a bug occurring when subset nodes have a dot in their name
 - convert_mixed_to_elements: prevent a bug occurring when multiple MIXED nodes are used
+- **[v1.3.1]** io: fix read of unstructured BCDataSet having a PointList
 
 🚧 API change
 ^^^^^^^^^^^^^
