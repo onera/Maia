@@ -365,7 +365,7 @@ def _new_shift_cgns_subsets(zone, location, shift_value):
     PT.get_child_from_name(node, 'PointList')[1][0] += shift_value
 
 # ------------------------------------------------------------------------------------------
-def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_degen_faces, pl_degen_nodes_kept, degen_bc_name, comm):
+def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_degen_faces, pl_degen_nodes_kept, degen_subset_names, comm):
   """
   In a zone, this function delete all degenerated faces store in ZoneSubRegion
   and update all nodes of the zone accept PointListDonor
@@ -528,7 +528,9 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   # for now: del degen_bc
   # PT.print_tree(PT.get_node_from_path(shallow_zone_n, f'ZoneBC/{degen_bc_name}'))
   # exit()
-  PT.rm_node_from_path(shallow_zone_n, f'ZoneBC/{degen_bc_name}')
+  for degen_subset_name in degen_subset_names:
+    PT.rm_node_from_path(shallow_zone_n, f'ZoneBC/{degen_subset_name}')
+    PT.rm_node_from_path(shallow_zone_n, f'{degen_subset_name}')
   
   # Suppression des artefacts d'algo
   PT.rm_nodes_from_name(shallow_zone_n,'__maia_degen_*')
@@ -536,3 +538,68 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   # Add zone to base
   PT.add_child(new_base_n, shallow_zone_n)
 
+# ------------------------------------------------------------------------------------------
+def delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm):
+  """
+  Delete all faces of family named fam_to_removed and keep only nodes that are shared with
+  family named fam_for_intersection
+  """
+  
+  new_dist_tree = copy.deepcopy(dist_tree)
+  new_base_n = PT.get_node_from_label(new_dist_tree, 'CGNSBase_t')
+  PT.rm_nodes_from_label(new_base_n, 'Zone_t')
+  
+  for zone_n in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
+    
+    pl_degen_faces           = np.empty(0, dtype=pdm_gnum_dtype)
+    pl_intersect_degen_faces = np.empty(0, dtype=pdm_gnum_dtype)
+    degen_subset_names       = []
+    intersect_subset_names   = []
+    for bc_n in PT.get_nodes_from_label(zone_n, 'BC_t'):
+      fam_n = PT.get_node_from_label(bc_n, 'FamilyName_t')
+      if fam_n is not None:
+        fam = PT.get_value(fam_n)
+        if fam == fam_to_remove:
+          pl_degen_faces = np.append(pl_degen_faces, PT.get_value(PT.Subset.getPatch(bc_n))[0])
+          degen_subset_names.append(PT.get_name(bc_n))
+        elif fam == fam_for_intersection:
+          pl_intersect_degen_faces = np.append(pl_intersect_degen_faces, PT.get_value(PT.Subset.getPatch(bc_n))[0])
+          intersect_subset_names.append(PT.get_name(bc_n))
+    for zsr_n in PT.get_nodes_from_label(zone_n, 'ZoneSubRegion_t'):
+      fam_n = PT.get_node_from_label(zsr_n, 'FamilyName_t')
+      if fam_n is not None:
+        fam = PT.get_value(fam_n)
+        if fam == fam_to_remove:
+          if PT.get_node_from_name(zsr_n, 'PointList') is None:
+            zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
+            zsr_extent_n = PT.get_node_from_path(zone_n, zsr_extent_path)
+            pl_degen_faces = np.append(pl_degen_faces, PT.get_value(PT.Subset.getPatch(zsr_extent_n))[0])
+          else:
+            pl_degen_faces = np.append(pl_degen_faces, PT.get_value(PT.Subset.getPatch(zsr_n))[0])
+          degen_subset_names.append(PT.get_name(zsr_n))
+        elif fam == fam_for_intersection:
+          if PT.Subset.getPatch(zsr_n) is None:
+            zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
+            zsr_extent_n = PT.get_node_from_path(zone_n, zsr_extent_path)
+            pl_intersect_degen_faces = np.append(pl_intersect_degen_faces, PT.get_value(PT.Subset.getPatch(zsr_extent_n))[0])
+          else:
+            pl_intersect_degen_faces = np.append(pl_intersect_degen_faces, PT.get_value(PT.Subset.getPatch(zsr_n))[0])
+          intersect_subset_names.append(PT.get_name(zsr_n))
+    if len(degen_subset_names) == 0:
+      PT.add_child(new_base_n, zone_n)
+      continue
+    if len(intersect_subset_names) == 0:
+      print("Error : 'intersect_degen_bc' is not defined !")
+      exit()
+    
+    # List with unique nodes
+    ngon_n = PT.Zone.NGonNode(zone_n)
+    nodes_degen_faces           = distribute_unique_vtx_ids_from_face_ids(pl_degen_faces,           ngon_n, comm)
+    nodes_intersect_degen_faces = distribute_unique_vtx_ids_from_face_ids(pl_intersect_degen_faces, ngon_n, comm)
+    
+    nodes_degen_faces_in = maia.utils.parallel.algo.gnum_isin(nodes_degen_faces,nodes_intersect_degen_faces, comm)
+    degen_nodes_kept = nodes_degen_faces[nodes_degen_faces_in]
+    
+    delete_degen_faces_for_one_zone(dist_tree, PT.get_name(zone_n), new_dist_tree, pl_degen_faces, degen_nodes_kept, degen_subset_names, comm)
+    
+    return new_dist_tree

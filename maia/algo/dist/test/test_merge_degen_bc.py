@@ -2,6 +2,8 @@ import copy
 import itertools
 import mpi4py.MPI      as MPI
 import numpy           as np
+
+import pytest
 import pytest_parallel
 
 import maia
@@ -21,8 +23,10 @@ import Pypdm.Pypdm as PDM
 
 
 
-@pytest_parallel.mark.parallel([1,2, 7, 11, 23, 59])
-def test_merge_degen_bc(comm):
+@pytest_parallel.mark.parallel([1,2,7,11,23,59])
+# @pytest.mark.parametrize("ZSR", [False, True])
+@pytest.mark.parametrize("ZSR", [False])
+def test_merge_degen_bc(ZSR,comm):
   #----------------------------
   # Parameters
   nx = 5
@@ -79,6 +83,13 @@ def test_merge_degen_bc(comm):
   for fam in fam_l:
       PT.update_child(base_n,fam,label='Family_t')
   
+  if ZSR:
+    ymin_n = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/ZoneBC_t/Ymin')
+    PT.rm_nodes_from_name(ymin_n, 'FamilyName')
+    PT.print_tree(ymin_n)
+    zone_n = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t')
+    PT.new_ZoneSubRegion(name='ZSR_Ymin', bc_name='Ymin', family=bc2fam['Ymin'], parent=zone_n)
+  
   #----------------------------
   # Convert to ngon
   # When convert_elements_to_ngon will be parallel independant, this part
@@ -98,63 +109,15 @@ def test_merge_degen_bc(comm):
   
   #-------------
   # Begin of the test
-
-  # Some functions need a NFace node
-  for zone_n in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
-    if not PT.Zone.has_nface_elements(zone_n):
-      maia.algo.pe_to_nface(zone_n, comm)
   
-  new_dist_tree = copy.deepcopy(dist_tree)
-  new_base_n = PT.get_node_from_label(new_dist_tree, 'CGNSBase_t')
-  PT.rm_nodes_from_label(new_base_n, 'Zone_t')
+  fam_to_remove        = 'AXIS'
+  fam_for_intersection = 'PER2'
   
-  for zone_n in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
-    
-    degen_bc_n = None
-    intersect_degen_bc_n = None
-    for bc in PT.get_nodes_from_label(zone_n, 'BC_t'):
-      fam_n = PT.get_node_from_label(bc, 'FamilyName_t')
-      if fam_n is None:
-        if bc[0].startswith("BCDegene"):
-          degen_bc_n = bc
-        elif bc[0].startswith("BCSymmetry"):
-          intersect_degen_bc_n = bc
-      else:
-        fam = PT.get_value(fam_n)
-        if (fam == 'AXIS') or (fam == 'DGL'):
-          degen_bc_n = bc
-        elif fam == 'SIDE1':
-          intersect_degen_bc_n = bc
-        elif bc[0] == "Ymin":
-          degen_bc_n = bc
-        elif bc[0] == "Zmax":
-          intersect_degen_bc_n = bc
-    if degen_bc_n is None:
-      PT.add_child(new_base_n, zone_n)
-      continue
-    if intersect_degen_bc_n is None: #Search in GC the first perio
-      for gc in PT.get_nodes_from_predicates(zone_n, ['ZoneGridConnectivity','GridConnectivity_t']):
-        if PT.get_nodes_from_label(gc, 'Periodic_t') is not None:
-          intersect_degen_bc_n = gc
-          break
-    if intersect_degen_bc_n is None:
-      print("Error : 'intersect_degen_bc' is not defined !")
-      exit()
-    
-    degen_bc_name = PT.get_name(degen_bc_n)
-    pl_degen_bc = PT.get_value(PT.get_node_from_name(degen_bc_n, 'PointList'))[0]
-    pl_intersect_degen_bc = PT.get_value(PT.get_node_from_name(intersect_degen_bc_n, 'PointList'))[0]
-    
-    # List with unique nodes
-    ngon_n = PT.Zone.NGonNode(zone_n)
-    nodes_degen_bc           = MDB.distribute_unique_vtx_ids_from_face_ids(pl_degen_bc,           ngon_n, comm)
-    nodes_intersect_degen_bc = MDB.distribute_unique_vtx_ids_from_face_ids(pl_intersect_degen_bc, ngon_n, comm)
-    
-    nodes_degen_bc_in = maia.utils.parallel.algo.gnum_isin(nodes_degen_bc,nodes_intersect_degen_bc, comm)
-    nodes_degen_line = nodes_degen_bc[nodes_degen_bc_in]
-    
-    MDB.delete_degen_faces_for_one_zone(dist_tree, PT.get_name(zone_n), new_dist_tree, pl_degen_bc, nodes_degen_line, degen_bc_name, comm)
-    
+  new_dist_tree = MDB.delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm)
+  
+  if ZSR:
+    PT.rm_nodes_from_name(new_dist_tree, 'ZSR_Ymin')
+    PT.rm_nodes_from_name(new_dist_tree, 'Ymin')
   
   maia.algo.dist.redistribute_tree(new_dist_tree, 'uniform', comm)
   ref_dist_tree = maia.io.file_to_dist_tree(f'/stck/sbouras/dev/dev-Fun/DegeneratedLine/eighth_cylinder_5x5x5_ready_ngon_without_degenline_REF.cgns', comm)
