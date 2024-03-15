@@ -97,6 +97,39 @@ def test_closestpoint_mdom(comm):
   # Gnum should have been reshifted
   assert _result['closest_src_gnum'][dom1_idx].max() <= PT.Zone.n_vtx(src_parts_per_dom[0][0])
   assert _result['closest_src_gnum'][dom2_idx].max() <= PT.Zone.n_vtx(src_parts_per_dom[1][0])
+
+@pytest_parallel.mark.parallel(2)
+def test_closest_points_lowdim(comm):
+  dtree_src = maia.factory.generate_dist_sphere(5, 'TRI_3', comm)
+
+  # Line generation by hand
+  cx = np.array([1.,1,1,1,1,1])
+  cy = np.array([0.,0,0,0,0,0])
+  cz = np.array([-0.5, -0.3, -0.1, 0.1, 0.3, 0.5])
+  dtree_tgt = PT.new_CGNSTree()
+  dbase_tgt = PT.new_CGNSBase(cell_dim=1, parent=dtree_tgt)
+  zone = PT.new_Zone(type='Unstructured', size=[[6,5,0]], parent=dbase_tgt)
+  PT.new_GridCoordinates(fields={f'Coordinate{dir}' : f for dir,f in zip('XYZ', [cx,cy,cz])}, parent=zone)
+  PT.new_Elements('BAR', 'BAR_2', erange=[1,5], econn=[1,2,2,3,3,4,4,5,5,6], parent=zone)
+  dtree_tgt = maia.factory.full_to_dist_tree(dtree_tgt, comm)
+
+  tree_src = partition_dist_tree(dtree_src, comm)
+  tree_tgt = partition_dist_tree(dtree_tgt, comm)
+
+  CLO.find_closest_points(tree_src, tree_tgt, 'CellCenter', comm)
+  tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
+  clo_node = PT.get_node_from_name_and_label(tgt_zone, 'ClosestPoint', 'DiscreteData_t')
+  assert clo_node is not None and PT.Subset.GridLocation(clo_node) == 'CellCenter'
+  assert PT.get_value(PT.get_child_from_name(clo_node, 'DomainList')) == "Base/zone"
+
+  # Check result on dist tree to not rely on partitioning
+  maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tree_tgt, comm)
+  if comm.rank == 0:
+    expected_dsrc_id = np.array([133,150,149])
+  elif comm.rank == 1:
+    expected_dsrc_id = np.array([131,128])
+  assert (PT.get_node_from_name(dtree_tgt, 'SrcId')[1] == expected_dsrc_id).all()
+
   
 @pytest_parallel.mark.parallel(3)
 def test_closest_points(comm):
