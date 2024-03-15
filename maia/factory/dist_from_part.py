@@ -189,7 +189,8 @@ def _recover_elements(dist_zone, part_zones, comm):
     for elt in elt_nodes:
       n_elt_per_dim[PT.Element.Dimension(elt)] += PT.Element.Size(elt)
 
-    elt_order = [PT.Zone.elt_ordering_by_dim(part_zone) for part_zone in part_zones]
+    elt_order = [PT.Zone.elt_ordering_by_dim(part_zone) for part_zone in part_zones
+                 if sum([d != [0,0] for d in PT.Zone.get_elt_range_per_dim(part_zone)]) > 1]
     n_increase = comm.allreduce(elt_order.count(1),  MPI.SUM)
     n_decrease = comm.allreduce(elt_order.count(-1), MPI.SUM)
     assert n_increase * n_decrease == 0

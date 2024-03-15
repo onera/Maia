@@ -24,6 +24,7 @@ Developpement version
 🐞 Fixes
 ^^^^^^^^
 - extract_part: ensure dtype correctness of transfered arrays
+- recover_dist_tree: prevent a crash if some Elements_t nodes does not exist in every zones
 
 v1.3 (January 2024)
 -------------------
