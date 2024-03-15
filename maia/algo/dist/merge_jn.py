@@ -15,12 +15,9 @@ from maia.algo.dist           import vertex_list as VL
 
 from maia.transfer import protocols as EP
 
-def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
+def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   """
-  Update ngon node after face and vertex merging, ie
-   - update ParentElements to combinate faces
-   - remove faces from EC, PE and ESO and update distribution info
-   - update ElementConnectivity using vertex old_to_new order
+  Update ParentElements in ngon to combinate faces
   """
   face_distri = PT.get_value(MT.getDistribution(ngon, 'Element'))
   pe          = PT.get_node_from_path(ngon, 'ParentElements')[1]
@@ -29,10 +26,10 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
   #TODO This method asserts that PE is CGNS compliant ie left_parent != 0 for bnd elements
   assert not np.any(pe[:,0] == 0)
 
-  # A/ Exchange parent cells before removing :
   # 1. Get the left cell of the faces to delete
   dist_data = {'PE' : pe[:,0]}
   part_data = EP.block_to_part(dist_data, face_distri, [del_faces], comm)
+  
   # 2. Put it in the right cell of the faces to keep
   #TODO : exchange of ref_faces could be avoided using get gnum copy
   part_data['FaceId'] = [ref_faces]
@@ -42,17 +39,42 @@ def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, com
   assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
   pe[local_faces, 1] = dist_data['PE']
 
-  # B/ Update EC, PE and ESO removing some faces
+def _update_ngon_remove_faces(ngon, del_faces, comm):
+  """
+  Remove faces from EC, PE and ESO and update distribution info in ngon
+  """
+  face_distri = PT.get_value(MT.getDistribution(ngon, 'Element'))
   part_data = [del_faces]
   dist_data = EP.part_to_block(part_data, face_distri, [del_faces], comm)
   local_faces = dist_data - face_distri[0] - 1
   RME.remove_ngons(ngon, local_faces, comm)
-
+  
+def _update_ngon_update_EC(ngon, vtx_distri_ini, old_to_new_vtx, comm):
+  """
+  Update ElementConnectivity using vertex old_to_new order in ngon
+  """
   # C/ Update vertex ids in EC
   ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
   part_data = EP.block_to_part(old_to_new_vtx, vtx_distri_ini, [PT.get_value(ngon_ec_n)], comm)
   assert len(ngon_ec_n[1]) == len(part_data[0])
   PT.set_value(ngon_ec_n, part_data[0])
+
+def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
+  """
+  Update ngon node after face and vertex merging, ie
+   - update ParentElements to combinate faces
+   - remove faces from EC, PE and ESO and update distribution info
+   - update ElementConnectivity using vertex old_to_new order
+  """
+
+  # A/ Exchange parent cells before removing :
+  _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm)
+
+  # B/ Update EC, PE and ESO removing some faces
+  _update_ngon_remove_faces(ngon, del_faces, comm)
+
+  # C/ Update vertex ids in EC
+  _update_ngon_update_EC(ngon, vtx_distri_ini, old_to_new_vtx, comm)
 
 def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
   """

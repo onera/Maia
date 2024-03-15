@@ -5,6 +5,7 @@ import numpy      as np
 import os
 
 import maia
+import maia.algo.dist.merge_jn          as MJN
 import maia.algo.part.point_cloud_utils as PCU
 import maia.pytree                      as PT
 import maia.pytree.maia                 as MT
@@ -35,64 +36,55 @@ def distribute_unique_vtx_ids_from_face_ids(pl_faces, ngon_n, comm):
   distrib_nodes_pl_wanted = par_utils.uniform_distribution(distrib_nodes_pl_init[-1], comm)
   return EP.block_to_block(nodes_pl, distrib_nodes_pl_init, distrib_nodes_pl_wanted, comm)
 
-
+def _remove_dup_vtx_ids_in_ESO(poly, comm):
+  """
+  Remove duplicated vertex ids in EC and update ESO
+  Works for ngon or nface nodes
+  """
+  poly_eso_n = PT.get_child_from_name(poly, 'ElementStartOffset')
+  poly_ec_n  = PT.get_child_from_name(poly, 'ElementConnectivity')
+  poly_eso   = PT.get_value(poly_eso_n)
+  poly_ec    = PT.get_value(poly_ec_n)
+  new_poly_eso = np.zeros(len(poly_eso), dtype=np.int32)
+  new_poly_ec  = []
+  _poly_eso = poly_eso - poly_eso[0]
+  for n in range(len(poly_eso)-1):
+    poly_ec_tmp = poly_ec[_poly_eso[n]:_poly_eso[n+1]]
+    _, idx = np.unique(poly_ec_tmp, return_index=True)
+    poly_ec_tmp = poly_ec_tmp[np.sort(idx)]
+    new_poly_ec.append(poly_ec_tmp)
+    new_poly_eso[n+1] = new_poly_eso[n] + len(poly_ec_tmp)
+  if new_poly_ec: new_poly_ec = np.concatenate(new_poly_ec)
+  size_new_poly_ec = new_poly_eso[-1]
+  size_new_poly_ec_per_proc = comm.allgather(size_new_poly_ec)
+  shift_new_poly_eso = int(np.sum(size_new_poly_ec_per_proc[:comm.rank]))
+  size_new_poly_eso_total = int(np.sum(size_new_poly_ec_per_proc[:comm.size])) 
+  new_poly_eso += shift_new_poly_eso
+  PT.set_value(poly_eso_n, new_poly_eso)
+  PT.set_value(poly_ec_n, new_poly_ec)
+  distrib_face_vtx_n = PT.maia.getDistribution(poly, 'ElementConnectivity')
+  PT.set_value(distrib_face_vtx_n, [new_poly_eso[0], new_poly_eso[-1], size_new_poly_eso_total])
 
 # ------------------------------------------------------------------------------------------
-# Inspirer de _new_update_ngon(ngon_n, ref_faces, face_to_remove, vtx_distri_ini, old_to_new_vtx, comm)
-# Gerer EC et ESO differemment car suppression de noeuds pas uniquement remplacement !
-def _new_update_ngon(ngon, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
+def _update_ngon(ngon, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
   """
   Update ngon node after face and vertex merging, ie
    - remove faces from EC, PE and ESO and update distribution info
    - update ElementConnectivity using vertex old_to_new order
+   - remove duplicated vertex ids in EC and update ESO
   """
-  
-  face_distri = PT.get_value(PT.maia.getDistribution(ngon, 'Element'))
-  pe          = PT.get_node_from_path(ngon, 'ParentElements')[1]
-
-
-  #TODO This method asserts that PE is CGNS compliant ie left_parent != 0 for bnd elements
-  assert not np.any(pe[:,0] == 0)
 
   # A/ Update EC, PE and ESO removing some faces
-  ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
-  part_data = [del_faces]
-  dist_data = EP.part_to_block(part_data, face_distri, [del_faces], comm)
-  local_faces = dist_data - face_distri[0] - 1
-  RME.remove_ngons(ngon, local_faces, comm)
+  MJN._update_ngon_remove_faces(ngon, del_faces, comm)
 
   # B/ Update vertex ids in EC
-  ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
-  part_data = EP.block_to_part(old_to_new_vtx, vtx_distri_ini, [PT.get_value(ngon_ec_n)], comm)
-  assert len(ngon_ec_n[1]) == len(part_data[0])
-  PT.set_value(ngon_ec_n, part_data[0])
+  MJN._update_ngon_update_EC(ngon, vtx_distri_ini, old_to_new_vtx, comm)
   
   # C/ Delete vertex ids duplicates in EC and update ESO
-  ngon_eso_n = PT.get_child_from_name(ngon, 'ElementStartOffset')
-  ngon_eso   = PT.get_value(ngon_eso_n)
-  ngon_ec    = PT.get_value(ngon_ec_n)
-  new_ngon_ec = []
-  new_ngon_eso = np.zeros(len(ngon_eso), dtype=np.int32)
-  _ngon_eso = ngon_eso - ngon_eso[0]
-  for n in range(len(ngon_eso)-1):
-    ngon_ec_tmp = ngon_ec[_ngon_eso[n]:_ngon_eso[n+1]]
-    _, idx = np.unique(ngon_ec_tmp, return_index=True)
-    ngon_ec_tmp = ngon_ec_tmp[np.sort(idx)]
-    new_ngon_ec.append(ngon_ec_tmp)
-    new_ngon_eso[n+1] = new_ngon_eso[n] + len(ngon_ec_tmp)
-  if new_ngon_ec: new_ngon_ec = np.concatenate(new_ngon_ec)
-  size_new_ngon_ec = new_ngon_eso[-1]
-  size_new_ngon_ec_per_proc = comm.allgather(size_new_ngon_ec)
-  shift_new_ngon_eso = int(np.sum(size_new_ngon_ec_per_proc[:comm.rank]))
-  size_new_ngon_eso_total = int(np.sum(size_new_ngon_ec_per_proc[:comm.size])) 
-  new_ngon_eso += shift_new_ngon_eso
-  PT.set_value(ngon_eso_n, new_ngon_eso)
-  PT.set_value(ngon_ec_n, new_ngon_ec)
-  distrib_face_vtx_n = PT.maia.getDistribution(ngon, 'ElementConnectivity')
-  PT.set_value(distrib_face_vtx_n, [new_ngon_eso[0], new_ngon_eso[-1], size_new_ngon_eso_total])
+  _remove_dup_vtx_ids_in_ESO(ngon, comm)
 
 # ------------------------------------------------------------------------------------------
-def _new_update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
+def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
   """
   Update nface node after face merging, ie
    - update ElementConnectivity using face old_to_new order
@@ -139,7 +131,7 @@ def _new_update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm
   PT.set_value(distrib_cell_face_n, [new_nface_eso[0], new_nface_eso[-1], size_new_nface_eso_total])
 
 # ------------------------------------------------------------------------------------------
-def _new_update_vtx_data(zone, vtx_to_remove, comm):
+def _update_vtx_data(zone, vtx_to_remove, comm):
   """
   Remove the vertices in data array supported by allVertex (currently
   managed : GridCoordinates, FlowSolution, DiscreteData)
@@ -171,7 +163,7 @@ def _new_update_vtx_data(zone, vtx_to_remove, comm):
   zone[1][0][0] = vtx_distri[2]
 
 # ------------------------------------------------------------------------------------------
-def _new_update_subset(node, pl_new, data_query, comm):
+def _update_subset(node, pl_new, data_query, comm):
   """
   Update a PointList and all the data
   """
@@ -214,7 +206,7 @@ def _new_update_subset(node, pl_new, data_query, comm):
       PT.set_value(data_nodes[-1], dist_data_ideal[path])
 
 # ------------------------------------------------------------------------------------------
-def _new_update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_name, comm):
+def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_name, comm):
   """
   Treated for now :
     BC, BCDataset (With or without PL), FlowSol, DiscreteData, ZoneSubRegion, JN
@@ -263,7 +255,7 @@ def _new_update_cgns_subsets(zone, location, entity_distri, old_to_new_face, bas
   part_offset = 0
   for node_list, data_query in all_nodes_and_queries:
     for node in node_list:
-      _new_update_subset(node, part_data_pl[part_offset], data_query, comm)
+      _update_subset(node, part_data_pl[part_offset], data_query, comm)
       part_offset += 1
 
   #For internal jn only, we must update PointListDonor with new face id. Non internal jn reorder the array,
@@ -283,7 +275,7 @@ def _new_update_cgns_subsets(zone, location, entity_distri, old_to_new_face, bas
 # ------------------------------------------------------------------------------------------
 # TODO move to sids module, doc, unit test
 #(take the one of _shift_cgns_subsets, and for _shift_cgns_subsets, make a trivial test)
-def new_all_nodes_with_point_list(zone, pl_location):
+def all_nodes_with_point_list(zone, pl_location):
   has_pl = lambda n: PT.get_child_from_name(n, 'PointList') is not None \
                      and PT.Subset.GridLocation(n) == pl_location
   return itertools.chain(
@@ -295,13 +287,13 @@ def new_all_nodes_with_point_list(zone, pl_location):
     )
 
 # ------------------------------------------------------------------------------------------
-def _new_shift_cgns_subsets(zone, location, shift_value):
+def _shift_cgns_subsets(zone, location, shift_value):
   """
   Shift all the PointList of the requested location with the given value
   PointList are seached in every node below zone, + in BC_t, BCDataSet_t,
   GridConnectivity_t
   """
-  for node in new_all_nodes_with_point_list(zone,location):
+  for node in all_nodes_with_point_list(zone,location):
     PT.get_child_from_name(node, 'PointList')[1][0] += shift_value
 
 # ------------------------------------------------------------------------------------------
@@ -372,7 +364,7 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   old_to_new_vtx_to_rm_from_degen_faces = np.delete(old_to_new_degen_faces_nodes, index_to_remove)
   old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, old_to_new_vtx_to_rm_from_degen_faces, comm)
   #> update ngon node
-  _new_update_ngon(shallow_ngon_n, face_to_remove, vtx_distri_ini, old_to_new_vtx, comm)
+  _update_ngon(shallow_ngon_n, face_to_remove, vtx_distri_ini, old_to_new_vtx, comm)
   
   # Update nface node
   # Trick : because some faces are removed, in the distribution, we create a new
@@ -389,23 +381,23 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   #> update nface node
   nface_n = PT.Zone.NFaceNode(shallow_zone_n)
   if nface_n:
-    _new_update_nface(nface_n, face_distri_ext, old_to_new_face, n_rmvd_face, comm)
+    _update_nface(nface_n, face_distri_ext, old_to_new_face, n_rmvd_face, comm)
   
   # Update all data stored at 'Vertex' except in subsets
-  _new_update_vtx_data(shallow_zone_n, vtx_to_remove, comm)
+  _update_vtx_data(shallow_zone_n, vtx_to_remove, comm)
   
   base_name = PT.get_name(PT.get_node_from_label(shallow_dist_tree, "CGNSBase_t"))
   
   # Update all data stored at 'Vertex' in subsets
-  _new_update_cgns_subsets(shallow_zone_n, 'Vertex', vtx_distri_ini, old_to_new_vtx, base_name, comm)
+  _update_cgns_subsets(shallow_zone_n, 'Vertex', vtx_distri_ini, old_to_new_vtx, base_name, comm)
   
   # Shift all CellCenter PL by the number of removed faces
   if PT.Element.Range(shallow_ngon_n)[0] == 1:
-    _new_shift_cgns_subsets(shallow_zone_n, 'CellCenter', -n_rmvd_face)
+    _shift_cgns_subsets(shallow_zone_n, 'CellCenter', -n_rmvd_face)
   
   # Update all data stored at 'FaceCenter' in subsets
   old_to_new_face_unsg = np.abs(old_to_new_face)
-  _new_update_cgns_subsets(shallow_zone_n, 'FaceCenter', face_distri_ext, old_to_new_face_unsg, base_name, comm)
+  _update_cgns_subsets(shallow_zone_n, 'FaceCenter', face_distri_ext, old_to_new_face_unsg, base_name, comm)
   
   # TO DO: delete in all FaceCenter* PL all "nb_faces+1" numbered face
   # for now: del degen_bc
@@ -414,9 +406,6 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   for degen_subset_name in degen_subset_names:
     PT.rm_node_from_path(shallow_zone_n, f'ZoneBC/{degen_subset_name}')
     PT.rm_node_from_path(shallow_zone_n, f'{degen_subset_name}')
-  
-  # Suppression des artefacts d'algo
-  PT.rm_nodes_from_name(shallow_zone_n,'__maia_degen_*')
   
   # Add zone to base
   PT.add_child(new_base_n, shallow_zone_n)
