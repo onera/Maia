@@ -1,34 +1,30 @@
-import mpi4py.MPI as MPI
-
-import numpy as np
 import copy
+import itertools
+import mpi4py.MPI as MPI
+import numpy      as np
 import os
 
 import maia
-import maia.pytree as PT
+import maia.algo.part.point_cloud_utils as PCU
+import maia.pytree                      as PT
+import maia.pytree.maia                 as MT
 
-from maia.algo.dist.merge_ids import merge_distributed_ids
 from maia                     import npy_pdm_gnum_dtype    as pdm_gnum_dtype
+from maia.algo.dist           import remove_element        as RME
+from maia.algo.dist.merge_ids import merge_distributed_ids
+from maia.transfer            import protocols             as EP
+from maia.utils               import par_utils, np_utils
 
 import Pypdm.Pypdm as PDM
-# ------------------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------------------
-from maia.transfer  import protocols      as EP
-from maia.algo.dist import remove_element as RME
-
-import maia.pytree.maia                 as MT
-import maia.algo.part.point_cloud_utils as PCU
-
-from maia       import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils import par_utils
-
-import itertools
 
 
 
 
-
+# TO DO: define where to store
 def distribute_unique_vtx_ids_from_face_ids(pl_faces, ngon_n, comm):
+  """
+  Get only unique nodes of faces in list and distribute it over all procs uniformly
+  """
   # Get the nodes ids of all faces in pl_faces
   __, nodes_pl = maia.algo.dist.vertex_list.face_ids_to_vtx_ids(pl_faces, ngon_n, comm)
   # Make unique
@@ -59,76 +55,41 @@ def _new_update_ngon(ngon, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
   assert not np.any(pe[:,0] == 0)
 
   # A/ Update EC, PE and ESO removing some faces
-  # PT.print_tree(ngon)
   ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
-  # print([comm.rank, f"BEFORE len(ngon_ec_n[1]) = {len(ngon_ec_n[1])}"])
   part_data = [del_faces]
   dist_data = EP.part_to_block(part_data, face_distri, [del_faces], comm)
   local_faces = dist_data - face_distri[0] - 1
   RME.remove_ngons(ngon, local_faces, comm)
-  # print("Step A done !")
-  # PT.print_tree(ngon)
-  # exit()
 
   # B/ Update vertex ids in EC
   ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
-  # print([comm.rank, f"len(old_to_new_vtx) = {len(old_to_new_vtx)}"])
-  # print([comm.rank, f"vtx_distri_ini = {vtx_distri_ini}"])
-  # print([comm.rank, f"AFTER len(ngon_ec_n[1]) = {len(ngon_ec_n[1])}"])
-  # exit()
   part_data = EP.block_to_part(old_to_new_vtx, vtx_distri_ini, [PT.get_value(ngon_ec_n)], comm)
   assert len(ngon_ec_n[1]) == len(part_data[0])
   PT.set_value(ngon_ec_n, part_data[0])
-  # print(len(np.unique(part_data[0])))
-  # print([comm.rank, f"len(part_data[0]) = {len(part_data[0])}", (4*4*5*3-16)*4])
-  # print(len(part_data[0]), 224*4-5)
-  # exit()
-  # print("Step B done !")
   
   # C/ Delete vertex ids duplicates in EC and update ESO
   ngon_eso_n = PT.get_child_from_name(ngon, 'ElementStartOffset')
   ngon_eso   = PT.get_value(ngon_eso_n)
   ngon_ec    = PT.get_value(ngon_ec_n)
-  # print([comm.rank, f"AFTER2 len(ngon_ec_n[1]) = {len(ngon_ec_n[1])}"])
-  # print([comm.rank, f"ngon_ec_n[1] = {ngon_ec_n[1]}"])
-  # print([comm.rank, f"ngon_eso_n[1] = {ngon_eso_n[1]}"])
-  # print(len(ngon_eso)-1)
   new_ngon_ec = []
   new_ngon_eso = np.zeros(len(ngon_eso), dtype=np.int32)
+  _ngon_eso = ngon_eso - ngon_eso[0]
   for n in range(len(ngon_eso)-1):
-    # if comm.rank==1: print(ngon_eso[n]-ngon_eso[0], ngon_eso[n+1]-ngon_eso[0])
-    ngon_ec_tmp = ngon_ec[ngon_eso[n]-ngon_eso[0]:ngon_eso[n+1]-ngon_eso[0]]
-    # if comm.rank==1: print(ngon_ec_tmp)
-    # exit()
+    ngon_ec_tmp = ngon_ec[_ngon_eso[n]:_ngon_eso[n+1]]
     _, idx = np.unique(ngon_ec_tmp, return_index=True)
     ngon_ec_tmp = ngon_ec_tmp[np.sort(idx)]
     new_ngon_ec.append(ngon_ec_tmp)
     new_ngon_eso[n+1] = new_ngon_eso[n] + len(ngon_ec_tmp)
-    # print(ngon_ec_tmp)
   if new_ngon_ec: new_ngon_ec = np.concatenate(new_ngon_ec)
-  # print([comm.rank, f"AFTER3 len(new_ngon_ec) = {len(new_ngon_ec)}"])
-  # print([comm.rank, f"new_ngon_ec = {new_ngon_ec}"])
-  # print([comm.rank, f"new_ngon_eso = {new_ngon_eso}"])
-  # print([comm.rank, f"size_new_ngon_ec = {new_ngon_eso[-1]}"])
   size_new_ngon_ec = new_ngon_eso[-1]
   size_new_ngon_ec_per_proc = comm.allgather(size_new_ngon_ec)
-  # print([comm.rank, f"size_new_ngon_ec_per_proc = {size_new_ngon_ec_per_proc}"])
   shift_new_ngon_eso = int(np.sum(size_new_ngon_ec_per_proc[:comm.rank]))
   size_new_ngon_eso_total = int(np.sum(size_new_ngon_ec_per_proc[:comm.size])) 
   new_ngon_eso += shift_new_ngon_eso
-  # print([comm.rank, f"shift_new_ngon_eso = {shift_new_ngon_eso}"])
-  # new_ngon_eso += 
   PT.set_value(ngon_eso_n, new_ngon_eso)
   PT.set_value(ngon_ec_n, new_ngon_ec)
-  # exit()
-  # print(new_ngon_eso)
-  #TO DO : exchange len(new_ngon_ec) to all rank to update new_ngon_eso and distribution
   distrib_face_vtx_n = PT.maia.getDistribution(ngon, 'ElementConnectivity')
   PT.set_value(distrib_face_vtx_n, [new_ngon_eso[0], new_ngon_eso[-1], size_new_ngon_eso_total])
-  # print([0, new_ngon_eso[-1], new_ngon_eso[-1]])
-  # print([comm.rank, f"distrib_face_vtx_n = {[new_ngon_eso[0], new_ngon_eso[-1], size_new_ngon_eso_total]}"])
-  # print(ngon_n)
-  # print("Step C done !")
 
 # ------------------------------------------------------------------------------------------
 def _new_update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
@@ -156,47 +117,26 @@ def _new_update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm
   nface_eso_n = PT.get_child_from_name(nface, 'ElementStartOffset')
   nface_eso   = PT.get_value(nface_eso_n)
   nface_ec    = PT.get_value(nface_ec_n)
-  # print(nface_ec)
-  # print(len(nface_eso)-1)
   new_nface_ec = []
   new_nface_eso = np.zeros(len(nface_eso), dtype=np.int32)
   fake_face_num = face_distri_ini[2] - n_rmvd_face
-  # print([comm.rank, f"n_rmvd_face = {n_rmvd_face}"])
-  # print([comm.rank, f"fake_face_num = {fake_face_num}"])
-  # print(fake_face_num)
-  # exit()
+  _nface_eso = nface_eso - nface_eso[0]
   for n in range(len(nface_eso)-1):
-    nface_ec_tmp = nface_ec[nface_eso[n]-nface_eso[0]:nface_eso[n+1]-nface_eso[0]]
-    # print(nface_ec_tmp)
-    # exit()
-    # print(nface_ec_tmp)
-    # if fake_face_num in nface_ec_tmp:
-      # print(f"SB : fake_face_num {fake_face_num} in nface_ec_tmp")
+    nface_ec_tmp = nface_ec[_nface_eso[n]:_nface_eso[n+1]]
     index_to_remove = np.where(nface_ec_tmp == fake_face_num)
     nface_ec_tmp   = np.delete(nface_ec_tmp, index_to_remove)
-    # print(nface_ec_tmp)
-    # print("---")
     new_nface_ec.append(nface_ec_tmp)
     new_nface_eso[n+1] = new_nface_eso[n] + len(nface_ec_tmp)
-    # print(nface_ec_tmp)
   if new_nface_ec: new_nface_ec = np.concatenate(new_nface_ec)
-  # print(new_nface_ec)
   size_new_nface_ec = new_nface_eso[-1]
   size_new_nface_ec_per_proc = comm.allgather(size_new_nface_ec)
   shift_new_nface_eso = int(np.sum(size_new_nface_ec_per_proc[:comm.rank]))
   size_new_nface_eso_total = int(np.sum(size_new_nface_ec_per_proc[:comm.size])) 
   new_nface_eso += shift_new_nface_eso
-  # print([comm.rank, f"shift_new_nface_eso = {shift_new_nface_eso}"])
   PT.set_value(nface_eso_n, new_nface_eso)
   PT.set_value(nface_ec_n, new_nface_ec)
-  # exit()
-  # print(new_nface_eso)
-  #TO DO : exchange len(new_nface_ec) to all rank to update new_nface_eso and distribution
   distrib_cell_face_n = PT.maia.getDistribution(nface, 'ElementConnectivity')
-  # PT.set_value(distrib_cell_face_n, [0, new_nface_eso[-1], new_nface_eso[-1]])
   PT.set_value(distrib_cell_face_n, [new_nface_eso[0], new_nface_eso[-1], size_new_nface_eso_total])
-  # print(nface_n)
-  # print("Step C done !")
 
 # ------------------------------------------------------------------------------------------
 def _new_update_vtx_data(zone, vtx_to_remove, comm):
@@ -225,7 +165,7 @@ def _new_update_vtx_data(zone, vtx_to_remove, comm):
   # Update vertex distribution
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
   n_rmvd   = len(local_vtx_to_rmv)
-  n_rmvd_offset  = par_utils.gather_and_shift(n_rmvd, comm, pdm_dtype)
+  n_rmvd_offset  = par_utils.gather_and_shift(n_rmvd, comm, pdm_gnum_dtype)
   vtx_distri = vtx_distri_ini - [n_rmvd_offset[i_rank], n_rmvd_offset[i_rank+1],  n_rmvd_offset[n_rank]]
   MT.newDistribution({'Vertex' : vtx_distri}, zone)
   zone[1][0][0] = vtx_distri[2]
@@ -255,7 +195,7 @@ def _new_update_subset(node, pl_new, data_query, comm):
 
   d_pl_new = PTB.getBlockGnumCopy()
 
-  new_distri_full = par_utils.gather_and_shift(len(d_pl_new), comm, pdm_dtype)
+  new_distri_full = par_utils.gather_and_shift(len(d_pl_new), comm, pdm_gnum_dtype)
   #Result is badly distributed, we can do a BlockToBlock to have a uniform distribution
   ideal_distri      = par_utils.uniform_distribution(new_distri_full[-1], comm)
   dist_data_ideal = EP.block_to_block(dist_data, new_distri_full, ideal_distri, comm)
@@ -371,26 +311,17 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   and update all nodes of the zone accept PointListDonor
   For now, this function is not inplace !!!
   """
-  
   zone_n = PT.get_node_from_name_and_label(dist_tree, zone_name, 'Zone_t')
   ngon_n = PT.Zone.NGonNode(zone_n)
   
-  # Defined private ZoneSubRegions to store mandatory information
-  zsr0_n = PT.new_ZoneSubRegion(name='__maia_degen_faces', point_list=[pl_degen_faces], loc='FaceCenter', parent=zone_n)
-  full_distri0 = par_utils.gather_and_shift(len(pl_degen_faces), comm)
-  partial_distri0 = full_distri0[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
-  PT.maia.newDistribution({"Index" : partial_distri0}, zsr0_n)
-  
-  zsr1_n = PT.new_ZoneSubRegion(name='__maia_degen_nodes_kept', point_list=[pl_degen_nodes_kept], loc='Vertex', parent=zone_n)
-  full_distri1 = par_utils.gather_and_shift(len(pl_degen_nodes_kept), comm)
-  partial_distri1 = full_distri1[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
-  PT.maia.newDistribution({"Index" : partial_distri1}, zsr1_n)
-    
+  # Define distribution 
+  #> for nodes kept in degenerated faces
+  full_distri_nodes_kept = par_utils.gather_and_shift(len(pl_degen_nodes_kept), comm)
+  partial_distri_nodes_kept = full_distri_nodes_kept[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+  #> for all unique nodes in degenerated faces
   nodes_from_degen_faces = distribute_unique_vtx_ids_from_face_ids(pl_degen_faces, ngon_n, comm)
-  zsr2_n = PT.new_ZoneSubRegion(name='__maia_degen_nodes', point_list=[nodes_from_degen_faces], loc='Vertex', parent=zone_n)
-  full_distri2 = par_utils.gather_and_shift(len(nodes_from_degen_faces), comm)
-  partial_distri2 = full_distri2[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
-  PT.maia.newDistribution({"Index" : partial_distri2}, zsr2_n)
+  full_distri_all_nodes_degen_faces = par_utils.gather_and_shift(len(nodes_from_degen_faces), comm)
+  partial_distri_all_nodes_degen_faces = full_distri_all_nodes_degen_faces[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
   
   # Work only on a copy of the considered zone !
   new_base_n = PT.get_node_from_label(new_dist_tree, 'CGNSBase_t')
@@ -399,79 +330,31 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
     shallow_dist_tree,
     lambda n: PT.get_label(n)=='Zone_t' and PT.get_name(zone_n) not in PT.get_name(n))
   
-  # Partition volumic mesh
-  part_tree_ngon = maia.factory.partition_dist_tree(shallow_dist_tree, comm)
-  
-  # Extract kept nodes of degenerated faces from volumic mesh
-  pzone_n = PT.get_node_from_label(part_tree_ngon, 'Zone_t')  
-  extractor_degen_line = maia.algo.part.extract_part.create_extractor_from_zsr(part_tree_ngon, '__maia_degen_nodes_kept', comm)
-  part_tree_degen_line = extractor_degen_line.get_extract_part_tree()
-  pzone_degen_line_n = PT.get_node_from_label(part_tree_degen_line, 'Zone_t')
-  dom_name = PT.get_name(PT.get_node_from_label(shallow_dist_tree, 'Zone_t'))
-  dom_path = f'{PT.get_name(PT.get_all_CGNSBase_t(part_tree_ngon)[0])}/{dom_name}'
-  parent_vtx = extractor_degen_line.exch_tool_box[dom_path]['parent_elt']['Vertex']
-  
-  # Find closest kept node for each nodes of volumic mesh
-  maia.algo.part.find_closest_points(part_tree_degen_line, part_tree_ngon, 'Vertex', comm)
-  # Verification que les noeuds donnes sont a une distance inferieure a une tolerance ?
+  # Find closest kept node for each nodes of degenerated faces
+  #> mimic fake partition to use _closest_points on distributed nodes clouds
+  src_lngn = np.arange(partial_distri_nodes_kept[0], partial_distri_nodes_kept[1], dtype=pdm_gnum_dtype) + 1
+  tgt_lngn = np.arange(partial_distri_all_nodes_degen_faces[0], partial_distri_all_nodes_degen_faces[1], dtype=pdm_gnum_dtype) + 1
+  cx, cy, cz = PT.Zone.coordinates(zone_n)
+  distri_vtx = PT.get_value(MT.getDistribution(zone_n, 'Vertex'))
+  part_data_coords = EP.block_to_part({'cx':cx, 'cy': cy, 'cz': cz}, distri_vtx, [pl_degen_nodes_kept, nodes_from_degen_faces], comm)
+  src_coords = np_utils.interweave_arrays([part_data_coords[c][0] for c in ['cx', 'cy', 'cz']])
+  tgt_coords = np_utils.interweave_arrays([part_data_coords[c][1] for c in ['cx', 'cy', 'cz']])
+  closest_src_gnum = maia.algo.part.closest_points._closest_points([(src_coords, src_lngn)], [(tgt_coords, tgt_lngn)], comm)[0]['closest_src_gnum']
   
   # Find old to new global numbering for nodes of degenerated faces
-  #> get link between each nodes of volume mesh and kept nodes (in the extract numbering)
-  try:
-    src_id = PT.get_value(PT.get_node_from_name(part_tree_ngon, 'SrcId'))
-  except TypeError:
-    src_id = np.empty(0, dtype=pdm_gnum_dtype)
-  #> get nodes of degenerated faces in partitionned zone
-  if pzone_n is None:
-    p_nodes_from_degen_faces = np.zeros((0), dtype=np.int32)
-  else:
-    pzsr2_n = PT.get_node_from_name(pzone_n, '__maia_degen_nodes')
-    if pzsr2_n is None:
-      p_nodes_from_degen_faces = np.zeros((0), dtype=np.int32)
-    else:
-      p_nodes_from_degen_faces = PT.get_value(PT.get_node_from_name(pzsr2_n, 'PointList'))[0]
-  #> get global numbering of each nodes of volume mesh
-  if pzone_n is None:
-    part1_gnum_vtx = np.empty(0, dtype=pdm_gnum_dtype)
-  else:
-    part1_gnum_vtx = PT.get_value(MT.getGlobalNumbering(pzone_n, 'Vertex'))
-  #> get global numbering of each kept nodes
-  if pzone_degen_line_n is None:
-    part2_gnum_vtx = np.empty(0, dtype=pdm_gnum_dtype)
-  else:
-    part2_gnum_vtx = PT.get_value(MT.getGlobalNumbering(pzone_degen_line_n, 'Vertex'))
-  #> compute old to new global numbering for each nodes of volumic mesh
-  ptp = PDM.PartToPart(comm, [part1_gnum_vtx], [part2_gnum_vtx], [np.arange(len(src_id)+1,dtype=src_id.dtype)], [src_id])
-  request1 = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P, PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2, [parent_vtx])
+  #> compute old to new global numbering for each nodes of degenerated faces
+  ptp = PDM.PartToPart(comm, [tgt_lngn], [src_lngn], [np.arange(len(closest_src_gnum)+1,dtype=closest_src_gnum.dtype)], [closest_src_gnum])
+  request1 = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P, PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2, [pl_degen_nodes_kept])
   _, part_data = ptp.reverse_wait(request1)
-  #> keep only old to new global numbering for nodes of degenerated faces
-  old_to_new_degen_bc_nodes = part_data[0][p_nodes_from_degen_faces-1]
-  #> store this information in ZSR to transfer it from part to dist
-  pzsr_n = PT.new_ZoneSubRegion(name='__maia_degen_nodes_new', point_list=[p_nodes_from_degen_faces], loc='Vertex', parent=pzone_n)
-  PT.new_DataArray("OldToNew", old_to_new_degen_bc_nodes, parent=pzsr_n)
-  if pzone_n is None:
-    local_gnum = np.empty(0, dtype=pdm_gnum_dtype)
-  else:
-    local_gnum = PT.get_value(MT.getGlobalNumbering(pzone_n, 'Vertex'))[p_nodes_from_degen_faces-1]
-  zsr_gnum = PCU.create_sub_numbering([local_gnum], comm)[0]
-  PT.maia.newGlobalNumbering({'Index' : zsr_gnum}, parent=pzsr_n)
-  #> transfer
-  maia.transfer.part_tree_to_dist_tree_only_labels(shallow_dist_tree, part_tree_ngon, ['ZoneSubRegion_t'], comm)
+  old_to_new_degen_faces_nodes = part_data[0]
   
-  # Get information in dist
+  # Get information in shallow dist_tree
   #> from zone and ngon nodes
   shallow_zone_n  = PT.get_node_from_label(shallow_dist_tree, 'Zone_t')
   shallow_ngon_n  = PT.Zone.NGonNode(shallow_zone_n)
-  #> from degenerated faces
-  degen_faces_n = PT.get_node_from_name(shallow_zone_n, '__maia_degen_faces')
-  pl_degen_faces = PT.get_value(PT.get_node_from_name(degen_faces_n, 'PointList'))[0]
-  #> from nodes of degenerated faces
-  zsr_n = PT.get_node_from_name(shallow_zone_n, '__maia_degen_nodes_new')
-  old_to_new_all_vtx_from_degen_faces = PT.get_value(PT.get_node_from_name(zsr_n, 'OldToNew'))
-  distrib_old_to_new_all_vtx_from_degen_faces = PT.get_value(PT.maia.getDistribution(zsr_n, 'Index')).copy()
   
   # Identify nodes to remove
-  ref_vtx         = np.unique(old_to_new_all_vtx_from_degen_faces)
+  ref_vtx         = np.unique(old_to_new_degen_faces_nodes)
   in_or_not = maia.utils.parallel.algo.gnum_isin(nodes_from_degen_faces,ref_vtx, comm)
   index_to_remove = np.where(in_or_not == True)
   vtx_to_remove   = np.delete(nodes_from_degen_faces, index_to_remove)
@@ -486,7 +369,7 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   # Update ngon node
   #> define old to new global numbering for nodes of degenerated faces to remove
   vtx_distri_ini  = PT.get_value(PT.maia.getDistribution(shallow_zone_n, 'Vertex'))
-  old_to_new_vtx_to_rm_from_degen_faces = np.delete(old_to_new_all_vtx_from_degen_faces, index_to_remove)
+  old_to_new_vtx_to_rm_from_degen_faces = np.delete(old_to_new_degen_faces_nodes, index_to_remove)
   old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, old_to_new_vtx_to_rm_from_degen_faces, comm)
   #> update ngon node
   _new_update_ngon(shallow_ngon_n, face_to_remove, vtx_distri_ini, old_to_new_vtx, comm)

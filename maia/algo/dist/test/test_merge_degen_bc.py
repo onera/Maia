@@ -281,6 +281,8 @@ def test_merge_degen_bc(ZSR,comm):
   for zone_n in PT.get_nodes_from_label(ref_dist_tree, 'Zone_t'):
     if not PT.Zone.has_nface_elements(zone_n):
       maia.algo.pe_to_nface(zone_n, comm)
+  
   #----------------------------
   # Assertion test
   assert maia.pytree.is_same_tree(ref_dist_tree, new_dist_tree)
+  
