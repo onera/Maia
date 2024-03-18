@@ -45,7 +45,7 @@ def _remove_ids_in_ESO(poly, func, comm):
   poly_ec_n  = PT.get_child_from_name(poly, 'ElementConnectivity')
   poly_eso   = PT.get_value(poly_eso_n)
   poly_ec    = PT.get_value(poly_ec_n)
-  new_poly_eso = np.zeros(len(poly_eso), dtype=np.int32)
+  new_poly_eso = np.zeros(len(poly_eso), dtype=pdm_gnum_dtype)
   new_poly_ec  = []
   _poly_eso = poly_eso - poly_eso[0]
   for n in range(len(poly_eso)-1):
@@ -193,7 +193,7 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
     face_distri_ext[1] += 1
   face_distri_ext[2] += 1
   #> define old to new global numbering for degenerated faces to remove
-  old_to_new_face_to_remove = (nb_faces+1)*np.ones(len(face_to_remove), dtype=np.int32)
+  old_to_new_face_to_remove = (nb_faces+1)*np.ones(len(face_to_remove), dtype=pdm_gnum_dtype)
   old_to_new_face = merge_distributed_ids(face_distri_ext, face_to_remove, old_to_new_face_to_remove, comm)
   #> update nface node
   nface_n = PT.Zone.NFaceNode(shallow_zone_n)
