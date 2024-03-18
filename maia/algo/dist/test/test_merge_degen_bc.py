@@ -260,16 +260,16 @@ def test_merge_degen_bc(ZSR,comm):
   fam_to_remove        = 'AXIS'
   fam_for_intersection = 'PER2'
   
-  new_dist_tree = MDB.delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm)
+  MDB.delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm)
   
   #----------------------------
   # Prepare result with ZSR
   if ZSR:
-    PT.rm_nodes_from_name(new_dist_tree, 'Ymin')
+    PT.rm_nodes_from_name(dist_tree, 'Ymin')
   
   #----------------------------
   # To be sure to have the same distribution with reference
-  maia.algo.dist.redistribute_tree(new_dist_tree, 'uniform', comm)
+  maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
   
   #----------------------------
   # Prepare reference
@@ -284,5 +284,5 @@ def test_merge_degen_bc(ZSR,comm):
   
   #----------------------------
   # Assertion test
-  assert maia.pytree.is_same_tree(ref_dist_tree, new_dist_tree)
+  assert maia.pytree.is_same_tree(dist_tree, ref_dist_tree)
   

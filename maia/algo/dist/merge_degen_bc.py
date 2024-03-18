@@ -120,13 +120,14 @@ def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
   _remove_id_in_ESO(nface, fake_face_num, comm) 
 
 # ------------------------------------------------------------------------------------------
-def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_degen_faces, pl_degen_nodes_kept, degen_subset_names, comm):
+def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_degen_nodes_kept, degen_subset_names, comm):
   """
-  In a zone, this function delete all degenerated faces store in ZoneSubRegion
+  In a zone, this function delete all degenerated faces store in a ZoneSubRegion
   and update all nodes of the zone accept PointListDonor
-  For now, this function is not inplace !!!
   """
-  zone_n = PT.get_node_from_name_and_label(dist_tree, zone_name, 'Zone_t')
+  base_name, zone_name = zone_path.split('/')
+  base_n = PT.get_child_from_name(dist_tree, base_name)
+  zone_n = PT.get_child_from_name(base_n, zone_name)
   ngon_n = PT.Zone.NGonNode(zone_n)
   
   # Define distribution 
@@ -137,13 +138,6 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   nodes_from_degen_faces = distribute_unique_vtx_ids_from_face_ids(pl_degen_faces, ngon_n, comm)
   full_distri_all_nodes_degen_faces = par_utils.gather_and_shift(len(nodes_from_degen_faces), comm)
   partial_distri_all_nodes_degen_faces = full_distri_all_nodes_degen_faces[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
-  
-  # Work only on a copy of the considered zone !
-  new_base_n = PT.get_node_from_label(new_dist_tree, 'CGNSBase_t')
-  shallow_dist_tree = PT.shallow_copy(dist_tree)
-  PT.rm_nodes_from_predicate(
-    shallow_dist_tree,
-    lambda n: PT.get_label(n)=='Zone_t' and PT.get_name(zone_n) not in PT.get_name(n))
   
   # Find closest kept node for each nodes of degenerated faces
   #> mimic fake partition to use _closest_points on distributed nodes clouds
@@ -163,9 +157,9 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   _, part_data = ptp.reverse_wait(request1)
   old_to_new_degen_faces_nodes = part_data[0]
   
-  # Get information in shallow dist_tree
-  #> from zone and ngon nodes
-  shallow_zone_n  = PT.get_node_from_label(shallow_dist_tree, 'Zone_t')
+  # Work only on a copy of the considered zone !
+  shallow_zone_n  = copy.deepcopy(PT.get_child_from_name(base_n, zone_name))
+  PT.rm_nodes_from_name(base_n, zone_name)
   shallow_ngon_n  = PT.Zone.NGonNode(shallow_zone_n)
   
   # Identify nodes to remove
@@ -209,8 +203,6 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   # Update all data stored at 'Vertex' except in subsets
   MJN._update_vtx_data(shallow_zone_n, vtx_to_remove, comm)
   
-  base_name = PT.get_name(PT.get_node_from_label(shallow_dist_tree, "CGNSBase_t"))
-  
   # Update all data stored at 'Vertex' in subsets
   MJN._update_cgns_subsets(shallow_zone_n, 'Vertex', vtx_distri_ini, old_to_new_vtx, base_name, comm)
   
@@ -231,11 +223,10 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
     PT.rm_node_from_path(shallow_zone_n, f'{degen_subset_name}')
   
   # Add zone to base
-  PT.add_child(new_base_n, shallow_zone_n)
+  PT.add_child(base_n, shallow_zone_n)
   
   # Update PointList/PointListDonor of other zones
-  shallow_zone_path = PT.get_name(new_base_n) + '/' + PT.get_name(shallow_zone_n)
-  MJN._update_pl_pld_in_jn(new_dist_tree, shallow_zone_path)
+  MJN._update_pl_pld_in_jn(dist_tree, zone_path)
 
 # ------------------------------------------------------------------------------------------
 def delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm):
@@ -244,9 +235,7 @@ def delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersectio
   family named fam_for_intersection
   """
   
-  new_dist_tree = copy.deepcopy(dist_tree)
-  new_base_n = PT.get_node_from_label(new_dist_tree, 'CGNSBase_t')
-  PT.rm_nodes_from_label(new_base_n, 'Zone_t')
+  base_n = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
   
   for zone_n in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
     
@@ -285,7 +274,6 @@ def delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersectio
             pl_intersect_degen_faces = np.append(pl_intersect_degen_faces, PT.get_value(PT.Subset.getPatch(zsr_n))[0])
           intersect_subset_names.append(PT.get_name(zsr_n))
     if len(degen_subset_names) == 0:
-      PT.add_child(new_base_n, zone_n)
       continue
     if len(intersect_subset_names) == 0:
       print("Error : 'intersect_degen_bc' is not defined !")
@@ -299,6 +287,6 @@ def delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersectio
     nodes_degen_faces_in = maia.utils.parallel.algo.gnum_isin(nodes_degen_faces,nodes_intersect_degen_faces, comm)
     degen_nodes_kept = nodes_degen_faces[nodes_degen_faces_in]
     
-    delete_degen_faces_for_one_zone(dist_tree, PT.get_name(zone_n), new_dist_tree, pl_degen_faces, degen_nodes_kept, degen_subset_names, comm)
+    zone_path = PT.get_name(base_n)+'/'+PT.get_name(zone_n)
     
-    return new_dist_tree
+    delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, degen_nodes_kept, degen_subset_names, comm)
