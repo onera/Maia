@@ -232,6 +232,10 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_name, new_dist_tree, pl_dege
   
   # Add zone to base
   PT.add_child(new_base_n, shallow_zone_n)
+  
+  # Update PointList/PointListDonor of other zones
+  shallow_zone_path = PT.get_name(new_base_n) + '/' + PT.get_name(shallow_zone_n)
+  MJN._update_pl_pld_in_jn(new_dist_tree, shallow_zone_path)
 
 # ------------------------------------------------------------------------------------------
 def delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm):

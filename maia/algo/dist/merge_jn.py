@@ -258,6 +258,36 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   MT.newDistribution({'Vertex' : vtx_distri}, zone)
   zone[1][0][0] = vtx_distri[2]
 
+def _update_pl_pld_in_jn(dist_tree, zone_path):
+  # Since PointList/PointList donor of JN have changed, we must change opposite join as well
+  # Carefull : for intra zone jn, we may have a clash of actualized pl/pld. We use pathes to break it
+  base_n, zone_n = zone_path.split('/')
+  zone = PT.get_node_from_path(dist_tree, zone_path)
+  jn_to_opp = {}
+  all_gcs_query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
+  for zgc, gc in PT.iter_children_from_predicates(zone, all_gcs_query[2:], ancestors=True):
+    jn_to_opp[base_n + '/' + zone_n + '/' + zgc[0] + '/' + gc[0]] = \
+        (np.copy(PT.get_child_from_name(gc, 'PointList')[1]), np.copy(PT.get_child_from_name(gc, 'PointListDonor')[1]))
+  for o_base, o_zone, o_zgc, o_gc in PT.iter_children_from_predicates(dist_tree, all_gcs_query, ancestors=True):
+    gc_path = '/'.join([PT.get_name(node) for node in [o_base, o_zone, o_zgc, o_gc]])
+    gc_path_opp = MJT.get_jn_donor_path(dist_tree, gc_path)
+    try:
+      pl_opp, pld_opp = jn_to_opp[gc_path_opp]
+      # Skip one internal jn over two
+      if PT.get_name(o_base) + '/' + PT.get_name(o_zone) == zone_path and gc_path_opp >= gc_path:
+        pass
+      else:
+        PT.set_value(PT.get_child_from_name(o_gc, 'PointList'),     pld_opp)
+        PT.set_value(PT.get_child_from_name(o_gc, 'PointListDonor'), pl_opp)
+      #Since we modify the PointList of this join, we must check that no data is related to it
+      assert PT.get_child_from_label(o_gc, 'DataArray_t') is None, \
+          "Can not reorder a GridConnectivity PointList to which data is related"
+      for zsr in PT.iter_children_from_label(o_zone, 'ZoneSubRegion_t'):
+        assert PT.Subset.ZSRExtent(zsr, o_zone) != PT.get_name(o_zgc) + '/' + PT.get_name(o_gc), \
+            "Can not reorder a GridConnectivity PointList to which data is related"
+    except KeyError:
+      pass
+
 
 
 def merge_intrazone_jn(dist_tree, jn_pathes, comm):
@@ -308,33 +338,8 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   if PT.Element.Range(ngon)[0] == 1:
     _shift_cgns_subsets(zone, 'CellCenter', -n_rmvd_face)
 
-  # Since PointList/PointList donor of JN have changed, we must change opposite join as well
-  # Carefull : for intra zone jn, we may have a clash of actualized pl/pld. We use pathes to break it
-  jn_to_opp = {}
   current_zone_path = base_n + '/' + zone_n
-  all_gcs_query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 'GridConnectivity_t']
-  for zgc, gc in PT.iter_children_from_predicates(zone, all_gcs_query[2:], ancestors=True):
-    jn_to_opp[base_n + '/' + zone_n + '/' + zgc[0] + '/' + gc[0]] = \
-        (np.copy(PT.get_child_from_name(gc, 'PointList')[1]), np.copy(PT.get_child_from_name(gc, 'PointListDonor')[1]))
-  for o_base, o_zone, o_zgc, o_gc in PT.iter_children_from_predicates(dist_tree, all_gcs_query, ancestors=True):
-    gc_path = '/'.join([PT.get_name(node) for node in [o_base, o_zone, o_zgc, o_gc]])
-    gc_path_opp = MJT.get_jn_donor_path(dist_tree, gc_path)
-    try:
-      pl_opp, pld_opp = jn_to_opp[gc_path_opp]
-      # Skip one internal jn over two
-      if PT.get_name(o_base) + '/' + PT.get_name(o_zone) == current_zone_path and gc_path_opp >= gc_path:
-        pass
-      else:
-        PT.set_value(PT.get_child_from_name(o_gc, 'PointList'),     pld_opp)
-        PT.set_value(PT.get_child_from_name(o_gc, 'PointListDonor'), pl_opp)
-      #Since we modify the PointList of this join, we must check that no data is related to it
-      assert PT.get_child_from_label(o_gc, 'DataArray_t') is None, \
-          "Can not reorder a GridConnectivity PointList to which data is related"
-      for zsr in PT.iter_children_from_label(o_zone, 'ZoneSubRegion_t'):
-        assert PT.Subset.ZSRExtent(zsr, o_zone) != PT.get_name(o_zgc) + '/' + PT.get_name(o_gc), \
-            "Can not reorder a GridConnectivity PointList to which data is related"
-    except KeyError:
-      pass
+  _update_pl_pld_in_jn(dist_tree, current_zone_path)
 
   #Cleanup
   PT.rm_node_from_path(dist_tree, jn_pathes[0])
