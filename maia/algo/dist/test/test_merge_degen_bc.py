@@ -21,14 +21,7 @@ from maia.utils               import par_utils
 
 import Pypdm.Pypdm as PDM
 
-
-
-@pytest_parallel.mark.parallel([1,2,7,11,23,59])
-@pytest.mark.parametrize("ZSR", [False, True])
-def test_merge_degen_bc(ZSR,comm):
-  #----------------------------
-  # Ref yaml
-  yaml_ref = '''
+yaml_ref = '''
   CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
   Base CGNSBase_t I4 [3, 3]:
     INLET Family_t:
@@ -172,7 +165,43 @@ def test_merge_degen_bc(ZSR,comm):
                 [285, 0], [283, 287], [276, 0], [284, 288], [285, 286], [286, 287], [277, 0], [285, 0], [287, 288], [278,
                 0], [286, 0], [288, 0], [279, 0], [287, 0], [280, 0], [288, 0], [281, 0], [282, 0], [283, 0], [284, 0], [285,
                 0], [286, 0], [287, 0], [288, 0]]
-  '''
+'''
+
+yaml_ref_zgc = '''
+      ZoneGridConnectivity ZoneGridConnectivity_t:
+        Xmin_0 GridConnectivity_t 'Base/zone':
+          GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+          GridLocation GridLocation_t 'FaceCenter':
+          PointList IndexArray_t I4 [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
+          PointListDonor IndexArray_t I4 [[20, 32, 43, 56, 73, 84, 95, 108, 125, 136, 147, 160, 177, 188, 199, 212]]:
+          GridConnectivityProperty GridConnectivityProperty_t:
+            Periodic Periodic_t:
+              RotationAngle DataArray_t R4 [0, 0, 0]:
+              RotationCenter DataArray_t R4 [0, 0, 0]:
+              Translation DataArray_t R4 [4, 0, 0]:
+          GridConnectivityDonorName Descriptor_t 'Xmax_0':
+          FamilyName FamilyName_t 'INLET':
+        Xmax_0 GridConnectivity_t 'Base/zone':
+          GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+          GridLocation GridLocation_t 'FaceCenter':
+          PointList IndexArray_t I4 [[20, 32, 43, 56, 73, 84, 95, 108, 125, 136, 147, 160, 177, 188, 199, 212]]:
+          PointListDonor IndexArray_t I4 [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
+          GridConnectivityProperty GridConnectivityProperty_t:
+            Periodic Periodic_t:
+              RotationAngle DataArray_t R4 [-0, -0, -0]:
+              RotationCenter DataArray_t R4 [0, 0, 0]:
+              Translation DataArray_t R4 [-4, -0, -0]:
+          GridConnectivityDonorName Descriptor_t 'Xmin_0':
+          FamilyName FamilyName_t 'OUTLET':
+'''
+
+@pytest_parallel.mark.parallel([1,2,7,11,23,59])
+@pytest.mark.parametrize("ZSR", [False, True])
+@pytest.mark.parametrize("JN", [False, True])
+def test_merge_degen_faces(ZSR,JN,comm):
+  #----------------------------
+  # Ref yaml
+  
   
   #----------------------------
   # Parameters
@@ -194,6 +223,22 @@ def test_merge_degen_bc(ZSR,comm):
   # Generate cube
   dist_tree = maia.factory.generate_dist_block([nx,ny,nz], 'HEXA_8', comm)
   maia.algo.scale_mesh(dist_tree, [nx-1,ny-1,nz-1])
+  
+  #----------------------------
+  # Add families
+  base_n = PT.get_all_CGNSBase_t(dist_tree)[0] 
+  for bc_n in PT.get_nodes_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t'):
+      PT.set_value(bc_n, 'FamilySpecified')
+      PT.update_child(bc_n,'FamilyName',label='FamilyName_t',value=bc2fam[bc_n[0]])
+  
+  for fam in fam_l:
+      PT.update_child(base_n,fam,label='Family_t')
+  
+  #----------------------------
+  # Prepare test case with join
+  if JN:
+    periodic = {'translation' : np.array([nx-1, 0, 0], np.float32)}
+    maia.algo.dist.connect_1to1_families(dist_tree, ('INLET', 'OUTLET'), comm, periodic=periodic)
   
   #----------------------------
   # Move nodes to generate sector of cylinder
@@ -221,16 +266,6 @@ def test_merge_degen_bc(ZSR,comm):
     coord_x[beg:end], coord_y[beg:end], coord_z[beg:end] = maia.utils.ndarray.np_utils.transform_cart_vectors(coord_x[beg:end], coord_y[beg:end], coord_z[beg:end], rotation_angle = np.array([i*theta_x,theta_y,theta_z]))
   
   #----------------------------
-  # Add families
-  base_n = PT.get_all_CGNSBase_t(dist_tree)[0] 
-  for bc_n in PT.get_nodes_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t'):
-      PT.set_value(bc_n, 'FamilySpecified')
-      PT.update_child(bc_n,'FamilyName',label='FamilyName_t',value=bc2fam[bc_n[0]])
-  
-  for fam in fam_l:
-      PT.update_child(base_n,fam,label='Family_t')
-  
-  #----------------------------
   # Prepare test case with ZSR
   if ZSR:
     ymin_n = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/ZoneBC_t/Ymin')
@@ -240,7 +275,7 @@ def test_merge_degen_bc(ZSR,comm):
   
   #----------------------------
   # Convert to ngon
-  # When convert_elements_to_ngon will be parallel independant, this part
+  # When convert_elements_to_ngon will be parallel independent, this part
   # could be reduce to
   # maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
   maia.algo.dist.redistribute_tree(dist_tree, 'gather', comm)
@@ -255,11 +290,9 @@ def test_merge_degen_bc(ZSR,comm):
   dist_tree = maia.factory.full_to_dist_tree(full_tree, comm, owner=0)
   
   #-------------
-  # Begin of the test
-  
+  # Test
   fam_to_remove        = 'AXIS'
   fam_for_intersection = 'PER2'
-  
   MDB.delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm)
   
   #----------------------------
@@ -275,6 +308,12 @@ def test_merge_degen_bc(ZSR,comm):
   # Prepare reference
   if comm.rank == 0:
     ref_full_tree = PT.yaml.to_cgns_tree(yaml_ref)
+    if JN:
+      ref_zgc = PT.yaml.to_node(yaml_ref_zgc)
+      ref_zone = PT.get_node_from_label(ref_full_tree, 'Zone_t')
+      PT.add_child(ref_zone, ref_zgc)
+      PT.rm_nodes_from_name(ref_full_tree, 'Xmin')
+      PT.rm_nodes_from_name(ref_full_tree, 'Xmax')
   else:
     ref_full_tree = None
   ref_dist_tree = maia.factory.full_to_dist_tree(ref_full_tree, comm, owner=0)
