@@ -32,14 +32,16 @@ class AttributeRW:
     """ Read the attribute attr_name in the object gid and return it
     as a sttriped string.  """
     _name = h5a.open(gid, attr_name)
-    _name.read(self.buff_S33)
+    _name.read(self.buff_S33, _name.get_type())
+    #                         ^ Copy attribute type from file, otherwise h5py
+    # will create a default that may clash (H5T_CSET_UTF8 vs H5T_CSET_ASCII)
     return self.buff_S33.tobytes().decode().rstrip('\x00') ###UGLY
 
   def read_bytes_3(self, gid, attr_name):
     """ Read the attribute attr_name in the object gid and return it
     as bytes.  """
     _name = h5a.open(gid, attr_name)
-    _name.read(self.buff_S3)
+    _name.read(self.buff_S3, _name.get_type())
     return self.buff_S3[0]
 
   def write_str_3(self, gid, attr_name, attr_value):
