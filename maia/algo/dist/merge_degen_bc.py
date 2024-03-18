@@ -152,7 +152,7 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   
   # Find old to new global numbering for nodes of degenerated faces
   #> compute old to new global numbering for each nodes of degenerated faces
-  ptp = PDM.PartToPart(comm, [tgt_lngn], [src_lngn], [np.arange(len(closest_src_gnum)+1,dtype=closest_src_gnum.dtype)], [closest_src_gnum])
+  ptp = PDM.PartToPart(comm, [tgt_lngn], [src_lngn], [np.arange(len(closest_src_gnum)+1,dtype=np.int32)], [closest_src_gnum])
   request1 = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P, PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2, [pl_degen_nodes_kept])
   _, part_data = ptp.reverse_wait(request1)
   old_to_new_degen_faces_nodes = part_data[0]
