@@ -2,7 +2,9 @@ import pytest
 import pytest_parallel
 import maia.pytree        as PT
 
+from maia         import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.factory import dcube_generator
+
 
 def check_dims(tree, expected_cell_dim, expected_phy_dim):
   base = PT.get_child_from_label(tree, 'CGNSBase_t')
@@ -28,6 +30,7 @@ def test_dcube_generate(comm):
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 1
   zone = zones[0]
+  assert PT.get_value(zone).dtype == pdm_gnum_dtype
   assert PT.get_node_from_path(zone, ':CGNS#Distribution/Vertex') is not None
   assert PT.get_node_from_path(zone, ':CGNS#Distribution/Cell') is not None
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 6
@@ -68,6 +71,7 @@ def test_dcube_nodal_generate(comm, cgns_elmt_name):
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 1
   zone = zones[0]
+  assert PT.get_value(zone).dtype == pdm_gnum_dtype
   assert PT.get_node_from_path(zone, ':CGNS#Distribution/Vertex') is not None
   assert PT.get_node_from_path(zone, ':CGNS#Distribution/Cell') is not None
   assert PT.get_node_from_path(zone, ':CGNS#Distribution/Cell')[1][2] > 0
@@ -81,6 +85,7 @@ def test_dcube_nodal_generate_ridges(comm):
   dist_tree = dcube_generator.dcube_nodal_generate(5, 1., [0., 0., 0.], 'PYRA_5', comm, get_ridges=True)
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
+  assert PT.get_value(zone).dtype == pdm_gnum_dtype
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 6
   assert [PT.get_name(n) for n in PT.get_children_from_label(zone, 'Elements_t')] == \
                    ['PYRA_5.0', 'TRI_3.0', 'QUAD_4.1', 'BAR_2.0', 'NODE.0']

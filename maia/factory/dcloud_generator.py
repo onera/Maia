@@ -4,6 +4,7 @@ import Pypdm.Pypdm as PDM
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
 from maia.utils import par_utils, layouts
 
 # --------------------------------------------------------------------------
@@ -140,7 +141,7 @@ def generate_dist_points(n_vtx, zone_type, comm, origin=np.zeros(3), max_coords=
     for zone in PT.iter_all_Zone_t(dist_tree):
       if isinstance(n_vtx, int):
         n_vtx = len(origin) * [n_vtx]
-      zsize = [[_n_vtx, 0, 0] for _n_vtx in n_vtx]
+      zsize = np.array([[_n_vtx, 0, 0] for _n_vtx in n_vtx], dtype=pdm_gnum_dtype)
       PT.set_value(zone, zsize)
       PT.update_child(zone, 'ZoneType', value='Structured')
     return dist_tree

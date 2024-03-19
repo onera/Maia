@@ -8,6 +8,7 @@ from maia.pytree.sids import elements_utils as EU
 
 import maia
 from maia.utils import np_utils, par_utils, layouts
+from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
 
 def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
 
@@ -16,7 +17,7 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
   n_cell  = g_dims['n_face_abs'] if g_dims['n_cell_abs'] == 0 else g_dims['n_cell_abs']
   max_dim = 3 if g_dims['n_cell_abs'] != 0 else 2
 
-  zone = PT.new_Zone('zone', size=[[n_vtx, n_cell, 0]], type='Unstructured') 
+  zone = PT.new_Zone('zone', size=np.array([[n_vtx, n_cell, 0]],dtype=pdm_gnum_dtype), type='Unstructured')
 
   # > Grid coordinates
   vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
