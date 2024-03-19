@@ -219,8 +219,12 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   # PT.print_tree(PT.get_node_from_path(shallow_zone_n, f'ZoneBC/{degen_bc_name}'))
   # exit()
   for degen_subset_name in degen_subset_names:
+    # PT.print_tree(PT.get_node_from_path(shallow_zone_n, f'ZoneBC/{degen_subset_name}'))
+    # exit()
     PT.rm_node_from_path(shallow_zone_n, f'ZoneBC/{degen_subset_name}')
     PT.rm_node_from_path(shallow_zone_n, f'{degen_subset_name}')
+  
+  # TO DO: update data located at FaceCenter and CellCenter
   
   # Add zone to base
   PT.add_child(base_n, shallow_zone_n)

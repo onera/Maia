@@ -198,6 +198,9 @@ yaml_ref_zgc = '''
 @pytest_parallel.mark.parallel([1,2,7,11,23,59])
 @pytest.mark.parametrize("ZSR", [False, True])
 @pytest.mark.parametrize("JN", [False, True])
+# @pytest_parallel.mark.parallel([2])
+# @pytest.mark.parametrize("ZSR", [False])
+# @pytest.mark.parametrize("JN", [False])
 def test_merge_degen_faces(ZSR,JN,comm):
   #----------------------------
   # Ref yaml
@@ -235,6 +238,26 @@ def test_merge_degen_faces(ZSR,JN,comm):
       PT.update_child(base_n,fam,label='Family_t')
   
   #----------------------------
+  # Add families
+  zone_n = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t')
+  ymin_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Ymin')
+  pl_ymin = PT.get_value(PT.get_node_from_name(ymin_n, 'PointList'))[0]
+  if comm.rank == 0:
+    zsr_data = PT.new_ZoneSubRegion(name='ZSR_Data', loc='FaceCenter', point_list=[pl_ymin[0]], fields = {'PL': pl_ymin[0]}, parent=zone_n)
+    cgns_dist = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data)
+    PT.new_DataArray('Index', [0,1,1], parent=cgns_dist)
+  else:
+    zsr_data = PT.new_ZoneSubRegion(name='ZSR_Data', loc='FaceCenter', point_list=[[]], fields = {'PL': []}, parent=zone_n)
+    cgns_dist = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data)
+    PT.new_DataArray('Index', [1,1,1], parent=cgns_dist)
+  
+  #----------------------------
+  # Prepare test case with ZSR
+  if ZSR:
+    PT.rm_nodes_from_name(ymin_n, 'FamilyName')
+    PT.new_ZoneSubRegion(name='ZSR_Ymin', loc='FaceCenter', bc_name='Ymin', family=bc2fam['Ymin'], parent=zone_n)
+  
+  #----------------------------
   # Prepare test case with join
   if JN:
     periodic = {'translation' : np.array([nx-1, 0, 0], np.float32)}
@@ -266,14 +289,6 @@ def test_merge_degen_faces(ZSR,JN,comm):
     coord_x[beg:end], coord_y[beg:end], coord_z[beg:end] = maia.utils.ndarray.np_utils.transform_cart_vectors(coord_x[beg:end], coord_y[beg:end], coord_z[beg:end], rotation_angle = np.array([i*theta_x,theta_y,theta_z]))
   
   #----------------------------
-  # Prepare test case with ZSR
-  if ZSR:
-    ymin_n = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/ZoneBC_t/Ymin')
-    PT.rm_nodes_from_name(ymin_n, 'FamilyName')
-    zone_n = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t')
-    PT.new_ZoneSubRegion(name='ZSR_Ymin', loc='FaceCenter', bc_name='Ymin', family=bc2fam['Ymin'], parent=zone_n)
-  
-  #----------------------------
   # Convert to ngon
   # When convert_elements_to_ngon will be parallel independent, this part
   # could be reduce to
@@ -299,6 +314,7 @@ def test_merge_degen_faces(ZSR,JN,comm):
   # Prepare result with ZSR
   if ZSR:
     PT.rm_nodes_from_name(dist_tree, 'Ymin')
+  PT.rm_nodes_from_name(dist_tree, 'ZSR_Data')
   
   #----------------------------
   # To be sure to have the same distribution with reference
