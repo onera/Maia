@@ -21,7 +21,9 @@ from maia.utils               import par_utils
 
 import Pypdm.Pypdm as PDM
 
-yaml_ref = '''
+int_type = 4 if pdm_gnum_dtype==np.int32 else 8
+
+yaml_ref = f'''
   CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
   Base CGNSBase_t I4 [3, 3]:
     INLET Family_t:
@@ -30,7 +32,7 @@ yaml_ref = '''
     FARFIELD Family_t:
     PER1 Family_t:
     PER2 Family_t:
-    zone Zone_t I4 [[105, 64, 0]]:
+    zone Zone_t I{int_type} [[105, 64, 0]]:
       ZoneType ZoneType_t 'Unstructured':
       GridCoordinates GridCoordinates_t:
         CoordinateX DataArray_t:
@@ -75,27 +77,27 @@ yaml_ref = '''
         Zmin BC_t 'FamilySpecified':
           GridLocation GridLocation_t 'FaceCenter':
           FamilyName FamilyName_t 'PER1':
-          PointList IndexArray_t I4 [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 18, 21, 24, 27]]:
+          PointList IndexArray_t I{int_type} [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 18, 21, 24, 27]]:
         Zmax BC_t 'FamilySpecified':
           GridLocation GridLocation_t 'FaceCenter':
           FamilyName FamilyName_t 'PER2':
-          PointList IndexArray_t I4 [[194, 197, 200, 203, 207, 210, 213, 215, 217, 218, 219, 220, 221, 222, 223, 224]]:
+          PointList IndexArray_t I{int_type} [[194, 197, 200, 203, 207, 210, 213, 215, 217, 218, 219, 220, 221, 222, 223, 224]]:
         Xmin BC_t 'FamilySpecified':
           GridLocation GridLocation_t 'FaceCenter':
           FamilyName FamilyName_t 'INLET':
-          PointList IndexArray_t I4 [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
+          PointList IndexArray_t I{int_type} [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
         Xmax BC_t 'FamilySpecified':
           GridLocation GridLocation_t 'FaceCenter':
           FamilyName FamilyName_t 'OUTLET':
-          PointList IndexArray_t I4 [[20, 32, 43, 56, 73, 84, 95, 108, 125, 136, 147, 160, 177, 188, 199, 212]]:
+          PointList IndexArray_t I{int_type} [[20, 32, 43, 56, 73, 84, 95, 108, 125, 136, 147, 160, 177, 188, 199, 212]]:
         Ymax BC_t 'FamilySpecified':
           GridLocation GridLocation_t 'FaceCenter':
           FamilyName FamilyName_t 'FARFIELD':
-          PointList IndexArray_t I4 [[52, 55, 58, 60, 104, 107, 110, 112, 156, 159, 162, 164, 208, 211, 214, 216]]:
+          PointList IndexArray_t I{int_type} [[52, 55, 58, 60, 104, 107, 110, 112, 156, 159, 162, 164, 208, 211, 214, 216]]:
       NGonElements Elements_t I4 [22, 0]:
-        ElementRange IndexRange_t I4 [1, 224]:
+        ElementRange IndexRange_t I{int_type} [1, 224]:
         ElementStartOffset DataArray_t:
-          I4 : [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 43, 47, 50, 54, 57, 61, 64, 68, 72, 75, 79, 83, 87, 91, 95, 99,
+          I{int_type} : [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 43, 47, 50, 54, 57, 61, 64, 68, 72, 75, 79, 83, 87, 91, 95, 99,
                 103, 107, 111, 115, 119, 123, 127, 131, 135, 139, 143, 147, 151, 155, 159, 163, 167, 171, 175, 179, 183,
                 187, 191, 195, 199, 203, 207, 211, 215, 219, 223, 227, 231, 235, 239, 243, 247, 250, 254, 257, 260, 264,
                 268, 271, 275, 279, 282, 286, 290, 294, 298, 302, 306, 310, 314, 318, 322, 326, 330, 334, 338, 342, 346,
@@ -107,7 +109,7 @@ yaml_ref = '''
                 760, 764, 768, 772, 776, 780, 784, 788, 792, 796, 800, 804, 808, 812, 816, 820, 824, 828, 832, 836, 840,
                 844, 848, 852, 856, 860, 864, 868, 872, 876]
         ElementConnectivity DataArray_t:
-          I4 : [1, 2, 82, 81, 2, 3, 83, 82, 84, 83, 3, 4, 4, 5, 85, 84, 6, 7, 2, 1, 3, 2, 7, 8, 8, 9, 4, 3, 5, 4, 9, 10,
+          I{int_type} : [1, 2, 82, 81, 2, 3, 83, 82, 84, 83, 3, 4, 4, 5, 85, 84, 6, 7, 2, 1, 3, 2, 7, 8, 8, 9, 4, 3, 5, 4, 9, 10,
                 7, 6, 11, 12, 12, 13, 8, 7, 81, 21, 1, 13, 14, 9, 8, 2, 22, 82, 14, 15, 10, 9, 3, 23, 83, 21, 22, 2, 1, 4,
                 24, 84, 16, 17, 12, 11, 22, 23, 3, 2, 5, 25, 85, 13, 12, 17, 18, 23, 24, 4, 3, 21, 26, 6, 1, 14, 13, 18,
                 19, 24, 25, 5, 4, 7, 27, 22, 2, 15, 14, 19, 20, 8, 28, 23, 3, 26, 27, 7, 6, 9, 29, 24, 4, 27, 28, 8, 7, 10,
@@ -141,7 +143,7 @@ yaml_ref = '''
                 92, 97, 96, 92, 93, 98, 97, 93, 94, 99, 98, 94, 95, 100, 99, 96, 97, 102, 101, 97, 98, 103, 102, 98, 99,
                 104, 103, 99, 100, 105, 104]
         ParentElements DataArray_t:
-          I4 : [[225, 0], [226, 0], [227, 0], [228, 0], [229, 0], [230, 0], [231, 0], [232, 0], [233, 0], [234, 0], [225,
+          I{int_type} : [[225, 0], [226, 0], [227, 0], [228, 0], [229, 0], [230, 0], [231, 0], [232, 0], [233, 0], [234, 0], [225,
                 0], [235, 0], [225, 226], [236, 0], [226, 227], [225, 229], [227, 228], [237, 0], [226, 230], [228, 0], [238,
                 0], [227, 231], [229, 0], [239, 0], [228, 232], [229, 230], [240, 0], [230, 231], [229, 233], [231, 232],
                 [230, 234], [232, 0], [231, 235], [233, 0], [232, 236], [233, 234], [234, 235], [225, 241], [233, 237], [235,
@@ -167,13 +169,13 @@ yaml_ref = '''
                 0], [286, 0], [287, 0], [288, 0]]
 '''
 
-yaml_ref_zgc = '''
+yaml_ref_zgc = f'''
       ZoneGridConnectivity ZoneGridConnectivity_t:
         Xmin_0 GridConnectivity_t 'Base/zone':
           GridConnectivityType GridConnectivityType_t 'Abutting1to1':
           GridLocation GridLocation_t 'FaceCenter':
-          PointList IndexArray_t I4 [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
-          PointListDonor IndexArray_t I4 [[20, 32, 43, 56, 73, 84, 95, 108, 125, 136, 147, 160, 177, 188, 199, 212]]:
+          PointList IndexArray_t I{int_type} [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
+          PointListDonor IndexArray_t I{int_type} [[20, 32, 43, 56, 73, 84, 95, 108, 125, 136, 147, 160, 177, 188, 199, 212]]:
           GridConnectivityProperty GridConnectivityProperty_t:
             Periodic Periodic_t:
               RotationAngle DataArray_t R4 [0, 0, 0]:
@@ -184,8 +186,8 @@ yaml_ref_zgc = '''
         Xmax_0 GridConnectivity_t 'Base/zone':
           GridConnectivityType GridConnectivityType_t 'Abutting1to1':
           GridLocation GridLocation_t 'FaceCenter':
-          PointList IndexArray_t I4 [[20, 32, 43, 56, 73, 84, 95, 108, 125, 136, 147, 160, 177, 188, 199, 212]]:
-          PointListDonor IndexArray_t I4 [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
+          PointList IndexArray_t I{int_type} [[20, 32, 43, 56, 73, 84, 95, 108, 125, 136, 147, 160, 177, 188, 199, 212]]:
+          PointListDonor IndexArray_t I{int_type} [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
           GridConnectivityProperty GridConnectivityProperty_t:
             Periodic Periodic_t:
               RotationAngle DataArray_t R4 [-0, -0, -0]:
