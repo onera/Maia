@@ -67,3 +67,18 @@ Base CGNSBase_t I4 [3, 3]:
     t = maia.io.cgns_io_tree.read_tree(out_file)
     assert (PT.get_value(PT.get_node_from_name(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
   TU.rm_collective_dir(tmp_dir, comm)
+
+@pytest_parallel.mark.parallel(2)
+def test_read_wrong_file(comm):
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+  tmp_file = os.path.join(tmp_dir, 'test.py')
+
+  # Prepare file for test
+  if comm.Get_rank() == 0:
+    with open(tmp_file, 'w') as f:
+      f.write('import maia\n')
+      f.write('print(maia.__version__)')
+
+  with pytest.raises(ValueError):
+    maia.io.file_to_dist_tree(tmp_file, comm)
+  TU.rm_collective_dir(tmp_dir, comm)

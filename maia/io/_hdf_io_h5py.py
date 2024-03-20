@@ -1,6 +1,7 @@
 from mpi4py import MPI
 from h5py   import h5p, h5f, h5fd
 from math   import prod
+import h5py
 
 import maia.pytree as PT
 
@@ -31,7 +32,8 @@ def load_data(names, labels, data_shape):
   return True
 
 def load_size_tree(filename, comm):
-
+  if not h5py.is_hdf5(filename):
+    raise ValueError(f"{filename} is not a valid HDF5 file")
   if comm.Get_rank() == 0:
     size_tree = load_tree_partial(filename, load_data)
     rm_legacy_nodes(size_tree)
@@ -50,6 +52,8 @@ def load_size_tree(filename, comm):
   return size_tree
 
 def load_partial(filename, dist_tree, hdf_filter):
+  if not h5py.is_hdf5(filename):
+    raise ValueError(f"{filename} is not a valid HDF5 file")
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
 
   for path, filter in hdf_filter.items():
@@ -82,9 +86,13 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
   fid.close()
 
 def read_full(filename):
+  if not h5py.is_hdf5(filename):
+    raise ValueError(f"{filename} is not a valid HDF5 file")
   return load_tree_partial(filename, lambda X,Y,s: True)
 
 def read_links(filename):
+  if not h5py.is_hdf5(filename):
+    raise ValueError(f"{filename} is not a valid HDF5 file")
   return load_tree_links(filename)
 
 def write_full(filename, dist_tree, links=[]):
