@@ -26,6 +26,7 @@ Developpement version
 ^^^^^^^^
 - extract_part: ensure dtype correctness of transfered arrays
 - recover_dist_tree: prevent a crash if some Elements_t nodes does not exist in every zones
+- recover_dist_tree: use gnum_dtype as output kind of created zones
 
 v1.3 (January 2024)
 -------------------

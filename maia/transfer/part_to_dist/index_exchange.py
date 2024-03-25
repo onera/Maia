@@ -292,8 +292,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   On the dist_zone, ElementRange of the created node are numbered per physical dimension
   and must be shifted afterward.
   """
-  n_rank = comm.Get_size()
-  i_rank = comm.Get_rank()
+
   vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
 
@@ -406,7 +405,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
     dn_elt = d_strid_pe.shape[0]
     duplicated_idx = np.where(d_strid_pe != 2)[0]
 
-    dist_pe = np.empty([dn_elt, 2], order='F', dtype=np.int32)
+    dist_pe = np.empty([dn_elt, 2], order='F', dtype=pdm_gnum_dtype)
     offset = 0
     for iFace in range(dn_elt):
       # Face was not shared with a second partition on this zone
@@ -442,14 +441,15 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
     d_elt_n[duplicated_idx] = d_elt_n[duplicated_idx] // 2
 
   #Now retrieve filtered ElementStartOffset using size and cumsum
-  d_elt_eso = np_utils.sizes_to_indices(d_elt_n)
+  d_elt_eso = np_utils.sizes_to_indices(d_elt_n, pdm_gnum_dtype)
 
   #Local work is done, ElementStartOffset must now be shifted
   shift_eso = par_utils.gather_and_shift(d_elt_eso[-1], comm)
   d_elt_eso += shift_eso[i_rank]
 
   # > Add in disttree
-  elt_node = PT.new_NGonElements(elem_name, erange=[1, n_faceTot], eso=d_elt_eso, ec=dist_ec, parent=dist_zone)
+  elt_range = np.array([1, n_faceTot], pdm_gnum_dtype)
+  elt_node = PT.new_NGonElements(elem_name, erange=elt_range, eso=d_elt_eso, ec=dist_ec, parent=dist_zone)
   if has_pe:
     # Shift dist PE because we put NGon first
     np_utils.shift_nonzeros(dist_pe, n_faceTot)
@@ -496,13 +496,14 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   d_elt_n, dist_ec = PTB.exchange_field(part_ec, part_stride)
 
   # ElementStartOffset must be shifted
-  dist_eso = np_utils.sizes_to_indices(d_elt_n)
+  dist_eso = np_utils.sizes_to_indices(d_elt_n, pdm_gnum_dtype)
   shift_eso = par_utils.gather_and_shift(dist_eso[-1], comm)
   dist_eso += shift_eso[comm.Get_rank()]
 
   # > Add in disttree
   n_cellTot = PTBDistribution[n_rank]
-  elt_node = PT.new_NFaceElements(elem_name, erange=[1, n_cellTot], eso=dist_eso, ec=dist_ec, parent=dist_zone)
+  elt_range = np.array([1, n_cellTot], dtype=pdm_gnum_dtype)
+  elt_node = PT.new_NFaceElements(elem_name, erange=elt_range, eso=dist_eso, ec=dist_ec, parent=dist_zone)
 
   distri_cell_face = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
   distri_ud = MT.newDistribution(parent=elt_node)

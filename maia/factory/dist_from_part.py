@@ -1,7 +1,6 @@
 from mpi4py import MPI
 import numpy      as np
 import operator
-import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -11,6 +10,7 @@ from maia.transfer              import utils              as tr_utils
 from maia.transfer.part_to_dist import data_exchange      as PTB
 from maia.transfer.part_to_dist import index_exchange     as IPTB
 from maia.utils                 import py_utils, par_utils
+from maia                       import npy_pdm_gnum_dtype as pdm_dtype
 
 def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
                                  child_list=[], get_value="ancestors",
@@ -136,7 +136,7 @@ def _recover_dist_block_size(part_zones, comm):
   # Choose any starting point
   first = next(iter(zones_to_size_g))
   idx_dim = zones_to_size_g[first].size
-  d_zone_dims = np.zeros((idx_dim,3), np.int32, order='F')
+  d_zone_dims = np.zeros((idx_dim,3), pdm_dtype, order='F')
   d_zone_dims[:,1] += zones_to_size_g[first] #Cell size
   for axis in range(3):
     for oper in [operator.ne, operator.eq]: #Go front (vtx != 1), then back (vtx == 1)
@@ -320,7 +320,7 @@ def recover_dist_tree(part_tree, comm):
 
     MT.newDistribution({'Vertex' : vtx_distri, 'Cell' : cell_distri}, parent=dist_zone)
     if PT.Zone.Type(dist_zone) == "Unstructured":
-      d_zone_dims = np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=np.int32)
+      d_zone_dims = np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=pdm_dtype)
     elif PT.Zone.Type(dist_zone) == "Structured":
       d_zone_dims = _recover_dist_block_size(part_zones, comm)
       if d_zone_dims.shape[0] == 3:
